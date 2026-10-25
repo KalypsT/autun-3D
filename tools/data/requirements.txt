@@ -1,0 +1,7 @@
+laspy[lazrs]==2.7.0
+numpy>=2.0
+pillow>=11.0
+pyproj>=3.7
+requests>=2.32
+shapely>=2.0
+tifffile>=2025.1.10
