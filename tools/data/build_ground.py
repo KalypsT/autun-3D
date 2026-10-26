@@ -123,13 +123,18 @@ def main():
             poly = Polygon(bs.way_line(e)).buffer(0)
             plazas["gravel" if t.get("surface") in ("gravel", "compacted", "fine_gravel") else "asphalt"].append(poly)
     # Le reste du sol minéral de la carte : places, cours, parkings non cartographiés.
-    one = ground[: ground.shape[0] // 2 * 2, : ground.shape[1] // 2 * 2]
-    one = one.reshape(one.shape[0] // 2, 2, one.shape[1] // 2, 2).transpose(0, 2, 1, 3).reshape(one.shape[0] // 2, one.shape[1] // 2, 4)
-    counts = np.stack([(one == k).sum(axis=2) for k in range(8)])
+    k = 4  # blocs de 4 x 4 pixels de 0,5 m : cellules de 2 m, assez fines pour des places, assez grosses pour rester légères
+    H4, W4 = ground.shape[0] // k, ground.shape[1] // k
+    blocks = ground[: H4 * k, : W4 * k].reshape(H4, k, W4, k).transpose(0, 2, 1, 3).reshape(H4, W4, k * k)
+    counts = np.stack([(blocks == cid).sum(axis=2) for cid in range(8)])
     major = counts.argmax(axis=0).astype(np.uint8)
     for name, cls_id in (("sett", 3), ("gravel", 4), ("paving", 0), ("asphalt", 1)):
-        m = ndimage.binary_closing(major == cls_id, iterations=1)
-        g = raster_polygons(m, c.RES * 2).buffer(0.6).buffer(-0.6)
+        m = ndimage.binary_opening(ndimage.binary_closing(major == cls_id, iterations=1), iterations=1)
+        lab, n = ndimage.label(m)
+        if n:
+            sizes = ndimage.sum(m, lab, range(1, n + 1))
+            m = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= 12])  # au moins ~50 m²
+        g = raster_polygons(m, c.RES * k).buffer(0.8).buffer(-0.8)
         plazas[name].append(g)
     print("places brutes", round(time.time() - t0), "s", flush=True)
     P = {}
