@@ -144,8 +144,8 @@ export function startGame(ctx: GameContext): void {
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
   });
-  // ?ride=velo, trottinette ou voiture : départ sur un véhicule (captures, essais).
-  const ride = { velo: "bike", trottinette: "scooter", voiture: "car" }[params.get("ride") ?? ""] as VehicleKind | undefined;
+  // ?ride=velo, trottinette, voiture ou moto : départ sur un véhicule (captures, essais).
+  const ride = { velo: "bike", trottinette: "scooter", voiture: "car", moto: "moto" }[params.get("ride") ?? ""] as VehicleKind | undefined;
   if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
 
   let hudTimer = 0;
@@ -226,6 +226,7 @@ export function startGame(ctx: GameContext): void {
     if (riding && rideModel) {
       rideModel.update(riding.state);
       if (rideModel.pose === "pedal") model.ride(rideModel.seat, crank);
+      else if (rideModel.pose === "seat") model.ride(rideModel.seat, 0);
       else if (rideModel.pose === "stand") model.stand(rideModel.seat);
     } else {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);

@@ -3,7 +3,7 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { BIKE, CAR, createVehicle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { BIKE, CAR, createVehicle, MOTO, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -255,5 +255,38 @@ describe("voiture", () => {
     c.vy = 8;
     for (let i = 0; i < 180; i++) stepVehicle(c, CAR, { throttle: 0, brake: 0, steer: 0 }, DT, big, none, stairs);
     expect(c.y).toBeLessThan(10);
+  });
+});
+
+describe("moto", () => {
+  const full = { throttle: 1, brake: 0, steer: 0 };
+
+  it("0 à 100 km/h en 4,5 à 7 s, plus vite que la voiture", () => {
+    const meta = { cols: 400, rows: 400, res: 5, x0: -1000, y0: -1000, y1: 1000, base: 0, unit: 0.01, zmin: 0, zmax: 0 } as TerrainMeta;
+    const t = new Terrain(meta, new Float32Array(400 * 400));
+    const m = createVehicle(0, -900, 0, t);
+    let time = 0;
+    while (kmh(m.speed) < 100 && time < 30) {
+      stepVehicle(m, MOTO, full, DT, t, none);
+      time += DT;
+    }
+    expect(time).toBeGreaterThan(4.5);
+    expect(time).toBeLessThan(7);
+  });
+
+  it("penche franchement dans un virage rapide, sans dépasser l'adhérence", () => {
+    const m = createVehicle(0, -50, 0, flat);
+    m.vy = m.speed = 14;
+    drive(m, { throttle: 0.4, brake: 0, steer: 1 }, 2, flat, none, MOTO);
+    expect(m.lean).toBeGreaterThan(0.3);
+    expect(Math.abs(m.speed * m.yawRate)).toBeLessThan(1.02 * 9.81);
+  });
+
+  it("freine de 50 km/h à l'arrêt en moins de 13 m", () => {
+    const m = createVehicle(0, -90, 0, flat);
+    m.vy = m.speed = 50 / 3.6;
+    const y0 = m.y;
+    brakingTime(m, MOTO);
+    expect(m.y - y0).toBeLessThan(13);
   });
 });

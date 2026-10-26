@@ -1,15 +1,16 @@
 import type * as THREE from "three";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
-import { BIKE, CAR, createVehicle, SCOOTER, type VehicleSpec, type VehicleState } from "../core/vehicle";
+import { BIKE, CAR, createVehicle, MOTO, SCOOTER, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import type { Terrain } from "../data/terrain";
 import { createBikeModel } from "../render/bike-model";
 import { createCarModel, ParkedCars } from "../render/car-model";
+import { createMotoModel } from "../render/moto-model";
 import { createScooterModel } from "../render/scooter-model";
 import type { TileExtras } from "../render/tile-manager";
 import type { VehicleModel } from "../render/vehicle-model";
 
-export type VehicleKind = "bike" | "scooter" | "car";
+export type VehicleKind = "bike" | "scooter" | "car" | "moto";
 
 /** Par type : physique, modèle, pictogramme, libellé de l'accélérateur, distance pour monter, caméra de poursuite. */
 export const KINDS: Record<VehicleKind, {
@@ -23,6 +24,7 @@ export const KINDS: Record<VehicleKind, {
   bike: { spec: BIKE, model: createBikeModel, icon: "🚲", gas: "Pédaler", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 } },
   scooter: { spec: SCOOTER, model: createScooterModel, icon: "🛴", gas: "Accélérer", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 } },
   car: { spec: CAR, model: createCarModel, icon: "🚗", gas: "Accélérer", reach: 3.0, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 } },
+  moto: { spec: MOTO, model: createMotoModel, icon: "🏍️", gas: "Accélérer", reach: 2.2, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 } },
 };
 
 /** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse. */
@@ -42,8 +44,9 @@ const DRAW_DISTANCE = 110;
 const CAR_DRAW_DISTANCE = 170;
 /** Écart entre deux vélos rangés côte à côte (m). */
 const BIKE_SPACING = 0.7;
-/** Part des places de stationnement occupées. */
+/** Part des places de stationnement occupées par une voiture, puis par deux motos. */
 const OCCUPANCY = 0.3;
+const MOTO_OCCUPANCY = 0.04;
 const MAX_PARKED_CARS = 400;
 
 /** Petit hachage entier déterministe (placement et couleurs reproductibles). */
@@ -103,9 +106,16 @@ export class Fleet {
       if (this.sources.has(key)) continue;
       this.sources.add(key);
       const h = hash(Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663));
-      if ((h % 1000) / 1000 >= OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
+      const draw = (h % 1000) / 1000;
+      if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
       // Garée en marche avant ou en marche arrière.
-      this.add("car", `voiture-${key}`, s.x, s.y, s.heading + (h & 1024 ? Math.PI : 0), (h >>> 12) & 15);
+      const heading = s.heading + (h & 1024 ? Math.PI : 0);
+      if (draw < OCCUPANCY) this.add("car", `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
+      else {
+        // Deux motos côte à côte sur la place.
+        const rx = Math.cos(heading), ry = -Math.sin(heading);
+        for (const side of [-1, 1]) this.add("moto", `moto-${key}-${side}`, s.x + rx * side * 0.6, s.y + ry * side * 0.6, heading, ((h >>> 12) + side + 1) & 15);
+      }
     }
     this.carOnly.currentTag = t.id;
     for (const st of t.stairs) {

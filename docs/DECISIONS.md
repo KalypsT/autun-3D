@@ -154,3 +154,9 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Escaliers : obstacles réservés aux voitures (`Fleet.carOnly`, emprise des zones `stairs`), retirés avec la tuile.
 - Chocs : les véhicules garés sont des obstacles fixes (masse infinie) ; les pousser viendra avec la circulation (étape 3).
 - Caméra de poursuite par type (distance, recul avec la vitesse, hauteur) ; on monte à moins de 3 m d'une voiture, on en descend côté conducteur (gauche).
+
+## 2026-10-26 — D25. Moto de moyenne cylindrée
+
+- Physique (`MOTO`) : 265 kg avec le pilote, 35 kW (≈ 32 kW à la roue), 0 à 100 km/h en ≈ 5,5 s, 170 km/h, freinage ≈ 0,9 g ; seule la roue arrière est motrice (motricité bornée) ; frein moteur ; inclinaison des deux-roues (jusqu'à ≈ 43°).
+- Garées par deux sur 4 % des places de stationnement (en plus des 30 % de voitures). Pilote assis, buste penché vers le guidon. `?ride=moto`.
+- Modèle : quatre maillages (cadre avec réservoir, moteur et échappement ; direction avec fourche, guidon et phare ; deux roues), angle de chasse de 24°.

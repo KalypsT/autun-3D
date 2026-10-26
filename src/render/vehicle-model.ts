@@ -10,8 +10,8 @@ export interface VehicleModel {
   update(s: VehicleState): void;
   /** Point d'attache du conducteur (repère local : avant vers −z, haut +y). */
   readonly seat: THREE.Vector3;
-  /** Posture du conducteur : assis qui pédale, debout, ou caché (dans une voiture). */
-  readonly pose: "pedal" | "stand" | "hidden";
+  /** Posture du conducteur : assis qui pédale, assis sans pédaler (moto), debout, ou caché (dans une voiture). */
+  readonly pose: "pedal" | "seat" | "stand" | "hidden";
   dispose(): void;
 }
 

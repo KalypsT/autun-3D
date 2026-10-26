@@ -157,6 +157,40 @@ export const CAR: VehicleSpec = {
   driveShare: 1.55 / 2.6,
 };
 
+/**
+ * Moto de moyenne cylindrée (permis A2) avec son pilote : 265 kg, 35 kW (≈ 32 kW à la roue), 0 à 100 km/h
+ * en ≈ 5,5 s, freinage ≈ 0,9 g ; seule la roue arrière est motrice ; elle penche dans les virages.
+ */
+export const MOTO: VehicleSpec = {
+  mass: 265,
+  yawInertia: 70,
+  front: 0.7,
+  rear: 0.72,
+  maxSteer: 0.55,
+  steerFade: 6,
+  steerRate: 2.2,
+  corneringFront: 9000,
+  corneringRear: 10500,
+  grip: 1.0,
+  power: 32000,
+  maxDrive: 2600,
+  driveFadeFrom: 160 / 3.6,
+  topSpeed: 170 / 3.6,
+  maxBrake: 2400,
+  reverseSpeed: 1.0,
+  reverseForce: 160,
+  rolling: 0.012,
+  drag: 0.36,
+  hull: [[0.6, 0.32], [-0.55, 0.32]],
+  restitution: 0.15,
+  impactFriction: 0.35,
+  wheelRadius: 0.31,
+  leans: true,
+  bodyRoll: 0,
+  engineBrake: 250,
+  driveShare: 0.72 / 1.42,
+};
+
 export interface VehicleState {
   x: number;
   y: number;

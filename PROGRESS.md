@@ -139,3 +139,10 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 
 ![Voitures garées](docs/captures/etape5-voitures-garees.jpg)
 ![Voiture](docs/captures/etape5-voiture.jpg)
+
+### Moto (26 octobre 2026) — étape 1 terminée
+
+- Moto de moyenne cylindrée (D25), garée par deux sur quelques places de stationnement ; pilote assis, inclinaison dans les virages. `?ride=moto`. Tests : 77.
+- L'étape 1 (véhicules libres) est complète : vélo, trottinette, voiture, moto, chargement à vitesse. Reste à régler au doigt sur téléphone (commandes, caméra) et à mesurer (`?bench=1`).
+
+![Moto](docs/captures/etape5-moto.jpg)
