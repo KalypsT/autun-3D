@@ -92,4 +92,5 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 - `tools/data/build_ground.py` : chaussées (largeurs BD TOPO), trottoirs de 2,2 m, places et parkings (OSM + sol minéral de la carte), passages piétons (207), lignes axiales, lampadaires (914, tous les 30 m sur les trottoirs). Découpés par tuile dans `tiles/*.json` (champ `ground`).
 - Client (`src/render/ground.ts`) : polygones triangulés et posés sur le relief, bordure de 15 cm avec liseré clair, marquages en blanc ; un seul maillage « sol » par tuile.
 - Ciel en trois teintes avec nuages en aplats (ombre rosée) ; arbres jaunes et orange par endroits ; enseignes avec lettres suggérées ; lampadaires et lanternes allumées la nuit.
-- À revoir : places en dents de scie (raster), parkings intérieurs traités en rues, lampadaires sans orientation, pas de texte sur les enseignes.
+- Enseignes : le nom du commerce s'affiche (atlas de noms de 192 cases, recyclé en anneau) ; lampadaires orientés vers la chaussée ; trottoirs prioritaires sur les places (bords nets).
+- À revoir : parkings intérieurs traités en rues, pas de places marquées, lignes de stop et bandes cyclables, pelouses et haies, mobilier orienté.
