@@ -146,11 +146,22 @@ export interface WorldManifest {
 }
 
 /** Contenu détaillé d'une tuile de 250 m (fichier tiles/<col>_<row>.json). */
+/** Talus du relief à dessiner en escalier (corrections manuelles, tools/data/manual.json). */
+export interface StairsZone {
+  id: string;
+  /** Emprise locale : x0, y0, x1, y1. */
+  bbox: [number, number, number, number];
+  /** Altitude du bas de l'escalier et hauteur d'une marche. */
+  base: number;
+  riser: number;
+}
+
 export interface TileData {
   /** Emprise locale de la tuile : x0, y0, x1, y1. */
   bounds: [number, number, number, number];
   /** Sols en vecteurs : couche -> polygones -> anneaux (extérieur puis trous), coordonnées aplaties. */
   ground: Record<string, number[][][]>;
+  stairs?: StairsZone[];
   buildings: Building[];
   fiches: FacadeFiche[];
   trees: Tree[];

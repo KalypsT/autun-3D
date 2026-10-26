@@ -4,6 +4,7 @@ import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/type
 import { planFacades, type Placement } from "./facades";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { buildGround } from "./ground";
+import { buildStairs } from "./stairs";
 import { SignAtlas } from "./sign-atlas";
 import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
@@ -352,6 +353,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
   buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
+  buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
   buildFurniture(detail, tile.furniture, terrain, glow, halo);
   append(detail, posts);
