@@ -28,11 +28,11 @@ describe("triangulation des toits (précalculée par tools/data)", () => {
         for (let k = 0; f.e && k < f.e.length; k += 2) extra.push(new THREE.Vector2(f.e[k]!, f.e[k + 1]!));
         const verts = [...contour, ...holes.flat(), ...extra];
         let got = 0;
-        if (!f.t) {
-          bad.push(`${b.id}#${i} sans triangles précalculés`);
-          continue;
-        }
-        for (let k = 0; k < f.t.length; k += 3) got += area([verts[f.t[k]!]!, verts[f.t[k + 1]!]!, verts[f.t[k + 2]!]!]);
+        // Les toits générés n'ont pas de triangles précalculés : le client les calcule (earcut), comme ici.
+        const tris: number[][] = [];
+        if (f.t) for (let k = 0; k + 2 < f.t.length; k += 3) tris.push([f.t[k]!, f.t[k + 1]!, f.t[k + 2]!]);
+        else tris.push(...THREE.ShapeUtils.triangulateShape(contour, holes));
+        for (const [a, c, d] of tris) got += area([verts[a!]!, verts[c!]!, verts[d!]!]);
         if (Math.abs(got - expected) / expected > (f.e ? 0.1 : 0.02)) bad.push(`${b.id}#${i} attendu ${expected.toFixed(2)} m², obtenu ${got.toFixed(2)} m²`);
       }
     }
