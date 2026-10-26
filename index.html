@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b1f27" />
+    <title>Autun 3D</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1b1f27; overflow: hidden; touch-action: none; overscroll-behavior: none; }
+      canvas { display: block; width: 100%; height: 100%; }
+      #debug { position: fixed; top: 6px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
+               background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
+      #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
+      #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
+                 text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="debug"></div>
+    <div id="loading">Chargement d'Autun…</div>
+    <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®) · three.js</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
