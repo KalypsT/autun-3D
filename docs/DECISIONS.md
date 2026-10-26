@@ -135,3 +135,12 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Même physique que le vélo, autres paramètres (`SCOOTER`) : moteur ≈ 500 W bridé à 25 km/h (limite légale), petites roues (adhérence 0,72, roulement deux fois plus fort), freinage ≈ 4,5 m/s², poussée à reculons à 1 m/s. Elle monte une côte de 8 % vers 20 km/h, mieux qu'un cycliste.
 - Une trottinette au bout de chaque rangée de vélos (parkings à vélos d'OSM). Conducteur debout, un pied devant l'autre ; la pédale de droite devient « Accélérer ».
 - Modèles de véhicules : interface commune `VehicleModel` (`src/render/vehicle-model.ts`), posture du conducteur portée par le modèle (« pedal » ou « stand »).
+
+## 2026-10-26 — D23. Construction des tuiles en tranches, anticipation selon la vitesse
+
+- Constat (profil sur processeur de PC) : une tuile dense coûte 150 à 340 ms d'un bloc — plan des façades 50-70 ms, éléments de façade 80-125 ms, assemblage du maillage « bâti » 50-65 ms, sols 15-60 ms. En roulant, chaque tuile aurait fait sauter 10 à 20 images.
+- La construction devient un générateur (`buildTileSteps`, `planFacadesSteps`, `buildGroundSteps`, `MeshBuilder.buildSteps`) qui rend la main après chaque bâtiment, tous les 40 éléments de façade, chaque polygone de sol et tous les 90 000 flottants copiés. `TileManager` lui accorde 4 ms par image (`?budget=`, `?budget=1000` = d'un bloc pour comparer) ; une tuile se construit ainsi en quelques dizaines d'images. Le préchargement du départ reste d'un bloc.
+- Les maillages d'une tuile neuve sont montrés un par image (l'envoi des sommets à la carte graphique est étalé) ; la silhouette reste visible jusqu'au dernier.
+- Anticipation : la distance d'une tuile est la plus petite entre la position et le point atteint dans 3 s à la vitesse actuelle ; les tuiles devant sont chargées et construites d'abord.
+- Les obstacles d'une tuile ne comptent qu'une fois sa construction finie : à 3 s d'anticipation et 210 m de rayon, on n'atteint jamais une tuile en cours de construction, même à 90 km/h.
+- Limite : `JSON.parse` d'une tuile (jusqu'à ≈ 1 Mo) reste d'un bloc sur le fil principal ; à déplacer dans un worker si le banc le montre.

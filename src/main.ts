@@ -8,7 +8,7 @@ import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
 import { useTheme } from "./render/style";
-import { buildTileStyled, StyleResources } from "./render/stylized";
+import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 
@@ -101,7 +101,8 @@ async function main(): Promise<void> {
   const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
-  const tiles = new TileManager(world, (d) => buildTileStyled(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210));
+  // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
+  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210), Number(params.get("budget") ?? 4));
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);

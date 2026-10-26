@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/types";
-import { planFacades, type Placement } from "./facades";
-import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { buildGround } from "./ground";
+import { planFacadesSteps, type Placement } from "./facades";
+import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
+import { buildGroundSteps } from "./ground";
 import { buildStairs } from "./stairs";
 import { SignAtlas } from "./sign-atlas";
 import { canvasTexture, rng } from "./canvas";
@@ -296,24 +296,29 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
   return group;
 }
 
-/** Ajoute les triangles de `src` à `dst` (pas de spread : les tableaux dépassent la limite d'arguments). */
-function append(dst: MeshBuilder, src: MeshBuilder): void {
-  for (const k of ["positions", "normals", "colors"] as const) {
-    const d = dst[k], v = src[k];
-    for (let i = 0; i < v.length; i++) d.push(v[i]!);
-  }
-}
-
 /** Maillages d'une tuile dans le style « conte » : murs en aplats, fenêtres et volets en volumes simples, toits propres. */
 export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Terrain): TileMeshes {
+  return finish(buildTileSteps(res, tile, terrain));
+}
+
+/** Bâtiments et éléments de façade traités entre deux points d'arrêt. */
+const BUILDINGS_PER_STEP = 6;
+const PLACEMENTS_PER_STEP = 40;
+
+/** Comme `buildTileStyled`, découpé en tranches de quelques millisecondes (cf. `TileManager`). */
+export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: Terrain): Steps<TileMeshes> {
   const skip = new URLSearchParams(location.search).get("skip") ?? "";
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
-  const plan = planFacades(tile.buildings, fiches, terrain);
+  const plan = yield* planFacadesSteps(tile.buildings, fiches, terrain);
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
-  glowTarget = glow;
   const names = new UvMeshBuilder();
-  signText = { mb: names, atlas: res.signAtlas };
+  // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
+  const target = (): void => {
+    glowTarget = glow;
+    signText = { mb: names, atlas: res.signAtlas };
+  };
 
+  let count = 0;
   for (const b of tile.buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
@@ -334,13 +339,16 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
       walls.quad(q[0], q[3], q[2], q[1], [-nrm[0], 0, -nrm[2]], wc);
     }
     for (const [cx, cy, sx, sy, z0, z1] of b.chim as [number, number, number, number, number, number][]) chimney(detail, cx, cy, sx, sy, z0, z1);
+    if (++count % BUILDINGS_PER_STEP === 0) yield;
   }
 
   // Éléments de façade en volumes simples.
   const sizes = new Map<string, number>();
   for (const r of plan.requests) sizes.set(r.key, r.wm);
   for (const r of plan.signRequests) sizes.set(r.key, r.wm);
+  count = 0;
   for (const p of skip.includes("place") ? [] : plan.placements) {
+    target();
     const parts = p.key.split("|");
     switch (parts[0]) {
       case "win": windowGeometry(detail, p, parts); break;
@@ -350,38 +358,46 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
       case "sign": signGeometry(detail, p, parts, sizes.get(p.key) ?? 2); break;
       default: break;
     }
+    if (++count % PLACEMENTS_PER_STEP === 0) yield;
   }
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
+  yield;
   if (!skip.includes("stairs")) buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
+  target();
   if (!skip.includes("furn")) buildFurniture(detail, tile.furniture, terrain, glow, halo);
-  append(detail, posts);
+  yield;
 
   const group = new THREE.Group();
   let draws = 0, triangles = 0;
-  const add = (name: string, mb: { build(): THREE.BufferGeometry; triangleCount: number }, mat: THREE.Material): void => {
-    if (mb.triangleCount === 0) return;
-    const m = new THREE.Mesh(mb.build(), mat);
+  const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
+    const m = new THREE.Mesh(geometry, mat);
     m.name = name;
     m.castShadow = name !== "grilles" && name !== "vitres" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
-    triangles += mb.triangleCount;
+    triangles += tris;
+  };
+  const add = (name: string, mb: { build(): THREE.BufferGeometry; triangleCount: number }, mat: THREE.Material): void => {
+    if (mb.triangleCount > 0) put(name, mb.build(), mb.triangleCount, mat);
   };
   add("toits", roofs, res.roofMat);
-  // Murs, façades, murets et mobilier partagent une matière : un seul maillage.
-  append(walls, detail);
-  add("bati", walls, res.wallMat);
+  // Murs, façades, murets, poteaux et mobilier partagent une matière : un seul maillage, assemblé par blocs.
+  const solid = walls.triangleCount + detail.triangleCount + posts.triangleCount;
+  if (solid > 0) put("bati", yield* walls.buildSteps([detail, posts]), solid, res.wallMat);
   add("vitres", glow, res.glowMat);
   res.signAtlas.flush();
   add("enseignes", names, res.signMat);
   add("halos", halo, res.haloMat);
-  add("sol", buildGround(tile.ground ?? {}, tile.bounds, terrain), res.groundMat);
+  yield;
+  const ground = yield* buildGroundSteps(tile.ground ?? {}, tile.bounds, terrain);
+  if (ground.triangleCount > 0) put("sol", yield* ground.buildSteps(), ground.triangleCount, res.groundMat);
   add("grilles", fence, res.fenceMat);
   if (tile.trees.length) {
+    yield;
     group.add(treesStyled(res, tile.trees));
     draws += 2;
   }

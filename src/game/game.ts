@@ -233,7 +233,9 @@ export function startGame(ctx: GameContext): void {
       updateHud();
     }
 
-    tiles.update(player.x, player.y);
+    // Les tuiles vers lesquelles on se dirige se chargent en premier.
+    if (riding) tiles.update(player.x, player.y, riding.state.vx, riding.state.vy);
+    else tiles.update(player.x, player.y, player.vx, player.vy);
     terrainView.update(player.x, player.y);
 
     atmosphere.advance(dt);

@@ -23,7 +23,7 @@ interface FrameSample {
   ms: number;
   draws: number;
   triangles: number;
-  /** Construction de tuile dans l'image mesurée (ms), 0 sinon. */
+  /** Temps de construction de tuile dans l'image mesurée (ms), 0 sinon. */
   build: number;
 }
 
@@ -40,8 +40,8 @@ interface PhaseReport {
   frames: FrameSummary;
   draws: { avg: number; max: number };
   triangles: { avg: number; max: number };
-  builds: { id: string; ms: number }[];
-  /** À-coups (> 50 ms) qui tombent sur une image où une tuile s'est construite. */
+  builds: { id: string; ms: number; frames: number; slice: number }[];
+  /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
   memory: Memory;
 }
@@ -145,6 +145,7 @@ export function startBench(ctx: GameContext): void {
     shadowMap: sunLight.shadow.mapSize.x,
     pixelRatio: renderer.getPixelRatio(),
     detail: Number(params.get("detail") ?? 210),
+    budget: Number(params.get("budget") ?? 4),
     hour: atmosphere.clock,
     route: `${r1(end / 1000)} km${short ? " (version courte, sans valeur de mesure)" : ""}`,
   };
@@ -193,27 +194,31 @@ export function startBench(ctx: GameContext): void {
       frames: summarizeFrames(samples.map((s) => s.ms)),
       draws: { avg: Math.round(dSum / n), max: dMax },
       triangles: { avg: Math.round(tSum / n), max: tMax },
-      builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms) })),
+      builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
       memory: measureMemory(ctx),
     });
   };
 
   /** Position de l'appareil suivi (le « véhicule ») et de la caméra. */
-  const pose = (): { x: number; y: number; cam: [number, number, number]; look: [number, number, number] } => {
+  const pose = (): { x: number; y: number; vx: number; vy: number; cam: [number, number, number]; look: [number, number, number] } => {
     const p = phase!;
     if (p.drive) {
       const s = Math.min(p.drive.from + t * p.drive.speed, p.drive.to);
       const at = route.at(s), back = route.at(s - CHASE_BACK), ahead = route.at(s + CHASE_AHEAD);
+      // Vitesse le long du parcours, pour l'anticipation du chargement.
+      const next = route.at(s + 1);
+      const len = Math.hypot(next.x - at.x, next.y - at.y) || 1;
       return {
         x: at.x, y: at.y,
+        vx: ((next.x - at.x) / len) * p.drive.speed, vy: ((next.y - at.y) / len) * p.drive.speed,
         cam: [back.x, terrain.heightAt(back.x, back.y) + CHASE_HEIGHT, back.y],
         look: [ahead.x, terrain.heightAt(ahead.x, ahead.y) + 1.2, ahead.y],
       };
     }
     // Vue du jeu au départ : derrière le piéton, regard vers le nord (mairie, théâtre).
     const x = spawn.x, y = spawn.y;
-    return { x, y, cam: [x, terrain.heightAt(x, y - 3.6) + 2.6, y - 3.6], look: [x, terrain.heightAt(x, y + 20) + 1.5, y + 20] };
+    return { x, y, vx: 0, vy: 0, cam: [x, terrain.heightAt(x, y - 3.6) + 2.6, y - 3.6], look: [x, terrain.heightAt(x, y + 20) + 1.5, y + 20] };
   };
 
   let last = performance.now();
@@ -263,9 +268,8 @@ export function startBench(ctx: GameContext): void {
     const pos = pose();
     camera.position.set(pos.cam[0], pos.cam[1], -pos.cam[2]);
     camera.lookAt(pos.look[0], pos.look[1], -pos.look[2]);
-    const before = tiles.buildCount;
-    tiles.update(pos.x, pos.y);
-    pendingBuild = tiles.buildCount !== before ? tiles.lastBuildMs : 0;
+    tiles.update(pos.x, pos.y, pos.vx, pos.vy);
+    pendingBuild = tiles.sliceMs;
     terrainView.update(pos.x, pos.y);
     atmosphere.advance(dt);
     placeSun(pos.x, pos.y, terrain.heightAt(pos.x, pos.y));
@@ -298,7 +302,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · ${String(r.settings["hour"])}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -311,9 +315,12 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {
-      const ms = p.builds.map((b) => b.ms);
+      const n = p.builds.length;
+      const sum = (f: (b: PhaseReport["builds"][number]) => number): number => p.builds.reduce((a, b) => a + f(b), 0);
+      const slice = Math.max(...p.builds.map((b) => b.slice));
       const worst = [...p.builds].sort((a, b) => b.ms - a.ms).slice(0, 4).map((b) => `${b.id} ${b.ms.toFixed(0)}`).join(", ");
-      lines.push(`  Tuiles construites : ${p.builds.length} · moyenne ${(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(0)} ms · plus lentes : ${worst} ms`);
+      lines.push(`  Tuiles construites : ${n} · travail moyen ${(sum((b) => b.ms) / n).toFixed(0)} ms étalé sur ${(sum((b) => b.frames) / n).toFixed(0)} images · plus longue tranche ${slice.toFixed(0)} ms`);
+      lines.push(`  Tuiles les plus lourdes : ${worst} ms`);
     }
     const m = p.memory;
     lines.push(`  Mémoire : géométrie ≈ ${m.geometryMB} Mo (${m.geometries}) · textures ≈ ${m.textureMB} Mo (${m.textures})${m.heapMB !== null ? ` · JavaScript ${m.heapMB} Mo` : ""}`);

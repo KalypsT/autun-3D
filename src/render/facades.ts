@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Building, FacadeFiche, WallRun } from "../data/types";
-import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { finish, hash01, MeshBuilder, toThree, type Steps, type Vec3 } from "./geometry";
 import {
   type ElementSpec, canonicalWindow, doorDims, doorRequest, quantize, railingRequest, shopModuleRequest, signRequest, SHOP_MODULE_W, windowDims, windowRequest,
   type DoorStyle, type WindowSpec,
@@ -120,6 +120,11 @@ function slabBox(mb: MeshBuilder, pl: Polyline, s0: number, s1: number, z: numbe
 }
 
 export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: Terrain): FacadePlan {
+  return finish(planFacadesSteps(buildings, fiches, terrain));
+}
+
+/** Comme `planFacades`, en rendant la main après chaque bâtiment. */
+export function* planFacadesSteps(buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: Terrain): Steps<FacadePlan> {
   const plan: FacadePlan = {
     requests: [], signRequests: [], placements: [], misc: new MeshBuilder(),
     stats: { windows: 0, doors: 0, shops: 0, balconies: 0, runs: 0 },
@@ -318,6 +323,7 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
         }
       }
     });
+    yield;
   }
   return plan;
 }
