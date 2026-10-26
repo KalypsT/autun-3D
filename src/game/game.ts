@@ -19,8 +19,25 @@ const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
 
+/** Carte d'ombres centrée sur le joueur (plus fine qu'une carte pour toute la zone) ; renvoie de quoi placer le soleil à chaque image. */
+export function followSun(ctx: GameContext): (x: number, y: number, z: number) => void {
+  const { scene, sunLight, sunDir, atmosphere } = ctx;
+  const sc = sunLight.shadow.camera;
+  sc.left = -SHADOW_HALF; sc.right = SHADOW_HALF; sc.top = SHADOW_HALF; sc.bottom = -SHADOW_HALF; sc.near = 20; sc.far = 700;
+  sc.updateProjectionMatrix();
+  scene.add(sunLight.target);
+  return (x, y, z) => {
+    sunDir.copy(atmosphere.lightDir);
+    // Cases de 0,5 m pour que les ombres ne scintillent pas.
+    const sx = Math.round(x / 0.5) * 0.5, sy = Math.round(y / 0.5) * 0.5;
+    sunLight.target.position.set(sx, z, -sy);
+    sunLight.position.set(sx + sunDir.x * 300, z + sunDir.y * 300, -sy + sunDir.z * 300);
+    sunLight.target.updateMatrixWorld();
+  };
+}
+
 export function startGame(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, sunLight, sunDir, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
+  const { camera, renderer, scene, sky, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
   const { terrain } = world;
   const spawn = gameSpawn(params);
   const startYaw = spawn.yaw;
@@ -28,11 +45,7 @@ export function startGame(ctx: GameContext): void {
   const model = createPlayerModel();
   scene.add(model.group);
 
-  // Carte d'ombres centrée sur le joueur : plus fine qu'une carte pour toute la zone.
-  const sc = sunLight.shadow.camera;
-  sc.left = -SHADOW_HALF; sc.right = SHADOW_HALF; sc.top = SHADOW_HALF; sc.bottom = -SHADOW_HALF; sc.near = 20; sc.far = 700;
-  sc.updateProjectionMatrix();
-  scene.add(sunLight.target);
+  const placeSun = followSun(ctx);
 
   const controls = new Controls(
     document.getElementById("touch")!,
@@ -91,13 +104,7 @@ export function startGame(ctx: GameContext): void {
     terrainView.update(player.x, player.y);
 
     atmosphere.advance(dt);
-    sunDir.copy(atmosphere.lightDir);
-
-    // Le soleil suit le joueur (cases de 0,5 m pour que les ombres ne scintillent pas).
-    const sx = Math.round(player.x / 0.5) * 0.5, sy = Math.round(player.y / 0.5) * 0.5;
-    sunLight.target.position.set(sx, player.z, -sy);
-    sunLight.position.set(sx + sunDir.x * 300, player.z + sunDir.y * 300, -sy + sunDir.z * 300);
-    sunLight.target.updateMatrixWorld();
+    placeSun(player.x, player.y, player.z);
     sky.position.copy(camera.position);
 
     renderer.render(scene, camera);

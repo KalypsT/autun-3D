@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { Colliders } from "./core/collision";
 import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
+import { startBench } from "./game/bench";
 import { gameSpawn, startGame } from "./game/game";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
@@ -17,6 +18,8 @@ const debugEl = document.getElementById("debug") as HTMLDivElement;
 const loadingEl = document.getElementById("loading") as HTMLDivElement;
 // Sans ?view ni ?cam, c'est le jeu ; avec, la caméra libre des captures.
 const viewerMode = params.has("view") || params.has("cam");
+// ?bench=1 : banc de test de performances (parcours fixe, rapport à la fin).
+const benchMode = !viewerMode && params.has("bench");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? (viewerMode ? 2 : 1.5))));
@@ -94,7 +97,7 @@ async function main(): Promise<void> {
   // Heure de jeu : ?h=17 (départ), ?speed=0.02 (heures de jeu par seconde ; 0 = figée), ?style=nuit = 23 h 30 figée.
   const night = params.get("style") === "nuit";
   const hour = Number(params.get("h") ?? (night ? 23.5 : 16));
-  const speed = Number(params.get("speed") ?? (night || viewerMode ? 0 : 1 / 50));
+  const speed = Number(params.get("speed") ?? (night || viewerMode || benchMode ? 0 : 1 / 50));
   const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
@@ -110,13 +113,14 @@ async function main(): Promise<void> {
     renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl,
     ready: (extra) => {
       loadingEl.remove();
-      document.body.classList.add(viewerMode ? "viewer" : "game");
+      document.body.classList.add(viewerMode ? "viewer" : benchMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
         ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
       };
     },
   };
   if (viewerMode) startViewer(ctx);
+  else if (benchMode) startBench(ctx);
   else startGame(ctx);
 }
 

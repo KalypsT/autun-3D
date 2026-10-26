@@ -12,10 +12,19 @@ Rédigée le 26 octobre 2026 après la PR #8. À mettre à jour à chaque étape
 - **Hébergement des données** : à décider selon la complexité (GitHub Pages tant que ça tient).
 - **Sons** : indécis. **Objectifs de jeu** : à penser plus tard, mais il en faudra.
 - **Rythme** : peu importe, choisir le plus optimisé (une version jouable par étape reste la règle).
+- **Corrections après test** : l'utilisateur les apporte au fil de l'eau ; on enchaîne les étapes sans les attendre.
+
+### Cadrage de l'étape 1 (véhicules), 26 octobre 2026
+
+- **Commandes tactiles** : schéma A seulement — à gauche, glisser horizontalement pour diriger ; à droite, zones Accélérer et Freiner/Reculer. Pas d'inclinaison ni de volant virtuel pour l'instant.
+- **Véhicules** : garés sur les places de parking marquées, faciles à trouver (pas de menu) ; bouton « Monter » à proximité. Un véhicule quitté reste où on l'a laissé.
+- **Réalisme** : simulation assez réaliste (inertie, adhérence, transferts de charge simplifiés) et collisions réalistes (impulsions, rotation au choc), sans dégâts pour l'instant. Escaliers : infranchissables en voiture, franchissables à vélo et à trottinette.
+- **Vue** : troisième personne uniquement.
+- **Plan** : (1) banc de test `?bench=1` ; (2) socle véhicules et vélo ; (3) trottinette ; (4) chargement à vitesse (anticipation, construction étalée) mesuré au banc ; (5) voiture ; (6) moto.
 
 ## Ordre proposé
 
-0. **Banc de test téléphone** (images/s, appels de dessin, mémoire, à-coups, exportés en rapport) et premiers retours de test.
+0. **Banc de test téléphone** (images/s, appels de dessin, mémoire, à-coups, exportés en rapport) : fait, `?bench=1` (D20). Mesure sur le téléphone à faire par l'utilisateur.
 1. **Véhicules libres** sur la carte actuelle (2,25 km²) : vélo, trottinette, puis voiture, puis moto. Physique arcade réaliste, caméra, commandes tactiles (volant virtuel, boutons, inclinaison à comparer), collisions, chargement des tuiles à vitesse (anticipation dans le sens de la marche).
 2. **Extension de la carte par anneaux** : centre élargi (≈ 9–10 km², tient encore dans le format JSON actuel et sur Pages), puis commune entière (format binaire compact, niveaux de détail supplémentaires, éventuellement hébergement séparé), puis campagne.
 3. **Vie dans la ville** : graphe piéton (trottoirs, passages), graphe routier (sens uniques, feux, priorités), passants, circulation, pigeons, ambiance sonore, horaires jour/nuit.

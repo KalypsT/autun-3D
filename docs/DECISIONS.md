@@ -111,3 +111,10 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Lumière : le soleil ne descend pas sous 5° (jamais d'éclairage par en dessous), puis la lune prend le relais du côté opposé. Même matière, même géométrie jour et nuit : seules les couleurs de lumière changent, pas de seconde palette.
 - Fenêtres et lampadaires : une couche chaude translucide posée sur 62 % des vitres (90 % des vitrines) et sur les lanternes, dont l'opacité suit la hauteur du soleil (de 3° à −6°) ; masquée en plein jour. Étoiles et nuages suivent aussi.
 - Horloge : 1 heure de jeu = 50 s réelles par défaut (un jour en 20 minutes), réglable par `?speed=`, figée dans le viewer.
+
+## 2026-10-26 — D20. Banc de test embarqué, mesures sur le téléphone de l'utilisateur
+
+- `?bench=1` lance un parcours fixe (`src/game/bench-route.ts`, 2,6 km de plus courts chemins sur les rues carrossables), caméra en poursuite comme derrière un véhicule : arrêt sur la place (8 s), rues à 50 km/h, rues à 90 km/h, puis arrêt sans ombres et arrêt sans ombres en définition 1×. Heure figée à 16 h pour que deux rapports soient comparables.
+- Mesures par phase : images/s moyennes et sur le 1 % le plus lent, durées d'image (médiane, 95 %, 99 %, max), à-coups (> 33 et > 50 ms) et part de ceux qui tombent sur une construction de tuile, appels de dessin et triangles, durée de chaque construction de tuile, mémoire géométrie et textures (estimation à partir de la scène), tas JavaScript quand Chrome le donne. Le rapport s'affiche à la fin (copier, télécharger en JSON) et porte la version (commit).
+- Le conteneur de développement n'a pas de carte graphique : ses images/s ne valent rien. Seul le téléphone de l'utilisateur fait foi ; les chiffres indépendants de l'appareil (appels, triangles, mémoire) sont vérifiés ici.
+- Cibles provisoires (Honor Magic 8 Pro) : 60 i/s de moyenne, 1 % le plus lent ≥ 40 i/s, aucune image > 50 ms en roulant à 50 km/h. À confirmer après le premier rapport.

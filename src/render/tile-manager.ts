@@ -30,6 +30,10 @@ export class TileManager {
   private readonly entries = new Map<string, Entry>();
   hidden = new Set<string>();
   lastBuildMs = 0;
+  /** Dernières constructions de tuiles (identifiant, durée en ms, instant), pour le banc de test. */
+  readonly builds: { id: string; ms: number; at: number }[] = [];
+  /** Nombre total de constructions depuis le début. */
+  buildCount = 0;
 
   constructor(
     world: WorldBase,
@@ -59,7 +63,11 @@ export class TileManager {
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
     this.show(e);
-    this.lastBuildMs = performance.now() - t0;
+    const t1 = performance.now();
+    this.lastBuildMs = t1 - t0;
+    this.buildCount++;
+    this.builds.push({ id: e.info.id, ms: this.lastBuildMs, at: t1 });
+    if (this.builds.length > 256) this.builds.shift();
   }
 
   private unload(e: Entry): void {
