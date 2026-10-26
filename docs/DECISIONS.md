@@ -64,3 +64,11 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 ## 2026-10-26 — D12. Atlas de sprites
 
 - Les sprites de façade sont regroupés en 2 pages de 2048 px (≈ 55 px/m, 497 sprites distincts) ; les variantes invisibles sont fusionnées (`canonicalWindow`). Mémoire de texture : ≈ 45 Mo avec mipmaps, à réduire avec KTX2 à l'étape de rendu final.
+
+## 2026-10-26 — D13. Déplacement à pied : collisions 2D, pas fixe, caméra qui se rétracte
+
+- Collisions : le plan (x, y) suffit pour se balader. Contours des bâtiments et de leurs cours, murs OSM = segments ; mobilier et troncs d'arbres = cercles ; grille spatiale de 8 m. Le piéton est un cercle de 0,35 m repoussé hors des obstacles, sa vitesse perd la part qui entre dans le mur (il glisse). Les cours intérieures et passages couverts ne sont pas franchissables.
+- Simulation à pas fixe de 1/60 s, indépendante des images affichées : même comportement à 30 ou 60 images/s. Les pas rapides (5 m/s ≈ 8 cm par pas) ne traversent pas les murs (test sur les vraies données : 120 trajets aléatoires de 8 s en courant).
+- Caméra à la troisième personne : orbite autour de la tête ; un rayon vers la caméra raccourcit la distance devant un mur (marge 0,35 m, minimum 0,6 m) ; le personnage se masque sous 0,9 m ; la distance revient doucement quand le mur disparaît.
+- Commandes : joystick flottant (moitié gauche de l'écran, à fond = course), regard au doigt (moitié droite), clavier (touches physiques WASD : fonctionne en AZERTY ZQSD), souris (glisser), plein écran + verrouillage paysage.
+- Rendu en jeu : densité de pixels plafonnée à 1,5 et carte d'ombres de 2048 centrée sur le joueur (±80 m) pour économiser le téléphone ; à mesurer.

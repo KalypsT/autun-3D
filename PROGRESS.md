@@ -7,7 +7,10 @@
 | 1. Accès et couverture des sources, `docs/SOURCES.md` | ✅ validée |
 | 2. Chaîne de données : relief, volumes et toits LiDAR, rues, arbres | ✅ fusionnée (PR #1) |
 | 3. Fiches façade (estimées) + générateur + matières | ✅ faite, en attente de ton avis |
-| 4. Rendu complet, jeu (commandes, véhicules, circulation), publication | à faire (workflow Pages en place) |
+| 4.1 Se balader à pied : commandes tactiles, caméra, collisions | ✅ faite, à tester sur téléphone |
+| 4.2 Vélo, puis voiture (conduite réaliste) | à faire |
+| 4.3 Circulation, passants, pigeons | à faire |
+| 4.4 Jour/nuit, plaque de rue, vue du ciel, KTX2, optimisation | à faire |
 
 ### Étape 3 (26 octobre 2026)
 
@@ -27,3 +30,17 @@ Défauts connus :
 - Textures non compressées (KTX2 à faire) ; chargement ≈ 1,1 s de génération sur PC + décodage des PNG/JPEG.
 - Les fenêtres ne s'allument pas encore la nuit.
 - Largeurs de rues et trottoirs estimés (voir étape 2).
+
+### Étape 4.1 (26 octobre 2026) : se balader à pied
+
+Fait :
+- `src/core/` (logique pure, sans rendu) : collisions (`collision.ts`), piéton (`player.ts`), caméra à la troisième personne (`camera-rig.ts`), obstacles du monde (`world.ts`) ; 27 tests dont un test d'intégration sur les vraies données.
+- `src/input/controls.ts` : joystick flottant, regard au doigt, clavier, souris ; `src/game/game.ts` : boucle à pas fixe 60 Hz, soleil et ombres qui suivent le joueur, personnage articulé provisoire.
+- Le viewer à caméra libre reste disponible avec `?view=` ou `?cam=` (captures, diagnostic) ; sans paramètre, c'est le jeu.
+- Test tactile automatisé (`tools/play.sh`) : marche à mi-poussée 0,9 m/s, course à fond 5 m/s, regard au doigt.
+
+Pas encore fait / limites :
+- Pas de saut, pas d'escaliers ni de portes : on marche à plat sur le relief. Les passages couverts (Balthus, de la Terrasse) sont bloqués.
+- Pas de recentrage automatique de la caméra derrière le personnage.
+- Performances sur téléphone non mesurées : en navigateur logiciel le jeu tourne à 13-80 images/s selon l'instant, ce qui ne dit rien du téléphone.
+- Personnage en blocs, sans visage ni vêtements d'Autun.

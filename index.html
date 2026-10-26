@@ -11,12 +11,28 @@
       #debug { position: fixed; top: 6px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
                background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
       #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
+      #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
+      body.game #touch { display: block; }
+      #stick-base, #stick-knob { position: fixed; display: none; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+      #stick-base { width: 116px; height: 116px; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); }
+      #stick-knob { width: 52px; height: 52px; background: rgba(255,255,255,.45); border: 2px solid rgba(255,255,255,.7); }
+      #fullscreen { position: fixed; top: 8px; right: 8px; width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.4);
+                    background: rgba(0,0,0,.35); color: #fff; font-size: 20px; display: none; z-index: 5; }
+      body.game #fullscreen { display: block; }
+      #hint { position: fixed; left: 0; right: 0; bottom: 14px; text-align: center; color: #fff; font: 14px system-ui, sans-serif;
+              text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
+      body.game #hint { animation: hint 9s ease-out 0.5s both; }
+      @keyframes hint { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
+    <div id="touch"></div>
+    <div id="stick-base"></div><div id="stick-knob"></div>
+    <button id="fullscreen" title="Plein écran" aria-label="Plein écran">⛶</button>
+    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder</div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>
     <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®) · three.js</div>

@@ -1,0 +1,56 @@
+import * as THREE from "three";
+
+/** Personnage provisoire en pièces articulées (la marche balance bras et jambes). */
+export interface PlayerModel {
+  group: THREE.Group;
+  /** Place et anime le personnage : position en repère données, cap, phase de pas et vitesse. */
+  update(x: number, y: number, z: number, heading: number, stride: number, speed: number): void;
+}
+
+export function createPlayerModel(): PlayerModel {
+  const group = new THREE.Group();
+  const mat = (c: string): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+  const jacket = mat("#3f6178"), pants = mat("#2f3340"), skin = mat("#d8a98a"), hair = mat("#3a2a20");
+  const box = (w: number, h: number, d: number, m: THREE.Material, y: number): THREE.Mesh => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(0, y, 0);
+    const mesh = new THREE.Mesh(g, m);
+    mesh.castShadow = true;
+    return mesh;
+  };
+  const body = new THREE.Group();
+  body.add(box(0.44, 0.62, 0.26, jacket, 1.12));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.125, 12, 10), skin);
+  head.position.y = 1.56;
+  head.castShadow = true;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
+  cap.position.y = 1.58;
+  body.add(head, cap);
+
+  const limb = (w: number, h: number, d: number, m: THREE.Material, hipY: number, x: number): THREE.Group => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, hipY, 0);
+    const mesh = box(w, h, d, m, -h / 2);
+    pivot.add(mesh);
+    return pivot;
+  };
+  const legL = limb(0.17, 0.8, 0.2, pants, 0.8, -0.11), legR = limb(0.17, 0.8, 0.2, pants, 0.8, 0.11);
+  const armL = limb(0.12, 0.58, 0.14, jacket, 1.4, -0.29), armR = limb(0.12, 0.58, 0.14, jacket, 1.4, 0.29);
+  group.add(body, legL, legR, armL, armR);
+
+  return {
+    group,
+    update(x, y, z, heading, stride, speed) {
+      const amp = Math.min(speed / 2, 1.8) * 0.5;
+      const s = Math.sin(stride) * amp;
+      legL.rotation.x = s;
+      legR.rotation.x = -s;
+      armL.rotation.x = -s * 0.9;
+      armR.rotation.x = s * 0.9;
+      const bob = Math.abs(Math.cos(stride)) * 0.04 * Math.min(speed / 2, 1.5);
+      body.position.y = bob;
+      group.position.set(x, z + bob * 0.2, -y);
+      group.rotation.y = -heading;
+    },
+  };
+}
