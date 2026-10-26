@@ -129,12 +129,16 @@ export function startBench(ctx: GameContext): void {
       if (m) (Array.isArray(m) ? m : [m]).forEach((x) => { x.needsUpdate = true; });
     });
   };
+  // ?bench=court : version brève pour vérifier le déroulé (rendu logiciel), sans valeur de mesure.
+  const short = params.get("bench") === "court";
+  const still = short ? 2 : 1;
+  const split = short ? 150 : SPLIT, end = short ? 300 : route.length;
   const phases: Phase[] = [
-    { name: "Arrêt sur la place", still: { seconds: 8 } },
-    { name: "Rues à 50 km/h", drive: { from: 0, to: SPLIT, speed: 50 / 3.6 } },
-    { name: "Rues à 90 km/h", drive: { from: SPLIT, to: route.length, speed: 90 / 3.6 } },
-    { name: "Arrêt, sans ombres", still: { seconds: 6 }, setup: () => setShadows(false) },
-    { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 }, setup: () => renderer.setPixelRatio(1) },
+    { name: "Arrêt sur la place", still: { seconds: short ? 2 : 8 } },
+    { name: "Rues à 50 km/h", drive: { from: 0, to: split, speed: 50 / 3.6 } },
+    { name: "Rues à 90 km/h", drive: { from: split, to: end, speed: 90 / 3.6 } },
+    { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
+    { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
   const settings = {
     shadows: renderer.shadowMap.enabled,
@@ -142,7 +146,7 @@ export function startBench(ctx: GameContext): void {
     pixelRatio: renderer.getPixelRatio(),
     detail: Number(params.get("detail") ?? 210),
     hour: atmosphere.clock,
-    route: `${r1(route.length / 1000)} km`,
+    route: `${r1(end / 1000)} km${short ? " (version courte, sans valeur de mesure)" : ""}`,
   };
 
   const banner = document.createElement("div");
@@ -295,7 +299,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
   lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · ${String(r.settings["hour"])}`);
-  lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s`);
+  lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
   lines.push("");

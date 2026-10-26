@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { addTileColliders } from "../core/world";
 import { loadTile } from "../data/load";
-import type { TileData, TileInfo, WorldBase } from "../data/types";
+import type { Furniture, TileData, TileInfo, WorldBase } from "../data/types";
 import { buildLodTile } from "./lod";
 import { disposeTile, type TileMeshes, type TileStats } from "./stylized";
 
@@ -16,6 +16,8 @@ interface Entry {
   lod: THREE.Mesh | null;
   detail: TileMeshes | null;
   data: TileData | null;
+  /** Mobilier de la tuile détaillée (gardé après construction, pour placer les véhicules). */
+  furniture: Furniture[] | null;
   fetching: boolean;
 }
 
@@ -34,6 +36,8 @@ export class TileManager {
   readonly builds: { id: string; ms: number; at: number }[] = [];
   /** Nombre total de constructions depuis le début. */
   buildCount = 0;
+  /** Appelé après chaque construction de tuile détaillée (données de la tuile). */
+  onBuild: ((data: Pick<TileData, "furniture">) => void) | null = null;
 
   constructor(
     world: WorldBase,
@@ -44,7 +48,7 @@ export class TileManager {
     for (const info of world.manifest.tiles) {
       const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain);
       if (lod) this.group.add(lod);
-      this.entries.set(info.id, { info, lod, detail: null, data: null, fetching: false });
+      this.entries.set(info.id, { info, lod, detail: null, data: null, furniture: null, fetching: false });
     }
   }
 
@@ -62,6 +66,8 @@ export class TileManager {
     e.detail = meshes;
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
+    e.furniture = data.furniture;
+    this.onBuild?.(data);
     this.show(e);
     const t1 = performance.now();
     this.lastBuildMs = t1 - t0;
@@ -75,6 +81,7 @@ export class TileManager {
     this.group.remove(e.detail.group);
     disposeTile(e.detail);
     e.detail = null;
+    e.furniture = null;
     this.colliders?.removeTag(e.info.id);
     this.show(e);
   }
@@ -103,6 +110,13 @@ export class TileManager {
         }
       } else if (d > this.load + UNLOAD_MARGIN && e.detail) this.unload(e);
     }
+  }
+
+  /** Mobilier des tuiles détaillées actuellement chargées. */
+  loadedFurniture(): Furniture[][] {
+    const out: Furniture[][] = [];
+    for (const e of this.entries.values()) if (e.furniture) out.push(e.furniture);
+    return out;
   }
 
   /** Charge et construit tout ce qui est proche de (px, py) avant le début du jeu. */
