@@ -60,7 +60,7 @@
    "trees": 180,
    "walls": 5,
    "furniture": 43,
-   "bytes": 766504
+   "bytes": 766503
   },
   {
    "id": "3_0",
@@ -76,7 +76,7 @@
    "trees": 188,
    "walls": 0,
    "furniture": 10,
-   "bytes": 48234
+   "bytes": 48235
   },
   {
    "id": "4_0",
@@ -124,7 +124,7 @@
    "trees": 177,
    "walls": 0,
    "furniture": 48,
-   "bytes": 274928
+   "bytes": 274926
   },
   {
    "id": "1_1",
@@ -155,8 +155,8 @@
    "buildings": 194,
    "trees": 170,
    "walls": 41,
-   "furniture": 65,
-   "bytes": 658887
+   "furniture": 64,
+   "bytes": 663717
   },
   {
    "id": "3_1",
@@ -172,7 +172,7 @@
    "trees": 165,
    "walls": 30,
    "furniture": 40,
-   "bytes": 343998
+   "bytes": 344605
   },
   {
    "id": "4_1",
@@ -188,7 +188,7 @@
    "trees": 163,
    "walls": 0,
    "furniture": 29,
-   "bytes": 76274
+   "bytes": 76273
   },
   {
    "id": "5_1",
@@ -220,7 +220,7 @@
    "trees": 146,
    "walls": 2,
    "furniture": 45,
-   "bytes": 430320
+   "bytes": 430288
   },
   {
    "id": "1_2",
@@ -251,8 +251,8 @@
    "buildings": 250,
    "trees": 151,
    "walls": 111,
-   "furniture": 52,
-   "bytes": 768720
+   "furniture": 51,
+   "bytes": 768543
   },
   {
    "id": "3_2",
@@ -268,7 +268,7 @@
    "trees": 181,
    "walls": 14,
    "furniture": 26,
-   "bytes": 374429
+   "bytes": 374488
   },
   {
    "id": "4_2",
@@ -284,7 +284,7 @@
    "trees": 180,
    "walls": 5,
    "furniture": 33,
-   "bytes": 169266
+   "bytes": 169131
   },
   {
    "id": "5_2",
@@ -316,7 +316,7 @@
    "trees": 149,
    "walls": 28,
    "furniture": 31,
-   "bytes": 374806
+   "bytes": 378509
   },
   {
    "id": "1_3",
@@ -332,7 +332,7 @@
    "trees": 123,
    "walls": 0,
    "furniture": 65,
-   "bytes": 652992
+   "bytes": 653025
   },
   {
    "id": "2_3",
@@ -348,7 +348,7 @@
    "trees": 58,
    "walls": 4,
    "furniture": 59,
-   "bytes": 370111
+   "bytes": 383073
   },
   {
    "id": "3_3",
@@ -363,8 +363,8 @@
    "buildings": 73,
    "trees": 182,
    "walls": 5,
-   "furniture": 53,
-   "bytes": 253607
+   "furniture": 52,
+   "bytes": 255205
   },
   {
    "id": "4_3",
@@ -380,7 +380,7 @@
    "trees": 207,
    "walls": 2,
    "furniture": 10,
-   "bytes": 80962
+   "bytes": 80991
   },
   {
    "id": "5_3",
@@ -396,7 +396,7 @@
    "trees": 91,
    "walls": 0,
    "furniture": 13,
-   "bytes": 22792
+   "bytes": 28409
   },
   {
    "id": "0_4",
@@ -412,7 +412,7 @@
    "trees": 138,
    "walls": 1,
    "furniture": 44,
-   "bytes": 554525
+   "bytes": 554509
   },
   {
    "id": "1_4",
@@ -428,7 +428,7 @@
    "trees": 173,
    "walls": 0,
    "furniture": 45,
-   "bytes": 420683
+   "bytes": 422776
   },
   {
    "id": "2_4",
@@ -444,7 +444,7 @@
    "trees": 92,
    "walls": 0,
    "furniture": 46,
-   "bytes": 671500
+   "bytes": 673460
   },
   {
    "id": "3_4",
@@ -460,7 +460,7 @@
    "trees": 166,
    "walls": 0,
    "furniture": 41,
-   "bytes": 173861
+   "bytes": 198963
   },
   {
    "id": "4_4",
@@ -476,7 +476,7 @@
    "trees": 256,
    "walls": 1,
    "furniture": 38,
-   "bytes": 127654
+   "bytes": 138772
   },
   {
    "id": "5_4",
@@ -492,7 +492,7 @@
    "trees": 145,
    "walls": 0,
    "furniture": 17,
-   "bytes": 54200
+   "bytes": 59118
   },
   {
    "id": "0_5",
@@ -508,7 +508,7 @@
    "trees": 72,
    "walls": 0,
    "furniture": 40,
-   "bytes": 143325
+   "bytes": 157519
   },
   {
    "id": "1_5",
@@ -524,7 +524,7 @@
    "trees": 117,
    "walls": 8,
    "furniture": 30,
-   "bytes": 283628
+   "bytes": 285723
   },
   {
    "id": "2_5",
@@ -540,7 +540,7 @@
    "trees": 104,
    "walls": 4,
    "furniture": 55,
-   "bytes": 663832
+   "bytes": 663837
   },
   {
    "id": "3_5",
@@ -556,7 +556,7 @@
    "trees": 161,
    "walls": 7,
    "furniture": 33,
-   "bytes": 201611
+   "bytes": 209432
   },
   {
    "id": "4_5",
@@ -572,7 +572,7 @@
    "trees": 150,
    "walls": 0,
    "furniture": 29,
-   "bytes": 245025
+   "bytes": 245004
   },
   {
    "id": "5_5",
@@ -588,7 +588,7 @@
    "trees": 172,
    "walls": 0,
    "furniture": 20,
-   "bytes": 268240
+   "bytes": 268267
   }
  ]
 }

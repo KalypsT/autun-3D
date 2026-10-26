@@ -93,4 +93,5 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 - Client (`src/render/ground.ts`) : polygones triangulés et posés sur le relief, bordure de 15 cm avec liseré clair, marquages en blanc ; un seul maillage « sol » par tuile.
 - Ciel en trois teintes avec nuages en aplats (ombre rosée) ; arbres jaunes et orange par endroits ; enseignes avec lettres suggérées ; lampadaires et lanternes allumées la nuit.
 - Enseignes : le nom du commerce s'affiche (atlas de noms de 192 cases, recyclé en anneau) ; lampadaires orientés vers la chaussée ; trottoirs prioritaires sur les places (bords nets).
-- À revoir : parkings intérieurs traités en rues, pas de places marquées, lignes de stop et bandes cyclables, pelouses et haies, mobilier orienté.
+- Parkings : pas de trottoir à l'intérieur, places marquées le long des allées ; personnage aux couleurs de l'affiche (veste vermillon, écharpe moutarde, bonnet bleu-vert).
+- À revoir : lignes de stop et bandes cyclables, pelouses et haies, mobilier orienté, ombres et couleurs par rue, mesures sur téléphone.
