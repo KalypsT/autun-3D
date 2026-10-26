@@ -32,6 +32,25 @@ export class MeshBuilder {
     this.tri(a, c, d, n, color);
   }
 
+  /** Quad dont la couleur passe de `low` (côté a-b) à `high` (côté c-d) : ombre au pied des murs, reflet dans les vitres. */
+  quadGradient(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, low: THREE.Color, high: THREE.Color): void {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const flip = (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2] < 0;
+    const tris: [Vec3, THREE.Color][][] = [
+      [[a, low], [b, low], [c, high]],
+      [[a, low], [c, high], [d, high]],
+    ];
+    for (const t of tris) {
+      const order = flip ? [t[0]!, t[2]!, t[1]!] : t;
+      for (const [p, col] of order) {
+        this.positions.push(p[0], p[1], p[2]);
+        this.normals.push(n[0], n[1], n[2]);
+        this.colors.push(col.r, col.g, col.b);
+      }
+    }
+  }
+
   get triangleCount(): number {
     return this.positions.length / 9;
   }

@@ -12,6 +12,7 @@ Un bâtiment, un arbre ou un mur appartient à la tuile de son centre (ou de son
 
 import json
 import shutil
+import zlib
 
 from shapely.geometry import Polygon
 from shapely.geometry.polygon import orient
@@ -45,7 +46,8 @@ def lod_record(b, fiche):
     wall = fiche["materials"]["wall"]["color"] if fiche else "#d4c4a4"
     roof = b.get("roofColor") or "#8a6a58"
     return {"r": pts, "e": round(b["eave"], 1), "g": round(b["ridge"], 1), "w": wall, "t": roof,
-            "m": fiche["materials"]["roof"] if fiche else "tuile_plate"}
+            "m": fiche["materials"]["roof"] if fiche else "tuile_plate",
+            "a": fiche["era"] if fiche else "xix", "k": zlib.crc32(b["id"].encode()) & 0xFFFFFFFF}
 
 
 def main():

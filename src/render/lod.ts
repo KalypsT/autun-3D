@@ -2,18 +2,25 @@ import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { LodBuilding } from "../data/types";
 import { MeshBuilder, toThree } from "./geometry";
+import { roofColor, wallColor } from "./style";
 
 const WALL_SHADE = 0.92;
 
 /** Silhouettes des bâtiments d'une tuile lointaine : prismes à toit plat, un seul maillage. */
-export function buildLodTile(buildings: readonly LodBuilding[], terrain: Terrain): THREE.Mesh | null {
+export function buildLodTile(buildings: readonly LodBuilding[], terrain: Terrain, stylized = false): THREE.Mesh | null {
   const mb = new MeshBuilder();
   const wall = new THREE.Color(), roof = new THREE.Color();
   for (const b of buildings) {
     const n = b.r.length / 2;
     if (n < 3) continue;
-    wall.set(b.w).multiplyScalar(WALL_SHADE);
-    roof.set(b.t);
+    if (stylized) {
+      const key = b.k / 4294967296;
+      wall.copy(wallColor(b.a, key)).multiplyScalar(WALL_SHADE);
+      roof.copy(roofColor(b.m, key));
+    } else {
+      wall.set(b.w).multiplyScalar(WALL_SHADE);
+      roof.set(b.t);
+    }
     // Faîtage plat à mi-pente : de loin, le volume compte plus que la forme du toit.
     const top = b.e + (b.g - b.e) * (b.m === "terrasse" ? 0 : 0.4);
     const bottom: number[] = [];

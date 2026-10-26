@@ -35,7 +35,7 @@ function roofTint(b: Building, material: RoofMaterial): THREE.Color {
   return c;
 }
 
-function planeUV(a: number, bb: number, x: number, y: number, size: number): [number, number] {
+export function planeUV(a: number, bb: number, x: number, y: number, size: number): [number, number] {
   const g = Math.hypot(a, bb);
   if (g < 1e-3) return [x / size, y / size];
   const hx = -bb / g, hy = a / g;
@@ -65,7 +65,7 @@ function wallRing(
   }
 }
 
-function chimney(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number, z0: number, z1: number): void {
+export function chimney(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number, z0: number, z1: number): void {
   const hx = Math.max(sx, 0.5) / 2, hy = Math.max(sy, 0.5) / 2;
   const p = (x: number, y: number, z: number): Vec3 => toThree(cx + x, cy + y, z);
   const c = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]] as const;
