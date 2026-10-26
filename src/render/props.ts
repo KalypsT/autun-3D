@@ -115,6 +115,8 @@ export function fenceMaterial(): THREE.MeshStandardMaterial {
 export interface WallSinks {
   /** Murs pleins (texturés comme les façades). */
   solid: MeshBuilder;
+  /** Couleur des haies. */
+  hedgeColor: THREE.Color;
   solidColor: THREE.Color;
   cap: MeshBuilder;
   fence: UvMeshBuilder;
@@ -125,7 +127,10 @@ export interface WallSinks {
 export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Terrain): void {
   for (const w of walls) {
     const open = w.kind === "fence" || w.kind === "gate";
-    const color = sinks.solidColor.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    const hedge = w.kind === "hedge", rampart = w.kind === "rampart";
+    const base = hedge ? sinks.hedgeColor : sinks.solidColor;
+    const color = base.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    const thick = hedge ? 0.8 : rampart ? 1.3 : THICK;
     let s = 0;
     for (let i = 0; i + 3 < w.pts.length; i += 2) {
       const x1 = w.pts[i]!, y1 = w.pts[i + 1]!, x2 = w.pts[i + 2]!, y2 = w.pts[i + 3]!;
@@ -149,14 +154,14 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Te
           box(sinks.posts, px, py, 0.06, 0.06, Math.atan2(ty, tx), terrain.heightAt(px, py) - 0.1, terrain.heightAt(px, py) + 0.15 + h, COLORS.iron);
         }
       } else {
-        const hw = THICK / 2;
+        const hw = thick / 2;
         const a1: [number, number] = [x1 + nx * hw, y1 + ny * hw], a2: [number, number] = [x2 + nx * hw, y2 + ny * hw];
         const b1: [number, number] = [x1 - nx * hw, y1 - ny * hw], b2: [number, number] = [x2 - nx * hw, y2 - ny * hw];
         const side = (p: [number, number], q: [number, number], n: Vec3): void =>
           sinks.solid.quad(toThree(p[0], p[1], zb1), toThree(q[0], q[1], zb2), toThree(q[0], q[1], zt2), toThree(p[0], p[1], zt1), n, color);
         side(a1, a2, toThree(nx, ny, 0));
         side(b2, b1, toThree(-nx, -ny, 0));
-        sinks.cap.quad(toThree(a1[0], a1[1], zt1), toThree(a2[0], a2[1], zt2), toThree(b2[0], b2[1], zt2), toThree(b1[0], b1[1], zt1), [0, 1, 0], COLORS.stone);
+        sinks.cap.quad(toThree(a1[0], a1[1], zt1), toThree(a2[0], a2[1], zt2), toThree(b2[0], b2[1], zt2), toThree(b1[0], b1[1], zt1), [0, 1, 0], hedge ? color.clone().multiplyScalar(1.15) : COLORS.stone);
       }
       s += len;
     }

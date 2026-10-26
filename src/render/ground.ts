@@ -4,7 +4,7 @@ import { hash01, MeshBuilder } from "./geometry";
 import { T } from "./style";
 
 /** Index de la couleur du thème (T.ground : asphalte, pavés, gravier, herbe, trottoir, dallage) et hauteur au-dessus du relief. */
-const LAYERS: Record<string, { color: number; lift: number; tint?: number }> = {
+const LAYERS: Record<string, { color: number | "water" | "pitch"; lift: number; tint?: number }> = {
   road_asphalt: { color: 0, lift: 0.045 },
   road_sett: { color: 1, lift: 0.045 },
   road_gravel: { color: 2, lift: 0.045 },
@@ -14,6 +14,9 @@ const LAYERS: Record<string, { color: number; lift: number; tint?: number }> = {
   plaza_gravel: { color: 2, lift: 0.035 },
   plaza_asphalt: { color: 0, lift: 0.035, tint: 1.12 },
   walk: { color: 4, lift: 0.15 },
+  lawn: { color: 3, lift: 0.03, tint: 1.12 },
+  pitch: { color: "pitch", lift: 0.035 },
+  water: { color: "water", lift: 0.01 },
 };
 const MARK_LIFT = 0.08;
 const MAX_EDGE = 5;
@@ -90,7 +93,8 @@ export function buildGround(layers: Record<string, number[][][]>, bounds: readon
   for (const [name, spec] of Object.entries(LAYERS)) {
     const polys = layers[name];
     if (!polys) continue;
-    const color = new THREE.Color(T.ground[spec.color]!).multiplyScalar(spec.tint ?? 1);
+    const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : T.ground[spec.color]!;
+    const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     fill(polys, spec.lift, color, true);
     if (name === "walk") curbs(mb, polys, terrain, color, onEdge);
   }

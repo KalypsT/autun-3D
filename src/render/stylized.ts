@@ -351,7 +351,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   }
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
-  buildWalls({ solid: detail, solidColor: C("#d9c9a6"), cap: detail, fence, posts }, tile.walls, terrain);
+  buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
   const halo = new MeshBuilder();
   buildFurniture(detail, tile.furniture, terrain, T.night ? glow : null, T.night ? halo : null);
   append(detail, posts);

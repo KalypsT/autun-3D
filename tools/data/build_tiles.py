@@ -117,6 +117,12 @@ def main():
         if t:
             tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1), "rot": rot})
 
+    for kind, lines, height in (("hedge", gv["hedges"], 1.1), ("rampart", gv["ramparts"], 6.0)):
+        for i, pts in enumerate(lines):
+            t = c.tile_of_local(pts[0], pts[1])
+            if t:
+                tile(*t)["walls"].append({"id": -(1000 * (1 if kind == "hedge" else 2) + i), "kind": kind, "height": height, "measured": height, "pts": pts})
+
     shutil.rmtree(TILES, ignore_errors=True)
     TILES.mkdir(parents=True)
     manifest = []
