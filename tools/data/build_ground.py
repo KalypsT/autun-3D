@@ -111,6 +111,7 @@ def main():
     # --- Places, rues piétonnes, parkings -------------------------------------------------
     ground = np.load(c.CACHE / "work" / "ground.npy")
     plazas = {"paving": [], "sett": [], "gravel": [], "asphalt": []}
+    parkings = []
     for s in streets:
         if s["kind"] in ("pedestrian", "living_street") and not s["motor"]:
             cls = SURFACE.get(s["surface"] or "paving", "paving")
@@ -121,6 +122,7 @@ def main():
             plazas[SURFACE.get(t.get("surface"), "paving")].append(Polygon(bs.way_line(e)).buffer(0))
         if t.get("amenity") == "parking" and len(e["geometry"]) >= 4:
             poly = Polygon(bs.way_line(e)).buffer(0)
+            parkings.append(poly)
             plazas["gravel" if t.get("surface") in ("gravel", "compacted", "fine_gravel") else "asphalt"].append(poly)
     # Le reste du sol minéral de la carte : places, cours, parkings non cartographiés.
     k = 4  # blocs de 4 x 4 pixels de 0,5 m : cellules de 2 m, assez fines pour des places, assez grosses pour rester légères
@@ -139,7 +141,8 @@ def main():
         plazas[name].append(g)
     print("places brutes", round(time.time() - t0), "s", flush=True)
     # Trottoirs d'abord (bande régulière le long des chaussées) : les places s'arrêtent à leur bord, pas l'inverse.
-    W = R.buffer(WALK_W, join_style="round").difference(R).difference(B.buffer(0.2))
+    PK = unary_union(parkings) if parkings else Polygon()
+    W = R.buffer(WALK_W, join_style="round").difference(R).difference(B.buffer(0.2)).difference(PK.buffer(0.5))  # pas de trottoir dans un parking
     W = W.buffer(-0.35).buffer(0.35)  # retire les éclats trop étroits
     P = {}
     taken = unary_union([R, B, W])
@@ -208,6 +211,27 @@ def main():
             u += 0.9
         n_cross += 1
     mk = unary_union(marks).intersection(R.buffer(-0.1))
+    # Places de stationnement : traits perpendiculaires aux allées intérieures des parkings.
+    bays = []
+    if not PK.is_empty:
+        for s in drivable:
+            ln = line(s)
+            if ln.length < 8 or ln.intersection(PK).length < 0.6 * ln.length:
+                continue
+            d = 2.0
+            while d < ln.length - 1.5:
+                q = ln.interpolate(d)
+                q2 = ln.interpolate(min(d + 0.5, ln.length))
+                tx, ty = q2.x - q.x, q2.y - q.y
+                L = math.hypot(tx, ty) or 1.0
+                nx, ny = -ty / L, tx / L
+                for side in (1, -1):
+                    a = (q.x + nx * side * (s["width"] / 2 + 0.1), q.y + ny * side * (s["width"] / 2 + 0.1))
+                    b = (a[0] + nx * side * 4.8, a[1] + ny * side * 4.8)
+                    bays.append(LineString([a, b]).buffer(0.05, cap_style="flat"))
+                d += 2.5
+    if bays:
+        mk = mk.union(unary_union(bays).intersection(PK).difference(R.buffer(0.05)).difference(B.buffer(0.3)))
     layers["marks"] = clean(mk, 0.05)
 
     # --- Lampadaires : le long des chaussées, sur les trottoirs ----------------------------
