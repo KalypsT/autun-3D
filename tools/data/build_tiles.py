@@ -11,10 +11,12 @@ Un bâtiment, un arbre ou un mur appartient à la tuile de son centre (ou de son
 """
 
 import json
+from pathlib import Path
 import shutil
+import math
 import zlib
 
-from shapely.geometry import MultiPolygon, Polygon, box
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 from shapely.geometry.polygon import orient
 
 import config as c
@@ -54,9 +56,11 @@ def decode(poly):
     return Polygon(*[[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[:1]], [[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[1:]]).buffer(0)
 
 
-def clip_layers(layers, bounds):
-    """Polygones de chaque couche, découpés à l'emprise de la tuile."""
+def clip_layers(layers, bounds, holes=()):
+    """Polygones de chaque couche, découpés à l'emprise de la tuile (moins les zones d'escalier, dessinées en relief)."""
     window = box(*bounds)
+    for z in holes:
+        window = window.difference(box(*z["bbox"]))
     out = {}
     for name, polys in layers.items():
         pieces = []
@@ -74,7 +78,39 @@ def clip_layers(layers, bounds):
     return out
 
 
+DRIVABLE = {"residential", "tertiary", "secondary", "unclassified", "service", "living_street", "primary"}
+
+
+def roadside_signals(furniture):
+    """Les feux d'OpenStreetMap sont des nœuds sur l'axe de la voie : on les pose de part et d'autre de la chaussée, sur le trottoir."""
+    streets = json.loads((c.OUT / "streets.json").read_text())
+    lines = [(LineString([(s["pts"][i], s["pts"][i + 1]) for i in range(0, len(s["pts"]), 2)]), s["width"]) for s in streets if s["kind"] in DRIVABLE]
+    out = []
+    for f in furniture:
+        if f["kind"] != "traffic_signals":
+            out.append(f)
+            continue
+        p = Point(f["x"], f["y"])
+        best = min(lines, key=lambda l: l[0].distance(p), default=None)
+        if best is None or best[0].distance(p) > 12:
+            out.append(f)
+            continue
+        ln, w = best
+        d = ln.project(p)
+        q, q2 = ln.interpolate(d), ln.interpolate(min(d + 1.0, ln.length))
+        q1 = ln.interpolate(max(d - 1.0, 0.0))
+        tx, ty = q2.x - q1.x, q2.y - q1.y
+        L = math.hypot(tx, ty) or 1.0
+        nx, ny = -ty / L, tx / L
+        for side in (1, -1):
+            off = w / 2 + 1.0
+            out.append({**f, "x": round(q.x + nx * side * off, 2), "y": round(q.y + ny * side * off, 2), "id": f["id"] * 10 + (1 if side > 0 else 2),
+                        "rot": round(math.atan2(-ny * side, -nx * side), 3)})
+    return out
+
+
 def main():
+    manual = json.loads((Path(__file__).parent / "manual.json").read_text())
     buildings = load("buildings_clean.json")
     gv = load("ground_vec.json")
     fiches = {f["id"]: f for f in load("facades.json")}
@@ -117,6 +153,11 @@ def main():
         if t:
             tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1), "rot": rot})
 
+    for t_ in tiles.values():
+        t_["furniture"] = roadside_signals(t_["furniture"])
+        for w in t_["walls"]:
+            if w["kind"] in manual["fenceHeights"] and w["measured"] < 0.8:
+                w["height"] = manual["fenceHeights"][w["kind"]]  # les grilles fines échappent au LiDAR
     for kind, lines, height in (("hedge", gv["hedges"], 1.1), ("rampart", gv["ramparts"], 6.0)):
         for i, pts in enumerate(lines):
             t = c.tile_of_local(pts[0], pts[1])
@@ -131,7 +172,8 @@ def main():
         for col in range(c.TILES_NX):
             rec = tiles.get((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
             bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
-            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds), **rec}
+            stairs = [z for z in manual["stairs"] if z["bbox"][0] < bounds[2] and z["bbox"][2] > bounds[0] and z["bbox"][1] < bounds[3] and z["bbox"][3] > bounds[1]]
+            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds, stairs), "stairs": stairs, **rec}
             text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
             (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
             total += len(text)

@@ -69,10 +69,20 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         cylinder(mb, f.x, f.y, 1.3, z, z + 0.55, COLORS.stone, 12);
         cylinder(mb, f.x, f.y, 0.2, z, z + 1.4, COLORS.stone, 8);
         break;
-      case "traffic_signals":
-        cylinder(mb, f.x, f.y, 0.05, z, z + 3.4, COLORS.iron, 5);
-        box(mb, f.x, f.y, 0.1, 0.12, rot, z + 2.6, z + 3.4, COLORS.iron);
+      case "traffic_signals": {
+        // Mât au bord de la chaussée, potence vers la route, feu à l'extrémité (rot : direction du mât vers la chaussée).
+        const dx = Math.cos(rot), dy = Math.sin(rot);
+        cylinder(mb, f.x, f.y, 0.06, z, z + 4.3, COLORS.iron, 6);
+        box(mb, f.x + dx * 1.0, f.y + dy * 1.0, 1.0, 0.04, rot, z + 4.15, z + 4.22, COLORS.iron);
+        const hx = f.x + dx * 1.9, hy = f.y + dy * 1.9;
+        box(mb, hx, hy, 0.14, 0.14, rot, z + 3.5, z + 4.2, COLORS.iron);
+        for (const [k, col] of [[0, "#d9472b"], [1, "#f1b24a"], [2, "#3fa56a"]] as const) {
+          for (const sgn of [-1, 1]) {
+            box(mb, hx + Math.cos(rot + Math.PI / 2) * sgn * 0.145, hy + Math.sin(rot + Math.PI / 2) * sgn * 0.145, 0.07, 0.01, rot, z + 3.6 + k * 0.23, z + 3.77 + k * 0.23, new THREE.Color(col));
+          }
+        }
         break;
+      }
       case "street_lamp": {
         // Mât fin, crosse vers la chaussée (sens aléatoire faute de donnée), lanterne.
         cylinder(mb, f.x, f.y, 0.06, z, z + 4.4, COLORS.iron, 6);

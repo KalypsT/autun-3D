@@ -1,0 +1,7 @@
+{
+  "_doc": "Corrections manuelles là où les données se trompent. stairs : zone (bbox locale x0, y0, x1, y1) dont le relief LiDAR est un talus lisse alors que c'est un escalier ; base : altitude du bas ; le client dessine des marches de riser m de haut.",
+  "stairs": [
+    {"id": "hotel-de-ville", "bbox": [14, 58, 42, 92], "base": -4.4, "riser": 0.17}
+  ],
+  "fenceHeights": {"fence": 1.8, "gate": 2.4}
+}

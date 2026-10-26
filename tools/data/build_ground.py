@@ -91,7 +91,15 @@ def main():
         return LineString(np.array(s["pts"]).reshape(-1, 2))
 
     # --- Chaussées ----------------------------------------------------------------------
-    drivable = [s for s in streets if s["kind"] in bs.DRIVABLE and s["motor"] and not s["tunnel"]]
+    way_tags = {e["id"]: e["tags"] for e in ways}
+
+    def is_lot(s):
+        t = way_tags.get(s["id"], {})
+        return t.get("service") == "parking_aisle" or t.get("name") == "Place du Champ de Mars"
+
+    carrossables = [s for s in streets if s["kind"] in bs.DRIVABLE and s["motor"] and not s["tunnel"]]
+    lots = [s for s in carrossables if is_lot(s)]  # allées de parking : traitées comme du parking, pas comme des rues
+    drivable = [s for s in carrossables if not is_lot(s)]
     by_surface = {"asphalt": [], "sett": [], "gravel": [], "paving": []}
     for s in drivable:
         cls = SURFACE.get(s["surface"] or "asphalt", "asphalt")
@@ -140,13 +148,20 @@ def main():
         g = raster_polygons(m, c.RES * k).buffer(0.8).buffer(-0.8)
         plazas[name].append(g)
     print("places brutes", round(time.time() - t0), "s", flush=True)
-    # Trottoirs d'abord (bande régulière le long des chaussées) : les places s'arrêtent à leur bord, pas l'inverse.
+    # Parkings : polygones OSM, plus la surface qu'entourent les allées (le Champ de Mars est un grand parking, pas des rues en spirale).
+    if lots:
+        lot = unary_union([line(s).buffer(s["width"] / 2 + 0.5) for s in lots]).buffer(14.0).buffer(-11.0)
+        filled = unary_union([Polygon(p.exterior) for p in parts(lot)]) if not lot.is_empty else Polygon()
+        filled = filled.difference(R.buffer(0.2)).difference(B.buffer(0.3))
+        plazas["asphalt"].append(filled)
+        parkings.append(filled)
     PK = unary_union(parkings) if parkings else Polygon()
+    # Trottoirs d'abord (bande régulière le long des chaussées) : les places s'arrêtent à leur bord, pas l'inverse.
     W = R.buffer(WALK_W, join_style="round").difference(R).difference(B.buffer(0.2)).difference(PK.buffer(0.5))  # pas de trottoir dans un parking
     W = W.buffer(-0.35).buffer(0.35)  # retire les éclats trop étroits
     P = {}
     taken = unary_union([R, B, W])
-    for name in ("sett", "gravel", "paving", "asphalt"):
+    for name in ("asphalt", "sett", "gravel", "paving"):
         if not plazas[name]:
             continue
         g = unary_union(plazas[name]).difference(taken).buffer(-0.4).buffer(0.4)
@@ -241,7 +256,7 @@ def main():
     # Places de stationnement : traits perpendiculaires aux allées intérieures des parkings.
     bays = []
     if not PK.is_empty:
-        for s in drivable:
+        for s in drivable + lots:
             ln = line(s)
             if ln.length < 8 or ln.intersection(PK).length < 0.6 * ln.length:
                 continue
