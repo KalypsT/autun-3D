@@ -1,17 +1,27 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { BIKE, createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
+import { BIKE, createVehicle, SCOOTER, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import type { Terrain } from "../data/terrain";
 import type { TileData } from "../data/types";
-import { createBikeModel, type BikeModel } from "../render/bike-model";
+import { createBikeModel } from "../render/bike-model";
+import { createScooterModel } from "../render/scooter-model";
+import type { VehicleModel } from "../render/vehicle-model";
+
+export type VehicleKind = "bike" | "scooter";
+
+/** Par type : physique, modèle, pictogramme et libellé de l'accélérateur. */
+export const KINDS: Record<VehicleKind, { spec: VehicleSpec; model: (variant: number) => VehicleModel; icon: string; gas: string }> = {
+  bike: { spec: BIKE, model: createBikeModel, icon: "🚲", gas: "Pédaler" },
+  scooter: { spec: SCOOTER, model: createScooterModel, icon: "🛴", gas: "Accélérer" },
+};
 
 /** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse. */
 export interface Vehicle {
   id: string;
-  kind: "bike";
+  kind: VehicleKind;
   spec: VehicleSpec;
   state: VehicleState;
-  model: BikeModel;
+  model: VehicleModel;
   ridden: boolean;
 }
 
@@ -38,7 +48,7 @@ export class Fleet {
     private readonly terrain: Terrain,
   ) {}
 
-  /** Gare des vélos aux parkings à vélos d'une tuile qui vient d'être construite (une seule fois par parking). */
+  /** Gare des vélos, et une trottinette en bout de rangée, aux parkings à vélos d'une tuile qui vient d'être construite (une seule fois par parking). */
   addFromTile(data: Pick<TileData, "furniture">): void {
     for (const f of data.furniture) {
       if (f.kind !== "bicycle_parking" || this.sources.has(f.id)) continue;
@@ -48,16 +58,18 @@ export class Fleet {
       const heading = ((h >>> 4) % 360) * (Math.PI / 180);
       // Côte à côte, perpendiculairement à leur axe.
       const rx = Math.cos(heading), ry = -Math.sin(heading);
-      for (let i = 0; i < count; i++) {
-        const off = (i - (count - 1) / 2) * BIKE_SPACING;
+      for (let i = 0; i <= count; i++) {
+        const scooter = i === count;
+        const off = (i - (count - 1) / 2) * BIKE_SPACING + (scooter ? 0.2 : 0);
         const p = this.colliders.resolve(f.x + rx * off, f.y + ry * off, 0.3);
-        this.add(`velo-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
+        this.add(scooter ? "scooter" : "bike", `${scooter ? "trottinette" : "velo"}-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
       }
     }
   }
 
-  add(id: string, x: number, y: number, heading: number, variant: number): Vehicle {
-    const v: Vehicle = { id, kind: "bike", spec: BIKE, state: createVehicle(x, y, heading, this.terrain), model: createBikeModel(variant), ridden: false };
+  add(kind: VehicleKind, id: string, x: number, y: number, heading: number, variant: number): Vehicle {
+    const k = KINDS[kind];
+    const v: Vehicle = { id, kind, spec: k.spec, state: createVehicle(x, y, heading, this.terrain), model: k.model(variant), ridden: false };
     v.state.pitch = 0;
     v.model.update(v.state);
     this.scene.add(v.model.group);

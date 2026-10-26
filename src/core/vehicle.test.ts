@@ -3,14 +3,24 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { BIKE, createVehicle, stepVehicle, steerLimit, type DriveInput, type VehicleState } from "./vehicle";
+import { BIKE, createVehicle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
 const none = new Colliders();
 
-function drive(s: VehicleState, input: DriveInput, seconds: number, terrain: Terrain = flat, colliders: Colliders = none): void {
-  for (let i = 0; i < seconds * 60; i++) stepVehicle(s, BIKE, input, DT, terrain, colliders);
+function drive(s: VehicleState, input: DriveInput, seconds: number, terrain: Terrain = flat, colliders: Colliders = none, spec: VehicleSpec = BIKE): void {
+  for (let i = 0; i < seconds * 60; i++) stepVehicle(s, spec, input, DT, terrain, colliders);
+}
+
+/** Temps (s) pour passer de la vitesse actuelle à l'arrêt, frein à fond. */
+function brakingTime(s: VehicleState, spec: VehicleSpec): number {
+  let t = 0;
+  while (s.speed > 0.01 && t < 20) {
+    stepVehicle(s, spec, { throttle: 0, brake: 1, steer: 0 }, DT, flat, none);
+    t += DT;
+  }
+  return t;
 }
 
 /** Pente constante vers le nord (montée de `grade` par mètre). */
@@ -130,5 +140,40 @@ describe("vélo", () => {
     drive(b, { throttle: 0, brake: 0, steer: 0 }, 4, flat, c);
     expect(b.y).toBeLessThan(10);
     expect(b.heading).not.toBeCloseTo(0.6, 1);
+  });
+});
+
+describe("trottinette électrique", () => {
+  const full = { throttle: 1, brake: 0, steer: 0 };
+
+  it("bridée à 25 km/h sur le plat", () => {
+    const t = createVehicle(0, -90, 0, flat);
+    drive(t, full, 20, flat, none, SCOOTER);
+    expect(kmh(t.speed)).toBeGreaterThan(23);
+    expect(kmh(t.speed)).toBeLessThanOrEqual(25.01);
+  });
+
+  it("le moteur monte une côte de 8 % plus vite qu'un cycliste", () => {
+    const up = slopeTerrain(0.08);
+    const t = createVehicle(0, -80, 0, up), b = createVehicle(0, -80, 0, up);
+    drive(t, full, 12, up, none, SCOOTER);
+    drive(b, full, 12, up);
+    expect(kmh(t.speed)).toBeGreaterThan(17);
+    expect(t.speed).toBeGreaterThan(b.speed);
+  });
+
+  it("freine moins fort qu'un vélo", () => {
+    const t = createVehicle(0, -90, 0, flat), b = createVehicle(0, -90, 0, flat);
+    t.vy = b.vy = 6;
+    t.speed = b.speed = 6;
+    expect(brakingTime(t, SCOOTER)).toBeGreaterThan(brakingTime(b, BIKE));
+  });
+
+  it("perd plus vite sa vitesse en roue libre (petites roues)", () => {
+    const t = createVehicle(0, -90, 0, flat), b = createVehicle(0, -90, 0, flat);
+    t.vy = b.vy = 6;
+    drive(t, { throttle: 0, brake: 0, steer: 0 }, 4, flat, none, SCOOTER);
+    drive(b, { throttle: 0, brake: 0, steer: 0 }, 4);
+    expect(t.speed).toBeLessThan(b.speed);
   });
 });

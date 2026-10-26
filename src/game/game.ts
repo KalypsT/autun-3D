@@ -5,7 +5,7 @@ import { Controls } from "../input/controls";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
-import { Fleet, type Vehicle } from "./vehicles";
+import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
 /** Point de départ : place du Champ de Mars, face au nord (mairie et théâtre au fond). */
 const SPAWN = { x: -10, y: -40, heading: 0 };
@@ -98,6 +98,7 @@ export function startGame(ctx: GameContext): void {
   const nearbyEl = document.getElementById("nearby")!;
   const nearbyArrow = document.getElementById("nearby-arrow")!;
   const nearbyText = document.getElementById("nearby-text")!;
+  const gasEl = document.getElementById("gas")!;
 
   const mount = (v: Vehicle): void => {
     riding = v;
@@ -106,6 +107,7 @@ export function startGame(ctx: GameContext): void {
     v.model.group.add(model.group);
     model.group.visible = true;
     controls.mode = "drive";
+    gasEl.textContent = KINDS[v.kind].gas;
     document.body.classList.add("driving");
   };
   const dismount = (): void => {
@@ -138,8 +140,9 @@ export function startGame(ctx: GameContext): void {
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
   });
-  // ?ride=velo : départ sur un vélo (captures, essais).
-  if (params.get("ride") === "velo") mount(fleet.add("velo-depart", spawn.x, spawn.y, startYaw, 1));
+  // ?ride=velo ou ?ride=trottinette : départ sur un véhicule (captures, essais).
+  const ride = { velo: "bike", trottinette: "scooter" }[params.get("ride") ?? ""] as VehicleKind | undefined;
+  if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
 
   let hudTimer = 0;
   let actionLabel = "";
@@ -147,7 +150,7 @@ export function startGame(ctx: GameContext): void {
     let label = "";
     const n = riding ? null : fleet.nearest(player.x, player.y);
     if (riding) label = "Descendre";
-    else if (n && n.distance < MOUNT_DISTANCE) label = "Monter 🚲";
+    else if (n && n.distance < MOUNT_DISTANCE) label = `Monter ${KINDS[n.vehicle.kind].icon}`;
     if (label !== actionLabel) {
       actionLabel = label;
       actionEl.textContent = label;
@@ -158,7 +161,7 @@ export function startGame(ctx: GameContext): void {
     if (showNearby) {
       const bearing = Math.atan2(n.vehicle.state.x - player.x, n.vehicle.state.y - player.y);
       nearbyArrow.style.transform = `rotate(${bearing - yaw}rad)`;
-      nearbyText.textContent = `🚲 ${Math.round(n.distance)} m`;
+      nearbyText.textContent = `${KINDS[n.vehicle.kind].icon} ${Math.round(n.distance)} m`;
     }
   };
 
@@ -176,7 +179,7 @@ export function startGame(ctx: GameContext): void {
       if (riding) {
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders);
-        if (drive.throttle > 0) crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
+        if (drive.throttle > 0 && riding.model.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else stepPlayer(player, { forward: input.forward, right: input.right, run: input.run }, yaw, STEP, terrain, colliders);
       acc -= STEP;
     }
@@ -217,7 +220,8 @@ export function startGame(ctx: GameContext): void {
 
     if (riding) {
       riding.model.update(riding.state);
-      model.ride(riding.model.seat, crank);
+      if (riding.model.pose === "pedal") model.ride(riding.model.seat, crank);
+      else model.stand(riding.model.seat);
     } else {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;

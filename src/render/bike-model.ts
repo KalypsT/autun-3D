@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { VehicleState } from "../core/vehicle";
+import { box, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Vélo de ville aux couleurs de l'affiche : cadre, guidon et panier, deux roues.
@@ -16,44 +15,6 @@ const FRONT_Z = -0.62;
 const HEAD = new THREE.Vector3(0, 0.92, -0.45);
 /** Inclinaison de l'axe de direction (rad, haut vers l'arrière). */
 const STEER_AXIS = 0.25;
-
-let material: THREE.MeshLambertMaterial | null = null;
-function sharedMaterial(): THREE.MeshLambertMaterial {
-  material ??= new THREE.MeshLambertMaterial({ vertexColors: true });
-  return material;
-}
-
-function paint(g: THREE.BufferGeometry, color: string): THREE.BufferGeometry {
-  const geo = g.index ? g.toNonIndexed() : g;
-  const c = new THREE.Color(color);
-  const n = geo.getAttribute("position").count;
-  const arr = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) arr.set([c.r, c.g, c.b], i * 3);
-  geo.setAttribute("color", new THREE.BufferAttribute(arr, 3));
-  return geo;
-}
-
-/** Tube de rayon r entre deux points. */
-function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: string): THREE.BufferGeometry {
-  const len = a.distanceTo(b);
-  const g = new THREE.CylinderGeometry(r, r, len, 6, 1);
-  const dir = b.clone().sub(a).normalize();
-  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
-  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-  return paint(g, color);
-}
-
-function box(w: number, h: number, d: number, x: number, y: number, z: number, color: string): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(w, h, d);
-  g.translate(x, y, z);
-  return paint(g, color);
-}
-
-function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const g = mergeGeometries(parts)!;
-  parts.forEach((p) => p.dispose());
-  return g;
-}
 
 /** Roue centrée sur son axe (axe x) : pneu, jante claire, moyeu. */
 function wheelGeometry(): THREE.BufferGeometry {
@@ -76,16 +37,8 @@ function wheelGeometry(): THREE.BufferGeometry {
 
 let wheelGeo: THREE.BufferGeometry | null = null;
 
-export interface BikeModel {
-  group: THREE.Group;
-  /** Place le vélo selon l'état du véhicule. */
-  update(s: VehicleState): void;
-  /** Point d'attache du cycliste (repère local du vélo). */
-  readonly seat: THREE.Vector3;
-  dispose(): void;
-}
 
-export function createBikeModel(variant: number): BikeModel {
+export function createBikeModel(variant: number): VehicleModel {
   const color = FRAME_COLORS[Math.abs(variant) % FRAME_COLORS.length]!;
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const rear = v(0, WHEEL_R, REAR_Z), bb = v(0, 0.3, 0.05), seatTop = v(0, 0.82, 0.18), headLow = v(0, 0.72, -0.5);
@@ -148,6 +101,7 @@ export function createBikeModel(variant: number): BikeModel {
   return {
     group,
     seat: v(0, 0.88, 0.22),
+    pose: "pedal",
     update(s) {
       group.position.set(s.x, s.z, -s.y);
       group.rotation.set(s.pitch, -s.heading, -s.lean);

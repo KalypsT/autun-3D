@@ -7,6 +7,8 @@ export interface PlayerModel {
   update(x: number, y: number, z: number, heading: number, stride: number, speed: number): void;
   /** Pose de cycliste, dans le repère local du vélo : bassin sur la selle `seat`, phase de pédalage `crank`. */
   ride(seat: THREE.Vector3, crank: number): void;
+  /** Debout sur un plateau (trottinette), pieds en `deck`, mains au guidon. */
+  stand(deck: THREE.Vector3): void;
 }
 
 export function createPlayerModel(): PlayerModel {
@@ -69,6 +71,22 @@ export function createPlayerModel(): PlayerModel {
         arm.position.y = shY;
         arm.position.z = shZ;
         arm.rotation.x = 0.95;
+      }
+    },
+    stand(deck) {
+      group.position.copy(deck);
+      group.rotation.set(0, 0, 0);
+      // Un pied devant l'autre, buste à peine penché, bras vers le guidon.
+      const lean = -0.12;
+      body.rotation.x = lean;
+      body.position.set(0, HIP - HIP * Math.cos(lean), -HIP * Math.sin(lean));
+      legL.rotation.x = 0.16;
+      legR.rotation.x = -0.12;
+      const sh = 1.4 - HIP;
+      for (const arm of [armL, armR]) {
+        arm.position.y = HIP + sh * Math.cos(lean);
+        arm.position.z = sh * Math.sin(lean);
+        arm.rotation.x = 0.62;
       }
     },
     update(x, y, z, heading, stride, speed) {

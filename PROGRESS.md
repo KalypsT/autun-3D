@@ -123,3 +123,9 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 ![Vélo garé](docs/captures/etape5-velo-parking.jpg)
 ![Vélo de profil](docs/captures/etape5-velo-profil.jpg)
 ![Virage](docs/captures/etape5-velo-virage.jpg)
+
+### Trottinette (26 octobre 2026)
+
+- Trottinette électrique de location (D22) : bridée à 25 km/h, petites roues, freins plus faibles ; une au bout de chaque rangée de vélos ; conducteur debout. `?ride=trottinette` : départ dessus. Tests : 62.
+
+![Trottinette](docs/captures/etape5-trottinette.jpg)

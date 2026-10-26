@@ -129,3 +129,9 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Véhicules garés aux parkings à vélos d'OSM (2 ou 3 par parking, couleurs et orientation tirées de l'identifiant), qui deviennent les obstacles à la place de l'ancien cercle invisible du parking. Un véhicule quitté reste où on le laisse (jusqu'au rechargement). Monter à moins de 2,2 m ; descendre en roulant freine d'abord.
 - Commandes (schéma A) : à gauche, glisser horizontalement pour diriger (70 px pour braquer à fond) ; à droite, pédales Pédaler et Frein ; le reste de la moitié droite sert à regarder, la caméra de poursuite se recale derrière après 1,2 s sans toucher. Clavier : Z/W ou flèche haut, S ou flèche bas, Q/A et D, espace, E pour monter et descendre.
 - Rendu : un vélo = 4 maillages (cadre, direction, deux roues) en couleurs de sommets ; les véhicules garés à plus de 110 m ne sont pas dessinés.
+
+## 2026-10-26 — D22. Trottinette électrique de location
+
+- Même physique que le vélo, autres paramètres (`SCOOTER`) : moteur ≈ 500 W bridé à 25 km/h (limite légale), petites roues (adhérence 0,72, roulement deux fois plus fort), freinage ≈ 4,5 m/s², poussée à reculons à 1 m/s. Elle monte une côte de 8 % vers 20 km/h, mieux qu'un cycliste.
+- Une trottinette au bout de chaque rangée de vélos (parkings à vélos d'OSM). Conducteur debout, un pied devant l'autre ; la pédale de droite devient « Accélérer ».
+- Modèles de véhicules : interface commune `VehicleModel` (`src/render/vehicle-model.ts`), posture du conducteur portée par le modèle (« pedal » ou « stand »).

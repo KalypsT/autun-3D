@@ -80,6 +80,37 @@ export const BIKE: VehicleSpec = {
   leans: true,
 };
 
+/**
+ * Trottinette électrique de location avec son conducteur : moteur ≈ 500 W bridé à 25 km/h, petites roues
+ * (adhérence et roulement moins bons), freins plus faibles qu'un vélo ; on la pousse à reculons.
+ */
+export const SCOOTER: VehicleSpec = {
+  mass: 88,
+  yawInertia: 16,
+  front: 0.45,
+  rear: 0.45,
+  maxSteer: 0.7,
+  steerFade: 3.2,
+  steerRate: 2.6,
+  corneringFront: 850,
+  corneringRear: 950,
+  grip: 0.72,
+  power: 500,
+  maxDrive: 230,
+  driveFadeFrom: 23 / 3.6,
+  topSpeed: 25 / 3.6,
+  maxBrake: 400,
+  reverseSpeed: 1.0,
+  reverseForce: 70,
+  rolling: 0.012,
+  drag: 0.32,
+  hull: [[0.36, 0.22], [-0.36, 0.22]],
+  restitution: 0.15,
+  impactFriction: 0.35,
+  wheelRadius: 0.11,
+  leans: true,
+};
+
 export interface VehicleState {
   x: number;
   y: number;

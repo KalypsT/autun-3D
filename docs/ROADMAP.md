@@ -20,7 +20,7 @@ Rédigée le 26 octobre 2026 après la PR #8. À mettre à jour à chaque étape
 - **Véhicules** : garés sur les places de parking marquées, faciles à trouver (pas de menu) ; bouton « Monter » à proximité. Un véhicule quitté reste où on l'a laissé.
 - **Réalisme** : simulation assez réaliste (inertie, adhérence, transferts de charge simplifiés) et collisions réalistes (impulsions, rotation au choc), sans dégâts pour l'instant. Escaliers : infranchissables en voiture, franchissables à vélo et à trottinette.
 - **Vue** : troisième personne uniquement.
-- **Plan** : (1) banc de test `?bench=1` (fait) ; (2) socle véhicules et vélo (fait, D21) ; (3) trottinette ; (4) chargement à vitesse (anticipation, construction étalée) mesuré au banc ; (5) voiture ; (6) moto.
+- **Plan** : (1) banc de test `?bench=1` (fait) ; (2) socle véhicules et vélo (fait, D21) ; (3) trottinette (fait, D22) ; (4) chargement à vitesse (anticipation, construction étalée) mesuré au banc ; (5) voiture ; (6) moto.
 
 ## Ordre proposé
 
