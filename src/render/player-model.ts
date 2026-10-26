@@ -9,8 +9,9 @@ export interface PlayerModel {
 
 export function createPlayerModel(): PlayerModel {
   const group = new THREE.Group();
-  const mat = (c: string): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
-  const jacket = mat("#3f6178"), pants = mat("#2f3340"), skin = mat("#d8a98a"), hair = mat("#3a2a20");
+  const mat = (c: string): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ color: c });
+  // Palette de l'affiche : veste vermillon, pantalon bleu nuit, écharpe moutarde, bonnet bleu-vert.
+  const jacket = mat("#d9472b"), pants = mat("#1f3a52"), skin = mat("#eeb98f"), hair = mat("#2a6f7e"), scarf = mat("#f1b24a"), shoes = mat("#3a2a20");
   const box = (w: number, h: number, d: number, m: THREE.Material, y: number): THREE.Mesh => {
     const g = new THREE.BoxGeometry(w, h, d);
     g.translate(0, y, 0);
@@ -25,7 +26,8 @@ export function createPlayerModel(): PlayerModel {
   head.castShadow = true;
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
   cap.position.y = 1.58;
-  body.add(head, cap);
+  const scarfMesh = box(0.3, 0.1, 0.3, scarf, 1.4);
+  body.add(head, cap, scarfMesh);
 
   const limb = (w: number, h: number, d: number, m: THREE.Material, hipY: number, x: number): THREE.Group => {
     const pivot = new THREE.Group();
@@ -36,6 +38,11 @@ export function createPlayerModel(): PlayerModel {
   };
   const legL = limb(0.17, 0.8, 0.2, pants, 0.8, -0.11), legR = limb(0.17, 0.8, 0.2, pants, 0.8, 0.11);
   const armL = limb(0.12, 0.58, 0.14, jacket, 1.4, -0.29), armR = limb(0.12, 0.58, 0.14, jacket, 1.4, 0.29);
+  for (const leg of [legL, legR]) {
+    const foot = box(0.19, 0.08, 0.3, shoes, -0.8 + 0.04);
+    foot.position.z = 0.04;
+    leg.add(foot);
+  }
   group.add(body, legL, legR, armL, armR);
 
   return {

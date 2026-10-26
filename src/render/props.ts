@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Furniture, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { canvasTexture } from "./paint";
+import { canvasTexture } from "./canvas";
 
 const THICK = 0.3;
 
@@ -29,17 +29,29 @@ function cylinder(mb: MeshBuilder, cx: number, cy: number, r: number, z0: number
   extrude(mb, pts, z0, z1, color);
 }
 
+const LAMP_LIT = new THREE.Color("#ffd27a");
+const LAMP_HALO = new THREE.Color("#ffb24a");
+
+/** Disque posé à plat (tache de lumière). */
+function disc(mb: MeshBuilder, cx: number, cy: number, z: number, r: number, color: THREE.Color, seg = 14): void {
+  for (let i = 0; i < seg; i++) {
+    const a0 = (i / seg) * Math.PI * 2, a1 = ((i + 1) / seg) * Math.PI * 2;
+    mb.tri(toThree(cx, cy, z), toThree(cx + r * Math.cos(a0), cy + r * Math.sin(a0), z), toThree(cx + r * Math.cos(a1), cy + r * Math.sin(a1), z), [0, 1, 0], color);
+  }
+}
+
 const COLORS = {
   wood: new THREE.Color("#7a5a3a"), iron: new THREE.Color("#2f3433"), green: new THREE.Color("#3d5a43"), steel: new THREE.Color("#8d9296"),
   yellow: new THREE.Color("#e8b923"), stone: new THREE.Color("#b6ad9c"), sanisette: new THREE.Color("#9aa09c"), water: new THREE.Color("#6f8f9a"),
 };
 
 /** Mobilier urbain simplifié, posé sur le sol. */
-export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: Terrain): number {
+/** `glow` reçoit les lanternes allumées (nuit), `halo` les taches de lumière au sol. */
+export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: Terrain, glow: MeshBuilder | null = null, halo: MeshBuilder | null = null): number {
   let n = 0;
   for (const f of items) {
     const z = terrain.heightAt(f.x, f.y);
-    const rot = hash01(String(f.id), 1) * Math.PI;
+    const rot = f.rot ?? hash01(String(f.id), 1) * Math.PI;
     switch (f.kind) {
       case "bench":
         box(mb, f.x, f.y, 0.8, 0.22, rot, z + 0.4, z + 0.46, COLORS.wood);
@@ -61,6 +73,17 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         cylinder(mb, f.x, f.y, 0.05, z, z + 3.4, COLORS.iron, 5);
         box(mb, f.x, f.y, 0.1, 0.12, rot, z + 2.6, z + 3.4, COLORS.iron);
         break;
+      case "street_lamp": {
+        // Mât fin, crosse vers la chaussée (sens aléatoire faute de donnée), lanterne.
+        cylinder(mb, f.x, f.y, 0.06, z, z + 4.4, COLORS.iron, 6);
+        const ax = f.x + Math.cos(rot) * 0.5, ay = f.y + Math.sin(rot) * 0.5;
+        box(mb, f.x + Math.cos(rot) * 0.25, f.y + Math.sin(rot) * 0.25, 0.25, 0.03, rot, z + 4.35, z + 4.42, COLORS.iron);
+        box(mb, ax, ay, 0.16, 0.16, rot, z + 4.12, z + 4.38, COLORS.steel);
+        if (glow) box(glow, ax, ay, 0.17, 0.17, rot, z + 4.115, z + 4.385, LAMP_LIT);
+        box(mb, ax, ay, 0.2, 0.2, rot, z + 4.38, z + 4.45, COLORS.iron);
+        if (halo) disc(halo, ax, ay, z + 0.2, 3.4, LAMP_HALO);
+        break;
+      }
       default: continue;
     }
     n++;
@@ -91,8 +114,9 @@ export function fenceMaterial(): THREE.MeshStandardMaterial {
 
 export interface WallSinks {
   /** Murs pleins (texturés comme les façades). */
-  solid: UvMeshBuilder;
-  solidSize: number;
+  solid: MeshBuilder;
+  /** Couleur des haies. */
+  hedgeColor: THREE.Color;
   solidColor: THREE.Color;
   cap: MeshBuilder;
   fence: UvMeshBuilder;
@@ -103,7 +127,10 @@ export interface WallSinks {
 export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Terrain): void {
   for (const w of walls) {
     const open = w.kind === "fence" || w.kind === "gate";
-    const color = sinks.solidColor.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    const hedge = w.kind === "hedge", rampart = w.kind === "rampart";
+    const base = hedge ? sinks.hedgeColor : sinks.solidColor;
+    const color = base.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    const thick = hedge ? 0.8 : rampart ? 1.3 : THICK;
     let s = 0;
     for (let i = 0; i + 3 < w.pts.length; i += 2) {
       const x1 = w.pts[i]!, y1 = w.pts[i + 1]!, x2 = w.pts[i + 2]!, y2 = w.pts[i + 3]!;
@@ -127,16 +154,14 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Te
           box(sinks.posts, px, py, 0.06, 0.06, Math.atan2(ty, tx), terrain.heightAt(px, py) - 0.1, terrain.heightAt(px, py) + 0.15 + h, COLORS.iron);
         }
       } else {
-        const hw = THICK / 2;
+        const hw = thick / 2;
         const a1: [number, number] = [x1 + nx * hw, y1 + ny * hw], a2: [number, number] = [x2 + nx * hw, y2 + ny * hw];
         const b1: [number, number] = [x1 - nx * hw, y1 - ny * hw], b2: [number, number] = [x2 - nx * hw, y2 - ny * hw];
-        const sz = sinks.solidSize;
         const side = (p: [number, number], q: [number, number], n: Vec3): void =>
-          sinks.solid.quad(toThree(p[0], p[1], zb1), toThree(q[0], q[1], zb2), toThree(q[0], q[1], zt2), toThree(p[0], p[1], zt1), n,
-            [s / sz, zb1 / sz], [(s + len) / sz, zb2 / sz], [(s + len) / sz, zt2 / sz], [s / sz, zt1 / sz], color);
+          sinks.solid.quad(toThree(p[0], p[1], zb1), toThree(q[0], q[1], zb2), toThree(q[0], q[1], zt2), toThree(p[0], p[1], zt1), n, color);
         side(a1, a2, toThree(nx, ny, 0));
         side(b2, b1, toThree(-nx, -ny, 0));
-        sinks.cap.quad(toThree(a1[0], a1[1], zt1), toThree(a2[0], a2[1], zt2), toThree(b2[0], b2[1], zt2), toThree(b1[0], b1[1], zt1), [0, 1, 0], COLORS.stone);
+        sinks.cap.quad(toThree(a1[0], a1[1], zt1), toThree(a2[0], a2[1], zt2), toThree(b2[0], b2[1], zt2), toThree(b1[0], b1[1], zt1), [0, 1, 0], hedge ? color.clone().multiplyScalar(1.15) : COLORS.stone);
       }
       s += len;
     }

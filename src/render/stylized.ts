@@ -1,16 +1,64 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/types";
-import { chimney, planeUV, type TileMeshes } from "./buildings";
 import { planFacades, type Placement } from "./facades";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { canvasTexture, rng } from "./paint";
+import { buildGround } from "./ground";
+import { SignAtlas } from "./sign-atlas";
+import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
-import { doorDims } from "./sprites";
+import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 
 const SKIRT = 0.4;
+const CHIMNEY = new THREE.Color("#a07a62");
 const FOOT = 1.2;
+
+export interface TileStats {
+  triangles: number;
+  windows: number;
+  doors: number;
+  shops: number;
+  balconies: number;
+  draws: number;
+}
+
+export interface TileMeshes {
+  group: THREE.Group;
+  stats: TileStats;
+}
+
+function dispose(group: THREE.Object3D): void {
+  group.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) m.geometry.dispose();
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
+  });
+}
+
+export function disposeTile(t: TileMeshes): void {
+  dispose(t.group);
+}
+
+
+export function planeUV(a: number, bb: number, x: number, y: number, size: number): [number, number] {
+  const g = Math.hypot(a, bb);
+  if (g < 1e-3) return [x / size, y / size];
+  const hx = -bb / g, hy = a / g;
+  return [(x * hx + y * hy) / size, (((x * a + y * bb) / g) * Math.sqrt(1 + g * g)) / size];
+}
+
+export function chimney(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number, z0: number, z1: number): void {
+  const hx = Math.max(sx, 0.5) / 2, hy = Math.max(sy, 0.5) / 2;
+  const p = (x: number, y: number, z: number): Vec3 => toThree(cx + x, cy + y, z);
+  const c = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]] as const;
+  for (let i = 0; i < 4; i++) {
+    const [ax, ay] = c[i]!, [bx, by] = c[(i + 1) % 4]!;
+    const len = Math.hypot(bx - ax, by - ay);
+    mb.quad(p(ax, ay, z0 - 0.2), p(bx, by, z0 - 0.2), p(bx, by, z1), p(ax, ay, z1), toThree((by - ay) / len, -(bx - ax) / len, 0), CHIMNEY);
+  }
+  mb.quad(p(-hx, -hy, z1), p(hx, -hy, z1), p(hx, hy, z1), p(-hx, hy, z1), [0, 1, 0], new THREE.Color("#5c4e44"));
+}
 
 let roofMap: THREE.CanvasTexture | null = null;
 /** Rangées de tuiles en traits doux : assez peu contrastées pour ne pas scintiller de loin. */
@@ -61,10 +109,16 @@ export class StyleResources {
     return this.gradient ? new THREE.MeshToonMaterial({ ...p, gradientMap: this.gradient }) : new THREE.MeshLambertMaterial(p);
   }
   readonly wallMat = this.lit({ vertexColors: true });
-  readonly detailMat = this.lit({ vertexColors: true });
   readonly roofMat = this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
   /** Vitres allumées (nuit) : sans éclairage. */
-  readonly glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+  readonly glowMat = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+  });
+  /** Taches de lumière des lampadaires : translucides, sans écriture de profondeur ; l'atmosphère règle l'opacité. */
+  readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false });
+  readonly signAtlas = new SignAtlas();
+  readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  readonly groundMat = this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   readonly fenceMat = fenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
   readonly crownMat = this.lit({ flatShading: true });
@@ -102,18 +156,17 @@ function panel(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
 
 const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"], ["#f08a3a", "#ffd27a"]];
 let glowTarget: MeshBuilder | null = null;
+let signText: { mb: UvMeshBuilder; atlas: SignAtlas } | null = null;
 
-/** Vitre : dégradé bleuté le jour ; la nuit, la plupart sont allumées (aplats chauds sans éclairage). */
+/** Vitre : dégradé bleuté ; une partie des fenêtres (tirées au hasard) reçoit en plus une couche chaude qui s'allume à la tombée de la nuit. */
 function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number, z1: number, off: number, litShare = 0.62): void {
-  if (T.night && glowTarget) {
-    const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
-    if (h < litShare) {
-      const [lo, hi] = pick(WARM, h * 13, 6);
-      panel(glowTarget, p, s0, s1, z0, z1, off, C(lo), C(hi));
-      return;
-    }
-  }
   panel(mb, p, s0, s1, z0, z1, off, C(T.glass[0]), C(T.glass[1]));
+  if (!glowTarget) return;
+  const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+  if (h < litShare) {
+    const [lo, hi] = pick(WARM, h * 13, 6);
+    panel(glowTarget, p, s0, s1, z0, z1, off + 0.006, C(lo), C(hi));
+  }
 }
 
 const SUR = { stone: 0.14, plaster_band: 0.1, none: 0 } as const;
@@ -184,8 +237,28 @@ function railingGeometry(mb: MeshBuilder, p: Placement): void {
 
 function signGeometry(mb: MeshBuilder, p: Placement, parts: string[], wm: number): void {
   const col = C(pick(T.shops, idKey(parts[2] ?? ""), 4));
+  const text = parts[1] ?? "";
   panel(mb, p, -wm / 2, wm / 2, 0, 0.55, 0, col);
   panel(mb, p, -wm / 2 + 0.05, wm / 2 - 0.05, 0.07, 0.48, 0.015, darker(col, 0.75), col.clone().multiplyScalar(1.08));
+  // Lettres suggérées par des barres claires de longueurs variées.
+  const letters = C(T.trim);
+  let s = -wm / 2 + 0.2;
+  const end = wm / 2 - 0.2;
+  const key = idKey(parts[1] ?? "");
+  for (let i = 0; s < end - 0.1; i++) {
+    const len = Math.min(0.12 + ((key * (i + 3) * 17) % 1) * 0.28, end - s);
+    if (!text) panel(mb, p, s, s + len, 0.18, 0.37, 0.03, letters);
+    s += len + 0.1;
+  }
+  if (text && signText) {
+    // Le nom : un quad texturé centré sur l'enseigne (case de l'atlas de noms, rapport 6,4).
+    const h = Math.min(0.34, (wm - 0.3) / 6.4);
+    const w = h * 6.4;
+    const r = signText.atlas.get(text, T.trim);
+    const at = (sx: number, z: number): Vec3 => toThree(p.x + p.tx * sx + p.nx * 0.035, p.y + p.ty * sx + p.ny * 0.035, p.z + z);
+    signText.mb.quad(at(-w / 2, 0.275 - h / 2), at(w / 2, 0.275 - h / 2), at(w / 2, 0.275 + h / 2), at(-w / 2, 0.275 + h / 2), toThree(p.nx, p.ny, 0),
+      [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], C("#ffffff"));
+  }
 }
 
 function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group {
@@ -222,12 +295,22 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
   return group;
 }
 
+/** Ajoute les triangles de `src` à `dst` (pas de spread : les tableaux dépassent la limite d'arguments). */
+function append(dst: MeshBuilder, src: MeshBuilder): void {
+  for (const k of ["positions", "normals", "colors"] as const) {
+    const d = dst[k], v = src[k];
+    for (let i = 0; i < v.length; i++) d.push(v[i]!);
+  }
+}
+
 /** Maillages d'une tuile dans le style « conte » : murs en aplats, fenêtres et volets en volumes simples, toits propres. */
 export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Terrain): TileMeshes {
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
   const plan = planFacades(tile.buildings, fiches, terrain);
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = plan.misc, glow = new MeshBuilder();
   glowTarget = glow;
+  const names = new UvMeshBuilder();
+  signText = { mb: names, atlas: res.signAtlas };
 
   for (const b of tile.buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
@@ -267,12 +350,11 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     }
   }
 
-  const fence = new UvMeshBuilder(), posts = new MeshBuilder(), solid = new UvMeshBuilder();
-  buildWalls({ solid, solidSize: 2, solidColor: C("#d9c9a6"), cap: detail, fence, posts }, tile.walls, terrain);
-  buildFurniture(detail, tile.furniture, terrain);
-  detail.positions.push(...posts.positions);
-  detail.normals.push(...posts.normals);
-  detail.colors.push(...posts.colors);
+  const fence = new UvMeshBuilder(), posts = new MeshBuilder();
+  buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
+  const halo = new MeshBuilder();
+  buildFurniture(detail, tile.furniture, terrain, glow, halo);
+  append(detail, posts);
 
   const group = new THREE.Group();
   let draws = 0, triangles = 0;
@@ -280,23 +362,27 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     if (mb.triangleCount === 0) return;
     const m = new THREE.Mesh(mb.build(), mat);
     m.name = name;
-    m.castShadow = name !== "grilles" && name !== "vitres";
+    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
     triangles += mb.triangleCount;
   };
-  add("murs", walls, res.wallMat);
   add("toits", roofs, res.roofMat);
-  add("details", detail, res.detailMat);
+  // Murs, façades, murets et mobilier partagent une matière : un seul maillage.
+  append(walls, detail);
+  add("bati", walls, res.wallMat);
   add("vitres", glow, res.glowMat);
-  add("pleins", solid, res.detailMat);
+  res.signAtlas.flush();
+  add("enseignes", names, res.signMat);
+  add("halos", halo, res.haloMat);
+  add("sol", buildGround(tile.ground ?? {}, tile.bounds, terrain), res.groundMat);
   add("grilles", fence, res.fenceMat);
   if (tile.trees.length) {
     group.add(treesStyled(res, tile.trees));
     draws += 2;
   }
-  return { group, stats: { triangles, ...plan.stats, draws }, pages: { facade: new Set(), sign: new Set() }, missed: 0 };
+  return { group, stats: { triangles, ...plan.stats, draws } };
 }
 
 function roofFaces(rb: UvMeshBuilder, b: Building, base: THREE.Color): void {

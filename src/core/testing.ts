@@ -16,10 +16,10 @@ export function loadRealWorld(): { terrain: Terrain; tile: TileData } {
     JSON.parse(read("terrain.json").toString("utf8")) as TerrainMeta,
     bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength) as ArrayBuffer,
   );
-  const tile: TileData = { buildings: [], fiches: [], trees: [], walls: [], furniture: [] };
+  const tile: TileData = { bounds: [0, 0, 0, 0], ground: {}, buildings: [], fiches: [], trees: [], walls: [], furniture: [] };
   for (const name of readdirSync("public/data/tiles")) {
     const t = JSON.parse(read(`tiles/${name}`).toString("utf8")) as TileData;
-    for (const k of Object.keys(tile) as (keyof TileData)[]) (tile[k] as unknown[]).push(...(t[k] as unknown[]));
+    for (const k of ["buildings", "fiches", "trees", "walls", "furniture"] as const) (tile[k] as unknown[]).push(...(t[k] as unknown[]));
   }
   return { terrain, tile };
 }
