@@ -5,6 +5,10 @@ export interface PlayerModel {
   group: THREE.Group;
   /** Place et anime le personnage : position en repère données, cap, phase de pas et vitesse. */
   update(x: number, y: number, z: number, heading: number, stride: number, speed: number): void;
+  /** Pose de cycliste, dans le repère local du vélo : bassin sur la selle `seat`, phase de pédalage `crank`. */
+  ride(seat: THREE.Vector3, crank: number): void;
+  /** Debout sur un plateau (trottinette), pieds en `deck`, mains au guidon. */
+  stand(deck: THREE.Vector3): void;
 }
 
 export function createPlayerModel(): PlayerModel {
@@ -40,14 +44,56 @@ export function createPlayerModel(): PlayerModel {
   const armL = limb(0.12, 0.58, 0.14, jacket, 1.4, -0.29), armR = limb(0.12, 0.58, 0.14, jacket, 1.4, 0.29);
   for (const leg of [legL, legR]) {
     const foot = box(0.19, 0.08, 0.3, shoes, -0.8 + 0.04);
-    foot.position.z = 0.04;
+    // Pointe des pieds vers l'avant (−z).
+    foot.position.z = -0.04;
     leg.add(foot);
   }
   group.add(body, legL, legR, armL, armR);
 
+  const HIP = 0.8;
   return {
     group,
+    ride(seat, crank) {
+      // Bassin sur la selle, buste penché vers le guidon, bras tendus, jambes qui pédalent.
+      group.position.set(seat.x, seat.y - HIP + 0.04, seat.z);
+      group.rotation.set(0, 0, 0);
+      const lean = -0.42;
+      body.rotation.x = lean;
+      // Rotation du buste autour de la hanche plutôt que des pieds.
+      body.position.set(0, HIP - HIP * Math.cos(lean), -HIP * Math.sin(lean));
+      const c = Math.sin(crank) * 0.38;
+      legL.rotation.x = 0.55 + c;
+      legR.rotation.x = 0.55 - c;
+      // Épaules avancées avec le buste.
+      const sh = 1.4 - HIP;
+      const shY = HIP + sh * Math.cos(lean), shZ = sh * Math.sin(lean);
+      for (const arm of [armL, armR]) {
+        arm.position.y = shY;
+        arm.position.z = shZ;
+        arm.rotation.x = 0.95;
+      }
+    },
+    stand(deck) {
+      group.position.copy(deck);
+      group.rotation.set(0, 0, 0);
+      // Un pied devant l'autre, buste à peine penché, bras vers le guidon.
+      const lean = -0.12;
+      body.rotation.x = lean;
+      body.position.set(0, HIP - HIP * Math.cos(lean), -HIP * Math.sin(lean));
+      legL.rotation.x = 0.16;
+      legR.rotation.x = -0.12;
+      const sh = 1.4 - HIP;
+      for (const arm of [armL, armR]) {
+        arm.position.y = HIP + sh * Math.cos(lean);
+        arm.position.z = sh * Math.sin(lean);
+        arm.rotation.x = 0.62;
+      }
+    },
     update(x, y, z, heading, stride, speed) {
+      body.rotation.x = 0;
+      body.position.z = 0;
+      armL.position.set(-0.29, 1.4, 0);
+      armR.position.set(0.29, 1.4, 0);
       const amp = Math.min(speed / 2, 1.8) * 0.5;
       const s = Math.sin(stride) * amp;
       legL.rotation.x = s;

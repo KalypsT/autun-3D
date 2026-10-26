@@ -23,6 +23,21 @@
               text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
       body.game #hint { animation: hint 9s ease-out 0.5s both; }
       @keyframes hint { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+      #pedals { position: fixed; right: 14px; bottom: 16px; display: none; gap: 12px; align-items: flex-end; z-index: 4; }
+      body.game.driving #pedals { display: flex; }
+      .pedal { touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-items: center; color: #fff;
+               font: 600 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000; border-radius: 18px; border: 2px solid rgba(255,255,255,.45); }
+      #brake { width: 92px; height: 92px; background: rgba(140, 40, 30, .35); }
+      #gas { width: 104px; height: 150px; background: rgba(40, 110, 70, .35); }
+      .pedal.on { background: rgba(255,255,255,.35); border-color: #fff; }
+      #action { position: fixed; right: 14px; bottom: 186px; z-index: 4; display: none; padding: 12px 18px; border-radius: 14px;
+                border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
+      body.game #action.show { display: block; }
+      body.game:not(.driving) #action { bottom: 24px; }
+      #nearby { position: fixed; top: 12px; right: 62px; z-index: 3; display: none; padding: 5px 12px 5px 8px;
+                border-radius: 16px; background: rgba(0,0,0,.4); color: #fff; font: 14px system-ui, sans-serif; pointer-events: none; }
+      body.game #nearby.show { display: flex; gap: 6px; align-items: center; }
+      #nearby-arrow { display: inline-block; transition: transform .15s linear; }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
     </style>
@@ -32,7 +47,10 @@
     <div id="touch"></div>
     <div id="stick-base"></div><div id="stick-knob"></div>
     <button id="fullscreen" title="Plein écran" aria-label="Plein écran">⛶</button>
-    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder</div>
+    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
+    <div id="pedals"><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
+    <button id="action"></button>
+    <div id="nearby"><span id="nearby-arrow">⬆</span><span id="nearby-text"></span></div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>
     <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®) · three.js</div>

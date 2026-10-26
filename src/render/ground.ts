@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
-import { hash01, MeshBuilder } from "./geometry";
+import { finish, hash01, MeshBuilder, type Steps } from "./geometry";
 import { T } from "./style";
 
 /** Index de la couleur du thème (T.ground : asphalte, pavés, gravier, herbe, trottoir, dallage) et hauteur au-dessus du relief. */
@@ -36,6 +36,11 @@ function area(ring: readonly number[]): number {
 
 /** Sols vectoriels d'une tuile : chaussées, places, trottoirs (avec bordure), marquages. Un seul maillage. */
 export function buildGround(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: Terrain): MeshBuilder {
+  return finish(buildGroundSteps(layers, bounds, terrain));
+}
+
+/** Comme `buildGround`, en rendant la main après chaque polygone. */
+export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: Terrain): Steps<MeshBuilder> {
   const mb = new MeshBuilder();
   const eps = 0.02;
   const onEdge = (x: number, y: number): boolean => Math.abs(x - bounds[0]!) < eps || Math.abs(x - bounds[2]!) < eps || Math.abs(y - bounds[1]!) < eps || Math.abs(y - bounds[3]!) < eps;
@@ -72,21 +77,19 @@ export function buildGround(layers: Record<string, number[][][]>, bounds: readon
     mb.tri(v(a), v(b), v(c), na, color);
   };
 
-  const fill = (polys: number[][][], lift: number, color: THREE.Color, jitter: boolean): void => {
-    for (const poly of polys) {
-      const ring = (r: number[]): THREE.Vector2[] => {
-        const pts: THREE.Vector2[] = [];
-        for (let i = 0; i < r.length; i += 2) pts.push(new THREE.Vector2(r[i], r[i + 1]));
-        return pts;
-      };
-      const contour = ring(poly[0]!);
-      const holes = poly.slice(1).map(ring);
-      const verts = [...contour, ...holes.flat()];
-      const col = jitter ? color.clone().multiplyScalar(0.97 + hash01(`${poly[0]![0]},${poly[0]![1]}`) * 0.06) : color;
-      for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
-        const a = verts[i!]!, b = verts[j!]!, c = verts[k!]!;
-        emit([a.x, a.y], [b.x, b.y], [c.x, c.y], lift, col, 0);
-      }
+  const fill = (poly: number[][], lift: number, color: THREE.Color, jitter: boolean): void => {
+    const ring = (r: number[]): THREE.Vector2[] => {
+      const pts: THREE.Vector2[] = [];
+      for (let i = 0; i < r.length; i += 2) pts.push(new THREE.Vector2(r[i], r[i + 1]));
+      return pts;
+    };
+    const contour = ring(poly[0]!);
+    const holes = poly.slice(1).map(ring);
+    const verts = [...contour, ...holes.flat()];
+    const col = jitter ? color.clone().multiplyScalar(0.97 + hash01(`${poly[0]![0]},${poly[0]![1]}`) * 0.06) : color;
+    for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
+      const a = verts[i!]!, b = verts[j!]!, c = verts[k!]!;
+      emit([a.x, a.y], [b.x, b.y], [c.x, c.y], lift, col, 0);
     }
   };
 
@@ -95,10 +98,20 @@ export function buildGround(layers: Record<string, number[][][]>, bounds: readon
     if (!polys) continue;
     const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : T.ground[spec.color]!;
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
-    fill(polys, spec.lift, color, true);
-    if (name === "walk") curbs(mb, polys, terrain, color, onEdge);
+    for (const poly of polys) {
+      fill(poly, spec.lift, color, true);
+      yield;
+      if (name === "walk") {
+        curbs(mb, [poly], terrain, color, onEdge);
+        yield;
+      }
+    }
   }
-  if (layers["marks"]) fill(layers["marks"], MARK_LIFT, new THREE.Color(T.trim), false);
+  const marks = new THREE.Color(T.trim);
+  for (const poly of layers["marks"] ?? []) {
+    fill(poly, MARK_LIFT, marks, false);
+    yield;
+  }
   return mb;
 }
 

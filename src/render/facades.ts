@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Building, FacadeFiche, WallRun } from "../data/types";
-import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { finish, hash01, MeshBuilder, toThree, type Steps, type Vec3 } from "./geometry";
 import {
   type ElementSpec, canonicalWindow, doorDims, doorRequest, quantize, railingRequest, shopModuleRequest, signRequest, SHOP_MODULE_W, windowDims, windowRequest,
   type DoorStyle, type WindowSpec,
@@ -120,6 +120,11 @@ function slabBox(mb: MeshBuilder, pl: Polyline, s0: number, s1: number, z: numbe
 }
 
 export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: Terrain): FacadePlan {
+  return finish(planFacadesSteps(buildings, fiches, terrain));
+}
+
+/** Comme `planFacades`, en rendant la main après chaque bâtiment. */
+export function* planFacadesSteps(buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: Terrain): Steps<FacadePlan> {
   const plan: FacadePlan = {
     requests: [], signRequests: [], placements: [], misc: new MeshBuilder(),
     stats: { windows: 0, doors: 0, shops: 0, balconies: 0, runs: 0 },
@@ -150,9 +155,10 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
     })();
     const doorStyle = f.ground.door.style;
 
-    f.walls.forEach((run, runIdx) => {
-      if (run.role === "party" || run.length < 1.8) return;
-      if (f.ground.kind === "blank" && run.eave - run.datum < 3.6) return;
+    // Boucle (et non forEach) pour pouvoir rendre la main après chaque pan de mur : certains bâtiments en ont des dizaines.
+    for (const [runIdx, run] of f.walls.entries()) {
+      if (run.role === "party" || run.length < 1.8) continue;
+      if (f.ground.kind === "blank" && run.eave - run.datum < 3.6) continue;
       const pl = runPolyline(b, run);
       const isStreet = run.role === "street";
       plan.stats.runs++;
@@ -177,7 +183,7 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
       const bayW = fa.bayWidth * (isStreet ? 1 : 1.15);
       const margin = 0.6;
       const usable = run.length - 2 * margin;
-      if (usable < 0.9) return;
+      if (usable < 0.9) continue;
       const nBays = Math.max(1, Math.round(usable / bayW));
       const bay = usable / nBays;
       const center = (i: number): number => margin + (i + 0.5) * bay;
@@ -317,7 +323,8 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
           plan.stats.balconies++;
         }
       }
-    });
+      yield;
+    }
   }
   return plan;
 }

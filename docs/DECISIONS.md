@@ -111,3 +111,52 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Lumière : le soleil ne descend pas sous 5° (jamais d'éclairage par en dessous), puis la lune prend le relais du côté opposé. Même matière, même géométrie jour et nuit : seules les couleurs de lumière changent, pas de seconde palette.
 - Fenêtres et lampadaires : une couche chaude translucide posée sur 62 % des vitres (90 % des vitrines) et sur les lanternes, dont l'opacité suit la hauteur du soleil (de 3° à −6°) ; masquée en plein jour. Étoiles et nuages suivent aussi.
 - Horloge : 1 heure de jeu = 50 s réelles par défaut (un jour en 20 minutes), réglable par `?speed=`, figée dans le viewer.
+
+## 2026-10-26 — D20. Banc de test embarqué, mesures sur le téléphone de l'utilisateur
+
+- `?bench=1` lance un parcours fixe (`src/game/bench-route.ts`, 2,6 km de plus courts chemins sur les rues carrossables), caméra en poursuite comme derrière un véhicule : arrêt sur la place (8 s), rues à 50 km/h, rues à 90 km/h, puis arrêt sans ombres et arrêt sans ombres en définition 1×. Heure figée à 16 h pour que deux rapports soient comparables.
+- Mesures par phase : images/s moyennes et sur le 1 % le plus lent, durées d'image (médiane, 95 %, 99 %, max), à-coups (> 33 et > 50 ms) et part de ceux qui tombent sur une construction de tuile, appels de dessin et triangles, durée de chaque construction de tuile, mémoire géométrie et textures (estimation à partir de la scène), tas JavaScript quand Chrome le donne. Le rapport s'affiche à la fin (copier, télécharger en JSON) et porte la version (commit).
+- Le conteneur de développement n'a pas de carte graphique : ses images/s ne valent rien. Seul le téléphone de l'utilisateur fait foi ; les chiffres indépendants de l'appareil (appels, triangles, mémoire) sont vérifiés ici.
+- Cibles provisoires (Honor Magic 8 Pro) : 60 i/s de moyenne, 1 % le plus lent ≥ 40 i/s, aucune image > 50 ms en roulant à 50 km/h. À confirmer après le premier rapport.
+
+## 2026-10-26 — D21. Véhicules : modèle « bicyclette » dynamique, chocs par impulsions
+
+- Physique (`src/core/vehicle.ts`, logique pure, testée) : deux essieux, pneus à rigidité de dérive bornée par l'adhérence (cercle de frottement simplifié), inertie de lacet, puissance et force de traction, frein, résistance au roulement et de l'air, pente du relief réel. Sous 4 m/s, le modèle tend progressivement vers le modèle géométrique (lacet = v tan δ / L), le modèle dynamique étant instable à très basse vitesse. Deux sous-pas par pas de 1/60 s.
+- Braquage maximal réduit avec la vitesse (max / (1 + (v / v₀)²)) et vitesse de braquage limitée : la direction au doigt reste stable à pleine vitesse.
+- Chocs : l'emprise est une suite de cercles le long de l'axe, testés contre les collisions 2D existantes ; impulsion au point de contact avec restitution et frottement de Coulomb, donc un choc de biais fait pivoter le véhicule. Pas de dégâts pour l'instant.
+- Deux-roues : l'inclinaison est l'équilibre entre gravité et accélération latérale (atan(v·ω / g)), lissée ; elle est visuelle, la physique reste plane.
+- Vélo (`BIKE`) : 92 kg avec le cycliste, ≈ 250 W, on ne pédale plus au-delà de 27 km/h ; une côte de 8 % se monte vers 11 km/h, les descentes accélèrent au-delà. Freinage ≈ 6,7 m/s². À l'arrêt, le frein fait reculer à 1,2 m/s.
+- Véhicules garés aux parkings à vélos d'OSM (2 ou 3 par parking, couleurs et orientation tirées de l'identifiant), qui deviennent les obstacles à la place de l'ancien cercle invisible du parking. Un véhicule quitté reste où on le laisse (jusqu'au rechargement). Monter à moins de 2,2 m ; descendre en roulant freine d'abord.
+- Commandes (schéma A) : à gauche, glisser horizontalement pour diriger (70 px pour braquer à fond) ; à droite, pédales Pédaler et Frein ; le reste de la moitié droite sert à regarder, la caméra de poursuite se recale derrière après 1,2 s sans toucher. Clavier : Z/W ou flèche haut, S ou flèche bas, Q/A et D, espace, E pour monter et descendre.
+- Rendu : un vélo = 4 maillages (cadre, direction, deux roues) en couleurs de sommets ; les véhicules garés à plus de 110 m ne sont pas dessinés.
+
+## 2026-10-26 — D22. Trottinette électrique de location
+
+- Même physique que le vélo, autres paramètres (`SCOOTER`) : moteur ≈ 500 W bridé à 25 km/h (limite légale), petites roues (adhérence 0,72, roulement deux fois plus fort), freinage ≈ 4,5 m/s², poussée à reculons à 1 m/s. Elle monte une côte de 8 % vers 20 km/h, mieux qu'un cycliste.
+- Une trottinette au bout de chaque rangée de vélos (parkings à vélos d'OSM). Conducteur debout, un pied devant l'autre ; la pédale de droite devient « Accélérer ».
+- Modèles de véhicules : interface commune `VehicleModel` (`src/render/vehicle-model.ts`), posture du conducteur portée par le modèle (« pedal » ou « stand »).
+
+## 2026-10-26 — D23. Construction des tuiles en tranches, anticipation selon la vitesse
+
+- Constat (profil sur processeur de PC) : une tuile dense coûte 150 à 340 ms d'un bloc — plan des façades 50-70 ms, éléments de façade 80-125 ms, assemblage du maillage « bâti » 50-65 ms, sols 15-60 ms. En roulant, chaque tuile aurait fait sauter 10 à 20 images.
+- La construction devient un générateur (`buildTileSteps`, `planFacadesSteps`, `buildGroundSteps`, `MeshBuilder.buildSteps`) qui rend la main après chaque bâtiment, tous les 40 éléments de façade, chaque polygone de sol et tous les 90 000 flottants copiés. `TileManager` lui accorde 4 ms par image (`?budget=`, `?budget=1000` = d'un bloc pour comparer) ; une tuile se construit ainsi en quelques dizaines d'images. Le préchargement du départ reste d'un bloc.
+- Les maillages d'une tuile neuve sont montrés un par image (l'envoi des sommets à la carte graphique est étalé) ; la silhouette reste visible jusqu'au dernier.
+- Anticipation : la distance d'une tuile est la plus petite entre la position et le point atteint dans 3 s à la vitesse actuelle ; les tuiles devant sont chargées et construites d'abord.
+- Les obstacles d'une tuile ne comptent qu'une fois sa construction finie. À 90 km/h, une tuile entre en chargement ≈ 11 s avant qu'on y arrive (210 m + 3 s d'anticipation) ; sa construction prend de l'ordre d'une seconde : la marge est large, mais à vérifier au banc sur téléphone si plusieurs tuiles attendent en même temps.
+- Mesure (banc court, processeur de PC, rendu logiciel) : d'un bloc, la plus longue interruption atteint 963 ms (tuile 0_4) ; en tranches de 4 ms, une tuile de ≈ 210 ms de travail s'étale sur ≈ 35 images. Les étapes trop longues trouvées par instrumentation (enseignes dessinées dans l'atlas, très grands bâtiments, assemblage des vitres) rendent maintenant la main plus souvent.
+- Limite : `JSON.parse` d'une tuile (jusqu'à ≈ 1 Mo) reste d'un bloc sur le fil principal ; à déplacer dans un worker si le banc le montre.
+
+## 2026-10-26 — D24. Voiture : citadine à traction avant, voitures garées sur les places marquées
+
+- Physique (`CAR`) : 1 250 kg, 66 kW (≈ 56 kW aux roues), 0 à 100 km/h en ≈ 12 s, 175 km/h, freinage ≈ 0,9 g (50 km/h → arrêt en ≈ 10 m), braquage 35° réduit avec la vitesse, pneus de tourisme ; motricité bornée par l'adhérence des roues avant (traction), frein moteur, roulis de caisse visuel vers l'extérieur du virage. Emprise : trois cercles de 0,82-0,85 m sur l'axe.
+- Places de stationnement : retrouvées dans le jeu à partir du marquage au sol (deux traits de ≈ 4,8 m parallèles à ≈ 2,5 m), sans régénérer les données (`src/core/parking.ts`, 1 163 places sur la zone). 30 % sont occupées, couleur et sens de stationnement tirés de la position ; aucune voiture dans les 4 m du point de départ.
+- Rendu : voitures garées en deux maillages instanciés pour toute la ville (peinture teintée par instance, détails et roues) dans un rayon de 170 m, mis à jour tous les 10 m de déplacement ; la voiture conduite reçoit un modèle articulé (caisse qui prend le roulis, quatre roues, braquage des roues avant). Le conducteur n'est pas dessiné (vitres sombres).
+- Escaliers : obstacles réservés aux voitures (`Fleet.carOnly`, emprise des zones `stairs`), retirés avec la tuile.
+- Chocs : les véhicules garés sont des obstacles fixes (masse infinie) ; les pousser viendra avec la circulation (étape 3).
+- Caméra de poursuite par type (distance, recul avec la vitesse, hauteur) ; on monte à moins de 3 m d'une voiture, on en descend côté conducteur (gauche).
+
+## 2026-10-26 — D25. Moto de moyenne cylindrée
+
+- Physique (`MOTO`) : 265 kg avec le pilote, 35 kW (≈ 32 kW à la roue), 0 à 100 km/h en ≈ 5,5 s, 170 km/h, freinage ≈ 0,9 g ; seule la roue arrière est motrice (motricité bornée) ; frein moteur ; inclinaison des deux-roues (jusqu'à ≈ 43°).
+- Garées par deux sur 4 % des places de stationnement (en plus des 30 % de voitures). Pilote assis, buste penché vers le guidon. `?ride=moto`.
+- Modèle : quatre maillages (cadre avec réservoir, moteur et échappement ; direction avec fourche, guidon et phare ; deux roues), angle de chasse de 24°.

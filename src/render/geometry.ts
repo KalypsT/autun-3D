@@ -7,6 +7,22 @@ export function toThree(x: number, y: number, z: number): [number, number, numbe
 
 export type Vec3 = [number, number, number];
 
+/**
+ * Travail découpé en tranches : chaque `yield` est un point où l'on peut rendre la main au navigateur
+ * (construction des tuiles étalée sur plusieurs images). La valeur finale est le résultat.
+ */
+export type Steps<T> = Generator<void, T, void>;
+
+/** Exécute un travail découpé d'une traite. */
+export function finish<T>(steps: Steps<T>): T {
+  let r = steps.next();
+  while (!r.done) r = steps.next();
+  return r.value;
+}
+
+/** Nombre de flottants copiés entre deux points d'arrêt lors de l'assemblage d'un maillage. */
+const COPY_CHUNK = 40_000;
+
 /** Accumulateur de triangles à normales plates et couleurs par sommet : un seul maillage par matériau. */
 export class MeshBuilder {
   readonly positions: number[] = [];
@@ -56,12 +72,35 @@ export class MeshBuilder {
   }
 
   build(): THREE.BufferGeometry {
+    return finish(this.buildSteps());
+  }
+
+  /** Assemble ce maillage suivi de `more` en une géométrie, par blocs (copie des sommets étalée). */
+  *buildSteps(more: readonly MeshBuilder[] = []): Steps<THREE.BufferGeometry> {
+    const parts: MeshBuilder[] = [this, ...more];
+    let n = 0;
+    for (const p of parts) n += p.positions.length;
+    const out = { positions: new Float32Array(n), normals: new Float32Array(n), colors: new Float32Array(n) };
+    for (const k of ["positions", "normals", "colors"] as const) {
+      const dst = out[k];
+      let o = 0;
+      for (const p of parts) {
+        const src = p[k];
+        for (let i = 0; i < src.length; i += COPY_CHUNK) {
+          const end = Math.min(src.length, i + COPY_CHUNK);
+          for (let j = i; j < end; j++) dst[o + j] = src[j]!;
+          yield;
+        }
+        o += src.length;
+      }
+    }
     const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
-    g.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
-    g.computeBoundingSphere();
+    g.setAttribute("position", new THREE.BufferAttribute(out.positions, 3));
+    g.setAttribute("normal", new THREE.BufferAttribute(out.normals, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(out.colors, 3));
     g.computeBoundingBox();
+    yield;
+    g.computeBoundingSphere();
     return g;
   }
 }

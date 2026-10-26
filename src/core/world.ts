@@ -1,9 +1,9 @@
 import type { TileData } from "../data/types";
 import { Colliders } from "./collision";
 
-/** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable. */
+/** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
-  bench: 0.55, waste_basket: 0.25, bicycle_parking: 0.5, post_box: 0.3, atm: 0.4, public_bookcase: 0.4,
+  bench: 0.55, waste_basket: 0.25, post_box: 0.3, atm: 0.4, public_bookcase: 0.4,
   bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
 };
 

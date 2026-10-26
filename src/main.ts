@@ -2,12 +2,13 @@ import * as THREE from "three";
 import { Colliders } from "./core/collision";
 import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
+import { startBench } from "./game/bench";
 import { gameSpawn, startGame } from "./game/game";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
 import { useTheme } from "./render/style";
-import { buildTileStyled, StyleResources } from "./render/stylized";
+import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 
@@ -17,6 +18,8 @@ const debugEl = document.getElementById("debug") as HTMLDivElement;
 const loadingEl = document.getElementById("loading") as HTMLDivElement;
 // Sans ?view ni ?cam, c'est le jeu ; avec, la caméra libre des captures.
 const viewerMode = params.has("view") || params.has("cam");
+// ?bench=1 : banc de test de performances (parcours fixe, rapport à la fin).
+const benchMode = !viewerMode && params.has("bench");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? (viewerMode ? 2 : 1.5))));
@@ -94,11 +97,12 @@ async function main(): Promise<void> {
   // Heure de jeu : ?h=17 (départ), ?speed=0.02 (heures de jeu par seconde ; 0 = figée), ?style=nuit = 23 h 30 figée.
   const night = params.get("style") === "nuit";
   const hour = Number(params.get("h") ?? (night ? 23.5 : 16));
-  const speed = Number(params.get("speed") ?? (night || viewerMode ? 0 : 1 / 50));
+  const speed = Number(params.get("speed") ?? (night || viewerMode || benchMode ? 0 : 1 / 50));
   const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
-  const tiles = new TileManager(world, (d) => buildTileStyled(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210));
+  // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
+  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210), Number(params.get("budget") ?? 4));
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);
@@ -110,13 +114,14 @@ async function main(): Promise<void> {
     renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl,
     ready: (extra) => {
       loadingEl.remove();
-      document.body.classList.add(viewerMode ? "viewer" : "game");
+      document.body.classList.add(viewerMode ? "viewer" : benchMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
         ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
       };
     },
   };
   if (viewerMode) startViewer(ctx);
+  else if (benchMode) startBench(ctx);
   else startGame(ctx);
 }
 

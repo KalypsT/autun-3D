@@ -1,4 +1,8 @@
-/** Commandes : joystick flottant à gauche, regard en glissant à droite, clavier et souris. */
+/**
+ * Commandes : à pied, joystick flottant à gauche et regard en glissant à droite ;
+ * en véhicule, direction en glissant horizontalement à gauche, pédales Accélérer et Freiner à droite.
+ * Clavier et souris dans les deux cas.
+ */
 
 export interface ControlSample {
   forward: number;
@@ -7,13 +11,23 @@ export interface ControlSample {
   /** Rotation demandée depuis le dernier appel, en radians (droite = lacet +, bas = tangage +). */
   lookYaw: number;
   lookPitch: number;
+  /** Véhicule : direction -1 à 1, accélérateur et frein 0-1. */
+  steer: number;
+  throttle: number;
+  brake: number;
+  /** Le regard a été touché depuis le dernier appel (la caméra de poursuite attend avant de se recaler). */
+  looking: boolean;
 }
+
+export type ControlMode = "foot" | "drive";
 
 const STICK_RADIUS = 58;
 const DEAD_ZONE = 0.12;
 const RUN_THRESHOLD = 0.85;
 const TOUCH_LOOK = 0.0048;
 const MOUSE_LOOK = 0.0032;
+/** Course horizontale du doigt pour braquer à fond (px). */
+const STEER_RANGE = 70;
 
 interface Pointer {
   id: number;
@@ -29,12 +43,18 @@ export class Controls {
   private lookPitch = 0;
   private stickX = 0;
   private stickY = 0;
+  private readonly pedals = new Map<number, "gas" | "brake">();
+  private looked = false;
+  /** À pied ou en véhicule : change le rôle du doigt de gauche et affiche les pédales. */
+  mode: ControlMode = "foot";
   private readonly cleanup: (() => void)[] = [];
 
   constructor(
     private readonly surface: HTMLElement,
     private readonly base: HTMLElement,
     private readonly knob: HTMLElement,
+    gas: HTMLElement | null = null,
+    brake: HTMLElement | null = null,
   ) {
     const on = (el: EventTarget, type: string, fn: (e: Event) => void): void => {
       el.addEventListener(type, fn);
@@ -48,6 +68,24 @@ export class Controls {
     on(surface, "pointermove", (e) => this.move(e as PointerEvent));
     on(surface, "pointerup", (e) => this.up(e as PointerEvent));
     on(surface, "pointercancel", (e) => this.up(e as PointerEvent));
+    for (const [el, kind] of [[gas, "gas"], [brake, "brake"]] as const) {
+      if (!el) continue;
+      const press = (e: Event): void => {
+        const p = e as PointerEvent;
+        p.preventDefault();
+        el.setPointerCapture(p.pointerId);
+        this.pedals.set(p.pointerId, kind);
+        el.classList.add("on");
+      };
+      const release = (e: Event): void => {
+        this.pedals.delete((e as PointerEvent).pointerId);
+        if (![...this.pedals.values()].includes(kind)) el.classList.remove("on");
+      };
+      on(el, "pointerdown", press);
+      on(el, "pointerup", release);
+      on(el, "pointercancel", release);
+      on(el, "contextmenu", (e) => e.preventDefault());
+    }
   }
 
   private down(e: PointerEvent): void {
@@ -70,6 +108,14 @@ export class Controls {
 
   private move(e: PointerEvent): void {
     if (this.stick && this.stick.id === e.pointerId) {
+      if (this.mode === "drive") {
+        const dx = Math.max(-STEER_RANGE, Math.min(STEER_RANGE, e.clientX - this.stick.cx));
+        this.stickX = dx / STEER_RANGE;
+        this.stickY = 0;
+        this.knob.style.left = `${this.stick.cx + dx}px`;
+        this.knob.style.top = `${this.stick.cy}px`;
+        return;
+      }
       let dx = e.clientX - this.stick.cx, dy = e.clientY - this.stick.cy;
       const len = Math.hypot(dx, dy);
       if (len > STICK_RADIUS) {
@@ -88,6 +134,7 @@ export class Controls {
     const k = look.mouse ? MOUSE_LOOK : TOUCH_LOOK;
     this.lookYaw += (e.clientX - look.x) * k;
     this.lookPitch += (e.clientY - look.y) * k;
+    this.looked = true;
     look.x = e.clientX;
     look.y = e.clientY;
   }
@@ -120,8 +167,18 @@ export class Controls {
       right = kr / l;
       run = k.has("ShiftLeft") || k.has("ShiftRight");
     }
-    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch };
+    // Véhicule : direction au doigt (ou A/D), pédales (ou Z/W/flèche haut, S/flèche bas, espace).
+    let steer = this.stickX, throttle = 0, brake = 0;
+    for (const p of this.pedals.values()) {
+      if (p === "gas") throttle = 1;
+      else brake = 1;
+    }
+    if (kr !== 0) steer = kr;
+    if (kf > 0) throttle = 1;
+    if (kf < 0 || k.has("Space")) brake = 1;
+    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, looking: this.looked || this.looks.size > 0 };
     this.lookYaw = this.lookPitch = 0;
+    this.looked = false;
     return sample;
   }
 
