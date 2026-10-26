@@ -99,8 +99,7 @@ vec3 gcol = a.r * tile(t0, vW, 3.0) * 1.15 + a.g * tile(t1, vW, 2.4) + a.b * til
           + b.r * tile(t3, vW, 2.2) * 0.9 + b.g * tile(t4, vW, 2.4) + pav * tile(t5, vW, 2.8);
 ${palette ? `gcol = a.r * pal[0] + a.g * pal[1] + a.b * pal[2] + b.r * pal[3] + b.g * pal[4] + pav * pal[5];
 gcol *= 0.94 + 0.12 * texture2D(t5, vW / 9.0).r;
-gcol *= 1.0 - 0.35 * b.b;
-gcol = pow(gcol, vec3(2.2));` : "gcol *= 1.0 - 0.5 * b.b;"}
+gcol *= 1.0 - 0.35 * b.b;` : "gcol *= 1.0 - 0.5 * b.b;"}
 diffuseColor.rgb *= gcol;`,
         );
     };

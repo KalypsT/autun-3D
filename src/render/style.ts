@@ -1,126 +1,65 @@
 import * as THREE from "three";
-import type { RoofMaterial } from "../data/types";
+import type { Era, RoofMaterial } from "../data/types";
 
-/** Un parti pris graphique : palette, lumière, matières sans texture. `?style=a|b|c` ; sans paramètre, le rendu texturé. */
+/** Direction artistique « conte peint » : géométrie simple, aplats de couleur, lumière chaude, sans texture de façade. */
 export interface Style {
   id: string;
-  label: string;
   sky: { horizon: string; zenith: string };
   fog: [string, number, number];
   sun: { color: string; intensity: number };
   hemi: { sky: string; ground: string; intensity: number };
   exposure: number;
-  toon: boolean;
-  /** Retouche des couleurs de mur et de toit venues des données : saturation (×), clarté (gain, décalage). */
-  sat: number;
-  light: [number, number];
-  roofs: Record<RoofMaterial, string>;
-  /** asphalte, pavés, gravier, herbe, trottoir, dallage */
-  ground: [string, string, string, string, string, string];
-  tree: { sat: number; light: [number, number] };
 }
 
-export const STYLES: Record<string, Style> = {
-  a: {
-    id: "a", label: "Maquette claire",
-    sky: { horizon: "#f3e8dd", zenith: "#a6c8ea" }, fog: ["#f3e8dd", 240, 950],
-    sun: { color: "#fff1de", intensity: 2.3 }, hemi: { sky: "#e3edf7", ground: "#f2e5d6", intensity: 2.2 },
-    exposure: 1.05, toon: false, sat: 0.55, light: [0.45, 0.5],
-    roofs: { tuile_plate: "#e3a58c", tuile_mecanique: "#dc9a82", ardoise: "#9aa8bd", zinc: "#bcc6ce", terrasse: "#cfcac0" },
-    ground: ["#c4c7cf", "#d6c8b5", "#e8dcc2", "#c8e2ac", "#efeae0", "#e2dbcf"],
-    tree: { sat: 0.55, light: [0.55, 0.42] },
-  },
-  b: {
-    id: "b", label: "Low-poly chaleureux",
-    sky: { horizon: "#f2dcbb", zenith: "#5f93cf" }, fog: ["#f2dcbb", 220, 900],
-    sun: { color: "#ffd9a2", intensity: 3.3 }, hemi: { sky: "#a9c4e2", ground: "#8c7a62", intensity: 1.45 },
-    exposure: 1.1, toon: false, sat: 0.9, light: [1.0, 0.0],
-    roofs: { tuile_plate: "#c6573b", tuile_mecanique: "#bd5035", ardoise: "#4f5c70", zinc: "#8f9ba4", terrasse: "#8e8b83" },
-    ground: ["#6e727b", "#a39585", "#c8b795", "#82b05e", "#d0c7b7", "#b5ad9f"],
-    tree: { sat: 1.0, light: [1.0, 0.0] },
-  },
-  c: {
-    id: "c", label: "Illustration contrastée",
-    sky: { horizon: "#ffc890", zenith: "#3d6bb3" }, fog: ["#ffc890", 200, 850],
-    sun: { color: "#ffcb86", intensity: 3.5 }, hemi: { sky: "#8fb1e0", ground: "#76665a", intensity: 1.3 },
-    exposure: 1.1, toon: true, sat: 1.3, light: [1.0, 0.02],
-    roofs: { tuile_plate: "#e2492f", tuile_mecanique: "#d9432b", ardoise: "#3b4876", zinc: "#7ea2b3", terrasse: "#a69f90" },
-    ground: ["#4a506a", "#9c8672", "#d6b880", "#69b659", "#eae1ce", "#a69b89"],
-    tree: { sat: 1.25, light: [1.0, 0.03] },
-  },
+export const CONTE: Style = {
+  id: "conte",
+  sky: { horizon: "#f4dfc2", zenith: "#5f95d0" },
+  fog: ["#f1dcc0", 230, 900],
+  sun: { color: "#ffdba3", intensity: 3.2 },
+  hemi: { sky: "#b4cdea", ground: "#8f7d68", intensity: 1.55 },
+  exposure: 1.1,
 };
 
-let gradient: THREE.DataTexture | null = null;
-function toonGradient(): THREE.DataTexture {
-  if (!gradient) {
-    gradient = new THREE.DataTexture(new Uint8Array([120, 190, 255]), 3, 1, THREE.RedFormat);
-    gradient.minFilter = gradient.magFilter = THREE.NearestFilter;
-    gradient.needsUpdate = true;
+/** asphalte, pavés, gravier, herbe, trottoir, dallage */
+export const GROUND_PALETTE: [string, string, string, string, string, string] = ["#6e727b", "#a39585", "#c8b795", "#82b05e", "#d0c7b7", "#b5ad9f"];
+
+const WALLS: Record<"old" | "xix" | "modern", string[]> = {
+  old: ["#ecd9b0", "#e3c996", "#d9c4a0", "#efdcc0"],
+  xix: ["#f1e2c4", "#ebd0a4", "#f0cfb0", "#e8d9bd", "#d9b99a", "#f3e9d3"],
+  modern: ["#e9e2d4", "#d8d4c8", "#e6d6c0", "#cfd3cb"],
+};
+
+export const ROOFS: Record<RoofMaterial, string> = {
+  tuile_plate: "#c9573c", tuile_mecanique: "#c0503a", ardoise: "#586783", zinc: "#8ea4b0", terrasse: "#aaa59b",
+};
+export const SHUTTERS = ["#6f9a82", "#5f84ab", "#a9503f", "#f3ebd6", "#7d5a3c", "#8aa56a"];
+export const DOORS = ["#7d3f35", "#35506e", "#3f6b57", "#6e5238", "#b8892f"];
+export const SHOPS = ["#a9503f", "#35506e", "#3f6b57", "#7d5a3c", "#b8892f", "#6f5a86"];
+export const TRIM = "#f6efe0";
+export const GLASS: [string, string] = ["#35506e", "#8fb4cc"];
+export const TREES = ["#6fa35a", "#82b45f", "#5c9355", "#98bd62", "#7aa857"];
+
+/** Clé stable [0, 1) tirée d'un identifiant (CRC-32), la même pour la silhouette (calculée à l'avance) et le détail. */
+export function idKey(id: string): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < id.length; i++) {
+    crc ^= id.charCodeAt(i);
+    for (let b = 0; b < 8; b++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
   }
-  return gradient;
+  return ((crc ^ 0xffffffff) >>> 0) / 4294967296;
 }
 
-const hsl = { h: 0, s: 0, l: 0 };
-const tmp = new THREE.Color();
-
-function remap(c: THREE.Color, sat: number, light: [number, number]): void {
-  c.getHSL(hsl);
-  c.setHSL(hsl.h, Math.min(1, hsl.s * sat), Math.min(0.95, hsl.l * light[0] + light[1]));
+export function pick<T>(list: readonly T[], key: number, salt = 0): T {
+  return list[Math.floor(((key * 7919 + salt * 0.6180339) % 1) * list.length) % list.length]!;
 }
 
-/** Matières et retouches d'un style, appliquées aux maillages d'une tuile. */
-export class Styler {
-  private readonly cache = new Map<string, THREE.Material>();
+/** Couleur de mur : une teinte de la palette de l'époque, très légèrement nuancée. */
+export function wallColor(era: Era, key: number): THREE.Color {
+  const group = era === "medieval" || era === "classical" ? "old" : era === "xix" ? "xix" : "modern";
+  const c = new THREE.Color(pick(WALLS[group], key, 1));
+  return c.multiplyScalar(0.96 + ((key * 131) % 1) * 0.08);
+}
 
-  constructor(readonly style: Style) {}
-
-  private material(key: string, color: string | null, vertexColors: boolean): THREE.Material {
-    let m = this.cache.get(key);
-    if (!m) {
-      const p = { vertexColors, ...(color ? { color } : {}), ...(key.startsWith("roof") ? { side: THREE.DoubleSide } : {}) };
-      m = this.style.toon ? new THREE.MeshToonMaterial({ ...p, gradientMap: toonGradient() }) : new THREE.MeshLambertMaterial(p);
-      this.cache.set(key, m);
-    }
-    return m;
-  }
-
-  apply(root: THREE.Object3D): void {
-    const st = this.style;
-    root.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh) return;
-      if (m.name.startsWith("sprites-") || m.name.startsWith("enseignes-")) {
-        m.visible = false;
-        return;
-      }
-      if (m.name === "grilles") return;
-      const inst = o as THREE.InstancedMesh;
-      if (inst.isInstancedMesh && inst.instanceColor) {
-        for (let i = 0; i < inst.count; i++) {
-          inst.getColorAt(i, tmp);
-          remap(tmp, st.tree.sat, st.tree.light);
-          inst.setColorAt(i, tmp);
-        }
-        inst.instanceColor.needsUpdate = true;
-        m.material = this.material("crown", null, false);
-        return;
-      }
-      if (inst.isInstancedMesh) {
-        m.material = this.material("trunk", "#6b5440", false);
-        return;
-      }
-      const col = m.geometry.getAttribute("color") as THREE.BufferAttribute | undefined;
-      if (!col || m.geometry.userData["styled"]) return;
-      m.geometry.userData["styled"] = true;
-      const roof = m.name.startsWith("toit-") ? (m.name.slice(5) as RoofMaterial) : null;
-      for (let i = 0; i < col.count; i++) {
-        tmp.setRGB(col.getX(i), col.getY(i), col.getZ(i));
-        if (roof) tmp.setRGB(1 + (tmp.r - 1) * 0.5, 1 + (tmp.g - 1) * 0.5, 1 + (tmp.b - 1) * 0.5);
-        else remap(tmp, st.sat, st.light);
-        col.setXYZ(i, tmp.r, tmp.g, tmp.b);
-      }
-      col.needsUpdate = true;
-      m.material = roof ? this.material(`roof-${roof}`, st.roofs[roof], true) : this.material("flat", null, true);
-    });
-  }
+export function roofColor(material: RoofMaterial, key: number): THREE.Color {
+  return new THREE.Color(ROOFS[material]).multiplyScalar(0.9 + ((key * 197) % 1) * 0.2);
 }

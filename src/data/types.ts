@@ -163,6 +163,9 @@ export interface LodBuilding {
   w: string;
   t: string;
   m: RoofMaterial;
+  /** Époque et clé de hachage de l'identifiant (CRC-32), pour que silhouette et détail aient la même couleur. */
+  a: Era;
+  k: number;
 }
 
 /** Ce qui est chargé une fois pour toutes au démarrage. */

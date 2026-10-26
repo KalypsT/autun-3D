@@ -36,17 +36,14 @@ export class TileManager {
 
   constructor(
     private readonly world: WorldBase,
-    private readonly res: CityResources,
+    private readonly res: CityResources | null,
     private readonly colliders: Colliders | null,
     private readonly load = LOAD,
-    private readonly styler: { apply(root: THREE.Object3D): void } | null = null,
+    private readonly stylized: ((data: TileData) => TileMeshes) | null = null,
   ) {
     for (const info of world.manifest.tiles) {
-      const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain);
-      if (lod) {
-        this.styler?.apply(lod);
-        this.group.add(lod);
-      }
+      const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain, this.stylized !== null);
+      if (lod) this.group.add(lod);
       this.entries.set(info.id, { info, lod, detail: null, data: null, fetching: false, keep: null, stale: false });
     }
   }
@@ -61,9 +58,10 @@ export class TileManager {
     e.data = null;
     e.keep = data;
     const t0 = performance.now();
-    let meshes = buildTileDetail(this.res, data, this.world.terrain);
+    const make = (): TileMeshes => (this.stylized ? this.stylized(data) : buildTileDetail(this.res!, data, this.world.terrain));
+    let meshes = make();
     // Atlas plein : on vide la page la plus ancienne, les tuiles qui s'en servaient sont à refaire.
-    for (let attempt = 0; attempt < 3 && meshes.missed > 0; attempt++) {
+    for (let attempt = 0; this.res && attempt < 3 && meshes.missed > 0; attempt++) {
       disposeTile(meshes);
       const facade = this.res.facadeAtlas.missed > 0 ? this.res.facadeAtlas.recycle() : -1;
       const sign = this.res.signAtlas.missed > 0 ? this.res.signAtlas.recycle() : -1;
@@ -71,13 +69,12 @@ export class TileManager {
         if (o !== e && o.detail && (o.detail.pages.facade.has(facade) || o.detail.pages.sign.has(sign))) this.markStale(o);
       }
       this.res.facadeAtlas.missed = this.res.signAtlas.missed = 0;
-      meshes = buildTileDetail(this.res, data, this.world.terrain);
+      meshes = make();
     }
     if (e.detail) {
       this.group.remove(e.detail.group);
       disposeTile(e.detail);
     } else if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
-    this.styler?.apply(meshes.group);
     meshes.group.children.forEach((m) => { if (this.hidden.has(m.name)) m.visible = false; });
     e.detail = meshes;
     e.stale = false;
