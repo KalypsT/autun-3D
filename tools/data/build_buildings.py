@@ -22,7 +22,7 @@ import sys
 import numpy as np
 import shapely
 from scipy import ndimage
-from scipy.spatial import cKDTree
+from scipy.spatial import Delaunay, cKDTree
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.polygon import orient
@@ -38,6 +38,7 @@ FLAT_SLOPE = math.tan(math.radians(3.5))
 MAX_SLOPE = math.tan(math.radians(62))
 MIN_AREA = 2.0       # m² : en dessous, on ignore l'emprise
 STEP_MIN = 0.25      # saut de hauteur entre deux faces voisines qui demande un mur (m)
+HF_THRESHOLD = 0.12  # part de cellules à plus d'1 m d'écart au-delà de laquelle on passe au toit maillé
 MIN_REGION = 6       # cellules (1,5 m²) : les régions plus petites sont absorbées par leur voisine
 
 rng = np.random.default_rng(42)
@@ -230,6 +231,52 @@ def triangulate(g):
     return out
 
 
+def heightfield(fp, zbound, cap=None):
+    """Toit maillé directement sur la surface LiDAR (bâtiments que les plans ne décrivent pas bien).
+
+    Maille de 1 m dans l'emprise, anneau densifié tous les 1,2 m ; altitude = mesure la plus proche, adoucie.
+    Retourne (anneau extérieur ouvert, anneaux de trous ouverts, altitudes, face au format du jeu).
+    """
+    x0, y0, zf = zbound
+    zs = ndimage.median_filter(zf, size=3)
+
+    def zat(x, y):
+        ix = min(max(int((x - x0) / CELL), 0), zs.shape[1] - 1)
+        iy = min(max(int((y - y0) / CELL), 0), zs.shape[0] - 1)
+        z = float(zs[iy, ix])
+        return min(z, cap) if cap is not None else z
+
+    def dens(ring):
+        pts = list(ring.coords)[:-1]
+        out = []
+        for p, q in zip(pts, pts[1:] + pts[:1]):
+            n = max(1, int(math.ceil(math.hypot(q[0] - p[0], q[1] - p[1]) / 1.2)))
+            out += [(p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n) for k in range(n)]
+        return out
+
+    ext = dens(fp.exterior)
+    holes = [dens(r) for r in fp.interiors]
+    minx, miny, maxx, maxy = fp.bounds
+    gx, gy = np.meshgrid(np.arange(math.floor(minx) + 0.5, maxx, 1.0), np.arange(math.floor(miny) + 0.5, maxy, 1.0))
+    inside = shapely.contains_xy(fp.buffer(-0.6), gx.ravel(), gy.ravel())
+    extra = list(zip(gx.ravel()[inside], gy.ravel()[inside]))
+    allpts = ext + [p for h in holes for p in h] + extra
+    arr = np.array(allpts)
+    tri = Delaunay(arr)
+    cen = arr[tri.simplices].mean(axis=1)
+    keep = shapely.contains_xy(fp.buffer(1e-3), cen[:, 0], cen[:, 1])
+    z = [round(zat(x, y), 2) for x, y in allpts]
+    face = {
+        "p": [0, 0, 0],
+        "r": [round(v, 2) for p in ext + [ext[0]] for v in p],
+        "h": [[round(v, 2) for p in h + [h[0]] for v in p] for h in holes],
+        "e": [round(v, 2) for p in extra for v in p],
+        "t": [int(i) for t in tri.simplices[keep] for i in t],
+        "z": z,
+    }
+    return ext, holes, z, face
+
+
 def ring_list(ring):
     return [round(float(v), 2) for xy in ring.coords for v in xy[:2]]
 
@@ -363,6 +410,8 @@ def build_one(props, fp, P_all, mnt_sampler):
     xyz = np.c_[sx[inside], sy[inside], sz[inside]]
     xyz = top_surface(xyz)
 
+    alt_max = props.get("altitude_maximale_toit")
+    cap = float(alt_max) - c.ORIGIN_Z + 1.5 if alt_max is not None else None  # plafond : toit BD TOPO + 1,5 m
     ground = float(np.median(mnt_sampler(np.array(fp.exterior.coords)[:, 0], np.array(fp.exterior.coords)[:, 1])))
     record = {
         "id": props["cleabs"] + (f"-{props['part']}" if props["part"] else ""),
@@ -380,6 +429,7 @@ def build_one(props, fp, P_all, mnt_sampler):
     planes = merge_planes(fit_planes(xyz), xyz) if len(xyz) >= MIN_INLIERS else []
     rms = None
     chim = []
+    zbound = None  # (x0, y0, zfill) : altitude mesurée la plus proche de chaque cellule
     if not planes:
         zr = ground + float(props.get("hauteur") or 6.0)
         planes = [(0.0, 0.0, zr)]
@@ -403,6 +453,10 @@ def build_one(props, fp, P_all, mnt_sampler):
         cz = np.where(has, zsum / np.maximum(cnt, 1), 0.0)
         mask = shapely.contains_xy(fp.buffer(0.36), cx.ravel(), cy.ravel()).reshape(cx.shape)
         lab = absorb_small(label_cells(planes, cx, cy, cz, has, mask), mask)
+        known = has & mask
+        if known.any():
+            near = ndimage.distance_transform_edt(~known, return_distances=False, return_indices=True)
+            zbound = (x0, y0, cz[tuple(near)])
         polys, ids = polygonize(lab, len(planes), x0, y0)
         clipped, face_plane = [], []
         for g, pid in zip(polys, ids):
@@ -441,13 +495,13 @@ def build_one(props, fp, P_all, mnt_sampler):
         ok = has & ~np.isnan(zmodel)
         rms = float(np.sqrt(np.mean((cz[ok] - zmodel[ok]) ** 2))) if ok.any() else None
         around = ndimage.maximum_filter(np.where(np.isnan(zmodel), -1e9, zmodel), size=5)
-        above = ok & (cz - around > 0.5) & (cz - zmodel < 4.0)
+        above = ok & (cz - around > 0.5) & (cz - zmodel < 3.0)
         if above.any():
             comp, ncomp = ndimage.label(above)
             for k in range(1, ncomp + 1):
                 rr, cc = np.nonzero(comp == k)
                 area = len(rr) * CELL * CELL
-                if 0.25 <= area <= 5.0 and max(np.ptp(rr), np.ptp(cc)) * CELL <= 3.0:
+                if 0.25 <= area <= 2.5 and (max(np.ptp(rr), np.ptp(cc)) + 1) * CELL <= 1.8:
                     bx0, bx1 = cx[0, cc.min()] - CELL / 2, cx[0, cc.max()] + CELL / 2
                     by0, by1 = cy[rr.min(), 0] - CELL / 2, cy[rr.max(), 0] + CELL / 2
                     top = float(np.percentile(cz[rr, cc], 90))
@@ -455,6 +509,34 @@ def build_one(props, fp, P_all, mnt_sampler):
                     chim.append([round((bx0 + bx1) / 2, 2), round((by0 + by1) / 2, 2), round(bx1 - bx0, 2),
                                  round(by1 - by0, 2), round(base, 2), round(top, 2)])
         record["q"] = {"n": int(len(xyz)), "planes": len(planes)}
+        bad = float(np.mean(np.abs(cz[ok] - zmodel[ok]) > 1.0)) if ok.any() else 0.0
+        if bad > HF_THRESHOLD and fp.area > 15 and zbound is not None:
+            fp = orient(fp, 1.0)
+            ext, holes_, zs_all, face = heightfield(fp, zbound, cap)
+            ne = len(ext)
+            record["ring"] = [round(v, 2) for p in ext for v in p]
+            record["top"] = zs_all[:ne]
+            record["holes"], record["holeTop"], at = [], [], ne
+            for h in holes_:
+                record["holes"].append([round(v, 2) for p in h for v in p])
+                record["holeTop"].append(zs_all[at:at + len(h)])
+                at += len(h)
+            record["faces"], record["steps"], record["chim"] = [face], [], []
+            record["roofKind"] = "complex"
+            record["eave"] = round(float(np.median(zs_all[:ne])), 2)
+            record["ridge"] = round(max(zs_all), 2)
+            record["q"]["heightfield"] = True
+            return record, rms
+
+    def zclamp(x, y, z):
+        """Un sommet ne s'écarte pas de plus de 1 m de la mesure LiDAR la plus proche (zones sans point : cours, trous)."""
+        if zbound is None:
+            return z
+        bx0, by0, zf = zbound
+        ix = min(max(int((x - bx0) / CELL), 0), zf.shape[1] - 1)
+        iy = min(max(int((y - by0) / CELL), 0), zf.shape[0] - 1)
+        hi = zf[iy, ix] + 1.0 if cap is None else min(zf[iy, ix] + 1.0, cap)
+        return float(min(max(z, zf[iy, ix] - 1.0), hi))
 
     # Anneaux nodés + haut de mur.
     face_vertices = {(round(x, 6), round(y, 6)) for g in faces_poly
@@ -467,7 +549,7 @@ def build_one(props, fp, P_all, mnt_sampler):
             zs = [plane_z(planes[pid], x, y) for g, pid in zip(faces_poly, face_plane) if g.distance(Point(x, y)) < 1e-3]
             if not zs:
                 zs = [plane_z(planes[face_plane[int(np.argmin([g.distance(Point(x, y)) for g in faces_poly]))]], x, y)]
-            tops.append(round(float(np.mean(zs)), 2))
+            tops.append(round(zclamp(x, y, float(np.mean(zs))), 2))
         return pts, tops
 
     fp = orient(fp, 1.0)
@@ -492,6 +574,12 @@ def build_one(props, fp, P_all, mnt_sampler):
         tri = triangulate(g)
         if tri is not None:
             face["t"] = tri
+        a_, b_, c_ = planes[pid]
+        openpts = [xy for ring in [g.exterior, *g.interiors] for xy in list(ring.coords)[:-1]]
+        raw = [a_ * x + b_ * y + c_ for x, y in openpts]
+        clamped = [zclamp(x, y, z) for (x, y), z in zip(openpts, raw)]
+        if any(abs(u - v) > 0.05 for u, v in zip(raw, clamped)):
+            face["z"] = [round(v, 2) for v in clamped]
         record["faces"].append(face)
 
     # Murs de raccord entre faces voisines dont les hauteurs diffèrent (lucarnes, décrochements).
@@ -557,6 +645,7 @@ def main():
     c.OUT.mkdir(parents=True, exist_ok=True)
     if not only:
         (c.OUT / "buildings.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+    print(f"toits maillés sur le LiDAR (plans insuffisants) : {sum(1 for r in out if r['q'].get('heightfield'))} bâtiments")
     kinds = {}
     for r in out:
         kinds[r["roofKind"]] = kinds.get(r["roofKind"], 0) + 1

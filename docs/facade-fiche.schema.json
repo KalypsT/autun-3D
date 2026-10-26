@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KalypsT/autun-3D/docs/facade-fiche.schema.json",
+  "title": "Fiche façade d'un bâtiment",
+  "description": "Décrit ce qu'on voit d'un bâtiment. `status` vaut `estimated` quand la fiche vient de la typologie (époque, matériaux, secteur sauvegardé) et `observed` quand elle a été remplie d'après des photos (référence dans `photos`).",
+  "type": "object",
+  "required": ["id", "status", "confidence", "sources", "era", "levels", "materials", "facade", "ground", "walls"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "status": { "enum": ["estimated", "observed"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "additionalProperties": false,
+        "properties": { "kind": { "enum": ["bdtopo", "bdnb", "osm", "lidar", "typology", "pop", "photo"] }, "ref": { "type": "string" } }
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "licence"],
+        "additionalProperties": false,
+        "properties": { "ref": { "type": "string" }, "licence": { "type": "string" }, "author": { "type": "string" } }
+      }
+    },
+    "address": { "type": ["string", "null"] },
+    "monument": {
+      "type": ["object", "null"],
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": { "name": { "type": "string" }, "mhs": { "type": ["string", "null"] }, "note": { "type": "string" } }
+    },
+    "era": { "enum": ["medieval", "classical", "xix", "interwar", "postwar", "contemporary"] },
+    "year": { "type": ["integer", "null"] },
+    "levels": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "storeys": {
+      "type": "object",
+      "required": ["ground", "upper"],
+      "additionalProperties": false,
+      "properties": { "ground": { "type": "number", "minimum": 2, "maximum": 6 }, "upper": { "type": "number", "minimum": 2, "maximum": 4.5 } }
+    },
+    "materials": {
+      "type": "object",
+      "required": ["wall", "roof"],
+      "additionalProperties": false,
+      "properties": {
+        "wall": {
+          "type": "object",
+          "required": ["kind", "color"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["plaster", "ashlar", "rubble", "brick", "concrete", "cladding"] },
+            "color": { "$ref": "#/$defs/color" }
+          }
+        },
+        "roof": { "enum": ["tuile_plate", "tuile_mecanique", "ardoise", "zinc", "terrasse"] }
+      }
+    },
+    "facade": {
+      "type": "object",
+      "required": ["bayWidth", "window", "shutters", "cornice", "plinth"],
+      "additionalProperties": false,
+      "properties": {
+        "bayWidth": { "type": "number", "minimum": 1.5, "maximum": 6 },
+        "window": {
+          "type": "object",
+          "required": ["style", "width", "height", "surround", "sill", "lintel", "frameColor"],
+          "additionalProperties": false,
+          "properties": {
+            "style": { "enum": ["panes_6", "panes_4", "panes_2", "french_window", "picture", "small"] },
+            "width": { "type": "number", "minimum": 0.4, "maximum": 2.5 },
+            "height": { "type": "number", "minimum": 0.4, "maximum": 2.6 },
+            "surround": { "enum": ["stone", "plaster_band", "none"] },
+            "sill": { "type": "boolean" },
+            "lintel": { "enum": ["flat", "segmental", "arched", "none"] },
+            "frameColor": { "$ref": "#/$defs/color" }
+          }
+        },
+        "shutters": {
+          "type": "object",
+          "required": ["kind", "color"],
+          "additionalProperties": false,
+          "properties": { "kind": { "enum": ["battant", "persienne", "roulant", "none"] }, "color": { "$ref": "#/$defs/color" } }
+        },
+        "balcony": { "enum": ["none", "filant", "individuel"] },
+        "balconyLevel": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "stringCourse": { "type": "boolean" },
+        "corners": { "enum": ["none", "quoins"] },
+        "cornice": {
+          "type": "object",
+          "required": ["kind", "height", "projection"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["stone_moulded", "eaves_rafters", "none"] },
+            "height": { "type": "number", "minimum": 0, "maximum": 1 },
+            "projection": { "type": "number", "minimum": 0, "maximum": 0.8 }
+          }
+        },
+        "plinth": {
+          "type": "object",
+          "required": ["height", "color"],
+          "additionalProperties": false,
+          "properties": { "height": { "type": "number", "minimum": 0, "maximum": 1.5 }, "color": { "$ref": "#/$defs/color" } }
+        }
+      }
+    },
+    "ground": {
+      "type": "object",
+      "required": ["kind", "door"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["dwelling", "shop", "passage", "monument", "blank"] },
+        "door": {
+          "type": "object",
+          "required": ["style", "color"],
+          "additionalProperties": false,
+          "properties": {
+            "style": { "enum": ["simple", "carriage", "glazed", "garage", "none"] },
+            "color": { "$ref": "#/$defs/color" }
+          }
+        },
+        "shopfront": {
+          "type": "object",
+          "required": ["color", "glazing"],
+          "additionalProperties": false,
+          "properties": { "color": { "$ref": "#/$defs/color" }, "glazing": { "enum": ["full", "divided"] } }
+        },
+        "shops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "kind", "wall", "s"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "kind": { "type": "string" },
+              "wall": { "type": "integer", "minimum": 0 },
+              "s": { "type": "number", "minimum": 0 },
+              "osm": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "walls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["a", "b", "role", "length", "eave", "gable", "datum"],
+        "additionalProperties": false,
+        "properties": {
+          "a": { "type": "integer", "minimum": 0 },
+          "b": { "type": "integer", "minimum": 0 },
+          "hole": { "type": "integer", "minimum": 0 },
+          "role": { "enum": ["street", "court", "party"] },
+          "length": { "type": "number", "minimum": 0 },
+          "eave": { "type": "number" },
+          "gable": { "type": "boolean" },
+          "datum": { "type": "number" }
+        }
+      }
+    },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": { "color": { "type": "string", "pattern": "^#[0-9a-f]{6}$" } }
+}

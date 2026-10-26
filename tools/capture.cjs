@@ -15,7 +15,7 @@ const fs = require("fs");
   for (const spec of views) {
     const [view, extra] = spec.split(":");  // extra : "h=18&day=100" ; pour une caméra libre : custom:cam=x,y,h,tx,ty,th
     const page = await ctx.newPage();
-    page.on("console", (m) => { if (m.type() === "error") console.log("console:", m.text()); });
+    page.on("console", (m) => { if (m.type() === "error" || m.text().startsWith("ville")) console.log("console:", m.text()); });
     page.on("pageerror", (e) => console.log("pageerror:", e.message));
     await page.goto(`${base}?view=${view}&debug${extra ? "&" + extra : ""}`);
     await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 120000 });

@@ -78,6 +78,36 @@ def overpass(dest):
     download("https://overpass-api.de/api/interpreter", dest, method="POST", optional=True, data={"data": query})
 
 
+def bdnb(dest):
+    """Bâtiments de l'IRIS 710140108 (centre d'Autun) : l'API libre rend 10 lignes par appel."""
+    if dest.exists() and not FORCE:
+        print(f"= {dest.relative_to(c.ROOT)}")
+        return
+    select = ("batiment_groupe_id,annee_construction,mat_mur_txt,mat_toit_txt,nb_niveau,nb_log,hauteur_mean,"
+              "usage_principal_bdnb_open,libelle_adr_principale_ban,denomination_monument_historique,"
+              "distance_monument_historique,perimetre_bat_historique,geom_groupe")
+    rows, offset = [], 0
+    while True:
+        r = session.get(
+            "https://api.bdnb.io/v1/bdnb/donnees/batiment_groupe_complet",
+            params={"code_iris": "eq.710140108", "select": select, "order": "batiment_groupe_id", "limit": 10, "offset": offset},
+            timeout=120,
+        )
+        if r.status_code == 429:
+            time.sleep(30)
+            continue
+        r.raise_for_status()
+        page = r.json()
+        rows += page
+        offset += 10
+        if len(page) < 10:
+            break
+        time.sleep(0.4)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(rows, ensure_ascii=False))
+    print(f"+ {dest.relative_to(c.ROOT)} ({len(rows)} groupes)")
+
+
 if __name__ == "__main__":
     raw = c.CACHE / "raw"
     wfs("BDTOPO_V3:batiment", raw / "bdtopo_batiment.json")
@@ -87,5 +117,6 @@ if __name__ == "__main__":
     # Orthophoto à 20 cm : 2,5 × la résolution de la grille 0,5 m.
     wms("HR.ORTHOIMAGERY.ORTHOPHOTOS", "image/jpeg", raw / "ortho.jpg", scale=2.5)
     download(c.LAZ_URL, raw / "lidar_0798_6651.copc.laz")
+    bdnb(raw / "bdnb.json")
     overpass(raw / "osm.json")  # en dernier : le serveur public est parfois indisponible
     print("ok")

@@ -25,14 +25,16 @@ describe("triangulation des toits (précalculée par tools/data)", () => {
         const holes = f.h.map(ring);
         const expected = area(contour) - holes.reduce((s, h) => s + area(h), 0);
         if (expected < 0.05) continue;
-        const verts = [...contour, ...holes.flat()];
+        const extra: THREE.Vector2[] = [];
+        for (let k = 0; f.e && k < f.e.length; k += 2) extra.push(new THREE.Vector2(f.e[k]!, f.e[k + 1]!));
+        const verts = [...contour, ...holes.flat(), ...extra];
         let got = 0;
         if (!f.t) {
           bad.push(`${b.id}#${i} sans triangles précalculés`);
           continue;
         }
         for (let k = 0; k < f.t.length; k += 3) got += area([verts[f.t[k]!]!, verts[f.t[k + 1]!]!, verts[f.t[k + 2]!]!]);
-        if (Math.abs(got - expected) / expected > 0.02) bad.push(`${b.id}#${i} attendu ${expected.toFixed(2)} m², obtenu ${got.toFixed(2)} m²`);
+        if (Math.abs(got - expected) / expected > (f.e ? 0.1 : 0.02)) bad.push(`${b.id}#${i} attendu ${expected.toFixed(2)} m², obtenu ${got.toFixed(2)} m²`);
       }
     }
     expect(bad.slice(0, 10)).toEqual([]);

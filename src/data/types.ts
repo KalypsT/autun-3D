@@ -27,6 +27,10 @@ export interface RoofFace {
   h: number[][];
   /** Triangles (indices dans les sommets ouverts du contour puis des trous) ; absent si le calcul a échoué. */
   t?: number[];
+  /** Sommets intérieurs supplémentaires x, y… (toit maillé), indexés après ceux du contour et des trous. */
+  e?: number[];
+  /** Altitude de chaque sommet quand elle diffère du plan (plafonnée sur la mesure LiDAR) ; absent sinon. */
+  z?: number[];
 }
 
 export interface BuildingInfo {
@@ -119,9 +123,77 @@ export interface GroundMeta {
 export interface WorldData {
   terrain: import("./terrain").Terrain;
   buildings: Building[];
+  fiches: Map<string, FacadeFiche>;
   streets: Street[];
   props: Props;
   trees: Tree[];
   groundMeta: GroundMeta;
   groundImage: HTMLImageElement;
+}
+
+// --- Fiches façade (docs/facade-fiche.schema.json) ---------------------------------------
+
+export type Era = "medieval" | "classical" | "xix" | "interwar" | "postwar" | "contemporary";
+export type WindowStyle = "panes_6" | "panes_4" | "panes_2" | "french_window" | "picture" | "small";
+export type RoofMaterial = "tuile_plate" | "tuile_mecanique" | "ardoise" | "zinc" | "terrasse";
+
+export interface FacadeWindow {
+  style: WindowStyle;
+  width: number;
+  height: number;
+  surround: "stone" | "plaster_band" | "none";
+  sill: boolean;
+  lintel: "flat" | "segmental" | "arched" | "none";
+  frameColor: string;
+}
+
+export interface WallRun {
+  /** Indices de sommets dans `ring` (ou dans `holes[hole]`) : la série va de a à b en suivant l'anneau. */
+  a: number;
+  b: number;
+  hole?: number;
+  role: "street" | "court" | "party";
+  length: number;
+  eave: number;
+  gable: boolean;
+  datum: number;
+}
+
+export interface Shop {
+  name: string | null;
+  kind: string;
+  wall: number;
+  s: number;
+  osm?: number;
+}
+
+export interface FacadeFiche {
+  id: string;
+  status: "estimated" | "observed";
+  confidence: number;
+  address?: string | null;
+  monument?: { name: string; mhs?: string | null; note?: string } | null;
+  era: Era;
+  year?: number | null;
+  levels: number;
+  storeys: { ground: number; upper: number };
+  materials: { wall: { kind: "plaster" | "ashlar" | "rubble" | "brick" | "concrete" | "cladding"; color: string }; roof: RoofMaterial };
+  facade: {
+    bayWidth: number;
+    window: FacadeWindow;
+    shutters: { kind: "battant" | "persienne" | "roulant" | "none"; color: string };
+    balcony?: "none" | "filant" | "individuel";
+    balconyLevel?: number;
+    stringCourse?: boolean;
+    corners?: "none" | "quoins";
+    cornice: { kind: "stone_moulded" | "eaves_rafters" | "none"; height: number; projection: number };
+    plinth: { height: number; color: string };
+  };
+  ground: {
+    kind: "dwelling" | "shop" | "passage" | "monument" | "blank";
+    door: { style: "simple" | "carriage" | "glazed" | "garage" | "none"; color: string };
+    shopfront?: { color: string; glazing: "full" | "divided" };
+    shops?: Shop[];
+  };
+  walls: WallRun[];
 }

@@ -109,7 +109,7 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ### Textures CC0
 
-- **Poly Haven** : API et téléchargements (`dl.polyhaven.org`) fonctionnent. On y trouve pierre, enduits, tuiles, ardoise, pavés et asphalte, en PBR (couleur, normales, rugosité). Ça suffit pour démarrer.
+- **Poly Haven** : API et téléchargements (`dl.polyhaven.org`) fonctionnent. Utilisées depuis l'étape 3 (sols, réduites à 512 px et recalées en teinte par `tools/data/fetch_textures.py`) : asphalt_02, cobblestone_floor_01, sandy_gravel, grass_ground, concrete_tiles, stone_pavers. On y trouve pierre, enduits, tuiles, ardoise, pavés et asphalte, en PBR (couleur, normales, rugosité). Ça suffit pour démarrer.
 - **ambientCG** : le catalogue (`ambientcg.com`) répond. Les fichiers sont servis par `acg-download.struffelproductions.com`, **autorisé le 26 octobre 2026** : les téléchargements fonctionnent maintenant.
 - Licence : CC0 pour les deux. On les crédite quand même.
 
