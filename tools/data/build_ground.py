@@ -138,8 +138,11 @@ def main():
         g = raster_polygons(m, c.RES * k).buffer(0.8).buffer(-0.8)
         plazas[name].append(g)
     print("places brutes", round(time.time() - t0), "s", flush=True)
+    # Trottoirs d'abord (bande régulière le long des chaussées) : les places s'arrêtent à leur bord, pas l'inverse.
+    W = R.buffer(WALK_W, join_style="round").difference(R).difference(B.buffer(0.2))
+    W = W.buffer(-0.35).buffer(0.35)  # retire les éclats trop étroits
     P = {}
-    taken = unary_union([R, B])
+    taken = unary_union([R, B, W])
     for name in ("sett", "gravel", "paving", "asphalt"):
         if not plazas[name]:
             continue
@@ -150,9 +153,6 @@ def main():
 
     print("places", round(time.time() - t0), "s", flush=True)
     # --- Trottoirs : bande le long des chaussées, hors bâtiments et places ------------------
-    W = R.buffer(WALK_W, join_style="round").difference(R).difference(B.buffer(0.2)).difference(unary_union(list(P.values())) if P else Polygon())
-    W = W.buffer(-0.35).buffer(0.35)  # retire les éclats trop étroits
-
     layers = {}
     for cls, g in roads.items():
         layers[f"road_{cls}"] = clean(g.simplify(0.12))
