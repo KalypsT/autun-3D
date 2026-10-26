@@ -10,7 +10,7 @@ import { Atmosphere } from "./render/atmosphere";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
-import { TileManager } from "./render/tile-manager";
+import { DETAIL_DISTANCE, TileManager } from "./render/tile-manager";
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -22,7 +22,8 @@ const viewerMode = params.has("view") || params.has("cam");
 const benchMode = !viewerMode && params.has("bench");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? (viewerMode ? 2 : 1.5))));
+// Définition : ×2,5 au plus en jeu (mesuré fluide en ×3 sur le téléphone de test, marge gardée pour la chauffe sur 30 minutes).
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? (viewerMode ? 2 : 2.5))));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 const shadows = params.get("shadow") !== "0";
@@ -38,7 +39,7 @@ const sunDir = new THREE.Vector3(0, 1, 0);
 const sunLight = new THREE.DirectionalLight("#ffe8c4", 3.0);
 sunLight.position.copy(sunDir).multiplyScalar(400);
 sunLight.castShadow = shadows;
-const mapSize = Number(params.get("shadowmap") ?? (viewerMode ? 4096 : 2048));
+const mapSize = Number(params.get("shadowmap") ?? 4096);
 sunLight.shadow.mapSize.set(mapSize, mapSize);
 const cam = sunLight.shadow.camera;
 cam.left = -230; cam.right = 230; cam.top = 230; cam.bottom = -230; cam.near = 50; cam.far = 900;
@@ -102,7 +103,7 @@ async function main(): Promise<void> {
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
-  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210), Number(params.get("budget") ?? 4));
+  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? DETAIL_DISTANCE), Number(params.get("budget") ?? 4));
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);

@@ -160,3 +160,9 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Physique (`MOTO`) : 265 kg avec le pilote, 35 kW (≈ 32 kW à la roue), 0 à 100 km/h en ≈ 5,5 s, 170 km/h, freinage ≈ 0,9 g ; seule la roue arrière est motrice (motricité bornée) ; frein moteur ; inclinaison des deux-roues (jusqu'à ≈ 43°).
 - Garées par deux sur 4 % des places de stationnement (en plus des 30 % de voitures). Pilote assis, buste penché vers le guidon. `?ride=moto`.
 - Modèle : quatre maillages (cadre avec réservoir, moteur et échappement ; direction avec fourche, guidon et phare ; deux roues), angle de chasse de 24°.
+
+## 2026-10-27 — D26. Réglages par défaut relevés d'après le banc sur téléphone
+
+- Mesures (Honor Magic 8 Pro, Adreno 840) : 60 i/s sur toutes les phases en définition native (×2,975), ombres 4096 et détail à 400 m ; seule baisse : 1 % le plus lent à 49 i/s à 90 km/h avec 400 m de détail, mémoire JavaScript 169 Mo (88 Mo à 210 m). Le navigateur cadence à 60 Hz : la marge au-delà reste inconnue.
+- Nouveaux défauts en jeu : définition ×2,5 au plus (au lieu de 1,5), carte d'ombres 4096 (au lieu de 2048), détail jusqu'à 300 m (au lieu de 210). On ne prend pas le maximum mesuré : le banc dure 3 minutes, la cible est 30 minutes de jeu, et la chauffe peut faire baisser la cadence d'un téléphone sur la durée.
+- À vérifier : une partie de 30 minutes sans baisse de fluidité ni chauffe gênante. Les paramètres `?dpr=`, `?shadowmap=`, `?detail=` restent disponibles pour comparer.

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { DETAIL_DISTANCE } from "../render/tile-manager";
 import { BENCH_ROUTE } from "./bench-route";
 import { Polyline, summarizeFrames, type FrameSummary } from "./bench-stats";
 import type { GameContext } from "./context";
@@ -144,7 +145,7 @@ export function startBench(ctx: GameContext): void {
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     pixelRatio: renderer.getPixelRatio(),
-    detail: Number(params.get("detail") ?? 210),
+    detail: Number(params.get("detail") ?? DETAIL_DISTANCE),
     budget: Number(params.get("budget") ?? 4),
     hour: atmosphere.clock,
     route: `${r1(end / 1000)} km${short ? " (version courte, sans valeur de mesure)" : ""}`,
