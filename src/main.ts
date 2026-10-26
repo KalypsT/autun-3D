@@ -7,6 +7,7 @@ import { gameSpawn, startGame } from "./game/game";
 import { startViewer, viewerView } from "./game/viewer";
 import { CityResources } from "./render/buildings";
 import { createSky, HORIZON } from "./render/sky";
+import { Styler, STYLES } from "./render/style";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 
@@ -45,7 +46,22 @@ sunLight.shadow.normalBias = 0.6;
 scene.add(sunLight);
 const sky = createSky(sunDir);
 scene.add(sky);
-scene.add(new THREE.HemisphereLight("#bcd3ee", "#9a8e78", 1.9));
+const hemi = new THREE.HemisphereLight("#bcd3ee", "#9a8e78", 1.9);
+scene.add(hemi);
+// ?style=a|b|c : rendu en aplats (sans textures de façade), pour comparer les partis pris graphiques.
+const style = STYLES[params.get("style") ?? ""] ?? null;
+if (style) {
+  scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
+  sunLight.color.set(style.sun.color);
+  sunLight.intensity = style.sun.intensity;
+  hemi.color.set(style.hemi.sky);
+  hemi.groundColor.set(style.hemi.ground);
+  hemi.intensity = style.hemi.intensity;
+  renderer.toneMappingExposure = style.exposure;
+  const u = (sky.material as THREE.ShaderMaterial).uniforms;
+  (u["horizon"]!.value as THREE.Color).set(style.sky.horizon);
+  (u["zenith"]!.value as THREE.Color).set(style.sky.zenith);
+}
 
 function resize(): void {
   const w = window.innerWidth, h = window.innerHeight;
@@ -60,14 +76,14 @@ async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
-  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2));
+  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2), style ? style.ground : null);
   terrainView.settle(start.x, start.y);
   scene.add(terrainView.group);
 
   const t0 = performance.now();
   const colliders = new Colliders();
   const res = new CityResources();
-  const tiles = new TileManager(world, res, colliders, Number(params.get("detail") ?? 210));
+  const tiles = new TileManager(world, res, colliders, Number(params.get("detail") ?? 210), style ? new Styler(style) : null);
   // ?hide=misc,sprites-0,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);

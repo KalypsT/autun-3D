@@ -39,10 +39,14 @@ export class TileManager {
     private readonly res: CityResources,
     private readonly colliders: Colliders | null,
     private readonly load = LOAD,
+    private readonly styler: { apply(root: THREE.Object3D): void } | null = null,
   ) {
     for (const info of world.manifest.tiles) {
       const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain);
-      if (lod) this.group.add(lod);
+      if (lod) {
+        this.styler?.apply(lod);
+        this.group.add(lod);
+      }
       this.entries.set(info.id, { info, lod, detail: null, data: null, fetching: false, keep: null, stale: false });
     }
   }
@@ -73,6 +77,7 @@ export class TileManager {
       this.group.remove(e.detail.group);
       disposeTile(e.detail);
     } else if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
+    this.styler?.apply(meshes.group);
     meshes.group.children.forEach((m) => { if (this.hidden.has(m.name)) m.visible = false; });
     e.detail = meshes;
     e.stale = false;

@@ -66,7 +66,7 @@ export class TerrainView {
     }
   }
 
-  static async create(terrain: Terrain, meta: GroundMeta, a: HTMLImageElement, b: HTMLImageElement, nearStep = 2): Promise<TerrainView> {
+  static async create(terrain: Terrain, meta: GroundMeta, a: HTMLImageElement, b: HTMLImageElement, nearStep = 2, palette: readonly string[] | null = null): Promise<TerrainView> {
     const textures = await Promise.all(GROUND_TEXTURES.map((n) => loadTexture(`${import.meta.env.BASE_URL}textures/ground/${n}.jpg`)));
     const wA = weightTexture(a), wB = weightTexture(b);
     const gw = meta.cols * meta.res, gh = meta.rows * meta.res;
@@ -77,6 +77,7 @@ export class TerrainView {
       shader.uniforms["wB"] = { value: wB };
       shader.uniforms["uGround"] = { value: ground };
       textures.forEach((t, i) => (shader.uniforms[`t${i}`] = { value: t }));
+      if (palette) shader.uniforms["pal"] = { value: palette.map((c) => new THREE.Color(c)) };
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", "#include <common>\nuniform vec4 uGround;\nvarying vec2 vG;\nvarying vec2 vW;")
         .replace("#include <begin_vertex>", "#include <begin_vertex>\nvG = vec2((position.x - uGround.x) * uGround.z, (-position.z - uGround.y) * uGround.w);\nvW = position.xz;");
@@ -87,6 +88,7 @@ export class TerrainView {
 varying vec2 vG; varying vec2 vW;
 uniform sampler2D wA; uniform sampler2D wB;
 uniform sampler2D t0; uniform sampler2D t1; uniform sampler2D t2; uniform sampler2D t3; uniform sampler2D t4; uniform sampler2D t5;
+${palette ? "uniform vec3 pal[6];" : ""}
 vec3 tile(sampler2D t, vec2 p, float s) { return mix(texture2D(t, p / s).rgb, texture2D(t, p / (s * 3.7) + 0.31).rgb, 0.4); }`,
         )
         .replace(
@@ -95,7 +97,10 @@ vec3 tile(sampler2D t, vec2 p, float s) { return mix(texture2D(t, p / s).rgb, te
 float pav = max(1.0 - (a.r + a.g + a.b + b.r + b.g), 0.0);
 vec3 gcol = a.r * tile(t0, vW, 3.0) * 1.15 + a.g * tile(t1, vW, 2.4) + a.b * tile(t2, vW, 2.6) * 1.1
           + b.r * tile(t3, vW, 2.2) * 0.9 + b.g * tile(t4, vW, 2.4) + pav * tile(t5, vW, 2.8);
-gcol *= 1.0 - 0.5 * b.b;
+${palette ? `gcol = a.r * pal[0] + a.g * pal[1] + a.b * pal[2] + b.r * pal[3] + b.g * pal[4] + pav * pal[5];
+gcol *= 0.94 + 0.12 * texture2D(t5, vW / 9.0).r;
+gcol *= 1.0 - 0.35 * b.b;
+gcol = pow(gcol, vec3(2.2));` : "gcol *= 1.0 - 0.5 * b.b;"}
 diffuseColor.rgb *= gcol;`,
         );
     };
