@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Furniture, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { canvasTexture } from "./paint";
+import { canvasTexture } from "./canvas";
 
 const THICK = 0.3;
 
@@ -91,8 +91,7 @@ export function fenceMaterial(): THREE.MeshStandardMaterial {
 
 export interface WallSinks {
   /** Murs pleins (texturés comme les façades). */
-  solid: UvMeshBuilder;
-  solidSize: number;
+  solid: MeshBuilder;
   solidColor: THREE.Color;
   cap: MeshBuilder;
   fence: UvMeshBuilder;
@@ -130,10 +129,8 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Te
         const hw = THICK / 2;
         const a1: [number, number] = [x1 + nx * hw, y1 + ny * hw], a2: [number, number] = [x2 + nx * hw, y2 + ny * hw];
         const b1: [number, number] = [x1 - nx * hw, y1 - ny * hw], b2: [number, number] = [x2 - nx * hw, y2 - ny * hw];
-        const sz = sinks.solidSize;
         const side = (p: [number, number], q: [number, number], n: Vec3): void =>
-          sinks.solid.quad(toThree(p[0], p[1], zb1), toThree(q[0], q[1], zb2), toThree(q[0], q[1], zt2), toThree(p[0], p[1], zt1), n,
-            [s / sz, zb1 / sz], [(s + len) / sz, zb2 / sz], [(s + len) / sz, zt2 / sz], [s / sz, zt1 / sz], color);
+          sinks.solid.quad(toThree(p[0], p[1], zb1), toThree(q[0], q[1], zb2), toThree(q[0], q[1], zt2), toThree(p[0], p[1], zt1), n, color);
         side(a1, a2, toThree(nx, ny, 0));
         side(b2, b1, toThree(-nx, -ny, 0));
         sinks.cap.quad(toThree(a1[0], a1[1], zt1), toThree(a2[0], a2[1], zt2), toThree(b2[0], b2[1], zt2), toThree(b1[0], b1[1], zt1), [0, 1, 0], COLORS.stone);

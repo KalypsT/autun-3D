@@ -110,7 +110,7 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ### Textures CC0
 
-- **Poly Haven** : API et téléchargements (`dl.polyhaven.org`) fonctionnent. Utilisées depuis l'étape 3 (sols, réduites à 512 px et recalées en teinte par `tools/data/fetch_textures.py`) : asphalt_02, cobblestone_floor_01, sandy_gravel, grass_ground, concrete_tiles, stone_pavers. On y trouve pierre, enduits, tuiles, ardoise, pavés et asphalte, en PBR (couleur, normales, rugosité). Ça suffit pour démarrer.
+- **Poly Haven** : API et téléchargements (`dl.polyhaven.org`) fonctionnent. Utilisées aux étapes 3 et 4 pour le rendu réaliste, **abandonné** (voir D17) : plus aucune texture externe n'est embarquée. On y trouve pierre, enduits, tuiles, ardoise, pavés et asphalte, en PBR (couleur, normales, rugosité). Ça suffit pour démarrer.
 - **ambientCG** : le catalogue (`ambientcg.com`) répond. Les fichiers sont servis par `acg-download.struffelproductions.com`, **autorisé le 26 octobre 2026** : les téléchargements fonctionnent maintenant.
 - Licence : CC0 pour les deux. On les crédite quand même.
 
@@ -135,6 +135,6 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ## Crédits à afficher dans le jeu
 
-> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO® (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Textures : Poly Haven, ambientCG (CC0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
+> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO® (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
 
 La liste exacte des photos (auteur, licence, lien) sera générée par la chaîne de données à partir des fiches façade.

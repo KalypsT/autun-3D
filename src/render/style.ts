@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Era, RoofMaterial } from "../data/types";
 
-/** Direction artistique : palette, lumière, ciel, matières. Choisie par `?style=` ; sans paramètre, le rendu texturé. */
+/** Direction artistique : palette, lumière, ciel, matières. `affiche` par défaut, `?style=nuit` pour la nuit. */
 export interface Theme {
   id: string;
   label: string;
@@ -43,21 +43,6 @@ export const THEMES: Record<string, Theme> = {
     shutters: ["#2f7f8f", "#d9472b", "#f1b24a", "#1f4a63"], doors: ["#1f4a63", "#d9472b", "#2f7f8f"], shops: ["#d9472b", "#1f4a63", "#2f7f8f", "#f1b24a"],
     trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e"], trunk: "#6b4a3a",
     ground: ["#7d8a8e", "#c79a6b", "#e3bf86", "#5fa06e", "#efdcb4", "#d6b98a"],
-  },
-  jouets: {
-    id: "jouets", label: "Ville de jouets",
-    sky: { horizon: "#d8ecff", zenith: "#7ec0ff", bands: 0, disc: 0, stars: 0 },
-    fog: ["#dcefff", 300, 1100],
-    sun: { color: "#fff4dc", intensity: 3.0 }, hemi: { sky: "#cfe6ff", ground: "#a89070", intensity: 1.45 },
-    exposure: 1.0, tone: "neutral", toon: false, night: false, overlay: [0, 0.12],
-    walls: {
-      old: ["#f2c14e", "#e8685a", "#5fa8d3", "#8ec27a"], xix: ["#f2c14e", "#e8685a", "#5fa8d3", "#8ec27a", "#e59c4b", "#b98bd1"],
-      modern: ["#f4ecd8", "#cfd8dc", "#f4ecd8"],
-    },
-    roofs: { tuile_plate: "#c8452f", tuile_mecanique: "#c0402b", ardoise: "#4a5d8a", zinc: "#9fb4c4", terrasse: "#d9c9a0" },
-    shutters: ["#4a5d8a", "#e8685a", "#8ec27a", "#f4ecd8"], doors: ["#4a5d8a", "#e8685a", "#8ec27a"], shops: ["#e8685a", "#5fa8d3", "#f2c14e", "#8ec27a"],
-    trim: "#fffaf0", glass: ["#4a6fa5", "#a9d4f0"], trees: ["#6cc04a", "#4fae4f", "#8ad04f"], trunk: "#8a5a3a",
-    ground: ["#7d848c", "#b89868", "#d0b478", "#6cae4a", "#d8d0bc", "#c2b698"],
   },
   nuit: {
     id: "nuit", label: "Autun la nuit",

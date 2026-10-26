@@ -37,8 +37,7 @@ tools/play.sh captures walk               # rejoue un scénario tactile dans le 
 ```sh
 python3 -m pip install -r tools/data/requirements.txt
 python3 tools/data/build_all.py          # télécharge dans .cache/ puis écrit public/data/ (relief, sols, rues, tuiles/, lod.json)
-python3 tools/data/fetch_textures.py     # textures de sol CC0 -> public/textures/ground/
 python3 tools/data/probe_sources.py      # vérifie l'accès et la couverture de chaque source
 ```
 
-Paramètres d'URL utiles : `?detail=600` (rayon de chargement des tuiles détaillées, en mètres), `?at=x,y` (point de départ), `?cam=x,y,h,cx,cy,ch` (caméra libre), `?step=2` (pas du relief proche), `?hide=misc,plaster` (masquer des maillages).
+Paramètres d'URL utiles : `?style=nuit` (la nuit, fenêtres allumées ; le jour est le style « affiche » par défaut), `?detail=600` (rayon de chargement des tuiles détaillées, en mètres), `?at=x,y` (point de départ), `?cam=x,y,h,cx,cy,ch` (caméra libre), `?step=2` (pas du relief proche), `?hide=bati,toits` (masquer des maillages).

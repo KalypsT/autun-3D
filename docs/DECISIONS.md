@@ -91,3 +91,16 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Relief : morceaux de 250 m, pas de 2 m à moins de 110 m, 5 m jusqu'à 380 m, 12 m au-delà ; normales calculées sur le relief (pas par maillage) pour qu'elles se raccordent entre niveaux ; jupe de 3 m sous chaque bord pour cacher les fissures.
 - Sols : deux PNG RVB de poids (asphalte/pavés/gravier ; herbe/trottoir/ombre près des murs), 1 m par pixel, avec mipmaps pour ne pas scintiller au loin ; le dallage est le complément à 1.
 - OSM : l'API `map` par blocs de 500 m remplace Overpass quand celui-ci coupe les connexions (même données, même licence).
+
+## 2026-10-26 — D17. Abandon du rendu réaliste, direction « affiche de voyage »
+
+- Constat (test sur téléphone) : carte correcte, mais lenteurs, scintillement des fenêtres texturées et rendu peu esthétique ; les toits LiDAR laissaient des trous et des éclats.
+- Choix : garder la cartographie (emprises, hauteurs BD TOPO, rues, relief, arbres, tuiles) et dessiner un style propre, sans texture externe : aplats, ombres en paliers, palette limitée, grain de papier léger ; façades **imaginées** par une grammaire (fenêtres, volets, portes, vitrines en petits volumes) plutôt que reconstituées. `?style=nuit` : même géométrie, fenêtres allumées (cycle jour/nuit à venir).
+- Bâtiments : toits générés depuis l'emprise (D18), plus de relevé LiDAR de toits.
+- Supprimés : atlas de sprites, textures de façade et de sol, cartes de normales (≈ 130 Mo de textures, 2 000 lignes de code).
+- Conséquence : un maillage de bâti par tuile (murs, façades, murets, mobilier), un de toits, un de grilles, deux d'arbres.
+
+## 2026-10-26 — D18. Toits générés
+
+- Chaque pan est la région du toit la plus proche d'un bord de l'emprise (Voronoï de points échantillonnés sur les bords), à pente constante de 0,7 : un toit à quatre pans pour n'importe quelle emprise ; deux pans avec pignons pour les rectangles à peu près réguliers (62 %) ; plateau au-delà de 4,6 m de montée ; toit plat pour les annexes (< 14 m²) et les terrasses.
+- Hauteur d'égout = hauteur BD TOPO × 0,94. Les fiches de façade sont recalculées sur ces emprises.

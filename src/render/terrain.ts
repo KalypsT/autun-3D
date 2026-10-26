@@ -2,28 +2,11 @@ import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { GroundMeta } from "../data/types";
 
-const GROUND_TEXTURES = ["asphalt", "sett", "gravel", "grass", "sidewalk", "paving"] as const;
 const CHUNK = 250;
 /** Pas du maillage selon la distance au joueur (m) : [distance max, pas]. */
-const LEVELS: [number, number][] = [[110, 2], [380, 5], [Infinity, 12]];
+const LEVELS: [number, number][] = [[90, 2.5], [300, 6], [Infinity, 14]];
 const SKIRT_INNER = 3;
 const SKIRT_OUTER = 40;
-
-function loadTexture(url: string): Promise<THREE.Texture> {
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(
-      url,
-      (t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = 8;
-        resolve(t);
-      },
-      undefined,
-      () => reject(new Error(`texture introuvable : ${url}`)),
-    );
-  });
-}
 
 /** Poids de mélange (données, pas des couleurs) : mipmaps pour ne pas scintiller au loin. */
 function weightTexture(img: HTMLImageElement): THREE.Texture {
@@ -66,8 +49,7 @@ export class TerrainView {
     }
   }
 
-  static async create(terrain: Terrain, meta: GroundMeta, a: HTMLImageElement, b: HTMLImageElement, nearStep = 2, palette: readonly string[] | null = null): Promise<TerrainView> {
-    const textures = await Promise.all(GROUND_TEXTURES.map((n) => loadTexture(`${import.meta.env.BASE_URL}textures/ground/${n}.jpg`)));
+  static create(terrain: Terrain, meta: GroundMeta, a: HTMLImageElement, b: HTMLImageElement, nearStep: number, palette: readonly string[]): TerrainView {
     const wA = weightTexture(a), wB = weightTexture(b);
     const gw = meta.cols * meta.res, gh = meta.rows * meta.res;
     const ground = new THREE.Vector4(meta.x0, meta.y1 - gh, 1 / gw, 1 / gh);
@@ -76,30 +58,18 @@ export class TerrainView {
       shader.uniforms["wA"] = { value: wA };
       shader.uniforms["wB"] = { value: wB };
       shader.uniforms["uGround"] = { value: ground };
-      textures.forEach((t, i) => (shader.uniforms[`t${i}`] = { value: t }));
-      if (palette) shader.uniforms["pal"] = { value: palette.map((c) => new THREE.Color(c)) };
+      shader.uniforms["pal"] = { value: palette.map((c) => new THREE.Color(c)) };
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", "#include <common>\nuniform vec4 uGround;\nvarying vec2 vG;\nvarying vec2 vW;")
         .replace("#include <begin_vertex>", "#include <begin_vertex>\nvG = vec2((position.x - uGround.x) * uGround.z, (-position.z - uGround.y) * uGround.w);\nvW = position.xz;");
       shader.fragmentShader = shader.fragmentShader
-        .replace(
-          "#include <common>",
-          `#include <common>
-varying vec2 vG; varying vec2 vW;
-uniform sampler2D wA; uniform sampler2D wB;
-uniform sampler2D t0; uniform sampler2D t1; uniform sampler2D t2; uniform sampler2D t3; uniform sampler2D t4; uniform sampler2D t5;
-${palette ? "uniform vec3 pal[6];" : ""}
-vec3 tile(sampler2D t, vec2 p, float s) { return mix(texture2D(t, p / s).rgb, texture2D(t, p / (s * 3.7) + 0.31).rgb, 0.4); }`,
-        )
+        .replace("#include <common>", "#include <common>\nvarying vec2 vG; varying vec2 vW;\nuniform sampler2D wA; uniform sampler2D wB; uniform vec3 pal[6];")
         .replace(
           "#include <map_fragment>",
           `vec3 a = texture2D(wA, vG).rgb; vec3 b = texture2D(wB, vG).rgb;
 float pav = max(1.0 - (a.r + a.g + a.b + b.r + b.g), 0.0);
-vec3 gcol = a.r * tile(t0, vW, 3.0) * 1.15 + a.g * tile(t1, vW, 2.4) + a.b * tile(t2, vW, 2.6) * 1.1
-          + b.r * tile(t3, vW, 2.2) * 0.9 + b.g * tile(t4, vW, 2.4) + pav * tile(t5, vW, 2.8);
-${palette ? `gcol = a.r * pal[0] + a.g * pal[1] + a.b * pal[2] + b.r * pal[3] + b.g * pal[4] + pav * pal[5];
-gcol *= 0.94 + 0.12 * texture2D(t5, vW / 9.0).r;
-gcol *= 1.0 - 0.35 * b.b;` : "gcol *= 1.0 - 0.5 * b.b;"}
+vec3 gcol = a.r * pal[0] + a.g * pal[1] + a.b * pal[2] + b.r * pal[3] + b.g * pal[4] + pav * pal[5];
+gcol *= 1.0 - 0.35 * b.b;
 diffuseColor.rgb *= gcol;`,
         );
     };

@@ -5,7 +5,6 @@ import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
 import { gameSpawn, startGame } from "./game/game";
 import { startViewer, viewerView } from "./game/viewer";
-import { CityResources } from "./render/buildings";
 import { createSky, HORIZON } from "./render/sky";
 import { useTheme } from "./render/style";
 import { buildTileStyled, StyleResources } from "./render/stylized";
@@ -49,25 +48,25 @@ const sky = createSky(sunDir);
 scene.add(sky);
 const hemi = new THREE.HemisphereLight("#bcd3ee", "#9a8e78", 1.9);
 scene.add(hemi);
-// ?style=affiche|jouets|nuit : direction artistique en aplats (sans textures de façade) ; sans paramètre, le rendu texturé.
-const style = useTheme(params.get("style") ?? "");
-if (style) {
-  scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
-  sunLight.color.set(style.sun.color);
-  sunLight.intensity = style.sun.intensity;
-  hemi.color.set(style.hemi.sky);
-  hemi.groundColor.set(style.hemi.ground);
-  hemi.intensity = style.hemi.intensity;
-  renderer.toneMapping = style.tone === "neutral" ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = style.exposure;
+// Direction artistique « affiche » par défaut ; ?style=nuit pour la version de nuit (fenêtres allumées).
+const style = useTheme(params.get("style") ?? "affiche")!;
+scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
+sunLight.color.set(style.sun.color);
+sunLight.intensity = style.sun.intensity;
+hemi.color.set(style.hemi.sky);
+hemi.groundColor.set(style.hemi.ground);
+hemi.intensity = style.hemi.intensity;
+renderer.toneMapping = style.tone === "neutral" ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = style.exposure;
+{
   const u = (sky.material as THREE.ShaderMaterial).uniforms;
   (u["horizon"]!.value as THREE.Color).set(style.sky.horizon);
   (u["zenith"]!.value as THREE.Color).set(style.sky.zenith);
   u["bands"]!.value = style.sky.bands;
   u["disc"]!.value = style.sky.disc;
   u["stars"]!.value = style.sky.stars;
-  addOverlay(style.overlay);
 }
+addOverlay(style.overlay);
 
 /** Grain de papier et vignette par-dessus l'image (deux couches CSS, très peu coûteuses). */
 function addOverlay([grain, vignette]: [number, number]): void {
@@ -101,21 +100,20 @@ async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
-  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2), style ? style.ground : null);
+  const terrainView = TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2.5), style.ground);
   terrainView.settle(start.x, start.y);
   scene.add(terrainView.group);
 
   const t0 = performance.now();
   const colliders = new Colliders();
-  const res = style ? null : new CityResources();
-  const styleRes = style ? new StyleResources() : null;
-  const tiles = new TileManager(world, res, colliders, Number(params.get("detail") ?? 210), styleRes ? (d) => buildTileStyled(styleRes, d, world.terrain) : null);
-  // ?hide=misc,sprites-0,... masque des maillages (diagnostic).
+  const styleRes = new StyleResources();
+  const tiles = new TileManager(world, (d) => buildTileStyled(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? 210));
+  // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);
   await tiles.preload(start.x, start.y);
   const { loaded, triangles, draws } = tiles.stats;
-  console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, atlas: res?.facadeAtlas.stats, signs: res?.signAtlas.stats, terrain: terrainView.triangles })}`);
+  console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
   const ctx: GameContext = {
     renderer, scene, camera, sky, sunLight, sunDir, world, tiles, terrainView, colliders, params, debugEl,
@@ -123,7 +121,7 @@ async function main(): Promise<void> {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : "game");
       (window as unknown as { __autun: object }).__autun = {
-        ready: true, stats: { ...tiles.stats, atlas: res?.facadeAtlas.stats, signAtlas: res?.signAtlas.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
+        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
       };
     },
   };

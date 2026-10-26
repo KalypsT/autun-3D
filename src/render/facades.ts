@@ -1,12 +1,11 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
 import type { Building, FacadeFiche, WallRun } from "../data/types";
-import type { SpriteRect, SpriteRequest } from "./atlas";
-import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
+import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 import {
-  canonicalWindow, doorDims, doorRequest, quantize, railingRequest, shopModuleRequest, signRequest, SHOP_MODULE_W, windowDims, windowRequest,
+  type ElementSpec, canonicalWindow, doorDims, doorRequest, quantize, railingRequest, shopModuleRequest, signRequest, SHOP_MODULE_W, windowDims, windowRequest,
   type DoorStyle, type WindowSpec,
-} from "./sprites";
+} from "./facade-specs";
 
 /** Un élément posé sur un mur : sprite de façade ou enseigne. */
 export interface Placement {
@@ -26,8 +25,8 @@ export interface Placement {
 }
 
 export interface FacadePlan {
-  requests: SpriteRequest[];
-  signRequests: SpriteRequest[];
+  requests: ElementSpec[];
+  signRequests: ElementSpec[];
   placements: Placement[];
   /** Éléments en volume sans texture : corniches, bandeaux, soubassements, balcons. */
   misc: MeshBuilder;
@@ -321,16 +320,4 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
     });
   }
   return plan;
-}
-
-/** Quad vertical d'un sprite posé sur un mur. */
-export function emitPlacement(mb: UvMeshBuilder, p: Placement, r: SpriteRect): void {
-  const w = p.width ?? r.wm;
-  const hw = w / 2;
-  const x0 = p.x - p.tx * hw, y0 = p.y - p.ty * hw, x1 = p.x + p.tx * hw, y1 = p.y + p.ty * hw;
-  const white = new THREE.Color(1, 1, 1);
-  mb.quad(
-    vec(x0, y0, p.z), vec(x1, y1, p.z), vec(x1, y1, p.z + r.hm), vec(x0, y0, p.z + r.hm),
-    toThree(p.nx, p.ny, 0), [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], white,
-  );
 }
