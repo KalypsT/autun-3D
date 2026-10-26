@@ -111,9 +111,11 @@ export class StyleResources {
   readonly wallMat = this.lit({ vertexColors: true });
   readonly roofMat = this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
   /** Vitres allumées (nuit) : sans éclairage. */
-  readonly glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
-  /** Taches de lumière des lampadaires (nuit) : translucides, sans écriture de profondeur. */
-  readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
+  readonly glowMat = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+  });
+  /** Taches de lumière des lampadaires : translucides, sans écriture de profondeur ; l'atmosphère règle l'opacité. */
+  readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false });
   readonly signAtlas = new SignAtlas();
   readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   readonly groundMat = this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
@@ -156,17 +158,15 @@ const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"]
 let glowTarget: MeshBuilder | null = null;
 let signText: { mb: UvMeshBuilder; atlas: SignAtlas } | null = null;
 
-/** Vitre : dégradé bleuté le jour ; la nuit, la plupart sont allumées (aplats chauds sans éclairage). */
+/** Vitre : dégradé bleuté ; une partie des fenêtres (tirées au hasard) reçoit en plus une couche chaude qui s'allume à la tombée de la nuit. */
 function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number, z1: number, off: number, litShare = 0.62): void {
-  if (T.night && glowTarget) {
-    const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
-    if (h < litShare) {
-      const [lo, hi] = pick(WARM, h * 13, 6);
-      panel(glowTarget, p, s0, s1, z0, z1, off, C(lo), C(hi));
-      return;
-    }
-  }
   panel(mb, p, s0, s1, z0, z1, off, C(T.glass[0]), C(T.glass[1]));
+  if (!glowTarget) return;
+  const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+  if (h < litShare) {
+    const [lo, hi] = pick(WARM, h * 13, 6);
+    panel(glowTarget, p, s0, s1, z0, z1, off + 0.006, C(lo), C(hi));
+  }
 }
 
 const SUR = { stone: 0.14, plaster_band: 0.1, none: 0 } as const;
@@ -353,7 +353,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
   buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
   const halo = new MeshBuilder();
-  buildFurniture(detail, tile.furniture, terrain, T.night ? glow : null, T.night ? halo : null);
+  buildFurniture(detail, tile.furniture, terrain, glow, halo);
   append(detail, posts);
 
   const group = new THREE.Group();

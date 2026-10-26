@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import type { WorldBase } from "../data/types";
 import type { TileManager } from "../render/tile-manager";
+import type { Atmosphere } from "../render/atmosphere";
 import type { TerrainView } from "../render/terrain";
 
 /** Ce que le jeu et le viewer partagent : rendu, scène, soleil et données du monde. */
@@ -13,6 +14,7 @@ export interface GameContext {
   sunLight: THREE.DirectionalLight;
   /** Direction vers le soleil dans le repère three. */
   sunDir: THREE.Vector3;
+  atmosphere: Atmosphere;
   world: WorldBase;
   tiles: TileManager;
   terrainView: TerrainView;

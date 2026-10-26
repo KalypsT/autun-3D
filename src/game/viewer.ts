@@ -23,7 +23,7 @@ export function viewerView(params: URLSearchParams): [number, number, number, nu
 
 /** Caméra libre pour les captures et le diagnostic : ?view=nom ou ?cam=x,y,h,cibleX,cibleY,hCible. */
 export function startViewer(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, params, debugEl, world, tiles, terrainView } = ctx;
+  const { camera, renderer, scene, sky, params, debugEl, world, tiles, terrainView, atmosphere, sunDir, sunLight } = ctx;
   const { terrain } = world;
   let yaw = 0, pitch = 0;
   const pos = new THREE.Vector3();
@@ -70,6 +70,9 @@ export function startViewer(ctx: GameContext): void {
     const cp = Math.cos(pitch);
     camera.lookAt(pos.x + Math.sin(yaw) * cp, pos.y + Math.sin(pitch), pos.z - Math.cos(yaw) * cp);
     sky.position.copy(camera.position);
+    atmosphere.advance(dt);
+    sunDir.copy(atmosphere.lightDir);
+    sunLight.position.copy(sunDir).multiplyScalar(400);
     tiles.update(pos.x, -pos.z);
     terrainView.update(pos.x, -pos.z);
     renderer.render(scene, camera);

@@ -78,8 +78,8 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         cylinder(mb, f.x, f.y, 0.06, z, z + 4.4, COLORS.iron, 6);
         const ax = f.x + Math.cos(rot) * 0.5, ay = f.y + Math.sin(rot) * 0.5;
         box(mb, f.x + Math.cos(rot) * 0.25, f.y + Math.sin(rot) * 0.25, 0.25, 0.03, rot, z + 4.35, z + 4.42, COLORS.iron);
-        const lantern = glow ?? mb;
-        box(lantern, ax, ay, 0.16, 0.16, rot, z + 4.12, z + 4.38, glow ? LAMP_LIT : COLORS.steel);
+        box(mb, ax, ay, 0.16, 0.16, rot, z + 4.12, z + 4.38, COLORS.steel);
+        if (glow) box(glow, ax, ay, 0.17, 0.17, rot, z + 4.115, z + 4.385, LAMP_LIT);
         box(mb, ax, ay, 0.2, 0.2, rot, z + 4.38, z + 4.45, COLORS.iron);
         if (halo) disc(halo, ax, ay, z + 0.2, 3.4, LAMP_HALO);
         break;

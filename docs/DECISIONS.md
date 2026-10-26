@@ -104,3 +104,10 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 
 - Chaque pan est la région du toit la plus proche d'un bord de l'emprise (Voronoï de points échantillonnés sur les bords), à pente constante de 0,7 : un toit à quatre pans pour n'importe quelle emprise ; deux pans avec pignons pour les rectangles à peu près réguliers (62 %) ; plateau au-delà de 4,6 m de montée ; toit plat pour les annexes (< 14 m²) et les terrasses.
 - Hauteur d'égout = hauteur BD TOPO × 0,94. Les fiches de façade sont recalculées sur ces emprises.
+
+## 2026-10-26 — D19. Cycle jour/nuit par interpolation d'ambiances
+
+- Le soleil vient de `core/sun.ts` (latitude d'Autun, jour de l'année, heure solaire). Quatre jalons selon sa hauteur (−10°, −3°, 3°, 15°) : nuit, crépuscule, couchant, jour ; ciel, brouillard, lumières, exposition sont interpolés entre deux jalons (`render/atmosphere.ts`).
+- Lumière : le soleil ne descend pas sous 5° (jamais d'éclairage par en dessous), puis la lune prend le relais du côté opposé. Même matière, même géométrie jour et nuit : seules les couleurs de lumière changent, pas de seconde palette.
+- Fenêtres et lampadaires : une couche chaude translucide posée sur 62 % des vitres (90 % des vitrines) et sur les lanternes, dont l'opacité suit la hauteur du soleil (de 3° à −6°) ; masquée en plein jour. Étoiles et nuages suivent aussi.
+- Horloge : 1 heure de jeu = 50 s réelles par défaut (un jour en 20 minutes), réglable par `?speed=`, figée dans le viewer.

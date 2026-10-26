@@ -20,7 +20,7 @@ const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
 
 export function startGame(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, sunLight, sunDir, world, params, debugEl, tiles, terrainView, colliders } = ctx;
+  const { camera, renderer, scene, sky, sunLight, sunDir, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
   const { terrain } = world;
   const spawn = gameSpawn(params);
   const startYaw = spawn.yaw;
@@ -58,7 +58,7 @@ export function startGame(ctx: GameContext): void {
   let pitch = 0.28;
   const distance = Number(params.get("dist") ?? 3.6);
   let camDist = distance;
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(player.speed * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(player.speed * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock}`);
 
   let last = performance.now();
   let acc = 0;
@@ -89,6 +89,9 @@ export function startGame(ctx: GameContext): void {
 
     tiles.update(player.x, player.y);
     terrainView.update(player.x, player.y);
+
+    atmosphere.advance(dt);
+    sunDir.copy(atmosphere.lightDir);
 
     // Le soleil suit le joueur (cases de 0,5 m pour que les ombres ne scintillent pas).
     const sx = Math.round(player.x / 0.5) * 0.5, sy = Math.round(player.y / 0.5) * 0.5;
