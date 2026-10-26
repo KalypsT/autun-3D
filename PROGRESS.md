@@ -5,26 +5,25 @@
 | Étape | État |
 |---|---|
 | 1. Accès et couverture des sources, `docs/SOURCES.md` | ✅ validée |
-| 2. Chaîne de données : relief, volumes et toits LiDAR, rues, arbres | ✅ faite, en attente de ton avis |
-| 3. Fiches façade (estimées pour ce premier essai) | à faire |
-| 4. Rendu complet, jeu, publication GitHub Pages | à faire (workflow déjà en place) |
+| 2. Chaîne de données : relief, volumes et toits LiDAR, rues, arbres | ✅ fusionnée (PR #1) |
+| 3. Fiches façade (estimées) + générateur + matières | ✅ faite, en attente de ton avis |
+| 4. Rendu complet, jeu (commandes, véhicules, circulation), publication | à faire (workflow Pages en place) |
 
-### Étape 2 (26 octobre 2026)
+### Étape 3 (26 octobre 2026)
 
 Fait :
-- `tools/data/` : `fetch.py` (téléchargements), `extract_lidar.py`, `build_terrain.py`, `build_buildings.py`, `build_streets.py`, `build_trees.py`, `check_buildings.py` ; `build_all.py` lance le tout.
-- `public/data/` : relief 1 m (270 ko), 353 bâtiments avec 2 679 faces de toit LiDAR, 1 061 cheminées détectées, 55 voies (sens, revêtement, largeur), carte des sols 0,5 m, 40 murs, 66 éléments de mobilier, 228 arbres réels.
-- Viewer minimal (Vite, TypeScript strict, three) : 9 appels de dessin, 236 k triangles, 50-60 images/s dans un navigateur sans GPU (SwiftShader) ; à mesurer sur ton téléphone.
-- Tests : relief, soleil, couverture de la triangulation des toits (10 tests). Workflow GitHub Actions prêt (`.github/workflows/deploy.yml`).
+- **Fiches façade** : 353 fiches JSON validées par `docs/facade-fiche.schema.json` (`tools/data/build_facades.py`). Époque et matériaux viennent de la BDNB et de BD TOPO, les niveaux de la hauteur LiDAR, 93 commerces nommés d'OpenStreetMap sont placés sur leur mur de rue. Chaque mur est qualifié (rue, cour, mitoyen). Toutes « estimées » (confiance 0,3 à 0,75) : aucune photo libre sur la zone.
+- **Générateur** (`src/render/facades.ts`) : travées, fenêtres, volets, portes, vitrines et enseignes, balcons en fer forgé, corniches, bandeaux, soubassements. 5 300 fenêtres, 197 portes, 85 vitrines, 157 balcons, en sprites à relief (atlas de 2 pages).
+- **Matières** : enduit et pierre de taille, tuile plate, tuile mécanique, ardoise, zinc, toit-terrasse ; sols en textures CC0 (asphalte, pavés, gravier, herbe, trottoir, dallage) avec assombrissement près des murs ; ciel en dégradé, brume, jupe sous le relief.
+- **Toits** : 27 bâtiments passent en toit maillé sur le LiDAR quand les plans échouent (D11).
+- Tests : 15 (relief, soleil, triangulation des toits, fiches, planificateur de façades).
 
 Défauts connus :
-- Façades sans détail (murs unis) : c'est l'objet de l'étape 3.
-- Un vide dans un toit du théâtre (probablement un écart entre deux emprises cadastrales).
-- Le kiosque à musique est classé « sol » par le LiDAR : il forme une bosse sur le terrain.
-- Largeurs de chaussée = BD TOPO quand un tronçon correspond (32 voies sur 55), valeurs types sinon ; trottoirs déduits (2 m), pas mesurés.
-- Sols : classes déduites de l'orthophoto et d'OSM, sans textures encore.
-- OSM : extraction faite quand Overpass répondait ; le serveur est tombé ensuite, `fetch.py` garde le cache.
-- Arbres : feuillage générique (pas d'essence), couronnes issues du LiDAR de mars élargies par l'orthophoto d'été.
-- Ombres : carte d'ombres unique, bords en escalier de près.
-
-À faire sur ton téléphone : ouvrir le viewer (voir README) et me dire si les volumes te parlent.
+- Hôtel de ville et théâtre : toits irréguliers (à modéliser à la main d'après photos, étape suivante).
+- Le kiosque à musique forme une bosse sur le terrain (classé « sol » par le LiDAR).
+- Arbres : couronnes en blobs plats, sans essence.
+- Très près d'un mur, les sprites (≈ 55 px/m) sont un peu flous ; pas de LOD.
+- Ombres : une seule carte, bords en escalier ; pas d'occlusion ambiante autre que sur le sol.
+- Textures non compressées (KTX2 à faire) ; chargement ≈ 1,1 s de génération sur PC + décodage des PNG/JPEG.
+- Les fenêtres ne s'allument pas encore la nuit.
+- Largeurs de rues et trottoirs estimés (voir étape 2).

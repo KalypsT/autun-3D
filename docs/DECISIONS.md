@@ -46,3 +46,21 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 ## 2026-10-26 — D9. Dépendances d'exécution
 
 - Une seule : `three`. Le reste (vite, typescript, vitest, eslint, @types) ne sert qu'au développement. Les triangulations et le LiDAR sont traités à l'avance en Python.
+
+## 2026-10-26 — D10. Façades : fiches en données, sprites à relief plutôt que maillages
+
+- Choix : une fiche JSON par bâtiment (`docs/facade-fiche.schema.json`, validée à la génération par `build_facades.py`). Le rendu ne modélise pas chaque fenêtre en géométrie : il pose des quads texturés (atlas de fenêtres, volets, portes, vitrines dessinés à partir des fiches, avec carte de normales pour le relief) et ne garde en volume que les corniches, bandeaux, soubassements, balcons et chaînages.
+- Raison : ~12 000 fenêtres en maillage coûteraient plus d'un million de triangles ; en quads, ~25 000.
+- Les fiches sont toutes « estimées » (aucune photo de rue libre sur la zone) ; `status: observed` + `photos` serviront quand on aura des photos.
+- KTX2 : repoussé à l'étape de rendu final, il faut un encodeur (basisu/toktx) qui n'est pas installé ici. Pour l'instant textures PNG/JPEG générées ou réduites.
+
+## 2026-10-26 — D11. Toits : plans par défaut, maillage LiDAR quand les plans échouent
+
+- Constat : 78 bâtiments sur 353 avaient plus de 15 % de cellules à plus d'1 m d'écart au MNS ; 27 d'entre eux (plus de 15 m²) portaient des éclats de toit visibles.
+- Choix : si plus de 12 % des cellules s'écartent de plus d'1 m, le toit est un maillage direct de la surface LiDAR (1 m, adouci), plafonné à l'altitude BD TOPO du toit + 1,5 m. Chaque sommet est aussi plafonné à ±1 m de la mesure la plus proche.
+- Limite connue : les ailes de l'hôtel de ville et du théâtre restent irrégulières. Ce sont des monuments : ils seront modélisés à part d'après des photos.
+- Les décrochements de moins de 1,5 m entre faces voisines ne dessinent plus de mur (ils formaient des plaques parasites).
+
+## 2026-10-26 — D12. Atlas de sprites
+
+- Les sprites de façade sont regroupés en 2 pages de 2048 px (≈ 55 px/m, 497 sprites distincts) ; les variantes invisibles sont fusionnées (`canonicalWindow`). Mémoire de texture : ≈ 45 Mo avec mipmaps, à réduire avec KTX2 à l'étape de rendu final.

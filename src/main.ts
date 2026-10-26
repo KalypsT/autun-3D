@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { sunDirection, sunPosition } from "./core/sun";
 import { loadWorld } from "./data/load";
-import { buildBuildings } from "./render/buildings";
+import { buildCity } from "./render/buildings";
+import { createSky, HORIZON } from "./render/sky";
 import { buildTerrain } from "./render/terrain";
 import { buildTrees } from "./render/trees";
 
@@ -13,21 +14,19 @@ const loadingEl = document.getElementById("loading") as HTMLDivElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? 2)));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = 1.15;
 const shadows = params.get("shadow") !== "0";
 renderer.shadowMap.enabled = shadows;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const sky = new THREE.Color("#a9c4de");
-scene.background = sky;
-scene.fog = new THREE.Fog(sky, 220, 760);
+scene.fog = new THREE.Fog(HORIZON, 260, 1000);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 1200);
 
 // Soleil : jour de l'année et heure solaire en paramètres (?h=16&day=200).
 const sun = sunPosition(Number(params.get("day") ?? 200), Number(params.get("h") ?? 16));
 const [sx, sy, sz] = sunDirection(sun);
-const sunLight = new THREE.DirectionalLight("#fff1dc", 3.2);
+const sunLight = new THREE.DirectionalLight("#ffe8c4", 3.0);
 sunLight.position.set(sx * 400, sz * 400, -sy * 400);
 sunLight.castShadow = shadows;
 sunLight.shadow.mapSize.set(4096, 4096);
@@ -36,7 +35,9 @@ cam.left = -230; cam.right = 230; cam.top = 230; cam.bottom = -230; cam.near = 5
 sunLight.shadow.bias = -0.0004;
 sunLight.shadow.normalBias = 0.6;
 scene.add(sunLight);
-scene.add(new THREE.HemisphereLight("#bcd4f0", "#8a7d6a", 1.15));
+const sky = createSky(new THREE.Vector3(sx, sz, -sy));
+scene.add(sky);
+scene.add(new THREE.HemisphereLight("#bcd3ee", "#9a8e78", 1.9));
 
 function resize(): void {
   const w = window.innerWidth, h = window.innerHeight;
@@ -80,9 +81,14 @@ canvas.addEventListener("pointermove", (e) => {
 async function main(): Promise<void> {
   const world = await loadWorld();
   const { terrain } = world;
-  scene.add(buildTerrain(terrain, world.groundMeta, world.groundImage, Number(params.get("step") ?? 2)));
-  const b = buildBuildings(world.buildings, terrain);
-  scene.add(b.walls, b.roofs);
+  scene.add(await buildTerrain(terrain, world.groundMeta, world.groundImage, Number(params.get("step") ?? 2)));
+  const t0 = performance.now();
+  const city = buildCity(world);
+  // ?hide=misc,sprites,... masque des maillages (diagnostic).
+  const hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
+  city.group.children.forEach((m) => { if (hidden.has(m.name)) m.visible = false; });
+  scene.add(city.group);
+  console.log(`ville construite en ${Math.round(performance.now() - t0)} ms ${JSON.stringify(city.stats)}`);
   scene.add(buildTrees(world.trees));
   loadingEl.remove();
 
@@ -114,6 +120,7 @@ async function main(): Promise<void> {
     if (keys.has("KeyE")) pos.y += speed;
     if (keys.has("KeyQ")) pos.y -= speed;
     applyCamera();
+    sky.position.copy(camera.position);
     renderer.render(scene, camera);
     frames++; acc += dt;
     if (acc >= 0.5) {
@@ -125,7 +132,7 @@ async function main(): Promise<void> {
   };
   if (params.has("debug")) debugEl.style.display = "block";
   requestAnimationFrame(tick);
-  (window as unknown as { __autun: object }).__autun = { ready: true, triangles: b.triangles };
+  (window as unknown as { __autun: object }).__autun = { ready: true, stats: city.stats };
 }
 
 main().catch((e: unknown) => {

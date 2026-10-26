@@ -23,6 +23,8 @@ rows = c.GRID_Y1 - c.ORIGIN[1] - (np.arange(H) + 0.5) * c.RES
 
 for b in json.load(open(c.OUT / "buildings.json")):
     for f in b["faces"]:
+        if "e" in f:  # toit maillé : l'altitude est dans f["z"], pas dans un plan
+            continue
         ring = np.array(f["r"]).reshape(-1, 2)
         poly = shapely.Polygon(ring, [np.array(h).reshape(-1, 2) for h in f["h"]])
         x0, y0, x1, y1 = poly.bounds
