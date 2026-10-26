@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import { sunDirection, sunPosition } from "./core/sun";
-import { loadWorld } from "./data/load";
+import { Colliders } from "./core/collision";
+import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
-import { startGame } from "./game/game";
-import { startViewer } from "./game/viewer";
-import { buildCity } from "./render/buildings";
+import { gameSpawn, startGame } from "./game/game";
+import { startViewer, viewerView } from "./game/viewer";
+import { CityResources } from "./render/buildings";
 import { createSky, HORIZON } from "./render/sky";
-import { buildTerrain } from "./render/terrain";
-import { buildTrees } from "./render/trees";
+import { TerrainView } from "./render/terrain";
+import { TileManager } from "./render/tile-manager";
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -56,23 +57,32 @@ window.addEventListener("resize", resize);
 resize();
 
 async function main(): Promise<void> {
-  const world = await loadWorld();
-  scene.add(await buildTerrain(world.terrain, world.groundMeta, world.groundImage, Number(params.get("step") ?? 2)));
+  const world = await loadWorldBase();
+  const focus = viewerMode ? viewerView(params) : null;
+  const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
+  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2));
+  terrainView.settle(start.x, start.y);
+  scene.add(terrainView.group);
+
   const t0 = performance.now();
-  const city = buildCity(world);
+  const colliders = new Colliders();
+  const res = new CityResources();
+  const tiles = new TileManager(world, res, colliders, Number(params.get("detail") ?? 210));
   // ?hide=misc,sprites-0,... masque des maillages (diagnostic).
-  const hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
-  city.group.children.forEach((m) => { if (hidden.has(m.name)) m.visible = false; });
-  scene.add(city.group);
-  console.log(`ville construite en ${Math.round(performance.now() - t0)} ms ${JSON.stringify(city.stats)}`);
-  scene.add(buildTrees(world.trees));
+  tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
+  scene.add(tiles.group);
+  await tiles.preload(start.x, start.y);
+  const { loaded, triangles, draws } = tiles.stats;
+  console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, atlas: res.facadeAtlas.stats, signs: res.signAtlas.stats, terrain: terrainView.triangles })}`);
 
   const ctx: GameContext = {
-    renderer, scene, camera, sky, sunLight, sunDir, world, params, debugEl,
+    renderer, scene, camera, sky, sunLight, sunDir, world, tiles, terrainView, colliders, params, debugEl,
     ready: (extra) => {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : "game");
-      (window as unknown as { __autun: object }).__autun = { ready: true, stats: city.stats, ...extra };
+      (window as unknown as { __autun: object }).__autun = {
+        ready: true, stats: { ...tiles.stats, atlas: res.facadeAtlas.stats, signAtlas: res.signAtlas.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
+      };
     },
   };
   if (viewerMode) startViewer(ctx);

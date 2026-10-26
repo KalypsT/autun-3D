@@ -17,7 +17,9 @@ Sortie : public/data/buildings.json (coordonnées locales en mètres, z relatif 
 
 import json
 import math
+import multiprocessing
 import sys
+import zlib
 
 import numpy as np
 import shapely
@@ -400,12 +402,14 @@ def classify(planes, areas):
     return "complex"
 
 
-def build_one(props, fp, P_all, mnt_sampler):
-    """Retourne (enregistrement, rms) ; fp et P_all sont en coordonnées locales."""
+def build_one(props, fp, P_index, mnt_sampler):
+    """Retourne (enregistrement, rms) ; fp est en coordonnées locales, P_index indexe les points « bâtiment »."""
+    global rng
+    rng = np.random.default_rng(zlib.crc32(props["cleabs"].encode()) + 7 * props.get("part", 0))
     minx, miny, maxx, maxy = fp.bounds
     near = fp.buffer(0.3)
-    sel = (P_all["x"] >= minx - 1) & (P_all["x"] <= maxx + 1) & (P_all["y"] >= miny - 1) & (P_all["y"] <= maxy + 1)
-    sx, sy, sz = P_all["x"][sel], P_all["y"][sel], P_all["z"][sel]
+    box = P_index.box(minx - 1, miny - 1, maxx + 1, maxy + 1)
+    sx, sy, sz = box[:, 0], box[:, 1], box[:, 2]
     inside = shapely.contains_xy(near, sx, sy)
     xyz = np.c_[sx[inside], sy[inside], sz[inside]]
     xyz = top_surface(xyz)
@@ -609,50 +613,65 @@ def build_one(props, fp, P_all, mnt_sampler):
     return record, rms
 
 
+_INDEX = None
+_MNT = None
+
+
+def _mnt_sampler(x, y):
+    col, row = common.world_to_pixel(np.asarray(x) + c.ORIGIN[0], np.asarray(y) + c.ORIGIN[1])
+    col = np.clip(col.astype(int), 0, _MNT.shape[1] - 1)
+    row = np.clip(row.astype(int), 0, _MNT.shape[0] - 1)
+    return _MNT[row, col]
+
+
+def _work(job):
+    props, g = job
+    fp = translate(g, -c.ORIGIN[0], -c.ORIGIN[1])
+    try:
+        return build_one(props, fp, _INDEX, _mnt_sampler)
+    except Exception as error:  # un bâtiment défaillant ne doit pas faire perdre les autres
+        print(f"  ! {props['cleabs']} : {type(error).__name__}: {error}", flush=True)
+        return None, None
+
+
 def main():
-    global ORTHO
-    from PIL import Image
-    ORTHO = np.asarray(Image.open(c.CACHE / "raw" / "ortho.jpg").convert("RGB").resize((c.GRID_W, c.GRID_H), Image.BOX))
+    global ORTHO, _INDEX, _MNT
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
-    raw = common.points()
-    cls6 = raw["cls"] == 6
-    P_all = {"x": raw["x"][cls6] - c.ORIGIN[0], "y": raw["y"][cls6] - c.ORIGIN[1], "z": raw["z"][cls6] - c.ORIGIN_Z}
-    mnt = common.raster("MNT") - c.ORIGIN_Z
+    ORTHO = common.ortho()
+    pts = common.points([6])
+    _INDEX = common.PointIndex(pts["x"], pts["y"], pts["z"])
+    _MNT = common.raster("MNT") - c.ORIGIN_Z
+    print(f"{len(pts['x'])} points bâtiment indexés")
 
-    def mnt_sampler(x, y):
-        col, row = common.world_to_pixel(np.asarray(x) + c.ORIGIN[0], np.asarray(y) + c.ORIGIN[1])
-        col = np.clip(col.astype(int), 0, mnt.shape[1] - 1)
-        row = np.clip(row.astype(int), 0, mnt.shape[0] - 1)
-        return mnt[row, col]
-
-    zx0, zy0, zx1, zy1 = c.ZONE
-    zone = shapely.box(zx0 - 8, zy0 - 8, zx1 + 8, zy1 + 8)
-    out, rmses = [], []
+    jobs = []
     for props, geom in common.bdtopo_buildings():
         if only and not props["cleabs"].startswith(only):
-            continue
-        if not geom.intersects(zone):
             continue
         geom = shapely.make_valid(geom)
         for g in (geom.geoms if geom.geom_type != "Polygon" and hasattr(geom, "geoms") else [geom]):
             if g.geom_type != "Polygon" or g.area < MIN_AREA:
                 continue
-            fp = translate(g, -c.ORIGIN[0], -c.ORIGIN[1])
-            rec, rms = build_one(props, fp, P_all, mnt_sampler)
-            out.append(rec)
-            if rms is not None:
-                rmses.append(rms)
-    c.OUT.mkdir(parents=True, exist_ok=True)
+            cx, cy = g.centroid.x, g.centroid.y
+            if c.ZONE[0] <= cx < c.ZONE[2] and c.ZONE[1] <= cy < c.ZONE[3]:
+                jobs.append((props, g))
+    print(f"{len(jobs)} bâtiments à reconstruire")
+    out = []
+    with multiprocessing.get_context("fork").Pool(4) as pool:
+        for n, (rec, _) in enumerate(pool.imap(_work, jobs, chunksize=6), 1):
+            if rec is not None:
+                out.append(rec)
+            if n % 250 == 0:
+                print(f"  {n}/{len(jobs)}", flush=True)
+    work = c.CACHE / "work"
+    work.mkdir(parents=True, exist_ok=True)
     if not only:
-        (c.OUT / "buildings.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+        (work / "buildings.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
     print(f"toits maillés sur le LiDAR (plans insuffisants) : {sum(1 for r in out if r['q'].get('heightfield'))} bâtiments")
     kinds = {}
     for r in out:
         kinds[r["roofKind"]] = kinds.get(r["roofKind"], 0) + 1
-    size = (c.OUT / "buildings.json").stat().st_size / 1e3 if (c.OUT / "buildings.json").exists() else 0
     print(f"{len(out)} bâtiments, {sum(len(r['faces']) for r in out)} faces, {sum(len(r['chim']) for r in out)} cheminées, "
           f"{sum(len(r['steps']) for r in out)} raccords ; toits {kinds}")
-    print(f"buildings.json : {size:.0f} ko ; contrôle des toits : python3 tools/data/check_buildings.py")
 
 
 if __name__ == "__main__":

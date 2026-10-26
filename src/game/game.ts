@@ -1,6 +1,5 @@
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, stepPlayer } from "../core/player";
-import { buildColliders } from "../core/world";
 import { Controls } from "../input/controls";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
@@ -8,19 +7,23 @@ import { FrameMeter } from "./hud";
 
 /** Point de départ : place du Champ de Mars, face au nord (mairie et théâtre au fond). */
 const SPAWN = { x: -10, y: -40, heading: 0 };
+
+/** ?at=x,y&yaw=radians : point de départ imposé (tests, captures). */
+export function gameSpawn(params: URLSearchParams): { x: number; y: number; yaw: number } {
+  const at = params.get("at")?.split(",").map(Number);
+  const yaw = Number(params.get("yaw") ?? SPAWN.heading);
+  return at && at.length === 2 && at.every(Number.isFinite) ? { x: at[0]!, y: at[1]!, yaw } : { x: SPAWN.x, y: SPAWN.y, yaw };
+}
 const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
 
 export function startGame(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, sunLight, sunDir, world, params, debugEl } = ctx;
+  const { camera, renderer, scene, sky, sunLight, sunDir, world, params, debugEl, tiles, terrainView, colliders } = ctx;
   const { terrain } = world;
-  const colliders = buildColliders(world);
-  // ?at=x,y&yaw=radians : point de départ imposé (tests, captures).
-  const at = params.get("at")?.split(",").map(Number);
-  const startYaw = Number(params.get("yaw") ?? SPAWN.heading);
-  const spawn = at && at.length === 2 && at.every(Number.isFinite) ? { x: at[0]!, y: at[1]! } : SPAWN;
+  const spawn = gameSpawn(params);
+  const startYaw = spawn.yaw;
   const player = createPlayer(spawn.x, spawn.y, terrain, startYaw);
   const model = createPlayerModel();
   scene.add(model.group);
@@ -55,7 +58,7 @@ export function startGame(ctx: GameContext): void {
   let pitch = 0.28;
   const distance = Number(params.get("dist") ?? 3.6);
   let camDist = distance;
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(player.speed * 3.6).toFixed(1)} km/h`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(player.speed * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles`);
 
   let last = performance.now();
   let acc = 0;
@@ -83,6 +86,9 @@ export function startGame(ctx: GameContext): void {
 
     model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
     model.group.visible = camDist > 0.9;
+
+    tiles.update(player.x, player.y);
+    terrainView.update(player.x, player.y);
 
     // Le soleil suit le joueur (cases de 0,5 m pour que les ombres ne scintillent pas).
     const sx = Math.round(player.x / 0.5) * 0.5, sy = Math.round(player.y / 0.5) * 0.5;

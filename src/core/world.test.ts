@@ -1,20 +1,20 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Terrain } from "../data/terrain";
-import type { Building, Props, TerrainMeta, Tree } from "../data/types";
 import { pointInRing } from "./collision";
 import { createPlayer, stepPlayer } from "./player";
+import { loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
-const read = (name: string): Buffer => readFileSync(`public/data/${name}`);
-const json = <T>(name: string): T => JSON.parse(read(name).toString("utf8")) as T;
-const bin = read("terrain.bin");
-const terrain = Terrain.decode(json<TerrainMeta>("terrain.json"), bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength) as ArrayBuffer);
-const buildings = json<Building[]>("buildings.json");
-const colliders = buildColliders({ buildings, props: json<Props>("props.json"), trees: json<Tree[]>("trees.json") });
+const { terrain, tile } = loadRealWorld();
+const buildings = tile.buildings;
+const colliders = buildColliders(tile);
+
+const boxes = buildings.map((b) => {
+  const xs = b.ring.filter((_, i) => i % 2 === 0), ys = b.ring.filter((_, i) => i % 2 === 1);
+  return { b, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+});
 
 function insideBuilding(x: number, y: number): boolean {
-  return buildings.some((b) => pointInRing(x, y, b.ring) && !b.holes.some((h) => pointInRing(x, y, h)));
+  return boxes.some(({ b, x0, x1, y0, y1 }) => x >= x0 && x <= x1 && y >= y0 && y <= y1 && pointInRing(x, y, b.ring) && !b.holes.some((h) => pointInRing(x, y, h)));
 }
 
 /** Générateur pseudo-aléatoire déterministe. */

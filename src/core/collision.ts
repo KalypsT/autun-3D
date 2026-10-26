@@ -34,6 +34,12 @@ function key(ix: number, iy: number): number {
 export class Colliders {
   readonly segments: Segment[] = [];
   readonly circles: Circle[] = [];
+  /** Obstacles par étiquette (une tuile), pour les retirer d'un coup. */
+  private readonly tagged = new Map<string, { segs: number[]; circles: number[] }>();
+  private readonly deadSeg = new Set<number>();
+  private readonly deadCircle = new Set<number>();
+  /** Étiquette appliquée aux obstacles ajoutés ensuite. */
+  currentTag: string | null = null;
   private readonly segGrid = new Map<number, number[]>();
   private readonly circleGrid = new Map<number, number[]>();
   private stamp = 0;
@@ -44,6 +50,7 @@ export class Colliders {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
     const id = this.segments.push({ ax, ay, bx, by }) - 1;
     this.segSeen.push(0);
+    this.record("segs", id);
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
     const y0 = Math.floor(Math.min(ay, by) / CELL), y1 = Math.floor(Math.max(ay, by) / CELL);
     for (let ix = x0; ix <= x1; ix++) {
@@ -59,6 +66,7 @@ export class Colliders {
   addCircle(x: number, y: number, r: number): void {
     const id = this.circles.push({ x, y, r }) - 1;
     this.circleSeen.push(0);
+    this.record("circles", id);
     const x0 = Math.floor((x - r) / CELL), x1 = Math.floor((x + r) / CELL);
     const y0 = Math.floor((y - r) / CELL), y1 = Math.floor((y + r) / CELL);
     for (let ix = x0; ix <= x1; ix++) {
@@ -69,6 +77,25 @@ export class Colliders {
         else this.circleGrid.set(k, [id]);
       }
     }
+  }
+
+  private record(kind: "segs" | "circles", id: number): void {
+    if (this.currentTag === null) return;
+    let t = this.tagged.get(this.currentTag);
+    if (!t) {
+      t = { segs: [], circles: [] };
+      this.tagged.set(this.currentTag, t);
+    }
+    t[kind].push(id);
+  }
+
+  /** Retire tous les obstacles ajoutés sous cette étiquette. */
+  removeTag(tag: string): void {
+    const t = this.tagged.get(tag);
+    if (!t) return;
+    t.segs.forEach((id) => this.deadSeg.add(id));
+    t.circles.forEach((id) => this.deadCircle.add(id));
+    this.tagged.delete(tag);
   }
 
   /** Ajoute le contour d'un anneau fermé (x0, y0, x1, y1, …) comme suite de segments. */
@@ -97,7 +124,7 @@ export class Colliders {
         for (let iy = y0; iy <= y1; iy++) {
           const k = key(ix, iy);
           for (const id of this.segGrid.get(k) ?? []) {
-            if (this.segSeen[id] === stamp) continue;
+            if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
             this.segSeen[id] = stamp;
             const s = this.segments[id]!;
             const dx = s.bx - s.ax, dy = s.by - s.ay;
@@ -124,7 +151,7 @@ export class Colliders {
             moved = true;
           }
           for (const id of this.circleGrid.get(k) ?? []) {
-            if (this.circleSeen[id] === stamp) continue;
+            if (this.circleSeen[id] === stamp || this.deadCircle.has(id)) continue;
             this.circleSeen[id] = stamp;
             const c = this.circles[id]!;
             let ex = x - c.x, ey = y - c.y;
@@ -166,7 +193,7 @@ export class Colliders {
     for (let ix = x0; ix <= x1; ix++) {
       for (let iy = y0; iy <= y1; iy++) {
         for (const id of this.segGrid.get(key(ix, iy)) ?? []) {
-          if (this.segSeen[id] === stamp) continue;
+          if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
           this.segSeen[id] = stamp;
           const s = this.segments[id]!;
           const sx = s.bx - s.ax, sy = s.by - s.ay;

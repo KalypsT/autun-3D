@@ -21,7 +21,6 @@ import zlib
 import numpy as np
 import shapely
 from jsonschema import Draft202012Validator
-from PIL import Image
 from pyproj import Transformer
 from shapely.affinity import translate
 from shapely.geometry import LineString, Point, Polygon
@@ -78,17 +77,16 @@ def local(lon, lat):
 
 
 def main():
-    buildings = json.load(open(c.OUT / "buildings.json"))
+    buildings = json.load(open(c.CACHE / "work" / "buildings.json"))
     streets = json.load(open(c.OUT / "streets.json"))
     osm = json.load(open(c.CACHE / "raw" / "osm.json"))["elements"]
     bdnb_rows = json.load(open(c.CACHE / "raw" / "bdnb.json"))
     mnt = common.raster("MNT") - c.ORIGIN_Z
-    ground_idx = np.asarray(Image.open(c.OUT / "ground.png"))
-    gmeta = json.load(open(c.OUT / "ground.json"))
+    ground_idx = np.load(c.CACHE / "work" / "ground.npy")
 
     def ground_class(x, y):
-        col = int((x - gmeta["x0"]) / gmeta["res"])
-        row = int((gmeta["y1"] - y) / gmeta["res"])
+        col = int((x + c.ORIGIN[0] - c.GRID_X0) / c.RES)
+        row = int((c.GRID_Y1 - (y + c.ORIGIN[1])) / c.RES)
         if 0 <= row < ground_idx.shape[0] and 0 <= col < ground_idx.shape[1]:
             return int(ground_idx[row, col])
         return 0
@@ -156,6 +154,7 @@ def main():
         if kind:
             shop_nodes.append((e["id"], t.get("name"), kind if t.get("shop") is None else t["shop"], Point(*local(e["lon"], e["lat"]))))
 
+    shop_tree = STRtree([sn[3] for sn in shop_nodes]) if shop_nodes else None
     street_lines = [LineString(np.array(s["pts"]).reshape(-1, 2)) for s in streets if s["kind"] != "steps"]
     street_tree = STRtree(street_lines)
     all_union_tree = tree
@@ -360,9 +359,9 @@ def main():
 
         # --- commerces et rez-de-chaussée ---------------------------------------------
         shops = []
-        for oid, name, kind, pt in shop_nodes:
-            inside = poly.buffer(1.0).contains(pt) or poly.distance(pt) < 3.0
-            if not inside:
+        near_shops = [shop_nodes[int(j)] for j in shop_tree.query(poly.buffer(3.0))] if shop_nodes else []
+        for oid, name, kind, pt in near_shops:
+            if poly.distance(pt) >= 3.0:
                 continue
             # Le mur de rue le plus proche du point.
             best = None
@@ -422,8 +421,8 @@ def main():
         for e in errors[:10]:
             print("ERREUR", e)
         raise SystemExit(f"{len(errors)} erreur(s) de schéma")
-    (c.OUT / "facades.json").write_text(json.dumps(fiches, ensure_ascii=False, separators=(",", ":")))
-    size = (c.OUT / "facades.json").stat().st_size / 1e3
+    (c.CACHE / "work" / "facades.json").write_text(json.dumps(fiches, ensure_ascii=False, separators=(",", ":")))
+    size = (c.CACHE / "work" / "facades.json").stat().st_size / 1e3
     print(f"{len(fiches)} fiches ({size:.0f} ko), toutes valides ; {json.dumps(stats, ensure_ascii=False)}")
 
 

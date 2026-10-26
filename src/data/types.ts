@@ -117,18 +117,63 @@ export interface GroundMeta {
   res: number;
   x0: number;
   y1: number;
-  classes: Record<string, number>;
 }
 
-export interface WorldData {
-  terrain: import("./terrain").Terrain;
+export interface TileInfo {
+  id: string;
+  col: number;
+  row: number;
+  /** Emprise locale : x0, y0, x1, y1. */
+  bounds: [number, number, number, number];
+  buildings: number;
+  trees: number;
+  walls: number;
+  furniture: number;
+  bytes: number;
+}
+
+export interface WorldManifest {
+  origin: [number, number];
+  originZ: number;
+  tileSize: number;
+  cols: number;
+  rows: number;
+  /** Emprise locale de la zone : x0, y0, x1, y1. */
+  zone: [number, number, number, number];
+  tiles: TileInfo[];
+}
+
+/** Contenu détaillé d'une tuile de 250 m (fichier tiles/<col>_<row>.json). */
+export interface TileData {
   buildings: Building[];
-  fiches: Map<string, FacadeFiche>;
-  streets: Street[];
-  props: Props;
+  fiches: FacadeFiche[];
   trees: Tree[];
+  walls: Wall[];
+  furniture: Furniture[];
+}
+
+/** Silhouette d'un bâtiment pour les tuiles lointaines. */
+export interface LodBuilding {
+  /** Contour simplifié : x0, y0, x1, y1… */
+  r: number[];
+  /** Altitude d'égout et de faîtage. */
+  e: number;
+  g: number;
+  /** Couleurs de mur et de toit. */
+  w: string;
+  t: string;
+  m: RoofMaterial;
+}
+
+/** Ce qui est chargé une fois pour toutes au démarrage. */
+export interface WorldBase {
+  manifest: WorldManifest;
+  terrain: import("./terrain").Terrain;
+  streets: Street[];
   groundMeta: GroundMeta;
-  groundImage: HTMLImageElement;
+  groundA: HTMLImageElement;
+  groundB: HTMLImageElement;
+  lod: Record<string, LodBuilding[]>;
 }
 
 // --- Fiches façade (docs/facade-fiche.schema.json) ---------------------------------------
