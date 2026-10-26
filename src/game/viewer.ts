@@ -2,25 +2,34 @@ import * as THREE from "three";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
 
+const VIEWS: Record<string, [number, number, number, number, number, number]> = {
+  aerial: [-150, -230, 140, 0, 10, 5],
+  street: [28, -25, 1.7, -5, 70, 8],
+  place: [-95, -75, 2.0, 30, -20, 4],
+  mairie: [10, 35, 1.7, 15, 95, 10],
+  church: [-40, -95, 1.7, -86, -136, 12],
+  cathedrale: [-330, -250, 1.7, -300, -330, 14],
+  lycee: [250, 120, 1.7, 290, 100, 4],
+  parking: [-60, 150, 1.7, -20, 170, 3],
+};
+
+/** Vue demandée : ?cam=x,y,h,cibleX,cibleY,hCible ou ?view=nom. */
+export function viewerView(params: URLSearchParams): [number, number, number, number, number, number] {
+  const custom = params.get("cam")?.split(",").map(Number);
+  return custom && custom.length === 6 && custom.every(Number.isFinite)
+    ? (custom as [number, number, number, number, number, number])
+    : (VIEWS[params.get("view") ?? "aerial"] ?? VIEWS["aerial"]!);
+}
+
 /** Caméra libre pour les captures et le diagnostic : ?view=nom ou ?cam=x,y,h,cibleX,cibleY,hCible. */
 export function startViewer(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, params, debugEl, world } = ctx;
+  const { camera, renderer, scene, sky, params, debugEl, world, tiles, terrainView } = ctx;
   const { terrain } = world;
   let yaw = 0, pitch = 0;
   const pos = new THREE.Vector3();
   const ground = (x: number, y: number): number => terrain.heightAt(x, y);
 
-  const views: Record<string, [number, number, number, number, number, number]> = {
-    aerial: [-150, -230, 140, 0, 10, 5],
-    street: [28, -25, 1.7, -5, 70, 8],
-    place: [-95, -75, 2.0, 30, -20, 4],
-    mairie: [10, 35, 1.7, 15, 95, 10],
-    church: [-40, -95, 1.7, -86, -136, 12],
-  };
-  const custom = params.get("cam")?.split(",").map(Number);
-  const v = custom && custom.length === 6 && custom.every(Number.isFinite)
-    ? (custom as [number, number, number, number, number, number])
-    : (views[params.get("view") ?? "aerial"] ?? views["aerial"]!);
+  const v = viewerView(params);
   const z = ground(v[0], v[1]) + v[2];
   pos.set(v[0], z, -v[1]);
   const dx = v[3] - v[0], dy = v[4] - v[1], dz = ground(v[3], v[4]) + v[5] - z;
@@ -61,6 +70,8 @@ export function startViewer(ctx: GameContext): void {
     const cp = Math.cos(pitch);
     camera.lookAt(pos.x + Math.sin(yaw) * cp, pos.y + Math.sin(pitch), pos.z - Math.cos(yaw) * cp);
     sky.position.copy(camera.position);
+    tiles.update(pos.x, -pos.z);
+    terrainView.update(pos.x, -pos.z);
     renderer.render(scene, camera);
     meter.tick(dt);
     requestAnimationFrame(tick);

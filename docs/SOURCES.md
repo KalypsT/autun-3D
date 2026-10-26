@@ -28,13 +28,14 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ## Détail par source
 
-### OpenStreetMap (Overpass API)
+### OpenStreetMap (API officielle, Overpass en secours)
 
 - Point d'accès : `https://overpass-api.de/api/interpreter` (fonctionne). Les miroirs `overpass.kumi.systems` et `overpass.private.coffee` sont bloqués ; ils ne sont pas nécessaires.
 - 25 rues nommées dans la zone, dont la place du Champ de Mars, la rue de l'Hôtel de Ville, la rue Saint-Saulge, la rue aux Cordiers, l'avenue Charles de Gaulle, les passages Balthus et de la Terrasse.
 - Ce qui est bien renseigné : `oneway` (33 voies sur 53), `surface` (49 sur 53 : asphalte, pavés `sett`, `paving_stones`), commerces (37 points, avec leur nom), restaurants (13), bancs (16), poubelles (12), parkings vélos, murs (`barrier=wall`, 37).
 - **Ce qui manque** : aucune largeur de rue (`width`), aucun trottoir dessiné (`footway=sidewalk` : 0, `sidewalk` : 3 voies), aucun réverbère, seulement 4 arbres isolés et 12 alignements, aucun niveau ni forme de toit sur les bâtiments.
 - Petite incohérence : la rue de l'Hôtel de Ville apparaît sous deux graphies (« Hotel » et « Hôtel ») ; on normalise avec le nom BAN de BD TOPO.
+- Zone de 2,25 km² : téléchargement par blocs de 500 m via `api.openstreetmap.org/api/0.6/map.json` (Overpass coupait les connexions) ; Overpass reste le secours (`tools/data/fetch.py`).
 - Licence : ODbL 1.0. **Conséquence** : nos fichiers de données qui combinent OSM avec d'autres sources forment une base dérivée ; ils doivent être diffusés sous ODbL. Ce n'est pas gênant pour un projet ouvert, mais c'est à savoir.
 - Crédit à afficher : « © les contributeurs d'OpenStreetMap ».
 

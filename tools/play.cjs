@@ -1,6 +1,6 @@
 // Joue une séquence tactile dans le jeu (navigateur sans interface) et capture les étapes.
 // Usage : node tools/play.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios : walk (marche, course, regard), wall (marche contre un mur), still (capture à l'arrêt)
+//   scénarios : walk (marche, course, regard), stream (course longue : chargement des tuiles), wall (marche contre un mur), still (capture à l'arrêt)
 //   4e argument : paramètres d'URL, ex. "at=19,-157&yaw=2.17"
 const { chromium } = require("playwright");
 const fs = require("fs");
@@ -47,6 +47,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("jeu-regard");
   } else if (scenario === "still") {
     await sleep(500);
+  } else if (scenario === "stream") {
+    // Téléportation par pas de 200 m vers le nord : les tuiles proches se chargent, les lointaines se déchargent.
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate((dy) => { window.__autun.player.y += dy; }, 200);
+      await sleep(5000);
+      console.log(JSON.stringify(await page.evaluate(() => { const a = window.__autun; const s = a.tiles.stats; return { y: Math.round(a.player.y), tiles: s.loaded.join(" "), draws: s.draws, tris: s.triangles, colliders: a.colliders.segments.length }; })));
+    }
+    await shot("jeu-flux");
   } else if (scenario === "wall") {
     // On marche vers la façade ouest de la place : on doit être arrêté, la caméra ne traverse pas.
     await page.keyboard.down("KeyA");

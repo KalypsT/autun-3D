@@ -21,7 +21,7 @@ model = np.full((H, W), np.nan, dtype=np.float32)
 cols = c.GRID_X0 - c.ORIGIN[0] + (np.arange(W) + 0.5) * c.RES
 rows = c.GRID_Y1 - c.ORIGIN[1] - (np.arange(H) + 0.5) * c.RES
 
-for b in json.load(open(c.OUT / "buildings.json")):
+for b in json.load(open(c.CACHE / "work" / "buildings.json")):
     for f in b["faces"]:
         if "e" in f:  # toit maillé : l'altitude est dans f["z"], pas dans un plan
             continue

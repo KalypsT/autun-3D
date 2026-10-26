@@ -1,0 +1,594 @@
+{
+ "origin": [
+  798770.0,
+  6650812.0
+ ],
+ "originZ": 330.0,
+ "tileSize": 250.0,
+ "cols": 6,
+ "rows": 6,
+ "zone": [
+  -520.0,
+  -812.0,
+  980.0,
+  688.0
+ ],
+ "tiles": [
+  {
+   "id": "0_0",
+   "col": 0,
+   "row": 0,
+   "bounds": [
+    -520.0,
+    -812.0,
+    -270.0,
+    -562.0
+   ],
+   "buildings": 7,
+   "trees": 347,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 31898
+  },
+  {
+   "id": "1_0",
+   "col": 1,
+   "row": 0,
+   "bounds": [
+    -270.0,
+    -812.0,
+    -20.0,
+    -562.0
+   ],
+   "buildings": 47,
+   "trees": 233,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 209254
+  },
+  {
+   "id": "2_0",
+   "col": 2,
+   "row": 0,
+   "bounds": [
+    -20.0,
+    -812.0,
+    230.0,
+    -562.0
+   ],
+   "buildings": 261,
+   "trees": 180,
+   "walls": 5,
+   "furniture": 9,
+   "bytes": 1199116
+  },
+  {
+   "id": "3_0",
+   "col": 3,
+   "row": 0,
+   "bounds": [
+    230.0,
+    -812.0,
+    480.0,
+    -562.0
+   ],
+   "buildings": 15,
+   "trees": 188,
+   "walls": 0,
+   "furniture": 2,
+   "bytes": 52102
+  },
+  {
+   "id": "4_0",
+   "col": 4,
+   "row": 0,
+   "bounds": [
+    480.0,
+    -812.0,
+    730.0,
+    -562.0
+   ],
+   "buildings": 6,
+   "trees": 38,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 26033
+  },
+  {
+   "id": "5_0",
+   "col": 5,
+   "row": 0,
+   "bounds": [
+    730.0,
+    -812.0,
+    980.0,
+    -562.0
+   ],
+   "buildings": 0,
+   "trees": 94,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 3203
+  },
+  {
+   "id": "0_1",
+   "col": 0,
+   "row": 1,
+   "bounds": [
+    -520.0,
+    -562.0,
+    -270.0,
+    -312.0
+   ],
+   "buildings": 100,
+   "trees": 177,
+   "walls": 0,
+   "furniture": 5,
+   "bytes": 300451
+  },
+  {
+   "id": "1_1",
+   "col": 1,
+   "row": 1,
+   "bounds": [
+    -270.0,
+    -562.0,
+    -20.0,
+    -312.0
+   ],
+   "buildings": 129,
+   "trees": 192,
+   "walls": 16,
+   "furniture": 6,
+   "bytes": 430824
+  },
+  {
+   "id": "2_1",
+   "col": 2,
+   "row": 1,
+   "bounds": [
+    -20.0,
+    -562.0,
+    230.0,
+    -312.0
+   ],
+   "buildings": 194,
+   "trees": 170,
+   "walls": 41,
+   "furniture": 42,
+   "bytes": 1065176
+  },
+  {
+   "id": "3_1",
+   "col": 3,
+   "row": 1,
+   "bounds": [
+    230.0,
+    -562.0,
+    480.0,
+    -312.0
+   ],
+   "buildings": 119,
+   "trees": 165,
+   "walls": 30,
+   "furniture": 12,
+   "bytes": 445719
+  },
+  {
+   "id": "4_1",
+   "col": 4,
+   "row": 1,
+   "bounds": [
+    480.0,
+    -562.0,
+    730.0,
+    -312.0
+   ],
+   "buildings": 20,
+   "trees": 163,
+   "walls": 0,
+   "furniture": 8,
+   "bytes": 75614
+  },
+  {
+   "id": "5_1",
+   "col": 5,
+   "row": 1,
+   "bounds": [
+    730.0,
+    -562.0,
+    980.0,
+    -312.0
+   ],
+   "buildings": 0,
+   "trees": 102,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 3467
+  },
+  {
+   "id": "0_2",
+   "col": 0,
+   "row": 2,
+   "bounds": [
+    -520.0,
+    -312.0,
+    -270.0,
+    -62.0
+   ],
+   "buildings": 151,
+   "trees": 146,
+   "walls": 2,
+   "furniture": 13,
+   "bytes": 538277
+  },
+  {
+   "id": "1_2",
+   "col": 1,
+   "row": 2,
+   "bounds": [
+    -270.0,
+    -312.0,
+    -20.0,
+    -62.0
+   ],
+   "buildings": 133,
+   "trees": 108,
+   "walls": 59,
+   "furniture": 12,
+   "bytes": 690210
+  },
+  {
+   "id": "2_2",
+   "col": 2,
+   "row": 2,
+   "bounds": [
+    -20.0,
+    -312.0,
+    230.0,
+    -62.0
+   ],
+   "buildings": 250,
+   "trees": 151,
+   "walls": 111,
+   "furniture": 25,
+   "bytes": 1168233
+  },
+  {
+   "id": "3_2",
+   "col": 3,
+   "row": 2,
+   "bounds": [
+    230.0,
+    -312.0,
+    480.0,
+    -62.0
+   ],
+   "buildings": 120,
+   "trees": 181,
+   "walls": 14,
+   "furniture": 7,
+   "bytes": 668377
+  },
+  {
+   "id": "4_2",
+   "col": 4,
+   "row": 2,
+   "bounds": [
+    480.0,
+    -312.0,
+    730.0,
+    -62.0
+   ],
+   "buildings": 57,
+   "trees": 180,
+   "walls": 5,
+   "furniture": 6,
+   "bytes": 187681
+  },
+  {
+   "id": "5_2",
+   "col": 5,
+   "row": 2,
+   "bounds": [
+    730.0,
+    -312.0,
+    980.0,
+    -62.0
+   ],
+   "buildings": 8,
+   "trees": 148,
+   "walls": 0,
+   "furniture": 0,
+   "bytes": 33200
+  },
+  {
+   "id": "0_3",
+   "col": 0,
+   "row": 3,
+   "bounds": [
+    -520.0,
+    -62.0,
+    -270.0,
+    188.0
+   ],
+   "buildings": 126,
+   "trees": 149,
+   "walls": 28,
+   "furniture": 12,
+   "bytes": 481419
+  },
+  {
+   "id": "1_3",
+   "col": 1,
+   "row": 3,
+   "bounds": [
+    -270.0,
+    -62.0,
+    -20.0,
+    188.0
+   ],
+   "buildings": 214,
+   "trees": 123,
+   "walls": 0,
+   "furniture": 22,
+   "bytes": 992103
+  },
+  {
+   "id": "2_3",
+   "col": 2,
+   "row": 3,
+   "bounds": [
+    -20.0,
+    -62.0,
+    230.0,
+    188.0
+   ],
+   "buildings": 114,
+   "trees": 58,
+   "walls": 4,
+   "furniture": 34,
+   "bytes": 777483
+  },
+  {
+   "id": "3_3",
+   "col": 3,
+   "row": 3,
+   "bounds": [
+    230.0,
+    -62.0,
+    480.0,
+    188.0
+   ],
+   "buildings": 73,
+   "trees": 182,
+   "walls": 5,
+   "furniture": 19,
+   "bytes": 377921
+  },
+  {
+   "id": "4_3",
+   "col": 4,
+   "row": 3,
+   "bounds": [
+    480.0,
+    -62.0,
+    730.0,
+    188.0
+   ],
+   "buildings": 15,
+   "trees": 207,
+   "walls": 2,
+   "furniture": 3,
+   "bytes": 303649
+  },
+  {
+   "id": "5_3",
+   "col": 5,
+   "row": 3,
+   "bounds": [
+    730.0,
+    -62.0,
+    980.0,
+    188.0
+   ],
+   "buildings": 2,
+   "trees": 91,
+   "walls": 0,
+   "furniture": 4,
+   "bytes": 30919
+  },
+  {
+   "id": "0_4",
+   "col": 0,
+   "row": 4,
+   "bounds": [
+    -520.0,
+    188.0,
+    -270.0,
+    438.0
+   ],
+   "buildings": 211,
+   "trees": 138,
+   "walls": 1,
+   "furniture": 13,
+   "bytes": 726909
+  },
+  {
+   "id": "1_4",
+   "col": 1,
+   "row": 4,
+   "bounds": [
+    -270.0,
+    188.0,
+    -20.0,
+    438.0
+   ],
+   "buildings": 149,
+   "trees": 173,
+   "walls": 0,
+   "furniture": 15,
+   "bytes": 616460
+  },
+  {
+   "id": "2_4",
+   "col": 2,
+   "row": 4,
+   "bounds": [
+    -20.0,
+    188.0,
+    230.0,
+    438.0
+   ],
+   "buildings": 216,
+   "trees": 92,
+   "walls": 0,
+   "furniture": 12,
+   "bytes": 947151
+  },
+  {
+   "id": "3_4",
+   "col": 3,
+   "row": 4,
+   "bounds": [
+    230.0,
+    188.0,
+    480.0,
+    438.0
+   ],
+   "buildings": 56,
+   "trees": 166,
+   "walls": 0,
+   "furniture": 14,
+   "bytes": 204921
+  },
+  {
+   "id": "4_4",
+   "col": 4,
+   "row": 4,
+   "bounds": [
+    480.0,
+    188.0,
+    730.0,
+    438.0
+   ],
+   "buildings": 41,
+   "trees": 256,
+   "walls": 1,
+   "furniture": 12,
+   "bytes": 136216
+  },
+  {
+   "id": "5_4",
+   "col": 5,
+   "row": 4,
+   "bounds": [
+    730.0,
+    188.0,
+    980.0,
+    438.0
+   ],
+   "buildings": 16,
+   "trees": 145,
+   "walls": 0,
+   "furniture": 3,
+   "bytes": 57568
+  },
+  {
+   "id": "0_5",
+   "col": 0,
+   "row": 5,
+   "bounds": [
+    -520.0,
+    438.0,
+    -270.0,
+    688.0
+   ],
+   "buildings": 39,
+   "trees": 72,
+   "walls": 0,
+   "furniture": 23,
+   "bytes": 193415
+  },
+  {
+   "id": "1_5",
+   "col": 1,
+   "row": 5,
+   "bounds": [
+    -270.0,
+    438.0,
+    -20.0,
+    688.0
+   ],
+   "buildings": 99,
+   "trees": 117,
+   "walls": 8,
+   "furniture": 16,
+   "bytes": 417532
+  },
+  {
+   "id": "2_5",
+   "col": 2,
+   "row": 5,
+   "bounds": [
+    -20.0,
+    438.0,
+    230.0,
+    688.0
+   ],
+   "buildings": 237,
+   "trees": 104,
+   "walls": 4,
+   "furniture": 20,
+   "bytes": 868531
+  },
+  {
+   "id": "3_5",
+   "col": 3,
+   "row": 5,
+   "bounds": [
+    230.0,
+    438.0,
+    480.0,
+    688.0
+   ],
+   "buildings": 72,
+   "trees": 161,
+   "walls": 7,
+   "furniture": 10,
+   "bytes": 227059
+  },
+  {
+   "id": "4_5",
+   "col": 4,
+   "row": 5,
+   "bounds": [
+    480.0,
+    438.0,
+    730.0,
+    688.0
+   ],
+   "buildings": 86,
+   "trees": 150,
+   "walls": 0,
+   "furniture": 13,
+   "bytes": 360339
+  },
+  {
+   "id": "5_5",
+   "col": 5,
+   "row": 5,
+   "bounds": [
+    730.0,
+    438.0,
+    980.0,
+    688.0
+   ],
+   "buildings": 103,
+   "trees": 172,
+   "walls": 0,
+   "furniture": 11,
+   "bytes": 308651
+  }
+ ]
+}

@@ -4,8 +4,8 @@ Usage : python3 tools/data/build_streets.py
 
 Sorties dans public/data/ :
   streets.json  voies (axe, nom, sens, revêtement, largeur de chaussée, trottoir) et nœuds OSM pour le graphe
-  ground.png    classe de sol par cellule de 0,5 m (PNG indexé, mêmes cellules que le MNT 0,5 m)
-  props.json    murs (hauteur mesurée au LiDAR), mobilier, passages piétons
+  ground_a.png, ground_b.png, ground.json   poids de mélange des sols à 1 m (cf. export_weights) ; classes à 0,5 m dans .cache/work/ground.npy
+  .cache/work/props.json   murs (hauteur mesurée au LiDAR), mobilier : découpés par tuile par build_tiles.py
 Les largeurs viennent de BD TOPO quand un tronçon correspond, sinon de valeurs types : champ `widthSource`.
 """
 
@@ -60,30 +60,33 @@ def way_line(e):
     return [local(g["lon"], g["lat"]) for g in e["geometry"]]
 
 
+def export_weights(ground):
+    """Carte des sols du jeu : poids de mélange à 1 m en deux PNG RVB (A : asphalte, pavés, gravier ; B : herbe, trottoir,
+    occlusion près des murs). Le dallage est le complément à 1. Aucun canal alpha : le navigateur ne le prémultiplie pas."""
+    H, W = ground.shape
+    h, w = H // 2, W // 2
+
+    def frac(k):
+        return (ground[: 2 * h, : 2 * w] == GROUND[k]).reshape(h, 2, w, 2).mean(axis=(1, 3)).astype(np.float32)
+
+    building = frac("building")
+    soft = ndimage.uniform_filter(ndimage.uniform_filter(building, 5), 5)
+    ao = np.clip(soft * 2.2, 0, 1) * (building < 0.5)
+    a = np.stack([frac("asphalt"), frac("sett"), frac("gravel")], axis=-1)
+    b = np.stack([frac("grass"), frac("sidewalk"), ao], axis=-1)
+    for name, arr in (("ground_a.png", a), ("ground_b.png", b)):
+        Image.fromarray((arr * 255).round().astype(np.uint8)).save(c.OUT / name, optimize=True)
+    (c.OUT / "ground.json").write_text(json.dumps({
+        "cols": w, "rows": h, "res": 1.0, "x0": c.GRID_X0 - c.ORIGIN[0], "y1": c.GRID_Y1 - c.ORIGIN[1]}))
+
+
 def main():
     osm = json.load(open(c.CACHE / "raw" / "osm.json"))["elements"]
     ways = [e for e in osm if e["type"] == "way" and "geometry" in e and "tags" in e]
     H, W = c.GRID_H, c.GRID_W
-    cols = c.GRID_X0 - c.ORIGIN[0] + (np.arange(W) + 0.5) * c.RES
-    rows = c.GRID_Y1 - c.ORIGIN[1] - (np.arange(H) + 0.5) * c.RES
-    GX, GY = np.meshgrid(cols, rows)
-
     def rasterize(geom):
-        """Masque (H, W) des cellules dont le centre est dans geom."""
-        mask = np.zeros((H, W), bool)
-        geoms = geom.geoms if hasattr(geom, "geoms") else [geom]
-        for g in geoms:
-            if g.is_empty:
-                continue
-            x0, y0, x1, y1 = g.bounds
-            ci = np.nonzero((cols >= x0) & (cols <= x1))[0]
-            ri = np.nonzero((rows >= y0) & (rows <= y1))[0]
-            if len(ci) == 0 or len(ri) == 0:
-                continue
-            gx, gy = np.meshgrid(cols[ci], rows[ri])
-            m = shapely.contains_xy(g, gx.ravel(), gy.ravel()).reshape(gx.shape)
-            mask[np.ix_(ri, ci)] |= m
-        return mask
+        """Masque (H, W) de la grille 0,5 m couvert par geom (coordonnées locales)."""
+        return common.polygon_mask([geom], local=True)
 
     # --- Bâtiments (masque) -------------------------------------------------------------
     bld = unary_union([translate(g, -c.ORIGIN[0], -c.ORIGIN[1]) for _, g in common.bdtopo_buildings()])
@@ -143,8 +146,7 @@ def main():
         })
 
     # --- Carte des sols -----------------------------------------------------------------
-    ortho = Image.open(c.CACHE / "raw" / "ortho.jpg").convert("RGB").resize((W, H), Image.BOX)
-    rgb = np.asarray(ortho).astype(np.float32)
+    rgb = common.ortho().astype(np.float32)
     luma = rgb.mean(axis=2)
     sat = rgb.max(axis=2) - rgb.min(axis=2)
     exg = 2 * rgb[..., 1] - rgb[..., 0] - rgb[..., 2]
@@ -166,19 +168,26 @@ def main():
     ground[ground == GROUND["sett"]] = GROUND["paving"]
 
     # Parkings : gravier ou asphalte selon l'orthophoto, jamais d'herbe.
+    parking = np.zeros((H, W), bool)
     for e in ways:
         t = e["tags"]
         if t.get("amenity") == "parking" and len(e["geometry"]) >= 4:
             m = rasterize(Polygon(way_line(e))) & ~bmask
+            parking |= m
             if m.any():
-                gravel = (ortho_cls[m] == GROUND["gravel"]).mean() + (ortho_cls[m] == GROUND["paving"]).mean() * 0.5
-                ground[m] = GROUND["gravel"] if gravel > 0.45 else GROUND["asphalt"]
+                # Un parking est en enrobé sauf si sa couleur médiane (les voitures n'y pèsent pas) est franchement sableuse.
+                med = np.median(rgb[m], axis=0)
+                sandy = med[0] - med[2] > 22 and med.mean() > 120
+                ground[m] = GROUND["gravel"] if sandy else GROUND["asphalt"]
 
     drivable = [s for s in streets if s["kind"] in DRIVABLE]
     walkways = [s for s in streets if s["kind"] in ("pedestrian", "footway", "path", "steps")]
     carriage = unary_union([LineString(np.array(s["pts"]).reshape(-1, 2)).buffer(s["width"] / 2, cap_style="flat")
                             for s in drivable if s["motor"] and not s["tunnel"]])
     cmask = rasterize(carriage)
+    # Loin de toute route et de tout bâtiment (plus de 14 m) : champ ou jardin, donc herbe (l'orthophoto d'été montre du foin sec).
+    far = ndimage.distance_transform_edt(~(cmask | bmask)) * c.RES > 14.0
+    ground[far & ~bmask & ~parking] = GROUND["grass"]
     # Trottoirs : sol libre à moins de SIDEWALK_W du bord de chaussée, hors herbe et parking.
     side = rasterize(carriage.buffer(SIDEWALK_W)) & ~cmask & ~bmask & (ground != GROUND["grass"]) \
         & (ground != GROUND["gravel"])
@@ -207,16 +216,11 @@ def main():
         ground[m & ~bmask] = GROUND[cls if cls in GROUND else "asphalt"]
     ground[bmask] = GROUND["building"]
 
-    img = Image.fromarray(ground, mode="P")
-    pal = [0] * 768
-    for k, (r, g, b) in PALETTE.items():
-        pal[3 * k:3 * k + 3] = [r, g, b]
-    img.putpalette(pal)
+    work = c.CACHE / "work"
+    work.mkdir(parents=True, exist_ok=True)
+    np.save(work / "ground.npy", ground)
     c.OUT.mkdir(parents=True, exist_ok=True)
-    img.save(c.OUT / "ground.png", optimize=True)
-    (c.OUT / "ground.json").write_text(json.dumps({
-        "cols": W, "rows": H, "res": c.RES,
-        "x0": c.GRID_X0 - c.ORIGIN[0], "y1": c.GRID_Y1 - c.ORIGIN[1], "classes": GROUND}, indent=1))
+    export_weights(ground)
 
     # --- Murs, mobilier -----------------------------------------------------------------
     mns, mnt = common.raster("MNS"), common.raster("MNT")
@@ -261,7 +265,7 @@ def main():
                 break
 
     (c.OUT / "streets.json").write_text(json.dumps(streets, ensure_ascii=False, separators=(",", ":")))
-    (c.OUT / "props.json").write_text(json.dumps({"walls": walls, "furniture": furniture}, ensure_ascii=False,
+    (c.CACHE / "work" / "props.json").write_text(json.dumps({"walls": walls, "furniture": furniture}, ensure_ascii=False,
                                                  separators=(",", ":")))
     counts = {k: int((ground == v).sum()) for k, v in GROUND.items()}
     print(f"{len(streets)} voies ({sum(s['motor'] for s in streets)} carrossables, "

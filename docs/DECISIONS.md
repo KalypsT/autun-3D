@@ -72,3 +72,22 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Caméra à la troisième personne : orbite autour de la tête ; un rayon vers la caméra raccourcit la distance devant un mur (marge 0,35 m, minimum 0,6 m) ; le personnage se masque sous 0,9 m ; la distance revient doucement quand le mur disparaît.
 - Commandes : joystick flottant (moitié gauche de l'écran, à fond = course), regard au doigt (moitié droite), clavier (touches physiques WASD : fonctionne en AZERTY ZQSD), souris (glisser), plein écran + verrouillage paysage.
 - Rendu en jeu : densité de pixels plafonnée à 1,5 et carte d'ombres de 2048 centrée sur le joueur (±80 m) pour économiser le téléphone ; à mesurer.
+
+## 2026-10-26 — D14. Monde par tuiles de 250 m, détail près du joueur, silhouettes au loin
+
+- Choix : zone de 6 × 6 tuiles alignées sur le Lambert-93 ; un objet appartient à la tuile de son centre. Chaque tuile est un JSON chargé à la demande ; `lod.json` (silhouettes simplifiées à 0,6 m) donne le reste. Relief et cartes de sol sont globaux (6 Mo) : plus simple que de les découper, et ils tiennent en mémoire.
+- Rayon de chargement 210 m, déchargement à 300 m (hystérésis). Brouillard de 260 à 1 000 m : au-delà de 210 m on ne voit de toute façon que des volumes.
+- Raison : toute la zone en détail fait 710 000 triangles et 490 appels de dessin, trop pour un téléphone milieu de gamme ; 8 tuiles en font 170 000 à 320 000.
+- Alternative écartée : un second pipeline de LOD complet (toits, façades simplifiés) ; les silhouettes à partir des mêmes données suffisent à cette distance.
+
+## 2026-10-26 — D15. Atlas de sprites rempli à la demande, avec recyclage
+
+- Les sprites ne sont plus planifiés pour toute la ville : chacun est dessiné dans l'atlas partagé à la première tuile qui en a besoin (48 px/m, 3 pages de 2048 + 1 de 1024 pour les enseignes). 1 214 sprites distincts sur la zone, 834 tiennent ensemble.
+- Quand les pages sont pleines, la moins récemment utilisée est vidée ; les tuiles qui s'en servaient masquent leurs sprites puis se reconstruisent (une par image). Alternative écartée : un atlas par tuile (trop d'appels de dessin et de textures).
+- Mémoire de texture des atlas : ≈ 130 Mo avec mipmaps et cartes de normales. À réduire (KTX2, pages plus petites) si le téléphone ne suit pas.
+
+## 2026-10-26 — D16. Relief par morceaux, sols en deux textures de poids
+
+- Relief : morceaux de 250 m, pas de 2 m à moins de 110 m, 5 m jusqu'à 380 m, 12 m au-delà ; normales calculées sur le relief (pas par maillage) pour qu'elles se raccordent entre niveaux ; jupe de 3 m sous chaque bord pour cacher les fissures.
+- Sols : deux PNG RVB de poids (asphalte/pavés/gravier ; herbe/trottoir/ombre près des murs), 1 m par pixel, avec mipmaps pour ne pas scintiller au loin ; le dallage est le complément à 1.
+- OSM : l'API `map` par blocs de 500 m remplace Overpass quand celui-ci coupe les connexions (même données, même licence).

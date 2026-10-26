@@ -1,15 +1,10 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Terrain } from "../data/terrain";
-import type { Building, FacadeFiche, TerrainMeta } from "../data/types";
+import { loadRealWorld } from "../core/testing";
 import { planFacades } from "./facades";
 
-const read = (name: string): Buffer => readFileSync(`public/data/${name}`);
-const meta = JSON.parse(read("terrain.json").toString("utf8")) as TerrainMeta;
-const bin = read("terrain.bin");
-const terrain = Terrain.decode(meta, bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength) as ArrayBuffer);
-const buildings = JSON.parse(read("buildings.json").toString("utf8")) as Building[];
-const fiches = new Map((JSON.parse(read("facades.json").toString("utf8")) as FacadeFiche[]).map((f) => [f.id, f]));
+const { terrain, tile } = loadRealWorld();
+const buildings = tile.buildings;
+const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
 
 describe("fiches façade", () => {
   it("existent pour chaque bâtiment, avec des séries de murs valides", () => {
@@ -32,9 +27,9 @@ describe("planFacades", () => {
   const plan = planFacades(buildings, fiches, terrain);
 
   it("pose des milliers d'éléments, tous finis", () => {
-    expect(plan.stats.windows).toBeGreaterThan(3000);
-    expect(plan.stats.doors).toBeGreaterThan(100);
-    expect(plan.stats.shops).toBeGreaterThan(40);
+    expect(plan.stats.windows).toBeGreaterThan(8000);
+    expect(plan.stats.doors).toBeGreaterThan(300);
+    expect(plan.stats.shops).toBeGreaterThan(100);
     for (const p of plan.placements) {
       for (const v of [p.x, p.y, p.z, p.tx, p.ty, p.nx, p.ny]) expect(Number.isFinite(v)).toBe(true);
     }
@@ -54,6 +49,6 @@ describe("planFacades", () => {
   });
 
   it("limite le nombre de sprites distincts (taille de l'atlas)", () => {
-    expect(new Set(plan.requests.map((r) => r.key)).size).toBeLessThan(600);
+    expect(new Set(plan.requests.map((r) => r.key)).size).toBeLessThan(1500);
   });
 });

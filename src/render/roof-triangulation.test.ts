@@ -1,9 +1,8 @@
-import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import type { Building } from "../data/types";
+import { loadRealWorld } from "../core/testing";
 
-const buildings = JSON.parse(readFileSync("public/data/buildings.json", "utf8")) as Building[];
+const buildings = loadRealWorld().tile.buildings;
 
 function ring(coords: number[]): THREE.Vector2[] {
   const pts: THREE.Vector2[] = [];

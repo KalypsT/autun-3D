@@ -1,8 +1,11 @@
 import * as THREE from "three";
 import type { Terrain } from "../data/terrain";
-import type { Building, FacadeFiche, RoofMaterial, WorldData } from "../data/types";
-import { buildAtlas, type Atlas } from "./atlas";
-import { emitPlacement, planFacades, type FacadePlan } from "./facades";
+import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/types";
+import type { SpriteRequest } from "./atlas";
+import { LazyAtlas } from "./lazy-atlas";
+import { buildFurniture, buildWalls, fenceMaterial } from "./props";
+import { buildTrees } from "./trees";
+import { emitPlacement, planFacades } from "./facades";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import {
   ashlarTexture, flatRoofTexture, mechanicalTileTexture, plainTileTexture, plasterTexture, slateTexture, zincTexture, type SurfaceTexture,
@@ -11,27 +14,12 @@ import {
 const CHIMNEY = new THREE.Color("#a07a62");
 const SKIRT = 0.4;
 
-export interface CityStats {
-  triangles: number;
-  windows: number;
-  doors: number;
-  shops: number;
-  balconies: number;
-  atlas: { pages: number; size: number; ppm: number; fill: number; sprites: number };
-  signAtlas: { pages: number; size: number; ppm: number; fill: number; sprites: number };
-}
-
-export interface City {
-  group: THREE.Group;
-  stats: CityStats;
-}
-
 function surfaceMaterial(tex: SurfaceTexture, roughness: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   const useNormals = !new URLSearchParams(location.search).has("nonormal");
   return new THREE.MeshStandardMaterial({ map: tex.map, ...(useNormals ? { normalMap: tex.normalMap } : {}), vertexColors: true, roughness, metalness: 0, ...extra });
 }
 
-function spriteMaterial(page: Atlas["pages"][number]): THREE.MeshStandardMaterial {
+function spriteMaterial(page: { map: THREE.Texture; normalMap: THREE.Texture }): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     map: page.map, normalMap: page.normalMap, alphaTest: 0.5, roughness: 0.7, metalness: 0,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
@@ -89,25 +77,75 @@ function chimney(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number
   mb.quad(p(-hx, -hy, z1), p(hx, -hy, z1), p(hx, hy, z1), p(-hx, hy, z1), [0, 1, 0], new THREE.Color("#5c4e44"));
 }
 
-export function buildCity(world: WorldData): City {
-  const { terrain, buildings, fiches } = world;
+export interface TileStats {
+  triangles: number;
+  windows: number;
+  doors: number;
+  shops: number;
+  balconies: number;
+  draws: number;
+}
 
-  // 1. Planification des façades, puis atlas des sprites.
-  const plan: FacadePlan = planFacades(buildings, fiches, terrain);
-  const atlas = buildAtlas(plan.requests, 2048, 80, 2.2, 2);
-  const signAtlas = buildAtlas(plan.signRequests, 1024, 64, 1.2);
-
-  // 2. Matières.
-  const plaster = plasterTexture(), ashlar = ashlarTexture();
-  const roofTex: Record<RoofMaterial, SurfaceTexture> = {
+/** Ce que toutes les tuiles partagent : textures, matériaux, atlas de sprites. */
+export class CityResources {
+  readonly plaster = plasterTexture();
+  readonly ashlar = ashlarTexture();
+  readonly roofTex: Record<RoofMaterial, SurfaceTexture> = {
     tuile_plate: plainTileTexture(), tuile_mecanique: mechanicalTileTexture(), ardoise: slateTexture(), zinc: zincTexture(), terrasse: flatRoofTexture(),
   };
+  readonly plasterMat = surfaceMaterial(this.plaster, 0.95);
+  readonly ashlarMat = surfaceMaterial(this.ashlar, 0.9);
+  readonly roofMat: Record<RoofMaterial, THREE.MeshStandardMaterial>;
+  readonly miscMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+  readonly fenceMat = fenceMaterial();
+  readonly facadeAtlas = new LazyAtlas(2048, 48, 2.2, 3);
+  readonly signAtlas = new LazyAtlas(1024, 48, 1.2, 2);
+  readonly facadeMats: THREE.MeshStandardMaterial[] = [];
+  readonly signMats: THREE.MeshStandardMaterial[] = [];
+
+  constructor() {
+    const roughness: Record<RoofMaterial, number> = { tuile_plate: 0.85, tuile_mecanique: 0.8, ardoise: 0.65, zinc: 0.5, terrasse: 0.95 };
+    const dbg = new URLSearchParams(location.search).get("dbg") === "normals";
+    this.roofMat = Object.fromEntries((Object.keys(roughness) as RoofMaterial[]).map((rm) => [rm, dbg
+      ? new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
+      : surfaceMaterial(this.roofTex[rm], roughness[rm], { side: THREE.DoubleSide, shadowSide: THREE.BackSide })])) as Record<RoofMaterial, THREE.MeshStandardMaterial>;
+    this.facadeAtlas.onPage = (i, p) => (this.facadeMats[i] = spriteMaterial(p));
+    this.signAtlas.onPage = (i, p) => (this.signMats[i] = spriteMaterial(p));
+  }
+}
+
+export interface TileMeshes {
+  /** Sprites qui n'ont pas trouvé de place dans l'atlas pendant la construction. */
+  missed: number;
+  group: THREE.Group;
+  stats: TileStats;
+  /** Pages d'atlas dont les sprites de cette tuile dépendent. */
+  pages: { facade: Set<number>; sign: Set<number> };
+}
+
+function dispose(group: THREE.Object3D): void {
+  group.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) m.geometry.dispose();
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
+  });
+}
+
+export function disposeTile(t: TileMeshes): void {
+  dispose(t.group);
+}
+
+/** Maillages détaillés d'une tuile : murs, toits, façades, murets, mobilier, arbres. */
+export function buildTileDetail(res: CityResources, tile: TileData, terrain: Terrain): TileMeshes {
+  const buildings = tile.buildings;
+  const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
+  const plan = planFacades(buildings, fiches, terrain);
+  const { plaster, ashlar } = res;
   const wallBuilders = { plaster: new UvMeshBuilder(), ashlar: new UvMeshBuilder() };
   const roofBuilders: Record<RoofMaterial, UvMeshBuilder> = {
     tuile_plate: new UvMeshBuilder(), tuile_mecanique: new UvMeshBuilder(), ardoise: new UvMeshBuilder(), zinc: new UvMeshBuilder(), terrasse: new UvMeshBuilder(),
   };
   const misc = plan.misc;
-
   for (const b of buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const kind = f?.materials.wall.kind === "ashlar" ? "ashlar" : "plaster";
@@ -120,7 +158,7 @@ export function buildCity(world: WorldData): City {
 
     const rm: RoofMaterial = f?.materials.roof ?? "tuile_plate";
     const rb = roofBuilders[rm];
-    const rsize = roofTex[rm].size;
+    const rsize = res.roofTex[rm].size;
     const tint = roofTint(b, rm);
     for (const face of b.faces) {
       const [a, bb, c] = face.p;
@@ -167,45 +205,58 @@ export function buildCity(world: WorldData): City {
     for (const [cx, cy, sx, sy, z0, z1] of b.chim as [number, number, number, number, number, number][]) chimney(misc, cx, cy, sx, sy, z0, z1);
   }
 
-  // 3. Quads des sprites.
-  const sprites = atlas.pages.map(() => new UvMeshBuilder()), signs = signAtlas.pages.map(() => new UvMeshBuilder());
-  for (const p of plan.placements) {
-    const r = (p.atlas === "facade" ? atlas : signAtlas).rects.get(p.key);
-    if (r) emitPlacement((p.atlas === "facade" ? sprites : signs)[r.page]!, p, r);
-  }
+  // Murs, grilles, mobilier.
+  const fence = new UvMeshBuilder(), posts = new MeshBuilder();
+  buildWalls({ solid: wallBuilders.plaster, solidSize: plaster.size, solidColor: new THREE.Color("#cdbf9f"), cap: misc, fence, posts }, tile.walls, terrain);
+  buildFurniture(misc, tile.furniture, terrain);
+  misc.positions.push(...posts.positions);
+  misc.normals.push(...posts.normals);
+  misc.colors.push(...posts.colors);
 
-  // 4. Maillages.
+  // Sprites : dessinés dans l'atlas partagé à la première demande.
+  const reqs = new Map<string, SpriteRequest>();
+  for (const r of plan.requests) reqs.set(r.key, r);
+  for (const r of plan.signRequests) reqs.set(r.key, r);
+  const sprites = new Map<number, UvMeshBuilder>(), signs = new Map<number, UvMeshBuilder>();
+  const missedBefore = res.facadeAtlas.missed + res.signAtlas.missed;
+  for (const p of plan.placements) {
+    const req = reqs.get(p.key);
+    if (!req) continue;
+    const atlas = p.atlas === "facade" ? res.facadeAtlas : res.signAtlas;
+    const r = atlas.get(req);
+    if (!r) continue;
+    const target = p.atlas === "facade" ? sprites : signs;
+    let mb = target.get(r.page);
+    if (!mb) target.set(r.page, (mb = new UvMeshBuilder()));
+    emitPlacement(mb, p, r);
+  }
+  res.facadeAtlas.flush();
+  res.signAtlas.flush();
+
   const group = new THREE.Group();
-  const add = (name: string, geo: THREE.BufferGeometry, mat: THREE.Material, cast = true): void => {
-    const m = new THREE.Mesh(geo, mat);
+  let draws = 0, triangles = 0;
+  const add = (name: string, mb: { build(): THREE.BufferGeometry; triangleCount: number }, mat: THREE.Material, cast = true): void => {
+    if (mb.triangleCount === 0) return;
+    const m = new THREE.Mesh(mb.build(), mat);
     m.name = name;
     m.castShadow = cast;
     m.receiveShadow = true;
     group.add(m);
+    draws++;
+    triangles += mb.triangleCount;
   };
-  add("plaster", wallBuilders.plaster.build(), surfaceMaterial(plaster, 0.95));
-  add("ashlar", wallBuilders.ashlar.build(), surfaceMaterial(ashlar, 0.9));
-  const roughness: Record<RoofMaterial, number> = { tuile_plate: 0.85, tuile_mecanique: 0.8, ardoise: 0.65, zinc: 0.5, terrasse: 0.95 };
-  for (const rm of Object.keys(roofBuilders) as RoofMaterial[]) {
-    const dbg = new URLSearchParams(location.search).get("dbg") === "normals";
-    add(`toit-${rm}`, roofBuilders[rm].build(), dbg
-      ? new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
-      : surfaceMaterial(roofTex[rm], roughness[rm], { side: THREE.DoubleSide, shadowSide: THREE.BackSide }));
+  add("plaster", wallBuilders.plaster, res.plasterMat);
+  add("ashlar", wallBuilders.ashlar, res.ashlarMat);
+  for (const rm of Object.keys(roofBuilders) as RoofMaterial[]) add(`toit-${rm}`, roofBuilders[rm], res.roofMat[rm]);
+  add("misc", misc, res.miscMat);
+  add("grilles", fence, res.fenceMat);
+  sprites.forEach((mb, i) => add(`sprites-${i}`, mb, res.facadeMats[i]!, false));
+  signs.forEach((mb, i) => add(`enseignes-${i}`, mb, res.signMats[i]!, false));
+  if (tile.trees.length) {
+    const trees = buildTrees(tile.trees);
+    group.add(trees);
+    draws += 2;
   }
-  add("misc", misc.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }));
-  sprites.forEach((mb, i) => add(`sprites-${i}`, mb.build(), spriteMaterial(atlas.pages[i]!), false));
-  signs.forEach((mb, i) => add(`enseignes-${i}`, mb.build(), spriteMaterial(signAtlas.pages[i]!), false));
-
-  const triangles =
-    wallBuilders.plaster.triangleCount + wallBuilders.ashlar.triangleCount + misc.triangleCount +
-    [...sprites, ...signs].reduce((n, b) => n + b.triangleCount, 0) +
-    Object.values(roofBuilders).reduce((s, r) => s + r.triangleCount, 0);
-  return {
-    group,
-    stats: {
-      triangles, ...plan.stats,
-      atlas: { pages: atlas.pages.length, size: atlas.size, ppm: Math.round(atlas.ppm), fill: Math.round(atlas.fill * 100) / 100, sprites: atlas.rects.size },
-      signAtlas: { pages: signAtlas.pages.length, size: signAtlas.size, ppm: Math.round(signAtlas.ppm), fill: Math.round(signAtlas.fill * 100) / 100, sprites: signAtlas.rects.size },
-    },
-  };
+  const missed = res.facadeAtlas.missed + res.signAtlas.missed - missedBefore;
+  return { group, stats: { triangles, ...plan.stats, draws }, pages: { facade: new Set(sprites.keys()), sign: new Set(signs.keys()) }, missed };
 }
