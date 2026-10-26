@@ -155,3 +155,12 @@ Honor Magic 8 Pro (Adreno 840), Chrome 155, tenu en portrait, rendu 633 × 1 230
 - 40 à 87 appels de dessin, 0,5 à 1,26 M triangles, géométrie 49-85 Mo, textures 26 Mo, JavaScript 88 Mo.
 - Conclusion : cibles de D20 atteintes avec une marge inconnue mais vraisemblablement large. À mesurer en chargeant davantage (définition native, ombres 4096, rayon de détail plus grand) avant de décider de relever les réglages par défaut.
 - Deux passages plus chargés (définition native, ombres 4096, puis détail à 400 m) restent à 60 i/s. Réglages par défaut relevés (D26) : définition ×2,5, ombres 4096, détail 300 m.
+
+### Retour d'essai des véhicules (27 octobre 2026)
+
+- Freinage refait (D27) : report de charge, roues qui se bloquent sans ABS, glissades, traces de pneus ; pression qui monte tant qu'on appuie.
+- Direction : braquage borné par l'adhérence à haute vitesse, braquage moins brusque, course du doigt progressive.
+- Repères des véhicules : un par type (vélo, trottinette, moto, voiture).
+- Tests : 79.
+
+![Freinage roues bloquées, trace au sol](docs/captures/etape5-freinage-trace.jpg)

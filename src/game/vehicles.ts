@@ -20,11 +20,13 @@ export const KINDS: Record<VehicleKind, {
   gas: string;
   reach: number;
   camera: { distance: number; perSpeed: number; height: number };
+  /** Traces de pneus : demi-voie (0 pour un deux-roues) et largeur de bande (m). */
+  tyre: { track: number; width: number };
 }> = {
-  bike: { spec: BIKE, model: createBikeModel, icon: "🚲", gas: "Pédaler", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 } },
-  scooter: { spec: SCOOTER, model: createScooterModel, icon: "🛴", gas: "Accélérer", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 } },
-  car: { spec: CAR, model: createCarModel, icon: "🚗", gas: "Accélérer", reach: 3.0, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 } },
-  moto: { spec: MOTO, model: createMotoModel, icon: "🏍️", gas: "Accélérer", reach: 2.2, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 } },
+  bike: { spec: BIKE, model: createBikeModel, icon: "🚲", gas: "Pédaler", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.05 } },
+  scooter: { spec: SCOOTER, model: createScooterModel, icon: "🛴", gas: "Accélérer", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.06 } },
+  car: { spec: CAR, model: createCarModel, icon: "🚗", gas: "Accélérer", reach: 3.0, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 }, tyre: { track: 0.74, width: 0.2 } },
+  moto: { spec: MOTO, model: createMotoModel, icon: "🏍️", gas: "Accélérer", reach: 2.2, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 }, tyre: { track: 0, width: 0.12 } },
 };
 
 /** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse. */
@@ -184,11 +186,11 @@ export class Fleet {
     return v.model;
   }
 
-  /** Véhicule libre le plus proche de (x, y), avec la distance à son centre. */
-  nearest(x: number, y: number): { vehicle: Vehicle; distance: number } | null {
+  /** Véhicule libre le plus proche de (x, y), d'un type donné ou de n'importe lequel, avec la distance à son centre. */
+  nearest(x: number, y: number, kind: VehicleKind | null = null): { vehicle: Vehicle; distance: number } | null {
     let best: { vehicle: Vehicle; distance: number } | null = null;
     for (const v of this.vehicles) {
-      if (v.ridden) continue;
+      if (v.ridden || (kind && v.kind !== kind)) continue;
       const d = Math.hypot(v.state.x - x, v.state.y - y);
       if (!best || d < best.distance) best = { vehicle: v, distance: d };
     }

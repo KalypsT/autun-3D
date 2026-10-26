@@ -34,10 +34,12 @@
                 border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
       body.game #action.show { display: block; }
       body.game:not(.driving) #action { bottom: 24px; }
-      #nearby { position: fixed; top: 12px; right: 62px; z-index: 3; display: none; padding: 5px 12px 5px 8px;
-                border-radius: 16px; background: rgba(0,0,0,.4); color: #fff; font: 14px system-ui, sans-serif; pointer-events: none; }
-      body.game #nearby.show { display: flex; gap: 6px; align-items: center; }
-      #nearby-arrow { display: inline-block; transition: transform .15s linear; }
+      #nearby { position: fixed; top: 12px; right: 62px; z-index: 3; display: none; gap: 6px; pointer-events: none; }
+      body.game:not(.driving) #nearby { display: flex; }
+      .chip { display: none; gap: 5px; align-items: center; padding: 5px 10px 5px 8px; border-radius: 16px; background: rgba(0,0,0,.4);
+              color: #fff; font: 14px system-ui, sans-serif; }
+      .chip.show { display: flex; }
+      .chip .arrow { display: inline-block; transition: transform .15s linear; }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
     </style>
@@ -50,7 +52,7 @@
     <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
     <div id="pedals"><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
     <button id="action"></button>
-    <div id="nearby"><span id="nearby-arrow">⬆</span><span id="nearby-text"></span></div>
+    <div id="nearby"></div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>
     <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®) · three.js</div>

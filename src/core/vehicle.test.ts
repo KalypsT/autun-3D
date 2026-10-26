@@ -200,13 +200,44 @@ describe("voiture", () => {
     expect(time).toBeLessThan(14);
   });
 
-  it("freine de 50 km/h à l'arrêt en moins de 12 m", () => {
+  it("frein maintenu à 50 km/h : les roues se bloquent, arrêt en 12 à 18 m (pression qui monte, pneus qui glissent)", () => {
     const c = createVehicle(0, -90, 0, big);
     c.vy = c.speed = 50 / 3.6;
     const y0 = c.y;
-    brakingTime(c, CAR);
-    expect(c.y - y0).toBeLessThan(12);
-    expect(c.y - y0).toBeGreaterThan(9);
+    let locked = false, rear = false;
+    while (c.speed > 0.01) {
+      stepVehicle(c, CAR, { throttle: 0, brake: 1, steer: 0 }, DT, big, none);
+      locked ||= c.lockedFront;
+      rear ||= c.lockedRear;
+    }
+    expect(locked).toBe(true);
+    // L'arrière ne bloque pas en ligne droite (répartition vers l'avant) : pas de tête-à-queue au freinage.
+    expect(rear).toBe(false);
+    expect(c.y - y0).toBeGreaterThan(12);
+    expect(c.y - y0).toBeLessThan(18);
+  });
+
+  it("un appui bref sur le frein ralentit sans bloquer les roues", () => {
+    const c = createVehicle(0, -90, 0, big);
+    c.vy = c.speed = 50 / 3.6;
+    let locked = false;
+    for (let i = 0; i < 15; i++) {
+      stepVehicle(c, CAR, { throttle: 0, brake: 1, steer: 0 }, DT, big, none);
+      locked ||= c.lockedFront || c.lockedRear;
+    }
+    expect(locked).toBe(false);
+    expect(c.speed).toBeLessThan(50 / 3.6);
+  });
+
+  it("roues avant bloquées, la voiture ne tourne presque plus : elle file tout droit", () => {
+    const t = wide();
+    const free = createVehicle(0, 0, 0, t), braked = createVehicle(0, 0, 0, t);
+    free.vy = free.speed = braked.vy = braked.speed = 60 / 3.6;
+    // Pression de freinage déjà au maximum.
+    braked.brakeLevel = 1;
+    drive(free, { throttle: 0, brake: 0, steer: 1 }, 1, t, none, CAR);
+    drive(braked, { throttle: 0, brake: 1, steer: 1 }, 1, t, none, CAR);
+    expect(braked.heading).toBeLessThan(free.heading * 0.5);
   });
 
   it("le frein moteur ralentit plus qu'une roue libre de vélo", () => {
@@ -235,7 +266,8 @@ describe("voiture", () => {
     const c = createVehicle(0, -90, 0, big);
     stepVehicle(c, CAR, full, DT, big, none);
     const accel = c.speed / DT;
-    expect(accel).toBeLessThanOrEqual(CAR.grip * 9.81 * CAR.driveShare + 0.01);
+    // Traction avant : au mieux la part de poids sur l'avant, qui s'allège en accélérant.
+    expect(accel).toBeLessThanOrEqual((CAR.grip * 9.81 * CAR.rear) / (CAR.front + CAR.rear) + 0.01);
   });
 
   it("contre un mur à 30 km/h : arrêt net sans traverser", () => {
@@ -282,11 +314,16 @@ describe("moto", () => {
     expect(Math.abs(m.speed * m.yawRate)).toBeLessThan(1.02 * 9.81);
   });
 
-  it("freine de 50 km/h à l'arrêt en moins de 13 m", () => {
+  it("freine de 50 km/h à l'arrêt en moins de 16 m, sans jamais bloquer l'avant", () => {
     const m = createVehicle(0, -90, 0, flat);
     m.vy = m.speed = 50 / 3.6;
     const y0 = m.y;
-    brakingTime(m, MOTO);
-    expect(m.y - y0).toBeLessThan(13);
+    let front = false;
+    while (m.speed > 0.01) {
+      stepVehicle(m, MOTO, { throttle: 0, brake: 1, steer: 0 }, DT, flat, none);
+      front ||= m.lockedFront;
+    }
+    expect(front).toBe(false);
+    expect(m.y - y0).toBeLessThan(16);
   });
 });
