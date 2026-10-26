@@ -28,7 +28,7 @@
    "trees": 347,
    "walls": 1,
    "furniture": 0,
-   "bytes": 32466
+   "bytes": 32478
   },
   {
    "id": "1_0",
@@ -44,7 +44,7 @@
    "trees": 233,
    "walls": 2,
    "furniture": 16,
-   "bytes": 138433
+   "bytes": 138446
   },
   {
    "id": "2_0",
@@ -60,7 +60,7 @@
    "trees": 180,
    "walls": 7,
    "furniture": 43,
-   "bytes": 767639
+   "bytes": 767790
   },
   {
    "id": "3_0",
@@ -76,7 +76,7 @@
    "trees": 188,
    "walls": 2,
    "furniture": 10,
-   "bytes": 51718
+   "bytes": 51730
   },
   {
    "id": "4_0",
@@ -92,7 +92,7 @@
    "trees": 38,
    "walls": 1,
    "furniture": 10,
-   "bytes": 26819
+   "bytes": 26832
   },
   {
    "id": "5_0",
@@ -108,7 +108,7 @@
    "trees": 94,
    "walls": 3,
    "furniture": 0,
-   "bytes": 4194
+   "bytes": 4206
   },
   {
    "id": "0_1",
@@ -124,7 +124,7 @@
    "trees": 177,
    "walls": 0,
    "furniture": 48,
-   "bytes": 275165
+   "bytes": 275245
   },
   {
    "id": "1_1",
@@ -140,7 +140,7 @@
    "trees": 192,
    "walls": 16,
    "furniture": 34,
-   "bytes": 349241
+   "bytes": 349249
   },
   {
    "id": "2_1",
@@ -156,7 +156,7 @@
    "trees": 170,
    "walls": 41,
    "furniture": 64,
-   "bytes": 665506
+   "bytes": 666386
   },
   {
    "id": "3_1",
@@ -172,7 +172,7 @@
    "trees": 165,
    "walls": 31,
    "furniture": 40,
-   "bytes": 344999
+   "bytes": 345011
   },
   {
    "id": "4_1",
@@ -188,7 +188,7 @@
    "trees": 163,
    "walls": 1,
    "furniture": 29,
-   "bytes": 79818
+   "bytes": 79830
   },
   {
    "id": "5_1",
@@ -204,7 +204,7 @@
    "trees": 102,
    "walls": 2,
    "furniture": 1,
-   "bytes": 5084
+   "bytes": 5095
   },
   {
    "id": "0_2",
@@ -220,7 +220,7 @@
    "trees": 146,
    "walls": 2,
    "furniture": 45,
-   "bytes": 430366
+   "bytes": 430378
   },
   {
    "id": "1_2",
@@ -236,7 +236,7 @@
    "trees": 108,
    "walls": 59,
    "furniture": 36,
-   "bytes": 437576
+   "bytes": 443273
   },
   {
    "id": "2_2",
@@ -252,7 +252,7 @@
    "trees": 151,
    "walls": 111,
    "furniture": 51,
-   "bytes": 769644
+   "bytes": 769993
   },
   {
    "id": "3_2",
@@ -268,7 +268,7 @@
    "trees": 181,
    "walls": 14,
    "furniture": 26,
-   "bytes": 374488
+   "bytes": 374515
   },
   {
    "id": "4_2",
@@ -284,7 +284,7 @@
    "trees": 180,
    "walls": 8,
    "furniture": 33,
-   "bytes": 170516
+   "bytes": 170601
   },
   {
    "id": "5_2",
@@ -300,7 +300,7 @@
    "trees": 148,
    "walls": 0,
    "furniture": 15,
-   "bytes": 37859
+   "bytes": 37870
   },
   {
    "id": "0_3",
@@ -315,8 +315,8 @@
    "buildings": 126,
    "trees": 149,
    "walls": 29,
-   "furniture": 31,
-   "bytes": 379209
+   "furniture": 32,
+   "bytes": 389354
   },
   {
    "id": "1_3",
@@ -331,8 +331,8 @@
    "buildings": 214,
    "trees": 123,
    "walls": 0,
-   "furniture": 65,
-   "bytes": 653025
+   "furniture": 67,
+   "bytes": 658015
   },
   {
    "id": "2_3",
@@ -348,7 +348,7 @@
    "trees": 58,
    "walls": 4,
    "furniture": 59,
-   "bytes": 383479
+   "bytes": 394006
   },
   {
    "id": "3_3",
@@ -364,7 +364,7 @@
    "trees": 182,
    "walls": 5,
    "furniture": 52,
-   "bytes": 256117
+   "bytes": 256168
   },
   {
    "id": "4_3",
@@ -380,7 +380,7 @@
    "trees": 207,
    "walls": 12,
    "furniture": 10,
-   "bytes": 85508
+   "bytes": 86167
   },
   {
    "id": "5_3",
@@ -396,7 +396,7 @@
    "trees": 91,
    "walls": 3,
    "furniture": 13,
-   "bytes": 31445
+   "bytes": 36044
   },
   {
    "id": "0_4",
@@ -411,8 +411,8 @@
    "buildings": 211,
    "trees": 138,
    "walls": 1,
-   "furniture": 44,
-   "bytes": 554580
+   "furniture": 43,
+   "bytes": 557902
   },
   {
    "id": "1_4",
@@ -427,8 +427,8 @@
    "buildings": 149,
    "trees": 173,
    "walls": 0,
-   "furniture": 45,
-   "bytes": 422848
+   "furniture": 46,
+   "bytes": 422813
   },
   {
    "id": "2_4",
@@ -444,7 +444,7 @@
    "trees": 92,
    "walls": 0,
    "furniture": 46,
-   "bytes": 673789
+   "bytes": 673970
   },
   {
    "id": "3_4",
@@ -459,8 +459,8 @@
    "buildings": 56,
    "trees": 166,
    "walls": 0,
-   "furniture": 41,
-   "bytes": 199647
+   "furniture": 36,
+   "bytes": 210354
   },
   {
    "id": "4_4",
@@ -475,8 +475,8 @@
    "buildings": 41,
    "trees": 256,
    "walls": 2,
-   "furniture": 38,
-   "bytes": 140865
+   "furniture": 37,
+   "bytes": 149459
   },
   {
    "id": "5_4",
@@ -492,7 +492,7 @@
    "trees": 145,
    "walls": 0,
    "furniture": 17,
-   "bytes": 61003
+   "bytes": 61023
   },
   {
    "id": "0_5",
@@ -507,8 +507,8 @@
    "buildings": 39,
    "trees": 72,
    "walls": 0,
-   "furniture": 40,
-   "bytes": 158742
+   "furniture": 41,
+   "bytes": 172898
   },
   {
    "id": "1_5",
@@ -524,7 +524,7 @@
    "trees": 117,
    "walls": 8,
    "furniture": 30,
-   "bytes": 285985
+   "bytes": 285965
   },
   {
    "id": "2_5",
@@ -540,7 +540,7 @@
    "trees": 104,
    "walls": 5,
    "furniture": 55,
-   "bytes": 663972
+   "bytes": 663980
   },
   {
    "id": "3_5",
@@ -555,8 +555,8 @@
    "buildings": 72,
    "trees": 161,
    "walls": 7,
-   "furniture": 33,
-   "bytes": 209432
+   "furniture": 32,
+   "bytes": 230354
   },
   {
    "id": "4_5",
@@ -571,8 +571,8 @@
    "buildings": 86,
    "trees": 150,
    "walls": 0,
-   "furniture": 29,
-   "bytes": 245072
+   "furniture": 28,
+   "bytes": 250957
   },
   {
    "id": "5_5",
@@ -587,8 +587,8 @@
    "buildings": 103,
    "trees": 172,
    "walls": 1,
-   "furniture": 20,
-   "bytes": 268742
+   "furniture": 23,
+   "bytes": 269023
   }
  ]
 }

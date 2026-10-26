@@ -56,9 +56,11 @@ def decode(poly):
     return Polygon(*[[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[:1]], [[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[1:]]).buffer(0)
 
 
-def clip_layers(layers, bounds):
-    """Polygones de chaque couche, découpés à l'emprise de la tuile."""
+def clip_layers(layers, bounds, holes=()):
+    """Polygones de chaque couche, découpés à l'emprise de la tuile (moins les zones d'escalier, dessinées en relief)."""
     window = box(*bounds)
+    for z in holes:
+        window = window.difference(box(*z["bbox"]))
     out = {}
     for name, polys in layers.items():
         pieces = []
@@ -171,7 +173,7 @@ def main():
             rec = tiles.get((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
             bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
             stairs = [z for z in manual["stairs"] if z["bbox"][0] < bounds[2] and z["bbox"][2] > bounds[0] and z["bbox"][1] < bounds[3] and z["bbox"][3] > bounds[1]]
-            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds), "stairs": stairs, **rec}
+            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds, stairs), "stairs": stairs, **rec}
             text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
             (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
             total += len(text)

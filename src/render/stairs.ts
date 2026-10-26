@@ -11,11 +11,17 @@ export function buildStairs(mb: MeshBuilder, zones: readonly StairsZone[], terra
     const [x0, y0, x1, y1] = zone.bbox;
     const nx = Math.ceil((x1 - x0) / CELL), ny = Math.ceil((y1 - y0) / CELL);
     const h = new Float32Array(nx * ny).fill(NaN);
+    // Relief lissé (moyenne sur 2 m) pour des marches régulières malgré le bruit du LiDAR, puis arrondi à la marche supérieure.
+    const smooth = (x: number, y: number): number => {
+      let sum = 0;
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]] as const) sum += terrain.heightAt(x + dx, y + dy);
+      return sum / 9;
+    };
     for (let j = 0; j < ny; j++) {
       for (let i = 0; i < nx; i++) {
-        const z = terrain.heightAt(x0 + (i + 0.5) * CELL, y0 + (j + 0.5) * CELL);
+        const z = smooth(x0 + (i + 0.5) * CELL, y0 + (j + 0.5) * CELL);
         if (z - zone.base < 0.15) continue;
-        h[j * nx + i] = zone.base + Math.ceil((z - zone.base) / zone.riser) * zone.riser;
+        h[j * nx + i] = zone.base + Math.ceil((z - zone.base) / zone.riser) * zone.riser + 0.08;
       }
     }
     const at = (i: number, j: number): number => (i < 0 || j < 0 || i >= nx || j >= ny ? zone.base : (h[j * nx + i] ?? NaN));

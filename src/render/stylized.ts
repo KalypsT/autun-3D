@@ -306,9 +306,10 @@ function append(dst: MeshBuilder, src: MeshBuilder): void {
 
 /** Maillages d'une tuile dans le style « conte » : murs en aplats, fenêtres et volets en volumes simples, toits propres. */
 export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Terrain): TileMeshes {
+  const skip = new URLSearchParams(location.search).get("skip") ?? "";
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
   const plan = planFacades(tile.buildings, fiches, terrain);
-  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = plan.misc, glow = new MeshBuilder();
+  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
   glowTarget = glow;
   const names = new UvMeshBuilder();
   signText = { mb: names, atlas: res.signAtlas };
@@ -317,7 +318,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
     const wc = wallColor(f?.era ?? "xix", key);
-    wall(walls, b.ring, b.top, terrain, wc);
+    if (!skip.includes("wall")) wall(walls, b.ring, b.top, terrain, wc);
     b.holes.forEach((hole, i) => wall(walls, hole, b.holeTop[i]!, terrain, wc));
     const rm: RoofMaterial = f?.materials.roof ?? "tuile_plate";
     const rc = roofColor(rm, key);
@@ -339,7 +340,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   const sizes = new Map<string, number>();
   for (const r of plan.requests) sizes.set(r.key, r.wm);
   for (const r of plan.signRequests) sizes.set(r.key, r.wm);
-  for (const p of plan.placements) {
+  for (const p of skip.includes("place") ? [] : plan.placements) {
     const parts = p.key.split("|");
     switch (parts[0]) {
       case "win": windowGeometry(detail, p, parts); break;
@@ -352,10 +353,10 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   }
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
-  buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
-  buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
+  if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
+  if (!skip.includes("stairs")) buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
-  buildFurniture(detail, tile.furniture, terrain, glow, halo);
+  if (!skip.includes("furn")) buildFurniture(detail, tile.furniture, terrain, glow, halo);
   append(detail, posts);
 
   const group = new THREE.Group();
