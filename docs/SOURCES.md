@@ -22,7 +22,7 @@ Une planche de contrôle se trouve dans [captures/etape1-sources.jpg](captures/e
 | Wikimedia Commons | ✅ (limite de débit) | 18 photos géolocalisées | Hôtel de ville (4), théâtre (2), lycée Bonaparte (2), vues de la place | Par image (à vérifier une par une) |
 | POP (Mérimée) | ✅ pages web seulement | Au moins 7 édifices protégés dans la zone | Dates, architecte, parties protégées. Pas de photo trouvée pour le théâtre | Texte © Monuments historiques : on ne reprend que des faits |
 | Poly Haven | ✅ | — | Textures PBR (pierre, enduit, tuiles, ardoise, pavés, asphalte) | CC0 |
-| ambientCG | ⚠️ catalogue oui, téléchargement **bloqué** | — | Textures PBR (tuiles plates notamment) | CC0 |
+| ambientCG | ✅ (domaine de téléchargement autorisé le 26/10) | — | Textures PBR (tuiles plates notamment) | CC0 |
 
 Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
@@ -110,14 +110,13 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 ### Textures CC0
 
 - **Poly Haven** : API et téléchargements (`dl.polyhaven.org`) fonctionnent. On y trouve pierre, enduits, tuiles, ardoise, pavés et asphalte, en PBR (couleur, normales, rugosité). Ça suffit pour démarrer.
-- **ambientCG** : le catalogue (`ambientcg.com`) répond, mais les fichiers sont servis par **`acg-download.struffelproductions.com`**, qui est **bloqué**. ambientCG a de bonnes tuiles plates bourguignonnes ; c'est utile, mais pas indispensable.
+- **ambientCG** : le catalogue (`ambientcg.com`) répond. Les fichiers sont servis par `acg-download.struffelproductions.com`, **autorisé le 26 octobre 2026** : les téléchargements fonctionnent maintenant.
 - Licence : CC0 pour les deux. On les crédite quand même.
 
 ## Domaines bloqués
 
 | Domaine | Rôle | Nécessaire ? |
 |---|---|---|
-| `acg-download.struffelproductions.com` | Téléchargement des textures ambientCG | Utile (tuiles plates, enduits variés). Poly Haven suffit pour démarrer |
 | `graph.mapillary.com` (et `www.mapillary.com`) | Photos de rue Mapillary (CC-BY-SA, Meta, pas Google). Demande aussi un jeton gratuit | Seulement si tu veux tester cette piste pour les façades |
 | `www.wikidata.org`, `query.wikidata.org` | Liens entre monuments, Commons et Mérimée | Non, OSM donne déjà ces liens |
 | `api.pop.culture.gouv.fr`, `data.culture.gouv.fr` | Accès structuré à POP | Non, les pages web suffisent |

@@ -1,0 +1,17 @@
+{
+ "cols": 760,
+ "rows": 712,
+ "res": 0.5,
+ "x0": -189.25,
+ "y1": 178.25,
+ "classes": {
+  "paving": 0,
+  "asphalt": 1,
+  "sidewalk": 2,
+  "sett": 3,
+  "gravel": 4,
+  "grass": 5,
+  "building": 6,
+  "paving_stones": 7
+ }
+}
