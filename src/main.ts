@@ -7,7 +7,7 @@ import { gameSpawn, startGame } from "./game/game";
 import { startViewer, viewerView } from "./game/viewer";
 import { CityResources } from "./render/buildings";
 import { createSky, HORIZON } from "./render/sky";
-import { CONTE, GROUND_PALETTE } from "./render/style";
+import { useTheme } from "./render/style";
 import { buildTileStyled, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
@@ -49,8 +49,8 @@ const sky = createSky(sunDir);
 scene.add(sky);
 const hemi = new THREE.HemisphereLight("#bcd3ee", "#9a8e78", 1.9);
 scene.add(hemi);
-// ?style=conte : direction artistique « conte peint » (aplats, sans textures de façade) ; sans paramètre, le rendu texturé.
-const style = params.get("style") === "conte" ? CONTE : null;
+// ?style=affiche|jouets|nuit : direction artistique en aplats (sans textures de façade) ; sans paramètre, le rendu texturé.
+const style = useTheme(params.get("style") ?? "");
 if (style) {
   scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
   sunLight.color.set(style.sun.color);
@@ -58,10 +58,34 @@ if (style) {
   hemi.color.set(style.hemi.sky);
   hemi.groundColor.set(style.hemi.ground);
   hemi.intensity = style.hemi.intensity;
+  renderer.toneMapping = style.tone === "neutral" ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = style.exposure;
   const u = (sky.material as THREE.ShaderMaterial).uniforms;
   (u["horizon"]!.value as THREE.Color).set(style.sky.horizon);
   (u["zenith"]!.value as THREE.Color).set(style.sky.zenith);
+  u["bands"]!.value = style.sky.bands;
+  u["disc"]!.value = style.sky.disc;
+  u["stars"]!.value = style.sky.stars;
+  addOverlay(style.overlay);
+}
+
+/** Grain de papier et vignette par-dessus l'image (deux couches CSS, très peu coûteuses). */
+function addOverlay([grain, vignette]: [number, number]): void {
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = 128;
+  const g = cv.getContext("2d")!;
+  const img = g.createImageData(128, 128);
+  for (let i = 0; i < 128 * 128; i++) {
+    const v = Math.random() * 255;
+    img.data[4 * i] = img.data[4 * i + 1] = img.data[4 * i + 2] = v;
+    img.data[4 * i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const el = document.createElement("div");
+  el.style.cssText = `position:fixed;inset:0;pointer-events:none;z-index:2;opacity:${grain};background:url(${cv.toDataURL()});mix-blend-mode:overlay;`;
+  const vg = document.createElement("div");
+  vg.style.cssText = `position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,${vignette}) 100%);`;
+  document.body.append(el, vg);
 }
 
 function resize(): void {
@@ -77,7 +101,7 @@ async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
-  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2), style ? GROUND_PALETTE : null);
+  const terrainView = await TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2), style ? style.ground : null);
   terrainView.settle(start.x, start.y);
   scene.add(terrainView.group);
 

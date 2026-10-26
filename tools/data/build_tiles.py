@@ -51,7 +51,7 @@ def lod_record(b, fiche):
 
 
 def main():
-    buildings = load("buildings.json")
+    buildings = load("buildings_clean.json")
     fiches = {f["id"]: f for f in load("facades.json")}
     trees = load("trees.json")
     props = load("props.json")

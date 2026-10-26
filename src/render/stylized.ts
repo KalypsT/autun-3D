@@ -7,7 +7,7 @@ import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { canvasTexture, rng } from "./paint";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./sprites";
-import { DOORS, GLASS, idKey, pick, roofColor, SHOPS, SHUTTERS, TREES, TRIM, wallColor } from "./style";
+import { idKey, pick, roofColor, T, wallColor } from "./style";
 
 const SKIRT = 0.4;
 const FOOT = 1.2;
@@ -43,14 +43,31 @@ function roofTexture(): THREE.CanvasTexture {
   return roofMap;
 }
 
+let gradientMap: THREE.DataTexture | null = null;
+/** Trois paliers de lumière pour l'ombrage « affiche ». */
+function toonGradient(): THREE.DataTexture {
+  if (!gradientMap) {
+    gradientMap = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
+    gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+    gradientMap.needsUpdate = true;
+  }
+  return gradientMap;
+}
+
 /** Matières partagées de la direction artistique « conte ». */
 export class StyleResources {
-  readonly wallMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  readonly detailMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  readonly roofMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+  private readonly gradient = T.toon ? toonGradient() : null;
+  private lit<P extends object>(p: P): THREE.Material {
+    return this.gradient ? new THREE.MeshToonMaterial({ ...p, gradientMap: this.gradient }) : new THREE.MeshLambertMaterial(p);
+  }
+  readonly wallMat = this.lit({ vertexColors: true });
+  readonly detailMat = this.lit({ vertexColors: true });
+  readonly roofMat = this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+  /** Vitres allumées (nuit) : sans éclairage. */
+  readonly glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
   readonly fenceMat = fenceMaterial();
-  readonly trunkMat = new THREE.MeshLambertMaterial({ color: "#6b5440" });
-  readonly crownMat = new THREE.MeshLambertMaterial({ flatShading: true });
+  readonly trunkMat = this.lit({ color: T.trunk });
+  readonly crownMat = this.lit({ flatShading: true });
 }
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -83,6 +100,22 @@ function panel(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
   else mb.quadGradient(at(s0, z0), at(s1, z0), at(s1, z1), at(s0, z1), n, low, high);
 }
 
+const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"], ["#f08a3a", "#ffd27a"]];
+let glowTarget: MeshBuilder | null = null;
+
+/** Vitre : dégradé bleuté le jour ; la nuit, la plupart sont allumées (aplats chauds sans éclairage). */
+function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number, z1: number, off: number, litShare = 0.62): void {
+  if (T.night && glowTarget) {
+    const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+    if (h < litShare) {
+      const [lo, hi] = pick(WARM, h * 13, 6);
+      panel(glowTarget, p, s0, s1, z0, z1, off, C(lo), C(hi));
+      return;
+    }
+  }
+  panel(mb, p, s0, s1, z0, z1, off, C(T.glass[0]), C(T.glass[1]));
+}
+
 const SUR = { stone: 0.14, plaster_band: 0.1, none: 0 } as const;
 
 function windowGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
@@ -90,12 +123,12 @@ function windowGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
   const [w, h] = size.split("x").map(Number) as [number, number];
   const sur = SUR[surround];
   const pad = sill === "1" ? 0.16 : 0.02;
-  const frame = C(frameHex ?? TRIM);
-  const trim = C(TRIM);
+  const frame = C(frameHex ?? T.trim);
+  const trim = C(T.trim);
   if (sur > 0) panel(mb, p, -(w / 2 + sur), w / 2 + sur, pad - 0.01, pad + h + sur, 0.02, trim);
   panel(mb, p, -w / 2, w / 2, pad, pad + h, 0.03, frame);
   const gi = Math.min(0.06, w * 0.12);
-  panel(mb, p, -w / 2 + gi, w / 2 - gi, pad + gi, pad + h - gi, 0.045, C(GLASS[0]), C(GLASS[1]));
+  glass(mb, p, -w / 2 + gi, w / 2 - gi, pad + gi, pad + h - gi, 0.045);
   const bar = 0.035;
   if (style === "panes_6" || style === "panes_4" || style === "panes_2" || style === "french_window") {
     panel(mb, p, -bar / 2, bar / 2, pad + gi, pad + h - gi, 0.06, frame);
@@ -104,7 +137,7 @@ function windowGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
   }
   if (sill === "1") panel(mb, p, -(w / 2 + sur + 0.05), w / 2 + sur + 0.05, 0, 0.1, 0.06, darker(trim, 0.92));
   if (shutter === "battant" || shutter === "persienne") {
-    const col = C(pick(SHUTTERS, idKey(parts[7] ?? ""), 2));
+    const col = C(pick(T.shutters, idKey(parts[7] ?? ""), 2));
     const edge = w / 2 + sur;
     for (const side of [-1, 1]) {
       const a = side * edge, b = side * (edge + w / 2);
@@ -116,11 +149,11 @@ function windowGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
 function doorGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
   const style = parts[1] as "simple" | "carriage" | "glazed" | "garage";
   const d = doorDims(style);
-  const col = style === "garage" ? C("#9aa0a2") : C(pick(DOORS, idKey(parts[2] ?? ""), 3));
-  const trim = C(TRIM);
+  const col = style === "garage" ? C("#9aa0a2") : C(pick(T.doors, idKey(parts[2] ?? ""), 3));
+  const trim = C(T.trim);
   if (style !== "garage") panel(mb, p, -(d.w / 2 + d.sur), d.w / 2 + d.sur, 0, d.h + d.sur, 0.03, trim);
   panel(mb, p, -d.w / 2, d.w / 2, 0.02, d.h, 0.045, darker(col, 0.8), col);
-  if (style === "glazed") panel(mb, p, -d.w / 2 + 0.12, d.w / 2 - 0.12, d.h * 0.35, d.h - 0.12, 0.06, C(GLASS[0]), C(GLASS[1]));
+  if (style === "glazed") glass(mb, p, -d.w / 2 + 0.12, d.w / 2 - 0.12, d.h * 0.35, d.h - 0.12, 0.06);
   if (style === "carriage") panel(mb, p, -d.w / 2 + 0.1, d.w / 2 - 0.1, d.h * 0.7, d.h - 0.1, 0.06, darker(col, 0.7), darker(col, 0.9));
   if (style !== "garage") panel(mb, p, -(d.w / 2 + d.sur + 0.06), d.w / 2 + d.sur + 0.06, -0.02, 0.1, 0.07, darker(trim, 0.85));
 }
@@ -129,10 +162,10 @@ function shopGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
   const hm = Number(parts[3]);
   const door = parts[4] === "door";
   const w = door ? 1.2 : 1.4;
-  const col = C(pick(SHOPS, idKey(parts[1] ?? ""), 4));
+  const col = C(pick(T.shops, idKey(parts[1] ?? ""), 4));
   panel(mb, p, -w / 2, w / 2, 0, hm, 0.05, col);
   const bulk = door ? 0.15 : 0.55;
-  panel(mb, p, -w / 2 + 0.07, w / 2 - 0.07, bulk, hm - 0.08, 0.07, C(GLASS[0]), C(GLASS[1]));
+  glass(mb, p, -w / 2 + 0.07, w / 2 - 0.07, bulk, hm - 0.08, 0.07, 0.9);
   if (!door) panel(mb, p, -w / 2 + 0.1, w / 2 - 0.1, 0.07, bulk - 0.06, 0.065, darker(col, 0.8));
   if (door) panel(mb, p, -0.03, 0.03, bulk, hm - 0.08, 0.085, col);
 }
@@ -150,7 +183,7 @@ function railingGeometry(mb: MeshBuilder, p: Placement): void {
 }
 
 function signGeometry(mb: MeshBuilder, p: Placement, parts: string[], wm: number): void {
-  const col = C(pick(SHOPS, idKey(parts[2] ?? ""), 4));
+  const col = C(pick(T.shops, idKey(parts[2] ?? ""), 4));
   panel(mb, p, -wm / 2, wm / 2, 0, 0.55, 0, col);
   panel(mb, p, -wm / 2 + 0.05, wm / 2 - 0.05, 0.07, 0.48, 0.015, darker(col, 0.75), col.clone().multiplyScalar(1.08));
 }
@@ -175,7 +208,7 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
     crowns.setMatrixAt(2 * i, m);
     m.makeScale(rad * 0.62, ch * 0.3, rad * 0.62).setPosition(x + rad * 0.12, z + trunk * 0.6 + ch * 0.82, -y);
     crowns.setMatrixAt(2 * i + 1, m);
-    color.set(pick(TREES, key, 5));
+    color.set(pick(T.trees, key, 5));
     crowns.setColorAt(2 * i, color);
     crowns.setColorAt(2 * i + 1, color.clone().multiplyScalar(1.12));
   });
@@ -193,7 +226,8 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
 export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Terrain): TileMeshes {
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
   const plan = planFacades(tile.buildings, fiches, terrain);
-  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = plan.misc;
+  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = plan.misc, glow = new MeshBuilder();
+  glowTarget = glow;
 
   for (const b of tile.buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
@@ -203,8 +237,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     b.holes.forEach((hole, i) => wall(walls, hole, b.holeTop[i]!, terrain, wc));
     const rm: RoofMaterial = f?.materials.roof ?? "tuile_plate";
     const rc = roofColor(rm, key);
-    if (b.q.fallback) flatRoof(roofs, b, terrain, rc);
-    else roofFaces(roofs, b, rc);
+    roofFaces(roofs, b, rc);
     for (const s of b.steps) {
       const [x1, y1, l1, h1, x2, y2, l2, h2] = s as [number, number, number, number, number, number, number, number];
       const len = Math.hypot(x2 - x1, y2 - y1);
@@ -247,7 +280,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     if (mb.triangleCount === 0) return;
     const m = new THREE.Mesh(mb.build(), mat);
     m.name = name;
-    m.castShadow = name !== "grilles";
+    m.castShadow = name !== "grilles" && name !== "vitres";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -256,6 +289,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   add("murs", walls, res.wallMat);
   add("toits", roofs, res.roofMat);
   add("details", detail, res.detailMat);
+  add("vitres", glow, res.glowMat);
   add("pleins", solid, res.detailMat);
   add("grilles", fence, res.fenceMat);
   if (tile.trees.length) {
@@ -289,23 +323,5 @@ function roofFaces(rb: UvMeshBuilder, b: Building, base: THREE.Color): void {
       const va = verts[i!]!, vb = verts[j!]!, vc = verts[k!]!;
       rb.tri(P(va), P(vb), P(vc), n, planeUV(a, bb, va.x, va.y, 1.4), planeUV(a, bb, vb.x, vb.y, 1.4), planeUV(a, bb, vc.x, vc.y, 1.4), base);
     }
-  }
-}
-
-/** Toit de repli (relevé LiDAR inutilisable) : couvercle plat, entre l'égout et le faîtage. */
-function flatRoof(rb: UvMeshBuilder, b: Building, terrain: Terrain, color: THREE.Color): void {
-  const top = b.eave + (b.ridge - b.eave) * 0.45;
-  const zb = Math.max(top, terrain.heightAt(b.ring[0]!, b.ring[1]!) + 3);
-  const open = (coords: number[]): THREE.Vector2[] => {
-    const pts: THREE.Vector2[] = [];
-    for (let i = 0; i < coords.length; i += 2) pts.push(new THREE.Vector2(coords[i]!, coords[i + 1]!));
-    return pts;
-  };
-  const contour = open(b.ring), holes = b.holes.map(open);
-  const verts = [...contour, ...holes.flat()];
-  for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
-    const va = verts[i!]!, vb = verts[j!]!, vc = verts[k!]!;
-    rb.tri(toThree(va.x, va.y, zb), toThree(vb.x, vb.y, zb), toThree(vc.x, vc.y, zb), [0, 1, 0],
-      [va.x / 1.4, va.y / 1.4], [vb.x / 1.4, vb.y / 1.4], [vc.x / 1.4, vc.y / 1.4], color);
   }
 }
