@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { addTileColliders } from "../core/world";
 import { loadTile } from "../data/load";
-import type { Furniture, TileData, TileInfo, WorldBase } from "../data/types";
+import type { Furniture, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
 import { disposeTile, type TileMeshes, type TileStats } from "./stylized";
@@ -16,13 +16,21 @@ const BUDGET = 4;
 /** Anticipation : on charge aussi autour du point où l'on sera dans LOOKAHEAD secondes. */
 const LOOKAHEAD = 3;
 
+/** Ce qu'une tuile détaillée garde pour le reste du jeu : mobilier, escaliers, marquages au sol. */
+export interface TileExtras {
+  id: string;
+  furniture: Furniture[];
+  stairs: StairsZone[];
+  marks: number[][][];
+}
+
 interface Entry {
   info: TileInfo;
   lod: THREE.Mesh | null;
   detail: TileMeshes | null;
   data: TileData | null;
-  /** Mobilier de la tuile détaillée (gardé après construction, pour placer les véhicules). */
-  furniture: Furniture[] | null;
+  /** Extrait de la tuile détaillée gardé après construction (pour placer les véhicules). */
+  extras: TileExtras | null;
   fetching: boolean;
   /** Maillages pas encore montrés (envoi à la carte graphique étalé, un par image) ; la silhouette reste jusque-là. */
   pending: THREE.Object3D[];
@@ -65,8 +73,9 @@ export class TileManager {
   readonly builds: BuildRecord[] = [];
   /** Nombre total de constructions terminées depuis le début. */
   buildCount = 0;
-  /** Appelé après chaque construction de tuile détaillée (données de la tuile). */
-  onBuild: ((data: Pick<TileData, "furniture">) => void) | null = null;
+  /** Appelé après chaque construction de tuile détaillée, et quand une tuile détaillée est déchargée. */
+  onBuild: ((extras: TileExtras) => void) | null = null;
+  onUnload: ((id: string) => void) | null = null;
 
   constructor(
     world: WorldBase,
@@ -79,7 +88,7 @@ export class TileManager {
     for (const info of world.manifest.tiles) {
       const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain);
       if (lod) this.group.add(lod);
-      this.entries.set(info.id, { info, lod, detail: null, data: null, furniture: null, fetching: false, pending: [] });
+      this.entries.set(info.id, { info, lod, detail: null, data: null, extras: null, fetching: false, pending: [] });
     }
   }
 
@@ -101,8 +110,8 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
-    e.furniture = data.furniture;
-    this.onBuild?.(data);
+    e.extras = { id: e.info.id, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
+    this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);
   }
@@ -122,8 +131,9 @@ export class TileManager {
     disposeTile(e.detail);
     e.detail = null;
     e.pending = [];
-    e.furniture = null;
+    e.extras = null;
     this.colliders?.removeTag(e.info.id);
+    this.onUnload?.(e.info.id);
     this.show(e);
   }
 
@@ -191,10 +201,10 @@ export class TileManager {
     this.work();
   }
 
-  /** Mobilier des tuiles détaillées actuellement chargées. */
-  loadedFurniture(): Furniture[][] {
-    const out: Furniture[][] = [];
-    for (const e of this.entries.values()) if (e.furniture) out.push(e.furniture);
+  /** Extraits des tuiles détaillées actuellement chargées. */
+  loadedExtras(): TileExtras[] {
+    const out: TileExtras[] = [];
+    for (const e of this.entries.values()) if (e.extras) out.push(e.extras);
     return out;
   }
 

@@ -48,6 +48,12 @@ export interface VehicleSpec {
   wheelRadius: number;
   /** Penche dans les virages (deux-roues). */
   leans: boolean;
+  /** Roulis de caisse (rad par m/s² d'accélération latérale), vers l'extérieur du virage ; 0 pour un deux-roues. */
+  bodyRoll: number;
+  /** Frein moteur quand on lâche l'accélérateur (N). */
+  engineBrake: number;
+  /** Part du poids sur les roues motrices (motricité bornée par l'adhérence) ; 1 = pas de limite pratique. */
+  driveShare: number;
 }
 
 export const GRAVITY = 9.81;
@@ -78,6 +84,9 @@ export const BIKE: VehicleSpec = {
   impactFriction: 0.35,
   wheelRadius: 0.34,
   leans: true,
+  bodyRoll: 0,
+  engineBrake: 0,
+  driveShare: 1,
 };
 
 /**
@@ -109,6 +118,43 @@ export const SCOOTER: VehicleSpec = {
   impactFriction: 0.35,
   wheelRadius: 0.11,
   leans: true,
+  bodyRoll: 0,
+  engineBrake: 0,
+  driveShare: 1,
+};
+
+/**
+ * Petite citadine à traction avant avec son conducteur : 1 250 kg, 66 kW (90 ch) dont ≈ 56 kW aux roues, 0 à 100 km/h en ≈ 12 s,
+ * freinage ≈ 0,9 g, pneus de tourisme. Centre de gravité vers l'avant (moteur).
+ */
+export const CAR: VehicleSpec = {
+  mass: 1250,
+  yawInertia: 1850,
+  front: 1.05,
+  rear: 1.55,
+  maxSteer: 0.62,
+  steerFade: 9,
+  steerRate: 1.8,
+  corneringFront: 70000,
+  corneringRear: 80000,
+  grip: 0.95,
+  power: 56000,
+  maxDrive: 5200,
+  driveFadeFrom: 165 / 3.6,
+  topSpeed: 175 / 3.6,
+  maxBrake: 11000,
+  reverseSpeed: 6,
+  reverseForce: 3500,
+  rolling: 0.013,
+  drag: 0.39,
+  hull: [[1.25, 0.82], [0, 0.85], [-1.25, 0.82]],
+  restitution: 0.2,
+  impactFriction: 0.3,
+  wheelRadius: 0.3,
+  leans: false,
+  bodyRoll: 0.012,
+  engineBrake: 350,
+  driveShare: 1.55 / 2.6,
 };
 
 export interface VehicleState {
@@ -172,10 +218,12 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /** Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. */
-export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: Terrain, colliders: Colliders): void {
+export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: Terrain, colliders: Colliders, extra: Colliders | null = null): void {
   const h = dt / SUBSTEPS;
   for (let i = 0; i < SUBSTEPS; i++) integrate(s, spec, input, h, terrain);
   collide(s, spec, colliders);
+  // Obstacles propres à certains véhicules (escaliers pour une voiture).
+  if (extra) collide(s, spec, extra);
   // Limites du monde (3 m de marge).
   const x = clamp(s.x, terrain.xMin + 3, terrain.xMax - 3), y = clamp(s.y, terrain.yMin + 3, terrain.yMax - 3);
   if (x !== s.x) s.vx = 0;
@@ -191,7 +239,8 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   s.speed = s.vx * fx + s.vy * fy;
   s.wheel += (s.speed * dt) / spec.wheelRadius;
   // Inclinaison d'un deux-roues : équilibre entre la gravité et l'accélération latérale (lissée).
-  const target = spec.leans ? clamp(Math.atan2(s.speed * s.yawRate, GRAVITY), -0.75, 0.75) : 0;
+  const lateral = s.speed * s.yawRate;
+  const target = spec.leans ? clamp(Math.atan2(lateral, GRAVITY), -0.75, 0.75) : clamp(-lateral * spec.bodyRoll, -0.08, 0.08);
   s.lean += (target - s.lean) * Math.min(1, dt * 10);
 }
 
@@ -215,7 +264,8 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   const slope = terrain.heightAt(s.x + sin * 0.5, s.y + cos * 0.5) - terrain.heightAt(s.x - sin * 0.5, s.y - cos * 0.5);
   let fx = 0, braking = 0;
   if (u < -0.3 && input.throttle > 0) braking = spec.maxBrake * input.throttle;
-  else fx = driveForce(spec, u, input.throttle);
+  else fx = Math.min(driveForce(spec, u, input.throttle), spec.grip * m * GRAVITY * spec.driveShare);
+  if (input.throttle <= 0 && u > 0.3) braking += spec.engineBrake;
   if (input.brake > 0) {
     if (u > 0.3) braking = spec.maxBrake * input.brake;
     else if (u > -spec.reverseSpeed && input.throttle <= 0) fx -= spec.reverseForce * input.brake;

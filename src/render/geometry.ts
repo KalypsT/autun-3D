@@ -21,7 +21,7 @@ export function finish<T>(steps: Steps<T>): T {
 }
 
 /** Nombre de flottants copiés entre deux points d'arrêt lors de l'assemblage d'un maillage. */
-const COPY_CHUNK = 90_000;
+const COPY_CHUNK = 40_000;
 
 /** Accumulateur de triangles à normales plates et couleurs par sommet : un seul maillage par matériau. */
 export class MeshBuilder {

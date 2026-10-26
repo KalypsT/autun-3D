@@ -3,7 +3,7 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { BIKE, createVehicle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { BIKE, CAR, createVehicle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -175,5 +175,85 @@ describe("trottinette électrique", () => {
     drive(t, { throttle: 0, brake: 0, steer: 0 }, 4, flat, none, SCOOTER);
     drive(b, { throttle: 0, brake: 0, steer: 0 }, 4);
     expect(t.speed).toBeLessThan(b.speed);
+  });
+});
+
+describe("voiture", () => {
+  const full = { throttle: 1, brake: 0, steer: 0 };
+  const big = flatTerrain();
+
+  /** Terrain plat de 2 × 2 km pour les essais à haute vitesse. */
+  function wide(): Terrain {
+    const meta = { cols: 400, rows: 400, res: 5, x0: -1000, y0: -1000, y1: 1000, base: 0, unit: 0.01, zmin: 0, zmax: 0 } as TerrainMeta;
+    return new Terrain(meta, new Float32Array(400 * 400));
+  }
+
+  it("0 à 100 km/h en 10 à 14 s", () => {
+    const t = wide();
+    const c = createVehicle(0, -900, 0, t);
+    let time = 0;
+    while (kmh(c.speed) < 100 && time < 30) {
+      stepVehicle(c, CAR, full, DT, t, none);
+      time += DT;
+    }
+    expect(time).toBeGreaterThan(10);
+    expect(time).toBeLessThan(14);
+  });
+
+  it("freine de 50 km/h à l'arrêt en moins de 12 m", () => {
+    const c = createVehicle(0, -90, 0, big);
+    c.vy = c.speed = 50 / 3.6;
+    const y0 = c.y;
+    brakingTime(c, CAR);
+    expect(c.y - y0).toBeLessThan(12);
+    expect(c.y - y0).toBeGreaterThan(9);
+  });
+
+  it("le frein moteur ralentit plus qu'une roue libre de vélo", () => {
+    const c = createVehicle(0, -90, 0, big);
+    c.vy = 14;
+    drive(c, { throttle: 0, brake: 0, steer: 0 }, 2, big, none, CAR);
+    expect(c.speed).toBeLessThan(13.5);
+    expect(c.speed).toBeGreaterThan(11);
+  });
+
+  it("braquage à fond à 50 km/h : la voiture tourne, sous-vire sans partir en tête-à-queue", () => {
+    const t = wide();
+    const c = createVehicle(0, 0, 0, t);
+    c.vy = 50 / 3.6;
+    drive(c, { throttle: 0.3, brake: 0, steer: 1 }, 4, t, none, CAR);
+    expect(c.heading).toBeGreaterThan(1);
+    expect(Math.abs(c.speed * c.yawRate)).toBeLessThan(0.98 * 9.81);
+    // Vitesse latérale faible devant la vitesse longitudinale : pas de tête-à-queue.
+    const lat = Math.abs(c.vx * Math.cos(c.heading) - c.vy * Math.sin(c.heading));
+    expect(lat).toBeLessThan(Math.abs(c.speed) * 0.3);
+    // La caisse penche vers l'extérieur (gauche) d'un virage à droite.
+    expect(c.lean).toBeLessThan(0);
+  });
+
+  it("à fond au démarrage, la motricité est bornée par l'adhérence des roues avant", () => {
+    const c = createVehicle(0, -90, 0, big);
+    stepVehicle(c, CAR, full, DT, big, none);
+    const accel = c.speed / DT;
+    expect(accel).toBeLessThanOrEqual(CAR.grip * 9.81 * CAR.driveShare + 0.01);
+  });
+
+  it("contre un mur à 30 km/h : arrêt net sans traverser", () => {
+    const c0 = new Colliders();
+    c0.addSegment(-20, 10, 20, 10);
+    const c = createVehicle(0, -10, 0, big);
+    c.vy = 30 / 3.6;
+    drive(c, { throttle: 0, brake: 0, steer: 0 }, 3, big, c0, CAR);
+    expect(c.y + 1.25 + 0.82).toBeLessThanOrEqual(10.01);
+    expect(Math.abs(c.speed)).toBeLessThan(2.5);
+  });
+
+  it("les obstacles supplémentaires (escaliers) arrêtent la voiture", () => {
+    const stairs = new Colliders();
+    stairs.addSegment(-20, 10, 20, 10);
+    const c = createVehicle(0, -10, 0, big);
+    c.vy = 8;
+    for (let i = 0; i < 180; i++) stepVehicle(c, CAR, { throttle: 0, brake: 0, steer: 0 }, DT, big, none, stairs);
+    expect(c.y).toBeLessThan(10);
   });
 });

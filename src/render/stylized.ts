@@ -303,7 +303,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
 
 /** Bâtiments et éléments de façade traités entre deux points d'arrêt. */
 const BUILDINGS_PER_STEP = 6;
-const PLACEMENTS_PER_STEP = 40;
+const PLACEMENTS_PER_STEP = 12;
 
 /** Comme `buildTileStyled`, découpé en tranches de quelques millisecondes (cf. `TileManager`). */
 export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: Terrain): Steps<TileMeshes> {
@@ -358,10 +358,12 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: Te
       case "sign": signGeometry(detail, p, parts, sizes.get(p.key) ?? 2); break;
       default: break;
     }
-    if (++count % PLACEMENTS_PER_STEP === 0) yield;
+    // Une enseigne dessine son nom dans l'atlas (texte sur canevas) : coûteux, on rend la main après chacune.
+    if (parts[0] === "sign" || ++count % PLACEMENTS_PER_STEP === 0) yield;
   }
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
+  yield;
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
   yield;
   if (!skip.includes("stairs")) buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
@@ -388,8 +390,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: Te
   // Murs, façades, murets, poteaux et mobilier partagent une matière : un seul maillage, assemblé par blocs.
   const solid = walls.triangleCount + detail.triangleCount + posts.triangleCount;
   if (solid > 0) put("bati", yield* walls.buildSteps([detail, posts]), solid, res.wallMat);
-  add("vitres", glow, res.glowMat);
+  if (glow.triangleCount > 0) put("vitres", yield* glow.buildSteps(), glow.triangleCount, res.glowMat);
   res.signAtlas.flush();
+  yield;
   add("enseignes", names, res.signMat);
   add("halos", halo, res.haloMat);
   yield;

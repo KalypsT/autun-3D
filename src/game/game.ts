@@ -5,6 +5,7 @@ import { Controls } from "../input/controls";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
+import type { VehicleModel } from "../render/vehicle-model";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
 /** Point de départ : place du Champ de Mars, face au nord (mairie et théâtre au fond). */
@@ -20,10 +21,7 @@ const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
-/** On peut monter sur un véhicule à moins de cette distance (m). */
-const MOUNT_DISTANCE = 2.2;
-/** Caméra de poursuite : distance à l'arrêt et inclinaison de repos. */
-const CHASE_DISTANCE = 3.9;
+/** Caméra de poursuite : inclinaison de repos. */
 const CHASE_PITCH = 0.24;
 
 function angleDelta(from: number, to: number): number {
@@ -60,8 +58,10 @@ export function startGame(ctx: GameContext): void {
 
   // Véhicules garés : aux parkings à vélos des tuiles déjà construites, puis de chaque nouvelle tuile.
   const fleet = new Fleet(scene, colliders, terrain);
-  for (const furniture of tiles.loadedFurniture()) fleet.addFromTile({ furniture });
-  tiles.onBuild = (data) => fleet.addFromTile(data);
+  fleet.keepClear(spawn.x, spawn.y, 4);
+  for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
+  tiles.onBuild = (extras) => fleet.addFromTile(extras);
+  tiles.onUnload = (id) => fleet.removeTile(id);
 
   const controls = new Controls(
     document.getElementById("touch")!,
@@ -87,6 +87,7 @@ export function startGame(ctx: GameContext): void {
   const distance = Number(params.get("dist") ?? 3.6);
   let camDist = distance;
   let riding: Vehicle | null = null;
+  let rideModel: VehicleModel | null = null;
   /** Descente demandée en roulant : on freine d'abord. */
   let leaving = false;
   let crank = 0;
@@ -103,9 +104,9 @@ export function startGame(ctx: GameContext): void {
   const mount = (v: Vehicle): void => {
     riding = v;
     leaving = false;
-    fleet.take(v);
-    v.model.group.add(model.group);
-    model.group.visible = true;
+    rideModel = fleet.take(v);
+    rideModel.group.add(model.group);
+    model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
     gasEl.textContent = KINDS[v.kind].gas;
     document.body.classList.add("driving");
@@ -113,13 +114,16 @@ export function startGame(ctx: GameContext): void {
   const dismount = (): void => {
     const v = riding!;
     const s = v.state;
-    // Pied à terre du côté gauche, hors des obstacles.
-    const r = colliders.resolve(s.x - Math.cos(s.heading) * 0.75, s.y + Math.sin(s.heading) * 0.75, PLAYER_RADIUS);
+    // Pied à terre du côté gauche (portière d'une voiture), hors des obstacles.
+    const side = v.kind === "car" ? 1.45 : 0.75;
+    const r = colliders.resolve(s.x - Math.cos(s.heading) * side, s.y + Math.sin(s.heading) * side, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: s.heading });
     s.vx = s.vy = s.yawRate = s.steer = s.lean = 0;
     s.speed = 0;
-    v.model.update(s);
+    rideModel?.update(s);
     scene.add(model.group);
+    model.group.visible = true;
+    rideModel = null;
     fleet.park(v);
     riding = null;
     leaving = false;
@@ -133,15 +137,15 @@ export function startGame(ctx: GameContext): void {
       return;
     }
     const n = fleet.nearest(player.x, player.y);
-    if (n && n.distance < MOUNT_DISTANCE) mount(n.vehicle);
+    if (n && n.distance < KINDS[n.vehicle.kind].reach) mount(n.vehicle);
   };
   actionEl.addEventListener("click", act);
   window.addEventListener("keydown", (e) => {
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
   });
-  // ?ride=velo ou ?ride=trottinette : départ sur un véhicule (captures, essais).
-  const ride = { velo: "bike", trottinette: "scooter" }[params.get("ride") ?? ""] as VehicleKind | undefined;
+  // ?ride=velo, trottinette ou voiture : départ sur un véhicule (captures, essais).
+  const ride = { velo: "bike", trottinette: "scooter", voiture: "car" }[params.get("ride") ?? ""] as VehicleKind | undefined;
   if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
 
   let hudTimer = 0;
@@ -150,13 +154,13 @@ export function startGame(ctx: GameContext): void {
     let label = "";
     const n = riding ? null : fleet.nearest(player.x, player.y);
     if (riding) label = "Descendre";
-    else if (n && n.distance < MOUNT_DISTANCE) label = `Monter ${KINDS[n.vehicle.kind].icon}`;
+    else if (n && n.distance < KINDS[n.vehicle.kind].reach) label = `Monter ${KINDS[n.vehicle.kind].icon}`;
     if (label !== actionLabel) {
       actionLabel = label;
       actionEl.textContent = label;
       actionEl.classList.toggle("show", label !== "");
     }
-    const showNearby = !!n && n.distance >= MOUNT_DISTANCE && n.distance < 400;
+    const showNearby = !!n && n.distance >= KINDS[n.vehicle.kind].reach && n.distance < 400;
     nearbyEl.classList.toggle("show", showNearby);
     if (showNearby) {
       const bearing = Math.atan2(n.vehicle.state.x - player.x, n.vehicle.state.y - player.y);
@@ -178,8 +182,8 @@ export function startGame(ctx: GameContext): void {
     while (acc >= STEP) {
       if (riding) {
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer };
-        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders);
-        if (drive.throttle > 0 && riding.model.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
+        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.kind === "car" ? fleet.carOnly : null);
+        if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else stepPlayer(player, { forward: input.forward, right: input.right, run: input.run }, yaw, STEP, terrain, colliders);
       acc -= STEP;
     }
@@ -203,8 +207,9 @@ export function startGame(ctx: GameContext): void {
 
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
-    const wanted = riding ? CHASE_DISTANCE + speed * 0.15 : distance;
-    const focusZ = riding ? player.z + 0.2 : player.z;
+    const chase = riding ? KINDS[riding.kind].camera : null;
+    const wanted = chase ? chase.distance + speed * chase.perSpeed : distance;
+    const focusZ = chase ? player.z + chase.height : player.z;
     const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: wanted }, colliders, terrain);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
@@ -218,10 +223,10 @@ export function startGame(ctx: GameContext): void {
       camera.updateProjectionMatrix();
     }
 
-    if (riding) {
-      riding.model.update(riding.state);
-      if (riding.model.pose === "pedal") model.ride(riding.model.seat, crank);
-      else model.stand(riding.model.seat);
+    if (riding && rideModel) {
+      rideModel.update(riding.state);
+      if (rideModel.pose === "pedal") model.ride(rideModel.seat, crank);
+      else if (rideModel.pose === "stand") model.stand(rideModel.seat);
     } else {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;

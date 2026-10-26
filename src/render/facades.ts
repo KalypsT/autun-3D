@@ -155,9 +155,10 @@ export function* planFacadesSteps(buildings: readonly Building[], fiches: Readon
     })();
     const doorStyle = f.ground.door.style;
 
-    f.walls.forEach((run, runIdx) => {
-      if (run.role === "party" || run.length < 1.8) return;
-      if (f.ground.kind === "blank" && run.eave - run.datum < 3.6) return;
+    // Boucle (et non forEach) pour pouvoir rendre la main après chaque pan de mur : certains bâtiments en ont des dizaines.
+    for (const [runIdx, run] of f.walls.entries()) {
+      if (run.role === "party" || run.length < 1.8) continue;
+      if (f.ground.kind === "blank" && run.eave - run.datum < 3.6) continue;
       const pl = runPolyline(b, run);
       const isStreet = run.role === "street";
       plan.stats.runs++;
@@ -182,7 +183,7 @@ export function* planFacadesSteps(buildings: readonly Building[], fiches: Readon
       const bayW = fa.bayWidth * (isStreet ? 1 : 1.15);
       const margin = 0.6;
       const usable = run.length - 2 * margin;
-      if (usable < 0.9) return;
+      if (usable < 0.9) continue;
       const nBays = Math.max(1, Math.round(usable / bayW));
       const bay = usable / nBays;
       const center = (i: number): number => margin + (i + 0.5) * bay;
@@ -322,8 +323,8 @@ export function* planFacadesSteps(buildings: readonly Building[], fiches: Readon
           plan.stats.balconies++;
         }
       }
-    });
-    yield;
+      yield;
+    }
   }
   return plan;
 }

@@ -100,8 +100,11 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     for (const poly of polys) {
       fill(poly, spec.lift, color, true);
-      if (name === "walk") curbs(mb, [poly], terrain, color, onEdge);
       yield;
+      if (name === "walk") {
+        curbs(mb, [poly], terrain, color, onEdge);
+        yield;
+      }
     }
   }
   const marks = new THREE.Color(T.trim);
