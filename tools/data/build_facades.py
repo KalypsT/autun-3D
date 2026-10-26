@@ -77,7 +77,7 @@ def local(lon, lat):
 
 
 def main():
-    buildings = json.load(open(c.CACHE / "work" / "buildings.json"))
+    buildings = json.load(open(c.CACHE / "work" / "buildings_clean.json"))
     streets = json.load(open(c.OUT / "streets.json"))
     osm = json.load(open(c.CACHE / "raw" / "osm.json"))["elements"]
     bdnb_rows = json.load(open(c.CACHE / "raw" / "bdnb.json"))

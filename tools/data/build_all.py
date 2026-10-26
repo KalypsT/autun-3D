@@ -11,7 +11,7 @@ from pathlib import Path
 import config as c
 
 here = Path(__file__).parent
-steps = ["fetch.py", "extract_lidar.py", "build_terrain.py", "build_buildings.py", "build_streets.py", "build_trees.py", "build_facades.py", "build_tiles.py", "check_buildings.py"]
+steps = ["fetch.py", "extract_lidar.py", "build_terrain.py", "build_buildings.py", "build_roofs.py", "build_streets.py", "build_trees.py", "build_facades.py", "build_tiles.py", "check_buildings.py"]
 for step in steps:
     if step == "extract_lidar.py" and (c.CACHE / "points.npz").exists():
         print(f"= {step}")
