@@ -214,6 +214,7 @@ export function startBench(ctx: GameContext): void {
 
   let last = performance.now();
   startPhase();
+  ctx.ready();
   const frame = (now: number): void => {
     const ms = now - last;
     last = now;
