@@ -128,12 +128,13 @@ def main():
     blocks = ground[: H4 * k, : W4 * k].reshape(H4, k, W4, k).transpose(0, 2, 1, 3).reshape(H4, W4, k * k)
     counts = np.stack([(blocks == cid).sum(axis=2) for cid in range(8)])
     major = counts.argmax(axis=0).astype(np.uint8)
-    for name, cls_id in (("sett", 3), ("gravel", 4), ("paving", 0), ("asphalt", 1)):
+    # L'asphalte hors chaussée vient surtout de l'ombre et des toits sombres : seuls les parkings d'OSM le dessinent.
+    for name, cls_id in (("sett", 3), ("gravel", 4), ("paving", 0)):
         m = ndimage.binary_opening(ndimage.binary_closing(major == cls_id, iterations=1), iterations=1)
         lab, n = ndimage.label(m)
         if n:
             sizes = ndimage.sum(m, lab, range(1, n + 1))
-            m = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= 12])  # au moins ~50 m²
+            m = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= 20])  # au moins ~50 m²
         g = raster_polygons(m, c.RES * k).buffer(0.8).buffer(-0.8)
         plazas[name].append(g)
     print("places brutes", round(time.time() - t0), "s", flush=True)
@@ -154,10 +155,10 @@ def main():
 
     layers = {}
     for cls, g in roads.items():
-        layers[f"road_{cls}"] = clean(g)
+        layers[f"road_{cls}"] = clean(g.simplify(0.12))
     for cls, g in P.items():
-        layers[f"plaza_{cls}"] = clean(g, 3.0)
-    layers["walk"] = clean(W)
+        layers[f"plaza_{cls}"] = clean(g.buffer(2.0, join_style="round").buffer(-2.0, join_style="round").simplify(1.2), 40.0)
+    layers["walk"] = clean(W.simplify(0.1))
 
     # --- Marquages ---------------------------------------------------------------------
     marks = []

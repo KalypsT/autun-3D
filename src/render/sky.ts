@@ -12,6 +12,7 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
       sun: { value: sunDir.clone().normalize() },
       horizon: { value: HORIZON.clone() },
       zenith: { value: new THREE.Color("#4a84c4") },
+      mid: { value: new THREE.Color("#8ab4dc") },
       bands: { value: 0 },
       disc: { value: 0 },
       stars: { value: 0 },
@@ -19,7 +20,7 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
     },
     vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
-      varying vec3 vDir; uniform vec3 sun; uniform vec3 horizon; uniform vec3 zenith; uniform float bands; uniform float disc; uniform float stars; uniform float clouds;
+      varying vec3 vDir; uniform vec3 sun; uniform vec3 horizon; uniform vec3 zenith; uniform vec3 mid; uniform float bands; uniform float disc; uniform float stars; uniform float clouds;
       float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float vnoise(vec2 p) {
         vec2 i = floor(p), f = fract(p);
@@ -31,7 +32,7 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
       void main() {
         float h = clamp(vDir.y, 0.0, 1.0);
         if (bands > 0.5) h = floor(h * bands + 0.5) / bands;
-        vec3 col = mix(horizon, zenith, pow(h, 0.55));
+        vec3 col = h < 0.4 ? mix(horizon, mid, h / 0.4) : mix(mid, zenith, (h - 0.4) / 0.6);
         float s = max(dot(normalize(vDir), sun), 0.0);
         col += vec3(1.0, 0.85, 0.6) * (pow(s, 6.0) * 0.18 + pow(s, 180.0) * 0.9);
         if (disc > 0.5) col = mix(col, vec3(1.0, 0.96, 0.8), smoothstep(0.9965, 0.9975, s) );

@@ -61,6 +61,7 @@ renderer.toneMappingExposure = style.exposure;
 {
   const u = (sky.material as THREE.ShaderMaterial).uniforms;
   (u["horizon"]!.value as THREE.Color).set(style.sky.horizon);
+  (u["mid"]!.value as THREE.Color).set(style.sky.mid);
   (u["zenith"]!.value as THREE.Color).set(style.sky.zenith);
   u["bands"]!.value = style.sky.bands;
   u["disc"]!.value = style.sky.disc;

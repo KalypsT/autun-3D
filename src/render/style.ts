@@ -5,7 +5,7 @@ import type { Era, RoofMaterial } from "../data/types";
 export interface Theme {
   id: string;
   label: string;
-  sky: { horizon: string; zenith: string; bands: number; disc: number; stars: number; clouds: number };
+  sky: { horizon: string; mid: string; zenith: string; bands: number; disc: number; stars: number; clouds: number };
   fog: [string, number, number];
   sun: { color: string; intensity: number };
   hemi: { sky: string; ground: string; intensity: number };
@@ -34,7 +34,7 @@ export interface Theme {
 export const THEMES: Record<string, Theme> = {
   affiche: {
     id: "affiche", label: "Affiche de voyage",
-    sky: { horizon: "#f6d9a8", zenith: "#2f7f8f", bands: 7, disc: 1, stars: 0, clouds: 1 },
+    sky: { horizon: "#f8dcae", mid: "#8fd0cf", zenith: "#2a86ad", bands: 7, disc: 1, stars: 0, clouds: 1 },
     fog: ["#f2cf9a", 180, 800],
     sun: { color: "#ffe2b0", intensity: 3.0 }, hemi: { sky: "#8fc3c4", ground: "#c0603a", intensity: 1.3 },
     exposure: 1.0, tone: "neutral", toon: true, night: false, overlay: [0.07, 0.22],
@@ -46,7 +46,7 @@ export const THEMES: Record<string, Theme> = {
   },
   nuit: {
     id: "nuit", label: "Autun la nuit",
-    sky: { horizon: "#2a3a6b", zenith: "#080d24", bands: 0, disc: 0, stars: 1, clouds: 0 },
+    sky: { horizon: "#2a3a6b", mid: "#18285a", zenith: "#080d24", bands: 0, disc: 0, stars: 1, clouds: 0 },
     fog: ["#27356b", 90, 560],
     sun: { color: "#a9bfff", intensity: 2.0 }, hemi: { sky: "#4a62b0", ground: "#2a2a48", intensity: 2.4 },
     exposure: 1.25, tone: "aces", toon: false, night: true, overlay: [0, 0.3],
