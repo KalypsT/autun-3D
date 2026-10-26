@@ -145,6 +145,10 @@ export interface WorldManifest {
 
 /** Contenu détaillé d'une tuile de 250 m (fichier tiles/<col>_<row>.json). */
 export interface TileData {
+  /** Emprise locale de la tuile : x0, y0, x1, y1. */
+  bounds: [number, number, number, number];
+  /** Sols en vecteurs : couche -> polygones -> anneaux (extérieur puis trous), coordonnées aplaties. */
+  ground: Record<string, number[][][]>;
   buildings: Building[];
   fiches: FacadeFiche[];
   trees: Tree[];

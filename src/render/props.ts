@@ -29,13 +29,25 @@ function cylinder(mb: MeshBuilder, cx: number, cy: number, r: number, z0: number
   extrude(mb, pts, z0, z1, color);
 }
 
+const LAMP_LIT = new THREE.Color("#ffd27a");
+const LAMP_HALO = new THREE.Color("#ffb24a");
+
+/** Disque posé à plat (tache de lumière). */
+function disc(mb: MeshBuilder, cx: number, cy: number, z: number, r: number, color: THREE.Color, seg = 14): void {
+  for (let i = 0; i < seg; i++) {
+    const a0 = (i / seg) * Math.PI * 2, a1 = ((i + 1) / seg) * Math.PI * 2;
+    mb.tri(toThree(cx, cy, z), toThree(cx + r * Math.cos(a0), cy + r * Math.sin(a0), z), toThree(cx + r * Math.cos(a1), cy + r * Math.sin(a1), z), [0, 1, 0], color);
+  }
+}
+
 const COLORS = {
   wood: new THREE.Color("#7a5a3a"), iron: new THREE.Color("#2f3433"), green: new THREE.Color("#3d5a43"), steel: new THREE.Color("#8d9296"),
   yellow: new THREE.Color("#e8b923"), stone: new THREE.Color("#b6ad9c"), sanisette: new THREE.Color("#9aa09c"), water: new THREE.Color("#6f8f9a"),
 };
 
 /** Mobilier urbain simplifié, posé sur le sol. */
-export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: Terrain): number {
+/** `glow` reçoit les lanternes allumées (nuit), `halo` les taches de lumière au sol. */
+export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: Terrain, glow: MeshBuilder | null = null, halo: MeshBuilder | null = null): number {
   let n = 0;
   for (const f of items) {
     const z = terrain.heightAt(f.x, f.y);
@@ -61,6 +73,17 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         cylinder(mb, f.x, f.y, 0.05, z, z + 3.4, COLORS.iron, 5);
         box(mb, f.x, f.y, 0.1, 0.12, rot, z + 2.6, z + 3.4, COLORS.iron);
         break;
+      case "street_lamp": {
+        // Mât fin, crosse vers la chaussée (sens aléatoire faute de donnée), lanterne.
+        cylinder(mb, f.x, f.y, 0.06, z, z + 4.4, COLORS.iron, 6);
+        const ax = f.x + Math.cos(rot) * 0.5, ay = f.y + Math.sin(rot) * 0.5;
+        box(mb, f.x + Math.cos(rot) * 0.25, f.y + Math.sin(rot) * 0.25, 0.25, 0.03, rot, z + 4.35, z + 4.42, COLORS.iron);
+        const lantern = glow ?? mb;
+        box(lantern, ax, ay, 0.16, 0.16, rot, z + 4.12, z + 4.38, glow ? LAMP_LIT : COLORS.steel);
+        box(mb, ax, ay, 0.2, 0.2, rot, z + 4.38, z + 4.45, COLORS.iron);
+        if (halo) disc(halo, ax, ay, z + 0.2, 3.4, LAMP_HALO);
+        break;
+      }
       default: continue;
     }
     n++;

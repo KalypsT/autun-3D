@@ -65,6 +65,7 @@ renderer.toneMappingExposure = style.exposure;
   u["bands"]!.value = style.sky.bands;
   u["disc"]!.value = style.sky.disc;
   u["stars"]!.value = style.sky.stars;
+  u["clouds"]!.value = style.sky.clouds;
 }
 addOverlay(style.overlay);
 

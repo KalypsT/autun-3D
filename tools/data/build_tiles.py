@@ -14,7 +14,7 @@ import json
 import shutil
 import zlib
 
-from shapely.geometry import Polygon
+from shapely.geometry import MultiPolygon, Polygon, box
 from shapely.geometry.polygon import orient
 
 import config as c
@@ -50,8 +50,33 @@ def lod_record(b, fiche):
             "a": fiche["era"] if fiche else "xix", "k": zlib.crc32(b["id"].encode()) & 0xFFFFFFFF}
 
 
+def decode(poly):
+    return Polygon(*[[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[:1]], [[(r[i], r[i + 1]) for i in range(0, len(r), 2)] for r in poly[1:]]).buffer(0)
+
+
+def clip_layers(layers, bounds):
+    """Polygones de chaque couche, découpés à l'emprise de la tuile."""
+    window = box(*bounds)
+    out = {}
+    for name, polys in layers.items():
+        pieces = []
+        for poly in polys:
+            g = decode(poly)
+            if not g.intersects(window):
+                continue
+            g = g.intersection(window)
+            for p in ([g] if isinstance(g, Polygon) else list(getattr(g, "geoms", []))):
+                if isinstance(p, Polygon) and p.area > 0.05:
+                    enc = lambda r: [round(v, 2) for xy in list(r.coords)[:-1] for v in xy]
+                    pieces.append([enc(p.exterior)] + [enc(r) for r in p.interiors])
+        if pieces:
+            out[name] = pieces
+    return out
+
+
 def main():
     buildings = load("buildings_clean.json")
+    gv = load("ground_vec.json")
     fiches = {f["id"]: f for f in load("facades.json")}
     trees = load("trees.json")
     props = load("props.json")
@@ -87,6 +112,11 @@ def main():
         if t:
             tile(*t)["furniture"].append(f)
 
+    for i, (x, y) in enumerate(gv["lamps"]):
+        t = c.tile_of_local(x, y)
+        if t:
+            tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1)})
+
     shutil.rmtree(TILES, ignore_errors=True)
     TILES.mkdir(parents=True)
     manifest = []
@@ -94,10 +124,12 @@ def main():
     for row in range(c.TILES_NY):
         for col in range(c.TILES_NX):
             rec = tiles.get((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
+            bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
+            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds), **rec}
             text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
             (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
             total += len(text)
-            manifest.append({"id": c.tile_id(col, row), "col": col, "row": row, "bounds": [round(v, 1) for v in c.tile_bounds_local(col, row)],
+            manifest.append({"id": c.tile_id(col, row), "col": col, "row": row, "bounds": bounds,
                              "buildings": len(rec["buildings"]), "trees": len(rec["trees"]), "walls": len(rec["walls"]),
                              "furniture": len(rec["furniture"]), "bytes": len(text)})
     (c.OUT / "lod.json").write_text(json.dumps(lod, separators=(",", ":")))

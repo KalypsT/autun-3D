@@ -5,7 +5,7 @@ import type { Era, RoofMaterial } from "../data/types";
 export interface Theme {
   id: string;
   label: string;
-  sky: { horizon: string; zenith: string; bands: number; disc: number; stars: number };
+  sky: { horizon: string; zenith: string; bands: number; disc: number; stars: number; clouds: number };
   fog: [string, number, number];
   sun: { color: string; intensity: number };
   hemi: { sky: string; ground: string; intensity: number };
@@ -34,19 +34,19 @@ export interface Theme {
 export const THEMES: Record<string, Theme> = {
   affiche: {
     id: "affiche", label: "Affiche de voyage",
-    sky: { horizon: "#f6d9a8", zenith: "#2f7f8f", bands: 7, disc: 1, stars: 0 },
+    sky: { horizon: "#f6d9a8", zenith: "#2f7f8f", bands: 7, disc: 1, stars: 0, clouds: 1 },
     fog: ["#f2cf9a", 180, 800],
     sun: { color: "#ffe2b0", intensity: 3.0 }, hemi: { sky: "#8fc3c4", ground: "#c0603a", intensity: 1.3 },
     exposure: 1.0, tone: "neutral", toon: true, night: false, overlay: [0.07, 0.22],
     walls: { old: ["#f3d9a0", "#efc982"], xix: ["#f5dfae", "#f1cf8a", "#f4c9a0"], modern: ["#e9dcc0", "#e2d2b0"] },
     roofs: { tuile_plate: "#d9472b", tuile_mecanique: "#cf4026", ardoise: "#2f4a63", zinc: "#6f98a3", terrasse: "#b9a98a" },
     shutters: ["#2f7f8f", "#d9472b", "#f1b24a", "#1f4a63"], doors: ["#1f4a63", "#d9472b", "#2f7f8f"], shops: ["#d9472b", "#1f4a63", "#2f7f8f", "#f1b24a"],
-    trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e"], trunk: "#6b4a3a",
+    trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e", "#3f9a6f", "#5aa874", "#e0a030", "#d9642b"], trunk: "#6b4a3a",
     ground: ["#7d8a8e", "#c79a6b", "#e3bf86", "#5fa06e", "#efdcb4", "#d6b98a"],
   },
   nuit: {
     id: "nuit", label: "Autun la nuit",
-    sky: { horizon: "#2a3a6b", zenith: "#080d24", bands: 0, disc: 0, stars: 1 },
+    sky: { horizon: "#2a3a6b", zenith: "#080d24", bands: 0, disc: 0, stars: 1, clouds: 0 },
     fog: ["#27356b", 90, 560],
     sun: { color: "#a9bfff", intensity: 2.0 }, hemi: { sky: "#4a62b0", ground: "#2a2a48", intensity: 2.4 },
     exposure: 1.25, tone: "aces", toon: false, night: true, overlay: [0, 0.3],
