@@ -94,4 +94,6 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 - Ciel en trois teintes avec nuages en aplats (ombre rosée) ; arbres jaunes et orange par endroits ; enseignes avec lettres suggérées ; lampadaires et lanternes allumées la nuit.
 - Enseignes : le nom du commerce s'affiche (atlas de noms de 192 cases, recyclé en anneau) ; lampadaires orientés vers la chaussée ; trottoirs prioritaires sur les places (bords nets).
 - Parkings : pas de trottoir à l'intérieur, places marquées le long des allées ; personnage aux couleurs de l'affiche (veste vermillon, écharpe moutarde, bonnet bleu-vert).
-- À revoir : lignes de stop et bandes cyclables, pelouses et haies, mobilier orienté, ombres et couleurs par rue, mesures sur téléphone.
+- Pelouses (OSM, ~1 km² dans la zone), terrains de sport, eau, 24 haies, 14 remparts (hauteur 6 m, épaisseur 1,3 m, avec collisions).
+- Lignes d'arrêt : abandonnées pour l'instant (les nœuds « stop » d'OSM ne sont jamais en bout de voie, le sens d'approche est inconnu).
+- À revoir : bandes cyclables, mobilier orienté, ombres et couleurs par rue, mesures sur téléphone.

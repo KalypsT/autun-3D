@@ -237,43 +237,6 @@ def main():
             marks.append(bar)
             u += 0.9
         n_cross += 1
-    # Lignes d'arrêt (stop, cédez-le-passage) : trait sur la demi-chaussée côté droit, à 2 m du carrefour.
-    stops = {f["id"]: f for f in props["furniture"] if f["kind"] in ("stop", "give_way")}
-    n_stop = 0
-    for s in drivable:
-        nodes = s["nodes"]
-        pts = np.array(s["pts"]).reshape(-1, 2)
-        if len(nodes) != len(pts):
-            continue
-        for idx, nid in enumerate(nodes):
-            f = stops.get(nid)
-            if not f:
-                continue
-            if idx == 0:
-                a_pt, b_pt = pts[0], pts[1]
-            elif idx == len(nodes) - 1:
-                a_pt, b_pt = pts[-1], pts[-2]
-            else:
-                continue  # nœud au milieu d'une voie : sens d'approche inconnu
-            ax, ay = b_pt[0] - a_pt[0], b_pt[1] - a_pt[1]
-            L = math.hypot(ax, ay)
-            if L < 4:
-                continue
-            ax, ay = ax / L, ay / L  # du carrefour vers l'intérieur de la voie
-            px, py = a_pt[0] + ax * 2.0, a_pt[1] + ay * 2.0
-            rx, ry = -ay, ax  # côté droit d'un véhicule qui arrive (il roule dans le sens -a)
-            w2 = s["width"] / 2
-            c0 = (px + rx * 0.15, py + ry * 0.15)
-            c1 = (px + rx * (w2 - 0.2), py + ry * (w2 - 0.2))
-            if f["kind"] == "stop":
-                marks.append(LineString([c0, c1]).buffer(0.2, cap_style="flat"))
-            else:
-                seg = LineString([c0, c1])
-                d = 0.0
-                while d < seg.length:
-                    marks.append(substring(seg, d, min(d + 0.4, seg.length)).buffer(0.1, cap_style="flat"))
-                    d += 0.8
-            n_stop += 1
     mk = unary_union(marks).intersection(R.buffer(-0.1))
     # Places de stationnement : traits perpendiculaires aux allées intérieures des parkings.
     bays = []
@@ -324,7 +287,7 @@ def main():
 
     out = {"layers": {k: [encode(p) for p in v] for k, v in layers.items()}, "lamps": [list(p) for p in lamps], "hedges": hedges, "ramparts": ramparts}
     (c.CACHE / "work" / "ground_vec.json").write_text(json.dumps(out, separators=(",", ":")))
-    print({k: (len(v), round(sum(p.area for p in v))) for k, v in layers.items()}, f"{len(lamps)} lampadaires, {n_cross} passages piétons, {n_stop} lignes d'arrêt, {len(hedges)} haies, {len(ramparts)} remparts")
+    print({k: (len(v), round(sum(p.area for p in v))) for k, v in layers.items()}, f"{len(lamps)} lampadaires, {n_cross} passages piétons, {len(hedges)} haies, {len(ramparts)} remparts")
 
 
 if __name__ == "__main__":
