@@ -4,6 +4,7 @@ import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/type
 import { planFacades, type Placement } from "./facades";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { buildGround } from "./ground";
+import { SignAtlas } from "./sign-atlas";
 import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
@@ -113,6 +114,8 @@ export class StyleResources {
   readonly glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
   /** Taches de lumière des lampadaires (nuit) : translucides, sans écriture de profondeur. */
   readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
+  readonly signAtlas = new SignAtlas();
+  readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   readonly groundMat = this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   readonly fenceMat = fenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
@@ -151,6 +154,7 @@ function panel(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
 
 const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"], ["#f08a3a", "#ffd27a"]];
 let glowTarget: MeshBuilder | null = null;
+let signText: { mb: UvMeshBuilder; atlas: SignAtlas } | null = null;
 
 /** Vitre : dégradé bleuté le jour ; la nuit, la plupart sont allumées (aplats chauds sans éclairage). */
 function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number, z1: number, off: number, litShare = 0.62): void {
@@ -233,6 +237,7 @@ function railingGeometry(mb: MeshBuilder, p: Placement): void {
 
 function signGeometry(mb: MeshBuilder, p: Placement, parts: string[], wm: number): void {
   const col = C(pick(T.shops, idKey(parts[2] ?? ""), 4));
+  const text = parts[1] ?? "";
   panel(mb, p, -wm / 2, wm / 2, 0, 0.55, 0, col);
   panel(mb, p, -wm / 2 + 0.05, wm / 2 - 0.05, 0.07, 0.48, 0.015, darker(col, 0.75), col.clone().multiplyScalar(1.08));
   // Lettres suggérées par des barres claires de longueurs variées.
@@ -242,8 +247,17 @@ function signGeometry(mb: MeshBuilder, p: Placement, parts: string[], wm: number
   const key = idKey(parts[1] ?? "");
   for (let i = 0; s < end - 0.1; i++) {
     const len = Math.min(0.12 + ((key * (i + 3) * 17) % 1) * 0.28, end - s);
-    panel(mb, p, s, s + len, 0.18, 0.37, 0.03, letters);
+    if (!text) panel(mb, p, s, s + len, 0.18, 0.37, 0.03, letters);
     s += len + 0.1;
+  }
+  if (text && signText) {
+    // Le nom : un quad texturé centré sur l'enseigne (case de l'atlas de noms, rapport 6,4).
+    const h = Math.min(0.34, (wm - 0.3) / 6.4);
+    const w = h * 6.4;
+    const r = signText.atlas.get(text, T.trim);
+    const at = (sx: number, z: number): Vec3 => toThree(p.x + p.tx * sx + p.nx * 0.035, p.y + p.ty * sx + p.ny * 0.035, p.z + z);
+    signText.mb.quad(at(-w / 2, 0.275 - h / 2), at(w / 2, 0.275 - h / 2), at(w / 2, 0.275 + h / 2), at(-w / 2, 0.275 + h / 2), toThree(p.nx, p.ny, 0),
+      [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], C("#ffffff"));
   }
 }
 
@@ -295,6 +309,8 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   const plan = planFacades(tile.buildings, fiches, terrain);
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = plan.misc, glow = new MeshBuilder();
   glowTarget = glow;
+  const names = new UvMeshBuilder();
+  signText = { mb: names, atlas: res.signAtlas };
 
   for (const b of tile.buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
@@ -346,7 +362,7 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
     if (mb.triangleCount === 0) return;
     const m = new THREE.Mesh(mb.build(), mat);
     m.name = name;
-    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "halos" && name !== "sol";
+    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -357,6 +373,8 @@ export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Te
   append(walls, detail);
   add("bati", walls, res.wallMat);
   add("vitres", glow, res.glowMat);
+  res.signAtlas.flush();
+  add("enseignes", names, res.signMat);
   add("halos", halo, res.haloMat);
   add("sol", buildGround(tile.ground ?? {}, tile.bounds, terrain), res.groundMat);
   add("grilles", fence, res.fenceMat);

@@ -101,6 +101,8 @@ export interface Furniture {
   y: number;
   name: string | null;
   id: number;
+  /** Orientation (rad, repère données) quand elle est connue : crosse des lampadaires vers la chaussée. */
+  rot?: number;
 }
 
 export interface Props {

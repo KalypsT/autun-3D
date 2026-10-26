@@ -51,7 +51,7 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
   let n = 0;
   for (const f of items) {
     const z = terrain.heightAt(f.x, f.y);
-    const rot = hash01(String(f.id), 1) * Math.PI;
+    const rot = f.rot ?? hash01(String(f.id), 1) * Math.PI;
     switch (f.kind) {
       case "bench":
         box(mb, f.x, f.y, 0.8, 0.22, rot, z + 0.4, z + 0.46, COLORS.wood);

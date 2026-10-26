@@ -112,10 +112,10 @@ def main():
         if t:
             tile(*t)["furniture"].append(f)
 
-    for i, (x, y) in enumerate(gv["lamps"]):
+    for i, (x, y, rot) in enumerate(gv["lamps"]):
         t = c.tile_of_local(x, y)
         if t:
-            tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1)})
+            tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1), "rot": rot})
 
     shutil.rmtree(TILES, ignore_errors=True)
     TILES.mkdir(parents=True)

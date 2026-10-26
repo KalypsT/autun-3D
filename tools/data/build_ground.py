@@ -228,8 +228,8 @@ def main():
             for off_side in (side, -side):
                 px, py = q.x + nx * off_side * (s["width"] / 2 + 0.7), q.y + ny * off_side * (s["width"] / 2 + 0.7)
                 pt = Point(px, py)
-                if Wp.contains(pt) and not Bp.intersects(pt.buffer(0.6)) and all(math.hypot(px - lx, py - ly) > 12 for lx, ly in lamps[-40:]):
-                    lamps.append((round(px, 2), round(py, 2)))
+                if Wp.contains(pt) and not Bp.intersects(pt.buffer(0.6)) and all(math.hypot(px - l[0], py - l[1]) > 12 for l in lamps[-40:]):
+                    lamps.append((round(px, 2), round(py, 2), round(math.atan2(-ny * off_side, -nx * off_side), 3)))
                     break
             side = -side
             d += LAMP_STEP
