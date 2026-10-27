@@ -48,7 +48,10 @@ export class Controls {
   private looked = false;
   /** À pied ou en véhicule : change le rôle du doigt de gauche et affiche les pédales. */
   mode: ControlMode = "foot";
+  /** Multiplicateur de la rotation de la caméra au doigt et à la souris (réglage de sensibilité). */
+  sensitivity = 1;
   private readonly cleanup: (() => void)[] = [];
+  private readonly pedalEls: HTMLElement[] = [];
 
   constructor(
     private readonly surface: HTMLElement,
@@ -72,6 +75,7 @@ export class Controls {
     on(surface, "pointercancel", (e) => this.up(e as PointerEvent));
     for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"]] as const) {
       if (!el) continue;
+      this.pedalEls.push(el);
       const press = (e: Event): void => {
         const p = e as PointerEvent;
         p.preventDefault();
@@ -135,7 +139,7 @@ export class Controls {
     const look = this.looks.get(e.pointerId);
     if (!look) return;
     if (look.mouse && e.buttons === 0) return;
-    const k = look.mouse ? MOUSE_LOOK : TOUCH_LOOK;
+    const k = (look.mouse ? MOUSE_LOOK : TOUCH_LOOK) * this.sensitivity;
     this.lookYaw += (e.clientX - look.x) * k;
     this.lookPitch += (e.clientY - look.y) * k;
     this.looked = true;
@@ -150,6 +154,22 @@ export class Controls {
       this.base.style.display = this.knob.style.display = "none";
     }
     this.looks.delete(e.pointerId);
+  }
+
+  /**
+   * Lâche tout : doigts, touches, pédales. À la pause, un doigt resté posé ne doit pas laisser une pédale « collée » à la reprise
+   * (les `pointerup` suivants tombent sur le menu, pas sur les commandes).
+   */
+  reset(): void {
+    this.keys.clear();
+    this.stick = null;
+    this.stickX = this.stickY = 0;
+    this.looks.clear();
+    this.pedals.clear();
+    this.lookYaw = this.lookPitch = 0;
+    this.looked = false;
+    this.base.style.display = this.knob.style.display = "none";
+    for (const el of this.pedalEls) el.classList.remove("on");
   }
 
   /** Lit l'état des commandes et remet à zéro les rotations accumulées. */

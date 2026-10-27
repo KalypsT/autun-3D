@@ -113,7 +113,8 @@ export class TileManager {
     world: WorldBase,
     private readonly builder: (data: TileData) => Steps<TileMeshes>,
     private readonly colliders: Colliders | null,
-    private readonly load = DETAIL_DISTANCE,
+    /** Rayon de chargement des tuiles détaillées (m) ; modifiable en jeu (réglages). */
+    public load = DETAIL_DISTANCE,
     /** Budget par image (ms) ; très grand = construction d'un bloc, comme avant. */
     private readonly budget = BUDGET,
   ) {

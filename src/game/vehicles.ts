@@ -9,6 +9,7 @@ import { createScooterModel } from "../render/scooter-model";
 import type { TileExtras } from "../render/tile-manager";
 import type { VehicleModel } from "../render/vehicle-model";
 import type { HeightField } from "../data/types";
+import type { SavedVehicle } from "../core/save";
 
 export type VehicleKind = "bike" | "scooter" | "car" | "moto";
 
@@ -39,6 +40,8 @@ export interface Vehicle {
   /** Modèle articulé ; une voiture garée n'en a pas (elle est dessinée par instances). */
   model: VehicleModel | null;
   ridden: boolean;
+  /** Place d'origine ; null pour un véhicule retrouvé dans une sauvegarde (d'origine inconnue : toujours à enregistrer). */
+  home: { x: number; y: number; heading: number } | null;
 }
 
 /** Au-delà, les véhicules garés ne sont pas dessinés. */
@@ -59,8 +62,13 @@ function hash(n: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/** Un véhicule est « déplacé » au-delà de ces écarts par rapport à sa place d'origine. */
+const MOVED_DISTANCE = 0.5;
+const MOVED_HEADING = 0.1;
+
 export class Fleet {
   readonly vehicles: Vehicle[] = [];
+  private readonly byId = new Map<string, Vehicle>();
   /** Obstacles que seules les voitures voient (escaliers). */
   readonly carOnly = new Colliders();
   private readonly sources = new Set<string>();
@@ -132,9 +140,16 @@ export class Fleet {
     this.carOnly.removeTag(id);
   }
 
-  add(kind: VehicleKind, id: string, x: number, y: number, heading: number, variant: number): Vehicle {
+  /**
+   * Ajoute un véhicule ; un identifiant déjà présent renvoie le véhicule existant (une tuile qui se recharge ne le recrée pas,
+   * et un véhicule retrouvé dans une sauvegarde reste à l'endroit où le joueur l'a laissé).
+   */
+  add(kind: VehicleKind, id: string, x: number, y: number, heading: number, variant: number, home: Vehicle["home"] = { x, y, heading }): Vehicle {
+    const existing = this.byId.get(id);
+    if (existing) return existing;
     const k = KINDS[kind];
-    const v: Vehicle = { id, kind, spec: k.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false };
+    const v: Vehicle = { id, kind, spec: k.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home };
+    this.byId.set(id, v);
     this.settle(v);
     if (kind !== "car") {
       v.model = k.model(variant);
@@ -144,6 +159,26 @@ export class Fleet {
     this.vehicles.push(v);
     this.park(v);
     return v;
+  }
+
+  /** Retrouve les véhicules d'une sauvegarde, là où ils avaient été laissés (avant que leurs tuiles ne les recréent à l'origine). */
+  restore(saved: readonly SavedVehicle[]): void {
+    for (const s of saved) this.add(s.kind, s.id, s.x, s.y, s.heading, s.variant, null);
+  }
+
+  get(id: string): Vehicle | null {
+    return this.byId.get(id) ?? null;
+  }
+
+  /** Véhicules à enregistrer : ceux que le joueur a déplacés, ou conduit, depuis leur place d'origine. */
+  savedVehicles(): SavedVehicle[] {
+    const out: SavedVehicle[] = [];
+    for (const v of this.vehicles) {
+      const s = v.state, h = v.home;
+      const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
+      if (moved) out.push({ id: v.id, kind: v.kind, variant: v.variant, x: s.x, y: s.y, heading: s.heading });
+    }
+    return out;
   }
 
   /** Pose le véhicule sur le relief (hauteur et tangage entre les essieux). */

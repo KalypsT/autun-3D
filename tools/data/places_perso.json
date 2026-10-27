@@ -1,0 +1,4 @@
+{
+  "_aide": "Lieux définis à la main (catégorie « perso » de la carte). x, y : coordonnées locales en mètres (celles qu'affiche « Noter ce lieu »). 'note' : texte court affiché sur la carte ; 'story' : réservé à l'histoire du jeu. Après modification : python3 tools/data/build_map.py",
+  "places": []
+}

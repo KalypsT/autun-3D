@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { addDays } from "../core/save";
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
@@ -45,7 +46,8 @@ export class Atmosphere {
   hour: number;
   /** Heures de jeu écoulées par seconde réelle (0 : horloge arrêtée). */
   speed: number;
-  readonly day: number;
+  /** Jour de l'année (1 à 365) : avance à chaque minuit du jeu. */
+  day: number;
   /** Direction vers la source de lumière (soleil, puis lune) dans le repère three ; modifiée sur place. */
   readonly lightDir = new THREE.Vector3(0, 1, 0);
   private lastApplied = -1;
@@ -69,7 +71,9 @@ export class Atmosphere {
 
   advance(dt: number): void {
     if (this.speed === 0) return;
-    this.hour = (this.hour + dt * this.speed) % 24;
+    const next = this.hour + dt * this.speed;
+    if (next >= 24) this.day = addDays(this.day, 1);
+    this.hour = next % 24;
     // Réglage à 4 images/s : assez fin pour un cycle de plusieurs minutes.
     if (Math.abs(this.hour - this.lastApplied) > 0.01 || this.hour < this.lastApplied) this.apply();
   }
