@@ -125,3 +125,37 @@ describe("véhicules garés selon le quartier (D55)", () => {
   });
 });
 
+describe("modèle articulé seulement à la conduite", () => {
+  it("un vélo garé est une instance : il reçoit son modèle quand on le prend, le perd quand on le pose", () => {
+    const scene = new THREE.Scene();
+    const fleet = new Fleet(scene, new Colliders(), flatTerrain());
+    const bike = fleet.add("velo-ville", "velo-1-0", 0, 0, 0, 2);
+    const before = scene.children.length;
+    expect(bike.model).toBeNull();
+    const model = fleet.take(bike);
+    expect(bike.model).toBe(model);
+    expect(scene.children.length).toBe(before + 1);
+    fleet.park(bike);
+    expect(bike.model).toBeNull();
+    expect(scene.children.length).toBe(before);
+  });
+
+  it("les véhicules proches sont dessinés en un maillage par modèle, ceux qu'on conduit n'y sont plus, les lointains non plus", () => {
+    const fleet = new Fleet(new THREE.Scene(), new Colliders(), flatTerrain());
+    fleet.add("citadine", "c1", 0, 0, 0, 0);
+    fleet.add("citadine", "c2", 5, 0, 0, 1);
+    fleet.add("berline", "b1", 10, 0, 0, 0);
+    fleet.add("moto-sportive", "m1", 15, 0, 0, 0);
+    const far = fleet.add("scooter-125", "s-far", 90, 0, 0, 0);
+    fleet.cull(0, 0);
+    expect(fleet.stats).toMatchObject({ total: 5, drawn: 5, meshes: 4 });
+    fleet.take(fleet.get("c1")!);
+    fleet.cull(0, 0);
+    expect(fleet.stats).toMatchObject({ drawn: 4, meshes: 4 });
+    far.state.x = 400;
+    fleet.park(far);
+    fleet.cull(0, 0);
+    expect(fleet.stats).toMatchObject({ drawn: 3, meshes: 3 });
+  });
+});
+

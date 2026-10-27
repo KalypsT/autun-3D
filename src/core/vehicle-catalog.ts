@@ -19,6 +19,8 @@ export interface FamilyInfo {
   /** Libellé de l'accélérateur et du klaxon. */
   gas: string;
   horn: string;
+  /** Portée du klaxon ou de la sonnette (m) : passants et pigeons devant sursautent jusque-là. */
+  hornRange: number;
   /** Distance (m) à laquelle on peut monter. */
   reach: number;
   /** Côté de la descente : décalage latéral (m) vers la gauche. */
@@ -29,10 +31,10 @@ export interface FamilyInfo {
 }
 
 export const FAMILIES: Record<VehicleFamily, FamilyInfo> = {
-  bike: { icon: "🚲", gas: "Pédaler", horn: "Sonnette", reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.05 } },
-  kickscooter: { icon: "🛴", gas: "Accélérer", horn: "Sonnette", reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.06 } },
-  car: { icon: "🚗", gas: "Accélérer", horn: "Klaxon", reach: 3.0, dismount: 1.45, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 }, tyre: { track: 0.74, width: 0.2 } },
-  moto: { icon: "🏍️", gas: "Accélérer", horn: "Klaxon", reach: 2.2, dismount: 0.75, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 }, tyre: { track: 0, width: 0.12 } },
+  bike: { icon: "🚲", gas: "Pédaler", horn: "Sonnette", hornRange: 15, reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.05 } },
+  kickscooter: { icon: "🛴", gas: "Accélérer", horn: "Sonnette", hornRange: 15, reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.06 } },
+  car: { icon: "🚗", gas: "Accélérer", horn: "Klaxon", hornRange: 35, reach: 3.0, dismount: 1.45, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 }, tyre: { track: 0.74, width: 0.2 } },
+  moto: { icon: "🏍️", gas: "Accélérer", horn: "Klaxon", hornRange: 28, reach: 2.2, dismount: 0.75, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 }, tyre: { track: 0, width: 0.12 } },
 };
 
 export interface VehicleDef {

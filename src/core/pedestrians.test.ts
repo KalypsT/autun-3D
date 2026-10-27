@@ -287,6 +287,24 @@ describe("chocs, esquives et klaxon", () => {
     }
   });
 
+  it("une sonnette (portée de 15 m) ne fait sursauter que les passants proches, un klaxon de voiture (35 m) aussi ceux qui sont plus loin", () => {
+    const startledAt = (hornRange: number | undefined): number[] => {
+      const sim = makeSim(graph(), 100, 4);
+      const obs = still(0, -20);
+      sim.prefill(obs);
+      run(sim, 60, obs);
+      sim.clearEvents();
+      sim.step(STEP, { ...still(0, -20), onFoot: false, vehicle: { ...car(0, -20, 0, 6), ...(hornRange === undefined ? {} : { hornRange }) }, horn: true });
+      const p = { x: 0, y: 0 };
+      return sim.events.filter((e) => e.kind === "startled").map((e) => (sim.position(e.slot, p), Math.hypot(p.x, p.y + 20)));
+    };
+    const bell = startledAt(15), horn = startledAt(35), def = startledAt(undefined);
+    expect(bell.every((d) => d <= 15)).toBe(true);
+    expect(horn.some((d) => d > 15)).toBe(true);
+    expect(horn.length).toBeGreaterThan(bell.length);
+    expect(def).toEqual(horn);
+  });
+
   it("cède la place au joueur à pied qui le bouscule, et fait trébucher celui qui lui fonce dessus en courant", () => {
     const { sim, slot, x, y } = setup();
     const before = { x: 0, y: 0 }, after = { x: 0, y: 0 };

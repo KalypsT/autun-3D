@@ -6,12 +6,13 @@ import { createPlayerModel } from "../render/player-model";
 import type { VehicleModel } from "../render/vehicle-model";
 import type { GameContext } from "./context";
 import { followSun, gameSpawn } from "./game";
-import { buildModel } from "./vehicles";
+import { ParkedModels } from "../render/parked-models";
+import { buildModel, restGeometryOf } from "./vehicles";
 
 /**
  * ?view=vehicles : la galerie des véhicules du catalogue, rangés par famille devant la caméra, au départ du jeu (captures, choix des mesures).
  * Paramètres : `ids=citadine,moto-routiere` (liste ; défaut : tout), `family=car|moto|bike|kickscooter`, `heading` (cap en rad : 0 vers le nord, loin de la caméra ;
- * 3,14 de face ; 1,57 de profil ; défaut 2,35 : de trois quarts), `variant` (couleur), `perRow` (4), `eye` (hauteur de l'œil ; défaut : monte avec le nombre de rangées), `rider=1` (un conducteur sur les deux-roues).
+ * 3,14 de face ; 1,57 de profil ; défaut 2,35 : de trois quarts), `variant` (couleur), `perRow` (4), `eye` (hauteur de l'œil ; défaut : monte avec le nombre de rangées), `rider=1` (un conducteur sur les deux-roues), `parked=1` (les véhicules tels qu'ils sont garés dans le jeu : instances au repos, sans conducteur).
  * Un appui sur l'écran passe à la couleur suivante de chaque palette.
  */
 export function startVehicleGallery(ctx: GameContext): void {
@@ -34,7 +35,21 @@ export function startVehicleGallery(ctx: GameContext): void {
   const width = Math.min(defs.length, perRow) * cell;
   const dist = Math.max(5, width / 2 / Math.tan(THREE.MathUtils.degToRad(46)) + 2.5);
   const placed: { model: VehicleModel; rider: ReturnType<typeof createPlayerModel> | null }[] = [];
+  const asParked = params.get("parked") === "1";
+  const parked = new ParkedModels(400, restGeometryOf);
+  if (asParked) scene.add(parked.group);
   const build = (): void => {
+    if (asParked) {
+      const items = defs.map((def, i) => {
+        const row = Math.floor(i / perRow), col = i % perRow;
+        const inRow = Math.min(perRow, defs.length - row * perRow);
+        const state = createVehicle(spawn.x + (col - (inRow - 1) / 2) * cell, spawn.y + dist + row * cell, heading, world.terrain);
+        return { model: def.id, x: state.x, y: state.y, z: state.z, heading, pitch: 0, color: paletteColor(def, variant) };
+      });
+      parked.set(items);
+      hint.textContent = `Garés (instances) : ${defs.map((d) => `${d.name} (${paletteColor(d, variant)})`).join(" · ")}`;
+      return;
+    }
     for (const p of placed) {
       scene.remove(p.model.group);
       p.model.dispose();

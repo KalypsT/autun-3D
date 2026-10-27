@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { CATALOG, vehicleDef } from "../core/vehicle-catalog";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, loft, parkedDetailGeometry } from "./car-body";
-import { CAR_BODIES, ParkedCars } from "./car-model";
+import { CAR_BODIES, carRestGeometry } from "./car-model";
+import { bakeRest, ParkedModels, tintPaintOnly } from "./parked-models";
+import { buildModel, restGeometryOf } from "../game/vehicles";
 
 const triangles = (g: THREE.BufferGeometry): number => g.getAttribute("position").count / 3;
 
@@ -62,24 +64,74 @@ describe("générateur de carrosserie", () => {
   });
 });
 
-describe("voitures garées par instances", () => {
-  const car = (x: number, color = "#d9472b") => ({ model: "citadine", x, y: 0, z: 0, heading: 0, pitch: 0, color });
+describe("véhicules garés par instances", () => {
+  const car = (x: number, color = "#d9472b", model = "citadine") => ({ model, x, y: 0, z: 0, heading: 0, pitch: 0, color });
 
-  it("un modèle absent de la zone ne coûte rien ; un modèle présent coûte deux maillages, quel que soit le nombre d'exemplaires", () => {
-    const parked = new ParkedCars(10);
+  it("un modèle absent de la zone ne coûte rien ; un modèle présent coûte un maillage, quel que soit le nombre d'exemplaires", () => {
+    const parked = new ParkedModels(10, carRestGeometry);
     expect(parked.drawn).toBe(0);
     parked.set([car(0), car(5), car(10)]);
+    expect(parked.drawn).toBe(1);
+    expect(parked.instances).toBe(3);
+    expect((parked.group.children[0] as THREE.InstancedMesh).count).toBe(3);
+    parked.set([car(0, "#2a6f7e", "berline"), car(5)]);
     expect(parked.drawn).toBe(2);
-    expect(parked.group.children.every((m) => (m as THREE.InstancedMesh).count === 3)).toBe(true);
     parked.set([]);
     expect(parked.drawn).toBe(0);
     expect(parked.group.children.every((m) => !m.visible)).toBe(true);
   });
 
+  it("les maillages préparés d'avance restent cachés tant qu'aucun exemplaire n'est dessiné", () => {
+    const parked = new ParkedModels(10, carRestGeometry);
+    parked.prepare(["citadine", "berline"]);
+    expect(parked.group.children).toHaveLength(2);
+    expect(parked.group.children.every((m) => !m.visible)).toBe(true);
+    expect(parked.drawn).toBe(0);
+    parked.set([car(0)]);
+    expect(parked.group.children.filter((m) => m.visible)).toHaveLength(1);
+  });
+
   it("au-delà de la capacité d'un modèle, les exemplaires en trop sont ignorés ; un modèle inconnu est refusé", () => {
-    const parked = new ParkedCars(2);
+    const parked = new ParkedModels(2, carRestGeometry);
     parked.set([car(0), car(1), car(2), car(3)]);
     expect((parked.group.children[0] as THREE.InstancedMesh).count).toBe(2);
-    expect(() => parked.set([{ ...car(0), model: "char-d-assaut" }])).toThrow();
+    expect(() => parked.set([car(0, "#fff", "char-d-assaut")])).toThrow();
+  });
+});
+
+describe("géométrie au repos de chaque modèle garé", () => {
+  const whiteShare = (g: THREE.BufferGeometry): number => {
+    const c = g.getAttribute("color");
+    let white = 0;
+    for (let i = 0; i < c.count; i++) if (c.getX(i) > 0.999 && c.getY(i) > 0.999 && c.getZ(i) > 0.999) white++;
+    return white / c.count;
+  };
+
+  it.each(CATALOG.map((d) => d.id))("%s : une seule géométrie, avec de la peinture à teinter (sommets blancs) et des pièces de couleur propre", (id) => {
+    const g = restGeometryOf(id);
+    expect(triangles(g)).toBeGreaterThan(100);
+    expect(triangles(g)).toBeLessThan(2500);
+    expect(whiteShare(g)).toBeGreaterThan(0.05);
+    expect(whiteShare(g)).toBeLessThan(0.7);
+    g.computeBoundingBox();
+    const def = vehicleDef(id)!, size = g.boundingBox!.getSize(new THREE.Vector3());
+    expect(Math.abs(size.z - def.size.length)).toBeLessThan(0.1);
+    expect(Math.abs(size.y - def.size.height)).toBeLessThan(0.1);
+  });
+
+  it("cuire un modèle articulé donne les mêmes triangles que ses pièces, et le libère", () => {
+    const model = buildModel(vehicleDef("moto-sportive")!, 0);
+    let pieces = 0;
+    model.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) pieces += triangles((o as THREE.Mesh).geometry); });
+    expect(triangles(bakeRest(model))).toBe(pieces);
+  });
+
+  it("la teinte ne touche que la peinture : le nuanceur de Three.js contient toujours la ligne qu'on remplace", () => {
+    expect(THREE.ShaderChunk["color_vertex"]).toContain("vColor.rgb *= instanceColor.rgb;");
+    const shader = { vertexShader: THREE.ShaderChunk["color_vertex"] } as THREE.WebGLProgramParametersWithUniforms;
+    const material = tintPaintOnly(new THREE.MeshLambertMaterial({ vertexColors: true }));
+    material.onBeforeCompile(shader, null as unknown as THREE.WebGLRenderer);
+    expect(shader.vertexShader).not.toContain("vColor.rgb *= instanceColor.rgb;");
+    expect(shader.vertexShader).toContain("step( 0.999");
   });
 });

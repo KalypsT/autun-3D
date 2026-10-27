@@ -2,13 +2,13 @@ import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, parkedDetailGeometry, type CarBodyParams } from "./car-body";
-import { sharedMaterial, type VehicleModel } from "./vehicle-model";
+import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 
 /**
  * Voitures aux couleurs de l'affiche, générées d'après leurs mesures (`car-body.ts`) : caisse en volumes simples, vitres sombres, phares crème.
  * Repère local : avant vers −z, haut +y, origine au centre de gravité (au sol).
  * Deux usages : la voiture conduite (caisse + quatre roues, celles de devant braquent) et les voitures garées,
- * dessinées par instances (un maillage de peinture teintée et un de détails par modèle présent, tous les exemplaires d'un modèle en un appel).
+ * dessinées par instances (`parked-models.ts`, une géométrie au repos par modèle, tous les exemplaires d'un modèle en un seul maillage).
  */
 
 /** Mesures de chaque voiture du catalogue (même identifiants que `src/core/vehicle-catalog.ts`). */
@@ -126,75 +126,8 @@ export function createCarModel(id: string, color: string): VehicleModel {
   };
 }
 
-interface ParkedModel {
-  paint: THREE.InstancedMesh;
-  detail: THREE.InstancedMesh;
-  n: number;
-}
-
-/**
- * Voitures garées : deux maillages instanciés par modèle présent (peinture teintée, détails et roues), créés à la demande ;
- * un modèle absent de la zone ne coûte aucun appel de dessin.
- */
-export class ParkedCars {
-  readonly group = new THREE.Group();
-  private readonly models = new Map<string, ParkedModel>();
-  private readonly paintMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  private readonly matrix = new THREE.Matrix4();
-  private readonly color = new THREE.Color();
-  private readonly euler = new THREE.Euler(0, 0, 0, "YXZ");
-  private readonly quat = new THREE.Quaternion();
-  private readonly pos = new THREE.Vector3();
-  private readonly one = new THREE.Vector3(1, 1, 1);
-
-  /** `capacity` : nombre maximal d'exemplaires d'un même modèle. */
-  constructor(readonly capacity: number) {}
-
-  private model(id: string): ParkedModel {
-    let m = this.models.get(id);
-    if (m) return m;
-    const { p, front, rear } = bodyOf(id);
-    const paint = new THREE.InstancedMesh(bodyPaintGeometry(p, front, rear, "#ffffff"), this.paintMat, this.capacity);
-    const detail = new THREE.InstancedMesh(parkedDetailGeometry(p, front, rear), sharedMaterial(), this.capacity);
-    for (const mesh of [paint, detail]) {
-      mesh.count = 0;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      // Les instances changent souvent et couvrent toute la zone : pas de tri par la caméra.
-      mesh.frustumCulled = false;
-      this.group.add(mesh);
-    }
-    m = { paint, detail, n: 0 };
-    this.models.set(id, m);
-    return m;
-  }
-
-  /** Réécrit les instances : une par voiture garée visible (modèle, position au sol, cap, tangage, couleur). */
-  set(cars: readonly { model: string; x: number; y: number; z: number; heading: number; pitch: number; color: string }[]): void {
-    for (const m of this.models.values()) m.n = 0;
-    for (const c of cars) {
-      const m = this.model(c.model);
-      if (m.n >= this.capacity) continue;
-      this.euler.set(c.pitch, -c.heading, 0);
-      this.quat.setFromEuler(this.euler);
-      this.matrix.compose(this.pos.set(c.x, c.z, -c.y), this.quat, this.one);
-      m.paint.setMatrixAt(m.n, this.matrix);
-      m.detail.setMatrixAt(m.n, this.matrix);
-      m.paint.setColorAt(m.n, this.color.set(c.color));
-      m.n++;
-    }
-    for (const m of this.models.values()) {
-      m.paint.count = m.detail.count = m.n;
-      m.paint.visible = m.detail.visible = m.n > 0;
-      m.paint.instanceMatrix.needsUpdate = m.detail.instanceMatrix.needsUpdate = true;
-      if (m.paint.instanceColor) m.paint.instanceColor.needsUpdate = true;
-    }
-  }
-
-  /** Nombre de maillages dessinés (deux par modèle présent), pour la mesure. */
-  get drawn(): number {
-    let n = 0;
-    for (const m of this.models.values()) if (m.n > 0) n += 2;
-    return n;
-  }
+/** Géométrie au repos d'une voiture garée : caisse (peinture blanche), détails et roues dans une seule géométrie. */
+export function carRestGeometry(id: string): THREE.BufferGeometry {
+  const { p, front, rear } = bodyOf(id);
+  return merge([bodyPaintGeometry(p, front, rear, "#ffffff"), parkedDetailGeometry(p, front, rear)]);
 }

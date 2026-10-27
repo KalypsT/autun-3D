@@ -543,3 +543,38 @@ Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s consta
 - **Tirage** : le modèle vient d'un hachage de la place, indépendant de celui qui décide si la place est occupée, de la couleur et du sens de stationnement ; il est reproductible (la même place donne toujours le même modèle). L'identifiant d'un véhicule ne contient pas son modèle (`voiture-<place>`), la sauvegarde enregistre le modèle (V-0) : un véhicule retrouvé dans une sauvegarde garde son modèle même si les poids changent un jour.
 - **Résultat sur l'anneau** (144 tuiles, simulé avec les vraies données) : 1 020 véhicules garés : 151 citadines, 146 compactes, 113 berlines, 86 breaks, 115 petits SUV, 65 camionnettes, 86 vieilles voitures, 12 sportives (1,5 % des voitures) ; 88 scooters 125, 85 motos routières, 21 motos sportives ; 29 vélos de ville, 8 VTT, 15 trottinettes.
 - **Interface** : le bouton devient « Monter 🚗 Berline » (nom du modèle, pictogramme propre au modèle s'il en a un : 🛵). Les pastilles des véhicules proches restent par famille.
+
+## 2026-10-27 — D56. V-6 : tous les véhicules garés en instances, mesure, bilan de l'étape V
+
+**Constat** (banc `?bench=1&fleet=1`, nouveau, sur PC en rendu logiciel : les appels de dessin et les triangles sont exacts, les durées ne valent rien) : avec les nouveaux modèles garés comme le jeu les place (D55), l'arrêt sur la place passait de **128 à 438 appels de dessin** (112 → 238 sans ombres). Cause : seules les voitures étaient instanciées ; chaque deux-roues garé était un modèle articulé de 4 maillages, 44 visibles autour de la place, chacun dessiné deux fois (carte d'ombres). Le budget du téléphone (≈ 150 appels à l'arrêt, D26) était dépassé près de trois fois : corrigé avant de livrer, pas laissé à la mesure du téléphone.
+
+**Correction** (`src/render/parked-models.ts`) : **tous** les véhicules garés, de toutes les familles, sont des instances.
+- **Une géométrie au repos par modèle** (peinture en blanc pur) : pour une voiture, caisse + détails + roues à 10 facettes ; pour un deux-roues, le modèle articulé construit en blanc, « cuit » à l'arrêt (guidon droit, roues immobiles : `bakeRest`) puis fusionné. **Un seul maillage instancié par modèle présent**, quel que soit le nombre d'exemplaires : au plus 14 maillages (28 appels avec l'ombre) pour tout le catalogue, au lieu de 2 par modèle de voiture (peinture + détails) et 4 par deux-roues garé.
+- **Teinte seulement de la peinture** : les sommets blancs sont teintés par la couleur de l'instance, les autres gardent leur couleur (pneus, verre, chrome). Le nuanceur de Three.js est modifié d'une ligne (`instanceColor` multiplié seulement si la couleur du sommet est blanche) ; un test vérifie que cette ligne existe toujours dans la version installée, et que chaque modèle a des sommets blancs et des sommets de couleur propre (aucun modèle n'est teinté en entier ni pas du tout).
+- **Un modèle articulé seulement à la conduite** : `Fleet.take` le crée, `Fleet.park` le libère (ce qui était déjà le cas pour les voitures).
+- **Préparation à l'avance** : les 14 maillages sont fabriqués au démarrage (cachés) ; sinon le premier remplissage coûtait 35 ms dans une image (mesuré au banc : pire mise à jour de 35,6 ms à 0,6 ms).
+- **Distances de dessin inchangées** : voitures à moins de 170 m, le reste à moins de 110 m, mise à jour tous les 10 m de déplacement.
+
+**Mesure sur PC** (appels de dessin / triangles, arrêt sur la place, avec ombres) :
+
+| | appels | triangles |
+|---|---|---|
+| sans véhicule garé (banc de J2) | 128 | 1 412 k |
+| V-5, deux-roues articulés | 438 | 1 574 k |
+| **V-6, tout en instances** | **157** | **1 598 k** |
+
+Sans ombres : 112 → 127 appels, 801 → 905 k triangles. Les 126 véhicules garés dessinés autour de la place coûtent ≈ 800 triangles chacun (voitures 560 à 700, deux-roues 400 à 900) ; le total à l'arrêt (1,6 M) est celui d'avant l'étape V (les anciennes citadines coûtaient 636 triangles). Trajets : 135 à 160 appels (max 181 au trajet à 200 km/h, contre 124 à 142 sans véhicule), « chargement en retard » 0 image sur 55 à 118 pour 50, 90 et 200 km/h (le banc ne mesure que la construction des tuiles, pas la tenue de route ; **valeur sans portée en rendu logiciel** : à refaire sur le téléphone). Mise à jour de la flotte : 0,01 à 0,04 ms par image (pire 0,6 ms) sur PC.
+
+**Protocole de mesure sur l'Honor** (comme D42 et D47 ; paysage, rapports à copier) :
+1. `?bench=1&crowd=100&sim=1&fleet=1&fast=200` : un seul passage (≈ 4 minutes). À comparer aux mesures de D47 : 60 i/s partout ; **« Chargement en retard » = 0** sur les trajets à 50, 90 et surtout **200 km/h** ; appels de dessin à l'arrêt sous ≈ 200 ; « Véhicules garés : mise à jour » sous 0,3 ms.
+2. Si tout est vert : `&soak=10` (10 minutes d'endurance avec véhicules garés).
+3. Pour isoler le coût des véhicules : le même banc sans `&fleet=1`.
+Si le chargement est en retard à 200 km/h, la vitesse plafonnée de la sportive (200 km/h) et de la moto sportive (210) est à baisser (`SPEED_CAP`, `src/core/vehicle-specs.ts`) ; si les appels dépassent le budget, réduire la distance de dessin des deux-roues (`DRAW_DISTANCE`) ou fusionner peinture et détails.
+
+**Klaxon et sonnette** (J2 × V) : portée par famille (`FamilyInfo.hornRange`) : sonnette 15 m (vélos, trottinette), moto et scooter 28 m, voiture 35 m ; passants et pigeons devant sursautent jusque-là, et sautent de côté à moins du tiers de la portée (12 m au plus). Test : la sonnette ne fait sursauter personne au-delà de 15 m, le klaxon de voiture si.
+
+**Coque et passants** : toutes les entrées du catalogue ont leur coque (`hull`), imposée par `defProblems` et par le type ; les chocs contre passants (D44) lisent donc la coque du modèle conduit.
+
+**Bilan de l'étape V** : catalogue de 14 modèles (8 voitures, 6 deux-roues : D50 à D55), générateur de carrosserie (D52), plafond de vitesse commun (D53, D54), collisions sûres à haute vitesse (D51), placement par quartier (D55), banc de la flotte (cette décision), sauvegarde version 2 avec migration (D50). **Reste de ton côté** : fusionner la PR et lancer la mesure du téléphone ci-dessus ; juger l'aspect (galerie `?view=vehicles`, essai `?ride=<identifiant>`, voitures garées dans les rues).
+
+**Pour J3 (circulation)** : les voitures de la circulation piocheront dans `CATALOG` (`family: "car"`), avec leur fiche (`spec`) et leur palette ; le placement par zone (`src/core/vehicle-placement.ts`) donne les poids par quartier ; les voitures roulantes ne seront pas des instances de repos mais des modèles articulés (roues qui tournent) ou une variante instanciée avec roues animées : à mesurer. La police et les taxis de J4 sont de simples entrées de plus.
