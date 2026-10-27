@@ -30,7 +30,8 @@ export function navCellsWanted(index: NavIndex, px: number, py: number, vx = 0, 
 export class NavManager {
   readonly graph = new NavGraph();
   index: NavIndex | null = null;
-  private readonly fetching = new Set<string>();
+  /** Chargements en cours : une super-tuile n'est jamais demandée (ni ajoutée) deux fois, sinon ses passants seraient déchargés (génération changée). */
+  private readonly fetching = new Map<string, Promise<void>>();
   private frame = 0;
   /** Appelé après chaque ajout ou retrait de super-tuile. */
   onChange: (() => void) | null = null;
@@ -46,18 +47,7 @@ export class NavManager {
     if (!index || this.frame++ % 10 !== 0) return;
     for (const id of navCellsWanted(index, px, py, vx, vy)) {
       if (this.graph.has(id) || this.fetching.has(id) || this.fetching.size >= MAX_FETCHES) continue;
-      this.fetching.add(id);
-      void loadNavCell(id).then(
-        (cell) => {
-          this.fetching.delete(id);
-          this.graph.add(cell);
-          this.onChange?.();
-        },
-        (err: unknown) => {
-          this.fetching.delete(id);
-          console.error(`navigation ${id}`, err);
-        },
-      );
+      void this.load(id);
     }
     let removed = false;
     for (const id of [...this.graph.cells.keys()]) {
@@ -66,10 +56,27 @@ export class NavManager {
     if (removed) this.onChange?.();
   }
 
+  private load(id: string): Promise<void> {
+    const pending = this.fetching.get(id);
+    if (pending) return pending;
+    const p = loadNavCell(id).then(
+      (cell) => {
+        this.fetching.delete(id);
+        if (!this.graph.has(id)) this.graph.add(cell);
+        this.onChange?.();
+      },
+      (err: unknown) => {
+        this.fetching.delete(id);
+        console.error(`navigation ${id}`, err);
+      },
+    );
+    this.fetching.set(id, p);
+    return p;
+  }
+
   /** Charge d'un coup les super-tuiles autour d'un point (départ du jeu, banc, captures). */
   async preload(px: number, py: number): Promise<void> {
     if (!this.index) await this.init();
-    await Promise.all(navCellsWanted(this.index!, px, py).map((id) => loadNavCell(id).then((c) => this.graph.add(c))));
-    this.onChange?.();
+    await Promise.all(navCellsWanted(this.index!, px, py).filter((id) => !this.graph.has(id)).map((id) => this.load(id)));
   }
 }

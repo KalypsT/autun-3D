@@ -14,6 +14,7 @@ import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
+import { PedsController } from "./peds-controller";
 import { UiBridge } from "./ui-bridge";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
@@ -92,8 +93,14 @@ export function startGame(ctx: GameContext): void {
 
   const settings = ctx.settings!;
   controls.sensitivity = settings.values.sensitivity;
-  settings.listeners.push((v) => {
+  settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
+    if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
+    // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
+    if (changed.includes("crowd")) {
+      if (v.crowd > 0) startPeds(v.crowd);
+      else (peds as PedsController | null)?.setCapacity(0);
+    }
   });
 
   let yaw = startYaw;
@@ -107,13 +114,38 @@ export function startGame(ctx: GameContext): void {
   let crank = 0;
   let lookIdle = 0;
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
-  // ?nav=1 ou ?nav=all : données de navigation chargées autour du joueur et recouvrement de contrôle (J2) ; sans ce paramètre, rien n'est chargé.
+  // Navigation et passants (J2) : chargés autour du joueur dès que « Foule » n'est pas sur « Aucune » (ou avec ?nav=1 / ?nav=all pour le recouvrement de contrôle).
   const navParam = params.get("nav");
-  const nav = navParam ? new NavManager() : null;
-  const navDebug = nav ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
-  if (navDebug) scene.add(navDebug.group);
-  if (nav) void nav.init().then(() => nav.preload(player.x, player.y));
-  const navInfo = (): string => (nav ? ` · nav ${nav.graph.cells.size} cellules ${nav.graph.edgeCount} arêtes (${navDebug!.stats.edges} dessinées, ${navDebug!.stats.ms.toFixed(1)} ms)` : "");
+  const crowdSetting = ctx.settings!.values.crowd;
+  let nav: NavManager | null = null;
+  let peds: PedsController | null = null;
+  let navDebug: NavDebug | null = null;
+  const startNav = (): NavManager => {
+    if (!nav) {
+      const n = (nav = new NavManager());
+      if (navParam) {
+        navDebug = new NavDebug(n.graph, terrain, navParam === "all");
+        scene.add(navDebug.group);
+      }
+      void n.init().then(() => n.preload(player.x, player.y));
+    }
+    return nav;
+  };
+  const startPeds = (capacity: number): void => {
+    if (capacity <= 0) return;
+    if (!peds) {
+      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7);
+      peds.setShadows(ctx.settings!.values.shadows !== 0);
+    } else peds.setCapacity(capacity);
+  };
+  if (navParam) startNav();
+  startPeds(crowdSetting);
+  const navInfo = (): string => {
+    if (!nav) return "";
+    const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
+    const pedText = p && st ? ` · passants ${st.alive}/${st.target} (max ${p.capacity}) sim ${p.simMs.toFixed(2)} ms dessin ${p.drawMs.toFixed(2)} ms` : "";
+    return ` · nav ${nav.graph.cells.size} cellules${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}`;
+  };
   const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
 
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -335,9 +367,16 @@ export function startGame(ctx: GameContext): void {
     if (riding) tiles.update(player.x, player.y, riding.state.vx, riding.state.vy);
     else tiles.update(player.x, player.y, player.vx, player.vy);
     terrainView.update(player.x, player.y);
-    if (nav) {
-      nav.update(player.x, player.y, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
-      navDebug!.update(player.x, player.y);
+    const navNow = nav as NavManager | null, pedsNow = peds as PedsController | null, dbgNow = navDebug as NavDebug | null;
+    if (navNow) {
+      const vx = riding ? riding.state.vx : player.vx, vy = riding ? riding.state.vy : player.vy;
+      navNow.update(player.x, player.y, vx, vy);
+      dbgNow?.update(player.x, player.y);
+      // Les passants jouent avec le temps du jeu : la pause fige tout (cette partie de la boucle n'est pas atteinte).
+      pedsNow?.update(dt, {
+        x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
+        vehicle: riding && Math.hypot(vx, vy) > 1 ? { x: player.x, y: player.y, vx, vy } : null,
+      }, camera.position.x, camera.position.z);
     }
 
     atmosphere.advance(dt);
@@ -353,6 +392,10 @@ export function startGame(ctx: GameContext): void {
   ctx.ready({
     player, colliders, fleet, marks, ui,
     riding: () => riding,
+    peds: () => {
+      const p = peds as PedsController | null;
+      return p ? { capacity: p.capacity, stats: p.stats, simMs: p.simMs, drawMs: p.drawMs } : null;
+    },
     camera: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }),
   });
 }

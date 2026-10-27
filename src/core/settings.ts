@@ -1,5 +1,5 @@
 /**
- * Réglages du joueur, enregistrés localement. Les paramètres d'URL (`?dpr=`, `?shadowmap=`, `?shadow=0`, `?detail=`) restent prioritaires :
+ * Réglages du joueur, enregistrés localement. Les paramètres d'URL (`?dpr=`, `?shadowmap=`, `?shadow=0`, `?detail=`, `?peds=`) restent prioritaires :
  * le réglage correspondant est alors imposé et l'écran des réglages le signale.
  */
 
@@ -16,13 +16,16 @@ export interface Settings {
   sensitivity: number;
   /** Minimap : nord toujours en haut au lieu de tourner avec la caméra. */
   minimapNorth: boolean;
+  /** Foule : nombre maximal de passants à la fois (0 = aucun). Le nombre réel suit l'heure et le lieu (D39). */
+  crowd: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
 export const DETAIL_CHOICES = [200, 300, 400] as const;
+export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -32,13 +35,14 @@ const nearest = <T extends number>(choices: readonly T[], v: number): T => choic
 export function parseSettings(raw: unknown): Settings {
   const o = (typeof raw === "object" && raw ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_SETTINGS;
-  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]);
+  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]);
   return {
     dpr: dpr === null ? d.dpr : nearest(DPR_CHOICES, dpr),
     shadows: shadows === null ? d.shadows : nearest(SHADOW_CHOICES, shadows),
     detail: detail === null ? d.detail : nearest(DETAIL_CHOICES, detail),
     sensitivity: sens === null ? d.sensitivity : Math.min(Math.max(Math.round(sens * 10) / 10, SENSITIVITY_RANGE.min), SENSITIVITY_RANGE.max),
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
+    crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
   };
 }
 
@@ -70,6 +74,12 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (detail !== null && detail > 0) {
     values.detail = detail;
     locked.add("detail");
+  }
+  // ?peds=0 coupe les passants, ?peds=150 impose leur nombre maximal (captures, comparaisons).
+  const peds = num(params.get("peds") === null ? null : Number(params.get("peds")));
+  if (peds !== null && peds >= 0) {
+    values.crowd = Math.min(Math.floor(peds), 400);
+    locked.add("crowd");
   }
   return { values, locked };
 }

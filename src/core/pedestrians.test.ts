@@ -15,7 +15,7 @@ const graph = (): NavGraph => {
   for (const c of cells) g.add(c);
   return g;
 };
-const still = (x = 0, y = -20): Observer => ({ x, y, vx: 0, vy: 0, yaw: 0, onFoot: true, vehicle: null });
+const still = (x = 0, y = -20, hour = 13): Observer => ({ x, y, vx: 0, vy: 0, yaw: 0, onFoot: true, vehicle: null, hour });
 const makeSim = (g: NavGraph, n = 100, seed = 7, opt: { tiers?: boolean; avoid?: boolean } = {}): PedSim => new PedSim(g, terrain, colliders, { capacity: n, seed, ...opt });
 
 function run(sim: PedSim, steps: number, obs: Observer | ((t: number) => Observer)): void {
@@ -97,17 +97,20 @@ describe("simulation des passants", () => {
     const dist: number[] = [];
     let inView = 0;
     let obs: Observer = still();
+    let started = false;
     sim.onSpawn = (slot) => {
       const p = { x: 0, y: 0 };
       sim.position(slot, p);
+      if (!started) return; // au départ (prefill), les passants naissent n'importe où : la première image n'est pas vide
       dist.push(Math.hypot(p.x - obs.x, p.y - obs.y));
       if (dist[dist.length - 1]! < 100 && Math.abs(Math.atan2(p.x - obs.x, p.y - obs.y) - obs.yaw) < 0.9) inView++;
     };
     sim.prefill(obs);
+    started = true;
     // Le véhicule roule vers l'est, caméra derrière lui, regard vers l'est.
     run(sim, 60 * 25, (t) => (obs = { x: -400 + 25 * t, y: -230, vx: 25, vy: 0, yaw: Math.PI / 2, onFoot: false, vehicle: { x: -400 + 25 * t, y: -230, vx: 25, vy: 0 } }));
-    expect(dist.length).toBeGreaterThan(100);
-    expect(Math.min(...dist.slice(100))).toBeGreaterThan(20);
+    expect(dist.length).toBeGreaterThan(50);
+    expect(Math.min(...dist)).toBeGreaterThan(20);
     expect(inView / dist.length).toBeLessThan(0.05);
   });
 
@@ -140,6 +143,44 @@ describe("simulation des passants", () => {
     expect(sim.stats.tiers[2]).toBeGreaterThan(sim.stats.tiers[0]);
     expect(full.stats.tiers).toEqual([full.stats.alive, 0, 0]);
     expect(TIER_RANGE[0]).toBeLessThan(TIER_RANGE[1]);
+  });
+
+  it("suit l'heure et le quartier : monde à midi au centre, presque personne à 3 h, peu en périphérie, et la foule se vide quand la nuit tombe", () => {
+    const g = graph();
+    const count = (obs: Observer, steps = 1800): { alive: number; target: number } => {
+      const sim = makeSim(g, 100);
+      sim.prefill(obs);
+      run(sim, steps, obs);
+      return { alive: sim.stats.alive, target: sim.stats.target };
+    };
+    const noon = count(still(0, -20, 13)), night = count(still(0, -20, 3));
+    expect(noon.target).toBeGreaterThanOrEqual(95);
+    expect(noon.alive).toBeGreaterThanOrEqual(90);
+    expect(night.target).toBeLessThanOrEqual(6);
+    expect(night.alive).toBeLessThanOrEqual(8);
+    // Périphérie : au sud-ouest de l'anneau, loin des commerces.
+    const outskirts = count(still(-1250, -1500, 13));
+    expect(outskirts.target).toBeLessThanOrEqual(35);
+    expect(outskirts.alive).toBeLessThanOrEqual(36);
+    // La nuit tombe : on part de la foule de midi, l'heure passe à 3 h, la foule se vide (un départ par pas, hors de vue ou loin).
+    const sim = makeSim(g, 100);
+    sim.prefill(still(0, -20, 13));
+    run(sim, 600, still(0, -20, 13));
+    expect(sim.stats.alive).toBeGreaterThanOrEqual(90);
+    run(sim, 60 * 30, still(0, -20, 3));
+    expect(sim.stats.alive).toBeLessThanOrEqual(12);
+  });
+
+  it("habille la même personne au même endroit à la même heure, et jamais deux jumeaux vivants", () => {
+    const recipes = (hour: number): string[] => {
+      const sim = makeSim(graph(), 60, 5);
+      sim.prefill(still(0, -20, hour));
+      return sim.state.recipes.filter((_, i) => sim.state.alive![i]).map((r) => JSON.stringify(r));
+    };
+    const a = recipes(13.2), b = recipes(13.7), c = recipes(15.2);
+    expect(a).toEqual(b); // même heure de jeu (13), même graine, même ordre de tirage
+    expect(a).not.toEqual(c);
+    expect(new Set(a).size).toBe(a.length);
   });
 
   it("repère un véhicule qui arrive sur un passage, mais pas un véhicule arrêté ou qui s'éloigne", () => {

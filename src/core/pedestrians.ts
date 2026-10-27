@@ -1,4 +1,5 @@
-import { PED } from "../data/nav";
+import { PED, ZONE } from "../data/nav";
+import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
 import { phaseRate } from "./character-rig";
@@ -53,6 +54,8 @@ export interface Observer {
   onFoot: boolean;
   /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. */
   vehicle: { x: number; y: number; vx: number; vy: number } | null;
+  /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
+  hour?: number;
 }
 
 export interface PedStats {
@@ -67,8 +70,12 @@ export interface PedStats {
   idle: number;
   /** Naissances refusées faute d'endroit hors de vue. */
   spawnFailures: number;
+  /** Nombre de passants visé à cette heure, dans ce quartier, à cette vitesse ; zone du graphe piéton autour du joueur. */
+  target: number;
+  zone: number;
 }
 
+const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
 const MASK_WALK = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner);
 
 const TAU = Math.PI * 2;
@@ -107,7 +114,7 @@ export function vehicleThreat(x: number, y: number, veh: { x: number; y: number;
 
 export class PedSim {
   readonly state: CrowdState;
-  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0 };
+  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, target: 0, zone: ZONE.outskirts };
   /** Appelé quand un emplacement reçoit un nouveau passant (le rendu l'habille). */
   onSpawn: ((slot: number, recipe: Recipe) => void) | null = null;
 
@@ -138,6 +145,8 @@ export class PedSim {
   private readonly link: Int32Array;
 
   private frame = 0;
+  private hour = 12;
+  private excessCursor = 0;
   private spawned = 0;
   private spawnRng = 0;
   private readonly moves: Move[] = [];
@@ -173,13 +182,17 @@ export class PedSim {
 
   /** Remplit tous les emplacements d'un coup (départ du jeu, du banc, des tests). */
   prefill(obs: Observer): void {
-    for (let pass = 0; pass < 12; pass++) {
-      let free = 0;
-      for (let i = 0; i < this.n; i++) {
+    this.hour = obs.hour ?? 12;
+    const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
+    this.stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
+    this.stats.target = crowdTarget(this.n, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy));
+    let alive = 0;
+    for (let pass = 0; pass < 12 && alive < this.stats.target; pass++) {
+      for (let i = 0; i < this.n && alive < this.stats.target; i++) {
         if (this.state.alive![i]) continue;
-        if (!this.spawn(i, obs, 8)) free++;
+        // Au départ personne n'a encore regardé : la première image n'est pas vide, les passants naissent n'importe où dans la couronne.
+        if (this.spawn(i, obs, 8, 35, 125, true)) alive++;
       }
-      if (free === 0) break;
     }
   }
 
@@ -189,6 +202,13 @@ export class PedSim {
     const st = this.state, alive = st.alive!, stats = this.stats;
     const v = Math.hypot(obs.vx, obs.vy);
     const rin = Math.min(35 + 3 * v, 110), rout = Math.min(rin + 90, 200);
+    this.hour = obs.hour ?? 12;
+    // Quartier du joueur (zone de la file la plus proche) : deux fois par seconde suffisent.
+    if (this.frame % 30 === 1) {
+      const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
+      stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
+    }
+    stats.target = crowdTarget(this.n, this.hour, stats.zone, v);
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
     let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0;
@@ -226,13 +246,30 @@ export class PedSim {
       const m2 = this.mode[i]!;
       if (m2 === PED_STATE.wait) waiting++; else if (m2 === PED_STATE.cross) crossing++; else if (m2 === PED_STATE.idle) idle++;
     }
+    // Trop de monde pour l'heure ou le quartier : les passants à l'écart (hors de vue, ou à plus de 60 m) s'en vont, deux au plus par pas.
+    if (nAlive > stats.target) {
+      let leaving = 2;
+      for (let k = 0; k < this.n && leaving > 0; k++) {
+        const i = (this.excessCursor + k) % this.n;
+        if (!alive[i]) continue;
+        const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
+        const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
+        if (hidden || d > 60) {
+          alive[i] = 0;
+          stats.despawns++;
+          nAlive--;
+          this.excessCursor = i + 1;
+          leaving--;
+        }
+      }
+    }
     stats.alive = nAlive;
     stats.tiers = [near, mid, far];
     stats.waiting = waiting;
     stats.crossing = crossing;
     stats.idle = idle;
     // Naissances : les emplacements libres se remplissent, au plus `spawnPerStep` par pas.
-    let attempts = this.spawnPerStep;
+    let attempts = nAlive < stats.target ? this.spawnPerStep : 0;
     for (let i = 0; i < this.n && attempts > 0; i++) {
       if (alive[i]) continue;
       attempts--;
@@ -251,9 +288,9 @@ export class PedSim {
   }
 
   /** Cherche un endroit de la couronne, hors du champ de vision, sur une file piétonne ; renvoie vrai si le passant est né. */
-  private spawn(i: number, obs: Observer, tries: number, rin = 35, rout = 125): boolean {
+  private spawn(i: number, obs: Observer, tries: number, rin = 35, rout = 125, anywhere = false): boolean {
     for (let k = 0; k < tries; k++) {
-      const a = this.random() * TAU, r = rin + this.random() * (rout - rin);
+      const a = this.random() * TAU, r = rin * 0.6 + this.random() * (rout - rin * 0.6);
       const px = obs.x + Math.sin(a) * r, py = obs.y + Math.cos(a) * r;
       const hit = this.graph.nearest(px, py, 25, MASK_WALK);
       if (!hit) continue;
@@ -262,8 +299,10 @@ export class PedSim {
       // Hors du champ de vision de la caméra (±55°), sauf au loin : sinon on le dit (spawnFailures) et on réessaie.
       const bearing = Math.atan2(hit.x - obs.x, hit.y - obs.y);
       const dist = Math.hypot(hit.x - obs.x, hit.y - obs.y);
-      if (dist < rin - 5 || dist > rout + 20) continue;
-      if (!this.opt.spawnInView && dist < 140 && Math.abs(angleDiff(bearing, obs.yaw)) < 0.95) {
+      // Derrière la caméra (plus de 86° du regard) on peut naître plus près : le joueur ne le voit pas ; devant, au-delà de `rin`.
+      const behind = Math.abs(angleDiff(bearing, obs.yaw)) > 1.5;
+      if (dist < (anywhere ? 8 : behind ? rin * 0.6 : rin - 5) || dist > rout + 20) continue;
+      if (!anywhere && !this.opt.spawnInView && dist < 140 && Math.abs(angleDiff(bearing, obs.yaw)) < 0.95) {
         this.stats.spawnFailures++;
         if (k < tries - 1) continue;
         if (dist < rin + 40) return false;
@@ -275,7 +314,12 @@ export class PedSim {
   }
 
   private place0(i: number, edge: number, s: number, x: number, y: number): void {
-    const seed = hash32(this.opt.seed, this.spawned++);
+    this.spawned++;
+    // Graine : monde, voie, heure de jeu et case de 6 m : la même personne se trouve au même endroit à la même heure (D39). Deux passants vivants
+    // n'ont jamais la même graine (deux jumeaux côte à côte se verraient).
+    const way = this.graph.edgeWay(edge) % 4294967296;
+    let seed = hash32(hash32(this.opt.seed ^ way, Math.floor(this.hour)), hash32(Math.round(x / 6) + 4096, Math.round(y / 6) + 4096));
+    for (let guard = 0; guard < 8 && this.taken(i, seed); guard++) seed = hash32(seed, guard + 1);
     this.rng[i] = seed ^ 0xa511e9b3;
     this.id[i] = seed;
     const recipe = recipeFromSeed(seed);
@@ -301,6 +345,12 @@ export class PedSim {
     this.state.phase[i] = nextRandom(this.rng, i) * TAU;
     this.stats.spawns++;
     this.onSpawn?.(i, recipe);
+  }
+
+  /** Un autre passant vivant a-t-il déjà cette graine ? */
+  private taken(self: number, seed: number): boolean {
+    for (let j = 0; j < this.n; j++) if (j !== self && this.state.alive![j] && this.id[j] === seed) return true;
+    return false;
   }
 
   // --- Décisions --------------------------------------------------------------------------------------------------

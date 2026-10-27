@@ -6,7 +6,7 @@ import {
   AGES, applyAppearance, BAGS, BEARDS, bottomColorChoices, BOTTOM_COLORS, BOTTOMS, BUILDS, CLOTH_COLORS, DEFAULT_RECIPE, GLASSES, HAIR_COLORS, HAIR_STYLES, HATS, hatColorChoices,
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
-import { DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, type SettingKey, type Settings } from "../core/settings";
+import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Réglages, Lieux notés, Sauvegarde. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -158,6 +158,8 @@ export class PauseMenu {
     row("Définition", "Plus haut : plus net, mais plus lent et plus chaud.", "dpr", choices("dpr", DPR_CHOICES.map((v) => ({ value: v, label: `×${String(v).replace(".", ",")}` })), values.dpr));
     row("Ombres", "Fines : la meilleure qualité, la plus lourde.", "shadows", choices("shadows", SHADOW_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 2048 ? "Moyennes" : "Fines" })), values.shadows));
     row("Rayon de détail", "Distance jusqu'à laquelle les bâtiments sont détaillés. 400 m double la mémoire.", "detail", choices("detail", DETAIL_CHOICES.map((v) => ({ value: v, label: `${v} m` })), values.detail));
+    row("Foule", "Nombre maximal de passants à la fois : il varie avec l'heure et le quartier. Moins, c'est plus fluide.", "crowd",
+      choices("crowd", CROWD_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 40 ? "Peu" : v === 100 ? "Normale" : "Dense" })), values.crowd));
     const range = h("input");
     range.type = "range";
     range.min = String(SENSITIVITY_RANGE.min);
@@ -174,7 +176,7 @@ export class PauseMenu {
     sens.append(range, out);
     row("Sensibilité de la caméra", "Vitesse de rotation au doigt.", "sensitivity", sens);
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
-    c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=) reste prioritaire."));
+    c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=) reste prioritaire."));
   }
 
   // --- Apparence ----------------------------------------------------------------------------------------------------------
