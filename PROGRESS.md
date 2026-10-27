@@ -333,3 +333,7 @@ Fait :
 - Pas encore : sons (J7), vêtements selon l'heure (J2-8).
 - Tests : 262 (12 de plus).
 
+**J2-8 (27 octobre 2026) : vêtements selon l'heure** (D46)
+- Les passants s'habillent selon la fraîcheur de l'heure : vestes, pulls, écharpes et bonnets la nuit et le matin ; t-shirts, shorts et lunettes de soleil l'après-midi. Même personne, mêmes couleurs, seules les couches changent.
+- Tests : 265 (3 de plus).
+

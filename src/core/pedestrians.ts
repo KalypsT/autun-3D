@@ -2,6 +2,7 @@ import { PED, ZONE } from "../data/nav";
 import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
+import { coldAt, dressForCold } from "./dress";
 import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
@@ -375,7 +376,7 @@ export class PedSim {
     for (let guard = 0; guard < 8 && this.taken(i, seed); guard++) seed = hash32(seed, guard + 1);
     this.rng[i] = seed ^ 0xa511e9b3;
     this.id[i] = seed;
-    const recipe = recipeFromSeed(seed);
+    const recipe = dressForCold(recipeFromSeed(seed), seed, coldAt(this.hour));
     this.state.recipes[i] = recipe;
     this.edge[i] = edge;
     this.gen[i] = this.graph.generation(edge);
