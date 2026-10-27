@@ -200,21 +200,18 @@ describe("voiture", () => {
     expect(time).toBeLessThan(14);
   });
 
-  it("frein maintenu à 50 km/h : les roues se bloquent, arrêt en 12 à 18 m (pression qui monte, pneus qui glissent)", () => {
+  it("frein maintenu à 50 km/h : l'ABS empêche le blocage, arrêt en 10 à 15 m", () => {
     const c = createVehicle(0, -90, 0, big);
     c.vy = c.speed = 50 / 3.6;
     const y0 = c.y;
-    let locked = false, rear = false;
+    let locked = false;
     while (c.speed > 0.01) {
       stepVehicle(c, CAR, { throttle: 0, brake: 1, steer: 0 }, DT, big, none);
-      locked ||= c.lockedFront;
-      rear ||= c.lockedRear;
+      locked ||= c.lockedFront || c.lockedRear;
     }
-    expect(locked).toBe(true);
-    // L'arrière ne bloque pas en ligne droite (répartition vers l'avant) : pas de tête-à-queue au freinage.
-    expect(rear).toBe(false);
-    expect(c.y - y0).toBeGreaterThan(12);
-    expect(c.y - y0).toBeLessThan(18);
+    expect(locked).toBe(false);
+    expect(c.y - y0).toBeGreaterThan(10);
+    expect(c.y - y0).toBeLessThan(15);
   });
 
   it("un appui bref sur le frein ralentit sans bloquer les roues", () => {
@@ -229,15 +226,27 @@ describe("voiture", () => {
     expect(c.speed).toBeLessThan(50 / 3.6);
   });
 
-  it("roues avant bloquées, la voiture ne tourne presque plus : elle file tout droit", () => {
+  it("freiner en tournant : grâce à l'ABS, la voiture tourne encore, et plus serré qu'à vitesse constante", () => {
     const t = wide();
     const free = createVehicle(0, 0, 0, t), braked = createVehicle(0, 0, 0, t);
-    free.vy = free.speed = braked.vy = braked.speed = 60 / 3.6;
-    // Pression de freinage déjà au maximum.
-    braked.brakeLevel = 1;
-    drive(free, { throttle: 0, brake: 0, steer: 1 }, 1, t, none, CAR);
-    drive(braked, { throttle: 0, brake: 1, steer: 1 }, 1, t, none, CAR);
-    expect(braked.heading).toBeLessThan(free.heading * 0.5);
+    free.vy = braked.vy = 70 / 3.6;
+    drive(free, { throttle: 0.3, brake: 0, steer: 1 }, 2, t, none, CAR);
+    drive(braked, { throttle: 0, brake: 1, steer: 1 }, 2, t, none, CAR);
+    expect(braked.lockedFront).toBe(false);
+    expect(braked.heading).toBeGreaterThan(0.5);
+    // En ralentissant, le rayon se resserre : on tourne davantage par mètre parcouru.
+    expect(braked.heading / Math.hypot(braked.x, braked.y)).toBeGreaterThan(free.heading / Math.hypot(free.x, free.y));
+  });
+
+  it("frein à main à 50 km/h en braquant : l'arrière bloque, la voiture pivote, puis se rattrape", () => {
+    const t = wide();
+    const c = createVehicle(0, 0, 0, t);
+    c.vy = 50 / 3.6;
+    for (let i = 0; i < 40; i++) stepVehicle(c, CAR, { throttle: 0, brake: 0, steer: 1, handbrake: 1 }, DT, t, none);
+    expect(c.lockedRear).toBe(true);
+    expect(c.heading).toBeGreaterThan(0.6);
+    drive(c, { throttle: 0.4, brake: 0, steer: 0 }, 2.5, t, none, CAR);
+    expect(Math.abs(c.yawRate)).toBeLessThan(0.15);
   });
 
   it("le frein moteur ralentit plus qu'une roue libre de vélo", () => {
@@ -316,6 +325,29 @@ describe("moto", () => {
     drive(m, { throttle: 0.4, brake: 0, steer: 1 }, 2, flat, none, MOTO);
     expect(m.lean).toBeGreaterThan(0.3);
     expect(Math.abs(m.speed * m.yawRate)).toBeLessThan(1.02 * 9.81);
+  });
+
+  it("en virage serré à 60 km/h, ne glisse pas de l'arrière", () => {
+    const meta = { cols: 400, rows: 400, res: 5, x0: -1000, y0: -1000, y1: 1000, base: 0, unit: 0.01, zmin: 0, zmax: 0 } as TerrainMeta;
+    const t = new Terrain(meta, new Float32Array(400 * 400));
+    const m = createVehicle(0, 0, 0, t);
+    m.vy = 60 / 3.6;
+    drive(m, { throttle: 0.4, brake: 0, steer: 1 }, 2, t, none, MOTO);
+    const beta = Math.atan2(m.vx * Math.cos(m.heading) - m.vy * Math.sin(m.heading), m.speed);
+    // Dérive normale d'un pneu qui tourne (quelques degrés), pas de glissade.
+    expect(Math.abs(beta)).toBeLessThan(0.08);
+  });
+
+  it("freiner en tournant ne la fait pas pivoter (ABS)", () => {
+    const m = createVehicle(0, -50, 0, flat);
+    m.vy = 50 / 3.6;
+    let maxYaw = 0;
+    for (let i = 0; i < 60; i++) {
+      stepVehicle(m, MOTO, { throttle: 0, brake: 1, steer: 1 }, DT, flat, none);
+      maxYaw = Math.max(maxYaw, Math.abs(m.yawRate));
+      expect(m.lockedRear).toBe(false);
+    }
+    expect(maxYaw).toBeLessThan(1.5);
   });
 
   it("freine de 50 km/h à l'arrêt en moins de 16 m, sans jamais bloquer l'avant", () => {
