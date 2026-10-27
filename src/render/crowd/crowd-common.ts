@@ -35,6 +35,24 @@ export class CrowdRigs {
     });
   }
 
+  /**
+   * Habille l'emplacement i d'une nouvelle recette (un passant naît dans un emplacement libre). Réutilise les tableaux de l'emplacement :
+   * seules la recette et les listes de pièces sont refaites.
+   */
+  assign(i: number, r: Recipe): void {
+    const d = bodyDims(r);
+    this.dims[i] = d;
+    restOffsets(d, this.offsets[i]);
+    geometryScales(d, this.scales[i]);
+    slotColors(r, this.colors[i]);
+    partMask(r, this.masks[i]);
+    const list: number[] = [];
+    PART_SPECS.forEach((s, k) => {
+      if (s.when(r)) list.push(k);
+    });
+    this.parts[i] = Int16Array.from(list);
+  }
+
   /** Matrices d'os du personnage i pour une pose et une racine données (dans `render` et `world`). */
   solveWith(i: number, pose: Pose, root: Root): void {
     solveBones(this.render, this.world, this.offsets[i]!, this.scales[i]!, pose, root);

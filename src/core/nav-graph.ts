@@ -39,6 +39,9 @@ const GRID = 32;
 export class NavGraph {
   readonly cells = new Map<string, Loaded>();
   private slots: (Loaded | undefined)[] = [];
+  /** Numéro de génération de chaque emplacement : un emplacement recyclé ne confond pas une ancienne référence avec une nouvelle super-tuile. */
+  private gens: number[] = [];
+  private genCounter = 0;
   private free: number[] = [];
   /** Clé de coordonnées d'un portail → ses nœuds (un par super-tuile qui le porte). */
   private readonly portals = new Map<string, number[]>();
@@ -61,6 +64,7 @@ export class NavGraph {
     if (slot >= 30000) throw new Error("navigation : trop de super-tuiles chargées");
     const l = this.index(slot, cell);
     this.slots[slot] = l;
+    this.gens[slot] = ++this.genCounter;
     this.cells.set(cell.id, l);
     for (const [key, node] of cell.ped.portals) {
       const ref = slot * SHIFT + node;
@@ -81,10 +85,16 @@ export class NavGraph {
       if (list.length === 0) this.portals.delete(key);
     }
     this.slots[l.slot] = undefined;
+    this.gens[l.slot] = 0;
     this.free.push(l.slot);
     this.cells.delete(id);
     this.version++;
     return true;
+  }
+
+  /** Génération de la super-tuile qui porte cette arête ou ce nœud (0 si elle n'est plus chargée) : à comparer à celle notée quand on a pris la référence. */
+  generation(ref: number): number {
+    return ref < 0 ? 0 : this.gens[Math.floor(ref / SHIFT)] ?? 0;
   }
 
   /** Nombre de clés de portail suivies (doit retomber à 0 quand tout est retiré). */

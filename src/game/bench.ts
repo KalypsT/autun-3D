@@ -6,6 +6,8 @@ import { Minimap } from "../ui/minimap";
 import { MapData } from "../ui/map-data";
 import type { GameContext } from "./context";
 import { createCrowdSim, type CrowdSim } from "./crowd-sim";
+import { PedSim, type Observer, type PedStats } from "../core/pedestrians";
+import { NavManager } from "./nav-manager";
 import { createCrowd } from "../render/crowd/crowd";
 import type { CrowdRenderer } from "../render/crowd/crowd-types";
 import { followSun, gameSpawn } from "./game";
@@ -44,6 +46,26 @@ interface Memory {
   heapMB: number | null;
 }
 
+/** Mesure de la simulation des passants (`?sim=1`) pendant une phase. */
+interface SimReport {
+  /** Durée d'un pas de simulation (ms) : moyenne, 95 %, pire. */
+  avgMs: number;
+  p95Ms: number;
+  maxMs: number;
+  /** Naissances et disparitions pendant la phase, et état à la fin. */
+  spawns: number;
+  despawns: number;
+  alive: number;
+  tiers: [number, number, number];
+  waiting: number;
+  crossing: number;
+  idle: number;
+  spawnFailures: number;
+  /** Super-tuiles de navigation chargées et arêtes. */
+  navCells: number;
+  navEdges: number;
+}
+
 interface PhaseReport {
   name: string;
   frames: FrameSummary;
@@ -53,8 +75,8 @@ interface PhaseReport {
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
   memory: Memory;
-  /** Foule de la phase : effectif, répartition près / loin, durée moyenne de sa mise à jour (ms) ; null s'il n'y en avait pas. */
-  crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number } | null;
+  /** Foule de la phase : effectif, répartition près / loin, durée moyenne de sa mise à jour (ms) ; null s'il n'y en avait pas. Avec `?sim=1`, `sim` mesure la simulation. */
+  crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number; sim?: SimReport } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -126,6 +148,16 @@ export function deviceInfo(ctx: GameContext): Record<string, unknown> {
   };
 }
 
+function simReport(stats: PedStats, ms: number[], base: { spawns: number; despawns: number }, nav: NavManager): SimReport {
+  const sorted = [...ms].sort((a, b) => a - b);
+  const n = Math.max(1, sorted.length);
+  return {
+    avgMs: sorted.reduce((a, b) => a + b, 0) / n, p95Ms: sorted[Math.floor(n * 0.95)] ?? 0, maxMs: sorted[sorted.length - 1] ?? 0,
+    spawns: stats.spawns - base.spawns, despawns: stats.despawns - base.despawns, alive: stats.alive, tiers: [...stats.tiers], waiting: stats.waiting,
+    crossing: stats.crossing, idle: stats.idle, spawnFailures: stats.spawnFailures, navCells: nav.graph.cells.size, navEdges: nav.graph.edgeCount,
+  };
+}
+
 export function startBench(ctx: GameContext): void {
   const { camera, renderer, scene, sky, atmosphere, world, tiles, terrainView, sunLight, params } = ctx;
   const { terrain } = world;
@@ -149,7 +181,10 @@ export function startBench(ctx: GameContext): void {
   // ?crowd=100 : phases avec 100 personnages animés devant la caméra (avec puis sans ombres des personnages) ; ?soak=10 : 10 minutes d'endurance
   // avec cette foule (une phase par minute), pour voir si la chauffe fait baisser la fluidité.
   const soak = Math.min(Math.max(Math.floor(Number(params.get("soak") ?? 0)) || 0, 0), 30);
-  const crowdN = Math.min(Math.max(Math.floor(Number(params.get("crowd") ?? (soak > 0 ? 100 : 0))) || 0, 0), 400);
+  // ?sim=1 : les passants sont ceux de la vraie simulation (J2), qui vivent pendant tout le banc, rues à 50 et 90 km/h comprises ; ?tiers=0 : tous jouent à
+  // fond à chaque pas ; ?avoid=0 : ni évitement ni collisions (comparaisons de coût).
+  const simMode = params.get("sim") === "1";
+  const crowdN = Math.min(Math.max(Math.floor(Number(params.get("crowd") ?? (soak > 0 || simMode ? 100 : 0))) || 0, 0), 400);
   const crowdPhases: Phase[] = crowdN > 0
     ? [
         { name: `Arrêt sur la place, ${crowdN} personnages`, still: { seconds: short ? 2 : 8 }, crowd: { n: crowdN, shadows: true } },
@@ -177,6 +212,7 @@ export function startBench(ctx: GameContext): void {
   const settingsShadows = renderer.shadowMap.enabled, settingsPixelRatio = renderer.getPixelRatio();
   const settings = {
     crowd: crowdN,
+    sim: simMode ? `simulation${params.get("tiers") === "0" ? ", sans paliers" : ""}${params.get("avoid") === "0" ? ", sans évitement" : ""}` : "",
     soak,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
@@ -215,6 +251,13 @@ export function startBench(ctx: GameContext): void {
   let crowd: CrowdRenderer | null = null;
   let crowdSim: CrowdSim | null = null;
   let crowdCost = { ms: 0, frames: 0 };
+  // Vraie simulation (?sim=1) : persiste d'une phase à l'autre ; la navigation se charge autour du point suivi.
+  let pedSim: PedSim | null = null;
+  let simMs: number[] = [];
+  let simBase = { spawns: 0, despawns: 0 };
+  let prefilled = false;
+  const nav = simMode ? new NavManager() : null;
+  if (nav) void nav.init().then(() => nav.preload(spawn.x, spawn.y));
   const groundAt = (x: number, z: number): number => terrain.heightAt(x, -z);
 
   const startPhase = (): void => {
@@ -222,11 +265,22 @@ export function startBench(ctx: GameContext): void {
     phase = phases[index] ?? null;
     if (!phase) return;
     phase.setup?.();
-    crowd?.dispose();
-    crowd = null;
-    crowdSim = null;
     crowdCost = { ms: 0, frames: 0 };
-    if (phase.crowd) {
+    simMs = [];
+    if (simMode) {
+      if (!crowd) {
+        pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
+        crowd = createCrowd(scene, pedSim.state);
+        pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
+      }
+      crowd.setShadows(phase.crowd?.shadows ?? renderer.shadowMap.enabled);
+      simBase = { spawns: pedSim!.stats.spawns, despawns: pedSim!.stats.despawns };
+    } else {
+      crowd?.dispose();
+      crowd = null;
+      crowdSim = null;
+    }
+    if (!simMode && phase.crowd) {
       const at = pose();
       crowdSim = createCrowdSim({ count: phase.crowd.n, camX: at.cam[0], camZ: -at.cam[2], camYaw: 0, seed: 7 });
       crowd = createCrowd(scene, crowdSim.state);
@@ -259,8 +313,12 @@ export function startBench(ctx: GameContext): void {
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
       memory: measureMemory(ctx),
-      crowd: p.crowd && crowd
-        ? { n: p.crowd.n, shadows: p.crowd.shadows, near: crowd.lodCounts().near, far: crowd.lodCounts().far, updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0 }
+      crowd: crowd && (simMode || p.crowd)
+        ? {
+            n: simMode ? crowdN : p.crowd!.n, shadows: p.crowd?.shadows ?? renderer.shadowMap.enabled, near: crowd.lodCounts().near, far: crowd.lodCounts().far,
+            updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0,
+            ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!) } : {}),
+          }
         : null,
       minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
     });
@@ -337,6 +395,7 @@ export function startBench(ctx: GameContext): void {
     camera.position.set(pos.cam[0], pos.cam[1], -pos.cam[2]);
     camera.lookAt(pos.look[0], pos.look[1], -pos.look[2]);
     tiles.update(pos.x, pos.y, pos.vx, pos.vy);
+    nav?.update(pos.x, pos.y, pos.vx, pos.vy);
     pendingBuild = tiles.sliceMs;
     terrainView.update(pos.x, pos.y);
     atmosphere.advance(dt);
@@ -350,7 +409,26 @@ export function startBench(ctx: GameContext): void {
         minimap.time(() => minimap.update({ x: pos.x, y: pos.y, cameraYaw: yaw, facing: yaw, north: false, vehicles: [], waypoint: null }));
       }
     }
-    if (crowd && crowdSim) {
+    if (pedSim && crowd && nav && nav.graph.edgeCount > 0) {
+      const obs: Observer = {
+        x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), onFoot: !phase?.drive,
+        vehicle: phase?.drive ? { x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy } : null,
+      };
+      if (!prefilled) {
+        pedSim.prefill(obs);
+        prefilled = true;
+      }
+      const s0 = performance.now();
+      pedSim.step(dt, obs);
+      const sim = performance.now() - s0;
+      const c0 = performance.now();
+      crowd.update(pedSim.state, pos.cam[0], -pos.cam[2]);
+      if (measuring) {
+        simMs.push(sim);
+        crowdCost.ms += performance.now() - c0;
+        crowdCost.frames++;
+      }
+    } else if (crowd && crowdSim) {
       crowdSim.step(dt, groundAt);
       const c0 = performance.now();
       crowd.update(crowdSim.state, pos.cam[0], -pos.cam[2]);
@@ -387,7 +465,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -400,6 +478,11 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
+    if (p.crowd?.sim) {
+      const q = p.crowd.sim;
+      lines.push(`  Simulation : ${q.avgMs.toFixed(3)} ms par image en moyenne · 95 % ${q.p95Ms.toFixed(3)} · pire ${q.maxMs.toFixed(2)} ms (objectif : moins de 2 ms)`);
+      lines.push(`  Passants : ${q.alive} vivants (paliers ${q.tiers.join(" / ")}) · ${q.spawns} naissances, ${q.despawns} disparitions dans la phase · ${q.waiting} attendent, ${q.crossing} traversent, ${q.idle} à l'arrêt · ${q.spawnFailures} naissances refusées (en vue) · navigation ${q.navCells} super-tuiles, ${q.navEdges} arêtes`);
+    }
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {
       const n = p.builds.length;

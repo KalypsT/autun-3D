@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { GameContext } from "./context";
 import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
+import { PedSim, type Observer } from "../core/pedestrians";
+import { createCrowd } from "../render/crowd/crowd";
 import { FrameMeter } from "./hud";
 
 const VIEWS: Record<string, [number, number, number, number, number, number]> = {
@@ -58,8 +60,14 @@ export function startViewer(ctx: GameContext): void {
 
   // ?nav=1 ou ?nav=all : recouvrement de la navigation (files, passages, places, points d'intérêt ; avec all, le graphe routier).
   const navParam = params.get("nav");
-  const nav = navParam ? new NavManager() : null;
-  const navDebug = nav ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
+  // ?sim=80 : 80 passants de la simulation autour de la caméra (captures) ; ?warm=20 : secondes simulées avant la première image (défaut 20).
+  const simN = Math.min(Math.max(Math.floor(Number(params.get("sim") ?? 0)) || 0, 0), 400);
+  const nav = navParam || simN > 0 ? new NavManager() : null;
+  const pedSim = simN > 0 && nav ? new PedSim(nav.graph, terrain, ctx.colliders, { capacity: simN, seed: Number(params.get("seed") ?? 7), spawnInView: true }) : null;
+  const crowd = pedSim ? createCrowd(scene, pedSim.state) : null;
+  if (pedSim && crowd) pedSim.onSpawn = (slot, recipe) => crowd.assign?.(slot, recipe);
+  const observer = (): Observer => ({ x: pos.x, y: -pos.z, vx: 0, vy: 0, yaw, onFoot: true, vehicle: null });
+  const navDebug = nav && navParam ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
   if (navDebug) scene.add(navDebug.group);
   const meter = new FrameMeter(renderer, debugEl);
   let last = performance.now();
@@ -86,12 +94,26 @@ export function startViewer(ctx: GameContext): void {
     terrainView.update(pos.x, -pos.z);
     nav?.update(pos.x, -pos.z);
     navDebug?.update(pos.x, -pos.z);
+    if (pedSim && crowd && nav!.graph.edgeCount > 0) {
+      pedSim.step(dt, observer());
+      crowd.update(pedSim.state, pos.x, pos.z);
+    }
     renderer.render(scene, camera);
     meter.tick(dt);
     requestAnimationFrame(tick);
   };
   if (params.has("debug")) debugEl.style.display = "block";
   requestAnimationFrame(tick);
-  if (nav) void nav.preload(v[0], v[1]).then(() => ctx.ready());
-  else ctx.ready();
+  if (nav) {
+    void nav.preload(v[0], v[1]).then(() => {
+      if (pedSim && crowd) {
+        // Les passants ont déjà marché un moment : on simule `warm` secondes avant la première image.
+        pedSim.prefill(observer());
+        for (let i = 0, n = Math.round(Number(params.get("warm") ?? 20) * 60); i < n; i++) pedSim.step(1 / 60, observer());
+        crowd.update(pedSim.state, pos.x, pos.z);
+        crowd.setShadows(true);
+      }
+      ctx.ready();
+    });
+  } else ctx.ready();
 }
