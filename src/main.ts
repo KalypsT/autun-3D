@@ -3,6 +3,7 @@ import { Colliders } from "./core/collision";
 import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
 import { startBench } from "./game/bench";
+import { startProto } from "./game/proto";
 import { startGame } from "./game/game";
 import { gameSpawn, resolveStart, type StartState } from "./game/start";
 import { SettingsController } from "./game/settings-controller";
@@ -24,11 +25,14 @@ const loadingEl = document.getElementById("loading") as HTMLDivElement;
 const viewerMode = params.has("view") || params.has("cam");
 // ?bench=1 : banc de test de performances (parcours fixe, rapport à la fin).
 const benchMode = !viewerMode && params.has("bench");
+// ?proto=1 : prototypes de rendu de foule (étape P), mesurés comme le banc.
+const protoMode = !viewerMode && !benchMode && params.has("proto");
+const testMode = benchMode || protoMode;
 
 // Réglages du joueur (enregistrés localement) ; le viewer et le banc gardent les valeurs par défaut pour que leurs mesures restent comparables.
 // Les paramètres d'URL (?dpr=, ?shadowmap=, ?shadow=0, ?detail=) sont prioritaires dans tous les cas.
 const settingsStore = new SettingsStore();
-const storedSettings = viewerMode || benchMode ? { ...DEFAULT_SETTINGS } : settingsStore.load();
+const storedSettings = viewerMode || testMode ? { ...DEFAULT_SETTINGS } : settingsStore.load();
 const effective = effectiveSettings(storedSettings, params).values;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
@@ -98,7 +102,7 @@ async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const saveStore = new SaveStore();
-  const startState: StartState | null = viewerMode || benchMode ? null : resolveStart(params, saveStore, world.manifest.zone);
+  const startState: StartState | null = viewerMode || testMode ? null : resolveStart(params, saveStore, world.manifest.zone);
   const start = focus ? { x: focus[0], y: focus[1] } : startState ?? gameSpawn(params);
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
   await terrainView.preload(start.x, start.y);
@@ -111,7 +115,7 @@ async function main(): Promise<void> {
   const night = params.get("style") === "nuit";
   const clock = startState?.save?.clock;
   const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : 16));
-  const speed = Number(params.get("speed") ?? (night || viewerMode || benchMode ? 0 : 1 / 50));
+  const speed = Number(params.get("speed") ?? (night || viewerMode || testMode ? 0 : 1 / 50));
   const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? clock?.day ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
@@ -124,12 +128,12 @@ async function main(): Promise<void> {
   const { loaded, triangles, draws } = tiles.stats;
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
-  const settings = viewerMode || benchMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
+  const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
   const ctx: GameContext = {
     renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl, settings, start: startState,
     ready: (extra) => {
       loadingEl.remove();
-      document.body.classList.add(viewerMode ? "viewer" : benchMode ? "bench" : "game");
+      document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
         ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, ...extra,
       };
@@ -137,6 +141,7 @@ async function main(): Promise<void> {
   };
   if (viewerMode) startViewer(ctx);
   else if (benchMode) startBench(ctx);
+  else if (protoMode) startProto(ctx);
   else startGame(ctx);
 }
 
