@@ -160,3 +160,19 @@ Chaque décision : date, contexte, choix, raison. On ne la réécrit pas : si el
 - Physique (`MOTO`) : 265 kg avec le pilote, 35 kW (≈ 32 kW à la roue), 0 à 100 km/h en ≈ 5,5 s, 170 km/h, freinage ≈ 0,9 g ; seule la roue arrière est motrice (motricité bornée) ; frein moteur ; inclinaison des deux-roues (jusqu'à ≈ 43°).
 - Garées par deux sur 4 % des places de stationnement (en plus des 30 % de voitures). Pilote assis, buste penché vers le guidon. `?ride=moto`.
 - Modèle : quatre maillages (cadre avec réservoir, moteur et échappement ; direction avec fourche, guidon et phare ; deux roues), angle de chasse de 24°.
+
+## 2026-10-27 — D26. Réglages par défaut relevés d'après le banc sur téléphone
+
+- Mesures (Honor Magic 8 Pro, Adreno 840) : 60 i/s sur toutes les phases en définition native (×2,975), ombres 4096 et détail à 400 m ; seule baisse : 1 % le plus lent à 49 i/s à 90 km/h avec 400 m de détail, mémoire JavaScript 169 Mo (88 Mo à 210 m). Le navigateur cadence à 60 Hz : la marge au-delà reste inconnue.
+- Nouveaux défauts en jeu : définition ×2,5 au plus (au lieu de 1,5), carte d'ombres 4096 (au lieu de 2048), détail jusqu'à 300 m (au lieu de 210). On ne prend pas le maximum mesuré : le banc dure 3 minutes, la cible est 30 minutes de jeu, et la chauffe peut faire baisser la cadence d'un téléphone sur la durée.
+- À vérifier : une partie de 30 minutes sans baisse de fluidité ni chauffe gênante. Les paramètres `?dpr=`, `?shadowmap=`, `?detail=` restent disponibles pour comparer.
+
+## 2026-10-27 — D27. Freinage par essieu, roues qui se bloquent, braquage borné par l'adhérence
+
+Retour d'essai : « frein à revoir, avec dérapages » ; « direction à adapter à haute vitesse » ; « pas trouvé de vélo ».
+- Freinage : réparti entre l'avant et l'arrière (voiture 80/20, deux-roues 50-70 % à l'avant), avec report de charge (hauteur du centre de gravité) : l'avant s'écrase, l'arrière s'allège. Chaque essieu a un « cercle d'adhérence » : ce qui sert à freiner ou à tracter ne sert plus à tourner.
+- Une roue freinée au-delà de son adhérence se bloque (voiture sans ABS) : elle glisse avec 75 % de l'adhérence, dans le sens de son mouvement, et ne dirige plus. Répartition réglée pour que l'avant bloque d'abord : la voiture file tout droit au lieu de partir en tête-à-queue. Deux-roues : frein avant toujours dosé (pas de chute modélisée), l'arrière peut bloquer.
+- Pédale tactile tout ou rien : la pression monte en 0,7 s tant qu'on appuie (un appui bref ralentit, un appui long bloque) et retombe en 0,15 s. Voiture lancée à 50 km/h, frein maintenu : arrêt en ≈ 15 m roues avant bloquées.
+- Traces de pneus au sol derrière les roues bloquées ou à la limite d'adhérence (un maillage instancié, 1 500 segments recyclés).
+- Braquage : en plus de la réduction avec la vitesse, borné à ce que les pneus peuvent tenir (v² δ / L ≤ 1,15 × adhérence) ; plein braquage en 0,35 s au plus ; course du doigt progressive (puissance 1,6) pour les petites corrections.
+- Repères à l'écran : un par type de véhicule (🚲 🛴 🏍️ 🚗), car les voitures garées partout masquaient les vélos.

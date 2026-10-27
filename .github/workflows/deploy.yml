@@ -9,9 +9,11 @@ on:
 permissions:
   contents: read
 
+# Les vérifications de PR ont leur propre groupe (une nouvelle poussée annule l'ancienne) ;
+# la publication depuis main n'est jamais annulée, sinon le site reste sur l'ancienne version.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'pull_request' && format('verif-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:

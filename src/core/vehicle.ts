@@ -52,8 +52,14 @@ export interface VehicleSpec {
   bodyRoll: number;
   /** Frein moteur quand on lâche l'accélérateur (N). */
   engineBrake: number;
-  /** Part du poids sur les roues motrices (motricité bornée par l'adhérence) ; 1 = pas de limite pratique. */
-  driveShare: number;
+  /** Essieu moteur : sa charge borne la motricité (patinage). */
+  driveAxle: "front" | "rear";
+  /** Hauteur du centre de gravité (m) : report de charge vers l'avant au freinage, vers l'arrière à l'accélération. */
+  cgHeight: number;
+  /** Part du freinage sur l'avant. */
+  brakeFront: number;
+  /** Frein avant dosé (deux-roues : le conducteur ne bloque pas l'avant) ; sinon les deux roues peuvent se bloquer. */
+  frontNeverLocks: boolean;
 }
 
 export const GRAVITY = 9.81;
@@ -86,7 +92,10 @@ export const BIKE: VehicleSpec = {
   leans: true,
   bodyRoll: 0,
   engineBrake: 0,
-  driveShare: 1,
+  driveAxle: "rear",
+  cgHeight: 1.0,
+  brakeFront: 0.6,
+  frontNeverLocks: true,
 };
 
 /**
@@ -120,12 +129,15 @@ export const SCOOTER: VehicleSpec = {
   leans: true,
   bodyRoll: 0,
   engineBrake: 0,
-  driveShare: 1,
+  driveAxle: "rear",
+  cgHeight: 0.9,
+  brakeFront: 0.5,
+  frontNeverLocks: true,
 };
 
 /**
- * Petite citadine à traction avant avec son conducteur : 1 250 kg, 66 kW (90 ch) dont ≈ 56 kW aux roues, 0 à 100 km/h en ≈ 12 s,
- * freinage ≈ 0,9 g, pneus de tourisme. Centre de gravité vers l'avant (moteur).
+ * Petite citadine à traction avant, sans ABS (au freinage maximal l'avant se bloque d'abord : elle file tout droit), avec son conducteur : 1 250 kg, 66 kW (90 ch) dont ≈ 56 kW aux roues, 0 à 100 km/h en ≈ 12 s,
+ * freinage ≈ 0,9 g à la limite du blocage, ≈ 0,7 g roues bloquées, pneus de tourisme. Centre de gravité vers l'avant (moteur).
  */
 export const CAR: VehicleSpec = {
   mass: 1250,
@@ -142,7 +154,7 @@ export const CAR: VehicleSpec = {
   maxDrive: 5200,
   driveFadeFrom: 165 / 3.6,
   topSpeed: 175 / 3.6,
-  maxBrake: 11000,
+  maxBrake: 13000,
   reverseSpeed: 6,
   reverseForce: 3500,
   rolling: 0.013,
@@ -154,7 +166,10 @@ export const CAR: VehicleSpec = {
   leans: false,
   bodyRoll: 0.012,
   engineBrake: 350,
-  driveShare: 1.55 / 2.6,
+  driveAxle: "front",
+  cgHeight: 0.55,
+  brakeFront: 0.8,
+  frontNeverLocks: false,
 };
 
 /**
@@ -188,7 +203,10 @@ export const MOTO: VehicleSpec = {
   leans: true,
   bodyRoll: 0,
   engineBrake: 250,
-  driveShare: 0.72 / 1.42,
+  driveAxle: "rear",
+  cgHeight: 0.7,
+  brakeFront: 0.7,
+  frontNeverLocks: true,
 };
 
 export interface VehicleState {
@@ -211,6 +229,14 @@ export interface VehicleState {
   speed: number;
   /** Dernier choc : vitesse d'impact (m/s), remise à zéro par l'appelant. */
   impact: number;
+  /** Pression de freinage 0-1 : monte progressivement tant que la pédale est enfoncée. */
+  brakeLevel: number;
+  /** Accélération longitudinale lissée (m/s²), pour le report de charge. */
+  accel: number;
+  /** Roues bloquées (elles glissent) et glissade 0-1 (pneus à la limite ou bloqués), pour l'affichage. */
+  lockedFront: boolean;
+  lockedRear: boolean;
+  skid: number;
 }
 
 export interface DriveInput {
@@ -223,7 +249,7 @@ export interface DriveInput {
 }
 
 export function createVehicle(x: number, y: number, heading: number, terrain: Terrain): VehicleState {
-  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0 };
+  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0 };
 }
 
 const SUBSTEPS = 2;
@@ -232,6 +258,17 @@ const KIN_LOW = 1.5;
 const KIN_HIGH = 4;
 /** Vitesse (1/s) à laquelle les pneus ramènent le véhicule vers le modèle géométrique. */
 const KIN_RATE = 10;
+/** Pédale de frein tactile (tout ou rien) : temps pour atteindre la pression maximale, et pour la relâcher. */
+const BRAKE_RAMP = 0.7;
+const BRAKE_RELEASE = 0.15;
+/** Adhérence d'un pneu qui glisse, rapportée à l'adhérence maximale. */
+const SLIDE_GRIP = 0.75;
+/** En dessous de cette vitesse (m/s), les roues ne se bloquent plus (le véhicule s'arrête). */
+const LOCK_MIN = 1.5;
+/** Braquage à haute vitesse : accélération latérale visée, en part de l'adhérence (un peu au-delà pour sentir la limite). */
+const STEER_GRIP = 1.15;
+/** Temps pour braquer à fond (s) : le volant ne saute pas d'un coup, même quand le braquage permis est petit. */
+const STEER_TIME = 0.35;
 
 /** Force motrice disponible à la vitesse u (m/s) pour un accélérateur 0-1. */
 export function driveForce(spec: VehicleSpec, u: number, throttle: number): number {
@@ -244,7 +281,10 @@ export function driveForce(spec: VehicleSpec, u: number, throttle: number): numb
 
 /** Braquage maximal à la vitesse u. */
 export function steerLimit(spec: VehicleSpec, u: number): number {
-  return spec.maxSteer / (1 + (u / spec.steerFade) ** 2);
+  const low = spec.maxSteer / (1 + (u / spec.steerFade) ** 2);
+  // À haute vitesse, pas plus que ce que les pneus peuvent tenir (v² δ / L ≈ accélération latérale).
+  const L = spec.front + spec.rear;
+  return Math.min(low, (STEER_GRIP * spec.grip * GRAVITY * L) / Math.max(u * u, 1e-3));
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -287,40 +327,95 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   let v = s.vx * cos - s.vy * sin;
   let w = s.yawRate;
 
-  // Guidon : suit la commande à vitesse limitée, borné selon la vitesse.
+  // Guidon : suit la commande à vitesse limitée (plein braquage en STEER_TIME au plus), borné selon la vitesse.
   const limit = steerLimit(spec, Math.abs(u));
   const wanted = clamp(input.steer, -1, 1) * limit;
-  s.steer += clamp(wanted - s.steer, -spec.steerRate * dt, spec.steerRate * dt);
+  const rate = Math.min(spec.steerRate, Math.max(limit / STEER_TIME, 0.05));
+  s.steer += clamp(wanted - s.steer, -rate * dt, rate * dt);
   s.steer = clamp(s.steer, -limit, limit);
   const d = s.steer;
 
-  // Forces longitudinales : moteur (ou marche arrière à l'arrêt), air, pente.
-  const slope = terrain.heightAt(s.x + sin * 0.5, s.y + cos * 0.5) - terrain.heightAt(s.x - sin * 0.5, s.y - cos * 0.5);
-  let fx = 0, braking = 0;
-  if (u < -0.3 && input.throttle > 0) braking = spec.maxBrake * input.throttle;
-  else fx = Math.min(driveForce(spec, u, input.throttle), spec.grip * m * GRAVITY * spec.driveShare);
-  if (input.throttle <= 0 && u > 0.3) braking += spec.engineBrake;
-  if (input.brake > 0) {
-    if (u > 0.3) braking = spec.maxBrake * input.brake;
-    else if (u > -spec.reverseSpeed && input.throttle <= 0) fx -= spec.reverseForce * input.brake;
-  }
-  fx -= spec.drag * u * Math.abs(u);
-  fx -= (m * GRAVITY * slope) / Math.sqrt(1 + slope * slope);
-  // Frottements (roulement, frein) : ils freinent sans jamais inverser le sens.
-  const uFree = u + (fx / m) * dt;
-  const stop = ((spec.rolling * m * GRAVITY + braking) / m) * dt;
-  const uLong = Math.abs(uFree) <= stop ? 0 : uFree - Math.sign(uFree) * stop;
+  // Pression de freinage : monte tant que la pédale est enfoncée, retombe vite.
+  const target = input.brake > 0 && u > 0.3 ? input.brake : 0;
+  s.brakeLevel += target > s.brakeLevel ? Math.min(target - s.brakeLevel, dt / BRAKE_RAMP) : Math.max(target - s.brakeLevel, -dt / BRAKE_RELEASE);
 
-  // Pneus : dérive, force latérale bornée par l'adhérence sur chaque essieu.
-  const nf = (m * GRAVITY * b) / L, nr = (m * GRAVITY * a) / L;
+  // Charges des essieux, avec le report dû à l'accélération (freinage : l'avant s'écrase, l'arrière s'allège).
+  const transfer = (m * s.accel * spec.cgHeight) / L;
+  const nf = Math.max((m * GRAVITY * b) / L - transfer, 0.08 * m * GRAVITY);
+  const nr = Math.max((m * GRAVITY * a) / L + transfer, 0.08 * m * GRAVITY);
+  const gripF = spec.grip * nf, gripR = spec.grip * nr;
+
+  // Moteur (ou marche arrière à l'arrêt), borné par la motricité de l'essieu moteur.
+  const driveGrip = spec.driveAxle === "front" ? gripF : gripR;
+  let drive = 0, brakeF = 0, brakeR = 0, friction = spec.rolling * m * GRAVITY;
+  if (u < -0.3 && input.throttle > 0) {
+    // Accélérer en reculant : on freine d'abord.
+    brakeF = spec.maxBrake * input.throttle * spec.brakeFront;
+    brakeR = spec.maxBrake * input.throttle * (1 - spec.brakeFront);
+  } else drive = Math.min(driveForce(spec, u, input.throttle), 0.98 * driveGrip);
+  if (input.brake > 0 && u <= 0.3 && u > -spec.reverseSpeed && input.throttle <= 0) drive -= spec.reverseForce * input.brake;
+  if (input.throttle <= 0 && u > 0.3) friction += spec.engineBrake;
+  if (s.brakeLevel > 0) {
+    brakeF = spec.maxBrake * s.brakeLevel * spec.brakeFront;
+    brakeR = spec.maxBrake * s.brakeLevel * (1 - spec.brakeFront);
+  }
+  if (spec.frontNeverLocks) brakeF = Math.min(brakeF, 0.95 * gripF);
+  // Une roue freinée au-delà de son adhérence se bloque (pas d'ABS) ; elle glisse alors dans le sens de son mouvement.
+  const fast = Math.abs(u) > LOCK_MIN;
+  s.lockedFront = fast && brakeF > gripF;
+  s.lockedRear = fast && brakeR > gripR;
+  const driveF = spec.driveAxle === "front" ? drive : 0, driveR = spec.driveAxle === "rear" ? drive : 0;
+
+  // Forces dans le repère du véhicule ; frottements (freins des roues qui tournent, roulement, frein moteur) à part.
+  const slope = terrain.heightAt(s.x + sin * 0.5, s.y + cos * 0.5) - terrain.heightAt(s.x - sin * 0.5, s.y - cos * 0.5);
+  let fx = -spec.drag * u * Math.abs(u) - (m * GRAVITY * slope) / Math.sqrt(1 + slope * slope);
+  let fyFront: number, fyRear: number, skid = 0;
   const au = Math.max(Math.abs(u), 0.5);
-  const alphaF = Math.atan2(v + a * w, au) - d * (u < 0 ? -1 : 1);
-  const alphaR = Math.atan2(v - b * w, au);
-  const fyf = clamp(-spec.corneringFront * alphaF, -spec.grip * nf, spec.grip * nf);
-  const fyr = clamp(-spec.corneringRear * alphaR, -spec.grip * nr, spec.grip * nr);
-  const u1 = uLong + (-(fyf * Math.sin(d)) / m + v * w) * dt;
-  v += ((fyr + fyf * Math.cos(d)) / m - u * w) * dt;
-  w += ((a * fyf * Math.cos(d) - b * fyr) / spec.yawInertia) * dt;
+  /** Glissade d'un pneu bloqué : force opposée à la vitesse du point de contact (vx avant, vy droite). */
+  const slide = (n: number, cvx: number, cvy: number): [number, number] => {
+    const sp = Math.hypot(cvx, cvy) || 1;
+    const f = SLIDE_GRIP * spec.grip * n;
+    return [(-cvx / sp) * f, (-cvy / sp) * f];
+  };
+  if (s.lockedFront) {
+    const [sx, sy] = slide(nf, u, v + a * w);
+    fx += sx;
+    fyFront = sy;
+    skid = 1;
+  } else {
+    // Pneu qui roule : la part d'adhérence prise par le freinage et la traction ne reste pas pour tourner.
+    const long = Math.abs(driveF) + brakeF;
+    const lat = Math.sqrt(Math.max(gripF * gripF - long * long, 0));
+    const alpha = Math.atan2(v + a * w, au) - d * (u < 0 ? -1 : 1);
+    const fyw = clamp(-spec.corneringFront * alpha, -lat, lat);
+    fx += driveF * Math.cos(d) - fyw * Math.sin(d);
+    fyFront = driveF * Math.sin(d) + fyw * Math.cos(d);
+    friction += brakeF;
+    skid = Math.max(skid, lat > 0 ? Math.abs(fyw) / lat : 1);
+  }
+  if (s.lockedRear) {
+    const [sx, sy] = slide(nr, u, v - b * w);
+    fx += sx;
+    fyRear = sy;
+    skid = 1;
+  } else {
+    const long = Math.abs(driveR) + brakeR;
+    const lat = Math.sqrt(Math.max(gripR * gripR - long * long, 0));
+    const alpha = Math.atan2(v - b * w, au);
+    fyRear = clamp(-spec.corneringRear * alpha, -lat, lat);
+    fx += driveR;
+    friction += brakeR;
+    skid = Math.max(skid, lat > 0 ? Math.abs(fyRear) / lat : 1);
+  }
+  s.skid = Math.abs(u) > LOCK_MIN ? clamp((skid - 0.85) / 0.15, 0, 1) : 0;
+
+  // Frottements : ils freinent sans jamais inverser le sens.
+  const uFree = u + (fx / m + v * w) * dt;
+  const stop = (friction / m) * dt;
+  const u1 = Math.abs(uFree) <= stop ? 0 : uFree - Math.sign(uFree) * stop;
+  s.accel += ((u1 - u) / dt - v * w - s.accel) * Math.min(1, dt * 8);
+  v += ((fyFront + fyRear) / m - u * w) * dt;
+  w += ((a * fyFront - b * fyRear) / spec.yawInertia) * dt;
   u = u1;
 
   // Basse vitesse : on tend vers le modèle géométrique (lacet = u tan δ / L, pas de dérive à l'arrière),

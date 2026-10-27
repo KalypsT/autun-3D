@@ -110,7 +110,9 @@ export class Controls {
     if (this.stick && this.stick.id === e.pointerId) {
       if (this.mode === "drive") {
         const dx = Math.max(-STEER_RANGE, Math.min(STEER_RANGE, e.clientX - this.stick.cx));
-        this.stickX = dx / STEER_RANGE;
+        // Courbe progressive : petits gestes précis au centre, braquage franc en bout de course.
+        const t = dx / STEER_RANGE;
+        this.stickX = Math.sign(t) * Math.abs(t) ** 1.6;
         this.stickY = 0;
         this.knob.style.left = `${this.stick.cx + dx}px`;
         this.knob.style.top = `${this.stick.cy}px`;

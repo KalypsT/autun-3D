@@ -5,6 +5,7 @@ import { Controls } from "../input/controls";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
+import { SkidMarks } from "../render/skid-marks";
 import type { VehicleModel } from "../render/vehicle-model";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
@@ -96,9 +97,18 @@ export function startGame(ctx: GameContext): void {
   const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock}`);
 
   const actionEl = document.getElementById("action") as HTMLButtonElement;
-  const nearbyEl = document.getElementById("nearby")!;
-  const nearbyArrow = document.getElementById("nearby-arrow")!;
-  const nearbyText = document.getElementById("nearby-text")!;
+  // Un repère par type de véhicule (les voitures, partout, masqueraient les vélos) : flèche et distance du plus proche.
+  const chips = (["bike", "scooter", "moto", "car"] as const).map((kind) => {
+    const el = document.createElement("div");
+    el.className = "chip";
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    arrow.textContent = "⬆";
+    const text = document.createElement("span");
+    el.append(arrow, text);
+    document.getElementById("nearby")!.append(el);
+    return { kind, el, arrow, text };
+  });
   const gasEl = document.getElementById("gas")!;
 
   const mount = (v: Vehicle): void => {
@@ -148,6 +158,21 @@ export function startGame(ctx: GameContext): void {
   const ride = { velo: "bike", trottinette: "scooter", voiture: "car", moto: "moto" }[params.get("ride") ?? ""] as VehicleKind | undefined;
   if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
 
+  // Traces de pneus derrière les roues bloquées ou qui glissent.
+  const marks = new SkidMarks();
+  scene.add(marks.mesh);
+  const leaveMarks = (v: Vehicle): void => {
+    const s = v.state, { track, width } = KINDS[v.kind].tyre;
+    const fx = Math.sin(s.heading), fy = Math.cos(s.heading), rx = Math.cos(s.heading), ry = -Math.sin(s.heading);
+    const sliding = s.skid > 0.6;
+    for (const [axle, off, on] of [["av", v.spec.front, s.lockedFront || sliding], ["ar", -v.spec.rear, s.lockedRear || sliding]] as const) {
+      for (const side of track > 0 ? [-1, 1] : [0]) {
+        const x = s.x + fx * off + rx * track * side, y = s.y + fy * off + ry * track * side;
+        marks.trail(`${v.id}-${axle}${side}`, x, y, terrain.heightAt(x, y), on, width);
+      }
+    }
+  };
+
   let hudTimer = 0;
   let actionLabel = "";
   const updateHud = (): void => {
@@ -160,12 +185,15 @@ export function startGame(ctx: GameContext): void {
       actionEl.textContent = label;
       actionEl.classList.toggle("show", label !== "");
     }
-    const showNearby = !!n && n.distance >= KINDS[n.vehicle.kind].reach && n.distance < 400;
-    nearbyEl.classList.toggle("show", showNearby);
-    if (showNearby) {
-      const bearing = Math.atan2(n.vehicle.state.x - player.x, n.vehicle.state.y - player.y);
-      nearbyArrow.style.transform = `rotate(${bearing - yaw}rad)`;
-      nearbyText.textContent = `${KINDS[n.vehicle.kind].icon} ${Math.round(n.distance)} m`;
+    if (riding) return;
+    for (const c of chips) {
+      const k = fleet.nearest(player.x, player.y, c.kind);
+      const show = !!k && k.distance >= KINDS[c.kind].reach && k.distance < 600;
+      c.el.classList.toggle("show", show);
+      if (!show) continue;
+      const bearing = Math.atan2(k.vehicle.state.x - player.x, k.vehicle.state.y - player.y);
+      c.arrow.style.transform = `rotate(${bearing - yaw}rad)`;
+      c.text.textContent = `${KINDS[c.kind].icon} ${Math.round(k.distance)} m`;
     }
   };
 
@@ -225,6 +253,7 @@ export function startGame(ctx: GameContext): void {
 
     if (riding && rideModel) {
       rideModel.update(riding.state);
+      leaveMarks(riding);
       if (rideModel.pose === "pedal") model.ride(rideModel.seat, crank);
       else if (rideModel.pose === "seat") model.ride(rideModel.seat, 0);
       else if (rideModel.pose === "stand") model.stand(rideModel.seat);
@@ -254,7 +283,7 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet,
+    player, colliders, fleet, marks,
     riding: () => riding,
     camera: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }),
   });

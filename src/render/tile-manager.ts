@@ -7,8 +7,11 @@ import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
 import { disposeTile, type TileMeshes, type TileStats } from "./stylized";
 
-/** Une tuile passe en détail quand son bord le plus proche est à moins de LOAD mètres, et revient en silhouette au-delà de UNLOAD. */
-const LOAD = 210;
+/**
+ * Une tuile passe en détail quand son bord le plus proche est à moins de DETAIL_DISTANCE mètres, et revient en silhouette
+ * au-delà de DETAIL_DISTANCE + UNLOAD_MARGIN. 300 m : mesuré fluide sur le téléphone de test (400 m aussi, mais mémoire doublée).
+ */
+export const DETAIL_DISTANCE = 300;
 const UNLOAD_MARGIN = 90;
 const MAX_FETCHES = 2;
 /** Temps de construction accordé par image (ms) : au-delà, la construction reprend à l'image suivante. */
@@ -81,7 +84,7 @@ export class TileManager {
     world: WorldBase,
     private readonly builder: (data: TileData) => Steps<TileMeshes>,
     private readonly colliders: Colliders | null,
-    private readonly load = LOAD,
+    private readonly load = DETAIL_DISTANCE,
     /** Budget par image (ms) ; très grand = construction d'un bloc, comme avant. */
     private readonly budget = BUDGET,
   ) {
