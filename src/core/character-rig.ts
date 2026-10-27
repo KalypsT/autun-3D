@@ -95,6 +95,59 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   a[BONE.head * 3 + 1] = -0.5 * a[BONE.torso * 3 + 1]!;
 }
 
+/** Genre de pose d'un passant heurté : 1 il trébuche, 2 il tombe, reste au sol, puis se relève. */
+export const HIT_POSE = { stumble: 1, down: 2 } as const;
+export const STUMBLE_TIME = 0.9;
+/** Durée totale d'une chute : 0,35 s pour tomber, environ 2,3 s au sol, 0,9 s pour se relever. */
+export const DOWN_TIME = 3.6;
+const FALL_TIME = 0.35, GETUP_TIME = 0.9;
+
+const smooth = (u: number): number => {
+  const c = clamp(u, 0, 1);
+  return c * c * (3 - 2 * c);
+};
+
+/**
+ * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (penché, bras en avant, retrouve l'équilibre) ou chute (tombe en
+ * `FALL_TIME`, reste à terre, se relève). `side` : +1 il tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière).
+ * Au sol, le bassin est à 24 cm du sol : tout le corps pivote autour des hanches (aucune autre pièce de rig nécessaire).
+ */
+export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims): void {
+  const a = pose.angles;
+  a.fill(0);
+  if (kind === HIT_POSE.stumble) {
+    const env = Math.sin(Math.PI * clamp(t / STUMBLE_TIME, 0, 1));
+    a[BONE.pelvis * 3] = side * 0.5 * env;
+    a[BONE.torso * 3] = side * 0.25 * env;
+    a[BONE.head * 3] = -side * 0.2 * env;
+    a[BONE.armL * 3] = 1.1 * env;
+    a[BONE.armR * 3] = 1.1 * env;
+    a[BONE.armL * 3 + 2] = -0.7 * env;
+    a[BONE.armR * 3 + 2] = 0.7 * env;
+    a[BONE.forearmL * 3] = 0.5 * env;
+    a[BONE.forearmR * 3] = 0.5 * env;
+    a[BONE.thighL * 3] = 0.45 * env;
+    a[BONE.shinL * 3] = -0.6 * env;
+    a[BONE.thighR * 3] = -0.2 * env;
+    pose.rootDy = -0.05 * env;
+    return;
+  }
+  const f = t < FALL_TIME ? smooth(t / FALL_TIME) : t < DOWN_TIME - GETUP_TIME ? 1 : 1 - smooth((t - (DOWN_TIME - GETUP_TIME)) / GETUP_TIME);
+  a[BONE.pelvis * 3] = side * 1.4 * f;
+  a[BONE.head * 3] = -side * 0.45 * f;
+  a[BONE.armL * 3] = 0.6 * f;
+  a[BONE.armR * 3] = 0.6 * f;
+  a[BONE.armL * 3 + 2] = -0.9 * f;
+  a[BONE.armR * 3 + 2] = 0.9 * f;
+  a[BONE.forearmL * 3] = 0.3 * f;
+  a[BONE.forearmR * 3] = 0.3 * f;
+  a[BONE.thighL * 3] = 0.15 * f;
+  a[BONE.shinL * 3] = -0.25 * f;
+  a[BONE.thighR * 3] = -0.05 * f;
+  // Le bassin descend à mesure que le corps bascule : toujours assez haut pour que les pieds ne passent pas sous le sol.
+  pose.rootDy = Math.max(0.24, (d.thigh + d.shin) * Math.cos(1.4 * f) + d.ankleY) - d.hipY;
+}
+
 /** Décalages d'articulation au repos (m), de chaque os par rapport à son parent, dans le repère du parent. 13 × 3 valeurs. */
 export function restOffsets(d: BodyDims, out: Float32Array = new Float32Array(BONE_COUNT * 3)): Float32Array {
   const set = (bone: number, x: number, y: number, z: number): void => {

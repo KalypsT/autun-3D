@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { decodeNavCell, type NavCell, type NavIndex } from "../data/nav";
 import { Terrain, TiledTerrain } from "../data/terrain";
 import type { TileData, WorldManifest } from "../data/types";
 
@@ -24,4 +25,11 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     for (const k of ["buildings", "fiches", "trees", "walls", "furniture"] as const) (tile[k] as unknown[]).push(...(t[k] as unknown[]));
   }
   return { terrain, tile, manifest };
+}
+
+/** Données de navigation réelles (public/data/nav) : l'index et toutes les super-tuiles décodées (Node uniquement). */
+export function loadRealNav(): { index: NavIndex; cells: NavCell[] } {
+  const index = JSON.parse(readFileSync("public/data/nav/index.json", "utf8")) as NavIndex;
+  const cells = index.cells.map((c) => decodeNavCell(JSON.parse(readFileSync(`public/data/nav/${c.id}.json`, "utf8"))));
+  return { index, cells };
 }

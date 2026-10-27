@@ -8,7 +8,14 @@ export const NEAR_DISTANCE = 28;
  * x, hauteur y, z ; cap `yaw` (rotation autour de y), phase de marche (rad) et vitesse (m/s).
  */
 export interface CrowdState {
+  /** Capacité : nombre d'emplacements (un par personnage possible). */
   count: number;
+  /** Emplacements occupés (1) ou libres (0) ; absent = tous occupés. Les passants naissent et disparaissent (J2) : un emplacement libre n'est pas dessiné. */
+  alive?: Uint8Array;
+  /** Pose spéciale d'un passant heurté (0 : marche ; 1 : trébuche ; 2 : tombe, au sol, se relève : `HIT_POSE`), temps écoulé depuis le choc (s) et sens de la chute. */
+  pose?: Uint8Array;
+  poseT?: Float32Array;
+  poseSide?: Int8Array;
   recipes: Recipe[];
   x: Float32Array;
   y: Float32Array;
@@ -23,6 +30,8 @@ export interface CrowdRenderer {
   readonly name: string;
   /** Anime et affiche l'état courant, vu depuis la caméra en (camX, camZ). */
   update(state: CrowdState, camX: number, camZ: number): void;
+  /** Habille l'emplacement i d'une nouvelle recette (les passants naissent et disparaissent). */
+  assign?(i: number, recipe: Recipe): void;
   /** Ombres portées des personnages proches. */
   setShadows(on: boolean): void;
   /** Personnages dessinés en détail complet / en détail réduit à la dernière mise à jour. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, geometryScales, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, walkPose } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STUMBLE_TIME, walkPose } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -148,6 +148,65 @@ describe("échelles de recette", () => {
         for (const height of [HEIGHT_RANGE.min, 1.75, HEIGHT_RANGE.max]) {
           const s = geometryScales(bodyDims({ ...DEFAULT_RECIPE, sex, build, height }));
           for (const v of s) if (!(v > 0.65 && v < 1.8)) bad.push(`${sex} ${build} ${height}: ${v}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+});
+
+describe("poses d'un passant heurté", () => {
+  const d = bodyDims(DEFAULT_RECIPE);
+  const joints = (kind: number, t: number, side: number): { y: number[]; pelvis: number; head: number; rootDy: number; angles: number[] } => {
+    const pose = createPose();
+    hitPose(pose, kind, t, side, d);
+    const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+    solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+    return { y: Array.from({ length: BONE_COUNT }, (_, b) => world[b * 16 + 13]!), pelvis: world[BONE.pelvis * 16 + 13]!, head: world[BONE.head * 16 + 13]!, rootDy: pose.rootDy, angles: Array.from(pose.angles) };
+  };
+
+  it("trébuche : se penche en milieu de mouvement, puis retrouve l'équilibre (tout à zéro à la fin)", () => {
+    const mid = joints(HIT_POSE.stumble, STUMBLE_TIME / 2, 1);
+    expect(mid.angles[BONE.pelvis * 3]!).toBeGreaterThan(0.4);
+    expect(joints(HIT_POSE.stumble, STUMBLE_TIME / 2, -1).angles[BONE.pelvis * 3]!).toBeLessThan(-0.4);
+    const end = joints(HIT_POSE.stumble, STUMBLE_TIME, 1);
+    expect(end.angles.every((a) => Math.abs(a) < 1e-9)).toBe(true);
+    expect(Math.abs(end.rootDy)).toBeLessThan(1e-9);
+  });
+
+  it("tombe : au sol le bassin est à 24 cm et la tête reste basse ; debout au début et à la fin", () => {
+    const start = joints(HIT_POSE.down, 0, 1), lying = joints(HIT_POSE.down, 1.5, 1), end = joints(HIT_POSE.down, DOWN_TIME, 1);
+    expect(start.pelvis).toBeCloseTo(d.hipY, 4);
+    expect(lying.pelvis).toBeCloseTo(0.24, 2);
+    expect(lying.head).toBeLessThan(0.45);
+    expect(Math.min(...lying.y)).toBeGreaterThan(-0.03); // aucun os ne passe sous le sol
+    expect(end.pelvis).toBeCloseTo(d.hipY, 4);
+    expect(end.angles.every((a) => Math.abs(a) < 1e-9)).toBe(true);
+  });
+
+  it("tombe sur le dos (+1) ou vers l'avant (−1) : la tête passe derrière ou devant le bassin (axe z : l'avant du personnage est −z)", () => {
+    const zOf = (side: number): number => {
+      const pose = createPose();
+      hitPose(pose, HIT_POSE.down, 1.5, side, d);
+      const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+      solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+      return world[BONE.head * 16 + 14]! - world[BONE.pelvis * 16 + 14]!;
+    };
+    expect(zOf(1)).toBeGreaterThan(0.4); // sur le dos : la tête est derrière
+    expect(zOf(-1)).toBeLessThan(-0.4); // à plat ventre : la tête est devant
+  });
+
+  it("reste fini et sans os sous le sol pour toutes les morphologies et à chaque instant", () => {
+    const bad: string[] = [];
+    for (let seed = 0; seed < 60; seed++) {
+      const r = recipeFromSeed(seed), dd = bodyDims(r);
+      for (const [kind, total] of [[HIT_POSE.stumble, STUMBLE_TIME], [HIT_POSE.down, DOWN_TIME]] as const) {
+        for (let k = 0; k <= 20; k++) {
+          const pose = createPose();
+          hitPose(pose, kind, (total * k) / 20, seed % 2 ? 1 : -1, dd);
+          const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+          solveBones(render, world, restOffsets(dd), geometryScales(dd), pose, root);
+          for (let b = 0; b < BONE_COUNT; b++) if (!Number.isFinite(world[b * 16 + 13]!) || world[b * 16 + 13]! < -0.04) bad.push(`${seed} ${kind} ${k} ${b} ${world[b * 16 + 13]}`);
         }
       }
     }

@@ -1,6 +1,8 @@
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
 import { stepVehicle } from "../core/vehicle";
+import type { Observer } from "../core/pedestrians";
+import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
 import { AppearanceStore } from "../core/appearance";
@@ -12,6 +14,10 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
+import { NavDebug } from "../render/nav-debug";
+import { NavManager } from "./nav-manager";
+import { PedsController } from "./peds-controller";
+import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
@@ -75,6 +81,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("gas"),
     document.getElementById("brake"),
     document.getElementById("handbrake"),
+    document.getElementById("horn"),
   );
   const fsButton = document.getElementById("fullscreen");
   fsButton?.addEventListener("click", () => {
@@ -90,8 +97,17 @@ export function startGame(ctx: GameContext): void {
 
   const settings = ctx.settings!;
   controls.sensitivity = settings.values.sensitivity;
-  settings.listeners.push((v) => {
+  settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
+    if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
+    // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
+    if (changed.includes("crowd")) {
+      if (v.crowd > 0) startPeds(v.crowd);
+      else {
+        (peds as PedsController | null)?.setCapacity(0);
+        (pigeons as PigeonsController | null)?.setCapacity(0);
+      }
+    }
   });
 
   let yaw = startYaw;
@@ -105,7 +121,46 @@ export function startGame(ctx: GameContext): void {
   let crank = 0;
   let lookIdle = 0;
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}`);
+  // Navigation et passants (J2) : chargés autour du joueur dès que « Foule » n'est pas sur « Aucune » (ou avec ?nav=1 / ?nav=all pour le recouvrement de contrôle).
+  const navParam = params.get("nav");
+  const crowdSetting = ctx.settings!.values.crowd;
+  let nav: NavManager | null = null;
+  let peds: PedsController | null = null;
+  let pigeons: PigeonsController | null = null;
+  let navDebug: NavDebug | null = null;
+  const startNav = (): NavManager => {
+    if (!nav) {
+      const n = (nav = new NavManager());
+      if (navParam) {
+        navDebug = new NavDebug(n.graph, terrain, navParam === "all");
+        scene.add(navDebug.group);
+      }
+      void n.init().then(() => n.preload(player.x, player.y));
+    }
+    return nav;
+  };
+  const startPeds = (capacity: number): void => {
+    if (capacity <= 0) return;
+    if (!peds) {
+      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7);
+      peds.setShadows(ctx.settings!.values.shadows !== 0);
+    } else peds.setCapacity(capacity);
+    // Pigeons (J2-7) : leur nombre suit la foule ; ?pigeons=N le force (0 : aucun).
+    const pg = params.has("pigeons") ? Math.max(0, Math.min(60, Math.round(Number(params.get("pigeons")) || 0))) : pigeonCapacity(capacity);
+    if (!pigeons) pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
+    else pigeons.setCapacity(pg);
+  };
+  if (navParam) startNav();
+  startPeds(crowdSetting);
+  const navInfo = (): string => {
+    if (!nav) return "";
+    const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
+    const pedText = p && st ? ` · passants ${st.alive}/${st.target} (max ${p.capacity}) sim ${p.simMs.toFixed(2)} ms dessin ${p.drawMs.toFixed(2)} ms` : "";
+    const g = pigeons as PigeonsController | null, gs = g?.stats;
+    const pigText = g && gs ? ` · pigeons ${gs.alive}/${g.capacity} (${gs.flocks} volées, ${(g.simMs + g.drawMs).toFixed(2)} ms)` : "";
+    return ` · nav ${nav.graph.cells.size} cellules${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
+  };
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
 
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
   const miniCost = (): string => {
@@ -129,6 +184,7 @@ export function startGame(ctx: GameContext): void {
     return { kind, el, arrow, text };
   });
   const gasEl = document.getElementById("gas")!;
+  const hornEl = document.getElementById("horn")!;
   const speedo = new Speedo(document.getElementById("speedo")!);
 
   const mount = (v: Vehicle): void => {
@@ -139,6 +195,7 @@ export function startGame(ctx: GameContext): void {
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
     gasEl.textContent = KINDS[v.kind].gas;
+    hornEl.textContent = v.kind === "bike" || v.kind === "scooter" ? "Sonnette" : "Klaxon";
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
   };
@@ -236,6 +293,9 @@ export function startGame(ctx: GameContext): void {
     },
   });
 
+  // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
+  let hornHeld = false;
+  let bumpTimer = 0;
   let last = performance.now();
   let acc = 0;
   let pausedRender = 0;
@@ -258,6 +318,9 @@ export function startGame(ctx: GameContext): void {
       requestAnimationFrame(frame);
       return;
     }
+    const hornPressed = input.horn && !hornHeld;
+    hornHeld = input.horn;
+    bumpTimer = Math.max(0, bumpTimer - dt);
     yaw += input.lookYaw;
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
 
@@ -267,7 +330,10 @@ export function startGame(ctx: GameContext): void {
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.kind === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
-      } else stepPlayer(player, { forward: input.forward, right: input.right, run: input.run }, yaw, STEP, terrain, colliders);
+      } else {
+        const k = bumpTimer > 0 ? 0.7 : 1;
+        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run }, yaw, STEP, terrain, colliders);
+      }
       acc -= STEP;
     }
     if (riding) {
@@ -326,6 +392,28 @@ export function startGame(ctx: GameContext): void {
     if (riding) tiles.update(player.x, player.y, riding.state.vx, riding.state.vy);
     else tiles.update(player.x, player.y, player.vx, player.vy);
     terrainView.update(player.x, player.y);
+    const navNow = nav as NavManager | null, pedsNow = peds as PedsController | null, dbgNow = navDebug as NavDebug | null;
+    if (navNow) {
+      const vx = riding ? riding.state.vx : player.vx, vy = riding ? riding.state.vy : player.vy;
+      navNow.update(player.x, player.y, vx, vy);
+      dbgNow?.update(player.x, player.y);
+      // Les passants jouent avec le temps du jeu : la pause fige tout (cette partie de la boucle n'est pas atteinte).
+      const obs: Observer = {
+        x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
+        vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull } : null,
+        horn: hornPressed && !!riding,
+      };
+      pedsNow?.update(dt, obs, camera.position.x, camera.position.z);
+      (pigeons as PigeonsController | null)?.update(dt, obs, pedsNow);
+      // Effet des passants sur le joueur : un choc ralentit le véhicule (10 à 30 %, jamais plus de 50 % d'un coup) ; à pied, une bousculade ralentit un instant.
+      const imp = pedsNow?.impact;
+      if (imp && riding && imp.slow > 0) {
+        const keep = 1 - imp.slow, s = riding.state;
+        s.speed *= keep;
+        s.vx *= keep;
+        s.vy *= keep;
+      } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
+    }
 
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
@@ -340,6 +428,14 @@ export function startGame(ctx: GameContext): void {
   ctx.ready({
     player, colliders, fleet, marks, ui,
     riding: () => riding,
+    peds: () => {
+      const p = peds as PedsController | null;
+      return p ? { capacity: p.capacity, stats: p.stats, simMs: p.simMs, drawMs: p.drawMs } : null;
+    },
+    pigeons: () => {
+      const g = pigeons as PigeonsController | null;
+      return g ? { capacity: g.capacity, stats: g.stats, simMs: g.simMs, drawMs: g.drawMs } : null;
+    },
     camera: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }),
   });
 }

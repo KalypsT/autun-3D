@@ -16,12 +16,15 @@ export function createCrowd(scene: THREE.Scene, state: CrowdState): CrowdRendere
   let near = 0, far = 0;
   return {
     name: "B · instances et nuanceur",
+    assign: (i, recipe) => rigs.assign(i, recipe),
     update(st, camX, camZ) {
       batches[0].clear();
       batches[1].clear();
       near = far = 0;
       const nd2 = NEAR_DISTANCE * NEAR_DISTANCE;
+      const alive = st.alive;
       for (let i = 0; i < st.count; i++) {
+        if (alive && !alive[i]) continue;
         const dx = st.x[i]! - camX, dz = st.z[i]! - camZ;
         const lod = dx * dx + dz * dz < nd2 ? 0 : 1;
         if (lod === 0) near++;

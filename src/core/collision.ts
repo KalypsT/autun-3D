@@ -164,6 +164,11 @@ export class Colliders {
 
   /** Repousse un cercle (centre x, y ; rayon r) hors de tous les obstacles voisins. */
   resolve(x: number, y: number, r: number): Resolution {
+    return this.resolveInto({ x: 0, y: 0, nx: 0, ny: 0, hit: false }, x, y, r);
+  }
+
+  /** Comme `resolve`, sans allouer : écrit le résultat dans `out` (réutilisable) et le renvoie. Pour les foules, appelée à chaque image. */
+  resolveInto(out: Resolution, x: number, y: number, r: number): Resolution {
     let sx = 0, sy = 0, hits = 0;
     for (let pass = 0; pass < 4; pass++) {
       let moved = false;
@@ -173,7 +178,8 @@ export class Colliders {
       for (let ix = x0; ix <= x1; ix++) {
         for (let iy = y0; iy <= y1; iy++) {
           const k = key(ix, iy);
-          for (const id of this.segGrid.get(k) ?? []) {
+          const segs = this.segGrid.get(k);
+          if (segs) for (const id of segs) {
             if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
             this.segSeen[id] = stamp;
             const s = this.segments[id]!;
@@ -200,7 +206,8 @@ export class Colliders {
             hits++;
             moved = true;
           }
-          for (const id of this.circleGrid.get(k) ?? []) {
+          const circs = this.circleGrid.get(k);
+          if (circs) for (const id of circs) {
             if (this.circleSeen[id] === stamp || this.deadCircle.has(id)) continue;
             this.circleSeen[id] = stamp;
             const c = this.circles[id]!;
@@ -227,7 +234,12 @@ export class Colliders {
       if (!moved) break;
     }
     const l = Math.hypot(sx, sy);
-    return { x, y, nx: l > 1e-9 ? sx / l : 0, ny: l > 1e-9 ? sy / l : 0, hit: hits > 0 };
+    out.x = x;
+    out.y = y;
+    out.nx = l > 1e-9 ? sx / l : 0;
+    out.ny = l > 1e-9 ? sy / l : 0;
+    out.hit = hits > 0;
+    return out;
   }
 
   /**
