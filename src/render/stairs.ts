@@ -1,12 +1,11 @@
 import * as THREE from "three";
-import type { Terrain } from "../data/terrain";
-import type { StairsZone } from "../data/types";
+import type { HeightField, StairsZone } from "../data/types";
 import { MeshBuilder, toThree } from "./geometry";
 
 const CELL = 0.5;
 
 /** Escalier à partir d'un talus du relief : colonnes de 0,5 m dont le dessus est arrondi à la marche supérieure, avec contremarches. */
-export function buildStairs(mb: MeshBuilder, zones: readonly StairsZone[], terrain: Terrain, top: THREE.Color, riser: THREE.Color): void {
+export function buildStairs(mb: MeshBuilder, zones: readonly StairsZone[], terrain: HeightField, top: THREE.Color, riser: THREE.Color): void {
   for (const zone of zones) {
     const [x0, y0, x1, y1] = zone.bbox;
     const nx = Math.ceil((x1 - x0) / CELL), ny = Math.ceil((y1 - y0) / CELL);

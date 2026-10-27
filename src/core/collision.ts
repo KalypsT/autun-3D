@@ -38,6 +38,9 @@ export class Colliders {
   private readonly tagged = new Map<string, { segs: number[]; circles: number[] }>();
   private readonly deadSeg = new Set<number>();
   private readonly deadCircle = new Set<number>();
+  /** Emplacements libérés par removeTag, réutilisés par les ajouts suivants : la mémoire ne grossit pas quand on charge et décharge des tuiles. */
+  private readonly freeSeg: number[] = [];
+  private readonly freeCircle: number[] = [];
   /** Étiquette appliquée aux obstacles ajoutés ensuite. */
   currentTag: string | null = null;
   private readonly segGrid = new Map<number, number[]>();
@@ -48,8 +51,17 @@ export class Colliders {
 
   addSegment(ax: number, ay: number, bx: number, by: number): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
-    const id = this.segments.push({ ax, ay, bx, by }) - 1;
-    this.segSeen.push(0);
+    const rec = { ax, ay, bx, by };
+    const reuse = this.freeSeg.pop();
+    let id: number;
+    if (reuse === undefined) {
+      id = this.segments.push(rec) - 1;
+      this.segSeen.push(0);
+    } else {
+      id = reuse;
+      this.segments[id] = rec;
+      this.deadSeg.delete(id);
+    }
     this.record("segs", id);
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
     const y0 = Math.floor(Math.min(ay, by) / CELL), y1 = Math.floor(Math.max(ay, by) / CELL);
@@ -64,8 +76,17 @@ export class Colliders {
   }
 
   addCircle(x: number, y: number, r: number): void {
-    const id = this.circles.push({ x, y, r }) - 1;
-    this.circleSeen.push(0);
+    const rec = { x, y, r };
+    const reuse = this.freeCircle.pop();
+    let id: number;
+    if (reuse === undefined) {
+      id = this.circles.push(rec) - 1;
+      this.circleSeen.push(0);
+    } else {
+      id = reuse;
+      this.circles[id] = rec;
+      this.deadCircle.delete(id);
+    }
     this.record("circles", id);
     const x0 = Math.floor((x - r) / CELL), x1 = Math.floor((x + r) / CELL);
     const y0 = Math.floor((y - r) / CELL), y1 = Math.floor((y + r) / CELL);
@@ -93,9 +114,38 @@ export class Colliders {
   removeTag(tag: string): void {
     const t = this.tagged.get(tag);
     if (!t) return;
-    t.segs.forEach((id) => this.deadSeg.add(id));
-    t.circles.forEach((id) => this.deadCircle.add(id));
+    for (const id of t.segs) {
+      const sg = this.segments[id]!;
+      this.unlink(this.segGrid, id, Math.floor(Math.min(sg.ax, sg.bx) / CELL), Math.floor(Math.max(sg.ax, sg.bx) / CELL), Math.floor(Math.min(sg.ay, sg.by) / CELL), Math.floor(Math.max(sg.ay, sg.by) / CELL));
+      this.deadSeg.add(id);
+      this.freeSeg.push(id);
+    }
+    for (const id of t.circles) {
+      const c = this.circles[id]!;
+      this.unlink(this.circleGrid, id, Math.floor((c.x - c.r) / CELL), Math.floor((c.x + c.r) / CELL), Math.floor((c.y - c.r) / CELL), Math.floor((c.y + c.r) / CELL));
+      this.deadCircle.add(id);
+      this.freeCircle.push(id);
+    }
     this.tagged.delete(tag);
+  }
+
+  /** Retire l'obstacle `id` des cellules de la grille qu'il touchait. */
+  private unlink(grid: Map<number, number[]>, id: number, x0: number, x1: number, y0: number, y1: number): void {
+    for (let ix = x0; ix <= x1; ix++) {
+      for (let iy = y0; iy <= y1; iy++) {
+        const k = key(ix, iy);
+        const cell = grid.get(k);
+        if (!cell) continue;
+        const i = cell.indexOf(id);
+        if (i >= 0) cell.splice(i, 1);
+        if (cell.length === 0) grid.delete(k);
+      }
+    }
+  }
+
+  /** Nombre d'obstacles en place (segments, cercles), emplacements libérés exclus. */
+  get live(): { segments: number; circles: number } {
+    return { segments: this.segments.length - this.freeSeg.length, circles: this.circles.length - this.freeCircle.length };
   }
 
   /** Ajoute le contour d'un anneau fermé (x0, y0, x1, y1, …) comme suite de segments. */

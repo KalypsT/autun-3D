@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import type { Terrain } from "../data/terrain";
-import type { Furniture, Wall } from "../data/types";
+import type { Furniture, HeightField, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { canvasTexture } from "./canvas";
 
@@ -47,7 +46,7 @@ const COLORS = {
 
 /** Mobilier urbain simplifié, posé sur le sol. */
 /** `glow` reçoit les lanternes allumées (nuit), `halo` les taches de lumière au sol. */
-export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: Terrain, glow: MeshBuilder | null = null, halo: MeshBuilder | null = null): number {
+export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], terrain: HeightField, glow: MeshBuilder | null = null, halo: MeshBuilder | null = null): number {
   let n = 0;
   for (const f of items) {
     const z = terrain.heightAt(f.x, f.y);
@@ -134,7 +133,7 @@ export interface WallSinks {
 }
 
 /** Murs, murets et grilles : les pleins en volume, les grilles en barreaux (texture à transparence) avec piliers. */
-export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: Terrain): void {
+export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: HeightField): void {
   for (const w of walls) {
     const open = w.kind === "fence" || w.kind === "gate";
     const hedge = w.kind === "hedge", rampart = w.kind === "rampart";

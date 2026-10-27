@@ -6,7 +6,8 @@ Entrées (.cache/work) : buildings.json, facades.json, trees.json, props.json.
 Sorties (public/data) :
   world.json         origine, grille de tuiles, effectifs
   tiles/<c>_<r>.json bâtiments complets, fiches façade, arbres, murs, mobilier d'une tuile (c vers l'est, r vers le nord)
-  lod.json           silhouettes simplifiées de tous les bâtiments, pour les tuiles lointaines
+  lod/<c>_<r>.json   silhouettes simplifiées des bâtiments d'une tuile, pour quand elle est loin (absent si la tuile n'a pas de bâtiment)
+Le relief et les sols par tuile sont écrits ensuite par pack.py, qui complète world.json.
 Un bâtiment, un arbre ou un mur appartient à la tuile de son centre (ou de son premier point).
 """
 
@@ -24,6 +25,7 @@ from roadside import settle as settle_roadside
 
 WORK = c.CACHE / "work"
 TILES = c.OUT / "tiles"
+LODS = c.OUT / "lod"
 
 
 def load(name):
@@ -166,7 +168,9 @@ def main():
                 tile(*t)["walls"].append({"id": -(1000 * (1 if kind == "hedge" else 2) + i), "kind": kind, "height": height, "measured": height, "pts": pts})
 
     shutil.rmtree(TILES, ignore_errors=True)
+    shutil.rmtree(LODS, ignore_errors=True)
     TILES.mkdir(parents=True)
+    LODS.mkdir(parents=True)
     manifest = []
     total = 0
     for row in range(c.TILES_NY):
@@ -179,10 +183,12 @@ def main():
             text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
             (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
             total += len(text)
+            silhouettes = lod.get(c.tile_id(col, row), [])
+            if silhouettes:
+                (LODS / f"{c.tile_id(col, row)}.json").write_text(json.dumps(silhouettes, separators=(",", ":")))
             manifest.append({"id": c.tile_id(col, row), "col": col, "row": row, "bounds": bounds,
                              "buildings": len(rec["buildings"]), "trees": len(rec["trees"]), "walls": len(rec["walls"]),
-                             "furniture": len(rec["furniture"]), "bytes": len(text)})
-    (c.OUT / "lod.json").write_text(json.dumps(lod, separators=(",", ":")))
+                             "furniture": len(rec["furniture"]), "lod": len(silhouettes), "bytes": len(text)})
     world = {
         "origin": list(c.ORIGIN), "originZ": c.ORIGIN_Z, "tileSize": c.TILE, "cols": c.TILES_NX, "rows": c.TILES_NY,
         "zone": [round(v, 1) for v in (c.ZONE[0] - c.ORIGIN[0], c.ZONE[1] - c.ORIGIN[1], c.ZONE[2] - c.ORIGIN[0], c.ZONE[3] - c.ORIGIN[1])],
@@ -190,7 +196,7 @@ def main():
     }
     (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
     print(f"{len(manifest)} tuiles, {total / 1e6:.1f} Mo de JSON (plus gros : {max(m['bytes'] for m in manifest) / 1e3:.0f} ko), "
-          f"lod.json {(c.OUT / 'lod.json').stat().st_size / 1e3:.0f} ko, "
+          f"silhouettes {sum(f.stat().st_size for f in LODS.glob('*.json')) / 1e3:.0f} ko, "
           f"{sum(m['buildings'] for m in manifest)} bâtiments, {sum(m['trees'] for m in manifest)} arbres")
 
 

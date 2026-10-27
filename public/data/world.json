@@ -28,7 +28,8 @@
    "trees": 347,
    "walls": 1,
    "furniture": 0,
-   "bytes": 32478
+   "bytes": 32478,
+   "lod": 7
   },
   {
    "id": "1_0",
@@ -44,7 +45,8 @@
    "trees": 233,
    "walls": 2,
    "furniture": 16,
-   "bytes": 138456
+   "bytes": 138456,
+   "lod": 47
   },
   {
    "id": "2_0",
@@ -60,7 +62,8 @@
    "trees": 180,
    "walls": 7,
    "furniture": 43,
-   "bytes": 767805
+   "bytes": 767805,
+   "lod": 261
   },
   {
    "id": "3_0",
@@ -76,7 +79,8 @@
    "trees": 188,
    "walls": 2,
    "furniture": 10,
-   "bytes": 51735
+   "bytes": 51735,
+   "lod": 15
   },
   {
    "id": "4_0",
@@ -92,7 +96,8 @@
    "trees": 38,
    "walls": 1,
    "furniture": 10,
-   "bytes": 26835
+   "bytes": 26835,
+   "lod": 6
   },
   {
    "id": "5_0",
@@ -108,7 +113,8 @@
    "trees": 94,
    "walls": 3,
    "furniture": 0,
-   "bytes": 4206
+   "bytes": 4206,
+   "lod": 0
   },
   {
    "id": "0_1",
@@ -124,7 +130,8 @@
    "trees": 177,
    "walls": 0,
    "furniture": 48,
-   "bytes": 275261
+   "bytes": 275261,
+   "lod": 100
   },
   {
    "id": "1_1",
@@ -140,7 +147,8 @@
    "trees": 192,
    "walls": 16,
    "furniture": 34,
-   "bytes": 349259
+   "bytes": 349259,
+   "lod": 129
   },
   {
    "id": "2_1",
@@ -156,7 +164,8 @@
    "trees": 170,
    "walls": 41,
    "furniture": 64,
-   "bytes": 666388
+   "bytes": 666388,
+   "lod": 194
   },
   {
    "id": "3_1",
@@ -172,7 +181,8 @@
    "trees": 165,
    "walls": 31,
    "furniture": 40,
-   "bytes": 345021
+   "bytes": 345021,
+   "lod": 119
   },
   {
    "id": "4_1",
@@ -188,7 +198,8 @@
    "trees": 163,
    "walls": 1,
    "furniture": 29,
-   "bytes": 79832
+   "bytes": 79832,
+   "lod": 20
   },
   {
    "id": "5_1",
@@ -204,7 +215,8 @@
    "trees": 102,
    "walls": 2,
    "furniture": 1,
-   "bytes": 5095
+   "bytes": 5095,
+   "lod": 0
   },
   {
    "id": "0_2",
@@ -220,7 +232,8 @@
    "trees": 146,
    "walls": 2,
    "furniture": 45,
-   "bytes": 430383
+   "bytes": 430383,
+   "lod": 151
   },
   {
    "id": "1_2",
@@ -236,7 +249,8 @@
    "trees": 108,
    "walls": 59,
    "furniture": 36,
-   "bytes": 443274
+   "bytes": 443274,
+   "lod": 133
   },
   {
    "id": "2_2",
@@ -252,7 +266,8 @@
    "trees": 151,
    "walls": 111,
    "furniture": 51,
-   "bytes": 770008
+   "bytes": 770008,
+   "lod": 250
   },
   {
    "id": "3_2",
@@ -268,7 +283,8 @@
    "trees": 181,
    "walls": 14,
    "furniture": 26,
-   "bytes": 374526
+   "bytes": 374526,
+   "lod": 120
   },
   {
    "id": "4_2",
@@ -284,7 +300,8 @@
    "trees": 180,
    "walls": 8,
    "furniture": 33,
-   "bytes": 170611
+   "bytes": 170611,
+   "lod": 57
   },
   {
    "id": "5_2",
@@ -300,7 +317,8 @@
    "trees": 148,
    "walls": 0,
    "furniture": 15,
-   "bytes": 37870
+   "bytes": 37870,
+   "lod": 8
   },
   {
    "id": "0_3",
@@ -316,7 +334,8 @@
    "trees": 149,
    "walls": 29,
    "furniture": 32,
-   "bytes": 389363
+   "bytes": 389363,
+   "lod": 126
   },
   {
    "id": "1_3",
@@ -332,7 +351,8 @@
    "trees": 123,
    "walls": 0,
    "furniture": 67,
-   "bytes": 658029
+   "bytes": 658029,
+   "lod": 214
   },
   {
    "id": "2_3",
@@ -348,7 +368,8 @@
    "trees": 58,
    "walls": 4,
    "furniture": 59,
-   "bytes": 394007
+   "bytes": 394007,
+   "lod": 114
   },
   {
    "id": "3_3",
@@ -364,7 +385,8 @@
    "trees": 182,
    "walls": 5,
    "furniture": 52,
-   "bytes": 256169
+   "bytes": 256169,
+   "lod": 73
   },
   {
    "id": "4_3",
@@ -380,7 +402,8 @@
    "trees": 207,
    "walls": 12,
    "furniture": 10,
-   "bytes": 86172
+   "bytes": 86172,
+   "lod": 15
   },
   {
    "id": "5_3",
@@ -396,7 +419,8 @@
    "trees": 91,
    "walls": 3,
    "furniture": 13,
-   "bytes": 36047
+   "bytes": 36047,
+   "lod": 2
   },
   {
    "id": "0_4",
@@ -412,7 +436,8 @@
    "trees": 138,
    "walls": 1,
    "furniture": 43,
-   "bytes": 557904
+   "bytes": 557904,
+   "lod": 211
   },
   {
    "id": "1_4",
@@ -428,7 +453,8 @@
    "trees": 173,
    "walls": 0,
    "furniture": 46,
-   "bytes": 422838
+   "bytes": 422838,
+   "lod": 149
   },
   {
    "id": "2_4",
@@ -444,7 +470,8 @@
    "trees": 92,
    "walls": 0,
    "furniture": 46,
-   "bytes": 673971
+   "bytes": 673971,
+   "lod": 216
   },
   {
    "id": "3_4",
@@ -460,7 +487,8 @@
    "trees": 166,
    "walls": 0,
    "furniture": 36,
-   "bytes": 210358
+   "bytes": 210358,
+   "lod": 56
   },
   {
    "id": "4_4",
@@ -476,7 +504,8 @@
    "trees": 256,
    "walls": 2,
    "furniture": 37,
-   "bytes": 149465
+   "bytes": 149465,
+   "lod": 41
   },
   {
    "id": "5_4",
@@ -492,7 +521,8 @@
    "trees": 145,
    "walls": 0,
    "furniture": 17,
-   "bytes": 61028
+   "bytes": 61028,
+   "lod": 16
   },
   {
    "id": "0_5",
@@ -508,7 +538,8 @@
    "trees": 72,
    "walls": 0,
    "furniture": 41,
-   "bytes": 172898
+   "bytes": 172898,
+   "lod": 39
   },
   {
    "id": "1_5",
@@ -524,7 +555,8 @@
    "trees": 117,
    "walls": 8,
    "furniture": 30,
-   "bytes": 285970
+   "bytes": 285970,
+   "lod": 99
   },
   {
    "id": "2_5",
@@ -540,7 +572,8 @@
    "trees": 104,
    "walls": 5,
    "furniture": 55,
-   "bytes": 663980
+   "bytes": 663980,
+   "lod": 237
   },
   {
    "id": "3_5",
@@ -556,7 +589,8 @@
    "trees": 161,
    "walls": 7,
    "furniture": 32,
-   "bytes": 230367
+   "bytes": 230367,
+   "lod": 72
   },
   {
    "id": "4_5",
@@ -572,7 +606,8 @@
    "trees": 150,
    "walls": 0,
    "furniture": 28,
-   "bytes": 250984
+   "bytes": 250984,
+   "lod": 86
   },
   {
    "id": "5_5",
@@ -588,7 +623,53 @@
    "trees": 172,
    "walls": 1,
    "furniture": 23,
-   "bytes": 269031
+   "bytes": 269031,
+   "lod": 103
   }
- ]
+ ],
+ "lattice": [
+  0.75,
+  0.75
+ ],
+ "blockSize": 254,
+ "coarse": {
+  "cols": 190,
+  "rows": 190,
+  "res": 8.0,
+  "x0": -528.0,
+  "y0": -824.0,
+  "y1": 696.0,
+  "base": -30.83,
+  "unit": 0.01,
+  "zmin": -30.8275,
+  "zmax": 64.698125,
+  "holes_filled": 0
+ },
+ "super": {
+  "tiles": 4,
+  "res": 4.0,
+  "size": 252,
+  "cells": [
+   {
+    "id": "s0_0",
+    "x0": -524.0,
+    "y1": 192.0
+   },
+   {
+    "id": "s1_0",
+    "x0": 476.0,
+    "y1": 192.0
+   },
+   {
+    "id": "s0_1",
+    "x0": -524.0,
+    "y1": 1192.0
+   },
+   {
+    "id": "s1_1",
+    "x0": 476.0,
+    "y1": 1192.0
+   }
+  ]
+ }
 }

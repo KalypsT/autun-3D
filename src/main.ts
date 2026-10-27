@@ -88,8 +88,8 @@ async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
-  const terrainView = TerrainView.create(world.terrain, world.groundMeta, world.groundA, world.groundB, Number(params.get("step") ?? 2.5), style.ground);
-  terrainView.settle(start.x, start.y);
+  const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
+  await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
 
   const t0 = performance.now();
@@ -117,7 +117,7 @@ async function main(): Promise<void> {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : benchMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
-        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, ...extra,
+        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, ...extra,
       };
     },
   };

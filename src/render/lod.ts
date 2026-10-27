@@ -1,13 +1,12 @@
 import * as THREE from "three";
-import type { Terrain } from "../data/terrain";
-import type { LodBuilding } from "../data/types";
+import type { HeightField, LodBuilding } from "../data/types";
 import { MeshBuilder, toThree } from "./geometry";
 import { roofColor, wallColor } from "./style";
 
 const WALL_SHADE = 0.92;
 
 /** Silhouettes des bâtiments d'une tuile lointaine : prismes à toit plat, un seul maillage. */
-export function buildLodTile(buildings: readonly LodBuilding[], terrain: Terrain, stylized = false): THREE.Mesh | null {
+export function buildLodTile(buildings: readonly LodBuilding[], terrain: HeightField, stylized = false): THREE.Mesh | null {
   const mb = new MeshBuilder();
   const wall = new THREE.Color(), roof = new THREE.Color();
   for (const b of buildings) {

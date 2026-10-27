@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import type { Terrain } from "../data/terrain";
-import type { Building, FacadeFiche, RoofMaterial, TileData } from "../data/types";
+import type { Building, FacadeFiche, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
 import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
 import { buildGroundSteps } from "./ground";
@@ -129,7 +128,7 @@ const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const darker = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 
 /** Mur : un dégradé sombre sur le premier mètre (ombre portée au pied), puis un aplat. */
-function wall(mb: MeshBuilder, ring: number[], tops: number[], terrain: Terrain, color: THREE.Color): void {
+function wall(mb: MeshBuilder, ring: number[], tops: number[], terrain: HeightField, color: THREE.Color): void {
   const n = ring.length / 2;
   const foot = darker(color, 0.7);
   for (let i = 0; i < n; i++) {
@@ -298,7 +297,7 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
 }
 
 /** Maillages d'une tuile dans le style « conte » : murs en aplats, fenêtres et volets en volumes simples, toits propres. */
-export function buildTileStyled(res: StyleResources, tile: TileData, terrain: Terrain): TileMeshes {
+export function buildTileStyled(res: StyleResources, tile: TileData, terrain: HeightField): TileMeshes {
   return finish(buildTileSteps(res, tile, terrain));
 }
 
@@ -307,7 +306,7 @@ const BUILDINGS_PER_STEP = 6;
 const PLACEMENTS_PER_STEP = 12;
 
 /** Comme `buildTileStyled`, découpé en tranches de quelques millisecondes (cf. `TileManager`). */
-export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: Terrain): Steps<TileMeshes> {
+export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: HeightField): Steps<TileMeshes> {
   const skip = new URLSearchParams(location.search).get("skip") ?? "";
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
   const plan = yield* planFacadesSteps(tile.buildings, fiches, terrain);

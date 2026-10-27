@@ -1,6 +1,41 @@
 import { describe, expect, it } from "vitest";
 import { Colliders, pointInRing } from "./collision";
 
+describe("Colliders.removeTag", () => {
+  function load(c: Colliders, tag: string, x: number): void {
+    c.currentTag = tag;
+    c.addSegment(x, -10, x, 10);
+    c.addCircle(x + 3, 0, 0.5);
+    c.currentTag = null;
+  }
+
+  it("retire les obstacles d'une tuile, et eux seuls", () => {
+    const c = new Colliders();
+    load(c, "a", 5);
+    load(c, "b", 50);
+    expect(c.resolve(4.9, 0, 0.35).hit).toBe(true);
+    c.removeTag("a");
+    expect(c.resolve(4.9, 0, 0.35).hit).toBe(false);
+    expect(c.resolve(8, 0, 0.35).hit).toBe(false);
+    expect(c.resolve(49.9, 0, 0.35).hit).toBe(true);
+    expect(c.raycast(0, 0, 10, 0)).toBeNull();
+    expect(c.raycast(40, 0, 60, 0)).not.toBeNull();
+  });
+
+  it("réutilise les emplacements libérés : charger et décharger sans fin ne fait pas grossir la mémoire", () => {
+    const c = new Colliders();
+    load(c, "a", 5);
+    const size = c.segments.length;
+    for (let i = 0; i < 200; i++) {
+      c.removeTag("a");
+      load(c, "a", 5);
+    }
+    expect(c.segments.length).toBe(size);
+    expect(c.live).toEqual({ segments: 1, circles: 1 });
+    expect(c.resolve(4.9, 0, 0.35).hit).toBe(true);
+  });
+});
+
 describe("Colliders.resolve", () => {
   it("repousse un cercle qui pénètre un mur", () => {
     const c = new Colliders();

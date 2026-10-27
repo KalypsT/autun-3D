@@ -11,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / ".cache"
 OUT = ROOT / "public" / "data"
+# Grilles globales intermédiaires (relief, poids des sols) : pack.py les découpe par tuile dans OUT.
+GLOBAL = CACHE / "work" / "global"
 
 # --- Zone : TILES_NX × TILES_NY tuiles de TILE mètres -----------------------------------------
 TILE = 250.0

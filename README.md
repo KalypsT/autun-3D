@@ -36,7 +36,7 @@ tools/play.sh captures walk               # rejoue un scénario tactile dans le 
 
 ```sh
 python3 -m pip install -r tools/data/requirements.txt
-python3 tools/data/build_all.py          # télécharge dans .cache/ puis écrit public/data/ (relief, sols, rues, tuiles/, lod.json)
+python3 tools/data/build_all.py          # télécharge dans .cache/ puis écrit public/data/ (world.json, tiles/, lod/, terrain/, ground/ : tout par tuile, voir D30)
 python3 tools/data/probe_sources.py      # vérifie l'accès et la couverture de chaque source
 ```
 
