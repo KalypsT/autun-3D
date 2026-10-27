@@ -8,6 +8,8 @@ import type { GameContext } from "./context";
 import { createCrowdSim, type CrowdSim } from "./crowd-sim";
 import { PedSim, type Observer, type PedStats } from "../core/pedestrians";
 import { NavManager } from "./nav-manager";
+import { PigeonSim, pigeonCapacity } from "../core/pigeons";
+import { PigeonRenderer } from "../render/pigeons";
 import { createCrowd } from "../render/crowd/crowd";
 import type { CrowdRenderer } from "../render/crowd/crowd-types";
 import { followSun, gameSpawn } from "./game";
@@ -64,6 +66,9 @@ interface SimReport {
   /** Super-tuiles de navigation chargées et arêtes. */
   navCells: number;
   navEdges: number;
+  /** Pigeons vivants à la fin et coût moyen (ms par image : pas de simulation et recalcul des sommets). */
+  pigeons: number;
+  pigeonMs: number;
 }
 
 interface PhaseReport {
@@ -148,13 +153,14 @@ export function deviceInfo(ctx: GameContext): Record<string, unknown> {
   };
 }
 
-function simReport(stats: PedStats, ms: number[], base: { spawns: number; despawns: number }, nav: NavManager): SimReport {
+function simReport(stats: PedStats, ms: number[], base: { spawns: number; despawns: number }, nav: NavManager, pigeons: { alive: number; ms: number }): SimReport {
   const sorted = [...ms].sort((a, b) => a - b);
   const n = Math.max(1, sorted.length);
   return {
     avgMs: sorted.reduce((a, b) => a + b, 0) / n, p95Ms: sorted[Math.floor(n * 0.95)] ?? 0, maxMs: sorted[sorted.length - 1] ?? 0,
     spawns: stats.spawns - base.spawns, despawns: stats.despawns - base.despawns, alive: stats.alive, tiers: [...stats.tiers], waiting: stats.waiting,
     crossing: stats.crossing, idle: stats.idle, spawnFailures: stats.spawnFailures, navCells: nav.graph.cells.size, navEdges: nav.graph.edgeCount,
+    pigeons: pigeons.alive, pigeonMs: pigeons.ms,
   };
 }
 
@@ -254,6 +260,9 @@ export function startBench(ctx: GameContext): void {
   // Vraie simulation (?sim=1) : persiste d'une phase à l'autre ; la navigation se charge autour du point suivi.
   let pedSim: PedSim | null = null;
   let simMs: number[] = [];
+  let pigSim: PigeonSim | null = null;
+  let pigView: PigeonRenderer | null = null;
+  let pigCost = { ms: 0, frames: 0 };
   let simBase = { spawns: 0, despawns: 0 };
   let prefilled = false;
   const nav = simMode ? new NavManager() : null;
@@ -267,11 +276,15 @@ export function startBench(ctx: GameContext): void {
     phase.setup?.();
     crowdCost = { ms: 0, frames: 0 };
     simMs = [];
+    pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
         pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
         crowd = createCrowd(scene, pedSim.state);
         pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
+        // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
+        pigSim = new PigeonSim(nav!.graph, terrain, ctx.colliders, { capacity: pigeonCapacity(crowdN), seed: 7 });
+        pigView = new PigeonRenderer(scene, Math.max(1, pigSim.capacity));
       }
       crowd.setShadows(phase.crowd?.shadows ?? renderer.shadowMap.enabled);
       simBase = { spawns: pedSim!.stats.spawns, despawns: pedSim!.stats.despawns };
@@ -317,7 +330,7 @@ export function startBench(ctx: GameContext): void {
         ? {
             n: simMode ? crowdN : p.crowd!.n, shadows: p.crowd?.shadows ?? renderer.shadowMap.enabled, near: crowd.lodCounts().near, far: crowd.lodCounts().far,
             updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0,
-            ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!) } : {}),
+            ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!, { alive: pigSim?.stats.alive ?? 0, ms: pigCost.frames ? pigCost.ms / pigCost.frames : 0 }) } : {}),
           }
         : null,
       minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
@@ -416,15 +429,24 @@ export function startBench(ctx: GameContext): void {
       };
       if (!prefilled) {
         pedSim.prefill(obs);
+        pigSim?.prefill(obs);
         prefilled = true;
       }
       const s0 = performance.now();
       pedSim.step(dt, obs);
       const sim = performance.now() - s0;
+      const p0 = performance.now();
+      if (pigSim && pigView) {
+        pigSim.step(dt, obs, pedSim);
+        pigView.update(pigSim.state);
+      }
+      const pig = performance.now() - p0;
       const c0 = performance.now();
       crowd.update(pedSim.state, pos.cam[0], -pos.cam[2]);
       if (measuring) {
         simMs.push(sim);
+        pigCost.ms += pig;
+        pigCost.frames++;
         crowdCost.ms += performance.now() - c0;
         crowdCost.frames++;
       }
@@ -482,6 +504,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
       const q = p.crowd.sim;
       lines.push(`  Simulation : ${q.avgMs.toFixed(3)} ms par image en moyenne · 95 % ${q.p95Ms.toFixed(3)} · pire ${q.maxMs.toFixed(2)} ms (objectif : moins de 2 ms)`);
       lines.push(`  Passants : ${q.alive} vivants (paliers ${q.tiers.join(" / ")}) · ${q.spawns} naissances, ${q.despawns} disparitions dans la phase · ${q.waiting} attendent, ${q.crossing} traversent, ${q.idle} à l'arrêt · ${q.spawnFailures} naissances refusées (en vue) · navigation ${q.navCells} super-tuiles, ${q.navEdges} arêtes`);
+      lines.push(`  Pigeons : ${q.pigeons} vivants · ${q.pigeonMs.toFixed(3)} ms par image (simulation et sommets)`);
     }
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {

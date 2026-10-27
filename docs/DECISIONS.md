@@ -422,3 +422,10 @@ Décisions de D39 appliquées : pigeons **sur les places, les parvis et près de
 - **Quand** : à la naissance du passant, avec l'heure de jeu entière déjà utilisée dans sa graine (D39) : même personne, même endroit, même heure → mêmes vêtements ; un passant déjà visible ne se change pas.
 - **Tests** (3) : courbe ; la nuit a ≥ 30 points de plus de couches, plus d'écharpes, moins de shorts et de lunettes de soleil que l'après-midi (1 500 recettes) ; même personne, recettes valides, travail intact, déterminisme.
 
+## 2026-10-27 — D47. Bilan de J2 : portes laissées de côté, mesure à faire (J2-10)
+
+- **J2-9 (portes) non faite** (optionnelle dans D39) : faire naître les passants sur les seuils demande de lire le planificateur de façades, pour un gain visuel faible (ils naissent hors de vue). À reprendre seulement si, sur le téléphone, des passants « sortis de nulle part » gênent.
+- **Banc** : `?bench=1&crowd=100&sim=1` mesure maintenant aussi les pigeons (nombre vivant, coût moyen par image) ; `&soak=10` donne l'endurance (10 minutes, perte d'images par seconde, mémoire).
+- **À mesurer sur le téléphone** (D42, paysage, économie d'énergie coupée) : `?bench=1&crowd=100&sim=1`, `crowd=150`, `crowd=200`, `crowd=150&sim=1&tiers=0`, puis `crowd=100&sim=1&soak=10`. Critères inchangés : 60 i/s, simulation < 1 ms en moyenne et < 5 ms au pire, pigeons < 1 ms, mémoire JavaScript stable. Si les résultats contredisent D42-D45 (paliers, 100 par défaut, pigeons à 40 % de la foule), on les révise ici.
+- **Idées notées, non faites** : apparition progressive (changement d'échelle) des passants nés en vue ; voisins qui réagissent à une chute ; son du klaxon et des pigeons (J7) ; buts de marche (bancs, vitrines : A*) ; poses assise et téléphone ; pigeons sur les bancs et les toits ; plus de coins à pigeons si les places paraissent vides.
+
