@@ -17,6 +17,7 @@ import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
 import { PedsController } from "./peds-controller";
+import { Traffic } from "./traffic";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
 import { Fleet, chaseOf, familyOf, tyreOf, type Vehicle } from "./vehicles";
@@ -153,13 +154,17 @@ export function startGame(ctx: GameContext): void {
   };
   if (navParam) startNav();
   startPeds(crowdSetting);
+  // Circulation (J3) : `?traffic=N` met N voitures conduites par des conducteurs simulés (en cours de développement, D59).
+  const trafficCount = Math.max(0, Math.min(60, Math.round(Number(params.get("traffic")) || 0)));
+  const traffic = trafficCount > 0 ? new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), trafficCount, 11) : null;
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
     const pedText = p && st ? ` · passants ${st.alive}/${st.target} (max ${p.capacity}) sim ${p.simMs.toFixed(2)} ms dessin ${p.drawMs.toFixed(2)} ms` : "";
     const g = pigeons as PigeonsController | null, gs = g?.stats;
     const pigText = g && gs ? ` · pigeons ${gs.alive}/${g.capacity} (${gs.flocks} volées, ${(g.simMs + g.drawMs).toFixed(2)} ms)` : "";
-    return ` · nav ${nav.graph.cells.size} cellules${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
+    const trafficText = traffic ? ` · circulation ${traffic.cars.length}/${trafficCount} voitures (sim ${traffic.simMs.toFixed(2)} ms)` : "";
+    return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
   const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
 
@@ -336,8 +341,10 @@ export function startGame(ctx: GameContext): void {
         const k = bumpTimer > 0 ? 0.7 : 1;
         stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run }, yaw, STEP, terrain, colliders);
       }
+      traffic?.step(STEP);
       acc -= STEP;
     }
+    traffic?.update(dt, player.x, player.y);
     if (riding) {
       const s = riding.state;
       if (leaving && Math.abs(s.speed) < 0.4) dismount();
