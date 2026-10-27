@@ -34,6 +34,16 @@ export class PedsController {
     return this.sim?.capacity ?? 0;
   }
 
+  /** Effet des passants sur le joueur au dernier pas (choc de véhicule, bousculade) ; null sans passants. */
+  get impact(): PedSim["impact"] | null {
+    return this.sim?.impact ?? null;
+  }
+
+  /** Événements de la dernière image (chocs, sursauts, frôlements) : J4 (témoins) et J5 (dégâts) les liront. */
+  get events(): PedSim["events"] {
+    return this.sim?.events ?? [];
+  }
+
   get stats(): PedSim["stats"] | null {
     return this.sim?.stats ?? null;
   }
@@ -64,6 +74,7 @@ export class PedsController {
       sim.prefill(obs);
       this.filled = true;
     }
+    sim.clearEvents();
     const t0 = performance.now();
     sim.step(dt, obs);
     const t1 = performance.now();

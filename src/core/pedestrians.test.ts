@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pointInRing } from "./collision";
 import { NavGraph } from "./nav-graph";
-import { PedSim, TIER_RANGE, vehicleThreat, type Observer } from "./pedestrians";
+import { PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent } from "./pedestrians";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -190,5 +190,145 @@ describe("simulation des passants", () => {
     expect(vehicleThreat(30, 20, { x: 0, y: 0, vx: 10, vy: 0 })).toBe(false);
     expect(vehicleThreat(200, 0, { x: 0, y: 0, vx: 10, vy: 0 })).toBe(false);
     expect(vehicleThreat(30, 0, null)).toBe(false);
+  });
+});
+
+describe("chocs, esquives et klaxon", () => {
+  /** Un passant vivant à l'écart des bâtiments, pris dans une simulation remplie. */
+  function setup(): { g: NavGraph; sim: PedSim; slot: number; x: number; y: number } {
+    const g = graph();
+    const sim = makeSim(g, 60, 9);
+    const obs = still(0, -20);
+    sim.prefill(obs);
+    run(sim, 30, obs);
+    let slot = 0;
+    for (let i = 0; i < sim.capacity; i++) if (sim.state.alive![i]) {
+      slot = i;
+      break;
+    }
+    const p = { x: 0, y: 0 };
+    sim.position(slot, p);
+    return { g, sim, slot, x: p.x, y: p.y };
+  }
+  // Une voiture large (1,5 m de rayon) : un passant sur sa trajectoire n'a pas le temps de se mettre à l'abri d'un bond de côté.
+  const car = (x: number, y: number, vx: number, vy: number): NonNullable<Observer["vehicle"]> => ({ x, y, vx, vy, heading: Math.atan2(vx, vy), hull: [[1.25, 1.5], [0, 1.5], [-1.25, 1.5]] });
+
+  /** Fait rouler un véhicule vers l'est, à `speed` m/s, sur la ligne du passant (décalée de `offset` m) pendant `seconds` s ; renvoie ce que la simulation a vu. */
+  function drive(c: { sim: PedSim; slot: number; x: number; y: number }, speed: number, seconds: number, offset = 0): { slow: number; events: PedEvent[]; fell: boolean } {
+    const p = { x: 0, y: 0 };
+    const out = { slow: 0, events: [] as PedEvent[], fell: false };
+    const x0 = c.x - 6 - speed;
+    for (let i = 0; i < Math.round(seconds * 60); i++) {
+      c.sim.position(c.slot, p);
+      const vx = x0 + speed * i * STEP, vy = (offset === 0 ? p.y : c.y) + offset; // sur la ligne du passant ; avec un décalage, une ligne fixe (la voiture ne suit pas son bond de côté)
+      c.sim.step(STEP, { x: vx, y: vy, vx: speed, vy: 0, yaw: Math.PI / 2, onFoot: false, hour: 13, vehicle: car(vx, vy, speed, 0) });
+      out.slow = Math.max(out.slow, c.sim.impact.slow);
+      out.events.push(...c.sim.events.filter((e) => e.slot === c.slot));
+      c.sim.clearEvents();
+      if (c.sim.state.pose![c.slot] === 2) out.fell = true;
+    }
+    return out;
+  }
+
+  it("fait tomber un passant percuté à 36 km/h, ralentit le véhicule de 10 à 30 %, puis le passant se relève sur une file", () => {
+    const c = setup();
+    const r = drive(c, 10, 2);
+    expect(r.events.filter((e) => e.kind === "hit")).toHaveLength(1); // un seul choc, pas un par pas
+    expect(r.fell).toBe(true);
+    expect(r.slow).toBeGreaterThanOrEqual(0.1);
+    expect(r.slow).toBeLessThanOrEqual(0.3 + 1e-9);
+    expect(c.sim.stats.knocked).toBeGreaterThan(0);
+    // À terre un moment, puis il se relève et reprend une file.
+    run(c.sim, 60 * 5, still(0, -20));
+    expect(c.sim.state.pose![c.slot]).toBe(0);
+    const p = { x: 0, y: 0 };
+    c.sim.position(c.slot, p);
+    expect(Number.isFinite(p.x + p.y)).toBe(true);
+    expect(c.g.nearest(p.x, p.y, 40)).not.toBeNull();
+  });
+
+  it("fait seulement trébucher un passant à 2 m/s, et pousse sans faire tomber un véhicule qui avance au pas", () => {
+    const a = setup();
+    const r = drive(a, 2, 9);
+    expect(r.events.some((e) => e.kind === "stumble")).toBe(true);
+    expect(r.events.some((e) => e.kind === "hit")).toBe(false);
+    expect(r.fell).toBe(false);
+    expect(r.slow).toBeLessThan(0.1);
+    const b = setup();
+    const w = drive(b, 0.8, 12);
+    expect(w.events.filter((e) => e.kind === "hit" || e.kind === "stumble")).toEqual([]);
+    expect(b.sim.stats.hits).toBe(0);
+  });
+
+  it("n'atteint pas un passant que le véhicule frôle à 1,9 m, mais le fait sursauter", () => {
+    const c = setup();
+    const r = drive(c, 14, 2.4, -1.9);
+    expect(r.events.filter((e) => e.kind === "hit" || e.kind === "stumble")).toEqual([]);
+    expect(r.events.some((e) => e.kind === "startled" || e.kind === "near_miss")).toBe(true);
+  });
+
+  it("fait sursauter les passants devant un klaxon, pas ceux derrière", () => {
+    const g = graph();
+    const sim = makeSim(g, 100, 4);
+    const obs = still(0, -20);
+    sim.prefill(obs);
+    run(sim, 60, obs);
+    const veh = car(0, -20, 0, 6);
+    sim.clearEvents();
+    sim.step(STEP, { ...still(0, -20), onFoot: false, vehicle: veh, horn: true });
+    const p = { x: 0, y: 0 };
+    const startled = sim.events.filter((e) => e.kind === "startled");
+    expect(startled.length).toBeGreaterThan(0);
+    for (const e of startled) {
+      sim.position(e.slot, p);
+      const d = Math.hypot(p.x, p.y + 20);
+      expect(d).toBeLessThan(36);
+      expect(Math.cos(Math.atan2(p.x, p.y + 20))).toBeGreaterThan(Math.cos(0.9)); // devant (cap nord)
+    }
+  });
+
+  it("cède la place au joueur à pied qui le bouscule, et fait trébucher celui qui lui fonce dessus en courant", () => {
+    const { sim, slot, x, y } = setup();
+    const before = { x: 0, y: 0 }, after = { x: 0, y: 0 };
+    sim.position(slot, before);
+    sim.clearEvents();
+    sim.step(STEP, { x: x + 0.3, y, vx: 1, vy: 0, yaw: 0, onFoot: true, vehicle: null, hour: 13 });
+    sim.position(slot, after);
+    expect(sim.impact.bump).toBeGreaterThan(0);
+    expect(Math.hypot(after.x - (x + 0.3), after.y - y)).toBeGreaterThan(0.45); // il s'est écarté du joueur
+    const r = setup();
+    r.sim.clearEvents();
+    r.sim.step(STEP, { x: r.x + 0.3, y: r.y, vx: 5, vy: 0, yaw: 0, onFoot: true, vehicle: null, hour: 13 });
+    expect(r.sim.events.some((e) => e.kind === "stumble")).toBe(true);
+    expect(r.sim.state.pose![r.slot]).toBe(1);
+  });
+});
+
+describe("entrées pour les autres systèmes", () => {
+  it("trouve les passants dans un cercle et les pousse : tombent au-dessus de 3,5 m/s, trébuchent en dessous, se relèvent ensuite", () => {
+    const sim = makeSim(graph(), 80, 3);
+    const obs = still(0, -20);
+    sim.prefill(obs);
+    run(sim, 30, obs);
+    const found: number[] = [];
+    const n = sim.queryCircle(0, -20, 120, found);
+    expect(n).toBe(found.length);
+    expect(n).toBeGreaterThan(20);
+    const [a, b] = found as [number, number];
+    sim.clearEvents();
+    sim.applyImpulse(a, 6, 0);
+    sim.applyImpulse(b, 1.5, 0);
+    sim.step(STEP, obs);
+    expect(sim.state.pose![a]).toBe(2);
+    expect(sim.state.pose![b]).toBe(1);
+    expect(sim.events.filter((e) => e.kind === "hit" || e.kind === "stumble")).toHaveLength(2);
+    // Un passant déjà à terre ne se relève pas pour être poussé de nouveau.
+    sim.clearEvents();
+    sim.applyImpulse(a, 6, 0);
+    expect(sim.events.filter((e) => e.kind === "hit")).toHaveLength(0);
+    run(sim, 60 * 5, obs);
+    expect(sim.state.pose![a]).toBe(0);
+    expect(sim.state.pose![b]).toBe(0);
+    expect(sim.stats.knocked).toBe(0);
   });
 });

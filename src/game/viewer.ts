@@ -110,6 +110,14 @@ export function startViewer(ctx: GameContext): void {
         // Les passants ont déjà marché un moment : on simule `warm` secondes avant la première image.
         pedSim.prefill(observer());
         for (let i = 0, n = Math.round(Number(params.get("warm") ?? 20) * 60); i < n; i++) pedSim.step(1 / 60, observer());
+        // ?hit=3 : trois passants autour de la cible sont poussés (captures des chutes), puis on laisse 1,2 s passer.
+        const hits = Math.min(Math.max(Math.floor(Number(params.get("hit") ?? 0)) || 0, 0), 20);
+        if (hits > 0) {
+          const near: number[] = [];
+          pedSim.queryCircle(v[3], v[4], 30, near);
+          near.slice(0, hits).forEach((slot, k) => pedSim.applyImpulse(slot, 5.5 - (k % 2) * 3, 1.5 * (k % 3 - 1)));
+          for (let i = 0; i < Math.round(Number(params.get("after") ?? 1.2) * 60); i++) pedSim.step(1 / 60, observer());
+        }
         crowd.update(pedSim.state, pos.x, pos.z);
         crowd.setShadows(true);
       }

@@ -12,6 +12,10 @@ export interface CrowdState {
   count: number;
   /** Emplacements occupés (1) ou libres (0) ; absent = tous occupés. Les passants naissent et disparaissent (J2) : un emplacement libre n'est pas dessiné. */
   alive?: Uint8Array;
+  /** Pose spéciale d'un passant heurté (0 : marche ; 1 : trébuche ; 2 : tombe, au sol, se relève : `HIT_POSE`), temps écoulé depuis le choc (s) et sens de la chute. */
+  pose?: Uint8Array;
+  poseT?: Float32Array;
+  poseSide?: Int8Array;
   recipes: Recipe[];
   x: Float32Array;
   y: Float32Array;

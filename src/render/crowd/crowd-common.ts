@@ -1,7 +1,7 @@
 import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
-import { BONE_COUNT, createPose, geometryScales, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { BONE_COUNT, createPose, geometryScales, hitPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
 
@@ -60,7 +60,9 @@ export class CrowdRigs {
 
   /** Pose de marche du personnage i, puis matrices d'os (dans `render` et `world`). */
   solve(state: CrowdState, i: number): void {
-    walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
+    const hit = state.pose?.[i] ?? 0;
+    if (hit > 0) hitPose(this.pose, hit, state.poseT![i]!, state.poseSide![i]!, this.dims[i]!);
+    else walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
     const r = this.root;
     r.x = state.x[i]!;
     r.y = state.y[i]!;

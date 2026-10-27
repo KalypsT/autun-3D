@@ -78,6 +78,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("gas"),
     document.getElementById("brake"),
     document.getElementById("handbrake"),
+    document.getElementById("horn"),
   );
   const fsButton = document.getElementById("fullscreen");
   fsButton?.addEventListener("click", () => {
@@ -170,6 +171,7 @@ export function startGame(ctx: GameContext): void {
     return { kind, el, arrow, text };
   });
   const gasEl = document.getElementById("gas")!;
+  const hornEl = document.getElementById("horn")!;
   const speedo = new Speedo(document.getElementById("speedo")!);
 
   const mount = (v: Vehicle): void => {
@@ -180,6 +182,7 @@ export function startGame(ctx: GameContext): void {
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
     gasEl.textContent = KINDS[v.kind].gas;
+    hornEl.textContent = v.kind === "bike" || v.kind === "scooter" ? "Sonnette" : "Klaxon";
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
   };
@@ -277,6 +280,9 @@ export function startGame(ctx: GameContext): void {
     },
   });
 
+  // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
+  let hornHeld = false;
+  let bumpTimer = 0;
   let last = performance.now();
   let acc = 0;
   let pausedRender = 0;
@@ -299,6 +305,9 @@ export function startGame(ctx: GameContext): void {
       requestAnimationFrame(frame);
       return;
     }
+    const hornPressed = input.horn && !hornHeld;
+    hornHeld = input.horn;
+    bumpTimer = Math.max(0, bumpTimer - dt);
     yaw += input.lookYaw;
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
 
@@ -308,7 +317,10 @@ export function startGame(ctx: GameContext): void {
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.kind === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
-      } else stepPlayer(player, { forward: input.forward, right: input.right, run: input.run }, yaw, STEP, terrain, colliders);
+      } else {
+        const k = bumpTimer > 0 ? 0.7 : 1;
+        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run }, yaw, STEP, terrain, colliders);
+      }
       acc -= STEP;
     }
     if (riding) {
@@ -375,8 +387,17 @@ export function startGame(ctx: GameContext): void {
       // Les passants jouent avec le temps du jeu : la pause fige tout (cette partie de la boucle n'est pas atteinte).
       pedsNow?.update(dt, {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
-        vehicle: riding && Math.hypot(vx, vy) > 1 ? { x: player.x, y: player.y, vx, vy } : null,
+        vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull } : null,
+        horn: hornPressed && !!riding,
       }, camera.position.x, camera.position.z);
+      // Effet des passants sur le joueur : un choc ralentit le véhicule (10 à 30 %, jamais plus de 50 % d'un coup) ; à pied, une bousculade ralentit un instant.
+      const imp = pedsNow?.impact;
+      if (imp && riding && imp.slow > 0) {
+        const keep = 1 - imp.slow, s = riding.state;
+        s.speed *= keep;
+        s.vx *= keep;
+        s.vy *= keep;
+      } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
     }
 
     atmosphere.advance(dt);

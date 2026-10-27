@@ -2,7 +2,7 @@ import { PED, ZONE } from "../data/nav";
 import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
-import { phaseRate } from "./character-rig";
+import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
 import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
@@ -19,13 +19,17 @@ import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
  * `fear` (0 à 1), `flags` réservés ; les autres systèmes liront ou pousseront les passants par `bodies` / `events` en J2-6.
  */
 
-export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3 } as const;
+export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, stumble: 4, down: 5 } as const;
 
 /** Distances (m) des paliers : près (évitement, collisions, tous les pas), milieu (un pas sur 3), loin (un pas sur 12). */
 export const TIER_RANGE = [28, 80] as const;
 const TIER_PERIOD = [1, 3, 12] as const;
 const AVOID_RADIUS = 3;
 const BODY = 0.28;
+/** Rayon du joueur à pied (le même que `PLAYER_RADIUS` de `player.ts`). */
+const PLAYER_BODY = 0.35;
+/** Coque d'un véhicule inconnu : un cercle de 0,8 m. */
+const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
   /** Nombre d'emplacements (passants possibles à la fois). */
@@ -52,10 +56,29 @@ export interface Observer {
   yaw: number;
   /** Le joueur est à pied : les passants l'évitent comme un des leurs. */
   onFoot: boolean;
-  /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. */
-  vehicle: { x: number; y: number; vx: number; vy: number } | null;
+  /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. `heading` et `hull` (cercles : décalage le long du cap, rayon) donnent sa coque. */
+  vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[] } | null;
+  /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent. */
+  horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
   hour?: number;
+}
+
+/** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
+export interface PedEvent {
+  kind: "hit" | "stumble" | "bump" | "near_miss" | "startled";
+  slot: number;
+  x: number;
+  y: number;
+  speed: number;
+}
+
+/** Effet des passants sur le joueur à ce pas : le véhicule perd `slow` (0 à 0,5) de sa vitesse après un choc ; à pied, `bump` > 0 si on bouscule quelqu'un. */
+export interface PedImpact {
+  slow: number;
+  speed: number;
+  hits: number;
+  bump: number;
 }
 
 export interface PedStats {
@@ -70,6 +93,9 @@ export interface PedStats {
   idle: number;
   /** Naissances refusées faute d'endroit hors de vue. */
   spawnFailures: number;
+  /** Passants heurtés (cumul) et ceux qui trébuchent ou sont à terre en ce moment. */
+  hits: number;
+  knocked: number;
   /** Nombre de passants visé à cette heure, dans ce quartier, à cette vitesse ; zone du graphe piéton autour du joueur. */
   target: number;
   zone: number;
@@ -114,7 +140,10 @@ export function vehicleThreat(x: number, y: number, veh: { x: number; y: number;
 
 export class PedSim {
   readonly state: CrowdState;
-  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, target: 0, zone: ZONE.outskirts };
+  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, hits: 0, knocked: 0, target: 0, zone: ZONE.outskirts };
+  /** Événements depuis le dernier `clearEvents` et effet sur le joueur au dernier pas. */
+  readonly events: PedEvent[] = [];
+  readonly impact: PedImpact = { slow: 0, speed: 0, hits: 0, bump: 0 };
   /** Appelé quand un emplacement reçoit un nouveau passant (le rendu l'habille). */
   onSpawn: ((slot: number, recipe: Recipe) => void) | null = null;
 
@@ -131,6 +160,10 @@ export class PedSim {
   private readonly s: Float32Array;
   private readonly lat: Float32Array;
   private readonly latTarget: Float32Array;
+  private readonly jx: Float32Array;
+  private readonly jy: Float32Array;
+  private readonly kx: Float32Array;
+  private readonly ky: Float32Array;
   private readonly ox: Float32Array;
   private readonly oy: Float32Array;
   private readonly mode: Uint8Array;
@@ -170,6 +203,10 @@ export class PedSim {
     this.spawnRng = hash32(opt.seed, 0x51ed);
     this.state = createCrowdState(Array.from({ length: n }, () => recipeFromSeed(0)));
     this.state.alive = new Uint8Array(n);
+    this.state.pose = new Uint8Array(n);
+    this.state.poseT = new Float32Array(n);
+    this.state.poseSide = new Int8Array(n);
+    this.jx = new Float32Array(n); this.jy = new Float32Array(n); this.kx = new Float32Array(n); this.ky = new Float32Array(n);
     this.x = new Float32Array(n); this.y = new Float32Array(n); this.heading = new Float32Array(n);
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
@@ -203,6 +240,9 @@ export class PedSim {
     const v = Math.hypot(obs.vx, obs.vy);
     const rin = Math.min(35 + 3 * v, 110), rout = Math.min(rin + 90, 200);
     this.hour = obs.hour ?? 12;
+    const imp = this.impact;
+    imp.slow = imp.speed = imp.hits = imp.bump = 0;
+    if (obs.horn && obs.vehicle) this.honk(obs.vehicle);
     // Quartier du joueur (zone de la file la plus proche) : deux fois par seconde suffisent.
     if (this.frame % 30 === 1) {
       const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
@@ -211,7 +251,7 @@ export class PedSim {
     stats.target = crowdTarget(this.n, this.hour, stats.zone, v);
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
-    let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0;
+    let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0;
     for (let i = 0; i < this.n; i++) {
       if (!alive[i]) continue;
       const g = this.graph, e = this.edge[i]!;
@@ -226,6 +266,18 @@ export class PedSim {
       this.tier[i] = tier;
       if (tier === 0) near++; else if (tier === 1) mid++; else far++;
       nAlive++;
+      if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
+      if (this.mode[i]! >= PED_STATE.stumble) {
+        this.knockedStep(i, dt);
+        knocked++;
+        continue;
+      }
+      if (obs.vehicle) this.vehicleContact(i, obs.vehicle);
+      if (obs.onFoot && d2 < 4) this.footContact(i, obs, d2);
+      if (this.mode[i]! >= PED_STATE.stumble) {
+        knocked++;
+        continue;
+      }
       this.acc[i]! += dt;
       const period = TIER_PERIOD[tier]!;
       if (period === 1 || (this.frame + this.id[i]!) % period === 0) {
@@ -264,6 +316,7 @@ export class PedSim {
       }
     }
     stats.alive = nAlive;
+    stats.knocked = knocked;
     stats.tiers = [near, mid, far];
     stats.waiting = waiting;
     stats.crossing = crossing;
@@ -334,6 +387,8 @@ export class PedSim {
     this.speed[i] = this.want[i]!;
     this.lat[i] = this.latTarget[i] = (nextRandom(this.rng, i) - 0.5) * 0.5;
     this.ox[i] = this.oy[i] = 0;
+    this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
+    this.state.pose![i] = 0;
     this.mode[i] = PED_STATE.walk;
     this.timer[i] = 0;
     this.fear[i] = 0;
@@ -363,7 +418,8 @@ export class PedSim {
       if (!this.threat(this.x[i]!, this.y[i]!, obs)) this.mode[i] = PED_STATE.cross;
       return;
     }
-    let target = this.want[i]!;
+    // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
+    let target = this.want[i]! * (1 + 0.6 * this.fear[i]!);
     if (this.tiers && tier > 0) {
       this.speed[i] = target;
       return;
@@ -481,7 +537,21 @@ export class PedSim {
     this.heading[i] = hd;
     // Latéral : positif à droite du sens de marche.
     const lat = this.lat[i]!;
-    let px = this.pt.x + Math.cos(hd) * lat, py = this.pt.y - Math.sin(hd) * lat;
+    // Écart d'esquive (klaxon, véhicule) : une vitesse qui s'amortit, puis un retour lent vers la file.
+    if (this.kx[i] !== 0 || this.ky[i] !== 0) {
+      this.jx[i]! += this.kx[i]! * dt;
+      this.jy[i]! += this.ky[i]! * dt;
+      const damp = Math.exp(-dt * 4);
+      this.kx[i]! *= damp;
+      this.ky[i]! *= damp;
+      if (Math.abs(this.kx[i]!) + Math.abs(this.ky[i]!) < 0.05) this.kx[i] = this.ky[i] = 0;
+    } else if (this.jx[i] !== 0 || this.jy[i] !== 0) {
+      const back = Math.max(0, 1 - dt * 1.5);
+      this.jx[i]! *= back;
+      this.jy[i]! *= back;
+      if (Math.abs(this.jx[i]!) + Math.abs(this.jy[i]!) < 0.02) this.jx[i] = this.jy[i] = 0;
+    }
+    let px = this.pt.x + Math.cos(hd) * lat + this.jx[i]!, py = this.pt.y - Math.sin(hd) * lat + this.jy[i]!;
     if (this.colliders && this.avoid && tier === 0) {
       const r = this.colliders.resolveInto(this.res, px, py, BODY);
       const tx = r.hit ? r.x - px : 0, ty = r.hit ? r.y - py : 0;
@@ -506,6 +576,179 @@ export class PedSim {
     st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
   }
 
+  // --- Chocs, esquives, klaxon -----------------------------------------------------------------------------------
+
+  private event(kind: PedEvent["kind"], i: number, speed: number): void {
+    if (this.events.length < 256) this.events.push({ kind, slot: i, x: this.x[i]!, y: this.y[i]!, speed });
+  }
+
+  /** Vide la liste d'événements (celui qui les lit s'en charge ; au-delà de 256 non lus, les nouveaux sont perdus). */
+  clearEvents(): void {
+    this.events.length = 0;
+  }
+
+  /** Esquive : une vitesse d'écart (m/s) dans la direction (dx, dy) unitaire ; le passant presse le pas. */
+  private startle(i: number, dx: number, dy: number, speed: number, silent = false): void {
+    this.kx[i]! += dx * speed;
+    this.ky[i]! += dy * speed;
+    if (this.fear[i]! < 0.5 && !silent) this.event("startled", i, speed);
+    this.fear[i] = 1;
+    if (this.mode[i] === PED_STATE.wait || this.mode[i] === PED_STATE.idle) this.mode[i] = PED_STATE.walk;
+  }
+
+  /** Le passant est heurté : il trébuche (choc léger) ou tombe (`kind`), avec une vitesse (m/s) dans la direction (ux, uy). */
+  private knock(i: number, kind: number, ux: number, uy: number, impulse: number): void {
+    this.mode[i] = kind === HIT_POSE.down ? PED_STATE.down : PED_STATE.stumble;
+    this.timer[i] = kind === HIT_POSE.down ? DOWN_TIME : STUMBLE_TIME;
+    this.kx[i] = ux * impulse;
+    this.ky[i] = uy * impulse;
+    this.fear[i] = 1;
+    this.speed[i] = 0;
+    const st = this.state;
+    st.pose![i] = kind;
+    st.poseT![i] = 0;
+    // Choc de face : sur le dos ; par derrière : vers l'avant.
+    st.poseSide![i] = ux * Math.sin(this.heading[i]!) + uy * Math.cos(this.heading[i]!) > 0 ? -1 : 1;
+    this.stats.hits++;
+  }
+
+  /** Contact d'un passant avec la coque du véhicule du joueur, ou esquive à son approche. */
+  private vehicleContact(i: number, v: NonNullable<Observer["vehicle"]>): void {
+    const px = this.x[i]!, py = this.y[i]!;
+    const dx = px - v.x, dy = py - v.y;
+    const speed = Math.hypot(v.vx, v.vy);
+    const reach = Math.max(8, 4 + speed * 1.2);
+    if (dx * dx + dy * dy > reach * reach) return;
+    const h = v.heading ?? Math.atan2(v.vx, v.vy);
+    const fx = Math.sin(h), fy = Math.cos(h);
+    let pen = 0, nx = 0, ny = 0;
+    for (const [off, r] of v.hull ?? DEFAULT_HULL) {
+      const ddx = px - (v.x + fx * off), ddy = py - (v.y + fy * off), d = Math.hypot(ddx, ddy);
+      if (d < r + BODY && r + BODY - d > pen) {
+        pen = r + BODY - d;
+        nx = d > 1e-6 ? ddx / d : 1;
+        ny = d > 1e-6 ? ddy / d : 0;
+      }
+    }
+    const ux = speed > 0.1 ? v.vx / speed : fx, uy = speed > 0.1 ? v.vy / speed : fy;
+    // Côté du passant par rapport à la trajectoire (vecteur unitaire d'écart).
+    const lat = -dx * uy + dy * ux;
+    const away = lat >= 0 ? 1 : -1;
+    const ax = -uy * away, ay = ux * away;
+    if (pen > 0) {
+      if (speed < 1.2) {
+        // Un véhicule qui avance au pas pousse le passant sans le faire tomber.
+        this.jx[i]! += nx * pen;
+        this.jy[i]! += ny * pen;
+        this.fear[i] = Math.max(this.fear[i]!, 0.5);
+        return;
+      }
+      const hard = speed >= 3.5;
+      this.knock(i, hard ? HIT_POSE.down : HIT_POSE.stumble, ux * 0.8 + ax * 0.6, uy * 0.8 + ay * 0.6, hard ? Math.min(9, 0.7 * speed + 1.5) : 1.2 + 0.4 * speed);
+      const slow = hard ? Math.min(0.3, Math.max(0.1, 0.1 + 0.02 * speed)) : 0.04;
+      const imp = this.impact;
+      imp.slow = Math.min(0.5, 1 - (1 - imp.slow) * (1 - slow));
+      imp.speed = Math.max(imp.speed, speed);
+      imp.hits++;
+      this.event(hard ? "hit" : "stumble", i, speed);
+      return;
+    }
+    // À l'approche : on saute de côté si le véhicule arrive vite sur soi.
+    if (speed > 2.5) {
+      // `ahead` : position du passant devant le véhicule, le long de sa trajectoire.
+      const ahead = dx * ux + dy * uy;
+      if (ahead > 0 && ahead < 3 + speed * 1.2 && Math.abs(lat) < 2.2 && this.fear[i]! < 0.5) {
+        this.startle(i, ax, ay, 5);
+        if (Math.abs(lat) < 1.4) this.event("near_miss", i, speed);
+      }
+    }
+  }
+
+  /** Contact avec le joueur à pied : le passant cède la place, un joueur qui court le fait trébucher. */
+  private footContact(i: number, obs: Observer, d2: number): void {
+    const min = PLAYER_BODY + BODY;
+    if (d2 >= min * min) return;
+    const d = Math.sqrt(d2) || 1e-6;
+    const nx = (this.x[i]! - obs.x) / d, ny = (this.y[i]! - obs.y) / d, pen = min - d;
+    this.jx[i]! += nx * pen;
+    this.jy[i]! += ny * pen;
+    this.impact.bump = Math.max(this.impact.bump, 0.3);
+    const vr = Math.hypot(obs.vx, obs.vy);
+    if (vr > 3.5 && this.mode[i]! < PED_STATE.stumble) {
+      this.knock(i, HIT_POSE.stumble, obs.vx / vr, obs.vy / vr, 1.0 + 0.3 * vr);
+      this.event("stumble", i, vr);
+    } else if (this.fear[i]! < 0.3) {
+      this.fear[i] = 0.5;
+      this.event("bump", i, vr);
+    }
+  }
+
+  /** Klaxon : les passants devant le véhicule (à moins de 35 m, ±45°) sursautent ; à moins de 12 m ils sautent de côté. */
+  private honk(v: NonNullable<Observer["vehicle"]>): void {
+    const h = v.heading ?? Math.atan2(v.vx, v.vy);
+    const fx = Math.sin(h), fy = Math.cos(h);
+    const alive = this.state.alive!;
+    for (let i = 0; i < this.n; i++) {
+      if (!alive[i] || this.mode[i]! >= PED_STATE.stumble) continue;
+      const dx = this.x[i]! - v.x, dy = this.y[i]! - v.y, d = Math.hypot(dx, dy);
+      if (d > 35 || d < 1 || Math.abs(angleDiff(Math.atan2(dx, dy), h)) > 0.8) continue;
+      const side = dx * fy - dy * fx >= 0 ? 1 : -1;
+      this.startle(i, fy * side, -fx * side, d < 12 ? 4 : 0, false);
+      this.fear[i] = 1;
+    }
+  }
+
+  /** Passant à terre ou qui trébuche : il glisse, se heurte aux murs, puis se relève et reprend sa file. */
+  private knockedStep(i: number, dt: number): void {
+    const g = this.graph, st = this.state;
+    st.poseT![i]! += dt;
+    this.timer[i]! -= dt;
+    const decay = Math.exp(-dt * (this.mode[i] === PED_STATE.down ? 2.5 : 4));
+    this.jx[i]! += this.kx[i]! * dt;
+    this.jy[i]! += this.ky[i]! * dt;
+    this.kx[i]! *= decay;
+    this.ky[i]! *= decay;
+    g.pointAt(this.edge[i]!, this.s[i]!, this.pt);
+    let px = this.pt.x + this.jx[i]!, py = this.pt.y + this.jy[i]!;
+    if (this.colliders) {
+      const r = this.colliders.resolveInto(this.res, px, py, BODY);
+      if (r.hit) {
+        this.jx[i]! += r.x - px;
+        this.jy[i]! += r.y - py;
+        this.kx[i]! *= 0.2;
+        this.ky[i]! *= 0.2;
+        px = r.x;
+        py = r.y;
+      }
+    }
+    this.x[i] = px;
+    this.y[i] = py;
+    st.x[i] = px;
+    st.z[i] = -py;
+    st.y[i] = this.terrain.heightAt(px, py);
+    st.yaw[i] = -this.heading[i]!;
+    st.speed[i] = 0;
+    if (this.timer[i]! > 0) return;
+    // Il se relève : il reprend la file piétonne la plus proche (le choc l'a peut-être emporté loin de la sienne).
+    const hit = g.nearest(px, py, 25, MASK_WALK);
+    if (!hit) {
+      st.alive![i] = 0;
+      this.stats.despawns++;
+      return;
+    }
+    this.edge[i] = hit.edge;
+    this.gen[i] = g.generation(hit.edge);
+    this.s[i] = hit.s;
+    const along = g.pointAt(hit.edge, hit.s, this.pt);
+    this.dir[i] = Math.cos(this.heading[i]! - along) >= 0 ? 1 : -1;
+    this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
+    this.ox[i] = this.oy[i] = 0;
+    this.lat[i] = this.latTarget[i] = 0;
+    this.speed[i] = this.want[i]! * 0.5;
+    this.mode[i] = PED_STATE.walk;
+    st.pose![i] = 0;
+  }
+
   // --- Voisinage -------------------------------------------------------------------------------------------------
 
   private hash(ix: number, iy: number): number {
@@ -521,6 +764,31 @@ export class PedSim {
       this.link[i] = this.head[h]!;
       this.head[h] = i;
     }
+  }
+
+  /** Les passants vivants dont le centre est dans le cercle (x, y, r) : leurs emplacements sont ajoutés à `out`. Renvoie leur nombre. */
+  queryCircle(x: number, y: number, r: number, out: number[]): number {
+    let n = 0;
+    for (let i = 0; i < this.n; i++) {
+      if (!this.state.alive![i]) continue;
+      if (Math.hypot(this.x[i]! - x, this.y[i]! - y) <= r) {
+        out.push(i);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * Pousse un passant : impulsion (ix, iy) en m/s. Au-delà de 3,5 m/s il tombe (et se relève ensuite), en dessous il trébuche. C'est l'entrée prévue
+   * pour J5 (coups, explosions, véhicules des autres) ; elle ne retire pas de santé (J5 ajoutera ses champs).
+   */
+  applyImpulse(i: number, ix: number, iy: number): void {
+    if (!this.state.alive![i] || this.mode[i]! >= PED_STATE.stumble) return;
+    const v = Math.hypot(ix, iy);
+    if (v < 0.05) return;
+    this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);
+    this.event(v >= 3.5 ? "hit" : "stumble", i, v);
   }
 
   /** Position d'un passant (repère du jeu), pour les tests et les autres systèmes. */
