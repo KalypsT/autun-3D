@@ -1,5 +1,5 @@
-import type { Terrain } from "../data/terrain";
 import type { Colliders } from "./collision";
+import type { HeightField } from "../data/types";
 
 /**
  * Véhicules : logique pure. Modèle « bicyclette » dynamique (deux essieux, pneus à rigidité de dérive
@@ -265,7 +265,7 @@ export interface DriveInput {
   handbrake?: number;
 }
 
-export function createVehicle(x: number, y: number, heading: number, terrain: Terrain): VehicleState {
+export function createVehicle(x: number, y: number, heading: number, terrain: HeightField): VehicleState {
   return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0 };
 }
 
@@ -310,7 +310,7 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /** Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. */
-export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: Terrain, colliders: Colliders, extra: Colliders | null = null): void {
+export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null): void {
   const h = dt / SUBSTEPS;
   for (let i = 0; i < SUBSTEPS; i++) integrate(s, spec, input, h, terrain);
   collide(s, spec, colliders);
@@ -336,7 +336,7 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   s.lean += (target - s.lean) * Math.min(1, dt * 10);
 }
 
-function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: Terrain): void {
+function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField): void {
   const { mass: m, front: a, rear: b } = spec;
   const L = a + b;
   const sin = Math.sin(s.heading), cos = Math.cos(s.heading);

@@ -2,11 +2,12 @@
 
 Usage : python3 tools/data/build_tiles.py
 
-Entrées (.cache/work) : buildings.json, facades.json, trees.json, props.json.
-Sorties (public/data) :
-  world.json         origine, grille de tuiles, effectifs
-  tiles/<c>_<r>.json bâtiments complets, fiches façade, arbres, murs, mobilier d'une tuile (c vers l'est, r vers le nord)
-  lod.json           silhouettes simplifiées de tous les bâtiments, pour les tuiles lointaines
+Entrées (.cache/blocks/<bloc>/work) : buildings_clean.json, facades.json, trees.json, props.json, ground_vec.json.
+Sorties : tuiles du bloc seulement (col, ligne = indices de la grille mondiale, cf. config.py), pour les tuiles de REGION qu'il contient ;
+  .cache/blocks/<bloc>/work/tiles.json  liste des tuiles écrites et de leurs effectifs, que pack.py fusionne dans public/data/world.json
+  public/data/tiles/<c>_<r>.json bâtiments complets, fiches façade, arbres, murs, mobilier d'une tuile (c vers l'est, r vers le nord)
+  public/data/lod/<c>_<r>.json   silhouettes simplifiées des bâtiments d'une tuile, pour quand elle est loin (absent si la tuile n'a pas de bâtiment)
+Le relief et les sols par tuile sont écrits ensuite par pack.py, qui crée ou complète world.json.
 Un bâtiment, un arbre ou un mur appartient à la tuile de son centre (ou de son premier point).
 """
 
@@ -24,6 +25,9 @@ from roadside import settle as settle_roadside
 
 WORK = c.CACHE / "work"
 TILES = c.OUT / "tiles"
+LODS = c.OUT / "lod"
+# Les objets sans identifiant d'origine (lampadaires, haies, remparts) en reçoivent un négatif, unique d'un bloc à l'autre.
+ID_BASE = (c.BLOCK_ID[1] * 10 + c.BLOCK_ID[0] + 1) * 1_000_000
 
 
 def load(name):
@@ -84,7 +88,7 @@ DRIVABLE = {"residential", "tertiary", "secondary", "unclassified", "service", "
 
 def roadside_signals(furniture):
     """Les feux d'OpenStreetMap sont des nœuds sur l'axe de la voie : on les pose de part et d'autre de la chaussée, sur le trottoir."""
-    streets = json.loads((c.OUT / "streets.json").read_text())
+    streets = json.loads((WORK / "streets.json").read_text())
     lines = [(LineString([(s["pts"][i], s["pts"][i + 1]) for i in range(0, len(s["pts"]), 2)]), s["width"]) for s in streets if s["kind"] in DRIVABLE]
     out = []
     for f in furniture:
@@ -119,6 +123,7 @@ def main():
     props = load("props.json")
 
     tiles = {}
+    block = c.block_tiles(*c.BLOCK_ID)
 
     def tile(col, row):
         return tiles.setdefault((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
@@ -152,7 +157,7 @@ def main():
     for i, (x, y, rot) in enumerate(gv["lamps"]):
         t = c.tile_of_local(x, y)
         if t:
-            tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(i + 1), "rot": rot})
+            tile(*t)["furniture"].append({"kind": "street_lamp", "x": x, "y": y, "name": None, "id": -(ID_BASE + i + 1), "rot": rot})
 
     for t_ in tiles.values():
         t_["furniture"] = roadside_signals(t_["furniture"])
@@ -163,34 +168,34 @@ def main():
         for i, pts in enumerate(lines):
             t = c.tile_of_local(pts[0], pts[1])
             if t:
-                tile(*t)["walls"].append({"id": -(1000 * (1 if kind == "hedge" else 2) + i), "kind": kind, "height": height, "measured": height, "pts": pts})
+                tile(*t)["walls"].append({"id": -(ID_BASE + 100_000 * (1 if kind == "hedge" else 2) + i), "kind": kind, "height": height, "measured": height, "pts": pts})
 
-    shutil.rmtree(TILES, ignore_errors=True)
-    TILES.mkdir(parents=True)
+    TILES.mkdir(parents=True, exist_ok=True)
+    LODS.mkdir(parents=True, exist_ok=True)
+    # Un bloc ne remplace que ses propres tuiles.
+    for col, row in block:
+        (TILES / f"{c.tile_id(col, row)}.json").unlink(missing_ok=True)
+        (LODS / f"{c.tile_id(col, row)}.json").unlink(missing_ok=True)
     manifest = []
     total = 0
-    for row in range(c.TILES_NY):
-        for col in range(c.TILES_NX):
-            rec = tiles.get((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
-            bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
-            stairs = [z for z in manual["stairs"] if z["bbox"][0] < bounds[2] and z["bbox"][2] > bounds[0] and z["bbox"][1] < bounds[3] and z["bbox"][3] > bounds[1]]
-            rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds, stairs), "stairs": stairs, **rec}
-            settle_roadside(rec)  # feux et troncs hors de la chaussée, couronnes élaguées au-dessus
-            text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
-            (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
-            total += len(text)
-            manifest.append({"id": c.tile_id(col, row), "col": col, "row": row, "bounds": bounds,
-                             "buildings": len(rec["buildings"]), "trees": len(rec["trees"]), "walls": len(rec["walls"]),
-                             "furniture": len(rec["furniture"]), "bytes": len(text)})
-    (c.OUT / "lod.json").write_text(json.dumps(lod, separators=(",", ":")))
-    world = {
-        "origin": list(c.ORIGIN), "originZ": c.ORIGIN_Z, "tileSize": c.TILE, "cols": c.TILES_NX, "rows": c.TILES_NY,
-        "zone": [round(v, 1) for v in (c.ZONE[0] - c.ORIGIN[0], c.ZONE[1] - c.ORIGIN[1], c.ZONE[2] - c.ORIGIN[0], c.ZONE[3] - c.ORIGIN[1])],
-        "tiles": manifest,
-    }
-    (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
+    for col, row in block:
+        rec = tiles.get((col, row), {"buildings": [], "fiches": [], "trees": [], "walls": [], "furniture": []})
+        bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
+        stairs = [z for z in manual["stairs"] if z["bbox"][0] < bounds[2] and z["bbox"][2] > bounds[0] and z["bbox"][1] < bounds[3] and z["bbox"][3] > bounds[1]]
+        rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds, stairs), "stairs": stairs, **rec}
+        settle_roadside(rec)  # feux et troncs hors de la chaussée, couronnes élaguées au-dessus
+        text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
+        (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
+        total += len(text)
+        silhouettes = lod.get(c.tile_id(col, row), [])
+        if silhouettes:
+            (LODS / f"{c.tile_id(col, row)}.json").write_text(json.dumps(silhouettes, separators=(",", ":")))
+        manifest.append({"id": c.tile_id(col, row), "col": col, "row": row, "bounds": bounds,
+                         "buildings": len(rec["buildings"]), "trees": len(rec["trees"]), "walls": len(rec["walls"]),
+                         "furniture": len(rec["furniture"]), "lod": len(silhouettes), "bytes": len(text)})
+    (WORK / "tiles.json").write_text(json.dumps(manifest))
     print(f"{len(manifest)} tuiles, {total / 1e6:.1f} Mo de JSON (plus gros : {max(m['bytes'] for m in manifest) / 1e3:.0f} ko), "
-          f"lod.json {(c.OUT / 'lod.json').stat().st_size / 1e3:.0f} ko, "
+          f"silhouettes {sum(f.stat().st_size for f in LODS.glob('*.json')) / 1e3:.0f} ko, "
           f"{sum(m['buildings'] for m in manifest)} bâtiments, {sum(m['trees'] for m in manifest)} arbres")
 
 

@@ -1,6 +1,15 @@
 /** Formats des fichiers produits par tools/data (public/data). Coordonnées locales en mètres :
  *  x vers l'est, y vers le nord, z vers le haut, relatif à l'altitude de référence du terrain. */
 
+/** Ce que le jeu demande au relief : l'altitude en un point et les limites du monde jouable. */
+export interface HeightField {
+  heightAt(x: number, y: number): number;
+  readonly xMin: number;
+  readonly xMax: number;
+  readonly yMin: number;
+  readonly yMax: number;
+}
+
 export interface TerrainMeta {
   cols: number;
   rows: number;
@@ -113,14 +122,6 @@ export interface Props {
 /** x, y, z du sol, hauteur, rayon de couronne, hauteur du tronc. */
 export type Tree = [number, number, number, number, number, number];
 
-export interface GroundMeta {
-  cols: number;
-  rows: number;
-  res: number;
-  x0: number;
-  y1: number;
-}
-
 export interface TileInfo {
   id: string;
   col: number;
@@ -131,6 +132,8 @@ export interface TileInfo {
   trees: number;
   walls: number;
   furniture: number;
+  /** Nombre de silhouettes dans lod/<id>.json (0 : pas de fichier). */
+  lod: number;
   bytes: number;
 }
 
@@ -138,11 +141,22 @@ export interface WorldManifest {
   origin: [number, number];
   originZ: number;
   tileSize: number;
+  /** Taille de la grille mondiale (en tuiles) : toute la commune ; seules les tuiles de `tiles` existent. */
   cols: number;
   rows: number;
-  /** Emprise locale de la zone : x0, y0, x1, y1. */
+  /** Coin sud-ouest de la grille mondiale (repère local) : la tuile (col, ligne) commence à gridOrigin + (col, ligne) × tileSize. */
+  gridOrigin: [number, number];
+  /** Emprise locale des tuiles qui existent : x0, y0, x1, y1 (limites du monde jouable). */
   zone: [number, number, number, number];
   tiles: TileInfo[];
+  /** Phase (mètres, modulo 1) du bord ouest et du bord nord de la grille fine du relief et des sols. */
+  lattice: [number, number];
+  /** Côté (en pixels de 1 m) d'un bloc fin de relief ou de sols. */
+  blockSize: number;
+  /** Relief de toute la zone, à gros pas (terrain/coarse.bin). */
+  coarse: TerrainMeta;
+  /** Sols grossiers par super-tuile de `tiles` × `tiles` tuiles, `res` mètres par pixel, `size` pixels de côté. */
+  super: { tiles: number; res: number; size: number; cells: { id: string; x0: number; y1: number }[] };
 }
 
 /** Contenu détaillé d'une tuile de 250 m (fichier tiles/<col>_<row>.json). */
@@ -185,15 +199,10 @@ export interface LodBuilding {
   k: number;
 }
 
-/** Ce qui est chargé une fois pour toutes au démarrage. */
+/** Ce qui est chargé une fois pour toutes au démarrage : le plan du monde et le relief à gros pas. Le reste se charge par tuile. */
 export interface WorldBase {
   manifest: WorldManifest;
-  terrain: import("./terrain").Terrain;
-  streets: Street[];
-  groundMeta: GroundMeta;
-  groundA: HTMLImageElement;
-  groundB: HTMLImageElement;
-  lod: Record<string, LodBuilding[]>;
+  terrain: import("./terrain").TiledTerrain;
 }
 
 // --- Fiches façade (docs/facade-fiche.schema.json) ---------------------------------------

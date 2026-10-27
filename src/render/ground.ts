@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import type { Terrain } from "../data/terrain";
 import { finish, hash01, MeshBuilder, type Steps } from "./geometry";
 import { T } from "./style";
+import type { HeightField } from "../data/types";
 
 /** Index de la couleur du thème (T.ground : asphalte, pavés, gravier, herbe, trottoir, dallage) et hauteur au-dessus du relief. */
 const LAYERS: Record<string, { color: number | "water" | "pitch"; lift: number; tint?: number }> = {
@@ -35,12 +35,12 @@ function area(ring: readonly number[]): number {
 }
 
 /** Sols vectoriels d'une tuile : chaussées, places, trottoirs (avec bordure), marquages. Un seul maillage. */
-export function buildGround(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: Terrain): MeshBuilder {
+export function buildGround(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: HeightField): MeshBuilder {
   return finish(buildGroundSteps(layers, bounds, terrain));
 }
 
 /** Comme `buildGround`, en rendant la main après chaque polygone. */
-export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: Terrain): Steps<MeshBuilder> {
+export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: HeightField): Steps<MeshBuilder> {
   const mb = new MeshBuilder();
   const eps = 0.02;
   const onEdge = (x: number, y: number): boolean => Math.abs(x - bounds[0]!) < eps || Math.abs(x - bounds[2]!) < eps || Math.abs(y - bounds[1]!) < eps || Math.abs(y - bounds[3]!) < eps;
@@ -116,7 +116,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
 }
 
 /** Bordures : une face verticale sur le contour des trottoirs, sauf sur les bords de tuile. */
-function curbs(mb: MeshBuilder, polys: number[][][], terrain: Terrain, top: THREE.Color, onEdge: (x: number, y: number) => boolean): void {
+function curbs(mb: MeshBuilder, polys: number[][][], terrain: HeightField, top: THREE.Color, onEdge: (x: number, y: number) => boolean): void {
   const face = top.clone().multiplyScalar(0.8);
   const lip = top.clone().multiplyScalar(1.1);
   const H = LAYERS["walk"]!.lift;

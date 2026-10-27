@@ -2,13 +2,13 @@ import type * as THREE from "three";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { BIKE, CAR, createVehicle, MOTO, SCOOTER, type VehicleSpec, type VehicleState } from "../core/vehicle";
-import type { Terrain } from "../data/terrain";
 import { createBikeModel } from "../render/bike-model";
 import { createCarModel, ParkedCars } from "../render/car-model";
 import { createMotoModel } from "../render/moto-model";
 import { createScooterModel } from "../render/scooter-model";
 import type { TileExtras } from "../render/tile-manager";
 import type { VehicleModel } from "../render/vehicle-model";
+import type { HeightField } from "../data/types";
 
 export type VehicleKind = "bike" | "scooter" | "car" | "moto";
 
@@ -72,7 +72,7 @@ export class Fleet {
   constructor(
     private readonly scene: THREE.Scene,
     private readonly colliders: Colliders,
-    private readonly terrain: Terrain,
+    private readonly terrain: HeightField,
   ) {
     scene.add(this.parked.group);
   }

@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { addTileColliders } from "../core/world";
-import { loadTile } from "../data/load";
-import type { Furniture, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
+import { loadLod, loadTile } from "../data/load";
+import type { TiledTerrain } from "../data/terrain";
+import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
 import { disposeTile, type TileMeshes, type TileStats } from "./stylized";
+import { FINE_RANGE, VIEW_RANGE } from "./terrain";
 
 /**
  * Une tuile passe en détail quand son bord le plus proche est à moins de DETAIL_DISTANCE mètres, et revient en silhouette
@@ -18,6 +20,17 @@ const MAX_FETCHES = 2;
 const BUDGET = 4;
 /** Anticipation : on charge aussi autour du point où l'on sera dans LOOKAHEAD secondes. */
 const LOOKAHEAD = 3;
+/** Silhouettes : construites jusqu'à VIEW_RANGE (au-delà, le brouillard cache tout), retirées LOD_MARGIN plus loin. */
+const LOD_MARGIN = 200;
+const MAX_LOD_FETCHES = 3;
+/** Relief fin : chargé pour les tuiles voisines de toute tuile détaillée (un bloc déborde d'une tuile, il faut le bloc de chacune des 8 voisines). */
+const TERRAIN_REACH = 360;
+const TERRAIN_KEEP = 200;
+const MAX_TERRAIN_FETCHES = 4;
+/** Les passes lentes (relief, silhouettes) ne tournent qu'une image sur SLOW. */
+const SLOW = 6;
+/** Au chargement, silhouettes construites d'avance dans ce rayon (m). */
+const PRELOAD_LOD = 700;
 
 /** Ce qu'une tuile détaillée garde pour le reste du jeu : mobilier, escaliers, marquages au sol. */
 export interface TileExtras {
@@ -32,6 +45,9 @@ interface Entry {
   lod: THREE.Mesh | null;
   detail: TileMeshes | null;
   data: TileData | null;
+  /** Silhouettes : "none" (pas chargées), "fetching", "queued" (reçues, maillage à construire), "ready" (maillage construit). */
+  lodState: "none" | "fetching" | "queued" | "ready";
+  lodData: LodBuilding[] | null;
   /** Extrait de la tuile détaillée gardé après construction (pour placer les véhicules). */
   extras: TileExtras | null;
   fetching: boolean;
@@ -68,6 +84,19 @@ function distanceTo(info: TileInfo, px: number, py: number): number {
 export class TileManager {
   readonly group = new THREE.Group();
   private readonly entries = new Map<string, Entry>();
+  private readonly grid = new Map<number, Entry>();
+  /** Tuiles avec une requête, des données ou un maillage détaillé en cours ou en mémoire. */
+  private readonly live = new Set<Entry>();
+  /** Tuiles dont les silhouettes sont demandées, en attente ou construites. */
+  private readonly lodLive = new Set<Entry>();
+  private lodFetching = 0;
+  private readonly lodQueue: Entry[] = [];
+  private readonly terrain: TiledTerrain;
+  private readonly cols: number;
+  /** Coin sud-ouest de la grille mondiale. */
+  private readonly zone: [number, number];
+  private readonly size: number;
+  private frame = 0;
   private job: Job | null = null;
   hidden = new Set<string>();
   /** Temps de construction passé pendant la dernière image (ms), 0 sans construction. */
@@ -88,11 +117,29 @@ export class TileManager {
     /** Budget par image (ms) ; très grand = construction d'un bloc, comme avant. */
     private readonly budget = BUDGET,
   ) {
+    this.terrain = world.terrain;
+    this.cols = world.manifest.cols;
+    this.zone = world.manifest.gridOrigin;
+    this.size = world.manifest.tileSize;
     for (const info of world.manifest.tiles) {
-      const lod = buildLodTile(world.lod[info.id] ?? [], world.terrain);
-      if (lod) this.group.add(lod);
-      this.entries.set(info.id, { info, lod, detail: null, data: null, extras: null, fetching: false, pending: [] });
+      const e: Entry = { info, lod: null, lodState: info.lod > 0 ? "none" : "ready", lodData: null, detail: null, data: null, extras: null, fetching: false, pending: [] };
+      this.entries.set(info.id, e);
+      this.grid.set(info.row * this.cols + info.col, e);
     }
+  }
+
+  /** Tuiles dont l'emprise touche le carré de demi-côté `range` autour du point. */
+  private near(px: number, py: number, range: number): Entry[] {
+    const out: Entry[] = [];
+    const c0 = Math.max(0, Math.floor((px - range - this.zone[0]) / this.size)), c1 = Math.floor((px + range - this.zone[0]) / this.size);
+    const r0 = Math.max(0, Math.floor((py - range - this.zone[1]) / this.size)), r1 = Math.floor((py + range - this.zone[1]) / this.size);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= Math.min(c1, this.cols - 1); c++) {
+        const e = this.grid.get(r * this.cols + c);
+        if (e) out.push(e);
+      }
+    }
+    return out;
   }
 
   /** La silhouette disparaît quand tous les maillages détaillés sont montrés. */
@@ -129,23 +176,65 @@ export class TileManager {
       this.job.steps.return(undefined as unknown as TileMeshes);
       this.job = null;
     }
-    if (!e.detail) return;
-    this.group.remove(e.detail.group);
-    disposeTile(e.detail);
-    e.detail = null;
-    e.pending = [];
-    e.extras = null;
-    this.colliders?.removeTag(e.info.id);
-    this.onUnload?.(e.info.id);
-    this.show(e);
+    e.data = null;
+    if (e.detail) {
+      this.group.remove(e.detail.group);
+      disposeTile(e.detail);
+      e.detail = null;
+      e.pending = [];
+      e.extras = null;
+      this.colliders?.removeTag(e.info.id);
+      this.onUnload?.(e.info.id);
+      this.show(e);
+    }
+    this.release(e);
   }
 
   private fetch(e: Entry): Promise<void> {
     e.fetching = true;
+    this.live.add(e);
     return loadTile(e.info.id).then(
       (d) => { e.data = d; e.fetching = false; },
-      (err: unknown) => { e.fetching = false; console.error(`tuile ${e.info.id}`, err); },
+      (err: unknown) => { e.fetching = false; this.release(e); console.error(`tuile ${e.info.id}`, err); },
     );
+  }
+
+  /** La tuile n'a plus rien en mémoire ni en cours : elle n'est plus suivie pour le déchargement. */
+  private release(e: Entry): void {
+    if (!e.fetching && !e.data && !e.detail && this.job?.e !== e) this.live.delete(e);
+  }
+
+  private fetchLod(e: Entry): Promise<void> {
+    e.lodState = "fetching";
+    this.lodLive.add(e);
+    this.lodFetching++;
+    return loadLod(e.info.id).then(
+      (d) => { e.lodData = d; e.lodState = "queued"; this.lodQueue.push(e); this.lodFetching--; },
+      (err: unknown) => { e.lodState = "ready"; this.lodFetching--; console.error(`silhouettes ${e.info.id}`, err); },
+    );
+  }
+
+  private buildLod(e: Entry): void {
+    const mesh = e.lodData ? buildLodTile(e.lodData, this.terrain) : null;
+    e.lodData = null;
+    e.lodState = "ready";
+    if (mesh) {
+      e.lod = mesh;
+      this.group.add(mesh);
+      this.show(e);
+    }
+  }
+
+  private dropLod(e: Entry): void {
+    if (e.lod) {
+      this.group.remove(e.lod);
+      e.lod.geometry.dispose();
+      (e.lod.material as THREE.Material).dispose();
+      e.lod = null;
+    }
+    e.lodData = null;
+    e.lodState = "none";
+    this.lodLive.delete(e);
   }
 
   /** Fait avancer la construction en cours dans le budget de l'image. */
@@ -177,31 +266,73 @@ export class TileManager {
    */
   update(px: number, py: number, vx = 0, vy = 0): void {
     this.sliceMs = 0;
+    this.frame++;
     const ax = px + vx * LOOKAHEAD, ay = py + vy * LOOKAHEAD;
-    const all = [...this.entries.values()]
-      .map((e) => ({ e, d: Math.min(distanceTo(e.info, px, py), distanceTo(e.info, ax, ay)) }))
+    const dist = (e: Entry): number => Math.min(distanceTo(e.info, px, py), distanceTo(e.info, ax, ay));
+    const all = this.near(px, py, this.load + Math.hypot(vx, vy) * LOOKAHEAD + 1)
+      .map((e) => ({ e, d: dist(e) }))
       .sort((a, b) => a.d - b.d);
-    let fetching = all.filter(({ e }) => e.fetching).length;
+    let fetching = 0;
+    for (const e of this.live) if (e.fetching) fetching++;
     // Un seul maillage montré par image : l'envoi des sommets à la carte graphique est étalé.
     let revealed = false;
     for (const { e, d } of all) {
-      if (d < this.load) {
-        if (e.detail) {
-          if (!revealed && e.pending.length) {
-            e.pending.shift()!.visible = true;
-            revealed = true;
-            this.show(e);
-          }
-        } else if (e.data && !this.job) {
+      if (d >= this.load) continue;
+      if (e.detail) {
+        if (!revealed && e.pending.length) {
+          e.pending.shift()!.visible = true;
+          revealed = true;
+          this.show(e);
+        }
+      } else if (e.data && !this.job) {
+        // Les altitudes fines de la tuile et de ses voisines doivent être là : les bâtiments, murs et sols s'y posent.
+        if (this.terrain.ready(e.info)) {
           this.job = { e, data: e.data, steps: this.builder(e.data), work: 0, frames: 0, slice: 0 };
           e.data = null;
-        } else if (!e.data && !e.fetching && this.job?.e !== e && fetching < MAX_FETCHES) {
-          void this.fetch(e);
-          fetching++;
         }
-      } else if (d > this.load + UNLOAD_MARGIN && (e.detail || this.job?.e === e)) this.unload(e);
+      } else if (!e.data && !e.fetching && this.job?.e !== e && fetching < MAX_FETCHES) {
+        void this.fetch(e);
+        fetching++;
+      }
     }
+    for (const e of [...this.live]) {
+      if (dist(e) > this.load + UNLOAD_MARGIN) this.unload(e);
+    }
+    if (this.frame % SLOW === 0) this.slow(px, py, vx, vy);
+    const queued = this.lodQueue.shift();
+    if (queued?.lodState === "queued") this.buildLod(queued);
     this.work();
+  }
+
+  /** Relief fin et silhouettes : passes qui n'ont pas besoin de tourner à chaque image. */
+  private slow(px: number, py: number, vx: number, vy: number): void {
+    const ax = px + vx * LOOKAHEAD, ay = py + vy * LOOKAHEAD;
+    const dist = (e: Entry): number => Math.min(distanceTo(e.info, px, py), distanceTo(e.info, ax, ay));
+    // Relief fin : autour de toute tuile détaillée, ses huit voisines comprises ; retiré quand plus aucune tuile détaillée n'en a besoin.
+    const reach = Math.max(this.load, FINE_RANGE) + TERRAIN_REACH;
+    const wide = this.near(px, py, reach + Math.hypot(vx, vy) * LOOKAHEAD)
+      .map((e) => ({ e, d: dist(e) }))
+      .filter(({ d }) => d < reach)
+      .sort((a, b) => a.d - b.d);
+    for (const { e } of wide) {
+      if (this.terrain.inflight >= MAX_TERRAIN_FETCHES) break;
+      if (!this.terrain.has(e.info.id)) void this.terrain.request(e.info.id);
+    }
+    for (const id of [...this.terrain.loadedIds()]) {
+      const e = this.entries.get(id);
+      if (e && dist(e) > reach + TERRAIN_KEEP) this.terrain.drop(id);
+    }
+    // Silhouettes : tout ce qui est visible, les plus proches d'abord.
+    const lods = this.near(px, py, VIEW_RANGE)
+      .filter((e) => e.lodState === "none" && distanceTo(e.info, px, py) < VIEW_RANGE)
+      .sort((a, b) => distanceTo(a.info, px, py) - distanceTo(b.info, px, py));
+    for (const e of lods) {
+      if (this.lodFetching >= MAX_LOD_FETCHES) break;
+      void this.fetchLod(e);
+    }
+    for (const e of [...this.lodLive]) {
+      if ((e.lodState === "ready" || e.lodState === "queued") && distanceTo(e.info, px, py) > VIEW_RANGE + LOD_MARGIN) this.dropLod(e);
+    }
   }
 
   /** Extraits des tuiles détaillées actuellement chargées. */
@@ -213,8 +344,22 @@ export class TileManager {
 
   /** Charge et construit d'une traite tout ce qui est proche de (px, py) avant le début du jeu. */
   async preload(px: number, py: number): Promise<void> {
-    const near = [...this.entries.values()].filter((e) => distanceTo(e.info, px, py) < this.load);
-    await Promise.all(near.map((e) => this.fetch(e)));
+    const near = this.near(px, py, this.load).filter((e) => distanceTo(e.info, px, py) < this.load);
+    const wide = this.near(px, py, PRELOAD_LOD).filter((e) => e.lodState === "none" && distanceTo(e.info, px, py) < PRELOAD_LOD);
+    const blocks = new Set<string>();
+    for (const e of near) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) blocks.add(`${e.info.col + dc}_${e.info.row + dr}`);
+    }
+    await Promise.all([
+      ...[...blocks].filter((id) => this.entries.has(id)).map((id) => this.terrain.request(id)),
+      ...near.map((e) => this.fetch(e)),
+      ...wide.map((e) => this.fetchLod(e)),
+    ]);
+    for (const e of wide) {
+      const i = this.lodQueue.indexOf(e);
+      if (i >= 0) this.lodQueue.splice(i, 1);
+      if (e.lodState === "queued") this.buildLod(e);
+    }
     for (const e of near.sort((a, b) => distanceTo(a.info, px, py) - distanceTo(b.info, px, py))) {
       const data = e.data;
       if (!data) continue;
@@ -226,12 +371,13 @@ export class TileManager {
     }
   }
 
-  get stats(): { loaded: string[]; triangles: number; draws: number; tileStats: Record<string, TileStats> } {
+  get stats(): { loaded: string[]; triangles: number; draws: number; lods: number; tileStats: Record<string, TileStats> } {
     const loaded: string[] = [];
     const tileStats: Record<string, TileStats> = {};
-    let triangles = 0, draws = 0;
+    let triangles = 0, draws = 0, lods = 0;
     for (const e of this.entries.values()) {
       if (e.lod) {
+        lods++;
         triangles += (e.lod.geometry.getAttribute("position").count) / 3;
         draws++;
       }
@@ -242,6 +388,6 @@ export class TileManager {
         draws += e.detail.stats.draws;
       }
     }
-    return { loaded, triangles: Math.round(triangles), draws, tileStats };
+    return { loaded, triangles: Math.round(triangles), draws, lods, tileStats };
   }
 }

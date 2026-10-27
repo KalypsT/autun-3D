@@ -52,7 +52,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (let i = 0; i < 6; i++) {
       await page.evaluate((dy) => { window.__autun.player.y += dy; }, 200);
       await sleep(5000);
-      console.log(JSON.stringify(await page.evaluate(() => { const a = window.__autun; const s = a.tiles.stats; return { y: Math.round(a.player.y), tiles: s.loaded.join(" "), draws: s.draws, tris: s.triangles, colliders: a.colliders.segments.length }; })));
+      console.log(JSON.stringify(await page.evaluate(() => { const a = window.__autun; const s = a.tiles.stats; return { y: Math.round(a.player.y), tiles: s.loaded.join(" "), blocs: a.terrain.loaded, silhouettes: s.lods, draws: s.draws, tris: s.triangles, relief: a.terrainView.triangles, colliders: a.colliders.live.segments }; })));
     }
     await shot("jeu-flux");
   } else if (scenario === "wall") {

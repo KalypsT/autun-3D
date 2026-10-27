@@ -78,9 +78,9 @@ def local(lon, lat):
 
 def main():
     buildings = json.load(open(c.CACHE / "work" / "buildings_clean.json"))
-    streets = json.load(open(c.OUT / "streets.json"))
+    streets = json.load(open(c.CACHE / "work" / "streets.json"))
     osm = json.load(open(c.CACHE / "raw" / "osm.json"))["elements"]
-    bdnb_rows = json.load(open(c.CACHE / "raw" / "bdnb.json"))
+    bdnb_rows = json.load(open(c.SHARED / "raw" / "bdnb.json"))
     mnt = common.raster("MNT") - c.ORIGIN_Z
     ground_idx = np.load(c.CACHE / "work" / "ground.npy")
 

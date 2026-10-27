@@ -39,6 +39,7 @@ MAX_PLANES = 14
 FLAT_SLOPE = math.tan(math.radians(3.5))
 MAX_SLOPE = math.tan(math.radians(62))
 MIN_AREA = 2.0       # m² : en dessous, on ignore l'emprise
+CONTEXT = 12.0       # m : frange autour du bloc dont on reconstruit aussi les bâtiments (voisinage des murs)
 STEP_MIN = 0.25      # saut de hauteur entre deux faces voisines qui demande un mur (m)
 HF_THRESHOLD = 0.12  # part de cellules à plus d'1 m d'écart au-delà de laquelle on passe au toit maillé
 MIN_REGION = 6       # cellules (1,5 m²) : les régions plus petites sont absorbées par leur voisine
@@ -652,7 +653,8 @@ def main():
             if g.geom_type != "Polygon" or g.area < MIN_AREA:
                 continue
             cx, cy = g.centroid.x, g.centroid.y
-            if c.ZONE[0] <= cx < c.ZONE[2] and c.ZONE[1] <= cy < c.ZONE[3]:
+            # Le bloc et une frange de 12 m : les bâtiments voisins servent à reconnaître les murs mitoyens en bordure de bloc.
+            if c.ZONE[0] - CONTEXT <= cx < c.ZONE[2] + CONTEXT and c.ZONE[1] - CONTEXT <= cy < c.ZONE[3] + CONTEXT:
                 jobs.append((props, g))
     print(f"{len(jobs)} bâtiments à reconstruire")
     out = []

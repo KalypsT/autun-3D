@@ -1,5 +1,5 @@
-import type { Terrain } from "../data/terrain";
 import type { Colliders } from "./collision";
+import type { HeightField } from "../data/types";
 
 /** Caméra à la troisième personne : orbite autour de la tête du piéton, sans traverser les murs ni le sol. */
 
@@ -24,7 +24,7 @@ export const HEAD_HEIGHT = 1.55;
 export const MIN_DISTANCE = 0.6;
 const WALL_MARGIN = 0.35;
 
-export function solveCamera(input: RigInput, colliders: Colliders, terrain: Terrain): RigResult {
+export function solveCamera(input: RigInput, colliders: Colliders, terrain: HeightField): RigResult {
   const cp = Math.cos(input.pitch), sp = Math.sin(input.pitch);
   // La caméra est derrière le regard : opposée au vecteur « avant ».
   const dx = -Math.sin(input.yaw) * cp, dy = -Math.cos(input.yaw) * cp, dz = sp;

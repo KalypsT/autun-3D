@@ -1,5 +1,5 @@
-import type { Terrain } from "../data/terrain";
 import type { Colliders } from "./collision";
+import type { HeightField } from "../data/types";
 
 /** Piéton : logique pure. Repère : x est, y nord, z haut ; cap 0 = nord, sens horaire (comme le soleil). */
 
@@ -33,7 +33,7 @@ const ACCEL = 14;
 const FRICTION = 16;
 const TURN_RATE = 12;
 
-export function createPlayer(x: number, y: number, terrain: Terrain, heading = 0): PlayerState {
+export function createPlayer(x: number, y: number, terrain: HeightField, heading = 0): PlayerState {
   return { x, y, z: terrain.heightAt(x, y), vx: 0, vy: 0, heading, speed: 0, stride: 0 };
 }
 
@@ -42,7 +42,7 @@ function angleDelta(from: number, to: number): number {
 }
 
 /** Fait avancer le piéton de `dt` secondes ; `camYaw` oriente « avant » et « droite ». */
-export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt: number, terrain: Terrain, colliders: Colliders): void {
+export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt: number, terrain: HeightField, colliders: Colliders): void {
   const mag = Math.min(Math.hypot(input.forward, input.right), 1);
   const sin = Math.sin(camYaw), cos = Math.cos(camYaw);
   // Avant = (sin, cos) ; droite = (cos, -sin).

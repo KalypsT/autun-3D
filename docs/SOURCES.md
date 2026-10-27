@@ -1,6 +1,6 @@
 # Sources de données — maquette réaliste d'Autun
 
-Zone de la maquette : quartier de la mairie, place du Champ de Mars.
+Zone de la maquette : quartier de la mairie, place du Champ de Mars ; la carte jouable est maintenant l'anneau de 3 × 3 km autour de la mairie (voir D31). Les chiffres ci-dessous décrivent la couverture du premier quartier étudié.
 WGS84 : lat 46.9488040 → 46.9516020, lon 4.2964430 → 4.3009710.
 Lambert-93 (EPSG:2154) : X 798601 → 798940, Y 6650654 → 6650970 (≈ 340 × 316 m).
 

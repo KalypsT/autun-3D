@@ -2,9 +2,9 @@
 
 Usage : python3 tools/data/build_streets.py
 
-Sorties dans public/data/ :
+Sorties dans .cache/blocks/<bloc>/work/ :
   streets.json  voies (axe, nom, sens, revêtement, largeur de chaussée, trottoir) et nœuds OSM pour le graphe
-  ground_a.png, ground_b.png, ground.json   poids de mélange des sols à 1 m (cf. export_weights) ; classes à 0,5 m dans .cache/work/ground.npy
+  .cache/work/global/ground_{a,b}.png, ground.json   poids de mélange des sols à 1 m (cf. export_weights) ; classes à 0,5 m dans .cache/work/ground.npy
   .cache/work/props.json   murs (hauteur mesurée au LiDAR), mobilier : découpés par tuile par build_tiles.py
 Les largeurs viennent de BD TOPO quand un tronçon correspond, sinon de valeurs types : champ `widthSource`.
 """
@@ -61,7 +61,7 @@ def way_line(e):
 
 
 def export_weights(ground):
-    """Carte des sols du jeu : poids de mélange à 1 m en deux PNG RVB (A : asphalte, pavés, gravier ; B : herbe, trottoir,
+    """Carte des sols du jeu (grille globale intermédiaire, découpée par tuile par pack.py) : poids de mélange à 1 m en deux PNG RVB (A : asphalte, pavés, gravier ; B : herbe, trottoir,
     occlusion près des murs). Le dallage est le complément à 1. Aucun canal alpha : le navigateur ne le prémultiplie pas."""
     H, W = ground.shape
     h, w = H // 2, W // 2
@@ -75,8 +75,8 @@ def export_weights(ground):
     a = np.stack([frac("asphalt"), frac("sett"), frac("gravel")], axis=-1)
     b = np.stack([frac("grass"), frac("sidewalk"), ao], axis=-1)
     for name, arr in (("ground_a.png", a), ("ground_b.png", b)):
-        Image.fromarray((arr * 255).round().astype(np.uint8)).save(c.OUT / name, optimize=True)
-    (c.OUT / "ground.json").write_text(json.dumps({
+        Image.fromarray((arr * 255).round().astype(np.uint8)).save(c.GLOBAL / name, optimize=True)
+    (c.GLOBAL / "ground.json").write_text(json.dumps({
         "cols": w, "rows": h, "res": 1.0, "x0": c.GRID_X0 - c.ORIGIN[0], "y1": c.GRID_Y1 - c.ORIGIN[1]}))
 
 
@@ -220,6 +220,7 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     np.save(work / "ground.npy", ground)
     c.OUT.mkdir(parents=True, exist_ok=True)
+    c.GLOBAL.mkdir(parents=True, exist_ok=True)
     export_weights(ground)
 
     # --- Murs, mobilier -----------------------------------------------------------------
@@ -264,7 +265,7 @@ def main():
                                   "name": t.get("name"), "id": e["id"]})
                 break
 
-    (c.OUT / "streets.json").write_text(json.dumps(streets, ensure_ascii=False, separators=(",", ":")))
+    (c.CACHE / "work" / "streets.json").write_text(json.dumps(streets, ensure_ascii=False, separators=(",", ":")))
     (c.CACHE / "work" / "props.json").write_text(json.dumps({"walls": walls, "furniture": furniture}, ensure_ascii=False,
                                                  separators=(",", ":")))
     counts = {k: int((ground == v).sum()) for k, v in GROUND.items()}

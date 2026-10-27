@@ -7,7 +7,7 @@ const buildings = tile.buildings;
 const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
 
 describe("fiches façade", () => {
-  it("existent pour chaque bâtiment, avec des séries de murs valides", () => {
+  it("existent pour chaque bâtiment, avec des séries de murs valides", { timeout: 30_000 }, () => {
     for (const b of buildings) {
       const f = fiches.get(b.id);
       expect(f, b.id).toBeDefined();
@@ -30,22 +30,21 @@ describe("planFacades", () => {
     expect(plan.stats.windows).toBeGreaterThan(8000);
     expect(plan.stats.doors).toBeGreaterThan(300);
     expect(plan.stats.shops).toBeGreaterThan(100);
-    for (const p of plan.placements) {
-      for (const v of [p.x, p.y, p.z, p.tx, p.ty, p.nx, p.ny]) expect(Number.isFinite(v)).toBe(true);
-    }
+    // Un seul expect : des centaines de milliers d'expect ralentissent le test à mesure que le monde grandit.
+    const bad = plan.placements.filter((p) => [p.x, p.y, p.z, p.tx, p.ty, p.nx, p.ny].some((v) => !Number.isFinite(v)));
+    expect(bad.length).toBe(0);
   });
 
   it("n'utilise que des sprites demandés", () => {
     const facade = new Set(plan.requests.map((r) => r.key));
     const signs = new Set(plan.signRequests.map((r) => r.key));
-    for (const p of plan.placements) expect((p.atlas === "facade" ? facade : signs).has(p.key), p.key).toBe(true);
+    const unknown = plan.placements.filter((p) => !(p.atlas === "facade" ? facade : signs).has(p.key)).map((p) => p.key);
+    expect(unknown).toEqual([]);
   });
 
   it("garde les fenêtres au-dessus du sol", () => {
-    for (const p of plan.placements) {
-      if (!p.key.startsWith("win|")) continue;
-      expect(p.z).toBeGreaterThan(terrain.heightAt(p.x, p.y) + 0.1);
-    }
+    const low = plan.placements.filter((p) => p.key.startsWith("win|") && p.z <= terrain.heightAt(p.x, p.y) + 0.1);
+    expect(low.length).toBe(0);
   });
 
   it("limite le nombre de sprites distincts (taille de l'atlas)", () => {

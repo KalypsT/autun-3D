@@ -1,6 +1,8 @@
-"""Télécharge les données brutes dans .cache/ (hors git). Idempotent et reprenable : ne retélécharge rien.
+"""Télécharge les données brutes du bloc (AUTUN_BLOCK, cf. config.py) dans .cache/ (hors git). Idempotent et reprenable : ne retélécharge rien.
 
-Usage : python3 tools/data/fetch.py [--force] [--only lidar|wfs|wms|bdnb|osm]
+Usage : AUTUN_BLOCK=3,4 python3 tools/data/fetch.py [--force] [--only lidar|wfs|wms|bdnb|osm]
+Partagé entre blocs (.cache/shared) : dalles LiDAR, blocs OpenStreetMap de 500 m, BDNB de la commune. Propre au bloc (.cache/blocks/<bloc>/raw) :
+rasters IGN 0,5 m, BD TOPO, extrait OpenStreetMap.
 """
 
 import io
@@ -22,6 +24,7 @@ ONLY = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
 session = requests.Session()
 session.headers["User-Agent"] = c.USER_AGENT
 RAW = c.CACHE / "raw"
+SHARED = c.SHARED / "raw"
 
 
 def get(url, *, method="GET", retries=6, timeout=300, **kwargs):
@@ -149,8 +152,8 @@ def lidar():
         "https://data.geopf.fr/wfs/ows",
         params={
             "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature", "TYPENAMES": "IGNF_LIDAR-HD_METADONNEE:metadata",
-            "OUTPUTFORMAT": "application/json", "SRSNAME": "EPSG:2154", "COUNT": 100,
-            "BBOX": f"{c.ZONE[0]},{c.ZONE[1]},{c.ZONE[2]},{c.ZONE[3]},urn:ogc:def:crs:EPSG::2154",
+            "OUTPUTFORMAT": "application/json", "SRSNAME": "EPSG:2154", "COUNT": 200,
+            "BBOX": f"{c.MARGIN_BOX[0]},{c.MARGIN_BOX[1]},{c.MARGIN_BOX[2]},{c.MARGIN_BOX[3]},urn:ogc:def:crs:EPSG::2154",
         },
     ).json()["features"]
     urls = {f["properties"]["coordonnees_nw"]: f["properties"]["url_npl"] for f in meta}
@@ -159,7 +162,7 @@ def lidar():
         if key not in urls:
             raise RuntimeError(f"dalle LiDAR {key} absente du catalogue")
     with ThreadPoolExecutor(2) as pool:
-        list(pool.map(lambda t: download_file(urls[f"{t[0]:04d}-{t[1]:04d}"], RAW / f"lidar_{t[0]}_{t[1]}.copc.laz"), c.LIDAR_TILES))
+        list(pool.map(lambda t: download_file(urls[f"{t[0]:04d}-{t[1]:04d}"], SHARED / f"lidar_{t[0]}_{t[1]}.copc.laz"), c.LIDAR_TILES))
 
 
 # --- BDNB : toute la commune, 10 lignes par appel ----------------------------------------------
@@ -194,17 +197,22 @@ def bdnb(dest):
     print(f"+ {dest.relative_to(c.ROOT)} ({len(rows)} groupes)")
 
 
-# --- OpenStreetMap (Overpass) par blocs de 500 m, avec reprise ---------------------------------
+# --- OpenStreetMap par blocs de 500 m alignés sur le Lambert-93 (partagés entre blocs), avec reprise ----------
 OSM_BLOCK = 500.0
 
 
-def overpass_block(bx, by, dest):
+def osm_bounds(bx, by, m=20.0):
+    """Emprise WGS84 (lat0, lon0, lat1, lon1) du bloc OSM absolu (bx, by), élargie de m mètres."""
     from pyproj import Transformer
 
     t = Transformer.from_crs(2154, 4326, always_xy=True)
-    m = 20.0
-    lon0, lat0 = t.transform(c.ZONE[0] + bx * OSM_BLOCK - m, c.ZONE[1] + by * OSM_BLOCK - m)
-    lon1, lat1 = t.transform(c.ZONE[0] + (bx + 1) * OSM_BLOCK + m, c.ZONE[1] + (by + 1) * OSM_BLOCK + m)
+    lon0, lat0 = t.transform(bx * OSM_BLOCK - m, by * OSM_BLOCK - m)
+    lon1, lat1 = t.transform((bx + 1) * OSM_BLOCK + m, (by + 1) * OSM_BLOCK + m)
+    return lat0, lon0, lat1, lon1
+
+
+def overpass_block(bx, by, dest):
+    lat0, lon0, lat1, lon1 = osm_bounds(bx, by)
     b = f"{lat0},{lon0},{lat1},{lon1}"
     query = (
         f"[out:json][timeout:180];("
@@ -225,12 +233,7 @@ NODE_KEYS = ("amenity", "shop", "tourism", "historic", "natural", "highway", "ba
 
 def osm_api_block(bx, by, dest):
     """Même contenu que overpass_block, par l'API officielle d'OpenStreetMap (secours quand Overpass est indisponible)."""
-    from pyproj import Transformer
-
-    t = Transformer.from_crs(2154, 4326, always_xy=True)
-    m = 20.0
-    lon0, lat0 = t.transform(c.ZONE[0] + bx * OSM_BLOCK - m, c.ZONE[1] + by * OSM_BLOCK - m)
-    lon1, lat1 = t.transform(c.ZONE[0] + (bx + 1) * OSM_BLOCK + m, c.ZONE[1] + (by + 1) * OSM_BLOCK + m)
+    lat0, lon0, lat1, lon1 = osm_bounds(bx, by)
     els = get("https://api.openstreetmap.org/api/0.6/map.json", params={"bbox": f"{lon0},{lat0},{lon1},{lat1}"}, retries=6).json()["elements"]
     nodes = {e["id"]: (e["lat"], e["lon"]) for e in els if e["type"] == "node"}
     out = []
@@ -253,12 +256,11 @@ def osm():
     if dest.exists() and not FORCE:
         print(f"= {dest.relative_to(c.ROOT)}")
         return
-    nx = math.ceil(c.TILES_NX * c.TILE / OSM_BLOCK)
-    ny = math.ceil(c.TILES_NY * c.TILE / OSM_BLOCK)
+    x0, y0, x1, y1 = c.MARGIN_BOX
     elements, missing = {}, []
-    for by in range(ny):
-        for bx in range(nx):
-            part = RAW / "osm" / f"{bx}_{by}.json"
+    for by in range(math.floor(y0 / OSM_BLOCK), math.floor((y1 - 1e-6) / OSM_BLOCK) + 1):
+        for bx in range(math.floor(x0 / OSM_BLOCK), math.floor((x1 - 1e-6) / OSM_BLOCK) + 1):
+            part = SHARED / "osm" / f"{bx}_{by}.json"
             if not part.exists() or FORCE:
                 try:
                     n = osm_api_block(bx, by, part)
@@ -286,7 +288,7 @@ if __name__ == "__main__":
         "wms": lambda: ([wms_mosaic(f"IGNF_LIDAR-HD_{n}_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93", n) for n in ("MNT", "MNS", "MNH")],
                         wms_mosaic("HR.ORTHOIMAGERY.ORTHOPHOTOS", "ortho", rgb=True)),
         "lidar": lidar,
-        "bdnb": lambda: bdnb(RAW / "bdnb.json"),
+        "bdnb": lambda: bdnb(SHARED / "bdnb.json"),
         "osm": osm,
     }
     for name, fn in steps.items():
