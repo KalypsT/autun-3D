@@ -19,6 +19,48 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.15, windshield: 0.5, roof: 1.2, rearGlass: 0.55, roofTaper: 0.9,
     wheelRadius: 0.3, tyreWidth: 0.2,
   },
+  compacte: {
+    length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
+    clearance: 0.27, belt: 0.9, noseHeight: 0.82, tailHeight: 0.95,
+    hood: 1.25, windshield: 0.55, roof: 1.2, rearGlass: 0.75, roofTaper: 0.9,
+    wheelRadius: 0.31, tyreWidth: 0.2,
+  },
+  berline: {
+    length: 4.75, width: 1.85, height: 1.45, overhangFront: 0.93,
+    clearance: 0.25, belt: 0.92, noseHeight: 0.8, tailHeight: 0.98,
+    hood: 1.45, windshield: 0.75, roof: 1.1, rearGlass: 0.6, roofTaper: 0.88,
+    wheelRadius: 0.32, tyreWidth: 0.21,
+  },
+  break: {
+    length: 4.8, width: 1.85, height: 1.5, overhangFront: 0.93,
+    clearance: 0.25, belt: 0.93, noseHeight: 0.8, tailHeight: 0.98,
+    hood: 1.4, windshield: 0.7, roof: 1.9, rearGlass: 0.35, roofTaper: 0.9,
+    wheelRadius: 0.32, tyreWidth: 0.21,
+  },
+  "petit-suv": {
+    length: 4.25, width: 1.8, height: 1.6, overhangFront: 0.88,
+    clearance: 0.2, belt: 1.0, noseHeight: 0.92, tailHeight: 1.06,
+    hood: 1.1, windshield: 0.6, roof: 1.35, rearGlass: 0.6, roofTaper: 0.92,
+    wheelRadius: 0.34, tyreWidth: 0.22,
+  },
+  camionnette: {
+    length: 4.9, width: 1.95, height: 1.95, overhangFront: 0.9,
+    clearance: 0.26, belt: 1.05, noseHeight: 0.95, tailHeight: 1.9,
+    hood: 1.0, windshield: 0.75, roof: 1.1, rearGlass: 0, roofTaper: 0.94,
+    wheelRadius: 0.33, tyreWidth: 0.22, cargo: true,
+  },
+  "vieille-voiture": {
+    length: 4.1, width: 1.68, height: 1.4, overhangFront: 0.78,
+    clearance: 0.24, belt: 0.86, noseHeight: 0.78, tailHeight: 0.92,
+    hood: 1.2, windshield: 0.5, roof: 1.3, rearGlass: 0.35, roofTaper: 0.92,
+    wheelRadius: 0.29, tyreWidth: 0.17, glass: "#3a4a5a",
+  },
+  sportive: {
+    length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
+    clearance: 0.12, belt: 0.78, noseHeight: 0.6, tailHeight: 0.84,
+    hood: 1.55, windshield: 0.85, roof: 0.75, rearGlass: 0.7, roofTaper: 0.84,
+    wheelRadius: 0.33, tyreWidth: 0.26, glass: "#1b2733",
+  },
 };
 
 function specOf(id: string): { front: number; rear: number } {

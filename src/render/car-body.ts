@@ -32,6 +32,8 @@ export interface CarBodyParams {
   roofTaper: number;
   wheelRadius: number;
   tyreWidth: number;
+  /** Camionnette : derrière le toit de la cabine, une caisse pleine hauteur, en peinture, sans vitre (la lunette est alors de longueur nulle). */
+  cargo?: boolean;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
 }
@@ -138,8 +140,13 @@ export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number,
       { z: nose, y0: p.clearance, y1: p.noseHeight, w0: W - 0.04, w1: W - 0.1 },
       { z: L.windshieldBaseZ, y0: p.clearance, y1: p.belt, w0: W - 0.03, w1: W - 0.05 },
       { z: L.rearBaseZ, y0: p.clearance, y1: p.belt, w0: W - 0.03, w1: W - 0.05 },
-      { z: tail, y0: p.clearance, y1: p.tailHeight, w0: W - 0.04, w1: W - 0.08 },
+      ...(p.cargo ? [] : [{ z: tail, y0: p.clearance, y1: p.tailHeight, w0: W - 0.04, w1: W - 0.08 }]),
     ], color),
+    // Caisse de camionnette : de la cabine à la queue, toute la hauteur.
+    ...(p.cargo ? [loft([
+      { z: L.rearBaseZ, y0: p.clearance, y1: top - 0.02, w0: W - 0.03, w1: W - 0.05 },
+      { z: tail, y0: p.clearance, y1: top - 0.02, w0: W - 0.04, w1: W - 0.06 },
+    ], color)] : []),
     // Ailes au-dessus des roues : elles débordent un peu de la caisse.
     box(p.width, 0.16, p.wheelRadius * 3.1, 0, p.belt - 0.1, L.wheels[0]![1], color),
     box(p.width, 0.16, p.wheelRadius * 3.1, 0, p.belt - 0.1, L.wheels[2]![1], color),

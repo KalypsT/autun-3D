@@ -31,6 +31,14 @@ export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
   return v.def.family === "car" ? { ...t, track: v.def.size.width / 2 - 0.13 } : t;
 }
 
+/** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (3,98 × 1,42 m). */
+export function chaseOf(v: { def: VehicleDef }): FamilyInfo["camera"] {
+  const c = FAMILIES[v.def.family].camera;
+  if (v.def.family !== "car") return c;
+  const { length, height } = v.def.size;
+  return { distance: c.distance + (length - 3.98) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.42) * 0.5 };
+}
+
 /** Interface et conduite communes à la famille du véhicule. */
 export function familyOf(v: { def: VehicleDef }): FamilyInfo {
   return FAMILIES[v.def.family];

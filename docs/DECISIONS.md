@@ -488,3 +488,28 @@ Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s consta
 - **Voitures garées** : deux maillages instanciés (peinture teintée par instance, détails et roues) **par modèle présent**, créés à la demande ; un modèle absent des 170 m ne coûte aucun appel de dessin (maillage masqué), un modèle présent en coûte deux (quatre avec l'ombre) quel que soit le nombre d'exemplaires. Capacité : 400 exemplaires par modèle. `ParkedCars.drawn` donne le nombre de maillages dessinés (pour le banc de V-6).
 - **Traces de pneus** : la voie d'une voiture suit sa largeur (`tyreOf`), plus une valeur fixe.
 - **Galerie** `?view=vehicles` (`src/game/vehicle-gallery.ts`) : le catalogue rangé devant la caméra, au départ du jeu ; `ids=`, `family=`, `heading=` (cap), `variant=`, `perRow=`, `eye=`, `rider=1` (conducteurs sur les deux-roues) ; un appui passe à la couleur suivante.
+
+## 2026-10-27 — D53. V-3 : huit voitures
+
+- **Catalogue** (`src/core/vehicle-catalog.ts`, fiches dans `src/core/vehicle-specs.ts`, mesures de carrosserie dans `src/render/car-model.ts`) : citadine, **compacte**, **berline**, **break**, **petit SUV**, **camionnette**, **vieille voiture**, **sportive**. Chaque fiche part de celle de la citadine (`CAR`) et ne réécrit que ce qui change : masse, inertie de lacet (masse × (0,46 × empattement)²), répartition avant/arrière, rigidité de dérive (≈ 56 et 64 N/rad par kg), adhérence, puissance, traction maximale (≈ 0,33 à 0,42 g, 0,62 g pour la sportive), freinage (≈ 0,8 à 1,2 g), traînée, hauteur du centre de gravité, roulis, frein moteur, répartition du freinage, coque (trois cercles du nez à la queue). Palettes par modèle (sobres pour la berline et le break, blanches pour la camionnette, délavées pour la vieille voiture, vives pour la sportive).
+- **Résultats mesurés** (simulation, plat, accélérateur ou frein à fond ; la pédale tactile met 0,7 s à monter, d'où des distances de freinage de 42 à 65 m) :
+
+  | modèle | 0-100 km/h | vitesse atteinte | 100 → 0 |
+  |---|---|---|---|
+  | citadine | 11,1 s | 167 km/h | 48 m |
+  | compacte | 9,7 s | 182 km/h | 48 m |
+  | berline | 9,3 s | 189 km/h | 49 m |
+  | break | 9,6 s | 188 km/h | 49 m |
+  | petit SUV | 10,7 s | 167 km/h | 50 m |
+  | camionnette | 16,8 s | 135 km/h | 55 m |
+  | vieille voiture | 12,6 s | 150 km/h | 65 m, roues avant bloquées |
+  | sportive | 4,9 s | 194 km/h | 42 m |
+
+  (la vitesse atteinte est de 93 à 97 % de la vitesse de la fiche : la traction s'éteint progressivement.)
+- **Plafond de vitesse** (D50) : `SPEED_CAP` (200 km/h pour les voitures, 210 pour les motos) et `limited(spec, cap)` : si la vitesse réelle de la fiche le dépasse (sportive 240, berline 215, break 205), la traction s'éteint sur les 6 % de vitesse sous le plafond, comme un limiteur ; le reste de la fiche ne change pas. Une seule constante à relever avec la commune entière.
+- **Vieille voiture** : pas d'ABS, adhérence 0,8, freins fatigués, roulement plus fort, suspension molle. Freinée à fond, ses roues avant se bloquent (comme avant D29) et elle s'arrête en 65 m contre 48 m pour la citadine. Test : bloque ; toutes les autres voitures ne bloquent jamais.
+- **Sportive** : propulsion (la roue arrière est motrice, motricité bornée par l'adhérence de l'essieu arrière), pneus larges, centre de gravité à 0,45 m. 0 à 100 km/h en 4,9 s ; plafonnée à 200 km/h.
+- **Camionnette** : la caisse arrière est pleine hauteur et sans vitre (option `cargo` du générateur : la lunette est de longueur nulle), direction plus lente, haut centre de gravité (0,85 m), freinage plus long.
+- **Tenue de route à la vitesse maximale** (test sur les huit) : plein braquage 1 s puis relâché à la vitesse maximale, sans tête-à-queue, l'accélération latérale reste sous `steerGrip × adhérence × 1,2` g, le cap tourne de moins de 40°, la voiture se remet droite en 4 s. Le braquage permis à la vitesse maximale reste supérieur à 0,004 rad (≈ 0,23°).
+- **Caméra de poursuite** par modèle (`chaseOf`) : celle de la famille, reculée de 1,2 m par mètre de longueur au-delà de la citadine et relevée de la moitié de l'écart de hauteur (une camionnette de 4,9 m et 1,95 m de haut voit au-dessus du toit, une sportive plus bas).
+- **Garage** : les nouvelles voitures s'essaient avec `?ride=<identifiant>` (`?ride=sportive`) et se jugent dans la galerie `?view=vehicles` (`family=car`, par défaut deux rangées vues de plus haut). Elles ne sont pas encore garées dans les rues : le placement par zone est l'étape V-5, les voitures garées sont pour l'instant toutes des citadines.

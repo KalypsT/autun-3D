@@ -11,7 +11,7 @@ import { buildModel } from "./vehicles";
 /**
  * ?view=vehicles : la galerie des véhicules du catalogue, rangés par famille devant la caméra, au départ du jeu (captures, choix des mesures).
  * Paramètres : `ids=citadine,moto-routiere` (liste ; défaut : tout), `family=car|moto|bike|kickscooter`, `heading` (cap en rad : 0 vers le nord, loin de la caméra ;
- * 3,14 de face ; 1,57 de profil ; défaut 2,35 : de trois quarts), `variant` (couleur), `perRow` (4), `eye` (hauteur de l'œil), `rider=1` (un conducteur sur les deux-roues).
+ * 3,14 de face ; 1,57 de profil ; défaut 2,35 : de trois quarts), `variant` (couleur), `perRow` (4), `eye` (hauteur de l'œil ; défaut : monte avec le nombre de rangées), `rider=1` (un conducteur sur les deux-roues).
  * Un appui sur l'écran passe à la couleur suivante de chaque palette.
  */
 export function startVehicleGallery(ctx: GameContext): void {
@@ -21,12 +21,14 @@ export function startVehicleGallery(ctx: GameContext): void {
   const ids = params.get("ids")?.split(",");
   const family = params.get("family");
   const defs: VehicleDef[] = CATALOG.filter((d) => (!ids || ids.includes(d.id)) && (!family || d.family === family));
-  const heading = Number(params.get("heading") ?? 2.35), eye = Number(params.get("eye") ?? 1.5);
+  const heading = Number(params.get("heading") ?? 2.35);
   const perRow = Math.max(1, Math.floor(Number(params.get("perRow") ?? 4)));
   const withRider = params.get("rider") === "1";
   let variant = Math.floor(Number(params.get("variant") ?? 0)) || 0;
 
   const rows = Math.ceil(defs.length / perRow);
+  // La caméra monte avec le nombre de rangées, pour voir celles de derrière par-dessus celles de devant.
+  const eye = Number(params.get("eye") ?? 1.5 + 2.4 * (rows - 1));
   // Une case par véhicule, large comme le plus long de la rangée ; la caméra recule pour tout cadrer.
   const cell = Math.max(2.4, ...defs.map((d) => d.size.length)) + 0.9;
   const width = Math.min(defs.length, perRow) * cell;
@@ -42,7 +44,7 @@ export function startVehicleGallery(ctx: GameContext): void {
     defs.forEach((def, i) => {
       const row = Math.floor(i / perRow), col = i % perRow;
       const inRow = Math.min(perRow, defs.length - row * perRow);
-      const x = spawn.x + (col - (inRow - 1) / 2) * cell, y = spawn.y + dist + row * (cell * 0.8);
+      const x = spawn.x + (col - (inRow - 1) / 2) * cell, y = spawn.y + dist + row * cell;
       const state = createVehicle(x, y, heading, world.terrain);
       const model = buildModel(def, variant);
       model.update(state);
@@ -68,7 +70,7 @@ export function startVehicleGallery(ctx: GameContext): void {
 
   const camX = spawn.x, camZ = -spawn.y;
   camera.position.set(camX, ground + eye, camZ);
-  camera.lookAt(camX, ground + eye * 0.55, camZ - dist - 1.2 - (rows - 1) * cell * 0.4);
+  camera.lookAt(camX, ground + 0.7, camZ - dist - (rows - 1) * cell * 0.5);
   const placeSun = followSun(ctx);
   ctx.ready({});
   const frame = (): void => {

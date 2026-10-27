@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { Colliders } from "../core/collision";
 import { flatTerrain } from "../core/testing";
 import { CATALOG } from "../core/vehicle-catalog";
-import { buildModel, Fleet, MODEL_BUILDERS } from "./vehicles";
+import { buildModel, chaseOf, Fleet, MODEL_BUILDERS } from "./vehicles";
+import { vehicleDef } from "../core/vehicle-catalog";
 
 const make = (): Fleet => new Fleet(new THREE.Scene(), new Colliders(), flatTerrain());
 
@@ -62,6 +63,18 @@ describe("catalogue et dessin", () => {
     expect(car.model).toBeNull();
     expect(car.family).toBe("car");
     expect(fleet.take(car)).toBe(car.model);
+  });
+});
+
+describe("caméra de poursuite par modèle", () => {
+  it("la citadine garde celle de sa famille ; une camionnette est plus loin et plus haut, une sportive plus près et plus basse", () => {
+    const cam = (id: string) => chaseOf({ def: vehicleDef(id)! });
+    const base = cam("citadine");
+    expect(base).toEqual({ distance: 6.2, perSpeed: 0.06, height: 0.55 });
+    expect(cam("camionnette").distance).toBeGreaterThan(base.distance + 1);
+    expect(cam("camionnette").height).toBeGreaterThan(base.height);
+    expect(cam("sportive").height).toBeLessThan(base.height);
+    expect(cam("moto-routiere")).toEqual(chaseOf({ def: vehicleDef("moto-routiere")! }));
   });
 });
 

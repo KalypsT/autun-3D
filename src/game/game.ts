@@ -19,7 +19,7 @@ import { NavManager } from "./nav-manager";
 import { PedsController } from "./peds-controller";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
-import { Fleet, familyOf, tyreOf, type Vehicle } from "./vehicles";
+import { Fleet, chaseOf, familyOf, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 
 export { gameSpawn } from "./start";
@@ -358,7 +358,7 @@ export function startGame(ctx: GameContext): void {
 
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
-    const chase = riding ? familyOf(riding).camera : null;
+    const chase = riding ? chaseOf(riding) : null;
     const wanted = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
     const focusZ = chase ? player.z + chase.height : player.z;
     const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: wanted }, colliders, terrain);

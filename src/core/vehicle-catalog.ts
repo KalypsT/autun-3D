@@ -1,4 +1,5 @@
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
+import { COMPACT, OLD_CAR, SEDAN, SPORT_CAR, SUV, VAN, WAGON } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -51,6 +52,13 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "velo-ville", family: "bike", name: "Vélo de ville", spec: BIKE, size: { length: 1.75, width: 0.6, height: 1.1 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"] },
   { id: "trottinette", family: "kickscooter", name: "Trottinette", spec: SCOOTER, size: { length: 1.1, width: 0.55, height: 1.1 }, palette: ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"] },
   { id: "citadine", family: "car", name: "Citadine", spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"] },
+  { id: "compacte", family: "car", name: "Compacte", spec: COMPACT, size: { length: 4.25, width: 1.8, height: 1.46 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#8a8f96"] },
+  { id: "berline", family: "car", name: "Berline", spec: SEDAN, size: { length: 4.75, width: 1.85, height: 1.45 }, palette: ["#1f3a52", "#8a8f96", "#2b2118", "#efe3c8", "#7a2e2e", "#3a4a5a"] },
+  { id: "break", family: "car", name: "Break", spec: WAGON, size: { length: 4.8, width: 1.85, height: 1.5 }, palette: ["#efe3c8", "#8a8f96", "#3f7d4e", "#1f3a52", "#b8a48a", "#2b2118"] },
+  { id: "petit-suv", family: "car", name: "Petit SUV", spec: SUV, size: { length: 4.25, width: 1.8, height: 1.6 }, palette: ["#2a6f7e", "#d9472b", "#efe3c8", "#2b2118", "#f1b24a", "#8a8f96", "#3f7d4e"] },
+  { id: "camionnette", family: "car", name: "Camionnette", spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#efe3c8", "#efe3c8", "#8a8f96", "#1f3a52", "#b8a48a", "#3f7d4e"] },
+  { id: "vieille-voiture", family: "car", name: "Vieille voiture", spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#a6553b", "#9a8b6a", "#7d8f7a", "#8a8f96", "#c9b98a", "#5f6f82"] },
+  { id: "sportive", family: "car", name: "Sportive", spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#2b2118", "#efe3c8", "#1f3a52", "#3f7d4e"] },
   { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, size: { length: 2.0, width: 0.8, height: 1.1 }, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
 ];
 
