@@ -248,18 +248,22 @@ describe("voiture", () => {
     expect(c.speed).toBeGreaterThan(11);
   });
 
-  it("braquage à fond à 50 km/h : la voiture tourne, sous-vire sans partir en tête-à-queue", () => {
+  it("braquage à fond à 50 km/h : l'arrière glisse peu à peu, et la voiture se remet droite quand on relâche", () => {
     const t = wide();
     const c = createVehicle(0, 0, 0, t);
     c.vy = 50 / 3.6;
-    drive(c, { throttle: 0.3, brake: 0, steer: 1 }, 4, t, none, CAR);
+    const beta = (): number => Math.atan2(c.vx * Math.cos(c.heading) - c.vy * Math.sin(c.heading), Math.abs(c.speed));
+    drive(c, { throttle: 0.3, brake: 0, steer: 1 }, 2.5, t, none, CAR);
     expect(c.heading).toBeGreaterThan(1);
-    expect(Math.abs(c.speed * c.yawRate)).toBeLessThan(0.98 * 9.81);
-    // Vitesse latérale faible devant la vitesse longitudinale : pas de tête-à-queue.
-    const lat = Math.abs(c.vx * Math.cos(c.heading) - c.vy * Math.sin(c.heading));
-    expect(lat).toBeLessThan(Math.abs(c.speed) * 0.3);
+    // Dérapage : l'arrière sort (dérive vers l'intérieur du virage), sans tête-à-queue.
+    expect(beta()).toBeLessThan(-0.05);
+    expect(beta()).toBeGreaterThan(-0.4);
+    expect(Math.abs(c.speed * c.yawRate)).toBeLessThan(1.1 * 9.81);
     // La caisse penche vers l'extérieur (gauche) d'un virage à droite.
     expect(c.lean).toBeLessThan(0);
+    drive(c, { throttle: 0.3, brake: 0, steer: 0 }, 1.5, t, none, CAR);
+    expect(Math.abs(beta())).toBeLessThan(0.05);
+    expect(Math.abs(c.yawRate)).toBeLessThan(0.1);
   });
 
   it("à fond au démarrage, la motricité est bornée par l'adhérence des roues avant", () => {

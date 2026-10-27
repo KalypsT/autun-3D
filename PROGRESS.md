@@ -164,3 +164,11 @@ Honor Magic 8 Pro (Adreno 840), Chrome 155, tenu en portrait, rendu 633 × 1 230
 - Tests : 79.
 
 ![Freinage roues bloquées, trace au sol](docs/captures/etape5-freinage-trace.jpg)
+
+### Deuxième retour d'essai (27 octobre 2026)
+
+- Feux tricolores et troncs sortis de la chaussée, couronnes au-dessus des rues relevées à 4 m ou réduites (D28, `tools/data/roadside.py`, tuiles corrigées sans tout régénérer).
+- Direction plus vive ; l'arrière peut décrocher en virage serré, et se rattrape en relâchant ou en contre-braquant.
+- Tests : 81.
+
+![Arbres d'alignement](docs/captures/etape5-arbres-alignement.jpg)
