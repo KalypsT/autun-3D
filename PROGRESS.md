@@ -204,3 +204,36 @@ La carte couvre maintenant 3 × 3 km autour de la mairie : 144 tuiles de 250 m, 
 
 L'agrandissement à la commune est reporté (D32) ; on ajoute d'abord les fonctions de jeu, dans l'ordre J1 à J7 de `docs/ROADMAP.md` : interface, carte et sauvegarde ; navigation et passants ; circulation ; police ; armes et violence ; argent et objectifs ; sons. Le prompt de l'étape J1 est dans `docs/ROADMAP.md`.
 
+
+### Étape J1 (27 octobre 2026) : interface, carte et sauvegarde
+
+Fait (décisions D33 à D35) :
+- **Interface en jeu** : horloge sous la minimap (haut à gauche), bouton pause à côté du plein écran (haut à droite), pastilles des véhicules en colonne dessous ; zone santé / arme / recherche prévue en haut au centre, vide (`body.layout` la montre pour les captures). Joystick et pédales n'ont pas bougé.
+- **Menu pause** (⏸, Échap, P ; en voiture comme à pied) : reprendre, carte, réglages, lieux notés, sauvegarde. La pause fige les véhicules, le soleil et l'horloge ; le rendu continue à 4 Hz derrière le menu (coupé sous la carte). Réglages en direct, enregistrés localement : définition, ombres, rayon de détail, sensibilité de la caméra, minimap ; les paramètres d'URL restent prioritaires (réglage grisé).
+- **Minimap** (canvas 2D rond, rayon 180 m, 16 Hz, tourne avec la caméra ou nord fixe) : routes, trottoirs, eau, pelouses, bâtiments, joueur, véhicules garés proches, repère (flèche au bord et distance hors champ). Coût chronométré (`Minimap.cost`) dans le panneau de debug et dans le rapport du banc.
+- **Carte agrandie** : tout l'anneau, déplacement et pincement, noms de rues, lieux par catégorie avec filtres, fiche au tap, joueur et direction ; appui long = pose ou retire le repère, visible sur la minimap et dans le monde (colonne et losange).
+- **Données** (`tools/data/build_map.py`, 1,3 Mo, aucune tuile régénérée) : 9 images de 1 km à 1 m et 2 m par pixel, vue d'ensemble à 4 m, `places.json` (271 lieux en 14 catégories dont `perso`, 246 rues nommées). `tools/data/places_perso.json` pour tes propres lieux.
+- **Notes de lieu** (menu pause) : position, direction, heure, texte et capture (IndexedDB) ; copier le texte ou télécharger le JSON.
+- **Sauvegarde locale** : position, caméra, véhicule conduit, véhicules déplacés, heure et jour, repère ; à la pause, en quittant la page, toutes les 30 s ; « Nouvelle partie ». Les paramètres de test (`?at=`, `?h=`…) coupent la sauvegarde.
+- Tests : 146 (conversion monde/carte, zoom et déplacement, repère, sauvegarde et réglages, notes, véhicules déplacés, départ de partie, horloge). `tools/ui.sh` rejoue les écrans en tactile.
+
+Mesuré ici (`?bench=court`, conteneur sans carte graphique : le rendu logiciel occupe les mêmes cœurs, les chiffres sont donc pessimistes) : mise à jour de la minimap à 0,21-0,33 ms en moyenne (pire cas 0,6 à 4,5 ms, lors d'à-coups du rendu logiciel), soit moins de 0,1 ms par image à 16 Hz ; objectif d'1 ms tenu en moyenne. Le banc (`?bench=1`) et le viewer (`?view=`) fonctionnent toujours.
+
+À vérifier sur le téléphone : coût réel de la minimap (`?debug`, puis `?bench=1` : ligne « Minimap » de chaque phase), ressenti de l'appui long (520 ms) et du pincement, clavier virtuel pendant la saisie d'une note (paysage), lisibilité de la minimap au soleil.
+
+Constats : aucun commissariat dans l'anneau d'après OpenStreetMap (la gendarmerie est à ≈ 270 m à l'est de la zone) ; commerces et monuments très denses au centre (icônes omises en vue d'ensemble quand elles se recouvrent).
+
+![HUD : minimap, horloge, zones santé / arme / recherche (pointillés), pause et plein écran](docs/captures/j1-hud-zones.jpg)
+![Repère hors de la minimap : flèche sur le bord et distance](docs/captures/j1-hud-repere-loin.jpg)
+![En voiture : l'interface ne gêne pas les pédales](docs/captures/j1-hud-voiture.jpg)
+![Menu pause](docs/captures/j1-pause-menu.jpg)
+![Réglages](docs/captures/j1-pause-reglages.jpg)
+![Noter ce lieu](docs/captures/j1-pause-note-formulaire.jpg)
+![Lieux notés](docs/captures/j1-pause-notes-liste.jpg)
+![Sauvegarde](docs/captures/j1-pause-sauvegarde.jpg)
+![Carte agrandie](docs/captures/j1-carte.jpg)
+![Appui long : le cercle se remplit, puis le repère est posé](docs/captures/j1-carte-appui.jpg)
+![Carte zoomée au pincement](docs/captures/j1-carte-zoom.jpg)
+![Fiche d'un lieu](docs/captures/j1-carte-fiche.jpg)
+![Filtres des lieux](docs/captures/j1-carte-filtres.jpg)
+![Le repère dans le monde : colonne et losange](docs/captures/j1-jeu-repere-monde.jpg)

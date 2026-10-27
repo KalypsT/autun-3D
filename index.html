@@ -8,7 +8,7 @@
     <style>
       html, body { margin: 0; height: 100%; background: #1b1f27; overflow: hidden; touch-action: none; overscroll-behavior: none; }
       canvas { display: block; width: 100%; height: 100%; }
-      #debug { position: fixed; top: 6px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
+      #debug { position: fixed; top: 192px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
                background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
       #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
       #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
@@ -16,9 +16,11 @@
       #stick-base, #stick-knob { position: fixed; display: none; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
       #stick-base { width: 116px; height: 116px; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); }
       #stick-knob { width: 52px; height: 52px; background: rgba(255,255,255,.45); border: 2px solid rgba(255,255,255,.7); }
-      #fullscreen { position: fixed; top: 8px; right: 8px; width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.4);
-                    background: rgba(0,0,0,.35); color: #fff; font-size: 20px; display: none; z-index: 5; }
-      body.game #fullscreen { display: block; }
+      #fullscreen, #pausebtn { position: fixed; top: 8px; width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.4);
+                    background: rgba(0,0,0,.35); color: #fff; font-size: 20px; display: none; z-index: 5; padding: 0; }
+      #fullscreen { right: 8px; }
+      #pausebtn { right: 58px; }
+      body.game #fullscreen, body.game #pausebtn { display: block; }
       #hint { position: fixed; left: 0; right: 0; bottom: 14px; text-align: center; color: #fff; font: 14px system-ui, sans-serif;
               text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
       body.game #hint { animation: hint 9s ease-out 0.5s both; }
@@ -36,7 +38,7 @@
                 border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
       body.game #action.show { display: block; }
       body.game:not(.driving) #action { bottom: 24px; }
-      #nearby { position: fixed; top: 12px; right: 62px; z-index: 3; display: none; gap: 6px; pointer-events: none; }
+      #nearby { position: fixed; top: 58px; right: 8px; z-index: 3; display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
       body.game:not(.driving) #nearby { display: flex; }
       .chip { display: none; gap: 5px; align-items: center; padding: 5px 10px 5px 8px; border-radius: 16px; background: rgba(0,0,0,.4);
               color: #fff; font: 14px system-ui, sans-serif; }
@@ -44,12 +46,91 @@
       .chip .arrow { display: inline-block; transition: transform .15s linear; }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
+
+      [hidden] { display: none !important; }
+      /* Interface en jeu : minimap et horloge en haut à gauche, zone santé / arme / recherche en haut au centre (vide jusqu'à J4-J5),
+         pause et plein écran en haut à droite. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */
+      #minimap { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 8px; width: 140px; height: 140px; z-index: 4; pointer-events: none; display: none; }
+      #clock { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 152px; width: 140px; box-sizing: border-box; z-index: 4; display: none; text-align: center; pointer-events: none;
+               padding: 3px 0; border-radius: 12px; background: rgba(27, 31, 39, .55); color: #fff8e6; font: 600 16px/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+      body.game #minimap, body.game #clock, body.minimap-on #minimap { display: block; }
+      #status { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; gap: 10px; align-items: center; pointer-events: none; color: #fff8e6; font: 600 14px system-ui, sans-serif; }
+      .slot { min-width: 96px; min-height: 26px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+      #wanted { min-width: 120px; }
+      body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
+      body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
+      /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
+      body.paused #action, body.paused #pedals, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      /* Menu pause */
+      #pause { position: fixed; inset: 0; z-index: 20; display: flex; background: rgba(20, 17, 14, .9); color: #fff8e6; font: 15px system-ui, sans-serif;
+               padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); gap: 14px; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+      .pm-side { width: 210px; flex: none; display: flex; flex-direction: column; gap: 6px; }
+      .pm-title { font: 700 22px system-ui, sans-serif; padding: 4px 6px 6px; letter-spacing: .02em; }
+      .pm-item { text-align: left; padding: 0 14px; height: 50px; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .25); background: rgba(255, 248, 230, .08); color: inherit; font: 600 16px system-ui, sans-serif; }
+      .pm-item.on { background: rgba(217, 71, 43, .85); border-color: #fff8e6; }
+      .pm-content { flex: 1; overflow-y: auto; padding: 2px 6px 12px 2px; -webkit-overflow-scrolling: touch; }
+      .pm-content h2 { margin: 2px 0 10px; font: 700 20px system-ui, sans-serif; }
+      .pm-content p { margin: 0 0 10px; line-height: 1.4; }
+      .pm-muted { opacity: .7; font-size: 13px; }
+      .pm-warn { color: #ffd27a; }
+      .pm-build { margin-top: 16px; }
+      .pm-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 248, 230, .14); }
+      .pm-row.locked { opacity: .55; }
+      .pm-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .pm-label small, .pm-note small, .pm-form-side small { opacity: .65; font-size: 12px; line-height: 1.3; }
+      .pm-seg { display: flex; flex: none; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 248, 230, .35); }
+      .pm-seg button { min-width: 64px; height: 40px; padding: 0 10px; border: 0; background: rgba(255, 248, 230, .08); color: inherit; font: 600 14px system-ui, sans-serif; }
+      .pm-seg button + button { border-left: 1px solid rgba(255, 248, 230, .25); }
+      .pm-seg button.on { background: #d9472b; }
+      .pm-seg button:disabled { opacity: .7; }
+      .pm-slider { display: flex; align-items: center; gap: 10px; flex: none; }
+      .pm-slider input { width: 170px; height: 40px; accent-color: #d9472b; }
+      .pm-value { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+      .pm-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 12px; }
+      .pm-actions button, .pm-note button, .bm-card button, .bm-chip button { height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255, 248, 230, .4); background: rgba(255, 248, 230, .1); color: inherit; font: 600 14px system-ui, sans-serif; }
+      .pm-actions button:disabled { opacity: .4; }
+      .pm-primary { background: #d9472b !important; border-color: #fff8e6 !important; }
+      .pm-danger { background: rgba(140, 30, 20, .8) !important; }
+      .pm-notes { display: flex; flex-direction: column; gap: 8px; }
+      .pm-note { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; background: rgba(255, 248, 230, .08); }
+      .pm-note img { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; flex: none; }
+      .pm-note-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+      .pm-del { height: 34px !important; font-size: 12px !important; }
+      .pm-form { display: flex; gap: 12px; align-items: flex-start; }
+      .pm-shot { width: 280px; max-width: 42%; border-radius: 8px; flex: none; }
+      .pm-form-side { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+      .pm-form textarea, .pm-paste { width: 100%; box-sizing: border-box; border-radius: 8px; border: 1px solid rgba(255, 248, 230, .4); background: rgba(0, 0, 0, .35); color: #fff8e6; font: 15px system-ui, sans-serif; padding: 8px; user-select: text; -webkit-user-select: text; }
+      .pm-paste { height: 90px; margin-top: 8px; }
+      /* Carte agrandie */
+      #bigmap { position: fixed; inset: 0; z-index: 30; background: #f2e4c0; touch-action: none; user-select: none; -webkit-user-select: none; font-family: system-ui, sans-serif; }
+      #bigmap canvas { position: absolute; inset: 0; touch-action: none; }
+      .bm-btn { position: absolute; z-index: 2; height: 44px; min-width: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .8); background: rgba(43, 33, 24, .82); color: #fff8e6; font: 600 15px system-ui, sans-serif; }
+      .bm-back { left: max(10px, env(safe-area-inset-left)); top: 10px; }
+      .bm-filter { right: max(10px, env(safe-area-inset-right)); top: 10px; }
+      .bm-here { left: max(10px, env(safe-area-inset-left)); bottom: 12px; font-size: 22px; }
+      .bm-zoom-in { right: max(10px, env(safe-area-inset-right)); bottom: 12px; font-size: 24px; }
+      .bm-zoom-out { right: calc(max(10px, env(safe-area-inset-right)) + 54px); bottom: 12px; font-size: 24px; }
+      .bm-filters { position: absolute; z-index: 3; right: max(10px, env(safe-area-inset-right)); top: 62px; display: grid; grid-template-columns: auto auto; gap: 0 18px; padding: 8px 14px; border-radius: 12px; background: rgba(43, 33, 24, .92); color: #fff8e6; font-size: 15px; }
+      .bm-filters label { display: flex; align-items: center; gap: 8px; height: 36px; }
+      .bm-filters input { width: 20px; height: 20px; accent-color: #d9472b; }
+      .bm-chip { position: absolute; z-index: 2; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; height: 44px; border-radius: 12px; background: rgba(217, 71, 43, .94); color: #fff8e6; font: 600 15px system-ui, sans-serif; white-space: nowrap; }
+      .bm-chip button { height: 34px; }
+      .bm-card { position: absolute; z-index: 2; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; min-width: 240px; max-width: 46%; padding: 10px 14px; border-radius: 12px; background: rgba(43, 33, 24, .93); color: #fff8e6; font-size: 14px; }
+      .bm-card span, .bm-card em { opacity: .8; font-size: 13px; }
+      .bm-credit { position: absolute; z-index: 1; left: calc(max(10px, env(safe-area-inset-left)) + 54px); bottom: 4px; font-size: 10px; color: rgba(43, 33, 24, .75); pointer-events: none; }
+      .bm-hint { position: absolute; z-index: 1; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 12px; border-radius: 10px; background: rgba(43, 33, 24, .72); color: #fff8e6; font-size: 13px; white-space: nowrap; pointer-events: none; opacity: 0; }
+      .bm-hint.fade { animation: hint 7s ease-out 0.3s both; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
     <div id="touch"></div>
     <div id="stick-base"></div><div id="stick-knob"></div>
+    <canvas id="minimap" aria-label="Minimap"></canvas>
+    <div id="clock" aria-label="Heure du jeu">--:--</div>
+    <div id="status"><div id="health" class="slot" data-name="santé"></div><div id="weapon" class="slot" data-name="arme"></div><div id="wanted" class="slot" data-name="recherche"></div></div>
+    <button id="pausebtn" title="Pause" aria-label="Pause">⏸</button>
     <button id="fullscreen" title="Plein écran" aria-label="Plein écran">⛶</button>
     <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
     <div id="pedals"><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>

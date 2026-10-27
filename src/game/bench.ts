@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { DETAIL_DISTANCE } from "../render/tile-manager";
 import { BENCH_ROUTE } from "./bench-route";
 import { Polyline, summarizeFrames, type FrameSummary } from "./bench-stats";
+import { Minimap } from "../ui/minimap";
+import { MapData } from "../ui/map-data";
 import type { GameContext } from "./context";
 import { followSun, gameSpawn } from "./game";
 
@@ -45,6 +47,8 @@ interface PhaseReport {
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
   memory: Memory;
+  /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
+  minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
 
 const CHASE_BACK = 7;
@@ -144,6 +148,7 @@ export function startBench(ctx: GameContext): void {
   const settings = {
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
+    minimap: params.get("minimap") !== "0",
     pixelRatio: renderer.getPixelRatio(),
     detail: Number(params.get("detail") ?? DETAIL_DISTANCE),
     budget: Number(params.get("budget") ?? 4),
@@ -155,6 +160,15 @@ export function startBench(ctx: GameContext): void {
   banner.style.cssText = "position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:6;padding:6px 12px;border-radius:8px;"
     + "background:rgba(0,0,0,.6);color:#fff;font:13px system-ui,sans-serif;pointer-events:none;white-space:nowrap;";
   document.body.append(banner);
+
+  // Minimap : la même que dans le jeu, mise à jour à 16 Hz, pour mesurer son coût au même moment que le reste (?minimap=0 pour comparer).
+  const withMinimap = params.get("minimap") !== "0";
+  const minimap = withMinimap ? new Minimap(document.getElementById("minimap") as HTMLCanvasElement) : null;
+  if (minimap) {
+    document.body.classList.add("minimap-on");
+    MapData.load().then((d) => minimap.attach(d), (e: unknown) => console.warn("carte indisponible :", e));
+  }
+  let miniTimer = 0;
 
   const reports: PhaseReport[] = [];
   let index = -1;
@@ -179,6 +193,7 @@ export function startBench(ctx: GameContext): void {
     stableSince = 0;
     firstBuild = tiles.builds.length;
     lastBuildCount = tiles.buildCount;
+    if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
   };
 
   const endPhase = (): void => {
@@ -198,6 +213,7 @@ export function startBench(ctx: GameContext): void {
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
       memory: measureMemory(ctx),
+      minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
     });
   };
 
@@ -246,6 +262,7 @@ export function startBench(ctx: GameContext): void {
         pendingBuild = 0;
         t = 0;
         samples = [];
+        if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
       }
     } else {
       // La durée mesurée ici est celle de l'image précédente : on lui attribue sa construction de tuile.
@@ -275,6 +292,14 @@ export function startBench(ctx: GameContext): void {
     atmosphere.advance(dt);
     placeSun(pos.x, pos.y, terrain.heightAt(pos.x, pos.y));
     sky.position.copy(camera.position);
+    if (minimap) {
+      miniTimer -= dt;
+      if (miniTimer <= 0) {
+        miniTimer = 1 / 16;
+        const yaw = Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]);
+        minimap.time(() => minimap.update({ x: pos.x, y: pos.y, cameraYaw: yaw, facing: yaw, north: false, vehicles: [], waypoint: null }));
+      }
+    }
     renderer.render(scene, camera);
 
     const remaining = p.still ? p.still.seconds - t : (p.drive!.to - p.drive!.from) / p.drive!.speed - t;
@@ -303,7 +328,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -314,6 +339,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  ${f.fps.toFixed(1)} i/s en moyenne · 1 % les plus lentes : ${f.low1.toFixed(1)} i/s · ${f.frames} images en ${f.seconds.toFixed(1)} s`);
     lines.push(`  Durée d'image : médiane ${f.p50.toFixed(1)} ms · 95 % ${f.p95.toFixed(1)} · 99 % ${f.p99.toFixed(1)} · max ${f.max.toFixed(0)} ms`);
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
+    if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {
       const n = p.builds.length;

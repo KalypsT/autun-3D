@@ -1,23 +1,18 @@
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
 import { stepVehicle } from "../core/vehicle";
+import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
 import { SkidMarks } from "../render/skid-marks";
 import type { VehicleModel } from "../render/vehicle-model";
+import { gameSpawn } from "./start";
+import { UiBridge } from "./ui-bridge";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
-/** Point de départ : place du Champ de Mars, face au nord (mairie et théâtre au fond). */
-const SPAWN = { x: -10, y: -40, heading: 0 };
-
-/** ?at=x,y&yaw=radians : point de départ imposé (tests, captures). */
-export function gameSpawn(params: URLSearchParams): { x: number; y: number; yaw: number } {
-  const at = params.get("at")?.split(",").map(Number);
-  const yaw = Number(params.get("yaw") ?? SPAWN.heading);
-  return at && at.length === 2 && at.every(Number.isFinite) ? { x: at[0]!, y: at[1]!, yaw } : { x: SPAWN.x, y: SPAWN.y, yaw };
-}
+export { gameSpawn } from "./start";
 const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
@@ -49,8 +44,9 @@ export function followSun(ctx: GameContext): (x: number, y: number, z: number) =
 export function startGame(ctx: GameContext): void {
   const { camera, renderer, scene, sky, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
   const { terrain } = world;
-  const spawn = gameSpawn(params);
+  const spawn = ctx.start ?? { ...gameSpawn(params), save: null, noSave: true };
   const startYaw = spawn.yaw;
+  const saved = spawn.save;
   const player = createPlayer(spawn.x, spawn.y, terrain, startYaw);
   const model = createPlayerModel();
   scene.add(model.group);
@@ -59,7 +55,9 @@ export function startGame(ctx: GameContext): void {
 
   // Véhicules garés : aux parkings à vélos des tuiles déjà construites, puis de chaque nouvelle tuile.
   const fleet = new Fleet(scene, colliders, terrain);
-  fleet.keepClear(spawn.x, spawn.y, 4);
+  // Départ neuf : aucune voiture garée sur le joueur. Partie reprise : les véhicules laissés ailleurs reviennent où ils étaient.
+  if (saved) fleet.restore(saved.vehicles);
+  else fleet.keepClear(spawn.x, spawn.y, 4);
   for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
   tiles.onBuild = (extras) => fleet.addFromTile(extras);
   tiles.onUnload = (id) => fleet.removeTile(id);
@@ -84,8 +82,14 @@ export function startGame(ctx: GameContext): void {
   });
   if (params.has("debug")) debugEl.style.display = "block";
 
+  const settings = ctx.settings!;
+  controls.sensitivity = settings.values.sensitivity;
+  settings.listeners.push((v) => {
+    controls.sensitivity = v.sensitivity;
+  });
+
   let yaw = startYaw;
-  let pitch = 0.28;
+  let pitch = saved ? saved.camera.pitch : 0.28;
   const distance = Number(params.get("dist") ?? 3.6);
   let camDist = distance;
   let riding: Vehicle | null = null;
@@ -95,7 +99,15 @@ export function startGame(ctx: GameContext): void {
   let crank = 0;
   let lookIdle = 0;
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}`);
+
+  /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
+  const miniCost = (): string => {
+    const c = ui.minimap.cost;
+    const text = c.calls ? `${(c.totalMs / c.calls).toFixed(2)} ms (max ${c.maxMs.toFixed(2)})` : "–";
+    Object.assign(c, { calls: 0, totalMs: 0, maxMs: 0 });
+    return text;
+  };
 
   const actionEl = document.getElementById("action") as HTMLButtonElement;
   // Un repère par type de véhicule (les voitures, partout, masqueraient les vélos) : flèche et distance du plus proche.
@@ -153,12 +165,18 @@ export function startGame(ctx: GameContext): void {
   };
   actionEl.addEventListener("click", act);
   window.addEventListener("keydown", (e) => {
+    // En pause (menu, carte, saisie d'une note), les touches ne commandent plus le jeu.
+    if (document.body.classList.contains("paused")) return;
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
   });
   // ?ride=velo, trottinette, voiture ou moto : départ sur un véhicule (captures, essais).
   const ride = { velo: "bike", trottinette: "scooter", voiture: "car", moto: "moto" }[params.get("ride") ?? ""] as VehicleKind | undefined;
   if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
+  else if (saved?.riding) {
+    const v = fleet.get(saved.riding);
+    if (v) mount(v);
+  }
 
   // Traces de pneus derrière les roues bloquées ou qui glissent.
   const marks = new SkidMarks();
@@ -199,12 +217,33 @@ export function startGame(ctx: GameContext): void {
     }
   };
 
+  const facing = (): number => (riding ? riding.state.heading : player.heading);
+  const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null,
+  }), saved);
+
   let last = performance.now();
   let acc = 0;
+  let pausedRender = 0;
   const frame = (now: number): void => {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
     const input = controls.poll();
+    if (ui.paused) {
+      // Pause : ni simulation ni horloge. Le chargement des tuiles continue, et l'image se rafraîchit à 4 Hz
+      // (ou tout de suite quand un réglage change) : rien ne bouge, mais l'aperçu des réglages reste vrai.
+      pausedRender += dt;
+      tiles.update(player.x, player.y, 0, 0);
+      terrainView.update(player.x, player.y);
+      if (!ui.coversScreen && (pausedRender > 0.25 || ui.needsRender)) {
+        pausedRender = 0;
+        ui.needsRender = false;
+        placeSun(player.x, player.y, player.z);
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(frame);
+      return;
+    }
     yaw += input.lookYaw;
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
 
@@ -278,6 +317,7 @@ export function startGame(ctx: GameContext): void {
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
     sky.position.copy(camera.position);
+    ui.tick(dt, now / 1000);
 
     renderer.render(scene, camera);
     meter.tick(dt);
@@ -285,7 +325,7 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks,
+    player, colliders, fleet, marks, ui,
     riding: () => riding,
     camera: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }),
   });

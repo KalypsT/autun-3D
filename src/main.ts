@@ -3,14 +3,18 @@ import { Colliders } from "./core/collision";
 import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
 import { startBench } from "./game/bench";
-import { gameSpawn, startGame } from "./game/game";
+import { startGame } from "./game/game";
+import { gameSpawn, resolveStart, type StartState } from "./game/start";
+import { SettingsController } from "./game/settings-controller";
+import { DEFAULT_SETTINGS, effectiveSettings, SettingsStore } from "./core/settings";
+import { SaveStore } from "./core/save";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
-import { DETAIL_DISTANCE, TileManager } from "./render/tile-manager";
+import { TileManager } from "./render/tile-manager";
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -21,9 +25,15 @@ const viewerMode = params.has("view") || params.has("cam");
 // ?bench=1 : banc de test de performances (parcours fixe, rapport à la fin).
 const benchMode = !viewerMode && params.has("bench");
 
+// Réglages du joueur (enregistrés localement) ; le viewer et le banc gardent les valeurs par défaut pour que leurs mesures restent comparables.
+// Les paramètres d'URL (?dpr=, ?shadowmap=, ?shadow=0, ?detail=) sont prioritaires dans tous les cas.
+const settingsStore = new SettingsStore();
+const storedSettings = viewerMode || benchMode ? { ...DEFAULT_SETTINGS } : settingsStore.load();
+const effective = effectiveSettings(storedSettings, params).values;
+
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-// Définition : ×2,5 au plus en jeu (mesuré fluide en ×3 sur le téléphone de test, marge gardée pour la chauffe sur 30 minutes).
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, Number(params.get("dpr") ?? (viewerMode ? 2 : 2.5))));
+// Définition : ×2,5 au plus par défaut (mesuré fluide en ×3 sur le téléphone de test, marge gardée pour la chauffe sur 30 minutes).
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, viewerMode ? Number(params.get("dpr") ?? 2) : effective.dpr));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 const shadows = params.get("shadow") !== "0";
@@ -38,8 +48,8 @@ const camera = new THREE.PerspectiveCamera(viewerMode ? 60 : 62, 1, 0.15, 1200);
 const sunDir = new THREE.Vector3(0, 1, 0);
 const sunLight = new THREE.DirectionalLight("#ffe8c4", 3.0);
 sunLight.position.copy(sunDir).multiplyScalar(400);
-sunLight.castShadow = shadows;
-const mapSize = Number(params.get("shadowmap") ?? 4096);
+sunLight.castShadow = shadows && effective.shadows !== 0;
+const mapSize = effective.shadows || 4096;
 sunLight.shadow.mapSize.set(mapSize, mapSize);
 const cam = sunLight.shadow.camera;
 cam.left = -230; cam.right = 230; cam.top = 230; cam.bottom = -230; cam.near = 50; cam.far = 900;
@@ -87,7 +97,9 @@ resize();
 async function main(): Promise<void> {
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
-  const start = focus ? { x: focus[0], y: focus[1] } : gameSpawn(params);
+  const saveStore = new SaveStore();
+  const startState: StartState | null = viewerMode || benchMode ? null : resolveStart(params, saveStore, world.manifest.zone);
+  const start = focus ? { x: focus[0], y: focus[1] } : startState ?? gameSpawn(params);
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
   await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
@@ -97,13 +109,14 @@ async function main(): Promise<void> {
   const styleRes = new StyleResources();
   // Heure de jeu : ?h=17 (départ), ?speed=0.02 (heures de jeu par seconde ; 0 = figée), ?style=nuit = 23 h 30 figée.
   const night = params.get("style") === "nuit";
-  const hour = Number(params.get("h") ?? (night ? 23.5 : 16));
+  const clock = startState?.save?.clock;
+  const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : 16));
   const speed = Number(params.get("speed") ?? (night || viewerMode || benchMode ? 0 : 1 / 50));
-  const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? clock?.day ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
-  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, Number(params.get("detail") ?? DETAIL_DISTANCE), Number(params.get("budget") ?? 4));
+  const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, effective.detail, Number(params.get("budget") ?? 4));
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);
@@ -111,8 +124,9 @@ async function main(): Promise<void> {
   const { loaded, triangles, draws } = tiles.stats;
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
+  const settings = viewerMode || benchMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
   const ctx: GameContext = {
-    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl,
+    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl, settings, start: startState,
     ready: (extra) => {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : benchMode ? "bench" : "game");

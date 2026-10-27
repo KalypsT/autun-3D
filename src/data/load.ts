@@ -3,7 +3,7 @@ import type { LodBuilding, TileData, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
 
-async function json<T>(name: string): Promise<T> {
+export async function loadJson<T>(name: string): Promise<T> {
   const res = await fetch(base + name);
   if (!res.ok) throw new Error(`${name} : ${res.status}`);
   return (await res.json()) as T;
@@ -14,6 +14,9 @@ async function binary(name: string): Promise<ArrayBuffer> {
   if (!res.ok) throw new Error(`${name} : ${res.status}`);
   return res.arrayBuffer();
 }
+
+/** Adresse d'un fichier de public/data. */
+export const dataUrl = (name: string): string => base + name;
 
 /** Images de sols : une image par fichier, décodée à part. */
 export function loadImage(name: string): Promise<HTMLImageElement> {
@@ -27,18 +30,18 @@ export function loadImage(name: string): Promise<HTMLImageElement> {
 
 /** Ce qui est chargé au démarrage : le plan du monde et le relief à gros pas. Tout le reste se charge par tuile. */
 export async function loadWorldBase(): Promise<WorldBase> {
-  const manifest = await json<WorldManifest>("world.json");
+  const manifest = await loadJson<WorldManifest>("world.json");
   const coarse = Terrain.decode(manifest.coarse, await binary("terrain/coarse.bin"));
   return { manifest, terrain: new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`)) };
 }
 
 export function loadTile(id: string): Promise<TileData> {
-  return json<TileData>(`tiles/${id}.json`);
+  return loadJson<TileData>(`tiles/${id}.json`);
 }
 
 /** Silhouettes des bâtiments d'une tuile (lod/<id>.json). */
 export function loadLod(id: string): Promise<LodBuilding[]> {
-  return json<LodBuilding[]>(`lod/${id}.json`);
+  return loadJson<LodBuilding[]>(`lod/${id}.json`);
 }
 
 /** Poids de mélange des sols d'une tuile (1 m par pixel) ou d'une super-tuile (4 m par pixel) : deux images A et B. */
