@@ -70,6 +70,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("stick-knob")!,
     document.getElementById("gas"),
     document.getElementById("brake"),
+    document.getElementById("handbrake"),
   );
   const fsButton = document.getElementById("fullscreen");
   fsButton?.addEventListener("click", () => {
@@ -120,6 +121,7 @@ export function startGame(ctx: GameContext): void {
     controls.mode = "drive";
     gasEl.textContent = KINDS[v.kind].gas;
     document.body.classList.add("driving");
+    document.body.classList.toggle("car", v.spec.handbrake);
   };
   const dismount = (): void => {
     const v = riding!;
@@ -138,7 +140,7 @@ export function startGame(ctx: GameContext): void {
     riding = null;
     leaving = false;
     controls.mode = "foot";
-    document.body.classList.remove("driving");
+    document.body.classList.remove("driving", "car");
   };
   const act = (): void => {
     if (riding) {
@@ -209,7 +211,7 @@ export function startGame(ctx: GameContext): void {
     acc += dt;
     while (acc >= STEP) {
       if (riding) {
-        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer };
+        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.kind === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else stepPlayer(player, { forward: input.forward, right: input.right, run: input.run }, yaw, STEP, terrain, colliders);

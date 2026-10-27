@@ -58,8 +58,15 @@ export interface VehicleSpec {
   cgHeight: number;
   /** Part du freinage sur l'avant. */
   brakeFront: number;
-  /** Frein avant dosé (deux-roues : le conducteur ne bloque pas l'avant) ; sinon les deux roues peuvent se bloquer. */
-  frontNeverLocks: boolean;
+  /**
+   * Antiblocage : les freins ne bloquent jamais les roues (ABS de la voiture et de la moto, freinage dosé du cycliste),
+   * on peut donc freiner en tournant ; seul le frein à main bloque l'arrière.
+   */
+  abs: boolean;
+  /** Braquage permis à haute vitesse, en part de l'adhérence : au-delà de 1, on peut faire glisser (voiture) ; sous 1, jamais (deux-roues). */
+  steerGrip: number;
+  /** Frein à main (bloque l'arrière, pour faire pivoter la voiture). */
+  handbrake: boolean;
 }
 
 export const GRAVITY = 9.81;
@@ -95,7 +102,9 @@ export const BIKE: VehicleSpec = {
   driveAxle: "rear",
   cgHeight: 1.0,
   brakeFront: 0.6,
-  frontNeverLocks: true,
+  abs: true,
+  steerGrip: 0.9,
+  handbrake: false,
 };
 
 /**
@@ -132,12 +141,14 @@ export const SCOOTER: VehicleSpec = {
   driveAxle: "rear",
   cgHeight: 0.9,
   brakeFront: 0.5,
-  frontNeverLocks: true,
+  abs: true,
+  steerGrip: 0.9,
+  handbrake: false,
 };
 
 /**
- * Petite citadine à traction avant, sans ABS (au freinage maximal l'avant se bloque d'abord : elle file tout droit), avec son conducteur : 1 250 kg, 66 kW (90 ch) dont ≈ 56 kW aux roues, 0 à 100 km/h en ≈ 12 s,
- * freinage ≈ 0,9 g à la limite du blocage, ≈ 0,7 g roues bloquées, pneus de tourisme. Centre de gravité vers l'avant (moteur).
+ * Petite citadine à traction avant, avec ABS (on peut freiner en tournant) et frein à main (pour la faire pivoter), avec son conducteur : 1 250 kg, 66 kW (90 ch) dont ≈ 56 kW aux roues, 0 à 100 km/h en ≈ 12 s,
+ * freinage ≈ 0,9 g, pneus de tourisme. Centre de gravité vers l'avant (moteur).
  */
 export const CAR: VehicleSpec = {
   mass: 1250,
@@ -145,7 +156,7 @@ export const CAR: VehicleSpec = {
   front: 1.05,
   rear: 1.55,
   maxSteer: 0.62,
-  steerFade: 9,
+  steerFade: 14,
   steerRate: 1.8,
   corneringFront: 70000,
   corneringRear: 80000,
@@ -169,7 +180,9 @@ export const CAR: VehicleSpec = {
   driveAxle: "front",
   cgHeight: 0.55,
   brakeFront: 0.8,
-  frontNeverLocks: false,
+  abs: true,
+  steerGrip: 1.4,
+  handbrake: true,
 };
 
 /**
@@ -206,7 +219,9 @@ export const MOTO: VehicleSpec = {
   driveAxle: "rear",
   cgHeight: 0.7,
   brakeFront: 0.7,
-  frontNeverLocks: true,
+  abs: true,
+  steerGrip: 0.9,
+  handbrake: false,
 };
 
 export interface VehicleState {
@@ -246,6 +261,8 @@ export interface DriveInput {
   brake: number;
   /** Direction -1 (gauche) à 1 (droite). */
   steer: number;
+  /** Frein à main (0 ou 1) ; ignoré si le véhicule n'en a pas. */
+  handbrake?: number;
 }
 
 export function createVehicle(x: number, y: number, heading: number, terrain: Terrain): VehicleState {
@@ -265,10 +282,11 @@ const BRAKE_RELEASE = 0.15;
 const SLIDE_GRIP = 0.75;
 /** En dessous de cette vitesse (m/s), les roues ne se bloquent plus (le véhicule s'arrête). */
 const LOCK_MIN = 1.5;
-/** Braquage à haute vitesse : accélération latérale visée, en part de l'adhérence (un peu au-delà pour sentir la limite). */
-const STEER_GRIP = 1.4;
 /** Temps pour braquer à fond (s) : le volant ne saute pas d'un coup, même quand le braquage permis est petit. */
 const STEER_TIME = 0.2;
+/** Deux-roues : écart permis entre le lacet réel et celui du guidon (rad/s), et glissade latérale (m/s). */
+const TWO_WHEEL_YAW = 0.2;
+const TWO_WHEEL_SLIP = 0.4;
 
 /** Force motrice disponible à la vitesse u (m/s) pour un accélérateur 0-1. */
 export function driveForce(spec: VehicleSpec, u: number, throttle: number): number {
@@ -284,7 +302,7 @@ export function steerLimit(spec: VehicleSpec, u: number): number {
   const low = spec.maxSteer / (1 + (u / spec.steerFade) ** 2);
   // À haute vitesse, pas plus que ce que les pneus peuvent tenir (v² δ / L ≈ accélération latérale).
   const L = spec.front + spec.rear;
-  return Math.min(low, (STEER_GRIP * spec.grip * GRAVITY * L) / Math.max(u * u, 1e-3));
+  return Math.min(low, (spec.steerGrip * spec.grip * GRAVITY * L) / Math.max(u * u, 1e-3));
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -326,6 +344,7 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   let u = s.vx * sin + s.vy * cos;
   let v = s.vx * cos - s.vy * sin;
   let w = s.yawRate;
+  const v0 = v;
 
   // Guidon : suit la commande à vitesse limitée (plein braquage en STEER_TIME au plus), borné selon la vitesse.
   const limit = steerLimit(spec, Math.abs(u));
@@ -359,8 +378,14 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
     brakeF = spec.maxBrake * s.brakeLevel * spec.brakeFront;
     brakeR = spec.maxBrake * s.brakeLevel * (1 - spec.brakeFront);
   }
-  if (spec.frontNeverLocks) brakeF = Math.min(brakeF, 0.95 * gripF);
-  // Une roue freinée au-delà de son adhérence se bloque (pas d'ABS) ; elle glisse alors dans le sens de son mouvement.
+  if (spec.abs) {
+    brakeF = Math.min(brakeF, 0.95 * gripF);
+    brakeR = Math.min(brakeR, 0.95 * gripR);
+  }
+  // Une roue freinée au-delà de son adhérence se bloque ; elle glisse alors dans le sens de son mouvement.
+  // Le frein à main bloque l'arrière d'un coup (à l'arrêt, il retient le véhicule).
+  const pull = spec.handbrake && (input.handbrake ?? 0) > 0;
+  if (pull) brakeR = Math.max(brakeR, 2 * gripR);
   const fast = Math.abs(u) > LOCK_MIN;
   s.lockedFront = fast && brakeF > gripF;
   s.lockedRear = fast && brakeR > gripR;
@@ -417,6 +442,17 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   v += ((fyFront + fyRear) / m - u * w) * dt;
   w += ((a * fyFront - b * fyRear) / spec.yawInertia) * dt;
   u = u1;
+
+  // Deux-roues : la chute n'est pas modélisée, ils ne dérapent donc pas. Leur lacet et leur dérive restent proches
+  // de ce que donne le guidon (sinon, en freinant fort, l'arrière délesté les ferait pivoter sur place).
+  // Une rotation venue d'un choc (déjà au-delà de la marge) s'amortit au lieu d'être coupée net.
+  if (spec.leans) {
+    const wk = (u * Math.tan(d)) / L, decay = 1 - Math.min(1, dt * 4);
+    const yawRoom = Math.max(TWO_WHEEL_YAW, Math.abs(s.yawRate - wk) * decay);
+    w = clamp(w, wk - yawRoom, wk + yawRoom);
+    const slipRoom = Math.max(TWO_WHEEL_SLIP, Math.abs(v0 - wk * b) * decay);
+    v = clamp(v, wk * b - slipRoom, wk * b + slipRoom);
+  }
 
   // Basse vitesse : on tend vers le modèle géométrique (lacet = u tan δ / L, pas de dérive à l'arrière),
   // progressivement pour qu'un choc puisse encore faire pivoter le véhicule.

@@ -172,3 +172,12 @@ Honor Magic 8 Pro (Adreno 840), Chrome 155, tenu en portrait, rendu 633 × 1 230
 - Tests : 81.
 
 ![Arbres d'alignement](docs/captures/etape5-arbres-alignement.jpg)
+
+### Troisième retour d'essai : ABS et frein à main (27 octobre 2026)
+
+- Voiture et moto avec ABS : freiner ne bloque plus les roues, on peut freiner en tournant. Frein à main en voiture pour la faire pivoter (D29).
+- Deux-roues stables : ils ne dérapent plus ni ne se retournent en freinant ou en tournant.
+- Voiture plus maniable en ville (20-40 km/h).
+- Tests : 84.
+
+![Frein à main : la voiture pivote, traces des roues arrière](docs/captures/etape5-frein-a-main.jpg)

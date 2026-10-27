@@ -15,7 +15,7 @@ npm ci
 npm run dev        # http://localhost:5173 ; ajouter ?debug pour le compteur d'images
 ```
 
-Sans paramètre, on joue : joystick flottant à gauche (à fond : courir), glisser à droite pour regarder ; au clavier ZQSD/WASD, Maj pour courir, souris pour regarder ; bouton ⛶ pour le plein écran. `?debug` affiche les images par seconde. Vélos et trottinettes garés aux parkings à vélos, voitures et motos sur les places de stationnement (indicateur 🚲/🛴/🚗/🏍️ du plus proche en haut à droite) : bouton « Monter » à côté, puis glisser horizontalement à gauche pour diriger, pédales Pédaler et Frein à droite (le frein à l'arrêt fait reculer) ; au clavier, E pour monter ou descendre, Z/S ou flèches pour pédaler et freiner, Q/D pour diriger.
+Sans paramètre, on joue : joystick flottant à gauche (à fond : courir), glisser à droite pour regarder ; au clavier ZQSD/WASD, Maj pour courir, souris pour regarder ; bouton ⛶ pour le plein écran. `?debug` affiche les images par seconde. Vélos et trottinettes garés aux parkings à vélos, voitures et motos sur les places de stationnement (indicateur 🚲/🛴/🚗/🏍️ du plus proche en haut à droite) : bouton « Monter » à côté, puis glisser horizontalement à gauche pour diriger, pédales Accélérer et Frein à droite (le frein à l'arrêt fait reculer), plus un frein à main en voiture pour la faire pivoter ; au clavier, E pour monter ou descendre, Z/S ou flèches pour accélérer et freiner, Q/D pour diriger, espace pour le frein à main.
 
 ## Viewer à caméra libre (captures, diagnostic)
 
