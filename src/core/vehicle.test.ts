@@ -3,7 +3,7 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { BIKE, CAR, createVehicle, MOTO, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { BIKE, CAR, collisionSteps, createVehicle, MOTO, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -361,5 +361,41 @@ describe("moto", () => {
     }
     expect(front).toBe(false);
     expect(m.y - y0).toBeLessThan(16);
+  });
+});
+
+describe("vitesse élevée et obstacles fins (D50)", () => {
+  /** Part des essais où le véhicule, lancé à `kmh` contre un mur sans épaisseur (comme une clôture) sous l'angle donné, le traverse. */
+  function crossings(spec: VehicleSpec, kmh: number, angle: number): number {
+    const fast = { ...spec, topSpeed: 400 / 3.6, driveFadeFrom: 399 / 3.6 };
+    const trials = 40;
+    let crossed = 0;
+    for (let k = 0; k < trials; k++) {
+      const wall = new Colliders();
+      wall.addSegment(-40, 0, 40, 0);
+      // Le déphasage fait varier où tombe le mur par rapport aux pas du véhicule.
+      const s = createVehicle(-60 * Math.sin(angle), -60 * Math.cos(angle) - (k / trials) * 2, angle, flat);
+      s.vx = Math.sin(angle) * (kmh / 3.6);
+      s.vy = Math.cos(angle) * (kmh / 3.6);
+      for (let i = 0; i < 150; i++) stepVehicle(s, fast, { throttle: 0, brake: 0, steer: 0 }, DT, flat, wall);
+      if (s.y > 1) crossed++;
+    }
+    return crossed / trials;
+  }
+
+  it("une moto lancée à 250 km/h, et même à 500, ne traverse pas un mur fin, de face ni de biais", () => {
+    for (const kmh of [250, 500]) for (const angle of [0, 0.3, -0.6]) expect(crossings(MOTO, kmh, angle)).toBe(0);
+  });
+
+  it("une voiture à 240 km/h non plus", () => {
+    for (const angle of [0, 0.4]) expect(crossings(CAR, 240, angle)).toBe(0);
+  });
+
+  it("assez de sous-pas pour avancer de moins que le plus petit rayon de la coque, sans excès à basse vitesse", () => {
+    expect(collisionSteps(BIKE, 7, DT)).toBe(2);
+    expect(collisionSteps(CAR, 48, DT)).toBe(2);
+    expect(collisionSteps(MOTO, 250 / 3.6, DT)).toBeGreaterThanOrEqual(4);
+    expect(250 / 3.6 * DT / collisionSteps(MOTO, 250 / 3.6, DT)).toBeLessThan(0.32);
+    expect(collisionSteps(MOTO, 1e6, DT)).toBe(12);
   });
 });

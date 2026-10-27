@@ -26,6 +26,8 @@ interface Phase {
   /** Arrêt sur la place pendant `seconds`, ou trajet de `from` à `to` mètres à `speed` m/s. */
   still?: { seconds: number };
   drive?: { from: number; to: number; speed: number };
+  /** Trajet qui repart du début du parcours : on attend d'abord que les tuiles du départ soient construites, comme pour un arrêt. */
+  warmStart?: boolean;
   /** Réglage appliqué avant la phase (non mesuré pendant la mise en route). */
   setup?: () => void;
   /** Foule de personnages animés devant la caméra pendant la phase (arrêts seulement). */
@@ -79,6 +81,8 @@ interface PhaseReport {
   builds: { id: string; ms: number; frames: number; slice: number }[];
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
+  /** Trajets seulement : images où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'avait pas encore ses obstacles (D50) ; null à l'arrêt. */
+  late: { frames: number; here: number; ahead: number } | null;
   memory: Memory;
   /** Foule de la phase : effectif, répartition près / loin, durée moyenne de sa mise à jour (ms) ; null s'il n'y en avait pas. Avec `?sim=1`, `sim` mesure la simulation. */
   crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number; sim?: SimReport } | null;
@@ -190,6 +194,9 @@ export function startBench(ctx: GameContext): void {
   // ?sim=1 : les passants sont ceux de la vraie simulation (J2), qui vivent pendant tout le banc, rues à 50 et 90 km/h comprises ; ?tiers=0 : tous jouent à
   // fond à chaque pas ; ?avoid=0 : ni évitement ni collisions (comparaisons de coût).
   const simMode = params.get("sim") === "1";
+  // ?fast=200 : un trajet de plus à cette vitesse (km/h, 100 à 300), pour voir si les tuiles se construisent à temps (véhicules rapides, D50).
+  const fastParam = Math.round(Number(params.get("fast") ?? 0)) || 0;
+  const fastKmh = fastParam >= 100 ? Math.min(fastParam, 300) : 0;
   const crowdN = Math.min(Math.max(Math.floor(Number(params.get("crowd") ?? (soak > 0 || simMode ? 100 : 0))) || 0, 0), 400);
   const crowdPhases: Phase[] = crowdN > 0
     ? [
@@ -205,6 +212,7 @@ export function startBench(ctx: GameContext): void {
     ...crowdPhases,
     { name: "Rues à 50 km/h", drive: { from: 0, to: split, speed: 50 / 3.6 } },
     { name: "Rues à 90 km/h", drive: { from: split, to: end, speed: 90 / 3.6 } },
+    ...(fastKmh > 0 ? [{ name: `Rues à ${fastKmh} km/h`, drive: { from: 0, to: end, speed: fastKmh / 3.6 }, warmStart: true }] : []),
     { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
     { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
@@ -220,6 +228,7 @@ export function startBench(ctx: GameContext): void {
     crowd: crowdN,
     sim: simMode ? `simulation${params.get("tiers") === "0" ? ", sans paliers" : ""}${params.get("avoid") === "0" ? ", sans évitement" : ""}` : "",
     soak,
+    fast: fastKmh,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -254,6 +263,7 @@ export function startBench(ctx: GameContext): void {
   let lastBuildCount = 0;
   let t = 0;
   let pendingBuild = 0;
+  let late = { here: 0, ahead: 0 };
   let crowd: CrowdRenderer | null = null;
   let crowdSim: CrowdSim | null = null;
   let crowdCost = { ms: 0, frames: 0 };
@@ -300,9 +310,10 @@ export function startBench(ctx: GameContext): void {
       crowd.setShadows(phase.crowd.shadows);
     }
     samples = [];
+    late = { here: 0, ahead: 0 };
     t = 0;
     // Les arrêts attendent que les tuiles autour soient construites (au plus 12 s), puis 1,5 s de mise en route.
-    warm = phase.still ? 12 : 0;
+    warm = phase.still || phase.warmStart ? 12 : 0;
     stableSince = 0;
     firstBuild = tiles.builds.length;
     lastBuildCount = tiles.buildCount;
@@ -325,6 +336,7 @@ export function startBench(ctx: GameContext): void {
       triangles: { avg: Math.round(tSum / n), max: tMax },
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
+      late: p.drive ? { frames: samples.length, ...late } : null,
       memory: measureMemory(ctx),
       crowd: crowd && (simMode || p.crowd)
         ? {
@@ -382,6 +394,7 @@ export function startBench(ctx: GameContext): void {
         pendingBuild = 0;
         t = 0;
         samples = [];
+        late = { here: 0, ahead: 0 };
         if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
       }
     } else {
@@ -410,6 +423,10 @@ export function startBench(ctx: GameContext): void {
     tiles.update(pos.x, pos.y, pos.vx, pos.vy);
     nav?.update(pos.x, pos.y, pos.vx, pos.vy);
     pendingBuild = tiles.sliceMs;
+    if (measuring && p.drive) {
+      if (!tiles.solidAt(pos.x, pos.y)) late.here++;
+      if (!tiles.solidAt(pos.x + pos.vx, pos.y + pos.vy)) late.ahead++;
+    }
     terrainView.update(pos.x, pos.y);
     atmosphere.advance(dt);
     placeSun(pos.x, pos.y, terrain.heightAt(pos.x, pos.y));
@@ -498,6 +515,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  ${f.fps.toFixed(1)} i/s en moyenne · 1 % les plus lentes : ${f.low1.toFixed(1)} i/s · ${f.frames} images en ${f.seconds.toFixed(1)} s`);
     lines.push(`  Durée d'image : médiane ${f.p50.toFixed(1)} ms · 95 % ${f.p95.toFixed(1)} · 99 % ${f.p99.toFixed(1)} · max ${f.max.toFixed(0)} ms`);
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
+    if (p.late) lines.push(`  Chargement en retard : ${p.late.here} images sur ${p.late.frames} sans obstacles sous le véhicule, ${p.late.ahead} sans obstacles à 1 s devant (objectif : 0)`);
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
     if (p.crowd?.sim) {

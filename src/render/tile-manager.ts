@@ -336,6 +336,16 @@ export class TileManager {
     }
   }
 
+  /**
+   * Les obstacles de la tuile qui contient (x, y) sont-ils en place ? Faux tant qu'elle se charge ou se construit : on y traverserait
+   * les murs. Vrai hors des tuiles du monde (les limites du monde s'en chargent).
+   */
+  solidAt(x: number, y: number): boolean {
+    const c = Math.floor((x - this.zone[0]) / this.size), r = Math.floor((y - this.zone[1]) / this.size);
+    const e = c >= 0 && c < this.cols ? this.grid.get(r * this.cols + c) : undefined;
+    return !e || e.extras !== null;
+  }
+
   /** Extraits des tuiles détaillées actuellement chargées. */
   loadedExtras(): TileExtras[] {
     const out: TileExtras[] = [];
