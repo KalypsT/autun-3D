@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import type { GameContext } from "./context";
+import { NavDebug } from "../render/nav-debug";
+import { NavManager } from "./nav-manager";
 import { FrameMeter } from "./hud";
 
 const VIEWS: Record<string, [number, number, number, number, number, number]> = {
@@ -54,6 +56,11 @@ export function startViewer(ctx: GameContext): void {
     pitch = Math.max(-1.4, Math.min(1.4, pitch - e.movementY * 0.005));
   });
 
+  // ?nav=1 ou ?nav=all : recouvrement de la navigation (files, passages, places, points d'intérêt ; avec all, le graphe routier).
+  const navParam = params.get("nav");
+  const nav = navParam ? new NavManager() : null;
+  const navDebug = nav ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
+  if (navDebug) scene.add(navDebug.group);
   const meter = new FrameMeter(renderer, debugEl);
   let last = performance.now();
   const fwd = new THREE.Vector3();
@@ -77,11 +84,14 @@ export function startViewer(ctx: GameContext): void {
     sunLight.position.copy(sunDir).multiplyScalar(400);
     tiles.update(pos.x, -pos.z);
     terrainView.update(pos.x, -pos.z);
+    nav?.update(pos.x, -pos.z);
+    navDebug?.update(pos.x, -pos.z);
     renderer.render(scene, camera);
     meter.tick(dt);
     requestAnimationFrame(tick);
   };
   if (params.has("debug")) debugEl.style.display = "block";
   requestAnimationFrame(tick);
-  ctx.ready();
+  if (nav) void nav.preload(v[0], v[1]).then(() => ctx.ready());
+  else ctx.ready();
 }

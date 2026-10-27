@@ -12,6 +12,8 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
+import { NavDebug } from "../render/nav-debug";
+import { NavManager } from "./nav-manager";
 import { UiBridge } from "./ui-bridge";
 import { Fleet, KINDS, type Vehicle, type VehicleKind } from "./vehicles";
 
@@ -105,7 +107,14 @@ export function startGame(ctx: GameContext): void {
   let crank = 0;
   let lookIdle = 0;
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}`);
+  // ?nav=1 ou ?nav=all : données de navigation chargées autour du joueur et recouvrement de contrôle (J2) ; sans ce paramètre, rien n'est chargé.
+  const navParam = params.get("nav");
+  const nav = navParam ? new NavManager() : null;
+  const navDebug = nav ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
+  if (navDebug) scene.add(navDebug.group);
+  if (nav) void nav.init().then(() => nav.preload(player.x, player.y));
+  const navInfo = (): string => (nav ? ` · nav ${nav.graph.cells.size} cellules ${nav.graph.edgeCount} arêtes (${navDebug!.stats.edges} dessinées, ${navDebug!.stats.ms.toFixed(1)} ms)` : "");
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
 
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
   const miniCost = (): string => {
@@ -326,6 +335,10 @@ export function startGame(ctx: GameContext): void {
     if (riding) tiles.update(player.x, player.y, riding.state.vx, riding.state.vy);
     else tiles.update(player.x, player.y, player.vx, player.vy);
     terrainView.update(player.x, player.y);
+    if (nav) {
+      nav.update(player.x, player.y, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
+      navDebug!.update(player.x, player.y);
+    }
 
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
