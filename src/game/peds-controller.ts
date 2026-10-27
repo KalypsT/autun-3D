@@ -48,6 +48,11 @@ export class PedsController {
     return this.sim?.stats ?? null;
   }
 
+  /** Passants vivants dans un cercle (leurs emplacements dans `out`) : les pigeons s'en servent pour savoir qui les frôle. */
+  queryCircle(x: number, y: number, r: number, out: number[]): number {
+    return this.sim?.queryCircle(x, y, r, out) ?? 0;
+  }
+
   setCapacity(n: number): void {
     if (n === this.capacity) return;
     this.crowd?.dispose();

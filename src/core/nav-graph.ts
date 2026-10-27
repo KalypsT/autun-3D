@@ -227,6 +227,19 @@ export class NavGraph {
     return out.length - before;
   }
 
+  /** Parcourt les points d'intérêt des super-tuiles chargées dont le type est dans `kindMask` (bits 1 << type) et qui sont à moins de `r` de (x, y). */
+  forEachPoi(kindMask: number, x: number, y: number, r: number, cb: (kind: number, px: number, py: number, heading: number) => void): void {
+    for (const l of this.cells.values()) {
+      const [x0, y0, x1, y1] = l.cell.bounds;
+      if (x < x0 - r || x > x1 + r || y < y0 - r || y > y1 + r) continue;
+      const poi = l.cell.poi;
+      for (let i = 0; i < poi.count; i++) {
+        if (!((kindMask >> poi.kind[i]!) & 1)) continue;
+        if (Math.hypot(poi.x[i]! - x, poi.y[i]! - y) <= r) cb(poi.kind[i]!, poi.x[i]!, poi.y[i]!, poi.heading[i]!);
+      }
+    }
+  }
+
   /** Arête la plus proche du point (x, y) à moins de `maxDist`, ou null. `typeMask` : bits des types acceptés (1 << type). */
   nearest(x: number, y: number, maxDist: number, typeMask = 0x3ff): NavHit | null {
     let best: NavHit | null = null;
