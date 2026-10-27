@@ -95,7 +95,8 @@ export class TerrainView {
   private readonly cols: number;
   private readonly rows: number;
   private readonly size: number;
-  private readonly zone: [number, number, number, number];
+  /** Coin sud-ouest de la grille mondiale. */
+  private readonly zone: [number, number];
   private readonly lattice: [number, number];
   private readonly blockSize: number;
   private readonly superCells: Map<string, { x0: number; y1: number }>;
@@ -118,7 +119,7 @@ export class TerrainView {
     this.cols = manifest.cols;
     this.rows = manifest.rows;
     this.size = manifest.tileSize;
-    this.zone = manifest.zone;
+    this.zone = manifest.gridOrigin;
     this.lattice = manifest.lattice;
     this.blockSize = manifest.blockSize;
     this.superTiles = manifest.super.tiles;

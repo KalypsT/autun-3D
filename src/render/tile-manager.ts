@@ -93,7 +93,8 @@ export class TileManager {
   private readonly lodQueue: Entry[] = [];
   private readonly terrain: TiledTerrain;
   private readonly cols: number;
-  private readonly zone: [number, number, number, number];
+  /** Coin sud-ouest de la grille mondiale. */
+  private readonly zone: [number, number];
   private readonly size: number;
   private frame = 0;
   private job: Job | null = null;
@@ -118,7 +119,7 @@ export class TileManager {
   ) {
     this.terrain = world.terrain;
     this.cols = world.manifest.cols;
-    this.zone = world.manifest.zone;
+    this.zone = world.manifest.gridOrigin;
     this.size = world.manifest.tileSize;
     for (const info of world.manifest.tiles) {
       const e: Entry = { info, lod: null, lodState: info.lod > 0 ? "none" : "ready", lodData: null, detail: null, data: null, extras: null, fetching: false, pending: [] };

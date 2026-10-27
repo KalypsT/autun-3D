@@ -1,7 +1,7 @@
 """Sols en vecteurs : chaussées, trottoirs, places et parkings, marquages, passages piétons, lampadaires.
 
 Usage : python3 tools/data/build_ground.py       (après build_streets.py et build_roofs.py)
-Entrées : public/data/streets.json, .cache/work/{buildings_clean,props,ground}.npy|json, .cache/raw/osm.json
+Entrées : .cache/blocks/<bloc>/work/streets.json, .cache/work/{buildings_clean,props,ground}.npy|json, .cache/raw/osm.json
 Sortie  : .cache/work/ground_vec.json   {layers: {nom: [polygone, ...]}, lamps: [[x, y], ...]}
 Un polygone est une liste d'anneaux (extérieur puis trous) en coordonnées locales aplaties [x0, y0, x1, y1, …].
 build_tiles.py découpe ces polygones par tuile ; le client les triangule et les pose sur le relief.
@@ -78,7 +78,7 @@ def raster_polygons(mask, res):
 def main():
     import time
     t0 = time.time()
-    streets = json.load(open(c.OUT / "streets.json"))
+    streets = json.load(open(c.CACHE / "work" / "streets.json"))
     osm = json.load(open(c.CACHE / "raw" / "osm.json"))["elements"]
     ways = [e for e in osm if e["type"] == "way" and "geometry" in e and "tags" in e]
     props = json.load(open(c.CACHE / "work" / "props.json"))

@@ -141,9 +141,12 @@ export interface WorldManifest {
   origin: [number, number];
   originZ: number;
   tileSize: number;
+  /** Taille de la grille mondiale (en tuiles) : toute la commune ; seules les tuiles de `tiles` existent. */
   cols: number;
   rows: number;
-  /** Emprise locale de la zone : x0, y0, x1, y1. */
+  /** Coin sud-ouest de la grille mondiale (repère local) : la tuile (col, ligne) commence à gridOrigin + (col, ligne) × tileSize. */
+  gridOrigin: [number, number];
+  /** Emprise locale des tuiles qui existent : x0, y0, x1, y1 (limites du monde jouable). */
   zone: [number, number, number, number];
   tiles: TileInfo[];
   /** Phase (mètres, modulo 1) du bord ouest et du bord nord de la grille fine du relief et des sols. */

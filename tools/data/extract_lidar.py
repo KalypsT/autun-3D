@@ -1,4 +1,4 @@
-"""Extrait de chaque dalle LiDAR HD les points utiles de la zone (marge comprise) dans .cache/points_<kx>_<ky>.npz.
+"""Extrait de chaque dalle LiDAR HD (partagée, .cache/shared/raw) les points utiles du bloc (marge comprise) dans .cache/blocks/<bloc>/points_<kx>_<ky>.npz.
 
 Garde les classes 6 (bâtiment) et 3, 4, 5 (végétation). Coordonnées relatives à ORIGIN (float32).
 
@@ -18,7 +18,7 @@ for kx, ky in c.LIDAR_TILES:
     if out.exists():
         print(f"= {out.name}")
         continue
-    las = laspy.read(c.CACHE / "raw" / f"lidar_{kx}_{ky}.copc.laz")
+    las = laspy.read(c.SHARED / "raw" / f"lidar_{kx}_{ky}.copc.laz")
     cls = np.asarray(las.classification)
     keep = np.isin(cls, KEEP) & (las.x >= x0) & (las.x < x1) & (las.y >= y0) & (las.y < y1)
     np.savez_compressed(

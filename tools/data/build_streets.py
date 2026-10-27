@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_streets.py
 
-Sorties dans public/data/ :
+Sorties dans .cache/blocks/<bloc>/work/ :
   streets.json  voies (axe, nom, sens, revêtement, largeur de chaussée, trottoir) et nœuds OSM pour le graphe
   .cache/work/global/ground_{a,b}.png, ground.json   poids de mélange des sols à 1 m (cf. export_weights) ; classes à 0,5 m dans .cache/work/ground.npy
   .cache/work/props.json   murs (hauteur mesurée au LiDAR), mobilier : découpés par tuile par build_tiles.py
@@ -265,7 +265,7 @@ def main():
                                   "name": t.get("name"), "id": e["id"]})
                 break
 
-    (c.OUT / "streets.json").write_text(json.dumps(streets, ensure_ascii=False, separators=(",", ":")))
+    (c.CACHE / "work" / "streets.json").write_text(json.dumps(streets, ensure_ascii=False, separators=(",", ":")))
     (c.CACHE / "work" / "props.json").write_text(json.dumps({"walls": walls, "furniture": furniture}, ensure_ascii=False,
                                                  separators=(",", ":")))
     counts = {k: int((ground == v).sum()) for k, v in GROUND.items()}

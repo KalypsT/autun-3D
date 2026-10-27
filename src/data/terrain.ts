@@ -69,6 +69,7 @@ export class TiledTerrain implements HeightField {
   private readonly x0: number;
   private readonly y0: number;
   private readonly size: number;
+  private readonly zone: [number, number, number, number];
 
   constructor(
     manifest: WorldManifest,
@@ -78,7 +79,8 @@ export class TiledTerrain implements HeightField {
   ) {
     this.cols = manifest.cols;
     this.rows = manifest.rows;
-    [this.x0, this.y0] = manifest.zone;
+    [this.x0, this.y0] = manifest.gridOrigin;
+    this.zone = manifest.zone;
     this.size = manifest.tileSize;
     this.blocks = new Array<Terrain | undefined>(this.cols * this.rows);
     for (const t of manifest.tiles) this.index.set(t.id, t);
@@ -94,16 +96,16 @@ export class TiledTerrain implements HeightField {
   }
 
   get xMin(): number {
-    return this.x0;
+    return this.zone[0];
   }
   get xMax(): number {
-    return this.x0 + this.cols * this.size;
+    return this.zone[2];
   }
   get yMin(): number {
-    return this.y0;
+    return this.zone[1];
   }
   get yMax(): number {
-    return this.y0 + this.rows * this.size;
+    return this.zone[3];
   }
 
   private slot(x: number, y: number): number {

@@ -42,7 +42,7 @@ function twoTiles(): { manifest: WorldManifest; terrain: TiledTerrain } {
   const tile = (col: number) => ({ id: `${col}_0`, col, row: 0, bounds: [col * 10, 0, col * 10 + 10, 10] as [number, number, number, number], buildings: 0, trees: 0, walls: 0, furniture: 0, lod: 0, bytes: 0 });
   const coarse: TerrainMeta = { cols: 5, rows: 3, res: 8, x0: -10, y0: -7, y1: 17, base: 0, unit: 0.01, zmin: 0, zmax: 0 };
   const manifest = {
-    origin: [0, 0], originZ: 0, tileSize: 10, cols: 2, rows: 1, zone: [0, 0, 20, 10], tiles: [tile(0), tile(1)], lattice: [0, 0], blockSize: 14, coarse,
+    origin: [0, 0], originZ: 0, tileSize: 10, cols: 2, rows: 1, gridOrigin: [0, 0], zone: [0, 0, 20, 10], tiles: [tile(0), tile(1)], lattice: [0, 0], blockSize: 14, coarse,
     super: { tiles: 4, res: 4, size: 252, cells: [] },
   } as WorldManifest;
   return { manifest, terrain: new TiledTerrain(manifest, Terrain.decode(coarse, new Uint16Array(15).buffer), () => Promise.reject(new Error("hors ligne"))) };
@@ -140,13 +140,14 @@ describe("relief réel par tuiles", () => {
 
   it("est continu de part et d'autre de chaque frontière de tuile", () => {
     let worst = 0;
+    const ids = new Set(manifest.tiles.map((t) => t.id));
     for (const t of manifest.tiles) {
       const [x0, y0, x1, y1] = t.bounds;
       for (let k = 1; k < 25; k++) {
         const u = k / 25;
         // Frontière est et nord (si la tuile voisine existe) : même point vu de chaque côté, à 2 mm.
-        if (t.col < manifest.cols - 1) worst = Math.max(worst, Math.abs(terrain.heightAt(x1 - 0.001, y0 + u * (y1 - y0)) - terrain.heightAt(x1 + 0.001, y0 + u * (y1 - y0))));
-        if (t.row < manifest.rows - 1) worst = Math.max(worst, Math.abs(terrain.heightAt(x0 + u * (x1 - x0), y1 - 0.001) - terrain.heightAt(x0 + u * (x1 - x0), y1 + 0.001)));
+        if (ids.has(`${t.col + 1}_${t.row}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x1 - 0.001, y0 + u * (y1 - y0)) - terrain.heightAt(x1 + 0.001, y0 + u * (y1 - y0))));
+        if (ids.has(`${t.col}_${t.row + 1}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x0 + u * (x1 - x0), y1 - 0.001) - terrain.heightAt(x0 + u * (x1 - x0), y1 + 0.001)));
       }
     }
     // Pente maximale du terrain ≈ 1 m/m (talus) : 2 mm de distance → moins de 5 mm.
@@ -156,7 +157,8 @@ describe("relief réel par tuiles", () => {
   it("le relief grossier suit le relief fin à quelques mètres près au pire (talus), et à moins de 1,5 m presque partout", () => {
     const diffs: number[] = [];
     for (let i = 0; i < 4000; i++) {
-      const x = -519 + ((i * 7919) % 1500), y = -811 + ((i * 104729) % 1498);
+      const [x0, y0, x1, y1] = manifest.zone;
+      const x = x0 + 1 + ((i * 7919) % Math.floor(x1 - x0 - 2)), y = y0 + 1 + ((i * 104729) % Math.floor(y1 - y0 - 2));
       diffs.push(Math.abs(terrain.coarse.heightAt(x, y) - terrain.heightAt(x, y)));
     }
     diffs.sort((a, b) => a - b);
