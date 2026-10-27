@@ -26,10 +26,9 @@ import config as c
 import streets_lib as sl
 from streets_lib import local, way_line  # noqa: F401  (build_ground.py les prend ici)
 
-# Les routes principales, pistes et voies cyclables (streets_lib.EXTRA_WIDTH) sont dans la liste de voies de la navigation, mais le sol
-# ne les dessine pas encore : passer à True les ajoute aux chaussées, trottoirs et marquages (puis régénérer les tuiles).
-DRAW_EXTRA = False
-DEFAULT_WIDTH, DRIVABLE = sl.classes(DRAW_EXTRA)
+# Niveau de classes du sol (streets_lib) : 0 = avant J2 (les routes principales n'avaient ni chaussée, ni trottoirs, ni marquages), 1 = avec elles.
+STREET_LEVEL = 1
+DEFAULT_WIDTH, DRIVABLE = sl.classes(STREET_LEVEL)
 WALKABLE = sl.WALKABLE
 NAME_FIX = sl.NAME_FIX
 
@@ -85,7 +84,7 @@ def main():
     bmask = rasterize(bld)
 
     # --- Voies (largeurs BD TOPO quand un tronçon correspond ; construction partagée avec la navigation) -------------
-    streets = sl.build_street_list(ways, sl.load_bd_routes(c.CACHE / "raw" / "bdtopo_route.json"), DRAW_EXTRA)
+    streets = sl.build_street_list(ways, sl.load_bd_routes(c.CACHE / "raw" / "bdtopo_route.json"), STREET_LEVEL)
 
     # --- Carte des sols -----------------------------------------------------------------
     rgb = common.ortho().astype(np.float32)

@@ -3,8 +3,8 @@
 Partagée entre le sol (`build_streets.py`, qui en tire chaussées, trottoirs et marquages) et la navigation (`build_nav.py`, étape J2),
 pour que les deux voient exactement les mêmes voies, aux mêmes largeurs et dans le même sens.
 
-Classes : `DEFAULT_WIDTH` et `DRIVABLE` sont celles que le sol dessine aujourd'hui. `EXTRA_WIDTH` (routes principales, pistes, voies cyclables)
-n'est produite que si on la demande (`extra=True`) : la navigation en a besoin, le sol les dessinera quand `build_streets.DRAW_EXTRA` sera activé.
+Classes, par niveau : 0 = celles que le sol dessinait jusqu'à J2 (`DEFAULT_WIDTH`) ; 1 = le sol d'aujourd'hui, avec les routes principales
+(`GROUND_EXTRA`, qui manquaient) ; 2 = la navigation, avec en plus les pistes et voies cyclables (`NAV_EXTRA`), dont le sol vient déjà de l'orthophoto.
 """
 
 import json
@@ -21,8 +21,9 @@ DRIVABLE = {"residential", "tertiary", "secondary", "unclassified", "service", "
 WALKABLE = {"pedestrian", "footway", "path", "steps", "living_street"}
 DEFAULT_WIDTH = {"tertiary": 6.5, "secondary": 7.0, "residential": 5.0, "unclassified": 4.5, "service": 3.5,
                  "living_street": 4.0, "pedestrian": 4.0, "footway": 1.8, "path": 1.2, "steps": 1.8}
-# Classes que le sol ignorait jusqu'ici : les routes principales de l'anneau (avenue de la République, route de Beaune…) n'avaient ni chaussée ni marquages.
-EXTRA_WIDTH = {"primary": 8.0, "road": 5.0, "track": 3.0, "cycleway": 2.0}
+# Routes que le sol ignorait avant J2 : les routes principales de l'anneau (avenue de la République, route de Beaune…) n'avaient ni chaussée ni marquages.
+GROUND_EXTRA = {"primary": 8.0, "road": 5.0}
+NAV_EXTRA = {"track": 3.0, "cycleway": 2.0}
 EXTRA_DRIVABLE = {"primary", "road"}
 NAME_FIX = {"Rue de l'Hotel de Ville": "Rue de l'Hôtel de Ville"}
 
@@ -31,11 +32,14 @@ KEPT_TAGS = ("highway", "access", "foot", "motor_vehicle", "bicycle", "bridge", 
              "footway", "oneway", "ref", "lit", "surface", "priority_road", "cycleway")
 
 
-def classes(extra: bool) -> tuple[dict[str, float], set[str]]:
-    """(largeurs par défaut, classes carrossables) du sol ou, avec `extra`, de la navigation."""
-    if not extra:
+def classes(level: int) -> tuple[dict[str, float], set[str]]:
+    """(largeurs par défaut, classes carrossables) du niveau demandé (voir l'en-tête)."""
+    if level <= 0:
         return DEFAULT_WIDTH, DRIVABLE
-    return {**DEFAULT_WIDTH, **EXTRA_WIDTH}, DRIVABLE | EXTRA_DRIVABLE
+    widths = {**DEFAULT_WIDTH, **GROUND_EXTRA}
+    if level >= 2:
+        widths.update(NAV_EXTRA)
+    return widths, DRIVABLE | EXTRA_DRIVABLE
 
 
 def local(lon, lat):
@@ -89,14 +93,14 @@ def match_bd(line, routes):
     return (best_any[1] if best_any else None, best_width[1] if best_width else None)
 
 
-def build_street_list(ways, routes, extra=False):
+def build_street_list(ways, routes, level=1):
     """Voies carrossables et piétonnes de l'extrait OpenStreetMap, avec largeurs BD TOPO quand un tronçon correspond.
 
     Chaque voie : id, name, kind, motor, oneway (1 : sens des points, −1 : inverse, 0 : double), surface, width, widthSource, maxspeed, lanes,
     tunnel (passage couvert sous un bâtiment), calming, nodes (ids OpenStreetMap), pts (x0, y0, x1, y1…), plus `osm` (étiquettes conservées)
     et `bd` (attributs du tronçon BD TOPO le plus proche, ou None).
     """
-    default_width, drivable = classes(extra)
+    default_width, drivable = classes(level)
     streets = []
     for e in ways:
         t = e["tags"]
