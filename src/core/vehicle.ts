@@ -266,9 +266,9 @@ const SLIDE_GRIP = 0.75;
 /** En dessous de cette vitesse (m/s), les roues ne se bloquent plus (le véhicule s'arrête). */
 const LOCK_MIN = 1.5;
 /** Braquage à haute vitesse : accélération latérale visée, en part de l'adhérence (un peu au-delà pour sentir la limite). */
-const STEER_GRIP = 1.15;
+const STEER_GRIP = 1.4;
 /** Temps pour braquer à fond (s) : le volant ne saute pas d'un coup, même quand le braquage permis est petit. */
-const STEER_TIME = 0.35;
+const STEER_TIME = 0.2;
 
 /** Force motrice disponible à la vitesse u (m/s) pour un accélérateur 0-1. */
 export function driveForce(spec: VehicleSpec, u: number, throttle: number): number {

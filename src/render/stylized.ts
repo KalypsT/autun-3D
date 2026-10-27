@@ -275,12 +275,13 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
   trees.forEach(([x, y, z, h, r, trunk], i) => {
     const key = idKey(`${x},${y}`);
     const rad = Math.min(r, 4.5) * (0.9 + key * 0.2);
-    const ch = Math.max(h - trunk * 0.6, 1.8);
-    m.makeScale(1, trunk, 1).setPosition(x, z, -y);
+    // Le feuillage commence en haut du tronc (au-dessus des rues : 4 m au moins, cf. tools/data/roadside.py).
+    const ch = Math.max(h - trunk, 1.8);
+    m.makeScale(1, trunk + ch * 0.25, 1).setPosition(x, z, -y);
     trunks.setMatrixAt(i, m);
-    m.makeScale(rad, ch * 0.42, rad).setPosition(x, z + trunk * 0.6 + ch * 0.38, -y);
+    m.makeScale(rad, ch * 0.42, rad).setPosition(x, z + trunk + ch * 0.42, -y);
     crowns.setMatrixAt(2 * i, m);
-    m.makeScale(rad * 0.62, ch * 0.3, rad * 0.62).setPosition(x + rad * 0.12, z + trunk * 0.6 + ch * 0.82, -y);
+    m.makeScale(rad * 0.62, ch * 0.3, rad * 0.62).setPosition(x + rad * 0.12, z + trunk + ch * 0.86, -y);
     crowns.setMatrixAt(2 * i + 1, m);
     color.set(pick(T.trees, key, 5));
     crowns.setColorAt(2 * i, color);

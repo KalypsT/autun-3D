@@ -176,3 +176,10 @@ Retour d'essai : « frein à revoir, avec dérapages » ; « direction à adapte
 - Traces de pneus au sol derrière les roues bloquées ou à la limite d'adhérence (un maillage instancié, 1 500 segments recyclés).
 - Braquage : en plus de la réduction avec la vitesse, borné à ce que les pneus peuvent tenir (v² δ / L ≤ 1,15 × adhérence) ; plein braquage en 0,35 s au plus ; course du doigt progressive (puissance 1,6) pour les petites corrections.
 - Repères à l'écran : un par type de véhicule (🚲 🛴 🏍️ 🚗), car les voitures garées partout masquaient les vélos.
+
+## 2026-10-27 — D28. Bords de chaussée : feux, troncs et couronnes ; direction plus vive
+
+Retour d'essai : feux encore au milieu de la route, arbres sur le bord de la route, feuillages trop gros ou trop bas qui masquent la route, direction trop molle.
+- `tools/data/roadside.py` (appelé par `build_tiles.py`, exécutable seul sur les tuiles publiées) : feux encore dans la chaussée (8 sur 29, aux carrefours : le décalage perpendiculaire à une rue tombait dans la rue qui croise) posés au point de trottoir le plus proche ; troncs dans la chaussée (54) poussés sur le bord, supprimés s'ils en sont à plus de 3 m ; couronnes qui débordent sur la chaussée élaguées comme des arbres d'alignement, à 4 m au moins (313), ou réduites quand l'arbre est trop petit (167). Un test vérifie qu'aucun feu ni tronc n'est dans la chaussée.
+- Rendu des arbres : le feuillage commence en haut du tronc (et non plus à 60 % de sa hauteur).
+- Direction : braquage permis jusqu'à 1,4 × l'adhérence à haute vitesse (on peut dépasser la limite et sentir glisser), plein braquage en 0,2 s, course du doigt moins atténuée (exposant 1,3). Conséquence voulue : braquage à fond à 50 km/h, l'arrière décroche peu à peu ; la voiture se remet droite en ≈ 1 s quand on relâche, ≈ 0,5 s en contre-braquant.

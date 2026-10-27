@@ -20,6 +20,7 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 from shapely.geometry.polygon import orient
 
 import config as c
+from roadside import settle as settle_roadside
 
 WORK = c.CACHE / "work"
 TILES = c.OUT / "tiles"
@@ -174,6 +175,7 @@ def main():
             bounds = [round(v, 1) for v in c.tile_bounds_local(col, row)]
             stairs = [z for z in manual["stairs"] if z["bbox"][0] < bounds[2] and z["bbox"][2] > bounds[0] and z["bbox"][1] < bounds[3] and z["bbox"][3] > bounds[1]]
             rec = {"bounds": bounds, "ground": clip_layers(gv["layers"], bounds, stairs), "stairs": stairs, **rec}
+            settle_roadside(rec)  # feux et troncs hors de la chaussée, couronnes élaguées au-dessus
             text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
             (TILES / f"{c.tile_id(col, row)}.json").write_text(text)
             total += len(text)
