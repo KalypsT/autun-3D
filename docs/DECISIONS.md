@@ -526,3 +526,20 @@ Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s consta
 - **Gabarit** : le catalogue reprend les dimensions mesurées des modèles ; un test vérifie que chaque deux-roues dessiné les respecte (longueur, largeur, hauteur à 8 cm près, roues au sol, poignées au-dessus des pieds).
 - **Tenue de route** : le test de plein braquage à la vitesse maximale couvre maintenant tout le catalogue. Deux-roues : lacet résiduel inférieur à 0,05 rad/s quatre secondes après (0,033 pour la moto sportive à 210 km/h, rayon de 1,7 km : elle roule droit pour le joueur).
 - **Essai** : `?ride=vtt`, `scooter-125`, `moto-sportive`. Galerie : `?view=vehicles&rider=1`. Placement dans les rues : étape V-5.
+
+## 2026-10-27 — D55. V-5 : quels véhicules où
+
+- **Principe** : le modèle garé sur une place dépend du quartier, tiré une fois pour toutes quand la tuile se construit (`src/core/vehicle-placement.ts`, logique pure ; `Fleet.addFromTile`). Les places occupées sont les mêmes qu'avant (30 % des places pour une voiture, 4 % pour deux motos, vélos aux parkings à vélos) : seul le modèle change. Pas de variation selon l'heure (D50).
+- **Zone d'une place** (`parkingZone`) : sans le graphe de navigation, qui se charge à son rythme (avant ou après la tuile) et rendrait le résultat dépendant de l'ordre des chargements : d'après le nombre de bâtiments de la tuile (`TileExtras.buildings`) et la distance à la mairie. Centre : au moins 90 bâtiments à moins de 500 m ; résidentiel : au moins 25 ; périphérie : au moins 3 ; nature : le reste. Même vocabulaire que les passants (`ZONE`, D39), mais calculé autrement : ce n'est pas la zone du graphe piéton, seulement une approximation de même nature.
+- **Poids** (en %, chaque tableau fait 100) :
+
+  | zone | citadine | compacte | berline | break | petit SUV | camionnette | vieille | sportive |
+  |---|---|---|---|---|---|---|---|---|
+  | centre | 28 | 22 | 12 | 6 | 12 | 8 | 10 | 2 |
+  | résidentiel | 18 | 22 | 14 | 12 | 16 | 5 | 11 | 2 |
+  | périphérie, nature | 10 | 14 | 12 | 10 | 18 | 24 | 10 | 2 |
+
+  Motos (par moto, chaque place en reçoit deux) : scooter 125 / routière / sportive = 55 / 33 / 12 (centre), 40 / 45 / 15 (résidentiel), 25 / 55 / 20 (périphérie, nature). Vélos des parkings à vélos : ville / VTT = 90 / 10 (centre), 75 / 25 (résidentiel), 50 / 50 (périphérie), 30 / 70 (nature) ; la trottinette au bout de la rangée est inchangée.
+- **Tirage** : le modèle vient d'un hachage de la place, indépendant de celui qui décide si la place est occupée, de la couleur et du sens de stationnement ; il est reproductible (la même place donne toujours le même modèle). L'identifiant d'un véhicule ne contient pas son modèle (`voiture-<place>`), la sauvegarde enregistre le modèle (V-0) : un véhicule retrouvé dans une sauvegarde garde son modèle même si les poids changent un jour.
+- **Résultat sur l'anneau** (144 tuiles, simulé avec les vraies données) : 1 020 véhicules garés : 151 citadines, 146 compactes, 113 berlines, 86 breaks, 115 petits SUV, 65 camionnettes, 86 vieilles voitures, 12 sportives (1,5 % des voitures) ; 88 scooters 125, 85 motos routières, 21 motos sportives ; 29 vélos de ville, 8 VTT, 15 trottinettes.
+- **Interface** : le bouton devient « Monter 🚗 Berline » (nom du modèle, pictogramme propre au modèle s'il en a un : 🛵). Les pastilles des véhicules proches restent par famille.

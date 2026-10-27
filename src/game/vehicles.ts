@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
+import { parkingZone, pickModel } from "../core/vehicle-placement";
 import { FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { CAR_BODIES, createCarModel, ParkedCars } from "../render/car-model";
@@ -81,6 +82,11 @@ function hash(n: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/** Nombre pseudo-aléatoire dans [0, 1[ tiré du hachage `h` et d'un rang, indépendant de la place et de la couleur (qui utilisent d'autres bits de `h`). */
+function unit(h: number, rank: number): number {
+  return hash(Math.imul(h, 0x2545f491) ^ Math.imul(rank + 1, 0x9e3779b1)) / 0x100000000;
+}
+
 /** Un véhicule est « déplacé » au-delà de ces écarts par rapport à sa place d'origine. */
 const MOVED_DISTANCE = 0.5;
 const MOVED_HEADING = 0.1;
@@ -118,6 +124,7 @@ export class Fleet {
       if (f.kind !== "bicycle_parking" || this.sources.has(`p${f.id}`)) continue;
       this.sources.add(`p${f.id}`);
       const h = hash(f.id);
+      const zone = parkingZone(f.x, f.y, t.buildings);
       const count = 2 + (h % 2);
       const heading = ((h >>> 4) % 360) * (Math.PI / 180);
       // Côte à côte, perpendiculairement à leur axe.
@@ -126,7 +133,7 @@ export class Fleet {
         const scooter = i === count;
         const off = (i - (count - 1) / 2) * BIKE_SPACING + (scooter ? 0.2 : 0);
         const p = this.colliders.resolve(f.x + rx * off, f.y + ry * off, 0.3);
-        this.add(scooter ? "trottinette" : "velo-ville", `${scooter ? "trottinette" : "velo"}-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
+        this.add(scooter ? "trottinette" : pickModel("bike", zone, unit(h, i)), `${scooter ? "trottinette" : "velo"}-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
       }
     }
     for (const s of findStalls(t.marks)) {
@@ -136,14 +143,15 @@ export class Fleet {
       this.sources.add(key);
       const h = hash(Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663));
       const draw = (h % 1000) / 1000;
+      const zone = parkingZone(s.x, s.y, t.buildings);
       if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
       // Garée en marche avant ou en marche arrière.
       const heading = s.heading + (h & 1024 ? Math.PI : 0);
-      if (draw < OCCUPANCY) this.add("citadine", `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
+      if (draw < OCCUPANCY) this.add(pickModel("car", zone, unit(h, 0)), `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
       else {
         // Deux motos côte à côte sur la place.
         const rx = Math.cos(heading), ry = -Math.sin(heading);
-        for (const side of [-1, 1]) this.add("moto-routiere", `moto-${key}-${side}`, s.x + rx * side * 0.6, s.y + ry * side * 0.6, heading, ((h >>> 12) + side + 1) & 15);
+        for (const side of [-1, 1]) this.add(pickModel("moto", zone, unit(h, side + 2)), `moto-${key}-${side}`, s.x + rx * side * 0.6, s.y + ry * side * 0.6, heading, ((h >>> 12) + side + 1) & 15);
       }
     }
     this.carOnly.currentTag = t.id;

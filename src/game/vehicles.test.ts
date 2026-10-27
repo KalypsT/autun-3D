@@ -78,3 +78,50 @@ describe("caméra de poursuite par modèle", () => {
   });
 });
 
+describe("véhicules garés selon le quartier (D55)", () => {
+  /** Un parking de `n` places côte à côte : deux traits de 4,8 m tous les 2,5 m. */
+  const lot = (n: number, x0: number): number[][][] =>
+    Array.from({ length: n + 1 }, (_, i) => [[x0 + i * 2.5 - 0.05, 0, x0 + i * 2.5 + 0.05, 0, x0 + i * 2.5 + 0.05, 4.8, x0 + i * 2.5 - 0.05, 4.8]]);
+  const tile = (buildings: number, x0: number, id = "t") => ({ id, buildings, furniture: [], stairs: [], marks: lot(600, x0) });
+  const models = (fleet: Fleet, prefix: string): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const v of fleet.vehicles) if (v.id.startsWith(prefix)) out[v.def.id] = (out[v.def.id] ?? 0) + 1;
+    return out;
+  };
+
+  it("un grand parking de centre-ville mêle les huit modèles de voiture, avec peu de sportives", () => {
+    const fleet = make();
+    fleet.addFromTile(tile(200, 0));
+    const cars = models(fleet, "voiture-");
+    const total = Object.values(cars).reduce((a, b) => a + b, 0);
+    expect(total).toBeGreaterThan(120);
+    expect(Object.keys(cars).length).toBeGreaterThanOrEqual(7);
+    expect((cars["sportive"] ?? 0) / total).toBeLessThan(0.06);
+    expect(Object.keys(cars).every((id) => CATALOG.find((d) => d.id === id)?.family === "car")).toBe(true);
+    expect(Object.keys(models(fleet, "moto-")).every((id) => CATALOG.find((d) => d.id === id)?.family === "moto")).toBe(true);
+  });
+
+  it("le même parking en périphérie a plus de camionnettes qu'en centre-ville ; la tuile qui se recharge ne change rien", () => {
+    const centre = make(), outskirts = make();
+    centre.addFromTile(tile(200, 0));
+    outskirts.addFromTile(tile(10, 0));
+    expect(models(outskirts, "voiture-")["camionnette"]!).toBeGreaterThan(models(centre, "voiture-")["camionnette"]!);
+    const before = centre.vehicles.length;
+    centre.addFromTile(tile(200, 0));
+    expect(centre.vehicles).toHaveLength(before);
+  });
+
+  it("un modèle garé reste le même véhicule dans la sauvegarde (identifiant et modèle)", () => {
+    const fleet = make();
+    fleet.addFromTile(tile(10, 0));
+    const van = fleet.vehicles.find((v) => v.def.id === "camionnette")!;
+    van.state.x += 30;
+    const saved = fleet.savedVehicles().find((v) => v.id === van.id)!;
+    expect(saved.model).toBe("camionnette");
+    const again = make();
+    again.restore([saved]);
+    again.addFromTile(tile(200, 0));
+    expect(again.get(van.id)!.def.id).toBe("camionnette");
+  });
+});
+

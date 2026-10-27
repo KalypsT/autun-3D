@@ -265,7 +265,7 @@ export function startGame(ctx: GameContext): void {
     let label = "";
     const n = riding ? null : fleet.nearest(player.x, player.y);
     if (riding) label = "Descendre";
-    else if (n && n.distance < familyOf(n.vehicle).reach) label = `Monter ${n.vehicle.def.icon ?? familyOf(n.vehicle).icon}`;
+    else if (n && n.distance < familyOf(n.vehicle).reach) label = `Monter ${n.vehicle.def.icon ?? familyOf(n.vehicle).icon} ${n.vehicle.def.name}`;
     if (label !== actionLabel) {
       actionLabel = label;
       actionEl.textContent = label;

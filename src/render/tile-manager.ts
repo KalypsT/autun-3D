@@ -35,6 +35,8 @@ const PRELOAD_LOD = 700;
 /** Ce qu'une tuile détaillée garde pour le reste du jeu : mobilier, escaliers, marquages au sol. */
 export interface TileExtras {
   id: string;
+  /** Nombre de bâtiments de la tuile (pour classer son quartier, D55). */
+  buildings: number;
   furniture: Furniture[];
   stairs: StairsZone[];
   marks: number[][][];
@@ -161,7 +163,7 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
-    e.extras = { id: e.info.id, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);
