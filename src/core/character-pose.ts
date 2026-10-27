@@ -10,7 +10,8 @@ import type { BodyDims } from "./character";
 import { BONE, REF_DIMS, solveBones, type Pose, type Root } from "./character-rig";
 
 export type V3 = readonly [number, number, number];
-export type RideStyle = "pedal" | "seat" | "stand";
+/** Assis qui pédale, assis (moto, scooter), assis penché sur le réservoir (moto sportive), debout (trottinette). */
+export type RideStyle = "pedal" | "seat" | "tuck" | "stand";
 
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -156,8 +157,8 @@ export function solveRide(
     a[BONE.head * 3 + 1] = 0.1;
   } else {
     pelvis = [anchors.seat[0], anchors.seat[1] + 0.07 * (d.height / REF_DIMS.height), anchors.seat[2]];
-    const lean = style === "pedal" ? 0.32 : 0.2;
-    a[BONE.pelvis * 3] = style === "pedal" ? -0.1 : -0.05;
+    const lean = style === "pedal" ? 0.32 : style === "tuck" ? 0.6 : 0.2;
+    a[BONE.pelvis * 3] = style === "pedal" ? -0.1 : style === "tuck" ? -0.15 : -0.05;
     a[BONE.torso * 3] = -lean - stoop;
     a[BONE.head * 3] = lean * 0.9 + stoop + (style === "pedal" ? 0.1 : 0.05);
   }

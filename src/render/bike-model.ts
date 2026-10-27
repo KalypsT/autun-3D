@@ -7,7 +7,17 @@ import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } fr
  * Quatre maillages : cadre, direction (fourche, guidon, panier), roue avant, roue arrière.
  */
 
-const WHEEL_R = 0.34;
+/** Mesures qui distinguent les vélos : rayon de roue, section du pneu, demi-largeur du guidon, panier devant, fourche suspendue (VTT). */
+export interface BikeStyle {
+  wheelR: number;
+  tyre: number;
+  bar: number;
+  basket: boolean;
+  suspension: boolean;
+}
+export const CITY_BIKE: BikeStyle = { wheelR: 0.34, tyre: 0.03, bar: 0.28, basket: true, suspension: false };
+export const MOUNTAIN_BIKE: BikeStyle = { wheelR: 0.35, tyre: 0.045, bar: 0.34, basket: false, suspension: true };
+
 const REAR_Z = 0.46;
 const FRONT_Z = -0.62;
 /** Haut du tube de direction : axe du guidon. */
@@ -16,15 +26,16 @@ const HEAD = new THREE.Vector3(0, 0.92, -0.45);
 const STEER_AXIS = 0.25;
 
 /** Roue centrée sur son axe (axe x) : pneu, jante claire, moyeu. */
-function wheelGeometry(): THREE.BufferGeometry {
-  const tyre = new THREE.TorusGeometry(WHEEL_R - 0.03, 0.03, 5, 22);
+function wheelGeometry(style: BikeStyle): THREE.BufferGeometry {
+  const WHEEL_R = style.wheelR;
+  const tyre = new THREE.TorusGeometry(WHEEL_R - style.tyre, style.tyre, 5, 22);
   tyre.rotateY(Math.PI / 2);
-  const rim = new THREE.TorusGeometry(WHEEL_R - 0.07, 0.012, 4, 22);
+  const rim = new THREE.TorusGeometry(WHEEL_R - 0.07 - (style.tyre - 0.03), 0.012, 4, 22);
   rim.rotateY(Math.PI / 2);
   const parts = [paint(tyre, "#24242a"), paint(rim, "#d8d2c4")];
   // Rayons suggérés par trois barres croisées : la rotation se voit.
   for (let i = 0; i < 3; i++) {
-    const s = new THREE.BoxGeometry(0.012, 2 * (WHEEL_R - 0.07), 0.012);
+    const s = new THREE.BoxGeometry(0.012, 2 * (WHEEL_R - 0.07 - (style.tyre - 0.03)), 0.012);
     s.rotateX((i * Math.PI) / 3);
     parts.push(paint(s, "#b9b3a6"));
   }
@@ -34,10 +45,10 @@ function wheelGeometry(): THREE.BufferGeometry {
   return merge(parts);
 }
 
-let wheelGeo: THREE.BufferGeometry | null = null;
+const wheelCache = new Map<BikeStyle, THREE.BufferGeometry>();
 
-
-export function createBikeModel(color: string): VehicleModel {
+export function createBikeModel(color: string, style: BikeStyle = CITY_BIKE): VehicleModel {
+  const WHEEL_R = style.wheelR;
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const rear = v(0, WHEEL_R, REAR_Z), bb = v(0, 0.3, 0.05), seatTop = v(0, 0.82, 0.18), headLow = v(0, 0.72, -0.5);
   const frameGeo = merge([
@@ -68,14 +79,21 @@ export function createBikeModel(color: string): VehicleModel {
     tube(v(0.05, -0.2, -0.05), front.clone().setX(0.05), 0.014, color),
     tube(v(-0.05, -0.2, -0.05), front.clone().setX(-0.05), 0.014, color),
     tube(v(0, 0, 0), v(0, 0.1, 0.05), 0.018, "#8a8478"),
-    tube(v(-0.28, 0.12, 0.1), v(0.28, 0.12, 0.1), 0.014, "#8a8478"),
-    box(0.05, 0.04, 0.11, 0.26, 0.12, 0.12, "#24242a"),
-    box(0.05, 0.04, 0.11, -0.26, 0.12, 0.12, "#24242a"),
-    // Panier moutarde devant le guidon.
-    box(0.34, 0.2, 0.26, 0, -0.05, -0.24, "#f1b24a"),
-    box(0.3, 0.02, 0.22, 0, 0.055, -0.24, "#c98a2a"),
+    tube(v(-style.bar, 0.12, 0.1), v(style.bar, 0.12, 0.1), 0.014, "#8a8478"),
+    box(0.05, 0.04, 0.11, style.bar - 0.02, 0.12, 0.12, "#24242a"),
+    box(0.05, 0.04, 0.11, -(style.bar - 0.02), 0.12, 0.12, "#24242a"),
+    ...(style.basket
+      ? [
+          // Panier moutarde devant le guidon.
+          box(0.34, 0.2, 0.26, 0, -0.05, -0.24, "#f1b24a"),
+          box(0.3, 0.02, 0.22, 0, 0.055, -0.24, "#c98a2a"),
+        ]
+      : []),
+    // Fourche suspendue : un fourreau épais de chaque côté.
+    ...(style.suspension ? [tube(v(0.05, -0.12, -0.04), v(0.05, -0.32, -0.12), 0.026, "#2c2c33"), tube(v(-0.05, -0.12, -0.04), v(-0.05, -0.32, -0.12), 0.026, "#2c2c33")] : []),
   ]);
-  wheelGeo ??= wheelGeometry();
+  let wheelGeo = wheelCache.get(style);
+  if (!wheelGeo) wheelCache.set(style, (wheelGeo = wheelGeometry(style)));
   const mat = sharedMaterial();
   const mesh = (g: THREE.BufferGeometry): THREE.Mesh => {
     const m = new THREE.Mesh(g, mat);
@@ -104,7 +122,7 @@ export function createBikeModel(color: string): VehicleModel {
   group.add(frame, steer, rw, crank);
   // Appuis du conducteur : poignées au bout du guidon, plante du pied sur le dessus des pédales.
   const anchors = {
-    gripL: marker(steerMesh, -0.26, 0.12, 0.12), gripR: marker(steerMesh, 0.26, 0.12, 0.12),
+    gripL: marker(steerMesh, -(style.bar - 0.02), 0.12, 0.12), gripR: marker(steerMesh, style.bar - 0.02, 0.12, 0.12),
     footL: marker(crank, -0.13, 0.17 + 0.01, 0), footR: marker(crank, 0.13, -0.17 + 0.01, 0),
   };
 

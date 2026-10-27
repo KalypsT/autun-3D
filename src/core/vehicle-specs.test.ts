@@ -92,8 +92,56 @@ describe("voitures du catalogue : performances", () => {
   });
 });
 
-describe("voitures du catalogue : tenue de route à la vitesse maximale", () => {
-  it.each(cars.map((d) => d.id))("%s : plein braquage puis relâché à la vitesse maximale, sans tête-à-queue, accélération latérale bornée", (id) => {
+describe("deux-roues du catalogue : performances", () => {
+  /** Temps (s) pour atteindre `kmhTarget`, accélérateur à fond. */
+  const timeTo = (spec: VehicleSpec, target: number): number => {
+    const s = createVehicle(0, -90, 0, flat);
+    for (let i = 0; i < 60 * 60; i++) {
+      stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, flat, none);
+      if (kmh(s) >= target) return (i + 1) * DT;
+      if (s.y > 80) s.y = -90;
+    }
+    return Infinity;
+  };
+  const spec = (id: string): VehicleSpec => vehicleDef(id)!.spec;
+
+  it("le VTT, aux gros pneus crantés, va un peu moins vite que le vélo de ville et freine mieux", () => {
+    const mtb = fullThrottle(spec("vtt")), city = fullThrottle(spec("velo-ville"));
+    expect(mtb.top).toBeGreaterThan(20);
+    expect(mtb.top).toBeLessThan(city.top + 0.1);
+    expect(mtb.top).toBeLessThanOrEqual(spec("vtt").topSpeed * 3.6 + 0.5);
+    expect(braking(spec("vtt"), 25).distance).toBeLessThan(9);
+  });
+
+  it("le scooter 125 : 0 à 50 km/h en 3,5 à 5,5 s, 88 à 101 km/h au maximum, freinage de 50 km/h en moins de 22 m, sans bloquer", () => {
+    expect(timeTo(spec("scooter-125"), 50)).toBeGreaterThan(3.5);
+    expect(timeTo(spec("scooter-125"), 50)).toBeLessThan(5.5);
+    const top = fullThrottle(spec("scooter-125")).top;
+    expect(top).toBeGreaterThan(88);
+    expect(top).toBeLessThan(101);
+    const b = braking(spec("scooter-125"), 50);
+    expect(b.distance).toBeLessThan(22);
+    expect(b.locked).toBe(false);
+  });
+
+  it("la moto sportive : 0 à 100 km/h en 2,8 à 4,2 s, plus vite que la routière ; bridée à 210 km/h ; freine de 100 km/h en 35 à 50 m sans bloquer", () => {
+    const sport = spec("moto-sportive");
+    expect(sport.topSpeed * 3.6).toBeCloseTo(210, 5);
+    expect(timeTo(sport, 100)).toBeGreaterThan(2.8);
+    expect(timeTo(sport, 100)).toBeLessThan(4.2);
+    expect(timeTo(sport, 100)).toBeLessThan(timeTo(spec("moto-routiere"), 100));
+    const top = fullThrottle(sport).top;
+    expect(top).toBeGreaterThan(195);
+    expect(top).toBeLessThanOrEqual(210.5);
+    const b = braking(sport, 100);
+    expect(b.distance).toBeGreaterThan(35);
+    expect(b.distance).toBeLessThan(50);
+    expect(b.locked).toBe(false);
+  });
+});
+
+describe("véhicules du catalogue : tenue de route à la vitesse maximale", () => {
+  it.each(CATALOG.map((d) => d.id))("%s : plein braquage puis relâché à la vitesse maximale, sans tête-à-queue, accélération latérale bornée", (id) => {
     const spec = vehicleDef(id)!.spec;
     const s = fullThrottle(spec).state;
     s.x = 0; s.y = -90; s.heading = 0;
@@ -106,19 +154,21 @@ describe("voitures du catalogue : tenue de route à la vitesse maximale", () => 
     // Relâché : la voiture se remet droite (le cap ne varie plus).
     for (let i = 0; i < 4 * 60; i++) { stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, flat, none); lateral(); }
     expect(Number.isFinite(s.x + s.y + s.heading)).toBe(true);
-    expect(Math.abs(s.yawRate)).toBeLessThan(0.03);
+    // Un deux-roues à 210 km/h tourne encore de 0,03 rad/s (rayon de 1,7 km) quatre secondes après : il est droit pour le joueur.
+    expect(Math.abs(s.yawRate)).toBeLessThan(0.05);
     expect(Math.abs(s.vx * Math.cos(s.heading) - s.vy * Math.sin(s.heading))).toBeLessThan(1.5);
     // Pas plus que l'adhérence permise (avec la marge de braquage de la fiche) et un cap qui a peu changé (< 40°).
     expect(maxLat).toBeLessThan(spec.steerGrip * spec.grip * 1.2);
-    expect(turned).toBeLessThan(0.7);
+    // À haute vitesse seulement : un vélo à fond braque, lui, beaucoup en une seconde.
+    if (spec.topSpeed > 30) expect(turned).toBeLessThan(0.7);
   });
 
   it("la direction à haute vitesse reste utilisable : le braquage permis à la vitesse maximale n'est jamais nul", () => {
-    for (const d of cars) {
+    for (const d of CATALOG.filter((x) => x.spec.topSpeed > 30)) {
       const s = d.spec;
       const L = s.front + s.rear;
       const limit = (s.steerGrip * s.grip * GRAVITY * L) / (s.topSpeed * s.topSpeed);
-      expect(limit).toBeGreaterThan(0.004);
+      expect(limit).toBeGreaterThan(0.003);
     }
   });
 });

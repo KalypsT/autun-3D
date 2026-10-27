@@ -3,10 +3,11 @@ import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
-import { createBikeModel } from "../render/bike-model";
+import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { CAR_BODIES, createCarModel, ParkedCars } from "../render/car-model";
 import { createMotoModel } from "../render/moto-model";
-import { createScooterModel } from "../render/scooter-model";
+import { createMotorScooterModel } from "../render/motorscooter-model";
+import { createKickScooterModel } from "../render/kickscooter-model";
 import type { TileExtras } from "../render/tile-manager";
 import type { VehicleModel } from "../render/vehicle-model";
 import type { HeightField } from "../data/types";
@@ -14,10 +15,13 @@ import type { SavedVehicle } from "../core/save";
 
 /** Dessin de chaque modèle du catalogue (`src/core/vehicle-catalog.ts`), à la couleur donnée. Un test vérifie que chaque entrée en a un. */
 export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
-  "velo-ville": createBikeModel,
-  trottinette: createScooterModel,
+  "velo-ville": (color) => createBikeModel(color),
+  vtt: (color) => createBikeModel(color, MOUNTAIN_BIKE),
+  trottinette: createKickScooterModel,
+  "scooter-125": createMotorScooterModel,
   ...Object.fromEntries(Object.keys(CAR_BODIES).map((id) => [id, (color: string) => createCarModel(id, color)])),
-  "moto-routiere": createMotoModel,
+  "moto-routiere": (color) => createMotoModel(color),
+  "moto-sportive": (color) => createMotoModel(color, "sport"),
 };
 
 /** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */

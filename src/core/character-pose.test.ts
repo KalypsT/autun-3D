@@ -36,7 +36,8 @@ describe("cinématique inverse à deux segments", () => {
 const BIKE: RideAnchors = { seat: [0, 0.88, 0.22], grips: [[-0.26, 1.04, -0.33], [0.26, 1.04, -0.33]], feet: [[-0.15, 0.13, 0.05], [0.15, 0.47, 0.05]] };
 const MOTO: RideAnchors = { seat: [0, 0.93, 0.22], grips: [[-0.34, 1.11, -0.4], [0.34, 1.11, -0.4]], feet: [[-0.26, 0.375, 0.12], [0.26, 0.375, 0.12]] };
 const SCOOTER: RideAnchors = { seat: [0, 0.165, 0.08], grips: [[-0.23, 1.12, -0.43], [0.23, 1.12, -0.43]], feet: [[-0.04, 0.166, -0.1], [0.04, 0.166, 0.2]] };
-const ANCHORS: Record<RideStyle, RideAnchors> = { pedal: BIKE, seat: MOTO, stand: SCOOTER };
+const TUCK: RideAnchors = { seat: [0, 0.88, 0.3], grips: [[-0.22, 0.94, -0.32], [0.22, 0.94, -0.32]], feet: [[-0.26, 0.475, 0.3], [0.26, 0.475, 0.3]] };
+const ANCHORS: Record<RideStyle, RideAnchors> = { pedal: BIKE, seat: MOTO, tuck: TUCK, stand: SCOOTER };
 
 function ride(recipe: Recipe, style: RideStyle): { world: Float32Array; d: ReturnType<typeof bodyDims> } {
   const d = bodyDims(recipe);
@@ -49,9 +50,9 @@ const at = (w: Float32Array, b: number): V3 => [w[b * 16 + 12]!, w[b * 16 + 13]!
 const below = (w: Float32Array, b: number, along: number): V3 => [w[b * 16 + 12]! - w[b * 16 + 4]! * along, w[b * 16 + 13]! - w[b * 16 + 5]! * along, w[b * 16 + 14]! - w[b * 16 + 6]! * along];
 
 describe("poses sur véhicule", () => {
-  it("amène mains et pieds sur leurs appuis quand ils sont à portée (vélo, moto, trottinette)", () => {
+  it("amène mains et pieds sur leurs appuis quand ils sont à portée (vélo, moto, moto sportive, trottinette)", () => {
     const bad: string[] = [];
-    for (const style of ["pedal", "seat", "stand"] as const) {
+    for (const style of ["pedal", "seat", "tuck", "stand"] as const) {
       const a = ANCHORS[style];
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
         const recipe = { ...recipeFromSeed(seed), height: 1.7 + (seed % 3) * 0.05 };
@@ -69,7 +70,7 @@ describe("poses sur véhicule", () => {
   });
 
   it("pose le bassin sur la selle, pieds à plat et genoux vers l'avant", () => {
-    for (const style of ["pedal", "seat"] as const) {
+    for (const style of ["pedal", "seat", "tuck"] as const) {
       const { world, d } = ride(DEFAULT_RECIPE, style);
       const p = at(world, BONE.pelvis);
       expect(Math.abs(p[0])).toBeLessThan(1e-4);
@@ -94,7 +95,7 @@ describe("poses sur véhicule", () => {
   it("reste finie pour toutes les morphologies, même quand les appuis sont hors de portée", () => {
     const bad: string[] = [];
     for (const height of [1.45, 2.02]) {
-      for (const style of ["pedal", "seat", "stand"] as const) {
+      for (const style of ["pedal", "seat", "tuck", "stand"] as const) {
         const out = new Float32Array(BONE_COUNT * 16);
         const { world } = ride({ ...DEFAULT_RECIPE, height, build: "heavy" }, style);
         for (const v of world) if (!Number.isFinite(v)) bad.push(`${style} ${height}`);

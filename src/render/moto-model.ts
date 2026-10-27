@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
+import { box, marker, merge, paint, sharedMaterial, tiltedBox, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Moto de style classique aux couleurs de l'affiche : réservoir peint, selle, moteur, échappement, phare rond.
@@ -14,9 +14,13 @@ const REAR_Z = 0.72;
 const HEAD = new THREE.Vector3(0, 0.98, -0.5);
 const STEER_AXIS = 0.42;
 
-let wheelGeo: THREE.BufferGeometry | null = null;
-function wheelGeometry(): THREE.BufferGeometry {
-  const tyre = new THREE.TorusGeometry(WHEEL_R - 0.055, 0.055, 6, 22);
+/** Style : « roadster » (classique) ou « sport » (carénage, guidons bas, pneu arrière large, selle reculée). */
+export type MotoStyle = "roadster" | "sport";
+
+const wheelCache = new Map<number, THREE.BufferGeometry>();
+/** Roue dont le pneu a la section donnée (rayon du tore, en m). */
+function wheelGeometry(section: number): THREE.BufferGeometry {
+  const tyre = new THREE.TorusGeometry(WHEEL_R - section, section, 6, 22);
   tyre.rotateY(Math.PI / 2);
   const rim = new THREE.CylinderGeometry(WHEEL_R - 0.1, WHEEL_R - 0.1, 0.03, 18);
   rim.rotateZ(Math.PI / 2);
@@ -26,7 +30,8 @@ function wheelGeometry(): THREE.BufferGeometry {
   return merge([paint(tyre, "#24242a"), paint(rim, "#8a8478"), paint(disc, "#cfc8b8"), box(0.034, (WHEEL_R - 0.1) * 2, 0.04, 0, 0, 0, "#efe3c8")]);
 }
 
-export function createMotoModel(color: string): VehicleModel {
+export function createMotoModel(color: string, style: MotoStyle = "roadster"): VehicleModel {
+  const sport = style === "sport";
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const chrome = "#cfc8b8", dark = "#2c2c33";
   const frameGeo = merge([
@@ -49,23 +54,51 @@ export function createMotoModel(color: string): VehicleModel {
     tube(v(0.12, 0.38, 0.6), v(0.12, 0.85, 0.45), 0.025, color),
     tube(v(-0.12, 0.38, 0.6), v(-0.12, 0.85, 0.45), 0.025, color),
     // Repose-pieds.
-    box(0.56, 0.03, 0.06, 0, 0.36, 0.12, dark),
+    box(0.56, 0.03, 0.06, 0, sport ? 0.46 : 0.36, sport ? 0.3 : 0.12, dark),
+    ...(sport
+      ? [
+          // Sportive : réservoir plus grand, sabot, flancs de carénage, bosse de selle pointue.
+          box(0.38, 0.26, 0.58, 0, 1.0, -0.2, color),
+          box(0.36, 0.2, 0.55, 0, 0.42, -0.02, color),
+          box(0.04, 0.3, 0.5, 0.19, 0.64, -0.1, color),
+          box(0.04, 0.3, 0.5, -0.19, 0.64, -0.1, color),
+          tiltedBox(0.22, 0.14, 0.44, 0, 0.96, 0.72, 0.1, color),
+        ]
+      : []),
   ]);
   // Direction exprimée depuis le haut de la colonne.
   const front = v(0, WHEEL_R, FRONT_Z).sub(HEAD);
   const steerGeo = merge([
     tube(v(0.09, 0, 0), front.clone().setX(0.09), 0.028, chrome),
     tube(v(-0.09, 0, 0), front.clone().setX(-0.09), 0.028, chrome),
-    tube(v(-0.36, 0.13, 0.08), v(0.36, 0.13, 0.08), 0.017, chrome),
     tube(v(0, 0, 0), v(0, 0.12, 0.06), 0.025, dark),
-    box(0.06, 0.05, 0.12, 0.34, 0.13, 0.1, "#24242a"),
-    box(0.06, 0.05, 0.12, -0.34, 0.13, 0.1, "#24242a"),
-    // Phare rond et garde-boue avant.
-    box(0.2, 0.18, 0.12, 0, -0.08, -0.12, dark),
-    box(0.16, 0.14, 0.02, 0, -0.08, -0.185, "#f5ecd2"),
+    ...(sport
+      ? [
+          // Demi-guidons bas, nez de carénage avec phare, bulle.
+          tube(v(0.07, 0.03, 0.02), v(0.21, -0.04, 0.16), 0.017, chrome),
+          tube(v(-0.07, 0.03, 0.02), v(-0.21, -0.04, 0.16), 0.017, chrome),
+          box(0.07, 0.05, 0.1, 0.22, -0.04, 0.18, "#24242a"),
+          box(0.07, 0.05, 0.1, -0.22, -0.04, 0.18, "#24242a"),
+          tiltedBox(0.34, 0.26, 0.42, 0, -0.1, -0.2, -0.25, color),
+          box(0.2, 0.08, 0.02, 0, -0.1, -0.42, "#f5ecd2"),
+          tiltedBox(0.26, 0.2, 0.02, 0, 0.1, -0.06, -0.75, "#3a4d63"),
+        ]
+      : [
+          tube(v(-0.36, 0.13, 0.08), v(0.36, 0.13, 0.08), 0.017, chrome),
+          box(0.06, 0.05, 0.12, 0.34, 0.13, 0.1, "#24242a"),
+          box(0.06, 0.05, 0.12, -0.34, 0.13, 0.1, "#24242a"),
+          // Phare rond.
+          box(0.2, 0.18, 0.12, 0, -0.08, -0.12, dark),
+          box(0.16, 0.14, 0.02, 0, -0.08, -0.185, "#f5ecd2"),
+        ]),
+    // Garde-boue avant.
     box(0.14, 0.03, 0.4, 0, front.y + WHEEL_R + 0.07, front.z, color),
   ]);
-  wheelGeo ??= wheelGeometry();
+  const wheelFor = (section: number): THREE.BufferGeometry => {
+    let g = wheelCache.get(section);
+    if (!g) wheelCache.set(section, (g = wheelGeometry(section)));
+    return g;
+  };
   const mat = sharedMaterial();
   const mesh = (g: THREE.BufferGeometry): THREE.Mesh => {
     const m = new THREE.Mesh(g, mat);
@@ -81,23 +114,24 @@ export function createMotoModel(color: string): VehicleModel {
   const steerMesh = mesh(steerGeo);
   steerMesh.rotation.order = "YXZ";
   steerMesh.rotation.x = -STEER_AXIS;
-  const fw = mesh(wheelGeo);
+  const fw = mesh(wheelFor(0.055));
   fw.position.copy(front);
   steerMesh.add(fw);
   steer.add(steerMesh);
-  const rw = mesh(wheelGeo);
+  const rw = mesh(wheelFor(sport ? 0.075 : 0.055));
   rw.position.set(0, WHEEL_R, REAR_Z);
   group.add(mesh(frameGeo), steer, rw);
   // Poignées dans les mains, plante des pieds sur le repose-pieds.
   const anchors = {
-    gripL: marker(steerMesh, -0.34, 0.13, 0.1), gripR: marker(steerMesh, 0.34, 0.13, 0.1),
-    footL: marker(group, -0.26, 0.375, 0.12), footR: marker(group, 0.26, 0.375, 0.12),
+    gripL: sport ? marker(steerMesh, -0.22, -0.04, 0.18) : marker(steerMesh, -0.34, 0.13, 0.1),
+    gripR: sport ? marker(steerMesh, 0.22, -0.04, 0.18) : marker(steerMesh, 0.34, 0.13, 0.1),
+    footL: marker(group, -0.26, sport ? 0.475 : 0.375, sport ? 0.3 : 0.12), footR: marker(group, 0.26, sport ? 0.475 : 0.375, sport ? 0.3 : 0.12),
   };
 
   return {
     group,
-    seat: v(0, 0.93, 0.22),
-    pose: "seat",
+    seat: sport ? v(0, 0.88, 0.3) : v(0, 0.93, 0.22),
+    pose: sport ? "tuck" : "seat",
     anchors,
     update(s) {
       group.position.set(s.x, s.z, -s.y);

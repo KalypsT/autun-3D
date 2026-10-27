@@ -24,7 +24,7 @@ function wheelGeometry(): THREE.BufferGeometry {
   return merge([paint(tyre, "#24242a"), paint(hub, "#b9b3a6"), box(0.058, WHEEL_R * 1.1, 0.02, 0, 0, 0, "#efe3c8")]);
 }
 
-export function createScooterModel(color: string): VehicleModel {
+export function createKickScooterModel(color: string): VehicleModel {
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const deckGeo = merge([
     box(0.17, 0.05, 0.66, 0, 0.13, 0.02, "#2c2c33"),
