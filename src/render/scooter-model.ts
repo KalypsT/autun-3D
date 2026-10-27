@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
+import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Trottinette électrique de location : plateau bas, colonne de direction, guidon, petites roues pleines.
@@ -72,11 +72,17 @@ export function createScooterModel(variant: number): VehicleModel {
   const rw = mesh(wheelGeo);
   rw.position.set(0, WHEEL_R, REAR_Z);
   group.add(mesh(deckGeo), steer, rw);
+  // Poignées dans les mains ; pieds l'un derrière l'autre sur le plateau (le gauche devant).
+  const anchors = {
+    gripL: marker(steerMesh, -0.23, 0.9, 0), gripR: marker(steerMesh, 0.23, 0.9, 0),
+    footL: marker(group, -0.04, 0.166, -0.14), footR: marker(group, 0.04, 0.166, 0.16),
+  };
 
   return {
     group,
     seat: v(0, 0.165, 0.08),
     pose: "stand",
+    anchors,
     update(s) {
       group.position.set(s.x, s.z, -s.y);
       group.rotation.set(s.pitch, -s.heading, -s.lean);

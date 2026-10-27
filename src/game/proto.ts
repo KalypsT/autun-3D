@@ -5,25 +5,24 @@ import type { GameContext } from "./context";
 import { createCrowdSim, type CrowdSim } from "./crowd-sim";
 import { followSun, gameSpawn } from "./game";
 import { showReportPanel } from "./report-panel";
-import { createPartsCrowd } from "../render/crowd/crowd-parts";
-import { createShaderCrowd } from "../render/crowd/crowd-shader";
-import { createSkinnedCrowd } from "../render/crowd/crowd-skinned";
+import { createCrowd } from "../render/crowd/crowd";
 import { createCrowdState, type CrowdRenderer, type CrowdState } from "../render/crowd/crowd-types";
 import { recipeFromSeed } from "../core/character";
+import { createVehicle } from "../core/vehicle";
+import { createBikeModel } from "../render/bike-model";
+import { createMotoModel } from "../render/moto-model";
+import { createPlayerModel } from "../render/player-model";
+import { createScooterModel } from "../render/scooter-model";
 
 /**
- * Prototypes de l'étape P (?proto=1) : la même foule dessinée de trois façons (A peau et os, B instances et nuanceur, C pièces groupées),
- * dans la vraie ville, pour choisir par la mesure. Chaque phase : construction, mise en route, 4 s d'images naturelles (fluidité),
+ * Banc de foule (?proto=1) : une foule de personnages animés dans la vraie ville, mesurée comme le banc. (L'étape P a comparé trois façons de
+ * la dessiner, A peau et os, B instances et nuanceur, C pièces groupées ; B a été retenue, D37, et A et C supprimées.) Chaque phase : construction, mise en route, 4 s d'images naturelles (fluidité),
  * puis 3 s avec attente de fin de dessin à chaque image (`finish`) pour mesurer le travail réel par image, que la limite de 60 Hz masque.
- * ?proto=look&r=A|B|C&n=24 : une rangée de personnages immobiles ou en marche, pour comparer les rendus à l'œil.
+ * ?proto=look&n=24 : une rangée de personnages immobiles ou en marche, pour comparer les rendus à l'œil.
  */
 
-type Approach = "A" | "B" | "C";
-const FACTORIES: Record<Approach, (scene: THREE.Scene, state: CrowdState) => CrowdRenderer> = {
-  A: createSkinnedCrowd,
-  B: createShaderCrowd,
-  C: createPartsCrowd,
-};
+type Approach = "B";
+const FACTORIES: Record<Approach, (scene: THREE.Scene, state: CrowdState) => CrowdRenderer> = { B: createCrowd };
 
 interface PhaseSpec {
   label: string;
@@ -78,17 +77,15 @@ export function startProto(ctx: GameContext): void {
   const groundAt = (x: number, z: number): number => terrain.heightAt(x, -z);
   const gl = renderer.getContext();
 
+  if (params.get("proto") === "riders") return startRiders(ctx, groundAt, spawn, ground);
   const look = params.get("proto") === "look";
   if (look) return startLook(ctx, groundAt, camX, camZ, ground);
 
   const phases: PhaseSpec[] = [{ label: "Sans personnage (référence)", approach: null, n: 0, shadows: true }];
-  for (const n of [50, 100, 200]) {
-    for (const a of ["A", "B", "C"] as const) phases.push({ label: `${a} · ${n} personnages`, approach: a, n, shadows: true });
-  }
-  for (const a of ["A", "B", "C"] as const) phases.push({ label: `${a} · 100 personnages, sans ombres des personnages`, approach: a, n: 100, shadows: false });
+  for (const n of [50, 100, 200, 300]) phases.push({ label: `${n} personnages`, approach: "B", n, shadows: true });
+  phases.push({ label: "200 personnages, sans ombres des personnages", approach: "B", n: 200, shadows: false });
   phases.push({ label: "Sans personnage (référence, fin)", approach: null, n: 0, shadows: true });
-  const only = params.get("only");
-  const list = only ? phases.filter((p) => p.approach === null || only.split(",").includes(p.approach)) : phases;
+  const list = phases;
   const short = params.get("proto") === "court";
   const t = short ? { warm: 0.3, natural: 0.6, work: 0.6 } : { warm: WARM, natural: NATURAL, work: WORK };
 
@@ -253,7 +250,7 @@ export function protoText(device: Record<string, unknown>, reports: PhaseReport[
 /** ?proto=look : une ou deux rangées de personnages devant la caméra, pour juger les rendus à l'œil (ou les comparer entre approches). */
 function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number, camX: number, camZ: number, ground: number): void {
   const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, params } = ctx;
-  const approach = (params.get("r") ?? "C").toUpperCase() as Approach;
+  const approach: Approach = "B";
   const n = Number(params.get("n") ?? 24);
   const seed = Number(params.get("seed") ?? 1);
   const recipes = Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i));
@@ -284,6 +281,44 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
     terrainView.update(x, y);
     atmosphere.advance(0);
     placeSun(x, y, ground);
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/**
+ * ?proto=riders : un vélo, une moto et une trottinette avec leur conducteur, devant la caméra, pour juger les poses de près.
+ * `heading` (rad, 0 = vers le nord, loin de la caméra ; 1,57 = de profil), `steer` (−1 à 1), `seed`, `eye`, `dist`, `crank` (rad, vélo).
+ */
+function startRiders(ctx: GameContext, groundAt: (x: number, z: number) => number, spawn: { x: number; y: number }, ground: number): void {
+  const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, world, params } = ctx;
+  const heading = Number(params.get("heading") ?? Math.PI / 2), steer = Number(params.get("steer") ?? 0), seed = Number(params.get("seed") ?? 1);
+  const dist = Number(params.get("dist") ?? 4.2), eye = Number(params.get("eye") ?? 1.1), crank = Number(params.get("crank") ?? 0.6);
+  const models = [createBikeModel(0), createMotoModel(0), createScooterModel(0)];
+  models.forEach((model, i) => {
+    const state = createVehicle(spawn.x + (i - 1) * 2.4, spawn.y + dist, heading, world.terrain);
+    state.steer = steer;
+    state.lean = steer * 0.2;
+    state.wheel = i;
+    model.update(state);
+    scene.add(model.group);
+    const rider = createPlayerModel(recipeFromSeed(seed * 10 + i));
+    model.group.add(rider.group);
+    rider.ride(model, crank + i * 2.1);
+  });
+  void groundAt;
+  const camX = spawn.x, camZ = -spawn.y;
+  camera.position.set(camX, ground + eye, camZ);
+  camera.lookAt(camX, ground + eye - 0.1, camZ - dist);
+  const placeSun = followSun(ctx);
+  ctx.ready({});
+  const frame = (): void => {
+    tiles.update(spawn.x, spawn.y, 0, 0);
+    terrainView.update(spawn.x, spawn.y);
+    atmosphere.advance(0);
+    placeSun(spawn.x, spawn.y, ground);
     sky.position.copy(camera.position);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);

@@ -1,6 +1,6 @@
 // Joue une séquence tactile dans le jeu (navigateur sans interface) et capture les étapes.
 // Usage : node tools/play.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios : walk (marche, course, regard), stream (course longue : chargement des tuiles), wall (marche contre un mur), still (capture à l'arrêt)
+//   scénarios : walk (marche, course, regard), hold (au volant : vitesse imposée à chaque image, accélérateur tenu, paramètre hold=km/h), stream (course longue : chargement des tuiles), wall (marche contre un mur), still (capture à l'arrêt)
 //   4e argument : paramètres d'URL, ex. "at=19,-157&yaw=2.17"
 const { chromium } = require("playwright");
 const fs = require("fs");
@@ -45,8 +45,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await touch("touchEnd", []);
     await sleep(600);
     await shot("jeu-regard");
+  } else if (scenario === "hold") {
+    // Le rendu logiciel est trop lent pour accélérer vraiment : on impose le vecteur vitesse à chaque image (`speed` est recalculée à partir de vx et vy).
+    const kmh = Number(new URLSearchParams(query).get("hold") ?? 15);
+    await page.evaluate((v) => {
+      window.__holdKmh = v;
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) => raf((t) => { const r = window.__autun.riding(); if (r) { const st = r.state, m = window.__holdKmh / 3.6; st.vx = Math.sin(st.heading) * m; st.vy = Math.cos(st.heading) * m; st.speed = m; } cb(t); });
+    }, kmh);
+    await page.keyboard.down("ArrowUp");
+    for (const name of ["a", "b", "c"]) {
+      await page.evaluate(() => new Promise((res) => { let i = 0; const f = () => (++i >= 3 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+      await shot(`jeu-roule-${name}`);
+    }
+    await page.keyboard.up("ArrowUp");
   } else if (scenario === "still") {
-    await sleep(500);
+    // Quelques images du jeu (le rendu logiciel en fait une par seconde) avant la capture.
+    await page.evaluate(() => new Promise((res) => { let i = 0; const f = () => (++i >= 5 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+    await shot("jeu-fixe");
   } else if (scenario === "stream") {
     // Téléportation par pas de 200 m vers le nord : les tuiles proches se chargent, les lointaines se déchargent.
     for (let i = 0; i < 6; i++) {

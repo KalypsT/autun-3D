@@ -1,109 +1,94 @@
 import * as THREE from "three";
+import { DEFAULT_RECIPE, type Recipe } from "../core/character";
+import { createPose, cycleLength, walkPose, type Pose } from "../core/character-rig";
+import { solveRide, type V3 } from "../core/character-pose";
+import { CharacterBatch } from "./crowd/character-batch";
+import { CrowdRigs } from "./crowd/crowd-common";
+import type { VehicleModel } from "./vehicle-model";
 
-/** Personnage provisoire en pièces articulées (la marche balance bras et jambes). */
+/**
+ * Le joueur : un personnage de la même fabrique que les passants (recette, catalogue de pièces, un seul appel de dessin, D37),
+ * à pied (marche, course) ou sur un véhicule (pédalage, assis, debout). `group` se place dans la scène (à pied) ou dans le repère
+ * du véhicule (au volant) : les matrices d'os sont toujours exprimées dans le repère du groupe.
+ */
 export interface PlayerModel {
   group: THREE.Group;
-  /** Place et anime le personnage : position en repère données, cap, phase de pas et vitesse. */
+  /** À pied : place et anime le personnage (position en repère données, cap, phase de pas du joueur, vitesse). */
   update(x: number, y: number, z: number, heading: number, stride: number, speed: number): void;
-  /** Pose de cycliste, dans le repère local du vélo : bassin sur la selle `seat`, phase de pédalage `crank`. */
-  ride(seat: THREE.Vector3, crank: number): void;
-  /** Debout sur un plateau (trottinette), pieds en `deck`, mains au guidon. */
-  stand(deck: THREE.Vector3): void;
+  /** Sur un véhicule : pose selon `vehicle.pose` (pédalage au rythme de `crank`, assis, debout), mains et pieds sur les appuis du véhicule. */
+  ride(vehicle: VehicleModel, crank: number): void;
+  /** Change d'apparence. */
+  setRecipe(recipe: Recipe): void;
+  dispose(): void;
 }
 
-export function createPlayerModel(): PlayerModel {
+/** Le joueur compte la distance parcourue par 2,2 rad par mètre ; la phase de marche, 2π par foulée complète. */
+const STRIDE_PER_METRE = 2.2;
+
+export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel {
   const group = new THREE.Group();
-  const mat = (c: string): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ color: c });
-  // Palette de l'affiche : veste vermillon, pantalon bleu nuit, écharpe moutarde, bonnet bleu-vert.
-  const jacket = mat("#d9472b"), pants = mat("#1f3a52"), skin = mat("#eeb98f"), hair = mat("#2a6f7e"), scarf = mat("#f1b24a"), shoes = mat("#3a2a20");
-  const box = (w: number, h: number, d: number, m: THREE.Material, y: number): THREE.Mesh => {
-    const g = new THREE.BoxGeometry(w, h, d);
-    g.translate(0, y, 0);
-    const mesh = new THREE.Mesh(g, m);
-    mesh.castShadow = true;
-    return mesh;
-  };
-  const body = new THREE.Group();
-  body.add(box(0.44, 0.62, 0.26, jacket, 1.12));
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.125, 12, 10), skin);
-  head.position.y = 1.56;
-  head.castShadow = true;
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
-  cap.position.y = 1.58;
-  const scarfMesh = box(0.3, 0.1, 0.3, scarf, 1.4);
-  body.add(head, cap, scarfMesh);
+  const batch = new CharacterBatch(0, 1);
+  batch.mesh.castShadow = true;
+  group.add(batch.mesh);
+  let rigs = new CrowdRigs([recipe]);
+  const pose: Pose = createPose();
+  const root = { x: 0, y: 0, z: 0, yaw: 0 };
+  let phase = 0;
+  let lastStride: number | null = null;
 
-  const limb = (w: number, h: number, d: number, m: THREE.Material, hipY: number, x: number): THREE.Group => {
-    const pivot = new THREE.Group();
-    pivot.position.set(x, hipY, 0);
-    const mesh = box(w, h, d, m, -h / 2);
-    pivot.add(mesh);
-    return pivot;
+  const publish = (): void => {
+    batch.clear();
+    batch.push(rigs.render, rigs.colors[0]!, rigs.masks[0]!);
+    batch.flush();
   };
-  const legL = limb(0.17, 0.8, 0.2, pants, 0.8, -0.11), legR = limb(0.17, 0.8, 0.2, pants, 0.8, 0.11);
-  const armL = limb(0.12, 0.58, 0.14, jacket, 1.4, -0.29), armR = limb(0.12, 0.58, 0.14, jacket, 1.4, 0.29);
-  for (const leg of [legL, legR]) {
-    const foot = box(0.19, 0.08, 0.3, shoes, -0.8 + 0.04);
-    // Pointe des pieds vers l'avant (−z).
-    foot.position.z = -0.04;
-    leg.add(foot);
-  }
-  group.add(body, legL, legR, armL, armR);
 
-  const HIP = 0.8;
+  // Appuis du véhicule, exprimés dans son propre repère.
+  const inverse = new THREE.Matrix4();
+  const p = new THREE.Vector3();
+  const local = (object: THREE.Object3D): V3 => {
+    p.setFromMatrixPosition(object.matrixWorld).applyMatrix4(inverse);
+    return [p.x, p.y, p.z];
+  };
+
   return {
     group,
-    ride(seat, crank) {
-      // Bassin sur la selle, buste penché vers le guidon, bras tendus, jambes qui pédalent.
-      group.position.set(seat.x, seat.y - HIP + 0.04, seat.z);
-      group.rotation.set(0, 0, 0);
-      const lean = -0.42;
-      body.rotation.x = lean;
-      // Rotation du buste autour de la hanche plutôt que des pieds.
-      body.position.set(0, HIP - HIP * Math.cos(lean), -HIP * Math.sin(lean));
-      const c = Math.sin(crank) * 0.38;
-      legL.rotation.x = 0.55 + c;
-      legR.rotation.x = 0.55 - c;
-      // Épaules avancées avec le buste.
-      const sh = 1.4 - HIP;
-      const shY = HIP + sh * Math.cos(lean), shZ = sh * Math.sin(lean);
-      for (const arm of [armL, armR]) {
-        arm.position.y = shY;
-        arm.position.z = shZ;
-        arm.rotation.x = 0.95;
-      }
-    },
-    stand(deck) {
-      group.position.copy(deck);
-      group.rotation.set(0, 0, 0);
-      // Un pied devant l'autre, buste à peine penché, bras vers le guidon.
-      const lean = -0.12;
-      body.rotation.x = lean;
-      body.position.set(0, HIP - HIP * Math.cos(lean), -HIP * Math.sin(lean));
-      legL.rotation.x = 0.16;
-      legR.rotation.x = -0.12;
-      const sh = 1.4 - HIP;
-      for (const arm of [armL, armR]) {
-        arm.position.y = HIP + sh * Math.cos(lean);
-        arm.position.z = sh * Math.sin(lean);
-        arm.rotation.x = 0.62;
-      }
-    },
     update(x, y, z, heading, stride, speed) {
-      body.rotation.x = 0;
-      body.position.z = 0;
-      armL.position.set(-0.29, 1.4, 0);
-      armR.position.set(0.29, 1.4, 0);
-      const amp = Math.min(speed / 2, 1.8) * 0.5;
-      const s = Math.sin(stride) * amp;
-      legL.rotation.x = s;
-      legR.rotation.x = -s;
-      armL.rotation.x = -s * 0.9;
-      armR.rotation.x = s * 0.9;
-      const bob = Math.abs(Math.cos(stride)) * 0.04 * Math.min(speed / 2, 1.5);
-      body.position.y = bob;
-      group.position.set(x, z + bob * 0.2, -y);
-      group.rotation.y = -heading;
+      group.position.set(x, z, -y);
+      group.rotation.set(0, -heading, 0);
+      const d = rigs.dims[0]!;
+      const v = Math.abs(speed);
+      if (lastStride !== null && v > 0.02) {
+        const metres = (stride - lastStride) / STRIDE_PER_METRE;
+        // Une téléportation ou un arrêt brutal ne doit pas faire sauter la phase.
+        if (metres > 0 && metres < 2) phase = (phase + (metres * Math.PI * 2) / cycleLength(v, d.height)) % (Math.PI * 2);
+      }
+      lastStride = stride;
+      walkPose(pose, phase, v, d);
+      rigs.solveWith(0, pose, root);
+      publish();
+    },
+    ride(vehicle, crank) {
+      const anchors = vehicle.anchors;
+      if (!anchors || vehicle.pose === "hidden") return;
+      lastStride = null;
+      group.position.set(0, 0, 0);
+      group.rotation.set(0, 0, 0);
+      vehicle.setCrank?.(crank);
+      vehicle.group.updateMatrixWorld(true);
+      inverse.copy(vehicle.group.matrixWorld).invert();
+      const seat: V3 = [vehicle.seat.x, vehicle.seat.y, vehicle.seat.z];
+      solveRide(
+        rigs.render, rigs.world, rigs.offsets[0]!, rigs.scales[0]!, rigs.dims[0]!, vehicle.pose,
+        { seat, grips: [local(anchors.gripL), local(anchors.gripR)], feet: [local(anchors.footL), local(anchors.footR)] }, pose,
+      );
+      publish();
+    },
+    setRecipe(next) {
+      rigs = new CrowdRigs([next]);
+    },
+    dispose() {
+      batch.dispose();
     },
   };
 }
+

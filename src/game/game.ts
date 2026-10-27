@@ -279,7 +279,7 @@ export function startGame(ctx: GameContext): void {
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
     const chase = riding ? KINDS[riding.kind].camera : null;
-    const wanted = chase ? chase.distance + speed * chase.perSpeed : distance;
+    const wanted = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
     const focusZ = chase ? player.z + chase.height : player.z;
     const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: wanted }, colliders, terrain);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
@@ -297,9 +297,7 @@ export function startGame(ctx: GameContext): void {
     if (riding && rideModel) {
       rideModel.update(riding.state);
       leaveMarks(riding);
-      if (rideModel.pose === "pedal") model.ride(rideModel.seat, crank);
-      else if (rideModel.pose === "seat") model.ride(rideModel.seat, 0);
-      else if (rideModel.pose === "stand") model.stand(rideModel.seat);
+      model.ride(rideModel, crank);
     } else {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;
