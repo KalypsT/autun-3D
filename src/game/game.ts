@@ -3,6 +3,8 @@ import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
 import { stepVehicle } from "../core/vehicle";
 import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
+import { AppearanceStore } from "../core/appearance";
+import type { Recipe } from "../core/character";
 import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
@@ -49,7 +51,10 @@ export function startGame(ctx: GameContext): void {
   const startYaw = spawn.yaw;
   const saved = spawn.save;
   const player = createPlayer(spawn.x, spawn.y, terrain, startYaw);
-  const model = createPlayerModel();
+  // Apparence du joueur : enregistrée à part de la partie (survit à « nouvelle partie »), appliquée tout de suite.
+  const appearanceStore = new AppearanceStore();
+  let appearance: Recipe = appearanceStore.load();
+  const model = createPlayerModel(appearance);
   scene.add(model.group);
 
   const placeSun = followSun(ctx);
@@ -222,7 +227,14 @@ export function startGame(ctx: GameContext): void {
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
     x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null,
-  }), saved);
+  }), saved, {
+    get: () => appearance,
+    set: (r) => {
+      appearance = r;
+      model.setRecipe(r);
+      appearanceStore.write(r);
+    },
+  });
 
   let last = performance.now();
   let acc = 0;

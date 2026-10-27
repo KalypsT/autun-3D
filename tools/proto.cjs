@@ -1,6 +1,7 @@
 // Captures et essais des prototypes de foule (étape P), au format téléphone en paysage, sans carte graphique.
 // Usage : node tools/proto.cjs <url-de-base> <dossier-de-sortie> nom:requête ...
 //   ex. : look-C:proto=look&r=C&n=24       capture d'une rangée de personnages dessinée par l'approche C
+//         bench:bench=court&crowd=50&soak=1   déroule le banc en version brève avec une foule (sans valeur de mesure)
 //         run:proto=court                   déroule la série de mesures en version brève, imprime le rapport (sans valeur de mesure)
 const { chromium } = require("playwright");
 const fs = require("fs");
@@ -24,6 +25,11 @@ const fs = require("fs");
       fs.writeFileSync(`${out}/${name}.txt`, text);
       console.log(text);
       await page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
+    } else if (query.startsWith("bench")) {
+      await page.waitForFunction(() => window.__autun.bench, null, { timeout: 1800000, polling: 2000 });
+      const text = await page.evaluate(() => window.__autun.bench.text);
+      fs.writeFileSync(`${out}/${name}.txt`, text);
+      console.log(text);
     } else {
       // Quelques images pour que les tuiles et la foule soient en place.
       await page.evaluate(() => new Promise((res) => { let i = 0; const f = () => (++i >= 4 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }));

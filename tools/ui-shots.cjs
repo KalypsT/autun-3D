@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -179,6 +179,36 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await frames(4);
     await shot("p-compteur-velo");
     await c2.close();
+  }
+
+  if (want("appearance")) {
+    const ctx = await open("dist=2.8");
+    await click("#pausebtn");
+    await sleep(800);
+    await clickText("Apparence");
+    await sleep(1500);
+    await shot("p-apparence-defaut");
+    for (const label of ["Femme", "Senior", "Chignon", "Jupe", "Lunettes"]) await clickText(label);
+    await sleep(1500);
+    await shot("p-apparence-modifiee");
+    await clickText("Hasard");
+    await sleep(1500);
+    await shot("p-apparence-aleatoire");
+    await page.evaluate(() => { document.querySelector(".pm-content").scrollTop = 520; });
+    await sleep(600);
+    await shot("p-apparence-bas");
+    const stored = await page.evaluate(() => localStorage.getItem("autun3d.appearance"));
+    console.log("enregistré:", stored ? stored.slice(0, 120) : stored);
+    await click(".pm-item:has-text('Reprendre')");
+    await page.evaluate(() => new Promise((res) => { let i = 0; const f = () => (++i >= 5 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+    await shot("p-apparence-jeu");
+    await page.reload();
+    await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 240000 });
+    await page.evaluate(() => new Promise((res) => { let i = 0; const f = () => (++i >= 5 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+    await sleep(3000);
+    console.log("après rechargement:", (await page.evaluate(() => localStorage.getItem("autun3d.appearance")))?.slice(0, 60));
+    await shot("p-apparence-rechargement");
+    await ctx.close();
   }
 
   await browser.close();

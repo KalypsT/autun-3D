@@ -80,3 +80,10 @@ export class Polyline {
     return { x: ax + (this.pts[2 * hi]! - ax) * t, y: ay + (this.pts[2 * hi + 1]! - ay) * t };
   }
 }
+
+/** Endurance : évolution des images par seconde minute après minute (la chauffe fait baisser la fréquence du processeur et du GPU). */
+export function soakTrend(fps: readonly number[]): { first: number; last: number; min: number; drop: number } | null {
+  if (fps.length === 0) return null;
+  const first = fps[0]!, last = fps[fps.length - 1]!;
+  return { first, last, min: Math.min(...fps), drop: first - last };
+}

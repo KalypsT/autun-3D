@@ -1,10 +1,13 @@
 import * as THREE from "three";
 import { DETAIL_DISTANCE } from "../render/tile-manager";
 import { BENCH_ROUTE } from "./bench-route";
-import { Polyline, summarizeFrames, type FrameSummary } from "./bench-stats";
+import { Polyline, soakTrend, summarizeFrames, type FrameSummary } from "./bench-stats";
 import { Minimap } from "../ui/minimap";
 import { MapData } from "../ui/map-data";
 import type { GameContext } from "./context";
+import { createCrowdSim, type CrowdSim } from "./crowd-sim";
+import { createCrowd } from "../render/crowd/crowd";
+import type { CrowdRenderer } from "../render/crowd/crowd-types";
 import { followSun, gameSpawn } from "./game";
 import { showReportPanel } from "./report-panel";
 
@@ -21,6 +24,8 @@ interface Phase {
   drive?: { from: number; to: number; speed: number };
   /** Réglage appliqué avant la phase (non mesuré pendant la mise en route). */
   setup?: () => void;
+  /** Foule de personnages animés devant la caméra pendant la phase (arrêts seulement). */
+  crowd?: { n: number; shadows: boolean };
 }
 
 interface FrameSample {
@@ -48,6 +53,8 @@ interface PhaseReport {
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
   memory: Memory;
+  /** Foule de la phase : effectif, répartition près / loin, durée moyenne de sa mise à jour (ms) ; null s'il n'y en avait pas. */
+  crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -139,14 +146,38 @@ export function startBench(ctx: GameContext): void {
   const short = params.get("bench") === "court";
   const still = short ? 2 : 1;
   const split = short ? 150 : SPLIT, end = short ? 300 : route.length;
+  // ?crowd=100 : phases avec 100 personnages animés devant la caméra (avec puis sans ombres des personnages) ; ?soak=10 : 10 minutes d'endurance
+  // avec cette foule (une phase par minute), pour voir si la chauffe fait baisser la fluidité.
+  const soak = Math.min(Math.max(Math.floor(Number(params.get("soak") ?? 0)) || 0, 0), 30);
+  const crowdN = Math.min(Math.max(Math.floor(Number(params.get("crowd") ?? (soak > 0 ? 100 : 0))) || 0, 0), 400);
+  const crowdPhases: Phase[] = crowdN > 0
+    ? [
+        { name: `Arrêt sur la place, ${crowdN} personnages`, still: { seconds: short ? 2 : 8 }, crowd: { n: crowdN, shadows: true } },
+        { name: `Arrêt sur la place, ${crowdN} personnages, sans ombres des personnages`, still: { seconds: short ? 2 : 8 }, crowd: { n: crowdN, shadows: false } },
+      ]
+    : [];
+  const soakPhases: Phase[] = Array.from({ length: soak }, (_, i) => ({
+    name: `Endurance, ${crowdN} personnages, minute ${i + 1}/${soak}`, still: { seconds: short ? 3 : 60 }, crowd: { n: crowdN, shadows: true },
+  }));
   const phases: Phase[] = [
     { name: "Arrêt sur la place", still: { seconds: short ? 2 : 8 } },
+    ...crowdPhases,
     { name: "Rues à 50 km/h", drive: { from: 0, to: split, speed: 50 / 3.6 } },
     { name: "Rues à 90 km/h", drive: { from: split, to: end, speed: 90 / 3.6 } },
     { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
     { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
+  // L'endurance passe en dernier, avec les ombres et la définition d'origine rétablies.
+  if (soakPhases.length) {
+    phases.push(
+      { name: "Retour aux réglages d'origine", still: { seconds: 1 }, setup: () => { setShadows(settingsShadows); renderer.setPixelRatio(settingsPixelRatio); } },
+      ...soakPhases,
+    );
+  }
+  const settingsShadows = renderer.shadowMap.enabled, settingsPixelRatio = renderer.getPixelRatio();
   const settings = {
+    crowd: crowdN,
+    soak,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -181,12 +212,26 @@ export function startBench(ctx: GameContext): void {
   let lastBuildCount = 0;
   let t = 0;
   let pendingBuild = 0;
+  let crowd: CrowdRenderer | null = null;
+  let crowdSim: CrowdSim | null = null;
+  let crowdCost = { ms: 0, frames: 0 };
+  const groundAt = (x: number, z: number): number => terrain.heightAt(x, -z);
 
   const startPhase = (): void => {
     index++;
     phase = phases[index] ?? null;
     if (!phase) return;
     phase.setup?.();
+    crowd?.dispose();
+    crowd = null;
+    crowdSim = null;
+    crowdCost = { ms: 0, frames: 0 };
+    if (phase.crowd) {
+      const at = pose();
+      crowdSim = createCrowdSim({ count: phase.crowd.n, camX: at.cam[0], camZ: -at.cam[2], camYaw: 0, seed: 7 });
+      crowd = createCrowd(scene, crowdSim.state);
+      crowd.setShadows(phase.crowd.shadows);
+    }
     samples = [];
     t = 0;
     // Les arrêts attendent que les tuiles autour soient construites (au plus 12 s), puis 1,5 s de mise en route.
@@ -214,6 +259,9 @@ export function startBench(ctx: GameContext): void {
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
       memory: measureMemory(ctx),
+      crowd: p.crowd && crowd
+        ? { n: p.crowd.n, shadows: p.crowd.shadows, near: crowd.lodCounts().near, far: crowd.lodCounts().far, updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0 }
+        : null,
       minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
     });
   };
@@ -276,6 +324,7 @@ export function startBench(ctx: GameContext): void {
       endPhase();
       startPhase();
       if (!phase) {
+        crowd?.dispose();
         banner.remove();
         showReport(ctx, { settings, loadMs, phases: reports });
         return;
@@ -299,6 +348,15 @@ export function startBench(ctx: GameContext): void {
         miniTimer = 1 / 16;
         const yaw = Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]);
         minimap.time(() => minimap.update({ x: pos.x, y: pos.y, cameraYaw: yaw, facing: yaw, north: false, vehicles: [], waypoint: null }));
+      }
+    }
+    if (crowd && crowdSim) {
+      crowdSim.step(dt, groundAt);
+      const c0 = performance.now();
+      crowd.update(crowdSim.state, pos.cam[0], -pos.cam[2]);
+      if (measuring) {
+        crowdCost.ms += performance.now() - c0;
+        crowdCost.frames++;
       }
     }
     renderer.render(scene, camera);
@@ -329,7 +387,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -341,6 +399,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  Durée d'image : médiane ${f.p50.toFixed(1)} ms · 95 % ${f.p95.toFixed(1)} · 99 % ${f.p99.toFixed(1)} · max ${f.max.toFixed(0)} ms`);
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
+    if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {
       const n = p.builds.length;
@@ -352,6 +411,11 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     }
     const m = p.memory;
     lines.push(`  Mémoire : géométrie ≈ ${m.geometryMB} Mo (${m.geometries}) · textures ≈ ${m.textureMB} Mo (${m.textures})${m.heapMB !== null ? ` · JavaScript ${m.heapMB} Mo` : ""}`);
+    lines.push("");
+  }
+  const soak = soakTrend(r.phases.filter((p) => p.name.startsWith("Endurance")).map((p) => p.frames.fps));
+  if (soak) {
+    lines.push(`Endurance : ${soak.first.toFixed(1)} i/s la première minute, ${soak.last.toFixed(1)} la dernière (minimum ${soak.min.toFixed(1)}), perte ${soak.drop.toFixed(1)} i/s`);
     lines.push("");
   }
   lines.push(`Navigateur : ${String(device["userAgent"])}`);

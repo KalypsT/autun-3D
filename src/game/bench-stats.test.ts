@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BENCH_ROUTE } from "./bench-route";
-import { Polyline, summarizeFrames } from "./bench-stats";
+import { Polyline, soakTrend, summarizeFrames } from "./bench-stats";
 
 describe("summarizeFrames", () => {
   it("60 i/s réguliers", () => {
@@ -46,5 +46,13 @@ describe("Polyline", () => {
       expect(BENCH_ROUTE[i + 1]).toBeLessThan(688);
       if (i > 0) expect(Math.hypot(BENCH_ROUTE[i]! - BENCH_ROUTE[i - 2]!, BENCH_ROUTE[i + 1]! - BENCH_ROUTE[i - 1]!)).toBeLessThan(120);
     }
+  });
+});
+
+describe("endurance", () => {
+  it("résume l'évolution minute après minute", () => {
+    expect(soakTrend([])).toBeNull();
+    expect(soakTrend([60, 60, 58.5, 52])).toEqual({ first: 60, last: 52, min: 52, drop: 8 });
+    expect(soakTrend([59.9])).toEqual({ first: 59.9, last: 59.9, min: 59.9, drop: 0 });
   });
 });
