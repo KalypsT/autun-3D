@@ -17,6 +17,10 @@ npm run dev        # http://localhost:5173 ; ajouter ?debug pour le compteur d'i
 
 Sans paramètre, on joue (la partie est reprise là où tu l'avais laissée) : joystick flottant à gauche (à fond : courir), glisser à droite pour regarder ; au clavier ZQSD/WASD, Maj pour courir, souris pour regarder ; bouton ⛶ pour le plein écran, bouton ⏸ (ou Échap, P) pour la pause : reprendre, carte, réglages, lieux notés, sauvegarde. La minimap en haut à gauche tourne avec la caméra ; la carte agrandie (menu pause) se déplace au doigt, se pince pour zoomer, et un appui long y pose ou retire un repère, visible sur la minimap et dans le monde. `?debug` affiche les images par seconde. Vélos et trottinettes garés aux parkings à vélos, voitures et motos sur les places de stationnement (indicateur 🚲/🛴/🚗/🏍️ du plus proche en haut à droite) : bouton « Monter » à côté, puis glisser horizontalement à gauche pour diriger, pédales Accélérer et Frein à droite (le frein à l'arrêt fait reculer), plus un frein à main en voiture pour la faire pivoter ; au clavier, E pour monter ou descendre, Z/S ou flèches pour accélérer et freiner, Q/D pour diriger, espace pour le frein à main.
 
+## Prototypes de foule (étape P)
+
+`?proto=1` mesure trois façons de dessiner une foule de personnages (rapport à copier, comme `?bench=1`) ; `?proto=look&r=C&n=24` en affiche une rangée (`r=A|B|C`, `seed=`, `dist=`, `turn=`). Voir `PROGRESS.md`.
+
 ## Viewer à caméra libre (captures, diagnostic)
 
 Avec `view=` ou `cam=`, c'est la caméra libre. Paramètres d'URL : `view=aerial|street|place|mairie|church`, `cam=x,y,hauteur,cibleX,cibleY,hauteurCible`,

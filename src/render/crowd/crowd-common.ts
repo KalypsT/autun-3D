@@ -1,0 +1,48 @@
+import type { Recipe } from "../../core/character";
+import { bodyDims, type BodyDims } from "../../core/character";
+import { PART_SPECS, partMask } from "../../core/character-kit";
+import { BONE_COUNT, createPose, geometryScales, restOffsets, solveBones, walkPose, type Pose } from "../../core/character-rig";
+import { slotColors } from "../character-parts";
+import type { CrowdState } from "./crowd-types";
+
+/** Ce que chaque approche calcule une fois par personnage (corps, couleurs, pièces) et le calcul de pose partagé. */
+export class CrowdRigs {
+  readonly dims: BodyDims[];
+  readonly offsets: Float32Array[];
+  readonly scales: Float32Array[];
+  readonly colors: Float32Array[];
+  readonly masks: Float32Array[];
+  /** Indices (dans PART_SPECS) des pièces visibles de chaque personnage. */
+  readonly parts: Int16Array[];
+  /** Matrices de rendu des os du dernier personnage résolu (13 × 16), et matrices monde sans échelle. */
+  readonly render = new Float32Array(BONE_COUNT * 16);
+  readonly world = new Float32Array(BONE_COUNT * 16);
+  readonly pose: Pose = createPose();
+  private readonly root = { x: 0, y: 0, z: 0, yaw: 0 };
+
+  constructor(recipes: Recipe[]) {
+    this.dims = recipes.map((r) => bodyDims(r));
+    this.offsets = this.dims.map((d) => restOffsets(d));
+    this.scales = this.dims.map((d) => geometryScales(d));
+    this.colors = recipes.map((r) => slotColors(r));
+    this.masks = recipes.map((r) => Float32Array.from(partMask(r) as number[]));
+    this.parts = recipes.map((r) => {
+      const list: number[] = [];
+      PART_SPECS.forEach((s, i) => {
+        if (s.when(r)) list.push(i);
+      });
+      return Int16Array.from(list);
+    });
+  }
+
+  /** Pose de marche du personnage i, puis matrices d'os (dans `render` et `world`). */
+  solve(state: CrowdState, i: number): void {
+    walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
+    const r = this.root;
+    r.x = state.x[i]!;
+    r.y = state.y[i]!;
+    r.z = state.z[i]!;
+    r.yaw = state.yaw[i]!;
+    solveBones(this.render, this.world, this.offsets[i]!, this.scales[i]!, this.pose, r);
+  }
+}
