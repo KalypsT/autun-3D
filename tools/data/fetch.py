@@ -1,6 +1,6 @@
 """Télécharge les données brutes du bloc (AUTUN_BLOCK, cf. config.py) dans .cache/ (hors git). Idempotent et reprenable : ne retélécharge rien.
 
-Usage : AUTUN_BLOCK=3,4 python3 tools/data/fetch.py [--force] [--only lidar|wfs|wms|bdnb|osm]
+Usage : AUTUN_BLOCK=3,4 python3 tools/data/fetch.py [--force] [--only lidar|wfs|routes|wms|bdnb|osm]   (routes : seulement les tronçons de route BD TOPO)
 Partagé entre blocs (.cache/shared) : dalles LiDAR, blocs OpenStreetMap de 500 m, BDNB de la commune. Propre au bloc (.cache/blocks/<bloc>/raw) :
 rasters IGN 0,5 m, BD TOPO, extrait OpenStreetMap.
 """
@@ -277,6 +277,7 @@ def osm():
                 elements[(e["type"], e["id"])] = e
     if missing:
         raise RuntimeError(f"OSM incomplet, blocs manquants : {missing} (relancer : les blocs faits sont gardés)")
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps({"elements": list(elements.values())}))
     print(f"+ {dest.relative_to(c.ROOT)} ({len(elements)} éléments)")
 
@@ -285,6 +286,7 @@ if __name__ == "__main__":
     steps = {
         "wfs": lambda: (wfs_paged("BDTOPO_V3:batiment", RAW / "bdtopo_batiment.json"),
                         wfs_paged("BDTOPO_V3:troncon_de_route", RAW / "bdtopo_route.json")),
+        "routes": lambda: wfs_paged("BDTOPO_V3:troncon_de_route", RAW / "bdtopo_route.json"),
         "wms": lambda: ([wms_mosaic(f"IGNF_LIDAR-HD_{n}_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93", n) for n in ("MNT", "MNS", "MNH")],
                         wms_mosaic("HR.ORTHOIMAGERY.ORTHOPHOTOS", "ortho", rgb=True)),
         "lidar": lidar,

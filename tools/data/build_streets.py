@@ -16,7 +16,6 @@ import re
 import numpy as np
 import shapely
 from PIL import Image
-from pyproj import Transformer
 from scipy import ndimage
 from shapely.affinity import translate
 from shapely.geometry import LineString, Polygon
@@ -24,8 +23,14 @@ from shapely.ops import unary_union
 
 import common
 import config as c
+import streets_lib as sl
+from streets_lib import local, way_line  # noqa: F401  (build_ground.py les prend ici)
 
-to_l93 = Transformer.from_crs(4326, 2154, always_xy=True)
+# Niveau de classes du sol (streets_lib) : 0 = avant J2 (les routes principales n'avaient ni chaussée, ni trottoirs, ni marquages), 1 = avec elles.
+STREET_LEVEL = 1
+DEFAULT_WIDTH, DRIVABLE = sl.classes(STREET_LEVEL)
+WALKABLE = sl.WALKABLE
+NAME_FIX = sl.NAME_FIX
 
 # Classes de sol (indices de la palette de ground.png).
 GROUND = {
@@ -41,23 +46,9 @@ GROUND = {
 PALETTE = {0: (170, 165, 155), 1: (70, 70, 74), 2: (150, 148, 142), 3: (120, 112, 104), 4: (190, 175, 150),
            5: (80, 120, 60), 6: (30, 30, 30), 7: (160, 150, 140)}
 
-DRIVABLE = {"residential", "tertiary", "secondary", "unclassified", "service", "living_street"}
-WALKABLE = {"pedestrian", "footway", "path", "steps", "living_street"}
-DEFAULT_WIDTH = {"tertiary": 6.5, "secondary": 7.0, "residential": 5.0, "unclassified": 4.5, "service": 3.5,
-                 "living_street": 4.0, "pedestrian": 4.0, "footway": 1.8, "path": 1.2, "steps": 1.8}
 SURFACE_CLASS = {"asphalt": "asphalt", "concrete": "paving", "sett": "sett", "paving_stones": "paving_stones",
                  "unhewn_cobblestone": "sett", "compacted": "gravel", "gravel": "gravel", "cobblestone": "sett"}
-NAME_FIX = {"Rue de l'Hotel de Ville": "Rue de l'Hôtel de Ville"}
 SIDEWALK_W = 2.0
-
-
-def local(lon, lat):
-    x, y = to_l93.transform(lon, lat)
-    return x - c.ORIGIN[0], y - c.ORIGIN[1]
-
-
-def way_line(e):
-    return [local(g["lon"], g["lat"]) for g in e["geometry"]]
 
 
 def export_weights(ground):
@@ -92,58 +83,8 @@ def main():
     bld = unary_union([translate(g, -c.ORIGIN[0], -c.ORIGIN[1]) for _, g in common.bdtopo_buildings()])
     bmask = rasterize(bld)
 
-    # --- Largeurs BD TOPO ---------------------------------------------------------------
-    bd_routes = []
-    for f in json.load(open(c.CACHE / "raw" / "bdtopo_route.json"))["features"]:
-        p = f["properties"]
-        if f["geometry"]["type"] != "LineString" or p.get("largeur_de_chaussee") is None:
-            continue
-        coords = [(x - c.ORIGIN[0], y - c.ORIGIN[1]) for x, y, *_ in f["geometry"]["coordinates"]]
-        bd_routes.append((LineString(coords), float(p["largeur_de_chaussee"]), p.get("sens_de_circulation")))
-
-    def bd_width(line):
-        mids = [line.interpolate(t, normalized=True) for t in (0.25, 0.5, 0.75)]
-        best = None
-        for rl, w, _ in bd_routes:
-            d = np.mean([rl.distance(m) for m in mids])
-            if d < 4.0 and (best is None or d < best[0]):
-                best = (d, w)
-        return best[1] if best else None
-
-    # --- Voies --------------------------------------------------------------------------
-    streets = []
-    for e in ways:
-        t = e["tags"]
-        hw = t.get("highway")
-        if not hw or t.get("area") == "yes" or hw not in DEFAULT_WIDTH:
-            continue
-        if t.get("footway") == "crossing":
-            continue
-        pts = way_line(e)
-        if len(pts) < 2:
-            continue
-        line = LineString(pts)
-        motor = hw in DRIVABLE and t.get("motor_vehicle") not in ("no", "private") and t.get("access") != "private"
-        oneway = 0
-        if t.get("oneway") in ("yes", "true", "1"):
-            oneway = 1
-        elif t.get("oneway") == "-1":
-            oneway = -1
-        bd = bd_width(line) if hw in DRIVABLE else None
-        width = bd if bd else DEFAULT_WIDTH[hw]
-        if t.get("lanes") and t["lanes"].isdigit() and not bd:
-            width = max(width, 3.0 * int(t["lanes"]))
-        name = NAME_FIX.get(t.get("name"), t.get("name"))
-        streets.append({
-            "id": e["id"], "name": name, "kind": hw, "motor": bool(motor),
-            "oneway": oneway, "surface": t.get("surface"), "width": round(width, 1),
-            "widthSource": "bdtopo" if bd else "type",
-            "maxspeed": int(t["maxspeed"]) if t.get("maxspeed", "").isdigit() else None,
-            "lanes": int(t["lanes"]) if t.get("lanes", "").isdigit() else None,
-            "tunnel": t.get("tunnel") == "building_passage",
-            "calming": t.get("traffic_calming"),
-            "nodes": e["nodes"], "pts": [round(v, 2) for p in pts for v in p],
-        })
+    # --- Voies (largeurs BD TOPO quand un tronçon correspond ; construction partagée avec la navigation) -------------
+    streets = sl.build_street_list(ways, sl.load_bd_routes(c.CACHE / "raw" / "bdtopo_route.json"), STREET_LEVEL)
 
     # --- Carte des sols -----------------------------------------------------------------
     rgb = common.ortho().astype(np.float32)
