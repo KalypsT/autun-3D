@@ -260,4 +260,6 @@ Fait :
 
 **À faire sur le téléphone** : ouvrir `https://kalypst.github.io/autun-3D/?proto=1` (paysage, batterie chargée, mode économie d'énergie coupé), laisser tourner ≈ 2 minutes sans toucher l'écran, « Copier le rapport » et le coller dans la conversation. Le choix de l'approche (D37) se fera sur ces chiffres.
 
-Suite de l'étape P : choix de l'approche (D37), rendu du joueur et de ses poses (pédalage, assis, trottinette), apparence du joueur, banc de foule, galerie.
+- **Mesure sur téléphone (Adreno 840)** : 60,3 i/s partout, même à 200 personnages avec les trois approches. Coût de la foule à 200 : A +5,4 ms, C +3,0 ms, **B +2,1 ms** (un seul appel de dessin). **B retenue** (D37) : tableau complet et limites dans `docs/DECISIONS.md`.
+
+Suite de l'étape P : rendu du joueur et de ses poses (pédalage, assis, trottinette), apparence du joueur, banc de foule, galerie.

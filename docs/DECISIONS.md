@@ -272,3 +272,34 @@ Contexte : J1 ajoute une minimap et une carte agrandie. Leurs données doivent �
 - **Compteur de vitesse** : petit affichage en bas au centre quand on conduit (voiture, moto, vélo, trottinette) : km/h en gros chiffres et arc de jauge « affiche ».
 - **Étape V (plus tard)** : catalogue de véhicules aux caractéristiques différentes ; voir `docs/ROADMAP.md`. Pas dans l'étape P.
 - Les décisions de rendu (technique retenue pour dessiner une foule, niveaux de détail) viendront dans D37 après prototype et mesure.
+
+## 2026-10-27 — D37. Rendu des personnages : instances et nuanceur (approche B)
+
+**Mesure** sur le Honor Magic 8 Pro (Adreno 840, rendu 1055 × 2050 px, ×2,5, ombres du soleil, rapport de `?proto=1` version bc0cd32). Le décor seul coûte ≈ 3,1 ms par image (97 appels de dessin, 1,48 M de triangles). « Coût » = travail par image avec attente de fin de dessin, moins ce décor ; le budget d'une image à 60 i/s est de 16,7 ms. Les 13 phases tiennent 60,3 i/s, 0 image au-dessus de 33 ms.
+
+| Personnages | A peau et os | B instances + nuanceur | C pièces groupées |
+|---|---|---|---|
+| 50 | +2,2 ms · 166 appels | **+0,6 ms** · 100 appels | +1,6 ms · 227 appels |
+| 100 | +3,9 ms · 239 appels | **+0,8 ms** · 100 appels | +2,3 ms · 240 appels |
+| 200 | +5,4 ms · 383 appels | **+2,1 ms** · 100 appels | +3,0 ms · 242 appels |
+| 100, sans ombres des personnages | +3,7 ms | +1,0 ms | +1,9 ms |
+
+Processeur à 200 personnages (mise à jour de la foule + envoi du dessin) : A 8,8 ms, B 4,5 ms, C 5,6 ms. Triangles envoyés à 200 : A et C 1,75 M, B 2,4 M (B traite toutes les pièces du catalogue, celles qu'un personnage ne porte pas sont réduites à un point).
+
+**Décision** : approche B pour tous les personnages (PNJ et joueur). Raisons :
+- Elle gagne à chaque effectif et monte le moins vite avec le nombre (≈ 11 µs par personnage à 200, contre 15 pour C et 27 pour A).
+- Un seul appel de dessin pour toute la foule (plus un pour l'ombre) : il reste du budget d'appels de dessin pour la circulation (J3) et les véhicules (V), alors que A et C en ajoutent 140 à 280.
+- C'est la moins chère pour le processeur, qui devra aussi faire tourner la navigation de J2.
+- Le surcoût en triangles dégénérés, craint, ne se voit pas sur ce GPU (Adreno). À surveiller sur un autre appareil.
+
+**Ce que ça ne dit pas** :
+- 25 secondes de mesure par phase, pas 30 minutes : la chauffe n'est pas mesurée. Le banc de foule (`?bench=1&crowd=N`) la mesurera.
+- La page a été ouverte en portrait (écran 423 × 944) : la foule, placée devant la caméra, était en partie hors champ, ce qui sous-estime un peu le coût de remplissage (les personnages sont petits à l'écran, l'effet est faible). Le banc de foule se fera en paysage.
+- La mémoire JavaScript affichée (141 Mo) ne varie pas : la valeur du navigateur est trop grossière pour comparer les approches.
+
+**Limites de B** : un nuanceur à maintenir (injection dans `MeshLambertMaterial` et `MeshDepthMaterial`), des normales approchées sous une mise à l'échelle non uniforme (invisible à cette taille), et une texture de données à réécrire à chaque image (≈ 200 octets par personnage). Les poses sont calculées par le processeur (`walkPose`) : toute pose nouvelle (pédalage, assis, debout) est du code TypeScript, pas du nuanceur.
+
+**Conséquences** :
+- Les approches A (`crowd-skinned.ts`) et C (`crowd-parts.ts`) seront supprimées dès que B porte le joueur et le banc de foule (l'historique git les garde ; les chiffres ci-dessus restent la référence). `?proto=1` ne mesurera plus que B.
+- Le joueur utilise B avec une instance, y compris sur les véhicules : poses `ride`, `stand` et assis à écrire dans `character-rig.ts` à partir des mêmes matrices d'os.
+- Budget pour J2 : rendu de 100 personnages ≈ +0,8 ms, 200 ≈ +2,1 ms ; le plafond sera plutôt la simulation (navigation) et la chauffe que le dessin.
