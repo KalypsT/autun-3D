@@ -38,10 +38,10 @@ export function paint(g: THREE.BufferGeometry, color: string): THREE.BufferGeome
   return geo;
 }
 
-/** Tube de rayon r entre deux points. */
-export function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: string): THREE.BufferGeometry {
+/** Tube de rayon r entre deux points (`capped` faux : sans bouchons, pour un tube dont les bouts sont cachés). */
+export function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: string, segments = 6, capped = true): THREE.BufferGeometry {
   const len = a.distanceTo(b);
-  const g = new THREE.CylinderGeometry(r, r, len, 6, 1);
+  const g = new THREE.CylinderGeometry(r, r, len, segments, 1, !capped);
   const dir = b.clone().sub(a).normalize();
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
   g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);

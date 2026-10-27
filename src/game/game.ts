@@ -19,7 +19,7 @@ import { NavManager } from "./nav-manager";
 import { PedsController } from "./peds-controller";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
-import { Fleet, familyOf, type Vehicle } from "./vehicles";
+import { Fleet, familyOf, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 
 export { gameSpawn } from "./start";
@@ -248,7 +248,7 @@ export function startGame(ctx: GameContext): void {
   const marks = new SkidMarks();
   scene.add(marks.mesh);
   const leaveMarks = (v: Vehicle): void => {
-    const s = v.state, { track, width } = familyOf(v).tyre;
+    const s = v.state, { track, width } = tyreOf(v);
     const fx = Math.sin(s.heading), fy = Math.cos(s.heading), rx = Math.cos(s.heading), ry = -Math.sin(s.heading);
     const sliding = s.skid > 0.6;
     for (const [axle, off, on] of [["av", v.spec.front, s.lockedFront || sliding], ["ar", -v.spec.rear, s.lockedRear || sliding]] as const) {

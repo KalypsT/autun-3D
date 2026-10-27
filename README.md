@@ -19,7 +19,7 @@ Sans paramètre, on joue (la partie est reprise là où tu l'avais laissée) : j
 
 ## Prototypes de foule (étape P)
 
-`?proto=1` mesure une foule de personnages animés (rapport à copier, comme `?bench=1`) ; `?proto=look&n=24` en affiche une rangée (`seed=`, `dist=`, `turn=`) ; `?proto=riders` montre les conducteurs sur leurs véhicules ; `?view=characters` est la galerie (appui : d'autres personnages) ; `?bench=1&crowd=100&soak=10` ajoute au banc une foule et dix minutes d'endurance. Voir `PROGRESS.md`.
+`?proto=1` mesure une foule de personnages animés (rapport à copier, comme `?bench=1`) ; `?proto=look&n=24` en affiche une rangée (`seed=`, `dist=`, `turn=`) ; `?proto=riders` montre les conducteurs sur leurs véhicules ; `?view=characters` est la galerie (appui : d'autres personnages) ; `?view=vehicles` est celle des véhicules du catalogue (`family=car`, `ids=`, `heading=`, `rider=1` ; appui : couleur suivante) ; `?bench=1&crowd=100&soak=10` ajoute au banc une foule et dix minutes d'endurance. Voir `PROGRESS.md`.
 
 ## Viewer à caméra libre (captures, diagnostic)
 

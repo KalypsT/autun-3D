@@ -4,6 +4,7 @@ import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
 import { startBench } from "./game/bench";
 import { startGallery, startProto } from "./game/proto";
+import { startVehicleGallery } from "./game/vehicle-gallery";
 import { startGame } from "./game/game";
 import { gameSpawn, resolveStart, type StartState } from "./game/start";
 import { SettingsController } from "./game/settings-controller";
@@ -141,6 +142,7 @@ async function main(): Promise<void> {
   };
   if (viewerMode) {
     if (params.get("view") === "characters") startGallery(ctx);
+    else if (params.get("view") === "vehicles") startVehicleGallery(ctx);
     else startViewer(ctx);
   }
   else if (benchMode) startBench(ctx);

@@ -41,15 +41,17 @@ export interface VehicleDef {
   /** Nom affiché. */
   name: string;
   spec: VehicleSpec;
+  /** Gabarit hors tout (m) : le modèle dessiné le respecte (test pour les voitures), la coque le recouvre à peu près. */
+  size: { length: number; width: number; height: number };
   /** Couleurs de peinture possibles ; l'exemplaire en prend une selon son numéro de variante. */
   palette: readonly string[];
 }
 
 export const CATALOG: readonly VehicleDef[] = [
-  { id: "velo-ville", family: "bike", name: "Vélo de ville", spec: BIKE, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"] },
-  { id: "trottinette", family: "kickscooter", name: "Trottinette", spec: SCOOTER, palette: ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"] },
-  { id: "citadine", family: "car", name: "Citadine", spec: CAR, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"] },
-  { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
+  { id: "velo-ville", family: "bike", name: "Vélo de ville", spec: BIKE, size: { length: 1.75, width: 0.6, height: 1.1 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"] },
+  { id: "trottinette", family: "kickscooter", name: "Trottinette", spec: SCOOTER, size: { length: 1.1, width: 0.55, height: 1.1 }, palette: ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"] },
+  { id: "citadine", family: "car", name: "Citadine", spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"] },
+  { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, size: { length: 2.0, width: 0.8, height: 1.1 }, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
 ];
 
 const byId = new Map(CATALOG.map((d) => [d.id, d]));
@@ -79,7 +81,13 @@ export function defProblems(d: VehicleDef): string[] {
   if (d.palette.length === 0 || d.palette.some((c) => !/^#[0-9a-f]{6}$/i.test(c))) out.push("palette");
   if (!(s.mass > 0 && s.yawInertia > 0 && s.front > 0 && s.rear > 0 && s.wheelRadius > 0 && s.grip > 0)) out.push("fiche");
   if (!(s.topSpeed > s.driveFadeFrom && s.driveFadeFrom > 0 && s.power > 0 && s.maxDrive > 0 && s.maxBrake > 0)) out.push("vitesses");
+  const { length, width, height } = d.size;
+  if (!(length > 0.5 && width > 0.3 && height > 0.5 && width < length)) out.push("gabarit");
   if (s.hull.length === 0 || s.hull.some(([off, r]) => !Number.isFinite(off) || !(r > 0))) out.push("coque");
+  // La coque recouvre à peu près la longueur et la largeur du véhicule (les passants s'y heurtent).
+  const ends = s.hull.flatMap(([off, r]) => [off - r, off + r]);
+  const hullLength = Math.max(...ends) - Math.min(...ends), hullWidth = 2 * Math.max(...s.hull.map(([, r]) => r));
+  if (hullLength < 0.75 * length || hullLength > 1.2 * length || hullWidth < 0.5 * width || hullWidth > 1.3 * width) out.push("coque et gabarit");
   if (s.leans === (d.family === "car")) out.push("inclinaison (deux-roues seulement)");
   if (s.handbrake !== (d.family === "car")) out.push("frein à main (voiture seulement)");
   return out;

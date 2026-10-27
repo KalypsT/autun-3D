@@ -4,7 +4,7 @@ import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
 import { createBikeModel } from "../render/bike-model";
-import { createCarModel, ParkedCars } from "../render/car-model";
+import { CAR_BODIES, createCarModel, ParkedCars } from "../render/car-model";
 import { createMotoModel } from "../render/moto-model";
 import { createScooterModel } from "../render/scooter-model";
 import type { TileExtras } from "../render/tile-manager";
@@ -16,13 +16,19 @@ import type { SavedVehicle } from "../core/save";
 export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
   "velo-ville": createBikeModel,
   trottinette: createScooterModel,
-  citadine: createCarModel,
+  ...Object.fromEntries(Object.keys(CAR_BODIES).map((id) => [id, (color: string) => createCarModel(id, color)])),
   "moto-routiere": createMotoModel,
 };
 
 /** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
 export function buildModel(def: VehicleDef, variant: number): VehicleModel {
   return MODEL_BUILDERS[def.id]!(paletteColor(def, variant));
+}
+
+/** Traces de pneus : la voie d'une voiture suit sa largeur (les roues sont à 13 cm du bord, comme dans le générateur de carrosserie). */
+export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
+  const t = FAMILIES[v.def.family].tyre;
+  return v.def.family === "car" ? { ...t, track: v.def.size.width / 2 - 0.13 } : t;
 }
 
 /** Interface et conduite communes à la famille du véhicule. */
@@ -245,7 +251,7 @@ export class Fleet {
     const cars = [];
     for (const v of this.vehicles) {
       if (v.family !== "car" || v.ridden || Math.hypot(v.state.x - x, v.state.y - y) > CAR_DRAW_DISTANCE) continue;
-      cars.push({ ...v.state, color: paletteColor(v.def, v.variant) });
+      cars.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, color: paletteColor(v.def, v.variant) });
     }
     this.parked.set(cars);
   }
