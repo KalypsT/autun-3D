@@ -145,13 +145,13 @@ describe("relief réel par tuiles", () => {
       const [x0, y0, x1, y1] = t.bounds;
       for (let k = 1; k < 25; k++) {
         const u = k / 25;
-        // Frontière est et nord (si la tuile voisine existe) : même point vu de chaque côté, à 2 mm.
-        if (ids.has(`${t.col + 1}_${t.row}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x1 - 0.001, y0 + u * (y1 - y0)) - terrain.heightAt(x1 + 0.001, y0 + u * (y1 - y0))));
-        if (ids.has(`${t.col}_${t.row + 1}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x0 + u * (x1 - x0), y1 - 0.001) - terrain.heightAt(x0 + u * (x1 - x0), y1 + 0.001)));
+        // Frontière est et nord (si la tuile voisine existe) : même point vu de chaque côté, à 2 micromètres.
+        if (ids.has(`${t.col + 1}_${t.row}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x1 - 1e-6, y0 + u * (y1 - y0)) - terrain.heightAt(x1 + 1e-6, y0 + u * (y1 - y0))));
+        if (ids.has(`${t.col}_${t.row + 1}`)) worst = Math.max(worst, Math.abs(terrain.heightAt(x0 + u * (x1 - x0), y1 - 1e-6) - terrain.heightAt(x0 + u * (x1 - x0), y1 + 1e-6)));
       }
     }
-    // Pente maximale du terrain ≈ 1 m/m (talus) : 2 mm de distance → moins de 5 mm.
-    expect(worst).toBeLessThan(0.005);
+    // Même au pied d'un talus raide (pente de plusieurs m/m), 2 µm de distance donnent moins de 0,1 mm d'écart : pas de couture.
+    expect(worst).toBeLessThan(1e-4);
   });
 
   it("le relief grossier suit le relief fin à quelques mètres près au pire (talus), et à moins de 1,5 m presque partout", () => {
