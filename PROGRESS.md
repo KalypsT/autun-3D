@@ -191,3 +191,10 @@ La commune fait 61,6 km² (27 fois la zone actuelle) ; avant d'agrandir la carte
 - Tests : 94 (relief par tuile : repli sur le grossier, absence de couture à chaque frontière de tuile, mêmes altitudes qu'avant, un seul chargement par bloc ; recyclage des obstacles).
 - **Reste pour l'étape B** (anneau de 9 à 10 km²) : télécharger et fabriquer par fenêtres (les rasters 0,5 m ne tiennent pas en un bloc à cette échelle), mesurer le poids réel des données et le comportement sur téléphone.
 
+### Étape B (27 octobre 2026) : chaîne par blocs, première partie
+
+But : l'anneau de 9 km² (12 × 12 tuiles autour de la mairie). Fait : la chaîne de données travaille par blocs de 2 × 2 km sur une grille mondiale stable (D31) ; ce qui ne dépend que de l'IGN a tourné sur le bloc central avec des données fraîches (relief identique à 1 cm, 99,6 % des bâtiments identiques).
+- **Bloqué** : OpenStreetMap (rues, mobilier, commerces, sols) et la BDNB (époque, matériaux) ne sont pas joignables depuis cet environnement. Sans eux, ni les rues ni les sols ni les façades ne peuvent être fabriqués pour l'anneau. À autoriser dans les réglages réseau de l'environnement : `api.openstreetmap.org`, `overpass-api.de`, `api.bdnb.io`.
+- Les données publiées sont inchangées (même contenu), sauf les identifiants de tuile, désormais absolus (`24_32` au lieu de `0_0`), et `world.json`.
+- Tests : 100 (dont un test d'intégrité : chaque tuile du plan a ses fichiers, grille cohérente, relief grossier qui couvre tout).
+
