@@ -1,4 +1,5 @@
 import type { NavCell, PedLayer } from "../data/nav";
+import { RoadGraph } from "./road-graph";
 
 /**
  * Graphe piéton des super-tuiles chargées, raccordées entre elles par leurs portails (nœuds de même coordonnées de chaque côté d'une frontière).
@@ -47,6 +48,8 @@ export class NavGraph {
   private readonly portals = new Map<string, number[]>();
   /** Incrémenté à chaque ajout ou retrait : les caches qui dépendent du graphe (recouvrement) s'en servent. */
   version = 0;
+  /** Graphe routier (J3), sur les mêmes emplacements de super-tuiles : ajouté et retiré avec elles. */
+  readonly road = new RoadGraph();
 
   has(id: string): boolean {
     return this.cells.has(id);
@@ -66,6 +69,7 @@ export class NavGraph {
     this.slots[slot] = l;
     this.gens[slot] = ++this.genCounter;
     this.cells.set(cell.id, l);
+    this.road.add(slot, cell);
     for (const [key, node] of cell.ped.portals) {
       const ref = slot * SHIFT + node;
       const list = this.portals.get(key);
@@ -84,6 +88,7 @@ export class NavGraph {
       if (i >= 0) list.splice(i, 1);
       if (list.length === 0) this.portals.delete(key);
     }
+    this.road.remove(l.slot);
     this.slots[l.slot] = undefined;
     this.gens[l.slot] = 0;
     this.free.push(l.slot);

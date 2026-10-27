@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { NavGraph } from "../core/nav-graph";
+import { NODE_FLAG, ROAD_FLAG } from "../data/nav";
 import type { HeightField } from "../data/types";
 
 /**
@@ -118,18 +119,8 @@ export class NavDebug {
       }
       const poi = l.cell.poi;
       for (let i = 0; i < poi.count; i++) if (Math.hypot(poi.x[i]! - px, poi.y[i]! - py) <= RADIUS) dot(poi.x[i]!, poi.y[i]!, 1.2, magenta);
-      if (this.roads) {
-        const r = l.cell.road;
-        for (let i = 0; i < r.edges; i++) {
-          line.length = 0;
-          line.push(r.nodeX[r.a[i]!]!, r.nodeY[r.a[i]!]!);
-          for (let k = 0; k < r.np[i]!; k++) line.push(r.geom[(r.p0[i]! + k) * 2]!, r.geom[(r.p0[i]! + k) * 2 + 1]!);
-          line.push(r.nodeX[r.b[i]!]!, r.nodeY[r.b[i]!]!);
-          if (Math.hypot(line[0]! - px, line[1]! - py) > RADIUS) continue;
-          ribbons.add(line, 0.3, new THREE.Color(ROAD_COLORS[7 - Math.min(7, r.cls[i]!)]), 0.12, this.terrain);
-        }
-      }
     }
+    if (this.roads) this.addRoads(px, py, ribbons, dot, line);
     this.group.add(ribbons.mesh());
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(dotPos, 3));
@@ -139,6 +130,46 @@ export class NavDebug {
     pts.renderOrder = 6;
     this.group.add(pts);
     this.stats = { edges, ms: performance.now() - t0 };
+  }
+
+  /**
+   * Graphe routier (`?nav=all`) : gris selon la classe, vert pour un sens unique (avec une flèche au milieu), turquoise pour un rond-point,
+   * noir pour une arête interdite à la circulation (allée de parking, voie de bus) ; nœuds : orange feu, rouge stop, jaune cédez-le-passage, bleu clair impasse.
+   */
+  private addRoads(px: number, py: number, ribbons: Ribbons, dot: (x: number, y: number, lift: number, c: THREE.Color) => void, line: number[]): void {
+    const road = this.graph.road;
+    const oneway = new THREE.Color("#2ecc40"), ring = new THREE.Color("#00c8c8"), shut = new THREE.Color("#000000");
+    const signal = new THREE.Color("#ff8800"), stop = new THREE.Color("#ff0000"), giveWay = new THREE.Color("#ffee00"), deadEnd = new THREE.Color("#66ccff");
+    const mid = { x: 0, y: 0 }, arrow: number[] = [];
+    for (const l of this.graph.cells.values()) {
+      const [x0, y0, x1, y1] = l.cell.bounds;
+      if (px < x0 - RADIUS || px > x1 + RADIUS || py < y0 - RADIUS || py > y1 + RADIUS) continue;
+      const r = l.cell.road;
+      for (const e of road.edgesOfSlot(l.slot)) {
+        const n = road.polyline(e, line);
+        if (Math.hypot(line[0]! - px, line[1]! - py) > RADIUS && Math.hypot(line[(n - 1) * 2]! - px, line[(n - 1) * 2 + 1]! - py) > RADIUS) continue;
+        const flags = road.edgeFlags(e);
+        const color = !road.drivable(e) ? shut : flags & ROAD_FLAG.roundabout ? ring : road.oneway(e) ? oneway : new THREE.Color(ROAD_COLORS[7 - Math.min(7, road.edgeClass(e))]);
+        ribbons.add(line, 0.3, color, 0.12, this.terrain);
+        const way = road.oneway(e);
+        if (way && road.drivable(e)) {
+          // Flèche au milieu : deux traits en V vers l'arrière du sens de circulation.
+          const heading = road.pointAt(e, road.edgeLength(e) / 2, mid) + (way === 2 ? Math.PI : 0);
+          for (const side of [-1, 1]) {
+            const back = heading + Math.PI + side * 0.5;
+            arrow.length = 0;
+            arrow.push(mid.x, mid.y, mid.x + Math.sin(back) * 2.5, mid.y + Math.cos(back) * 2.5);
+            ribbons.add(arrow, 0.3, oneway, 0.14, this.terrain);
+          }
+        }
+      }
+      for (let i = 0; i < r.nodes; i++) {
+        if (Math.hypot(r.nodeX[i]! - px, r.nodeY[i]! - py) > RADIUS) continue;
+        const f = r.nodeFlags[i]!;
+        const c = f & NODE_FLAG.signal ? signal : f & NODE_FLAG.stop ? stop : f & NODE_FLAG.giveWay ? giveWay : f & NODE_FLAG.deadEnd ? deadEnd : null;
+        if (c) dot(r.nodeX[i]!, r.nodeY[i]!, 1.0, c);
+      }
+    }
   }
 
   dispose(): void {
