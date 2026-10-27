@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -152,6 +152,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     console.log("après rechargement:", JSON.stringify(await page.evaluate(() => ({ x: window.__autun.player.x, y: window.__autun.player.y, wp: window.__autun.ui.waypoint }))));
     await shot("j1-reprise");
     await ctx.close();
+  }
+
+  if (want("speedo")) {
+    // Le rendu logiciel est trop lent pour accélérer vraiment : on impose le vecteur vitesse du véhicule à chaque image (`speed` est recalculée à partir de vx et vy).
+    const hold = (kmh) => page.evaluate((v) => {
+      window.__holdKmh = v;
+      if (window.__holding) return;
+      window.__holding = true;
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) => raf((t) => { const r = window.__autun.riding(); if (r) { const st = r.state, v = window.__holdKmh / 3.6; st.vx = Math.sin(st.heading) * v; st.vy = Math.cos(st.heading) * v; st.speed = v; } cb(t); });
+    }, kmh);
+    const c1 = await open("ride=voiture");
+    await hold(87);
+    await frames(4);
+    await shot("p-compteur-voiture");
+    await hold(176);
+    await frames(4);
+    await shot("p-compteur-voiture-max");
+    await click("#pausebtn");
+    await sleep(800);
+    await shot("p-compteur-pause");
+    await c1.close();
+    const c2 = await open("ride=velo");
+    await hold(19);
+    await frames(4);
+    await shot("p-compteur-velo");
+    await c2.close();
   }
 
   await browser.close();

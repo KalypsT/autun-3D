@@ -7,6 +7,7 @@ import { createPlayerModel } from "../render/player-model";
 import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
 import { SkidMarks } from "../render/skid-marks";
+import { Speedo } from "../ui/speedo";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { UiBridge } from "./ui-bridge";
@@ -123,6 +124,7 @@ export function startGame(ctx: GameContext): void {
     return { kind, el, arrow, text };
   });
   const gasEl = document.getElementById("gas")!;
+  const speedo = new Speedo(document.getElementById("speedo")!);
 
   const mount = (v: Vehicle): void => {
     riding = v;
@@ -302,6 +304,7 @@ export function startGame(ctx: GameContext): void {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;
     }
+    if (riding) speedo.set(riding.state.speed, riding.spec.topSpeed);
     fleet.cull(cx, cy);
     hudTimer -= dt;
     if (hudTimer <= 0) {
