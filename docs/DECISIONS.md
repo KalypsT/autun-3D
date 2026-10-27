@@ -440,3 +440,12 @@ Mesure sur Honor (`?bench=1&crowd=100&sim=1`) : pigeons 1,2 à 1,35 ms par image
 - **Envoi à la carte graphique** limité à la partie écrite des trois tampons (`addUpdateRange`) et supprimé quand il n'y a plus d'oiseau.
 - **Recensement des coins** : au plus un toutes les 1,5 s, même quand le graphe change sans cesse en roulant.
 - **Résultat sur PC** : recalcul des sommets 3,2 fois plus rapide (0,159 → 0,050 ms pour 17 oiseaux), plus l'économie d'envoi et la portée. À remesurer sur le téléphone (ligne « Pigeons » du banc). Note : le chronomètre de Chrome sur Android est grossier (0,1 ms), les 0,36-0,42 ms sans oiseau étaient probablement surtout du bruit de mesure, comme l'est sans doute une part des petites valeurs.
+
+## 2026-10-27 — D49. Correction : la foule se renouvelait en boucle à l'arrêt (suite de D43)
+
+Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s constants, aucune perte, mémoire stable (pas de fuite ; le tas JavaScript retombe de 273 à 159 Mo à la minute 9, c'est un ramasse-miettes) ; mais **800 à 1 200 naissances par minute avec la caméra immobile** (autant de disparitions, population constante), alors que la marche normale en demande 20 à 40.
+- **Cause** (reproduite sur PC : 1 726 disparitions en 120 s, durée de vie médiane 0,3 s, nés et morts à 80 m) : en dessous de la cible, jusqu'à 2 passants naissaient par pas même pour un déficit de 1 ; au-dessus, la règle « trop de monde » en retirait 2 même pour un excès de 1, en visant des passants à plus de 60 m, donc surtout les nouveau-nés. La foule oscillait entre cible − 1 et cible + 1 à chaque pas.
+- **Correction** (`src/core/pedestrians.ts`) : la cible est arrondie à l'entier ; on ne fait naître que le déficit (2 au plus par pas) et on ne retire que l'excès (2 au plus). Résultat sur PC : 26 disparitions en 120 s, durée de vie médiane 80 s. Test de régression (60 s à l'arrêt au Champ de Mars : moins de 150 naissances, population à ± 2 de la cible).
+- **Conséquences** : la foule est plus stable et un peu moins chère (moins de naissances, chacune coûtant une recherche de point). Les 441 à 3 744 « naissances refusées (en vue) » des rapports étaient le même phénomène.
+- **Pigeons** : les rapports de cette série (version afc1310) précèdent l'optimisation de D48 ; à remesurer.
+

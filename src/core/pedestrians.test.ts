@@ -331,4 +331,16 @@ describe("entrées pour les autres systèmes", () => {
     expect(sim.state.pose![b]).toBe(0);
     expect(sim.stats.knocked).toBe(0);
   });
+
+  it("à l'arrêt au centre, la foule ne se renouvelle pas en boucle (régression : 20 naissances par seconde mesurées sur téléphone)", () => {
+    const sim = makeSim(graph());
+    const obs = still(-27.9, -15.1, 16);
+    sim.prefill(obs);
+    run(sim, 30, obs);
+    const before = sim.stats.spawns;
+    run(sim, 60, obs);
+    expect(sim.stats.spawns - before).toBeLessThan(150);
+    expect(sim.stats.alive).toBeGreaterThanOrEqual(sim.stats.target - 2);
+    expect(sim.stats.alive).toBeLessThanOrEqual(sim.stats.target + 1);
+  });
 });
