@@ -246,6 +246,9 @@ def osm_api_block(bx, by, dest):
             out.append({"type": "way", "id": e["id"], "nodes": e["nodes"], "tags": tags, "geometry": geometry})
         elif e["type"] == "node" and any(k in tags for k in NODE_KEYS):
             out.append({"type": "node", "id": e["id"], "lat": e["lat"], "lon": e["lon"], "tags": tags})
+        elif e["type"] == "relation" and str(tags.get("type", "")).startswith("restriction"):
+            # Restrictions de virage (étape J2, graphe routier) : membres from / via / to.
+            out.append({"type": "relation", "id": e["id"], "tags": tags, "members": [{"type": m["type"], "ref": m["ref"], "role": m["role"]} for m in e.get("members", [])]})
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps({"elements": out}))
     return len(out)
