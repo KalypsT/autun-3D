@@ -247,33 +247,55 @@ export function protoText(device: Record<string, unknown>, reports: PhaseReport[
   return lines.join("\n");
 }
 
-/** ?proto=look : une ou deux rangées de personnages devant la caméra, pour juger les rendus à l'œil (ou les comparer entre approches). */
+/**
+ * ?proto=look et ?view=characters : une ou deux rangées de personnages devant la caméra, pour juger la variété (ou comparer les rendus).
+ * `n` (24 par défaut), `seed`, `gap`, `dist`, `eye`, `turn` (cap des personnages : 0 de face, 3,14 de dos). En galerie (`view=characters`),
+ * un appui sur l'écran tire 24 autres recettes.
+ */
 function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number, camX: number, camZ: number, ground: number): void {
   const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, params } = ctx;
-  const approach: Approach = "B";
   const n = Number(params.get("n") ?? 24);
-  const seed = Number(params.get("seed") ?? 1);
-  const recipes = Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i));
-  const state = createCrowdState(recipes);
+  let seed = Number(params.get("seed") ?? 1);
   const perRow = Math.ceil(n / 2), spacing = Number(params.get("gap") ?? 0.95), dist = Number(params.get("dist") ?? 5.2);
   const turn = Number(params.get("turn") ?? 0);
-  for (let i = 0; i < n; i++) {
-    const row = i % 2, col = Math.floor(i / 2);
-    state.x[i] = camX + (col - (perRow - 1) / 2) * spacing + (row ? spacing / 2 : 0);
-    state.z[i] = camZ - dist - (row ? 2 : 0);
-    state.y[i] = groundAt(state.x[i]!, state.z[i]!);
-    // Face à la caméra : le « avant » du corps est −z, une rotation de π le tourne vers +z.
-    state.yaw[i] = Math.PI + turn;
-    const walking = i % 3 === 1;
-    state.speed[i] = walking ? 1.4 : 0;
-    state.phase[i] = walking ? (i * 1.3) % (Math.PI * 2) : 0;
-  }
-  const crowd = FACTORIES[approach](scene, state);
+  const place = (): CrowdState => {
+    const state = createCrowdState(Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i)));
+    for (let i = 0; i < n; i++) {
+      const row = i % 2, col = Math.floor(i / 2);
+      state.x[i] = camX + (col - (perRow - 1) / 2) * spacing + (row ? spacing / 2 : 0);
+      state.z[i] = camZ - dist - (row ? 2 : 0);
+      state.y[i] = groundAt(state.x[i]!, state.z[i]!);
+      // Face à la caméra : le « avant » du corps est −z, une rotation de π le tourne vers +z.
+      state.yaw[i] = Math.PI + turn;
+      const walking = i % 3 === 1;
+      state.speed[i] = walking ? 1.4 : 0;
+      state.phase[i] = walking ? (i * 1.3) % (Math.PI * 2) : 0;
+    }
+    return state;
+  };
+  let state = place();
+  let crowd = FACTORIES.B(scene, state);
   const eye = Number(params.get("eye") ?? 1.6);
   camera.position.set(camX, ground + eye, camZ);
   camera.lookAt(camX, ground + eye - 0.45 * (dist / 5.2), camZ - dist - 1);
   const placeSun = followSun(ctx);
   const x = camX, y = -camZ;
+  if (params.get("view") === "characters") {
+    // Appui bref : autres personnages (le plus souvent d'une seule tape ; pas de rotation de la caméra).
+    renderer.domElement.addEventListener("click", () => {
+      seed++;
+      crowd.dispose();
+      state = place();
+      crowd = FACTORIES.B(scene, state);
+    });
+    const hint = document.createElement("div");
+    hint.textContent = `Appuie sur l'écran pour tirer d'autres personnages · graine ${seed}`;
+    hint.style.cssText = "position:fixed;left:50%;bottom:10px;transform:translateX(-50%);padding:5px 12px;border-radius:10px;background:rgba(0,0,0,.5);color:#fff;font:13px system-ui,sans-serif;pointer-events:none;";
+    document.body.append(hint);
+    renderer.domElement.addEventListener("click", () => {
+      hint.textContent = `Appuie sur l'écran pour tirer d'autres personnages · graine ${seed}`;
+    });
+  }
   ctx.ready({ crowd });
   const frame = (): void => {
     crowd.update(state, camX, camZ);
@@ -286,6 +308,13 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+}
+
+/** ?view=characters : la galerie des personnages (voir `startLook`), au départ du jeu. */
+export function startGallery(ctx: GameContext): void {
+  const spawn = gameSpawn(ctx.params);
+  const ground = ctx.world.terrain.heightAt(spawn.x, spawn.y);
+  startLook(ctx, (x, z) => ctx.world.terrain.heightAt(x, -z), spawn.x, -spawn.y, ground);
 }
 
 /**

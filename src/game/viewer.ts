@@ -11,6 +11,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   parking: [-60, 150, 1.7, -20, 170, 3],
+  // Galerie des personnages (startGallery) : le départ du jeu.
+  characters: [-10, -40, 1.7, -10, -20, 1.2],
 };
 
 /** Vue demandée : ?cam=x,y,h,cibleX,cibleY,hCible ou ?view=nom. */

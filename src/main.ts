@@ -3,7 +3,7 @@ import { Colliders } from "./core/collision";
 import { loadWorldBase } from "./data/load";
 import type { GameContext } from "./game/context";
 import { startBench } from "./game/bench";
-import { startProto } from "./game/proto";
+import { startGallery, startProto } from "./game/proto";
 import { startGame } from "./game/game";
 import { gameSpawn, resolveStart, type StartState } from "./game/start";
 import { SettingsController } from "./game/settings-controller";
@@ -139,7 +139,10 @@ async function main(): Promise<void> {
       };
     },
   };
-  if (viewerMode) startViewer(ctx);
+  if (viewerMode) {
+    if (params.get("view") === "characters") startGallery(ctx);
+    else startViewer(ctx);
+  }
   else if (benchMode) startBench(ctx);
   else if (protoMode) startProto(ctx);
   else startGame(ctx);
