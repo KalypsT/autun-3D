@@ -429,3 +429,14 @@ Décisions de D39 appliquées : pigeons **sur les places, les parvis et près de
 - **À mesurer sur le téléphone** (D42, paysage, économie d'énergie coupée) : `?bench=1&crowd=100&sim=1`, `crowd=150`, `crowd=200`, `crowd=150&sim=1&tiers=0`, puis `crowd=100&sim=1&soak=10`. Critères inchangés : 60 i/s, simulation < 1 ms en moyenne et < 5 ms au pire, pigeons < 1 ms, mémoire JavaScript stable. Si les résultats contredisent D42-D45 (paliers, 100 par défaut, pigeons à 40 % de la foule), on les révise ici.
 - **Idées notées, non faites** : apparition progressive (changement d'échelle) des passants nés en vue ; voisins qui réagissent à une chute ; son du klaxon et des pigeons (J7) ; buts de marche (bancs, vitrines : A*) ; poses assise et téléphone ; pigeons sur les bancs et les toits ; plus de coins à pigeons si les places paraissent vides.
 
+
+
+## 2026-10-27 — D48. Pigeons : coût réduit après la mesure du téléphone (suite de D45)
+
+Mesure sur Honor (`?bench=1&crowd=100&sim=1`) : pigeons 1,2 à 1,35 ms par image pour 35-40 oiseaux, au-dessus du critère de D47 (< 1 ms), alors que la simulation des passants n'en coûte que 0,2. Mesure sur PC : le pas de simulation des pigeons est négligeable (0,005 ms), tout vient du recalcul des sommets (`PigeonRenderer.update`).
+- **Sommets triés par os** : la matrice d'un os est chargée une fois pour tous ses sommets (13 chargements au lieu de 145 par oiseau), normales ramenées à 1 par une multiplication (plus de racine carrée).
+- **Couleurs** réécrites seulement si la variante de plumage de l'emplacement change.
+- **Portée** : les oiseaux à plus de 100 m du joueur ne sont pas recalculés ni dessinés (un point de deux pixels).
+- **Envoi à la carte graphique** limité à la partie écrite des trois tampons (`addUpdateRange`) et supprimé quand il n'y a plus d'oiseau.
+- **Recensement des coins** : au plus un toutes les 1,5 s, même quand le graphe change sans cesse en roulant.
+- **Résultat sur PC** : recalcul des sommets 3,2 fois plus rapide (0,159 → 0,050 ms pour 17 oiseaux), plus l'économie d'envoi et la portée. À remesurer sur le téléphone (ligne « Pigeons » du banc). Note : le chronomètre de Chrome sur Android est grossier (0,1 ms), les 0,36-0,42 ms sans oiseau étaient probablement surtout du bruit de mesure, comme l'est sans doute une part des petites valeurs.

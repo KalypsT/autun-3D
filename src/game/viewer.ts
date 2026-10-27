@@ -114,7 +114,7 @@ export function startViewer(ctx: GameContext): void {
     }
     if (pigSim && pigView && nav!.graph.edgeCount > 0) {
       if (!sheet) pigSim.step(dt, pigObserver());
-      pigView.update(sheet ?? pigSim.state);
+      pigView.update(sheet ?? pigSim.state, pos.x, -pos.z, 100);
     }
     renderer.render(scene, camera);
     meter.tick(dt);

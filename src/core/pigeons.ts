@@ -145,6 +145,8 @@ export class PigeonSim {
   private readonly flocks: (Flock | null)[] = new Array(MAX_FLOCKS).fill(null);
   private readonly spots: Spot[] = [];
   private spotVersion = -1;
+  /** Heure (s de simulation) du dernier recensement : pas plus d'un toutes les 1,5 s, même quand le graphe change sans cesse en roulant. */
+  private spotClock = -1e9;
   private spotX = 1e9;
   private spotY = 1e9;
   private rng: number;
@@ -199,7 +201,8 @@ export class PigeonSim {
 
   private refreshSpots(obs: Observer, force = false): void {
     const moved = Math.hypot(obs.x - this.spotX, obs.y - this.spotY);
-    if (!force && this.graph.version === this.spotVersion && moved < 60) return;
+    if (!force && (this.clock - this.spotClock < 1.5 || (this.graph.version === this.spotVersion && moved < 60))) return;
+    this.spotClock = this.clock;
     this.spotVersion = this.graph.version;
     this.spotX = obs.x;
     this.spotY = obs.y;
