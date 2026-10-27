@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { SAVE_KEY, SaveStore, serializeSave, type SaveGame, type StorageLike } from "../core/save";
+import { SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, type SaveGame, type StorageLike } from "../core/save";
 import { gameSpawn, resolveStart } from "./start";
 
 const zone: [number, number, number, number] = [-1520, -1812, 1480, 1188];
 const saved: SaveGame = {
-  version: 1, savedAt: 1, player: { x: 300, y: -200 }, camera: { yaw: 1.5, pitch: 0.3 }, riding: null, vehicles: [], clock: { hour: 9, day: 12 }, waypoint: null,
+  version: SAVE_VERSION, savedAt: 1, player: { x: 300, y: -200 }, camera: { yaw: 1.5, pitch: 0.3 }, riding: null, vehicles: [], clock: { hour: 9, day: 12 }, waypoint: null,
 };
 const storeWith = (save: SaveGame | null): SaveStore => {
   const data: Record<string, string> = save ? { [SAVE_KEY]: serializeSave(save) } : {};

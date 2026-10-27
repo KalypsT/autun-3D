@@ -435,7 +435,7 @@ export class PigeonSim {
       this.directorT = 0;
       this.director(obs);
     }
-    if (obs.horn) this.scatter(obs.x, obs.y, 35);
+    if (obs.horn) this.scatter(obs.x, obs.y, obs.vehicle?.hornRange ?? 35);
 
     // Menaces : le joueur à pied ou son véhicule en marche, et les passants qui frôlent.
     const veh = obs.vehicle;

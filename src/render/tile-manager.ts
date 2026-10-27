@@ -35,6 +35,8 @@ const PRELOAD_LOD = 700;
 /** Ce qu'une tuile détaillée garde pour le reste du jeu : mobilier, escaliers, marquages au sol. */
 export interface TileExtras {
   id: string;
+  /** Nombre de bâtiments de la tuile (pour classer son quartier, D55). */
+  buildings: number;
   furniture: Furniture[];
   stairs: StairsZone[];
   marks: number[][][];
@@ -161,7 +163,7 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
-    e.extras = { id: e.info.id, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);
@@ -334,6 +336,16 @@ export class TileManager {
     for (const e of [...this.lodLive]) {
       if ((e.lodState === "ready" || e.lodState === "queued") && distanceTo(e.info, px, py) > VIEW_RANGE + LOD_MARGIN) this.dropLod(e);
     }
+  }
+
+  /**
+   * Les obstacles de la tuile qui contient (x, y) sont-ils en place ? Faux tant qu'elle se charge ou se construit : on y traverserait
+   * les murs. Vrai hors des tuiles du monde (les limites du monde s'en chargent).
+   */
+  solidAt(x: number, y: number): boolean {
+    const c = Math.floor((x - this.zone[0]) / this.size), r = Math.floor((y - this.zone[1]) / this.size);
+    const e = c >= 0 && c < this.cols ? this.grid.get(r * this.cols + c) : undefined;
+    return !e || e.extras !== null;
   }
 
   /** Extraits des tuiles détaillées actuellement chargées. */

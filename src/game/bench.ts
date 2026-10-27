@@ -13,6 +13,8 @@ import { PigeonRenderer } from "../render/pigeons";
 import { createCrowd } from "../render/crowd/crowd";
 import type { CrowdRenderer } from "../render/crowd/crowd-types";
 import { followSun, gameSpawn } from "./game";
+import { CATALOG } from "../core/vehicle-catalog";
+import { Fleet } from "./vehicles";
 import { showReportPanel } from "./report-panel";
 
 /**
@@ -26,6 +28,8 @@ interface Phase {
   /** Arrêt sur la place pendant `seconds`, ou trajet de `from` à `to` mètres à `speed` m/s. */
   still?: { seconds: number };
   drive?: { from: number; to: number; speed: number };
+  /** Trajet qui repart du début du parcours : on attend d'abord que les tuiles du départ soient construites, comme pour un arrêt. */
+  warmStart?: boolean;
   /** Réglage appliqué avant la phase (non mesuré pendant la mise en route). */
   setup?: () => void;
   /** Foule de personnages animés devant la caméra pendant la phase (arrêts seulement). */
@@ -79,9 +83,13 @@ interface PhaseReport {
   builds: { id: string; ms: number; frames: number; slice: number }[];
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
+  /** Trajets seulement : images où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'avait pas encore ses obstacles (D50) ; null à l'arrêt. */
+  late: { frames: number; here: number; ahead: number } | null;
   memory: Memory;
   /** Foule de la phase : effectif, répartition près / loin, durée moyenne de sa mise à jour (ms) ; null s'il n'y en avait pas. Avec `?sim=1`, `sim` mesure la simulation. */
   crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number; sim?: SimReport } | null;
+  /** `?fleet=1` : véhicules garés comme dans le jeu (+ un de chaque modèle devant le départ), à la fin de la phase, et coût de leur mise à jour par image ; null sans. */
+  fleet: { total: number; drawn: number; meshes: number; avgMs: number; maxMs: number } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -190,6 +198,20 @@ export function startBench(ctx: GameContext): void {
   // ?sim=1 : les passants sont ceux de la vraie simulation (J2), qui vivent pendant tout le banc, rues à 50 et 90 km/h comprises ; ?tiers=0 : tous jouent à
   // fond à chaque pas ; ?avoid=0 : ni évitement ni collisions (comparaisons de coût).
   const simMode = params.get("sim") === "1";
+  // ?fleet=1 : les véhicules garés du jeu (voitures instanciées par modèle, deux-roues articulés) et, devant le départ, un exemplaire de chaque modèle du
+  // catalogue : le pire cas d'appels de dessin (D56). Sans ce paramètre, le banc ne contient aucun véhicule (comparaison avec les mesures précédentes).
+  const fleetMode = params.get("fleet") === "1";
+  const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
+  if (fleet) {
+    for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
+    tiles.onBuild = (extras) => fleet.addFromTile(extras);
+    tiles.onUnload = (id) => fleet.removeTile(id);
+    CATALOG.forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
+  }
+  let fleetCost = { ms: 0, max: 0, frames: 0 };
+  // ?fast=200 : un trajet de plus à cette vitesse (km/h, 100 à 300), pour voir si les tuiles se construisent à temps (véhicules rapides, D50).
+  const fastParam = Math.round(Number(params.get("fast") ?? 0)) || 0;
+  const fastKmh = fastParam >= 100 ? Math.min(fastParam, 300) : 0;
   const crowdN = Math.min(Math.max(Math.floor(Number(params.get("crowd") ?? (soak > 0 || simMode ? 100 : 0))) || 0, 0), 400);
   const crowdPhases: Phase[] = crowdN > 0
     ? [
@@ -205,6 +227,7 @@ export function startBench(ctx: GameContext): void {
     ...crowdPhases,
     { name: "Rues à 50 km/h", drive: { from: 0, to: split, speed: 50 / 3.6 } },
     { name: "Rues à 90 km/h", drive: { from: split, to: end, speed: 90 / 3.6 } },
+    ...(fastKmh > 0 ? [{ name: `Rues à ${fastKmh} km/h`, drive: { from: 0, to: end, speed: fastKmh / 3.6 }, warmStart: true }] : []),
     { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
     { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
@@ -220,6 +243,8 @@ export function startBench(ctx: GameContext): void {
     crowd: crowdN,
     sim: simMode ? `simulation${params.get("tiers") === "0" ? ", sans paliers" : ""}${params.get("avoid") === "0" ? ", sans évitement" : ""}` : "",
     soak,
+    fast: fastKmh,
+    fleet: fleetMode,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -254,6 +279,7 @@ export function startBench(ctx: GameContext): void {
   let lastBuildCount = 0;
   let t = 0;
   let pendingBuild = 0;
+  let late = { here: 0, ahead: 0 };
   let crowd: CrowdRenderer | null = null;
   let crowdSim: CrowdSim | null = null;
   let crowdCost = { ms: 0, frames: 0 };
@@ -276,6 +302,7 @@ export function startBench(ctx: GameContext): void {
     phase.setup?.();
     crowdCost = { ms: 0, frames: 0 };
     simMs = [];
+    fleetCost = { ms: 0, max: 0, frames: 0 };
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
@@ -300,9 +327,10 @@ export function startBench(ctx: GameContext): void {
       crowd.setShadows(phase.crowd.shadows);
     }
     samples = [];
+    late = { here: 0, ahead: 0 };
     t = 0;
     // Les arrêts attendent que les tuiles autour soient construites (au plus 12 s), puis 1,5 s de mise en route.
-    warm = phase.still ? 12 : 0;
+    warm = phase.still || phase.warmStart ? 12 : 0;
     stableSince = 0;
     firstBuild = tiles.builds.length;
     lastBuildCount = tiles.buildCount;
@@ -325,6 +353,7 @@ export function startBench(ctx: GameContext): void {
       triangles: { avg: Math.round(tSum / n), max: tMax },
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
+      late: p.drive ? { frames: samples.length, ...late } : null,
       memory: measureMemory(ctx),
       crowd: crowd && (simMode || p.crowd)
         ? {
@@ -333,6 +362,7 @@ export function startBench(ctx: GameContext): void {
             ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!, { alive: pigSim?.stats.alive ?? 0, ms: pigCost.frames ? pigCost.ms / pigCost.frames : 0 }) } : {}),
           }
         : null,
+      fleet: fleet ? { ...fleet.stats, avgMs: fleetCost.frames ? fleetCost.ms / fleetCost.frames : 0, maxMs: fleetCost.max } : null,
       minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
     });
   };
@@ -382,6 +412,7 @@ export function startBench(ctx: GameContext): void {
         pendingBuild = 0;
         t = 0;
         samples = [];
+        late = { here: 0, ahead: 0 };
         if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
       }
     } else {
@@ -408,8 +439,20 @@ export function startBench(ctx: GameContext): void {
     camera.position.set(pos.cam[0], pos.cam[1], -pos.cam[2]);
     camera.lookAt(pos.look[0], pos.look[1], -pos.look[2]);
     tiles.update(pos.x, pos.y, pos.vx, pos.vy);
+    if (fleet) {
+      const t0 = performance.now();
+      fleet.cull(pos.x, pos.y);
+      const ms = performance.now() - t0;
+      fleetCost.ms += ms;
+      fleetCost.max = Math.max(fleetCost.max, ms);
+      fleetCost.frames++;
+    }
     nav?.update(pos.x, pos.y, pos.vx, pos.vy);
     pendingBuild = tiles.sliceMs;
+    if (measuring && p.drive) {
+      if (!tiles.solidAt(pos.x, pos.y)) late.here++;
+      if (!tiles.solidAt(pos.x + pos.vx, pos.y + pos.vy)) late.ahead++;
+    }
     terrainView.update(pos.x, pos.y);
     atmosphere.advance(dt);
     placeSun(pos.x, pos.y, terrain.heightAt(pos.x, pos.y));
@@ -487,7 +530,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -498,6 +541,8 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  ${f.fps.toFixed(1)} i/s en moyenne · 1 % les plus lentes : ${f.low1.toFixed(1)} i/s · ${f.frames} images en ${f.seconds.toFixed(1)} s`);
     lines.push(`  Durée d'image : médiane ${f.p50.toFixed(1)} ms · 95 % ${f.p95.toFixed(1)} · 99 % ${f.p99.toFixed(1)} · max ${f.max.toFixed(0)} ms`);
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
+    if (p.late) lines.push(`  Chargement en retard : ${p.late.here} images sur ${p.late.frames} sans obstacles sous le véhicule, ${p.late.ahead} sans obstacles à 1 s devant (objectif : 0)`);
+    if (p.fleet) lines.push(`  Véhicules garés : ${p.fleet.total} en tout · ${p.fleet.drawn} dessinés en ${p.fleet.meshes} maillages instanciés (un par modèle présent) · mise à jour ${p.fleet.avgMs.toFixed(2)} ms par image (pire ${p.fleet.maxMs.toFixed(2)} ms)`);
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
     if (p.crowd?.sim) {

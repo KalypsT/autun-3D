@@ -270,6 +270,8 @@ export function createVehicle(x: number, y: number, heading: number, terrain: He
 }
 
 const SUBSTEPS = 2;
+/** Plafond des sous-pas (au-delà, la vitesse dépasse tout ce que le jeu permet). */
+const MAX_SUBSTEPS = 12;
 /** En dessous, modèle géométrique pur ; au-dessus de KIN_HIGH, modèle dynamique pur. */
 const KIN_LOW = 1.5;
 const KIN_HIGH = 4;
@@ -287,6 +289,18 @@ const STEER_TIME = 0.2;
 /** Deux-roues : écart permis entre le lacet réel et celui du guidon (rad/s), et glissade latérale (m/s). */
 const TWO_WHEEL_YAW = 0.2;
 const TWO_WHEEL_SLIP = 0.4;
+
+/** Plus petit rayon de la coque (m). */
+function smallestRadius(spec: VehicleSpec): number {
+  let r = Infinity;
+  for (const [, c] of spec.hull) r = Math.min(r, c);
+  return r;
+}
+
+/** Nombre de sous-pas d'un pas de `dt` secondes à la vitesse `speed` (m/s) : au moins deux, assez pour avancer de moins que le plus petit rayon de la coque. */
+export function collisionSteps(spec: VehicleSpec, speed: number, dt: number): number {
+  return Math.min(MAX_SUBSTEPS, Math.max(SUBSTEPS, Math.ceil((speed * dt) / (0.9 * smallestRadius(spec)))));
+}
 
 /** Force motrice disponible à la vitesse u (m/s) pour un accélérateur 0-1. */
 export function driveForce(spec: VehicleSpec, u: number, throttle: number): number {
@@ -311,11 +325,16 @@ function clamp(v: number, lo: number, hi: number): number {
 
 /** Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. */
 export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null): void {
-  const h = dt / SUBSTEPS;
-  for (let i = 0; i < SUBSTEPS; i++) integrate(s, spec, input, h, terrain);
-  collide(s, spec, colliders);
-  // Obstacles propres à certains véhicules (escaliers pour une voiture).
-  if (extra) collide(s, spec, extra);
+  // Chocs à chaque sous-pas, et assez de sous-pas pour qu'on n'avance jamais de plus que le plus petit rayon de la coque entre deux
+  // tests : sinon un mur fin passe entre deux positions (moto à 250 km/h : 68 % de traversées, D50).
+  const n = collisionSteps(spec, Math.hypot(s.vx, s.vy), dt);
+  const h = dt / n;
+  for (let i = 0; i < n; i++) {
+    integrate(s, spec, input, h, terrain);
+    collide(s, spec, colliders);
+    // Obstacles propres à certains véhicules (escaliers pour une voiture).
+    if (extra) collide(s, spec, extra);
+  }
   // Limites du monde (3 m de marge).
   const x = clamp(s.x, terrain.xMin + 3, terrain.xMax - 3), y = clamp(s.y, terrain.yMin + 3, terrain.yMax - 3);
   if (x !== s.x) s.vx = 0;

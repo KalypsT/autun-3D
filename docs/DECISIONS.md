@@ -449,3 +449,132 @@ Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s consta
 - **Conséquences** : la foule est plus stable et un peu moins chère (moins de naissances, chacune coûtant une recherche de point). Les 441 à 3 744 « naissances refusées (en vue) » des rapports étaient le même phénomène.
 - **Pigeons** : les rapports de cette série (version afc1310) précèdent l'optimisation de D48 ; à remesurer.
 
+
+## 2026-10-27 — D50. Étape V : cadrage et catalogue de véhicules (V-0)
+
+**Cadrage** (réponses de l'utilisateur, recommandations suivies) :
+- **Vitesses maximales plafonnées** : voiture sportive 200 km/h, moto sportive 210 km/h, avec une accélération réaliste. Raison : à 240 km/h, le rayon de virage permis par l'adhérence est d'environ 300 m (v² / 1,4 g), pour des rues de 4 à 8 m et un anneau traversé en 45 s ; on ne roule vite qu'en ligne droite sur quelques avenues, et la vitesse coûte cher (collisions, chargement des tuiles). Le plafond sera une constante unique à relever avec la commune entière (étape C).
+- **Obtention** : les véhicules sont garés sur les places (voitures, deux-roues motorisés) et aux parkings à vélos, avec un modèle tiré selon la zone (centre, résidentiel, périphérie, nature, comme les passants en D39) ; sportives et motos sportives à environ 2 %. Pas de variation selon l'heure : un véhicule garé est un obstacle et se sauvegarde, il ne peut pas apparaître et disparaître ; cela relève de la circulation (J3). Les véhicules de J3 et J4 (circulation, vol) puiseront dans le même catalogue ; la police et les taxis y seront de simples entrées.
+- **Pas de garage** avant l'étape argent (J6) : `?ride=<identifiant>` pour essayer un modèle, et une galerie `?view=vehicles`.
+- **Vieille voiture** : freinage plus faible, adhérence plus basse, **sans ABS** (les roues bloquent comme avant D29) : c'est ce qui la distingue à la conduite.
+
+**Constats avant de coder** : (1) une moto à 250 km/h traverse un mur fin dans 68 % des cas (pas de 1,16 m par image contre une coque de 0,32 m de rayon ; voiture à 240 km/h : 0 %) ; à corriger à l'étape V-1 par des collisions à chaque sous-pas. (2) Chargement des tuiles à 200 km/h : estimé, pas mesuré, phase de banc à ajouter. (3) Seules les voitures garées sont instanciées ; les deux-roues garés sont des modèles complets, masqués au-delà de 110 m.
+
+**Découpage** : V-0 catalogue (cette décision), V-1 vitesse (collisions, banc), V-2 générateur de carrosserie et voitures garées par modèle, V-3 voitures, V-4 deux-roues, V-5 placement par zone, V-6 bilan et mesure.
+
+**V-0, catalogue** (`src/core/vehicle-catalog.ts`, logique pure) :
+- Une entrée (`VehicleDef`) : identifiant stable (enregistré dans les sauvegardes), famille, nom, fiche physique (`VehicleSpec`, coque `hull` obligatoire pour les chocs contre passants, D44), palette. Les quatre véhicules existants sont les premières entrées, **avec les fiches inchangées** (un test compare les objets) : `velo-ville`, `trottinette`, `citadine`, `moto-routiere`.
+- **Famille** (`bike`, `kickscooter`, `car`, `moto`) : ce qui est commun à plusieurs modèles pour l'interface et la conduite (pictogramme, libellés de l'accélérateur et du klaxon ou de la sonnette, distance pour monter, côté de la descente, caméra de poursuite, traces de pneus). L'ancien type `scooter` est renommé `kickscooter` : c'était la trottinette électrique, et « scooter 125 » désignera un autre véhicule.
+- `defProblems` valide une entrée (identifiant, palette, fiche, vitesses, coque, inclinaison et frein à main cohérents avec la famille) ; un test l'applique à tout le catalogue, donc toute entrée future.
+- **Dessin** : `MODEL_BUILDERS` (`src/game/vehicles.ts`) associe un constructeur de modèle à chaque identifiant, à la couleur de la palette (les palettes vivent maintenant dans le catalogue, plus dans les fichiers de modèles) ; un test vérifie que chaque entrée a son dessin. `Fleet.add` prend un identifiant de modèle.
+- **Sauvegarde version 2** : un véhicule est enregistré par `model` au lieu de `kind`. La version 1 est migrée à la lecture (`car` → `citadine`, `bike` → `velo-ville`, `scooter` → `trottinette`, `moto` → `moto-routiere`) ; un modèle inconnu est écarté (le véhicule seul, pas la partie). Une version plus récente que le jeu reste refusée. Les anciennes sauvegardes restent donc chargeables.
+- `?ride=` accepte les anciens noms (velo, trottinette, voiture, moto) et tout identifiant du catalogue.
+- Aucun changement de comportement : mêmes fiches, mêmes modèles, mêmes couleurs, mêmes appels de dessin.
+
+## 2026-10-27 — D51. V-1 : collisions à haute vitesse et phase rapide du banc
+
+- **Cause de la traversée de mur** (D50) : `stepVehicle` intégrait deux sous-pas puis testait les chocs une seule fois ; à 250 km/h, la moto avance de 1,16 m entre deux tests, plus que l'écart entre ses deux cercles de coque (1,15 m) : un segment de mur sans épaisseur passe entre les deux. La voiture, avec trois cercles de 0,82 m, ne traverse rien à 240 km/h (0 % mesuré).
+- **Correction** (`src/core/vehicle.ts`) : les chocs (et les obstacles propres aux voitures) sont testés à **chaque sous-pas**, et le nombre de sous-pas est adapté à la vitesse (`collisionSteps`) pour avancer de moins de 0,9 × le plus petit rayon de la coque entre deux tests, au plus 12. À vitesse normale rien ne change (2 sous-pas : vélo, trottinette, voiture jusqu'à ≈ 350 km/h, moto jusqu'à ≈ 100 km/h). Test de non-traversée à 250 et 500 km/h, de face et de biais, qui échoue sans l'adaptation (le seul test à chaque sous-pas suffit à 250 km/h, pas à 500).
+- **Tuile non construite** : `TileManager.solidAt(x, y)` dit si les obstacles de la tuile qui contient un point sont en place (une tuile en chargement ou en construction n'a pas ses murs : on la traverserait).
+- **Banc** : `?bench=1&fast=200` ajoute un trajet à cette vitesse (km/h, 100 à 300) qui repart du début du parcours après une mise en route des tuiles, et **tous les trajets** (50, 90 et rapide) comptent maintenant les images où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'avait pas ses obstacles (« Chargement en retard », objectif : 0). Le banc est une caméra qui suit un parcours, pas un vrai véhicule : il mesure le chargement à vitesse donnée, pas la tenue de route.
+- **Mesure** : sur PC, rendu logiciel, `bench=court` ne vaut rien en valeur absolue (voir D20) ; la mesure qui compte est celle de l'Honor (`?bench=1&fast=200&crowd=100&sim=1`, à copier), à faire avec le bilan de V-6 ; le plafond de 200 km/h de D50 ne sera relevé qu'à ce prix.
+
+## 2026-10-27 — D52. V-2 : générateur de carrosserie, voitures garées par modèle
+
+- **Générateur** (`src/render/car-body.ts`) : une voiture est décrite par ses mesures (`CarBodyParams` : longueur, largeur, hauteur, porte-à-faux avant, garde au sol, ligne de ceinture, hauteur du nez et de la queue, longueurs du capot, du pare-brise, du toit et de la lunette, rétrécissement du toit, roues). Le reste (coffre, positions des phares, des feux, des roues, des montants) en découle. Analogie : le patron d'un couturier.
+- **Construction** : des « tranches » (sections trapézoïdales le long de l'axe, `loft`) reliées par des faces planes, normales vers l'extérieur : le bas de caisse (capot qui monte vers le pare-brise, flancs, coffre) en peinture, l'habitacle en verre, plus le toit, les ailes au-dessus des roues, les montants A, B et C (tubes sans bouchons), pare-chocs, phares, calandre, feux, plaque, rétroviseurs. Phares, feux et plaque sont posés en saillie de 1,5 cm sur la face de la caisse (première version : enfouis, donc invisibles).
+- **Gabarit** : `VehicleDef.size` (longueur, largeur, hauteur hors tout) est dans le catalogue ; un test vérifie que le modèle généré le respecte à quelques centimètres près (roues au sol, essieux aux distances de la fiche physique) et que la coque de la fiche recouvre à peu près le gabarit (`defProblems`, vérifié pour toute entrée).
+- **Citadine refaite** avec le générateur, mêmes dimensions (3,98 × 1,74 × 1,42 m), proportions de hayon. Coût par voiture garée : 692 triangles (208 de peinture, 484 de détails et de roues à 10 facettes) contre 636 avant (+9 %) ; l'écart est dû aux montants et aux pare-chocs ; la voiture conduite garde des roues à 14 facettes.
+- **Voitures garées** : deux maillages instanciés (peinture teintée par instance, détails et roues) **par modèle présent**, créés à la demande ; un modèle absent des 170 m ne coûte aucun appel de dessin (maillage masqué), un modèle présent en coûte deux (quatre avec l'ombre) quel que soit le nombre d'exemplaires. Capacité : 400 exemplaires par modèle. `ParkedCars.drawn` donne le nombre de maillages dessinés (pour le banc de V-6).
+- **Traces de pneus** : la voie d'une voiture suit sa largeur (`tyreOf`), plus une valeur fixe.
+- **Galerie** `?view=vehicles` (`src/game/vehicle-gallery.ts`) : le catalogue rangé devant la caméra, au départ du jeu ; `ids=`, `family=`, `heading=` (cap), `variant=`, `perRow=`, `eye=`, `rider=1` (conducteurs sur les deux-roues) ; un appui passe à la couleur suivante.
+
+## 2026-10-27 — D53. V-3 : huit voitures
+
+- **Catalogue** (`src/core/vehicle-catalog.ts`, fiches dans `src/core/vehicle-specs.ts`, mesures de carrosserie dans `src/render/car-model.ts`) : citadine, **compacte**, **berline**, **break**, **petit SUV**, **camionnette**, **vieille voiture**, **sportive**. Chaque fiche part de celle de la citadine (`CAR`) et ne réécrit que ce qui change : masse, inertie de lacet (masse × (0,46 × empattement)²), répartition avant/arrière, rigidité de dérive (≈ 56 et 64 N/rad par kg), adhérence, puissance, traction maximale (≈ 0,33 à 0,42 g, 0,62 g pour la sportive), freinage (≈ 0,8 à 1,2 g), traînée, hauteur du centre de gravité, roulis, frein moteur, répartition du freinage, coque (trois cercles du nez à la queue). Palettes par modèle (sobres pour la berline et le break, blanches pour la camionnette, délavées pour la vieille voiture, vives pour la sportive).
+- **Résultats mesurés** (simulation, plat, accélérateur ou frein à fond ; la pédale tactile met 0,7 s à monter, d'où des distances de freinage de 42 à 65 m) :
+
+  | modèle | 0-100 km/h | vitesse atteinte | 100 → 0 |
+  |---|---|---|---|
+  | citadine | 11,1 s | 167 km/h | 48 m |
+  | compacte | 9,7 s | 182 km/h | 48 m |
+  | berline | 9,3 s | 189 km/h | 49 m |
+  | break | 9,6 s | 188 km/h | 49 m |
+  | petit SUV | 10,7 s | 167 km/h | 50 m |
+  | camionnette | 16,8 s | 135 km/h | 55 m |
+  | vieille voiture | 12,6 s | 150 km/h | 65 m, roues avant bloquées |
+  | sportive | 4,9 s | 194 km/h | 42 m |
+
+  (la vitesse atteinte est de 93 à 97 % de la vitesse de la fiche : la traction s'éteint progressivement.)
+- **Plafond de vitesse** (D50) : `SPEED_CAP` (200 km/h pour les voitures, 210 pour les motos) et `limited(spec, cap)` : si la vitesse réelle de la fiche le dépasse (sportive 240, berline 215, break 205), la traction s'éteint sur les 6 % de vitesse sous le plafond, comme un limiteur ; le reste de la fiche ne change pas. Une seule constante à relever avec la commune entière.
+- **Vieille voiture** : pas d'ABS, adhérence 0,8, freins fatigués, roulement plus fort, suspension molle. Freinée à fond, ses roues avant se bloquent (comme avant D29) et elle s'arrête en 65 m contre 48 m pour la citadine. Test : bloque ; toutes les autres voitures ne bloquent jamais.
+- **Sportive** : propulsion (la roue arrière est motrice, motricité bornée par l'adhérence de l'essieu arrière), pneus larges, centre de gravité à 0,45 m. 0 à 100 km/h en 4,9 s ; plafonnée à 200 km/h.
+- **Camionnette** : la caisse arrière est pleine hauteur et sans vitre (option `cargo` du générateur : la lunette est de longueur nulle), direction plus lente, haut centre de gravité (0,85 m), freinage plus long.
+- **Tenue de route à la vitesse maximale** (test sur tout le catalogue ; deux-roues : lacet résiduel < 0,05 rad/s) : plein braquage 1 s puis relâché à la vitesse maximale, sans tête-à-queue, l'accélération latérale reste sous `steerGrip × adhérence × 1,2` g, le cap tourne de moins de 40°, la voiture se remet droite en 4 s. Le braquage permis à la vitesse maximale reste supérieur à 0,003 rad (≈ 0,17°) pour les véhicules de plus de 108 km/h (la moto sportive à 210 km/h : 0,004 rad, rayon de virage ≈ 350 m).
+- **Caméra de poursuite** par modèle (`chaseOf`) : celle de la famille, reculée de 1,2 m par mètre de longueur au-delà de la citadine et relevée de la moitié de l'écart de hauteur (une camionnette de 4,9 m et 1,95 m de haut voit au-dessus du toit, une sportive plus bas).
+- **Garage** : les nouvelles voitures s'essaient avec `?ride=<identifiant>` (`?ride=sportive`) et se jugent dans la galerie `?view=vehicles` (`family=car`, par défaut deux rangées vues de plus haut). Elles ne sont pas encore garées dans les rues : le placement par zone est l'étape V-5, les voitures garées sont pour l'instant toutes des citadines.
+
+## 2026-10-27 — D54. V-4 : six deux-roues
+
+- **Catalogue** : vélo de ville, **VTT**, trottinette, **scooter 125**, moto routière, **moto sportive**. Famille `bike` : vélo de ville et VTT ; `kickscooter` : trottinette ; `moto` : scooter 125, moto routière, moto sportive (le scooter 125 a son propre pictogramme 🛵 : `VehicleDef.icon`).
+- **Fiches** (`src/core/vehicle-specs.ts`) :
+  - **VTT** : 94 kg, ≈ 250 W, gros pneus crantés (roulement 0,011, adhérence 0,9), roues de 29 pouces, freins à disque ; plafonne vers 23 km/h sur le plat, un peu moins que le vélo de ville.
+  - **Scooter 125** : 235 kg avec le pilote, 10 kW (7,5 aux roues), petites roues (rayon 0,25 m), 0 à 50 km/h en 4,3 s, 93 km/h atteints (100 de fiche), freinage de 50 km/h en 16 m, avec ABS.
+  - **Moto sportive** : 275 kg, 85 kW (76 aux roues), pneus larges (adhérence 1,1), centre de gravité à 0,62 m, 0 à 100 km/h en 3,1 s, **plafonnée à 210 km/h** (250 réels ; 203 km/h atteints), freinage de 100 km/h en 42 m (la routière : 50 m, 0 à 100 en 4,5 s).
+- **Modèles** : le vélo est paramétré par un `BikeStyle` (rayon de roue, section du pneu, largeur du guidon, panier, fourche suspendue) ; le VTT n'a pas de panier, un guidon plus large, des pneus plus gros et une fourche épaisse. `createMotoModel(couleur, "roadster" | "sport")` : la sportive a un carénage (nez, bulle, flancs, sabot), un grand réservoir, une bosse de selle pointue, des demi-guidons bas, un pneu arrière large, des repose-pieds hauts et reculés. Scooter 125 (`src/render/motorscooter-model.ts`) : tablier devant les jambes, plancher plat, coque arrière sous la selle, phare carré, rétroviseurs, pot ; pieds à plat sur le plancher. L'ancien fichier de la trottinette est renommé `kickscooter-model.ts`.
+- **Pose « penché sur le réservoir »** (`RideStyle` « tuck » dans `src/core/character-pose.ts`) pour la moto sportive : torse incliné de 0,6 rad (0,2 pour une moto assise), bras vers les demi-guidons bas ; testée avec les autres poses (mains et pieds sur leurs appuis, finitude pour toutes les morphologies).
+- **Gabarit** : le catalogue reprend les dimensions mesurées des modèles ; un test vérifie que chaque deux-roues dessiné les respecte (longueur, largeur, hauteur à 8 cm près, roues au sol, poignées au-dessus des pieds).
+- **Tenue de route** : le test de plein braquage à la vitesse maximale couvre maintenant tout le catalogue. Deux-roues : lacet résiduel inférieur à 0,05 rad/s quatre secondes après (0,033 pour la moto sportive à 210 km/h, rayon de 1,7 km : elle roule droit pour le joueur).
+- **Essai** : `?ride=vtt`, `scooter-125`, `moto-sportive`. Galerie : `?view=vehicles&rider=1`. Placement dans les rues : étape V-5.
+
+## 2026-10-27 — D55. V-5 : quels véhicules où
+
+- **Principe** : le modèle garé sur une place dépend du quartier, tiré une fois pour toutes quand la tuile se construit (`src/core/vehicle-placement.ts`, logique pure ; `Fleet.addFromTile`). Les places occupées sont les mêmes qu'avant (30 % des places pour une voiture, 4 % pour deux motos, vélos aux parkings à vélos) : seul le modèle change. Pas de variation selon l'heure (D50).
+- **Zone d'une place** (`parkingZone`) : sans le graphe de navigation, qui se charge à son rythme (avant ou après la tuile) et rendrait le résultat dépendant de l'ordre des chargements : d'après le nombre de bâtiments de la tuile (`TileExtras.buildings`) et la distance à la mairie. Centre : au moins 90 bâtiments à moins de 500 m ; résidentiel : au moins 25 ; périphérie : au moins 3 ; nature : le reste. Même vocabulaire que les passants (`ZONE`, D39), mais calculé autrement : ce n'est pas la zone du graphe piéton, seulement une approximation de même nature.
+- **Poids** (en %, chaque tableau fait 100) :
+
+  | zone | citadine | compacte | berline | break | petit SUV | camionnette | vieille | sportive |
+  |---|---|---|---|---|---|---|---|---|
+  | centre | 28 | 22 | 12 | 6 | 12 | 8 | 10 | 2 |
+  | résidentiel | 18 | 22 | 14 | 12 | 16 | 5 | 11 | 2 |
+  | périphérie, nature | 10 | 14 | 12 | 10 | 18 | 24 | 10 | 2 |
+
+  Motos (par moto, chaque place en reçoit deux) : scooter 125 / routière / sportive = 55 / 33 / 12 (centre), 40 / 45 / 15 (résidentiel), 25 / 55 / 20 (périphérie, nature). Vélos des parkings à vélos : ville / VTT = 90 / 10 (centre), 75 / 25 (résidentiel), 50 / 50 (périphérie), 30 / 70 (nature) ; la trottinette au bout de la rangée est inchangée.
+- **Tirage** : le modèle vient d'un hachage de la place, indépendant de celui qui décide si la place est occupée, de la couleur et du sens de stationnement ; il est reproductible (la même place donne toujours le même modèle). L'identifiant d'un véhicule ne contient pas son modèle (`voiture-<place>`), la sauvegarde enregistre le modèle (V-0) : un véhicule retrouvé dans une sauvegarde garde son modèle même si les poids changent un jour.
+- **Résultat sur l'anneau** (144 tuiles, simulé avec les vraies données) : 1 020 véhicules garés : 151 citadines, 146 compactes, 113 berlines, 86 breaks, 115 petits SUV, 65 camionnettes, 86 vieilles voitures, 12 sportives (1,5 % des voitures) ; 88 scooters 125, 85 motos routières, 21 motos sportives ; 29 vélos de ville, 8 VTT, 15 trottinettes.
+- **Interface** : le bouton devient « Monter 🚗 Berline » (nom du modèle, pictogramme propre au modèle s'il en a un : 🛵). Les pastilles des véhicules proches restent par famille.
+
+## 2026-10-27 — D56. V-6 : tous les véhicules garés en instances, mesure, bilan de l'étape V
+
+**Constat** (banc `?bench=1&fleet=1`, nouveau, sur PC en rendu logiciel : les appels de dessin et les triangles sont exacts, les durées ne valent rien) : avec les nouveaux modèles garés comme le jeu les place (D55), l'arrêt sur la place passait de **128 à 438 appels de dessin** (112 → 238 sans ombres). Cause : seules les voitures étaient instanciées ; chaque deux-roues garé était un modèle articulé de 4 maillages, 44 visibles autour de la place, chacun dessiné deux fois (carte d'ombres). Le budget du téléphone (≈ 150 appels à l'arrêt, D26) était dépassé près de trois fois : corrigé avant de livrer, pas laissé à la mesure du téléphone.
+
+**Correction** (`src/render/parked-models.ts`) : **tous** les véhicules garés, de toutes les familles, sont des instances.
+- **Une géométrie au repos par modèle** (peinture en blanc pur) : pour une voiture, caisse + détails + roues à 10 facettes ; pour un deux-roues, le modèle articulé construit en blanc, « cuit » à l'arrêt (guidon droit, roues immobiles : `bakeRest`) puis fusionné. **Un seul maillage instancié par modèle présent**, quel que soit le nombre d'exemplaires : au plus 14 maillages (28 appels avec l'ombre) pour tout le catalogue, au lieu de 2 par modèle de voiture (peinture + détails) et 4 par deux-roues garé.
+- **Teinte seulement de la peinture** : les sommets blancs sont teintés par la couleur de l'instance, les autres gardent leur couleur (pneus, verre, chrome). Le nuanceur de Three.js est modifié d'une ligne (`instanceColor` multiplié seulement si la couleur du sommet est blanche) ; un test vérifie que cette ligne existe toujours dans la version installée, et que chaque modèle a des sommets blancs et des sommets de couleur propre (aucun modèle n'est teinté en entier ni pas du tout).
+- **Un modèle articulé seulement à la conduite** : `Fleet.take` le crée, `Fleet.park` le libère (ce qui était déjà le cas pour les voitures).
+- **Préparation à l'avance** : les 14 maillages sont fabriqués au démarrage (cachés) ; sinon le premier remplissage coûtait 35 ms dans une image (mesuré au banc : pire mise à jour de 35,6 ms à 0,6 ms).
+- **Distances de dessin inchangées** : voitures à moins de 170 m, le reste à moins de 110 m, mise à jour tous les 10 m de déplacement.
+
+**Mesure sur PC** (appels de dessin / triangles, arrêt sur la place, avec ombres) :
+
+| | appels | triangles |
+|---|---|---|
+| sans véhicule garé (banc de J2) | 128 | 1 412 k |
+| V-5, deux-roues articulés | 438 | 1 574 k |
+| **V-6, tout en instances** | **157** | **1 598 k** |
+
+Sans ombres : 112 → 127 appels, 801 → 905 k triangles. Les 126 véhicules garés dessinés autour de la place coûtent ≈ 800 triangles chacun (voitures 560 à 700, deux-roues 400 à 900) ; le total à l'arrêt (1,6 M) est celui d'avant l'étape V (les anciennes citadines coûtaient 636 triangles). Trajets : 135 à 160 appels (max 181 au trajet à 200 km/h, contre 124 à 142 sans véhicule), « chargement en retard » 0 image sur 55 à 118 pour 50, 90 et 200 km/h (le banc ne mesure que la construction des tuiles, pas la tenue de route ; **valeur sans portée en rendu logiciel** : à refaire sur le téléphone). Mise à jour de la flotte : 0,01 à 0,04 ms par image (pire 0,6 ms) sur PC.
+
+**Protocole de mesure sur l'Honor** (comme D42 et D47 ; paysage, rapports à copier) :
+1. `?bench=1&crowd=100&sim=1&fleet=1&fast=200` : un seul passage (≈ 4 minutes). À comparer aux mesures de D47 : 60 i/s partout ; **« Chargement en retard » = 0** sur les trajets à 50, 90 et surtout **200 km/h** ; appels de dessin à l'arrêt sous ≈ 200 ; « Véhicules garés : mise à jour » sous 0,3 ms.
+2. Si tout est vert : `&soak=10` (10 minutes d'endurance avec véhicules garés).
+3. Pour isoler le coût des véhicules : le même banc sans `&fleet=1`.
+Si le chargement est en retard à 200 km/h, la vitesse plafonnée de la sportive (200 km/h) et de la moto sportive (210) est à baisser (`SPEED_CAP`, `src/core/vehicle-specs.ts`) ; si les appels dépassent le budget, réduire la distance de dessin des deux-roues (`DRAW_DISTANCE`) ou fusionner peinture et détails.
+
+**Klaxon et sonnette** (J2 × V) : portée par famille (`FamilyInfo.hornRange`) : sonnette 15 m (vélos, trottinette), moto et scooter 28 m, voiture 35 m ; passants et pigeons devant sursautent jusque-là, et sautent de côté à moins du tiers de la portée (12 m au plus). Test : la sonnette ne fait sursauter personne au-delà de 15 m, le klaxon de voiture si.
+
+**Coque et passants** : toutes les entrées du catalogue ont leur coque (`hull`), imposée par `defProblems` et par le type ; les chocs contre passants (D44) lisent donc la coque du modèle conduit.
+
+**Bilan de l'étape V** : catalogue de 14 modèles (8 voitures, 6 deux-roues : D50 à D55), générateur de carrosserie (D52), plafond de vitesse commun (D53, D54), collisions sûres à haute vitesse (D51), placement par quartier (D55), banc de la flotte (cette décision), sauvegarde version 2 avec migration (D50). **Reste de ton côté** : fusionner la PR et lancer la mesure du téléphone ci-dessus ; juger l'aspect (galerie `?view=vehicles`, essai `?ride=<identifiant>`, voitures garées dans les rues).
+
+**Pour J3 (circulation)** : les voitures de la circulation piocheront dans `CATALOG` (`family: "car"`), avec leur fiche (`spec`) et leur palette ; le placement par zone (`src/core/vehicle-placement.ts`) donne les poids par quartier ; les voitures roulantes ne seront pas des instances de repos mais des modèles articulés (roues qui tournent) ou une variante instanciée avec roues animées : à mesurer. La police et les taxis de J4 sont de simples entrées de plus.

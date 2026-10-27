@@ -9,10 +9,9 @@ import { createCrowd } from "../render/crowd/crowd";
 import { createCrowdState, type CrowdRenderer, type CrowdState } from "../render/crowd/crowd-types";
 import { recipeFromSeed } from "../core/character";
 import { createVehicle } from "../core/vehicle";
-import { createBikeModel } from "../render/bike-model";
-import { createMotoModel } from "../render/moto-model";
 import { createPlayerModel } from "../render/player-model";
-import { createScooterModel } from "../render/scooter-model";
+import { vehicleDef } from "../core/vehicle-catalog";
+import { buildModel } from "./vehicles";
 
 /**
  * Banc de foule (?proto=1) : une foule de personnages animés dans la vraie ville, mesurée comme le banc. (L'étape P a comparé trois façons de
@@ -325,7 +324,7 @@ function startRiders(ctx: GameContext, groundAt: (x: number, z: number) => numbe
   const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, world, params } = ctx;
   const heading = Number(params.get("heading") ?? Math.PI / 2), steer = Number(params.get("steer") ?? 0), seed = Number(params.get("seed") ?? 1);
   const dist = Number(params.get("dist") ?? 4.2), eye = Number(params.get("eye") ?? 1.1), crank = Number(params.get("crank") ?? 0.6);
-  const models = [createBikeModel(0), createMotoModel(0), createScooterModel(0)];
+  const models = ["velo-ville", "moto-routiere", "trottinette"].map((id) => buildModel(vehicleDef(id)!, 0));
   models.forEach((model, i) => {
     const state = createVehicle(spawn.x + (i - 1) * 2.4, spawn.y + dist, heading, world.terrain);
     state.steer = steer;

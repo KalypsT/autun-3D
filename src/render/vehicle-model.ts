@@ -10,8 +10,8 @@ export interface VehicleModel {
   update(s: VehicleState): void;
   /** Point d'attache du conducteur (repère local : avant vers −z, haut +y). */
   readonly seat: THREE.Vector3;
-  /** Posture du conducteur : assis qui pédale, assis sans pédaler (moto), debout, ou caché (dans une voiture). */
-  readonly pose: "pedal" | "seat" | "stand" | "hidden";
+  /** Posture du conducteur : assis qui pédale, assis sans pédaler (moto, scooter), assis penché sur le réservoir (moto sportive), debout, ou caché (dans une voiture). */
+  readonly pose: "pedal" | "seat" | "tuck" | "stand" | "hidden";
   /**
    * Points d'appui du conducteur : repères attachés à la direction (poignées) et au pédalier ou au châssis (pieds, au point où la plante touche
    * le pédalier, le repose-pied ou le plateau). Ils suivent le guidon qui tourne et les pédales qui tournent. Absents pour une voiture (conducteur caché).
@@ -38,10 +38,10 @@ export function paint(g: THREE.BufferGeometry, color: string): THREE.BufferGeome
   return geo;
 }
 
-/** Tube de rayon r entre deux points. */
-export function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: string): THREE.BufferGeometry {
+/** Tube de rayon r entre deux points (`capped` faux : sans bouchons, pour un tube dont les bouts sont cachés). */
+export function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: string, segments = 6, capped = true): THREE.BufferGeometry {
   const len = a.distanceTo(b);
-  const g = new THREE.CylinderGeometry(r, r, len, 6, 1);
+  const g = new THREE.CylinderGeometry(r, r, len, segments, 1, !capped);
   const dir = b.clone().sub(a).normalize();
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
   g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
@@ -50,6 +50,14 @@ export function tube(a: THREE.Vector3, b: THREE.Vector3, r: number, color: strin
 
 export function box(w: number, h: number, d: number, x: number, y: number, z: number, color: string): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  return paint(g, color);
+}
+
+/** Boîte inclinée d'un angle `tilt` autour de l'axe x (positif : le haut part vers l'arrière), centrée en (x, y, z). */
+export function tiltedBox(w: number, h: number, d: number, x: number, y: number, z: number, tilt: number, color: string): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.rotateX(tilt);
   g.translate(x, y, z);
   return paint(g, color);
 }

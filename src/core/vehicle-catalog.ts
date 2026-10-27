@@ -1,0 +1,109 @@
+import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
+import { COMPACT, MTB, OLD_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
+
+/**
+ * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
+ * son nom, sa famille, sa fiche physique et sa palette. Le dessin (`src/game/vehicles.ts`) associe un modèle 3D à chaque identifiant.
+ * Analogie : un classeur de fiches. Le jeu (placement, conduite), puis la circulation (J3) et la police (J4) y piochent
+ * sans rien savoir des véhicules en particulier ; ajouter un modèle, c'est ajouter une fiche.
+ */
+
+/**
+ * Famille : ce qui est commun à plusieurs modèles pour l'interface et la conduite (pictogramme, libellés, distance pour monter,
+ * caméra de poursuite, traces de pneus). Une moto de course et une moto de ville sont de la même famille.
+ */
+export type VehicleFamily = "bike" | "kickscooter" | "car" | "moto";
+
+export interface FamilyInfo {
+  icon: string;
+  /** Libellé de l'accélérateur et du klaxon. */
+  gas: string;
+  horn: string;
+  /** Portée du klaxon ou de la sonnette (m) : passants et pigeons devant sursautent jusque-là. */
+  hornRange: number;
+  /** Distance (m) à laquelle on peut monter. */
+  reach: number;
+  /** Côté de la descente : décalage latéral (m) vers la gauche. */
+  dismount: number;
+  camera: { distance: number; perSpeed: number; height: number };
+  /** Traces de pneus : demi-voie (0 pour un deux-roues) et largeur de bande (m). */
+  tyre: { track: number; width: number };
+}
+
+export const FAMILIES: Record<VehicleFamily, FamilyInfo> = {
+  bike: { icon: "🚲", gas: "Pédaler", horn: "Sonnette", hornRange: 15, reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.05 } },
+  kickscooter: { icon: "🛴", gas: "Accélérer", horn: "Sonnette", hornRange: 15, reach: 2.2, dismount: 0.75, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.06 } },
+  car: { icon: "🚗", gas: "Accélérer", horn: "Klaxon", hornRange: 35, reach: 3.0, dismount: 1.45, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 }, tyre: { track: 0.74, width: 0.2 } },
+  moto: { icon: "🏍️", gas: "Accélérer", horn: "Klaxon", hornRange: 28, reach: 2.2, dismount: 0.75, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 }, tyre: { track: 0, width: 0.12 } },
+};
+
+export interface VehicleDef {
+  /** Identifiant stable (enregistré dans les sauvegardes : ne jamais le changer). */
+  id: string;
+  family: VehicleFamily;
+  /** Nom affiché. */
+  name: string;
+  spec: VehicleSpec;
+  /** Pictogramme propre au modèle, s'il diffère de celui de sa famille (le scooter est un 🛵, pas une moto). */
+  icon?: string;
+  /** Gabarit hors tout (m) : le modèle dessiné le respecte (test pour les voitures), la coque le recouvre à peu près. */
+  size: { length: number; width: number; height: number };
+  /** Couleurs de peinture possibles ; l'exemplaire en prend une selon son numéro de variante. */
+  palette: readonly string[];
+}
+
+export const CATALOG: readonly VehicleDef[] = [
+  { id: "velo-ville", family: "bike", name: "Vélo de ville", spec: BIKE, size: { length: 1.76, width: 0.57, height: 1.06 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"] },
+  { id: "vtt", family: "bike", name: "VTT", spec: MTB, size: { length: 1.78, width: 0.69, height: 1.06 }, palette: ["#d9472b", "#1f3a52", "#3f7d4e", "#f1b24a", "#2b2118"] },
+  { id: "trottinette", family: "kickscooter", name: "Trottinette", spec: SCOOTER, size: { length: 1.14, width: 0.51, height: 1.12 }, palette: ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"] },
+  { id: "citadine", family: "car", name: "Citadine", spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"] },
+  { id: "compacte", family: "car", name: "Compacte", spec: COMPACT, size: { length: 4.25, width: 1.8, height: 1.46 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#8a8f96"] },
+  { id: "berline", family: "car", name: "Berline", spec: SEDAN, size: { length: 4.75, width: 1.85, height: 1.45 }, palette: ["#1f3a52", "#8a8f96", "#2b2118", "#efe3c8", "#7a2e2e", "#3a4a5a"] },
+  { id: "break", family: "car", name: "Break", spec: WAGON, size: { length: 4.8, width: 1.85, height: 1.5 }, palette: ["#efe3c8", "#8a8f96", "#3f7d4e", "#1f3a52", "#b8a48a", "#2b2118"] },
+  { id: "petit-suv", family: "car", name: "Petit SUV", spec: SUV, size: { length: 4.25, width: 1.8, height: 1.6 }, palette: ["#2a6f7e", "#d9472b", "#efe3c8", "#2b2118", "#f1b24a", "#8a8f96", "#3f7d4e"] },
+  { id: "camionnette", family: "car", name: "Camionnette", spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#efe3c8", "#efe3c8", "#8a8f96", "#1f3a52", "#b8a48a", "#3f7d4e"] },
+  { id: "vieille-voiture", family: "car", name: "Vieille voiture", spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#a6553b", "#9a8b6a", "#7d8f7a", "#8a8f96", "#c9b98a", "#5f6f82"] },
+  { id: "sportive", family: "car", name: "Sportive", spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#2b2118", "#efe3c8", "#1f3a52", "#3f7d4e"] },
+  { id: "scooter-125", family: "moto", name: "Scooter 125", icon: "🛵", spec: SCOOTER_125, size: { length: 1.85, width: 0.78, height: 1.23 }, palette: ["#efe3c8", "#2a6f7e", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a"] },
+  { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, size: { length: 2.04, width: 0.74, height: 1.13 }, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
+  { id: "moto-sportive", family: "moto", name: "Moto sportive", spec: SPORT_MOTO, size: { length: 2.04, width: 0.6, height: 1.16 }, palette: ["#d9472b", "#f1b24a", "#1f3a52", "#efe3c8", "#3f7d4e"] },
+];
+
+const byId = new Map(CATALOG.map((d) => [d.id, d]));
+
+export function vehicleDef(id: string): VehicleDef | undefined {
+  return byId.get(id);
+}
+
+/** Couleur de peinture d'une variante (le numéro est ramené dans la palette, quel que soit son signe). */
+export function paletteColor(def: VehicleDef, variant: number): string {
+  return def.palette[Math.abs(Math.trunc(variant)) % def.palette.length]!;
+}
+
+/** Modèle des anciennes sauvegardes (version 1 : un seul modèle par type) et des anciens paramètres `?ride=`. */
+export const LEGACY_MODELS: Readonly<Record<string, string>> = {
+  bike: "velo-ville", scooter: "trottinette", car: "citadine", moto: "moto-routiere",
+  velo: "velo-ville", voiture: "citadine",
+};
+
+/**
+ * Anomalies d'une entrée, vides si elle est valable : toute nouvelle entrée doit passer par là (test sur tout le catalogue).
+ * La coque (`hull`) est obligatoire, les passants la lisent pour les chocs (D44).
+ */
+export function defProblems(d: VehicleDef): string[] {
+  const s = d.spec, out: string[] = [];
+  if (!/^[a-z0-9-]+$/.test(d.id)) out.push("identifiant");
+  if (d.palette.length === 0 || d.palette.some((c) => !/^#[0-9a-f]{6}$/i.test(c))) out.push("palette");
+  if (!(s.mass > 0 && s.yawInertia > 0 && s.front > 0 && s.rear > 0 && s.wheelRadius > 0 && s.grip > 0)) out.push("fiche");
+  if (!(s.topSpeed > s.driveFadeFrom && s.driveFadeFrom > 0 && s.power > 0 && s.maxDrive > 0 && s.maxBrake > 0)) out.push("vitesses");
+  const { length, width, height } = d.size;
+  if (!(length > 0.5 && width > 0.3 && height > 0.5 && width < length)) out.push("gabarit");
+  if (s.hull.length === 0 || s.hull.some(([off, r]) => !Number.isFinite(off) || !(r > 0))) out.push("coque");
+  // La coque recouvre à peu près la longueur et la largeur du véhicule (les passants s'y heurtent).
+  const ends = s.hull.flatMap(([off, r]) => [off - r, off + r]);
+  const hullLength = Math.max(...ends) - Math.min(...ends), hullWidth = 2 * Math.max(...s.hull.map(([, r]) => r));
+  if (hullLength < 0.75 * length || hullLength > 1.2 * length || hullWidth < 0.5 * width || hullWidth > 1.3 * width) out.push("coque et gabarit");
+  if (s.leans === (d.family === "car")) out.push("inclinaison (deux-roues seulement)");
+  if (s.handbrake !== (d.family === "car")) out.push("frein à main (voiture seulement)");
+  return out;
+}

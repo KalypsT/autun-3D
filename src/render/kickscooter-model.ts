@@ -7,7 +7,6 @@ import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } fr
  * Quatre maillages : plateau, direction (colonne, guidon), roue avant, roue arrière.
  */
 
-const STEM_COLORS = ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"];
 const WHEEL_R = 0.11;
 const FRONT_Z = -0.45;
 const REAR_Z = 0.45;
@@ -25,8 +24,7 @@ function wheelGeometry(): THREE.BufferGeometry {
   return merge([paint(tyre, "#24242a"), paint(hub, "#b9b3a6"), box(0.058, WHEEL_R * 1.1, 0.02, 0, 0, 0, "#efe3c8")]);
 }
 
-export function createScooterModel(variant: number): VehicleModel {
-  const color = STEM_COLORS[Math.abs(variant) % STEM_COLORS.length]!;
+export function createKickScooterModel(color: string): VehicleModel {
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const deckGeo = merge([
     box(0.17, 0.05, 0.66, 0, 0.13, 0.02, "#2c2c33"),

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { addDays, parseSave, SAVE_KEY, SaveStore, serializeSave, type SaveGame, type StorageLike } from "./save";
+import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, type SaveGame, type StorageLike } from "./save";
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
-  version: 1,
+  version: 2,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
   riding: "voiture-12,34",
   vehicles: [
-    { id: "voiture-12,34", kind: "car", variant: 3, x: 5, y: 6, heading: 1.2 },
-    { id: "velo-7-0", kind: "bike", variant: 1, x: -20, y: 14, heading: 0 },
+    { id: "voiture-12,34", model: "citadine", variant: 3, x: 5, y: 6, heading: 1.2 },
+    { id: "velo-7-0", model: "velo-ville", variant: 1, x: -20, y: 14, heading: 0 },
   ],
   clock: { hour: 17.25, day: 200 },
   waypoint: { x: 400, y: -300 },
@@ -31,15 +31,45 @@ describe("sauvegarde", () => {
     expect(parseSave("")).toBeNull();
     expect(parseSave("{pas du json")).toBeNull();
     expect(parseSave("[1,2]")).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), version: 2 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 3 }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), version: undefined }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: "1", y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: 1e9, y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: null, day: 3 } }))).toBeNull();
   });
 
+  it("migre une sauvegarde de version 1 : chaque type devient son modèle d'alors, le reste est conservé", () => {
+    const v1 = {
+      ...sample(),
+      version: 1,
+      vehicles: [
+        { id: "voiture-12,34", kind: "car", variant: 3, x: 5, y: 6, heading: 1.2 },
+        { id: "velo-7-0", kind: "bike", variant: 1, x: -20, y: 14, heading: 0 },
+        { id: "trottinette-7-3", kind: "scooter", variant: 2, x: -19, y: 14, heading: 0 },
+        { id: "moto-1,2-1", kind: "moto", variant: 0, x: 1, y: 2, heading: 0.5 },
+        { id: "x", kind: "tank", variant: 0, x: 0, y: 0, heading: 0 },
+      ],
+    };
+    const p = parseSave(JSON.stringify(v1))!;
+    expect(p.version).toBe(SAVE_VERSION);
+    expect(p.vehicles.map((v) => [v.id, v.model, v.variant])).toEqual([
+      ["voiture-12,34", "citadine", 3], ["velo-7-0", "velo-ville", 1], ["trottinette-7-3", "trottinette", 2], ["moto-1,2-1", "moto-routiere", 0],
+    ]);
+    expect(p.riding).toBe("voiture-12,34");
+    expect(p.player).toEqual(sample().player);
+    expect(p.waypoint).toEqual(sample().waypoint);
+  });
+
+  it("une sauvegarde de version 1 reste lisible après un aller-retour par le stockage (relue en version 2)", () => {
+    const st = fakeStorage({ [SAVE_KEY]: JSON.stringify({ ...sample(), version: 1, vehicles: [{ id: "voiture-1,1", kind: "car", variant: 0, x: 0, y: 0, heading: 0 }], riding: null }) });
+    const store = new SaveStore(st);
+    const loaded = store.load()!;
+    expect(store.write(loaded)).toBe(true);
+    expect(store.load()).toEqual(loaded);
+  });
+
   it("écarte les véhicules invalides et un véhicule conduit qui n'existe plus", () => {
-    const s = { ...sample(), vehicles: [{ id: "x", kind: "tank", variant: 0, x: 0, y: 0, heading: 0 }, sample().vehicles[1]!] };
+    const s = { ...sample(), vehicles: [{ id: "x", model: "char-d-assaut", variant: 0, x: 0, y: 0, heading: 0 }, sample().vehicles[1]!] };
     const p = parseSave(JSON.stringify(s))!;
     expect(p.vehicles.map((v) => v.id)).toEqual(["velo-7-0"]);
     expect(p.riding).toBeNull();

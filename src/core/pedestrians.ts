@@ -58,8 +58,8 @@ export interface Observer {
   /** Le joueur est à pied : les passants l'évitent comme un des leurs. */
   onFoot: boolean;
   /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. `heading` et `hull` (cercles : décalage le long du cap, rayon) donnent sa coque. */
-  vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[] } | null;
-  /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent. */
+  vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[]; hornRange?: number } | null;
+  /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent, jusqu'à la portée `vehicle.hornRange` (35 m par défaut). */
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
   hour?: number;
@@ -687,17 +687,18 @@ export class PedSim {
     }
   }
 
-  /** Klaxon : les passants devant le véhicule (à moins de 35 m, ±45°) sursautent ; à moins de 12 m ils sautent de côté. */
+  /** Klaxon : les passants devant le véhicule (à moins de sa portée, 35 m par défaut, ±45°) sursautent ; à moins du tiers de la portée (12 m au plus) ils sautent de côté. */
   private honk(v: NonNullable<Observer["vehicle"]>): void {
     const h = v.heading ?? Math.atan2(v.vx, v.vy);
     const fx = Math.sin(h), fy = Math.cos(h);
     const alive = this.state.alive!;
+    const range = v.hornRange ?? 35, jump = Math.min(12, range / 3);
     for (let i = 0; i < this.n; i++) {
       if (!alive[i] || this.mode[i]! >= PED_STATE.stumble) continue;
       const dx = this.x[i]! - v.x, dy = this.y[i]! - v.y, d = Math.hypot(dx, dy);
-      if (d > 35 || d < 1 || Math.abs(angleDiff(Math.atan2(dx, dy), h)) > 0.8) continue;
+      if (d > range || d < 1 || Math.abs(angleDiff(Math.atan2(dx, dy), h)) > 0.8) continue;
       const side = dx * fy - dy * fx >= 0 ? 1 : -1;
-      this.startle(i, fy * side, -fx * side, d < 12 ? 4 : 0, false);
+      this.startle(i, fy * side, -fx * side, d < jump ? 4 : 0, false);
       this.fear[i] = 1;
     }
   }

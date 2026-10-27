@@ -9,7 +9,7 @@ export const MINIMAP_SIZE = 140;
 const PAPER = "#f2e4c0";
 const INK = "#2b2118";
 const ACCENT = "#d9472b";
-const VEHICLE_COLORS: Record<string, string> = { bike: "#2f7f8f", scooter: "#f1b24a", moto: "#7a4a8a", car: "#1f4a63" };
+const VEHICLE_COLORS: Record<string, string> = { bike: "#2f7f8f", kickscooter: "#f1b24a", moto: "#7a4a8a", car: "#1f4a63" };
 
 export interface MinimapVehicle {
   x: number;
