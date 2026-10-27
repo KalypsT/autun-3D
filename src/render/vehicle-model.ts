@@ -12,6 +12,13 @@ export interface VehicleModel {
   readonly seat: THREE.Vector3;
   /** Posture du conducteur : assis qui pédale, assis sans pédaler (moto), debout, ou caché (dans une voiture). */
   readonly pose: "pedal" | "seat" | "stand" | "hidden";
+  /**
+   * Points d'appui du conducteur : repères attachés à la direction (poignées) et au pédalier ou au châssis (pieds, au point où la plante touche
+   * le pédalier, le repose-pied ou le plateau). Ils suivent le guidon qui tourne et les pédales qui tournent. Absents pour une voiture (conducteur caché).
+   */
+  readonly anchors?: { gripL: THREE.Object3D; gripR: THREE.Object3D; footL: THREE.Object3D; footR: THREE.Object3D };
+  /** Fait tourner le pédalier (rad) : seul le vélo en a un. */
+  setCrank?(angle: number): void;
   dispose(): void;
 }
 
@@ -53,3 +60,11 @@ export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return g;
 }
 
+
+/** Repère vide, placé en (x, y, z) dans le repère de `parent`. */
+export function marker(parent: THREE.Object3D, x: number, y: number, z: number): THREE.Object3D {
+  const o = new THREE.Object3D();
+  o.position.set(x, y, z);
+  parent.add(o);
+  return o;
+}

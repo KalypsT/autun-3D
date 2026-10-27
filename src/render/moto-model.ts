@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
+import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Moto de style classique aux couleurs de l'affiche : réservoir peint, selle, moteur, échappement, phare rond.
@@ -90,11 +90,17 @@ export function createMotoModel(variant: number): VehicleModel {
   const rw = mesh(wheelGeo);
   rw.position.set(0, WHEEL_R, REAR_Z);
   group.add(mesh(frameGeo), steer, rw);
+  // Poignées dans les mains, plante des pieds sur le repose-pieds.
+  const anchors = {
+    gripL: marker(steerMesh, -0.34, 0.13, 0.1), gripR: marker(steerMesh, 0.34, 0.13, 0.1),
+    footL: marker(group, -0.26, 0.375, 0.12), footR: marker(group, 0.26, 0.375, 0.12),
+  };
 
   return {
     group,
     seat: v(0, 0.93, 0.22),
     pose: "seat",
+    anchors,
     update(s) {
       group.position.set(s.x, s.z, -s.y);
       group.rotation.set(s.pitch, -s.heading, -s.lean);

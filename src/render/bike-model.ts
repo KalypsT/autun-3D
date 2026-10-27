@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
+import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Vélo de ville aux couleurs de l'affiche : cadre, guidon et panier, deux roues.
@@ -55,9 +55,14 @@ export function createBikeModel(variant: number): VehicleModel {
     box(0.15, 0.05, 0.26, 0, 0.88, 0.2, "#3a2a20"),
     tube(v(0, 0.82, 0.18), v(0, 0.87, 0.19), 0.012, "#8a8478"),
     box(0.04, 0.12, 0.12, 0.07, 0.3, 0.05, "#3a3a40"),
-    box(0.1, 0.02, 0.05, 0.13, 0.3, 0.05, "#24242a"),
-    box(0.1, 0.02, 0.05, -0.13, 0.3, 0.05, "#24242a"),
     box(0.16, 0.02, 0.36, 0, 0.72, 0.42, "#2c2c33"),
+  ]);
+  // Pédalier : manivelles et pédales tournent autour du boîtier, centrées sur lui.
+  const crankGeo = merge([
+    tube(v(0.07, 0, 0), v(0.07, -0.17, 0), 0.012, "#8a8478"),
+    tube(v(-0.07, 0, 0), v(-0.07, 0.17, 0), 0.012, "#8a8478"),
+    box(0.1, 0.02, 0.05, 0.13, -0.17, 0, "#24242a"),
+    box(0.1, 0.02, 0.05, -0.13, 0.17, 0, "#24242a"),
   ]);
   // Direction : pivote autour de l'axe du tube de direction ; géométrie exprimée depuis HEAD.
   const front = v(0, WHEEL_R, FRONT_Z).sub(HEAD);
@@ -96,12 +101,24 @@ export function createBikeModel(variant: number): VehicleModel {
   steer.add(steerMesh);
   const rw = mesh(wheelGeo);
   rw.position.set(0, WHEEL_R, REAR_Z);
-  group.add(frame, steer, rw);
+  const crank = mesh(crankGeo);
+  crank.position.copy(bb);
+  group.add(frame, steer, rw, crank);
+  // Appuis du conducteur : poignées au bout du guidon, plante du pied sur le dessus des pédales.
+  const anchors = {
+    gripL: marker(steerMesh, -0.26, 0.12, 0.12), gripR: marker(steerMesh, 0.26, 0.12, 0.12),
+    footL: marker(crank, -0.13, 0.17 + 0.01, 0), footR: marker(crank, 0.13, -0.17 + 0.01, 0),
+  };
 
   return {
     group,
     seat: v(0, 0.88, 0.22),
     pose: "pedal",
+    anchors,
+    setCrank(angle) {
+      // Vers l'avant, la pédale du bas recule : rotation négative autour de l'axe x.
+      crank.rotation.x = -angle;
+    },
     update(s) {
       group.position.set(s.x, s.z, -s.y);
       group.rotation.set(s.pitch, -s.heading, -s.lean);
@@ -110,6 +127,7 @@ export function createBikeModel(variant: number): VehicleModel {
       rw.rotation.x = -s.wheel;
     },
     dispose() {
+      crankGeo.dispose();
       frameGeo.dispose();
       steerGeo.dispose();
     },

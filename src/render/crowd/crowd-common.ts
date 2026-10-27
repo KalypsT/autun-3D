@@ -1,7 +1,7 @@
 import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
-import { BONE_COUNT, createPose, geometryScales, restOffsets, solveBones, walkPose, type Pose } from "../../core/character-rig";
+import { BONE_COUNT, createPose, geometryScales, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
 
@@ -33,6 +33,11 @@ export class CrowdRigs {
       });
       return Int16Array.from(list);
     });
+  }
+
+  /** Matrices d'os du personnage i pour une pose et une racine données (dans `render` et `world`). */
+  solveWith(i: number, pose: Pose, root: Root): void {
+    solveBones(this.render, this.world, this.offsets[i]!, this.scales[i]!, pose, root);
   }
 
   /** Pose de marche du personnage i, puis matrices d'os (dans `render` et `world`). */
