@@ -6,6 +6,9 @@ import type { HeightField } from "../data/types";
 import { PigeonRenderer } from "../render/pigeons";
 import type { NavManager } from "./nav-manager";
 
+/** Au-delà, un pigeon n'est plus qu'un point de deux pixels : on ne le dessine pas. */
+const VIEW_RANGE = 100;
+
 /**
  * Les pigeons du jeu : simulation (`PigeonSim`) et rendu (un maillage, un appel de dessin). Ils n'existent qu'une fois la navigation chargée
  * (les coins à pigeons viennent de ses points d'intérêt) ; leur nombre suit le réglage « Foule » (D45).
@@ -64,7 +67,7 @@ export class PigeonsController {
     const t0 = performance.now();
     sim.step(dt, obs, peds);
     const t1 = performance.now();
-    view.update(sim.state);
+    view.update(sim.state, obs.x, obs.y, VIEW_RANGE);
     const t2 = performance.now();
     this.simMs += (t1 - t0 - this.simMs) * 0.05;
     this.drawMs += (t2 - t1 - this.drawMs) * 0.05;

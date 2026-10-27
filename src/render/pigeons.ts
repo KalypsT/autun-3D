@@ -31,6 +31,8 @@ interface Template {
   tintable: Uint8Array;
   index: Uint16Array;
   verts: number;
+  /** Sommets de l'os k : de `boneStart[k]` (inclus) à `boneStart[k + 1]` (exclu). */
+  boneStart: Uint16Array;
 }
 
 class Builder {
@@ -131,9 +133,18 @@ function buildTemplate(): Template {
     b.quad([x0, SHOULDER_Y, -0.06], [x1, SHOULDER_Y, -0.05], [x1, SHOULDER_Y, 0.075], [x0, SHOULDER_Y, 0.09], [grey, grey, dark, grey], inBone);
     b.quad([x1, SHOULDER_Y, -0.05], [x2, SHOULDER_Y, -0.01], [x2, SHOULDER_Y, 0.04], [x1, SHOULDER_Y, 0.075], [grey, dark, dark, dark], outBone);
   }
+  // Sommets triés par os : le rendu applique la matrice d'un os à tous ses sommets d'un coup (13 chargements de matrice au lieu de 145).
+  const n = b.bone.length;
+  const order = Array.from({ length: n }, (_, i) => i).sort((p, q) => b.bone[p]! - b.bone[q]! || p - q);
+  const newId = new Array<number>(n);
+  order.forEach((old, k) => { newId[old] = k; });
+  const take = (src: number[], w: number): Float32Array => Float32Array.from(order.flatMap((old) => src.slice(old * w, old * w + w)));
+  const start = new Uint16Array(BONES + 1);
+  for (const bone of b.bone) start[bone + 1]!++;
+  for (let k = 0; k < BONES; k++) start[k + 1]! += start[k]!;
   return {
-    pos: new Float32Array(b.pos), nor: new Float32Array(b.nor), col: new Float32Array(b.col), bone: new Uint8Array(b.bone), tintable: new Uint8Array(b.tintable),
-    index: new Uint16Array(b.index), verts: b.bone.length,
+    pos: take(b.pos, 3), nor: take(b.nor, 3), col: take(b.col, 3), bone: Uint8Array.from(order.map((old) => b.bone[old]!)), tintable: Uint8Array.from(order.map((old) => b.tintable[old]!)),
+    index: Uint16Array.from(b.index.map((i) => newId[i]!)), verts: n, boneStart: start,
   };
 }
 
@@ -183,12 +194,15 @@ export class PigeonRenderer {
   private readonly bodyM = new Float32Array(12);
   /** Oiseaux dessinés à la dernière mise à jour. */
   drawn = 0;
+  /** Variante de plumage déjà écrite dans les couleurs de chaque emplacement (−1 : rien) : les couleurs ne sont réécrites que si elle change. */
+  private readonly inked: Int8Array;
 
   constructor(scene: THREE.Scene, private readonly capacity: number) {
     const n = Math.max(1, capacity), v = TEMPLATE.verts;
     this.pos = new Float32Array(n * v * 3);
     this.nor = new Float32Array(n * v * 3);
     this.col = new Float32Array(n * v * 3);
+    this.inked = new Int8Array(n).fill(-1);
     const index = new Uint16Array(n * TEMPLATE.index.length);
     for (let k = 0; k < n; k++) for (let j = 0; j < TEMPLATE.index.length; j++) index[k * TEMPLATE.index.length + j] = TEMPLATE.index[j]! + k * v;
     this.geometry = new THREE.BufferGeometry();
@@ -207,17 +221,30 @@ export class PigeonRenderer {
     scene.add(this.mesh);
   }
 
-  /** Recalcule les sommets de tous les oiseaux vivants (au plus `capacity`). */
-  update(s: PigeonState): void {
+  /**
+   * Recalcule les sommets des oiseaux vivants (au plus `capacity`) à moins de `range` m de (x, y), repère du jeu : plus loin ce n'est qu'un
+   * point de deux pixels, et seule la partie écrite du tampon est renvoyée à la carte graphique.
+   */
+  update(s: PigeonState, x = 0, y = 0, range = Infinity): void {
     let k = 0;
+    const r2 = range * range;
     for (let i = 0; i < s.capacity && k < this.capacity; i++) {
       if (!s.alive[i]) continue;
+      const dx = s.x[i]! - x, dy = s.y[i]! - y;
+      if (dx * dx + dy * dy > r2) continue;
       this.pose(s, i, k++);
     }
+    const changed = k > 0 || this.drawn > 0;
     this.drawn = k;
     this.geometry.setDrawRange(0, k * TEMPLATE.index.length);
     this.mesh.visible = k > 0;
-    for (const a of ["position", "normal", "color"] as const) this.geometry.getAttribute(a).needsUpdate = true;
+    if (!changed) return;
+    for (const a of ["position", "normal", "color"] as const) {
+      const attr = this.geometry.getAttribute(a) as THREE.BufferAttribute;
+      attr.clearUpdateRanges();
+      attr.addUpdateRange(0, Math.max(1, k * TEMPLATE.verts * 3));
+      attr.needsUpdate = true;
+    }
   }
 
   private pose(s: PigeonState, i: number, slot: number): void {
@@ -253,27 +280,33 @@ export class PigeonRenderer {
       mul(t2, t3, t1);
       mul(bones[outer]!, this.bodyM, t2);
     }
-    // Sommets.
-    const v = TEMPLATE.verts, base = slot * v * 3;
+    // Sommets, os par os (les sommets du gabarit sont triés par os).
+    const v = TEMPLATE.verts, base = slot * v * 3, tp = TEMPLATE.pos, tn = TEMPLATE.nor, tc = TEMPLATE.col, tt = TEMPLATE.tintable;
     const tint = TINTS[s.tint[i]!]!;
-    for (let j = 0; j < v; j++) {
-      const m = bones[TEMPLATE.bone[j]!]!;
-      const x = TEMPLATE.pos[j * 3]!, y = TEMPLATE.pos[j * 3 + 1]!, z = TEMPLATE.pos[j * 3 + 2]!;
-      const o = base + j * 3;
-      this.pos[o] = m[0]! * x + m[1]! * y + m[2]! * z + m[3]!;
-      this.pos[o + 1] = m[4]! * x + m[5]! * y + m[6]! * z + m[7]!;
-      this.pos[o + 2] = m[8]! * x + m[9]! * y + m[10]! * z + m[11]!;
-      const nx = TEMPLATE.nor[j * 3]!, ny = TEMPLATE.nor[j * 3 + 1]!, nz = TEMPLATE.nor[j * 3 + 2]!;
-      let ox = m[0]! * nx + m[1]! * ny + m[2]! * nz, oy = m[4]! * nx + m[5]! * ny + m[6]! * nz, oz = m[8]! * nx + m[9]! * ny + m[10]! * nz;
-      const l = Math.hypot(ox, oy, oz) || 1;
-      ox /= l; oy /= l; oz /= l;
-      this.nor[o] = ox;
-      this.nor[o + 1] = oy;
-      this.nor[o + 2] = oz;
-      const f = TEMPLATE.tintable[j]!;
-      this.col[o] = TEMPLATE.col[j * 3]! * (f ? tint[0] : 1);
-      this.col[o + 1] = TEMPLATE.col[j * 3 + 1]! * (f ? tint[1] : 1);
-      this.col[o + 2] = TEMPLATE.col[j * 3 + 2]! * (f ? tint[2] : 1);
+    const ink = this.inked[slot] !== s.tint[i]!;
+    this.inked[slot] = s.tint[i]!;
+    const unit = 1 / PIGEON_SCALE;
+    for (let b = 0; b < BONES; b++) {
+      const m = bones[b]!;
+      const m0 = m[0]!, m1 = m[1]!, m2 = m[2]!, m3 = m[3]!, m4 = m[4]!, m5 = m[5]!, m6 = m[6]!, m7 = m[7]!, m8 = m[8]!, m9 = m[9]!, m10 = m[10]!, m11 = m[11]!;
+      for (let j = TEMPLATE.boneStart[b]!, e = TEMPLATE.boneStart[b + 1]!; j < e; j++) {
+        const x = tp[j * 3]!, y = tp[j * 3 + 1]!, z = tp[j * 3 + 2]!;
+        const o = base + j * 3;
+        this.pos[o] = m0 * x + m1 * y + m2 * z + m3;
+        this.pos[o + 1] = m4 * x + m5 * y + m6 * z + m7;
+        this.pos[o + 2] = m8 * x + m9 * y + m10 * z + m11;
+        // Les os ne font que tourner (et le monde ×1,3) : la normale ressort de longueur 1,3 ; on la ramène à 1 sans racine carrée.
+        const nx = tn[j * 3]!, ny = tn[j * 3 + 1]!, nz = tn[j * 3 + 2]!;
+        this.nor[o] = (m0 * nx + m1 * ny + m2 * nz) * unit;
+        this.nor[o + 1] = (m4 * nx + m5 * ny + m6 * nz) * unit;
+        this.nor[o + 2] = (m8 * nx + m9 * ny + m10 * nz) * unit;
+        if (ink) {
+          const f = tt[j]!;
+          this.col[o] = tc[j * 3]! * (f ? tint[0] : 1);
+          this.col[o + 1] = tc[j * 3 + 1]! * (f ? tint[1] : 1);
+          this.col[o + 2] = tc[j * 3 + 2]! * (f ? tint[2] : 1);
+        }
+      }
     }
   }
 

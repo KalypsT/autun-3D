@@ -300,8 +300,11 @@ export class PedSim {
       if (m2 === PED_STATE.wait) waiting++; else if (m2 === PED_STATE.cross) crossing++; else if (m2 === PED_STATE.idle) idle++;
     }
     // Trop de monde pour l'heure ou le quartier : les passants à l'écart (hors de vue, ou à plus de 60 m) s'en vont, deux au plus par pas.
-    if (nAlive > stats.target) {
-      let leaving = 2;
+    // Les écarts à la cible se comptent en entiers : sans cela, un déficit de 1 faisait naître 2 passants, l'excès de 1 en retirait 2 (souvent les nouveaux-nés,
+    // à plus de 60 m), et la foule se renouvelait en boucle à chaque pas (mesure sur téléphone : 20 naissances par seconde à l'arrêt).
+    const goal = Math.round(stats.target);
+    if (nAlive > goal) {
+      let leaving = Math.min(2, nAlive - goal);
       for (let k = 0; k < this.n && leaving > 0; k++) {
         const i = (this.excessCursor + k) % this.n;
         if (!alive[i]) continue;
@@ -323,7 +326,7 @@ export class PedSim {
     stats.crossing = crossing;
     stats.idle = idle;
     // Naissances : les emplacements libres se remplissent, au plus `spawnPerStep` par pas.
-    let attempts = nAlive < stats.target ? this.spawnPerStep : 0;
+    let attempts = nAlive < goal ? Math.min(this.spawnPerStep, goal - nAlive) : 0;
     for (let i = 0; i < this.n && attempts > 0; i++) {
       if (alive[i]) continue;
       attempts--;

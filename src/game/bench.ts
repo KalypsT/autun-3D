@@ -438,7 +438,7 @@ export function startBench(ctx: GameContext): void {
       const p0 = performance.now();
       if (pigSim && pigView) {
         pigSim.step(dt, obs, pedSim);
-        pigView.update(pigSim.state);
+        pigView.update(pigSim.state, obs.x, obs.y, 100);
       }
       const pig = performance.now() - p0;
       const c0 = performance.now();

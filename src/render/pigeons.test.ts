@@ -59,4 +59,19 @@ describe("rendu des pigeons", () => {
     expect(r.mesh.visible).toBe(false);
     r.dispose();
   });
+
+  it("ne dessine pas les oiseaux au-delà de la portée, et recolore un emplacement quand le plumage change", () => {
+    const r = new PigeonRenderer(new THREE.Scene(), 4);
+    const s = state(4);
+    s.x[1] = 500;
+    s.x[2] = 40;
+    r.update(s, 0, 0, 100);
+    expect(r.drawn).toBe(3);
+    const col = r.mesh.geometry.getAttribute("color").array as Float32Array;
+    const before = Array.from(col.slice(0, PIGEON_VERTS * 3));
+    s.tint[0] = 2;
+    r.update(s, 0, 0, 100);
+    expect(Array.from(col.slice(0, PIGEON_VERTS * 3))).not.toEqual(before);
+    r.dispose();
+  });
 });
