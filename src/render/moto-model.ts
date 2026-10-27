@@ -7,7 +7,6 @@ import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } fr
  * Quatre maillages : cadre, direction (fourche, guidon, phare), roue avant, roue arrière.
  */
 
-const TANK_COLORS = ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"];
 const WHEEL_R = 0.31;
 const FRONT_Z = -0.7;
 const REAR_Z = 0.72;
@@ -27,8 +26,7 @@ function wheelGeometry(): THREE.BufferGeometry {
   return merge([paint(tyre, "#24242a"), paint(rim, "#8a8478"), paint(disc, "#cfc8b8"), box(0.034, (WHEEL_R - 0.1) * 2, 0.04, 0, 0, 0, "#efe3c8")]);
 }
 
-export function createMotoModel(variant: number): VehicleModel {
-  const color = TANK_COLORS[Math.abs(variant) % TANK_COLORS.length]!;
+export function createMotoModel(color: string): VehicleModel {
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const chrome = "#cfc8b8", dark = "#2c2c33";
   const frameGeo = merge([

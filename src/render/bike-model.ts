@@ -7,7 +7,6 @@ import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } fr
  * Quatre maillages : cadre, direction (fourche, guidon, panier), roue avant, roue arrière.
  */
 
-const FRAME_COLORS = ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"];
 const WHEEL_R = 0.34;
 const REAR_Z = 0.46;
 const FRONT_Z = -0.62;
@@ -38,8 +37,7 @@ function wheelGeometry(): THREE.BufferGeometry {
 let wheelGeo: THREE.BufferGeometry | null = null;
 
 
-export function createBikeModel(variant: number): VehicleModel {
-  const color = FRAME_COLORS[Math.abs(variant) % FRAME_COLORS.length]!;
+export function createBikeModel(color: string): VehicleModel {
   const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
   const rear = v(0, WHEEL_R, REAR_Z), bb = v(0, 0.3, 0.05), seatTop = v(0, 0.82, 0.18), headLow = v(0, 0.72, -0.5);
   const frameGeo = merge([

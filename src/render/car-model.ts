@@ -9,7 +9,6 @@ import { box, merge, paint, sharedMaterial, type VehicleModel } from "./vehicle-
  * toutes dessinées en deux appels (peinture teintée par instance, détails).
  */
 
-export const CAR_COLORS = ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"];
 const WHEEL_R = 0.3;
 const FRONT_Z = -1.05;
 const REAR_Z = 1.55;
@@ -71,9 +70,8 @@ function parkedDetailGeometry(): THREE.BufferGeometry {
 
 let shared: { wheel: THREE.BufferGeometry; detail: THREE.BufferGeometry } | null = null;
 
-export function createCarModel(variant: number): VehicleModel {
+export function createCarModel(color: string): VehicleModel {
   shared ??= { wheel: wheelGeometry(), detail: detailGeometry() };
-  const color = CAR_COLORS[Math.abs(variant) % CAR_COLORS.length]!;
   const bodyGeo = bodyGeometry(color);
   const mat = sharedMaterial();
   const mesh = (g: THREE.BufferGeometry): THREE.Mesh => {
@@ -143,7 +141,7 @@ export class ParkedCars {
   }
 
   /** Réécrit les instances : une par voiture garée visible (position au sol, cap, tangage, couleur). */
-  set(cars: readonly { x: number; y: number; z: number; heading: number; pitch: number; variant: number }[]): void {
+  set(cars: readonly { x: number; y: number; z: number; heading: number; pitch: number; color: string }[]): void {
     const n = Math.min(cars.length, this.capacity);
     for (let i = 0; i < n; i++) {
       const c = cars[i]!;
@@ -152,7 +150,7 @@ export class ParkedCars {
       this.matrix.compose(this.pos.set(c.x, c.z, -c.y), this.quat, this.one);
       this.paint.setMatrixAt(i, this.matrix);
       this.detail.setMatrixAt(i, this.matrix);
-      this.paint.setColorAt(i, this.color.set(CAR_COLORS[Math.abs(c.variant) % CAR_COLORS.length]!));
+      this.paint.setColorAt(i, this.color.set(c.color));
     }
     this.paint.count = this.detail.count = n;
     this.paint.instanceMatrix.needsUpdate = this.detail.instanceMatrix.needsUpdate = true;

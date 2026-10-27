@@ -1,4 +1,4 @@
-import { addDays, type SaveGame, type SaveStore } from "../core/save";
+import { addDays, SAVE_VERSION, type SaveGame, type SaveStore } from "../core/save";
 import type { Recipe } from "../core/character";
 import { AppearancePreview } from "../render/appearance-preview";
 import { NotesStore } from "../core/notes-store";
@@ -229,7 +229,7 @@ export class UiBridge {
     const s = this.state();
     const { atmosphere } = this.ctx;
     return {
-      version: 1,
+      version: SAVE_VERSION,
       savedAt: Date.now(),
       player: { x: s.x, y: s.y },
       camera: { yaw: s.yaw, pitch: s.pitch },
@@ -278,7 +278,7 @@ export class UiBridge {
         for (const v of this.fleet.vehicles) {
           if (v.ridden) continue;
           const dx = v.state.x - s.x, dy = v.state.y - s.y;
-          if (dx * dx + dy * dy < MINIMAP_VEHICLE_RADIUS * MINIMAP_VEHICLE_RADIUS) list.push({ x: v.state.x, y: v.state.y, kind: v.kind });
+          if (dx * dx + dy * dy < MINIMAP_VEHICLE_RADIUS * MINIMAP_VEHICLE_RADIUS) list.push({ x: v.state.x, y: v.state.y, kind: v.family });
         }
         this.minimap.update({ x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint });
       });

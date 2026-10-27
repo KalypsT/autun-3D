@@ -449,3 +449,24 @@ Mesure sur téléphone (`crowd=100&sim=1&soak=10`, 10 minutes) : 60,3 i/s consta
 - **Conséquences** : la foule est plus stable et un peu moins chère (moins de naissances, chacune coûtant une recherche de point). Les 441 à 3 744 « naissances refusées (en vue) » des rapports étaient le même phénomène.
 - **Pigeons** : les rapports de cette série (version afc1310) précèdent l'optimisation de D48 ; à remesurer.
 
+
+## 2026-10-27 — D50. Étape V : cadrage et catalogue de véhicules (V-0)
+
+**Cadrage** (réponses de l'utilisateur, recommandations suivies) :
+- **Vitesses maximales plafonnées** : voiture sportive 200 km/h, moto sportive 210 km/h, avec une accélération réaliste. Raison : à 240 km/h, le rayon de virage permis par l'adhérence est d'environ 300 m (v² / 1,4 g), pour des rues de 4 à 8 m et un anneau traversé en 45 s ; on ne roule vite qu'en ligne droite sur quelques avenues, et la vitesse coûte cher (collisions, chargement des tuiles). Le plafond sera une constante unique à relever avec la commune entière (étape C).
+- **Obtention** : les véhicules sont garés sur les places (voitures, deux-roues motorisés) et aux parkings à vélos, avec un modèle tiré selon la zone (centre, résidentiel, périphérie, nature, comme les passants en D39) ; sportives et motos sportives à environ 2 %. Pas de variation selon l'heure : un véhicule garé est un obstacle et se sauvegarde, il ne peut pas apparaître et disparaître ; cela relève de la circulation (J3). Les véhicules de J3 et J4 (circulation, vol) puiseront dans le même catalogue ; la police et les taxis y seront de simples entrées.
+- **Pas de garage** avant l'étape argent (J6) : `?ride=<identifiant>` pour essayer un modèle, et une galerie `?view=vehicles`.
+- **Vieille voiture** : freinage plus faible, adhérence plus basse, **sans ABS** (les roues bloquent comme avant D29) : c'est ce qui la distingue à la conduite.
+
+**Constats avant de coder** : (1) une moto à 250 km/h traverse un mur fin dans 68 % des cas (pas de 1,16 m par image contre une coque de 0,32 m de rayon ; voiture à 240 km/h : 0 %) ; à corriger à l'étape V-1 par des collisions à chaque sous-pas. (2) Chargement des tuiles à 200 km/h : estimé, pas mesuré, phase de banc à ajouter. (3) Seules les voitures garées sont instanciées ; les deux-roues garés sont des modèles complets, masqués au-delà de 110 m.
+
+**Découpage** : V-0 catalogue (cette décision), V-1 vitesse (collisions, banc), V-2 générateur de carrosserie et voitures garées par modèle, V-3 voitures, V-4 deux-roues, V-5 placement par zone, V-6 bilan et mesure.
+
+**V-0, catalogue** (`src/core/vehicle-catalog.ts`, logique pure) :
+- Une entrée (`VehicleDef`) : identifiant stable (enregistré dans les sauvegardes), famille, nom, fiche physique (`VehicleSpec`, coque `hull` obligatoire pour les chocs contre passants, D44), palette. Les quatre véhicules existants sont les premières entrées, **avec les fiches inchangées** (un test compare les objets) : `velo-ville`, `trottinette`, `citadine`, `moto-routiere`.
+- **Famille** (`bike`, `kickscooter`, `car`, `moto`) : ce qui est commun à plusieurs modèles pour l'interface et la conduite (pictogramme, libellés de l'accélérateur et du klaxon ou de la sonnette, distance pour monter, côté de la descente, caméra de poursuite, traces de pneus). L'ancien type `scooter` est renommé `kickscooter` : c'était la trottinette électrique, et « scooter 125 » désignera un autre véhicule.
+- `defProblems` valide une entrée (identifiant, palette, fiche, vitesses, coque, inclinaison et frein à main cohérents avec la famille) ; un test l'applique à tout le catalogue, donc toute entrée future.
+- **Dessin** : `MODEL_BUILDERS` (`src/game/vehicles.ts`) associe un constructeur de modèle à chaque identifiant, à la couleur de la palette (les palettes vivent maintenant dans le catalogue, plus dans les fichiers de modèles) ; un test vérifie que chaque entrée a son dessin. `Fleet.add` prend un identifiant de modèle.
+- **Sauvegarde version 2** : un véhicule est enregistré par `model` au lieu de `kind`. La version 1 est migrée à la lecture (`car` → `citadine`, `bike` → `velo-ville`, `scooter` → `trottinette`, `moto` → `moto-routiere`) ; un modèle inconnu est écarté (le véhicule seul, pas la partie). Une version plus récente que le jeu reste refusée. Les anciennes sauvegardes restent donc chargeables.
+- `?ride=` accepte les anciens noms (velo, trottinette, voiture, moto) et tout identifiant du catalogue.
+- Aucun changement de comportement : mêmes fiches, mêmes modèles, mêmes couleurs, mêmes appels de dessin.

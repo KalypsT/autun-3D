@@ -1,17 +1,20 @@
 /** Sauvegarde locale : un seul emplacement, versionné, lu avec méfiance (le stockage du navigateur peut contenir n'importe quoi). */
 
+import { LEGACY_MODELS, vehicleDef } from "./vehicle-catalog";
 import type { Waypoint } from "./waypoint";
 
-export const SAVE_VERSION = 1;
+/**
+ * Version 2 (D50) : un véhicule est enregistré par son modèle du catalogue (`model`) et non plus par son type (`kind`).
+ * La version 1 est migrée à la lecture : chaque type devient son modèle d'alors (voir `LEGACY_MODELS`).
+ */
+export const SAVE_VERSION = 2;
 export const SAVE_KEY = "autun3d.save";
-
-export type SavedKind = "bike" | "scooter" | "car" | "moto";
-const KINDS: readonly string[] = ["bike", "scooter", "car", "moto"];
 
 /** Un véhicule qui n'est plus à sa place d'origine (ou que l'on conduit). */
 export interface SavedVehicle {
   id: string;
-  kind: SavedKind;
+  /** Identifiant d'une entrée du catalogue (`vehicleDef`). */
+  model: string;
   variant: number;
   x: number;
   y: number;
@@ -71,8 +74,9 @@ export function parseSave(text: string | null): SaveGame | null {
   }
   if (typeof o !== "object" || !o) return null;
   const r = o as Record<string, unknown>;
-  // Version inconnue (plus récente que ce jeu) : on n'y touche pas. Les anciennes versions seront migrées ici.
-  if (r["version"] !== SAVE_VERSION) return null;
+  // Version inconnue (plus récente que ce jeu) : on n'y touche pas. Les anciennes versions sont migrées ici.
+  const version = r["version"];
+  if (version !== SAVE_VERSION && version !== 1) return null;
   const p = r["player"] as Record<string, unknown> | undefined;
   const cam = r["camera"] as Record<string, unknown> | undefined;
   const clock = r["clock"] as Record<string, unknown> | undefined;
@@ -80,9 +84,11 @@ export function parseSave(text: string | null): SaveGame | null {
   const vehicles: SavedVehicle[] = [];
   if (Array.isArray(r["vehicles"])) {
     for (const v of r["vehicles"] as Record<string, unknown>[]) {
-      if (v && typeof v["id"] === "string" && KINDS.includes(v["kind"] as string) && finite(v["variant"]) && coord(v["x"]) && coord(v["y"]) && finite(v["heading"])) {
-        vehicles.push({ id: v["id"], kind: v["kind"] as SavedKind, variant: v["variant"], x: v["x"], y: v["y"], heading: v["heading"] });
-      }
+      if (!v || typeof v["id"] !== "string" || !finite(v["variant"]) || !coord(v["x"]) || !coord(v["y"]) || !finite(v["heading"])) continue;
+      // Version 1 : le type donne le modèle. Modèle inconnu (retiré du catalogue, ou sauvegarde d'un autre jeu) : le véhicule est écarté.
+      const model = version === 1 ? LEGACY_MODELS[v["kind"] as string] : v["model"];
+      if (typeof model !== "string" || !vehicleDef(model)) continue;
+      vehicles.push({ id: v["id"], model, variant: v["variant"], x: v["x"], y: v["y"], heading: v["heading"] });
     }
   }
   const riding = typeof r["riding"] === "string" && vehicles.some((v) => v.id === r["riding"]) ? (r["riding"] as string) : null;

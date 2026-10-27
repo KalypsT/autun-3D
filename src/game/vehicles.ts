@@ -1,7 +1,8 @@
 import type * as THREE from "three";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
-import { BIKE, CAR, createVehicle, MOTO, SCOOTER, type VehicleSpec, type VehicleState } from "../core/vehicle";
+import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
+import { FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
 import { createBikeModel } from "../render/bike-model";
 import { createCarModel, ParkedCars } from "../render/car-model";
 import { createMotoModel } from "../render/moto-model";
@@ -11,29 +12,29 @@ import type { VehicleModel } from "../render/vehicle-model";
 import type { HeightField } from "../data/types";
 import type { SavedVehicle } from "../core/save";
 
-export type VehicleKind = "bike" | "scooter" | "car" | "moto";
-
-/** Par type : physique, modèle, pictogramme, libellé de l'accélérateur, distance pour monter, caméra de poursuite. */
-export const KINDS: Record<VehicleKind, {
-  spec: VehicleSpec;
-  model: (variant: number) => VehicleModel;
-  icon: string;
-  gas: string;
-  reach: number;
-  camera: { distance: number; perSpeed: number; height: number };
-  /** Traces de pneus : demi-voie (0 pour un deux-roues) et largeur de bande (m). */
-  tyre: { track: number; width: number };
-}> = {
-  bike: { spec: BIKE, model: createBikeModel, icon: "🚲", gas: "Pédaler", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.05 } },
-  scooter: { spec: SCOOTER, model: createScooterModel, icon: "🛴", gas: "Accélérer", reach: 2.2, camera: { distance: 3.9, perSpeed: 0.15, height: 0.2 }, tyre: { track: 0, width: 0.06 } },
-  car: { spec: CAR, model: createCarModel, icon: "🚗", gas: "Accélérer", reach: 3.0, camera: { distance: 6.2, perSpeed: 0.06, height: 0.55 }, tyre: { track: 0.74, width: 0.2 } },
-  moto: { spec: MOTO, model: createMotoModel, icon: "🏍️", gas: "Accélérer", reach: 2.2, camera: { distance: 4.6, perSpeed: 0.07, height: 0.35 }, tyre: { track: 0, width: 0.12 } },
+/** Dessin de chaque modèle du catalogue (`src/core/vehicle-catalog.ts`), à la couleur donnée. Un test vérifie que chaque entrée en a un. */
+export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
+  "velo-ville": createBikeModel,
+  trottinette: createScooterModel,
+  citadine: createCarModel,
+  "moto-routiere": createMotoModel,
 };
+
+/** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
+export function buildModel(def: VehicleDef, variant: number): VehicleModel {
+  return MODEL_BUILDERS[def.id]!(paletteColor(def, variant));
+}
+
+/** Interface et conduite communes à la famille du véhicule. */
+export function familyOf(v: { def: VehicleDef }): FamilyInfo {
+  return FAMILIES[v.def.family];
+}
 
 /** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse. */
 export interface Vehicle {
   id: string;
-  kind: VehicleKind;
+  def: VehicleDef;
+  family: VehicleFamily;
   spec: VehicleSpec;
   state: VehicleState;
   variant: number;
@@ -107,7 +108,7 @@ export class Fleet {
         const scooter = i === count;
         const off = (i - (count - 1) / 2) * BIKE_SPACING + (scooter ? 0.2 : 0);
         const p = this.colliders.resolve(f.x + rx * off, f.y + ry * off, 0.3);
-        this.add(scooter ? "scooter" : "bike", `${scooter ? "trottinette" : "velo"}-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
+        this.add(scooter ? "trottinette" : "velo-ville", `${scooter ? "trottinette" : "velo"}-${f.id}-${i}`, p.x, p.y, heading, (h >>> (8 + i * 3)) & 7);
       }
     }
     for (const s of findStalls(t.marks)) {
@@ -120,11 +121,11 @@ export class Fleet {
       if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
       // Garée en marche avant ou en marche arrière.
       const heading = s.heading + (h & 1024 ? Math.PI : 0);
-      if (draw < OCCUPANCY) this.add("car", `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
+      if (draw < OCCUPANCY) this.add("citadine", `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
       else {
         // Deux motos côte à côte sur la place.
         const rx = Math.cos(heading), ry = -Math.sin(heading);
-        for (const side of [-1, 1]) this.add("moto", `moto-${key}-${side}`, s.x + rx * side * 0.6, s.y + ry * side * 0.6, heading, ((h >>> 12) + side + 1) & 15);
+        for (const side of [-1, 1]) this.add("moto-routiere", `moto-${key}-${side}`, s.x + rx * side * 0.6, s.y + ry * side * 0.6, heading, ((h >>> 12) + side + 1) & 15);
       }
     }
     this.carOnly.currentTag = t.id;
@@ -144,15 +145,16 @@ export class Fleet {
    * Ajoute un véhicule ; un identifiant déjà présent renvoie le véhicule existant (une tuile qui se recharge ne le recrée pas,
    * et un véhicule retrouvé dans une sauvegarde reste à l'endroit où le joueur l'a laissé).
    */
-  add(kind: VehicleKind, id: string, x: number, y: number, heading: number, variant: number, home: Vehicle["home"] = { x, y, heading }): Vehicle {
+  add(model: string, id: string, x: number, y: number, heading: number, variant: number, home: Vehicle["home"] = { x, y, heading }): Vehicle {
     const existing = this.byId.get(id);
     if (existing) return existing;
-    const k = KINDS[kind];
-    const v: Vehicle = { id, kind, spec: k.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home };
+    const def = vehicleDef(model);
+    if (!def) throw new Error(`modèle de véhicule inconnu : ${model}`);
+    const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home };
     this.byId.set(id, v);
     this.settle(v);
-    if (kind !== "car") {
-      v.model = k.model(variant);
+    if (v.family !== "car") {
+      v.model = buildModel(def, variant);
       v.model.update(v.state);
       this.scene.add(v.model.group);
     }
@@ -163,7 +165,7 @@ export class Fleet {
 
   /** Retrouve les véhicules d'une sauvegarde, là où ils avaient été laissés (avant que leurs tuiles ne les recréent à l'origine). */
   restore(saved: readonly SavedVehicle[]): void {
-    for (const s of saved) this.add(s.kind, s.id, s.x, s.y, s.heading, s.variant, null);
+    for (const s of saved) this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);
   }
 
   get(id: string): Vehicle | null {
@@ -176,7 +178,7 @@ export class Fleet {
     for (const v of this.vehicles) {
       const s = v.state, h = v.home;
       const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
-      if (moved) out.push({ id: v.id, kind: v.kind, variant: v.variant, x: s.x, y: s.y, heading: s.heading });
+      if (moved) out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading });
     }
     return out;
   }
@@ -198,7 +200,7 @@ export class Fleet {
     this.colliders.currentTag = `veh:${v.id}`;
     for (const [off, r] of v.spec.hull) this.colliders.addCircle(s.x + Math.sin(s.heading) * off, s.y + Math.cos(s.heading) * off, r);
     this.colliders.currentTag = null;
-    if (v.kind === "car") {
+    if (v.family === "car") {
       if (v.model) {
         this.scene.remove(v.model.group);
         v.model.dispose();
@@ -213,7 +215,7 @@ export class Fleet {
     v.ridden = true;
     this.colliders.removeTag(`veh:${v.id}`);
     if (!v.model) {
-      v.model = KINDS[v.kind].model(v.variant);
+      v.model = buildModel(v.def, v.variant);
       v.model.update(v.state);
       this.scene.add(v.model.group);
       this.carsDirty = true;
@@ -222,10 +224,10 @@ export class Fleet {
   }
 
   /** Véhicule libre le plus proche de (x, y), d'un type donné ou de n'importe lequel, avec la distance à son centre. */
-  nearest(x: number, y: number, kind: VehicleKind | null = null): { vehicle: Vehicle; distance: number } | null {
+  nearest(x: number, y: number, family: VehicleFamily | null = null): { vehicle: Vehicle; distance: number } | null {
     let best: { vehicle: Vehicle; distance: number } | null = null;
     for (const v of this.vehicles) {
-      if (v.ridden || (kind && v.kind !== kind)) continue;
+      if (v.ridden || (family && v.family !== family)) continue;
       const d = Math.hypot(v.state.x - x, v.state.y - y);
       if (!best || d < best.distance) best = { vehicle: v, distance: d };
     }
@@ -235,15 +237,15 @@ export class Fleet {
   /** Masque les deux-roues éloignés et met à jour les voitures garées visibles (au plus tous les 10 m de déplacement). */
   cull(x: number, y: number): void {
     for (const v of this.vehicles) {
-      if (v.model && v.kind !== "car") v.model.group.visible = v.ridden || Math.hypot(v.state.x - x, v.state.y - y) < DRAW_DISTANCE;
+      if (v.model && v.family !== "car") v.model.group.visible = v.ridden || Math.hypot(v.state.x - x, v.state.y - y) < DRAW_DISTANCE;
     }
     if (!this.carsDirty && Math.hypot(x - this.lastCull.x, y - this.lastCull.y) < 10) return;
     this.carsDirty = false;
     this.lastCull = { x, y };
     const cars = [];
     for (const v of this.vehicles) {
-      if (v.kind !== "car" || v.ridden || Math.hypot(v.state.x - x, v.state.y - y) > CAR_DRAW_DISTANCE) continue;
-      cars.push({ ...v.state, variant: v.variant });
+      if (v.family !== "car" || v.ridden || Math.hypot(v.state.x - x, v.state.y - y) > CAR_DRAW_DISTANCE) continue;
+      cars.push({ ...v.state, color: paletteColor(v.def, v.variant) });
     }
     this.parked.set(cars);
   }
