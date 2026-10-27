@@ -1,4 +1,6 @@
 import { addDays, type SaveGame, type SaveStore } from "../core/save";
+import type { Recipe } from "../core/character";
+import { AppearancePreview } from "../render/appearance-preview";
 import { NotesStore } from "../core/notes-store";
 import type { Waypoint } from "../core/waypoint";
 import { WaypointMarker } from "../render/waypoint-marker";
@@ -48,6 +50,7 @@ export class UiBridge {
   private frozen: { x: number; y: number; z: number; heading: number; hour: number; day: number } | null = null;
   private lastSaved: number | null;
   private suppress = false;
+  private preview: AppearancePreview | null = null;
   private notes: Promise<{ store: NotesStore; persistent: boolean }> | null = null;
   /** La carte agrandie couvre tout l'écran : inutile de dessiner le monde derrière. */
   get coversScreen(): boolean {
@@ -65,8 +68,11 @@ export class UiBridge {
     private readonly saveStore: SaveStore | null,
     private readonly state: () => GameState,
     initial: SaveGame | null,
+    private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
   ) {
     const settings = ctx.settings!;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
     this.waypoint = initial?.waypoint ?? null;
     this.lastSaved = initial?.savedAt || null;
     this.minimap = new Minimap(document.getElementById("minimap") as HTMLCanvasElement);
@@ -88,6 +94,14 @@ export class UiBridge {
       pauseShot: () => new Promise((resolve) => (this.shot ? this.shot.toBlob((b) => resolve(b), "image/jpeg", 0.82) : resolve(null))),
       situation: () => this.frozen ?? this.situation(),
       notes: () => (this.notes ??= this.openNotes()),
+      appearance: {
+        get: () => this.appearance.get(),
+        set: (r) => this.appearance.set(r),
+        // L'aperçu n'est fabriqué qu'à la première ouverture de l'écran : il n'alourdit pas le démarrage.
+        get preview() {
+          return self.previewHandle();
+        },
+      },
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
     });
 
@@ -180,6 +194,10 @@ export class UiBridge {
     c.width = SHOT_WIDTH;
     c.height = Math.round((SHOT_WIDTH * src.height) / src.width);
     c.getContext("2d")?.drawImage(src, 0, 0, c.width, c.height);
+  }
+
+  private previewHandle(): AppearancePreview {
+    return (this.preview ??= new AppearancePreview(this.ctx.renderer, this.appearance.get()));
   }
 
   private openMap(): boolean {

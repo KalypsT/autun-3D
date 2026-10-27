@@ -1,6 +1,11 @@
 import { clockText, notesExport, notesText, type PlaceNote } from "../core/notes";
 import { compassName } from "../core/mapview";
 import type { NotesStore } from "../core/notes-store";
+import { LABELS, randomAppearance } from "../core/appearance";
+import {
+  AGES, applyAppearance, BAGS, BEARDS, bottomColorChoices, BOTTOM_COLORS, BOTTOMS, BUILDS, CLOTH_COLORS, DEFAULT_RECIPE, GLASSES, HAIR_COLORS, HAIR_STYLES, HATS, hatColorChoices,
+  HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
+} from "../core/character";
 import { DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Réglages, Lieux notés, Sauvegarde. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
@@ -20,10 +25,12 @@ export interface PauseHooks {
   pauseShot(): Promise<Blob | null>;
   situation(): { x: number; y: number; z: number; heading: number; hour: number; day: number };
   notes(): Promise<{ store: NotesStore; persistent: boolean }>;
+  /** Apparence du joueur : lecture, changement (appliqué tout de suite en jeu et enregistré), aperçu dessiné par le moteur du jeu. */
+  appearance: { get(): Recipe; set(recipe: Recipe): void; preview: { canvas: HTMLCanvasElement; show(recipe: Recipe): void; rotate(radians: number): void } };
   build: string;
 }
 
-type PanelId = "home" | "settings" | "notes" | "save";
+type PanelId = "home" | "settings" | "appearance" | "notes" | "save";
 
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -67,6 +74,7 @@ export class PauseMenu {
     item("🗺  Carte", () => {
       if (!hooks.openMap()) this.content.replaceChildren(h("h2", "", "Carte"), h("p", "pm-warn", "La carte n'a pas pu être chargée (fichiers absents ou réseau coupé). Réessaie plus tard."));
     });
+    item("👤  Apparence", () => this.show("appearance"), "appearance");
     item("⚙  Réglages", () => this.show("settings"), "settings");
     item("📍  Lieux notés", () => this.show("notes"), "notes");
     item("💾  Sauvegarde", () => this.show("save"), "save");
@@ -105,6 +113,7 @@ export class PauseMenu {
     this.content.replaceChildren();
     if (panel === "home") this.home();
     else if (panel === "settings") this.settingsPanel();
+    else if (panel === "appearance") this.appearancePanel();
     else if (panel === "notes") void this.notesPanel();
     else this.savePanel();
   }
@@ -166,6 +175,140 @@ export class PauseMenu {
     row("Sensibilité de la caméra", "Vitesse de rotation au doigt.", "sensitivity", sens);
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
     c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=) reste prioritaire."));
+  }
+
+  // --- Apparence ----------------------------------------------------------------------------------------------------------
+
+  private appearancePanel(): void {
+    const { appearance } = this.hooks;
+    const c = this.content;
+    c.append(h("h2", "", "Apparence"));
+    const layout = h("div", "pm-appearance");
+    const left = h("div", "pm-preview");
+    const right = h("div", "pm-controls");
+    layout.append(left, right);
+    c.append(layout);
+
+    // Aperçu : glisser pour tourner le personnage.
+    const canvas = appearance.preview.canvas;
+    let last: number | null = null;
+    canvas.onpointerdown = (e) => {
+      last = e.clientX;
+      canvas.setPointerCapture(e.pointerId);
+    };
+    canvas.onpointermove = (e) => {
+      if (last === null) return;
+      appearance.preview.rotate((e.clientX - last) * 0.014);
+      last = e.clientX;
+    };
+    canvas.onpointerup = canvas.onpointercancel = () => {
+      last = null;
+    };
+    const bar = h("div", "pm-actions");
+    const random = h("button", "pm-primary", "🎲 Hasard");
+    random.addEventListener("click", () => change(randomAppearance()));
+    const reset = h("button", "", "Par défaut");
+    reset.addEventListener("click", () => change(applyAppearance(DEFAULT_RECIPE)));
+    bar.append(random, reset);
+    left.append(canvas, bar, h("small", "pm-muted", "Glisse sur l'image pour tourner."));
+
+    const change = (next: Recipe): void => {
+      appearance.set(next);
+      appearance.preview.show(next);
+      build();
+    };
+    const patch = (p: Partial<Recipe>): void => change(applyAppearance(appearance.get(), p));
+
+    const build = (): void => {
+      const keep = c.scrollTop;
+      const r = appearance.get();
+      right.replaceChildren();
+      const section = (title: string): void => {
+        right.append(h("h3", "pm-section", title));
+      };
+      const choice = <T extends string>(label: string, labels: Record<T, string>, values: readonly T[], current: T, set: (v: T) => void): void => {
+        const row = h("div", "pm-arow");
+        row.append(h("span", "pm-alabel", label));
+        const box = h("div", "pm-chips");
+        for (const v of values) {
+          const b = h("button", v === current ? "on" : "", labels[v]);
+          b.addEventListener("click", () => set(v));
+          box.append(b);
+        }
+        row.append(box);
+        right.append(row);
+      };
+      const swatches = (label: string, palette: readonly string[], indices: readonly number[], current: number, set: (i: number) => void): void => {
+        const row = h("div", "pm-arow");
+        row.append(h("span", "pm-alabel", label));
+        const box = h("div", "pm-swatches");
+        for (const i of indices) {
+          const b = h("button", i === current ? "pm-sw on" : "pm-sw");
+          b.style.background = palette[i]!;
+          b.setAttribute("aria-label", palette[i]!);
+          b.addEventListener("click", () => set(i));
+          box.append(b);
+        }
+        row.append(box);
+        right.append(row);
+      };
+      const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+
+      section("Corps");
+      choice("Sexe", LABELS.sex, SEXES, r.sex, (v) => patch({ sex: v }));
+      choice("Âge", LABELS.age, AGES, r.age, (v) => patch({ age: v }));
+      choice("Corpulence", LABELS.build, BUILDS, r.build, (v) => patch({ build: v }));
+      const hrow = h("div", "pm-arow");
+      hrow.append(h("span", "pm-alabel", "Taille"));
+      const slider = h("input");
+      slider.type = "range";
+      slider.min = String(Math.round(HEIGHT_RANGE.min * 100));
+      slider.max = String(Math.round(HEIGHT_RANGE.max * 100));
+      slider.step = "1";
+      slider.value = String(Math.round(r.height * 100));
+      const out = h("span", "pm-value", `${(r.height).toFixed(2).replace(".", ",")} m`);
+      out.style.width = "52px";
+      // Pendant le glissement on ne reconstruit pas l'écran (le curseur serait perdu) : seul l'aperçu change.
+      slider.addEventListener("input", () => {
+        const next = applyAppearance(appearance.get(), { height: Number(slider.value) / 100 });
+        out.textContent = `${next.height.toFixed(2).replace(".", ",")} m`;
+        appearance.set(next);
+        appearance.preview.show(next);
+      });
+      const sl = h("div", "pm-slider");
+      sl.append(slider, out);
+      hrow.append(sl);
+      right.append(hrow);
+      swatches("Teint", SKIN_TONES, range(SKIN_TONES.length), r.skin, (i) => patch({ skin: i }));
+
+      section("Cheveux");
+      choice("Coiffure", LABELS.hairStyle, HAIR_STYLES, r.hairStyle, (v) => patch({ hairStyle: v }));
+      swatches("Couleur", HAIR_COLORS, range(HAIR_COLORS.length), r.hairColor, (i) => patch({ hairColor: i }));
+      choice("Barbe", LABELS.beard, BEARDS, r.beard, (v) => patch({ beard: v }));
+
+      section("Tenue");
+      choice("Haut", LABELS.top, TOPS, r.top, (v) => patch({ top: v }));
+      swatches(r.top === "apron" ? "Couleur du tablier" : "Couleur du haut", CLOTH_COLORS, topColorChoices(r.top), r.topColor, (i) => patch({ topColor: i }));
+      if (r.top === "apron") swatches("Chemise dessous", CLOTH_COLORS, range(16), r.scarfColor, (i) => patch({ scarfColor: i }));
+      choice("Bas", LABELS.bottom, BOTTOMS, r.bottom, (v) => patch({ bottom: v }));
+      swatches("Couleur du bas", BOTTOM_COLORS, bottomColorChoices(r.bottom), r.bottomColor, (i) => patch({ bottomColor: i }));
+      choice("Chaussures", LABELS.shoes, SHOES, r.shoes, (v) => patch({ shoes: v }));
+      swatches("Couleur des chaussures", SHOE_COLORS, shoeColorChoices(r.shoes), r.shoeColor, (i) => patch({ shoeColor: i }));
+
+      section("Accessoires");
+      choice("Chapeau", LABELS.hat, HATS, r.hat, (v) => patch({ hat: v }));
+      if (r.hat !== "none") swatches("Couleur du chapeau", CLOTH_COLORS, hatColorChoices(r.hat), r.hatColor, (i) => patch({ hatColor: i }));
+      choice("Lunettes", LABELS.glasses, GLASSES, r.glasses, (v) => patch({ glasses: v }));
+      choice("Sac", LABELS.bag, BAGS, r.bag, (v) => patch({ bag: v }));
+      if (r.bag !== "none") swatches("Couleur du sac", CLOTH_COLORS, range(16), r.bagColor, (i) => patch({ bagColor: i }));
+      if (r.top !== "apron") {
+        choice("Écharpe", { off: "Non", on: "Oui" }, ["off", "on"] as const, r.scarf ? "on" : "off", (v) => patch({ scarf: v === "on" }));
+        if (r.scarf) swatches("Couleur de l'écharpe", CLOTH_COLORS, range(16), r.scarfColor, (i) => patch({ scarfColor: i }));
+      }
+      c.scrollTop = keep;
+    };
+    appearance.preview.show(appearance.get());
+    build();
   }
 
   // --- Lieux notés --------------------------------------------------------------------------------------------------------

@@ -321,6 +321,33 @@ export function isValidRecipe(r: Recipe): boolean {
   );
 }
 
+/** Couleurs de bas et de chaussures que le tirage peut donner pour chaque type (le choix du joueur s'y limite aussi). */
+export const bottomColorChoices = (kind: BottomKind): number[] => BOTTOM_COLOR_CHOICES[kind].map(([i]) => i);
+export const shoeColorChoices = (kind: ShoeKind): number[] => SHOE_COLOR_CHOICES[kind].map(([i]) => i);
+/** Couleurs de haut (gilet fluo ou non), de chapeau (casque ou non). Les deux dernières couleurs de `CLOTH_COLORS` sont les fluo. */
+export const topColorChoices = (top: TopKind): number[] => (top === "hivis" ? [...HIVIS_COLORS] : Array.from({ length: 16 }, (_, i) => i));
+export const hatColorChoices = (hat: HatKind): number[] => (hat === "helmet" ? [YELLOW_HIVIS, WHITE, 2, 0, 14] : Array.from({ length: 16 }, (_, i) => i));
+
+/**
+ * Recette modifiée à la main : on applique le changement, puis on rétablit la cohérence (couleurs permises pour la pièce choisie,
+ * pas d'écharpe sous un tablier dont la chemise utilise cette couleur, famille de tenue d'après le haut). Idempotente.
+ */
+export function applyAppearance(r: Recipe, patch: Partial<Recipe> = {}): Recipe {
+  const m: Recipe = { ...r, ...patch };
+  m.height = Math.round(Math.min(Math.max(finite(m.height) ? m.height : r.height, HEIGHT_RANGE.min), HEIGHT_RANGE.max) * 100) / 100;
+  const keep = (value: number, allowed: readonly number[]): number => (allowed.includes(value) ? value : allowed[0]!);
+  m.topColor = keep(m.topColor, topColorChoices(m.top));
+  m.hatColor = keep(m.hatColor, hatColorChoices(m.hat));
+  m.bottomColor = keep(m.bottomColor, bottomColorChoices(m.bottom));
+  m.shoeColor = keep(m.shoeColor, shoeColorChoices(m.shoes));
+  const plain = Array.from({ length: 16 }, (_, i) => i);
+  m.bagColor = keep(m.bagColor, plain);
+  m.scarfColor = keep(m.scarfColor, plain);
+  if (m.top === "apron") m.scarf = false;
+  m.outfit = m.top === "hivis" || m.top === "apron" ? "work" : m.top === "sport" ? "sport" : "city";
+  return m;
+}
+
 /** Couleurs résolues (chaînes CSS) : ce que le rendu applique. */
 export interface RecipeColors {
   skin: string;
