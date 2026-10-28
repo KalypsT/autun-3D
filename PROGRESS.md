@@ -447,3 +447,6 @@ Fait :
 
 **Remesure de la correction D69 sur le téléphone (28 octobre 2026)** (D77)
 - Build `2a1fb50` (avant J4), 22 h, `traffic=30`, `traffic=20`, `traffic=30&soak=10` : 60 i/s partout, dix minutes d'endurance sans image au-dessus de 33 ms, **voitures collées : rafales isolées (183, 412 et 215 pas avec contact en trois minutes sur dix, 0 ailleurs) au lieu de 229 à 2 325 par minute**, pas de fuite de mémoire, « Dense » la nuit toujours à 195-200 appels de dessin en moyenne. La mesure de J4 reste à faire.
+
+**Mesure de J4 sur le téléphone (28 octobre 2026)** (D78)
+- Build `42a640b` (J4 fusionné), 22 h, `&police=1`, « Dense » et Normale, dix minutes d'endurance : **60 i/s partout, aucune image au-dessus de 33 ms pendant l'endurance**, coût de la police dans le bruit (0,04 à 0,11 ms par image), pas de fuite de mémoire. Appels de dessin « Dense » : **199 à 204 en moyenne (pic 205)**, +5 à +8 par rapport à sans police dont +2 d'artefact du banc (corrigé). Les poursuivants se touchent et touchent des civils (2 284 pas à 50 km/h) : la marche arrière ne regarde plus derrière (corrigé, à remesurer). Tests : 472.
