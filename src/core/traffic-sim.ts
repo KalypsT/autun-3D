@@ -54,7 +54,9 @@ export class TrafficSim {
     state.speed = speed;
     const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders);
     const { halfLen, halfWid } = extentOf(spec);
-    const car: SimCar = { id: this.serial++, spec, state, driver, other: { state, halfLen, halfWid }, age: 0 };
+    const id = this.serial++;
+    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0 };
+    if (driver) driver.junction.id = id;
     this.cars.push(car);
     return car;
   }

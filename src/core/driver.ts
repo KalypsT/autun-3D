@@ -1,5 +1,7 @@
 import type { Colliders, Resolution } from "./collision";
+import { conflict, emptyJunction, mustYield, obligationOf, sameJunction, type JunctionState } from "./junction";
 import type { NavGraph } from "./nav-graph";
+import { ROAD_FLAG } from "../data/nav";
 import { moveDir, moveEdge, type RoadGraph, type RoadMove } from "./road-graph";
 import { driveForce, GRAVITY, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
@@ -25,7 +27,7 @@ const SPEED_FLOOR = 15 / 3.6;
 /** Longueur de route (m) qu'on garde devant soi, et nombre maximal d'arêtes dans la route. */
 const AHEAD = 220;
 const MAX_MOVES = 14;
-/** Écart au tracé (m) au-delà duquel le conducteur est perdu, et temps (s) à l'arrêt sans raison au bout duquel il est bloqué. */
+/** Écart au tracé (m) au-delà duquel le conducteur est perdu, et temps (s) à l'arrêt sans raison d'attendre (voie fermée par un obstacle fixe, obstacle contre lequel il est coincé) au bout duquel il est bloqué. */
 const LOST_DISTANCE = 8;
 const STUCK_TIME = 8;
 /** Passes d'adoucissement du tracé, et part de la courbure maximale permise par la direction que le tracé a le droit d'utiliser. */
@@ -131,6 +133,10 @@ export interface Path {
   curv: Float32Array;
   /** Rang, dans la route, du sens de parcours auquel appartient le point. */
   move: Uint8Array;
+  /** Points où la coque toucherait un obstacle fixe même sur le tracé écarté : la voie y est fermée (vitesse nulle). */
+  closed: Uint8Array;
+  /** Raccords entre deux arêtes consécutives de la route : indices de début et de fin dans le tracé (le raccord k relie les arêtes k et k + 1). */
+  junctions: { a: number; b: number }[];
 }
 
 const wrap = (a: number): number => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
@@ -236,6 +242,8 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
     pm.push(mv);
   };
   let prevDir: [number, number] | null = null;
+  // Points bruts de début et de fin de chaque raccord (jonction entre deux arêtes de la route).
+  const rawA: number[] = [], rawB: number[] = [];
   for (let i = 0; i < route.length; i++) {
     const from = i === 0 ? Math.min(startS, Math.max(lens[0]! - 0.5, 0)) : cutAt(i - 1);
     const to = i === route.length - 1 ? lens[i]! : lens[i]! - cutAt(i);
@@ -251,7 +259,9 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
       const ax = pts[pts.length - 2]!, ay = pts[pts.length - 1]!;
       const mid: number[] = [];
       bezier(ax, ay, prevDir[0], prevDir[1], seg[0]!, seg[1]!, dx / dl, dy / dl, mid);
+      rawA.push(pts.length / 2 - 1);
       for (let k = 0; k < mid.length; k += 2) push(mid[k]!, mid[k + 1]!, i - 1, Math.min(lim, pl[pl.length - 1]!));
+      rawB.push(pts.length / 2);
     }
     for (let k = 0; k < seg.length; k += 2) push(seg[k]!, seg[k + 1]!, i, lim);
     const n = seg.length;
@@ -282,6 +292,10 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
     ls.push(pl[pl.length - 1]!);
   }
   const n = xs.length;
+  // Indices des raccords dans le tracé rééchantillonné : abscisse curviligne brute divisée par DS.
+  const cum: number[] = [0];
+  for (let i = 1; i < pts.length / 2; i++) cum.push(cum[i - 1]! + Math.hypot(pts[i * 2]! - pts[i * 2 - 2]!, pts[i * 2 + 1]! - pts[i * 2 - 1]!));
+  const junctions = rawA.map((a, k) => ({ a: Math.min(n - 1, Math.floor(cum[a]! / DS)), b: Math.min(n - 1, Math.ceil(cum[rawB[k]!]! / DS)) }));
   smoothPath(xs, ys);
   if (colliders) clearPath(xs, ys, colliders);
   const x = Float32Array.from(xs), y = Float32Array.from(ys), heading = new Float32Array(n), v = new Float32Array(n), curv = new Float32Array(n), move = Uint8Array.from(ms);
@@ -296,6 +310,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
     v[i] = Math.min(ls[i]!, Math.sqrt(A_LAT / Math.max(k, 1e-3)), spec ? cornerSpeed(spec, k) : Infinity);
   }
   // Là où la coque de la voiture toucherait un obstacle fixe même sur le tracé écarté, la voie est fermée : on s'arrête avant.
+  const closed = new Uint8Array(n);
   if (colliders && spec) {
     const res: Resolution = { x: 0, y: 0, nx: 0, ny: 0, hit: false };
     for (let i = 0; i < n; i++) {
@@ -303,6 +318,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
       for (const [off, r] of spec.hull) {
         if (colliders.resolveInto(res, x[i]! + sx * off, y[i]! + sy * off, r).hit) {
           v[i] = 0;
+          closed[i] = 1;
           break;
         }
       }
@@ -315,7 +331,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
   }
   // Freinage anticipé : on doit pouvoir ralentir à A_DEC pour atteindre chaque vitesse plus loin.
   for (let i = n - 2; i >= 0; i--) v[i] = Math.min(v[i]!, Math.sqrt(v[i + 1]! * v[i + 1]! + 2 * A_DEC * DS));
-  return { n, x, y, heading, v, curv, move };
+  return { n, x, y, heading, v, curv, move, junctions, closed };
 }
 
 /** Vitesse maximale (m/s) à laquelle la voiture peut tenir une courbure `k` (1/m) en n'utilisant que `STEER_USE` de son braquage : le braquage permis baisse avec la vitesse. */
@@ -335,6 +351,8 @@ export interface Other {
   /** Demi-longueur et demi-largeur de l'emprise (m). */
   halfLen: number;
   halfWid: number;
+  /** Où en est ce conducteur de son prochain carrefour (voitures de la circulation seulement). */
+  junction?: JunctionState;
 }
 
 /** Emprise d'une fiche : demi-longueur (du centre de gravité au bout du cercle extrême) et demi-largeur. */
@@ -353,6 +371,18 @@ const HEADWAY = 1.3;
 /** Au-delà de cette distance (m) devant, les autres usagers ne comptent pas ; et vitesse (m/s) à laquelle on croise une voiture venant en face sur une voie trop étroite. */
 const LOOK_AHEAD_MAX = 60;
 const ONCOMING_SPEED = 3;
+/** Distance d'arrêt (m) devant une ligne d'arrêt ou un panneau, durée (s) du marquage d'un stop, portée (m) à laquelle on regarde le carrefour suivant. */
+const LINE_GAP = 0.8;
+/** La ligne d'arrêt est reculée de cette distance (m) par rapport au début du raccord : le virage de l'autre balaie large. */
+const LINE_BACK = 2;
+const STOP_PAUSE = 1;
+const JUNCTION_REACH = 80;
+/** Les autres arrivent-ils avant nous ? Marge (s) sur les temps d'arrivée, vitesse plancher (m/s) pour les estimer, distance (m) au-delà de laquelle on les ignore. */
+const CLAIM_MARGIN = 2.5;
+const CLAIM_SPEED = 2.5;
+const CLAIM_REACH = 35;
+/** Attente (s) à la ligne après laquelle, entre deux voitures qui se bloquent, celle de plus petit identifiant passe. */
+const DEADLOCK_AFTER = 3;
 /** Freinage d'urgence maximal demandé (m/s²). */
 const A_EMERGENCY = 8;
 /** Temps (s) d'immobilité après lequel un conducteur qui attend est retiré (interblocage), et un conducteur sans raison d'attendre. */
@@ -404,6 +434,7 @@ export class Driver {
     const road = this.road;
     const out: RoadMove[] = [];
     road.next(last, out);
+    for (let i = out.length - 1; i >= 0; i--) if (this.banned.has(`${last}>${out[i]}`)) out.splice(i, 1);
     // Impasse : pas de demi-tour (une voiture ne tourne pas dans 3,5 m sans manœuvrer) ; la route s'arrête là.
     if (out.length === 0) return null;
     if (out.length === 1) return out[0]!;
@@ -458,10 +489,30 @@ export class Driver {
   /** Refait le tracé : `startS` abscisse de départ sur la première arête (null : celle du tracé actuel). */
   private rebuild(startS: number | null, rank: number): void {
     if (startS !== null) this.pathStart = startS;
-    this.extend(rank);
-    this.gens.length = 0;
-    for (const m of this.route) this.gens.push(this.nav.generation(moveEdge(m)));
-    this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended);
+    // Un virage dont le raccord traverse un obstacle fixe (un mur qui coupe le coin) est interdit à ce conducteur : on en choisit un autre.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      this.extend(rank);
+      this.gens.length = 0;
+      for (const m of this.route) this.gens.push(this.nav.generation(moveEdge(m)));
+      this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended);
+      const bad = this.closedJunction(this.path, rank);
+      if (bad < 0) return;
+      this.banned.add(`${this.route[bad]}>${this.route[bad + 1]}`);
+      this.route.length = bad + 1;
+      this.ended = false;
+    }
+  }
+
+  /** Raccords interdits à ce conducteur : « arête d'arrivée > arête de départ ». */
+  private readonly banned = new Set<string>();
+
+  /** Rang du premier raccord (à partir de celui de la voiture) dont le virage traverse un obstacle fixe, ou −1. */
+  private closedJunction(path: Path, rank: number): number {
+    for (let q = Math.max(rank, 0); q < path.junctions.length; q++) {
+      const { a, b } = path.junctions[q]!;
+      for (let i = a; i <= b && i < path.n; i++) if (path.closed[i]) return q;
+    }
+    return -1;
   }
 
   private valid(): boolean {
@@ -476,6 +527,108 @@ export class Driver {
   private waitFor = 0;
   /** Écart (m) à l'usager le plus proche devant au dernier pas, et sa vitesse le long de la route (diagnostic et tests). */
   gap = Infinity;
+  /** Prochain carrefour : publié pour les autres conducteurs (`Other.junction`). */
+  readonly junction: JunctionState = emptyJunction(0);
+  private stopDone = "";
+  private stopFor = 0;
+  private junctionWait = 0;
+
+  /**
+   * Prochain carrefour de la route : renvoie l'écart (m) entre le nez de la voiture et la ligne où elle doit s'arrêter, ou Infinity si elle peut passer.
+   * Un stop se marque toujours (arrêt complet d'une seconde) ; ailleurs, on cède quand un autre conducteur prioritaire arrive en même temps.
+   */
+  private assessJunction(u: number, dt: number, path: Path, others: readonly Other[]): number {
+    const J = this.junction;
+    J.active = false;
+    J.waiting = false;
+    const road = this.road;
+    let k = -1;
+    for (let q = 0; q < path.junctions.length; q++) {
+      // Le carrefour reste « devant » 3 m après sa sortie : l'arrière de la voiture y est encore.
+      if (path.junctions[q]!.b + 2 >= this.index) {
+        k = q;
+        break;
+      }
+    }
+    if (k < 0 || k + 1 >= this.route.length) return Infinity;
+    const jn = path.junctions[k]!;
+    const own = extentOf(this.spec);
+    const dist = (jn.a - this.index) * DS - own.halfLen - LINE_BACK;
+    if (dist > JUNCTION_REACH) return Infinity;
+    const inMove = this.route[k]!, outMove = this.route[k + 1]!;
+    const node = road.arrivalNode(inMove);
+    const inEdge = moveEdge(inMove), outEdge = moveEdge(outMove);
+    const arms = road.arms(node);
+    const sign = road.signAt(inMove);
+    let obligation = obligationOf(sign);
+    if (sign & 8 && obligation > 0) {
+      // Panneau dont la direction est inconnue : il vise la branche la moins importante, si elles ne se valent pas.
+      const edges: number[] = [];
+      road.edgesAt(node, edges);
+      let lo = 99, hi = -1;
+      for (const e of edges) {
+        lo = Math.min(lo, road.edgeClass(e));
+        hi = Math.max(hi, road.edgeClass(e));
+      }
+      if (!(hi > lo && road.edgeClass(inEdge) === hi)) obligation = 0;
+    }
+    if (arms < 3 && obligation < 2) return Infinity;
+    const x = road.nodeX(node), y = road.nodeY(node);
+    const ring = (road.edgeFlags(inEdge) & ROAD_FLAG.roundabout) !== 0, nextRing = (road.edgeFlags(outEdge) & ROAD_FLAG.roundabout) !== 0;
+    J.active = true;
+    J.x = x;
+    J.y = y;
+    J.inEdge = inEdge;
+    J.outEdge = outEdge;
+    J.inH = path.heading[Math.max(jn.a - 1, 0)]!;
+    J.outH = path.heading[Math.min(jn.b + 1, path.n - 1)]!;
+    J.turn = wrap(J.outH - J.inH);
+    J.dist = dist;
+    J.speed = u;
+    J.cls = road.edgeClass(inEdge);
+    J.obligation = obligation;
+    J.ring = ring;
+    J.enteringRing = !ring && nextRing;
+    // Le nez a franchi la ligne : on est engagé, on passe.
+    if (dist < 0) {
+      this.junctionWait = 0;
+      return Infinity;
+    }
+    const key = `${x.toFixed(1)},${y.toFixed(1)}`;
+    let blocking = false;
+    if (obligation === 2 && this.stopDone !== key) {
+      blocking = true;
+      this.stopFor = u < 0.3 && dist < 3 ? this.stopFor + dt : 0;
+      if (this.stopFor >= STOP_PAUSE) {
+        this.stopDone = key;
+        blocking = false;
+      }
+    }
+    if (!blocking && arms >= 3) {
+      const timeMe = Math.max(dist, 0) / Math.max(u, CLAIM_SPEED);
+      // On ne peut plus s'arrêter à temps : on passe.
+      const canStop = dist >= (u * u) / (2 * 5);
+      for (const o of others) {
+        const oj = o.junction;
+        if (!canStop || !oj || oj === J || !oj.active || !sameJunction(J, oj)) continue;
+        if (!conflict(J, oj) || !mustYield(J, oj)) continue;
+        if (oj.dist >= CLAIM_REACH || (oj.dist >= 0 && oj.dist / Math.max(oj.speed, CLAIM_SPEED) >= timeMe + CLAIM_MARGIN)) continue;
+        // Deux voitures qui s'attendent l'une l'autre : après quelques secondes, celle de plus petit identifiant passe.
+        if (oj.waiting && this.junctionWait > DEADLOCK_AFTER && J.id < oj.id) continue;
+        blocking = true;
+        break;
+      }
+    }
+    if (blocking) {
+      this.junctionWait = u < 0.5 ? this.junctionWait + dt : this.junctionWait;
+      J.waiting = u < 0.5;
+      J.waitedFor = this.junctionWait;
+      return Math.max(dist, 0.05);
+    }
+    this.junctionWait = 0;
+    J.waitedFor = 0;
+    return Infinity;
+  }
 
   /** Usager le plus proche devant, sur la route : écart (m) entre les pare-chocs et vitesse (m/s) dans le sens de la marche ; null si rien. */
   private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean }): boolean {
@@ -503,6 +656,10 @@ export class Driver {
       const along = Math.abs(Math.cos(rel)) * o.halfLen + Math.abs(Math.sin(rel)) * o.halfWid;
       const across = Math.abs(Math.sin(rel)) * o.halfLen + Math.abs(Math.cos(rel)) * o.halfWid;
       if (bd > own.halfWid + across + 0.3) continue;
+      // Une autre voiture de la circulation qui nous croise (cap très différent) n'est pas devant nous : c'est l'affaire des règles du carrefour,
+      // sinon deux voitures au milieu d'un carrefour se prendraient pour le « devant » l'une de l'autre et ne repartiraient jamais.
+      const coming = Math.cos(rel) < -0.5 && o.state.vx * Math.sin(path.heading[bj]!) + o.state.vy * Math.cos(path.heading[bj]!) < -1;
+      if (o.junction && Math.abs(rel) > 1.2 && !coming) continue;
       const gap = Math.max((bj - this.index) * DS - own.halfLen - along, 0.05);
       if (gap < out.gap) {
         out.gap = gap;
@@ -595,6 +752,18 @@ export class Driver {
     // Autres usagers devant : suivi à distance de sécurité (IDM), prudence face à une voiture qui vient en face.
     this.waiting = false;
     this.gap = Infinity;
+    const line = this.assessJunction(u, dt, path, others);
+    if (line < Infinity) {
+      // Ligne d'arrêt : un obstacle immobile à `line` mètres, dont on s'approche jusqu'à LINE_GAP.
+      const star = LINE_GAP + Math.max(0, u * HEADWAY + (u * u) / (2 * Math.sqrt(A_ACC * A_DEC)));
+      const idm = A_ACC * (1 - Math.pow(u / Math.max(vt, 0.5), 4) - (star / line) ** 2);
+      if (idm < aDes) {
+        aDes = Math.max(idm, -A_EMERGENCY);
+        this.waiting = u < 1.5;
+        this.waitWhy = "priorité";
+      }
+      this.gap = Math.min(this.gap, line);
+    }
     if (others.length > 0 && this.nearestAhead(s, path, u, others, ahead)) {
       this.gap = ahead.gap;
       if (ahead.oncoming) {
@@ -618,7 +787,7 @@ export class Driver {
     else if (u < 0.5) handbrake = 1;
     else if (aDes * spec.mass + resist < -0.05 * spec.maxBrake) brake = Math.min(Math.max((-aDes * spec.mass - resist) / spec.maxBrake, 0), 1);
     // Bloqué : à l'arrêt alors que la route est libre. Qui attend (voiture devant) a une autre limite, plus longue : un interblocage se défait.
-    this.stuckFor = Math.abs(s.speed) < 0.3 && vt > 1 && !this.waiting ? this.stuckFor + dt : 0;
+    this.stuckFor = Math.abs(s.speed) < 0.3 && !this.waiting && !this.ended ? this.stuckFor + dt : 0;
     this.waitFor = Math.abs(s.speed) < 0.3 && this.waiting ? this.waitFor + dt : 0;
     if (this.waitFor > WAIT_LIMIT) {
       this.lost = true;
