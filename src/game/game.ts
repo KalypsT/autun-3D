@@ -38,6 +38,8 @@ import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 import { AudioSystem } from "../audio/audio-system";
 import { stepCrossed } from "../core/sound-model";
 import { GameAudio, type TrafficVisit } from "./game-audio";
+import { CameraShake, Haptics, speedFov, speedLines } from "../core/feel";
+import { VehicleLights } from "../render/vehicle-lights";
 
 export { gameSpawn } from "./start";
 const STEP = 1 / 60;
@@ -121,9 +123,14 @@ export function startGame(ctx: GameContext): void {
   // Sons (J7, D89) : rien ne joue avant le premier geste (règle des navigateurs) ; `?sound=0` les coupe.
   const audioSys = new AudioSystem(settings.values.volume);
   const audio = new GameAudio(audioSys);
+  // Ressenti (D90) : vibrations du téléphone, tremblement de la caméra.
+  const haptics = new Haptics(typeof navigator.vibrate === "function" ? (p) => void navigator.vibrate(p) : null);
+  haptics.enabled = settings.values.vibration;
+  const shake = new CameraShake();
   settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
+    if (changed.includes("vibration")) haptics.enabled = v.vibration;
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
     // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
     if (changed.includes("traffic")) startTraffic(v.traffic);
@@ -142,6 +149,8 @@ export function startGame(ctx: GameContext): void {
   let camDist = distance;
   let riding: Vehicle | null = null;
   let rideModel: VehicleModel | null = null;
+  /** Feux du véhicule conduit (D90). */
+  let lights: VehicleLights | null = null;
   /** Descente demandée en roulant : on freine d'abord. */
   let leaving = false;
   let crank = 0;
@@ -299,6 +308,8 @@ export function startGame(ctx: GameContext): void {
     leaving = false;
     rideModel = fleet.take(v);
     rideModel.group.add(model.group);
+    lights = new VehicleLights(v.def);
+    rideModel.group.add(lights.group);
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
     gasEl.textContent = familyOf(v).gas;
@@ -317,6 +328,8 @@ export function startGame(ctx: GameContext): void {
     s.vx = s.vy = s.yawRate = s.steer = s.lean = 0;
     s.speed = 0;
     rideModel?.update(s);
+    lights?.dispose();
+    lights = null;
     scene.add(model.group);
     model.group.visible = true;
     rideModel = null;
@@ -513,6 +526,7 @@ export function startGame(ctx: GameContext): void {
     police.reset();
     lastStars = 0;
     audio.arrest();
+    haptics.arrest();
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
@@ -531,6 +545,7 @@ export function startGame(ctx: GameContext): void {
     police.reset();
     lastStars = 0;
     audio.death();
+    haptics.death();
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
@@ -548,6 +563,8 @@ export function startGame(ctx: GameContext): void {
   let lastPhase = model.phase;
   let lastStars = wanted.stars;
   const eachCar = (visit: TrafficVisit): void => (traffic as Traffic | null)?.forEachSound(visit);
+  const speedLinesEl = document.getElementById("speedlines")!;
+  let speedLinesOn = false;
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
   let bumpTimer = 0;
@@ -608,6 +625,9 @@ export function startGame(ctx: GameContext): void {
         player.z = s.z;
         audio.impact(s.impact);
         audio.drive(dt, s, leaving ? 0 : input.throttle, leaving ? 1 : input.brake);
+        haptics.crash(s.impact);
+        if (s.impact >= 1.2) shake.impact(s.impact);
+        lights?.update(atmosphere.night, (leaving || input.brake > 0.05) && s.speed > 0.5, s.speed < -0.3);
         s.impact = 0;
         // Caméra de poursuite : se recale derrière le véhicule, sauf si l'on vient de regarder ailleurs.
         lookIdle = input.looking ? 0 : lookIdle + dt;
@@ -629,13 +649,25 @@ export function startGame(ctx: GameContext): void {
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
     const tz = focusZ + HEAD_HEIGHT;
     const cx = player.x + (rig.x - player.x) * k, cy = player.y + (rig.y - player.y) * k, cz = tz + (rig.z - tz) * k;
-    camera.position.set(cx, cz, -cy);
+    // Sensation de vitesse (D90) : tremblement (vers la droite de l'écran et vers le haut), champ de vision qui s'ouvre, traits au-delà de 100 km/h.
+    haptics.step(dt);
+    shake.step(dt, riding ? speed : 0);
+    const sx = shake.offset.x, sy = shake.offset.y;
+    camera.position.set(cx + Math.cos(yaw) * sx, cz + sy, -(cy - Math.sin(yaw) * sx));
     camera.lookAt(player.x, tz - 0.1, -player.y);
     audio.listen(cx, cy, yaw, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
-    const fov = 62 + Math.min(speed * 0.8, 8);
-    if (Math.abs(camera.fov - fov) > 0.05) {
+    const fov = camera.fov + (speedFov(speed, !!riding) - camera.fov) * Math.min(1, dt * 3);
+    if (Math.abs(camera.fov - fov) > 0.02) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
+    }
+    const lines = riding ? speedLines(speed) : 0;
+    if (lines > 0.01 || speedLinesOn) {
+      speedLinesOn = lines > 0.01;
+      speedLinesEl.style.display = speedLinesOn ? "block" : "none";
+      // Les rayons tournent un peu à chaque image : ils défilent au lieu de rester figés.
+      speedLinesEl.style.opacity = (lines * 0.6).toFixed(2);
+      speedLinesEl.style.transform = `rotate(${(Math.random() * 6).toFixed(1)}deg)`;
     }
 
     // Combat (J5) : à pied seulement. Mêlée : le coup tourne le joueur vers sa cible et touche à la frappe (J5-1). Arme à feu : tir instantané, visée assistée (J5-3).
@@ -657,7 +689,10 @@ export function startGame(ctx: GameContext): void {
       gun.cancel();
       const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, pedsNow0);
       if (res.started && weapon.style !== "aim") audio.swing(weapon.style as AttackStyle);
-      if (res.hits > 0) audio.meleeHit(weapon.id);
+      if (res.hits > 0) {
+        audio.meleeHit(weapon.id);
+        haptics.hit();
+      }
       violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
       model.setStrike(melee.active && weapon.style !== "aim" ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
@@ -681,6 +716,7 @@ export function startGame(ctx: GameContext): void {
         const mx = player.x + Math.sin(gun.facing) * MUZZLE, my = player.y + Math.cos(gun.facing) * MUZZLE;
         fx.flash(mx, my, z0);
         audio.shot(weapon.id as GunId, mx, my, true);
+        haptics.shot(weapon.id as GunId);
         for (let k = 0; k < res.fxCount; k++) {
           const sh = res.shots[k]!;
           const z1 = sh.kind === 2 ? terrain.heightAt(sh.x1, sh.y1) + 1.1 : z0;
@@ -761,6 +797,10 @@ export function startGame(ctx: GameContext): void {
       (pigeons as PigeonsController | null)?.update(dt, obs, pedsNow);
       // Effet des passants sur le joueur : un choc ralentit le véhicule (10 à 30 %, jamais plus de 50 % d'un coup) ; à pied, une bousculade ralentit un instant.
       const imp = pedsNow?.impact;
+      if (imp && riding && imp.hits > 0) {
+        haptics.hit();
+        shake.impact(Math.min(imp.speed, 6));
+      }
       if (imp && riding && imp.slow > 0) {
         const keep = 1 - imp.slow, s = riding.state;
         s.speed *= keep;
@@ -813,6 +853,7 @@ export function startGame(ctx: GameContext): void {
     if (health.takeDeath()) die();
     if (health.takeHurt() > 0) {
       audio.hurt();
+      haptics.hurt();
       hurtEl.classList.add("flash");
       void hurtEl.offsetWidth;
       hurtEl.classList.remove("flash");

@@ -22,9 +22,11 @@ export interface Settings {
   traffic: number;
   /** Volume général des sons (0 = muet, 1 = plein) (J7, D89). */
   volume: number;
+  /** Vibrations du téléphone aux chocs, tirs et coups reçus (D90). */
+  vibration: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -51,6 +53,7 @@ export function parseSettings(raw: unknown): Settings {
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
     volume: volume === null ? d.volume : roundVolume(volume),
+    vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
   };
 }
 
@@ -105,6 +108,11 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (volume !== null && volume >= 0) {
     values.volume = roundVolume(volume);
     locked.add("volume");
+  }
+  // ?vibrate=0 coupe les vibrations (essais).
+  if (params.get("vibrate") === "0") {
+    values.vibration = false;
+    locked.add("vibration");
   }
   return { values, locked };
 }

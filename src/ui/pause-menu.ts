@@ -194,6 +194,7 @@ export class PauseMenu {
     const volBox = h("div", "pm-slider");
     volBox.append(vol, volOut);
     row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
+    row("Vibrations", "Le téléphone vibre aux chocs, aux tirs et aux coups reçus.", "vibration", choices("vibration", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.vibration));
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
     c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=, ?sound=0) reste prioritaire."));
   }

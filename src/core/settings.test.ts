@@ -73,3 +73,15 @@ describe("réglage « Volume » (J7)", () => {
     expect(stored.volume).toBe(0.6);
   });
 });
+
+describe("réglage « Vibrations » (D90)", () => {
+  it("activées par défaut, booléen strict, coupées par ?vibrate=0", () => {
+    expect(DEFAULT_SETTINGS.vibration).toBe(true);
+    expect(parseSettings({ vibration: false }).vibration).toBe(false);
+    expect(parseSettings({ vibration: "non" }).vibration).toBe(true);
+    const off = effectiveSettings(DEFAULT_SETTINGS, new URLSearchParams("vibrate=0"));
+    expect(off.values.vibration).toBe(false);
+    expect(off.locked.has("vibration")).toBe(true);
+    expect(DEFAULT_SETTINGS.vibration).toBe(true);
+  });
+});
