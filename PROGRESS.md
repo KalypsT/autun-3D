@@ -422,3 +422,28 @@ Fait :
 **Mesures de nuit, « Dense » et endurance de J3 (28 octobre 2026)** (D69)
 - Nuit avec 20 puis 30 voitures et dix minutes d'endurance sur l'Honor : 60,2 à 60,4 i/s partout, pas de fuite de mémoire, mais 195 à 200 appels de dessin en moyenne avec « Dense » la nuit (limite atteinte). Défaut trouvé : des voitures collées l'une à l'autre pendant plus d'une minute (jusqu'à 2 325 pas de contact par minute) : corrigé (D69, tests : 430), à remesurer.
 
+**J4-0 (28 octobre 2026) : cadrage de J4 et niveau de recherche** (D70)
+- Cadrage de l'étape J4 : trois étoiles, infractions et témoins, perte de piste, arrestation et reprise au bord est de l'anneau, vol avec conducteur, conducteurs visibles, police de la gendarmerie sans arme à feu, découpage en J4-0 à J4-6.
+- `src/core/wanted.ts` : niveau de recherche (infractions vues par la police ou signalées par un passant après 6 s, zone de recherche, une étoile perdue après 15, 25 ou 40 s hors de vue) ; `src/ui/wanted-hud.ts` : étoiles dans `#wanted` (disques et étoiles pleines, clignotement quand la piste est perdue). `?wanted=N` pour essayer. Tests : 441.
+
+**J4-1 (28 octobre 2026) : vol avec conducteur** (D71)
+- Bouton « Prendre » à côté d'une voiture de la circulation à moins de 3 m/s : elle devient un véhicule de la flotte (même modèle, même couleur, sauvegardée quand on la quitte) ; son conducteur sort côté gauche, trébuche et s'enfuit en courant (`PedSim.eject`), et la police est prévenue (une étoile au bout de 6 s). Tests : 442.
+
+**J4-2 (28 octobre 2026) : voiture de gendarmerie** (D72)
+- Entrée `gendarmerie` du catalogue (caisse de la compacte, bleu nuit, bandes claires, barre de gyrophares, moteur plus fort), gyrophares allumés en un seul maillage pour toutes les voitures de police (+1 appel de dessin, sans ombre), patrouilles dans la circulation ordinaire (une à la fois). Galerie : `?view=vehicles&ids=gendarmerie`.
+
+**J4-3 (28 octobre 2026) : itinéraire et poursuite** (D73)
+- `src/core/road-route.ts` (A*, sens uniques ignorés pour la police), `src/core/chase.ts` (route, conduite directe, marche arrière, attente près du joueur arrêté), conducteur en poursuite (axe de la chaussée, plus vite, règles ignorées), civils qui se rangent devant la sirène, `Traffic.pursuers` et `?chase=N`. Essais sur les vraies données : la gendarmerie rattrape un fugitif qui roule comme la circulation et s'arrête à 4 à 8 m de lui quand il s'arrête. Tests : 457.
+
+**J4-4 (28 octobre 2026) : détection et renforts** (D74)
+- La police voit (patrouilles devant elles, poursuivants tout autour, murs qui cachent), constate les infractions (vol, passant renversé, voiture de police percutée, excès de vitesse et feu rouge sous ses yeux, refus de s'arrêter), envoie 1, 2 puis 4 voitures, fouille la zone de recherche quand elle a perdu la piste ; police et zone sur la minimap.
+
+**J4-5 (28 octobre 2026) : gendarmes à pied, arrestation, reprise** (D75)
+- Les gendarmes descendent d'une voiture arrêtée près du joueur, courent vers lui (4,7 m/s, le joueur court à 5), l'arrêtent au contact (à pied 1,5 s, au volant à l'arrêt 2 s) ; renversés par une voiture, ils tombent et se relèvent (+1 étoile). Dessinés dans la foule des passants (aucun appel de dessin de plus). Arrestation : bandeau « Arrêté », véhicule confisqué, reprise à pied au bord est de l'anneau six heures plus tard. Tests : 471.
+
+**J4-6 (28 octobre 2026) : banc, endurance, bilan de J4** (D76)
+- `?bench=1&police=1` : une poursuite à trois étoiles pendant tout le banc (quatre gendarmeries, équipages aux arrêts), rapport « Police » par phase. Rendu logiciel, « Dense » la nuit : appels de dessin identiques à ±2 près avec et sans police. Endurance sans écran d'une poursuite (dix minutes, deux départs) : rien d'aberrant ; elle a trouvé des voitures lointaines qui ne disparaissaient jamais (la vue du joueur n'avait pas de portée) : corrigé.
+- **Étape J4 terminée côté code** (D70 à D76, 472 tests) ; reste la mesure sur l'Honor (protocole en D76) et ton avis en jouant ; J4-1b (conducteurs visibles) attend ta décision.
+
+**Remesure de la correction D69 sur le téléphone (28 octobre 2026)** (D77)
+- Build `2a1fb50` (avant J4), 22 h, `traffic=30`, `traffic=20`, `traffic=30&soak=10` : 60 i/s partout, dix minutes d'endurance sans image au-dessus de 33 ms, **voitures collées : rafales isolées (183, 412 et 215 pas avec contact en trois minutes sur dix, 0 ailleurs) au lieu de 229 à 2 325 par minute**, pas de fuite de mémoire, « Dense » la nuit toujours à 195-200 appels de dessin en moyenne. La mesure de J4 reste à faire.

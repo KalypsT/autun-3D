@@ -45,7 +45,7 @@ export function laneOffset(road: RoadGraph, e: number): number {
 const tmpLine: number[] = [];
 
 /** Ligne de la voie de droite d'un sens de parcours, dans le sens de la marche (x, y à plat) : les sommets de l'arête décalés à droite, coins en onglet. */
-export function laneLine(road: RoadGraph, move: RoadMove, out: number[]): void {
+export function laneLine(road: RoadGraph, move: RoadMove, out: number[], centered = false): void {
   const e = moveEdge(move);
   const n = road.polyline(e, tmpLine);
   const pts: number[] = [];
@@ -54,7 +54,7 @@ export function laneLine(road: RoadGraph, move: RoadMove, out: number[]): void {
   // Les sommets confondus n'ont pas de direction : on les écarte.
   const line: number[] = [pts[0]!, pts[1]!];
   for (let i = 1; i < n; i++) if (Math.hypot(pts[i * 2]! - line[line.length - 2]!, pts[i * 2 + 1]! - line[line.length - 1]!) > 0.05) line.push(pts[i * 2]!, pts[i * 2 + 1]!);
-  const m = line.length / 2, off = laneOffset(road, e);
+  const m = line.length / 2, off = centered ? 0 : laneOffset(road, e);
   out.length = 0;
   if (m < 2 || off === 0) {
     out.push(...line);
@@ -224,12 +224,26 @@ function clearPath(xs: number[], ys: number[], colliders: Colliders): void {
 }
 
 /**
+ * Style de conduite pour le tracé : voie de droite, vitesse 0,9 × la limite, virages et freinages confortables (la circulation) ; ou, en poursuite (J4),
+ * l'axe de la chaussée, 1,45 × la limite (50 km/h au moins), virages pris à 4,5 m/s² et freinage à 5 m/s².
+ */
+export interface PathStyle {
+  centered: boolean;
+  factor: number;
+  floor: number;
+  aLat: number;
+  aDec: number;
+}
+export const CALM: PathStyle = { centered: false, factor: SPEED_FACTOR, floor: SPEED_FLOOR, aLat: A_LAT, aDec: A_DEC };
+export const CHASE: PathStyle = { centered: true, factor: 1.45, floor: 50 / 3.6, aLat: 4.5, aDec: 5 };
+
+/**
  * Construit le tracé d'une route. `startS` : abscisse (m) du départ sur la voie du premier sens. `limitOf` : vitesse autorisée (km/h) d'un sens.
  */
-export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: number, limitOf: (m: RoadMove) => number, colliders: Colliders | null = null, spec: VehicleSpec | null = null, endStop = false): Path {
+export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: number, limitOf: (m: RoadMove) => number, colliders: Colliders | null = null, spec: VehicleSpec | null = null, endStop = false, style: PathStyle = CALM): Path {
   const lines: number[][] = route.map((m) => {
     const l: number[] = [];
-    laneLine(road, m, l);
+    laneLine(road, m, l, style.centered);
     return l;
   });
   const lens = lines.map(lineLength);
@@ -254,7 +268,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
       seg.length = 0;
       seg.push(lines[i]![0]!, lines[i]![1]!, lines[i]![2]!, lines[i]![3]!);
     }
-    const lim = Math.max(limitOf(route[i]!) / 3.6, SPEED_FLOOR) * SPEED_FACTOR;
+    const lim = Math.max(limitOf(route[i]!) / 3.6 * style.factor, style.floor * (style.centered ? 1 : style.factor));
     const dx = seg[2]! - seg[0]!, dy = seg[3]! - seg[1]!, dl = Math.hypot(dx, dy) || 1;
     if (prevDir && pts.length >= 2) {
       const ax = pts[pts.length - 2]!, ay = pts[pts.length - 1]!;
@@ -308,7 +322,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
     const a = Math.max(i - 2, 0), b = Math.min(i + 2, n - 1);
     const k = Math.abs(wrap(heading[b]! - heading[a]!)) / Math.max((b - a) * DS, DS);
     curv[i] = k;
-    v[i] = Math.min(ls[i]!, Math.sqrt(A_LAT / Math.max(k, 1e-3)), spec ? cornerSpeed(spec, k) : Infinity);
+    v[i] = Math.min(ls[i]!, Math.sqrt(style.aLat / Math.max(k, 1e-3)), spec ? cornerSpeed(spec, k) : Infinity);
   }
   // Là où la coque de la voiture toucherait un obstacle fixe même sur le tracé écarté, la voie est fermée : on s'arrête avant.
   const closed = new Uint8Array(n);
@@ -331,7 +345,7 @@ export function buildPath(road: RoadGraph, route: readonly RoadMove[], startS: n
     for (let i = stop; i < n; i++) v[i] = 0;
   }
   // Freinage anticipé : on doit pouvoir ralentir à A_DEC pour atteindre chaque vitesse plus loin.
-  for (let i = n - 2; i >= 0; i--) v[i] = Math.min(v[i]!, Math.sqrt(v[i + 1]! * v[i + 1]! + 2 * A_DEC * DS));
+  for (let i = n - 2; i >= 0; i--) v[i] = Math.min(v[i]!, Math.sqrt(v[i + 1]! * v[i + 1]! + 2 * style.aDec * DS));
   return { n, x, y, heading, v, curv, move, junctions, closed };
 }
 
@@ -397,6 +411,11 @@ const WAIT_LIMIT = 60;
 const STILL_LIMIT = 50;
 const HONK_AFTER = 3;
 const HONK_EVERY = 5;
+/** Se ranger devant une sirène : décalage à droite (m) et vitesse au plus (m/s). */
+const YIELD_SHIFT = 1;
+const YIELD_SPEED = 2;
+/** Chaussée (m) en dessous de laquelle on ne se range pas : une voiture de police ne pourrait pas passer. */
+const YIELD_WIDTH = 6;
 
 /** Petit générateur pseudo-aléatoire reproductible (mulberry32). */
 function rng(seed: number): () => number {
@@ -443,7 +462,13 @@ export class Driver {
   private chooseNext(last: RoadMove): RoadMove | null {
     const road = this.road;
     const out: RoadMove[] = [];
-    road.next(last, out);
+    road.next(last, out, this.chase);
+    // Itinéraire imposé (poursuite) : on le suit tant qu'il est possible, sinon on l'oublie.
+    if (this.plan.length > 0) {
+      const want = this.plan[0]!;
+      if (out.includes(want) && !this.banned.has(`${last}>${want}`)) return this.plan.shift()!;
+      this.plan.length = 0;
+    }
     for (let i = out.length - 1; i >= 0; i--) if (this.banned.has(`${last}>${out[i]}`)) out.splice(i, 1);
     // Impasse : pas de demi-tour (une voiture ne tourne pas dans 3,5 m sans manœuvrer) ; la route s'arrête là.
     if (out.length === 0) return null;
@@ -504,7 +529,7 @@ export class Driver {
       this.extend(rank);
       this.gens.length = 0;
       for (const m of this.route) this.gens.push(this.nav.generation(moveEdge(m)));
-      this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended);
+      this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended, this.chase ? CHASE : CALM);
       const bad = this.closedJunction(this.path, rank);
       if (bad < 0) return;
       this.banned.add(`${this.route[bad]}>${this.route[bad + 1]}`);
@@ -528,6 +553,68 @@ export class Driver {
   private valid(): boolean {
     for (let i = 0; i < this.route.length; i++) if (this.gens[i] === 0 || this.nav.generation(moveEdge(this.route[i]!)) !== this.gens[i]) return false;
     return true;
+  }
+
+  /**
+   * Conduite de poursuite (J4, D73) : axe de la chaussée, plus vite (`CHASE`), feux, stops, priorités et sens uniques ignorés, pas de klaxon (la sirène).
+   * Le tracé est refait depuis l'arête où l'on roule.
+   */
+  chase = false;
+  /** Itinéraire imposé (poursuite) : les sens à prendre après celui où l'on roule, consommés au fil des prolongements. */
+  private readonly plan: RoadMove[] = [];
+  /** Se ranger à droite et ralentir (une sirène arrive derrière) : secondes restantes. */
+  private yielding = 0;
+
+  /** Sens de parcours où roule la voiture. */
+  get currentMove(): RoadMove {
+    return this.route[this.path ? this.path.move[this.index]! : 0]!;
+  }
+
+  setChase(on: boolean): void {
+    if (on === this.chase) return;
+    this.chase = on;
+    this.replan([]);
+  }
+
+  /** Impose les sens à prendre après celui où l'on roule (un itinéraire de `findRoute`) : la suite de la route est refaite. */
+  setPlan(moves: readonly RoadMove[]): void {
+    this.replan(moves);
+  }
+
+  private replan(moves: readonly RoadMove[]): void {
+    this.plan.length = 0;
+    for (const m of moves) this.plan.push(m);
+    if (!this.path) return;
+    const rank = this.path.move[this.index]!;
+    this.route.length = rank + 1;
+    this.ended = false;
+    this.rebuild(null, rank);
+    // Le point où l'on était se retrouve au même rang du nouveau tracé : il commence au même endroit.
+    this.index = Math.min(this.index, this.path!.n - 1);
+  }
+
+  /**
+   * Repart de zéro sur le sens `move`, à `s` m de son début (poursuite : la voiture a quitté son tracé, J4). Les compteurs de blocage sont remis à zéro ;
+   * les virages interdits restent (ce sont des murs).
+   */
+  restart(move: RoadMove, s: number): void {
+    this.route.length = 0;
+    this.route.push(move);
+    this.startS = s;
+    this.path = null;
+    this.index = 0;
+    this.lost = false;
+    this.lostWhy = "";
+    this.ended = false;
+    this.plan.length = 0;
+    this.stuckFor = this.idleFor = this.waitFor = this.stillFor = this.touchFor = 0;
+  }
+
+  /** Une voiture de police toutes sirènes dehors arrive derrière : on se range à droite et on ralentit pendant `t` s. */
+  yieldTo(t: number): void {
+    // Dans une rue trop étroite pour être doublé, se ranger ne libère rien et ralentirait la poursuite : on continue.
+    if (this.path && this.road.edgeWidth(moveEdge(this.currentMove)) < YIELD_WIDTH) return;
+    this.yielding = Math.max(this.yielding, t);
   }
 
   /** Commandes pour ce pas : à appeler avant `stepVehicle`. */
@@ -594,6 +681,7 @@ export class Driver {
     const J = this.junction;
     J.active = false;
     J.waiting = false;
+    if (this.chase) return Infinity;
     const road = this.road;
     let k = -1;
     for (let q = 0; q < path.junctions.length; q++) {
@@ -825,10 +913,14 @@ export class Driver {
     for (let j = this.index; j <= Math.min(path.n - 1, this.index + 6); j++) k = Math.max(k, path.curv[j]!);
     const Ld = Math.min(Math.max(Math.min(3 + 0.7 * u, Math.sqrt(1.4 / Math.max(k, 0.01))), 2.5), 16);
     const target = Math.min(path.n - 1, this.index + Math.round(Ld / DS));
-    const dx = path.x[target]! - s.x, dy = path.y[target]! - s.y;
+    // Rangé à droite (une sirène derrière) : on vise un mètre à droite du tracé.
+    if (this.yielding > 0) this.yielding -= dt;
+    const shift = this.yielding > 0 ? YIELD_SHIFT : 0;
+    const th = path.heading[target]!;
+    const dx = path.x[target]! + Math.cos(th) * shift - s.x, dy = path.y[target]! - Math.sin(th) * shift - s.y;
     const alpha = wrap(Math.atan2(dx, dy) - s.heading);
     // Poursuite de point, plus un rappel vers le tracé proportionnel à l'écart latéral (positif quand le tracé est à droite de la voiture).
-    const lateral = (path.x[this.index]! - s.x) * Math.cos(s.heading) - (path.y[this.index]! - s.y) * Math.sin(s.heading);
+    const lateral = (path.x[this.index]! - s.x) * Math.cos(s.heading) - (path.y[this.index]! - s.y) * Math.sin(s.heading) + shift;
     const delta = Math.atan2(2 * (spec.front + spec.rear) * Math.sin(alpha), Math.max(Math.hypot(dx, dy), 1)) + Math.atan(CROSS_GAIN * lateral / (u + 1.5));
     const limit = steerLimit(spec, u);
     const steer = Math.min(Math.max(delta / limit, -1), 1);
@@ -839,6 +931,7 @@ export class Driver {
       this.hurry -= dt;
       vt *= 1.1;
     }
+    if (shift > 0) vt = Math.min(vt, YIELD_SPEED);
     let aDes = Math.min(Math.max(1.2 * (vt - u), -3.5), A_ACC);
     // Autres usagers devant : suivi à distance de sécurité (IDM), prudence face à une voiture qui vient en face.
     this.waiting = false;
@@ -938,6 +1031,8 @@ export class Driver {
       this.lost = true;
       this.lostWhy = "au bout de la route";
     }
+    // En poursuite, la sirène tient lieu de klaxon.
+    if (this.chase) this.honking = false;
     return { throttle, brake, steer, handbrake };
   }
 }

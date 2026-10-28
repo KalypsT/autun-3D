@@ -187,8 +187,10 @@ export class RoadGraph {
   /**
    * Suites permises en arrivant par le sens `m` : ajoute à `out` les sens carrossables qui partent du nœud d'arrivée (et de ses jumeaux),
    * sans demi-tour (une boucle se reprend dans le même sens). Passe les frontières de super-tuile. Renvoie le nombre ajouté.
+   * `wrongWay` : les sens uniques sont ignorés (la police en poursuite, J4).
    */
-  next(m: RoadMove, out: RoadMove[]): number {
+  next(m: RoadMove, out: RoadMove[], wrongWay = false): number {
+    const ok = (ref: RoadMove): boolean => (wrongWay ? this.drivable(moveEdge(ref)) : this.canGo(ref));
     const before = out.length;
     const e = moveEdge(m);
     for (const t of this.twins(this.arrivalNode(m))) {
@@ -201,8 +203,8 @@ export class RoadGraph {
         if (same && r.a[ei] !== r.b[ei]) continue;
         // Une arête en boucle (ses deux bouts sont le même nœud) peut se reprendre, mais seulement dans le même sens : l'autre serait un demi-tour.
         // Elle figure deux fois dans la liste : on ne la compte qu'une fois par extrémité.
-        if (r.a[ei] === local && this.canGo(ref * 2) && (!same || moveDir(m) === 0)) out.push(ref * 2);
-        if (r.b[ei] === local && this.canGo(ref * 2 + 1) && (!same || moveDir(m) === 1)) out.push(ref * 2 + 1);
+        if (r.a[ei] === local && ok(ref * 2) && (!same || moveDir(m) === 0)) out.push(ref * 2);
+        if (r.b[ei] === local && ok(ref * 2 + 1) && (!same || moveDir(m) === 1)) out.push(ref * 2 + 1);
       }
     }
     return out.length - before;

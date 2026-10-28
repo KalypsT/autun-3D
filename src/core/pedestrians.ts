@@ -31,6 +31,10 @@ const BODY = 0.28;
 /** Rayon du joueur à pied (le même que `PLAYER_RADIUS` de `player.ts`). */
 const PLAYER_BODY = 0.35;
 /** Coque d'un véhicule inconnu : un cercle de 0,8 m. */
+/** Vitesse de fuite (m/s) d'un passant paniqué. */
+export const FLEE_SPEED = 3.8;
+/** Durée de la fuite (s) du conducteur dont on prend la voiture. */
+export const FLEE_TIME = 14;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
@@ -46,6 +50,11 @@ export interface PedSimOptions {
   spawnPerStep?: number;
   /** true : les passants peuvent naître dans le champ de vision (captures du viewer) ; défaut false (jeu). */
   spawnInView?: boolean;
+  /**
+   * Emplacements réservés en fin de tableau (J4 : les gendarmes à pied) : la simulation ne les fait ni naître ni marcher, un autre système les place
+   * (`setExternal`) ; ils sont dessinés par la même foule, vus par les voitures (`forEachNear`) et évités par les passants.
+   */
+  reserved?: number;
 }
 
 /**
@@ -172,6 +181,8 @@ export class PedSim {
   onSpawn: ((slot: number, recipe: Recipe) => void) | null = null;
 
   private readonly n: number;
+  /** Emplacements gérés par la simulation (les suivants sont réservés). */
+  private readonly free: number;
   // Un tableau par champ (accès rapide, rien à allouer).
   private readonly x: Float32Array;
   private readonly y: Float32Array;
@@ -193,6 +204,8 @@ export class PedSim {
   private readonly mode: Uint8Array;
   private readonly timer: Float32Array;
   private readonly fear: Float32Array;
+  /** Fuite (s restantes) : le passant court, effrayé, jusqu'à la fin du compte (conducteur dont on a pris la voiture, J4). */
+  private readonly panic: Float32Array;
   private readonly acc: Float32Array;
   private readonly rng: Uint32Array;
   private readonly id: Uint32Array;
@@ -221,6 +234,7 @@ export class PedSim {
     private readonly opt: PedSimOptions,
   ) {
     const n = (this.n = opt.capacity);
+    this.free = Math.max(0, n - (opt.reserved ?? 0));
     this.tiers = opt.tiers ?? true;
     this.avoid = opt.avoid ?? true;
     this.spawnPerStep = opt.spawnPerStep ?? 2;
@@ -235,7 +249,7 @@ export class PedSim {
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
     this.ox = new Float32Array(n); this.oy = new Float32Array(n); this.mode = new Uint8Array(n); this.timer = new Float32Array(n);
-    this.fear = new Float32Array(n); this.acc = new Float32Array(n); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
+    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
     this.tier = new Uint8Array(n); this.link = new Int32Array(n).fill(-1);
   }
 
@@ -246,10 +260,10 @@ export class PedSim {
     this.hour = obs.hour ?? 12;
     const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
     this.stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
-    this.stats.target = crowdTarget(this.n, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy));
+    this.stats.target = crowdTarget(this.free, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy));
     let alive = 0;
     for (let pass = 0; pass < 12 && alive < this.stats.target; pass++) {
-      for (let i = 0; i < this.n && alive < this.stats.target; i++) {
+      for (let i = 0; i < this.free && alive < this.stats.target; i++) {
         if (this.state.alive![i]) continue;
         // Au départ personne n'a encore regardé : la première image n'est pas vide, les passants naissent n'importe où dans la couronne.
         if (this.spawn(i, obs, 8, 35, 125, true)) alive++;
@@ -273,11 +287,11 @@ export class PedSim {
       const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
       stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
-    stats.target = crowdTarget(this.n, this.hour, stats.zone, v);
+    stats.target = crowdTarget(this.free, this.hour, stats.zone, v);
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
     let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0;
-    for (let i = 0; i < this.n; i++) {
+    for (let i = 0; i < this.free; i++) {
       if (!alive[i]) continue;
       const g = this.graph, e = this.edge[i]!;
       const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d2 = dx * dx + dy * dy;
@@ -291,7 +305,10 @@ export class PedSim {
       this.tier[i] = tier;
       if (tier === 0) near++; else if (tier === 1) mid++; else far++;
       nAlive++;
-      if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
+      if (this.panic[i]! > 0) {
+        this.panic[i] = Math.max(0, this.panic[i]! - dt);
+        this.fear[i] = 1;
+      } else if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
       if (this.mode[i]! >= PED_STATE.stumble) {
         this.knockedStep(i, dt);
         knocked++;
@@ -330,8 +347,8 @@ export class PedSim {
     const goal = Math.round(stats.target);
     if (nAlive > goal) {
       let leaving = Math.min(2, nAlive - goal);
-      for (let k = 0; k < this.n && leaving > 0; k++) {
-        const i = (this.excessCursor + k) % this.n;
+      for (let k = 0; k < this.free && leaving > 0; k++) {
+        const i = (this.excessCursor + k) % this.free;
         if (!alive[i]) continue;
         const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
         const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
@@ -352,7 +369,7 @@ export class PedSim {
     stats.idle = idle;
     // Naissances : les emplacements libres se remplissent, au plus `spawnPerStep` par pas.
     let attempts = nAlive < goal ? Math.min(this.spawnPerStep, goal - nAlive) : 0;
-    for (let i = 0; i < this.n && attempts > 0; i++) {
+    for (let i = 0; i < this.free && attempts > 0; i++) {
       if (alive[i]) continue;
       attempts--;
       this.spawn(i, obs, 6, rin, rout);
@@ -395,12 +412,13 @@ export class PedSim {
     return false;
   }
 
-  private place0(i: number, edge: number, s: number, x: number, y: number): void {
+  private place0(i: number, edge: number, s: number, x: number, y: number, forced: number | null = null): void {
     this.spawned++;
     // Graine : monde, voie, heure de jeu et case de 6 m : la même personne se trouve au même endroit à la même heure (D39). Deux passants vivants
     // n'ont jamais la même graine (deux jumeaux côte à côte se verraient).
     const way = this.graph.edgeWay(edge) % 4294967296;
     let seed = hash32(hash32(this.opt.seed ^ way, Math.floor(this.hour)), hash32(Math.round(x / 6) + 4096, Math.round(y / 6) + 4096));
+    if (forced !== null) seed = forced >>> 0;
     for (let guard = 0; guard < 8 && this.taken(i, seed); guard++) seed = hash32(seed, guard + 1);
     this.rng[i] = seed ^ 0xa511e9b3;
     this.id[i] = seed;
@@ -421,6 +439,7 @@ export class PedSim {
     this.mode[i] = PED_STATE.walk;
     this.timer[i] = 0;
     this.fear[i] = 0;
+    this.panic[i] = 0;
     this.acc[i] = 0;
     this.x[i] = x;
     this.y[i] = y;
@@ -449,6 +468,7 @@ export class PedSim {
     }
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
     let target = this.want[i]! * (1 + 0.6 * this.fear[i]!);
+    if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
     if (this.tiers && tier > 0) {
       this.speed[i] = target;
       return;
@@ -725,7 +745,7 @@ export class PedSim {
     const fx = Math.sin(h), fy = Math.cos(h);
     const alive = this.state.alive!;
     const range = v.hornRange ?? 35, jump = Math.min(12, range / 3);
-    for (let i = 0; i < this.n; i++) {
+    for (let i = 0; i < this.free; i++) {
       if (!alive[i] || this.mode[i]! >= PED_STATE.stumble) continue;
       const dx = this.x[i]! - v.x, dy = this.y[i]! - v.y, d = Math.hypot(dx, dy);
       if (d > range || d < 1 || Math.abs(angleDiff(Math.atan2(dx, dy), h)) > 0.8) continue;
@@ -833,11 +853,90 @@ export class PedSim {
   }
 
   /**
+   * Fait sortir quelqu'un d'une voiture (J4 : le conducteur dont le joueur prend la voiture) : un passant de la recette `seed` apparaît en (x, y),
+   * trébuche (poussé de `push` m/s dans la direction (ux, uy)), puis s'enfuit en courant pendant `FLEE_TIME` s, en s'éloignant de (fromX, fromY).
+   * Un emplacement libre est pris, sinon celui du passant le plus éloigné. Renvoie l'emplacement, ou −1 s'il n'y a pas de file piétonne à 25 m.
+   */
+  eject(x: number, y: number, seed: number, ux: number, uy: number, push: number, fromX: number, fromY: number): number {
+    const alive = this.state.alive!;
+    let slot = -1, far = -1;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i]) {
+        slot = i;
+        break;
+      }
+      const d = Math.hypot(this.x[i]! - x, this.y[i]! - y);
+      if (d > far) {
+        far = d;
+        slot = i;
+      }
+    }
+    const hit = slot < 0 ? null : this.graph.nearest(x, y, 25, MASK_WALK);
+    if (!hit) return -1;
+    if (alive[slot]) this.stats.despawns++;
+    this.place0(slot, hit.edge, hit.s, x, y, seed);
+    // Le passant est sur la file la plus proche ; son écart le met à la portière. Il trébuche, puis repart dans la direction opposée au joueur.
+    this.graph.pointAt(hit.edge, hit.s, this.pt);
+    this.jx[slot] = x - this.pt.x;
+    this.jy[slot] = y - this.pt.y;
+    this.x[slot] = x;
+    this.y[slot] = y;
+    this.heading[slot] = Math.atan2(x - fromX, y - fromY);
+    this.knock(slot, HIT_POSE.stumble, ux, uy, push);
+    this.stats.hits--;
+    this.panic[slot] = FLEE_TIME;
+    this.event("startled", slot, push);
+    return slot;
+  }
+
+  /** Premier emplacement réservé (voir `PedSimOptions.reserved`) et leur nombre. */
+  get reservedStart(): number {
+    return this.free;
+  }
+
+  /**
+   * Place un personnage d'un emplacement réservé (J4 : gendarme à pied) : `recipe` à sa première apparition (null pour la garder), position, cap
+   * (rad, 0 = nord), vitesse (m/s, l'animation de marche ou de course la suit), pose de choc (`HIT_POSE`, 0 debout) et temps écoulé depuis le choc.
+   * `on` false : l'emplacement est vide (rien n'est dessiné).
+   */
+  setExternal(i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number): void {
+    if (i < this.free || i >= this.n) return;
+    const st = this.state;
+    if (!on) {
+      st.alive![i] = 0;
+      return;
+    }
+    if (recipe) {
+      st.recipes[i] = recipe;
+      this.onSpawn?.(i, recipe);
+    }
+    st.alive![i] = 1;
+    this.x[i] = x;
+    this.y[i] = y;
+    this.heading[i] = heading;
+    this.speed[i] = speed;
+    this.mode[i] = pose > 0 ? PED_STATE.down : PED_STATE.walk;
+    st.x[i] = x;
+    st.z[i] = -y;
+    st.y[i] = this.terrain.heightAt(x, y);
+    st.yaw[i] = -heading;
+    st.speed[i] = pose > 0 ? 0 : speed;
+    st.pose![i] = pose;
+    st.poseT![i] = poseT;
+    st.phase[i] = (st.phase[i]! + phaseRate(pose > 0 ? 0 : speed, st.recipes[i]!.height) * dt) % TAU;
+  }
+
+  /** Le passant de cet emplacement s'enfuit-il encore ? (tests, diagnostic) */
+  fleeing(i: number): boolean {
+    return !!this.state.alive![i] && this.panic[i]! > 0;
+  }
+
+  /**
    * Pousse un passant : impulsion (ix, iy) en m/s. Au-delà de 3,5 m/s il tombe (et se relève ensuite), en dessous il trébuche. C'est l'entrée prévue
    * pour J5 (coups, explosions, véhicules des autres) ; elle ne retire pas de santé (J5 ajoutera ses champs).
    */
   applyImpulse(i: number, ix: number, iy: number): void {
-    if (!this.state.alive![i] || this.mode[i]! >= PED_STATE.stumble) return;
+    if (i >= this.free || !this.state.alive![i] || this.mode[i]! >= PED_STATE.stumble) return;
     const v = Math.hypot(ix, iy);
     if (v < 0.05) return;
     this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);

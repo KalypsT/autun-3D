@@ -36,6 +36,17 @@ export interface CarBodyParams {
   cargo?: boolean;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
+  /** Livrée (police, J4) : une bande claire et un filet de couleur le long des flancs, une barre de gyrophares sur le toit. */
+  livery?: { stripe: string; accent: string; lightBar: boolean };
+}
+
+/** Barre de gyrophares : hauteur du socle, et ses deux feux (centre x, y, z et taille), dans le repère du véhicule. */
+const BAR_HEIGHT = 0.1;
+export function beaconBoxes(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number; size: [number, number, number] }[] {
+  if (!p.livery?.lightBar) return [];
+  const L = carLayout(p, front, rear);
+  const z = L.roofFrontZ + p.roof * 0.35, y = p.height + BAR_HEIGHT / 2 + 0.01;
+  return [-1, 1].map((side) => ({ x: side * 0.3, y, z, size: [0.42, BAR_HEIGHT * 0.9, 0.2] as [number, number, number] }));
 }
 
 /** Positions utiles d'une carrosserie, dans le repère du véhicule. */
@@ -193,7 +204,26 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
     // Rétroviseurs, dans la largeur hors tout.
     box(0.1, 0.08, 0.12, W - 0.07, p.belt + 0.1, L.windshieldBaseZ + 0.2, TRIM),
     box(0.1, 0.08, 0.12, -(W - 0.07), p.belt + 0.1, L.windshieldBaseZ + 0.2, TRIM),
+    ...liveryParts(p, front, rear),
   ]);
+}
+
+/** Bandes des flancs et barre de gyrophares (éteinte : les feux allumés sont des instances à part, `beaconBoxes`). */
+function liveryParts(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry[] {
+  const lv = p.livery;
+  if (!lv) return [];
+  const L = carLayout(p, front, rear), W = p.width / 2;
+  const z0 = L.noseZ + 0.35, z1 = L.tailZ - 0.3, mid = (p.clearance + p.belt) / 2;
+  const parts = [-1, 1].flatMap((side) => [
+    box(0.02, 0.16, z1 - z0, side * (W - 0.025), mid + 0.04, (z0 + z1) / 2, lv.stripe),
+    box(0.02, 0.04, z1 - z0, side * (W - 0.025), mid - 0.08, (z0 + z1) / 2, lv.accent),
+  ]);
+  if (lv.lightBar) {
+    const z = L.roofFrontZ + p.roof * 0.35;
+    parts.push(box(1.0, BAR_HEIGHT * 0.5, 0.24, 0, p.height + BAR_HEIGHT * 0.25, z, "#d9dde2"));
+    for (const b of beaconBoxes(p, front, rear)) parts.push(box(b.size[0] - 0.02, b.size[1] - 0.01, b.size[2] - 0.02, b.x, b.y, b.z, "#3d6fc4"));
+  }
+  return parts;
 }
 
 /** Roue : pneu, enjoliveur clair et un rayon plus clair encore (la rotation se voit). `segments` : facettes du pneu. */

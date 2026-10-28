@@ -196,6 +196,21 @@ export class Fleet {
     return v;
   }
 
+  /** Retire un véhicule de la flotte (J4 : confisqué à l'arrestation) : ni obstacle, ni dessin, ni sauvegarde. */
+  remove(v: Vehicle): void {
+    const i = this.vehicles.indexOf(v);
+    if (i < 0) return;
+    this.vehicles.splice(i, 1);
+    this.byId.delete(v.id);
+    this.colliders.removeTag(`veh:${v.id}`);
+    if (v.model) {
+      this.scene.remove(v.model.group);
+      v.model.dispose();
+      v.model = null;
+    }
+    this.dirty = true;
+  }
+
   /** Retrouve les véhicules d'une sauvegarde, là où ils avaient été laissés (avant que leurs tuiles ne les recréent à l'origine). */
   restore(saved: readonly SavedVehicle[]): void {
     for (const s of saved) this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);

@@ -68,6 +68,15 @@ export const WAGON: VehicleSpec = limited({
   maxBrake: 17800, reverseForce: 4800, drag: 0.39, hull: [[1.15, 0.9], [-0.35, 0.92], [-1.85, 0.9]], wheelRadius: 0.32, bodyRoll: 0.016, engineBrake: 430, cgHeight: 0.57, brakeFront: 0.78,
 }, SPEED_CAP.car);
 
+/**
+ * Voiture de gendarmerie (J4, D72) : la compacte avec un moteur plus fort (1 420 kg avec l'équipement, 95 kW aux roues, 0 à 100 km/h en ≈ 8,5 s,
+ * 205 km/h plafonnée à 200), freins et pneus un peu meilleurs. Elle doit pouvoir rattraper la plupart des voitures volées, pas la sportive.
+ */
+export const POLICE_CAR: VehicleSpec = limited({
+  ...COMPACT, mass: 1420, yawInertia: 2094, corneringFront: 82000, corneringRear: 92000, power: 95000, maxDrive: 6300, driveFadeFrom: kmh(190), topSpeed: kmh(205),
+  maxBrake: 15500, engineBrake: 400,
+}, SPEED_CAP.car);
+
 /** Petit SUV : 1 450 kg, 72 kW aux roues, 180 km/h, haut sur roues (centre de gravité à 0,65 m, plus de roulis), moins de prise que la compacte. */
 export const SUV: VehicleSpec = {
   ...CAR, mass: 1450, yawInertia: 2106, front: 1.1, rear: 1.52, grip: 0.92,

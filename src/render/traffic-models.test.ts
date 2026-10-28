@@ -58,7 +58,7 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
     }
   });
 
-  it("dessine 24 voitures de tous les modèles avec au plus 10 maillages le jour et 10 la nuit (feux), contre 144 pour des modèles articulés", () => {
+  it("dessine 24 voitures de tous les modèles avec un maillage par modèle et un de roues le jour, plus les feux la nuit, contre 144 pour des modèles articulés", () => {
     const models = new TrafficModels();
     models.prepare(cars.map((c) => c.id));
     const items: TrafficItem[] = [];
@@ -80,6 +80,36 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
     expect(models.drawn).toBe(3);
     models.set([]);
     expect(models.drawn).toBe(0);
+    models.dispose();
+  });
+
+  it("gyrophares (J4) : un seul maillage pour toutes les voitures de police en poursuite, sans ombre, posé sur la barre du toit, qui clignote ; rien sans poursuite", () => {
+    const models = new TrafficModels();
+    models.prepare(["gendarmerie", "citadine"]);
+    const beacons = (models as unknown as { beacons: THREE.InstancedMesh }).beacons;
+    const s = stateAt(10, 20, 0.4);
+    models.set([itemOf("gendarmerie", s), itemOf("citadine", stateAt(30, 20, 0))]);
+    expect(beacons.visible).toBe(false);
+    const quiet = models.drawn;
+    const patrols = [0, 1, 2].map((k) => ({ ...itemOf("gendarmerie", stateAt(10 + k * 8, 20, 0.4)), beacon: 0 }));
+    models.set([...patrols, itemOf("citadine", stateAt(30, 20, 0))]);
+    expect(beacons.visible).toBe(true);
+    expect(beacons.castShadow).toBe(false);
+    expect(beacons.count).toBe(6);
+    // Trois voitures de police allumées : un maillage de plus, pas trois.
+    expect(models.drawn).toBe(quiet + 1);
+    // Les feux sont au-dessus du toit de la voiture.
+    const m = new THREE.Matrix4(), pos = new THREE.Vector3();
+    beacons.getMatrixAt(0, m);
+    pos.setFromMatrixPosition(m);
+    expect(pos.y - s.z).toBeGreaterThan(CAR_BODIES.gendarmerie!.height);
+    expect(pos.y - s.z).toBeLessThan(CAR_BODIES.gendarmerie!.height + 0.12);
+    // Clignotement : l'un puis l'autre feu, quatre fois par seconde.
+    const c0 = new THREE.Color(), c1 = new THREE.Color();
+    beacons.getColorAt(0, c0);
+    models.set([{ ...patrols[0]!, beacon: 0.3 }]);
+    beacons.getColorAt(0, c1);
+    expect(c0.equals(c1)).toBe(false);
     models.dispose();
   });
 

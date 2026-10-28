@@ -28,6 +28,11 @@ export interface MinimapState {
   north: boolean;
   vehicles: readonly MinimapVehicle[];
   waypoint: Waypoint | null;
+  /** Voitures de police (J4) : points qui alternent bleu et rouge (`flash`), ramenés sur le bord quand elles sont hors du disque. */
+  police?: readonly { x: number; y: number }[];
+  flash?: boolean;
+  /** Zone de recherche quand la police a perdu la piste : cercle autour de la dernière position connue. */
+  search?: { x: number; y: number; r: number } | null;
 }
 
 /**
@@ -128,6 +133,34 @@ export class Minimap {
       }
       ctx.fill();
       if (v.kind !== "car") ctx.stroke();
+    }
+
+    // Zone de recherche : un disque rouge pâle cerclé de pointillés.
+    if (s.search) {
+      const [cx, cy] = worldToScreen(view, s.search.x, s.search.y);
+      ctx.beginPath();
+      ctx.arc(cx, cy, s.search.r * scale, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(217, 71, 43, 0.16)";
+      ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // Police : sur le bord du disque quand elle est plus loin (on voit d'où elle vient).
+    if (s.police) {
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#fff8e6";
+      s.police.forEach((p, i) => {
+        const [px, py] = worldToScreen(view, p.x, p.y);
+        const q = clampToDisc(px - size / 2, py - size / 2, r - 5);
+        ctx.fillStyle = (i % 2 === 0) === !!s.flash ? "#2f5fd0" : ACCENT;
+        ctx.beginPath();
+        ctx.arc(size / 2 + q.x, size / 2 + q.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
     }
 
     // Repère : épingle dans le champ, flèche sur le bord et distance au-delà.

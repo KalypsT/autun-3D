@@ -12,6 +12,9 @@ import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
 import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
+import { Wanted } from "../core/wanted";
+import { WantedHud } from "../ui/wanted-hud";
+import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
@@ -29,6 +32,8 @@ const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
+/** Vitesse (m/s) sous laquelle on peut prendre une voiture de la circulation avec son conducteur (J4-1). */
+const CARJACK_SPEED = 3;
 /** Caméra de poursuite : inclinaison de repos. */
 const CHASE_PITCH = 0.24;
 
@@ -158,6 +163,15 @@ export function startGame(ctx: GameContext): void {
     if (!pigeons) pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
     else pigeons.setCapacity(pg);
   };
+  /** La foule, même vide (« Foule : Aucune ») : les gendarmes à pied y sont dessinés (J4-5). */
+  const needPeds = (): PedsController => {
+    if (!peds) {
+      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7);
+      peds.setSignals(signals);
+      peds.setShadows(ctx.settings!.values.shadows !== 0);
+    }
+    return peds;
+  };
   const startSignals = (): Signals => {
     startNav();
     return signals!;
@@ -176,6 +190,13 @@ export function startGame(ctx: GameContext): void {
     else (traffic as Traffic).setCapacity(capacity);
   };
   startTraffic(settings.values.traffic);
+  // `?chase=N` (essais, J4-3) : N voitures de gendarmerie poursuivent le joueur, quel que soit le niveau de recherche (la circulation est créée au besoin).
+  const chaseParam = params.has("chase") ? Math.max(0, Math.min(6, Math.round(Number(params.get("chase")) || 0))) : 0;
+  // La circulation pour la police (J4) : créée au besoin, même avec « Circulation : Aucune » (elle n'a alors que des voitures de police).
+  const needTraffic = (create: boolean): Traffic | null => {
+    if (!traffic && create) traffic = new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), Math.max(0, settings.values.traffic), startSignals(), 11);
+    return traffic as Traffic | null;
+  };
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
@@ -183,11 +204,12 @@ export function startGame(ctx: GameContext): void {
     const g = pigeons as PigeonsController | null, gs = g?.stats;
     const pigText = g && gs ? ` · pigeons ${gs.alive}/${g.capacity} (${gs.flocks} volées, ${(g.simMs + g.drawMs).toFixed(2)} ms)` : "";
     const tr = traffic as Traffic | null;
-    const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)` : "";
+    const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}`);
 
+  const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
   const miniCost = (): string => {
     const c = ui.minimap.cost;
@@ -212,6 +234,13 @@ export function startGame(ctx: GameContext): void {
   const gasEl = document.getElementById("gas")!;
   const hornEl = document.getElementById("horn")!;
   const speedo = new Speedo(document.getElementById("speedo")!);
+  // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
+  const wanted = new Wanted();
+  const wantedHud = new WantedHud(document.getElementById("wanted")!);
+  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic);
+  police.minPursuers = chaseParam;
+  const pedWitnesses: number[] = [];
+  if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
   const mount = (v: Vehicle): void => {
     riding = v;
@@ -244,14 +273,44 @@ export function startGame(ctx: GameContext): void {
     controls.mode = "foot";
     document.body.classList.remove("driving", "car");
   };
+  // Vol avec conducteur (J4-1, D71) : une voiture de la circulation lente (feu rouge, file) à portée de la main peut être prise ;
+  // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
+  let stolen = 0;
+  const reachable = (): { fleet: Vehicle | null; traffic: string | null } => {
+    const n = fleet.nearest(player.x, player.y);
+    const near = n && n.distance < familyOf(n.vehicle).reach ? n : null;
+    const t = (traffic as Traffic | null)?.nearest(player.x, player.y, FAMILIES.car.reach);
+    const jack = !!t && t.speed < CARJACK_SPEED && (!near || t.distance < near.distance);
+    return { fleet: jack ? null : (near?.vehicle ?? null), traffic: jack ? t.def.name : null };
+  };
+  const carjack = (): void => {
+    const got = (traffic as Traffic | null)?.extract(player.x, player.y, FAMILIES.car.reach);
+    if (!got) return;
+    const v = fleet.add(got.model, `volee-${Date.now().toString(36)}-${++stolen}`, got.x, got.y, got.heading, got.variant, null);
+    const s = v.state;
+    s.vx = got.vx;
+    s.vy = got.vy;
+    s.yawRate = got.yawRate;
+    s.speed = got.vx * Math.sin(got.heading) + got.vy * Math.cos(got.heading);
+    // Portière du conducteur : à gauche (même côté que la descente du joueur) ; il est tiré vers l'extérieur et s'enfuit loin du joueur.
+    const lx = -Math.cos(got.heading), ly = Math.sin(got.heading), side = FAMILIES.car.dismount;
+    (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
+    police.crime("carjack", got.x, got.y, true);
+    mount(v);
+  };
   const act = (): void => {
     if (riding) {
       if (Math.abs(riding.state.speed) < 1.2) dismount();
       else leaving = true;
       return;
     }
-    const n = fleet.nearest(player.x, player.y);
-    if (n && n.distance < familyOf(n.vehicle).reach) mount(n.vehicle);
+    const r = reachable();
+    if (r.traffic) carjack();
+    else if (r.fleet) {
+      // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
+      if (r.fleet.home) police.crime("theft", player.x, player.y, false);
+      mount(r.fleet);
+    }
   };
   actionEl.addEventListener("click", act);
   window.addEventListener("keydown", (e) => {
@@ -288,9 +347,10 @@ export function startGame(ctx: GameContext): void {
   let actionLabel = "";
   const updateHud = (): void => {
     let label = "";
-    const n = riding ? null : fleet.nearest(player.x, player.y);
+    const r = riding ? null : reachable();
     if (riding) label = "Descendre";
-    else if (n && n.distance < familyOf(n.vehicle).reach) label = `Monter ${n.vehicle.def.icon ?? familyOf(n.vehicle).icon} ${n.vehicle.def.name}`;
+    else if (r?.traffic) label = `Prendre 🚗 ${r.traffic}`;
+    else if (r?.fleet) label = `Monter ${r.fleet.def.icon ?? familyOf(r.fleet).icon} ${r.fleet.def.name}`;
     if (label !== actionLabel) {
       actionLabel = label;
       actionEl.textContent = label;
@@ -319,6 +379,30 @@ export function startGame(ctx: GameContext): void {
       appearanceStore.write(r);
     },
   });
+
+  ui.police = police.minimap;
+
+  // Arrestation (J4-5, D75) : le véhicule conduit est confisqué, on repart à pied au bord est de l'anneau, six heures plus tard, sans étoile.
+  const busted = document.getElementById("busted")!;
+  const arrest = (): void => {
+    const taken = riding;
+    if (taken) {
+      dismount();
+      fleet.remove(taken);
+    }
+    police.reset();
+    const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
+    yaw = ARREST_SPAWN.heading;
+    if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
+    busted.querySelector(".b-title")!.textContent = appearance.sex === "f" ? "Arrêtée" : "Arrêté";
+    busted.querySelector(".b-sub")!.textContent = `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`;
+    busted.classList.remove("show");
+    void busted.offsetWidth;
+    busted.classList.add("show");
+    controls.reset();
+    ui.save();
+  };
 
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
@@ -388,9 +472,9 @@ export function startGame(ctx: GameContext): void {
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
     const chase = riding ? chaseOf(riding) : null;
-    const wanted = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
+    const targetDist = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
     const focusZ = chase ? player.z + chase.height : player.z;
-    const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: wanted }, colliders, terrain);
+    const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: targetDist }, colliders, terrain);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
     const tz = focusZ + HEAD_HEIGHT;
@@ -449,6 +533,23 @@ export function startGame(ctx: GameContext): void {
       } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
     }
 
+    {
+      const imp = (peds as PedsController | null)?.impact;
+      const s = riding?.state;
+      police.update(dt, {
+        x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
+        pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0,
+        witnesses: (x, y, r) => {
+          pedWitnesses.length = 0;
+          return (peds as PedsController | null)?.queryCircle(x, y, r, pedWitnesses) ?? 0;
+        },
+      });
+    }
+    // Gendarmes à pied : dessinés par la foule (emplacements réservés, aucun appel de dessin de plus) ; la foule est créée au besoin.
+    if (police.officers.list.length > 0 || peds) needPeds().setOfficers(police.officers.list, dt);
+    if (police.takeArrest()) arrest();
+    wantedHud.set(wanted);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
@@ -461,7 +562,13 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks, ui,
+    player, colliders, fleet, marks, ui, wanted,
+    traffic: () => traffic as Traffic | null,
+    police,
+    /** Captures : tourner la caméra (rad, 0 = nord). */
+    look: (v: number) => {
+      yaw = v;
+    },
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;
