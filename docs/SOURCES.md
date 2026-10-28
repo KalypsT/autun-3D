@@ -119,7 +119,8 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 - **OpenStreetMap complet** sur la région (`tools/data/region_sources.py`) : nœuds, voies, relations multipolygones et toutes les étiquettes, pour les types de bâtiments (étiquettes `building`, `shop`, `amenity`, marques), les terrains de sport, les stations-service, les cimetières ; puis l'eau et les ponts (M2).
 - **BD TOPO, zones d'activité ou d'intérêt** (`BDTOPO_V3:zone_d_activite_ou_d_interet`) : 92 zones nommées et typées sur la région (mairie, sous-préfecture, écoles, hôpitaux, maisons de retraite, gare, stade, gymnases, piscine, musées, théâtre, églises, poste, zone industrielle…). **BD TOPO, constructions ponctuelles** : 5 clochers, cheminées, antennes. **BD TOPO, terrains de sport** : 26, par discipline. Licence Ouverte 2.0.
 - **MNS LiDAR** par petites fenêtres (WMS) autour des églises : hauteur réelle des clochers.
-- **Cadastre** (`CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`, WFS de la Géoplateforme, Licence Ouverte 2.0) : accessible, 4 821 parcelles sur l'anneau ; servira aux rues de M3 (l'espace public est ce qui n'est dans aucune parcelle).
+- **Cadastre** (`CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`, WFS de la Géoplateforme, Licence Ouverte 2.0) : 4 855 parcelles sur l'anneau ; l'espace public est ce qui n'est dans aucune parcelle (rues, trottoirs, places : D94), et les limites de parcelle sur la rue reçoivent leurs clôtures. Crédit : « IGN – Parcellaire Express (PCI) ».
+- **Orthophoto à 0,5 m** sur la région (WMS, blocs de 500 m, `region_sources.Ortho`) : enrobé, herbe et gravier des profils en travers et de l'espace public.
 
 ## Domaines bloqués
 
@@ -142,6 +143,6 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ## Crédits à afficher dans le jeu
 
-> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO® (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
+> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO®, Parcellaire Express (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
 
 La liste exacte des photos (auteur, licence, lien) sera générée par la chaîne de données à partir des fiches façade.

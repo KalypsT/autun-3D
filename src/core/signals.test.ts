@@ -179,7 +179,8 @@ describe("feux de circulation (J3-3)", () => {
     const priv = sim as unknown as { mode: Uint8Array; edge: Int32Array; x: Float32Array; y: Float32Array };
     const prev = new Uint8Array(160);
     let starts = 0, violations = 0;
-    for (let k = 0; k < 60 * 300; k++) {
+    // Sept minutes : assez de traversées pour que le contrôle compte (cinq en cinq minutes depuis les sols du cadastre, D94).
+    for (let k = 0; k < 60 * 420; k++) {
       signals.clock.t += DT;
       sim.step(DT, obs);
       for (let i = 0; i < 160; i++) {

@@ -9,6 +9,9 @@ const FURNITURE_RADIUS: Record<string, number> = {
   bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
 };
 
+/** Identifiants des clôtures de parcelle écrites par tools/data/build_public_space.py : −(PARCEL_FENCE_ID + n). */
+export const PARCEL_FENCE_ID = 900_000_000;
+
 export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures">;
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
@@ -19,7 +22,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     c.addRing(b.ring);
     for (const h of b.holes) c.addRing(h);
   }
-  for (const w of tile.walls) c.addPolyline(w.pts);
+  // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
+  for (const w of tile.walls) c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID);
   for (const f of tile.furniture) {
     const r = FURNITURE_RADIUS[f.kind];
     if (r !== undefined) c.addCircle(f.x, f.y, r);

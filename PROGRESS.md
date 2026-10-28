@@ -508,3 +508,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Toute l'eau (27,8 ha au lieu de 3,9), avec un liseré sur les rives et des rides ; 26 km de ruisseaux ; le seuil de l'Arroux. La ligne de chemin de fer (8,2 km) avec ballast, traverses et rails, le faisceau de la gare, deux quais avec abri, les passages à niveau.
 - Aucun appel de dessin de plus ; +10 % de triangles au pire (vue sur le faisceau de la gare). 590 tests.
 - À faire de ton côté : passer les ponts à pied, à vélo et en voiture (Saint-Andoche, route de Saulieu, rue de Paris), passer dessous, longer l'Arroux, aller à la gare.
+
+**M3 (28 octobre 2026) : rues sur le cadastre** (D94)
+- Les sols des 144 tuiles sont refaits d'après le cadastre : l'espace public est ce qui n'est dans aucune parcelle. Les trottoirs vont jusqu'aux façades (plus de trottoir mangé par les maisons, plus de bande vide dans les avenues), les rues étroites deviennent des rues partagées, la chaussée ne déborde plus sur les parcelles, 47 rues ont leur largeur corrigée d'après l'orthophoto.
+- Les cours privées ne sont plus dessinées comme des places publiques (les taches beiges) ; chaque limite de parcelle sur la rue a sa clôture : mur (surtout en vieille ville), grille ou haie, avec des passages aux allées et des portillons (71 km). On voit et on tire par-dessus ; on ne passe pas à travers.
+- Accotements enherbés, îlots des ronds-points en pelouse, lignes de rive sur les grandes routes, lignes d'arrêt aux stops. Lampadaires, feux et arbres recalés. Navigation des passants et des voitures reconstruite sur ces sols, carte régénérée.
+- Coût : +1 % de triangles, +5 à +8 appels de dessin au centre (à vérifier au banc). 590 tests.
+- À faire de ton côté : te balader en vieille ville et dans les faubourgs, rouler dans les rues étroites, regarder la carte ; dire si les clôtures gênent (on peut en réduire la part de murs ou ouvrir plus de passages).

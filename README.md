@@ -45,6 +45,7 @@ python3 -m pip install -r tools/data/requirements.txt
 python3 tools/data/build_all.py          # tous les blocs de REGION ; ou : build_all.py 3,4 (un bloc de 2 × 2 km, D31). Télécharge dans .cache/ puis écrit public/data/ (world.json, tiles/, lod/, terrain/, ground/ : tout par tuile, voir D30)
 python3 tools/data/build_map.py          # carte : images par kilomètre, lieux et rues dans public/data/map (D33) ; ne touche à aucune tuile
 python3 tools/data/build_nav.py          # navigation : files piétonnes, graphe routier, points d'intérêt, par super-tuile de 1 km dans public/data/nav (D40) ; après `fetch.py --only osm` et `--only routes` pour chaque bloc ; ne touche à aucune tuile
+python3 tools/data/build_public_space.py # rues, trottoirs, places et clôtures d'après le cadastre (D94) : réécrit sols, clôtures et lampadaires des tuiles, puis relancer build_nav.py et build_map.py
 python3 tools/data/build_structures.py   # ponts (tabliers mesurés au LiDAR), eau, ruisseaux, voies ferrées, quais dans public/data/structures (D93) ; ne touche à aucune tuile
 python3 tools/data/build_kinds.py        # types de bâtiments et sites (grandes surfaces, mairie, gare, églises, terrains, stations-service…) dans public/data/kinds (D92) ; ne touche à aucune tuile
 python3 tools/data/nav_debug.py out.png x0 y0 x1 y1 [px/m]   # image de contrôle de la navigation

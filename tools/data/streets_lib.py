@@ -8,6 +8,7 @@ Classes, par niveau : 0 = celles que le sol dessinait jusqu'à J2 (`DEFAULT_WIDT
 """
 
 import json
+from pathlib import Path
 
 import numpy as np
 from pyproj import Transformer
@@ -26,6 +27,8 @@ GROUND_EXTRA = {"primary": 8.0, "road": 5.0}
 NAV_EXTRA = {"track": 3.0, "cycleway": 2.0}
 EXTRA_DRIVABLE = {"primary", "road"}
 NAME_FIX = {"Rue de l'Hotel de Ville": "Rue de l'Hôtel de Ville"}
+# Largeurs de chaussée mesurées sur l'orthophoto dans l'emprise publique du cadastre (build_public_space.py, D94) : elles priment.
+MEASURED = Path(__file__).with_name("measured_widths.json")
 
 # Étiquettes OpenStreetMap conservées telles quelles sur chaque voie (la navigation en tire accès, ponts, ronds-points…).
 KEPT_TAGS = ("highway", "access", "foot", "motor_vehicle", "bicycle", "bridge", "tunnel", "layer", "junction", "sidewalk", "service",
@@ -101,6 +104,7 @@ def build_street_list(ways, routes, level=1):
     et `bd` (attributs du tronçon BD TOPO le plus proche, ou None).
     """
     default_width, drivable = classes(level)
+    measured = json.loads(MEASURED.read_text())["widths"] if MEASURED.exists() else {}
     streets = []
     for e in ways:
         t = e["tags"]
@@ -124,11 +128,14 @@ def build_street_list(ways, routes, level=1):
         width = bd if bd else default_width[hw]
         if t.get("lanes") and t["lanes"].isdigit() and not bd:
             width = max(width, 3.0 * int(t["lanes"]))
+        source = "bdtopo" if bd else "type"
+        if str(e["id"]) in measured:
+            width, source = measured[str(e["id"])], "measured"
         name = NAME_FIX.get(t.get("name"), t.get("name"))
         streets.append({
             "id": e["id"], "name": name, "kind": hw, "motor": bool(motor),
             "oneway": oneway, "surface": t.get("surface"), "width": round(width, 1),
-            "widthSource": "bdtopo" if bd else "type",
+            "widthSource": source,
             "maxspeed": int(t["maxspeed"]) if t.get("maxspeed", "").isdigit() else None,
             "lanes": int(t["lanes"]) if t.get("lanes", "").isdigit() else None,
             "tunnel": t.get("tunnel") == "building_passage",

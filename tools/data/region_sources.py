@@ -48,12 +48,14 @@ class Osm:
 
     def __init__(self, elements):
         self.nodes = {}  # id -> (x, y)
+        self.latlon = {}  # id -> (lat, lon)
         self.node_tags = {}  # id -> étiquettes (nœuds étiquetés seulement)
         self.ways = {}  # id -> {"tags", "nodes"}
         self.relations = {}  # id -> {"tags", "members"}
         for e in elements:
             if e["type"] == "node":
                 self.nodes[e["id"]] = local(e["lon"], e["lat"])
+                self.latlon[e["id"]] = (e["lat"], e["lon"])
                 if e.get("tags"):
                     self.node_tags[e["id"]] = e["tags"]
             elif e["type"] == "way":
@@ -110,6 +112,16 @@ class Osm:
                 g = self.relation_polygon(rid)
                 if g is not None and not g.is_empty:
                     out.append(("relation", rid, r["tags"], g))
+        return out
+
+    def ways_with_geometry(self):
+        """Voies étiquetées au format de `fetch.py` ({id, tags, nodes, geometry: [{lat, lon}]}), pour `streets_lib`."""
+        out = []
+        for wid, w in self.ways.items():
+            if not w["tags"]:
+                continue
+            geom = [{"lat": self.latlon[n][0], "lon": self.latlon[n][1]} for n in w["nodes"] if n in self.latlon]
+            out.append({"type": "way", "id": wid, "tags": w["tags"], "nodes": w["nodes"], "geometry": geom})
         return out
 
     def tagged_nodes(self):
@@ -187,6 +199,39 @@ def mns_window(x0, y0, x1, y1, res=0.5):
     arr = tifffile.imread(io.BytesIO(data)).astype(np.float32)
     arr[arr < -100] = np.nan
     return arr - c.ORIGIN_Z, X0 - c.ORIGIN[0], Y1 - c.ORIGIN[1]
+
+
+# --- Orthophoto : grille 0,5 m de la région -----------------------------------------------------------------------------------
+class Ortho:
+    """Orthophoto IGN (BD ORTHO, 20 cm rééchantillonnée à 0,5 m par le WMS) sur l'emprise de la région, en blocs de 500 m."""
+
+    RES = 0.5
+
+    def __init__(self, margin=40.0):
+        from PIL import Image
+
+        x0, y0, x1, y1 = region_box(margin)
+        self.X0 = math.floor(x0 / 500) * 500
+        self.Y1 = math.ceil(y1 / 500) * 500
+        X1, Y0 = math.ceil(x1 / 500) * 500, math.floor(y0 / 500) * 500
+        n = int(500 / self.RES)
+        self.W, self.H = int((X1 - self.X0) / self.RES), int((self.Y1 - Y0) / self.RES)
+        self.rgb = np.zeros((self.H, self.W, 3), np.uint8)
+        for by in range(int(Y0 / 500), int(self.Y1 / 500)):
+            for bx in range(int(self.X0 / 500), int(X1 / 500)):
+                cache = c.SHARED / "ortho05" / f"{bx}_{by}.jpg"
+                data = fetch.wms_block("HR.ORTHOIMAGERY.ORTHOPHOTOS", "image/jpeg", bx * 500, by * 500, (bx + 1) * 500, (by + 1) * 500, n, n, cache)
+                img = np.asarray(Image.open(io.BytesIO(data)).convert("RGB"))
+                r0 = int((self.Y1 - (by + 1) * 500) / self.RES)
+                c0 = int((bx * 500 - self.X0) / self.RES)
+                self.rgb[r0:r0 + n, c0:c0 + n] = img
+        # Origine en coordonnées locales.
+        self.x0 = self.X0 - c.ORIGIN[0]
+        self.y1 = self.Y1 - c.ORIGIN[1]
+
+    def pixel(self, x, y):
+        """(ligne, colonne) du pixel du point local (x, y)."""
+        return int((self.y1 - y) / self.RES), int((x - self.x0) / self.RES)
 
 
 def as_polygons(g):

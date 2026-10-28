@@ -8,6 +8,8 @@ export interface Segment {
   ay: number;
   bx: number;
   by: number;
+  /** Obstacle bas (clôture, muret) : il arrête les déplacements, pas les rayons (vue, tirs, caméra passent par-dessus). */
+  low?: boolean;
 }
 
 export interface Circle {
@@ -49,9 +51,9 @@ export class Colliders {
   private segSeen: number[] = [];
   private circleSeen: number[] = [];
 
-  addSegment(ax: number, ay: number, bx: number, by: number): void {
+  addSegment(ax: number, ay: number, bx: number, by: number, low = false): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
-    const rec = { ax, ay, bx, by };
+    const rec: Segment = low ? { ax, ay, bx, by, low } : { ax, ay, bx, by };
     const reuse = this.freeSeg.pop();
     let id: number;
     if (reuse === undefined) {
@@ -157,9 +159,9 @@ export class Colliders {
     }
   }
 
-  /** Ajoute une ligne ouverte (x0, y0, x1, y1, …) en segments. */
-  addPolyline(coords: readonly number[]): void {
-    for (let i = 0; i + 3 < coords.length; i += 2) this.addSegment(coords[i]!, coords[i + 1]!, coords[i + 2]!, coords[i + 3]!);
+  /** Ajoute une ligne ouverte (x0, y0, x1, y1, …) en segments ; `low` : obstacle bas, transparent aux rayons. */
+  addPolyline(coords: readonly number[], low = false): void {
+    for (let i = 0; i + 3 < coords.length; i += 2) this.addSegment(coords[i]!, coords[i + 1]!, coords[i + 2]!, coords[i + 3]!, low);
   }
 
   /** Repousse un cercle (centre x, y ; rayon r) hors de tous les obstacles voisins. */
@@ -244,7 +246,7 @@ export class Colliders {
 
   /**
    * Premier obstacle rencontré sur le segment (ax, ay) -> (bx, by) : fraction 0-1 de la longueur, ou null.
-   * Seuls les segments sont testés (murs) ; les cercles (mobilier) ne gênent pas la caméra.
+   * Seuls les segments sont testés (murs) ; les cercles (mobilier) ne gênent pas la caméra, ni les obstacles bas (clôtures).
    */
   raycast(ax: number, ay: number, bx: number, by: number): number | null {
     let best: number | null = null;
@@ -258,6 +260,7 @@ export class Colliders {
           if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
           this.segSeen[id] = stamp;
           const s = this.segments[id]!;
+          if (s.low) continue;
           const sx = s.bx - s.ax, sy = s.by - s.ay;
           const den = rx * sy - ry * sx;
           if (Math.abs(den) < 1e-12) continue;

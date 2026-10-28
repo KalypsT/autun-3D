@@ -128,22 +128,26 @@ describe("poursuite qui dure (J4-6)", () => {
     expect(arrests).toBeGreaterThan(0);
   }, 600000);
 
-  // Cinq étoiles (J5-4, D82) : six poursuivants au lieu de quatre ; mêmes critères, avec le nouveau plafond.
+  // Cinq étoiles (J5-4, D82) : six poursuivants au lieu de quatre ; mêmes critères, avec le nouveau plafond. Deux départs (D94) : une
+  // poursuite est chaotique, un fugitif peut semer la police dès la première minute (départ 5 depuis les sols du cadastre), l'autre non.
   it("cinq étoiles : six poursuivants au plus, six gendarmes à pied au plus, rien d'aberrant, rien qui s'accumule", () => {
-    const r = soak(5, 240, 240, 5);
-    expect(r.bad).toBe(0);
-    expect(r.minutes).toHaveLength(4);
-    let most = 0;
-    for (const q of r.minutes) {
-      most = Math.max(most, q.chasing);
-      expect(q.chasing).toBeLessThanOrEqual(6);
-      expect(q.officers).toBeLessThanOrEqual(OFFICER.max);
-      expect(q.farthest).toBeLessThan(500);
-      expect(q.contacts).toBeLessThan(2700);
+    let most = 0, damage = 0;
+    for (const seed of [5, 6]) {
+      const r = soak(seed, 240, 240, 5);
+      expect(r.bad).toBe(0);
+      expect(r.minutes).toHaveLength(4);
+      for (const q of r.minutes) {
+        most = Math.max(most, q.chasing);
+        expect(q.chasing).toBeLessThanOrEqual(6);
+        expect(q.officers).toBeLessThanOrEqual(OFFICER.max);
+        expect(q.farthest).toBeLessThan(500);
+        expect(q.contacts).toBeLessThan(2700);
+      }
+      expect(Number.isFinite(r.damage)).toBe(true);
+      damage += r.damage;
     }
     expect(most).toBeGreaterThan(4);
     // Armée : les tirs des voitures et des gendarmes retirent des points de vie à un fugitif au volant, sans valeur aberrante (un joueur au volant en perd moitié moins, côté jeu).
-    expect(r.damage).toBeGreaterThan(0);
-    expect(Number.isFinite(r.damage)).toBe(true);
+    expect(damage).toBeGreaterThan(0);
   }, 600000);
 });
