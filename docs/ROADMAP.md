@@ -44,7 +44,7 @@ Chaque étape doit être jouable et testable sur téléphone. Les noms J1 à J7 
 Idées retenues pour plus tard : mode photo, météo (pluie, brume, adhérence), dégâts des véhicules, engins volants, **enfants** parmi les PNJ (proportions différentes, à décider avec l'utilisateur).
 
 Idées notées pendant J4 (pas faites, hors périmètre) :
-- Police : barrages à 3 étoiles (deux voitures en travers d'une rue sur le trajet prévu du joueur) ; reconnaissance de la voiture signalée (changer de véhicule hors de vue ferait perdre la piste plus vite) ; plus de trois étoiles avec les armes (J5) ; poursuivants qui prennent des places distinctes autour du joueur arrêté (ils s'empilent, D78) ; képi et insignes des gendarmes (pièces du kit) ; animation de l'arrestation ; gendarmes qui sortent le joueur d'une voiture au pas ; la vraie position de la gendarmerie (donnée `perso` ou agrandissement de la zone) pour la reprise.
+- Police : barrages à 3 étoiles (deux voitures en travers d'une rue sur le trajet prévu du joueur) ; reconnaissance de la voiture signalée (changer de véhicule hors de vue ferait perdre la piste plus vite) ; plus de trois étoiles avec les armes (J5) ; képi et insignes des gendarmes (pièces du kit) ; animation de l'arrestation ; gendarmes qui sortent le joueur d'une voiture au pas ; la vraie position de la gendarmerie (donnée `perso` ou agrandissement de la zone) pour la reprise.
 
 Idées notées pendant J3 (pas faites, hors périmètre) :
 - Rendu de la circulation : feux de freinage, clignotants, phares projetés sur la chaussée la nuit, conducteur visible derrière les vitres, deux niveaux de détail (roues à 6 facettes au loin) si le budget de triangles se resserre.

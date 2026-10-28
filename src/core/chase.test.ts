@@ -116,6 +116,48 @@ describe("poursuite (J4-3)", () => {
     }
   });
 
+  it("quatre gendarmeries qui poursuivent un point qui roule (comme le banc, sans corps) ne s'empilent pas : D79, avant les places autour de la cible, 17 248 pas avec contact sur 26 396 (65 %)", () => {
+    let contact = 0, close = 0, steps = 0;
+    for (const seed of [2, 3, 4, 5]) {
+      const list = starts(4), from = list[(seed * 17) % list.length]!;
+      const lp = { x: 0, y: 0, heading: 0 };
+      lanePoint(nav.road, from, 5, lp);
+      const car = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
+      const fd = new Driver(nav, from, 5, seed, FUGITIVE, colliders, null);
+      const sim = new TrafficSim(nav, world.terrain, colliders);
+      // Quatre voitures de police à 70 à 200 m, comme des renforts.
+      let placed = 0;
+      for (let k = 0; k < list.length && placed < 4; k++) {
+        const m = list[(seed * 13 + k * 7) % list.length]!;
+        lanePoint(nav.road, m, 5, lp);
+        const d = Math.hypot(lp.x - car.x, lp.y - car.y);
+        if (d > 70 && d < 200) {
+          sim.setChase(sim.add(POLICE, m, 5, seed * 10 + placed, 0), true);
+          placed++;
+        }
+      }
+      for (let i = 0; i < 150 * 60; i++) {
+        const input = fd.update(car, DT, []);
+        if (fd.lost) {
+          const h = nav.road.nearest(car.x, car.y, 30);
+          if (h) fd.restart(h.edge * 2, h.s);
+        }
+        stepVehicle(car, FUGITIVE, input, DT, world.terrain, colliders);
+        sim.chaseTarget = { x: car.x, y: car.y, vx: car.vx, vy: car.vy };
+        sim.step(DT, null);
+        if (i <= 60 * 40) continue;
+        steps++;
+        if (sim.stats.contacts > 0) contact++;
+        let near = false;
+        for (let a = 0; a < sim.cars.length; a++) for (let b = a + 1; b < sim.cars.length; b++) if (Math.hypot(sim.cars[a]!.state.x - sim.cars[b]!.state.x, sim.cars[a]!.state.y - sim.cars[b]!.state.y) < 3) near = true;
+        if (near) close++;
+      }
+    }
+    expect(steps).toBeGreaterThan(20000);
+    expect(contact / steps).toBeLessThan(0.1);
+    expect(close / steps).toBeLessThan(0.03);
+  }, 120000);
+
   it("contre un fugitif aussi rapide qu'elle, elle le retrouve le plus souvent une fois qu'il s'est arrêté", () => {
     let held = 0;
     for (let seed = 1; seed <= 6; seed++) if (chase(seed, 200, 120, true).held < 12) held++;

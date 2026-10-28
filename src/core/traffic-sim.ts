@@ -194,6 +194,9 @@ export class TrafficSim {
       hasTarget = true;
     }
     this.sirens();
+    // Une place autour de la cible par voiture en poursuite (dans l'ordre des voitures) : elles ne visent pas toutes le même point.
+    let rank = 0;
+    for (const c of this.cars) if (c.chase) c.chase.slot = rank++;
     for (const c of this.cars) {
       c.state.impact = 0;
       c.hitPlayer = 0;
