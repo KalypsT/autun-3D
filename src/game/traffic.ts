@@ -1,21 +1,22 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { lanePoint } from "../core/driver";
-import { moveEdge } from "../core/road-graph";
+import { MASK_ZONE, type TrafficBody } from "../core/pedestrians";
 import type { Signals } from "../core/signals";
-import type { TrafficBody } from "../core/pedestrians";
+import { trafficTarget } from "../core/traffic-density";
+import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import { CATALOG, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
+import { ZONE } from "../data/nav";
 import type { HeightField } from "../data/types";
 import type { VehicleModel } from "../render/vehicle-model";
 import type { NavManager } from "./nav-manager";
 import { buildModel } from "./vehicles";
 
 /**
- * Circulation (étape J3). Première version (J3-1) : des voitures qui roulent seules sur les routes autour du joueur, chacune avec son
- * conducteur (`src/core/driver.ts`) et son modèle articulé. `?traffic=N` en met N ; une voiture perdue (impasse, blocage) est remplacée.
- * Les règles de circulation, la naissance et la mort selon l'heure et le rendu par instances viennent dans les étapes suivantes (D58).
+ * Circulation du jeu (étape J3) : la simulation (`src/core/traffic-sim.ts`), un modèle articulé par voiture (le rendu par instances est J3-5),
+ * et la vie de la couronne autour du joueur (D64) : naissance hors de sa vue selon l'heure et le quartier, disparition au loin, remplacement
+ * des voitures perdues. Rien n'est sauvegardé : la circulation renaît autour du joueur.
  */
 
 interface TrafficCar {
@@ -24,11 +25,25 @@ interface TrafficCar {
   model: VehicleModel;
   /** Ce que voient les passants de cette voiture (position, vitesse, coque) et ce que le choc d'un passant lui a coûté. */
   body: TrafficBody;
+  /** Depuis combien de secondes le conducteur est perdu (le joueur la regardait : elle n'a pas pu disparaître). */
+  lostFor: number;
 }
 
-/** Distance (m) du joueur à laquelle on place une voiture : ni dans son champ de vision immédiat, ni hors de la navigation chargée. */
-const SPAWN_MIN = 45;
-const SPAWN_MAX = 170;
+/** Ce que la circulation sait du joueur à chaque image : position, cap de la caméra, vitesse, heure de jeu, et le véhicule qu'il conduit. */
+export interface TrafficEnv {
+  x: number;
+  y: number;
+  yaw: number;
+  speed: number;
+  hour: number;
+  vehicle: { x: number; y: number } | null;
+}
+
+/** Une voiture qui s'éloigne de plus que cela de la couronne de naissance disparaît (si le joueur ne la voit pas). */
+const DESPAWN_MARGIN = 70;
+/** Délai (s) entre deux naissances, et entre deux retraits de voitures en surnombre. */
+const SPAWN_EVERY = 0.25;
+const TRIM_EVERY = 0.6;
 
 export class Traffic {
   readonly cars: TrafficCar[] = [];
@@ -37,14 +52,19 @@ export class Traffic {
   simMs = 0;
   private serial = 0;
   private cooldown = 0;
+  private zoneTimer = 0;
+  private trimTimer = 0;
+  /** Zone du joueur (0 centre ... 3 nature) et nombre de voitures visé à cet instant. */
+  zone: number = ZONE.outskirts;
+  target = 0;
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly nav: NavManager,
     terrain: HeightField,
-    colliders: Colliders,
+    private readonly colliders: Colliders,
     private readonly solidAt: (x: number, y: number) => boolean,
-    private capacity: number,
+    private max: number,
     signals: Signals,
     private readonly seed = 1,
   ) {
@@ -90,8 +110,13 @@ export class Traffic {
 
   private readonly bodyList: TrafficBody[] = [];
 
+  /** Nombre maximal de voitures (le réglage). */
+  get capacity(): number {
+    return this.max;
+  }
+
   setCapacity(n: number): void {
-    this.capacity = n;
+    this.max = n;
     while (this.cars.length > n) this.remove(this.cars.length - 1);
   }
 
@@ -103,18 +128,49 @@ export class Traffic {
     this.simMs += (performance.now() - t0 - this.simMs) * 0.02;
   }
 
-  /** À chaque image : modèles, remplacement des voitures perdues, naissances. */
-  update(dt: number, px: number, py: number): void {
+  /** À chaque image : modèles, retraits (voitures perdues, lointaines ou en surnombre), naissances selon la densité de l'heure et du quartier. */
+  update(dt: number, env: TrafficEnv): void {
+    const graph = this.nav.graph;
+    // Quartier du joueur (zone de la file piétonne la plus proche) : deux fois par seconde suffisent.
+    this.zoneTimer -= dt;
+    if (this.zoneTimer <= 0) {
+      this.zoneTimer = 0.5;
+      const hit = graph.nearest(env.x, env.y, 80, MASK_ZONE);
+      this.zone = hit ? graph.edgeZone(hit.edge) : ZONE.outskirts;
+    }
+    this.target = trafficTarget(this.max, env.hour, this.zone, env.speed);
+    const { rOut } = spawnRing(env.speed);
+    const seen = (x: number, y: number): boolean => visibleFrom(env.x, env.y, env.yaw, 1.1, x, y, this.colliders);
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!;
       c.model.update(c.sim.state);
-      // Perdue, ou restée loin derrière : elle disparaît.
-      if (c.sim.driver?.lost || Math.hypot(c.sim.state.x - px, c.sim.state.y - py) > SPAWN_MAX * 2) this.remove(i);
+      const d = Math.hypot(c.sim.state.x - env.x, c.sim.state.y - env.y);
+      // Perdue (impasse, blocage) ou sortie de la couronne : elle disparaît quand le joueur ne la voit pas. Une voiture perdue qu'il regarde
+      // reste (elle ne disparaît pas sous ses yeux), mais pas plus de 20 s.
+      const lost = c.sim.driver?.lost ?? false;
+      if (lost) c.lostFor += dt;
+      if ((lost || d > rOut + DESPAWN_MARGIN) && (c.lostFor > 20 || !seen(c.sim.state.x, c.sim.state.y))) this.remove(i);
+    }
+    // Surnombre (la nuit tombe, le quartier change) : on retire la plus éloignée que le joueur ne voit pas.
+    this.trimTimer -= dt;
+    if (this.cars.length > this.target && this.trimTimer <= 0) {
+      this.trimTimer = TRIM_EVERY;
+      let far = -1, fd = 0;
+      for (let i = 0; i < this.cars.length; i++) {
+        const s = this.cars[i]!.sim.state, d = Math.hypot(s.x - env.x, s.y - env.y);
+        if (d > fd && !seen(s.x, s.y)) {
+          fd = d;
+          far = i;
+        }
+      }
+      if (far >= 0) this.remove(far);
     }
     this.cooldown -= dt;
-    if (this.cars.length < this.capacity && this.cooldown <= 0 && this.nav.graph.cells.size > 0) {
-      this.cooldown = 0.3;
-      this.spawn(px, py);
+    // Au début, on remplit vite (jusqu'à 3 par image tant qu'il manque la moitié) ; ensuite une naissance toutes les 0,25 s.
+    let budget = this.cars.length < this.target / 2 ? 3 : 1;
+    while (budget-- > 0 && this.cars.length < this.target && (this.cooldown <= 0 || this.cars.length < this.target / 2) && graph.cells.size > 0) {
+      this.cooldown = SPAWN_EVERY;
+      if (!this.spawn(env)) break;
     }
   }
 
@@ -127,45 +183,29 @@ export class Traffic {
     this.cars.splice(i, 1);
   }
 
-  private spawn(px: number, py: number): void {
-    const graph = this.nav.graph, road = graph.road;
-    const rnd = (n: number): number => {
-      let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(this.serial * 8 + n + 1, 0xc2b2ae35);
+  /** Fait naître une voiture sur une voie libre de la couronne ; faux s'il n'y en a pas (rien n'est alors créé). */
+  private spawn(env: TrafficEnv): boolean {
+    const rnd = (): number => {
+      let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(++this.serial, 0xc2b2ae35);
       h ^= h >>> 15;
       h = Math.imul(h, 0x2c1b3c6d);
       return ((h ^ (h >>> 12)) >>> 0) / 4294967296;
     };
-    const candidates: number[] = [];
-    const mid = { x: 0, y: 0 };
-    for (const l of graph.cells.values()) {
-      for (const e of road.edgesOfSlot(l.slot)) {
-        if (!road.drivable(e) || road.edgeLength(e) < 25 || road.edgeClass(e) > 5) continue;
-        if ((road.nodeFlags(road.edgeA(e)) | road.nodeFlags(road.edgeB(e))) & 2) continue;
-        road.pointAt(e, road.edgeLength(e) / 2, mid);
-        const d = Math.hypot(mid.x - px, mid.y - py);
-        if (d < SPAWN_MIN || d > SPAWN_MAX || !this.solidAt(mid.x, mid.y)) continue;
-        candidates.push(e);
-      }
-    }
-    this.serial++;
-    if (candidates.length === 0) return;
-    const e = candidates[Math.floor(rnd(0) * candidates.length)]!;
-    let move = e * 2 + (rnd(1) < 0.5 ? 0 : 1);
-    if (!road.canGo(move)) move ^= 1;
-    if (!road.canGo(move)) return;
-    const s = Math.min(road.edgeLength(moveEdge(move)) / 2, 12);
-    const lp = { x: 0, y: 0, heading: 0 };
-    lanePoint(road, move, s, lp);
-    // Pas sur une autre voiture.
-    if (this.cars.some((c) => Math.hypot(c.sim.state.x - lp.x, c.sim.state.y - lp.y) < 10)) return;
     const cars = CATALOG.filter((d) => d.family === "car");
-    const def = cars.find((d) => d.id === pickModel("car", 0, rnd(2))) ?? cars[0]!;
-    const variant = Math.floor(rnd(3) * 16);
-    const sim = this.sim.add(def.spec, move, s, Math.floor(rnd(4) * 1e9));
+    const def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
+    const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);
+    if (env.vehicle) taken.push(env.vehicle);
+    else taken.push({ x: env.x, y: env.y });
+    const sp = pickSpawn(this.nav.graph, { px: env.x, py: env.y, yaw: env.yaw, speed: env.speed, rnd, taken, solidAt: this.solidAt, colliders: this.colliders, hull: def.spec.hull });
+    if (!sp) return false;
+    const variant = Math.floor(rnd() * 16);
+    // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
+    const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
     const model = buildModel(def, variant);
     model.update(sim.state);
     this.scene.add(model.group);
-    this.cars.push({ sim, def, model, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 } });
+    this.cars.push({ sim, def, model, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
+    return true;
   }
 
   dispose(): void {

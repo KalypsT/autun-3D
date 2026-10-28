@@ -121,7 +121,7 @@ export interface PedStats {
   zone: number;
 }
 
-const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
+export const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
 const MASK_WALK = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner);
 
 const TAU = Math.PI * 2;

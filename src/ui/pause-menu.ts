@@ -6,7 +6,7 @@ import {
   AGES, applyAppearance, BAGS, BEARDS, bottomColorChoices, BOTTOM_COLORS, BOTTOMS, BUILDS, CLOTH_COLORS, DEFAULT_RECIPE, GLASSES, HAIR_COLORS, HAIR_STYLES, HATS, hatColorChoices,
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
-import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, type SettingKey, type Settings } from "../core/settings";
+import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Réglages, Lieux notés, Sauvegarde. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -160,6 +160,8 @@ export class PauseMenu {
     row("Rayon de détail", "Distance jusqu'à laquelle les bâtiments sont détaillés. 400 m double la mémoire.", "detail", choices("detail", DETAIL_CHOICES.map((v) => ({ value: v, label: `${v} m` })), values.detail));
     row("Foule", "Nombre maximal de passants à la fois : il varie avec l'heure et le quartier. Moins, c'est plus fluide.", "crowd",
       choices("crowd", CROWD_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 40 ? "Peu" : v === 100 ? "Normale" : "Dense" })), values.crowd));
+    row("Circulation", "Nombre maximal de voitures à la fois : il varie avec l'heure et le quartier. Moins, c'est plus fluide.", "traffic",
+      choices("traffic", TRAFFIC_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 10 ? "Faible" : v === 20 ? "Normale" : "Dense" })), values.traffic));
     const range = h("input");
     range.type = "range";
     range.min = String(SENSITIVITY_RANGE.min);

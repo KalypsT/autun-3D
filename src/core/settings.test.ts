@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROWD_CHOICES, DEFAULT_SETTINGS, effectiveSettings, parseSettings } from "./settings";
+import { CROWD_CHOICES, DEFAULT_SETTINGS, effectiveSettings, parseSettings, TRAFFIC_CHOICES } from "./settings";
 
 describe("réglage « Foule »", () => {
   it("vaut 100 par défaut et se limite aux choix proposés", () => {
@@ -23,5 +23,29 @@ describe("réglage « Foule »", () => {
     expect(none.values.crowd).toBe(40);
     expect(none.locked.has("crowd")).toBe(false);
     expect(stored.crowd).toBe(40);
+  });
+});
+
+describe("réglage « Circulation »", () => {
+  it("vaut 0 (aucune) par défaut tant que la mesure sur téléphone n'est pas faite, et se limite aux choix proposés", () => {
+    expect(DEFAULT_SETTINGS.traffic).toBe(0);
+    expect(parseSettings({}).traffic).toBe(0);
+    expect(parseSettings({ traffic: 22 }).traffic).toBe(20);
+    expect(parseSettings({ traffic: 1000 }).traffic).toBe(30);
+    expect(parseSettings({ traffic: "beaucoup" }).traffic).toBe(0);
+    expect(TRAFFIC_CHOICES).toContain(parseSettings({ traffic: 12 }).traffic);
+  });
+
+  it("est imposé par ?traffic=N, borné à 60, sans toucher aux réglages enregistrés", () => {
+    const stored = { ...DEFAULT_SETTINGS, traffic: 10 };
+    const forced = effectiveSettings(stored, new URLSearchParams("traffic=14"));
+    expect(forced.values.traffic).toBe(14);
+    expect(forced.locked.has("traffic")).toBe(true);
+    expect(effectiveSettings(stored, new URLSearchParams("traffic=999")).values.traffic).toBe(60);
+    expect(effectiveSettings(stored, new URLSearchParams("traffic=0")).values.traffic).toBe(0);
+    const none = effectiveSettings(stored, new URLSearchParams("dpr=2"));
+    expect(none.values.traffic).toBe(10);
+    expect(none.locked.has("traffic")).toBe(false);
+    expect(stored.traffic).toBe(10);
   });
 });
