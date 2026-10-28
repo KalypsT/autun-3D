@@ -121,6 +121,35 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     traffic.dispose();
   }, 60000);
 
+  it("poursuite (J4-3) : les gendarmeries demandées naissent hors de vue, rejoignent le joueur à pied, gyrophares allumés (+3 maillages au plus), puis sont rappelées", () => {
+    const { traffic } = make(10);
+    const here = { x: -10, y: -40 };
+    const step = (): void => {
+      traffic.step(DT, { kind: "foot", x: here.x, y: here.y, vx: 0, vy: 0 });
+      traffic.update(DT, env({ ...here, hour: 22 }));
+    };
+    for (let k = 0; k < 60 * 20; k++) step();
+    const quiet = traffic.models.drawn - (traffic.policeCount > 0 ? 1 : 0);
+    traffic.pursuers = 2;
+    let closest = Infinity;
+    for (let k = 0; k < 60 * 90; k++) {
+      step();
+      for (const c of traffic.cars) if (c.sim.chase) closest = Math.min(closest, Math.hypot(c.sim.state.x - here.x, c.sim.state.y - here.y));
+    }
+    expect(traffic.chasing).toBe(2);
+    for (const c of traffic.cars) if (c.sim.chase) expect(c.siren && c.police).toBe(true);
+    expect(closest).toBeLessThan(15);
+    // Coût : le modèle de la gendarmerie et le maillage des gyrophares, rien de plus (les civils présents peuvent avoir changé de modèles).
+    expect(traffic.models.drawn).toBeLessThanOrEqual(quiet + 3);
+    // La circulation garde son plafond : les poursuivants y comptent.
+    expect(traffic.cars.length).toBeLessThanOrEqual(Math.max(10, traffic.target) + 2);
+    traffic.pursuers = 0;
+    for (let k = 0; k < 60; k++) step();
+    expect(traffic.chasing).toBe(0);
+    for (const c of traffic.cars) expect(c.siren).toBe(false);
+    traffic.dispose();
+  }, 60000);
+
   it("`extract` retire la voiture la plus proche de la circulation et de l'écran, et rend de quoi en faire un véhicule de la flotte (J4 : vol)", () => {
     const { traffic } = make(10);
     for (let k = 0; k < 60 * 30; k++) {

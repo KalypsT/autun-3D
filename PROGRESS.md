@@ -431,3 +431,6 @@ Fait :
 
 **J4-2 (28 octobre 2026) : voiture de gendarmerie** (D72)
 - Entrée `gendarmerie` du catalogue (caisse de la compacte, bleu nuit, bandes claires, barre de gyrophares, moteur plus fort), gyrophares allumés en un seul maillage pour toutes les voitures de police (+1 appel de dessin, sans ombre), patrouilles dans la circulation ordinaire (une à la fois). Galerie : `?view=vehicles&ids=gendarmerie`.
+
+**J4-3 (28 octobre 2026) : itinéraire et poursuite** (D73)
+- `src/core/road-route.ts` (A*, sens uniques ignorés pour la police), `src/core/chase.ts` (route, conduite directe, marche arrière, attente près du joueur arrêté), conducteur en poursuite (axe de la chaussée, plus vite, règles ignorées), civils qui se rangent devant la sirène, `Traffic.pursuers` et `?chase=N`. Essais sur les vraies données : la gendarmerie rattrape un fugitif qui roule comme la circulation et s'arrête à 4 à 8 m de lui quand il s'arrête. Tests : 457.

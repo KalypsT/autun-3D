@@ -70,6 +70,12 @@ export class Traffic {
   target = 0;
   /** Horloge des gyrophares (s). */
   private beaconClock = 0;
+  /**
+   * Voitures de police en poursuite voulues (J4, D73) : les patrouilles présentes se mettent en chasse, d'autres naissent hors de vue dans la couronne.
+   * Elles comptent dans le plafond : en surnombre, ce sont des civils qui sont retirés.
+   */
+  pursuers = 0;
+  private policeCooldown = 0;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -222,6 +228,11 @@ export class Traffic {
       const d = Math.hypot(c.sim.state.x - env.x, c.sim.state.y - env.y);
       // Perdue (impasse, blocage) ou sortie de la couronne : elle disparaît quand le joueur ne la voit pas. Une voiture perdue qu'il regarde
       // reste (elle ne disparaît pas sous ses yeux), mais pas plus de 20 s.
+      // En poursuite, un conducteur « perdu » est remis sur la route par la poursuite ; une voiture de police ne disparaît que très loin, hors de vue.
+      if (c.sim.chase) {
+        if (d > rOut + DESPAWN_MARGIN + 150 && !seen(c.sim.state.x, c.sim.state.y)) this.remove(i);
+        continue;
+      }
       const lost = c.sim.driver?.lost ?? false;
       if (lost) c.lostFor += dt;
       // Une voiture collée à une autre retirée par son conducteur disparaît tout de suite (deux voitures qui se chevauchent à l'arrêt choquent plus qu'une disparition).
@@ -234,6 +245,7 @@ export class Traffic {
       this.trimTimer = TRIM_EVERY;
       let far = -1, fd = 0;
       for (let i = 0; i < this.cars.length; i++) {
+        if (this.cars[i]!.sim.chase) continue;
         const s = this.cars[i]!.sim.state, d = Math.hypot(s.x - env.x, s.y - env.y);
         if (d > fd && !seen(s.x, s.y)) {
           fd = d;
@@ -242,6 +254,7 @@ export class Traffic {
       }
       if (far >= 0) this.remove(far);
     }
+    this.updatePursuit(dt, env);
     this.cooldown -= dt;
     // Au début, on remplit vite (jusqu'à 3 par image tant qu'il manque la moitié) ; ensuite une naissance toutes les 0,25 s.
     let budget = this.cars.length < this.target / 2 ? 3 : 1;
@@ -250,6 +263,41 @@ export class Traffic {
       if (!this.spawn(env)) break;
     }
     this.render();
+  }
+
+  /** Voitures en poursuite. */
+  get chasing(): number {
+    let n = 0;
+    for (const c of this.cars) if (c.sim.chase) n++;
+    return n;
+  }
+
+  /** Met en chasse ou rappelle des voitures de police pour atteindre `pursuers` ; fait naître celles qui manquent (une toutes les 2 s, hors de vue). */
+  private updatePursuit(dt: number, env: TrafficEnv): void {
+    let n = this.chasing;
+    for (const c of this.cars) {
+      if (n <= this.pursuers) break;
+      if (!c.sim.chase) continue;
+      this.sim.setChase(c.sim, false);
+      c.siren = false;
+      n--;
+    }
+    for (const c of this.cars) {
+      if (n >= this.pursuers) break;
+      if (!c.police || c.sim.chase) continue;
+      this.sim.setChase(c.sim, true);
+      c.siren = true;
+      n++;
+    }
+    this.policeCooldown -= dt;
+    if (n < this.pursuers && this.policeCooldown <= 0 && this.nav.graph.cells.size > 0) {
+      this.policeCooldown = 2;
+      const c = this.spawn(env, true);
+      if (c) {
+        this.sim.setChase(c.sim, true);
+        c.siren = true;
+      }
+    }
   }
 
   /** Écrit les instances à dessiner : une par voiture, à jour de sa position, de son cap, de ses roues. */
@@ -272,8 +320,8 @@ export class Traffic {
     this.cars.splice(i, 1);
   }
 
-  /** Fait naître une voiture sur une voie libre de la couronne ; faux s'il n'y en a pas (rien n'est alors créé). */
-  private spawn(env: TrafficEnv): boolean {
+  /** Fait naître une voiture (de police si `police`) sur une voie libre de la couronne ; null s'il n'y en a pas (rien n'est alors créé). */
+  private spawn(env: TrafficEnv, police = false): TrafficCar | null {
     const rnd = (): number => {
       let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(++this.serial, 0xc2b2ae35);
       h ^= h >>> 15;
@@ -282,18 +330,19 @@ export class Traffic {
     };
     const cars = CATALOG.filter((d) => d.family === "car");
     let def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
-    if (rnd() < PATROL_SHARE && this.policeCount < MAX_PATROLS) def = POLICE;
+    if ((rnd() < PATROL_SHARE && this.policeCount < MAX_PATROLS) || police) def = POLICE;
     const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);
     if (env.vehicle) taken.push(env.vehicle);
     else taken.push({ x: env.x, y: env.y });
     const sp = pickSpawn(this.nav.graph, { px: env.x, py: env.y, yaw: env.yaw, speed: env.speed, rnd, taken, solidAt: this.solidAt, colliders: this.colliders, hull: def.spec.hull });
-    if (!sp) return false;
+    if (!sp) return null;
     const variant = Math.floor(rnd() * 16);
     const driver = Math.floor(rnd() * 4294967296);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
     const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
-    this.cars.push({ sim, def, variant, driver, police: def === POLICE, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
-    return true;
+    const car: TrafficCar = { sim, def, variant, driver, police: def === POLICE, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 };
+    this.cars.push(car);
+    return car;
   }
 
   dispose(): void {

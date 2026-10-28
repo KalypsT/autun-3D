@@ -180,6 +180,12 @@ export function startGame(ctx: GameContext): void {
     else (traffic as Traffic).setCapacity(capacity);
   };
   startTraffic(settings.values.traffic);
+  // `?chase=N` (essais, J4-3) : N voitures de gendarmerie poursuivent le joueur, quel que soit le niveau de recherche (la circulation est créée au besoin).
+  const chaseParam = params.has("chase") ? Math.max(0, Math.min(6, Math.round(Number(params.get("chase")) || 0))) : 0;
+  if (chaseParam > 0) {
+    if (!traffic) traffic = new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), 0, startSignals(), 11);
+    (traffic as Traffic).pursuers = chaseParam;
+  }
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
@@ -187,7 +193,7 @@ export function startGame(ctx: GameContext): void {
     const g = pigeons as PigeonsController | null, gs = g?.stats;
     const pigText = g && gs ? ` · pigeons ${gs.alive}/${g.capacity} (${gs.flocks} volées, ${(g.simMs + g.drawMs).toFixed(2)} ms)` : "";
     const tr = traffic as Traffic | null;
-    const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)` : "";
+    const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
   const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}`);

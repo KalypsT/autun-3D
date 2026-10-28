@@ -1,3 +1,4 @@
+import { Chaser, type ChaseTarget } from "./chase";
 import type { Colliders } from "./collision";
 import { Driver, extentOf, lanePoint, type Other } from "./driver";
 import type { NavGraph } from "./nav-graph";
@@ -22,6 +23,8 @@ export interface SimCar {
   other: Other;
   /** Âge (s) et pire impact reçu (m/s) depuis le dernier `step` (diagnostic). */
   age: number;
+  /** Poursuite du joueur (police, J4) : null hors poursuite. */
+  chase: Chaser | null;
 }
 
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
@@ -91,7 +94,7 @@ export class TrafficSim {
     const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders, this.signals);
     const { halfLen, halfWid } = extentOf(spec);
     const id = this.serial++;
-    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0 };
+    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0, chase: null };
     if (driver) driver.junction.id = id;
     this.cars.push(car);
     return car;
@@ -99,7 +102,8 @@ export class TrafficSim {
 
   /** Une voiture est heurtée par le joueur : au-delà de 1,5 m/s, son conducteur est secoué (`Driver.bump`). Entre voitures, on continue (les frôlements viennent des rues étroites : s'arrêter au milieu d'un carrefour les multiplierait). */
   private shake(c: SimCar, impact: number): void {
-    if (c.driver && impact > 1.5) c.driver.bump(impact);
+    // Un gendarme en poursuite ne s'arrête pas pour un choc : il le cherchait peut-être.
+    if (c.driver && !c.chase && impact > 1.5) c.driver.bump(impact);
   }
 
   /**
@@ -112,6 +116,32 @@ export class TrafficSim {
       const dx = c.state.x - x, dy = c.state.y - y, d = Math.hypot(dx, dy);
       if (!c.driver || d > 35 || d < 1 || (dx * fx + dy * fy) / d < Math.cos(0.8)) continue;
       c.driver.hurryUp();
+    }
+  }
+
+  /** Lance (ou arrête) la poursuite du joueur par cette voiture (J4) ; son conducteur passe en conduite de poursuite, ou revient à la circulation. */
+  setChase(c: SimCar, on: boolean): void {
+    if (!c.driver || on === (c.chase !== null)) return;
+    c.chase = on ? new Chaser(this.nav, this.colliders, c.spec) : null;
+    if (!on) c.driver.setChase(false);
+  }
+
+  private readonly target: ChaseTarget = { x: 0, y: 0, vx: 0, vy: 0 };
+
+  /** Les voitures devant une voiture de poursuite lancée, à moins de 45 m et dans le même sens, se rangent à droite (une seconde, renouvelée tant qu'elle est là). */
+  private sirens(): void {
+    for (const p of this.cars) {
+      if (!p.chase || p.state.speed < 3) continue;
+      const fx = Math.sin(p.state.heading), fy = Math.cos(p.state.heading);
+      for (const c of this.cars) {
+        if (c === p || !c.driver || c.chase) continue;
+        const dx = c.state.x - p.state.x, dy = c.state.y - p.state.y;
+        if (Math.abs(dx) > 45 || Math.abs(dy) > 45) continue;
+        const ahead = dx * fx + dy * fy;
+        if (ahead < 0 || ahead > 45 || Math.abs(dx * fy - dy * fx) > 6) continue;
+        if (Math.sin(c.state.heading) * fx + Math.cos(c.state.heading) * fy < 0.3) continue;
+        c.driver.yieldTo(1);
+      }
     }
   }
 
@@ -140,6 +170,22 @@ export class TrafficSim {
       FOOT.vy = player.vy;
       others.push(this.footOther);
     }
+    const t = this.target;
+    let hasTarget = false;
+    if (player?.kind === "vehicle") {
+      t.x = player.state.x;
+      t.y = player.state.y;
+      t.vx = player.state.vx;
+      t.vy = player.state.vy;
+      hasTarget = true;
+    } else if (player?.kind === "foot") {
+      t.x = player.x;
+      t.y = player.y;
+      t.vx = player.vx;
+      t.vy = player.vy;
+      hasTarget = true;
+    }
+    this.sirens();
     for (const c of this.cars) {
       c.state.impact = 0;
       let seen: readonly Other[] = others;
@@ -154,7 +200,7 @@ export class TrafficSim {
           seen = list;
         }
       }
-      const input = c.driver ? c.driver.update(c.state, dt, seen) : PARKED;
+      const input = !c.driver ? PARKED : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
       stepVehicle(c.state, c.spec, input, dt, this.terrain, this.colliders);
       c.age += dt;
     }
