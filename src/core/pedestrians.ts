@@ -60,6 +60,9 @@ export const ALARM_KILL = 25;
 /** Durée de la fuite (s) des témoins d'un coup, d'un meurtre. */
 export const ALARM_FLEE = 6;
 export const ALARM_KILL_FLEE = 10;
+/** Un coup de feu effraie tout dans 40 m (J5-3). */
+export const ALARM_SHOT = 40;
+export const ALARM_SHOT_FLEE = 8;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
@@ -1084,6 +1087,31 @@ export class PedSim {
     if (v < 0.05) return;
     this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);
     this.event(v >= 3.5 ? "hit" : "stumble", i, v);
+  }
+
+  /**
+   * Premier passant touché par le rayon qui part de (x, y) dans la direction (dx, dy) (unitaire), sur au plus `maxDist` m : son emplacement et la
+   * distance du point d'impact (`out.slot` −1 s'il n'y en a pas). Le passant est un cercle de 40 cm de rayon vu de dessus (la hauteur est ignorée) ;
+   * un passant à terre compte, un mort non (un cadavre n'arrête pas les balles). Les emplacements réservés (gendarmes) ne sont pas touchés ici (J5-5).
+   */
+  rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
+    out.slot = -1;
+    out.dist = maxDist;
+    const alive = this.state.alive!, R = BODY + 0.12;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i] || this.mode[i] === PED_STATE.dead) continue;
+      const rx = this.x[i]! - x, ry = this.y[i]! - y;
+      const along = rx * dx + ry * dy;
+      if (along < 0 || along > out.dist + R) continue;
+      const side2 = rx * rx + ry * ry - along * along;
+      if (side2 > R * R) continue;
+      const t = along - Math.sqrt(R * R - side2);
+      if (t >= 0 && t < out.dist) {
+        out.dist = t;
+        out.slot = i;
+      }
+    }
+    return out.slot >= 0;
   }
 
   /** Points de vie d'un passant (tests, diagnostic). */

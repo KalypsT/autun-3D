@@ -364,4 +364,30 @@ describe("passants : coups, blessure, fuite (J5-1)", () => {
     expect(sim.stats.deaths).toBe(1);
     expect(sim.damage(slot, 10, 1, 0, 1)).toBe(0);
   });
+
+  it("`rayPed` : le rayon touche le premier passant sur son chemin, pas ceux derrière, ni les cadavres, ni ce qui est hors de portée", () => {
+    const { sim, slot, pos } = setup();
+    const out = { slot: -1, dist: 0 };
+    // De 10 m au sud, plein nord, droit sur lui : touché à environ 10 m moins son rayon.
+    expect(sim.rayPed(pos.x, pos.y - 10, 0, 1, 50, out)).toBe(true);
+    expect(out.slot).toBeGreaterThanOrEqual(0);
+    expect(out.dist).toBeLessThan(10.2);
+    // Trop court : rien.
+    expect(sim.rayPed(pos.x, pos.y - 10, 0, 1, 5, out)).toBe(false);
+    expect(out.slot).toBe(-1);
+    // Dans l'autre sens : rien dans l'axe de ce passant (il est derrière).
+    const behind = sim.rayPed(pos.x, pos.y - 10, 0, -1, 50, out);
+    if (behind) expect(out.slot).not.toBe(slot);
+    // Un cadavre ne protège pas.
+    sim.damage(slot, 500, 0, 1, 1.4);
+    sim.rayPed(pos.x, pos.y - 10, 0, 1, 50, out);
+    expect(out.slot).not.toBe(slot);
+    // Un passant à terre, lui, est touché.
+    const s2 = setup();
+    s2.sim.applyImpulse(s2.slot, 6, 0);
+    const p2 = { x: 0, y: 0 };
+    s2.sim.position(s2.slot, p2);
+    expect(s2.sim.rayPed(p2.x, p2.y - 6, 0, 1, 50, out)).toBe(true);
+  });
 });
+

@@ -92,6 +92,21 @@ export class PedsController implements Arena {
     return this.sim?.damage(slot, damage, ux, uy, impulse) ?? 0;
   }
 
+  /** Premier passant sur un rayon (J5-3) : voir `PedSim.rayPed`. */
+  rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
+    if (!this.sim) {
+      out.slot = -1;
+      out.dist = maxDist;
+      return false;
+    }
+    return this.sim.rayPed(x, y, dx, dy, maxDist, out);
+  }
+
+  /** Alarme (J5-4) : voir `PedSim.alarm`. */
+  alarm(x: number, y: number, radius: number, flee: number): number {
+    return this.sim?.alarm(x, y, radius, flee) ?? 0;
+  }
+
   setCapacity(n: number): void {
     n = Math.max(0, n);
     if (n === this.crowdCap) return;

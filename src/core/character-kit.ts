@@ -109,6 +109,9 @@ export const PART_SPECS: readonly PartSpec[] = [
   // Armes tenues (J5, D80) : jamais dans une recette ; `addPart` les ajoute au masque du personnage qui les tient (le joueur, puis les gendarmes).
   spec("weaponKnife", [BONE.forearmR], SLOT.none, false, () => false),
   spec("weaponBat", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponPistol", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponShotgun", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponRifle", [BONE.forearmR], SLOT.none, false, () => false),
 ];
 
 /** Les mises à jour de masque tiennent sur trois nombres de 22 bits : au plus 66 pièces. */

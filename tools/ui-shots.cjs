@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -179,6 +179,63 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     await sleep(4000);
     await shot("j5-cadavre");
+    await ctx.close();
+  }
+
+  if (want("cache")) {
+    // Une arme au sol (J5-3) : la batte du Monument aux morts, vue de côté à 6 m (caisse qui tourne et faisceau jaune).
+    const ctx = await open("h=15");
+    await page.evaluate(() => { const a = window.__autun; a.player.x = 34.8; a.player.y = -44; a.look(-2.356 + 0.55); });
+    await sleep(3000);
+    await shot("j5-arme-au-sol");
+    await ctx.close();
+  }
+
+  if (want("guns")) {
+    // Armes à feu (J5-3) : arme au sol (caisse et faisceau) au Monument aux morts, puis pistolet, fusil à pompe et fusil d'assaut tenus et tirés. On fige le jeu (pause)
+    // à l'image du tir ; on relève les appels de dessin sans effet, avec un tir et avec une arme au sol en vue. Rendu logiciel : quelques minutes.
+    const ctx = await open("arms=pistol,shotgun,rifle&h=15");
+    await page.addStyleTag({ content: "#weapon.flash button { animation: none !important; }" });
+    await sleep(1500);
+    // Une cache : la batte du Monument aux morts, vue du nord (à 6 m).
+    await page.evaluate(() => { const a = window.__autun; a.player.x = 30.8; a.player.y = -42; a.look(Math.PI); });
+    await sleep(2500);
+    await shot("j5-arme-au-sol");
+    // Appels de dessin exacts : la même image avec le maillage des effets caché, puis montré (le jeu est figé à l'image mesurée).
+    const delta = () => page.evaluate(() => {
+      const a = window.__autun;
+      const wasPaused = a.ui.paused;
+      a.ui.paused = true;
+      const r = (vis) => { a.fx.mesh.visible = vis; a.renderOnce(); return { calls: a.renderer.info.render.calls, tris: a.renderer.info.render.triangles }; };
+      const had = a.fx.mesh.visible;
+      const off = r(false), on = r(had);
+      a.fx.mesh.visible = had;
+      a.ui.paused = wasPaused;
+      return { effets: a.fx.count, sans: off, avec: on, delta: on.calls - off.calls, triangles: on.tris - off.tris };
+    });
+    console.log("arme au sol en vue :", JSON.stringify(await delta()));
+    const facePed = () => page.evaluate(() => {
+      const a = window.__autun, c = a.pedsController(), out = [], p = { x: 0, y: 0 };
+      c.pick(a.player.x, a.player.y, 0, 80, Math.PI, 1, out);
+      if (!out.length) return false;
+      c.position(out[0], p);
+      a.player.x = p.x - 0.8; a.player.y = p.y - 7; a.player.heading = 0;
+      a.look(-0.5);
+      return true;
+    });
+    for (const [id, name] of [["pistol", "pistolet"], ["shotgun", "fusil-pompe"], ["rifle", "fusil-assaut"]]) {
+      await page.evaluate((w) => window.__autun.inventory.select(w), id);
+      await sleep(1200);
+      if (!(await facePed())) console.log("pas de passant à portée");
+      await touch("touchStart", [[845, 272]]);
+      await page.waitForFunction(() => { const a = window.__autun; if (a.fx.count > 0 && a.gun.recoil > 0.5) { a.ui.paused = true; return true; } return false; }, null, { timeout: 600000, polling: "raf" });
+      await touch("touchEnd", []);
+      await sleep(1200);
+      await shot(`j5-tir-${name}`);
+      console.log(`tir (${name}) :`, JSON.stringify(await delta()));
+      await page.evaluate(() => { window.__autun.ui.paused = false; window.__autun.gun.cancel(); });
+      await sleep(800);
+    }
     await ctx.close();
   }
 

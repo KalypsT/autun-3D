@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
 import { createPose, cycleLength, walkPose, type Pose } from "../core/character-rig";
-import { attackPose, guardPose } from "../core/character-attack";
+import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
-import type { AttackStyle } from "../core/weapons";
+import type { AttackStyle, GunId } from "../core/weapons";
 import { solveRide, type V3 } from "../core/character-pose";
 import { CharacterBatch } from "./crowd/character-batch";
 import { CrowdRigs } from "./crowd/crowd-common";
@@ -27,6 +27,8 @@ export interface PlayerModel {
    * suit tout seul.
    */
   setHeld(part: string | null, style: AttackStyle | null): void;
+  /** Arme à feu en main (J5-3) : pièce tenue, arme (null : aucune), fondu de la garde à la visée (0 à 1) et secousse du dernier tir (0 à 1). Remplace `setHeld`. */
+  setGun(part: string | null, gun: GunId | null, aim: number, recoil: number): void;
   /** Coup en cours (progression 0 à 1, moment de la frappe, poing +1 droit ou −1 gauche) ; null hors coup. À pied seulement. */
   setStrike(strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null): void;
   dispose(): void;
@@ -47,6 +49,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let lastStride: number | null = null;
   let held: string | null = null;
   let heldStyle: AttackStyle | null = null;
+  let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
   const mask = new Float32Array(3);
   /** Sur un véhicule : l'arme reste dans la poche. */
@@ -86,6 +89,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       walkPose(pose, phase, v, d);
       // Arme blanche en main : garde du bras droit ; un coup en cours se joue par-dessus.
       if (heldStyle && held) guardPose(pose, heldStyle);
+      if (gun && held) gunPose(pose, gun.id, gun.aim, gun.recoil);
       if (strike) attackPose(pose, strike.style, strike.u, strike.hitAt, strike.side);
       rigs.solveWith(0, pose, root);
       publish();
@@ -113,6 +117,12 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     setHeld(part, style) {
       held = part;
       heldStyle = style;
+      gun = null;
+    },
+    setGun(part, id, aim, recoil) {
+      held = part;
+      heldStyle = null;
+      gun = id ? { id, aim, recoil } : null;
     },
     setStrike(next) {
       strike = next;

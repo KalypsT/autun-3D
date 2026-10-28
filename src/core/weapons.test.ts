@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Inventory, strikeTime, WEAPON_ORDER, WEAPONS } from "./weapons";
+import { Inventory, reserveCap, strikeTime, WEAPON_ORDER, WEAPONS } from "./weapons";
 import { PART_SPECS, partMask, setPart } from "./character-kit";
 import { recipeFromSeed } from "./character";
 
@@ -42,14 +42,50 @@ describe("catalogue d'armes", () => {
     expect(inv.cycle(-1).id).toBe("bat");
     expect(inv.select("knife")).toBe(true);
     inv.grant("pistol", 24);
-    expect(inv.ammo.pistol).toBe(24);
+    // Une arme neuve est chargée d'abord (un chargeur), le reste va en réserve.
+    expect(inv.magOf("pistol")).toBe(12);
+    expect(inv.reserveOf("pistol")).toBe(12);
     inv.grant("pistol", 6);
-    expect(inv.ammo.pistol).toBe(30);
+    expect(inv.reserveOf("pistol")).toBe(18);
     inv.loseAll();
     expect(inv.current.id).toBe("fists");
     expect(inv.list().map((w) => w.id)).toEqual(["fists"]);
     expect(inv.ammo.pistol).toBeUndefined();
+    expect(inv.mag.pistol).toBeUndefined();
     expect(inv.has("knife")).toBe(false);
+  });
+
+  it("tir, rechargement, plafond de réserve, enregistrement", () => {
+    const inv = new Inventory();
+    inv.grant("pistol", 20);
+    expect(inv.magOf("pistol")).toBe(12);
+    for (let k = 0; k < 12; k++) expect(inv.fire("pistol")).toBe(true);
+    expect(inv.fire("pistol")).toBe(false);
+    expect(inv.canReload("pistol")).toBe(true);
+    expect(inv.reload("pistol")).toBe(8);
+    expect(inv.magOf("pistol")).toBe(8);
+    expect(inv.reserveOf("pistol")).toBe(0);
+    expect(inv.canReload("pistol")).toBe(false);
+    // Réserve plafonnée à six chargeurs.
+    inv.grant("pistol", 500);
+    expect(inv.reserveOf("pistol")).toBe(reserveCap(WEAPONS.pistol));
+    expect(reserveCap(WEAPONS.pistol)).toBe(72);
+    // Une arme à feu sans balle (mag 0) reçoit la première balle dans le chargeur.
+    const e = new Inventory();
+    e.grant("shotgun");
+    expect(e.magOf("shotgun")).toBe(0);
+    e.grant("shotgun", 4);
+    expect(e.magOf("shotgun")).toBe(4);
+    // Aller-retour par la sauvegarde.
+    inv.select("pistol");
+    const saved = inv.toSave();
+    expect(saved).toEqual({ owned: ["pistol"], mag: { pistol: 8 }, ammo: { pistol: 72 }, current: "pistol" });
+    const b = new Inventory();
+    b.restore(JSON.parse(JSON.stringify(saved)));
+    expect(b.current.id).toBe("pistol");
+    expect(b.magOf("pistol")).toBe(8);
+    expect(b.reserveOf("pistol")).toBe(72);
+    expect(b.has("fists")).toBe(true);
   });
 });
 

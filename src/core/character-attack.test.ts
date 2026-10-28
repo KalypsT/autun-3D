@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE } from "./character";
-import { attackBlend, attackKey, attackPose, guardPose } from "./character-attack";
+import { attackBlend, attackKey, attackPose, guardPose, gunPose } from "./character-attack";
 import { BONE, BONE_COUNT, createPose, geometryScales, restOffsets, solveBones, walkPose } from "./character-rig";
 import type { AttackStyle } from "./weapons";
 
@@ -84,4 +84,25 @@ describe("poses d'attaque (J5-1)", () => {
       }
     }
   });
+
+  it("armes à feu : à la visée les bras sont tendus devant le buste, à hauteur d'épaule ; la secousse recule la main ; les angles restent bornés", () => {
+    for (const gun of ["pistol", "shotgun", "rifle"] as const) {
+      const ready = createPose(), aim = createPose(), kick = createPose();
+      for (const p of [ready, aim, kick]) walkPose(p, 0, 0, d);
+      gunPose(ready, gun, 0, 0);
+      gunPose(aim, gun, 1, 0);
+      gunPose(kick, gun, 1, 1);
+      const hr = hand(ready, BONE.forearmR), ha = hand(aim, BONE.forearmR), hk = hand(kick, BONE.forearmR);
+      expect(ha.y).toBeGreaterThan(hr.y);
+      expect(ha.z).toBeLessThan(-0.45);
+      // Hauteur de l'épaule (≈ 1,45 m) : la main est à peu près à cette hauteur en visée.
+      expect(ha.y).toBeGreaterThan(1.2);
+      expect(ha.y).toBeLessThan(1.7);
+      expect(hk.z).toBeGreaterThan(ha.z);
+      // La main d'appui rejoint l'arme (devant le buste aussi).
+      expect(hand(aim, BONE.forearmL).z).toBeLessThan(-0.35);
+      for (const v of kick.angles) expect(Math.abs(v)).toBeLessThan(2.6);
+    }
+  });
 });
+

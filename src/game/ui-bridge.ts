@@ -1,4 +1,5 @@
 import { MAX_HEALTH } from "../core/health";
+import type { SavedArms } from "../core/weapons";
 import { addDays, SAVE_VERSION, type SaveGame, type SaveStore } from "../core/save";
 import type { Recipe } from "../core/character";
 import { AppearancePreview } from "../render/appearance-preview";
@@ -26,6 +27,8 @@ export interface GameState {
   ridingId: string | null;
   /** Points de vie du joueur. */
   health: number;
+  /** Armes du joueur. */
+  arms: SavedArms;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -61,6 +64,8 @@ export class UiBridge {
   }
 
   /** Police et zone de recherche à montrer sur la minimap (J4) : le jeu les tient à jour. */
+  /** Armes au sol disponibles à montrer sur la minimap (J5-3) : le jeu les tient à jour. */
+  caches: { x: number; y: number }[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -244,6 +249,7 @@ export class UiBridge {
       clock: { hour: atmosphere.hour, day: addDays(atmosphere.day, 0) },
       waypoint: this.waypoint,
       health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
+      arms: s.arms,
     };
   }
 
@@ -289,7 +295,7 @@ export class UiBridge {
         }
         this.minimap.update({
           x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint,
-          police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
+          caches: this.caches, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
         });
       });
     }

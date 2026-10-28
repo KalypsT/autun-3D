@@ -11,7 +11,7 @@
  */
 
 import { BONE, type Pose } from "./character-rig";
-import type { AttackStyle } from "./weapons";
+import type { AttackStyle, GunId } from "./weapons";
 
 /** Angles d'une image clé : bras d'attaque (x, z), avant-bras (x), buste (x en plus, torsion y), bassin (torsion y). */
 type Key = readonly [number, number, number, number, number, number];
@@ -98,4 +98,40 @@ export function attackPose(pose: Pose, style: AttackStyle, u: number, hitAt: num
     mix(other * 3 + 2, side > 0 ? -0.1 : 0.1);
     mix(otherFore * 3, 1.5);
   }
+}
+
+/** Pose d'une arme à feu : bras en position basse (prêt) ou à l'épaule (visée), avec une secousse au tir. Pistolet à deux mains, armes longues calées. */
+const GUN_READY: Record<GunId, Key> = {
+  pistol: [0.7, 0.05, 1.1, 0.03, 0, 0],
+  shotgun: [0.95, 0.1, 1.0, 0.05, 0, 0],
+  rifle: [0.95, 0.1, 1.0, 0.05, 0, 0],
+};
+const GUN_AIM: Record<GunId, Key> = {
+  pistol: [1.5, -0.02, 0.1, 0.1, -0.1, -0.04],
+  shotgun: [1.45, 0.0, 0.25, 0.12, -0.18, -0.06],
+  rifle: [1.45, 0.0, 0.25, 0.12, -0.18, -0.06],
+};
+
+/**
+ * Arme à feu en main droite à l'instant : `w` (0 à 1) de la garde à la visée, `recoil` (0 à 1) la secousse du dernier tir. À appeler après `walkPose`. Le bras gauche
+ * vient soutenir l'arme (pistolet : devant, à deux mains ; armes longues : sous le canon).
+ */
+export function gunPose(pose: Pose, gun: GunId, w: number, recoil: number): void {
+  const a = pose.angles;
+  const r = GUN_READY[gun], m = GUN_AIM[gun];
+  const mix = (idx: number, v: number, k = 1): void => {
+    a[idx] = a[idx]! + (v - a[idx]!) * k;
+  };
+  const k = (i: number): number => r[i]! + (m[i]! - r[i]!) * w;
+  mix(BONE.armR * 3, k(0) - 0.45 * recoil);
+  mix(BONE.armR * 3 + 2, k(1));
+  mix(BONE.forearmR * 3, k(2) + 0.12 * recoil);
+  a[BONE.torso * 3] = a[BONE.torso * 3]! + k(3) - 0.07 * recoil;
+  a[BONE.torso * 3 + 1] = a[BONE.torso * 3 + 1]! + k(4);
+  a[BONE.pelvis * 3 + 1] = a[BONE.pelvis * 3 + 1]! + k(5);
+  // Main d'appui : en visée elle rejoint l'arme (pistolet : tout droit ; armes longues : fléchie sous le canon).
+  const long = gun !== "pistol";
+  mix(BONE.armL * 3, (long ? 1.25 : 1.45) * w + 0.6 * (1 - w), 1);
+  mix(BONE.armL * 3 + 2, (long ? 0.35 : 0.5) * w - 0.1 * (1 - w));
+  mix(BONE.forearmL * 3, (long ? 0.7 : 0.2) * w + 1.4 * (1 - w));
 }

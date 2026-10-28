@@ -3,7 +3,7 @@ import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, t
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
-  version: 3,
+  version: 4,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
@@ -15,6 +15,7 @@ const sample = (): SaveGame => ({
   clock: { hour: 17.25, day: 200 },
   waypoint: { x: 400, y: -300 },
   health: 72,
+  arms: { owned: ["knife", "pistol"], mag: { pistol: 7 }, ammo: { pistol: 30 }, current: "pistol" },
 });
 
 const fakeStorage = (initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } => {
@@ -32,7 +33,7 @@ describe("sauvegarde", () => {
     expect(parseSave("")).toBeNull();
     expect(parseSave("{pas du json")).toBeNull();
     expect(parseSave("[1,2]")).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), version: 4 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 5 }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), version: undefined }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: "1", y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: 1e9, y: 2 } }))).toBeNull();
@@ -47,6 +48,17 @@ describe("sauvegarde", () => {
     delete old.health;
     expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.health).toBe(100);
     expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.version).toBe(SAVE_VERSION);
+  });
+
+  it("armes (version 4) : lues avec méfiance ; absentes (versions 1 à 3) : les seuls poings", () => {
+    const bad = parseSave(JSON.stringify({ ...sample(), arms: { owned: ["fists", "pistol", "pistol", "bazooka", 4, "bat"], mag: { pistol: 99, bat: 5 }, ammo: { pistol: -3 }, current: "rifle" } }))!;
+    expect(bad.arms).toEqual({ owned: ["pistol", "bat"], mag: { pistol: 12 }, ammo: { pistol: 0 }, current: "fists" });
+    expect(parseSave(JSON.stringify({ ...sample(), arms: "n'importe quoi" }))!.arms).toEqual({ owned: [], mag: {}, ammo: {}, current: "fists" });
+    expect(parseSave(JSON.stringify({ ...sample(), arms: { owned: ["bat"], current: "bat" } }))!.arms.current).toBe("bat");
+    expect(parseSave(JSON.stringify({ ...sample(), arms: { owned: ["pistol"], mag: {}, ammo: { pistol: 9999 }, current: "pistol" } }))!.arms.ammo.pistol).toBe(72);
+    const old: Partial<SaveGame> = sample();
+    delete old.arms;
+    for (const v of [1, 2, 3]) expect(parseSave(JSON.stringify({ ...old, version: v }))!.arms).toEqual({ owned: [], mag: {}, ammo: {}, current: "fists" });
   });
 
   it("migre une sauvegarde de version 1 : chaque type devient son modèle d'alors, le reste est conservé", () => {

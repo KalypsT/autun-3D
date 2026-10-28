@@ -1,7 +1,8 @@
+import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
 import { stepVehicle } from "../core/vehicle";
-import type { Observer } from "../core/pedestrians";
+import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
@@ -16,7 +17,10 @@ import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { DEATH_HOURS, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
-import { Inventory, WEAPON_ORDER, WEAPONS, type WeaponId } from "../core/weapons";
+import { Inventory, WEAPON_ORDER, WEAPONS, type GunId, type WeaponId } from "../core/weapons";
+import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
+import { CACHE_ROUNDS, PICKUP_REACH, Pickups } from "../core/pickups";
+import { Fx, type PickupView } from "../render/fx";
 import { Melee } from "../core/melee";
 import { WeaponHud } from "../ui/weapon-hud";
 import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
@@ -237,6 +241,18 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("nearby")!.append(el);
     return { kind, el, arrow, text };
   });
+  // Repère de l'arme au sol disponible la plus proche (J5-3) : flèche et distance, comme les véhicules.
+  const pkChip = (() => {
+    const el = document.createElement("div");
+    el.className = "chip";
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    arrow.textContent = "⬆";
+    const text = document.createElement("span");
+    el.append(arrow, text);
+    document.getElementById("nearby")!.append(el);
+    return { el, arrow, text };
+  })();
   const gasEl = document.getElementById("gas")!;
   const hornEl = document.getElementById("horn")!;
   const speedo = new Speedo(document.getElementById("speedo")!);
@@ -249,16 +265,23 @@ export function startGame(ctx: GameContext): void {
   const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
   const healthHud = new HealthHud(document.getElementById("health")!);
   const hurtEl = document.getElementById("hurt")!;
-  // Armes (J5-1, D80) : les poings sont toujours là ; `?arms=knife,bat` (ou `all`) donne des armes pour les essais (la recherche d'armes en ville viendra avec J5-3).
+  // Armes (J5, D80) : les poings sont toujours là ; reprise de la sauvegarde ; `?arms=knife,bat,pistol` (ou `all`) en donne pour les essais ; on en trouve dans les caches de la ville (D84).
   const inventory = new Inventory();
+  if (saved) inventory.restore(saved.arms);
   const melee = new Melee();
+  const gun = new Gun(0x51f7);
+  const pickups = new Pickups();
   const armsParam = params.get("arms");
-  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS && WEAPONS[id as WeaponId].kind === "melee") inventory.grant(id as WeaponId);
+  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? 0) * 2);
   const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
     inventory.cycle();
     melee.cancel();
+    gun.cancel();
   });
+  // Rechargement demandé au clavier (R), pris en compte à l'image suivante.
+  let reloadAsked = false;
   let heldId: WeaponId | null = null;
+  let aimW = 0;
   const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
@@ -324,6 +347,14 @@ export function startGame(ctx: GameContext): void {
       else leaving = true;
       return;
     }
+    // Une arme au sol à portée de main passe avant un véhicule.
+    const pk = pickups.nearest(player.x, player.y, PICKUP_REACH);
+    if (pk && pickups.canTake(pk, inventory)) {
+      const fresh = !inventory.has(pk.weapon);
+      pickups.take(pk, inventory);
+      if (fresh) inventory.select(pk.weapon);
+      return;
+    }
     const r = reachable();
     if (r.traffic) carjack();
     else if (r.fleet) {
@@ -339,6 +370,7 @@ export function startGame(ctx: GameContext): void {
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
     if (e.code === "KeyX" && !e.repeat) inventory.cycle();
+    if (e.code === "KeyR" && !e.repeat) reloadAsked = true;
     if (e.code.startsWith("Digit") && !e.repeat) {
       const id = WEAPON_ORDER[Number(e.code.slice(5)) - 1];
       if (id) inventory.select(id);
@@ -368,12 +400,41 @@ export function startGame(ctx: GameContext): void {
     }
   };
 
+  // Effets de tir et armes au sol (un seul maillage instancié), monde du tir, réticule de la visée assistée.
+  const fx = new Fx(scene);
+  const pickViews: PickupView[] = [];
+  const reticleEl = document.getElementById("reticle")!;
+  const reticleV = new THREE.Vector3();
+  const shootWorld: ShootWorld = {
+    pick: (x, y, h, r, a, m, out) => {
+      const p = peds as PedsController | null;
+      if (!p) {
+        out.length = 0;
+        return 0;
+      }
+      return p.pick(x, y, h, r, a, m, out);
+    },
+    position: (slot, out) => (peds as PedsController | null)?.position(slot, out),
+    hurt: (slot, d, ux, uy, i) => (peds as PedsController | null)?.hurt(slot, d, ux, uy, i) ?? 0,
+    rayPed: (x, y, dx, dy, m, out) => {
+      const p = peds as PedsController | null;
+      if (!p) {
+        out.slot = -1;
+        out.dist = m;
+        return false;
+      }
+      return p.rayPed(x, y, dx, dy, m, out);
+    },
+    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by),
+  };
   let hudTimer = 0;
   let actionLabel = "";
   const updateHud = (): void => {
     let label = "";
     const r = riding ? null : reachable();
-    if (riding) label = "Descendre";
+    const pk = riding ? null : pickups.nearest(player.x, player.y, PICKUP_REACH);
+    if (pk && pickups.canTake(pk, inventory)) label = `Ramasser ${WEAPONS[pk.weapon].icon} ${WEAPONS[pk.weapon].name}`;
+    else if (riding) label = "Descendre";
     else if (r?.traffic) label = `Prendre 🚗 ${r.traffic}`;
     else if (r?.fleet) label = `Monter ${r.fleet.def.icon ?? familyOf(r.fleet).icon} ${r.fleet.def.name}`;
     if (label !== actionLabel) {
@@ -382,6 +443,19 @@ export function startGame(ctx: GameContext): void {
       actionEl.classList.toggle("show", label !== "");
     }
     if (riding) return;
+    let near: { x: number; y: number; weapon: WeaponId } | null = null, nd = 500;
+    for (const pk of pickups.list) {
+      const d = Math.hypot(pk.x - player.x, pk.y - player.y);
+      if (pickups.available(pk) && pickups.canTake(pk, inventory) && d < nd) {
+        nd = d;
+        near = pk;
+      }
+    }
+    pkChip.el.classList.toggle("show", !!near && nd >= PICKUP_REACH);
+    if (near && nd >= PICKUP_REACH) {
+      pkChip.arrow.style.transform = `rotate(${Math.atan2(near.x - player.x, near.y - player.y) - yaw}rad)`;
+      pkChip.text.textContent = `${WEAPONS[near.weapon].icon} ${Math.round(nd)} m`;
+    }
     for (const c of chips) {
       const k = fleet.nearest(player.x, player.y, c.kind);
       const show = !!k && k.distance >= FAMILIES[c.kind].reach && k.distance < 600;
@@ -395,7 +469,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, health: health.hp,
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, health: health.hp, arms: inventory.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -426,6 +500,7 @@ export function startGame(ctx: GameContext): void {
     police.reset();
     inventory.loseAll();
     melee.cancel();
+    gun.cancel();
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     yaw = ARREST_SPAWN.heading;
@@ -441,6 +516,7 @@ export function startGame(ctx: GameContext): void {
     police.reset();
     inventory.loseAll();
     melee.cancel();
+    gun.cancel();
     const r = colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: HOSPITAL_SPAWN.heading });
     yaw = HOSPITAL_SPAWN.heading;
@@ -492,8 +568,8 @@ export function startGame(ctx: GameContext): void {
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
-        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : 1);
-        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active }, yaw, STEP, terrain, colliders);
+        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : gun.idle < 0.35 ? 0.6 : 1);
+        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35 }, yaw, STEP, terrain, colliders);
       }
       (traffic as Traffic | null)?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
@@ -536,26 +612,80 @@ export function startGame(ctx: GameContext): void {
       camera.updateProjectionMatrix();
     }
 
-    // Corps à corps (J5-1) : à pied seulement ; le coup tourne le joueur vers sa cible et touche au moment de la frappe.
+    // Combat (J5) : à pied seulement. Mêlée : le coup tourne le joueur vers sa cible et touche à la frappe (J5-1). Arme à feu : tir instantané, visée assistée (J5-3).
     const weapon = inventory.current;
+    const pedsNow0 = peds as PedsController | null;
+    // Violence (J5-4) : frapper est une agression, tuer un meurtre ; la police l'ajoute si elle voit, sinon un passant vivant à moins de 25 m téléphone.
+    const violence = (hits: number, killed: number): void => {
+      if (hits <= 0) return;
+      pedWitnesses.length = 0;
+      police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
+    };
+    let reticle: { x: number; y: number; z: number } | null = null;
     if (riding || health.dead) {
       melee.cancel();
+      gun.cancel();
       model.setStrike(null);
-    } else {
-      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, peds as PedsController | null);
-      // Violence (J5-4) : frapper est une agression, tuer un meurtre ; la police l'ajoute si elle voit, sinon un passant vivant à moins de 25 m téléphone.
-      if (res.hits > 0) {
-        pedWitnesses.length = 0;
-        police.crime(res.killed > 0 ? "murder" : "assault", player.x, player.y, ((peds as PedsController | null)?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
-      }
+    } else if (weapon.kind === "melee") {
+      gun.cancel();
+      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, pedsNow0);
+      violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
-      model.setStrike(melee.active ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
+      model.setStrike(melee.active && weapon.style !== "aim" ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
+    } else {
+      melee.cancel();
+      model.setStrike(null);
+      const res = gun.step(dt, input.attack, reloadAsked, weapon, inventory, player.x, player.y, yaw, shootWorld);
+      reloadAsked = false;
+      if (input.attack || gun.aim > 0) player.heading += angleDelta(player.heading, gun.facing) * Math.min(1, 18 * dt);
+      if (gun.targeted && pedsNow0) {
+        const tp = { x: 0, y: 0 };
+        pedsNow0.position(gun.target, tp);
+        reticle = { x: tp.x, y: tp.y, z: terrain.heightAt(tp.x, tp.y) + 1.1 };
+      }
+      if (res.fired > 0) {
+        // Traits, éclair de bouche et étincelles (un seul maillage, D84) ; le coup de feu effraie tout dans 40 m et la police l'entend si elle voit.
+        const z0 = player.z + 1.3;
+        const mx = player.x + Math.sin(gun.facing) * MUZZLE, my = player.y + Math.cos(gun.facing) * MUZZLE;
+        fx.flash(mx, my, z0);
+        for (let k = 0; k < res.fxCount; k++) {
+          const sh = res.shots[k]!;
+          const z1 = sh.kind === 2 ? terrain.heightAt(sh.x1, sh.y1) + 1.1 : z0;
+          fx.tracer(sh.x0, sh.y0, z0, sh.x1, sh.y1, z1);
+          if (sh.kind > 0) fx.sparks(sh.x1, sh.y1, z1, sh.kind === 2, Math.random);
+        }
+        pedsNow0?.alarm(player.x, player.y, ALARM_SHOT, ALARM_SHOT_FLEE);
+        pedWitnesses.length = 0;
+        police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0);
+        violence(res.hits, res.killed);
+      }
     }
-    if (heldId !== weapon.id) {
+    // Position de tir : fondu de la garde à la visée, secousse du tir. Arme blanche : garde ; mains nues : rien.
+    aimW += ((gun.aim > 0 || input.attack ? 1 : 0) - aimW) * Math.min(1, dt * 10);
+    if (weapon.kind === "gun") {
+      heldId = null;
+      model.setGun(weapon.part, weapon.id as GunId, aimW, gun.recoil);
+    } else if (heldId !== weapon.id) {
       heldId = weapon.id;
-      model.setHeld(weapon.part, weapon.part && weapon.kind === "melee" ? weapon.style : null);
+      model.setHeld(weapon.part, weapon.part && weapon.style !== "aim" ? weapon.style : null);
     }
-    weaponHud.set(weapon, null);
+    weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 } : null);
+    // Réticule sur la cible assistée (un point de l'écran) ; armes au sol et effets : mis à jour à chaque image.
+    if (reticle) {
+      reticleV.set(reticle.x, reticle.z, -reticle.y).project(camera);
+      reticleEl.style.display = reticleV.z < 1 ? "block" : "none";
+      reticleEl.style.left = `${((reticleV.x + 1) / 2) * window.innerWidth}px`;
+      reticleEl.style.top = `${((1 - reticleV.y) / 2) * window.innerHeight}px`;
+    } else reticleEl.style.display = "none";
+    pickups.update(dt);
+    pickViews.length = 0;
+    for (const pk of pickups.list) {
+      if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
+      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon });
+    }
+    fx.update(dt, pickViews, pickups.time);
+    ui.caches.length = 0;
+    for (const pk of pickups.list) if (pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
     if (riding && rideModel) {
       rideModel.update(riding.state);
       leaveMarks(riding);
@@ -639,7 +769,9 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted, health, inventory, melee,
+    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
+    /** Captures et mesures : redessine la scène telle quelle. */
+    renderOnce: () => renderer.render(scene, camera),
     traffic: () => traffic as Traffic | null,
     police,
     /** Essais et captures : les passants (voir `PedsController`). */

@@ -24,15 +24,15 @@ export class WeaponHud {
     el.setAttribute("aria-label", "Arme");
   }
 
-  /** `ammo` : balles dans le chargeur et en réserve (armes à feu), null pour la mêlée. */
-  set(weapon: WeaponDef, ammo: { mag: number; reserve: number } | null): void {
-    const key = `${weapon.id}/${ammo ? `${ammo.mag}/${ammo.reserve}` : ""}`;
+  /** `ammo` : balles dans le chargeur et en réserve (armes à feu), null pour la mêlée ; `reloading` : ↻ à la place du compte. */
+  set(weapon: WeaponDef, ammo: { mag: number; reserve: number; reloading: boolean } | null): void {
+    const key = `${weapon.id}/${ammo ? `${ammo.reloading ? "r" : ammo.mag}/${ammo.reserve}` : ""}`;
     if (key === this.shown) return;
     const changed = !this.shown.startsWith(`${weapon.id}/`);
     this.shown = key;
     this.icon.textContent = weapon.icon;
     this.name.textContent = weapon.name;
-    this.ammo.textContent = ammo ? `${ammo.mag}/${ammo.reserve}` : "";
+    this.ammo.textContent = ammo ? (ammo.reloading ? `↻ ${ammo.reserve}` : `${ammo.mag}/${ammo.reserve}`) : "";
     this.button.title = weapon.name;
     if (this.attackEl) {
       this.attackEl.textContent = weapon.icon;
