@@ -1,5 +1,5 @@
 import type { Colliders } from "./collision";
-import type { Driver, Other } from "./driver";
+import { extentOf, type Driver, type Other } from "./driver";
 import type { NavGraph } from "./nav-graph";
 import type { RoadGraph } from "./road-graph";
 import { findRoute } from "./road-route";
@@ -82,6 +82,11 @@ export class Chaser {
     if (this.reverseFor > 0) {
       this.reverseFor -= dt;
       this.mode = "reverse";
+      // Quelqu'un derrière (le poursuivant coincé juste après nous, un civil) : on ne recule pas dedans.
+      if (this.blockedBehind(s, others)) {
+        this.reverseFor = 0;
+        return { throttle: 0, brake: 1, steer: 0, handbrake: 0 };
+      }
       if (this.reverseFor <= 0) this.rejoin(s, driver);
       return { throttle: 0, brake: 1, steer: this.reverseSteer, handbrake: 0 };
     }
@@ -109,6 +114,7 @@ export class Chaser {
     this.lastSteer = input.steer;
     // Coincé contre un mur, une voiture : marche arrière en braquant de l'autre côté.
     this.stuck = Math.abs(u) < 0.6 && input.throttle > 0.3 ? this.stuck + dt : Math.max(0, this.stuck - dt);
+    if (this.stuck > STUCK_AFTER && this.blockedBehind(s, others)) this.stuck = 0;
     if (this.stuck > STUCK_AFTER) {
       this.stuck = 0;
       this.reverseFor = REVERSE_FOR;
@@ -142,6 +148,20 @@ export class Chaser {
     if (a >= 0) throttle = Math.min(Math.max((a * spec.mass + resist) / Math.max(driveForce(spec, u, 1), 1), 0), 1);
     else if (u > 0.3) brake = Math.min(Math.max((-a * spec.mass - resist) / spec.maxBrake, 0), 1);
     return { throttle, brake, steer, handbrake: 0 };
+  }
+
+  /** Un usager est-il derrière la voiture, à moins de 1,2 m de son pare-chocs arrière, sur sa largeur ? */
+  private blockedBehind(s: VehicleState, others: readonly Other[]): boolean {
+    const own = extentOf(this.spec);
+    const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
+    for (const o of others) {
+      if (o.state === s || o.player) continue;
+      const dx = o.state.x - s.x, dy = o.state.y - s.y;
+      const back = -(dx * fx + dy * fy);
+      if (back <= 0 || back > own.halfLen + o.halfLen + 1.2) continue;
+      if (Math.abs(dx * fy - dy * fx) < own.halfWid + o.halfWid + 0.2) return true;
+    }
+    return false;
   }
 
   /** Recalcule l'itinéraire vers l'arête du fugitif (toutes les 1,5 s, ou tout de suite s'il a changé d'arête). */

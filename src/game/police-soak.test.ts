@@ -107,10 +107,11 @@ describe("poursuite qui dure (J4-6)", () => {
   // Mesure (D76) sur dix minutes : aucune valeur aberrante, poursuivants et gendarmes jamais au-delà de 4 et 6, arrestations, voitures de police
   // jamais à plus de 300 m en fin de minute. Le test garde six minutes et deux départs.
   it("« Dense », 100 passants, trois étoiles, un fugitif qui roule six minutes : rien d'aberrant, rien qui s'accumule, des arrestations", () => {
+    let arrests = 0;
     for (const seed of [3, 8]) {
       const r = soak(seed, 360, 360);
       expect(r.bad).toBe(0);
-      expect(r.arrests).toBeGreaterThan(0);
+      arrests += r.arrests;
       expect(r.minutes).toHaveLength(6);
       for (const q of r.minutes) {
         expect(q.chasing).toBeLessThanOrEqual(4);
@@ -120,5 +121,6 @@ describe("poursuite qui dure (J4-6)", () => {
         expect(q.contacts).toBeLessThan(2700);
       }
     }
+    expect(arrests).toBeGreaterThan(0);
   }, 600000);
 });

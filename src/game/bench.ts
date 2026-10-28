@@ -222,7 +222,8 @@ export function startBench(ctx: GameContext): void {
     for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
     tiles.onBuild = (extras) => fleet.addFromTile(extras);
     tiles.onUnload = (id) => fleet.removeTile(id);
-    CATALOG.forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
+    // Sans la gendarmerie : elle n'est jamais garée dans le jeu (D72), et un exemplaire de plus au départ ajoutait un maillage instancié (+2 appels) aux rapports du banc (D77).
+    CATALOG.filter((def) => def.id !== "gendarmerie").forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
   }
   let fleetCost = { ms: 0, max: 0, frames: 0 };
   let trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
