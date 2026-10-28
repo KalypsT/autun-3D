@@ -99,6 +99,28 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     traffic.dispose();
   });
 
+  it("patrouilles de gendarmerie (J4) : il en naît dans la circulation ordinaire, jamais plus d'une à la fois, gyrophares éteints", () => {
+    const { traffic } = make(20);
+    let seen = 0, most = 0;
+    const ids = new Set<unknown>();
+    // Le joueur roule vers l'est puis revient : les voitures se renouvellent.
+    for (let k = 0; k < 60 * 240; k++) {
+      const t = k / 60, x = 400 * Math.sin(t / 40);
+      traffic.step(DT, { kind: "foot", x, y: 0, vx: 0, vy: 0 });
+      traffic.update(DT, env({ x, speed: 10 * Math.abs(Math.cos(t / 40)), yaw: Math.cos(t / 40) >= 0 ? Math.PI / 2 : -Math.PI / 2 }));
+      most = Math.max(most, traffic.policeCount);
+      for (const c of traffic.cars) if (c.police && !ids.has(c)) {
+        ids.add(c);
+        seen++;
+        expect(c.siren).toBe(false);
+        expect(c.def.id).toBe("gendarmerie");
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+    expect(most).toBe(1);
+    traffic.dispose();
+  }, 60000);
+
   it("`extract` retire la voiture la plus proche de la circulation et de l'écran, et rend de quoi en faire un véhicule de la flotte (J4 : vol)", () => {
     const { traffic } = make(10);
     for (let k = 0; k < 60 * 30; k++) {

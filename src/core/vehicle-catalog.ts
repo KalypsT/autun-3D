@@ -1,5 +1,5 @@
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, MTB, OLD_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, MTB, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -64,6 +64,8 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "camionnette", family: "car", name: "Camionnette", spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#efe3c8", "#efe3c8", "#8a8f96", "#1f3a52", "#b8a48a", "#3f7d4e"] },
   { id: "vieille-voiture", family: "car", name: "Vieille voiture", spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#a6553b", "#9a8b6a", "#7d8f7a", "#8a8f96", "#c9b98a", "#5f6f82"] },
   { id: "sportive", family: "car", name: "Sportive", spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#2b2118", "#efe3c8", "#1f3a52", "#3f7d4e"] },
+  // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
+  { id: "gendarmerie", family: "car", name: "Gendarmerie", icon: "🚓", spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
   { id: "scooter-125", family: "moto", name: "Scooter 125", icon: "🛵", spec: SCOOTER_125, size: { length: 1.85, width: 0.78, height: 1.23 }, palette: ["#efe3c8", "#2a6f7e", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a"] },
   { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, size: { length: 2.04, width: 0.74, height: 1.13 }, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
   { id: "moto-sportive", family: "moto", name: "Moto sportive", spec: SPORT_MOTO, size: { length: 2.04, width: 0.6, height: 1.16 }, palette: ["#d9472b", "#f1b24a", "#1f3a52", "#efe3c8", "#3f7d4e"] },

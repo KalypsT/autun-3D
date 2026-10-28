@@ -55,6 +55,14 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.2, windshield: 0.5, roof: 1.3, rearGlass: 0.35, roofTaper: 0.92,
     wheelRadius: 0.29, tyreWidth: 0.17, glass: "#3a4a5a",
   },
+  // Gendarmerie (J4, D72) : la caisse de la compacte, bleu nuit, bandes claires sur les flancs, barre de gyrophares sur le toit.
+  gendarmerie: {
+    length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
+    clearance: 0.27, belt: 0.9, noseHeight: 0.82, tailHeight: 0.95,
+    hood: 1.25, windshield: 0.55, roof: 1.2, rearGlass: 0.75, roofTaper: 0.9,
+    wheelRadius: 0.31, tyreWidth: 0.2,
+    livery: { stripe: "#eef1f4", accent: "#4a8fd8", lightBar: true },
+  },
   sportive: {
     length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
     clearance: 0.12, belt: 0.78, noseHeight: 0.6, tailHeight: 0.84,

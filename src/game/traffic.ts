@@ -5,7 +5,7 @@ import type { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
-import { CATALOG, paletteColor, type VehicleDef } from "../core/vehicle-catalog";
+import { CATALOG, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import { ZONE } from "../data/nav";
 import type { HeightField } from "../data/types";
@@ -24,6 +24,9 @@ interface TrafficCar {
   variant: number;
   /** Ce que voient les passants de cette voiture (position, vitesse, coque) et ce que le choc d'un passant lui a coûté. */
   body: TrafficBody;
+  /** Voiture de gendarmerie (J4) ; ses gyrophares sont allumés pendant une poursuite (`siren`). */
+  police: boolean;
+  siren: boolean;
   /** Graine de la recette du conducteur (J4 : celui qui sort quand le joueur prend la voiture). */
   driver: number;
   /** Depuis combien de secondes le conducteur est perdu (le joueur la regardait : elle n'a pas pu disparaître). */
@@ -45,6 +48,10 @@ const DESPAWN_MARGIN = 70;
 /** Délai (s) entre deux naissances, et entre deux retraits de voitures en surnombre. */
 const SPAWN_EVERY = 0.25;
 const TRIM_EVERY = 0.6;
+/** Patrouilles de gendarmerie dans la circulation ordinaire (J4, D72) : une naissance sur `1 / PATROL_SHARE` au plus, une patrouille à la fois. */
+const PATROL_SHARE = 0.06;
+const MAX_PATROLS = 1;
+const POLICE: VehicleDef = vehicleDef("gendarmerie")!;
 
 export class Traffic {
   readonly cars: TrafficCar[] = [];
@@ -61,6 +68,8 @@ export class Traffic {
   /** Zone du joueur (0 centre ... 3 nature) et nombre de voitures visé à cet instant. */
   zone: number = ZONE.outskirts;
   target = 0;
+  /** Horloge des gyrophares (s). */
+  private beaconClock = 0;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -168,6 +177,13 @@ export class Traffic {
     return out;
   }
 
+  /** Voitures de gendarmerie présentes. */
+  get policeCount(): number {
+    let n = 0;
+    for (const c of this.cars) if (c.police) n++;
+    return n;
+  }
+
   /** Nombre maximal de voitures (le réglage). */
   get capacity(): number {
     return this.max;
@@ -198,6 +214,7 @@ export class Traffic {
       this.zone = hit ? graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
     this.target = trafficTarget(this.max, env.hour, this.zone, env.speed);
+    this.beaconClock += dt;
     const { rOut } = spawnRing(env.speed);
     const seen = (x: number, y: number): boolean => visibleFrom(env.x, env.y, env.yaw, 1.1, x, y, this.colliders);
     for (let i = this.cars.length - 1; i >= 0; i--) {
@@ -241,7 +258,9 @@ export class Traffic {
     items.length = 0;
     for (const c of this.cars) {
       const s = c.sim.state;
-      items.push({ model: c.def.id, x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) });
+      const item: TrafficItem = { model: c.def.id, x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) };
+      if (c.siren) item.beacon = this.beaconClock;
+      items.push(item);
     }
     this.models.set(items);
   }
@@ -262,7 +281,8 @@ export class Traffic {
       return ((h ^ (h >>> 12)) >>> 0) / 4294967296;
     };
     const cars = CATALOG.filter((d) => d.family === "car");
-    const def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
+    let def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
+    if (rnd() < PATROL_SHARE && this.policeCount < MAX_PATROLS) def = POLICE;
     const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);
     if (env.vehicle) taken.push(env.vehicle);
     else taken.push({ x: env.x, y: env.y });
@@ -272,7 +292,7 @@ export class Traffic {
     const driver = Math.floor(rnd() * 4294967296);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
     const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
-    this.cars.push({ sim, def, variant, driver, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
+    this.cars.push({ sim, def, variant, driver, police: def === POLICE, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
     return true;
   }
 

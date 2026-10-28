@@ -428,3 +428,6 @@ Fait :
 
 **J4-1 (28 octobre 2026) : vol avec conducteur** (D71)
 - Bouton « Prendre » à côté d'une voiture de la circulation à moins de 3 m/s : elle devient un véhicule de la flotte (même modèle, même couleur, sauvegardée quand on la quitte) ; son conducteur sort côté gauche, trébuche et s'enfuit en courant (`PedSim.eject`), et la police est prévenue (une étoile au bout de 6 s). Tests : 442.
+
+**J4-2 (28 octobre 2026) : voiture de gendarmerie** (D72)
+- Entrée `gendarmerie` du catalogue (caisse de la compacte, bleu nuit, bandes claires, barre de gyrophares, moteur plus fort), gyrophares allumés en un seul maillage pour toutes les voitures de police (+1 appel de dessin, sans ombre), patrouilles dans la circulation ordinaire (une à la fois). Galerie : `?view=vehicles&ids=gendarmerie`.
