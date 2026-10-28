@@ -7,8 +7,8 @@ import type { WantedView } from "./wanted";
  * relie le niveau de recherche, la circulation et les infractions.
  */
 
-/** Voitures en poursuite selon le niveau de recherche (0 à 3 étoiles). */
-export const PURSUERS = [0, 1, 2, 4] as const;
+/** Voitures en poursuite selon le niveau de recherche (0 à 5 étoiles). */
+export const PURSUERS = [0, 1, 2, 4, 5, 6] as const;
 
 /** Une voiture de police (ou, en J4-5, un gendarme à pied) : position, cap, en poursuite ou non. */
 export interface PoliceUnit {

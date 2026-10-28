@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { setPart } from "../../core/character-kit";
 import { CharacterBatch } from "./character-batch";
 import { CrowdRigs } from "./crowd-common";
 import { NEAR_DISTANCE, type CrowdRenderer, type CrowdState } from "./crowd-types";
@@ -14,6 +15,7 @@ export function createCrowd(scene: THREE.Scene, state: CrowdState): CrowdRendere
   for (const b of batches) group.add(b.mesh);
   scene.add(group);
   let near = 0, far = 0;
+  const mask = new Float32Array(3);
   return {
     name: "B · instances et nuanceur",
     assign: (i, recipe) => rigs.assign(i, recipe),
@@ -30,7 +32,12 @@ export function createCrowd(scene: THREE.Scene, state: CrowdState): CrowdRendere
         if (lod === 0) near++;
         else far++;
         rigs.solve(st, i);
-        batches[lod].push(rigs.render, rigs.colors[i]!, rigs.masks[i]!);
+        // Un pistolet tenu s'ajoute au masque (de près seulement : l'arme n'existe pas dans le détail réduit).
+        if (st.held && st.held[i] && lod === 0) {
+          mask.set(rigs.masks[i]!);
+          setPart(mask, "weaponPistol", true);
+          batches[lod].push(rigs.render, rigs.colors[i]!, mask);
+        } else batches[lod].push(rigs.render, rigs.colors[i]!, rigs.masks[i]!);
       }
       batches[0].flush();
       batches[1].flush();

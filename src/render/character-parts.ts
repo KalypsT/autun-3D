@@ -200,6 +200,51 @@ const SHAPES: Record<string, Shape> = {
     ...(c.lod === 0 ? [placed(box(0.035, 0.7, 0.012, 0, 0, 0), 0, 0.2, -0.122, 0, 0, -0.62)] : []),
   ]),
   handbag: (c) => merge([box(0.2, 0.15, 0.07, 0.01, -R.forearm - 0.13, 0), ...(c.lod === 0 ? [box(0.012, 0.1, 0.012, 0.01, -R.forearm - 0.045, 0)] : [])]),
+  // Armes tenues dans la main droite (repère de l'avant-bras : l'origine est le coude, la main est à y = −forearm − 0,045). Le manche traverse le poing,
+  // la lame ou le fût prolonge l'avant-bras. Un peu plus gros que nature : de la caméra, à 3,6 m, il faut qu'on le lise.
+  weaponKnife: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.034, 0.12, 0.034, 0, y, 0, [0.16, 0.12, 0.1]),
+      box(0.05, 0.02, 0.07, 0, y - 0.07, 0, [0.35, 0.3, 0.25]),
+      box(0.012, 0.28, 0.052, 0, y - 0.22, 0, [0.88, 0.9, 0.94]),
+    ]);
+  },
+  weaponBat: () => {
+    const y = -R.forearm - 0.045;
+    return loft([
+      { y: y - 0.78, rx: 0.05, rz: 0.05 }, { y: y - 0.5, rx: 0.045, rz: 0.045 }, { y: y - 0.2, rx: 0.026, rz: 0.026 },
+      { y: y + 0.1, rx: 0.02, rz: 0.02 }, { y: y + 0.14, rx: 0.03, rz: 0.03 },
+    ], 8, { capBottom: true, capTop: true, color: [0.74, 0.52, 0.3] });
+  },
+  // Armes à feu : le canon prolonge l'avant-bras (−y), la crosse reste vers le coude. Gris foncé et bois : quelques boîtes chacune.
+  weaponPistol: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.04, 0.11, 0.05, 0, y + 0.02, 0.02, [0.12, 0.12, 0.14]),
+      box(0.045, 0.2, 0.06, 0, y - 0.1, -0.03, [0.22, 0.23, 0.27]),
+      box(0.02, 0.05, 0.02, 0, y - 0.215, -0.065, [0.7, 0.72, 0.76]),
+    ]);
+  },
+  weaponShotgun: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.055, 0.34, 0.07, 0, y + 0.22, 0.02, [0.62, 0.42, 0.24]),
+      box(0.06, 0.16, 0.075, 0, y - 0.02, -0.02, [0.18, 0.18, 0.2]),
+      box(0.04, 0.55, 0.045, 0, y - 0.38, -0.03, [0.26, 0.27, 0.3]),
+      box(0.05, 0.2, 0.06, 0, y - 0.26, 0.02, [0.62, 0.42, 0.24]),
+    ]);
+  },
+  weaponRifle: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.05, 0.3, 0.075, 0, y + 0.24, 0.02, [0.22, 0.23, 0.2]),
+      box(0.06, 0.3, 0.09, 0, y - 0.07, -0.01, [0.18, 0.19, 0.2]),
+      box(0.032, 0.42, 0.034, 0, y - 0.4, -0.025, [0.28, 0.29, 0.32]),
+      box(0.045, 0.14, 0.08, 0, y - 0.0, 0.1, [0.14, 0.14, 0.16]),
+      box(0.03, 0.1, 0.03, 0, y - 0.64, -0.025, [0.12, 0.12, 0.14]),
+    ]);
+  },
   scarf: (c) => merge([
     loft([{ y: 0.49, rx: 0.088, rz: 0.082 }, { y: 0.52, rx: 0.1, rz: 0.092 }, { y: 0.555, rx: 0.09, rz: 0.084 }], c.seg),
     ...(c.lod === 0 ? [box(0.07, 0.24, 0.025, 0.03, 0.38, -0.12)] : []),

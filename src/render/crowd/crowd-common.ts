@@ -1,7 +1,8 @@
 import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
-import { BONE_COUNT, createPose, geometryScales, hitPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { gunPose } from "../../core/character-attack";
+import { BONE_COUNT, createPose, geometryScales, GUN_POSE, hitPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
 
@@ -61,7 +62,11 @@ export class CrowdRigs {
   /** Pose de marche du personnage i, puis matrices d'os (dans `render` et `world`). */
   solve(state: CrowdState, i: number): void {
     const hit = state.pose?.[i] ?? 0;
-    if (hit > 0) hitPose(this.pose, hit, state.poseT![i]!, state.poseSide![i]!, this.dims[i]!);
+    if (hit === GUN_POSE.aim || hit === GUN_POSE.ready) {
+      // Armé (J5-5) : la marche, puis le pistolet en main : visée (la secousse du dernier tir suit `poseT`, secondes depuis le tir) ou pistolet bas.
+      walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
+      gunPose(this.pose, "pistol", hit === GUN_POSE.aim ? 1 : 0, hit === GUN_POSE.aim ? Math.max(0, 1 - state.poseT![i]! / 0.18) : 0);
+    } else if (hit > 0) hitPose(this.pose, hit, state.poseT![i]!, state.poseSide![i]!, this.dims[i]!);
     else walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
     const r = this.root;
     r.x = state.x[i]!;

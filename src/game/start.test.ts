@@ -4,7 +4,7 @@ import { gameSpawn, resolveStart } from "./start";
 
 const zone: [number, number, number, number] = [-1520, -1812, 1480, 1188];
 const saved: SaveGame = {
-  version: SAVE_VERSION, savedAt: 1, player: { x: 300, y: -200 }, camera: { yaw: 1.5, pitch: 0.3 }, riding: null, vehicles: [], clock: { hour: 9, day: 12 }, waypoint: null,
+  version: SAVE_VERSION, savedAt: 1, player: { x: 300, y: -200 }, camera: { yaw: 1.5, pitch: 0.3 }, riding: null, vehicles: [], clock: { hour: 9, day: 12 }, waypoint: null, health: 100, arms: { owned: [], mag: {}, ammo: {}, current: "fists" },
 };
 const storeWith = (save: SaveGame | null): SaveStore => {
   const data: Record<string, string> = save ? { [SAVE_KEY]: serializeSave(save) } : {};

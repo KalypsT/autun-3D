@@ -31,6 +31,8 @@ export interface MinimapState {
   /** Voitures de police (J4) : points qui alternent bleu et rouge (`flash`), ramenés sur le bord quand elles sont hors du disque. */
   police?: readonly { x: number; y: number }[];
   flash?: boolean;
+  /** Armes au sol disponibles (J5-3) : petits losanges orange. */
+  caches?: readonly { x: number; y: number }[];
   /** Zone de recherche quand la police a perdu la piste : cercle autour de la dernière position connue. */
   search?: { x: number; y: number; r: number } | null;
 }
@@ -161,6 +163,25 @@ export class Minimap {
         ctx.fill();
         ctx.stroke();
       });
+    }
+
+    // Armes au sol : un losange orange dans le disque (hors du disque, rien : le repère « arme » du jeu indique la plus proche).
+    if (s.caches) {
+      ctx.fillStyle = "#f1b24a";
+      ctx.strokeStyle = "#1b1f27";
+      ctx.lineWidth = 1.2;
+      for (const c of s.caches) {
+        const [px, py] = worldToScreen(view, c.x, c.y);
+        if (Math.hypot(px - size / 2, py - size / 2) > r - 6) continue;
+        ctx.beginPath();
+        ctx.moveTo(px, py - 5);
+        ctx.lineTo(px + 4, py);
+        ctx.lineTo(px, py + 5);
+        ctx.lineTo(px - 4, py);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
 
     // Repère : épingle dans le champ, flèche sur le bord et distance au-delà.

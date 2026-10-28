@@ -39,6 +39,16 @@
                 border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
       body.game #action.show { display: block; }
       body.game:not(.driving) #action { bottom: 24px; }
+      /* Attaque (J5) : bouton rond à droite, à pied seulement ; à côté du pouce qui regarde, au-dessus du bouton d'action. */
+      #attack { position: fixed; right: 26px; bottom: 96px; width: 88px; height: 88px; z-index: 4; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
+                place-items: center; border-radius: 50%; border: 3px solid rgba(255, 248, 230, .8); background: rgba(217, 71, 43, .62); color: #fff8e6;
+                font: 600 34px system-ui, sans-serif; text-shadow: 0 1px 3px #000; box-shadow: 0 4px 0 rgba(27, 31, 39, .5); }
+      body.game:not(.driving) #attack { display: grid; }
+      #attack.on { background: rgba(217, 71, 43, .95); transform: translateY(3px); box-shadow: 0 1px 0 rgba(27, 31, 39, .5); }
+      /* Réticule de la visée assistée (J5-3) : un anneau crème qui suit la cible de l'arme à feu. */
+      #reticle { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 3; display: none; pointer-events: none; border-radius: 50%;
+                 border: 3px solid #fff8e6; box-shadow: 0 0 0 2px rgba(27, 31, 39, .55), inset 0 0 0 2px rgba(27, 31, 39, .35); }
+      #reticle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #d9472b; }
       #nearby { position: fixed; top: 58px; right: 8px; z-index: 3; display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
       body.game:not(.driving) #nearby { display: flex; }
       .chip { display: none; gap: 5px; align-items: center; padding: 5px 10px 5px 8px; border-radius: 16px; background: rgba(0,0,0,.4);
@@ -82,14 +92,37 @@
       @keyframes wlost { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
       #wanted.rise .wstar.full { animation: wrise .5s ease-out 2; }
       @keyframes wrise { 0% { transform: scale(1.45); } 100% { transform: scale(1); } }
+      /* Santé (J5) : disque sombre cerclé de crème avec un cœur, barre crème qui se vide ; cachée à santé pleine, rouge brique et pulsante sous 30 %. */
+      #health { display: none; gap: 6px; }
+      #health.on { display: flex; }
+      #health .hicon { width: 30px; height: 30px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+      #health .hicon svg { width: 100%; height: 100%; display: block; }
+      #health .hicon circle { fill: rgba(27, 31, 39, .6); stroke: #fff8e6; stroke-width: 1.4; }
+      #health .hicon path { fill: #fff8e6; }
+      #health.low .hicon circle { fill: #d9472b; }
+      #health .hbar { width: 84px; height: 12px; border-radius: 6px; background: rgba(27, 31, 39, .6); box-shadow: inset 0 0 0 1.4px #fff8e6; overflow: hidden; }
+      #health .hfill { display: block; height: 100%; width: 100%; background: #fff8e6; }
+      #health.low .hfill { background: #d9472b; }
+      #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
+      /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
+      #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
+      #hurt.flash { opacity: 1; transition: none; }
+      /* Arme en main (J5) : pastille sombre cerclée de crème, qu'on touche pour passer à l'arme suivante. */
+      #weapon { pointer-events: auto; }
+      #weapon button { display: flex; align-items: center; gap: 6px; padding: 3px 12px 3px 8px; border-radius: 15px; border: 1.4px solid #fff8e6; background: rgba(27, 31, 39, .6);
+                       color: #fff8e6; font: 600 14px system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+      #weapon .wicon { font-size: 18px; line-height: 1; }
+      #weapon .wammo { opacity: .85; font-variant-numeric: tabular-nums; }
+      #weapon.flash button { animation: wrise .45s ease-out; }
       body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
-      body.paused #action, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
-      /* Arrestation (J4) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
+      body.paused #action, body.paused #attack, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
+      #busted.dead { background: rgba(27, 31, 39, .94); }
       #busted.show { display: flex; animation: busted 5s ease-in both; }
       #busted .b-title { font: 900 44px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
       #busted .b-sub { font: 600 15px system-ui, sans-serif; opacity: .95; }
@@ -183,8 +216,11 @@
     <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
     <div id="pedals"><div id="horn" class="pedal">Klaxon</div><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
+    <div id="reticle"></div>
+    <div id="attack" role="button" aria-label="Frapper">👊</div>
     <button id="action"></button>
     <div id="nearby"></div>
+    <div id="hurt"></div>
     <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>

@@ -1,7 +1,7 @@
 import type { ChaseTarget } from "../core/chase";
 import type { Colliders } from "../core/collision";
 import { RoadWatch } from "../core/offenses";
-import { Officers } from "../core/officers";
+import { OFFICER, Officers, shotHitChance, type OfficerShot } from "../core/officers";
 import type { VehicleSpec, VehicleState } from "../core/vehicle";
 import { EvadeWatch, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
 import type { RoadGraph } from "../core/road-graph";
@@ -24,6 +24,8 @@ export interface PolicePlayer {
   /** Passants renversés par le véhicule du joueur à cette image (`PedSim.impact`) : nombre et vitesse du choc. */
   pedHits: number;
   pedHitSpeed: number;
+  /** Passants tués par le véhicule du joueur à cette image (J5-4). */
+  pedKills?: number;
   /** Passants à moins de `r` de (x, y) (témoins possibles). */
   witnesses(x: number, y: number, r: number): number;
 }
@@ -45,6 +47,8 @@ const DEPLOY_REACH = 28;
 /** Les gendarmes remontent quand le joueur roule à plus de … m/s et qu'ils sont à plus de … m de lui. */
 const RECALL_SPEED = 6;
 const RECALL_GAP = 12;
+/** Voitures de poursuite qui tirent en même temps à cinq étoiles (D85). */
+const CAR_SHOOTERS = 2;
 
 /**
  * La police dans le jeu (J4, D74) : elle regarde (ses voitures voient le joueur ou non), constate les infractions (vol, passant renversé,
@@ -68,6 +72,11 @@ export class PoliceController {
   private readonly parked = new Set<number>();
   private readonly cars: { id: number; x: number; y: number; heading: number; speed: number; chasing: boolean }[] = [];
   private seq = 0;
+  /** Tirs de la police à cette image (le jeu les dessine puis appelle `clearShots`), points de vie retirés au joueur depuis `takeDamage`, armes lâchées depuis `takeDrops`. */
+  readonly shots: OfficerShot[] = [];
+  private damage = 0;
+  private readonly drops: { x: number; y: number }[] = [];
+  private readonly carCool = new Map<number, number>();
   /** Ce que la minimap montre : voitures de police et zone de recherche quand la piste est perdue. */
   readonly minimap: { units: { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
@@ -83,6 +92,23 @@ export class PoliceController {
     this.officers = new Officers(colliders);
   }
 
+  /** Police armée (J5-5) : points de vie retirés au joueur par les tirs depuis le dernier appel (le jeu applique la moitié au volant). */
+  takeDamage(): number {
+    const d = this.damage;
+    this.damage = 0;
+    return d;
+  }
+
+  clearShots(): void {
+    this.shots.length = 0;
+  }
+
+  /** Positions des gendarmes tués depuis le dernier appel : leur pistolet tombe là. */
+  takeDrops(out: { x: number; y: number }[]): void {
+    for (const d of this.drops) out.push(d);
+    this.drops.length = 0;
+  }
+
   /** Vrai une fois après une arrestation. */
   takeArrest(): boolean {
     const a = this.arrested;
@@ -93,6 +119,10 @@ export class PoliceController {
   /** Après l'arrestation : plus de gendarmes à pied, voitures libérées, plus d'étoile. */
   reset(): void {
     this.officers.clear();
+    this.shots.length = 0;
+    this.damage = 0;
+    this.drops.length = 0;
+    this.carCool.clear();
     const t = this.traffic(false);
     for (const id of this.parked) t?.park(id, false);
     this.parked.clear();
@@ -125,7 +155,14 @@ export class PoliceController {
     else if (p.driving && p.speed > RECALL_SPEED) {
       for (const o of off.list) if (Math.hypot(o.x - p.x, o.y - p.y) > RECALL_GAP) off.recall(o.car);
     }
-    off.step(dt, { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle }, (id) => traffic.policeCar(id));
+    // Armés à quatre étoiles et plus (D85) ; au volant, seulement à cinq (à quatre ils cherchent encore à arrêter la voiture).
+    const armed = w.stars >= 4 && (!p.driving || w.stars >= 5);
+    off.step(dt, { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle }, (id) => traffic.policeCar(id), armed);
+    this.damage += off.takeDamage();
+    for (const sh of off.shots) if (this.shots.length < 48) this.shots.push(sh);
+    off.clearShots();
+    if (off.takeDeaths(this.drops) > 0) w.report("kill_cop", p.x, p.y, "police");
+    if (w.stars >= 5) this.carFire(dt, p);
     for (const id of this.parked) {
       if (off.countOf(id) > 0) continue;
       traffic.park(id, false);
@@ -137,6 +174,40 @@ export class PoliceController {
       off.arrested = false;
       off.progress = 0;
     }
+  }
+
+  /**
+   * Cinq étoiles : le passager d'une voiture de poursuite à moins de 35 m, avec le joueur dans sa vue (sans mur), tire par la vitre toutes les 1,5 s environ ;
+   * moins précis qu'à pied (la voiture bouge), même dégât par balle.
+   */
+  private carFire(dt: number, p: PolicePlayer): void {
+    const live = new Set<number>();
+    // Au plus deux voitures tirent en même temps : les plus proches du joueur.
+    let fired = 0;
+    this.cars.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    for (const c of this.cars) {
+      if (!c.chasing) continue;
+      live.add(c.id);
+      // Un équipage descendu ne tire plus de la voiture.
+      if (this.officers.countOf(c.id) > 0) continue;
+      const cd = (this.carCool.get(c.id) ?? 1.2) - dt;
+      const d = Math.hypot(p.x - c.x, p.y - c.y);
+      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || (this.colliders.raycast(c.x, c.y, p.x, p.y) ?? null) !== null) {
+        this.carCool.set(c.id, Math.max(cd, 0));
+        continue;
+      }
+      fired++;
+      this.carCool.set(c.id, 1.5 + 0.5 * ((c.id * 2654435761) % 1000) / 1000);
+      // Tirage reproductible par voiture et par instant : pas de hasard global.
+      const roll = (((c.id * 7919 + this.seq++ * 104729) * 2654435761) >>> 0) / 4294967296;
+      const hit = roll < shotHitChance(d, p.speed, true);
+      if (hit) this.damage += OFFICER.damage;
+      if (this.shots.length < 48) {
+        const ux = (p.x - c.x) / (d || 1), uy = (p.y - c.y) / (d || 1), off = hit ? 0 : 1.2;
+        this.shots.push({ x0: c.x + ux, y0: c.y + uy, x1: p.x - uy * off + (hit ? 0 : ux * 3), y1: p.y + ux * off + (hit ? 0 : uy * 3), hit });
+      }
+    }
+    for (const id of this.carCool.keys()) if (!live.has(id)) this.carCool.delete(id);
   }
 
   /** La police voit-elle ce point en ce moment ? */
@@ -174,6 +245,11 @@ export class PoliceController {
     if (p.pedHits > 0 && p.pedHitSpeed >= KNOCK_SPEED) {
       if (this.seen) w.report("hit_ped", p.x, p.y, "police");
       else if (p.witnesses(p.x, p.y, 40) >= 2) w.report("hit_ped", p.x, p.y, "civilian");
+    }
+    // Passant tué par le véhicule : un meurtre (en plus de l'infraction de l'avoir renversé).
+    if (p.pedKills) {
+      if (this.seen) w.report("murder", p.x, p.y, "police");
+      else if (p.witnesses(p.x, p.y, 40) >= 1) w.report("murder", p.x, p.y, "civilian");
     }
     if (traffic && traffic.takeRam() > RAM_IMPACT) w.report("ram_police", p.x, p.y, "police");
     if (this.evade.update(dt, w.stars, this.seen, p.x, p.y, p.speed, this.units)) w.report("evade", p.x, p.y, "police");

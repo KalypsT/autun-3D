@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { PedSim, type Observer } from "../core/pedestrians";
+import type { Arena } from "../core/melee";
 import { gendarmeRecipe } from "../core/character";
 import { OFFICER, Officers, type Officer } from "../core/officers";
 import type { HeightField } from "../data/types";
@@ -13,7 +14,7 @@ import type { NavManager } from "./nav-manager";
  * Les passants du jeu : la simulation (`PedSim`), son rendu (la foule de l'étape P, un seul appel de dessin) et le réglage « Foule ».
  * Les passants n'existent qu'une fois la navigation chargée autour du joueur ; changer le nombre maximal les refabrique (nouvelle foule).
  */
-export class PedsController {
+export class PedsController implements Arena {
   private sim: PedSim | null = null;
   private crowd: CrowdRenderer | null = null;
   private filled = false;
@@ -74,6 +75,45 @@ export class PedsController {
     return this.sim?.eject(x, y, seed, ux, uy, push, fromX, fromY) ?? -1;
   }
 
+  /** Combat du joueur (J5-1) : voir `Arena` ; sans passants rien n'est à portée. */
+  pick(x: number, y: number, heading: number, range: number, halfAngle: number, max: number, out: number[]): number {
+    if (!this.sim) {
+      out.length = 0;
+      return 0;
+    }
+    return this.sim.pick(x, y, heading, range, halfAngle, max, out);
+  }
+
+  position(slot: number, out: { x: number; y: number }): void {
+    this.sim?.position(slot, out);
+  }
+
+  hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
+    const sim = this.sim;
+    if (!sim) return 0;
+    // Un emplacement réservé est un gendarme (J5-5) : le coup va à `Officers` (via `officerHurt`), pas à la simulation des passants.
+    if (slot >= sim.reservedStart) return this.officerHurt ? this.officerHurt(slot - sim.reservedStart, damage, ux, uy, impulse) : 0;
+    return sim.damage(slot, damage, ux, uy, impulse);
+  }
+
+  /** Ce que reçoit un gendarme frappé ou touché : emplacement dans la liste réservée, dégâts, direction, impulsion ; renvoie 0, 1 (touché) ou 2 (tué). Branché par le jeu sur `Officers.hurt`. */
+  officerHurt: ((index: number, damage: number, ux: number, uy: number, impulse: number) => number) | null = null;
+
+  /** Premier passant sur un rayon (J5-3) : voir `PedSim.rayPed`. */
+  rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
+    if (!this.sim) {
+      out.slot = -1;
+      out.dist = maxDist;
+      return false;
+    }
+    return this.sim.rayPed(x, y, dx, dy, maxDist, out);
+  }
+
+  /** Alarme (J5-4) : voir `PedSim.alarm`. */
+  alarm(x: number, y: number, radius: number, flee: number): number {
+    return this.sim?.alarm(x, y, radius, flee) ?? 0;
+  }
+
   setCapacity(n: number): void {
     n = Math.max(0, n);
     if (n === this.crowdCap) return;
@@ -113,7 +153,10 @@ export class PedsController {
       seen[o.slot] = 1;
       const fresh = this.officerSeeds[o.slot] !== o.seed;
       if (fresh) this.officerSeeds[o.slot] = o.seed;
-      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.poseT, dt);
+      // Visée : le temps passé à `setExternal` est celui depuis le dernier tir (la secousse du pistolet) ; un mort garde la pose de chute tenue.
+      const pose = Officers.pose(o);
+      const t = o.mode === "dead" ? Math.min(o.poseT, 2.2) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT;
+      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, pose, t, dt, o.armed && o.mode !== "dead", o.mode === "dead");
     }
     for (let k = 0; k < OFFICER.max; k++) {
       if (seen[k]) continue;

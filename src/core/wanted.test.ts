@@ -59,7 +59,73 @@ describe("niveau de recherche", () => {
     run(w, REPEAT_WINDOW + 0.1, 0, 0, true);
     w.report("ram_police", 0, 0, "police");
     w.report("hit_cop", 0, 0, "police");
+    // La conduite, la bousculade et le choc contre la police s'arrêtent à trois étoiles : les deux dernières viennent de la violence.
+    expect(w.stars).toBe(3);
+    run(w, REPEAT_WINDOW + 0.1, 0, 0, true);
+    w.report("hit_ped", 0, 0, "police");
+    expect(w.stars).toBe(3);
+  });
+
+  it("violence (J5-4) : une agression fait une étoile sans monter ; un meurtre fait deux étoiles puis une de plus à chaque nouveau, jusqu'à cinq", () => {
+    const w = new Wanted();
+    w.report("assault", 0, 0, "police");
+    expect(w.stars).toBe(1);
+    w.report("assault", 0, 0, "police");
+    expect(w.stars).toBe(1);
+    run(w, REPEAT_WINDOW + 0.1, 0, 0, true);
+    w.report("murder", 0, 0, "police");
+    expect(w.stars).toBe(2);
+    run(w, REPEAT_WINDOW + 0.1, 0, 0, true);
+    w.report("murder", 0, 0, "police");
+    w.report("murder", 0, 0, "police");
+    expect(w.stars).toBe(3);
+    for (let k = 0; k < 4; k++) {
+      run(w, REPEAT_WINDOW + 0.1, 0, 0, true);
+      w.report("murder", 0, 0, "police");
+    }
     expect(w.stars).toBe(MAX_STARS);
+    expect(MAX_STARS).toBe(5);
+    // Un coup de feu en public fait au moins deux étoiles ; un gendarme tué, quatre.
+    const g = new Wanted();
+    g.report("gunfire", 0, 0, "police");
+    expect(g.stars).toBe(2);
+    const k = new Wanted();
+    k.report("kill_cop", 0, 0, "police");
+    expect(k.stars).toBe(4);
+    run(k, REPEAT_WINDOW + 0.1, 0, 0, true);
+    k.report("kill_cop", 0, 0, "police");
+    expect(k.stars).toBe(5);
+  });
+
+  it("une infraction plafonnée ne fait jamais baisser le niveau", () => {
+    const w = new Wanted();
+    w.set(5, 0, 0);
+    w.report("hit_ped", 1, 1, "police");
+    w.report("ram_police", 1, 1, "police");
+    expect(w.stars).toBe(5);
+  });
+
+  it("un témoin qui téléphone signale une agression ou un meurtre après le délai, la police seule voit une voiture percutée", () => {
+    const w = new Wanted();
+    w.report("murder", 3, 4, "civilian");
+    run(w, CALL_DELAY - 0.5, 0, 0, false);
+    expect(w.stars).toBe(0);
+    run(w, 1, 0, 0, false);
+    expect(w.stars).toBe(2);
+    w.report("ram_police", 0, 0, "civilian");
+    expect(w.pendingCalls).toBe(0);
+  });
+
+  it("les quatrième et cinquième étoiles refroidissent plus lentement et fouillent plus large", () => {
+    expect(ESCAPE_TIME[5]).toBeGreaterThan(ESCAPE_TIME[3]);
+    expect(SEARCH_RADIUS[5]).toBeGreaterThan(SEARCH_RADIUS[3]);
+    const w = new Wanted();
+    w.set(5, 0, 0);
+    run(w, ESCAPE_TIME[5] - 1, SEARCH_RADIUS[5] + 100, 0, false);
+    expect(w.stars).toBe(5);
+    run(w, 2, SEARCH_RADIUS[5] + 100, 0, false);
+    expect(w.stars).toBe(4);
+    expect(w.radius).toBe(SEARCH_RADIUS[4]);
   });
 
   it("la fuite fait passer d'une à deux étoiles, sans toucher à trois", () => {
