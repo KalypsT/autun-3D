@@ -329,6 +329,35 @@ export function cornerSpeed(spec: VehicleSpec, k: number): number {
   return best;
 }
 
+/** Un autre usager de la route que le conducteur doit voir : voiture, véhicule du joueur, joueur à pied (J3-2). */
+export interface Other {
+  state: { x: number; y: number; vx: number; vy: number; heading: number };
+  /** Demi-longueur et demi-largeur de l'emprise (m). */
+  halfLen: number;
+  halfWid: number;
+}
+
+/** Emprise d'une fiche : demi-longueur (du centre de gravité au bout du cercle extrême) et demi-largeur. */
+export function extentOf(spec: VehicleSpec): { halfLen: number; halfWid: number } {
+  let len = 0, wid = 0;
+  for (const [off, r] of spec.hull) {
+    len = Math.max(len, Math.abs(off) + r);
+    wid = Math.max(wid, r);
+  }
+  return { halfLen: len, halfWid: wid };
+}
+
+/** Suivi (modèle IDM : distance de sécurité de `HEADWAY` s plus la distance d'arrêt relative) : écart minimal à l'arrêt, temps inter-véhicules (s). */
+const MIN_GAP = 2;
+const HEADWAY = 1.3;
+/** Au-delà de cette distance (m) devant, les autres usagers ne comptent pas ; et vitesse (m/s) à laquelle on croise une voiture venant en face sur une voie trop étroite. */
+const LOOK_AHEAD_MAX = 60;
+const ONCOMING_SPEED = 3;
+/** Freinage d'urgence maximal demandé (m/s²). */
+const A_EMERGENCY = 8;
+/** Temps (s) d'immobilité après lequel un conducteur qui attend est retiré (interblocage), et un conducteur sans raison d'attendre. */
+const WAIT_LIMIT = 45;
+
 /** Petit générateur pseudo-aléatoire reproductible (mulberry32). */
 function rng(seed: number): () => number {
   let a = seed >>> 0;
@@ -339,6 +368,8 @@ function rng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+const ahead = { gap: Infinity, v: 0, oncoming: false };
 
 export class Driver {
   /** Route suivie : sens de parcours du graphe routier ; le premier est celui où l'on roule. */
@@ -439,7 +470,52 @@ export class Driver {
   }
 
   /** Commandes pour ce pas : à appeler avant `stepVehicle`. */
-  update(s: VehicleState, dt: number): DriveInput {
+  /** Il attend (voiture devant, priorité) : à l'arrêt, ce n'est pas être bloqué. Et la raison de la dernière attente (diagnostic). */
+  waiting = false;
+  waitWhy = "";
+  private waitFor = 0;
+  /** Écart (m) à l'usager le plus proche devant au dernier pas, et sa vitesse le long de la route (diagnostic et tests). */
+  gap = Infinity;
+
+  /** Usager le plus proche devant, sur la route : écart (m) entre les pare-chocs et vitesse (m/s) dans le sens de la marche ; null si rien. */
+  private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean }): boolean {
+    const own = extentOf(this.spec);
+    const reach = Math.min(path.n - 1, this.index + Math.ceil(Math.min(LOOK_AHEAD_MAX, 12 + u * 4) / DS));
+    const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
+    let found = false;
+    out.gap = Infinity;
+    for (const o of others) {
+      const ox = o.state.x - s.x, oy = o.state.y - s.y;
+      if (o.state === s || Math.abs(ox) > LOOK_AHEAD_MAX + 8 || Math.abs(oy) > LOOK_AHEAD_MAX + 8) continue;
+      // Derrière nous : sans intérêt.
+      if (ox * fx + oy * fy < -own.halfLen * 0.5) continue;
+      let bj = -1, bd = Infinity;
+      for (let j = this.index; j <= reach; j++) {
+        const d = Math.hypot(path.x[j]! - o.state.x, path.y[j]! - o.state.y);
+        if (d < bd) {
+          bd = d;
+          bj = j;
+        }
+      }
+      if (bj < 0) continue;
+      // Emprise de l'autre dans le repère de notre route : le long de la marche et en travers.
+      const rel = wrap(o.state.heading - path.heading[bj]!);
+      const along = Math.abs(Math.cos(rel)) * o.halfLen + Math.abs(Math.sin(rel)) * o.halfWid;
+      const across = Math.abs(Math.sin(rel)) * o.halfLen + Math.abs(Math.cos(rel)) * o.halfWid;
+      if (bd > own.halfWid + across + 0.3) continue;
+      const gap = Math.max((bj - this.index) * DS - own.halfLen - along, 0.05);
+      if (gap < out.gap) {
+        out.gap = gap;
+        out.v = o.state.vx * Math.sin(path.heading[bj]!) + o.state.vy * Math.cos(path.heading[bj]!);
+        // En face : il vient vers nous (un usager arrêté, même tourné vers nous, est un obstacle comme un autre).
+        out.oncoming = Math.cos(rel) < -0.5 && out.v < -1;
+        found = true;
+      }
+    }
+    return found;
+  }
+
+  update(s: VehicleState, dt: number, others: readonly Other[] = []): DriveInput {
     const spec = this.spec;
     const idle: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: 1 };
     if (this.lost) return idle;
@@ -515,14 +591,39 @@ export class Driver {
     // Vitesse : celle que le tracé conseille un peu plus loin (le profil anticipe déjà les freinages).
     let vt = Infinity;
     for (let j = this.index; j <= Math.min(path.n - 1, this.index + 1 + Math.round((u * 0.5) / DS)); j++) vt = Math.min(vt, path.v[j]!);
-    const aDes = Math.min(Math.max(1.2 * (vt - u), -3.5), A_ACC);
+    let aDes = Math.min(Math.max(1.2 * (vt - u), -3.5), A_ACC);
+    // Autres usagers devant : suivi à distance de sécurité (IDM), prudence face à une voiture qui vient en face.
+    this.waiting = false;
+    this.gap = Infinity;
+    if (others.length > 0 && this.nearestAhead(s, path, u, others, ahead)) {
+      this.gap = ahead.gap;
+      if (ahead.oncoming) {
+        // Sur une voie étroite on se croise doucement : on ne s'arrête pas (les deux voitures attendraient l'une l'autre).
+        if (ahead.gap < 25) aDes = Math.min(aDes, Math.min(Math.max(1.2 * (ONCOMING_SPEED - u), -3.5), A_ACC));
+      } else {
+        const lead = Math.max(ahead.v, 0);
+        const wanted = Math.max(vt, 0.5);
+        const star = MIN_GAP + Math.max(0, u * HEADWAY + (u * (u - lead)) / (2 * Math.sqrt(A_ACC * A_DEC)));
+        const idm = A_ACC * (1 - Math.pow(u / wanted, 4) - (star / ahead.gap) ** 2);
+        if (idm < aDes) {
+          aDes = Math.max(idm, -A_EMERGENCY);
+          this.waiting = lead < 0.5 && u < 1.5;
+          this.waitWhy = "voiture devant";
+        }
+      }
+    }
     let throttle = 0, brake = 0, handbrake = 0;
     const resist = spec.drag * u * u + spec.rolling * spec.mass * GRAVITY + (u > 0.3 ? spec.engineBrake : 0);
     if (aDes >= 0) throttle = Math.min(Math.max((aDes * spec.mass + resist) / Math.max(driveForce(spec, u, 1), 1), 0), 1);
     else if (u < 0.5) handbrake = 1;
     else if (aDes * spec.mass + resist < -0.05 * spec.maxBrake) brake = Math.min(Math.max((-aDes * spec.mass - resist) / spec.maxBrake, 0), 1);
-    // Bloqué : à l'arrêt alors que la route est libre.
-    this.stuckFor = Math.abs(s.speed) < 0.3 && vt > 1 ? this.stuckFor + dt : 0;
+    // Bloqué : à l'arrêt alors que la route est libre. Qui attend (voiture devant) a une autre limite, plus longue : un interblocage se défait.
+    this.stuckFor = Math.abs(s.speed) < 0.3 && vt > 1 && !this.waiting ? this.stuckFor + dt : 0;
+    this.waitFor = Math.abs(s.speed) < 0.3 && this.waiting ? this.waitFor + dt : 0;
+    if (this.waitFor > WAIT_LIMIT) {
+      this.lost = true;
+      this.lostWhy = `interbloqué (${this.waitWhy})`;
+    }
     if (this.stuckFor > STUCK_TIME) {
       this.lost = true;
       this.lostWhy = "bloqué à l'arrêt";

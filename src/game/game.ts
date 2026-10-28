@@ -341,7 +341,7 @@ export function startGame(ctx: GameContext): void {
         const k = bumpTimer > 0 ? 0.7 : 1;
         stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run }, yaw, STEP, terrain, colliders);
       }
-      traffic?.step(STEP);
+      traffic?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
     }
     traffic?.update(dt, player.x, player.y);

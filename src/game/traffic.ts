@@ -1,8 +1,8 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { Driver, lanePoint } from "../core/driver";
+import { lanePoint } from "../core/driver";
 import { moveEdge } from "../core/road-graph";
-import { createVehicle, stepVehicle, type VehicleState } from "../core/vehicle";
+import { TrafficSim, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import { CATALOG, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import type { HeightField } from "../data/types";
@@ -17,9 +17,8 @@ import { buildModel } from "./vehicles";
  */
 
 interface TrafficCar {
+  sim: SimCar;
   def: VehicleDef;
-  state: VehicleState;
-  driver: Driver;
   model: VehicleModel;
 }
 
@@ -29,6 +28,7 @@ const SPAWN_MAX = 170;
 
 export class Traffic {
   readonly cars: TrafficCar[] = [];
+  private readonly sim: TrafficSim;
   /** Coût moyen (ms, lissé) d'un pas de simulation de toutes les voitures, pour la ligne de diagnostic. */
   simMs = 0;
   private serial = 0;
@@ -37,26 +37,30 @@ export class Traffic {
   constructor(
     private readonly scene: THREE.Scene,
     private readonly nav: NavManager,
-    private readonly terrain: HeightField,
-    private readonly colliders: Colliders,
+    terrain: HeightField,
+    colliders: Colliders,
     private readonly solidAt: (x: number, y: number) => boolean,
     private capacity: number,
     private readonly seed = 1,
-  ) {}
+  ) {
+    this.sim = new TrafficSim(nav.graph, terrain, colliders);
+  }
+
+  /** Contacts de la circulation au dernier pas (voitures entre elles, avec le joueur). */
+  get stats(): TrafficSim["stats"] {
+    return this.sim.stats;
+  }
 
   setCapacity(n: number): void {
     this.capacity = n;
     while (this.cars.length > n) this.remove(this.cars.length - 1);
   }
 
-  /** Un pas de simulation à pas fixe : conducteurs puis physique. */
-  step(dt: number): void {
+  /** Un pas de simulation à pas fixe : conducteurs, physique et chocs. `player` : ce que les conducteurs voient du joueur. */
+  step(dt: number, player: PlayerBody | null): void {
     if (this.cars.length === 0) return;
     const t0 = performance.now();
-    for (const c of this.cars) {
-      const input = c.driver.update(c.state, dt);
-      stepVehicle(c.state, c.def.spec, input, dt, this.terrain, this.colliders);
-    }
+    this.sim.step(dt, player);
     this.simMs += (performance.now() - t0 - this.simMs) * 0.02;
   }
 
@@ -64,9 +68,9 @@ export class Traffic {
   update(dt: number, px: number, py: number): void {
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!;
-      c.model.update(c.state);
+      c.model.update(c.sim.state);
       // Perdue, ou restée loin derrière : elle disparaît.
-      if (c.driver.lost || Math.hypot(c.state.x - px, c.state.y - py) > SPAWN_MAX * 2) this.remove(i);
+      if (c.sim.driver?.lost || Math.hypot(c.sim.state.x - px, c.sim.state.y - py) > SPAWN_MAX * 2) this.remove(i);
     }
     this.cooldown -= dt;
     if (this.cars.length < this.capacity && this.cooldown <= 0 && this.nav.graph.cells.size > 0) {
@@ -77,6 +81,8 @@ export class Traffic {
 
   private remove(i: number): void {
     const c = this.cars[i]!;
+    const k = this.sim.cars.indexOf(c.sim);
+    if (k >= 0) this.sim.remove(k);
     this.scene.remove(c.model.group);
     c.model.dispose();
     this.cars.splice(i, 1);
@@ -85,7 +91,7 @@ export class Traffic {
   private spawn(px: number, py: number): void {
     const graph = this.nav.graph, road = graph.road;
     const rnd = (n: number): number => {
-      let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(this.serial * 2 + n + 1, 0xc2b2ae35);
+      let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(this.serial * 8 + n + 1, 0xc2b2ae35);
       h ^= h >>> 15;
       h = Math.imul(h, 0x2c1b3c6d);
       return ((h ^ (h >>> 12)) >>> 0) / 4294967296;
@@ -108,19 +114,19 @@ export class Traffic {
     let move = e * 2 + (rnd(1) < 0.5 ? 0 : 1);
     if (!road.canGo(move)) move ^= 1;
     if (!road.canGo(move)) return;
+    const s = Math.min(road.edgeLength(moveEdge(move)) / 2, 12);
     const lp = { x: 0, y: 0, heading: 0 };
-    lanePoint(road, move, Math.min(road.edgeLength(moveEdge(move)) / 2, 12), lp);
+    lanePoint(road, move, s, lp);
     // Pas sur une autre voiture.
-    if (this.cars.some((c) => Math.hypot(c.state.x - lp.x, c.state.y - lp.y) < 8)) return;
+    if (this.cars.some((c) => Math.hypot(c.sim.state.x - lp.x, c.sim.state.y - lp.y) < 10)) return;
     const cars = CATALOG.filter((d) => d.family === "car");
     const def = cars.find((d) => d.id === pickModel("car", 0, rnd(2))) ?? cars[0]!;
     const variant = Math.floor(rnd(3) * 16);
-    const state = createVehicle(lp.x, lp.y, lp.heading, this.terrain);
-    const driver = new Driver(graph, move, Math.min(road.edgeLength(moveEdge(move)) / 2, 12), Math.floor(rnd(4) * 1e9), def.spec, this.colliders);
+    const sim = this.sim.add(def.spec, move, s, Math.floor(rnd(4) * 1e9));
     const model = buildModel(def, variant);
-    model.update(state);
+    model.update(sim.state);
     this.scene.add(model.group);
-    this.cars.push({ def, state, driver, model });
+    this.cars.push({ sim, def, model });
   }
 
   dispose(): void {
