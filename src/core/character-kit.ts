@@ -106,6 +106,9 @@ export const PART_SPECS: readonly PartSpec[] = [
   spec("shoulderBag", TORSO, SLOT.bag, false, (r) => r.bag === "shoulder"),
   spec("handbag", [BONE.forearmR], SLOT.bag, false, (r) => r.bag === "handbag"),
   spec("scarf", TORSO, SLOT.scarf, false, (r) => r.scarf),
+  // Armes tenues (J5, D80) : jamais dans une recette ; `addPart` les ajoute au masque du personnage qui les tient (le joueur, puis les gendarmes).
+  spec("weaponKnife", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponBat", [BONE.forearmR], SLOT.none, false, () => false),
 ];
 
 /** Les mises à jour de masque tiennent sur trois nombres de 22 bits : au plus 66 pièces. */
@@ -122,6 +125,21 @@ export function partMask(r: Recipe, out: Float32Array | number[] = [0, 0, 0]): F
   out[0] = out[1] = out[2] = 0;
   for (let i = 0; i < PART_SPECS.length; i++) if (PART_SPECS[i]!.when(r)) out[Math.floor(i / 22)] = (out[Math.floor(i / 22)] as number) + 2 ** (i % 22);
   return out;
+}
+
+/** Indice d'une pièce dans le catalogue (−1 si elle n'existe pas). */
+export function partIndex(id: string): number {
+  return PART_SPECS.findIndex((s) => s.id === id);
+}
+
+/** Ajoute (ou retire, `on` faux) la pièce `id` à un masque de pièces (arme tenue). Sans effet si la pièce n'existe pas. */
+export function setPart(mask: Float32Array | number[], id: string, on: boolean): void {
+  const i = partIndex(id);
+  if (i < 0) return;
+  const word = Math.floor(i / 22), bit = 2 ** (i % 22);
+  const has = Math.floor((mask[word] as number) / bit) % 2 === 1;
+  if (on && !has) mask[word] = (mask[word] as number) + bit;
+  else if (!on && has) mask[word] = (mask[word] as number) - bit;
 }
 
 /** Nombre de pièces visibles (et d'instances de pièces avec les doublons de côté). */

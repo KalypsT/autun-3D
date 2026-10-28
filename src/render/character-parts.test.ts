@@ -44,8 +44,8 @@ describe("catalogue de formes", () => {
       if (!g) continue;
       g.computeBoundingBox();
       const b = g.boundingBox!;
-      // Une pièce reste à moins de 1,2 m de son os, et dans 0,6 m de large de chaque côté.
-      if (b.min.y < -0.9 || b.max.y > 1.2 || Math.abs(b.min.x) > 0.6 || Math.abs(b.max.x) > 0.6 || Math.abs(b.min.z) > 0.6 || Math.abs(b.max.z) > 0.6) {
+      // Une pièce reste à moins de 1,2 m de son os, et dans 0,6 m de large de chaque côté ; une arme tenue (la batte, 0,9 m au bout de la main) descend plus bas.
+      if (b.min.y < (spec.id.startsWith("weapon") ? -1.3 : -0.9) || b.max.y > 1.2 || Math.abs(b.min.x) > 0.6 || Math.abs(b.max.x) > 0.6 || Math.abs(b.min.z) > 0.6 || Math.abs(b.max.z) > 0.6) {
         bad.push(`${spec.id}: ${b.min.toArray().map((v) => v.toFixed(2))} → ${b.max.toArray().map((v) => v.toFixed(2))}`);
       }
     }

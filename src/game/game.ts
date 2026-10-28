@@ -16,6 +16,9 @@ import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { DEATH_HOURS, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
+import { Inventory, WEAPON_ORDER, WEAPONS, type WeaponId } from "../core/weapons";
+import { Melee } from "../core/melee";
+import { WeaponHud } from "../ui/weapon-hud";
 import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
@@ -92,6 +95,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("brake"),
     document.getElementById("handbrake"),
     document.getElementById("horn"),
+    document.getElementById("attack"),
   );
   const fsButton = document.getElementById("fullscreen");
   fsButton?.addEventListener("click", () => {
@@ -245,6 +249,16 @@ export function startGame(ctx: GameContext): void {
   const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
   const healthHud = new HealthHud(document.getElementById("health")!);
   const hurtEl = document.getElementById("hurt")!;
+  // Armes (J5-1, D80) : les poings sont toujours là ; `?arms=knife,bat` (ou `all`) donne des armes pour les essais (la recherche d'armes en ville viendra avec J5-3).
+  const inventory = new Inventory();
+  const melee = new Melee();
+  const armsParam = params.get("arms");
+  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS && WEAPONS[id as WeaponId].kind === "melee") inventory.grant(id as WeaponId);
+  const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
+    inventory.cycle();
+    melee.cancel();
+  });
+  let heldId: WeaponId | null = null;
   const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
@@ -324,6 +338,11 @@ export function startGame(ctx: GameContext): void {
     if (document.body.classList.contains("paused")) return;
     if (e.code === "KeyF") debugEl.style.display = debugEl.style.display === "block" ? "none" : "block";
     if (e.code === "KeyE" && !e.repeat) act();
+    if (e.code === "KeyX" && !e.repeat) inventory.cycle();
+    if (e.code.startsWith("Digit") && !e.repeat) {
+      const id = WEAPON_ORDER[Number(e.code.slice(5)) - 1];
+      if (id) inventory.select(id);
+    }
   });
   // ?ride=velo, trottinette, voiture ou moto, ou l'identifiant d'une entrée du catalogue (citadine, moto-routiere…) : départ sur un véhicule (captures, essais).
   const rideParam = params.get("ride") ?? "";
@@ -405,6 +424,8 @@ export function startGame(ctx: GameContext): void {
       fleet.remove(taken);
     }
     police.reset();
+    inventory.loseAll();
+    melee.cancel();
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     yaw = ARREST_SPAWN.heading;
@@ -418,6 +439,8 @@ export function startGame(ctx: GameContext): void {
   const die = (): void => {
     if (riding) dismount();
     police.reset();
+    inventory.loseAll();
+    melee.cancel();
     const r = colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: HOSPITAL_SPAWN.heading });
     yaw = HOSPITAL_SPAWN.heading;
@@ -468,8 +491,9 @@ export function startGame(ctx: GameContext): void {
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
-        const k = bumpTimer > 0 ? 0.7 : 1;
-        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run }, yaw, STEP, terrain, colliders);
+        // Un coup en cours ralentit : on ne court pas en frappant.
+        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : 1);
+        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active }, yaw, STEP, terrain, colliders);
       }
       (traffic as Traffic | null)?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
@@ -512,6 +536,21 @@ export function startGame(ctx: GameContext): void {
       camera.updateProjectionMatrix();
     }
 
+    // Corps à corps (J5-1) : à pied seulement ; le coup tourne le joueur vers sa cible et touche au moment de la frappe.
+    const weapon = inventory.current;
+    if (riding || health.dead) {
+      melee.cancel();
+      model.setStrike(null);
+    } else {
+      melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, peds as PedsController | null);
+      if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
+      model.setStrike(melee.active ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
+    }
+    if (heldId !== weapon.id) {
+      heldId = weapon.id;
+      model.setHeld(weapon.part, weapon.part && weapon.kind === "melee" ? weapon.style : null);
+    }
+    weaponHud.set(weapon, null);
     if (riding && rideModel) {
       rideModel.update(riding.state);
       leaveMarks(riding);
@@ -595,9 +634,11 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted, health,
+    player, colliders, fleet, marks, ui, wanted, health, inventory, melee,
     traffic: () => traffic as Traffic | null,
     police,
+    /** Essais et captures : les passants (voir `PedsController`). */
+    pedsController: () => peds as PedsController | null,
     /** Captures : tourner la caméra (rad, 0 = nord). */
     look: (v: number) => {
       yaw = v;

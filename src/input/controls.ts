@@ -18,6 +18,8 @@ export interface ControlSample {
   handbrake: number;
   /** Klaxon (ou sonnette) enfoncé. */
   horn: boolean;
+  /** Bouton d'attaque tenu (ou touche J) : frapper ou tirer (J5). */
+  attack: boolean;
   /** Le regard a été touché depuis le dernier appel (la caméra de poursuite attend avant de se recaler). */
   looking: boolean;
 }
@@ -46,7 +48,7 @@ export class Controls {
   private lookPitch = 0;
   private stickX = 0;
   private stickY = 0;
-  private readonly pedals = new Map<number, "gas" | "brake" | "handbrake" | "horn">();
+  private readonly pedals = new Map<number, "gas" | "brake" | "handbrake" | "horn" | "attack">();
   private looked = false;
   /** À pied ou en véhicule : change le rôle du doigt de gauche et affiche les pédales. */
   mode: ControlMode = "foot";
@@ -63,6 +65,7 @@ export class Controls {
     brake: HTMLElement | null = null,
     handbrake: HTMLElement | null = null,
     horn: HTMLElement | null = null,
+    attack: HTMLElement | null = null,
   ) {
     const on = (el: EventTarget, type: string, fn: (e: Event) => void): void => {
       el.addEventListener(type, fn);
@@ -76,7 +79,7 @@ export class Controls {
     on(surface, "pointermove", (e) => this.move(e as PointerEvent));
     on(surface, "pointerup", (e) => this.up(e as PointerEvent));
     on(surface, "pointercancel", (e) => this.up(e as PointerEvent));
-    for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"], [horn, "horn"]] as const) {
+    for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"], [horn, "horn"], [attack, "attack"]] as const) {
       if (!el) continue;
       this.pedalEls.push(el);
       const press = (e: Event): void => {
@@ -195,18 +198,19 @@ export class Controls {
       run = k.has("ShiftLeft") || k.has("ShiftRight");
     }
     // Véhicule : direction au doigt (ou Q/A et D), pédales (ou Z/W/flèche haut, S/flèche bas), frein à main (ou espace).
-    let steer = this.stickX, throttle = 0, brake = 0, handbrake = 0, horn = k.has("KeyH");
+    let steer = this.stickX, throttle = 0, brake = 0, handbrake = 0, horn = k.has("KeyH"), attack = k.has("KeyJ");
     for (const p of this.pedals.values()) {
       if (p === "gas") throttle = 1;
       else if (p === "brake") brake = 1;
       else if (p === "horn") horn = true;
+      else if (p === "attack") attack = true;
       else handbrake = 1;
     }
     if (kr !== 0) steer = kr;
     if (kf > 0) throttle = 1;
     if (kf < 0) brake = 1;
     if (k.has("Space")) handbrake = 1;
-    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, horn, looking: this.looked || this.looks.size > 0 };
+    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, horn, attack, looking: this.looked || this.looks.size > 0 };
     this.lookYaw = this.lookPitch = 0;
     this.looked = false;
     return sample;

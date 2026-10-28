@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -123,6 +123,45 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("j5-mort");
     const state = await page.evaluate(() => ({ x: window.__autun.player.x, y: window.__autun.player.y, hp: window.__autun.health.hp }));
     console.log("après la mort :", JSON.stringify(state));
+    await ctx.close();
+  }
+
+  if (want("combat")) {
+    // Corps à corps (J5-1) : armes en main et geste de coup. On se place face au passant le plus proche, on tient le bouton d'attaque (touche réelle),
+    // et on fige le jeu (pause) à la frappe pour capturer la pose. Rendu logiciel : quelques minutes.
+    const ctx = await open("arms=all&h=15");
+    await page.addStyleTag({ content: "#weapon.flash button { animation: none !important; }" });
+    await sleep(1500);
+    await shot("j5-mains-nues");
+    const facePed = () => page.evaluate(() => {
+      const a = window.__autun, c = a.pedsController(), out = [], p = { x: 0, y: 0 };
+      c.pick(a.player.x, a.player.y, 0, 80, Math.PI, 1, out);
+      if (!out.length) return false;
+      c.position(out[0], p);
+      // Un mètre quinze au sud du passant, tourné vers lui ; caméra de trois quarts, côté bras droit.
+      a.player.x = p.x; a.player.y = p.y - 1.15; a.player.heading = 0;
+      a.look(-0.9);
+      return true;
+    });
+    const hold = async (progress) => {
+      await touch("touchStart", [[845, 272]]);
+      await page.waitForFunction((u) => { const m = window.__autun.melee; if (m.active && m.progress >= u) { window.__autun.ui.paused = true; return true; } return false; }, progress, { timeout: 600000, polling: "raf" });
+      await touch("touchEnd", []);
+    };
+    const release = async () => { await page.evaluate(() => { window.__autun.ui.paused = false; window.__autun.melee.cancel(); }); await sleep(800); };
+    for (const [id, name, progress] of [["fists", "poing", 0.5], ["knife", "couteau", 0.5], ["bat", "batte", 0.5]]) {
+      await page.evaluate((w) => window.__autun.inventory.select(w), id);
+      await sleep(1200);
+      if (!(await facePed())) console.log("pas de passant à portée");
+      await hold(progress);
+      await sleep(1200);
+      await shot(`j5-coup-${name}`);
+      await release();
+    }
+    // Garde armée au repos.
+    await page.evaluate(() => window.__autun.inventory.select("knife"));
+    await sleep(2500);
+    await shot("j5-garde-couteau");
     await ctx.close();
   }
 

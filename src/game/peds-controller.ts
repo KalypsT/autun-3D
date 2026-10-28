@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { PedSim, type Observer } from "../core/pedestrians";
+import type { Arena } from "../core/melee";
 import { gendarmeRecipe } from "../core/character";
 import { OFFICER, Officers, type Officer } from "../core/officers";
 import type { HeightField } from "../data/types";
@@ -13,7 +14,7 @@ import type { NavManager } from "./nav-manager";
  * Les passants du jeu : la simulation (`PedSim`), son rendu (la foule de l'étape P, un seul appel de dessin) et le réglage « Foule ».
  * Les passants n'existent qu'une fois la navigation chargée autour du joueur ; changer le nombre maximal les refabrique (nouvelle foule).
  */
-export class PedsController {
+export class PedsController implements Arena {
   private sim: PedSim | null = null;
   private crowd: CrowdRenderer | null = null;
   private filled = false;
@@ -72,6 +73,23 @@ export class PedsController {
   /** Fait sortir quelqu'un d'une voiture (J4) : voir `PedSim.eject` ; −1 sans passants ou sans file piétonne proche. */
   eject(x: number, y: number, seed: number, ux: number, uy: number, push: number, fromX: number, fromY: number): number {
     return this.sim?.eject(x, y, seed, ux, uy, push, fromX, fromY) ?? -1;
+  }
+
+  /** Combat du joueur (J5-1) : voir `Arena` ; sans passants rien n'est à portée. */
+  pick(x: number, y: number, heading: number, range: number, halfAngle: number, max: number, out: number[]): number {
+    if (!this.sim) {
+      out.length = 0;
+      return 0;
+    }
+    return this.sim.pick(x, y, heading, range, halfAngle, max, out);
+  }
+
+  position(slot: number, out: { x: number; y: number }): void {
+    this.sim?.position(slot, out);
+  }
+
+  hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
+    return this.sim?.damage(slot, damage, ux, uy, impulse) ?? 0;
   }
 
   setCapacity(n: number): void {

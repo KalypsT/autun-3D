@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
 import { createPose, cycleLength, walkPose, type Pose } from "../core/character-rig";
+import { attackPose, guardPose } from "../core/character-attack";
+import { setPart } from "../core/character-kit";
+import type { AttackStyle } from "../core/weapons";
 import { solveRide, type V3 } from "../core/character-pose";
 import { CharacterBatch } from "./crowd/character-batch";
 import { CrowdRigs } from "./crowd/crowd-common";
@@ -19,6 +22,13 @@ export interface PlayerModel {
   ride(vehicle: VehicleModel, crank: number): void;
   /** Change d'apparence. */
   setRecipe(recipe: Recipe): void;
+  /**
+   * Arme en main (J5) : pièce du kit tenue (null : les poings) et geste ; `style` null : mains nues, bras le long du corps. Le fondu vers la garde
+   * suit tout seul.
+   */
+  setHeld(part: string | null, style: AttackStyle | null): void;
+  /** Coup en cours (progression 0 à 1, moment de la frappe, poing +1 droit ou −1 gauche) ; null hors coup. À pied seulement. */
+  setStrike(strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null): void;
   dispose(): void;
 }
 
@@ -35,10 +45,19 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   const root = { x: 0, y: 0, z: 0, yaw: 0 };
   let phase = 0;
   let lastStride: number | null = null;
+  let held: string | null = null;
+  let heldStyle: AttackStyle | null = null;
+  let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
+  const mask = new Float32Array(3);
+  /** Sur un véhicule : l'arme reste dans la poche. */
+  let mounted = false;
 
   const publish = (): void => {
     batch.clear();
-    batch.push(rigs.render, rigs.colors[0]!, rigs.masks[0]!);
+    // Le masque de pièces de la recette, plus l'arme tenue.
+    mask.set(rigs.masks[0]!);
+    if (held && !mounted) setPart(mask, held, true);
+    batch.push(rigs.render, rigs.colors[0]!, mask);
     batch.flush();
   };
 
@@ -63,7 +82,11 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
         if (metres > 0 && metres < 2) phase = (phase + (metres * Math.PI * 2) / cycleLength(v, d.height)) % (Math.PI * 2);
       }
       lastStride = stride;
+      mounted = false;
       walkPose(pose, phase, v, d);
+      // Arme blanche en main : garde du bras droit ; un coup en cours se joue par-dessus.
+      if (heldStyle && held) guardPose(pose, heldStyle);
+      if (strike) attackPose(pose, strike.style, strike.u, strike.hitAt, strike.side);
       rigs.solveWith(0, pose, root);
       publish();
     },
@@ -71,6 +94,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       const anchors = vehicle.anchors;
       if (!anchors || vehicle.pose === "hidden") return;
       lastStride = null;
+      mounted = true;
       group.position.set(0, 0, 0);
       group.rotation.set(0, 0, 0);
       vehicle.setCrank?.(crank);
@@ -85,6 +109,13 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     setRecipe(next) {
       rigs = new CrowdRigs([next]);
+    },
+    setHeld(part, style) {
+      held = part;
+      heldStyle = style;
+    },
+    setStrike(next) {
+      strike = next;
     },
     dispose() {
       batch.dispose();

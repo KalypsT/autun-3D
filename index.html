@@ -39,6 +39,12 @@
                 border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
       body.game #action.show { display: block; }
       body.game:not(.driving) #action { bottom: 24px; }
+      /* Attaque (J5) : bouton rond à droite, à pied seulement ; à côté du pouce qui regarde, au-dessus du bouton d'action. */
+      #attack { position: fixed; right: 26px; bottom: 96px; width: 88px; height: 88px; z-index: 4; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
+                place-items: center; border-radius: 50%; border: 3px solid rgba(255, 248, 230, .8); background: rgba(217, 71, 43, .62); color: #fff8e6;
+                font: 600 34px system-ui, sans-serif; text-shadow: 0 1px 3px #000; box-shadow: 0 4px 0 rgba(27, 31, 39, .5); }
+      body.game:not(.driving) #attack { display: grid; }
+      #attack.on { background: rgba(217, 71, 43, .95); transform: translateY(3px); box-shadow: 0 1px 0 rgba(27, 31, 39, .5); }
       #nearby { position: fixed; top: 58px; right: 8px; z-index: 3; display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
       body.game:not(.driving) #nearby { display: flex; }
       .chip { display: none; gap: 5px; align-items: center; padding: 5px 10px 5px 8px; border-radius: 16px; background: rgba(0,0,0,.4);
@@ -97,11 +103,18 @@
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
       #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
       #hurt.flash { opacity: 1; transition: none; }
+      /* Arme en main (J5) : pastille sombre cerclée de crème, qu'on touche pour passer à l'arme suivante. */
+      #weapon { pointer-events: auto; }
+      #weapon button { display: flex; align-items: center; gap: 6px; padding: 3px 12px 3px 8px; border-radius: 15px; border: 1.4px solid #fff8e6; background: rgba(27, 31, 39, .6);
+                       color: #fff8e6; font: 600 14px system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+      #weapon .wicon { font-size: 18px; line-height: 1; }
+      #weapon .wammo { opacity: .85; font-variant-numeric: tabular-nums; }
+      #weapon.flash button { animation: wrise .45s ease-out; }
       body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
       body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
-      body.paused #action, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      body.paused #action, body.paused #attack, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
@@ -199,6 +212,7 @@
     <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
     <div id="pedals"><div id="horn" class="pedal">Klaxon</div><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
+    <div id="attack" role="button" aria-label="Frapper">👊</div>
     <button id="action"></button>
     <div id="nearby"></div>
     <div id="hurt"></div>

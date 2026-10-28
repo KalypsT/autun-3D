@@ -35,6 +35,15 @@ const PLAYER_BODY = 0.35;
 export const FLEE_SPEED = 3.8;
 /** Durée de la fuite (s) du conducteur dont on prend la voiture. */
 export const FLEE_TIME = 14;
+/** Points de vie d'un passant (J5, D80). */
+export const PED_HP = 100;
+/** Sous ce niveau le passant est blessé : il s'enfuit plus lentement (il boite). */
+export const WOUNDED_HP = 40;
+/** Fuite (s) d'un passant touché ; blessé, il fuit plus longtemps. */
+export const HURT_FLEE = 8;
+export const WOUNDED_FLEE = 20;
+/** Assommé à 0 point de vie (en attendant la mort, J5-2) : il tombe, se relève avec ces points de vie. */
+export const KO_RECOVER_HP = 30;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
@@ -97,7 +106,7 @@ export interface Observer {
 
 /** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
 export interface PedEvent {
-  kind: "hit" | "stumble" | "bump" | "near_miss" | "startled";
+  kind: "hit" | "stumble" | "bump" | "near_miss" | "startled" | "hurt";
   slot: number;
   x: number;
   y: number;
@@ -207,6 +216,10 @@ export class PedSim {
   /** Fuite (s restantes) : le passant court, effrayé, jusqu'à la fin du compte (conducteur dont on a pris la voiture, J4). */
   private readonly panic: Float32Array;
   private readonly acc: Float32Array;
+  /** Points de vie (J5). */
+  private readonly hp: Float32Array;
+  /** Cap de fuite d'un passant touché (rad), pris quand il se relève ; NaN : aucun. */
+  private readonly fleeDir: Float32Array;
   private readonly rng: Uint32Array;
   private readonly id: Uint32Array;
   private readonly tier: Uint8Array;
@@ -249,7 +262,7 @@ export class PedSim {
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
     this.ox = new Float32Array(n); this.oy = new Float32Array(n); this.mode = new Uint8Array(n); this.timer = new Float32Array(n);
-    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
+    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.hp = new Float32Array(n).fill(PED_HP); this.fleeDir = new Float32Array(n).fill(NaN); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
     this.tier = new Uint8Array(n); this.link = new Int32Array(n).fill(-1);
   }
 
@@ -441,6 +454,8 @@ export class PedSim {
     this.fear[i] = 0;
     this.panic[i] = 0;
     this.acc[i] = 0;
+    this.hp[i] = PED_HP;
+    this.fleeDir[i] = NaN;
     this.x[i] = x;
     this.y[i] = y;
     this.heading[i] = this.dir[i]! > 0 ? this.graph.pointAt(edge, s, this.pt) : this.graph.pointAt(edge, s, this.pt) + Math.PI;
@@ -469,6 +484,7 @@ export class PedSim {
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
     let target = this.want[i]! * (1 + 0.6 * this.fear[i]!);
     if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
+    if (this.hp[i]! < WOUNDED_HP) target *= 0.7;
     if (this.tiers && tier > 0) {
       this.speed[i] = target;
       return;
@@ -796,6 +812,9 @@ export class PedSim {
     this.edge[i] = hit.edge;
     this.gen[i] = g.generation(hit.edge);
     this.s[i] = hit.s;
+    const flee = this.fleeDir[i]!;
+    if (this.panic[i]! > 0 && !Number.isNaN(flee)) this.heading[i] = flee;
+    this.fleeDir[i] = NaN;
     const along = g.pointAt(hit.edge, hit.s, this.pt);
     this.dir[i] = Math.cos(this.heading[i]! - along) >= 0 ? 1 : -1;
     this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
@@ -941,6 +960,58 @@ export class PedSim {
     if (v < 0.05) return;
     this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);
     this.event(v >= 3.5 ? "hit" : "stumble", i, v);
+  }
+
+  /** Points de vie d'un passant (tests, diagnostic). */
+  health(i: number): number {
+    return this.hp[i]!;
+  }
+
+  /**
+   * Passants debout (ni à terre ni qui trébuchent) dans le cône de cap `heading` et de demi-angle `halfAngle`, à moins de `range` de (x, y) mesuré
+   * de centre à centre moins le rayon du corps ; leurs emplacements, du plus proche au plus loin (au plus `max`), dans `out` (vidé d'abord).
+   * Les emplacements réservés (gendarmes) ne sont pas des cibles du joueur ici. Sans allocation.
+   */
+  pick(x: number, y: number, heading: number, range: number, halfAngle: number, max: number, out: number[]): number {
+    out.length = 0;
+    const alive = this.state.alive!, reach = range + BODY;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i] || this.mode[i]! >= PED_STATE.stumble) continue;
+      const dx = this.x[i]! - x, dy = this.y[i]! - y, d = Math.hypot(dx, dy);
+      if (d > reach) continue;
+      // Tout contre le joueur (moins de 0,4 m), l'angle ne veut plus rien dire : il est dans le cône.
+      if (d > 0.4 && Math.abs(angleDiff(Math.atan2(dx, dy), heading)) > halfAngle) continue;
+      // Insertion triée (au plus `max` éléments, très petit).
+      let k = out.length;
+      if (k < max) out.push(i);
+      else if (d >= Math.hypot(this.x[out[k - 1]!]! - x, this.y[out[k - 1]!]! - y)) continue;
+      else k--;
+      while (k > 0 && Math.hypot(this.x[out[k - 1]!]! - x, this.y[out[k - 1]!]! - y) > d) {
+        out[k] = out[k - 1]!;
+        k--;
+      }
+      out[k] = i;
+    }
+    return out.length;
+  }
+
+  /**
+   * Frappe un passant (J5-1, D80) : retire `amount` points de vie, le pousse de `impulse` m/s dans la direction (ux, uy) (trébuche ou tombe, comme
+   * `applyImpulse`), et le fait fuir loin du coup (blessé sous 40 points : plus longtemps, et il boite). À 0 point il est assommé (il tombe, se
+   * relève avec 30 points) : **la mort viendra en J5-2**. Renvoie 0 (rien : emplacement réservé, absent ou déjà à terre), 1 (touché), 2 (assommé).
+   */
+  damage(i: number, amount: number, ux: number, uy: number, impulse: number): number {
+    if (i >= this.free || !this.state.alive![i] || this.mode[i]! >= PED_STATE.stumble || !(amount > 0)) return 0;
+    this.hp[i]! -= amount;
+    const ko = this.hp[i]! <= 0;
+    if (ko) this.hp[i] = KO_RECOVER_HP;
+    const v = Math.max(impulse, ko ? 4 : 0);
+    const len = Math.hypot(ux, uy) || 1;
+    this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ux / len, uy / len, v);
+    this.panic[i] = Math.max(this.panic[i]!, this.hp[i]! < WOUNDED_HP ? WOUNDED_FLEE : HURT_FLEE);
+    this.fleeDir[i] = Math.atan2(ux, uy);
+    this.event("hurt", i, v);
+    return ko ? 2 : 1;
   }
 
   /** Position d'un passant (repère du jeu), pour les tests et les autres systèmes. */
