@@ -419,3 +419,6 @@ Fait :
 **Mesure de J3 sur le téléphone (28 octobre 2026)** (D68)
 - `?bench=1&crowd=100&sim=1&fleet=1&traffic=20` sur l'Honor : 60,2 à 60,4 i/s partout, chargement en retard nul à 50 et 90 km/h, **187 appels de dessin à l'arrêt sur la place (177 sans circulation)**, 1,79 M de triangles, simulation des voitures 0,95 à 1,04 ms par pas pour 17 voitures, mise à jour 0,15 à 0,20 ms par image, 0 klaxon. **Le réglage « Circulation » vaut Normale (20) par défaut.** Reste : nuit, « Dense », endurance.
 
+**Mesures de nuit, « Dense » et endurance de J3 (28 octobre 2026)** (D69)
+- Nuit avec 20 puis 30 voitures et dix minutes d'endurance sur l'Honor : 60,2 à 60,4 i/s partout, pas de fuite de mémoire, mais 195 à 200 appels de dessin en moyenne avec « Dense » la nuit (limite atteinte). Défaut trouvé : des voitures collées l'une à l'autre pendant plus d'une minute (jusqu'à 2 325 pas de contact par minute) : corrigé (D69, tests : 430), à remesurer.
+

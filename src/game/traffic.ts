@@ -192,7 +192,9 @@ export class Traffic {
       // reste (elle ne disparaît pas sous ses yeux), mais pas plus de 20 s.
       const lost = c.sim.driver?.lost ?? false;
       if (lost) c.lostFor += dt;
-      if ((lost || d > rOut + DESPAWN_MARGIN) && (c.lostFor > 20 || !seen(c.sim.state.x, c.sim.state.y))) this.remove(i);
+      // Une voiture collée à une autre retirée par son conducteur disparaît tout de suite (deux voitures qui se chevauchent à l'arrêt choquent plus qu'une disparition).
+      const overlapped = c.sim.driver?.lostWhy === "collée à une autre voiture";
+      if ((lost || d > rOut + DESPAWN_MARGIN) && (c.lostFor > 20 || overlapped || !seen(c.sim.state.x, c.sim.state.y))) this.remove(i);
     }
     // Surnombre (la nuit tombe, le quartier change) : on retire la plus éloignée que le joueur ne voit pas.
     this.trimTimer -= dt;

@@ -113,8 +113,8 @@ describe("conducteur simulé (J3-1)", () => {
     }
     console.log(`citadine : ${(distance / 1000).toFixed(1)} km, ${scraped}/${list.length} trajets avec un choc, pire ${worst.toFixed(1)} m/s, perdus ${JSON.stringify([...lostWhy])}`);
     // Un conducteur ne se perd jamais en quittant la route ni parce que la route disparaît du graphe ; il peut arriver au bout d'une impasse
-    // (le graphe en a 178) ou, rarement, rester bloqué par un obstacle fixe dans une rue de 3 m.
-    expect([...lostWhy.keys()].filter((w) => w !== "au bout de la route" && w !== "bloqué à l'arrêt")).toEqual([]);
+    // (le graphe en a 178) ou, rarement, rester bloqué par un obstacle fixe dans une rue de 3 m (retiré au bout de 8 s, ou de 50 s d'immobilité en dernier recours, D69).
+    expect([...lostWhy.keys()].filter((w) => w !== "au bout de la route" && w !== "bloqué à l'arrêt" && w !== "immobile depuis trop longtemps")).toEqual([]);
     expect(lostWhy.get("bloqué à l'arrêt") ?? 0).toBeLessThanOrEqual(Math.ceil(list.length * 0.2));
     expect(scraped).toBeLessThanOrEqual(Math.ceil(list.length * 0.45));
     expect(worst).toBeLessThan(4);

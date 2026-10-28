@@ -394,6 +394,7 @@ const A_EMERGENCY = 8;
 /** Temps (s) d'immobilité après lequel un conducteur qui attend est retiré (interblocage), et un conducteur sans raison d'attendre. */
 const WAIT_LIMIT = 60;
 /** Le joueur bloque la route depuis ce temps (s) : on klaxonne, puis toutes les HONK_EVERY secondes au plus. */
+const STILL_LIMIT = 50;
 const HONK_AFTER = 3;
 const HONK_EVERY = 5;
 
@@ -408,7 +409,7 @@ function rng(seed: number): () => number {
   };
 }
 
-const ahead = { gap: Infinity, v: 0, oncoming: false, player: false };
+const ahead = { gap: Infinity, v: 0, oncoming: false, player: false, id: -1 };
 
 export class Driver {
   /** Route suivie : sens de parcours du graphe routier ; le premier est celui où l'on roule. */
@@ -552,6 +553,25 @@ export class Driver {
   }
 
   private honkPending = false;
+  /**
+   * Deux voitures qui se chevauchent au milieu d'un carrefour se prennent chacune pour le « devant » de l'autre et ne repartent plus (mesuré sur le téléphone :
+   * plus d'une minute de chevauchement, D69). Après 3 s d'immobilité collées à une voiture, celle de plus petit identifiant ignore l'autre pendant 4 s : la physique
+   * des chocs les sépare.
+   */
+  private leaderWait = 0;
+  private stillFor = 0;
+  /** Depuis combien de secondes (cumulées, retombant lentement) cette voiture touche l'autre dont l'identifiant est `touchId` ; voir `touch`. */
+  private touchFor = 0;
+  private touchId = -1;
+  private touchedNow = false;
+
+  /** `TrafficSim` signale qu'elle touche la voiture `otherId` à ce pas. */
+  touch(otherId: number): void {
+    this.touchedNow = true;
+    this.touchId = otherId;
+  }
+  private ignoreId = -1;
+  private ignoreFor = 0;
 
   /** Un klaxon derrière lui : il se presse pendant trois secondes (10 % de vitesse en plus, sans jamais sacrifier la distance de sécurité). */
   hurryUp(): void {
@@ -685,7 +705,7 @@ export class Driver {
   }
 
   /** Usager le plus proche devant, sur la route : écart (m) entre les pare-chocs et vitesse (m/s) dans le sens de la marche ; null si rien. */
-  private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean; player: boolean }): boolean {
+  private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean; player: boolean; id: number }): boolean {
     const own = extentOf(this.spec);
     const reach = Math.min(path.n - 1, this.index + Math.ceil(Math.min(LOOK_AHEAD_MAX, 30 + u * 4) / DS));
     const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
@@ -693,7 +713,7 @@ export class Driver {
     out.gap = Infinity;
     for (const o of others) {
       const ox = o.state.x - s.x, oy = o.state.y - s.y;
-      if (o.state === s || Math.abs(ox) > LOOK_AHEAD_MAX + 8 || Math.abs(oy) > LOOK_AHEAD_MAX + 8) continue;
+      if (o.state === s || (this.ignoreFor > 0 && o.junction?.id === this.ignoreId) || Math.abs(ox) > LOOK_AHEAD_MAX + 8 || Math.abs(oy) > LOOK_AHEAD_MAX + 8) continue;
       // Derrière nous : sans intérêt.
       if (ox * fx + oy * fy < -own.halfLen * 0.5) continue;
       let bj = -1, bd = Infinity;
@@ -721,6 +741,7 @@ export class Driver {
         // En face : il vient vers nous (un usager arrêté, même tourné vers nous, est un obstacle comme un autre).
         out.oncoming = !o.walker && !o.player && Math.cos(rel) < -0.5 && out.v < -1;
         out.player = o.player === true;
+        out.id = o.junction?.id ?? -1;
         found = true;
       }
     }
@@ -731,6 +752,8 @@ export class Driver {
     const spec = this.spec;
     this.honking = this.honkPending;
     this.honkPending = false;
+    this.touchFor = this.touchedNow ? this.touchFor + dt : Math.max(0, this.touchFor - 0.5 * dt);
+    this.touchedNow = false;
     const idle: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: 1 };
     if (this.lost) return idle;
     if (!this.path) {
@@ -820,6 +843,7 @@ export class Driver {
     // Autres usagers devant : suivi à distance de sécurité (IDM), prudence face à une voiture qui vient en face.
     this.waiting = false;
     this.honkCool -= dt;
+    if (this.ignoreFor > 0) this.ignoreFor -= dt;
     this.gap = Infinity;
     const line = this.assessJunction(u, dt, path, others);
     if (line < Infinity) {
@@ -833,7 +857,16 @@ export class Driver {
       }
       this.gap = Math.min(this.gap, line);
     }
-    if (others.length > 0 && this.nearestAhead(s, path, u, others, ahead)) {
+    const found = others.length > 0 && this.nearestAhead(s, path, u, others, ahead);
+    // Collée à une voiture, à l'arrêt : le compte monte et ne retombe que lentement (le chevauchement fait osciller « devant » et « pas devant »).
+    const stuckTogether = found && ahead.id >= 0 && ahead.gap < 1 && u < 0.3;
+    this.leaderWait = stuckTogether ? this.leaderWait + dt : Math.max(0, this.leaderWait - 0.5 * dt);
+    if (stuckTogether && this.leaderWait > 3 && ahead.id > this.junction.id) {
+      this.ignoreId = ahead.id;
+      this.ignoreFor = 4;
+      this.leaderWait = 0;
+    }
+    if (found) {
       this.gap = ahead.gap;
       // Le joueur fonce sur nous : freinage assez fort pour annuler la vitesse de rapprochement avant le contact, sans attendre que l'IDM s'y mette.
       if (ahead.player && u - ahead.v > 3) {
@@ -859,6 +892,7 @@ export class Driver {
           aDes = Math.max(idm, -A_EMERGENCY);
           this.waiting = lead < 0.5 && u < 1.5;
           this.waitWhy = ahead.player ? "joueur devant" : "voiture devant";
+
           // Le joueur nous bloque ou nous surprend : coup de klaxon (toutes les 5 s au plus).
           if (ahead.player) {
             this.playerWait = u < 1 ? this.playerWait + dt : 0;
@@ -885,6 +919,18 @@ export class Driver {
     if (this.stuckFor > STUCK_TIME) {
       this.lost = true;
       this.lostWhy = "bloqué à l'arrêt";
+    }
+    // Immobile depuis longtemps, quelle qu'en soit la raison (même une attente qui oscille entre deux raisons) : 50 s, plus que le plus long feu rouge (38 s).
+    this.stillFor = Math.abs(s.speed) < 0.6 ? this.stillFor + dt : Math.max(0, this.stillFor - dt);
+    // Deux voitures collées l'une à l'autre, à l'arrêt, que ni le suivi ni les règles ne séparent (l'une bloque physiquement l'autre) : celle de plus petit
+    // identifiant est retirée au bout de 5 s de contact (D69). L'autre repart.
+    if (this.touchFor > 5 && this.stillFor > 4 && this.touchId > this.junction.id) {
+      this.lost = true;
+      this.lostWhy = "collée à une autre voiture";
+    }
+    if (this.stillFor > STILL_LIMIT) {
+      this.lost = true;
+      this.lostWhy = "immobile depuis trop longtemps";
     }
     // Arrivé au bout d'une route sans suite : il attend un moment puis disparaît (l'appelant le retire).
     this.idleFor = this.ended && Math.abs(s.speed) < 0.3 && path.n - this.index < 8 ? this.idleFor + dt : 0;

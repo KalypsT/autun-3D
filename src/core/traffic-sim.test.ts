@@ -333,4 +333,3 @@ describe("interactions avec le joueur (J3-6)", () => {
     expect(noisy.behind).toBeLessThan(noisy.ahead);
   });
 });
-

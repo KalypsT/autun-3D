@@ -6,6 +6,7 @@ import { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
 import { buildColliders } from "../core/world";
 import { NavManager } from "./nav-manager";
+import { PedSim, type Observer } from "../core/pedestrians";
 import { Traffic, type TrafficEnv } from "./traffic";
 import { visibleFrom } from "../core/traffic-spawn";
 
@@ -118,5 +119,30 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(traffic.models.instances).toBe(n - 1);
     traffic.dispose();
   });
+
+  it("la nuit, 30 voitures et 100 passants à l'arrêt sur la place pendant 9 minutes : pas d'interblocage de voitures collées (D69, mesuré sur le téléphone : jusqu'à 2 325 pas de contact par minute)", () => {
+    const { traffic, nav } = make(30);
+    const peds = new PedSim(nav.graph, world.terrain, colliders, { capacity: 100, seed: 7 });
+    peds.signals = new Signals(nav.graph.road, { t: 0 });
+    traffic.setPeds(peds);
+    const base: Observer = { x: -10, y: -40, vx: 0, vy: 0, yaw: 0, onFoot: true, vehicle: null, hour: 22 };
+    peds.prefill(base);
+    let perMinute = 0, worstMinute = 0;
+    for (let k = 1; k <= 60 * 60 * 9; k++) {
+      traffic.step(DT, { kind: "foot", x: -10, y: -40, vx: 0, vy: 0 });
+      traffic.update(DT, env({ x: -10, y: -40, hour: 22 }));
+      peds.step(DT, { ...base, vehicles: traffic.bodies(), honks: traffic.takeHonks() });
+      traffic.applyImpacts();
+      if (traffic.stats.contacts > 0) perMinute++;
+      if (k % 3600 === 0) {
+        worstMinute = Math.max(worstMinute, perMinute);
+        perMinute = 0;
+      }
+    }
+    expect(traffic.cars.length).toBeGreaterThan(8);
+    // Les premiers instants (naissances qui se croisent) comptent : le plafond est bien en dessous des 1 000 à 2 300 pas par minute mesurés avant la correction.
+    expect(worstMinute).toBeLessThan(700);
+    traffic.dispose();
+  }, 120000);
 });
 

@@ -171,6 +171,8 @@ export class TrafficSim {
         if (contactVehicles(a, b, this.hit)) {
           this.stats.contacts++;
           this.stats.worstImpact = Math.max(this.stats.worstImpact, a.state.impact, b.state.impact);
+          a.driver?.touch(b.id);
+          b.driver?.touch(a.id);
         }
       }
       this.hit.impact = 0;
