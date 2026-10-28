@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -106,6 +106,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.waitForFunction(() => document.getElementById("busted").classList.contains("show"), null, { timeout: 1800000, polling: 500 });
     await frames(2);
     await shot("j4-arrete");
+    await ctx.close();
+  }
+
+  if (want("health")) {
+    // Santé (J5-0) : 35 points de vie, puis 15 (jauge rouge) ; mort : bandeau, reprise à l'hôpital, jauge pleine donc cachée.
+    const ctx = await open("hurt=35&h=15");
+    await page.addStyleTag({ content: "#health .hicon { animation: none !important; } #busted.show { animation: none !important; } #hurt { transition: none !important; }" });
+    await sleep(1500);
+    await shot("j5-sante-35");
+    await page.evaluate(() => window.__autun.health.set(15));
+    await sleep(600);
+    await shot("j5-sante-15");
+    await page.evaluate(() => window.__autun.health.damage(1000));
+    await frames(3);
+    await shot("j5-mort");
+    const state = await page.evaluate(() => ({ x: window.__autun.player.x, y: window.__autun.player.y, hp: window.__autun.health.hp }));
+    console.log("après la mort :", JSON.stringify(state));
     await ctx.close();
   }
 

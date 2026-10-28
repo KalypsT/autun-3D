@@ -105,6 +105,8 @@ export class Officers {
    * `carAt(id)` : position de la voiture d'un gendarme (null si elle n'existe plus : il disparaît en l'atteignant… ou tout de suite).
    */
   step(dt: number, p: Suspect, carAt: (id: number) => { x: number; y: number } | null): void {
+    // Un pas négatif ou nul ne fait rien (il aurait fait grimper la progression de l'arrestation, même sans gendarme).
+    if (!(dt > 0)) return;
     const veh = p.vehicle;
     const vspeed = veh ? Math.hypot(veh.state.vx, veh.state.vy) : Math.hypot(p.vx, p.vy);
     let touching = false;

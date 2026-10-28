@@ -14,6 +14,8 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
+import { DEATH_HOURS, Health, HOSPITAL_SPAWN } from "../core/health";
+import { HealthHud } from "../ui/health-hud";
 import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
@@ -239,6 +241,10 @@ export function startGame(ctx: GameContext): void {
   const wantedHud = new WantedHud(document.getElementById("wanted")!);
   const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic);
   police.minPursuers = chaseParam;
+  // Santé (J5-0, D80) : reprise de la sauvegarde ; `?hurt=N` impose N points de vie (0 : mort au départ, essais et captures).
+  const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
+  const healthHud = new HealthHud(document.getElementById("health")!);
+  const hurtEl = document.getElementById("hurt")!;
   const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
@@ -370,7 +376,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null,
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, health: health.hp,
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -384,6 +390,14 @@ export function startGame(ctx: GameContext): void {
 
   // Arrestation (J4-5, D75) : le véhicule conduit est confisqué, on repart à pied au bord est de l'anneau, six heures plus tard, sans étoile.
   const busted = document.getElementById("busted")!;
+  const banner = (title: string, sub: string, dead: boolean): void => {
+    busted.querySelector(".b-title")!.textContent = title;
+    busted.querySelector(".b-sub")!.textContent = sub;
+    busted.classList.toggle("dead", dead);
+    busted.classList.remove("show");
+    void busted.offsetWidth;
+    busted.classList.add("show");
+  };
   const arrest = (): void => {
     const taken = riding;
     if (taken) {
@@ -395,11 +409,21 @@ export function startGame(ctx: GameContext): void {
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     yaw = ARREST_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
-    busted.querySelector(".b-title")!.textContent = appearance.sex === "f" ? "Arrêtée" : "Arrêté";
-    busted.querySelector(".b-sub")!.textContent = `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`;
-    busted.classList.remove("show");
-    void busted.offsetWidth;
-    busted.classList.add("show");
+    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`, false);
+    controls.reset();
+    ui.save();
+  };
+
+  // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital trois heures plus tard, santé pleine, sans étoile.
+  const die = (): void => {
+    if (riding) dismount();
+    police.reset();
+    const r = colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, PLAYER_RADIUS);
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: HOSPITAL_SPAWN.heading });
+    yaw = HOSPITAL_SPAWN.heading;
+    if (atmosphere.speed > 0) atmosphere.advance(DEATH_HOURS / atmosphere.speed);
+    health.restore();
+    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital, ${DEATH_HOURS} heures plus tard.`, true);
     controls.reset();
     ui.save();
   };
@@ -411,7 +435,8 @@ export function startGame(ctx: GameContext): void {
   let acc = 0;
   let pausedRender = 0;
   const frame = (now: number): void => {
-    const dt = Math.min((now - last) / 1000, 0.1);
+    // Jamais négatif : l'horodatage de la première image peut précéder `last` (initialisation longue) ; un pas négatif faisait grimper la progression de l'arrestation sans gendarme (trouvé en J5-0).
+    const dt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     const input = controls.poll();
     if (ui.paused) {
@@ -549,6 +574,14 @@ export function startGame(ctx: GameContext): void {
     // Gendarmes à pied : dessinés par la foule (emplacements réservés, aucun appel de dessin de plus) ; la foule est créée au besoin.
     if (police.officers.list.length > 0 || peds) needPeds().setOfficers(police.officers.list, dt);
     if (police.takeArrest()) arrest();
+    health.update(dt);
+    if (health.takeDeath()) die();
+    if (health.takeHurt() > 0) {
+      hurtEl.classList.add("flash");
+      void hurtEl.offsetWidth;
+      hurtEl.classList.remove("flash");
+    }
+    healthHud.set(health.hp);
     wantedHud.set(wanted);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
@@ -562,7 +595,7 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted,
+    player, colliders, fleet, marks, ui, wanted, health,
     traffic: () => traffic as Traffic | null,
     police,
     /** Captures : tourner la caméra (rad, 0 = nord). */

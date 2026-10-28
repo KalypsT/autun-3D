@@ -25,6 +25,13 @@ describe("gendarmes à pied (J4-5)", () => {
     expect(t).toBeLessThan(8);
   });
 
+  it("un pas de temps négatif ne fait pas monter l'arrestation (sans gendarme non plus)", () => {
+    const o = new Officers(null);
+    o.step(-3, onFoot(0, 0), noCar);
+    expect(o.progress).toBe(0);
+    expect(o.arrested).toBe(false);
+  });
+
   it("ne rattrapent pas un joueur qui court (5 m/s contre 4,7)", () => {
     const o = new Officers(null);
     o.spawn(-3, 0, 0, 1, 42);

@@ -82,14 +82,30 @@
       @keyframes wlost { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
       #wanted.rise .wstar.full { animation: wrise .5s ease-out 2; }
       @keyframes wrise { 0% { transform: scale(1.45); } 100% { transform: scale(1); } }
+      /* Santé (J5) : disque sombre cerclé de crème avec un cœur, barre crème qui se vide ; cachée à santé pleine, rouge brique et pulsante sous 30 %. */
+      #health { display: none; gap: 6px; }
+      #health.on { display: flex; }
+      #health .hicon { width: 30px; height: 30px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+      #health .hicon svg { width: 100%; height: 100%; display: block; }
+      #health .hicon circle { fill: rgba(27, 31, 39, .6); stroke: #fff8e6; stroke-width: 1.4; }
+      #health .hicon path { fill: #fff8e6; }
+      #health.low .hicon circle { fill: #d9472b; }
+      #health .hbar { width: 84px; height: 12px; border-radius: 6px; background: rgba(27, 31, 39, .6); box-shadow: inset 0 0 0 1.4px #fff8e6; overflow: hidden; }
+      #health .hfill { display: block; height: 100%; width: 100%; background: #fff8e6; }
+      #health.low .hfill { background: #d9472b; }
+      #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
+      /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
+      #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
+      #hurt.flash { opacity: 1; transition: none; }
       body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
       body.paused #action, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
-      /* Arrestation (J4) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
+      /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
+      #busted.dead { background: rgba(27, 31, 39, .94); }
       #busted.show { display: flex; animation: busted 5s ease-in both; }
       #busted .b-title { font: 900 44px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
       #busted .b-sub { font: 600 15px system-ui, sans-serif; opacity: .95; }
@@ -185,6 +201,7 @@
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <button id="action"></button>
     <div id="nearby"></div>
+    <div id="hurt"></div>
     <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>

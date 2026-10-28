@@ -11,7 +11,7 @@ export function gameSpawn(params: URLSearchParams): { x: number; y: number; yaw:
 }
 
 /** Paramètres d'URL qui servent aux tests et aux captures : ils imposent la situation de départ et coupent la sauvegarde. */
-const FORCING_PARAMS = ["at", "yaw", "ride", "h", "day", "speed", "style"];
+const FORCING_PARAMS = ["at", "yaw", "ride", "h", "day", "speed", "style", "hurt"];
 
 export interface StartState {
   x: number;

@@ -3,7 +3,7 @@ import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, t
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
-  version: 2,
+  version: 3,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
@@ -14,6 +14,7 @@ const sample = (): SaveGame => ({
   ],
   clock: { hour: 17.25, day: 200 },
   waypoint: { x: 400, y: -300 },
+  health: 72,
 });
 
 const fakeStorage = (initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } => {
@@ -31,11 +32,21 @@ describe("sauvegarde", () => {
     expect(parseSave("")).toBeNull();
     expect(parseSave("{pas du json")).toBeNull();
     expect(parseSave("[1,2]")).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), version: 3 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 4 }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), version: undefined }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: "1", y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: 1e9, y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: null, day: 3 } }))).toBeNull();
+  });
+
+  it("santé (version 3) : bornée à 1..100 ; absente (versions 1 et 2) : pleine", () => {
+    expect(parseSave(JSON.stringify({ ...sample(), health: 0 }))!.health).toBe(1);
+    expect(parseSave(JSON.stringify({ ...sample(), health: 5000 }))!.health).toBe(100);
+    expect(parseSave(JSON.stringify({ ...sample(), health: "x" }))!.health).toBe(100);
+    const old: Partial<SaveGame> = sample();
+    delete old.health;
+    expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.health).toBe(100);
+    expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.version).toBe(SAVE_VERSION);
   });
 
   it("migre une sauvegarde de version 1 : chaque type devient son modèle d'alors, le reste est conservé", () => {

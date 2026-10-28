@@ -1,3 +1,4 @@
+import { MAX_HEALTH } from "../core/health";
 import { addDays, SAVE_VERSION, type SaveGame, type SaveStore } from "../core/save";
 import type { Recipe } from "../core/character";
 import { AppearancePreview } from "../render/appearance-preview";
@@ -23,6 +24,8 @@ export interface GameState {
   yaw: number;
   pitch: number;
   ridingId: string | null;
+  /** Points de vie du joueur. */
+  health: number;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -240,6 +243,7 @@ export class UiBridge {
       vehicles: this.fleet.savedVehicles(),
       clock: { hour: atmosphere.hour, day: addDays(atmosphere.day, 0) },
       waypoint: this.waypoint,
+      health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
     };
   }
 
