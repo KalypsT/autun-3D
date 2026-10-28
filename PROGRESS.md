@@ -478,3 +478,6 @@ Fait :
 **Mesure de J5 sur le téléphone (28 octobre 2026)** (D87)
 - Build `fa120e5`, 22 h, `crowd=100&sim=1&fleet=1&police=1&combat=1`, trois rapports (30 voitures, 20 voitures, 30 voitures avec `soak=10`) : **60 i/s partout, dix minutes d'endurance sans perte** (aucune image de plus de 33 ms en une minute), **199,4 appels de dessin en moyenne pendant l'endurance (pic 204, D78 : 201,6)**, tireur et effets 0,04 à 0,09 ms par image, police armée 0,06 à 0,14 ms, mémoire stable (pas de fuite). Un joueur immobile à cinq étoiles meurt en 4 à 5 s (réglage à juger en jouant). Contacts entre voitures à 50 km/h : 15 à 51 % des pas (D79 visait moins de 10 %), mais cinq étoiles et six poursuivants au lieu de trois : **à remesurer sans `&combat=1`**.
 
+**Remesure des contacts de la police sur le téléphone (28 octobre 2026)** (D88)
+- Build `fa120e5`, `traffic=30&police=1` à trois étoiles, sans `&combat=1` : **contacts 9,0 % des pas à 50 km/h, 2,8 % à 90 km/h** (D79 avant correction : 48 % et 4 %) : **l'objectif de D79 est atteint**. Les 15 à 51 % de D87 venaient des cinq étoiles (six poursuivants, gendarmes à pied). Le combat n'ajoute rien de mesurable au dessin (193, 194, 195 appels à l'arrêt avec ou sans). J5 est mesuré et validé.
+
