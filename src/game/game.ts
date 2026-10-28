@@ -14,7 +14,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
-import { PoliceController } from "./police";
+import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
@@ -162,6 +162,15 @@ export function startGame(ctx: GameContext): void {
     const pg = params.has("pigeons") ? Math.max(0, Math.min(60, Math.round(Number(params.get("pigeons")) || 0))) : pigeonCapacity(capacity);
     if (!pigeons) pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
     else pigeons.setCapacity(pg);
+  };
+  /** La foule, même vide (« Foule : Aucune ») : les gendarmes à pied y sont dessinés (J4-5). */
+  const needPeds = (): PedsController => {
+    if (!peds) {
+      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7);
+      peds.setSignals(signals);
+      peds.setShadows(ctx.settings!.values.shadows !== 0);
+    }
+    return peds;
   };
   const startSignals = (): Signals => {
     startNav();
@@ -373,6 +382,28 @@ export function startGame(ctx: GameContext): void {
 
   ui.police = police.minimap;
 
+  // Arrestation (J4-5, D75) : le véhicule conduit est confisqué, on repart à pied au bord est de l'anneau, six heures plus tard, sans étoile.
+  const busted = document.getElementById("busted")!;
+  const arrest = (): void => {
+    const taken = riding;
+    if (taken) {
+      dismount();
+      fleet.remove(taken);
+    }
+    police.reset();
+    const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
+    yaw = ARREST_SPAWN.heading;
+    if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
+    busted.querySelector(".b-title")!.textContent = appearance.sex === "f" ? "Arrêtée" : "Arrêté";
+    busted.querySelector(".b-sub")!.textContent = `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`;
+    busted.classList.remove("show");
+    void busted.offsetWidth;
+    busted.classList.add("show");
+    controls.reset();
+    ui.save();
+  };
+
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
   let bumpTimer = 0;
@@ -507,6 +538,7 @@ export function startGame(ctx: GameContext): void {
       const s = riding?.state;
       police.update(dt, {
         x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
         pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0,
         witnesses: (x, y, r) => {
           pedWitnesses.length = 0;
@@ -514,6 +546,9 @@ export function startGame(ctx: GameContext): void {
         },
       });
     }
+    // Gendarmes à pied : dessinés par la foule (emplacements réservés, aucun appel de dessin de plus) ; la foule est créée au besoin.
+    if (police.officers.list.length > 0 || peds) needPeds().setOfficers(police.officers.list, dt);
+    if (police.takeArrest()) arrest();
     wantedHud.set(wanted);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);

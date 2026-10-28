@@ -437,3 +437,6 @@ Fait :
 
 **J4-4 (28 octobre 2026) : détection et renforts** (D74)
 - La police voit (patrouilles devant elles, poursuivants tout autour, murs qui cachent), constate les infractions (vol, passant renversé, voiture de police percutée, excès de vitesse et feu rouge sous ses yeux, refus de s'arrêter), envoie 1, 2 puis 4 voitures, fouille la zone de recherche quand elle a perdu la piste ; police et zone sur la minimap.
+
+**J4-5 (28 octobre 2026) : gendarmes à pied, arrestation, reprise** (D75)
+- Les gendarmes descendent d'une voiture arrêtée près du joueur, courent vers lui (4,7 m/s, le joueur court à 5), l'arrêtent au contact (à pied 1,5 s, au volant à l'arrêt 2 s) ; renversés par une voiture, ils tombent et se relèvent (+1 étoile). Dessinés dans la foule des passants (aucun appel de dessin de plus). Arrestation : bandeau « Arrêté », véhicule confisqué, reprise à pied au bord est de l'anneau six heures plus tard. Tests : 471.

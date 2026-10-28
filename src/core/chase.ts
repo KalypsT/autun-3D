@@ -40,6 +40,8 @@ const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class Chaser {
   mode: ChaseMode = "road";
+  /** L'équipage est descendu (J4-5) : la voiture reste garée, frein à main, jusqu'à son retour. */
+  parked = false;
   /** Distance au fugitif (m) au dernier pas. */
   distance = Infinity;
   /** Itinéraires calculés (diagnostic) et recherches échouées. */
@@ -71,6 +73,11 @@ export class Chaser {
     const dx = target.x - s.x, dy = target.y - s.y, d = Math.hypot(dx, dy);
     this.distance = d;
     const u = s.speed;
+    if (this.parked) {
+      this.mode = "hold";
+      this.stuck = 0;
+      return { throttle: 0, brake: Math.abs(u) > 0.3 ? 1 : 0, steer: 0, handbrake: Math.abs(u) <= 0.3 ? 1 : 0 };
+    }
     // En train de reculer pour se dégager.
     if (this.reverseFor > 0) {
       this.reverseFor -= dt;

@@ -414,6 +414,8 @@ const HONK_EVERY = 5;
 /** Se ranger devant une sirène : décalage à droite (m) et vitesse au plus (m/s). */
 const YIELD_SHIFT = 1;
 const YIELD_SPEED = 2;
+/** Chaussée (m) en dessous de laquelle on ne se range pas : une voiture de police ne pourrait pas passer. */
+const YIELD_WIDTH = 6;
 
 /** Petit générateur pseudo-aléatoire reproductible (mulberry32). */
 function rng(seed: number): () => number {
@@ -610,6 +612,8 @@ export class Driver {
 
   /** Une voiture de police toutes sirènes dehors arrive derrière : on se range à droite et on ralentit pendant `t` s. */
   yieldTo(t: number): void {
+    // Dans une rue trop étroite pour être doublé, se ranger ne libère rien et ralentirait la poursuite : on continue.
+    if (this.path && this.road.edgeWidth(moveEdge(this.currentMove)) < YIELD_WIDTH) return;
     this.yielding = Math.max(this.yielding, t);
   }
 

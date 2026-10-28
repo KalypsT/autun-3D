@@ -260,6 +260,18 @@ function index(max: number, v: unknown, fallback: number): number {
   return finite(v) && Number.isInteger(v) && v >= 0 && v < max ? v : fallback;
 }
 
+/**
+ * Gendarme (J4, D75) : la tenue de service bleu nuit (veste et pantalon bleu marine, casquette, chaussures noires), sans sac, sans écharpe,
+ * sans lunettes de soleil ; corps, visage et coiffure viennent de la graine. Aucune pièce nouvelle : les pièces du tirage, aux couleurs de l'uniforme.
+ */
+export function gendarmeRecipe(seed: number): Recipe {
+  const r = recipeFromSeed(seed);
+  return {
+    ...r, age: "adult", top: "jacket", topColor: 1, bottom: "trousers", bottomColor: 3, shoes: "boots", shoeColor: 1, hat: "cap", hatColor: 1,
+    glasses: r.glasses === "sun" ? "none" : r.glasses, bag: "none", scarf: false, outfit: "work",
+  };
+}
+
 export function serializeRecipe(r: Recipe): string {
   return JSON.stringify({ version: RECIPE_VERSION, ...r });
 }

@@ -87,6 +87,13 @@
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
       body.paused #minimap, body.paused #clock, body.paused #status, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
       body.paused #action, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      /* Arrestation (J4) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
+      #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
+                background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
+      #busted.show { display: flex; animation: busted 5s ease-in both; }
+      #busted .b-title { font: 900 44px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+      #busted .b-sub { font: 600 15px system-ui, sans-serif; opacity: .95; }
+      @keyframes busted { 0% { opacity: 0; transform: scaleY(.2); } 8%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
       /* Menu pause */
       #pause { position: fixed; inset: 0; z-index: 20; display: flex; background: rgba(20, 17, 14, .9); color: #fff8e6; font: 15px system-ui, sans-serif;
                padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); gap: 14px; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
@@ -178,6 +185,7 @@
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <button id="action"></button>
     <div id="nearby"></div>
+    <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
     <div id="debug"></div>
     <div id="loading">Chargement d'Autun…</div>
     <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®) · three.js</div>

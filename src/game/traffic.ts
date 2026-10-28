@@ -216,6 +216,22 @@ export class Traffic {
 
   private ram = 0;
 
+  /** Voitures de police : identifiant de simulation, position, cap, vitesse, en poursuite ou non. */
+  forEachPolice(visit: (id: number, x: number, y: number, heading: number, speed: number, chasing: boolean) => void): void {
+    for (const c of this.cars) if (c.police) visit(c.sim.id, c.sim.state.x, c.sim.state.y, c.sim.state.heading, Math.hypot(c.sim.state.vx, c.sim.state.vy), c.sim.chase !== null);
+  }
+
+  /** Position de la voiture de police `id`, ou null si elle n'existe plus. */
+  policeCar(id: number): { x: number; y: number } | null {
+    for (const c of this.cars) if (c.sim.id === id) return c.sim.state;
+    return null;
+  }
+
+  /** L'équipage de la voiture `id` est descendu (elle reste garée) ou remonté. */
+  park(id: number, on: boolean): void {
+    for (const c of this.cars) if (c.sim.id === id && c.sim.chase) c.sim.chase.parked = on;
+  }
+
   /** Pire choc (m/s) entre le véhicule du joueur et une voiture de police depuis le dernier appel. */
   takeRam(): number {
     const r = this.ram;

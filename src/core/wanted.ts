@@ -3,7 +3,7 @@
  * l'infraction et selon qui l'a vue, et redescend quand la police perd la piste.
  *
  * Analogie : un chien de piste. Tant qu'un policier te voit, il a l'odeur fraîche (« dernière position connue ») ; dès qu'il te perd, il fouille un
- * cercle autour de cet endroit (la zone de recherche). Hors du cercle et hors de vue, la piste refroidit vite ; dans le cercle, lentement.
+ * cercle autour de cet endroit (la zone de recherche). Hors du cercle et hors de vue, la piste refroidit vite ; dans le cercle, quatre fois moins vite.
  * Au bout du délai propre au niveau, il lâche une étoile, et la fouille recommence autour du même point pour le niveau d'en dessous.
  *
  * Témoins : un policier qui voit l'infraction la compte tout de suite ; un passant (ou le conducteur dont on prend la voiture) téléphone :
@@ -63,7 +63,7 @@ export const SEARCH_RADIUS = [0, 80, 120, 160] as const;
 /** Temps hors de vue (s) pour perdre une étoile, par niveau. */
 export const ESCAPE_TIME = [0, 15, 25, 40] as const;
 /** Dans la zone de recherche, la piste refroidit à cette fraction de la vitesse normale. */
-export const INSIDE_RATE = 1 / 3;
+export const INSIDE_RATE = 1 / 4;
 
 /** Ce que l'interface et les autres systèmes lisent (aucune allocation par image). */
 export interface WantedView {

@@ -5,7 +5,7 @@ import { Signals } from "../core/signals";
 import { buildColliders } from "../core/world";
 import { Wanted } from "../core/wanted";
 import { NavManager } from "./nav-manager";
-import { PoliceController, type PolicePlayer } from "./police";
+import { ARREST_SPAWN, PoliceController, type PolicePlayer } from "./police";
 import { Traffic } from "./traffic";
 
 const world = loadRealWorld();
@@ -23,7 +23,7 @@ function setup(capacity: number): { traffic: Traffic; police: PoliceController; 
   return { traffic, police, wanted };
 }
 
-const foot = (x: number, y: number): PolicePlayer => ({ x, y, vx: 0, vy: 0, heading: 0, speed: 0, driving: false, pedHits: 0, pedHitSpeed: 0, witnesses: () => 0 });
+const foot = (x: number, y: number): PolicePlayer => ({ x, y, vx: 0, vy: 0, heading: 0, speed: 0, driving: false, vehicle: null, pedHits: 0, pedHitSpeed: 0, witnesses: () => 0 });
 
 function run(traffic: Traffic, police: PoliceController, seconds: number, p: PolicePlayer, each?: () => void): void {
   for (let k = 0; k < seconds * 60; k++) {
@@ -82,6 +82,36 @@ describe("police dans le jeu (J4-4)", () => {
     const p = { ...foot(-10, -40), driving: true, pedHits: 1, pedHitSpeed: 8 };
     police.update(DT, p);
     expect(wanted.stars).toBe(2);
+    traffic.dispose();
+  }, 120000);
+
+  it("arrestation (J4-5) : à pied, immobile, une étoile : la voiture arrive, l'équipage descend, le joueur est arrêté ; la reprise est sur un trottoir de la zone", () => {
+    const { traffic, police, wanted } = setup(10);
+    const here = foot(-10, -40);
+    wanted.set(1, here.x, here.y);
+    let arrested = -1, deployed = 0;
+    for (let k = 0; k < 60 * 150 && arrested < 0; k++) {
+      traffic.step(DT, { kind: "foot", x: here.x, y: here.y, vx: 0, vy: 0 });
+      traffic.update(DT, { x: here.x, y: here.y, yaw: 0, speed: 0, hour: 15, vehicle: null });
+      police.update(DT, here);
+      deployed = Math.max(deployed, police.officers.list.length);
+      if (police.takeArrest()) arrested = k / 60;
+    }
+    expect(deployed).toBe(1);
+    expect(arrested).toBeGreaterThan(0);
+    // Après la peine : plus d'étoile, plus de gendarme dehors, les voitures repartent.
+    police.reset();
+    expect(wanted.stars).toBe(0);
+    expect(police.officers.list).toHaveLength(0);
+    const nav = new NavManager();
+    for (const c of cells) nav.graph.add(c);
+    const hit = nav.graph.nearest(ARREST_SPAWN.x, ARREST_SPAWN.y, 1);
+    expect(hit).not.toBeNull();
+    const t = world.terrain;
+    expect(ARREST_SPAWN.x).toBeLessThan(t.xMax - 30);
+    expect(ARREST_SPAWN.y).toBeGreaterThan(t.yMin + 30);
+    expect(ARREST_SPAWN.y).toBeLessThan(t.yMax - 30);
+    expect(colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, 0.35).hit).toBe(false);
     traffic.dispose();
   }, 120000);
 });
