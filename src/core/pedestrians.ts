@@ -6,6 +6,7 @@ import { coldAt, dressForCold } from "./dress";
 import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
+import type { Signals } from "./signals";
 import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
 
 /**
@@ -145,6 +146,8 @@ export class PedSim {
   /** Événements depuis le dernier `clearEvents` et effet sur le joueur au dernier pas. */
   readonly events: PedEvent[] = [];
   readonly impact: PedImpact = { slow: 0, speed: 0, hits: 0, bump: 0 };
+  /** Feux de circulation (J3-3) : aux passages à feux, les passants attendent le rouge des voitures. Null : ils ne regardent que les véhicules. */
+  signals: Signals | null = null;
   /** Appelé quand un emplacement reçoit un nouveau passant (le rendu l'habille). */
   onSpawn: ((slot: number, recipe: Recipe) => void) | null = null;
 
@@ -419,7 +422,7 @@ export class PedSim {
     const mode = this.mode[i]!;
     if (mode === PED_STATE.wait) {
       // Attente à l'entrée d'un passage : on traverse quand plus rien n'arrive.
-      if (!this.threat(this.x[i]!, this.y[i]!, obs)) this.mode[i] = PED_STATE.cross;
+      if (!this.threat(this.x[i]!, this.y[i]!, obs) && !this.redForWalkers(i)) this.mode[i] = PED_STATE.cross;
       return;
     }
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
@@ -462,6 +465,12 @@ export class PedSim {
     const half = Math.max(0.2, Math.min(1.2, this.graph.edgeWidth(this.edge[i]!) / 2) - 0.3);
     this.latTarget[i] = Math.max(-half, Math.min(half, 0.3 * half + push * 0.35));
     return best;
+  }
+
+  /** Le passant est à l'entrée d'un passage à feux et le feu des piétons n'est pas au vert (les voitures roulent encore). */
+  private redForWalkers(i: number): boolean {
+    if (!this.signals || this.graph.edgeType(this.edge[i]!) !== PED.crossingSignal) return false;
+    return this.signals.pedWalk(this.x[i]!, this.y[i]!, this.graph.edgeWay(this.edge[i]!)) === false;
   }
 
   private threat(x: number, y: number, obs: Observer): boolean {
@@ -520,7 +529,7 @@ export class PedSim {
     this.s[i] = Math.min(Math.max(this.s[i]!, 0), g.edgeLength(ne));
     const typ = g.edgeType(ne);
     if (typ === PED.crossing || typ === PED.crossingSignal || typ === PED.crossingImplicit) {
-      this.mode[i] = this.threat(this.x[i]!, this.y[i]!, obs) ? PED_STATE.wait : PED_STATE.cross;
+      this.mode[i] = this.threat(this.x[i]!, this.y[i]!, obs) || this.redForWalkers(i) ? PED_STATE.wait : PED_STATE.cross;
     } else if (this.mode[i] === PED_STATE.cross) {
       this.mode[i] = PED_STATE.walk;
     }

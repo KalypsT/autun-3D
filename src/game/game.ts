@@ -17,6 +17,7 @@ import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
 import { PedsController } from "./peds-controller";
+import { Signals } from "../core/signals";
 import { Traffic } from "./traffic";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
@@ -130,9 +131,12 @@ export function startGame(ctx: GameContext): void {
   let peds: PedsController | null = null;
   let pigeons: PigeonsController | null = null;
   let navDebug: NavDebug | null = null;
+  // Feux de circulation (J3-3) : une horloge de simulation, avancée à chaque image jouée (la pause la fige), pour les voitures et les passants.
+  let signals: Signals | null = null;
   const startNav = (): NavManager => {
     if (!nav) {
       const n = (nav = new NavManager());
+      signals = new Signals(n.graph.road, { t: 0 });
       if (navParam) {
         navDebug = new NavDebug(n.graph, terrain, navParam === "all");
         scene.add(navDebug.group);
@@ -145,6 +149,7 @@ export function startGame(ctx: GameContext): void {
     if (capacity <= 0) return;
     if (!peds) {
       peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7);
+      peds.setSignals(signals);
       peds.setShadows(ctx.settings!.values.shadows !== 0);
     } else peds.setCapacity(capacity);
     // Pigeons (J2-7) : leur nombre suit la foule ; ?pigeons=N le force (0 : aucun).
@@ -152,11 +157,15 @@ export function startGame(ctx: GameContext): void {
     if (!pigeons) pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
     else pigeons.setCapacity(pg);
   };
+  const startSignals = (): Signals => {
+    startNav();
+    return signals!;
+  };
   if (navParam) startNav();
   startPeds(crowdSetting);
   // Circulation (J3) : `?traffic=N` met N voitures conduites par des conducteurs simulés (en cours de développement, D59).
   const trafficCount = Math.max(0, Math.min(60, Math.round(Number(params.get("traffic")) || 0)));
-  const traffic = trafficCount > 0 ? new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), trafficCount, 11) : null;
+  const traffic = trafficCount > 0 ? new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), trafficCount, startSignals(), 11) : null;
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
@@ -424,6 +433,7 @@ export function startGame(ctx: GameContext): void {
       } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
     }
 
+    if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
     sky.position.copy(camera.position);

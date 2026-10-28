@@ -1,7 +1,8 @@
 import type { Colliders, Resolution } from "./collision";
 import { conflict, emptyJunction, mustYield, obligationOf, sameJunction, type JunctionState } from "./junction";
 import type { NavGraph } from "./nav-graph";
-import { ROAD_FLAG } from "../data/nav";
+import { NODE_FLAG, ROAD_FLAG } from "../data/nav";
+import { AMBER, GREEN, RED, type Signals } from "./signals";
 import { moveDir, moveEdge, type RoadGraph, type RoadMove } from "./road-graph";
 import { driveForce, GRAVITY, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
@@ -386,7 +387,7 @@ const DEADLOCK_AFTER = 3;
 /** Freinage d'urgence maximal demandé (m/s²). */
 const A_EMERGENCY = 8;
 /** Temps (s) d'immobilité après lequel un conducteur qui attend est retiré (interblocage), et un conducteur sans raison d'attendre. */
-const WAIT_LIMIT = 45;
+const WAIT_LIMIT = 60;
 
 /** Petit générateur pseudo-aléatoire reproductible (mulberry32). */
 function rng(seed: number): () => number {
@@ -419,7 +420,7 @@ export class Driver {
   private readonly gens: number[] = [];
   private startS: number;
 
-  constructor(private readonly nav: NavGraph, start: RoadMove, startS: number, seed: number, private readonly spec: VehicleSpec, private readonly colliders: Colliders | null = null) {
+  constructor(private readonly nav: NavGraph, start: RoadMove, startS: number, seed: number, private readonly spec: VehicleSpec, private readonly colliders: Colliders | null = null, private readonly signals: Signals | null = null) {
     this.route.push(start);
     this.startS = startS;
     this.random = rng(seed);
@@ -572,7 +573,8 @@ export class Driver {
       }
       if (!(hi > lo && road.edgeClass(inEdge) === hi)) obligation = 0;
     }
-    if (arms < 3 && obligation < 2) return Infinity;
+    const signalized = this.signals !== null && (road.nodeFlags(node) & NODE_FLAG.signal) !== 0;
+    if (arms < 3 && obligation < 2 && !signalized) return Infinity;
     const x = road.nodeX(node), y = road.nodeY(node);
     const ring = (road.edgeFlags(inEdge) & ROAD_FLAG.roundabout) !== 0, nextRing = (road.edgeFlags(outEdge) & ROAD_FLAG.roundabout) !== 0;
     J.active = true;
@@ -604,6 +606,11 @@ export class Driver {
         blocking = false;
       }
     }
+    // Feu : rouge, on s'arrête ; orange, on s'arrête si on le peut sans freiner à plus de 3,5 m/s² ; vert, on passe, en ne cédant qu'à ce qui est déjà dans le carrefour
+    // et, en tournant à gauche, à celui qui vient en face.
+    const light = signalized ? this.signals!.carState(inMove) : -1;
+    if (light === RED || (light === AMBER && dist >= (u * u) / (2 * 3.5))) blocking = true;
+    const permissive = light === GREEN || light === AMBER;
     if (!blocking && arms >= 3) {
       const timeMe = Math.max(dist, 0) / Math.max(u, CLAIM_SPEED);
       // On ne peut plus s'arrêter à temps : on passe.
@@ -611,7 +618,11 @@ export class Driver {
       for (const o of others) {
         const oj = o.junction;
         if (!canStop || !oj || oj === J || !oj.active || !sameJunction(J, oj)) continue;
-        if (!conflict(J, oj) || !mustYield(J, oj)) continue;
+        if (!conflict(J, oj)) continue;
+        if (permissive) {
+          const oncomingLeft = J.turn < -0.6 && Math.abs(wrap(oj.inH + Math.PI - J.inH)) < 0.4;
+          if (oj.dist >= 0 && !oncomingLeft) continue;
+        } else if (!mustYield(J, oj)) continue;
         if (oj.dist >= CLAIM_REACH || (oj.dist >= 0 && oj.dist / Math.max(oj.speed, CLAIM_SPEED) >= timeMe + CLAIM_MARGIN)) continue;
         // Deux voitures qui s'attendent l'une l'autre : après quelques secondes, celle de plus petit identifiant passe.
         if (oj.waiting && this.junctionWait > DEADLOCK_AFTER && J.id < oj.id) continue;

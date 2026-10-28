@@ -1,6 +1,7 @@
 import type { Colliders } from "./collision";
 import { Driver, extentOf, lanePoint, type Other } from "./driver";
 import type { NavGraph } from "./nav-graph";
+import { Signals } from "./signals";
 import type { RoadMove } from "./road-graph";
 import { createVehicle, stepVehicle, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 import { contactVehicles } from "./vehicle-contact";
@@ -38,11 +39,19 @@ export class TrafficSim {
   /** Contacts entre voitures et avec le joueur au dernier pas, et pire impact (m/s). */
   stats = { contacts: 0, worstImpact: 0 };
 
+  /** Feux de circulation. Sans `signals`, la simulation a les siens, avec une horloge qu'elle fait avancer elle-même (essais) ; le jeu en passe un, partagé avec les passants. */
+  readonly signals: Signals;
+  private readonly ownClock: boolean;
+
   constructor(
     private readonly nav: NavGraph,
     private readonly terrain: HeightField,
     private readonly colliders: Colliders,
-  ) {}
+    signals?: Signals,
+  ) {
+    this.signals = signals ?? new Signals(nav.road, { t: 0 });
+    this.ownClock = !signals;
+  }
 
   /** Ajoute une voiture sur la voie de droite de `move`, à `s` m de son début, lancée à `speed` m/s ; sans graine, elle reste arrêtée. */
   add(spec: VehicleSpec, move: RoadMove, s: number, seed: number | null, speed = 0): SimCar {
@@ -52,7 +61,7 @@ export class TrafficSim {
     state.vx = Math.sin(lp.heading) * speed;
     state.vy = Math.cos(lp.heading) * speed;
     state.speed = speed;
-    const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders);
+    const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders, this.signals);
     const { halfLen, halfWid } = extentOf(spec);
     const id = this.serial++;
     const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0 };
@@ -67,6 +76,7 @@ export class TrafficSim {
 
   /** Un pas de simulation : conducteurs, physique, puis chocs. `player` : ce que la circulation voit du joueur. */
   step(dt: number, player: PlayerBody | null = null): void {
+    if (this.ownClock) this.signals.clock.t += dt;
     const others = this.others;
     others.length = 0;
     for (const c of this.cars) others.push(c.other);

@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { lanePoint } from "../core/driver";
 import { moveEdge } from "../core/road-graph";
+import type { Signals } from "../core/signals";
 import { TrafficSim, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import { CATALOG, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
@@ -41,9 +42,10 @@ export class Traffic {
     colliders: Colliders,
     private readonly solidAt: (x: number, y: number) => boolean,
     private capacity: number,
+    signals: Signals,
     private readonly seed = 1,
   ) {
-    this.sim = new TrafficSim(nav.graph, terrain, colliders);
+    this.sim = new TrafficSim(nav.graph, terrain, colliders, signals);
   }
 
   /** Contacts de la circulation au dernier pas (voitures entre elles, avec le joueur). */
