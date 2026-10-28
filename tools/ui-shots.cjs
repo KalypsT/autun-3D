@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -49,6 +49,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1500);
     await shot("j1-hud-voiture");
     await c2.close();
+  }
+
+  if (want("wanted")) {
+    // Étoiles de recherche (J4-0) : niveau imposé ; sans police (J4-4), la piste est « perdue » et les étoiles clignotent : on fige l'animation.
+    const ctx = await open("ride=voiture&wanted=3&h=15");
+    await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; }" });
+    await sleep(1500);
+    await shot("j4-recherche-3-voiture");
+    await page.evaluate(() => window.__autun.wanted.set(1, 0, 0));
+    await sleep(600);
+    await shot("j4-recherche-1");
+    await ctx.close();
   }
 
   if (want("pause")) {

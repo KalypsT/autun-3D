@@ -422,3 +422,6 @@ Fait :
 **Mesures de nuit, « Dense » et endurance de J3 (28 octobre 2026)** (D69)
 - Nuit avec 20 puis 30 voitures et dix minutes d'endurance sur l'Honor : 60,2 à 60,4 i/s partout, pas de fuite de mémoire, mais 195 à 200 appels de dessin en moyenne avec « Dense » la nuit (limite atteinte). Défaut trouvé : des voitures collées l'une à l'autre pendant plus d'une minute (jusqu'à 2 325 pas de contact par minute) : corrigé (D69, tests : 430), à remesurer.
 
+**J4-0 (28 octobre 2026) : cadrage de J4 et niveau de recherche** (D70)
+- Cadrage de l'étape J4 : trois étoiles, infractions et témoins, perte de piste, arrestation et reprise au bord est de l'anneau, vol avec conducteur, conducteurs visibles, police de la gendarmerie sans arme à feu, découpage en J4-0 à J4-6.
+- `src/core/wanted.ts` : niveau de recherche (infractions vues par la police ou signalées par un passant après 6 s, zone de recherche, une étoile perdue après 15, 25 ou 40 s hors de vue) ; `src/ui/wanted-hud.ts` : étoiles dans `#wanted` (disques et étoiles pleines, clignotement quand la piste est perdue). `?wanted=N` pour essayer. Tests : 441.

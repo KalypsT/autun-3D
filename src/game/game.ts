@@ -12,6 +12,8 @@ import type { GameContext } from "./context";
 import { FrameMeter } from "./hud";
 import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
+import { Wanted } from "../core/wanted";
+import { WantedHud } from "../ui/wanted-hud";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
@@ -186,8 +188,9 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${navInfo()}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}`);
 
+  const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
   const miniCost = (): string => {
     const c = ui.minimap.cost;
@@ -212,6 +215,10 @@ export function startGame(ctx: GameContext): void {
   const gasEl = document.getElementById("gas")!;
   const hornEl = document.getElementById("horn")!;
   const speedo = new Speedo(document.getElementById("speedo")!);
+  // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
+  const wanted = new Wanted();
+  const wantedHud = new WantedHud(document.getElementById("wanted")!);
+  if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
   const mount = (v: Vehicle): void => {
     riding = v;
@@ -388,9 +395,9 @@ export function startGame(ctx: GameContext): void {
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
     const chase = riding ? chaseOf(riding) : null;
-    const wanted = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
+    const targetDist = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
     const focusZ = chase ? player.z + chase.height : player.z;
-    const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: wanted }, colliders, terrain);
+    const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: targetDist }, colliders, terrain);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
     const tz = focusZ + HEAD_HEIGHT;
@@ -449,6 +456,8 @@ export function startGame(ctx: GameContext): void {
       } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
     }
 
+    wanted.update(dt, player.x, player.y, false);
+    wantedHud.set(wanted);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
@@ -461,7 +470,7 @@ export function startGame(ctx: GameContext): void {
   };
   requestAnimationFrame(frame);
   ctx.ready({
-    player, colliders, fleet, marks, ui,
+    player, colliders, fleet, marks, ui, wanted,
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;
