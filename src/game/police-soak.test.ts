@@ -32,7 +32,7 @@ interface SoakMinute {
  * Endurance de la poursuite (D76) : « Dense » (30), 100 passants, feux, trois étoiles au départ (`stars`) ; un fugitif au volant (conducteur de poursuite : vite,
  * à contresens) roule `drive` s puis s'arrête et attend. Renvoie un relevé par minute et l'instant de l'arrestation (−1 sans).
  */
-function soak(seed: number, drive: number, total: number, stars = 3): { minutes: SoakMinute[]; arrestedAt: number; bad: number; arrests: number } {
+function soak(seed: number, drive: number, total: number, stars = 3): { minutes: SoakMinute[]; arrestedAt: number; bad: number; arrests: number; damage: number } {
   const nav = new NavManager();
   for (const c of cells) nav.graph.add(c);
   const signals = new Signals(nav.graph.road, { t: 0 });
@@ -52,7 +52,7 @@ function soak(seed: number, drive: number, total: number, stars = 3): { minutes:
   wanted.set(stars, car.x, car.y);
   const minutes: SoakMinute[] = [];
   let m: SoakMinute = { chasing: 0, officers: 0, contacts: 0, nearest: Infinity, stars: 0, arrests: 0, farthest: 0 };
-  let arrestedAt = -1, bad = 0, arrests = 0;
+  let arrestedAt = -1, bad = 0, arrests = 0, damage = 0;
   for (let i = 0; i < total * 60; i++) {
     const t = i * DT;
     const stopped = t >= drive;
@@ -74,6 +74,8 @@ function soak(seed: number, drive: number, total: number, stars = 3): { minutes:
       pedHits: peds.impact.hits, pedHitSpeed: peds.impact.speed, witnesses: () => 0,
     });
     signals.clock.t += DT;
+    damage += police.takeDamage();
+    police.clearShots();
     if (police.takeArrest()) {
       if (arrestedAt < 0) arrestedAt = t;
       arrests++;
@@ -100,7 +102,7 @@ function soak(seed: number, drive: number, total: number, stars = 3): { minutes:
     }
   }
   traffic.dispose();
-  return { minutes, arrestedAt, bad, arrests };
+  return { minutes, arrestedAt, bad, arrests, damage };
 }
 
 describe("poursuite qui dure (J4-6)", () => {
@@ -120,6 +122,8 @@ describe("poursuite qui dure (J4-6)", () => {
         // Jamais collées une minute entière (D69 : jusqu'à 2 325 pas de contact par minute avant correction).
         expect(q.contacts).toBeLessThan(2700);
       }
+      // À trois étoiles la police n'est pas armée : aucun point de vie perdu (J5-5).
+      expect(r.damage).toBe(0);
     }
     expect(arrests).toBeGreaterThan(0);
   }, 600000);
@@ -138,5 +142,8 @@ describe("poursuite qui dure (J4-6)", () => {
       expect(q.contacts).toBeLessThan(2700);
     }
     expect(most).toBeGreaterThan(4);
+    // Armée : les tirs des voitures et des gendarmes retirent des points de vie à un fugitif au volant, sans valeur aberrante (un joueur au volant en perd moitié moins, côté jeu).
+    expect(r.damage).toBeGreaterThan(0);
+    expect(Number.isFinite(r.damage)).toBe(true);
   }, 600000);
 });

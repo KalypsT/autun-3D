@@ -286,6 +286,7 @@ export class PedSim {
     this.state.pose = new Uint8Array(n);
     this.state.poseT = new Float32Array(n);
     this.state.poseSide = new Int8Array(n);
+    this.state.held = new Uint8Array(n);
     this.jx = new Float32Array(n); this.jy = new Float32Array(n); this.kx = new Float32Array(n); this.ky = new Float32Array(n);
     this.x = new Float32Array(n); this.y = new Float32Array(n); this.heading = new Float32Array(n);
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
@@ -1045,7 +1046,7 @@ export class PedSim {
    * (rad, 0 = nord), vitesse (m/s, l'animation de marche ou de course la suit), pose de choc (`HIT_POSE`, 0 debout) et temps écoulé depuis le choc.
    * `on` false : l'emplacement est vide (rien n'est dessiné).
    */
-  setExternal(i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number): void {
+  setExternal(i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number, armed = false, dead = false): void {
     if (i < this.free || i >= this.n) return;
     const st = this.state;
     if (!on) {
@@ -1061,15 +1062,16 @@ export class PedSim {
     this.y[i] = y;
     this.heading[i] = heading;
     this.speed[i] = speed;
-    this.mode[i] = pose > 0 ? PED_STATE.down : PED_STATE.walk;
+    this.mode[i] = dead ? PED_STATE.dead : pose === HIT_POSE.down ? PED_STATE.down : PED_STATE.walk;
+    st.held![i] = armed ? 1 : 0;
     st.x[i] = x;
     st.z[i] = -y;
     st.y[i] = this.terrain.heightAt(x, y);
     st.yaw[i] = -heading;
-    st.speed[i] = pose > 0 ? 0 : speed;
+    st.speed[i] = pose === HIT_POSE.down || pose === HIT_POSE.stumble ? 0 : speed;
     st.pose![i] = pose;
     st.poseT![i] = poseT;
-    st.phase[i] = (st.phase[i]! + phaseRate(pose > 0 ? 0 : speed, st.recipes[i]!.height) * dt) % TAU;
+    st.phase[i] = (st.phase[i]! + phaseRate(pose === HIT_POSE.down || pose === HIT_POSE.stumble ? 0 : speed, st.recipes[i]!.height) * dt) % TAU;
   }
 
   /** Le passant de cet emplacement s'enfuit-il encore ? (tests, diagnostic) */
@@ -1092,13 +1094,13 @@ export class PedSim {
   /**
    * Premier passant touché par le rayon qui part de (x, y) dans la direction (dx, dy) (unitaire), sur au plus `maxDist` m : son emplacement et la
    * distance du point d'impact (`out.slot` −1 s'il n'y en a pas). Le passant est un cercle de 40 cm de rayon vu de dessus (la hauteur est ignorée) ;
-   * un passant à terre compte, un mort non (un cadavre n'arrête pas les balles). Les emplacements réservés (gendarmes) ne sont pas touchés ici (J5-5).
+   * un passant à terre compte, un mort non (un cadavre n'arrête pas les balles). Les emplacements réservés (gendarmes à pied, J5-5) sont des cibles comme les autres ; c'est `PedsController.hurt` qui les envoie à `Officers`.
    */
   rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
     out.slot = -1;
     out.dist = maxDist;
     const alive = this.state.alive!, R = BODY + 0.12;
-    for (let i = 0; i < this.free; i++) {
+    for (let i = 0; i < this.n; i++) {
       if (!alive[i] || this.mode[i] === PED_STATE.dead) continue;
       const rx = this.x[i]! - x, ry = this.y[i]! - y;
       const along = rx * dx + ry * dy;
@@ -1122,12 +1124,12 @@ export class PedSim {
   /**
    * Passants debout (ni à terre ni qui trébuchent) dans le cône de cap `heading` et de demi-angle `halfAngle`, à moins de `range` de (x, y) mesuré
    * de centre à centre moins le rayon du corps ; leurs emplacements, du plus proche au plus loin (au plus `max`), dans `out` (vidé d'abord).
-   * Les emplacements réservés (gendarmes) ne sont pas des cibles du joueur ici. Sans allocation.
+   * Les emplacements réservés (gendarmes à pied, J5-5) sont des cibles comme les autres. Sans allocation.
    */
   pick(x: number, y: number, heading: number, range: number, halfAngle: number, max: number, out: number[]): number {
     out.length = 0;
     const alive = this.state.alive!, reach = range + BODY;
-    for (let i = 0; i < this.free; i++) {
+    for (let i = 0; i < this.n; i++) {
       // Un passant à terre reste une cible (coup de grâce) ; celui qui trébuche (0,9 s) ou qui est mort, non.
       if (!alive[i] || this.mode[i] === PED_STATE.stumble || this.mode[i] === PED_STATE.dead) continue;
       const dx = this.x[i]! - x, dy = this.y[i]! - y, d = Math.hypot(dx, dy);

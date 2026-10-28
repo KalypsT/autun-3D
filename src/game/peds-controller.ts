@@ -89,8 +89,15 @@ export class PedsController implements Arena {
   }
 
   hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
-    return this.sim?.damage(slot, damage, ux, uy, impulse) ?? 0;
+    const sim = this.sim;
+    if (!sim) return 0;
+    // Un emplacement réservé est un gendarme (J5-5) : le coup va à `Officers` (via `officerHurt`), pas à la simulation des passants.
+    if (slot >= sim.reservedStart) return this.officerHurt ? this.officerHurt(slot - sim.reservedStart, damage, ux, uy, impulse) : 0;
+    return sim.damage(slot, damage, ux, uy, impulse);
   }
+
+  /** Ce que reçoit un gendarme frappé ou touché : emplacement dans la liste réservée, dégâts, direction, impulsion ; renvoie 0, 1 (touché) ou 2 (tué). Branché par le jeu sur `Officers.hurt`. */
+  officerHurt: ((index: number, damage: number, ux: number, uy: number, impulse: number) => number) | null = null;
 
   /** Premier passant sur un rayon (J5-3) : voir `PedSim.rayPed`. */
   rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
@@ -146,7 +153,10 @@ export class PedsController implements Arena {
       seen[o.slot] = 1;
       const fresh = this.officerSeeds[o.slot] !== o.seed;
       if (fresh) this.officerSeeds[o.slot] = o.seed;
-      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.poseT, dt);
+      // Visée : le temps passé à `setExternal` est celui depuis le dernier tir (la secousse du pistolet) ; un mort garde la pose de chute tenue.
+      const pose = Officers.pose(o);
+      const t = o.mode === "dead" ? Math.min(o.poseT, 2.2) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT;
+      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, pose, t, dt, o.armed && o.mode !== "dead", o.mode === "dead");
     }
     for (let k = 0; k < OFFICER.max; k++) {
       if (seen[k]) continue;

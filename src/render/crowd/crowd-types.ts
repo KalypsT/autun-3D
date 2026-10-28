@@ -16,6 +16,8 @@ export interface CrowdState {
   pose?: Uint8Array;
   poseT?: Float32Array;
   poseSide?: Int8Array;
+  /** Arme tenue (J5-5) : 0 aucune, 1 un pistolet (la pièce `weaponPistol`, ajoutée au masque du personnage). */
+  held?: Uint8Array;
   recipes: Recipe[];
   x: Float32Array;
   y: Float32Array;

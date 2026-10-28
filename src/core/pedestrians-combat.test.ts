@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { recipeFromSeed } from "./character";
 import { Melee } from "./melee";
 import { NavGraph } from "./nav-graph";
 import { ALARM_HURT, ALARM_KILL, CORPSE_HIDDEN_LIFE, CORPSE_MAX_LIFE, MAX_CORPSES, PED_HP, PED_STATE, PedSim, SINK_TIME, VEHICLE_DAMAGE, WOUNDED_HP, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
@@ -388,6 +389,28 @@ describe("passants : coups, blessure, fuite (J5-1)", () => {
     const p2 = { x: 0, y: 0 };
     s2.sim.position(s2.slot, p2);
     expect(s2.sim.rayPed(p2.x, p2.y - 6, 0, 1, 50, out)).toBe(true);
+  });
+
+  it("les gendarmes à pied (emplacements réservés) sont des cibles : `pick` et `rayPed` les trouvent, un mort n'en est plus une, l'alarme les ignore", () => {
+    const sim = new PedSim(graph(), terrain, colliders, { capacity: 106, seed: 7, reserved: 6 });
+    const base = sim.reservedStart;
+    const recipe = recipeFromSeed(3);
+    sim.setExternal(base + 2, true, recipe, 5, 5, 0, 0, 0, 0, 0.016, true, false);
+    expect(sim.state.held![base + 2]).toBe(1);
+    const out: number[] = [];
+    expect(sim.pick(5, 3, 0, 5, 0.8, 3, out)).toBe(1);
+    expect(out[0]).toBe(base + 2);
+    const hit = { slot: -1, dist: 0 };
+    expect(sim.rayPed(5, -5, 0, 1, 30, hit)).toBe(true);
+    expect(hit.slot).toBe(base + 2);
+    // L'alarme n'agit pas sur lui ; la simulation des passants ne le blesse pas (c'est `Officers`).
+    expect(sim.alarm(5, 5, 50, 5)).toBe(0);
+    expect(sim.damage(base + 2, 50, 0, 1, 1)).toBe(0);
+    // Mort : plus une cible ; l'arme n'est plus tenue.
+    sim.setExternal(base + 2, true, null, 5, 5, 0, 0, 2, 1, 0.016, false, true);
+    expect(sim.pick(5, 3, 0, 5, 0.8, 3, out)).toBe(0);
+    expect(sim.rayPed(5, -5, 0, 1, 30, hit)).toBe(false);
+    expect(sim.state.held![base + 2]).toBe(0);
   });
 });
 

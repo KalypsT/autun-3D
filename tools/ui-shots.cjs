@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -236,6 +236,38 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await page.evaluate(() => { window.__autun.ui.paused = false; window.__autun.gun.cancel(); });
       await sleep(800);
     }
+    await ctx.close();
+  }
+
+  if (want("armed")) {
+    // Police armée (J5-5) : quatre étoiles, deux gendarmes à 14 m qui visent le joueur ; on fige le jeu au tir, puis on en abat un (cadavre et pistolet lâché).
+    const ctx = await open("wanted=4&h=15");
+    await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; } #hurt { transition: none !important; }" });
+    await sleep(1500);
+    await page.evaluate(() => {
+      const a = window.__autun;
+      a.player.x = -10; a.player.y = -40; a.player.heading = 0; a.look(0);
+      const o = a.police.officers;
+      o.spawn(-8.5, -27.5, Math.PI, 0, 11);
+      o.spawn(-12.5, -26.5, Math.PI, 0, 23);
+    });
+    await page.waitForFunction(() => {
+      const a = window.__autun, l = a.police.officers.list;
+      if (l.some((o) => o.sinceShot < 0.12 && o.aiming)) { a.ui.paused = true; return true; }
+      return false;
+    }, null, { timeout: 900000, polling: "raf" });
+    await sleep(1500);
+    await shot("j5-police-arme-tir");
+    await page.evaluate(() => { window.__autun.ui.paused = false; });
+    await sleep(500);
+    await page.evaluate(() => {
+      const a = window.__autun, o = a.police.officers.list[0];
+      a.police.officers.hurt(o.slot, 500, 0, -1, 1);
+    });
+    await page.waitForFunction(() => window.__autun.police.officers.list.some((o) => o.mode === "dead" && o.poseT > 1.5) && window.__autun.pickups.list.some((p) => p.dropped), null, { timeout: 900000, polling: "raf" });
+    await page.evaluate(() => { window.__autun.ui.paused = true; });
+    await sleep(1500);
+    await shot("j5-police-gendarme-tue");
     await ctx.close();
   }
 

@@ -112,6 +112,56 @@ describe("police dans le jeu (J4-4)", () => {
     w2.traffic.dispose();
   }, 120000);
 
+  it("police armée (J5-5) : à quatre étoiles et à pied, les gendarmes descendent, tirent et finissent par tuer un joueur immobile sans l'arrêter ; à trois étoiles, aucun tir", () => {
+    const run4 = (stars: number): { damage: number; killedAt: number; arrested: boolean; shots: number } => {
+      const { traffic, police, wanted } = setup(10);
+      const here = foot(-10, -40);
+      wanted.set(stars, here.x, here.y);
+      let damage = 0, killedAt = -1, arrested = false, shots = 0;
+      for (let k = 0; k < 60 * 240 && killedAt < 0; k++) {
+        traffic.step(DT, { kind: "foot", x: here.x, y: here.y, vx: 0, vy: 0 });
+        traffic.update(DT, { x: here.x, y: here.y, yaw: 0, speed: 0, hour: 15, vehicle: null });
+        police.update(DT, here);
+        damage += police.takeDamage();
+        shots += police.shots.length;
+        police.clearShots();
+        if (police.takeArrest()) arrested = true;
+        if (damage >= 100) killedAt = k / 60;
+      }
+      traffic.dispose();
+      return { damage, killedAt, arrested, shots };
+    };
+    const armed = run4(4);
+    expect(armed.shots).toBeGreaterThan(5);
+    expect(armed.killedAt).toBeGreaterThan(0);
+    expect(armed.arrested).toBe(false);
+    // À trois étoiles : jamais un tir (la police arrête, D75).
+    const calm = run4(3);
+    expect(calm.shots).toBe(0);
+    expect(calm.damage).toBe(0);
+  }, 300000);
+
+  it("un gendarme tué : `kill_cop` (quatre étoiles), son pistolet tombe là où il est mort", () => {
+    const { traffic, police, wanted } = setup(0);
+    const o = police.officers.spawn(3, 4, 0, 1, 9)!;
+    police.officers.hurt(o.slot, 500, 0, 1, 1);
+    police.update(DT, foot(0, 0));
+    expect(wanted.stars).toBe(4);
+    const drops: { x: number; y: number }[] = [];
+    police.takeDrops(drops);
+    expect(drops).toHaveLength(1);
+    expect(Math.hypot(drops[0]!.x - o.x, drops[0]!.y - o.y)).toBeLessThan(1);
+    police.takeDrops(drops);
+    expect(drops).toHaveLength(1);
+    // Le suivant, à plus de 3 s : cinq étoiles.
+    for (let k = 0; k < 4 * 60; k++) police.update(DT, foot(0, 0));
+    const o2 = police.officers.spawn(5, 4, 0, 1, 11)!;
+    police.officers.hurt(o2.slot, 500, 0, 1, 1);
+    police.update(DT, foot(0, 0));
+    expect(wanted.stars).toBe(5);
+    traffic.dispose();
+  }, 120000);
+
   it("arrestation (J4-5) : à pied, immobile, une étoile : la voiture arrive, l'équipage descend, le joueur est arrêté ; la reprise est sur un trottoir de la zone", () => {
     const { traffic, police, wanted } = setup(10);
     const here = foot(-10, -40);

@@ -97,6 +97,8 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
 
 /** Genre de pose d'un passant heurté : 1 il trébuche, 2 il tombe, reste au sol, puis se relève. */
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
+/** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
+export const GUN_POSE = { aim: 3, ready: 4 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,35 s pour tomber, environ 2,3 s au sol, 0,9 s pour se relever. */
 export const DOWN_TIME = 3.6;

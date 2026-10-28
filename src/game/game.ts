@@ -427,6 +427,7 @@ export function startGame(ctx: GameContext): void {
     },
     wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by),
   };
+  const drops: { x: number; y: number }[] = [];
   let hudTimer = 0;
   let actionLabel = "";
   const updateHud = (): void => {
@@ -615,6 +616,7 @@ export function startGame(ctx: GameContext): void {
     // Combat (J5) : à pied seulement. Mêlée : le coup tourne le joueur vers sa cible et touche à la frappe (J5-1). Arme à feu : tir instantané, visée assistée (J5-3).
     const weapon = inventory.current;
     const pedsNow0 = peds as PedsController | null;
+    if (pedsNow0 && !pedsNow0.officerHurt) pedsNow0.officerHurt = (i, d, ux, uy, imp) => police.officers.hurt(i, d, ux, uy, imp);
     // Violence (J5-4) : frapper est une agression, tuer un meurtre ; la police l'ajoute si elle voit, sinon un passant vivant à moins de 25 m téléphone.
     const violence = (hits: number, killed: number): void => {
       if (hits <= 0) return;
@@ -744,6 +746,25 @@ export function startGame(ctx: GameContext): void {
           return (peds as PedsController | null)?.queryCircle(x, y, r, pedWitnesses) ?? 0;
         },
       });
+    }
+    // Police armée (J5-5, D85) : les balles qui portent retirent des points de vie (la moitié au volant) ; traits et éclairs de la police, passants effrayés ;
+    // le pistolet d'un gendarme tué tombe à terre (on peut le ramasser).
+    {
+      const dmg = police.takeDamage();
+      if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
+      if (police.shots.length > 0) {
+        for (const sh of police.shots) {
+          const z0 = terrain.heightAt(sh.x0, sh.y0) + 1.3;
+          fx.flash(sh.x0, sh.y0, z0);
+          fx.tracer(sh.x0, sh.y0, z0, sh.x1, sh.y1, sh.hit ? player.z + 1.1 : z0);
+          if (sh.hit) fx.sparks(sh.x1, sh.y1, player.z + 1.1, true, Math.random);
+        }
+        (peds as PedsController | null)?.alarm(police.shots[0]!.x0, police.shots[0]!.y0, ALARM_SHOT, ALARM_SHOT_FLEE);
+        police.clearShots();
+      }
+      drops.length = 0;
+      police.takeDrops(drops);
+      for (const d of drops) pickups.drop(d.x, d.y, "pistol", CACHE_ROUNDS.pistol! / 2);
     }
     // Gendarmes à pied : dessinés par la foule (emplacements réservés, aucun appel de dessin de plus) ; la foule est créée au besoin.
     if (police.officers.list.length > 0 || peds) needPeds().setOfficers(police.officers.list, dt);
