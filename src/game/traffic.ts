@@ -50,6 +50,8 @@ const DESPAWN_MARGIN = 70;
 /** Délai (s) entre deux naissances, et entre deux retraits de voitures en surnombre. */
 const SPAWN_EVERY = 0.25;
 const TRIM_EVERY = 0.6;
+/** Le joueur ne voit pas une voiture plus loin que cela (m). */
+const SEEN_RANGE = 400;
 /** Patrouilles de gendarmerie dans la circulation ordinaire (J4, D72) : une naissance sur `1 / PATROL_SHARE` au plus, une patrouille à la fois. */
 const PATROL_SHARE = 0.06;
 const MAX_PATROLS = 1;
@@ -262,7 +264,9 @@ export class Traffic {
     this.target = trafficTarget(this.max, env.hour, this.zone, env.speed);
     this.beaconClock += dt;
     const { rOut } = spawnRing(env.speed);
-    const seen = (x: number, y: number): boolean => visibleFrom(env.x, env.y, env.yaw, 1.1, x, y, this.colliders);
+    // Au-delà de 400 m on ne voit plus une voiture (les murs lointains ne sont pas chargés : sans cette borne, une voiture droit devant à 1 km passait pour vue
+    // et ne disparaissait jamais ; trouvé par l'endurance de la poursuite, D76).
+    const seen = (x: number, y: number): boolean => Math.hypot(x - env.x, y - env.y) < SEEN_RANGE && visibleFrom(env.x, env.y, env.yaw, 1.1, x, y, this.colliders);
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!;
       const d = Math.hypot(c.sim.state.x - env.x, c.sim.state.y - env.y);

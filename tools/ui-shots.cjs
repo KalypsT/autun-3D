@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -73,6 +73,39 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     }, null, { timeout: 900000, polling: 1000 });
     await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; }" });
     await shot("j4-police-nuit");
+    await ctx.close();
+  }
+
+  if (want("arrest")) {
+    // Poursuite et arrestation (J4-5) : une étoile, en fin d'après-midi ; caméra tournée vers la gendarmerie qui arrive, puis vers les gendarmes à pied,
+    // puis le bandeau d'arrestation. Rendu logiciel : 15 à 30 minutes.
+    const ctx = await open("wanted=1&h=17.5&traffic=8");
+    await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; } #busted.show { animation: none !important; }" });
+    const face = (pick) => page.evaluate((which) => {
+      const a = window.__autun, p = a.player;
+      let best = null, bd = 1e9;
+      if (which === "car") a.traffic().forEachPolice((id, x, y) => { const d = Math.hypot(x - p.x, y - p.y); if (d < bd) { bd = d; best = { x, y }; } });
+      else for (const o of a.police.officers.list) { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; best = o; } }
+      if (best) a.look(Math.atan2(best.x - p.x, best.y - p.y));
+      return bd;
+    }, pick);
+    await page.waitForFunction(() => {
+      const a = window.__autun, p = a.player, t = a.traffic();
+      let near = false;
+      if (t) t.forEachPolice((id, x, y, h, s, ch) => { if (ch && Math.hypot(x - p.x, y - p.y) < 30) near = true; });
+      return near;
+    }, null, { timeout: 1800000, polling: 1000 });
+    await face("car");
+    await frames(3);
+    await shot("j4-gendarmerie-arrive");
+    await page.waitForFunction(() => window.__autun.police.officers.list.length > 0, null, { timeout: 1800000, polling: 1000 });
+    await page.waitForFunction(() => window.__autun.police.officers.list.some((o) => Math.hypot(o.x - window.__autun.player.x, o.y - window.__autun.player.y) < 7), null, { timeout: 1800000, polling: 500 });
+    await face("officer");
+    await frames(2);
+    await shot("j4-gendarmes-a-pied");
+    await page.waitForFunction(() => document.getElementById("busted").classList.contains("show"), null, { timeout: 1800000, polling: 500 });
+    await frames(2);
+    await shot("j4-arrete");
     await ctx.close();
   }
 

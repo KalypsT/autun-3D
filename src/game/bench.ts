@@ -17,6 +17,10 @@ import { CATALOG } from "../core/vehicle-catalog";
 import { Fleet } from "./vehicles";
 import { Signals } from "../core/signals";
 import { Traffic } from "./traffic";
+import { Wanted } from "../core/wanted";
+import { OFFICER, Officers } from "../core/officers";
+import { gendarmeRecipe } from "../core/character";
+import { PoliceController } from "./police";
 import { showReportPanel } from "./report-panel";
 
 /**
@@ -94,6 +98,8 @@ interface PhaseReport {
   fleet: { total: number; drawn: number; meshes: number; avgMs: number; maxMs: number } | null;
   /** `?traffic=N` : la circulation du jeu pendant le banc (D67), à la fin de la phase : voitures, cible, maillages, coût de simulation et de mise à jour ; null sans. */
   traffic: { max: number; cars: number; target: number; meshes: number; simAvgMs: number; simMaxMs: number; updateAvgMs: number; updateMaxMs: number; steps: number; contacts: number; honks: number } | null;
+  /** `?police=1` (J4, D76) : à la fin de la phase, voitures de police, en poursuite, gendarmes à pied ; coût de la police par image (vue, infractions, équipages). */
+  police: { cars: number; chasing: number; officers: number; avgMs: number; maxMs: number } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -207,6 +213,9 @@ export function startBench(ctx: GameContext): void {
   // ?traffic=N : la circulation du jeu (J3, D64 et D65) pendant tout le banc : N voitures au plus, qui naissent hors de la vue autour du point suivi, roulent
   // avec leurs conducteurs, leurs feux et les passants du banc (avec ?sim=1), dessinées par instances ; sans ce paramètre, aucune voiture.
   const trafficN = Math.min(Math.max(Math.floor(Number(params.get("traffic") ?? 0)) || 0, 0), 60);
+  // ?police=1 (J4, D76) : une poursuite à trois étoiles pendant tout le banc : quatre gendarmeries suivent le point suivi, gyrophares allumés, et descendent
+  // aux arrêts (gendarmes dessinés dans la foule avec ?sim=1). Aucune arrestation ne termine le banc (les gendarmes remontent et redescendent).
+  const policeMode = params.get("police") === "1";
   const fleetMode = params.get("fleet") === "1";
   const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
   if (fleet) {
@@ -217,6 +226,7 @@ export function startBench(ctx: GameContext): void {
   }
   let fleetCost = { ms: 0, max: 0, frames: 0 };
   let trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
+  let policeCost = { ms: 0, max: 0, frames: 0 };
   // ?fast=200 : un trajet de plus à cette vitesse (km/h, 100 à 300), pour voir si les tuiles se construisent à temps (véhicules rapides, D50).
   const fastParam = Math.round(Number(params.get("fast") ?? 0)) || 0;
   const fastKmh = fastParam >= 100 ? Math.min(fastParam, 300) : 0;
@@ -254,6 +264,7 @@ export function startBench(ctx: GameContext): void {
     fast: fastKmh,
     fleet: fleetMode,
     traffic: trafficN,
+    police: policeMode,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -300,10 +311,13 @@ export function startBench(ctx: GameContext): void {
   let pigCost = { ms: 0, frames: 0 };
   let simBase = { spawns: 0, despawns: 0 };
   let prefilled = false;
-  const nav = simMode || trafficN > 0 ? new NavManager() : null;
-  const signals = nav && trafficN > 0 ? new Signals(nav.graph.road, { t: 0 }) : null;
+  const nav = simMode || trafficN > 0 || policeMode ? new NavManager() : null;
+  const signals = nav && (trafficN > 0 || policeMode) ? new Signals(nav.graph.road, { t: 0 }) : null;
   const traffic = nav && signals ? new Traffic(scene, nav, terrain, ctx.colliders, (x, y) => tiles.solidAt(x, y), trafficN, signals, 11) : null;
   let trafficAcc = 0;
+  const wanted = new Wanted();
+  const police = policeMode && traffic && nav ? new PoliceController(wanted, ctx.colliders, () => nav.graph.road, () => signals, () => traffic) : null;
+  const officerSeeds = new Int32Array(OFFICER.max).fill(-1), officerOut = new Uint8Array(OFFICER.max);
   if (nav) void nav.init().then(() => nav.preload(spawn.x, spawn.y));
   const groundAt = (x: number, z: number): number => terrain.heightAt(x, -z);
 
@@ -316,10 +330,11 @@ export function startBench(ctx: GameContext): void {
     simMs = [];
     fleetCost = { ms: 0, max: 0, frames: 0 };
     trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
+    policeCost = { ms: 0, max: 0, frames: 0 };
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
-        pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
+        pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN + (police ? OFFICER.max : 0), reserved: police ? OFFICER.max : 0, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
         crowd = createCrowd(scene, pedSim.state);
         pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
         // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
@@ -374,6 +389,16 @@ export function startBench(ctx: GameContext): void {
             updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0,
             ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!, { alive: pigSim?.stats.alive ?? 0, ms: pigCost.frames ? pigCost.ms / pigCost.frames : 0 }) } : {}),
           }
+        : null,
+      police: police && traffic
+        ? (() => {
+            let cars = 0, chasing = 0;
+            traffic.forEachPolice((_id, _x, _y, _h, _s, ch) => {
+              cars++;
+              if (ch) chasing++;
+            });
+            return { cars, chasing, officers: police.officers.list.length, avgMs: policeCost.frames ? policeCost.ms / policeCost.frames : 0, maxMs: policeCost.max };
+          })()
         : null,
       traffic: traffic
         ? {
@@ -498,6 +523,39 @@ export function startBench(ctx: GameContext): void {
         trafficCost.updMax = Math.max(trafficCost.updMax, ud);
         trafficCost.frames++;
       }
+      if (police) {
+        // Trois étoiles tenues pendant tout le banc ; la poursuite vise le point suivi, même en roulant (le banc n'a pas de véhicule).
+        const c0 = performance.now();
+        wanted.set(3, pos.x, pos.y);
+        const yaw = Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]);
+        police.update(dt, {
+          x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, heading: yaw, speed: Math.hypot(pos.vx, pos.vy), driving: !!phase?.drive, vehicle: null,
+          pedHits: 0, pedHitSpeed: 0, witnesses: () => 0,
+        });
+        traffic.setChaseTarget({ x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy });
+        if (police.takeArrest()) police.reset();
+        if (pedSim) {
+          const base = pedSim.reservedStart, out = officerOut;
+          out.fill(0);
+          for (const o of police.officers.list) {
+            out[o.slot] = 1;
+            const fresh = officerSeeds[o.slot] !== o.seed;
+            officerSeeds[o.slot] = o.seed;
+            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.poseT, dt);
+          }
+          for (let k = 0; k < OFFICER.max; k++) {
+            if (out[k] || officerSeeds[k]! < 0) continue;
+            officerSeeds[k] = -1;
+            pedSim.setExternal(base + k, false, null, 0, 0, 0, 0, 0, 0, 0);
+          }
+        }
+        const pd = performance.now() - c0;
+        if (measuring) {
+          policeCost.ms += pd;
+          policeCost.max = Math.max(policeCost.max, pd);
+          policeCost.frames++;
+        }
+      }
     }
     pendingBuild = tiles.sliceMs;
     if (measuring && p.drive) {
@@ -584,7 +642,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? " · police (3 étoiles)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -600,6 +658,10 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     if (p.traffic) {
       const q = p.traffic;
       lines.push(`  Circulation : ${q.cars} voitures (cible ${q.target}, au plus ${q.max}) · ${q.meshes} maillages instanciés · simulation ${q.simAvgMs.toFixed(3)} ms par pas (pire ${q.simMaxMs.toFixed(2)} ms, ${q.steps} pas) · mise à jour et naissances ${q.updateAvgMs.toFixed(3)} ms par image (pire ${q.updateMaxMs.toFixed(2)} ms) · ${q.contacts} pas avec contact, ${q.honks} coups de klaxon`);
+    }
+    if (p.police) {
+      const q = p.police;
+      lines.push(`  Police : ${q.cars} voitures dont ${q.chasing} en poursuite · ${q.officers} gendarmes à pied · ${q.avgMs.toFixed(3)} ms par image (pire ${q.maxMs.toFixed(2)} ms)`);
     }
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);

@@ -440,3 +440,7 @@ Fait :
 
 **J4-5 (28 octobre 2026) : gendarmes à pied, arrestation, reprise** (D75)
 - Les gendarmes descendent d'une voiture arrêtée près du joueur, courent vers lui (4,7 m/s, le joueur court à 5), l'arrêtent au contact (à pied 1,5 s, au volant à l'arrêt 2 s) ; renversés par une voiture, ils tombent et se relèvent (+1 étoile). Dessinés dans la foule des passants (aucun appel de dessin de plus). Arrestation : bandeau « Arrêté », véhicule confisqué, reprise à pied au bord est de l'anneau six heures plus tard. Tests : 471.
+
+**J4-6 (28 octobre 2026) : banc, endurance, bilan de J4** (D76)
+- `?bench=1&police=1` : une poursuite à trois étoiles pendant tout le banc (quatre gendarmeries, équipages aux arrêts), rapport « Police » par phase. Rendu logiciel, « Dense » la nuit : appels de dessin identiques à ±2 près avec et sans police. Endurance sans écran d'une poursuite (dix minutes, deux départs) : rien d'aberrant ; elle a trouvé des voitures lointaines qui ne disparaissaient jamais (la vue du joueur n'avait pas de portée) : corrigé.
+- **Étape J4 terminée côté code** (D70 à D76, 472 tests) ; reste la mesure sur l'Honor (protocole en D76) et ton avis en jouant ; J4-1b (conducteurs visibles) attend ta décision.

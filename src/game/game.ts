@@ -564,6 +564,11 @@ export function startGame(ctx: GameContext): void {
   ctx.ready({
     player, colliders, fleet, marks, ui, wanted,
     traffic: () => traffic as Traffic | null,
+    police,
+    /** Captures : tourner la caméra (rad, 0 = nord). */
+    look: (v: number) => {
+      yaw = v;
+    },
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;
