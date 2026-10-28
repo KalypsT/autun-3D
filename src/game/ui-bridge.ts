@@ -57,6 +57,9 @@ export class UiBridge {
     return this.bigmap?.isOpen ?? false;
   }
 
+  /** Police et zone de recherche à montrer sur la minimap (J4) : le jeu les tient à jour. */
+  police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
+
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
   needsRender = false;
   private readonly vehicles: MinimapVehicle[] = [];
@@ -280,7 +283,10 @@ export class UiBridge {
           const dx = v.state.x - s.x, dy = v.state.y - s.y;
           if (dx * dx + dy * dy < MINIMAP_VEHICLE_RADIUS * MINIMAP_VEHICLE_RADIUS) list.push({ x: v.state.x, y: v.state.y, kind: v.family });
         }
-        this.minimap.update({ x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint });
+        this.minimap.update({
+          x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint,
+          police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
+        });
       });
     }
     this.marker.update(camera.position.x, -camera.position.z, time);

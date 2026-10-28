@@ -14,6 +14,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
+import { PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
 import { NavDebug } from "../render/nav-debug";
@@ -182,10 +183,11 @@ export function startGame(ctx: GameContext): void {
   startTraffic(settings.values.traffic);
   // `?chase=N` (essais, J4-3) : N voitures de gendarmerie poursuivent le joueur, quel que soit le niveau de recherche (la circulation est créée au besoin).
   const chaseParam = params.has("chase") ? Math.max(0, Math.min(6, Math.round(Number(params.get("chase")) || 0))) : 0;
-  if (chaseParam > 0) {
-    if (!traffic) traffic = new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), 0, startSignals(), 11);
-    (traffic as Traffic).pursuers = chaseParam;
-  }
+  // La circulation pour la police (J4) : créée au besoin, même avec « Circulation : Aucune » (elle n'a alors que des voitures de police).
+  const needTraffic = (create: boolean): Traffic | null => {
+    if (!traffic && create) traffic = new Traffic(scene, startNav(), terrain, colliders, (x, y) => tiles.solidAt(x, y), Math.max(0, settings.values.traffic), startSignals(), 11);
+    return traffic as Traffic | null;
+  };
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
@@ -226,6 +228,9 @@ export function startGame(ctx: GameContext): void {
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
   const wantedHud = new WantedHud(document.getElementById("wanted")!);
+  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic);
+  police.minPursuers = chaseParam;
+  const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
   const mount = (v: Vehicle): void => {
@@ -281,7 +286,7 @@ export function startGame(ctx: GameContext): void {
     // Portière du conducteur : à gauche (même côté que la descente du joueur) ; il est tiré vers l'extérieur et s'enfuit loin du joueur.
     const lx = -Math.cos(got.heading), ly = Math.sin(got.heading), side = FAMILIES.car.dismount;
     (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
-    wanted.report("carjack", got.x, got.y, "civilian");
+    police.crime("carjack", got.x, got.y, true);
     mount(v);
   };
   const act = (): void => {
@@ -292,7 +297,11 @@ export function startGame(ctx: GameContext): void {
     }
     const r = reachable();
     if (r.traffic) carjack();
-    else if (r.fleet) mount(r.fleet);
+    else if (r.fleet) {
+      // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
+      if (r.fleet.home) police.crime("theft", player.x, player.y, false);
+      mount(r.fleet);
+    }
   };
   actionEl.addEventListener("click", act);
   window.addEventListener("keydown", (e) => {
@@ -361,6 +370,8 @@ export function startGame(ctx: GameContext): void {
       appearanceStore.write(r);
     },
   });
+
+  ui.police = police.minimap;
 
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
@@ -491,7 +502,18 @@ export function startGame(ctx: GameContext): void {
       } else if (imp && !riding && imp.bump > 0) bumpTimer = 0.3;
     }
 
-    wanted.update(dt, player.x, player.y, false);
+    {
+      const imp = (peds as PedsController | null)?.impact;
+      const s = riding?.state;
+      police.update(dt, {
+        x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0,
+        witnesses: (x, y, r) => {
+          pedWitnesses.length = 0;
+          return (peds as PedsController | null)?.queryCircle(x, y, r, pedWitnesses) ?? 0;
+        },
+      });
+    }
     wantedHud.set(wanted);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);

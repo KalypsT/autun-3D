@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -60,6 +60,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => window.__autun.wanted.set(1, 0, 0));
     await sleep(600);
     await shot("j4-recherche-1");
+    await ctx.close();
+  }
+
+  if (want("police")) {
+    // Poursuite (J4-4) : deux étoiles, la nuit ; on attend qu'une voiture de gendarmerie soit à moins de 25 m du joueur (rendu logiciel : plusieurs minutes).
+    const ctx = await open("wanted=2&h=21.5&traffic=10");
+    await page.waitForFunction(() => {
+      const t = window.__autun.traffic();
+      const p = window.__autun.player;
+      return t && t.cars.some((c) => c.sim.chase && Math.hypot(c.sim.state.x - p.x, c.sim.state.y - p.y) < 25);
+    }, null, { timeout: 900000, polling: 1000 });
+    await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; }" });
+    await shot("j4-police-nuit");
     await ctx.close();
   }
 

@@ -31,6 +31,11 @@ export interface SpawnQuery {
   hull: VehicleSpec["hull"];
   /** Nombre d'arêtes essayées au plus. */
   tries?: number;
+  /**
+   * Centre de la couronne, s'il n'est pas le joueur (J4 : les renforts naissent autour du lieu où la police cherche). On ne naît alors ni dans le champ
+   * de vision du joueur, ni à moins du rayon intérieur de la couronne de lui.
+   */
+  around?: { x: number; y: number };
 }
 
 export interface Spawn {
@@ -62,6 +67,7 @@ export function pickSpawn(nav: NavGraph, q: SpawnQuery): Spawn | null {
   const road = nav.road;
   const { rIn, rOut } = spawnRing(q.speed);
   const halfFov = q.halfFov ?? 0.95, minGap = q.minGap ?? 20;
+  const cx = q.around?.x ?? q.px, cy = q.around?.y ?? q.py;
   // Arêtes dont une extrémité au moins tombe à moins de rOut + 60 m du joueur (la sélection exacte se fait sur le point choisi).
   const candidates: number[] = [];
   for (const l of nav.cells.values()) {
@@ -70,7 +76,7 @@ export function pickSpawn(nav: NavGraph, q: SpawnQuery): Spawn | null {
       const a = road.edgeA(e), b = road.edgeB(e);
       if ((road.nodeFlags(a) | road.nodeFlags(b)) & 2) continue;
       const mx = (road.nodeX(a) + road.nodeX(b)) / 2, my = (road.nodeY(a) + road.nodeY(b)) / 2;
-      const d = Math.hypot(mx - q.px, my - q.py);
+      const d = Math.hypot(mx - cx, my - cy);
       if (d < rIn - road.edgeLength(e) / 2 || d > rOut + road.edgeLength(e) / 2) continue;
       candidates.push(e);
     }
@@ -87,8 +93,9 @@ export function pickSpawn(nav: NavGraph, q: SpawnQuery): Spawn | null {
     const margin = Math.min(10, len / 4);
     const s = margin + q.rnd() * Math.max(len - 2 * margin - 15, 1);
     lanePoint(road, move, s, lp);
-    const d = Math.hypot(lp.x - q.px, lp.y - q.py);
+    const d = Math.hypot(lp.x - cx, lp.y - cy);
     if (d < rIn || d > rOut || !q.solidAt(lp.x, lp.y)) continue;
+    if (q.around && Math.hypot(lp.x - q.px, lp.y - q.py) < rIn) continue;
     if (visibleFrom(q.px, q.py, q.yaw, halfFov, lp.x, lp.y, q.colliders)) continue;
     if (q.taken.some((c) => Math.hypot(c.x - lp.x, c.y - lp.y) < minGap)) continue;
     // Place libre pour la coque (un véhicule garé, un poteau, un mur) : on teste chaque cercle.

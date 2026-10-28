@@ -434,3 +434,6 @@ Fait :
 
 **J4-3 (28 octobre 2026) : itinéraire et poursuite** (D73)
 - `src/core/road-route.ts` (A*, sens uniques ignorés pour la police), `src/core/chase.ts` (route, conduite directe, marche arrière, attente près du joueur arrêté), conducteur en poursuite (axe de la chaussée, plus vite, règles ignorées), civils qui se rangent devant la sirène, `Traffic.pursuers` et `?chase=N`. Essais sur les vraies données : la gendarmerie rattrape un fugitif qui roule comme la circulation et s'arrête à 4 à 8 m de lui quand il s'arrête. Tests : 457.
+
+**J4-4 (28 octobre 2026) : détection et renforts** (D74)
+- La police voit (patrouilles devant elles, poursuivants tout autour, murs qui cachent), constate les infractions (vol, passant renversé, voiture de police percutée, excès de vitesse et feu rouge sous ses yeux, refus de s'arrêter), envoie 1, 2 puis 4 voitures, fouille la zone de recherche quand elle a perdu la piste ; police et zone sur la minimap.

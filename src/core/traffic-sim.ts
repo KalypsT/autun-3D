@@ -25,6 +25,8 @@ export interface SimCar {
   age: number;
   /** Poursuite du joueur (police, J4) : null hors poursuite. */
   chase: Chaser | null;
+  /** Impact (m/s) du dernier choc avec le véhicule du joueur à ce pas, 0 sans choc (J4 : percuter la police). */
+  hitPlayer: number;
 }
 
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
@@ -94,7 +96,7 @@ export class TrafficSim {
     const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders, this.signals);
     const { halfLen, halfWid } = extentOf(spec);
     const id = this.serial++;
-    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0, chase: null };
+    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0, chase: null, hitPlayer: 0 };
     if (driver) driver.junction.id = id;
     this.cars.push(car);
     return car;
@@ -127,6 +129,8 @@ export class TrafficSim {
   }
 
   private readonly target: ChaseTarget = { x: 0, y: 0, vx: 0, vy: 0 };
+  /** Où vont les voitures en poursuite (J4) : null, sur le joueur ; sinon ce point (la fouille, quand la police l'a perdu de vue). */
+  chaseTarget: ChaseTarget | null = null;
 
   /** Les voitures devant une voiture de poursuite lancée, à moins de 45 m et dans le même sens, se rangent à droite (une seconde, renouvelée tant qu'elle est là). */
   private sirens(): void {
@@ -185,9 +189,14 @@ export class TrafficSim {
       t.vy = player.vy;
       hasTarget = true;
     }
+    if (this.chaseTarget) {
+      Object.assign(t, this.chaseTarget);
+      hasTarget = true;
+    }
     this.sirens();
     for (const c of this.cars) {
       c.state.impact = 0;
+      c.hitPlayer = 0;
       let seen: readonly Other[] = others;
       if (c.driver && this.peds) {
         this.walkerCount = 0;
@@ -225,6 +234,7 @@ export class TrafficSim {
       if (playerBody && Math.abs(a.state.x - playerBody.state.x) < 8 && Math.abs(a.state.y - playerBody.state.y) < 8 && contactVehicles(a, playerBody, this.hit)) {
         this.stats.contacts++;
         this.stats.worstImpact = Math.max(this.stats.worstImpact, a.state.impact);
+        a.hitPlayer = Math.max(a.hitPlayer, this.hit.impact);
         this.shake(a, this.hit.impact);
       }
     }

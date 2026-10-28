@@ -5,6 +5,8 @@ import type { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
+import type { ChaseTarget } from "../core/chase";
+import type { PoliceUnit } from "../core/police";
 import { CATALOG, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import { ZONE } from "../data/nav";
@@ -200,11 +202,33 @@ export class Traffic {
     while (this.cars.length > n) this.remove(this.cars.length - 1);
   }
 
+  /** Où vont les voitures en poursuite : null, sur le joueur ; sinon ce point (fouille). */
+  setChaseTarget(t: ChaseTarget | null): void {
+    this.sim.chaseTarget = t;
+  }
+
+  /** Les voitures de police (position, cap, en poursuite), réécrites dans `out`. */
+  policeUnits(out: PoliceUnit[]): PoliceUnit[] {
+    out.length = 0;
+    for (const c of this.cars) if (c.police) out.push({ x: c.sim.state.x, y: c.sim.state.y, heading: c.sim.state.heading, chasing: c.sim.chase !== null });
+    return out;
+  }
+
+  private ram = 0;
+
+  /** Pire choc (m/s) entre le véhicule du joueur et une voiture de police depuis le dernier appel. */
+  takeRam(): number {
+    const r = this.ram;
+    this.ram = 0;
+    return r;
+  }
+
   /** Un pas de simulation à pas fixe : conducteurs, physique et chocs. `player` : ce que les conducteurs voient du joueur. */
   step(dt: number, player: PlayerBody | null): void {
     if (this.cars.length === 0) return;
     const t0 = performance.now();
     this.sim.step(dt, player);
+    for (const c of this.cars) if (c.police && c.sim.hitPlayer > this.ram) this.ram = c.sim.hitPlayer;
     for (const h of this.sim.honks) this.pendingHonks.push({ x: h.x, y: h.y, vx: h.vx, vy: h.vy, heading: h.heading, hull: h.hull, hornRange: 35 });
     this.simMs += (performance.now() - t0 - this.simMs) * 0.02;
   }
@@ -292,7 +316,9 @@ export class Traffic {
     this.policeCooldown -= dt;
     if (n < this.pursuers && this.policeCooldown <= 0 && this.nav.graph.cells.size > 0) {
       this.policeCooldown = 2;
-      const c = this.spawn(env, true);
+      // La piste perdue (la poursuite vise un point de fouille), les renforts naissent autour de ce point, pas autour du joueur que la police ne sait pas où trouver.
+      const at = this.sim.chaseTarget;
+      const c = this.spawn(env, true, at ? { x: at.x, y: at.y } : undefined);
       if (c) {
         this.sim.setChase(c.sim, true);
         c.siren = true;
@@ -321,7 +347,7 @@ export class Traffic {
   }
 
   /** Fait naître une voiture (de police si `police`) sur une voie libre de la couronne ; null s'il n'y en a pas (rien n'est alors créé). */
-  private spawn(env: TrafficEnv, police = false): TrafficCar | null {
+  private spawn(env: TrafficEnv, police = false, around?: { x: number; y: number }): TrafficCar | null {
     const rnd = (): number => {
       let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(++this.serial, 0xc2b2ae35);
       h ^= h >>> 15;
@@ -334,7 +360,7 @@ export class Traffic {
     const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);
     if (env.vehicle) taken.push(env.vehicle);
     else taken.push({ x: env.x, y: env.y });
-    const sp = pickSpawn(this.nav.graph, { px: env.x, py: env.y, yaw: env.yaw, speed: env.speed, rnd, taken, solidAt: this.solidAt, colliders: this.colliders, hull: def.spec.hull });
+    const sp = pickSpawn(this.nav.graph, { px: env.x, py: env.y, yaw: env.yaw, speed: env.speed, rnd, taken, solidAt: this.solidAt, colliders: this.colliders, hull: def.spec.hull, ...(around ? { around } : {}) });
     if (!sp) return null;
     const variant = Math.floor(rnd() * 16);
     const driver = Math.floor(rnd() * 4294967296);
