@@ -48,6 +48,22 @@ export interface PedSimOptions {
   spawnInView?: boolean;
 }
 
+/**
+ * Un véhicule de la circulation vu par les passants (J3-3b) : position, vitesse, coque. La simulation y écrit ce que le choc a coûté au véhicule
+ * (`slow`, part de vitesse perdue 0 à 0,5, comme pour le véhicule du joueur dans `PedSim.impact`), à remettre à zéro par l'appelant à chaque pas.
+ */
+export interface TrafficBody {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  heading?: number;
+  hull?: readonly (readonly [number, number])[];
+  slow: number;
+  speed: number;
+  hits: number;
+}
+
 /** Ce que la simulation sait du joueur à chaque pas : position, vitesse, direction du regard, et le véhicule qu'il conduit. */
 export interface Observer {
   x: number;
@@ -60,6 +76,8 @@ export interface Observer {
   onFoot: boolean;
   /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. `heading` et `hull` (cercles : décalage le long du cap, rayon) donnent sa coque. */
   vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[]; hornRange?: number } | null;
+  /** Les véhicules de la circulation (J3) : les passants les évitent, attendent à l'entrée d'un passage devant eux et peuvent être heurtés. */
+  vehicles?: readonly TrafficBody[];
   /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent, jusqu'à la portée `vehicle.hornRange` (35 m par défaut). */
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
@@ -276,7 +294,8 @@ export class PedSim {
         knocked++;
         continue;
       }
-      if (obs.vehicle) this.vehicleContact(i, obs.vehicle);
+      if (obs.vehicle) this.vehicleContact(i, obs.vehicle, this.impact);
+      if (obs.vehicles) for (const tv of obs.vehicles) this.vehicleContact(i, tv, tv);
       if (obs.onFoot && d2 < 4) this.footContact(i, obs, d2);
       if (this.mode[i]! >= PED_STATE.stumble) {
         knocked++;
@@ -474,7 +493,9 @@ export class PedSim {
   }
 
   private threat(x: number, y: number, obs: Observer): boolean {
-    return vehicleThreat(x, y, obs.vehicle);
+    if (vehicleThreat(x, y, obs.vehicle)) return true;
+    if (obs.vehicles) for (const v of obs.vehicles) if (vehicleThreat(x, y, v)) return true;
+    return false;
   }
 
   /** Fin de l'arête : choisit la suite (tout droit de préférence, jamais demi-tour s'il y a mieux), attend si un passage est dangereux. */
@@ -626,7 +647,7 @@ export class PedSim {
   }
 
   /** Contact d'un passant avec la coque du véhicule du joueur, ou esquive à son approche. */
-  private vehicleContact(i: number, v: NonNullable<Observer["vehicle"]>): void {
+  private vehicleContact(i: number, v: NonNullable<Observer["vehicle"]>, imp: { slow: number; speed: number; hits: number }): void {
     const px = this.x[i]!, py = this.y[i]!;
     const dx = px - v.x, dy = py - v.y;
     const speed = Math.hypot(v.vx, v.vy);
@@ -659,7 +680,6 @@ export class PedSim {
       const hard = speed >= 3.5;
       this.knock(i, hard ? HIT_POSE.down : HIT_POSE.stumble, ux * 0.8 + ax * 0.6, uy * 0.8 + ay * 0.6, hard ? Math.min(9, 0.7 * speed + 1.5) : 1.2 + 0.4 * speed);
       const slow = hard ? Math.min(0.3, Math.max(0.1, 0.1 + 0.02 * speed)) : 0.04;
-      const imp = this.impact;
       imp.slow = Math.min(0.5, 1 - (1 - imp.slow) * (1 - slow));
       imp.speed = Math.max(imp.speed, speed);
       imp.hits++;
@@ -777,6 +797,22 @@ export class PedSim {
       const h = this.hash(Math.floor(this.x[i]! / 4), Math.floor(this.y[i]! / 4));
       this.link[i] = this.head[h]!;
       this.head[h] = i;
+    }
+  }
+
+  /**
+   * Passants vivants à moins de `r` de (x, y), pour la circulation (J3-3b) : `visit(x, y, vx, vy, engaged)`, où `engaged` dit qu'ils traversent
+   * (sur un passage) ou sont à terre, donc que les voitures doivent leur laisser la place. Sans allocation.
+   */
+  forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
+    const alive = this.state.alive!, r2 = r * r;
+    for (let i = 0; i < this.n; i++) {
+      if (!alive[i]) continue;
+      const dx = this.x[i]! - x, dy = this.y[i]! - y;
+      if (dx * dx + dy * dy > r2) continue;
+      const m = this.mode[i]!;
+      const sp = m === PED_STATE.walk || m === PED_STATE.cross ? this.speed[i]! * (m === PED_STATE.cross ? 1.25 : 1) : 0;
+      visit(this.x[i]!, this.y[i]!, Math.sin(this.heading[i]!) * sp, Math.cos(this.heading[i]!) * sp, m === PED_STATE.cross || m >= PED_STATE.stumble);
     }
   }
 

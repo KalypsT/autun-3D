@@ -420,8 +420,11 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
+        ...(traffic ? { vehicles: traffic.bodies() } : {}),
       };
+      traffic?.setPeds(pedsNow);
       pedsNow?.update(dt, obs, camera.position.x, camera.position.z);
+      traffic?.applyImpacts();
       (pigeons as PigeonsController | null)?.update(dt, obs, pedsNow);
       // Effet des passants sur le joueur : un choc ralentit le véhicule (10 à 30 %, jamais plus de 50 % d'un coup) ; à pied, une bousculade ralentit un instant.
       const imp = pedsNow?.impact;

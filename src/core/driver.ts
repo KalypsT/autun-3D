@@ -354,6 +354,9 @@ export interface Other {
   halfWid: number;
   /** Où en est ce conducteur de son prochain carrefour (voitures de la circulation seulement). */
   junction?: JunctionState;
+  /** Piéton (J3-3b) ; `engaged` : il traverse ou est à terre, les voitures lui laissent la place même hors de leur voie. */
+  walker?: boolean;
+  engaged?: boolean;
 }
 
 /** Emprise d'une fiche : demi-longueur (du centre de gravité au bout du cercle extrême) et demi-largeur. */
@@ -574,7 +577,8 @@ export class Driver {
       if (!(hi > lo && road.edgeClass(inEdge) === hi)) obligation = 0;
     }
     const signalized = this.signals !== null && (road.nodeFlags(node) & NODE_FLAG.signal) !== 0;
-    if (arms < 3 && obligation < 2 && !signalized) return Infinity;
+    const crossing = (road.nodeFlags(node) & NODE_FLAG.crossing) !== 0;
+    if (arms < 3 && obligation < 2 && !signalized && !crossing) return Infinity;
     const x = road.nodeX(node), y = road.nodeY(node);
     const ring = (road.edgeFlags(inEdge) & ROAD_FLAG.roundabout) !== 0, nextRing = (road.edgeFlags(outEdge) & ROAD_FLAG.roundabout) !== 0;
     J.active = true;
@@ -608,6 +612,16 @@ export class Driver {
     }
     // Feu : rouge, on s'arrête ; orange, on s'arrête si on le peut sans freiner à plus de 3,5 m/s² ; vert, on passe, en ne cédant qu'à ce qui est déjà dans le carrefour
     // et, en tournant à gauche, à celui qui vient en face.
+    // Passage piéton : on laisse la place à un piéton engagé, sur n'importe quelle partie du passage, tant qu'on peut s'arrêter à 6 m/s².
+    if (!blocking && crossing && dist >= (u * u) / (2 * 6)) {
+      const reach = Math.max(4.5, road.edgeWidth(inEdge) / 2 + 3);
+      for (const o of others) {
+        if (o.walker && o.engaged && Math.hypot(o.state.x - x, o.state.y - y) < reach) {
+          blocking = true;
+          break;
+        }
+      }
+    }
     const light = signalized ? this.signals!.carState(inMove) : -1;
     if (light === RED || (light === AMBER && dist >= (u * u) / (2 * 3.5))) blocking = true;
     const permissive = light === GREEN || light === AMBER;
@@ -676,7 +690,7 @@ export class Driver {
         out.gap = gap;
         out.v = o.state.vx * Math.sin(path.heading[bj]!) + o.state.vy * Math.cos(path.heading[bj]!);
         // En face : il vient vers nous (un usager arrêté, même tourné vers nous, est un obstacle comme un autre).
-        out.oncoming = Math.cos(rel) < -0.5 && out.v < -1;
+        out.oncoming = !o.walker && Math.cos(rel) < -0.5 && out.v < -1;
         found = true;
       }
     }

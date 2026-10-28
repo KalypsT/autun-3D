@@ -56,6 +56,11 @@ export class PedsController {
     return this.sim?.queryCircle(x, y, r, out) ?? 0;
   }
 
+  /** Passants à moins de `r` de (x, y) pour la circulation : voir `PedSim.forEachNear`. */
+  forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
+    this.sim?.forEachNear(x, y, r, visit);
+  }
+
   setCapacity(n: number): void {
     if (n === this.capacity) return;
     this.crowd?.dispose();

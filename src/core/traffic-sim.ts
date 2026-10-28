@@ -27,6 +27,14 @@ export interface SimCar {
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
 export type PlayerBody = { kind: "vehicle"; state: VehicleState; spec: VehicleSpec } | { kind: "foot"; x: number; y: number; vx: number; vy: number };
 
+/** Ce que la circulation sait des passants : la simulation des passants (`PedSim.forEachNear`) ou un faux dans les essais. */
+export interface PedLookup {
+  forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void;
+}
+
+/** Les conducteurs regardent les passants à cette distance (m) de leur voiture. */
+const PED_REACH = 30;
+
 const FOOT: Other["state"] = { x: 0, y: 0, vx: 0, vy: 0, heading: 0 };
 const PARKED: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: 1 };
 
@@ -38,6 +46,22 @@ export class TrafficSim {
   private footOther: Other = { state: FOOT, halfLen: 0.4, halfWid: 0.4 };
   /** Contacts entre voitures et avec le joueur au dernier pas, et pire impact (m/s). */
   stats = { contacts: 0, worstImpact: 0 };
+  /** Les passants (J3-3b) : les voitures les évitent, et s'arrêtent pour ceux qui traversent. Null : aucun. */
+  peds: PedLookup | null = null;
+  private readonly walkers: Other[] = [];
+  private walkerCount = 0;
+  private readonly scratch: Other[] = [];
+  private readonly collect = (x: number, y: number, vx: number, vy: number, engaged: boolean): void => {
+    let w = this.walkers[this.walkerCount];
+    if (!w) w = this.walkers[this.walkerCount] = { state: { x: 0, y: 0, vx: 0, vy: 0, heading: 0 }, halfLen: 0.35, halfWid: 0.35, walker: true, engaged: false };
+    w.state.x = x;
+    w.state.y = y;
+    w.state.vx = vx;
+    w.state.vy = vy;
+    w.state.heading = Math.atan2(vx, vy);
+    w.engaged = engaged;
+    this.walkerCount++;
+  };
 
   /** Feux de circulation. Sans `signals`, la simulation a les siens, avec une horloge qu'elle fait avancer elle-même (essais) ; le jeu en passe un, partagé avec les passants. */
   readonly signals: Signals;
@@ -97,7 +121,19 @@ export class TrafficSim {
     }
     for (const c of this.cars) {
       c.state.impact = 0;
-      const input = c.driver ? c.driver.update(c.state, dt, others) : PARKED;
+      let seen: readonly Other[] = others;
+      if (c.driver && this.peds) {
+        this.walkerCount = 0;
+        this.peds.forEachNear(c.state.x, c.state.y, PED_REACH, this.collect);
+        if (this.walkerCount > 0) {
+          const list = this.scratch;
+          list.length = 0;
+          for (const o of others) list.push(o);
+          for (let k = 0; k < this.walkerCount; k++) list.push(this.walkers[k]!);
+          seen = list;
+        }
+      }
+      const input = c.driver ? c.driver.update(c.state, dt, seen) : PARKED;
       stepVehicle(c.state, c.spec, input, dt, this.terrain, this.colliders);
       c.age += dt;
     }

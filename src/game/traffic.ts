@@ -3,7 +3,8 @@ import type { Colliders } from "../core/collision";
 import { lanePoint } from "../core/driver";
 import { moveEdge } from "../core/road-graph";
 import type { Signals } from "../core/signals";
-import { TrafficSim, type PlayerBody, type SimCar } from "../core/traffic-sim";
+import type { TrafficBody } from "../core/pedestrians";
+import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import { CATALOG, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import type { HeightField } from "../data/types";
@@ -21,6 +22,8 @@ interface TrafficCar {
   sim: SimCar;
   def: VehicleDef;
   model: VehicleModel;
+  /** Ce que voient les passants de cette voiture (position, vitesse, coque) et ce que le choc d'un passant lui a coûté. */
+  body: TrafficBody;
 }
 
 /** Distance (m) du joueur à laquelle on place une voiture : ni dans son champ de vision immédiat, ni hors de la navigation chargée. */
@@ -52,6 +55,40 @@ export class Traffic {
   get stats(): TrafficSim["stats"] {
     return this.sim.stats;
   }
+
+  /** Les passants : les voitures les évitent et s'arrêtent pour ceux qui traversent. */
+  setPeds(peds: PedLookup | null): void {
+    this.sim.peds = peds;
+  }
+
+  /** Les voitures telles que les passants les voient (`Observer.vehicles`), à jour de leur position. */
+  bodies(): readonly TrafficBody[] {
+    this.bodyList.length = 0;
+    for (const c of this.cars) {
+      const s = c.sim.state, b = c.body;
+      b.x = s.x;
+      b.y = s.y;
+      b.vx = s.vx;
+      b.vy = s.vy;
+      b.heading = s.heading;
+      b.slow = b.speed = b.hits = 0;
+      this.bodyList.push(b);
+    }
+    return this.bodyList;
+  }
+
+  /** Après la simulation des passants : une voiture qui a heurté un passant perd 10 à 30 % de sa vitesse (D44, comme le véhicule du joueur). */
+  applyImpacts(): void {
+    for (const c of this.cars) {
+      if (c.body.slow <= 0) continue;
+      const keep = 1 - c.body.slow, s = c.sim.state;
+      s.vx *= keep;
+      s.vy *= keep;
+      s.speed *= keep;
+    }
+  }
+
+  private readonly bodyList: TrafficBody[] = [];
 
   setCapacity(n: number): void {
     this.capacity = n;
@@ -128,7 +165,7 @@ export class Traffic {
     const model = buildModel(def, variant);
     model.update(sim.state);
     this.scene.add(model.group);
-    this.cars.push({ sim, def, model });
+    this.cars.push({ sim, def, model, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 } });
   }
 
   dispose(): void {

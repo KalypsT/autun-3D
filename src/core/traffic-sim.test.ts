@@ -165,3 +165,62 @@ describe("circulation à plusieurs (J3-2)", () => {
     expect(contactSteps).toBeLessThan(60);
   });
 });
+
+describe("passants et circulation (J3-3b)", () => {
+  /** Un faux passant, immobile, à la position donnée. */
+  const fakePed = (get: () => { x: number; y: number; engaged: boolean } | null) => ({
+    forEachNear(_x: number, _y: number, _r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
+      const p = get();
+      if (p) visit(p.x, p.y, 0, 0, p.engaged);
+    },
+  });
+
+  it("une voiture s'arrête devant un piéton qui traverse sur un passage, tant qu'il y est, puis repart", () => {
+    const stops: { m: number; node: number }[] = [];
+    for (const m of real.starts(1, 70, 7)) {
+      const node = nav.road.arrivalNode(m);
+      if (nav.road.nodeFlags(node) & 32 && !(nav.road.nodeFlags(node) & (4 | 3)) && nav.road.arms(node) === 2 && !nav.road.signAt(m)) stops.push({ m, node });
+    }
+    expect(stops.length).toBeGreaterThan(8);
+    let tested = 0;
+    for (const { m, node } of stops.slice(0, 8)) {
+      const nx = nav.road.nodeX(node), ny = nav.road.nodeY(node);
+      let present = true;
+      const sim = new TrafficSim(nav, world.terrain, colliders);
+      sim.peds = fakePed(() => (present ? { x: nx, y: ny, engaged: true } : null));
+      const car = sim.add(citadine, m, Math.max(nav.road.edgeLength(moveEdge(m)) - 60, 0), 3, 8);
+      let min = Infinity;
+      for (let i = 0; i < 60 * 25; i++) {
+        sim.step(DT);
+        min = Math.min(min, Math.hypot(car.state.x - nx, car.state.y - ny));
+      }
+      // Pendant que le piéton est là, la voiture reste avant le passage, à l'arrêt.
+      expect(car.state.speed).toBeLessThan(0.3);
+      expect(min).toBeGreaterThan(3);
+      present = false;
+      let passed = false;
+      for (let i = 0; i < 60 * 20 && !car.driver!.lost; i++) {
+        sim.step(DT);
+        if (Math.hypot(car.state.x - nx, car.state.y - ny) < 2.5) passed = true;
+      }
+      expect(passed || car.driver!.lost).toBe(true);
+      tested++;
+    }
+    expect(tested).toBe(8);
+  });
+
+  it("une voiture s'arrête devant un piéton immobile sur sa voie (hors passage) et ne le touche pas", () => {
+    const m = straightRoad();
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 80, lp);
+    const sim = new TrafficSim(nav, world.terrain, colliders);
+    sim.peds = fakePed(() => ({ x: lp.x, y: lp.y, engaged: false }));
+    const car = sim.add(citadine, m, 5, 9, 10);
+    for (let i = 0; i < 60 * 30; i++) sim.step(DT);
+    expect(car.state.speed).toBeLessThan(0.3);
+    const d = Math.hypot(car.state.x - lp.x, car.state.y - lp.y);
+    expect(d).toBeGreaterThan(extentOf(citadine).halfLen + 0.35);
+    expect(d).toBeLessThan(extentOf(citadine).halfLen + 8);
+  });
+});
+

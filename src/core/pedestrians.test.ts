@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pointInRing } from "./collision";
 import { NavGraph } from "./nav-graph";
-import { PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent } from "./pedestrians";
+import { PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -245,6 +245,34 @@ describe("chocs, esquives et klaxon", () => {
     c.sim.position(c.slot, p);
     expect(Number.isFinite(p.x + p.y)).toBe(true);
     expect(c.g.nearest(p.x, p.y, 40)).not.toBeNull();
+  });
+
+  it("un véhicule de la circulation (`Observer.vehicles`) heurte un passant comme celui du joueur : le passant tombe, la voiture perd 10 à 30 % de sa vitesse, un seul choc", () => {
+    const c = setup();
+    const p = { x: 0, y: 0 };
+    const body: TrafficBody = { x: 0, y: 0, vx: 10, vy: 0, heading: Math.PI / 2, hull: [[1.25, 1.5], [0, 1.5], [-1.25, 1.5]], slow: 0, speed: 0, hits: 0 };
+    let slow = 0, hits = 0, fell = false;
+    const events: PedEvent[] = [];
+    for (let i = 0; i < 120; i++) {
+      c.sim.position(c.slot, p);
+      body.x = c.x - 16 + 10 * i * STEP;
+      body.y = p.y;
+      body.slow = 0;
+      body.hits = 0;
+      c.sim.step(STEP, { ...still(0, -20), onFoot: true, vehicles: [body] });
+      slow = Math.max(slow, body.slow);
+      hits += body.hits;
+      events.push(...c.sim.events.filter((e) => e.slot === c.slot));
+      c.sim.clearEvents();
+      if (c.sim.state.pose![c.slot] === 2) fell = true;
+    }
+    expect(events.filter((e) => e.kind === "hit")).toHaveLength(1);
+    expect(fell).toBe(true);
+    expect(slow).toBeGreaterThanOrEqual(0.1);
+    expect(slow).toBeLessThanOrEqual(0.3 + 1e-9);
+    expect(hits).toBe(1);
+    // Le véhicule du joueur n'a rien subi : l'effet est sur la voiture de la circulation.
+    expect(c.sim.impact.slow).toBe(0);
   });
 
   it("fait seulement trébucher un passant à 2 m/s, et pousse sans faire tomber un véhicule qui avance au pas", () => {
