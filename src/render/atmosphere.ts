@@ -78,6 +78,11 @@ export class Atmosphere {
     if (Math.abs(this.hour - this.lastApplied) > 0.01 || this.hour < this.lastApplied) this.apply();
   }
 
+  /** Nuit pour les lumières allumées (fenêtres, lampadaires, feux des voitures) : 0 le jour, 1 la nuit noire, de 3° à −6° de hauteur du soleil. */
+  get night(): number {
+    return this.res.glowMat.opacity;
+  }
+
   get clock(): string {
     const h = Math.floor(this.hour), m = Math.floor((this.hour - h) * 60);
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;

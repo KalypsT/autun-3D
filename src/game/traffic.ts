@@ -5,13 +5,12 @@ import type { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
-import { CATALOG, type VehicleDef } from "../core/vehicle-catalog";
+import { CATALOG, paletteColor, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import { ZONE } from "../data/nav";
 import type { HeightField } from "../data/types";
-import type { VehicleModel } from "../render/vehicle-model";
+import { TrafficModels, type TrafficItem } from "../render/traffic-models";
 import type { NavManager } from "./nav-manager";
-import { buildModel } from "./vehicles";
 
 /**
  * Circulation du jeu (étape J3) : la simulation (`src/core/traffic-sim.ts`), un modèle articulé par voiture (le rendu par instances est J3-5),
@@ -22,7 +21,7 @@ import { buildModel } from "./vehicles";
 interface TrafficCar {
   sim: SimCar;
   def: VehicleDef;
-  model: VehicleModel;
+  variant: number;
   /** Ce que voient les passants de cette voiture (position, vitesse, coque) et ce que le choc d'un passant lui a coûté. */
   body: TrafficBody;
   /** Depuis combien de secondes le conducteur est perdu (le joueur la regardait : elle n'a pas pu disparaître). */
@@ -48,6 +47,9 @@ const TRIM_EVERY = 0.6;
 export class Traffic {
   readonly cars: TrafficCar[] = [];
   private readonly sim: TrafficSim;
+  /** Rendu par instances (D65) : un maillage par modèle présent, un pour toutes les roues, un pour les feux. */
+  readonly models = new TrafficModels();
+  private readonly items: TrafficItem[] = [];
   /** Coût moyen (ms, lissé) d'un pas de simulation de toutes les voitures, pour la ligne de diagnostic. */
   simMs = 0;
   private serial = 0;
@@ -69,6 +71,13 @@ export class Traffic {
     private readonly seed = 1,
   ) {
     this.sim = new TrafficSim(nav.graph, terrain, colliders, signals);
+    this.models.prepare(CATALOG.filter((d) => d.family === "car").map((d) => d.id));
+    scene.add(this.models.group);
+  }
+
+  /** Nuit (0 à 1) : les feux s'allument comme les fenêtres. */
+  setNight(glow: number): void {
+    this.models.setNight(glow);
   }
 
   /** Contacts de la circulation au dernier pas (voitures entre elles, avec le joueur). */
@@ -143,7 +152,6 @@ export class Traffic {
     const seen = (x: number, y: number): boolean => visibleFrom(env.x, env.y, env.yaw, 1.1, x, y, this.colliders);
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!;
-      c.model.update(c.sim.state);
       const d = Math.hypot(c.sim.state.x - env.x, c.sim.state.y - env.y);
       // Perdue (impasse, blocage) ou sortie de la couronne : elle disparaît quand le joueur ne la voit pas. Une voiture perdue qu'il regarde
       // reste (elle ne disparaît pas sous ses yeux), mais pas plus de 20 s.
@@ -172,14 +180,24 @@ export class Traffic {
       this.cooldown = SPAWN_EVERY;
       if (!this.spawn(env)) break;
     }
+    this.render();
+  }
+
+  /** Écrit les instances à dessiner : une par voiture, à jour de sa position, de son cap, de ses roues. */
+  private render(): void {
+    const items = this.items;
+    items.length = 0;
+    for (const c of this.cars) {
+      const s = c.sim.state;
+      items.push({ model: c.def.id, x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) });
+    }
+    this.models.set(items);
   }
 
   private remove(i: number): void {
     const c = this.cars[i]!;
     const k = this.sim.cars.indexOf(c.sim);
     if (k >= 0) this.sim.remove(k);
-    this.scene.remove(c.model.group);
-    c.model.dispose();
     this.cars.splice(i, 1);
   }
 
@@ -201,14 +219,13 @@ export class Traffic {
     const variant = Math.floor(rnd() * 16);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
     const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
-    const model = buildModel(def, variant);
-    model.update(sim.state);
-    this.scene.add(model.group);
-    this.cars.push({ sim, def, model, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
+    this.cars.push({ sim, def, variant, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
     return true;
   }
 
   dispose(): void {
     for (let i = this.cars.length - 1; i >= 0; i--) this.remove(i);
+    this.scene.remove(this.models.group);
+    this.models.dispose();
   }
 }

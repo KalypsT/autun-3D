@@ -78,7 +78,8 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(maxCars).toBeLessThanOrEqual(15);
     // Toutes les voitures vivantes sont dans la couronne élargie, et la scène ne garde que leurs modèles.
     for (const c of traffic.cars) expect(Math.hypot(c.sim.state.x - x, c.sim.state.y + 200)).toBeLessThan(450);
-    expect(scene.children.length).toBe(traffic.cars.length);
+    expect(scene.children.length).toBe(1);
+    expect(traffic.models.instances).toBe(traffic.cars.length);
     traffic.dispose();
     expect(scene.children.length).toBe(0);
   });
