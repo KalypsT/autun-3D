@@ -37,7 +37,7 @@ export function solveCamera(input: RigInput, colliders: Colliders, terrain: Heig
   }
   let x = input.x + dx * d, y = input.y + dy * d, z = tz + dz * d;
   // Le sol ne doit pas masquer la caméra ; si on la remonte, on la rapproche pour garder l'axe de visée.
-  const floor = terrain.heightAt(x, y) + 0.35;
+  const floor = terrain.heightAt(x, y, tz) + 0.35;
   if (z < floor) {
     z = floor;
   }

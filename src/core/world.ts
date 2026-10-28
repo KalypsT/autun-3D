@@ -1,5 +1,7 @@
-import type { TileData } from "../data/types";
+import type { HeightField, TileData } from "../data/types";
 import { Colliders } from "./collision";
+import { isOpen, landmarkCircles, landmarkRings } from "./landmarks";
+import { parapetLines } from "./bridges";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -7,21 +9,30 @@ const FURNITURE_RADIUS: Record<string, number> = {
   bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
 };
 
-export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees">;
+/** Identifiants des clôtures de parcelle écrites par tools/data/build_public_space.py : −(PARCEL_FENCE_ID + n). */
+export const PARCEL_FENCE_ID = 900_000_000;
+
+export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures">;
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
-export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null): void {
+export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null, terrain: HeightField | null = null): void {
   c.currentTag = tag;
   for (const b of tile.buildings) {
+    if (isOpen(tile.kinds, b.id)) continue;
     c.addRing(b.ring);
     for (const h of b.holes) c.addRing(h);
   }
-  for (const w of tile.walls) c.addPolyline(w.pts);
+  // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
+  for (const w of tile.walls) c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID);
   for (const f of tile.furniture) {
     const r = FURNITURE_RADIUS[f.kind];
     if (r !== undefined) c.addCircle(f.x, f.y, r);
   }
   for (const [x, y] of tile.trees) c.addCircle(x, y, 0.3);
+  for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
+  for (const ring of landmarkRings(tile.kinds, (x, y) => terrain?.heightAt(x, y) ?? 0)) c.addRing(ring);
+  // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
+  for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line);
   c.currentTag = null;
 }
 

@@ -180,7 +180,8 @@ export class TerrainView {
 
   private build(c: Chunk, level: number): void {
     const [bx0, by0, bx1, by1] = c.info.bounds;
-    const field: HeightField = level < 2 ? this.terrain : this.terrain.coarse;
+    // Relief nu : les tabliers de pont (D93) ne doivent pas combler la vallée sous eux.
+    const field: HeightField = level < 2 ? this.terrain.ground : this.terrain.coarse;
     const step = level === 0 ? this.nearStep : LEVELS[level]![1];
     const cx = Math.max(1, Math.round((bx1 - bx0) / step)), cy = Math.max(1, Math.round((by1 - by0) / step));
     const nx = cx + 1, ny = cy + 1;

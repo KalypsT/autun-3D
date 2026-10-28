@@ -84,7 +84,7 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   y = Math.min(Math.max(y, terrain.yMin + 3), terrain.yMax - 3);
   p.x = x;
   p.y = y;
-  p.z = terrain.heightAt(x, y);
+  p.z = terrain.heightAt(x, y, p.z);
   p.speed = Math.hypot(p.vx, p.vy);
   if (p.speed > 0.15) {
     const target = Math.atan2(p.vx, p.vy);

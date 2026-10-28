@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Building, FacadeFiche, HeightField, WallRun } from "../data/types";
 import { finish, hash01, MeshBuilder, toThree, type Steps, type Vec3 } from "./geometry";
+import { shopfrontExtras } from "./shopfront";
 import {
   type ElementSpec, canonicalWindow, doorDims, doorRequest, quantize, railingRequest, shopModuleRequest, signRequest, SHOP_MODULE_W, windowDims, windowRequest,
   type DoorStyle, type WindowSpec,
@@ -123,7 +124,11 @@ export function planFacades(buildings: readonly Building[], fiches: ReadonlyMap<
 }
 
 /** Comme `planFacades`, en rendant la main après chaque bâtiment. */
-export function* planFacadesSteps(buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: HeightField): Steps<FacadePlan> {
+export function* planFacadesSteps(
+  buildings: readonly Building[], fiches: ReadonlyMap<string, FacadeFiche>, terrain: HeightField,
+  /** Sol libre devant les façades (trottoirs, places) : les terrasses ne s'installent que là. */
+  free: (x: number, y: number) => boolean = () => false,
+): Steps<FacadePlan> {
   const plan: FacadePlan = {
     requests: [], signRequests: [], placements: [], misc: new MeshBuilder(),
     stats: { windows: 0, doors: 0, shops: 0, balconies: 0, runs: 0 },
@@ -205,11 +210,12 @@ export function* planFacadesSteps(buildings: readonly Building[], fiches: Readon
       // Rez-de-chaussée : porte et vitrines.
       const blocked = new Set<number>();
       const mainWall = runIdx === mainIdx;
-      if (isStreet && mainWall && f.ground.kind !== "blank") {
-        const shops = (f.ground.shops ?? []).filter((sh) => sh.wall === runIdx);
-        const wantsShop = f.ground.kind === "shop";
-        const centers: { name: string | null; s: number }[] = shops.map((sh) => ({ name: sh.name, s: sh.s }));
-        if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2 });
+      const shops = (f.ground.shops ?? []).filter((sh) => sh.wall === runIdx);
+      const wantsShop = f.ground.kind === "shop";
+      // Le mur principal reçoit la porte ou les vitrines ; un autre mur sur rue, seulement les commerces qu'OpenStreetMap y place.
+      if (isStreet && f.ground.kind !== "blank" && (mainWall || (wantsShop && shops.length > 0))) {
+        const centers: { name: string | null; s: number; kind: string | null }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind }));
+        if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2, kind: null });
         const sf = f.ground.shopfront;
         if (wantsShop && sf) {
           for (const c of centers.slice(0, 2)) {
@@ -253,10 +259,16 @@ export function* planFacadesSteps(buildings: readonly Building[], fiches: Readon
               plan.signRequests.push(sg);
               place(sg.key, "sign", sampleAt(pl, s0 + used / 2), run.datum + gh - 0.72, 0.1);
             }
+            // Store, terrasse, croix de pharmacie ou carotte de tabac selon le commerce.
+            const front = sampleAt(pl, s0 + used / 2);
+            shopfrontExtras(plan.misc, {
+              x: front.x, y: front.y, tx: front.tx, ty: front.ty, nx: front.nx, ny: front.ny, width: used,
+              zTop: topZ, zSign: run.datum + gh - 0.72, key: `${b.id}|${c.s.toFixed(1)}`,
+            }, c.kind, new THREE.Color(sf.color), terrain, free);
             plan.stats.shops++;
             for (let i = 0; i < nBays; i++) if (center(i) > s0 - 0.5 && center(i) < s0 + used + 0.5) blocked.add(i);
           }
-        } else if (doorStyle !== "none") {
+        } else if (doorStyle !== "none" && mainWall) {
           const style = doorStyle as DoorStyle;
           const d = doorDims(style);
           let i = Math.floor(hash01(b.id, 9) * nBays);

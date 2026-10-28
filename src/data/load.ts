@@ -1,5 +1,5 @@
 import { Terrain, TiledTerrain } from "./terrain";
-import type { LodBuilding, TileData, WorldBase, WorldManifest } from "./types";
+import type { LodBuilding, TileData, TileKinds, TileStructures, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
 
@@ -35,8 +35,41 @@ export async function loadWorldBase(): Promise<WorldBase> {
   return { manifest, terrain: new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`)) };
 }
 
-export function loadTile(id: string): Promise<TileData> {
-  return loadJson<TileData>(`tiles/${id}.json`);
+const indexes = new Map<string, Promise<Set<string>>>();
+
+/** Tuiles qui ont un fichier dans le dossier `dir` (dir/index.json) ; un index absent vaut « aucune ». */
+function tilesWith(dir: string): Promise<Set<string>> {
+  let p = indexes.get(dir);
+  if (!p) {
+    p = loadJson<{ tiles: string[] }>(`${dir}/index.json`).then((i) => new Set(i.tiles), () => new Set<string>());
+    indexes.set(dir, p);
+  }
+  return p;
+}
+
+/** Repère lointain (clocher) d'une tuile : identifiant du bâtiment et tour (x, y, côté, haut de la tour, pointe). */
+export interface FarLandmark {
+  tile: string;
+  id: string;
+  t: [number, number, number, number, number];
+}
+
+/** Clochers de toutes les tuiles (kinds/index.json), dessinés de loin (D95) ; aucun si l'index manque. */
+export function loadLandmarks(): Promise<FarLandmark[]> {
+  return loadJson<{ landmarks?: FarLandmark[] }>("kinds/index.json").then((i) => i.landmarks ?? [], () => []);
+}
+
+/** Tuile détaillée, avec ses types de bâtiments et sites (kinds/) et ses ponts, eau et voies ferrées (structures/) quand elle en a. */
+export async function loadTile(id: string): Promise<TileData> {
+  const [hasKinds, hasStructures] = await Promise.all([tilesWith("kinds"), tilesWith("structures")]).then(([k, s]) => [k.has(id), s.has(id)]);
+  const [tile, kinds, structures] = await Promise.all([
+    loadJson<TileData>(`tiles/${id}.json`),
+    hasKinds ? loadJson<TileKinds>(`kinds/${id}.json`) : null,
+    hasStructures ? loadJson<TileStructures>(`structures/${id}.json`) : null,
+  ]);
+  if (kinds) tile.kinds = kinds;
+  if (structures) tile.structures = structures;
+  return tile;
 }
 
 /** Silhouettes des bâtiments d'une tuile (lod/<id>.json). */

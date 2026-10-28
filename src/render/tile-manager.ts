@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { addTileColliders } from "../core/world";
-import { loadLod, loadTile } from "../data/load";
+import { loadLandmarks, loadLod, loadTile } from "../data/load";
+import { MeshBuilder } from "./geometry";
+import { buildFarTower } from "./monuments";
 import type { TiledTerrain } from "../data/terrain";
 import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
@@ -124,6 +126,7 @@ export class TileManager {
     this.cols = world.manifest.cols;
     this.zone = world.manifest.gridOrigin;
     this.size = world.manifest.tileSize;
+    void this.loadFar();
     for (const info of world.manifest.tiles) {
       const e: Entry = { info, lod: null, lodState: info.lod > 0 ? "none" : "ready", lodData: null, detail: null, data: null, extras: null, fetching: false, pending: [] };
       this.entries.set(info.id, e);
@@ -145,9 +148,32 @@ export class TileManager {
     return out;
   }
 
-  /** La silhouette disparaît quand tous les maillages détaillés sont montrés. */
+  /** La silhouette disparaît quand tous les maillages détaillés sont montrés ; les clochers lointains de la tuile aussi. */
   private show(e: Entry): void {
-    if (e.lod) e.lod.visible = !e.detail || e.pending.length > 0;
+    const far = !e.detail || e.pending.length > 0;
+    if (e.lod) e.lod.visible = far;
+    for (const m of this.far.get(e.info.id) ?? []) m.visible = far;
+  }
+
+  /** Clochers dessinés de loin (D95) : la flèche de Saint-Lazare se voit depuis toute la ville, avant que sa tuile soit détaillée. */
+  private readonly far = new Map<string, THREE.Mesh[]>();
+
+  private async loadFar(): Promise<void> {
+    const list = await loadLandmarks();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+    for (const l of list) {
+      const e = this.entries.get(l.tile);
+      if (!e) continue;
+      const mb = new MeshBuilder();
+      buildFarTower(mb, l.t, this.terrain);
+      const mesh = new THREE.Mesh(mb.build(), mat);
+      mesh.name = "repere";
+      this.group.add(mesh);
+      const arr = this.far.get(l.tile) ?? [];
+      arr.push(mesh);
+      this.far.set(l.tile, arr);
+      this.show(e);
+    }
   }
 
   /** Fin de construction : la tuile entre dans la scène, maillages masqués, et ses obstacles comptent tout de suite. */
@@ -162,7 +188,7 @@ export class TileManager {
       }
     }
     this.group.add(meshes.group);
-    if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
+    if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
     e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
@@ -174,7 +200,23 @@ export class TileManager {
     if (this.builds.length > 256) this.builds.shift();
   }
 
+  /**
+   * Tabliers de pont et quais de la tuile (D93), avant sa construction : chaussées, mobilier et entités s'y posent. Un quai est à
+   * hauteur fixe au-dessus du plus haut point de son contour.
+   */
+  private registerDecks(id: string, data: TileData): void {
+    const st = data.structures;
+    if (!st) return;
+    const platforms = st.platforms.map((p, i) => {
+      let z = -Infinity;
+      for (let k = 0; k < p.r.length; k += 2) z = Math.max(z, this.terrain.groundAt(p.r[k]!, p.r[k + 1]!));
+      return { ...p, z: z + p.h, id: `q:${id}:${i}` };
+    });
+    this.terrain.decks.add(id, st.decks, platforms);
+  }
+
   private unload(e: Entry): void {
+    this.terrain.decks.remove(e.info.id);
     if (this.job?.e === e) {
       this.job.steps.return(undefined as unknown as TileMeshes);
       this.job = null;
@@ -290,6 +332,7 @@ export class TileManager {
       } else if (e.data && !this.job) {
         // Les altitudes fines de la tuile et de ses voisines doivent être là : les bâtiments, murs et sols s'y posent.
         if (this.terrain.ready(e.info)) {
+          this.registerDecks(e.info.id, e.data);
           this.job = { e, data: e.data, steps: this.builder(e.data), work: 0, frames: 0, slice: 0 };
           e.data = null;
         }
@@ -377,6 +420,7 @@ export class TileManager {
       const data = e.data;
       if (!data) continue;
       e.data = null;
+      this.registerDecks(e.info.id, data);
       const t0 = performance.now();
       this.finishBuild(e, data, finish(this.builder(data)), true);
       const ms = performance.now() - t0;

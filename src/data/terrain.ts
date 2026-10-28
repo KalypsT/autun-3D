@@ -1,4 +1,5 @@
 import type { HeightField, TerrainMeta, TileInfo, WorldManifest } from "./types";
+import { Decks } from "../core/decks";
 
 /** Grille d'altitudes : logique pure, sans rendu. */
 export class Terrain implements HeightField {
@@ -58,6 +59,8 @@ export class Terrain implements HeightField {
  * Chaque bloc déborde de sa tuile : l'interpolation ne sort jamais de son bloc, donc pas de couture entre tuiles.
  */
 export class TiledTerrain implements HeightField {
+  /** Tabliers de pont et quais des tuiles chargées (D93). */
+  readonly decks = new Decks();
   private readonly blocks: (Terrain | undefined)[];
   private readonly index = new Map<string, TileInfo>();
   private readonly pending = new Map<string, Promise<void>>();
@@ -113,10 +116,29 @@ export class TiledTerrain implements HeightField {
     return col >= 0 && col < this.cols && row >= 0 && row < this.rows ? row * this.cols + col : -1;
   }
 
-  heightAt(x: number, y: number): number {
+  /** Altitude de la surface : le relief, ou un tablier ou un quai au-dessus (D93) ; `zHint` départage deux niveaux. */
+  heightAt(x: number, y: number, zHint?: number): number {
+    const z = this.groundAt(x, y);
+    return this.decks.empty ? z : this.decks.surface(x, y, z, zHint);
+  }
+
+  /** Relief nu (sans tabliers). */
+  groundAt(x: number, y: number): number {
     const i = this.slot(x, y);
     const b = i < 0 ? undefined : this.blocks[i];
     return b ? b.heightAt(x, y) : this.coarse.heightAt(x, y);
+  }
+
+  /** Vue du relief nu, pour dessiner le sol, l'eau et les piles sous les ponts. */
+  readonly ground: HeightField = ((t: TiledTerrain): HeightField => ({
+    heightAt: (x, y) => t.groundAt(x, y),
+    get xMin(): number { return t.xMin; }, get xMax(): number { return t.xMax; }, get yMin(): number { return t.yMin; }, get yMax(): number { return t.yMax; },
+  }))(this);
+
+  /** Altitude des rails : le tablier ferroviaire s'il y en a un, sinon le relief. */
+  railAt(x: number, y: number): number {
+    const z = this.groundAt(x, y);
+    return this.decks.empty ? z : this.decks.surface(x, y, z, undefined, true);
   }
 
   private slotOf(id: string): number {

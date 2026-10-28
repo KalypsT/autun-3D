@@ -114,6 +114,15 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 - **ambientCG** : le catalogue (`ambientcg.com`) répond. Les fichiers sont servis par `acg-download.struffelproductions.com`, **autorisé le 26 octobre 2026** : les téléchargements fonctionnent maintenant.
 - Licence : CC0 pour les deux. On les crédite quand même.
 
+## Ajouts de l'étape M (28 octobre 2026)
+
+- **OpenStreetMap complet** sur la région (`tools/data/region_sources.py`) : nœuds, voies, relations multipolygones et toutes les étiquettes, pour les types de bâtiments (étiquettes `building`, `shop`, `amenity`, marques), les terrains de sport, les stations-service, les cimetières ; puis l'eau et les ponts (M2).
+- **BD TOPO, zones d'activité ou d'intérêt** (`BDTOPO_V3:zone_d_activite_ou_d_interet`) : 92 zones nommées et typées sur la région (mairie, sous-préfecture, écoles, hôpitaux, maisons de retraite, gare, stade, gymnases, piscine, musées, théâtre, églises, poste, zone industrielle…). **BD TOPO, constructions ponctuelles** : 5 clochers, cheminées, antennes. **BD TOPO, terrains de sport** : 26, par discipline. Licence Ouverte 2.0.
+- **MNS LiDAR** par petites fenêtres (WMS) autour des églises et des portes romaines : hauteur réelle des clochers, volumes de la cathédrale, hauteur des portes (D95).
+- **Dimensions des monuments** (D95) : longueurs des portes d'Arroux (18,7 m) et Saint-André (19,1 m) d'après Structurae ; cathédrale (≈ 80 m de flèche) d'après PSS-archi et techno-science.net. Seules des cotes, aucune image reprise.
+- **Cadastre** (`CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`, WFS de la Géoplateforme, Licence Ouverte 2.0) : 4 855 parcelles sur l'anneau ; l'espace public est ce qui n'est dans aucune parcelle (rues, trottoirs, places : D94), et les limites de parcelle sur la rue reçoivent leurs clôtures. Crédit : « IGN – Parcellaire Express (PCI) ».
+- **Orthophoto à 0,5 m** sur la région (WMS, blocs de 500 m, `region_sources.Ortho`) : enrobé, herbe et gravier des profils en travers et de l'espace public.
+
 ## Domaines bloqués
 
 | Domaine | Rôle | Nécessaire ? |
@@ -135,6 +144,6 @@ Données Google (Street View, 3D Tiles…) : non utilisées, comme demandé.
 
 ## Crédits à afficher dans le jeu
 
-> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO® (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
+> Données : © les contributeurs d'OpenStreetMap (ODbL) · IGN – BD TOPO®, LiDAR HD, BD ORTHO®, Parcellaire Express (Licence Ouverte 2.0) · BDNB – CSTB (Licence Ouverte 2.0) · Photos de référence : Wikimedia Commons, auteurs cités dans les fiches · Moteur : three.js (MIT)
 
 La liste exacte des photos (auteur, licence, lien) sera générée par la chaîne de données à partir des fiches façade.

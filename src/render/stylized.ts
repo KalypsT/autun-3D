@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Building, FacadeFiche, HeightField, RoofMaterial, TileData } from "../data/types";
+import type { Building, BuildingKind, FacadeFiche, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
 import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
 import { buildGroundSteps } from "./ground";
@@ -9,6 +9,9 @@ import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
+import { reshapeBuilding } from "../core/landmarks";
+import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
+import { buildStructures, buildWater } from "./structures";
 
 const SKIRT = 0.4;
 const CHIMNEY = new THREE.Color("#a07a62");
@@ -261,6 +264,43 @@ function signGeometry(mb: MeshBuilder, p: Placement, parts: string[], wm: number
   }
 }
 
+/**
+ * Sol libre devant une façade (trottoir ou place, jamais la chaussée) : les terrasses de café ne s'installent que là.
+ * Index par cases de 8 m des polygones de trottoirs et de places de la tuile.
+ */
+function freeGround(layers: Record<string, number[][][]>): (x: number, y: number) => boolean {
+  const CELL = 8;
+  const cells = new Map<number, number[][][]>();
+  const key = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
+  for (const [name, polys] of Object.entries(layers)) {
+    if (name !== "walk" && !name.startsWith("plaza_")) continue;
+    for (const poly of polys) {
+      const r = poly[0]!;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < r.length; i += 2) {
+        x0 = Math.min(x0, r[i]!); x1 = Math.max(x1, r[i]!); y0 = Math.min(y0, r[i + 1]!); y1 = Math.max(y1, r[i + 1]!);
+      }
+      for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) {
+        for (let j = Math.floor(y0 / CELL); j <= Math.floor(y1 / CELL); j++) {
+          const list = cells.get(key(i, j)) ?? [];
+          list.push(poly);
+          cells.set(key(i, j), list);
+        }
+      }
+    }
+  }
+  const inRing = (x: number, y: number, r: readonly number[]): boolean => {
+    let inside = false;
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      const xi = r[i]!, yi = r[i + 1]!, xj = r[j]!, yj = r[j + 1]!;
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const inPoly = (x: number, y: number, poly: number[][]): boolean => inRing(x, y, poly[0]!) && !poly.slice(1).some((h) => inRing(x, y, h));
+  return (x, y) => (cells.get(key(Math.floor(x / CELL), Math.floor(y / CELL))) ?? []).some((p) => inPoly(x, y, p));
+}
+
 function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group {
   const group = new THREE.Group();
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.26, 1, 6);
@@ -309,7 +349,11 @@ const PLACEMENTS_PER_STEP = 12;
 export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: HeightField): Steps<TileMeshes> {
   const skip = new URLSearchParams(location.search).get("skip") ?? "";
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
-  const plan = yield* planFacadesSteps(tile.buildings, fiches, terrain);
+  const kinds = tile.kinds;
+  const kindOf = (id: string): BuildingKind | undefined => kinds?.buildings[id];
+  // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
+  const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k));
+  const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
   const names = new UvMeshBuilder();
   // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
@@ -319,14 +363,20 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   };
 
   let count = 0;
-  for (const b of tile.buildings) {
+  const wallColors = new Map<string, THREE.Color>();
+  for (const b of buildings) {
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
-    const wc = wallColor(f?.era ?? "xix", key);
-    if (!skip.includes("wall")) wall(walls, b.ring, b.top, terrain, wc);
-    b.holes.forEach((hole, i) => wall(walls, hole, b.holeTop[i]!, terrain, wc));
+    const kind = kindOf(b.id);
+    if (kind?.k === "hidden") continue;
+    const wc = landmarkWallColor(kind, b.id) ?? wallColor(f?.era ?? "xix", key);
+    wallColors.set(b.id, wc);
+    if (drawsWalls(kind)) {
+      if (!skip.includes("wall")) wall(walls, b.ring, b.top, terrain, wc);
+      b.holes.forEach((hole, i) => wall(walls, hole, b.holeTop[i]!, terrain, wc));
+    }
     const rm: RoofMaterial = f?.materials.roof ?? "tuile_plate";
-    const rc = roofColor(rm, key);
+    const rc = landmarkRoofColor(kind) ?? roofColor(rm, key);
     roofFaces(roofs, b, rc);
     for (const s of b.steps) {
       const [x1, y1, l1, h1, x2, y2, l2, h2] = s as [number, number, number, number, number, number, number, number];
@@ -341,6 +391,21 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     for (const [cx, cy, sx, sy, z0, z1] of b.chim as [number, number, number, number, number, number][]) chimney(detail, cx, cy, sx, sy, z0, z1);
     if (++count % BUILDINGS_PER_STEP === 0) yield;
   }
+
+  // Ponts, voies ferrées, quais (D93) ; l'eau est dessinée avec le sol.
+  const st = skip.includes("structures") ? undefined : tile.structures;
+  if (st) {
+    buildStructures(detail, st, tile.bounds, terrain, terrain.ground ?? terrain, (x, y) => terrain.railAt?.(x, y) ?? terrain.heightAt(x, y));
+    yield;
+  }
+
+  // Gabarits : grandes surfaces, hangars, services publics, églises, stations-service, cimetières.
+  target();
+  if (!skip.includes("kinds")) {
+    buildLandmarks({ solid: detail, glow, names, atlas: res.signAtlas }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
+      (b) => wallColors.get(b.id) ?? C(T.walls.xix[0]!));
+  }
+  yield;
 
   // Éléments de façade en volumes simples.
   const sizes = new Map<string, number>();
@@ -396,7 +461,11 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   add("enseignes", names, res.signMat);
   add("halos", halo, res.haloMat);
   yield;
-  const ground = yield* buildGroundSteps(tile.ground ?? {}, tile.bounds, terrain);
+  // L'eau des ouvrages (surfaces complètes, multipolygones compris) remplace la couche d'eau de la tuile.
+  const layers = st ? Object.fromEntries(Object.entries(tile.ground ?? {}).filter(([k]) => k !== "water")) : tile.ground ?? {};
+  const ground = yield* buildGroundSteps(layers, tile.bounds, terrain);
+  buildSitesGround(ground, kinds, terrain.ground ?? terrain);
+  if (st) buildWater(ground, st, tile.bounds, terrain.ground ?? terrain);
   if (ground.triangleCount > 0) put("sol", yield* ground.buildSteps(), ground.triangleCount, res.groundMat);
   add("grilles", fence, res.fenceMat);
   if (tile.trees.length) {

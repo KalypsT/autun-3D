@@ -3,7 +3,15 @@
 
 /** Ce que le jeu demande au relief : l'altitude en un point et les limites du monde jouable. */
 export interface HeightField {
-  heightAt(x: number, y: number): number;
+  /**
+   * Altitude de la surface : relief, ou tablier de pont et quai quand il y en a (D93). `zHint`, l'altitude actuelle de qui demande,
+   * départage deux niveaux (le pont et la route qui passe dessous) ; sans lui, la surface la plus haute.
+   */
+  heightAt(x: number, y: number, zHint?: number): number;
+  /** Relief nu, sans les tabliers (dessin du sol, de l'eau, des piles) ; absent : c'est le même. */
+  readonly ground?: HeightField;
+  /** Altitude des rails : tablier ferroviaire ou relief ; absent : `heightAt`. */
+  railAt?(x: number, y: number): number;
   readonly xMin: number;
   readonly xMax: number;
   readonly yMin: number;
@@ -170,9 +178,109 @@ export interface StairsZone {
   riser: number;
 }
 
+// --- Types de bâtiments et sites (kinds/<tuile>.json, tools/data/build_kinds.py, D92) ------------------
+
+export type BuildingKindId =
+  | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
+  | "care" | "culture" | "church" | "chapel" | "hidden";
+
+/** Volumes d'une cathédrale mesurés au LiDAR (D95) : repère (centre, angle de l'axe, chevet vers les s positifs), abscisses, hauteurs. */
+export interface CathedralSpec {
+  c: [number, number];
+  a: number;
+  /** Décalage du faîtage de la nef en travers de l'axe. */
+  t0: number;
+  west: number;
+  cross: number;
+  east: number;
+  /** Faîtage de la nef, au-dessus du sol (m). */
+  ridge: number;
+  /** Haut de la tour de croisée, pointe de la flèche, haut des tours de façade (altitudes absolues). */
+  body: number;
+  tip: number;
+  towers: number;
+  /** Sol de référence (altitude). */
+  g: number;
+}
+
+export interface BuildingKind {
+  k: BuildingKindId;
+  /** Texte de l'enseigne ou de l'inscription (bâtiment principal d'un site). */
+  n?: string;
+  /** Couleur du panneau et des lettres de l'enseigne. */
+  c?: string;
+  tc?: string;
+  /** 1 : bâtiment principal de son site (inscription, drapeaux). */
+  main?: 1;
+  /** Clocher : x, y, côté, z du haut de la tour, z de la pointe. */
+  tower?: [number, number, number, number, number];
+  /** Cathédrale : volumes mesurés (le gabarit remplace le clocher générique). */
+  mon?: CathedralSpec;
+}
+
+export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
+
+export type Site =
+  /** Station-service : auvent l × w centré en (x, y), grand côté orienté de `a` radians ; `roof` : bâtiment-auvent existant. */
+  | { t: "fuel"; x: number; y: number; a: number; l: number; w: number; n?: string; c?: string; roof?: string }
+  /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
+  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
+  | { t: "track"; r: number[] }
+  | { t: "cemetery"; r: number[] }
+  /** Porte romaine (D95) : centre, angle du grand côté, longueur, épaisseur, haut mesuré (altitude) ; `st` : disposition (Arroux, Saint-André). */
+  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number };
+
+export interface TileKinds {
+  v: number;
+  buildings: Record<string, BuildingKind>;
+  sites: Site[];
+}
+
+// --- Ponts, eau, voies ferrées (structures/<tuile>.json, tools/data/build_structures.py, D93) ------------------
+
+export interface Deck {
+  id: number;
+  k: "road" | "foot" | "rail";
+  /** Largeur du tablier (m). */
+  w: number;
+  /** Axe : x, y, z du dessus du tablier, par sommet. */
+  p: number[];
+  /** Style : voûtes en pierre, tablier droit, passerelle légère. */
+  st: "stone" | "beam" | "light";
+  /** Abscisses des piles le long de l'axe. */
+  sp: number[];
+  /** Tronçons de parapet infranchissables [s0, s1] (coupés au-dessus d'une voie). */
+  pc: [number, number][];
+  n?: string;
+}
+
+export interface Platform {
+  /** Contour du quai (anneau aplati) et hauteur au-dessus du relief. */
+  r: number[];
+  h: number;
+}
+
+export interface TileStructures {
+  v: number;
+  decks: Deck[];
+  /** Polygones d'eau découpés à la tuile : anneau extérieur puis trous. */
+  water: number[][][];
+  streams: { p: number[]; w: number }[];
+  weirs: { p: number[] }[];
+  /** Voies ferrées ; `s` : 1 pour une voie de service. */
+  rails: { p: number[]; s: number }[];
+  platforms: Platform[];
+  /** Passages à niveau : x, y, angle de la voie ferrée. */
+  crossings: [number, number, number][];
+}
+
 export interface TileData {
   /** Emprise locale de la tuile : x0, y0, x1, y1. */
   bounds: [number, number, number, number];
+  /** Ponts, eau et voies ferrées (absent : aucun). */
+  structures?: TileStructures;
+  /** Types de bâtiments et sites remarquables (absent : aucun). */
+  kinds?: TileKinds;
   /** Sols en vecteurs : couche -> polygones -> anneaux (extérieur puis trous), coordonnées aplaties. */
   ground: Record<string, number[][][]>;
   stairs?: StairsZone[];

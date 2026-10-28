@@ -491,3 +491,33 @@ Fait :
 - Ton véhicule allume ses phares et ses feux arrière à la nuit tombée, avec un faisceau peint sur la chaussée devant lui ; feux stop quand tu freines (même de jour), feu de recul. 0 appel de dessin le jour, 3 la nuit.
 - Le téléphone vibre aux chocs, aux tirs, aux coups portés et reçus, à la mort et à l'arrestation ; réglage « Vibrations » dans le menu pause.
 - Sensation de vitesse : le champ de vision s'ouvre progressivement jusqu'à 200 km/h (avant, il plafonnait dès 36 km/h), la caméra frémit à grande vitesse et se secoue aux chocs, des traits de vitesse apparaissent au-delà de 100 km/h.
+
+### Étape M : une carte qui ressemble à Autun (28 octobre 2026)
+
+Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et rivières mal rendus, rues mal proportionnées. Quatre lots : M1 bâtiments typés, M2 ponts, eau et voies ferrées, M3 rues sur le cadastre, M4 repères et monuments (cathédrale, portes romaines).
+
+**M1 (28 octobre 2026) : bâtiments typés** (D92)
+- 711 bâtiments reçoivent un type d'après OpenStreetMap et l'IGN (`tools/data/build_kinds.py`, 49 ko, aucune tuile régénérée) : le Leclerc, l'Aldi, la Biocoop, Mr.Bricolage ont un toit plat, une entrée vitrée sous auvent et leur enseigne ; les 123 hangars sont bardés avec des portes sectionnelles ; les gymnases ont leur bande translucide et leur nom ; les 330 annexes une porte de garage ; la mairie porte « HÔTEL DE VILLE » et ses drapeaux, la gare son nom et son horloge, La Poste son panneau jaune, les écoles leur nom et le drapeau ; les églises ont des vitraux, un portail, une rosace et leur clocher mesuré au LiDAR (**la flèche de Saint-Lazare se voit de loin**).
+- Devantures : stores rayés, terrasses de café quand le trottoir le permet, croix verte des pharmacies, carotte des tabacs. Stations-service avec auvent, pompes et totem. Terrains de foot verts rayés avec leurs lignes, tennis en terre battue, pistes rouges, tombes dans les cimetières.
+- Aucun appel de dessin de plus ; quelques pour cent de triangles (le plus : un cimetière). 584 tests.
+- À faire de ton côté : te balader (Leclerc, gare, mairie, stade Saint-Roch, cimetière, rue aux commerces) et dire ce qui sonne faux ; vérifier avec `?debug` que les images par seconde ne bougent pas.
+
+**M2 (28 octobre 2026) : ponts, eau, voies ferrées** (D93)
+- Les 28 ponts de l'anneau ont un tablier à leur vraie hauteur, mesurée sur le modèle de surface LiDAR : la route ne plonge plus vers la rivière. Les grands ponts routiers sur l'eau (Saint-Andoche, route de Saulieu, avenue de la République…) sont en pierre, avec voûtes, piles et avant-becs ; les autres ont un tablier droit, les passerelles un garde-corps. Les parapets empêchent de tomber.
+- Deux niveaux : sous le pont Saint-Andoche, la route du bas reste en bas, et le joueur, les voitures et les passants qui passent dessous ne sont pas soulevés sur le tablier.
+- Toute l'eau (27,8 ha au lieu de 3,9), avec un liseré sur les rives et des rides ; 26 km de ruisseaux ; le seuil de l'Arroux. La ligne de chemin de fer (8,2 km) avec ballast, traverses et rails, le faisceau de la gare, deux quais avec abri, les passages à niveau.
+- Aucun appel de dessin de plus ; +10 % de triangles au pire (vue sur le faisceau de la gare). 590 tests.
+- À faire de ton côté : passer les ponts à pied, à vélo et en voiture (Saint-Andoche, route de Saulieu, rue de Paris), passer dessous, longer l'Arroux, aller à la gare.
+
+**M3 (28 octobre 2026) : rues sur le cadastre** (D94)
+- Les sols des 144 tuiles sont refaits d'après le cadastre : l'espace public est ce qui n'est dans aucune parcelle. Les trottoirs vont jusqu'aux façades (plus de trottoir mangé par les maisons, plus de bande vide dans les avenues), les rues étroites deviennent des rues partagées, la chaussée ne déborde plus sur les parcelles, 47 rues ont leur largeur corrigée d'après l'orthophoto.
+- Les cours privées ne sont plus dessinées comme des places publiques (les taches beiges) ; chaque limite de parcelle sur la rue a sa clôture : mur (surtout en vieille ville), grille ou haie, avec des passages aux allées et des portillons (71 km). On voit et on tire par-dessus ; on ne passe pas à travers.
+- Accotements enherbés, îlots des ronds-points en pelouse, lignes de rive sur les grandes routes, lignes d'arrêt aux stops. Lampadaires, feux et arbres recalés. Navigation des passants et des voitures reconstruite sur ces sols, carte régénérée.
+- Coût : +1 % de triangles, +5 à +8 appels de dessin au centre (à vérifier au banc). 590 tests.
+- À faire de ton côté : te balader en vieille ville et dans les faubourgs, rouler dans les rues étroites, regarder la carte ; dire si les clôtures gênent (on peut en réduire la part de murs ou ouvrir plus de passages).
+
+**M4 (28 octobre 2026) : cathédrale, portes romaines, repères lointains** (D95)
+- La cathédrale Saint-Lazare a ses volumes mesurés au LiDAR : nef, transept, chœur à abside, tour de croisée et flèche octogonale (≈ 86 m), deux tours de façade, grand portail. Sa flèche se voit de toute la ville, même quand sa tuile n'est pas encore chargée.
+- Les portes d'Arroux et Saint-André : deux grandes arches pour les voitures, deux petites pour les piétons, galerie de dix arcades en haut. On passe dessous à pied, à vélo et en voiture ; seules les piles bloquent.
+- Aucun appel de dessin de plus ; environ 3 000 triangles pour les deux portes et la cathédrale. 595 tests.
+- À faire de ton côté : passer sous les deux portes (en voiture par le milieu), faire le tour de la cathédrale, regarder la flèche depuis le bas de la ville ; dire ce qui sonne faux.

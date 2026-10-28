@@ -420,7 +420,7 @@ export function startGame(ctx: GameContext): void {
     for (const [axle, off, on] of [["av", v.spec.front, s.lockedFront || sliding], ["ar", -v.spec.rear, s.lockedRear || sliding]] as const) {
       for (const side of track > 0 ? [-1, 1] : [0]) {
         const x = s.x + fx * off + rx * track * side, y = s.y + fy * off + ry * track * side;
-        marks.trail(`${v.id}-${axle}${side}`, x, y, terrain.heightAt(x, y), on, width);
+        marks.trail(`${v.id}-${axle}${side}`, x, y, terrain.heightAt(x, y, s.z), on, width);
       }
     }
   };
