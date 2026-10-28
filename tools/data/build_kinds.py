@@ -76,6 +76,46 @@ PITCH_SPORTS = {"soccer": "soccer", "soccer;multi": "soccer", "rugby_union": "ru
                 "handball": "handball", "multi": "multi", "volleyball": "multi", "athletics": "athletics"}
 
 
+# Portes romaines : dimensions réelles connues (Structurae) quand le contour OSM est plus court.
+GATES = {"arroux": {"l": 18.7}, "andre": {"l": 19.1}}
+
+
+def cathedral_spec(b, zz, X, Y, inside, peak):
+    """Volumes d'une cathédrale mesurés sur le modèle de surface : axe (grand côté du rectangle orienté), abscisses du portail ouest, de la
+    croisée et du chevet, décalage du faîtage, hauteurs du faîtage de la nef, de la tour de croisée, de la flèche et des tours de façade."""
+    poly = b["poly"]
+    r = poly.minimum_rotated_rectangle
+    pts = list(r.exterior.coords)[:3]
+    e1 = (pts[1][0] - pts[0][0], pts[1][1] - pts[0][1])
+    e2 = (pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])
+    ax, ay = e1 if math.hypot(*e1) >= math.hypot(*e2) else e2
+    a = math.atan2(ay, ax)
+    cx, cy = poly.centroid.x, poly.centroid.y
+    S = (X - cx) * math.cos(a) + (Y - cy) * math.sin(a)
+    T = -(X - cx) * math.sin(a) + (Y - cy) * math.cos(a)
+    g = b["ground"]
+    H = np.where(inside, zz - g, -1e9)
+    s_peak, t_peak = float(S[peak]), float(T[peak])
+    # La croisée est du côté de la flèche : on oriente l'axe pour que le chevet soit vers les s positifs (la flèche est plus près du chevet).
+    s_in = S[inside]
+    if s_peak < (s_in.min() + s_in.max()) / 2:
+        a += math.pi
+        S, T, s_peak, t_peak = -S, -T, -s_peak, -t_peak
+        s_in = S[inside]
+    west, east = float(s_in.min()), float(s_in.max())
+    nave_zone = inside & (S > west + 6) & (S < s_peak - 9)
+    ridge = float(np.percentile(H[nave_zone], 97)) if nave_zone.sum() > 20 else 20.0
+    ridge_cells = nave_zone & (H > ridge - 0.6)
+    t0 = float(np.median(T[ridge_cells])) if ridge_cells.any() else t_peak
+    tip = float(H[peak])
+    ring = inside & ((S - s_peak) ** 2 + (T - t_peak) ** 2 < 8 ** 2) & ((S - s_peak) ** 2 + (T - t_peak) ** 2 > 3 ** 2)
+    body = float(np.percentile(H[ring], 92)) if ring.any() else ridge + 12
+    front = inside & (S < west + 7)
+    towers = float(np.percentile(H[front], 99)) if front.any() else ridge
+    return {"c": [round(cx, 2), round(cy, 2)], "a": round(a, 4), "t0": round(t0, 2), "west": round(west, 2), "cross": round(s_peak, 2), "east": round(east, 2),
+            "ridge": round(ridge, 2), "body": round(g + max(body, ridge + 6), 2), "tip": round(g + tip, 2), "towers": round(max(towers, ridge + 1), 2), "g": round(g, 2)}
+
+
 def norm(s):
     return "".join(ch for ch in unicodedata.normalize("NFD", (s or "").lower()) if unicodedata.category(ch) != "Mn").strip()
 
@@ -277,6 +317,14 @@ def main():
                     e["tc"] = tcol
             entries[i] = e
 
+    # Cathédrales : bâtiments couverts à plus de moitié par un contour OSM building=cathedral.
+    cathedrals = set()
+    for typ, oid, tags, g in areas:
+        if tags.get("building") == "cathedral":
+            for i in hits(g):
+                if i in entries:
+                    cathedrals.add(i)
+
     # Clochers : la tour est la zone la plus haute du modèle de surface, autour du maximum ; le point « Clocher » de BD TOPO l'emporte s'il existe.
     towers = 0
     for i, e in entries.items():
@@ -309,7 +357,11 @@ def main():
         nave = float(np.percentile(zz[inside], 80)) if inside.any() else b["ridge"]
         if tip - nave < 3.0:
             continue  # rien ne dépasse franchement le toit : pas de clocher
-        high = zz > nave + 1.5
+        # La tour : ce qui dépasse le faîtage mesuré loin d'elle (à plus de 12 m du sommet) ; sinon la nef d'une cathédrale, plus haute que
+        # la moyenne de l'emprise, serait prise dans la tour.
+        far = inside & (((X - X[r0, c0]) ** 2 + (Y - Y[r0, c0]) ** 2) > 12 ** 2)
+        ridge = float(np.percentile(zz[far], 95)) if far.sum() > 20 else nave
+        high = zz > max(nave + 1.5, ridge + 2.0)
         lab, _ = ndimage.label(high)
         region = lab == lab[r0, c0]
         side = float(np.clip(math.sqrt(region.sum() * res * res), 3.0, min(9.0, math.sqrt(b["area"]) * 0.5)))
@@ -320,6 +372,11 @@ def main():
         e["tower"] = [round(tx, 2), round(ty, 2), round(side, 2), round(body, 2), round(tip, 2)]
         print(f"  clocher {b['id']} : côté {side:.1f} m, tour {body - b['ground']:.1f} m, pointe {tip - b['ground']:.1f} m (nef {nave - b['ground']:.1f} m)")
         towers += 1
+        if i in cathedrals:
+            e["mon"] = cathedral_spec(b, zz, X, Y, inside, (r0, c0))
+            # La tour de croisée de la cathédrale est dessinée par son gabarit (M4) : pas de clocher générique en plus.
+            e["tower"][3] = e["mon"]["body"]
+            print(f"  cathédrale : {json.dumps(e['mon'])}")
 
     # --- Sites ----------------------------------------------------------------------------------------------------------------
     sites = defaultdict(list)
@@ -401,6 +458,34 @@ def main():
         if tid:
             sites[tid].append({"t": "pitch", "s": s, "r": ring(g), "box": obox(g)})
 
+    # Portes romaines (M4, D95) : modèles d'après leur contour OSM, hauteur mesurée au modèle de surface ; les bâtiments BD TOPO couverts à plus
+    # de moitié par la porte sont masqués (la porte les remplace).
+    for typ, oid, tags, g in areas:
+        if tags.get("historic") != "city_gate" or tags.get("building") != "gate":
+            continue
+        cx, cy, a, l, w = obox(g)
+        name = tags.get("name", "")
+        style = "andre" if "André" in name else "arroux"
+        real = GATES.get(style, {})
+        x0, y0, x1, y1 = g.bounds
+        z, wx0, wy1 = rs.mns_window(x0 - 2, y0 - 2, x1 + 2, y1 + 2)
+        rows, cols = z.shape
+        xs = wx0 + (np.arange(cols) + 0.5) * 0.5
+        ys = wy1 - (np.arange(rows) + 0.5) * 0.5
+        X, Y = np.meshgrid(xs, ys)
+        zone = g.buffer(1.0)
+        inside = np.array([zone.contains(Point(x, y)) for x, y in zip(X.ravel(), Y.ravel())]).reshape(z.shape)
+        top = float(np.nanmax(z[inside])) if inside.any() else None
+        site = {"t": "gate", "st": style, "n": name, "x": cx, "y": cy, "a": a, "l": round(real.get("l", l), 2), "w": round(min(max(w, 3.2), 4.5), 2)}
+        if top is not None:
+            site["top"] = round(top, 2)
+        tid = tile_at(cx, cy)
+        if tid:
+            sites[tid].append(site)
+        for i in hits(g, 0.5):
+            entries[i] = {"k": "hidden"}
+        print(f"  porte {name} : {site}")
+
     # Cimetières.
     for typ, oid, tags, g in areas:
         if tags.get("landuse") == "cemetery" or tags.get("amenity") == "grave_yard":
@@ -422,7 +507,9 @@ def main():
     kinds = Counter(e["k"] for e in entries.values())
     site_count = Counter(s["t"] for lst in sites.values() for s in lst)
     named = sorted({(e["k"], e.get("n")) for e in entries.values() if e.get("n")})
-    index = {"v": VERSION, "tiles": ids, "stats": {"buildings": dict(sorted(kinds.items())), "sites": dict(sorted(site_count.items())), "towers": towers}}
+    # Repères lointains : les clochers, visibles depuis les tuiles en silhouettes (le jeu les dessine tant que leur tuile n'est pas détaillée).
+    landmarks = [{"tile": buildings[i]["tile"], "id": buildings[i]["id"], "t": e["tower"]} for i, e in sorted(entries.items()) if e.get("tower")]
+    index = {"v": VERSION, "tiles": ids, "landmarks": landmarks, "stats": {"buildings": dict(sorted(kinds.items())), "sites": dict(sorted(site_count.items())), "towers": towers}}
     (OUT / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
     size = sum(p.stat().st_size for p in OUT.glob("*.json"))
     print(f"{len(entries)} bâtiments typés dans {len(ids)} tuiles ({size / 1e3:.0f} ko) : {dict(kinds)}")

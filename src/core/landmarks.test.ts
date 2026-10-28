@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Building, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { fuelLayout, isOpen, landmarkCircles, PARAPET, reshapeBuilding } from "./landmarks";
+import { at, fuelLayout, gateLayout, isOpen, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding } from "./landmarks";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
 
@@ -102,9 +102,9 @@ describe("gabarits : données réelles (public/data/kinds)", () => {
     expect(byName("GARE D'AUTUN")).toEqual(["station"]);
     expect(byName("E.Leclerc")).toEqual(["retail"]);
     expect(byName("La Poste")).toContain("post");
-    // La flèche de la cathédrale Saint-Lazare : plus de 70 m au-dessus de la tour la plus basse.
+    // La flèche de la cathédrale Saint-Lazare : plus de 30 m au-dessus du corps de la tour de croisée.
     const spires = Object.values(kinds.buildings).filter((k) => k.tower).map((k) => k.tower![4] - k.tower![3]);
-    expect(Math.max(...spires)).toBeGreaterThan(40);
+    expect(Math.max(...spires)).toBeGreaterThan(30);
   });
 
   it("terrains de sport et stations-service ont une géométrie utilisable", () => {
@@ -117,5 +117,75 @@ describe("gabarits : données réelles (public/data/kinds)", () => {
       }
     }
     expect(kinds.sites.filter((s) => s.t === "fuel").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("monuments (D95)", () => {
+  const gate: Extract<Site, { t: "gate" }> = { t: "gate", st: "arroux", n: "Porte d'Arroux", x: 0, y: 0, a: 0.3, l: 18.7, w: 4.3, top: 14 };
+
+  it("porte romaine : deux grandes arches au centre, deux petites aux bouts, dix arcades de galerie", () => {
+    const lay = gateLayout(gate, 0);
+    expect(lay.height).toBeCloseTo(14);
+    const ground = lay.openings.filter((o) => o.zb < 0);
+    const gallery = lay.openings.filter((o) => o.zb > 0);
+    expect(ground.length).toBe(4);
+    expect(gallery.length).toBe(10);
+    const widths = ground.map((o) => o.s1 - o.s0).sort((a, b) => a - b);
+    expect(widths[0]).toBeCloseTo(2.2);
+    expect(widths[3]).toBeCloseTo(4.3);
+    // Les ouvertures restent dans la porte, ne se chevauchent pas, et les arcades sont au-dessus des grandes arches.
+    const sorted = [...ground].sort((a, b) => a.s0 - b.s0);
+    for (let i = 0; i + 1 < sorted.length; i++) expect(sorted[i]!.s1).toBeLessThan(sorted[i + 1]!.s0);
+    expect(sorted[0]!.s0).toBeGreaterThan(-gate.l / 2);
+    for (const o of ground) expect(o.spring + (o.s1 - o.s0) / 2).toBeLessThan(lay.gallery[0]);
+    // Piles + ouvertures couvrent toute la longueur.
+    const piers = lay.piers.reduce((sum, [a, b]) => sum + b - a, 0);
+    expect(piers + widths.reduce((a, b) => a + b, 0)).toBeCloseTo(gate.l);
+  });
+
+  it("on passe sous les grandes arches, pas à travers les piles", () => {
+    const c = new Colliders();
+    for (const r of landmarkRings({ sites: [gate] }, () => 0)) c.addRing(r);
+    const f = gateLayout(gate, 0).frame;
+    for (const s of [-2.7, 2.7]) {
+      for (const t of [-3, 0, 3]) {
+        const [x, y] = at(f, s, t);
+        expect(c.resolve(x, y, 0.35).hit).toBe(false);
+      }
+    }
+    const [px, py] = at(f, 0.75, 0);
+    expect(c.resolve(px, py, 0.35).hit).toBe(true);
+  });
+
+  describe("données réelles", () => {
+    const world = loadRealWorld();
+    const kinds = world.tile.kinds!;
+    const index = JSON.parse(readFileSync("public/data/kinds/index.json", "utf8")) as { landmarks: { id: string; t: number[] }[] };
+
+    it("cathédrale Saint-Lazare : volumes mesurés plausibles, repère lointain dans l'index", () => {
+      const mon = Object.entries(kinds.buildings).filter(([, k]) => k.mon);
+      expect(mon.length).toBe(1);
+      const [id, k] = mon[0]!;
+      const m = k.mon!;
+      // Environ 80 m de long, flèche à plus de 75 m au-dessus du parvis.
+      expect(m.east - m.west).toBeGreaterThan(70);
+      expect(m.east - m.west).toBeLessThan(95);
+      expect(m.tip - m.g).toBeGreaterThan(75);
+      expect(m.body).toBeLessThan(m.tip);
+      expect(m.cross).toBeGreaterThan(m.west);
+      expect(m.cross).toBeLessThan(m.east);
+      expect(index.landmarks.some((l) => l.id === id)).toBe(true);
+    });
+
+    it("les deux portes romaines sont là, et le bâtiment sous la porte Saint-André est masqué", () => {
+      const gates = kinds.sites.filter((s) => s.t === "gate");
+      expect(gates.map((g) => g.st).sort()).toEqual(["andre", "arroux"]);
+      for (const g of gates) {
+        const h = gateLayout(g, world.terrain.heightAt(g.x, g.y)).height;
+        expect(h).toBeGreaterThan(8);
+        expect(h).toBeLessThan(18);
+      }
+      expect(Object.values(kinds.buildings).filter((k) => k.k === "hidden").length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

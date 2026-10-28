@@ -515,3 +515,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Accotements enherbés, îlots des ronds-points en pelouse, lignes de rive sur les grandes routes, lignes d'arrêt aux stops. Lampadaires, feux et arbres recalés. Navigation des passants et des voitures reconstruite sur ces sols, carte régénérée.
 - Coût : +1 % de triangles, +5 à +8 appels de dessin au centre (à vérifier au banc). 590 tests.
 - À faire de ton côté : te balader en vieille ville et dans les faubourgs, rouler dans les rues étroites, regarder la carte ; dire si les clôtures gênent (on peut en réduire la part de murs ou ouvrir plus de passages).
+
+**M4 (28 octobre 2026) : cathédrale, portes romaines, repères lointains** (D95)
+- La cathédrale Saint-Lazare a ses volumes mesurés au LiDAR : nef, transept, chœur à abside, tour de croisée et flèche octogonale (≈ 86 m), deux tours de façade, grand portail. Sa flèche se voit de toute la ville, même quand sa tuile n'est pas encore chargée.
+- Les portes d'Arroux et Saint-André : deux grandes arches pour les voitures, deux petites pour les piétons, galerie de dix arcades en haut. On passe dessous à pied, à vélo et en voiture ; seules les piles bloquent.
+- Aucun appel de dessin de plus ; environ 3 000 triangles pour les deux portes et la cathédrale. 595 tests.
+- À faire de ton côté : passer sous les deux portes (en voiture par le milieu), faire le tour de la cathédrale, regarder la flèche depuis le bas de la ville ; dire ce qui sonne faux.

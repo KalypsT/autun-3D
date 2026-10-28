@@ -103,7 +103,80 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   return out;
 }
 
-/** Les auvents n'ont pas de murs : on passe dessous. */
+/** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
-  return kinds?.buildings[id]?.k === "canopy";
+  const k = kinds?.buildings[id]?.k;
+  return k === "canopy" || k === "hidden";
+}
+
+/** Ouverture d'un mur : de s0 à s1 le long du mur, du bas `zb` jusqu'à la naissance de l'arc `spring` (arc en plein cintre au-dessus). */
+export interface Opening {
+  s0: number;
+  s1: number;
+  zb: number;
+  spring: number;
+}
+
+export interface GateLayout {
+  frame: Frame;
+  /** Hauteur totale au-dessus du sol. */
+  height: number;
+  openings: Opening[];
+  /** Piles au niveau du sol (s0, s1), obstacles. */
+  piers: [number, number][];
+  /** Corniches : (bas, haut) au-dessus du sol. */
+  cornices: [number, number][];
+  /** Pilastres de la galerie (abscisses) et leurs bas et haut. */
+  pilasters: number[];
+  gallery: [number, number];
+}
+
+/**
+ * Disposition d'une porte romaine d'Autun (D95) : deux grandes arches au centre (voitures), deux petites aux bouts (piétons), corniche,
+ * galerie de dix arcades à pilastres, corniche haute. Largeurs de la porte d'Arroux (18,7 m), mises à l'échelle de la longueur ; hauteurs en
+ * fractions de la hauteur mesurée au LiDAR.
+ */
+export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): GateLayout {
+  const frame = frameOf(site.x, site.y, site.a, site.l, site.w);
+  const H = Math.min(Math.max((site.top ?? ground + 12) - ground, 7), 20);
+  const k = site.l / 18.7;
+  const outer = 0.9 * k, small = 2.2 * k, mid = 1.4 * k, big = 4.3 * k;
+  const half = site.l / 2;
+  const openings: Opening[] = [];
+  const piers: [number, number][] = [];
+  const bigTop = 0.58 * H, smallTop = 0.36 * H;
+  for (const side of [-1, 1]) {
+    const e0 = side * half, e1 = side * (half - outer), e2 = side * (half - outer - small), e3 = side * (half - outer - small - mid);
+    const e4 = side * (half - outer - small - mid - big);
+    const lo = (a: number, b: number): [number, number] => [Math.min(a, b), Math.max(a, b)];
+    const [s0, s1] = lo(e1, e2), [b0, b1] = lo(e3, e4);
+    openings.push({ s0, s1, zb: -0.5, spring: smallTop - small / 2 }, { s0: b0, s1: b1, zb: -0.5, spring: bigTop - big / 2 });
+    piers.push(lo(e0, e1), lo(e2, e3));
+  }
+  piers.push([-(half - outer - small - mid - big), half - outer - small - mid - big]);
+  const sill = 0.7 * H, galTop = 0.92 * H;
+  const pitch = (site.l - 1.2) / 10, aw = pitch * 0.62;
+  const pilasters: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const c = -half + 0.6 + pitch * (i + 0.5);
+    openings.push({ s0: c - aw / 2, s1: c + aw / 2, zb: sill, spring: galTop - aw / 2 });
+    pilasters.push(-half + 0.6 + pitch * i);
+  }
+  pilasters.push(half - 0.6);
+  return { frame, height: H, openings, piers, cornices: [[0.63 * H, 0.68 * H], [0.93 * H, 0.98 * H]], pilasters, gallery: [sill, galTop] };
+}
+
+/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches). */
+export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
+  const out: number[][] = [];
+  for (const s of kinds?.sites ?? []) {
+    if (s.t !== "gate") continue;
+    const lay = gateLayout(s, ground(s.x, s.y));
+    const f = lay.frame;
+    for (const [s0, s1] of lay.piers) {
+      const pts = [at(f, s0, -f.hw), at(f, s1, -f.hw), at(f, s1, f.hw), at(f, s0, f.hw)];
+      out.push(pts.flat());
+    }
+  }
+  return out;
 }

@@ -182,7 +182,26 @@ export interface StairsZone {
 
 export type BuildingKindId =
   | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
-  | "care" | "culture" | "church" | "chapel";
+  | "care" | "culture" | "church" | "chapel" | "hidden";
+
+/** Volumes d'une cathédrale mesurés au LiDAR (D95) : repère (centre, angle de l'axe, chevet vers les s positifs), abscisses, hauteurs. */
+export interface CathedralSpec {
+  c: [number, number];
+  a: number;
+  /** Décalage du faîtage de la nef en travers de l'axe. */
+  t0: number;
+  west: number;
+  cross: number;
+  east: number;
+  /** Faîtage de la nef, au-dessus du sol (m). */
+  ridge: number;
+  /** Haut de la tour de croisée, pointe de la flèche, haut des tours de façade (altitudes absolues). */
+  body: number;
+  tip: number;
+  towers: number;
+  /** Sol de référence (altitude). */
+  g: number;
+}
 
 export interface BuildingKind {
   k: BuildingKindId;
@@ -195,6 +214,8 @@ export interface BuildingKind {
   main?: 1;
   /** Clocher : x, y, côté, z du haut de la tour, z de la pointe. */
   tower?: [number, number, number, number, number];
+  /** Cathédrale : volumes mesurés (le gabarit remplace le clocher générique). */
+  mon?: CathedralSpec;
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
@@ -205,7 +226,9 @@ export type Site =
   /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
   | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
   | { t: "track"; r: number[] }
-  | { t: "cemetery"; r: number[] };
+  | { t: "cemetery"; r: number[] }
+  /** Porte romaine (D95) : centre, angle du grand côté, longueur, épaisseur, haut mesuré (altitude) ; `st` : disposition (Arroux, Saint-André). */
+  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number };
 
 export interface TileKinds {
   v: number;

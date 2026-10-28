@@ -368,6 +368,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
     const kind = kindOf(b.id);
+    if (kind?.k === "hidden") continue;
     const wc = landmarkWallColor(kind, b.id) ?? wallColor(f?.era ?? "xix", key);
     wallColors.set(b.id, wc);
     if (drawsWalls(kind)) {

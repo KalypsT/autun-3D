@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { addTileColliders } from "../core/world";
-import { loadLod, loadTile } from "../data/load";
+import { loadLandmarks, loadLod, loadTile } from "../data/load";
+import { MeshBuilder } from "./geometry";
+import { buildFarTower } from "./monuments";
 import type { TiledTerrain } from "../data/terrain";
 import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
@@ -124,6 +126,7 @@ export class TileManager {
     this.cols = world.manifest.cols;
     this.zone = world.manifest.gridOrigin;
     this.size = world.manifest.tileSize;
+    void this.loadFar();
     for (const info of world.manifest.tiles) {
       const e: Entry = { info, lod: null, lodState: info.lod > 0 ? "none" : "ready", lodData: null, detail: null, data: null, extras: null, fetching: false, pending: [] };
       this.entries.set(info.id, e);
@@ -145,9 +148,32 @@ export class TileManager {
     return out;
   }
 
-  /** La silhouette disparaît quand tous les maillages détaillés sont montrés. */
+  /** La silhouette disparaît quand tous les maillages détaillés sont montrés ; les clochers lointains de la tuile aussi. */
   private show(e: Entry): void {
-    if (e.lod) e.lod.visible = !e.detail || e.pending.length > 0;
+    const far = !e.detail || e.pending.length > 0;
+    if (e.lod) e.lod.visible = far;
+    for (const m of this.far.get(e.info.id) ?? []) m.visible = far;
+  }
+
+  /** Clochers dessinés de loin (D95) : la flèche de Saint-Lazare se voit depuis toute la ville, avant que sa tuile soit détaillée. */
+  private readonly far = new Map<string, THREE.Mesh[]>();
+
+  private async loadFar(): Promise<void> {
+    const list = await loadLandmarks();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+    for (const l of list) {
+      const e = this.entries.get(l.tile);
+      if (!e) continue;
+      const mb = new MeshBuilder();
+      buildFarTower(mb, l.t, this.terrain);
+      const mesh = new THREE.Mesh(mb.build(), mat);
+      mesh.name = "repere";
+      this.group.add(mesh);
+      const arr = this.far.get(l.tile) ?? [];
+      arr.push(mesh);
+      this.far.set(l.tile, arr);
+      this.show(e);
+    }
   }
 
   /** Fin de construction : la tuile entre dans la scène, maillages masqués, et ses obstacles comptent tout de suite. */
@@ -162,7 +188,7 @@ export class TileManager {
       }
     }
     this.group.add(meshes.group);
-    if (this.colliders) addTileColliders(this.colliders, data, e.info.id);
+    if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
     e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;

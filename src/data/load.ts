@@ -47,6 +47,18 @@ function tilesWith(dir: string): Promise<Set<string>> {
   return p;
 }
 
+/** Repère lointain (clocher) d'une tuile : identifiant du bâtiment et tour (x, y, côté, haut de la tour, pointe). */
+export interface FarLandmark {
+  tile: string;
+  id: string;
+  t: [number, number, number, number, number];
+}
+
+/** Clochers de toutes les tuiles (kinds/index.json), dessinés de loin (D95) ; aucun si l'index manque. */
+export function loadLandmarks(): Promise<FarLandmark[]> {
+  return loadJson<{ landmarks?: FarLandmark[] }>("kinds/index.json").then((i) => i.landmarks ?? [], () => []);
+}
+
 /** Tuile détaillée, avec ses types de bâtiments et sites (kinds/) et ses ponts, eau et voies ferrées (structures/) quand elle en a. */
 export async function loadTile(id: string): Promise<TileData> {
   const [hasKinds, hasStructures] = await Promise.all([tilesWith("kinds"), tilesWith("structures")]).then(([k, s]) => [k.has(id), s.has(id)]);

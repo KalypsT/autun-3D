@@ -3,6 +3,7 @@ import type { Building, BuildingKind, FacadeFiche, HeightField, Site, TileKinds 
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
+import { buildCathedral, buildGate } from "./monuments";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
 
@@ -59,7 +60,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel");
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden");
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -442,7 +443,8 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
       }
     }
   }
-  if (kind.tower) tower(sinks, b, kind.tower, terrain, wall);
+  if (kind.mon) buildCathedral(sinks.solid, kind.mon, terrain, C(T.roofs.ardoise));
+  else if (kind.tower) tower(sinks, b, kind.tower, terrain, wall);
 }
 
 /** Clocher : tour carrée dans l'axe de la nef, abat-sons, flèche octogonale ou toit en pavillon. */
@@ -694,11 +696,13 @@ export function buildLandmarks(
         break;
       }
       case "church": case "chapel": church(sinks, b, kind, segs, terrain, wall); break;
+      case "hidden": break;
       default: civic(sinks, kind, fiche, segs, terrain); break;
     }
   }
   for (const s of kinds.sites) {
     if (s.t === "fuel") fuel(sinks, s, s.roof ? tile.buildings.find((b) => b.id === s.roof) : undefined, terrain);
     else if (s.t === "cemetery") cemetery(sinks, s, terrain);
+    else if (s.t === "gate") buildGate(sinks.solid, s, terrain);
   }
 }
