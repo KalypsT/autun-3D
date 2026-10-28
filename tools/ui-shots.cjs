@@ -162,6 +162,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => window.__autun.inventory.select("knife"));
     await sleep(2500);
     await shot("j5-garde-couteau");
+    // Mort d'un passant (J5-2) : on le tue d'un coup, on laisse tomber le corps, puis on capture le cadavre au sol.
+    await page.evaluate(() => window.__autun.inventory.select("fists"));
+    await facePed();
+    await page.evaluate(() => {
+      const a = window.__autun, c = a.pedsController(), out = [];
+      c.pick(a.player.x, a.player.y, 0, 5, Math.PI, 1, out);
+      if (out.length) c.hurt(out[0], 500, 0, 1, 1.4);
+    });
+    await sleep(4000);
+    await shot("j5-cadavre");
     await ctx.close();
   }
 

@@ -206,7 +206,7 @@ export function startGame(ctx: GameContext): void {
   const navInfo = (): string => {
     if (!nav) return "";
     const p = peds as PedsController | null, d = navDebug as NavDebug | null, st = p?.stats;
-    const pedText = p && st ? ` · passants ${st.alive}/${st.target} (max ${p.capacity}) sim ${p.simMs.toFixed(2)} ms dessin ${p.drawMs.toFixed(2)} ms` : "";
+    const pedText = p && st ? ` · passants ${st.alive}/${st.target} (max ${p.capacity})${st.corpses ? `, ${st.corpses} cadavres` : ""} sim ${p.simMs.toFixed(2)} ms dessin ${p.drawMs.toFixed(2)} ms` : "";
     const g = pigeons as PigeonsController | null, gs = g?.stats;
     const pigText = g && gs ? ` · pigeons ${gs.alive}/${g.capacity} (${gs.flocks} volées, ${(g.simMs + g.drawMs).toFixed(2)} ms)` : "";
     const tr = traffic as Traffic | null;

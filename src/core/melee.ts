@@ -17,7 +17,7 @@ export interface Arena {
   pick(x: number, y: number, heading: number, range: number, halfAngle: number, max: number, out: number[]): number;
   /** Position d'un passant. */
   position(slot: number, out: { x: number; y: number }): void;
-  /** Frappe un passant : points de vie retirés, direction du coup (vecteur unitaire), impulsion (m/s). Renvoie 0 rien, 1 blessé, 2 assommé. */
+  /** Frappe un passant : points de vie retirés, direction du coup (vecteur unitaire), impulsion (m/s). Renvoie 0 rien, 1 touché, 2 tué. */
   hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number;
 }
 

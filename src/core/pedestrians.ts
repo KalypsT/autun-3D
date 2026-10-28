@@ -21,7 +21,7 @@ import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
  * `fear` (0 à 1), `flags` réservés ; les autres systèmes liront ou pousseront les passants par `bodies` / `events` en J2-6.
  */
 
-export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, stumble: 4, down: 5 } as const;
+export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, stumble: 4, down: 5, dead: 6 } as const;
 
 /** Distances (m) des paliers : près (évitement, collisions, tous les pas), milieu (un pas sur 3), loin (un pas sur 12). */
 export const TIER_RANGE = [28, 80] as const;
@@ -42,8 +42,18 @@ export const WOUNDED_HP = 40;
 /** Fuite (s) d'un passant touché ; blessé, il fuit plus longtemps. */
 export const HURT_FLEE = 8;
 export const WOUNDED_FLEE = 20;
-/** Assommé à 0 point de vie (en attendant la mort, J5-2) : il tombe, se relève avec ces points de vie. */
-export const KO_RECOVER_HP = 30;
+/** Cadavres (J5-2, D80) : au plus `MAX_CORPSES` ; au-delà, le plus ancien s'enfonce dans le sol. Hors de vue ils s'enfoncent après `CORPSE_HIDDEN_LIFE` s, vus après `CORPSE_MAX_LIFE` s. */
+export const MAX_CORPSES = 8;
+export const CORPSE_HIDDEN_LIFE = 60;
+export const CORPSE_MAX_LIFE = 150;
+/** Durée (s) de l'enfoncement, et profondeur atteinte (m) : le corps gît à 24 cm du sol, il disparaît sous le terrain. */
+export const SINK_TIME = 3;
+const SINK_DEPTH = 0.6;
+/** Un cadavre de moins de … s est un obstacle pour les voitures (elles s'arrêtent) ; plus ancien, elles passent (pas d'embouteillage permanent). */
+const CORPSE_BLOCKS = 20;
+/** Dégâts d'un véhicule au-delà de 3,5 m/s : `(vitesse − 3,5) × VEHICLE_DAMAGE` points de vie, soit la mort vers 50 km/h (13,9 m/s). */
+export const VEHICLE_DAMAGE = 9.6;
+const KNOCK_SPEED = 3.5;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
@@ -106,7 +116,7 @@ export interface Observer {
 
 /** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
 export interface PedEvent {
-  kind: "hit" | "stumble" | "bump" | "near_miss" | "startled" | "hurt";
+  kind: "hit" | "stumble" | "bump" | "near_miss" | "startled" | "hurt" | "killed";
   slot: number;
   x: number;
   y: number;
@@ -136,6 +146,9 @@ export interface PedStats {
   /** Passants heurtés (cumul) et ceux qui trébuchent ou sont à terre en ce moment. */
   hits: number;
   knocked: number;
+  /** Cadavres présents (J5-2), et morts depuis le début (cumul). */
+  corpses: number;
+  deaths: number;
   /** Nombre de passants visé à cette heure, dans ce quartier, à cette vitesse ; zone du graphe piéton autour du joueur. */
   target: number;
   zone: number;
@@ -180,7 +193,7 @@ export function vehicleThreat(x: number, y: number, veh: { x: number; y: number;
 
 export class PedSim {
   readonly state: CrowdState;
-  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, hits: 0, knocked: 0, target: 0, zone: ZONE.outskirts };
+  readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, hits: 0, knocked: 0, corpses: 0, deaths: 0, target: 0, zone: ZONE.outskirts };
   /** Événements depuis le dernier `clearEvents` et effet sur le joueur au dernier pas. */
   readonly events: PedEvent[] = [];
   readonly impact: PedImpact = { slow: 0, speed: 0, hits: 0, bump: 0 };
@@ -218,6 +231,9 @@ export class PedSim {
   private readonly acc: Float32Array;
   /** Points de vie (J5). */
   private readonly hp: Float32Array;
+  /** Cadavre : secondes depuis la mort, et temps d'enfoncement (0 : pas encore). */
+  private readonly age: Float32Array;
+  private readonly sink: Float32Array;
   /** Cap de fuite d'un passant touché (rad), pris quand il se relève ; NaN : aucun. */
   private readonly fleeDir: Float32Array;
   private readonly rng: Uint32Array;
@@ -262,7 +278,7 @@ export class PedSim {
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
     this.ox = new Float32Array(n); this.oy = new Float32Array(n); this.mode = new Uint8Array(n); this.timer = new Float32Array(n);
-    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.hp = new Float32Array(n).fill(PED_HP); this.fleeDir = new Float32Array(n).fill(NaN); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
+    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.hp = new Float32Array(n).fill(PED_HP); this.age = new Float32Array(n); this.sink = new Float32Array(n); this.fleeDir = new Float32Array(n).fill(NaN); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
     this.tier = new Uint8Array(n); this.link = new Int32Array(n).fill(-1);
   }
 
@@ -303,7 +319,7 @@ export class PedSim {
     stats.target = crowdTarget(this.free, this.hour, stats.zone, v);
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
-    let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0;
+    let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0, corpses = 0;
     for (let i = 0; i < this.free; i++) {
       if (!alive[i]) continue;
       const g = this.graph, e = this.edge[i]!;
@@ -323,8 +339,10 @@ export class PedSim {
         this.fear[i] = 1;
       } else if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
       if (this.mode[i]! >= PED_STATE.stumble) {
-        this.knockedStep(i, dt);
-        knocked++;
+        this.knockedStep(i, dt, obs);
+        if (!alive[i]) nAlive--;
+        else if (this.mode[i] === PED_STATE.dead) corpses++;
+        else knocked++;
         continue;
       }
       if (obs.vehicle) this.vehicleContact(i, obs.vehicle, this.impact);
@@ -357,12 +375,14 @@ export class PedSim {
     // Trop de monde pour l'heure ou le quartier : les passants à l'écart (hors de vue, ou à plus de 60 m) s'en vont, deux au plus par pas.
     // Les écarts à la cible se comptent en entiers : sans cela, un déficit de 1 faisait naître 2 passants, l'excès de 1 en retirait 2 (souvent les nouveaux-nés,
     // à plus de 60 m), et la foule se renouvelait en boucle à chaque pas (mesure sur téléphone : 20 naissances par seconde à l'arrêt).
+    // Les cadavres (J5-2) ne comptent pas comme des passants : ils ne font ni naître ni partir les autres.
+    nAlive -= corpses;
     const goal = Math.round(stats.target);
     if (nAlive > goal) {
       let leaving = Math.min(2, nAlive - goal);
       for (let k = 0; k < this.free && leaving > 0; k++) {
         const i = (this.excessCursor + k) % this.free;
-        if (!alive[i]) continue;
+        if (!alive[i] || this.mode[i] === PED_STATE.dead) continue;
         const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
         const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
         if (hidden || d > 60) {
@@ -376,6 +396,7 @@ export class PedSim {
     }
     stats.alive = nAlive;
     stats.knocked = knocked;
+    stats.corpses = corpses;
     stats.tiers = [near, mid, far];
     stats.waiting = waiting;
     stats.crossing = crossing;
@@ -455,6 +476,7 @@ export class PedSim {
     this.panic[i] = 0;
     this.acc[i] = 0;
     this.hp[i] = PED_HP;
+    this.age[i] = this.sink[i] = 0;
     this.fleeDir[i] = NaN;
     this.x[i] = x;
     this.y[i] = y;
@@ -718,6 +740,12 @@ export class PedSim {
       }
       const hard = speed >= 3.5;
       this.knock(i, hard ? HIT_POSE.down : HIT_POSE.stumble, ux * 0.8 + ax * 0.6, uy * 0.8 + ay * 0.6, hard ? Math.min(9, 0.7 * speed + 1.5) : 1.2 + 0.4 * speed);
+      // Un véhicule qui renverse blesse (J5-2, D80) : (vitesse − 3,5) × 9,6 points de vie, la mort vers 50 km/h ; en dessous, un simple trébuchement.
+      if (hard) {
+        this.hp[i]! -= (speed - KNOCK_SPEED) * VEHICLE_DAMAGE;
+        if (this.hp[i]! <= 0) this.kill(i);
+        else if (this.hp[i]! < PED_HP) this.wound(i, ux, uy);
+      }
       const slow = hard ? Math.min(0.3, Math.max(0.1, 0.1 + 0.02 * speed)) : 0.04;
       imp.slow = Math.min(0.5, 1 - (1 - imp.slow) * (1 - slow));
       imp.speed = Math.max(imp.speed, speed);
@@ -772,11 +800,12 @@ export class PedSim {
   }
 
   /** Passant à terre ou qui trébuche : il glisse, se heurte aux murs, puis se relève et reprend sa file. */
-  private knockedStep(i: number, dt: number): void {
+  private knockedStep(i: number, dt: number, obs: Observer): void {
     const g = this.graph, st = this.state;
     st.poseT![i]! += dt;
     this.timer[i]! -= dt;
-    const decay = Math.exp(-dt * (this.mode[i] === PED_STATE.down ? 2.5 : 4));
+    const dead = this.mode[i] === PED_STATE.dead;
+    const decay = Math.exp(-dt * (this.mode[i] === PED_STATE.down || dead ? 2.5 : 4));
     this.jx[i]! += this.kx[i]! * dt;
     this.jy[i]! += this.ky[i]! * dt;
     this.kx[i]! *= decay;
@@ -801,6 +830,10 @@ export class PedSim {
     st.y[i] = this.terrain.heightAt(px, py);
     st.yaw[i] = -this.heading[i]!;
     st.speed[i] = 0;
+    if (dead) {
+      this.corpseStep(i, dt, obs);
+      return;
+    }
     if (this.timer[i]! > 0) return;
     // Il se relève : il reprend la file piétonne la plus proche (le choc l'a peut-être emporté loin de la sienne).
     const hit = g.nearest(px, py, 25, MASK_WALK);
@@ -823,6 +856,52 @@ export class PedSim {
     this.speed[i] = this.want[i]! * 0.5;
     this.mode[i] = PED_STATE.walk;
     st.pose![i] = 0;
+  }
+
+  /** Cadavre : il reste au sol dans la pose de chute, puis s'enfonce doucement dans le terrain (hors de vue au bout d'une minute, au plus tard après 150 s). */
+  private corpseStep(i: number, dt: number, obs: Observer): void {
+    const st = this.state;
+    this.age[i]! += dt;
+    // La pose reste tenue au sol (ni relèvement ni retour à la marche).
+    st.poseT![i] = Math.min(st.poseT![i]!, DOWN_TIME - 1.4);
+    if (this.sink[i]! === 0) {
+      const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
+      const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
+      if (this.age[i]! > CORPSE_MAX_LIFE || (this.age[i]! > CORPSE_HIDDEN_LIFE && (hidden || d > 60))) this.sink[i] = 1e-4;
+      return;
+    }
+    this.sink[i]! += dt;
+    if (this.sink[i]! >= SINK_TIME) {
+      st.alive![i] = 0;
+      this.stats.despawns++;
+      return;
+    }
+    st.y[i]! -= SINK_DEPTH * (this.sink[i]! / SINK_TIME);
+  }
+
+  /** Le passant meurt (J5-2) : il reste à terre pour de bon ; le plus ancien cadavre s'enfonce si l'on dépasse `MAX_CORPSES`. */
+  private kill(i: number): void {
+    this.mode[i] = PED_STATE.dead;
+    this.hp[i] = 0;
+    this.age[i] = 0;
+    this.sink[i] = 0;
+    this.panic[i] = 0;
+    this.fear[i] = 0;
+    this.stats.deaths++;
+    this.event("killed", i, 0);
+    let count = 0, oldest = -1;
+    for (let j = 0; j < this.free; j++) {
+      if (!this.state.alive![j] || this.mode[j] !== PED_STATE.dead || this.sink[j]! > 0) continue;
+      count++;
+      if (oldest < 0 || this.age[j]! > this.age[oldest]!) oldest = j;
+    }
+    if (count > MAX_CORPSES && oldest >= 0) this.sink[oldest] = 1e-4;
+  }
+
+  /** Après un coup qui laisse en vie : le passant fuit (plus longtemps et en boitant s'il est blessé), loin de la direction (ux, uy) du coup. */
+  private wound(i: number, ux: number, uy: number): void {
+    this.panic[i] = Math.max(this.panic[i]!, this.hp[i]! < WOUNDED_HP ? WOUNDED_FLEE : HURT_FLEE);
+    this.fleeDir[i] = Math.atan2(ux, uy);
   }
 
   // --- Voisinage -------------------------------------------------------------------------------------------------
@@ -853,16 +932,18 @@ export class PedSim {
       const dx = this.x[i]! - x, dy = this.y[i]! - y;
       if (dx * dx + dy * dy > r2) continue;
       const m = this.mode[i]!;
+      // Un cadavre récent est un obstacle ; plus ancien, la circulation passe (sinon un corps sur la chaussée la bloquerait une minute).
+      if (m === PED_STATE.dead && this.age[i]! > CORPSE_BLOCKS) continue;
       const sp = m === PED_STATE.walk || m === PED_STATE.cross ? this.speed[i]! * (m === PED_STATE.cross ? 1.25 : 1) : 0;
       visit(this.x[i]!, this.y[i]!, Math.sin(this.heading[i]!) * sp, Math.cos(this.heading[i]!) * sp, m === PED_STATE.cross || m >= PED_STATE.stumble);
     }
   }
 
-  /** Les passants vivants dont le centre est dans le cercle (x, y, r) : leurs emplacements sont ajoutés à `out`. Renvoie leur nombre. */
+  /** Les passants vivants (pas les morts : un cadavre ne témoigne de rien) dont le centre est dans le cercle (x, y, r) : leurs emplacements sont ajoutés à `out`. Renvoie leur nombre. */
   queryCircle(x: number, y: number, r: number, out: number[]): number {
     let n = 0;
     for (let i = 0; i < this.n; i++) {
-      if (!this.state.alive![i]) continue;
+      if (!this.state.alive![i] || this.mode[i] === PED_STATE.dead) continue;
       if (Math.hypot(this.x[i]! - x, this.y[i]! - y) <= r) {
         out.push(i);
         n++;
@@ -996,22 +1077,21 @@ export class PedSim {
   }
 
   /**
-   * Frappe un passant (J5-1, D80) : retire `amount` points de vie, le pousse de `impulse` m/s dans la direction (ux, uy) (trébuche ou tombe, comme
-   * `applyImpulse`), et le fait fuir loin du coup (blessé sous 40 points : plus longtemps, et il boite). À 0 point il est assommé (il tombe, se
-   * relève avec 30 points) : **la mort viendra en J5-2**. Renvoie 0 (rien : emplacement réservé, absent ou déjà à terre), 1 (touché), 2 (assommé).
+   * Frappe un passant (J5, D80) : retire `amount` points de vie, le pousse de `impulse` m/s dans la direction (ux, uy) (trébuche ou tombe, comme
+   * `applyImpulse`), et le fait fuir loin du coup (blessé sous 40 points : plus longtemps, et il boite). À 0 point il meurt : il reste à terre
+   * (`MAX_CORPSES` cadavres au plus). Renvoie 0 (rien : emplacement réservé, absent, déjà à terre ou mort), 1 (touché), 2 (tué).
    */
   damage(i: number, amount: number, ux: number, uy: number, impulse: number): number {
     if (i >= this.free || !this.state.alive![i] || this.mode[i]! >= PED_STATE.stumble || !(amount > 0)) return 0;
     this.hp[i]! -= amount;
-    const ko = this.hp[i]! <= 0;
-    if (ko) this.hp[i] = KO_RECOVER_HP;
-    const v = Math.max(impulse, ko ? 4 : 0);
+    const dead = this.hp[i]! <= 0;
+    const v = Math.max(impulse, dead ? 4 : 0);
     const len = Math.hypot(ux, uy) || 1;
-    this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ux / len, uy / len, v);
-    this.panic[i] = Math.max(this.panic[i]!, this.hp[i]! < WOUNDED_HP ? WOUNDED_FLEE : HURT_FLEE);
-    this.fleeDir[i] = Math.atan2(ux, uy);
+    this.knock(i, v >= KNOCK_SPEED ? HIT_POSE.down : HIT_POSE.stumble, ux / len, uy / len, v);
     this.event("hurt", i, v);
-    return ko ? 2 : 1;
+    if (dead) this.kill(i);
+    else this.wound(i, ux, uy);
+    return dead ? 2 : 1;
   }
 
   /** Position d'un passant (repère du jeu), pour les tests et les autres systèmes. */
