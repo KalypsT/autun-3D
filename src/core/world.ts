@@ -1,6 +1,7 @@
 import type { TileData } from "../data/types";
 import { Colliders } from "./collision";
 import { isOpen, landmarkCircles } from "./landmarks";
+import { parapetLines } from "./bridges";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -8,7 +9,7 @@ const FURNITURE_RADIUS: Record<string, number> = {
   bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
 };
 
-export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds">;
+export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures">;
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
 export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null): void {
@@ -25,6 +26,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   }
   for (const [x, y] of tile.trees) c.addCircle(x, y, 0.3);
   for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
+  // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
+  for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line);
   c.currentTag = null;
 }
 

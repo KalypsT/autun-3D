@@ -683,7 +683,7 @@ export class PedSim {
     const st = this.state, v = this.mode[i] === PED_STATE.walk || this.mode[i] === PED_STATE.cross ? this.speed[i]! : 0;
     st.x[i] = px;
     st.z[i] = -py;
-    st.y[i] = this.terrain.heightAt(px, py);
+    st.y[i] = this.terrain.heightAt(px, py, st.y[i]);
     st.yaw[i] = -hd;
     st.speed[i] = v;
     st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
@@ -847,7 +847,7 @@ export class PedSim {
     this.y[i] = py;
     st.x[i] = px;
     st.z[i] = -py;
-    st.y[i] = this.terrain.heightAt(px, py);
+    st.y[i] = this.terrain.heightAt(px, py, st.y[i]);
     st.yaw[i] = -this.heading[i]!;
     st.speed[i] = 0;
     if (dead) {

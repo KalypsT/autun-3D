@@ -42,6 +42,8 @@ export function buildGround(layers: Record<string, number[][][]>, bounds: readon
 /** Comme `buildGround`, en rendant la main après chaque polygone. */
 export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: readonly number[], terrain: HeightField): Steps<MeshBuilder> {
   const mb = new MeshBuilder();
+  // Pelouses, eau et terrains restent sur le relief nu ; chaussées, trottoirs et places suivent les tabliers de pont (D93).
+  const bare = terrain.ground ?? terrain;
   const eps = 0.02;
   const onEdge = (x: number, y: number): boolean => Math.abs(x - bounds[0]!) < eps || Math.abs(x - bounds[2]!) < eps || Math.abs(y - bounds[1]!) < eps || Math.abs(y - bounds[3]!) < eps;
 
@@ -51,7 +53,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : T.ground[spec.color]!;
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     for (const poly of polys) {
-      fillOnTerrain(mb, poly, spec.lift, color, terrain, true);
+      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" ? bare : terrain, true);
       yield;
       if (name === "walk") {
         curbs(mb, [poly], terrain, color, onEdge);

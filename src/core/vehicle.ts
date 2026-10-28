@@ -343,8 +343,9 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   s.y = y;
   // Hauteur et tangage : moyenne et pente entre les deux essieux.
   const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
-  const zf = terrain.heightAt(s.x + fx * spec.front, s.y + fy * spec.front);
-  const zr = terrain.heightAt(s.x - fx * spec.rear, s.y - fy * spec.rear);
+  // L'altitude actuelle départage le tablier d'un pont et la route qui passe dessous (D93).
+  const zf = terrain.heightAt(s.x + fx * spec.front, s.y + fy * spec.front, s.z);
+  const zr = terrain.heightAt(s.x - fx * spec.rear, s.y - fy * spec.rear, s.z);
   s.z = (zf * spec.rear + zr * spec.front) / (spec.front + spec.rear);
   s.pitch = Math.atan2(zf - zr, spec.front + spec.rear);
   s.speed = s.vx * fx + s.vy * fy;
@@ -411,7 +412,7 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   const driveF = spec.driveAxle === "front" ? drive : 0, driveR = spec.driveAxle === "rear" ? drive : 0;
 
   // Forces dans le repère du véhicule ; frottements (freins des roues qui tournent, roulement, frein moteur) à part.
-  const slope = terrain.heightAt(s.x + sin * 0.5, s.y + cos * 0.5) - terrain.heightAt(s.x - sin * 0.5, s.y - cos * 0.5);
+  const slope = terrain.heightAt(s.x + sin * 0.5, s.y + cos * 0.5, s.z) - terrain.heightAt(s.x - sin * 0.5, s.y - cos * 0.5, s.z);
   let fx = -spec.drag * u * Math.abs(u) - (m * GRAVITY * slope) / Math.sqrt(1 + slope * slope);
   let fyFront: number, fyRear: number, skid = 0;
   const au = Math.max(Math.abs(u), 0.5);

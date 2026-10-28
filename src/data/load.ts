@@ -1,5 +1,5 @@
 import { Terrain, TiledTerrain } from "./terrain";
-import type { LodBuilding, TileData, TileKinds, WorldBase, WorldManifest } from "./types";
+import type { LodBuilding, TileData, TileKinds, TileStructures, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
 
@@ -35,19 +35,28 @@ export async function loadWorldBase(): Promise<WorldBase> {
   return { manifest, terrain: new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`)) };
 }
 
-let kindsIndex: Promise<Set<string>> | null = null;
+const indexes = new Map<string, Promise<Set<string>>>();
 
-/** Tuiles qui ont un fichier de types (kinds/index.json) ; un index absent vaut « aucune ». */
-function kindTiles(): Promise<Set<string>> {
-  kindsIndex ??= loadJson<{ tiles: string[] }>("kinds/index.json").then((i) => new Set(i.tiles), () => new Set<string>());
-  return kindsIndex;
+/** Tuiles qui ont un fichier dans le dossier `dir` (dir/index.json) ; un index absent vaut « aucune ». */
+function tilesWith(dir: string): Promise<Set<string>> {
+  let p = indexes.get(dir);
+  if (!p) {
+    p = loadJson<{ tiles: string[] }>(`${dir}/index.json`).then((i) => new Set(i.tiles), () => new Set<string>());
+    indexes.set(dir, p);
+  }
+  return p;
 }
 
-/** Tuile détaillée, avec ses types de bâtiments et ses sites quand elle en a. */
+/** Tuile détaillée, avec ses types de bâtiments et sites (kinds/) et ses ponts, eau et voies ferrées (structures/) quand elle en a. */
 export async function loadTile(id: string): Promise<TileData> {
-  const has = (await kindTiles()).has(id);
-  const [tile, kinds] = await Promise.all([loadJson<TileData>(`tiles/${id}.json`), has ? loadJson<TileKinds>(`kinds/${id}.json`) : null]);
+  const [hasKinds, hasStructures] = await Promise.all([tilesWith("kinds"), tilesWith("structures")]).then(([k, s]) => [k.has(id), s.has(id)]);
+  const [tile, kinds, structures] = await Promise.all([
+    loadJson<TileData>(`tiles/${id}.json`),
+    hasKinds ? loadJson<TileKinds>(`kinds/${id}.json`) : null,
+    hasStructures ? loadJson<TileStructures>(`structures/${id}.json`) : null,
+  ]);
   if (kinds) tile.kinds = kinds;
+  if (structures) tile.structures = structures;
   return tile;
 }
 

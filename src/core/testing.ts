@@ -4,7 +4,7 @@ import { NavGraph } from "./nav-graph";
 import { buildColliders } from "./world";
 import type { Colliders } from "./collision";
 import { Terrain, TiledTerrain } from "../data/terrain";
-import type { TileData, TileKinds, WorldManifest } from "../data/types";
+import type { TileData, TileKinds, TileStructures, WorldManifest } from "../data/types";
 
 /** Terrain plat de 200 × 200 m centré sur l'origine, pour les tests. */
 export function flatTerrain(z = 0): Terrain {
@@ -36,6 +36,25 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     kinds.sites.push(...k.sites);
   }
   tile.kinds = kinds;
+  // Ponts, eau et voies ferrées (structures/) : les tabliers et quais comptent dans les altitudes, comme dans le jeu.
+  const structures: TileStructures = { v: 1, decks: [], water: [], streams: [], weirs: [], rails: [], platforms: [], crossings: [] };
+  const seen = new Set<number>();
+  for (const name of readdirSync("public/data/structures")) {
+    if (name === "index.json") continue;
+    const st = JSON.parse(read(`structures/${name}`).toString("utf8")) as TileStructures;
+    for (const d of st.decks) {
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      structures.decks.push(d);
+    }
+    for (const k of ["water", "streams", "weirs", "rails", "platforms", "crossings"] as const) (structures[k] as unknown[]).push(...(st[k] as unknown[]));
+  }
+  tile.structures = structures;
+  terrain.decks.add("tests", structures.decks, structures.platforms.map((p, i) => {
+    let z = -Infinity;
+    for (let k = 0; k < p.r.length; k += 2) z = Math.max(z, terrain.groundAt(p.r[k]!, p.r[k + 1]!));
+    return { ...p, z: z + p.h, id: `q:${i}` };
+  }));
   return { terrain, tile, manifest };
 }
 

@@ -11,6 +11,7 @@ import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 import { reshapeBuilding } from "../core/landmarks";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
+import { buildStructures, buildWater } from "./structures";
 
 const SKIRT = 0.4;
 const CHIMNEY = new THREE.Color("#a07a62");
@@ -390,6 +391,13 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     if (++count % BUILDINGS_PER_STEP === 0) yield;
   }
 
+  // Ponts, voies ferrées, quais (D93) ; l'eau est dessinée avec le sol.
+  const st = skip.includes("structures") ? undefined : tile.structures;
+  if (st) {
+    buildStructures(detail, st, tile.bounds, terrain, terrain.ground ?? terrain, (x, y) => terrain.railAt?.(x, y) ?? terrain.heightAt(x, y));
+    yield;
+  }
+
   // Gabarits : grandes surfaces, hangars, services publics, églises, stations-service, cimetières.
   target();
   if (!skip.includes("kinds")) {
@@ -452,8 +460,11 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   add("enseignes", names, res.signMat);
   add("halos", halo, res.haloMat);
   yield;
-  const ground = yield* buildGroundSteps(tile.ground ?? {}, tile.bounds, terrain);
-  buildSitesGround(ground, kinds, terrain);
+  // L'eau des ouvrages (surfaces complètes, multipolygones compris) remplace la couche d'eau de la tuile.
+  const layers = st ? Object.fromEntries(Object.entries(tile.ground ?? {}).filter(([k]) => k !== "water")) : tile.ground ?? {};
+  const ground = yield* buildGroundSteps(layers, tile.bounds, terrain);
+  buildSitesGround(ground, kinds, terrain.ground ?? terrain);
+  if (st) buildWater(ground, st, tile.bounds, terrain.ground ?? terrain);
   if (ground.triangleCount > 0) put("sol", yield* ground.buildSteps(), ground.triangleCount, res.groundMat);
   add("grilles", fence, res.fenceMat);
   if (tile.trees.length) {

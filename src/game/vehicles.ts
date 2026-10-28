@@ -235,8 +235,8 @@ export class Fleet {
   private settle(v: Vehicle): void {
     const s = v.state, sp = v.spec;
     const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
-    const zf = this.terrain.heightAt(s.x + fx * sp.front, s.y + fy * sp.front);
-    const zr = this.terrain.heightAt(s.x - fx * sp.rear, s.y - fy * sp.rear);
+    const zf = this.terrain.heightAt(s.x + fx * sp.front, s.y + fy * sp.front, s.z);
+    const zr = this.terrain.heightAt(s.x - fx * sp.rear, s.y - fy * sp.rear, s.z);
     s.z = (zf * sp.rear + zr * sp.front) / (sp.front + sp.rear);
     s.pitch = Math.atan2(zf - zr, sp.front + sp.rear);
   }

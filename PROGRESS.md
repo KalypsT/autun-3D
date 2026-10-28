@@ -501,3 +501,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Devantures : stores rayés, terrasses de café quand le trottoir le permet, croix verte des pharmacies, carotte des tabacs. Stations-service avec auvent, pompes et totem. Terrains de foot verts rayés avec leurs lignes, tennis en terre battue, pistes rouges, tombes dans les cimetières.
 - Aucun appel de dessin de plus ; quelques pour cent de triangles (le plus : un cimetière). 584 tests.
 - À faire de ton côté : te balader (Leclerc, gare, mairie, stade Saint-Roch, cimetière, rue aux commerces) et dire ce qui sonne faux ; vérifier avec `?debug` que les images par seconde ne bougent pas.
+
+**M2 (28 octobre 2026) : ponts, eau, voies ferrées** (D93)
+- Les 28 ponts de l'anneau ont un tablier à leur vraie hauteur, mesurée sur le modèle de surface LiDAR : la route ne plonge plus vers la rivière. Les grands ponts routiers sur l'eau (Saint-Andoche, route de Saulieu, avenue de la République…) sont en pierre, avec voûtes, piles et avant-becs ; les autres ont un tablier droit, les passerelles un garde-corps. Les parapets empêchent de tomber.
+- Deux niveaux : sous le pont Saint-Andoche, la route du bas reste en bas, et le joueur, les voitures et les passants qui passent dessous ne sont pas soulevés sur le tablier.
+- Toute l'eau (27,8 ha au lieu de 3,9), avec un liseré sur les rives et des rides ; 26 km de ruisseaux ; le seuil de l'Arroux. La ligne de chemin de fer (8,2 km) avec ballast, traverses et rails, le faisceau de la gare, deux quais avec abri, les passages à niveau.
+- Aucun appel de dessin de plus ; +10 % de triangles au pire (vue sur le faisceau de la gare). 590 tests.
+- À faire de ton côté : passer les ponts à pied, à vélo et en voiture (Saint-Andoche, route de Saulieu, rue de Paris), passer dessous, longer l'Arroux, aller à la gare.

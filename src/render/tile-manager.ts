@@ -174,7 +174,23 @@ export class TileManager {
     if (this.builds.length > 256) this.builds.shift();
   }
 
+  /**
+   * Tabliers de pont et quais de la tuile (D93), avant sa construction : chaussées, mobilier et entités s'y posent. Un quai est à
+   * hauteur fixe au-dessus du plus haut point de son contour.
+   */
+  private registerDecks(id: string, data: TileData): void {
+    const st = data.structures;
+    if (!st) return;
+    const platforms = st.platforms.map((p, i) => {
+      let z = -Infinity;
+      for (let k = 0; k < p.r.length; k += 2) z = Math.max(z, this.terrain.groundAt(p.r[k]!, p.r[k + 1]!));
+      return { ...p, z: z + p.h, id: `q:${id}:${i}` };
+    });
+    this.terrain.decks.add(id, st.decks, platforms);
+  }
+
   private unload(e: Entry): void {
+    this.terrain.decks.remove(e.info.id);
     if (this.job?.e === e) {
       this.job.steps.return(undefined as unknown as TileMeshes);
       this.job = null;
@@ -290,6 +306,7 @@ export class TileManager {
       } else if (e.data && !this.job) {
         // Les altitudes fines de la tuile et de ses voisines doivent être là : les bâtiments, murs et sols s'y posent.
         if (this.terrain.ready(e.info)) {
+          this.registerDecks(e.info.id, e.data);
           this.job = { e, data: e.data, steps: this.builder(e.data), work: 0, frames: 0, slice: 0 };
           e.data = null;
         }
@@ -377,6 +394,7 @@ export class TileManager {
       const data = e.data;
       if (!data) continue;
       e.data = null;
+      this.registerDecks(e.info.id, data);
       const t0 = performance.now();
       this.finishBuild(e, data, finish(this.builder(data)), true);
       const ms = performance.now() - t0;

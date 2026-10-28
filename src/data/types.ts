@@ -3,7 +3,15 @@
 
 /** Ce que le jeu demande au relief : l'altitude en un point et les limites du monde jouable. */
 export interface HeightField {
-  heightAt(x: number, y: number): number;
+  /**
+   * Altitude de la surface : relief, ou tablier de pont et quai quand il y en a (D93). `zHint`, l'altitude actuelle de qui demande,
+   * départage deux niveaux (le pont et la route qui passe dessous) ; sans lui, la surface la plus haute.
+   */
+  heightAt(x: number, y: number, zHint?: number): number;
+  /** Relief nu, sans les tabliers (dessin du sol, de l'eau, des piles) ; absent : c'est le même. */
+  readonly ground?: HeightField;
+  /** Altitude des rails : tablier ferroviaire ou relief ; absent : `heightAt`. */
+  railAt?(x: number, y: number): number;
   readonly xMin: number;
   readonly xMax: number;
   readonly yMin: number;
@@ -205,9 +213,49 @@ export interface TileKinds {
   sites: Site[];
 }
 
+// --- Ponts, eau, voies ferrées (structures/<tuile>.json, tools/data/build_structures.py, D93) ------------------
+
+export interface Deck {
+  id: number;
+  k: "road" | "foot" | "rail";
+  /** Largeur du tablier (m). */
+  w: number;
+  /** Axe : x, y, z du dessus du tablier, par sommet. */
+  p: number[];
+  /** Style : voûtes en pierre, tablier droit, passerelle légère. */
+  st: "stone" | "beam" | "light";
+  /** Abscisses des piles le long de l'axe. */
+  sp: number[];
+  /** Tronçons de parapet infranchissables [s0, s1] (coupés au-dessus d'une voie). */
+  pc: [number, number][];
+  n?: string;
+}
+
+export interface Platform {
+  /** Contour du quai (anneau aplati) et hauteur au-dessus du relief. */
+  r: number[];
+  h: number;
+}
+
+export interface TileStructures {
+  v: number;
+  decks: Deck[];
+  /** Polygones d'eau découpés à la tuile : anneau extérieur puis trous. */
+  water: number[][][];
+  streams: { p: number[]; w: number }[];
+  weirs: { p: number[] }[];
+  /** Voies ferrées ; `s` : 1 pour une voie de service. */
+  rails: { p: number[]; s: number }[];
+  platforms: Platform[];
+  /** Passages à niveau : x, y, angle de la voie ferrée. */
+  crossings: [number, number, number][];
+}
+
 export interface TileData {
   /** Emprise locale de la tuile : x0, y0, x1, y1. */
   bounds: [number, number, number, number];
+  /** Ponts, eau et voies ferrées (absent : aucun). */
+  structures?: TileStructures;
   /** Types de bâtiments et sites remarquables (absent : aucun). */
   kinds?: TileKinds;
   /** Sols en vecteurs : couche -> polygones -> anneaux (extérieur puis trous), coordonnées aplaties. */
