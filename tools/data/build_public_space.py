@@ -36,6 +36,11 @@ from build_tiles import clip_layers
 
 SIDEWALK_MAX = 5.0  # au-delà, l'espace public le long d'une rue devient place ou pelouse
 SIDEWALK_MIN = 0.8  # en dessous, rue partagée : pas de trottoir
+STREET_KINDS = {"motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "living_street", "service", "pedestrian", "road",
+                "primary_link", "secondary_link", "tertiary_link"}
+STREAM_BANK = 2.5  # berge enherbée de chaque côté d'un ruisseau (m)
+FENCE_ROAD = 12.0  # une limite de parcelle n'est clôturée que si une voie passe à moins (m)
+FENCE_WATER = 8.0  # pas de clôture de parcelle sur les rives
 SAMPLE = 6.0  # pas des profils en travers (m)
 SURFACE = {"asphalt": "asphalt", "concrete": "paving", "sett": "sett", "paving_stones": "paving", "unhewn_cobblestone": "sett",
            "cobblestone": "sett", "compacted": "gravel", "gravel": "gravel", "fine_gravel": "gravel"}
@@ -130,6 +135,12 @@ def main():
         for poly in json.loads(f.read_text())["water"]:
             water.append(Polygon(list(zip(poly[0][::2], poly[0][1::2])), [list(zip(h[::2], h[1::2])) for h in poly[1:]]).buffer(0))
     WATER = unary_union(water) if water else Polygon()
+    # Ruisseaux et rivières filaires (D93) : le lit n'est dans aucune parcelle, il ne doit pas devenir place, trottoir ni rue (D96).
+    streams = []
+    for f in (c.OUT / "structures").glob("*_*.json"):
+        for st in json.loads(f.read_text())["streams"]:
+            streams.append(LineString(list(zip(st["p"][0::2], st["p"][1::2]))).buffer(st["w"] / 2 + STREAM_BANK, cap_style="flat"))
+    CORRIDOR = unary_union(streams) if streams else Polygon()
 
     x0, y0, x1, y1 = rs.region_box(40)
     zone = box(x0 - c.ORIGIN[0], y0 - c.ORIGIN[1], x1 - c.ORIGIN[0], y1 - c.ORIGIN[1])
@@ -281,7 +292,8 @@ def main():
                 lawns.append(Polygon(ln.coords).buffer(-s["width"] / 2 - 0.3))
 
     # --- Trottoirs : l'espace public le long des chaussées, jusqu'aux façades et clôtures -------------------------------------
-    W = R.buffer(SIDEWALK_MAX, join_style="round").intersection(D).difference(R).difference(PK.buffer(0.5)).difference(PED).difference(WATER)
+    BANK = CORRIDOR.difference(R.buffer(0.5)).difference(B).difference(WATER)
+    W = R.buffer(SIDEWALK_MAX, join_style="round").intersection(D).difference(R).difference(PK.buffer(0.5)).difference(PED).difference(WATER).difference(BANK)
     # Accotements enherbés : l'herbe de l'orthophoto dans la bande des trottoirs.
     grass = grid.polygons(ndimage.binary_opening(cls == 5, iterations=2) & grid.mask([W]))
     verges = grass.intersection(W).buffer(-0.5).buffer(0.5)
@@ -289,7 +301,7 @@ def main():
     print("trottoirs", round(W.area / 1e4, 1), "ha ; accotements", round(verges.area / 1e4, 1), "ha")
 
     # --- Le reste de l'espace public : places, pelouses, parkings d'après l'orthophoto ----------------------------------------
-    rest = D.difference(R).difference(W).difference(verges).difference(WATER).difference(PK).difference(PED)
+    rest = D.difference(R).difference(W).difference(verges).difference(WATER).difference(PK).difference(PED).difference(BANK)
     rest_mask = grid.mask([rest])
     for name, k in (("lawn", 5), ("gravel", 4), ("asphalt", 1), ("paving", 0)):
         m = ndimage.binary_opening(ndimage.binary_closing((cls == k) & rest_mask, iterations=1), iterations=1)
@@ -307,7 +319,7 @@ def main():
     for cls_name, g in roads.items():
         layers[f"road_{cls_name}"] = clean(g.simplify(0.12))
     P_ = {}
-    taken = unary_union([R, B, W])
+    taken = unary_union([R, B, W, BANK])
     for name in ("asphalt", "sett", "gravel", "paving"):
         if not plazas[name]:
             continue
@@ -317,8 +329,8 @@ def main():
     for name, g in P_.items():
         layers[f"plaza_{name}"] = clean(g.buffer(2.0, join_style="round").buffer(-2.0, join_style="round").simplify(0.6), 12.0)
     layers["walk"] = clean(W.simplify(0.1))
-    covered = unary_union([R, B, W] + list(P_.values()))
-    L = unary_union([g.buffer(0) for g in lawns] + [verges]).difference(covered).difference(WATER)
+    covered = unary_union([R, B, W] + list(P_.values()))  # BANK reste en pelouse : jamais couverte
+    L = unary_union([g.buffer(0) for g in lawns] + [verges, BANK]).difference(covered).difference(WATER)
     layers["lawn"] = clean(L.simplify(0.3), 4.0)
     pitches = [g for typ, oid, t, g in osm.areas() if t.get("leisure") == "pitch" and g.intersects(zone)]
     if pitches:
@@ -327,7 +339,7 @@ def main():
     print({k: (len(v), round(sum(p.area for p in v))) for k, v in layers.items()})
 
     # --- Clôtures de parcelle sur la rue -----------------------------------------------------------------------------------
-    fences = parcel_fences(parcels, D, B, R, PK, osm, zone)
+    fences = parcel_fences(parcels, D, B, R, PK, osm, zone, WATER.union(CORRIDOR))
     print(f"clôtures : {len(fences)} tronçons, {sum(f['len'] for f in fences) / 1000:.1f} km")
 
     # --- Lampadaires : le long des chaussées, sur les nouveaux trottoirs ------------------------------------------------------
@@ -469,12 +481,20 @@ def markings(drivable, lots, R, PK, tiles, tags_of, line):
     return mk
 
 
-def parcel_fences(parcels, D, B, R, PK, osm, zone):
-    """Limites de parcelle sur l'espace public sans bâtiment : mur (vieille ville, souvent), grille ou haie. Interrompues aux accès
-    (toute voie ou chemin qui entre dans la parcelle) et, au milieu des longs tronçons, d'un portillon d'1,2 m."""
+def parcel_fences(parcels, D, B, R, PK, osm, zone, wet):
+    """Limites de parcelle sur l'espace public sans bâtiment, le long d'une rue seulement (D96) : mur (vieille ville, souvent), grille ou haie
+    (haie face aux champs et aux bois). Rien sur les rives, dans les parcs et sur les terrains de sport, ni à plus de FENCE_ROAD d'une voie.
+    Interrompues aux accès (toute voie ou chemin qui entre dans la parcelle) et d'un portillon d'1,2 m tous les 10 m environ."""
     Dn = D.buffer(0.3)
-    gaps = unary_union([ln.buffer(2.5) for ln in (osm.way_line(wid) for wid, w in osm.ways.items() if w["tags"].get("highway")) if ln is not None]
-                       + [B.buffer(0.6), PK.buffer(0.5)])
+    hw = [(wid, w["tags"]) for wid, w in osm.ways.items() if w["tags"].get("highway")]
+    gaps = unary_union([ln.buffer(2.5) for ln in (osm.way_line(wid) for wid, _ in hw) if ln is not None] + [B.buffer(0.6), PK.buffer(0.5)])
+    street = unary_union([ln.buffer(FENCE_ROAD) for ln in (osm.way_line(wid) for wid, t in hw if t["highway"] in STREET_KINDS) if ln is not None])
+    street_p, wet_p = prep(street), prep(wet.buffer(FENCE_WATER))
+    areas = osm.areas()
+    open_p = prep(unary_union([g for _, _, t, g in areas if t.get("leisure") in ("park", "pitch", "sports_centre", "playground", "stadium", "recreation_ground", "track", "garden")
+                               and t.get("access") not in ("private", "no")]))
+    wild_p = prep(unary_union([g for _, _, t, g in areas if t.get("landuse") in ("meadow", "farmland", "forest", "orchard", "vineyard", "allotments")
+                               or t.get("natural") in ("wood", "scrub", "grassland", "wetland")]))
     gaps_p = prep(gaps)
     Dp = prep(Dn)
     out = []
@@ -495,16 +515,22 @@ def parcel_fences(parcels, D, B, R, PK, osm, zone):
             lines = [g for g in getattr(merged, "geoms", [merged]) if g.geom_type == "LineString"]
         key = zlib.crc32(f"{p.centroid.x:.1f},{p.centroid.y:.1f}".encode()) / 2**32
         old = math.hypot(p.centroid.x - CENTER[0], p.centroid.y - CENTER[1]) < 650
-        kind = ("wall" if key < 0.8 else "fence") if old else ("wall" if key < 0.35 else "fence" if key < 0.75 else "hedge")
-        height = {"wall": 2.0 if old else 1.1, "fence": 1.5, "hedge": 1.4}[kind]
         for ln in lines:
             ln = ln.simplify(0.2)
             if ln.length < 1.5:
                 continue
+            mid = ln.interpolate(0.5, normalized=True)
+            if not street_p.contains(mid) or wet_p.contains(mid) or open_p.contains(mid):
+                continue
+            kind = ("wall" if key < 0.8 else "fence") if old else ("wall" if key < 0.35 else "fence" if key < 0.75 else "hedge")
+            if wild_p.contains(mid):
+                kind = "hedge"
+            height = {"wall": 2.0 if old else 1.1, "fence": 1.5, "hedge": 1.4}[kind]
+            n = max(1, round(ln.length / 10)) if ln.length > 7 else 1
             pieces = [ln]
             if ln.length > 7:
-                m = ln.length / 2
-                pieces = [substring(ln, 0, m - 0.6), substring(ln, m + 0.6, ln.length)]
+                cuts = [ln.length * i / n for i in range(n + 1)]
+                pieces = [substring(ln, cuts[i] + (0.6 if i else 0), cuts[i + 1] - (0.6 if i + 1 < n else 0)) for i in range(n)]
             for q in pieces:
                 if q.geom_type == "LineString" and q.length >= 1.0:
                     out.append({"kind": kind, "height": height, "len": q.length, "pts": [round(v, 2) for xy in q.coords for v in xy]})
