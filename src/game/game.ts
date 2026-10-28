@@ -17,7 +17,7 @@ import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { DEATH_HOURS, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
-import { Inventory, WEAPON_ORDER, WEAPONS, type GunId, type WeaponId } from "../core/weapons";
+import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
 import { CACHE_ROUNDS, PICKUP_REACH, Pickups } from "../core/pickups";
 import { Fx, type PickupView } from "../render/fx";
@@ -35,6 +35,9 @@ import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
 import { Fleet, chaseOf, familyOf, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
+import { AudioSystem } from "../audio/audio-system";
+import { stepCrossed } from "../core/sound-model";
+import { GameAudio, type TrafficVisit } from "./game-audio";
 
 export { gameSpawn } from "./start";
 const STEP = 1 / 60;
@@ -115,8 +118,12 @@ export function startGame(ctx: GameContext): void {
 
   const settings = ctx.settings!;
   controls.sensitivity = settings.values.sensitivity;
+  // Sons (J7, D89) : rien ne joue avant le premier geste (règle des navigateurs) ; `?sound=0` les coupe.
+  const audioSys = new AudioSystem(settings.values.volume);
+  const audio = new GameAudio(audioSys);
   settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
+    if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
     // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
     if (changed.includes("traffic")) startTraffic(v.traffic);
@@ -170,8 +177,10 @@ export function startGame(ctx: GameContext): void {
     } else peds.setCapacity(capacity);
     // Pigeons (J2-7) : leur nombre suit la foule ; ?pigeons=N le force (0 : aucun).
     const pg = params.has("pigeons") ? Math.max(0, Math.min(60, Math.round(Number(params.get("pigeons")) || 0))) : pigeonCapacity(capacity);
-    if (!pigeons) pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
-    else pigeons.setCapacity(pg);
+    if (!pigeons) {
+      pigeons = new PigeonsController(scene, startNav(), terrain, colliders, pg, 7);
+      pigeons.onScatter = (x, y) => audio.scatter(x, y);
+    } else pigeons.setCapacity(pg);
   };
   /** La foule, même vide (« Foule : Aucune ») : les gendarmes à pied y sont dessinés (J4-5). */
   const needPeds = (): PedsController => {
@@ -217,7 +226,7 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()} · ${audio.info}`);
 
   const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -296,6 +305,7 @@ export function startGame(ctx: GameContext): void {
     hornEl.textContent = familyOf(v).horn;
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
+    audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
   };
   const dismount = (): void => {
     const v = riding!;
@@ -315,6 +325,7 @@ export function startGame(ctx: GameContext): void {
     leaving = false;
     controls.mode = "foot";
     document.body.classList.remove("driving", "car");
+    audio.setRide(null);
   };
   // Vol avec conducteur (J4-1, D71) : une voiture de la circulation lente (feu rouge, file) à portée de la main peut être prise ;
   // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
@@ -352,6 +363,7 @@ export function startGame(ctx: GameContext): void {
     if (pk && pickups.canTake(pk, inventory)) {
       const fresh = !inventory.has(pk.weapon);
       pickups.take(pk, inventory);
+      audio.pickup();
       if (fresh) inventory.select(pk.weapon);
       return;
     }
@@ -499,6 +511,8 @@ export function startGame(ctx: GameContext): void {
       fleet.remove(taken);
     }
     police.reset();
+    lastStars = 0;
+    audio.arrest();
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
@@ -515,6 +529,8 @@ export function startGame(ctx: GameContext): void {
   const die = (): void => {
     if (riding) dismount();
     police.reset();
+    lastStars = 0;
+    audio.death();
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
@@ -528,6 +544,10 @@ export function startGame(ctx: GameContext): void {
     ui.save();
   };
 
+  // Sons : dernière phase de marche (pas), dernier niveau de recherche, circulation à parcourir.
+  let lastPhase = model.phase;
+  let lastStars = wanted.stars;
+  const eachCar = (visit: TrafficVisit): void => (traffic as Traffic | null)?.forEachSound(visit);
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
   let bumpTimer = 0;
@@ -539,6 +559,7 @@ export function startGame(ctx: GameContext): void {
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     const input = controls.poll();
+    audioSys.setPaused(ui.paused);
     if (ui.paused) {
       // Pause : ni simulation ni horloge. Le chargement des tuiles continue, et l'image se rafraîchit à 4 Hz
       // (ou tout de suite quand un réglage change) : rien ne bouge, mais l'aperçu des réglages reste vrai.
@@ -557,6 +578,7 @@ export function startGame(ctx: GameContext): void {
     const hornPressed = input.horn && !hornHeld;
     hornHeld = input.horn;
     if (hornPressed && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
+    audio.horn(input.horn && !!riding);
     bumpTimer = Math.max(0, bumpTimer - dt);
     yaw += input.lookYaw;
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
@@ -584,6 +606,8 @@ export function startGame(ctx: GameContext): void {
         player.x = s.x;
         player.y = s.y;
         player.z = s.z;
+        audio.impact(s.impact);
+        audio.drive(dt, s, leaving ? 0 : input.throttle, leaving ? 1 : input.brake);
         s.impact = 0;
         // Caméra de poursuite : se recale derrière le véhicule, sauf si l'on vient de regarder ailleurs.
         lookIdle = input.looking ? 0 : lookIdle + dt;
@@ -607,6 +631,7 @@ export function startGame(ctx: GameContext): void {
     const cx = player.x + (rig.x - player.x) * k, cy = player.y + (rig.y - player.y) * k, cz = tz + (rig.z - tz) * k;
     camera.position.set(cx, cz, -cy);
     camera.lookAt(player.x, tz - 0.1, -player.y);
+    audio.listen(cx, cy, yaw, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
     const fov = 62 + Math.min(speed * 0.8, 8);
     if (Math.abs(camera.fov - fov) > 0.05) {
       camera.fov = fov;
@@ -631,6 +656,8 @@ export function startGame(ctx: GameContext): void {
     } else if (weapon.kind === "melee") {
       gun.cancel();
       const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, pedsNow0);
+      if (res.started && weapon.style !== "aim") audio.swing(weapon.style as AttackStyle);
+      if (res.hits > 0) audio.meleeHit(weapon.id);
       violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
       model.setStrike(melee.active && weapon.style !== "aim" ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
@@ -639,6 +666,9 @@ export function startGame(ctx: GameContext): void {
       model.setStrike(null);
       const res = gun.step(dt, input.attack, reloadAsked, weapon, inventory, player.x, player.y, yaw, shootWorld);
       reloadAsked = false;
+      if (res.dry) audio.dry();
+      if (res.reloadStarted) audio.reload(false);
+      if (res.reloadDone) audio.reload(true);
       if (input.attack || gun.aim > 0) player.heading += angleDelta(player.heading, gun.facing) * Math.min(1, 18 * dt);
       if (gun.targeted && pedsNow0) {
         const tp = { x: 0, y: 0 };
@@ -650,6 +680,7 @@ export function startGame(ctx: GameContext): void {
         const z0 = player.z + 1.3;
         const mx = player.x + Math.sin(gun.facing) * MUZZLE, my = player.y + Math.cos(gun.facing) * MUZZLE;
         fx.flash(mx, my, z0);
+        audio.shot(weapon.id as GunId, mx, my, true);
         for (let k = 0; k < res.fxCount; k++) {
           const sh = res.shots[k]!;
           const z1 = sh.kind === 2 ? terrain.heightAt(sh.x1, sh.y1) + 1.1 : z0;
@@ -695,6 +726,8 @@ export function startGame(ctx: GameContext): void {
     } else {
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;
+      if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);
+      lastPhase = model.phase;
     }
     if (riding) speedo.set(riding.state.speed, riding.spec.topSpeed);
     fleet.cull(cx, cy);
@@ -720,8 +753,10 @@ export function startGame(ctx: GameContext): void {
         horn: hornPressed && !!riding,
         ...(traffic ? { vehicles: (traffic as Traffic).bodies(), honks: (traffic as Traffic).takeHonks() } : {}),
       };
+      for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
       (traffic as Traffic | null)?.setPeds(pedsNow);
       pedsNow?.update(dt, obs, camera.position.x, camera.position.z);
+      if (pedsNow) audio.pedEvents(pedsNow.events);
       (traffic as Traffic | null)?.applyImpacts();
       (pigeons as PigeonsController | null)?.update(dt, obs, pedsNow);
       // Effet des passants sur le joueur : un choc ralentit le véhicule (10 à 30 %, jamais plus de 50 % d'un coup) ; à pied, une bousculade ralentit un instant.
@@ -753,6 +788,11 @@ export function startGame(ctx: GameContext): void {
       const dmg = police.takeDamage();
       if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
       if (police.shots.length > 0) {
+        for (let i = 0; i < police.shots.length && i < 4; i++) {
+          const sh = police.shots[i]!;
+          audio.shot("pistol", sh.x0, sh.y0, false);
+          if (!sh.hit) audio.nearMiss(sh.x0, sh.y0, sh.x1, sh.y1, player.x, player.y);
+        }
         for (const sh of police.shots) {
           const z0 = terrain.heightAt(sh.x0, sh.y0) + 1.3;
           fx.flash(sh.x0, sh.y0, z0);
@@ -772,12 +812,19 @@ export function startGame(ctx: GameContext): void {
     health.update(dt);
     if (health.takeDeath()) die();
     if (health.takeHurt() > 0) {
+      audio.hurt();
       hurtEl.classList.add("flash");
       void hurtEl.offsetWidth;
       hurtEl.classList.remove("flash");
     }
     healthHud.set(health.hp);
     wantedHud.set(wanted);
+    if (wanted.stars !== lastStars) {
+      audio.stars(wanted.stars, lastStars);
+      lastStars = wanted.stars;
+    }
+    audio.traffic(dt, eachCar);
+    audio.update(dt, atmosphere.hour, atmosphere.day);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
@@ -811,5 +858,7 @@ export function startGame(ctx: GameContext): void {
       return g ? { capacity: g.capacity, stats: g.stats, simMs: g.simMs, drawMs: g.drawMs } : null;
     },
     camera: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }),
+    /** Essais : état du son (contexte, voix). */
+    sound: () => ({ state: audioSys.ctx?.state ?? "aucun", info: audio.info }),
   });
 }

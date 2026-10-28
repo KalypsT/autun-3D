@@ -20,9 +20,11 @@ export interface Settings {
   crowd: number;
   /** Circulation : nombre maximal de voitures à la fois (0 = aucune). Le nombre réel suit l'heure et le lieu (D64). */
   traffic: number;
+  /** Volume général des sons (0 = muet, 1 = plein) (J7, D89). */
+  volume: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -30,6 +32,7 @@ export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
+export const VOLUME_STEP = 0.05;
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const nearest = <T extends number>(choices: readonly T[], v: number): T => choices.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
@@ -38,7 +41,7 @@ const nearest = <T extends number>(choices: readonly T[], v: number): T => choic
 export function parseSettings(raw: unknown): Settings {
   const o = (typeof raw === "object" && raw ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_SETTINGS;
-  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]), traffic = num(o["traffic"]);
+  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]), traffic = num(o["traffic"]), volume = num(o["volume"]);
   return {
     dpr: dpr === null ? d.dpr : nearest(DPR_CHOICES, dpr),
     shadows: shadows === null ? d.shadows : nearest(SHADOW_CHOICES, shadows),
@@ -47,7 +50,13 @@ export function parseSettings(raw: unknown): Settings {
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
+    volume: volume === null ? d.volume : roundVolume(volume),
   };
+}
+
+/** Volume ramené entre 0 et 1, par pas de 5 %. */
+function roundVolume(v: number): number {
+  return Math.min(Math.max(Math.round(v / VOLUME_STEP) * VOLUME_STEP, 0), 1);
 }
 
 export type SettingKey = keyof Settings;
@@ -90,6 +99,12 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (traffic !== null && traffic >= 0) {
     values.traffic = Math.min(Math.floor(traffic), 60);
     locked.add("traffic");
+  }
+  // ?sound=0 coupe le son (captures, banc), ?volume=0.5 l'impose.
+  const volume = params.get("sound") === "0" ? 0 : num(params.get("volume") === null ? null : Number(params.get("volume")));
+  if (volume !== null && volume >= 0) {
+    values.volume = roundVolume(volume);
+    locked.add("volume");
   }
   return { values, locked };
 }

@@ -6,7 +6,7 @@ import {
   AGES, applyAppearance, BAGS, BEARDS, bottomColorChoices, BOTTOM_COLORS, BOTTOMS, BUILDS, CLOTH_COLORS, DEFAULT_RECIPE, GLASSES, HAIR_COLORS, HAIR_STYLES, HATS, hatColorChoices,
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
-import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, type SettingKey, type Settings } from "../core/settings";
+import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Réglages, Lieux notés, Sauvegarde. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -177,8 +177,25 @@ export class PauseMenu {
     const sens = h("div", "pm-slider");
     sens.append(range, out);
     row("Sensibilité de la caméra", "Vitesse de rotation au doigt.", "sensitivity", sens);
+    const vol = h("input");
+    vol.type = "range";
+    vol.min = "0";
+    vol.max = "1";
+    vol.step = String(VOLUME_STEP);
+    vol.value = String(values.volume);
+    vol.disabled = locked.has("volume");
+    const volText = (v: number): string => (v === 0 ? "Muet" : `${Math.round(v * 100)} %`);
+    const volOut = h("span", "pm-value", volText(values.volume));
+    vol.addEventListener("input", () => {
+      const v = Number(vol.value);
+      volOut.textContent = volText(v);
+      this.hooks.setSettings({ volume: v });
+    });
+    const volBox = h("div", "pm-slider");
+    volBox.append(vol, volOut);
+    row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
-    c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=) reste prioritaire."));
+    c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=, ?sound=0) reste prioritaire."));
   }
 
   // --- Apparence ----------------------------------------------------------------------------------------------------------

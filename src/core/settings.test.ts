@@ -50,3 +50,26 @@ describe("réglage « Circulation »", () => {
     expect(stored.traffic).toBe(10);
   });
 });
+
+describe("réglage « Volume » (J7)", () => {
+  it("vaut 80 % par défaut, borné entre 0 et 1 par pas de 5 %", () => {
+    expect(DEFAULT_SETTINGS.volume).toBe(0.8);
+    expect(parseSettings({}).volume).toBe(0.8);
+    expect(parseSettings({ volume: 0.33 }).volume).toBeCloseTo(0.35);
+    expect(parseSettings({ volume: 3 }).volume).toBe(1);
+    expect(parseSettings({ volume: -1 }).volume).toBe(0);
+    expect(parseSettings({ volume: "fort" }).volume).toBe(0.8);
+  });
+
+  it("?sound=0 coupe le son, ?volume=0.5 l'impose, sans toucher aux réglages enregistrés", () => {
+    const stored = { ...DEFAULT_SETTINGS, volume: 0.6 };
+    const mute = effectiveSettings(stored, new URLSearchParams("sound=0"));
+    expect(mute.values.volume).toBe(0);
+    expect(mute.locked.has("volume")).toBe(true);
+    expect(effectiveSettings(stored, new URLSearchParams("volume=0.5")).values.volume).toBe(0.5);
+    const none = effectiveSettings(stored, new URLSearchParams("dpr=2"));
+    expect(none.values.volume).toBe(0.6);
+    expect(none.locked.has("volume")).toBe(false);
+    expect(stored.volume).toBe(0.6);
+  });
+});
