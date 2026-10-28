@@ -357,6 +357,8 @@ export interface Other {
   /** Piéton (J3-3b) ; `engaged` : il traverse ou est à terre, les voitures lui laissent la place même hors de leur voie. */
   walker?: boolean;
   engaged?: boolean;
+  /** Le joueur (au volant ou à pied) : jamais « en face » (il ne tient pas sa voie : on freine), et un klaxon peut lui répondre (J3-6). */
+  player?: boolean;
 }
 
 /** Emprise d'une fiche : demi-longueur (du centre de gravité au bout du cercle extrême) et demi-largeur. */
@@ -373,7 +375,7 @@ export function extentOf(spec: VehicleSpec): { halfLen: number; halfWid: number 
 const MIN_GAP = 2;
 const HEADWAY = 1.3;
 /** Au-delà de cette distance (m) devant, les autres usagers ne comptent pas ; et vitesse (m/s) à laquelle on croise une voiture venant en face sur une voie trop étroite. */
-const LOOK_AHEAD_MAX = 60;
+const LOOK_AHEAD_MAX = 90;
 const ONCOMING_SPEED = 3;
 /** Distance d'arrêt (m) devant une ligne d'arrêt ou un panneau, durée (s) du marquage d'un stop, portée (m) à laquelle on regarde le carrefour suivant. */
 const LINE_GAP = 0.8;
@@ -391,6 +393,9 @@ const DEADLOCK_AFTER = 3;
 const A_EMERGENCY = 8;
 /** Temps (s) d'immobilité après lequel un conducteur qui attend est retiré (interblocage), et un conducteur sans raison d'attendre. */
 const WAIT_LIMIT = 60;
+/** Le joueur bloque la route depuis ce temps (s) : on klaxonne, puis toutes les HONK_EVERY secondes au plus. */
+const HONK_AFTER = 3;
+const HONK_EVERY = 5;
 
 /** Petit générateur pseudo-aléatoire reproductible (mulberry32). */
 function rng(seed: number): () => number {
@@ -403,7 +408,7 @@ function rng(seed: number): () => number {
   };
 }
 
-const ahead = { gap: Infinity, v: 0, oncoming: false };
+const ahead = { gap: Infinity, v: 0, oncoming: false, player: false };
 
 export class Driver {
   /** Route suivie : sens de parcours du graphe routier ; le premier est celui où l'on roule. */
@@ -529,6 +534,30 @@ export class Driver {
   waiting = false;
   waitWhy = "";
   private waitFor = 0;
+  /** Coup de klaxon demandé à ce pas (le joueur bloque la route, freinage d'urgence, choc) : la circulation le transmet aux passants. */
+  honking = false;
+  private honkCool = 0;
+  private playerWait = 0;
+  /** Temps (s) pendant lequel le conducteur, secoué par un choc, reste arrêté ; et temps (s) pendant lequel un klaxon derrière lui le presse. */
+  private shaken = 0;
+  private hurry = 0;
+
+  /** Un choc de `impact` m/s (J3-6) : le conducteur freine et s'arrête un moment (2 s plus 0,4 s par m/s), klaxonne, puis reprend sa route s'il le peut. */
+  bump(impact: number): void {
+    this.shaken = Math.max(this.shaken, 2 + 0.4 * impact);
+    if (this.honkCool <= 0) {
+      this.honkPending = true;
+      this.honkCool = HONK_EVERY;
+    }
+  }
+
+  private honkPending = false;
+
+  /** Un klaxon derrière lui : il se presse pendant trois secondes (10 % de vitesse en plus, sans jamais sacrifier la distance de sécurité). */
+  hurryUp(): void {
+    this.hurry = 3;
+  }
+
   /** Écart (m) à l'usager le plus proche devant au dernier pas, et sa vitesse le long de la route (diagnostic et tests). */
   gap = Infinity;
   /** Prochain carrefour : publié pour les autres conducteurs (`Other.junction`). */
@@ -656,9 +685,9 @@ export class Driver {
   }
 
   /** Usager le plus proche devant, sur la route : écart (m) entre les pare-chocs et vitesse (m/s) dans le sens de la marche ; null si rien. */
-  private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean }): boolean {
+  private nearestAhead(s: VehicleState, path: Path, u: number, others: readonly Other[], out: { gap: number; v: number; oncoming: boolean; player: boolean }): boolean {
     const own = extentOf(this.spec);
-    const reach = Math.min(path.n - 1, this.index + Math.ceil(Math.min(LOOK_AHEAD_MAX, 12 + u * 4) / DS));
+    const reach = Math.min(path.n - 1, this.index + Math.ceil(Math.min(LOOK_AHEAD_MAX, 30 + u * 4) / DS));
     const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
     let found = false;
     out.gap = Infinity;
@@ -690,7 +719,8 @@ export class Driver {
         out.gap = gap;
         out.v = o.state.vx * Math.sin(path.heading[bj]!) + o.state.vy * Math.cos(path.heading[bj]!);
         // En face : il vient vers nous (un usager arrêté, même tourné vers nous, est un obstacle comme un autre).
-        out.oncoming = !o.walker && Math.cos(rel) < -0.5 && out.v < -1;
+        out.oncoming = !o.walker && !o.player && Math.cos(rel) < -0.5 && out.v < -1;
+        out.player = o.player === true;
         found = true;
       }
     }
@@ -699,6 +729,8 @@ export class Driver {
 
   update(s: VehicleState, dt: number, others: readonly Other[] = []): DriveInput {
     const spec = this.spec;
+    this.honking = this.honkPending;
+    this.honkPending = false;
     const idle: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: 1 };
     if (this.lost) return idle;
     if (!this.path) {
@@ -756,6 +788,13 @@ export class Driver {
       this.lostWhy = hit.d > LOST_DISTANCE ? `écart au tracé ${hit.d.toFixed(1)} m` : "fin de route";
       return idle;
     }
+    // Secoué par un choc : on freine et on attend un moment (pas de direction : la voiture est peut-être de travers), puis on repart.
+    if (this.shaken > 0) {
+      this.shaken -= dt;
+      this.waiting = true;
+      this.waitWhy = "choc";
+      return { throttle: 0, brake: Math.abs(s.speed) > 0.5 ? 0.7 : 0, steer: 0, handbrake: Math.abs(s.speed) <= 0.5 ? 1 : 0 };
+    }
     // Direction : poursuite d'un point devant la voiture.
     const u = Math.max(s.speed, 0);
     // Distance de visée : longue en ligne droite (stable), courte dans un virage, où viser loin ferait couper à l'intérieur (écart ≈ Ld² k / 8).
@@ -773,9 +812,14 @@ export class Driver {
     // Vitesse : celle que le tracé conseille un peu plus loin (le profil anticipe déjà les freinages).
     let vt = Infinity;
     for (let j = this.index; j <= Math.min(path.n - 1, this.index + 1 + Math.round((u * 0.5) / DS)); j++) vt = Math.min(vt, path.v[j]!);
+    if (this.hurry > 0) {
+      this.hurry -= dt;
+      vt *= 1.1;
+    }
     let aDes = Math.min(Math.max(1.2 * (vt - u), -3.5), A_ACC);
     // Autres usagers devant : suivi à distance de sécurité (IDM), prudence face à une voiture qui vient en face.
     this.waiting = false;
+    this.honkCool -= dt;
     this.gap = Infinity;
     const line = this.assessJunction(u, dt, path, others);
     if (line < Infinity) {
@@ -791,18 +835,38 @@ export class Driver {
     }
     if (others.length > 0 && this.nearestAhead(s, path, u, others, ahead)) {
       this.gap = ahead.gap;
+      // Le joueur fonce sur nous : freinage assez fort pour annuler la vitesse de rapprochement avant le contact, sans attendre que l'IDM s'y mette.
+      if (ahead.player && u - ahead.v > 3) {
+        const need = ((u - ahead.v) * (u - ahead.v)) / (2 * Math.max(ahead.gap - 1, 0.5));
+        if (need > 3) {
+          aDes = Math.max(Math.min(aDes, -need), -A_EMERGENCY);
+          if (this.honkCool <= 0) {
+            this.honking = true;
+            this.honkCool = HONK_EVERY;
+          }
+        }
+      }
       if (ahead.oncoming) {
         // Sur une voie étroite on se croise doucement : on ne s'arrête pas (les deux voitures attendraient l'une l'autre).
         if (ahead.gap < 25) aDes = Math.min(aDes, Math.min(Math.max(1.2 * (ONCOMING_SPEED - u), -3.5), A_ACC));
       } else {
-        const lead = Math.max(ahead.v, 0);
+        // Le joueur qui vient vers nous compte avec sa vitesse de rapprochement (une voiture en face est traitée plus haut).
+        const lead = ahead.player ? ahead.v : Math.max(ahead.v, 0);
         const wanted = Math.max(vt, 0.5);
         const star = MIN_GAP + Math.max(0, u * HEADWAY + (u * (u - lead)) / (2 * Math.sqrt(A_ACC * A_DEC)));
         const idm = A_ACC * (1 - Math.pow(u / wanted, 4) - (star / ahead.gap) ** 2);
         if (idm < aDes) {
           aDes = Math.max(idm, -A_EMERGENCY);
           this.waiting = lead < 0.5 && u < 1.5;
-          this.waitWhy = "voiture devant";
+          this.waitWhy = ahead.player ? "joueur devant" : "voiture devant";
+          // Le joueur nous bloque ou nous surprend : coup de klaxon (toutes les 5 s au plus).
+          if (ahead.player) {
+            this.playerWait = u < 1 ? this.playerWait + dt : 0;
+            if ((this.playerWait > HONK_AFTER || idm <= -6) && this.honkCool <= 0) {
+              this.honking = true;
+              this.honkCool = HONK_EVERY;
+            }
+          }
         }
       }
     }

@@ -78,6 +78,8 @@ export interface Observer {
   vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[]; hornRange?: number } | null;
   /** Les véhicules de la circulation (J3) : les passants les évitent, attendent à l'entrée d'un passage devant eux et peuvent être heurtés. */
   vehicles?: readonly TrafficBody[];
+  /** Coups de klaxon des voitures de la circulation à cet instant (J3-6) : les passants devant elles sursautent comme devant celui du joueur. */
+  honks?: readonly NonNullable<Observer["vehicle"]>[];
   /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent, jusqu'à la portée `vehicle.hornRange` (35 m par défaut). */
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
@@ -265,6 +267,7 @@ export class PedSim {
     const imp = this.impact;
     imp.slow = imp.speed = imp.hits = imp.bump = 0;
     if (obs.horn && obs.vehicle) this.honk(obs.vehicle);
+    if (obs.honks) for (const h of obs.honks) this.honk(h);
     // Quartier du joueur (zone de la file la plus proche) : deux fois par seconde suffisent.
     if (this.frame % 30 === 1) {
       const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);

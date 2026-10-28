@@ -315,6 +315,23 @@ describe("chocs, esquives et klaxon", () => {
     }
   });
 
+  it("le klaxon d'une voiture de la circulation (`Observer.honks`) fait sursauter les passants devant elle, comme celui du joueur", () => {
+    const sim = makeSim(graph(), 100, 4);
+    const obs = still(0, -20);
+    sim.prefill(obs);
+    run(sim, 60, obs);
+    sim.clearEvents();
+    sim.step(STEP, { ...obs, honks: [car(0, -20, 0, 6)] });
+    const startled = sim.events.filter((e) => e.kind === "startled");
+    expect(startled.length).toBeGreaterThan(0);
+    const p = { x: 0, y: 0 };
+    for (const e of startled) {
+      sim.position(e.slot, p);
+      expect(Math.hypot(p.x, p.y + 20)).toBeLessThan(36);
+      expect(Math.cos(Math.atan2(p.x, p.y + 20))).toBeGreaterThan(Math.cos(0.9));
+    }
+  });
+
   it("une sonnette (portée de 15 m) ne fait sursauter que les passants proches, un klaxon de voiture (35 m) aussi ceux qui sont plus loin", () => {
     const startledAt = (hornRange: number | undefined): number[] => {
       const sim = makeSim(graph(), 100, 4);

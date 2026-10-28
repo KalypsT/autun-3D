@@ -347,6 +347,7 @@ export function startGame(ctx: GameContext): void {
     }
     const hornPressed = input.horn && !hornHeld;
     hornHeld = input.horn;
+    if (hornPressed && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
     bumpTimer = Math.max(0, bumpTimer - dt);
     yaw += input.lookYaw;
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
@@ -432,7 +433,7 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
-        ...(traffic ? { vehicles: (traffic as Traffic).bodies() } : {}),
+        ...(traffic ? { vehicles: (traffic as Traffic).bodies(), honks: (traffic as Traffic).takeHonks() } : {}),
       };
       (traffic as Traffic | null)?.setPeds(pedsNow);
       pedsNow?.update(dt, obs, camera.position.x, camera.position.z);

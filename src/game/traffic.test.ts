@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
+import { CATALOG } from "../core/vehicle-catalog";
 import { loadRealNav, loadRealWorld } from "../core/testing";
 import { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
@@ -96,4 +97,26 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(traffic.cars.length).toBeGreaterThan(0);
     traffic.dispose();
   });
+
+  it("`extract` retire la voiture la plus proche de la circulation et de l'écran, et rend de quoi en faire un véhicule de la flotte (J4 : vol)", () => {
+    const { traffic } = make(10);
+    for (let k = 0; k < 60 * 30; k++) {
+      traffic.step(DT, { kind: "foot", x: 0, y: 0, vx: 0, vy: 0 });
+      traffic.update(DT, env());
+    }
+    const n = traffic.cars.length;
+    expect(n).toBeGreaterThan(3);
+    expect(traffic.extract(1e5, 1e5, 50)).toBeNull();
+    expect(traffic.cars.length).toBe(n);
+    const target = traffic.cars[0]!.sim.state;
+    const got = traffic.extract(target.x, target.y, 5)!;
+    expect(got).not.toBeNull();
+    expect(CATALOG.some((d) => d.id === got.model && d.family === "car")).toBe(true);
+    expect(Number.isInteger(got.variant)).toBe(true);
+    expect(Math.hypot(got.vx, got.vy)).toBeGreaterThan(0);
+    expect(traffic.cars.length).toBe(n - 1);
+    expect(traffic.models.instances).toBe(n - 1);
+    traffic.dispose();
+  });
 });
+

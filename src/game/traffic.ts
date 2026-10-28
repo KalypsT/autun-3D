@@ -1,6 +1,6 @@
 import type * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { MASK_ZONE, type TrafficBody } from "../core/pedestrians";
+import { MASK_ZONE, type Observer, type TrafficBody } from "../core/pedestrians";
 import type { Signals } from "../core/signals";
 import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
@@ -118,6 +118,40 @@ export class Traffic {
   }
 
   private readonly bodyList: TrafficBody[] = [];
+  private pendingHonks: NonNullable<Observer["vehicle"]>[] = [];
+
+  /** Coups de klaxon des conducteurs depuis le dernier appel (à donner aux passants, une seule fois). */
+  takeHonks(): readonly NonNullable<Observer["vehicle"]>[] {
+    const out = this.pendingHonks;
+    this.pendingHonks = [];
+    return out;
+  }
+
+  /** Le joueur klaxonne : les conducteurs devant lui se pressent (J3-6). */
+  playerHorn(x: number, y: number, heading: number): void {
+    this.sim.playerHorn(x, y, heading);
+  }
+
+  /**
+   * Prend la voiture la plus proche de (x, y) à moins de `maxDist` hors de la circulation (J4 : vol) : elle disparaît de la simulation et de l'écran,
+   * et ce qu'il faut pour en faire un véhicule de la flotte (`Fleet.add` avec le même modèle et la même couleur) est rendu, avec sa vitesse.
+   */
+  extract(x: number, y: number, maxDist: number): { model: string; variant: number; x: number; y: number; heading: number; vx: number; vy: number } | null {
+    let best = -1, bd = maxDist;
+    for (let i = 0; i < this.cars.length; i++) {
+      const s = this.cars[i]!.sim.state, d = Math.hypot(s.x - x, s.y - y);
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+    if (best < 0) return null;
+    const c = this.cars[best]!, s = c.sim.state;
+    const out = { model: c.def.id, variant: c.variant, x: s.x, y: s.y, heading: s.heading, vx: s.vx, vy: s.vy };
+    this.remove(best);
+    this.render();
+    return out;
+  }
 
   /** Nombre maximal de voitures (le réglage). */
   get capacity(): number {
@@ -134,6 +168,7 @@ export class Traffic {
     if (this.cars.length === 0) return;
     const t0 = performance.now();
     this.sim.step(dt, player);
+    for (const h of this.sim.honks) this.pendingHonks.push({ x: h.x, y: h.y, vx: h.vx, vy: h.vy, heading: h.heading, hull: h.hull, hornRange: 35 });
     this.simMs += (performance.now() - t0 - this.simMs) * 0.02;
   }
 

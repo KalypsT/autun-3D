@@ -43,7 +43,10 @@ export class TrafficSim {
   private serial = 0;
   private readonly others: Other[] = [];
   private playerOther: Other | null = null;
-  private footOther: Other = { state: FOOT, halfLen: 0.4, halfWid: 0.4 };
+  private footOther: Other = { state: FOOT, halfLen: 0.4, halfWid: 0.4, player: true };
+  /** Coups de klaxon de ce pas (le joueur bloque la route, choc) : les passants les entendent. */
+  readonly honks: { x: number; y: number; vx: number; vy: number; heading: number; hull: VehicleSpec["hull"] }[] = [];
+  private readonly hit = { impact: 0 };
   /** Contacts entre voitures et avec le joueur au dernier pas, et pire impact (m/s). */
   stats = { contacts: 0, worstImpact: 0 };
   /** Les passants (J3-3b) : les voitures les évitent, et s'arrêtent pour ceux qui traversent. Null : aucun. */
@@ -94,6 +97,24 @@ export class TrafficSim {
     return car;
   }
 
+  /** Une voiture est heurtée par le joueur : au-delà de 1,5 m/s, son conducteur est secoué (`Driver.bump`). Entre voitures, on continue (les frôlements viennent des rues étroites : s'arrêter au milieu d'un carrefour les multiplierait). */
+  private shake(c: SimCar, impact: number): void {
+    if (c.driver && impact > 1.5) c.driver.bump(impact);
+  }
+
+  /**
+   * Le joueur klaxonne (J3-6) : les conducteurs dans le cône de 45° devant lui, à moins de 35 m, se pressent trois secondes.
+   * `heading` : cap du joueur (rad, 0 = nord, sens horaire).
+   */
+  playerHorn(x: number, y: number, heading: number): void {
+    const fx = Math.sin(heading), fy = Math.cos(heading);
+    for (const c of this.cars) {
+      const dx = c.state.x - x, dy = c.state.y - y, d = Math.hypot(dx, dy);
+      if (!c.driver || d > 35 || d < 1 || (dx * fx + dy * fy) / d < Math.cos(0.8)) continue;
+      c.driver.hurryUp();
+    }
+  }
+
   remove(i: number): void {
     this.cars.splice(i, 1);
   }
@@ -107,7 +128,7 @@ export class TrafficSim {
     let playerBody: { state: VehicleState; spec: VehicleSpec } | null = null;
     if (player?.kind === "vehicle") {
       const { halfLen, halfWid } = extentOf(player.spec);
-      if (!this.playerOther || this.playerOther.state !== player.state) this.playerOther = { state: player.state, halfLen, halfWid };
+      if (!this.playerOther || this.playerOther.state !== player.state) this.playerOther = { state: player.state, halfLen, halfWid, player: true };
       this.playerOther.halfLen = halfLen;
       this.playerOther.halfWid = halfWid;
       others.push(this.playerOther);
@@ -139,21 +160,29 @@ export class TrafficSim {
     }
     this.stats.contacts = 0;
     this.stats.worstImpact = 0;
+    this.honks.length = 0;
     const n = this.cars.length;
     for (let i = 0; i < n; i++) {
       const a = this.cars[i]!;
       for (let j = i + 1; j < n; j++) {
         const b = this.cars[j]!;
         if (Math.abs(a.state.x - b.state.x) > 8 || Math.abs(a.state.y - b.state.y) > 8) continue;
-        if (contactVehicles(a, b)) {
+        this.hit.impact = 0;
+        if (contactVehicles(a, b, this.hit)) {
           this.stats.contacts++;
           this.stats.worstImpact = Math.max(this.stats.worstImpact, a.state.impact, b.state.impact);
         }
       }
-      if (playerBody && Math.abs(a.state.x - playerBody.state.x) < 8 && Math.abs(a.state.y - playerBody.state.y) < 8 && contactVehicles(a, playerBody)) {
+      this.hit.impact = 0;
+      if (playerBody && Math.abs(a.state.x - playerBody.state.x) < 8 && Math.abs(a.state.y - playerBody.state.y) < 8 && contactVehicles(a, playerBody, this.hit)) {
         this.stats.contacts++;
         this.stats.worstImpact = Math.max(this.stats.worstImpact, a.state.impact);
+        this.shake(a, this.hit.impact);
       }
+    }
+    for (const c of this.cars) {
+      if (!c.driver?.honking) continue;
+      this.honks.push({ x: c.state.x, y: c.state.y, vx: c.state.vx, vy: c.state.vy, heading: c.state.heading, hull: c.spec.hull });
     }
   }
 }

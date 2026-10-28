@@ -13,8 +13,8 @@ export interface Body {
 
 const RESTITUTION = 0.2;
 
-/** Pire vitesse d'impact (m/s) du dernier contact, laissée dans `state.impact` des deux véhicules. Renvoie vrai s'il y a eu contact. */
-export function contactVehicles(a: Body, b: Body): boolean {
+/** Pire vitesse d'impact (m/s) du contact, laissée dans `state.impact` des deux véhicules (et dans `result.impact`, s'il est donné : seulement ce contact, sans les chocs contre les murs). Renvoie vrai s'il y a eu contact. */
+export function contactVehicles(a: Body, b: Body, result?: { impact: number }): boolean {
   const sa = a.state, sb = b.state;
   // Rejet rapide : les emprises sont loin l'une de l'autre.
   let reachA = 0, reachB = 0;
@@ -56,6 +56,7 @@ export function contactVehicles(a: Body, b: Body): boolean {
       sb.yawRate -= (rnb * j) / ib;
       sa.impact = Math.max(sa.impact, -vn);
       sb.impact = Math.max(sb.impact, -vn);
+      if (result) result.impact = Math.max(result.impact, -vn);
     }
   }
   return touched;

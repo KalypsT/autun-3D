@@ -224,3 +224,113 @@ describe("passants et circulation (J3-3b)", () => {
   });
 });
 
+describe("interactions avec le joueur (J3-6)", () => {
+  const playerAt = (x: number, y: number, heading: number, speed: number) => {
+    const state = createVehicle(x, y, heading, world.terrain);
+    state.vx = Math.sin(heading) * speed;
+    state.vy = Math.cos(heading) * speed;
+    state.speed = speed;
+    return { kind: "vehicle" as const, state, spec: citadine };
+  };
+
+  it("le joueur arrêté sur la voie : la voiture s'arrête derrière lui, klaxonne au bout de 3 s, puis toutes les 5 s au plus", () => {
+    const m = straightRoad();
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 90, lp);
+    const sim = new TrafficSim(nav, world.terrain, colliders);
+    const car = sim.add(citadine, m, 5, 21, 10);
+    const player = playerAt(lp.x, lp.y, lp.heading, 0);
+    const times: number[] = [];
+    for (let i = 0; i < 60 * 30; i++) {
+      sim.step(DT, player);
+      if (sim.honks.length > 0) times.push(i * DT);
+    }
+    expect(car.state.speed).toBeLessThan(0.3);
+    expect(times.length).toBeGreaterThanOrEqual(2);
+    // Pas de klaxon avant l'arrêt, puis un espacement d'au moins 5 s.
+    expect(times[0]!).toBeGreaterThan(3);
+    for (let i = 1; i < times.length; i++) expect(times[i]! - times[i - 1]!).toBeGreaterThanOrEqual(4.9);
+    expect(sim.stats.contacts).toBe(0);
+  });
+
+  it("le joueur qui arrive de face sur sa voie à 36 km/h : la voiture freine à temps (moins de 4 m/s quand il est à 20 m) et klaxonne", () => {
+    const m = straightRoad();
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 120, lp);
+    const sim = new TrafficSim(nav, world.terrain, colliders);
+    const car = sim.add(citadine, m, 5, 22, 10);
+    const player = playerAt(lp.x, lp.y, lp.heading + Math.PI, 10);
+    let honked = false, speedAt20 = -1;
+    for (let i = 0; i < 60 * 6; i++) {
+      player.state.x += player.state.vx * DT;
+      player.state.y += player.state.vy * DT;
+      sim.step(DT, player);
+      honked ||= sim.honks.length > 0;
+      if (speedAt20 < 0 && Math.hypot(car.state.x - player.state.x, car.state.y - player.state.y) < 20) speedAt20 = car.state.speed;
+    }
+    expect(speedAt20).toBeGreaterThanOrEqual(0);
+    expect(speedAt20).toBeLessThan(4);
+    expect(honked).toBe(true);
+  });
+
+  it("heurtée par le joueur, la voiture freine, s'arrête un moment en klaxonnant, puis reprend sa route sans être perdue", () => {
+    const m = straightRoad();
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 5, lp);
+    const sim = new TrafficSim(nav, world.terrain, colliders);
+    // La voiture roule à 5 m/s ; le joueur la rattrape par l'arrière à 12 m/s.
+    const car = sim.add(citadine, m, 40, 23, 5);
+    const player = playerAt(lp.x, lp.y, lp.heading, 20);
+    let hitAt = -1, honked = false, minSpeedAfter = Infinity, away = false;
+    for (let i = 0; i < 60 * 25; i++) {
+      if (!away) {
+        player.state.x += player.state.vx * DT;
+        player.state.y += player.state.vy * DT;
+      }
+      sim.step(DT, away ? null : player);
+      if (hitAt < 0 && sim.stats.contacts > 0) {
+        hitAt = i * DT;
+        away = true;
+      }
+      if (hitAt >= 0) {
+        honked ||= sim.honks.length > 0;
+        if (i * DT < hitAt + 4) minSpeedAfter = Math.min(minSpeedAfter, car.state.speed);
+      }
+    }
+    expect(hitAt).toBeGreaterThan(0);
+    expect(honked).toBe(true);
+    // Elle s'est arrêtée (ou presque) après le choc, puis repart : dans 25 s elle roule, et n'est pas perdue.
+    expect(minSpeedAfter).toBeLessThan(0.6);
+    expect(car.driver!.lost).toBe(false);
+    expect(car.state.speed).toBeGreaterThan(3);
+  });
+
+  it("un coup de klaxon du joueur presse les conducteurs devant lui (+ 10 % pendant 3 s), pas ceux derrière", () => {
+    const m = straightRoad();
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 5, lp);
+    const run = (horn: boolean): { ahead: number; behind: number } => {
+      const sim = new TrafficSim(nav, world.terrain, colliders);
+      const ahead = sim.add(citadine, m, 30, 31, 8);
+      const behind = sim.add(citadine, m, 5, 32, 8);
+      // Le joueur est entre les deux, sur le bas-côté de la route (pas un obstacle), cap de la route.
+      const player = playerAt(lp.x + 30, lp.y + 30, lp.heading, 0);
+      const lp2 = { x: 0, y: 0, heading: 0 };
+      lanePoint(nav.road, m, 18, lp2);
+      player.state.x = lp2.x + Math.cos(lp2.heading) * 6;
+      player.state.y = lp2.y - Math.sin(lp2.heading) * 6;
+      player.state.heading = lp2.heading;
+      for (let i = 0; i < 60 * 12; i++) {
+        if (horn && i === 60 * 2) sim.playerHorn(lp2.x, lp2.y, lp2.heading);
+        sim.step(DT, player);
+        if (i === 60 * 4) return { ahead: ahead.state.speed, behind: behind.state.speed };
+      }
+      return { ahead: 0, behind: 0 };
+    };
+    const quiet = run(false), noisy = run(true);
+    expect(noisy.ahead).toBeGreaterThan(quiet.ahead * 1.04);
+    // Celui qui est derrière le joueur n'est pas visé (il peut seulement suivre l'autre).
+    expect(noisy.behind).toBeLessThan(noisy.ahead);
+  });
+});
+
