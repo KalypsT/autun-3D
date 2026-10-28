@@ -463,3 +463,6 @@ Fait :
 **J5-2 (28 octobre 2026) : mort et cadavres des passants** (D82)
 - À 0 point de vie un passant meurt et reste à terre ; 8 cadavres au plus (le plus ancien s'enfonce dans le sol), disparition au bout de 60 s hors de vue ou 150 s en vue, ni témoin ni cible, obstacle pour les voitures pendant 20 s. Un véhicule tue au-delà d'environ 50 km/h ((vitesse − 3,5) × 9,6 points de vie). Aucun appel de dessin de plus. Endurance sans écran du combat (2 graines : 8 à 9 morts, plafond tenu, aucun emplacement perdu, plus aucun cadavre 200 s après). Le meurtre ne fait pas encore monter les étoiles (J5-4). 507 tests.
 
+**J5-4 (28 octobre 2026) : réactions et infractions, cinq étoiles** (D83, fait avant J5-3)
+- Cinq étoiles : la conduite et les bousculades s'arrêtent à trois, les deux dernières viennent de la violence. Frapper un passant est une agression (une étoile), tuer est un meurtre (deux étoiles puis une de plus à chaque nouveau), y compris en voiture ; un témoin vivant à moins de 25 m téléphone. Poursuivants 5 puis 6 à 4 et 5 étoiles (la police n'a toujours pas d'arme : J5-5). Les passants à moins de 12 m d'un coup (25 m d'un meurtre) s'enfuient loin de la scène. `gunfire` et `kill_cop` sont prêtes pour J5-3 et J5-5. Endurance sans écran de la poursuite à cinq étoiles. 516 tests.
+

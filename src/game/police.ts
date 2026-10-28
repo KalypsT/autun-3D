@@ -24,6 +24,8 @@ export interface PolicePlayer {
   /** Passants renversés par le véhicule du joueur à cette image (`PedSim.impact`) : nombre et vitesse du choc. */
   pedHits: number;
   pedHitSpeed: number;
+  /** Passants tués par le véhicule du joueur à cette image (J5-4). */
+  pedKills?: number;
   /** Passants à moins de `r` de (x, y) (témoins possibles). */
   witnesses(x: number, y: number, r: number): number;
 }
@@ -174,6 +176,11 @@ export class PoliceController {
     if (p.pedHits > 0 && p.pedHitSpeed >= KNOCK_SPEED) {
       if (this.seen) w.report("hit_ped", p.x, p.y, "police");
       else if (p.witnesses(p.x, p.y, 40) >= 2) w.report("hit_ped", p.x, p.y, "civilian");
+    }
+    // Passant tué par le véhicule : un meurtre (en plus de l'infraction de l'avoir renversé).
+    if (p.pedKills) {
+      if (this.seen) w.report("murder", p.x, p.y, "police");
+      else if (p.witnesses(p.x, p.y, 40) >= 1) w.report("murder", p.x, p.y, "civilian");
     }
     if (traffic && traffic.takeRam() > RAM_IMPACT) w.report("ram_police", p.x, p.y, "police");
     if (this.evade.update(dt, w.stars, this.seen, p.x, p.y, p.speed, this.units)) w.report("evade", p.x, p.y, "police");

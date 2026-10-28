@@ -29,10 +29,10 @@ interface SoakMinute {
 }
 
 /**
- * Endurance de la poursuite (D76) : « Dense » (30), 100 passants, feux, trois étoiles au départ ; un fugitif au volant (conducteur de poursuite : vite,
+ * Endurance de la poursuite (D76) : « Dense » (30), 100 passants, feux, trois étoiles au départ (`stars`) ; un fugitif au volant (conducteur de poursuite : vite,
  * à contresens) roule `drive` s puis s'arrête et attend. Renvoie un relevé par minute et l'instant de l'arrestation (−1 sans).
  */
-function soak(seed: number, drive: number, total: number): { minutes: SoakMinute[]; arrestedAt: number; bad: number; arrests: number } {
+function soak(seed: number, drive: number, total: number, stars = 3): { minutes: SoakMinute[]; arrestedAt: number; bad: number; arrests: number } {
   const nav = new NavManager();
   for (const c of cells) nav.graph.add(c);
   const signals = new Signals(nav.graph.road, { t: 0 });
@@ -49,7 +49,7 @@ function soak(seed: number, drive: number, total: number): { minutes: SoakMinute
   const car = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
   const fd = new Driver(nav.graph, from, 5, seed, CAR, colliders, null);
   fd.setChase(true);
-  wanted.set(3, car.x, car.y);
+  wanted.set(stars, car.x, car.y);
   const minutes: SoakMinute[] = [];
   let m: SoakMinute = { chasing: 0, officers: 0, contacts: 0, nearest: Infinity, stars: 0, arrests: 0, farthest: 0 };
   let arrestedAt = -1, bad = 0, arrests = 0;
@@ -78,9 +78,9 @@ function soak(seed: number, drive: number, total: number): { minutes: SoakMinute
       if (arrestedAt < 0) arrestedAt = t;
       arrests++;
       m.arrests++;
-      // On repart aussitôt avec trois étoiles : l'endurance continue.
+      // On repart aussitôt avec le même nombre d'étoiles : l'endurance continue.
       police.reset();
-      if (!stopped) wanted.set(3, car.x, car.y);
+      if (!stopped) wanted.set(stars, car.x, car.y);
     }
     if (!Number.isFinite(car.x + car.y)) bad++;
     m.chasing = Math.max(m.chasing, traffic.chasing);
@@ -122,5 +122,21 @@ describe("poursuite qui dure (J4-6)", () => {
       }
     }
     expect(arrests).toBeGreaterThan(0);
+  }, 600000);
+
+  // Cinq étoiles (J5-4, D82) : six poursuivants au lieu de quatre ; mêmes critères, avec le nouveau plafond.
+  it("cinq étoiles : six poursuivants au plus, six gendarmes à pied au plus, rien d'aberrant, rien qui s'accumule", () => {
+    const r = soak(5, 240, 240, 5);
+    expect(r.bad).toBe(0);
+    expect(r.minutes).toHaveLength(4);
+    let most = 0;
+    for (const q of r.minutes) {
+      most = Math.max(most, q.chasing);
+      expect(q.chasing).toBeLessThanOrEqual(6);
+      expect(q.officers).toBeLessThanOrEqual(OFFICER.max);
+      expect(q.farthest).toBeLessThan(500);
+      expect(q.contacts).toBeLessThan(2700);
+    }
+    expect(most).toBeGreaterThan(4);
   }, 600000);
 });

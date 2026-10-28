@@ -50,14 +50,14 @@ function soak(seed: number, kill: number, rest: number): Report {
     const killing = t < kill;
     let vx = 0, vy = 0;
     if (killing) {
-      // Vers le passant le plus proche (à moins de 40 m), à 4 m/s.
+      // Vers le passant le plus proche (à moins de 40 m), à 5 m/s (la course du joueur).
       if (peds.pick(me.x, me.y, 0, 40, Math.PI, 1, out) > 0) {
         peds.position(out[0]!, p);
         const d = Math.hypot(p.x - me.x, p.y - me.y);
         me.heading = Math.atan2(p.x - me.x, p.y - me.y);
         if (d > 1.0) {
-          vx = Math.sin(me.heading) * 4;
-          vy = Math.cos(me.heading) * 4;
+          vx = Math.sin(me.heading) * 5;
+          vy = Math.cos(me.heading) * 5;
         }
       }
       melee.step(DT, true, WEAPONS.bat, me.x, me.y, me.heading, arena);
@@ -75,7 +75,8 @@ function soak(seed: number, kill: number, rest: number): Report {
     traffic.applyImpacts();
     signals.clock.t += DT;
     const st = peds.stats;
-    rep.maxCorpses = Math.max(rep.maxCorpses, st.corpses);
+    // Le plafond vaut pour les cadavres qui ne s'enfoncent pas encore.
+    rep.maxCorpses = Math.max(rep.maxCorpses, st.corpses - st.sinking);
     rep.maxTotal = Math.max(rep.maxTotal, st.alive + st.corpses);
     if (!Number.isFinite(me.x) || !Number.isFinite(peds.checksum())) rep.bad++;
     if (st.alive + st.corpses > 100) rep.bad++;
@@ -87,9 +88,9 @@ function soak(seed: number, kill: number, rest: number): Report {
 }
 
 describe("endurance du combat (J5-2)", () => {
-  it("un joueur à la batte tue pendant 2 minutes, puis s'arrête : jamais plus de 8 cadavres, pas de fuite d'emplacements, les cadavres disparaissent", () => {
+  it("un joueur à la batte tue pendant plus de 3 minutes, puis s'arrête : jamais plus de 8 cadavres, pas de fuite d'emplacements, les cadavres disparaissent", () => {
     for (const seed of [3, 11]) {
-      const r = soak(seed, 120, 200);
+      const r = soak(seed, 200, 200);
       expect(r.bad).toBe(0);
       expect(r.deaths).toBeGreaterThan(5);
       expect(r.maxCorpses).toBeLessThanOrEqual(MAX_CORPSES);

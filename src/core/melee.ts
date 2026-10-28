@@ -33,8 +33,9 @@ export const COMBO_FINISHER = 3;
 export interface MeleeResult {
   /** Coups portés à ce pas (cibles touchées). */
   hits: number;
-  /** Cibles blessées ou assommées à ce pas (`Arena.hurt` ≥ 1). */
+  /** Cibles touchées à ce pas (`Arena.hurt` ≥ 1) et, parmi elles, tuées (`Arena.hurt` = 2). */
   hurt: number;
+  killed: number;
   /** Un coup vient de partir. */
   started: boolean;
 }
@@ -57,7 +58,7 @@ export class Melee {
   private comboT = 0;
   private readonly found: number[] = [];
   private readonly pos = { x: 0, y: 0 };
-  readonly result: MeleeResult = { hits: 0, hurt: 0, started: false };
+  readonly result: MeleeResult = { hits: 0, hurt: 0, killed: 0, started: false };
 
   /** Progression du coup (0 à 1), 0 hors coup. */
   get progress(): number {
@@ -80,7 +81,7 @@ export class Melee {
    */
   step(dt: number, want: boolean, weapon: WeaponDef, x: number, y: number, heading: number, arena: Arena | null): MeleeResult {
     const res = this.result;
-    res.hits = res.hurt = 0;
+    res.hits = res.hurt = res.killed = 0;
     res.started = false;
     if (this.active && this.weapon !== weapon) this.cancel();
     if (this.comboT > 0) {
@@ -135,7 +136,9 @@ export class Melee {
       arena.position(slot, this.pos);
       const dx = this.pos.x - x, dy = this.pos.y - y, d = Math.hypot(dx, dy) || 1;
       res.hits++;
-      if (arena.hurt(slot, weapon.damage, dx / d, dy / d, knock ? Math.max(weapon.impulse, KNOCKDOWN_IMPULSE) : weapon.impulse) > 0) res.hurt++;
+      const r = arena.hurt(slot, weapon.damage, dx / d, dy / d, knock ? Math.max(weapon.impulse, KNOCKDOWN_IMPULSE) : weapon.impulse);
+      if (r > 0) res.hurt++;
+      if (r === 2) res.killed++;
     }
   }
 }

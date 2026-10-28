@@ -52,6 +52,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   if (want("wanted")) {
+    // Cinq étoiles (J5-4) avec la jauge de santé et l'arme : la ligne du haut doit tenir (à pied, 45 points de vie, couteau).
+    const c5 = await open("arms=all&hurt=45&wanted=5&h=15");
+    await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; } #weapon.flash button { animation: none !important; }" });
+    await page.evaluate(() => window.__autun.inventory.select("knife"));
+    await sleep(1500);
+    await shot("j5-hud-5-etoiles");
+    await c5.close();
     // Étoiles de recherche (J4-0) : niveau imposé ; sans police (J4-4), la piste est « perdue » et les étoiles clignotent : on fige l'animation.
     const ctx = await open("ride=voiture&wanted=3&h=15");
     await page.addStyleTag({ content: "#wanted .wstar { animation: none !important; }" });

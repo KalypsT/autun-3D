@@ -10,7 +10,8 @@
  * l'infraction compte après un délai, et seulement si elle est de celles que les passants signalent.
  */
 
-export const MAX_STARS = 3;
+/** Cinq étoiles depuis J5 (D80) : les quatrième et cinquième viennent de la violence (meurtres, gendarme tué) et arment la police (J5-5). */
+export const MAX_STARS = 5;
 
 export type Crime =
   /** Prendre une voiture avec son conducteur (le conducteur témoigne toujours). */
@@ -28,7 +29,15 @@ export type Crime =
   /** Franchir un feu rouge. */
   | "red_light"
   /** Ne pas s'arrêter quand la police le demande (une étoile devient deux). */
-  | "evade";
+  | "evade"
+  /** Frapper un passant (J5-1). */
+  | "assault"
+  /** Tuer un passant (J5-2) : à la main, à l'arme ou en le renversant. */
+  | "murder"
+  /** Tirer en public avec une arme à feu (J5-3). */
+  | "gunfire"
+  /** Tuer un gendarme (J5-5). */
+  | "kill_cop";
 
 export type Witness = "police" | "civilian";
 
@@ -39,17 +48,25 @@ interface CrimeRule {
   add: number;
   /** Les passants la signalent (sinon, seule la police compte). */
   civilians: boolean;
+  /** Niveau que cette infraction ne peut pas dépasser à elle seule (défaut : `MAX_STARS`) ; elle ne fait jamais baisser le niveau. */
+  cap?: number;
 }
 
 export const CRIMES: Record<Crime, CrimeRule> = {
   carjack: { min: 1, add: 0, civilians: true },
   theft: { min: 1, add: 0, civilians: false },
-  hit_ped: { min: 1, add: 1, civilians: true },
-  hit_cop: { min: 1, add: 1, civilians: true },
-  ram_police: { min: 1, add: 1, civilians: false },
+  hit_ped: { min: 1, add: 1, civilians: true, cap: 3 },
+  hit_cop: { min: 1, add: 1, civilians: true, cap: 3 },
+  ram_police: { min: 1, add: 1, civilians: false, cap: 3 },
   speeding: { min: 1, add: 0, civilians: false },
   red_light: { min: 1, add: 0, civilians: false },
   evade: { min: 2, add: 0, civilians: false },
+  // Violence (J5-4, D80) : une agression fait une étoile, un meurtre deux puis une de plus à chaque nouveau (une fois par 3 s), un coup de feu en public
+  // deux, un gendarme tué quatre puis cinq.
+  assault: { min: 1, add: 0, civilians: true },
+  murder: { min: 2, add: 1, civilians: true },
+  gunfire: { min: 2, add: 0, civilians: true },
+  kill_cop: { min: 4, add: 1, civilians: true },
 };
 
 /** Délai d'un signalement par téléphone (s). */
@@ -59,9 +76,9 @@ export const REPEAT_WINDOW = 3;
 /** Impact minimal (m/s) contre une voiture de police pour compter comme une infraction. */
 export const RAM_IMPACT = 1.5;
 /** Rayon de la zone de recherche (m) par niveau (indice = étoiles). */
-export const SEARCH_RADIUS = [0, 80, 120, 160] as const;
+export const SEARCH_RADIUS = [0, 80, 120, 160, 200, 240] as const;
 /** Temps hors de vue (s) pour perdre une étoile, par niveau. */
-export const ESCAPE_TIME = [0, 15, 25, 40] as const;
+export const ESCAPE_TIME = [0, 15, 25, 40, 55, 70] as const;
 /** Dans la zone de recherche, la piste refroidit à cette fraction de la vitesse normale. */
 export const INSIDE_RATE = 1 / 4;
 
@@ -195,7 +212,8 @@ export class Wanted implements WantedView {
       if (last !== undefined && this.time - last < REPEAT_WINDOW) add = 0;
       else this.lastAdd.set(crime, this.time);
     }
-    const next = Math.min(MAX_STARS, Math.max(rule.min, this.stars + add));
+    // Jamais de baisse : un niveau déjà au-dessus du plafond de l'infraction reste où il est.
+    const next = Math.max(this.stars, Math.min(rule.cap ?? MAX_STARS, Math.max(rule.min, this.stars + add)));
     // Toute infraction signalée remet la piste à jour, même sans étoile de plus.
     this.lastX = x;
     this.lastY = y;

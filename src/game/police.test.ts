@@ -85,6 +85,33 @@ describe("police dans le jeu (J4-4)", () => {
     traffic.dispose();
   }, 120000);
 
+  it("violence (J5-4) : sans témoin personne n'appelle ; avec un passant à portée l'agression fait une étoile et le meurtre deux après 6 s ; un passant tué par le véhicule du joueur est un meurtre", () => {
+    const { traffic, police, wanted } = setup(0);
+    // Personne autour : rien.
+    police.crime("murder", 0, 0, false);
+    run(traffic, police, 8, foot(0, 0));
+    expect(wanted.stars).toBe(0);
+    // Un témoin : l'agression compte après le délai (une étoile), le meurtre ensuite (deux).
+    police.crime("assault", 0, 0, true);
+    expect(wanted.stars).toBe(0);
+    run(traffic, police, 7, foot(0, 0));
+    expect(wanted.stars).toBe(1);
+    police.crime("murder", 0, 0, true);
+    run(traffic, police, 7, foot(0, 0));
+    expect(wanted.stars).toBe(2);
+    // Un passant tué au volant : la police absente, un témoin à moins de 40 m appelle ; sans témoin, rien.
+    const w2 = setup(0);
+    const killed = (witnesses: number): PolicePlayer => ({ ...foot(0, 0), driving: true, pedHits: 1, pedHitSpeed: 14, pedKills: 1, witnesses: () => witnesses });
+    w2.police.update(DT, killed(0));
+    expect(w2.wanted.pendingCalls).toBe(0);
+    w2.police.update(DT, killed(3));
+    expect(w2.wanted.pendingCalls).toBeGreaterThan(0);
+    for (let i = 0; i < 7 * 60; i++) w2.police.update(DT, { ...foot(0, 0), driving: true });
+    expect(w2.wanted.stars).toBeGreaterThanOrEqual(2);
+    traffic.dispose();
+    w2.traffic.dispose();
+  }, 120000);
+
   it("arrestation (J4-5) : à pied, immobile, une étoile : la voiture arrive, l'équipage descend, le joueur est arrêté ; la reprise est sur un trottoir de la zone", () => {
     const { traffic, police, wanted } = setup(10);
     const here = foot(-10, -40);

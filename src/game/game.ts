@@ -542,7 +542,12 @@ export function startGame(ctx: GameContext): void {
       melee.cancel();
       model.setStrike(null);
     } else {
-      melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, peds as PedsController | null);
+      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, peds as PedsController | null);
+      // Violence (J5-4) : frapper est une agression, tuer un meurtre ; la police l'ajoute si elle voit, sinon un passant vivant à moins de 25 m téléphone.
+      if (res.hits > 0) {
+        pedWitnesses.length = 0;
+        police.crime(res.killed > 0 ? "murder" : "assault", player.x, player.y, ((peds as PedsController | null)?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
+      }
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
       model.setStrike(melee.active ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
     }
@@ -603,7 +608,7 @@ export function startGame(ctx: GameContext): void {
       police.update(dt, {
         x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
         vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
-        pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0,
+        pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
         witnesses: (x, y, r) => {
           pedWitnesses.length = 0;
           return (peds as PedsController | null)?.queryCircle(x, y, r, pedWitnesses) ?? 0;

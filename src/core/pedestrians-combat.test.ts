@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Melee } from "./melee";
 import { NavGraph } from "./nav-graph";
-import { CORPSE_HIDDEN_LIFE, CORPSE_MAX_LIFE, MAX_CORPSES, PED_HP, PED_STATE, PedSim, SINK_TIME, VEHICLE_DAMAGE, WOUNDED_HP, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
+import { ALARM_HURT, ALARM_KILL, CORPSE_HIDDEN_LIFE, CORPSE_MAX_LIFE, MAX_CORPSES, PED_HP, PED_STATE, PedSim, SINK_TIME, VEHICLE_DAMAGE, WOUNDED_HP, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
@@ -61,10 +61,10 @@ describe("passants : coups, blessure, fuite (J5-1)", () => {
       last = d;
     }
     expect(many).toBeLessThanOrEqual(8);
-    // Un passant à terre n'est plus une cible.
+    // Un passant à terre reste une cible (coup de grâce) ; celui qui trébuche, non.
     sim.applyImpulse(slot, 6, 0);
     sim.pick(pos.x, pos.y, 0, 5, Math.PI, 5, out);
-    expect(out.includes(slot)).toBe(false);
+    expect(out.includes(slot)).toBe(true);
   });
 
   it("un coup retire des points de vie, fait trébucher ou tomber, déclenche l'événement et la fuite loin du coup", () => {
@@ -267,5 +267,101 @@ describe("passants : coups, blessure, fuite (J5-1)", () => {
     }
     expect(hits).toBeGreaterThanOrEqual(3);
     expect(ko).toBe(true);
+  });
+
+  it("l'alarme (J5-4) : un coup effraie les passants à moins de 12 m, un meurtre à moins de 25 m ; ils fuient loin de la scène et les plus éloignés ne bougent pas", () => {
+    const sim = new PedSim(graph(), terrain, colliders, { capacity: 150, seed: 7 });
+    const obs = obsAt(0, -20);
+    sim.prefill(obs);
+    for (let i = 0; i < 90; i++) sim.step(STEP, obs);
+    // Un passant au hasard (le plus proche du joueur) est la victime.
+    let victim = -1, best = 1e9;
+    const p = { x: 0, y: 0 };
+    for (let i = 0; i < sim.capacity; i++) {
+      if (!sim.state.alive![i]) continue;
+      sim.position(i, p);
+      const d = Math.hypot(p.x - obs.x, p.y - obs.y);
+      if (d < best) { best = d; victim = i; }
+    }
+    const v = { x: 0, y: 0 };
+    sim.position(victim, v);
+    const near: number[] = [], mid: number[] = [], far: number[] = [];
+    for (let i = 0; i < sim.capacity; i++) {
+      if (i === victim || !sim.state.alive![i]) continue;
+      sim.position(i, p);
+      const d = Math.hypot(p.x - v.x, p.y - v.y);
+      if (d < ALARM_HURT - 1) near.push(i);
+      else if (d > ALARM_HURT + 2 && d < ALARM_KILL - 2) mid.push(i);
+      else if (d > ALARM_KILL + 3) far.push(i);
+    }
+    expect(near.length + mid.length).toBeGreaterThan(0);
+    expect(far.length).toBeGreaterThan(0);
+    sim.clearEvents();
+    sim.damage(victim, 12, 0, 1, 1.4);
+    for (const i of near) expect(sim.fleeing(i)).toBe(true);
+    for (const i of mid) expect(sim.fleeing(i)).toBe(false);
+    for (const i of far) expect(sim.fleeing(i)).toBe(false);
+    expect(sim.events.some((e: PedEvent) => e.kind === "startled")).toBe(near.length > 0);
+    // Le meurtre porte plus loin.
+    const victim2 = [...near, ...mid][0]!;
+    if (victim2 !== undefined && sim.state.alive![victim2]) {
+      sim.position(victim2, v);
+      sim.damage(victim2, 500, 0, 1, 1.4);
+      for (let i = 0; i < sim.capacity; i++) {
+        if (i === victim2 || !sim.state.alive![i] || sim.state.pose![i]) continue;
+        sim.position(i, p);
+        if (Math.hypot(p.x - v.x, p.y - v.y) < ALARM_KILL - 1) expect(sim.fleeing(i)).toBe(true);
+      }
+    }
+  });
+
+  it("un passant effrayé s'éloigne de la scène (sa file se retourne s'il se dirigeait vers elle)", () => {
+    const sim = new PedSim(graph(), terrain, colliders, { capacity: 100, seed: 7 });
+    const obs = obsAt(0, -20);
+    sim.prefill(obs);
+    for (let i = 0; i < 60; i++) sim.step(STEP, obs);
+    let closer = 0, total = 0;
+    for (let trial = 0; trial < 12; trial++) {
+      const s2 = new PedSim(graph(), terrain, colliders, { capacity: 100, seed: 100 + trial });
+      s2.prefill(obs);
+      for (let i = 0; i < 60; i++) s2.step(STEP, obs);
+      const p = { x: 0, y: 0 };
+      let slot = -1, best = 1e9;
+      for (let i = 0; i < s2.capacity; i++) {
+        if (!s2.state.alive![i]) continue;
+        s2.position(i, p);
+        const d = Math.hypot(p.x - obs.x, p.y - obs.y);
+        if (d < best) { best = d; slot = i; }
+      }
+      s2.position(slot, p);
+      const before = { ...p };
+      // Une scène à 5 m (côté sud du passant) : il doit s'en éloigner.
+      const sx = before.x, sy = before.y - 5;
+      s2.alarm(sx, sy, 20, 6);
+      for (let i = 0; i < 60 * 3; i++) s2.step(STEP, obs);
+      if (!s2.state.alive![slot]) continue;
+      s2.position(slot, p);
+      total++;
+      if (Math.hypot(p.x - sx, p.y - sy) < Math.hypot(before.x - sx, before.y - sy)) closer++;
+    }
+    expect(total).toBeGreaterThan(6);
+    // Une file en impasse ou un virage peut rapprocher un cas isolé, jamais la majorité.
+    expect(closer).toBeLessThanOrEqual(Math.floor(total / 4));
+  });
+
+  it("coup de grâce : un passant à terre prend les coups sans retomber, et meurt s'il n'a plus de points de vie", () => {
+    const { sim, slot, obs } = setup();
+    sim.applyImpulse(slot, 6, 0);
+    expect(sim.state.pose![slot]).toBe(2);
+    const t0 = sim.state.poseT![slot]!;
+    expect(sim.damage(slot, 30, 1, 0, 2.6)).toBe(1);
+    expect(sim.health(slot)).toBe(70);
+    // Pas de nouvelle chute : la pose continue où elle en était.
+    sim.step(STEP, obs);
+    expect(sim.state.poseT![slot]!).toBeGreaterThan(t0);
+    expect(sim.state.poseT![slot]!).toBeLessThan(t0 + 0.5);
+    expect(sim.damage(slot, 80, 1, 0, 2.6)).toBe(2);
+    expect(sim.stats.deaths).toBe(1);
+    expect(sim.damage(slot, 10, 1, 0, 1)).toBe(0);
   });
 });
