@@ -1,5 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { decodeNavCell, type NavCell, type NavIndex } from "../data/nav";
+import { NavGraph } from "./nav-graph";
+import { buildColliders } from "./world";
+import type { Colliders } from "./collision";
 import { Terrain, TiledTerrain } from "../data/terrain";
 import type { TileData, WorldManifest } from "../data/types";
 
@@ -32,4 +35,36 @@ export function loadRealNav(): { index: NavIndex; cells: NavCell[] } {
   const index = JSON.parse(readFileSync("public/data/nav/index.json", "utf8")) as NavIndex;
   const cells = index.cells.map((c) => decodeNavCell(JSON.parse(readFileSync(`public/data/nav/${c.id}.json`, "utf8"))));
   return { index, cells };
+}
+
+const SHIFT = 65536;
+
+/** Le monde réel pour les essais de circulation : relief, graphe de navigation complet et obstacles fixes (Node uniquement). */
+export function loadRealRoadWorld(): {
+  world: ReturnType<typeof loadRealWorld>;
+  nav: NavGraph;
+  colliders: Colliders;
+  /** Sens de départ : arêtes carrossables assez longues, hors bord du monde, dans le sens permis ; une sur `every`. */
+  starts: (every: number, minLength?: number, maxClass?: number) => number[];
+} {
+  const world = loadRealWorld();
+  const { cells } = loadRealNav();
+  const nav = new NavGraph();
+  for (const c of cells) nav.add(c);
+  const colliders = buildColliders(world.tile);
+  const starts = (every: number, minLength = 40, maxClass = 5): number[] => {
+    const out: number[] = [];
+    let k = 0;
+    for (const c of cells) {
+      for (const e of nav.road.edgesOfSlot(Math.floor(nav.edgesOf(c.id)[0]! / SHIFT))) {
+        if (!nav.road.drivable(e) || nav.road.edgeLength(e) < minLength || nav.road.edgeClass(e) > maxClass) continue;
+        // Pas au bord du monde (la physique y retient les véhicules à 3 m de la limite).
+        if ((nav.road.nodeFlags(nav.road.edgeA(e)) | nav.road.nodeFlags(nav.road.edgeB(e))) & 2) continue;
+        if (k++ % every !== 0) continue;
+        out.push(nav.road.canGo(e * 2) ? e * 2 : e * 2 + 1);
+      }
+    }
+    return out;
+  };
+  return { world, nav, colliders, starts };
 }

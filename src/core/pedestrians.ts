@@ -6,6 +6,7 @@ import { coldAt, dressForCold } from "./dress";
 import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
+import type { Signals } from "./signals";
 import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
 
 /**
@@ -47,6 +48,22 @@ export interface PedSimOptions {
   spawnInView?: boolean;
 }
 
+/**
+ * Un véhicule de la circulation vu par les passants (J3-3b) : position, vitesse, coque. La simulation y écrit ce que le choc a coûté au véhicule
+ * (`slow`, part de vitesse perdue 0 à 0,5, comme pour le véhicule du joueur dans `PedSim.impact`), à remettre à zéro par l'appelant à chaque pas.
+ */
+export interface TrafficBody {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  heading?: number;
+  hull?: readonly (readonly [number, number])[];
+  slow: number;
+  speed: number;
+  hits: number;
+}
+
 /** Ce que la simulation sait du joueur à chaque pas : position, vitesse, direction du regard, et le véhicule qu'il conduit. */
 export interface Observer {
   x: number;
@@ -59,6 +76,10 @@ export interface Observer {
   onFoot: boolean;
   /** Véhicule mobile du joueur (J2 : le seul danger aux passages) ; null sinon. `heading` et `hull` (cercles : décalage le long du cap, rayon) donnent sa coque. */
   vehicle: { x: number; y: number; vx: number; vy: number; heading?: number; hull?: readonly (readonly [number, number])[]; hornRange?: number } | null;
+  /** Les véhicules de la circulation (J3) : les passants les évitent, attendent à l'entrée d'un passage devant eux et peuvent être heurtés. */
+  vehicles?: readonly TrafficBody[];
+  /** Coups de klaxon des voitures de la circulation à cet instant (J3-6) : les passants devant elles sursautent comme devant celui du joueur. */
+  honks?: readonly NonNullable<Observer["vehicle"]>[];
   /** Klaxon (ou sonnette) enfoncé à ce pas : les passants devant lui sursautent, jusqu'à la portée `vehicle.hornRange` (35 m par défaut). */
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
@@ -102,7 +123,7 @@ export interface PedStats {
   zone: number;
 }
 
-const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
+export const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
 const MASK_WALK = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner);
 
 const TAU = Math.PI * 2;
@@ -145,6 +166,8 @@ export class PedSim {
   /** Événements depuis le dernier `clearEvents` et effet sur le joueur au dernier pas. */
   readonly events: PedEvent[] = [];
   readonly impact: PedImpact = { slow: 0, speed: 0, hits: 0, bump: 0 };
+  /** Feux de circulation (J3-3) : aux passages à feux, les passants attendent le rouge des voitures. Null : ils ne regardent que les véhicules. */
+  signals: Signals | null = null;
   /** Appelé quand un emplacement reçoit un nouveau passant (le rendu l'habille). */
   onSpawn: ((slot: number, recipe: Recipe) => void) | null = null;
 
@@ -244,6 +267,7 @@ export class PedSim {
     const imp = this.impact;
     imp.slow = imp.speed = imp.hits = imp.bump = 0;
     if (obs.horn && obs.vehicle) this.honk(obs.vehicle);
+    if (obs.honks) for (const h of obs.honks) this.honk(h);
     // Quartier du joueur (zone de la file la plus proche) : deux fois par seconde suffisent.
     if (this.frame % 30 === 1) {
       const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
@@ -273,7 +297,8 @@ export class PedSim {
         knocked++;
         continue;
       }
-      if (obs.vehicle) this.vehicleContact(i, obs.vehicle);
+      if (obs.vehicle) this.vehicleContact(i, obs.vehicle, this.impact);
+      if (obs.vehicles) for (const tv of obs.vehicles) this.vehicleContact(i, tv, tv);
       if (obs.onFoot && d2 < 4) this.footContact(i, obs, d2);
       if (this.mode[i]! >= PED_STATE.stumble) {
         knocked++;
@@ -419,7 +444,7 @@ export class PedSim {
     const mode = this.mode[i]!;
     if (mode === PED_STATE.wait) {
       // Attente à l'entrée d'un passage : on traverse quand plus rien n'arrive.
-      if (!this.threat(this.x[i]!, this.y[i]!, obs)) this.mode[i] = PED_STATE.cross;
+      if (!this.threat(this.x[i]!, this.y[i]!, obs) && !this.redForWalkers(i)) this.mode[i] = PED_STATE.cross;
       return;
     }
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
@@ -464,8 +489,16 @@ export class PedSim {
     return best;
   }
 
+  /** Le passant est à l'entrée d'un passage à feux et le feu des piétons n'est pas au vert (les voitures roulent encore). */
+  private redForWalkers(i: number): boolean {
+    if (!this.signals || this.graph.edgeType(this.edge[i]!) !== PED.crossingSignal) return false;
+    return this.signals.pedWalk(this.x[i]!, this.y[i]!, this.graph.edgeWay(this.edge[i]!)) === false;
+  }
+
   private threat(x: number, y: number, obs: Observer): boolean {
-    return vehicleThreat(x, y, obs.vehicle);
+    if (vehicleThreat(x, y, obs.vehicle)) return true;
+    if (obs.vehicles) for (const v of obs.vehicles) if (vehicleThreat(x, y, v)) return true;
+    return false;
   }
 
   /** Fin de l'arête : choisit la suite (tout droit de préférence, jamais demi-tour s'il y a mieux), attend si un passage est dangereux. */
@@ -520,7 +553,7 @@ export class PedSim {
     this.s[i] = Math.min(Math.max(this.s[i]!, 0), g.edgeLength(ne));
     const typ = g.edgeType(ne);
     if (typ === PED.crossing || typ === PED.crossingSignal || typ === PED.crossingImplicit) {
-      this.mode[i] = this.threat(this.x[i]!, this.y[i]!, obs) ? PED_STATE.wait : PED_STATE.cross;
+      this.mode[i] = this.threat(this.x[i]!, this.y[i]!, obs) || this.redForWalkers(i) ? PED_STATE.wait : PED_STATE.cross;
     } else if (this.mode[i] === PED_STATE.cross) {
       this.mode[i] = PED_STATE.walk;
     }
@@ -617,7 +650,7 @@ export class PedSim {
   }
 
   /** Contact d'un passant avec la coque du véhicule du joueur, ou esquive à son approche. */
-  private vehicleContact(i: number, v: NonNullable<Observer["vehicle"]>): void {
+  private vehicleContact(i: number, v: NonNullable<Observer["vehicle"]>, imp: { slow: number; speed: number; hits: number }): void {
     const px = this.x[i]!, py = this.y[i]!;
     const dx = px - v.x, dy = py - v.y;
     const speed = Math.hypot(v.vx, v.vy);
@@ -650,7 +683,6 @@ export class PedSim {
       const hard = speed >= 3.5;
       this.knock(i, hard ? HIT_POSE.down : HIT_POSE.stumble, ux * 0.8 + ax * 0.6, uy * 0.8 + ay * 0.6, hard ? Math.min(9, 0.7 * speed + 1.5) : 1.2 + 0.4 * speed);
       const slow = hard ? Math.min(0.3, Math.max(0.1, 0.1 + 0.02 * speed)) : 0.04;
-      const imp = this.impact;
       imp.slow = Math.min(0.5, 1 - (1 - imp.slow) * (1 - slow));
       imp.speed = Math.max(imp.speed, speed);
       imp.hits++;
@@ -768,6 +800,22 @@ export class PedSim {
       const h = this.hash(Math.floor(this.x[i]! / 4), Math.floor(this.y[i]! / 4));
       this.link[i] = this.head[h]!;
       this.head[h] = i;
+    }
+  }
+
+  /**
+   * Passants vivants à moins de `r` de (x, y), pour la circulation (J3-3b) : `visit(x, y, vx, vy, engaged)`, où `engaged` dit qu'ils traversent
+   * (sur un passage) ou sont à terre, donc que les voitures doivent leur laisser la place. Sans allocation.
+   */
+  forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
+    const alive = this.state.alive!, r2 = r * r;
+    for (let i = 0; i < this.n; i++) {
+      if (!alive[i]) continue;
+      const dx = this.x[i]! - x, dy = this.y[i]! - y;
+      if (dx * dx + dy * dy > r2) continue;
+      const m = this.mode[i]!;
+      const sp = m === PED_STATE.walk || m === PED_STATE.cross ? this.speed[i]! * (m === PED_STATE.cross ? 1.25 : 1) : 0;
+      visit(this.x[i]!, this.y[i]!, Math.sin(this.heading[i]!) * sp, Math.cos(this.heading[i]!) * sp, m === PED_STATE.cross || m >= PED_STATE.stumble);
     }
   }
 

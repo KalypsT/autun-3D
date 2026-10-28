@@ -67,7 +67,7 @@ export interface PedLayer {
   portalKey: Map<number, string>;
 }
 
-/** Graphe routier d'une super-tuile (J3 l'utilisera ; décodé tel quel). */
+/** Graphe routier d'une super-tuile (client : `src/core/road-graph.ts`). */
 export interface RoadLayer {
   nodes: number;
   edges: number;
@@ -95,6 +95,15 @@ export interface RoadLayer {
   restrFrom: Uint16Array;
   restrTo: Uint16Array;
   restrCode: Uint8Array;
+  /** Distance cumulée à la fin de chacun des np + 1 segments de l'arête e, à partir de `cumAt[e]`. */
+  cumAt: Uint32Array;
+  cum: Float32Array;
+  /** Arêtes incidentes à chaque nœud (format CSR). */
+  adjStart: Uint32Array;
+  adj: Uint16Array;
+  /** Nœuds portails : clé de coordonnées → nœud local, et l'inverse. */
+  portals: Map<string, number>;
+  portalKey: Map<number, string>;
 }
 
 export interface NavPois {
@@ -181,6 +190,23 @@ function decodeNodes(n: number[], stride: number, id: string): { count: number; 
   return { count, x, y, flags };
 }
 
+/** Arêtes incidentes à chaque nœud, en format CSR (une arête en boucle y figure deux fois). */
+function incidence(nodeCount: number, a: Uint16Array, b: Uint16Array, edges: number): { adjStart: Uint32Array; adj: Uint16Array } {
+  const adjStart = new Uint32Array(nodeCount + 1);
+  for (let i = 0; i < edges; i++) {
+    adjStart[a[i]! + 1]!++;
+    adjStart[b[i]! + 1]!++;
+  }
+  for (let i = 0; i < nodeCount; i++) adjStart[i + 1]! += adjStart[i]!;
+  const fill = adjStart.slice(0, nodeCount);
+  const adj = new Uint16Array(adjStart[nodeCount]!);
+  for (let i = 0; i < edges; i++) {
+    adj[fill[a[i]!]!++] = i;
+    adj[fill[b[i]!]!++] = i;
+  }
+  return { adjStart, adj };
+}
+
 function decodePed(raw: RawGraph, id: string): PedLayer {
   const nodes = decodeNodes(raw.n, PED_N, id);
   check(raw.e.length % PED_E === 0 && raw.g.length % 2 === 0, id, "arêtes piétonnes mal formées");
@@ -197,18 +223,7 @@ function decodePed(raw: RawGraph, id: string): PedLayer {
   const geom = Float32Array.from(raw.g);
   const { cumAt, cum, length } = cumulative(nodes.x, nodes.y, a, b, p0, np, geom, edges);
   // Arêtes incidentes à chaque nœud.
-  const adjStart = new Uint32Array(nodes.count + 1);
-  for (let i = 0; i < edges; i++) {
-    adjStart[a[i]! + 1]!++;
-    adjStart[b[i]! + 1]!++;
-  }
-  for (let i = 0; i < nodes.count; i++) adjStart[i + 1]! += adjStart[i]!;
-  const fill = adjStart.slice(0, nodes.count);
-  const adj = new Uint16Array(adjStart[nodes.count]!);
-  for (let i = 0; i < edges; i++) {
-    adj[fill[a[i]!]!++] = i;
-    adj[fill[b[i]!]!++] = i;
-  }
+  const { adjStart, adj } = incidence(nodes.count, a, b, edges);
   const portals = new Map<string, number>(), portalKey = new Map<number, string>();
   for (let i = 0; i < nodes.count; i++) {
     if (!(nodes.flags[i]! & 1)) continue;
@@ -233,7 +248,15 @@ function decodeRoad(raw: RawGraph, id: string): RoadLayer {
     check(a[i]! < nodes.count && b[i]! < nodes.count && p0[i]! + np[i]! <= raw.g.length / 2, id, `arête routière ${i} hors tableaux`);
   }
   const geom = Float32Array.from(raw.g);
-  const length = cumulative(nodes.x, nodes.y, a, b, p0, np, geom, edges).length;
+  const { cumAt, cum, length } = cumulative(nodes.x, nodes.y, a, b, p0, np, geom, edges);
+  const { adjStart, adj } = incidence(nodes.count, a, b, edges);
+  const portals = new Map<string, number>(), portalKey = new Map<number, string>();
+  for (let i = 0; i < nodes.count; i++) {
+    if (!(nodes.flags[i]! & 1)) continue;
+    const key = `${raw.n[i * ROAD_N]},${raw.n[i * ROAD_N + 1]}`;
+    portals.set(key, i);
+    portalKey.set(i, key);
+  }
   const s = raw.s ?? [], r = raw.r ?? [];
   check(s.length % 3 === 0 && r.length % 3 === 0, id, "panneaux ou restrictions mal formés");
   const signNode = new Uint16Array(s.length / 3), signEdge = new Uint16Array(s.length / 3), signKind = new Uint8Array(s.length / 3);
@@ -244,7 +267,7 @@ function decodeRoad(raw: RawGraph, id: string): RoadLayer {
   for (let i = 0; i < restrFrom.length; i++) {
     restrFrom[i] = r[i * 3]!; restrTo[i] = r[i * 3 + 1]!; restrCode[i] = r[i * 3 + 2]!;
   }
-  return { nodes: nodes.count, edges, nodeX: nodes.x, nodeY: nodes.y, nodeFlags: nodes.flags, a, b, cls, flags, lanes, speed, width, length, gid, p0, np, geom, signNode, signEdge, signKind, restrFrom, restrTo, restrCode };
+  return { nodes: nodes.count, edges, nodeX: nodes.x, nodeY: nodes.y, nodeFlags: nodes.flags, a, b, cls, flags, lanes, speed, width, length, gid, p0, np, geom, signNode, signEdge, signKind, restrFrom, restrTo, restrCode, cumAt, cum, adjStart, adj, portals, portalKey };
 }
 
 export function loadNavIndex(): Promise<NavIndex> {

@@ -119,7 +119,7 @@ describe("stockage", () => {
 describe("réglages", () => {
   it("valeurs invalides : retour aux valeurs par défaut champ par champ ; valeurs proches : on prend le choix le plus proche", () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, minimapNorth: "oui", crowd: 120 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, minimapNorth: false, crowd: 100 });
+    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, minimapNorth: "oui", crowd: 120 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, minimapNorth: false, crowd: 100, traffic: 0 });
     expect(parseSettings({ dpr: 2.4, minimapNorth: true }).dpr).toBe(2.5);
     expect(parseSettings({ minimapNorth: true }).minimapNorth).toBe(true);
   });

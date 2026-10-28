@@ -4,6 +4,7 @@ import { PedSim, type Observer } from "../core/pedestrians";
 import type { HeightField } from "../data/types";
 import { createCrowd } from "../render/crowd/crowd";
 import type { CrowdRenderer } from "../render/crowd/crowd-types";
+import type { Signals } from "../core/signals";
 import type { NavManager } from "./nav-manager";
 
 /**
@@ -15,6 +16,8 @@ export class PedsController {
   private crowd: CrowdRenderer | null = null;
   private filled = false;
   private shadows = true;
+  /** Feux de circulation partagés avec les voitures : les passants attendent le feu des piétons aux passages à feux (J3-3). */
+  private signals: Signals | null = null;
   /** Durée moyenne (ms, lissée) de la simulation et de la mise à jour du dessin par image, pour la ligne de diagnostic. */
   simMs = 0;
   drawMs = 0;
@@ -53,6 +56,11 @@ export class PedsController {
     return this.sim?.queryCircle(x, y, r, out) ?? 0;
   }
 
+  /** Passants à moins de `r` de (x, y) pour la circulation : voir `PedSim.forEachNear`. */
+  forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
+    this.sim?.forEachNear(x, y, r, visit);
+  }
+
   setCapacity(n: number): void {
     if (n === this.capacity) return;
     this.crowd?.dispose();
@@ -61,9 +69,15 @@ export class PedsController {
     this.filled = false;
     if (n <= 0) return;
     this.sim = new PedSim(this.nav.graph, this.terrain, this.colliders, { capacity: n, seed: this.seed });
+    this.sim.signals = this.signals;
     this.crowd = createCrowd(this.scene, this.sim.state);
     this.crowd.setShadows(this.shadows);
     this.sim.onSpawn = (slot, recipe) => this.crowd?.assign?.(slot, recipe);
+  }
+
+  setSignals(signals: Signals | null): void {
+    this.signals = signals;
+    if (this.sim) this.sim.signals = signals;
   }
 
   setShadows(on: boolean): void {

@@ -18,14 +18,17 @@ export interface Settings {
   minimapNorth: boolean;
   /** Foule : nombre maximal de passants à la fois (0 = aucun). Le nombre réel suit l'heure et le lieu (D39). */
   crowd: number;
+  /** Circulation : nombre maximal de voitures à la fois (0 = aucune). Le nombre réel suit l'heure et le lieu (D64). */
+  traffic: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 0 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
 export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
+export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -35,7 +38,7 @@ const nearest = <T extends number>(choices: readonly T[], v: number): T => choic
 export function parseSettings(raw: unknown): Settings {
   const o = (typeof raw === "object" && raw ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_SETTINGS;
-  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]);
+  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]), traffic = num(o["traffic"]);
   return {
     dpr: dpr === null ? d.dpr : nearest(DPR_CHOICES, dpr),
     shadows: shadows === null ? d.shadows : nearest(SHADOW_CHOICES, shadows),
@@ -43,6 +46,7 @@ export function parseSettings(raw: unknown): Settings {
     sensitivity: sens === null ? d.sensitivity : Math.min(Math.max(Math.round(sens * 10) / 10, SENSITIVITY_RANGE.min), SENSITIVITY_RANGE.max),
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
+    traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
   };
 }
 
@@ -80,6 +84,12 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (peds !== null && peds >= 0) {
     values.crowd = Math.min(Math.floor(peds), 400);
     locked.add("crowd");
+  }
+  // ?traffic=N impose le nombre maximal de voitures (0 : aucune ; borné à 60).
+  const traffic = num(params.get("traffic") === null ? null : Number(params.get("traffic")));
+  if (traffic !== null && traffic >= 0) {
+    values.traffic = Math.min(Math.floor(traffic), 60);
+    locked.add("traffic");
   }
   return { values, locked };
 }
