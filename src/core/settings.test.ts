@@ -27,12 +27,13 @@ describe("réglage « Foule »", () => {
 });
 
 describe("réglage « Circulation »", () => {
-  it("vaut 0 (aucune) par défaut tant que la mesure sur téléphone n'est pas faite, et se limite aux choix proposés", () => {
-    expect(DEFAULT_SETTINGS.traffic).toBe(0);
-    expect(parseSettings({}).traffic).toBe(0);
+  it("vaut 20 (normale) par défaut depuis la mesure sur téléphone (D68), et se limite aux choix proposés", () => {
+    expect(DEFAULT_SETTINGS.traffic).toBe(20);
+    expect(parseSettings({}).traffic).toBe(20);
     expect(parseSettings({ traffic: 22 }).traffic).toBe(20);
     expect(parseSettings({ traffic: 1000 }).traffic).toBe(30);
-    expect(parseSettings({ traffic: "beaucoup" }).traffic).toBe(0);
+    expect(parseSettings({ traffic: "beaucoup" }).traffic).toBe(20);
+    expect(parseSettings({ traffic: 0 }).traffic).toBe(0);
     expect(TRAFFIC_CHOICES).toContain(parseSettings({ traffic: 12 }).traffic);
   });
 
