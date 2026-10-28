@@ -666,7 +666,7 @@ export function startGame(ctx: GameContext): void {
       speedLinesOn = lines > 0.01;
       speedLinesEl.style.display = speedLinesOn ? "block" : "none";
       // Les rayons tournent un peu à chaque image : ils défilent au lieu de rester figés.
-      speedLinesEl.style.opacity = (lines * 0.6).toFixed(2);
+      speedLinesEl.style.opacity = (Math.min(1, lines * 1.6) * 0.85).toFixed(2);
       speedLinesEl.style.transform = `rotate(${(Math.random() * 6).toFixed(1)}deg)`;
     }
 

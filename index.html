@@ -107,7 +107,7 @@
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
       /* Traits de vitesse (D90) : rayons crème autour du centre, au-delà de 100 km/h ; l'opacité suit la vitesse. */
       #speedlines { position: fixed; inset: -12%; z-index: 2; pointer-events: none; opacity: 0; display: none;
-                    background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 248, 230, 0) 0deg 2.1deg, rgba(255, 248, 230, .5) 2.3deg 2.5deg, rgba(255, 248, 230, 0) 2.7deg 6.5deg);
+                    background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 248, 230, 0) 0deg 2.1deg, rgba(255, 248, 230, .8) 2.3deg 2.6deg, rgba(255, 248, 230, 0) 2.7deg 6.5deg);
                     -webkit-mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); }
       #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
       #hurt.flash { opacity: 1; transition: none; }
