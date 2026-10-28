@@ -1109,3 +1109,15 @@ Tests : `decks.test.ts` (surface la plus haute, deux niveaux avec l'altitude act
 - Sources des dimensions : Structurae (portes d'Arroux et Saint-André), PSS-archi et techno-science (cathédrale).
 - Tests : disposition des portes (ouvertures, piles, passage sous les grandes arches), données réelles (une cathédrale, deux portes, hauteurs plausibles, repère dans l'index), budgets de triangles. 595 tests.
 - Limites : formes simplifiées (pas de chapiteaux, pas de voussoirs, pas de tympan sculpté) ; la porte d'Arroux est enterrée à la hauteur de la rue actuelle comme dans la réalité ; le théâtre romain, le temple de Janus et les remparts restent pour J6.
+
+## 2026-10-28 — D96. Moins de clôtures, des cours d'eau qui ressemblent à des cours d'eau
+
+**Constat** (retour de l'utilisateur après D94) : trop de clôtures, certaines injustifiées (stade Saint-Roch), et l'Acaron remplacé par un chemin entre deux grilles. Analyse : le lit d'un cours d'eau n'appartient à aucune parcelle, donc le programme le comptait comme espace public (place goudronnée ou pelouse par-dessus le ruban d'eau, l'eau sombre de l'orthophoto ressemblant à de l'enrobé) et clôturait toutes les parcelles qui le bordent (≈ 2 km de rives). Plus largement, toute limite de parcelle touchant l'espace public recevait une clôture, même sans rue devant : 7,4 km à plus de 12 m de toute voie (prés, enceinte du stade), 4,6 km sur des rives, 4,8 km face aux champs et aux bois, 0,7 km dans des parcs et terrains de sport.
+
+**Changements** (`build_public_space.py`, mêmes sorties) :
+- **Couloir des cours d'eau** : chaque ruisseau et rivière filaire (D93) réserve son lit plus 2,5 m de berge de chaque côté ; ni place, ni trottoir, ni parking dedans : berge enherbée. Les chaussées ne sont pas coupées (les ponts restent).
+- **Une clôture seulement face à une rue** : un tronçon n'est clôturé que si une voie carrossable ou piétonne passe à moins de 12 m ; rien à moins de 8 m de l'eau ; rien dans les parcs, terrains de sport, aires de jeux et jardins publics (écoles et cimetières gardent la leur) ; **haie** face aux champs, prés et bois.
+- **Plus de passages** : un portillon de 1,2 m tous les 10 m environ (un seul au milieu avant), pour ne plus avoir de grille continue.
+- Résultat : **67,8 → 55,2 km** de clôtures (le reste est presque entièrement le long de rues d'habitation). Navigation et carte reconstruites.
+- **Test** : la poursuite à trois étoiles (`police-soak`) prenait les départs 3 et 8 ; avec les nouveaux sols, le fugitif du départ 8 est arrêté douze fois puis reste au contact la dernière minute (3 267 pas sur 3 600). Remplacé par les départs 3, 9 et 10 (trois au lieu de deux), qui passent avec les mêmes seuils ; le départ 8 n'a pas été analysé plus loin.
+- Limites : le lit des rivières à polygone (Arroux) n'a pas de couloir (les rives sont déjà sans clôture à moins de 8 m) ; le ruban d'eau des ruisseaux reste tacheté de bleu par endroits (rendu des ruisseaux, D93) ; si c'est encore trop pour toi le long des rues d'habitation, on peut n'en mettre qu'à une parcelle sur deux.

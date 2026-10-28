@@ -110,7 +110,7 @@ describe("poursuite qui dure (J4-6)", () => {
   // jamais à plus de 300 m en fin de minute. Le test garde six minutes et deux départs.
   it("« Dense », 100 passants, trois étoiles, un fugitif qui roule six minutes : rien d'aberrant, rien qui s'accumule, des arrestations", () => {
     let arrests = 0;
-    for (const seed of [3, 8]) {
+    for (const seed of [3, 9, 10]) {
       const r = soak(seed, 360, 360);
       expect(r.bad).toBe(0);
       arrests += r.arrests;
