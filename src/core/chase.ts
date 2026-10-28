@@ -35,6 +35,9 @@ const OFF_ROAD = 7;
 const A_MAX = 4;
 /** Écart visé (m, de centre à centre) derrière un fugitif qui roule : une longueur et demie ; le contact vient quand il freine. */
 const FOLLOW_GAP = 7;
+/** Places autour de la cible : deux de front à ±1,8 m de l'axe, à `FOLLOW_GAP` m derrière elle, puis par paires tous les 6 m (une longueur et demie). */
+const SLOT_SIDE = 1.8;
+const SLOT_ROW = 6;
 
 const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -42,6 +45,12 @@ export class Chaser {
   mode: ChaseMode = "road";
   /** L'équipage est descendu (J4-5) : la voiture reste garée, frein à main, jusqu'à son retour. */
   parked = false;
+  /** Place de ce poursuivant autour de la cible (0, 1, 2…) : donnée par la simulation, une par voiture en poursuite (D79). */
+  slot = 0;
+  /** Direction (unitaire) dans laquelle on arrive sur une cible immobile, fixée à l'entrée en conduite directe : les places se prennent de ce côté. */
+  private ax = 0;
+  private ay = 0;
+  private approached = false;
   /** Distance au fugitif (m) au dernier pas. */
   distance = Infinity;
   /** Itinéraires calculés (diagnostic) et recherches échouées. */
@@ -92,7 +101,9 @@ export class Chaser {
     }
     const tspeed = Math.hypot(target.vx, target.vy);
     let input: DriveInput;
-    if (tspeed < 1 && d < HOLD_DISTANCE && Math.abs(u) < 1) {
+    this.slotPoint(s, target, tspeed);
+    const dSlot = Math.hypot(this.sx - s.x, this.sy - s.y);
+    if (tspeed < 1 && (d < HOLD_DISTANCE || dSlot < 3) && dSlot < 3.5 && Math.abs(u) < 1) {
       // Le fugitif est arrêté tout près et nous aussi : on reste là.
       this.mode = "hold";
       this.stuck = 0;
@@ -103,8 +114,9 @@ export class Chaser {
     // Un fugitif arrêté à portée : conduite directe, qui ralentit pour s'arrêter à une longueur et demie de lui.
     if (sees || !onRoad || (tspeed < 1 && d < 30)) {
       this.mode = "direct";
-      input = this.direct(s, d, target, tspeed);
+      input = this.direct(s, target, tspeed);
     } else {
+      this.approached = false;
       if (this.mode !== "road") this.rejoin(s, driver);
       this.mode = "road";
       if (driver.lost) this.rejoin(s, driver);
@@ -124,18 +136,50 @@ export class Chaser {
     return input;
   }
 
-  /** Conduite directe : poursuite d'un point (la position du fugitif un peu en avance sur sa vitesse), à la vitesse du fugitif plus un peu. */
-  private direct(s: VehicleState, d: number, t: ChaseTarget, tspeed: number): DriveInput {
+  /** Place de ce poursuivant (`sx`, `sy`) : derrière une cible qui roule (dans le sens de sa marche), du côté d'où l'on arrive pour une cible immobile. */
+  private sx = 0;
+  private sy = 0;
+  private slotPoint(s: VehicleState, t: ChaseTarget, tspeed: number): void {
+    let ux: number, uy: number;
+    if (tspeed > 2) {
+      ux = t.vx / tspeed;
+      uy = t.vy / tspeed;
+    } else {
+      if (!this.approached) {
+        const dd = Math.hypot(t.x - s.x, t.y - s.y) || 1;
+        this.ax = (t.x - s.x) / dd;
+        this.ay = (t.y - s.y) / dd;
+        this.approached = true;
+      }
+      ux = this.ax;
+      uy = this.ay;
+    }
+    // Une voiture de police qui n'est pas derrière une cible qui roule (elle arrive de face, ou à sa hauteur) la vise elle-même : lui faire prendre sa place derrière
+    // la cible l'obligerait à faire demi-tour, et elle la perdrait (D79).
+    const behind = (s.x - t.x) * -ux + (s.y - t.y) * -uy;
+    if (tspeed > 2 && behind < 4) {
+      this.sx = t.x;
+      this.sy = t.y;
+      return;
+    }
+    const back = FOLLOW_GAP + SLOT_ROW * Math.floor(this.slot / 2), side = (this.slot % 2 === 0 ? -1 : 1) * SLOT_SIDE;
+    this.sx = t.x - ux * back + uy * side;
+    this.sy = t.y - uy * back - ux * side;
+  }
+
+  /** Conduite directe : poursuite de sa place derrière la cible (un peu en avance sur sa vitesse), à la vitesse de la cible plus un peu. */
+  private direct(s: VehicleState, t: ChaseTarget, tspeed: number): DriveInput {
+    const d = Math.hypot(this.sx - s.x, this.sy - s.y);
     const lead = Math.min(d / 25, 1.2);
-    const px = t.x + t.vx * lead, py = t.y + t.vy * lead;
+    const px = this.sx + t.vx * lead, py = this.sy + t.vy * lead;
     const alpha = wrap(Math.atan2(px - s.x, py - s.y) - s.heading);
     const u = Math.max(s.speed, 0);
     const L = this.spec.front + this.spec.rear;
     const steer = Math.min(Math.max(Math.atan2(2 * L * Math.sin(alpha), Math.max(d, 1)) / steerLimit(this.spec, u), -1), 1);
     // Vitesse voulue : celle du fugitif, plus de quoi combler l'écart ; au pas si le fugitif est derrière nous.
-    let want = Math.min(this.spec.topSpeed * 0.9, tspeed + 0.45 * (d - FOLLOW_GAP));
-    // Fugitif arrêté : vitesse qui permet de s'arrêter à `FOLLOW_GAP` en freinant à 5 m/s².
-    if (tspeed < 1) want = Math.min(want, Math.sqrt(2 * 5 * Math.max(d - FOLLOW_GAP, 0)));
+    let want = Math.min(this.spec.topSpeed * 0.9, tspeed + 0.45 * (d - 1));
+    // Fugitif arrêté : vitesse qui permet de s'arrêter sur sa place en freinant à 5 m/s².
+    if (tspeed < 1) want = Math.min(want, Math.sqrt(2 * 5 * Math.max(d - 1, 0)));
     if (Math.abs(alpha) > 0.9) want = Math.min(want, 5);
     // Un mur droit devant : on ralentit d'autant.
     const look = 4 + u * 0.9, fx = Math.sin(s.heading), fy = Math.cos(s.heading);

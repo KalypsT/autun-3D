@@ -450,3 +450,6 @@ Fait :
 
 **Mesure de J4 sur le téléphone (28 octobre 2026)** (D78)
 - Build `42a640b` (J4 fusionné), 22 h, `&police=1`, « Dense » et Normale, dix minutes d'endurance : **60 i/s partout, aucune image au-dessus de 33 ms pendant l'endurance**, coût de la police dans le bruit (0,04 à 0,11 ms par image), pas de fuite de mémoire. Appels de dessin « Dense » : **199 à 204 en moyenne (pic 205)**, +5 à +8 par rapport à sans police dont +2 d'artefact du banc (corrigé). Les poursuivants se touchent et touchent des civils (2 284 pas à 50 km/h) : la marche arrière ne regarde plus derrière (corrigé, à remesurer). Tests : 472.
+
+**Mesure du correctif de D78 sur le téléphone et places des poursuivants (28 octobre 2026)** (D79)
+- Build `29be8a5` : la marche arrière n'était pas la cause des contacts (2 775 pas sur 5 800 à 50 km/h). Les poursuivants visaient tous le même point en conduite directe et s'empilaient (le banc vise un point sans corps) : chacun a maintenant sa place autour de la cible. Sans écran, scénario du banc : pas avec contact 65 % → 1,3 %. Appels de dessin à l'arrêt 194 à 195 (artefact du banc parti). Tests : 473. À remesurer sur le téléphone.
