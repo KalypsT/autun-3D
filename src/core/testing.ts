@@ -4,7 +4,7 @@ import { NavGraph } from "./nav-graph";
 import { buildColliders } from "./world";
 import type { Colliders } from "./collision";
 import { Terrain, TiledTerrain } from "../data/terrain";
-import type { TileData, WorldManifest } from "../data/types";
+import type { TileData, TileKinds, WorldManifest } from "../data/types";
 
 /** Terrain plat de 200 × 200 m centré sur l'origine, pour les tests. */
 export function flatTerrain(z = 0): Terrain {
@@ -27,6 +27,15 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     const t = JSON.parse(read(`tiles/${name}`).toString("utf8")) as TileData;
     for (const k of ["buildings", "fiches", "trees", "walls", "furniture"] as const) (tile[k] as unknown[]).push(...(t[k] as unknown[]));
   }
+  // Types de bâtiments et sites (kinds/), réunis comme les tuiles.
+  const kinds: TileKinds = { v: 1, buildings: {}, sites: [] };
+  for (const name of readdirSync("public/data/kinds")) {
+    if (name === "index.json") continue;
+    const k = JSON.parse(read(`kinds/${name}`).toString("utf8")) as TileKinds;
+    Object.assign(kinds.buildings, k.buildings);
+    kinds.sites.push(...k.sites);
+  }
+  tile.kinds = kinds;
   return { terrain, tile, manifest };
 }
 

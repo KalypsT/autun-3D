@@ -1,5 +1,6 @@
 import type { TileData } from "../data/types";
 import { Colliders } from "./collision";
+import { isOpen, landmarkCircles } from "./landmarks";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -7,12 +8,13 @@ const FURNITURE_RADIUS: Record<string, number> = {
   bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
 };
 
-export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees">;
+export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds">;
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
 export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null): void {
   c.currentTag = tag;
   for (const b of tile.buildings) {
+    if (isOpen(tile.kinds, b.id)) continue;
     c.addRing(b.ring);
     for (const h of b.holes) c.addRing(h);
   }
@@ -22,6 +24,7 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     if (r !== undefined) c.addCircle(f.x, f.y, r);
   }
   for (const [x, y] of tile.trees) c.addCircle(x, y, 0.3);
+  for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
   c.currentTag = null;
 }
 

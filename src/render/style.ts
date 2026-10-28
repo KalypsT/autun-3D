@@ -42,7 +42,7 @@ export const THEMES: Record<string, Theme> = {
     walls: { old: ["#f3d9a0", "#efc982"], xix: ["#f5dfae", "#f1cf8a", "#f4c9a0"], modern: ["#e9dcc0", "#e2d2b0"] },
     roofs: { tuile_plate: "#d9472b", tuile_mecanique: "#cf4026", ardoise: "#2f4a63", zinc: "#6f98a3", terrasse: "#b9a98a" },
     shutters: ["#2f7f8f", "#d9472b", "#f1b24a", "#1f4a63"], doors: ["#1f4a63", "#d9472b", "#2f7f8f"], shops: ["#d9472b", "#1f4a63", "#2f7f8f", "#f1b24a"],
-    trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e", "#3f9a6f", "#5aa874", "#e0a030", "#d9642b"], trunk: "#6b4a3a", water: "#4fb0c6", pitch: "#cf6a42",
+    trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e", "#3f9a6f", "#5aa874", "#e0a030", "#d9642b"], trunk: "#6b4a3a", water: "#4fb0c6", pitch: "#57a06a",
     ground: ["#7d8a8e", "#c79a6b", "#e3bf86", "#5fa06e", "#efdcb4", "#d6b98a"],
   },
   nuit: {
@@ -54,7 +54,7 @@ export const THEMES: Record<string, Theme> = {
     walls: { old: ["#6e6a7c", "#7b6f78"], xix: ["#6a6f86", "#74707f", "#7d7582"], modern: ["#5f6678", "#666b7d"] },
     roofs: { tuile_plate: "#6b3f4d", tuile_mecanique: "#63394a", ardoise: "#2f3b5c", zinc: "#4f6580", terrasse: "#4c5068" },
     shutters: ["#2b4a5e", "#5a3550", "#3c5a50"], doors: ["#3a2f45", "#2b4a5e"], shops: ["#5a3550", "#2b4a5e", "#3c5a50"],
-    trim: "#9aa0b8", glass: ["#10182e", "#2a3a5e"], trees: ["#1f4a4a", "#25564f", "#1c3f47"], trunk: "#2a2530", water: "#1d3a6e", pitch: "#5a3a48",
+    trim: "#9aa0b8", glass: ["#10182e", "#2a3a5e"], trees: ["#1f4a4a", "#25564f", "#1c3f47"], trunk: "#2a2530", water: "#1d3a6e", pitch: "#2f4a48",
     ground: ["#4a5273", "#6a6480", "#7d7690", "#3f6a6a", "#7a80a0", "#666c8c"],
   },
 };

@@ -1,5 +1,5 @@
 import { Terrain, TiledTerrain } from "./terrain";
-import type { LodBuilding, TileData, WorldBase, WorldManifest } from "./types";
+import type { LodBuilding, TileData, TileKinds, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
 
@@ -35,8 +35,20 @@ export async function loadWorldBase(): Promise<WorldBase> {
   return { manifest, terrain: new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`)) };
 }
 
-export function loadTile(id: string): Promise<TileData> {
-  return loadJson<TileData>(`tiles/${id}.json`);
+let kindsIndex: Promise<Set<string>> | null = null;
+
+/** Tuiles qui ont un fichier de types (kinds/index.json) ; un index absent vaut « aucune ». */
+function kindTiles(): Promise<Set<string>> {
+  kindsIndex ??= loadJson<{ tiles: string[] }>("kinds/index.json").then((i) => new Set(i.tiles), () => new Set<string>());
+  return kindsIndex;
+}
+
+/** Tuile détaillée, avec ses types de bâtiments et ses sites quand elle en a. */
+export async function loadTile(id: string): Promise<TileData> {
+  const has = (await kindTiles()).has(id);
+  const [tile, kinds] = await Promise.all([loadJson<TileData>(`tiles/${id}.json`), has ? loadJson<TileKinds>(`kinds/${id}.json`) : null]);
+  if (kinds) tile.kinds = kinds;
+  return tile;
 }
 
 /** Silhouettes des bâtiments d'une tuile (lod/<id>.json). */

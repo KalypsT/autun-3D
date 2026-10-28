@@ -491,3 +491,13 @@ Fait :
 - Ton véhicule allume ses phares et ses feux arrière à la nuit tombée, avec un faisceau peint sur la chaussée devant lui ; feux stop quand tu freines (même de jour), feu de recul. 0 appel de dessin le jour, 3 la nuit.
 - Le téléphone vibre aux chocs, aux tirs, aux coups portés et reçus, à la mort et à l'arrestation ; réglage « Vibrations » dans le menu pause.
 - Sensation de vitesse : le champ de vision s'ouvre progressivement jusqu'à 200 km/h (avant, il plafonnait dès 36 km/h), la caméra frémit à grande vitesse et se secoue aux chocs, des traits de vitesse apparaissent au-delà de 100 km/h.
+
+### Étape M : une carte qui ressemble à Autun (28 octobre 2026)
+
+Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et rivières mal rendus, rues mal proportionnées. Quatre lots : M1 bâtiments typés, M2 ponts, eau et voies ferrées, M3 rues sur le cadastre, M4 repères et monuments (cathédrale, portes romaines).
+
+**M1 (28 octobre 2026) : bâtiments typés** (D92)
+- 711 bâtiments reçoivent un type d'après OpenStreetMap et l'IGN (`tools/data/build_kinds.py`, 49 ko, aucune tuile régénérée) : le Leclerc, l'Aldi, la Biocoop, Mr.Bricolage ont un toit plat, une entrée vitrée sous auvent et leur enseigne ; les 123 hangars sont bardés avec des portes sectionnelles ; les gymnases ont leur bande translucide et leur nom ; les 330 annexes une porte de garage ; la mairie porte « HÔTEL DE VILLE » et ses drapeaux, la gare son nom et son horloge, La Poste son panneau jaune, les écoles leur nom et le drapeau ; les églises ont des vitraux, un portail, une rosace et leur clocher mesuré au LiDAR (**la flèche de Saint-Lazare se voit de loin**).
+- Devantures : stores rayés, terrasses de café quand le trottoir le permet, croix verte des pharmacies, carotte des tabacs. Stations-service avec auvent, pompes et totem. Terrains de foot verts rayés avec leurs lignes, tennis en terre battue, pistes rouges, tombes dans les cimetières.
+- Aucun appel de dessin de plus ; quelques pour cent de triangles (le plus : un cimetière). 584 tests.
+- À faire de ton côté : te balader (Leclerc, gare, mairie, stade Saint-Roch, cimetière, rue aux commerces) et dire ce qui sonne faux ; vérifier avec `?debug` que les images par seconde ne bougent pas.

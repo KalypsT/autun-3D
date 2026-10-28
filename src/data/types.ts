@@ -170,9 +170,46 @@ export interface StairsZone {
   riser: number;
 }
 
+// --- Types de bâtiments et sites (kinds/<tuile>.json, tools/data/build_kinds.py, D92) ------------------
+
+export type BuildingKindId =
+  | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
+  | "care" | "culture" | "church" | "chapel";
+
+export interface BuildingKind {
+  k: BuildingKindId;
+  /** Texte de l'enseigne ou de l'inscription (bâtiment principal d'un site). */
+  n?: string;
+  /** Couleur du panneau et des lettres de l'enseigne. */
+  c?: string;
+  tc?: string;
+  /** 1 : bâtiment principal de son site (inscription, drapeaux). */
+  main?: 1;
+  /** Clocher : x, y, côté, z du haut de la tour, z de la pointe. */
+  tower?: [number, number, number, number, number];
+}
+
+export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
+
+export type Site =
+  /** Station-service : auvent l × w centré en (x, y), grand côté orienté de `a` radians ; `roof` : bâtiment-auvent existant. */
+  | { t: "fuel"; x: number; y: number; a: number; l: number; w: number; n?: string; c?: string; roof?: string }
+  /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
+  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
+  | { t: "track"; r: number[] }
+  | { t: "cemetery"; r: number[] };
+
+export interface TileKinds {
+  v: number;
+  buildings: Record<string, BuildingKind>;
+  sites: Site[];
+}
+
 export interface TileData {
   /** Emprise locale de la tuile : x0, y0, x1, y1. */
   bounds: [number, number, number, number];
+  /** Types de bâtiments et sites remarquables (absent : aucun). */
+  kinds?: TileKinds;
   /** Sols en vecteurs : couche -> polygones -> anneaux (extérieur puis trous), coordonnées aplaties. */
   ground: Record<string, number[][][]>;
   stairs?: StairsZone[];
