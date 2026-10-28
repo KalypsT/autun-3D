@@ -15,6 +15,8 @@ import type { CrowdRenderer } from "../render/crowd/crowd-types";
 import { followSun, gameSpawn } from "./game";
 import { CATALOG } from "../core/vehicle-catalog";
 import { Fleet } from "./vehicles";
+import { Signals } from "../core/signals";
+import { Traffic } from "./traffic";
 import { showReportPanel } from "./report-panel";
 
 /**
@@ -90,6 +92,8 @@ interface PhaseReport {
   crowd: { n: number; shadows: boolean; near: number; far: number; updateMs: number; sim?: SimReport } | null;
   /** `?fleet=1` : véhicules garés comme dans le jeu (+ un de chaque modèle devant le départ), à la fin de la phase, et coût de leur mise à jour par image ; null sans. */
   fleet: { total: number; drawn: number; meshes: number; avgMs: number; maxMs: number } | null;
+  /** `?traffic=N` : la circulation du jeu pendant le banc (D67), à la fin de la phase : voitures, cible, maillages, coût de simulation et de mise à jour ; null sans. */
+  traffic: { max: number; cars: number; target: number; meshes: number; simAvgMs: number; simMaxMs: number; updateAvgMs: number; updateMaxMs: number; steps: number; contacts: number; honks: number } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -200,6 +204,9 @@ export function startBench(ctx: GameContext): void {
   const simMode = params.get("sim") === "1";
   // ?fleet=1 : les véhicules garés du jeu (voitures instanciées par modèle, deux-roues articulés) et, devant le départ, un exemplaire de chaque modèle du
   // catalogue : le pire cas d'appels de dessin (D56). Sans ce paramètre, le banc ne contient aucun véhicule (comparaison avec les mesures précédentes).
+  // ?traffic=N : la circulation du jeu (J3, D64 et D65) pendant tout le banc : N voitures au plus, qui naissent hors de la vue autour du point suivi, roulent
+  // avec leurs conducteurs, leurs feux et les passants du banc (avec ?sim=1), dessinées par instances ; sans ce paramètre, aucune voiture.
+  const trafficN = Math.min(Math.max(Math.floor(Number(params.get("traffic") ?? 0)) || 0, 0), 60);
   const fleetMode = params.get("fleet") === "1";
   const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
   if (fleet) {
@@ -209,6 +216,7 @@ export function startBench(ctx: GameContext): void {
     CATALOG.forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
   }
   let fleetCost = { ms: 0, max: 0, frames: 0 };
+  let trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
   // ?fast=200 : un trajet de plus à cette vitesse (km/h, 100 à 300), pour voir si les tuiles se construisent à temps (véhicules rapides, D50).
   const fastParam = Math.round(Number(params.get("fast") ?? 0)) || 0;
   const fastKmh = fastParam >= 100 ? Math.min(fastParam, 300) : 0;
@@ -245,6 +253,7 @@ export function startBench(ctx: GameContext): void {
     soak,
     fast: fastKmh,
     fleet: fleetMode,
+    traffic: trafficN,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -291,7 +300,10 @@ export function startBench(ctx: GameContext): void {
   let pigCost = { ms: 0, frames: 0 };
   let simBase = { spawns: 0, despawns: 0 };
   let prefilled = false;
-  const nav = simMode ? new NavManager() : null;
+  const nav = simMode || trafficN > 0 ? new NavManager() : null;
+  const signals = nav && trafficN > 0 ? new Signals(nav.graph.road, { t: 0 }) : null;
+  const traffic = nav && signals ? new Traffic(scene, nav, terrain, ctx.colliders, (x, y) => tiles.solidAt(x, y), trafficN, signals, 11) : null;
+  let trafficAcc = 0;
   if (nav) void nav.init().then(() => nav.preload(spawn.x, spawn.y));
   const groundAt = (x: number, z: number): number => terrain.heightAt(x, -z);
 
@@ -303,6 +315,7 @@ export function startBench(ctx: GameContext): void {
     crowdCost = { ms: 0, frames: 0 };
     simMs = [];
     fleetCost = { ms: 0, max: 0, frames: 0 };
+    trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
@@ -360,6 +373,14 @@ export function startBench(ctx: GameContext): void {
             n: simMode ? crowdN : p.crowd!.n, shadows: p.crowd?.shadows ?? renderer.shadowMap.enabled, near: crowd.lodCounts().near, far: crowd.lodCounts().far,
             updateMs: crowdCost.frames ? crowdCost.ms / crowdCost.frames : 0,
             ...(pedSim ? { sim: simReport(pedSim.stats, simMs, simBase, nav!, { alive: pigSim?.stats.alive ?? 0, ms: pigCost.frames ? pigCost.ms / pigCost.frames : 0 }) } : {}),
+          }
+        : null,
+      traffic: traffic
+        ? {
+            max: trafficN, cars: traffic.cars.length, target: traffic.target, meshes: traffic.models.drawn,
+            simAvgMs: trafficCost.steps ? trafficCost.simMs / trafficCost.steps : 0, simMaxMs: trafficCost.simMax,
+            updateAvgMs: trafficCost.frames ? trafficCost.updMs / trafficCost.frames : 0, updateMaxMs: trafficCost.updMax, steps: trafficCost.steps,
+            contacts: trafficCost.contacts, honks: trafficCost.honks,
           }
         : null,
       fleet: fleet ? { ...fleet.stats, avgMs: fleetCost.frames ? fleetCost.ms / fleetCost.frames : 0, maxMs: fleetCost.max } : null,
@@ -427,6 +448,7 @@ export function startBench(ctx: GameContext): void {
       startPhase();
       if (!phase) {
         crowd?.dispose();
+        traffic?.dispose();
         banner.remove();
         showReport(ctx, { settings, loadMs, phases: reports });
         return;
@@ -448,6 +470,35 @@ export function startBench(ctx: GameContext): void {
       fleetCost.frames++;
     }
     nav?.update(pos.x, pos.y, pos.vx, pos.vy);
+    if (traffic && signals) {
+      // Les voitures jouent à pas fixe (1/60 s, deux au plus par image) comme dans le jeu ; le point suivi est un piéton ou, en roulant, un véhicule sans physique.
+      signals.clock.t += dt;
+      trafficAcc = Math.min(trafficAcc + dt, 2 / 60);
+      // Aux arrêts, le point suivi est un piéton (obstacle) ; en roulant, il est ignoré : le banc mesure la circulation, pas ses réactions à un faux joueur à 90 km/h.
+      const body = phase?.drive ? null : { kind: "foot" as const, x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy };
+      while (trafficAcc >= 1 / 60) {
+        const t0 = performance.now();
+        traffic.step(1 / 60, body);
+        const d = performance.now() - t0;
+        if (measuring) {
+          trafficCost.simMs += d;
+          trafficCost.simMax = Math.max(trafficCost.simMax, d);
+          trafficCost.steps++;
+          trafficCost.contacts += traffic.stats.contacts;
+        }
+        trafficAcc -= 1 / 60;
+      }
+      const u0 = performance.now();
+      traffic.setNight(atmosphere.night);
+      traffic.setPeds(pedSim);
+      traffic.update(dt, { x: pos.x, y: pos.y, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), speed: Math.hypot(pos.vx, pos.vy), hour: atmosphere.hour, vehicle: null });
+      const ud = performance.now() - u0;
+      if (measuring) {
+        trafficCost.updMs += ud;
+        trafficCost.updMax = Math.max(trafficCost.updMax, ud);
+        trafficCost.frames++;
+      }
+    }
     pendingBuild = tiles.sliceMs;
     if (measuring && p.drive) {
       if (!tiles.solidAt(pos.x, pos.y)) late.here++;
@@ -469,7 +520,9 @@ export function startBench(ctx: GameContext): void {
       const obs: Observer = {
         x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), onFoot: !phase?.drive,
         vehicle: phase?.drive ? { x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy } : null,
+        ...(traffic ? { vehicles: traffic.bodies(), honks: traffic.takeHonks() } : {}),
       };
+      if (measuring && obs.honks) trafficCost.honks += obs.honks.length;
       if (!prefilled) {
         pedSim.prefill(obs);
         pigSim?.prefill(obs);
@@ -477,6 +530,7 @@ export function startBench(ctx: GameContext): void {
       }
       const s0 = performance.now();
       pedSim.step(dt, obs);
+      traffic?.applyImpacts();
       const sim = performance.now() - s0;
       const p0 = performance.now();
       if (pigSim && pigView) {
@@ -530,7 +584,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -543,6 +597,10 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
     if (p.late) lines.push(`  Chargement en retard : ${p.late.here} images sur ${p.late.frames} sans obstacles sous le véhicule, ${p.late.ahead} sans obstacles à 1 s devant (objectif : 0)`);
     if (p.fleet) lines.push(`  Véhicules garés : ${p.fleet.total} en tout · ${p.fleet.drawn} dessinés en ${p.fleet.meshes} maillages instanciés (un par modèle présent) · mise à jour ${p.fleet.avgMs.toFixed(2)} ms par image (pire ${p.fleet.maxMs.toFixed(2)} ms)`);
+    if (p.traffic) {
+      const q = p.traffic;
+      lines.push(`  Circulation : ${q.cars} voitures (cible ${q.target}, au plus ${q.max}) · ${q.meshes} maillages instanciés · simulation ${q.simAvgMs.toFixed(3)} ms par pas (pire ${q.simMaxMs.toFixed(2)} ms, ${q.steps} pas) · mise à jour et naissances ${q.updateAvgMs.toFixed(3)} ms par image (pire ${q.updateMaxMs.toFixed(2)} ms) · ${q.contacts} pas avec contact, ${q.honks} coups de klaxon`);
+    }
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
     if (p.crowd?.sim) {
