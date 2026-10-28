@@ -32,6 +32,8 @@ export const OFFICER = {
   reaction: 0.6,
   fireEvery: 1.2,
   damage: 12,
+  /** Au plus … gendarmes tirent en même temps (les plus proches du joueur) : les autres visent et couvrent (sans cela six gendarmes tuent en deux secondes). */
+  maxShooters: 3,
   /** Un gendarme mort reste au sol (s) puis disparaît. */
   corpseLife: 40,
 } as const;
@@ -101,6 +103,9 @@ export class Officers {
   /** Tirs partis à ce pas (le rendu les lit puis les efface avec `clearShots`), points de vie retirés au joueur depuis le dernier `takeDamage`, gendarmes tués (position) depuis `takeDeaths`. */
   readonly shots: OfficerShot[] = [];
   private damage = 0;
+  /** Distances des gendarmes qui courent (tri pour le plafond de tireurs) et distance du dernier des tireurs autorisés à ce pas. */
+  private readonly ranks: number[] = [];
+  private fireLimit = Infinity;
   private readonly deaths: { x: number; y: number }[] = [];
   private killed = 0;
   private readonly res: Resolution = { x: 0, y: 0, nx: 0, ny: 0, hit: false };
@@ -229,6 +234,15 @@ export class Officers {
     const veh = p.vehicle;
     const vspeed = veh ? Math.hypot(veh.state.vx, veh.state.vy) : Math.hypot(p.vx, p.vy);
     let touching = false;
+    // Armés : seuls les `maxShooters` plus proches tirent (les autres visent et attendent leur tour).
+    if (armed) {
+      const ds = this.ranks;
+      ds.length = 0;
+      for (const q of this.list) if (q.mode === "run") ds.push(Math.hypot(p.x - q.x, p.y - q.y));
+      ds.sort((a, b) => a - b);
+      this.fireLimit = ds.length > OFFICER.maxShooters ? ds[OFFICER.maxShooters - 1]! : Infinity;
+    }
+
     for (let i = this.list.length - 1; i >= 0; i--) {
       const o = this.list[i]!;
       if (o.mode === "dead") {
@@ -279,7 +293,7 @@ export class Officers {
           o.aiming = true;
           o.aimT += dt;
           if (dd > OFFICER.holdDistance + 4) speedCap = 2.2;
-          if (o.aimT >= OFFICER.reaction && o.cool <= 0) this.fire(o, p, dd, vspeed, o.speed > 0.5);
+          if (o.aimT >= OFFICER.reaction && o.cool <= 0 && dd <= this.fireLimit) this.fire(o, p, dd, vspeed, o.speed > 0.5);
         } else o.aimT = 0;
       } else o.aimT = 0;
       if (o.mode === "back") {

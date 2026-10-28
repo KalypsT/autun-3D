@@ -242,4 +242,34 @@ describe("gendarmes à pied (J4-5)", () => {
     expect(hitAt(8.3).mode).not.toBe("dead");
     expect(hitAt(15).mode).toBe("dead");
   });
+
+  it("six gendarmes armés : seuls les trois plus proches tirent en même temps (sans cela six tueraient en deux secondes) ; tuer le joueur prend plus de 4 s en moyenne", () => {
+    const o = new Officers(null);
+    const dists = [14, 15, 16, 17, 18, 19];
+    dists.forEach((d, k) => o.spawn(k * 0.5, d, 0, 1, 50 + k));
+    const shooters = new Set<number>();
+    for (let t = 0; t < 12; t += DT) {
+      o.step(DT, onFoot(0, 0), noCar, true);
+      for (const sh of o.shots) {
+        const who = o.list.findIndex((q) => Math.hypot(q.x + Math.sin(q.heading) * 0.55 - sh.x0, q.y + Math.cos(q.heading) * 0.55 - sh.y0) < 0.2);
+        if (who >= 0) shooters.add(who);
+      }
+      o.clearShots();
+    }
+    expect(shooters.size).toBeLessThanOrEqual(3);
+    expect(shooters.size).toBeGreaterThan(0);
+    const times: number[] = [];
+    for (let seed = 1; seed <= 8; seed++) {
+      const g = new Officers(null);
+      dists.forEach((d, k) => g.spawn(k * 0.5, d, 0, 1, seed * 10 + k));
+      let hp = 100, t = 0;
+      for (; t < 60 && hp > 0; t += DT) {
+        g.step(DT, onFoot(0, 0), noCar, true);
+        hp -= g.takeDamage();
+        g.clearShots();
+      }
+      times.push(t);
+    }
+    expect(times.reduce((a, b) => a + b, 0) / times.length).toBeGreaterThan(4);
+  });
 });

@@ -47,6 +47,8 @@ const DEPLOY_REACH = 28;
 /** Les gendarmes remontent quand le joueur roule à plus de … m/s et qu'ils sont à plus de … m de lui. */
 const RECALL_SPEED = 6;
 const RECALL_GAP = 12;
+/** Voitures de poursuite qui tirent en même temps à cinq étoiles (D85). */
+const CAR_SHOOTERS = 2;
 
 /**
  * La police dans le jeu (J4, D74) : elle regarde (ses voitures voient le joueur ou non), constate les infractions (vol, passant renversé,
@@ -180,6 +182,9 @@ export class PoliceController {
    */
   private carFire(dt: number, p: PolicePlayer): void {
     const live = new Set<number>();
+    // Au plus deux voitures tirent en même temps : les plus proches du joueur.
+    let fired = 0;
+    this.cars.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
     for (const c of this.cars) {
       if (!c.chasing) continue;
       live.add(c.id);
@@ -187,10 +192,11 @@ export class PoliceController {
       if (this.officers.countOf(c.id) > 0) continue;
       const cd = (this.carCool.get(c.id) ?? 1.2) - dt;
       const d = Math.hypot(p.x - c.x, p.y - c.y);
-      if (cd > 0 || d > 35 || (this.colliders.raycast(c.x, c.y, p.x, p.y) ?? null) !== null) {
+      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || (this.colliders.raycast(c.x, c.y, p.x, p.y) ?? null) !== null) {
         this.carCool.set(c.id, Math.max(cd, 0));
         continue;
       }
+      fired++;
       this.carCool.set(c.id, 1.5 + 0.5 * ((c.id * 2654435761) % 1000) / 1000);
       // Tirage reproductible par voiture et par instant : pas de hasard global.
       const roll = (((c.id * 7919 + this.seq++ * 104729) * 2654435761) >>> 0) / 4294967296;

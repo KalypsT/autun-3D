@@ -22,6 +22,8 @@ import { OFFICER, Officers } from "../core/officers";
 import { gendarmeRecipe } from "../core/character";
 import { PoliceController } from "./police";
 import { showReportPanel } from "./report-panel";
+import { CombatBot } from "./combat-bot";
+import { Fx } from "../render/fx";
 
 /**
  * Banc de test (?bench=1) : la caméra suit un parcours fixe dans les rues, à vitesse de voiture,
@@ -100,6 +102,8 @@ interface PhaseReport {
   traffic: { max: number; cars: number; target: number; meshes: number; simAvgMs: number; simMaxMs: number; updateAvgMs: number; updateMaxMs: number; steps: number; contacts: number; honks: number } | null;
   /** `?police=1` (J4, D76) : à la fin de la phase, voitures de police, en poursuite, gendarmes à pied ; coût de la police par image (vue, infractions, équipages). */
   police: { cars: number; chasing: number; officers: number; avgMs: number; maxMs: number } | null;
+  /** `?combat=1` (J5-6, D86) : à la fin de la phase, tirs, touchés, tués, cadavres, effets simultanés au plus, tirs de la police ; coût du tireur et des effets par image ; null sans. */
+  combat: { shots: number; hits: number; kills: number; corpses: number; fxPeak: number; fxFrames: number; frames: number; policeShots: number; policeDamage: number; avgMs: number; maxMs: number } | null;
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -216,6 +220,13 @@ export function startBench(ctx: GameContext): void {
   // ?police=1 (J4, D76) : une poursuite à trois étoiles pendant tout le banc : quatre gendarmeries suivent le point suivi, gyrophares allumés, et descendent
   // aux arrêts (gendarmes dessinés dans la foule avec ?sim=1). Aucune arrestation ne termine le banc (les gendarmes remontent et redescendent).
   const policeMode = params.get("police") === "1";
+  // ?combat=1 (J5-6, D86), avec ?sim=1 : un tireur au fusil d'assaut tient le point suivi et tire sans arrêt sur le passant le plus proche (munitions rechargées chaque
+  // minute), les passants s'enfuient et meurent (cadavres plafonnés), les traits et étincelles passent par le maillage instancié des effets ; avec ?police=1 la poursuite
+  // est à cinq étoiles (gendarmes et voitures armés qui tirent sur le point suivi).
+  const combatMode = params.get("combat") === "1" && simMode;
+  const fx = combatMode ? new Fx(scene) : null;
+  let bot: CombatBot | null = null;
+  let combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: 0, hits0: 0, kills0: 0 };
   const fleetMode = params.get("fleet") === "1";
   const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
   if (fleet) {
@@ -266,6 +277,7 @@ export function startBench(ctx: GameContext): void {
     fleet: fleetMode,
     traffic: trafficN,
     police: policeMode,
+    combat: combatMode,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -332,12 +344,14 @@ export function startBench(ctx: GameContext): void {
     fleetCost = { ms: 0, max: 0, frames: 0 };
     trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
     policeCost = { ms: 0, max: 0, frames: 0 };
+    combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: bot?.shots ?? 0, hits0: bot?.hits ?? 0, kills0: bot?.kills ?? 0 };
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
         pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN + (police ? OFFICER.max : 0), reserved: police ? OFFICER.max : 0, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
         crowd = createCrowd(scene, pedSim.state);
         pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
+        if (combatMode) bot = new CombatBot(pedSim, ctx.colliders);
         // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
         pigSim = new PigeonSim(nav!.graph, terrain, ctx.colliders, { capacity: pigeonCapacity(crowdN), seed: 7 });
         pigView = new PigeonRenderer(scene, Math.max(1, pigSim.capacity));
@@ -400,6 +414,13 @@ export function startBench(ctx: GameContext): void {
             });
             return { cars, chasing, officers: police.officers.list.length, avgMs: policeCost.frames ? policeCost.ms / policeCost.frames : 0, maxMs: policeCost.max };
           })()
+        : null,
+      combat: bot && fx
+        ? {
+            shots: bot.shots - combatCost.shots0, hits: bot.hits - combatCost.hits0, kills: bot.kills - combatCost.kills0, corpses: pedSim?.stats.corpses ?? 0, fxPeak: combatCost.fxPeak,
+            fxFrames: combatCost.fxFrames, frames: combatCost.frames, policeShots: combatCost.policeShots, policeDamage: Math.round(combatCost.policeDamage),
+            avgMs: combatCost.frames ? combatCost.ms / combatCost.frames : 0, maxMs: combatCost.max,
+          }
         : null,
       traffic: traffic
         ? {
@@ -475,6 +496,7 @@ export function startBench(ctx: GameContext): void {
       if (!phase) {
         crowd?.dispose();
         traffic?.dispose();
+        fx?.dispose();
         banner.remove();
         showReport(ctx, { settings, loadMs, phases: reports });
         return;
@@ -527,7 +549,7 @@ export function startBench(ctx: GameContext): void {
       if (police) {
         // Trois étoiles tenues pendant tout le banc ; la poursuite vise le point suivi, même en roulant (le banc n'a pas de véhicule).
         const c0 = performance.now();
-        wanted.set(3, pos.x, pos.y);
+        wanted.set(combatMode ? 5 : 3, pos.x, pos.y);
         const yaw = Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]);
         police.update(dt, {
           x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, heading: yaw, speed: Math.hypot(pos.vx, pos.vy), driving: !!phase?.drive, vehicle: null,
@@ -542,7 +564,7 @@ export function startBench(ctx: GameContext): void {
             out[o.slot] = 1;
             const fresh = officerSeeds[o.slot] !== o.seed;
             officerSeeds[o.slot] = o.seed;
-            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.poseT, dt);
+            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.mode === "dead" ? Math.min(o.poseT, 2.2) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT, dt, o.armed && o.mode !== "dead", o.mode === "dead");
           }
           for (let k = 0; k < OFFICER.max; k++) {
             if (out[k] || officerSeeds[k]! < 0) continue;
@@ -599,6 +621,42 @@ export function startBench(ctx: GameContext): void {
       const pig = performance.now() - p0;
       const c0 = performance.now();
       crowd.update(pedSim.state, pos.cam[0], -pos.cam[2]);
+      if (bot && fx) {
+        // Le tireur, les tirs de la police et les effets (un seul maillage) : leur coût est compté ensemble.
+        const k0 = performance.now();
+        const z = terrain.heightAt(pos.x, pos.y) + 1.3;
+        const r = bot.step(dt, pos.x, pos.y);
+        if (r.fired > 0) {
+          fx.flash(r.shots[0]!.x0, r.shots[0]!.y0, z);
+          for (let k = 0; k < r.fxCount; k++) {
+            const sh = r.shots[k]!;
+            fx.tracer(sh.x0, sh.y0, z, sh.x1, sh.y1, z);
+            if (sh.kind > 0) fx.sparks(sh.x1, sh.y1, z - 0.2, sh.kind === 2, Math.random);
+          }
+        }
+        if (police) {
+          const dmg = police.takeDamage();
+          if (measuring) {
+            combatCost.policeDamage += dmg;
+            combatCost.policeShots += police.shots.length;
+          }
+          for (const sh of police.shots) {
+            const z0 = terrain.heightAt(sh.x0, sh.y0) + 1.3;
+            fx.flash(sh.x0, sh.y0, z0);
+            fx.tracer(sh.x0, sh.y0, z0, sh.x1, sh.y1, z0);
+          }
+          police.clearShots();
+        }
+        fx.update(dt, [], t);
+        const kd = performance.now() - k0;
+        if (measuring) {
+          combatCost.ms += kd;
+          combatCost.max = Math.max(combatCost.max, kd);
+          combatCost.frames++;
+          combatCost.fxPeak = Math.max(combatCost.fxPeak, fx.count);
+          if (fx.count > 0) combatCost.fxFrames++;
+        }
+      }
       if (measuring) {
         simMs.push(sim);
         pigCost.ms += pig;
@@ -643,7 +701,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? " · police (3 étoiles)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -663,6 +721,10 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     if (p.police) {
       const q = p.police;
       lines.push(`  Police : ${q.cars} voitures dont ${q.chasing} en poursuite · ${q.officers} gendarmes à pied · ${q.avgMs.toFixed(3)} ms par image (pire ${q.maxMs.toFixed(2)} ms)`);
+    }
+    if (p.combat) {
+      const q = p.combat;
+      lines.push(`  Combat : ${q.shots} tirs, ${q.hits} touchés, ${q.kills} tués dans la phase · ${q.corpses} cadavres à la fin (au plus 8 qui ne s'enfoncent pas) · effets : jusqu'à ${q.fxPeak} instances, présents sur ${q.fxFrames} images de ${q.frames} (chacune coûte +1 appel de dessin) · tireur et effets ${q.avgMs.toFixed(3)} ms par image (pire ${q.maxMs.toFixed(2)} ms)${q.policeShots || q.policeDamage ? ` · police : ${q.policeShots} tirs, ${q.policeDamage} points de dégâts sur le point suivi` : ""}`);
     }
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);
