@@ -425,3 +425,6 @@ Fait :
 **J4-0 (28 octobre 2026) : cadrage de J4 et niveau de recherche** (D70)
 - Cadrage de l'étape J4 : trois étoiles, infractions et témoins, perte de piste, arrestation et reprise au bord est de l'anneau, vol avec conducteur, conducteurs visibles, police de la gendarmerie sans arme à feu, découpage en J4-0 à J4-6.
 - `src/core/wanted.ts` : niveau de recherche (infractions vues par la police ou signalées par un passant après 6 s, zone de recherche, une étoile perdue après 15, 25 ou 40 s hors de vue) ; `src/ui/wanted-hud.ts` : étoiles dans `#wanted` (disques et étoiles pleines, clignotement quand la piste est perdue). `?wanted=N` pour essayer. Tests : 441.
+
+**J4-1 (28 octobre 2026) : vol avec conducteur** (D71)
+- Bouton « Prendre » à côté d'une voiture de la circulation à moins de 3 m/s : elle devient un véhicule de la flotte (même modèle, même couleur, sauvegardée quand on la quitte) ; son conducteur sort côté gauche, trébuche et s'enfuit en courant (`PedSim.eject`), et la police est prévenue (une étoile au bout de 6 s). Tests : 442.

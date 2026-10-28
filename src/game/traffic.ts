@@ -24,6 +24,8 @@ interface TrafficCar {
   variant: number;
   /** Ce que voient les passants de cette voiture (position, vitesse, coque) et ce que le choc d'un passant lui a coûté. */
   body: TrafficBody;
+  /** Graine de la recette du conducteur (J4 : celui qui sort quand le joueur prend la voiture). */
+  driver: number;
   /** Depuis combien de secondes le conducteur est perdu (le joueur la regardait : elle n'a pas pu disparaître). */
   lostFor: number;
 }
@@ -132,11 +134,24 @@ export class Traffic {
     this.sim.playerHorn(x, y, heading);
   }
 
+  /** La voiture de la circulation la plus proche de (x, y) à moins de `maxDist` (J4 : bouton « Monter »), avec sa vitesse (m/s) ; null sinon. */
+  nearest(x: number, y: number, maxDist: number): { def: VehicleDef; distance: number; speed: number } | null {
+    let best: TrafficCar | null = null, bd = maxDist;
+    for (const c of this.cars) {
+      const s = c.sim.state, d = Math.hypot(s.x - x, s.y - y);
+      if (d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    return best ? { def: best.def, distance: bd, speed: Math.hypot(best.sim.state.vx, best.sim.state.vy) } : null;
+  }
+
   /**
    * Prend la voiture la plus proche de (x, y) à moins de `maxDist` hors de la circulation (J4 : vol) : elle disparaît de la simulation et de l'écran,
    * et ce qu'il faut pour en faire un véhicule de la flotte (`Fleet.add` avec le même modèle et la même couleur) est rendu, avec sa vitesse.
    */
-  extract(x: number, y: number, maxDist: number): { model: string; variant: number; x: number; y: number; heading: number; vx: number; vy: number } | null {
+  extract(x: number, y: number, maxDist: number): { model: string; variant: number; driver: number; x: number; y: number; heading: number; vx: number; vy: number; yawRate: number } | null {
     let best = -1, bd = maxDist;
     for (let i = 0; i < this.cars.length; i++) {
       const s = this.cars[i]!.sim.state, d = Math.hypot(s.x - x, s.y - y);
@@ -147,7 +162,7 @@ export class Traffic {
     }
     if (best < 0) return null;
     const c = this.cars[best]!, s = c.sim.state;
-    const out = { model: c.def.id, variant: c.variant, x: s.x, y: s.y, heading: s.heading, vx: s.vx, vy: s.vy };
+    const out = { model: c.def.id, variant: c.variant, driver: c.driver, x: s.x, y: s.y, heading: s.heading, vx: s.vx, vy: s.vy, yawRate: s.yawRate };
     this.remove(best);
     this.render();
     return out;
@@ -254,9 +269,10 @@ export class Traffic {
     const sp = pickSpawn(this.nav.graph, { px: env.x, py: env.y, yaw: env.yaw, speed: env.speed, rnd, taken, solidAt: this.solidAt, colliders: this.colliders, hull: def.spec.hull });
     if (!sp) return false;
     const variant = Math.floor(rnd() * 16);
+    const driver = Math.floor(rnd() * 4294967296);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
     const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
-    this.cars.push({ sim, def, variant, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
+    this.cars.push({ sim, def, variant, driver, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 });
     return true;
   }
 

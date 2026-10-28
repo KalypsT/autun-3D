@@ -110,7 +110,16 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(traffic.extract(1e5, 1e5, 50)).toBeNull();
     expect(traffic.cars.length).toBe(n);
     const target = traffic.cars[0]!.sim.state;
+    const seen = traffic.nearest(target.x, target.y, 5)!;
+    expect(seen.def).toBe(traffic.cars[0]!.def);
+    expect(seen.distance).toBeLessThan(0.01);
+    expect(seen.speed).toBeCloseTo(Math.hypot(target.vx, target.vy), 6);
+    expect(traffic.nearest(1e5, 1e5, 50)).toBeNull();
+    // Chaque voiture a son conducteur (graine de recette), différent d'une voiture à l'autre.
+    expect(new Set(traffic.cars.map((c) => c.driver)).size).toBe(n);
+    const driver = traffic.cars[0]!.driver;
     const got = traffic.extract(target.x, target.y, 5)!;
+    expect(got.driver).toBe(driver);
     expect(got).not.toBeNull();
     expect(CATALOG.some((d) => d.id === got.model && d.family === "car")).toBe(true);
     expect(Number.isInteger(got.variant)).toBe(true);

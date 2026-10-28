@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { recipeFromSeed } from "./character";
 import { pointInRing } from "./collision";
 import { NavGraph } from "./nav-graph";
-import { PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
+import { FLEE_SPEED, FLEE_TIME, PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -393,6 +394,41 @@ describe("entrées pour les autres systèmes", () => {
     expect(sim.state.pose![a]).toBe(0);
     expect(sim.state.pose![b]).toBe(0);
     expect(sim.stats.knocked).toBe(0);
+  });
+
+  it("fait sortir un conducteur (J4) : il apparaît à la portière avec sa recette, trébuche, s'enfuit en courant loin du joueur, puis se calme", () => {
+    const sim = makeSim(graph(), 60, 5);
+    const player = { x: 0, y: -20 };
+    const obs = still(player.x, player.y);
+    sim.prefill(obs);
+    run(sim, 30, obs);
+    // Plein : l'emplacement du plus éloigné est repris.
+    const door = { x: player.x - 1.2, y: player.y + 0.4 };
+    sim.clearEvents();
+    const slot = sim.eject(door.x, door.y, 123456, -1, 0, 1.6, player.x, player.y);
+    expect(slot).toBeGreaterThanOrEqual(0);
+    const r = recipeFromSeed(123456);
+    expect(sim.state.recipes[slot]!.height).toBe(r.height);
+    expect(sim.state.recipes[slot]!.sex).toBe(r.sex);
+    const p = { x: 0, y: 0 };
+    sim.position(slot, p);
+    expect(Math.hypot(p.x - door.x, p.y - door.y)).toBeLessThan(0.01);
+    expect(sim.events.some((e) => e.kind === "startled" && e.slot === slot)).toBe(true);
+    sim.step(STEP, obs);
+    expect(sim.state.pose![slot]).toBe(1);
+    expect(sim.fleeing(slot)).toBe(true);
+    // Après le trébuchement, il court et s'éloigne.
+    let fastest = 0;
+    for (let k = 0; k < 60 * 6; k++) {
+      sim.step(STEP, obs);
+      fastest = Math.max(fastest, sim.state.speed[slot]!);
+    }
+    expect(sim.state.alive![slot]).toBe(1);
+    expect(fastest).toBeGreaterThan(FLEE_SPEED * 0.9);
+    sim.position(slot, p);
+    expect(Math.hypot(p.x - player.x, p.y - player.y)).toBeGreaterThan(10);
+    run(sim, 60 * FLEE_TIME, obs);
+    expect(sim.fleeing(slot)).toBe(false);
   });
 
   it("à l'arrêt au centre, la foule ne se renouvelle pas en boucle (régression : 20 naissances par seconde mesurées sur téléphone)", () => {

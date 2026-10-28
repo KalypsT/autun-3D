@@ -31,6 +31,8 @@ const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
 const SHADOW_HALF = 80;
+/** Vitesse (m/s) sous laquelle on peut prendre une voiture de la circulation avec son conducteur (J4-1). */
+const CARJACK_SPEED = 3;
 /** Caméra de poursuite : inclinaison de repos. */
 const CHASE_PITCH = 0.24;
 
@@ -251,14 +253,40 @@ export function startGame(ctx: GameContext): void {
     controls.mode = "foot";
     document.body.classList.remove("driving", "car");
   };
+  // Vol avec conducteur (J4-1, D71) : une voiture de la circulation lente (feu rouge, file) à portée de la main peut être prise ;
+  // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
+  let stolen = 0;
+  const reachable = (): { fleet: Vehicle | null; traffic: string | null } => {
+    const n = fleet.nearest(player.x, player.y);
+    const near = n && n.distance < familyOf(n.vehicle).reach ? n : null;
+    const t = (traffic as Traffic | null)?.nearest(player.x, player.y, FAMILIES.car.reach);
+    const jack = !!t && t.speed < CARJACK_SPEED && (!near || t.distance < near.distance);
+    return { fleet: jack ? null : (near?.vehicle ?? null), traffic: jack ? t.def.name : null };
+  };
+  const carjack = (): void => {
+    const got = (traffic as Traffic | null)?.extract(player.x, player.y, FAMILIES.car.reach);
+    if (!got) return;
+    const v = fleet.add(got.model, `volee-${Date.now().toString(36)}-${++stolen}`, got.x, got.y, got.heading, got.variant, null);
+    const s = v.state;
+    s.vx = got.vx;
+    s.vy = got.vy;
+    s.yawRate = got.yawRate;
+    s.speed = got.vx * Math.sin(got.heading) + got.vy * Math.cos(got.heading);
+    // Portière du conducteur : à gauche (même côté que la descente du joueur) ; il est tiré vers l'extérieur et s'enfuit loin du joueur.
+    const lx = -Math.cos(got.heading), ly = Math.sin(got.heading), side = FAMILIES.car.dismount;
+    (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
+    wanted.report("carjack", got.x, got.y, "civilian");
+    mount(v);
+  };
   const act = (): void => {
     if (riding) {
       if (Math.abs(riding.state.speed) < 1.2) dismount();
       else leaving = true;
       return;
     }
-    const n = fleet.nearest(player.x, player.y);
-    if (n && n.distance < familyOf(n.vehicle).reach) mount(n.vehicle);
+    const r = reachable();
+    if (r.traffic) carjack();
+    else if (r.fleet) mount(r.fleet);
   };
   actionEl.addEventListener("click", act);
   window.addEventListener("keydown", (e) => {
@@ -295,9 +323,10 @@ export function startGame(ctx: GameContext): void {
   let actionLabel = "";
   const updateHud = (): void => {
     let label = "";
-    const n = riding ? null : fleet.nearest(player.x, player.y);
+    const r = riding ? null : reachable();
     if (riding) label = "Descendre";
-    else if (n && n.distance < familyOf(n.vehicle).reach) label = `Monter ${n.vehicle.def.icon ?? familyOf(n.vehicle).icon} ${n.vehicle.def.name}`;
+    else if (r?.traffic) label = `Prendre 🚗 ${r.traffic}`;
+    else if (r?.fleet) label = `Monter ${r.fleet.def.icon ?? familyOf(r.fleet).icon} ${r.fleet.def.name}`;
     if (label !== actionLabel) {
       actionLabel = label;
       actionEl.textContent = label;
@@ -471,6 +500,7 @@ export function startGame(ctx: GameContext): void {
   requestAnimationFrame(frame);
   ctx.ready({
     player, colliders, fleet, marks, ui, wanted,
+    traffic: () => traffic as Traffic | null,
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

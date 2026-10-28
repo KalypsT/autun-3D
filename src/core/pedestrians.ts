@@ -31,6 +31,10 @@ const BODY = 0.28;
 /** Rayon du joueur à pied (le même que `PLAYER_RADIUS` de `player.ts`). */
 const PLAYER_BODY = 0.35;
 /** Coque d'un véhicule inconnu : un cercle de 0,8 m. */
+/** Vitesse de fuite (m/s) d'un passant paniqué. */
+export const FLEE_SPEED = 3.8;
+/** Durée de la fuite (s) du conducteur dont on prend la voiture. */
+export const FLEE_TIME = 14;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
 export interface PedSimOptions {
@@ -193,6 +197,8 @@ export class PedSim {
   private readonly mode: Uint8Array;
   private readonly timer: Float32Array;
   private readonly fear: Float32Array;
+  /** Fuite (s restantes) : le passant court, effrayé, jusqu'à la fin du compte (conducteur dont on a pris la voiture, J4). */
+  private readonly panic: Float32Array;
   private readonly acc: Float32Array;
   private readonly rng: Uint32Array;
   private readonly id: Uint32Array;
@@ -235,7 +241,7 @@ export class PedSim {
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
     this.ox = new Float32Array(n); this.oy = new Float32Array(n); this.mode = new Uint8Array(n); this.timer = new Float32Array(n);
-    this.fear = new Float32Array(n); this.acc = new Float32Array(n); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
+    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
     this.tier = new Uint8Array(n); this.link = new Int32Array(n).fill(-1);
   }
 
@@ -291,7 +297,10 @@ export class PedSim {
       this.tier[i] = tier;
       if (tier === 0) near++; else if (tier === 1) mid++; else far++;
       nAlive++;
-      if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
+      if (this.panic[i]! > 0) {
+        this.panic[i] = Math.max(0, this.panic[i]! - dt);
+        this.fear[i] = 1;
+      } else if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
       if (this.mode[i]! >= PED_STATE.stumble) {
         this.knockedStep(i, dt);
         knocked++;
@@ -395,12 +404,13 @@ export class PedSim {
     return false;
   }
 
-  private place0(i: number, edge: number, s: number, x: number, y: number): void {
+  private place0(i: number, edge: number, s: number, x: number, y: number, forced: number | null = null): void {
     this.spawned++;
     // Graine : monde, voie, heure de jeu et case de 6 m : la même personne se trouve au même endroit à la même heure (D39). Deux passants vivants
     // n'ont jamais la même graine (deux jumeaux côte à côte se verraient).
     const way = this.graph.edgeWay(edge) % 4294967296;
     let seed = hash32(hash32(this.opt.seed ^ way, Math.floor(this.hour)), hash32(Math.round(x / 6) + 4096, Math.round(y / 6) + 4096));
+    if (forced !== null) seed = forced >>> 0;
     for (let guard = 0; guard < 8 && this.taken(i, seed); guard++) seed = hash32(seed, guard + 1);
     this.rng[i] = seed ^ 0xa511e9b3;
     this.id[i] = seed;
@@ -421,6 +431,7 @@ export class PedSim {
     this.mode[i] = PED_STATE.walk;
     this.timer[i] = 0;
     this.fear[i] = 0;
+    this.panic[i] = 0;
     this.acc[i] = 0;
     this.x[i] = x;
     this.y[i] = y;
@@ -449,6 +460,7 @@ export class PedSim {
     }
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
     let target = this.want[i]! * (1 + 0.6 * this.fear[i]!);
+    if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
     if (this.tiers && tier > 0) {
       this.speed[i] = target;
       return;
@@ -830,6 +842,48 @@ export class PedSim {
       }
     }
     return n;
+  }
+
+  /**
+   * Fait sortir quelqu'un d'une voiture (J4 : le conducteur dont le joueur prend la voiture) : un passant de la recette `seed` apparaît en (x, y),
+   * trébuche (poussé de `push` m/s dans la direction (ux, uy)), puis s'enfuit en courant pendant `FLEE_TIME` s, en s'éloignant de (fromX, fromY).
+   * Un emplacement libre est pris, sinon celui du passant le plus éloigné. Renvoie l'emplacement, ou −1 s'il n'y a pas de file piétonne à 25 m.
+   */
+  eject(x: number, y: number, seed: number, ux: number, uy: number, push: number, fromX: number, fromY: number): number {
+    const alive = this.state.alive!;
+    let slot = -1, far = -1;
+    for (let i = 0; i < this.n; i++) {
+      if (!alive[i]) {
+        slot = i;
+        break;
+      }
+      const d = Math.hypot(this.x[i]! - x, this.y[i]! - y);
+      if (d > far) {
+        far = d;
+        slot = i;
+      }
+    }
+    const hit = slot < 0 ? null : this.graph.nearest(x, y, 25, MASK_WALK);
+    if (!hit) return -1;
+    if (alive[slot]) this.stats.despawns++;
+    this.place0(slot, hit.edge, hit.s, x, y, seed);
+    // Le passant est sur la file la plus proche ; son écart le met à la portière. Il trébuche, puis repart dans la direction opposée au joueur.
+    this.graph.pointAt(hit.edge, hit.s, this.pt);
+    this.jx[slot] = x - this.pt.x;
+    this.jy[slot] = y - this.pt.y;
+    this.x[slot] = x;
+    this.y[slot] = y;
+    this.heading[slot] = Math.atan2(x - fromX, y - fromY);
+    this.knock(slot, HIT_POSE.stumble, ux, uy, push);
+    this.stats.hits--;
+    this.panic[slot] = FLEE_TIME;
+    this.event("startled", slot, push);
+    return slot;
+  }
+
+  /** Le passant de cet emplacement s'enfuit-il encore ? (tests, diagnostic) */
+  fleeing(i: number): boolean {
+    return !!this.state.alive![i] && this.panic[i]! > 0;
   }
 
   /**

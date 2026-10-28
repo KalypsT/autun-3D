@@ -61,6 +61,11 @@ export class PedsController {
     this.sim?.forEachNear(x, y, r, visit);
   }
 
+  /** Fait sortir quelqu'un d'une voiture (J4) : voir `PedSim.eject` ; −1 sans passants ou sans file piétonne proche. */
+  eject(x: number, y: number, seed: number, ux: number, uy: number, push: number, fromX: number, fromY: number): number {
+    return this.sim?.eject(x, y, seed, ux, uy, push, fromX, fromY) ?? -1;
+  }
+
   setCapacity(n: number): void {
     if (n === this.capacity) return;
     this.crowd?.dispose();
