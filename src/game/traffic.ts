@@ -223,6 +223,14 @@ export class Traffic {
     for (const c of this.cars) if (c.police) visit(c.sim.id, c.sim.state.x, c.sim.state.y, c.sim.state.heading, Math.hypot(c.sim.state.vx, c.sim.state.vy), c.sim.chase !== null);
   }
 
+  /** Toutes les voitures pour les sons (J7, D89) : identifiant, position, vitesse, modèle, sirène en marche. */
+  forEachSound(visit: (id: number, x: number, y: number, vx: number, vy: number, speed: number, model: string, siren: boolean) => void): void {
+    for (const c of this.cars) {
+      const s = c.sim.state;
+      visit(c.sim.id, s.x, s.y, s.vx, s.vy, s.speed, c.def.id, c.siren);
+    }
+  }
+
   /** Position de la voiture de police `id`, ou null si elle n'existe plus. */
   policeCar(id: number): { x: number; y: number } | null {
     for (const c of this.cars) if (c.sim.id === id) return c.sim.state;

@@ -105,6 +105,10 @@
       #health.low .hfill { background: #d9472b; }
       #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
+      /* Traits de vitesse (D90) : rayons crème autour du centre, au-delà de 100 km/h ; l'opacité suit la vitesse. */
+      #speedlines { position: fixed; inset: -12%; z-index: 2; pointer-events: none; opacity: 0; display: none;
+                    background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 248, 230, 0) 0deg 2.1deg, rgba(255, 248, 230, .8) 2.3deg 2.6deg, rgba(255, 248, 230, 0) 2.7deg 6.5deg);
+                    -webkit-mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); }
       #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
       #hurt.flash { opacity: 1; transition: none; }
       /* Arme en main (J5) : pastille sombre cerclée de crème, qu'on touche pour passer à l'arme suivante. */
@@ -117,7 +121,7 @@
       body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #speedlines, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
       body.paused #action, body.paused #attack, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
@@ -220,6 +224,7 @@
     <div id="attack" role="button" aria-label="Frapper">👊</div>
     <button id="action"></button>
     <div id="nearby"></div>
+    <div id="speedlines"></div>
     <div id="hurt"></div>
     <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
     <div id="debug"></div>

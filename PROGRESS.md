@@ -481,3 +481,13 @@ Fait :
 **Remesure des contacts de la police sur le téléphone (28 octobre 2026)** (D88)
 - Build `fa120e5`, `traffic=30&police=1` à trois étoiles, sans `&combat=1` : **contacts 9,0 % des pas à 50 km/h, 2,8 % à 90 km/h** (D79 avant correction : 48 % et 4 %) : **l'objectif de D79 est atteint**. Les 15 à 51 % de D87 venaient des cinq étoiles (six poursuivants, gendarmes à pied). Le combat n'ajoute rien de mesurable au dessin (193, 194, 195 appels à l'arrêt avec ou sans). J5 est mesuré et validé.
 
+
+**J7 (28 octobre 2026) : les sons** (D89)
+- Tout est fabriqué par le navigateur, sans fichier. Véhicule conduit : démarreur, moteur avec boîte de vitesses imaginaire (passages de rapport, pétarades des sportives), sifflement de la trottinette, roue libre du vélo, pneus qui roulent et qui crissent, vent, klaxon tenu ou sonnette, portière, chocs. Circulation : moteurs des 4 voitures les plus proches, klaxons, sirène deux-tons des 2 poursuivants les plus proches, avec effet Doppler. Armes, coups, pas, cris des passants, envol des pigeons, **cloches de Saint-Lazare qui sonnent les heures de 7 h à 21 h (volée à midi)**, oiseaux selon l'heure et la saison, chouette la nuit, grillons les nuits d'été, rumeur de la ville, alertes des étoiles. Les sons sont placés (gauche, droite, distance).
+- Rien ne joue avant le premier appui (règle des navigateurs), la pause met le son en veille. Réglage « Volume » dans le menu pause ; `?sound=0` coupe tout. **Page d'écoute `?sounds`** pour juger chaque son au téléphone ; `tools/sounds.sh` les rend hors ligne (51 scènes : aucune muette, saturée ni invalide). 566 tests.
+- À faire de ton côté : écouter (`?sounds`, puis en jouant), dire ce qui sonne faux ; vérifier avec `?debug` que les images par seconde ne bougent pas avec le son.
+
+**Lot rapide (28 octobre 2026) : phares, vibrations, sensation de vitesse** (D90)
+- Ton véhicule allume ses phares et ses feux arrière à la nuit tombée, avec un faisceau peint sur la chaussée devant lui ; feux stop quand tu freines (même de jour), feu de recul. 0 appel de dessin le jour, 3 la nuit.
+- Le téléphone vibre aux chocs, aux tirs, aux coups portés et reçus, à la mort et à l'arrestation ; réglage « Vibrations » dans le menu pause.
+- Sensation de vitesse : le champ de vision s'ouvre progressivement jusqu'à 200 km/h (avant, il plafonnait dès 36 km/h), la caméra frémit à grande vitesse et se secoue aux chocs, des traits de vitesse apparaissent au-delà de 100 km/h.

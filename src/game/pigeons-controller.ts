@@ -33,6 +33,9 @@ export class PigeonsController {
     this.setCapacity(capacity);
   }
 
+  /** Envol d'une volée (position du coin) : le son des ailes (J7). Survit aux changements de capacité. */
+  onScatter: ((x: number, y: number) => void) | null = null;
+
   get capacity(): number {
     return this.sim?.capacity ?? 0;
   }
@@ -49,6 +52,7 @@ export class PigeonsController {
     this.filled = false;
     if (n <= 0) return;
     this.sim = new PigeonSim(this.nav.graph, this.terrain, this.colliders, { capacity: n, seed: this.seed, spawnInView: this.spawnInView });
+    this.sim.onScatter = (x, y) => this.onScatter?.(x, y);
     this.view = new PigeonRenderer(this.scene, n);
   }
 

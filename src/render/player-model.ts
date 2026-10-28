@@ -22,6 +22,8 @@ export interface PlayerModel {
   ride(vehicle: VehicleModel, crank: number): void;
   /** Change d'apparence. */
   setRecipe(recipe: Recipe): void;
+  /** Phase de marche (0 à 2π) : les pas s'entendent aux appuis (J7). */
+  readonly phase: number;
   /**
    * Arme en main (J5) : pièce du kit tenue (null : les poings) et geste ; `style` null : mains nues, bras le long du corps. Le fondu vers la garde
    * suit tout seul.
@@ -74,6 +76,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
 
   return {
     group,
+    get phase() {
+      return phase;
+    },
     update(x, y, z, heading, stride, speed) {
       group.position.set(x, z, -y);
       group.rotation.set(0, -heading, 0);

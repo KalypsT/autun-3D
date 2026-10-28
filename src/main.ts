@@ -100,6 +100,12 @@ window.addEventListener("resize", resize);
 resize();
 
 async function main(): Promise<void> {
+  // ?sounds : page d'écoute des sons (J7) ; chargée à part, elle ne pèse pas sur le jeu.
+  if (params.has("sounds")) {
+    const { startSoundGallery } = await import("./game/sound-gallery");
+    startSoundGallery();
+    return;
+  }
   const world = await loadWorldBase();
   const focus = viewerMode ? viewerView(params) : null;
   const saveStore = new SaveStore();
