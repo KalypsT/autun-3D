@@ -58,6 +58,8 @@ export class Controls {
   private looked = false;
   /** À pied ou en véhicule : change le rôle du doigt de gauche et affiche les pédales. */
   mode: ControlMode = "foot";
+  /** En véhicule : le joystick sert aussi à lever une roue (deux-roues) ; faux en voiture. */
+  lift = true;
   /** Multiplicateur de la rotation de la caméra au doigt et à la souris (réglage de sensibilité). */
   sensitivity = 1;
   private readonly cleanup: (() => void)[] = [];
@@ -131,7 +133,8 @@ export class Controls {
         // Courbe progressive : petits gestes précis au centre, braquage franc en bout de course.
         const t = dx / STEER_RANGE;
         this.stickX = Math.sign(t) * Math.abs(t) ** 1.3;
-        const dy = Math.max(-LIFT_RANGE, Math.min(LIFT_RANGE, e.clientY - this.stick.cy));
+        // En voiture, rien à lever : le bouton du joystick ne bouge qu'à l'horizontale (D104).
+        const dy = this.lift ? Math.max(-LIFT_RANGE, Math.min(LIFT_RANGE, e.clientY - this.stick.cy)) : 0;
         this.stickY = dy / LIFT_RANGE;
         this.knob.style.left = `${this.stick.cx + dx}px`;
         this.knob.style.top = `${this.stick.cy + dy}px`;

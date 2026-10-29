@@ -18,6 +18,12 @@ const PATHS = {
   police: `<path ${STROKE} d="M4 14.5l1.8-4.6A2 2 0 0 1 7.7 8.5h8.6a2 2 0 0 1 1.9 1.4L20 14.5v2.5H4z"/><circle fill="currentColor" cx="7.5" cy="19" r="2.4"/><circle fill="currentColor" cx="16.5" cy="19" r="2.4"/><path fill="currentColor" d="M10 4.5h4v2.5h-4z"/>`,
   moto: `<circle ${STROKE} cx="5" cy="16" r="3.2"/><circle ${STROKE} cx="19" cy="16" r="3.2"/><path ${STROKE} d="M5 16h6.5l3-5H9M13.5 7.5h3L19 16M8 11l3.5 5"/>`,
   scooter: `<circle ${STROKE} cx="5.5" cy="17" r="2.6"/><circle ${STROKE} cx="18.5" cy="17" r="2.6"/><path ${STROKE} d="M8 17h5.5l2.5-10h-2.5M16 7h2.5M4.5 13.5H12"/>`,
+  gas: `<path ${STROKE} stroke-width="2.6" d="M6 12l6-6 6 6M6 18.5l6-6 6 6"/>`,
+  brake: `<rect ${STROKE} stroke-width="2.4" x="3" y="7" width="18" height="10" rx="2.5"/><path ${STROKE} d="M8 10.5v3M12 10.5v3M16 10.5v3"/>`,
+  handbrake: `<path ${STROKE} stroke-width="2.6" d="M12 21V9"/><circle fill="currentColor" cx="12" cy="6.5" r="3.5"/>`,
+  horn: `<path ${STROKE} d="M3 10v4h3l8 4V6l-8 4z"/><path ${STROKE} d="M17.5 9a4 4 0 0 1 0 6M20 7a7 7 0 0 1 0 10"/>`,
+  bell: `<path ${STROKE} d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path ${STROKE} d="M10 20.5a2 2 0 0 0 4 0"/>`,
+  exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
   reload: `<path ${STROKE} stroke-width="2.4" d="M20 12a8 8 0 1 1-2.3-5.7"/><path ${STROKE} stroke-width="2.4" d="M20 4v4h-4"/>`,
 } as const;
 

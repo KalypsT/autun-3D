@@ -267,6 +267,11 @@ export function startGame(ctx: GameContext): void {
   const actionEl = document.getElementById("action") as HTMLButtonElement;
   const gasEl = document.getElementById("gas")!;
   const hornEl = document.getElementById("horn")!;
+  // Pédales (D104) : pictogramme et mot ; le mot de l'accélérateur suit la famille du véhicule (Pédaler, Accélérer).
+  gasEl.innerHTML = `${icon("gas")}<span></span>`;
+  const gasLabel = gasEl.querySelector("span")!;
+  document.getElementById("brake")!.innerHTML = `${icon("brake")}<span>Frein</span>`;
+  document.getElementById("handbrake")!.innerHTML = `${icon("handbrake")}<span>Frein<br>à main</span>`;
   const speedo = new Speedo(document.getElementById("speedo")!);
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
@@ -312,8 +317,13 @@ export function startGame(ctx: GameContext): void {
     rideModel.group.add(lights.group);
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
-    gasEl.textContent = familyOf(v).gas;
-    hornEl.textContent = familyOf(v).horn;
+    controls.lift = v.family !== "car";
+    gasLabel.textContent = familyOf(v).gas;
+    gasEl.setAttribute("aria-label", familyOf(v).gas);
+    // Klaxon ou sonnette : un bouton rond avec son pictogramme, le mot dans son libellé.
+    hornEl.innerHTML = icon(familyOf(v).horn === "Sonnette" ? "bell" : "horn");
+    hornEl.setAttribute("aria-label", familyOf(v).horn);
+    hornEl.title = familyOf(v).horn;
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
@@ -493,7 +503,7 @@ export function startGame(ctx: GameContext): void {
     const r = riding ? null : reachable();
     const pk = riding ? null : pickups.nearest(player.x, player.y, PICKUP_REACH);
     if (pk && pickups.canTake(pk, inventory)) [verb, what, ico] = ["Ramasser", WEAPONS[pk.weapon].name, weaponIcon(pk.weapon)];
-    else if (riding) verb = "Descendre";
+    else if (riding) [verb, ico] = ["Descendre", icon("exit")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
     const label = what ? `${verb} : ${what}` : verb;

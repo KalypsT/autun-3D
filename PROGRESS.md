@@ -571,3 +571,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pictogrammes dessinés au lieu des emoji (armes, véhicules). 621 tests.
 - À faire de ton côté : marcher jusqu'à un vélo ou une voiture, ramasser une arme, recharger au bouton ; dire si le bouton d'action tombe bien sous le pouce. Ensuite : étape 3 (véhicules : pédales, « Descendre » en haut à droite, compteur près de la minimap).
 
+**Interface en jeu, étape 3 : en véhicule (29 octobre 2026)** (D104)
+- Le compteur est un petit cadran collé à la minimap : il ne cache plus ton véhicule. La distance de roue arrière s'affiche juste en dessous.
+- « Descendre » passe en haut à droite, en petit : plus de descente par erreur en accélérant.
+- Pédales redessinées : accélérateur haut, frein large rouge, frein à main au-dessus du frein (voiture), klaxon ou sonnette en bouton rond.
+- En voiture, le bouton du joystick ne bouge plus qu'à gauche et à droite. 621 tests.
+- À faire de ton côté : rouler en voiture et à vélo, dire si le compteur se lit d'un coup d'œil et si la taille des pédales convient.
+

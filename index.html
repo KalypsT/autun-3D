@@ -10,7 +10,7 @@
       :root { --ink: #1b1f27; --cream: #fff8e6; --brick: #d9472b; --ochre: #f1b24a; --panel: rgba(27, 31, 39, .72); --lift: 0 3px 0 rgba(27, 31, 39, .45); }
       html, body { margin: 0; height: 100%; background: #1b1f27; overflow: hidden; touch-action: none; overscroll-behavior: none; }
       canvas { display: block; width: 100%; height: 100%; }
-      #debug { position: fixed; top: 192px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
+      #debug { position: fixed; top: 204px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
                background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
       #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
       #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
@@ -22,21 +22,33 @@
               text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
       body.game #hint { animation: hint 9s ease-out 0.5s both; }
       @keyframes hint { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
-      #pedals { position: fixed; right: 14px; bottom: 16px; display: none; gap: 12px; align-items: flex-end; z-index: 4; }
-      body.game.driving #pedals { display: flex; }
-      .pedal { touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-items: center; color: var(--cream); box-sizing: border-box;
-               font: 800 14px system-ui, sans-serif; border-radius: 20px; border: 2.5px solid var(--cream); background: var(--panel); box-shadow: var(--lift); }
-      #brake { width: 92px; height: 92px; background: rgba(217, 71, 43, .78); }
-      #horn { width: 78px; height: 64px; font-size: 12px; text-align: center; }
-      #handbrake { width: 78px; height: 64px; font-size: 12px; text-align: center; display: none; }
-      body.car #handbrake { display: grid; }
-      #gas { width: 104px; height: 150px; box-shadow: var(--lift), inset 0 -56px 0 rgba(241, 178, 74, .28); }
+      /* Pédales (D104), sous le pouce droit : accélérateur haut et étroit (ocre en bas), frein large (rouge brique), frein à main au-dessus
+         du frein (voiture seulement), klaxon ou sonnette en bouton rond à gauche. Chacune : pictogramme et mot (le klaxon : pictogramme seul). */
+      #pedals { position: fixed; right: 0; bottom: 0; width: 310px; height: 190px; display: none; z-index: 4; pointer-events: none; }
+      body.game.driving #pedals { display: block; }
+      .pedal { position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; display: flex; flex-direction: column; align-items: center;
+               justify-content: center; gap: 5px; color: var(--cream); box-sizing: border-box; text-align: center;
+               font: 800 14px/1.05 system-ui, sans-serif; border-radius: 22px; border: 2.5px solid var(--cream); background: var(--panel); box-shadow: var(--lift); }
+      #gas { right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 98px; height: 156px; box-shadow: var(--lift), inset 0 -60px 0 rgba(241, 178, 74, .28); }
+      #gas .ico { font-size: 34px; color: var(--ochre); }
+      #brake { right: calc(max(14px, env(safe-area-inset-right)) + 110px); bottom: 16px; width: 100px; height: 96px; background: rgba(217, 71, 43, .78); }
+      #brake .ico { font-size: 28px; }
+      #handbrake { right: calc(max(14px, env(safe-area-inset-right)) + 110px); bottom: 122px; width: 100px; height: 48px; flex-direction: row; gap: 6px; border-radius: 16px;
+                   font-size: 12px; text-align: left; display: none; }
+      #handbrake .ico { font-size: 22px; color: var(--ochre); }
+      body.car #handbrake { display: flex; }
+      #horn { right: calc(max(14px, env(safe-area-inset-right)) + 222px); bottom: 26px; width: 58px; height: 58px; border-radius: 50%; border-width: 2px; }
+      #horn .ico { font-size: 26px; }
       .pedal.on { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); filter: brightness(1.35); }
       .ico { display: block; width: 1em; height: 1em; }
       /* Bouton d'action : en véhicule (« Descendre »), une pastille au-dessus des pédales. */
       #action { position: fixed; right: 14px; bottom: 186px; z-index: 4; display: none; padding: 12px 18px; border-radius: 14px;
                 border: 2px solid var(--cream); background: rgba(217, 71, 43, .9); color: var(--cream); font: 800 16px system-ui, sans-serif; box-shadow: var(--lift); }
       body.game #action.show { display: block; }
+      /* En véhicule (D104), « Descendre » est une petite pastille en haut à droite, loin des pédales. */
+      body.game.driving #action.show { top: 8px; bottom: auto; right: max(10px, env(safe-area-inset-right)); height: 46px; padding: 0 16px 0 12px; border-radius: 23px; border-width: 1.5px;
+                background: var(--panel); display: flex; align-items: center; gap: 6px; font: 700 13px system-ui, sans-serif; }
+      body.game.driving #action .ico { font-size: 20px; }
       /* À pied (D103), le groupe du pouce droit : gros bouton rond d'attaque, bouton d'action rond à sa gauche (Monter, Prendre, Ramasser : pictogramme
          et verbe), petit bouton de rechargement au-dessus quand une arme à feu est en main. */
       body.game:not(.driving) #action.show { right: 134px; bottom: 42px; width: 78px; height: 78px; padding: 0; border-radius: 50%; background: var(--panel);
@@ -60,20 +72,23 @@
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
       body.game #credits { display: none; }
 
-      /* Compteur de vitesse : en bas au centre, seulement au volant ; entre le joystick (gauche) et les pédales (droite). */
-      #speedo { position: fixed; left: 50%; bottom: 28px; width: 112px; height: 94px; transform: translateX(-50%); z-index: 3; display: none; pointer-events: none; }
+      /* Compteur (D104) : petit cadran accolé en bas à droite de la minimap (en bas au centre, il cachait le véhicule) ; l'heure se décale à gauche. */
+      #speedo { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 100px); top: 96px; width: 72px; height: 72px; z-index: 5; display: none; pointer-events: none; }
       body.game.driving #speedo { display: block; }
       body.driving #hint { display: none; }
+      body.driving #clock { left: calc(max(10px, env(safe-area-inset-left)) + 24px); }
       #speedo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-      #speedo .disc { fill: rgba(27, 31, 39, .7); stroke: var(--cream); stroke-width: 1.5; }
-      #speedo .track, #speedo #speedo-arc { fill: none; stroke-width: 9; stroke-linecap: butt; }
+      #speedo .disc { fill: var(--ink); stroke: var(--cream); stroke-width: 2; }
+      #speedo .track, #speedo #speedo-arc { fill: none; stroke-width: 5; stroke-linecap: butt; }
       #speedo .track { stroke: rgba(255, 248, 230, .22); }
-      #speedo #speedo-arc { stroke: #f1b24a; stroke-dasharray: 0 100; }
-      #speedo #speedo-arc.red { stroke: #d9472b; }
-      #speedo-value { position: absolute; left: 0; right: 0; top: 30px; text-align: center; color: #fff8e6; font: 800 34px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 rgba(27, 31, 39, .8); }
-      #stunt { position: fixed; left: 50%; bottom: 132px; transform: translateX(-50%); z-index: 3; pointer-events: none; padding: 4px 12px; border-radius: 14px; background: rgba(27, 31, 39, .55); color: #f1b24a; font: 800 17px/1.2 system-ui, sans-serif; white-space: nowrap; text-shadow: 0 2px 0 rgba(27, 31, 39, .8); }
+      #speedo #speedo-arc { stroke: var(--ochre); stroke-dasharray: 0 100; }
+      #speedo #speedo-arc.red { stroke: var(--brick); }
+      #speedo-value { position: absolute; left: 0; right: 0; top: 22px; text-align: center; color: var(--cream); font: 800 22px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+      #speedo-unit { position: absolute; left: 0; right: 0; top: 46px; text-align: center; color: var(--ochre); font: 700 9px/1 system-ui, sans-serif; letter-spacing: .05em; }
+      /* Figure en cours (roue arrière, roue avant) : sous la minimap. */
+      #stunt { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 8px); top: 174px; z-index: 4; pointer-events: none; padding: 4px 10px; border-radius: 12px;
+               background: rgba(27, 31, 39, .78); border: 1.5px solid var(--ochre); color: var(--ochre); font: 800 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
       #stunt:empty { display: none; }
-      #speedo-unit { position: absolute; left: 0; right: 0; top: 66px; text-align: center; color: #f1b24a; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .06em; }
       [hidden] { display: none !important; }
       /* Interface en jeu (D102) : minimap et horloge en haut à gauche (un appui sur la minimap ouvre la carte, qui est l'écran de pause),
          bandeau santé / arme / recherche en haut au centre. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */
@@ -233,9 +248,9 @@
     <div id="clock" aria-label="Heure du jeu">--:--</div>
     <div id="status"><div id="health" class="slot" data-name="santé"></div><div id="weapon" class="slot" data-name="arme"></div><div id="wanted" class="slot" data-name="recherche"></div></div>
     <div id="hint">Pouce gauche : marcher (à fond : courir) · glisser à droite : regarder · toucher la minimap : carte et pause</div>
-    <div id="pedals"><div id="horn" class="pedal">Klaxon</div><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
+    <div id="pedals"><div id="horn" class="pedal" role="button" aria-label="Klaxon"></div><div id="handbrake" class="pedal" role="button" aria-label="Frein à main"></div><div id="brake" class="pedal" role="button" aria-label="Frein"></div><div id="gas" class="pedal" role="button" aria-label="Accélérer"></div></div>
     <div id="stunt" aria-live="polite"></div>
-    <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
+    <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="reticle"></div>
     <div id="attack" role="button" aria-label="Frapper"></div>
     <button id="reload" title="Recharger" aria-label="Recharger"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4"/></svg></button>
