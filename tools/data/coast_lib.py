@@ -42,9 +42,10 @@ def _tile_box(col, row, pad=0.0):
     return box(x0 - pad, y0 - pad, x1 + pad, y1 + pad)
 
 
-def _noise(s):
-    """Bruit doux et déterministe le long du contour (s : abscisse en m), entre -1 et 1."""
-    return (0.55 * math.sin(s / 173.0 + 0.7) + 0.3 * math.sin(s / 61.0 + 2.1) + 0.15 * math.sin(s / 29.0 + 4.4))
+def _noise(x, y):
+    """Bruit doux et déterministe, entre -1 et 1, fonction de la position seule : agrandir la ville à un endroit ne déplace pas la côte
+    ailleurs (avec un bruit le long du contour, ajouter trois tuiles avait décalé toute la côte, D105)."""
+    return 0.4 * math.sin(x / 181.0 + 0.7) + 0.35 * math.sin(y / 157.0 + 2.1) + 0.25 * math.sin((x - y) / 59.0 + 4.4)
 
 
 @lru_cache(maxsize=1)
@@ -61,7 +62,7 @@ def land():
         p, q = ring.interpolate(s), ring.interpolate((s + 4.0) % ring.length)
         tx, ty = q.x - p.x, q.y - p.y
         L = math.hypot(tx, ty) or 1.0
-        d = WOBBLE * _noise(s)
+        d = WOBBLE * _noise(p.x, p.y)
         pts.append((p.x + ty / L * d, p.y - tx / L * d))  # normale extérieure d'un anneau parcouru dans le sens trigonométrique
     shape = Polygon(pts)
     if not shape.is_valid:
