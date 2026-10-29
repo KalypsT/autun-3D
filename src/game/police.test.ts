@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { loadRealNav, loadRealWorld } from "../core/testing";
 import { Signals } from "../core/signals";
 import { buildColliders } from "../core/world";
+import { GENDARMERIE } from "../core/police";
+import { waterDepth } from "../core/shore";
 import { Wanted } from "../core/wanted";
 import { NavManager } from "./nav-manager";
 import { ARREST_SPAWN, PoliceController, type PolicePlayer } from "./police";
@@ -189,6 +191,9 @@ describe("police dans le jeu (J4-4)", () => {
     expect(ARREST_SPAWN.y).toBeGreaterThan(t.yMin + 30);
     expect(ARREST_SPAWN.y).toBeLessThan(t.yMax - 30);
     expect(colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, 0.35).hit).toBe(false);
+    // Devant la gendarmerie (D105), et pas dans l'eau.
+    expect(Math.hypot(ARREST_SPAWN.x - GENDARMERIE.x, ARREST_SPAWN.y - GENDARMERIE.y)).toBeLessThan(60);
+    expect(waterDepth(t, ARREST_SPAWN.x, ARREST_SPAWN.y)).toBe(0);
     traffic.dispose();
   }, 120000);
 });
