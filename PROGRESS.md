@@ -526,3 +526,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les clôtures ne bordent plus que les rues : 55 km au lieu de 68. Plus de grille à travers les prés ni dans l'enceinte du stade Saint-Roch, ni sur les rives ; des haies face aux champs et aux bois ; des portillons plus fréquents.
 - L'Acaron et les autres ruisseaux ont leur lit et leurs berges enherbées : plus de « chemin entre deux grilles ».
 - À regarder : le ruban d'eau des ruisseaux, encore tacheté par endroits. 595 tests.
+
+**Conduite des voitures (29 octobre 2026)** (D97)
+- On tourne à haute vitesse : environ 0,95 g à 90, 130 et 170 km/h, au lieu de 0,66, 0,43 et 0,30 g pour la citadine. La voiture sous-vire un peu à la limite au lieu de partir de l'arrière.
+- Dérapages dosés : frein à main, ou freinage fort en braquant, pour faire partir l'arrière ; on tient la glisse à l'accélérateur et au contre-braquage, avec une aide qui tourne les roues dans la glisse ; une stabilisation empêche le tête-à-queue (sauf frein à main tenu).
+- La sportive ne part plus en tête-à-queue (80° avant) : antipatinage en virage ; plein braquage et plein gaz, elle glisse d'environ 23° et se remet droite quand on relâche.
+- L'accélérateur monte en 0,35 s au lieu d'un coup. Caractère par voiture : camionnette très stable, vieille voiture sans aucune aide. 603 tests.
+- À faire de ton côté : rouler vite sur les grands axes, essayer le frein à main dans un carrefour, la sportive en sortie de virage ; dire si tu veux plus d'arcade (aide au contre-braquage, angle de glisse) ou plus de simulation.

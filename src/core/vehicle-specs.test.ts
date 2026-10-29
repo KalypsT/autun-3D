@@ -141,24 +141,36 @@ describe("deux-roues du catalogue : performances", () => {
 });
 
 describe("véhicules du catalogue : tenue de route à la vitesse maximale", () => {
-  it.each(CATALOG.map((d) => d.id))("%s : plein braquage puis relâché à la vitesse maximale, sans tête-à-queue, accélération latérale bornée", (id) => {
+  it.each(CATALOG.map((d) => d.id))("%s : plein braquage puis relâché à la vitesse maximale, sans tête-à-queue ni glisse, accélération latérale bornée", (id) => {
     const spec = vehicleDef(id)!.spec;
     const s = fullThrottle(spec).state;
     s.x = 0; s.y = -90; s.heading = 0;
     s.vx = 0; s.vy = s.speed;
-    let maxLat = 0;
-    const lateral = (): void => { maxLat = Math.max(maxLat, Math.abs(s.speed * s.yawRate) / GRAVITY); };
+    let maxLat = 0, maxBeta = 0;
+    // Accélération latérale de la trajectoire (rotation de la vitesse, pas de la caisse, qui tourne un peu plus vite à l'entrée du virage) et dérive.
+    const step = (steer: number): void => {
+      const before = Math.atan2(s.vx, s.vy);
+      stepVehicle(s, spec, { throttle: 1, brake: 0, steer }, DT, flat, none);
+      // Terrain d'essai de 200 m : on ramène la voiture vers le centre sans toucher à sa vitesse.
+      if (Math.abs(s.x) > 80) s.x -= Math.sign(s.x) * 160;
+      if (Math.abs(s.y) > 80) s.y -= Math.sign(s.y) * 160;
+      const dir = Math.atan2(s.vx, s.vy);
+      maxLat = Math.max(maxLat, (Math.abs(Math.atan2(Math.sin(dir - before), Math.cos(dir - before))) / DT) * Math.hypot(s.vx, s.vy) / GRAVITY);
+      maxBeta = Math.max(maxBeta, Math.abs(Math.atan2(Math.sin(dir - s.heading), Math.cos(dir - s.heading))));
+    };
     // Plein braquage 1 s, à fond sur l'accélérateur.
-    for (let i = 0; i < 60; i++) { stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 1 }, DT, flat, none); lateral(); }
+    for (let i = 0; i < 60; i++) step(1);
     const turned = Math.abs(s.heading);
     // Relâché : la voiture se remet droite (le cap ne varie plus).
-    for (let i = 0; i < 4 * 60; i++) { stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, flat, none); lateral(); }
+    for (let i = 0; i < 4 * 60; i++) step(0);
     expect(Number.isFinite(s.x + s.y + s.heading)).toBe(true);
     // Un deux-roues à 210 km/h tourne encore de 0,03 rad/s (rayon de 1,7 km) quatre secondes après : il est droit pour le joueur.
     expect(Math.abs(s.yawRate)).toBeLessThan(0.05);
     expect(Math.abs(s.vx * Math.cos(s.heading) - s.vy * Math.sin(s.heading))).toBeLessThan(1.5);
     // Pas plus que l'adhérence permise (avec la marge de braquage de la fiche) et un cap qui a peu changé (< 40°).
     expect(maxLat).toBeLessThan(spec.steerGrip * spec.grip * 1.2);
+    // Voiture : le volant à fond à pleine vitesse ne fait pas décrocher l'arrière (D97).
+    expect(maxBeta).toBeLessThan(0.2);
     // À haute vitesse seulement : un vélo à fond braque, lui, beaucoup en une seconde.
     if (spec.topSpeed > 30) expect(turned).toBeLessThan(0.7);
   });

@@ -3,7 +3,8 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { BIKE, CAR, collisionSteps, createVehicle, MOTO, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { OLD_CAR, SPORT_CAR, VAN } from "./vehicle-specs";
+import { BIKE, CAR, collisionSteps, createVehicle, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -257,16 +258,20 @@ describe("voiture", () => {
     expect(c.speed).toBeGreaterThan(11);
   });
 
-  it("braquage à fond à 50 km/h : l'arrière glisse peu à peu, et la voiture se remet droite quand on relâche", () => {
+  it("braquage à fond à 50 km/h : la voiture tourne à la limite de l'adhérence sans que l'arrière décroche, et se remet droite quand on relâche", () => {
     const t = wide();
     const c = createVehicle(0, 0, 0, t);
     c.vy = 50 / 3.6;
     const beta = (): number => Math.atan2(c.vx * Math.cos(c.heading) - c.vy * Math.sin(c.heading), Math.abs(c.speed));
-    drive(c, { throttle: 0.3, brake: 0, steer: 1 }, 2.5, t, none, CAR);
+    let maxBeta = 0;
+    for (let i = 0; i < 150; i++) {
+      stepVehicle(c, CAR, { throttle: 0.3, brake: 0, steer: 1 }, DT, t, none);
+      maxBeta = Math.max(maxBeta, Math.abs(beta()));
+    }
     expect(c.heading).toBeGreaterThan(1);
-    // Dérapage : l'arrière sort (dérive vers l'intérieur du virage), sans tête-à-queue.
-    expect(beta()).toBeLessThan(-0.05);
-    expect(beta()).toBeGreaterThan(-0.4);
+    // Un peu plus d'adhérence à l'arrière (D97) : la voiture sous-vire à la limite, pas de dérapage de l'arrière.
+    expect(maxBeta).toBeLessThan(0.1);
+    expect(Math.abs(c.speed * c.yawRate)).toBeGreaterThan(0.8 * 9.81);
     expect(Math.abs(c.speed * c.yawRate)).toBeLessThan(1.1 * 9.81);
     // La caisse penche vers l'extérieur (gauche) d'un virage à droite.
     expect(c.lean).toBeLessThan(0);
@@ -397,5 +402,140 @@ describe("vitesse élevée et obstacles fins (D50)", () => {
     expect(collisionSteps(MOTO, 250 / 3.6, DT)).toBeGreaterThanOrEqual(4);
     expect(250 / 3.6 * DT / collisionSteps(MOTO, 250 / 3.6, DT)).toBeLessThan(0.32);
     expect(collisionSteps(MOTO, 1e6, DT)).toBe(12);
+  });
+});
+
+describe("conduite des voitures : simulation avec un fond d'arcade (D97)", () => {
+  const big = (): Terrain => {
+    const meta = { cols: 800, rows: 800, res: 5, x0: -2000, y0: -2000, y1: 2000, base: 0, unit: 0.01, zmin: 0, zmax: 0 } as TerrainMeta;
+    return new Terrain(meta, new Float32Array(800 * 800));
+  };
+  /** Dérive de la caisse (rad) : angle entre la vitesse et l'axe de la voiture. */
+  const beta = (c: VehicleState): number => {
+    const b = Math.atan2(c.vx, c.vy) - c.heading;
+    return Math.atan2(Math.sin(b), Math.cos(b));
+  };
+  /** Accélération latérale moyenne de la trajectoire (en g) en braquant à fond à `kmh`, après 2 s. */
+  function cornering(spec: VehicleSpec, kmh: number): { g: number; beta: number } {
+    const t = big();
+    const c = createVehicle(0, 0, 0, t);
+    c.vy = kmh / 3.6;
+    let sum = 0, n = 0, maxBeta = 0;
+    for (let i = 0; i < 240; i++) {
+      const before = Math.atan2(c.vx, c.vy);
+      stepVehicle(c, spec, { throttle: 0.35, brake: 0, steer: 1 }, DT, t, none);
+      const turn = Math.atan2(c.vx, c.vy) - before;
+      if (i >= 120) { sum += (Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn))) / DT) * Math.hypot(c.vx, c.vy); n++; }
+      maxBeta = Math.max(maxBeta, Math.abs(beta(c)));
+    }
+    return { g: sum / n / 9.81, beta: maxBeta };
+  }
+
+  it("à haute vitesse, le volant permet encore de prendre presque toute l'adhérence, sans faire décrocher l'arrière", () => {
+    // Avant D97, la citadine ne prenait que 0,66 g à 90 km/h et 0,43 g à 130 : le braquage ignorait la dérive des pneus avant.
+    for (const kmh of [90, 130, 170]) {
+      const r = cornering(CAR, kmh);
+      expect(r.g).toBeGreaterThan(0.85);
+      expect(r.g).toBeLessThan(1.05);
+      expect(r.beta).toBeLessThan(0.12);
+    }
+    expect(steerLimit(CAR, 130 / 3.6)).toBeGreaterThan(2 * (CAR.steerGrip * CAR.grip * 9.81 * 2.6) / (130 / 3.6) ** 2);
+  });
+
+  it("la sportive à fond en virage : antipatinage, l'arrière ne décroche que plein braquage, en glisse tenue sans tête-à-queue", () => {
+    const run = (steer: number): { max: number; end: number; straight: number } => {
+      const t = big();
+      const c = createVehicle(0, 0, 0, t);
+      c.vy = 50 / 3.6;
+      for (let i = 0; i < 90; i++) stepVehicle(c, SPORT_CAR, { throttle: 0.2, brake: 0, steer: 0.6 }, DT, t, none);
+      let max = 0;
+      for (let i = 0; i < 180; i++) {
+        stepVehicle(c, SPORT_CAR, { throttle: 1, brake: 0, steer }, DT, t, none);
+        max = Math.max(max, Math.abs(beta(c)));
+      }
+      const end = Math.abs(beta(c));
+      drive(c, { throttle: 0.3, brake: 0, steer: 0 }, 2, t, none, SPORT_CAR);
+      return { max, end, straight: Math.abs(beta(c)) };
+    };
+    // Avant D97 : 80° de dérive en 2 s, tête-à-queue.
+    const half = run(0.6);
+    expect(half.max).toBeLessThan(0.1);
+    const full = run(1);
+    expect(full.max).toBeGreaterThan(0.2);
+    expect(full.max).toBeLessThan(SPORT_CAR.maxDrift);
+    expect(full.end).toBeGreaterThan(0.15);
+    expect(full.straight).toBeLessThan(0.05);
+  });
+
+  it("à fond au démarrage en ligne droite, l'antipatinage laisse toute la motricité", () => {
+    const t = big();
+    const c = createVehicle(0, 0, 0, t);
+    stepVehicle(c, SPORT_CAR, { throttle: 1, brake: 0, steer: 0 }, DT, t, none);
+    const L = SPORT_CAR.front + SPORT_CAR.rear;
+    expect(c.speed / DT).toBeGreaterThan(0.9 * (SPORT_CAR.grip * SPORT_CAR.rearGrip * 9.81 * SPORT_CAR.front) / L);
+  });
+
+  it("coup de frein à main à 60 km/h : l'arrière part franchement, et la voiture se rattrape seule en moins de 2 s, volant lâché (aide au contre-braquage)", () => {
+    const t = big();
+    const c = createVehicle(0, 0, 0, t);
+    c.vy = 60 / 3.6;
+    // Tiré une demi-seconde : plus longtemps, la glisse est plus profonde (la stabilisation se tait tant qu'on le tient).
+    for (let i = 0; i < 30; i++) stepVehicle(c, CAR, { throttle: 0, brake: 0, steer: 1, handbrake: 1 }, DT, t, none);
+    let max = 0, sliding = 0;
+    for (let i = 0; i < 180; i++) {
+      stepVehicle(c, CAR, { throttle: 0.5, brake: 0, steer: 0 }, DT, t, none);
+      max = Math.max(max, Math.abs(beta(c)));
+      if (Math.abs(beta(c)) > 0.12) sliding = (i + 1) * DT;
+      // Les roues avant suivent la glisse : elles braquent d'elles-mêmes vers la gauche (l'arrière part à gauche d'un virage à droite).
+      if (i === 15) expect(c.steer).toBeLessThan(-0.05);
+    }
+    expect(max).toBeGreaterThan(0.4);
+    expect(max).toBeLessThan(CAR.maxDrift);
+    expect(sliding).toBeLessThan(2);
+  });
+
+  it("en glisse, on peut contre-braquer au-delà du braquage permis en ligne", () => {
+    const t = big();
+    const c = createVehicle(0, 0, 0, t);
+    c.vy = 80 / 3.6;
+    for (let i = 0; i < 25; i++) stepVehicle(c, CAR, { throttle: 0, brake: 0, steer: 1, handbrake: 1 }, DT, t, none);
+    let most = 0;
+    for (let i = 0; i < 30; i++) {
+      stepVehicle(c, CAR, { throttle: 0.3, brake: 0, steer: -1 }, DT, t, none);
+      most = Math.max(most, -c.steer - steerLimit(CAR, c.speed));
+    }
+    expect(most).toBeGreaterThan(0.05);
+  });
+
+  it("freiner fort en braquant à fond : la voiture tourne, l'arrière peut glisser un peu mais jamais au-delà de sa dérive maximale", () => {
+    for (const spec of [CAR, VAN, SPORT_CAR]) {
+      const t = big();
+      const c = createVehicle(0, 0, 0, t);
+      c.vy = 90 / 3.6;
+      for (let i = 0; i < 60; i++) stepVehicle(c, spec, { throttle: 0.5, brake: 0, steer: 1 }, DT, t, none);
+      let max = 0;
+      for (let i = 0; i < 90; i++) {
+        stepVehicle(c, spec, { throttle: 0, brake: 1, steer: 1 }, DT, t, none);
+        max = Math.max(max, Math.abs(beta(c)));
+      }
+      expect(max).toBeLessThan(spec.maxDrift);
+    }
+  });
+
+  it("la vieille voiture n'a aucune aide : ni contre-braquage automatique ni stabilisation", () => {
+    expect(OLD_CAR.driftAssist).toBe(0);
+    expect(OLD_CAR.maxDrift).toBe(Infinity);
+  });
+
+  it("accélérateur tout ou rien du joueur : enfoncé à fond en 0,35 s, relâché en 0,1 s", () => {
+    let level = 0;
+    for (let i = 0; i < 10; i++) level = rampThrottle(level, 1, DT);
+    expect(level).toBeGreaterThan(0.4);
+    expect(level).toBeLessThan(0.55);
+    for (let i = 0; i < 12; i++) level = rampThrottle(level, 1, DT);
+    expect(level).toBe(1);
+    for (let i = 0; i < 7; i++) level = rampThrottle(level, 0, DT);
+    expect(level).toBe(0);
+    expect(rampThrottle(0.8, 0.5, DT)).toBeCloseTo(0.8 - DT / 0.1);
   });
 });

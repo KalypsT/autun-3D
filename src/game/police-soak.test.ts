@@ -52,14 +52,22 @@ function soak(seed: number, drive: number, total: number, stars = 3): { minutes:
   wanted.set(stars, car.x, car.y);
   const minutes: SoakMinute[] = [];
   let m: SoakMinute = { chasing: 0, officers: 0, contacts: 0, nearest: Infinity, stars: 0, arrests: 0, farthest: 0 };
-  let arrestedAt = -1, bad = 0, arrests = 0, damage = 0;
+  let arrestedAt = -1, bad = 0, arrests = 0, damage = 0, pinned = 0;
   for (let i = 0; i < total * 60; i++) {
     const t = i * DT;
     const stopped = t >= drive;
     const input = stopped ? { throttle: 0, brake: car.speed > 0.3 ? 1 : 0, steer: 0, handbrake: car.speed > 0.3 ? 0 : 1 } : fd.update(car, DT, []);
-    if (!stopped && fd.lost) {
+    // Fugitif encastré (son conducteur, qui ne recule pas, repart toutes les 8 s contre le même mur) : le joueur reculerait ; au bout de 10 s,
+    // on le replace sur la voie la plus proche (D97 : un choc à 72 km/h le laissait collé à un mur, entouré de gendarmes, toute une minute).
+    pinned = !stopped && Math.abs(car.speed) < 0.5 ? pinned + DT : 0;
+    if (!stopped && (fd.lost || pinned > 10)) {
       const h = nav.graph.road.nearest(car.x, car.y, 30);
       if (h) fd.restart(h.edge * 2, h.s);
+      if (h && pinned > 10) {
+        lanePoint(nav.graph.road, h.edge * 2, h.s, lp);
+        Object.assign(car, createVehicle(lp.x, lp.y, lp.heading, world.terrain));
+        pinned = 0;
+      }
     }
     stepVehicle(car, CAR, input, DT, world.terrain, colliders);
     traffic.step(DT, { kind: "vehicle", state: car, spec: CAR });

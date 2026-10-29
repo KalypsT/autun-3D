@@ -4,7 +4,7 @@ import type { NavGraph } from "./nav-graph";
 import { NODE_FLAG, ROAD_FLAG } from "../data/nav";
 import { AMBER, GREEN, RED, type Signals } from "./signals";
 import { moveDir, moveEdge, type RoadGraph, type RoadMove } from "./road-graph";
-import { driveForce, GRAVITY, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { driveForce, GRAVITY, steerLimit, steerLimitNoSlip, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 /**
  * Conducteur simulé (J3-1, D59) : logique pure. Il suit une route (suite de sens de parcours du graphe routier) sur la voie de droite,
@@ -354,7 +354,7 @@ export function cornerSpeed(spec: VehicleSpec, k: number): number {
   const L = spec.front + spec.rear;
   let best = 1.5;
   for (let v = 1.5; v <= 40; v += 0.5) {
-    if ((STEER_USE * Math.tan(steerLimit(spec, v))) / L >= k) best = v;
+    if ((STEER_USE * Math.tan(steerLimitNoSlip(spec, v))) / L >= k) best = v;
     else break;
   }
   return best;

@@ -84,29 +84,33 @@ export const SUV: VehicleSpec = {
   maxBrake: 14000, reverseForce: 4000, drag: 0.53, hull: [[1.11, 0.87], [-0.15, 0.89], [-1.4, 0.87]], wheelRadius: 0.34, bodyRoll: 0.022, engineBrake: 400, cgHeight: 0.65, brakeFront: 0.78,
 };
 
-/** Camionnette : 2 100 kg à vide chargée du conducteur, 64 kW aux roues, 145 km/h, grande surface frontale, haute (0,85 m), freinage ≈ 0,8 g, direction plus lente. */
+/** Camionnette : 2 100 kg à vide chargée du conducteur, 64 kW aux roues, 145 km/h, grande surface frontale, haute (0,85 m), freinage ≈ 0,8 g, direction plus lente ; très stable (glisse bornée à ≈ 25°, D97). */
 export const VAN: VehicleSpec = {
   ...CAR, mass: 2100, yawInertia: 3999, front: 1.3, rear: 1.7, maxSteer: 0.58, steerFade: 12, steerRate: 1.6, grip: 0.9,
   corneringFront: 95000, corneringRear: 110000, power: 64000, maxDrive: 6800, driveFadeFrom: kmh(130), topSpeed: kmh(145),
   maxBrake: 17000, reverseForce: 5200, drag: 0.63, hull: [[1.26, 0.94], [-0.25, 0.96], [-1.76, 0.94]], wheelRadius: 0.33, bodyRoll: 0.026, engineBrake: 500, cgHeight: 0.85, brakeFront: 0.75, steerGrip: 1.3,
+  driftAssist: 0.5, maxDrift: 0.45,
 };
 
 /**
  * Vieille voiture : 1 100 kg, 46 kW aux roues, 160 km/h, pneus usés (adhérence 0,8, roulement plus fort), freins fatigués (≈ 0,83 g) et **pas d'ABS** :
- * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle.
+ * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle. Aucune aide à la conduite (D97) : ni contre-braquage automatique ni stabilisation.
  */
 export const OLD_CAR: VehicleSpec = {
   ...CAR, mass: 1100, yawInertia: 1514, front: 1.05, rear: 1.5, grip: 0.8,
   corneringFront: 48000, corneringRear: 55000, power: 46000, maxDrive: 4100, driveFadeFrom: kmh(148), topSpeed: kmh(160),
   maxBrake: 9000, reverseForce: 2900, rolling: 0.016, drag: 0.43, hull: [[1.02, 0.81], [-0.22, 0.83], [-1.46, 0.81]], wheelRadius: 0.29, bodyRoll: 0.02, engineBrake: 300, abs: false, steerGrip: 1.3,
+  rearGrip: 1.1, driftAssist: 0, maxDrift: Infinity,
 };
 
 /**
  * Sportive à propulsion : 1 450 kg, 190 kW aux roues, 0 à 100 km/h en ≈ 5 s, 240 km/h réels, plafonnée à 200 km/h ; pneus larges (adhérence 1,15),
- * centre de gravité bas (0,45 m), roue arrière motrice (elle peut décrocher en sortie de virage).
+ * centre de gravité bas (0,45 m), roue arrière motrice. Conduite (D97) : antipatinage en virage (70 % de l'adhérence arrière pour la motricité,
+ toute en ligne droite), l'arrière ne décroche que plein braquage et plein gaz, en glisse tenue (≈ 20 à 25°, bornée à ≈ 40°) ; avant D97, plein gaz en virage = tête-à-queue.
  */
 export const SPORT_CAR: VehicleSpec = limited({
   ...CAR, mass: 1450, yawInertia: 2074, front: 1.28, rear: 1.32, maxSteer: 0.55, steerFade: 16, steerRate: 2, grip: 1.15,
   corneringFront: 108000, corneringRear: 125000, power: 190000, maxDrive: 8800, driveFadeFrom: kmh(225), topSpeed: kmh(240),
   maxBrake: 17000, reverseForce: 3900, drag: 0.38, hull: [[1.29, 0.91], [-0.02, 0.93], [-1.34, 0.91]], wheelRadius: 0.33, bodyRoll: 0.008, engineBrake: 450, driveAxle: "rear", cgHeight: 0.45, brakeFront: 0.66,
+  traction: 0.7, rearGrip: 1.06, driftAssist: 0.45, maxDrift: 0.7,
 }, SPEED_CAP.car);

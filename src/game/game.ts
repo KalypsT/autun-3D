@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
-import { stepVehicle } from "../core/vehicle";
+import { rampThrottle, stepVehicle } from "../core/vehicle";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
@@ -567,6 +567,8 @@ export function startGame(ctx: GameContext): void {
   let speedLinesOn = false;
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
+  /** Accélérateur dosé de la voiture conduite (la commande est tout ou rien). */
+  let throttle = 0;
   let bumpTimer = 0;
   let last = performance.now();
   let acc = 0;
@@ -603,7 +605,8 @@ export function startGame(ctx: GameContext): void {
     acc += dt;
     while (acc >= STEP) {
       if (riding) {
-        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle: input.throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
+        throttle = riding.family === "car" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
+        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
