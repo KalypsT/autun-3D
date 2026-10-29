@@ -251,18 +251,24 @@ export class Minimap {
       ctx.fillText(label.text, label.x, label.y);
     }
 
-    // Anneau, et « N » à l'endroit du nord.
+    // Anneau encre et crème (style du bandeau d'état), et « N » à l'endroit du nord.
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, r, 0, Math.PI * 2);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(43, 33, 24, .85)";
+    ctx.arc(size / 2, size / 2, r + 1.5, 0, Math.PI * 2);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#1b1f27";
+    ctx.stroke();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#fff8e6";
     ctx.stroke();
     const na = -heading;
-    const nx = size / 2 + Math.sin(na) * (r + 0.5), ny = size / 2 - Math.cos(na) * (r + 0.5);
+    const nx = size / 2 + Math.sin(na) * (r + 1.5), ny = size / 2 - Math.cos(na) * (r + 1.5);
     ctx.beginPath();
-    ctx.arc(nx, ny, 7, 0, Math.PI * 2);
+    ctx.arc(nx, ny, 7.5, 0, Math.PI * 2);
     ctx.fillStyle = ACCENT;
     ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "#fff8e6";
+    ctx.stroke();
     ctx.font = "700 9px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";

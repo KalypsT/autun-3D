@@ -2,13 +2,16 @@ import { clampToZone, fitScale, formatDistance, imageMatrix, imagesInView, panBy
 import { toggleWaypoint, waypointFrom, type Waypoint } from "../core/waypoint";
 import type { MapData, Place, StreetInfo } from "./map-data";
 
-/** Carte agrandie (écran de pause) : fond par kilomètre, rues, lieux, joueur et repère. Nord en haut. */
+/** Carte agrandie (écran de pause, ouvert par un appui sur la minimap) : fond par kilomètre, rues, lieux, joueur et repère. Nord en haut. */
 
 export interface BigMapHooks {
   player(): { x: number; y: number; facing: number };
   waypoint(): Waypoint | null;
   setWaypoint(w: Waypoint | null): void;
-  close(): void;
+  /** Reprendre la partie. */
+  resume(): void;
+  /** Ouvrir le menu (réglages, lieux notés, apparence, sauvegarde, crédits). */
+  menu(): void;
 }
 
 const PAPER = "#f2e4c0";
@@ -113,7 +116,8 @@ export class BigMap {
     }
     el.append(
       this.canvas,
-      button("bm-back", "← Retour", "Retour au menu", () => hooks.close()),
+      button("bm-resume", "▶  Reprendre", "Reprendre la partie", () => hooks.resume()),
+      button("bm-menu", "☰  Menu", "Menu : réglages, lieux notés, apparence, sauvegarde, crédits", () => hooks.menu()),
       button("bm-filter", "Lieux ▾", "Choisir les lieux affichés", () => { this.filterEl.hidden = !this.filterEl.hidden; }),
       this.filterEl,
       this.chipEl,

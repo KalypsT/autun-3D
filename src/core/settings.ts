@@ -24,9 +24,11 @@ export interface Settings {
   volume: number;
   /** Vibrations du téléphone aux chocs, tirs et coups reçus (D90). */
   vibration: boolean;
+  /** Plein écran (et paysage verrouillé) au premier appui sur le jeu. */
+  fullscreen: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -54,6 +56,7 @@ export function parseSettings(raw: unknown): Settings {
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
     volume: volume === null ? d.volume : roundVolume(volume),
     vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
+    fullscreen: typeof o["fullscreen"] === "boolean" ? o["fullscreen"] : d.fullscreen,
   };
 }
 

@@ -30,6 +30,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const shot = async (name) => { await page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 }); console.log("ok", `${out}/${name}.png`); };
   const click = async (sel) => { await page.click(sel, { timeout: 60000 }); await sleep(300); };
   const clickText = async (text) => { await page.locator(`button:has-text("${text}")`).first().click({ timeout: 60000 }); await sleep(300); };
+  // Pause (D102) : un appui sur la minimap ouvre la carte, qui est l'écran de pause ; « Menu » mène au menu.
+  const pauseMap = async () => {
+    await click("#minimap");
+    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+  };
+  const pauseMenu = async () => {
+    await pauseMap();
+    await click(".bm-menu");
+  };
   const frames = (n) => page.evaluate((k) => new Promise((res) => { let i = 0; const f = () => (++i >= k ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 
   if (want("hud")) {
@@ -274,7 +283,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (want("pause")) {
     // Réglages enregistrés avant le chargement (définition ×1,5, ombres moyennes : plus léger pour le rendu logiciel) : rien n'est imposé par l'URL.
     const ctx = await open("", () => localStorage.setItem("autun3d.settings", JSON.stringify({ dpr: 1.5, shadows: 2048 })), true);
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await shot("j1-pause-menu");
     await clickText("Réglages");
@@ -293,6 +302,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const text = await page.evaluate(async () => (await navigator.clipboard?.readText?.().catch(() => "")) || "");
     await clickText("Sauvegarde");
     await shot("j1-pause-sauvegarde");
+    await clickText("Crédits");
+    await shot("j1-pause-credits");
     await clickText("Nouvelle partie");
     await shot("j1-pause-nouvelle-partie");
     await ctx.close();
@@ -300,10 +311,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   if (want("map")) {
     const ctx = await open();
-    await click("#pausebtn");
-    await sleep(500);
-    await clickText("Carte");
-    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+    await pauseMap();
     await sleep(2500);
     await shot("j1-carte");
     // Appui long : pose le repère (cercle qui se remplit pendant l'appui).
@@ -328,8 +336,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("j1-carte-fiche");
     await click(".bm-filter");
     await shot("j1-carte-filtres");
-    await click(".bm-back");
-    await click(".pm-item:has-text('Reprendre')");
+    await click(".bm-filter");
+    await click(".bm-resume");
     // Le repère à 35 m devant : colonne et losange dans le monde.
     await page.evaluate(() => window.__autun.ui.setWaypoint({ x: -10, y: -5 }));
     await sleep(2500);
@@ -343,10 +351,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => window.__autun.ui.setWaypoint({ x: -10, y: -5 }));
     await sleep(3000);
     await shot("j1-jeu-repere-monde");
-    await click("#pausebtn");
-    await sleep(500);
-    await clickText("Carte");
-    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+    await pauseMap();
     await sleep(2000);
     await click(".bm-filter");
     await shot("j1-carte-filtres");
@@ -390,7 +395,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await hold(176);
     await frames(4);
     await shot("p-compteur-voiture-max");
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await shot("p-compteur-pause");
     await c1.close();
@@ -403,7 +408,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   if (want("appearance")) {
     const ctx = await open("dist=2.8");
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await clickText("Apparence");
     await sleep(1500);

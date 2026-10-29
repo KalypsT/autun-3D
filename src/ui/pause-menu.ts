@@ -8,7 +8,7 @@ import {
 } from "../core/character";
 import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
-/** Menu pause : Reprendre, Carte, Réglages, Lieux notés, Sauvegarde. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
+/** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
   resume(): void;
   /** Ouvre la carte agrandie ; false si elle n'a pas pu être chargée. */
@@ -30,7 +30,7 @@ export interface PauseHooks {
   build: string;
 }
 
-type PanelId = "home" | "settings" | "appearance" | "notes" | "save";
+type PanelId = "home" | "settings" | "appearance" | "notes" | "save" | "credits";
 
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -78,6 +78,7 @@ export class PauseMenu {
     item("⚙  Réglages", () => this.show("settings"), "settings");
     item("📍  Lieux notés", () => this.show("notes"), "notes");
     item("💾  Sauvegarde", () => this.show("save"), "save");
+    item("©  Crédits", () => this.show("credits"), "credits");
     this.content = h("div", "pm-content");
     el.append(side, this.content);
     document.body.append(el);
@@ -115,6 +116,7 @@ export class PauseMenu {
     else if (panel === "settings") this.settingsPanel();
     else if (panel === "appearance") this.appearancePanel();
     else if (panel === "notes") void this.notesPanel();
+    else if (panel === "credits") this.creditsPanel();
     else this.savePanel();
   }
 
@@ -195,6 +197,7 @@ export class PauseMenu {
     volBox.append(vol, volOut);
     row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
     row("Vibrations", "Le téléphone vibre aux chocs, aux tirs et aux coups reçus.", "vibration", choices("vibration", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.vibration));
+    row("Plein écran", "Le jeu passe en plein écran, en paysage, au premier appui.", "fullscreen", choices("fullscreen", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.fullscreen));
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
     c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=, ?sound=0) reste prioritaire."));
   }
@@ -437,6 +440,26 @@ export class PauseMenu {
   }
 
   // --- Sauvegarde ---------------------------------------------------------------------------------------------------------
+
+  // --- Crédits -------------------------------------------------------------------------------------------------------------
+
+  /** Sources des données et licences (voir docs/SOURCES.md) : elles ne sont plus sur l'écran de jeu, mais ici, sur la carte et au chargement. */
+  private creditsPanel(): void {
+    const line = (title: string, text: string): HTMLElement => {
+      const p = h("p");
+      p.append(h("strong", "", title), ` : ${text}`);
+      return p;
+    };
+    this.content.append(
+      h("h2", "", "Crédits"),
+      h("p", "", "Autun 3D est fait à partir de données ouvertes."),
+      line("Rues, commerces, mobilier", "© les contributeurs d'OpenStreetMap, licence ODbL 1.0 (openstreetmap.org/copyright)"),
+      line("Bâtiments, relief, toits, arbres, sols", "IGN – BD TOPO®, LiDAR HD, BD ORTHO®, Parcellaire Express, Licence Ouverte Etalab 2.0"),
+      line("Bâtiments (usages, adresses)", "BDNB – CSTB, Licence Ouverte 2.0"),
+      line("Moteur 3D", "three.js, licence MIT"),
+      h("p", "pm-muted", `Version ${this.hooks.build}.`),
+    );
+  }
 
   private savePanel(): void {
     const c = this.content;

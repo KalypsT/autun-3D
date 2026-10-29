@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#1b1f27" />
     <title>Autun 3D</title>
     <style>
+      /* Style « affiche » (D17) : encre, crème, rouge brique, ocre ; toute l'interface en jeu les reprend (D102). */
+      :root { --ink: #1b1f27; --cream: #fff8e6; --brick: #d9472b; --ochre: #f1b24a; --panel: rgba(27, 31, 39, .72); --lift: 0 3px 0 rgba(27, 31, 39, .45); }
       html, body { margin: 0; height: 100%; background: #1b1f27; overflow: hidden; touch-action: none; overscroll-behavior: none; }
       canvas { display: block; width: 100%; height: 100%; }
       #debug { position: fixed; top: 192px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
@@ -14,29 +16,24 @@
       #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
       body.game #touch { display: block; }
       #stick-base, #stick-knob { position: fixed; display: none; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-      #stick-base { width: 116px; height: 116px; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); }
-      #stick-knob { width: 52px; height: 52px; background: rgba(255,255,255,.45); border: 2px solid rgba(255,255,255,.7); }
-      #fullscreen, #pausebtn { position: fixed; top: 8px; width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.4);
-                    background: rgba(0,0,0,.35); color: #fff; font-size: 20px; display: none; z-index: 5; padding: 0; }
-      #fullscreen { right: 8px; }
-      #pausebtn { right: 58px; }
-      body.game #fullscreen, body.game #pausebtn { display: block; }
+      #stick-base { width: 116px; height: 116px; box-sizing: border-box; background: rgba(27, 31, 39, .35); border: 2px solid rgba(255, 248, 230, .7); }
+      #stick-knob { width: 52px; height: 52px; box-sizing: border-box; background: rgba(255, 248, 230, .85); border: 2px solid var(--cream); box-shadow: var(--lift); }
       #hint { position: fixed; left: 0; right: 0; bottom: 14px; text-align: center; color: #fff; font: 14px system-ui, sans-serif;
               text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
       body.game #hint { animation: hint 9s ease-out 0.5s both; }
       @keyframes hint { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
       #pedals { position: fixed; right: 14px; bottom: 16px; display: none; gap: 12px; align-items: flex-end; z-index: 4; }
       body.game.driving #pedals { display: flex; }
-      .pedal { touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-items: center; color: #fff;
-               font: 600 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000; border-radius: 18px; border: 2px solid rgba(255,255,255,.45); }
-      #brake { width: 92px; height: 92px; background: rgba(140, 40, 30, .35); }
-      #horn { width: 78px; height: 64px; font-size: 12px; text-align: center; background: rgba(150, 110, 20, .4); }
-      #handbrake { width: 78px; height: 64px; font-size: 12px; text-align: center; background: rgba(60, 60, 90, .35); display: none; }
+      .pedal { touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-items: center; color: var(--cream); box-sizing: border-box;
+               font: 800 14px system-ui, sans-serif; border-radius: 20px; border: 2.5px solid var(--cream); background: var(--panel); box-shadow: var(--lift); }
+      #brake { width: 92px; height: 92px; background: rgba(217, 71, 43, .78); }
+      #horn { width: 78px; height: 64px; font-size: 12px; text-align: center; }
+      #handbrake { width: 78px; height: 64px; font-size: 12px; text-align: center; display: none; }
       body.car #handbrake { display: grid; }
-      #gas { width: 104px; height: 150px; background: rgba(40, 110, 70, .35); }
-      .pedal.on { background: rgba(255,255,255,.35); border-color: #fff; }
+      #gas { width: 104px; height: 150px; box-shadow: var(--lift), inset 0 -56px 0 rgba(241, 178, 74, .28); }
+      .pedal.on { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); filter: brightness(1.35); }
       #action { position: fixed; right: 14px; bottom: 186px; z-index: 4; display: none; padding: 12px 18px; border-radius: 14px;
-                border: 2px solid rgba(255,255,255,.6); background: rgba(217, 71, 43, .82); color: #fff; font: 600 16px system-ui, sans-serif; }
+                border: 2px solid var(--cream); background: rgba(217, 71, 43, .9); color: var(--cream); font: 800 16px system-ui, sans-serif; box-shadow: var(--lift); }
       body.game #action.show { display: block; }
       body.game:not(.driving) #action { bottom: 24px; }
       /* Attaque (J5) : bouton rond à droite, à pied seulement ; à côté du pouce qui regarde, au-dessus du bouton d'action. */
@@ -57,13 +54,14 @@
       .chip .arrow { display: inline-block; transition: transform .15s linear; }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
+      body.game #credits { display: none; }
 
       /* Compteur de vitesse : en bas au centre, seulement au volant ; entre le joystick (gauche) et les pédales (droite). */
       #speedo { position: fixed; left: 50%; bottom: 28px; width: 112px; height: 94px; transform: translateX(-50%); z-index: 3; display: none; pointer-events: none; }
       body.game.driving #speedo { display: block; }
       body.driving #hint { display: none; }
       #speedo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-      #speedo .disc { fill: rgba(27, 31, 39, .55); }
+      #speedo .disc { fill: rgba(27, 31, 39, .7); stroke: var(--cream); stroke-width: 1.5; }
       #speedo .track, #speedo #speedo-arc { fill: none; stroke-width: 9; stroke-linecap: butt; }
       #speedo .track { stroke: rgba(255, 248, 230, .22); }
       #speedo #speedo-arc { stroke: #f1b24a; stroke-dasharray: 0 100; }
@@ -73,38 +71,47 @@
       #stunt:empty { display: none; }
       #speedo-unit { position: absolute; left: 0; right: 0; top: 66px; text-align: center; color: #f1b24a; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .06em; }
       [hidden] { display: none !important; }
-      /* Interface en jeu : minimap et horloge en haut à gauche, zone santé / arme / recherche en haut au centre (vide jusqu'à J4-J5),
-         pause et plein écran en haut à droite. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */
-      #minimap { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 8px; width: 140px; height: 140px; z-index: 4; pointer-events: none; display: none; }
-      #clock { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 152px; width: 140px; box-sizing: border-box; z-index: 4; display: none; text-align: center; pointer-events: none;
-               padding: 3px 0; border-radius: 12px; background: rgba(27, 31, 39, .55); color: #fff8e6; font: 600 16px/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
-      body.game #minimap, body.game #clock, body.minimap-on #minimap { display: block; }
-      #status { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; gap: 10px; align-items: center; pointer-events: none; color: #fff8e6; font: 600 14px system-ui, sans-serif; }
-      .slot { min-width: 96px; min-height: 26px; display: flex; align-items: center; justify-content: center; gap: 4px; }
-      #wanted { min-width: 120px; }
-      /* Étoiles de recherche (J4) : disques sombres cerclés de crème, étoile pleine rouge brique pour le niveau atteint ; cachées sans étoile. */
-      #wanted .wstar { display: none; width: 30px; height: 30px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
-      #wanted.on .wstar { display: block; }
-      #wanted .wstar svg { width: 100%; height: 100%; display: block; }
-      #wanted .wstar circle { fill: rgba(27, 31, 39, .6); stroke: #fff8e6; stroke-width: 1.4; }
-      #wanted .wstar path { fill: none; stroke: rgba(255, 248, 230, .45); stroke-width: 1.3; stroke-linejoin: round; }
-      #wanted .wstar.full circle { fill: #d9472b; }
-      #wanted .wstar.full path { fill: #fff8e6; stroke: #fff8e6; }
+      /* Interface en jeu (D102) : minimap et horloge en haut à gauche (un appui sur la minimap ouvre la carte, qui est l'écran de pause),
+         bandeau santé / arme / recherche en haut au centre. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */
+      #minimap { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 8px; width: 140px; height: 140px; z-index: 4; display: none; border-radius: 50%; cursor: pointer;
+                 touch-action: none; -webkit-tap-highlight-color: transparent; }
+      #clock { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 36px); top: 132px; width: 68px; height: 24px; box-sizing: border-box; z-index: 4; display: none; place-items: center; pointer-events: none;
+               border-radius: 12px; border: 1.5px solid var(--cream); background: var(--ink); color: var(--cream); font: 700 14px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+      body.game #minimap, body.minimap-on #minimap { display: block; }
+      body.game #clock { display: grid; }
+      /* Bandeau d'état « plaque émaillée » : double filet crème et ocre ; chaque partie n'apparaît que quand elle sert, le bandeau disparaît s'il est vide. */
+      #status { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; display: none; align-items: stretch; height: 44px; padding: 0 4px; box-sizing: border-box;
+                border-radius: 22px; border: 2px solid var(--cream); background: rgba(27, 31, 39, .86); white-space: nowrap; pointer-events: none;
+                box-shadow: inset 0 0 0 2px rgba(27, 31, 39, .86), inset 0 0 0 3px rgba(241, 178, 74, .7), 0 3px 0 rgba(27, 31, 39, .5); color: var(--cream); font: 600 14px system-ui, sans-serif; }
+      #status:has(> .slot.on) { display: flex; }
+      body.driving #weapon { display: none !important; }
+      body.driving #status:not(:has(> #health.on, > #wanted.on)) { display: none; }
+      .slot { position: relative; display: none; align-items: center; gap: 7px; padding: 0 12px; }
+      .slot.on { display: flex; }
+      /* Filet entre deux parties visibles (l'arme est cachée en véhicule). */
+      #status > .slot.on ~ .slot.on::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1.5px; background: rgba(255, 248, 230, .3); }
+      body.driving #health:not(.on) ~ #wanted::after { display: none; }
+      /* Étoiles de recherche (J4) : étoile pleine rouge brique cerclée de crème pour le niveau atteint, contour pâle au-delà ; cachées sans étoile. */
+      #wanted { gap: 2px; padding: 0 8px 0 10px; }
+      #wanted .wstar { display: block; width: 21px; height: 21px; }
+      #wanted .wstar svg { width: 100%; height: 100%; display: block; overflow: visible; }
+      #wanted .wstar circle { display: none; }
+      #wanted .wstar path { fill: none; stroke: rgba(255, 248, 230, .4); stroke-width: 1.5; stroke-linejoin: round; }
+      #wanted .wstar.full path { fill: var(--brick); stroke: var(--cream); }
       #wanted.lost .wstar.full { animation: wlost 1.1s ease-in-out infinite; }
       @keyframes wlost { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
       #wanted.rise .wstar.full { animation: wrise .5s ease-out 2; }
       @keyframes wrise { 0% { transform: scale(1.45); } 100% { transform: scale(1); } }
-      /* Santé (J5) : disque sombre cerclé de crème avec un cœur, barre crème qui se vide ; cachée à santé pleine, rouge brique et pulsante sous 30 %. */
-      #health { display: none; gap: 6px; }
-      #health.on { display: flex; }
-      #health .hicon { width: 30px; height: 30px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
-      #health .hicon svg { width: 100%; height: 100%; display: block; }
-      #health .hicon circle { fill: rgba(27, 31, 39, .6); stroke: #fff8e6; stroke-width: 1.4; }
-      #health .hicon path { fill: #fff8e6; }
-      #health.low .hicon circle { fill: #d9472b; }
-      #health .hbar { width: 84px; height: 12px; border-radius: 6px; background: rgba(27, 31, 39, .6); box-shadow: inset 0 0 0 1.4px #fff8e6; overflow: hidden; }
-      #health .hfill { display: block; height: 100%; width: 100%; background: #fff8e6; }
-      #health.low .hfill { background: #d9472b; }
+      /* Santé (J5) : cœur dans une pastille rouge brique, jauge crème découpée en segments ; cachée à santé pleine, rouge brique et pulsante sous 30 %. */
+      #health { padding-left: 6px; }
+      #health .hicon { width: 26px; height: 26px; }
+      #health .hicon svg { width: 100%; height: 100%; display: block; overflow: visible; }
+      #health .hicon circle { fill: var(--brick); stroke: var(--cream); stroke-width: 1.5; }
+      #health .hicon path { fill: var(--cream); transform: scale(.58); transform-origin: 12px 12px; }
+      #health .hbar { position: relative; width: 80px; height: 12px; border-radius: 3px; background: rgba(255, 248, 230, .16); overflow: hidden; }
+      #health .hbar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 7px, var(--ink) 7px 8px); }
+      #health .hfill { display: block; height: 100%; width: 100%; background: var(--cream); }
+      #health.low .hfill { background: var(--brick); }
       #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
       /* Traits de vitesse (D90) : rayons crème autour du centre, au-delà de 100 km/h ; l'opacité suit la vitesse. */
@@ -113,17 +120,20 @@
                     -webkit-mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); mask-image: radial-gradient(ellipse at center, transparent 40%, #000 78%); }
       #hurt { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 24px rgba(217, 71, 43, .75); transition: opacity .5s ease-out; }
       #hurt.flash { opacity: 1; transition: none; }
-      /* Arme en main (J5) : pastille sombre cerclée de crème, qu'on touche pour passer à l'arme suivante. */
-      #weapon { pointer-events: auto; }
-      #weapon button { display: flex; align-items: center; gap: 6px; padding: 3px 12px 3px 8px; border-radius: 15px; border: 1.4px solid #fff8e6; background: rgba(27, 31, 39, .6);
-                       color: #fff8e6; font: 600 14px system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
-      #weapon .wicon { font-size: 18px; line-height: 1; }
-      #weapon .wammo { opacity: .85; font-variant-numeric: tabular-nums; }
+      /* Arme en main (J5) : pictogramme dans une pastille crème, nom en petites capitales, munitions en ocre ; un appui passe à l'arme suivante. */
+      #weapon { pointer-events: auto; padding: 0; }
+      #weapon button { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 12px; border: 0; background: none; color: var(--cream); cursor: pointer; font: inherit; }
+      #weapon .wicon { width: 26px; height: 26px; border-radius: 50%; background: var(--cream); display: grid; place-items: center; font-size: 15px; line-height: 1; }
+      #weapon .wname { font: 800 11px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+      #weapon .wammo { font: 800 18px/1 system-ui, sans-serif; color: var(--ochre); font-variant-numeric: tabular-nums; }
+      #weapon .wammo:empty { display: none; }
+      #weapon .wammo small { font-size: 12px; font-weight: 700; color: rgba(255, 248, 230, .7); }
       #weapon.flash button { animation: wrise .45s ease-out; }
-      body.layout .slot { outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
+      body.layout #status { display: flex; }
+      body.layout .slot { display: flex; min-width: 80px; outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #speedlines, body.paused #nearby, body.paused #pausebtn, body.paused #fullscreen,
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #speedlines, body.paused #nearby,
       body.paused #action, body.paused #attack, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
@@ -138,7 +148,7 @@
                padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); gap: 14px; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
       .pm-side { width: 210px; flex: none; display: flex; flex-direction: column; gap: 6px; }
       .pm-title { font: 700 22px system-ui, sans-serif; padding: 4px 6px 6px; letter-spacing: .02em; }
-      .pm-item { text-align: left; padding: 0 14px; height: 50px; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .25); background: rgba(255, 248, 230, .08); color: inherit; font: 600 16px system-ui, sans-serif; }
+      .pm-item { text-align: left; padding: 0 14px; height: 44px; flex: none; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .25); background: rgba(255, 248, 230, .08); color: inherit; font: 600 16px system-ui, sans-serif; }
       .pm-item.on { background: rgba(217, 71, 43, .85); border-color: #fff8e6; }
       .pm-content { flex: 1; overflow-y: auto; padding: 2px 6px 12px 2px; -webkit-overflow-scrolling: touch; }
       .pm-content h2 { margin: 2px 0 10px; font: 700 20px system-ui, sans-serif; }
@@ -193,8 +203,9 @@
       #bigmap { position: fixed; inset: 0; z-index: 30; background: #f2e4c0; touch-action: none; user-select: none; -webkit-user-select: none; font-family: system-ui, sans-serif; }
       #bigmap canvas { position: absolute; inset: 0; touch-action: none; }
       .bm-btn { position: absolute; z-index: 2; height: 44px; min-width: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .8); background: rgba(43, 33, 24, .82); color: #fff8e6; font: 600 15px system-ui, sans-serif; }
-      .bm-back { left: max(10px, env(safe-area-inset-left)); top: 10px; }
-      .bm-filter { right: max(10px, env(safe-area-inset-right)); top: 10px; }
+      .bm-resume { left: max(10px, env(safe-area-inset-left)); top: 10px; border-color: var(--ink); background: var(--brick); font-weight: 800; }
+      .bm-menu { right: max(10px, env(safe-area-inset-right)); top: 10px; font-weight: 800; }
+      .bm-filter { right: calc(max(10px, env(safe-area-inset-right)) + 104px); top: 10px; }
       .bm-here { left: max(10px, env(safe-area-inset-left)); bottom: 12px; font-size: 22px; }
       .bm-zoom-in { right: max(10px, env(safe-area-inset-right)); bottom: 12px; font-size: 24px; }
       .bm-zoom-out { right: calc(max(10px, env(safe-area-inset-right)) + 54px); bottom: 12px; font-size: 24px; }
@@ -214,12 +225,10 @@
     <canvas id="game"></canvas>
     <div id="touch"></div>
     <div id="stick-base"></div><div id="stick-knob"></div>
-    <canvas id="minimap" aria-label="Minimap"></canvas>
+    <canvas id="minimap" role="button" aria-label="Carte et pause"></canvas>
     <div id="clock" aria-label="Heure du jeu">--:--</div>
     <div id="status"><div id="health" class="slot" data-name="santé"></div><div id="weapon" class="slot" data-name="arme"></div><div id="wanted" class="slot" data-name="recherche"></div></div>
-    <button id="pausebtn" title="Pause" aria-label="Pause">⏸</button>
-    <button id="fullscreen" title="Plein écran" aria-label="Plein écran">⛶</button>
-    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · vélos, trottinettes et voitures garés : bouton Monter</div>
+    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · toucher la minimap : carte et pause</div>
     <div id="pedals"><div id="horn" class="pedal">Klaxon</div><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
     <div id="stunt" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>

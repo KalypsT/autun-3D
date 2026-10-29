@@ -558,3 +558,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Visages peints : yeux (blanc, iris, paupière), sourcils, lèvres, ombres ; plus fins et plus colorés chez les femmes, ridés chez les seniors.
 - Les couleurs choisies (écran Apparence, passants) ne changent pas : la texture les module. Toujours un seul appel de dessin pour la foule. 620 tests.
 - À faire de ton côté : regarder ton personnage dans l'écran Apparence en changeant de haut, de bas et de chaussures ; croiser des passants ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone. Dire si les détails sont trop marqués ou pas assez.
+
+**Interface en jeu, étape 1 : style commun, pause par la minimap (29 octobre 2026)** (D102)
+- Plus de bouton pause : toucher la minimap ouvre la carte, qui est l'écran de pause, avec « Reprendre » et « Menu ». Échap ou P marchent toujours.
+- Plus de bouton plein écran : le jeu passe en plein écran au premier appui (réglage « Plein écran » dans le menu pour le couper). Les crédits sont dans le menu (« Crédits »), sur la carte et au chargement.
+- Un seul style « affiche » : santé, arme et étoiles réunies dans un bandeau à double filet en haut au centre (l'arme est cachée en voiture) ; heure en pastille sous la minimap ; joystick, pédales et bouton d'action en sombre cerclé de crème. 621 tests.
+- À faire de ton côté : toucher la minimap en jouant, revenir au jeu par « Reprendre » ; vérifier le plein écran au premier appui ; dire si le bandeau du haut est lisible au soleil. Ensuite : étape 2 (à pied), puis étape 3 (véhicules et compteur près de la minimap).
+

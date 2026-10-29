@@ -108,16 +108,6 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("horn"),
     document.getElementById("attack"),
   );
-  const fsButton = document.getElementById("fullscreen");
-  fsButton?.addEventListener("click", () => {
-    void document.documentElement.requestFullscreen?.().then(async () => {
-      try {
-        await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-      } catch {
-        /* le verrouillage d'orientation n'existe pas partout */
-      }
-    });
-  });
   if (params.has("debug")) debugEl.style.display = "block";
 
   const settings = ctx.settings!;
@@ -129,8 +119,27 @@ export function startGame(ctx: GameContext): void {
   const haptics = new Haptics(typeof navigator.vibrate === "function" ? (p) => void navigator.vibrate(p) : null);
   haptics.enabled = settings.values.vibration;
   const shake = new CameraShake();
+  // Plein écran (et paysage) au premier appui sur le jeu, et de nouveau après en être sorti ; il faut un geste, d'où l'écoute des appuis.
+  const enterFullscreen = (): void => {
+    if (!settings.values.fullscreen || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    document.documentElement.requestFullscreen().then(async () => {
+      try {
+        await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+      } catch {
+        /* le verrouillage d'orientation n'existe pas partout */
+      }
+    }, () => {
+      /* refusé (navigateur, réglage du téléphone) : on réessaiera au prochain appui */
+    });
+  };
+  document.getElementById("touch")?.addEventListener("pointerdown", enterFullscreen);
   settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
+    // Le changement vient d'un appui dans le menu : c'est un geste, le plein écran peut s'ouvrir ou se fermer tout de suite.
+    if (changed.includes("fullscreen")) {
+      if (v.fullscreen) enterFullscreen();
+      else if (document.fullscreenElement) void document.exitFullscreen();
+    }
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("vibration")) haptics.enabled = v.vibration;
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
