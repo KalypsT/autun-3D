@@ -585,3 +585,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La mairie annexe de Saint-Pantaléon a son inscription « MAIRIE ANNEXE ».
 - 101 Mo de données (47 avant) ; le jeu ne charge toujours que les tuiles autour de toi. 625 tests.
 - À faire de ton côté : aller voir la mer (plage à l'ouest de la Verrerie, falaises au sud), entrer dans l'eau à pied et en voiture ; rouler jusqu'aux Télots par la route de Saulieu ; te faire arrêter (reprise devant la gendarmerie) ; lancer `?bench=1` sur le téléphone. Pour fusionner, préfère « Squash and merge » (la branche contient plusieurs fabrications successives des données).
+
+![Plage à l'ouest de la Verrerie](docs/captures/d105-plage.jpg)
+![Falaises du sud, vues de la mer](docs/captures/d105-falaises.jpg)
+![Carte agrandie : la côte ouest](docs/captures/d105-carte.jpg)
+![Route de Saulieu vers les Télots, le long de la mer](docs/captures/d105-route-telots.jpg)
+![Bellevue en presqu'île](docs/captures/d105-bellevue.jpg)
+![Reprise devant la gendarmerie](docs/captures/d105-gendarmerie.jpg)
