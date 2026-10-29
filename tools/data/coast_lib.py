@@ -78,9 +78,9 @@ def _prepared():
 def on_land(x, y, margin=0.0):
     """Vrai si le point local (x, y) est à terre, à plus de `margin` mètres de la côte (margin < 0 : jusqu'à |margin| en mer)."""
     g = _prepared()
+    inside = bool(shapely.contains_xy(g, x, y))
     if margin == 0.0:
-        return g.contains_xy(x, y)
-    inside = g.contains_xy(x, y)
+        return inside
     d = g.exterior.distance(Point(x, y))
     return (inside and d >= margin) if margin > 0 else (inside or d <= -margin)
 
