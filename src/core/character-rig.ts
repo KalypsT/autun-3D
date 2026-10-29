@@ -27,10 +27,12 @@ export const REF_DIMS: BodyDims = bodyDims(REF_RECIPE);
 export interface Pose {
   angles: Float32Array;
   rootDy: number;
+  /** Déport latéral du bassin (m, vers +x : la droite du personnage) : en marchant, il se porte sur la jambe d'appui. */
+  rootDx: number;
 }
 
 export function createPose(): Pose {
-  return { angles: new Float32Array(BONE_COUNT * 3), rootDy: 0 };
+  return { angles: new Float32Array(BONE_COUNT * 3), rootDy: 0, rootDx: 0 };
 }
 
 export interface Root {
@@ -54,45 +56,110 @@ export function phaseRate(speed: number, height: number): number {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 
 /**
+ * Courbes d'un cycle de marche (D100), d'après les relevés de la marche humaine : `u` va de 0 (pose du talon de cette jambe) à 1.
+ * Hanche : flexion (+, cuisse vers l'avant) ; genou : flexion (+) ; pied : inclinaison de la semelle par rapport au sol (+ : pointe levée).
+ * En marchant : genou presque tendu à la pose du talon, légère flexion pour amortir, appui tendu, puis grande flexion pendant que la jambe
+ * passe (le pied ne racle pas le sol) ; le pied se déroule du talon à la pointe. En courant : appui plus fléchi, genou très replié derrière.
+ */
+type Keys = readonly (readonly [number, number])[];
+const HIP_WALK: Keys = [[0, 0.38], [0.12, 0.3], [0.3, 0.08], [0.5, -0.17], [0.62, -0.12], [0.75, 0.15], [0.88, 0.4]];
+const KNEE_WALK: Keys = [[0, 0.06], [0.13, 0.3], [0.3, 0.12], [0.45, 0.12], [0.6, 0.6], [0.72, 1.05], [0.85, 0.45], [0.95, 0.08]];
+const FOOT_WALK: Keys = [[0, 0.22], [0.08, 0], [0.42, 0], [0.52, -0.18], [0.62, -0.5], [0.72, -0.15], [0.85, 0.08], [0.95, 0.18]];
+const HIP_RUN: Keys = [[0, 0.5], [0.15, 0.3], [0.35, -0.25], [0.45, -0.3], [0.6, 0.1], [0.8, 0.7], [0.92, 0.6]];
+const KNEE_RUN: Keys = [[0, 0.3], [0.12, 0.65], [0.3, 0.35], [0.42, 0.6], [0.6, 1.9], [0.75, 1.4], [0.9, 0.5]];
+const FOOT_RUN: Keys = [[0, 0.12], [0.1, 0], [0.28, -0.25], [0.4, -0.7], [0.55, -0.3], [0.8, 0.1], [0.92, 0.15]];
+
+/** Courbe périodique (période 1) passant par les clés, lissée (Catmull-Rom). */
+function cyclic(keys: Keys, u: number): number {
+  const n = keys.length;
+  u -= Math.floor(u);
+  let i = n - 1;
+  for (let k = 0; k < n; k++) if (keys[k]![0] <= u) i = k;
+  const at = (k: number): readonly [number, number] => {
+    const m = ((k % n) + n) % n;
+    const lap = Math.floor(k / n);
+    return [keys[m]![0] + lap, keys[m]![1]];
+  };
+  const [t0, p0] = at(i - 1), [t1, p1] = at(i), [t2, p2] = at(i + 1), [t3, p3] = at(i + 2);
+  const uu = u < t1 ? u + 1 : u;
+  const t = (uu - t1) / (t2 - t1);
+  // Tangentes à pas non uniforme (Catmull-Rom sur les instants des clés).
+  const m1 = ((p2 - p0) / (t2 - t0)) * (t2 - t1), m2 = ((p3 - p1) / (t3 - t1)) * (t2 - t1);
+  const t2_ = t * t, t3_ = t2_ * t;
+  return (2 * t3_ - 3 * t2_ + 1) * p1 + (t3_ - 2 * t2_ + t) * m1 + (-2 * t3_ + 3 * t2_) * p2 + (t3_ - t2_) * m2;
+}
+
+const legRot = new Float64Array(9), legTmp = new Float64Array(9), legAcc = new Float64Array(9);
+/** m = a × b (3 × 3 par colonnes). */
+function mul3(m: Float64Array, a: Float64Array, b: Float64Array): void {
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 3; r++) m[c * 3 + r] = a[r]! * b[c * 3]! + a[3 + r]! * b[c * 3 + 1]! + a[6 + r]! * b[c * 3 + 2]!;
+  }
+}
+/** Hauteur de la cheville sous le bassin (m, négative) pour la pose courante : bassin, cuisse, jambe (déport et bascule du bassin compris). */
+function ankleBelowPelvis(a: Float32Array, thigh: number, shin: number, side: number, d: BodyDims): number {
+  rotation(legAcc, a[BONE.pelvis * 3]!, a[BONE.pelvis * 3 + 1]!, a[BONE.pelvis * 3 + 2]!);
+  const hipY = legAcc[1]! * side * d.stance;
+  rotation(legRot, a[thigh * 3]!, a[thigh * 3 + 1]!, a[thigh * 3 + 2]!);
+  mul3(legTmp, legAcc, legRot);
+  const kneeY = hipY - legTmp[4]! * d.thigh;
+  rotation(legRot, a[shin * 3]!, a[shin * 3 + 1]!, a[shin * 3 + 2]!);
+  mul3(legAcc, legTmp, legRot);
+  return kneeY - legAcc[4]! * d.shin;
+}
+
+/**
  * Pose de marche ou de course à la phase `phase` (rad ; 0 à 2π = un cycle de deux pas) et à la vitesse `speed` (m/s).
- * À l'arrêt (vitesse nulle) : debout, bras le long du corps. Les pieds restent au sol (`rootDy`).
+ * À la phase π/2, la cuisse gauche est au plus en avant : le talon gauche se pose. Le bassin bascule et se déporte sur la jambe d'appui,
+ * les épaules tournent à l'inverse du bassin, la tête reste stable, les bras balancent avec un léger retard, coude plié vers l'avant.
+ * À l'arrêt (vitesse nulle) : debout, bras le long du corps, coudes à peine pliés. Le pied le plus bas reste au sol (`rootDy`).
  */
 export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims): void {
   const a = pose.angles;
   const w = clamp(speed / 1.4, 0, 1);
   const r = clamp((speed - 2.4) / 3, 0, 1);
-  const swing = 0.42 * w + 0.3 * r;
-  const stoop = d.stoop + 0.04 * w + 0.14 * r;
   a.fill(0);
-  const sL = Math.sin(phase), sR = -sL;
-  const leg = (thigh: number, shin: number, foot: number, s: number, c: number): number => {
-    const th = 0.1 * w + swing * s;
-    // La jambe plie surtout quand la cuisse passe vers l'avant.
-    const k = clamp(w * 0.12 + (0.5 * w + 0.5 * r) * Math.max(0, c) ** 1.5, 0, 2.2);
-    a[thigh * 3] = th;
-    a[shin * 3] = -k;
-    a[foot * 3] = clamp(0.9 * (k - th), -0.6, 0.6);
-    return d.thigh * Math.cos(th) + d.shin * Math.cos(th - k);
-  };
-  const eL = leg(BONE.thighL, BONE.shinL, BONE.footL, sL, Math.cos(phase + 0.3));
-  const eR = leg(BONE.thighR, BONE.shinR, BONE.footR, sR, Math.cos(phase + Math.PI + 0.3));
-  pose.rootDy = Math.max(eL, eR) - (d.thigh + d.shin);
+  const uL = phase / (2 * Math.PI) - 0.25;
+  const mix = (walk: Keys, run: Keys, u: number): number => w * ((1 - r) * cyclic(walk, u) + r * cyclic(run, u));
 
-  // Bras : en opposition aux jambes, coudes fléchis surtout vers l'avant, un peu écartés du corps.
-  const armSwing = 0.5 * w + 0.45 * r;
-  a[BONE.armL * 3] = -armSwing * sL + 0.04;
-  a[BONE.armR * 3] = -armSwing * sR + 0.04;
-  a[BONE.armL * 3 + 2] = -0.08;
-  a[BONE.armR * 3 + 2] = 0.08;
-  a[BONE.forearmL * 3] = 0.12 + 0.18 * w + 1.0 * r + 0.2 * w * (0.5 - 0.5 * sL);
-  a[BONE.forearmR * 3] = 0.12 + 0.18 * w + 1.0 * r + 0.2 * w * (0.5 - 0.5 * sR);
+  // Bassin : torsion (la hanche de la jambe qui avance part en avant), bascule (le côté de la jambe qui passe descend) et déport sur l'appui.
+  const support = Math.sin(2 * Math.PI * uL);
+  const roll = -0.045 * w * (1 - 0.5 * r) * support;
+  const shift = -0.022 * w * (1 - 0.6 * r) * support;
+  a[BONE.pelvis * 3 + 1] = -(0.07 + 0.05 * r) * w * Math.sin(phase);
+  a[BONE.pelvis * 3 + 2] = roll;
+  pose.rootDx = shift;
 
-  // Buste : penché vers l'avant (avance plus en courant, voûté chez les seniors) et en torsion inverse du bassin ; tête qui compense.
-  a[BONE.pelvis * 3 + 1] = -0.08 * w * sL;
+  const legLen = d.thigh + d.shin;
+  for (const [thigh, shin, foot, u] of [[BONE.thighL, BONE.shinL, BONE.footL, uL], [BONE.thighR, BONE.shinR, BONE.footR, uL + 0.5]] as const) {
+    const hip = mix(HIP_WALK, HIP_RUN, u);
+    const knee = clamp(mix(KNEE_WALK, KNEE_RUN, u), 0, 2.2);
+    a[thigh * 3] = hip;
+    // La jambe reste d'aplomb malgré la bascule et le déport du bassin : le pied d'appui ne glisse pas de côté.
+    a[thigh * 3 + 2] = -roll - shift / legLen;
+    a[shin * 3] = -knee;
+    a[foot * 3] = clamp(mix(FOOT_WALK, FOOT_RUN, u) - hip + knee, -0.9, 0.9);
+  }
+  const ankle = Math.min(ankleBelowPelvis(a, BONE.thighL, BONE.shinL, -1, d), ankleBelowPelvis(a, BONE.thighR, BONE.shinR, 1, d));
+  pose.rootDy = -ankle - legLen;
+
+  // Bras : en opposition aux jambes, avec un léger retard ; coude plié, davantage quand le bras passe devant ; en courant, coudes à angle droit.
+  const armSwing = 0.4 * w + 0.45 * r;
+  for (const [arm, fore, side, s] of [[BONE.armL, BONE.forearmL, -1, Math.sin(phase - 0.2)], [BONE.armR, BONE.forearmR, 1, -Math.sin(phase - 0.2)]] as const) {
+    const swing = -armSwing * s + 0.04 + 0.12 * r;
+    a[arm * 3] = swing;
+    a[arm * 3 + 2] = side * (0.1 + 0.06 * r);
+    a[fore * 3] = 0.15 + 0.12 * w + 1.15 * r + (0.3 * w + 0.2 * r) * Math.max(0, swing);
+  }
+
+  // Buste penché (plus en courant, voûté chez les seniors), torsion inverse du bassin, bascule compensée ; la tête regarde droit devant.
+  const stoop = d.stoop + 0.04 * w + 0.14 * r;
   a[BONE.torso * 3] = -stoop;
-  a[BONE.torso * 3 + 1] = 0.12 * w * sL;
+  a[BONE.torso * 3 + 1] = (0.11 + 0.05 * r) * w * Math.sin(phase);
+  a[BONE.torso * 3 + 2] = -0.8 * roll;
   a[BONE.head * 3] = 0.7 * stoop;
-  a[BONE.head * 3 + 1] = -0.5 * a[BONE.torso * 3 + 1]!;
+  a[BONE.head * 3 + 1] = -0.8 * (a[BONE.pelvis * 3 + 1]! + a[BONE.torso * 3 + 1]!);
+  a[BONE.head * 3 + 2] = -0.2 * roll;
 }
 
 /** Genre de pose d'un passant heurté : 1 il trébuche, 2 il tombe, reste au sol, puis se relève. */
@@ -117,6 +184,7 @@ const smooth = (u: number): number => {
 export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims): void {
   const a = pose.angles;
   a.fill(0);
+  pose.rootDx = 0;
   if (kind === HIT_POSE.stumble) {
     const env = Math.sin(Math.PI * clamp(t / STUMBLE_TIME, 0, 1));
     a[BONE.pelvis * 3] = side * 0.5 * env;
@@ -284,7 +352,7 @@ export function solveBones(out: Float32Array, world: Float32Array, offsets: Floa
   for (let b = 0; b < BONE_COUNT; b++) {
     const o = b * 16;
     rotation(rot, a[b * 3]!, a[b * 3 + 1]!, a[b * 3 + 2]!);
-    const ox = offsets[b * 3]!, oy = offsets[b * 3 + 1]! + (b === 0 ? pose.rootDy : 0), oz = offsets[b * 3 + 2]!;
+    const ox = offsets[b * 3]! + (b === 0 ? pose.rootDx : 0), oy = offsets[b * 3 + 1]! + (b === 0 ? pose.rootDy : 0), oz = offsets[b * 3 + 2]!;
     const p = PARENT[b]!;
     if (p < 0) {
       // Racine : translation au sol, cap, puis décalage du bassin.

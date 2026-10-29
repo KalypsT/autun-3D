@@ -163,6 +163,7 @@ export function solveRide(
     a[BONE.head * 3] = lean * 0.9 + stoop + (style === "pedal" ? 0.1 : 0.05);
   }
   pose.rootDy = -d.hipY;
+  pose.rootDx = 0;
   const root: Root = { x: pelvis[0], y: pelvis[1], z: pelvis[2], yaw: 0 };
   solveBones(out, world, offsets, scales, pose, root);
 

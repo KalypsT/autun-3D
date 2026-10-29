@@ -54,6 +54,13 @@ const TORSO_RINGS: readonly Ring[] = [
 /** Anneaux gardés au loin (indices de TORSO_RINGS). */
 const TORSO_FAR = [0, 3, 5, 7, 9, 11];
 
+/**
+ * Poitrine du torse féminin (hauteur, profondeur des galbes) : le sillon dessous monte vite, le haut redescend en pente douce vers
+ * les clavicules. Modelée dans la surface du torse, sans pièce rapportée : ni arête ni ligne d'ombre.
+ */
+const BUST_PROFILE: readonly (readonly [number, number])[] = [[0.27, 0], [0.3, 0.016], [0.325, 0.031], [0.35, 0.038], [0.38, 0.034], [0.415, 0.019], [0.45, 0.005], [0.48, 0]];
+const bustAt = (y: number): number => (y <= 0.27 || y >= 0.48 ? 0 : radiusAt(BUST_PROFILE, y));
+
 const PELVIS_RINGS: readonly Ring[] = [
   { y: -0.155, rx: 0.085, rz: 0.065, cz: 0.005 },
   { y: -0.115, rx: 0.16, rz: 0.098, cz: 0.012 },
@@ -68,11 +75,19 @@ const profileRings = (p: Profile, scale = 1, lod: Lod = 0): Ring[] => {
   const kept = lod === 1 ? sorted.filter((_, i) => i % 2 === 0 || i === sorted.length - 1) : sorted;
   return kept.map(([y, r]) => ({ y, rx: r * scale, rz: r * scale }));
 };
-/** Anneau du torse interpolé à la hauteur y, agrandi de `grow` (bandes, cols). */
-const torsoRingAt = (y: number, grow = 1): Ring => {
+/** Anneau du torse interpolé à la hauteur y, agrandi de `grow` (bandes, cols) ; `female` : avec la poitrine. */
+const torsoRingAt = (y: number, grow = 1, female = false): Ring => {
   const at = (f: (r: Ring) => number): number => radiusAt(TORSO_RINGS.map((r) => [r.y, f(r)] as const), y);
-  return { y, rx: at((r) => r.rx) * grow, rz: at((r) => r.rz) * grow, cz: at((r) => r.cz ?? 0), p: at((r) => r.p ?? 2) };
+  const ring: Ring = { y, rx: at((r) => r.rx) * grow, rz: at((r) => r.rz) * grow, cz: at((r) => r.cz ?? 0), p: at((r) => r.p ?? 2) };
+  if (female && bustAt(y) > 0) ring.bust = bustAt(y) * grow;
+  return ring;
 };
+/** Torse féminin : les anneaux du torse, plus serrés là où passe la poitrine. */
+const FEMALE_TORSO: readonly Ring[] = [
+  ...TORSO_RINGS.filter((r) => r.y < 0.27 || r.y > 0.48),
+  ...BUST_PROFILE.map(([y]) => torsoRingAt(y, 1, true)),
+].sort((a, b) => a.y - b.y);
+const FEMALE_TORSO_FAR: readonly Ring[] = [0, 3, 5].map((i) => TORSO_RINGS[i]!).concat([torsoRingAt(0.35, 1, true), TORSO_RINGS[7]!, TORSO_RINGS[9]!, TORSO_RINGS[11]!]);
 
 interface Ctx {
   /** Nombre de côtés d'un membre. */
@@ -125,6 +140,13 @@ function shoe(c: Ctx, grow = 1, bottom = -0.07, top = Infinity, color: RGB = WHI
   return g;
 }
 
+/** Bandes réfléchissantes du gilet de chantier, posées sur le torse (féminin : elles épousent la poitrine). */
+function reflectiveStripes(female: boolean): THREE.BufferGeometry {
+  const band = (y0: number, y1: number): THREE.BufferGeometry =>
+    loft([torsoRingAt(y0, 1.04, female), torsoRingAt(y1, 1.04, female)], female ? 20 : 16, { color: [0.88, 0.88, 0.8] });
+  return merge([band(0.1, 0.15), band(0.28, 0.33)]);
+}
+
 const SHAPES: Record<string, Shape> = {
   head: (c) => {
     const near = c.lod === 0;
@@ -160,13 +182,11 @@ const SHAPES: Record<string, Shape> = {
   shinSkin: (c) => limb(SHIN, 1, c),
 
   torso: (c) => loft(c.lod === 0 ? TORSO_RINGS : TORSO_FAR.map((i) => TORSO_RINGS[i]!), c.lod === 0 ? 14 : 7, { capTop: true }),
-  // Poitrine (femmes) : un volume large dans la couleur du haut, comme sous un vêtement, posé sur la coque du torse.
-  bust: (c) => ellipsoid(0, 0.35, -0.087, 0.12, 0.082, 0.05, c.lod === 0 ? 12 : 6, c.lod === 0 ? 7 : 4),
+  // Torse féminin : poitrine modelée dans la surface ; plus de côtés devant pour suivre les deux galbes.
+  torsoF: (c) => loft(c.lod === 0 ? FEMALE_TORSO : FEMALE_TORSO_FAR, c.lod === 0 ? 20 : 9, { capTop: true }),
   apronPanel: (c) => merge([box(0.25, 0.74, 0.02, 0, 0.02, -0.135), ...(c.lod === 0 ? [box(0.035, 0.22, 0.012, 0, 0.44, -0.12)] : [])]),
-  stripes: () => {
-    const band = (y0: number, y1: number): THREE.BufferGeometry => loft([torsoRingAt(y0, 1.04), torsoRingAt(y1, 1.04)], 16, { color: [0.88, 0.88, 0.8] });
-    return merge([band(0.1, 0.15), band(0.28, 0.33)]);
-  },
+  stripes: () => reflectiveStripes(false),
+  stripesF: () => reflectiveStripes(true),
   collar: (c) => loft([{ y: 0.51, rx: 0.088, rz: 0.077, cz: 0.008 }, { y: 0.55, rx: 0.074, rz: 0.067, cz: 0.008 }, { y: 0.585, rx: 0.064, rz: 0.06, cz: 0.008 }], c.seg),
   hood: () => ellipsoid(0, 0.555, 0.075, 0.1, 0.075, 0.07, 10, 6),
   hemJacket: (c) => loft([{ y: -0.17, rx: 0.175, rz: 0.126, cz: 0.01 }, { y: -0.05, rx: 0.17, rz: 0.12, cz: 0.012 }, { y: 0.06, rx: 0.162, rz: 0.113, cz: 0.006 }], c.seg + 4),
@@ -250,7 +270,7 @@ const SHAPES: Record<string, Shape> = {
 
   backpack: (c) => merge([
     box(0.3, 0.36, 0.13, 0, 0.3, 0.19),
-    ...(c.lod === 0 ? [box(0.035, 0.28, 0.012, 0.09, 0.34, -0.117), box(0.035, 0.28, 0.012, -0.09, 0.34, -0.117)] : []),
+    ...(c.lod === 0 ? [box(0.035, 0.28, 0.012, 0.125, 0.34, -0.118), box(0.035, 0.28, 0.012, -0.125, 0.34, -0.118)] : []),
   ]),
   shoulderBag: (c) => merge([
     box(0.28, 0.2, 0.09, -0.03, -0.02, 0.165),

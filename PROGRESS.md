@@ -545,3 +545,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Coudes, genoux, épaules et hanches plient en souplesse au lieu de deux tubes qui se croisent (visible sur les véhicules et en marchant) ; jupes et manteaux suivent un peu les jambes.
 - Épaules des hommes moins larges, jambes moins écartées. Toujours un seul appel de dessin pour toute la foule ; environ 2,5 fois plus de triangles par personnage proche. 616 tests.
 - À faire de ton côté : regarder ton personnage (écran Apparence, en marchant, sur un vélo) et les passants de près ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone pour vérifier qu'on tient 60 i/s. Ensuite : étape 2 (démarche), puis étape 3 (vêtements et visage peints).
+
+**Personnages plus réalistes, étape 2 : la démarche (29 octobre 2026)** (D100)
+- Poitrine des femmes refaite : modelée dans la surface du torse (plus de « boules » ni d'étagère).
+- Marche d'après un vrai cycle de marche : le talon se pose, le genou amortit, le pied se déroule jusqu'à la pointe, la jambe se plie pour passer ; le bassin bascule et se porte sur la jambe d'appui, les épaules tournent à l'inverse, la tête reste stable, les bras balancent avec un léger retard, coude plié.
+- Course : genou très replié derrière, buste penché, coudes à angle droit (fini les jambes raides).
+- Joueur, passants et gendarmes en profitent ; `?proto=look&walk=1.4&turn=1.5708` montre tout le cycle d'un coup. 616 tests.
+- À faire de ton côté : marcher et courir avec ton personnage (de dos, comme en jeu), regarder les passants de profil ; dire si les bras balancent trop ou pas assez, si les hanches roulent trop.

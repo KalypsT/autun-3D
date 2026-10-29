@@ -25,7 +25,8 @@ describe("catalogue de pièces", () => {
       const one = (ids: string[], label: string): void => {
         if (ids.filter((i) => p.has(i)).length !== 1) bad.push(`${label}: ${ids.filter((i) => p.has(i)).join("+") || "aucun"} (${r.top} ${r.bottom})`);
       };
-      one(["torsoTop", "torsoApron"], "torse");
+      one(["torsoTop", "torsoTopF", "torsoApron"], "torse");
+      if (p.has("torsoTopF") !== (r.sex === "f" && r.top !== "apron")) bad.push(`torse féminin: ${r.sex} ${r.top}`);
       one(["pelvis", "skirt"], "bassin");
       if (!p.has("head") || !p.has("neck") || !p.has("hands") || !p.has("foot")) bad.push("corps incomplet");
       // Bras : peau nue ou manche, jamais les deux, jamais rien.
@@ -38,7 +39,7 @@ describe("catalogue de pièces", () => {
       const shorts = p.has("thighShorts") && p.has("thighSkinLower") && p.has("shinSkin");
       const skirt = p.has("skirt") && p.has("thighSkinFull") && p.has("shinSkin");
       if ([long, shorts, skirt].filter(Boolean).length !== 1) bad.push(`jambes: ${r.bottom}`);
-      if (p.has("hatHelmet") && !p.has("stripes")) bad.push("casque sans gilet");
+      if (p.has("hatHelmet") && !p.has("stripes") && !p.has("stripesF")) bad.push("casque sans gilet");
       if (["bootShaft", "sole"].filter((i) => p.has(i)).length !== (r.shoes === "leather" ? 0 : 1)) bad.push(`chaussures: ${r.shoes}`);
       if (Array.from(p).filter((i) => i.startsWith("hair")).length !== (r.hairStyle === "bald" ? 0 : 1)) bad.push(`cheveux: ${r.hairStyle}`);
       if (Array.from(p).filter((i) => i.startsWith("hat")).length !== (r.hat === "none" ? 0 : 1)) bad.push(`chapeau: ${r.hat}`);

@@ -56,11 +56,13 @@ export const PART_SPECS: readonly PartSpec[] = [
   spec("thighSkinFull", THIGHS, SLOT.skin, true, (r) => r.bottom === "skirt"),
   spec("shinSkin", SHINS, SLOT.skin, true, (r) => r.bottom === "shorts" || r.bottom === "skirt"),
   // Haut : une seule coque de torse (le tablier recouvre une chemise dans l'emplacement « écharpe »).
-  spec("torsoTop", TORSO, SLOT.top, true, (r) => r.top !== "apron", "torso"),
+  // Les femmes ont leur torse, poitrine modelée dedans (sauf sous le tablier, qui la couvrirait mal).
+  spec("torsoTop", TORSO, SLOT.top, true, (r) => r.top !== "apron" && r.sex !== "f", "torso"),
+  spec("torsoTopF", TORSO, SLOT.top, true, (r) => r.top !== "apron" && r.sex === "f", "torsoF"),
   spec("torsoApron", TORSO, SLOT.scarf, true, (r) => r.top === "apron", "torso"),
-  spec("bust", TORSO, SLOT.top, true, (r) => r.sex === "f" && r.top !== "apron"),
   spec("apronPanel", TORSO, SLOT.top, false, (r) => r.top === "apron"),
-  spec("stripes", TORSO, SLOT.none, false, (r) => r.top === "hivis"),
+  spec("stripes", TORSO, SLOT.none, false, (r) => r.top === "hivis" && r.sex !== "f"),
+  spec("stripesF", TORSO, SLOT.none, false, (r) => r.top === "hivis" && r.sex === "f"),
   spec("collar", TORSO, SLOT.top, false, (r) => COLLARED.includes(r.top)),
   spec("hood", TORSO, SLOT.top, false, (r) => r.top === "hoodie"),
   spec("hemJacket", PELVIS, SLOT.top, false, (r) => r.top === "jacket" || r.top === "hoodie"),

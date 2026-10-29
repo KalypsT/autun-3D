@@ -248,7 +248,8 @@ export function protoText(device: Record<string, unknown>, reports: PhaseReport[
 
 /**
  * ?proto=look et ?view=characters : une ou deux rangées de personnages devant la caméra, pour juger la variété (ou comparer les rendus).
- * `n` (24 par défaut), `seed`, `gap`, `dist`, `eye`, `turn` (cap des personnages : 0 de face, 3,14 de dos). En galerie (`view=characters`),
+ * `n` (24 par défaut), `seed`, `gap`, `dist`, `eye`, `turn` (cap des personnages : 0 de face, 3,14 de dos), `walk` (tous marchent à cette vitesse,
+ * phases réparties sur un cycle). En galerie (`view=characters`),
  * un appui sur l'écran tire 24 autres recettes.
  */
 function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number, camX: number, camZ: number, ground: number): void {
@@ -257,6 +258,8 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   let seed = Number(params.get("seed") ?? 1);
   const perRow = Math.ceil(n / 2), spacing = Number(params.get("gap") ?? 0.95), dist = Number(params.get("dist") ?? 5.2);
   const turn = Number(params.get("turn") ?? 0);
+  // `walk=1.4` : tout le monde marche à cette vitesse (m/s), phases réparties sur un cycle (pour juger la démarche d'un coup d'œil).
+  const walkAll = params.has("walk") ? Number(params.get("walk")) : null;
   const place = (): CrowdState => {
     const state = createCrowdState(Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i)));
     for (let i = 0; i < n; i++) {
@@ -266,9 +269,9 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
       state.y[i] = groundAt(state.x[i]!, state.z[i]!);
       // Face à la caméra : le « avant » du corps est −z, une rotation de π le tourne vers +z.
       state.yaw[i] = Math.PI + turn;
-      const walking = i % 3 === 1;
-      state.speed[i] = walking ? 1.4 : 0;
-      state.phase[i] = walking ? (i * 1.3) % (Math.PI * 2) : 0;
+      const walking = walkAll !== null || i % 3 === 1;
+      state.speed[i] = walking ? (walkAll ?? 1.4) : 0;
+      state.phase[i] = walkAll !== null ? (i / n) * Math.PI * 2 : walking ? (i * 1.3) % (Math.PI * 2) : 0;
     }
     return state;
   };

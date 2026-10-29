@@ -18,7 +18,13 @@ export interface Ring {
   cx?: number;
   cz?: number;
   p?: number;
+  /** Poitrine : profondeur (m) de deux galbes sur la face avant (−z), de part et d'autre du milieu. */
+  bust?: number;
 }
+
+/** Galbes de poitrine à l'abscisse relative xn = x / rx, sur la face avant (front : 0 sur les côtés, 1 droit devant). */
+const bustLobes = (xn: number, front: number): number =>
+  front ** 1.5 * (Math.exp(-(((xn - 0.33) / 0.28) ** 2)) + Math.exp(-(((xn + 0.33) / 0.28) ** 2)));
 
 /** Angle au-delà duquel deux faces voisines gardent une arête vive (rad). */
 export const CREASE = (55 * Math.PI) / 180;
@@ -104,7 +110,9 @@ export function loft(rings: readonly Ring[], seg: number, opts: { capBottom?: bo
     Array.from({ length: seg }, (_, j) => {
       const t = (j / seg) * Math.PI * 2;
       const c = Math.cos(t), s = Math.sin(t), e = 2 / (r.p ?? 2);
-      return [(r.cx ?? 0) + r.rx * Math.sign(c) * Math.abs(c) ** e, r.y, (r.cz ?? 0) + r.rz * Math.sign(s) * Math.abs(s) ** e];
+      const xn = Math.sign(c) * Math.abs(c) ** e;
+      const z = (r.cz ?? 0) + r.rz * Math.sign(s) * Math.abs(s) ** e - (r.bust ? r.bust * bustLobes(xn, Math.max(0, -s)) : 0);
+      return [(r.cx ?? 0) + r.rx * xn, r.y, z];
     });
   const rows = rings.map(pts);
   const tris: number[] = [];
