@@ -17,15 +17,16 @@ import math
 
 import numpy as np
 from PIL import Image
-from shapely.geometry import Polygon, box
+from shapely.geometry import LineString, Polygon, box
+from shapely.ops import unary_union
 
 import coast_lib as k
 import config as c
 
 OUT = c.OUT
 UNIT = 0.01
-# Une tuile plus loin que cela de la côte, entièrement à terre, n'est pas touchée : la falaise (CLIFF m/m) y dépasserait 600 m.
-REACH = 160.0
+# Une tuile plus loin que cela de la côte, entièrement à terre, n'est pas touchée : plage (35 m) puis falaise (3 m/m) y dépasseraient 600 m.
+REACH = 200.0
 # Poids de mélange des sols (D30) : A = asphalte, pavés, gravier ; B = herbe, trottoir, ombre. Sable : le gravier ; roche : les pavés, assombris.
 SAND = ((0, 0, 255), (0, 0, 0))
 SEABED = ((0, 0, 255), (0, 0, 110))
@@ -48,18 +49,30 @@ def write_block(path, ox, oy, n, z):
 
 
 def shore(z, sd):
-    """Sol plafonné, et masques (plage ou fond, falaise) pour les sols."""
-    cap = k.shore_cap(sd)
-    new = np.minimum(z, cap)
-    sand = sd > -2.5
-    rock = (~sand) & (z - new > 0.8)
-    return new, sand, rock
+    """Sol plafonné, et masques du rivage (sable, roche, mer) pour les sols et la découpe."""
+    new = np.minimum(z, k.shore_cap(sd))
+    sand, rock, sea = k.shore_masks(new, sd)
+    return new, sand, rock, sea
+
+
+def mask_polygon(mask, ox, oy, cell=2):
+    """Le masque (grille de 1 m, coin nord-ouest ox, oy) en polygones : cellules de `cell` mètres fusionnées, contour lissé."""
+    n = mask.shape[0] // cell * cell
+    mm = mask[:n, :n].reshape(n // cell, cell, n // cell, cell).mean(axis=(1, 3)) >= 0.5
+    boxes = []
+    for r in range(mm.shape[0]):
+        d = np.diff(np.concatenate([[0], mm[r].astype(np.int8), [0]]))
+        for a, b in zip(np.where(d == 1)[0], np.where(d == -1)[0]):
+            boxes.append(box(ox + a * cell, oy - (r + 1) * cell, ox + b * cell, oy - r * cell))
+    if not boxes:
+        return Polygon()
+    return unary_union(boxes).buffer(1.0).buffer(-1.0)
 
 
 def paint(path_a, path_b, sand, rock, sea):
     a = np.array(Image.open(path_a).convert("RGB"))
     b = np.array(Image.open(path_b).convert("RGB"))
-    for mask, (wa, wb) in ((rock, ROCK), (sand & ~sea, SAND), (sea, SEABED)):
+    for mask, (wa, wb) in ((rock, ROCK), (sand & ~sea & ~rock, SAND), (sea, SEABED)):
         a[mask] = wa
         b[mask] = wb
     Image.fromarray(a).save(path_a, optimize=True)
@@ -88,22 +101,52 @@ def footprint_on_land(ring):
     return poly.intersection(k.land()).area >= 0.9 * poly.area
 
 
-def clip_tile(rec):
-    kept = [b for b in rec["buildings"] if footprint_on_land(b["ring"])]
+def clip_tile(rec, shore_poly, in_shore):
+    """Découpe le contenu d'une tuile à la côte (`k.land`) et au rivage (plage, falaise : `shore_poly`, `in_shore(x, y)`)."""
+    def ok_footprint(ring):
+        if not footprint_on_land(ring):
+            return False
+        if shore_poly.is_empty:
+            return True
+        poly = Polygon(ring_points(ring)).buffer(0)
+        return poly.area <= 0 or poly.intersection(shore_poly).area <= 0.1 * poly.area
+
+    kept = [b for b in rec["buildings"] if ok_footprint(b["ring"])]
     ids = {b["id"] for b in kept}
     gone = len(rec["buildings"]) - len(kept)
     rec["buildings"] = kept
     rec["fiches"] = [f for f in rec["fiches"] if f["id"] in ids]
-    rec["trees"] = [t for t in rec["trees"] if k.on_land(t[0], t[1], 1.0)]
+    rec["trees"] = [t for t in rec["trees"] if k.on_land(t[0], t[1], 1.0) and not in_shore(t[0], t[1])]
     walls = []
     for w in rec["walls"]:
-        for i, pts in enumerate(k.clip_line(w["pts"])):
+        pieces = k.clip_line(w["pts"])
+        if not shore_poly.is_empty:
+            cut = []
+            for pts in pieces:
+                g = LineString([(pts[i], pts[i + 1]) for i in range(0, len(pts) - 1, 2)]).difference(shore_poly)
+                for part in getattr(g, "geoms", [g]):
+                    if part.geom_type == "LineString" and part.length >= 0.5:
+                        cut.append([round(v, 2) for p in part.coords for v in p])
+            pieces = cut
+        for i, pts in enumerate(pieces):
             walls.append({**w, "pts": pts} if i == 0 else {**w, "id": w["id"] * 100 - i, "pts": pts})
     rec["walls"] = walls
-    rec["furniture"] = [f for f in rec["furniture"] if k.on_land(f["x"], f["y"], 0.5)]
+    rec["furniture"] = [f for f in rec["furniture"] if k.on_land(f["x"], f["y"], 0.5) and not in_shore(f["x"], f["y"])]
     ground = {}
     for layer, polys in rec["ground"].items():
-        out = [p for poly in polys for p in k.clip_polygon(poly)]
+        out = []
+        for poly in polys:
+            for p in k.clip_polygon(poly):
+                if shore_poly.is_empty:
+                    out.append(p)
+                    continue
+                g = Polygon(ring_points(p[0]), [ring_points(h) for h in p[1:]]).buffer(0)
+                if not g.intersects(shore_poly):
+                    out.append(p)
+                    continue
+                for part in getattr(g.difference(shore_poly), "geoms", [g.difference(shore_poly)]):
+                    if part.geom_type == "Polygon" and part.area >= 0.5:
+                        out.append([[round(v, 2) for xy in list(r.coords)[:-1] for v in xy] for r in (part.exterior, *part.interiors)])
         if out:
             ground[layer] = out
     rec["ground"] = ground
@@ -148,17 +191,24 @@ def main():
         ox, oy, n, z = read_block(tpath)
         xx, yy = grid_xy(ox, oy, n)
         sd = k.signed_distance(xx, yy)
-        new, sand, rock = shore(z, sd)
+        new, sand, rock, sea = shore(z, sd)
         stats["cells_lowered"] += int((z - new > 0.01).sum())
         write_block(tpath, ox, oy, n, new)
         ga, gb = OUT / "ground" / f"{tid}_a.png", OUT / "ground" / f"{tid}_b.png"
         if ga.exists() and gb.exists():
-            paint(ga, gb, sand, rock, new < k.SEA_Z)
-        # Contenu de la tuile.
+            paint(ga, gb, sand, rock, sea)
+        # Contenu de la tuile : rien en mer, ni sur la plage ou la falaise.
+        rim = sand | rock | sea
+        shore_poly = mask_polygon(rim, ox, oy)
+
+        def in_shore(x, y, ox=ox, oy=oy, n=n, rim=rim):
+            i, j = int(oy - y), int(x - ox)
+            return 0 <= i < n and 0 <= j < n and bool(rim[i, j])
+
         p = OUT / "tiles" / f"{tid}.json"
         rec = json.loads(p.read_text())
         trees0 = len(rec["trees"])
-        stats["buildings"] += clip_tile(rec)
+        stats["buildings"] += clip_tile(rec, shore_poly, in_shore)
         stats["trees"] += trees0 - len(rec["trees"])
         text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
         p.write_text(text)
@@ -191,7 +241,7 @@ def main():
     xs =meta["x0"] + (np.arange(meta["cols"]) + 0.5) * meta["res"]
     ys = meta["y1"] - (np.arange(meta["rows"]) + 0.5) * meta["res"]
     xx, yy = np.meshgrid(xs, ys)
-    new, _, _ = shore(z, k.signed_distance(xx, yy))
+    new, _, _, _ = shore(z, k.signed_distance(xx, yy))
     lo = math.floor(float(new.min()))
     (OUT / "terrain" / "coarse.bin").write_bytes(np.round((new - lo) / meta["unit"]).astype("<u2").tobytes())
     meta.update(base=float(lo), zmin=float(new.min()), zmax=float(new.max()))
@@ -206,10 +256,10 @@ def main():
         cc = np.clip(((cx - meta["x0"]) / meta["res"]).astype(int), 0, meta["cols"] - 1)
         rr = np.clip(((meta["y1"] - cy) / meta["res"]).astype(int), 0, meta["rows"] - 1)
         zc = z[rr, cc]
-        nz, sand, rock = shore(zc, k.signed_distance(cx, cy))
+        _, sand, rock, sea = shore(zc, k.signed_distance(cx, cy))
         ga, gb = OUT / "ground" / f"{cell['id']}_a.png", OUT / "ground" / f"{cell['id']}_b.png"
         if ga.exists() and gb.exists():
-            paint(ga, gb, sand, rock, nz < k.SEA_Z)
+            paint(ga, gb, sand, rock, sea)
 
     coast = []
     for x, y in k.land().simplify(3.0).exterior.coords:

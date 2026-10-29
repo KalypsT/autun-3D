@@ -25,11 +25,15 @@ SEA_Z = SEA_ALTITUDE - c.ORIGIN_Z
 # Largeur moyenne de terre ajoutée autour de la zone jouable, et amplitude du bruit (m).
 OFFSET = 125.0
 WOBBLE = 45.0
-# Profil du rivage (m) : la terre est plafonnée à SEA_Z + BERM au trait de côte ; elle monte au plus de CLIFF mètres par mètre vers
-# l'intérieur (falaise à 72°) et descend de BEACH mètres par mètre vers le large, jusqu'à DEPTH sous la surface.
+# Profil du rivage (m) : la terre est plafonnée à SEA_Z + BERM au trait de côte. Vers l'intérieur, une plage de BEACH_W mètres monte
+# de SAND mètres par mètre, puis une falaise de CLIFF mètres par mètre (72°) ; vers le large, le fond descend de SHELF mètres par mètre,
+# jusqu'à DEPTH sous la surface. Dans la plaine, on a une plage (et un petit talus derrière si la terre est plus haute) ; sur les
+# collines, une plage au pied d'une falaise.
 BERM = 1.6
+BEACH_W = 35.0
+SAND = 0.12
 CLIFF = 3.0
-BEACH = 0.22
+SHELF = 0.22
 DEPTH = 9.0
 
 
@@ -133,10 +137,65 @@ def clip_polygon(rings):
 
 
 def shore_cap(signed):
-    """Altitude locale maximale du sol selon la distance signée à la côte (m, positive en mer) : falaise, berme, puis fond marin."""
+    """Altitude locale maximale du sol selon la distance signée à la côte (m, positive en mer) : falaise, plage, berme, puis fond marin."""
     s = np.asarray(signed, dtype=np.float64)
-    cap = np.where(s < 0, SEA_Z + BERM - CLIFF * s, SEA_Z + BERM - BEACH * s)
+    inland = np.maximum(-s, 0.0)
+    land = SEA_Z + BERM + SAND * np.minimum(inland, BEACH_W) + CLIFF * np.maximum(inland - BEACH_W, 0.0)
+    cap = np.where(s < 0, land, SEA_Z + BERM - SHELF * s)
     return np.maximum(cap, SEA_Z - DEPTH)
+
+
+def shore_masks(z, signed):
+    """Sur un sol déjà plafonné (`z`), le rivage : (sable, roche, mer). Sable : la bande de plage et le fond ; roche : la falaise, là où le
+    sol suit le plafond au-delà de la plage. Ne dépend que du sol final : la même réponse à chaque passage."""
+    s = np.asarray(signed, dtype=np.float64)
+    sea = z < SEA_Z
+    sand = (s >= -BEACH_W) | sea
+    rock = (~sand) & (z >= shore_cap(s) - 0.05)
+    return sand, rock, sea
+
+
+class TerrainSampler:
+    """Relief fin publié (public/data/terrain/<id>.bin), lu à la demande : pour les étapes qui suivent build_coast."""
+
+    def __init__(self):
+        self.blocks = {}
+
+    def at(self, x, y):
+        col = math.floor((x - c.GRID_X) / c.TILE)
+        row = math.floor((y - c.GRID_Y) / c.TILE)
+        key = (col, row)
+        if key not in self.blocks:
+            p = c.OUT / "terrain" / f"{col}_{row}.bin"
+            if not p.exists():
+                self.blocks[key] = None
+            else:
+                buf = p.read_bytes()
+                base, ox, oy, n = np.frombuffer(buf, dtype="<f4", count=4)
+                n = int(n)
+                z = float(base) + np.frombuffer(buf, dtype="<u2", offset=16, count=n * n).reshape(n, n).astype(np.float64) * 0.01
+                self.blocks[key] = (float(ox), float(oy), n, z)
+        b = self.blocks[key]
+        if b is None:
+            return None
+        ox, oy, n, z = b
+        j = min(max(int(x - ox), 0), n - 1)
+        i = min(max(int(oy - y), 0), n - 1)
+        return float(z[i, j])
+
+
+_SAMPLER = TerrainSampler()
+
+
+def usable(x, y, margin=2.0):
+    """Vrai si (x, y) est à terre, hors du rivage (plage, falaise) : là où passent les routes et les files de la navigation."""
+    if not on_land(x, y, BEACH_W + margin):
+        return False
+    z = _SAMPLER.at(x, y)
+    if z is None:
+        return True
+    s = float(signed_distance(np.array([x]), np.array([y]))[0])
+    return z < float(shore_cap(np.array([s]))[0]) - 0.5  # le sol ne suit pas le plafond : pas une falaise
 
 
 # Distance signée à la côte, calculée une fois sur toute la région à DIST_RES mètres, puis interpolée : les tuiles voisines voient le même

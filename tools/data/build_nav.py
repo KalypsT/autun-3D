@@ -133,9 +133,9 @@ def load_routes():
 
 
 def trim_to_land(s):
-    """La voie réduite à sa plus longue suite de nœuds à terre (D105) : les routes qui partent vers la mer s'arrêtent au dernier nœud."""
+    """La voie réduite à sa plus longue suite de nœuds à terre, hors plage et falaise (D105) : les routes qui partent vers la mer s'arrêtent au dernier nœud."""
     pts = s["pts"]
-    on = [coast.on_land(pts[i], pts[i + 1], 2.0) for i in range(0, len(pts), 2)]
+    on = [coast.usable(pts[i], pts[i + 1]) for i in range(0, len(pts), 2)]
     if all(on):
         return s
     best, start = (0, 0), None
