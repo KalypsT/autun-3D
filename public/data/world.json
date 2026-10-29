@@ -4429,10 +4429,10 @@
    ],
    "buildings": 0,
    "trees": 0,
-   "walls": 0,
-   "furniture": 0,
+   "walls": 1,
+   "furniture": 8,
    "lod": 0,
-   "bytes": 130
+   "bytes": 5473
   },
   {
    "id": "15_42",
@@ -4445,11 +4445,11 @@
     1938.0
    ],
    "buildings": 0,
-   "trees": 236,
-   "walls": 0,
+   "trees": 436,
+   "walls": 2,
    "furniture": 0,
    "lod": 0,
-   "bytes": 8841
+   "bytes": 16854
   },
   {
    "id": "16_42",
@@ -4804,9 +4804,9 @@
    "buildings": 0,
    "trees": 0,
    "walls": 0,
-   "furniture": 0,
+   "furniture": 3,
    "lod": 0,
-   "bytes": 130
+   "bytes": 2604
   },
   {
    "id": "15_43",
@@ -5195,9 +5195,9 @@
    "buildings": 3,
    "trees": 19,
    "walls": 0,
-   "furniture": 0,
+   "furniture": 2,
    "lod": 3,
-   "bytes": 8249
+   "bytes": 9920
   },
   {
    "id": "16_44",
@@ -5483,10 +5483,10 @@
    ],
    "buildings": 0,
    "trees": 15,
-   "walls": 9,
-   "furniture": 2,
+   "walls": 1,
+   "furniture": 1,
    "lod": 0,
-   "bytes": 8111
+   "bytes": 2090
   },
   {
    "id": "15_45",
@@ -5500,10 +5500,10 @@
    ],
    "buildings": 6,
    "trees": 125,
-   "walls": 42,
-   "furniture": 8,
+   "walls": 0,
+   "furniture": 13,
    "lod": 6,
-   "bytes": 59316
+   "bytes": 28850
   },
   {
    "id": "16_45",
@@ -5771,11 +5771,11 @@
     2938.0
    ],
    "buildings": 0,
-   "trees": 80,
-   "walls": 16,
-   "furniture": 3,
+   "trees": 123,
+   "walls": 1,
+   "furniture": 12,
    "lod": 0,
-   "bytes": 26597
+   "bytes": 20699
   },
   {
    "id": "15_46",
@@ -5792,7 +5792,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 3205
+   "bytes": 3291
   },
   {
    "id": "16_46",
@@ -6060,11 +6060,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 0,
+   "trees": 96,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 13267
+   "bytes": 4861
   },
   {
    "id": "15_47",
@@ -6077,11 +6077,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 0,
+   "trees": 8,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 790
+   "bytes": 653
   },
   {
    "id": "16_47",
