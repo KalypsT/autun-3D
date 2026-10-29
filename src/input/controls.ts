@@ -1,6 +1,7 @@
 /**
  * Commandes : à pied, joystick flottant à gauche et regard en glissant à droite ;
- * en véhicule, direction en glissant horizontalement à gauche, pédales Accélérer et Freiner à droite.
+ * en véhicule, direction en glissant horizontalement à gauche, pédales Accélérer et Freiner à droite ; sur un deux-roues, le même doigt
+ * tiré vers le bas lève la roue avant (roue arrière), poussé vers le haut en freinant lève la roue arrière (roue avant).
  * Clavier et souris dans les deux cas.
  */
 
@@ -16,6 +17,8 @@ export interface ControlSample {
   throttle: number;
   brake: number;
   handbrake: number;
+  /** Véhicule : joystick vertical −1 (poussé vers le haut) à 1 (tiré vers le bas), hors zone morte ; clavier : C et Maj. */
+  lift: number;
   /** Klaxon (ou sonnette) enfoncé. */
   horn: boolean;
   /** Bouton d'attaque tenu (ou touche J) : frapper ou tirer (J5). */
@@ -33,6 +36,9 @@ const TOUCH_LOOK = 0.0048;
 const MOUSE_LOOK = 0.0032;
 /** Course horizontale du doigt pour braquer à fond (px). */
 const STEER_RANGE = 70;
+/** Course verticale du doigt en véhicule (px), et zone morte (part de la course) : un geste de direction un peu en biais ne lève pas de roue. */
+const LIFT_RANGE = 60;
+const LIFT_DEAD = 0.35;
 
 interface Pointer {
   id: number;
@@ -125,9 +131,10 @@ export class Controls {
         // Courbe progressive : petits gestes précis au centre, braquage franc en bout de course.
         const t = dx / STEER_RANGE;
         this.stickX = Math.sign(t) * Math.abs(t) ** 1.3;
-        this.stickY = 0;
+        const dy = Math.max(-LIFT_RANGE, Math.min(LIFT_RANGE, e.clientY - this.stick.cy));
+        this.stickY = dy / LIFT_RANGE;
         this.knob.style.left = `${this.stick.cx + dx}px`;
-        this.knob.style.top = `${this.stick.cy}px`;
+        this.knob.style.top = `${this.stick.cy + dy}px`;
         return;
       }
       let dx = e.clientX - this.stick.cx, dy = e.clientY - this.stick.cy;
@@ -182,7 +189,7 @@ export class Controls {
   poll(): ControlSample {
     let forward = 0, right = 0, run = false;
     const mag = Math.hypot(this.stickX, this.stickY);
-    if (mag > DEAD_ZONE) {
+    if (mag > DEAD_ZONE && this.mode === "foot") {
       const scaled = (mag - DEAD_ZONE) / (1 - DEAD_ZONE);
       forward = (-this.stickY / mag) * scaled;
       right = (this.stickX / mag) * scaled;
@@ -210,7 +217,12 @@ export class Controls {
     if (kf > 0) throttle = 1;
     if (kf < 0) brake = 1;
     if (k.has("Space")) handbrake = 1;
-    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, horn, attack, looking: this.looked || this.looks.size > 0 };
+    // Roue arrière et roue avant (D98) : joystick vertical au-delà de la zone morte ; Maj tire le guidon, C avance le poids.
+    const ly = this.mode === "drive" ? this.stickY : 0;
+    let lift = Math.abs(ly) > LIFT_DEAD ? (Math.sign(ly) * (Math.abs(ly) - LIFT_DEAD)) / (1 - LIFT_DEAD) : 0;
+    if (k.has("ShiftLeft") || k.has("ShiftRight")) lift = 1;
+    if (k.has("KeyC")) lift = -1;
+    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, lift, horn, attack, looking: this.looked || this.looks.size > 0 };
     this.lookYaw = this.lookPitch = 0;
     this.looked = false;
     return sample;

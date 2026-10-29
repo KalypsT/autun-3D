@@ -95,3 +95,14 @@ export class Health {
     return d;
   }
 }
+
+/** Chute d'un deux-roues (D98) : points de vie perdus par km/h au moment de la chute. */
+export const FALL_DAMAGE_PER_KMH = 0.8;
+
+/**
+ * Blessure d'une chute à `speed` m/s, proportionnelle à la vitesse (15 km/h : 12 points, 50 : 40, 100 : 80), jamais mortelle :
+ * on garde au moins un point de vie sur les `hp` qu'on avait.
+ */
+export function fallDamage(speed: number, hp: number): number {
+  return Math.max(0, Math.min(Math.abs(speed) * 3.6 * FALL_DAMAGE_PER_KMH, hp - 1));
+}

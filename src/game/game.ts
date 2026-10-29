@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
-import { createPlayer, PLAYER_RADIUS, stepPlayer } from "../core/player";
-import { rampThrottle, stepVehicle } from "../core/vehicle";
+import { createPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
+import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { DOWN_TIME } from "../core/character-rig";
+import { StuntMeter } from "../core/stunt";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
@@ -15,7 +17,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
-import { DEATH_HOURS, Health, HOSPITAL_SPAWN } from "../core/health";
+import { DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
@@ -155,6 +157,12 @@ export function startGame(ctx: GameContext): void {
   let leaving = false;
   let crank = 0;
   let lookIdle = 0;
+  /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
+  let downFor = 0;
+  let downSide = -1;
+  /** Roue arrière et roue avant : distance sur une roue, affichée au-dessus du compteur de vitesse. */
+  const stunt = new StuntMeter();
+  const stuntEl = document.getElementById("stunt");
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
   // Navigation et passants (J2) : chargés autour du joueur dès que « Foule » n'est pas sur « Aucune » (ou avec ?nav=1 / ?nav=all pour le recouvrement de contrôle).
   const navParam = params.get("nav");
@@ -306,6 +314,8 @@ export function startGame(ctx: GameContext): void {
   const mount = (v: Vehicle): void => {
     riding = v;
     leaving = false;
+    // Un deux-roues tombé se relève quand on remonte dessus.
+    Object.assign(v.state, { lean: 0, wheelie: 0, wheelieRate: 0, fallen: false, impact: 0 });
     rideModel = fleet.take(v);
     rideModel.group.add(model.group);
     lights = new VehicleLights(v.def);
@@ -318,15 +328,20 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
   };
-  const dismount = (): void => {
+  /** Descend du véhicule ; `lean` : inclinaison où on le laisse (un deux-roues tombé reste couché). */
+  const dismount = (lean = 0): void => {
     const v = riding!;
     const s = v.state;
     // Pied à terre du côté gauche (portière d'une voiture), hors des obstacles.
     const side = familyOf(v).dismount;
     const r = colliders.resolve(s.x - Math.cos(s.heading) * side, s.y + Math.sin(s.heading) * side, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: s.heading });
-    s.vx = s.vy = s.yawRate = s.steer = s.lean = 0;
+    landWheelie(s, v.spec);
+    s.vx = s.vy = s.yawRate = s.steer = 0;
+    s.lean = lean;
+    s.fallen = false;
     s.speed = 0;
+    stunt.end();
     rideModel?.update(s);
     lights?.dispose();
     lights = null;
@@ -365,7 +380,33 @@ export function startGame(ctx: GameContext): void {
     police.crime("carjack", got.x, got.y, true);
     mount(v);
   };
+  /**
+   * Chute d'un deux-roues (D98) : choc trop fort contre un obstacle ou une voiture, ou cabrage trop poussé. Le deux-roues reste couché
+   * là où il est ; le pilote est projeté dans le sens de la marche, glisse, reste au sol puis se relève ; blessure selon la vitesse, jamais mortelle.
+   */
+  const fall = (speed: number): void => {
+    const v = riding!;
+    const s = v.state;
+    // Basculé en arrière (roue arrière trop poussée) : il tombe sur le dos, derrière ; sinon (choc), en avant.
+    const back = s.fallen && s.wheelie > 0 && s.impact < v.spec.fallImpact;
+    const sp = Math.hypot(s.vx, s.vy);
+    const dx = sp > 0.3 ? s.vx / sp : Math.sin(s.heading), dy = sp > 0.3 ? s.vy / sp : Math.cos(s.heading);
+    audio.impact(Math.max(s.impact, 4));
+    haptics.crash(Math.max(s.impact, 4));
+    shake.impact(Math.min(Math.max(s.impact, 2), 8));
+    const x = s.x, y = s.y;
+    dismount(s.lean >= 0 ? FALLEN_LEAN : -FALLEN_LEAN);
+    // Devant le deux-roues (ou derrière, s'il a basculé en arrière), hors de sa coque.
+    const ahead = back ? -1.2 : 1.2;
+    const r = colliders.resolve(x + dx * ahead, y + dy * ahead, PLAYER_RADIUS);
+    const throw_ = back ? 0 : 0.6 * speed;
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_, vy: dy * throw_, speed: 0, heading: Math.atan2(dx, dy) });
+    downFor = DOWN_TIME;
+    downSide = back ? 1 : -1;
+    health.damage(fallDamage(speed, health.hp));
+  };
   const act = (): void => {
+    if (downFor > 0) return;
     if (riding) {
       if (Math.abs(riding.state.speed) < 1.2) dismount();
       else leaving = true;
@@ -603,16 +644,21 @@ export function startGame(ctx: GameContext): void {
     pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
 
     acc += dt;
+    // Vitesse avant ce pas : celle d'une éventuelle chute (le choc l'a déjà réduite).
+    const rideSpeed = riding ? Math.hypot(riding.state.vx, riding.state.vy) : 0;
     while (acc >= STEP) {
       if (riding) {
-        throttle = riding.family === "car" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
-        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
+        throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
+        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
         stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
         const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : gun.idle < 0.35 ? 0.6 : 1);
-        stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35 }, yaw, STEP, terrain, colliders);
+        if (downFor > 0) {
+          downFor = Math.max(0, downFor - STEP);
+          slidePlayer(player, STEP, terrain, colliders);
+        } else stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35 }, yaw, STEP, terrain, colliders);
       }
       (traffic as Traffic | null)?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
@@ -622,6 +668,7 @@ export function startGame(ctx: GameContext): void {
     if (riding) {
       const s = riding.state;
       if (leaving && Math.abs(s.speed) < 0.4) dismount();
+      else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {
         player.x = s.x;
         player.y = s.y;
@@ -684,7 +731,7 @@ export function startGame(ctx: GameContext): void {
       police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
     };
     let reticle: { x: number; y: number; z: number } | null = null;
-    if (riding || health.dead) {
+    if (riding || health.dead || downFor > 0) {
       melee.cancel();
       gun.cancel();
       model.setStrike(null);
@@ -762,13 +809,20 @@ export function startGame(ctx: GameContext): void {
       rideModel.update(riding.state);
       leaveMarks(riding);
       model.ride(rideModel, crank);
+      stunt.update(riding.state.wheelie, riding.state.speed, dt);
     } else {
+      model.setDown(downFor > 0 ? { t: DOWN_TIME - downFor, side: downSide } : null);
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;
       if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);
       lastPhase = model.phase;
     }
     if (riding) speedo.set(riding.state.speed, riding.spec.topSpeed);
+    if (!riding) stunt.update(0, 0, dt);
+    if (stuntEl) {
+      const text = stunt.label();
+      if (stuntEl.textContent !== text) stuntEl.textContent = text;
+    }
     fleet.cull(cx, cy);
     hudTimer -= dt;
     if (hudTimer <= 0) {

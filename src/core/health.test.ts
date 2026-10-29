@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEATH_HOURS, Health, HOSPITAL_SPAWN, MAX_HEALTH, REGEN_CAP, REGEN_DELAY } from "./health";
+import { DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN, MAX_HEALTH, REGEN_CAP, REGEN_DELAY } from "./health";
 import { loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -90,5 +90,18 @@ describe("santé du joueur", () => {
     expect(colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, 0.35).hit).toBe(false);
     expect(blocked).toBe(0);
     expect(DEATH_HOURS).toBeGreaterThan(0);
+  });
+});
+
+describe("chute d'un deux-roues (D98)", () => {
+  it("blessure proportionnelle à la vitesse, jamais mortelle", () => {
+    expect(fallDamage(15 / 3.6, MAX_HEALTH)).toBeCloseTo(12);
+    expect(fallDamage(50 / 3.6, MAX_HEALTH)).toBeCloseTo(40);
+    expect(fallDamage(100 / 3.6, MAX_HEALTH)).toBeCloseTo(80);
+    const h = new Health(30);
+    h.damage(fallDamage(150 / 3.6, h.hp));
+    expect(h.hp).toBe(1);
+    expect(h.dead).toBe(false);
+    expect(fallDamage(30 / 3.6, 1)).toBe(0);
   });
 });

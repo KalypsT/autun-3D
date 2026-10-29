@@ -1145,3 +1145,43 @@ Tests : `decks.test.ts` (surface la plus haute, deux niveaux avec l'altitude act
 **Tests** : `steerLimit` et les virages à pleine vitesse mesurent maintenant l'accélération de la trajectoire (la caisse tourne un peu plus vite qu'elle à l'entrée du virage) et la dérive ; « braquage à fond à 50 km/h : l'arrière glisse peu à peu » devient « sans que l'arrière décroche ». Huit tests nouveaux (adhérence à haute vitesse, sportive à fond en virage, motricité au départ, frein à main, contre-braquage, freinage en virage, vieille voiture sans aide, accélérateur). Endurance de la poursuite : au départ 3, un choc à 72 km/h (cap droit, sans glisse) laissait le fugitif du banc encastré contre un mur une minute, entouré de gendarmes (3 386 pas de contact sur 3 600) ; son conducteur ne recule pas et repart toutes les 8 s contre le même mur. Le banc le replace sur la voie la plus proche après 10 s immobile (le joueur reculerait) ; seuils inchangés. 603 tests.
 
 **Limites** : réglages à confirmer au volant (aide au contre-braquage et angle de glisse surtout) ; pas de ressenti de la glisse au son ni à l'écran au-delà des traces existantes ; les deux-roues (même bride de braquage à haute vitesse) restent pour plus tard.
+
+## 2026-10-29 — D98. Deux-roues : on tourne en se penchant, roue arrière, roue avant, chutes
+
+**Constat** (après D97, demande de l'utilisateur) : même esprit que les voitures, simulation avec un fond d'arcade. Mesures au banc avant :
+- **Motos molles à haute vitesse** : même bride de braquage que les voitures avant D97 ; 0,78 g à 85 km/h pour la routière, 0,70 g à 136 ; 0,84 g et 0,75 g pour la sportive. La marge de lacet des deux-roues (0,2 rad/s autour de celui du guidon) les laissait tourner moins que leur inclinaison à haute vitesse.
+- **Inclinaison décorative** : calculée après coup d'après le virage, avec retard ; la moto ne se couchait pas d'elle-même.
+- **Ni chute ni roue arrière ou avant** : une moto lancée contre un mur rebondissait, pilote en selle. Pourtant la physique y était presque : le vélo freinait à 0,54 g pour un basculement à 0,46 g (le plancher des charges l'empêchait), la sportive accélérait à 0,96 g pour un cabrage à 1,10 g.
+
+**Choix de l'utilisateur** : la direction commande l'inclinaison ; chute sur choc seulement (jamais en se penchant), blessure proportionnelle à la vitesse, jamais mortelle ; roue arrière en tirant le joystick vers le bas, roue avant en le poussant vers le haut en freinant.
+
+**Inclinaison** (`leanSteer`, fiches `maxLean`, `rollRate`) : au-dessus de 5 m/s, la direction fixe l'inclinaison voulue (bornée par la fiche et par tan φ ≤ 0,95 × adhérence, moins quand on freine : on se relève) ; le deux-roues s'y penche à sa vitesse de roulis (vélo 2,6 rad/s, trottinette 3, scooter 1,9, routière 1,6, sportive 2) et le guidon prend l'angle qui fait tourner à g tan φ (contre-braquage implicite). Sous 2 m/s, le guidon comme avant ; entre les deux, un mélange ; au pas, l'inclinaison est celle de l'équilibre. Inclinaisons maximales : trottinette 30°, vélo 35°, VTT et scooter 40°, routière 43,5°, sportive 46° (l'adhérence borne les 45° et 50° des fiches). Marge de lacet divisée par deux tous les 5 m/s. Accélérateur dosé (D97) pour les motos et le scooter.
+
+**Roue arrière et roue avant** (`pitchUp`, `pivot`, état `wheelie`, fiches `pullBack`, `pushForward`) : angle de cabrage autour de la roue au sol ; l'accélération (ou la décélération) le lève, le poids le ramène, équilibre à atan(bras / hauteur du centre de gravité). Le joystick recule ou avance le poids du pilote (vélo 8 cm, VTT 10, routière 12, sportive 15 ; 0 pour la roue arrière du scooter et de la trottinette). Sans le joystick, rien ne décolle (anti-cabrage). L'arcade :
+- coup de rein (2 rad/s) quand on tire le guidon en accélérant, pour que les vélos décollent ;
+- zone d'équilibre aidée vers 85 % de l'angle d'équilibre, tant qu'on tient le joystick et les gaz (roue arrière) ou le frein en roulant (roue avant, dès le départ) ;
+- gaz ou frein avant coupés à l'approche de l'équilibre (comme l'électronique des motos récentes) ;
+- joystick relâché : le poids revient, la roue redescend franchement.
+
+Sur la roue arrière, la direction ne répond presque plus et seul le frein arrière agit ; sur la roue avant, seul le frein avant. Au-delà de l'équilibre plus 0,2 rad, on tombe (rare : la coupure l'empêche presque toujours). Le modèle pivote autour de la roue restée au sol (tangage et hauteur relevés dans `stepVehicle`, retirés par `landWheelie`). Compteur de distance sur une roue au-dessus du compteur de vitesse (`StuntMeter`), avec le record.
+
+**Commandes** : en conduite, le joystick a maintenant un axe vertical (60 px de course, zone morte de 35 % pour qu'un geste de direction en biais ne lève rien) ; au clavier, Maj (roue arrière) et C (roue avant).
+
+**Chutes** (fiche `fallImpact`) : un choc dont la vitesse d'entrée dans l'obstacle (mur, voiture garée, voiture de la circulation) dépasse 3,3 m/s en trottinette (12 km/h), 4,2 m/s à vélo (15 km/h), 5,5 m/s en scooter et à moto (20 km/h) fait tomber ; frotter un mur en le longeant, non. Le deux-roues reste couché sur le côté (instances garées avec inclinaison) ; le pilote est projeté devant (à 0,6 fois sa vitesse), glisse à 0,7 g (`slidePlayer`), reste au sol avec la pose des passants heurtés puis se relève (3,6 s) ; blessure de 0,8 point par km/h (`fallDamage`), on garde toujours au moins un point de vie. On remonte en relevant le deux-roues.
+
+**Résultats au banc** (après ; avant entre parenthèses) :
+
+| | Virage max | Inclinaison | Roue arrière tenue | Roue avant |
+|---|---|---|---|---|
+| Vélo, 20 km/h | 0,71 g (0,54) | 35° (28°) | 18°, coup de rein | 26° |
+| VTT, 20 km/h | 0,85 g (0,52) | 40° (28°) | 18° | 27° |
+| Trottinette, 20 km/h | 0,54 g (0,58) | 30° (30°) | non | 21° |
+| Scooter 125, 80 km/h | 0,76 g (0,70) | 40° (35°) | non | 42° |
+| Routière, 85 et 136 km/h | 0,87 et 0,86 g (0,78 et 0,70) | 44° (38°) | 38 à 42° | 41° |
+| Sportive, 105 et 168 km/h | 0,96 et 0,95 g (0,84 et 0,75) | 46° (40°) | 45° | 44° |
+
+Un virage de 90° à 85 km/h prend encore 4,8 s à moto (5,1 s avant) : c'est la physique (au mieux ≈ 4 s à 1 g à cette vitesse), pas une bride. La moto se couche à 40° en une demi-seconde.
+
+**Tests** : 12 nouveaux (inclinaison et virage, bornes et redressement au freinage, roue arrière tenue sans bascule et reposée, anti-cabrage, scooter et trottinette sans roue arrière, coup de rein du vélo, roue avant sans passer par-dessus le guidon, chutes au choc mais pas en longeant un mur ni en voiture, `landWheelie`, blessures, glissade, compteur). 615 tests. Vérifié dans le navigateur : roue arrière de la sportive et du VTT vues de côté, chute contre une voiture garée (deux-roues couché, pilote au sol, vie entamée, compteur et record).
+
+**Limites** : pas de son propre à la chute ni à la roue arrière (le choc existant joue) ; le pilote garde sa pose de conduite pendant la roue arrière ; heurter un passant ne fait pas tomber (les chocs avec les passants restent ceux de J3) ; vitesse de roulis et inclinaisons à confirmer au doigt.

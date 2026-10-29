@@ -3,8 +3,8 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { OLD_CAR, SPORT_CAR, VAN } from "./vehicle-specs";
-import { BIKE, CAR, collisionSteps, createVehicle, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { MTB, OLD_CAR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, VAN } from "./vehicle-specs";
+import { BIKE, CAR, collisionSteps, createVehicle, landWheelie, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -537,5 +537,154 @@ describe("conduite des voitures : simulation avec un fond d'arcade (D97)", () =>
     for (let i = 0; i < 7; i++) level = rampThrottle(level, 0, DT);
     expect(level).toBe(0);
     expect(rampThrottle(0.8, 0.5, DT)).toBeCloseTo(0.8 - DT / 0.1);
+  });
+});
+
+describe("deux-roues : on tourne en se penchant, roue arrière, roue avant, chutes (D98)", () => {
+  const big = (): Terrain => {
+    const meta = { cols: 800, rows: 800, res: 5, x0: -2000, y0: -2000, y1: 2000, base: 0, unit: 0.01, zmin: 0, zmax: 0 } as TerrainMeta;
+    return new Terrain(meta, new Float32Array(800 * 800));
+  };
+  const launched = (kmh: number): { t: Terrain; s: VehicleState } => {
+    const t = big();
+    const s = createVehicle(0, 0, 0, t);
+    s.vy = kmh / 3.6;
+    return { t, s };
+  };
+
+  it("la direction fait pencher : la moto se couche en moins d'une demi-seconde, et l'inclinaison fait le virage (g tan φ)", () => {
+    const { t, s } = launched(85);
+    for (let i = 0; i < 30; i++) stepVehicle(s, MOTO, { throttle: 0.5, brake: 0, steer: 1 }, DT, t, none);
+    expect(s.lean).toBeGreaterThan(0.6);
+    let sum = 0, n = 0;
+    for (let i = 0; i < 120; i++) {
+      const before = Math.atan2(s.vx, s.vy);
+      stepVehicle(s, MOTO, { throttle: Math.hypot(s.vx, s.vy) < 85 / 3.6 ? 0.6 : 0, brake: 0, steer: 1 }, DT, t, none);
+      const turn = Math.atan2(s.vx, s.vy) - before;
+      if (i >= 30) { sum += (Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn))) / DT) * Math.hypot(s.vx, s.vy); n++; }
+    }
+    // Avant D98 : 0,78 g à 85 km/h (38° d'inclinaison, calculée après coup).
+    const g = sum / n / 9.81;
+    expect(g).toBeGreaterThan(0.84);
+    expect(g).toBeLessThan(Math.tan(s.lean) + 0.05);
+  });
+
+  it("l'inclinaison est bornée par la fiche et par l'adhérence ; freiner en virage redresse", () => {
+    for (const spec of [BIKE, SCOOTER, MOTO, SPORT_MOTO]) {
+      const { t, s } = launched(Math.min(60, spec.topSpeed * 3.6 * 0.8));
+      let most = 0;
+      for (let i = 0; i < 120; i++) {
+        stepVehicle(s, spec, { throttle: 0.4, brake: 0, steer: 1 }, DT, t, none);
+        most = Math.max(most, s.lean);
+      }
+      expect(most).toBeLessThanOrEqual(spec.maxLean + 1e-6);
+      expect(Math.tan(most)).toBeLessThanOrEqual(0.95 * spec.grip + 1e-6);
+      // Moins d'adhérence pour tourner : on se relève (la trottinette, aux freins faibles, à peine).
+      const leaning = s.lean;
+      for (let i = 0; i < 40; i++) stepVehicle(s, spec, { throttle: 0, brake: 1, steer: 1 }, DT, t, none);
+      if (spec !== SCOOTER) expect(s.lean).toBeLessThan(leaning - 0.05);
+    }
+  });
+
+  it("roue arrière : joystick tiré et gaz, la moto se cabre et tient sans basculer ; lâcher le joystick la repose", () => {
+    for (const spec of [MOTO, SPORT_MOTO]) {
+      const { t, s } = launched(15);
+      let most = 0;
+      for (let i = 0; i < 4 * 60; i++) {
+        stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0, lift: 1 }, DT, t, none);
+        most = Math.max(most, s.wheelie);
+      }
+      expect(most).toBeGreaterThan(0.5);
+      expect(s.wheelie).toBeGreaterThan(0.3);
+      expect(s.fallen).toBe(false);
+      // Roue avant en l'air : la direction ne répond presque plus.
+      const heading = s.heading;
+      for (let i = 0; i < 20; i++) stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 1, lift: 1 }, DT, t, none);
+      expect(Math.abs(s.heading - heading)).toBeLessThan(0.15);
+      for (let i = 0; i < 90; i++) stepVehicle(s, spec, { throttle: 0.3, brake: 0, steer: 0 }, DT, t, none);
+      expect(s.wheelie).toBe(0);
+      expect(s.fallen).toBe(false);
+    }
+  });
+
+  it("sans le joystick, plein gaz ne lève pas l'avant ; ni le scooter ni la trottinette ne font de roue arrière", () => {
+    for (const spec of [MOTO, SPORT_MOTO, BIKE]) {
+      const { t, s } = launched(3);
+      for (let i = 0; i < 3 * 60; i++) stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, t, none);
+      expect(s.wheelie).toBe(0);
+    }
+    for (const spec of [SCOOTER, SCOOTER_125]) {
+      const { t, s } = launched(10);
+      for (let i = 0; i < 3 * 60; i++) stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0, lift: 1 }, DT, t, none);
+      expect(s.wheelie).toBe(0);
+    }
+  });
+
+  it("à vélo, tirer sur le guidon en pédalant lève l'avant (coup de rein)", () => {
+    for (const spec of [BIKE, MTB]) {
+      const { t, s } = launched(12);
+      let most = 0;
+      for (let i = 0; i < 3 * 60; i++) {
+        stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0, lift: 1 }, DT, t, none);
+        most = Math.max(most, s.wheelie);
+      }
+      expect(most).toBeGreaterThan(0.2);
+      expect(s.fallen).toBe(false);
+    }
+  });
+
+  it("roue avant : joystick poussé en freinant lève l'arrière, sans passer par-dessus le guidon ; le frein seul ne la lève pas", () => {
+    for (const spec of [BIKE, MOTO, SPORT_MOTO, SCOOTER_125]) {
+      const kmh = Math.min(40, spec.topSpeed * 3.6 * 0.8);
+      const a = launched(kmh), b = launched(kmh);
+      let most = 0, plain = 0;
+      for (let i = 0; i < 4 * 60; i++) {
+        stepVehicle(a.s, spec, { throttle: 0, brake: 1, steer: 0, lift: -1 }, DT, a.t, none);
+        stepVehicle(b.s, spec, { throttle: 0, brake: 1, steer: 0 }, DT, b.t, none);
+        most = Math.min(most, a.s.wheelie);
+        plain = Math.min(plain, b.s.wheelie);
+        expect(a.s.fallen).toBe(false);
+      }
+      expect(most).toBeLessThan(-0.12);
+      expect(plain).toBe(0);
+      // Arrêtée, la roue arrière est retombée.
+      expect(a.s.wheelie).toBe(0);
+    }
+  });
+
+  it("un choc de face au-delà du seuil fait tomber, pas en dessous ni en frottant un mur ; une voiture ne tombe jamais", () => {
+    // Roue libre vers un mur à y = 10 m, depuis 1,5 m (de biais) ou 3 m (de face) ; vrai si l'on a touché le mur et que le pilote est tombé.
+    const crash = (spec: VehicleSpec, kmh: number, angle: number): boolean => {
+      const t = big();
+      const wall = new Colliders();
+      wall.addSegment(-50, 10, 50, 10);
+      const s = createVehicle(0, angle > 1 ? 8.5 : 7, angle, t);
+      s.vx = (Math.sin(angle) * kmh) / 3.6;
+      s.vy = (Math.cos(angle) * kmh) / 3.6;
+      let touched = false;
+      for (let i = 0; i < 150; i++) {
+        stepVehicle(s, spec, { throttle: 0, brake: 0, steer: 0 }, DT, t, wall);
+        touched ||= s.impact > 0;
+      }
+      expect(touched).toBe(true);
+      return s.fallen;
+    };
+    for (const spec of [BIKE, MOTO]) {
+      expect(crash(spec, 30, 0)).toBe(true);
+      expect(crash(spec, 10, 0)).toBe(false);
+      // Le long du mur, à 10° : l'entrée dans le mur reste sous le seuil.
+      expect(crash(spec, 40, Math.PI / 2 - 0.17)).toBe(false);
+    }
+    expect(crash(CAR, 50, 0)).toBe(false);
+  });
+
+  it("reposer un deux-roues sur ses roues retire le cabrage du tangage et de la hauteur", () => {
+    const { t, s } = launched(15);
+    for (let i = 0; i < 90; i++) stepVehicle(s, MOTO, { throttle: 1, brake: 0, steer: 0, lift: 1 }, DT, t, none);
+    expect(s.wheelie).toBeGreaterThan(0.2);
+    landWheelie(s, MOTO);
+    expect(s.wheelie).toBe(0);
+    expect(Math.abs(s.pitch)).toBeLessThan(1e-6);
+    expect(Math.abs(s.z)).toBeLessThan(1e-6);
   });
 });

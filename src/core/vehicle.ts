@@ -84,6 +84,20 @@ export interface VehicleSpec {
   rearGrip: number;
   /** Dérive maximale des pneus arrière (rad), l'angle de la glisse : au-delà, la stabilisation la ramène (pas de tête-à-queue), sauf frein à main tiré. Infinity : aucune aide. */
   maxDrift: number;
+  /**
+   * Deux-roues (D98) : la direction commande l'inclinaison. Inclinaison maximale (rad), bornée aussi par l'adhérence, et vitesse à laquelle
+   * on se penche (rad/s). 0 pour une voiture.
+   */
+  maxLean: number;
+  rollRate: number;
+  /**
+   * Roue arrière et roue avant (D98) : de combien le pilote recule son poids en tirant le joystick vers le bas (m), ou l'avance en le poussant
+   * vers le haut en freinant. 0 : impossible (pas de roue arrière en scooter ni en trottinette).
+   */
+  pullBack: number;
+  pushForward: number;
+  /** Choc (m/s, vitesse d'entrée dans l'obstacle) à partir duquel un deux-roues fait tomber son pilote ; Infinity pour une voiture. */
+  fallImpact: number;
 }
 
 export const GRAVITY = 9.81;
@@ -126,6 +140,11 @@ export const BIKE: VehicleSpec = {
   traction: 0.98,
   rearGrip: 1,
   maxDrift: Infinity,
+  maxLean: 0.61,
+  rollRate: 2.6,
+  pullBack: 0.08,
+  pushForward: 0.15,
+  fallImpact: 4.2,
 };
 
 /**
@@ -169,6 +188,11 @@ export const SCOOTER: VehicleSpec = {
   traction: 0.98,
   rearGrip: 1,
   maxDrift: Infinity,
+  maxLean: 0.52,
+  rollRate: 3,
+  pullBack: 0,
+  pushForward: 0.1,
+  fallImpact: 3.3,
 };
 
 /**
@@ -214,6 +238,11 @@ export const CAR: VehicleSpec = {
   traction: 0.95,
   rearGrip: 1.12,
   maxDrift: 0.6,
+  maxLean: 0,
+  rollRate: 0,
+  pullBack: 0,
+  pushForward: 0,
+  fallImpact: Infinity,
 };
 
 /**
@@ -257,6 +286,11 @@ export const MOTO: VehicleSpec = {
   traction: 0.98,
   rearGrip: 1,
   maxDrift: Infinity,
+  maxLean: 0.79,
+  rollRate: 1.6,
+  pullBack: 0.12,
+  pushForward: 0.12,
+  fallImpact: 5.5,
 };
 
 export interface VehicleState {
@@ -287,6 +321,11 @@ export interface VehicleState {
   lockedFront: boolean;
   lockedRear: boolean;
   skid: number;
+  /** Deux-roues (D98) : cabrage (rad, positif roue avant en l'air, négatif roue arrière en l'air) et sa vitesse (rad/s). */
+  wheelie: number;
+  wheelieRate: number;
+  /** Deux-roues : le pilote vient de tomber (cabrage trop poussé) ; remis à faux par l'appelant. */
+  fallen: boolean;
 }
 
 export interface DriveInput {
@@ -298,10 +337,12 @@ export interface DriveInput {
   steer: number;
   /** Frein à main (0 ou 1) ; ignoré si le véhicule n'en a pas. */
   handbrake?: number;
+  /** Deux-roues : joystick vertical, −1 (poussé vers le haut : poids en avant, roue avant en freinant) à 1 (tiré vers le bas : roue arrière). */
+  lift?: number;
 }
 
 export function createVehicle(x: number, y: number, heading: number, terrain: HeightField): VehicleState {
-  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0 };
+  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0, wheelie: 0, wheelieRate: 0, fallen: false };
 }
 
 const SUBSTEPS = 2;
@@ -324,6 +365,8 @@ const STEER_TIME = 0.2;
 /** Deux-roues : écart permis entre le lacet réel et celui du guidon (rad/s), et glissade latérale (m/s). */
 const TWO_WHEEL_YAW = 0.2;
 const TWO_WHEEL_SLIP = 0.4;
+/** Vitesse (m/s) à laquelle la marge de lacet d'un deux-roues est divisée par deux. */
+const TWO_WHEEL_YAW_FADE = 5;
 /** Voiture : dérive des pneus arrière (rad) en dessous de laquelle on ne parle pas de glisse (virage ordinaire), sans aide ni contre-braquage en plus. */
 const DRIFT_DEAD = 0.08;
 /** Pneu qui roule mais dépasse sa limite : l'adhérence redescend vers cette part de son maximum (décrochage net, pas brutal). */
@@ -339,6 +382,34 @@ const TRACTION_FULL = 0.98;
 const STAB_FROM = 0.7;
 const STAB_RATE = 1.2;
 const STAB_BLEND = 10;
+
+/** Deux-roues (D98) : en dessous de LEAN_LOW (m/s), on tient le guidon ; au-dessus de LEAN_HIGH, l'inclinaison commande seule la direction. */
+const LEAN_LOW = 2;
+const LEAN_HIGH = 5;
+/** Part de l'adhérence que l'inclinaison peut demander (tan φ ≤ LEAN_GRIP × adhérence). */
+const LEAN_GRIP = 0.95;
+/** Rappel de l'inclinaison vers l'angle voulu (1/s), sous la vitesse de roulis de la fiche. */
+const LEAN_GAIN = 7;
+/** Inclinaison d'un deux-roues couché par terre (rad). */
+export const FALLEN_LEAN = 1.35;
+/**
+ * Roue arrière et roue avant (D98) : inertie de tangage autour de la roue au sol (part de m · d², d distance du centre de gravité à la roue),
+ * amortissement (1/s), coup de rein du pilote qui tire le guidon pour décoller l'avant (rad/s).
+ */
+const PITCH_INERTIA = 1.15;
+const WHEELIE_DAMP = 5;
+const WHEELIE_POP = 2;
+/**
+ * Zone d'équilibre aidée (l'arcade) : tant qu'on tient le joystick et qu'on accélère (roue arrière, au-delà de la moitié de l'angle d'équilibre)
+ * ou qu'on freine en roulant (roue avant, dès le départ), un rappel (rad/s² par rad) ramène vers WHEELIE_HOLD de cet angle. Au-delà de l'équilibre plus WHEELIE_OVER, on tombe.
+ */
+const WHEELIE_HOLD = 0.85;
+/** Gaz (roue arrière) ou frein avant (roue avant) coupés tout à fait à cette part de l'angle d'équilibre, pleinement donnés 30 % plus bas. */
+const WHEELIE_CUT = 0.95;
+const WHEELIE_SPRING = 15;
+const WHEELIE_OVER = 0.2;
+/** Joystick relâché : le pilote ramène son poids sur la roue en l'air (rad/s²). */
+const WHEELIE_DROP = 6;
 
 /** Plus petit rayon de la coque (m). */
 function smallestRadius(spec: VehicleSpec): number {
@@ -402,6 +473,15 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+/** Repose un deux-roues sur ses deux roues tout de suite (chute, descente) : retire le cabrage du tangage et de la hauteur. */
+export function landWheelie(s: VehicleState, spec: VehicleSpec): void {
+  if (s.wheelie !== 0) {
+    s.z -= (s.wheelie > 0 ? spec.rear : spec.front) * Math.sin(Math.abs(s.wheelie));
+    s.pitch -= s.wheelie;
+  }
+  s.wheelie = s.wheelieRate = 0;
+}
+
 /** Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. */
 export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null): void {
   // Chocs à chaque sous-pas, et assez de sous-pas pour qu'on n'avance jamais de plus que le plus petit rayon de la coque entre deux
@@ -427,12 +507,89 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   const zr = terrain.heightAt(s.x - fx * spec.rear, s.y - fy * spec.rear, s.z);
   s.z = (zf * spec.rear + zr * spec.front) / (spec.front + spec.rear);
   s.pitch = Math.atan2(zf - zr, spec.front + spec.rear);
+  // Sur une roue : le véhicule pivote autour de la roue restée au sol (le modèle tourne autour du point sous le centre de gravité, on le relève d'autant).
+  if (s.wheelie !== 0) {
+    s.z += (s.wheelie > 0 ? spec.rear : spec.front) * Math.sin(Math.abs(s.wheelie));
+    s.pitch += s.wheelie;
+  }
   s.speed = s.vx * fx + s.vy * fy;
   s.wheel += (s.speed * dt) / spec.wheelRadius;
-  // Inclinaison d'un deux-roues : équilibre entre la gravité et l'accélération latérale (lissée).
-  const lateral = s.speed * s.yawRate;
-  const target = spec.leans ? clamp(Math.atan2(lateral, GRAVITY), -0.75, 0.75) : clamp(-lateral * spec.bodyRoll, -0.08, 0.08);
-  s.lean += (target - s.lean) * Math.min(1, dt * 10);
+  // Deux-roues : un choc trop fort fait tomber le pilote (D98). Voiture : roulis de caisse vers l'extérieur du virage (l'inclinaison d'un
+  // deux-roues se calcule pendant l'intégration).
+  if (spec.leans) {
+    if (s.impact >= spec.fallImpact) s.fallen = true;
+  } else {
+    const lateral = s.speed * s.yawRate;
+    s.lean += (clamp(-lateral * spec.bodyRoll, -0.08, 0.08) - s.lean) * Math.min(1, dt * 10);
+  }
+}
+
+/**
+ * Deux-roues au-dessus du pas : la commande fixe l'inclinaison voulue (bornée par la fiche et par l'adhérence que le freinage laisse) ; le
+ * deux-roues s'y penche à sa vitesse de roulis, et le guidon prend l'angle qui fait tourner à g tan φ (le contre-braquage d'un vrai pilote
+ * est implicite). Au pas, on garde le guidon déjà calculé dans `s.steer` ; entre les deux, un mélange.
+ */
+function leanSteer(s: VehicleState, spec: VehicleSpec, cmd: number, u: number, dt: number): void {
+  const k = clamp((Math.abs(u) - LEAN_LOW) / (LEAN_HIGH - LEAN_LOW), 0, 1);
+  const share = clamp((s.brakeLevel * spec.maxBrake) / (spec.grip * spec.mass * GRAVITY), 0, 0.9);
+  const room = Math.min(spec.maxLean, Math.atan(LEAN_GRIP * spec.grip * Math.sqrt(1 - share * share)));
+  // Roue avant en l'air : on ne se penche presque plus.
+  const air = s.wheelie > 0 ? 1 - 0.8 * clamp(s.wheelie / 0.15, 0, 1) : 1;
+  const target = cmd * room * air;
+  s.lean += clamp((target - s.lean) * LEAN_GAIN * dt, -spec.rollRate * dt, spec.rollRate * dt);
+  const L = spec.front + spec.rear;
+  const fromLean = clamp(Math.atan((L * GRAVITY * Math.tan(s.lean)) / Math.max(u * u, 1)), -spec.maxSteer, spec.maxSteer) * (u < 0 ? -1 : 1);
+  s.steer += (fromLean - s.steer) * k;
+}
+
+/** Part des gaz (roue arrière) ou du frein avant (roue avant) laissée à l'angle `q`, pour un angle d'équilibre `balance`. */
+function wheelieCut(q: number, balance: number): number {
+  return clamp((WHEELIE_CUT * balance - q) / (0.3 * balance), 0, 1);
+}
+
+/**
+ * Rotation d'un deux-roues autour d'une roue au sol, de `q` ≥ 0 (rad) : `arm` et `h`, position du centre de gravité par rapport à cette roue
+ * (en avant ou en arrière, en hauteur), `lift` l'accélération qui lève l'autre roue (accélération pour la roue arrière, décélération pour la
+ * roue avant), `hold` l'aide à l'équilibre, active au-delà de `holdFrom` de l'angle d'équilibre. Renvoie le nouvel angle, sa vitesse, et si l'on a dépassé l'équilibre (chute).
+ */
+function pivot(q: number, om: number, arm: number, h: number, lift: number, hold: boolean, holdFrom: number, dt: number): [number, number, boolean] {
+  const c = Math.cos(q), sn = Math.sin(q);
+  const xr = arm * c - h * sn, zr = arm * sn + h * c;
+  const balance = Math.atan2(arm, h);
+  // Coupure des gaz ou du frein avant près de l'équilibre (voir `integrate`) : sans attendre que l'accélération lissée retombe.
+  lift *= wheelieCut(q, balance);
+  let alpha = (lift * zr - GRAVITY * xr) / (PITCH_INERTIA * (arm * arm + h * h)) - WHEELIE_DAMP * om;
+  if (hold && q >= holdFrom * balance) alpha += WHEELIE_SPRING * (WHEELIE_HOLD * balance - q);
+  // Joystick relâché (ou gaz coupés, frein lâché) : le pilote ramène son poids, la roue redescend franchement.
+  else if (!hold) alpha -= WHEELIE_DROP;
+  om += alpha * dt;
+  q += om * dt;
+  if (q <= 0) return [0, 0, false];
+  return [q, om, q > balance + WHEELIE_OVER];
+}
+
+/**
+ * Roue arrière (joystick tiré vers le bas, en accélérant) et roue avant (poussé vers le haut, en freinant) : le pilote recule ou avance son
+ * poids, l'accélération ou le freinage font le reste. Sans le joystick, rien ne décolle (anti-cabrage), et une roue en l'air redescend.
+ */
+function pitchUp(s: VehicleState, spec: VehicleSpec, input: DriveInput, u: number, dt: number): void {
+  const lift = clamp(input.lift ?? 0, -1, 1);
+  const back = Math.max(lift, 0) * spec.pullBack, ahead = Math.max(-lift, 0) * spec.pushForward;
+  const h = spec.cgHeight;
+  let over = false;
+  if (s.wheelie > 0 || (back > 0 && u > -0.3)) {
+    const gas = input.throttle > 0;
+    // Coup de rein : le pilote tire le guidon en accélérant, l'avant décolle même sans grosse accélération (vélo).
+    if (s.wheelie === 0 && gas && lift > 0.5) s.wheelieRate = WHEELIE_POP;
+    [s.wheelie, s.wheelieRate, over] = pivot(s.wheelie, s.wheelieRate, spec.rear - back, h, s.accel, back > 0 && gas, 0.5, dt);
+  } else if (s.wheelie < 0 || (ahead > 0 && u > 0.3)) {
+    let q: number;
+    // Le freinage d'un arrêt est bref : l'aide lève l'arrière dès le début (tant qu'on roule).
+    [q, s.wheelieRate, over] = pivot(-s.wheelie, -s.wheelieRate, spec.front - ahead, h, -s.accel, ahead > 0 && input.brake > 0 && u > LOCK_MIN, 0, dt);
+    s.wheelie = q > 0 ? -q : 0;
+    s.wheelieRate = q > 0 ? -s.wheelieRate : 0;
+  }
+  if (over) s.fallen = true;
 }
 
 function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField): void {
@@ -462,16 +619,21 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   const rate = Math.min(spec.steerRate * (1 + 2 * Math.abs(drift)), Math.max((limit + Math.abs(drift)) / STEER_TIME, 0.05));
   s.steer += clamp(wanted - s.steer, -rate * dt, rate * dt);
   s.steer = clamp(s.steer, -limit + Math.min(drift, 0), limit + Math.max(drift, 0));
+  if (spec.leans) leanSteer(s, spec, cmd, u, dt);
   const d = s.steer;
 
   // Pression de freinage : monte tant que la pédale est enfoncée, retombe vite.
   const target = input.brake > 0 && u > 0.3 ? input.brake : 0;
   s.brakeLevel += target > s.brakeLevel ? Math.min(target - s.brakeLevel, dt / BRAKE_RAMP) : Math.max(target - s.brakeLevel, -dt / BRAKE_RELEASE);
 
-  // Charges des essieux, avec le report dû à l'accélération (freinage : l'avant s'écrase, l'arrière s'allège).
+  if (spec.leans) pitchUp(s, spec, input, u, dt);
+
+  // Charges des essieux, avec le report dû à l'accélération (freinage : l'avant s'écrase, l'arrière s'allège) ; sur une roue, elle porte tout.
   const transfer = (m * s.accel * spec.cgHeight) / L;
-  const nf = Math.max((m * GRAVITY * b) / L - transfer, 0.08 * m * GRAVITY);
-  const nr = Math.max((m * GRAVITY * a) / L + transfer, 0.08 * m * GRAVITY);
+  let nf = Math.max((m * GRAVITY * b) / L - transfer, 0.08 * m * GRAVITY);
+  let nr = Math.max((m * GRAVITY * a) / L + transfer, 0.08 * m * GRAVITY);
+  if (s.wheelie > 0) [nf, nr] = [0.02 * m * GRAVITY, m * GRAVITY];
+  else if (s.wheelie < 0) [nf, nr] = [m * GRAVITY, 0.02 * m * GRAVITY];
   const gripF = spec.grip * nf, gripR = spec.grip * spec.rearGrip * nr;
 
   // Moteur (ou marche arrière à l'arrêt), borné par la motricité de l'essieu moteur (et l'antipatinage).
@@ -492,8 +654,10 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   if (input.brake > 0 && u <= 0.3 && u > -spec.reverseSpeed && input.throttle <= 0) drive -= spec.reverseForce * input.brake;
   if (input.throttle <= 0 && u > 0.3) friction += spec.engineBrake;
   if (s.brakeLevel > 0) {
-    brakeF = spec.maxBrake * s.brakeLevel * spec.brakeFront;
-    brakeR = spec.maxBrake * s.brakeLevel * (1 - spec.brakeFront);
+    // Deux-roues, joystick poussé vers le haut : tout sur le frein avant (roue avant).
+    const share = spec.leans && (input.lift ?? 0) < -0.5 ? 1 : spec.brakeFront;
+    brakeF = spec.maxBrake * s.brakeLevel * share;
+    brakeR = spec.maxBrake * s.brakeLevel * (1 - share);
   }
   if (spec.abs) {
     brakeF = Math.min(brakeF, 0.95 * gripF);
@@ -507,6 +671,16 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
       brakeF = Math.min(brakeF, Math.sqrt(gripF * gripF - heldF * heldF));
       brakeR = Math.min(brakeR, Math.sqrt(gripR * gripR - heldR * heldR));
     }
+  }
+  // Sur une roue : en approchant de l'équilibre, le pilote (et l'électronique d'une moto récente) coupe les gaz ou relâche le frein avant,
+  // pour ne pas basculer.
+  if (spec.leans && s.wheelie !== 0) {
+    const lift = clamp(input.lift ?? 0, -1, 1);
+    const up = s.wheelie > 0;
+    const arm = up ? spec.rear - Math.max(lift, 0) * spec.pullBack : spec.front - Math.max(-lift, 0) * spec.pushForward;
+    const cut = wheelieCut(Math.abs(s.wheelie), Math.atan2(arm, spec.cgHeight));
+    if (up) drive *= cut;
+    else brakeF *= cut;
   }
   // Une roue freinée au-delà de son adhérence se bloque ; elle glisse alors dans le sens de son mouvement.
   // Le frein à main bloque l'arrière d'un coup (à l'arrêt, il retient le véhicule).
@@ -575,15 +749,20 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
   w += ((a * fyFront - b * fyRear) / spec.yawInertia) * dt;
   u = u1;
 
-  // Deux-roues : la chute n'est pas modélisée, ils ne dérapent donc pas. Leur lacet et leur dérive restent proches
+  // Deux-roues : ils ne dérapent pas (on ne tombe pas en se penchant, D98). Leur lacet et leur dérive restent proches
   // de ce que donne le guidon (sinon, en freinant fort, l'arrière délesté les ferait pivoter sur place).
   // Une rotation venue d'un choc (déjà au-delà de la marge) s'amortit au lieu d'être coupée net.
+  // Au pas, l'inclinaison est celle de l'équilibre (on tient le guidon, D98).
   if (spec.leans) {
     const wk = (u * Math.tan(d)) / L, decay = 1 - Math.min(1, dt * 4);
-    const yawRoom = Math.max(TWO_WHEEL_YAW, Math.abs(s.yawRate - wk) * decay);
+    // Marge de lacet : 0,2 rad/s au pas, de moins en moins vite (à 85 km/h, elle laissait la moto tourner moitié moins que son inclinaison).
+    const yawRoom = Math.max(TWO_WHEEL_YAW / (1 + Math.abs(u) / TWO_WHEEL_YAW_FADE), Math.abs(s.yawRate - wk) * decay);
     w = clamp(w, wk - yawRoom, wk + yawRoom);
     const slipRoom = Math.max(TWO_WHEEL_SLIP, Math.abs(v0 - wk * b) * decay);
     v = clamp(v, wk * b - slipRoom, wk * b + slipRoom);
+    const k = clamp((Math.abs(u) - LEAN_LOW) / (LEAN_HIGH - LEAN_LOW), 0, 1);
+    const balance = clamp(Math.atan2(u * w, GRAVITY), -spec.maxLean, spec.maxLean);
+    s.lean += (balance - s.lean) * (1 - k) * Math.min(1, dt * 10);
   }
 
   // Voiture qui glisse trop (arcade) : au-delà de STAB_FROM de la dérive maximale, le lacet est ramené vers celui de la trajectoire (jamais

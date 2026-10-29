@@ -25,6 +25,7 @@ export const MTB: VehicleSpec = {
   ...BIKE, mass: 94, yawInertia: 24, front: 0.64, rear: 0.48, steerRate: 2.6,
   corneringFront: 1200, corneringRear: 1400, grip: 0.9, driveFadeFrom: kmh(21), topSpeed: kmh(26),
   maxBrake: 700, rolling: 0.011, drag: 0.34, hull: [[0.45, 0.3], [-0.4, 0.3]], wheelRadius: 0.35,
+  maxLean: 0.7, rollRate: 2.8, pullBack: 0.1,
 };
 
 /**
@@ -35,6 +36,7 @@ export const SCOOTER_125: VehicleSpec = {
   ...MOTO, mass: 235, yawInertia: 51, front: 0.62, rear: 0.68, maxSteer: 0.65, steerFade: 5,
   corneringFront: 6600, corneringRear: 7500, grip: 0.95, power: 7500, maxDrive: 950, driveFadeFrom: kmh(92), topSpeed: kmh(100),
   maxBrake: 2100, brakeFront: 0.6, reverseForce: 120, rolling: 0.013, drag: 0.33, hull: [[0.6, 0.28], [-0.55, 0.28]], wheelRadius: 0.25, engineBrake: 100, cgHeight: 0.62,
+  maxLean: 0.7, rollRate: 1.9, pullBack: 0, pushForward: 0.1,
 };
 
 /**
@@ -45,6 +47,7 @@ export const SPORT_MOTO: VehicleSpec = limited({
   ...MOTO, mass: 275, yawInertia: 68, front: 0.68, rear: 0.72, maxSteer: 0.5, steerFade: 6.5, grip: 1.1,
   corneringFront: 12000, corneringRear: 13500, power: 76000, maxDrive: 4000, driveFadeFrom: kmh(235), topSpeed: kmh(250),
   maxBrake: 3100, brakeFront: 0.75, drag: 0.22, hull: [[0.62, 0.32], [-0.6, 0.32]], wheelRadius: 0.31, engineBrake: 300, cgHeight: 0.62,
+  maxLean: 0.87, rollRate: 2, pullBack: 0.15, pushForward: 0.15,
 }, SPEED_CAP.moto);
 
 /** Compacte à hayon (classe Golf) : 1 350 kg, 85 kW dont 72 aux roues, 0 à 100 km/h en ≈ 10 s, 195 km/h. */

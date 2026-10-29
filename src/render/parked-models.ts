@@ -58,6 +58,8 @@ export interface ParkedItem {
   z: number;
   heading: number;
   pitch: number;
+  /** Inclinaison (rad, positive à droite) : un deux-roues tombé est couché (D98). */
+  lean?: number;
   color: string;
 }
 
@@ -105,7 +107,7 @@ export class ParkedModels {
     for (const c of items) {
       const s = this.slot(c.model);
       if (s.n >= this.capacity) continue;
-      this.euler.set(c.pitch, -c.heading, 0);
+      this.euler.set(c.pitch, -c.heading, -(c.lean ?? 0));
       this.quat.setFromEuler(this.euler);
       this.matrix.compose(this.pos.set(c.x, c.z, -c.y), this.quat, this.one);
       s.mesh.setMatrixAt(s.n, this.matrix);
