@@ -27,7 +27,7 @@ describe("catalogue de formes", () => {
           if (lod === 0) bad.push(`${spec.id}: absent de près`);
           continue;
         }
-        if (Object.keys(g.attributes).sort().join() !== "color,normal,position") bad.push(`${spec.id}: attributs ${Object.keys(g.attributes).join()}`);
+        if (Object.keys(g.attributes).sort().join() !== "color,normal,position,uv") bad.push(`${spec.id}: attributs ${Object.keys(g.attributes).join()}`);
         if (g.index) bad.push(`${spec.id}: indexé`);
         const p = verts(g);
         if (p.length === 0 || p.length % 9 !== 0) bad.push(`${spec.id}: ${p.length}`);

@@ -3,8 +3,9 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 
 /**
  * Petits outils de modélisation pour les personnages : anneaux superposés (« loft »), ellipsoïdes, boîtes, calottes.
- * Toute forme finit avec trois attributs : position, normale et couleur (teinte de modulation, blanc par défaut). Les normales sont
- * lissées entre faces voisines tant que l'angle reste sous `CREASE` : un bras est rond, l'arête d'une boîte ou d'une semelle reste nette.
+ * Toute forme finit avec quatre attributs : position, normale, couleur (teinte de modulation, blanc par défaut) et uv (coordonnées dans
+ * la forme, 0 à 1 ; −1 : sans texture, D101). Les normales sont lissées entre faces voisines tant que l'angle reste sous `CREASE` :
+ * un bras est rond, l'arête d'une boîte ou d'une semelle reste nette.
  */
 
 export type RGB = readonly [number, number, number];
@@ -75,11 +76,11 @@ export function creasedNormals(geo: THREE.BufferGeometry, crease = CREASE): void
   geo.setAttribute("normal", new THREE.BufferAttribute(out, 3));
 }
 
-/** Rend une géométrie non indexée, sans uv, à normales lissées (arêtes vives au-delà de `crease`) et à couleur uniforme. */
+/** Rend une géométrie non indexée, à normales lissées (arêtes vives au-delà de `crease`), à couleur uniforme, uv gardées (−1 si aucune). */
 export function finish(g: THREE.BufferGeometry, color: RGB = WHITE, crease = CREASE): THREE.BufferGeometry {
   const geo = g.index ? g.toNonIndexed() : g;
   if (geo !== g) g.dispose();
-  geo.deleteAttribute("uv");
+  if (!geo.getAttribute("uv")) untextured(geo);
   geo.deleteAttribute("color");
   creasedNormals(geo, crease);
   const n = geo.getAttribute("position").count;
@@ -89,25 +90,40 @@ export function finish(g: THREE.BufferGeometry, color: RGB = WHITE, crease = CRE
   return geo;
 }
 
-/** Construit une géométrie non indexée à partir d'une liste de triangles (9 valeurs par triangle) ; les triangles dégénérés sont écartés. */
-function fromTriangles(tris: number[], color: RGB): THREE.BufferGeometry {
-  const kept: number[] = [];
-  for (let i = 0; i < tris.length; i += 9) {
+/** Marque une géométrie comme sans texture (uv à −1 : le rendu lit alors un texel blanc). */
+export function untextured(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(g.getAttribute("position").count * 2).fill(-1), 2));
+  return g;
+}
+
+/**
+ * Construit une géométrie non indexée à partir d'une liste de triangles (9 valeurs par triangle) et de leurs uv (6 par triangle) ;
+ * les triangles dégénérés sont écartés.
+ */
+function fromTriangles(tris: number[], uvs: number[], color: RGB): THREE.BufferGeometry {
+  const kept: number[] = [], keptUv: number[] = [];
+  for (let i = 0, f = 0; i < tris.length; i += 9, f += 6) {
     const ax = tris[i + 3]! - tris[i]!, ay = tris[i + 4]! - tris[i + 1]!, az = tris[i + 5]! - tris[i + 2]!;
     const bx = tris[i + 6]! - tris[i]!, by = tris[i + 7]! - tris[i + 1]!, bz = tris[i + 8]! - tris[i + 2]!;
     const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
     if (cx * cx + cy * cy + cz * cz < 1e-12) continue;
     for (let k = 0; k < 9; k++) kept.push(tris[i + k]!);
+    for (let k = 0; k < 6; k++) keptUv.push(uvs[f + k]!);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(kept), 3));
+  g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(keptUv), 2));
   return finish(g, color);
 }
 
-/** Tube elliptique par anneaux (hauteurs croissantes), normales vers l'extérieur ; fermé en bas et/ou en haut si demandé. */
+/**
+ * Tube elliptique par anneaux (hauteurs croissantes), normales vers l'extérieur ; fermé en bas et/ou en haut si demandé.
+ * uv : u fait le tour (0 sur le côté +x, 0,25 derrière, 0,5 côté −x, 0,75 devant), v monte du premier anneau (0) au dernier (1).
+ */
 export function loft(rings: readonly Ring[], seg: number, opts: { capBottom?: boolean; capTop?: boolean; color?: RGB } = {}): THREE.BufferGeometry {
+  // seg + 1 points par anneau : le dernier reprend le premier avec u = 1 (couture de la texture).
   const pts = (r: Ring): number[][] =>
-    Array.from({ length: seg }, (_, j) => {
+    Array.from({ length: seg + 1 }, (_, j) => {
       const t = (j / seg) * Math.PI * 2;
       const c = Math.cos(t), s = Math.sin(t), e = 2 / (r.p ?? 2);
       const xn = Math.sign(c) * Math.abs(c) ** e;
@@ -115,28 +131,29 @@ export function loft(rings: readonly Ring[], seg: number, opts: { capBottom?: bo
       return [(r.cx ?? 0) + r.rx * xn, r.y, z];
     });
   const rows = rings.map(pts);
-  const tris: number[] = [];
-  const push = (a: number[], b: number[], c: number[]): void => {
-    tris.push(a[0]!, a[1]!, a[2]!, b[0]!, b[1]!, b[2]!, c[0]!, c[1]!, c[2]!);
+  const y0 = rings[0]!.y, span = rings[rings.length - 1]!.y - y0 || 1;
+  const tris: number[] = [], uvs: number[] = [];
+  // Un sommet : [anneau, rang dans l'anneau] ; le centre d'un fond : [anneau, −1 − rang].
+  const vert = (i: number, j: number): void => {
+    const p = j < 0 ? [rings[i]!.cx ?? 0, rings[i]!.y, rings[i]!.cz ?? 0] : rows[i]![j]!;
+    tris.push(p[0]!, p[1]!, p[2]!);
+    uvs.push(j < 0 ? (-1 - j + 0.5) / seg : j / seg, (rings[i]!.y - y0) / span);
+  };
+  const tri = (a: [number, number], b: [number, number], c: [number, number]): void => {
+    vert(...a);
+    vert(...b);
+    vert(...c);
   };
   for (let i = 0; i + 1 < rows.length; i++) {
     for (let j = 0; j < seg; j++) {
-      const a = rows[i]![j]!, b = rows[i]![(j + 1) % seg]!, c = rows[i + 1]![(j + 1) % seg]!, d = rows[i + 1]![j]!;
-      push(a, c, b);
-      push(a, d, c);
+      tri([i, j], [i + 1, j + 1], [i, j + 1]);
+      tri([i, j], [i + 1, j], [i + 1, j + 1]);
     }
   }
-  const first = rings[0]!, last = rings[rings.length - 1]!;
-  if (opts.capBottom) {
-    const c = [first.cx ?? 0, first.y, first.cz ?? 0];
-    for (let j = 0; j < seg; j++) push(c, rows[0]![j]!, rows[0]![(j + 1) % seg]!);
-  }
-  if (opts.capTop) {
-    const c = [last.cx ?? 0, last.y, last.cz ?? 0];
-    const top = rows[rows.length - 1]!;
-    for (let j = 0; j < seg; j++) push(c, top[(j + 1) % seg]!, top[j]!);
-  }
-  return fromTriangles(tris, opts.color ?? WHITE);
+  const last = rings.length - 1;
+  if (opts.capBottom) for (let j = 0; j < seg; j++) tri([0, -1 - j], [0, j], [0, j + 1]);
+  if (opts.capTop) for (let j = 0; j < seg; j++) tri([last, -1 - j], [last, j + 1], [last, j]);
+  return fromTriangles(tris, uvs, opts.color ?? WHITE);
 }
 
 export function ellipsoid(x: number, y: number, z: number, rx: number, ry: number, rz: number, w = 8, h = 6, color: RGB = WHITE): THREE.BufferGeometry {
@@ -186,9 +203,10 @@ export function cap(
 ): THREE.BufferGeometry {
   const at = (phi: number, t: number): number[] => {
     const theta = lo(phi) + (hi(phi) - lo(phi)) * t;
-    return [cx + rx * Math.sin(theta) * Math.cos(phi), cy + ry * Math.cos(theta), cz + rz * Math.sin(theta) * Math.sin(phi)];
+    return [cx + rx * Math.sin(theta) * Math.cos(phi), cy + ry * Math.cos(theta), cz + rz * Math.sin(theta) * Math.sin(phi), (phi - phiFrom) / (phiTo - phiFrom), t];
   };
-  const tris: number[] = [];
+  const tris: number[] = [], uvs: number[] = [];
+  // Un point porte ses uv en 4e et 5e valeurs : u le long de la lisière (φ), v du pôle (0) à la lisière (1).
   const push = (a: number[], b: number[], c: number[]): void => {
     // Orientation : la normale du triangle doit s'éloigner du centre.
     const ux = b[0]! - a[0]!, uy = b[1]! - a[1]!, uz = b[2]! - a[2]!, vx = c[0]! - a[0]!, vy = c[1]! - a[1]!, vz = c[2]! - a[2]!;
@@ -197,6 +215,7 @@ export function cap(
     const flip = nx * mx + ny * my + nz * mz < 0;
     const [p, q] = flip ? [c, b] : [b, c];
     tris.push(a[0]!, a[1]!, a[2]!, p[0]!, p[1]!, p[2]!, q[0]!, q[1]!, q[2]!);
+    uvs.push(a[3]!, a[4]!, p[3]!, p[4]!, q[3]!, q[4]!);
   };
   for (let i = 0; i < steps; i++) {
     const p0 = phiFrom + ((phiTo - phiFrom) * i) / steps, p1 = phiFrom + ((phiTo - phiFrom) * (i + 1)) / steps;
@@ -206,7 +225,7 @@ export function cap(
       push(at(p0, t0), at(p1, t1), at(p0, t1));
     }
   }
-  return fromTriangles(tris, color);
+  return fromTriangles(tris, uvs, color);
 }
 
 /** Interpole le rayon d'un profil (hauteur décroissante ou croissante) à la hauteur y. */

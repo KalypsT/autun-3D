@@ -3,6 +3,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { PART_SPECS } from "../../core/character-kit";
 import { BONE_COUNT, jointBlend } from "../../core/character-rig";
 import { partGeometry, type Lod } from "../character-parts";
+import { characterTexture } from "../character-texture";
 
 /**
  * Lot de personnages dessinés d'un seul appel (D37, approche B : instances et nuanceur).
@@ -23,6 +24,9 @@ in float aBone;
 in float aPart;
 in float aSlot;
 in vec3 aSkin;
+in vec2 aUv;
+in float aLayer;
+varying vec3 vDetail;
 bool partVisible() {
 	vec3 m = texelFetch( uInst, ivec2( ${MASK_AT}, gl_InstanceID ), 0 ).xyz;
 	float w = aPart < 22.0 ? m.x : ( aPart < 44.0 ? m.y : m.z );
@@ -78,6 +82,29 @@ const COLOR_VERTEX = /* glsl */ `
 vColor = vec4( 1.0 );
 vColor.rgb *= color;
 if ( aSlot > -0.5 ) vColor.rgb *= texelFetch( uInst, ivec2( ${COLOR_AT} + int( aSlot + 0.5 ), gl_InstanceID ), 0 ).rgb;
+// Page de la texture (D101) : la variante de la recette pour le groupe de la pièce (code : haut + 16 bas + 256 chaussures + 4096 visage).
+{
+	float code = texelFetch( uInst, ivec2( ${MASK_AT}, gl_InstanceID ), 0 ).w;
+	float page = 0.0;
+	if ( aLayer > 3.5 ) page = floor( code / 4096.0 );
+	else if ( aLayer > 2.5 ) page = mod( floor( code / 256.0 ), 16.0 );
+	else if ( aLayer > 1.5 ) page = mod( floor( code / 16.0 ), 16.0 );
+	else if ( aLayer > 0.5 ) page = mod( code, 16.0 );
+	vDetail = vec3( aUv, page );
+}
+`;
+
+// Texture peinte : rgb × 2 module la couleur (alpha 1) ou la remplace (alpha 0).
+const FRAGMENT_HEADER = /* glsl */ `
+uniform highp sampler2DArray uDetail;
+varying vec3 vDetail;
+`;
+const DETAIL_FRAGMENT = /* glsl */ `
+#include <color_fragment>
+{
+	vec4 detail = texture( uDetail, vDetail );
+	diffuseColor.rgb = mix( 2.0 * detail.rgb, diffuseColor.rgb * 2.0 * detail.rgb, detail.a );
+}
 `;
 
 // La normale passe avant la position dans le nuanceur Lambert : la peau est calculée une fois, ici.
@@ -111,6 +138,9 @@ function universalGeometry(lod: Lod): THREE.InstancedBufferGeometry {
       const skin = new Float32Array(n * 3), w = [0, 0, 0];
       for (let i = 0; i < n; i++) skin.set(jointBlend(bone, pos.getX(i), pos.getY(i), pos.getZ(i), w), i * 3);
       g.setAttribute("aSkin", new THREE.BufferAttribute(skin, 3));
+      g.setAttribute("aUv", g.getAttribute("uv"));
+      g.deleteAttribute("uv");
+      g.setAttribute("aLayer", new THREE.BufferAttribute(new Float32Array(n).fill(spec.layer), 1));
       pieces.push(g);
     }
   });
@@ -141,16 +171,21 @@ export class CharacterBatch {
     this.texture.generateMipmaps = false;
     this.texture.needsUpdate = true;
     const uniform = { value: this.texture };
+    const detail = { value: characterTexture() };
     this.material = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.material.onBeforeCompile = (shader) => {
       shader.uniforms["uInst"] = uniform;
+      shader.uniforms["uDetail"] = detail;
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", `#include <common>\n${FRAGMENT_HEADER}`)
+        .replace("#include <color_fragment>", DETAIL_FRAGMENT);
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", `#include <common>\n${HEADER}`)
         .replace("#include <color_vertex>", COLOR_VERTEX)
         .replace("#include <beginnormal_vertex>", NORMAL_VERTEX)
         .replace("#include <begin_vertex>", POSITION_VERTEX);
     };
-    this.material.customProgramCacheKey = () => "character-batch-lambert";
+    this.material.customProgramCacheKey = () => "character-batch-lambert-detail";
     this.depth = new THREE.MeshDepthMaterial();
     this.depth.onBeforeCompile = (shader) => {
       shader.uniforms["uInst"] = uniform;
@@ -171,7 +206,7 @@ export class CharacterBatch {
   }
 
   /**
-   * Ajoute un personnage : matrices de rendu des 13 os (13 × 16, colonnes), couleurs d'emplacement (8 × 3) et masque de pièces (3 mots).
+   * Ajoute un personnage : matrices de rendu des 13 os (13 × 16, colonnes), couleurs d'emplacement (8 × 3) et masque de pièces (3 mots, puis le code des variantes de texture).
    * Ignoré quand le lot est plein.
    */
   push(bones: Float32Array, colors: Float32Array, mask: Float32Array): void {
@@ -196,6 +231,7 @@ export class CharacterBatch {
     d[row + MASK_AT * 4] = mask[0]!;
     d[row + MASK_AT * 4 + 1] = mask[1]!;
     d[row + MASK_AT * 4 + 2] = mask[2]!;
+    d[row + MASK_AT * 4 + 3] = mask[3] ?? 0;
   }
 
   /** Publie les personnages écrits : nombre d'instances, visibilité, envoi de la texture. */

@@ -3,7 +3,8 @@ import type { Recipe } from "../core/character";
 import { recipeColors } from "../core/character";
 import { PART_SPECS, SLOT_COUNT, type PartSpec } from "../core/character-kit";
 import { REF_DIMS } from "../core/character-rig";
-import { box, cap, ellipsoid, loft, placed, radiusAt, shapedEllipsoid, sliceProfile, type Ring, type RGB, merge, WHITE } from "./character-shapes";
+import { atlasUv, REGIONS, SHAPE_REGION } from "./character-texture";
+import { box, cap, ellipsoid, loft, placed, radiusAt, shapedEllipsoid, sliceProfile, type Ring, type RGB, merge, untextured, WHITE } from "./character-shapes";
 
 /**
  * Formes du catalogue de pièces (`src/core/character-kit.ts`), dessinées sur le corps de référence (1,75 m, adulte moyen)
@@ -22,9 +23,6 @@ const HEAD_R: readonly [number, number, number] = [0.082, 0.1155, 0.098];
 const FRONT = -Math.PI / 2;
 
 const SKIN_SHADE: RGB = [0.95, 0.88, 0.84];
-const DARK: RGB = [0.1, 0.08, 0.07];
-const BROW: RGB = [0.32, 0.24, 0.2];
-const MOUTH: RGB = [0.72, 0.42, 0.4];
 
 // Profils (hauteur dans le repère de l'os, rayon) des membres, de l'articulation vers l'extrémité : cuisse qui s'affine vers le genou,
 // mollet, biceps, avant-bras qui s'affine vers le poignet. Le haut du bras est un dôme (le deltoïde) qui arrondit l'épaule.
@@ -152,15 +150,11 @@ const SHAPES: Record<string, Shape> = {
     const near = c.lod === 0;
     const parts = [shapedEllipsoid(0, HC, 0, HEAD_R[0], HEAD_R[1], HEAD_R[2], near ? 14 : 7, near ? 10 : 5, shapeHead)];
     if (near) {
-      parts.push(
-        // Nez (arête et bout), yeux, sourcils, bouche, oreilles.
+      // Nez et oreilles en volume ; yeux, sourcils et bouche sont peints sur la tête (`character-texture.ts`).
+      parts.push(...[
         placed(ellipsoid(0, 0, 0, 0.01, 0.026, 0.013, 5, 3, SKIN_SHADE), 0, HC - 0.008, -0.094, -0.25),
-        ellipsoid(0.031, HC + 0.02, -0.087, 0.011, 0.0075, 0.006, 5, 3, DARK), ellipsoid(-0.031, HC + 0.02, -0.087, 0.011, 0.0075, 0.006, 5, 3, DARK),
-        placed(ellipsoid(0, 0, 0, 0.016, 0.0045, 0.005, 4, 2, BROW), 0.031, HC + 0.042, -0.083, 0, 0, -0.08),
-        placed(ellipsoid(0, 0, 0, 0.016, 0.0045, 0.005, 4, 2, BROW), -0.031, HC + 0.042, -0.083, 0, 0, 0.08),
-        ellipsoid(0, HC - 0.052, -0.085, 0.019, 0.0055, 0.005, 6, 2, MOUTH),
         ellipsoid(0.08, HC - 0.004, 0.012, 0.01, 0.024, 0.016, 5, 3, SKIN_SHADE), ellipsoid(-0.08, HC - 0.004, 0.012, 0.01, 0.024, 0.016, 5, 3, SKIN_SHADE),
-      );
+      ].map(untextured));
     }
     return merge(parts);
   },
@@ -330,15 +324,23 @@ const SHAPES: Record<string, Shape> = {
 
 /** Les anneaux de lunettes viennent de THREE.TorusGeometry : on les ramène au format commun. */
 function finishTorus(g: THREE.BufferGeometry, color: RGB): THREE.BufferGeometry {
-  const geo = g.toNonIndexed();
+  const geo = untextured(g.toNonIndexed());
   g.dispose();
-  geo.deleteAttribute("uv");
   geo.computeVertexNormals();
   const n = geo.getAttribute("position").count;
   const arr = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) arr.set(color, i * 3);
   geo.setAttribute("color", new THREE.BufferAttribute(arr, 3));
   return geo;
+}
+
+/** Ramène les uv d'une forme (0 à 1 dans la forme) à sa place sur la feuille de texture ; sans place, tout lit le texel blanc. */
+function placeInAtlas(g: THREE.BufferGeometry, rect: readonly [number, number, number, number] | null): void {
+  const uv = g.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) {
+    const [u, v] = atlasUv(rect, uv.getX(i), uv.getY(i));
+    uv.setXY(i, u, v);
+  }
 }
 
 const cache = new Map<string, THREE.BufferGeometry | null>();
@@ -350,6 +352,7 @@ export function shapeGeometry(shape: string, lod: Lod): THREE.BufferGeometry | n
   const build = SHAPES[shape];
   if (!build) throw new Error(`forme inconnue : ${shape}`);
   const g = build({ seg: lod === 0 ? 10 : 5, lod });
+  if (g) placeInAtlas(g, SHAPE_REGION[shape] ? REGIONS[SHAPE_REGION[shape]]! : null);
   cache.set(key, g);
   return g;
 }

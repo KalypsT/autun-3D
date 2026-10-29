@@ -7,12 +7,27 @@
  * instances, pièces groupées) donnent le même résultat, seul le temps de préparation change.
  */
 
-import type { Recipe, TopKind } from "./character";
+import { BOTTOMS, SHOES, TOPS, type Recipe, type TopKind } from "./character";
 import { BONE } from "./character-rig";
 
 /** Emplacements de couleur : le rendu les remplace par la couleur de la recette. −1 : couleur de la forme telle quelle. */
 export const SLOT = { none: -1, skin: 0, hair: 1, top: 2, bottom: 3, shoes: 4, hat: 5, bag: 6, scarf: 7 } as const;
 export const SLOT_COUNT = 8;
+
+/**
+ * Groupes de texture (D101) : une pièce lit la page de la texture des personnages qui correspond à la variante de la recette
+ * pour son groupe (le genre de haut pour le torse et les manches, le genre de bas pour les jambes…). 0 : page commune.
+ */
+export const LAYER = { none: 0, top: 1, bottom: 2, shoes: 3, face: 4 } as const;
+/** Nombre de pages de la texture : autant que de genres de hauts, le groupe le plus varié. */
+export const LAYER_COUNT = TOPS.length;
+/** Variante du visage : 0 homme, 1 femme, +2 senior. */
+export const faceVariant = (r: Recipe): number => (r.sex === "f" ? 1 : 0) + (r.age === "senior" ? 2 : 0);
+
+/** Variantes d'une recette pour chaque groupe, en un seul nombre exact en flottant : haut + 16 bas + 256 chaussures + 4096 visage. */
+export function variantCode(r: Recipe): number {
+  return TOPS.indexOf(r.top) + 16 * BOTTOMS.indexOf(r.bottom) + 256 * SHOES.indexOf(r.shoes) + 4096 * faceVariant(r);
+}
 
 export interface PartSpec {
   id: string;
@@ -24,6 +39,8 @@ export interface PartSpec {
   when(r: Recipe): boolean;
   /** Gardée au loin (niveau de détail 1) ; les petits détails sont écartés. */
   far: boolean;
+  /** Groupe de texture (`LAYER`). */
+  layer: number;
 }
 
 const SHORT_SLEEVES: readonly TopKind[] = ["tshirt", "sport"];
@@ -42,7 +59,17 @@ const HEAD = [BONE.head];
 const TORSO = [BONE.torso];
 const PELVIS = [BONE.pelvis];
 
-const spec = (id: string, bones: readonly number[], slot: number, far: boolean, when: (r: Recipe) => boolean, shape = id): PartSpec => ({ id, shape, bones, slot, far, when });
+/** Groupe de texture des pièces habillées ; les autres lisent la page commune. */
+const LAYER_OF: Readonly<Record<string, number>> = {
+  head: LAYER.face,
+  torsoTop: LAYER.top, torsoTopF: LAYER.top, torsoApron: LAYER.top, hemJacket: LAYER.top, hemCoat: LAYER.top,
+  sleeveShort: LAYER.top, sleeveLongTop: LAYER.top, sleeveLongApron: LAYER.top, sleeveLongWork: LAYER.top,
+  foreSleeveTop: LAYER.top, foreSleeveApron: LAYER.top, foreSleeveWork: LAYER.top,
+  pelvis: LAYER.bottom, skirt: LAYER.bottom, thighCloth: LAYER.bottom, shinCloth: LAYER.bottom, thighShorts: LAYER.bottom,
+  foot: LAYER.shoes, bootShaft: LAYER.shoes,
+};
+const spec = (id: string, bones: readonly number[], slot: number, far: boolean, when: (r: Recipe) => boolean, shape = id): PartSpec =>
+  ({ id, shape, bones, slot, far, when, layer: LAYER_OF[id] ?? LAYER.none });
 const always = (): boolean => true;
 
 export const PART_SPECS: readonly PartSpec[] = [
@@ -126,10 +153,11 @@ export function visibleParts(r: Recipe, out: boolean[] = new Array<boolean>(PART
   return out;
 }
 
-/** Masque de pièces en trois mots de 22 bits (exacts en flottant 32 bits), pour un nuanceur. */
-export function partMask(r: Recipe, out: Float32Array | number[] = [0, 0, 0]): Float32Array | number[] {
+/** Masque de pièces en trois mots de 22 bits (exacts en flottant 32 bits), pour un nuanceur, suivi du code des variantes (`variantCode`). */
+export function partMask(r: Recipe, out: Float32Array | number[] = [0, 0, 0, 0]): Float32Array | number[] {
   out[0] = out[1] = out[2] = 0;
   for (let i = 0; i < PART_SPECS.length; i++) if (PART_SPECS[i]!.when(r)) out[Math.floor(i / 22)] = (out[Math.floor(i / 22)] as number) + 2 ** (i % 22);
+  out[3] = variantCode(r);
   return out;
 }
 

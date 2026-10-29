@@ -552,3 +552,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Course : genou très replié derrière, buste penché, coudes à angle droit (fini les jambes raides).
 - Joueur, passants et gendarmes en profitent ; `?proto=look&walk=1.4&turn=1.5708` montre tout le cycle d'un coup. 616 tests.
 - À faire de ton côté : marcher et courir avec ton personnage (de dos, comme en jeu), regarder les passants de profil ; dire si les bras balancent trop ou pas assez, si les hanches roulent trop.
+
+**Personnages plus réalistes, étape 3 : vêtements et visage peints (29 octobre 2026)** (D101)
+- Une texture peinte par le jeu lui-même (aucune image téléchargée) habille chaque vêtement : chemise à boutons et poche, veste à fermeture éclair, manteau à double boutonnage et ceinture, sweat à poche kangourou et cordons, pull à côtes, survêtement à bandes ; jean avec piqûres, délavage et poches arrière, pantalon à pli, jogging à bandes, pantalon de travail à poches et genouillères, jupe plissée ; baskets à lacets, chaussures de ville, chaussures montantes à lacets croisés ; cheveux en mèches.
+- Visages peints : yeux (blanc, iris, paupière), sourcils, lèvres, ombres ; plus fins et plus colorés chez les femmes, ridés chez les seniors.
+- Les couleurs choisies (écran Apparence, passants) ne changent pas : la texture les module. Toujours un seul appel de dessin pour la foule. 620 tests.
+- À faire de ton côté : regarder ton personnage dans l'écran Apparence en changeant de haut, de bas et de chaussures ; croiser des passants ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone. Dire si les détails sont trop marqués ou pas assez.
