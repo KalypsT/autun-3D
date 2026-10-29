@@ -1296,4 +1296,14 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 - Hôtel de ville : la ville agrandie a deux mairies (Autun et la mairie annexe de Saint-Pantaléon) ; seule la plus proche de l'origine garde l'inscription « HÔTEL DE VILLE », les autres portent « MAIRIE ANNEXE » (`build_kinds.py`).
 - Gendarmerie (OpenStreetMap, rive est du plan d'eau du Vallon) : `GENDARMERIE` dans `src/core/police.ts` ; les renforts en sortent quand le joueur est à moins de 800 m (et que la police ne fouille pas un autre point) ; on y reprend après une arrestation.
 
-**Poids** : à compléter après fabrication.
+**Poids et coûts mesurés** :
+- Données publiées : 101 Mo (contre 47 Mo) : relief fin 55 Mo (426 blocs de 1 m, dont ceux de la bordure et de la mer), tuiles 31 Mo, sols 8,8 Mo, silhouettes 2 Mo, carte 1,7 Mo, navigation 1,4 Mo. 426 tuiles, 8 166 bâtiments, 60 093 arbres. Site publié par GitHub Pages : 102 Mo (limite : 1 Go).
+- Démarrage du jeu : le relief grossier grandit avec l'emprise totale (5,75 × 6,75 km) : 1,2 Mo (280 ko avant), `world.json` 107 ko. Le reste se charge toujours par tuile autour du joueur : rien ne change à l'écran ni en mémoire.
+- Dépôt : l'arbre final compressé passe de 27 à 47 Mo ; les fabrications successives de la branche en ajoutent davantage dans l'historique : fusionner la PR en « Squash and merge » n'en garde qu'une.
+- Tests : 625, ≈ 71 s ici (95 s avant : les tests ne chargent pas plus de tuiles qu'ils n'en touchent). Fabrication complète : ≈ 2 h 30 de blocs (LiDAR et BDNB déjà en cache : 8 Go) et 1 h 10 pour `build_public_space.py`.
+- Les scénarios de circulation et de police des tests restent tirés dans l'ancien carré (`SCENARIO_ZONE` de `src/core/testing.ts`), où ils ont été mesurés ; ils n'ont pas été mesurés sur les nouveaux quartiers. Deux recalages : la gendarmerie d'un scénario de poursuite part d'une arête reliée au fugitif ; le seuil de proximité des quatre gendarmeries passe à 4 % (3,5 % mesurés sur les nouveaux tirages).
+
+**Limites connues** :
+- Les routes qui partent vers la mer finissent en impasse au dernier nœud OpenStreetMap à terre ; les conducteurs de la circulation qui y arrivent sont retirés (comme dans toute impasse, D64).
+- Pas encore de vagues, de nage ni de bateau ; un véhicule qui entre dans l'eau s'arrête au bord, il ne coule pas.
+- Mesure sur téléphone à refaire (`?bench=1`) : le parcours du banc est dans l'ancien carré.

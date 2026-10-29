@@ -578,3 +578,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - En voiture, le bouton du joystick ne bouge plus qu'à gauche et à droite. 621 tests.
 - À faire de ton côté : rouler en voiture et à vélo, dire si le compteur se lit d'un coup d'œil et si la taille des pédales convient.
 
+**La ville entière, entourée par la mer (29 octobre 2026)** (D105)
+- La carte suit maintenant toute la ville : Saint-Pantaléon, Saint-Martin, Saint-Symphorien, la rive est du plan d'eau du Vallon (Village du Vallon, Saint-Pierre, la gendarmerie), les Cours et la Cité de l'Orme au nord, Pierrefitte et la Verrerie à l'ouest, Bellevue et les Télots. 18,9 km² jouables (contre 9), 8 166 bâtiments, 60 093 arbres.
+- Tout autour, la mer, comme dans un GTA : on avance dans l'eau jusqu'à la taille, une voiture s'arrête à 50 cm d'eau, un deux-roues à 35 cm, sans choc. Plages dans la plaine de l'Arroux (nord, ouest), falaises sur les collines de Montjeu (sud), Bellevue en presqu'île. La minimap et la carte montrent la mer.
+- La police sort de la gendarmerie quand tu es à moins de 800 m, et c'est devant elle que tu reprends après une arrestation.
+- La mairie annexe de Saint-Pantaléon a son inscription « MAIRIE ANNEXE ».
+- 101 Mo de données (47 avant) ; le jeu ne charge toujours que les tuiles autour de toi. 625 tests.
+- À faire de ton côté : aller voir la mer (plage à l'ouest de la Verrerie, falaises au sud), entrer dans l'eau à pied et en voiture ; rouler jusqu'aux Télots par la route de Saulieu ; te faire arrêter (reprise devant la gendarmerie) ; lancer `?bench=1` sur le téléphone. Pour fusionner, préfère « Squash and merge » (la branche contient plusieurs fabrications successives des données).
