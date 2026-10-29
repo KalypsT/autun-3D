@@ -56,7 +56,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
   let down: { t: number; side: number } | null = null;
-  const mask = new Float32Array(3);
+  const mask = new Float32Array(4);
   /** Sur un véhicule : l'arme reste dans la poche. */
   let mounted = false;
 

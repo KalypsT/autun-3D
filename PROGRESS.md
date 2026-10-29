@@ -539,3 +539,22 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Roue arrière : joystick tiré vers le bas en accélérant (Maj au clavier). Motos vers 40 à 45°, vélo et VTT vers 18° (coup de rein) ; pas en scooter ni en trottinette. Roue avant : joystick poussé vers le haut en freinant (C), pour tous. Une aide tient l'équilibre, lâcher le joystick repose la roue. Distance et record affichés au-dessus du compteur.
 - Chutes : un choc de face au-delà de 12 km/h en trottinette, 15 km/h à vélo, 20 km/h à moto fait tomber ; le deux-roues reste couché, le pilote glisse, reste au sol puis se relève ; blessure selon la vitesse (0,8 point par km/h), jamais mortelle. On ne tombe pas en se penchant. 615 tests.
 - À faire de ton côté : la sportive dans les grandes courbes, une roue arrière au doigt (joystick vers le bas), une roue avant à vélo ; dire si la moto se penche trop vite ou trop lentement.
+
+**Personnages plus réalistes, étape 1 : corps et articulations (29 octobre 2026)** (D99)
+- Joueur et passants changent ensemble (même fabrique) : ombrage lisse au lieu des facettes, torse avec taille, poitrine et épaules arrondies, bassin et fessiers, cuisses, mollets, biceps et avant-bras galbés, mains avec pouce, vraies chaussures, tête à mâchoire, nez, yeux et sourcils arrondis.
+- Coudes, genoux, épaules et hanches plient en souplesse au lieu de deux tubes qui se croisent (visible sur les véhicules et en marchant) ; jupes et manteaux suivent un peu les jambes.
+- Épaules des hommes moins larges, jambes moins écartées. Toujours un seul appel de dessin pour toute la foule ; environ 2,5 fois plus de triangles par personnage proche. 616 tests.
+- À faire de ton côté : regarder ton personnage (écran Apparence, en marchant, sur un vélo) et les passants de près ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone pour vérifier qu'on tient 60 i/s. Ensuite : étape 2 (démarche), puis étape 3 (vêtements et visage peints).
+
+**Personnages plus réalistes, étape 2 : la démarche (29 octobre 2026)** (D100)
+- Poitrine des femmes refaite : modelée dans la surface du torse (plus de « boules » ni d'étagère).
+- Marche d'après un vrai cycle de marche : le talon se pose, le genou amortit, le pied se déroule jusqu'à la pointe, la jambe se plie pour passer ; le bassin bascule et se porte sur la jambe d'appui, les épaules tournent à l'inverse, la tête reste stable, les bras balancent avec un léger retard, coude plié.
+- Course : genou très replié derrière, buste penché, coudes à angle droit (fini les jambes raides).
+- Joueur, passants et gendarmes en profitent ; `?proto=look&walk=1.4&turn=1.5708` montre tout le cycle d'un coup. 616 tests.
+- À faire de ton côté : marcher et courir avec ton personnage (de dos, comme en jeu), regarder les passants de profil ; dire si les bras balancent trop ou pas assez, si les hanches roulent trop.
+
+**Personnages plus réalistes, étape 3 : vêtements et visage peints (29 octobre 2026)** (D101)
+- Une texture peinte par le jeu lui-même (aucune image téléchargée) habille chaque vêtement : chemise à boutons et poche, veste à fermeture éclair, manteau à double boutonnage et ceinture, sweat à poche kangourou et cordons, pull à côtes, survêtement à bandes ; jean avec piqûres, délavage et poches arrière, pantalon à pli, jogging à bandes, pantalon de travail à poches et genouillères, jupe plissée ; baskets à lacets, chaussures de ville, chaussures montantes à lacets croisés ; cheveux en mèches.
+- Visages peints : yeux (blanc, iris, paupière), sourcils, lèvres, ombres ; plus fins et plus colorés chez les femmes, ridés chez les seniors.
+- Les couleurs choisies (écran Apparence, passants) ne changent pas : la texture les module. Toujours un seul appel de dessin pour la foule. 620 tests.
+- À faire de ton côté : regarder ton personnage dans l'écran Apparence en changeant de haut, de bas et de chaussures ; croiser des passants ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone. Dire si les détails sont trop marqués ou pas assez.

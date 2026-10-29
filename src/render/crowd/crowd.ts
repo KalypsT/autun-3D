@@ -15,7 +15,7 @@ export function createCrowd(scene: THREE.Scene, state: CrowdState): CrowdRendere
   for (const b of batches) group.add(b.mesh);
   scene.add(group);
   let near = 0, far = 0;
-  const mask = new Float32Array(3);
+  const mask = new Float32Array(4);
   return {
     name: "B · instances et nuanceur",
     assign: (i, recipe) => rigs.assign(i, recipe),
