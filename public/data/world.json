@@ -3816,11 +3816,11 @@
     1438.0
    ],
    "buildings": 0,
-   "trees": 17,
-   "walls": 4,
-   "furniture": 1,
+   "trees": 52,
+   "walls": 3,
+   "furniture": 6,
    "lod": 0,
-   "bytes": 6208
+   "bytes": 6473
   },
   {
    "id": "19_40",
@@ -3834,10 +3834,10 @@
    ],
    "buildings": 4,
    "trees": 15,
-   "walls": 26,
-   "furniture": 8,
+   "walls": 3,
+   "furniture": 9,
    "lod": 4,
-   "bytes": 21859
+   "bytes": 18497
   },
   {
    "id": "20_40",
@@ -3851,10 +3851,10 @@
    ],
    "buildings": 8,
    "trees": 64,
-   "walls": 80,
-   "furniture": 20,
+   "walls": 0,
+   "furniture": 24,
    "lod": 8,
-   "bytes": 62805
+   "bytes": 34503
   },
   {
    "id": "21_40",
@@ -3868,10 +3868,10 @@
    ],
    "buildings": 1,
    "trees": 75,
-   "walls": 41,
+   "walls": 2,
    "furniture": 9,
    "lod": 1,
-   "bytes": 16160
+   "bytes": 10483
   },
   {
    "id": "22_40",
@@ -3885,10 +3885,10 @@
    ],
    "buildings": 20,
    "trees": 85,
-   "walls": 68,
-   "furniture": 16,
+   "walls": 1,
+   "furniture": 17,
    "lod": 20,
-   "bytes": 77054
+   "bytes": 66905
   },
   {
    "id": "23_40",
@@ -3902,10 +3902,10 @@
    ],
    "buildings": 3,
    "trees": 33,
-   "walls": 17,
+   "walls": 1,
    "furniture": 8,
    "lod": 3,
-   "bytes": 22189
+   "bytes": 20432
   },
   {
    "id": "24_40",
@@ -4121,12 +4121,12 @@
     -1770.0,
     1688.0
    ],
-   "buildings": 5,
-   "trees": 107,
-   "walls": 0,
+   "buildings": 6,
+   "trees": 163,
+   "walls": 1,
    "furniture": 0,
-   "lod": 5,
-   "bytes": 19747
+   "lod": 6,
+   "bytes": 29690
   },
   {
    "id": "19_41",
@@ -4140,10 +4140,10 @@
    ],
    "buildings": 4,
    "trees": 145,
-   "walls": 35,
+   "walls": 1,
    "furniture": 8,
    "lod": 4,
-   "bytes": 38979
+   "bytes": 22002
   },
   {
    "id": "20_41",
@@ -4157,10 +4157,10 @@
    ],
    "buildings": 0,
    "trees": 6,
-   "walls": 7,
+   "walls": 0,
    "furniture": 3,
    "lod": 0,
-   "bytes": 8710
+   "bytes": 2293
   },
   {
    "id": "21_41",
@@ -4177,7 +4177,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 10951
+   "bytes": 1348
   },
   {
    "id": "22_41",
@@ -4194,7 +4194,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 6747
+   "bytes": 874
   },
   {
    "id": "23_41",
@@ -4211,7 +4211,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 2,
-   "bytes": 15149
+   "bytes": 13365
   },
   {
    "id": "24_41",
@@ -4462,11 +4462,11 @@
     1938.0
    ],
    "buildings": 0,
-   "trees": 29,
+   "trees": 155,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 1278
+   "bytes": 6069
   },
   {
    "id": "17_42",
@@ -4479,11 +4479,11 @@
     1938.0
    ],
    "buildings": 0,
-   "trees": 3,
+   "trees": 17,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 703
+   "bytes": 1028
   },
   {
    "id": "18_42",
@@ -4496,11 +4496,11 @@
     1938.0
    ],
    "buildings": 2,
-   "trees": 317,
-   "walls": 3,
-   "furniture": 5,
+   "trees": 346,
+   "walls": 0,
+   "furniture": 6,
    "lod": 2,
-   "bytes": 48227
+   "bytes": 39082
   },
   {
    "id": "19_42",
@@ -4514,10 +4514,10 @@
    ],
    "buildings": 10,
    "trees": 101,
-   "walls": 66,
-   "furniture": 16,
+   "walls": 0,
+   "furniture": 17,
    "lod": 10,
-   "bytes": 86977
+   "bytes": 63914
   },
   {
    "id": "20_42",
@@ -4534,7 +4534,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 12501
+   "bytes": 1314
   },
   {
    "id": "21_42",
@@ -4551,7 +4551,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 8889
+   "bytes": 975
   },
   {
    "id": "22_42",
@@ -4568,7 +4568,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 4003
+   "bytes": 1673
   },
   {
    "id": "23_42",
@@ -4585,7 +4585,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 6971
+   "bytes": 2957
   },
   {
    "id": "24_42",
@@ -4854,10 +4854,10 @@
    ],
    "buildings": 3,
    "trees": 105,
-   "walls": 48,
-   "furniture": 21,
+   "walls": 0,
+   "furniture": 22,
    "lod": 3,
-   "bytes": 58262
+   "bytes": 33197
   },
   {
    "id": "18_43",
@@ -4871,10 +4871,10 @@
    ],
    "buildings": 11,
    "trees": 136,
-   "walls": 23,
-   "furniture": 12,
+   "walls": 0,
+   "furniture": 15,
    "lod": 11,
-   "bytes": 125928
+   "bytes": 116817
   },
   {
    "id": "19_43",
@@ -4888,10 +4888,10 @@
    ],
    "buildings": 12,
    "trees": 160,
-   "walls": 9,
+   "walls": 0,
    "furniture": 3,
    "lod": 12,
-   "bytes": 45724
+   "bytes": 51536
   },
   {
    "id": "20_43",
@@ -4904,11 +4904,11 @@
     2188.0
    ],
    "buildings": 8,
-   "trees": 0,
+   "trees": 3,
    "walls": 0,
    "furniture": 0,
    "lod": 8,
-   "bytes": 19904
+   "bytes": 24269
   },
   {
    "id": "21_43",
@@ -4921,11 +4921,11 @@
     2188.0
    ],
    "buildings": 0,
-   "trees": 121,
+   "trees": 130,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 7350
+   "bytes": 4985
   },
   {
    "id": "22_43",
@@ -4938,11 +4938,11 @@
     2188.0
    ],
    "buildings": 0,
-   "trees": 27,
+   "trees": 58,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 1612
+   "bytes": 2443
   },
   {
    "id": "23_43",
@@ -4955,11 +4955,11 @@
     2188.0
    ],
    "buildings": 0,
-   "trees": 58,
+   "trees": 73,
    "walls": 0,
-   "furniture": 0,
+   "furniture": 1,
    "lod": 0,
-   "bytes": 9976
+   "bytes": 4737
   },
   {
    "id": "24_43",
@@ -5211,10 +5211,10 @@
    ],
    "buildings": 4,
    "trees": 62,
-   "walls": 69,
+   "walls": 0,
    "furniture": 15,
    "lod": 4,
-   "bytes": 51087
+   "bytes": 22260
   },
   {
    "id": "17_44",
@@ -5228,10 +5228,10 @@
    ],
    "buildings": 18,
    "trees": 58,
-   "walls": 70,
-   "furniture": 35,
+   "walls": 0,
+   "furniture": 37,
    "lod": 18,
-   "bytes": 119666
+   "bytes": 101678
   },
   {
    "id": "18_44",
@@ -5245,10 +5245,10 @@
    ],
    "buildings": 11,
    "trees": 110,
-   "walls": 60,
+   "walls": 0,
    "furniture": 17,
    "lod": 11,
-   "bytes": 63174
+   "bytes": 53307
   },
   {
    "id": "19_44",
@@ -5262,10 +5262,10 @@
    ],
    "buildings": 11,
    "trees": 254,
-   "walls": 26,
+   "walls": 0,
    "furniture": 6,
    "lod": 11,
-   "bytes": 52451
+   "bytes": 50723
   },
   {
    "id": "20_44",
@@ -5278,11 +5278,11 @@
     2438.0
    ],
    "buildings": 2,
-   "trees": 32,
+   "trees": 42,
    "walls": 0,
    "furniture": 0,
    "lod": 2,
-   "bytes": 9643
+   "bytes": 6994
   },
   {
    "id": "23_44",
@@ -5295,11 +5295,11 @@
     2438.0
    ],
    "buildings": 0,
-   "trees": 56,
-   "walls": 4,
-   "furniture": 9,
+   "trees": 93,
+   "walls": 0,
+   "furniture": 10,
    "lod": 0,
-   "bytes": 30583
+   "bytes": 9176
   },
   {
    "id": "24_44",
@@ -5517,10 +5517,10 @@
    ],
    "buildings": 0,
    "trees": 58,
-   "walls": 5,
+   "walls": 1,
    "furniture": 4,
    "lod": 0,
-   "bytes": 9809
+   "bytes": 11949
   },
   {
    "id": "17_45",
@@ -5537,7 +5537,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 2,
-   "bytes": 9574
+   "bytes": 12980
   },
   {
    "id": "18_45",
@@ -5551,10 +5551,10 @@
    ],
    "buildings": 3,
    "trees": 38,
-   "walls": 7,
+   "walls": 0,
    "furniture": 1,
    "lod": 3,
-   "bytes": 48814
+   "bytes": 51642
   },
   {
    "id": "19_45",
@@ -5568,10 +5568,10 @@
    ],
    "buildings": 10,
    "trees": 94,
-   "walls": 45,
+   "walls": 0,
    "furniture": 7,
    "lod": 10,
-   "bytes": 38776
+   "bytes": 34640
   },
   {
    "id": "20_45",
@@ -5583,12 +5583,12 @@
     -1270.0,
     2688.0
    ],
-   "buildings": 0,
-   "trees": 10,
+   "buildings": 1,
+   "trees": 59,
    "walls": 0,
    "furniture": 0,
-   "lod": 0,
-   "bytes": 1111
+   "lod": 1,
+   "bytes": 7024
   },
   {
    "id": "23_45",
@@ -5600,12 +5600,12 @@
     -520.0,
     2688.0
    ],
-   "buildings": 0,
-   "trees": 2,
+   "buildings": 3,
+   "trees": 34,
    "walls": 0,
-   "furniture": 0,
-   "lod": 0,
-   "bytes": 3237
+   "furniture": 5,
+   "lod": 3,
+   "bytes": 15646
   },
   {
    "id": "24_45",
@@ -5826,7 +5826,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 1,
-   "bytes": 4653
+   "bytes": 5381
   },
   {
    "id": "18_46",
@@ -5843,7 +5843,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 1,
-   "bytes": 5737
+   "bytes": 5669
   },
   {
    "id": "19_46",
@@ -5860,7 +5860,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 16047
+   "bytes": 13252
   },
   {
    "id": "20_46",
@@ -5873,11 +5873,11 @@
     2938.0
    ],
    "buildings": 0,
-   "trees": 70,
+   "trees": 84,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 7710
+   "bytes": 3696
   },
   {
    "id": "23_46",
@@ -5890,11 +5890,11 @@
     2938.0
    ],
    "buildings": 0,
-   "trees": 5,
+   "trees": 20,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 484
+   "bytes": 1196
   },
   {
    "id": "24_46",
@@ -6094,11 +6094,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 6,
+   "trees": 20,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 610
+   "bytes": 1073
   },
   {
    "id": "17_47",
@@ -6111,11 +6111,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 15,
+   "trees": 17,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 2194
+   "bytes": 962
   },
   {
    "id": "18_47",
@@ -6128,11 +6128,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 37,
+   "trees": 82,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 2198
+   "bytes": 3559
   },
   {
    "id": "19_47",
@@ -6145,11 +6145,11 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 225,
+   "trees": 286,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 14475
+   "bytes": 11507
   },
   {
    "id": "20_47",
@@ -6162,11 +6162,28 @@
     3188.0
    ],
    "buildings": 0,
-   "trees": 10,
+   "trees": 41,
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 1594
+   "bytes": 1705
+  },
+  {
+   "id": "23_47",
+   "col": 23,
+   "row": 47,
+   "bounds": [
+    -770.0,
+    2938.0,
+    -520.0,
+    3188.0
+   ],
+   "buildings": 0,
+   "trees": 3,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 301
   },
   {
    "id": "26_47",
@@ -7221,7 +7238,7 @@
   "base": -57.0,
   "unit": 0.01,
   "zmin": -56.5,
-  "zmax": 259.67,
+  "zmax": 259.66998291015625,
   "holes_filled": 0
  },
  "super": {
