@@ -1168,7 +1168,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 15009
+   "bytes": 13387
   },
   {
    "id": "32_32",
@@ -1389,7 +1389,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 17633
+   "bytes": 16499
   },
   {
    "id": "32_33",
@@ -1658,10 +1658,10 @@
    ],
    "buildings": 0,
    "trees": 245,
-   "walls": 35,
+   "walls": 0,
    "furniture": 9,
    "lod": 0,
-   "bytes": 28198
+   "bytes": 18143
   },
   {
    "id": "32_34",
@@ -1950,7 +1950,7 @@
    "walls": 0,
    "furniture": 1,
    "lod": 0,
-   "bytes": 9319
+   "bytes": 7654
   },
   {
    "id": "32_35",
@@ -2239,7 +2239,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 271
+   "bytes": 160
   },
   {
    "id": "32_36",
@@ -2525,10 +2525,10 @@
    ],
    "buildings": 9,
    "trees": 80,
-   "walls": 18,
+   "walls": 0,
    "furniture": 14,
    "lod": 9,
-   "bytes": 60917
+   "bytes": 57944
   },
   {
    "id": "32_37",
@@ -2780,10 +2780,10 @@
    ],
    "buildings": 23,
    "trees": 201,
-   "walls": 43,
+   "walls": 0,
    "furniture": 16,
    "lod": 23,
-   "bytes": 95629
+   "bytes": 89117
   },
   {
    "id": "32_38",
@@ -2933,10 +2933,10 @@
    ],
    "buildings": 24,
    "trees": 159,
-   "walls": 13,
-   "furniture": 2,
+   "walls": 0,
+   "furniture": 4,
    "lod": 24,
-   "bytes": 78965
+   "bytes": 69426
   },
   {
    "id": "25_39",
@@ -2950,10 +2950,10 @@
    ],
    "buildings": 110,
    "trees": 218,
-   "walls": 58,
-   "furniture": 17,
+   "walls": 6,
+   "furniture": 19,
    "lod": 110,
-   "bytes": 353174
+   "bytes": 344430
   },
   {
    "id": "26_39",
@@ -2967,10 +2967,10 @@
    ],
    "buildings": 111,
    "trees": 178,
-   "walls": 167,
-   "furniture": 29,
+   "walls": 5,
+   "furniture": 31,
    "lod": 111,
-   "bytes": 321913
+   "bytes": 306470
   },
   {
    "id": "27_39",
@@ -2984,10 +2984,10 @@
    ],
    "buildings": 42,
    "trees": 213,
-   "walls": 103,
-   "furniture": 56,
+   "walls": 4,
+   "furniture": 57,
    "lod": 42,
-   "bytes": 161705
+   "bytes": 137313
   },
   {
    "id": "28_39",
@@ -3001,10 +3001,10 @@
    ],
    "buildings": 66,
    "trees": 171,
-   "walls": 77,
-   "furniture": 23,
+   "walls": 2,
+   "furniture": 27,
    "lod": 66,
-   "bytes": 196491
+   "bytes": 184999
   },
   {
    "id": "29_39",
@@ -3018,10 +3018,10 @@
    ],
    "buildings": 56,
    "trees": 89,
-   "walls": 101,
-   "furniture": 30,
+   "walls": 0,
+   "furniture": 31,
    "lod": 56,
-   "bytes": 167871
+   "bytes": 161619
   },
   {
    "id": "30_39",
@@ -3035,10 +3035,10 @@
    ],
    "buildings": 21,
    "trees": 215,
-   "walls": 54,
+   "walls": 0,
    "furniture": 10,
    "lod": 21,
-   "bytes": 74919
+   "bytes": 68607
   },
   {
    "id": "31_39",
@@ -3052,10 +3052,10 @@
    ],
    "buildings": 24,
    "trees": 247,
-   "walls": 56,
+   "walls": 0,
    "furniture": 10,
    "lod": 24,
-   "bytes": 81668
+   "bytes": 70876
   },
   {
    "id": "32_39",
