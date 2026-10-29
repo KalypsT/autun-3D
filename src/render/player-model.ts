@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { createPose, cycleLength, walkPose, type Pose } from "../core/character-rig";
+import { createPose, cycleLength, HIT_POSE, hitPose, walkPose, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
@@ -33,6 +33,8 @@ export interface PlayerModel {
   setGun(part: string | null, gun: GunId | null, aim: number, recoil: number): void;
   /** Coup en cours (progression 0 à 1, moment de la frappe, poing +1 droit ou −1 gauche) ; null hors coup. À pied seulement. */
   setStrike(strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null): void;
+  /** Chute (D98, tombé d'un deux-roues) : temps depuis la chute (s) et sens (+1 sur le dos, −1 en avant), pose des passants heurtés ; null debout. */
+  setDown(down: { t: number; side: number } | null): void;
   dispose(): void;
 }
 
@@ -53,6 +55,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let heldStyle: AttackStyle | null = null;
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
+  let down: { t: number; side: number } | null = null;
   const mask = new Float32Array(3);
   /** Sur un véhicule : l'arme reste dans la poche. */
   let mounted = false;
@@ -91,6 +94,12 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       }
       lastStride = stride;
       mounted = false;
+      if (down) {
+        hitPose(pose, HIT_POSE.down, down.t, down.side, d);
+        rigs.solveWith(0, pose, root);
+        publish();
+        return;
+      }
       walkPose(pose, phase, v, d);
       // Arme blanche en main : garde du bras droit ; un coup en cours se joue par-dessus.
       if (heldStyle && held) guardPose(pose, heldStyle);
@@ -131,6 +140,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     setStrike(next) {
       strike = next;
+    },
+    setDown(next) {
+      down = next;
     },
     dispose() {
       batch.dispose();

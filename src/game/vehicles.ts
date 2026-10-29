@@ -291,7 +291,7 @@ export class Fleet {
       if (v.ridden) continue;
       const reach = v.family === "car" ? CAR_DRAW_DISTANCE : DRAW_DISTANCE;
       if (Math.hypot(v.state.x - x, v.state.y - y) > reach) continue;
-      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, color: paletteColor(v.def, v.variant) });
+      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color: paletteColor(v.def, v.variant) });
     }
     this.parked.set(items);
     this.stats.drawn = this.parked.instances;

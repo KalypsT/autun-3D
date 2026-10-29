@@ -526,3 +526,16 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les clôtures ne bordent plus que les rues : 55 km au lieu de 68. Plus de grille à travers les prés ni dans l'enceinte du stade Saint-Roch, ni sur les rives ; des haies face aux champs et aux bois ; des portillons plus fréquents.
 - L'Acaron et les autres ruisseaux ont leur lit et leurs berges enherbées : plus de « chemin entre deux grilles ».
 - À regarder : le ruban d'eau des ruisseaux, encore tacheté par endroits. 595 tests.
+
+**Conduite des voitures (29 octobre 2026)** (D97)
+- On tourne à haute vitesse : environ 0,95 g à 90, 130 et 170 km/h, au lieu de 0,66, 0,43 et 0,30 g pour la citadine. La voiture sous-vire un peu à la limite au lieu de partir de l'arrière.
+- Dérapages dosés : frein à main, ou freinage fort en braquant, pour faire partir l'arrière ; on tient la glisse à l'accélérateur et au contre-braquage, avec une aide qui tourne les roues dans la glisse ; une stabilisation empêche le tête-à-queue (sauf frein à main tenu).
+- La sportive ne part plus en tête-à-queue (80° avant) : antipatinage en virage ; plein braquage et plein gaz, elle glisse d'environ 23° et se remet droite quand on relâche.
+- L'accélérateur monte en 0,35 s au lieu d'un coup. Caractère par voiture : camionnette très stable, vieille voiture sans aucune aide. 603 tests.
+- À faire de ton côté : rouler vite sur les grands axes, essayer le frein à main dans un carrefour, la sportive en sortie de virage ; dire si tu veux plus d'arcade (aide au contre-braquage, angle de glisse) ou plus de simulation.
+
+**Conduite des deux-roues (29 octobre 2026)** (D98)
+- On tourne en se penchant : la direction fixe l'inclinaison, et c'est elle qui fait le virage. La moto se couche à 40° en une demi-seconde et prend 0,87 g à 85 km/h (0,78 avant) ; la sportive 0,96 g ; le VTT 0,85 g à 20 km/h (0,52 avant). Freiner en virage redresse.
+- Roue arrière : joystick tiré vers le bas en accélérant (Maj au clavier). Motos vers 40 à 45°, vélo et VTT vers 18° (coup de rein) ; pas en scooter ni en trottinette. Roue avant : joystick poussé vers le haut en freinant (C), pour tous. Une aide tient l'équilibre, lâcher le joystick repose la roue. Distance et record affichés au-dessus du compteur.
+- Chutes : un choc de face au-delà de 12 km/h en trottinette, 15 km/h à vélo, 20 km/h à moto fait tomber ; le deux-roues reste couché, le pilote glisse, reste au sol puis se relève ; blessure selon la vitesse (0,8 point par km/h), jamais mortelle. On ne tombe pas en se penchant. 615 tests.
+- À faire de ton côté : la sportive dans les grandes courbes, une roue arrière au doigt (joystick vers le bas), une roue avant à vélo ; dire si la moto se penche trop vite ou trop lentement.

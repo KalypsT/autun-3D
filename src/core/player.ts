@@ -92,3 +92,26 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   }
   p.stride += p.speed * dt * 2.2;
 }
+
+/** Glissade au sol après une chute (D98) : décélération (m/s², pilote qui frotte sur la chaussée, ≈ 0,7 g). */
+export const SLIDE_DECEL = 7;
+
+/** Pilote tombé : il glisse dans le sens de sa vitesse jusqu'à l'arrêt, le long des obstacles, sans tourner ni marcher. */
+export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, colliders: Colliders): void {
+  const v = Math.hypot(p.vx, p.vy);
+  const k = v > 0 ? Math.max(v - SLIDE_DECEL * dt, 0) / v : 0;
+  p.vx *= k;
+  p.vy *= k;
+  const r = colliders.resolve(p.x + p.vx * dt, p.y + p.vy * dt, PLAYER_RADIUS);
+  if (r.hit) {
+    const into = p.vx * r.nx + p.vy * r.ny;
+    if (into < 0) {
+      p.vx -= into * r.nx;
+      p.vy -= into * r.ny;
+    }
+  }
+  p.x = Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3);
+  p.y = Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3);
+  p.z = terrain.heightAt(p.x, p.y, p.z);
+  p.speed = 0;
+}

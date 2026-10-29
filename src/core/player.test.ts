@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Colliders } from "./collision";
-import { createPlayer, RUN_SPEED, stepPlayer, WALK_SPEED } from "./player";
+import { createPlayer, RUN_SPEED, SLIDE_DECEL, slidePlayer, stepPlayer, WALK_SPEED } from "./player";
 import { flatTerrain } from "./testing";
 
 const DT = 1 / 60;
@@ -82,5 +82,23 @@ describe("stepPlayer", () => {
     const p = createPlayer(0, 0, terrain);
     run(3000, () => stepPlayer(p, { forward: 1, right: 0, run: true }, 0, DT, terrain, new Colliders()));
     expect(p.y).toBeLessThanOrEqual(terrain.yMax - 3 + 1e-6);
+  });
+});
+
+describe("pilote tombé (D98)", () => {
+  it("glisse dans le sens de sa vitesse et s'arrête au bout de v² / 2a, sans traverser un mur", () => {
+    const t = flatTerrain();
+    const p = createPlayer(0, -50, t);
+    p.vy = 10;
+    for (let i = 0; i < 180; i++) slidePlayer(p, 1 / 60, t, new Colliders());
+    expect(p.vx).toBe(0);
+    expect(p.vy).toBe(0);
+    expect(p.y + 50).toBeCloseTo(100 / (2 * SLIDE_DECEL), 0);
+    const wall = new Colliders();
+    wall.addSegment(-10, 0, 10, 0);
+    const q = createPlayer(0, -2, t);
+    q.vy = 12;
+    for (let i = 0; i < 120; i++) slidePlayer(q, 1 / 60, t, wall);
+    expect(q.y).toBeLessThan(0);
   });
 });
