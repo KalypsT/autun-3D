@@ -52,7 +52,7 @@ describe("catalogue de formes", () => {
     expect(bad).toEqual([]);
   });
 
-  it("tient le budget de triangles : ≈ 1 000 de près, ≈ 300 à 500 au loin", () => {
+  it("tient le budget de triangles : ≈ 2 500 de près, ≈ 650 au loin", () => {
     const near: number[] = [], far: number[] = [];
     for (let s = 1; s <= 400; s++) {
       const r = recipeFromSeed(s);
@@ -61,12 +61,12 @@ describe("catalogue de formes", () => {
       }
     }
     const avg = (l: number[]): number => l.reduce((a, b) => a + b, 0) / l.length;
-    expect(avg(near)).toBeGreaterThan(700);
-    expect(avg(near)).toBeLessThan(1500);
-    expect(Math.max(...near)).toBeLessThan(2000);
-    expect(avg(far)).toBeGreaterThan(200);
-    expect(avg(far)).toBeLessThan(550);
-    expect(Math.max(...far)).toBeLessThan(800);
+    expect(avg(near)).toBeGreaterThan(1800);
+    expect(avg(near)).toBeLessThan(2900);
+    expect(Math.max(...near)).toBeLessThan(3400);
+    expect(avg(far)).toBeGreaterThan(400);
+    expect(avg(far)).toBeLessThan(800);
+    expect(Math.max(...far)).toBeLessThan(1000);
     expect(avg(far) / avg(near)).toBeLessThan(0.6);
   });
 

@@ -58,6 +58,7 @@ export const PART_SPECS: readonly PartSpec[] = [
   // Haut : une seule coque de torse (le tablier recouvre une chemise dans l'emplacement « écharpe »).
   spec("torsoTop", TORSO, SLOT.top, true, (r) => r.top !== "apron", "torso"),
   spec("torsoApron", TORSO, SLOT.scarf, true, (r) => r.top === "apron", "torso"),
+  spec("bust", TORSO, SLOT.top, true, (r) => r.sex === "f" && r.top !== "apron"),
   spec("apronPanel", TORSO, SLOT.top, false, (r) => r.top === "apron"),
   spec("stripes", TORSO, SLOT.none, false, (r) => r.top === "hivis"),
   spec("collar", TORSO, SLOT.top, false, (r) => COLLARED.includes(r.top)),

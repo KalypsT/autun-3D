@@ -1,15 +1,15 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { PART_SPECS } from "../../core/character-kit";
-import { BONE_COUNT } from "../../core/character-rig";
+import { BONE_COUNT, jointBlend } from "../../core/character-rig";
 import { partGeometry, type Lod } from "../character-parts";
 
 /**
  * Lot de personnages dessinés d'un seul appel (D37, approche B : instances et nuanceur).
  * La géométrie « universelle » contient toutes les pièces du catalogue ; chaque sommet connaît son os, sa pièce et son emplacement
  * de couleur. Chaque personnage est une ligne d'une texture de données : les 13 matrices d'os (3 lignes chacune), les 8 couleurs
- * d'emplacement et le masque des pièces présentes. Le nuanceur de sommets applique l'os (peau), la couleur, et réduit à un point
- * les pièces absentes. Les matrices sont exprimées dans le repère du maillage (`mesh`) : le lot peut donc être enfant d'un groupe
+ * d'emplacement et le masque des pièces présentes. Le nuanceur de sommets applique l'os (peau, souple aux articulations : `jointBlend`),
+ * la couleur, et réduit à un point les pièces absentes. Les matrices sont exprimées dans le repère du maillage (`mesh`) : le lot peut donc être enfant d'un groupe
  * qui bouge (le joueur sur son véhicule) ou rester à l'origine de la scène (la foule, en coordonnées du monde).
  */
 
@@ -22,16 +22,55 @@ uniform highp sampler2D uInst;
 in float aBone;
 in float aPart;
 in float aSlot;
+in vec3 aSkin;
 bool partVisible() {
 	vec3 m = texelFetch( uInst, ivec2( ${MASK_AT}, gl_InstanceID ), 0 ).xyz;
 	float w = aPart < 22.0 ? m.x : ( aPart < 44.0 ? m.y : m.z );
 	return mod( floor( w / exp2( mod( aPart, 22.0 ) ) ), 2.0 ) > 0.5;
 }
-void boneRows( out vec4 r0, out vec4 r1, out vec4 r2 ) {
-	int b = int( aBone + 0.5 ) * 3;
+void boneRows( float bone, out vec4 r0, out vec4 r1, out vec4 r2 ) {
+	int b = int( bone + 0.5 ) * 3;
 	r0 = texelFetch( uInst, ivec2( b, gl_InstanceID ), 0 );
 	r1 = texelFetch( uInst, ivec2( b + 1, gl_InstanceID ), 0 );
 	r2 = texelFetch( uInst, ivec2( b + 2, gl_InstanceID ), 0 );
+}
+// Orientation d'un os : colonnes de sa matrice, débarrassées de l'échelle de la géométrie.
+mat3 boneRotation( vec4 r0, vec4 r1, vec4 r2 ) {
+	return mat3( normalize( vec3( r0.x, r1.x, r2.x ) ), normalize( vec3( r0.y, r1.y, r2.y ) ), normalize( vec3( r0.z, r1.z, r2.z ) ) );
+}
+// Tourne v d'une fraction w de la rotation q (même axe, angle × w).
+vec3 turnBy( mat3 q, float w, vec3 v ) {
+	vec3 axis = vec3( q[ 1 ][ 2 ] - q[ 2 ][ 1 ], q[ 2 ][ 0 ] - q[ 0 ][ 2 ], q[ 0 ][ 1 ] - q[ 1 ][ 0 ] );
+	float l = length( axis );
+	if ( l < 1e-5 ) return v;
+	axis /= l;
+	float a = w * acos( clamp( ( q[ 0 ][ 0 ] + q[ 1 ][ 1 ] + q[ 2 ][ 2 ] - 1.0 ) * 0.5, -1.0, 1.0 ) );
+	float c = cos( a ), s = sin( a );
+	return v * c + cross( axis, v ) * s + axis * dot( axis, v ) * ( 1.0 - c );
+}
+// Peau (D37, D99) : l'os porteur, puis, près d'une articulation, une rotation partielle vers l'os voisin autour de l'articulation.
+// Les pièces absentes sont réduites à un point.
+void skin( vec3 p, vec3 n, out vec3 tp, out vec3 tn ) {
+	vec4 r0, r1, r2;
+	boneRows( aBone, r0, r1, r2 );
+	if ( !partVisible() ) {
+		tp = vec3( r0.w, r1.w, r2.w );
+		tn = vec3( 0.0, 1.0, 0.0 );
+		return;
+	}
+	tp = vec3( dot( r0.xyz, p ) + r0.w, dot( r1.xyz, p ) + r1.w, dot( r2.xyz, p ) + r2.w );
+	// Normale sous une échelle non uniforme : M · S⁻² · n est parallèle à R · S⁻¹ · n.
+	vec3 c0 = vec3( r0.x, r1.x, r2.x ), c1 = vec3( r0.y, r1.y, r2.y ), c2 = vec3( r0.z, r1.z, r2.z );
+	vec3 m = n / vec3( dot( c0, c0 ), dot( c1, c1 ), dot( c2, c2 ) );
+	tn = normalize( vec3( dot( r0.xyz, m ), dot( r1.xyz, m ), dot( r2.xyz, m ) ) );
+	if ( aSkin.y > 0.0 ) {
+		vec4 o0, o1, o2;
+		boneRows( aSkin.x, o0, o1, o2 );
+		mat3 q = boneRotation( o0, o1, o2 ) * transpose( boneRotation( r0, r1, r2 ) );
+		vec3 pivot = aSkin.z > 0.5 ? vec3( o0.w, o1.w, o2.w ) : vec3( r0.w, r1.w, r2.w );
+		tp = pivot + turnBy( q, aSkin.y, tp - pivot );
+		tn = turnBy( q, aSkin.y, tn );
+	}
 }
 `;
 
@@ -41,23 +80,19 @@ vColor.rgb *= color;
 if ( aSlot > -0.5 ) vColor.rgb *= texelFetch( uInst, ivec2( ${COLOR_AT} + int( aSlot + 0.5 ), gl_InstanceID ), 0 ).rgb;
 `;
 
+// La normale passe avant la position dans le nuanceur Lambert : la peau est calculée une fois, ici.
 const NORMAL_VERTEX = /* glsl */ `
-vec3 objectNormal = vec3( normal );
-{
-	vec4 r0, r1, r2;
-	boneRows( r0, r1, r2 );
-	objectNormal = normalize( vec3( dot( r0.xyz, normal ), dot( r1.xyz, normal ), dot( r2.xyz, normal ) ) );
-}
+vec3 skinned, objectNormal;
+skin( position, normal, skinned, objectNormal );
 `;
 
 const POSITION_VERTEX = /* glsl */ `
-vec3 transformed = vec3( position );
-{
-	vec4 r0, r1, r2;
-	boneRows( r0, r1, r2 );
-	if ( partVisible() ) transformed = vec3( dot( r0.xyz, position ) + r0.w, dot( r1.xyz, position ) + r1.w, dot( r2.xyz, position ) + r2.w );
-	else transformed = vec3( r0.w, r1.w, r2.w );
-}
+vec3 transformed = skinned;
+`;
+
+const DEPTH_POSITION_VERTEX = /* glsl */ `
+vec3 transformed, skinNormal;
+skin( position, vec3( 0.0, 1.0, 0.0 ), transformed, skinNormal );
 `;
 
 /** Géométrie universelle d'un niveau de détail : toutes les pièces du catalogue, un exemplaire par os porteur. */
@@ -72,6 +107,10 @@ function universalGeometry(lod: Lod): THREE.InstancedBufferGeometry {
       g.setAttribute("aBone", new THREE.BufferAttribute(new Float32Array(n).fill(bone), 1));
       g.setAttribute("aPart", new THREE.BufferAttribute(new Float32Array(n).fill(s), 1));
       g.setAttribute("aSlot", new THREE.BufferAttribute(new Float32Array(n).fill(spec.slot), 1));
+      const pos = g.getAttribute("position");
+      const skin = new Float32Array(n * 3), w = [0, 0, 0];
+      for (let i = 0; i < n; i++) skin.set(jointBlend(bone, pos.getX(i), pos.getY(i), pos.getZ(i), w), i * 3);
+      g.setAttribute("aSkin", new THREE.BufferAttribute(skin, 3));
       pieces.push(g);
     }
   });
@@ -117,7 +156,7 @@ export class CharacterBatch {
       shader.uniforms["uInst"] = uniform;
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", `#include <common>\n${HEADER}`)
-        .replace("#include <begin_vertex>", POSITION_VERTEX);
+        .replace("#include <begin_vertex>", DEPTH_POSITION_VERTEX);
     };
     this.depth.customProgramCacheKey = () => "character-batch-depth";
     this.mesh = new THREE.Mesh(this.geometry, this.material);

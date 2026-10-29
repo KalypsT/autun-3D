@@ -424,7 +424,7 @@ export function bodyDims(r: Recipe): BodyDims {
   const w = BUILD_WIDTH[r.build], d = BUILD_DEPTH[r.build];
   const female = r.sex === "f";
   const hipY = 0.52 * H, shoulderY = 0.82 * H;
-  const shoulderHalf = (female ? 0.108 : 0.123) * H * (0.9 + 0.1 * w);
+  const shoulderHalf = (female ? 0.108 : 0.115) * H * (0.9 + 0.1 * w);
   const hipHalf = (female ? 0.1 : 0.088) * H * w;
   return {
     height: H,
@@ -447,6 +447,6 @@ export function bodyDims(r: Recipe): BodyDims {
     limbRadius: 0.032 * H * (0.8 + 0.2 * w),
     headRadius: 0.066 * H * (female ? 0.97 : 1),
     stoop: r.age === "senior" ? 0.1 : 0.02,
-    stance: hipHalf * 0.8,
+    stance: hipHalf * 0.64,
   };
 }

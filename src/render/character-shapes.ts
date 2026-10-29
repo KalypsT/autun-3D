@@ -3,28 +3,79 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 
 /**
  * Petits outils de modélisation pour les personnages : anneaux superposés (« loft »), ellipsoïdes, boîtes, calottes.
- * Toute forme finit avec trois attributs : position, normale (facettes plates, style « affiche ») et couleur (teinte de modulation, blanc par défaut).
+ * Toute forme finit avec trois attributs : position, normale et couleur (teinte de modulation, blanc par défaut). Les normales sont
+ * lissées entre faces voisines tant que l'angle reste sous `CREASE` : un bras est rond, l'arête d'une boîte ou d'une semelle reste nette.
  */
 
 export type RGB = readonly [number, number, number];
 export const WHITE: RGB = [1, 1, 1];
 
-/** Anneau d'un loft : hauteur, demi-axes x et z, et décalage du centre. */
+/** Anneau d'un loft : hauteur, demi-axes x et z, décalage du centre, et exposant de super-ellipse (2 : ellipse ; plus : plus carré). */
 export interface Ring {
   y: number;
   rx: number;
   rz: number;
   cx?: number;
   cz?: number;
+  p?: number;
 }
 
-/** Rend une géométrie non indexée, sans uv, à normales plates et à couleur uniforme. */
-export function finish(g: THREE.BufferGeometry, color: RGB = WHITE): THREE.BufferGeometry {
+/** Angle au-delà duquel deux faces voisines gardent une arête vive (rad). */
+export const CREASE = (55 * Math.PI) / 180;
+
+/**
+ * Normales lissées d'une géométrie non indexée : chaque sommet prend la moyenne des faces qui le touchent (même position au
+ * centième de millimètre près) et dont l'orientation reste à moins de `crease` de la sienne. Le lissage de three arrondit les
+ * positions au centimètre : trop grossier pour un œil de 1,6 cm.
+ */
+export function creasedNormals(geo: THREE.BufferGeometry, crease = CREASE): void {
+  const p = geo.getAttribute("position").array as Float32Array;
+  const faces = p.length / 9;
+  const fn = new Float64Array(faces * 3);
+  for (let f = 0; f < faces; f++) {
+    const i = f * 9;
+    const ax = p[i + 3]! - p[i]!, ay = p[i + 4]! - p[i + 1]!, az = p[i + 5]! - p[i + 2]!;
+    const bx = p[i + 6]! - p[i]!, by = p[i + 7]! - p[i + 1]!, bz = p[i + 8]! - p[i + 2]!;
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    fn[f * 3] = nx / l;
+    fn[f * 3 + 1] = ny / l;
+    fn[f * 3 + 2] = nz / l;
+  }
+  const key = (v: number): string => `${Math.round(p[v * 3]! * 1e5)},${Math.round(p[v * 3 + 1]! * 1e5)},${Math.round(p[v * 3 + 2]! * 1e5)}`;
+  const around = new Map<string, number[]>();
+  for (let v = 0; v < faces * 3; v++) {
+    const k = key(v);
+    const list = around.get(k);
+    if (list) list.push(Math.floor(v / 3));
+    else around.set(k, [Math.floor(v / 3)]);
+  }
+  const cos = Math.cos(crease);
+  const out = new Float32Array(p.length);
+  for (let v = 0; v < faces * 3; v++) {
+    const f = Math.floor(v / 3);
+    let x = 0, y = 0, z = 0;
+    for (const g of around.get(key(v))!) {
+      if (fn[g * 3]! * fn[f * 3]! + fn[g * 3 + 1]! * fn[f * 3 + 1]! + fn[g * 3 + 2]! * fn[f * 3 + 2]! < cos) continue;
+      x += fn[g * 3]!;
+      y += fn[g * 3 + 1]!;
+      z += fn[g * 3 + 2]!;
+    }
+    const l = Math.hypot(x, y, z) || 1;
+    out[v * 3] = x / l;
+    out[v * 3 + 1] = y / l;
+    out[v * 3 + 2] = z / l;
+  }
+  geo.setAttribute("normal", new THREE.BufferAttribute(out, 3));
+}
+
+/** Rend une géométrie non indexée, sans uv, à normales lissées (arêtes vives au-delà de `crease`) et à couleur uniforme. */
+export function finish(g: THREE.BufferGeometry, color: RGB = WHITE, crease = CREASE): THREE.BufferGeometry {
   const geo = g.index ? g.toNonIndexed() : g;
   if (geo !== g) g.dispose();
   geo.deleteAttribute("uv");
   geo.deleteAttribute("color");
-  geo.computeVertexNormals();
+  creasedNormals(geo, crease);
   const n = geo.getAttribute("position").count;
   const arr = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) arr.set(color, i * 3);
@@ -52,7 +103,8 @@ export function loft(rings: readonly Ring[], seg: number, opts: { capBottom?: bo
   const pts = (r: Ring): number[][] =>
     Array.from({ length: seg }, (_, j) => {
       const t = (j / seg) * Math.PI * 2;
-      return [(r.cx ?? 0) + r.rx * Math.cos(t), r.y, (r.cz ?? 0) + r.rz * Math.sin(t)];
+      const c = Math.cos(t), s = Math.sin(t), e = 2 / (r.p ?? 2);
+      return [(r.cx ?? 0) + r.rx * Math.sign(c) * Math.abs(c) ** e, r.y, (r.cz ?? 0) + r.rz * Math.sign(s) * Math.abs(s) ** e];
     });
   const rows = rings.map(pts);
   const tris: number[] = [];
@@ -86,13 +138,30 @@ export function ellipsoid(x: number, y: number, z: number, rx: number, ry: numbe
   return finish(g, color);
 }
 
+/** Ellipsoïde déformé point par point : `f` reçoit les coordonnées relatives au centre et les modifie (mâchoire, crâne…). */
+export function shapedEllipsoid(
+  x: number, y: number, z: number, rx: number, ry: number, rz: number, w: number, h: number,
+  f: (p: THREE.Vector3) => void, color: RGB = WHITE,
+): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(1, w, h);
+  g.scale(rx, ry, rz);
+  const pos = g.getAttribute("position");
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    f(v);
+    pos.setXYZ(i, v.x + x, v.y + y, v.z + z);
+  }
+  return finish(g, color);
+}
+
 export function box(w: number, h: number, d: number, x: number, y: number, z: number, color: RGB = WHITE): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   g.translate(x, y, z);
   return finish(g, color);
 }
 
-/** Applique une rotation (rad, autour de x, y, z) puis une translation à une géométrie. */
+/** Applique une rotation (rad, autour de x, y, z) puis une translation à une géométrie (normales comprises). */
 export function placed(g: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): THREE.BufferGeometry {
   g.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, ry, rz, "YXZ"))));
   return g;

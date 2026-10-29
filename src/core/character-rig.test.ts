@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STUMBLE_TIME, walkPose } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STUMBLE_TIME, walkPose } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -211,5 +211,32 @@ describe("poses d'un passant heurté", () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+});
+
+describe("peau souple aux articulations (D99)", () => {
+  it("donne un poids de 0,5 à la jointure, qui s'éteint en s'éloignant, vers le bon os et le bon pivot", () => {
+    const R = REF_DIMS;
+    // Genou, côté cuisse : pivot sur l'origine de la jambe (l'enfant).
+    expect(jointBlend(BONE.thighL, 0, -R.thigh + 0.001, 0)).toEqual([BONE.shinL, expect.closeTo(0.5, 2), 1]);
+    // Genou, côté jambe : pivot sur sa propre origine.
+    expect(jointBlend(BONE.shinR, 0, -0.001, 0)).toEqual([BONE.thighR, expect.closeTo(0.5, 2), 0]);
+    // Milieu de la cuisse, du mollet, de l'avant-bras : rigide.
+    expect(jointBlend(BONE.thighL, 0, -0.22, 0)[1]).toBe(0);
+    expect(jointBlend(BONE.shinL, 0, -0.2, 0)[1]).toBe(0);
+    expect(jointBlend(BONE.forearmR, 0, -0.15, 0)[1]).toBe(0);
+    // Le haut de l'épaule suit le bras de son côté ; la tête et les pieds restent rigides.
+    expect(jointBlend(BONE.torso, -0.19, 0.49, 0)[0]).toBe(BONE.armL);
+    expect(jointBlend(BONE.torso, 0.19, 0.49, 0)[0]).toBe(BONE.armR);
+    expect(jointBlend(BONE.head, 0, 0.15, 0)[1]).toBe(0);
+    expect(jointBlend(BONE.footL, 0, -0.05, -0.1)[1]).toBe(0);
+    // Le poids reste toujours entre 0 et 0,5.
+    for (let b = 0; b < BONE_COUNT; b++) {
+      for (let y = -0.5; y <= 0.6; y += 0.05) {
+        const w = jointBlend(b, 0.1, y, 0)[1]!;
+        expect(w).toBeGreaterThanOrEqual(0);
+        expect(w).toBeLessThanOrEqual(0.5);
+      }
+    }
   });
 });

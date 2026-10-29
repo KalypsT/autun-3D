@@ -174,6 +174,65 @@ export function restOffsets(d: BodyDims, out: Float32Array = new Float32Array(BO
   return out;
 }
 
+const REF_OFFSETS = restOffsets(REF_DIMS);
+const smoothstep = (a: number, b: number, v: number): number => smooth((v - a) / (b - a));
+/** 1 jusqu'à l'articulation (d ≤ 0), puis s'éteint en douceur sur la longueur `l`. */
+const fade = (d: number, l: number): number => 1 - smoothstep(0, l, d);
+
+/**
+ * Peau souple aux articulations (étape « personnages », D99) : un sommet proche d'une articulation suit en partie l'os voisin.
+ * Le nuanceur le fait tourner autour de l'articulation d'une fraction (`w`) de l'écart d'orientation entre les deux os : à la jointure
+ * (w = 0,5) les deux côtés se rejoignent à mi-chemin, comme un coude qui plie au lieu de deux tubes qui se croisent.
+ * Entrée : os porteur et position du sommet dans son repère (corps de référence). Sortie dans `out` : autre os, poids (0 à 0,5) et
+ * pivot (1 : l'articulation est l'origine de l'autre os, qui est l'enfant ; 0 : celle de l'os porteur). Poids nul : sommet rigide.
+ */
+export function jointBlend(bone: number, x: number, y: number, z: number, out: number[] = [0, 0, 0]): number[] {
+  let other = 0, w = 0, pivot = 0;
+  const take = (o: number, weight: number, p: number): void => {
+    if (weight > w) [other, w, pivot] = [o, weight, p];
+  };
+  const R = REF_DIMS;
+  switch (bone) {
+    case BONE.armL:
+    case BONE.armR:
+      take(BONE.torso, 0.5 * fade(-y, 0.13), 0);
+      take(bone + 1, 0.5 * fade(y + R.upperArm, 0.07), 1);
+      break;
+    case BONE.forearmL:
+    case BONE.forearmR:
+      take(bone - 1, 0.5 * fade(-y, 0.07), 0);
+      break;
+    case BONE.thighL:
+    case BONE.thighR:
+      take(BONE.pelvis, 0.5 * fade(-y, 0.12), 0);
+      take(bone + 1, 0.5 * fade(y + R.thigh, 0.09), 1);
+      break;
+    case BONE.shinL:
+    case BONE.shinR:
+      take(bone - 1, 0.5 * fade(-y, 0.09), 0);
+      break;
+    case BONE.torso: {
+      take(BONE.pelvis, 0.5 * fade(y, 0.16), 0);
+      // Le haut de l'épaule (deltoïde, trapèze) suit un peu le bras de son côté.
+      const arm = x < 0 ? BONE.armL : BONE.armR;
+      const ox = REF_OFFSETS[arm * 3]!, oy = REF_OFFSETS[arm * 3 + 1]!;
+      take(arm, 0.35 * fade(Math.hypot(x - ox, y - oy, z) - 0.04, 0.09), 1);
+      break;
+    }
+    case BONE.head:
+      take(BONE.torso, 0.5 * fade(y + 0.03, 0.08), 0);
+      break;
+    case BONE.pelvis:
+      // Bas du bassin, jupe, pans de manteau : suivent en partie la cuisse de leur côté.
+      take(x < 0 ? BONE.thighL : BONE.thighR, 0.4 * smoothstep(0.02, 0.1, Math.abs(x)) * smoothstep(0, 0.12, -y), 1);
+      break;
+  }
+  out[0] = other;
+  out[1] = w;
+  out[2] = pivot;
+  return out;
+}
+
 /** Échelle (x, y, z) de la géométrie de chaque os par rapport au corps de référence. 13 × 3 valeurs. */
 export function geometryScales(d: BodyDims, out: Float32Array = new Float32Array(BONE_COUNT * 3)): Float32Array {
   const ref = REF_DIMS;
