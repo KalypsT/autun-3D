@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPath, Driver, lanePoint } from "./driver";
 import { NavGraph } from "./nav-graph";
 import { moveEdge } from "./road-graph";
-import { loadRealNav, loadRealWorld } from "./testing";
+import { inScenarioZone, loadRealNav, loadRealWorld } from "./testing";
 import { createVehicle, stepVehicle } from "./vehicle";
 import { CATALOG, vehicleDef } from "./vehicle-catalog";
 import { buildColliders } from "./world";
@@ -23,6 +23,7 @@ function starts(every: number, minLength = 40, maxClass = 5): number[] {
       if (!nav.road.drivable(e) || nav.road.edgeLength(e) < minLength || nav.road.edgeClass(e) > maxClass) continue;
       // Pas au bord du monde (la physique y retient les véhicules à 3 m de la limite).
       if ((nav.road.nodeFlags(nav.road.edgeA(e)) | nav.road.nodeFlags(nav.road.edgeB(e))) & 2) continue;
+      if (!inScenarioZone(nav.road.nodeX(nav.road.edgeA(e)), nav.road.nodeY(nav.road.edgeA(e)))) continue;
       if (k++ % every !== 0) continue;
       out.push(nav.road.canGo(e * 2) ? e * 2 : e * 2 + 1);
     }
