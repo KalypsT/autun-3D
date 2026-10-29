@@ -16,6 +16,8 @@ export interface HeightField {
   readonly xMax: number;
   readonly yMin: number;
   readonly yMax: number;
+  /** Niveau de la mer qui entoure le monde (z local, D105) ; absent : pas de mer. */
+  readonly seaLevel?: number | undefined;
 }
 
 export interface TerrainMeta {
@@ -165,6 +167,8 @@ export interface WorldManifest {
   coarse: TerrainMeta;
   /** Sols grossiers par super-tuile de `tiles` × `tiles` tuiles, `res` mètres par pixel, `size` pixels de côté. */
   super: { tiles: number; res: number; size: number; cells: { id: string; x0: number; y1: number }[] };
+  /** Mer qui entoure le monde (tools/data/build_coast.py, D105) : niveau (z local) et trait de côte (x0, y0, x1, y1…, anneau ouvert). */
+  sea?: { z: number; coast: number[] };
 }
 
 /** Contenu détaillé d'une tuile de 250 m (fichier tiles/<col>_<row>.json). */

@@ -22,6 +22,7 @@ from scipy.spatial import cKDTree
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
+import coast_lib as coast
 import config as c
 import nav_lib as nl
 import streets_lib as sl
@@ -129,6 +130,26 @@ def load_routes():
             seen.add(key)
             routes.append((line, props))
     return routes
+
+
+def trim_to_land(s):
+    """La voie réduite à sa plus longue suite de nœuds à terre (D105) : les routes qui partent vers la mer s'arrêtent au dernier nœud."""
+    pts = s["pts"]
+    on = [coast.on_land(pts[i], pts[i + 1], 2.0) for i in range(0, len(pts), 2)]
+    if all(on):
+        return s
+    best, start = (0, 0), None
+    for i, v in enumerate(on + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            if i - start > best[1] - best[0]:
+                best = (start, i)
+            start = None
+    if best[1] - best[0] < 2:
+        return None
+    a, b = best
+    return {**s, "nodes": s["nodes"][a:b], "pts": pts[2 * a:2 * b]}
 
 
 def walkable(s):
@@ -315,7 +336,7 @@ def main():
     log(f"obstacles : {len(tiles['buildings'])} bâtiments, {len(tiles['walls'])} murs ({time.time() - t0:.0f} s)")
     ways, node_tags, nodes, restrictions, _ = load_osm()
     routes = load_routes()
-    streets = sl.build_street_list(ways, routes, 2)
+    streets = [s for s in (trim_to_land(s) for s in sl.build_street_list(ways, routes, 2)) if s]
     # Une même voie peut venir de deux blocs : l'extrait OpenStreetMap est déjà dédoublonné par (type, id).
     log(f"voies : {len(streets)} ({Counter(s['kind'] for s in streets).most_common()}), {len(routes)} tronçons BD TOPO, {len(restrictions)} restrictions")
 

@@ -7,6 +7,13 @@ import type { WantedView } from "./wanted";
  * relie le niveau de recherche, la circulation et les infractions.
  */
 
+/**
+ * La gendarmerie d'Autun (D105), rue de la rive est du plan d'eau du Vallon (OpenStreetMap, way 124225434), dans la carte depuis l'agrandissement :
+ * les renforts en sortent quand le joueur est à moins de BASE_REACH mètres, et on y reprend après une arrestation.
+ */
+export const GENDARMERIE = { x: 1790, y: 595 } as const;
+export const BASE_REACH = 800;
+
 /** Voitures en poursuite selon le niveau de recherche (0 à 5 étoiles). */
 export const PURSUERS = [0, 1, 2, 4, 5, 6] as const;
 

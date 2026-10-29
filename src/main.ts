@@ -13,6 +13,7 @@ import { SaveStore } from "./core/save";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
+import { createSea } from "./render/sea";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
@@ -114,6 +115,8 @@ async function main(): Promise<void> {
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
   await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
+  const sea = createSea(world.manifest, style.toon);
+  if (sea) scene.add(sea);
 
   const t0 = performance.now();
   const colliders = new Colliders();
