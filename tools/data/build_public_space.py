@@ -59,10 +59,12 @@ class Grid:
         self.o = ortho
         self.H, self.W = ortho.H, ortho.W
 
-    def mask(self, geoms):
-        img = Image.new("1", (self.W, self.H), 0)
+    def mask(self, geoms, window=None):
+        """Masque des géométries ; `window` = (ligne, colonne, hauteur, largeur) pour une fenêtre de la grille seulement."""
+        r0, c0, h, w = window or (0, 0, self.H, self.W)
+        img = Image.new("1", (w, h), 0)
         d = ImageDraw.Draw(img)
-        res, x0, y1 = self.o.RES, self.o.x0, self.o.y1
+        res, x0, y1 = self.o.RES, self.o.x0 + c0 * self.o.RES, self.o.y1 - r0 * self.o.RES
         for g in geoms:
             for p in rs.as_polygons(g):
                 d.polygon([((x - x0) / res, (y1 - y) / res) for x, y in p.exterior.coords], fill=1)
@@ -76,17 +78,19 @@ class Grid:
             return arr[r, q]
         return False
 
-    def polygons(self, m, cell=4):
-        """Vectorise un masque par cellules de `cell` pixels (2 m) : rectangles fusionnés, puis union lissée."""
-        H4, W4 = self.H // cell, self.W // cell
+    def polygons(self, m, cell=4, origin=(0, 0)):
+        """Vectorise un masque par cellules de `cell` pixels (2 m) : rectangles fusionnés, puis union lissée. `origin` : (ligne, colonne) du
+        coin du masque dans la grille, pour un masque de fenêtre."""
+        H4, W4 = m.shape[0] // cell, m.shape[1] // cell
         mm = m[: H4 * cell, : W4 * cell].reshape(H4, cell, W4, cell).mean(axis=(1, 3)) > 0.5
         boxes = []
         res = self.o.RES * cell
+        ox, oy = self.o.x0 + origin[1] * self.o.RES, self.o.y1 - origin[0] * self.o.RES
         for r in range(H4):
             row = mm[r]
             d = np.diff(np.concatenate([[0], row.astype(np.int8), [0]]))
             for s, e in zip(np.where(d == 1)[0], np.where(d == -1)[0]):
-                boxes.append(box(self.o.x0 + s * res, self.o.y1 - (r + 1) * res, self.o.x0 + e * res, self.o.y1 - r * res))
+                boxes.append(box(ox + s * res, oy - (r + 1) * res, ox + e * res, oy - r * res))
         return unary_union(boxes) if boxes else Polygon()
 
 
@@ -153,6 +157,7 @@ def main():
     ortho = rs.Ortho()
     grid = Grid(ortho)
     cls = classify(ortho.rgb)
+    ortho.rgb = None  # seules les classes servent ensuite : 0,5 Go de moins sur toute la ville
     public = grid.mask([D])
     print("orthophoto et masques prêts")
 
@@ -302,14 +307,28 @@ def main():
 
     # --- Le reste de l'espace public : places, pelouses, parkings d'après l'orthophoto ----------------------------------------
     rest = D.difference(R).difference(W).difference(verges).difference(WATER).difference(PK).difference(PED).difference(BANK)
-    rest_mask = grid.mask([rest])
-    for name, k in (("lawn", 5), ("gravel", 4), ("asphalt", 1), ("paving", 0)):
-        m = ndimage.binary_opening(ndimage.binary_closing((cls == k) & rest_mask, iterations=1), iterations=1)
-        lab, nlab = ndimage.label(m)
-        if nlab:
-            sizes = ndimage.sum(m, lab, range(1, nlab + 1))
-            m = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= 40])  # 10 m² au moins
-        g = grid.polygons(m).buffer(0.8).buffer(-0.8).intersection(rest)
+    # Par fenêtres de 1 km (D105) : sur toute la ville, les masques et étiquettes d'un seul tenant dépassaient la mémoire. Les fenêtres se
+    # touchent sur des multiples de 4 pixels, comme les cellules de `polygons` ; une tache coupée par un bord n'est jugée que sur sa part.
+    WIN = 2000
+    found = {name: [] for name in ("lawn", "gravel", "asphalt", "paving")}
+    for r0 in range(0, grid.H, WIN):
+        for c0 in range(0, grid.W, WIN):
+            h, w = min(WIN, grid.H - r0), min(WIN, grid.W - c0)
+            wx0, wy1 = grid.o.x0 + c0 * grid.o.RES, grid.o.y1 - r0 * grid.o.RES
+            part = rest.intersection(box(wx0, wy1 - h * grid.o.RES, wx0 + w * grid.o.RES, wy1))
+            if part.is_empty:
+                continue
+            rest_mask = grid.mask([part], (r0, c0, h, w))
+            sub = cls[r0:r0 + h, c0:c0 + w]
+            for name, k in (("lawn", 5), ("gravel", 4), ("asphalt", 1), ("paving", 0)):
+                m = ndimage.binary_opening(ndimage.binary_closing((sub == k) & rest_mask, iterations=1), iterations=1)
+                lab, nlab = ndimage.label(m)
+                if nlab:
+                    sizes = ndimage.sum(m, lab, range(1, nlab + 1))
+                    m = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= 40])  # 10 m² au moins
+                found[name].append(grid.polygons(m, origin=(r0, c0)))
+    for name in ("lawn", "gravel", "asphalt", "paving"):
+        g = unary_union(found[name]).buffer(0.8).buffer(-0.8).intersection(rest)
         if name == "lawn":
             lawns.append(g)
         else:
