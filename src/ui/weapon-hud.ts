@@ -1,8 +1,9 @@
 import type { WeaponDef } from "../core/weapons";
+import { weaponIcon } from "./icons";
 
 /**
  * Arme en main, dans le bandeau d'état en haut au centre (`#weapon`, caché en véhicule) : pictogramme et nom, plus les munitions pour une arme à feu (J5-3). Un appui passe à l'arme suivante
- * (`onCycle`). Le bouton d'attaque change aussi de pictogramme. Ne touche au DOM que quand quelque chose change.
+ * (`onCycle`). Le bouton d'attaque change aussi de pictogramme (dessinés, D103). Ne touche au DOM que quand quelque chose change.
  */
 export class WeaponHud {
   private readonly button: HTMLButtonElement;
@@ -32,7 +33,7 @@ export class WeaponHud {
     const changed = !this.shown.startsWith(`${weapon.id}/`);
     if (!this.shown) this.el.classList.add("on");
     this.shown = key;
-    this.icon.textContent = weapon.icon;
+    this.icon.innerHTML = weaponIcon(weapon.id);
     this.name.textContent = weapon.name;
     // Chargeur en gros, réserve en petit à côté.
     if (ammo) {
@@ -42,7 +43,7 @@ export class WeaponHud {
     } else this.ammo.replaceChildren();
     this.button.title = weapon.name;
     if (this.attackEl) {
-      this.attackEl.textContent = weapon.icon;
+      this.attackEl.innerHTML = weaponIcon(weapon.id);
       this.attackEl.setAttribute("aria-label", weapon.kind === "gun" ? "Tirer" : "Frapper");
     }
     if (changed) {

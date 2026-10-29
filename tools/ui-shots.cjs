@@ -191,6 +191,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await ctx.close();
   }
 
+  if (want("thumb")) {
+    // Groupe du pouce droit à pied (D103) : pistolet en main (bouton de rechargement) à côté d'une voiture garée (« Monter »), puis devant une batte au sol (« Ramasser »).
+    const ctx = await open("arms=pistol&h=15");
+    await page.addStyleTag({ content: "#weapon.flash button { animation: none !important; }" });
+    await page.evaluate(() => {
+      const a = window.__autun, p = a.player;
+      a.inventory.select("pistol");
+      const k = a.fleet.nearest(p.x, p.y, "car");
+      if (k) { p.x = k.vehicle.state.x + 2; p.y = k.vehicle.state.y; }
+    });
+    await sleep(2500);
+    await shot("p-pouce-monter");
+    await page.evaluate(() => {
+      const a = window.__autun, p = a.player, c = a.pickups.list.find((q) => q.weapon === "bat");
+      if (c) { p.x = c.x + 1; p.y = c.y; }
+    });
+    await sleep(2500);
+    await shot("p-pouce-ramasser");
+    await ctx.close();
+  }
+
   if (want("cache")) {
     // Une arme au sol (J5-3) : la batte du Monument aux morts, vue de côté à 6 m (caisse qui tourne et faisceau jaune).
     const ctx = await open("h=15");

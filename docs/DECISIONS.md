@@ -1251,3 +1251,15 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 
 **Pas encore fait** (étapes suivantes, maquettes faites) : à pied, groupe du pouce droit (frapper, action ronde, recharger) et suppression des pastilles des objets proches ; en véhicule, pédales en forme de pédales, klaxon rond, « Descendre » en haut à droite, compteur en petit cadran accolé à la minimap (variante B retenue : celui du bas cache le véhicule) ; pictogrammes dessinés au lieu des emoji.
 
+## 2026-10-29 — D103. Interface en jeu, étape 2 : à pied
+
+**Constat** : à pied, la droite de l'écran portait une colonne de cinq pastilles (vélo, trottinette, moto, voiture et arme au sol les plus proches, avec flèche et distance) qui faisait doublon avec la minimap ; le bouton d'action était un rectangle rouge sous le bouton d'attaque ; le rechargement n'existait qu'au clavier (R) ; les pictogrammes étaient des emoji, dessinés différemment d'un téléphone à l'autre.
+
+**Choix** :
+- **Plus d'indication des objets proches** (choix de l'utilisateur) : la colonne `#nearby` est retirée. Véhicules garés et armes au sol restent sur la minimap.
+- **Groupe du pouce droit** : gros bouton rond d'attaque (96 px, rouge brique cerclé de crème) en bas à droite ; à sa gauche, le bouton d'action devient rond (72 px, sombre cerclé de crème) avec un pictogramme et un verbe court (« Monter », « Prendre », « Ramasser ») ; le nom complet (« Monter : Berline ») est dans son libellé accessible et son titre. Au-dessus, un petit bouton rond de rechargement (↻, `#reload`), seulement avec une arme à feu en main (classe `gun` sur `body`). En véhicule, le bouton d'action reste « Descendre » au-dessus des pédales jusqu'à l'étape 3.
+- **Pictogrammes dessinés** (`src/ui/icons.ts`) : armes (poings, couteau, batte, pistolet, fusil à pompe, fusil d'assaut), familles de véhicules, scooter et gendarmerie, rechargement ; SVG au trait de la couleur du texte. Ils remplacent les emoji dans le bandeau d'état, le bouton d'attaque et le bouton d'action. Le catalogue garde ses emoji (galeries, carte).
+- **Aide de départ** raccourcie : « Pouce gauche : marcher (à fond : courir) · glisser à droite : regarder · toucher la minimap : carte et pause ».
+
+**Capture** : `tools/ui.sh <dossier> thumb` (pistolet en main à côté d'une voiture, puis devant une batte au sol).
+

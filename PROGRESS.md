@@ -565,3 +565,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Un seul style « affiche » : santé, arme et étoiles réunies dans un bandeau à double filet en haut au centre (l'arme est cachée en voiture) ; heure en pastille sous la minimap ; joystick, pédales et bouton d'action en sombre cerclé de crème. 621 tests.
 - À faire de ton côté : toucher la minimap en jouant, revenir au jeu par « Reprendre » ; vérifier le plein écran au premier appui ; dire si le bandeau du haut est lisible au soleil. Ensuite : étape 2 (à pied), puis étape 3 (véhicules et compteur près de la minimap).
 
+**Interface en jeu, étape 2 : à pied (29 octobre 2026)** (D103)
+- Plus de colonne d'objets proches à droite : la minimap montre véhicules et armes au sol.
+- Pouce droit : gros bouton rond pour frapper ou tirer ; à sa gauche, un bouton rond « Monter », « Prendre » ou « Ramasser » avec un pictogramme ; au-dessus, un bouton ↻ pour recharger quand on tient une arme à feu.
+- Pictogrammes dessinés au lieu des emoji (armes, véhicules). 621 tests.
+- À faire de ton côté : marcher jusqu'à un vélo ou une voiture, ramasser une arme, recharger au bouton ; dire si le bouton d'action tombe bien sous le pouce. Ensuite : étape 3 (véhicules : pédales, « Descendre » en haut à droite, compteur près de la minimap).
+

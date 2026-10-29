@@ -32,26 +32,30 @@
       body.car #handbrake { display: grid; }
       #gas { width: 104px; height: 150px; box-shadow: var(--lift), inset 0 -56px 0 rgba(241, 178, 74, .28); }
       .pedal.on { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); filter: brightness(1.35); }
+      .ico { display: block; width: 1em; height: 1em; }
+      /* Bouton d'action : en véhicule (« Descendre »), une pastille au-dessus des pédales. */
       #action { position: fixed; right: 14px; bottom: 186px; z-index: 4; display: none; padding: 12px 18px; border-radius: 14px;
                 border: 2px solid var(--cream); background: rgba(217, 71, 43, .9); color: var(--cream); font: 800 16px system-ui, sans-serif; box-shadow: var(--lift); }
       body.game #action.show { display: block; }
-      body.game:not(.driving) #action { bottom: 24px; }
-      /* Attaque (J5) : bouton rond à droite, à pied seulement ; à côté du pouce qui regarde, au-dessus du bouton d'action. */
-      #attack { position: fixed; right: 26px; bottom: 96px; width: 88px; height: 88px; z-index: 4; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
-                place-items: center; border-radius: 50%; border: 3px solid rgba(255, 248, 230, .8); background: rgba(217, 71, 43, .62); color: #fff8e6;
-                font: 600 34px system-ui, sans-serif; text-shadow: 0 1px 3px #000; box-shadow: 0 4px 0 rgba(27, 31, 39, .5); }
+      /* À pied (D103), le groupe du pouce droit : gros bouton rond d'attaque, bouton d'action rond à sa gauche (Monter, Prendre, Ramasser : pictogramme
+         et verbe), petit bouton de rechargement au-dessus quand une arme à feu est en main. */
+      body.game:not(.driving) #action.show { right: 136px; bottom: 44px; width: 72px; height: 72px; padding: 0; border-radius: 50%; background: var(--panel);
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 800 12px/1 system-ui, sans-serif; }
+      #action .ico { font-size: 30px; }
+      #action:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); }
+      #attack { position: fixed; right: 26px; bottom: 30px; width: 96px; height: 96px; box-sizing: border-box; z-index: 4; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
+                place-items: center; border-radius: 50%; border: 3px solid var(--cream); background: rgba(217, 71, 43, .82); color: var(--cream);
+                font-size: 46px; box-shadow: 0 5px 0 rgba(27, 31, 39, .5); }
       body.game:not(.driving) #attack { display: grid; }
-      #attack.on { background: rgba(217, 71, 43, .95); transform: translateY(3px); box-shadow: 0 1px 0 rgba(27, 31, 39, .5); }
+      #attack.on { background: var(--brick); transform: translateY(3px); box-shadow: 0 2px 0 rgba(27, 31, 39, .5); }
+      #reload { position: fixed; right: 118px; bottom: 136px; width: 52px; height: 52px; padding: 0; z-index: 4; display: none; place-items: center; border-radius: 50%;
+                border: 2px solid var(--cream); background: var(--panel); color: var(--cream); font-size: 24px; box-shadow: var(--lift); touch-action: manipulation; }
+      body.game.gun:not(.driving) #reload { display: grid; }
+      #reload:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); }
       /* Réticule de la visée assistée (J5-3) : un anneau crème qui suit la cible de l'arme à feu. */
       #reticle { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 3; display: none; pointer-events: none; border-radius: 50%;
                  border: 3px solid #fff8e6; box-shadow: 0 0 0 2px rgba(27, 31, 39, .55), inset 0 0 0 2px rgba(27, 31, 39, .35); }
       #reticle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #d9472b; }
-      #nearby { position: fixed; top: 58px; right: 8px; z-index: 3; display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
-      body.game:not(.driving) #nearby { display: flex; }
-      .chip { display: none; gap: 5px; align-items: center; padding: 5px 10px 5px 8px; border-radius: 16px; background: rgba(0,0,0,.4);
-              color: #fff; font: 14px system-ui, sans-serif; }
-      .chip.show { display: flex; }
-      .chip .arrow { display: inline-block; transition: transform .15s linear; }
       #credits { position: fixed; right: 6px; bottom: 4px; font: 10px system-ui, sans-serif; color: rgba(255,255,255,.7);
                  text-shadow: 0 0 3px #000; pointer-events: none; max-width: 70%; text-align: right; }
       body.game #credits { display: none; }
@@ -123,7 +127,7 @@
       /* Arme en main (J5) : pictogramme dans une pastille crème, nom en petites capitales, munitions en ocre ; un appui passe à l'arme suivante. */
       #weapon { pointer-events: auto; padding: 0; }
       #weapon button { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 12px; border: 0; background: none; color: var(--cream); cursor: pointer; font: inherit; }
-      #weapon .wicon { width: 26px; height: 26px; border-radius: 50%; background: var(--cream); display: grid; place-items: center; font-size: 15px; line-height: 1; }
+      #weapon .wicon { width: 26px; height: 26px; border-radius: 50%; background: var(--cream); color: var(--ink); display: grid; place-items: center; font-size: 17px; }
       #weapon .wname { font: 800 11px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
       #weapon .wammo { font: 800 18px/1 system-ui, sans-serif; color: var(--ochre); font-variant-numeric: tabular-nums; }
       #weapon .wammo:empty { display: none; }
@@ -133,8 +137,8 @@
       body.layout .slot { display: flex; min-width: 80px; outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #speedlines, body.paused #nearby,
-      body.paused #action, body.paused #attack, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      body.paused #minimap, body.paused #clock, body.paused #status, body.paused #hurt, body.paused #speedlines,
+      body.paused #action, body.paused #attack, body.paused #reload, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
@@ -228,14 +232,14 @@
     <canvas id="minimap" role="button" aria-label="Carte et pause"></canvas>
     <div id="clock" aria-label="Heure du jeu">--:--</div>
     <div id="status"><div id="health" class="slot" data-name="santé"></div><div id="weapon" class="slot" data-name="arme"></div><div id="wanted" class="slot" data-name="recherche"></div></div>
-    <div id="hint">Joystick à gauche pour marcher (à fond : courir) · glisser à droite pour regarder · toucher la minimap : carte et pause</div>
+    <div id="hint">Pouce gauche : marcher (à fond : courir) · glisser à droite : regarder · toucher la minimap : carte et pause</div>
     <div id="pedals"><div id="horn" class="pedal">Klaxon</div><div id="handbrake" class="pedal">Frein<br>à main</div><div id="brake" class="pedal">Frein</div><div id="gas" class="pedal">Pédaler</div></div>
     <div id="stunt" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 120 100"><circle class="disc" cx="60" cy="56" r="54"/><path class="track" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/><path id="speedo-arc" pathLength="100" d="M 27.5 88.5 A 46 46 0 1 1 92.5 88.5"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="reticle"></div>
-    <div id="attack" role="button" aria-label="Frapper">👊</div>
+    <div id="attack" role="button" aria-label="Frapper"></div>
+    <button id="reload" title="Recharger" aria-label="Recharger"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4"/></svg></button>
     <button id="action"></button>
-    <div id="nearby"></div>
     <div id="speedlines"></div>
     <div id="hurt"></div>
     <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
