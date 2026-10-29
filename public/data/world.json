@@ -15,6 +15,142 @@
  ],
  "tiles": [
   {
+   "id": "24_27",
+   "col": 24,
+   "row": 27,
+   "bounds": [
+    -520.0,
+    -2062.0,
+    -270.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 829,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 30879
+  },
+  {
+   "id": "25_27",
+   "col": 25,
+   "row": 27,
+   "bounds": [
+    -270.0,
+    -2062.0,
+    -20.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 651,
+   "walls": 0,
+   "furniture": 26,
+   "lod": 0,
+   "bytes": 40061
+  },
+  {
+   "id": "26_27",
+   "col": 26,
+   "row": 27,
+   "bounds": [
+    -20.0,
+    -2062.0,
+    230.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 831,
+   "walls": 0,
+   "furniture": 2,
+   "lod": 0,
+   "bytes": 30731
+  },
+  {
+   "id": "27_27",
+   "col": 27,
+   "row": 27,
+   "bounds": [
+    230.0,
+    -2062.0,
+    480.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 1095,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 39354
+  },
+  {
+   "id": "28_27",
+   "col": 28,
+   "row": 27,
+   "bounds": [
+    480.0,
+    -2062.0,
+    730.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 1103,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 39693
+  },
+  {
+   "id": "29_27",
+   "col": 29,
+   "row": 27,
+   "bounds": [
+    730.0,
+    -2062.0,
+    980.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 953,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 34341
+  },
+  {
+   "id": "30_27",
+   "col": 30,
+   "row": 27,
+   "bounds": [
+    980.0,
+    -2062.0,
+    1230.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 870,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 32167
+  },
+  {
+   "id": "31_27",
+   "col": 31,
+   "row": 27,
+   "bounds": [
+    1230.0,
+    -2062.0,
+    1480.0,
+    -1812.0
+   ],
+   "buildings": 0,
+   "trees": 674,
+   "walls": 0,
+   "furniture": 0,
+   "lod": 0,
+   "bytes": 24940
+  },
+  {
    "id": "32_27",
    "col": 32,
    "row": 27,
@@ -128,10 +264,10 @@
    ],
    "buildings": 1,
    "trees": 657,
-   "walls": 27,
-   "furniture": 6,
+   "walls": 0,
+   "furniture": 8,
    "lod": 1,
-   "bytes": 45990
+   "bytes": 34111
   },
   {
    "id": "26_28",
@@ -145,10 +281,10 @@
    ],
    "buildings": 7,
    "trees": 572,
-   "walls": 36,
+   "walls": 0,
    "furniture": 15,
    "lod": 7,
-   "bytes": 63713
+   "bytes": 47273
   },
   {
    "id": "27_28",
@@ -165,7 +301,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 40279
+   "bytes": 37317
   },
   {
    "id": "28_28",
@@ -199,7 +335,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 29459
+   "bytes": 29354
   },
   {
    "id": "30_28",
@@ -216,7 +352,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 38465
+   "bytes": 32517
   },
   {
    "id": "31_28",
@@ -233,7 +369,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 1,
-   "bytes": 33117
+   "bytes": 25372
   },
   {
    "id": "32_28",
@@ -451,10 +587,10 @@
    ],
    "buildings": 0,
    "trees": 749,
-   "walls": 10,
-   "furniture": 3,
+   "walls": 0,
+   "furniture": 11,
    "lod": 0,
-   "bytes": 48426
+   "bytes": 34103
   },
   {
    "id": "32_29",
@@ -689,10 +825,10 @@
    ],
    "buildings": 13,
    "trees": 630,
-   "walls": 66,
-   "furniture": 10,
+   "walls": 0,
+   "furniture": 17,
    "lod": 13,
-   "bytes": 88585
+   "bytes": 66757
   },
   {
    "id": "32_30",
@@ -927,10 +1063,10 @@
    ],
    "buildings": 0,
    "trees": 306,
-   "walls": 2,
+   "walls": 0,
    "furniture": 1,
    "lod": 0,
-   "bytes": 16170
+   "bytes": 12372
   },
   {
    "id": "32_31",
@@ -6541,7 +6677,7 @@
   "base": -44.0,
   "unit": 0.01,
   "zmin": -43.08000183105469,
-  "zmax": 259.0299987792969,
+  "zmax": 259.046875,
   "holes_filled": 0
  },
  "super": {
@@ -6625,6 +6761,11 @@
     "y1": 5192.0
    },
    {
+    "id": "s6_6",
+    "x0": -524.0,
+    "y1": -1808.0
+   },
+   {
     "id": "s6_7",
     "x0": -524.0,
     "y1": -808.0
@@ -6658,6 +6799,11 @@
     "id": "s7_13",
     "x0": 476.0,
     "y1": 5192.0
+   },
+   {
+    "id": "s7_6",
+    "x0": 476.0,
+    "y1": -1808.0
    },
    {
     "id": "s7_7",
