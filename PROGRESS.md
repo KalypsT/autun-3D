@@ -558,3 +558,23 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Visages peints : yeux (blanc, iris, paupière), sourcils, lèvres, ombres ; plus fins et plus colorés chez les femmes, ridés chez les seniors.
 - Les couleurs choisies (écran Apparence, passants) ne changent pas : la texture les module. Toujours un seul appel de dessin pour la foule. 620 tests.
 - À faire de ton côté : regarder ton personnage dans l'écran Apparence en changeant de haut, de bas et de chaussures ; croiser des passants ; lancer `?bench=1&crowd=100&soak=10` sur le téléphone. Dire si les détails sont trop marqués ou pas assez.
+
+**Interface en jeu, étape 1 : style commun, pause par la minimap (29 octobre 2026)** (D102)
+- Plus de bouton pause : toucher la minimap ouvre la carte, qui est l'écran de pause, avec « Reprendre » et « Menu ». Échap ou P marchent toujours.
+- Plus de bouton plein écran : le jeu passe en plein écran au premier appui (réglage « Plein écran » dans le menu pour le couper). Les crédits sont dans le menu (« Crédits »), sur la carte et au chargement.
+- Un seul style « affiche » : santé, arme et étoiles réunies dans un bandeau à double filet en haut au centre (l'arme est cachée en voiture) ; heure en pastille sous la minimap ; joystick, pédales et bouton d'action en sombre cerclé de crème. 621 tests.
+- À faire de ton côté : toucher la minimap en jouant, revenir au jeu par « Reprendre » ; vérifier le plein écran au premier appui ; dire si le bandeau du haut est lisible au soleil. Ensuite : étape 2 (à pied), puis étape 3 (véhicules et compteur près de la minimap).
+
+**Interface en jeu, étape 2 : à pied (29 octobre 2026)** (D103)
+- Plus de colonne d'objets proches à droite : la minimap montre véhicules et armes au sol.
+- Pouce droit : gros bouton rond pour frapper ou tirer ; à sa gauche, un bouton rond « Monter », « Prendre » ou « Ramasser » avec un pictogramme ; au-dessus, un bouton ↻ pour recharger quand on tient une arme à feu.
+- Pictogrammes dessinés au lieu des emoji (armes, véhicules). 621 tests.
+- À faire de ton côté : marcher jusqu'à un vélo ou une voiture, ramasser une arme, recharger au bouton ; dire si le bouton d'action tombe bien sous le pouce. Ensuite : étape 3 (véhicules : pédales, « Descendre » en haut à droite, compteur près de la minimap).
+
+**Interface en jeu, étape 3 : en véhicule (29 octobre 2026)** (D104)
+- Le compteur est un petit cadran collé à la minimap : il ne cache plus ton véhicule. La distance de roue arrière s'affiche juste en dessous.
+- « Descendre » passe en haut à droite, en petit : plus de descente par erreur en accélérant.
+- Pédales redessinées : accélérateur haut, frein large rouge, frein à main au-dessus du frein (voiture), klaxon ou sonnette en bouton rond.
+- En voiture, le bouton du joystick ne bouge plus qu'à gauche et à droite. 621 tests.
+- À faire de ton côté : rouler en voiture et à vélo, dire si le compteur se lit d'un coup d'œil et si la taille des pédales convient.
+

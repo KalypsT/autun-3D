@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -30,6 +30,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const shot = async (name) => { await page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 }); console.log("ok", `${out}/${name}.png`); };
   const click = async (sel) => { await page.click(sel, { timeout: 60000 }); await sleep(300); };
   const clickText = async (text) => { await page.locator(`button:has-text("${text}")`).first().click({ timeout: 60000 }); await sleep(300); };
+  // Pause (D102) : un appui sur la minimap ouvre la carte, qui est l'écran de pause ; « Menu » mène au menu.
+  const pauseMap = async () => {
+    await click("#minimap");
+    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+  };
+  const pauseMenu = async () => {
+    await pauseMap();
+    await click(".bm-menu");
+  };
   const frames = (n) => page.evaluate((k) => new Promise((res) => { let i = 0; const f = () => (++i >= k ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 
   if (want("hud")) {
@@ -182,6 +191,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await ctx.close();
   }
 
+  if (want("thumb")) {
+    // Groupe du pouce droit à pied (D103) : pistolet en main (bouton de rechargement) à côté d'une voiture garée (« Monter »), puis devant une batte au sol (« Ramasser »).
+    const ctx = await open("arms=pistol&h=15");
+    await page.addStyleTag({ content: "#weapon.flash button { animation: none !important; }" });
+    await page.evaluate(() => {
+      const a = window.__autun, p = a.player;
+      a.inventory.select("pistol");
+      const k = a.fleet.nearest(p.x, p.y, "car");
+      if (k) { p.x = k.vehicle.state.x + 2; p.y = k.vehicle.state.y; }
+    });
+    await sleep(2500);
+    await shot("p-pouce-monter");
+    await page.evaluate(() => {
+      const a = window.__autun, p = a.player, c = a.pickups.list.find((q) => q.weapon === "bat");
+      if (c) { p.x = c.x + 1; p.y = c.y; }
+    });
+    await sleep(2500);
+    await shot("p-pouce-ramasser");
+    await ctx.close();
+  }
+
   if (want("cache")) {
     // Une arme au sol (J5-3) : la batte du Monument aux morts, vue de côté à 6 m (caisse qui tourne et faisceau jaune).
     const ctx = await open("h=15");
@@ -274,7 +304,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (want("pause")) {
     // Réglages enregistrés avant le chargement (définition ×1,5, ombres moyennes : plus léger pour le rendu logiciel) : rien n'est imposé par l'URL.
     const ctx = await open("", () => localStorage.setItem("autun3d.settings", JSON.stringify({ dpr: 1.5, shadows: 2048 })), true);
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await shot("j1-pause-menu");
     await clickText("Réglages");
@@ -295,15 +325,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("j1-pause-sauvegarde");
     await clickText("Nouvelle partie");
     await shot("j1-pause-nouvelle-partie");
+    await clickText("Crédits");
+    await shot("j1-pause-credits");
     await ctx.close();
   }
 
   if (want("map")) {
     const ctx = await open();
-    await click("#pausebtn");
-    await sleep(500);
-    await clickText("Carte");
-    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+    await pauseMap();
     await sleep(2500);
     await shot("j1-carte");
     // Appui long : pose le repère (cercle qui se remplit pendant l'appui).
@@ -328,8 +357,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("j1-carte-fiche");
     await click(".bm-filter");
     await shot("j1-carte-filtres");
-    await click(".bm-back");
-    await click(".pm-item:has-text('Reprendre')");
+    await click(".bm-filter");
+    await click(".bm-resume");
     // Le repère à 35 m devant : colonne et losange dans le monde.
     await page.evaluate(() => window.__autun.ui.setWaypoint({ x: -10, y: -5 }));
     await sleep(2500);
@@ -343,10 +372,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => window.__autun.ui.setWaypoint({ x: -10, y: -5 }));
     await sleep(3000);
     await shot("j1-jeu-repere-monde");
-    await click("#pausebtn");
-    await sleep(500);
-    await clickText("Carte");
-    await page.waitForFunction(() => !document.getElementById("bigmap").hidden, null, { timeout: 30000 });
+    await pauseMap();
     await sleep(2000);
     await click(".bm-filter");
     await shot("j1-carte-filtres");
@@ -390,7 +416,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await hold(176);
     await frames(4);
     await shot("p-compteur-voiture-max");
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await shot("p-compteur-pause");
     await c1.close();
@@ -403,7 +429,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   if (want("appearance")) {
     const ctx = await open("dist=2.8");
-    await click("#pausebtn");
+    await pauseMenu();
     await sleep(800);
     await clickText("Apparence");
     await sleep(1500);

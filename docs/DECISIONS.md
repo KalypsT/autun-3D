@@ -1236,3 +1236,40 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 **Coût** : mémoire graphique ≈ 3 Mo (9 pages de 256 × 256 avec leurs niveaux réduits) ; peinture ≈ 0,1 s sur PC au premier personnage (une fois par partie) ; une lecture de texture par pixel de personnage. **À mesurer sur le téléphone** avec le banc de foule, comme D99.
 
 **Limites** : la texture ne sait pas de quel côté est la jambe ou le bras (les deux côtés partagent la forme) : la poche cargo est peinte des deux côtés de la cuisse ; les mains et les bras nus restent unis ; les détails fins (piqûres) s'effacent au loin par les niveaux réduits, comme voulu ; les vêtements sombres montrent moins le relief peint (on module une couleur déjà sombre).
+
+## 2026-10-29 — D102. Interface en jeu, étape 1 : style commun, pause par la minimap
+
+**Constat** : deux styles se mélangeaient à l'écran. Le cœur, les étoiles, l'arme, le bouton de frappe et le compteur suivaient le style « affiche » (D17 : encre, crème, rouge brique, ocre) ; les boutons pause et plein écran, les pédales, le joystick et le bouton d'action étaient des voiles blancs ou gris translucides. La pastille de l'arme restait affichée en voiture, où l'on ne peut pas s'en servir. Les crédits passaient sous les pédales.
+
+**Choix** (maquettes validées avec l'utilisateur ; refonte en trois étapes : style commun et pause, puis à pied, puis en véhicule) :
+- **Jetons de couleur** dans `index.html` (`--ink`, `--cream`, `--brick`, `--ochre`, `--panel`, `--lift`) ; joystick, pédales et bouton d'action passent en fond sombre cerclé de crème, avec une ombre portée qui s'écrase à l'appui. Le frein reste rouge brique, l'accélérateur a un fond ocre en bas.
+- **Bandeau d'état « plaque émaillée »** (`#status`) : santé, arme et étoiles dans une seule pastille à double filet (crème dehors, ocre fin dedans), séparées par des filets. Chaque partie n'apparaît que quand elle sert (santé entamée, arme à pied, recherche) ; le bandeau disparaît s'il est vide (`:has()`). Jauge de santé découpée en segments, cœur dans une pastille rouge brique ; arme dans une pastille crème, nom en petites capitales, chargeur en gros chiffres ocre et réserve en petit ; étoiles sans disque, pleines en rouge brique cerclé de crème. **L'arme est cachée en véhicule.**
+- **Minimap** : anneau encre et crème, « N » cerclé de crème ; l'horloge devient une pastille qui chevauche le bas du cercle.
+- **Pause** : le bouton ⏸ est retiré. **Un appui sur la minimap ouvre la carte agrandie, qui est l'écran de pause** (le jeu est figé comme avant) ; elle porte « Reprendre » (à gauche) et « Menu » (à droite, à côté de « Lieux »). Le menu garde l'entrée « Carte » pour y revenir. Échap et P mettent en pause sur la carte et reprennent depuis la carte ou le menu. Si les données de la carte n'ont pas pu être chargées, la pause ouvre le menu.
+- **Plein écran** : le bouton ⛶ est retiré ; le jeu passe en plein écran (paysage verrouillé si possible) au premier appui, et de nouveau après en être sorti. Réglage « Plein écran » (Oui par défaut) dans les réglages ; le changer depuis le menu ouvre ou ferme le plein écran tout de suite.
+- **Crédits** : retirés de l'écran de jeu ; ils restent au chargement, sur la carte (attribution des données de la carte) et dans une nouvelle entrée « Crédits » du menu (sources et licences, d'après `docs/SOURCES.md`).
+
+**Pas encore fait** (étapes suivantes, maquettes faites) : à pied, groupe du pouce droit (frapper, action ronde, recharger) et suppression des pastilles des objets proches ; en véhicule, pédales en forme de pédales, klaxon rond, « Descendre » en haut à droite, compteur en petit cadran accolé à la minimap (variante B retenue : celui du bas cache le véhicule) ; pictogrammes dessinés au lieu des emoji.
+
+## 2026-10-29 — D103. Interface en jeu, étape 2 : à pied
+
+**Constat** : à pied, la droite de l'écran portait une colonne de cinq pastilles (vélo, trottinette, moto, voiture et arme au sol les plus proches, avec flèche et distance) qui faisait doublon avec la minimap ; le bouton d'action était un rectangle rouge sous le bouton d'attaque ; le rechargement n'existait qu'au clavier (R) ; les pictogrammes étaient des emoji, dessinés différemment d'un téléphone à l'autre.
+
+**Choix** :
+- **Plus d'indication des objets proches** (choix de l'utilisateur) : la colonne `#nearby` est retirée. Véhicules garés et armes au sol restent sur la minimap.
+- **Groupe du pouce droit** : gros bouton rond d'attaque (96 px, rouge brique cerclé de crème) en bas à droite ; à sa gauche, le bouton d'action devient rond (72 px, sombre cerclé de crème) avec un pictogramme et un verbe court (« Monter », « Prendre », « Ramasser ») ; le nom complet (« Monter : Berline ») est dans son libellé accessible et son titre. Au-dessus, un petit bouton rond de rechargement (↻, `#reload`), seulement avec une arme à feu en main (classe `gun` sur `body`). En véhicule, le bouton d'action reste « Descendre » au-dessus des pédales jusqu'à l'étape 3.
+- **Pictogrammes dessinés** (`src/ui/icons.ts`) : armes (poings, couteau, batte, pistolet, fusil à pompe, fusil d'assaut), familles de véhicules, scooter et gendarmerie, rechargement ; SVG au trait de la couleur du texte. Ils remplacent les emoji dans le bandeau d'état, le bouton d'attaque et le bouton d'action. Le catalogue garde ses emoji (galeries, carte).
+- **Aide de départ** raccourcie : « Pouce gauche : marcher (à fond : courir) · glisser à droite : regarder · toucher la minimap : carte et pause ».
+
+**Capture** : `tools/ui.sh <dossier> thumb` (pistolet en main à côté d'une voiture, puis devant une batte au sol).
+
+## 2026-10-29 — D104. Interface en jeu, étape 3 : en véhicule
+
+**Constat** : le compteur, en bas au centre, cachait le véhicule (la caméra est derrière lui) et chevauchait le klaxon sur un écran de 915 px ; les pédales étaient une rangée de rectangles au texte seul ; « Descendre », gros bouton rouge juste au-dessus de l'accélérateur, se touchait par erreur ; en voiture, le bouton du joystick montait et descendait alors que seul le geste horizontal compte.
+
+**Choix** (maquettes, variante B du compteur retenue par l'utilisateur) :
+- **Compteur** : petit cadran rond de 72 px accolé en bas à droite de la minimap (arc ocre, rouge brique en fin de course, graduation propre à chaque véhicule comme avant) ; l'heure se décale à gauche sous la minimap. La distance de la roue arrière ou avant s'affiche sous la minimap.
+- **Pédales** placées une à une sous le pouce droit : accélérateur haut et étroit (cerclé d'ocre, chevrons ocre, « Pédaler » ou « Accélérer »), frein large rouge brique (pictogramme et « Frein »), frein à main au-dessus du frein (voiture seulement), klaxon ou sonnette en bouton rond à pictogramme (le mot est dans son libellé accessible). Mêmes tailles qu'avant à peu près ; à ajuster après essai sur le téléphone.
+- **« Descendre »** : petite pastille sombre en haut à droite (pictogramme de sortie), loin des pédales.
+- **Joystick en voiture** : le bouton ne se déplace qu'à l'horizontale (`Controls.lift`, faux en voiture) ; sur un deux-roues, il garde l'axe vertical (roue arrière, roue avant).
+

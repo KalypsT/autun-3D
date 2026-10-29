@@ -1,6 +1,6 @@
 import { gaugeFraction, GAUGE_REDLINE, kmh } from "../core/speedo";
 
-/** Compteur de vitesse en bas au centre (`#speedo`) : chiffres et arc. Il ne touche au DOM que quand une valeur change. */
+/** Compteur de vitesse, petit cadran accolé à la minimap (`#speedo`, D104) : chiffres et arc. Il ne touche au DOM que quand une valeur change. */
 export class Speedo {
   private readonly value: HTMLElement;
   private readonly arc: SVGPathElement;

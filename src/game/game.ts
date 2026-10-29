@@ -25,6 +25,7 @@ import { CACHE_ROUNDS, PICKUP_REACH, Pickups } from "../core/pickups";
 import { Fx, type PickupView } from "../render/fx";
 import { Melee } from "../core/melee";
 import { WeaponHud } from "../ui/weapon-hud";
+import { icon, vehicleIcon, weaponIcon } from "../ui/icons";
 import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
@@ -108,16 +109,6 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("horn"),
     document.getElementById("attack"),
   );
-  const fsButton = document.getElementById("fullscreen");
-  fsButton?.addEventListener("click", () => {
-    void document.documentElement.requestFullscreen?.().then(async () => {
-      try {
-        await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-      } catch {
-        /* le verrouillage d'orientation n'existe pas partout */
-      }
-    });
-  });
   if (params.has("debug")) debugEl.style.display = "block";
 
   const settings = ctx.settings!;
@@ -129,8 +120,27 @@ export function startGame(ctx: GameContext): void {
   const haptics = new Haptics(typeof navigator.vibrate === "function" ? (p) => void navigator.vibrate(p) : null);
   haptics.enabled = settings.values.vibration;
   const shake = new CameraShake();
+  // Plein écran (et paysage) au premier appui sur le jeu, et de nouveau après en être sorti ; il faut un geste, d'où l'écoute des appuis.
+  const enterFullscreen = (): void => {
+    if (!settings.values.fullscreen || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    document.documentElement.requestFullscreen().then(async () => {
+      try {
+        await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+      } catch {
+        /* le verrouillage d'orientation n'existe pas partout */
+      }
+    }, () => {
+      /* refusé (navigateur, réglage du téléphone) : on réessaiera au prochain appui */
+    });
+  };
+  document.getElementById("touch")?.addEventListener("pointerdown", enterFullscreen);
   settings.listeners.push((v, changed) => {
     controls.sensitivity = v.sensitivity;
+    // Le changement vient d'un appui dans le menu : c'est un geste, le plein écran peut s'ouvrir ou se fermer tout de suite.
+    if (changed.includes("fullscreen")) {
+      if (v.fullscreen) enterFullscreen();
+      else if (document.fullscreenElement) void document.exitFullscreen();
+    }
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("vibration")) haptics.enabled = v.vibration;
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
@@ -255,32 +265,13 @@ export function startGame(ctx: GameContext): void {
   };
 
   const actionEl = document.getElementById("action") as HTMLButtonElement;
-  // Un repère par type de véhicule (les voitures, partout, masqueraient les vélos) : flèche et distance du plus proche.
-  const chips = (["bike", "kickscooter", "moto", "car"] as const).map((kind) => {
-    const el = document.createElement("div");
-    el.className = "chip";
-    const arrow = document.createElement("span");
-    arrow.className = "arrow";
-    arrow.textContent = "⬆";
-    const text = document.createElement("span");
-    el.append(arrow, text);
-    document.getElementById("nearby")!.append(el);
-    return { kind, el, arrow, text };
-  });
-  // Repère de l'arme au sol disponible la plus proche (J5-3) : flèche et distance, comme les véhicules.
-  const pkChip = (() => {
-    const el = document.createElement("div");
-    el.className = "chip";
-    const arrow = document.createElement("span");
-    arrow.className = "arrow";
-    arrow.textContent = "⬆";
-    const text = document.createElement("span");
-    el.append(arrow, text);
-    document.getElementById("nearby")!.append(el);
-    return { el, arrow, text };
-  })();
   const gasEl = document.getElementById("gas")!;
   const hornEl = document.getElementById("horn")!;
+  // Pédales (D104) : pictogramme et mot ; le mot de l'accélérateur suit la famille du véhicule (Pédaler, Accélérer).
+  gasEl.innerHTML = `${icon("gas")}<span></span>`;
+  const gasLabel = gasEl.querySelector("span")!;
+  document.getElementById("brake")!.innerHTML = `${icon("brake")}<span>Frein</span>`;
+  document.getElementById("handbrake")!.innerHTML = `${icon("handbrake")}<span>Frein<br>à main</span>`;
   const speedo = new Speedo(document.getElementById("speedo")!);
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
@@ -304,8 +295,12 @@ export function startGame(ctx: GameContext): void {
     melee.cancel();
     gun.cancel();
   });
-  // Rechargement demandé au clavier (R), pris en compte à l'image suivante.
+  // Rechargement demandé au clavier (R) ou au bouton (arme à feu en main, à pied), pris en compte à l'image suivante.
   let reloadAsked = false;
+  let gunInHand = false;
+  document.getElementById("reload")?.addEventListener("click", () => {
+    reloadAsked = true;
+  });
   let heldId: WeaponId | null = null;
   let aimW = 0;
   const pedWitnesses: number[] = [];
@@ -322,8 +317,13 @@ export function startGame(ctx: GameContext): void {
     rideModel.group.add(lights.group);
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
-    gasEl.textContent = familyOf(v).gas;
-    hornEl.textContent = familyOf(v).horn;
+    controls.lift = v.family !== "car";
+    gasLabel.textContent = familyOf(v).gas;
+    gasEl.setAttribute("aria-label", familyOf(v).gas);
+    // Klaxon ou sonnette : un bouton rond avec son pictogramme, le mot dans son libellé.
+    hornEl.innerHTML = icon(familyOf(v).horn === "Sonnette" ? "bell" : "horn");
+    hornEl.setAttribute("aria-label", familyOf(v).horn);
+    hornEl.title = familyOf(v).horn;
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
@@ -496,41 +496,23 @@ export function startGame(ctx: GameContext): void {
   const drops: { x: number; y: number }[] = [];
   let hudTimer = 0;
   let actionLabel = "";
+  // Bouton d'action (D103) : à pied, rond avec un pictogramme et un verbe court (le nom complet est dans son libellé accessible) ;
+  // les objets proches ne sont plus signalés en haut à droite, la minimap les montre.
   const updateHud = (): void => {
-    let label = "";
+    let verb = "", what = "", ico = "";
     const r = riding ? null : reachable();
     const pk = riding ? null : pickups.nearest(player.x, player.y, PICKUP_REACH);
-    if (pk && pickups.canTake(pk, inventory)) label = `Ramasser ${WEAPONS[pk.weapon].icon} ${WEAPONS[pk.weapon].name}`;
-    else if (riding) label = "Descendre";
-    else if (r?.traffic) label = `Prendre 🚗 ${r.traffic}`;
-    else if (r?.fleet) label = `Monter ${r.fleet.def.icon ?? familyOf(r.fleet).icon} ${r.fleet.def.name}`;
+    if (pk && pickups.canTake(pk, inventory)) [verb, what, ico] = ["Ramasser", WEAPONS[pk.weapon].name, weaponIcon(pk.weapon)];
+    else if (riding) [verb, ico] = ["Descendre", icon("exit")];
+    else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
+    else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
+    const label = what ? `${verb} : ${what}` : verb;
     if (label !== actionLabel) {
       actionLabel = label;
-      actionEl.textContent = label;
+      actionEl.innerHTML = ico ? `${ico}<span>${verb}</span>` : verb;
+      actionEl.setAttribute("aria-label", label);
+      actionEl.title = label;
       actionEl.classList.toggle("show", label !== "");
-    }
-    if (riding) return;
-    let near: { x: number; y: number; weapon: WeaponId } | null = null, nd = 500;
-    for (const pk of pickups.list) {
-      const d = Math.hypot(pk.x - player.x, pk.y - player.y);
-      if (pickups.available(pk) && pickups.canTake(pk, inventory) && d < nd) {
-        nd = d;
-        near = pk;
-      }
-    }
-    pkChip.el.classList.toggle("show", !!near && nd >= PICKUP_REACH);
-    if (near && nd >= PICKUP_REACH) {
-      pkChip.arrow.style.transform = `rotate(${Math.atan2(near.x - player.x, near.y - player.y) - yaw}rad)`;
-      pkChip.text.textContent = `${WEAPONS[near.weapon].icon} ${Math.round(nd)} m`;
-    }
-    for (const c of chips) {
-      const k = fleet.nearest(player.x, player.y, c.kind);
-      const show = !!k && k.distance >= FAMILIES[c.kind].reach && k.distance < 600;
-      c.el.classList.toggle("show", show);
-      if (!show) continue;
-      const bearing = Math.atan2(k.vehicle.state.x - player.x, k.vehicle.state.y - player.y);
-      c.arrow.style.transform = `rotate(${bearing - yaw}rad)`;
-      c.text.textContent = `${FAMILIES[c.kind].icon} ${Math.round(k.distance)} m`;
     }
   };
 
@@ -788,6 +770,8 @@ export function startGame(ctx: GameContext): void {
       heldId = weapon.id;
       model.setHeld(weapon.part, weapon.part && weapon.style !== "aim" ? weapon.style : null);
     }
+    // Bouton de rechargement : seulement avec une arme à feu en main (le CSS le cache aussi en véhicule).
+    if ((weapon.kind === "gun") !== gunInHand) document.body.classList.toggle("gun", (gunInHand = weapon.kind === "gun"));
     weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 } : null);
     // Réticule sur la cible assistée (un point de l'écran) ; armes au sol et effets : mis à jour à chaque image.
     if (reticle) {

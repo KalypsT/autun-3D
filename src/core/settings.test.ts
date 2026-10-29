@@ -85,3 +85,12 @@ describe("réglage « Vibrations » (D90)", () => {
     expect(DEFAULT_SETTINGS.vibration).toBe(true);
   });
 });
+
+describe("réglage « Plein écran »", () => {
+  it("activé par défaut, booléen strict", () => {
+    expect(DEFAULT_SETTINGS.fullscreen).toBe(true);
+    expect(parseSettings({ fullscreen: false }).fullscreen).toBe(false);
+    expect(parseSettings({ fullscreen: 1 }).fullscreen).toBe(true);
+    expect(parseSettings({}).fullscreen).toBe(true);
+  });
+});

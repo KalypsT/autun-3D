@@ -127,7 +127,8 @@ export class UiBridge {
           },
           waypoint: () => this.waypoint,
           setWaypoint: (w) => this.setWaypoint(w),
-          close: () => {
+          resume: () => this.setPaused(false),
+          menu: () => {
             this.bigmap?.close();
             this.menu.open("home");
           },
@@ -136,7 +137,8 @@ export class UiBridge {
       (e: unknown) => console.warn("carte indisponible :", e),
     );
 
-    document.getElementById("pausebtn")?.addEventListener("click", () => this.setPaused(true));
+    // La pause passe par la minimap : un appui ouvre la carte agrandie, qui est l'écran de pause.
+    document.getElementById("minimap")?.addEventListener("click", () => this.setPaused(true));
     window.addEventListener("keydown", (e) => {
       if (e.repeat) return;
       // Dans un champ de texte (note), seule Échap agit : taper « p » ne doit pas relancer le jeu.
@@ -162,13 +164,9 @@ export class UiBridge {
 
   // --- Pause ---------------------------------------------------------------------------------------------------------------
 
-  /** Échap ou P : ferme la carte, puis le menu ; sinon met en pause. */
+  /** Échap ou P : reprend la partie depuis la carte ou le menu ; sinon met en pause (sur la carte). */
   back(): void {
-    if (this.bigmap?.isOpen) {
-      this.bigmap.close();
-      this.menu.open("home");
-    } else if (this.paused) this.setPaused(false);
-    else this.setPaused(true);
+    this.setPaused(!this.paused);
   }
 
   setPaused(on: boolean): void {
@@ -184,7 +182,8 @@ export class UiBridge {
       const s = this.state();
       this.frozen = { x: s.x, y: s.y, z: s.z, heading: s.yaw, hour: this.ctx.atmosphere.hour, day: this.ctx.atmosphere.day };
       this.save();
-      this.menu.open("home");
+      // L'écran de pause est la carte ; le menu seulement si elle n'a pas pu être chargée.
+      if (!this.openMap()) this.menu.open("home");
     } else {
       this.bigmap?.close();
       this.menu.close();

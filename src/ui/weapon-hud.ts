@@ -1,8 +1,9 @@
 import type { WeaponDef } from "../core/weapons";
+import { weaponIcon } from "./icons";
 
 /**
- * Arme en main, en haut au centre (`#weapon`) : pictogramme et nom, plus les munitions pour une arme à feu (J5-3). Un appui passe à l'arme suivante
- * (`onCycle`). Le bouton d'attaque change aussi de pictogramme. Ne touche au DOM que quand quelque chose change.
+ * Arme en main, dans le bandeau d'état en haut au centre (`#weapon`, caché en véhicule) : pictogramme et nom, plus les munitions pour une arme à feu (J5-3). Un appui passe à l'arme suivante
+ * (`onCycle`). Le bouton d'attaque change aussi de pictogramme (dessinés, D103). Ne touche au DOM que quand quelque chose change.
  */
 export class WeaponHud {
   private readonly button: HTMLButtonElement;
@@ -16,6 +17,7 @@ export class WeaponHud {
     this.icon = document.createElement("span");
     this.icon.className = "wicon";
     this.name = document.createElement("span");
+    this.name.className = "wname";
     this.ammo = document.createElement("span");
     this.ammo.className = "wammo";
     this.button.append(this.icon, this.name, this.ammo);
@@ -29,13 +31,19 @@ export class WeaponHud {
     const key = `${weapon.id}/${ammo ? `${ammo.reloading ? "r" : ammo.mag}/${ammo.reserve}` : ""}`;
     if (key === this.shown) return;
     const changed = !this.shown.startsWith(`${weapon.id}/`);
+    if (!this.shown) this.el.classList.add("on");
     this.shown = key;
-    this.icon.textContent = weapon.icon;
+    this.icon.innerHTML = weaponIcon(weapon.id);
     this.name.textContent = weapon.name;
-    this.ammo.textContent = ammo ? (ammo.reloading ? `↻ ${ammo.reserve}` : `${ammo.mag}/${ammo.reserve}`) : "";
+    // Chargeur en gros, réserve en petit à côté.
+    if (ammo) {
+      const reserve = document.createElement("small");
+      reserve.textContent = `/${ammo.reserve}`;
+      this.ammo.replaceChildren(ammo.reloading ? "↻" : String(ammo.mag), reserve);
+    } else this.ammo.replaceChildren();
     this.button.title = weapon.name;
     if (this.attackEl) {
-      this.attackEl.textContent = weapon.icon;
+      this.attackEl.innerHTML = weaponIcon(weapon.id);
       this.attackEl.setAttribute("aria-label", weapon.kind === "gun" ? "Tirer" : "Frapper");
     }
     if (changed) {
