@@ -316,6 +316,14 @@ def main():
                 if tcol:
                     e["tc"] = tcol
             entries[i] = e
+    # Une seule « HÔTEL DE VILLE » : celle d'Autun, près de l'origine (la mairie). Les autres mairies de la ville agrandie (D105, Saint-Pantaléon)
+    # sont des mairies annexes.
+    halls = [i for i, e in entries.items() if e["k"] == "townhall" and e.get("main")]
+    if len(halls) > 1:
+        first = min(halls, key=lambda i: buildings[i]["poly"].centroid.distance(Point(0, 0)))
+        for i in halls:
+            if i != first:
+                entries[i]["n"] = "MAIRIE ANNEXE"
 
     # Cathédrales : bâtiments couverts à plus de moitié par un contour OSM building=cathedral.
     cathedrals = set()

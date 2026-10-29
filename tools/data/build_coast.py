@@ -166,11 +166,16 @@ def main():
         lp = OUT / "lod" / f"{tid}.json"
         if lp.exists():
             lod = [s for s in json.loads(lp.read_text()) if footprint_on_land(s["r"])]
-            lp.write_text(json.dumps(lod, separators=(",", ":")))
+            if lod:
+                lp.write_text(json.dumps(lod, separators=(",", ":")))
+            else:
+                lp.unlink()  # pas de fichier de silhouettes pour une tuile sans bâtiment (comme pack.py)
             t["lod"] = len(lod)
         kp = OUT / "kinds" / f"{tid}.json"
         if kp.exists():
             kd = json.loads(kp.read_text())
+            kept = {b["id"] for b in rec["buildings"]}
+            kd["buildings"] = {i: v for i, v in kd.get("buildings", {}).items() if i in kept}
             kd["sites"] = [s for s in kd.get("sites", []) if not isinstance(s, dict) or "r" not in s or footprint_on_land(s["r"])]
             kp.write_text(json.dumps(kd, ensure_ascii=False, separators=(",", ":")))
         sp = OUT / "structures" / f"{tid}.json"
