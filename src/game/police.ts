@@ -34,7 +34,7 @@ export interface PolicePlayer {
  * Reprise après une arrestation (D75, D105) : à pied, sur le trottoir devant la gendarmerie (`GENDARMERIE`), tourné vers la rue. Vérifié par un
  * test : un trottoir, à terre, sans obstacle.
  */
-export const ARREST_SPAWN = { x: 1761.4, y: 610.0, heading: -1.085 } as const;
+export const ARREST_SPAWN = { x: 1758.0, y: 611.8, heading: -1.085 } as const;
 /** Heures passées en cellule. */
 export const ARREST_HOURS = 6;
 
