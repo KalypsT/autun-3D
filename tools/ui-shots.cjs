@@ -302,10 +302,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const text = await page.evaluate(async () => (await navigator.clipboard?.readText?.().catch(() => "")) || "");
     await clickText("Sauvegarde");
     await shot("j1-pause-sauvegarde");
-    await clickText("Crédits");
-    await shot("j1-pause-credits");
     await clickText("Nouvelle partie");
     await shot("j1-pause-nouvelle-partie");
+    await clickText("Crédits");
+    await shot("j1-pause-credits");
     await ctx.close();
   }
 
