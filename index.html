@@ -39,9 +39,9 @@
       body.game #action.show { display: block; }
       /* À pied (D103), le groupe du pouce droit : gros bouton rond d'attaque, bouton d'action rond à sa gauche (Monter, Prendre, Ramasser : pictogramme
          et verbe), petit bouton de rechargement au-dessus quand une arme à feu est en main. */
-      body.game:not(.driving) #action.show { right: 136px; bottom: 44px; width: 72px; height: 72px; padding: 0; border-radius: 50%; background: var(--panel);
-                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 800 12px/1 system-ui, sans-serif; }
-      #action .ico { font-size: 30px; }
+      body.game:not(.driving) #action.show { right: 134px; bottom: 42px; width: 78px; height: 78px; padding: 0; border-radius: 50%; background: var(--panel);
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 800 11px/1 system-ui, sans-serif; letter-spacing: -.01em; }
+      #action .ico { font-size: 28px; }
       #action:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); }
       #attack { position: fixed; right: 26px; bottom: 30px; width: 96px; height: 96px; box-sizing: border-box; z-index: 4; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
                 place-items: center; border-radius: 50%; border: 3px solid var(--cream); background: rgba(217, 71, 43, .82); color: var(--cream);
