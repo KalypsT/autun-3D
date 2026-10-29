@@ -1269,7 +1269,7 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 
 **Choix** (maquettes, variante B du compteur retenue par l'utilisateur) :
 - **Compteur** : petit cadran rond de 72 px accolé en bas à droite de la minimap (arc ocre, rouge brique en fin de course, graduation propre à chaque véhicule comme avant) ; l'heure se décale à gauche sous la minimap. La distance de la roue arrière ou avant s'affiche sous la minimap.
-- **Pédales** placées une à une sous le pouce droit : accélérateur haut et étroit (chevrons ocre, « Pédaler » ou « Accélérer »), frein large rouge brique (pictogramme et « Frein »), frein à main au-dessus du frein (voiture seulement), klaxon ou sonnette en bouton rond à pictogramme (le mot est dans son libellé accessible). Mêmes tailles qu'avant à peu près ; à ajuster après essai sur le téléphone.
+- **Pédales** placées une à une sous le pouce droit : accélérateur haut et étroit (cerclé d'ocre, chevrons ocre, « Pédaler » ou « Accélérer »), frein large rouge brique (pictogramme et « Frein »), frein à main au-dessus du frein (voiture seulement), klaxon ou sonnette en bouton rond à pictogramme (le mot est dans son libellé accessible). Mêmes tailles qu'avant à peu près ; à ajuster après essai sur le téléphone.
 - **« Descendre »** : petite pastille sombre en haut à droite (pictogramme de sortie), loin des pédales.
 - **Joystick en voiture** : le bouton ne se déplace qu'à l'horizontale (`Controls.lift`, faux en voiture) ; sur un deux-roues, il garde l'axe vertical (roue arrière, roue avant).
 

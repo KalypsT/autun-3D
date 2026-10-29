@@ -22,14 +22,14 @@
               text-shadow: 0 1px 4px #000; pointer-events: none; opacity: 0; transition: opacity .6s; }
       body.game #hint { animation: hint 9s ease-out 0.5s both; }
       @keyframes hint { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
-      /* Pédales (D104), sous le pouce droit : accélérateur haut et étroit (ocre en bas), frein large (rouge brique), frein à main au-dessus
+      /* Pédales (D104), sous le pouce droit : accélérateur haut et étroit (cerclé d'ocre), frein large (rouge brique), frein à main au-dessus
          du frein (voiture seulement), klaxon ou sonnette en bouton rond à gauche. Chacune : pictogramme et mot (le klaxon : pictogramme seul). */
       #pedals { position: fixed; right: 0; bottom: 0; width: 310px; height: 190px; display: none; z-index: 4; pointer-events: none; }
       body.game.driving #pedals { display: block; }
       .pedal { position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; display: flex; flex-direction: column; align-items: center;
                justify-content: center; gap: 5px; color: var(--cream); box-sizing: border-box; text-align: center;
                font: 800 14px/1.05 system-ui, sans-serif; border-radius: 22px; border: 2.5px solid var(--cream); background: var(--panel); box-shadow: var(--lift); }
-      #gas { right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 98px; height: 156px; box-shadow: var(--lift), inset 0 -60px 0 rgba(241, 178, 74, .28); }
+      #gas { right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 98px; height: 156px; border-color: var(--ochre); }
       #gas .ico { font-size: 34px; color: var(--ochre); }
       #brake { right: calc(max(14px, env(safe-area-inset-right)) + 110px); bottom: 16px; width: 100px; height: 96px; background: rgba(217, 71, 43, .78); }
       #brake .ico { font-size: 28px; }
