@@ -22,7 +22,8 @@ function signedVolume(g: THREE.BufferGeometry): number {
   return v;
 }
 
-const cars = CATALOG.filter((d) => d.family === "car");
+// Les voitures à carrosserie générée : pas la locomotive du petit train (D118), dessinée avec ses wagons (`train-model.ts`).
+const cars = CATALOG.filter((d) => d.family === "car" && !d.train);
 
 describe("générateur de carrosserie", () => {
   it("chaque voiture du catalogue a ses mesures, et chaque mesure sa voiture", () => {
@@ -44,7 +45,8 @@ describe("générateur de carrosserie", () => {
     // Les essieux sont à leur place par rapport au centre de gravité de la fiche.
     const { wheels, noseZ } = carLayout(p, front, rear);
     expect(wheels[0]![1]).toBeCloseTo(-front);
-    expect(wheels[2]![1]).toBeCloseTo(rear);
+    // Tandem (grumier, D116) : l'essieu arrière de la fiche est au milieu des deux essieux arrière.
+    expect(wheels.length > 4 ? (wheels[2]![1] + wheels[4]![1]) / 2 : wheels[2]![1]).toBeCloseTo(rear);
     expect(box.min.z).toBeCloseTo(noseZ, 2);
   });
 
@@ -54,8 +56,9 @@ describe("générateur de carrosserie", () => {
     const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), glass = bodyDetailGeometry(p, front, rear);
     expect(signedVolume(paint)).toBeGreaterThan(1);
     expect(triangles(paint)).toBeLessThan(340);
-    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(1000);
-    expect(triangles(carRestGeometry(id))).toBeLessThan(1300);
+    // Un véhicule unique (D114, D115), seul de son modèle, a droit à plus de détails (capote, roue de secours ; comptoir, lettrage, rôtissoire).
+    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique ? 2300 : 1000);
+    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique ? 2700 : 1300);
     expect(triangles(glass)).toBeGreaterThan(0);
   });
 
@@ -129,7 +132,7 @@ describe("géométrie au repos de chaque modèle garé", () => {
     return white / c.count;
   };
 
-  it.each(CATALOG.map((d) => d.id))("%s : une seule géométrie, avec de la peinture à teinter (sommets blancs) et des pièces de couleur propre", (id) => {
+  it.each(CATALOG.filter((d) => !d.train).map((d) => d.id))("%s : une seule géométrie, avec de la peinture à teinter (sommets blancs) et des pièces de couleur propre", (id) => {
     const g = restGeometryOf(id);
     expect(triangles(g)).toBeGreaterThan(100);
     expect(triangles(g)).toBeLessThan(2500);
@@ -150,7 +153,10 @@ describe("géométrie au repos de chaque modèle garé", () => {
 
   it("la teinte ne touche que la peinture : le nuanceur de Three.js contient toujours la ligne qu'on remplace", () => {
     expect(THREE.ShaderChunk["color_vertex"]).toContain("vColor.rgb *= instanceColor.rgb;");
-    const shader = { vertexShader: THREE.ShaderChunk["color_vertex"] } as THREE.WebGLProgramParametersWithUniforms;
+    // Le vrai programme, tel que `onBeforeCompile` le reçoit : avec ses `#include` pas encore dépliés (D116 : un essai sur le bloc déjà déplié
+    // laissait passer un remplacement qui, dans le jeu, ne trouvait rien).
+    expect(THREE.ShaderLib.lambert.vertexShader).toContain("#include <color_vertex>");
+    const shader = { vertexShader: THREE.ShaderLib.lambert.vertexShader } as THREE.WebGLProgramParametersWithUniforms;
     const material = tintPaintOnly(new THREE.MeshLambertMaterial({ vertexColors: true }));
     material.onBeforeCompile(shader, null as unknown as THREE.WebGLRenderer);
     expect(shader.vertexShader).not.toContain("vColor.rgb *= instanceColor.rgb;");

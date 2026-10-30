@@ -46,7 +46,8 @@ function lampGeometry(spots: readonly (readonly [number, number, number])[], siz
 
 /** Où sont les feux d'un véhicule (repère du modèle). Voitures : les feux des modèles de la circulation ; deux-roues : estimés d'après la fiche. */
 export function lampLayout(def: VehicleDef): { head: [number, number, number][]; tail: [number, number, number][]; frontZ: number; kind: keyof typeof BEAM } {
-  if (def.family === "car") {
+  // Voitures : leurs feux ; la locomotive du petit train (D118) n'a pas de carrosserie générée : un fanal estimé, comme un deux-roues.
+  if (def.family === "car" && !def.train) {
     const l = lampBoxes(def.id);
     return { head: l.head, tail: l.tail, frontZ: l.head[0]![2], kind: "car" };
   }

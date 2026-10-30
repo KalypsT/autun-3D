@@ -4,7 +4,7 @@ import { createVehicle } from "../core/vehicle";
 import { CATALOG, vehicleDef } from "../core/vehicle-catalog";
 import { flatTerrain } from "../core/testing";
 import { brokenLamps, crumplePoint, CRUSH, type CrumpleFrame } from "./car-damage";
-import { carRestGeometry, createCarModel, DENTED } from "./car-model";
+import { CAR_BODIES, carRestGeometry, chimneyOf, createCarModel, DENTED, vendorOf } from "./car-model";
 import { Smoke } from "./smoke";
 
 const frame: CrumpleFrame = { noseZ: -2, tailZ: 2, halfWidth: 0.9, belt: 0.9, light: [], tail: [], glass: "#000000" };
@@ -98,7 +98,7 @@ describe("fumée (D110)", () => {
 
 describe("forme abîmée des voitures dessinées par instances (D112)", () => {
   it("chaque voiture a sa forme cabossée : même nombre de triangles, avant reculé, aucune valeur absurde", () => {
-    for (const def of CATALOG.filter((d) => d.family === "car")) {
+    for (const def of CATALOG.filter((d) => d.family === "car" && !d.train)) {
       const neat = carRestGeometry(def.id), dented = carRestGeometry(def.id + DENTED);
       expect(dented.getAttribute("position").count).toBe(neat.getAttribute("position").count);
       expect((dented.getAttribute("position").array as Float32Array).every(Number.isFinite)).toBe(true);
@@ -114,5 +114,24 @@ describe("forme abîmée des voitures dessinées par instances (D112)", () => {
       };
       expect(white(dented)).toBe(white(neat));
     }
+  });
+});
+
+describe("camions-restaurants (D115)", () => {
+  it("le vendeur se tient dans la caisse, derrière l'ouverture ; seul le camion pizza a une cheminée ; une voiture ordinaire n'a ni l'un ni l'autre", () => {
+    for (const id of ["pizza-du-vallon", "rotisserie-champ-de-mars"]) {
+      const v = vendorOf(id)!, p = CAR_BODIES[id]!;
+      expect(Math.abs(v.x)).toBeLessThan(p.width / 2 - 0.2);
+      expect(v.y).toBeGreaterThan(p.clearance - 0.1);
+      expect(v.y + 1.7).toBeGreaterThan(p.foodTruck!.bottom + 0.5);
+    }
+    expect(chimneyOf("pizza-du-vallon")![1]).toBeGreaterThan(CAR_BODIES["pizza-du-vallon"]!.height);
+    expect(chimneyOf("rotisserie-champ-de-mars")).toBeNull();
+    // La pizza s'ouvre à gauche, la rôtisserie à droite : le vendeur et la cheminée sont du côté de l'ouverture.
+    expect(vendorOf("pizza-du-vallon")!).toMatchObject({ side: -1 });
+    expect(vendorOf("pizza-du-vallon")!.x).toBeLessThan(0);
+    expect(chimneyOf("pizza-du-vallon")![0]).toBeLessThan(0);
+    expect(vendorOf("rotisserie-champ-de-mars")!).toMatchObject({ side: 1 });
+    expect(vendorOf("citadine")).toBeNull();
   });
 });

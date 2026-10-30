@@ -47,7 +47,7 @@ export const SHOE_COLORS = ["#efe9dc", "#222226", "#5a3b26", "#1f3a52", "#c03a2a
 
 /** Indices dans `CLOTH_COLORS` réservés au travail. */
 const HIVIS_COLORS = [16, 17] as const;
-const WHITE = 9;
+export const WHITE = 9;
 const YELLOW_HIVIS = 16;
 
 export const HEIGHT_RANGE = { min: 1.45, max: 2.02 } as const;

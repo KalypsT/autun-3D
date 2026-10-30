@@ -110,7 +110,7 @@ export class Traffic {
     private readonly seed = 1,
   ) {
     this.sim = new TrafficSim(nav.graph, terrain, colliders, signals);
-    const cars = CATALOG.filter((d) => d.family === "car").map((d) => d.id);
+    const cars = CATALOG.filter((d) => d.family === "car" && !d.unique).map((d) => d.id);
     // Avec la forme abîmée de chaque modèle (D112), cachée tant qu'aucune voiture cabossée ne roule.
     this.models.prepare([...cars, ...cars.map((id) => id + DENTED)]);
     scene.add(this.models.group);
@@ -124,6 +124,11 @@ export class Traffic {
   /** Contacts de la circulation au dernier pas (voitures entre elles, avec le joueur). */
   get stats(): TrafficSim["stats"] {
     return this.sim.stats;
+  }
+
+  /** Le petit train (D117) : les conducteurs le voient comme une voiture. */
+  setExtra(others: TrafficSim["extra"]): void {
+    this.sim.extra = others;
   }
 
   /** Les passants : les voitures les évitent et s'arrêtent pour ceux qui traversent. */
@@ -443,7 +448,10 @@ export class Traffic {
       h = Math.imul(h, 0x2c1b3c6d);
       return ((h ^ (h >>> 12)) >>> 0) / 4294967296;
     };
-    const cars = CATALOG.filter((d) => d.family === "car");
+    // Sans les véhicules uniques (D114). Défaut connu, laissé tel quel (D114) : `find` refait un tirage pour chaque modèle examiné, si bien que la
+    // répartition par quartier (D55) n'est pas respectée ; le corriger change toute la circulation, et l'endurance de la poursuite (D76) révèle
+    // alors des embouteillages de l'IA de conduite : à reprendre dans un chantier de la circulation.
+    const cars = CATALOG.filter((d) => d.family === "car" && !d.unique);
     let def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
     if ((rnd() < PATROL_SHARE && this.policeCount < MAX_PATROLS) || police) def = POLICE;
     const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);

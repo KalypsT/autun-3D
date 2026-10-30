@@ -234,7 +234,8 @@ export function startBench(ctx: GameContext): void {
     tiles.onBuild = (extras) => fleet.addFromTile(extras);
     tiles.onUnload = (id) => fleet.removeTile(id);
     // Sans la gendarmerie : elle n'est jamais garée dans le jeu (D72), et un exemplaire de plus au départ ajoutait un maillage instancié (+2 appels) aux rapports du banc (D77).
-    CATALOG.filter((def) => def.id !== "gendarmerie").forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
+    // Ni les véhicules uniques (D114) : un seul exemplaire, à sa place.
+    CATALOG.filter((def) => def.id !== "gendarmerie" && !def.unique).forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
   }
   // &dent=1 (D113), avec ?fleet=1 : une voiture garée sur trois est abîmée (forme cabossée), une sur douze est une épave noircie : le pire cas des
   // formes abîmées (un maillage instancié de plus par modèle présent). Sans fumée ni flammes (elles sont du jeu, pas du banc).

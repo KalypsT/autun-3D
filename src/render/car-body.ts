@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, ringLoft, tube, type Ring } from "./vehicle-model";
+import { box, merge, paint, ringLoft, tiltedBox, tube, type Ring } from "./vehicle-model";
 
 /**
  * Générateur de carrosserie (D52, refait en D107) : une voiture est décrite par quelques mesures (longueur, hauteur, capot, pare-brise, toit, lunette, coffre)
@@ -53,6 +53,44 @@ export interface CarStyle {
   intake?: boolean;
   /** Portes arrière battantes (camionnette). */
   rearDoors?: boolean;
+  /** Capote en toile de cette couleur à la place du toit et des vitres, avec un pare-brise droit et de petites fenêtres (jeep, D114). */
+  softTop?: string;
+  /** Roue de secours accrochée à la face arrière (D114). */
+  spareWheel?: boolean;
+}
+
+/**
+ * Caisse d'un camion-restaurant (D115) : une ouverture de service sur le flanc droit (côté trottoir ; le gauche si `left`), de `from` à `to` m après le pied de la caisse
+ * et de `bottom` à `top` m de haut, avec son comptoir, son auvent relevé (rayé si `stripe`), le fond de la caisse (`interior`), un lettrage en blocs,
+ * et soit la cheminée d'un four à bois, soit les broches d'une rôtisserie.
+ */
+export interface FoodTruck {
+  from: number;
+  to: number;
+  bottom: number;
+  top: number;
+  interior: string;
+  counter: string;
+  awning: string;
+  stripe?: string;
+  /** Lettrage sur le flanc de l'ouverture : vertical entre la cabine et l'ouverture, ou horizontal au-dessus de l'ouverture. */
+  lettering: { text: string; color: string; vertical: boolean };
+  /** Ouverture sur le flanc gauche (tout l'aménagement en miroir, lettrage compris, qui reste lisible) : pour servir un parking placé à gauche. */
+  left?: boolean;
+  oven?: boolean;
+  spits?: boolean;
+}
+
+/**
+ * Grumier (D116) : derrière la cabine avancée, un châssis nu à `bed` m (dessus des longerons), une grue de chargement repliée, une ridelle qui
+ * protège la cabine, des bancs à ranchers et deux piles de grumes (écorce `bark`, bouts `wood`), une barre de feux arrière, des garde-boue sur le
+ * tandem, un pare-cycliste et un réservoir sur chaque flanc, un échappement vertical.
+ */
+export interface LogTruck {
+  bed: number;
+  bark: string;
+  wood: string;
+  crane: string;
 }
 
 export interface CarBodyParams {
@@ -79,6 +117,14 @@ export interface CarBodyParams {
   tyreWidth: number;
   /** Camionnette : derrière le toit de la cabine, une caisse pleine hauteur, en peinture, sans vitre (la lunette est alors de longueur nulle). */
   cargo?: boolean;
+  /** Haut du toit de la cabine, s'il est plus bas que la caisse (camion-restaurant, D115) ; défaut : `height`. */
+  cabHeight?: number;
+  /** Camion-restaurant (D115) : la caisse est creuse, ouverte sur un flanc pour le service (voir `FoodTruck`). */
+  foodTruck?: FoodTruck;
+  /** Tandem arrière (D116) : deux essieux arrière, écartés de tant (m) de part et d'autre de l'essieu arrière de la fiche (le milieu du tandem). */
+  tandem?: number;
+  /** Grumier (D116) : plateau à grumes derrière la cabine (voir `LogTruck`) ; avec `cargo`, la cabine est seule à prendre la peinture. */
+  logTruck?: LogTruck;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
   style: CarStyle;
@@ -103,7 +149,7 @@ export interface CarLayout {
   roofFrontZ: number;
   roofRearZ: number;
   rearBaseZ: number;
-  /** Centres des quatre roues : [x, z], avant droit, avant gauche, arrière droit, arrière gauche. */
+  /** Centres des roues : [x, z], avant droit, avant gauche, arrière droit, arrière gauche (puis le second essieu arrière d'un tandem). */
   wheels: readonly (readonly [number, number])[];
 }
 
@@ -140,10 +186,12 @@ export function carLayout(p: CarBodyParams, front: number, rear: number): CarLay
   const roofFrontZ = windshieldBaseZ + p.windshield;
   const roofRearZ = roofFrontZ + p.roof;
   const rearBaseZ = roofRearZ + p.rearGlass;
-  const track = wheelTrack(p);
+  const track = wheelTrack(p), t = (p.tandem ?? 0) / 2;
   return {
     noseZ, tailZ, windshieldBaseZ, roofFrontZ, roofRearZ, rearBaseZ,
-    wheels: [[track, -front], [-track, -front], [track, rear], [-track, rear]],
+    wheels: t
+      ? [[track, -front], [-track, -front], [track, rear - t], [-track, rear - t], [track, rear + t], [-track, rear + t]]
+      : [[track, -front], [-track, -front], [track, rear], [-track, rear]],
   };
 }
 
@@ -260,6 +308,12 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
     sec(hoodMid, (p.noseHeight + p.belt) / 2 + 0.015 + 0.025 * r),
     sec(L.windshieldBaseZ, p.belt),
   ];
+  if (p.cargo && p.foodTruck) return [sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color), ...hollowBox(p, f, color)];
+  if (p.cargo && p.logTruck) {
+    // Grumier : la cabine seule, fermée derrière par sa paroi pleine (le plateau est dans les détails).
+    const top = (p.cabHeight ?? p.height) - 0.02;
+    return [sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color), sectionLoft([sec(L.roofRearZ - 0.05, top), sec(L.rearBaseZ, top)], color)];
+  }
   if (p.cargo) {
     return [
       sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color),
@@ -281,7 +335,7 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
 /** Toit, montants, ailes séparées, pare-chocs et rétroviseurs couleur caisse, becquets : tout ce qui prend la peinture. */
 function paintParts(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry[] {
   const f = frame(p, front, rear), { L, W, st, side, shoulder, roofW, bZ } = f;
-  const top = p.height, roofColor = st.roof ?? color;
+  const top = p.cabHeight ?? p.height, roofColor = st.softTop ?? st.roof ?? color;
   const parts = lowerBody(p, f, color);
   // Toit : une dalle aux bords chanfreinés, un peu plus longue que le verre qu'elle couvre.
   const roofZ0 = L.roofFrontZ - 0.05, roofZ1 = L.roofRearZ + (p.cargo ? 0 : 0.06);
@@ -292,7 +346,8 @@ function paintParts(p: CarBodyParams, front: number, rear: number, color: string
   const pillar = st.blackPillars ? DARK : roofColor;
   for (const s of [-1, 1]) {
     const at = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(s * x, y, z);
-    parts.push(tube(at(shoulder - 0.01, p.belt, L.windshieldBaseZ + 0.02), at(roofW, top - 0.04, L.roofFrontZ), 0.035, roofColor, 4, false));
+    // Montant A : celui du toit ; sous une capote, c'est le cadre du pare-brise, de la couleur de la caisse.
+    parts.push(tube(at(shoulder - 0.01, p.belt, L.windshieldBaseZ + 0.02), at(roofW, top - 0.04, L.roofFrontZ), 0.035, st.softTop ? color : roofColor, 4, false));
     if (!p.cargo) parts.push(tube(at(shoulder - 0.01, p.belt, L.rearBaseZ - 0.02), at(roofW, top - 0.04, L.roofRearZ), 0.045, roofColor, 4, false));
     if (!st.blackPillars) {
       parts.push(tube(at(shoulder - 0.005, p.belt, bZ), at(roofW + 0.015, top - 0.04, bZ), 0.045, pillar, 4, false));
@@ -426,6 +481,13 @@ function tailParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
     const xs = st.exhaust === 2 ? [W * 0.5, -W * 0.5] : [W * 0.5];
     for (const x of xs) parts.push(disc(0.04, 0.1, x, p.clearance - 0.01, L.tailZ - 0.06, st.exhaust === 2 ? CHROME : DARK, 8));
   }
+  if (st.spareWheel) {
+    // Roue de secours sur la face arrière, axe dans la longueur.
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 12, st.rim);
+    w.rotateY(Math.PI / 2);
+    w.translate(0, Math.max(p.belt - 0.05, p.wheelRadius + p.clearance), L.tailZ + p.tyreWidth / 2 - 0.01);
+    parts.push(w);
+  }
   if (st.rearDoors) {
     const z = L.tailZ - FACE + 0.004, y0 = p.clearance + 0.2, y1 = p.height - 0.1;
     parts.push(box(0.014, y1 - y0, 0.012, 0, (y0 + y1) / 2, z, DARK));
@@ -443,18 +505,22 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   const front = L.wheels[0]![1], rear = L.wheels[2]![1];
   for (const [x, z] of L.wheels) {
     const s = Math.sign(x);
-    if (st.fenders) continue;
+    // Derrière la cabine d'un grumier, pas de flanc : des garde-boue (dans `logTruckParts`).
+    if (st.fenders || (p.logTruck && z > L.rearBaseZ)) continue;
     // Passage de roue : une demi-ellipse sombre contre le flanc, derrière la face du pneu ; cerclée de plastique sur un SUV.
     if (st.cladding) parts.push(arch(s * (side - 0.01), s * (W - 0.027), p.wheelRadius, z, archR + 0.07, archR + 0.09, CLAD));
     parts.push(arch(s * (side - 0.02), s * (W - 0.021), p.wheelRadius, z, archR, archR + 0.02, DARK));
   }
   const lineTop = p.belt - ct - 0.015, lineBottom = p.clearance + 0.12;
-  const doorFront = Math.max(L.windshieldBaseZ + 0.06, front + archR + 0.08);
-  const doorRear = p.cargo ? L.rearBaseZ - 0.04 : st.doors === 2 ? Math.min(L.rearBaseZ - 0.08, rear - archR - 0.06) : bZ;
+  // Cabine avancée d'un grumier : la porte est au-dessus de la roue avant, de la longueur d'une porte de camion.
+  const doorFront = p.logTruck ? L.windshieldBaseZ + 0.1 : Math.max(L.windshieldBaseZ + 0.06, front + archR + 0.08);
+  const doorRear = p.logTruck ? doorFront + 1.2 : p.cargo ? L.rearBaseZ - 0.04 : st.doors === 2 ? Math.min(L.rearBaseZ - 0.08, rear - archR - 0.06) : bZ;
   const lines = st.doors === 2 && !p.cargo ? [doorFront, bZ, doorRear] : [doorFront, doorRear];
-  if (p.cargo) lines.push(L.rearBaseZ + 0.95);
+  // Porte coulissante d'une camionnette (pas sur un camion-restaurant : son flanc est l'ouverture de service).
+  const sliding = p.cargo && !p.foodTruck && !p.logTruck;
+  if (sliding) lines.push(L.rearBaseZ + 0.95);
   const handles = st.doors === 2 && !p.cargo ? [bZ - 0.18, doorRear - 0.16] : [doorRear - 0.18];
-  if (p.cargo) handles.push(L.rearBaseZ + 0.85);
+  if (sliding) handles.push(L.rearBaseZ + 0.85);
   for (const s of [-1, 1]) {
     const x = s * (side + 0.003);
     for (const z of lines) parts.push(box(0.008, lineTop - lineBottom, 0.012, x, (lineTop + lineBottom) / 2, z, DARK));
@@ -471,7 +537,7 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
       const len = rear - front - p.wheelRadius * 3.6;
       parts.push(box(W - side + 0.02, 0.04, len, s * (side + W - 0.03) / 2, p.clearance + 0.06, (front + rear) / 2, TRIM));
     }
-    if (p.cargo) {
+    if (sliding) {
       // Rail de la porte coulissante.
       const z0 = L.rearBaseZ + 0.05, z1 = L.rearBaseZ + 1.0;
       parts.push(box(0.012, 0.025, z1 - z0, s * (side + 0.004), p.belt + 0.25, (z0 + z1) / 2, DARK));
@@ -484,17 +550,20 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
   const f = frame(p, front, rear), { L, W, st, shoulder, roofW } = f;
   const glass = p.glass ?? "#2b3a4c";
-  const top = p.height;
+  const top = p.cabHeight ?? p.height;
   const cabinW = roofW - 0.005;
   const glassEnd = p.cargo ? L.roofRearZ - 0.02 : L.rearBaseZ;
   const parts: THREE.BufferGeometry[] = [
+    ...softTopParts(p, f),
+    ...foodTruckParts(p, f),
+    ...logTruckParts(p, f),
     // Habitacle en verre : du pied du pare-brise à celui de la lunette, posé sur l'épaule de la caisse, sous le toit.
     loft([
       { z: L.windshieldBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 },
       { z: L.roofFrontZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
       { z: p.cargo ? glassEnd : L.roofRearZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
       ...(p.cargo ? [] : [{ z: L.rearBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 }]),
-    ], glass),
+    ], st.softTop ?? glass),
     ...faceParts(p, f, front, rear),
     ...tailParts(p, f, front, rear),
     ...sideParts(p, f),
@@ -519,6 +588,207 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
     for (const s of [-1, 1]) parts.push(box(0.04, 0.13, 0.08, s * W * 0.6, y - 0.07, z, DARK));
   }
   return merge(parts);
+}
+
+/**
+ * Caisse creuse d'un camion-restaurant (D115) : sous l'ouverture, au-dessus, devant et derrière elle, en peinture ; le flanc opposé, plein. L'intérieur
+ * (fond, comptoir) est dans les détails. Le vendeur se tient dedans, visible par l'ouverture.
+ */
+function hollowBox(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometry[] {
+  const { L, side, tail } = f, t = p.foodTruck!, z0 = L.rearBaseZ - 0.01, h0 = L.rearBaseZ + t.from, h1 = L.rearBaseZ + t.to, top = p.height - 0.02;
+  // Pavé de xa à xb, de y0 à y1, de za à zb ; `ct` : chanfrein des deux arêtes du haut.
+  const block = (za: number, zb: number, y0: number, y1: number, xa: number, xb: number, ct = 0): THREE.BufferGeometry => {
+    const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
+    const ring = (z: number): Ring => (ct > 0
+      ? [v(xa, y0, z), v(xb, y0, z), v(xb, y1 - ct, z), v(xb - ct, y1, z), v(xa + ct, y1, z), v(xa, y1 - ct, z)]
+      : [v(xa, y0, z), v(xb, y0, z), v(xb, y1, z), v(xa, y1, z)]);
+    return ringLoft([ring(za), ring(zb)], color);
+  };
+  return [
+    block(z0, tail, p.clearance, t.bottom, -side, side),
+    block(z0, tail, t.top, top, -side, side, 0.08),
+    block(z0, h0, t.bottom, t.top, -side, side),
+    block(h1, tail, t.bottom, t.top, -side, side),
+    t.left ? block(h0, h1, t.bottom, t.top, side - 0.05, side) : block(h0, h1, t.bottom, t.top, -side, -side + 0.05),
+  ];
+}
+
+/** Pixels (3 × 5) des lettres du lettrage des camions-restaurants, ligne par ligne du haut, colonne de gauche d'abord. */
+const BLOCK_FONT: Record<string, readonly string[]> = {
+  A: ["010", "101", "111", "101", "101"], E: ["111", "100", "110", "100", "111"], I: ["111", "010", "010", "010", "111"],
+  O: ["111", "101", "101", "101", "111"], P: ["111", "101", "111", "100", "100"], R: ["110", "101", "110", "101", "101"],
+  S: ["111", "100", "111", "001", "111"], T: ["111", "010", "010", "010", "010"], Z: ["111", "001", "010", "100", "111"],
+  U: ["101", "101", "101", "101", "111"], N: ["101", "111", "111", "101", "101"],
+};
+
+/**
+ * Lettrage en blocs sur un flanc (x = `x`), vu de l'extérieur : les colonnes d'une lettre vont vers `dir` (−1 : vers l'avant, lu sur le flanc droit ;
+ * +1 : vers l'arrière, lu sur le flanc gauche). Chaque suite de pixels d'une ligne est une seule boîte. `z` : bord de départ de la première lettre ;
+ * `y` : haut de la première lettre ; `px` : taille d'un pixel.
+ */
+export function blockLetters(text: string, x: number, z: number, y: number, px: number, vertical: boolean, color: string, dir: number): THREE.BufferGeometry[] {
+  const parts: THREE.BufferGeometry[] = [];
+  [...text].forEach((ch, i) => {
+    const glyph = BLOCK_FONT[ch];
+    if (!glyph) return;
+    const lz = vertical ? z : z + dir * i * 4 * px, ly = vertical ? y - i * 6.5 * px : y;
+    glyph.forEach((row, r) => {
+      for (let c = 0; c < 3; c++) {
+        if (row[c] !== "1") continue;
+        let n = 1;
+        while (c + n < 3 && row[c + n] === "1") n++;
+        parts.push(box(0.012, px, n * px, x, ly - (r + 0.5) * px, lz + dir * (c + n / 2) * px, color));
+        c += n - 1;
+      }
+    });
+  });
+  return parts;
+}
+
+/** Intérieur et équipement d'un camion-restaurant (D115) : fond, comptoir, auvent, lettrage, cheminée du four ou broches de la rôtisserie. */
+function foodTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  const t = p.foodTruck;
+  if (!t) return [];
+  const { L, side } = f, h0 = L.rearBaseZ + t.from, h1 = L.rearBaseZ + t.to, zm = (h0 + h1) / 2, len = h1 - h0;
+  // s : flanc de l'ouverture (1 à droite, −1 à gauche) ; tout s'écrit pour le flanc droit, en x multiplié par s.
+  const s = t.left ? -1 : 1, x = s * side;
+  const parts: THREE.BufferGeometry[] = [
+    // Fond de la caisse, plafond et plancher de l'ouverture (vus par elle).
+    box(0.02, t.top - t.bottom, len, s * (-side + 0.06), (t.top + t.bottom) / 2, zm, t.interior),
+    box(2 * side - 0.1, 0.02, len, 0, t.top - 0.012, zm, t.interior),
+    // Comptoir qui dépasse dehors.
+    box(0.42, 0.05, len - 0.1, x + s * 0.06, t.bottom + 0.025, zm, t.counter),
+  ];
+  // Auvent relevé au-dessus de l'ouverture : il part du haut de l'ouverture vers l'extérieur, en montant un peu (bandes de deux couleurs si rayé).
+  const bands = t.stripe ? 8 : 1, reach = 0.95;
+  for (let k = 0; k < bands; k++) {
+    const g = new THREE.BoxGeometry(0.03, reach, len / bands + 0.002);
+    g.translate(0, reach / 2, 0);
+    g.rotateZ(-s * (Math.PI / 2 - 0.3));
+    g.translate(x + s * 0.02, t.top + 0.03, h0 + (k + 0.5) * (len / bands));
+    parts.push(paint(g, k % 2 && t.stripe ? t.stripe : t.awning));
+  }
+  // Lettrage : à droite, il part de son bord arrière vers l'avant ; à gauche, de son bord avant vers l'arrière (même place, lisible des deux côtés).
+  const L0 = t.lettering, lx = x + s * 0.006;
+  if (L0.vertical) parts.push(...blockLetters(L0.text, lx, h0 - 0.16 - (s < 0 ? 3 * 0.065 : 0), p.height - 0.4, 0.065, true, L0.color, -s));
+  else parts.push(...blockLetters(L0.text, lx, h1 - 0.05 - (s < 0 ? (4 * L0.text.length - 1) * 0.07 : 0), p.height - 0.12, 0.07, false, L0.color, -s));
+  if (t.oven) {
+    // Four à bois au fond : sa bouche rougeoie ; cheminée noire sur le toit.
+    parts.push(box(0.5, 0.75, 0.9, s * (-side + 0.32), t.bottom + 0.375, h1 - 0.55, "#7a6a5c"), box(0.02, 0.28, 0.4, s * (-side + 0.58), t.bottom + 0.3, h1 - 0.55, "#f08a2c"));
+    parts.push(...chimney(p, f));
+  }
+  if (t.spits) {
+    // Rôtissoire : trois broches de poulets dorés devant un fond rougeoyant.
+    parts.push(box(0.02, 0.9, len - 0.3, s * (-side + 0.08), t.bottom + 0.55, zm, "#e8641e"));
+    for (const y of [0.3, 0.6, 0.9]) {
+      parts.push(tube(new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h0 + 0.1), new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h1 - 0.1), 0.012, "#c9ccd0", 5, false));
+      for (let k = 0; k < 5; k++) parts.push(box(0.16, 0.13, 0.18, s * (-side + 0.35), t.bottom + y, h0 + 0.25 + k * ((len - 0.5) / 4), "#b4692f"));
+    }
+  }
+  return parts;
+}
+
+/** Grumier (D116) : tout ce qui est derrière la cabine, en couleurs fixes (voir `LogTruck`). */
+function logTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  const t = p.logTruck;
+  if (!t) return [];
+  const { L, side } = f, parts: THREE.BufferGeometry[] = [];
+  const z0 = L.rearBaseZ, z1 = L.tailZ - 0.05, bed = t.bed, r = 0.21;
+  // Châssis : deux longerons de la cabine à la queue.
+  for (const s of [-1, 1]) parts.push(box(0.16, 0.3, z1 - z0 + 0.6, s * 0.45, bed - 0.15, (z0 - 0.6 + z1) / 2, DARK));
+  // Pare-cycliste (deux lisses) et réservoir, entre la roue avant et le tandem.
+  const g0 = L.wheels[0]![1] + p.wheelRadius + 0.25, g1 = L.wheels[2]![1] - p.wheelRadius - 0.2;
+  for (const s of [-1, 1]) {
+    for (const y of [p.clearance + 0.2, p.clearance + 0.5]) parts.push(box(0.03, 0.07, g1 - g0, s * (side - 0.03), y, (g0 + g1) / 2, TRIM));
+  }
+  parts.push(box(0.5, 0.5, 1.1, -(side - 0.33), p.clearance + 0.4, Math.max(g0, z0) + 0.65, CHROME));
+  // Garde-boue au-dessus du tandem.
+  const ra = L.wheels[2]![1], rb = L.wheels[L.wheels.length - 1]![1], track = wheelTrack(p);
+  for (const s of [-1, 1]) parts.push(box(p.tyreWidth + 0.02, 0.04, rb - ra + 2 * p.wheelRadius + 0.15, s * track, 2 * p.wheelRadius + 0.1, (ra + rb) / 2, DARK));
+  // Barre des feux arrière, sous le plateau (les feux sont posés dessus, `tailParts`).
+  parts.push(box(2 * side - 0.1, 0.16, 0.08, 0, p.clearance + 0.62, L.tailZ - FACE - 0.05, DARK));
+  // Échappement vertical, contre la paroi arrière de la cabine.
+  parts.push(tube(new THREE.Vector3(side - 0.2, bed - 0.2, z0 + 0.12), new THREE.Vector3(side - 0.2, (p.cabHeight ?? p.height) + 0.3, z0 + 0.12), 0.06, CHROME, 8, false));
+  // Hauteur des grumes empilées en trois rangs (5, 4, 3), sur des bancs de 12 cm.
+  const rise = 2 * r * Math.sin(Math.PI / 3), logTop = bed + 0.12 + 2 * r + 2 * rise;
+  // Grue repliée, juste derrière la cabine : colonne, flèche couchée sur les grumes, bras replié dessus, grappin posé sur la pile.
+  const cz = z0 + 0.4;
+  parts.push(box(0.8, 0.3, 0.6, 0, bed + 0.15, cz, t.crane), box(2 * side - 0.1, 0.16, 0.22, 0, bed - 0.12, cz, t.crane));
+  parts.push(tube(new THREE.Vector3(0, bed + 0.3, cz), new THREE.Vector3(0, logTop + 0.62, cz), 0.16, t.crane, 8));
+  parts.push(box(0.22, 0.26, 3.5, 0.3, logTop + 0.25, cz + 1.75, t.crane), box(0.18, 0.2, 2.6, 0.3, logTop + 0.48, cz + 1.4, t.crane));
+  parts.push(box(0.36, 0.3, 0.4, 0.3, logTop + 0.15, cz + 3.35, DARK));
+  // Ridelle avant : deux montants et trois lisses, entre la grue et les grumes.
+  const hz = cz + 0.4;
+  for (const s of [-1, 1]) parts.push(box(0.1, logTop - bed + 0.15, 0.1, s * (side - 0.08), (bed + logTop + 0.15) / 2, hz, DARK));
+  for (const y of [bed + 0.35, (bed + logTop) / 2 + 0.1, logTop + 0.05]) parts.push(box(2 * side - 0.12, 0.08, 0.08, 0, y, hz, DARK));
+  // Deux piles de grumes, chacune sur deux bancs à ranchers.
+  const zs = hz + 0.12, gap = 0.25, len = (z1 - 0.02 - zs - gap) / 2;
+  for (let k = 0; k < 2; k++) {
+    const a = zs + k * (len + gap), zm = a + len / 2;
+    for (const zb of [a + 0.45, a + len - 0.45]) {
+      parts.push(box(2 * side - 0.04, 0.12, 0.18, 0, bed + 0.06, zb, DARK));
+      for (const s of [-1, 1]) parts.push(box(0.09, logTop - bed - 0.1, 0.09, s * (side - 0.06), (bed + logTop - 0.1) / 2, zb, DARK));
+    }
+    [5, 4, 3].forEach((n, j) => {
+      for (let i = 0; i < n; i++) {
+        // Diamètres et longueurs un peu inégaux (tirés de la place de la grume) : un chargement de bois, pas des tubes.
+        const h = (i * 7 + j * 3 + k * 5) % 5, rr = r * (0.84 + 0.04 * h), ll = len - 0.05 * ((i + j + k) % 3);
+        const x = (i - (n - 1) / 2) * 2 * r, y = bed + 0.12 + r + j * rise, z = zm + 0.04 * ((h % 3) - 1);
+        const g = new THREE.CylinderGeometry(rr, rr, ll, 7, 1, true);
+        g.rotateX(Math.PI / 2);
+        g.translate(x, y, z);
+        parts.push(paint(g, t.bark));
+        for (const e of [-1, 1]) {
+          const c = new THREE.CircleGeometry(rr * 0.97, 7);
+          if (e < 0) c.rotateY(Math.PI);
+          c.translate(x, y, z + e * (ll / 2 + 0.002));
+          parts.push(paint(c, t.wood));
+        }
+      }
+    });
+  }
+  return parts;
+}
+
+/** Position (repère du véhicule) du haut de la cheminée d'un camion à four à bois, pour sa fumée ; null sans four. */
+export function chimneyTop(p: CarBodyParams, front: number, rear: number): [number, number, number] | null {
+  if (!p.foodTruck?.oven) return null;
+  const L = carLayout(p, front, rear);
+  return [(p.foodTruck.left ? -1 : 1) * (p.width / 2 - 0.55), p.height + 0.6, L.rearBaseZ + p.foodTruck.to - 0.55];
+}
+
+function chimney(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  const [x, y, z] = chimneyTop(p, f.front, f.rear)!;
+  const g = new THREE.CylinderGeometry(0.09, 0.09, 0.6, 8);
+  g.translate(x, y - 0.3, z);
+  const cap = new THREE.CylinderGeometry(0.16, 0.12, 0.08, 8);
+  cap.translate(x, y + 0.02, z);
+  return [paint(g, "#1d1f24"), paint(cap, "#1d1f24")];
+}
+
+/**
+ * Où se tient le vendeur d'un camion-restaurant (repère du véhicule : pieds au plancher, face à l'ouverture), et le flanc de l'ouverture (`side` : 1 à
+ * droite, −1 à gauche) ; null pour un autre véhicule.
+ */
+export function vendorSpot(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number; side: number } | null {
+  const t = p.foodTruck;
+  if (!t) return null;
+  const L = carLayout(p, front, rear), side = t.left ? -1 : 1;
+  return { x: side * (p.width / 2 - 0.75), y: t.bottom - 0.95, z: L.rearBaseZ + t.from + 0.6, side };
+}
+
+/** Sous une capote (D114) : pare-brise droit dans son cadre, deux fenêtres souples de chaque côté, une à l'arrière. */
+function softTopParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  if (!p.style.softTop) return [];
+  const { L, shoulder, roofW } = f, glass = p.glass ?? "#2b3a4c", top = p.height;
+  const rise = top - 0.05 - p.belt, run = L.roofFrontZ - L.windshieldBaseZ, tilt = Math.atan2(run, rise), h = Math.hypot(rise, run);
+  const yc = p.belt + rise / 2, zc = (L.windshieldBaseZ + L.roofFrontZ) / 2 - 0.014 * Math.cos(tilt);
+  const parts = [tiltedBox(2 * Math.min(shoulder, roofW) - 0.1, h - 0.06, 0.02, 0, yc, zc, tilt, glass)];
+  for (const s of [-1, 1]) {
+    for (const z of [L.roofFrontZ + 0.4, L.roofRearZ - 0.5]) parts.push(box(0.012, 0.32, 0.55, s * (roofW + 0.004), p.belt + (top - p.belt) * 0.55, z, glass));
+  }
+  parts.push(box(0.8, 0.28, 0.012, 0, p.belt + (top - p.belt) * 0.55, L.rearBaseZ + 0.004, glass));
+  return parts;
 }
 
 /** Bandes des flancs et barre de gyrophares (éteinte : les feux allumés sont des instances à part, `beaconBoxes`). */

@@ -64,6 +64,8 @@ export class TrafficSim {
   stats = { contacts: 0, worstImpact: 0 };
   /** Les passants (J3-3b) : les voitures les évitent, et s'arrêtent pour ceux qui traversent. Null : aucun. */
   peds: PedLookup | null = null;
+  /** Autres véhicules que les conducteurs voient comme des voitures sans en être (le petit train, D117) : ni chocs ni dégâts ici, ce sont des obstacles. */
+  extra: readonly Other[] = [];
   private readonly walkers: Other[] = [];
   private walkerCount = 0;
   private readonly scratch: Other[] = [];
@@ -167,6 +169,7 @@ export class TrafficSim {
     const others = this.others;
     others.length = 0;
     for (const c of this.cars) others.push(c.other);
+    for (const o of this.extra) others.push(o);
     let playerBody: { state: VehicleState; spec: VehicleSpec } | null = null;
     if (player?.kind === "vehicle") {
       const { halfLen, halfWid } = extentOf(player.spec);

@@ -11,12 +11,19 @@ import type { VehicleModel } from "./vehicle-model";
  * l'instance) seulement les sommets blancs et laisse les autres tels quels. Un véhicule qu'on enfourche reçoit, lui, son modèle articulé (`take`).
  */
 
-/** Teinte par instance des seuls sommets de peinture (blanc pur) : le reste garde sa couleur. */
+/**
+ * Teinte par instance des seuls sommets de peinture (blanc pur) : le reste garde sa couleur. Le nuanceur reçu ici n'a pas encore ses `#include`
+ * dépliés : on remplace l'inclusion du bloc de couleur par ce bloc modifié (D116 ; avant, le remplacement ne trouvait rien et tout était teint,
+ * jantes, feux et vitres compris).
+ */
 export function tintPaintOnly(material: THREE.MeshLambertMaterial): THREE.MeshLambertMaterial {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader.replace(
-      "vColor.rgb *= instanceColor.rgb;",
-      "vColor.rgb *= mix( vec3( 1.0 ), instanceColor.rgb, step( 0.999, min( color.r, min( color.g, color.b ) ) ) );",
+      "#include <color_vertex>",
+      THREE.ShaderChunk.color_vertex.replace(
+        "vColor.rgb *= instanceColor.rgb;",
+        "vColor.rgb *= mix( vec3( 1.0 ), instanceColor.rgb, step( 0.999, min( color.r, min( color.g, color.b ) ) ) );",
+      ),
     );
   };
   // Un programme propre : l'ajout ci-dessus ne doit pas être partagé avec un autre matériau Lambert.

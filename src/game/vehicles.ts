@@ -12,6 +12,7 @@ import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
 import { createMotorScooterModel } from "../render/motorscooter-model";
 import { createKickScooterModel } from "../render/kickscooter-model";
+import { createLocoRideModel, locoRestGeometry } from "../render/train-model";
 import type { TileExtras } from "../render/tile-manager";
 import type { VehicleModel } from "../render/vehicle-model";
 import type { HeightField } from "../data/types";
@@ -24,6 +25,8 @@ export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
   trottinette: createKickScooterModel,
   "scooter-125": createMotorScooterModel,
   ...Object.fromEntries(Object.keys(CAR_BODIES).map((id) => [id, (color: string) => createCarModel(id, color)])),
+  // La locomotive du petit train (D118) : le train la dessine ; conduite, elle ne porte que le joueur.
+  "petit-train": () => createLocoRideModel(),
   "moto-routiere": (color) => createMotoModel(color),
   "moto-sportive": (color) => createMotoModel(color, "sport"),
 };
@@ -32,12 +35,13 @@ export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
 export function restGeometryOf(id: string): THREE.BufferGeometry {
   const def = vehicleDef(baseModel(id));
   if (!def) throw new Error(`modèle de véhicule inconnu : ${id}`);
+  if (def.train) return locoRestGeometry();
   return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[def.id]!("#ffffff"));
 }
 
 /** Modèle dessiné pour un véhicule garé ou de la circulation : sa forme abîmée s'il paraît cabossé (voitures seulement, D112). */
 export function drawnModel(def: VehicleDef, damage: VehicleDamage): string {
-  return def.family === "car" && looksDented(damage) ? def.id + DENTED : def.id;
+  return def.family === "car" && !def.train && looksDented(damage) ? def.id + DENTED : def.id;
 }
 
 /** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
@@ -54,6 +58,8 @@ export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
 /** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (3,98 × 1,42 m). */
 export function chaseOf(v: { def: VehicleDef }): FamilyInfo["camera"] {
   const c = FAMILIES[v.def.family].camera;
+  // Petit train (D118) : la caméra recule et monte pour voir les wagons derrière la locomotive.
+  if (v.def.train) return { distance: 12, perSpeed: 0.1, height: 2.2 };
   if (v.def.family !== "car") return c;
   const { length, height } = v.def.size;
   return { distance: c.distance + (length - 3.98) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.42) * 0.5 };
@@ -123,6 +129,10 @@ function unit(h: number, rank: number): number {
   return hash(Math.imul(h, 0x2545f491) ^ Math.imul(rank + 1, 0x9e3779b1)) / 0x100000000;
 }
 
+/** Côté des cases où rien ne se gare (m), et clé d'une case. */
+const CLEAR_CELL = 2;
+const cellKey = (ix: number, iy: number): number => (ix + 32768) * 65536 + (iy + 32768);
+
 /** Un véhicule est « déplacé » au-delà de ces écarts par rapport à sa place d'origine. */
 const MOVED_DISTANCE = 0.5;
 const MOVED_HEADING = 0.1;
@@ -135,6 +145,8 @@ export class Fleet {
   private readonly sources = new Set<string>();
   private readonly parked = new ParkedModels(MAX_PARKED, restGeometryOf);
   private readonly clear: { x: number; y: number; r: number }[] = [];
+  /** Cases de 2 m où rien ne se gare : le circuit du petit train (D117), trop long pour une liste de cercles. */
+  private readonly clearCells = new Set<number>();
   private dirty = true;
   private lastCull = { x: Infinity, y: Infinity };
   /** Pour la mesure (banc) : véhicules en tout, véhicules garés dessinés et maillages instanciés qu'ils coûtent (un par modèle présent). */
@@ -153,6 +165,24 @@ export class Fleet {
   /** Aucun véhicule ne sera garé dans ce cercle (point de départ du joueur). */
   keepClear(x: number, y: number, r: number): void {
     this.clear.push({ x, y, r });
+  }
+
+  /** Aucune voiture ne sera garée à moins de `r` m de ce tracé (points x, y à la suite, tous les mètres ou moins). */
+  keepClearAlong(points: readonly number[], r: number): void {
+    const n = Math.ceil(r / CLEAR_CELL);
+    for (let i = 0; i < points.length; i += 2) {
+      const cx = Math.floor(points[i]! / CLEAR_CELL), cy = Math.floor(points[i + 1]! / CLEAR_CELL);
+      for (let dx = -n; dx <= n; dx++) {
+        for (let dy = -n; dy <= n; dy++) {
+          const x = (cx + dx + 0.5) * CLEAR_CELL, y = (cy + dy + 0.5) * CLEAR_CELL;
+          if (Math.hypot(x - points[i]!, y - points[i + 1]!) < r) this.clearCells.add(cellKey(cx + dx, cy + dy));
+        }
+      }
+    }
+  }
+
+  private cleared(x: number, y: number): boolean {
+    return this.clearCells.has(cellKey(Math.floor(x / CLEAR_CELL), Math.floor(y / CLEAR_CELL))) || this.clear.some((c) => Math.hypot(x - c.x, y - c.y) < c.r);
   }
 
   /**
@@ -184,7 +214,7 @@ export class Fleet {
       const h = hash(Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663));
       const draw = (h % 1000) / 1000;
       const zone = parkingZone(s.x, s.y, t.buildings);
-      if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
+      if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.cleared(s.x, s.y)) continue;
       // Garée en marche avant ou en marche arrière.
       const heading = s.heading + (h & 1024 ? Math.PI : 0);
       if (draw < OCCUPANCY) this.add(pickModel("car", zone, unit(h, 0)), `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
@@ -255,6 +285,8 @@ export class Fleet {
   savedVehicles(): SavedVehicle[] {
     const out: SavedVehicle[] = [];
     for (const v of this.vehicles) {
+      // La locomotive du petit train n'est jamais enregistrée : une partie remet le train sur son circuit (D118).
+      if (v.def.train) continue;
       const s = v.state, h = v.home;
       const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
       // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
@@ -263,6 +295,26 @@ export class Fleet {
       out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading, ...(hurt ? { damage: { health: d.health, zones: { ...d.zones }, end: d.end } } : {}) });
     }
     return out;
+  }
+
+  /**
+   * Déplace un véhicule garé (la locomotive du petit train qui roule sur son circuit, D118) : sa position, posée sur le relief, et ses cercles
+   * de collision. Rien à redessiner : il n'est pas dessiné par instances.
+   */
+  place(v: Vehicle, x: number, y: number, heading: number, speed: number): void {
+    if (v.ridden) return;
+    const s = v.state;
+    s.x = x;
+    s.y = y;
+    s.heading = heading;
+    s.speed = speed;
+    s.vx = Math.sin(heading) * speed;
+    s.vy = Math.cos(heading) * speed;
+    this.settle(v);
+    this.colliders.removeTag(`veh:${v.id}`);
+    this.colliders.currentTag = `veh:${v.id}`;
+    for (const [off, r] of v.spec.hull) this.colliders.addCircle(x + Math.sin(heading) * off, y + Math.cos(heading) * off, r);
+    this.colliders.currentTag = null;
   }
 
   /** Pose le véhicule sur le relief (hauteur et tangage entre les essieux). */

@@ -4,12 +4,15 @@ import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } fr
 import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
+import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
+import { chimneyOf, vendorOf } from "../render/car-model";
+import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
-import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
+import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer, type TrafficBody } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
@@ -49,6 +52,7 @@ import { stepCrossed } from "../core/sound-model";
 import { GameAudio, type TrafficVisit } from "./game-audio";
 import { CameraShake, Haptics, speedFov, speedLines } from "../core/feel";
 import { VehicleLights } from "../render/vehicle-lights";
+import { TouristTrain, TRAIN_CLEAR, type TrainEnv } from "./tourist-train";
 
 export { gameSpawn } from "./start";
 const STEP = 1 / 60;
@@ -101,6 +105,11 @@ export function startGame(ctx: GameContext): void {
   // Départ neuf : aucune voiture garée sur le joueur. Partie reprise : les véhicules laissés ailleurs reviennent où ils étaient.
   if (saved) fleet.restore(saved.vehicles);
   else fleet.keepClear(spawn.x, spawn.y, 4);
+  // Aucune voiture garée sur la place d'un véhicule unique (D115 : la rôtisserie est au milieu du parking du Champ de Mars).
+  for (const spot of UNIQUES) {
+    const def = vehicleDef(spot.model);
+    if (def) fleet.keepClear(spot.x, spot.y, def.size.length / 2 + 1.5);
+  }
   for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
   tiles.onBuild = (extras) => fleet.addFromTile(extras);
   tiles.onUnload = (id) => fleet.removeTile(id);
@@ -374,6 +383,107 @@ export function startGame(ctx: GameContext): void {
   const damaged = new Set<Vehicle>();
   const abandoned: Abandoned[] = [];
   const garageStop = new GarageStop();
+  // Véhicules uniques (D114) : apparition à leur place (selon leur horaire), retrait hors service, retour à leur place après un moment.
+  const keeper = new UniqueKeeper();
+  let uniqueTimer = 0;
+  const updateUniques = (dt: number): void => {
+    uniqueTimer -= dt;
+    if (uniqueTimer > 0) return;
+    const step = 0.5 - uniqueTimer;
+    uniqueTimer = 0.5;
+    for (const spot of UNIQUES) {
+      const v = fleet.get(spot.id) ?? null;
+      const view = {
+        exists: !!v, atHome: !!v && Math.hypot(v.state.x - spot.x, v.state.y - spot.y) < UNIQUE.home, usable: !!v && v.damage.usable, ridden: !!v && v === riding,
+        toVehicle: v ? Math.hypot(v.state.x - player.x, v.state.y - player.y) : Infinity, toHome: Math.hypot(spot.x - player.x, spot.y - player.y),
+      };
+      const action = keeper.decide(spot, view, atmosphere.hour, step);
+      if ((action === "despawn" || action === "respawn") && v) {
+        damaged.delete(v);
+        fleet.remove(v);
+      }
+      if (action === "spawn" || action === "respawn") fleet.add(spot.model, spot.id, spot.x, spot.y, spot.heading, 0);
+      // Camions-restaurants (D115) : un vendeur en tablier blanc derrière le comptoir quand le camion est ouvert, à sa place, et qu'on est assez près.
+      const w = fleet.get(spot.id);
+      const spotAt = vendorOf(spot.model);
+      const open = !!w && !!spotAt && w !== riding && w.damage.usable && onDuty(spot, atmosphere.hour)
+        && Math.hypot(w.state.x - spot.x, w.state.y - spot.y) < UNIQUE.home && Math.hypot(w.state.x - player.x, w.state.y - player.y) < 90;
+      let vendor = vendors.get(spot.id);
+      if (!open && vendor) {
+        scene.remove(vendor.group);
+        vendor.dispose();
+        vendors.delete(spot.id);
+      } else if (open && w && spotAt) {
+        if (!vendor) {
+          vendor = createPlayerModel(applyAppearance(recipeFromSeed(vendorSeed(spot.id)), { top: "apron", topColor: WHITE, hat: "none" }));
+          scene.add(vendor.group);
+          vendors.set(spot.id, vendor);
+        }
+        const p = vendorWorld(w, spotAt);
+        vendor.update(p.x, p.y, p.z, w.state.heading + (spotAt.side * Math.PI) / 2, 0, 0);
+      }
+    }
+  };
+  // Petit train touristique (D117) : il tourne sur son circuit, montré de 11 h à 18 h. `?train=<m>` : le place à tant de mètres du départ.
+  const train = new TouristTrain(scene, colliders, terrain, fleet, Number(params.get("train") ?? 0) || 0);
+  // Aucune voiture garée sur le circuit : une place dont le centre est à moins de la demi-largeur du train et d'une demi-voiture.
+  fleet.keepClearAlong(train.route.samples(), TRAIN_CLEAR);
+  const trainCars: TrainEnv["cars"][number][] = [];
+  const trainParked: TrainEnv["parked"][number][] = [];
+  const updateTrain = (dt: number): void => {
+    const t = traffic as Traffic | null, at = train.position;
+    trainCars.length = 0;
+    if (t) for (const c of t.cars) trainCars.push(c.sim);
+    // Véhicules de la flotte qui ne sont plus à leur place (laissés par le joueur sur la chaussée) : le train s'arrête devant.
+    trainParked.length = 0;
+    for (const v of fleet.vehicles) {
+      if (v.ridden || v.def.train || Math.abs(v.state.x - at.x) > 80 || Math.abs(v.state.y - at.y) > 80) continue;
+      if (!v.home || Math.hypot(v.state.x - v.home.x, v.state.y - v.home.y) > 0.5) trainParked.push(v);
+    }
+    train.update(dt, {
+      x: player.x, y: player.y, hour: atmosphere.hour, vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
+      cars: trainCars, peds: peds as PedsController | null, parked: trainParked, road: (nav as NavManager | null)?.graph.road ?? null, signals: signals as Signals | null,
+    });
+    t?.setExtra(train.visible ? train.seenByTraffic : []);
+    // Train volé (D119) : des passagers sautent des wagons et s'enfuient loin de la locomotive.
+    const off = train.takeAlighting();
+    off.forEach((a, i) => (peds as PedsController | null)?.eject(a.x, a.y, 7001 + i, a.ux, a.uy, 1.2, at.x, at.y));
+  };
+  /** Les voitures que voient les passants, et le train quand il est là. */
+  const withTrain = (bodies: readonly TrafficBody[]): readonly TrafficBody[] => (train.visible ? [...bodies, ...train.seenByPeds] : bodies);
+  /** On prend la locomotive du petit train (D118) : le conducteur saute de la cabine et s'enfuit, c'est un vol sous les yeux de témoins. */
+  const robTrain = (v: Vehicle): boolean => {
+    if (!v.def.train) return false;
+    const at = train.takeConductor();
+    if (!at) return false;
+    const lx = -Math.cos(at.heading), ly = Math.sin(at.heading);
+    (peds as PedsController | null)?.eject(at.x + lx * 1.4, at.y + ly * 1.4, 20240611, lx, ly, 1.4, v.state.x, v.state.y);
+    police.crime("carjack", v.state.x, v.state.y, true);
+    return true;
+  };
+  /** Vendeurs des camions-restaurants (D115), par identifiant de véhicule unique. */
+  const vendors = new Map<string, ReturnType<typeof createPlayerModel>>();
+  const vendorSeed = (id: string): number => [...id].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  /** Position dans le monde d'un point du repère du véhicule (x à droite, y en haut, z vers l'arrière). */
+  const vendorWorld = (v: Vehicle, at: { x: number; y: number; z: number }): { x: number; y: number; z: number } => {
+    const hx = Math.sin(v.state.heading), hy = Math.cos(v.state.heading);
+    return { x: v.state.x - hx * at.z + hy * at.x, y: v.state.y - hy * at.z - hx * at.x, z: v.state.z + at.y };
+  };
+  /** On prend un camion-restaurant ouvert (D115) : le vendeur saute dehors et s'enfuit, c'est un vol sous les yeux de témoins. */
+  const robVendor = (v: Vehicle): boolean => {
+    const vendor = vendors.get(v.id), at = vendorOf(v.def.id);
+    if (!vendor || !at) return false;
+    scene.remove(vendor.group);
+    vendor.dispose();
+    vendors.delete(v.id);
+    // Il sort par l'ouverture, du côté où elle est.
+    const p = vendorWorld(v, { ...at, x: at.x + at.side * 1.6 });
+    const ux = at.side * Math.cos(v.state.heading), uy = -at.side * Math.sin(v.state.heading);
+    (peds as PedsController | null)?.eject(p.x, p.y, vendorSeed(v.id), ux, uy, 1.4, v.state.x, v.state.y);
+    police.crime("carjack", v.state.x, v.state.y, true);
+    return true;
+  };
+  const CHIMNEY_SMOKE = new THREE.Color("#cfcac0");
   // Véhicules abîmés retrouvés dans la sauvegarde (D113) : ils fument (ou brûlent) de nouveau.
   for (const v of fleet.vehicles) if (v.damage.version > 0 && (v.damage.health < DAMAGE.max || v.damage.end)) damaged.add(v);
   /** Véhicules sur la trajectoire d'un tir (D113) : de la flotte, ou de la circulation (état, fiche et dégâts). */
@@ -564,6 +674,13 @@ export function startGame(ctx: GameContext): void {
         (peds as PedsController | null)?.eject(a.x + lx * side, a.y + ly * side, a.driver, lx, ly, 1.2, a.x, a.y);
       }
     }
+    // Fumée de la cheminée du four à pizza (D115), tant que le camion est ouvert.
+    for (const [id] of vendors) {
+      const w = fleet.get(id), top = w ? chimneyOf(w.def.id) : null;
+      if (!w || !top || Math.random() > dt * 3) continue;
+      const p = vendorWorld(w, { x: top[0], y: top[1], z: top[2] });
+      smoke.emit(p.x, p.y, p.z, 0, 0, 0.8 + Math.random() * 0.4, CHIMNEY_SMOKE, 0.15, 0.55, 2.2, Math.random);
+    }
     smoke.update(dt);
     flames.update(dt);
     // Garage (D113) : arrêté devant, au volant d'un véhicule abîmé, on repart réparé ; le nom du garage s'affiche comme celui d'un véhicule.
@@ -658,7 +775,7 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (r.fleet.home) police.crime("theft", player.x, player.y, false);
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
       mount(r.fleet);
     }
   };
@@ -679,7 +796,8 @@ export function startGame(ctx: GameContext): void {
   const rideParam = params.get("ride") ?? "";
   const ride = vehicleDef(LEGACY_MODELS[rideParam] ?? rideParam)?.id;
   if (ride) {
-    const v = fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
+    // `?ride=petit-train` : aux commandes du petit train, ses wagons derrière (D118).
+    const v = vehicleDef(ride)?.train ? train.spawnFree(spawn.x, spawn.y, startYaw) : fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
     // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109), les points perdus répartis sur les zones de `&dent=front,left`
     // (défaut : l'avant et l'arrière).
     if (params.has("damage")) {
@@ -935,6 +1053,8 @@ export function startGame(ctx: GameContext): void {
       if (hurt > 0 && !health.dead) health.damage(hurt);
     }
     updateDamage(dt);
+    updateUniques(dt);
+    updateTrain(dt);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {
@@ -1124,7 +1244,7 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
-        ...(traffic ? { vehicles: (traffic as Traffic).bodies(), honks: (traffic as Traffic).takeHonks() } : {}),
+        ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
       };
       for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
       (traffic as Traffic | null)?.setPeds(pedsNow);
@@ -1224,6 +1344,10 @@ export function startGame(ctx: GameContext): void {
     police,
     /** Essais et captures : les passants (voir `PedsController`). */
     pedsController: () => peds as PedsController | null,
+    /** Essais et captures : le petit train (D117), les feux et les rues chargées. */
+    train,
+    signals: () => signals as Signals | null,
+    road: () => (nav as NavManager | null)?.graph.road ?? null,
     /** Captures : tourner la caméra (rad, 0 = nord). */
     look: (v: number) => {
       yaw = v;

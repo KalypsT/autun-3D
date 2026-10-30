@@ -675,3 +675,66 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Réparation au garage](docs/captures/d113-garage.jpg)
 
+**Véhicules uniques, étape 1 : la jeep du Lycée militaire (30 octobre 2026)** (D114)
+- Une jeep militaire kaki (Couhard Sentinelle), capote en toile et roue de secours, garée dans l'enceinte du Lycée militaire. Un seul exemplaire : détruite ou abandonnée ailleurs, elle revient à sa place quelques minutes après que tu t'es éloigné. Lourde, lente (130 km/h), robuste.
+- La minimap ne montre plus les véhicules garés (seulement la police en poursuite).
+- Défaut ancien trouvé dans la circulation (la répartition des modèles par quartier n'était pas respectée) : noté, à corriger dans un chantier de la circulation.
+- 689 tests.
+- À faire de ton côté : aller au Lycée militaire, prendre la jeep. Ensuite : le camion Pizza du Vallon et la rôtisserie du marché.
+
+![La jeep militaire](docs/captures/d114-jeep.jpg)
+![La jeep au Lycée militaire](docs/captures/d114-jeep-lycee.jpg)
+
+**Véhicules uniques, étape 2 : Pizza du Vallon et Rôtisserie du Champ de Mars (30 octobre 2026)** (D115)
+- Le camion Pizza du Vallon (vert, « PIZZA » à la verticale, cheminée du four à bois qui fume) est sur le parking du Collège du Vallon de 17 h à 22 h, dos à la route, cabine vers l'ouest, comptoir ouvert sur le parking, avec son pizzaïolo en tablier derrière.
+- La Rôtisserie du Champ de Mars (auvent rayé rouge et blanc, poulets à la broche) est sur le petit parking devant la mairie de 7 h à 13 h, comptoir tourné vers les places et la mairie.
+- En dehors de leurs heures, ils ne sont pas là. Prendre un camion ouvert, c'est un vol : le vendeur s'enfuit et la police est prévenue. La pizza qui soigne viendra avec l'argent.
+- 700 tests.
+- À faire de ton côté : aller voir les deux camions à leur heure (`?at=506,1092&yaw=-0.2&h=18` pour la pizza, `?at=37,23&yaw=-0.35&h=9` pour la rôtisserie, ou en jouant), les prendre et les conduire. Ensuite : le petit train touristique.
+
+![Le camion Pizza du Vallon](docs/captures/d115-pizza-du-vallon.jpg)
+![Les deux camions de près](docs/captures/d115-camions-de-pres.jpg)
+![La rôtisserie devant la mairie](docs/captures/d115-rotisserie.jpg)
+
+**Véhicules uniques, étape 3 : le Grumier du Morvan (30 octobre 2026)** (D116)
+- Un grumier rouge, chargé de deux piles de grumes, grue jaune repliée, attend sur le bas-côté de la route de Château-Chinon, à l'entrée de la ville côté Morvan, tourné vers la ville. Il est toujours là.
+- C'est un vrai poids lourd à conduire : 16 tonnes, trois essieux, bridé à 90 km/h, lent à démarrer (0 à 80 km/h en une vingtaine de secondes), qui tourne large et pousse les voitures. Très solide (il encaisse plus de deux fois ce que prend une voiture).
+- Correction au passage : les voitures garées et la circulation étaient teintes en entier de la couleur de leur carrosserie (jantes, feux, vitres compris), le réglage censé ne teindre que la peinture ne s'appliquait pas. Elles retrouvent leurs jantes grises, leurs feux rouges et orange et leurs vitres sombres.
+- 705 tests.
+- À faire de ton côté : aller voir le grumier (`?at=-1090,961&yaw=-1.2`, ou en jouant : route de Château-Chinon, après le pont Saint-Andoche), le conduire, et regarder les voitures garées. Ensuite : le circuit du petit train touristique, à valider sur une carte avant de coder.
+
+![Le Grumier du Morvan à l'entrée de la ville](docs/captures/d116-grumier.jpg)
+![Son chargement](docs/captures/d116-grumier-chargement.jpg)
+![De près](docs/captures/d116-grumier-galerie.jpg)
+![Voitures garées : jantes, feux et vitres de leur vraie couleur](docs/captures/d116-voitures-garees.jpg)
+
+**Petit train touristique, étape 1 : le circuit et le train qui tourne (30 octobre 2026)** (D117)
+- Un petit train vert et doré (« AUTUN » sur la locomotive, trois wagons à bancs) fait le tour des monuments : cathédrale et musée Rolin, théâtre romain, porte Saint-André, porte d'Arroux, tour de l'Horloge, hôtel de ville. 6,9 km, sans demi-tour, environ 38 minutes par tour.
+- Il part de la rue du Général Demetz (côté Champ de Mars), s'y arrête une minute à chaque tour, ralentit devant les monuments, s'arrête aux feux rouges et devant ce qui bloque sa voie. Les voitures et les passants le voient et l'évitent ; on bute dessus.
+- Il est là de 11 h à 18 h. Le temps du jeu va trop vite pour qu'il fasse un tour dans ces heures-là : il tourne sans fin et n'apparaît (ou ne disparaît) qu'aux bonnes heures, loin des yeux du joueur.
+- 714 tests.
+- À faire de ton côté : aller le voir (`?at=57,-40.5&yaw=-2.71&h=12` au départ, ou en jouant vers 11 h au Champ de Mars), le suivre, lui barrer la route. Ensuite : le prendre et le conduire (étape 2).
+
+![Le circuit](docs/captures/d117-circuit.png)
+![Au départ](docs/captures/d117-train-depart.jpg)
+![Devant le théâtre romain](docs/captures/d117-train-theatre-romain.jpg)
+![Vers la cathédrale](docs/captures/d117-train-cathedrale.jpg)
+
+**Petit train touristique, étape 2 : le voler et le conduire (30 octobre 2026)** (D118)
+- On peut prendre le petit train comme une voiture : le conducteur saute de la cabine et s'enfuit, c'est un vol avec témoins. On conduit debout dans la cabine, les trois wagons suivent derrière comme des remorques et coupent les virages.
+- C'est lent et lourd : 25 km/h au plus, mais il monte jusqu'à la cathédrale.
+- Abandonné loin de toi, il revient au départ de son circuit au bout de deux minutes, avec un nouveau conducteur.
+- 719 tests.
+- À faire de ton côté : le voler au départ (Champ de Mars, entre 11 h et 18 h) ou essayer directement `?ride=petit-train`, prendre des virages serrés, monter vers la cathédrale.
+
+![Le train volé, au départ](docs/captures/d118-train-vole.jpg)
+![Aux commandes sur le Champ de Mars](docs/captures/d118-train-conduit.jpg)
+
+**Petit train : des passagers (30 octobre 2026)** (D119)
+- Les wagons portent des touristes assis sur les bancs, environ une place sur deux, tous différents.
+- Quand on vole le train, ils descendent et quelques-uns s'enfuient en courant. Revenu sur son circuit, le train repart avec ses passagers.
+- 720 tests.
+
+![Les passagers](docs/captures/d119-passagers.jpg)
+![Le train complet au départ](docs/captures/d119-train-complet.jpg)
+

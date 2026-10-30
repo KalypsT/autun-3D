@@ -12,15 +12,17 @@ const kmh = (s: VehicleState): number => s.speed * 3.6;
 const cars = CATALOG.filter((d) => d.family === "car");
 
 /** Accélérateur à fond sur le plat (on remet le véhicule au début quand il approche du bord du terrain d'essai) : temps pour 100 km/h et vitesse atteinte au bout de 100 s. */
-function fullThrottle(spec: VehicleSpec): { t100: number; top: number; state: VehicleState } {
+function fullThrottle(spec: VehicleSpec): { t100: number; t80: number; t20: number; top: number; state: VehicleState } {
   const s = createVehicle(0, -90, 0, flat);
-  let t100 = 0;
+  let t100 = 0, t80 = 0, t20 = 0;
   for (let i = 0; i < 100 * 60; i++) {
     stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, flat, none);
     if (!t100 && kmh(s) >= 100) t100 = (i + 1) * DT;
+    if (!t80 && kmh(s) >= 80) t80 = (i + 1) * DT;
+    if (!t20 && kmh(s) >= 20) t20 = (i + 1) * DT;
     if (s.y > 80) s.y = -90;
   }
-  return { t100, top: kmh(s), state: s };
+  return { t100, t80, t20, top: kmh(s), state: s };
 }
 
 /** Freinage à fond depuis `from` km/h : distance (m) et roues bloquées ou non. */
@@ -41,14 +43,20 @@ describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
+    "jeep-militaire": [12, 18], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
+  /** Poids lourd bridé à 90 km/h (D116) : 0 à 80 km/h (s), d'après un porteur chargé. */
+  const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40] };
+  /** Petit train (D118, 25 km/h au plus, sans passagers) : 0 à 20 km/h (s). */
+  const T20: Record<string, [number, number]> = { "petit-train": [4, 12] };
 
   it.each(cars.map((d) => d.id))("%s : 0 à 100 km/h dans la fourchette de sa classe, vitesse maximale sous sa fiche et sous le plafond", (id) => {
     const spec = vehicleDef(id)!.spec;
     const r = fullThrottle(spec);
-    const [lo, hi] = T100[id]!;
-    expect(r.t100).toBeGreaterThan(lo);
-    expect(r.t100).toBeLessThan(hi);
+    const [lo, hi] = T100[id] ?? T80[id] ?? T20[id]!;
+    const t = T100[id] ? r.t100 : T80[id] ? r.t80 : r.t20;
+    expect(t).toBeGreaterThan(lo);
+    expect(t).toBeLessThan(hi);
     expect(r.top).toBeGreaterThan(0.9 * spec.topSpeed * 3.6);
     expect(r.top).toBeLessThanOrEqual(spec.topSpeed * 3.6 + 0.5);
     expect(r.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
@@ -59,7 +67,8 @@ describe("voitures du catalogue : performances", () => {
     expect(sport.topSpeed * 3.6).toBeCloseTo(200, 5);
     const r = fullThrottle(sport);
     expect(r.top).toBeGreaterThan(193);
-    for (const d of cars) if (d.id !== "sportive") expect(fullThrottle(d.spec).t100).toBeGreaterThan(r.t100 + 3);
+    // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
+    for (const d of cars) if (d.id !== "sportive") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
   });
 
   it("le plafond ne touche que ce qui le dépasse", () => {
@@ -74,13 +83,27 @@ describe("voitures du catalogue : performances", () => {
 
   it("freinage à 100 km/h : 35 à 60 m avec ABS, sans jamais bloquer ; la camionnette plus longue que la sportive", () => {
     for (const d of cars) {
-      if (d.id === "vieille-voiture") continue;
+      // Le petit train (25 km/h au plus) : freiné depuis sa vitesse maximale, à part.
+      if (d.id === "vieille-voiture" || d.train) continue;
       const r = braking(d.spec, 100);
       expect([d.id, r.locked]).toEqual([d.id, false]);
       expect(r.distance).toBeGreaterThan(35);
       expect(r.distance).toBeLessThan(60);
     }
     expect(braking(vehicleDef("camionnette")!.spec, 100).distance).toBeGreaterThan(braking(vehicleDef("sportive")!.spec, 100).distance + 8);
+  });
+
+  it("le petit train (D118) : 25 km/h au plus ; monte une pente de 10 % à plus de 10 km/h ; arrêté en moins de 8 m depuis sa vitesse maximale, sans bloquer", () => {
+    const loco = vehicleDef("petit-train")!.spec;
+    expect(fullThrottle(loco).top).toBeLessThanOrEqual(25.5);
+    // La montée vers la cathédrale : une pente de 10 % vers le nord.
+    const slope = { heightAt: (_x: number, y: number) => 0.1 * y, xMin: -1000, xMax: 1000, yMin: -1000, yMax: 1000 };
+    const s = createVehicle(0, -90, 0, slope);
+    for (let i = 0; i < 40 * 60; i++) stepVehicle(s, loco, { throttle: 1, brake: 0, steer: 0 }, DT, slope, none);
+    expect(kmh(s)).toBeGreaterThan(10);
+    const r = braking(loco, 25);
+    expect(r.locked).toBe(false);
+    expect(r.distance).toBeLessThan(8);
   });
 
   it("la vieille voiture n'a pas d'ABS : roues avant bloquées au freinage à fond, arrêt bien plus long que la citadine", () => {

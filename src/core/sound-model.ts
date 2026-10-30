@@ -43,6 +43,15 @@ export const ENGINE_PROFILES: Readonly<Record<string, EngineProfile>> = {
   "vieille-voiture": car({ idle: 700, redline: 5200, gears: 4, bright: 0.3, rough: 0.55 }),
   sportive: car({ cylinders: 6, idle: 950, redline: 7800, gears: 6, bright: 0.8, rough: 0.08, pops: true }),
   gendarmerie: car({ redline: 6200, bright: 0.45 }),
+  // Jeep militaire (D114) : vieux diesel rugueux, peu de rapports.
+  "jeep-militaire": car({ diesel: true, idle: 720, redline: 4400, gears: 4, bright: 0.28, rough: 0.5 }),
+  // Camions-restaurants (D115) : gros diesel d'utilitaire.
+  "pizza-du-vallon": car({ diesel: true, idle: 700, redline: 4000, bright: 0.22, rough: 0.3 }),
+  "rotisserie-champ-de-mars": car({ diesel: true, idle: 700, redline: 4000, bright: 0.22, rough: 0.3 }),
+  // Petit train (D118) : petit diesel tranquille, trois rapports.
+  "petit-train": car({ diesel: true, idle: 800, redline: 3000, gears: 3, bright: 0.3, rough: 0.35 }),
+  // Grumier (D116) : six cylindres de poids lourd, bas régime, beaucoup de rapports.
+  "grumier-morvan": car({ diesel: true, cylinders: 6, idle: 600, redline: 2500, gears: 8, bright: 0.15, rough: 0.4 }),
   "scooter-125": car({ cylinders: 1, idle: 1600, redline: 9000, gears: 0, bright: 0.65, rough: 0.35 }),
   "moto-routiere": car({ cylinders: 2, idle: 1100, redline: 9500, gears: 6, bright: 0.5, rough: 0.6 }),
   "moto-sportive": car({ cylinders: 4, idle: 1300, redline: 13500, gears: 6, bright: 0.9, rough: 0.05, pops: true }),
