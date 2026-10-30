@@ -24,6 +24,7 @@ const PATHS = {
   horn: `<path ${STROKE} d="M3 10v4h3l8 4V6l-8 4z"/><path ${STROKE} d="M17.5 9a4 4 0 0 1 0 6M20 7a7 7 0 0 1 0 10"/>`,
   bell: `<path ${STROKE} d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path ${STROKE} d="M10 20.5a2 2 0 0 0 4 0"/>`,
   exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
+  jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
   reload: `<path ${STROKE} stroke-width="2.4" d="M20 12a8 8 0 1 1-2.3-5.7"/><path ${STROKE} stroke-width="2.4" d="M20 4v4h-4"/>`,
 } as const;
 

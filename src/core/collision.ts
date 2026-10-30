@@ -10,6 +10,16 @@ export interface Segment {
   by: number;
   /** Obstacle bas (clôture, muret) : il arrête les déplacements, pas les rayons (vue, tirs, caméra passent par-dessus). */
   low?: boolean;
+  /** Hauteur au-dessus du sol (m) d'un mur, d'une clôture ou d'une haie : on passe par-dessus en sautant assez haut. Absente : infranchissable (bâtiment). */
+  height?: number;
+  /** On peut l'escalader (grille, muret, haie basse). */
+  climb?: boolean;
+}
+
+/** Hauteur et escalade d'un obstacle franchissable. */
+export interface Top {
+  height: number;
+  climb: boolean;
 }
 
 export interface Circle {
@@ -25,6 +35,8 @@ export interface Resolution {
   nx: number;
   ny: number;
   hit: boolean;
+  /** Segment escaladable touché (indice dans `segments`), ou −1. */
+  wall?: number;
 }
 
 const CELL = 8;
@@ -51,9 +63,13 @@ export class Colliders {
   private segSeen: number[] = [];
   private circleSeen: number[] = [];
 
-  addSegment(ax: number, ay: number, bx: number, by: number, low = false): void {
+  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
     const rec: Segment = low ? { ax, ay, bx, by, low } : { ax, ay, bx, by };
+    if (top) {
+      rec.height = top.height;
+      if (top.climb) rec.climb = true;
+    }
     const reuse = this.freeSeg.pop();
     let id: number;
     if (reuse === undefined) {
@@ -159,19 +175,22 @@ export class Colliders {
     }
   }
 
-  /** Ajoute une ligne ouverte (x0, y0, x1, y1, …) en segments ; `low` : obstacle bas, transparent aux rayons. */
-  addPolyline(coords: readonly number[], low = false): void {
-    for (let i = 0; i + 3 < coords.length; i += 2) this.addSegment(coords[i]!, coords[i + 1]!, coords[i + 2]!, coords[i + 3]!, low);
+  /** Ajoute une ligne ouverte (x0, y0, x1, y1, …) en segments ; `low` : obstacle bas, transparent aux rayons ; `top` : hauteur, escalade. */
+  addPolyline(coords: readonly number[], low = false, top: Top | null = null): void {
+    for (let i = 0; i + 3 < coords.length; i += 2) this.addSegment(coords[i]!, coords[i + 1]!, coords[i + 2]!, coords[i + 3]!, low, top);
   }
 
-  /** Repousse un cercle (centre x, y ; rayon r) hors de tous les obstacles voisins. */
-  resolve(x: number, y: number, r: number): Resolution {
-    return this.resolveInto({ x: 0, y: 0, nx: 0, ny: 0, hit: false }, x, y, r);
+  /**
+   * Repousse un cercle (centre x, y ; rayon r) hors de tous les obstacles voisins. `clear` : hauteur des pieds au-dessus du sol (m), en saut ;
+   * les murs, clôtures et haies moins hauts sont ignorés.
+   */
+  resolve(x: number, y: number, r: number, clear = 0): Resolution {
+    return this.resolveInto({ x: 0, y: 0, nx: 0, ny: 0, hit: false }, x, y, r, clear);
   }
 
   /** Comme `resolve`, sans allouer : écrit le résultat dans `out` (réutilisable) et le renvoie. Pour les foules, appelée à chaque image. */
-  resolveInto(out: Resolution, x: number, y: number, r: number): Resolution {
-    let sx = 0, sy = 0, hits = 0;
+  resolveInto(out: Resolution, x: number, y: number, r: number, clear = 0): Resolution {
+    let sx = 0, sy = 0, hits = 0, wall = -1;
     for (let pass = 0; pass < 4; pass++) {
       let moved = false;
       const stamp = ++this.stamp;
@@ -185,6 +204,7 @@ export class Colliders {
             if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
             this.segSeen[id] = stamp;
             const s = this.segments[id]!;
+            if (clear > 0 && s.height !== undefined && s.height <= clear) continue;
             const dx = s.bx - s.ax, dy = s.by - s.ay;
             const len2 = dx * dx + dy * dy;
             const t = Math.min(Math.max(((x - s.ax) * dx + (y - s.ay) * dy) / len2, 0), 1);
@@ -206,6 +226,7 @@ export class Colliders {
             sx += ex;
             sy += ey;
             hits++;
+            if (s.climb) wall = id;
             moved = true;
           }
           const circs = this.circleGrid.get(k);
@@ -241,6 +262,7 @@ export class Colliders {
     out.nx = l > 1e-9 ? sx / l : 0;
     out.ny = l > 1e-9 ? sy / l : 0;
     out.hit = hits > 0;
+    out.wall = wall;
     return out;
   }
 

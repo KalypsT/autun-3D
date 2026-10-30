@@ -4,7 +4,7 @@ import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
 import { MTB, OLD_CAR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, VAN } from "./vehicle-specs";
-import { BIKE, CAR, collisionSteps, createVehicle, landWheelie, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
+import { airborne, BIKE, CAR, collisionSteps, createVehicle, landWheelie, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -686,5 +686,70 @@ describe("deux-roues : on tourne en se penchant, roue arrière, roue avant, chut
     expect(s.wheelie).toBe(0);
     expect(Math.abs(s.pitch)).toBeLessThan(1e-6);
     expect(Math.abs(s.z)).toBeLessThan(1e-6);
+  });
+});
+
+/** Terrain dont l'altitude ne dépend que de y (profil nord-sud). */
+function profileTerrain(z: (y: number) => number): Terrain {
+  const meta = { cols: 200, rows: 200, res: 1, x0: -100, y0: -100, y1: 100, base: 0, unit: 0.01, zmin: -50, zmax: 50 } as TerrainMeta;
+  const raw = new Float32Array(200 * 200);
+  for (let r = 0; r < 200; r++) for (let c = 0; c < 200; c++) raw[r * 200 + c] = z(100 - r);
+  return new Terrain(meta, raw);
+}
+
+describe("vol (arcade)", () => {
+  /** Tremplin : 10 m de montée à 30 %, puis le sol retombe à zéro. */
+  const ramp = profileTerrain((y) => (y > 0 && y < 10 ? 0.3 * y : 0));
+  const launch = (fly: boolean): { maxAir: number; landY: number; impact: number } => {
+    const s = createVehicle(0, -40, 0, ramp);
+    s.vy = 20;
+    let maxAir = 0, landY = 0, impact = 0;
+    for (let i = 0; i < 400; i++) {
+      stepVehicle(s, CAR, { throttle: 0.3, brake: 0, steer: 0 }, DT, ramp, none, null, fly);
+      maxAir = Math.max(maxAir, s.air);
+      if (maxAir > 1 && s.air === 0 && !landY) landY = s.y;
+      impact = Math.max(impact, s.impact);
+      s.impact = 0;
+    }
+    return { maxAir, landY, impact };
+  };
+
+  it("le haut d'un tremplin pris à 72 km/h fait décoller, et l'on retombe plus loin avec un choc", () => {
+    const r = launch(true);
+    expect(r.maxAir).toBeGreaterThan(2);
+    expect(r.landY).toBeGreaterThan(20);
+    expect(r.impact).toBeGreaterThan(0);
+  });
+
+  it("sans vol (circulation, gendarmes), le véhicule suit le relief comme avant", () => {
+    expect(launch(false).maxAir).toBe(0);
+  });
+
+  it("ne décolle ni sur le plat, ni dans une descente régulière, ni sur un relief bosselé de quelques centimètres", () => {
+    const bumpy = profileTerrain((y) => -0.08 * y + 0.03 * Math.sin(y * 2.3) + 0.02 * Math.sin(y * 5.1));
+    for (const [t, grade] of [[flat, 0], [slopeTerrain(-0.08), -0.08], [bumpy, -0.08]] as const) {
+      // Déjà lancé dans la pente (sinon, le départ est une crête).
+      const s = createVehicle(0, -80, 0, t);
+      s.vy = 30;
+      s.vz = 30 * grade;
+      for (let i = 0; i < 300; i++) {
+        stepVehicle(s, CAR, { throttle: 1, brake: 0, steer: 0 }, DT, t, none, null, true);
+        expect(airborne(s)).toBe(false);
+      }
+    }
+  });
+
+  it("tombe d'un mur de soutènement de 5 m au lieu de se téléporter en bas", () => {
+    const ledge = profileTerrain((y) => (y < 0 ? 5 : 0));
+    const s = createVehicle(0, -20, 0, ledge);
+    s.vy = 10;
+    let flew = 0;
+    for (let i = 0; i < 180; i++) {
+      stepVehicle(s, CAR, { throttle: 0.2, brake: 0, steer: 0 }, DT, ledge, none, null, true);
+      if (airborne(s)) flew++;
+    }
+    // Une chute de 5 m dure environ √(2 × 5 / CAR_GRAVITY) ≈ 1,2 s.
+    expect(flew / 60).toBeGreaterThan(0.9);
+    expect(s.z).toBeCloseTo(0, 1);
   });
 });

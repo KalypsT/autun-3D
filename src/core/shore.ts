@@ -33,3 +33,11 @@ export function shoreNormal(terrain: HeightField, x: number, y: number): [number
   const n = Math.hypot(gx, gy);
   return n > 1e-6 ? [-gx / n, -gy / n] : [0, 0];
 }
+
+/**
+ * Sur un tablier de pont ou un quai (au-dessus du relief nu) : leurs extrémités ne rejoignent pas toujours la chaussée dans les données (D93),
+ * on y redescend sans tomber.
+ */
+export function onDeck(terrain: HeightField, x: number, y: number, z: number): boolean {
+  return terrain.ground !== undefined && z - terrain.ground.heightAt(x, y) > 0.3;
+}

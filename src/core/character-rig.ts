@@ -162,6 +162,48 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   a[BONE.head * 3 + 2] = -0.2 * roll;
 }
 
+/**
+ * En l'air (saut, chute), par-dessus une pose debout : jambes repliées et bras écartés vers le haut ; en tombant vite, les jambes se déplient
+ * pour la réception. `vz` : vitesse verticale (m/s). Le bassin garde sa hauteur debout : les pieds remontent sous le corps.
+ */
+export function airPose(pose: Pose, vz: number): void {
+  const a = pose.angles;
+  const tuck = clamp(1 + vz / 9, 0.35, 1);
+  for (const [thigh, shin, foot, lead] of [[BONE.thighL, BONE.shinL, BONE.footL, 1.15], [BONE.thighR, BONE.shinR, BONE.footR, 0.75]] as const) {
+    a[thigh * 3] = lead * tuck;
+    a[thigh * 3 + 2] = 0;
+    a[shin * 3] = -1.5 * tuck;
+    a[foot * 3] = 0.3 * tuck;
+  }
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 0.9 + 0.5 * (1 - tuck);
+    a[arm * 3 + 2] = side * 0.55;
+    a[fore * 3] = 0.5;
+  }
+  a[BONE.torso * 3] = -0.12 * tuck;
+  pose.rootDx = 0;
+}
+
+/** Escalade : bras tendus vers le haut, mains et pieds qui alternent ; `climbed` (m), hauteur gravie, donne le rythme. */
+export function climbPose(pose: Pose, climbed: number): void {
+  const a = pose.angles;
+  a.fill(0);
+  const s = Math.sin(climbed * 7);
+  a[BONE.armL * 3] = 2.7 + 0.3 * s;
+  a[BONE.armR * 3] = 2.7 - 0.3 * s;
+  a[BONE.armL * 3 + 2] = -0.25;
+  a[BONE.armR * 3 + 2] = 0.25;
+  a[BONE.forearmL * 3] = 0.35 - 0.3 * s;
+  a[BONE.forearmR * 3] = 0.35 + 0.3 * s;
+  a[BONE.thighL * 3] = 0.8 - 0.5 * s;
+  a[BONE.thighR * 3] = 0.8 + 0.5 * s;
+  a[BONE.shinL * 3] = -1.3 + 0.4 * s;
+  a[BONE.shinR * 3] = -1.3 - 0.4 * s;
+  a[BONE.torso * 3] = -0.1;
+  a[BONE.head * 3] = -0.25;
+  pose.rootDx = 0;
+}
+
 /** Genre de pose d'un passant heurté : 1 il trébuche, 2 il tombe, reste au sol, puis se relève. */
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
 /** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
