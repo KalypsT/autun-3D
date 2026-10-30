@@ -17,6 +17,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
+import { VehicleNameHud } from "../ui/vehicle-name";
 import { DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
@@ -308,6 +309,7 @@ export function startGame(ctx: GameContext): void {
   const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
+  const vehicleName = new VehicleNameHud(document.getElementById("vname")!);
   const mount = (v: Vehicle): void => {
     riding = v;
     leaving = false;
@@ -329,10 +331,12 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
+    vehicleName.show(v.def.badge);
   };
   /** Descend du véhicule ; `lean` : inclinaison où on le laisse (un deux-roues tombé reste couché). */
   const dismount = (lean = 0): void => {
     const v = riding!;
+    vehicleName.hide();
     const s = v.state;
     // Pied à terre du côté gauche (portière d'une voiture), hors des obstacles.
     const side = familyOf(v).dismount;

@@ -1335,3 +1335,42 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 - Pas de contrôle en l'air en véhicule, pas de tonneau : le véhicule retombe toujours sur ses roues.
 - Pas de tremplins posés exprès (à choisir : voir la proposition dans PROGRESS.md).
 - On ne monte pas sur un muret pour y rester : on passe toujours de l'autre côté.
+
+## 2026-10-30 — D107. Voitures plus belles et reconnaissables, nom du modèle en montant
+
+**Demande** : des véhicules trop simples, difficiles à distinguer les uns des autres ; les rendre plus jolis et mieux construits, donner un nom à chaque modèle et l'afficher brièvement quand on monte dedans, à la manière de GTA 3. Choix : **noms locaux** (marques fictives, clins d'œil à Autun) ; **style « affiche »** gardé (D17) ; **voitures d'abord** (les deux-roues ensuite) ; modèles uniques (un seul exemplaire sur la carte, qui réapparaît après un moment) et nouveaux modèles courants : plus tard ; dégâts des véhicules : chantier à part, après celui-ci.
+
+**Constat** (captures `?view=vehicles&family=car`, `docs/captures/d107-avant.jpg`) : toutes les voitures sortaient du même moule (D52) : quatre sections en trapèze, un bloc de verre, un toit plat, les mêmes phares rectangulaires crème, la même barre de calandre, les mêmes feux, pare-chocs et enjoliveurs. Seules les mesures changeaient, de 10 à 30 cm : à 30 m, citadine, compacte et berline étaient la même voiture. Les palettes reprenaient presque toutes les six mêmes couleurs.
+
+**Générateur refait** (`src/render/car-body.ts`) :
+- **Sections à huit coins** (octogone aplati : épaules et bas de caisse chanfreinés selon l'arrondi du modèle) au lieu de quatre ; profil en six à sept sections : nez arrondi en plan, capot bombé, coffre ou hayon, queue arrondie. Orientation des faces par tronçon (`ringLoft`) : juste même quand le profil n'est pas convexe.
+- **Passages de roue** : demi-ellipses sombres contre le flanc, derrière la face des pneus (qui affleurent désormais le bord hors tout : `wheelTrack`, utilisé aussi pour les traces de pneus) ; plus d'ailes en boîte.
+- **Vitrage lisible** : verre posé sur l'épaule de la caisse, montants A, B (et D sur un long toit) et C, rebord sous les vitres, toit en dalle chanfreinée.
+- **Flancs** : lignes de portières (trois ou cinq portes), poignées, rétroviseurs.
+- **Style par modèle** (`CarStyle`) : phares ronds, rectangulaires, en amande ou en bandeau, avec clignotants ; calandre fine, haute, chromée ou de sport (grande prise d'air) ; feux horizontaux, verticaux, en bandeau traversant ou ronds ; pare-chocs noirs, couleur caisse ou chromés ; couleur des jantes ; options : toit noir, montants noirs, baguette chromée, barres de toit, becquet ou aileron, protections de SUV, baguette de portière, écope de capot, échappements, ailes séparées et marchepieds (voiture ancienne), prise d'air, portes arrière battantes vitrées et porte coulissante (camionnette). Plaques avant et arrière.
+
+| modèle | nom | signature |
+|---|---|---|
+| citadine | Éduen Moineau | courte, hayon droit, phares ronds, baguette de portière, trois portes |
+| compacte | Éduen Arroux | hayon incliné, phares en amande, pare-chocs couleur caisse, becquet de toit |
+| berline | Augusta Préfète | trois volumes, calandre et baguettes chromées, phares rectangulaires |
+| break | Augusta Morvandelle | long pavillon, barres de toit, calandre haute, feux verticaux |
+| petit SUV | Éduen Morvan | toit et montants noirs, protections, phares et feux en bandeau |
+| camionnette | Couhard Mulet | caisse haute, portes arrière vitrées, porte coulissante |
+| vieille voiture | Éduen Pétrolette | ailes séparées, chromes, phares et feux ronds, jantes crème |
+| sportive | Augusta Janus | très basse, toit noir, aileron, écope, double échappement, jantes sombres |
+| gendarmerie | Éduen Arroux Gendarmerie | la compacte, pare-chocs noirs, livrée et gyrophares (D72) |
+
+Éduen (les Éduens, peuple gaulois d'Autun) : voitures populaires ; Augusta (Augustodunum) : haut de gamme ; Couhard (la pierre de Couhard) : utilitaires.
+
+**Couleurs** : une palette propre à chaque modèle (vives pour la citadine, sombres et sérieuses pour la berline, pastels pour la vieille voiture, beaucoup de blanc pour la camionnette…).
+
+**Nom en montant** (`src/ui/vehicle-name.ts`, `#vname`) : `VehicleDef.badge` (marque et modèle) ; en montant, la marque en petites capitales ocre et le modèle en grosses capitales crème ombrées d'encre, soulignées de rouge brique, à droite sous « Descendre », sur un dégradé sombre ; entrée en glissant, 2,4 s, puis effacement (3,2 s en tout) ; caché en descendant. Rien pour un véhicule sans nom (les deux-roues, pour l'instant).
+
+**Rendu par instances inchangé** (D56, D65) : aucun appel de dessin de plus. La peinture reste en blanc pur, teintée par instance ; aucune pièce de détail n'est blanc pur (test). Les roues de la circulation restent un seul maillage pour tous les modèles : la jante y est blanche, teintée par instance de la couleur de jantes du modèle (même nuanceur que la peinture). Les feux allumés la nuit (circulation, voiture conduite) suivent la position des phares et des feux de chaque style (`lampSpots`).
+
+**Coût** : par voiture garée (caisse, détails, quatre roues à 10 facettes), **1 100 à 1 260 triangles** (contre 560 à 700) ; la moitié environ dans les roues (96 chacune) et les petites pièces. Autour de la place, où le banc compte ≈ 126 véhicules garés dont une bonne moitié de voitures, le calcul (pas encore la mesure) donne **≈ +30 à 40 k triangles** à l'arrêt (sur ≈ 1,7 M). Plafonds des tests relevés en conséquence (caisse < 340, détails et roues < 1 000, total < 1 300). **À mesurer sur l'Honor** (`?bench=1&fleet=1&traffic=20`) ; si cela coûte, une version allégée pour les voitures garées au-delà de 60 m.
+
+**Pour les dégâts (chantier suivant)** : le générateur fabrique la caisse pièce par pièce (bas de caisse, toit, pare-chocs, portières délimitées) : on pourra déformer ou assombrir par zone la voiture conduite, et garder pour la voiture garée une géométrie « abîmée » par modèle (les instances ne peuvent pas chacune avoir leurs propres bosses sans coûter un maillage de plus).
+
+**Limites connues** : pas d'arrondi vrai (facettes, style « affiche ») ; la grille de calandre et les phares sont des volumes posés, pas des creux ; la vitre de custode n'existe que par le montant D du break.

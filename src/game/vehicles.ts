@@ -5,6 +5,7 @@ import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehi
 import { parkingZone, pickModel } from "../core/vehicle-placement";
 import { CATALOG, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
+import { wheelTrack } from "../render/car-body";
 import { CAR_BODIES, carRestGeometry, createCarModel } from "../render/car-model";
 import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
@@ -38,10 +39,10 @@ export function buildModel(def: VehicleDef, variant: number): VehicleModel {
   return MODEL_BUILDERS[def.id]!(paletteColor(def, variant));
 }
 
-/** Traces de pneus : la voie d'une voiture suit sa largeur (les roues sont à 13 cm du bord, comme dans le générateur de carrosserie). */
+/** Traces de pneus : la voie d'une voiture est celle de ses roues dessinées (générateur de carrosserie). */
 export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
-  const t = FAMILIES[v.def.family].tyre;
-  return v.def.family === "car" ? { ...t, track: v.def.size.width / 2 - 0.13 } : t;
+  const t = FAMILIES[v.def.family].tyre, body = CAR_BODIES[v.def.id];
+  return v.def.family === "car" && body ? { ...t, track: wheelTrack(body) } : t;
 }
 
 /** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (3,98 × 1,42 m). */

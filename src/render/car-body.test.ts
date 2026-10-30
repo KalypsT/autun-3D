@@ -48,13 +48,35 @@ describe("générateur de carrosserie", () => {
     expect(box.min.z).toBeCloseTo(noseZ, 2);
   });
 
+  // Budget (D107) : ≈ 1 100 triangles par voiture garée (caisse, détails et quatre roues), contre ≈ 700 avant le style par modèle.
   it.each(cars.map((d) => d.id))("%s : faces vers l'extérieur, et un nombre de triangles raisonnable", (id) => {
     const def = vehicleDef(id)!, p = CAR_BODIES[id]!, { front, rear } = def.spec;
     const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), glass = bodyDetailGeometry(p, front, rear);
     expect(signedVolume(paint)).toBeGreaterThan(1);
-    expect(triangles(paint)).toBeLessThan(250);
-    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(700);
+    expect(triangles(paint)).toBeLessThan(340);
+    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(1000);
+    expect(triangles(carRestGeometry(id))).toBeLessThan(1300);
     expect(triangles(glass)).toBeGreaterThan(0);
+  });
+
+  it("chaque voiture a sa signature : phares, calandre, feux, pare-chocs et jantes ne sont jamais tous les mêmes d'un modèle à l'autre (D107)", () => {
+    const signatures = cars.map((d) => {
+      const st = CAR_BODIES[d.id]!.style;
+      return [st.headlights, st.grille, st.taillights, st.bumpers, st.rim].join(" ");
+    });
+    expect(new Set(signatures).size).toBe(cars.length);
+    // Les voitures civiles (la gendarmerie reprend la compacte) se distinguent même par leur face avant seule.
+    const faces = cars.filter((d) => d.id !== "gendarmerie").map((d) => `${CAR_BODIES[d.id]!.style.headlights} ${CAR_BODIES[d.id]!.style.grille}`);
+    expect(new Set(faces).size).toBeGreaterThanOrEqual(6);
+  });
+
+  it("aucune pièce de détail n'est blanc pur (elle prendrait la teinte de la caisse sur une voiture garée ou de la circulation)", () => {
+    for (const d of cars) {
+      const p = CAR_BODIES[d.id]!, c = parkedDetailGeometry(p, d.spec.front, d.spec.rear).getAttribute("color");
+      let white = 0;
+      for (let i = 0; i < c.count; i++) if (c.getX(i) > 0.999 && c.getY(i) > 0.999 && c.getZ(i) > 0.999) white++;
+      expect([d.id, white]).toEqual([d.id, 0]);
+    }
   });
 
   it("une tranche en volume : un cube donne douze triangles et le volume attendu, vers l'extérieur", () => {

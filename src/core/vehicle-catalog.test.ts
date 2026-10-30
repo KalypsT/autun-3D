@@ -28,6 +28,12 @@ describe("catalogue de véhicules", () => {
     expect(defProblems({ ...d, family: "moto" })).toContain("inclinaison (deux-roues seulement)");
   });
 
+  it("chaque voiture a une marque et un nom de modèle, jamais deux fois le même (affichés en montant, D107)", () => {
+    const cars = CATALOG.filter((d) => d.family === "car");
+    expect(cars.every((d) => d.badge && d.badge.make.length > 0 && d.badge.model.length > 0)).toBe(true);
+    expect(new Set(cars.map((d) => `${d.badge!.make} ${d.badge!.model}`)).size).toBe(cars.length);
+  });
+
   it("la couleur d'une variante reste dans la palette, quel que soit le numéro", () => {
     const d = vehicleDef("citadine")!;
     for (const v of [0, 1, 6, 7, 15, -3, 2.7]) expect(d.palette).toContain(paletteColor(d, v));

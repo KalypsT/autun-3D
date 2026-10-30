@@ -599,3 +599,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - En véhicule (le tien seulement) : une crête prise vite ou le haut d'une montée font décoller, une falaise fait tomber ; en l'air, plus de direction ni de frein ; une réception brutale secoue, et fait tomber d'un deux-roues. La sortie des ponts ne fait pas sauter (les données des ponts ne rejoignent pas toujours la route).
 - 635 tests.
 - À faire de ton côté : sauter par-dessus une haie, escalader une grille, sauter d'un mur haut ; en voiture, prendre vite le haut d'une rue en pente et rouler vers une falaise au sud ; dire si la hauteur des sauts et la force des réceptions te conviennent.
+
+**Voitures plus belles et reconnaissables, nom du modèle en montant (30 octobre 2026)** (D107)
+- Chaque voiture a maintenant sa silhouette et sa « face » : formes arrondies ou anguleuses selon le modèle, passages de roue, vraies vitres avec leurs montants, portières, poignées, rétroviseurs, plaques ; phares ronds, rectangulaires, en amande ou en bandeau, calandres, feux, pare-chocs, jantes et accessoires différents (barres de toit, aileron, toit noir, chromes, ailes de voiture ancienne…).
+- Chaque modèle a un nom (marques fictives d'Autun) qui s'affiche quelques secondes en haut à droite quand tu montes dedans : Éduen Moineau (citadine), Éduen Arroux (compacte), Augusta Préfète (berline), Augusta Morvandelle (break), Éduen Morvan (petit SUV), Couhard Mulet (camionnette), Éduen Pétrolette (vieille voiture), Augusta Janus (sportive).
+- Une palette de couleurs propre à chaque modèle. Aucun appel de dessin de plus ; environ 1 200 triangles par voiture au lieu de 700. 638 tests.
+- À faire de ton côté : regarder la galerie (`?view=vehicles&family=car`, appui pour changer de couleur), monter dans plusieurs voitures, dire si on les reconnaît de loin et si les noms te plaisent ; lancer `?bench=1&fleet=1&traffic=20` sur le téléphone. Ensuite : les deux-roues, puis les modèles uniques et les dégâts.
+
+![Avant](docs/captures/d107-avant.jpg)
+![Les neuf voitures, de face](docs/captures/d107-voitures-avant.jpg)
+![Les neuf voitures, de l'arrière](docs/captures/d107-voitures-arriere.jpg)
+![Le nom du modèle en montant](docs/captures/d107-nom.jpg)
