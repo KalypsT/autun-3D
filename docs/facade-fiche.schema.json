@@ -131,6 +131,7 @@
           "properties": { "color": { "$ref": "#/$defs/color" }, "glazing": { "enum": ["full", "divided"] } }
         },
         "front": { "type": "integer", "minimum": 0, "description": "Mur d'entrée (indice dans `walls`) : vitrines et porte y vont (build_shop_fronts.py, D120). Absent : le plus long mur sur rue." },
+        "signWall": { "type": "integer", "minimum": 0, "description": "Mur de la grande enseigne d'une grande surface (correction à la main, D120). Absent : le plus grand mur de l'entrée." },
         "frontWalls": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Autres murs de l'entrée d'une grande surface, vitrés au rez-de-chaussée (correction à la main, D120)." },
         "shops": {
           "type": "array",

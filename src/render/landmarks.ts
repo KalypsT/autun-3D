@@ -80,11 +80,13 @@ interface Seg {
   front: boolean;
   /** Sur un autre mur de l'entrée (`frontWalls`), vitré au rez-de-chaussée. */
   glazed: boolean;
+  /** Sur le mur de l'enseigne (`signWall`). */
+  sign: boolean;
 }
 
 function segments(b: Building, fiche: FacadeFiche | undefined): Seg[] {
   const n = b.ring.length / 2;
-  const street = new Set<number>(), front = new Set<number>(), glazed = new Set<number>();
+  const street = new Set<number>(), front = new Set<number>(), glazed = new Set<number>(), sign = new Set<number>();
   const more = new Set(fiche?.ground.frontWalls ?? []);
   fiche?.walls.forEach((w, wi) => {
     if (w.hole !== undefined || w.role !== "street") return;
@@ -93,6 +95,7 @@ function segments(b: Building, fiche: FacadeFiche | undefined): Seg[] {
       street.add((w.a + j) % n);
       if (wi === fiche.ground.front) front.add((w.a + j) % n);
       if (more.has(wi)) glazed.add((w.a + j) % n);
+      if (wi === fiche.ground.signWall) sign.add((w.a + j) % n);
     }
   });
   const out: Seg[] = [];
@@ -102,7 +105,7 @@ function segments(b: Building, fiche: FacadeFiche | undefined): Seg[] {
     const len = Math.hypot(x2 - x1, y2 - y1);
     if (len < 0.5) continue;
     const tx = (x2 - x1) / len, ty = (y2 - y1) / len;
-    out.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: Math.min(b.top[i]!, b.top[j]!), street: street.has(i), front: front.has(i), glazed: glazed.has(i) });
+    out.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: Math.min(b.top[i]!, b.top[j]!), street: street.has(i), front: front.has(i), glazed: glazed.has(i), sign: sign.has(i) });
   }
   return out;
 }
@@ -270,8 +273,9 @@ function retail(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
   }
   // Grande enseigne sur l'acrotère.
   if (kind.n) {
-    // Sur le plus grand mur de l'entrée quand elle en a plusieurs (un sas étroit entre des murs vitrés).
-    const sg = segs.reduce((best, s) => (s.glazed && s.len > best.len ? s : best), g);
+    // Sur le mur de l'enseigne s'il est donné, sinon sur le plus grand mur de l'entrée (un sas étroit entre des murs vitrés).
+    const marked = segs.filter((s) => s.sign && s.len >= 2);
+    const sg = marked.length > 0 ? marked.reduce((a, b) => (b.len > a.len ? b : a)) : segs.reduce((best, s) => (s.glazed && s.len > best.len ? s : best), g);
     const [sx, sy] = onSeg(sg, sg.len / 2);
     const h = Math.min(3.0, Math.max(1.4, (sg.top - terrain.heightAt(sx, sy)) * 0.36));
     signboard(sinks, sg, sg.len / 2, Math.max(za + 0.9, sg.top - h - 0.1), h, sg.len * 0.7, kind.n, kind.c ? C(kind.c) : accent, kind.tc ?? "#ffffff");
@@ -491,7 +495,7 @@ function tower(sinks: LandmarkSinks, b: Building, t: [number, number, number, nu
     const [x1, y1] = corners[i]!, [x2, y2] = corners[(i + 1) % 4]!;
     const len = Math.hypot(x2 - x1, y2 - y1) || 1;
     const tx = (x2 - x1) / len, ty = (y2 - y1) / len;
-    faces.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: body, street: false, front: false, glazed: false });
+    faces.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: body, street: false, front: false, glazed: false, sign: false });
   }
   const louver = C("#3a3634");
   const bh = Math.min(3.2, (body - z0) * 0.22);
@@ -558,7 +562,7 @@ function fuel(sinks: LandmarkSinks, site: Extract<Site, { t: "fuel" }>, roof: Bu
   block(sinks.solid, tx, ty, f.ux, f.uy, 0.75, 0.22, z - 0.2, z + 5.5, accent);
   for (const side of [1, -1]) {
     const g: Seg = { x: tx - f.ux * 0.65 * side - f.vx * 0.23 * side, y: ty - f.uy * 0.65 * side - f.vy * 0.23 * side, tx: f.ux * side, ty: f.uy * side,
-      nx: f.uy * side, ny: -f.ux * side, len: 1.3, top: z + 5.5, street: true, front: false, glazed: false };
+      nx: f.uy * side, ny: -f.ux * side, len: 1.3, top: z + 5.5, street: true, front: false, glazed: false, sign: false };
     for (let k = 0; k < 3; k++) plate(sinks.solid, g, 0.15, 1.15, z + 1.6 + k * 0.75, z + 2.2 + k * 0.75, 0.01, WHITE);
     if (site.n) text(sinks, g, 0.65, z + 4.3, 0.2, 0.02, site.n, "#ffffff");
   }

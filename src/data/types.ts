@@ -384,6 +384,8 @@ export interface FacadeFiche {
     front?: number;
     /** Autres murs de l'entrée d'une grande surface, vitrés au rez-de-chaussée (correction à la main, D120). */
     frontWalls?: number[];
+    /** Mur de la grande enseigne d'une grande surface (correction à la main, D120) ; absent : le plus grand mur de l'entrée. */
+    signWall?: number;
   };
   walls: WallRun[];
 }
