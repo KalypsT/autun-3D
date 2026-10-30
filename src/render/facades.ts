@@ -147,7 +147,9 @@ export function* planFacadesSteps(
     if (!f) continue;
     const fa = f.facade;
     const gh = f.storeys.ground, uh = f.storeys.upper;
+    // Le mur d'entrée de la fiche (D120), sinon le plus long mur sur rue.
     const mainIdx = (() => {
+      if (f.ground.front !== undefined && f.walls[f.ground.front]) return f.ground.front;
       let best = -1, len = 0;
       f.walls.forEach((w, i) => {
         if (w.role === "street" && w.hole === undefined && w.length > len) {

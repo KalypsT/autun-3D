@@ -738,3 +738,30 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Les passagers](docs/captures/d119-passagers.jpg)
 ![Le train complet au départ](docs/captures/d119-train-complet.jpg)
 
+
+**Les vitrines et les enseignes du bon côté (30 octobre 2026)** (D120)
+- Avant : une vitrine sans nom sur deux et près d'une enseigne sur quatre étaient sur l'arrière du bâtiment ou sur une autre rue que celle de leur adresse (toute l'avenue Charles-de-Gaulle, entre autres).
+- Maintenant, chaque bâtiment commerçant a un mur d'entrée : la porte cartographiée, sinon le mur qui donne sur la rue de l'adresse, sinon (grandes surfaces) celui qui donne sur le parking. Il reste 6 enseignes et 2 vitrines sur une autre rue, toutes sur des bâtiments d'angle.
+- Une correction à la main par bâtiment est possible (`fronts` dans `tools/data/manual.json`). Première utilisée : E.Leclerc, dont l'entrée est le bloc avancé de la façade nord d'après ta photo (sas au milieu, vitrines de part et d'autre, enseigne sur le mur blanc juste à droite de l'entrée).
+- 721 tests.
+
+![Avant](docs/captures/d120-cic-avant.jpg)
+![Après : le CIC côté avenue](docs/captures/d120-cic-apres.jpg)
+![E.Leclerc : enseigne sur la façade nord](docs/captures/d120-leclerc-nord.jpg)
+
+**Bâtiments d'après photos, étape 1 : les abris à chariots (30 octobre 2026)** (D121)
+- Les six cubes beiges du parking de Leclerc sont devenus des abris ouverts d'après ta photo : cadre anthracite, toit plat, bandeau jaune et noir côté magasin, chariots bleus.
+- Suite prévue : l'entrée de Leclerc (sas à pyramide, vitrage, auvent sur poteaux, enseigne basse), puis son volume (toits à deux pentes, bardage vert-gris).
+- 721 tests.
+
+![Avant](docs/captures/d121-chariots-avant.jpg)
+![Après](docs/captures/d121-chariots-apres.jpg)
+
+**Bâtiments d'après photos, étape 2 : l'entrée d'E.Leclerc (30 octobre 2026)** (D122)
+- Le bloc d'entrée suit tes photos : grand vitrage à montants sombres, marquise anthracite continue sur poteaux fins, bandeau sombre au-dessus, potelets inox, pyramide de verre sur le sas.
+- Le faux hangar collé au mur nord est devenu la marquise qui prolonge l'entrée ; l'enseigne est basse, en lettres bleues sur panneau blanc.
+- Suite prévue : le volume (toits à deux pentes du LiDAR, pignons crème, bardage vert-gris du côté est).
+- 721 tests.
+
+![De face](docs/captures/d122-leclerc-face.jpg)
+![Depuis l'ouest](docs/captures/d122-leclerc-ouest.jpg)

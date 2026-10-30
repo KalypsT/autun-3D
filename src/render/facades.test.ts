@@ -19,6 +19,7 @@ describe("fiches façade", () => {
         expect(w.length).toBeGreaterThan(0);
       }
       for (const s of f!.ground.shops ?? []) expect(s.wall).toBeLessThan(f!.walls.length);
+      if (f!.ground.front !== undefined) expect(f!.walls[f!.ground.front]?.role, b.id).toBe("street");
     }
   });
 });
@@ -45,6 +46,25 @@ describe("planFacades", () => {
   it("garde les fenêtres au-dessus du sol", () => {
     const low = plan.placements.filter((p) => p.key.startsWith("win|") && p.z <= terrain.heightAt(p.x, p.y) + 0.1);
     expect(low.length).toBe(0);
+  });
+
+  it("pose les vitrines sans nom sur le mur d'entrée de la fiche (D120)", () => {
+    // Un commerce sans nom dont le mur d'entrée n'est pas le plus long mur sur rue : ses enseignes doivent regarder le mur d'entrée.
+    const f = tile.fiches.find((fi) => {
+      if (fi.ground.kind !== "shop" || fi.ground.shops?.length || fi.ground.front === undefined) return false;
+      const longest = fi.walls.reduce((best, w, i) => (w.role === "street" && w.hole === undefined && w.length > (fi.walls[best]?.length ?? 0) ? i : best), -1);
+      return longest !== fi.ground.front && fi.walls[fi.ground.front]!.length > 6;
+    });
+    expect(f).toBeDefined();
+    const b = buildings.find((x) => x.id === f!.id)!;
+    const one = planFacades([b], new Map([[b.id, f!]]), terrain);
+    const signs = one.placements.filter((p) => p.atlas === "sign");
+    expect(signs.length).toBeGreaterThan(0);
+    const w = f!.walls[f!.ground.front!]!, n = b.ring.length / 2;
+    const ax = b.ring[2 * w.a]!, ay = b.ring[2 * w.a + 1]!, bx = b.ring[2 * ((w.a + 1) % n)]!, by = b.ring[2 * ((w.a + 1) % n) + 1]!;
+    const len = Math.hypot(bx - ax, by - ay);
+    // Normale sortante de la première arête du mur d'entrée, la même que celle de l'enseigne.
+    for (const p of signs) expect(p.nx * ((by - ay) / len) + p.ny * (-(bx - ax) / len)).toBeGreaterThan(0.7);
   });
 
   it("limite le nombre de sprites distincts (taille de l'atlas)", () => {

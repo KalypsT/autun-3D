@@ -1579,3 +1579,58 @@ Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1
 
 **Essais** : `?at=53.5,-42.8&yaw=-2.4&h=12&dist=2.5` (de près, au départ) ; vérifié en jeu : passagers à bord, puis plus personne après le vol. 1 essai de plus (places prises : environ la moitié, toujours les mêmes, différentes d'un wagon à l'autre). 720 tests.
 
+
+## 2026-10-30 — D120. Les vitrines et les enseignes du bon côté
+
+**Demande de l'utilisateur** : la plupart des magasins ont leur enseigne du mauvais côté (dont E.Leclerc).
+
+**Cause** (`build_facades.py`) : la vitrine allait sur le mur « de rue » le plus long du bâtiment, ou, pour un commerce d'OpenStreetMap, sur le mur de rue le plus proche de son point. Or ce point est souvent au milieu du bâtiment, et un mur arrière à une dizaine de mètres d'une ruelle compte comme mur de rue. **Mesure** (bâtiments dont la rue de l'adresse passe à moins de 22 m d'un mur) : 141 vitrines sans nom sur 244 et 43 enseignes nommées sur 192 regardaient une autre rue que celle de l'adresse (toute l'avenue Charles-de-Gaulle, rue Saint-Saulge, rue aux Cordiers…).
+
+**Correction** : étape autonome `tools/data/build_shop_fronts.py` (après `build_map.py`, dont elle lit les 345 rues nommées de `map/places.json`). Pour chaque bâtiment commerçant (fiche « commerce » ou grande surface de `kinds`), elle choisit le **mur d'entrée** (`ground.front`, nouveau champ facultatif de la fiche) et le mur de chaque commerce nommé, du plus sûr au moins sûr :
+0. une correction à la main (`fronts` de `tools/data/manual.json`, d'après une photo) ;
+1. une porte OpenStreetMap posée sur le contour (`entrance`, désormais gardée par `fetch.py` ; seulement 3 à Autun) ;
+2. le point du commerce s'il est sur le contour (cartographié à sa porte) ;
+3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m, parkings OpenStreetMap) ;
+4. le mur qui regarde la rue de l'adresse (`addr:street` du commerce, sinon adresse BAN du bâtiment) ;
+5. sinon rien ne change (347 bâtiments : adresse inconnue, ou rue à plus de 22 m, en cœur d'îlot).
+Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reçoit alors volets et encadrements). Rien d'autre ne change dans les tuiles (relues et réécrites à l'octet près ; une deuxième passe ne réécrit rien).
+
+**Rendu** : `planFacades` prend `ground.front` comme mur principal (porte ou vitrines), sinon le plus long mur sur rue comme avant ; les grandes surfaces (`landmarks.ts`) posent entrée vitrée, auvent et grande enseigne sur le plus long pan du mur d'entrée. `build_nav.py` place le point « commerce » devant ce mur (à la prochaine régénération de la navigation).
+
+**Résultat** (même mesure) : 6 enseignes nommées sur 192 et 2 vitrines sur 244 regardent encore une autre rue (commerces d'angle dont le point OpenStreetMap est sur l'autre façade). 87 tuiles réécrites, 42 enseignes nommées changent de mur, 18 grandes surfaces sont tournées vers leur parking ; 721 tests (1 de plus : les vitrines suivent le mur d'entrée). **E.Leclerc** : le calcul gardait l'entrée à l'ouest (côté parking, comme avant). D'après une capture de l'entrée fournie par l'utilisateur, l'entrée est sur la **façade nord**, au **bloc avancé** : un sas à pyramide (mur 5, 7,5 m) entre deux murs vitrés (9 et 3). Une première tentative sur le grand mur nord en retrait (11) était fausse : l'annexe qui le borde est une simple bande, pas le sas. D'où un champ de plus, `also` dans `fronts` (manual.json) et `ground.frontWalls` dans la fiche : les autres murs de l'entrée d'une grande surface, **vitrés au rez-de-chaussée** ; l'auvent reste sur le mur d'entrée (ici le sas, vitré sur toute sa largeur) ; la grande enseigne va sur le mur `sign` (`ground.signWall`) s'il est donné, à `signAt` mètres de son début (`ground.signAt`, 9 m de large au plus), sinon sur le plus grand mur de l'entrée. Leclerc : enseigne sur le grand mur nord en retrait (mur 11), à 8 m du bloc d'entrée, avant la petite annexe, d'après l'utilisateur. Les murs d'une correction à la main passent en rôle « rue » avant tout choix : une seule passe suffit. La capture (Google Street View) n'est pas versionnée : elle a seulement servi à lire l'entrée.
+
+![E.Leclerc : l'enseigne sur la façade nord](captures/d120-leclerc-nord.jpg)
+
+![Avenue Charles-de-Gaulle, avant](captures/d120-cic-avant.jpg)
+![Avenue Charles-de-Gaulle, après : le CIC côté avenue](captures/d120-cic-apres.jpg)
+
+## 2026-10-30 — D121. Bâtiments d'après photos, étape 1 : les abris à chariots
+
+**Demande de l'utilisateur** : améliorer des bâtiments d'après ses photos, en commençant par E.Leclerc. Photos fournies (captures Google Street View, non versionnées : elles servent seulement à décrire) : l'entrée nord, un abri à chariots, le côté est (2018). Ordre convenu : abris à chariots, puis l'entrée de Leclerc, puis son volume (toits à deux pentes du LiDAR, bardage).
+
+**Constat** : devant l'entrée, six cubes beiges pleins de 2,3 × 8,2 m. Ce sont les abris à chariots, que la BD TOPO donne comme de petits bâtiments (hauteur 2,3 m, deux à 5,6 m : arbres voisins dans le LiDAR).
+
+**Détection** (`tools/data/build_carts.py`, étape autonome après `build_kinds.py`, qui réécrit `kinds`) : emprise rectangulaire (≥ 85 % de son rectangle orienté), 1,8 à 3,2 m sur 6 à 12 m, sur un parking OpenStreetMap (à moins de 3 m), à moins de 60 m d'une grande surface sans y être collée ; seuls les types « rien », annexe ou hangar sont remplacés. Type `cart`, avec `open` : le milieu du petit côté le plus proche de la grande surface. **Règle prudente** : les six abris de Leclerc, rien d'autre ; les boîtes de 3 × 4,8 m près de Lidl et de Biocoop (120 à 240 m, plus courtes) restent des bâtiments faute de photo.
+
+**Dessin** (`cartShelter`, `landmarks.ts`), d'après la photo : cadre d'acier anthracite (poteaux aux coins et tous les 2,8 m au plus, lisses haute, médiane et basse), toit plat clair débordant de 10 cm, petit côté ouvert avec bandeau jaune et noir, chariots bleus emboîtés sur les deux tiers de la longueur. Pas de vitres pleines : le verre clair de la photo laisse voir les chariots, des panneaux opaques auraient refait des boîtes. Les murs et le toit génériques ne sont plus dessinés (comme `hidden`) ; la collision reste celle de l'emprise. Coût : quelques centaines de triangles dans la géométrie des détails, aucun appel de dessin de plus.
+
+**Pas encore** : les abris des autres enseignes (photos à venir) ; ils restent des boîtes dans les silhouettes lointaines (LOD).
+
+![Avant : un cube beige devant l'entrée](captures/d121-chariots-avant.jpg)
+![Après : abri ouvert, chariots](captures/d121-chariots-apres.jpg)
+
+## 2026-10-30 — D122. Bâtiments d'après photos, étape 2 : l'entrée d'E.Leclerc
+
+**D'après les photos de l'utilisateur** (entrée nord vue de face, de l'ouest et de l'est) : bloc d'entrée vitré à montants anthracite, sas surmonté d'une pyramide de verre clair, marquise anthracite continue sur poteaux fins, bandeau anthracite au-dessus, potelets inox au bord du trottoir, enseigne basse (lettres bleues sur mur blanc) juste à l'ouest du bloc, la marquise continuant le long du mur nord.
+
+**Bloc d'entrée** (`entranceBlock`, `landmarks.ts`), quand une grande surface a des murs d'entrée vitrés (`frontWalls`, D120) : sur le sas et chacun de ces murs, vitrage jusqu'à 3,85 m avec traverse à 2,5 m et montants tous les 1,8 m environ ; marquise de 45 cm d'épaisseur dont le **bord avant est aligné** à 3,2 m devant le mur le plus avancé (les murs en retrait ont une marquise plus profonde : pas de trou aux décrochements), dessous clair, poteaux tous les 6 m au plus ; bandeau anthracite de 1,3 m au-dessus ; potelets inox (0,9 m) tous les 1,8 m, 0,6 m devant la marquise ; **pyramide** de verre clair (4,6 m de haut) sur le sas, de 1,2 m dans le mur jusqu'au bord de la marquise. Les faces de la pyramide sont orientées par le calcul (matériau à une face). Les grandes surfaces sans correction gardent l'entrée et l'auvent de D92.
+
+**Marquise le long du mur nord** : la bande BD TOPO de 3,2 × 36 m et 4,3 m de haut collée au mur 11, dessinée en hangar, est la marquise. Nouveau : `kinds` dans `tools/data/manual.json` impose un type d'après photo ; `build_carts.py` l'applique après `build_kinds.py` (qui réécrit `kinds`) et corrige seulement les statistiques de l'index de ce qu'il change (build_kinds compte aussi la marge hors des tuiles). La bande devient un auvent `style: "marquise"` (`marquise`, `landmarks.ts`) : dalle anthracite de 45 cm, dessous clair, poteaux fins tous les 6 m au plus ; on passe dessous (auvent : pas de collision).
+
+**Enseigne basse** : `signZ` dans `fronts` (fiche : `ground.signZ`) pose l'enseigne à tant de mètres du sol, panneau blanc et lettres à la couleur de l'enseigne, 1,4 m de haut ; Leclerc : 2,3 m.
+
+**Pas encore** (étape 3) : le volume. Le bloc d'entrée réel est plus bas que la halle ; la halle a des toits à deux pentes (13 pans dans le LiDAR, égout 9,3 m, faîte 13,9 m), des pignons crème et un bardage vert-gris (photo du côté est, 2018), alors que les grandes surfaces sont dessinées en boîtes à toit plat (`ROOF_SCALE` 0).
+
+![De face](captures/d122-leclerc-face.jpg)
+![Depuis l'ouest](captures/d122-leclerc-ouest.jpg)
+![Depuis l'est](captures/d122-leclerc-est.jpg)

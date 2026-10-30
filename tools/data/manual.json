@@ -3,5 +3,13 @@
   "stairs": [
     {"id": "hotel-de-ville", "bbox": [14, 58, 42, 92], "base": -4.4, "riser": 0.17}
   ],
+  "_fronts": "fronts : mur d'entrée d'un bâtiment commerçant {\"wall\": indice dans les murs de sa fiche, \"also\": autres murs de l'entrée (vitrés, grandes surfaces), \"sign\": mur de la grande enseigne, \"signAt\": milieu de l'enseigne en mètres depuis le début de ce mur (sinon au milieu), \"signZ\": bas d'une enseigne basse, en mètres au-dessus du sol, \"photo\": référence}, vu sur une photo ; build_shop_fronts.py l'impose (D120).",
+  "fronts": {
+    "BATIMENT0000000348848856": {"wall": 5, "also": [9, 7, 3], "sign": 11, "signAt": 8, "signZ": 2.3, "photo": "E.Leclerc : sas d'entrée à pyramide (mur 5) au milieu du bloc avancé de la façade nord, vitré (murs 9, 7, 3), enseigne sur le grand mur nord en retrait (mur 11), contre le bloc d'entrée, avant la petite annexe ; capture Google Street View fournie par l'utilisateur, juillet 2026"}
+  },
+  "_kinds": "kinds : type imposé à un bâtiment d'après photo (identifiant -> entrée de public/data/kinds) ; build_carts.py l'applique après build_kinds.py (D122).",
+  "kinds": {
+    "BATIMENT0000000348848861": {"k": "canopy", "style": "marquise", "photo": "E.Leclerc : la bande de 3,2 × 36 m le long du mur nord est la marquise de l'entrée (capture Google Street View fournie par l'utilisateur)"}
+  },
   "fenceHeights": {"fence": 1.8, "gate": 2.4}
 }

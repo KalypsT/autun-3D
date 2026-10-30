@@ -186,7 +186,7 @@ export interface StairsZone {
 
 export type BuildingKindId =
   | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
-  | "care" | "culture" | "church" | "chapel" | "hidden";
+  | "care" | "culture" | "church" | "chapel" | "hidden" | "cart";
 
 /** Volumes d'une cathédrale mesurés au LiDAR (D95) : repère (centre, angle de l'axe, chevet vers les s positifs), abscisses, hauteurs. */
 export interface CathedralSpec {
@@ -214,6 +214,10 @@ export interface BuildingKind {
   /** Couleur du panneau et des lettres de l'enseigne. */
   c?: string;
   tc?: string;
+  /** Auvent : « marquise » anthracite sur poteaux fins, le long d'une façade (correction à la main d'après photo, D122). */
+  style?: "marquise";
+  /** Abri à chariots : milieu du petit côté ouvert (D121). */
+  open?: [number, number];
   /** 1 : bâtiment principal de son site (inscription, drapeaux). */
   main?: 1;
   /** Clocher : x, y, côté, z du haut de la tour, z de la pointe. */
@@ -380,6 +384,16 @@ export interface FacadeFiche {
     door: { style: "simple" | "carriage" | "glazed" | "garage" | "none"; color: string };
     shopfront?: { color: string; glazing: "full" | "divided" };
     shops?: Shop[];
+    /** Mur d'entrée (indice dans `walls`), qui reçoit vitrines et porte ; absent : le plus long mur sur rue (D120). */
+    front?: number;
+    /** Autres murs de l'entrée d'une grande surface, vitrés au rez-de-chaussée (correction à la main, D120). */
+    frontWalls?: number[];
+    /** Mur de la grande enseigne d'une grande surface (correction à la main, D120) ; absent : le plus grand mur de l'entrée. */
+    signWall?: number;
+    /** Milieu de la grande enseigne, en mètres depuis le début du mur `signWall` ; absent : au milieu du mur. */
+    signAt?: number;
+    /** Enseigne basse d'après photo : bas du panneau, en mètres au-dessus du sol (D122) ; absent : en haut du mur. */
+    signZ?: number;
   };
   walls: WallRun[];
 }

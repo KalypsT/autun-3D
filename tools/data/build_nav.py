@@ -197,7 +197,9 @@ def build_pois(tiles, ways, node_tags, nodes, plaza_nodes, gp, zone):
         street = [w for w in f["walls"] if w["role"] == "street"]
         if not street:
             continue
-        w = max(street, key=lambda w: w["length"])
+        # Le mur d'entrée choisi par build_shop_fronts.py (D120), sinon le plus long mur sur rue.
+        front = f["ground"].get("front")
+        w = f["walls"][front] if front is not None else max(street, key=lambda w: w["length"])
         a, b = (ring[2 * w["a"]], ring[2 * w["a"] + 1]), (ring[2 * w["b"]], ring[2 * w["b"] + 1])
         mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
         nx, ny = -(b[1] - a[1]), b[0] - a[0]
