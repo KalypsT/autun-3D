@@ -640,7 +640,8 @@ def main():
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
     ORTHO = common.ortho()
     pts = common.points([6])
-    _INDEX = common.PointIndex(pts["x"], pts["y"], pts["z"])
+    # Un bloc de bordure peut n'avoir aucun point bâtiment (D105) : ses bâtiments éventuels échouent alors un à un, sans arrêter la chaîne.
+    _INDEX = common.PointIndex(pts["x"], pts["y"], pts["z"]) if len(pts["x"]) else None
     _MNT = common.raster("MNT") - c.ORIGIN_Z
     print(f"{len(pts['x'])} points bâtiment indexés")
 

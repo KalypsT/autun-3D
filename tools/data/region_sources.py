@@ -31,10 +31,9 @@ to_l93 = Transformer.from_crs(4326, 2154, always_xy=True)
 
 
 def region_box(margin=60.0):
-    """Emprise Lambert-93 (x0, y0, x1, y1) des tuiles de REGION, élargie de `margin` mètres."""
-    c0, r0, nx, ny = c.REGION
-    x0, y0 = (c.GRID_I0 + c0) * c.TILE, (c.GRID_J0 + r0) * c.TILE
-    return x0 - margin, y0 - margin, x0 + nx * c.TILE + margin, y0 + ny * c.TILE + margin
+    """Emprise Lambert-93 (x0, y0, x1, y1) des tuiles de region.json, élargie de `margin` mètres."""
+    x0, y0, x1, y1 = c.region_bounds()
+    return x0 - margin, y0 - margin, x1 + margin, y1 + margin
 
 
 def local(lon, lat):

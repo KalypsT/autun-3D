@@ -42,6 +42,9 @@ for b in json.load(open(c.CACHE / "work" / "buildings.json")):
 
 ok = ~np.isnan(model) & ~np.isnan(mns)
 d = (model - mns)[ok]
+if d.size == 0:  # bloc de bordure sans toit (D105)
+    print("cellules de toit : 0")
+    sys.exit(0)
 print(f"cellules de toit : {ok.sum()} ; écart absolu médian {np.median(np.abs(d)):.2f} m, "
       f"90e centile {np.percentile(np.abs(d), 90):.2f} m ; < 0,5 m : {(np.abs(d) < 0.5).mean():.0%} ; biais {d.mean():+.2f} m")
 if len(sys.argv) > 1:

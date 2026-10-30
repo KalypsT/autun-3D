@@ -172,7 +172,8 @@ def main():
 
     TILES.mkdir(parents=True, exist_ok=True)
     LODS.mkdir(parents=True, exist_ok=True)
-    # Un bloc ne remplace que ses propres tuiles.
+    # Un bloc ne remplace que ses propres tuiles, et jamais celles de KEEP (contexte seulement, D105).
+    block = c.write_tiles(*c.BLOCK_ID)
     for col, row in block:
         (TILES / f"{c.tile_id(col, row)}.json").unlink(missing_ok=True)
         (LODS / f"{c.tile_id(col, row)}.json").unlink(missing_ok=True)

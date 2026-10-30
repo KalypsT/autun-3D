@@ -1,5 +1,6 @@
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
+import { holdShore, WADE_DEPTH } from "./shore";
 
 /** Piéton : logique pure. Repère : x est, y nord, z haut ; cap 0 = nord, sens horaire (comme le soleil). */
 
@@ -79,11 +80,16 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
       p.vy -= into * r.ny;
     }
   }
-  // Limites du monde (3 m de marge).
+  // Limites du monde (3 m de marge), puis la mer : on y entre jusqu'à la taille, pas plus loin (D105).
   x = Math.min(Math.max(x, terrain.xMin + 3), terrain.xMax - 3);
   y = Math.min(Math.max(y, terrain.yMin + 3), terrain.yMax - 3);
-  p.x = x;
-  p.y = y;
+  const shore = holdShore(terrain, p.x, p.y, x, y, WADE_DEPTH);
+  if (shore.blocked) {
+    if (shore.x === p.x) p.vx = 0;
+    if (shore.y === p.y) p.vy = 0;
+  }
+  p.x = shore.x;
+  p.y = shore.y;
   p.z = terrain.heightAt(x, y, p.z);
   p.speed = Math.hypot(p.vx, p.vy);
   if (p.speed > 0.15) {
@@ -110,8 +116,9 @@ export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, co
       p.vy -= into * r.ny;
     }
   }
-  p.x = Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3);
-  p.y = Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3);
+  const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH);
+  p.x = shore.x;
+  p.y = shore.y;
   p.z = terrain.heightAt(p.x, p.y, p.z);
   p.speed = 0;
 }

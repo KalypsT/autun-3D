@@ -96,7 +96,7 @@ function roofTexture(): THREE.CanvasTexture {
 
 let gradientMap: THREE.DataTexture | null = null;
 /** Trois paliers de lumière pour l'ombrage « affiche ». */
-function toonGradient(): THREE.DataTexture {
+export function toonGradient(): THREE.DataTexture {
   if (!gradientMap) {
     gradientMap = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
     gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;

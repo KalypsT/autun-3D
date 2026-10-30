@@ -165,7 +165,7 @@ def lidar():
         list(pool.map(lambda t: download_file(urls[f"{t[0]:04d}-{t[1]:04d}"], SHARED / f"lidar_{t[0]}_{t[1]}.copc.laz"), c.LIDAR_TILES))
 
 
-# --- BDNB : toute la commune, 10 lignes par appel ----------------------------------------------
+# --- BDNB : les communes de c.INSEE, 10 lignes par appel ----------------------------------------------
 def bdnb(dest):
     if dest.exists() and not FORCE:
         print(f"= {dest.relative_to(c.ROOT)}")
@@ -173,27 +173,35 @@ def bdnb(dest):
     select = ("batiment_groupe_id,annee_construction,mat_mur_txt,mat_toit_txt,nb_niveau,nb_log,hauteur_mean,"
               "usage_principal_bdnb_open,libelle_adr_principale_ban,denomination_monument_historique,"
               "distance_monument_historique,perimetre_bat_historique,geom_groupe")
-    part = dest.with_suffix(".part.json")
-    rows = json.loads(part.read_text()) if part.exists() else []
-    offset = len(rows)
-    while True:
-        r = get(
-            "https://api.bdnb.io/v1/bdnb/donnees/batiment_groupe_complet",
-            params={"code_commune_insee": f"eq.{c.INSEE_AUTUN}", "select": select, "order": "batiment_groupe_id", "limit": 10, "offset": offset},
-            timeout=120,
-        )
-        page = r.json()
-        rows += page
-        offset += 10
-        if offset % 500 == 0:
-            part.write_text(json.dumps(rows, ensure_ascii=False))
-            print(f"  bdnb : {len(rows)} groupes")
-        if len(page) < 10:
-            break
-        time.sleep(0.55)
+    rows = []
+    for insee in c.INSEE:  # une commune à la fois : un filtre « in.(…) » dépasse le délai du serveur
+        part = dest.with_name(f"{dest.stem}_{insee}.part.json")
+        done = dest.with_name(f"{dest.stem}_{insee}.json")
+        if done.exists():
+            rows += json.loads(done.read_text())
+            continue
+        mine = json.loads(part.read_text()) if part.exists() else []
+        offset = len(mine)
+        while True:
+            r = get(
+                "https://api.bdnb.io/v1/bdnb/donnees/batiment_groupe_complet",
+                params={"code_commune_insee": f"eq.{insee}", "select": select, "order": "batiment_groupe_id", "limit": 10, "offset": offset},
+                timeout=120,
+            )
+            page = r.json()
+            mine += page
+            offset += 10
+            if offset % 500 == 0:
+                part.write_text(json.dumps(mine, ensure_ascii=False))
+                print(f"  bdnb {insee} : {len(mine)} groupes")
+            if len(page) < 10:
+                break
+            time.sleep(0.55)
+        done.write_text(json.dumps(mine, ensure_ascii=False))
+        part.unlink(missing_ok=True)
+        rows += mine
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(rows, ensure_ascii=False))
-    part.unlink(missing_ok=True)
     print(f"+ {dest.relative_to(c.ROOT)} ({len(rows)} groupes)")
 
 

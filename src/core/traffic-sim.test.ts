@@ -16,7 +16,8 @@ const citadine = vehicleDef("citadine")!.spec;
 function straightRoad(): number {
   for (const m of real.starts(1, 150)) {
     const e = moveEdge(m);
-    if (nav.road.edgeWidth(e) < 5.5 || nav.road.oneway(e)) continue;
+    // En ville (50 km/h au plus) : une voiture y accélère encore au moment des mesures, sans buter sur la vitesse permise (D105).
+    if (nav.road.edgeWidth(e) < 5.5 || nav.road.oneway(e) || nav.road.edgeSpeed(e) > 50) continue;
     const poly: number[] = [];
     const n = nav.road.polyline(e, poly);
     const h0 = Math.atan2(poly[2]! - poly[0]!, poly[3]! - poly[1]!), h1 = Math.atan2(poly[n * 2 - 2]! - poly[0]!, poly[n * 2 - 1]! - poly[1]!);

@@ -31,10 +31,10 @@ export interface PolicePlayer {
 }
 
 /**
- * Reprise après une arrestation (D75) : à pied, sur le trottoir d'une route du bord est de l'anneau, à mi-hauteur (la gendarmerie d'Autun est à ≈ 270 m
- * à l'est de la zone, D33 ; sa position exacte n'est pas dans les données). Vérifié par un test : un trottoir, dans la zone jouable.
+ * Reprise après une arrestation (D75, D105) : à pied, sur le trottoir devant la gendarmerie (`GENDARMERIE`), tourné vers la rue. Vérifié par un
+ * test : un trottoir, à terre, sans obstacle.
  */
-export const ARREST_SPAWN = { x: 1407.8, y: -250.1, heading: -Math.PI / 2 } as const;
+export const ARREST_SPAWN = { x: 1758.0, y: 611.8, heading: -1.085 } as const;
 /** Heures passées en cellule. */
 export const ARREST_HOURS = 6;
 

@@ -6,7 +6,7 @@ import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import type { ChaseTarget } from "../core/chase";
-import type { PoliceUnit } from "../core/police";
+import { BASE_REACH, GENDARMERIE, type PoliceUnit } from "../core/police";
 import { CATALOG, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
 import { pickModel } from "../core/vehicle-placement";
 import { ZONE } from "../data/nav";
@@ -345,8 +345,10 @@ export class Traffic {
     if (n < this.pursuers && this.policeCooldown <= 0 && this.nav.graph.cells.size > 0) {
       this.policeCooldown = 2;
       // La piste perdue (la poursuite vise un point de fouille), les renforts naissent autour de ce point, pas autour du joueur que la police ne sait pas où trouver.
+      // Sinon, près de la gendarmerie (D105), ils en sortent ; plus loin, ils arrivent de la couronne autour du joueur.
       const at = this.sim.chaseTarget;
-      const c = this.spawn(env, true, at ? { x: at.x, y: at.y } : undefined);
+      const nearBase = !at && Math.hypot(env.x - GENDARMERIE.x, env.y - GENDARMERIE.y) < BASE_REACH;
+      const c = (nearBase ? this.spawn(env, true, GENDARMERIE) : null) ?? this.spawn(env, true, at ? { x: at.x, y: at.y } : undefined);
       if (c) {
         this.sim.setChase(c.sim, true);
         c.siren = true;

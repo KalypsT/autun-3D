@@ -1,5 +1,6 @@
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
+import { BIKE_DEPTH, CAR_DEPTH, shoreNormal, waterDepth } from "./shore";
 
 /**
  * Véhicules : logique pure. Modèle « bicyclette » dynamique (deux essieux, pneus à rigidité de dérive
@@ -489,10 +490,12 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   const n = collisionSteps(spec, Math.hypot(s.vx, s.vy), dt);
   const h = dt / n;
   for (let i = 0; i < n; i++) {
+    const px = s.x, py = s.y;
     integrate(s, spec, input, h, terrain);
     collide(s, spec, colliders);
     // Obstacles propres à certains véhicules (escaliers pour une voiture).
     if (extra) collide(s, spec, extra);
+    wade(s, spec, terrain, px, py, h);
   }
   // Limites du monde (3 m de marge).
   const x = clamp(s.x, terrain.xMin + 3, terrain.xMax - 3), y = clamp(s.y, terrain.yMin + 3, terrain.yMax - 3);
@@ -799,6 +802,30 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
 }
 
 /** Chocs : chaque cercle de l'emprise est repoussé hors des obstacles, avec une impulsion au point de contact. */
+/**
+ * La mer (D105) : l'eau freine d'autant plus qu'elle est profonde ; au-delà de la profondeur que le véhicule supporte, il reste au bord et
+ * perd la vitesse qui l'emmenait au large (sans choc : on ne tombe pas, on ne se blesse pas).
+ */
+function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: number, py: number, dt: number): void {
+  if (terrain.seaLevel === undefined) return;
+  const depth = waterDepth(terrain, s.x, s.y);
+  if (depth <= 0.05) return;
+  const k = Math.max(0, 1 - 3 * depth * dt);
+  s.vx *= k;
+  s.vy *= k;
+  if (depth <= (spec.leans ? BIKE_DEPTH : CAR_DEPTH)) return;
+  const [nx, ny] = shoreNormal(terrain, s.x, s.y);
+  s.x = px;
+  s.y = py;
+  const vn = s.vx * nx + s.vy * ny;
+  if (nx === 0 && ny === 0) {
+    s.vx = s.vy = 0;
+  } else if (vn < 0) {
+    s.vx -= vn * nx;
+    s.vy -= vn * ny;
+  }
+}
+
 function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders): void {
   const inertia = spec.yawInertia;
   for (const [off, r] of spec.hull) {

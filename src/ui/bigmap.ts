@@ -14,7 +14,8 @@ export interface BigMapHooks {
   menu(): void;
 }
 
-const PAPER = "#f2e4c0";
+/** Fond hors des images : la mer qui entoure le monde (D105), même teinte que l'eau des images de la carte. */
+const SEA = "#4fb0c6";
 const INK = "#2b2118";
 const ACCENT = "#d9472b";
 const LONG_PRESS_MS = 520;
@@ -355,7 +356,7 @@ export class BigMap {
     const { ctx, view, dpr, data } = this;
     this.checkPress(performance.now());
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = PAPER;
+    ctx.fillStyle = SEA;
     ctx.fillRect(0, 0, view.w, view.h);
     data.nextFrame();
 

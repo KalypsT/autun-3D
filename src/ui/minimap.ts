@@ -7,6 +7,8 @@ export const MINIMAP_RADIUS_M = 180;
 export const MINIMAP_SIZE = 140;
 
 const PAPER = "#f2e4c0";
+/** Fond hors des images : la mer qui entoure le monde (D105), même teinte que l'eau des images de la carte. */
+const SEA = "#4fb0c6";
 const INK = "#2b2118";
 const ACCENT = "#d9472b";
 const VEHICLE_COLORS: Record<string, string> = { bike: "#2f7f8f", kickscooter: "#f1b24a", moto: "#7a4a8a", car: "#1f4a63" };
@@ -88,7 +90,7 @@ export class Minimap {
     ctx.beginPath();
     ctx.arc(size / 2, size / 2, r, 0, Math.PI * 2);
     ctx.clip();
-    ctx.fillStyle = PAPER;
+    ctx.fillStyle = SEA;
     ctx.fillRect(0, 0, size, size);
 
     const data = this.data;

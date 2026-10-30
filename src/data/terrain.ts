@@ -73,6 +73,7 @@ export class TiledTerrain implements HeightField {
   private readonly y0: number;
   private readonly size: number;
   private readonly zone: [number, number, number, number];
+  readonly seaLevel: number | undefined;
 
   constructor(
     manifest: WorldManifest,
@@ -84,6 +85,7 @@ export class TiledTerrain implements HeightField {
     this.rows = manifest.rows;
     [this.x0, this.y0] = manifest.gridOrigin;
     this.zone = manifest.zone;
+    this.seaLevel = manifest.sea?.z;
     this.size = manifest.tileSize;
     this.blocks = new Array<Terrain | undefined>(this.cols * this.rows);
     for (const t of manifest.tiles) this.index.set(t.id, t);
@@ -133,6 +135,7 @@ export class TiledTerrain implements HeightField {
   readonly ground: HeightField = ((t: TiledTerrain): HeightField => ({
     heightAt: (x, y) => t.groundAt(x, y),
     get xMin(): number { return t.xMin; }, get xMax(): number { return t.xMax; }, get yMin(): number { return t.yMin; }, get yMax(): number { return t.yMax; },
+    get seaLevel(): number | undefined { return t.seaLevel; },
   }))(this);
 
   /** Altitude des rails : le tablier ferroviaire s'il y en a un, sinon le relief. */

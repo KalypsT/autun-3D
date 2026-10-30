@@ -20,7 +20,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 from pyproj import Transformer
 from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import box as sbox
 
+import coast_lib as coast
 import config as c
 
 FORCE = "--force" in sys.argv
@@ -235,9 +237,9 @@ def streets_from_ways(ways, zone):
             line = LineString(pts)
             if not line.intersects(Polygon([(zone[0], zone[1]), (zone[2], zone[1]), (zone[2], zone[3]), (zone[0], zone[3])])):
                 continue
-            line = line.simplify(1.5)
-            lines.append([round(v, 1) for p in line.coords for v in p])
-            kinds.append(kind)
+            for part in coast.clip_line([v for p in line.simplify(1.5).coords for v in p]):  # rien en mer (D105)
+                lines.append([round(v, 1) for v in part])
+                kinds.append(kind)
         if not lines:
             continue
         kind = min(kinds, key=lambda k: STREET_RANK[k])
@@ -358,6 +360,11 @@ def render_km(x0, y1, layers_idx, buildings_idx):
     scale = SS / RES
     size = int(KM / RES * SS)
     img = Image.new("RGB", (size, size), rgb(PAPER))
+    # La mer autour du monde (D105), sous tout le reste.
+    sea = sbox(x0 - 4, y1 - KM - 4, x0 + KM + 4, y1 + 4).difference(coast.land())
+    for g in getattr(sea, "geoms", [sea]):
+        if g.geom_type == "Polygon" and g.area > 1:
+            fill(img, [[v for p in list(r.coords)[:-1] for v in p] for r in (g.exterior, *g.interiors)], rgb(COLORS["water"]), x0, y1, scale)
     box = (x0 - 30, y1 - KM - 30, x0 + KM + 30, y1 + 30)
     hit = lambda bb: bb[2] >= box[0] and bb[0] <= box[2] and bb[3] >= box[1] and bb[1] <= box[3]
     for name in ORDER:
@@ -403,7 +410,7 @@ def build_images(world, layers, buildings):
     i0, i1 = min(k[0] for k in kms), max(k[0] for k in kms)
     j0, j1 = min(k[1] for k in kms), max(k[1] for k in kms)
     s = int(KM / OVERVIEW_RES)
-    over = Image.new("RGB", ((i1 - i0 + 1) * s, (j1 - j0 + 1) * s), rgb(PAPER))
+    over = Image.new("RGB", ((i1 - i0 + 1) * s, (j1 - j0 + 1) * s), rgb(COLORS["water"]))
     for (i, j), im in smalls.items():
         over.paste(im, ((i - i0) * s, (j1 - j) * s))
     assert shared is not None
@@ -425,6 +432,7 @@ def main():
     places = dedupe(osm_places)
     places += monument_places(monuments, places)
     places += perso_places(zone)
+    places = [p for p in places if coast.on_land(p["x"], p["y"])]
     for p in places:
         p.pop("area", None)
         if p.get("kind") is None:

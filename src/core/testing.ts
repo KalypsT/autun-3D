@@ -67,6 +67,17 @@ export function loadRealNav(): { index: NavIndex; cells: NavCell[] } {
 
 const SHIFT = 65536;
 
+/**
+ * Zone des scénarios de circulation et de police (D105) : l'ancien carré de 3 × 3 km autour de la mairie, où ils ont été mesurés et
+ * étalonnés (D59 à D86). La ville agrandie y ajoute des routes de campagne et des impasses qui finissent à la mer : les tirages au hasard
+ * y changeraient de nature (autres mesures à faire si l'on veut les y étendre).
+ */
+export const SCENARIO_ZONE = [-1520, -1812, 1480, 1188] as const;
+
+export function inScenarioZone(x: number, y: number): boolean {
+  return x >= SCENARIO_ZONE[0] && x <= SCENARIO_ZONE[2] && y >= SCENARIO_ZONE[1] && y <= SCENARIO_ZONE[3];
+}
+
 /** Le monde réel pour les essais de circulation : relief, graphe de navigation complet et obstacles fixes (Node uniquement). */
 export function loadRealRoadWorld(): {
   world: ReturnType<typeof loadRealWorld>;
@@ -88,6 +99,7 @@ export function loadRealRoadWorld(): {
         if (!nav.road.drivable(e) || nav.road.edgeLength(e) < minLength || nav.road.edgeClass(e) > maxClass) continue;
         // Pas au bord du monde (la physique y retient les véhicules à 3 m de la limite).
         if ((nav.road.nodeFlags(nav.road.edgeA(e)) | nav.road.nodeFlags(nav.road.edgeB(e))) & 2) continue;
+        if (!inScenarioZone(nav.road.nodeX(nav.road.edgeA(e)), nav.road.nodeY(nav.road.edgeA(e)))) continue;
         if (k++ % every !== 0) continue;
         out.push(nav.road.canGo(e * 2) ? e * 2 : e * 2 + 1);
       }

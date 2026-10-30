@@ -1273,3 +1273,37 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 - **« Descendre »** : petite pastille sombre en haut à droite (pictogramme de sortie), loin des pédales.
 - **Joystick en voiture** : le bouton ne se déplace qu'à l'horizontale (`Controls.lift`, faux en voiture) ; sur un deux-roues, il garde l'axe vertical (roue arrière, roue avant).
 
+
+## 2026-10-29 — D105. La ville entière, entourée par la mer
+
+**Demande** : couvrir toute la ville d'Autun (surtout le nord-nord-est avec Saint-Pantaléon, la rive est du plan d'eau du Vallon, un peu de l'ouest), plus Bellevue et les Télots ; un contour qui suit la ville plutôt qu'un rectangle ; une limite du monde « comme dans GTA », par l'eau : on peut avancer dans la bande du bord, mais l'eau empêche d'aller plus loin. Pas la commune entière (étape C, toujours reportée).
+
+**Emprise** (`tools/data/region.json`) : 302 tuiles jouables (18,9 km², contre 144 et 9 km²) choisies sur la BD TOPO (tuiles couvertes à plus de 15 % par la zone d'habitation « Autun » de l'IGN ou portant au moins 8 bâtiments, Bellevue, les Télots, le passage de Pierrefitte vers Bellevue et le couloir de la route de Saulieu vers les Télots, puis trous bouchés), plus un anneau de 124 tuiles de bordure où passe la côte. Le couloir a été ajouté après la première fabrication : la route de Saulieu traversait la baie creusée entre les Télots et la langue nord, et les Télots formaient un réseau routier à part (2,6 % des routes) ; avec lui, 99 % des routes carrossables sont d'un seul tenant (le reste : des bouts de moins de 400 m qui finissent à la mer). 8 140 bâtiments sur 8 658 de la commune (les Télots sont sur Saint-Forgeot et Dracy-Saint-Loup : leur BDNB est téléchargée aussi, `config.INSEE`). `config.REGION` (un rectangle) devient `REGION_TILES` ; les blocs restent les mêmes (12 blocs de 2 km, dont 8 nouveaux).
+
+**Coutures** : chaque bloc n'avait été fabriqué que sur l'emprise de ses tuiles (plus 20 m) ; au bord de l'ancien carré, les murs mitoyens avec un voisin hors zone avaient été traités comme des façades sur rue, et le mobilier posé sans voir l'autre côté. Les 44 tuiles de l'ancien bord sont donc refabriquées avec leurs voisines ; les 100 autres (`keep`) ne sont jamais réécrites par un bloc (`config.write_tiles`), elles servent seulement de contexte. Les étapes globales (sols du cadastre, navigation, carte) recalculent toutes les tuiles, comme avant.
+
+**La mer** (`tools/data/coast_lib.py`, `build_coast.py`) :
+- Côte : la zone jouable élargie de 125 m, lissée, déformée par un bruit doux (± 45 m), gardée à 40 m au moins de la ville et dans l'anneau de bordure. Déterministe : chaque étape la recalcule à l'identique.
+- Niveau : 282,5 m, celui de la plaine de l'Arroux au nord et à l'ouest (285 à 310 m le long de la bordure). Au sud, les collines de Montjeu (jusqu'à 594 m) tombent dans la mer. Le sol est plafonné par un profil (`coast_lib.shore_cap`) : 1,6 m au-dessus de l'eau sur le trait de côte, une plage de 35 m qui monte de 12 cm par mètre, puis une falaise qui monte de 3 m par mètre (72°) ; vers le large, le fond descend de 22 cm par mètre jusqu'à 9 m. Dans la plaine on a donc une plage (et un petit talus derrière si la terre est plus haute), sur les collines une plage au pied d'une falaise. Sable (le « gravier » des sols) sur la plage et le fond, roche (les « pavés » assombris) sur les falaises ; aucun sol, mur, arbre, mobilier ni bâtiment sur ce rivage, et la navigation s'arrête avant (`coast_lib.usable`). Les masques du rivage ne dépendent que du sol final : l'étape se relance sans rien changer.
+- Découpe à la côte de tout ce que la chaîne a fabriqué : bâtiments (gardés s'ils sont à terre à 90 %), fiches, arbres, murs (polylignes coupées), mobilier, sols, silhouettes, sites typés, ouvrages (tabliers, voies, eau). Les voies de la navigation s'arrêtent à leur dernier nœud à terre ; la carte peint la mer et ne garde que les lieux à terre.
+- Ordre de la chaîne : blocs, `build_structures.py`, `build_kinds.py`, `build_public_space.py`, **`build_coast.py`**, `build_nav.py`, `build_map.py`. `build_coast.py` est idempotente.
+- Chaîne sur toute la ville : `build_public_space.py` classe l'orthophoto par fenêtres de 1 km (une seule image de 158 millions de pixels dépassait les 15 Go de la machine ; pic mesuré ensuite : 11 Go) ; un bloc sans aucun point bâtiment LiDAR (bande de bordure) ne s'arrête plus.
+
+**Dans le jeu** :
+- `world.json` porte `sea: { z, coast }` ; le relief le transmet (`HeightField.seaLevel`).
+- Limite par la profondeur (`src/core/shore.ts`) : à pied, on entre jusqu'à 1 m d'eau puis on longe le rivage ; une voiture s'arrête à 0,5 m, un deux-roues à 0,35 m ; l'eau freine avant (d'autant plus qu'elle est profonde), sans choc, sans chute. Pas de mur à dessiner : la falaise ou la pente du rivage suffit. Le rectangle de `zone` reste une limite de secours.
+- Rendu (`src/render/sea.ts`) : un plan d'eau de 30 km au niveau de la mer et un ruban d'écume de 3 à 10 m au large du trait de côte (deux appels de dessin, construits une fois). Fond de la minimap et de la carte : la couleur de la mer.
+- Hôtel de ville : la ville agrandie a deux mairies (Autun et la mairie annexe de Saint-Pantaléon) ; seule la plus proche de l'origine garde l'inscription « HÔTEL DE VILLE », les autres portent « MAIRIE ANNEXE » (`build_kinds.py`).
+- Gendarmerie (OpenStreetMap, rive est du plan d'eau du Vallon) : `GENDARMERIE` dans `src/core/police.ts` ; les renforts en sortent quand le joueur est à moins de 800 m (et que la police ne fouille pas un autre point) ; on y reprend après une arrestation.
+
+**Poids et coûts mesurés** :
+- Données publiées : 101 Mo (contre 47 Mo) : relief fin 55 Mo (426 blocs de 1 m, dont ceux de la bordure et de la mer), tuiles 31 Mo, sols 8,8 Mo, silhouettes 2 Mo, carte 1,7 Mo, navigation 1,4 Mo. 426 tuiles, 8 166 bâtiments, 60 093 arbres. Site publié par GitHub Pages : 102 Mo (limite : 1 Go).
+- Démarrage du jeu : le relief grossier grandit avec l'emprise totale (5,75 × 6,75 km) : 1,2 Mo (280 ko avant), `world.json` 107 ko. Le reste se charge toujours par tuile autour du joueur : rien ne change à l'écran ni en mémoire.
+- Dépôt : l'arbre final compressé passe de 27 à 47 Mo ; les fabrications successives de la branche en ajoutent davantage dans l'historique : fusionner la PR en « Squash and merge » n'en garde qu'une.
+- Tests : 625, ≈ 71 s ici (95 s avant : les tests ne chargent pas plus de tuiles qu'ils n'en touchent). Fabrication complète : ≈ 2 h 30 de blocs (LiDAR et BDNB déjà en cache : 8 Go) et 1 h 10 pour `build_public_space.py`.
+- Les scénarios de circulation et de police des tests restent tirés dans l'ancien carré (`SCENARIO_ZONE` de `src/core/testing.ts`), où ils ont été mesurés ; ils n'ont pas été mesurés sur les nouveaux quartiers. Deux recalages : la gendarmerie d'un scénario de poursuite part d'une arête reliée au fugitif ; le seuil de proximité des quatre gendarmeries passe à 4 % (3,5 % mesurés sur les nouveaux tirages).
+
+**Limites connues** :
+- Les routes qui partent vers la mer finissent en impasse au dernier nœud OpenStreetMap à terre ; les conducteurs de la circulation qui y arrivent sont retirés (comme dans toute impasse, D64).
+- Pas encore de vagues, de nage ni de bateau ; un véhicule qui entre dans l'eau s'arrête au bord, il ne coule pas.
+- Mesure sur téléphone à refaire (`?bench=1`) : le parcours du banc est dans l'ancien carré.

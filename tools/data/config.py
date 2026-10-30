@@ -9,6 +9,7 @@ La chaîne travaille par **blocs** de 8 × 8 tuiles (2 km), pour que la mémoire
 Chaque bloc ne fabrique que les tuiles de REGION qu'il contient ; ses rasters et ses données brutes débordent de MARGIN mètres.
 """
 
+import json
 import math
 import os
 from pathlib import Path
@@ -25,9 +26,20 @@ SUPER = 4  # côté d'une super-tuile de sols grossiers, en tuiles (divise BLOCK
 GRID_I0, GRID_J0 = 3169, 26568
 GRID_NX, GRID_NY = 56, 56  # 7 × 7 blocs : couvre la commune d'Autun (10,4 × 12,5 km) avec marge
 
-# Tuiles à fabriquer : (colonne, ligne, nombre de colonnes, nombre de lignes) dans la grille mondiale.
-# Anneau actuel : 12 × 12 tuiles (3 km) autour de la mairie. La commune entière viendra ensuite.
-REGION = (20, 28, 12, 12)
+# Tuiles à fabriquer (D105) : la ville (`playable`, contour qui suit l'agglomération) et un anneau d'une tuile autour (`border`),
+# où passe la côte de la mer qui entoure le monde (build_coast.py). Les tuiles `keep` (anciennes, loin des nouvelles) ne sont
+# jamais réécrites par un bloc : elles servent seulement de contexte.
+_REGION = json.loads((Path(__file__).with_name("region.json")).read_text())
+
+
+def _ids(key):
+    return {tuple(int(v) for v in s.split("_")) for s in _REGION[key]}
+
+
+PLAYABLE = _ids("playable")
+BORDER = _ids("border")
+KEEP = _ids("keep")
+REGION_TILES = PLAYABLE | BORDER
 
 # Origine locale : conservée depuis la première maquette (mairie), pour que les coordonnées restent stables.
 ORIGIN = (798770.0, 6650812.0)
@@ -40,11 +52,12 @@ RES = 0.5
 
 USER_AGENT = "Autun3DMockup/0.1 (https://github.com/kalypst/autun-3d)"
 INSEE_AUTUN = "71014"
+# Communes dont la BDNB est téléchargée : Autun, et Saint-Forgeot et Dracy-Saint-Loup pour les Télots (D105).
+INSEE = ("71014", "71414", "71184")
 
 
 def _region_tiles():
-    c0, r0, nx, ny = REGION
-    return {(c, r) for r in range(r0, r0 + ny) for c in range(c0, c0 + nx)}
+    return REGION_TILES
 
 
 def block_of_tile(col, row):
@@ -54,6 +67,18 @@ def block_of_tile(col, row):
 def block_tiles(bi, bj):
     """Tuiles (colonne, ligne) de la grille mondiale que fabrique le bloc (bi, bj) : celles de REGION qu'il contient."""
     return sorted(t for t in _region_tiles() if block_of_tile(*t) == (bi, bj))
+
+
+def write_tiles(bi, bj):
+    """Tuiles du bloc (bi, bj) qu'il écrit dans public/data : toutes celles de block_tiles, sauf KEEP."""
+    return [t for t in block_tiles(bi, bj) if t not in KEEP]
+
+
+def region_bounds():
+    """Emprise Lambert-93 (x0, y0, x1, y1) des tuiles de REGION_TILES."""
+    cols = [t[0] for t in REGION_TILES]
+    rows = [t[1] for t in REGION_TILES]
+    return ((GRID_I0 + min(cols)) * TILE, (GRID_J0 + min(rows)) * TILE, (GRID_I0 + max(cols) + 1) * TILE, (GRID_J0 + max(rows) + 1) * TILE)
 
 
 def region_blocks():
@@ -76,7 +101,7 @@ PARTS = ROOT / ".cache" / "parts"
 
 _tiles = block_tiles(*BLOCK_ID)
 if not _tiles:
-    raise SystemExit(f"le bloc {BLOCK_ID} ne contient aucune tuile de REGION {REGION}")
+    raise SystemExit(f"le bloc {BLOCK_ID} ne contient aucune tuile de region.json")
 _cols = [t[0] for t in _tiles]
 _rows = [t[1] for t in _tiles]
 TILE_COL0, TILE_ROW0 = min(_cols), min(_rows)
