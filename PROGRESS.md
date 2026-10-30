@@ -645,3 +645,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Fumée blanche](docs/captures/d110-fumee-blanche.jpg)
 ![Fumée noire, compteur rouge](docs/captures/d110-fumee-noire.jpg)
 
+**Dégâts des véhicules, étape 3 : feu, explosion, épave (30 octobre 2026)** (D111)
+- Une voiture en feu crache des flammes par le capot et crépite ; 5 secondes plus tard, elle explose : boule de feu, nuage de fumée, grondement, secousse.
+- Le souffle tue celui qui est resté dedans, blesse ou tue les passants et gendarmes autour (et les projette), te blesse si tu es à quelques mètres, et abîme les voitures voisines : une voiture déjà bien touchée peut exploser à son tour.
+- Faire exploser une voiture en public te donne au moins deux étoiles ; les victimes comptent comme des meurtres.
+- L'épave est noircie, brûle quelques secondes, fume, puis finit par disparaître quand tu es loin.
+- Pas encore : la circulation et la police ne sont pas touchées par les explosions (étape 4). 667 tests.
+- À faire de ton côté : `?ride=berline&damage=8` : descends tout de suite et éloigne-toi en courant, puis regarde. Écoute aussi `?sounds` (Explosion, Crépitement). Dis-moi si la boule de feu est assez impressionnante et si la portée du souffle (mort à 2,5 m, blessé jusqu'à 8 m) te va.
+
+![Explosion](docs/captures/d111-explosion.jpg)
+![Épave qui brûle](docs/captures/d111-epave-brule.jpg)
+

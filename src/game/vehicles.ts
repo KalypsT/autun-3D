@@ -102,6 +102,8 @@ export function drivenSpec(v: { spec: VehicleSpec; damage: VehicleDamage }): Veh
   return spec;
 }
 
+/** Peinture d'une épave brûlée (D111). */
+const WRECK_COLOR = "#2b2724";
 /** Au-delà, les véhicules garés ne sont pas dessinés. */
 const DRAW_DISTANCE = 110;
 const CAR_DRAW_DISTANCE = 170;
@@ -299,6 +301,18 @@ export class Fleet {
     return v.model;
   }
 
+  /** Redessine les véhicules garés à la prochaine image (un véhicule a changé d'aspect : épave). */
+  refresh(): void {
+    this.dirty = true;
+  }
+
+  /** Véhicules (garés ou conduit) à moins de `r` mètres de (x, y). */
+  around(x: number, y: number, r: number, out: Vehicle[]): Vehicle[] {
+    out.length = 0;
+    for (const v of this.vehicles) if (Math.hypot(v.state.x - x, v.state.y - y) < r) out.push(v);
+    return out;
+  }
+
   /** Véhicule libre le plus proche de (x, y), d'un type donné ou de n'importe lequel, avec la distance à son centre. */
   nearest(x: number, y: number, family: VehicleFamily | null = null): { vehicle: Vehicle; distance: number } | null {
     let best: { vehicle: Vehicle; distance: number } | null = null;
@@ -322,7 +336,9 @@ export class Fleet {
       if (v.ridden) continue;
       const reach = v.family === "car" ? CAR_DRAW_DISTANCE : DRAW_DISTANCE;
       if (Math.hypot(v.state.x - x, v.state.y - y) > reach) continue;
-      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color: paletteColor(v.def, v.variant) });
+      // Une épave brûlée est noircie : la peinture prend la teinte du charbon (D111).
+      const color = v.damage.end === "explosion" ? WRECK_COLOR : paletteColor(v.def, v.variant);
+      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
     }
     this.parked.set(items);
     this.stats.drawn = this.parked.instances;

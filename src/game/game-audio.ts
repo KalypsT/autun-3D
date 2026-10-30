@@ -223,6 +223,22 @@ export class GameAudio {
     if (own && gun === "shotgun") S.pump(kit, this.sys.buses!.sfx, t + 0.35, { ...NEAR, gain: 0.5 });
   }
 
+  /** Explosion d'un véhicule (D111), entendue de loin. */
+  explosion(x: number, y: number): void {
+    const kit = this.kit;
+    if (!kit) return;
+    const spot = this.spot(x, y, 15, 900, 0.6, 1.3);
+    if (spot) S.explosion(kit, this.sys.buses!.sfx, kit.ctx.currentTime, spot);
+  }
+
+  /** Crépitement d'un véhicule en feu ou d'une épave qui brûle (D111) : à appeler au hasard, quelques fois par seconde. */
+  crackle(x: number, y: number): void {
+    const kit = this.kit;
+    if (!kit) return;
+    const spot = this.spot(x, y, 4, 40, 0.1, 0.8);
+    if (spot) S.crackle(kit, this.sys.buses!.sfx, kit.ctx.currentTime, spot);
+  }
+
   /** Balle d'un gendarme qui manque le joueur : sifflement si elle passe à moins de 4 m de lui (px, py). */
   nearMiss(x0: number, y0: number, x1: number, y1: number, px: number, py: number): void {
     const kit = this.kit;

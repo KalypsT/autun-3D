@@ -4,7 +4,7 @@ import * as THREE from "three";
  * Fumée des véhicules abîmés (D110), dans **un seul maillage instancié** : chaque bouffée est un petit polyèdre éclairé (style « affiche » :
  * des volumes à facettes, pas de transparence) qui monte, dérive avec le vent, gonfle, puis rétrécit jusqu'à disparaître.
  * Rien à l'écran : maillage caché, **0 appel de dessin** ; dès qu'une bouffée existe, **+1** (sans ombre), quel que soit leur nombre.
- * Il servira aussi aux flammes et à l'explosion (étape 3) et aux autres véhicules (étape 4).
+ * Un second exemplaire, sans éclairage, dessine les flammes et la boule de feu des explosions (D111).
  *
  * Repère : celui du jeu en entrée (x est, y nord, z haut) ; la scène three est (x, z, −y).
  */
@@ -40,9 +40,10 @@ export class Smoke {
   /** Bouffées écrites au dernier `update` (diagnostic, tests). */
   count = 0;
 
-  constructor(scene: THREE.Scene | null) {
+  /** `lit` faux : des flammes (D111), qui brillent sans éclairage, hors tonalité. */
+  constructor(scene: THREE.Scene | null, lit = true) {
     const geo = new THREE.IcosahedronGeometry(0.5, 0);
-    const material = new THREE.MeshLambertMaterial({ flatShading: true });
+    const material = lit ? new THREE.MeshLambertMaterial({ flatShading: true }) : new THREE.MeshBasicMaterial({ toneMapped: false });
     this.mesh = new THREE.InstancedMesh(geo, material, CAPACITY);
     this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.mesh.frustumCulled = false;
@@ -53,11 +54,14 @@ export class Smoke {
     scene?.add(this.mesh);
   }
 
-  /** Une bouffée en (x, y, z), lancée à (vx, vy, vz) m/s, de taille size0 à size1 (m) pendant `life` secondes. Ignorée si tout est pris. */
-  emit(x: number, y: number, z: number, vx: number, vy: number, vz: number, color: THREE.Color, size0: number, size1: number, life: number, rand: () => number): void {
+  /**
+   * Une bouffée en (x, y, z), lancée à (vx, vy, vz) m/s, de taille size0 à size1 (m) pendant `life` secondes, qui n'apparaît qu'au bout de `delay`
+   * secondes (la fumée d'une explosion laisse d'abord voir la boule de feu). Ignorée si tout est pris.
+   */
+  emit(x: number, y: number, z: number, vx: number, vy: number, vz: number, color: THREE.Color, size0: number, size1: number, life: number, rand: () => number, delay = 0): void {
     if (this.puffs.length >= CAPACITY) return;
     const p = this.free.pop() ?? ({ color: new THREE.Color() } as Puff);
-    Object.assign(p, { x, y, z, vx, vy, vz, t: 0, life, size0, size1, spin: rand() * Math.PI * 2 });
+    Object.assign(p, { x, y, z, vx, vy, vz, t: -delay, life, size0, size1, spin: rand() * Math.PI * 2 });
     p.color.copy(color);
     this.puffs.push(p);
   }
@@ -67,6 +71,7 @@ export class Smoke {
     for (let i = this.puffs.length - 1; i >= 0; i--) {
       const p = this.puffs[i]!;
       p.t += dt;
+      if (p.t < 0) continue;
       if (p.t >= p.life) {
         this.puffs[i] = this.puffs[this.puffs.length - 1]!;
         this.puffs.pop();

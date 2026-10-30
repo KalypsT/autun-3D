@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
-import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
 import { DAMAGE, type DamageTier } from "../core/damage";
+import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
@@ -367,7 +368,7 @@ export function startGame(ctx: GameContext): void {
   };
   // Dégâts (D109, D110) : les véhicules abîmés par le joueur (celui qu'il conduit, et ceux qu'il a laissés) brûlent jusqu'à leur fin
   // et fument tant qu'on est à moins de 150 m ; la voiture conduite montre sa carrosserie froissée, ses phares et ses vitres cassés.
-  // Pas encore de flammes ni d'explosion à l'écran (étape 3) ; une épave n'a plus de moteur et ne se reprend pas.
+  // Une épave n'a plus de moteur et ne se reprend pas.
   const damaged = new Set<Vehicle>();
   const smoke = new Smoke(scene);
   const smokeAcc = new Map<Vehicle, number>();
@@ -406,23 +407,121 @@ export function startGame(ctx: GameContext): void {
     const x = s.x + (hx * ca + hy * sa) * r, y = s.y + (hy * ca - hx * sa) * r;
     fx.sparks(x, y, s.z + 0.45, false, Math.random);
   };
+  // Feu et explosion (D111) : flammes sans éclairage (un second maillage de bouffées), boule de feu, souffle qui blesse et pousse,
+  // épave noircie qui brûle, puis fume, puis disparaît quand on ne la voit plus.
+  const flames = new Smoke(scene, false);
+  const FLAME_COLORS = ["#fff1a8", "#f1b24a", "#e8641e", "#d9472b"].map((c) => new THREE.Color(c));
+  const WRECK_SMOKE = new THREE.Color("#3a3a3f");
+  const near: Vehicle[] = [];
+  const blastPeds: number[] = [];
+  const blastPos = { x: 0, y: 0 };
+  /** Flammes : sur le capot (véhicule en feu) ou sur toute la caisse (épave qui brûle). */
+  const emitFlames = (v: Vehicle, dt: number, rate: number, spread: boolean): void => {
+    if (Math.hypot(v.state.x - player.x, v.state.y - player.y) > 150) return;
+    const s = v.state, [ox, oy, oz] = smokeOrigin(v.def);
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading), half = v.def.size.length / 2 - 0.3;
+    const n = Math.floor(dt * rate + Math.random());
+    for (let i = 0; i < n; i++) {
+      const along = spread ? (Math.random() * 2 - 1) * half : oz, side = spread ? (Math.random() - 0.5) * v.def.size.width * 0.7 : ox;
+      const x = s.x + hx * along + hy * side, y = s.y + hy * along - hx * side;
+      flames.emit(x, y, s.z + (spread ? 0.5 + Math.random() * 0.5 : oy), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 2 + Math.random() * 1.5,
+        FLAME_COLORS[Math.floor(Math.random() * FLAME_COLORS.length)]!, 0.22, spread ? 0.75 : 0.55, 0.4 + Math.random() * 0.35, Math.random);
+    }
+    if (Math.random() < dt * 4) audio.crackle(s.x, s.y);
+  };
+  const emitWreckSmoke = (v: Vehicle, dt: number, rate: number): void => {
+    if (Math.hypot(v.state.x - player.x, v.state.y - player.y) > 150) return;
+    const s = v.state, n = Math.floor(dt * rate + Math.random());
+    for (let i = 0; i < n; i++) {
+      smoke.emit(s.x + (Math.random() - 0.5), s.y + (Math.random() - 0.5), s.z + 1.1, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 1.1 + Math.random() * 0.6,
+        WRECK_SMOKE, 0.25, 0.85 + Math.random() * 0.3, 2.2 + Math.random(), Math.random);
+    }
+  };
+  /** Le véhicule explose : boule de feu, débris, bruit ; le souffle tue le conducteur, blesse et projette autour, abîme les véhicules voisins. */
+  const explode = (v: Vehicle): void => {
+    const s = v.state, x = s.x, y = s.y, z = s.z;
+    // Boule de feu (jaune au cœur, orange et rouge autour), puis, un peu après, le nuage de fumée qui monte au-dessus.
+    for (let i = 0; i < 36; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 4.5, core = i < 12;
+      flames.emit(x + Math.cos(a) * 0.4, y + Math.sin(a) * 0.4, z + 0.8, Math.cos(a) * sp, Math.sin(a) * sp, 1 + Math.random() * 4,
+        FLAME_COLORS[core ? Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 3)]!, 0.6, core ? 2.6 + Math.random() : 1.8 + Math.random() * 1.2,
+        0.7 + Math.random() * 0.5, Math.random);
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 0.4 + Math.random() * 1.5;
+      smoke.emit(x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, z + 1.8 + Math.random(), Math.cos(a) * sp, Math.sin(a) * sp, 2 + Math.random() * 1.5, WRECK_SMOKE,
+        0.6, 1.6 + Math.random() * 0.8, 3 + Math.random() * 1.5, Math.random, 0.45 + Math.random() * 0.4);
+    }
+    for (let i = 0; i < 6; i++) fx.sparks(x + (Math.random() - 0.5) * 2, y + (Math.random() - 0.5) * 2, z + 0.6 + Math.random(), false, Math.random);
+    audio.explosion(x, y);
+    const dPlayer = Math.hypot(player.x - x, player.y - y);
+    if (dPlayer < 45) shake.impact(Math.max(2, 8 - dPlayer / 5));
+    if (dPlayer < 25) haptics.crash(8);
+    // Le joueur : tué s'il est dedans ; à pied, blessé selon la distance ; dans un autre véhicule, protégé de moitié.
+    if (!health.dead) {
+      if (riding === v) health.damage(10000);
+      else {
+        const hurt = EXPLOSION.player * blastShare(dPlayer) * (riding ? EXPLOSION.sheltered : 1);
+        if (hurt > 0) health.damage(hurt);
+      }
+    }
+    // Les véhicules voisins (dont celui du joueur) : abîmés du côté du souffle ; une voiture déjà très touchée peut prendre feu à son tour.
+    for (const w of fleet.around(x, y, EXPLOSION.radius, near)) {
+      if (w === v) continue;
+      const points = EXPLOSION.vehicle * blastShare(Math.hypot(w.state.x - x, w.state.y - y));
+      if (points <= 0) continue;
+      w.damage.damage(points, contactAngle(w.state, x - w.state.x, y - w.state.y));
+      damaged.add(w);
+    }
+    // Les passants et les gendarmes à pied : blessés ou tués, projetés.
+    let hits = 0, killed = 0;
+    const n = shootWorld.pick(x, y, 0, EXPLOSION.radius, Math.PI, 24, blastPeds);
+    for (let i = 0; i < n; i++) {
+      const slot = blastPeds[i]!;
+      shootWorld.position(slot, blastPos);
+      const dx = blastPos.x - x, dy = blastPos.y - y, d = Math.hypot(dx, dy), share = blastShare(d);
+      if (share <= 0) continue;
+      const r = shootWorld.hurt(slot, EXPLOSION.ped * share, d > 0.01 ? dx / d : 1, d > 0.01 ? dy / d : 0, EXPLOSION.impulse * share);
+      if (r > 0) hits++;
+      if (r === 2) killed++;
+    }
+    // Une explosion en public est une infraction, ses morts des meurtres ; un passant vivant à moins de 40 m appelle.
+    pedWitnesses.length = 0;
+    const seen = ((peds as PedsController | null)?.queryCircle(x, y, 40, pedWitnesses) ?? 0) > 0;
+    police.crime("explosion", x, y, seen);
+    if (hits > 0) police.crime(killed > 0 ? "murder" : "assault", x, y, seen);
+    fleet.refresh();
+  };
   const updateDamage = (dt: number): void => {
     if (riding && riding.damage.version > 0) damaged.add(riding);
     showDamage();
     for (const v of damaged) {
       v.damage.update(dt);
-      for (const e of v.damage.takeEvents()) {
-        // En attendant l'explosion (étape 3) : un grand choc ressenti, si l'on est dedans ou tout près.
-        if (e.kind === "explode" && Math.hypot(v.state.x - player.x, v.state.y - player.y) < 25) {
-          audio.impact(8);
-          shake.impact(8);
-          haptics.crash(8);
+      for (const e of v.damage.takeEvents()) if (e.kind === "explode") explode(v);
+      const d = v.damage;
+      if (d.end === "explosion") {
+        const stage = wreckStage(d.sinceEnd);
+        if (stage === "fire") {
+          emitFlames(v, dt, 26, true);
+          emitWreckSmoke(v, dt, 6);
+        } else if (stage === "smoke") emitWreckSmoke(v, dt, 3.5);
+        // Une épave froide, hors de vue depuis longtemps, disparaît (une voiture de stationnement reviendra à sa place avec sa tuile).
+        else if (d.sinceEnd > EXPLOSION.vanish && v !== riding && Math.hypot(v.state.x - player.x, v.state.y - player.y) > EXPLOSION.vanishDistance) {
+          fleet.remove(v);
+          damaged.delete(v);
         }
+        continue;
       }
+      if (d.end === "breakdown") {
+        if (d.profile.burns && wreckStage(d.sinceEnd) !== "cold") emitWreckSmoke(v, dt, 3);
+        continue;
+      }
+      if (d.burning >= 0) emitFlames(v, dt, 18, false);
       emitSmoke(v, dt);
       if (v.damage.version > 0 && v.damage.tier === "ok" && v.damage.health >= DAMAGE.max) damaged.delete(v);
     }
     smoke.update(dt);
+    flames.update(dt);
     const tier = riding?.damage.tier;
     audio.setDamage(tier === "smoke" ? 0.3 : tier === "heavy" ? 0.7 : tier === "fire" || tier === "wrecked" ? 1 : 0);
     speedo.setHurt(!!riding && (riding.damage.health <= DAMAGE.heavy || !riding.damage.usable));

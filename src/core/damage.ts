@@ -79,6 +79,8 @@ export class VehicleDamage {
   burning = -1;
   /** Fin atteinte : épave brûlée (« explosion ») ou en panne (« breakdown »), ou null tant que le véhicule roule. */
   end: EndMode | null = null;
+  /** Temps depuis la fin (s) : l'épave brûle, puis fume, puis peut disparaître (D111). */
+  sinceEnd = 0;
   /** Augmente à chaque changement (points retirés, réparation, reprise) : le dessin ne se refait que quand il bouge. */
   version = 0;
   private tierSeen: DamageTier = "ok";
@@ -133,7 +135,11 @@ export class VehicleDamage {
 
   /** Avance le temps : le feu brûle, puis le véhicule explose ou tombe en panne. */
   update(dt: number): void {
-    if (this.burning < 0 || this.end) return;
+    if (this.end) {
+      this.sinceEnd += dt;
+      return;
+    }
+    if (this.burning < 0) return;
     this.burning += dt;
     if (this.burning >= DAMAGE.burn) this.finish();
   }
@@ -144,6 +150,7 @@ export class VehicleDamage {
     for (const z of ZONES) this.zones[z] = 0;
     this.burning = -1;
     this.end = null;
+    this.sinceEnd = 0;
     this.tierSeen = "ok";
     this.pending.length = 0;
     this.version++;
@@ -188,6 +195,7 @@ export class VehicleDamage {
 
   private finish(): void {
     this.burning = -1;
+    this.sinceEnd = 0;
     this.end = this.burns ? "explosion" : "breakdown";
     this.pending.push(this.end === "explosion" ? { kind: "explode" } : { kind: "breakdown" });
   }

@@ -1438,3 +1438,18 @@ Le froissage n'est préparé qu'à la première bosse (copie des positions et co
 
 **Reste** (étapes suivantes) : une voiture abîmée qu'on gare redevient intacte à l'œil (le dessin par instances : formes « abîmée » et « épave » par modèle, étape 4) ; pas de flammes ni d'explosion à l'écran (étape 3) ; pas de pare-chocs qui tombe (le froissage le fait pendre avec le reste de l'avant).
 
+## 2026-10-30 — D111. Dégâts des véhicules, étape 3 : feu, explosion, épave
+
+**Feu** : un véhicule en feu (≤ 10 points, D109) crache des **flammes** par le capot (moteur d'un deux-roues), 18 par seconde, en plus de la fumée noire épaisse ; elles **crépitent** (son `crackle`, quelques fois par seconde à moins de 40 m). Les flammes sont un second maillage de bouffées (`Smoke(scene, false)` : sans éclairage, hors tonalité, elles brillent) : **0 appel de dessin sans feu, +1 avec**.
+
+**Explosion** (5 s après le départ du feu ; `explode` dans `game.ts`, barème dans `src/core/explosion.ts`) :
+- **boule de feu** de 36 flammes (jaune au cœur, orange et rouge autour, jusqu'à 3,6 m), puis, 0,45 à 0,85 s après (`Smoke.emit(…, delay)`), un nuage de fumée qui monte au-dessus ; étincelles (débris) ; **grondement** (son `explosion`, entendu jusqu'à 900 m), secousse de la caméra jusqu'à 45 m, vibration jusqu'à 25 m ;
+- **souffle** (`blastShare` : pleine force jusqu'à 2,5 m, puis décroissance au carré jusqu'à 8 m) : **le conducteur resté dedans meurt** ; à pied, jusqu'à 150 points (mort à moins de 2,5 m, blessé à quelques mètres, rien à 8 m) ; dans un autre véhicule, moitié ; les **passants et les gendarmes à pied** prennent jusqu'à 160 points et sont projetés (jusqu'à 9 m/s) ; les **véhicules voisins** de la flotte prennent jusqu'à 70 points du côté du souffle : une voiture neuve est seulement touchée, une voiture déjà bien abîmée **prend feu à son tour** (réaction en chaîne possible) ;
+- **infractions** : nouvelle infraction `explosion` (au moins deux étoiles, signalée par les passants à moins de 40 m, comme un coup de feu), et les blessés ou tués comptent comme agression ou meurtre.
+
+**Épave** : peinture **noircie** (teinte charbon `#2b2724`, y compris garée par instances, sans coût de plus) ; elle **brûle 9 s** (flammes sur toute la caisse), puis **fume jusqu'à 45 s** ; une épave froide **disparaît** au bout de 3 minutes quand le joueur est à plus de 120 m (une voiture de stationnement revient à sa place avec sa tuile). Une épave ne se reprend pas (D109). Une voiture **en panne** (mode sans violence) fume un peu, sans flamme.
+
+**Pas fait** : la voiture qui explose ne fait pas de bond (les véhicules garés ne sont pas simulés) ; la circulation et la police ne sont pas encore touchées par le souffle (elles n'ont pas d'état de dégâts : étape 4) ; pas de lumière d'explosion (une lampe de three.js ferait recalculer l'éclairage de tous les matériaux de la ville, D90).
+
+**Essais** : `?ride=berline&damage=8` (la voiture est en feu dès le départ : descendre et s'éloigner, elle explose 5 s plus tard). Sur la machine d'intégration (≈ 1,7 image/s en rendu logiciel, le temps de jeu au sixième du temps réel), capture prise au moment de l'explosion : boule de feu, joueur blessé à 6 m (flash rouge), puis épave noircie qui brûle. Page d'écoute : « Explosion d'un véhicule », « Crépitement d'un feu » (crête −3,6 dB et −12,6 dB). 5 tests (souffle, blessures selon la distance, réaction en chaîne, vie de l'épave, infraction).
+

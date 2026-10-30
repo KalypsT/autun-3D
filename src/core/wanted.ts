@@ -37,7 +37,9 @@ export type Crime =
   /** Tirer en public avec une arme à feu (J5-3). */
   | "gunfire"
   /** Tuer un gendarme (J5-5). */
-  | "kill_cop";
+  | "kill_cop"
+  /** Faire exploser un véhicule en public (D111). */
+  | "explosion";
 
 export type Witness = "police" | "civilian";
 
@@ -67,6 +69,8 @@ export const CRIMES: Record<Crime, CrimeRule> = {
   murder: { min: 2, add: 1, civilians: true },
   gunfire: { min: 2, add: 0, civilians: true },
   kill_cop: { min: 4, add: 1, civilians: true },
+  // Une explosion en public vaut un coup de feu ; les morts qu'elle fait sont des meurtres (D111).
+  explosion: { min: 2, add: 0, civilians: true },
 };
 
 /** Délai d'un signalement par téléphone (s). */
