@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Colliders } from "./collision";
-import { DAMAGE, END_MODE, impactPoints, tierOf, VehicleDamage, zoneOf, type DamageEvent } from "./damage";
+import { abandons, DAMAGE, deratedSpec, END_MODE, impactPoints, looksDented, tierOf, VehicleDamage, zoneOf, type DamageEvent } from "./damage";
 import { CAR, createVehicle, stepVehicle } from "./vehicle";
 import { contactVehicles } from "./vehicle-contact";
 import { CATALOG, damageProfile, vehicleDef } from "./vehicle-catalog";
@@ -161,5 +161,36 @@ describe("dégâts : le moteur physique dit où le choc a porté", () => {
     expect(a.state.impact).toBeGreaterThan(0);
     expect(zoneOf(a.state.impactAngle)).toBe("left");
     expect(zoneOf(b.state.impactAngle)).toBe("front");
+  });
+});
+
+describe("dégâts : circulation et dessin (D112)", () => {
+  it("un conducteur abandonne sa voiture dès la fumée noire, pas avant ; une épave est toujours abandonnée", () => {
+    const d = car();
+    d.damage(45);
+    expect(abandons(d)).toBe(false);
+    d.damage(30);
+    expect(abandons(d)).toBe(true);
+    d.damage(50);
+    for (let t = 0; t < 6; t += 0.5) d.update(0.5);
+    expect(abandons(d)).toBe(true);
+  });
+
+  it("une voiture paraît cabossée dès la fumée blanche ; neuve ou à peine touchée, non", () => {
+    const d = car();
+    expect(looksDented(d)).toBe(false);
+    d.damage(10);
+    expect(looksDented(d)).toBe(false);
+    d.damage(35);
+    expect(looksDented(d)).toBe(true);
+  });
+
+  it("le moteur affaibli : une fiche par palier, gardée ; freins et pneus intacts", () => {
+    expect(deratedSpec(CAR, 1)).toBe(CAR);
+    const weak = deratedSpec(CAR, 0.6);
+    expect(weak).toBe(deratedSpec(CAR, 0.6));
+    expect(weak.power).toBeCloseTo(CAR.power * 0.6);
+    expect(weak.maxBrake).toBe(CAR.maxBrake);
+    expect(weak.grip).toBe(CAR.grip);
   });
 });

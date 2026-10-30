@@ -4,10 +4,10 @@ import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { parkingZone, pickModel } from "../core/vehicle-placement";
 import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
-import { VehicleDamage } from "../core/damage";
+import { deratedSpec, looksDented, VehicleDamage } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { carLayout, wheelTrack } from "../render/car-body";
-import { CAR_BODIES, carRestGeometry, createCarModel } from "../render/car-model";
+import { baseModel, CAR_BODIES, carRestGeometry, createCarModel, DENTED } from "../render/car-model";
 import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
 import { createMotorScooterModel } from "../render/motorscooter-model";
@@ -30,9 +30,14 @@ export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
 
 /** Géométrie au repos d'un modèle garé (peinture blanche), pour le maillage instancié de tous ses exemplaires. */
 export function restGeometryOf(id: string): THREE.BufferGeometry {
-  const def = vehicleDef(id);
+  const def = vehicleDef(baseModel(id));
   if (!def) throw new Error(`modèle de véhicule inconnu : ${id}`);
-  return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[id]!("#ffffff"));
+  return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[def.id]!("#ffffff"));
+}
+
+/** Modèle dessiné pour un véhicule garé ou de la circulation : sa forme abîmée s'il paraît cabossé (voitures seulement, D112). */
+export function drawnModel(def: VehicleDef, damage: VehicleDamage): string {
+  return def.family === "car" && looksDented(damage) ? def.id + DENTED : def.id;
 }
 
 /** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
@@ -87,19 +92,9 @@ export interface Vehicle {
   damage: VehicleDamage;
 }
 
-const derated = new WeakMap<VehicleSpec, Map<number, VehicleSpec>>();
-/**
- * Fiche avec laquelle le véhicule roule : celle du modèle, moteur affaibli selon ses dégâts (puissance, traction et marche arrière ;
- * freins, pneus et direction intacts). Une fiche par palier, gardée : aucune allocation à chaque pas.
- */
+/** Fiche avec laquelle le véhicule roule : celle du modèle, moteur affaibli selon ses dégâts (`deratedSpec`). */
 export function drivenSpec(v: { spec: VehicleSpec; damage: VehicleDamage }): VehicleSpec {
-  const k = v.damage.power;
-  if (k >= 1) return v.spec;
-  let byK = derated.get(v.spec);
-  if (!byK) derated.set(v.spec, (byK = new Map()));
-  let spec = byK.get(k);
-  if (!spec) byK.set(k, (spec = { ...v.spec, power: v.spec.power * k, maxDrive: v.spec.maxDrive * k, reverseForce: v.spec.reverseForce * k }));
-  return spec;
+  return deratedSpec(v.spec, v.damage.power);
 }
 
 /** Peinture d'une épave brûlée (D111). */
@@ -151,7 +146,8 @@ export class Fleet {
     private readonly terrain: HeightField,
   ) {
     scene.add(this.parked.group);
-    this.parked.prepare(CATALOG.map((d) => d.id));
+    // Aussi la forme abîmée de chaque voiture (D112) : elle ne coûte un appel de dessin que quand une voiture cabossée est là.
+    this.parked.prepare([...CATALOG.map((d) => d.id), ...CATALOG.filter((d) => d.family === "car").map((d) => d.id + DENTED)]);
   }
 
   /** Aucun véhicule ne sera garé dans ce cercle (point de départ du joueur). */
@@ -338,7 +334,7 @@ export class Fleet {
       if (Math.hypot(v.state.x - x, v.state.y - y) > reach) continue;
       // Une épave brûlée est noircie : la peinture prend la teinte du charbon (D111).
       const color = v.damage.end === "explosion" ? WRECK_COLOR : paletteColor(v.def, v.variant);
-      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
+      items.push({ model: drawnModel(v.def, v.damage), x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
     }
     this.parked.set(items);
     this.stats.drawn = this.parked.instances;

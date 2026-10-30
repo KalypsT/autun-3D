@@ -8,6 +8,7 @@ import type { GameContext } from "./context";
 import { followSun, gameSpawn } from "./game";
 import { ParkedModels } from "../render/parked-models";
 import { ZONES, type Zone } from "../core/damage";
+import { DENTED } from "../render/car-model";
 import { buildModel, restGeometryOf } from "./vehicles";
 
 /**
@@ -47,7 +48,8 @@ export function startVehicleGallery(ctx: GameContext): void {
         const row = Math.floor(i / perRow), col = i % perRow;
         const inRow = Math.min(perRow, defs.length - row * perRow);
         const state = createVehicle(spawn.x + (col - (inRow - 1) / 2) * cell, spawn.y + dist + row * cell, heading, world.terrain);
-        return { model: def.id, x: state.x, y: state.y, z: state.z, heading, pitch: 0, color: paletteColor(def, variant) };
+        // Avec `dent`, les voitures garées prennent leur forme abîmée commune (D112), quelles que soient les zones demandées.
+        return { model: dent && def.family === "car" ? def.id + DENTED : def.id, x: state.x, y: state.y, z: state.z, heading, pitch: 0, color: paletteColor(def, variant) };
       });
       parked.set(items);
       hint.textContent = `Garés (instances) : ${defs.map((d) => `${d.name} (${paletteColor(d, variant)})`).join(" · ")}`;

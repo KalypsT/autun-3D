@@ -6,6 +6,7 @@ import { Signals } from "./signals";
 import type { RoadMove } from "./road-graph";
 import { createVehicle, stepVehicle, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 import { contactVehicles } from "./vehicle-contact";
+import { abandons, deratedSpec, VehicleDamage, type DamageProfile } from "./damage";
 import type { HeightField } from "../data/types";
 
 /**
@@ -27,6 +28,10 @@ export interface SimCar {
   chase: Chaser | null;
   /** Impact (m/s) du dernier choc avec le véhicule du joueur à ce pas, 0 sans choc (J4 : percuter la police). */
   hitPlayer: number;
+  /** Dégâts (D112) : les chocs (murs, autres voitures, joueur) l'abîment, son moteur faiblit ; trop abîmée, son conducteur s'arrête pour l'abandonner. */
+  damage: VehicleDamage;
+  /** Voiture de police. */
+  police: boolean;
 }
 
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
@@ -42,6 +47,9 @@ const PED_REACH = 30;
 
 const FOOT: Other["state"] = { x: 0, y: 0, vx: 0, vy: 0, heading: 0 };
 const PARKED: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: 1 };
+/** Un conducteur qui abandonne sa voiture abîmée freine jusqu'à l'arrêt. */
+const STOPPING: DriveInput = { throttle: 0, brake: 1, steer: 0, handbrake: 1 };
+const ORDINARY: DamageProfile = { toughness: 1, burns: true };
 
 export class TrafficSim {
   readonly cars: SimCar[] = [];
@@ -86,7 +94,7 @@ export class TrafficSim {
   }
 
   /** Ajoute une voiture sur la voie de droite de `move`, à `s` m de son début, lancée à `speed` m/s ; sans graine, elle reste arrêtée. */
-  add(spec: VehicleSpec, move: RoadMove, s: number, seed: number | null, speed = 0): SimCar {
+  add(spec: VehicleSpec, move: RoadMove, s: number, seed: number | null, speed = 0, profile: DamageProfile = ORDINARY, police = false): SimCar {
     const lp = { x: 0, y: 0, heading: 0 };
     lanePoint(this.nav.road, move, s, lp);
     const state = createVehicle(lp.x, lp.y, lp.heading, this.terrain);
@@ -96,7 +104,7 @@ export class TrafficSim {
     const driver = seed === null ? null : new Driver(this.nav, move, s, seed, spec, this.colliders, this.signals);
     const { halfLen, halfWid } = extentOf(spec);
     const id = this.serial++;
-    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0, chase: null, hitPlayer: 0 };
+    const car: SimCar = { id, spec, state, driver, other: { state, halfLen, halfWid, ...(driver ? { junction: driver.junction } : {}) }, age: 0, chase: null, hitPlayer: 0, damage: new VehicleDamage(profile), police };
     if (driver) driver.junction.id = id;
     this.cars.push(car);
     return car;
@@ -212,8 +220,8 @@ export class TrafficSim {
           seen = list;
         }
       }
-      const input = !c.driver ? PARKED : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
-      stepVehicle(c.state, c.spec, input, dt, this.terrain, this.colliders);
+      const input = !c.driver ? PARKED : abandons(c.damage) ? STOPPING : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
+      stepVehicle(c.state, deratedSpec(c.spec, c.damage.power), input, dt, this.terrain, this.colliders);
       c.age += dt;
     }
     this.stats.contacts = 0;
@@ -240,6 +248,11 @@ export class TrafficSim {
         a.hitPlayer = Math.max(a.hitPlayer, this.hit.impact);
         this.shake(a, this.hit.impact);
       }
+    }
+    // Dégâts (D112) : le pire choc du pas (mur, autre voiture, joueur) abîme chaque voiture, là où il a porté.
+    for (const c of this.cars) {
+      if (c.state.impact > 0) c.damage.hit(c.state.impact, c.state.impactAngle);
+      c.damage.update(dt);
     }
     for (const c of this.cars) {
       if (!c.driver?.honking) continue;

@@ -7,7 +7,11 @@ import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import type { ChaseTarget } from "../core/chase";
 import { BASE_REACH, GENDARMERIE, type PoliceUnit } from "../core/police";
-import { CATALOG, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
+import { CATALOG, damageProfile, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
+import { abandons, type VehicleDamage } from "../core/damage";
+import { contactAngle } from "../core/vehicle";
+import { DENTED } from "../render/car-model";
+import { drawnModel } from "./vehicles";
 import { pickModel } from "../core/vehicle-placement";
 import { ZONE } from "../data/nav";
 import type { HeightField } from "../data/types";
@@ -35,6 +39,18 @@ interface TrafficCar {
   lostFor: number;
 }
 
+/** Une voiture abandonnée par son conducteur (D112), à remettre à la flotte. */
+export interface Abandoned {
+  model: string;
+  variant: number;
+  driver: number;
+  police: boolean;
+  x: number;
+  y: number;
+  heading: number;
+  damage: VehicleDamage;
+}
+
 /** Ce que la circulation sait du joueur à chaque image : position, cap de la caméra, vitesse, heure de jeu, et le véhicule qu'il conduit. */
 export interface TrafficEnv {
   x: number;
@@ -56,6 +72,8 @@ const SEEN_RANGE = 400;
 const PATROL_SHARE = 0.06;
 const MAX_PATROLS = 1;
 const POLICE: VehicleDef = vehicleDef("gendarmerie")!;
+/** Voitures abandonnées gardées en attendant que le jeu les reprenne (D112). */
+const MAX_ABANDONED = 16;
 
 export class Traffic {
   readonly cars: TrafficCar[] = [];
@@ -92,7 +110,9 @@ export class Traffic {
     private readonly seed = 1,
   ) {
     this.sim = new TrafficSim(nav.graph, terrain, colliders, signals);
-    this.models.prepare(CATALOG.filter((d) => d.family === "car").map((d) => d.id));
+    const cars = CATALOG.filter((d) => d.family === "car").map((d) => d.id);
+    // Avec la forme abîmée de chaque modèle (D112), cachée tant qu'aucune voiture cabossée ne roule.
+    this.models.prepare([...cars, ...cars.map((id) => id + DENTED)]);
     scene.add(this.models.group);
   }
 
@@ -185,6 +205,44 @@ export class Traffic {
     this.remove(best);
     this.render();
     return out;
+  }
+
+  /**
+   * Voitures abandonnées (D112) : trop abîmées, leur conducteur s'est arrêté (ou la voiture brûle déjà) ; elles quittent la circulation, et ce qu'il faut
+   * pour en faire un véhicule de la flotte est écrit dans `out`, avec leurs dégâts (le jeu fait fuir le conducteur civil).
+   */
+  takeAbandoned(out: Abandoned[]): Abandoned[] {
+    out.length = 0;
+    for (const a of this.abandoned) out.push(a);
+    this.abandoned.length = 0;
+    return out;
+  }
+
+  /** Voitures abandonnées pas encore reprises par le jeu (au plus `MAX_ABANDONED` : sans preneur, les plus anciennes sont oubliées). */
+  private readonly abandoned: Abandoned[] = [];
+
+  /** Retire de la circulation les voitures dont le conducteur a abandonné, arrêtées (ou qui brûlent déjà, ou épaves). */
+  private dropAbandoned(): void {
+    for (let i = this.cars.length - 1; i >= 0; i--) {
+      const c = this.cars[i]!, s = c.sim.state, d = c.sim.damage;
+      if (!abandons(d) || (Math.hypot(s.vx, s.vy) > 0.8 && d.burning < 0 && !d.end)) continue;
+      this.abandoned.push({ model: c.def.id, variant: c.variant, driver: c.driver, police: c.police, x: s.x, y: s.y, heading: s.heading, damage: d });
+      if (this.abandoned.length > MAX_ABANDONED) this.abandoned.shift();
+      this.remove(i);
+    }
+  }
+
+  /** Voitures abîmées (fumée, feu) : pour la fumée et les flammes. */
+  forEachDamaged(visit: (state: SimCar["state"], def: VehicleDef, damage: VehicleDamage) => void): void {
+    for (const c of this.cars) if (c.sim.damage.tier !== "ok") visit(c.sim.state, c.def, c.sim.damage);
+  }
+
+  /** Souffle d'une explosion en (x, y) (D111) : chaque voiture à moins de `radius` m perd `points(distance)` points, du côté du souffle. */
+  blast(x: number, y: number, radius: number, points: (d: number) => number): void {
+    for (const c of this.cars) {
+      const s = c.sim.state, d = Math.hypot(s.x - x, s.y - y);
+      if (d < radius) c.sim.damage.damage(points(d), contactAngle(s, x - s.x, y - s.y));
+    }
   }
 
   /** Voitures de gendarmerie présentes. */
@@ -306,6 +364,7 @@ export class Traffic {
       }
       if (far >= 0) this.remove(far);
     }
+    this.dropAbandoned();
     this.updatePursuit(dt, env);
     this.cooldown -= dt;
     // Au début, on remplit vite (jusqu'à 3 par image tant qu'il manque la moitié) ; ensuite une naissance toutes les 0,25 s.
@@ -362,7 +421,7 @@ export class Traffic {
     items.length = 0;
     for (const c of this.cars) {
       const s = c.sim.state;
-      const item: TrafficItem = { model: c.def.id, x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) };
+      const item: TrafficItem = { model: drawnModel(c.def, c.sim.damage), x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) };
       if (c.siren) item.beacon = this.beaconClock;
       items.push(item);
     }
@@ -395,7 +454,7 @@ export class Traffic {
     const variant = Math.floor(rnd() * 16);
     const driver = Math.floor(rnd() * 4294967296);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
-    const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9));
+    const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9), damageProfile(def), def === POLICE);
     const car: TrafficCar = { sim, def, variant, driver, police: def === POLICE, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 };
     this.cars.push(car);
     return car;

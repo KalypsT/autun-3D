@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
-import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, parkedDetailGeometry, type CarBodyParams } from "./car-body";
+import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
+import type { Zone } from "../core/damage";
 
 /**
  * Voitures aux couleurs de l'affiche, générées d'après leurs mesures et leur style (`car-body.ts`) : chaque modèle a sa silhouette, ses phares, sa calandre,
@@ -103,10 +104,7 @@ export function createCarModel(id: string, color: string): VehicleModel {
   const detailGeo = bodyDetailGeometry(p, front, rear);
   const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim);
   // Dégâts (D110) : préparés à la première bosse seulement (copie des positions et des couleurs d'origine).
-  const frame: CrumpleFrame = {
-    noseZ: layout.noseZ, tailZ: layout.tailZ, halfWidth: p.width / 2, belt: p.belt,
-    light: ["#f5ecd2", "#f1a03a"], tail: ["#e0442c", "#9c2a1c"], glass: p.glass ?? "#2b3a4c",
-  };
+  const frame = crumpleFrame(p, front, rear);
   let crumplers: Crumpler[] | null = null;
   const mat = sharedMaterial();
   const mesh = (g: THREE.BufferGeometry): THREE.Mesh => {
@@ -157,8 +155,54 @@ export function createCarModel(id: string, color: string): VehicleModel {
   };
 }
 
-/** Géométrie au repos d'une voiture garée : caisse (peinture blanche), détails et roues dans une seule géométrie. */
+function crumpleFrame(p: CarBodyParams, front: number, rear: number): CrumpleFrame {
+  const layout = carLayout(p, front, rear);
+  return {
+    noseZ: layout.noseZ, tailZ: layout.tailZ, halfWidth: p.width / 2, belt: p.belt,
+    light: ["#f5ecd2", "#f1a03a"], tail: ["#e0442c", "#9c2a1c"], glass: p.glass ?? "#2b3a4c",
+  };
+}
+
+/**
+ * Forme « abîmée » d'un modèle (D112), commune à tous ses exemplaires cabossés dessinés par instances (garés, circulation) : un avant bien enfoncé,
+ * l'arrière et les flancs touchés, un phare cassé, le pare-brise fêlé. Les bosses exactes d'une voiture n'existent que sur celle qu'on conduit.
+ */
+export const DENT: Readonly<Record<Zone, number>> = { front: 0.6, rear: 0.3, left: 0.35, right: 0.15 };
+/** Suffixe des modèles dessinés sous leur forme abîmée (`citadine#dent`). */
+export const DENTED = "#dent";
+
+/** Identifiant du modèle sans le suffixe de la forme abîmée. */
+export function baseModel(id: string): string {
+  const i = id.indexOf("#");
+  return i < 0 ? id : id.slice(0, i);
+}
+
+/** Caisse peinte (en blanc) et détails d'une voiture, abîmés si l'identifiant porte le suffixe `#dent`. */
+function bodyParts(id: string): { paint: THREE.BufferGeometry; detail: THREE.BufferGeometry; p: CarBodyParams; front: number; rear: number } {
+  const { p, front, rear } = bodyOf(baseModel(id));
+  const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), detail = bodyDetailGeometry(p, front, rear);
+  if (id.endsWith(DENTED)) {
+    const frame = crumpleFrame(p, front, rear);
+    new Crumpler(paint, frame, true, false).apply(DENT);
+    new Crumpler(detail, frame, false).apply(DENT);
+  }
+  return { paint, detail, p, front, rear };
+}
+
+/** Caisse sans roues (circulation, D65) : peinture blanche et détails ; `citadine#dent` : la forme abîmée. */
+export function carBodyGeometry(id: string): THREE.BufferGeometry {
+  const { paint, detail } = bodyParts(id);
+  return merge([paint, detail]);
+}
+
+/** Géométrie au repos d'une voiture garée : caisse (peinture blanche), détails et roues dans une seule géométrie ; `citadine#dent` : la forme abîmée. */
 export function carRestGeometry(id: string): THREE.BufferGeometry {
-  const { p, front, rear } = bodyOf(id);
-  return merge([bodyPaintGeometry(p, front, rear, "#ffffff"), parkedDetailGeometry(p, front, rear)]);
+  const { paint, detail, p, front, rear } = bodyParts(id);
+  const parts = [paint, detail];
+  for (const [x, z] of carLayout(p, front, rear).wheels) {
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim);
+    w.translate(x, p.wheelRadius, z);
+    parts.push(w);
+  }
+  return merge(parts);
 }

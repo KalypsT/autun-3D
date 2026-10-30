@@ -80,7 +80,11 @@ export class Crumpler {
   private readonly tails: THREE.Color[];
   private readonly glass: THREE.Color;
 
-  constructor(private readonly geo: THREE.BufferGeometry, private readonly frame: CrumpleFrame, private readonly paint: boolean) {
+  /**
+   * `paint` : la caisse peinte (sinon les détails) ; `tarnish` faux : la peinture n'est pas ternie (forme commune dessinée par instances, D112 :
+   * seuls les sommets blanc pur prennent la couleur de l'exemplaire).
+   */
+  constructor(private readonly geo: THREE.BufferGeometry, private readonly frame: CrumpleFrame, private readonly paint: boolean, private readonly tarnish = true) {
     this.pos0 = (geo.getAttribute("position").array as Float32Array).slice();
     this.col0 = (geo.getAttribute("color").array as Float32Array).slice();
     this.lights = frame.light.map((c) => new THREE.Color(c));
@@ -102,7 +106,7 @@ export class Crumpler {
       tmp.setRGB(c0[i]!, c0[i + 1]!, c0[i + 2]!);
       if (this.paint) {
         // Peinture ternie là où la tôle a pris.
-        tmp.multiplyScalar(1 - 0.35 * wear);
+        if (this.tarnish) tmp.multiplyScalar(1 - 0.35 * wear);
       } else {
         const x = p0[i]!, z = p0[i + 2]!, right = x > 0;
         if (z < f.noseZ + 0.2 && this.lights.some((l) => close(l, tmp)) && (right ? broken.headRight : broken.headLeft)) tmp.copy(BROKEN);

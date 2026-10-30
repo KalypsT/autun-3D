@@ -1,9 +1,8 @@
 import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
-import { beaconBoxes, bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, lampSpots } from "./car-body";
-import { CAR_BODIES } from "./car-model";
+import { beaconBoxes, carLayout, carWheelGeometry, lampSpots } from "./car-body";
+import { baseModel, CAR_BODIES, carBodyGeometry } from "./car-model";
 import { tintPaintOnly } from "./parked-models";
-import { merge } from "./vehicle-model";
 
 /**
  * Voitures qui roulent (J3-5, D65), dessinées par instances comme les voitures garées (D56), mais avec des roues qui tournent et braquent :
@@ -59,12 +58,10 @@ interface Layout {
   beacons: ReturnType<typeof beaconBoxes>;
 }
 
-/** Géométrie d'un modèle sans ses roues : peinture en blanc (teintée par instance) et détails. */
+/** Géométrie d'un modèle sans ses roues : peinture en blanc (teintée par instance) et détails ; `citadine#dent` : sa forme abîmée (D112). */
 export function bodyOnlyGeometry(id: string): THREE.BufferGeometry {
-  const p = CAR_BODIES[id], def = vehicleDef(id);
-  if (!p || !def) throw new Error(`voiture inconnue : ${id}`);
-  const { front, rear } = def.spec;
-  return merge([bodyPaintGeometry(p, front, rear, "#ffffff"), bodyDetailGeometry(p, front, rear)]);
+  if (!CAR_BODIES[baseModel(id)] || !vehicleDef(baseModel(id))) throw new Error(`voiture inconnue : ${id}`);
+  return carBodyGeometry(id);
 }
 
 /** Phares et feux arrière d'un modèle, dans son repère : [x, y, z, largeur, hauteur, profondeur], les deux premiers devant. */
@@ -158,7 +155,8 @@ export class TrafficModels {
     return s;
   }
 
-  private layout(id: string): Layout {
+  private layout(model: string): Layout {
+    const id = baseModel(model);
     let l = this.layouts.get(id);
     if (!l) {
       const p = CAR_BODIES[id]!, def = vehicleDef(id)!;

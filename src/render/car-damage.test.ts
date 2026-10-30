@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createVehicle } from "../core/vehicle";
-import { vehicleDef } from "../core/vehicle-catalog";
+import { CATALOG, vehicleDef } from "../core/vehicle-catalog";
 import { flatTerrain } from "../core/testing";
 import { brokenLamps, crumplePoint, CRUSH, type CrumpleFrame } from "./car-damage";
-import { createCarModel } from "./car-model";
+import { carRestGeometry, createCarModel, DENTED } from "./car-model";
 import { Smoke } from "./smoke";
 
 const frame: CrumpleFrame = { noseZ: -2, tailZ: 2, halfWidth: 0.9, belt: 0.9, light: [], tail: [], glass: "#000000" };
@@ -93,5 +93,26 @@ describe("fumée (D110)", () => {
     smoke.update(0.1);
     expect(smoke.count).toBe(smoke.mesh.instanceMatrix.count);
     smoke.dispose();
+  });
+});
+
+describe("forme abîmée des voitures dessinées par instances (D112)", () => {
+  it("chaque voiture a sa forme cabossée : même nombre de triangles, avant reculé, aucune valeur absurde", () => {
+    for (const def of CATALOG.filter((d) => d.family === "car")) {
+      const neat = carRestGeometry(def.id), dented = carRestGeometry(def.id + DENTED);
+      expect(dented.getAttribute("position").count).toBe(neat.getAttribute("position").count);
+      expect((dented.getAttribute("position").array as Float32Array).every(Number.isFinite)).toBe(true);
+      neat.computeBoundingBox();
+      dented.computeBoundingBox();
+      expect(dented.boundingBox!.min.z).toBeGreaterThan(neat.boundingBox!.min.z + 0.1);
+      // La peinture reste blanc pur (teintée par instance) : autant de sommets blancs qu'avant.
+      const white = (g: THREE.BufferGeometry): number => {
+        const c = g.getAttribute("color");
+        let n = 0;
+        for (let i = 0; i < c.count; i++) if (Math.min(c.getX(i), c.getY(i), c.getZ(i)) > 0.999) n++;
+        return n;
+      };
+      expect(white(dented)).toBe(white(neat));
+    }
   });
 });

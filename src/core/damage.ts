@@ -8,6 +8,8 @@
  * La puissance baisse avec le palier (la direction n'est jamais touchée : pénible au pouce sur téléphone).
  */
 
+import type { VehicleSpec } from "./vehicle";
+
 export type Zone = "front" | "rear" | "left" | "right";
 export const ZONES: readonly Zone[] = ["front", "rear", "left", "right"];
 
@@ -199,4 +201,33 @@ export class VehicleDamage {
     this.end = this.burns ? "explosion" : "breakdown";
     this.pending.push(this.end === "explosion" ? { kind: "explode" } : { kind: "breakdown" });
   }
+}
+
+const derated = new WeakMap<VehicleSpec, Map<number, VehicleSpec>>();
+/**
+ * Fiche avec laquelle roule un véhicule abîmé : moteur affaibli de `power` (puissance, traction, marche arrière ; freins, pneus et direction intacts).
+ * Une fiche par palier et par modèle, gardée : aucune allocation à chaque pas.
+ */
+export function deratedSpec(spec: VehicleSpec, power: number): VehicleSpec {
+  if (power >= 1) return spec;
+  let byK = derated.get(spec);
+  if (!byK) derated.set(spec, (byK = new Map()));
+  let out = byK.get(power);
+  if (!out) byK.set(power, (out = { ...spec, power: spec.power * power, maxDrive: spec.maxDrive * power, reverseForce: spec.reverseForce * power }));
+  return out;
+}
+
+/**
+ * Un conducteur de la circulation abandonne sa voiture (D112) dès la fumée noire : un civil s'arrête, descend et s'enfuit ; une gendarmerie est hors
+ * d'usage (son moteur affaibli la laissait coincée contre une autre voiture pendant des minutes, trouvé par l'endurance de la poursuite).
+ * Elle tient plus longtemps grâce à sa solidité (1,4).
+ */
+export function abandons(d: VehicleDamage): boolean {
+  const tier = d.tier;
+  return tier === "wrecked" || tier === "fire" || tier === "heavy";
+}
+
+/** Une voiture paraît cabossée (forme « abîmée » du dessin par instances, D112) dès la fumée blanche, et jusqu'à l'épave. */
+export function looksDented(d: VehicleDamage): boolean {
+  return d.version > 0 && (d.health <= DAMAGE.smoke || d.end !== null);
 }

@@ -656,3 +656,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Explosion](docs/captures/d111-explosion.jpg)
 ![Épave qui brûle](docs/captures/d111-epave-brule.jpg)
 
+**Dégâts des véhicules, étape 4 : police, circulation, voitures garées (30 octobre 2026)** (D112)
+- Les voitures de la circulation s'abîment aux chocs (contre toi, entre elles, contre les murs), fument, ralentissent. À la fumée noire, le conducteur s'arrête, descend et s'enfuit : la voiture reste là, abîmée ; elle peut brûler et exploser, ou tu peux la reprendre si elle roule encore.
+- Une gendarmerie à la fumée noire est hors d'usage : elle quitte la poursuite (la police envoie des renforts). Elle est 1,4 fois plus solide qu'une voiture ordinaire.
+- Les voitures garées que tu percutes s'abîment aussi, et fument si elles sont bien touchées.
+- Les voitures cabossées garées ou qui roulent ont une forme abîmée (une par modèle) ; les explosions abîment aussi la circulation.
+- 673 tests. Le chargement prend environ 70 ms de plus sur PC (fabrication des formes abîmées).
+- À faire de ton côté : percuter des voitures de la circulation et des voitures garées ; se faire poursuivre (`?wanted=2`) et mettre une gendarmerie hors d'usage en la percutant plusieurs fois. Dis-moi si les gendarmeries tombent trop vite ou pas assez.
+
+![Voitures garées cabossées](docs/captures/d112-garees-cabossees.jpg)
+
