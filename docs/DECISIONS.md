@@ -1634,3 +1634,25 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![De face](captures/d122-leclerc-face.jpg)
 ![Depuis l'ouest](captures/d122-leclerc-ouest.jpg)
 ![Depuis l'est](captures/d122-leclerc-est.jpg)
+
+## 2026-10-30 — D123. Bâtiments d'après photos, étape 3 : l'hôtel de ville, volumes et toits
+
+**Demande de l'utilisateur** : modéliser l'hôtel de ville d'après ses photos, en commençant par les volumes et les toits ; retirer l'inscription. Photo fournie (non versionnée, elle sert seulement à décrire) : la façade sur le Champ de Mars (sud-sud-est), de face, depuis la place un peu à l'ouest de l'axe. Lecture : 11 travées ; pavillons d'angle de 2 travées et avant-corps central de 3 travées, en légère saillie, à toits d'ardoise raides et tronqués (le central plus haut, avec paratonnerre) ; trois niveaux : soubassement en pierre blonde à bossages et arcades grillagées, étage noble clair à hautes fenêtres à frontons cintrés, étage en pierre blonde ; perron et portique au centre, balcon à balustrade, trois drapeaux aux baies du balcon, lucarne-fronton aux armes ; œils-de-bœuf, lucarnes, cheminées. Pas d'inscription.
+
+**Constat** : la mairie était le volume générique (cinq niveaux de petites fenêtres identiques, un toit à croupes uniforme, D18), avec l'inscription « HÔTEL DE VILLE » et les drapeaux sur le plus long mur (nord-est), invisibles depuis la place.
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS, fenêtre de 0,5 m autour du bâtiment ; hauteurs au-dessus de la place devant la façade, à −4,5 m) : façade de 44,6 m ; corps principal de 13,75 m de profondeur, corniche à 17,0 m, faîtage à 22,6 m (deux pans) ; pavillons d'angle de 8 m, plateau à 24,9 et 25,0 m ; pavillon central de 12 m, plateau à 27,9 m ; ailes autour de la cour (côtés et arrière) plus basses : égout à 14,4 m, faîtage à 19,5 m sur leur ligne médiane, croupes aux angles ; perron de 12 m de large dont le palier est à 4,5 m (le niveau de la cour, et le haut du soubassement). Les lucarnes relevées sur le pan avant (tous les 4 m, symétriques) confirment les 11 travées de 4,05 m.
+
+**Données** : étape autonome `tools/data/build_monuments.py` (après `build_kinds.py`, qui réécrit `kinds`). La lecture de la photo est dans `monuments` de `tools/data/manual.json` (coin de départ de la façade dans le contour, travées, pavillons en travées, hauts du soubassement et de l'étage noble, `sign: false`) ; l'étape y ajoute les mesures (médianes sur les parties entre pavillons, qui écartent lucarnes et cheminées ; corniche = droite du pan avant ramenée au mur ; plateau des pavillons = cellules à moins de 0,6 m de leur 90ᵉ centile ; égout des ailes = pente entre 1,5 et 4,5 m du mur) et n'écrit que le champ `hall` du bâtiment dans `kinds/26_35.json`, en retirant l'inscription. La fenêtre LiDAR est gardée dans `.cache/shared/raw/monuments` ; une deuxième passe ne réécrit rien.
+
+**Rendu** (`buildTownHall`, `src/render/monuments.ts`, dans le maillage plein de la tuile : aucun appel de dessin de plus, 1 566 triangles et 144 de vitres allumées) : murs, toit et façade génériques ne sont plus dessinés (comme pour un abri à chariots) ; la collision reste l'emprise. **Volumes à pans nets** : corps principal à deux pans (débord de 30 cm), pavillons en saillie de 35 cm à toits en tronc de pyramide jusqu'au plateau mesuré (zinc), ailes basses à deux pans dont le faîtage suit la ligne médiane entre contour et cour (croupes et noues aux angles, ce qui suit le contour irrégulier sans maillage du relevé) ; le pan sur cour de l'aile avant rejoint la corniche arrière du corps principal. **Niveaux** : soubassement et étage en pierre blonde, étage noble clair, bandeaux et corniche clairs ; travées régulières : arcades sombres au soubassement (sauf derrière le perron), fenêtres hautes à l'étage noble et plus courtes à l'étage, portes et baies en plein cintre dans l'avant-corps central ; fenêtres simples tous les 4 m aux mêmes niveaux sur les autres murs, là où elles tiennent entre le sol et la corniche. Plus d'inscription ni de drapeaux génériques.
+
+**Pas encore** : le détail de la façade (bossages, frontons, chaînes d'angle, étape suivante), le portique, le balcon, les drapeaux et le perron (qui reste le talus en marches de D94), les lucarnes, œils-de-bœuf et cheminées, les autres façades d'après photo ; la silhouette lointaine (LOD) reste le volume générique.
+
+![Avant](captures/d123-mairie-avant.jpg)
+![Après](captures/d123-mairie-apres.jpg)
+![Avant, vue haute](captures/d123-mairie-haut-avant.jpg)
+![Après, vue haute](captures/d123-mairie-haut-apres.jpg)
+![La cour et les ailes basses](captures/d123-mairie-cour.jpg)
+![Depuis le sud-ouest (?view=mairie)](captures/d123-mairie-angle.jpg)
+![La nuit](captures/d123-mairie-nuit.jpg)

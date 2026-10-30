@@ -765,3 +765,16 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![De face](docs/captures/d122-leclerc-face.jpg)
 ![Depuis l'ouest](docs/captures/d122-leclerc-ouest.jpg)
+
+**Bâtiments d'après photos, étape 3 : l'hôtel de ville, volumes et toits (30 octobre 2026)** (D123)
+- La mairie n'est plus une boîte à cinq rangs de petites fenêtres : d'après ta photo et le relevé LiDAR, elle a son corps principal sur le Champ de Mars (corniche à 17 m), ses deux pavillons d'angle et son pavillon central en légère saillie, à toits d'ardoise raides et tronqués (25 m et 28 m), et des ailes plus basses autour d'une cour ouverte.
+- Trois niveaux comme sur la photo : soubassement à arcades et étage en pierre blonde, étage noble clair ; 11 travées régulières, portes et baies en plein cintre au centre. Les fenêtres s'allument la nuit.
+- L'inscription « HÔTEL DE VILLE » est retirée (et les drapeaux génériques, qui étaient sur le mur nord-est).
+- Nouvelle étape de données `tools/data/build_monuments.py` : la lecture de la photo est dans `manual.json`, les hauteurs sont mesurées au LiDAR.
+- 722 tests.
+- Suite prévue : le détail de la façade (bossages, frontons, chaînes d'angle), puis le portique, le balcon, les drapeaux et le perron, puis les lucarnes et cheminées.
+
+![Avant](docs/captures/d123-mairie-avant.jpg)
+![Après](docs/captures/d123-mairie-apres.jpg)
+![Après, vue haute](docs/captures/d123-mairie-haut-apres.jpg)
+![La cour](docs/captures/d123-mairie-cour.jpg)
