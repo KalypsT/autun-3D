@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, tube } from "./vehicle-model";
+import { box, merge, paint, ringLoft, tube, type Ring } from "./vehicle-model";
 
 /**
  * Générateur de carrosserie (D52, refait en D107) : une voiture est décrite par quelques mesures (longueur, hauteur, capot, pare-brise, toit, lunette, coffre)
@@ -169,58 +169,6 @@ interface Station {
   /** Demi-largeurs en bas et en haut de la section. */
   w0: number;
   w1: number;
-}
-
-type Ring = THREE.Vector3[];
-
-const ZERO_UV = [0, 0];
-
-function centroid(points: readonly THREE.Vector3[]): THREE.Vector3 {
-  const c = new THREE.Vector3();
-  for (const p of points) c.add(p);
-  return c.divideScalar(points.length);
-}
-
-/**
- * Volume délimité par des anneaux successifs de même nombre de coins (chacun un polygone convexe), faces planes, normales vers l'extérieur.
- * Chaque face latérale est orientée par rapport à l'axe du tronçon (centre de ses deux anneaux), chaque bouchon par rapport à l'anneau voisin :
- * cela suffit pour des sections convexes, même le long d'un profil qui ne l'est pas (capot qui monte, coffre qui redescend).
- */
-export function ringLoft(rings: readonly Ring[], color: string): THREE.BufferGeometry {
-  const pos: number[] = [], nor: number[] = [], uv: number[] = [];
-  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), n = new THREE.Vector3();
-  const tri = (u: THREE.Vector3, v: THREE.Vector3, w: THREE.Vector3, inside: THREE.Vector3): void => {
-    n.copy(ab.subVectors(v, u)).cross(ac.subVectors(w, u));
-    if (n.lengthSq() < 1e-12) return;
-    // La normale doit regarder à l'opposé du point intérieur.
-    const mid = ab.copy(u).add(v).add(w).divideScalar(3).sub(inside);
-    if (n.dot(mid) < 0) [v, w] = [w, v];
-    n.copy(ab.subVectors(v, u)).cross(ac.subVectors(w, u)).normalize();
-    for (const p of [u, v, w]) {
-      pos.push(p.x, p.y, p.z);
-      nor.push(n.x, n.y, n.z);
-      uv.push(ZERO_UV[0]!, ZERO_UV[1]!);
-    }
-  };
-  const centers = rings.map(centroid);
-  for (let i = 0; i + 1 < rings.length; i++) {
-    const a = rings[i]!, b = rings[i + 1]!, inside = centers[i]!.clone().add(centers[i + 1]!).multiplyScalar(0.5);
-    for (let k = 0; k < a.length; k++) {
-      const k1 = (k + 1) % a.length;
-      tri(a[k]!, a[k1]!, b[k1]!, inside);
-      tri(a[k]!, b[k1]!, b[k]!, inside);
-    }
-  }
-  // Bouchons : éventail depuis le premier coin, orienté à l'opposé de l'anneau voisin.
-  for (const [cap, next] of [[0, 1], [rings.length - 1, rings.length - 2]] as const) {
-    const r = rings[cap]!, inside = centers[cap]!.clone().lerp(centers[next]!, 0.5);
-    for (let k = 1; k + 1 < r.length; k++) tri(r[0]!, r[k]!, r[k + 1]!, inside);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  return paint(g, color);
 }
 
 /** Volume fait de sections trapézoïdales successives (de l'avant vers l'arrière). */

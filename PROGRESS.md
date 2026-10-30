@@ -610,3 +610,18 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Les neuf voitures, de face](docs/captures/d107-voitures-avant.jpg)
 ![Les neuf voitures, de l'arrière](docs/captures/d107-voitures-arriere.jpg)
 ![Le nom du modèle en montant](docs/captures/d107-nom.jpg)
+
+**Deux-roues plus beaux et reconnaissables, et leurs noms (30 octobre 2026)** (D108)
+- Vélo de ville (Bibracte Promenade) : cadre ouvert, garde-boue, porte-bagages, panier en osier, guidon relevé, selle à ressorts. VTT (Bibracte Beuvray) : cadre plongeant, fourche suspendue, pneus à crampons, freins à disque, bidon. On ne les confond plus.
+- Scooter (Éduen Zéphyr 125) : tablier galbé, coque arrondie, top-case, phare dans le guidon, rétroviseurs ronds. Moto routière (Bibracte Druide) : réservoir en goutte, moteur à ailettes, deux échappements chromés, phare rond, roues à rayons. Moto sportive (Bibracte Celte R) : carénage intégral, double phare, bulle, coque arrière effilée, jantes coulées.
+- Trottinette (Trott'Autun Libre-service) : livrée du service de location, phare et écran.
+- Le nom s'affiche en montant, comme pour les voitures. Aucun appel de dessin de plus ; les vélos garés coûtent ≈ 500 triangles de plus chacun. 644 tests.
+- À faire de ton côté : galerie `?view=vehicles&family=moto` puis `family=bike` (et `&rider=1` pour voir les conducteurs), monter sur chacun ; lancer `?bench=1&fleet=1&traffic=20` sur le téléphone (voitures et deux-roues ensemble). Ensuite : les modèles uniques, puis les dégâts.
+
+![Avant](docs/captures/d108-avant.jpg)
+![Vélo de ville, VTT, trottinette](docs/captures/d108-velos.jpg)
+![Scooter, routière, sportive](docs/captures/d108-motos.jpg)
+![Les mêmes, de l'arrière](docs/captures/d108-motos-arriere.jpg)
+![Avec leurs conducteurs](docs/captures/d108-conducteurs.jpg)
+![Le nom en montant](docs/captures/d108-nom.jpg)
+

@@ -1,6 +1,6 @@
 /**
  * Nom du véhicule (D107), à la manière de GTA 3 : quand on monte dedans, la marque et le modèle s'affichent quelques secondes à droite,
- * sous « Descendre », en grosses capitales de l'affiche, puis s'effacent. Rien pour un véhicule sans nom (deux-roues, pour l'instant).
+ * sous « Descendre », en grosses capitales de l'affiche, puis s'effacent. Tous les modèles du catalogue ont un nom (D107, D108) ; rien pour un véhicule qui n'en aurait pas.
  */
 export class VehicleNameHud {
   private readonly make: HTMLElement;

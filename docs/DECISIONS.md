@@ -1374,3 +1374,31 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 **Pour les dégâts (chantier suivant)** : le générateur fabrique la caisse pièce par pièce (bas de caisse, toit, pare-chocs, portières délimitées) : on pourra déformer ou assombrir par zone la voiture conduite, et garder pour la voiture garée une géométrie « abîmée » par modèle (les instances ne peuvent pas chacune avoir leurs propres bosses sans coûter un maillage de plus).
 
 **Limites connues** : pas d'arrondi vrai (facettes, style « affiche ») ; la grille de calandre et les phares sont des volumes posés, pas des creux ; la vitre de custode n'existe que par le montant D du break.
+
+## 2026-10-30 — D108. Deux-roues plus beaux et reconnaissables, et leurs noms
+
+**Demande** : après les voitures (D107), les deux-roues : même but (plus jolis, mieux construits, reconnaissables), même style « affiche », un nom par modèle affiché en montant.
+
+**Constat** (`docs/captures/d108-avant.jpg`) : les motos étaient des empilements de boîtes (réservoir, selle, moteur, coque) ; la sportive se distinguait par un carénage en boîtes sur la direction ; le vélo de ville et le VTT étaient le même cadre, avec ou sans panier ; le scooter, une caisse anguleuse.
+
+**Outils communs** (`src/render/vehicle-model.ts`) : `ringLoft` (venu de `car-body.ts`), `podLoft` (pièce arrondie : sections ovales à huit pans le long de l'axe, pour réservoirs, carénages, selles, coques, silencieux), `fender` (garde-boue : bande courbe autour d'une roue), `xDisc` et `zDisc` (disques d'axe x ou z : moyeux, disques de frein, phares, feux, compteurs). Tubes des deux-roues à cinq pans sans bouchons (`tb`).
+
+**Modèles** (points d'appui du conducteur, selle, essieux et colonne de direction inchangés : les poses des conducteurs restent justes) :
+
+| modèle | nom | ce qui le distingue |
+|---|---|---|
+| vélo de ville | Bibracte Promenade | cadre ouvert à deux tubes cintrés, carter de chaîne, garde-boue, porte-bagages et feu arrière, panier en osier, phare, guidon relevé, sonnette, selle large à ressorts, béquille |
+| VTT | Bibracte Beuvray | cadre plongeant, gros tube diagonal à bande crème, fourche suspendue, cintre plat, pneus à crampons, freins à disque, bidon, selle étroite |
+| trottinette | Trott'Autun Libre-service | plateau arrondi (batterie de la couleur du service), colonne épaisse à bande crème et plaque à code, phare, écran au guidon, garde-boue, béquille |
+| scooter 125 | Éduen Zéphyr 125 | tablier galbé avec cravate et clignotants, plancher à bandes de caoutchouc, coque arrière bombée, selle à deux niveaux, top-case, couvre-guidon avec phare et compteur, rétroviseurs ronds, jantes alliage à cinq branches |
+| moto routière | Bibracte Druide | réservoir en goutte à écussons, moteur à ailettes, deux silencieux chromés, phare rond chromé, deux compteurs, rétroviseurs ronds, garde-boue courbes, feu rond, roues à rayons et tambour |
+| moto sportive | Bibracte Celte R | carénage intégral fixé au cadre (nez à double optique, bulle, flancs à bande crème, sabot), coque arrière effilée, cadre en aluminium, silencieux relevé, fourche inversée dorée, jantes coulées à trois branches soulignées d'ocre, disque de frein |
+
+Bibracte (l'oppidum du mont Beuvray) : vélos et motos ; Éduen : le scooter, comme les voitures populaires ; Trott'Autun : le service de location fictif. Palettes propres à chaque modèle. Le nom s'affiche en montant comme pour les voitures (D107).
+
+**Gabarits** mis à jour au catalogue d'après les modèles (vélo de ville 1,83 m de long avec ses garde-boue, routière 1,28 m de haut avec ses rétroviseurs, scooter 1,92 × 0,72 × 1,26 m…) ; ils ne servent qu'au test de gabarit et à la galerie (la coque des chocs est dans la fiche, inchangée).
+
+**Coût** (exemplaire garé, une géométrie instanciée par modèle, D56 : **aucun appel de dessin de plus**) : vélo de ville 1 302 triangles, VTT 1 268, trottinette 634, scooter 1 182, routière 2 044, sportive 1 588, contre 400 à 900 avant. Les vélos sont les plus nombreux (deux ou trois par parking à vélos) : ≈ +500 triangles chacun ; les motos sont rares (4 % des places, D55). Budget par famille testé (vélo < 1 400, trottinette < 800, moto < 2 200). **À mesurer sur l'Honor** avec les voitures (D107).
+
+**Limites connues** : feux allumés la nuit des deux-roues toujours estimés d'après la fiche (`lampLayout`), pas lus sur le modèle ; le carénage de la sportive ne tourne pas avec le guidon (fixé au cadre, comme en vrai) mais le garde-boue avant, si.
+
