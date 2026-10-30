@@ -239,6 +239,8 @@ export interface CathedralModel {
   choirAisles: [number, number, number][];
   /** Abside : rayon, égout, nombre de pans. */
   apse: [number, number, number];
+  /** Tourelle du chevet (D128) : s, t, côté, pointe mesurée. */
+  turret: [number, number, number, number];
 }
 
 /**

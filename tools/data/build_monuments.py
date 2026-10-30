@@ -312,6 +312,12 @@ def measure_cathedral(bid, b, spec, mon):
             else:
                 row_ += [r2(out), r2(g + med(H(s, t) for s in rng(s0 + 0.5, s1 - 0.5) for t in rng(min(a_[0], out) + 0.5, max(a_[0], out) - 0.5)))]
         chapels.append(row_)
+    # Tourelle au coin du bloc et du bas-côté du chœur (photo du chevet) : point le plus haut juste derrière le transept, centre = moyenne des
+    # cellules à moins de 1,5 m de ce haut ; côté d'après la photo.
+    win = [(s, t, H(s, t)) for s in rng(tr1 + 0.25, tr1 + 4) for t in rng(blk - 2.5, blk + 2.5)]
+    top = max(z for *_, z in win)
+    hi = [(s, t) for s, t, z in win if z > top - 1.5]
+    turret = [r2(med(q[0] for q in hi)), r2(med(q[1] for q in hi)), spec["turret"], r2(g + top)]
     tw = spec["towers"]
     return {
         "c": [r2(cx), r2(cy)], "a": a, "t0": r2(t0), "g": r2(g),
@@ -325,6 +331,7 @@ def measure_cathedral(bid, b, spec, mon):
         "choir": [r2(sc), r2(cA), r2(cB), r2(g + ce), r2(g + cr)],
         "choirAisles": choir_aisles,
         "apse": [r2(r), r2(g + ae), spec["apse"]],
+        "turret": turret,
     }
 
 

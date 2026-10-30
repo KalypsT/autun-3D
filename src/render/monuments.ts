@@ -231,6 +231,8 @@ const TILE_BROWN = C("#a8603c");
 const LEAD = C("#7f8f86");
 const SPIRE_STONE = C("#aaa294");
 const BAY = C("#34404c");
+/** Tuiles vernissées du chevet (photos) : fond jaune d'ocre, résille verte, losanges rouges et brun-noir. */
+const GLAZE_FILL = C("#d9a83a"), GLAZE_NET = C("#2f6a48"), GLAZE_RED = C("#a8432c"), GLAZE_DARK = C("#2e2723");
 
 type Pt = [number, number];
 
@@ -258,13 +260,27 @@ function prismST(mb: MeshBuilder, f: Frame, pts: Pt[], top: (p: Pt) => number, g
 
 const rectST = (s0: number, s1: number, t0: number, t1: number): Pt[] => [[s0, t0], [s1, t0], [s1, t1], [s0, t1]];
 
-/** Baie en plein cintre sur le mur de a à b (normale sortante à droite de a → b), centrée à `u` mètres de a, de z0 au sommet de l'arc z1. */
-function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.04): void {
+/**
+ * Baie en plein cintre (ou en arc brisé, `pointed`) sur le mur de a à b (normale sortante à droite de a → b), centrée à `u` mètres de a, de z0
+ * au sommet de l'arc z1.
+ */
+function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.04, pointed = false): void {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
   const os = dt * off, ot = -ds * off;
   const n = N(f, dt, -ds);
   const at2 = (v: number, z: number): [number, number, number] => [a[0] + ds * (u + v) + os, a[1] + dt * (u + v) + ot, z];
+  if (pointed) {
+    // Arc brisé équilatéral : deux arcs de rayon w centrés aux naissances opposées.
+    const spring = Math.max(z0, z1 - w * 0.866);
+    q(mb, f, at2(-w / 2, z0), at2(w / 2, z0), at2(w / 2, spring), at2(-w / 2, spring), n, col);
+    const arc: [number, number][] = [];
+    for (let i = 0; i <= 3; i++) { const th = Math.PI - (Math.PI / 3) * (i / 3); arc.push([w / 2 + w * Math.cos(th), w * Math.sin(th)]); }
+    for (const k of [1, -1]) for (let i = 0; i < 3; i++) {
+      mb.tri(P(f, ...at2(0, spring)), P(f, ...at2(k * arc[i]![0], spring + arc[i]![1])), P(f, ...at2(k * arc[i + 1]![0], spring + arc[i + 1]![1])), n, col);
+    }
+    return;
+  }
   const spring = Math.max(z0, z1 - w / 2);
   q(mb, f, at2(-w / 2, z0), at2(w / 2, z0), at2(w / 2, spring), at2(-w / 2, spring), n, col);
   for (let i = 0; i < 6; i++) {
@@ -279,23 +295,55 @@ function leanTo(mb: MeshBuilder, f: Frame, s0: number, s1: number, tIn: number, 
   pan(mb, f, [s0, tIn, zIn], [s1, tIn, zIn], [s1, tOut + d * ov, zOut + k * ov], [s0, tOut + d * ov, zOut + k * ov], col);
 }
 
+type RoofPan = (mb: MeshBuilder, f: Frame, a: [number, number, number], b: [number, number, number], c: [number, number, number], d: [number, number, number] | null, col: THREE.Color) => void;
+
+/**
+ * Pan de tuiles vernissées (a, b à l'égout, c, d en haut ; d null : triangle) : rangs de losanges en quinconce, chacun fait de deux triangles
+ * de part et d'autre d'une ligne de rang ; couleurs selon les deux diagonales du réseau : tous les quatre losanges, une résille verte dans
+ * un sens et brun-noir dans l'autre, un losange rouge au cœur de chaque maille, fond jaune.
+ */
+function glazedPan(rows: number, cols: number): RoofPan {
+  return (mb, f, a, b, c, d) => {
+    const A = P(f, ...a), B = P(f, ...b), Cc = P(f, ...c), D = d ? P(f, ...d) : Cc;
+    const n = upNormal(A, B, Cc);
+    const lerp = (p: Vec3, r: Vec3, k: number): Vec3 => [p[0] + (r[0] - p[0]) * k, p[1] + (r[1] - p[1]) * k, p[2] + (r[2] - p[2]) * k];
+    const pt = (v: number, x: number): Vec3 => lerp(lerp(A, D, v), lerp(B, Cc, v), Math.min(1, Math.max(0, x / cols)));
+    const color = (line: number, centre: number): THREE.Color => {
+      const du = (Math.round(centre * 2) + line - 1) / 2, dw = (Math.round(centre * 2) - line - 1) / 2;
+      const iu = ((du % 4) + 4) % 4, iw = ((dw % 4) + 4) % 4;
+      if (iu === 0) return GLAZE_NET;
+      if (iw === 0) return GLAZE_DARK;
+      return iu === 2 && iw === 2 ? GLAZE_RED : GLAZE_FILL;
+    };
+    for (let r = 0; r < rows; r++) {
+      const v0 = r / rows, v1 = (r + 1) / rows, sh = r % 2 ? 0.5 : 0;
+      for (let x = -sh; x < cols; x += 1) {
+        // Triangle pointe en haut (moitié haute du losange de la ligne r), puis pointe en bas (moitié basse de celui de la ligne r + 1).
+        if (x + 1 > 0) mb.tri(pt(v0, x), pt(v0, x + 1), pt(v1, x + 0.5), n, color(r, x + 0.5));
+        if (x > 0 || sh === 0) mb.tri(pt(v1, x - 0.5), pt(v1, x + 0.5), pt(v0, x), n, color(r + 1, x));
+      }
+      if (sh === 0) mb.tri(pt(v1, cols - 0.5), pt(v1, cols), pt(v0, cols), n, color(r + 1, cols));
+    }
+  };
+}
+
 /** Toit en croupe sur le rectangle (pyramide s'il est carré), de l'égout ze au faîtage zr, faîtage le long du grand côté. */
-function hipRoof(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, t1: number, ze: number, zr: number, col: THREE.Color): void {
+function hipRoof(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, t1: number, ze: number, zr: number, col: THREE.Color, roofPan: RoofPan = pan): void {
   const sm = (s0 + s1) / 2, tm = (t0 + t1) / 2, h = Math.min(s1 - s0, t1 - t0) / 2;
   const alongS = s1 - s0 >= t1 - t0;
   const r0: [number, number, number] = alongS ? [s0 + h, tm, zr] : [sm, t0 + h, zr];
   const r1: [number, number, number] = alongS ? [s1 - h, tm, zr] : [sm, t1 - h, zr];
   const c = (s: number, t: number): [number, number, number] => [s, t, ze];
   if (alongS) {
-    pan(mb, f, c(s0, t0), c(s1, t0), r1, r0, col);
-    pan(mb, f, c(s1, t1), c(s0, t1), r0, r1, shade(col, 0.9));
-    pan(mb, f, c(s0, t1), c(s0, t0), r0, null, shade(col, 0.95));
-    pan(mb, f, c(s1, t0), c(s1, t1), r1, null, shade(col, 0.95));
+    roofPan(mb, f, c(s0, t0), c(s1, t0), r1, r0, col);
+    roofPan(mb, f, c(s1, t1), c(s0, t1), r0, r1, shade(col, 0.9));
+    roofPan(mb, f, c(s0, t1), c(s0, t0), r0, null, shade(col, 0.95));
+    roofPan(mb, f, c(s1, t0), c(s1, t1), r1, null, shade(col, 0.95));
   } else {
-    pan(mb, f, c(s0, t1), c(s0, t0), r0, r1, col);
-    pan(mb, f, c(s1, t0), c(s1, t1), r1, r0, shade(col, 0.9));
-    pan(mb, f, c(s0, t0), c(s1, t0), r0, null, shade(col, 0.95));
-    pan(mb, f, c(s1, t1), c(s0, t1), r1, null, shade(col, 0.95));
+    roofPan(mb, f, c(s0, t1), c(s0, t0), r0, r1, col);
+    roofPan(mb, f, c(s1, t0), c(s1, t1), r1, r0, shade(col, 0.9));
+    roofPan(mb, f, c(s0, t0), c(s1, t0), r0, null, shade(col, 0.95));
+    roofPan(mb, f, c(s1, t1), c(s0, t1), r1, null, shade(col, 0.95));
   }
 }
 
@@ -367,8 +415,22 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   gable(mb, f, tr0 - OV, tr1 + OV, blk, tE + 0.3, te - 0.25, trr, TILE_BROWN, wall, true);
   archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 2.6, ground(tm, tE) + 0.3, ground(tm, tE) + 5.2, BAY);
   archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 3.2, ground(tm, tE) + 9, te - 1.2, BAY);
+  // Bloc carré (D128) : toit en croupe de tuiles vernissées, deux grandes baies en arc brisé par face libre, contreforts d'angle.
   prismST(mb, f, rectST(tr0, tr1, tW, blk), flat(be), ground, wall);
-  hipRoof(mb, f, tr0 - 0.3, tr1 + 0.3, tW - 0.3, blk, be - 0.2, bt, TILE_BROWN);
+  hipRoof(mb, f, tr0 - 0.3, tr1 + 0.3, tW - 0.3, blk, be - 0.2, bt, TILE_BROWN, glazedPan(12, 10));
+  const blockFaces: [Pt, Pt][] = [[[tr0, blk], [tr0, tW]], [[tr0, tW], [tr1, tW]], [[tr1, tW], [tr1, blk]]];
+  for (const [a, b] of blockFaces) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    for (const k of [0.3, 0.7]) archOn(mb, f, a, b, len * k, Math.min(2, len * 0.16), ground(...a) + 3.2, be - 1.4, BAY, 0.04, true);
+  }
+  for (const [ps, pt_, ang] of [[tr0, tW, Math.PI * 1.25], [tr1, tW, Math.PI * 1.75]] as const) buttress(mb, f, m.a, ps, pt_, ang, ground(ps, pt_), be - 1.5);
+  // Tourelle au coin du bloc et du bas-côté du chœur : corps carré, pyramide vernissée (pointe mesurée).
+  const [us, ut, uw, utop] = m.turret;
+  const uz = utop - uw * 1.6;
+  prismST(mb, f, rectST(us - uw / 2, us + uw / 2, ut - uw / 2, ut + uw / 2), flat(uz), ground, wall);
+  box(mb, f, us - uw / 2 - 0.15, us + uw / 2 + 0.15, ut - uw / 2 - 0.15, ut + uw / 2 + 0.15, uz - 0.4, uz, shade(wall, 1.06));
+  hipRoof(mb, f, us - uw / 2 - 0.15, us + uw / 2 + 0.15, ut - uw / 2 - 0.15, ut + uw / 2 + 0.15, uz, utop, TILE_BROWN, glazedPan(4, 2));
+  archOn(mb, f, [us + uw / 2, ut - uw / 2], [us + uw / 2, ut + uw / 2], uw / 2, 0.5, uz - 3.2, uz - 1, BAY, 0.04, true);
   // Tour de croisée : corps carré, deux baies jumelles par face, corniche, flèche octogonale et clochetons d'angle.
   const h = side / 2, c0 = m.t0;
   box(mb, f, sx - h, sx + h, c0 - h, c0 + h, Math.min(ne, te) - 1, body, shade(wall, 0.97), shade(wall, 0.85));
@@ -388,14 +450,34 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   });
   const ac = (cA + cB) / 2;
   const ap = (i: number): Pt => { const a = (Math.PI * i) / faces; return [sc + r * Math.sin(a), ac - r * Math.cos(a)]; };
+  // Abside (D128) : toit conique de tuiles vernissées en losanges, corniche, contreforts aux angles, deux étages de baies en arc brisé.
+  const glazeApse = glazedPan(7, 4);
+  const ra = r + 0.35;
+  const apo = (i: number): Pt => { const a = (Math.PI * i) / faces; return [sc + ra * Math.sin(a), ac - ra * Math.cos(a)]; };
   for (let i = 0; i < faces; i++) {
     const a = ap(i), b = ap(i + 1);
     wallST(mb, f, a, b, ae, ae, ground, wall);
-    pan(mb, f, [...a, ae - 0.2], [...b, ae - 0.2], [sc, ac, cr], null, TILE_BROWN);
+    wallST(mb, f, apo(i), apo(i + 1), ae, ae, () => ae - 0.7, shade(wall, 1.06));
+    glazeApse(mb, f, [...apo(i), ae - 0.1], [...apo(i + 1), ae - 0.1], [sc, ac, cr], null, TILE_BROWN);
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    archOn(mb, f, a, b, len / 2, Math.min(2.2, len * 0.4), ground((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) + 9, ae - 1.8, BAY);
+    const zg = ground((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    archOn(mb, f, a, b, len / 2, Math.min(2, len * 0.36), zg + 10.5, ae - 2, BAY, 0.04, true);
+    archOn(mb, f, a, b, len / 2, Math.min(1.3, len * 0.24), zg + 3, zg + 7.5, BAY, 0.04, true);
+  }
+  for (let i = 1; i < faces; i++) {
+    const [ps, pt_] = ap(i);
+    buttress(mb, f, m.a, ps, pt_, Math.atan2(-Math.cos((Math.PI * i) / faces), Math.sin((Math.PI * i) / faces)), ground(ps, pt_), ae - 2.5);
   }
   if (ae > ce) for (const t of [cA, cB]) mb.tri(P(f, sc, t, ce - 0.25), P(f, sc, t, ae - 0.2), P(f, sc, ac, cr), N(f, -1, 0), wall);
+}
+
+/** Contrefort au point (s, t) du mur, saillant dans la direction `dir` (angle dans le repère), du sol z0 à z1, glacis en tête. */
+function buttress(mb: MeshBuilder, f: Frame, a: number, s: number, t: number, dir: number, z0: number, z1: number): void {
+  const [x, y] = at(f, s, t);
+  const fb = frameOf(x, y, a + dir, 1, 1);
+  box(mb, fb, -0.3, 1.3, -0.55, 0.55, z0, z1 - 1.6, STONE, shade(STONE, 0.9));
+  pan(mb, fb, [1.3, -0.55, z1 - 1.6], [1.3, 0.55, z1 - 1.6], [-0.3, 0.55, z1], [-0.3, -0.55, z1], shade(STONE, 1.05));
+  for (const k of [-1, 1]) mb.tri(P(fb, 1.3, k * 0.55, z1 - 1.6), P(fb, -0.3, k * 0.55, z1 - 1.6), P(fb, -0.3, k * 0.55, z1), N(fb, 0, k), STONE);
 }
 
 // --- Hôtel de ville ---------------------------------------------------------------------------------------------------------------

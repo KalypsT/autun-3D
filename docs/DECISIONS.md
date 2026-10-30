@@ -1741,3 +1741,24 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Le chevet](captures/d127-cathedrale-chevet.jpg)
 ![Depuis le nord-ouest : le porche et ses tours](captures/d127-cathedrale-nord-ouest.jpg)
 ![Silhouette lointaine, avant (à gauche) et après](captures/d127-cathedrale-silhouette.jpg)
+
+## 2026-10-30 — D128. Bâtiments d'après photos, étape 8 : la cathédrale, le chevet et ses tuiles vernissées
+
+**D'après les photos de l'utilisateur** (drone au-dessus du chevet, chevet au sol depuis le sud-est) : l'abside polygonale à contreforts et hautes baies, le bloc carré au bout du bras ouest du transept et une petite tourelle entre lui et le chœur sont couverts de tuiles vernissées en losanges (jaune d'ocre, vert, brun-noir, rouge) ; le bloc a de grandes baies.
+
+**Mesure** (`build_monuments.py`) : la **tourelle** se voit dans le modèle de surface (pointe à 22 m au-dessus du sol du bâtiment, au-dessus du bas-côté du chœur à 10-12 m et du toit du bloc) : point le plus haut juste derrière le transept, au coin du bloc ; centre = médiane des cellules à moins de 1,5 m de ce haut ; côté d'après la photo (3 m, `turret` dans `manual.json`). Champ `turret` de `cath` ; une deuxième passe ne change rien.
+
+**Rendu** (`src/render/monuments.ts`) :
+- **Tuiles vernissées** (`glazedPan`) : sur un pan quelconque (quadrilatère ou triangle), rangs de losanges en quinconce, chaque losange fait de deux triangles de part et d'autre d'une ligne de rang ; couleur selon les deux diagonales du réseau : tous les quatre losanges, une résille verte dans un sens et brun-noir dans l'autre, un losange rouge au cœur de chaque maille, fond jaune. En aplats, sans texture (D17). Sur le cône de l'abside, le toit en croupe du bloc et la pyramide de la tourelle (`hipRoof` accepte maintenant un dessin de pan).
+- **Abside** : corniche saillante, contreforts à glacis aux angles du polygone, deux étages de baies en arc brisé par pan (hautes baies en haut, petites en bas).
+- **Bloc** : deux grandes baies en arc brisé par face libre, contreforts d'angle. **Tourelle** : corps carré, corniche, baie, pyramide vernissée jusqu'à la pointe mesurée.
+- `archOn` dessine aussi l'arc brisé équilatéral ; `buttress` pose un contrefort dans n'importe quelle direction.
+- 2 643 triangles pour toute la cathédrale (1 043 à l'étape 1).
+
+**Pas encore** : le motif exact de chaque toit (la photo du drone montre aussi des chevrons) est stylisé, le même pour les trois toits ; le détail de la tour de croisée et de la flèche (étape 3), les flancs et le porche (étape 4).
+
+![Avant](captures/d128-chevet-avant.jpg)
+![Après](captures/d128-chevet-apres.jpg)
+![Depuis le sud-ouest, avant](captures/d128-chevet-ouest-avant.jpg)
+![Depuis le sud-ouest, après](captures/d128-chevet-ouest-apres.jpg)
+![Vue haute du chevet](captures/d128-chevet-haut.jpg)

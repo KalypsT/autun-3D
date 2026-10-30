@@ -108,6 +108,10 @@ describe("monuments (D95) : géométrie", () => {
     for (const a of m.aisles) expect(a[1]).toBeLessThan(m.nave[4]);
     expect(m.chapels).toHaveLength(7);
     expect(k.tower![3]).toBeCloseTo(m.tower[2], 1);
+    // Tourelle du chevet (D128) : au coin du bloc et du chœur, plus haute que l'égout du bloc, plus basse que le transept.
+    expect(m.turret[0]).toBeGreaterThan(m.transept[1] - 1);
+    expect(m.turret[3]).toBeGreaterThan(m.block[1] + 5);
+    expect(m.turret[3]).toBeLessThan(m.transept[5]);
     const mb = new MeshBuilder();
     buildSaintLazare(mb, m, world.terrain);
     expect(mb.positions.every(Number.isFinite)).toBe(true);

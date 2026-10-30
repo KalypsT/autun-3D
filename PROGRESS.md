@@ -821,3 +821,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le flanc est](docs/captures/d127-cathedrale-flanc-apres.jpg)
 ![Le chevet](docs/captures/d127-cathedrale-chevet.jpg)
 ![Le porche et ses tours](docs/captures/d127-cathedrale-nord-ouest.jpg)
+
+**Bâtiments d'après photos, étape 8 : la cathédrale, le chevet (30 octobre 2026)** (D128)
+- L'abside, le bloc carré au bout du transept et la petite tourelle (retrouvée dans le relevé LiDAR, pointe à 22 m) ont leurs toits en tuiles vernissées : losanges jaunes, résille verte et brun-noir, losanges rouges, en aplats.
+- L'abside a ses contreforts, sa corniche et deux étages de baies en arc brisé ; le bloc a ses grandes baies.
+- 724 tests.
+- Suite : la tour de croisée et la flèche.
+
+![Avant](docs/captures/d128-chevet-avant.jpg)
+![Après](docs/captures/d128-chevet-apres.jpg)
+![Depuis le sud-ouest](docs/captures/d128-chevet-ouest-apres.jpg)
