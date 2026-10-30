@@ -1656,3 +1656,20 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![La cour et les ailes basses](captures/d123-mairie-cour.jpg)
 ![Depuis le sud-ouest (?view=mairie)](captures/d123-mairie-angle.jpg)
 ![La nuit](captures/d123-mairie-nuit.jpg)
+
+## 2026-10-30 — D124. Bâtiments d'après photos, étape 4 : l'hôtel de ville, détail de la façade
+
+**D'après la photo de l'utilisateur** (façade sur le Champ de Mars, D123), le détail de la façade principale, toujours dans `buildTownHall` (`src/render/monuments.ts`), sans nouvelle donnée :
+- **Soubassement à bossages** : refends horizontaux tous les 55 cm (joints creux sombres), clé saillante au sommet de chaque arcade, cordon saillant au-dessus.
+- **Étage noble** : appui saillant, corniche et **fronton cintré** (segment de cercle de 2 m de corde, 42 cm de flèche, avec son épaisseur) au-dessus de chaque fenêtre hors de l'avant-corps central ; bandeau sous l'étage.
+- **Étage** : appui et linteau saillant.
+- **Chaînes d'angle** aux coins saillants des pavillons, de l'étage noble à la corniche : blocs de pierre blonde alternés (95 et 55 cm), en alternance d'une face à l'autre du coin.
+- **Corniche moulurée** du corps principal : doucine, larmier de 42 cm de saillie, bandeau, et **modillons** tous les 90 cm sous le larmier côté façade. Les corniches et bandeaux sont prolongés de leur saillie aux deux bouts : les coins saillants se referment.
+- Les ornements de quelques centimètres de saillie (chaînes, refends) n'ont que leur face avant : 3 654 triangles pour tout le monument (6 062 avec des pavés complets, sans différence visible).
+
+**Pas encore** : portique, balcon, drapeaux et perron (étape suivante), lucarnes, œils-de-bœuf, cheminées, sculptures des baies centrales.
+
+![Avant](captures/d124-mairie-detail-avant.jpg)
+![Après](captures/d124-mairie-detail-apres.jpg)
+![De face](captures/d124-mairie-face.jpg)
+![Depuis le sud-ouest](captures/d124-mairie-angle.jpg)

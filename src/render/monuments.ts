@@ -263,6 +263,9 @@ interface HallWall {
   out: ST;
   top: number;
   front: boolean;
+  /** Chaîne d'angle au début (a) ou à la fin (b) du mur : coin saillant d'un pavillon. */
+  qa?: boolean;
+  qb?: boolean;
 }
 
 function wallBands(mb: MeshBuilder, f: Frame, w: HallWall, ground: (s: number, t: number) => number, cuts: number[], colors: THREE.Color[]): void {
@@ -283,13 +286,59 @@ function wallBands(mb: MeshBuilder, f: Frame, w: HallWall, ground: (s: number, t
   }
 }
 
-/** Bandeau ou corniche le long d'un mur : face avant à `proj` du mur, dessus et dessous. */
+/** Point du mur à `u` mètres de son début, à `off` devant lui. */
+function onWall(w: HallWall, u: number, off: number): ST {
+  const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]) || 1;
+  return [w.a[0] + ((w.b[0] - w.a[0]) * u) / len + w.out[0] * off, w.a[1] + ((w.b[1] - w.a[1]) * u) / len + w.out[1] * off];
+}
+
+/**
+ * Pavé plaqué sur un mur : de u0 à u1 le long du mur, de z0 à z1, de `off0` à `off1` devant lui (face avant, dessus, dessous, bouts) ;
+ * `flat` : face avant seule (saillies de quelques centimètres : chaînes d'angle, refends).
+ */
+function block(mb: MeshBuilder, f: Frame, w: HallWall, u0: number, u1: number, z0: number, z1: number, off0: number, off1: number, col: THREE.Color, flat = false): void {
+  const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]) || 1;
+  const tx = (w.b[0] - w.a[0]) / len, ty = (w.b[1] - w.a[1]) / len;
+  const a0 = onWall(w, u0, off0), b0 = onWall(w, u1, off0), a1 = onWall(w, u0, off1), b1 = onWall(w, u1, off1);
+  q(mb, f, [a1[0], a1[1], z0], [b1[0], b1[1], z0], [b1[0], b1[1], z1], [a1[0], a1[1], z1], N(f, w.out[0], w.out[1]), col);
+  if (flat) return;
+  q(mb, f, [a0[0], a0[1], z1], [b0[0], b0[1], z1], [b1[0], b1[1], z1], [a1[0], a1[1], z1], [0, 1, 0], shade(col, 1.04));
+  q(mb, f, [a0[0], a0[1], z0], [b0[0], b0[1], z0], [b1[0], b1[1], z0], [a1[0], a1[1], z0], [0, -1, 0], shade(col, 0.8));
+  q(mb, f, [a0[0], a0[1], z0], [a1[0], a1[1], z0], [a1[0], a1[1], z1], [a0[0], a0[1], z1], N(f, -tx, -ty), shade(col, 0.9));
+  q(mb, f, [b0[0], b0[1], z0], [b1[0], b1[1], z0], [b1[0], b1[1], z1], [b0[0], b0[1], z1], N(f, tx, ty), shade(col, 0.9));
+}
+
+/** Bandeau ou corniche sur toute la longueur du mur, prolongé de sa saillie aux deux bouts (les coins saillants se referment). */
 function course(mb: MeshBuilder, f: Frame, w: HallWall, z0: number, z1: number, proj: number, col: THREE.Color): void {
-  const o = (p: ST, d: number): ST => [p[0] + w.out[0] * d, p[1] + w.out[1] * d];
-  const a = o(w.a, proj), b = o(w.b, proj);
-  q(mb, f, [a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], N(f, w.out[0], w.out[1]), col);
-  q(mb, f, [w.a[0], w.a[1], z1], [w.b[0], w.b[1], z1], [b[0], b[1], z1], [a[0], a[1], z1], [0, 1, 0], shade(col, 1.04));
-  q(mb, f, [w.a[0], w.a[1], z0], [w.b[0], w.b[1], z0], [b[0], b[1], z0], [a[0], a[1], z0], [0, -1, 0], shade(col, 0.8));
+  const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+  block(mb, f, w, -proj, len + proj, z0, z1, 0, proj, col);
+}
+
+/** Fronton cintré (segment de cercle) posé sur le mur : corde de u0 à u1 à l'altitude z, flèche `rise`, épaisseur `off`. */
+function segmentPediment(mb: MeshBuilder, f: Frame, w: HallWall, u0: number, u1: number, z: number, rise: number, off: number, col: THREE.Color): void {
+  const c = (u1 - u0) / 2, um = (u0 + u1) / 2;
+  const R = (c * c + rise * rise) / (2 * rise), zc = z + rise - R, a = Math.asin(c / R);
+  const pt = (k: number, o: number): [number, number, number] => {
+    const th = -a + (2 * a * k) / 6;
+    const [ss, tt] = onWall(w, um + Math.sin(th) * R, o);
+    return [ss, tt, zc + Math.cos(th) * R];
+  };
+  const [cs, ct] = onWall(w, um, off);
+  for (let k = 0; k < 6; k++) {
+    mb.tri(P(f, cs, ct, z), P(f, ...pt(k, off)), P(f, ...pt(k + 1, off)), N(f, w.out[0], w.out[1]), col);
+    const A = P(f, ...pt(k, 0)), B = P(f, ...pt(k + 1, 0)), Cc = P(f, ...pt(k + 1, off)), D = P(f, ...pt(k, off));
+    mb.quad(A, B, Cc, D, upNormal(A, B, Cc), shade(col, 1.04));
+  }
+}
+
+/** Chaîne d'angle : blocs de pierre alternés (longs et courts) depuis un bout du mur, sur la hauteur z0..z1 ; `phase` alterne d'une face à l'autre. */
+function quoins(mb: MeshBuilder, f: Frame, w: HallWall, atEnd: boolean, z0: number, z1: number, phase: number, col: THREE.Color): void {
+  const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+  for (let k = 0, z = z0; z + 0.3 < z1; k++, z += 0.55) {
+    const wd = Math.min(len, (k + phase) % 2 ? 0.55 : 0.95);
+    const [u0, u1] = atEnd ? [len - wd, len] : [0, wd];
+    block(mb, f, w, u0, u1, z, Math.min(z + 0.5, z1), 0, 0.05, col, true);
+  }
 }
 
 /**
@@ -347,14 +396,14 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
   let s = 0;
   for (const pv of [...pavs].sort((x, y) => x.s0 - y.s0)) {
     if (pv.s0 - s > 0.05) body.push(W([s, 0], [pv.s0, 0], m.eave, true));
-    if (!pv.left) body.push(W([pv.s0, 0], [pv.s0, -PROJ], m.eave));
-    body.push(W([sOf(pv, 0, -PROJ), -PROJ], [sOf(pv, 1, -PROJ), -PROJ], m.eave, true));
-    if (!pv.right) body.push(W([pv.s1, -PROJ], [pv.s1, 0], m.eave));
+    if (!pv.left) body.push({ ...W([pv.s0, 0], [pv.s0, -PROJ], m.eave), qb: true });
+    body.push({ ...W([sOf(pv, 0, -PROJ), -PROJ], [sOf(pv, 1, -PROJ), -PROJ], m.eave, true), qa: true, qb: true });
+    if (!pv.right) body.push({ ...W([pv.s1, -PROJ], [pv.s1, 0], m.eave), qa: true });
     s = pv.s1;
   }
   if (L - s > 0.05) body.push(W([s, 0], [L, 0], m.eave, true));
   const t0L = pavs.some((pv) => pv.left) ? -PROJ : 0, t0R = pavs.some((pv) => pv.right) ? -PROJ : 0;
-  body.push(W([sR(t0R), t0R], [sR(d), d], m.eave), W([sL(d), d], [sL(t0L), t0L], m.eave));
+  body.push({ ...W([sR(t0R), t0R], [sR(d), d], m.eave), qa: t0R < 0 }, { ...W([sL(d), d], [sL(t0L), t0L], m.eave), qb: t0L < 0 });
   // Ailes basses : murs extérieurs au-delà du corps principal, murs de la cour.
   const wings: HallWall[] = [];
   for (let i = 1; i < n; i++) {
@@ -369,11 +418,27 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
   const colors = [HALL_STONE, HALL_LIGHT, HALL_STONE];
   for (const w of [...body, ...wings]) {
     wallBands(mb, f, w, ground, [L1, L2], colors);
-    course(mb, f, w, w.top - 0.45, w.top, 0.3, HALL_TRIM);
-    if (w.front) {
-      course(mb, f, w, L1 - 0.1, L1 + 0.18, 0.12, HALL_TRIM);
-      course(mb, f, w, L2 - 0.1, L2 + 0.18, 0.12, HALL_TRIM);
+    const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+    if (w.top === m.eave) {
+      // Corniche moulurée du corps principal : doucine, larmier saillant, bandeau ; modillons sous le larmier côté façade.
+      course(mb, f, w, w.top - 0.8, w.top - 0.5, 0.16, HALL_TRIM);
+      course(mb, f, w, w.top - 0.5, w.top - 0.12, 0.42, HALL_TRIM);
+      course(mb, f, w, w.top - 0.12, w.top, 0.3, shade(HALL_TRIM, 0.95));
+      if (w.front) for (let u = 0.45; u < len - 0.2; u += 0.9) block(mb, f, w, u - 0.09, u + 0.09, w.top - 0.8, w.top - 0.5, 0.16, 0.38, shade(HALL_TRIM, 0.93));
+    } else course(mb, f, w, w.top - 0.45, w.top, 0.3, HALL_TRIM);
+    if (w.front || w.qa || w.qb) {
+      // Cordon au-dessus du soubassement, bandeau sous l'étage.
+      course(mb, f, w, L1 - 0.2, L1 + 0.15, 0.16, HALL_TRIM);
+      course(mb, f, w, L2 - 0.15, L2 + 0.2, 0.12, HALL_TRIM);
+      // Bossages du soubassement : refends horizontaux (joints creux sombres).
+      for (let z = m.g + 0.55; z < L1 - 0.35; z += 0.55) {
+        const gz = Math.max(ground(...onWall(w, 0, 0)), ground(...onWall(w, len, 0)));
+        if (z > gz + 0.1) block(mb, f, w, 0, len, z - 0.035, z + 0.035, 0, 0.012, shade(HALL_STONE, 0.72), true);
+      }
     }
+    // Chaînes d'angle des pavillons, de l'étage noble à la corniche (les deux faces d'un coin alternent).
+    if (w.qa) quoins(mb, f, w, false, L1 + 0.15, w.top - 0.8, w.front ? 0 : 1, shade(HALL_STONE, 1.04));
+    if (w.qb) quoins(mb, f, w, true, L1 + 0.15, w.top - 0.8, w.front ? 0 : 1, shade(HALL_STONE, 1.04));
   }
 
   // Façade : les travées, à pas régulier ; l'avant-corps central a portes et baies en plein cintre, pas d'arcade (perron).
@@ -385,11 +450,30 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     const u = sc - w.a[0];
     const mid = centre.some((pv) => pv.s0 < sc && sc < pv.s1);
     const lit = (i * 7 + 3) % 5 < 2;
-    if (!mid) bay(mb, glow, f, w, u, 1.7, m.g + 0.45, m.levels[0] - 1.05, true, true, false);
+    const trim = HALL_TRIM;
+    if (!mid) {
+      // Arcade du soubassement et sa clé.
+      const top = m.g + 0.45 + m.levels[0] - 1.05;
+      bay(mb, glow, f, w, u, 1.7, m.g + 0.45, m.levels[0] - 1.05, true, true, false);
+      block(mb, f, w, u - 0.17, u + 0.17, top - 0.15, top + 0.32, 0, 0.08, trim);
+    }
     if (mid) bay(mb, glow, f, w, u, 1.8, L1 + 0.05, 4.6, true, false, lit);
-    else bay(mb, glow, f, w, u, 1.35, L1 + 1.1, 3.4, false, false, lit);
+    else {
+      // Étage noble : appui, fenêtre haute, corniche et fronton cintré.
+      const z0 = L1 + 1.1, top = z0 + 3.4;
+      block(mb, f, w, u - 0.9, u + 0.9, z0 - 0.32, z0 - 0.18, 0, 0.14, trim);
+      bay(mb, glow, f, w, u, 1.35, z0, 3.4, false, false, lit);
+      block(mb, f, w, u - 1.0, u + 1.0, top + 0.22, top + 0.4, 0, 0.18, trim);
+      segmentPediment(mb, f, w, u - 1.0, u + 1.0, top + 0.4, 0.42, 0.16, trim);
+    }
     if (mid) bay(mb, glow, f, w, u, 1.45, L2 + 0.8, 3.3, true, false, !lit);
-    else bay(mb, glow, f, w, u, 1.3, L2 + 0.9, 2.6, false, false, !lit);
+    else {
+      // Étage : appui et linteau saillant.
+      const z0 = L2 + 0.9, top = z0 + 2.6;
+      block(mb, f, w, u - 0.85, u + 0.85, z0 - 0.3, z0 - 0.18, 0, 0.12, trim);
+      bay(mb, glow, f, w, u, 1.3, z0, 2.6, false, false, !lit);
+      block(mb, f, w, u - 0.9, u + 0.9, top + 0.18, top + 0.34, 0, 0.14, trim);
+    }
   }
   // Autres murs : fenêtres simples tous les 4 m environ, aux mêmes niveaux, là où elles tiennent entre le sol et la corniche.
   for (const w of [...body.filter((x) => !x.front), ...wings]) {

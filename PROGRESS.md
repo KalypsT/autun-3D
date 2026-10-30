@@ -778,3 +778,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d123-mairie-apres.jpg)
 ![Après, vue haute](docs/captures/d123-mairie-haut-apres.jpg)
 ![La cour](docs/captures/d123-mairie-cour.jpg)
+
+**Bâtiments d'après photos, étape 4 : l'hôtel de ville, détail de la façade (30 octobre 2026)** (D124)
+- Soubassement à bossages (refends, clés d'arcades, cordon), frontons cintrés et appuis aux fenêtres de l'étage noble, linteaux à l'étage, chaînes d'angle en pierre blonde aux pavillons, corniche moulurée à modillons.
+- 722 tests.
+
+![Avant](docs/captures/d124-mairie-detail-avant.jpg)
+![Après](docs/captures/d124-mairie-detail-apres.jpg)
+![De face](docs/captures/d124-mairie-face.jpg)
