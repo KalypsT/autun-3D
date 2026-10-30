@@ -88,6 +88,9 @@
       #speedo .track { stroke: rgba(255, 248, 230, .22); }
       #speedo #speedo-arc { stroke: var(--ochre); stroke-dasharray: 0 100; }
       #speedo #speedo-arc.red { stroke: var(--brick); }
+      /* Véhicule très abîmé (D109) : cadran cerclé de rouge brique, qui bat lentement. */
+      #speedo.hurt .disc { stroke: var(--brick); stroke-width: 3.5; animation: shurt 1.2s ease-in-out infinite; }
+      @keyframes shurt { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: .35; } }
       #speedo-value { position: absolute; left: 0; right: 0; top: 22px; text-align: center; color: var(--cream); font: 800 22px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
       #speedo-unit { position: absolute; left: 0; right: 0; top: 46px; text-align: center; color: var(--ochre); font: 700 9px/1 system-ui, sans-serif; letter-spacing: .05em; }
       /* Nom du véhicule (D107), à la GTA 3 : à droite sous « Descendre », marque en petites capitales ocre, modèle en grosses capitales crème à l'ombre d'encre. */

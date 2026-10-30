@@ -3,7 +3,8 @@ import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { parkingZone, pickModel } from "../core/vehicle-placement";
-import { CATALOG, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
+import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
+import { VehicleDamage } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { wheelTrack } from "../render/car-body";
 import { CAR_BODIES, carRestGeometry, createCarModel } from "../render/car-model";
@@ -71,6 +72,23 @@ export interface Vehicle {
   ridden: boolean;
   /** Place d'origine ; null pour un véhicule retrouvé dans une sauvegarde (d'origine inconnue : toujours à enregistrer). */
   home: { x: number; y: number; heading: number } | null;
+  /** Dégâts (D109) : santé, zones écrasées, feu, fin. */
+  damage: VehicleDamage;
+}
+
+const derated = new WeakMap<VehicleSpec, Map<number, VehicleSpec>>();
+/**
+ * Fiche avec laquelle le véhicule roule : celle du modèle, moteur affaibli selon ses dégâts (puissance, traction et marche arrière ;
+ * freins, pneus et direction intacts). Une fiche par palier, gardée : aucune allocation à chaque pas.
+ */
+export function drivenSpec(v: { spec: VehicleSpec; damage: VehicleDamage }): VehicleSpec {
+  const k = v.damage.power;
+  if (k >= 1) return v.spec;
+  let byK = derated.get(v.spec);
+  if (!byK) derated.set(v.spec, (byK = new Map()));
+  let spec = byK.get(k);
+  if (!spec) byK.set(k, (spec = { ...v.spec, power: v.spec.power * k, maxDrive: v.spec.maxDrive * k, reverseForce: v.spec.reverseForce * k }));
+  return spec;
 }
 
 /** Au-delà, les véhicules garés ne sont pas dessinés. */
@@ -189,7 +207,7 @@ export class Fleet {
     if (existing) return existing;
     const def = vehicleDef(model);
     if (!def) throw new Error(`modèle de véhicule inconnu : ${model}`);
-    const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home };
+    const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home, damage: new VehicleDamage(damageProfile(def)) };
     this.byId.set(id, v);
     this.settle(v);
     this.vehicles.push(v);
@@ -274,7 +292,8 @@ export class Fleet {
   nearest(x: number, y: number, family: VehicleFamily | null = null): { vehicle: Vehicle; distance: number } | null {
     let best: { vehicle: Vehicle; distance: number } | null = null;
     for (const v of this.vehicles) {
-      if (v.ridden || (family && v.family !== family)) continue;
+      // Une épave (brûlée, en panne, cassée) ne se reprend pas (D109).
+      if (v.ridden || !v.damage.usable || (family && v.family !== family)) continue;
       const d = Math.hypot(v.state.x - x, v.state.y - y);
       if (!best || d < best.distance) best = { vehicle: v, distance: d };
     }

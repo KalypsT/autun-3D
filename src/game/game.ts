@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
 import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { DAMAGE } from "../core/damage";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
@@ -37,7 +38,7 @@ import { Signals } from "../core/signals";
 import { Traffic } from "./traffic";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
-import { Fleet, chaseOf, familyOf, tyreOf, type Vehicle } from "./vehicles";
+import { Fleet, chaseOf, drivenSpec, familyOf, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 import { AudioSystem } from "../audio/audio-system";
 import { stepCrossed } from "../core/sound-model";
@@ -255,7 +256,7 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()} · ${audio.info}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()} · ${audio.info}`);
 
   const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -362,6 +363,34 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.remove("driving", "car");
     audio.setRide(null);
   };
+  // Dégâts (D109) : le véhicule conduit, et ceux qu'on a laissés en feu, continuent de brûler jusqu'à leur fin.
+  // Étape 1 : pas encore de fumée, de feu ni d'explosion à l'écran (étapes 2 et 3) ; une épave n'a plus de moteur et ne se reprend pas.
+  const burning = new Set<Vehicle>();
+  const updateDamage = (dt: number): void => {
+    if (riding && riding.damage.burning >= 0) burning.add(riding);
+    for (const v of burning) {
+      v.damage.update(dt);
+      if (v.damage.burning < 0) burning.delete(v);
+    }
+    for (const v of riding ? [riding, ...burning] : burning) {
+      for (const e of v.damage.takeEvents()) {
+        // En attendant l'explosion (étape 3) : un grand choc ressenti, si l'on est dedans ou tout près.
+        if (e.kind === "explode" && Math.hypot(v.state.x - player.x, v.state.y - player.y) < 25) {
+          audio.impact(8);
+          shake.impact(8);
+          haptics.crash(8);
+        }
+      }
+    }
+    speedo.setHurt(!!riding && (riding.damage.health <= DAMAGE.heavy || !riding.damage.usable));
+  };
+  const damageInfo = (): string => {
+    const d = riding?.damage;
+    if (!d) return "";
+    const z = d.zones;
+    return ` · dégâts ${d.health.toFixed(0)} ${d.tier}${d.burning >= 0 ? ` feu ${d.burning.toFixed(1)} s` : ""} (av ${z.front.toFixed(2)} ar ${z.rear.toFixed(2)} g ${z.left.toFixed(2)} d ${z.right.toFixed(2)})`;
+  };
+
   // Vol avec conducteur (J4-1, D71) : une voiture de la circulation lente (feu rouge, file) à portée de la main peut être prise ;
   // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
   let stolen = 0;
@@ -453,7 +482,13 @@ export function startGame(ctx: GameContext): void {
   // ?ride=velo, trottinette, voiture ou moto, ou l'identifiant d'une entrée du catalogue (citadine, moto-routiere…) : départ sur un véhicule (captures, essais).
   const rideParam = params.get("ride") ?? "";
   const ride = vehicleDef(LEGACY_MODELS[rideParam] ?? rideParam)?.id;
-  if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
+  if (ride) {
+    const v = fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
+    // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109).
+    if (params.has("damage")) v.damage.damage(DAMAGE.max - Math.min(DAMAGE.max, Math.max(0, Number(params.get("damage")) || 0)));
+    v.damage.takeEvents();
+    mount(v);
+  }
   else if (saved?.riding) {
     const v = fleet.get(saved.riding);
     if (v) mount(v);
@@ -646,7 +681,7 @@ export function startGame(ctx: GameContext): void {
       if (riding) {
         throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
-        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
+        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
@@ -674,10 +709,13 @@ export function startGame(ctx: GameContext): void {
       const hurt = dropDamage(drop);
       if (hurt > 0 && !health.dead) health.damage(hurt);
     }
+    updateDamage(dt);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {
       const s = riding.state;
+      // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.
+      if (s.impact > 0) riding.damage.hit(s.impact, s.impactAngle);
       if (leaving && Math.abs(s.speed) < 0.4) dismount();
       else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {

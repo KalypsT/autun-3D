@@ -314,6 +314,11 @@ export interface VehicleState {
   speed: number;
   /** Dernier choc : vitesse d'impact (m/s), remise à zéro par l'appelant. */
   impact: number;
+  /**
+   * Où a porté ce choc (le plus fort depuis la dernière remise à zéro) : angle du point de contact autour du véhicule (rad ; 0 devant, π/2 à droite,
+   * ±π derrière, −π/2 à gauche), NaN pour une réception de saut (sous le véhicule). Lu par les dégâts (D109).
+   */
+  impactAngle: number;
   /** Pression de freinage 0-1 : monte progressivement tant que la pédale est enfoncée. */
   brakeLevel: number;
   /** Accélération longitudinale lissée (m/s²), pour le report de charge. */
@@ -349,7 +354,7 @@ export interface DriveInput {
 }
 
 export function createVehicle(x: number, y: number, heading: number, terrain: HeightField): VehicleState {
-  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0, wheelie: 0, wheelieRate: 0, fallen: false, vz: 0, air: 0 };
+  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, impactAngle: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0, wheelie: 0, wheelieRate: 0, fallen: false, vz: 0, air: 0 };
 }
 
 const SUBSTEPS = 2;
@@ -579,7 +584,11 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
     // pas, une rampe de quelques mètres, si. Réception : la part de vitesse verticale que la pente du sol n'absorbe pas fait un choc.
     const road = s.speed * slope;
     if (s.air > 0) {
-      s.impact = Math.max(s.impact, road - s.vz - LAND_SOFT);
+      const landing = road - s.vz - LAND_SOFT;
+      if (landing > s.impact) {
+        s.impact = landing;
+        s.impactAngle = NaN;
+      }
       s.vz = Math.max(s.vz, road);
     } else s.vz += (road - s.vz) * Math.min(1, dt / SUSPENSION_TIME);
     s.air = 0;
@@ -955,6 +964,15 @@ function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear
     s.vx += (jt * tx) / spec.mass;
     s.vy += (jt * ty) / spec.mass;
     s.yawRate -= (rt * jt) / inertia;
-    s.impact = Math.max(s.impact, -vn);
+    if (-vn > s.impact) {
+      s.impact = -vn;
+      s.impactAngle = contactAngle(s, rx, ry);
+    }
   }
+}
+
+/** Angle autour du véhicule (0 devant, π/2 à droite) d'un point donné par son écart (rx est, ry nord) au centre de gravité. */
+export function contactAngle(s: VehicleState, rx: number, ry: number): number {
+  const sin = Math.sin(s.heading), cos = Math.cos(s.heading);
+  return Math.atan2(rx * cos - ry * sin, rx * sin + ry * cos);
 }

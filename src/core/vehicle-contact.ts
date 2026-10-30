@@ -1,4 +1,4 @@
-import type { VehicleSpec, VehicleState } from "./vehicle";
+import { contactAngle, type VehicleSpec, type VehicleState } from "./vehicle";
 
 /**
  * Chocs entre deux véhicules (J3-2) : les cercles de coque (`VehicleSpec.hull`) qui se chevauchent sont écartés, au prorata inverse des masses,
@@ -54,8 +54,14 @@ export function contactVehicles(a: Body, b: Body, result?: { impact: number }): 
       sb.vx += (j * nx) / mb;
       sb.vy += (j * ny) / mb;
       sb.yawRate -= (rnb * j) / ib;
-      sa.impact = Math.max(sa.impact, -vn);
-      sb.impact = Math.max(sb.impact, -vn);
+      if (-vn > sa.impact) {
+        sa.impact = -vn;
+        sa.impactAngle = contactAngle(sa, rax, ray);
+      }
+      if (-vn > sb.impact) {
+        sb.impact = -vn;
+        sb.impactAngle = contactAngle(sb, rbx, rby);
+      }
       if (result) result.impact = Math.max(result.impact, -vn);
     }
   }

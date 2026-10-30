@@ -625,3 +625,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avec leurs conducteurs](docs/captures/d108-conducteurs.jpg)
 ![Le nom en montant](docs/captures/d108-nom.jpg)
 
+**Dégâts des véhicules, étape 1 : la logique (30 octobre 2026)** (D109)
+- Chaque véhicule a maintenant une santé et quatre zones (avant, arrière, côtés). Les chocs au-delà de 12 km/h l'abîment, à l'endroit touché, selon la solidité du modèle (la gendarmerie et la camionnette encaissent mieux, une moto ou un vélo moins).
+- Paliers : fumée blanche sous 60 %, fumée noire sous 30 %, feu sous 10 %, explosion 5 s plus tard. Le moteur faiblit à chaque palier ; la direction et les freins restent intacts. Un vélo ou une trottinette ne brûle pas : il casse. Une épave ne se reprend pas.
+- Sous 30 %, le compteur se cercle de rouge et bat lentement (pas de jauge, comme convenu).
+- Prévu pour le mode enfant : un seul aiguillage fait finir une voiture en panne plutôt qu'en explosion.
+- Pas encore à l'écran : la carrosserie abîmée, la fumée, le feu, l'explosion (étapes 2 et 3) ; pour l'instant l'explosion n'est qu'un grand choc ressenti. 656 tests.
+- À faire de ton côté : `?ride=citadine&debug`, foncer dans des murs à différentes vitesses et lire la ligne « dégâts » ; `?ride=citadine&damage=25` pour voir le compteur rouge et sentir le moteur faible. Dis-moi si le barème te paraît trop dur ou trop doux (une voiture qui prend feu à 90 km/h contre un mur).
+

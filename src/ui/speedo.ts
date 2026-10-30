@@ -7,8 +7,9 @@ export class Speedo {
   private shown = -1;
   private fill = -1;
   private red = false;
+  private hurt = false;
 
-  constructor(el: HTMLElement) {
+  constructor(private readonly el: HTMLElement) {
     this.value = el.querySelector<HTMLElement>("#speedo-value")!;
     this.arc = el.querySelector<SVGPathElement>("#speedo-arc")!;
   }
@@ -32,5 +33,12 @@ export class Speedo {
       this.red = red;
       this.arc.classList.toggle("red", red);
     }
+  }
+
+  /** Véhicule très abîmé (D109 : sous 30 % de santé, fumée noire, feu) : le cadran se cercle de rouge brique et bat lentement. */
+  setHurt(hurt: boolean): void {
+    if (hurt === this.hurt) return;
+    this.hurt = hurt;
+    this.el.classList.toggle("hurt", hurt);
   }
 }
