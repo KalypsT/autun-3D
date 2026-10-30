@@ -19,6 +19,7 @@ Le relevé ne sert qu'à mesurer : le client dessine des pans plans (un toit mai
 import io
 import json
 import math
+import zlib
 
 import numpy as np
 import tifffile
@@ -27,6 +28,7 @@ import config as c
 import fetch
 
 KINDS = c.OUT / "kinds"
+LOD = c.OUT / "lod"
 CACHE = c.SHARED / "raw" / "monuments"
 LAYER = "IGNF_LIDAR-HD_{}_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93"
 MARGIN = 20.0
@@ -147,6 +149,28 @@ def measure_hall(bid, b, spec):
         thr = far + 0.25 * (zl - far)
         inside = [float(s) for s in np.arange(c0 - 6, c1 + 6, 0.25) if mnt(*xy(s, tm)) > thr]
         extra = {"portico": [r2(tf), r2(balcony)], "perron": [r2(min(inside)), r2(max(inside)), r2(tl), r2(tfoot), r2(zl)], "stairs": spec["perron"]}
+    # Toits : lucarnes des travées données (haut = point le plus haut qui dépasse le pan avant de plus de 50 cm), lucarne-fronton de l'avant-corps
+    # central (modèle de surface à 0,75-1,75 m du mur, où il dépasse le pan raide du pavillon), épis et paratonnerre (point le plus haut du
+    # plateau, s'il dépasse de 80 cm), cheminées repérées par la chaîne (`chim` du bâtiment).
+    roof = lambda t: z0 + slope * t
+    dormers = []
+    for i in spec.get("dormers", []):
+        sc = (i + 0.5) * p
+        hi = [S(s, t) for s in np.arange(sc - 0.75, sc + 0.8, 0.25) for t in np.arange(0.5, 4.01, 0.25) if S(s, t) - roof(t) > 0.5]
+        if hi:
+            dormers.append([r2(sc), r2(max(hi))])
+    if centre and spec.get("fronton"):
+        cs = (centre[0][0] + centre[0][1]) / 2
+        extra["fronton"] = r2(np.median([S(s, t) for s in np.arange(cs - 1.2, cs + 1.25, 0.25) for t in (0.75, 1.0, 1.25, 1.5, 1.75)]))
+    tips = []
+    for a, b_, s0, s1, t0, t1, top in pavs:
+        tip = max(S(s, t) for s in np.arange(s0 - 0.25, s1 + 0.3, 0.25) for t in np.arange(t0 - 0.25, t1 + 0.3, 0.25))
+        tips.append(r2(tip) if tip - top > 0.8 else None)
+    chim = []
+    for cx, cy, sx, sy, cz0, cz1 in b.get("chim", []):
+        cs_, ct_ = st((cx, cy))
+        chim.append([r2(cs_), r2(ct_), r2(max(sx, sy)), r2(cz1)])
+    extra.update({"dormers": dormers, "oculi": bool(spec.get("oculi")), "tips": tips, "chim": chim})
     return {
         "o": [r2(ox), r2(oy)], "a": round(math.atan2(uy, ux), 5), "l": r2(L), "d": r2(depth),
         "ring": [r2(v) for q in R for v in q], "court": [r2(v) for q in H for v in q],
@@ -165,7 +189,7 @@ def main():
         for b in json.loads((c.OUT / "tiles" / f"{m['id']}.json").read_text())["buildings"]:
             if b["id"] in manual:
                 found[b["id"]] = (m["id"], b)
-    changed = set()
+    changed, changed_lod = set(), set()
     kinds = {}
     for bid, spec in manual.items():
         if bid not in found:
@@ -187,9 +211,47 @@ def main():
         print(f"  {bid} : façade {hall['l']} m, corniche {hall['eave'] - hall['g']:.1f} m et faîtage {hall['ridge'] - hall['g']:.1f} m au-dessus du sol devant,"
               f" corps de {hall['d']} m, pavillons {tops} m,"
               f" ailes {hall['wingEave'] - hall['g']:.1f} / {hall['wingRidge'] - hall['g']:.1f} m")
+        if lod_silhouette(tid, bid, hall):
+            changed_lod.add(tid)
     for tid in changed:
         (KINDS / f"{tid}.json").write_text(json.dumps(kinds[tid], ensure_ascii=False, separators=(",", ":")))
-    print(f"{len(manual)} monument(s) d'après photo ; {len(changed)} fichier(s) de tuile réécrit(s)")
+    print(f"{len(manual)} monument(s) d'après photo ; {len(changed)} fichier(s) de types et {len(changed_lod)} de silhouettes réécrit(s)")
+
+
+def lod_silhouette(tid, bid, h):
+    """Silhouette lointaine (lod/<tuile>.json) : le prisme unique du bâtiment devient corps principal, pavillons et ailes basses, chacun
+    avec son égout et son haut ; les entrées du bâtiment (même clé) sont remplacées, le reste du fichier est inchangé. Vrai si réécrit."""
+    path = LOD / f"{tid}.json"
+    if not path.exists():
+        return False
+    lod = json.loads(path.read_text())
+    key = zlib.crc32(bid.encode())
+    mine = [e for e in lod if e["k"] == key]
+    if not mine:
+        return False
+    a, (ox, oy) = h["a"], h["o"]
+    ca, sa = math.cos(a), math.sin(a)
+    xy = lambda s, t: [round(ox + ca * s - sa * t, 1), round(oy + sa * s + ca * t, 1)]
+    R = [(h["ring"][i], h["ring"][i + 1]) for i in range(0, len(h["ring"]), 2)]
+    d = h["d"]
+    edge = lambda p0, p1, t: p0[0] + (p1[0] - p0[0]) * t / p1[1]
+    sL, sR = (lambda t: edge(R[0], R[-1], t)), (lambda t: edge(R[1], R[2], t))
+    polys = [([(0, 0), (h["l"], 0), (sR(d), d), (sL(d), d)], h["eave"], h["ridge"]),
+             ([(sL(d), d), (sR(d), d), *R[2:]], h["wingEave"], h["wingRidge"])]
+    for s0, s1, *_rest, top in h["pav"]:
+        a0 = sL(0) if s0 < 0.05 else s0
+        a1 = sR(0) if s1 > h["l"] - 0.05 else s1
+        b0 = sL(d) if s0 < 0.05 else s0
+        b1 = sR(d) if s1 > h["l"] - 0.05 else s1
+        polys.append(([(a0, -0.35), (a1, -0.35), (b1, d), (b0, d)], h["eave"], top))
+    base = {k: v for k, v in mine[0].items() if k not in ("r", "e", "g")}
+    new = [{"r": [v for q in pts for v in xy(*q)], "e": round(e, 1), "g": round(g, 1), **base} for pts, e, g in polys]
+    if mine == new:
+        return False
+    i = lod.index(mine[0])
+    rest = [e for e in lod if e["k"] != key]
+    path.write_text(json.dumps(rest[:i] + new + rest[i:], separators=(",", ":")))
+    return True
 
 
 if __name__ == "__main__":

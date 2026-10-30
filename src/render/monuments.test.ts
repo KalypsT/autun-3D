@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { loadRealWorld } from "../core/testing";
+import type { LodBuilding } from "../data/types";
 import { MeshBuilder } from "./geometry";
+import { idKey } from "./style";
 import { buildCathedral, buildFarTower, buildGate, buildTownHall } from "./monuments";
 
 describe("monuments (D95) : géométrie", () => {
@@ -65,11 +68,33 @@ describe("monuments (D95) : géométrie", () => {
         expect(world.terrain.heightAt(...xy(s, t))).toBeLessThan(line + 0.2);
       }
     }
+    // Toits (D126) : quatre lucarnes aux travées 2, 3, 7, 8, qui dépassent le pan avant ; lucarne-fronton au-dessus de la corniche, sous le
+    // plateau central ; paratonnerre mesuré au-dessus du plateau central ; cheminée sur le corps principal, au-dessus de son toit.
+    const p = m.l / m.bays;
+    expect(m.dormers!.map(([s]) => Math.round(s / p - 0.5))).toEqual([2, 3, 7, 8]);
+    for (const [, top] of m.dormers!) expect(top).toBeGreaterThan(m.eave + 2);
+    expect(m.fronton!).toBeGreaterThan(m.eave + 4);
+    expect(m.fronton!).toBeLessThan(m.pav[1]![6]);
+    expect(m.tips![1]!).toBeGreaterThan(m.pav[1]![6] + 1);
+    for (const [cs, ct, , top] of m.chim!) {
+      expect(cs).toBeGreaterThan(0);
+      expect(cs).toBeLessThan(m.l);
+      expect(ct).toBeLessThan(m.d);
+      expect(top).toBeGreaterThan(m.eave + ((m.ridge - m.eave) * Math.min(ct, m.d - ct)) / (m.d / 2));
+    }
     const mb = new MeshBuilder(), glow = new MeshBuilder();
     buildTownHall(mb, glow, m, world.terrain, new THREE.Color("#2f4a63"));
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
-    expect(tris(mb)).toBeLessThan(6000);
+    expect(tris(mb)).toBeLessThan(8000);
     expect(tris(glow)).toBeGreaterThan(0);
+  });
+
+  it("hôtel de ville (D126) : silhouette lointaine en corps principal, pavillons et ailes", () => {
+    const lod = JSON.parse(readFileSync("public/data/lod/26_35.json", "utf8")) as LodBuilding[];
+    const id = Object.entries(kinds.buildings).find(([, b]) => b.hall)![0];
+    const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
+    expect(parts).toHaveLength(5);
+    expect(Math.max(...parts.map((e) => e.g))).toBeGreaterThan(Math.max(...parts.map((e) => e.e)) + 8);
   });
 });

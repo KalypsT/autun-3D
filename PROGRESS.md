@@ -797,3 +797,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d125-mairie-perron-apres.jpg)
 ![De face](docs/captures/d125-mairie-face.jpg)
 ![La nuit](docs/captures/d125-mairie-nuit.jpg)
+
+**Bâtiments d'après photos, étape 6 : l'hôtel de ville, toits et silhouette lointaine (30 octobre 2026)** (D126)
+- Lucarnes rondes entre les pavillons et lucarne-fronton aux armes sur le pavillon central (hauteurs mesurées au LiDAR), œils-de-bœuf sur les pavillons d'angle, crêtes, épis, paratonnerre, cheminée de brique.
+- De loin, la mairie n'est plus une boîte : corps principal, trois pavillons plus hauts, ailes plus basses.
+- 723 tests.
+- La mairie est faite pour la façade sur le Champ de Mars. Pour aller plus loin, il faudrait des photos des autres côtés et de la cour, et savoir quel est le troisième drapeau (rouge et bleu).
+
+![Avant](docs/captures/d126-mairie-toits-avant.jpg)
+![Après](docs/captures/d126-mairie-toits-apres.jpg)
+![De face](docs/captures/d126-mairie-face.jpg)

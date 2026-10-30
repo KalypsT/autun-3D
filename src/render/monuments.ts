@@ -232,7 +232,7 @@ const HALL_LIGHT = C("#f1e9d6");
 const HALL_TRIM = C(T.trim);
 const HALL_GRILLE = C("#2f3532");
 const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
-const TREAD = C("#e6d9b8"), RISER = C("#bba98a"), IRON = C("#2b302e");
+const TREAD = C("#e6d9b8"), RISER = C("#bba98a"), IRON = C("#2b302e"), BRICK = C("#b0533a");
 const FLAG_BLUE = C("#1f3f8f"), FLAG_WHITE = C("#f4f1ea"), FLAG_RED = C("#d3313a"), FLAG_EU = C("#1f3f9f"), FLAG_STAR = C("#f2c81e");
 /** Saillie des pavillons sur la façade, débord du toit du corps principal. */
 const PROJ = 0.35, OVERHANG = 0.3;
@@ -557,6 +557,66 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     for (let k = 0; k < 4; k++) pan(mb, f, base[k]!, base[(k + 1) % 4]!, top[(k + 1) % 4]!, top[k]!, k % 2 ? shade(roofColor, 0.94) : roofColor);
     pan(mb, f, top[0]!, top[1]!, top[2]!, top[3]!, zinc);
   }
+  // Lucarnes, œils-de-bœuf, lucarne-fronton, crêtes, épis, cheminées (D126).
+  const stone = HALL_TRIM, glass = C(T.glass[0]);
+  for (const [sc, zt] of m.dormers ?? []) {
+    // Lucarne ronde du corps principal : face en pierre à plein cintre, oculus, couverture en zinc.
+    const tF = 0.1, w = 1.5, zs = zt - w / 2;
+    dormer(mb, f, tF, dormerOutline(sc, w, m.eave - 0.2, zs, w / 2), m.eave + slope * tF, (z) => (z - m.eave) / slope, stone, zinc);
+    disc(mb, f, sc, tF - 0.03, zs - 0.15, 0.5, 0.5, shade(stone, 0.92));
+    disc(mb, f, sc, tF - 0.05, zs - 0.15, 0.36, 0.36, glass);
+  }
+  for (const [k, pv] of pavs.entries()) {
+    const t0 = -PROJ - 0.1, sp = (pv.top - m.eave) / (pv.pt0 - t0), tF = -PROJ + 0.05;
+    const tRoof = (z: number): number => t0 + (z - m.eave) / sp, zAtF = m.eave + sp * (tF - t0);
+    const sc = (sOf(pv, 0, 0) + sOf(pv, 1, 0)) / 2;
+    if (m.oculi && (pv.left || pv.right)) {
+      // Œil-de-bœuf des pavillons d'angle (photo) : grande face cintrée, oculus cerclé, petite clé.
+      const w = 2.0, zt = m.eave + 4.0, zs = zt - w / 2;
+      dormer(mb, f, tF, dormerOutline(sc, w, m.eave - 0.2, zs, w / 2), zAtF, tRoof, stone, zinc);
+      disc(mb, f, sc, tF - 0.03, zs - 0.1, 0.72, 0.72, shade(HALL_STONE, 1.04), 14);
+      disc(mb, f, sc, tF - 0.05, zs - 0.1, 0.52, 0.52, glass, 14);
+      box(mb, f, sc - 0.15, sc + 0.15, tF - 0.12, tF, zs + 0.55, zs + 0.95, stone);
+    }
+    if (m.fronton && !pv.left && !pv.right) {
+      // Lucarne-fronton de l'avant-corps central (hauteur mesurée) : panneau à fronton cintré, cartouche aux armes, volutes de chaque côté.
+      const w = 4.4, zt = m.fronton, rise = 0.9, zs = zt - rise;
+      dormer(mb, f, tF, dormerOutline(sc, w, m.eave - 0.2, zs, rise), zAtF, tRoof, shade(HALL_STONE, 1.02), zinc);
+      const fr = dormerOutline(sc, w, zs - 0.18, zs, rise).slice(1, -1);
+      for (let i = 0; i + 1 < fr.length; i++) {
+        const [s0, z0] = fr[i]!, [s1, z1] = fr[i + 1]!;
+        q(mb, f, [s0, tF - 0.04, z0 - 0.2], [s1, tF - 0.04, z1 - 0.2], [s1, tF - 0.04, z1], [s0, tF - 0.04, z0], N(f, 0, -1), stone);
+      }
+      const zc = (m.eave + zs) / 2 + 0.2;
+      disc(mb, f, sc, tF - 0.04, zc, 0.85, 1.05, stone, 14);
+      disc(mb, f, sc, tF - 0.07, zc, 0.6, 0.8, shade(HALL_STONE, 0.9), 14);
+      for (const dir of [-1, 1]) {
+        const e = sc + (dir * w) / 2;
+        for (let i = 0; i < 5; i++) {
+          const a0 = (Math.PI / 2) * (i / 5), a1 = (Math.PI / 2) * ((i + 1) / 5);
+          mb.tri(P(f, e, tF, m.eave), P(f, e + dir * Math.sin(a0) * 1.1, tF, m.eave + Math.cos(a0) * 1.4), P(f, e + dir * Math.sin(a1) * 1.1, tF, m.eave + Math.cos(a1) * 1.4), N(f, 0, -1), stone);
+        }
+      }
+    }
+    // Crête en fer autour du plateau, épi (ou paratonnerre mesuré) au milieu.
+    const cr = [[pv.ps0, pv.pt0], [pv.ps1, pv.pt0], [pv.ps1, pv.pt1], [pv.ps0, pv.pt1]] as const;
+    for (let i = 0; i < 4; i++) {
+      const [a, b] = [cr[i]!, cr[(i + 1) % 4]!];
+      const nS = b[1] - a[1], nT = -(b[0] - a[0]), l = Math.hypot(nS, nT) || 1;
+      for (const k of [1, -1]) q(mb, f, [a[0], a[1], pv.top], [b[0], b[1], pv.top], [b[0], b[1], pv.top + 0.35], [a[0], a[1], pv.top + 0.35], N(f, (k * nS) / l, (k * nT) / l), IRON);
+    }
+    const ms = (pv.ps0 + pv.ps1) / 2, mt = (pv.pt0 + pv.pt1) / 2, tip = m.tips?.[k] ?? null;
+    box(mb, f, ms - 0.2, ms + 0.2, mt - 0.2, mt + 0.2, pv.top, pv.top + 0.5, zinc);
+    spire(mb, f, ms, mt, 0.16, pv.top + 0.5, tip !== null ? Math.min(tip, pv.top + 1.8) : pv.top + 1.9, 4, IRON);
+    if (tip !== null && tip > pv.top + 1.8) box(mb, f, ms - 0.03, ms + 0.03, mt - 0.03, mt + 0.03, pv.top + 1.6, tip, IRON);
+  }
+  for (const [cs, ct, side, top] of m.chim ?? []) {
+    // Cheminée de brique (photo), du dessous du toit à son haut mesuré, couronnée d'une dalle.
+    const h = side / 2;
+    box(mb, f, cs - h, cs + h, ct - h, ct + h, top - 4, top - 0.12, BRICK);
+    box(mb, f, cs - h - 0.06, cs + h + 0.06, ct - h - 0.06, ct + h + 0.06, top - 0.12, top, shade(HALL_TRIM, 0.9));
+  }
+
   // Ailes basses : un pan extérieur et un pan sur cour par côté, faîtage sur la ligne médiane (le côté de la façade n'a que le pan sur cour).
   const M: [number, number][] = R.map((r, i) => [(r[0] + H[i]![0]) / 2, (r[1] + H[i]![1]) / 2]);
   for (let i = 0; i < n; i++) {
@@ -564,6 +624,42 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     const mi: [number, number, number] = [M[i]![0], M[i]![1], m.wingRidge], mj: [number, number, number] = [M[j]![0], M[j]![1], m.wingRidge];
     if (i !== 0) pan(mb, f, [R[i]![0], R[i]![1], m.wingEave], [R[j]![0], R[j]![1], m.wingEave], mj, mi, roofColor);
     pan(mb, f, [H[i]![0], H[i]![1], m.wingEave], [H[j]![0], H[j]![1], m.wingEave], mj, mi, shade(roofColor, 0.96));
+  }
+}
+
+/**
+ * Lucarne sur un pan qui monte vers +t : face avant verticale en t = tF, de contour `outline` (points (s, z) du bas à droite au bas à gauche
+ * en passant par le haut), joues jusqu'au pan, couverture qui rejoint le pan (`tRoof(z)` : profondeur où le pan atteint z).
+ */
+function dormer(mb: MeshBuilder, f: Frame, tF: number, outline: [number, number][], zRoofAtF: number, tRoof: (z: number) => number, face: THREE.Color, cover: THREE.Color): void {
+  const n = outline.length;
+  for (let i = 1; i + 1 < n; i++) mb.tri(P(f, outline[0]![0], tF, outline[0]![1]), P(f, outline[i]![0], tF, outline[i]![1]), P(f, outline[i + 1]![0], tF, outline[i + 1]![1]), N(f, 0, -1), face);
+  const [sR, zsR] = outline[1]!, [sL, zsL] = outline[n - 2]!;
+  if (zsR > zRoofAtF) mb.tri(P(f, sR, tF, zRoofAtF), P(f, sR, tF, zsR), P(f, sR, tRoof(zsR), zsR), N(f, 1, 0), shade(face, 0.88));
+  if (zsL > zRoofAtF) mb.tri(P(f, sL, tF, zRoofAtF), P(f, sL, tF, zsL), P(f, sL, tRoof(zsL), zsL), N(f, -1, 0), shade(face, 0.88));
+  for (let i = 1; i + 2 < n; i++) {
+    const [s0, z0] = outline[i]!, [s1, z1] = outline[i + 1]!;
+    pan(mb, f, [s0, tF - 0.06, z0], [s1, tF - 0.06, z1], [s1, tRoof(z1), z1], [s0, tRoof(z0), z0], cover);
+  }
+}
+
+/** Contour de lucarne : montants de zb à zs, puis arc (plein cintre si `rise` = demi-largeur, segment sinon) jusqu'à zs + rise. */
+function dormerOutline(sc: number, w: number, zb: number, zs: number, rise: number): [number, number][] {
+  const c = w / 2, R = (c * c + rise * rise) / (2 * rise), zc = zs + rise - R, a = Math.asin(Math.min(1, c / R));
+  const out: [number, number][] = [[sc + c, zb], [sc + c, zs]];
+  for (let k = 1; k < 8; k++) {
+    const th = a - (2 * a * k) / 8;
+    out.push([sc + Math.sin(th) * R, zc + Math.cos(th) * R]);
+  }
+  out.push([sc - c, zs], [sc - c, zb]);
+  return out;
+}
+
+/** Disque posé sur une face de normale −t (oculus, cartouche), centré en (s, z), rayons rs (le long de s) et rz. */
+function disc(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, rs: number, rz: number, col: THREE.Color, sides = 12): void {
+  for (let i = 0; i < sides; i++) {
+    const a0 = (Math.PI * 2 * i) / sides, a1 = (Math.PI * 2 * (i + 1)) / sides;
+    mb.tri(P(f, s, t, z), P(f, s + Math.cos(a0) * rs, t, z + Math.sin(a0) * rz), P(f, s + Math.cos(a1) * rs, t, z + Math.sin(a1) * rz), N(f, 0, -1), col);
   }
 }
 

@@ -239,6 +239,16 @@ export interface TownHallSpec {
   perron?: [number, number, number, number, number];
   /** Escalier du relief (`stairs` de la tuile) que le perron remplace à l'écran. */
   stairs?: string;
+  /** Lucarnes du toit du corps principal : abscisse, haut mesuré. */
+  dormers?: [number, number][];
+  /** Œils-de-bœuf sur les pavillons d'angle (photo). */
+  oculi?: boolean;
+  /** Haut mesuré de la lucarne-fronton de l'avant-corps central. */
+  fronton?: number;
+  /** Pointe mesurée de l'épi ou du paratonnerre de chaque pavillon (null : épi d'après photo). */
+  tips?: (number | null)[];
+  /** Cheminées : s, t, côté, haut. */
+  chim?: [number, number, number, number][];
 }
 
 export interface BuildingKind {

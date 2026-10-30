@@ -1695,3 +1695,21 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![Au pied du perron, après](captures/d125-mairie-pied-apres.jpg)
 ![De face](captures/d125-mairie-face.jpg)
 ![La nuit](captures/d125-mairie-nuit.jpg)
+
+## 2026-10-30 — D126. Bâtiments d'après photos, étape 6 : l'hôtel de ville, toits et silhouette lointaine
+
+**D'après la photo de l'utilisateur** : œil-de-bœuf à encadrement de pierre sur le pan avant de chaque pavillon d'angle, deux lucarnes rondes de chaque côté entre les pavillons, grande lucarne-fronton sculptée aux armes sur le pavillon central, épis sur les pavillons, paratonnerre au centre, crêtes de faîtage, cheminée de brique à droite.
+
+**Mesures** (`build_monuments.py`) : lucarnes des travées 2, 3, 7, 8 (`dormers` dans `manual.json`) : haut = point le plus haut qui dépasse le pan avant de plus de 50 cm (15,95 m local, 3,45 m au-dessus de la corniche, pour les quatre) ; lucarne-fronton : modèle de surface à 0,75-1,75 m de la façade, là où il dépasse le pan raide du pavillon central (18,05 m, 5,5 m au-dessus de la corniche) ; paratonnerre : point le plus haut du plateau central (2,3 m au-dessus) ; les plateaux des pavillons d'angle n'ont pas de pointe mesurable (épis trop fins pour le LiDAR à 0,5 m : hauteur d'après la photo) ; cheminée : celle que la chaîne avait repérée (`chim` du bâtiment), derrière le faîtage à droite, là où la photo montre une cheminée de brique. Une recherche automatique des cheminées par les pics du modèle de surface a été essayée puis écartée : sur des pans raides et des faîtages, elle trouve surtout des arêtes. Les œils-de-bœuf des pavillons d'angle (`oculi`) suivent la photo (2 m de large, 4 m au-dessus de la corniche) : le relevé ne les distingue pas du pan raide.
+
+**Rendu** (`src/render/monuments.ts`) : `dormer` dessine une lucarne sur n'importe quel pan (face verticale de contour donné, joues triangulaires jusqu'au pan, couverture en zinc qui rejoint le pan) ; lucarnes rondes (face à plein cintre, oculus cerclé) sur le corps principal, œils-de-bœuf plus grands à clé sur les pavillons d'angle, lucarne-fronton (panneau à fronton cintré, corniche, cartouche ovale, volutes) sur le pavillon central ; crête en fer autour des plateaux, épis, paratonnerre ; cheminée en brique coiffée d'une dalle. 5 431 triangles pour tout le monument.
+
+**Silhouette lointaine** : `build_monuments.py` remplace le prisme unique du bâtiment dans `lod/26_35.json` par cinq (corps principal, trois pavillons, ailes basses), chacun avec son égout et son haut ; les autres entrées du fichier sont inchangées et une deuxième passe ne réécrit rien. De loin, la mairie garde ses trois toits plus hauts.
+
+**Pas encore** : les autres façades et la cour d'après photo (aucune photo pour l'instant), la cheminée de pierre à gauche de la photo (non retrouvée dans le relevé), le troisième drapeau, les sculptures des baies du balcon.
+
+![Avant](captures/d126-mairie-toits-avant.jpg)
+![Après](captures/d126-mairie-toits-apres.jpg)
+![De face](captures/d126-mairie-face.jpg)
+![Vue haute](captures/d126-mairie-haut.jpg)
+![Silhouette lointaine, avant (en haut) et après](captures/d126-mairie-silhouette.jpg)
