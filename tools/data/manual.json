@@ -4,6 +4,8 @@
     {"id": "hotel-de-ville", "bbox": [14, 58, 42, 92], "base": -4.4, "riser": 0.17}
   ],
   "_fronts": "fronts : mur d'entrée d'un bâtiment commerçant {\"wall\": indice dans les murs de sa fiche, \"photo\": référence}, vu sur une photo ; build_shop_fronts.py l'impose (D120).",
-  "fronts": {},
+  "fronts": {
+    "BATIMENT0000000348848856": {"wall": 11, "photo": "E.Leclerc, entrée sur la façade nord (capture Google Street View fournie par l'utilisateur, juillet 2026)"}
+  },
   "fenceHeights": {"fence": 1.8, "gate": 2.4}
 }

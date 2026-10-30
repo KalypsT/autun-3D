@@ -742,8 +742,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Les vitrines et les enseignes du bon côté (30 octobre 2026)** (D120)
 - Avant : une vitrine sans nom sur deux et près d'une enseigne sur quatre étaient sur l'arrière du bâtiment ou sur une autre rue que celle de leur adresse (toute l'avenue Charles-de-Gaulle, entre autres).
 - Maintenant, chaque bâtiment commerçant a un mur d'entrée : la porte cartographiée, sinon le mur qui donne sur la rue de l'adresse, sinon (grandes surfaces) celui qui donne sur le parking. Il reste 6 enseignes et 2 vitrines sur une autre rue, toutes sur des bâtiments d'angle.
-- Une correction à la main par bâtiment est possible (`fronts` dans `tools/data/manual.json`) : elle servira pour E.Leclerc dès qu'on aura la photo.
+- Une correction à la main par bâtiment est possible (`fronts` dans `tools/data/manual.json`). Première utilisée : E.Leclerc, dont l'entrée est sur la façade nord d'après ta photo.
 - 721 tests.
 
 ![Avant](docs/captures/d120-cic-avant.jpg)
 ![Après : le CIC côté avenue](docs/captures/d120-cic-apres.jpg)
+![E.Leclerc : enseigne sur la façade nord](docs/captures/d120-leclerc-nord.jpg)

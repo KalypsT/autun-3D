@@ -1597,7 +1597,9 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 
 **Rendu** : `planFacades` prend `ground.front` comme mur principal (porte ou vitrines), sinon le plus long mur sur rue comme avant ; les grandes surfaces (`landmarks.ts`) posent entrée vitrée, auvent et grande enseigne sur le plus long pan du mur d'entrée. `build_nav.py` place le point « commerce » devant ce mur (à la prochaine régénération de la navigation).
 
-**Résultat** (même mesure) : 6 enseignes nommées sur 192 et 2 vitrines sur 244 regardent encore une autre rue (commerces d'angle dont le point OpenStreetMap est sur l'autre façade). 87 tuiles réécrites, 42 enseignes nommées changent de mur, 18 grandes surfaces sont tournées vers leur parking ; 721 tests (1 de plus : les vitrines suivent le mur d'entrée). **E.Leclerc** : l'entrée reste à l'ouest, côté grand parking, comme avant ; l'utilisateur fournira une photo, qui deviendra une ligne de `fronts`.
+**Résultat** (même mesure) : 6 enseignes nommées sur 192 et 2 vitrines sur 244 regardent encore une autre rue (commerces d'angle dont le point OpenStreetMap est sur l'autre façade). 87 tuiles réécrites, 42 enseignes nommées changent de mur, 18 grandes surfaces sont tournées vers leur parking ; 721 tests (1 de plus : les vitrines suivent le mur d'entrée). **E.Leclerc** : le calcul gardait l'entrée à l'ouest (côté parking, comme avant) ; une capture de l'entrée fournie par l'utilisateur la place sur la **façade nord** : première ligne de `fronts` (mur 11, 54 m, mitoyen d'une petite annexe de 112 m² qui doit être le sas d'entrée à pyramide ; il passe en rôle « rue »). La capture (Google Street View) n'est pas versionnée : elle a seulement servi à lire le côté.
+
+![E.Leclerc : l'enseigne sur la façade nord](captures/d120-leclerc-nord.jpg)
 
 ![Avenue Charles-de-Gaulle, avant](captures/d120-cic-avant.jpg)
 ![Avenue Charles-de-Gaulle, après : le CIC côté avenue](captures/d120-cic-apres.jpg)
