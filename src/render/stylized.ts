@@ -9,7 +9,7 @@ import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
-import { reshapeBuilding } from "../core/landmarks";
+import { reshapeBuilding, treesOutsideMonuments } from "../core/landmarks";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
 import { buildStructures, buildWater } from "./structures";
 
@@ -438,7 +438,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (!skip.includes("stairs")) buildStairs(detail, (tile.stairs ?? []).filter((z) => !perrons.has(z.id)), terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
   target();
-  if (!skip.includes("furn")) buildFurniture(detail, tile.furniture, terrain, glow, halo);
+  // Le mobilier remplacé par un monument d'après photo (fontaine Saint-Lazare, D131) n'est pas dessiné.
+  const replaced = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [s.id] : [])));
+  if (!skip.includes("furn")) buildFurniture(detail, tile.furniture.filter((f) => !replaced.has(f.id)), terrain, glow, halo);
   yield;
 
   const group = new THREE.Group();
@@ -472,9 +474,10 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (st) buildWater(ground, st, tile.bounds, terrain.ground ?? terrain);
   if (ground.triangleCount > 0) put("sol", yield* ground.buildSteps(), ground.triangleCount, res.groundMat);
   add("grilles", fence, res.fenceMat);
-  if (tile.trees.length) {
+  const trees = treesOutsideMonuments(kinds, tile.trees);
+  if (trees.length) {
     yield;
-    group.add(treesStyled(res, tile.trees));
+    group.add(treesStyled(res, trees));
     draws += 2;
   }
   return { group, stats: { triangles, ...plan.stats, draws } };

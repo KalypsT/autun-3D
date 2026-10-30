@@ -1799,3 +1799,24 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Le porche et ses tours, après](captures/d130-porche-apres.jpg)
 ![La nuit](captures/d130-nuit.jpg)
 ![Vue de drone depuis le chevet, comme la photo](captures/d130-cathedrale-drone.jpg)
+
+## 2026-10-30 — D131. Bâtiments d'après photos, étape 11 : le portail de la cathédrale et la fontaine Saint-Lazare
+
+**Photos de l'utilisateur** (non versionnées) : le portail au fond du porche, de face ; la fontaine Saint-Lazare vue du nord-est, avec derrière elle les chapelles de l'est et le flanc du porche ; l'utilisateur confirme que c'est l'édicule vu au pied de la tour est sur la photo de nuit (D127). Lecture :
+- **Porche et portail** : porche ouvert sous une voûte en berceau, arcs sur les murs latéraux, escalier jusqu'au seuil entre deux grilles à pointes ; deux portes de bois à panneaux, trumeau portant une statue, colonnes à chapiteaux dans les ébrasements, linteau sculpté, tympan du Jugement dernier (Christ en mandorle au centre, figures en registres), trois voussures dont une à médaillons. Sur le flanc du porche (photo de la fontaine), arcades jumelles en arc brisé et oculus.
+- **Fontaine** : emmarchement et bassin bas à lobes en pierre sombre, vasque sur pied avec jet au centre, édicule Renaissance de pierre claire à quatre piles (piédestaux, colonnes cannelées), arcs en plein cintre sur chaque face, entablement à inscription, frontons, vases aux angles ; lanterne ronde à colonnettes et niche, coupolette, pélican au sommet.
+
+**Mesures** (`build_monuments.py`, modèle `fountain` dans `monuments` de `manual.json`) : la fontaine est dans OpenStreetMap (mobilier `fountain` « Fontaine Saint-Lazare », 13 m à l'est de la tour est du porche, comme sur les photos). Sur le modèle de surface : centre de l'édicule (cellules à plus de 2 m au-dessus du sol), haut 8,3 m, bassin de 3,0 m de rayon (premier cercle où la médiane du relevé retombe à moins de 10 cm du sol) ; orientation de la cathédrale. Site `fountain` dans `kinds/26_33.json` (et le compte des sites de `kinds/index.json`) ; une deuxième passe ne change rien. Le porche n'a pas de nouvelle donnée : le seuil des portes est pris au sol du bâtiment (BD TOPO), faute de mesure possible sous le toit ; le pied de l'escalier est au plus haut point du relief du jeu, 4,2 m devant les portes, soit 11 marches.
+
+**Rendu** (`src/render/monuments.ts`) :
+- **Porche** : le mur avant est percé d'un vrai grand arc (`archWall`, intrados et piédroits `archSoffit`), ce qui laisse voir l'intérieur : voûte en berceau, murs intérieurs à arcs aveugles, escalier et grilles, **portail** (`portal`) sur le mur ouest de la nef. Le tympan est stylisé en aplats : demi-disque, mandorle plus sombre, Christ plus clair, deux registres de figures de part et d'autre, frise du linteau, médaillons de la voussure. Proportions d'après la photo (portes de 5 m sur 4,2 m, tympan de 6,4 m). La collision reste l'emprise : on ne monte pas dans le porche.
+- **Fontaine** (`buildFountain`, dessinée par la tuile où elle se trouve) : modèle complet, hauteurs d'après la photo mises à l'échelle du haut mesuré. Le cylindre générique du mobilier n'est plus dessiné (même identifiant OpenStreetMap). Le bassin devient un obstacle de son rayon. Un arbre de la carte poussait au milieu : les arbres à l'intérieur du bassin ne sont plus ni dessinés ni des obstacles (`treesOutsideMonuments`).
+- 5 275 triangles pour la cathédrale (4 163 avant), 1 112 pour la fontaine.
+
+**Pas encore** : on ne peut pas entrer dans le porche (la collision suit l'emprise) ; la façade extérieure du porche n'a pas de photo (un seul grand arc) ; la navigation des passants garde l'ancien rayon de la fontaine (1 m) ; l'éclairage de nuit.
+
+![Le porche, avant](captures/d131-porche-avant.jpg)
+![Le porche et le portail, après](captures/d131-porche-apres.jpg)
+![Depuis le parvis](captures/d131-porche-parvis.jpg)
+![La fontaine, avant](captures/d131-fontaine-avant.jpg)
+![La fontaine Saint-Lazare, après](captures/d131-fontaine-apres.jpg)

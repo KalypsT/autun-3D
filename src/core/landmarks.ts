@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, Site } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, Site, Tree } from "../data/types";
 
 /** Gabarits « boîte » : leur façade d'habitation est remplacée (bardage, quais, vitrage d'entrée). */
 export const BOX_KINDS: ReadonlySet<BuildingKindId> = new Set(["retail", "industrial", "annex", "sports", "greenhouse", "canopy"]);
@@ -95,12 +95,20 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
     out.push([lay.totem[0], lay.totem[1], 0.5]);
   }
+  // Fontaine d'après photo (D131) : son bassin.
+  for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;
     for (let i = 0; i < b.ring.length; i += 2) out.push([b.ring[i]!, b.ring[i + 1]!, 0.3]);
   }
   return out;
+}
+
+/** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */
+export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, trees: readonly Tree[]): Tree[] {
+  const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
+  return basins.length ? trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r)) : [...trees];
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */

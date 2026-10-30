@@ -853,3 +853,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le flanc est, après](docs/captures/d130-flanc-apres.jpg)
 ![Le porche et ses tours](docs/captures/d130-porche-apres.jpg)
 ![Vue de drone depuis le chevet](docs/captures/d130-cathedrale-drone.jpg)
+
+**Bâtiments d'après photos, étape 11 : le portail et la fontaine Saint-Lazare (30 octobre 2026)** (D131)
+- Le porche s'ouvre maintenant sur le parvis par un grand arc. On y voit la voûte, l'escalier entre ses grilles et le portail de ta photo : portes de bois, trumeau et statue, colonnes, linteau, tympan du Jugement dernier (Christ en mandorle et figures, en aplats), voussures à médaillons.
+- La fontaine Saint-Lazare est à sa vraie place (OpenStreetMap), à sa hauteur mesurée au LiDAR (8,3 m) : bassin à lobes, vasque et jet, édicule à arcs, entablement, vases, lanterne et pélican. On ne la traverse plus, et l'arbre qui poussait au milieu a disparu.
+- On ne peut pas encore entrer dans le porche (la collision suit l'emprise du bâtiment).
+- 725 tests.
+
+![Le porche, avant](docs/captures/d131-porche-avant.jpg)
+![Le porche et le portail](docs/captures/d131-porche-apres.jpg)
+![La fontaine, avant](docs/captures/d131-fontaine-avant.jpg)
+![La fontaine Saint-Lazare](docs/captures/d131-fontaine-apres.jpg)

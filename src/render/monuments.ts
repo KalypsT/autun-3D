@@ -297,6 +297,53 @@ function rectOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z
   q(mb, f, p(-w / 2, z0), p(w / 2, z0), p(w / 2, z1), p(-w / 2, z1), N(f, dt, -ds), col);
 }
 
+/**
+ * Mur plan de a à b (normale sortante à droite de a → b), du sol jusqu'à zt, percé d'une arcade en plein cintre de largeur w centrée à `u`
+ * mètres de a, naissance à zs : piédroits pleins jusqu'en haut, tympan au-dessus de l'arc.
+ */
+function archWall(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, zt: number, u: number, w: number, zs: number, ground: (s: number, t: number) => number, col: THREE.Color): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+  const pt = (v: number): Pt => [a[0] + ds * v, a[1] + dt * v];
+  wallST(mb, f, a, pt(u - w / 2), zt, zt, ground, col);
+  wallST(mb, f, pt(u + w / 2), b, zt, zt, ground, col);
+  const n = N(f, dt, -ds);
+  for (let i = 0; i < 8; i++) {
+    const t0 = Math.PI - (Math.PI * i) / 8, t1 = Math.PI - (Math.PI * (i + 1)) / 8;
+    const v0 = u + (w / 2) * Math.cos(t0), v1 = u + (w / 2) * Math.cos(t1);
+    q(mb, f, [...pt(v0), zs + (w / 2) * Math.sin(t0)], [...pt(v1), zs + (w / 2) * Math.sin(t1)], [...pt(v1), zt], [...pt(v0), zt], n, col);
+  }
+}
+
+/** Intrados et piédroits de l'arcade d'`archWall` (même a, b, u, w, zs), sur l'épaisseur `depth` vers l'intérieur. */
+function archSoffit(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, zs: number, depth: number, ground: (s: number, t: number) => number, col: THREE.Color): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+  const pt = (v: number, d: number): Pt => [a[0] + ds * v - dt * d, a[1] + dt * v + ds * d];
+  for (let i = 0; i < 8; i++) {
+    const t0 = Math.PI - (Math.PI * i) / 8, t1 = Math.PI - (Math.PI * (i + 1)) / 8, tm = (t0 + t1) / 2;
+    const v0 = u + (w / 2) * Math.cos(t0), v1 = u + (w / 2) * Math.cos(t1), z0 = zs + (w / 2) * Math.sin(t0), z1 = zs + (w / 2) * Math.sin(t1);
+    const nh = N(f, -ds * Math.cos(tm), -dt * Math.cos(tm));
+    q(mb, f, [...pt(v0, 0), z0], [...pt(v1, 0), z1], [...pt(v1, depth), z1], [...pt(v0, depth), z0], [nh[0], -Math.sin(tm), nh[2]], shade(col, 0.88));
+  }
+  for (const k of [-1, 1]) {
+    const v = u + (k * w) / 2;
+    const p0 = pt(v, 0), p1 = pt(v, depth);
+    q(mb, f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, zs], [...p0, zs], N(f, -ds * k, -dt * k), shade(col, 0.92));
+  }
+}
+
+/** Disque (oculus) sur le mur de a à b, centré à `u` mètres de a et à l'altitude zc. */
+function roundOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, zc: number, r: number, col: THREE.Color, off = 0.04): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+  const p = (v: number, z: number): Vec3 => P(f, a[0] + ds * (u + v) + dt * off, a[1] + dt * (u + v) - ds * off, z);
+  for (let i = 0; i < 8; i++) {
+    const a0 = (Math.PI * i) / 4, a1 = (Math.PI * (i + 1)) / 4;
+    mb.tri(p(0, zc), p(Math.cos(a0) * r, zc + Math.sin(a0) * r), p(Math.cos(a1) * r, zc + Math.sin(a1) * r), N(f, dt, -ds), col);
+  }
+}
+
 /** Appentis de s0 à s1, du mur haut en tIn (haut zIn) au mur bas en tOut (haut zOut), débord `ov` côté bas. */
 function leanTo(mb: MeshBuilder, f: Frame, s0: number, s1: number, tIn: number, tOut: number, zIn: number, zOut: number, ov: number, col: THREE.Color): void {
   const d = Math.sign(tOut - tIn), k = (zOut - zIn) / Math.abs(tOut - tIn);
@@ -376,13 +423,48 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   const OV = 0.35;
   const flat = (z: number) => (): number => z;
 
-  // Porche : pignon sur le parvis, grand arc d'entrée.
-  prismST(mb, f, rectST(p0, n0, pA, pB), flat(pe), ground, wall);
+  // Porche (D131, photo du portail) : ouvert sur le parvis par un grand arc, voûte en berceau, arcs aveugles sur les murs latéraux,
+  // escalier jusqu'au seuil des portes entre deux grilles, portail au fond (sur le mur ouest de la nef) ; arcades jumelles et oculus sur
+  // ses flancs, au-delà des tours (photo de la fontaine).
   gable(mb, f, p0 - OV, n0, pA - OV, pB + OV, pe - 0.2, pr, TILE_BROWN, wall);
-  const pc = (pA + pB) / 2, zp = ground(p0, pc) + 0.3;
-  const pw = Math.min(8, (pB - pA) * 0.6);
-  archFace(mb, f, p0 - 0.03, -1, pc, pw + 1.2, zp, Math.min(pe - zp - 1, pw * 1.5), shade(STONE, 1.08));
-  archFace(mb, f, p0 - 0.06, -1, pc, pw, zp, Math.min(pe - zp - 1.5, pw * 1.5 - 0.7), BAY);
+  const pc = (pA + pB) / 2, TH = 1.0, iA = pA + TH, iB = pB - TH, Rv = (iB - iA) / 2;
+  const zD = m.g, zV = Math.min(zD + 7.5, pe - 0.8 - Rv), Wo = Math.min(7.5, iB - iA - 1.5);
+  wallST(mb, f, [p0, pA], [n0, pA], pe, pe, ground, wall);
+  wallST(mb, f, [n0, pB], [p0, pB], pe, pe, ground, wall);
+  archWall(mb, f, [p0, pB], [p0, pA], pe, pB - pc, Wo, zV, ground, wall);
+  archSoffit(mb, f, [p0, pB], [p0, pA], pB - pc, Wo, zV, TH, ground, wall);
+  archWall(mb, f, [p0 + TH, pA], [p0 + TH, pB], zV + Rv, pc - pA, Wo, zV, ground, PORCH_IN);
+  wallST(mb, f, [n0, iA], [p0 + TH, iA], zV, zV, ground, PORCH_IN);
+  wallST(mb, f, [p0 + TH, iB], [n0, iB], zV, zV, ground, PORCH_IN);
+  for (const u of [0.3, 0.7]) {
+    archOn(mb, f, [n0, iA], [p0 + TH, iA], (n0 - p0 - TH) * u, 2.8, ground(n0 - 3, iA) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
+    archOn(mb, f, [p0 + TH, iB], [n0, iB], (n0 - p0 - TH) * u, 2.8, ground(n0 - 3, iB) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
+  }
+  for (let i = 0; i < 10; i++) {
+    const t0 = (Math.PI * i) / 10, t1 = (Math.PI * (i + 1)) / 10, tm = (t0 + t1) / 2;
+    const v = (th: number): [number, number] => [pc - Rv * Math.cos(th), zV + Rv * Math.sin(th)];
+    const [ta, za] = v(t0), [tb_, zb] = v(t1);
+    const nh = N(f, 0, Math.cos(tm));
+    q(mb, f, [p0 + TH, ta, za], [n0, ta, za], [n0, tb_, zb], [p0 + TH, tb_, zb], [nh[0], -Math.sin(tm), nh[2]], shade(PORCH_IN, 0.94 + 0.06 * Math.sin(tm)));
+  }
+  // Escalier : du sol du porche (le plus haut point du relief au pied) au seuil, marches de 16 cm environ sur 4,2 m ; grilles au pied.
+  const sf = n0 - 4.2;
+  let zF = -Infinity;
+  for (let t = iA; t <= iB; t += 0.5) zF = Math.max(zF, ground(sf, t) + 0.3);
+  if (zD - zF > 0.3) {
+    const nSteps = Math.round((zD - zF) / 0.16), dep = 4.2 / nSteps;
+    for (let k = 0; k < nSteps; k++) box(mb, f, sf + k * dep, n0, iA, iB, zF - 0.6, zF + ((k + 1) * (zD - zF)) / nSteps, RISER, TREAD);
+    for (const [t0, t1] of [[iA + 0.2, pc - 2.1], [pc + 2.1, iB - 0.2]] as const) {
+      box(mb, f, sf - 0.3, sf - 0.25, t0, t1, zF + 1.0, zF + 1.06, IRON);
+      for (let t = t0; t <= t1 + 0.01; t += 0.16) box(mb, f, sf - 0.3, sf - 0.27, t - 0.015, t + 0.015, ground(sf - 0.3, t), zF + 1.18, IRON);
+    }
+  }
+  portal(mb, f, n0, pc, zD);
+  for (const [a, b, uc] of [[[p0, pA], [n0, pA], (w0 + n0 - p0) / 2], [[n0, pB], [p0, pB], (n0 - p0 - w1) / 2]] as const) {
+    const zg = ground(...(a as Pt));
+    for (const k of [-1, 1]) archOn(mb, f, a as Pt, b as Pt, uc + k * 0.85, 1.3, zg + 1, zg + 4.4, BAY, 0.04, true);
+    roundOn(mb, f, a as Pt, b as Pt, uc, zg + 5.4, 0.6, BAY);
+  }
   // Tours du porche (D130, photo de nuit et drone) : contreforts aux angles extérieurs, deux étages de baies jumelles en plein cintre dans un
   // encadrement en retrait, cordon et corniche, flèche de pierre à quatre pans, clochetons à ses angles.
   for (const [t0, t1, side] of [[pA - w0, pA, -1], [pB, pB + w1, 1]] as const) {
@@ -554,6 +636,151 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
     buttress(mb, f, m.a, ps, pt_, Math.atan2(-Math.cos((Math.PI * i) / faces), Math.sin((Math.PI * i) / faces)), ground(ps, pt_), ae - 2.5);
   }
   if (ae > ce) for (const t of [cA, cB]) mb.tri(P(f, sc, t, ce - 0.25), P(f, sc, t, ae - 0.2), P(f, sc, ac, cr), N(f, -1, 0), wall);
+}
+
+/** Pierre claire du porche et du portail, bois des portes, sculptures (D131). */
+const PORCH_IN = C("#d8cbb0");
+const PORTAL_STONE = C("#e2d6ba"), PORTAL_DARK = C("#b9a888"), WOOD = C("#5a3826");
+
+/**
+ * Portail de Saint-Lazare (D131, photo de l'utilisateur), sur le mur ouest de la nef (s = n0, face vers le porche), centré en t = c, seuil à
+ * zD : deux portes de bois à panneaux, trumeau et sa statue, colonnes et chapiteaux des ébrasements, linteau à frise de figures, tympan du
+ * Jugement dernier (Christ en mandorle, deux registres de figures), trois voussures dont une à médaillons. Proportions d'après la photo
+ * (portes de 5 m sur 4,2 m, tympan de 6,4 m).
+ */
+function portal(mb: MeshBuilder, f: Frame, n0: number, c: number, zD: number): void {
+  const n = N(f, -1, 0);
+  const face = (off: number, t0: number, t1: number, z0: number, z1: number, col: THREE.Color): void => q(mb, f, [n0 - off, t0, z0], [n0 - off, t1, z0], [n0 - off, t1, z1], [n0 - off, t0, z1], n, col);
+  const fan = (off: number, tc: number, zc: number, r0: number, r1: number, rz: number, a0: number, a1: number, k: number, col: THREE.Color): void => {
+    for (let i = 0; i < k; i++) {
+      const b0 = a0 + ((a1 - a0) * i) / k, b1 = a0 + ((a1 - a0) * (i + 1)) / k;
+      const p = (r: number, b: number): [number, number, number] => [n0 - off, tc + r * Math.cos(b), zc + r * rz * Math.sin(b)];
+      if (r0 > 0) q(mb, f, p(r0, b0), p(r1, b0), p(r1, b1), p(r0, b1), n, col);
+      else mb.tri(P(f, n0 - off, tc, zc), P(f, ...p(r1, b0)), P(f, ...p(r1, b1)), n, col);
+    }
+  };
+  // Portes et panneaux.
+  face(0.03, c - 2.5, c + 2.5, zD, zD + 4.2, WOOD);
+  for (const [t0, t1] of [[c - 2.4, c - 0.35], [c + 0.35, c + 2.4]] as const) for (let r = 0; r < 3; r++) face(0.06, t0 + 0.12, t1 - 0.12, zD + 0.25 + r * 1.3, zD + 1.3 + r * 1.3, shade(WOOD, 0.78));
+  // Trumeau et statue.
+  box(mb, f, n0 - 0.45, n0, c - 0.3, c + 0.3, zD, zD + 4.2, PORTAL_STONE);
+  box(mb, f, n0 - 0.8, n0 - 0.45, c - 0.2, c + 0.2, zD + 1.0, zD + 3.3, shade(PORTAL_STONE, 1.05));
+  box(mb, f, n0 - 0.75, n0 - 0.5, c - 0.12, c + 0.12, zD + 3.3, zD + 3.6, shade(PORTAL_STONE, 1.05));
+  // Colonnes des ébrasements, chapiteaux.
+  for (const k of [-1, 1]) for (const d of [3.0, 3.45, 3.9]) {
+    column(mb, f, n0 - 0.25, c + k * d, 0.17, zD, zD + 4.75, PORTAL_STONE);
+    box(mb, f, n0 - 0.5, n0, c + k * d - 0.24, c + k * d + 0.24, zD + 4.75, zD + 5.1, shade(PORTAL_STONE, 1.06));
+  }
+  // Linteau et sa frise.
+  const zL = zD + 4.85;
+  box(mb, f, n0 - 0.3, n0, c - 3.25, c + 3.25, zD + 4.2, zL, PORTAL_STONE);
+  for (let t = c - 3.0; t < c + 3.0; t += 0.38) face(0.31, t, t + 0.2, zD + 4.3, zD + 4.75, PORTAL_DARK);
+  // Tympan : demi-disque, mandorle et Christ, figures en deux registres.
+  const RT = 3.2;
+  fan(0.2, c, zL, 0, RT, 1, 0, Math.PI, 12, PORTAL_STONE);
+  fan(0.24, c, zL + 1.75, 0, 0.85, 1.5 / 0.85, 0, Math.PI * 2, 12, shade(PORTAL_STONE, 0.84));
+  face(0.27, c - 0.32, c + 0.32, zL + 0.55, zL + 2.6, shade(PORTAL_STONE, 1.06));
+  face(0.27, c - 0.17, c + 0.17, zL + 2.6, zL + 2.95, shade(PORTAL_STONE, 1.06));
+  for (const k of [-1, 1]) for (let x = 1.25; x < 3.0; x += 0.36) {
+    const lim = zL + Math.sqrt(RT * RT - (x + 0.11) ** 2) - 0.2;
+    face(0.23, c + k * x - 0.11, c + k * x + 0.11, zL + 0.15, Math.min(zL + 1.25, lim), PORTAL_DARK);
+    if (lim > zL + 1.7) face(0.23, c + k * x - 0.11, c + k * x + 0.11, zL + 1.45, Math.min(zL + 2.5, lim), PORTAL_DARK);
+  }
+  // Voussures : la deuxième porte des médaillons.
+  fan(0.25, c, zL, RT, 3.6, 1, 0, Math.PI, 12, shade(PORTAL_STONE, 0.9));
+  fan(0.3, c, zL, 3.6, 4.25, 1, 0, Math.PI, 12, PORTAL_STONE);
+  for (let i = 0; i <= 12; i++) {
+    const b = (Math.PI * i) / 12;
+    fan(0.33, c + 3.93 * Math.cos(b), zL + 3.93 * Math.sin(b), 0, 0.22, 1, 0, Math.PI * 2, 6, PORTAL_DARK);
+  }
+  fan(0.28, c, zL, 4.25, 4.6, 1, 0, Math.PI, 12, shade(PORTAL_STONE, 0.95));
+}
+
+/** Pierre blanche de l'édicule, pierre sombre des bassins, eau, jet (D131). */
+const FOUNT_STONE = C("#e8e1d1"), FOUNT_DARK = C("#7a756b"), FOUNT_WATER = C("#5f8ea0"), FOUNT_JET = C("#d6e8ee");
+
+/**
+ * Fontaine Saint-Lazare (D131) d'après la photo de l'utilisateur, à la position, au sol, au haut et au rayon de bassin mesurés : emmarchement
+ * et bassin bas à quatre lobes en pierre sombre, eau ; édicule Renaissance de pierre claire à quatre piles (piédestaux, colonnes), arcs en
+ * plein cintre sur les quatre faces, entablement à inscription, frontons, vases aux angles ; lanterne à colonnettes et niches, coupolette,
+ * pélican ; vasque sur pied et jet au centre. Hauteurs d'après la photo, mises à l'échelle du haut mesuré.
+ */
+export function buildFountain(mb: MeshBuilder, site: Extract<Site, { t: "fountain" }>, terrain: HeightField): void {
+  const f = frameOf(site.x, site.y, site.a, 1, 1);
+  const z0 = terrain.heightAt(site.x, site.y);
+  const k = (site.top - site.g) / 8.3;
+  const z = (h: number): number => z0 + h * k;
+  const ground = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y) - 0.2; };
+  const lobe = (r: number, th: number): Pt => { const rr = r - 0.45 * Math.cos(4 * th); return [rr * Math.cos(th), rr * Math.sin(th)]; };
+  const SEG = 32, rb = site.rb;
+  // Emmarchement, bassin à lobes, eau.
+  for (let i = 0; i < SEG; i++) {
+    const a0 = (2 * Math.PI * i) / SEG, a1 = (2 * Math.PI * (i + 1)) / SEG;
+    const P0 = lobe(rb + 0.4, a0), P1 = lobe(rb + 0.4, a1), B0 = lobe(rb, a0), B1 = lobe(rb, a1), I0 = lobe(rb - 0.3, a0), I1 = lobe(rb - 0.3, a1);
+    wallST(mb, f, P1, P0, z0 + 0.15, z0 + 0.15, ground, FOUNT_DARK);
+    q(mb, f, [...P0, z0 + 0.15], [...P1, z0 + 0.15], [...B1, z0 + 0.15], [...B0, z0 + 0.15], [0, 1, 0], shade(FOUNT_DARK, 1.15));
+    wallST(mb, f, B1, B0, z0 + 0.6, z0 + 0.6, () => z0 + 0.15, FOUNT_DARK);
+    q(mb, f, [...B0, z0 + 0.6], [...B1, z0 + 0.6], [...I1, z0 + 0.6], [...I0, z0 + 0.6], [0, 1, 0], shade(FOUNT_DARK, 1.2));
+    wallST(mb, f, I0, I1, z0 + 0.6, z0 + 0.6, () => z0 + 0.4, shade(FOUNT_DARK, 0.85));
+    mb.tri(P(f, 0, 0, z0 + 0.4), P(f, ...I0, z0 + 0.4), P(f, ...I1, z0 + 0.4), [0, 1, 0], FOUNT_WATER);
+  }
+  // Édicule : piédestaux, faces à arc (les piles sont leurs piédroits), colonnes d'angle.
+  const H = 1.6, E = H - 0.5;
+  for (const ks of [-1, 1]) for (const kt of [-1, 1]) {
+    box(mb, f, ks * (H + 0.05) - 0.36, ks * (H + 0.05) + 0.36, kt * (H + 0.05) - 0.36, kt * (H + 0.05) + 0.36, z0 + 0.3, z(1.9), FOUNT_STONE);
+    box(mb, f, ks * (H + 0.05) - 0.42, ks * (H + 0.05) + 0.42, kt * (H + 0.05) - 0.42, kt * (H + 0.05) + 0.42, z(1.75), z(1.9), shade(FOUNT_STONE, 1.05));
+    column(mb, f, ks * (H + 0.1), kt * (H + 0.1), 0.17, z(1.9), z(4.45), FOUNT_STONE);
+    box(mb, f, ks * (H + 0.1) - 0.25, ks * (H + 0.1) + 0.25, kt * (H + 0.1) - 0.25, kt * (H + 0.1) + 0.25, z(4.3), z(4.55), shade(FOUNT_STONE, 1.04));
+  }
+  const sq = (h: number): [Pt, Pt][] => [[[h, -h], [h, h]], [[h, h], [-h, h]], [[-h, h], [-h, -h]], [[-h, -h], [h, -h]]];
+  const outer = sq(H), inner = sq(E);
+  outer.forEach(([a, b], i) => {
+    archWall(mb, f, a, b, z(4.55), H, 1.9, z(3.5), () => z(1.9), FOUNT_STONE);
+    archSoffit(mb, f, a, b, H, 1.9, z(3.5), H - E, () => z(1.9), FOUNT_STONE);
+    const [ia, ib] = inner[i]!;
+    archWall(mb, f, ib, ia, z(4.55), E, 1.9, z(3.5), () => z(1.9), shade(FOUNT_STONE, 0.85));
+    rectOn(mb, f, a, b, H, 2.6, z(4.75), z(4.95), shade(FOUNT_STONE, 0.8), 0.28);
+  });
+  // Entablement, corniche, frontons, vases.
+  box(mb, f, -1.85, 1.85, -1.85, 1.85, z(4.55), z(5.15), shade(FOUNT_STONE, 1.03));
+  box(mb, f, -2.0, 2.0, -2.0, 2.0, z(5.15), z(5.35), FOUNT_STONE);
+  for (const [a, b] of sq(1.95)) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+    const m0: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    mb.tri(P(f, m0[0] - ds, m0[1] - dt, z(5.35)), P(f, m0[0] + ds, m0[1] + dt, z(5.35)), P(f, m0[0], m0[1], z(5.9)), N(f, dt, -ds), FOUNT_STONE);
+  }
+  for (const ks of [-1, 1]) for (const kt of [-1, 1]) {
+    column(mb, f, ks * 1.7, kt * 1.7, 0.16, z(5.35), z(5.6), FOUNT_STONE);
+    spire(mb, f, ks * 1.7, kt * 1.7, 0.26, z(5.6), z(6.1), 6, shade(FOUNT_STONE, 0.95));
+  }
+  // Lanterne : socle, tambour octogonal à colonnettes et niches, corniche, coupolette, pélican.
+  box(mb, f, -0.95, 0.95, -0.95, 0.95, z(5.35), z(5.95), FOUNT_STONE);
+  column(mb, f, 0, 0, 0.62, z(5.95), z(7.55), FOUNT_STONE);
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (Math.PI * i) / 2;
+    column(mb, f, 0.74 * Math.cos(a), 0.74 * Math.sin(a), 0.08, z(5.95), z(7.55), shade(FOUNT_STONE, 1.05));
+    const c = Math.cos((Math.PI * i) / 2), s_ = Math.sin((Math.PI * i) / 2), ap = 0.62 * Math.cos(Math.PI / 8), hw = 0.62 * Math.sin(Math.PI / 8);
+    archOn(mb, f, [c * ap + s_ * hw, s_ * ap - c * hw], [c * ap - s_ * hw, s_ * ap + c * hw], hw, 0.34, z(6.3), z(7.2), BAY, 0.03);
+  }
+  box(mb, f, -0.78, 0.78, -0.78, 0.78, z(7.55), z(7.75), shade(FOUNT_STONE, 1.03));
+  spire(mb, f, 0, 0, 0.75, z(7.75), z(8.0), 8, shade(FOUNT_STONE, 0.92));
+  box(mb, f, -0.2, 0.2, -0.1, 0.1, z(8.0), z(8.2), shade(FOUNT_STONE, 0.9));
+  box(mb, f, 0.12, 0.2, -0.05, 0.05, z(8.15), z(8.3), shade(FOUNT_STONE, 0.9));
+  // Vasque sur pied, jet.
+  column(mb, f, 0, 0, 0.28, z0 + 0.4, z(1.6), FOUNT_DARK);
+  for (let i = 0; i < 8; i++) {
+    const a0 = (Math.PI * i) / 4, a1 = (Math.PI * (i + 1)) / 4, am = (a0 + a1) / 2;
+    const nh = N(f, Math.cos(am), Math.sin(am));
+    q(mb, f, [0.28 * Math.cos(a0), 0.28 * Math.sin(a0), z(1.6)], [0.28 * Math.cos(a1), 0.28 * Math.sin(a1), z(1.6)], [0.85 * Math.cos(a1), 0.85 * Math.sin(a1), z(1.95)],
+      [0.85 * Math.cos(a0), 0.85 * Math.sin(a0), z(1.95)], [nh[0] * 0.6, -0.8, nh[2] * 0.6], FOUNT_DARK);
+    mb.tri(P(f, 0, 0, z(1.92)), P(f, 0.8 * Math.cos(a0), 0.8 * Math.sin(a0), z(1.92)), P(f, 0.8 * Math.cos(a1), 0.8 * Math.sin(a1), z(1.92)), [0, 1, 0], FOUNT_WATER);
+  }
+  for (const [us, vt] of [[1, 0], [0, 1]] as const) {
+    for (const sg of [1, -1]) {
+      q(mb, f, [-0.04 * vt, -0.04 * us, z(1.92)], [0.04 * vt, 0.04 * us, z(1.92)], [0.04 * vt, 0.04 * us, z(2.6)], [-0.04 * vt, -0.04 * us, z(2.6)], N(f, us * sg, vt * sg), FOUNT_JET);
+      q(mb, f, [0.86, -0.03 * sg, z0 + 0.4], [0.86, 0.03 * sg, z0 + 0.4], [0.86, 0.03 * sg, z(1.95)], [0.86, -0.03 * sg, z(1.95)], N(f, sg, 0), FOUNT_JET);
+    }
+  }
 }
 
 /** Contrefort au point (s, t) du mur, saillant dans la direction `dir` (angle dans le repère), du sol z0 à z1, glacis en tête. */

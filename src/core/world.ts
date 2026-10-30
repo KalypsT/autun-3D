@@ -1,6 +1,6 @@
 import type { HeightField, TileData } from "../data/types";
 import { Colliders, type Top } from "./collision";
-import { isOpen, landmarkCircles, landmarkRings } from "./landmarks";
+import { isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments } from "./landmarks";
 import { parapetLines } from "./bridges";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
@@ -42,7 +42,7 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     const r = FURNITURE_RADIUS[f.kind];
     if (r !== undefined) c.addCircle(f.x, f.y, r);
   }
-  for (const [x, y] of tile.trees) c.addCircle(x, y, 0.3);
+  for (const [x, y] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3);
   for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
   for (const ring of landmarkRings(tile.kinds, (x, y) => terrain?.heightAt(x, y) ?? 0)) c.addRing(ring);
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.

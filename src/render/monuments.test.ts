@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { loadRealWorld } from "../core/testing";
-import type { LodBuilding } from "../data/types";
+import type { LodBuilding, Site, Tree } from "../data/types";
+import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildFarTower, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildFarTower, buildFountain, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -18,7 +19,7 @@ describe("monuments (D95) : géométrie", () => {
       const mb = new MeshBuilder();
       buildGate(mb, s, world.terrain);
       expect(mb.positions.every(Number.isFinite)).toBe(true);
-      expect(tris(mb)).toBeLessThan(3000);
+    expect(tris(mb)).toBeLessThan(3000);
     }
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();
@@ -124,6 +125,24 @@ describe("monuments (D95) : géométrie", () => {
     const lod = JSON.parse(readFileSync("public/data/lod/26_32.json", "utf8")) as LodBuilding[];
     const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
     expect(parts).toHaveLength(12);
+  });
+
+  it("fontaine Saint-Lazare (D131) : mesures plausibles, mobilier remplacé, bassin dégagé et infranchissable, coût borné", () => {
+    const k = JSON.parse(readFileSync("public/data/kinds/26_33.json", "utf8")) as { buildings: Record<string, never>; sites: Site[] };
+    const f = k.sites.find((s): s is Extract<Site, { t: "fountain" }> => s.t === "fountain")!;
+    expect(f.n).toBe("Fontaine Saint-Lazare");
+    expect(f.id).toBe(2380355768);
+    expect(f.top - f.g).toBeGreaterThan(6);
+    expect(f.top - f.g).toBeLessThan(11);
+    expect(f.rb).toBeGreaterThan(2);
+    expect(f.rb).toBeLessThan(4);
+    const trees: Tree[] = [[f.x + 0.5, f.y, 0, 0, 0, 0], [f.x + 20, f.y, 0, 0, 0, 0]];
+    expect(treesOutsideMonuments(k, trees)).toHaveLength(1);
+    expect(landmarkCircles(k, [])).toContainEqual([f.x, f.y, f.rb + 0.2]);
+    const mb = new MeshBuilder();
+    buildFountain(mb, f, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(mb)).toBeLessThan(3000);
   });
 
   it("hôtel de ville (D126) : silhouette lointaine en corps principal, pavillons et ailes", () => {

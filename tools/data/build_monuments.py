@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -6,7 +6,8 @@ Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilis
           gardée dans .cache/shared/raw/monuments).
 Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour dans ce repère, hauteurs mesurées) ; `sign: false` retire
           l'inscription (`n`) ; cathédrale (modèle `cathedral`, D127) : champ `cath`, clocher lointain (`tower` et kinds/index.json) ;
-          silhouettes lointaines (lod/<tuile>.json). Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
+          silhouettes lointaines (lod/<tuile>.json) ; fontaine (modèle `fountain`, D131) : site `fountain` de la tuile où elle se trouve.
+          Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
 - sol devant la façade : médiane du terrain sur une bande de 2 à 4 m devant elle, hors du perron (travées des pavillons centraux) ;
@@ -343,6 +344,61 @@ def measure_cathedral(bid, b, spec, mon):
     }
 
 
+def measure_fountain(spec, f, a):
+    """Fontaine (D131) : centre de l'édicule (cellules à plus de 2 m au-dessus du sol, à moins de 3 m du point OpenStreetMap), sol (médiane du
+    terrain à 3,5-4,5 m), haut (point le plus haut), rayon du bassin (premier rayon où la médiane du relevé sur le cercle retombe à moins
+    de 10 cm du sol). Orientation : celle du bâtiment `align` (l'axe de la cathédrale)."""
+    x, y = f["x"], f["y"]
+    key = "fountain_" + str(f["id"])
+    mns = Raster("MNS", key, math.floor(x - 12), math.floor(y - 12), math.ceil(x + 12), math.ceil(y + 12))
+    mnt = Raster("MNT", key, math.floor(x - 12), math.floor(y - 12), math.ceil(x + 12), math.ceil(y + 12))
+    ring = [(x + r * math.cos(th), y + r * math.sin(th)) for r in (3.5, 4.0, 4.5) for th in np.arange(0, 2 * math.pi, math.pi / 16)]
+    g = float(np.median([mnt(*q) for q in ring]))
+    cells = [(x + dx, y + dy, mns(x + dx, y + dy) - g) for dx in np.arange(-3, 3.01, 0.25) for dy in np.arange(-3, 3.01, 0.25) if dx * dx + dy * dy <= 9]
+    hi = [q for q in cells if q[2] > 2]
+    cx, cy = float(np.mean([q[0] for q in hi])), float(np.mean([q[1] for q in hi]))
+    top = max(q[2] for q in cells)
+    rb = next(float(r) for r in np.arange(1.5, 6, 0.25)
+              if np.median([mns(cx + r * math.cos(th), cy + r * math.sin(th)) - g for th in np.arange(0, 2 * math.pi, math.pi / 24)]) < 0.1)
+    r2 = lambda v: round(float(v), 2)
+    return {"t": "fountain", "st": spec["style"], "n": f["name"], "x": r2(cx), "y": r2(cy), "a": round(a, 4), "id": f["id"],
+            "g": r2(g), "top": r2(g + top), "rb": r2(rb)}
+
+
+def fountain(name, spec, world, kinds_mon):
+    """Écrit le site `fountain` dans kinds/<tuile de la fontaine>.json (le même identifiant OpenStreetMap remplace l'ancien) et le compte
+    des sites de kinds/index.json. Vrai si le fichier change."""
+    for m in world["tiles"]:
+        path = c.OUT / "tiles" / f"{m['id']}.json"
+        if not path.exists():
+            continue
+        tile = json.loads(path.read_text())
+        f = next((q for q in tile.get("furniture", []) if q["id"] == spec["osm"]), None)
+        if f:
+            break
+    else:
+        print(f"  monument : {name} absent du mobilier")
+        return False
+    tid = m["id"]
+    site = measure_fountain(spec, f, kinds_mon(spec["align"])["a"])
+    print(f"  {name} : {site['n']}, haut {site['top'] - site['g']:.1f} m, bassin de {site['rb']} m de rayon")
+    kp = KINDS / f"{tid}.json"
+    k = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+    sites = [q for q in k["sites"] if not (q.get("t") == "fountain" and q.get("id") == site["id"])] + [site]
+    if sites == k["sites"]:
+        return False
+    k["sites"] = sites
+    kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+    index = json.loads((KINDS / "index.json").read_text())
+    n = sum(1 for t in index["tiles"] + ([tid] if tid not in index["tiles"] else [])
+            for q in json.loads((KINDS / f"{t}.json").read_text())["sites"] if q.get("t") == "fountain")
+    index["stats"]["sites"]["fountain"] = n
+    if tid not in index["tiles"]:
+        index["tiles"] = sorted(index["tiles"] + [tid])
+    (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    return True
+
+
 def main():
     manual = json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("monuments", {})
     world = json.load(open(c.OUT / "world.json"))
@@ -355,7 +411,16 @@ def main():
                 found[b["id"]] = (m["id"], b)
     changed, changed_lod = set(), set()
     kinds = {}
+
+    def kinds_mon(bid):
+        tid = found[bid][0]
+        return kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))["buildings"][bid]["mon"]
+
     for bid, spec in manual.items():
+        if spec["model"] == "fountain":
+            if fountain(bid, spec, world, kinds_mon):
+                print(f"  site de {bid} réécrit")
+            continue
         if bid not in found:
             print(f"  monument : {bid} absent des tuiles")
             continue

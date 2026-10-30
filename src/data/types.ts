@@ -322,7 +322,12 @@ export type Site =
   | { t: "track"; r: number[] }
   | { t: "cemetery"; r: number[] }
   /** Porte romaine (D95) : centre, angle du grand côté, longueur, épaisseur, haut mesuré (altitude) ; `st` : disposition (Arroux, Saint-André). */
-  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number };
+  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number }
+  /**
+   * Fontaine modélisée d'après photo (D131) : centre de l'édicule, orientation, mobilier OpenStreetMap remplacé (`id`), sol, haut et rayon
+   * du bassin mesurés (altitudes absolues).
+   */
+  | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number };
 
 export interface TileKinds {
   v: number;
