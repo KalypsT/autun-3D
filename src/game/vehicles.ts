@@ -6,7 +6,7 @@ import { parkingZone, pickModel } from "../core/vehicle-placement";
 import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
 import { VehicleDamage } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
-import { wheelTrack } from "../render/car-body";
+import { carLayout, wheelTrack } from "../render/car-body";
 import { CAR_BODIES, carRestGeometry, createCarModel } from "../render/car-model";
 import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
@@ -52,6 +52,17 @@ export function chaseOf(v: { def: VehicleDef }): FamilyInfo["camera"] {
   if (v.def.family !== "car") return c;
   const { length, height } = v.def.size;
   return { distance: c.distance + (length - 3.98) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.42) * 0.5 };
+}
+
+/**
+ * D'où sort la fumée d'un véhicule abîmé (D110), dans son repère : [vers la droite, hauteur, vers l'avant] (m). Voiture : le capot, au-dessus du moteur ;
+ * deux-roues : le moteur, sous la selle.
+ */
+export function smokeOrigin(def: VehicleDef): [number, number, number] {
+  const body = CAR_BODIES[def.id];
+  if (def.family !== "car" || !body) return [0, 0.62, 0.05];
+  const L = carLayout(body, def.spec.front, def.spec.rear);
+  return [0, (body.noseHeight + body.belt) / 2 + 0.06, -(L.noseZ + body.hood * 0.45)];
 }
 
 /** Interface et conduite communes à la famille du véhicule. */

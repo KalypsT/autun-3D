@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
 import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
-import { DAMAGE } from "../core/damage";
+import { DAMAGE, type DamageTier } from "../core/damage";
+import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
@@ -38,7 +39,7 @@ import { Signals } from "../core/signals";
 import { Traffic } from "./traffic";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
-import { Fleet, chaseOf, drivenSpec, familyOf, tyreOf, type Vehicle } from "./vehicles";
+import { Fleet, chaseOf, drivenSpec, familyOf, smokeOrigin, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 import { AudioSystem } from "../audio/audio-system";
 import { stepCrossed } from "../core/sound-model";
@@ -319,6 +320,7 @@ export function startGame(ctx: GameContext): void {
     rideModel = fleet.take(v);
     rideModel.group.add(model.group);
     lights = new VehicleLights(v.def);
+    shownDamage = -1;
     rideModel.group.add(lights.group);
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
@@ -363,16 +365,52 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.remove("driving", "car");
     audio.setRide(null);
   };
-  // Dégâts (D109) : le véhicule conduit, et ceux qu'on a laissés en feu, continuent de brûler jusqu'à leur fin.
-  // Étape 1 : pas encore de fumée, de feu ni d'explosion à l'écran (étapes 2 et 3) ; une épave n'a plus de moteur et ne se reprend pas.
-  const burning = new Set<Vehicle>();
-  const updateDamage = (dt: number): void => {
-    if (riding && riding.damage.burning >= 0) burning.add(riding);
-    for (const v of burning) {
-      v.damage.update(dt);
-      if (v.damage.burning < 0) burning.delete(v);
+  // Dégâts (D109, D110) : les véhicules abîmés par le joueur (celui qu'il conduit, et ceux qu'il a laissés) brûlent jusqu'à leur fin
+  // et fument tant qu'on est à moins de 150 m ; la voiture conduite montre sa carrosserie froissée, ses phares et ses vitres cassés.
+  // Pas encore de flammes ni d'explosion à l'écran (étape 3) ; une épave n'a plus de moteur et ne se reprend pas.
+  const damaged = new Set<Vehicle>();
+  const smoke = new Smoke(scene);
+  const smokeAcc = new Map<Vehicle, number>();
+  const SMOKE: Partial<Record<DamageTier, { rate: number; color: THREE.Color; size: [number, number]; life: number }>> = {
+    smoke: { rate: 7, color: new THREE.Color("#e9e5dc"), size: [0.22, 0.7], life: 1.8 },
+    heavy: { rate: 12, color: new THREE.Color("#4a4a50"), size: [0.28, 0.95], life: 2.2 },
+    fire: { rate: 16, color: new THREE.Color("#2a2a2e"), size: [0.32, 1.15], life: 2.6 },
+  };
+  let shownDamage = -1;
+  /** Montre l'état des dégâts sur le modèle conduit (seulement quand il a changé). */
+  const showDamage = (): void => {
+    if (!riding || !rideModel || riding.damage.version === shownDamage) return;
+    shownDamage = riding.damage.version;
+    const broken = rideModel.setDamage?.(riding.damage.zones);
+    if (broken) lights?.setBroken(broken);
+  };
+  const emitSmoke = (v: Vehicle, dt: number): void => {
+    const style = SMOKE[v.damage.tier];
+    if (!style || Math.hypot(v.state.x - player.x, v.state.y - player.y) > 150) return;
+    let acc = (smokeAcc.get(v) ?? 0) + dt * style.rate;
+    const s = v.state, [ox, oy, oz] = smokeOrigin(v.def);
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading);
+    for (; acc >= 1; acc--) {
+      const x = s.x + hx * oz + hy * ox + (Math.random() - 0.5) * 0.3, y = s.y + hy * oz - hx * ox + (Math.random() - 0.5) * 0.3;
+      smoke.emit(x, y, s.z + oy, s.vx * 0.2 + (Math.random() - 0.5) * 0.4, s.vy * 0.2 + (Math.random() - 0.5) * 0.4, 0.9 + Math.random() * 0.6,
+        style.color, style.size[0], style.size[1] * (0.8 + Math.random() * 0.4), style.life * (0.8 + Math.random() * 0.4), Math.random);
     }
-    for (const v of riding ? [riding, ...burning] : burning) {
+    smokeAcc.set(v, acc);
+  };
+  /** Étincelles au point du choc (au bord de la carrosserie, dans la direction du choc). */
+  const crashSparks = (v: Vehicle, angle: number): void => {
+    if (Number.isNaN(angle) || v.family === "bike" || v.family === "kickscooter") return;
+    const s = v.state, ca = Math.cos(angle), sa = Math.sin(angle);
+    const r = 1 / Math.hypot(ca / (v.def.size.length / 2), sa / (v.def.size.width / 2));
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading);
+    const x = s.x + (hx * ca + hy * sa) * r, y = s.y + (hy * ca - hx * sa) * r;
+    fx.sparks(x, y, s.z + 0.45, false, Math.random);
+  };
+  const updateDamage = (dt: number): void => {
+    if (riding && riding.damage.version > 0) damaged.add(riding);
+    showDamage();
+    for (const v of damaged) {
+      v.damage.update(dt);
       for (const e of v.damage.takeEvents()) {
         // En attendant l'explosion (étape 3) : un grand choc ressenti, si l'on est dedans ou tout près.
         if (e.kind === "explode" && Math.hypot(v.state.x - player.x, v.state.y - player.y) < 25) {
@@ -381,7 +419,12 @@ export function startGame(ctx: GameContext): void {
           haptics.crash(8);
         }
       }
+      emitSmoke(v, dt);
+      if (v.damage.version > 0 && v.damage.tier === "ok" && v.damage.health >= DAMAGE.max) damaged.delete(v);
     }
+    smoke.update(dt);
+    const tier = riding?.damage.tier;
+    audio.setDamage(tier === "smoke" ? 0.3 : tier === "heavy" ? 0.7 : tier === "fire" || tier === "wrecked" ? 1 : 0);
     speedo.setHurt(!!riding && (riding.damage.health <= DAMAGE.heavy || !riding.damage.usable));
   };
   const damageInfo = (): string => {
@@ -484,8 +527,15 @@ export function startGame(ctx: GameContext): void {
   const ride = vehicleDef(LEGACY_MODELS[rideParam] ?? rideParam)?.id;
   if (ride) {
     const v = fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
-    // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109).
-    if (params.has("damage")) v.damage.damage(DAMAGE.max - Math.min(DAMAGE.max, Math.max(0, Number(params.get("damage")) || 0)));
+    // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109), les points perdus répartis sur les zones de `&dent=front,left`
+    // (défaut : l'avant et l'arrière).
+    if (params.has("damage")) {
+      const lost = DAMAGE.max - Math.min(DAMAGE.max, Math.max(0, Number(params.get("damage")) || 0));
+      const ANGLE: Record<string, number> = { front: 0, right: Math.PI / 2, rear: Math.PI, left: -Math.PI / 2 };
+      const where = (params.get("dent") ?? "").split(",").filter((z) => z in ANGLE);
+      if (where.length === 0) v.damage.damage(lost);
+      for (const z of where) v.damage.damage(lost / where.length, ANGLE[z]);
+    }
     v.damage.takeEvents();
     mount(v);
   }
@@ -715,7 +765,7 @@ export function startGame(ctx: GameContext): void {
     if (riding) {
       const s = riding.state;
       // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.
-      if (s.impact > 0) riding.damage.hit(s.impact, s.impactAngle);
+      if (s.impact > 0 && riding.damage.hit(s.impact, s.impactAngle) > 0) crashSparks(riding, s.impactAngle);
       if (leaving && Math.abs(s.speed) < 0.4) dismount();
       else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {

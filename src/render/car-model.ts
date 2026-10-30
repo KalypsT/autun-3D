@@ -3,6 +3,7 @@ import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, parkedDetailGeometry, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
+import { Crumpler, type CrumpleFrame } from "./car-damage";
 
 /**
  * Voitures aux couleurs de l'affiche, générées d'après leurs mesures et leur style (`car-body.ts`) : chaque modèle a sa silhouette, ses phares, sa calandre,
@@ -101,6 +102,12 @@ export function createCarModel(id: string, color: string): VehicleModel {
   const bodyGeo = bodyPaintGeometry(p, front, rear, color);
   const detailGeo = bodyDetailGeometry(p, front, rear);
   const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim);
+  // Dégâts (D110) : préparés à la première bosse seulement (copie des positions et des couleurs d'origine).
+  const frame: CrumpleFrame = {
+    noseZ: layout.noseZ, tailZ: layout.tailZ, halfWidth: p.width / 2, belt: p.belt,
+    light: ["#f5ecd2", "#f1a03a"], tail: ["#e0442c", "#9c2a1c"], glass: p.glass ?? "#2b3a4c",
+  };
+  let crumplers: Crumpler[] | null = null;
   const mat = sharedMaterial();
   const mesh = (g: THREE.BufferGeometry): THREE.Mesh => {
     const m = new THREE.Mesh(g, mat);
@@ -135,6 +142,12 @@ export function createCarModel(id: string, color: string): VehicleModel {
         w.rotation.y = i < 2 ? -s.steer : 0;
         w.rotation.x = -s.wheel;
       });
+    },
+    setDamage(zones) {
+      crumplers ??= [new Crumpler(bodyGeo, frame, true), new Crumpler(detailGeo, frame, false)];
+      const broken = crumplers[0]!.apply(zones);
+      crumplers[1]!.apply(zones);
+      return broken;
     },
     dispose() {
       bodyGeo.dispose();

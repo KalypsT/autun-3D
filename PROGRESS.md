@@ -633,3 +633,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pas encore à l'écran : la carrosserie abîmée, la fumée, le feu, l'explosion (étapes 2 et 3) ; pour l'instant l'explosion n'est qu'un grand choc ressenti. 656 tests.
 - À faire de ton côté : `?ride=citadine&debug`, foncer dans des murs à différentes vitesses et lire la ligne « dégâts » ; `?ride=citadine&damage=25` pour voir le compteur rouge et sentir le moteur faible. Dis-moi si le barème te paraît trop dur ou trop doux (une voiture qui prend feu à 90 km/h contre un mur).
 
+**Dégâts des véhicules, étape 2 : ce qu'on voit et ce qu'on entend (30 octobre 2026)** (D110)
+- Ta voiture se froisse là où elle a pris le choc : l'avant ou l'arrière recule et se plie, le capot se soulève, les flancs s'enfoncent, la peinture se ternit. Les phares et feux du côté touché se cassent et ne s'allument plus la nuit ; les vitres se fêlent.
+- Fumée blanche sous 60 %, noire sous 30 %, épaisse en feu ; une voiture abîmée que tu laisses continue de fumer. Étincelles au moment du choc.
+- Le moteur a des ratés, et pétarade quand il est très touché.
+- Pas encore : flammes et explosion (étape 3) ; une voiture abîmée qu'on gare redevient intacte (étape 4). 662 tests.
+- À faire de ton côté : `?ride=citadine&debug` et foncer dans des murs ; ou directement `?ride=berline&damage=45&dent=front,left` (fumée blanche) et `damage=20` (fumée noire). Dis-moi si la déformation est assez visible, et si les ratés du moteur ne sont pas agaçants.
+
+![Avant écrasé](docs/captures/d110-avant-ecrase.jpg)
+![Arrière écrasé](docs/captures/d110-arriere-ecrase.jpg)
+![Fumée blanche](docs/captures/d110-fumee-blanche.jpg)
+![Fumée noire, compteur rouge](docs/captures/d110-fumee-noire.jpg)
+

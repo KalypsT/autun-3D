@@ -7,13 +7,14 @@ import type { VehicleModel } from "../render/vehicle-model";
 import type { GameContext } from "./context";
 import { followSun, gameSpawn } from "./game";
 import { ParkedModels } from "../render/parked-models";
+import { ZONES, type Zone } from "../core/damage";
 import { buildModel, restGeometryOf } from "./vehicles";
 
 /**
  * ?view=vehicles : la galerie des véhicules du catalogue, rangés par famille devant la caméra, au départ du jeu (captures, choix des mesures).
  * Paramètres : `ids=citadine,moto-routiere` (liste ; défaut : tout), `family=car|moto|bike|kickscooter`, `heading` (cap en rad : 0 vers le nord, loin de la caméra ;
  * 3,14 de face ; 1,57 de profil ; défaut 2,35 : de trois quarts), `variant` (couleur), `perRow` (4), `eye` (hauteur de l'œil ; défaut : monte avec le nombre de rangées), `rider=1` (un conducteur sur les deux-roues), `parked=1` (les véhicules tels qu'ils sont garés dans le jeu : instances au repos, sans conducteur).
- * Un appui sur l'écran passe à la couleur suivante de chaque palette.
+ * `dent=front:0.8,left:0.5` (zones écrasées, voitures seulement : D110). Un appui sur l'écran passe à la couleur suivante de chaque palette.
  */
 export function startVehicleGallery(ctx: GameContext): void {
   const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, world, params } = ctx;
@@ -26,6 +27,8 @@ export function startVehicleGallery(ctx: GameContext): void {
   const perRow = Math.max(1, Math.floor(Number(params.get("perRow") ?? 4)));
   const withRider = params.get("rider") === "1";
   let variant = Math.floor(Number(params.get("variant") ?? 0)) || 0;
+  // `dent=front:0.8,left:0.5` : zones écrasées (0 à 1), pour juger les dégâts (D110).
+  const dent = params.has("dent") ? parseDent(params.get("dent")!) : null;
 
   const rows = Math.ceil(defs.length / perRow);
   // La caméra monte avec le nombre de rangées, pour voir celles de derrière par-dessus celles de devant.
@@ -62,6 +65,7 @@ export function startVehicleGallery(ctx: GameContext): void {
       const x = spawn.x + (col - (inRow - 1) / 2) * cell, y = spawn.y + dist + row * cell;
       const state = createVehicle(x, y, heading, world.terrain);
       const model = buildModel(def, variant);
+      if (dent) model.setDamage?.(dent);
       model.update(state);
       scene.add(model.group);
       let rider: ReturnType<typeof createPlayerModel> | null = null;
@@ -98,4 +102,14 @@ export function startVehicleGallery(ctx: GameContext): void {
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+}
+
+/** `front:0.8,left:0.5` → écrasement de chaque zone (les autres à zéro). */
+export function parseDent(text: string): Record<Zone, number> {
+  const zones: Record<Zone, number> = { front: 0, rear: 0, left: 0, right: 0 };
+  for (const part of text.split(",")) {
+    const [z, v] = part.split(":");
+    if (z && (ZONES as readonly string[]).includes(z)) zones[z as Zone] = Math.min(1, Math.max(0, Number(v ?? 1) || 0));
+  }
+  return zones;
 }

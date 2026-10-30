@@ -19,6 +19,11 @@ export interface VehicleModel {
   readonly anchors?: { gripL: THREE.Object3D; gripR: THREE.Object3D; footL: THREE.Object3D; footR: THREE.Object3D };
   /** Fait tourner le pédalier (rad) : seul le vélo en a un. */
   setCrank?(angle: number): void;
+  /**
+   * Montre les dégâts (D110) : écrasement de chaque zone, 0 à 1 (tout à zéro : neuf). Seules les voitures se déforment ; renvoie les phares
+   * et feux cassés de chaque côté (pour éteindre leur lumière la nuit).
+   */
+  setDamage?(zones: Readonly<Record<"front" | "rear" | "left" | "right", number>>): { headRight: boolean; headLeft: boolean; tailRight: boolean; tailLeft: boolean };
   dispose(): void;
 }
 

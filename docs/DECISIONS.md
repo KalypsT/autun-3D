@@ -1418,3 +1418,23 @@ Bibracte (l'oppidum du mont Beuvray) : vélos et motos ; Éduen : le scooter, co
 
 **Mesures** : 12 tests (barème, zones, paliers, feu et explosion, vélo cassé, aiguillage « panne », réparation et reprise, profils du catalogue, angle de choc contre un mur et entre deux voitures). Essai dans le navigateur (`?ride=citadine&damage=25&debug`, puis `damage=5`) : compteur cerclé de rouge, zones et feu suivis au debug.
 
+## 2026-10-30 — D110. Dégâts des véhicules, étape 2 : ce qu'on voit et ce qu'on entend
+
+**Carrosserie froissée** (`src/render/car-damage.ts`, voiture conduite seulement) : à chaque changement des dégâts (D109), les sommets de la caisse et des détails sont recalculés **depuis leurs positions d'origine** (aucune accumulation, une réparation rend la voiture exactement neuve, testé) :
+- **avant, arrière** : le bout recule jusqu'à 34 cm (zone tout à fait écrasée), sur une longueur qui grandit avec l'écrasement, se resserre un peu, et le capot ou le coffre se soulève en se pliant ; **flancs** : enfoncés jusqu'à 15 cm, surtout au milieu de la longueur ;
+- un **bruit propre à chaque point** (fonction de sa position d'origine : deux sommets confondus bougent pareil, aucune fente) donne un froissé en facettes, style « affiche » ; normales recalculées à plat ;
+- **peinture ternie** là où la tôle a pris (jusqu'à −35 %) ;
+- **phares et feux cassés** : un bout écrasé à plus de 45 % casse le phare (ou le feu) du côté le plus touché, à plus de 80 % les deux ; ils virent au gris (rouge sombre derrière) et **ne s'allument plus la nuit** (`VehicleLights.setBroken` : la plaque lumineuse de ce côté disparaît, le faisceau au sol faiblit de moitié par phare perdu) ;
+- **vitres fêlées** : chaque triangle de verre dont la zone (pare-brise, lunette, vitres de flanc, d'après son orientation d'origine) dépasse 55 % prend un verre clair, légèrement varié.
+Le froissage n'est préparé qu'à la première bosse (copie des positions et couleurs d'origine) ; calcul sur ≈ 3 000 sommets, seulement quand les dégâts changent. Les deux-roues ne se déforment pas (décidé au cadrage).
+
+**Fumée** (`src/render/smoke.ts`, `Smoke`) : un seul maillage instancié de bouffées (icosaèdres éclairés à facettes, sans transparence), qui montent, prennent un vent léger, gonflent puis rétrécissent jusqu'à disparaître ; 220 au plus ; **0 appel de dessin sans fumée, +1 avec** (sans ombre). Elle sortira aussi les flammes et l'explosion (étape 3). Elle sort du capot d'une voiture, du moteur d'un deux-roues (`smokeOrigin`) : blanche (7 bouffées/s) sous 60 %, noire (12/s) sous 30 %, noire épaisse (16/s) en feu. Les véhicules abîmés que le joueur a laissés fument aussi, à moins de 150 m.
+
+**Étincelles** au point du choc (bord de la carrosserie dans la direction du choc), avec le maillage des effets de tir, dès qu'un choc retire des points.
+
+**Son** (`GameAudio.setDamage`) : le moteur a des **ratés** (il se tait 50 à 170 ms, régime un peu plus bas), de plus en plus souvent avec le palier ; sous la fumée noire, une **pétarade** une fois sur deux à cinq. Le fracas des chocs existait déjà.
+
+**Essais** : `?view=vehicles&family=car&dent=front:0.9,left:0.6` (zones écrasées dans la galerie) ; en jeu, `?ride=berline&damage=45&dent=front,left` (santé de départ, points perdus répartis sur les zones nommées). 6 tests (froissage neutre sans dégât, bout et flancs, sommets confondus, phares cassés, vraie berline écrasée puis réparée à l'identique, fumée).
+
+**Reste** (étapes suivantes) : une voiture abîmée qu'on gare redevient intacte à l'œil (le dessin par instances : formes « abîmée » et « épave » par modèle, étape 4) ; pas de flammes ni d'explosion à l'écran (étape 3) ; pas de pare-chocs qui tombe (le froissage le fait pendre avec le reste de l'avant).
+

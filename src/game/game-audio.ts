@@ -148,6 +148,13 @@ export class GameAudio {
     };
   }
 
+  /** Moteur abîmé (D110) : 0 (sain) à 1 (en feu) ; il a des ratés de plus en plus souvent, et pétarade quand il est très touché. */
+  private damageLevel = 0;
+  private cough = 0;
+  setDamage(level: number): void {
+    this.damageLevel = Math.min(1, Math.max(0, level));
+  }
+
   /** À chaque image au volant : état du véhicule et pédales. */
   drive(dt: number, s: VehicleState, throttle: number, brake: number): void {
     if (!this.ride && this.pendingRide && this.kit) this.build(this.pendingRide, false);
@@ -159,7 +166,14 @@ export class GameAudio {
     r.ignition = Math.min(1, r.ignition + dt * 2.5);
     const on = Math.max(0, r.ignition);
     const m = r.model, p = r.profile;
-    if (r.engine instanceof EngineVoice) r.engine.update(m.rpm, m.load, on);
+    // Ratés : le moteur se tait un instant ; sous la fumée noire, une pétarade de temps en temps.
+    this.cough -= dt;
+    if (this.cough <= -0.05 && this.damageLevel > 0 && r.engine instanceof EngineVoice && Math.random() < dt * this.damageLevel * 2.5) {
+      this.cough = 0.05 + Math.random() * 0.12;
+      if (this.kit && this.damageLevel > 0.6 && Math.random() < 0.4) S.pop(this.kit, this.sys.buses!.sfx, this.kit.ctx.currentTime, { ...NEAR, gain: 0.7 });
+    }
+    const missing = this.cough > 0;
+    if (r.engine instanceof EngineVoice) r.engine.update(missing ? m.rpm * 0.85 : m.rpm, m.load, missing ? on * 0.15 : on);
     else if (r.engine instanceof ElectricVoice) r.engine.update(Math.abs(s.speed) / r.spec.topSpeed, m.load, 1);
     else r.engine?.update(s.speed, r.spec.wheelRadius, pedal > 0.05, 1);
     r.road?.update(s.speed, s.skid, 1);

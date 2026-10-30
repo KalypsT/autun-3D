@@ -79,6 +79,8 @@ export class VehicleDamage {
   burning = -1;
   /** Fin atteinte : épave brûlée (« explosion ») ou en panne (« breakdown »), ou null tant que le véhicule roule. */
   end: EndMode | null = null;
+  /** Augmente à chaque changement (points retirés, réparation, reprise) : le dessin ne se refait que quand il bouge. */
+  version = 0;
   private tierSeen: DamageTier = "ok";
   private readonly pending: DamageEvent[] = [];
 
@@ -109,6 +111,7 @@ export class VehicleDamage {
   /** Retire des points (balle, explosion, choc), inscrits dans la zone de l'angle donné (NaN : répartis sur l'avant et l'arrière). */
   damage(points: number, angle = NaN): void {
     if (!(points > 0) || this.end) return;
+    this.version++;
     this.health = Math.max(0, this.health - points);
     const add = (z: Zone, p: number): void => {
       this.zones[z] = Math.min(1, this.zones[z] + p / DAMAGE.zoneFull);
@@ -143,6 +146,7 @@ export class VehicleDamage {
     this.end = null;
     this.tierSeen = "ok";
     this.pending.length = 0;
+    this.version++;
   }
 
   /** Reprend un état enregistré (sauvegarde). */
