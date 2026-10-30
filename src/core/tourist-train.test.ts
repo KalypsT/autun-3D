@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROUTE, TrainRoute } from "./train-route";
-import { carPoses, lapTime, TRAIN, trainLength, trainOnDuty, trainShown, TrainSim, type CarPose } from "./tourist-train";
+import { carPoses, lapTime, MAX_HITCH, towPoses, TRAIN, trainLength, trainOnDuty, trainShown, TrainSim, type CarPose } from "./tourist-train";
 import { TRAIN_ROUTE_MONUMENTS } from "./train-route-data";
 import { UNIQUES } from "./uniques";
 
@@ -126,5 +126,40 @@ describe("petit train : marche (D117)", () => {
     expect(trainShown(true, 18.5, 400)).toBe(false);
     expect(trainShown(false, 11.5, 50)).toBe(false);
     expect(trainShown(false, 11.5, 400)).toBe(true);
+  });
+});
+
+describe("petit train volé : les wagons tirés (D118)", () => {
+  const advance = (loco: { x: number; y: number; heading: number }, d: number, turn: number): void => {
+    loco.heading += turn;
+    loco.x += Math.sin(loco.heading) * d;
+    loco.y += Math.cos(loco.heading) * d;
+  };
+
+  it("en ligne droite, les wagons restent alignés derrière la locomotive, à l'écart prévu", () => {
+    const loco = { x: 0, y: 0, heading: 0.4 }, poses: CarPose[] = [];
+    for (let k = 0; k < 200; k++) {
+      advance(loco, 0.1, 0);
+      towPoses(loco, poses);
+    }
+    for (let i = 1; i < poses.length; i++) {
+      expect(Math.abs(wrapAngle(poses[i]!.heading - 0.4))).toBeLessThan(1e-6);
+      const want = TRAIN.gap + TRAIN.cars[i - 1]!.overhang + TRAIN.cars[i]!.overhang;
+      expect(Math.hypot(poses[i - 1]!.rear.x - poses[i]!.front.x, poses[i - 1]!.rear.y - poses[i]!.front.y)).toBeCloseTo(want, 5);
+    }
+  });
+
+  it("en tournant en rond, les wagons coupent le virage sans jamais dépasser l'angle d'attelage", () => {
+    const loco = { x: 0, y: 0, heading: 0 }, poses: CarPose[] = [];
+    for (let k = 0; k < 3000; k++) {
+      advance(loco, 0.05, 0.012);
+      towPoses(loco, poses);
+      for (let i = 1; i < poses.length; i++) expect(Math.abs(wrapAngle(poses[i]!.heading - poses[i - 1]!.heading))).toBeLessThanOrEqual(MAX_HITCH + 1e-9);
+    }
+    // Les wagons suivent un cercle plus petit que celui de la locomotive (ils coupent à l'intérieur), sans se replier.
+    const r = (p: { x: number; y: number }, c: { x: number; y: number }): number => Math.hypot(p.x - c.x, p.y - c.y);
+    // Cap croissant : virage à droite, le centre est à droite de la locomotive.
+    const centre = { x: loco.x + Math.cos(loco.heading) * (0.05 / 0.012), y: loco.y - Math.sin(loco.heading) * (0.05 / 0.012) };
+    expect(r(poses.at(-1)!, centre)).toBeLessThan(r(poses[0]!, centre));
   });
 });

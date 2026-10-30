@@ -74,6 +74,60 @@ export function carPoses(route: TrainRoute, s: number, out: CarPose[], cars: rea
   return out;
 }
 
+/** Angle maximal entre deux voitures attelées (rad) : au-delà, le timon les ferait se toucher. */
+export const MAX_HITCH = (70 * Math.PI) / 180;
+
+/**
+ * Wagons tirés librement (D118, la locomotive volée) : chaque wagon est accroché au milieu de l'écart qui le sépare de la voiture de devant, et
+ * son essieu arrière suit cet attelage (courbe de poursuite : il garde la distance et se tourne vers lui), sans dépasser `MAX_HITCH` d'angle
+ * avec la voiture de devant. `out` garde les poses d'une image à l'autre (vide : le train est remis droit derrière la locomotive).
+ */
+export function towPoses(loco: { x: number; y: number; heading: number }, out: CarPose[], cars: readonly TrainCar[] = TRAIN.cars): CarPose[] {
+  const fresh = out.length !== cars.length;
+  for (let i = 0; i < cars.length; i++) {
+    const c = cars[i]!;
+    const p = (out[i] ??= { x: 0, y: 0, heading: 0, front: { x: 0, y: 0, heading: 0 }, rear: { x: 0, y: 0, heading: 0 } });
+    let dirX: number, dirY: number, rx: number, ry: number;
+    if (i === 0) {
+      dirX = Math.sin(loco.heading);
+      dirY = Math.cos(loco.heading);
+      rx = loco.x - dirX * (c.wheelbase / 2);
+      ry = loco.y - dirY * (c.wheelbase / 2);
+    } else {
+      const q = out[i - 1]!, prev = cars[i - 1]!, qx = Math.sin(q.heading), qy = Math.cos(q.heading);
+      // L'attelage : derrière l'essieu arrière de la voiture de devant, au milieu de l'écart entre les caisses.
+      const hx = q.rear.x - qx * (prev.overhang + TRAIN.gap / 2), hy = q.rear.y - qy * (prev.overhang + TRAIN.gap / 2);
+      const reach = TRAIN.gap / 2 + c.overhang + c.wheelbase;
+      let dx = fresh ? qx : hx - p.rear.x, dy = fresh ? qy : hy - p.rear.y;
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len;
+      dy /= len;
+      // Angle borné avec la voiture de devant.
+      const rel = Math.atan2(dx * qy - dy * qx, dx * qx + dy * qy);
+      if (Math.abs(rel) > MAX_HITCH) {
+        const a = q.heading + Math.sign(rel) * MAX_HITCH;
+        dx = Math.sin(a);
+        dy = Math.cos(a);
+      }
+      dirX = dx;
+      dirY = dy;
+      rx = hx - dx * reach;
+      ry = hy - dy * reach;
+    }
+    p.heading = Math.atan2(dirX, dirY);
+    p.rear.x = rx;
+    p.rear.y = ry;
+    p.rear.heading = p.heading;
+    p.front.x = rx + dirX * c.wheelbase;
+    p.front.y = ry + dirY * c.wheelbase;
+    p.front.heading = p.heading;
+    p.x = (p.front.x + p.rear.x) / 2;
+    p.y = (p.front.y + p.rear.y) / 2;
+  }
+  out.length = cars.length;
+  return out;
+}
+
 /** Le train est-il de service à cette heure ? */
 export function trainOnDuty(hour: number): boolean {
   const h = ((hour % 24) + 24) % 24;

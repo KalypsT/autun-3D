@@ -155,7 +155,8 @@ describe("conducteur simulé (J3-1)", () => {
       return !r.lost && r.distance > 400;
     })!;
     expect(st).toBeDefined();
-    for (const def of CATALOG.filter((d) => d.family === "car")) {
+    // Pas la locomotive du petit train (D118) : elle ne roule jamais dans la circulation.
+    for (const def of CATALOG.filter((d) => d.family === "car" && !d.train)) {
       const r = run(def.id, st, 3, 60);
       expect([def.id, r.lost, r.crashes]).toEqual([def.id, false, 0]);
       expect(r.maxOff).toBeLessThan(3.5);

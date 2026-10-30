@@ -57,6 +57,7 @@ describe("véhicules uniques (D114)", () => {
       expect(placed.has(spot.model)).toBe(false);
     }
     expect(new Set(UNIQUES.map((u) => u.id)).size).toBe(UNIQUES.length);
-    for (const def of CATALOG.filter((d) => d.unique)) expect(UNIQUES.some((u) => u.model === def.id)).toBe(true);
+    // Tous ont leur place, sauf le petit train (D118), qui tourne sur son circuit.
+    for (const def of CATALOG.filter((d) => d.unique && !d.train)) expect(UNIQUES.some((u) => u.model === def.id)).toBe(true);
   });
 });

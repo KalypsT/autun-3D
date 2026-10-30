@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { CarPose, TrainCar } from "../core/tourist-train";
 import { blockLetters, carWheelGeometry } from "./car-body";
-import { box, merge, paint, sharedMaterial, tube } from "./vehicle-model";
+import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
 /**
  * Petit train touristique (D117) : une fausse locomotive à vapeur (chaudière verte cerclée de laiton, cheminée noire, chasse-pierres rouge,
@@ -170,3 +170,38 @@ export class TrainModel {
     for (const g of this.geometries) g.dispose();
   }
 }
+
+/**
+ * La locomotive comme véhicule conduit (D118) : un groupe sans maillage (le train la dessine, avec ses wagons), qui ne porte que les points
+ * d'appui du joueur debout dans la cabine, les mains sur la barre de commande.
+ */
+export function createLocoRideModel(): VehicleModel {
+  const group = new THREE.Group();
+  group.rotation.order = "YXZ";
+  const f = TRAIN_BODY.loco.floor;
+  const anchors = {
+    gripL: marker(group, -0.22, f + 1.0, 0.55), gripR: marker(group, 0.22, f + 1.0, 0.55),
+    footL: marker(group, -0.14, f, 1.0), footR: marker(group, 0.14, f, 1.1),
+  };
+  return {
+    group,
+    seat: new THREE.Vector3(0, f, 1.05),
+    pose: "stand",
+    anchors,
+    update(s) {
+      group.position.set(s.x, s.z, -s.y);
+      group.rotation.set(s.pitch, -s.heading, 0);
+    },
+    dispose() {},
+  };
+}
+
+/** Géométrie « garée » de la locomotive pour le dessin par instances : un triangle nul (le train la dessine lui-même). */
+export function locoRestGeometry(): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0]), 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+  return g;
+}
+

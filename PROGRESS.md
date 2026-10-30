@@ -720,3 +720,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Devant le théâtre romain](docs/captures/d117-train-theatre-romain.jpg)
 ![Vers la cathédrale](docs/captures/d117-train-cathedrale.jpg)
 
+**Petit train touristique, étape 2 : le voler et le conduire (30 octobre 2026)** (D118)
+- On peut prendre le petit train comme une voiture : le conducteur saute de la cabine et s'enfuit, c'est un vol avec témoins. On conduit debout dans la cabine, les trois wagons suivent derrière comme des remorques et coupent les virages.
+- C'est lent et lourd : 25 km/h au plus, mais il monte jusqu'à la cathédrale.
+- Abandonné loin de toi, il revient au départ de son circuit au bout de deux minutes, avec un nouveau conducteur.
+- 719 tests.
+- À faire de ton côté : le voler au départ (Champ de Mars, entre 11 h et 18 h) ou essayer directement `?ride=petit-train`, prendre des virages serrés, monter vers la cathédrale.
+
+![Le train volé, au départ](docs/captures/d118-train-vole.jpg)
+![Aux commandes sur le Champ de Mars](docs/captures/d118-train-conduit.jpg)
+

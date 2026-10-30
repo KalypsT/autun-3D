@@ -22,7 +22,8 @@ function signedVolume(g: THREE.BufferGeometry): number {
   return v;
 }
 
-const cars = CATALOG.filter((d) => d.family === "car");
+// Les voitures à carrosserie générée : pas la locomotive du petit train (D118), dessinée avec ses wagons (`train-model.ts`).
+const cars = CATALOG.filter((d) => d.family === "car" && !d.train);
 
 describe("générateur de carrosserie", () => {
   it("chaque voiture du catalogue a ses mesures, et chaque mesure sa voiture", () => {
@@ -131,7 +132,7 @@ describe("géométrie au repos de chaque modèle garé", () => {
     return white / c.count;
   };
 
-  it.each(CATALOG.map((d) => d.id))("%s : une seule géométrie, avec de la peinture à teinter (sommets blancs) et des pièces de couleur propre", (id) => {
+  it.each(CATALOG.filter((d) => !d.train).map((d) => d.id))("%s : une seule géométrie, avec de la peinture à teinter (sommets blancs) et des pièces de couleur propre", (id) => {
     const g = restGeometryOf(id);
     expect(triangles(g)).toBeGreaterThan(100);
     expect(triangles(g)).toBeLessThan(2500);

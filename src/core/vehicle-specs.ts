@@ -131,6 +131,19 @@ export const LOG_TRUCK: VehicleSpec = {
 };
 
 /**
+ * Locomotive du petit train (D118), avec ses trois wagons à tirer : la fiche porte la masse de tout le train (6 t, passagers absents), un petit
+ * diesel de 22 kW à rapports courts (forte traction à basse vitesse : il monte à la cathédrale, ≈ 10 % de pente, à plus de 10 km/h),
+ * 25 km/h au plus (0 à 20 km/h en ≈ 5 s à vide), 2,2 m d'empattement, braquage serré (les wagons suivent à la trace), centre de gravité bas.
+ * On ne la conduit que volée : lente, lourde, impossible à faire glisser.
+ */
+export const TRAIN_LOCO: VehicleSpec = {
+  ...CAR, mass: 6000, yawInertia: 6000, front: 1.1, rear: 1.1, maxSteer: 0.6, steerFade: 6, steerRate: 1.2, grip: 0.8,
+  corneringFront: 220000, corneringRear: 250000, power: 22000, maxDrive: 11000, driveFadeFrom: kmh(22), topSpeed: kmh(25),
+  maxBrake: 33000, reverseSpeed: 2, reverseForce: 5000, rolling: 0.015, drag: 2, hull: [[1.1, 0.95], [-1.1, 0.95]], wheelRadius: 0.34,
+  bodyRoll: 0.01, engineBrake: 2500, driveAxle: "rear", cgHeight: 0.9, brakeFront: 0.5, steerGrip: 1.2, driftAssist: 0.5, maxDrift: 0.3, rearGrip: 1.15,
+};
+
+/**
  * Vieille voiture : 1 100 kg, 46 kW aux roues, 160 km/h, pneus usés (adhérence 0,8, roulement plus fort), freins fatigués (≈ 0,83 g) et **pas d'ABS** :
  * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle. Aucune aide à la conduite (D97) : ni contre-braquage automatique ni stabilisation.
  */

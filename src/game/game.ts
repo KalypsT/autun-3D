@@ -425,7 +425,7 @@ export function startGame(ctx: GameContext): void {
     }
   };
   // Petit train touristique (D117) : il tourne sur son circuit, montré de 11 h à 18 h. `?train=<m>` : le place à tant de mètres du départ.
-  const train = new TouristTrain(scene, colliders, terrain, Number(params.get("train") ?? 0) || 0);
+  const train = new TouristTrain(scene, colliders, terrain, fleet, Number(params.get("train") ?? 0) || 0);
   // Aucune voiture garée sur le circuit : une place dont le centre est à moins de la demi-largeur du train et d'une demi-voiture.
   fleet.keepClearAlong(train.route.samples(), TRAIN_CLEAR);
   const trainCars: TrainEnv["cars"][number][] = [];
@@ -437,17 +437,27 @@ export function startGame(ctx: GameContext): void {
     // Véhicules de la flotte qui ne sont plus à leur place (laissés par le joueur sur la chaussée) : le train s'arrête devant.
     trainParked.length = 0;
     for (const v of fleet.vehicles) {
-      if (v.ridden || Math.abs(v.state.x - at.x) > 80 || Math.abs(v.state.y - at.y) > 80) continue;
+      if (v.ridden || v.def.train || Math.abs(v.state.x - at.x) > 80 || Math.abs(v.state.y - at.y) > 80) continue;
       if (!v.home || Math.hypot(v.state.x - v.home.x, v.state.y - v.home.y) > 0.5) trainParked.push(v);
     }
     train.update(dt, {
       x: player.x, y: player.y, hour: atmosphere.hour, vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
       cars: trainCars, peds: peds as PedsController | null, parked: trainParked, road: (nav as NavManager | null)?.graph.road ?? null, signals: signals as Signals | null,
     });
-    t?.setExtra(train.visible ? train.others : []);
+    t?.setExtra(train.visible ? train.seenByTraffic : []);
   };
   /** Les voitures que voient les passants, et le train quand il est là. */
-  const withTrain = (bodies: readonly TrafficBody[]): readonly TrafficBody[] => (train.visible ? [...bodies, ...train.bodies] : bodies);
+  const withTrain = (bodies: readonly TrafficBody[]): readonly TrafficBody[] => (train.visible ? [...bodies, ...train.seenByPeds] : bodies);
+  /** On prend la locomotive du petit train (D118) : le conducteur saute de la cabine et s'enfuit, c'est un vol sous les yeux de témoins. */
+  const robTrain = (v: Vehicle): boolean => {
+    if (!v.def.train) return false;
+    const at = train.takeConductor();
+    if (!at) return false;
+    const lx = -Math.cos(at.heading), ly = Math.sin(at.heading);
+    (peds as PedsController | null)?.eject(at.x + lx * 1.4, at.y + ly * 1.4, 20240611, lx, ly, 1.4, v.state.x, v.state.y);
+    police.crime("carjack", v.state.x, v.state.y, true);
+    return true;
+  };
   /** Vendeurs des camions-restaurants (D115), par identifiant de véhicule unique. */
   const vendors = new Map<string, ReturnType<typeof createPlayerModel>>();
   const vendorSeed = (id: string): number => [...id].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
@@ -762,7 +772,7 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (!robVendor(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
       mount(r.fleet);
     }
   };
@@ -783,7 +793,8 @@ export function startGame(ctx: GameContext): void {
   const rideParam = params.get("ride") ?? "";
   const ride = vehicleDef(LEGACY_MODELS[rideParam] ?? rideParam)?.id;
   if (ride) {
-    const v = fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
+    // `?ride=petit-train` : aux commandes du petit train, ses wagons derrière (D118).
+    const v = vehicleDef(ride)?.train ? train.spawnFree(spawn.x, spawn.y, startYaw) : fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
     // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109), les points perdus répartis sur les zones de `&dent=front,left`
     // (défaut : l'avant et l'arrière).
     if (params.has("damage")) {
@@ -1230,7 +1241,7 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
-        ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.bodies } : {}),
+        ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
       };
       for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
       (traffic as Traffic | null)?.setPeds(pedsNow);

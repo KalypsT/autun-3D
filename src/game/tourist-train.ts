@@ -5,18 +5,23 @@ import type { TrafficBody } from "../core/pedestrians";
 import { AMBER, RED, type Signals } from "../core/signals";
 import type { RoadGraph } from "../core/road-graph";
 import type { VehicleSpec, VehicleState } from "../core/vehicle";
-import { carPoses, LOCO, TRAIN, trainShown, TrainSim, type CarPose, type TrainView } from "../core/tourist-train";
+import { carPoses, LOCO, towPoses, TRAIN, trainShown, TrainSim, type CarPose, type TrainView } from "../core/tourist-train";
 import { TrainRoute } from "../core/train-route";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
 import type { HeightField } from "../data/types";
 import { createPlayerModel } from "../render/player-model";
 import { TrainModel, TRAIN_BODY } from "../render/train-model";
+import type { Fleet, Vehicle } from "./vehicles";
 
 /**
  * Petit train touristique dans le jeu (D117) : la marche (`TrainSim`), le dessin, le conducteur, et la place du train parmi les autres.
- * Ce n'est pas un véhicule de la flotte : on ne le prend pas (étape suivante). Il est un obstacle (cercles de collision recalculés à chaque
- * image : le joueur, les voitures et les passants butent dessus), la circulation le voit comme une voiture, les passants l'évitent ;
- * lui s'arrête devant ce qui est sur sa voie, au feu rouge, et une minute au départ à chaque tour.
+ * Il est un obstacle (cercles de collision recalculés à chaque image : le joueur, les voitures et les passants butent dessus), la circulation
+ * le voit comme une voiture, les passants l'évitent ; lui s'arrête devant ce qui est sur sa voie, au feu rouge, et une minute au départ à
+ * chaque tour.
+ *
+ * On peut le voler (D118) : sa locomotive est un véhicule de la flotte (`petit-train`), tenu à sa place sur le circuit à chaque image. Prise,
+ * elle se conduit comme les autres, le conducteur s'enfuit (le jeu l'éjecte), et les wagons suivent derrière elle (`towPoses`). Laissé loin du
+ * joueur un moment, le train revient au départ de son circuit, avec un nouveau conducteur.
  */
 
 /** Ce que le jeu donne au train à chaque image. */
@@ -44,6 +49,10 @@ export const TRAIN_CLEAR = LANE + 2.4;
 /** Coincé par une voiture de la circulation plus de tant (s) : il avance au pas en la poussant (deux véhicules qui s'attendent face à face). */
 const STUCK = 15;
 const COLLIDER_TAG = "train";
+/** Identifiant de la locomotive dans la flotte. */
+export const LOCO_ID = "unique-petit-train";
+/** Volé puis laissé : il revient sur son circuit après tant de secondes loin du joueur (et de son départ). */
+const RETURN_AFTER = 120;
 
 export class TouristTrain {
   readonly route = new TrainRoute();
@@ -58,11 +67,18 @@ export class TouristTrain {
   private stuck = 0;
   private readonly edges: number[] = [];
   private push = 0;
+  /** La locomotive dans la flotte (tant que le train est montré), volée ou non, et le temps passé loin du joueur une fois abandonnée. */
+  private loco: Vehicle | null = null;
+  private stolen = false;
+  private away = 0;
+  /** Le conducteur est parti (train volé) : il revient avec le train sur son circuit. */
+  private conductorGone = false;
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly colliders: Colliders,
     private readonly terrain: HeightField,
+    private readonly fleet: Fleet,
     start = 0,
   ) {
     this.sim = new TrainSim(this.route, start);
@@ -79,6 +95,47 @@ export class TouristTrain {
     return this.shown === true;
   }
 
+  /** Ce que voit la circulation : chaque voiture du train, sauf la locomotive quand le joueur la conduit (elle est alors son véhicule). */
+  get seenByTraffic(): readonly Other[] {
+    return this.loco?.ridden ? this.others.slice(1) : this.others;
+  }
+
+  /** Ce que voient les passants (même règle). */
+  get seenByPeds(): readonly TrafficBody[] {
+    return this.loco?.ridden ? this.bodies.slice(1) : this.bodies;
+  }
+
+  /** Le train est-il volé (hors de son circuit) ? */
+  get isStolen(): boolean {
+    return this.stolen;
+  }
+
+  /**
+   * Le joueur prend la locomotive : le conducteur descend de la cabine (renvoie où il est, pour l'éjecter), ou null s'il n'y en a pas (déjà
+   * parti : le train est volé).
+   */
+  takeConductor(): { x: number; y: number; heading: number } | null {
+    if (this.conductorGone || !this.shown) return null;
+    this.conductorGone = true;
+    this.scene.remove(this.driver.group);
+    const p = this.poses[0]!, back = 1.1;
+    return { x: p.x - Math.sin(p.heading) * back, y: p.y - Math.cos(p.heading) * back, heading: p.heading };
+  }
+
+  /** Essais et captures (`?ride=petit-train`) : le train, déjà volé, posé là, ses wagons droits derrière la locomotive, qui est renvoyée. */
+  spawnFree(x: number, y: number, heading: number): Vehicle {
+    if (this.loco) this.fleet.remove(this.loco);
+    const v = (this.loco = this.fleet.add("petit-train", LOCO_ID, x, y, heading, 0));
+    this.stolen = true;
+    this.conductorGone = true;
+    this.shown = true;
+    this.away = 0;
+    this.poses.length = 0;
+    this.scene.add(this.model.group);
+    this.scene.remove(this.driver.group);
+    return v;
+  }
+
   /** Position de la locomotive (diagnostic, captures). */
   get position(): { x: number; y: number } {
     const p = this.poses[0];
@@ -86,32 +143,107 @@ export class TouristTrain {
   }
 
   update(dt: number, env: TrainEnv): void {
+    if (this.loco && !this.fleet.get(LOCO_ID)) this.loco = null;
+    if (this.stolen) {
+      this.updateStolen(dt, env);
+      return;
+    }
+    if (this.loco && !this.loco.damage.usable) {
+      // Locomotive détruite sur son circuit (tirs, explosion voisine) : le train s'arrête là, sans conducteur ; il reviendra comme un train volé.
+      this.stolen = true;
+      this.conductorGone = true;
+      this.scene.remove(this.driver.group);
+      this.updateStolen(dt, env);
+      return;
+    }
+    if (this.loco?.ridden) {
+      // Le joueur vient de prendre la locomotive : les wagons partent de là où ils sont sur le circuit.
+      this.stolen = true;
+      this.away = 0;
+      this.updateStolen(dt, env);
+      return;
+    }
     carPoses(this.route, this.sim.s, this.poses);
     const loco = this.poses[0]!;
     const dist = Math.hypot(loco.x - env.x, loco.y - env.y);
     const shown = trainShown(this.shown, env.hour, dist);
     if (shown !== this.shown) {
       this.shown = shown;
-      if (shown) this.scene.add(this.model.group, this.driver.group);
+      if (shown) this.scene.add(this.model.group);
       else {
-        this.scene.remove(this.model.group, this.driver.group);
+        this.scene.remove(this.model.group);
         this.colliders.removeTag(COLLIDER_TAG);
       }
     }
+    if (shown && !this.conductorGone) this.scene.add(this.driver.group);
+    else this.scene.remove(this.driver.group);
     // Loin du joueur, ou caché : il roule seul. Près de lui : obstacles et feux.
     const aware = shown && dist < AWARE;
     this.sim.update(dt, aware ? this.view(env, dt) : undefined);
     carPoses(this.route, this.sim.s, this.poses);
+    // La locomotive dans la flotte, tenue à sa place : on peut la prendre comme un véhicule garé. Cachée, il n'y en a pas.
+    if (shown && !this.loco) this.loco = this.fleet.add("petit-train", LOCO_ID, loco.x, loco.y, loco.heading, 0);
+    else if (!shown && this.loco) {
+      this.fleet.remove(this.loco);
+      this.loco = null;
+    }
     if (!shown) return;
-    this.model.update(this.poses, (x, y) => this.terrain.heightAt(x, y), this.sim.wheel);
+    const p0 = this.poses[0]!;
+    this.fleet.place(this.loco!, p0.x, p0.y, p0.heading, this.sim.speed);
     this.placeDriver();
+    this.draw(this.sim.speed, this.sim.wheel);
+  }
+
+  /** Volé : la locomotive est un véhicule de la flotte (conduit ou laissé), les wagons la suivent ; laissé loin du joueur, il revient sur son circuit. */
+  private updateStolen(dt: number, env: TrainEnv): void {
+    const v = this.loco;
+    if (!v) {
+      this.backToRoute();
+      return;
+    }
+    const s = v.state;
+    towPoses(s, this.poses);
+    this.sim.wheel += Math.abs(s.speed) * dt;
+    this.draw(s.speed, this.sim.wheel);
+    if (v.ridden) {
+      this.away = 0;
+      return;
+    }
+    const depot = this.route.at(0, { x: 0, y: 0, heading: 0 });
+    const far = Math.hypot(s.x - env.x, s.y - env.y) > TRAIN.far && Math.hypot(depot.x - env.x, depot.y - env.y) > TRAIN.far;
+    this.away = far ? this.away + dt : 0;
+    if (this.away > RETURN_AFTER) this.backToRoute();
+  }
+
+  /**
+   * Remet le train au départ de son circuit, avec un nouveau conducteur ; la locomotive volée (ou son épave) disparaît. Le train est d'abord
+   * caché : il ne réapparaît (s'il est de service) que loin des yeux du joueur.
+   */
+  private backToRoute(): void {
+    if (this.loco) this.fleet.remove(this.loco);
+    this.shown = false;
+    this.scene.remove(this.model.group, this.driver.group);
+    this.colliders.removeTag(COLLIDER_TAG);
+    this.loco = null;
+    this.stolen = false;
+    this.conductorGone = false;
+    this.away = 0;
+    this.sim.s = 0;
+    this.sim.speed = 0;
+    this.sim.dwell = TRAIN.dwell;
+    this.poses.length = 0;
+  }
+
+  /** Dessin, cercles de collision des wagons (ceux de la locomotive sont ceux de la flotte), et ce que voient les autres. */
+  private draw(speed: number, wheel: number): void {
+    this.model.update(this.poses, (x, y) => this.terrain.heightAt(x, y), wheel);
     this.colliders.removeTag(COLLIDER_TAG);
     this.colliders.currentTag = COLLIDER_TAG;
-    const v = this.sim.speed;
+    const v = speed;
     this.poses.forEach((p, i) => {
       const c = TRAIN.cars[i]!, fx = Math.sin(p.heading), fy = Math.cos(p.heading), half = c.wheelbase / 2 + c.overhang;
-      // Deux cercles par caisse, de la largeur du train.
-      for (const k of [-1, 1]) this.colliders.addCircle(p.x + fx * k * (half - c.halfWidth), p.y + fy * k * (half - c.halfWidth), c.halfWidth);
+      // Deux cercles par wagon, de la largeur du train.
+      if (i > 0) for (const k of [-1, 1]) this.colliders.addCircle(p.x + fx * k * (half - c.halfWidth), p.y + fy * k * (half - c.halfWidth), c.halfWidth);
       const o = this.others[i]!.state;
       o.x = p.x;
       o.y = p.y;
@@ -226,6 +358,7 @@ export class TouristTrain {
   }
 
   dispose(): void {
+    if (this.loco) this.fleet.remove(this.loco);
     this.scene.remove(this.model.group, this.driver.group);
     this.colliders.removeTag(COLLIDER_TAG);
     this.model.dispose();

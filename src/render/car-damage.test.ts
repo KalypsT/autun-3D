@@ -98,7 +98,7 @@ describe("fumée (D110)", () => {
 
 describe("forme abîmée des voitures dessinées par instances (D112)", () => {
   it("chaque voiture a sa forme cabossée : même nombre de triangles, avant reculé, aucune valeur absurde", () => {
-    for (const def of CATALOG.filter((d) => d.family === "car")) {
+    for (const def of CATALOG.filter((d) => d.family === "car" && !d.train)) {
       const neat = carRestGeometry(def.id), dented = carRestGeometry(def.id + DENTED);
       expect(dented.getAttribute("position").count).toBe(neat.getAttribute("position").count);
       expect((dented.getAttribute("position").array as Float32Array).every(Number.isFinite)).toBe(true);
