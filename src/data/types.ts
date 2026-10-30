@@ -380,6 +380,8 @@ export interface FacadeFiche {
     door: { style: "simple" | "carriage" | "glazed" | "garage" | "none"; color: string };
     shopfront?: { color: string; glazing: "full" | "divided" };
     shops?: Shop[];
+    /** Mur d'entrée (indice dans `walls`), qui reçoit vitrines et porte ; absent : le plus long mur sur rue (D120). */
+    front?: number;
   };
   walls: WallRun[];
 }

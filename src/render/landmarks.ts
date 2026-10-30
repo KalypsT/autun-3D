@@ -76,16 +76,21 @@ interface Seg {
   len: number;
   top: number;
   street: boolean;
+  /** Sur le mur d'entrée de la fiche (D120). */
+  front: boolean;
 }
 
 function segments(b: Building, fiche: FacadeFiche | undefined): Seg[] {
   const n = b.ring.length / 2;
-  const street = new Set<number>();
-  for (const w of fiche?.walls ?? []) {
-    if (w.hole !== undefined || w.role !== "street") continue;
+  const street = new Set<number>(), front = new Set<number>();
+  fiche?.walls.forEach((w, wi) => {
+    if (w.hole !== undefined || w.role !== "street") return;
     const count = (w.b - w.a + n) % n || n;
-    for (let j = 0; j < count; j++) street.add((w.a + j) % n);
-  }
+    for (let j = 0; j < count; j++) {
+      street.add((w.a + j) % n);
+      if (wi === fiche.ground.front) front.add((w.a + j) % n);
+    }
+  });
   const out: Seg[] = [];
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
@@ -93,15 +98,16 @@ function segments(b: Building, fiche: FacadeFiche | undefined): Seg[] {
     const len = Math.hypot(x2 - x1, y2 - y1);
     if (len < 0.5) continue;
     const tx = (x2 - x1) / len, ty = (y2 - y1) / len;
-    out.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: Math.min(b.top[i]!, b.top[j]!), street: street.has(i) });
+    out.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: Math.min(b.top[i]!, b.top[j]!), street: street.has(i), front: front.has(i) });
   }
   return out;
 }
 
-/** Le mur d'entrée : le plus long côté sur rue, sinon le plus long côté. */
+/** Le mur d'entrée : le plus long côté du mur d'entrée de la fiche (D120), sinon le plus long côté sur rue, sinon le plus long côté. */
 function mainSeg(segs: Seg[]): Seg | null {
+  const rank = (s: Seg): number => (s.front ? 2 : s.street ? 1 : 0);
   let best: Seg | null = null;
-  for (const s of segs) if (!best || (s.street && !best.street) || (s.street === best.street && s.len > best.len)) best = s;
+  for (const s of segs) if (!best || rank(s) > rank(best) || (rank(s) === rank(best) && s.len > best.len)) best = s;
   return best;
 }
 
@@ -469,7 +475,7 @@ function tower(sinks: LandmarkSinks, b: Building, t: [number, number, number, nu
     const [x1, y1] = corners[i]!, [x2, y2] = corners[(i + 1) % 4]!;
     const len = Math.hypot(x2 - x1, y2 - y1) || 1;
     const tx = (x2 - x1) / len, ty = (y2 - y1) / len;
-    faces.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: body, street: false });
+    faces.push({ x: x1, y: y1, tx, ty, nx: ty, ny: -tx, len, top: body, street: false, front: false });
   }
   const louver = C("#3a3634");
   const bh = Math.min(3.2, (body - z0) * 0.22);
@@ -536,7 +542,7 @@ function fuel(sinks: LandmarkSinks, site: Extract<Site, { t: "fuel" }>, roof: Bu
   block(sinks.solid, tx, ty, f.ux, f.uy, 0.75, 0.22, z - 0.2, z + 5.5, accent);
   for (const side of [1, -1]) {
     const g: Seg = { x: tx - f.ux * 0.65 * side - f.vx * 0.23 * side, y: ty - f.uy * 0.65 * side - f.vy * 0.23 * side, tx: f.ux * side, ty: f.uy * side,
-      nx: f.uy * side, ny: -f.ux * side, len: 1.3, top: z + 5.5, street: true };
+      nx: f.uy * side, ny: -f.ux * side, len: 1.3, top: z + 5.5, street: true, front: false };
     for (let k = 0; k < 3; k++) plate(sinks.solid, g, 0.15, 1.15, z + 1.6 + k * 0.75, z + 2.2 + k * 0.75, 0.01, WHITE);
     if (site.n) text(sinks, g, 0.65, z + 4.3, 0.2, 0.02, site.n, "#ffffff");
   }

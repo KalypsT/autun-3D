@@ -3,5 +3,7 @@
   "stairs": [
     {"id": "hotel-de-ville", "bbox": [14, 58, 42, 92], "base": -4.4, "riser": 0.17}
   ],
+  "_fronts": "fronts : mur d'entrée d'un bâtiment commerçant {\"wall\": indice dans les murs de sa fiche, \"photo\": référence}, vu sur une photo ; build_shop_fronts.py l'impose (D120).",
+  "fronts": {},
   "fenceHeights": {"fence": 1.8, "gate": 2.4}
 }

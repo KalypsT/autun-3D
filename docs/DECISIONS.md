@@ -1579,3 +1579,25 @@ Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1
 
 **Essais** : `?at=53.5,-42.8&yaw=-2.4&h=12&dist=2.5` (de près, au départ) ; vérifié en jeu : passagers à bord, puis plus personne après le vol. 1 essai de plus (places prises : environ la moitié, toujours les mêmes, différentes d'un wagon à l'autre). 720 tests.
 
+
+## 2026-10-30 — D120. Les vitrines et les enseignes du bon côté
+
+**Demande de l'utilisateur** : la plupart des magasins ont leur enseigne du mauvais côté (dont E.Leclerc).
+
+**Cause** (`build_facades.py`) : la vitrine allait sur le mur « de rue » le plus long du bâtiment, ou, pour un commerce d'OpenStreetMap, sur le mur de rue le plus proche de son point. Or ce point est souvent au milieu du bâtiment, et un mur arrière à une dizaine de mètres d'une ruelle compte comme mur de rue. **Mesure** (bâtiments dont la rue de l'adresse passe à moins de 22 m d'un mur) : 141 vitrines sans nom sur 244 et 43 enseignes nommées sur 192 regardaient une autre rue que celle de l'adresse (toute l'avenue Charles-de-Gaulle, rue Saint-Saulge, rue aux Cordiers…).
+
+**Correction** : étape autonome `tools/data/build_shop_fronts.py` (après `build_map.py`, dont elle lit les 345 rues nommées de `map/places.json`). Pour chaque bâtiment commerçant (fiche « commerce » ou grande surface de `kinds`), elle choisit le **mur d'entrée** (`ground.front`, nouveau champ facultatif de la fiche) et le mur de chaque commerce nommé, du plus sûr au moins sûr :
+0. une correction à la main (`fronts` de `tools/data/manual.json`, d'après une photo) ;
+1. une porte OpenStreetMap posée sur le contour (`entrance`, désormais gardée par `fetch.py` ; seulement 3 à Autun) ;
+2. le point du commerce s'il est sur le contour (cartographié à sa porte) ;
+3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m, parkings OpenStreetMap) ;
+4. le mur qui regarde la rue de l'adresse (`addr:street` du commerce, sinon adresse BAN du bâtiment) ;
+5. sinon rien ne change (347 bâtiments : adresse inconnue, ou rue à plus de 22 m, en cœur d'îlot).
+Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reçoit alors volets et encadrements). Rien d'autre ne change dans les tuiles (relues et réécrites à l'octet près ; une deuxième passe ne réécrit rien).
+
+**Rendu** : `planFacades` prend `ground.front` comme mur principal (porte ou vitrines), sinon le plus long mur sur rue comme avant ; les grandes surfaces (`landmarks.ts`) posent entrée vitrée, auvent et grande enseigne sur le plus long pan du mur d'entrée. `build_nav.py` place le point « commerce » devant ce mur (à la prochaine régénération de la navigation).
+
+**Résultat** (même mesure) : 6 enseignes nommées sur 192 et 2 vitrines sur 244 regardent encore une autre rue (commerces d'angle dont le point OpenStreetMap est sur l'autre façade). 87 tuiles réécrites, 42 enseignes nommées changent de mur, 18 grandes surfaces sont tournées vers leur parking ; 721 tests (1 de plus : les vitrines suivent le mur d'entrée). **E.Leclerc** : l'entrée reste à l'ouest, côté grand parking, comme avant ; l'utilisateur fournira une photo, qui deviendra une ligne de `fronts`.
+
+![Avenue Charles-de-Gaulle, avant](captures/d120-cic-avant.jpg)
+![Avenue Charles-de-Gaulle, après : le CIC côté avenue](captures/d120-cic-apres.jpg)

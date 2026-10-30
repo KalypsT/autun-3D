@@ -130,6 +130,7 @@
           "additionalProperties": false,
           "properties": { "color": { "$ref": "#/$defs/color" }, "glazing": { "enum": ["full", "divided"] } }
         },
+        "front": { "type": "integer", "minimum": 0, "description": "Mur d'entrée (indice dans `walls`) : vitrines et porte y vont (build_shop_fronts.py, D120). Absent : le plus long mur sur rue." },
         "shops": {
           "type": "array",
           "items": {

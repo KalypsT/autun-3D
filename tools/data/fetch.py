@@ -226,7 +226,7 @@ def overpass_block(bx, by, dest):
         f"[out:json][timeout:180];("
         f"way[highway]({b});way[barrier]({b});way[natural]({b});way[leisure]({b});way[landuse]({b});way[amenity]({b});"
         f"way[\"area:highway\"]({b});way[man_made]({b});way[building][name]({b});way[building][\"ref:mhs\"]({b});"
-        f"node({b})[~\"^(amenity|shop|tourism|historic|natural|highway|barrier|man_made|leisure|crossing|kerb|heritage)$\"~\".\"];"
+        f"node({b})[~\"^(amenity|shop|tourism|historic|natural|highway|barrier|man_made|leisure|crossing|kerb|heritage|entrance)$\"~\".\"];"
         f");out geom;"
     )
     r = get("https://overpass-api.de/api/interpreter", method="POST", data={"data": query}, retries=8, timeout=300)
@@ -236,7 +236,7 @@ def overpass_block(bx, by, dest):
 
 
 WAY_KEYS = ("highway", "barrier", "natural", "leisure", "landuse", "amenity", "area:highway", "man_made")
-NODE_KEYS = ("amenity", "shop", "tourism", "historic", "natural", "highway", "barrier", "man_made", "leisure", "crossing", "kerb", "heritage")
+NODE_KEYS = ("amenity", "shop", "tourism", "historic", "natural", "highway", "barrier", "man_made", "leisure", "crossing", "kerb", "heritage", "entrance")
 
 
 def osm_api_block(bx, by, dest):
