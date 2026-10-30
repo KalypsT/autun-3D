@@ -368,8 +368,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
     const kind = kindOf(b.id);
-    // Caché (remplacé par un monument) ou abri à chariots (dessiné ouvert par les gabarits) : ni murs ni toit génériques.
-    if (kind?.k === "hidden" || kind?.k === "cart") continue;
+    // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123) :
+    // ni murs ni toit génériques.
+    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall) continue;
     const wc = landmarkWallColor(kind, b.id) ?? wallColor(f?.era ?? "xix", key);
     wallColors.set(b.id, wc);
     if (drawsWalls(kind)) {
@@ -432,7 +433,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   yield;
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
   yield;
-  if (!skip.includes("stairs")) buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
+  // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
+  const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));
+  if (!skip.includes("stairs")) buildStairs(detail, (tile.stairs ?? []).filter((z) => !perrons.has(z.id)), terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
   target();
   if (!skip.includes("furn")) buildFurniture(detail, tile.furniture, terrain, glow, halo);

@@ -765,3 +765,45 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![De face](docs/captures/d122-leclerc-face.jpg)
 ![Depuis l'ouest](docs/captures/d122-leclerc-ouest.jpg)
+
+**Bâtiments d'après photos, étape 3 : l'hôtel de ville, volumes et toits (30 octobre 2026)** (D123)
+- La mairie n'est plus une boîte à cinq rangs de petites fenêtres : d'après ta photo et le relevé LiDAR, elle a son corps principal sur le Champ de Mars (corniche à 17 m), ses deux pavillons d'angle et son pavillon central en légère saillie, à toits d'ardoise raides et tronqués (25 m et 28 m), et des ailes plus basses autour d'une cour ouverte.
+- Trois niveaux comme sur la photo : soubassement à arcades et étage en pierre blonde, étage noble clair ; 11 travées régulières, portes et baies en plein cintre au centre. Les fenêtres s'allument la nuit.
+- L'inscription « HÔTEL DE VILLE » est retirée (et les drapeaux génériques, qui étaient sur le mur nord-est).
+- Nouvelle étape de données `tools/data/build_monuments.py` : la lecture de la photo est dans `manual.json`, les hauteurs sont mesurées au LiDAR.
+- 722 tests.
+- Suite prévue : le détail de la façade (bossages, frontons, chaînes d'angle), puis le portique, le balcon, les drapeaux et le perron, puis les lucarnes et cheminées.
+
+![Avant](docs/captures/d123-mairie-avant.jpg)
+![Après](docs/captures/d123-mairie-apres.jpg)
+![Après, vue haute](docs/captures/d123-mairie-haut-apres.jpg)
+![La cour](docs/captures/d123-mairie-cour.jpg)
+
+**Bâtiments d'après photos, étape 4 : l'hôtel de ville, détail de la façade (30 octobre 2026)** (D124)
+- Soubassement à bossages (refends, clés d'arcades, cordon), frontons cintrés et appuis aux fenêtres de l'étage noble, linteaux à l'étage, chaînes d'angle en pierre blonde aux pavillons, corniche moulurée à modillons.
+- 722 tests.
+
+![Avant](docs/captures/d124-mairie-detail-avant.jpg)
+![Après](docs/captures/d124-mairie-detail-apres.jpg)
+![De face](docs/captures/d124-mairie-face.jpg)
+
+**Bâtiments d'après photos, étape 5 : l'hôtel de ville, portique, balcon, drapeaux et perron (30 octobre 2026)** (D125)
+- Le talus en marches devant la mairie est devenu un vrai perron (palier et pied mesurés au LiDAR) : marches régulières, murs d'échiffre, deux rampes, lampadaires à deux lanternes allumés la nuit.
+- Portique à six colonnes devant les trois portes, balcon à balustrade, drapeaux tricolore et européen aux baies du balcon.
+- Le troisième drapeau de ta photo (rouge et bleu) n'est pas dessiné : dis-moi lequel c'est.
+- 722 tests.
+
+![Avant](docs/captures/d125-mairie-perron-avant.jpg)
+![Après](docs/captures/d125-mairie-perron-apres.jpg)
+![De face](docs/captures/d125-mairie-face.jpg)
+![La nuit](docs/captures/d125-mairie-nuit.jpg)
+
+**Bâtiments d'après photos, étape 6 : l'hôtel de ville, toits et silhouette lointaine (30 octobre 2026)** (D126)
+- Lucarnes rondes entre les pavillons et lucarne-fronton aux armes sur le pavillon central (hauteurs mesurées au LiDAR), œils-de-bœuf sur les pavillons d'angle, crêtes, épis, paratonnerre, cheminée de brique.
+- De loin, la mairie n'est plus une boîte : corps principal, trois pavillons plus hauts, ailes plus basses.
+- 723 tests.
+- La mairie est faite pour la façade sur le Champ de Mars. Pour aller plus loin, il faudrait des photos des autres côtés et de la cour, et savoir quel est le troisième drapeau (rouge et bleu).
+
+![Avant](docs/captures/d126-mairie-toits-avant.jpg)
+![Après](docs/captures/d126-mairie-toits-apres.jpg)
+![De face](docs/captures/d126-mairie-face.jpg)

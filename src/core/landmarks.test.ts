@@ -98,7 +98,9 @@ describe("gabarits : données réelles (public/data/kinds)", () => {
 
   it("les lieux connus sont reconnus", () => {
     const byName = (n: string): string[] => Object.values(kinds.buildings).filter((k) => k.n === n).map((k) => k.k);
-    expect(byName("HÔTEL DE VILLE")).toEqual(["townhall"]);
+    // L'hôtel de ville n'a plus d'inscription (il n'en a pas sur la photo, D123) : il est reconnu par son modèle dédié.
+    expect(byName("HÔTEL DE VILLE")).toEqual([]);
+    expect(Object.values(kinds.buildings).filter((k) => k.hall).map((k) => k.k)).toEqual(["townhall"]);
     expect(byName("GARE D'AUTUN")).toEqual(["station"]);
     expect(byName("E.Leclerc")).toEqual(["retail"]);
     expect(byName("La Poste")).toContain("post");

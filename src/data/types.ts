@@ -207,6 +207,50 @@ export interface CathedralSpec {
   g: number;
 }
 
+/**
+ * Hôtel de ville modélisé d'après photo (D123), volumes mesurés au LiDAR (tools/data/build_monuments.py). Repère : origine `o` au coin de la
+ * façade principale, `s` le long de la façade (angle `a`), `t` vers l'intérieur ; altitudes absolues (locales).
+ */
+export interface TownHallSpec {
+  o: [number, number];
+  a: number;
+  /** Longueur de la façade, profondeur du corps principal. */
+  l: number;
+  d: number;
+  /** Contour et cour en (s, t), même sens, le sommet k de la cour en face du coin k ; le côté 0 est la façade. */
+  ring: number[];
+  court: number[];
+  /** Sol devant la façade, corniche et faîtage du corps principal. */
+  g: number;
+  eave: number;
+  ridge: number;
+  /** Ailes basses autour de la cour : égout, faîtage (sur leur ligne médiane). */
+  wingEave: number;
+  wingRidge: number;
+  /** Nombre de travées de la façade. */
+  bays: number;
+  /** Pavillons : base s0, s1 ; plateau du toit s0, s1, t0, t1 ; haut (altitude). */
+  pav: [number, number, number, number, number, number, number][];
+  /** Hauts du soubassement et de l'étage noble au-dessus de `g`. */
+  levels: [number, number];
+  /** Portique de l'avant-corps central : bord avant du balcon (t), haut de sa balustrade (altitude). */
+  portico?: [number, number];
+  /** Perron : s0, s1, début de la volée (t, bord du palier), pied (t), altitude du palier. */
+  perron?: [number, number, number, number, number];
+  /** Escalier du relief (`stairs` de la tuile) que le perron remplace à l'écran. */
+  stairs?: string;
+  /** Lucarnes du toit du corps principal : abscisse, haut mesuré. */
+  dormers?: [number, number][];
+  /** Œils-de-bœuf sur les pavillons d'angle (photo). */
+  oculi?: boolean;
+  /** Haut mesuré de la lucarne-fronton de l'avant-corps central. */
+  fronton?: number;
+  /** Pointe mesurée de l'épi ou du paratonnerre de chaque pavillon (null : épi d'après photo). */
+  tips?: (number | null)[];
+  /** Cheminées : s, t, côté, haut. */
+  chim?: [number, number, number, number][];
+}
+
 export interface BuildingKind {
   k: BuildingKindId;
   /** Texte de l'enseigne ou de l'inscription (bâtiment principal d'un site). */
@@ -224,6 +268,8 @@ export interface BuildingKind {
   tower?: [number, number, number, number, number];
   /** Cathédrale : volumes mesurés (le gabarit remplace le clocher générique). */
   mon?: CathedralSpec;
+  /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
+  hall?: TownHallSpec;
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
