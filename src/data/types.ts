@@ -233,6 +233,12 @@ export interface TownHallSpec {
   pav: [number, number, number, number, number, number, number][];
   /** Hauts du soubassement et de l'étage noble au-dessus de `g`. */
   levels: [number, number];
+  /** Portique de l'avant-corps central : bord avant du balcon (t), haut de sa balustrade (altitude). */
+  portico?: [number, number];
+  /** Perron : s0, s1, début de la volée (t, bord du palier), pied (t), altitude du palier. */
+  perron?: [number, number, number, number, number];
+  /** Escalier du relief (`stairs` de la tuile) que le perron remplace à l'écran. */
+  stairs?: string;
 }
 
 export interface BuildingKind {

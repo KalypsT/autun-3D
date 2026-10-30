@@ -126,12 +126,32 @@ def measure_hall(bid, b, spec):
             ps, pt = O0[0] + (O1[0] - O0[0]) * f, O0[1] + (O1[1] - O0[1]) * f
             z1, z2 = S(ps + nx * 1.5, pt + ny * 1.5), S(ps + nx * 4.5, pt + ny * 4.5)
             eaves.append(z1 - 1.5 * (z2 - z1) / 3)
+    # Portique et perron, devant l'avant-corps central : bord avant du balcon (modèle de surface au-dessus de l'étage noble), haut de sa
+    # balustrade ; palier (terrain sous le portique), début de la volée (terrain 25 cm sous le palier), pied (terrain revenu à 10 cm du sol
+    # relevé 12 à 16 m plus loin), largeur à mi-volée.
     r2 = lambda v: round(float(v), 2)
+    extra = {}
+    if centre and spec.get("perron"):
+        c0, c1 = centre[0]
+        mids = np.arange(c0 + 1.5, c1 - 1.5, 0.5)
+        Sm = lambda t: float(np.median([S(s, t) for s in mids]))
+        Tm = lambda t: float(np.median([mnt(*xy(s, t)) for s in mids]))
+        noble = g + spec["levels"][1] - 1.5
+        tf = next(float(t) for t in np.arange(-0.25, -6, -0.25) if Sm(t) < noble)
+        balcony = float(np.median([Sm(t) for t in np.arange(tf + 0.5, -0.4, 0.25)] or [Sm(tf + 0.5)]))
+        zl = float(np.median([Tm(t) for t in np.arange(-0.5, tf + 0.25, -0.25)]))
+        tl = next(float(t) for t in np.arange(tf, -20, -0.25) if Tm(t) < zl - 0.25) + 0.25
+        far = float(np.median([Tm(t) for t in np.arange(tl - 12, tl - 16, -0.5)]))
+        tfoot = next(float(t) for t in np.arange(tl, -30, -0.25) if Tm(t) < far + 0.1)
+        tm = (tl + tfoot) / 2
+        thr = far + 0.25 * (zl - far)
+        inside = [float(s) for s in np.arange(c0 - 6, c1 + 6, 0.25) if mnt(*xy(s, tm)) > thr]
+        extra = {"portico": [r2(tf), r2(balcony)], "perron": [r2(min(inside)), r2(max(inside)), r2(tl), r2(tfoot), r2(zl)], "stairs": spec["perron"]}
     return {
         "o": [r2(ox), r2(oy)], "a": round(math.atan2(uy, ux), 5), "l": r2(L), "d": r2(depth),
         "ring": [r2(v) for q in R for v in q], "court": [r2(v) for q in H for v in q],
         "g": r2(g), "eave": r2(eave), "ridge": r2(ridge), "wingEave": r2(np.median(eaves)), "wingRidge": r2(np.median(ridges)),
-        "bays": bays, "pav": pavs, "levels": spec["levels"],
+        "bays": bays, "pav": pavs, "levels": spec["levels"], **extra,
     }
 
 

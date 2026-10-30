@@ -226,12 +226,14 @@ export function buildCathedral(mb: MeshBuilder, m: CathedralSpec, terrain: Heigh
 
 // --- Hôtel de ville ---------------------------------------------------------------------------------------------------------------
 
-/** Pierre blonde (soubassement, étage, chaînes), étage noble clair, encadrements et corniche, grilles des arcades (photo, D123). */
+/** Pierre blonde (soubassement, étage, chaînes), étage noble clair, encadrements et corniche, grilles des arcades (photo, D123) ; marches, ferronnerie, drapeaux. */
 const HALL_STONE = C("#e0bd84");
 const HALL_LIGHT = C("#f1e9d6");
 const HALL_TRIM = C(T.trim);
 const HALL_GRILLE = C("#2f3532");
 const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
+const TREAD = C("#e6d9b8"), RISER = C("#bba98a"), IRON = C("#2b302e");
+const FLAG_BLUE = C("#1f3f8f"), FLAG_WHITE = C("#f4f1ea"), FLAG_RED = C("#d3313a"), FLAG_EU = C("#1f3f9f"), FLAG_STAR = C("#f2c81e");
 /** Saillie des pavillons sur la façade, débord du toit du corps principal. */
 const PROJ = 0.35, OVERHANG = 0.3;
 
@@ -367,6 +369,48 @@ function bay(mb: MeshBuilder, glow: MeshBuilder, f: Frame, w: HallWall, u: numbe
   if (lit && !grille) shape(glow, wd / 2, z0, z0 + h, 0.056, GLOW_LO, GLOW_HI);
 }
 
+/** Colonne octogonale de rayon r, centrée en (s, t), de z0 à z1. */
+function column(mb: MeshBuilder, f: Frame, s: number, t: number, r: number, z0: number, z1: number, col: THREE.Color): void {
+  for (let i = 0; i < 8; i++) {
+    const a0 = (Math.PI * i) / 4 + Math.PI / 8, a1 = a0 + Math.PI / 4, am = (a0 + a1) / 2;
+    q(mb, f, [s + Math.cos(a0) * r, t + Math.sin(a0) * r, z0], [s + Math.cos(a1) * r, t + Math.sin(a1) * r, z0], [s + Math.cos(a1) * r, t + Math.sin(a1) * r, z1],
+      [s + Math.cos(a0) * r, t + Math.sin(a0) * r, z1], N(f, Math.cos(am), Math.sin(am)), shade(col, 0.9 + 0.1 * Math.max(0, -Math.sin(am))));
+  }
+}
+
+/** Pavé du repère avec son dessous clair (entablement, plinthes vues d'en bas). */
+function boxUnder(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, t1: number, z0: number, z1: number, col: THREE.Color, top: THREE.Color = col): void {
+  box(mb, f, s0, s1, t0, t1, z0, z1, col, top);
+  q(mb, f, [s0, t0, z0], [s1, t0, z0], [s1, t1, z0], [s0, t1, z0], [0, -1, 0], shade(HALL_LIGHT, 0.9));
+}
+
+/**
+ * Drapeau sur une hampe qui sort du mur (normale −t) en montant à 45°, penchée de côté (`side`) pour qu'on le voie de face : bandes verticales
+ * le long de la hampe (tricolore) ou fond bleu à couronne d'étoiles (Europe).
+ */
+function hallFlag(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, side: number, eu: boolean): void {
+  const dS = side * 0.6, dT = -0.8; // direction horizontale de la hampe dans le repère
+  const L = 2.6, thick = 0.035;
+  const pt = (d: number, zz: number, w = 0): [number, number, number] => [s + dS * d - dT * w, t + dT * d + dS * w, zz];
+  for (const k of [1, -1]) q(mb, f, pt(0, z, -thick), pt(0, z, thick), pt(L * 0.7, z + L * 0.7, thick), pt(L * 0.7, z + L * 0.7, -thick), N(f, -dS * k, -dT * k), FLAG_WHITE);
+  const fw = 1.35, fh = 0.9, n = N(f, dT, -dS), back = N(f, -dT, dS);
+  const stripes: [number, number, THREE.Color][] = eu ? [[0, 1, FLAG_EU]] : [[0, 1 / 3, FLAG_BLUE], [1 / 3, 2 / 3, FLAG_WHITE], [2 / 3, 1, FLAG_RED]];
+  for (const [a0, a1, col] of stripes) {
+    const d0 = 0.35 + a0 * fw, d1 = 0.35 + a1 * fw;
+    for (const nn of [n, back]) mb.quad(P(f, ...pt(d0, z + d0 * 0.7 - fh)), P(f, ...pt(d1, z + d1 * 0.7 - fh)), P(f, ...pt(d1, z + d1 * 0.7)), P(f, ...pt(d0, z + d0 * 0.7)), nn, col);
+  }
+  if (!eu) return;
+  // Douze étoiles en couronne (petits losanges), des deux côtés.
+  const dc = 0.35 + fw / 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (Math.PI * 2 * i) / 12, r = 0.27, e = 0.045;
+    const d = dc + Math.cos(a) * r, zc = z + dc * 0.7 - fh / 2 + Math.sin(a) * r + (d - dc) * 0.7;
+    for (const [nn, w] of [[n, -0.004], [back, 0.004]] as const) {
+      mb.quad(P(f, ...pt(d - e, zc, w)), P(f, ...pt(d, zc - e, w)), P(f, ...pt(d + e, zc, w)), P(f, ...pt(d, zc + e, w)), nn, FLAG_STAR);
+    }
+  }
+}
+
 /**
  * Hôtel de ville (D123) d'après photo et relevé LiDAR : corps principal sur la façade (corniche et toit à deux pans), pavillons en légère
  * saillie à toits raides tronqués (deux d'angle, un central), ailes basses autour de la cour (toit à deux pans sur la ligne médiane, croupes
@@ -491,6 +535,10 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     }
   }
 
+  // Portique, balcon, perron et drapeaux de l'avant-corps central (D125).
+  const cpv = centre[0];
+  if (m.portico && m.perron && cpv) portico(mb, glow, f, m, cpv, ground);
+
   // Toits. Corps principal : deux pans entre les pavillons d'angle (le bout est caché dans leur toit), faîtage au milieu.
   const slope = (m.ridge - m.eave) / (d / 2);
   const left = pavs.find((pv) => pv.left), right = pavs.find((pv) => pv.right);
@@ -516,6 +564,102 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     const mi: [number, number, number] = [M[i]![0], M[i]![1], m.wingRidge], mj: [number, number, number] = [M[j]![0], M[j]![1], m.wingRidge];
     if (i !== 0) pan(mb, f, [R[i]![0], R[i]![1], m.wingEave], [R[j]![0], R[j]![1], m.wingEave], mj, mi, roofColor);
     pan(mb, f, [H[i]![0], H[i]![1], m.wingEave], [H[j]![0], H[j]![1], m.wingEave], mj, mi, shade(roofColor, 0.96));
+  }
+}
+
+/**
+ * Portique, balcon et perron de l'hôtel de ville (D125), d'après la photo et les mesures : six colonnes (par paires aux bouts, une entre
+ * chaque porte) sous un entablement, balcon à balustrade, drapeaux tricolore et européen aux baies du balcon ; perron droit du palier au
+ * pied mesurés, entre deux murs d'échiffre pleins, deux rampes, piédestaux et lampadaires à deux lanternes au pied.
+ */
+function portico(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, cpv: { s0: number; s1: number }, ground: (s: number, t: number) => number): void {
+  const [tf0, zTop] = m.portico!;
+  const [ps0, ps1, tl, tfoot, zl] = m.perron!;
+  const wallT = -PROJ, tf = tf0 + 0.15, p = m.l / m.bays;
+  const zFloor = zTop - 1.0, zE = zFloor - 0.95, zBase = zl + 0.05;
+  const a0 = cpv.s0 + 0.35, a1 = cpv.s1 - 0.35;
+  const bays: number[] = [];
+  for (let i = 0; i < m.bays; i++) if ((i + 0.5) * p > cpv.s0 && (i + 0.5) * p < cpv.s1) bays.push((i + 0.5) * p);
+  // Entablement : architrave, frise, corniche ; dessous clair.
+  boxUnder(mb, f, a0, a1, tf, wallT, zE, zE + 0.35, HALL_TRIM);
+  boxUnder(mb, f, a0 + 0.05, a1 - 0.05, tf + 0.05, wallT, zE + 0.35, zFloor - 0.2, shade(HALL_STONE, 1.02));
+  boxUnder(mb, f, a0 - 0.15, a1 + 0.15, tf - 0.15, wallT, zFloor - 0.2, zFloor, HALL_TRIM);
+  // Colonnes : base, fût, chapiteau.
+  const ct = tf + 0.45;
+  const cols = [a0 + 0.45, a0 + 1.2, ...bays.slice(0, -1).map((b, i) => (b + bays[i + 1]!) / 2), a1 - 1.2, a1 - 0.45];
+  for (const cs of cols) {
+    box(mb, f, cs - 0.4, cs + 0.4, ct - 0.4, ct + 0.4, zBase, zBase + 0.4, HALL_TRIM);
+    column(mb, f, cs, ct, 0.29, zBase + 0.4, zE - 0.35, HALL_TRIM);
+    boxUnder(mb, f, cs - 0.42, cs + 0.42, ct - 0.42, ct + 0.42, zE - 0.35, zE, HALL_TRIM);
+  }
+  // Balustrade du balcon : plinthe, balustres, main courante, dés au-dessus des colonnes doubles.
+  const rail = (s0: number, s1: number, t0: number, t1: number): void => {
+    box(mb, f, s0, s1, t0, t1, zFloor, zFloor + 0.18, HALL_TRIM);
+    boxUnder(mb, f, s0, s1, t0, t1, zTop - 0.14, zTop, HALL_TRIM);
+    const alongS = s1 - s0 > t1 - t0;
+    const len = alongS ? s1 - s0 : t1 - t0, n = Math.max(1, Math.round(len / 0.32));
+    for (let i = 0; i < n; i++) {
+      const c = (alongS ? s0 : t0) + ((i + 0.5) * len) / n, mid = alongS ? (t0 + t1) / 2 : (s0 + s1) / 2;
+      const [bs, bt] = alongS ? [c, mid] : [mid, c];
+      box(mb, f, bs - 0.07, bs + 0.07, bt - 0.07, bt + 0.07, zFloor + 0.18, zTop - 0.14, HALL_TRIM);
+    }
+  };
+  rail(a0, a1, tf, tf + 0.28);
+  rail(a0, a0 + 0.28, tf + 0.28, wallT);
+  rail(a1 - 0.28, a1, tf + 0.28, wallT);
+  for (const cs of [a0 + 0.82, a1 - 0.82]) box(mb, f, cs - 0.55, cs + 0.55, tf, tf + 0.35, zFloor, zTop + 0.08, HALL_TRIM);
+  // Drapeaux aux baies du balcon : tricolore au centre, européen à droite.
+  const zFlag = m.g + m.levels[1] + 3.2;
+  if (bays.length >= 3) {
+    hallFlag(mb, f, bays[1]!, wallT - 0.05, zFlag, -1, false);
+    hallFlag(mb, f, bays[2]!, wallT - 0.05, zFlag, 1, true);
+  }
+
+  // Perron : marches régulières du palier au pied, posées 5 cm au-dessus du relief (qui reste la surface où l'on marche).
+  const sm = (ps0 + ps1) / 2;
+  const zFoot = ground(sm, tfoot);
+  const lift = 0.05;
+  const n = Math.max(1, Math.round((zl - zFoot) / 0.16)), rise = (zl - zFoot) / n, run = (tl - tfoot) / n;
+  q(mb, f, [ps0, tl, zl + lift], [ps1, tl, zl + lift], [ps1, wallT, zl + lift], [ps0, wallT, zl + lift], [0, 1, 0], TREAD);
+  for (let k = 0; k < n; k++) {
+    const t = tl - k * run, zt = zl - k * rise + lift, zb = k === n - 1 ? zFoot - 0.3 : zt - rise;
+    q(mb, f, [ps0, t, zb], [ps1, t, zb], [ps1, t, zt], [ps0, t, zt], N(f, 0, -1), RISER);
+    if (k < n - 1) q(mb, f, [ps0, t - run, zt - rise], [ps1, t - run, zt - rise], [ps1, t, zt - rise], [ps0, t, zt - rise], [0, 1, 0], TREAD);
+  }
+  // Murs d'échiffre pleins, du sol de la place au garde-corps (85 cm au-dessus des marches et du palier).
+  const zb = zFoot - 0.3, h = 0.85;
+  const line = (t: number): number => zFoot + ((t - tfoot) / (tl - tfoot)) * (zl - zFoot) + lift + h;
+  for (const [s0, s1] of [[ps0 - 0.45, ps0], [ps1, ps1 + 0.45]] as const) {
+    const prof: [number, number][] = [[tfoot, zb], [wallT, zb], [wallT, zl + lift + h], [tl, zl + lift + h], [tfoot, line(tfoot)]];
+    for (const [ss, dir] of [[s0, -1], [s1, 1]] as const) {
+      for (let i = 1; i + 1 < prof.length; i++) mb.tri(P(f, ss, ...prof[0]!), P(f, ss, ...prof[i]!), P(f, ss, ...prof[i + 1]!), N(f, dir, 0), shade(HALL_STONE, 0.95));
+    }
+    q(mb, f, [s0, tfoot, line(tfoot)], [s1, tfoot, line(tfoot)], [s1, tl, zl + lift + h], [s0, tl, zl + lift + h], upNormal(P(f, s0, tfoot, line(tfoot)), P(f, s1, tfoot, line(tfoot)), P(f, s1, tl, zl + lift + h)), HALL_TRIM);
+    q(mb, f, [s0, tl, zl + lift + h], [s1, tl, zl + lift + h], [s1, wallT, zl + lift + h], [s0, wallT, zl + lift + h], [0, 1, 0], HALL_TRIM);
+    q(mb, f, [s0, tfoot, zb], [s1, tfoot, zb], [s1, tfoot, line(tfoot)], [s0, tfoot, line(tfoot)], N(f, 0, -1), HALL_STONE);
+    // Piédestal et lampadaire à deux lanternes au pied de l'échiffre.
+    const cs = (s0 + s1) / 2, pt = tfoot + 0.25, zp = line(tfoot) + 0.45;
+    box(mb, f, cs - 0.4, cs + 0.4, pt - 0.4, pt + 0.4, zb, zp, HALL_STONE, HALL_TRIM);
+    box(mb, f, cs - 0.07, cs + 0.07, pt - 0.07, pt + 0.07, zp, zp + 3.0, IRON);
+    box(mb, f, cs - 0.55, cs + 0.55, pt - 0.04, pt + 0.04, zp + 2.75, zp + 2.83, IRON);
+    for (const ls of [cs - 0.5, cs + 0.5]) {
+      box(mb, f, ls - 0.16, ls + 0.16, pt - 0.16, pt + 0.16, zp + 2.83, zp + 3.33, C("#f3e6c0"), IRON);
+      for (const [dir, axisT] of [[-1, true], [1, true], [-1, false], [1, false]] as const) {
+        const o = 0.165;
+        if (axisT) q(glow, f, [ls - 0.13, pt + dir * o, zp + 2.86], [ls + 0.13, pt + dir * o, zp + 2.86], [ls + 0.13, pt + dir * o, zp + 3.3], [ls - 0.13, pt + dir * o, zp + 3.3], N(f, 0, dir), GLOW_HI);
+        else q(glow, f, [ls + dir * o, pt - 0.13, zp + 2.86], [ls + dir * o, pt + 0.13, zp + 2.86], [ls + dir * o, pt + 0.13, zp + 3.3], [ls + dir * o, pt - 0.13, zp + 3.3], N(f, dir, 0), GLOW_HI);
+      }
+    }
+  }
+  // Deux rampes en fer : poteaux tous les quatre marches, main courante qui suit la pente.
+  for (const rs of [ps0 + (ps1 - ps0) / 3, ps0 + (2 * (ps1 - ps0)) / 3]) {
+    for (let k = 0; k < n; k += 4) {
+      const t = tl - (k + 0.5) * run, zt = zl - (k + 1) * rise + lift;
+      box(mb, f, rs - 0.03, rs + 0.03, t - 0.03, t + 0.03, zt, zt + 0.9, IRON);
+    }
+    const r0: [number, number] = [tl - 0.5 * run, zl - rise + lift + 0.9], r1: [number, number] = [tfoot + 0.5 * run, zFoot + lift + 0.9];
+    for (const dir of [-1, 1]) q(mb, f, [rs + dir * 0.03, r1[0], r1[1]], [rs + dir * 0.03, r0[0], r0[1]], [rs + dir * 0.03, r0[0], r0[1] + 0.06], [rs + dir * 0.03, r1[0], r1[1] + 0.06], N(f, dir, 0), IRON);
+    q(mb, f, [rs - 0.03, r1[0], r1[1] + 0.06], [rs + 0.03, r1[0], r1[1] + 0.06], [rs + 0.03, r0[0], r0[1] + 0.06], [rs - 0.03, r0[0], r0[1] + 0.06], [0, 1, 0], IRON);
   }
 }
 

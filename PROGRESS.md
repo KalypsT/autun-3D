@@ -786,3 +786,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d124-mairie-detail-avant.jpg)
 ![Après](docs/captures/d124-mairie-detail-apres.jpg)
 ![De face](docs/captures/d124-mairie-face.jpg)
+
+**Bâtiments d'après photos, étape 5 : l'hôtel de ville, portique, balcon, drapeaux et perron (30 octobre 2026)** (D125)
+- Le talus en marches devant la mairie est devenu un vrai perron (palier et pied mesurés au LiDAR) : marches régulières, murs d'échiffre, deux rampes, lampadaires à deux lanternes allumés la nuit.
+- Portique à six colonnes devant les trois portes, balcon à balustrade, drapeaux tricolore et européen aux baies du balcon.
+- Le troisième drapeau de ta photo (rouge et bleu) n'est pas dessiné : dis-moi lequel c'est.
+- 722 tests.
+
+![Avant](docs/captures/d125-mairie-perron-avant.jpg)
+![Après](docs/captures/d125-mairie-perron-apres.jpg)
+![De face](docs/captures/d125-mairie-face.jpg)
+![La nuit](docs/captures/d125-mairie-nuit.jpg)

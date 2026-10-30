@@ -1673,3 +1673,25 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![Après](captures/d124-mairie-detail-apres.jpg)
 ![De face](captures/d124-mairie-face.jpg)
 ![Depuis le sud-ouest](captures/d124-mairie-angle.jpg)
+
+## 2026-10-30 — D125. Bâtiments d'après photos, étape 5 : l'hôtel de ville, portique, balcon, drapeaux et perron
+
+**D'après la photo de l'utilisateur** : portique de colonnes devant les trois portes cintrées de l'avant-corps central, balcon à balustrade au-dessus, drapeaux aux baies du balcon, perron droit à rampes entre deux murs d'échiffre, lampadaires à deux lanternes sur des piédestaux au pied.
+
+**Mesures** (`build_monuments.py`, même fenêtre LiDAR ; `perron` dans `monuments` de `manual.json` désigne l'escalier remplacé) : bord avant du balcon à 2 m de la façade (le modèle de surface y passe sous l'étage noble), haut de la balustrade à 12,2 m au-dessus de la place ; palier à 4,6 m (terrain sous le portique : le haut du soubassement), qui s'avance jusqu'à 2,25 m de la façade ; pied de la volée 9 m plus loin (terrain revenu à 10 cm du sol relevé 12 à 16 m devant, la place remonte de 30 cm devant le perron) ; volée de 11,25 m de large (terrain au quart de la hauteur, à mi-volée). Champs `portico`, `perron`, `stairs` du `hall` ; une deuxième passe ne change rien.
+
+**Rendu** (`portico`, `src/render/monuments.ts`) :
+- **Portique** : six colonnes octogonales (par paires aux bouts, une entre chaque porte) sur bases et sous chapiteaux carrés, entablement en trois assises (architrave, frise en pierre blonde, corniche), dessous clair.
+- **Balcon** : plinthe, balustres tous les 32 cm, main courante, dés au-dessus des colonnes doubles.
+- **Drapeaux** : tricolore à la baie du milieu, européen (fond bleu, couronne de douze étoiles) à droite, sur des hampes qui sortent du mur à 45° et penchent de côté pour être vus de face. La photo en montre un troisième, rouge et bleu, que l'utilisateur n'a pas encore identifié : il n'est pas dessiné.
+- **Perron** : marches régulières (26 de 16 cm, 35 cm de giron) du palier au pied mesurés, posées 5 cm au-dessus du relief ; murs d'échiffre pleins du sol de la place au garde-corps (85 cm au-dessus des marches) ; deux rampes en fer qui partagent la volée en trois ; piédestaux et lampadaires à deux lanternes, allumées la nuit. **L'ancien escalier sur le relief** (`stairs` « hotel-de-ville », D94, colonnes de 50 cm arrondies à la marche) n'est plus dessiné quand un monument le remplace ; la zone reste interdite aux voitures, et l'on marche toujours sur le relief (pente régulière, sous les marches de moins de 20 cm : test).
+- 4 896 triangles et 176 de lumières pour tout le monument.
+
+**Pas encore** : sculptures des baies du balcon, lucarnes et œils-de-bœuf, lucarne-fronton aux armes, cheminées, épis et paratonnerre (étape suivante) ; silhouette lointaine.
+
+![Avant](captures/d125-mairie-perron-avant.jpg)
+![Après](captures/d125-mairie-perron-apres.jpg)
+![Au pied du perron, avant](captures/d125-mairie-pied-avant.jpg)
+![Au pied du perron, après](captures/d125-mairie-pied-apres.jpg)
+![De face](captures/d125-mairie-face.jpg)
+![La nuit](captures/d125-mairie-nuit.jpg)

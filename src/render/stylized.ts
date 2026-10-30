@@ -433,7 +433,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   yield;
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
   yield;
-  if (!skip.includes("stairs")) buildStairs(detail, tile.stairs ?? [], terrain, C("#e6d9b8"), C("#bba98a"));
+  // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
+  const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));
+  if (!skip.includes("stairs")) buildStairs(detail, (tile.stairs ?? []).filter((z) => !perrons.has(z.id)), terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
   target();
   if (!skip.includes("furn")) buildFurniture(detail, tile.furniture, terrain, glow, halo);

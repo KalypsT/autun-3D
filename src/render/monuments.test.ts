@@ -47,6 +47,24 @@ describe("monuments (D95) : géométrie", () => {
       expect(pt0).toBeGreaterThan(0);
       expect(pt1).toBeLessThan(m.d);
     }
+    // Portique et perron (D125) : palier au niveau du haut du soubassement, volée devant le portique, aussi large que l'avant-corps central ;
+    // les marches (droite du palier au pied) restent au-dessus du relief, qui est la surface où l'on marche.
+    const [tf, zTop] = m.portico!;
+    const [ps0, ps1, tl, tfoot, zl] = m.perron!;
+    expect(Math.abs(zl - (m.g + m.levels[0]))).toBeLessThan(0.6);
+    expect(zTop - m.g).toBeGreaterThan(m.levels[1]);
+    expect(tl).toBeLessThan(tf);
+    expect(tfoot).toBeLessThan(tl - 5);
+    expect(ps1 - ps0).toBeGreaterThan(0.8 * (m.pav[1]![1] - m.pav[1]![0]));
+    const f = { c: Math.cos(m.a), s: Math.sin(m.a) };
+    const xy = (s: number, t: number): [number, number] => [m.o[0] + f.c * s - f.s * t, m.o[1] + f.s * s + f.c * t];
+    const zFoot = world.terrain.heightAt(...xy((ps0 + ps1) / 2, tfoot));
+    for (let t = tfoot + 0.5; t < tl; t += 0.5) {
+      for (const s of [ps0 + 0.5, (ps0 + ps1) / 2, ps1 - 0.5]) {
+        const line = zFoot + ((t - tfoot) / (tl - tfoot)) * (zl - zFoot);
+        expect(world.terrain.heightAt(...xy(s, t))).toBeLessThan(line + 0.2);
+      }
+    }
     const mb = new MeshBuilder(), glow = new MeshBuilder();
     buildTownHall(mb, glow, m, world.terrain, new THREE.Color("#2f4a63"));
     expect(mb.positions.every(Number.isFinite)).toBe(true);
