@@ -73,6 +73,8 @@ export class TouristTrain {
   private away = 0;
   /** Le conducteur est parti (train volé) : il revient avec le train sur son circuit. */
   private conductorGone = false;
+  /** Passagers qui viennent de descendre (le train est volé), à faire fuir par le jeu (`takeAlighting`). */
+  private alighting: { x: number; y: number; ux: number; uy: number }[] = [];
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -133,7 +135,28 @@ export class TouristTrain {
     this.poses.length = 0;
     this.scene.add(this.model.group);
     this.scene.remove(this.driver.group);
+    this.model.setPassengers(false);
     return v;
+  }
+
+  /** Passagers descendus depuis le dernier appel (train volé) : où ils sautent du wagon, et dans quelle direction. */
+  takeAlighting(): { x: number; y: number; ux: number; uy: number }[] {
+    const out = this.alighting;
+    this.alighting = [];
+    return out;
+  }
+
+  /** Les passagers descendent : ils disparaissent des bancs, et quelques-uns sautent des deux premiers wagons, de chaque côté (D119). */
+  private passengersOff(): void {
+    this.model.setPassengers(false);
+    for (let i = 1; i <= 2; i++) {
+      const p = this.poses[i];
+      if (!p) continue;
+      for (const side of [-1, 1]) {
+        const ux = side * Math.cos(p.heading), uy = -side * Math.sin(p.heading), off = TRAIN.cars[i]!.halfWidth + 0.5;
+        this.alighting.push({ x: p.x + ux * off, y: p.y + uy * off, ux, uy });
+      }
+    }
   }
 
   /** Position de la locomotive (diagnostic, captures). */
@@ -153,11 +176,13 @@ export class TouristTrain {
       this.stolen = true;
       this.conductorGone = true;
       this.scene.remove(this.driver.group);
+      this.passengersOff();
       this.updateStolen(dt, env);
       return;
     }
     if (this.loco?.ridden) {
-      // Le joueur vient de prendre la locomotive : les wagons partent de là où ils sont sur le circuit.
+      // Le joueur vient de prendre la locomotive : les wagons partent de là où ils sont sur le circuit ; les passagers descendent.
+      this.passengersOff();
       this.stolen = true;
       this.away = 0;
       this.updateStolen(dt, env);
@@ -227,6 +252,7 @@ export class TouristTrain {
     this.loco = null;
     this.stolen = false;
     this.conductorGone = false;
+    this.model.setPassengers(true);
     this.away = 0;
     this.sim.s = 0;
     this.sim.speed = 0;

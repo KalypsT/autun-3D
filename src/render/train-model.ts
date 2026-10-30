@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import type { CarPose, TrainCar } from "../core/tourist-train";
+import { recipeFromSeed } from "../core/character";
+import { solveRide, type RideAnchors } from "../core/character-pose";
+import { CharacterBatch } from "./crowd/character-batch";
+import { CrowdRigs } from "./crowd/crowd-common";
 import { blockLetters, carWheelGeometry } from "./car-body";
 import { box, marker, merge, paint, sharedMaterial, tube, type VehicleModel } from "./vehicle-model";
 
@@ -81,6 +85,56 @@ export function locoGeometry(c: TrainCar): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/** Bancs d'un wagon : quatre rangs tournés vers l'avant, trois places chacun ; z du milieu de chaque rang, x de chaque place, hauteur de l'assise. */
+export const BENCH = { rows: 4, seats: [-0.55, 0, 0.55] as const, seat: 0.45 } as const;
+
+function benchZ(c: TrainCar, k: number): number {
+  const half = c.wheelbase / 2 + c.overhang, pitch = (2 * half - 0.4) / BENCH.rows;
+  return -half + 0.2 + pitch * (k + 0.5);
+}
+
+/** Petit hachage entier (places occupées et apparences des passagers, reproductibles). */
+function hash(n: number): number {
+  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Part des places occupées. */
+const OCCUPANCY = 0.55;
+
+/**
+ * Passagers d'un wagon (D119) : des touristes assis sur les bancs, à peu près une place sur deux, tirés de `seed`. Leur pose ne change pas :
+ * elle est calculée une fois, dans le repère du wagon, et le lot (un appel de dessin) suit le wagon. Null : aucune place prise.
+ */
+export function passengerBatch(c: TrainCar, seed: number): CharacterBatch | null {
+  const floor = TRAIN_BODY.wagon.floor, places: { x: number; z: number; recipe: number }[] = [];
+  for (let k = 0; k < BENCH.rows; k++) {
+    BENCH.seats.forEach((x, j) => {
+      const h = hash(seed * 31 + k * 7 + j);
+      if (h % 1000 < OCCUPANCY * 1000) places.push({ x, z: benchZ(c, k), recipe: h });
+    });
+  }
+  if (places.length === 0) return null;
+  const rigs = new CrowdRigs(places.map((p) => recipeFromSeed(p.recipe)));
+  const batch = new CharacterBatch(0, places.length);
+  batch.mesh.castShadow = true;
+  places.forEach((p, i) => {
+    const y = floor + BENCH.seat;
+    // Assis au fond du banc, pieds à plat devant, mains sur les cuisses ; tournés vers l'avant (−z).
+    const anchors: RideAnchors = {
+      seat: [p.x, y, p.z + 0.02],
+      grips: [[p.x - 0.16, y + 0.17, p.z - 0.2], [p.x + 0.16, y + 0.17, p.z - 0.2]],
+      feet: [[p.x - 0.12, floor + 0.03, p.z - 0.42], [p.x + 0.12, floor + 0.03, p.z - 0.42]],
+    };
+    solveRide(rigs.render, rigs.world, rigs.offsets[i]!, rigs.scales[i]!, rigs.dims[i]!, "seat", anchors, rigs.pose);
+    batch.push(rigs.render, rigs.colors[i]!, rigs.masks[i]!);
+  });
+  batch.flush();
+  return batch;
+}
+
 /** Caisse d'un wagon (sans roues) : plancher, murets crème filetés de vert, quatre bancs, montants dorés, toit vert à lambrequin. */
 export function wagonGeometry(c: TrainCar): THREE.BufferGeometry {
   const half = c.wheelbase / 2 + c.overhang, w = c.halfWidth, b = TRAIN_BODY.wagon, parts: THREE.BufferGeometry[] = [];
@@ -96,9 +150,8 @@ export function wagonGeometry(c: TrainCar): THREE.BufferGeometry {
   }
   for (const z of [-half + 0.025, half - 0.025]) parts.push(box(2 * w, sill - b.floor, 0.05, 0, (sill + b.floor) / 2, z, CREAM));
   // Bancs tournés vers l'avant : assise et dossier.
-  const rows = 4, pitch = (2 * half - 0.4) / rows;
-  for (let k = 0; k < rows; k++) {
-    const z = -half + 0.2 + pitch * (k + 0.5);
+  for (let k = 0; k < BENCH.rows; k++) {
+    const z = benchZ(c, k);
     parts.push(box(2 * w - 0.2, 0.06, 0.42, 0, b.floor + 0.42, z - 0.05, WOOD), box(2 * w - 0.2, 0.42, 0.05, 0, b.floor + 0.66, z + 0.18, WOOD));
     parts.push(box(2 * w - 0.3, 0.4, 0.06, 0, b.floor + 0.21, z - 0.05, BLACK));
   }
@@ -119,6 +172,7 @@ export class TrainModel {
   readonly group = new THREE.Group();
   private readonly cars: { root: THREE.Group; wheels: THREE.Mesh[]; radius: number; wheelbase: number }[] = [];
   private readonly geometries: THREE.BufferGeometry[] = [];
+  private readonly passengers: CharacterBatch[] = [];
 
   constructor(cars: readonly TrainCar[]) {
     const mat = sharedMaterial();
@@ -139,6 +193,13 @@ export class TrainModel {
       const body = new THREE.Mesh(geo, mat);
       body.castShadow = body.receiveShadow = true;
       root.add(body);
+      if (c.kind === "wagon") {
+        const p = passengerBatch(c, this.cars.length + 1);
+        if (p) {
+          root.add(p.mesh);
+          this.passengers.push(p);
+        }
+      }
       const wheels: THREE.Mesh[] = [];
       for (const z of [-c.wheelbase / 2, c.wheelbase / 2]) {
         for (const s of [-1, 1]) {
@@ -166,8 +227,14 @@ export class TrainModel {
     });
   }
 
+  /** Les passagers sont-ils à bord ? (Ils descendent quand on vole le train.) */
+  setPassengers(on: boolean): void {
+    for (const p of this.passengers) p.mesh.visible = on && p.count > 0;
+  }
+
   dispose(): void {
     for (const g of this.geometries) g.dispose();
+    for (const p of this.passengers) p.dispose();
   }
 }
 

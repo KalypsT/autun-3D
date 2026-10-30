@@ -1569,3 +1569,13 @@ Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1
 
 **Pas encore** : passagers ; son propre (cloche) ; une épave noircie (la locomotive détruite garde ses couleurs).
 
+## 2026-10-30 — D119. Le petit train : des passagers
+
+**Demande de l'utilisateur** : des passagers dans les wagons, si ce n'est pas trop complexe.
+
+**Passagers** (`passengerBatch`, `src/render/train-model.ts`) : des touristes **assis sur les bancs**, tournés vers l'avant, **à peu près une place sur deux** (12 places par wagon : quatre rangs de trois), apparences tirées au hasard mais fixes pour chaque place. Ce sont des personnages de la même fabrique que les passants, dans la pose « assis » des deux-roues (bassin sur l'assise, pieds à plat devant, mains sur les cuisses). Comme ils ne bougent pas, leur pose est **calculée une seule fois**, dans le repère du wagon : un lot de personnages par wagon (un appel de dessin), que le wagon emporte avec lui. Coût : trois appels de dessin, aucun calcul par image.
+
+**Vol du train** : les passagers **descendent** (ils disparaissent des bancs) et quatre d'entre eux sautent des deux premiers wagons, de chaque côté, et **s'enfuient** loin de la locomotive (comme le conducteur). Revenu sur son circuit, le train repart avec ses passagers.
+
+**Essais** : `?at=53.5,-42.8&yaw=-2.4&h=12&dist=2.5` (de près, au départ) ; vérifié en jeu : passagers à bord, puis plus personne après le vol. 1 essai de plus (places prises : environ la moitié, toujours les mêmes, différentes d'un wagon à l'autre). 720 tests.
+

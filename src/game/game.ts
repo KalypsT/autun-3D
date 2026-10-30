@@ -445,6 +445,9 @@ export function startGame(ctx: GameContext): void {
       cars: trainCars, peds: peds as PedsController | null, parked: trainParked, road: (nav as NavManager | null)?.graph.road ?? null, signals: signals as Signals | null,
     });
     t?.setExtra(train.visible ? train.seenByTraffic : []);
+    // Train volé (D119) : des passagers sautent des wagons et s'enfuient loin de la locomotive.
+    const off = train.takeAlighting();
+    off.forEach((a, i) => (peds as PedsController | null)?.eject(a.x, a.y, 7001 + i, a.ux, a.uy, 1.2, at.x, at.y));
   };
   /** Les voitures que voient les passants, et le train quand il est là. */
   const withTrain = (bodies: readonly TrafficBody[]): readonly TrafficBody[] => (train.visible ? [...bodies, ...train.seenByPeds] : bodies);

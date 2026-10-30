@@ -730,3 +730,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le train volé, au départ](docs/captures/d118-train-vole.jpg)
 ![Aux commandes sur le Champ de Mars](docs/captures/d118-train-conduit.jpg)
 
+**Petit train : des passagers (30 octobre 2026)** (D119)
+- Les wagons portent des touristes assis sur les bancs, environ une place sur deux, tous différents.
+- Quand on vole le train, ils descendent et quelques-uns s'enfuient en courant. Revenu sur son circuit, le train repart avec ses passagers.
+- 720 tests.
+
+![Les passagers](docs/captures/d119-passagers.jpg)
+![Le train complet au départ](docs/captures/d119-train-complet.jpg)
+
