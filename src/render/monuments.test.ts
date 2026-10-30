@@ -112,6 +112,10 @@ describe("monuments (D95) : géométrie", () => {
     expect(m.turret[0]).toBeGreaterThan(m.transept[1] - 1);
     expect(m.turret[3]).toBeGreaterThan(m.block[1] + 5);
     expect(m.turret[3]).toBeLessThan(m.transept[5]);
+    // Flèche (D129) : pied presque aussi large que la tour, clochetons au-dessus de la tour.
+    expect(m.tower[4]).toBeGreaterThan(m.tower[1] * 0.3);
+    expect(m.tower[4]).toBeLessThan(m.tower[1] * 0.55);
+    expect(m.spire[0]).toBeGreaterThan(m.tower[2] + 3);
     const mb = new MeshBuilder();
     buildSaintLazare(mb, m, world.terrain);
     expect(mb.positions.every(Number.isFinite)).toBe(true);

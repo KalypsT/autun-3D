@@ -289,6 +289,14 @@ function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z
   }
 }
 
+/** Ouverture rectangulaire sur le mur de a à b (normale sortante à droite de a → b), centrée à `u` mètres de a, de z0 à z1. */
+function rectOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.03): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+  const p = (v: number, z: number): [number, number, number] => [a[0] + ds * (u + v) + dt * off, a[1] + dt * (u + v) - ds * off, z];
+  q(mb, f, p(-w / 2, z0), p(w / 2, z0), p(w / 2, z1), p(-w / 2, z1), N(f, dt, -ds), col);
+}
+
 /** Appentis de s0 à s1, du mur haut en tIn (haut zIn) au mur bas en tOut (haut zOut), débord `ov` côté bas. */
 function leanTo(mb: MeshBuilder, f: Frame, s0: number, s1: number, tIn: number, tOut: number, zIn: number, zOut: number, ov: number, col: THREE.Color): void {
   const d = Math.sign(tOut - tIn), k = (zOut - zIn) / Math.abs(tOut - tIn);
@@ -361,7 +369,8 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   const [, tr0, nA, nB, ne, nr] = m.nave;
   const [, tr1, tW, tE, te, trr] = m.transept;
   const [blk, be, bt] = m.block;
-  const [sx, side, body, tip] = m.tower;
+  const [sx, side, body, tip, sr] = m.tower;
+  const [pin, gh] = m.spire;
   const [sc, cA, cB, ce, cr] = m.choir;
   const [r, ae, faces] = m.apse;
   const OV = 0.35;
@@ -431,14 +440,59 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   box(mb, f, us - uw / 2 - 0.15, us + uw / 2 + 0.15, ut - uw / 2 - 0.15, ut + uw / 2 + 0.15, uz - 0.4, uz, shade(wall, 1.06));
   hipRoof(mb, f, us - uw / 2 - 0.15, us + uw / 2 + 0.15, ut - uw / 2 - 0.15, ut + uw / 2 + 0.15, uz, utop, TILE_BROWN, glazedPan(4, 2));
   archOn(mb, f, [us + uw / 2, ut - uw / 2], [us + uw / 2, ut + uw / 2], uw / 2, 0.5, uz - 3.2, uz - 1, BAY, 0.04, true);
-  // Tour de croisée : corps carré, deux baies jumelles par face, corniche, flèche octogonale et clochetons d'angle.
-  const h = side / 2, c0 = m.t0;
-  box(mb, f, sx - h, sx + h, c0 - h, c0 + h, Math.min(ne, te) - 1, body, shade(wall, 0.97), shade(wall, 0.85));
+  // Tour de croisée (D129) : contreforts d'angle, par face deux baies jumelles en arc brisé sous un arc de décharge, corniche, balustrade
+  // ajourée ; flèche octogonale (rayon mesuré), gâbles ajourés au pied des faces tournées vers la nef, le chœur et les bras, crochets sur
+  // les arêtes, clochetons d'angle (photo), croix.
+  const h = side / 2, c0 = m.t0, zt = Math.min(ne, te);
+  box(mb, f, sx - h, sx + h, c0 - h, c0 + h, zt - 1, body, shade(wall, 0.97), shade(wall, 0.85));
+  for (const ks of [-1, 1]) for (const kt of [-1, 1]) {
+    buttress(mb, f, m.a, sx + ks * h, c0 + kt * (h - 0.8), ks > 0 ? 0 : Math.PI, zt, body - 3);
+    buttress(mb, f, m.a, sx + ks * (h - 0.8), c0 + kt * h, kt > 0 ? Math.PI / 2 : -Math.PI / 2, zt, body - 3);
+  }
   const tFaces: [Pt, Pt][] = [[[sx - h, c0 + h], [sx - h, c0 - h]], [[sx + h, c0 - h], [sx + h, c0 + h]], [[sx - h, c0 - h], [sx + h, c0 - h]], [[sx + h, c0 + h], [sx - h, c0 + h]]];
-  for (const [a, b] of tFaces) for (const u of [h - 1.6, h + 1.6]) archOn(mb, f, a, b, u, 1.6, body - 10, body - 1.8, BAY);
-  box(mb, f, sx - h - 0.4, sx + h + 0.4, c0 - h - 0.4, c0 + h + 0.4, body - 0.7, body, shade(wall, 1.06));
-  spire(mb, f, sx, c0, h * 0.84, body, tip, 8, SPIRE_STONE);
-  for (const ks of [-1, 1]) for (const kt of [-1, 1]) spire(mb, f, sx + ks * (h - 0.7), c0 + kt * (h - 0.7), 0.9, body, body + 9, 4, SPIRE_STONE);
+  for (const [a, b] of tFaces) {
+    archOn(mb, f, a, b, h, 4.6, body - 11.5, body - 1.6, shade(wall, 0.84), 0.04, true);
+    for (const u of [h - 1.15, h + 1.15]) archOn(mb, f, a, b, u, 1.4, body - 10.8, body - 4.2, BAY, 0.07, true);
+  }
+  const hp = h + 0.4;
+  box(mb, f, sx - hp, sx + hp, c0 - hp, c0 + hp, body - 0.7, body, shade(wall, 1.06));
+  const pFaces: [Pt, Pt][] = [[[sx - hp, c0 + hp], [sx - hp, c0 - hp]], [[sx + hp, c0 - hp], [sx + hp, c0 + hp]], [[sx - hp, c0 - hp], [sx + hp, c0 - hp]], [[sx + hp, c0 + hp], [sx - hp, c0 + hp]]];
+  for (const [a, b] of pFaces) {
+    wallST(mb, f, a, b, body + 1.1, body + 1.1, () => body, shade(wall, 1.06));
+    wallST(mb, f, b, a, body + 1.1, body + 1.1, () => body, shade(wall, 0.9));
+    const n = Math.floor((2 * hp - 0.4) / 0.6);
+    for (let i = 0; i < n; i++) rectOn(mb, f, a, b, 0.2 + 0.6 * (i + 0.5) + (2 * hp - 0.4 - 0.6 * n) / 2, 0.32, body + 0.25, body + 0.85, BAY);
+  }
+  const zs = tip - 1.5;
+  spire(mb, f, sx, c0, sr, body, zs, 8, SPIRE_STONE);
+  const rAt = (z: number): number => sr * (1 - (z - body) / (zs - body));
+  for (let i = 0; i < 8; i++) {
+    const a = Math.PI / 8 + (Math.PI * i) / 4, ca = Math.cos(a), sa = Math.sin(a);
+    for (let z = body + gh + 1; z < zs - 4; z += 2.8) {
+      const r0 = rAt(z), r1 = rAt(z + 0.9);
+      const e0 = P(f, sx + ca * r0, c0 + sa * r0, z), e1 = P(f, sx + ca * r1, c0 + sa * r1, z + 0.9);
+      const o = P(f, sx + ca * (r0 + 0.55), c0 + sa * (r0 + 0.55), z + 0.35);
+      for (const k of [1, -1]) mb.tri(e0, e1, o, N(f, -sa * k, ca * k), shade(SPIRE_STONE, 0.95));
+    }
+  }
+  for (const phi of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const dc = Math.cos(phi), ds = Math.sin(phi), ap = sr * Math.cos(Math.PI / 8) + 0.1, hw = sr * Math.sin(Math.PI / 8);
+    const L: Pt = [sx + dc * ap + ds * hw, c0 + ds * ap - dc * hw], R: Pt = [sx + dc * ap - ds * hw, c0 + ds * ap + dc * hw];
+    const A: [number, number, number] = [sx + dc * ap, c0 + ds * ap, body + gh];
+    const ai = rAt(body + gh) * Math.cos(Math.PI / 8);
+    const I: [number, number, number] = [sx + dc * ai, c0 + ds * ai, body + gh];
+    mb.tri(P(f, ...L, body), P(f, ...R, body), P(f, ...A), N(f, dc, ds), shade(SPIRE_STONE, 1.08));
+    pan(mb, f, [...L, body], A, I, null, shade(SPIRE_STONE, 0.9));
+    pan(mb, f, [...R, body], A, I, null, shade(SPIRE_STONE, 0.9));
+    archOn(mb, f, L, R, hw, hw * 0.75, body + 0.6, body + gh * 0.62, BAY, 0.03, true);
+  }
+  for (const ks of [-1, 1]) for (const kt of [-1, 1]) {
+    const ps = sx + ks * (h - 0.2), pt_ = c0 + kt * (h - 0.2), zp = body + (pin - body) * 0.4;
+    box(mb, f, ps - 0.5, ps + 0.5, pt_ - 0.5, pt_ + 0.5, body, zp, SPIRE_STONE);
+    spire(mb, f, ps, pt_, 0.75, zp, pin, 4, SPIRE_STONE);
+  }
+  box(mb, f, sx - 0.1, sx + 0.1, c0 - 0.1, c0 + 0.1, zs - 0.5, tip, IRON);
+  box(mb, f, sx - 0.06, sx + 0.06, c0 - 0.55, c0 + 0.55, tip - 0.65, tip - 0.45, IRON);
   // Chœur, bas-côtés du chœur, abside polygonale à grandes baies (corniche mesurée, plus haute que celle du chœur).
   prismST(mb, f, rectST(tr1, sc, cA, cB), flat(ce), ground, wall);
   gable(mb, f, tr1, sc, cA - OV, cB + OV, ce - 0.25, cr, TILE_BROWN, wall);

@@ -289,6 +289,13 @@ def measure_cathedral(bid, b, spec, mon):
     ring_s = [H(s, t) for t in rng(t0 - side / 2 + 0.5, t0 + side / 2 - 0.5) for s in (sx - side / 2 + 0.75, sx + side / 2 - 0.75)]
     body = med(ring_t + ring_s)
     tip = max(H(s, t) for s in rng(sx - 2, sx + 2) for t in rng(t0 - 2, t0 + 2))
+    # Flèche (D129) : rayon de l'octogone de même aire que les cellules au-dessus de z, droite en z entre 8 m au-dessus de la tour et 6 m
+    # sous la pointe (au-dessous, gâbles et clochetons l'élargissent), ramenée au haut de la tour.
+    spire_cells = [H(s, t) for s in rng(sx - 9, sx + 9) for t in rng(t0 - 9, t0 + 9)]
+    zs = np.arange(body + 8, tip - 6, 1.0)
+    radii = [math.sqrt(sum(z_ > z for z_ in spire_cells) * 0.25 / (2 * math.sqrt(2))) for z in zs]
+    kr, r0 = np.polyfit(zs, radii, 1)
+    spire_r = float(kr * body + r0)
     # Chœur et abside : coupe derrière la croisée ; abside en demi-polygone de rayon la demi-largeur, au bout de l'emprise (le toit déborde
     # au-delà) ; corniche de l'abside = toit relevé à 75 cm du mur, sur l'axe.
     cc = section(tr1 + 1, tr1 + 7)
@@ -327,7 +334,8 @@ def measure_cathedral(bid, b, spec, mon):
         "aisles": aisles, "chapels": chapels,
         "transept": [r2(tr0), r2(tr1), r2(tW), r2(tE), r2(g + te), r2(g + t_ridge)],
         "block": [r2(blk), r2(g + blk_eave), r2(g + blk_top)],
-        "tower": [r2(sx), r2(side), r2(g + body), r2(g + tip)],
+        "tower": [r2(sx), r2(side), r2(g + body), r2(g + tip), r2(spire_r)],
+        "spire": [r2(g + body + spec["spire"]["pinnacles"]), spec["spire"]["gables"]],
         "choir": [r2(sc), r2(cA), r2(cB), r2(g + ce), r2(g + cr)],
         "choirAisles": choir_aisles,
         "apse": [r2(r), r2(g + ae), spec["apse"]],
@@ -384,7 +392,7 @@ def cathedral(tid, bid, b, spec, k):
     e = dict(k["buildings"][bid])
     cath = measure_cathedral(bid, b, spec, e["mon"])
     e["cath"] = cath
-    sx, side, body, tip = cath["tower"]
+    sx, side, body, tip, _ = cath["tower"]
     ca, sa = math.cos(cath["a"]), math.sin(cath["a"])
     t0 = cath["t0"]
     e["tower"] = [round(cath["c"][0] + ca * sx - sa * t0, 2), round(cath["c"][1] + sa * sx + ca * t0, 2), side, body, tip]
@@ -416,7 +424,7 @@ def lod_cathedral(tid, bid, m):
     n0, n1, nA, nB, ne, nr = m["nave"]
     tr0, tr1, tW, tE, te, trr = m["transept"]
     blk, be, bt = m["block"]
-    sx, side, body, _ = m["tower"]
+    sx, side, body, *_ = m["tower"]
     sc, cA, cB, ce, cr = m["choir"]
     r, ae, _ = m["apse"]
     c0 = m["t0"]

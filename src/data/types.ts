@@ -231,8 +231,10 @@ export interface CathedralModel {
   transept: [number, number, number, number, number, number];
   /** Bloc carré au bout du bras ouest : t du mur qui le sépare du bras, égout, pointe du toit. */
   block: [number, number, number];
-  /** Tour de croisée : s du centre, côté, haut du corps, pointe de la flèche. */
-  tower: [number, number, number, number];
+  /** Tour de croisée : s du centre, côté, haut du corps, pointe de la flèche, rayon de la flèche au pied (D129). */
+  tower: [number, number, number, number, number];
+  /** Flèche (D129) : haut des clochetons d'angle (altitude), hauteur des gâbles au pied de la flèche (photo). */
+  spire: [number, number];
   /** Chœur : s du centre de l'abside, t0, t1, égout, faîtage. */
   choir: [number, number, number, number, number];
   /** Bas-côtés du chœur, comme `aisles`. */

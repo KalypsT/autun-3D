@@ -831,3 +831,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d128-chevet-avant.jpg)
 ![Après](docs/captures/d128-chevet-apres.jpg)
 ![Depuis le sud-ouest](docs/captures/d128-chevet-ouest-apres.jpg)
+
+**Bâtiments d'après photos, étape 9 : la cathédrale, tour de croisée et flèche (30 octobre 2026)** (D129)
+- La tour de croisée a ses contreforts, ses baies jumelles en arc brisé et sa balustrade ajourée ; la flèche a sa vraie largeur au pied (mesurée au LiDAR), ses crochets sur les arêtes, ses gâbles, ses clochetons d'angle et sa croix.
+- Les clochetons et les gâbles sont trop fins pour le relevé : leur hauteur vient de ta photo.
+- 724 tests.
+- Suite : les flancs et le porche.
+
+![Avant](docs/captures/d129-fleche-avant.jpg)
+![Après](docs/captures/d129-fleche-apres.jpg)
+![Depuis le sud-est](docs/captures/d129-tour-apres.jpg)

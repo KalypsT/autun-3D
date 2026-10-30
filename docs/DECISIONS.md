@@ -1762,3 +1762,18 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Depuis le sud-ouest, avant](captures/d128-chevet-ouest-avant.jpg)
 ![Depuis le sud-ouest, après](captures/d128-chevet-ouest-apres.jpg)
 ![Vue haute du chevet](captures/d128-chevet-haut.jpg)
+
+## 2026-10-30 — D129. Bâtiments d'après photos, étape 9 : la cathédrale, tour de croisée et flèche
+
+**D'après les photos de l'utilisateur** (chevet au sol depuis le sud-est, drone) : tour carrée à contreforts d'angle, deux hautes baies jumelles en arc brisé par face, galerie à balustrade ajourée ; flèche octogonale de pierre grise à crochets sur les arêtes, gâbles ajourés au pied des faces, grands clochetons aux angles de la tour, croix.
+
+**Mesures** (`build_monuments.py`) : **rayon de la flèche au pied**, 5,4 m (octogone presque aussi large que la tour de 12,5 m) : pour chaque altitude, rayon de l'octogone de même aire que les cellules du modèle de surface plus hautes ; droite en altitude entre 8 m au-dessus de la tour et 6 m sous la pointe (plus bas, gâbles et clochetons élargissent la coupe), ramenée au haut de la tour. Les **clochetons et les gâbles** sont trop fins pour le relevé à 0,5 m : un seul angle de la tour monte à 9,5 m au-dessus de la galerie, les trois autres à 4-5 m, et les gâbles ne se distinguent pas du cône de la flèche ; hauteurs d'après la photo (clochetons à 9 m au-dessus de la tour, ce que confirme l'angle mesuré ; gâbles de 6 m), dans `spire` de `manual.json`. Champs `tower` (rayon ajouté) et `spire` de `cath` ; une deuxième passe ne change rien.
+
+**Rendu** (`src/render/monuments.ts`) : deux contreforts à glacis à chaque angle de la tour, au-dessus des toits ; par face, un arc de décharge en retrait et deux baies en arc brisé ; corniche et balustrade (parapet de 1,1 m percé de jours tous les 60 cm, `rectOn`) ; flèche au rayon mesuré, crochets tous les 2,8 m sur les huit arêtes (ailettes vues des deux côtés) ; quatre gâbles au pied des faces tournées vers la nef, le chœur et les bras, avec leur petit toit qui rejoint la flèche et une lucarne en arc brisé ; clochetons d'angle (fût carré et pyramide) ; croix en fer. 3 299 triangles pour toute la cathédrale.
+
+**Pas encore** : les flancs (chapelles gothiques, fenêtres en arc brisé, pinacles et balustrade) et le porche (marches, portail, tours), étape 4.
+
+![Avant](captures/d129-fleche-avant.jpg)
+![Après](captures/d129-fleche-apres.jpg)
+![Depuis le sud-est, avant](captures/d129-tour-avant.jpg)
+![Depuis le sud-est, après](captures/d129-tour-apres.jpg)
