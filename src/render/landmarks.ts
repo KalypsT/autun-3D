@@ -60,7 +60,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden");
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart");
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -374,6 +374,79 @@ function canopy(sinks: LandmarkSinks, b: Building, color: string, terrain: Heigh
     sinks.solid.tri(toThree(a[0], a[1], z0), toThree(bb[0], bb[1], z0), toThree(c[0], c[1], z0), [0, -1, 0], C("#fbf7ee"));
   }
   if (!site) for (const [x, y] of pts) block(sinks.solid, x, y, 1, 0, 0.12, 0.12, terrain.heightAt(x, y), z0, C("#d8d8d2"));
+}
+
+// --- Abris à chariots (D121) ----------------------------------------------------------------------------------------------------
+
+const STEEL = C("#3a4043");
+const SHELTER_ROOF = C("#c3cdd0");
+const HAZARD = [C("#f2c230"), C("#222222")];
+const TROLLEY = C("#2a4a9a");
+
+/**
+ * Abri à chariots d'après photo (E.Leclerc) : cadre d'acier anthracite (poteaux, lisses haute et basse), toit plat clair, un petit côté
+ * ouvert avec bandeau jaune et noir, une rangée de chariots bleus emboîtés. Pas de vitres pleines : le verre clair laisse voir les chariots.
+ */
+function cartShelter(mb: MeshBuilder, b: Building, kind: BuildingKind, terrain: HeightField): void {
+  // Rectangle orienté : le plus long côté du contour donne l'axe, l'étendue des sommets les dimensions.
+  const n = b.ring.length / 2;
+  let ux = 1, uy = 0, best = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const dx = b.ring[2 * j]! - b.ring[2 * i]!, dy = b.ring[2 * j + 1]! - b.ring[2 * i + 1]!;
+    const l = Math.hypot(dx, dy);
+    if (l > best) [best, ux, uy] = [l, dx / l, dy / l];
+  }
+  const vx = -uy, vy = ux;
+  let s0 = Infinity, s1 = -Infinity, t0 = Infinity, t1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = b.ring[2 * i]!, y = b.ring[2 * i + 1]!;
+    const s = x * ux + y * uy, t = x * vx + y * vy;
+    s0 = Math.min(s0, s); s1 = Math.max(s1, s); t0 = Math.min(t0, t); t1 = Math.max(t1, t);
+  }
+  const sm = (s0 + s1) / 2, tm = (t0 + t1) / 2;
+  const cx = ux * sm + vx * tm, cy = uy * sm + vy * tm;
+  const hl = (s1 - s0) / 2, hw = (t1 - t0) / 2;
+  // Le côté ouvert est vers `open` : on retourne l'axe pour qu'il soit en +hl.
+  if (kind.open && kind.open[0] * ux + kind.open[1] * uy < sm) [ux, uy] = [-ux, -uy];
+  const vx2 = -uy, vy2 = ux;
+  const at = (s: number, t: number): [number, number] => [cx + ux * s + vx2 * t, cy + uy * s + vy2 * t];
+  const z = terrain.heightAt(cx, cy), H = 2.3;
+  const post = (s: number, t: number): void => {
+    const [x, y] = at(s, t);
+    block(mb, x, y, ux, uy, 0.05, 0.05, terrain.heightAt(x, y) - 0.1, z + H, STEEL);
+  };
+  // Poteaux aux coins et tous les 2,8 m au plus le long des grands côtés.
+  const bays = Math.max(1, Math.round((2 * hl) / 2.8));
+  for (let i = 0; i <= bays; i++) for (const t of [-hw, hw]) post(-hl + (2 * hl * i) / bays, t);
+  // Lisses hautes tout autour, lisses basses sur les côtés fermés (grands côtés et fond).
+  for (const t of [-hw, hw]) {
+    const [x, y] = at(0, t);
+    block(mb, x, y, ux, uy, hl, 0.04, z + H - 0.14, z + H, STEEL);
+    block(mb, x, y, ux, uy, hl, 0.03, z + 0.25, z + 0.33, STEEL);
+    block(mb, x, y, ux, uy, hl, 0.02, z + 1.1, z + 1.15, STEEL);
+  }
+  const [bx, by] = at(-hl, 0);
+  block(mb, bx, by, vx2, vy2, hw, 0.04, z + H - 0.14, z + H, STEEL);
+  block(mb, bx, by, vx2, vy2, hw, 0.03, z + 0.25, z + 0.33, STEEL);
+  // Bandeau jaune et noir au-dessus du côté ouvert.
+  const stripes = Math.max(4, Math.round((2 * hw) / 0.3));
+  for (let i = 0; i < stripes; i++) {
+    const [x, y] = at(hl + 0.03, -hw + (2 * hw * (i + 0.5)) / stripes);
+    block(mb, x, y, vx2, vy2, hw / stripes, 0.03, z + H - 0.3, z + H - 0.06, HAZARD[i % 2]!);
+  }
+  // Toit plat, débordant de 10 cm.
+  const [rx, ry] = at(0, 0);
+  block(mb, rx, ry, ux, uy, hl + 0.1, hw + 0.1, z + H, z + H + 0.06, SHELTER_ROOF);
+  // Chariots emboîtés depuis le fond, sur les deux tiers de la longueur.
+  const count = Math.floor((2 * hl * 0.66 - 0.9) / 0.32) + 1;
+  for (let i = 0; i < count; i++) {
+    const [x, y] = at(-hl + 0.55 + i * 0.32, 0);
+    const zz = terrain.heightAt(x, y);
+    block(mb, x, y, ux, uy, 0.45, 0.27, zz + 0.38, zz + 0.95, TROLLEY);
+    const [hx, hy] = at(-hl + 0.55 + i * 0.32 + 0.5, 0);
+    block(mb, hx, hy, ux, uy, 0.03, 0.27, zz + 0.95, zz + 1.0, C("#c9302c"));
+  }
 }
 
 // --- Services publics : inscription, drapeaux, horloge ------------------------------------------------------------------------------
@@ -737,6 +810,7 @@ export function buildLandmarks(
       }
       case "church": case "chapel": church(sinks, b, kind, segs, terrain, wall); break;
       case "hidden": break;
+      case "cart": cartShelter(sinks.solid, b, kind, terrain); break;
       default: civic(sinks, kind, fiche, segs, terrain); break;
     }
   }

@@ -1603,3 +1603,18 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 
 ![Avenue Charles-de-Gaulle, avant](captures/d120-cic-avant.jpg)
 ![Avenue Charles-de-Gaulle, après : le CIC côté avenue](captures/d120-cic-apres.jpg)
+
+## 2026-10-30 — D121. Bâtiments d'après photos, étape 1 : les abris à chariots
+
+**Demande de l'utilisateur** : améliorer des bâtiments d'après ses photos, en commençant par E.Leclerc. Photos fournies (captures Google Street View, non versionnées : elles servent seulement à décrire) : l'entrée nord, un abri à chariots, le côté est (2018). Ordre convenu : abris à chariots, puis l'entrée de Leclerc, puis son volume (toits à deux pentes du LiDAR, bardage).
+
+**Constat** : devant l'entrée, six cubes beiges pleins de 2,3 × 8,2 m. Ce sont les abris à chariots, que la BD TOPO donne comme de petits bâtiments (hauteur 2,3 m, deux à 5,6 m : arbres voisins dans le LiDAR).
+
+**Détection** (`tools/data/build_carts.py`, étape autonome après `build_kinds.py`, qui réécrit `kinds`) : emprise rectangulaire (≥ 85 % de son rectangle orienté), 1,8 à 3,2 m sur 6 à 12 m, sur un parking OpenStreetMap (à moins de 3 m), à moins de 60 m d'une grande surface sans y être collée ; seuls les types « rien », annexe ou hangar sont remplacés. Type `cart`, avec `open` : le milieu du petit côté le plus proche de la grande surface. **Règle prudente** : les six abris de Leclerc, rien d'autre ; les boîtes de 3 × 4,8 m près de Lidl et de Biocoop (120 à 240 m, plus courtes) restent des bâtiments faute de photo.
+
+**Dessin** (`cartShelter`, `landmarks.ts`), d'après la photo : cadre d'acier anthracite (poteaux aux coins et tous les 2,8 m au plus, lisses haute, médiane et basse), toit plat clair débordant de 10 cm, petit côté ouvert avec bandeau jaune et noir, chariots bleus emboîtés sur les deux tiers de la longueur. Pas de vitres pleines : le verre clair de la photo laisse voir les chariots, des panneaux opaques auraient refait des boîtes. Les murs et le toit génériques ne sont plus dessinés (comme `hidden`) ; la collision reste celle de l'emprise. Coût : quelques centaines de triangles dans la géométrie des détails, aucun appel de dessin de plus.
+
+**Pas encore** : les abris des autres enseignes (photos à venir) ; ils restent des boîtes dans les silhouettes lointaines (LOD).
+
+![Avant : un cube beige devant l'entrée](captures/d121-chariots-avant.jpg)
+![Après : abri ouvert, chariots](captures/d121-chariots-apres.jpg)

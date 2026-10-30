@@ -186,7 +186,7 @@ export interface StairsZone {
 
 export type BuildingKindId =
   | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
-  | "care" | "culture" | "church" | "chapel" | "hidden";
+  | "care" | "culture" | "church" | "chapel" | "hidden" | "cart";
 
 /** Volumes d'une cathédrale mesurés au LiDAR (D95) : repère (centre, angle de l'axe, chevet vers les s positifs), abscisses, hauteurs. */
 export interface CathedralSpec {
@@ -214,6 +214,8 @@ export interface BuildingKind {
   /** Couleur du panneau et des lettres de l'enseigne. */
   c?: string;
   tc?: string;
+  /** Abri à chariots : milieu du petit côté ouvert (D121). */
+  open?: [number, number];
   /** 1 : bâtiment principal de son site (inscription, drapeaux). */
   main?: 1;
   /** Clocher : x, y, côté, z du haut de la tour, z de la pointe. */

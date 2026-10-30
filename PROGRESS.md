@@ -748,3 +748,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d120-cic-avant.jpg)
 ![Après : le CIC côté avenue](docs/captures/d120-cic-apres.jpg)
 ![E.Leclerc : enseigne sur la façade nord](docs/captures/d120-leclerc-nord.jpg)
+
+**Bâtiments d'après photos, étape 1 : les abris à chariots (30 octobre 2026)** (D121)
+- Les six cubes beiges du parking de Leclerc sont devenus des abris ouverts d'après ta photo : cadre anthracite, toit plat, bandeau jaune et noir côté magasin, chariots bleus.
+- Suite prévue : l'entrée de Leclerc (sas à pyramide, vitrage, auvent sur poteaux, enseigne basse), puis son volume (toits à deux pentes, bardage vert-gris).
+- 721 tests.
+
+![Avant](docs/captures/d121-chariots-avant.jpg)
+![Après](docs/captures/d121-chariots-apres.jpg)
