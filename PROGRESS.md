@@ -690,9 +690,21 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La Rôtisserie du Champ de Mars (auvent rayé rouge et blanc, poulets à la broche) est sur le petit parking devant la mairie de 7 h à 13 h, comptoir tourné vers les places et la mairie.
 - En dehors de leurs heures, ils ne sont pas là. Prendre un camion ouvert, c'est un vol : le vendeur s'enfuit et la police est prévenue. La pizza qui soigne viendra avec l'argent.
 - 700 tests.
-- À faire de ton côté : aller voir les deux camions à leur heure (`?at=516,1100&h=18` pour la pizza, `?at=40,-14&h=9` pour la rôtisserie, ou en jouant), les prendre et les conduire. Ensuite : le petit train touristique.
+- À faire de ton côté : aller voir les deux camions à leur heure (`?at=506,1092&yaw=-0.2&h=18` pour la pizza, `?at=37,23&yaw=-0.35&h=9` pour la rôtisserie, ou en jouant), les prendre et les conduire. Ensuite : le petit train touristique.
 
 ![Le camion Pizza du Vallon](docs/captures/d115-pizza-du-vallon.jpg)
 ![Les deux camions de près](docs/captures/d115-camions-de-pres.jpg)
-![La rôtisserie sur la place du Champ de Mars](docs/captures/d115-rotisserie.jpg)
+![La rôtisserie devant la mairie](docs/captures/d115-rotisserie.jpg)
+
+**Véhicules uniques, étape 3 : le Grumier du Morvan (30 octobre 2026)** (D116)
+- Un grumier rouge, chargé de deux piles de grumes, grue jaune repliée, attend sur le bas-côté de la route de Château-Chinon, à l'entrée de la ville côté Morvan, tourné vers la ville. Il est toujours là.
+- C'est un vrai poids lourd à conduire : 16 tonnes, trois essieux, bridé à 90 km/h, lent à démarrer (0 à 80 km/h en une vingtaine de secondes), qui tourne large et pousse les voitures. Très solide (il encaisse plus de deux fois ce que prend une voiture).
+- Correction au passage : les voitures garées et la circulation étaient teintes en entier de la couleur de leur carrosserie (jantes, feux, vitres compris), le réglage censé ne teindre que la peinture ne s'appliquait pas. Elles retrouvent leurs jantes grises, leurs feux rouges et orange et leurs vitres sombres.
+- 705 tests.
+- À faire de ton côté : aller voir le grumier (`?at=-1090,961&yaw=-1.2`, ou en jouant : route de Château-Chinon, après le pont Saint-Andoche), le conduire, et regarder les voitures garées. Ensuite : le circuit du petit train touristique, à valider sur une carte avant de coder.
+
+![Le Grumier du Morvan à l'entrée de la ville](docs/captures/d116-grumier.jpg)
+![Son chargement](docs/captures/d116-grumier-chargement.jpg)
+![De près](docs/captures/d116-grumier-galerie.jpg)
+![Voitures garées : jantes, feux et vitres de leur vraie couleur](docs/captures/d116-voitures-garees.jpg)
 

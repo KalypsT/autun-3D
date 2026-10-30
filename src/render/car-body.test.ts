@@ -44,7 +44,8 @@ describe("générateur de carrosserie", () => {
     // Les essieux sont à leur place par rapport au centre de gravité de la fiche.
     const { wheels, noseZ } = carLayout(p, front, rear);
     expect(wheels[0]![1]).toBeCloseTo(-front);
-    expect(wheels[2]![1]).toBeCloseTo(rear);
+    // Tandem (grumier, D116) : l'essieu arrière de la fiche est au milieu des deux essieux arrière.
+    expect(wheels.length > 4 ? (wheels[2]![1] + wheels[4]![1]) / 2 : wheels[2]![1]).toBeCloseTo(rear);
     expect(box.min.z).toBeCloseTo(noseZ, 2);
   });
 
@@ -151,7 +152,10 @@ describe("géométrie au repos de chaque modèle garé", () => {
 
   it("la teinte ne touche que la peinture : le nuanceur de Three.js contient toujours la ligne qu'on remplace", () => {
     expect(THREE.ShaderChunk["color_vertex"]).toContain("vColor.rgb *= instanceColor.rgb;");
-    const shader = { vertexShader: THREE.ShaderChunk["color_vertex"] } as THREE.WebGLProgramParametersWithUniforms;
+    // Le vrai programme, tel que `onBeforeCompile` le reçoit : avec ses `#include` pas encore dépliés (D116 : un essai sur le bloc déjà déplié
+    // laissait passer un remplacement qui, dans le jeu, ne trouvait rien).
+    expect(THREE.ShaderLib.lambert.vertexShader).toContain("#include <color_vertex>");
+    const shader = { vertexShader: THREE.ShaderLib.lambert.vertexShader } as THREE.WebGLProgramParametersWithUniforms;
     const material = tintPaintOnly(new THREE.MeshLambertMaterial({ vertexColors: true }));
     material.onBeforeCompile(shader, null as unknown as THREE.WebGLRenderer);
     expect(shader.vertexShader).not.toContain("vColor.rgb *= instanceColor.rgb;");

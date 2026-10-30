@@ -81,6 +81,18 @@ export interface FoodTruck {
   spits?: boolean;
 }
 
+/**
+ * Grumier (D116) : derrière la cabine avancée, un châssis nu à `bed` m (dessus des longerons), une grue de chargement repliée, une ridelle qui
+ * protège la cabine, des bancs à ranchers et deux piles de grumes (écorce `bark`, bouts `wood`), une barre de feux arrière, des garde-boue sur le
+ * tandem, un pare-cycliste et un réservoir sur chaque flanc, un échappement vertical.
+ */
+export interface LogTruck {
+  bed: number;
+  bark: string;
+  wood: string;
+  crane: string;
+}
+
 export interface CarBodyParams {
   /** Hors tout (m) : du nez à la queue, pare-chocs compris. */
   length: number;
@@ -109,6 +121,10 @@ export interface CarBodyParams {
   cabHeight?: number;
   /** Camion-restaurant (D115) : la caisse est creuse, ouverte sur un flanc pour le service (voir `FoodTruck`). */
   foodTruck?: FoodTruck;
+  /** Tandem arrière (D116) : deux essieux arrière, écartés de tant (m) de part et d'autre de l'essieu arrière de la fiche (le milieu du tandem). */
+  tandem?: number;
+  /** Grumier (D116) : plateau à grumes derrière la cabine (voir `LogTruck`) ; avec `cargo`, la cabine est seule à prendre la peinture. */
+  logTruck?: LogTruck;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
   style: CarStyle;
@@ -133,7 +149,7 @@ export interface CarLayout {
   roofFrontZ: number;
   roofRearZ: number;
   rearBaseZ: number;
-  /** Centres des quatre roues : [x, z], avant droit, avant gauche, arrière droit, arrière gauche. */
+  /** Centres des roues : [x, z], avant droit, avant gauche, arrière droit, arrière gauche (puis le second essieu arrière d'un tandem). */
   wheels: readonly (readonly [number, number])[];
 }
 
@@ -170,10 +186,12 @@ export function carLayout(p: CarBodyParams, front: number, rear: number): CarLay
   const roofFrontZ = windshieldBaseZ + p.windshield;
   const roofRearZ = roofFrontZ + p.roof;
   const rearBaseZ = roofRearZ + p.rearGlass;
-  const track = wheelTrack(p);
+  const track = wheelTrack(p), t = (p.tandem ?? 0) / 2;
   return {
     noseZ, tailZ, windshieldBaseZ, roofFrontZ, roofRearZ, rearBaseZ,
-    wheels: [[track, -front], [-track, -front], [track, rear], [-track, rear]],
+    wheels: t
+      ? [[track, -front], [-track, -front], [track, rear - t], [-track, rear - t], [track, rear + t], [-track, rear + t]]
+      : [[track, -front], [-track, -front], [track, rear], [-track, rear]],
   };
 }
 
@@ -291,6 +309,11 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
     sec(L.windshieldBaseZ, p.belt),
   ];
   if (p.cargo && p.foodTruck) return [sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color), ...hollowBox(p, f, color)];
+  if (p.cargo && p.logTruck) {
+    // Grumier : la cabine seule, fermée derrière par sa paroi pleine (le plateau est dans les détails).
+    const top = (p.cabHeight ?? p.height) - 0.02;
+    return [sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color), sectionLoft([sec(L.roofRearZ - 0.05, top), sec(L.rearBaseZ, top)], color)];
+  }
   if (p.cargo) {
     return [
       sectionLoft([...front, sec(L.rearBaseZ, p.belt)], color),
@@ -482,17 +505,19 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   const front = L.wheels[0]![1], rear = L.wheels[2]![1];
   for (const [x, z] of L.wheels) {
     const s = Math.sign(x);
-    if (st.fenders) continue;
+    // Derrière la cabine d'un grumier, pas de flanc : des garde-boue (dans `logTruckParts`).
+    if (st.fenders || (p.logTruck && z > L.rearBaseZ)) continue;
     // Passage de roue : une demi-ellipse sombre contre le flanc, derrière la face du pneu ; cerclée de plastique sur un SUV.
     if (st.cladding) parts.push(arch(s * (side - 0.01), s * (W - 0.027), p.wheelRadius, z, archR + 0.07, archR + 0.09, CLAD));
     parts.push(arch(s * (side - 0.02), s * (W - 0.021), p.wheelRadius, z, archR, archR + 0.02, DARK));
   }
   const lineTop = p.belt - ct - 0.015, lineBottom = p.clearance + 0.12;
-  const doorFront = Math.max(L.windshieldBaseZ + 0.06, front + archR + 0.08);
-  const doorRear = p.cargo ? L.rearBaseZ - 0.04 : st.doors === 2 ? Math.min(L.rearBaseZ - 0.08, rear - archR - 0.06) : bZ;
+  // Cabine avancée d'un grumier : la porte est au-dessus de la roue avant, de la longueur d'une porte de camion.
+  const doorFront = p.logTruck ? L.windshieldBaseZ + 0.1 : Math.max(L.windshieldBaseZ + 0.06, front + archR + 0.08);
+  const doorRear = p.logTruck ? doorFront + 1.2 : p.cargo ? L.rearBaseZ - 0.04 : st.doors === 2 ? Math.min(L.rearBaseZ - 0.08, rear - archR - 0.06) : bZ;
   const lines = st.doors === 2 && !p.cargo ? [doorFront, bZ, doorRear] : [doorFront, doorRear];
   // Porte coulissante d'une camionnette (pas sur un camion-restaurant : son flanc est l'ouverture de service).
-  const sliding = p.cargo && !p.foodTruck;
+  const sliding = p.cargo && !p.foodTruck && !p.logTruck;
   if (sliding) lines.push(L.rearBaseZ + 0.95);
   const handles = st.doors === 2 && !p.cargo ? [bZ - 0.18, doorRear - 0.16] : [doorRear - 0.18];
   if (sliding) handles.push(L.rearBaseZ + 0.85);
@@ -531,6 +556,7 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
   const parts: THREE.BufferGeometry[] = [
     ...softTopParts(p, f),
     ...foodTruckParts(p, f),
+    ...logTruckParts(p, f),
     // Habitacle en verre : du pied du pare-brise à celui de la lunette, posé sur l'épaule de la caisse, sous le toit.
     loft([
       { z: L.windshieldBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 },
@@ -657,6 +683,68 @@ function foodTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
       parts.push(tube(new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h0 + 0.1), new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h1 - 0.1), 0.012, "#c9ccd0", 5, false));
       for (let k = 0; k < 5; k++) parts.push(box(0.16, 0.13, 0.18, s * (-side + 0.35), t.bottom + y, h0 + 0.25 + k * ((len - 0.5) / 4), "#b4692f"));
     }
+  }
+  return parts;
+}
+
+/** Grumier (D116) : tout ce qui est derrière la cabine, en couleurs fixes (voir `LogTruck`). */
+function logTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  const t = p.logTruck;
+  if (!t) return [];
+  const { L, side } = f, parts: THREE.BufferGeometry[] = [];
+  const z0 = L.rearBaseZ, z1 = L.tailZ - 0.05, bed = t.bed, r = 0.21;
+  // Châssis : deux longerons de la cabine à la queue.
+  for (const s of [-1, 1]) parts.push(box(0.16, 0.3, z1 - z0 + 0.6, s * 0.45, bed - 0.15, (z0 - 0.6 + z1) / 2, DARK));
+  // Pare-cycliste (deux lisses) et réservoir, entre la roue avant et le tandem.
+  const g0 = L.wheels[0]![1] + p.wheelRadius + 0.25, g1 = L.wheels[2]![1] - p.wheelRadius - 0.2;
+  for (const s of [-1, 1]) {
+    for (const y of [p.clearance + 0.2, p.clearance + 0.5]) parts.push(box(0.03, 0.07, g1 - g0, s * (side - 0.03), y, (g0 + g1) / 2, TRIM));
+  }
+  parts.push(box(0.5, 0.5, 1.1, -(side - 0.33), p.clearance + 0.4, Math.max(g0, z0) + 0.65, CHROME));
+  // Garde-boue au-dessus du tandem.
+  const ra = L.wheels[2]![1], rb = L.wheels[L.wheels.length - 1]![1], track = wheelTrack(p);
+  for (const s of [-1, 1]) parts.push(box(p.tyreWidth + 0.02, 0.04, rb - ra + 2 * p.wheelRadius + 0.15, s * track, 2 * p.wheelRadius + 0.1, (ra + rb) / 2, DARK));
+  // Barre des feux arrière, sous le plateau (les feux sont posés dessus, `tailParts`).
+  parts.push(box(2 * side - 0.1, 0.16, 0.08, 0, p.clearance + 0.62, L.tailZ - FACE - 0.05, DARK));
+  // Échappement vertical, contre la paroi arrière de la cabine.
+  parts.push(tube(new THREE.Vector3(side - 0.2, bed - 0.2, z0 + 0.12), new THREE.Vector3(side - 0.2, (p.cabHeight ?? p.height) + 0.3, z0 + 0.12), 0.06, CHROME, 8, false));
+  // Hauteur des grumes empilées en trois rangs (5, 4, 3), sur des bancs de 12 cm.
+  const rise = 2 * r * Math.sin(Math.PI / 3), logTop = bed + 0.12 + 2 * r + 2 * rise;
+  // Grue repliée, juste derrière la cabine : colonne, flèche couchée sur les grumes, bras replié dessus, grappin posé sur la pile.
+  const cz = z0 + 0.4;
+  parts.push(box(0.8, 0.3, 0.6, 0, bed + 0.15, cz, t.crane), box(2 * side - 0.1, 0.16, 0.22, 0, bed - 0.12, cz, t.crane));
+  parts.push(tube(new THREE.Vector3(0, bed + 0.3, cz), new THREE.Vector3(0, logTop + 0.62, cz), 0.16, t.crane, 8));
+  parts.push(box(0.22, 0.26, 3.5, 0.3, logTop + 0.25, cz + 1.75, t.crane), box(0.18, 0.2, 2.6, 0.3, logTop + 0.48, cz + 1.4, t.crane));
+  parts.push(box(0.36, 0.3, 0.4, 0.3, logTop + 0.15, cz + 3.35, DARK));
+  // Ridelle avant : deux montants et trois lisses, entre la grue et les grumes.
+  const hz = cz + 0.4;
+  for (const s of [-1, 1]) parts.push(box(0.1, logTop - bed + 0.15, 0.1, s * (side - 0.08), (bed + logTop + 0.15) / 2, hz, DARK));
+  for (const y of [bed + 0.35, (bed + logTop) / 2 + 0.1, logTop + 0.05]) parts.push(box(2 * side - 0.12, 0.08, 0.08, 0, y, hz, DARK));
+  // Deux piles de grumes, chacune sur deux bancs à ranchers.
+  const zs = hz + 0.12, gap = 0.25, len = (z1 - 0.02 - zs - gap) / 2;
+  for (let k = 0; k < 2; k++) {
+    const a = zs + k * (len + gap), zm = a + len / 2;
+    for (const zb of [a + 0.45, a + len - 0.45]) {
+      parts.push(box(2 * side - 0.04, 0.12, 0.18, 0, bed + 0.06, zb, DARK));
+      for (const s of [-1, 1]) parts.push(box(0.09, logTop - bed - 0.1, 0.09, s * (side - 0.06), (bed + logTop - 0.1) / 2, zb, DARK));
+    }
+    [5, 4, 3].forEach((n, j) => {
+      for (let i = 0; i < n; i++) {
+        // Diamètres et longueurs un peu inégaux (tirés de la place de la grume) : un chargement de bois, pas des tubes.
+        const h = (i * 7 + j * 3 + k * 5) % 5, rr = r * (0.84 + 0.04 * h), ll = len - 0.05 * ((i + j + k) % 3);
+        const x = (i - (n - 1) / 2) * 2 * r, y = bed + 0.12 + r + j * rise, z = zm + 0.04 * ((h % 3) - 1);
+        const g = new THREE.CylinderGeometry(rr, rr, ll, 7, 1, true);
+        g.rotateX(Math.PI / 2);
+        g.translate(x, y, z);
+        parts.push(paint(g, t.bark));
+        for (const e of [-1, 1]) {
+          const c = new THREE.CircleGeometry(rr * 0.97, 7);
+          if (e < 0) c.rotateY(Math.PI);
+          c.translate(x, y, z + e * (ll / 2 + 0.002));
+          parts.push(paint(c, t.wood));
+        }
+      }
+    });
   }
   return parts;
 }

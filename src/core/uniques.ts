@@ -26,6 +26,9 @@ export const UNIQUES: readonly UniqueSpot[] = [
   // Rôtisserie du marché, de 7 h à 13 h, sur le petit parking devant la mairie (entre la rue et le parvis), le long de sa rangée de places,
   // la cabine vers la place du Champ de Mars ; son comptoir (à droite) donne sur les places et la mairie.
   { id: "unique-rotisserie", model: "rotisserie-champ-de-mars", x: 30, y: 41.5, heading: 4.11, hours: [7, 13] },
+  // Grumier du Morvan, à l'entrée de la ville côté Morvan : sur le bas-côté de la route de Château-Chinon, juste après la rangée d'arbres, tourné
+  // vers la ville comme s'il descendait du Morvan avec son chargement.
+  { id: "unique-grumier", model: "grumier-morvan", x: -1101.3, y: 965.1, heading: 2.478 },
 ];
 
 export const UNIQUE = {

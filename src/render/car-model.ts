@@ -113,6 +113,15 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.33, tyreWidth: 0.26, glass: "#1b2733",
     style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#2e3035", doors: 1, roundness: 0.7, roof: "#1b1d22", spoiler: "wing", hoodScoop: true, exhaust: 2, blackPillars: true },
   },
+  // Grumier du Morvan (D116) : cabine avancée rouge, porteur à trois essieux (tandem arrière), deux piles de grumes, grue jaune repliée.
+  "grumier-morvan": {
+    length: 9.2, width: 2.5, height: 3.33, cabHeight: 3.05, overhangFront: 1.3,
+    clearance: 0.45, belt: 1.85, noseHeight: 1.25, tailHeight: 1.1,
+    hood: 0.2, windshield: 0.3, roof: 1.65, rearGlass: 0.15, roofTaper: 0.95,
+    wheelRadius: 0.5, tyreWidth: 0.34, cargo: true, tandem: 1.36,
+    style: { headlights: "rect", grille: "tall", taillights: "horizontal", bumpers: "trim", rim: "#c9ccd0", doors: 1, roundness: 0.25 },
+    logTruck: { bed: 1.25, bark: "#5a4632", wood: "#d9b98a", crane: "#d9a21b" },
+  },
 };
 
 function specOf(id: string): { front: number; rear: number } {

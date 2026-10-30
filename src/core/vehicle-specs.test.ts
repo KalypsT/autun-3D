@@ -12,15 +12,16 @@ const kmh = (s: VehicleState): number => s.speed * 3.6;
 const cars = CATALOG.filter((d) => d.family === "car");
 
 /** Accélérateur à fond sur le plat (on remet le véhicule au début quand il approche du bord du terrain d'essai) : temps pour 100 km/h et vitesse atteinte au bout de 100 s. */
-function fullThrottle(spec: VehicleSpec): { t100: number; top: number; state: VehicleState } {
+function fullThrottle(spec: VehicleSpec): { t100: number; t80: number; top: number; state: VehicleState } {
   const s = createVehicle(0, -90, 0, flat);
-  let t100 = 0;
+  let t100 = 0, t80 = 0;
   for (let i = 0; i < 100 * 60; i++) {
     stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0 }, DT, flat, none);
     if (!t100 && kmh(s) >= 100) t100 = (i + 1) * DT;
+    if (!t80 && kmh(s) >= 80) t80 = (i + 1) * DT;
     if (s.y > 80) s.y = -90;
   }
-  return { t100, top: kmh(s), state: s };
+  return { t100, t80, top: kmh(s), state: s };
 }
 
 /** Freinage à fond depuis `from` km/h : distance (m) et roues bloquées ou non. */
@@ -43,13 +44,16 @@ describe("voitures du catalogue : performances", () => {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
     "jeep-militaire": [12, 18], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
+  /** Poids lourd bridé à 90 km/h (D116) : 0 à 80 km/h (s), d'après un porteur chargé. */
+  const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40] };
 
   it.each(cars.map((d) => d.id))("%s : 0 à 100 km/h dans la fourchette de sa classe, vitesse maximale sous sa fiche et sous le plafond", (id) => {
     const spec = vehicleDef(id)!.spec;
     const r = fullThrottle(spec);
-    const [lo, hi] = T100[id]!;
-    expect(r.t100).toBeGreaterThan(lo);
-    expect(r.t100).toBeLessThan(hi);
+    const [lo, hi] = T100[id] ?? T80[id]!;
+    const t = T100[id] ? r.t100 : r.t80;
+    expect(t).toBeGreaterThan(lo);
+    expect(t).toBeLessThan(hi);
     expect(r.top).toBeGreaterThan(0.9 * spec.topSpeed * 3.6);
     expect(r.top).toBeLessThanOrEqual(spec.topSpeed * 3.6 + 0.5);
     expect(r.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
@@ -60,7 +64,8 @@ describe("voitures du catalogue : performances", () => {
     expect(sport.topSpeed * 3.6).toBeCloseTo(200, 5);
     const r = fullThrottle(sport);
     expect(r.top).toBeGreaterThan(193);
-    for (const d of cars) if (d.id !== "sportive") expect(fullThrottle(d.spec).t100).toBeGreaterThan(r.t100 + 3);
+    // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
+    for (const d of cars) if (d.id !== "sportive") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
   });
 
   it("le plafond ne touche que ce qui le dépasse", () => {

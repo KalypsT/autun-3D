@@ -117,6 +117,20 @@ export const FOOD_TRUCK: VehicleSpec = {
 };
 
 /**
+ * Grumier du Morvan (D116, exemplaire unique) : porteur à trois essieux chargé de grumes, 16 t, 220 kW (0 à 80 km/h en ≈ 25 s), bridé à 90 km/h comme un poids lourd ;
+ * 4,6 m d'empattement (essieu avant et milieu du tandem arrière), propulsion, centre de gravité haut (1,5 m), direction très lente et grand rayon
+ * de braquage (≈ 9 m), pneus de camion (adhérence 0,8, peu de roulement), gros frein moteur (ralentisseur). Freins renforcés pour le jeu
+ * (arrêt en moins de 60 m à 100 km/h, quand un vrai camion chargé en demande plutôt 60 à 70).
+ */
+export const LOG_TRUCK: VehicleSpec = {
+  ...CAR, mass: 16000, yawInertia: 71600, front: 2.7, rear: 1.9, maxSteer: 0.48, steerFade: 8, steerRate: 1.1, grip: 0.8,
+  corneringFront: 580000, corneringRear: 670000, power: 220000, maxDrive: 40000, driveFadeFrom: kmh(84), topSpeed: kmh(90),
+  maxBrake: 140000, reverseSpeed: 4, reverseForce: 20000, rolling: 0.008, drag: 4.1,
+  hull: [[2.85, 1.2], [1.15, 1.22], [-0.55, 1.22], [-2.25, 1.22], [-3.95, 1.2]], wheelRadius: 0.5, bodyRoll: 0.02, engineBrake: 9000,
+  driveAxle: "rear", cgHeight: 1.5, brakeFront: 0.55, steerGrip: 1.2, driftAssist: 0.5, maxDrift: 0.35, rearGrip: 1.15,
+};
+
+/**
  * Vieille voiture : 1 100 kg, 46 kW aux roues, 160 km/h, pneus usés (adhérence 0,8, roulement plus fort), freins fatigués (≈ 0,83 g) et **pas d'ABS** :
  * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle. Aucune aide à la conduite (D97) : ni contre-braquage automatique ni stabilisation.
  */
