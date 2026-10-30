@@ -807,3 +807,17 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d126-mairie-toits-avant.jpg)
 ![Après](docs/captures/d126-mairie-toits-apres.jpg)
 ![De face](docs/captures/d126-mairie-face.jpg)
+
+**Bâtiments d'après photos, étape 7 : la cathédrale, volumes mesurés (30 octobre 2026)** (D127)
+- La cathédrale n'est plus un bâtiment générique avec un clocher : d'après tes photos et le relevé LiDAR, elle a son porche et ses deux tours, sa nef haute (30 m au faîtage) avec ses fenêtres hautes, ses bas-côtés et ses chapelles, son transept plus bas, le bloc carré au bout du bras ouest, sa tour de croisée (40 m) et sa flèche (86 m), son chœur et son abside polygonale.
+- Les toits sont en tuiles brun-ocre (gris-vert sur les chapelles) et les flèches en pierre grise, plus en ardoise bleue.
+- Les deux tours du porche n'apparaissent pas dans le relevé LiDAR, alors qu'on les voit sur tes photos et sur l'orthophoto : leur hauteur vient des photos (26 m au corps, 36 m à la pointe).
+- De loin, on voit la tour de croisée et le vaisseau, plus un mât de 54 m.
+- 724 tests.
+- Suite : le chevet et ses tuiles vernissées.
+
+![Avant](docs/captures/d127-cathedrale-avant.jpg)
+![Après](docs/captures/d127-cathedrale-apres.jpg)
+![Le flanc est](docs/captures/d127-cathedrale-flanc-apres.jpg)
+![Le chevet](docs/captures/d127-cathedrale-chevet.jpg)
+![Le porche et ses tours](docs/captures/d127-cathedrale-nord-ouest.jpg)

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CathedralSpec, HeightField, Site, TownHallSpec } from "../data/types";
+import type { CathedralModel, CathedralSpec, HeightField, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, gateLayout, type Frame, type GateLayout } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -222,6 +222,180 @@ export function buildCathedral(mb: MeshBuilder, m: CathedralSpec, terrain: Heigh
   archFace(mb, f, w0 - 0.04, -1, t0, 4.4, zp, 8.6, C("#d8c9a8"));
   q(mb, f, [w0 - 0.06, t0 - 2.2, zp], [w0 - 0.06, t0 + 2.2, zp], [w0 - 0.06, t0 + 2.2, zp + 6.0], [w0 - 0.06, t0 - 2.2, zp + 6.0], N(f, -1, 0), C("#4a3424"));
   q(mb, f, [w0 - 0.06, t0 - 2.2, zp + 6.0], [w0 - 0.06, t0 + 2.2, zp + 6.0], [w0 - 0.06, t0 + 2.2, zp + 6.3], [w0 - 0.06, t0 - 2.2, zp + 6.3], N(f, -1, 0), STONE_DARK);
+}
+
+// --- Cathédrale d'après photo (D127) ------------------------------------------------------------------------------------------------
+
+/** Tuiles plates brun-ocre (nef, bas-côtés, transept, chœur), toits gris-vert des chapelles, pierre grise de la flèche, baies sombres (photos). */
+const TILE_BROWN = C("#a8603c");
+const LEAD = C("#7f8f86");
+const SPIRE_STONE = C("#aaa294");
+const BAY = C("#34404c");
+
+type Pt = [number, number];
+
+/** Mur droit de a à b (s, t), normale `out`, du sol jusqu'aux hauts za (en a) et zb (en b), en pans de 6 m au plus pour suivre le relief. */
+function wallST(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, za: number, zb: number, ground: (s: number, t: number) => number, col: THREE.Color): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 0.01) return;
+  const n = N(f, (b[1] - a[1]) / len, -(b[0] - a[0]) / len);
+  const k = Math.max(1, Math.ceil(len / 6));
+  for (let i = 0; i < k; i++) {
+    const u0 = i / k, u1 = (i + 1) / k;
+    const p0: Pt = [a[0] + (b[0] - a[0]) * u0, a[1] + (b[1] - a[1]) * u0], p1: Pt = [a[0] + (b[0] - a[0]) * u1, a[1] + (b[1] - a[1]) * u1];
+    const z0 = za + (zb - za) * u0, z1 = za + (zb - za) * u1;
+    q(mb, f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n, col);
+  }
+}
+
+/** Murs d'un contour (s, t) dans le sens trigonométrique, haut `top` en chaque sommet. */
+function prismST(mb: MeshBuilder, f: Frame, pts: Pt[], top: (p: Pt) => number, ground: (s: number, t: number) => number, col: THREE.Color): void {
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]!, b = pts[(i + 1) % pts.length]!;
+    wallST(mb, f, a, b, top(a), top(b), ground, col);
+  }
+}
+
+const rectST = (s0: number, s1: number, t0: number, t1: number): Pt[] => [[s0, t0], [s1, t0], [s1, t1], [s0, t1]];
+
+/** Baie en plein cintre sur le mur de a à b (normale sortante à droite de a → b), centrée à `u` mètres de a, de z0 au sommet de l'arc z1. */
+function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.04): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
+  const os = dt * off, ot = -ds * off;
+  const n = N(f, dt, -ds);
+  const at2 = (v: number, z: number): [number, number, number] => [a[0] + ds * (u + v) + os, a[1] + dt * (u + v) + ot, z];
+  const spring = Math.max(z0, z1 - w / 2);
+  q(mb, f, at2(-w / 2, z0), at2(w / 2, z0), at2(w / 2, spring), at2(-w / 2, spring), n, col);
+  for (let i = 0; i < 6; i++) {
+    const a0 = (Math.PI * i) / 6, a1 = (Math.PI * (i + 1)) / 6;
+    mb.tri(P(f, ...at2(0, spring)), P(f, ...at2(Math.cos(a0) * (w / 2), spring + Math.sin(a0) * (w / 2))), P(f, ...at2(Math.cos(a1) * (w / 2), spring + Math.sin(a1) * (w / 2))), n, col);
+  }
+}
+
+/** Appentis de s0 à s1, du mur haut en tIn (haut zIn) au mur bas en tOut (haut zOut), débord `ov` côté bas. */
+function leanTo(mb: MeshBuilder, f: Frame, s0: number, s1: number, tIn: number, tOut: number, zIn: number, zOut: number, ov: number, col: THREE.Color): void {
+  const d = Math.sign(tOut - tIn), k = (zOut - zIn) / Math.abs(tOut - tIn);
+  pan(mb, f, [s0, tIn, zIn], [s1, tIn, zIn], [s1, tOut + d * ov, zOut + k * ov], [s0, tOut + d * ov, zOut + k * ov], col);
+}
+
+/** Toit en croupe sur le rectangle (pyramide s'il est carré), de l'égout ze au faîtage zr, faîtage le long du grand côté. */
+function hipRoof(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, t1: number, ze: number, zr: number, col: THREE.Color): void {
+  const sm = (s0 + s1) / 2, tm = (t0 + t1) / 2, h = Math.min(s1 - s0, t1 - t0) / 2;
+  const alongS = s1 - s0 >= t1 - t0;
+  const r0: [number, number, number] = alongS ? [s0 + h, tm, zr] : [sm, t0 + h, zr];
+  const r1: [number, number, number] = alongS ? [s1 - h, tm, zr] : [sm, t1 - h, zr];
+  const c = (s: number, t: number): [number, number, number] => [s, t, ze];
+  if (alongS) {
+    pan(mb, f, c(s0, t0), c(s1, t0), r1, r0, col);
+    pan(mb, f, c(s1, t1), c(s0, t1), r0, r1, shade(col, 0.9));
+    pan(mb, f, c(s0, t1), c(s0, t0), r0, null, shade(col, 0.95));
+    pan(mb, f, c(s1, t0), c(s1, t1), r1, null, shade(col, 0.95));
+  } else {
+    pan(mb, f, c(s0, t1), c(s0, t0), r0, r1, col);
+    pan(mb, f, c(s1, t0), c(s1, t1), r1, r0, shade(col, 0.9));
+    pan(mb, f, c(s0, t0), c(s1, t0), r0, null, shade(col, 0.95));
+    pan(mb, f, c(s1, t1), c(s0, t1), r1, null, shade(col, 0.95));
+  }
+}
+
+/**
+ * Cathédrale Saint-Lazare d'après les photos de l'utilisateur et le LiDAR (D127), à pans nets : porche et ses deux tours, nef haute à deux
+ * pans, bas-côtés en appentis, chapelles par travée, transept à pignons et bloc carré à toit en croupe au bout du bras ouest, tour de croisée
+ * et flèche octogonale à clochetons, chœur, abside polygonale, bas-côtés du chœur. Remplace murs, toit et baies génériques du bâtiment.
+ */
+export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: HeightField): void {
+  const f = frameOf(m.c[0], m.c[1], m.a, 1, 1);
+  const ground = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y) - 0.3; };
+  const wall = STONE;
+  const [p0, n0, pA, pB, pe, pr] = m.porch;
+  const [w0, w1, tb, tt] = m.towers;
+  const [, tr0, nA, nB, ne, nr] = m.nave;
+  const [, tr1, tW, tE, te, trr] = m.transept;
+  const [blk, be, bt] = m.block;
+  const [sx, side, body, tip] = m.tower;
+  const [sc, cA, cB, ce, cr] = m.choir;
+  const [r, ae, faces] = m.apse;
+  const OV = 0.35;
+  const flat = (z: number) => (): number => z;
+
+  // Porche : pignon sur le parvis, grand arc d'entrée.
+  prismST(mb, f, rectST(p0, n0, pA, pB), flat(pe), ground, wall);
+  gable(mb, f, p0 - OV, n0, pA - OV, pB + OV, pe - 0.2, pr, TILE_BROWN, wall);
+  const pc = (pA + pB) / 2, zp = ground(p0, pc) + 0.3;
+  const pw = Math.min(8, (pB - pA) * 0.6);
+  archFace(mb, f, p0 - 0.03, -1, pc, pw + 1.2, zp, Math.min(pe - zp - 1, pw * 1.5), shade(STONE, 1.08));
+  archFace(mb, f, p0 - 0.06, -1, pc, pw, zp, Math.min(pe - zp - 1.5, pw * 1.5 - 0.7), BAY);
+  // Tours du porche, flèches de pierre à quatre pans, baies jumelles sous la corniche.
+  for (const [t0, t1] of [[pA - w0, pA], [pB, pB + w1]] as const) {
+    const w = t1 - t0, s1 = p0 + w;
+    prismST(mb, f, rectST(p0, s1, t0, t1), flat(tb), ground, wall);
+    box(mb, f, p0 - 0.25, s1 + 0.25, t0 - 0.25, t1 + 0.25, tb - 0.5, tb, shade(wall, 1.06));
+    spire(mb, f, (p0 + s1) / 2, (t0 + t1) / 2, (w / 2 + 0.25) * Math.SQRT2, tb, tt, 4, SPIRE_STONE);
+    const sides: [Pt, Pt][] = [[[p0, t1], [p0, t0]], [[s1, t0], [s1, t1]], [[p0, t0], [s1, t0]], [[s1, t1], [p0, t1]]];
+    for (const [a, b] of sides) for (const u of [w * 0.3, w * 0.7]) archOn(mb, f, a, b, u, Math.min(1.1, w * 0.18), tb - 6, tb - 1.5, BAY);
+  }
+  // Nef : murs jusqu'à l'égout, deux pans, pignon ouest au-dessus du porche ; fenêtres hautes par travée au-dessus des bas-côtés.
+  prismST(mb, f, rectST(n0, tr0, nA, nB), flat(ne), ground, wall);
+  gable(mb, f, n0 - 0.3, tr0, nA - OV, nB + OV, ne - 0.25, nr, TILE_BROWN, wall);
+  for (const [s0, s1] of m.chapels) {
+    const u = (s0 + s1) / 2 - n0;
+    archOn(mb, f, [n0, nA], [tr0, nA], u, 1.5, Math.max(m.aisles[0]![1], m.aisles[1]![1]) + 0.8, ne - 1.2, BAY);
+    archOn(mb, f, [tr0, nB], [n0, nB], tr0 - n0 - u, 1.5, Math.max(m.aisles[0]![1], m.aisles[1]![1]) + 0.8, ne - 1.2, BAY);
+  }
+  // Bas-côtés (appentis) et chapelles : chapelles en caissons à toit gris-vert, grandes baies par travée ; côté est, toit gris-vert continu.
+  const sa = [p0 + w0, p0 + w1];
+  m.aisles.forEach(([tOut, zIn, zOut], i) => {
+    const d = i === 0 ? -1 : 1, tIn = i === 0 ? nA : nB, s0 = sa[i]!;
+    const roof = i === 0 ? TILE_BROWN : LEAD;
+    const pts: Pt[] = d < 0 ? [[s0, tIn], [s0, tOut], [tr0, tOut], [tr0, tIn]] : [[s0, tOut], [s0, tIn], [tr0, tIn], [tr0, tOut]];
+    prismST(mb, f, pts, (p) => (Math.abs(p[1] - tIn) < 0.01 ? zIn : zOut), ground, wall);
+    leanTo(mb, f, s0, tr0, tIn, tOut, zIn, zOut, OV, roof);
+    m.chapels.forEach((c) => {
+      const out = c[2 + 2 * i]!, h = c[3 + 2 * i]!;
+      if (!h) return;
+      const cp: Pt[] = d < 0 ? rectST(c[0], c[1], out, tOut) : rectST(c[0], c[1], tOut, out);
+      prismST(mb, f, cp, flat(h), ground, wall);
+      q(mb, f, [c[0], cp[0]![1], h], [c[1], cp[0]![1], h], [c[1], cp[2]![1], h], [c[0], cp[2]![1], h], [0, 1, 0], LEAD);
+      const face: [Pt, Pt] = d < 0 ? [[c[0], out], [c[1], out]] : [[c[1], out], [c[0], out]];
+      archOn(mb, f, face[0], face[1], (c[1] - c[0]) / 2, Math.min(2.2, (c[1] - c[0]) * 0.38), ground((c[0] + c[1]) / 2, out) + 3, h - 1.5, BAY);
+    });
+  });
+  // Transept : bras à pignons (portail et grande baie au pignon est), bloc carré au bout du bras ouest, toit en croupe.
+  const tm = (tr0 + tr1) / 2;
+  prismST(mb, f, rectST(tr0, tr1, blk, tE), flat(te), ground, wall);
+  gable(mb, f, tr0 - OV, tr1 + OV, blk, tE + 0.3, te - 0.25, trr, TILE_BROWN, wall, true);
+  archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 2.6, ground(tm, tE) + 0.3, ground(tm, tE) + 5.2, BAY);
+  archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 3.2, ground(tm, tE) + 9, te - 1.2, BAY);
+  prismST(mb, f, rectST(tr0, tr1, tW, blk), flat(be), ground, wall);
+  hipRoof(mb, f, tr0 - 0.3, tr1 + 0.3, tW - 0.3, blk, be - 0.2, bt, TILE_BROWN);
+  // Tour de croisée : corps carré, deux baies jumelles par face, corniche, flèche octogonale et clochetons d'angle.
+  const h = side / 2, c0 = m.t0;
+  box(mb, f, sx - h, sx + h, c0 - h, c0 + h, Math.min(ne, te) - 1, body, shade(wall, 0.97), shade(wall, 0.85));
+  const tFaces: [Pt, Pt][] = [[[sx - h, c0 + h], [sx - h, c0 - h]], [[sx + h, c0 - h], [sx + h, c0 + h]], [[sx - h, c0 - h], [sx + h, c0 - h]], [[sx + h, c0 + h], [sx - h, c0 + h]]];
+  for (const [a, b] of tFaces) for (const u of [h - 1.6, h + 1.6]) archOn(mb, f, a, b, u, 1.6, body - 10, body - 1.8, BAY);
+  box(mb, f, sx - h - 0.4, sx + h + 0.4, c0 - h - 0.4, c0 + h + 0.4, body - 0.7, body, shade(wall, 1.06));
+  spire(mb, f, sx, c0, h * 0.84, body, tip, 8, SPIRE_STONE);
+  for (const ks of [-1, 1]) for (const kt of [-1, 1]) spire(mb, f, sx + ks * (h - 0.7), c0 + kt * (h - 0.7), 0.9, body, body + 9, 4, SPIRE_STONE);
+  // Chœur, bas-côtés du chœur, abside polygonale à grandes baies (corniche mesurée, plus haute que celle du chœur).
+  prismST(mb, f, rectST(tr1, sc, cA, cB), flat(ce), ground, wall);
+  gable(mb, f, tr1, sc, cA - OV, cB + OV, ce - 0.25, cr, TILE_BROWN, wall);
+  m.choirAisles.forEach(([tOut, zIn, zOut], i) => {
+    const tIn = i === 0 ? cA : cB;
+    const pts: Pt[] = i === 0 ? [[tr1, tIn], [tr1, tOut], [sc, tOut], [sc, tIn]] : [[tr1, tOut], [tr1, tIn], [sc, tIn], [sc, tOut]];
+    prismST(mb, f, pts, (p) => (Math.abs(p[1] - tIn) < 0.01 ? zIn : zOut), ground, wall);
+    leanTo(mb, f, tr1, sc, tIn, tOut, zIn, zOut, OV, TILE_BROWN);
+  });
+  const ac = (cA + cB) / 2;
+  const ap = (i: number): Pt => { const a = (Math.PI * i) / faces; return [sc + r * Math.sin(a), ac - r * Math.cos(a)]; };
+  for (let i = 0; i < faces; i++) {
+    const a = ap(i), b = ap(i + 1);
+    wallST(mb, f, a, b, ae, ae, ground, wall);
+    pan(mb, f, [...a, ae - 0.2], [...b, ae - 0.2], [sc, ac, cr], null, TILE_BROWN);
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    archOn(mb, f, a, b, len / 2, Math.min(2.2, len * 0.4), ground((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) + 9, ae - 1.8, BAY);
+  }
+  if (ae > ce) for (const t of [cA, cB]) mb.tri(P(f, sc, t, ce - 0.25), P(f, sc, t, ae - 0.2), P(f, sc, ac, cr), N(f, -1, 0), wall);
 }
 
 // --- Hôtel de ville ---------------------------------------------------------------------------------------------------------------

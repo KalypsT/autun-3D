@@ -5,7 +5,7 @@ import { loadRealWorld } from "../core/testing";
 import type { LodBuilding } from "../data/types";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildFarTower, buildGate, buildTownHall } from "./monuments";
+import { buildCathedral, buildFarTower, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -88,6 +88,34 @@ describe("monuments (D95) : géométrie", () => {
     expect(tris(mb)).toBeGreaterThan(500);
     expect(tris(mb)).toBeLessThan(8000);
     expect(tris(glow)).toBeGreaterThan(0);
+  });
+
+  it("cathédrale (D127) : volumes mesurés plausibles, sommets finis, coût borné, silhouette lointaine", () => {
+    const [id, k] = Object.entries(kinds.buildings).find(([, b]) => b.cath)!;
+    const m = k.cath!;
+    const above = (z: number): number => z - m.g;
+    // Au-dessus du sol du bâtiment : nef ≈ 19 / 30 m, transept plus bas que la nef, tour de croisée ≈ 40 m, flèche ≈ 86 m.
+    expect(above(m.nave[4])).toBeGreaterThan(16);
+    expect(above(m.nave[5])).toBeGreaterThan(27);
+    expect(above(m.nave[5])).toBeLessThan(33);
+    expect(m.transept[5]).toBeLessThan(m.nave[5]);
+    expect(above(m.tower[2])).toBeGreaterThan(35);
+    expect(above(m.tower[3])).toBeGreaterThan(80);
+    // Porche au nord-ouest, croisée puis chœur vers le chevet ; bas-côtés plus bas que l'égout de la nef ; sept travées.
+    expect(m.porch[0]).toBeLessThan(m.nave[0]);
+    expect(m.nave[1]).toBeLessThan(m.tower[0]);
+    expect(m.tower[0]).toBeLessThan(m.choir[0]);
+    for (const a of m.aisles) expect(a[1]).toBeLessThan(m.nave[4]);
+    expect(m.chapels).toHaveLength(7);
+    expect(k.tower![3]).toBeCloseTo(m.tower[2], 1);
+    const mb = new MeshBuilder();
+    buildSaintLazare(mb, m, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(mb)).toBeGreaterThan(500);
+    expect(tris(mb)).toBeLessThan(8000);
+    const lod = JSON.parse(readFileSync("public/data/lod/26_32.json", "utf8")) as LodBuilding[];
+    const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
+    expect(parts).toHaveLength(12);
   });
 
   it("hôtel de ville (D126) : silhouette lointaine en corps principal, pavillons et ailes", () => {

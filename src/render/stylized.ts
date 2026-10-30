@@ -368,9 +368,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     const f: FacadeFiche | undefined = fiches.get(b.id);
     const key = idKey(b.id);
     const kind = kindOf(b.id);
-    // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123) :
-    // ni murs ni toit génériques.
-    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall) continue;
+    // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123 ;
+    // cathédrale, D127) : ni murs ni toit génériques.
+    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.cath) continue;
     const wc = landmarkWallColor(kind, b.id) ?? wallColor(f?.era ?? "xix", key);
     wallColors.set(b.id, wc);
     if (drawsWalls(kind)) {

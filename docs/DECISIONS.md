@@ -1713,3 +1713,31 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![De face](captures/d126-mairie-face.jpg)
 ![Vue haute](captures/d126-mairie-haut.jpg)
 ![Silhouette lointaine, avant (en haut) et après](captures/d126-mairie-silhouette.jpg)
+
+## 2026-10-30 — D127. Bâtiments d'après photos, étape 7 : la cathédrale Saint-Lazare, volumes mesurés
+
+**Demande de l'utilisateur** : modéliser la cathédrale d'après ses photos, avec la même méthode que pour l'hôtel de ville. Photos fournies (non versionnées, elles servent seulement à décrire), points de vue confirmés par l'utilisateur : vue de drone au-dessus du chevet (sud-sud-est) vers la ville ; le chevet au sol depuis le sud-est ; le flanc est de nuit, flèche à gauche et tour est du porche à droite. Lecture : nef de 7 travées entre le porche (nord-nord-ouest) et la croisée, chapelles gothiques le long des bas-côtés (grandes baies, pinacles, balustrade), toits de tuiles plates brun-ocre ; abside polygonale, bloc carré au bout du bras ouest du transept et petite tourelle, couverts de tuiles vernissées en losanges ; tour de croisée à baies jumelles, galerie, flèche octogonale de pierre grise à gâbles, crochets et clochetons ; deux tours carrées au porche, à flèches de pierre ; portail roman au pignon du bras est. Plan validé : (1) volumes mesurés et couleurs, (2) chevet et tuiles vernissées, (3) tour de croisée et flèche, (4) flancs et porche.
+
+**Constat** : la nef était le bâtiment générique (grand mur nu, œils-de-bœuf et portes de maison), `buildCathedral` (D95) y ajoutait des volumes approximatifs couverts d'ardoise bleue, flèche comprise ; de loin, le clocher lointain était un mât de 54 m (haut de la tour mal mesuré : l'anneau autour de la flèche prenait la flèche elle-même).
+
+**Mesures** (`build_monuments.py`, modèle `cathedral`, dans le repère de `mon` de build_kinds : s le long de la nef vers le chevet, t vers l'est-nord-est ; profils médians du modèle de surface LiDAR, ce qui écarte pinacles et arbres ; murs = chutes de plus de 3 m entre deux échantillons de 0,5 m ; égouts = droite du pan ramenée au mur ; hauteurs au-dessus du sol du bâtiment) :
+- porche de 13 m de large et 11,4 m de long, faîtage à 20,1 m ; nef de 38 m (7 travées de 5,5 m) et 14,5 m de large, égout 19,0 m, faîtage 30,0 m ;
+- bas-côtés en appentis de 5 m (13,5 m contre la nef, 11,4 et 12,6 m au mur extérieur) ; chapelles par travée jusqu'au bord de l'emprise BD TOPO, plus basses à l'ouest (6 à 8 m) qu'à l'est (12 m, celles de la photo de nuit) ;
+- transept de 14,5 m entre pignons à 46 m l'un de l'autre, égout 20,6 m, faîtage 25,1 m (plus bas que la nef) ; au bout du bras ouest, le bloc carré (11 × 15 m), égout 10,8 m, pointe du toit 25,4 m ;
+- tour de croisée de 12,5 m de côté, corps à 40,3 m, flèche à 85,6 m ;
+- chœur de 13,5 m de large, égout 20,0 m, faîtage 30,6 m ; abside de 6,75 m de rayon, corniche à 24,7 m (relevée à 75 cm du mur sur l'axe, plus haute que celle du chœur) ; elle finit au bout de l'emprise, le toit débordant d'1 m au-delà ; bas-côtés du chœur en appentis.
+- **Tours du porche : le relevé ne les voit pas.** Aux coins avant du porche, le modèle de surface reste au niveau du sol (le parvis, 3 m plus bas que le bâtiment), alors que l'orthophotographie de l'IGN et les photos de l'utilisateur montrent deux tours carrées à flèche de pierre. Seule une arête fine de 30 à 32 m longe le bord ouest du porche (non identifiée). Côté pris sur l'emprise (6 et 5,3 m), hauteurs d'après les photos (corps à 26 m, pointe à 36 m, `towers` dans `manual.json`), les deux tours identiques (symétrie validée par l'utilisateur).
+
+Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le clocher lointain (`tower` du bâtiment et son repère dans `kinds/index.json` : tour de 12,5 m jusqu'à 40,3 m, flèche à 85,6 m) et remplace le prisme unique de la silhouette lointaine (`lod/26_32.json`) par douze (porche, tours, nef, bas-côtés, transept, bloc, tour de croisée, chœur et abside, bas-côtés du chœur). `mon` reste (repère, et gabarit D95 des cathédrales sans modèle). Une deuxième passe ne réécrit rien.
+
+**Rendu** (`buildSaintLazare`, `src/render/monuments.ts`, dans le maillage plein de la tuile : aucun appel de dessin de plus, 1 043 triangles) : murs, toit et baies génériques ne sont plus dessinés (comme pour la mairie) ; la collision reste l'emprise. Volumes à pans nets, murs qui suivent le relief (le sol monte de 5 m du parvis au chevet) ; toits de tuiles brun-ocre (nef, porche, transept, bloc, chœur, abside, bas-côté ouest), gris-vert sur le bas-côté est et toutes les chapelles (d'après l'orthophotographie) ; flèches en pierre grise. Baies sombres en plein cintre : fenêtres hautes de la nef par travée, grandes baies des chapelles, baies de l'abside, portail et grande baie au pignon est du transept, baies jumelles des tours, grand arc du porche.
+
+**Pas encore** (étapes suivantes du plan) : les tuiles vernissées et la tourelle du chevet (étape 2), le détail de la tour de croisée et de la flèche (3), les chapelles gothiques, les fenêtres en arc brisé, les marches et le portail du porche (4) ; la fontaine Saint-Lazare au pied de la tour est (photo de nuit), à confirmer.
+
+![Avant](captures/d127-cathedrale-avant.jpg)
+![Après](captures/d127-cathedrale-apres.jpg)
+![Le flanc est, avant](captures/d127-cathedrale-flanc-avant.jpg)
+![Le flanc est, après](captures/d127-cathedrale-flanc-apres.jpg)
+![Le chevet](captures/d127-cathedrale-chevet.jpg)
+![Depuis le nord-ouest : le porche et ses tours](captures/d127-cathedrale-nord-ouest.jpg)
+![Silhouette lointaine, avant (à gauche) et après](captures/d127-cathedrale-silhouette.jpg)

@@ -208,6 +208,40 @@ export interface CathedralSpec {
 }
 
 /**
+ * Cathédrale modélisée d'après photo (D127), volumes mesurés au LiDAR (tools/data/build_monuments.py). Repère de `mon` : centre `c`, `s` le long
+ * de la nef vers le chevet (angle `a`), `t` en travers vers l'est-nord-est ; altitudes absolues (locales).
+ */
+export interface CathedralModel {
+  c: [number, number];
+  a: number;
+  /** Axe de la nef (t du faîtage). */
+  t0: number;
+  g: number;
+  /** Porche : s0, s1, t0, t1, égout, faîtage. */
+  porch: [number, number, number, number, number, number];
+  /** Tours du porche : côté de la tour ouest, de la tour est, haut du corps, pointe (d'après photo). */
+  towers: [number, number, number, number];
+  /** Nef : s0, s1 (croisée), t0, t1, égout, faîtage. */
+  nave: [number, number, number, number, number, number];
+  /** Bas-côtés ouest et est : t du mur extérieur, haut contre la nef, haut au mur extérieur. */
+  aisles: [number, number, number][];
+  /** Chapelles par travée : s0, s1, puis t extérieur et haut à l'ouest et à l'est (haut 0 : pas de chapelle). */
+  chapels: [number, number, number, number, number, number][];
+  /** Transept : s0, s1, t des pignons ouest et est, égout, faîtage. */
+  transept: [number, number, number, number, number, number];
+  /** Bloc carré au bout du bras ouest : t du mur qui le sépare du bras, égout, pointe du toit. */
+  block: [number, number, number];
+  /** Tour de croisée : s du centre, côté, haut du corps, pointe de la flèche. */
+  tower: [number, number, number, number];
+  /** Chœur : s du centre de l'abside, t0, t1, égout, faîtage. */
+  choir: [number, number, number, number, number];
+  /** Bas-côtés du chœur, comme `aisles`. */
+  choirAisles: [number, number, number][];
+  /** Abside : rayon, égout, nombre de pans. */
+  apse: [number, number, number];
+}
+
+/**
  * Hôtel de ville modélisé d'après photo (D123), volumes mesurés au LiDAR (tools/data/build_monuments.py). Repère : origine `o` au coin de la
  * façade principale, `s` le long de la façade (angle `a`), `t` vers l'intérieur ; altitudes absolues (locales).
  */
@@ -268,6 +302,8 @@ export interface BuildingKind {
   tower?: [number, number, number, number, number];
   /** Cathédrale : volumes mesurés (le gabarit remplace le clocher générique). */
   mon?: CathedralSpec;
+  /** Cathédrale d'après photo (D127) : modèle dédié (remplace murs, toit et façade génériques, et le gabarit `mon`). */
+  cath?: CathedralModel;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
   hall?: TownHallSpec;
 }

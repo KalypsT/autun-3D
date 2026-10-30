@@ -1,11 +1,12 @@
-"""Monuments modélisés d'après photo (D123) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
           tiles/*.json (emprise BD TOPO), modèles de surface et de terrain LiDAR HD de l'IGN (WMS, fenêtre autour du bâtiment, 0,5 m,
           gardée dans .cache/shared/raw/monuments).
 Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour dans ce repère, hauteurs mesurées) ; `sign: false` retire
-          l'inscription (`n`). Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
+          l'inscription (`n`) ; cathédrale (modèle `cathedral`, D127) : champ `cath`, clocher lointain (`tower` et kinds/index.json) ;
+          silhouettes lointaines (lod/<tuile>.json). Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
 - sol devant la façade : médiane du terrain sur une bande de 2 à 4 m devant elle, hors du perron (travées des pavillons centraux) ;
@@ -179,6 +180,154 @@ def measure_hall(bid, b, spec):
     }
 
 
+def run(f, x0, step, limit, test):
+    """Première abscisse depuis x0 (par pas `step`, jusqu'à `limit`) où test(f(x), f(x - step)) est vrai, ou None."""
+    x = x0 + step
+    while (x - limit) * step <= 0:
+        if test(f(x), f(x - step)):
+            return x - step / 2
+        x += step
+    return None
+
+
+def measure_cathedral(bid, b, spec, mon):
+    """Volumes de la cathédrale (D127) dans le repère de `mon` (build_kinds.py : axe de la nef, s vers le chevet, t vers l'est-nord-est) :
+    porche, nef, bas-côtés, chapelles par travée, transept et bloc carré au bout du bras ouest, tour de croisée et flèche, chœur, bas-côtés du
+    chœur, abside. Profils médians du modèle de surface (ce qui écarte pinacles, lucarnes et arbres) ; murs = chutes de plus de 3 m entre
+    deux échantillons (0,5 m), égouts = droite du pan ramenée au mur ; débords des chapelles = emprise BD TOPO."""
+    from shapely.geometry import LineString, Polygon
+    (cx, cy), a, t0 = mon["c"], mon["a"], mon["t0"]
+    ca, sa = math.cos(a), math.sin(a)
+    xy = lambda s, t: (cx + ca * s - sa * t, cy + sa * s + ca * t)
+    ring = pairs(b["ring"])
+    P = Polygon([((x - cx) * ca + (y - cy) * sa, -(x - cx) * sa + (y - cy) * ca) for x, y in ring])
+    xs, ys = [q[0] for q in ring], [q[1] for q in ring]
+    box = (math.floor(min(xs) - MARGIN), math.floor(min(ys) - MARGIN), math.ceil(max(xs) + MARGIN), math.ceil(max(ys) + MARGIN))
+    mns = Raster("MNS", bid, *box)
+    g = b["ground"]
+    H = lambda s, t: mns(*xy(s, t)) - g
+    med = lambda vals: float(np.median(list(vals)))
+    r2 = lambda v: round(float(v), 2)
+    rng = lambda u0, u1, d=0.5: np.arange(u0, u1 + 1e-6, d)
+    s_min, t_min, s_max, t_max = P.bounds
+
+    def extent(s0, s1, side):
+        """Débord de l'emprise sur un côté (−1 : ouest-sud-ouest, 1 : est-nord-est), médiane entre s0 et s1."""
+        out = []
+        for s in rng(s0, s1, 0.5):
+            cut = LineString([(s, t0), (s, t0 + side * 60)]).intersection(P)
+            pts = [q[1] for gg in getattr(cut, "geoms", [cut]) for q in gg.coords]
+            if pts:
+                out.append(max(pts) if side > 0 else min(pts))
+        return med(out)
+
+    # Profil en long sur l'axe : tour de croisée (au-dessus du faîtage de la nef de plus de 4 m), faîtage de la nef, pignon ouest, porche.
+    along = lambda s: med(H(s, t) for t in rng(t0 - 1, t0 + 1))
+    sx = mon["cross"]
+    ridge = med(along(s) for s in rng(sx - 30, sx - 10))
+    k0 = run(along, sx, -0.5, s_min, lambda z, zp: z < ridge + 4)
+    k1 = run(along, sx, 0.5, s_max, lambda z, zp: z < ridge + 4)
+    nave0 = run(along, k0 - 3, -0.5, s_min, lambda z, zp: z < ridge - 3)
+    porch0 = run(along, s_min - 3, 0.5, nave0, lambda z, zp: z > 8)
+    # Coupes en travers (médianes sur une plage de s) ; murs = chute de plus de 3 m entre deux échantillons, de part et d'autre de l'axe.
+    def section(s0, s1):
+        return lambda t: med(H(s, t) for s in rng(s0, s1))
+
+    def walls(cut, tc, lim=25):
+        return run(cut, tc, -0.5, tc - lim, lambda z, zp: zp - z > 3), run(cut, tc, 0.5, tc + lim, lambda z, zp: zp - z > 3)
+
+    def eave(cut, tw, tr):
+        """Droite du pan entre 1 m du mur et 1 m du faîtage, ramenée au mur tw."""
+        ts = rng(min(tw, tr) + 1, max(tw, tr) - 1) if abs(tr - tw) > 2.5 else [tw + (tr - tw) * 0.3]
+        if len(ts) < 2:
+            return cut(ts[0])
+        k, z0 = np.polyfit(ts, [cut(t) for t in ts], 1)
+        return float(k * tw + z0)
+
+    def vessel(cut, tc):
+        tA, tB = walls(cut, tc)
+        zr = max(cut(t) for t in rng(tA + 0.5, tB - 0.5))
+        tr = (tA + tB) / 2
+        return tA, tB, (eave(cut, tA, tr) + eave(cut, tB, tr)) / 2, zr
+
+    pc = section(porch0 + 1, porch0 + 5)  # largeur à l'avant (en arrière, bas-côtés et tours la masquent)
+    pA, pB = run(pc, t0, -0.5, t0 - 20, lambda z, zp: z < 8), run(pc, t0, 0.5, t0 + 20, lambda z, zp: z < 8)
+    # Hauteurs du porche sur sa moitié arrière : à l'avant, une arête fine monte à 30 m le long du bord ouest (non identifiée).
+    pk = section(nave0 - 5, nave0 - 1)
+    pm = (pA + pB) / 2
+    porch = [r2(porch0), r2(nave0), r2(pA), r2(pB), r2(g + (eave(pk, pA, pm) + eave(pk, pB, pm)) / 2), r2(g + max(pk(t) for t in rng(pA + 1, pB - 1)))]
+    nc = section(nave0 + 3, k0 - 3)
+    nA, nB, ne, nr = vessel(nc, t0)
+    # Bas-côtés : appentis du mur de la nef au premier ressaut de plus d'1,5 m sur 1 m (côté ouest), même largeur de l'autre côté s'il n'y en a pas.
+    widths = []
+    for side, tw in ((-1, nA), (1, nB)):
+        w = run(nc, tw + side * 1.5, side * 1.0, tw + side * 9, lambda z, zp: zp - z > 1.5)
+        widths.append(abs(w - tw) if w is not None else None)
+    aw = next(w for w in widths if w is not None)
+    widths = [w if w is not None else aw for w in widths]
+    aisles = [[r2(tw - side * 0 + side * w), r2(g + nc(tw + side * 0.75)), r2(g + nc(tw + side * (w - 0.5)))] for side, tw, w in ((-1, nA, widths[0]), (1, nB, widths[1]))]
+    # Transept (pignons au bout des bras), bloc carré au bout du bras ouest (ressaut du profil), tour de croisée carrée centrée sur la flèche.
+    row = lambda t: (lambda s: H(s, t))
+    tA_ = aisles[1][0] - 2
+    tr0 = run(lambda s: med(H(s, t) for t in rng(tA_ - 1, tA_ + 1)), sx, -0.5, nave0, lambda z, zp: z < aisles[1][1] - g + 3)
+    tr1 = run(lambda s: med(H(s, t) for t in rng(tA_ - 1, tA_ + 1)), sx, 0.5, s_max, lambda z, zp: z < aisles[1][1] - g + 3)
+    tc = section(tr0 + 1.5, tr1 - 1.5)
+    tE = extent(tr0 + 1, tr1 - 1, 1)
+    tW = extent(tr0 + 1, tr1 - 1, -1)
+    armE = [t for t in rng(nB + 2, tE - 1)]
+    # Ressaut du côté ouest : fin du bras (pan du transept), début du bloc.
+    blk = run(tc, nA - 2, -0.5, tW + 1, lambda z, zp: zp - z > 3)
+    arm_cut = lambda s: med(H(s, t) for t in armE)
+    sm = (tr0 + tr1) / 2
+    te = (eave(arm_cut, tr0, sm) + eave(arm_cut, tr1, sm)) / 2
+    t_ridge = max(arm_cut(s) for s in rng(tr0 + 1, tr1 - 1))
+    blk_cut = lambda s: med(H(s, t) for t in rng(tW + 2, blk - 2))
+    blk_top = float(np.percentile([H(s, t) for s in rng(tr0 + 1, tr1 - 1) for t in rng(tW + 1, blk - 1)], 98))
+    blk_eave = eave(blk_cut, tr0, sm)
+    side = nB - nA - 2
+    ring_t = [H(s, t) for s in rng(sx - side / 2 + 0.5, sx + side / 2 - 0.5) for t in (t0 - side / 2 + 0.75, t0 + side / 2 - 0.75)]
+    ring_s = [H(s, t) for t in rng(t0 - side / 2 + 0.5, t0 + side / 2 - 0.5) for s in (sx - side / 2 + 0.75, sx + side / 2 - 0.75)]
+    body = med(ring_t + ring_s)
+    tip = max(H(s, t) for s in rng(sx - 2, sx + 2) for t in rng(t0 - 2, t0 + 2))
+    # Chœur et abside : coupe derrière la croisée ; abside en demi-polygone de rayon la demi-largeur, au bout de l'emprise (le toit déborde
+    # au-delà) ; corniche de l'abside = toit relevé à 75 cm du mur, sur l'axe.
+    cc = section(tr1 + 1, tr1 + 7)
+    cA, cB, ce, cr = vessel(cc, t0)
+    r = (cB - cA) / 2
+    end = min(s_max, run(along, k1 + 2, 0.5, s_max + 2, lambda z, zp: zp - z > 3))
+    sc = end - r
+    ae = along(end - 0.75)
+    choir_aisles = [[r2(extent(tr1 + 1, sc - 1, side)), r2(g + cc(tw + side * 0.75)), r2(g + cc(tw + side * 3))] for side, tw in ((-1, cA), (1, cB))]
+    # Chapelles le long des bas-côtés, par travée : débord de l'emprise, haut médian.
+    bays = spec["bays"]
+    p = (tr0 - nave0) / bays
+    chapels = []
+    for i in range(bays):
+        s0, s1 = nave0 + i * p, nave0 + (i + 1) * p
+        row_ = [r2(s0), r2(s1)]
+        for k, (sd, a_) in enumerate(((-1, aisles[0]), (1, aisles[1]))):
+            out = extent(s0 + 0.5, s1 - 0.5, sd)
+            if abs(out - a_[0]) < 1:
+                row_ += [r2(a_[0]), 0]
+            else:
+                row_ += [r2(out), r2(g + med(H(s, t) for s in rng(s0 + 0.5, s1 - 0.5) for t in rng(min(a_[0], out) + 0.5, max(a_[0], out) - 0.5)))]
+        chapels.append(row_)
+    tw = spec["towers"]
+    return {
+        "c": [r2(cx), r2(cy)], "a": a, "t0": r2(t0), "g": r2(g),
+        "porch": porch,
+        "towers": [r2(min(tw["w"], pA - extent(porch0 + 0.5, nave0 - 0.5, -1))), r2(min(tw["w"], extent(porch0 + 0.5, nave0 - 0.5, 1) - pB)), r2(g + tw["body"]), r2(g + tw["tip"])],
+        "nave": [r2(nave0), r2(tr0), r2(nA), r2(nB), r2(g + ne), r2(g + nr)],
+        "aisles": aisles, "chapels": chapels,
+        "transept": [r2(tr0), r2(tr1), r2(tW), r2(tE), r2(g + te), r2(g + t_ridge)],
+        "block": [r2(blk), r2(g + blk_eave), r2(g + blk_top)],
+        "tower": [r2(sx), r2(side), r2(g + body), r2(g + tip)],
+        "choir": [r2(sc), r2(cA), r2(cB), r2(g + ce), r2(g + cr)],
+        "choirAisles": choir_aisles,
+        "apse": [r2(r), r2(g + ae), spec["apse"]],
+    }
+
+
 def main():
     manual = json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("monuments", {})
     world = json.load(open(c.OUT / "world.json"))
@@ -196,10 +345,14 @@ def main():
             print(f"  monument : {bid} absent des tuiles")
             continue
         tid, b = found[bid]
+        k = kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))
+        if spec["model"] == "cathedral":
+            if cathedral(tid, bid, b, spec, k):
+                changed.add(tid)
+            continue
         if spec["model"] != "townhall":
             raise SystemExit(f"{bid} : modèle inconnu {spec['model']}")
         hall = measure_hall(bid, b, spec)
-        k = kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))
         e = dict(k["buildings"].get(bid, {"k": "townhall"}))
         e["hall"] = hall
         if spec.get("sign") is False:
@@ -218,9 +371,63 @@ def main():
     print(f"{len(manual)} monument(s) d'après photo ; {len(changed)} fichier(s) de types et {len(changed_lod)} de silhouettes réécrit(s)")
 
 
-def lod_silhouette(tid, bid, h):
-    """Silhouette lointaine (lod/<tuile>.json) : le prisme unique du bâtiment devient corps principal, pavillons et ailes basses, chacun
-    avec son égout et son haut ; les entrées du bâtiment (même clé) sont remplacées, le reste du fichier est inchangé. Vrai si réécrit."""
+def cathedral(tid, bid, b, spec, k):
+    """Cathédrale (D127) : champ `cath` du bâtiment, clocher lointain (`tower` et repère de kinds/index.json) à la tour et à la flèche
+    mesurées, silhouette lointaine ; `mon` (repère, build_kinds.py) est gardé. Vrai si kinds/<tuile>.json change."""
+    e = dict(k["buildings"][bid])
+    cath = measure_cathedral(bid, b, spec, e["mon"])
+    e["cath"] = cath
+    sx, side, body, tip = cath["tower"]
+    ca, sa = math.cos(cath["a"]), math.sin(cath["a"])
+    t0 = cath["t0"]
+    e["tower"] = [round(cath["c"][0] + ca * sx - sa * t0, 2), round(cath["c"][1] + sa * sx + ca * t0, 2), side, body, tip]
+    g = cath["g"]
+    print(f"  {bid} : porche {cath['porch'][5] - g:.1f} m, nef {cath['nave'][4] - g:.1f} / {cath['nave'][5] - g:.1f} m,"
+          f" transept {cath['transept'][4] - g:.1f} / {cath['transept'][5] - g:.1f} m, chœur {cath['choir'][3] - g:.1f} / {cath['choir'][4] - g:.1f} m,"
+          f" tour de croisée {body - g:.1f} m, flèche {tip - g:.1f} m")
+    index = json.loads((KINDS / "index.json").read_text())
+    marks = [dict(m, t=e["tower"]) if m["id"] == bid else m for m in index["landmarks"]]
+    if marks != index["landmarks"]:
+        index["landmarks"] = marks
+        (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    if lod_cathedral(tid, bid, cath):
+        print(f"  silhouette lointaine de {bid} réécrite")
+    if k["buildings"][bid] == e:
+        return False
+    k["buildings"][bid] = e
+    return True
+
+
+def lod_cathedral(tid, bid, m):
+    """Silhouette lointaine de la cathédrale : porche et tours, nef, bas-côtés, transept et bloc, tour de croisée, chœur et abside, bas-côtés
+    du chœur, chacun avec son égout et son haut (la flèche reste le clocher lointain). Vrai si lod/<tuile>.json est réécrit."""
+    ca, sa = math.cos(m["a"]), math.sin(m["a"])
+    xy = lambda s, t: [round(m["c"][0] + ca * s - sa * t, 1), round(m["c"][1] + sa * s + ca * t, 1)]
+    rect = lambda s0, s1, t0, t1: [(s0, t0), (s1, t0), (s1, t1), (s0, t1)]
+    p0, p1, pA, pB, pe, pr = m["porch"]
+    w0, w1, tb, tt = m["towers"]
+    n0, n1, nA, nB, ne, nr = m["nave"]
+    tr0, tr1, tW, tE, te, trr = m["transept"]
+    blk, be, bt = m["block"]
+    sx, side, body, _ = m["tower"]
+    sc, cA, cB, ce, cr = m["choir"]
+    r, ae, _ = m["apse"]
+    c0 = m["t0"]
+    out = [min(q[2] for q in m["chapels"]), max(q[4] for q in m["chapels"])]
+    polys = [(rect(p0, n0, pA, pB), pe, pr), (rect(p0, p0 + w0, pA - w0, pA), tb, tt), (rect(p0, p0 + w1, pB, pB + w1), tb, tt),
+             (rect(n0, tr0, nA, nB), ne, nr), (rect(p0 + max(w0, w1), tr0, out[0], nA), m["aisles"][0][2], m["aisles"][0][1]),
+             (rect(p0 + max(w0, w1), tr0, nB, out[1]), m["aisles"][1][2], m["aisles"][1][1]),
+             (rect(tr0, tr1, blk, tE), te, trr), (rect(tr0, tr1, tW, blk), be, bt),
+             (rect(sx - side / 2, sx + side / 2, c0 - side / 2, c0 + side / 2), body, body),
+             ([(tr1, cA), (sc, cA), *[(sc + r * math.sin(math.pi * i / 4), c0 - r * math.cos(math.pi * i / 4)) for i in range(1, 4)], (sc, cB), (tr1, cB)], max(ce, ae), cr),
+             (rect(tr1, sc, m["choirAisles"][0][0], cA), m["choirAisles"][0][2], m["choirAisles"][0][1]),
+             (rect(tr1, sc, cB, m["choirAisles"][1][0]), m["choirAisles"][1][2], m["choirAisles"][1][1])]
+    return replace_lod(tid, bid, [([xy(*q) for q in pts], e, top) for pts, e, top in polys])
+
+
+def replace_lod(tid, bid, polys):
+    """Remplace les prismes du bâtiment (même clé) dans lod/<tuile>.json par `polys` (contour en [x, y], égout, haut), à la place du premier ;
+    le reste du fichier est inchangé. Vrai si réécrit."""
     path = LOD / f"{tid}.json"
     if not path.exists():
         return False
@@ -229,6 +436,19 @@ def lod_silhouette(tid, bid, h):
     mine = [e for e in lod if e["k"] == key]
     if not mine:
         return False
+    base = {k: v for k, v in mine[0].items() if k not in ("r", "e", "g")}
+    new = [{"r": [v for q in pts for v in q], "e": round(e, 1), "g": round(g, 1), **base} for pts, e, g in polys]
+    if mine == new:
+        return False
+    i = lod.index(mine[0])
+    rest = [e for e in lod if e["k"] != key]
+    path.write_text(json.dumps(rest[:i] + new + rest[i:], separators=(",", ":")))
+    return True
+
+
+def lod_silhouette(tid, bid, h):
+    """Silhouette lointaine (lod/<tuile>.json) : le prisme unique du bâtiment devient corps principal, pavillons et ailes basses, chacun
+    avec son égout et son haut ; les entrées du bâtiment (même clé) sont remplacées, le reste du fichier est inchangé. Vrai si réécrit."""
     a, (ox, oy) = h["a"], h["o"]
     ca, sa = math.cos(a), math.sin(a)
     xy = lambda s, t: [round(ox + ca * s - sa * t, 1), round(oy + sa * s + ca * t, 1)]
@@ -244,14 +464,7 @@ def lod_silhouette(tid, bid, h):
         b0 = sL(d) if s0 < 0.05 else s0
         b1 = sR(d) if s1 > h["l"] - 0.05 else s1
         polys.append(([(a0, -0.35), (a1, -0.35), (b1, d), (b0, d)], h["eave"], top))
-    base = {k: v for k, v in mine[0].items() if k not in ("r", "e", "g")}
-    new = [{"r": [v for q in pts for v in xy(*q)], "e": round(e, 1), "g": round(g, 1), **base} for pts, e, g in polys]
-    if mine == new:
-        return False
-    i = lod.index(mine[0])
-    rest = [e for e in lod if e["k"] != key]
-    path.write_text(json.dumps(rest[:i] + new + rest[i:], separators=(",", ":")))
-    return True
+    return replace_lod(tid, bid, [([xy(*q) for q in pts], e, g) for pts, e, g in polys])
 
 
 if __name__ == "__main__":
