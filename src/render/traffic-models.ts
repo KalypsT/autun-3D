@@ -1,9 +1,8 @@
 import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
-import { beaconBoxes, bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry } from "./car-body";
-import { CAR_BODIES } from "./car-model";
+import { beaconBoxes, carLayout, carWheelGeometry, lampSpots } from "./car-body";
+import { baseModel, CAR_BODIES, carBodyGeometry } from "./car-model";
 import { tintPaintOnly } from "./parked-models";
-import { merge, sharedMaterial } from "./vehicle-model";
 
 /**
  * Voitures qui roulent (J3-5, D65), dessinées par instances comme les voitures garées (D56), mais avec des roues qui tournent et braquent :
@@ -55,29 +54,26 @@ interface Layout {
   radius: number;
   width: number;
   lamps: ReturnType<typeof lampBoxes>;
+  rim: THREE.Color;
   beacons: ReturnType<typeof beaconBoxes>;
 }
 
-/** Géométrie d'un modèle sans ses roues : peinture en blanc (teintée par instance) et détails. */
+/** Géométrie d'un modèle sans ses roues : peinture en blanc (teintée par instance) et détails ; `citadine#dent` : sa forme abîmée (D112). */
 export function bodyOnlyGeometry(id: string): THREE.BufferGeometry {
-  const p = CAR_BODIES[id], def = vehicleDef(id);
-  if (!p || !def) throw new Error(`voiture inconnue : ${id}`);
-  const { front, rear } = def.spec;
-  return merge([bodyPaintGeometry(p, front, rear, "#ffffff"), bodyDetailGeometry(p, front, rear)]);
+  if (!CAR_BODIES[baseModel(id)] || !vehicleDef(baseModel(id))) throw new Error(`voiture inconnue : ${id}`);
+  return carBodyGeometry(id);
 }
 
 /** Phares et feux arrière d'un modèle, dans son repère : [x, y, z, largeur, hauteur, profondeur], les deux premiers devant. */
 export function lampBoxes(id: string): { head: [number, number, number][]; tail: [number, number, number][] } {
   const p = CAR_BODIES[id], def = vehicleDef(id);
   if (!p || !def) throw new Error(`voiture inconnue : ${id}`);
-  const L = carLayout(p, def.spec.front, def.spec.rear), W = p.width / 2;
-  return {
-    head: [[W * 0.68, p.noseHeight - 0.14, L.noseZ + 0.035 + 0.02], [-W * 0.68, p.noseHeight - 0.14, L.noseZ + 0.035 + 0.02]],
-    tail: [[W * 0.7, p.tailHeight - 0.18, L.tailZ - 0.035 - 0.02], [-W * 0.7, p.tailHeight - 0.18, L.tailZ - 0.035 - 0.02]],
-  };
+  const l = lampSpots(p, def.spec.front, def.spec.rear);
+  // Un peu en avant des phares et en arrière des feux : la plaque lumineuse les recouvre.
+  return { head: l.head.map(([x, y, z]) => [x, y, z - 0.01]), tail: l.tail.map(([x, y, z]) => [x, y, z + 0.01]) };
 }
 
-/** Roue unitaire : rayon 1 (y, z) et largeur 1 (x), les mêmes couleurs que les roues des modèles articulés. */
+/** Roue unitaire : rayon 1 (y, z) et largeur 1 (x), jante blanche teintée par instance de la couleur des jantes du modèle. */
 function unitWheelGeometry(): THREE.BufferGeometry {
   return carWheelGeometry(1, 1, WHEEL_SEGMENTS);
 }
@@ -87,6 +83,7 @@ export class TrafficModels {
   private readonly slots = new Map<string, Slot>();
   private readonly bodyMaterial = tintPaintOnly(new THREE.MeshLambertMaterial({ vertexColors: true }));
   private readonly wheels: THREE.InstancedMesh;
+  private readonly wheelMaterial = tintPaintOnly(new THREE.MeshLambertMaterial({ vertexColors: true }));
   private readonly lamps: THREE.InstancedMesh;
   private readonly lampMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   private readonly beacons: THREE.InstancedMesh;
@@ -118,7 +115,7 @@ export class TrafficModels {
   private readonly layouts = new Map<string, Layout>();
 
   constructor() {
-    this.wheels = new THREE.InstancedMesh(unitWheelGeometry(), sharedMaterial(), MAX_CARS * 4);
+    this.wheels = new THREE.InstancedMesh(unitWheelGeometry(), this.wheelMaterial, MAX_CARS * 4);
     this.lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.lampMaterial, MAX_CARS * 4);
     this.beacons = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), MAX_BEACONS);
     this.beacons.castShadow = false;
@@ -158,11 +155,12 @@ export class TrafficModels {
     return s;
   }
 
-  private layout(id: string): Layout {
+  private layout(model: string): Layout {
+    const id = baseModel(model);
     let l = this.layouts.get(id);
     if (!l) {
       const p = CAR_BODIES[id]!, def = vehicleDef(id)!;
-      l = { wheels: carLayout(p, def.spec.front, def.spec.rear).wheels, radius: p.wheelRadius, width: p.tyreWidth, lamps: lampBoxes(id), beacons: beaconBoxes(p, def.spec.front, def.spec.rear) };
+      l = { wheels: carLayout(p, def.spec.front, def.spec.rear).wheels, radius: p.wheelRadius, width: p.tyreWidth, lamps: lampBoxes(id), rim: new THREE.Color(p.style.rim), beacons: beaconBoxes(p, def.spec.front, def.spec.rear) };
       this.layouts.set(id, l);
     }
     return l;
@@ -203,6 +201,7 @@ export class TrafficModels {
         this.quat.copy(this.steerQuat).multiply(this.spinQuat);
         this.local.compose(this.pos.set(x, l.radius, z), this.quat, this.scale.set(l.width, l.radius, l.radius));
         this.tmp.multiplyMatrices(this.car, this.local);
+        this.wheels.setColorAt(this.nWheels, l.rim);
         this.wheels.setMatrixAt(this.nWheels++, this.tmp);
       }
       // Feux : deux phares, deux feux arrière, sur la caisse (elle prend le roulis).
@@ -236,6 +235,7 @@ export class TrafficModels {
     this.wheels.count = this.nWheels;
     this.wheels.visible = this.nWheels > 0;
     this.wheels.instanceMatrix.needsUpdate = true;
+    if (this.wheels.instanceColor) this.wheels.instanceColor.needsUpdate = true;
     this.lamps.count = this.nLamps;
     this.lamps.visible = this.nLamps > 0;
     this.lamps.instanceMatrix.needsUpdate = true;
@@ -270,6 +270,7 @@ export class TrafficModels {
     this.beacons.geometry.dispose();
     (this.beacons.material as THREE.Material).dispose();
     this.bodyMaterial.dispose();
+    this.wheelMaterial.dispose();
     this.group.clear();
   }
 }

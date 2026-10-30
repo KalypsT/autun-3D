@@ -88,8 +88,19 @@
       #speedo .track { stroke: rgba(255, 248, 230, .22); }
       #speedo #speedo-arc { stroke: var(--ochre); stroke-dasharray: 0 100; }
       #speedo #speedo-arc.red { stroke: var(--brick); }
+      /* Véhicule très abîmé (D109) : cadran cerclé de rouge brique, qui bat lentement. */
+      #speedo.hurt .disc { stroke: var(--brick); stroke-width: 3.5; animation: shurt 1.2s ease-in-out infinite; }
+      @keyframes shurt { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: .35; } }
       #speedo-value { position: absolute; left: 0; right: 0; top: 22px; text-align: center; color: var(--cream); font: 800 22px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
       #speedo-unit { position: absolute; left: 0; right: 0; top: 46px; text-align: center; color: var(--ochre); font: 700 9px/1 system-ui, sans-serif; letter-spacing: .05em; }
+      /* Nom du véhicule (D107), à la GTA 3 : à droite sous « Descendre », marque en petites capitales ocre, modèle en grosses capitales crème à l'ombre d'encre. */
+      #vname { position: fixed; right: 0; top: 64px; z-index: 5; display: none; pointer-events: none; text-align: right; padding: 8px max(16px, env(safe-area-inset-right)) 8px 70px;
+               background: linear-gradient(to left, rgba(27, 31, 39, .7), rgba(27, 31, 39, .45) 60%, rgba(27, 31, 39, 0)); }
+      body.game.driving #vname.show { display: block; animation: vname 3.2s ease-out both; }
+      #vname .vn-make { color: var(--ochre); font: 900 14px/1 system-ui, sans-serif; letter-spacing: .32em; text-transform: uppercase; text-shadow: 2px 2px 0 var(--ink); margin-right: -.32em; }
+      #vname .vn-model { margin-top: 4px; color: var(--cream); font: italic 900 34px/1 system-ui, sans-serif; letter-spacing: .03em; text-transform: uppercase;
+                         text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); border-bottom: 4px solid var(--brick); padding-bottom: 3px; }
+      @keyframes vname { 0% { opacity: 0; transform: translateX(40px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
       /* Figure en cours (roue arrière, roue avant) : sous la minimap. */
       #stunt { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 8px); top: 174px; z-index: 4; pointer-events: none; padding: 4px 10px; border-radius: 12px;
                background: rgba(27, 31, 39, .78); border: 1.5px solid var(--ochre); color: var(--ochre); font: 800 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
@@ -255,6 +266,7 @@
     <div id="hint">Pouce gauche : marcher (à fond : courir) · glisser à droite : regarder · toucher la minimap : carte et pause</div>
     <div id="pedals"><div id="horn" class="pedal" role="button" aria-label="Klaxon"></div><div id="handbrake" class="pedal" role="button" aria-label="Frein à main"></div><div id="brake" class="pedal" role="button" aria-label="Frein"></div><div id="gas" class="pedal" role="button" aria-label="Accélérer"></div></div>
     <div id="stunt" aria-live="polite"></div>
+    <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="reticle"></div>
     <div id="attack" role="button" aria-label="Frapper"></div>

@@ -289,7 +289,8 @@ export class Officers {
       if (armed && o.mode === "run") {
         stopAt = OFFICER.holdDistance;
         const dd = Math.hypot(p.x - o.x, p.y - o.y);
-        if (dd <= OFFICER.shootRange && (!this.colliders || this.colliders.raycast(o.x, o.y, p.x, p.y) === null)) {
+        // Une voiture garée, un tronc ou un poteau entre le gendarme et le joueur l'abrite (D113).
+        if (dd <= OFFICER.shootRange && (!this.colliders || this.colliders.raycast(o.x, o.y, p.x, p.y, true) === null)) {
           o.aiming = true;
           o.aimT += dt;
           if (dd > OFFICER.holdDistance + 4) speedCap = 2.2;

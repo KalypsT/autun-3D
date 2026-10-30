@@ -136,6 +136,8 @@ export const SCENES: readonly SoundScene[] = [
   shot("crash-light", "Véhicules", "Choc léger (voiture)", 1.5, (k, o, t) => S.crash(k, o, t, 0.15, true, NEAR)),
   shot("crash-hard", "Véhicules", "Choc violent (voiture)", 2, (k, o, t) => S.crash(k, o, t, 1, true, NEAR)),
   shot("crash-bike", "Véhicules", "Choc à vélo", 1.5, (k, o, t) => S.crash(k, o, t, 0.4, false, { ...NEAR, gain: 0.6 })),
+  shot("explosion", "Véhicules", "Explosion d'un véhicule", 3, (k, o, t) => S.explosion(k, o, t, NEAR)),
+  shot("crackle", "Véhicules", "Crépitement d'un feu", 1, (k, o, t) => { for (let i = 0; i < 4; i++) S.crackle(k, o, t + i * 0.22, { ...NEAR, gain: 0.8 }); }),
   shot("pops", "Véhicules", "Pétarades (sportive)", 1.5, (k, o, t) => S.pop(k, o, t, { ...NEAR, gain: 0.5 }), 4, 0.13),
   shot("door", "Véhicules", "Portière", 1, (k, o, t) => S.door(k, o, t, { ...NEAR, gain: 0.6 })),
   shot("pistol", "Armes", "Pistolet (trois coups)", 2, (k, o, t) => S.gunshot(k, o, t, "pistol", { ...NEAR, gain: 0.85, echo: 0.45 }), 3, 0.3),

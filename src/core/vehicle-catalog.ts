@@ -1,3 +1,4 @@
+import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
 import { COMPACT, MTB, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
 
@@ -41,8 +42,14 @@ export interface VehicleDef {
   /** Identifiant stable (enregistré dans les sauvegardes : ne jamais le changer). */
   id: string;
   family: VehicleFamily;
-  /** Nom affiché. */
+  /** Nom du type de véhicule (galerie, menus). */
   name: string;
+  /**
+   * Marque et modèle (fictifs, clins d'œil à Autun, D107), affichés quelques secondes quand on monte dedans, à la manière de GTA 3.
+   * Éduen (les Éduens, peuple gaulois d'Autun) : voitures et scooters populaires ; Augusta (Augustodunum) : haut de gamme ; Couhard (la pierre de Couhard) :
+   * utilitaires ; Bibracte (l'oppidum du mont Beuvray) : vélos et motos ; Trott'Autun : le service de trottinettes en libre-service.
+   */
+  badge?: { make: string; model: string };
   spec: VehicleSpec;
   /** Pictogramme propre au modèle, s'il diffère de celui de sa famille (le scooter est un 🛵, pas une moto). */
   icon?: string;
@@ -50,26 +57,33 @@ export interface VehicleDef {
   size: { length: number; width: number; height: number };
   /** Couleurs de peinture possibles ; l'exemplaire en prend une selon son numéro de variante. */
   palette: readonly string[];
+  /** Solidité face aux chocs et aux balles (D109) : 1 pour une voiture ordinaire (défaut), plus pour un utilitaire ou la gendarmerie. */
+  toughness?: number;
 }
 
 export const CATALOG: readonly VehicleDef[] = [
-  { id: "velo-ville", family: "bike", name: "Vélo de ville", spec: BIKE, size: { length: 1.76, width: 0.57, height: 1.06 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8"] },
-  { id: "vtt", family: "bike", name: "VTT", spec: MTB, size: { length: 1.78, width: 0.69, height: 1.06 }, palette: ["#d9472b", "#1f3a52", "#3f7d4e", "#f1b24a", "#2b2118"] },
-  { id: "trottinette", family: "kickscooter", name: "Trottinette", spec: SCOOTER, size: { length: 1.14, width: 0.51, height: 1.12 }, palette: ["#2a6f7e", "#f1b24a", "#d9472b", "#3f7d4e"] },
-  { id: "citadine", family: "car", name: "Citadine", spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#b8a48a"] },
-  { id: "compacte", family: "car", name: "Compacte", spec: COMPACT, size: { length: 4.25, width: 1.8, height: 1.46 }, palette: ["#d9472b", "#2a6f7e", "#f1b24a", "#efe3c8", "#1f3a52", "#3f7d4e", "#8a8f96"] },
-  { id: "berline", family: "car", name: "Berline", spec: SEDAN, size: { length: 4.75, width: 1.85, height: 1.45 }, palette: ["#1f3a52", "#8a8f96", "#2b2118", "#efe3c8", "#7a2e2e", "#3a4a5a"] },
-  { id: "break", family: "car", name: "Break", spec: WAGON, size: { length: 4.8, width: 1.85, height: 1.5 }, palette: ["#efe3c8", "#8a8f96", "#3f7d4e", "#1f3a52", "#b8a48a", "#2b2118"] },
-  { id: "petit-suv", family: "car", name: "Petit SUV", spec: SUV, size: { length: 4.25, width: 1.8, height: 1.6 }, palette: ["#2a6f7e", "#d9472b", "#efe3c8", "#2b2118", "#f1b24a", "#8a8f96", "#3f7d4e"] },
-  { id: "camionnette", family: "car", name: "Camionnette", spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#efe3c8", "#efe3c8", "#8a8f96", "#1f3a52", "#b8a48a", "#3f7d4e"] },
-  { id: "vieille-voiture", family: "car", name: "Vieille voiture", spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#a6553b", "#9a8b6a", "#7d8f7a", "#8a8f96", "#c9b98a", "#5f6f82"] },
-  { id: "sportive", family: "car", name: "Sportive", spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#2b2118", "#efe3c8", "#1f3a52", "#3f7d4e"] },
+  { id: "velo-ville", family: "bike", name: "Vélo de ville", badge: { make: "Bibracte", model: "Promenade" }, toughness: 0.6, spec: BIKE, size: { length: 1.83, width: 0.58, height: 1.09 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8", "#9fb8a6", "#d98a8a"] },
+  { id: "vtt", family: "bike", name: "VTT", badge: { make: "Bibracte", model: "Beuvray" }, toughness: 0.7, spec: MTB, size: { length: 1.78, width: 0.69, height: 1.07 }, palette: ["#d9472b", "#1b1d22", "#3f7d4e", "#f1b24a", "#2d6fb8", "#8a8f96"] },
+  { id: "trottinette", family: "kickscooter", name: "Trottinette", badge: { make: "Trott'Autun", model: "Libre-service" }, toughness: 0.5, spec: SCOOTER, size: { length: 1.17, width: 0.51, height: 1.15 }, palette: ["#2a6f7e", "#3f7d4e", "#d9472b"] },
+  { id: "citadine", family: "car", name: "Citadine", badge: { make: "Éduen", model: "Moineau" }, spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#f1b24a", "#5aa0b4", "#9cc25b", "#efe3c8", "#d98a8a", "#2a6f7e"] },
+  { id: "compacte", family: "car", name: "Compacte", badge: { make: "Éduen", model: "Arroux" }, spec: COMPACT, size: { length: 4.25, width: 1.8, height: 1.46 }, palette: ["#2a6f7e", "#c23a2a", "#8a8f96", "#1f3a52", "#e8e4da", "#3f7d4e"] },
+  { id: "berline", family: "car", name: "Berline", badge: { make: "Augusta", model: "Préfète" }, spec: SEDAN, size: { length: 4.75, width: 1.85, height: 1.45 }, palette: ["#1d2530", "#8a8f96", "#7a2e2e", "#1f3a52", "#c8c2b4", "#3a4a5a"] },
+  { id: "break", family: "car", name: "Break", badge: { make: "Augusta", model: "Morvandelle" }, spec: WAGON, size: { length: 4.8, width: 1.85, height: 1.5 }, palette: ["#5d6b4f", "#b8a48a", "#efe3c8", "#4b5d73", "#8a8f96", "#6e4a33"] },
+  { id: "petit-suv", family: "car", name: "Petit SUV", badge: { make: "Éduen", model: "Morvan" }, toughness: 1.15, spec: SUV, size: { length: 4.25, width: 1.8, height: 1.6 }, palette: ["#c4562f", "#2f6a5a", "#d6d2c8", "#3a7ca5", "#8a8f96", "#e0a43a"] },
+  { id: "camionnette", family: "car", name: "Camionnette", badge: { make: "Couhard", model: "Mulet" }, toughness: 1.3, spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#e8e4da", "#e8e4da", "#e8e4da", "#8a8f96", "#c23a2a", "#2a6f7e", "#f1b24a"] },
+  { id: "vieille-voiture", family: "car", name: "Vieille voiture", badge: { make: "Éduen", model: "Pétrolette" }, toughness: 0.9, spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#9fb8a6", "#c9b98a", "#8fa8c4", "#a6553b", "#e3d6b8", "#7d6a8a"] },
+  { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#e8e4da", "#1b1d22", "#2d6fb8", "#3f7d4e"] },
   // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
-  { id: "gendarmerie", family: "car", name: "Gendarmerie", icon: "🚓", spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
-  { id: "scooter-125", family: "moto", name: "Scooter 125", icon: "🛵", spec: SCOOTER_125, size: { length: 1.85, width: 0.78, height: 1.23 }, palette: ["#efe3c8", "#2a6f7e", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a"] },
-  { id: "moto-routiere", family: "moto", name: "Moto routière", spec: MOTO, size: { length: 2.04, width: 0.74, height: 1.13 }, palette: ["#d9472b", "#1f3a52", "#2a6f7e", "#f1b24a", "#3f7d4e"] },
-  { id: "moto-sportive", family: "moto", name: "Moto sportive", spec: SPORT_MOTO, size: { length: 2.04, width: 0.6, height: 1.16 }, palette: ["#d9472b", "#f1b24a", "#1f3a52", "#efe3c8", "#3f7d4e"] },
+  { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
+  { id: "scooter-125", family: "moto", name: "Scooter 125", badge: { make: "Éduen", model: "Zéphyr 125" }, icon: "🛵", toughness: 0.6, spec: SCOOTER_125, size: { length: 1.92, width: 0.72, height: 1.26 }, palette: ["#efe3c8", "#9fb8a6", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a", "#8fa8c4"] },
+  { id: "moto-routiere", family: "moto", name: "Moto routière", badge: { make: "Bibracte", model: "Druide" }, toughness: 0.7, spec: MOTO, size: { length: 2.09, width: 0.74, height: 1.28 }, palette: ["#7a2e2e", "#1f3a52", "#1b1d22", "#3f7d4e", "#c9b98a", "#d9472b"] },
+  { id: "moto-sportive", family: "moto", name: "Moto sportive", badge: { make: "Bibracte", model: "Celte R" }, toughness: 0.65, spec: SPORT_MOTO, size: { length: 2.04, width: 0.63, height: 1.15 }, palette: ["#d9472b", "#f1b24a", "#2d6fb8", "#1b1d22", "#3f7d4e"] },
 ];
+
+/** Dégâts d'un modèle (D109) : sa solidité, et s'il peut brûler (voitures et motos ; un vélo ou une trottinette se casse). */
+export function damageProfile(def: VehicleDef): DamageProfile {
+  return { toughness: def.toughness ?? 1, burns: def.family === "car" || def.family === "moto" };
+}
 
 const byId = new Map(CATALOG.map((d) => [d.id, d]));
 

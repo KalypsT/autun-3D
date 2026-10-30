@@ -40,6 +40,7 @@ function beamMap(): THREE.DataTexture {
 
 /** Boîtes lumineuses fusionnées en une géométrie (x, y, z du centre, taille commune). */
 function lampGeometry(spots: readonly (readonly [number, number, number])[], size: readonly [number, number, number]): THREE.BufferGeometry {
+  if (spots.length === 0) return new THREE.BufferGeometry();
   return merge(spots.map(([x, y, z]) => new THREE.BoxGeometry(size[0], size[1], size[2]).translate(x, y, z)));
 }
 
@@ -55,23 +56,36 @@ export function lampLayout(def: VehicleDef): { head: [number, number, number][];
   return { head: [[0, hy, frontZ]], tail: [[0, ty, rearZ]], frontZ, kind: def.family === "moto" ? "moto" : "small" };
 }
 
+function reverseSpots(tail: readonly [number, number, number][]): [number, number, number][] {
+  return tail.map(([x, y, z]) => [x * 0.6, y, z]);
+}
+
 export class VehicleLights {
   readonly group = new THREE.Group();
   private readonly headMat = new THREE.MeshBasicMaterial({ color: "#fff1c0", transparent: true, opacity: 0, depthWrite: false });
   private readonly tailMat = new THREE.MeshBasicMaterial({ color: "#ff3a22", transparent: true, opacity: 0, depthWrite: false });
   private readonly reverseMat = new THREE.MeshBasicMaterial({ color: "#f4f1ea", transparent: true, opacity: 0, depthWrite: false });
   private readonly beamMat: THREE.MeshBasicMaterial;
-  private readonly glow: number;
+  private glow: number;
+  private readonly fullGlow: number;
   private readonly meshes: THREE.Mesh[] = [];
+  private readonly layout: ReturnType<typeof lampLayout>;
+  private readonly head: THREE.Mesh;
+  private readonly tail: THREE.Mesh;
+  private readonly reverse: THREE.Mesh | null;
 
   constructor(def: VehicleDef) {
     const l = lampLayout(def), car = l.kind === "car";
-    const head = new THREE.Mesh(lampGeometry(l.head, car ? [0.32, 0.2, 0.06] : [0.14, 0.12, 0.06]), this.headMat);
-    const tail = new THREE.Mesh(lampGeometry(l.tail, car ? [0.3, 0.18, 0.06] : [0.1, 0.07, 0.05]), this.tailMat);
+    this.layout = l;
+    const head = new THREE.Mesh(lampGeometry(l.head, this.headSize), this.headMat);
+    const tail = new THREE.Mesh(lampGeometry(l.tail, this.tailSize), this.tailMat);
     // Feu de recul : à l'intérieur des feux arrière (voitures seulement).
-    const reverse = car ? new THREE.Mesh(lampGeometry(l.tail.map(([x, y, z]) => [x * 0.6, y, z] as [number, number, number]), [0.12, 0.1, 0.07]), this.reverseMat) : null;
+    const reverse = car ? new THREE.Mesh(lampGeometry(reverseSpots(l.tail), [0.12, 0.1, 0.07]), this.reverseMat) : null;
+    this.head = head;
+    this.tail = tail;
+    this.reverse = reverse;
     const b = BEAM[l.kind];
-    this.glow = b.glow;
+    this.glow = this.fullGlow = b.glow;
     this.beamMat = new THREE.MeshBasicMaterial({
       map: beamMap(), color: "#ffd98a", transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
@@ -89,6 +103,29 @@ export class VehicleLights {
       this.group.add(m);
     }
     beam.renderOrder = 1;
+  }
+
+  private get headSize(): [number, number, number] {
+    return this.layout.kind === "car" ? [0.32, 0.2, 0.06] : [0.14, 0.12, 0.06];
+  }
+
+  private get tailSize(): [number, number, number] {
+    return this.layout.kind === "car" ? [0.3, 0.18, 0.06] : [0.1, 0.07, 0.05];
+  }
+
+  /** Phares et feux cassés (D110) : ils ne s'allument plus ; le faisceau au sol faiblit avec chaque phare perdu. */
+  setBroken(b: { headRight: boolean; headLeft: boolean; tailRight: boolean; tailLeft: boolean }): void {
+    const keep = (spots: readonly [number, number, number][], right: boolean, left: boolean) => spots.filter(([x]) => (x > 0 ? !right : x < 0 ? !left : !(right && left)));
+    const head = keep(this.layout.head, b.headRight, b.headLeft), tail = keep(this.layout.tail, b.tailRight, b.tailLeft);
+    this.head.geometry.dispose();
+    this.head.geometry = lampGeometry(head, this.headSize);
+    this.tail.geometry.dispose();
+    this.tail.geometry = lampGeometry(tail, this.tailSize);
+    if (this.reverse) {
+      this.reverse.geometry.dispose();
+      this.reverse.geometry = lampGeometry(reverseSpots(tail), [0.12, 0.1, 0.07]);
+    }
+    this.glow = (this.fullGlow * head.length) / Math.max(1, this.layout.head.length);
   }
 
   /** Nuit 0-1 (comme les fenêtres), frein appuyé en roulant, marche arrière. */

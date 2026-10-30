@@ -1335,3 +1335,162 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 - Pas de contrôle en l'air en véhicule, pas de tonneau : le véhicule retombe toujours sur ses roues.
 - Pas de tremplins posés exprès (à choisir : voir la proposition dans PROGRESS.md).
 - On ne monte pas sur un muret pour y rester : on passe toujours de l'autre côté.
+
+## 2026-10-30 — D107. Voitures plus belles et reconnaissables, nom du modèle en montant
+
+**Demande** : des véhicules trop simples, difficiles à distinguer les uns des autres ; les rendre plus jolis et mieux construits, donner un nom à chaque modèle et l'afficher brièvement quand on monte dedans, à la manière de GTA 3. Choix : **noms locaux** (marques fictives, clins d'œil à Autun) ; **style « affiche »** gardé (D17) ; **voitures d'abord** (les deux-roues ensuite) ; modèles uniques (un seul exemplaire sur la carte, qui réapparaît après un moment) et nouveaux modèles courants : plus tard ; dégâts des véhicules : chantier à part, après celui-ci.
+
+**Constat** (captures `?view=vehicles&family=car`, `docs/captures/d107-avant.jpg`) : toutes les voitures sortaient du même moule (D52) : quatre sections en trapèze, un bloc de verre, un toit plat, les mêmes phares rectangulaires crème, la même barre de calandre, les mêmes feux, pare-chocs et enjoliveurs. Seules les mesures changeaient, de 10 à 30 cm : à 30 m, citadine, compacte et berline étaient la même voiture. Les palettes reprenaient presque toutes les six mêmes couleurs.
+
+**Générateur refait** (`src/render/car-body.ts`) :
+- **Sections à huit coins** (octogone aplati : épaules et bas de caisse chanfreinés selon l'arrondi du modèle) au lieu de quatre ; profil en six à sept sections : nez arrondi en plan, capot bombé, coffre ou hayon, queue arrondie. Orientation des faces par tronçon (`ringLoft`) : juste même quand le profil n'est pas convexe.
+- **Passages de roue** : demi-ellipses sombres contre le flanc, derrière la face des pneus (qui affleurent désormais le bord hors tout : `wheelTrack`, utilisé aussi pour les traces de pneus) ; plus d'ailes en boîte.
+- **Vitrage lisible** : verre posé sur l'épaule de la caisse, montants A, B (et D sur un long toit) et C, rebord sous les vitres, toit en dalle chanfreinée.
+- **Flancs** : lignes de portières (trois ou cinq portes), poignées, rétroviseurs.
+- **Style par modèle** (`CarStyle`) : phares ronds, rectangulaires, en amande ou en bandeau, avec clignotants ; calandre fine, haute, chromée ou de sport (grande prise d'air) ; feux horizontaux, verticaux, en bandeau traversant ou ronds ; pare-chocs noirs, couleur caisse ou chromés ; couleur des jantes ; options : toit noir, montants noirs, baguette chromée, barres de toit, becquet ou aileron, protections de SUV, baguette de portière, écope de capot, échappements, ailes séparées et marchepieds (voiture ancienne), prise d'air, portes arrière battantes vitrées et porte coulissante (camionnette). Plaques avant et arrière.
+
+| modèle | nom | signature |
+|---|---|---|
+| citadine | Éduen Moineau | courte, hayon droit, phares ronds, baguette de portière, trois portes |
+| compacte | Éduen Arroux | hayon incliné, phares en amande, pare-chocs couleur caisse, becquet de toit |
+| berline | Augusta Préfète | trois volumes, calandre et baguettes chromées, phares rectangulaires |
+| break | Augusta Morvandelle | long pavillon, barres de toit, calandre haute, feux verticaux |
+| petit SUV | Éduen Morvan | toit et montants noirs, protections, phares et feux en bandeau |
+| camionnette | Couhard Mulet | caisse haute, portes arrière vitrées, porte coulissante |
+| vieille voiture | Éduen Pétrolette | ailes séparées, chromes, phares et feux ronds, jantes crème |
+| sportive | Augusta Janus | très basse, toit noir, aileron, écope, double échappement, jantes sombres |
+| gendarmerie | Éduen Arroux Gendarmerie | la compacte, pare-chocs noirs, livrée et gyrophares (D72) |
+
+Éduen (les Éduens, peuple gaulois d'Autun) : voitures populaires ; Augusta (Augustodunum) : haut de gamme ; Couhard (la pierre de Couhard) : utilitaires.
+
+**Couleurs** : une palette propre à chaque modèle (vives pour la citadine, sombres et sérieuses pour la berline, pastels pour la vieille voiture, beaucoup de blanc pour la camionnette…).
+
+**Nom en montant** (`src/ui/vehicle-name.ts`, `#vname`) : `VehicleDef.badge` (marque et modèle) ; en montant, la marque en petites capitales ocre et le modèle en grosses capitales crème ombrées d'encre, soulignées de rouge brique, à droite sous « Descendre », sur un dégradé sombre ; entrée en glissant, 2,4 s, puis effacement (3,2 s en tout) ; caché en descendant. Rien pour un véhicule sans nom (les deux-roues, pour l'instant).
+
+**Rendu par instances inchangé** (D56, D65) : aucun appel de dessin de plus. La peinture reste en blanc pur, teintée par instance ; aucune pièce de détail n'est blanc pur (test). Les roues de la circulation restent un seul maillage pour tous les modèles : la jante y est blanche, teintée par instance de la couleur de jantes du modèle (même nuanceur que la peinture). Les feux allumés la nuit (circulation, voiture conduite) suivent la position des phares et des feux de chaque style (`lampSpots`).
+
+**Coût** : par voiture garée (caisse, détails, quatre roues à 10 facettes), **1 100 à 1 260 triangles** (contre 560 à 700) ; la moitié environ dans les roues (96 chacune) et les petites pièces. Autour de la place, où le banc compte ≈ 126 véhicules garés dont une bonne moitié de voitures, le calcul (pas encore la mesure) donne **≈ +30 à 40 k triangles** à l'arrêt (sur ≈ 1,7 M). Plafonds des tests relevés en conséquence (caisse < 340, détails et roues < 1 000, total < 1 300). **À mesurer sur l'Honor** (`?bench=1&fleet=1&traffic=20`) ; si cela coûte, une version allégée pour les voitures garées au-delà de 60 m.
+
+**Pour les dégâts (chantier suivant)** : le générateur fabrique la caisse pièce par pièce (bas de caisse, toit, pare-chocs, portières délimitées) : on pourra déformer ou assombrir par zone la voiture conduite, et garder pour la voiture garée une géométrie « abîmée » par modèle (les instances ne peuvent pas chacune avoir leurs propres bosses sans coûter un maillage de plus).
+
+**Limites connues** : pas d'arrondi vrai (facettes, style « affiche ») ; la grille de calandre et les phares sont des volumes posés, pas des creux ; la vitre de custode n'existe que par le montant D du break.
+
+## 2026-10-30 — D108. Deux-roues plus beaux et reconnaissables, et leurs noms
+
+**Demande** : après les voitures (D107), les deux-roues : même but (plus jolis, mieux construits, reconnaissables), même style « affiche », un nom par modèle affiché en montant.
+
+**Constat** (`docs/captures/d108-avant.jpg`) : les motos étaient des empilements de boîtes (réservoir, selle, moteur, coque) ; la sportive se distinguait par un carénage en boîtes sur la direction ; le vélo de ville et le VTT étaient le même cadre, avec ou sans panier ; le scooter, une caisse anguleuse.
+
+**Outils communs** (`src/render/vehicle-model.ts`) : `ringLoft` (venu de `car-body.ts`), `podLoft` (pièce arrondie : sections ovales à huit pans le long de l'axe, pour réservoirs, carénages, selles, coques, silencieux), `fender` (garde-boue : bande courbe autour d'une roue), `xDisc` et `zDisc` (disques d'axe x ou z : moyeux, disques de frein, phares, feux, compteurs). Tubes des deux-roues à cinq pans sans bouchons (`tb`).
+
+**Modèles** (points d'appui du conducteur, selle, essieux et colonne de direction inchangés : les poses des conducteurs restent justes) :
+
+| modèle | nom | ce qui le distingue |
+|---|---|---|
+| vélo de ville | Bibracte Promenade | cadre ouvert à deux tubes cintrés, carter de chaîne, garde-boue, porte-bagages et feu arrière, panier en osier, phare, guidon relevé, sonnette, selle large à ressorts, béquille |
+| VTT | Bibracte Beuvray | cadre plongeant, gros tube diagonal à bande crème, fourche suspendue, cintre plat, pneus à crampons, freins à disque, bidon, selle étroite |
+| trottinette | Trott'Autun Libre-service | plateau arrondi (batterie de la couleur du service), colonne épaisse à bande crème et plaque à code, phare, écran au guidon, garde-boue, béquille |
+| scooter 125 | Éduen Zéphyr 125 | tablier galbé avec cravate et clignotants, plancher à bandes de caoutchouc, coque arrière bombée, selle à deux niveaux, top-case, couvre-guidon avec phare et compteur, rétroviseurs ronds, jantes alliage à cinq branches |
+| moto routière | Bibracte Druide | réservoir en goutte à écussons, moteur à ailettes, deux silencieux chromés, phare rond chromé, deux compteurs, rétroviseurs ronds, garde-boue courbes, feu rond, roues à rayons et tambour |
+| moto sportive | Bibracte Celte R | carénage intégral fixé au cadre (nez à double optique, bulle, flancs à bande crème, sabot), coque arrière effilée, cadre en aluminium, silencieux relevé, fourche inversée dorée, jantes coulées à trois branches soulignées d'ocre, disque de frein |
+
+Bibracte (l'oppidum du mont Beuvray) : vélos et motos ; Éduen : le scooter, comme les voitures populaires ; Trott'Autun : le service de location fictif. Palettes propres à chaque modèle. Le nom s'affiche en montant comme pour les voitures (D107).
+
+**Gabarits** mis à jour au catalogue d'après les modèles (vélo de ville 1,83 m de long avec ses garde-boue, routière 1,28 m de haut avec ses rétroviseurs, scooter 1,92 × 0,72 × 1,26 m…) ; ils ne servent qu'au test de gabarit et à la galerie (la coque des chocs est dans la fiche, inchangée).
+
+**Coût** (exemplaire garé, une géométrie instanciée par modèle, D56 : **aucun appel de dessin de plus**) : vélo de ville 1 302 triangles, VTT 1 268, trottinette 634, scooter 1 182, routière 2 044, sportive 1 588, contre 400 à 900 avant. Les vélos sont les plus nombreux (deux ou trois par parking à vélos) : ≈ +500 triangles chacun ; les motos sont rares (4 % des places, D55). Budget par famille testé (vélo < 1 400, trottinette < 800, moto < 2 200). **À mesurer sur l'Honor** avec les voitures (D107).
+
+**Limites connues** : feux allumés la nuit des deux-roues toujours estimés d'après la fiche (`lampLayout`), pas lus sur le modèle ; le carénage de la sportive ne tourne pas avec le guidon (fixé au cadre, comme en vrai) mais le garde-boue avant, si.
+
+## 2026-10-30 — D109. Dégâts des véhicules, étape 1 : la logique
+
+**Cadrage du chantier** (choix de l'utilisateur) : **explosion** comme dans un GTA (une voiture en feu explose, tue son conducteur resté dedans, blesse ou tue autour, peut faire exploser une voisine) ; **pas de jauge** à l'écran, le compteur vire au rouge brique sous 30 % ; **les balles abîment les véhicules et s'arrêtent sur les carrosseries** (on peut s'abriter derrière une voiture) ; une voiture abîmée laissée quelque part **reste abîmée, sauvegarde comprise**, les épaves disparaissent hors de vue au bout d'un moment ; **garages de réparation**, sans effet sur les étoiles. Un futur **mode enfant** (sans violence, sans police, sans explosion) réglera tout d'un seul choix : la fin d'un véhicule passe dès maintenant par **un seul aiguillage** (`END_MODE` : explosion ou panne), sans réglage au menu pour l'instant. Étapes : 1 logique ; 2 rendu de la voiture conduite (déformation, phares, vitres, fumée, sons) ; 3 feu, explosion, épave, blessures, infractions ; 4 police, circulation, voitures garées (formes « abîmée » et « épave » par modèle), réaction des conducteurs ; 5 tirs sur les véhicules, réparation, sauvegarde, deux-roues, mesure.
+
+**Logique** (`src/core/damage.ts`, `VehicleDamage`, pure et testée) :
+- **Santé** de 100 points et **quatre zones** (avant, arrière, gauche, droite ; 0 intacte à 1 écrasée), qui ne servent qu'à l'aspect. Un choc inscrit 70 % de ses points dans sa zone, le reste sur les deux voisines (un choc de face plisse aussi les ailes) ; 45 points écrasent une zone.
+- **Barème des chocs** : rien sous 3,3 m/s de vitesse d'impact (≈ 12 km/h) ; au-delà, (impact − 3,3)^1,5 points, divisés par la **solidité** du modèle (`VehicleDef.toughness`, 1 par défaut : gendarmerie 1,4, camionnette 1,3, petit SUV 1,15, vieille voiture 0,9, sportive 0,85, motos 0,65 à 0,7, scooter 0,6, vélos 0,6 à 0,7, trottinette 0,5). Ordre de grandeur, citadine dans un mur de face : 50 km/h ≈ 35 points (fumée blanche), 90 km/h : le feu. Une réception de saut (D106) compte moitié, sur l'avant et l'arrière.
+- **Paliers** : intact (> 60) ; fumée blanche (60 à 30, puissance × 0,85) ; fumée noire (30 à 10, × 0,6) ; en feu (≤ 10, × 0,6, on peut encore s'enfuir au volant) ; **explosion au bout de 5 s de feu**, puis épave (plus de moteur). La direction, les freins et les pneus ne sont jamais touchés (une direction qui tire d'un côté est pénible au pouce). Vélos et trottinette (sans moteur ni réservoir) ne brûlent pas : **cassés** à 10 points. En mode « panne » (`END_MODE`), une voiture finit en panne au lieu d'exploser.
+- Événements pour le jeu (`takeEvents` : changement de palier, explosion, panne), `repair` (garage), `restore` (sauvegarde ; un véhicule enregistré en feu se remet à brûler).
+
+**Physique** (`src/core/vehicle.ts`, `vehicle-contact.ts`) : `VehicleState.impactAngle` dit **où** a porté le plus fort choc de l'image (angle du point de contact autour du véhicule : 0 devant, π/2 à droite), contre un mur comme contre un autre véhicule ; NaN pour une réception de saut. Rien d'autre ne change dans la conduite.
+
+**Dans le jeu** (véhicule du joueur seulement à cette étape) : chaque choc de l'image abîme le véhicule conduit à l'endroit touché ; il roule avec une fiche au moteur affaibli selon son palier (`drivenSpec` : une fiche gardée par palier, aucune allocation par pas) ; un véhicule en feu qu'on quitte continue de brûler jusqu'à sa fin ; **une épave ne se reprend pas** (pas de bouton « Monter ») ; le compteur se cercle de rouge brique et bat lentement sous 30 % (`#speedo.hurt`) ; `?debug` affiche santé, palier, feu et zones ; **`?damage=N`** donne la santé du véhicule de départ (avec `?ride=`). **Provisoire jusqu'à l'étape 3** : l'explosion n'est qu'un grand choc ressenti (son, secousse, vibration) à moins de 25 m, sans flamme ni blessure ; rien ne se voit sur la carrosserie avant l'étape 2 ; les dégâts ne sont pas encore enregistrés (étape 5).
+
+**Mesures** : 12 tests (barème, zones, paliers, feu et explosion, vélo cassé, aiguillage « panne », réparation et reprise, profils du catalogue, angle de choc contre un mur et entre deux voitures). Essai dans le navigateur (`?ride=citadine&damage=25&debug`, puis `damage=5`) : compteur cerclé de rouge, zones et feu suivis au debug.
+
+## 2026-10-30 — D110. Dégâts des véhicules, étape 2 : ce qu'on voit et ce qu'on entend
+
+**Carrosserie froissée** (`src/render/car-damage.ts`, voiture conduite seulement) : à chaque changement des dégâts (D109), les sommets de la caisse et des détails sont recalculés **depuis leurs positions d'origine** (aucune accumulation, une réparation rend la voiture exactement neuve, testé) :
+- **avant, arrière** : le bout recule jusqu'à 34 cm (zone tout à fait écrasée), sur une longueur qui grandit avec l'écrasement, se resserre un peu, et le capot ou le coffre se soulève en se pliant ; **flancs** : enfoncés jusqu'à 15 cm, surtout au milieu de la longueur ;
+- un **bruit propre à chaque point** (fonction de sa position d'origine : deux sommets confondus bougent pareil, aucune fente) donne un froissé en facettes, style « affiche » ; normales recalculées à plat ;
+- **peinture ternie** là où la tôle a pris (jusqu'à −35 %) ;
+- **phares et feux cassés** : un bout écrasé à plus de 45 % casse le phare (ou le feu) du côté le plus touché, à plus de 80 % les deux ; ils virent au gris (rouge sombre derrière) et **ne s'allument plus la nuit** (`VehicleLights.setBroken` : la plaque lumineuse de ce côté disparaît, le faisceau au sol faiblit de moitié par phare perdu) ;
+- **vitres fêlées** : chaque triangle de verre dont la zone (pare-brise, lunette, vitres de flanc, d'après son orientation d'origine) dépasse 55 % prend un verre clair, légèrement varié.
+Le froissage n'est préparé qu'à la première bosse (copie des positions et couleurs d'origine) ; calcul sur ≈ 3 000 sommets, seulement quand les dégâts changent. Les deux-roues ne se déforment pas (décidé au cadrage).
+
+**Fumée** (`src/render/smoke.ts`, `Smoke`) : un seul maillage instancié de bouffées (icosaèdres éclairés à facettes, sans transparence), qui montent, prennent un vent léger, gonflent puis rétrécissent jusqu'à disparaître ; 220 au plus ; **0 appel de dessin sans fumée, +1 avec** (sans ombre). Elle sortira aussi les flammes et l'explosion (étape 3). Elle sort du capot d'une voiture, du moteur d'un deux-roues (`smokeOrigin`) : blanche (7 bouffées/s) sous 60 %, noire (12/s) sous 30 %, noire épaisse (16/s) en feu. Les véhicules abîmés que le joueur a laissés fument aussi, à moins de 150 m.
+
+**Étincelles** au point du choc (bord de la carrosserie dans la direction du choc), avec le maillage des effets de tir, dès qu'un choc retire des points.
+
+**Son** (`GameAudio.setDamage`) : le moteur a des **ratés** (il se tait 50 à 170 ms, régime un peu plus bas), de plus en plus souvent avec le palier ; sous la fumée noire, une **pétarade** une fois sur deux à cinq. Le fracas des chocs existait déjà.
+
+**Essais** : `?view=vehicles&family=car&dent=front:0.9,left:0.6` (zones écrasées dans la galerie) ; en jeu, `?ride=berline&damage=45&dent=front,left` (santé de départ, points perdus répartis sur les zones nommées). 6 tests (froissage neutre sans dégât, bout et flancs, sommets confondus, phares cassés, vraie berline écrasée puis réparée à l'identique, fumée).
+
+**Reste** (étapes suivantes) : une voiture abîmée qu'on gare redevient intacte à l'œil (le dessin par instances : formes « abîmée » et « épave » par modèle, étape 4) ; pas de flammes ni d'explosion à l'écran (étape 3) ; pas de pare-chocs qui tombe (le froissage le fait pendre avec le reste de l'avant).
+
+## 2026-10-30 — D111. Dégâts des véhicules, étape 3 : feu, explosion, épave
+
+**Feu** : un véhicule en feu (≤ 10 points, D109) crache des **flammes** par le capot (moteur d'un deux-roues), 18 par seconde, en plus de la fumée noire épaisse ; elles **crépitent** (son `crackle`, quelques fois par seconde à moins de 40 m). Les flammes sont un second maillage de bouffées (`Smoke(scene, false)` : sans éclairage, hors tonalité, elles brillent) : **0 appel de dessin sans feu, +1 avec**.
+
+**Explosion** (5 s après le départ du feu ; `explode` dans `game.ts`, barème dans `src/core/explosion.ts`) :
+- **boule de feu** de 36 flammes (jaune au cœur, orange et rouge autour, jusqu'à 3,6 m), puis, 0,45 à 0,85 s après (`Smoke.emit(…, delay)`), un nuage de fumée qui monte au-dessus ; étincelles (débris) ; **grondement** (son `explosion`, entendu jusqu'à 900 m), secousse de la caméra jusqu'à 45 m, vibration jusqu'à 25 m ;
+- **souffle** (`blastShare` : pleine force jusqu'à 2,5 m, puis décroissance au carré jusqu'à 8 m) : **le conducteur resté dedans meurt** ; à pied, jusqu'à 150 points (mort à moins de 2,5 m, blessé à quelques mètres, rien à 8 m) ; dans un autre véhicule, moitié ; les **passants et les gendarmes à pied** prennent jusqu'à 160 points et sont projetés (jusqu'à 9 m/s) ; les **véhicules voisins** de la flotte prennent jusqu'à 70 points du côté du souffle : une voiture neuve est seulement touchée, une voiture déjà bien abîmée **prend feu à son tour** (réaction en chaîne possible) ;
+- **infractions** : nouvelle infraction `explosion` (au moins deux étoiles, signalée par les passants à moins de 40 m, comme un coup de feu), et les blessés ou tués comptent comme agression ou meurtre.
+
+**Épave** : peinture **noircie** (teinte charbon `#2b2724`, y compris garée par instances, sans coût de plus) ; elle **brûle 9 s** (flammes sur toute la caisse), puis **fume jusqu'à 45 s** ; une épave froide **disparaît** au bout de 3 minutes quand le joueur est à plus de 120 m (une voiture de stationnement revient à sa place avec sa tuile). Une épave ne se reprend pas (D109). Une voiture **en panne** (mode sans violence) fume un peu, sans flamme.
+
+**Pas fait** : la voiture qui explose ne fait pas de bond (les véhicules garés ne sont pas simulés) ; la circulation et la police ne sont pas encore touchées par le souffle (elles n'ont pas d'état de dégâts : étape 4) ; pas de lumière d'explosion (une lampe de three.js ferait recalculer l'éclairage de tous les matériaux de la ville, D90).
+
+**Essais** : `?ride=berline&damage=8` (la voiture est en feu dès le départ : descendre et s'éloigner, elle explose 5 s plus tard). Sur la machine d'intégration (≈ 1,7 image/s en rendu logiciel, le temps de jeu au sixième du temps réel), capture prise au moment de l'explosion : boule de feu, joueur blessé à 6 m (flash rouge), puis épave noircie qui brûle. Page d'écoute : « Explosion d'un véhicule », « Crépitement d'un feu » (crête −3,6 dB et −12,6 dB). 5 tests (souffle, blessures selon la distance, réaction en chaîne, vie de l'épave, infraction).
+
+## 2026-10-30 — D112. Dégâts des véhicules, étape 4 : police, circulation, voitures garées
+
+**Circulation** (`src/core/traffic-sim.ts`) : chaque voiture a ses dégâts (`SimCar.damage`, profil du modèle : la gendarmerie est 1,4 fois plus solide). Le pire choc de chaque pas (mur, autre voiture, véhicule du joueur) l'abîme là où il a porté, y compris entre voitures de la circulation (les frôlements restent sous le seuil de 12 km/h) ; elle roule avec un moteur affaibli (`deratedSpec`, déplacé dans `src/core/damage.ts` et partagé avec le véhicule du joueur). **À la fumée noire, son conducteur abandonne** (`abandons`) : il freine jusqu'à l'arrêt (ou tout de suite si la voiture brûle), la voiture quitte la circulation et **rejoint la flotte** comme une voiture garée, avec ses dégâts (elle fume, brûle et explose comme les autres ; on peut la reprendre si elle roule encore) ; un conducteur civil descend et s'enfuit (comme lors d'un vol, D71). Sa place d'origine est celle où elle s'arrête : elle n'est enregistrée que si le joueur la déplace.
+
+**Police** : une **gendarmerie à la fumée noire est hors d'usage**, comme une voiture civile (un premier essai la laissait rouler jusqu'au feu ; l'endurance de la poursuite, D76, a montré une gendarmerie à 60 % de puissance coincée contre une autre voiture pendant quatre minutes, chaque pas en contact). Elle quitte la poursuite ; la police envoie des renforts comme pour une voiture perdue. Pas d'équipage qui descend à pied (noté).
+
+**Voitures garées** : percutées par le joueur, elles prennent le même choc que lui, de leur côté (la voiture garée dont la coque touche le point du choc, `hitParked`), et fument si elles sont assez touchées.
+
+**Dessin par instances** : une **forme « abîmée » commune à chaque modèle** de voiture (`citadine#dent` : avant enfoncé à 60 %, arrière 30 %, flanc gauche 35 %, droit 15 %, un phare cassé, pare-brise fêlé ; `DENT`, `carRestGeometry`, `carBodyGeometry`), utilisée dès la fumée blanche (`looksDented`) par les voitures garées et la circulation. **Un appel de dessin de plus (deux avec l'ombre) seulement par modèle dont un exemplaire cabossé est là.** La peinture de cette forme n'est pas ternie : seuls les sommets blanc pur prennent la couleur de l'exemplaire (testé). Les bosses exactes n'existent que sur la voiture conduite (D110) ; une épave garde la forme abîmée, noircie (D111). Les 18 formes (garées, circulation) sont fabriquées au chargement : **73 ms sur PC** (plutôt qu'un à-coup de 35 ms en jeu à la première voiture cabossée, D56).
+
+**Fumée et flammes** des voitures de la circulation abîmées, comme pour la flotte ; le **souffle des explosions** (D111) abîme aussi la circulation.
+
+**Essais** : galerie `?view=vehicles&family=car&parked=1&dent=front` (formes abîmées). 6 tests de plus (choc par l'arrière d'une voiture arrêtée dans la vraie simulation, arrêt à la fumée noire et pas à la fumée blanche, règles d'abandon et d'aspect cabossé, moteur affaibli partagé, forme abîmée de chaque voiture) ; endurance de la poursuite revenue sous ses seuils (pire minute : 2 100 pas en contact sur 3 600, seuil 2 700, aucune voiture abîmée en cause).
+
+**Reste** : les dégâts ne sont pas enregistrés (étape 5) ; les deux-roues de la circulation n'existent pas ; une voiture abandonnée qu'on ne regarde plus reste là (comme une voiture volée) tant qu'elle n'est pas une épave.
+
+## 2026-10-30 — D113. Dégâts des véhicules, étape 5 : balles, garages, sauvegarde, mesure
+
+**Balles et carrosseries** :
+- `Colliders.raycast(…, circles)` : avec `circles`, le rayon s'arrête aussi à l'entrée des obstacles ronds (véhicules garés, troncs, poteaux, mobilier) ; un départ dans un cercle ne compte pas. Seuls les tirs s'en servent (les balles du joueur, les tirs des gendarmes à pied et des voitures de police) : la caméra, la vue de la police, l'apparition de la circulation et les pigeons sont inchangés. Effet voulu : **on s'abrite derrière une voiture garée** (les gendarmes ne tirent plus à travers), et les balles s'arrêtent sur les troncs et les poteaux (le « mobilier » repoussé en J5).
+- `ShootWorld.rayVehicle` / `hurtVehicle` (`src/core/gun.ts`) : chaque balle (ou plomb) cherche le premier véhicule sur sa trajectoire, garé ou de la circulation (`rayHull` : entrée dans les cercles de la coque, `vehicle-contact.ts`) ; un passant plus près prend la balle, sinon la carrosserie l'arrête et prend les dégâts, du côté où elle entre (`VehicleDamage.shot` : un cinquième des dégâts d'une personne, divisé par la solidité : un chargeur de pistolet, 12 balles, met une voiture ordinaire en fumée noire, il en faut deux pour le feu ; au fusil d'assaut, une vingtaine de balles). Étincelles orange au point d'impact (celles d'un mur).
+- Au volant, **les balles des gendarmes abîment aussi le véhicule** (en plus de la moitié des dégâts pour le joueur, J5-5).
+
+**Garages** (`src/core/garages.ts`) : les **8 garages automobiles d'Autun** (`car_repair` de `map/places.json` : Norauto, Eurorepar, Renault, Citroën, Stéphane Belin Automobiles…). **Arrêté à moins de 22 m de l'un d'eux pendant 1,2 s** au volant d'un véhicule abîmé (pas d'une épave), on repart **réparé** (gratuit pour l'instant), et le nom du garage s'affiche comme celui d'un véhicule, au-dessus de « Réparée ». Sans effet sur les étoiles (choix de l'utilisateur). **Minimap** : une pastille bleu-vert cerclée de crème, avec une petite clé, par garage.
+
+**Sauvegarde** : champ facultatif `damage` d'un véhicule enregistré (santé, écrasement des zones, fin) ; les sauvegardes d'avant se lisent toujours (véhicules intacts), la version ne change pas (4). Un véhicule abîmé est enregistré même s'il n'a pas bougé (voiture garée percutée). Repris, il fume ou brûle de nouveau ; une épave reprise est froide.
+
+**Deux-roues** : rien de plus que ce qui est fait depuis D109 (pas de déformation, décidé au cadrage) : motos et scooter fument, brûlent et explosent ; vélos et trottinette sont cassés à 10 points.
+
+**Banc** : `?bench=1&fleet=1&dent=1` : une voiture garée sur trois prend sa forme abîmée, une sur douze est une épave noircie (le pire cas des formes abîmées : un maillage instancié de plus par modèle présent), signalé dans le rapport.
+
+**Mesure à faire sur l'Honor** (protocole du chantier entier, D107 à D113), même build, 17 h, chacun trois minutes :
+1. `?bench=1&fleet=1&traffic=20` : comparé aux rapports de D86 (voitures et deux-roues plus détaillés : ≈ +500 triangles par véhicule garé) ;
+2. `?bench=1&fleet=1&dent=1&traffic=20` : pire cas des formes abîmées (appels de dessin : au plus +9, +18 avec les ombres) ;
+3. en jeu, `?ride=berline&damage=8` : descendre, s'éloigner, regarder l'explosion : images par seconde pendant la boule de feu (`?debug`).
+Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1) coûte, version allégée des voitures garées au-delà de 60 m (D107) ; si (2) coûte, garder la forme abîmée pour la seule circulation.
+
+5 tests de plus (rayon et cercles, balle arrêtée par une carrosserie et passant devant la voiture, balles et solidité, épave froide à la reprise, garages, dégâts relus de la sauvegarde). 680 tests.
+
+**Bilan du chantier des dégâts** (D109 à D113) : santé et zones, paliers, moteur affaibli, aiguillage explosion ou panne pour un futur mode enfant (D109) ; carrosserie froissée, phares et vitres cassés, fumée, ratés (D110) ; feu, explosion, souffle, épave (D111) ; circulation, police, voitures garées, forme abîmée par modèle (D112) ; balles, abri derrière les voitures, garages, sauvegarde, banc (D113). **Repoussé** : pneus crevés, gendarmes qui descendent d'une voiture hors d'usage, bond de la voiture qui explose, lumière d'explosion, prix de la réparation (avec l'argent), réglage « mode enfant ».
+

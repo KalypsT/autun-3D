@@ -35,6 +35,8 @@ export interface MinimapState {
   flash?: boolean;
   /** Armes au sol disponibles (J5-3) : petits losanges orange. */
   caches?: readonly { x: number; y: number }[];
+  /** Garages de réparation (D113) : pastilles bleu-vert marquées d'une clé. */
+  garages?: readonly { x: number; y: number }[];
   /** Zone de recherche quand la police a perdu la piste : cercle autour de la dernière position connue. */
   search?: { x: number; y: number; r: number } | null;
 }
@@ -165,6 +167,32 @@ export class Minimap {
         ctx.fill();
         ctx.stroke();
       });
+    }
+
+    // Garages : une pastille bleu-vert cerclée de crème, une petite clé crème dedans (dans le disque seulement).
+    if (s.garages) {
+      ctx.save();
+      for (const g of s.garages) {
+        const [px, py] = worldToScreen(view, g.x, g.y);
+        if (Math.hypot(px - size / 2, py - size / 2) > r - 7) continue;
+        ctx.fillStyle = "#2a6f7e";
+        ctx.strokeStyle = "#fff8e6";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.lineWidth = 1.6;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(px - 2.5, py + 2.5);
+        ctx.lineTo(px + 1.5, py - 1.5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(px + 2, py - 2, 1.4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // Armes au sol : un losange orange dans le disque (hors du disque, rien : le repère « arme » du jeu indique la plus proche).

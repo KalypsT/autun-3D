@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { flatTerrain } from "../core/testing";
 import { createVehicle } from "../core/vehicle";
 import { CATALOG } from "../core/vehicle-catalog";
-import { buildModel } from "../game/vehicles";
+import { buildModel, restGeometryOf } from "../game/vehicles";
 
 describe("deux-roues : le modèle dessiné respecte le gabarit du catalogue", () => {
   it.each(CATALOG.filter((d) => d.family !== "car").map((d) => d.id))("%s", (id) => {
@@ -26,3 +26,13 @@ describe("deux-roues : le modèle dessiné respecte le gabarit du catalogue", ()
     }
   });
 });
+
+describe("deux-roues : budget de triangles d'un exemplaire garé (D108)", () => {
+  // Vélos et trottinettes sont nombreux aux parkings à vélos : plus économes que les motos, rares dans les rues.
+  const budget: Record<string, number> = { bike: 1400, kickscooter: 800, moto: 2200 };
+  it.each(CATALOG.filter((d) => d.family !== "car").map((d) => d.id))("%s", (id) => {
+    const def = CATALOG.find((d) => d.id === id)!;
+    expect(restGeometryOf(id).getAttribute("position").count / 3).toBeLessThan(budget[def.family]!);
+  });
+});
+

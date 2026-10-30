@@ -236,6 +236,20 @@ export function startBench(ctx: GameContext): void {
     // Sans la gendarmerie : elle n'est jamais garée dans le jeu (D72), et un exemplaire de plus au départ ajoutait un maillage instancié (+2 appels) aux rapports du banc (D77).
     CATALOG.filter((def) => def.id !== "gendarmerie").forEach((def, i) => fleet.add(def.id, `banc-${def.id}`, spawn.x + ((i % 7) - 3) * 2.6, spawn.y + 10 + 6 * Math.floor(i / 7), 2.35, 0));
   }
+  // &dent=1 (D113), avec ?fleet=1 : une voiture garée sur trois est abîmée (forme cabossée), une sur douze est une épave noircie : le pire cas des
+  // formes abîmées (un maillage instancié de plus par modèle présent). Sans fumée ni flammes (elles sont du jeu, pas du banc).
+  const dentMode = fleetMode && params.get("dent") === "1";
+  let dentCount = 0;
+  const dentFleet = (): void => {
+    if (!fleet || !dentMode || fleet.vehicles.length === dentCount) return;
+    fleet.vehicles.forEach((v, i) => {
+      if (i < dentCount || v.family !== "car") return;
+      if (i % 12 === 0) v.damage.restore(0, { front: 1, rear: 0.5 }, "explosion");
+      else if (i % 3 === 0) v.damage.damage(50, 0);
+    });
+    dentCount = fleet.vehicles.length;
+    fleet.refresh();
+  };
   let fleetCost = { ms: 0, max: 0, frames: 0 };
   let trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
   let policeCost = { ms: 0, max: 0, frames: 0 };
@@ -274,7 +288,7 @@ export function startBench(ctx: GameContext): void {
     sim: simMode ? `simulation${params.get("tiers") === "0" ? ", sans paliers" : ""}${params.get("avoid") === "0" ? ", sans évitement" : ""}` : "",
     soak,
     fast: fastKmh,
-    fleet: fleetMode,
+    fleet: fleetMode ? (dentMode ? "dent" : true) : false,
     traffic: trafficN,
     police: policeMode,
     combat: combatMode,
@@ -510,6 +524,7 @@ export function startBench(ctx: GameContext): void {
     camera.lookAt(pos.look[0], pos.look[1], -pos.look[2]);
     tiles.update(pos.x, pos.y, pos.vx, pos.vy);
     if (fleet) {
+      dentFleet();
       const t0 = performance.now();
       fleet.cull(pos.x, pos.y);
       const ms = performance.now() - t0;
@@ -701,7 +716,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? " · véhicules garés" : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);

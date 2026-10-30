@@ -23,6 +23,24 @@ export interface SavedVehicle {
   x: number;
   y: number;
   heading: number;
+  /** Dégâts (D113), absents pour un véhicule intact (et dans les sauvegardes d'avant) : santé, écrasement des zones, fin. */
+  damage?: SavedDamage;
+}
+
+export interface SavedDamage {
+  health: number;
+  zones: { front: number; rear: number; left: number; right: number };
+  end: "explosion" | "breakdown" | null;
+}
+
+/** Dégâts enregistrés, valables ou écartés (null). */
+export function parseDamage(o: unknown): SavedDamage | null {
+  if (!o || typeof o !== "object") return null;
+  const r = o as Record<string, unknown>, z = r["zones"] as Record<string, unknown> | undefined;
+  if (!finite(r["health"]) || !z) return null;
+  const zone = (k: string): number => (finite(z[k]) ? Math.min(Math.max(z[k], 0), 1) : 0);
+  const end = r["end"] === "explosion" || r["end"] === "breakdown" ? r["end"] : null;
+  return { health: Math.min(Math.max(r["health"], 0), 100), zones: { front: zone("front"), rear: zone("rear"), left: zone("left"), right: zone("right") }, end };
 }
 
 export interface SaveGame {
@@ -114,7 +132,8 @@ export function parseSave(text: string | null): SaveGame | null {
       // Version 1 : le type donne le modèle. Modèle inconnu (retiré du catalogue, ou sauvegarde d'un autre jeu) : le véhicule est écarté.
       const model = version === 1 ? LEGACY_MODELS[v["kind"] as string] : v["model"];
       if (typeof model !== "string" || !vehicleDef(model)) continue;
-      vehicles.push({ id: v["id"], model, variant: v["variant"], x: v["x"], y: v["y"], heading: v["heading"] });
+      const damage = parseDamage(v["damage"]);
+      vehicles.push({ id: v["id"], model, variant: v["variant"], x: v["x"], y: v["y"], heading: v["heading"], ...(damage ? { damage } : {}) });
     }
   }
   const riding = typeof r["riding"] === "string" && vehicles.some((v) => v.id === r["riding"]) ? (r["riding"] as string) : null;

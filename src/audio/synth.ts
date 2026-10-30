@@ -128,6 +128,30 @@ export function crash(kit: Kit, dest: AudioNode, t: number, intensity: number, m
   if (k > 0.55) for (let i = 0; i < 9; i++) tone(kit, out, t + 0.02 + rnd() * 0.35, "sine", 3000 + rnd() * 4500, 3000 + rnd() * 4500, 0.05, 0.08 * k, 0.001, 0.06 + rnd() * 0.1);
 }
 
+/**
+ * Explosion d'un véhicule (D111) : grondement sourd qui s'assourdit longtemps, claquement, souffle grave, débris de tôle et de verre qui retombent.
+ */
+export function explosion(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
+  const out = spotOut(kit, dest, { ...spot, echo: Math.max(spot.echo, 0.6) });
+  const f = burst(kit, out, t, "lowpass", 2400, 0.7, 1, 0.003, 1.6, true);
+  f.frequency.setValueAtTime(2400, t);
+  f.frequency.exponentialRampToValueAtTime(120, t + 1.6);
+  burst(kit, out, t, "bandpass", 1200, 0.9, 0.7, 0.001, 0.12);
+  tone(kit, out, t, "sine", 70, 28, 0.9, 1, 0.004, 1.1);
+  for (let i = 0; i < 14; i++) {
+    const d = 0.3 + rnd() * 1.4;
+    if (i % 2) tone(kit, out, t + d, "sine", 300 + rnd() * 500, 250 + rnd() * 300, 0.12, 0.12, 0.002, 0.15);
+    else tone(kit, out, t + d, "sine", 3000 + rnd() * 4000, 3000 + rnd() * 4000, 0.05, 0.06, 0.001, 0.07);
+  }
+}
+
+/** Crépitement d'un feu (D111) : quelques petits craquements secs. */
+export function crackle(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  for (let i = 0; i < 3; i++) burst(kit, out, t + rnd() * 0.25, "bandpass", 1500 + rnd() * 2500, 2, 0.45 + rnd() * 0.3, 0.001, 0.02 + rnd() * 0.03);
+  burst(kit, out, t, "lowpass", 500, 0.7, 0.25, 0.05, 0.3, true);
+}
+
 /** Portière qui claque : coup sourd et pêne. */
 export function door(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
   const out = spotOut(kit, dest, spot);

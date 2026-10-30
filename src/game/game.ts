@@ -1,7 +1,12 @@
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
-import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
+import { GarageStop } from "../core/garages";
+import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
+import { rayHull } from "../core/vehicle-contact";
+import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
@@ -17,6 +22,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
+import { VehicleNameHud } from "../ui/vehicle-name";
 import { DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
@@ -33,10 +39,10 @@ import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
 import { PedsController } from "./peds-controller";
 import { Signals } from "../core/signals";
-import { Traffic } from "./traffic";
+import { Traffic, type Abandoned } from "./traffic";
 import { PigeonsController } from "./pigeons-controller";
 import { UiBridge } from "./ui-bridge";
-import { Fleet, chaseOf, familyOf, tyreOf, type Vehicle } from "./vehicles";
+import { Fleet, chaseOf, drivenSpec, familyOf, smokeOrigin, tyreOf, type Vehicle } from "./vehicles";
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 import { AudioSystem } from "../audio/audio-system";
 import { stepCrossed } from "../core/sound-model";
@@ -254,7 +260,7 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()} · ${audio.info}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()} · ${audio.info}`);
 
   const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -308,6 +314,7 @@ export function startGame(ctx: GameContext): void {
   const pedWitnesses: number[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
+  const vehicleName = new VehicleNameHud(document.getElementById("vname")!);
   const mount = (v: Vehicle): void => {
     riding = v;
     leaving = false;
@@ -316,6 +323,7 @@ export function startGame(ctx: GameContext): void {
     rideModel = fleet.take(v);
     rideModel.group.add(model.group);
     lights = new VehicleLights(v.def);
+    shownDamage = -1;
     rideModel.group.add(lights.group);
     model.group.visible = rideModel.pose !== "hidden";
     controls.mode = "drive";
@@ -329,10 +337,12 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
+    vehicleName.show(v.def.badge);
   };
   /** Descend du véhicule ; `lean` : inclinaison où on le laisse (un deux-roues tombé reste couché). */
   const dismount = (lean = 0): void => {
     const v = riding!;
+    vehicleName.hide();
     const s = v.state;
     // Pied à terre du côté gauche (portière d'une voiture), hors des obstacles.
     const side = familyOf(v).dismount;
@@ -358,6 +368,225 @@ export function startGame(ctx: GameContext): void {
     document.body.classList.remove("driving", "car");
     audio.setRide(null);
   };
+  // Dégâts (D109, D110) : les véhicules abîmés par le joueur (celui qu'il conduit, et ceux qu'il a laissés) brûlent jusqu'à leur fin
+  // et fument tant qu'on est à moins de 150 m ; la voiture conduite montre sa carrosserie froissée, ses phares et ses vitres cassés.
+  // Une épave n'a plus de moteur et ne se reprend pas.
+  const damaged = new Set<Vehicle>();
+  const abandoned: Abandoned[] = [];
+  const garageStop = new GarageStop();
+  // Véhicules abîmés retrouvés dans la sauvegarde (D113) : ils fument (ou brûlent) de nouveau.
+  for (const v of fleet.vehicles) if (v.damage.version > 0 && (v.damage.health < DAMAGE.max || v.damage.end)) damaged.add(v);
+  /** Véhicules sur la trajectoire d'un tir (D113) : de la flotte, ou de la circulation (état, fiche et dégâts). */
+  const shotTargets: (Vehicle | { state: Vehicle["state"]; spec: Vehicle["spec"]; damage: Vehicle["damage"] })[] = [];
+  const smoke = new Smoke(scene);
+  const SMOKE: Partial<Record<DamageTier, { rate: number; color: THREE.Color; size: [number, number]; life: number }>> = {
+    smoke: { rate: 7, color: new THREE.Color("#e9e5dc"), size: [0.22, 0.7], life: 1.8 },
+    heavy: { rate: 12, color: new THREE.Color("#4a4a50"), size: [0.28, 0.95], life: 2.2 },
+    fire: { rate: 16, color: new THREE.Color("#2a2a2e"), size: [0.32, 1.15], life: 2.6 },
+  };
+  let shownDamage = -1;
+  /** Montre l'état des dégâts sur le modèle conduit (seulement quand il a changé). */
+  const showDamage = (): void => {
+    if (!riding || !rideModel || riding.damage.version === shownDamage) return;
+    shownDamage = riding.damage.version;
+    const broken = rideModel.setDamage?.(riding.damage.zones);
+    if (broken) lights?.setBroken(broken);
+  };
+  /** Fumée d'un véhicule abîmé (de la flotte ou de la circulation), selon son palier. */
+  const emitSmoke = (s: Vehicle["state"], def: Vehicle["def"], tier: DamageTier, dt: number): void => {
+    const style = SMOKE[tier];
+    if (!style || Math.hypot(s.x - player.x, s.y - player.y) > 150) return;
+    const [ox, oy, oz] = smokeOrigin(def);
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading);
+    for (let n = Math.floor(dt * style.rate + Math.random()); n > 0; n--) {
+      const x = s.x + hx * oz + hy * ox + (Math.random() - 0.5) * 0.3, y = s.y + hy * oz - hx * ox + (Math.random() - 0.5) * 0.3;
+      smoke.emit(x, y, s.z + oy, s.vx * 0.2 + (Math.random() - 0.5) * 0.4, s.vy * 0.2 + (Math.random() - 0.5) * 0.4, 0.9 + Math.random() * 0.6,
+        style.color, style.size[0], style.size[1] * (0.8 + Math.random() * 0.4), style.life * (0.8 + Math.random() * 0.4), Math.random);
+    }
+  };
+  /** Point du choc : au bord de la carrosserie, dans la direction du choc. */
+  const contactPoint = (v: Vehicle, angle: number): { x: number; y: number } => {
+    const s = v.state, ca = Math.cos(angle), sa = Math.sin(angle);
+    const r = 1 / Math.hypot(ca / (v.def.size.length / 2), sa / (v.def.size.width / 2));
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading);
+    return { x: s.x + (hx * ca + hy * sa) * r, y: s.y + (hy * ca - hx * sa) * r };
+  };
+  /** Le joueur percute un véhicule garé (D112) : celui dont la coque touche le point du choc prend le même choc, de son côté. */
+  const hitParked = (v: Vehicle, impact: number, angle: number): void => {
+    if (Number.isNaN(angle)) return;
+    const p = contactPoint(v, angle);
+    for (const w of fleet.around(p.x, p.y, 4, near)) {
+      if (w === v) continue;
+      const ws = w.state, hx = Math.sin(ws.heading), hy = Math.cos(ws.heading);
+      if (!w.spec.hull.some(([off, r]) => Math.hypot(ws.x + hx * off - p.x, ws.y + hy * off - p.y) < r + 0.35)) continue;
+      w.damage.hit(impact, contactAngle(ws, p.x - ws.x, p.y - ws.y));
+      damaged.add(w);
+      fleet.refresh();
+      return;
+    }
+  };
+  /** Étincelles au point du choc (au bord de la carrosserie, dans la direction du choc). */
+  const crashSparks = (v: Vehicle, angle: number): void => {
+    if (Number.isNaN(angle) || v.family === "bike" || v.family === "kickscooter") return;
+    const p = contactPoint(v, angle);
+    fx.sparks(p.x, p.y, v.state.z + 0.45, false, Math.random);
+  };
+  // Feu et explosion (D111) : flammes sans éclairage (un second maillage de bouffées), boule de feu, souffle qui blesse et pousse,
+  // épave noircie qui brûle, puis fume, puis disparaît quand on ne la voit plus.
+  const flames = new Smoke(scene, false);
+  const FLAME_COLORS = ["#fff1a8", "#f1b24a", "#e8641e", "#d9472b"].map((c) => new THREE.Color(c));
+  const WRECK_SMOKE = new THREE.Color("#3a3a3f");
+  const near: Vehicle[] = [];
+  const blastPeds: number[] = [];
+  const blastPos = { x: 0, y: 0 };
+  /** Flammes : sur le capot (véhicule en feu) ou sur toute la caisse (épave qui brûle). */
+  const emitFlames = (s: Vehicle["state"], def: Vehicle["def"], dt: number, rate: number, spread: boolean): void => {
+    if (Math.hypot(s.x - player.x, s.y - player.y) > 150) return;
+    const [ox, oy, oz] = smokeOrigin(def);
+    const hx = Math.sin(s.heading), hy = Math.cos(s.heading), half = def.size.length / 2 - 0.3;
+    const n = Math.floor(dt * rate + Math.random());
+    for (let i = 0; i < n; i++) {
+      const along = spread ? (Math.random() * 2 - 1) * half : oz, side = spread ? (Math.random() - 0.5) * def.size.width * 0.7 : ox;
+      const x = s.x + hx * along + hy * side, y = s.y + hy * along - hx * side;
+      flames.emit(x, y, s.z + (spread ? 0.5 + Math.random() * 0.5 : oy), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 2 + Math.random() * 1.5,
+        FLAME_COLORS[Math.floor(Math.random() * FLAME_COLORS.length)]!, 0.22, spread ? 0.75 : 0.55, 0.4 + Math.random() * 0.35, Math.random);
+    }
+    if (Math.random() < dt * 4) audio.crackle(s.x, s.y);
+  };
+  const emitWreckSmoke = (v: Vehicle, dt: number, rate: number): void => {
+    if (Math.hypot(v.state.x - player.x, v.state.y - player.y) > 150) return;
+    const s = v.state, n = Math.floor(dt * rate + Math.random());
+    for (let i = 0; i < n; i++) {
+      smoke.emit(s.x + (Math.random() - 0.5), s.y + (Math.random() - 0.5), s.z + 1.1, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 1.1 + Math.random() * 0.6,
+        WRECK_SMOKE, 0.25, 0.85 + Math.random() * 0.3, 2.2 + Math.random(), Math.random);
+    }
+  };
+  /** Le véhicule explose : boule de feu, débris, bruit ; le souffle tue le conducteur, blesse et projette autour, abîme les véhicules voisins. */
+  const explode = (v: Vehicle): void => {
+    const s = v.state, x = s.x, y = s.y, z = s.z;
+    // Boule de feu (jaune au cœur, orange et rouge autour), puis, un peu après, le nuage de fumée qui monte au-dessus.
+    for (let i = 0; i < 36; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 4.5, core = i < 12;
+      flames.emit(x + Math.cos(a) * 0.4, y + Math.sin(a) * 0.4, z + 0.8, Math.cos(a) * sp, Math.sin(a) * sp, 1 + Math.random() * 4,
+        FLAME_COLORS[core ? Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 3)]!, 0.6, core ? 2.6 + Math.random() : 1.8 + Math.random() * 1.2,
+        0.7 + Math.random() * 0.5, Math.random);
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 0.4 + Math.random() * 1.5;
+      smoke.emit(x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, z + 1.8 + Math.random(), Math.cos(a) * sp, Math.sin(a) * sp, 2 + Math.random() * 1.5, WRECK_SMOKE,
+        0.6, 1.6 + Math.random() * 0.8, 3 + Math.random() * 1.5, Math.random, 0.45 + Math.random() * 0.4);
+    }
+    for (let i = 0; i < 6; i++) fx.sparks(x + (Math.random() - 0.5) * 2, y + (Math.random() - 0.5) * 2, z + 0.6 + Math.random(), false, Math.random);
+    audio.explosion(x, y);
+    const dPlayer = Math.hypot(player.x - x, player.y - y);
+    if (dPlayer < 45) shake.impact(Math.max(2, 8 - dPlayer / 5));
+    if (dPlayer < 25) haptics.crash(8);
+    // Le joueur : tué s'il est dedans ; à pied, blessé selon la distance ; dans un autre véhicule, protégé de moitié.
+    if (!health.dead) {
+      if (riding === v) health.damage(10000);
+      else {
+        const hurt = EXPLOSION.player * blastShare(dPlayer) * (riding ? EXPLOSION.sheltered : 1);
+        if (hurt > 0) health.damage(hurt);
+      }
+    }
+    // Les véhicules voisins (dont celui du joueur) : abîmés du côté du souffle ; une voiture déjà très touchée peut prendre feu à son tour.
+    for (const w of fleet.around(x, y, EXPLOSION.radius, near)) {
+      if (w === v) continue;
+      const points = EXPLOSION.vehicle * blastShare(Math.hypot(w.state.x - x, w.state.y - y));
+      if (points <= 0) continue;
+      w.damage.damage(points, contactAngle(w.state, x - w.state.x, y - w.state.y));
+      damaged.add(w);
+    }
+    (traffic as Traffic | null)?.blast(x, y, EXPLOSION.radius, (d) => EXPLOSION.vehicle * blastShare(d));
+    // Les passants et les gendarmes à pied : blessés ou tués, projetés.
+    let hits = 0, killed = 0;
+    const n = shootWorld.pick(x, y, 0, EXPLOSION.radius, Math.PI, 24, blastPeds);
+    for (let i = 0; i < n; i++) {
+      const slot = blastPeds[i]!;
+      shootWorld.position(slot, blastPos);
+      const dx = blastPos.x - x, dy = blastPos.y - y, d = Math.hypot(dx, dy), share = blastShare(d);
+      if (share <= 0) continue;
+      const r = shootWorld.hurt(slot, EXPLOSION.ped * share, d > 0.01 ? dx / d : 1, d > 0.01 ? dy / d : 0, EXPLOSION.impulse * share);
+      if (r > 0) hits++;
+      if (r === 2) killed++;
+    }
+    // Une explosion en public est une infraction, ses morts des meurtres ; un passant vivant à moins de 40 m appelle.
+    pedWitnesses.length = 0;
+    const seen = ((peds as PedsController | null)?.queryCircle(x, y, 40, pedWitnesses) ?? 0) > 0;
+    police.crime("explosion", x, y, seen);
+    if (hits > 0) police.crime(killed > 0 ? "murder" : "assault", x, y, seen);
+    fleet.refresh();
+  };
+  const updateDamage = (dt: number): void => {
+    if (riding && riding.damage.version > 0) damaged.add(riding);
+    showDamage();
+    for (const v of damaged) {
+      v.damage.update(dt);
+      for (const e of v.damage.takeEvents()) if (e.kind === "explode") explode(v);
+      const d = v.damage;
+      if (d.end === "explosion") {
+        const stage = wreckStage(d.sinceEnd);
+        if (stage === "fire") {
+          emitFlames(v.state, v.def, dt, 26, true);
+          emitWreckSmoke(v, dt, 6);
+        } else if (stage === "smoke") emitWreckSmoke(v, dt, 3.5);
+        // Une épave froide, hors de vue depuis longtemps, disparaît (une voiture de stationnement reviendra à sa place avec sa tuile).
+        else if (d.sinceEnd > EXPLOSION.vanish && v !== riding && Math.hypot(v.state.x - player.x, v.state.y - player.y) > EXPLOSION.vanishDistance) {
+          fleet.remove(v);
+          damaged.delete(v);
+        }
+        continue;
+      }
+      if (d.end === "breakdown") {
+        if (d.profile.burns && wreckStage(d.sinceEnd) !== "cold") emitWreckSmoke(v, dt, 3);
+        continue;
+      }
+      if (d.burning >= 0) emitFlames(v.state, v.def, dt, 18, false);
+      emitSmoke(v.state, v.def, d.tier, dt);
+      if (v.damage.version > 0 && v.damage.tier === "ok" && v.damage.health >= DAMAGE.max) damaged.delete(v);
+    }
+    // La circulation (D112) : ses voitures abîmées fument et brûlent ; celles que leur conducteur abandonne rejoignent la flotte (garées, avec leurs dégâts),
+    // et le conducteur civil descend et s'enfuit ; une gendarmerie en feu est hors d'usage.
+    const tr = traffic as Traffic | null;
+    if (tr) {
+      tr.forEachDamaged((st, def, dmg) => {
+        if (dmg.burning >= 0) emitFlames(st, def, dt, 18, false);
+        emitSmoke(st, def, dmg.tier, dt);
+      });
+      for (const a of tr.takeAbandoned(abandoned)) {
+        // Sa place d'origine est celle où on l'a laissée : elle n'est enregistrée que si le joueur la déplace.
+        const v = fleet.add(a.model, `abandon-${Date.now().toString(36)}-${++stolen}`, a.x, a.y, a.heading, a.variant);
+        v.damage = a.damage;
+        damaged.add(v);
+        fleet.refresh();
+        if (a.police) continue;
+        const lx = -Math.cos(a.heading), ly = Math.sin(a.heading), side = FAMILIES.car.dismount;
+        (peds as PedsController | null)?.eject(a.x + lx * side, a.y + ly * side, a.driver, lx, ly, 1.2, a.x, a.y);
+      }
+    }
+    smoke.update(dt);
+    flames.update(dt);
+    // Garage (D113) : arrêté devant, au volant d'un véhicule abîmé, on repart réparé ; le nom du garage s'affiche comme celui d'un véhicule.
+    if (riding) {
+      const d = riding.damage, needs = d.usable && d.version > 0 && (d.health < DAMAGE.max || ZONES.some((z) => d.zones[z] > 0));
+      const g = garageStop.update(dt, ui.garages, riding.state.x, riding.state.y, riding.state.speed, needs);
+      if (g) {
+        d.repair();
+        damaged.delete(riding);
+        vehicleName.show({ make: g.name, model: "Réparée" });
+      }
+    }
+    const tier = riding?.damage.tier;
+    audio.setDamage(tier === "smoke" ? 0.3 : tier === "heavy" ? 0.7 : tier === "fire" || tier === "wrecked" ? 1 : 0);
+    speedo.setHurt(!!riding && (riding.damage.health <= DAMAGE.heavy || !riding.damage.usable));
+  };
+  const damageInfo = (): string => {
+    const d = riding?.damage;
+    if (!d) return "";
+    const z = d.zones;
+    return ` · dégâts ${d.health.toFixed(0)} ${d.tier}${d.burning >= 0 ? ` feu ${d.burning.toFixed(1)} s` : ""} (av ${z.front.toFixed(2)} ar ${z.rear.toFixed(2)} g ${z.left.toFixed(2)} d ${z.right.toFixed(2)})`;
+  };
+
   // Vol avec conducteur (J4-1, D71) : une voiture de la circulation lente (feu rouge, file) à portée de la main peut être prise ;
   // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
   let stolen = 0;
@@ -449,7 +678,20 @@ export function startGame(ctx: GameContext): void {
   // ?ride=velo, trottinette, voiture ou moto, ou l'identifiant d'une entrée du catalogue (citadine, moto-routiere…) : départ sur un véhicule (captures, essais).
   const rideParam = params.get("ride") ?? "";
   const ride = vehicleDef(LEGACY_MODELS[rideParam] ?? rideParam)?.id;
-  if (ride) mount(fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1));
+  if (ride) {
+    const v = fleet.add(ride, "depart", spawn.x, spawn.y, startYaw, 1);
+    // `?damage=N` : santé du véhicule de départ (essais des dégâts, D109), les points perdus répartis sur les zones de `&dent=front,left`
+    // (défaut : l'avant et l'arrière).
+    if (params.has("damage")) {
+      const lost = DAMAGE.max - Math.min(DAMAGE.max, Math.max(0, Number(params.get("damage")) || 0));
+      const ANGLE: Record<string, number> = { front: 0, right: Math.PI / 2, rear: Math.PI, left: -Math.PI / 2 };
+      const where = (params.get("dent") ?? "").split(",").filter((z) => z in ANGLE);
+      if (where.length === 0) v.damage.damage(lost);
+      for (const z of where) v.damage.damage(lost / where.length, ANGLE[z]);
+    }
+    v.damage.takeEvents();
+    mount(v);
+  }
   else if (saved?.riding) {
     const v = fleet.get(saved.riding);
     if (v) mount(v);
@@ -495,7 +737,29 @@ export function startGame(ctx: GameContext): void {
       }
       return p.rayPed(x, y, dx, dy, m, out);
     },
-    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by),
+    // Les balles s'arrêtent aussi sur les obstacles ronds : véhicules garés, troncs, poteaux (D113).
+    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by, true),
+    // Véhicules visés (D113) : ceux de la flotte et de la circulation à moins de 80 m ; la balle les abîme du côté où elle entre.
+    rayVehicle: (x, y, dx, dy, maxDist) => {
+      shotTargets.length = 0;
+      for (const v of fleet.around(x, y, 80, near)) if (!v.ridden) shotTargets.push(v);
+      for (const c of (traffic as Traffic | null)?.cars ?? []) if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < 80) shotTargets.push({ state: c.sim.state, spec: c.sim.spec, damage: c.sim.damage });
+      let best: { dist: number; id: number } | null = null;
+      shotTargets.forEach((t, id) => {
+        const d = rayHull(x, y, dx, dy, t, best?.dist ?? maxDist);
+        if (d !== null) best = { dist: d, id };
+      });
+      return best;
+    },
+    hurtVehicle: (id, damage, x, y) => {
+      const t = shotTargets[id];
+      if (!t) return;
+      t.damage.shot(damage, contactAngle(t.state, x - t.state.x, y - t.state.y));
+      if ("def" in t) {
+        damaged.add(t);
+        fleet.refresh();
+      }
+    },
   };
   const drops: { x: number; y: number }[] = [];
   let hudTimer = 0;
@@ -642,7 +906,7 @@ export function startGame(ctx: GameContext): void {
       if (riding) {
         throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
-        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
+        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
@@ -670,10 +934,16 @@ export function startGame(ctx: GameContext): void {
       const hurt = dropDamage(drop);
       if (hurt > 0 && !health.dead) health.damage(hurt);
     }
+    updateDamage(dt);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {
       const s = riding.state;
+      // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.
+      if (s.impact > 0 && riding.damage.hit(s.impact, s.impactAngle) > 0) {
+        crashSparks(riding, s.impactAngle);
+        hitParked(riding, s.impact, s.impactAngle);
+      }
       if (leaving && Math.abs(s.speed) < 0.4) dismount();
       else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {
@@ -893,6 +1163,8 @@ export function startGame(ctx: GameContext): void {
     // le pistolet d'un gendarme tué tombe à terre (on peut le ramasser).
     {
       const dmg = police.takeDamage();
+      // Au volant, les balles des gendarmes abîment aussi le véhicule (D113).
+      if (dmg > 0 && riding) riding.damage.shot(dmg);
       if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
       if (police.shots.length > 0) {
         for (let i = 0; i < police.shots.length && i < 4; i++) {

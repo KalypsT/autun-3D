@@ -3,9 +3,11 @@ import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { parkingZone, pickModel } from "../core/vehicle-placement";
-import { CATALOG, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
+import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
+import { DAMAGE, deratedSpec, looksDented, VehicleDamage, ZONES } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
-import { CAR_BODIES, carRestGeometry, createCarModel } from "../render/car-model";
+import { carLayout, wheelTrack } from "../render/car-body";
+import { baseModel, CAR_BODIES, carRestGeometry, createCarModel, DENTED } from "../render/car-model";
 import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
 import { createMotorScooterModel } from "../render/motorscooter-model";
@@ -28,9 +30,14 @@ export const MODEL_BUILDERS: Record<string, (color: string) => VehicleModel> = {
 
 /** Géométrie au repos d'un modèle garé (peinture blanche), pour le maillage instancié de tous ses exemplaires. */
 export function restGeometryOf(id: string): THREE.BufferGeometry {
-  const def = vehicleDef(id);
+  const def = vehicleDef(baseModel(id));
   if (!def) throw new Error(`modèle de véhicule inconnu : ${id}`);
-  return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[id]!("#ffffff"));
+  return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[def.id]!("#ffffff"));
+}
+
+/** Modèle dessiné pour un véhicule garé ou de la circulation : sa forme abîmée s'il paraît cabossé (voitures seulement, D112). */
+export function drawnModel(def: VehicleDef, damage: VehicleDamage): string {
+  return def.family === "car" && looksDented(damage) ? def.id + DENTED : def.id;
 }
 
 /** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
@@ -38,10 +45,10 @@ export function buildModel(def: VehicleDef, variant: number): VehicleModel {
   return MODEL_BUILDERS[def.id]!(paletteColor(def, variant));
 }
 
-/** Traces de pneus : la voie d'une voiture suit sa largeur (les roues sont à 13 cm du bord, comme dans le générateur de carrosserie). */
+/** Traces de pneus : la voie d'une voiture est celle de ses roues dessinées (générateur de carrosserie). */
 export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
-  const t = FAMILIES[v.def.family].tyre;
-  return v.def.family === "car" ? { ...t, track: v.def.size.width / 2 - 0.13 } : t;
+  const t = FAMILIES[v.def.family].tyre, body = CAR_BODIES[v.def.id];
+  return v.def.family === "car" && body ? { ...t, track: wheelTrack(body) } : t;
 }
 
 /** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (3,98 × 1,42 m). */
@@ -50,6 +57,17 @@ export function chaseOf(v: { def: VehicleDef }): FamilyInfo["camera"] {
   if (v.def.family !== "car") return c;
   const { length, height } = v.def.size;
   return { distance: c.distance + (length - 3.98) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.42) * 0.5 };
+}
+
+/**
+ * D'où sort la fumée d'un véhicule abîmé (D110), dans son repère : [vers la droite, hauteur, vers l'avant] (m). Voiture : le capot, au-dessus du moteur ;
+ * deux-roues : le moteur, sous la selle.
+ */
+export function smokeOrigin(def: VehicleDef): [number, number, number] {
+  const body = CAR_BODIES[def.id];
+  if (def.family !== "car" || !body) return [0, 0.62, 0.05];
+  const L = carLayout(body, def.spec.front, def.spec.rear);
+  return [0, (body.noseHeight + body.belt) / 2 + 0.06, -(L.noseZ + body.hood * 0.45)];
 }
 
 /** Interface et conduite communes à la famille du véhicule. */
@@ -70,8 +88,17 @@ export interface Vehicle {
   ridden: boolean;
   /** Place d'origine ; null pour un véhicule retrouvé dans une sauvegarde (d'origine inconnue : toujours à enregistrer). */
   home: { x: number; y: number; heading: number } | null;
+  /** Dégâts (D109) : santé, zones écrasées, feu, fin. */
+  damage: VehicleDamage;
 }
 
+/** Fiche avec laquelle le véhicule roule : celle du modèle, moteur affaibli selon ses dégâts (`deratedSpec`). */
+export function drivenSpec(v: { spec: VehicleSpec; damage: VehicleDamage }): VehicleSpec {
+  return deratedSpec(v.spec, v.damage.power);
+}
+
+/** Peinture d'une épave brûlée (D111). */
+const WRECK_COLOR = "#2b2724";
 /** Au-delà, les véhicules garés ne sont pas dessinés. */
 const DRAW_DISTANCE = 110;
 const CAR_DRAW_DISTANCE = 170;
@@ -119,7 +146,8 @@ export class Fleet {
     private readonly terrain: HeightField,
   ) {
     scene.add(this.parked.group);
-    this.parked.prepare(CATALOG.map((d) => d.id));
+    // Aussi la forme abîmée de chaque voiture (D112) : elle ne coûte un appel de dessin que quand une voiture cabossée est là.
+    this.parked.prepare([...CATALOG.map((d) => d.id), ...CATALOG.filter((d) => d.family === "car").map((d) => d.id + DENTED)]);
   }
 
   /** Aucun véhicule ne sera garé dans ce cercle (point de départ du joueur). */
@@ -188,7 +216,7 @@ export class Fleet {
     if (existing) return existing;
     const def = vehicleDef(model);
     if (!def) throw new Error(`modèle de véhicule inconnu : ${model}`);
-    const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home };
+    const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home, damage: new VehicleDamage(damageProfile(def)) };
     this.byId.set(id, v);
     this.settle(v);
     this.vehicles.push(v);
@@ -213,7 +241,10 @@ export class Fleet {
 
   /** Retrouve les véhicules d'une sauvegarde, là où ils avaient été laissés (avant que leurs tuiles ne les recréent à l'origine). */
   restore(saved: readonly SavedVehicle[]): void {
-    for (const s of saved) this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);
+    for (const s of saved) {
+      const v = this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);
+      if (s.damage) v.damage.restore(s.damage.health, s.damage.zones, s.damage.end);
+    }
   }
 
   get(id: string): Vehicle | null {
@@ -226,7 +257,10 @@ export class Fleet {
     for (const v of this.vehicles) {
       const s = v.state, h = v.home;
       const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
-      if (moved) out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading });
+      // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
+      const d = v.damage, hurt = d.version > 0 && (d.health < DAMAGE.max || d.end !== null || ZONES.some((z) => d.zones[z] > 0));
+      if (!moved && !hurt) continue;
+      out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading, ...(hurt ? { damage: { health: d.health, zones: { ...d.zones }, end: d.end } } : {}) });
     }
     return out;
   }
@@ -269,11 +303,24 @@ export class Fleet {
     return v.model;
   }
 
+  /** Redessine les véhicules garés à la prochaine image (un véhicule a changé d'aspect : épave). */
+  refresh(): void {
+    this.dirty = true;
+  }
+
+  /** Véhicules (garés ou conduit) à moins de `r` mètres de (x, y). */
+  around(x: number, y: number, r: number, out: Vehicle[]): Vehicle[] {
+    out.length = 0;
+    for (const v of this.vehicles) if (Math.hypot(v.state.x - x, v.state.y - y) < r) out.push(v);
+    return out;
+  }
+
   /** Véhicule libre le plus proche de (x, y), d'un type donné ou de n'importe lequel, avec la distance à son centre. */
   nearest(x: number, y: number, family: VehicleFamily | null = null): { vehicle: Vehicle; distance: number } | null {
     let best: { vehicle: Vehicle; distance: number } | null = null;
     for (const v of this.vehicles) {
-      if (v.ridden || (family && v.family !== family)) continue;
+      // Une épave (brûlée, en panne, cassée) ne se reprend pas (D109).
+      if (v.ridden || !v.damage.usable || (family && v.family !== family)) continue;
       const d = Math.hypot(v.state.x - x, v.state.y - y);
       if (!best || d < best.distance) best = { vehicle: v, distance: d };
     }
@@ -291,7 +338,9 @@ export class Fleet {
       if (v.ridden) continue;
       const reach = v.family === "car" ? CAR_DRAW_DISTANCE : DRAW_DISTANCE;
       if (Math.hypot(v.state.x - x, v.state.y - y) > reach) continue;
-      items.push({ model: v.def.id, x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color: paletteColor(v.def, v.variant) });
+      // Une épave brûlée est noircie : la peinture prend la teinte du charbon (D111).
+      const color = v.damage.end === "explosion" ? WRECK_COLOR : paletteColor(v.def, v.variant);
+      items.push({ model: drawnModel(v.def, v.damage), x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
     }
     this.parked.set(items);
     this.stats.drawn = this.parked.instances;

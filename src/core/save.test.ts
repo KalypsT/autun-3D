@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, type SaveGame, type StorageLike } from "./save";
+import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, type SaveGame, type StorageLike, parseDamage } from "./save";
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
@@ -166,5 +166,14 @@ describe("réglages", () => {
     store.write({ ...DEFAULT_SETTINGS, sensitivity: 1.4, minimapNorth: true });
     expect(new SettingsStore(st).load()).toMatchObject({ sensitivity: 1.4, minimapNorth: true });
     expect(new SettingsStore(null).write(DEFAULT_SETTINGS)).toBe(false);
+  });
+});
+
+describe("dégâts des véhicules dans la sauvegarde (D113)", () => {
+  it("les dégâts d'un véhicule sont relus ; absents (sauvegarde d'avant), le véhicule est intact ; des valeurs absurdes sont bornées ou écartées", () => {
+    expect(parseDamage({ health: 42, zones: { front: 0.5, rear: 2 }, end: "explosion" })).toEqual({ health: 42, zones: { front: 0.5, rear: 1, left: 0, right: 0 }, end: "explosion" });
+    expect(parseDamage(undefined)).toBeNull();
+    expect(parseDamage({ health: "x", zones: {} })).toBeNull();
+    expect(parseDamage({ health: 500, zones: {}, end: "bof" })).toEqual({ health: 100, zones: { front: 0, rear: 0, left: 0, right: 0 }, end: null });
   });
 });

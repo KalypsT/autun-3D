@@ -334,3 +334,35 @@ describe("interactions avec le joueur (J3-6)", () => {
     expect(noisy.behind).toBeLessThan(noisy.ahead);
   });
 });
+
+describe("dégâts de la circulation (D112)", () => {
+  it("le joueur percute par l'arrière une voiture arrêtée à 50 km/h : elle est abîmée surtout derrière", () => {
+    const m = straightRoad();
+    const sim = new TrafficSim(nav, world.terrain, colliders);
+    const lead = sim.add(citadine, m, 60, null);
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, m, 45, lp);
+    const state = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
+    state.vx = Math.sin(lp.heading) * 14;
+    state.vy = Math.cos(lp.heading) * 14;
+    for (let i = 0; i < 120; i++) {
+      state.x += state.vx * DT;
+      state.y += state.vy * DT;
+      sim.step(DT, { kind: "vehicle", state, spec: citadine });
+    }
+    expect(lead.damage.health).toBeLessThan(90);
+    expect(lead.damage.zones.rear).toBeGreaterThan(lead.damage.zones.front);
+  });
+
+  it("à la fumée blanche, une voiture roule encore (moins vite) ; à la fumée noire, elle s'arrête pour être abandonnée", () => {
+    const m = straightRoad();
+    for (const [lost, stops] of [[45, false], [75, true]] as const) {
+      const sim = new TrafficSim(nav, world.terrain, colliders);
+      const car = sim.add(citadine, m, 5, 1, 10);
+      car.damage.damage(lost);
+      for (let i = 0; i < 60 * 4; i++) sim.step(DT);
+      if (stops) expect(car.state.speed).toBeLessThan(0.5);
+      else expect(car.state.speed).toBeGreaterThan(2);
+    }
+  });
+});

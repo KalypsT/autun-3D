@@ -599,3 +599,79 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - En véhicule (le tien seulement) : une crête prise vite ou le haut d'une montée font décoller, une falaise fait tomber ; en l'air, plus de direction ni de frein ; une réception brutale secoue, et fait tomber d'un deux-roues. La sortie des ponts ne fait pas sauter (les données des ponts ne rejoignent pas toujours la route).
 - 635 tests.
 - À faire de ton côté : sauter par-dessus une haie, escalader une grille, sauter d'un mur haut ; en voiture, prendre vite le haut d'une rue en pente et rouler vers une falaise au sud ; dire si la hauteur des sauts et la force des réceptions te conviennent.
+
+**Voitures plus belles et reconnaissables, nom du modèle en montant (30 octobre 2026)** (D107)
+- Chaque voiture a maintenant sa silhouette et sa « face » : formes arrondies ou anguleuses selon le modèle, passages de roue, vraies vitres avec leurs montants, portières, poignées, rétroviseurs, plaques ; phares ronds, rectangulaires, en amande ou en bandeau, calandres, feux, pare-chocs, jantes et accessoires différents (barres de toit, aileron, toit noir, chromes, ailes de voiture ancienne…).
+- Chaque modèle a un nom (marques fictives d'Autun) qui s'affiche quelques secondes en haut à droite quand tu montes dedans : Éduen Moineau (citadine), Éduen Arroux (compacte), Augusta Préfète (berline), Augusta Morvandelle (break), Éduen Morvan (petit SUV), Couhard Mulet (camionnette), Éduen Pétrolette (vieille voiture), Augusta Janus (sportive).
+- Une palette de couleurs propre à chaque modèle. Aucun appel de dessin de plus ; environ 1 200 triangles par voiture au lieu de 700. 638 tests.
+- À faire de ton côté : regarder la galerie (`?view=vehicles&family=car`, appui pour changer de couleur), monter dans plusieurs voitures, dire si on les reconnaît de loin et si les noms te plaisent ; lancer `?bench=1&fleet=1&traffic=20` sur le téléphone. Ensuite : les deux-roues, puis les modèles uniques et les dégâts.
+
+![Avant](docs/captures/d107-avant.jpg)
+![Les neuf voitures, de face](docs/captures/d107-voitures-avant.jpg)
+![Les neuf voitures, de l'arrière](docs/captures/d107-voitures-arriere.jpg)
+![Le nom du modèle en montant](docs/captures/d107-nom.jpg)
+
+**Deux-roues plus beaux et reconnaissables, et leurs noms (30 octobre 2026)** (D108)
+- Vélo de ville (Bibracte Promenade) : cadre ouvert, garde-boue, porte-bagages, panier en osier, guidon relevé, selle à ressorts. VTT (Bibracte Beuvray) : cadre plongeant, fourche suspendue, pneus à crampons, freins à disque, bidon. On ne les confond plus.
+- Scooter (Éduen Zéphyr 125) : tablier galbé, coque arrondie, top-case, phare dans le guidon, rétroviseurs ronds. Moto routière (Bibracte Druide) : réservoir en goutte, moteur à ailettes, deux échappements chromés, phare rond, roues à rayons. Moto sportive (Bibracte Celte R) : carénage intégral, double phare, bulle, coque arrière effilée, jantes coulées.
+- Trottinette (Trott'Autun Libre-service) : livrée du service de location, phare et écran.
+- Le nom s'affiche en montant, comme pour les voitures. Aucun appel de dessin de plus ; les vélos garés coûtent ≈ 500 triangles de plus chacun. 644 tests.
+- À faire de ton côté : galerie `?view=vehicles&family=moto` puis `family=bike` (et `&rider=1` pour voir les conducteurs), monter sur chacun ; lancer `?bench=1&fleet=1&traffic=20` sur le téléphone (voitures et deux-roues ensemble). Ensuite : les modèles uniques, puis les dégâts.
+
+![Avant](docs/captures/d108-avant.jpg)
+![Vélo de ville, VTT, trottinette](docs/captures/d108-velos.jpg)
+![Scooter, routière, sportive](docs/captures/d108-motos.jpg)
+![Les mêmes, de l'arrière](docs/captures/d108-motos-arriere.jpg)
+![Avec leurs conducteurs](docs/captures/d108-conducteurs.jpg)
+![Le nom en montant](docs/captures/d108-nom.jpg)
+
+**Dégâts des véhicules, étape 1 : la logique (30 octobre 2026)** (D109)
+- Chaque véhicule a maintenant une santé et quatre zones (avant, arrière, côtés). Les chocs au-delà de 12 km/h l'abîment, à l'endroit touché, selon la solidité du modèle (la gendarmerie et la camionnette encaissent mieux, une moto ou un vélo moins).
+- Paliers : fumée blanche sous 60 %, fumée noire sous 30 %, feu sous 10 %, explosion 5 s plus tard. Le moteur faiblit à chaque palier ; la direction et les freins restent intacts. Un vélo ou une trottinette ne brûle pas : il casse. Une épave ne se reprend pas.
+- Sous 30 %, le compteur se cercle de rouge et bat lentement (pas de jauge, comme convenu).
+- Prévu pour le mode enfant : un seul aiguillage fait finir une voiture en panne plutôt qu'en explosion.
+- Pas encore à l'écran : la carrosserie abîmée, la fumée, le feu, l'explosion (étapes 2 et 3) ; pour l'instant l'explosion n'est qu'un grand choc ressenti. 656 tests.
+- À faire de ton côté : `?ride=citadine&debug`, foncer dans des murs à différentes vitesses et lire la ligne « dégâts » ; `?ride=citadine&damage=25` pour voir le compteur rouge et sentir le moteur faible. Dis-moi si le barème te paraît trop dur ou trop doux (une voiture qui prend feu à 90 km/h contre un mur).
+
+**Dégâts des véhicules, étape 2 : ce qu'on voit et ce qu'on entend (30 octobre 2026)** (D110)
+- Ta voiture se froisse là où elle a pris le choc : l'avant ou l'arrière recule et se plie, le capot se soulève, les flancs s'enfoncent, la peinture se ternit. Les phares et feux du côté touché se cassent et ne s'allument plus la nuit ; les vitres se fêlent.
+- Fumée blanche sous 60 %, noire sous 30 %, épaisse en feu ; une voiture abîmée que tu laisses continue de fumer. Étincelles au moment du choc.
+- Le moteur a des ratés, et pétarade quand il est très touché.
+- Pas encore : flammes et explosion (étape 3) ; une voiture abîmée qu'on gare redevient intacte (étape 4). 662 tests.
+- À faire de ton côté : `?ride=citadine&debug` et foncer dans des murs ; ou directement `?ride=berline&damage=45&dent=front,left` (fumée blanche) et `damage=20` (fumée noire). Dis-moi si la déformation est assez visible, et si les ratés du moteur ne sont pas agaçants.
+
+![Avant écrasé](docs/captures/d110-avant-ecrase.jpg)
+![Arrière écrasé](docs/captures/d110-arriere-ecrase.jpg)
+![Fumée blanche](docs/captures/d110-fumee-blanche.jpg)
+![Fumée noire, compteur rouge](docs/captures/d110-fumee-noire.jpg)
+
+**Dégâts des véhicules, étape 3 : feu, explosion, épave (30 octobre 2026)** (D111)
+- Une voiture en feu crache des flammes par le capot et crépite ; 5 secondes plus tard, elle explose : boule de feu, nuage de fumée, grondement, secousse.
+- Le souffle tue celui qui est resté dedans, blesse ou tue les passants et gendarmes autour (et les projette), te blesse si tu es à quelques mètres, et abîme les voitures voisines : une voiture déjà bien touchée peut exploser à son tour.
+- Faire exploser une voiture en public te donne au moins deux étoiles ; les victimes comptent comme des meurtres.
+- L'épave est noircie, brûle quelques secondes, fume, puis finit par disparaître quand tu es loin.
+- Pas encore : la circulation et la police ne sont pas touchées par les explosions (étape 4). 667 tests.
+- À faire de ton côté : `?ride=berline&damage=8` : descends tout de suite et éloigne-toi en courant, puis regarde. Écoute aussi `?sounds` (Explosion, Crépitement). Dis-moi si la boule de feu est assez impressionnante et si la portée du souffle (mort à 2,5 m, blessé jusqu'à 8 m) te va.
+
+![Explosion](docs/captures/d111-explosion.jpg)
+![Épave qui brûle](docs/captures/d111-epave-brule.jpg)
+
+**Dégâts des véhicules, étape 4 : police, circulation, voitures garées (30 octobre 2026)** (D112)
+- Les voitures de la circulation s'abîment aux chocs (contre toi, entre elles, contre les murs), fument, ralentissent. À la fumée noire, le conducteur s'arrête, descend et s'enfuit : la voiture reste là, abîmée ; elle peut brûler et exploser, ou tu peux la reprendre si elle roule encore.
+- Une gendarmerie à la fumée noire est hors d'usage : elle quitte la poursuite (la police envoie des renforts). Elle est 1,4 fois plus solide qu'une voiture ordinaire.
+- Les voitures garées que tu percutes s'abîment aussi, et fument si elles sont bien touchées.
+- Les voitures cabossées garées ou qui roulent ont une forme abîmée (une par modèle) ; les explosions abîment aussi la circulation.
+- 673 tests. Le chargement prend environ 70 ms de plus sur PC (fabrication des formes abîmées).
+- À faire de ton côté : percuter des voitures de la circulation et des voitures garées ; se faire poursuivre (`?wanted=2`) et mettre une gendarmerie hors d'usage en la percutant plusieurs fois. Dis-moi si les gendarmeries tombent trop vite ou pas assez.
+
+![Voitures garées cabossées](docs/captures/d112-garees-cabossees.jpg)
+
+**Dégâts des véhicules, étape 5 : balles, garages, sauvegarde (30 octobre 2026)** (D113)
+- Les balles abîment les véhicules, garés ou qui roulent, et s'arrêtent sur les carrosseries : tu peux t'abriter derrière une voiture garée, les gendarmes ne tirent plus à travers. Un chargeur de pistolet met une voiture en fumée noire, deux la font brûler. Au volant, les balles des gendarmes abîment aussi ta voiture. Les balles s'arrêtent aussi sur les troncs et les poteaux.
+- Garages : les 8 garages automobiles d'Autun (Norauto, Eurorepar, Renault…) sont sur la minimap (pastille bleu-vert avec une clé). Arrête-toi devant, au volant d'un véhicule abîmé : une seconde plus tard, il est réparé et le nom du garage s'affiche. Gratuit pour l'instant, sans effet sur les étoiles.
+- Les dégâts de tes véhicules sont enregistrés avec la partie (les anciennes sauvegardes se lisent toujours).
+- Chantier des dégâts terminé côté code (D109 à D113). 680 tests.
+- À faire de ton côté : tirer sur une voiture garée, t'abriter derrière une voiture pendant une poursuite à quatre étoiles (`?wanted=4&arms=all`), te faire réparer dans un garage. Puis la mesure sur l'Honor (protocole en D113) : `?bench=1&fleet=1&traffic=20`, puis la même avec `&dent=1`, et une explosion en jeu avec `?debug`.
+
+![Réparation au garage](docs/captures/d113-garage.jpg)
+
