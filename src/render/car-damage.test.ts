@@ -127,6 +127,11 @@ describe("camions-restaurants (D115)", () => {
     }
     expect(chimneyOf("pizza-du-vallon")![1]).toBeGreaterThan(CAR_BODIES["pizza-du-vallon"]!.height);
     expect(chimneyOf("rotisserie-champ-de-mars")).toBeNull();
+    // La pizza s'ouvre à gauche, la rôtisserie à droite : le vendeur et la cheminée sont du côté de l'ouverture.
+    expect(vendorOf("pizza-du-vallon")!).toMatchObject({ side: -1 });
+    expect(vendorOf("pizza-du-vallon")!.x).toBeLessThan(0);
+    expect(chimneyOf("pizza-du-vallon")![0]).toBeLessThan(0);
+    expect(vendorOf("rotisserie-champ-de-mars")!).toMatchObject({ side: 1 });
     expect(vendorOf("citadine")).toBeNull();
   });
 });

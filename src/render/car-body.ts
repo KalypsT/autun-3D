@@ -60,7 +60,7 @@ export interface CarStyle {
 }
 
 /**
- * Caisse d'un camion-restaurant (D115) : une ouverture de service sur le flanc droit (côté trottoir), de `from` à `to` m après le pied de la caisse
+ * Caisse d'un camion-restaurant (D115) : une ouverture de service sur le flanc droit (côté trottoir ; le gauche si `left`), de `from` à `to` m après le pied de la caisse
  * et de `bottom` à `top` m de haut, avec son comptoir, son auvent relevé (rayé si `stripe`), le fond de la caisse (`interior`), un lettrage en blocs,
  * et soit la cheminée d'un four à bois, soit les broches d'une rôtisserie.
  */
@@ -73,8 +73,10 @@ export interface FoodTruck {
   counter: string;
   awning: string;
   stripe?: string;
-  /** Lettrage sur le flanc droit : vertical entre la cabine et l'ouverture, ou horizontal au-dessus de l'ouverture. */
+  /** Lettrage sur le flanc de l'ouverture : vertical entre la cabine et l'ouverture, ou horizontal au-dessus de l'ouverture. */
   lettering: { text: string; color: string; vertical: boolean };
+  /** Ouverture sur le flanc gauche (tout l'aménagement en miroir, lettrage compris, qui reste lisible) : pour servir un parking placé à gauche. */
+  left?: boolean;
   oven?: boolean;
   spits?: boolean;
 }
@@ -105,7 +107,7 @@ export interface CarBodyParams {
   cargo?: boolean;
   /** Haut du toit de la cabine, s'il est plus bas que la caisse (camion-restaurant, D115) ; défaut : `height`. */
   cabHeight?: number;
-  /** Camion-restaurant (D115) : la caisse est creuse, ouverte sur le flanc droit pour le service (voir `FoodTruck`). */
+  /** Camion-restaurant (D115) : la caisse est creuse, ouverte sur un flanc pour le service (voir `FoodTruck`). */
   foodTruck?: FoodTruck;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
@@ -563,7 +565,7 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
 }
 
 /**
- * Caisse creuse d'un camion-restaurant (D115) : sous l'ouverture, au-dessus, devant et derrière elle, en peinture ; le flanc gauche, plein. L'intérieur
+ * Caisse creuse d'un camion-restaurant (D115) : sous l'ouverture, au-dessus, devant et derrière elle, en peinture ; le flanc opposé, plein. L'intérieur
  * (fond, comptoir) est dans les détails. Le vendeur se tient dedans, visible par l'ouverture.
  */
 function hollowBox(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometry[] {
@@ -581,7 +583,7 @@ function hollowBox(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
     block(z0, tail, t.top, top, -side, side, 0.08),
     block(z0, h0, t.bottom, t.top, -side, side),
     block(h1, tail, t.bottom, t.top, -side, side),
-    block(h0, h1, t.bottom, t.top, -side, -side + 0.05),
+    t.left ? block(h0, h1, t.bottom, t.top, side - 0.05, side) : block(h0, h1, t.bottom, t.top, -side, -side + 0.05),
   ];
 }
 
@@ -593,21 +595,22 @@ const BLOCK_FONT: Record<string, readonly string[]> = {
 };
 
 /**
- * Lettrage en blocs sur le flanc droit (x = `x`), vu de l'extérieur : les colonnes d'une lettre vont vers l'avant (−z). Chaque suite de pixels d'une
- * ligne est une seule boîte. `z` : bord arrière de la première lettre ; `y` : haut de la première lettre ; `px` : taille d'un pixel.
+ * Lettrage en blocs sur un flanc (x = `x`), vu de l'extérieur : les colonnes d'une lettre vont vers `dir` (−1 : vers l'avant, lu sur le flanc droit ;
+ * +1 : vers l'arrière, lu sur le flanc gauche). Chaque suite de pixels d'une ligne est une seule boîte. `z` : bord de départ de la première lettre ;
+ * `y` : haut de la première lettre ; `px` : taille d'un pixel.
  */
-function blockLetters(text: string, x: number, z: number, y: number, px: number, vertical: boolean, color: string): THREE.BufferGeometry[] {
+function blockLetters(text: string, x: number, z: number, y: number, px: number, vertical: boolean, color: string, dir: number): THREE.BufferGeometry[] {
   const parts: THREE.BufferGeometry[] = [];
   [...text].forEach((ch, i) => {
     const glyph = BLOCK_FONT[ch];
     if (!glyph) return;
-    const lz = vertical ? z : z - i * 4 * px, ly = vertical ? y - i * 6.5 * px : y;
+    const lz = vertical ? z : z + dir * i * 4 * px, ly = vertical ? y - i * 6.5 * px : y;
     glyph.forEach((row, r) => {
       for (let c = 0; c < 3; c++) {
         if (row[c] !== "1") continue;
         let n = 1;
         while (c + n < 3 && row[c + n] === "1") n++;
-        parts.push(box(0.012, px, n * px, x, ly - (r + 0.5) * px, lz - (c + n / 2) * px, color));
+        parts.push(box(0.012, px, n * px, x, ly - (r + 0.5) * px, lz + dir * (c + n / 2) * px, color));
         c += n - 1;
       }
     });
@@ -619,37 +622,40 @@ function blockLetters(text: string, x: number, z: number, y: number, px: number,
 function foodTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   const t = p.foodTruck;
   if (!t) return [];
-  const { L, side } = f, h0 = L.rearBaseZ + t.from, h1 = L.rearBaseZ + t.to, zm = (h0 + h1) / 2, len = h1 - h0, x = side;
+  const { L, side } = f, h0 = L.rearBaseZ + t.from, h1 = L.rearBaseZ + t.to, zm = (h0 + h1) / 2, len = h1 - h0;
+  // s : flanc de l'ouverture (1 à droite, −1 à gauche) ; tout s'écrit pour le flanc droit, en x multiplié par s.
+  const s = t.left ? -1 : 1, x = s * side;
   const parts: THREE.BufferGeometry[] = [
     // Fond de la caisse, plafond et plancher de l'ouverture (vus par elle).
-    box(0.02, t.top - t.bottom, len, -side + 0.06, (t.top + t.bottom) / 2, zm, t.interior),
+    box(0.02, t.top - t.bottom, len, s * (-side + 0.06), (t.top + t.bottom) / 2, zm, t.interior),
     box(2 * side - 0.1, 0.02, len, 0, t.top - 0.012, zm, t.interior),
     // Comptoir qui dépasse dehors.
-    box(0.42, 0.05, len - 0.1, x + 0.06, t.bottom + 0.025, zm, t.counter),
+    box(0.42, 0.05, len - 0.1, x + s * 0.06, t.bottom + 0.025, zm, t.counter),
   ];
   // Auvent relevé au-dessus de l'ouverture : il part du haut de l'ouverture vers l'extérieur, en montant un peu (bandes de deux couleurs si rayé).
   const bands = t.stripe ? 8 : 1, reach = 0.95;
   for (let k = 0; k < bands; k++) {
     const g = new THREE.BoxGeometry(0.03, reach, len / bands + 0.002);
     g.translate(0, reach / 2, 0);
-    g.rotateZ(-(Math.PI / 2 - 0.3));
-    g.translate(x + 0.02, t.top + 0.03, h0 + (k + 0.5) * (len / bands));
+    g.rotateZ(-s * (Math.PI / 2 - 0.3));
+    g.translate(x + s * 0.02, t.top + 0.03, h0 + (k + 0.5) * (len / bands));
     parts.push(paint(g, k % 2 && t.stripe ? t.stripe : t.awning));
   }
-  const L0 = t.lettering;
-  if (L0.vertical) parts.push(...blockLetters(L0.text, x + 0.006, h0 - 0.16, p.height - 0.4, 0.065, true, L0.color));
-  else parts.push(...blockLetters(L0.text, x + 0.006, h1 - 0.05, p.height - 0.12, 0.07, false, L0.color));
+  // Lettrage : à droite, il part de son bord arrière vers l'avant ; à gauche, de son bord avant vers l'arrière (même place, lisible des deux côtés).
+  const L0 = t.lettering, lx = x + s * 0.006;
+  if (L0.vertical) parts.push(...blockLetters(L0.text, lx, h0 - 0.16 - (s < 0 ? 3 * 0.065 : 0), p.height - 0.4, 0.065, true, L0.color, -s));
+  else parts.push(...blockLetters(L0.text, lx, h1 - 0.05 - (s < 0 ? (4 * L0.text.length - 1) * 0.07 : 0), p.height - 0.12, 0.07, false, L0.color, -s));
   if (t.oven) {
     // Four à bois au fond : sa bouche rougeoie ; cheminée noire sur le toit.
-    parts.push(box(0.5, 0.75, 0.9, -side + 0.32, t.bottom + 0.375, h1 - 0.55, "#7a6a5c"), box(0.02, 0.28, 0.4, -side + 0.58, t.bottom + 0.3, h1 - 0.55, "#f08a2c"));
+    parts.push(box(0.5, 0.75, 0.9, s * (-side + 0.32), t.bottom + 0.375, h1 - 0.55, "#7a6a5c"), box(0.02, 0.28, 0.4, s * (-side + 0.58), t.bottom + 0.3, h1 - 0.55, "#f08a2c"));
     parts.push(...chimney(p, f));
   }
   if (t.spits) {
     // Rôtissoire : trois broches de poulets dorés devant un fond rougeoyant.
-    parts.push(box(0.02, 0.9, len - 0.3, -side + 0.08, t.bottom + 0.55, zm, "#e8641e"));
+    parts.push(box(0.02, 0.9, len - 0.3, s * (-side + 0.08), t.bottom + 0.55, zm, "#e8641e"));
     for (const y of [0.3, 0.6, 0.9]) {
-      parts.push(tube(new THREE.Vector3(-side + 0.35, t.bottom + y, h0 + 0.1), new THREE.Vector3(-side + 0.35, t.bottom + y, h1 - 0.1), 0.012, "#c9ccd0", 5, false));
-      for (let k = 0; k < 5; k++) parts.push(box(0.16, 0.13, 0.18, -side + 0.35, t.bottom + y, h0 + 0.25 + k * ((len - 0.5) / 4), "#b4692f"));
+      parts.push(tube(new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h0 + 0.1), new THREE.Vector3(s * (-side + 0.35), t.bottom + y, h1 - 0.1), 0.012, "#c9ccd0", 5, false));
+      for (let k = 0; k < 5; k++) parts.push(box(0.16, 0.13, 0.18, s * (-side + 0.35), t.bottom + y, h0 + 0.25 + k * ((len - 0.5) / 4), "#b4692f"));
     }
   }
   return parts;
@@ -659,7 +665,7 @@ function foodTruckParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 export function chimneyTop(p: CarBodyParams, front: number, rear: number): [number, number, number] | null {
   if (!p.foodTruck?.oven) return null;
   const L = carLayout(p, front, rear);
-  return [p.width / 2 - 0.55, p.height + 0.6, L.rearBaseZ + p.foodTruck.to - 0.55];
+  return [(p.foodTruck.left ? -1 : 1) * (p.width / 2 - 0.55), p.height + 0.6, L.rearBaseZ + p.foodTruck.to - 0.55];
 }
 
 function chimney(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
@@ -671,12 +677,15 @@ function chimney(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   return [paint(g, "#1d1f24"), paint(cap, "#1d1f24")];
 }
 
-/** Où se tient le vendeur d'un camion-restaurant (repère du véhicule : pieds au plancher, face à l'ouverture) ; null pour un autre véhicule. */
-export function vendorSpot(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number } | null {
+/**
+ * Où se tient le vendeur d'un camion-restaurant (repère du véhicule : pieds au plancher, face à l'ouverture), et le flanc de l'ouverture (`side` : 1 à
+ * droite, −1 à gauche) ; null pour un autre véhicule.
+ */
+export function vendorSpot(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number; side: number } | null {
   const t = p.foodTruck;
   if (!t) return null;
-  const L = carLayout(p, front, rear);
-  return { x: p.width / 2 - 0.75, y: t.bottom - 0.95, z: L.rearBaseZ + t.from + 0.6 };
+  const L = carLayout(p, front, rear), side = t.left ? -1 : 1;
+  return { x: side * (p.width / 2 - 0.75), y: t.bottom - 0.95, z: L.rearBaseZ + t.from + 0.6, side };
 }
 
 /** Sous une capote (D114) : pare-brise droit dans son cadre, deux fenêtres souples de chaque côté, une à l'arrière. */

@@ -686,8 +686,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![La jeep au Lycée militaire](docs/captures/d114-jeep-lycee.jpg)
 
 **Véhicules uniques, étape 2 : Pizza du Vallon et Rôtisserie du Champ de Mars (30 octobre 2026)** (D115)
-- Le camion Pizza du Vallon (vert, « PIZZA » à la verticale, cheminée du four à bois qui fume) est sur le parking du Collège du Vallon de 17 h à 22 h, avec son pizzaïolo en tablier derrière le comptoir.
-- La Rôtisserie du Champ de Mars (auvent rayé rouge et blanc, poulets à la broche) est au milieu de la place du Champ de Mars de 7 h à 13 h.
+- Le camion Pizza du Vallon (vert, « PIZZA » à la verticale, cheminée du four à bois qui fume) est sur le parking du Collège du Vallon de 17 h à 22 h, dos à la route, cabine vers l'ouest, comptoir ouvert sur le parking, avec son pizzaïolo en tablier derrière.
+- La Rôtisserie du Champ de Mars (auvent rayé rouge et blanc, poulets à la broche) est sur le petit parking devant la mairie de 7 h à 13 h, comptoir tourné vers les places et la mairie.
 - En dehors de leurs heures, ils ne sont pas là. Prendre un camion ouvert, c'est un vol : le vendeur s'enfuit et la police est prévenue. La pizza qui soigne viendra avec l'argent.
 - 700 tests.
 - À faire de ton côté : aller voir les deux camions à leur heure (`?at=516,1100&h=18` pour la pizza, `?at=40,-14&h=9` pour la rôtisserie, ou en jouant), les prendre et les conduire. Ensuite : le petit train touristique.

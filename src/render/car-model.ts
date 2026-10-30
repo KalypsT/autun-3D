@@ -82,7 +82,8 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.38, tyreWidth: 0.27,
     style: { headlights: "round", grille: "tall", taillights: "round", bumpers: "trim", rim: "#3f4a2e", doors: 1, roundness: 0.05, softTop: "#6e6a48", spareWheel: true },
   },
-  // Camions-restaurants (D115) : cabine d'utilitaire, caisse haute et creuse ouverte à droite pour le service.
+  // Camions-restaurants (D115) : cabine d'utilitaire, caisse haute et creuse ouverte sur un flanc pour le service (à gauche pour la pizza : sa place
+  // la met dos à la route, le parking à sa gauche).
   "pizza-du-vallon": {
     length: 6, width: 2.2, height: 3, cabHeight: 2.45, overhangFront: 0.85,
     clearance: 0.32, belt: 1.18, noseHeight: 1.05, tailHeight: 2.95,
@@ -91,7 +92,7 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#c9ccd0", doors: 1, roundness: 0.45, cladding: true },
     foodTruck: {
       from: 0.65, to: 2.85, bottom: 1.25, top: 2.35, interior: "#5a1f2a", counter: "#8fd14f", awning: "#6fb532",
-      lettering: { text: "PIZZA", color: "#d9472b", vertical: true }, oven: true,
+      lettering: { text: "PIZZA", color: "#d9472b", vertical: true }, oven: true, left: true,
     },
   },
   "rotisserie-champ-de-mars": {
@@ -239,7 +240,7 @@ export function carRestGeometry(id: string): THREE.BufferGeometry {
 }
 
 /** Camion-restaurant (D115) : où se tient le vendeur (repère du véhicule), ou null pour un autre modèle. */
-export function vendorOf(id: string): { x: number; y: number; z: number } | null {
+export function vendorOf(id: string): { x: number; y: number; z: number; side: number } | null {
   const p = CAR_BODIES[id], def = vehicleDef(id);
   return p && def ? vendorSpot(p, def.spec.front, def.spec.rear) : null;
 }

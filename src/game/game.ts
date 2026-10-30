@@ -419,7 +419,7 @@ export function startGame(ctx: GameContext): void {
           vendors.set(spot.id, vendor);
         }
         const p = vendorWorld(w, spotAt);
-        vendor.update(p.x, p.y, p.z, w.state.heading + Math.PI / 2, 0, 0);
+        vendor.update(p.x, p.y, p.z, w.state.heading + (spotAt.side * Math.PI) / 2, 0, 0);
       }
     }
   };
@@ -438,8 +438,9 @@ export function startGame(ctx: GameContext): void {
     scene.remove(vendor.group);
     vendor.dispose();
     vendors.delete(v.id);
-    const p = vendorWorld(v, { ...at, x: at.x + 1.6 });
-    const ux = Math.cos(v.state.heading), uy = -Math.sin(v.state.heading);
+    // Il sort par l'ouverture, du côté où elle est.
+    const p = vendorWorld(v, { ...at, x: at.x + at.side * 1.6 });
+    const ux = at.side * Math.cos(v.state.heading), uy = -at.side * Math.sin(v.state.heading);
     (peds as PedsController | null)?.eject(p.x, p.y, vendorSeed(v.id), ux, uy, 1.4, v.state.x, v.state.y);
     police.crime("carjack", v.state.x, v.state.y, true);
     return true;
