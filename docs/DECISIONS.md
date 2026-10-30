@@ -1777,3 +1777,25 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Après](captures/d129-fleche-apres.jpg)
 ![Depuis le sud-est, avant](captures/d129-tour-avant.jpg)
 ![Depuis le sud-est, après](captures/d129-tour-apres.jpg)
+
+## 2026-10-30 — D130. Bâtiments d'après photos, étape 10 : la cathédrale, flancs et porche
+
+**D'après les photos de l'utilisateur** : le flanc est de nuit (chapelles gothiques à grandes baies, contreforts surmontés de pinacles, balustrade ajourée le long des toits ; fenêtres hautes de la nef en plein cintre ; portail roman à petit pignon au bras est du transept ; tour est du porche à deux étages de baies jumelles, contreforts et flèche de pierre à clochetons) et la vue de drone (les deux tours du porche).
+
+**Rendu** (`src/render/monuments.ts`, aucune donnée nouvelle) :
+- **Chapelles** : grande baie en arc brisé à meneau par travée, contreforts à glacis entre les travées ; côté est seulement (photo de nuit), pinacles au-dessus des contreforts et balustrade ajourée (parapet de 90 cm, jours tous les 60 cm). Les chapelles de l'ouest, plus basses (6 à 8 m mesurés), n'ont pas de photo : baies et contreforts seulement.
+- **Nef** : bandeau sous l'égout.
+- **Transept** : avant-corps du portail au pignon est (6 m de large, petit pignon couvert de tuiles), voussure claire et porte.
+- **Tours du porche** : deux étages de baies jumelles en plein cintre dans un encadrement en retrait sur chaque face, cordon entre les étages, contreforts aux angles extérieurs jusqu'au cordon, clochetons aux angles de la flèche.
+- 4 163 triangles pour toute la cathédrale (1 043 à l'étape 1 ; la mairie en a 5 431). Le test borne le monument à 8 000.
+
+**Pas encore** (faute de photo ou de validation) : la façade du porche (portail, marches depuis le parvis, plus bas de 3 m : le relevé ne montre pas de marches devant le porche), les chapelles de l'ouest, la fontaine Saint-Lazare au pied de la tour est ; l'éclairage de nuit de la cathédrale (la photo de nuit la montre illuminée, le jeu la laisse dans l'ombre comme les autres bâtiments).
+
+![Le flanc est, avant](captures/d130-flanc-avant.jpg)
+![Le flanc est, après](captures/d130-flanc-apres.jpg)
+![Les chapelles au sol, avant](captures/d130-chapelles-avant.jpg)
+![Les chapelles au sol, après](captures/d130-chapelles-apres.jpg)
+![Le porche et ses tours, avant](captures/d130-porche-avant.jpg)
+![Le porche et ses tours, après](captures/d130-porche-apres.jpg)
+![La nuit](captures/d130-nuit.jpg)
+![Vue de drone depuis le chevet, comme la photo](captures/d130-cathedrale-drone.jpg)

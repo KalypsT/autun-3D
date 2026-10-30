@@ -383,18 +383,29 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   const pw = Math.min(8, (pB - pA) * 0.6);
   archFace(mb, f, p0 - 0.03, -1, pc, pw + 1.2, zp, Math.min(pe - zp - 1, pw * 1.5), shade(STONE, 1.08));
   archFace(mb, f, p0 - 0.06, -1, pc, pw, zp, Math.min(pe - zp - 1.5, pw * 1.5 - 0.7), BAY);
-  // Tours du porche, flèches de pierre à quatre pans, baies jumelles sous la corniche.
-  for (const [t0, t1] of [[pA - w0, pA], [pB, pB + w1]] as const) {
-    const w = t1 - t0, s1 = p0 + w;
+  // Tours du porche (D130, photo de nuit et drone) : contreforts aux angles extérieurs, deux étages de baies jumelles en plein cintre dans un
+  // encadrement en retrait, cordon et corniche, flèche de pierre à quatre pans, clochetons à ses angles.
+  for (const [t0, t1, side] of [[pA - w0, pA, -1], [pB, pB + w1, 1]] as const) {
+    const w = t1 - t0, s1 = p0 + w, tOut = side < 0 ? t0 : t1;
     prismST(mb, f, rectST(p0, s1, t0, t1), flat(tb), ground, wall);
     box(mb, f, p0 - 0.25, s1 + 0.25, t0 - 0.25, t1 + 0.25, tb - 0.5, tb, shade(wall, 1.06));
+    box(mb, f, p0 - 0.15, s1 + 0.15, t0 - 0.15, t1 + 0.15, tb - 7.2, tb - 6.9, shade(wall, 1.06));
     spire(mb, f, (p0 + s1) / 2, (t0 + t1) / 2, (w / 2 + 0.25) * Math.SQRT2, tb, tt, 4, SPIRE_STONE);
+    for (const ps of [p0 + 0.2, s1 - 0.2]) for (const pt_ of [t0 + 0.2, t1 - 0.2]) spire(mb, f, ps, pt_, 0.45, tb, tb + 2.8, 4, SPIRE_STONE);
+    for (const [ps, dir] of [[p0, Math.PI], [s1, 0]] as const) {
+      buttress(mb, f, m.a, ps, tOut - side * 0.8, dir, ground(ps, tOut), tb - 7.5);
+      buttress(mb, f, m.a, ps + (dir ? 0.8 : -0.8), tOut, side > 0 ? Math.PI / 2 : -Math.PI / 2, ground(ps, tOut), tb - 7.5);
+    }
     const sides: [Pt, Pt][] = [[[p0, t1], [p0, t0]], [[s1, t0], [s1, t1]], [[p0, t0], [s1, t0]], [[s1, t1], [p0, t1]]];
-    for (const [a, b] of sides) for (const u of [w * 0.3, w * 0.7]) archOn(mb, f, a, b, u, Math.min(1.1, w * 0.18), tb - 6, tb - 1.5, BAY);
+    for (const [a, b] of sides) for (const [z0, z1] of [[tb - 6.2, tb - 1.2], [tb - 12.8, tb - 8]] as const) {
+      archOn(mb, f, a, b, w / 2, w * 0.66, z0 - 0.4, z1 + 0.3, shade(wall, 0.84));
+      for (const u of [w * 0.33, w * 0.67]) archOn(mb, f, a, b, u, Math.min(1.1, w * 0.19), z0, z1, BAY, 0.07);
+    }
   }
   // Nef : murs jusqu'à l'égout, deux pans, pignon ouest au-dessus du porche ; fenêtres hautes par travée au-dessus des bas-côtés.
   prismST(mb, f, rectST(n0, tr0, nA, nB), flat(ne), ground, wall);
   gable(mb, f, n0 - 0.3, tr0, nA - OV, nB + OV, ne - 0.25, nr, TILE_BROWN, wall);
+  box(mb, f, n0, tr0, nA - 0.25, nB + 0.25, ne - 0.45, ne - 0.1, shade(wall, 1.06));
   for (const [s0, s1] of m.chapels) {
     const u = (s0 + s1) / 2 - n0;
     archOn(mb, f, [n0, nA], [tr0, nA], u, 1.5, Math.max(m.aisles[0]![1], m.aisles[1]![1]) + 0.8, ne - 1.2, BAY);
@@ -408,21 +419,41 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
     const pts: Pt[] = d < 0 ? [[s0, tIn], [s0, tOut], [tr0, tOut], [tr0, tIn]] : [[s0, tOut], [s0, tIn], [tr0, tIn], [tr0, tOut]];
     prismST(mb, f, pts, (p) => (Math.abs(p[1] - tIn) < 0.01 ? zIn : zOut), ground, wall);
     leanTo(mb, f, s0, tr0, tIn, tOut, zIn, zOut, OV, roof);
-    m.chapels.forEach((c) => {
+    m.chapels.forEach((c, b) => {
       const out = c[2 + 2 * i]!, h = c[3 + 2 * i]!;
       if (!h) return;
       const cp: Pt[] = d < 0 ? rectST(c[0], c[1], out, tOut) : rectST(c[0], c[1], tOut, out);
       prismST(mb, f, cp, flat(h), ground, wall);
       q(mb, f, [c[0], cp[0]![1], h], [c[1], cp[0]![1], h], [c[1], cp[2]![1], h], [c[0], cp[2]![1], h], [0, 1, 0], LEAD);
+      // Chapelles (D130) : grande baie en arc brisé à meneau, contreforts entre les travées ; côté est (photo de nuit), pinacles au-dessus des
+      // contreforts et balustrade ajourée le long du toit.
       const face: [Pt, Pt] = d < 0 ? [[c[0], out], [c[1], out]] : [[c[1], out], [c[0], out]];
-      archOn(mb, f, face[0], face[1], (c[1] - c[0]) / 2, Math.min(2.2, (c[1] - c[0]) * 0.38), ground((c[0] + c[1]) / 2, out) + 3, h - 1.5, BAY);
+      const bw = c[1] - c[0], ww = Math.min(2.6, bw * 0.45), z0 = ground((c[0] + c[1]) / 2, out) + 3;
+      archOn(mb, f, face[0], face[1], bw / 2, ww, z0, h - 1.6, BAY, 0.04, true);
+      rectOn(mb, f, face[0], face[1], bw / 2, 0.16, z0, h - 1.6 - ww * 0.55, wall, 0.07);
+      for (const sb of b === m.chapels.length - 1 ? [c[0], c[1]] : [c[0]]) {
+        buttress(mb, f, m.a, sb, out, d < 0 ? -Math.PI / 2 : Math.PI / 2, ground(sb, out), h + (d > 0 ? 0.6 : -0.6));
+        if (d > 0) spire(mb, f, sb, out + 0.5, 0.42, h + 0.6, h + 3.6, 4, wall);
+      }
+      if (d > 0) {
+        const fo: [Pt, Pt] = [[c[1], out + 0.12], [c[0], out + 0.12]];
+        wallST(mb, f, fo[0], fo[1], h + 0.9, h + 0.9, () => h, shade(wall, 1.06));
+        wallST(mb, f, fo[1], fo[0], h + 0.9, h + 0.9, () => h, shade(wall, 0.9));
+        const n = Math.floor((bw - 1.2) / 0.6);
+        for (let k = 0; k < n; k++) rectOn(mb, f, fo[0], fo[1], 0.6 + 0.6 * (k + 0.5) + (bw - 1.2 - 0.6 * n) / 2, 0.3, h + 0.2, h + 0.7, BAY);
+      }
     });
   });
   // Transept : bras à pignons (portail et grande baie au pignon est), bloc carré au bout du bras ouest, toit en croupe.
   const tm = (tr0 + tr1) / 2;
   prismST(mb, f, rectST(tr0, tr1, blk, tE), flat(te), ground, wall);
   gable(mb, f, tr0 - OV, tr1 + OV, blk, tE + 0.3, te - 0.25, trr, TILE_BROWN, wall, true);
-  archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 2.6, ground(tm, tE) + 0.3, ground(tm, tE) + 5.2, BAY);
+  // Portail roman du pignon est (photo de nuit) : avant-corps à petit pignon, voussure claire, porte.
+  const zd = ground(tm, tE);
+  box(mb, f, tm - 3, tm + 3, tE, tE + 0.9, zd, zd + 7, wall);
+  gable(mb, f, tm - 3.2, tm + 3.2, tE - 0.2, tE + 1.1, zd + 7, zd + 9.4, TILE_BROWN, wall, true);
+  archOn(mb, f, [tr1, tE + 0.9], [tr0, tE + 0.9], tr1 - tm, 4.2, zd + 0.3, zd + 6.2, shade(STONE, 1.08), 0.03);
+  archOn(mb, f, [tr1, tE + 0.9], [tr0, tE + 0.9], tr1 - tm, 2.6, zd + 0.3, zd + 5.2, BAY, 0.06);
   archOn(mb, f, [tr1, tE], [tr0, tE], tr1 - tm, 3.2, ground(tm, tE) + 9, te - 1.2, BAY);
   // Bloc carré (D128) : toit en croupe de tuiles vernissées, deux grandes baies en arc brisé par face libre, contreforts d'angle.
   prismST(mb, f, rectST(tr0, tr1, tW, blk), flat(be), ground, wall);

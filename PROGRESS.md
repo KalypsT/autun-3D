@@ -841,3 +841,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d129-fleche-avant.jpg)
 ![Après](docs/captures/d129-fleche-apres.jpg)
 ![Depuis le sud-est](docs/captures/d129-tour-apres.jpg)
+
+**Bâtiments d'après photos, étape 10 : la cathédrale, flancs et porche (30 octobre 2026)** (D130)
+- Côté est, les chapelles ont leurs grandes baies en arc brisé à meneau, leurs contreforts surmontés de pinacles et leur balustrade ajourée, comme sur ta photo de nuit ; le bras est du transept a son portail roman à petit pignon.
+- Les tours du porche ont deux étages de baies jumelles, leurs contreforts et des clochetons au pied de leur flèche.
+- Toute la cathédrale : 4 163 triangles (moins que la mairie).
+- 724 tests.
+- Il manque, faute de photo : la façade du porche (portail, marches), les chapelles de l'ouest, la fontaine Saint-Lazare. La nuit, la cathédrale n'est pas illuminée comme sur ta photo : à faire si tu veux.
+
+![Le flanc est, avant](docs/captures/d130-flanc-avant.jpg)
+![Le flanc est, après](docs/captures/d130-flanc-apres.jpg)
+![Le porche et ses tours](docs/captures/d130-porche-apres.jpg)
+![Vue de drone depuis le chevet](docs/captures/d130-cathedrale-drone.jpg)
