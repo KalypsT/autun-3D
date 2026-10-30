@@ -382,6 +382,8 @@ export interface FacadeFiche {
     shops?: Shop[];
     /** Mur d'entrée (indice dans `walls`), qui reçoit vitrines et porte ; absent : le plus long mur sur rue (D120). */
     front?: number;
+    /** Autres murs de l'entrée d'une grande surface, vitrés au rez-de-chaussée (correction à la main, D120). */
+    frontWalls?: number[];
   };
   walls: WallRun[];
 }

@@ -10,7 +10,7 @@ Sorties : dans les fiches des tuiles seulement, `ground.front` (indice du mur d'
 Avant (build_facades.py), la vitrine allait sur le mur « de rue » le plus long, ou le plus proche du point OSM du commerce. Or ce point est
 souvent au milieu du bâtiment, et un mur arrière à moins de 10 m d'une ruelle compte comme mur de rue : 345 vitrines sans nom sur 499
 et 50 enseignes nommées sur 201 regardaient une autre rue que celle de leur adresse. Ordre de choix du mur, du plus sûr au moins sûr :
-  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "photo": ...}, d'après une photo) ;
+  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "photo": ...}, d'après une photo) ;
   1. une porte OpenStreetMap posée sur le contour (commerce, entrée principale) ;
   2. le point du commerce lui-même s'il est sur le contour (cartographié à sa porte) ;
   3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m) ;
@@ -218,9 +218,13 @@ def main():
             front, why = choose(W, cands, None, street, big)
         chosen = []
         g.pop("front", None)
+        g.pop("frontWalls", None)
         if front is not None:
             g["front"] = front
             chosen.append(front)
+        if fi["id"] in manual and manual[fi["id"]].get("also"):
+            g["frontWalls"] = manual[fi["id"]]["also"]
+            chosen.extend(g["frontWalls"])
         stats[f"bâtiment : {why}"] += 1
         for sh in g.get("shops", []):
             t, p = shops.get(sh["osm"], ({}, None))
