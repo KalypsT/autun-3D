@@ -675,3 +675,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Réparation au garage](docs/captures/d113-garage.jpg)
 
+**Véhicules uniques, étape 1 : la jeep du Lycée militaire (30 octobre 2026)** (D114)
+- Une jeep militaire kaki (Couhard Sentinelle), capote en toile et roue de secours, garée dans l'enceinte du Lycée militaire. Un seul exemplaire : détruite ou abandonnée ailleurs, elle revient à sa place quelques minutes après que tu t'es éloigné. Lourde, lente (130 km/h), robuste.
+- La minimap ne montre plus les véhicules garés (seulement la police en poursuite).
+- Défaut ancien trouvé dans la circulation (la répartition des modèles par quartier n'était pas respectée) : noté, à corriger dans un chantier de la circulation.
+- 689 tests.
+- À faire de ton côté : aller au Lycée militaire, prendre la jeep. Ensuite : le camion Pizza du Vallon et la rôtisserie du marché.
+
+![La jeep militaire](docs/captures/d114-jeep.jpg)
+![La jeep au Lycée militaire](docs/captures/d114-jeep-lycee.jpg)
+

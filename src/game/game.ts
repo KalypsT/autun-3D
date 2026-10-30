@@ -4,6 +4,7 @@ import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } fr
 import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
+import { UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
@@ -374,6 +375,28 @@ export function startGame(ctx: GameContext): void {
   const damaged = new Set<Vehicle>();
   const abandoned: Abandoned[] = [];
   const garageStop = new GarageStop();
+  // Véhicules uniques (D114) : apparition à leur place (selon leur horaire), retrait hors service, retour à leur place après un moment.
+  const keeper = new UniqueKeeper();
+  let uniqueTimer = 0;
+  const updateUniques = (dt: number): void => {
+    uniqueTimer -= dt;
+    if (uniqueTimer > 0) return;
+    const step = 0.5 - uniqueTimer;
+    uniqueTimer = 0.5;
+    for (const spot of UNIQUES) {
+      const v = fleet.get(spot.id) ?? null;
+      const view = {
+        exists: !!v, atHome: !!v && Math.hypot(v.state.x - spot.x, v.state.y - spot.y) < UNIQUE.home, usable: !!v && v.damage.usable, ridden: !!v && v === riding,
+        toVehicle: v ? Math.hypot(v.state.x - player.x, v.state.y - player.y) : Infinity, toHome: Math.hypot(spot.x - player.x, spot.y - player.y),
+      };
+      const action = keeper.decide(spot, view, atmosphere.hour, step);
+      if ((action === "despawn" || action === "respawn") && v) {
+        damaged.delete(v);
+        fleet.remove(v);
+      }
+      if (action === "spawn" || action === "respawn") fleet.add(spot.model, spot.id, spot.x, spot.y, spot.heading, 0);
+    }
+  };
   // Véhicules abîmés retrouvés dans la sauvegarde (D113) : ils fument (ou brûlent) de nouveau.
   for (const v of fleet.vehicles) if (v.damage.version > 0 && (v.damage.health < DAMAGE.max || v.damage.end)) damaged.add(v);
   /** Véhicules sur la trajectoire d'un tir (D113) : de la flotte, ou de la circulation (état, fiche et dégâts). */
@@ -935,6 +958,7 @@ export function startGame(ctx: GameContext): void {
       if (hurt > 0 && !health.dead) health.damage(hurt);
     }
     updateDamage(dt);
+    updateUniques(dt);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {

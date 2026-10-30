@@ -9,7 +9,7 @@ import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
-import { Minimap, type MinimapVehicle } from "../ui/minimap";
+import { Minimap } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
 import { PauseMenu } from "../ui/pause-menu";
 import type { Controls } from "../input/controls";
@@ -34,8 +34,6 @@ export interface GameState {
 
 const AUTOSAVE_MS = 30000;
 const MINIMAP_HZ = 16;
-/** Véhicules garés montrés sur la minimap : dans ce rayon (m). */
-const MINIMAP_VEHICLE_RADIUS = 150;
 const SHOT_WIDTH = 800;
 
 /**
@@ -73,7 +71,6 @@ export class UiBridge {
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
   needsRender = false;
-  private readonly vehicles: MinimapVehicle[] = [];
 
   constructor(
     private readonly ctx: GameContext,
@@ -289,15 +286,9 @@ export class UiBridge {
     if (this.miniTimer <= 0) {
       this.miniTimer = 1 / MINIMAP_HZ;
       this.minimap.time(() => {
-        const list = this.vehicles;
-        list.length = 0;
-        for (const v of this.fleet.vehicles) {
-          if (v.ridden) continue;
-          const dx = v.state.x - s.x, dy = v.state.y - s.y;
-          if (dx * dx + dy * dy < MINIMAP_VEHICLE_RADIUS * MINIMAP_VEHICLE_RADIUS) list.push({ x: v.state.x, y: v.state.y, kind: v.family });
-        }
+        // Aucun véhicule sur la carte (D114) : on cherche une voiture ou un vélo dans la rue ; seule la police en poursuite y figure.
         this.minimap.update({
-          x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint,
+          x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: [], waypoint: this.waypoint,
           caches: this.caches, garages: this.garages, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
         });
       });

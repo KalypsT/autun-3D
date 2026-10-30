@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { box, merge, paint, ringLoft, tube, type Ring } from "./vehicle-model";
+import { box, merge, paint, ringLoft, tiltedBox, tube, type Ring } from "./vehicle-model";
 
 /**
  * Générateur de carrosserie (D52, refait en D107) : une voiture est décrite par quelques mesures (longueur, hauteur, capot, pare-brise, toit, lunette, coffre)
@@ -53,6 +53,10 @@ export interface CarStyle {
   intake?: boolean;
   /** Portes arrière battantes (camionnette). */
   rearDoors?: boolean;
+  /** Capote en toile de cette couleur à la place du toit et des vitres, avec un pare-brise droit et de petites fenêtres (jeep, D114). */
+  softTop?: string;
+  /** Roue de secours accrochée à la face arrière (D114). */
+  spareWheel?: boolean;
 }
 
 export interface CarBodyParams {
@@ -281,7 +285,7 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
 /** Toit, montants, ailes séparées, pare-chocs et rétroviseurs couleur caisse, becquets : tout ce qui prend la peinture. */
 function paintParts(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry[] {
   const f = frame(p, front, rear), { L, W, st, side, shoulder, roofW, bZ } = f;
-  const top = p.height, roofColor = st.roof ?? color;
+  const top = p.height, roofColor = st.softTop ?? st.roof ?? color;
   const parts = lowerBody(p, f, color);
   // Toit : une dalle aux bords chanfreinés, un peu plus longue que le verre qu'elle couvre.
   const roofZ0 = L.roofFrontZ - 0.05, roofZ1 = L.roofRearZ + (p.cargo ? 0 : 0.06);
@@ -292,7 +296,8 @@ function paintParts(p: CarBodyParams, front: number, rear: number, color: string
   const pillar = st.blackPillars ? DARK : roofColor;
   for (const s of [-1, 1]) {
     const at = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(s * x, y, z);
-    parts.push(tube(at(shoulder - 0.01, p.belt, L.windshieldBaseZ + 0.02), at(roofW, top - 0.04, L.roofFrontZ), 0.035, roofColor, 4, false));
+    // Montant A : celui du toit ; sous une capote, c'est le cadre du pare-brise, de la couleur de la caisse.
+    parts.push(tube(at(shoulder - 0.01, p.belt, L.windshieldBaseZ + 0.02), at(roofW, top - 0.04, L.roofFrontZ), 0.035, st.softTop ? color : roofColor, 4, false));
     if (!p.cargo) parts.push(tube(at(shoulder - 0.01, p.belt, L.rearBaseZ - 0.02), at(roofW, top - 0.04, L.roofRearZ), 0.045, roofColor, 4, false));
     if (!st.blackPillars) {
       parts.push(tube(at(shoulder - 0.005, p.belt, bZ), at(roofW + 0.015, top - 0.04, bZ), 0.045, pillar, 4, false));
@@ -426,6 +431,13 @@ function tailParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
     const xs = st.exhaust === 2 ? [W * 0.5, -W * 0.5] : [W * 0.5];
     for (const x of xs) parts.push(disc(0.04, 0.1, x, p.clearance - 0.01, L.tailZ - 0.06, st.exhaust === 2 ? CHROME : DARK, 8));
   }
+  if (st.spareWheel) {
+    // Roue de secours sur la face arrière, axe dans la longueur.
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 12, st.rim);
+    w.rotateY(Math.PI / 2);
+    w.translate(0, Math.max(p.belt - 0.05, p.wheelRadius + p.clearance), L.tailZ + p.tyreWidth / 2 - 0.01);
+    parts.push(w);
+  }
   if (st.rearDoors) {
     const z = L.tailZ - FACE + 0.004, y0 = p.clearance + 0.2, y1 = p.height - 0.1;
     parts.push(box(0.014, y1 - y0, 0.012, 0, (y0 + y1) / 2, z, DARK));
@@ -488,13 +500,14 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
   const cabinW = roofW - 0.005;
   const glassEnd = p.cargo ? L.roofRearZ - 0.02 : L.rearBaseZ;
   const parts: THREE.BufferGeometry[] = [
+    ...softTopParts(p, f),
     // Habitacle en verre : du pied du pare-brise à celui de la lunette, posé sur l'épaule de la caisse, sous le toit.
     loft([
       { z: L.windshieldBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 },
       { z: L.roofFrontZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
       { z: p.cargo ? glassEnd : L.roofRearZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
       ...(p.cargo ? [] : [{ z: L.rearBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 }]),
-    ], glass),
+    ], st.softTop ?? glass),
     ...faceParts(p, f, front, rear),
     ...tailParts(p, f, front, rear),
     ...sideParts(p, f),
@@ -519,6 +532,20 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
     for (const s of [-1, 1]) parts.push(box(0.04, 0.13, 0.08, s * W * 0.6, y - 0.07, z, DARK));
   }
   return merge(parts);
+}
+
+/** Sous une capote (D114) : pare-brise droit dans son cadre, deux fenêtres souples de chaque côté, une à l'arrière. */
+function softTopParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
+  if (!p.style.softTop) return [];
+  const { L, shoulder, roofW } = f, glass = p.glass ?? "#2b3a4c", top = p.height;
+  const rise = top - 0.05 - p.belt, run = L.roofFrontZ - L.windshieldBaseZ, tilt = Math.atan2(run, rise), h = Math.hypot(rise, run);
+  const yc = p.belt + rise / 2, zc = (L.windshieldBaseZ + L.roofFrontZ) / 2 - 0.014 * Math.cos(tilt);
+  const parts = [tiltedBox(2 * Math.min(shoulder, roofW) - 0.1, h - 0.06, 0.02, 0, yc, zc, tilt, glass)];
+  for (const s of [-1, 1]) {
+    for (const z of [L.roofFrontZ + 0.4, L.roofRearZ - 0.5]) parts.push(box(0.012, 0.32, 0.55, s * (roofW + 0.004), p.belt + (top - p.belt) * 0.55, z, glass));
+  }
+  parts.push(box(0.8, 0.28, 0.012, 0, p.belt + (top - p.belt) * 0.55, L.rearBaseZ + 0.004, glass));
+  return parts;
 }
 
 /** Bandes des flancs et barre de gyrophares (éteinte : les feux allumés sont des instances à part, `beaconBoxes`). */

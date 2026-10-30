@@ -6,7 +6,8 @@ import { CAR_BODIES, createCarModel } from "./car-model";
 import { bodyOnlyGeometry, TrafficModels, type TrafficItem } from "./traffic-models";
 
 const flat = { heightAt: () => 0, xMin: -1e4, xMax: 1e4, yMin: -1e4, yMax: 1e4 };
-const cars = CATALOG.filter((d) => d.family === "car");
+// Les véhicules uniques (D114) ne roulent jamais dans la circulation.
+const cars = CATALOG.filter((d) => d.family === "car" && !d.unique);
 
 function stateAt(x: number, y: number, heading: number): VehicleState {
   const s = createVehicle(x, y, heading, flat);

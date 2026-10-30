@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, MTB, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, JEEP, MTB, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -59,6 +59,8 @@ export interface VehicleDef {
   palette: readonly string[];
   /** Solidité face aux chocs et aux balles (D109) : 1 pour une voiture ordinaire (défaut), plus pour un utilitaire ou la gendarmerie. */
   toughness?: number;
+  /** Exemplaire unique (D114) : jamais dans la circulation ni sur les places ordinaires ; il a sa place fixe (`src/core/uniques.ts`). */
+  unique?: boolean;
 }
 
 export const CATALOG: readonly VehicleDef[] = [
@@ -75,6 +77,8 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#e8e4da", "#1b1d22", "#2d6fb8", "#3f7d4e"] },
   // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
   { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
+  // Véhicules uniques (D114) : un seul exemplaire, à sa place (`src/core/uniques.ts`).
+  { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
   { id: "scooter-125", family: "moto", name: "Scooter 125", badge: { make: "Éduen", model: "Zéphyr 125" }, icon: "🛵", toughness: 0.6, spec: SCOOTER_125, size: { length: 1.92, width: 0.72, height: 1.26 }, palette: ["#efe3c8", "#9fb8a6", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a", "#8fa8c4"] },
   { id: "moto-routiere", family: "moto", name: "Moto routière", badge: { make: "Bibracte", model: "Druide" }, toughness: 0.7, spec: MOTO, size: { length: 2.09, width: 0.74, height: 1.28 }, palette: ["#7a2e2e", "#1f3a52", "#1b1d22", "#3f7d4e", "#c9b98a", "#d9472b"] },
   { id: "moto-sportive", family: "moto", name: "Moto sportive", badge: { make: "Bibracte", model: "Celte R" }, toughness: 0.65, spec: SPORT_MOTO, size: { length: 2.04, width: 0.63, height: 1.15 }, palette: ["#d9472b", "#f1b24a", "#2d6fb8", "#1b1d22", "#3f7d4e"] },

@@ -96,6 +96,16 @@ export const VAN: VehicleSpec = {
 };
 
 /**
+ * Jeep militaire (D114, exemplaire unique du Lycée militaire) : 1 650 kg, courte (2,2 m d'empattement), 60 kW aux roues mais beaucoup de couple,
+ * 130 km/h, pneus tout-terrain (adhérence 0,95), haute (centre de gravité à 0,8 m), roulis marqué ; robuste (solidité 1,6 au catalogue).
+ */
+export const JEEP: VehicleSpec = {
+  ...CAR, mass: 1650, yawInertia: 1900, front: 1.05, rear: 1.15, maxSteer: 0.6, steerFade: 12, steerRate: 1.8, grip: 0.95,
+  corneringFront: 70000, corneringRear: 78000, power: 60000, maxDrive: 6400, driveFadeFrom: kmh(115), topSpeed: kmh(130),
+  maxBrake: 13500, reverseForce: 4500, drag: 0.7, hull: [[1.0, 0.92], [0, 0.94], [-1.05, 0.92]], wheelRadius: 0.38, bodyRoll: 0.03, engineBrake: 550, cgHeight: 0.8, brakeFront: 0.72,
+};
+
+/**
  * Vieille voiture : 1 100 kg, 46 kW aux roues, 160 km/h, pneus usés (adhérence 0,8, roulement plus fort), freins fatigués (≈ 0,83 g) et **pas d'ABS** :
  * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle. Aucune aide à la conduite (D97) : ni contre-braquage automatique ni stabilisation.
  */

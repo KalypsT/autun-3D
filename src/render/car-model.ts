@@ -74,6 +74,14 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     livery: { stripe: "#eef1f4", accent: "#4a8fd8", lightBar: true },
     style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "trim", rim: "#7d7f84", doors: 2, roundness: 0.6, intake: true },
   },
+  // Jeep militaire (D114) : courte, carrée, haute, capote en toile, roue de secours, phares ronds, pare-chocs noirs, grandes roues tout-terrain.
+  "jeep-militaire": {
+    length: 3.85, width: 1.84, height: 1.88, overhangFront: 0.6,
+    clearance: 0.4, belt: 1.12, noseHeight: 1.06, tailHeight: 1.1,
+    hood: 1.05, windshield: 0.12, roof: 2.05, rearGlass: 0.06, roofTaper: 0.97,
+    wheelRadius: 0.38, tyreWidth: 0.27,
+    style: { headlights: "round", grille: "tall", taillights: "round", bumpers: "trim", rim: "#3f4a2e", doors: 1, roundness: 0.05, softTop: "#6e6a48", spareWheel: true },
+  },
   sportive: {
     length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
     clearance: 0.12, belt: 0.78, noseHeight: 0.6, tailHeight: 0.84,
