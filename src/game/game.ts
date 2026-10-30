@@ -4,7 +4,9 @@ import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } fr
 import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
-import { UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
+import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
+import { chimneyOf, vendorOf } from "../render/car-model";
+import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
@@ -102,6 +104,11 @@ export function startGame(ctx: GameContext): void {
   // Départ neuf : aucune voiture garée sur le joueur. Partie reprise : les véhicules laissés ailleurs reviennent où ils étaient.
   if (saved) fleet.restore(saved.vehicles);
   else fleet.keepClear(spawn.x, spawn.y, 4);
+  // Aucune voiture garée sur la place d'un véhicule unique (D115 : la rôtisserie est au milieu du parking du Champ de Mars).
+  for (const spot of UNIQUES) {
+    const def = vehicleDef(spot.model);
+    if (def) fleet.keepClear(spot.x, spot.y, def.size.length / 2 + 1.5);
+  }
   for (const extras of tiles.loadedExtras()) fleet.addFromTile(extras);
   tiles.onBuild = (extras) => fleet.addFromTile(extras);
   tiles.onUnload = (id) => fleet.removeTile(id);
@@ -395,8 +402,49 @@ export function startGame(ctx: GameContext): void {
         fleet.remove(v);
       }
       if (action === "spawn" || action === "respawn") fleet.add(spot.model, spot.id, spot.x, spot.y, spot.heading, 0);
+      // Camions-restaurants (D115) : un vendeur en tablier blanc derrière le comptoir quand le camion est ouvert, à sa place, et qu'on est assez près.
+      const w = fleet.get(spot.id);
+      const spotAt = vendorOf(spot.model);
+      const open = !!w && !!spotAt && w !== riding && w.damage.usable && onDuty(spot, atmosphere.hour)
+        && Math.hypot(w.state.x - spot.x, w.state.y - spot.y) < UNIQUE.home && Math.hypot(w.state.x - player.x, w.state.y - player.y) < 90;
+      let vendor = vendors.get(spot.id);
+      if (!open && vendor) {
+        scene.remove(vendor.group);
+        vendor.dispose();
+        vendors.delete(spot.id);
+      } else if (open && w && spotAt) {
+        if (!vendor) {
+          vendor = createPlayerModel(applyAppearance(recipeFromSeed(vendorSeed(spot.id)), { top: "apron", topColor: WHITE, hat: "none" }));
+          scene.add(vendor.group);
+          vendors.set(spot.id, vendor);
+        }
+        const p = vendorWorld(w, spotAt);
+        vendor.update(p.x, p.y, p.z, w.state.heading + Math.PI / 2, 0, 0);
+      }
     }
   };
+  /** Vendeurs des camions-restaurants (D115), par identifiant de véhicule unique. */
+  const vendors = new Map<string, ReturnType<typeof createPlayerModel>>();
+  const vendorSeed = (id: string): number => [...id].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  /** Position dans le monde d'un point du repère du véhicule (x à droite, y en haut, z vers l'arrière). */
+  const vendorWorld = (v: Vehicle, at: { x: number; y: number; z: number }): { x: number; y: number; z: number } => {
+    const hx = Math.sin(v.state.heading), hy = Math.cos(v.state.heading);
+    return { x: v.state.x - hx * at.z + hy * at.x, y: v.state.y - hy * at.z - hx * at.x, z: v.state.z + at.y };
+  };
+  /** On prend un camion-restaurant ouvert (D115) : le vendeur saute dehors et s'enfuit, c'est un vol sous les yeux de témoins. */
+  const robVendor = (v: Vehicle): boolean => {
+    const vendor = vendors.get(v.id), at = vendorOf(v.def.id);
+    if (!vendor || !at) return false;
+    scene.remove(vendor.group);
+    vendor.dispose();
+    vendors.delete(v.id);
+    const p = vendorWorld(v, { ...at, x: at.x + 1.6 });
+    const ux = Math.cos(v.state.heading), uy = -Math.sin(v.state.heading);
+    (peds as PedsController | null)?.eject(p.x, p.y, vendorSeed(v.id), ux, uy, 1.4, v.state.x, v.state.y);
+    police.crime("carjack", v.state.x, v.state.y, true);
+    return true;
+  };
+  const CHIMNEY_SMOKE = new THREE.Color("#cfcac0");
   // Véhicules abîmés retrouvés dans la sauvegarde (D113) : ils fument (ou brûlent) de nouveau.
   for (const v of fleet.vehicles) if (v.damage.version > 0 && (v.damage.health < DAMAGE.max || v.damage.end)) damaged.add(v);
   /** Véhicules sur la trajectoire d'un tir (D113) : de la flotte, ou de la circulation (état, fiche et dégâts). */
@@ -587,6 +635,13 @@ export function startGame(ctx: GameContext): void {
         (peds as PedsController | null)?.eject(a.x + lx * side, a.y + ly * side, a.driver, lx, ly, 1.2, a.x, a.y);
       }
     }
+    // Fumée de la cheminée du four à pizza (D115), tant que le camion est ouvert.
+    for (const [id] of vendors) {
+      const w = fleet.get(id), top = w ? chimneyOf(w.def.id) : null;
+      if (!w || !top || Math.random() > dt * 3) continue;
+      const p = vendorWorld(w, { x: top[0], y: top[1], z: top[2] });
+      smoke.emit(p.x, p.y, p.z, 0, 0, 0.8 + Math.random() * 0.4, CHIMNEY_SMOKE, 0.15, 0.55, 2.2, Math.random);
+    }
     smoke.update(dt);
     flames.update(dt);
     // Garage (D113) : arrêté devant, au volant d'un véhicule abîmé, on repart réparé ; le nom du garage s'affiche comme celui d'un véhicule.
@@ -681,7 +736,7 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (r.fleet.home) police.crime("theft", player.x, player.y, false);
+      if (!robVendor(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
       mount(r.fleet);
     }
   };

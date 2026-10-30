@@ -4,7 +4,7 @@ import { createVehicle } from "../core/vehicle";
 import { CATALOG, vehicleDef } from "../core/vehicle-catalog";
 import { flatTerrain } from "../core/testing";
 import { brokenLamps, crumplePoint, CRUSH, type CrumpleFrame } from "./car-damage";
-import { carRestGeometry, createCarModel, DENTED } from "./car-model";
+import { CAR_BODIES, carRestGeometry, chimneyOf, createCarModel, DENTED, vendorOf } from "./car-model";
 import { Smoke } from "./smoke";
 
 const frame: CrumpleFrame = { noseZ: -2, tailZ: 2, halfWidth: 0.9, belt: 0.9, light: [], tail: [], glass: "#000000" };
@@ -114,5 +114,19 @@ describe("forme abîmée des voitures dessinées par instances (D112)", () => {
       };
       expect(white(dented)).toBe(white(neat));
     }
+  });
+});
+
+describe("camions-restaurants (D115)", () => {
+  it("le vendeur se tient dans la caisse, derrière l'ouverture ; seul le camion pizza a une cheminée ; une voiture ordinaire n'a ni l'un ni l'autre", () => {
+    for (const id of ["pizza-du-vallon", "rotisserie-champ-de-mars"]) {
+      const v = vendorOf(id)!, p = CAR_BODIES[id]!;
+      expect(Math.abs(v.x)).toBeLessThan(p.width / 2 - 0.2);
+      expect(v.y).toBeGreaterThan(p.clearance - 0.1);
+      expect(v.y + 1.7).toBeGreaterThan(p.foodTruck!.bottom + 0.5);
+    }
+    expect(chimneyOf("pizza-du-vallon")![1]).toBeGreaterThan(CAR_BODIES["pizza-du-vallon"]!.height);
+    expect(chimneyOf("rotisserie-champ-de-mars")).toBeNull();
+    expect(vendorOf("citadine")).toBeNull();
   });
 });

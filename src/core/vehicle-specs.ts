@@ -106,6 +106,17 @@ export const JEEP: VehicleSpec = {
 };
 
 /**
+ * Camion-restaurant (D115, camion pizza et rôtisserie) : 3 300 kg (caisse aménagée, four ou rôtissoire), 3,8 m d'empattement, 75 kW, 115 km/h,
+ * centre de gravité très haut (1,15 m), direction lente et grand rayon de braquage ; stable (glisse bornée comme la camionnette, D97).
+ */
+export const FOOD_TRUCK: VehicleSpec = {
+  ...CAR, mass: 3300, yawInertia: 9900, front: 1.6, rear: 2.2, maxSteer: 0.55, steerFade: 10, steerRate: 1.4, grip: 0.85,
+  corneringFront: 120000, corneringRear: 140000, power: 75000, maxDrive: 8500, driveFadeFrom: kmh(100), topSpeed: kmh(115),
+  maxBrake: 27000, reverseForce: 6500, drag: 0.9, hull: [[1.35, 1.1], [0.15, 1.12], [-1.05, 1.12], [-2.45, 1.1]], wheelRadius: 0.37, bodyRoll: 0.035, engineBrake: 700,
+  cgHeight: 1.15, brakeFront: 0.7, steerGrip: 1.3, driftAssist: 0.5, maxDrift: 0.45,
+};
+
+/**
  * Vieille voiture : 1 100 kg, 46 kW aux roues, 160 km/h, pneus usés (adhérence 0,8, roulement plus fort), freins fatigués (≈ 0,83 g) et **pas d'ABS** :
  * freinée à fond, les roues avant se bloquent, comme avant D29 ; suspension molle. Aucune aide à la conduite (D97) : ni contre-braquage automatique ni stabilisation.
  */

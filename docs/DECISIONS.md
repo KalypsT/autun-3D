@@ -1508,3 +1508,16 @@ Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1
 
 8 tests de plus (horaires, apparition, retrait, retour à sa place, véhicules uniques hors des tirages ; performances, son et budget de la jeep). 689 tests.
 
+## 2026-10-30 — D115. Véhicules uniques, étape 2 : le camion Pizza du Vallon et la Rôtisserie du Champ de Mars
+
+**Camions-restaurants** (`CarBodyParams.foodTruck`, `cabHeight`, `car-body.ts`) : une cabine d'utilitaire plus basse que la caisse, une **caisse creuse** (sous, au-dessus, devant et derrière l'ouverture de service, flanc gauche plein) **ouverte sur le flanc droit** (côté trottoir), avec le fond de la caisse, un comptoir qui dépasse dehors, un auvent relevé (rayé pour la rôtisserie), un **lettrage en blocs** (police de 3 × 5 pixels, chaque suite de pixels d'une ligne en une boîte : « PIZZA » à la verticale entre la cabine et l'ouverture, « ROTISSERIE » au-dessus de l'ouverture), et soit un **four à bois** au fond (bouche rougeoyante) avec sa **cheminée** noire sur le toit, soit une **rôtissoire** (trois broches de poulets dorés devant un fond rougeoyant). Fiche `FOOD_TRUCK` (3 300 kg, 3,8 m d'empattement, 75 kW, 115 km/h, centre de gravité à 1,15 m, freins renforcés pour s'arrêter en moins de 60 m à 100 km/h), solidité 1,5, gros diesel. Coût : jusqu'à 2 600 triangles garé (plafond des véhicules uniques relevé à 2 700 : un seul exemplaire de chaque).
+
+- **Pizza du Vallon** (Couhard Pizza du Vallon, vert pomme, intérieur bordeaux) : sur l'aire goudronnée à l'ouest du Collège du Vallon (502 ; 1108, repère donné par l'utilisateur), tourné vers le nord, comptoir vers le collège, **de 17 h à 22 h** tous les jours. Sa cheminée fume tant qu'il est ouvert.
+- **Rôtisserie du Champ de Mars** (Couhard Rôtisserie du Champ de Mars, blanc cassé, auvent rouge et blanc) : au milieu de la place du Champ de Mars (28 ; 2), dans l'axe de la place, **de 7 h à 13 h** tous les jours. Aucune voiture n'est garée sur sa place (`Fleet.keepClear` sur la place de chaque véhicule unique).
+
+**Vendeurs** : quand le camion est ouvert, à sa place, et le joueur à moins de 90 m, un vendeur en **tablier blanc** (un personnage du jeu, recette tirée de l'identifiant du camion) se tient derrière le comptoir, tourné vers l'ouverture (`vendorOf`). **Prendre un camion ouvert est un vol avec témoin** (« carjack ») : le vendeur saute dehors et s'enfuit (comme le conducteur d'une voiture volée, D71). Fermé (hors service), le camion n'est pas là (D114). **La pizza qui soigne attendra l'argent** (choix de l'utilisateur).
+
+**Essais** : `?at=516,1100&yaw=5&h=18` (camion pizza), `?at=40,-14&yaw=5.6&h=9` (rôtisserie). 1 test de plus (place du vendeur, cheminée du seul camion pizza). 700 tests.
+
+**Bilan de la première vague** (D114, D115) : jeep militaire, camion pizza, rôtisserie du marché. **Reste** : le petit train touristique (plusieurs wagons, un circuit dans la vieille ville) ; la caserne des pompiers (à revoir) ; la correction du tirage des modèles de la circulation (D114).
+

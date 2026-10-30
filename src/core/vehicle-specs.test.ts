@@ -41,7 +41,7 @@ describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
-    "jeep-militaire": [12, 18],
+    "jeep-militaire": [12, 18], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
 
   it.each(cars.map((d) => d.id))("%s : 0 à 100 km/h dans la fourchette de sa classe, vitesse maximale sous sa fiche et sous le plafond", (id) => {

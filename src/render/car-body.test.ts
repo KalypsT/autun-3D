@@ -54,9 +54,9 @@ describe("générateur de carrosserie", () => {
     const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), glass = bodyDetailGeometry(p, front, rear);
     expect(signedVolume(paint)).toBeGreaterThan(1);
     expect(triangles(paint)).toBeLessThan(340);
-    // Un véhicule unique (D114), seul de son modèle, a droit à plus de détails (capote, roue de secours).
-    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique ? 1400 : 1000);
-    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique ? 1700 : 1300);
+    // Un véhicule unique (D114, D115), seul de son modèle, a droit à plus de détails (capote, roue de secours ; comptoir, lettrage, rôtissoire).
+    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique ? 2300 : 1000);
+    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique ? 2700 : 1300);
     expect(triangles(glass)).toBeGreaterThan(0);
   });
 

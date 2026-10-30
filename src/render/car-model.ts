@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
-import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, type CarBodyParams } from "./car-body";
+import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
@@ -81,6 +81,29 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.05, windshield: 0.12, roof: 2.05, rearGlass: 0.06, roofTaper: 0.97,
     wheelRadius: 0.38, tyreWidth: 0.27,
     style: { headlights: "round", grille: "tall", taillights: "round", bumpers: "trim", rim: "#3f4a2e", doors: 1, roundness: 0.05, softTop: "#6e6a48", spareWheel: true },
+  },
+  // Camions-restaurants (D115) : cabine d'utilitaire, caisse haute et creuse ouverte à droite pour le service.
+  "pizza-du-vallon": {
+    length: 6, width: 2.2, height: 3, cabHeight: 2.45, overhangFront: 0.85,
+    clearance: 0.32, belt: 1.18, noseHeight: 1.05, tailHeight: 2.95,
+    hood: 0.75, windshield: 0.65, roof: 0.75, rearGlass: 0, roofTaper: 0.94,
+    wheelRadius: 0.37, tyreWidth: 0.24, cargo: true,
+    style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#c9ccd0", doors: 1, roundness: 0.45, cladding: true },
+    foodTruck: {
+      from: 0.65, to: 2.85, bottom: 1.25, top: 2.35, interior: "#5a1f2a", counter: "#8fd14f", awning: "#6fb532",
+      lettering: { text: "PIZZA", color: "#d9472b", vertical: true }, oven: true,
+    },
+  },
+  "rotisserie-champ-de-mars": {
+    length: 6, width: 2.2, height: 2.9, cabHeight: 2.4, overhangFront: 0.85,
+    clearance: 0.32, belt: 1.18, noseHeight: 1.05, tailHeight: 2.85,
+    hood: 0.75, windshield: 0.65, roof: 0.75, rearGlass: 0, roofTaper: 0.94,
+    wheelRadius: 0.37, tyreWidth: 0.24, cargo: true,
+    style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#b9b4a8", doors: 1, roundness: 0.45, cladding: true },
+    foodTruck: {
+      from: 0.45, to: 3.0, bottom: 1.2, top: 2.2, interior: "#3b3d42", counter: "#c9ccd0", awning: "#d9472b", stripe: "#efe9df",
+      lettering: { text: "ROTISSERIE", color: "#d9472b", vertical: false }, spits: true,
+    },
   },
   sportive: {
     length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
@@ -214,3 +237,16 @@ export function carRestGeometry(id: string): THREE.BufferGeometry {
   }
   return merge(parts);
 }
+
+/** Camion-restaurant (D115) : où se tient le vendeur (repère du véhicule), ou null pour un autre modèle. */
+export function vendorOf(id: string): { x: number; y: number; z: number } | null {
+  const p = CAR_BODIES[id], def = vehicleDef(id);
+  return p && def ? vendorSpot(p, def.spec.front, def.spec.rear) : null;
+}
+
+/** Camion à four à bois (D115) : haut de la cheminée (repère du véhicule), ou null. */
+export function chimneyOf(id: string): [number, number, number] | null {
+  const p = CAR_BODIES[id], def = vehicleDef(id);
+  return p && def ? chimneyTop(p, def.spec.front, def.spec.rear) : null;
+}
+
