@@ -49,7 +49,7 @@ python3 tools/data/build_public_space.py # rues, trottoirs, places et clôtures 
 python3 tools/data/build_structures.py   # ponts (tabliers mesurés au LiDAR), eau, ruisseaux, voies ferrées, quais dans public/data/structures (D93) ; ne touche à aucune tuile
 python3 tools/data/build_coast.py        # la mer autour du monde (D105) : creuse le rivage (plage, falaises), découpe à la côte tout ce qui est en mer ; après build_public_space.py, avant build_nav.py et build_map.py
 python3 tools/data/build_kinds.py        # types de bâtiments et sites (grandes surfaces, mairie, gare, églises, terrains, stations-service…), cathédrale et portes romaines (D95) dans public/data/kinds (D92) ; ne touche à aucune tuile
-python3 tools/data/build_carts.py        # abris à chariots des grandes surfaces (D121) : type `cart` dans public/data/kinds ; à relancer après build_kinds.py (qui réécrit kinds), après build_shop_fronts.py (parkings OSM)
+python3 tools/data/build_carts.py        # abris à chariots des grandes surfaces (D121) et types imposés à la main d'après photo (`kinds` de manual.json, D122) dans public/data/kinds ; à relancer après build_kinds.py (qui réécrit kinds), après build_shop_fronts.py (parkings OSM)
 python3 tools/data/build_shop_fronts.py  # côté des vitrines et enseignes (D120) : mur d'entrée de chaque bâtiment commerçant (porte OSM, adresse, parking ; corrections `fronts` de manual.json) ; après build_map.py, ne réécrit que les fiches des tuiles ; puis relancer build_nav.py pour les points « commerce »
 python3 tools/data/nav_debug.py out.png x0 y0 x1 y1 [px/m]   # image de contrôle de la navigation
 python3 tools/data/probe_sources.py      # vérifie l'accès et la couverture de chaque source

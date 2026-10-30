@@ -3,7 +3,8 @@
 Usage : python3 tools/data/build_carts.py       (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : public/data/world.json, tiles/*.json (emprises), kinds/*.json (grandes surfaces), parkings OpenStreetMap (.cache/shared/raw/osm,
           les blocs téléchargés par fetch.py ou build_shop_fronts.py).
-Sortie : kinds/<tuile>.json, type `cart` pour chaque abri, avec `open` : milieu du petit côté ouvert (vers la grande surface la plus proche).
+Sortie : kinds/<tuile>.json, type `cart` pour chaque abri, avec `open` : milieu du petit côté ouvert (vers la grande surface la plus proche) ;
+          et les types imposés à la main d'après photo (`kinds` de tools/data/manual.json, D122 : la marquise de l'entrée d'E.Leclerc).
 
 Un abri : emprise rectangulaire (≥ 85 % de son rectangle orienté), 1,8 à 3,2 m sur 6 à 12 m, sur un parking OpenStreetMap (à moins de 3 m)
 et à moins de 60 m d'une grande surface, sans y être collé. Règle prudente : les six abris d'E.Leclerc (2,3 × 8,2 m, photo de l'utilisateur) ;
@@ -13,6 +14,7 @@ les petites boîtes de 3 × 4,8 m près de Lidl et de Biocoop, plus loin et plus
 import glob
 import json
 import math
+from collections import Counter
 
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon
@@ -88,7 +90,24 @@ def main():
             open_end = min(ends, key=lambda p: store.distance(Point(p)))
             found[(tid, b["id"])] = [round(open_end[0], 2), round(open_end[1], 2)]
 
+    before = Counter(e["k"] for k in kinds.values() for e in k["buildings"].values())
+    # Types imposés à la main (d'après photo) : ils l'emportent sur la détection et sur build_kinds.py.
+    manual = json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("kinds", {})
+    owner = {b["id"]: tid for tid, rec in tiles.items() for b in rec["buildings"] if b["id"] in manual}
+    found = {key: end for key, end in found.items() if key[1] not in manual}
+
     changed = set()
+    for bid, entry in manual.items():
+        tid = owner.get(bid)
+        if tid is None:
+            print(f"  correction à la main : {bid} absent des tuiles")
+            continue
+        e = {k: v for k, v in entry.items() if k != "photo"}
+        k = kinds.setdefault(tid, {"v": 1, "buildings": {}, "sites": []})
+        if k["buildings"].get(bid) != e:
+            k["buildings"][bid] = e
+            k["buildings"] = dict(sorted(k["buildings"].items()))
+            changed.add(tid)
     for tid, k in kinds.items():
         for bid in [bid for bid, e in k["buildings"].items() if e["k"] == "cart" and (tid, bid) not in found]:
             del k["buildings"][bid]
@@ -107,15 +126,14 @@ def main():
     index = json.load(open(KINDS / "index.json"))
     tiles_idx = sorted(set(index["tiles"]) | {t for t, k in kinds.items() if k["buildings"] or k["sites"]})
     count = sum(1 for k in kinds.values() for e in k["buildings"].values() if e["k"] == "cart")
-    stats = index["stats"]["buildings"]
-    if count:
-        stats["cart"] = count
-    else:
-        stats.pop("cart", None)
-    index["stats"]["buildings"] = dict(sorted(stats.items()))
+    # Statistiques de build_kinds.py (qui compte aussi la marge hors des tuiles), corrigées des seuls changements faits ici.
+    stats = Counter(index["stats"]["buildings"])
+    stats.subtract(before)
+    stats.update(e["k"] for k in kinds.values() for e in k["buildings"].values())
+    index["stats"]["buildings"] = dict(sorted((k, v) for k, v in stats.items() if v > 0))
     index["tiles"] = tiles_idx
     (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
-    print(f"{count} abris à chariots ; {len(changed)} fichiers de tuile réécrits")
+    print(f"{count} abris à chariots, {len(manual)} types imposés à la main ; {len(changed)} fichiers de tuile réécrits")
 
 
 if __name__ == "__main__":

@@ -1618,3 +1618,19 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 
 ![Avant : un cube beige devant l'entrée](captures/d121-chariots-avant.jpg)
 ![Après : abri ouvert, chariots](captures/d121-chariots-apres.jpg)
+
+## 2026-10-30 — D122. Bâtiments d'après photos, étape 2 : l'entrée d'E.Leclerc
+
+**D'après les photos de l'utilisateur** (entrée nord vue de face, de l'ouest et de l'est) : bloc d'entrée vitré à montants anthracite, sas surmonté d'une pyramide de verre clair, marquise anthracite continue sur poteaux fins, bandeau anthracite au-dessus, potelets inox au bord du trottoir, enseigne basse (lettres bleues sur mur blanc) juste à l'ouest du bloc, la marquise continuant le long du mur nord.
+
+**Bloc d'entrée** (`entranceBlock`, `landmarks.ts`), quand une grande surface a des murs d'entrée vitrés (`frontWalls`, D120) : sur le sas et chacun de ces murs, vitrage jusqu'à 3,85 m avec traverse à 2,5 m et montants tous les 1,8 m environ ; marquise de 45 cm d'épaisseur dont le **bord avant est aligné** à 3,2 m devant le mur le plus avancé (les murs en retrait ont une marquise plus profonde : pas de trou aux décrochements), dessous clair, poteaux tous les 6 m au plus ; bandeau anthracite de 1,3 m au-dessus ; potelets inox (0,9 m) tous les 1,8 m, 0,6 m devant la marquise ; **pyramide** de verre clair (4,6 m de haut) sur le sas, de 1,2 m dans le mur jusqu'au bord de la marquise. Les faces de la pyramide sont orientées par le calcul (matériau à une face). Les grandes surfaces sans correction gardent l'entrée et l'auvent de D92.
+
+**Marquise le long du mur nord** : la bande BD TOPO de 3,2 × 36 m et 4,3 m de haut collée au mur 11, dessinée en hangar, est la marquise. Nouveau : `kinds` dans `tools/data/manual.json` impose un type d'après photo ; `build_carts.py` l'applique après `build_kinds.py` (qui réécrit `kinds`) et corrige seulement les statistiques de l'index de ce qu'il change (build_kinds compte aussi la marge hors des tuiles). La bande devient un auvent `style: "marquise"` (`marquise`, `landmarks.ts`) : dalle anthracite de 45 cm, dessous clair, poteaux fins tous les 6 m au plus ; on passe dessous (auvent : pas de collision).
+
+**Enseigne basse** : `signZ` dans `fronts` (fiche : `ground.signZ`) pose l'enseigne à tant de mètres du sol, panneau blanc et lettres à la couleur de l'enseigne, 1,4 m de haut ; Leclerc : 2,3 m.
+
+**Pas encore** (étape 3) : le volume. Le bloc d'entrée réel est plus bas que la halle ; la halle a des toits à deux pentes (13 pans dans le LiDAR, égout 9,3 m, faîte 13,9 m), des pignons crème et un bardage vert-gris (photo du côté est, 2018), alors que les grandes surfaces sont dessinées en boîtes à toit plat (`ROOF_SCALE` 0).
+
+![De face](captures/d122-leclerc-face.jpg)
+![Depuis l'ouest](captures/d122-leclerc-ouest.jpg)
+![Depuis l'est](captures/d122-leclerc-est.jpg)

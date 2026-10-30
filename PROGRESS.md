@@ -756,3 +756,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Avant](docs/captures/d121-chariots-avant.jpg)
 ![Après](docs/captures/d121-chariots-apres.jpg)
+
+**Bâtiments d'après photos, étape 2 : l'entrée d'E.Leclerc (30 octobre 2026)** (D122)
+- Le bloc d'entrée suit tes photos : grand vitrage à montants sombres, marquise anthracite continue sur poteaux fins, bandeau sombre au-dessus, potelets inox, pyramide de verre sur le sas.
+- Le faux hangar collé au mur nord est devenu la marquise qui prolonge l'entrée ; l'enseigne est basse, en lettres bleues sur panneau blanc.
+- Suite prévue : le volume (toits à deux pentes du LiDAR, pignons crème, bardage vert-gris du côté est).
+- 721 tests.
+
+![De face](docs/captures/d122-leclerc-face.jpg)
+![Depuis l'ouest](docs/captures/d122-leclerc-ouest.jpg)

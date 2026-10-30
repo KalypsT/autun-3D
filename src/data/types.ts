@@ -214,6 +214,8 @@ export interface BuildingKind {
   /** Couleur du panneau et des lettres de l'enseigne. */
   c?: string;
   tc?: string;
+  /** Auvent : « marquise » anthracite sur poteaux fins, le long d'une façade (correction à la main d'après photo, D122). */
+  style?: "marquise";
   /** Abri à chariots : milieu du petit côté ouvert (D121). */
   open?: [number, number];
   /** 1 : bâtiment principal de son site (inscription, drapeaux). */
@@ -390,6 +392,8 @@ export interface FacadeFiche {
     signWall?: number;
     /** Milieu de la grande enseigne, en mètres depuis le début du mur `signWall` ; absent : au milieu du mur. */
     signAt?: number;
+    /** Enseigne basse d'après photo : bas du panneau, en mètres au-dessus du sol (D122) ; absent : en haut du mur. */
+    signZ?: number;
   };
   walls: WallRun[];
 }

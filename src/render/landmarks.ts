@@ -48,7 +48,7 @@ export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color |
     case "retail": return C("#b8b2a6");
     case "industrial": case "sports": return C("#8fa3a8");
     case "greenhouse": return C("#d8ece8");
-    case "canopy": return C("#efebe3");
+    case "canopy": return kind.style === "marquise" ? MARQUISE.clone() : C("#efebe3");
     default: return null;
   }
 }
@@ -239,7 +239,13 @@ function ribs(sinks: LandmarkSinks, segs: Seg[], terrain: HeightField, wall: THR
   }
 }
 
-function retail(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg[], terrain: HeightField, wall: THREE.Color, signAt?: number): void {
+/** Options d'une grande surface venues de la fiche (corrections à la main d'après photo, D120 et D122). */
+interface RetailOptions {
+  signAt?: number;
+  signZ?: number;
+}
+
+function retail(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg[], terrain: HeightField, wall: THREE.Color, opts: RetailOptions = {}): void {
   const accent = C(kind.c ?? pick(T.shops, idKey(b.id), 7));
   plinth(sinks, segs, terrain, 0.5, CONCRETE);
   topBand(sinks, segs, PARAPET + 0.25, accent.clone().lerp(wall, 0.25));
@@ -248,52 +254,123 @@ function retail(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
     const [ax, ay] = onSeg(g, 0, -0.25), [bx, by] = onSeg(g, g.len, -0.25);
     sinks.solid.quad(toThree(ax, ay, b.eave), toThree(bx, by, b.eave), toThree(bx, by, g.top), toThree(ax, ay, g.top), toThree(-g.nx, -g.ny, 0), shade(wall, 0.85));
   }
-  // Autres murs de l'entrée (correction d'après photo) : vitrés au rez-de-chaussée, montants sombres.
-  for (const s of segs) {
-    if (!s.glazed || s.len < 2) continue;
-    const [x, y] = onSeg(s, s.len / 2);
-    const z = terrain.heightAt(x, y);
-    glazing(sinks, s, 0.3, s.len - 0.3, z + 0.05, z + 3.0, 0.05, 1);
-    for (let t = 0.3; t <= s.len - 0.3 + 1e-6; t += (s.len - 0.6) / Math.max(1, Math.round((s.len - 0.6) / 2.2))) plate(sinks.solid, s, t - 0.06, t + 0.06, z, z + 3.05, 0.08, DARK);
-  }
   const g = mainSeg(segs);
   if (!g || g.len < 6) return;
   const mid = g.len / 2;
   const [mx, my] = onSeg(g, mid);
   const z0 = terrain.heightAt(mx, my);
-  // Entrée seule sur son mur : un peu moins de la moitié du mur ; sas entre des murs vitrés : tout le mur.
-  const w = segs.some((s) => s.glazed) ? g.len - 0.6 : Math.min(14, g.len * 0.45);
-  // Entrée vitrée, montants sombres.
-  glazing(sinks, g, mid - w / 2, mid + w / 2, z0 + 0.05, z0 + 3.0, 0.05, 1);
-  for (let s = mid - w / 2; s <= mid + w / 2 + 1e-6; s += w / Math.max(2, Math.round(w / 2.2))) plate(sinks.solid, g, s - 0.06, s + 0.06, z0, z0 + 3.05, 0.08, DARK);
-  // Auvent : dalle en saillie sur deux poteaux, bandeau à la couleur de l'enseigne.
-  const aw = w + 2, depth = 2.8, za = z0 + 3.5;
-  const p0 = onSeg(g, mid - aw / 2), p1 = onSeg(g, mid + aw / 2), p2 = onSeg(g, mid + aw / 2, depth), p3 = onSeg(g, mid - aw / 2, depth);
-  const n = toThree(g.nx, g.ny, 0);
-  sinks.solid.quad(toThree(p0[0], p0[1], za + 0.45), toThree(p1[0], p1[1], za + 0.45), toThree(p2[0], p2[1], za + 0.45), toThree(p3[0], p3[1], za + 0.45), [0, 1, 0], WHITE);
-  soffit(sinks.solid, [p0, p1, p2, p3], za, WHITE);
-  sinks.solid.quad(toThree(p3[0], p3[1], za), toThree(p2[0], p2[1], za), toThree(p2[0], p2[1], za + 0.45), toThree(p3[0], p3[1], za + 0.45), n, accent);
-  for (const [q, t] of [[p0, p3], [p1, p2]] as const) {
-    const len = Math.hypot(t[0] - q[0], t[1] - q[1]) || 1;
-    sinks.solid.quad(toThree(q[0], q[1], za), toThree(t[0], t[1], za), toThree(t[0], t[1], za + 0.45), toThree(q[0], q[1], za + 0.45), toThree((t[1] - q[1]) / len, -(t[0] - q[0]) / len, 0), accent);
+  let za = z0 + 3.5;
+  if (segs.some((s) => s.glazed)) {
+    // Bloc d'entrée d'après photo : sas et murs vitrés sous une marquise continue.
+    za = entranceBlock(sinks, g, segs.filter((s) => s.glazed || s === g), z0);
+  } else {
+    const w = Math.min(14, g.len * 0.45);
+    // Entrée vitrée, montants sombres.
+    glazing(sinks, g, mid - w / 2, mid + w / 2, z0 + 0.05, z0 + 3.0, 0.05, 1);
+    for (let s = mid - w / 2; s <= mid + w / 2 + 1e-6; s += w / Math.max(2, Math.round(w / 2.2))) plate(sinks.solid, g, s - 0.06, s + 0.06, z0, z0 + 3.05, 0.08, DARK);
+    // Auvent : dalle en saillie sur deux poteaux, bandeau à la couleur de l'enseigne.
+    const aw = w + 2, depth = 2.8;
+    const p0 = onSeg(g, mid - aw / 2), p1 = onSeg(g, mid + aw / 2), p2 = onSeg(g, mid + aw / 2, depth), p3 = onSeg(g, mid - aw / 2, depth);
+    const n = toThree(g.nx, g.ny, 0);
+    sinks.solid.quad(toThree(p0[0], p0[1], za + 0.45), toThree(p1[0], p1[1], za + 0.45), toThree(p2[0], p2[1], za + 0.45), toThree(p3[0], p3[1], za + 0.45), [0, 1, 0], WHITE);
+    soffit(sinks.solid, [p0, p1, p2, p3], za, WHITE);
+    sinks.solid.quad(toThree(p3[0], p3[1], za), toThree(p2[0], p2[1], za), toThree(p2[0], p2[1], za + 0.45), toThree(p3[0], p3[1], za + 0.45), n, accent);
+    for (const [q, t] of [[p0, p3], [p1, p2]] as const) {
+      const len = Math.hypot(t[0] - q[0], t[1] - q[1]) || 1;
+      sinks.solid.quad(toThree(q[0], q[1], za), toThree(t[0], t[1], za), toThree(t[0], t[1], za + 0.45), toThree(q[0], q[1], za + 0.45), toThree((t[1] - q[1]) / len, -(t[0] - q[0]) / len, 0), accent);
+    }
+    for (const s of [mid - aw / 2 + 0.3, mid + aw / 2 - 0.3]) {
+      const [x, y] = onSeg(g, s, depth - 0.3);
+      block(sinks.solid, x, y, g.tx, g.ty, 0.1, 0.1, terrain.heightAt(x, y), za, DARK);
+    }
   }
-  for (const s of [mid - aw / 2 + 0.3, mid + aw / 2 - 0.3]) {
-    const [x, y] = onSeg(g, s, depth - 0.3);
-    block(sinks.solid, x, y, g.tx, g.ty, 0.1, 0.1, terrain.heightAt(x, y), za, DARK);
+  if (!kind.n) return;
+  // Sur le mur de l'enseigne s'il est donné, sinon sur le plus grand mur de l'entrée (un sas étroit entre des murs vitrés).
+  const marked = segs.filter((s) => s.sign && s.len >= 2);
+  // Position donnée le long du mur de l'enseigne : le côté qui la contient, enseigne de 9 m au plus ; sinon au milieu du plus grand côté.
+  const signAt = opts.signAt;
+  const at = signAt === undefined ? undefined : marked.find((s) => signAt >= s.from && signAt <= s.from + s.len);
+  const sg = at ?? (marked.length > 0 ? marked.reduce((a, b) => (b.len > a.len ? b : a)) : segs.reduce((best, s) => (s.glazed && s.len > best.len ? s : best), g));
+  const sMid = at ? Math.min(Math.max(signAt! - at.from, 1), at.len - 1) : sg.len / 2;
+  const sw = at ? Math.min(9, at.len * 0.7, 2 * Math.min(sMid, at.len - sMid)) : sg.len * 0.7;
+  const [sx, sy] = onSeg(sg, sMid);
+  const zs = terrain.heightAt(sx, sy);
+  if (opts.signZ !== undefined) {
+    // Enseigne basse d'après photo : lettres à la couleur de l'enseigne sur un panneau blanc, posé à signZ mètres du sol.
+    signboard(sinks, sg, sMid, zs + opts.signZ, 1.4, Math.min(sw, 6.5), kind.n, C("#f6f4ee"), kind.c ?? "#1d5fa6");
+    return;
   }
-  // Grande enseigne sur l'acrotère.
-  if (kind.n) {
-    // Sur le mur de l'enseigne s'il est donné, sinon sur le plus grand mur de l'entrée (un sas étroit entre des murs vitrés).
-    const marked = segs.filter((s) => s.sign && s.len >= 2);
-    // Position donnée le long du mur de l'enseigne : le côté qui la contient, enseigne de 9 m au plus ; sinon au milieu du plus grand côté.
-    const at = signAt === undefined ? undefined : marked.find((s) => signAt >= s.from && signAt <= s.from + s.len);
-    const sg = at ?? (marked.length > 0 ? marked.reduce((a, b) => (b.len > a.len ? b : a)) : segs.reduce((best, s) => (s.glazed && s.len > best.len ? s : best), g));
-    const sMid = at ? Math.min(Math.max(signAt! - at.from, 1), at.len - 1) : sg.len / 2;
-    const sw = at ? Math.min(9, at.len * 0.7, 2 * Math.min(sMid, at.len - sMid)) : sg.len * 0.7;
-    const [sx, sy] = onSeg(sg, sMid);
-    const h = Math.min(3.0, Math.max(1.4, (sg.top - terrain.heightAt(sx, sy)) * 0.36));
-    signboard(sinks, sg, sMid, Math.max(za + 0.9, sg.top - h - 0.1), h, sw, kind.n, kind.c ? C(kind.c) : accent, kind.tc ?? "#ffffff");
+  const h = Math.min(3.0, Math.max(1.4, (sg.top - zs) * 0.36));
+  signboard(sinks, sg, sMid, Math.max(za + 0.9, sg.top - h - 0.1), h, sw, kind.n, kind.c ? C(kind.c) : accent, kind.tc ?? "#ffffff");
+}
+
+const STEEL_LIGHT = C("#b9bec0");
+const MARQUISE = C("#3d4448");
+const MARQUISE_UNDER = C("#d9dcdc");
+
+/**
+ * Bloc d'entrée vitré d'une grande surface (d'après photo, E.Leclerc, D122) : vitrage sur 3,85 m (dessous de la marquise du mur voisin) avec traverse et montants anthracite sur
+ * chaque mur de l'entrée, marquise anthracite continue dont le bord avant est aligné malgré les décrochements, poteaux fins, bandeau
+ * anthracite au-dessus, pyramide vitrée sur le sas (`sas`, le mur d'entrée), potelets inox au bord du trottoir. Rend la hauteur du
+ * dessous de la marquise.
+ */
+function entranceBlock(sinks: LandmarkSinks, sas: Seg, walls: Seg[], z0: number): number {
+  const mb = sinks.solid;
+  const zc = z0 + 3.85, thick = 0.45, depth = 3.2;
+  // Les murs de l'entrée sont parallèles au sas : distance de chacun, le long de la normale, au plan du sas.
+  const off = (s: Seg): number => (s.x - sas.x) * sas.nx + (s.y - sas.y) * sas.ny;
+  const outer = Math.max(...walls.map(off)) + depth;
+  for (const s of walls) {
+    const d = outer - off(s);
+    // Vitrage, traverse, montants.
+    glazing(sinks, s, 0.15, s.len - 0.15, z0 + 0.05, zc, 0.05, 1);
+    plate(mb, s, 0.15, s.len - 0.15, z0 + 2.45, z0 + 2.55, 0.08, DARK);
+    const bays = Math.max(1, Math.round((s.len - 0.3) / 1.8));
+    for (let i = 0; i <= bays; i++) {
+      const t = 0.15 + ((s.len - 0.3) * i) / bays;
+      plate(mb, s, t - 0.05, t + 0.05, z0, zc, 0.08, DARK);
+    }
+    // Bandeau anthracite au-dessus de la marquise.
+    plate(mb, s, 0, s.len, zc + thick, zc + thick + 1.3, 0.04, MARQUISE);
+    // Marquise : dessus, dessous, tranche avant, poteaux tous les 6 m au plus au bord avant.
+    const p0 = onSeg(s, 0), p1 = onSeg(s, s.len), p2 = onSeg(s, s.len, d), p3 = onSeg(s, 0, d);
+    mb.quad(toThree(p0[0], p0[1], zc + thick), toThree(p1[0], p1[1], zc + thick), toThree(p2[0], p2[1], zc + thick), toThree(p3[0], p3[1], zc + thick), [0, 1, 0], MARQUISE);
+    soffit(mb, [p0, p1, p2, p3], zc, MARQUISE_UNDER);
+    mb.quad(toThree(p3[0], p3[1], zc), toThree(p2[0], p2[1], zc), toThree(p2[0], p2[1], zc + thick), toThree(p3[0], p3[1], zc + thick), toThree(s.nx, s.ny, 0), MARQUISE);
+    const posts = Math.max(1, Math.ceil(s.len / 6));
+    for (let i = 0; i <= posts; i++) {
+      const [x, y] = onSeg(s, Math.min(Math.max((s.len * i) / posts, 0.2), s.len - 0.2), d - 0.25);
+      block(mb, x, y, s.tx, s.ty, 0.08, 0.08, z0 - 0.1, zc, MARQUISE);
+    }
+    // Potelets inox au bord du trottoir, tous les 1,8 m.
+    for (let t = 0.9; t < s.len; t += 1.8) {
+      const [x, y] = onSeg(s, t, d + 0.6);
+      block(mb, x, y, s.tx, s.ty, 0.07, 0.07, z0 - 0.1, z0 + 0.9, STEEL_LIGHT);
+    }
   }
+  // Pyramide vitrée sur le sas, au-dessus de la marquise ; sa moitié arrière entre dans le mur.
+  const d = outer - off(sas);
+  const zb = zc + thick, apex = 4.6;
+  const c = [onSeg(sas, 0.2, -1.2), onSeg(sas, sas.len - 0.2, -1.2), onSeg(sas, sas.len - 0.2, d), onSeg(sas, 0.2, d)];
+  const [tx, ty] = onSeg(sas, sas.len / 2, (d - 1.2) / 2);
+  const top: Vec3 = toThree(tx, ty, zb + apex);
+  // Verre clair à armature grise (photo), pas le bleu-vert des vitrines.
+  const glass = [C("#cfdcdf"), C("#a9bcc1")];
+  for (let i = 0; i < 4; i++) {
+    const a = c[i]!, bb = c[(i + 1) % 4]!;
+    const ex = bb[0] - a[0], ey = bb[1] - a[1];
+    const el = Math.hypot(ex, ey) || 1;
+    // Normale vers l'extérieur de la pyramide : du côté opposé à son centre.
+    let nx = ey / el, ny = -ex / el;
+    if ((tx - a[0]) * nx + (ty - a[1]) * ny > 0) [nx, ny] = [-nx, -ny];
+    const nrm = new THREE.Vector3(nx, 0.6, -ny).normalize();
+    const A = new THREE.Vector3(...toThree(a[0], a[1], zb)), B = new THREE.Vector3(...toThree(bb[0], bb[1], zb)), T = new THREE.Vector3(...top);
+    // Face avant dans le sens trigonométrique vue de l'extérieur (matériau à une face).
+    const front = B.clone().sub(A).cross(T.clone().sub(A)).dot(nrm) > 0;
+    if (front) mb.tri(A.toArray(), B.toArray(), top, [nrm.x, nrm.y, nrm.z], glass[i % 2]!);
+    else mb.tri(B.toArray(), A.toArray(), top, [nrm.x, nrm.y, nrm.z], glass[i % 2]!);
+  }
+  return zc;
 }
 
 function industrial(sinks: LandmarkSinks, b: Building, segs: Seg[], terrain: HeightField, wall: THREE.Color): void {
@@ -446,6 +523,35 @@ function cartShelter(mb: MeshBuilder, b: Building, kind: BuildingKind, terrain: 
     block(mb, x, y, ux, uy, 0.45, 0.27, zz + 0.38, zz + 0.95, TROLLEY);
     const [hx, hy] = at(-hl + 0.55 + i * 0.32 + 0.5, 0);
     block(mb, hx, hy, ux, uy, 0.03, 0.27, zz + 0.95, zz + 1.0, C("#c9302c"));
+  }
+}
+
+/**
+ * Marquise le long d'une façade (d'après photo, l'entrée d'E.Leclerc, D122) : dalle anthracite de 45 cm (le dessus vient des pans),
+ * dessous clair, poteaux fins tous les 6 m au plus sur les grands côtés.
+ */
+function marquise(mb: MeshBuilder, b: Building, terrain: HeightField): void {
+  const z1 = b.eave, z0 = b.eave - 0.45;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < b.ring.length; i += 2) pts.push([b.ring[i]!, b.ring[i + 1]!]);
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i]!, [x2, y2] = pts[(i + 1) % pts.length]!;
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+    mb.quad(toThree(x1, y1, z0), toThree(x2, y2, z0), toThree(x2, y2, z1), toThree(x1, y1, z1), toThree(uy, -ux, 0), MARQUISE);
+    if (len < 6) continue;
+    const posts = Math.ceil(len / 6);
+    for (let k = 0; k <= posts; k++) {
+      // Un peu en retrait du bord, pour que le poteau soit sous la dalle.
+      const s = Math.min(Math.max((len * k) / posts, 0.3), len - 0.3);
+      const x = x1 + ux * s - uy * 0.25, y = y1 + uy * s + ux * 0.25;
+      block(mb, x, y, ux, uy, 0.08, 0.08, terrain.heightAt(x, y) - 0.1, z0, MARQUISE);
+    }
+  }
+  const shape = pts.map(([x, y]) => new THREE.Vector2(x, y));
+  for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(shape, [])) {
+    const a = pts[i!]!, bb = pts[j!]!, c = pts[k!]!;
+    mb.tri(toThree(a[0], a[1], z0), toThree(bb[0], bb[1], z0), toThree(c[0], c[1], z0), [0, -1, 0], MARQUISE_UNDER);
   }
 }
 
@@ -798,14 +904,21 @@ export function buildLandmarks(
     const segs = segments(b, fiche);
     const wall = wallOf(b);
     switch (kind.k) {
-      case "retail": retail(sinks, b, kind, segs, terrain, wall, fiche?.ground.signAt); break;
+      case "retail": {
+        const o: RetailOptions = {};
+        if (fiche?.ground.signAt !== undefined) o.signAt = fiche.ground.signAt;
+        if (fiche?.ground.signZ !== undefined) o.signZ = fiche.ground.signZ;
+        retail(sinks, b, kind, segs, terrain, wall, o);
+        break;
+      }
       case "industrial": industrial(sinks, b, segs, terrain, wall); break;
       case "sports": sportsHall(sinks, kind, segs, terrain); break;
       case "annex": annex(sinks, b, segs, terrain); break;
       case "greenhouse": greenhouse(sinks, segs, terrain); break;
       case "canopy": {
         const site = fuelSites.find((s) => s.roof === b.id);
-        canopy(sinks, b, site?.c ?? "#d9472b", terrain, site);
+        if (kind.style === "marquise") marquise(sinks.solid, b, terrain);
+        else canopy(sinks, b, site?.c ?? "#d9472b", terrain, site);
         break;
       }
       case "church": case "chapel": church(sinks, b, kind, segs, terrain, wall); break;
