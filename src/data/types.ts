@@ -386,6 +386,8 @@ export interface FacadeFiche {
     frontWalls?: number[];
     /** Mur de la grande enseigne d'une grande surface (correction à la main, D120) ; absent : le plus grand mur de l'entrée. */
     signWall?: number;
+    /** Milieu de la grande enseigne, en mètres depuis le début du mur `signWall` ; absent : au milieu du mur. */
+    signAt?: number;
   };
   walls: WallRun[];
 }

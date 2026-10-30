@@ -10,7 +10,7 @@ Sorties : dans les fiches des tuiles seulement, `ground.front` (indice du mur d'
 Avant (build_facades.py), la vitrine allait sur le mur « de rue » le plus long, ou le plus proche du point OSM du commerce. Or ce point est
 souvent au milieu du bâtiment, et un mur arrière à moins de 10 m d'une ruelle compte comme mur de rue : 345 vitrines sans nom sur 499
 et 50 enseignes nommées sur 201 regardaient une autre rue que celle de leur adresse. Ordre de choix du mur, du plus sûr au moins sûr :
-  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "photo": ...}, d'après une photo) ;
+  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "signAt": milieu de l'enseigne en mètres depuis le début de ce mur, "photo": ...}, d'après une photo) ;
   1. une porte OpenStreetMap posée sur le contour (commerce, entrée principale) ;
   2. le point du commerce lui-même s'il est sur le contour (cartographié à sa porte) ;
   3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m) ;
@@ -205,6 +205,12 @@ def main():
         return None, "inchangé"
 
     for tid, b, fi in todo:
+        # Les murs d'une correction à la main sont des murs de rue avant tout choix (une seule passe suffit).
+        m = manual.get(fi["id"], {})
+        for i in [m.get("wall"), m.get("sign"), *m.get("also", [])]:
+            if i is not None and fi["walls"][i]["role"] != "street":
+                fi["walls"][i]["role"] = "street"
+                stats["mur passé en rue"] += 1
         W = Walls(b, fi)
         cands = W.candidates()
         if not cands:
@@ -220,6 +226,7 @@ def main():
         g.pop("front", None)
         g.pop("frontWalls", None)
         g.pop("signWall", None)
+        g.pop("signAt", None)
         if front is not None:
             g["front"] = front
             chosen.append(front)
@@ -228,6 +235,8 @@ def main():
             chosen.extend(g["frontWalls"])
         if fi["id"] in manual and manual[fi["id"]].get("sign") is not None:
             g["signWall"] = manual[fi["id"]]["sign"]
+            if manual[fi["id"]].get("signAt") is not None:
+                g["signAt"] = manual[fi["id"]]["signAt"]
             chosen.append(g["signWall"])
         stats[f"bâtiment : {why}"] += 1
         for sh in g.get("shops", []):
