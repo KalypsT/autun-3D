@@ -618,6 +618,7 @@ const BLOCK_FONT: Record<string, readonly string[]> = {
   A: ["010", "101", "111", "101", "101"], E: ["111", "100", "110", "100", "111"], I: ["111", "010", "010", "010", "111"],
   O: ["111", "101", "101", "101", "111"], P: ["111", "101", "111", "100", "100"], R: ["110", "101", "110", "101", "101"],
   S: ["111", "100", "111", "001", "111"], T: ["111", "010", "010", "010", "010"], Z: ["111", "001", "010", "100", "111"],
+  U: ["101", "101", "101", "101", "111"], N: ["101", "111", "111", "101", "101"],
 };
 
 /**
@@ -625,7 +626,7 @@ const BLOCK_FONT: Record<string, readonly string[]> = {
  * +1 : vers l'arrière, lu sur le flanc gauche). Chaque suite de pixels d'une ligne est une seule boîte. `z` : bord de départ de la première lettre ;
  * `y` : haut de la première lettre ; `px` : taille d'un pixel.
  */
-function blockLetters(text: string, x: number, z: number, y: number, px: number, vertical: boolean, color: string, dir: number): THREE.BufferGeometry[] {
+export function blockLetters(text: string, x: number, z: number, y: number, px: number, vertical: boolean, color: string, dir: number): THREE.BufferGeometry[] {
   const parts: THREE.BufferGeometry[] = [];
   [...text].forEach((ch, i) => {
     const glyph = BLOCK_FONT[ch];

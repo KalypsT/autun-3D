@@ -708,3 +708,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![De près](docs/captures/d116-grumier-galerie.jpg)
 ![Voitures garées : jantes, feux et vitres de leur vraie couleur](docs/captures/d116-voitures-garees.jpg)
 
+**Petit train touristique, étape 1 : le circuit et le train qui tourne (30 octobre 2026)** (D117)
+- Un petit train vert et doré (« AUTUN » sur la locomotive, trois wagons à bancs) fait le tour des monuments : cathédrale et musée Rolin, théâtre romain, porte Saint-André, porte d'Arroux, tour de l'Horloge, hôtel de ville. 6,9 km, sans demi-tour, environ 38 minutes par tour.
+- Il part de la rue du Général Demetz (côté Champ de Mars), s'y arrête une minute à chaque tour, ralentit devant les monuments, s'arrête aux feux rouges et devant ce qui bloque sa voie. Les voitures et les passants le voient et l'évitent ; on bute dessus.
+- Il est là de 11 h à 18 h. Le temps du jeu va trop vite pour qu'il fasse un tour dans ces heures-là : il tourne sans fin et n'apparaît (ou ne disparaît) qu'aux bonnes heures, loin des yeux du joueur.
+- 714 tests.
+- À faire de ton côté : aller le voir (`?at=57,-40.5&yaw=-2.71&h=12` au départ, ou en jouant vers 11 h au Champ de Mars), le suivre, lui barrer la route. Ensuite : le prendre et le conduire (étape 2).
+
+![Le circuit](docs/captures/d117-circuit.png)
+![Au départ](docs/captures/d117-train-depart.jpg)
+![Devant le théâtre romain](docs/captures/d117-train-theatre-romain.jpg)
+![Vers la cathédrale](docs/captures/d117-train-cathedrale.jpg)
+

@@ -126,6 +126,11 @@ export class Traffic {
     return this.sim.stats;
   }
 
+  /** Le petit train (D117) : les conducteurs le voient comme une voiture. */
+  setExtra(others: TrafficSim["extra"]): void {
+    this.sim.extra = others;
+  }
+
   /** Les passants : les voitures les évitent et s'arrêtent pour ceux qui traversent. */
   setPeds(peds: PedLookup | null): void {
     this.sim.peds = peds;

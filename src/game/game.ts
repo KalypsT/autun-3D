@@ -12,7 +12,7 @@ import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
-import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer } from "../core/pedestrians";
+import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer, type TrafficBody } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
 import { SaveStore } from "../core/save";
 import { Controls } from "../input/controls";
@@ -52,6 +52,7 @@ import { stepCrossed } from "../core/sound-model";
 import { GameAudio, type TrafficVisit } from "./game-audio";
 import { CameraShake, Haptics, speedFov, speedLines } from "../core/feel";
 import { VehicleLights } from "../render/vehicle-lights";
+import { TouristTrain, TRAIN_CLEAR, type TrainEnv } from "./tourist-train";
 
 export { gameSpawn } from "./start";
 const STEP = 1 / 60;
@@ -423,6 +424,30 @@ export function startGame(ctx: GameContext): void {
       }
     }
   };
+  // Petit train touristique (D117) : il tourne sur son circuit, montré de 11 h à 18 h. `?train=<m>` : le place à tant de mètres du départ.
+  const train = new TouristTrain(scene, colliders, terrain, Number(params.get("train") ?? 0) || 0);
+  // Aucune voiture garée sur le circuit : une place dont le centre est à moins de la demi-largeur du train et d'une demi-voiture.
+  fleet.keepClearAlong(train.route.samples(), TRAIN_CLEAR);
+  const trainCars: TrainEnv["cars"][number][] = [];
+  const trainParked: TrainEnv["parked"][number][] = [];
+  const updateTrain = (dt: number): void => {
+    const t = traffic as Traffic | null, at = train.position;
+    trainCars.length = 0;
+    if (t) for (const c of t.cars) trainCars.push(c.sim);
+    // Véhicules de la flotte qui ne sont plus à leur place (laissés par le joueur sur la chaussée) : le train s'arrête devant.
+    trainParked.length = 0;
+    for (const v of fleet.vehicles) {
+      if (v.ridden || Math.abs(v.state.x - at.x) > 80 || Math.abs(v.state.y - at.y) > 80) continue;
+      if (!v.home || Math.hypot(v.state.x - v.home.x, v.state.y - v.home.y) > 0.5) trainParked.push(v);
+    }
+    train.update(dt, {
+      x: player.x, y: player.y, hour: atmosphere.hour, vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
+      cars: trainCars, peds: peds as PedsController | null, parked: trainParked, road: (nav as NavManager | null)?.graph.road ?? null, signals: signals as Signals | null,
+    });
+    t?.setExtra(train.visible ? train.others : []);
+  };
+  /** Les voitures que voient les passants, et le train quand il est là. */
+  const withTrain = (bodies: readonly TrafficBody[]): readonly TrafficBody[] => (train.visible ? [...bodies, ...train.bodies] : bodies);
   /** Vendeurs des camions-restaurants (D115), par identifiant de véhicule unique. */
   const vendors = new Map<string, ReturnType<typeof createPlayerModel>>();
   const vendorSeed = (id: string): number => [...id].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
@@ -1015,6 +1040,7 @@ export function startGame(ctx: GameContext): void {
     }
     updateDamage(dt);
     updateUniques(dt);
+    updateTrain(dt);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {
@@ -1204,7 +1230,7 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
-        ...(traffic ? { vehicles: (traffic as Traffic).bodies(), honks: (traffic as Traffic).takeHonks() } : {}),
+        ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.bodies } : {}),
       };
       for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
       (traffic as Traffic | null)?.setPeds(pedsNow);
@@ -1304,6 +1330,10 @@ export function startGame(ctx: GameContext): void {
     police,
     /** Essais et captures : les passants (voir `PedsController`). */
     pedsController: () => peds as PedsController | null,
+    /** Essais et captures : le petit train (D117), les feux et les rues chargées. */
+    train,
+    signals: () => signals as Signals | null,
+    road: () => (nav as NavManager | null)?.graph.road ?? null,
     /** Captures : tourner la caméra (rad, 0 = nord). */
     look: (v: number) => {
       yaw = v;

@@ -123,6 +123,10 @@ function unit(h: number, rank: number): number {
   return hash(Math.imul(h, 0x2545f491) ^ Math.imul(rank + 1, 0x9e3779b1)) / 0x100000000;
 }
 
+/** Côté des cases où rien ne se gare (m), et clé d'une case. */
+const CLEAR_CELL = 2;
+const cellKey = (ix: number, iy: number): number => (ix + 32768) * 65536 + (iy + 32768);
+
 /** Un véhicule est « déplacé » au-delà de ces écarts par rapport à sa place d'origine. */
 const MOVED_DISTANCE = 0.5;
 const MOVED_HEADING = 0.1;
@@ -135,6 +139,8 @@ export class Fleet {
   private readonly sources = new Set<string>();
   private readonly parked = new ParkedModels(MAX_PARKED, restGeometryOf);
   private readonly clear: { x: number; y: number; r: number }[] = [];
+  /** Cases de 2 m où rien ne se gare : le circuit du petit train (D117), trop long pour une liste de cercles. */
+  private readonly clearCells = new Set<number>();
   private dirty = true;
   private lastCull = { x: Infinity, y: Infinity };
   /** Pour la mesure (banc) : véhicules en tout, véhicules garés dessinés et maillages instanciés qu'ils coûtent (un par modèle présent). */
@@ -153,6 +159,24 @@ export class Fleet {
   /** Aucun véhicule ne sera garé dans ce cercle (point de départ du joueur). */
   keepClear(x: number, y: number, r: number): void {
     this.clear.push({ x, y, r });
+  }
+
+  /** Aucune voiture ne sera garée à moins de `r` m de ce tracé (points x, y à la suite, tous les mètres ou moins). */
+  keepClearAlong(points: readonly number[], r: number): void {
+    const n = Math.ceil(r / CLEAR_CELL);
+    for (let i = 0; i < points.length; i += 2) {
+      const cx = Math.floor(points[i]! / CLEAR_CELL), cy = Math.floor(points[i + 1]! / CLEAR_CELL);
+      for (let dx = -n; dx <= n; dx++) {
+        for (let dy = -n; dy <= n; dy++) {
+          const x = (cx + dx + 0.5) * CLEAR_CELL, y = (cy + dy + 0.5) * CLEAR_CELL;
+          if (Math.hypot(x - points[i]!, y - points[i + 1]!) < r) this.clearCells.add(cellKey(cx + dx, cy + dy));
+        }
+      }
+    }
+  }
+
+  private cleared(x: number, y: number): boolean {
+    return this.clearCells.has(cellKey(Math.floor(x / CLEAR_CELL), Math.floor(y / CLEAR_CELL))) || this.clear.some((c) => Math.hypot(x - c.x, y - c.y) < c.r);
   }
 
   /**
@@ -184,7 +208,7 @@ export class Fleet {
       const h = hash(Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663));
       const draw = (h % 1000) / 1000;
       const zone = parkingZone(s.x, s.y, t.buildings);
-      if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.clear.some((c) => Math.hypot(s.x - c.x, s.y - c.y) < c.r)) continue;
+      if (draw >= OCCUPANCY + MOTO_OCCUPANCY || this.cleared(s.x, s.y)) continue;
       // Garée en marche avant ou en marche arrière.
       const heading = s.heading + (h & 1024 ? Math.PI : 0);
       if (draw < OCCUPANCY) this.add(pickModel("car", zone, unit(h, 0)), `voiture-${key}`, s.x, s.y, heading, (h >>> 12) & 15);
