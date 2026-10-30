@@ -194,3 +194,24 @@ describe("dégâts : circulation et dessin (D112)", () => {
     expect(weak.grip).toBe(CAR.grip);
   });
 });
+
+describe("dégâts : balles et sauvegarde (D113)", () => {
+  it("une balle abîme un véhicule du cinquième de ce qu'elle retire à une personne, moins un véhicule solide ; un chargeur de pistolet met une voiture en fumée noire, pas en feu", () => {
+    const d = car();
+    d.shot(34, 0);
+    expect(d.health).toBeCloseTo(100 - 34 * DAMAGE.bullet);
+    const tough = new VehicleDamage({ toughness: 1.4, burns: true });
+    tough.shot(34, 0);
+    expect(tough.health).toBeGreaterThan(d.health);
+    const c = car();
+    for (let i = 0; i < 12; i++) c.shot(34, 0);
+    expect(c.tier).toBe("heavy");
+  });
+
+  it("une épave reprise d'une sauvegarde est froide : elle ne se remet pas à brûler", () => {
+    const d = car();
+    d.restore(0, { front: 1 }, "explosion");
+    expect(d.sinceEnd).toBeGreaterThan(60);
+    expect(d.takeEvents()).toEqual([]);
+  });
+});

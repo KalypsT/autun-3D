@@ -125,6 +125,29 @@ describe("armes à feu (J5-3)", () => {
     expect(r.shots[0]!.y0).toBeCloseTo(MUZZLE, 5);
   });
 
+  it("une carrosserie arrête la balle et prend les dégâts ; un passant devant la voiture la prend, lui, et la voiture rien (D113)", () => {
+    for (const [pedY, carY, carHit] of [[10, 5, true], [3, 6, false]] as const) {
+      const w = world([{ x: 0, y: pedY, hp: 100 }]);
+      const hits: number[] = [];
+      const shielded: ShootWorld = {
+        ...w,
+        rayVehicle: (_x, y, _dx, dy, maxDist) => (dy > 0.9 && carY - 1 - y <= maxDist ? { dist: carY - 1 - y, id: 7 } : null),
+        hurtVehicle: (id, damage) => hits.push(id, damage),
+      };
+      const g = new Gun(5);
+      const r = g.step(DT, true, false, WEAPONS.pistol, armed("pistol", 24), 0, 0, 0, shielded);
+      expect(r.fired).toBe(1);
+      if (carHit) {
+        expect(r.hits).toBe(0);
+        expect(hits).toEqual([7, WEAPONS.pistol.damage]);
+        expect(r.shots[0]!.y1).toBeCloseTo(carY - 1, 5);
+      } else {
+        expect(r.hits).toBe(1);
+        expect(hits).toEqual([]);
+      }
+    }
+  });
+
   it("le fusil à pompe tire huit plombs en éventail dont les dégâts s'additionnent en un seul coup et baissent avec la distance", () => {
     const near = world([{ x: 0, y: 2, hp: 1000 }]);
     const g = new Gun(9);

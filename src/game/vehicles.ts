@@ -4,7 +4,7 @@ import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
 import { parkingZone, pickModel } from "../core/vehicle-placement";
 import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type FamilyInfo, type VehicleDef, type VehicleFamily } from "../core/vehicle-catalog";
-import { deratedSpec, looksDented, VehicleDamage } from "../core/damage";
+import { DAMAGE, deratedSpec, looksDented, VehicleDamage, ZONES } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { carLayout, wheelTrack } from "../render/car-body";
 import { baseModel, CAR_BODIES, carRestGeometry, createCarModel, DENTED } from "../render/car-model";
@@ -241,7 +241,10 @@ export class Fleet {
 
   /** Retrouve les véhicules d'une sauvegarde, là où ils avaient été laissés (avant que leurs tuiles ne les recréent à l'origine). */
   restore(saved: readonly SavedVehicle[]): void {
-    for (const s of saved) this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);
+    for (const s of saved) {
+      const v = this.add(s.model, s.id, s.x, s.y, s.heading, s.variant, null);
+      if (s.damage) v.damage.restore(s.damage.health, s.damage.zones, s.damage.end);
+    }
   }
 
   get(id: string): Vehicle | null {
@@ -254,7 +257,10 @@ export class Fleet {
     for (const v of this.vehicles) {
       const s = v.state, h = v.home;
       const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
-      if (moved) out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading });
+      // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
+      const d = v.damage, hurt = d.version > 0 && (d.health < DAMAGE.max || d.end !== null || ZONES.some((z) => d.zones[z] > 0));
+      if (!moved && !hurt) continue;
+      out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading, ...(hurt ? { damage: { health: d.health, zones: { ...d.zones }, end: d.end } } : {}) });
     }
     return out;
   }

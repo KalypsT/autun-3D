@@ -192,7 +192,7 @@ export class PoliceController {
       if (this.officers.countOf(c.id) > 0) continue;
       const cd = (this.carCool.get(c.id) ?? 1.2) - dt;
       const d = Math.hypot(p.x - c.x, p.y - c.y);
-      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || (this.colliders.raycast(c.x, c.y, p.x, p.y) ?? null) !== null) {
+      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || (this.colliders.raycast(c.x, c.y, p.x, p.y, true) ?? null) !== null) {
         this.carCool.set(c.id, Math.max(cd, 0));
         continue;
       }

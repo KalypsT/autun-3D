@@ -268,9 +268,10 @@ export class Colliders {
 
   /**
    * Premier obstacle rencontré sur le segment (ax, ay) -> (bx, by) : fraction 0-1 de la longueur, ou null.
-   * Seuls les segments sont testés (murs) ; les cercles (mobilier) ne gênent pas la caméra, ni les obstacles bas (clôtures).
+   * Par défaut, seuls les segments sont testés (murs) ; les cercles (mobilier, véhicules garés) ne gênent pas la caméra, ni les obstacles bas (clôtures).
+   * `circles` : les cercles comptent aussi (balles et ligne de tir, D113 : on s'abrite derrière une voiture garée).
    */
-  raycast(ax: number, ay: number, bx: number, by: number): number | null {
+  raycast(ax: number, ay: number, bx: number, by: number, circles = false): number | null {
     let best: number | null = null;
     const stamp = ++this.stamp;
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
@@ -289,6 +290,20 @@ export class Colliders {
           const t = ((s.ax - ax) * sy - (s.ay - ay) * sx) / den;
           const u = ((s.ax - ax) * ry - (s.ay - ay) * rx) / den;
           if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
+        }
+        if (!circles) continue;
+        // Obstacles ronds (véhicules garés, troncs, poteaux, D113) : première entrée du rayon dans le cercle ; un départ dans le cercle ne compte pas.
+        for (const id of this.circleGrid.get(key(ix, iy)) ?? []) {
+          if (this.circleSeen[id] === stamp || this.deadCircle.has(id)) continue;
+          this.circleSeen[id] = stamp;
+          const c = this.circles[id]!;
+          const fx = ax - c.x, fy = ay - c.y, a = rx * rx + ry * ry;
+          const b = 2 * (fx * rx + fy * ry), q = fx * fx + fy * fy - c.r * c.r;
+          if (q <= 0 || a < 1e-12) continue;
+          const disc = b * b - 4 * a * q;
+          if (disc < 0) continue;
+          const t = (-b - Math.sqrt(disc)) / (2 * a);
+          if (t >= 0 && t <= 1 && (best === null || t < best)) best = t;
         }
       }
     }

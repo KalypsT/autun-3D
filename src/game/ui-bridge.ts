@@ -8,6 +8,7 @@ import type { Waypoint } from "../core/waypoint";
 import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
+import { garagesFrom, type Garage } from "../core/garages";
 import { Minimap, type MinimapVehicle } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
 import { PauseMenu } from "../ui/pause-menu";
@@ -66,6 +67,8 @@ export class UiBridge {
   /** Police et zone de recherche à montrer sur la minimap (J4) : le jeu les tient à jour. */
   /** Armes au sol disponibles à montrer sur la minimap (J5-3) : le jeu les tient à jour. */
   caches: { x: number; y: number }[] = [];
+  /** Garages de réparation (D113), connus quand les lieux de la carte sont chargés. */
+  garages: Garage[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -120,6 +123,7 @@ export class UiBridge {
     MapData.load().then(
       (data) => {
         this.minimap.attach(data);
+        this.garages = garagesFrom(data.places.places);
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();
@@ -294,7 +298,7 @@ export class UiBridge {
         }
         this.minimap.update({
           x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: list, waypoint: this.waypoint,
-          caches: this.caches, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
+          caches: this.caches, garages: this.garages, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
         });
       });
     }

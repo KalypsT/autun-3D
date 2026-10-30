@@ -12,7 +12,15 @@ import { type Inventory, type WeaponDef } from "./weapons";
 /** Ce que le tir demande au monde : les passants (`Arena`), le premier passant sur un rayon, et le premier mur (fraction 0 à 1 du segment, null sinon). */
 export interface ShootWorld extends Arena {
   rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean;
+  /** Premier obstacle (mur, et pour les balles aussi les obstacles ronds : véhicules garés, troncs, poteaux) : fraction 0-1 du segment, ou null. */
   wall(ax: number, ay: number, bx: number, by: number): number | null;
+  /**
+   * Premier véhicule touché par le rayon (garé ou de la circulation, D113) à moins de `maxDist` : sa distance et un numéro à rendre à `hurtVehicle`,
+   * ou null. Absent : les balles ignorent les véhicules (essais).
+   */
+  rayVehicle?(x: number, y: number, dx: number, dy: number, maxDist: number): { dist: number; id: number } | null;
+  /** Une balle a touché ce véhicule en (x, y) : dégâts de l'arme (le monde les ramène à l'échelle des véhicules). */
+  hurtVehicle?(id: number, damage: number, x: number, y: number): void;
 }
 
 /** Demi-angle (rad) du cône de visée assistée autour du regard de la caméra. */
@@ -180,13 +188,21 @@ export class Gun {
           dist = wall * weapon.range;
           kind = 1;
         }
-        if (world.rayPed(mx, my, dx, dy, dist, this.hit)) {
+        // Une carrosserie arrête la balle (on s'abrite derrière une voiture) et prend les dégâts, sauf si un passant est plus près.
+        let veh = world.rayVehicle?.(mx, my, dx, dy, dist + 0.05) ?? null;
+        if (veh && veh.dist <= dist + 0.05) {
+          dist = veh.dist;
+          kind = 1;
+        } else veh = null;
+        const per = (d: number): number => (weapon.falloff ? Math.max(FALLOFF_MIN, 1 - (d / weapon.range) * (1 - FALLOFF_MIN)) : 1);
+        const ped = world.rayPed(mx, my, dx, dy, dist, this.hit);
+        if (veh && !ped) world.hurtVehicle?.(veh.id, weapon.damage * per(dist), mx + dx * dist, my + dy * dist);
+        if (ped) {
           dist = this.hit.dist;
           kind = 2;
-          const per = weapon.falloff ? Math.max(FALLOFF_MIN, 1 - (dist / weapon.range) * (1 - FALLOFF_MIN)) : 1;
           const e = this.damage.get(this.hit.slot);
-          if (e) e.dmg += weapon.damage * per;
-          else this.damage.set(this.hit.slot, { dmg: weapon.damage * per, nx: dx, ny: dy });
+          if (e) e.dmg += weapon.damage * per(dist);
+          else this.damage.set(this.hit.slot, { dmg: weapon.damage * per(dist), nx: dx, ny: dy });
         }
       }
       const s = res.shots[res.fxCount++]!;

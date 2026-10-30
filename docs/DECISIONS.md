@@ -1469,3 +1469,28 @@ Le froissage n'est préparé qu'à la première bosse (copie des positions et co
 
 **Reste** : les dégâts ne sont pas enregistrés (étape 5) ; les deux-roues de la circulation n'existent pas ; une voiture abandonnée qu'on ne regarde plus reste là (comme une voiture volée) tant qu'elle n'est pas une épave.
 
+## 2026-10-30 — D113. Dégâts des véhicules, étape 5 : balles, garages, sauvegarde, mesure
+
+**Balles et carrosseries** :
+- `Colliders.raycast(…, circles)` : avec `circles`, le rayon s'arrête aussi à l'entrée des obstacles ronds (véhicules garés, troncs, poteaux, mobilier) ; un départ dans un cercle ne compte pas. Seuls les tirs s'en servent (les balles du joueur, les tirs des gendarmes à pied et des voitures de police) : la caméra, la vue de la police, l'apparition de la circulation et les pigeons sont inchangés. Effet voulu : **on s'abrite derrière une voiture garée** (les gendarmes ne tirent plus à travers), et les balles s'arrêtent sur les troncs et les poteaux (le « mobilier » repoussé en J5).
+- `ShootWorld.rayVehicle` / `hurtVehicle` (`src/core/gun.ts`) : chaque balle (ou plomb) cherche le premier véhicule sur sa trajectoire, garé ou de la circulation (`rayHull` : entrée dans les cercles de la coque, `vehicle-contact.ts`) ; un passant plus près prend la balle, sinon la carrosserie l'arrête et prend les dégâts, du côté où elle entre (`VehicleDamage.shot` : un cinquième des dégâts d'une personne, divisé par la solidité : un chargeur de pistolet, 12 balles, met une voiture ordinaire en fumée noire, il en faut deux pour le feu ; au fusil d'assaut, une vingtaine de balles). Étincelles orange au point d'impact (celles d'un mur).
+- Au volant, **les balles des gendarmes abîment aussi le véhicule** (en plus de la moitié des dégâts pour le joueur, J5-5).
+
+**Garages** (`src/core/garages.ts`) : les **8 garages automobiles d'Autun** (`car_repair` de `map/places.json` : Norauto, Eurorepar, Renault, Citroën, Stéphane Belin Automobiles…). **Arrêté à moins de 22 m de l'un d'eux pendant 1,2 s** au volant d'un véhicule abîmé (pas d'une épave), on repart **réparé** (gratuit pour l'instant), et le nom du garage s'affiche comme celui d'un véhicule, au-dessus de « Réparée ». Sans effet sur les étoiles (choix de l'utilisateur). **Minimap** : une pastille bleu-vert cerclée de crème, avec une petite clé, par garage.
+
+**Sauvegarde** : champ facultatif `damage` d'un véhicule enregistré (santé, écrasement des zones, fin) ; les sauvegardes d'avant se lisent toujours (véhicules intacts), la version ne change pas (4). Un véhicule abîmé est enregistré même s'il n'a pas bougé (voiture garée percutée). Repris, il fume ou brûle de nouveau ; une épave reprise est froide.
+
+**Deux-roues** : rien de plus que ce qui est fait depuis D109 (pas de déformation, décidé au cadrage) : motos et scooter fument, brûlent et explosent ; vélos et trottinette sont cassés à 10 points.
+
+**Banc** : `?bench=1&fleet=1&dent=1` : une voiture garée sur trois prend sa forme abîmée, une sur douze est une épave noircie (le pire cas des formes abîmées : un maillage instancié de plus par modèle présent), signalé dans le rapport.
+
+**Mesure à faire sur l'Honor** (protocole du chantier entier, D107 à D113), même build, 17 h, chacun trois minutes :
+1. `?bench=1&fleet=1&traffic=20` : comparé aux rapports de D86 (voitures et deux-roues plus détaillés : ≈ +500 triangles par véhicule garé) ;
+2. `?bench=1&fleet=1&dent=1&traffic=20` : pire cas des formes abîmées (appels de dessin : au plus +9, +18 avec les ombres) ;
+3. en jeu, `?ride=berline&damage=8` : descendre, s'éloigner, regarder l'explosion : images par seconde pendant la boule de feu (`?debug`).
+Seuils : 60 i/s tenus, appels de dessin moyens sous 200 à l'arrêt (D78). Si (1) coûte, version allégée des voitures garées au-delà de 60 m (D107) ; si (2) coûte, garder la forme abîmée pour la seule circulation.
+
+5 tests de plus (rayon et cercles, balle arrêtée par une carrosserie et passant devant la voiture, balles et solidité, épave froide à la reprise, garages, dégâts relus de la sauvegarde). 680 tests.
+
+**Bilan du chantier des dégâts** (D109 à D113) : santé et zones, paliers, moteur affaibli, aiguillage explosion ou panne pour un futur mode enfant (D109) ; carrosserie froissée, phares et vitres cassés, fumée, ratés (D110) ; feu, explosion, souffle, épave (D111) ; circulation, police, voitures garées, forme abîmée par modèle (D112) ; balles, abri derrière les voitures, garages, sauvegarde, banc (D113). **Repoussé** : pneus crevés, gendarmes qui descendent d'une voiture hors d'usage, bond de la voiture qui explose, lumière d'explosion, prix de la réparation (avec l'argent), réglage « mode enfant ».
+

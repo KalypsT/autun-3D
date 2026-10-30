@@ -67,3 +67,23 @@ export function contactVehicles(a: Body, b: Body, result?: { impact: number }): 
   }
   return touched;
 }
+
+/**
+ * Distance (m) à laquelle le rayon parti de (x, y) dans la direction unitaire (dx, dy) entre dans la coque du véhicule (ses cercles), ou null
+ * s'il la manque ou part de l'intérieur (D113 : balles).
+ */
+export function rayHull(x: number, y: number, dx: number, dy: number, b: Body, maxDist: number): number | null {
+  const s = b.state, hx = Math.sin(s.heading), hy = Math.cos(s.heading);
+  let best: number | null = null;
+  for (const [off, r] of b.spec.hull) {
+    const fx = x - (s.x + hx * off), fy = y - (s.y + hy * off);
+    const bq = fx * dx + fy * dy, c = fx * fx + fy * fy - r * r;
+    if (c <= 0) return null;
+    const disc = bq * bq - c;
+    if (disc < 0) continue;
+    const t = -bq - Math.sqrt(disc);
+    if (t >= 0 && t <= maxDist && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+

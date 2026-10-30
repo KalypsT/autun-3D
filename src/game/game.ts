@@ -2,8 +2,10 @@ import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
 import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
-import { DAMAGE, type DamageTier } from "../core/damage";
+import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
+import { GarageStop } from "../core/garages";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
+import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
@@ -371,6 +373,11 @@ export function startGame(ctx: GameContext): void {
   // Une épave n'a plus de moteur et ne se reprend pas.
   const damaged = new Set<Vehicle>();
   const abandoned: Abandoned[] = [];
+  const garageStop = new GarageStop();
+  // Véhicules abîmés retrouvés dans la sauvegarde (D113) : ils fument (ou brûlent) de nouveau.
+  for (const v of fleet.vehicles) if (v.damage.version > 0 && (v.damage.health < DAMAGE.max || v.damage.end)) damaged.add(v);
+  /** Véhicules sur la trajectoire d'un tir (D113) : de la flotte, ou de la circulation (état, fiche et dégâts). */
+  const shotTargets: (Vehicle | { state: Vehicle["state"]; spec: Vehicle["spec"]; damage: Vehicle["damage"] })[] = [];
   const smoke = new Smoke(scene);
   const SMOKE: Partial<Record<DamageTier, { rate: number; color: THREE.Color; size: [number, number]; life: number }>> = {
     smoke: { rate: 7, color: new THREE.Color("#e9e5dc"), size: [0.22, 0.7], life: 1.8 },
@@ -559,6 +566,16 @@ export function startGame(ctx: GameContext): void {
     }
     smoke.update(dt);
     flames.update(dt);
+    // Garage (D113) : arrêté devant, au volant d'un véhicule abîmé, on repart réparé ; le nom du garage s'affiche comme celui d'un véhicule.
+    if (riding) {
+      const d = riding.damage, needs = d.usable && d.version > 0 && (d.health < DAMAGE.max || ZONES.some((z) => d.zones[z] > 0));
+      const g = garageStop.update(dt, ui.garages, riding.state.x, riding.state.y, riding.state.speed, needs);
+      if (g) {
+        d.repair();
+        damaged.delete(riding);
+        vehicleName.show({ make: g.name, model: "Réparée" });
+      }
+    }
     const tier = riding?.damage.tier;
     audio.setDamage(tier === "smoke" ? 0.3 : tier === "heavy" ? 0.7 : tier === "fire" || tier === "wrecked" ? 1 : 0);
     speedo.setHurt(!!riding && (riding.damage.health <= DAMAGE.heavy || !riding.damage.usable));
@@ -720,7 +737,29 @@ export function startGame(ctx: GameContext): void {
       }
       return p.rayPed(x, y, dx, dy, m, out);
     },
-    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by),
+    // Les balles s'arrêtent aussi sur les obstacles ronds : véhicules garés, troncs, poteaux (D113).
+    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by, true),
+    // Véhicules visés (D113) : ceux de la flotte et de la circulation à moins de 80 m ; la balle les abîme du côté où elle entre.
+    rayVehicle: (x, y, dx, dy, maxDist) => {
+      shotTargets.length = 0;
+      for (const v of fleet.around(x, y, 80, near)) if (!v.ridden) shotTargets.push(v);
+      for (const c of (traffic as Traffic | null)?.cars ?? []) if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < 80) shotTargets.push({ state: c.sim.state, spec: c.sim.spec, damage: c.sim.damage });
+      let best: { dist: number; id: number } | null = null;
+      shotTargets.forEach((t, id) => {
+        const d = rayHull(x, y, dx, dy, t, best?.dist ?? maxDist);
+        if (d !== null) best = { dist: d, id };
+      });
+      return best;
+    },
+    hurtVehicle: (id, damage, x, y) => {
+      const t = shotTargets[id];
+      if (!t) return;
+      t.damage.shot(damage, contactAngle(t.state, x - t.state.x, y - t.state.y));
+      if ("def" in t) {
+        damaged.add(t);
+        fleet.refresh();
+      }
+    },
   };
   const drops: { x: number; y: number }[] = [];
   let hudTimer = 0;
@@ -1124,6 +1163,8 @@ export function startGame(ctx: GameContext): void {
     // le pistolet d'un gendarme tué tombe à terre (on peut le ramasser).
     {
       const dmg = police.takeDamage();
+      // Au volant, les balles des gendarmes abîment aussi le véhicule (D113).
+      if (dmg > 0 && riding) riding.damage.shot(dmg);
       if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
       if (police.shots.length > 0) {
         for (let i = 0; i < police.shots.length && i < 4; i++) {

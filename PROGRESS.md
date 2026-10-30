@@ -666,3 +666,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Voitures garées cabossées](docs/captures/d112-garees-cabossees.jpg)
 
+**Dégâts des véhicules, étape 5 : balles, garages, sauvegarde (30 octobre 2026)** (D113)
+- Les balles abîment les véhicules, garés ou qui roulent, et s'arrêtent sur les carrosseries : tu peux t'abriter derrière une voiture garée, les gendarmes ne tirent plus à travers. Un chargeur de pistolet met une voiture en fumée noire, deux la font brûler. Au volant, les balles des gendarmes abîment aussi ta voiture. Les balles s'arrêtent aussi sur les troncs et les poteaux.
+- Garages : les 8 garages automobiles d'Autun (Norauto, Eurorepar, Renault…) sont sur la minimap (pastille bleu-vert avec une clé). Arrête-toi devant, au volant d'un véhicule abîmé : une seconde plus tard, il est réparé et le nom du garage s'affiche. Gratuit pour l'instant, sans effet sur les étoiles.
+- Les dégâts de tes véhicules sont enregistrés avec la partie (les anciennes sauvegardes se lisent toujours).
+- Chantier des dégâts terminé côté code (D109 à D113). 680 tests.
+- À faire de ton côté : tirer sur une voiture garée, t'abriter derrière une voiture pendant une poursuite à quatre étoiles (`?wanted=4&arms=all`), te faire réparer dans un garage. Puis la mesure sur l'Honor (protocole en D113) : `?bench=1&fleet=1&traffic=20`, puis la même avec `&dent=1`, et une explosion en jeu avec `?debug`.
+
+![Réparation au garage](docs/captures/d113-garage.jpg)
+

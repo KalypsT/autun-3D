@@ -37,6 +37,11 @@ export const DAMAGE = {
   burn: 5,
   /** Puissance restante à chaque palier. */
   powerLeft: { ok: 1, smoke: 0.85, heavy: 0.6, fire: 0.6, wrecked: 0 } as Record<DamageTier, number>,
+  /**
+   * Une balle abîme un véhicule du cinquième de ce qu'elle retire à une personne (D113) : un chargeur de pistolet (12) met une voiture ordinaire
+   * en fumée noire, il en faut deux pour le feu ; au fusil d'assaut, une vingtaine de balles.
+   */
+  bullet: 0.2,
   /** Écrasement d'une zone : part des points d'un choc qui s'y inscrit (le reste se répartit sur les voisines), et points pour l'écraser tout à fait. */
   zoneShare: 0.7,
   zoneFull: 45,
@@ -112,6 +117,11 @@ export class VehicleDamage {
     return points;
   }
 
+  /** Balle de ces dégâts (ceux d'une personne), venue de cet angle : ramenée à l'échelle des véhicules et à la solidité du modèle. */
+  shot(points: number, angle = NaN): void {
+    this.damage((points * DAMAGE.bullet) / this.profile.toughness, angle);
+  }
+
   /** Retire des points (balle, explosion, choc), inscrits dans la zone de l'angle donné (NaN : répartis sur l'avant et l'arrière). */
   damage(points: number, angle = NaN): void {
     if (!(points > 0) || this.end) return;
@@ -164,6 +174,8 @@ export class VehicleDamage {
     this.health = Math.min(DAMAGE.max, Math.max(0, health));
     for (const z of ZONES) this.zones[z] = Math.min(1, Math.max(0, zones[z] ?? 0));
     this.end = end;
+    // Une épave enregistrée est froide : elle ne se remet pas à brûler.
+    this.sinceEnd = end ? 600 : 0;
     this.tierSeen = tierOf(this.health);
     // Enregistré en feu : le feu reprend à son début (ou c'est une panne, là où rien ne brûle).
     if (!end && this.tierSeen === "fire") {

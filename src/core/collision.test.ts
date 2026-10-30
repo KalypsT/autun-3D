@@ -112,3 +112,15 @@ describe("pointInRing", () => {
     expect(pointInRing(5, 2, square)).toBe(false);
   });
 });
+
+describe("rayons et obstacles ronds (D113)", () => {
+  it("par défaut, un rayon traverse les cercles ; avec `circles`, il s'arrête à l'entrée du premier ; un départ dans un cercle ne compte pas", () => {
+    const c = new Colliders();
+    c.addCircle(5, 0, 1);
+    c.addCircle(9, 0, 1);
+    expect(c.raycast(0, 0, 20, 0)).toBeNull();
+    expect(c.raycast(0, 0, 20, 0, true)).toBeCloseTo(4 / 20, 6);
+    expect(c.raycast(0, 3, 20, 3, true)).toBeNull();
+    expect(c.raycast(5, 0, 5.5, 0, true)).toBeNull();
+  });
+});
