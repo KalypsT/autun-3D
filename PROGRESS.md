@@ -592,3 +592,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Route de Saulieu vers les Télots, le long de la mer](docs/captures/d105-route-telots.jpg)
 ![Bellevue en presqu'île](docs/captures/d105-bellevue.jpg)
 ![Reprise devant la gendarmerie](docs/captures/d105-gendarmerie.jpg)
+
+**Gravité : sauter, escalader, tomber, décoller (30 octobre 2026)** (D106)
+- À pied : bouton rond « Sauter » au-dessus du bouton d'attaque (espace au clavier). On saute par-dessus les murets et haies basses (jusqu'à 1,4 m). Contre une grille, un portail ou un mur un peu plus haut (jusqu'à 2,5 m), un appui sur Sauter fait escalader puis retomber de l'autre côté. Les murs de bâtiments et les remparts restent infranchissables.
+- On tombe vraiment du haut d'un mur ou d'une falaise : rien jusqu'à 4 m, blessé au-delà, mort vers 15 m.
+- En véhicule (le tien seulement) : une crête prise vite ou le haut d'une montée font décoller, une falaise fait tomber ; en l'air, plus de direction ni de frein ; une réception brutale secoue, et fait tomber d'un deux-roues. La sortie des ponts ne fait pas sauter (les données des ponts ne rejoignent pas toujours la route).
+- 635 tests.
+- À faire de ton côté : sauter par-dessus une haie, escalader une grille, sauter d'un mur haut ; en voiture, prendre vite le haut d'une rue en pente et rouler vers une falaise au sud ; dire si la hauteur des sauts et la force des réceptions te conviennent.

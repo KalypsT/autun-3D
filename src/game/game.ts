@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
-import { createPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
+import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
 import { FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
 import { DOWN_TIME } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
@@ -17,7 +17,7 @@ import { SkidMarks } from "../render/skid-marks";
 import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
-import { DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
+import { DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
@@ -108,6 +108,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("handbrake"),
     document.getElementById("horn"),
     document.getElementById("attack"),
+    document.getElementById("jump"),
   );
   if (params.has("debug")) debugEl.style.display = "block";
 
@@ -272,6 +273,7 @@ export function startGame(ctx: GameContext): void {
   const gasLabel = gasEl.querySelector("span")!;
   document.getElementById("brake")!.innerHTML = `${icon("brake")}<span>Frein</span>`;
   document.getElementById("handbrake")!.innerHTML = `${icon("handbrake")}<span>Frein<br>à main</span>`;
+  document.getElementById("jump")!.innerHTML = icon("jump");
   const speedo = new Speedo(document.getElementById("speedo")!);
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
@@ -310,7 +312,7 @@ export function startGame(ctx: GameContext): void {
     riding = v;
     leaving = false;
     // Un deux-roues tombé se relève quand on remonte dessus.
-    Object.assign(v.state, { lean: 0, wheelie: 0, wheelieRate: 0, fallen: false, impact: 0 });
+    Object.assign(v.state, { lean: 0, wheelie: 0, wheelieRate: 0, fallen: false, impact: 0, vz: 0, air: 0 });
     rideModel = fleet.take(v);
     rideModel.group.add(model.group);
     lights = new VehicleLights(v.def);
@@ -336,6 +338,7 @@ export function startGame(ctx: GameContext): void {
     const side = familyOf(v).dismount;
     const r = colliders.resolve(s.x - Math.cos(s.heading) * side, s.y + Math.sin(s.heading) * side, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: s.heading });
+    groundPlayer(player);
     landWheelie(s, v.spec);
     s.vx = s.vy = s.yawRate = s.steer = 0;
     s.lean = lean;
@@ -401,6 +404,7 @@ export function startGame(ctx: GameContext): void {
     const r = colliders.resolve(x + dx * ahead, y + dy * ahead, PLAYER_RADIUS);
     const throw_ = back ? 0 : 0.6 * speed;
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_, vy: dy * throw_, speed: 0, heading: Math.atan2(dx, dy) });
+    groundPlayer(player);
     downFor = DOWN_TIME;
     downSide = back ? 1 : -1;
     health.damage(fallDamage(speed, health.hp));
@@ -555,6 +559,7 @@ export function startGame(ctx: GameContext): void {
     gun.cancel();
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
+    groundPlayer(player);
     yaw = ARREST_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
     banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`, false);
@@ -574,6 +579,7 @@ export function startGame(ctx: GameContext): void {
     gun.cancel();
     const r = colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: HOSPITAL_SPAWN.heading });
+    groundPlayer(player);
     yaw = HOSPITAL_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(DEATH_HOURS / atmosphere.speed);
     health.restore();
@@ -590,6 +596,7 @@ export function startGame(ctx: GameContext): void {
   let speedLinesOn = false;
   // Klaxon (front montant) et bousculade d'un passant à pied (ralentit un instant).
   let hornHeld = false;
+  let jumpHeld = false;
   /** Accélérateur dosé de la voiture conduite (la commande est tout ou rien). */
   let throttle = 0;
   let bumpTimer = 0;
@@ -619,6 +626,9 @@ export function startGame(ctx: GameContext): void {
     }
     const hornPressed = input.horn && !hornHeld;
     hornHeld = input.horn;
+    // Un appui, un saut : il ne compte qu'au premier pas de simulation de l'image.
+    let jumpNow = input.jump && !jumpHeld && downFor <= 0 && !health.dead;
+    jumpHeld = input.jump;
     if (hornPressed && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
     audio.horn(input.horn && !!riding);
     bumpTimer = Math.max(0, bumpTimer - dt);
@@ -632,7 +642,7 @@ export function startGame(ctx: GameContext): void {
       if (riding) {
         throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
         const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
-        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null);
+        stepVehicle(riding.state, riding.spec, drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
@@ -640,10 +650,25 @@ export function startGame(ctx: GameContext): void {
         if (downFor > 0) {
           downFor = Math.max(0, downFor - STEP);
           slidePlayer(player, STEP, terrain, colliders);
-        } else stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35 }, yaw, STEP, terrain, colliders);
+        } else {
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35, jump: jumpNow }, yaw, STEP, terrain, colliders);
+          jumpNow = false;
+        }
       }
       (traffic as Traffic | null)?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
+    }
+    // Réception d'un saut ou d'une chute : choc ressenti au-delà de 1,5 m, blessure au-delà de SAFE_DROP.
+    if (player.landed > 0) {
+      const drop = player.landed;
+      player.landed = 0;
+      if (drop > 1.5) {
+        audio.impact(Math.min(drop * 1.5, 8));
+        haptics.crash(Math.min(drop * 1.5, 8));
+        shake.impact(Math.min(drop, 8));
+      }
+      const hurt = dropDamage(drop);
+      if (hurt > 0 && !health.dead) health.damage(hurt);
     }
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
@@ -796,6 +821,7 @@ export function startGame(ctx: GameContext): void {
       stunt.update(riding.state.wheelie, riding.state.speed, dt);
     } else {
       model.setDown(downFor > 0 ? { t: DOWN_TIME - downFor, side: downSide } : null);
+      model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
       model.group.visible = camDist > 0.9;
       if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);

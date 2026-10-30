@@ -106,3 +106,12 @@ export const FALL_DAMAGE_PER_KMH = 0.8;
 export function fallDamage(speed: number, hp: number): number {
   return Math.max(0, Math.min(Math.abs(speed) * 3.6 * FALL_DAMAGE_PER_KMH, hp - 1));
 }
+
+/** Chute à pied : sans blessure jusqu'à SAFE_DROP (m), puis DROP_DAMAGE points par mètre ; au-delà de 15 m environ, elle tue. */
+export const SAFE_DROP = 4;
+export const DROP_DAMAGE = 9;
+
+/** Blessure d'une chute à pied de `height` mètres (saut d'un mur, d'un quai, d'une falaise). */
+export function dropDamage(height: number): number {
+  return Math.max(0, (height - SAFE_DROP) * DROP_DAMAGE);
+}

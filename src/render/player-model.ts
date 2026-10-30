@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { createPose, cycleLength, HIT_POSE, hitPose, walkPose, type Pose } from "../core/character-rig";
+import { airPose, climbPose, createPose, cycleLength, HIT_POSE, hitPose, walkPose, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
@@ -35,6 +35,8 @@ export interface PlayerModel {
   setStrike(strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null): void;
   /** Chute (D98, tombé d'un deux-roues) : temps depuis la chute (s) et sens (+1 sur le dos, −1 en avant), pose des passants heurtés ; null debout. */
   setDown(down: { t: number; side: number } | null): void;
+  /** En l'air (`vz`, vitesse verticale) ou en escalade (`t`, altitude, pour le rythme des mains) ; null au sol. */
+  setAir(air: { climb: boolean; vz: number; t: number } | null): void;
   dispose(): void;
 }
 
@@ -56,6 +58,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
   let down: { t: number; side: number } | null = null;
+  let air: { climb: boolean; vz: number; t: number } | null = null;
   const mask = new Float32Array(4);
   /** Sur un véhicule : l'arme reste dans la poche. */
   let mounted = false;
@@ -100,7 +103,16 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
         publish();
         return;
       }
-      walkPose(pose, phase, v, d);
+      if (air?.climb) {
+        // Le bassin garde sa hauteur debout (pose de référence à l'arrêt), le reste du corps s'agrippe.
+        walkPose(pose, phase, 0, d);
+        climbPose(pose, air.t);
+        rigs.solveWith(0, pose, root);
+        publish();
+        return;
+      }
+      walkPose(pose, phase, air ? 0 : v, d);
+      if (air) airPose(pose, air.vz);
       // Arme blanche en main : garde du bras droit ; un coup en cours se joue par-dessus.
       if (heldStyle && held) guardPose(pose, heldStyle);
       if (gun && held) gunPose(pose, gun.id, gun.aim, gun.recoil);
@@ -143,6 +155,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     setDown(next) {
       down = next;
+    },
+    setAir(next) {
+      air = next;
     },
     dispose() {
       batch.dispose();

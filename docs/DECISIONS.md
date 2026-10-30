@@ -1307,3 +1307,31 @@ Le pied le plus bas reste au sol comme avant, mais la hauteur des chevilles se c
 - Les routes qui partent vers la mer finissent en impasse au dernier nœud OpenStreetMap à terre ; les conducteurs de la circulation qui y arrivent sont retirés (comme dans toute impasse, D64).
 - Pas encore de vagues, de nage ni de bateau ; un véhicule qui entre dans l'eau s'arrête au bord, il ne coule pas.
 - Mesure sur téléphone à refaire (`?bench=1`) : le parcours du banc est dans l'ancien carré.
+
+## 2026-10-30 — D106. Gravité : sauter, escalader, tomber, décoller
+
+**Demande** : les voitures restent collées au sol (pas de décollage en haut d'une montée prise vite, ni de chute d'une falaise) ; le personnage ne peut pas sauter par-dessus une haie ou une barrière. Choix : **arcade** ; escalade des grilles un peu plus hautes ; blessure à partir d'une certaine hauteur de chute ; **seulement pour le joueur** (la circulation et les gendarmes suivent toujours le relief) ; bouton tactile à droite. Tremplins : plus tard, quand on aura choisi où les poser.
+
+**Avant** : aucune vitesse verticale. À chaque image, l'altitude était imposée par le relief (`heightAt`) : au bord d'un mur de soutènement, le joueur ou le véhicule était téléporté en bas.
+
+**À pied** (`src/core/player.ts`) :
+- Gravité 22 m/s² (plus forte que la vraie : le saut est vif), saut de 1,1 m, ≈ 0,6 s en l'air. En l'air, on garde son élan et on ne l'infléchit qu'à 5 m/s².
+- Les murs, clôtures et haies gardent leur hauteur dans les collisions (`Segment.height`, déjà dans les données : `Wall.height`) : en l'air, on passe au-dessus de ce qui est plus bas que les pieds repliés (30 cm au-dessus des pieds, soit 1,4 m au sommet du saut). Les murs de bâtiments n'ont pas de hauteur : jamais franchis. Parapets des ponts : 1,1 m.
+- Escalade (`Segment.climb`, `wallTop` dans `src/core/world.ts`) : grilles, portails, murs et murets jusqu'à 2,5 m, haies jusqu'à 1,5 m. Contre l'obstacle, en le poussant, un appui sur Sauter (ou l'obstacle attrapé en retombant d'un saut) fait monter à 2,4 m/s, passer par-dessus en 0,3 s, puis retomber de l'autre côté. Remparts (6 m) et murs de 3,5 m : non.
+- Chute : quand le sol descend de plus de 25 cm (plus 1,2 m par mètre parcouru) en un pas, on tombe au lieu de le suivre. Blessure (`dropDamage`, `src/core/health.ts`) : rien jusqu'à 4 m, puis 9 points par mètre (12 m : 72 points ; vers 15 m, la mort). Choc ressenti (son, vibration, secousse) au-delà de 1,5 m.
+- Poses (`airPose`, `climbPose`, `src/core/character-rig.ts`) : jambes repliées et bras écartés en l'air, jambes qui se déplient en tombant vite ; bras levés et appuis alternés en escalade.
+- Commandes : espace, ou bouton rond « Sauter » au-dessus du bouton d'attaque. Un appui bref entre deux images n'est pas perdu (`Controls.jumpTap`).
+
+**En véhicule** (`src/core/vehicle.ts`, `stepVehicle(…, fly = true)` pour le joueur seulement) :
+- Gravité 7,4 m/s² (arcade : on décolle plus facilement d'une crête et le vol dure plus). La caisse suit une trajectoire libre dès que le sol s'en écarte ; au sol, sa vitesse verticale suit celle de la chaussée avec 0,1 s de retard (suspension) : les bosses de quelques centimètres ne la lancent pas, une rampe de quelques mètres si. La pente qui donne l'élan est bornée à 45 % : au-delà, c'est un mur ou un défaut du relief, pas une rampe.
+- Débattement de 25 cm (`SUSPENSION`) : en dessous, les roues restent au sol et gardent l'adhérence. Au-delà, en vol (`airborne`) : ni moteur, ni freins, ni pneus ; le véhicule garde son élan et sa rotation (qui s'amortit), le nez suit la trajectoire, il passe au-dessus des clôtures moins hautes que ses roues.
+- Réception : la vitesse verticale que la pente ne prend pas, au-delà de 4,5 m/s, compte comme un choc (`impact`) : son, secousse, et chute d'un deux-roues au-delà de son seuil (D98).
+- Bouts de pont et de quai (`onDeck`, `src/core/shore.ts`) : dans les données, les tabliers ne rejoignent pas toujours la chaussée (jusqu'à 4,5 m de marche, D93). Quitter un tablier en roulant redescend sans voler, comme avant (sinon on sautait en sortie de pont) ; à pied aussi. On tombe toujours d'un pont si l'on enjambe le parapet.
+
+**Mesures** : une citadine menée par le conducteur simulé sur 24 trajets de 2 minutes (18 km, 30 à 45 km/h), avec le vol : une dizaine de petits sauts, quatre de plus de 70 cm, tous sur des bosses du relief (un creux de 2 m à pentes de 60 % rue près de x −1 035, y 710 ; une bosse de 2 m près de x −572, y 443) ; plus aucun en sortie de pont. Essai dans le navigateur : saut par-dessus un muret de 1 m, escalade d'une grille de 1,5 m et d'un mur de 2 m. Tests : 635.
+
+**Limites connues** :
+- Les vrais défauts du relief (bosses et creux de 2 m sur certaines rues) font maintenant sauter la voiture du joueur : à corriger dans les données si on en trouve qui gênent.
+- Pas de contrôle en l'air en véhicule, pas de tonneau : le véhicule retombe toujours sur ses roues.
+- Pas de tremplins posés exprès (à choisir : voir la proposition dans PROGRESS.md).
+- On ne monte pas sur un muret pour y rester : on passe toujours de l'autre côté.

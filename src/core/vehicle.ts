@@ -1,6 +1,6 @@
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
-import { BIKE_DEPTH, CAR_DEPTH, shoreNormal, waterDepth } from "./shore";
+import { BIKE_DEPTH, CAR_DEPTH, onDeck, shoreNormal, waterDepth } from "./shore";
 
 /**
  * Véhicules : logique pure. Modèle « bicyclette » dynamique (deux essieux, pneus à rigidité de dérive
@@ -327,6 +327,12 @@ export interface VehicleState {
   wheelieRate: number;
   /** Deux-roues : le pilote vient de tomber (cabrage trop poussé) ; remis à faux par l'appelant. */
   fallen: boolean;
+  /**
+   * Vitesse verticale (m/s, positive vers le haut) et écart de la trajectoire libre au sol (m) : 0 au sol ; les roues décollent au-delà de
+   * SUSPENSION (voir `airborne`).
+   */
+  vz: number;
+  air: number;
 }
 
 export interface DriveInput {
@@ -343,7 +349,7 @@ export interface DriveInput {
 }
 
 export function createVehicle(x: number, y: number, heading: number, terrain: HeightField): VehicleState {
-  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0, wheelie: 0, wheelieRate: 0, fallen: false };
+  return { x, y, z: terrain.heightAt(x, y), heading, vx: 0, vy: 0, yawRate: 0, steer: 0, pitch: 0, lean: 0, wheel: 0, speed: 0, impact: 0, brakeLevel: 0, accel: 0, lockedFront: false, lockedRear: false, skid: 0, wheelie: 0, wheelieRate: 0, fallen: false, vz: 0, air: 0 };
 }
 
 const SUBSTEPS = 2;
@@ -483,8 +489,45 @@ export function landWheelie(s: VehicleState, spec: VehicleSpec): void {
   s.wheelie = s.wheelieRate = 0;
 }
 
-/** Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. */
-export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null): void {
+/**
+ * Gravité des véhicules (m/s²), plus faible que la vraie (arcade) : une crête prise vite ou le haut d'une montée font décoller,
+ * et le vol dure un peu plus.
+ */
+export const CAR_GRAVITY = 7.4;
+/**
+ * Débattement de la suspension (m) : tant que la trajectoire libre s'écarte moins que cela du sol (bosses du relief, petite crête), les roues
+ * restent au sol et gardent leur adhérence. Au-delà, le véhicule vole : plus d'adhérence, le nez suit la trajectoire.
+ */
+export const SUSPENSION = 0.25;
+
+/** Retard (s) de la caisse sur les mouvements verticaux de la chaussée. */
+const SUSPENSION_TIME = 0.1;
+
+/** Le véhicule vole (ses roues ne touchent plus le sol). */
+export function airborne(s: VehicleState): boolean {
+  return s.air > SUSPENSION;
+}
+/** Vitesse verticale (m/s) qu'une réception absorbe sans choc ; au-delà, elle compte comme un choc (bruit, secousse, chute d'un deux-roues). */
+const LAND_SOFT = 4.5;
+/** Pente la plus forte (montée par mètre) qui lance le véhicule vers le haut comme une rampe. */
+const LAUNCH_SLOPE = 0.45;
+/** Tangage maximal en vol (rad) et vitesse à laquelle le nez suit la trajectoire (rad/s). */
+const AIR_PITCH = 0.7;
+const AIR_PITCH_RATE = 1.2;
+
+/** Hauteur dont le cabrage relève le véhicule (m). */
+function wheelieLift(s: VehicleState, spec: VehicleSpec): number {
+  return s.wheelie === 0 ? 0 : (s.wheelie > 0 ? spec.rear : spec.front) * Math.sin(Math.abs(s.wheelie));
+}
+
+/**
+ * Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. `fly` : il peut quitter le sol (véhicule
+ * du joueur) ; sinon, il suit toujours le relief (circulation, gendarmes).
+ */
+export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null, fly = false): void {
+  // Altitude de la trajectoire libre au début du pas (la suspension détendue en plus) ; on ne décolle pas du bout d'un tablier (voir `onDeck`).
+  const z0 = s.z - wheelieLift(s, spec) + Math.min(s.air, SUSPENSION);
+  const deck0 = fly && s.air < 1 && onDeck(terrain, s.x, s.y, terrain.heightAt(s.x, s.y, z0));
   // Chocs à chaque sous-pas, et assez de sous-pas pour qu'on n'avance jamais de plus que le plus petit rayon de la coque entre deux
   // tests : sinon un mur fin passe entre deux positions (moto à 250 km/h : 68 % de traversées, D50).
   const n = collisionSteps(spec, Math.hypot(s.vx, s.vy), dt);
@@ -492,9 +535,10 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   for (let i = 0; i < n; i++) {
     const px = s.x, py = s.y;
     integrate(s, spec, input, h, terrain);
-    collide(s, spec, colliders);
+    const clear = Math.max(0, s.air - SUSPENSION);
+    collide(s, spec, colliders, clear);
     // Obstacles propres à certains véhicules (escaliers pour une voiture).
-    if (extra) collide(s, spec, extra);
+    if (extra) collide(s, spec, extra, clear);
     wade(s, spec, terrain, px, py, h);
   }
   // Limites du monde (3 m de marge).
@@ -503,19 +547,50 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   if (y !== s.y) s.vy = 0;
   s.x = x;
   s.y = y;
-  // Hauteur et tangage : moyenne et pente entre les deux essieux.
+  // Hauteur et tangage du sol : moyenne et pente entre les deux essieux.
   const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
+  const L = spec.front + spec.rear;
   // L'altitude actuelle départage le tablier d'un pont et la route qui passe dessous (D93).
-  const zf = terrain.heightAt(s.x + fx * spec.front, s.y + fy * spec.front, s.z);
-  const zr = terrain.heightAt(s.x - fx * spec.rear, s.y - fy * spec.rear, s.z);
-  s.z = (zf * spec.rear + zr * spec.front) / (spec.front + spec.rear);
-  s.pitch = Math.atan2(zf - zr, spec.front + spec.rear);
-  // Sur une roue : le véhicule pivote autour de la roue restée au sol (le modèle tourne autour du point sous le centre de gravité, on le relève d'autant).
-  if (s.wheelie !== 0) {
-    s.z += (s.wheelie > 0 ? spec.rear : spec.front) * Math.sin(Math.abs(s.wheelie));
-    s.pitch += s.wheelie;
-  }
+  const zf = terrain.heightAt(s.x + fx * spec.front, s.y + fy * spec.front, z0);
+  const zr = terrain.heightAt(s.x - fx * spec.rear, s.y - fy * spec.rear, z0);
+  const zg = (zf * spec.rear + zr * spec.front) / L;
+  // Pente qui donne l'élan vertical, bornée : au-delà de LAUNCH_SLOPE, c'est un mur ou un défaut du relief, pas une rampe.
+  const slope = clamp((zf - zr) / L, -LAUNCH_SLOPE, LAUNCH_SLOPE);
   s.speed = s.vx * fx + s.vy * fy;
+  // Vol (arcade) : le véhicule suit sa trajectoire libre dès que le sol s'en écarte (crête prise vite, bord d'un quai), jusqu'à le retrouver.
+  const zb = z0 + s.vz * dt - 0.5 * CAR_GRAVITY * dt * dt;
+  const grounded = !fly || (deck0 && !onDeck(terrain, s.x, s.y, zg));
+  if (zb > zg && !grounded) {
+    s.vz -= CAR_GRAVITY * dt;
+    s.air = zb - zg;
+    if (airborne(s)) {
+      s.z = zb - SUSPENSION;
+      s.wheelie = s.wheelieRate = 0;
+      // Le nez suit la trajectoire.
+      const target = clamp(Math.atan2(s.vz, Math.max(Math.hypot(s.vx, s.vy), 2)), -AIR_PITCH, AIR_PITCH);
+      s.pitch += clamp(target - s.pitch, -AIR_PITCH_RATE * dt, AIR_PITCH_RATE * dt);
+    } else {
+      // La suspension se détend : les roues restent au sol.
+      s.z = zg + wheelieLift(s, spec);
+      s.pitch = Math.atan2(zf - zr, L) + s.wheelie;
+    }
+  } else {
+    // Au sol, la vitesse verticale de la caisse suit celle de la chaussée avec le retard de la suspension : les petites bosses ne la lancent
+    // pas, une rampe de quelques mètres, si. Réception : la part de vitesse verticale que la pente du sol n'absorbe pas fait un choc.
+    const road = s.speed * slope;
+    if (s.air > 0) {
+      s.impact = Math.max(s.impact, road - s.vz - LAND_SOFT);
+      s.vz = Math.max(s.vz, road);
+    } else s.vz += (road - s.vz) * Math.min(1, dt / SUSPENSION_TIME);
+    s.air = 0;
+    s.z = zg;
+    s.pitch = Math.atan2(zf - zr, L);
+    // Sur une roue : le véhicule pivote autour de la roue restée au sol (le modèle tourne autour du point sous le centre de gravité, on le relève d'autant).
+    if (s.wheelie !== 0) {
+      s.z += wheelieLift(s, spec);
+      s.pitch += s.wheelie;
+    }
+  }
   s.wheel += (s.speed * dt) / spec.wheelRadius;
   // Deux-roues : un choc trop fort fait tomber le pilote (D98). Voiture : roulis de caisse vers l'extérieur du virage (l'inclinaison d'un
   // deux-roues se calcule pendant l'intégration).
@@ -595,7 +670,30 @@ function pitchUp(s: VehicleState, spec: VehicleSpec, input: DriveInput, u: numbe
   if (over) s.fallen = true;
 }
 
+/** En vol : ni adhérence ni moteur ni freins, le véhicule garde son élan (seule la traînée le freine) et sa rotation, qui s'amortit. */
+function fly(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number): void {
+  const v = Math.hypot(s.vx, s.vy);
+  const k = v > 0 ? Math.max(0, 1 - ((spec.drag * v) / spec.mass) * dt) : 1;
+  s.vx *= k;
+  s.vy *= k;
+  s.yawRate *= 1 - Math.min(1, dt * 0.8);
+  s.heading += s.yawRate * dt;
+  // Le volant tourne quand même (on le voit), sans effet.
+  const limit = steerLimit(spec, v);
+  s.steer += clamp(clamp(input.steer, -1, 1) * limit - s.steer, -spec.steerRate * dt, spec.steerRate * dt);
+  s.accel += (0 - s.accel) * Math.min(1, dt * 8);
+  s.brakeLevel = 0;
+  s.lockedFront = s.lockedRear = false;
+  s.skid = 0;
+  s.x += s.vx * dt;
+  s.y += s.vy * dt;
+}
+
 function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField): void {
+  if (airborne(s)) {
+    fly(s, spec, input, dt);
+    return;
+  }
   const { mass: m, front: a, rear: b } = spec;
   const L = a + b;
   const sin = Math.sin(s.heading), cos = Math.cos(s.heading);
@@ -826,12 +924,13 @@ function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: numb
   }
 }
 
-function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders): void {
+/** `clear` : hauteur des roues au-dessus du sol, en vol ; on passe au-dessus des murets et clôtures moins hauts. */
+function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear = 0): void {
   const inertia = spec.yawInertia;
   for (const [off, r] of spec.hull) {
     const sin = Math.sin(s.heading), cos = Math.cos(s.heading);
     const cx = s.x + sin * off, cy = s.y + cos * off;
-    const res = colliders.resolve(cx, cy, r);
+    const res = colliders.resolve(cx, cy, r, clear);
     if (!res.hit) continue;
     const nx = res.nx, ny = res.ny;
     s.x += res.x - cx;

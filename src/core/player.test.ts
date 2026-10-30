@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Colliders } from "./collision";
-import { createPlayer, RUN_SPEED, SLIDE_DECEL, slidePlayer, stepPlayer, WALK_SPEED } from "./player";
+import { Terrain } from "../data/terrain";
+import type { TerrainMeta } from "../data/types";
+import { dropDamage } from "./health";
+import { createPlayer, JUMP_HEIGHT, RUN_SPEED, SLIDE_DECEL, slidePlayer, stepPlayer, WALK_SPEED } from "./player";
 import { flatTerrain } from "./testing";
 
 const DT = 1 / 60;
@@ -100,5 +103,105 @@ describe("pilote tombé (D98)", () => {
     q.vy = 12;
     for (let i = 0; i < 120; i++) slidePlayer(q, 1 / 60, t, wall);
     expect(q.y).toBeLessThan(0);
+  });
+});
+
+/** Terrain dont l'altitude ne dépend que de y (profil nord-sud). */
+function profile(z: (y: number) => number): Terrain {
+  const meta = { cols: 200, rows: 200, res: 1, x0: -100, y0: -100, y1: 100, base: 0, unit: 0.01, zmin: -50, zmax: 50 } as TerrainMeta;
+  const raw = new Float32Array(200 * 200);
+  for (let r = 0; r < 200; r++) for (let c = 0; c < 200; c++) raw[r * 200 + c] = z(100 - r);
+  return new Terrain(meta, raw);
+}
+
+describe("saut, chute et escalade", () => {
+  const go = { forward: 1, right: 0, run: true };
+
+  it("un saut monte à JUMP_HEIGHT et retombe en moins d'une seconde", () => {
+    const p = createPlayer(0, 0, terrain);
+    stepPlayer(p, { ...go, forward: 0, jump: true }, 0, DT, terrain, new Colliders());
+    let top = 0, frames = 0;
+    while (p.air && frames < 120) {
+      stepPlayer(p, { ...go, forward: 0 }, 0, DT, terrain, new Colliders());
+      top = Math.max(top, p.z);
+      frames++;
+    }
+    expect(top).toBeCloseTo(JUMP_HEIGHT, 1);
+    expect(frames).toBeLessThan(60);
+    expect(p.z).toBe(0);
+    expect(p.landed).toBeCloseTo(JUMP_HEIGHT, 1);
+    expect(dropDamage(p.landed)).toBe(0);
+  });
+
+  it("passe un muret de 1 m en sautant, pas sans sauter, et jamais un mur de 2 m", () => {
+    const wall = (h: number): Colliders => {
+      const c = new Colliders();
+      c.addSegment(-10, 2, 10, 2, true, { height: h, climb: false });
+      return c;
+    };
+    const walk = createPlayer(0, 0, terrain);
+    run(120, () => stepPlayer(walk, go, 0, DT, terrain, wall(1)));
+    expect(walk.y).toBeLessThan(2);
+    for (const [h, over] of [[1, true], [2, false]] as const) {
+      const p = createPlayer(0, -3, terrain);
+      const c = wall(h);
+      run(40, () => stepPlayer(p, go, 0, DT, terrain, c));
+      stepPlayer(p, { ...go, jump: true }, 0, DT, terrain, c);
+      run(120, () => stepPlayer(p, go, 0, DT, terrain, c));
+      expect(p.y > 2).toBe(over);
+    }
+  });
+
+  it("escalade une grille de 2 m qu'on pousse en sautant, et retombe de l'autre côté", () => {
+    const c = new Colliders();
+    c.addSegment(-10, 2, 10, 2, true, { height: 2, climb: true });
+    const p = createPlayer(0, 0, terrain);
+    run(60, () => stepPlayer(p, go, 0, DT, terrain, c));
+    stepPlayer(p, { ...go, jump: true }, 0, DT, terrain, c);
+    expect(p.climb).not.toBeNull();
+    let top = 0;
+    run(150, () => {
+      stepPlayer(p, go, 0, DT, terrain, c);
+      top = Math.max(top, p.z);
+    });
+    expect(top).toBeGreaterThanOrEqual(2);
+    expect(p.climb).toBeNull();
+    expect(p.y).toBeGreaterThan(2.3);
+    expect(p.z).toBe(0);
+  });
+
+  it("n'escalade pas un mur de bâtiment", () => {
+    const c = new Colliders();
+    c.addSegment(-10, 2, 10, 2);
+    const p = createPlayer(0, 0, terrain);
+    run(60, () => stepPlayer(p, go, 0, DT, terrain, c));
+    stepPlayer(p, { ...go, jump: true }, 0, DT, terrain, c);
+    run(120, () => stepPlayer(p, go, 0, DT, terrain, c));
+    expect(p.climb).toBeNull();
+    expect(p.y).toBeLessThan(2);
+  });
+
+  it("tombe du haut d'une falaise de 10 m au lieu d'en suivre la paroi, et se blesse", () => {
+    const cliff = profile((y) => (y < 5 ? 10 : 0));
+    const p = createPlayer(0, 0, cliff);
+    let fell = false;
+    run(240, () => {
+      stepPlayer(p, go, 0, DT, cliff, new Colliders());
+      fell ||= p.air;
+      if (p.landed > 0) expect(p.landed).toBeGreaterThan(9);
+    });
+    expect(fell).toBe(true);
+    expect(p.z).toBeCloseTo(0, 1);
+    expect(dropDamage(10)).toBeGreaterThan(40);
+    expect(dropDamage(3)).toBe(0);
+  });
+
+  it("descend une pente raide en courant sans décoller", () => {
+    const hill = profile((y) => -0.6 * y);
+    const p = createPlayer(0, -20, hill);
+    run(300, () => {
+      stepPlayer(p, go, 0, DT, hill, new Colliders());
+      expect(p.air).toBe(false);
+    });
   });
 });
