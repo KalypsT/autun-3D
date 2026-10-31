@@ -571,6 +571,16 @@ def measure_theatre(bid, b, spec):
     depth = math.dist(m0, m1)
     stepd = next(float(d) for d in np.arange(0.25, depth, 0.25)
                  if mns(m0[0] + (m1[0] - m0[0]) * d / depth, m0[1] + (m1[1] - m0[1]) * d / depth) > ztop - 0.15)
+    # Poteaux d'éclairage et arbustes taillés (positions sur l'orthophotographie : ombres des poteaux, boules sombres des arbustes ; photos) :
+    # haut = plus haut point du MNS au-dessus du terrain à moins d'1 m. Un poteau trop fin pour le relevé (moins de 4 m) prend la hauteur du
+    # premier (ombres de même longueur).
+    def peak(x, y, r=1.0):
+        return max(mns(x + dx, y + dy) - mnt(x + dx, y + dy) for dx in np.arange(-r, r + 0.01, 0.25) for dy in np.arange(-r, r + 0.01, 0.25))
+    poles = []
+    for x, y in spec.get("poles", []):
+        h = peak(x, y)
+        poles.append([x, y, round(float(h if h > 4 or not poles else poles[0][2]), 2)])
+    shrubs = [[x, y, round(float(min(1.4, max(0.6, peak(x, y, 0.75)))), 2)] for x, y in spec.get("shrubs", [])]
     r2f = lambda v: round(float(v), 2)
     return {
         "t": "theatre", "id": bid, "n": spec.get("name", "Théâtre romain"),
@@ -579,6 +589,7 @@ def measure_theatre(bid, b, spec):
         "pr": [r2f(r1), r2f(r2), r2f(zp)], "up": [r2f(r2), r2f(r3), r2f(r4), r2f(r5), r2f(z5)],
         "lanes": [lanes_lo, [[u, z] for u, z in zip(lanes_up, tops_up)], lane], "cun": cun, "ends": ends,
         "stage": [v for p in sc for v in (r2f(p[0]), r2f(p[1]))] + [r2f(ztop), r2f(stepd)],
+        "poles": poles, "shrubs": shrubs,
     }
 
 

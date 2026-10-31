@@ -368,6 +368,9 @@ export interface TheatreSite {
   ends: [number, number, number[]][];
   /** Scène moderne : quatre coins (le premier côté face à l'orchestre), dessus, profondeur des marches. */
   stage: number[];
+  /** Poteaux d'éclairage (pied x, y ; hauteur au-dessus du sol) et arbustes taillés (x, y, hauteur) : orthophotographie et photos, D136. */
+  poles?: [number, number, number][];
+  shrubs?: [number, number, number][];
 }
 
 export interface TileKinds {

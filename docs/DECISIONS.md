@@ -1928,3 +1928,29 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![La navigation, avant et après (recouvrement de `nav_debug.py`)](captures/d135-theatre-navigation.jpg)
 ![Des passants dans l'orchestre et sur la scène, vus de la précinction](captures/d135-theatre-passants.jpg)
 ![Depuis l'extrémité nord](captures/d135-theatre-passants-nord.jpg)
+
+## 2026-10-31 — D136. Bâtiments d'après photos, étape 16 : le théâtre romain, barrières, poteaux et arbustes
+
+**Suite et fin du plan validé (D133), étape 4.** Mobilier moderne vu sur les photos de l'utilisateur.
+
+**Correction de ma lecture des photos** : j'avais lu « des bancs le long de l'allée » sur la photo de drone (à droite, au nord-est). L'orthophotographie montre à cet endroit **quatre arbustes taillés en boule**, en rangée sur un îlot d'herbe entre deux allées, et pas de banc. Ce sont donc des arbustes. Aucun banc n'est visible ailleurs, ni dans OpenStreetMap.
+
+**Mesures** (`build_monuments.py`, `poles` et `shrubs` du site `theatre`) :
+- **Poteaux d'éclairage** : aucun n'est dans OpenStreetMap ni dans le mobilier des tuiles. Sur l'orthophotographie, deux ombres fines d'environ 13 m, sans couronne : leur pied donne la position (`poles` de `manual.json`). L'un au sud-est de l'orchestre (photo 2 : au-delà de la scène ; photo de drone : dans la pelouse au premier plan), l'autre près des arbustes (photo de drone, à droite). Hauteur : plus haut point du modèle de surface à moins d'1 m du pied, **9,2 m** pour le premier ; le second est trop fin pour le relevé (2,4 m) : il prend la hauteur du premier (ombres de même longueur). **Le premier était dans la carte comme un arbre** (couronne d'1,2 m de rayon, 10,4 m) : cet « arbre » n'est plus dessiné ni un obstacle.
+- **Arbustes** : positions sur l'orthophotographie (`shrubs`), hauteur = plus haut point du modèle de surface à moins de 75 cm, bornée à 0,6-1,4 m (0,6 à 0,65 m).
+
+**Rendu** (`src/render/theatre.ts`) :
+- **Barrières de la scène** (photos) : barrières galvanisées le long de ses deux côtés, panneaux de 2,4 m, poteaux, lisses haute et basse, barreaux tous les 20 cm, au niveau des marches puis du plateau. Elles correspondent aux obstacles de D133 (1,1 m, escaladables).
+- **Poteaux** : fût effilé, traverse et deux projecteurs tournés vers le milieu de l'orchestre ; **jamais allumés** (choix de l'utilisateur : le théâtre n'est pas éclairé la nuit).
+- **Arbustes** : octogones qui se resserrent en haut, vert sombre.
+- Poteaux (20 cm) et arbustes (70 cm) sont des obstacles ronds (`landmarkCircles`).
+- **10 930 triangles** pour tout le théâtre (9 518 avant ; borne du test : 12 000).
+
+**Tests** : deux poteaux de 7 à 12 m, quatre arbustes, tous obstacles ; l'arbre du pied du premier poteau est bien retiré.
+
+**Bilan du théâtre (D133 à D136)** : cavea mesurée, gradins restaurés en bas et dans deux coins du haut, précinction, coins herbus et massifs ruinés, escaliers, orchestre, scène et ses barrières, poteaux, arbustes ; tout est praticable, les passants y entrent, la piste du stade est en terre. **Pas fait** : les sièges des passants sur les gradins (la simulation n'a pas de place assise) ; pas de mur de scène ni de vomitoire (rien de lisible sur les photos ni dans le relevé).
+
+![La scène et ses barrières, un poteau à gauche](captures/d136-theatre-scene.jpg)
+![Les arbustes taillés et le second poteau](captures/d136-theatre-arbustes.jpg)
+![Du haut de l'extrémité nord, comme la photo 2](captures/d136-theatre-nord.jpg)
+![Vue de drone](captures/d136-theatre-drone.jpg)

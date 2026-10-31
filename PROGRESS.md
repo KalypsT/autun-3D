@@ -915,3 +915,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![La navigation, avant et après](docs/captures/d135-theatre-navigation.jpg)
 ![Des passants dans l'orchestre et sur la scène](docs/captures/d135-theatre-passants.jpg)
+
+**Bâtiments d'après photos, étape 16 : le théâtre romain, barrières, poteaux et arbustes (31 octobre 2026)** (D136)
+- La scène a ses barrières galvanisées sur ses deux côtés.
+- Deux poteaux d'éclairage (9,2 m), retrouvés par leur ombre sur l'orthophoto ; l'un était dans la carte comme un arbre. Ils ne s'allument pas la nuit.
+- Correction : ce que j'avais pris pour des bancs sur ta photo de drone sont quatre arbustes taillés (orthophoto) ; ils sont dessinés comme tels.
+- 10 930 triangles pour tout le théâtre. 735 tests.
+- Le plan du théâtre est terminé (D133 à D136).
+
+![La scène et ses barrières](docs/captures/d136-theatre-scene.jpg)
+![Les arbustes et le second poteau](docs/captures/d136-theatre-arbustes.jpg)
+![Vue de drone](docs/captures/d136-theatre-drone.jpg)

@@ -97,6 +97,12 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
     out.push([lay.totem[0], lay.totem[1], 0.5]);
   }
+  // Théâtre romain (D136) : poteaux d'éclairage et arbustes taillés.
+  for (const s of kinds.sites) {
+    if (s.t !== "theatre") continue;
+    for (const [x, y] of s.poles ?? []) out.push([x, y, 0.2]);
+    for (const [x, y] of s.shrubs ?? []) out.push([x, y, 0.7]);
+  }
   // Fontaine d'après photo (D131) : son bassin.
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
   // Auvents sans site (rare) : un poteau à chaque coin.

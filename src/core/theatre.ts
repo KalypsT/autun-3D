@@ -401,6 +401,8 @@ export function theatreWalls(s: TheatreSite, ground: (x: number, y: number) => n
 
 /** L'arbre (x, y) pousse-t-il dans le théâtre (cavea jusqu'à la lisière, orchestre, scène) ? */
 export function inTheatre(s: TheatreSite, x: number, y: number): boolean {
+  // Un « arbre » de la carte au pied d'un poteau d'éclairage est le poteau lui-même (couronne étroite, D136).
+  if ((s.poles ?? []).some(([px, py]) => Math.hypot(x - px, y - py) < 1.5)) return true;
   const L = theatreLayout(s);
   const [R, u] = polar(L, x, y);
   if (R < L.r4 && Math.abs(u) <= HALF + 0.05) return true;

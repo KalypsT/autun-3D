@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
 import type { LodBuilding, Site, TheatreSite, TileKinds } from "../data/types";
 import { Decks, STEP_UP } from "../core/decks";
-import { treesOutsideMonuments } from "../core/landmarks";
+import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { inTheatre, laneStepZ, laneZ, theatreDecks, theatreLayout, theatreSectors, theatreWalls, xyOf } from "../core/theatre";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
@@ -164,6 +164,21 @@ describe("théâtre romain (D133)", () => {
       }
     }
     expect(hits).toBe(0);
+  });
+
+  it("mobilier (D136) : deux poteaux d'éclairage d'environ 9 m et quatre arbustes, obstacles ; l'« arbre » du pied du premier poteau est retiré", () => {
+    expect(s.poles).toHaveLength(2);
+    for (const [, , h] of s.poles!) {
+      expect(h).toBeGreaterThan(7);
+      expect(h).toBeLessThan(12);
+    }
+    expect(s.shrubs).toHaveLength(4);
+    const circles = landmarkCircles(k, []);
+    for (const [x, y] of [...s.poles!, ...s.shrubs!]) expect(circles.some(([cx, cy]) => cx === x && cy === y)).toBe(true);
+    const tile = JSON.parse(readFileSync("public/data/tiles/29_36.json", "utf8")) as { trees: [number, number, number, number, number, number][] };
+    const [px, py] = s.poles![0]!;
+    expect(tile.trees.some(([x, y]) => Math.hypot(x - px, y - py) < 1.5)).toBe(true);
+    expect(treesOutsideMonuments(k, tile.trees).some(([x, y]) => Math.hypot(x - px, y - py) < 1.5)).toBe(false);
   });
 
   it("obstacles : podium coupé par l'escalier de l'axe, barrières de la scène, massifs ; arbres retirés de la cavea", () => {

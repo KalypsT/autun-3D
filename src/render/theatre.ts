@@ -168,6 +168,87 @@ function stage(c: Ctx): void {
   mb.quad(at(0, g.depth, gz(0, g.depth)), at(g.width, g.depth, gz(g.width, g.depth)), at(g.width, g.depth, g.zt), at(0, g.depth, g.zt), nN, STAGE_SIDE);
 }
 
+const STEEL = C("#9aa3a8"), POLE = C("#8b9196"), LAMP = C("#3a3f44"), SHRUB = C("#2f6a4a");
+
+/** Pavé quelconque : base (quatre coins x, y), du bas z0 au haut z1, côtés et dessus. */
+function prism(mb: MeshBuilder, ring: [number, number][], z0: number, z1: number, col: THREE.Color, top: THREE.Color = col): void {
+  const n = ring.length;
+  let cx = 0, cy = 0;
+  for (const [x, y] of ring) { cx += x / n; cy += y / n; }
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = ring[i]!, [bx, by] = ring[(i + 1) % n]!;
+    let nx = by - ay, ny = -(bx - ax);
+    if (nx * ((ax + bx) / 2 - cx) + ny * ((ay + by) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+    const l = Math.hypot(nx, ny) || 1;
+    mb.quad(toThree(ax, ay, z0), toThree(bx, by, z0), toThree(bx, by, z1), toThree(ax, ay, z1), toThree(nx / l, ny / l, 0), col);
+  }
+  for (let i = 1; i + 1 < n; i++) mb.tri(toThree(...ring[0]!, z1), toThree(...ring[i]!, z1), toThree(...ring[i + 1]!, z1), [0, 1, 0], top);
+}
+
+/**
+ * Barrières de chantier galvanisées le long des deux côtés de la scène (photos ; obstacles de `theatreWalls`, D136) : panneaux de 2,4 m,
+ * poteaux, lisses haute et basse, barreaux tous les 20 cm (deux faces), au niveau des marches puis du plateau.
+ */
+function barriers(c: Ctx): void {
+  const { mb, L } = c;
+  const g = L.stage, zo = L.s.zo;
+  const t1 = g.sd / g.steps, h = (g.zt - zo) / g.steps;
+  const zAt = (t: number): number => (t < g.sd - t1 ? zo + (Math.floor(t / t1) + 1) * h : g.zt);
+  const at = (e: number, t: number): [number, number] => [g.ox + g.ex * e + g.nx * t, g.oy + g.ey * e + g.ny * t];
+  const rect = (e: number, t: number, de: number, dt: number): [number, number][] => [at(e - de, t - dt), at(e + de, t - dt), at(e + de, t + dt), at(e - de, t + dt)];
+  const nE = toThree(g.ex, g.ey, 0), nW = toThree(-g.ex, -g.ey, 0);
+  for (const e of [0.15, g.width - 0.15]) {
+    const t0 = 0.3, tEnd = g.depth - 0.3;
+    const panels = Math.max(1, Math.round((tEnd - t0) / 2.4));
+    for (let k = 0; k < panels; k++) {
+      const a = t0 + ((tEnd - t0) * k) / panels, b = t0 + ((tEnd - t0) * (k + 1)) / panels;
+      const z = Math.min(zAt(a + 0.05), zAt(b - 0.05));
+      for (const t of [a + 0.04, b - 0.04]) prism(mb, rect(e, t, 0.025, 0.025), zAt(t), zAt(t) + 1.1, STEEL);
+      prism(mb, rect(e, (a + b) / 2, 0.02, (b - a) / 2 - 0.04), z + 1.04, z + 1.1, STEEL);
+      prism(mb, rect(e, (a + b) / 2, 0.02, (b - a) / 2 - 0.04), z + 0.12, z + 0.18, STEEL);
+      for (let t = a + 0.2; t < b - 0.12; t += 0.2) {
+        const [x0, y0] = at(e, t - 0.01), [x1, y1] = at(e, t + 0.01);
+        for (const [n, off] of [[nE, 0.01], [nW, -0.01]] as const) {
+          const ox = g.ex * off, oy = g.ey * off;
+          mb.quad(toThree(x0 + ox, y0 + oy, z + 0.18), toThree(x1 + ox, y1 + oy, z + 0.18), toThree(x1 + ox, y1 + oy, z + 1.04), toThree(x0 + ox, y0 + oy, z + 1.04), n, STEEL);
+        }
+      }
+    }
+  }
+}
+
+/** Poteau d'éclairage (photos) : fût effilé, traverse et deux projecteurs tournés vers la scène et l'orchestre ; jamais allumé (choix de l'utilisateur). */
+function pole(c: Ctx, x: number, y: number, h: number): void {
+  const { mb, L } = c;
+  const z0 = c.ground(x, y) - 0.2, zt = z0 + 0.2 + h;
+  const ring = (r: number): [number, number][] => Array.from({ length: 6 }, (_, i) => [x + r * Math.cos((i * Math.PI) / 3), y + r * Math.sin((i * Math.PI) / 3)]);
+  const b = ring(0.13), t = ring(0.08);
+  for (let i = 0; i < 6; i++) {
+    const j = (i + 1) % 6, m = ((i + 0.5) * Math.PI) / 3;
+    mb.quad(toThree(...b[i]!, z0), toThree(...b[j]!, z0), toThree(...t[j]!, zt), toThree(...t[i]!, zt), toThree(Math.cos(m), Math.sin(m), 0), POLE);
+  }
+  // Vers le milieu de l'orchestre : traverse perpendiculaire, projecteurs en avant.
+  const dx = L.cx - x, dy = L.cy - y, l = Math.hypot(dx, dy) || 1, fx = dx / l, fy = dy / l, sx = -fy, sy = fx;
+  const box = (px: number, py: number, hs: number, hf: number, za: number, zb: number, col: THREE.Color): void =>
+    prism(mb, [[px - sx * hs - fx * hf, py - sy * hs - fy * hf], [px + sx * hs - fx * hf, py + sy * hs - fy * hf], [px + sx * hs + fx * hf, py + sy * hs + fy * hf], [px - sx * hs + fx * hf, py - sy * hs + fy * hf]], za, zb, col);
+  box(x, y, 0.8, 0.05, zt - 0.5, zt - 0.4, POLE);
+  for (const k of [-0.6, 0.6]) box(x + sx * k + fx * 0.2, y + sy * k + fy * 0.2, 0.2, 0.15, zt - 0.4, zt - 0.05, LAMP);
+}
+
+/** Arbuste taillé en boule (orthophotographie) : octogone qui se resserre en haut. */
+function shrub(c: Ctx, x: number, y: number, h: number): void {
+  const z0 = c.ground(x, y) - 0.1;
+  const ring = (r: number): [number, number][] => Array.from({ length: 8 }, (_, i) => [x + r * Math.cos((i * Math.PI) / 4), y + r * Math.sin((i * Math.PI) / 4)]);
+  const lo = ring(0.6), mid = ring(0.75), hi = ring(0.42);
+  const zm = z0 + 0.1 + h * 0.55, zt = z0 + 0.1 + h;
+  for (let i = 0; i < 8; i++) {
+    const j = (i + 1) % 8, m = ((i + 0.5) * Math.PI) / 4, nx = Math.cos(m), ny = Math.sin(m);
+    c.mb.quad(toThree(...lo[i]!, z0), toThree(...lo[j]!, z0), toThree(...mid[j]!, zm), toThree(...mid[i]!, zm), toThree(nx, ny, 0), SHRUB);
+    c.mb.quad(toThree(...mid[i]!, zm), toThree(...mid[j]!, zm), toThree(...hi[j]!, zt), toThree(...hi[i]!, zt), toThree(nx * 0.7, ny * 0.7, 0.7), SHRUB.clone().multiplyScalar(1.12));
+  }
+  for (let i = 1; i < 7; i++) c.mb.tri(toThree(...hi[0]!, zt), toThree(...hi[i]!, zt), toThree(...hi[i + 1]!, zt), [0, 1, 0], SHRUB.clone().multiplyScalar(1.2));
+}
+
 /** Dessine le théâtre dans le maillage plein de sa tuile. */
 export function buildTheatre(mb: MeshBuilder, s: TheatreSite, terrain: HeightField): void {
   const L = theatreLayout(s);
@@ -209,4 +290,7 @@ export function buildTheatre(mb: MeshBuilder, s: TheatreSite, terrain: HeightFie
   for (const l of L.lanesLow) lane(c, l, STEP, STEP_FRONT);
   for (const l of L.lanesUp) lane(c, l, grass, WOOD);
   stage(c);
+  barriers(c);
+  for (const [x, y, h] of s.poles ?? []) pole(c, x, y, h);
+  for (const [x, y, h] of s.shrubs ?? []) shrub(c, x, y, h);
 }
