@@ -321,7 +321,8 @@ export type Site =
   | { t: "fuel"; x: number; y: number; a: number; l: number; w: number; n?: string; c?: string; roof?: string }
   /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
   | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
-  | { t: "track"; r: number[] }
+  /** Piste ; `s` : « dirt », terre battue (correction d'après photo, D133), sinon synthétique. */
+  | { t: "track"; r: number[]; s?: "dirt" }
   | { t: "cemetery"; r: number[] }
   /** Porte romaine (D95) : centre, angle du grand côté, longueur, épaisseur, haut mesuré (altitude) ; `st` : disposition (Arroux, Saint-André). */
   | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number }
@@ -329,7 +330,48 @@ export type Site =
    * Fontaine modélisée d'après photo (D131) : centre de l'édicule, orientation, mobilier OpenStreetMap remplacé (`id`), sol, haut et rayon
    * du bassin mesurés (altitudes absolues).
    */
-  | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number };
+  | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
+  | TheatreSite;
+
+/**
+ * Théâtre romain modélisé d'après photo (D133), mesuré au LiDAR (tools/data/build_monuments.py). Repère polaire : centre `c`, axe `a` (du
+ * centre vers le fond de la cavea), angles `u` relatifs à l'axe (radians) ; rayons en mètres, altitudes absolues (locales).
+ */
+export interface TheatreSite {
+  t: "theatre";
+  /** Bâtiment BD TOPO remplacé (masqué). */
+  id: string;
+  n: string;
+  c: [number, number];
+  a: number;
+  /** Orchestre : altitude, rayon (pied du podium). */
+  zo: number;
+  ro: number;
+  /** Demi-ouverture mesurée de la pente (la cavea est dessinée en demi-cercle). */
+  span: number;
+  /** Gradins restaurés : nombre de rangs (photo), rayon du premier et de la fin du dernier, haut du premier et du dernier. */
+  rows: [number, number, number, number, number];
+  /** Étendue angulaire des gradins restaurés (orthophotographie). */
+  rest: [number, number];
+  /** Précinction : rayons intérieur et extérieur, altitude. */
+  pr: [number, number, number];
+  /** Partie haute : pied (r2), début de la terrasse (r3), lisière des arbres (r4), sommet (r5) et son altitude. */
+  up: [number, number, number, number, number];
+  /** Escaliers : angles en bas ; en haut, angle et altitude du haut ; largeur des escaliers du haut. */
+  lanes: [number[], [number, number][], number];
+  /**
+   * Coins de la partie haute : u0, u1, ruiné (1 : profil en paliers de r2 à r4) ou non (altitudes à r2, r3, r4), nombre de rangs restaurés
+   * sur la pente de r2 à r3 (0 : herbe ; photos, D134).
+   */
+  cun: [number, number, number, number[], number][];
+  /** Massifs ruinés du bas, au-delà des gradins : u0, u1, profil en paliers de ro à r2. */
+  ends: [number, number, number[]][];
+  /** Scène moderne : quatre coins (le premier côté face à l'orchestre), dessus, profondeur des marches. */
+  stage: number[];
+  /** Poteaux d'éclairage (pied x, y ; hauteur au-dessus du sol) et arbustes taillés (x, y, hauteur) : orthophotographie et photos, D136. */
+  poles?: [number, number, number][];
+  shrubs?: [number, number, number][];
+}
 
 export interface TileKinds {
   v: number;

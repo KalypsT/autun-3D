@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { landmarkDecks } from "../core/landmarks";
+import { landmarkDecks, landmarkSectors } from "../core/landmarks";
 import { addTileColliders } from "../core/world";
 import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
@@ -209,6 +209,9 @@ export class TileManager {
     const st = data.structures;
     // Marches et volée du porche de la cathédrale (D132), invisibles : les monuments les dessinent.
     const extra = landmarkDecks(data.kinds);
+    // Gradins du théâtre romain (D133) : secteurs d'anneau, invisibles eux aussi.
+    const sectors = landmarkSectors(data.kinds);
+    if (sectors.length) this.terrain.decks.addSectors(id, sectors);
     if (!st) {
       if (extra.length) this.terrain.decks.add(id, extra);
       return;

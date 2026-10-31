@@ -4,6 +4,7 @@ import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
 import { buildCathedral, buildFountain, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
 
@@ -882,8 +883,9 @@ function cemetery(sinks: LandmarkSinks, site: Extract<Site, { t: "cemetery" }>, 
 /** Sols des sites : pistes d'athlétisme, surfaces et lignes des terrains de sport (dans le maillage des sols). */
 export function buildSitesGround(mb: MeshBuilder, kinds: TileKinds | undefined, terrain: HeightField): void {
   if (!kinds) return;
-  const track = C("#c8553d"), white = C("#f4f1ea");
-  for (const s of kinds.sites) if (s.t === "track") fillOnTerrain(mb, [s.r], 0.05, track, terrain);
+  // Pistes synthétiques rouges ; terre battue rouge-brun (D133, d'après photo).
+  const track = C("#c8553d"), dirt = C("#a8724f"), white = C("#f4f1ea");
+  for (const s of kinds.sites) if (s.t === "track") fillOnTerrain(mb, [s.r], 0.05, s.s === "dirt" ? dirt : track, terrain);
   for (const s of kinds.sites) {
     if (s.t !== "pitch") continue;
     const { surface, lines } = pitchPolys(s);
@@ -941,5 +943,6 @@ export function buildLandmarks(
     else if (s.t === "cemetery") cemetery(sinks, s, terrain);
     else if (s.t === "gate") buildGate(sinks.solid, s, terrain);
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
+    else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
   }
 }

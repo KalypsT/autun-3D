@@ -878,3 +878,51 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![L'entrée](docs/captures/d132-entree-apres.jpg)
 ![La nuit, avant](docs/captures/d132-nuit-avant.jpg)
 ![La nuit, après](docs/captures/d132-nuit-apres.jpg)
+
+**Bâtiments d'après photos, étape 13 : le théâtre romain, volumes mesurés (31 octobre 2026)** (D133)
+- Le théâtre n'est plus un immeuble de six étages en fer à cheval : d'après tes photos et le relevé LiDAR, la cavea s'ouvre vers l'est-nord-est (orchestre de 26,5 m de rayon, 148 m de diamètre au haut de la pente, 17 m de dénivelé).
+- Orchestre en terre battue, podium, 15 rangs de gradins restaurés en pierre grise (de −58° à +61° autour de l'axe, mesurés sur l'orthophoto), allée herbue, sept coins herbus séparés par six escaliers, massifs ruinés aux extrémités, scène moderne avec ses marches.
+- On y marche déjà : gradins, allée, coins et escaliers sont praticables (tabliers invisibles alignés sur les marches) ; le podium et les hauts massifs sont des obstacles qu'on escalade.
+- La piste du stade du Théâtre romain est en terre rouge-brun, plus en rouge synthétique.
+- Pas d'éclairage la nuit, comme demandé.
+- 6 966 triangles. 732 tests.
+- Suite : le détail des ruines (moellons, coins du haut à gradins restaurés, marches de bois), puis les passants, puis les barrières de la scène, le poteau d'éclairage et les bancs.
+- À essayer : `?at=845,290&h=14` (dans l'orchestre), monter par l'escalier central ; `?at=765.3,298&yaw=2.14&h=14&train=3170` (le petit train).
+
+![Avant](docs/captures/d133-theatre-avant.jpg)
+![Après](docs/captures/d133-theatre-apres.jpg)
+![Du haut de l'extrémité nord](docs/captures/d133-theatre-nord.jpg)
+![Depuis l'aile sud](docs/captures/d133-theatre-sud.jpg)
+
+**Bâtiments d'après photos, étape 14 : le théâtre romain, ruines et détails (31 octobre 2026)** (D134)
+- Les massifs des extrémités ne sont plus de grandes marches : blocs de maçonnerie cassés, de hauteurs inégales, en dents de scie au bout de la cavea.
+- Deux coins de la partie haute ont leurs gradins restaurés (20 et 19 rangs), comme sur tes photos : le relevé ne les distingue que pour l'un des deux, l'autre vient de ta photo de drone.
+- Maçonnerie en moellons nuancés à assises sombres, murs des voûtes qui affleurent dans l'herbe, escaliers du haut à traverses de bois.
+- Tout reste praticable, à la hauteur dessinée.
+- 9 518 triangles. 733 tests.
+- Suite : les passants, puis les barrières de la scène, le poteau d'éclairage et les bancs.
+
+![Du haut de l'extrémité nord](docs/captures/d134-theatre-nord-apres.jpg)
+![L'extrémité nord](docs/captures/d134-theatre-extremite-nord.jpg)
+![Dans un coin restauré](docs/captures/d134-theatre-coin-restaure.jpg)
+
+**Bâtiments d'après photos, étape 15 : le théâtre romain, les passants (31 octobre 2026)** (D135)
+- Les passants entrent dans le théâtre : allée de la précinction, escalier central jusqu'à l'orchestre, six escaliers jusqu'au chemin du sommet, scène, sortie au nord vers la maison du gardien.
+- Ils montent sur les gradins et la scène à leur vraie hauteur.
+- Nouvelle étape `tools/data/build_theatre_nav.py` : elle ne touche que la navigation autour du théâtre, sans régénérer la ville (à relancer après `build_nav.py`).
+- 734 tests.
+- Suite : les barrières de la scène, le poteau d'éclairage et les bancs.
+
+![La navigation, avant et après](docs/captures/d135-theatre-navigation.jpg)
+![Des passants dans l'orchestre et sur la scène](docs/captures/d135-theatre-passants.jpg)
+
+**Bâtiments d'après photos, étape 16 : le théâtre romain, barrières, poteaux et arbustes (31 octobre 2026)** (D136)
+- La scène a ses barrières galvanisées sur ses deux côtés.
+- Deux poteaux d'éclairage (9,2 m), retrouvés par leur ombre sur l'orthophoto ; l'un était dans la carte comme un arbre. Ils ne s'allument pas la nuit.
+- Correction : ce que j'avais pris pour des bancs sur ta photo de drone sont quatre arbustes taillés (orthophoto) ; ils sont dessinés comme tels.
+- 10 930 triangles pour tout le théâtre. 735 tests.
+- Le plan du théâtre est terminé (D133 à D136).
+
+![La scène et ses barrières](docs/captures/d136-theatre-scene.jpg)
+![Les arbustes et le second poteau](docs/captures/d136-theatre-arbustes.jpg)
+![Vue de drone](docs/captures/d136-theatre-drone.jpg)

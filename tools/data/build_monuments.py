@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -6,7 +6,8 @@ Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilis
           gardée dans .cache/shared/raw/monuments).
 Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour dans ce repère, hauteurs mesurées) ; `sign: false` retire
           l'inscription (`n`) ; cathédrale (modèle `cathedral`, D127) : champ `cath`, clocher lointain (`tower` et kinds/index.json) ;
-          silhouettes lointaines (lod/<tuile>.json) ; fontaine (modèle `fountain`, D131) : site `fountain` de la tuile où elle se trouve.
+          silhouettes lointaines (lod/<tuile>.json) ; fontaine (modèle `fountain`, D131) : site `fountain` de la tuile où elle se trouve ;
+          théâtre romain (modèle `theatre`, D133) : site `theatre`, bâtiment BD TOPO masqué ; revêtement des pistes (`tracks`, D133).
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -406,8 +407,243 @@ def fountain(name, spec, world, kinds_mon):
     return True
 
 
+def osm_way(wid):
+    """Contour d'une voie OpenStreetMap (API officielle, gardée dans .cache), en coordonnées locales."""
+    from pyproj import Transformer
+    path = CACHE / f"osm_way_{wid}.json"
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(fetch.get(f"https://api.openstreetmap.org/api/0.6/way/{wid}/full.json").text)
+    els = json.loads(path.read_text())["elements"]
+    nodes = {e["id"]: (e["lon"], e["lat"]) for e in els if e["type"] == "node"}
+    way = next(e for e in els if e["type"] == "way")
+    tr = Transformer.from_crs(4326, 2154, always_xy=True)
+    return [(X - c.ORIGIN[0], Y - c.ORIGIN[1]) for X, Y in (tr.transform(*nodes[n]) for n in way["nodes"])]
+
+
+def fit_circle(pts):
+    P = np.array(pts)
+    sol = np.linalg.lstsq(np.c_[2 * P, np.ones(len(P))], (P ** 2).sum(1), rcond=None)[0]
+    return float(sol[0]), float(sol[1]), float(math.sqrt(sol[2] + sol[0] ** 2 + sol[1] ** 2))
+
+
+def measure_theatre(bid, b, spec):
+    """Théâtre romain (D133) : cavea adossée à la pente, mesurée sur des profils radiaux du relevé LiDAR.
+    - centre et rayon de l'orchestre : cercle ajusté sur le pied des gradins (premier rayon où le terrain dépasse l'orchestre de 60 cm), sur
+      les directions où la pente monte de plus de 8 m ; axe = direction moyenne de ces directions ; orchestre = médiane du terrain au centre ;
+    - profil médian du modèle de surface (MNS) sur l'axe ± 50° (le terrain lissé gomme gradins et ruines) : haut des gradins restaurés et
+      précinction (premier palier), début de la terrasse haute (second palier), arbres du sommet (MNS plus de 4 m au-dessus du terrain) ;
+    - gradins restaurés : droite du MNS entre le pied et la précinction ; nombre de rangs d'après les photos ; étendue angulaire sur
+      l'orthophotographie (pierre grise peu saturée entre les rayons 29 et 37 m) ;
+    - coins de la partie haute entre les escaliers rayonnants (OpenStreetMap) : hauteurs médianes du MNS au pied, au début de la terrasse et au
+      bord des arbres ; massifs ruinés des extrémités : profil médian tous les 3 m ;
+    - scène moderne : contour OpenStreetMap, dessus = médiane du MNS, marches côté orchestre jusqu'où le MNS atteint le dessus.
+    Tout en angles relatifs à l'axe (radians, positifs vers la gauche en regardant le fond de la cavea depuis l'orchestre)."""
+    ring = pairs(b["ring"])
+    xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+    box = (math.floor(min(xs) - 50), math.floor(min(ys) - 50), math.ceil(max(xs) + 50), math.ceil(max(ys) + 50))
+    mns, mnt = Raster("MNS", bid, *box), Raster("MNT", bid, *box)
+    # Centre approché : cellules les plus basses dans l'emprise BD TOPO élargie de 10 m (l'orchestre).
+    sub = mnt.a[50 * 2 - 20:-(50 * 2 - 20), 50 * 2 - 20:-(50 * 2 - 20)]
+    rr, cc = np.nonzero(sub < float(np.nanmin(sub)) + 0.4)
+    cx, cy = box[0] + 40 + (cc.mean() + 0.5) * c.RES, mnt.y1 - 40 - (rr.mean() + 0.5) * c.RES
+    pol = lambda R, th: (cx + R * math.cos(th), cy + R * math.sin(th))
+    for _ in range(4):
+        # Orchestre : le demi-disque côté cavea (la scène et le pré occupent l'autre moitié, plus haut).
+        zo = float(np.percentile([mnt(cx + dx, cy + dy) for dx in range(-18, 19, 2) for dy in range(-18, 19, 2) if dx * dx + dy * dy < 324], 25))
+        feet, dirs = [], []
+        for th in np.radians(np.arange(0, 360, 3)):
+            rs = np.arange(5, 60, 0.25)
+            z = np.array([mnt(*pol(R, th)) for R in rs])
+            if z[-1] - zo < 8:
+                continue
+            dirs.append(th)
+            feet.append(pol(float(rs[int(np.argmax(z > zo + 0.6))]), th))
+        # Les bouts de la cavea sont ruinés : on ajuste sur les directions du milieu.
+        ax = math.atan2(np.mean(np.sin(dirs)), np.mean(np.cos(dirs)))
+        mid = [p for p, th in zip(feet, dirs) if abs(math.remainder(th - ax, 2 * math.pi)) < math.radians(65)]
+        cx, cy, ro = fit_circle(mid)
+    span = max(abs(math.remainder(th - ax, 2 * math.pi)) for th in dirs)
+    P = lambda R, rel: (cx + R * math.cos(ax + rel), cy + R * math.sin(ax + rel))
+    rels = np.radians(np.arange(-50, 50.1, 2))
+    rs = np.arange(ro - 1, ro + 55, 0.5)
+    S = np.array([np.median([mns(*P(R, u)) for u in rels]) for R in rs])
+    T = np.array([np.median([mnt(*P(R, u)) for u in rels]) for R in rs])
+    grad = np.gradient(S, 0.5)
+    # Paliers : pente moyenne inférieure à 0,12 sur 1,5 m, prolongés tant qu'elle reste sous 0,2.
+    def flat(after):
+        for i in range(len(rs) - 3):
+            if rs[i] > after and np.mean(grad[i:i + 3]) < 0.12 and max(grad[i:i + 3]) < 0.2:
+                j = i
+                while j < len(rs) - 1 and grad[j] < 0.2:
+                    j += 1
+                return i, j
+        raise SystemExit(f"{bid} : palier introuvable après {after:.1f} m")
+    i1, i2 = flat(ro + 5)
+    r1, r2, zp = float(rs[i1]), float(rs[i2]), float(np.median(S[i1:i2]))
+    i3, _ = flat(r2 + 5)
+    r3 = float(rs[i3])
+    r4 = float(next(rs[i] for i in range(i3, len(rs)) if S[i] - T[i] > 4)) - 0.5
+    r5 = float(next(rs[i] for i in range(len(rs) - 1) if rs[i] > r4 and T[i + 1] - T[i] < 0.02))
+    z5 = float(T[list(rs).index(r5)])
+    lower = (rs > ro + 0.75) & (rs < r1 - 0.25)
+    slope, icpt = np.polyfit(rs[lower], S[lower], 1)
+    n = spec["rows"]
+    rw0 = ro + spec.get("podium", 0.5)
+    dr = (r1 - rw0) / n
+    rows = [n, rw0, r1, float(icpt + slope * (rw0 + dr / 2)), zp]
+    # Étendue des gradins restaurés sur l'orthophotographie (0,25 m).
+    from PIL import Image
+    ox0, oy0, ox1, oy1 = math.floor(cx - 45), math.floor(cy - 45), math.ceil(cx + 45), math.ceil(cy + 45)
+    w, h = (ox1 - ox0) * 4, (oy1 - oy0) * 4
+    png = fetch.wms_block("HR.ORTHOIMAGERY.ORTHOPHOTOS", "image/png", ox0 + c.ORIGIN[0], oy0 + c.ORIGIN[1], ox1 + c.ORIGIN[0], oy1 + c.ORIGIN[1],
+                          w, h, CACHE / f"{bid}_ortho_{ox0}_{oy0}_{w}x{h}.png")
+    o = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(float) / 255
+    hi, lo = o.max(2), o.min(2)
+    grey = (hi - lo < 0.13 * np.maximum(hi, 1e-3)) & (hi > 0.45)
+    def stone(rel):
+        v = []
+        for R in np.arange(ro + 2.5, r1 - 1, 0.5):
+            x, y = P(R, rel)
+            v.append(grey[int((oy1 - y) * 4), int((x - ox0) * 4)])
+        return np.mean(v) > 0.6
+    rest = []
+    for sign in (-1, 1):
+        k = 0
+        while stone(sign * math.radians(k + 1)):
+            k += 1
+        rest.append(sign * math.radians(k))
+    # Escaliers (OpenStreetMap) : angle du milieu de chaque volée, rangés en bas (pied sous la précinction) et en haut.
+    lanes_lo, lanes_up = [], []
+    for wid in spec["stairs"]:
+        pts = osm_way(wid)
+        mx, my = np.mean([p[0] for p in pts]), np.mean([p[1] for p in pts])
+        rel = math.remainder(math.atan2(my - cy, mx - cx) - ax, 2 * math.pi)
+        (lanes_lo if math.hypot(mx - cx, my - cy) < r2 else lanes_up).append(round(rel, 4))
+    lanes_lo.sort(); lanes_up.sort()
+    lane = spec.get("lane", 2.4)
+    # Haut de chaque escalier de la partie haute : terrain au bord des arbres (le pied est la précinction).
+    tops_up = [round(float(np.median([mnt(*P(r4 - 0.5, u + d / r4)) for d in (-0.6, 0.0, 0.6)])), 2) for u in lanes_up]
+    med = lambda f, R, a0, a1: float(np.median([f(*P(R, u)) for u in np.linspace(a0, a1, 12)]))
+    # Haut d'un coin à R : médiane du MNS, au moins 30 cm au-dessus du terrain ; près de la lisière (3 m), quart bas du MNS et au plus 4 m
+    # au-dessus du terrain (les cimes débordent sur la terrasse).
+    def top(R, a0, a1):
+        g = med(mnt, R, a0, a1)
+        if R > r4 - 3:
+            R = min(R, r4 - 1)
+            g = med(mnt, R, a0, a1)
+            return round(min(max(float(np.percentile([mns(*P(R, u)) for u in np.linspace(a0, a1, 12)], 25)), g + 0.3), g + 4), 2)
+        return round(max(med(mns, R, a0, a1), g + 0.3), 2)
+    # Coins de la partie haute : entre deux escaliers ; les deux coins extrêmes vont jusqu'au diamètre (massifs ruinés).
+    edges = [-math.pi / 2] + lanes_up + [math.pi / 2]
+    cun = []
+    for a0, a1 in zip(edges[:-1], edges[1:]):
+        m0, m1 = a0 + (0.0 if a0 == -math.pi / 2 else lane / 2 / r3 + 0.02), a1 - (0.0 if a1 == math.pi / 2 else lane / 2 / r3 + 0.02)
+        ruin = a0 == -math.pi / 2 or a1 == math.pi / 2
+        q0, q1 = (m0 + 0.05, m1 - 0.05)
+        if ruin:
+            prof = [top(R, q0, q1) for R in np.linspace(r2, r4, 9)]
+        else:
+            prof = [top(R, q0, q1) for R in (r2 + 0.5, r3, r4)]
+        cun.append([round(a0, 4), round(a1, 4), int(ruin), prof, 0])
+    # Coins du haut à gradins restaurés (photos, et rythme des rangs sur l'orthophotographie pour le coin de 12° à 33°) : sur la pente, de la
+    # hauteur des rangs du bas.
+    rise = (zp - rows[3]) / (n - 1)
+    for i in spec.get("upperRows", []):
+        q = cun[i]
+        q[4] = max(2, round((q[3][1] - q[3][0]) / rise))
+    # Massifs ruinés du bas, au-delà des gradins restaurés, jusqu'au diamètre.
+    ends = []
+    for a0, a1 in ((-math.pi / 2, rest[0]), (rest[1], math.pi / 2)):
+        q0, q1 = a0 + 0.05, a1 - 0.05
+        prof = [top(R, q0, q1) for R in np.linspace(ro, r2, 6)]
+        ends.append([round(a0, 4), round(a1, 4), prof])
+    # Scène moderne.
+    sc = osm_way(spec["stage"])[:-1]
+    sx, sy = np.mean([p[0] for p in sc]), np.mean([p[1] for p in sc])
+    inner = [(sx + (p[0] - sx) * k, sy + (p[1] - sy) * k) for p in sc for k in (0.2, 0.5)]
+    ztop = float(np.median([mns(*q) for q in inner]))
+    # Marches : côté le plus proche du centre ; largeur = où le MNS atteint le dessus (à 15 cm près) en partant de ce côté.
+    k0 = min(range(4), key=lambda i: math.hypot((sc[i][0] + sc[(i + 1) % 4][0]) / 2 - cx, (sc[i][1] + sc[(i + 1) % 4][1]) / 2 - cy))
+    sc = sc[k0:] + sc[:k0]
+    m0 = ((sc[0][0] + sc[1][0]) / 2, (sc[0][1] + sc[1][1]) / 2)
+    m1 = ((sc[2][0] + sc[3][0]) / 2, (sc[2][1] + sc[3][1]) / 2)
+    depth = math.dist(m0, m1)
+    stepd = next(float(d) for d in np.arange(0.25, depth, 0.25)
+                 if mns(m0[0] + (m1[0] - m0[0]) * d / depth, m0[1] + (m1[1] - m0[1]) * d / depth) > ztop - 0.15)
+    # Poteaux d'éclairage et arbustes taillés (positions sur l'orthophotographie : ombres des poteaux, boules sombres des arbustes ; photos) :
+    # haut = plus haut point du MNS au-dessus du terrain à moins d'1 m. Un poteau trop fin pour le relevé (moins de 4 m) prend la hauteur du
+    # premier (ombres de même longueur).
+    def peak(x, y, r=1.0):
+        return max(mns(x + dx, y + dy) - mnt(x + dx, y + dy) for dx in np.arange(-r, r + 0.01, 0.25) for dy in np.arange(-r, r + 0.01, 0.25))
+    poles = []
+    for x, y in spec.get("poles", []):
+        h = peak(x, y)
+        poles.append([x, y, round(float(h if h > 4 or not poles else poles[0][2]), 2)])
+    shrubs = [[x, y, round(float(min(1.4, max(0.6, peak(x, y, 0.75)))), 2)] for x, y in spec.get("shrubs", [])]
+    r2f = lambda v: round(float(v), 2)
+    return {
+        "t": "theatre", "id": bid, "n": spec.get("name", "Théâtre romain"),
+        "c": [r2f(cx), r2f(cy)], "a": round(ax, 4), "zo": r2f(zo), "ro": r2f(ro), "span": round(span, 3),
+        "rows": [n, r2f(rw0), r2f(r1), r2f(rows[3]), r2f(zp)], "rest": [round(rest[0], 4), round(rest[1], 4)],
+        "pr": [r2f(r1), r2f(r2), r2f(zp)], "up": [r2f(r2), r2f(r3), r2f(r4), r2f(r5), r2f(z5)],
+        "lanes": [lanes_lo, [[u, z] for u, z in zip(lanes_up, tops_up)], lane], "cun": cun, "ends": ends,
+        "stage": [v for p in sc for v in (r2f(p[0]), r2f(p[1]))] + [r2f(ztop), r2f(stepd)],
+        "poles": poles, "shrubs": shrubs,
+    }
+
+
+def theatre(tid, bid, b, spec, k):
+    """Théâtre romain (D133) : le bâtiment BD TOPO (un immeuble en fer à cheval) est masqué (`hidden`), le site `theatre` le remplace ; sa
+    silhouette lointaine est retirée (la cavea est un creux du relief). Vrai si kinds/<tuile>.json change."""
+    site = measure_theatre(bid, b, spec)
+    g = site["zo"]
+    print(f"  {bid} : orchestre de {site['ro']} m de rayon, axe {math.degrees(site['a']):.0f}°, ouverture {2 * math.degrees(site['span']):.0f}°,"
+          f" {site['rows'][0]} rangs restaurés jusqu'à {site['rows'][2]} m ({site['pr'][2] - g:.1f} m), terrasse à {site['up'][1]} m,"
+          f" arbres à {site['up'][2]} m, sommet à {site['up'][3]} m ({site['up'][4] - g:.1f} m) ; gradins sur"
+          f" {math.degrees(site['rest'][0]):.0f}° à {math.degrees(site['rest'][1]):.0f}° ; escaliers {len(site['lanes'][0])} en bas,"
+          f" {len(site['lanes'][1])} en haut ; scène : dessus à {site['stage'][8] - g:.1f} m, marches sur {site['stage'][9]} m")
+    if replace_lod(tid, bid, []):
+        print(f"  silhouette lointaine de {bid} retirée")
+    e = {"k": "hidden"}
+    sites = [q for q in k["sites"] if not (q.get("t") == "theatre" and q.get("id") == bid)] + [site]
+    if k["buildings"].get(bid) == e and sites == k["sites"]:
+        return False
+    k["buildings"][bid] = e
+    k["sites"] = sites
+    index = json.loads((KINDS / "index.json").read_text())
+    if tid not in index["tiles"]:
+        index["tiles"] = sorted(index["tiles"] + [tid])
+    index["stats"]["sites"]["theatre"] = 1
+    (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    return True
+
+
+def track_surfaces(fixes):
+    """Revêtement des pistes d'après photo (`tracks` de manual.json) : la piste de kinds/<tuile>.json dont un sommet est à moins de 15 m
+    du point donné prend `s` (« dirt » : terre battue, dessinée rouge-brun au lieu du rouge des pistes synthétiques). Rend les tuiles changées."""
+    out = set()
+    for fix in fixes:
+        x, y = fix["at"]
+        tid = f"{int((x + c.ORIGIN[0]) // c.TILE) - c.GRID_I0}_{int((y + c.ORIGIN[1]) // c.TILE) - c.GRID_J0}"
+        path = KINDS / f"{tid}.json"
+        k = json.loads(path.read_text())
+        hit = [q for q in k["sites"] if q["t"] == "track" and min(math.dist((x, y), p) for p in pairs(q["r"])) < 15]
+        if len(hit) != 1:
+            raise SystemExit(f"piste introuvable près de {fix['at']} ({len(hit)})")
+        if hit[0].get("s") != fix["s"]:
+            hit[0]["s"] = fix["s"]
+            path.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+            out.add(tid)
+    return out
+
+
 def main():
-    manual = json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("monuments", {})
+    data = json.load(open(c.ROOT / "tools" / "data" / "manual.json"))
+    fixed = track_surfaces(data.get("tracks", []))
+    if fixed:
+        print(f"  revêtement des pistes : {', '.join(sorted(fixed))}")
+    manual = data.get("monuments", {})
     world = json.load(open(c.OUT / "world.json"))
     found = {}
     for m in world["tiles"]:
@@ -435,6 +671,10 @@ def main():
         k = kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))
         if spec["model"] == "cathedral":
             if cathedral(tid, bid, b, spec, k):
+                changed.add(tid)
+            continue
+        if spec["model"] == "theatre":
+            if theatre(tid, bid, b, spec, k):
                 changed.add(tid)
             continue
         if spec["model"] != "townhall":

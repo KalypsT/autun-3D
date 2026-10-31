@@ -1852,3 +1852,105 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![La nuit, le porche](captures/d132-nuit-porche.jpg)
 ![Vue de drone la nuit, avant](captures/d132-nuit-drone-avant.jpg)
 ![Vue de drone la nuit, après](captures/d132-nuit-drone-apres.jpg)
+
+## 2026-10-31 — D133. Bâtiments d'après photos, étape 13 : le théâtre romain, volumes mesurés
+
+**Demande de l'utilisateur** : modéliser le théâtre romain d'après ses photos, avec la méthode de la cathédrale. Photos (non versionnées), points de vue confirmés : vue de drone depuis l'est au-dessus du stade ; du haut de l'extrémité nord vers le sud-sud-est ; depuis l'aile sud vers le nord. Lecture : cavea en demi-cercle ouverte à l'est-nord-est, une quinzaine de rangs restaurés en pierre grise derrière un podium bas, escalier central jusqu'à l'orchestre de terre battue, allée herbue au-dessus, partie haute en massifs de maçonnerie moussus séparés par des escaliers rayonnants (quelques coins à gradins restaurés, marches à traverses de bois), gros massifs ruinés aux extrémités, rideau de grands arbres au sommet, scène moderne sur le diamètre (plateau gris clair, marches, barrières), poteau d'éclairage, bancs. Pas de mur de scène ni de vomitoire lisible. Choix de l'utilisateur : gradins, précinction, coins du haut et escaliers praticables ; pas d'éclairage de nuit ; la piste du stade voisin en terre rouge-brun. Plan validé : (1) volumes mesurés, (2) ruines et détails, (3) jouabilité et passants, (4) scène et mobilier.
+
+**Constat** : le théâtre était l'emprise BD TOPO `BATIMENT0000000035039419` (« Arène ou théâtre antique », 17,5 m), dessinée comme un immeuble en fer à cheval de six étages à toit plat qui couvrait toute la cavea ; au sol, on était dedans. Le relief LiDAR, lui, a bien la forme de la cavea.
+
+**Mesures** (`build_monuments.py`, modèle `theatre`, site `theatre` de `kinds/29_36.json`) :
+- **Centre et orchestre** : cercle ajusté sur le pied des gradins (premier rayon où le terrain dépasse l'orchestre de 60 cm), sur les directions où la pente monte de plus de 8 m : centre (857,7 ; 299,7), **rayon 26,5 m** (écart de quelques centimètres d'une direction à l'autre) ; orchestre à −15,2 m (quart bas du terrain dans 18 m, la scène et le pré occupant l'autre moitié). **Axe vers 201°** : la cavea s'ouvre vers l'est-nord-est ; pente mesurée sur 168°, dessinée en demi-cercle (les bouts, ruinés, sont sur le diamètre).
+- **Le terrain (MNT) gomme tout** : gradins et ruines y deviennent une pente lisse de 1 pour 3, 2 à 3 m sous les ruines. Profil médian du **modèle de surface (MNS)** sur l'axe ± 50° : gradins restaurés jusqu'à 38,5 m (pente 0,48), **précinction** de 38,5 à 41 m (palier à −8,55 m), partie haute jusqu'à la **terrasse** (56,5 m, vers −1,2 m), **lisière des arbres** à 66,5 m, **sommet** à 78 m (+1,8 m, 17 m au-dessus de l'orchestre ; 148 m de diamètre au haut de la pente, comme dans les sources).
+- **Gradins restaurés** : droite du MNS entre le pied et la précinction ; **15 rangs** (photos, le relevé à 0,5 m ne les sépare pas) de 77 cm et 35 cm ; podium de 50 cm d'épaisseur et 1,5 m de haut devant le premier rang. **Étendue sur l'orthophotographie** (pierre grise peu saturée entre 29 et 37 m) : de −58° à +61° autour de l'axe.
+- **Escaliers** : voies `highway=steps` d'OpenStreetMap (API officielle, gardée dans `.cache`) : trois en bas (dont celui de l'axe, qui descend dans l'orchestre), six en haut (sept coins). Haut de chaque escalier du haut : terrain à la lisière.
+- **Coins du haut** : hauteur médiane du MNS au pied, au début de la terrasse et à la lisière (quart bas du MNS et au plus 4 m au-dessus du terrain près des arbres, dont les cimes débordent) ; les deux coins extrêmes et les **massifs du bas au-delà des gradins** sont des ruines : profil en paliers (9 et 6 mesures).
+- **Scène moderne** : contour OpenStreetMap (`building=scene`), dessus = médiane du MNS (1,5 m au-dessus de l'orchestre, de plain-pied avec le pré), marches côté orchestre jusqu'où le MNS atteint le dessus (5,5 m).
+- Le bâtiment BD TOPO est masqué (`hidden`) et sa silhouette lointaine retirée : de loin, la cavea est le creux du relief. Une deuxième passe ne réécrit rien.
+- **Piste du stade du Théâtre romain** : sans étiquette de revêtement dans OpenStreetMap ; d'après la photo de drone et l'orthophotographie, c'est une allée de terre rouge-brun. Correction `tracks` de `manual.json` (site `track` avec `s: "dirt"`), appliquée par `build_monuments.py`.
+
+**Rendu** (`src/render/theatre.ts`, logique dans `src/core/theatre.ts`, dans le maillage plein de la tuile : aucun appel de dessin de plus) : orchestre de terre battue et dallage au pied du podium, posés sur le relief ; podium ; rangs de pierre grise ; précinction herbue ; coins du haut en pente nette (dessus d'herbe, flancs de maçonnerie), massifs ruinés en paliers ; escaliers à marches de pierre (demi-marches entre les rangs) ; scène (marches et plateau). Chaque morceau est un secteur d'anneau dont les bords descendent jusqu'à ce qui le jouxte (rang, escalier, relief) ; une marche plate ne passe jamais sous le relief. Les arbres de la carte dans la cavea, l'orchestre et sur la scène sont retirés (il y en avait un, dans le massif nord). **6 966 triangles** (test : moins de 12 000, pour les détails de l'étape 2).
+
+**Jouabilité, déjà en place** (D93) : tabliers invisibles. Nouveau type de tablier, le **secteur d'anneau** (`DeckSector`, altitude linéaire en rayon, `Decks.addSectors`) : podium, chaque rang (exactement sur la marche dessinée), précinction, dessus des coins et des paliers des massifs ; les escaliers et les marches de la scène sont des rampes qui passent par le milieu des contremarches (à une demi-marche près, moins de 20 cm, test). On monte de l'orchestre au sommet par l'escalier de l'axe sans marche de plus de `STEP_UP` (test). **Obstacles** : le podium (on l'escalade, on voit par-dessus) sauf à l'escalier de l'axe, les bords des massifs et des coins plus hauts de plus d'1 m que ce qui les jouxte (escaladables jusqu'à 2,5 m, D106), les barrières des deux côtés de la scène.
+
+**Pas encore** (étapes suivantes) : le détail des ruines (moellons, ruptures, coins du haut à gradins restaurés, marches de bois), la navigation des passants, les barrières dessinées de la scène, le poteau d'éclairage et les bancs.
+
+![Avant : l'immeuble BD TOPO](captures/d133-theatre-avant.jpg)
+![Après : vue de drone depuis l'est, comme la photo](captures/d133-theatre-apres.jpg)
+![Au sol, avant (dans l'immeuble)](captures/d133-theatre-sol-avant.jpg)
+![Au sol, après](captures/d133-theatre-sol-apres.jpg)
+![Du haut de l'extrémité nord, comme la photo](captures/d133-theatre-nord.jpg)
+![Depuis l'aile sud vers le nord, comme la photo](captures/d133-theatre-sud.jpg)
+![Depuis le passage du petit train, au-dessus de la cavea](captures/d133-theatre-train.jpg)
+![La nuit : pas d'éclairage](captures/d133-theatre-nuit.jpg)
+![Silhouette lointaine : plus d'immeuble](captures/d133-theatre-silhouette.jpg)
+
+## 2026-10-31 — D134. Bâtiments d'après photos, étape 14 : le théâtre romain, ruines et détails
+
+**Suite du plan validé (D133), étape 2.** Ce qui se voit sur les photos de l'utilisateur et que l'étape 1 ne dessinait pas : les massifs des extrémités sont des blocs de maçonnerie cassés (pas de grandes marches régulières), deux coins de la partie haute ont retrouvé leurs gradins, les murs des voûtes affleurent dans l'herbe des autres coins, les escaliers du haut ont des marches d'herbe tenues par des traverses de bois.
+
+**Coins restaurés : d'après les photos, la mesure ne suffit pas.** Recherche du rythme des rangs (période de 0,6 à 1 m) dans le profil radial de l'orthophotographie, coin par coin : les gradins du bas, restaurés, donnent un rapport de 0,31 ; seul le coin de 12° à 33° au sud de l'axe, sur sa pente (42 à 56 m), en donne autant (0,28), le coin de l'axe 0,12, les autres moins de 0,1. La photo de drone montre des gradins dans ces deux coins (au centre et au centre-gauche, vue depuis l'est). Choix : ces deux coins (`upperRows` de `manual.json`, indices 3 et 4 depuis l'extrémité nord) ; nombre de rangs = hauteur de la pente divisée par celle des rangs du bas, mesurée : **20 et 19 rangs** d'environ 35 × 78 cm, comme en bas (`build_monuments.py`, 5ᵉ valeur de chaque coin de `cun`).
+
+**Morceaux** (`blockPieces`, `src/core/theatre.ts`) : chaque massif est découpé en morceaux (secteurs d'anneau) qui servent à la fois au dessin, aux tabliers invisibles et aux obstacles :
+- **ruines** : blocs d'environ 7 m de large ; chaque palier mesuré est relevé ou abaissé de −0,5 à +0,3 m par un bruit déterministe (la maçonnerie est cassée, pas taillée en marches) ; au bout de la cavea, sur le diamètre, chaque bloc s'arrête 0 à 2 m en retrait (dents de scie, comme sur la photo de drone) ;
+- **coins restaurés** : la pente devient des rangs (secteurs plats, exactement à la hauteur dessinée), la terrasse reste herbue ;
+- **autres coins** : pente et terrasse herbues.
+
+**Rendu** (`src/render/theatre.ts`) : maçonnerie en moellons (teinte nuancée d'une face à l'autre, assises sombres tous les 90 cm à hauteur absolue, alignées d'une face à l'autre, sur les faces de plus de 1,3 m) ; dessus moussus des ruines, jamais sous le relief ; murs rayonnants des voûtes en bandes de maçonnerie de 90 cm affleurant de 12 cm dans l'herbe des coins non restaurés (le relevé montre des bandes plus hautes dans chaque coin) ; escaliers du haut à marches d'herbe et contremarches de bois ; arcs dessinés tous les 5° (4° avant). **9 518 triangles** (6 966 à l'étape 1 ; borne du test : 12 000).
+
+**Tests** : 39 rangs restaurés dans la partie haute, de 30 à 45 cm ; plus de 60 blocs de ruine, de hauteurs variées ; la surface du jeu est exactement le dessus de chaque rang et de chaque bloc (ou le relief s'il est plus haut).
+
+**Pas encore** (étapes suivantes) : les passants (navigation), les barrières dessinées de la scène, le poteau d'éclairage et les bancs.
+
+![Du haut de l'extrémité nord, avant](captures/d134-theatre-nord-avant.jpg)
+![Du haut de l'extrémité nord, après : coins restaurés, murs des voûtes](captures/d134-theatre-nord-apres.jpg)
+![Depuis l'aile sud, avant](captures/d134-theatre-sud-avant.jpg)
+![Depuis l'aile sud, après](captures/d134-theatre-sud-apres.jpg)
+![L'extrémité nord depuis l'est : massifs cassés](captures/d134-theatre-extremite-nord.jpg)
+![Dans un coin restauré de la partie haute](captures/d134-theatre-coin-restaure.jpg)
+![Vue de drone](captures/d134-theatre-drone.jpg)
+
+## 2026-10-31 — D135. Bâtiments d'après photos, étape 15 : le théâtre romain, les passants
+
+**Suite du plan validé (D133), étape 3.** **Constat** : la navigation des passants (D40) ne passait pas dans la cavea. `build_nav.py` retire les voies OpenStreetMap qui traversent un bâtiment ; l'emprise BD TOPO du théâtre (masquée dans le jeu depuis D133) couvrait toute la cavea : il ne restait que le chemin du sommet (`249622262`), et l'escalier qui en descend près de la maison du gardien.
+
+**Choix : une étape autonome, `tools/data/build_theatre_nav.py`, qui ne réécrit que la super-tuile du théâtre** (`nav/s7_9.json`) et son entrée dans `nav/index.json`. Régénérer la navigation repartirait de tout OpenStreetMap et réécrirait toute la ville ; et `build_nav.py` ne sait pas dessiner des chemins sur des gradins. Après une régénération, il suffit de relancer cette étape (README).
+- **Ce qui est ajouté** (31 arêtes, aux mesures du site `theatre`) : l'**allée de la précinction** (chemin), d'un bout des gradins restaurés à l'autre ; l'**escalier de l'axe**, de la précinction à l'orchestre (escalier) ; les **six escaliers du haut**, jusqu'au chemin du sommet (raccord : l'arête la plus proche, à moins de 12 m, est coupée en deux ; les six le sont) ; un **carrefour au milieu de l'orchestre**, la **scène** (marches, plateau, sortie à l'est, contournée à 1,5 m) et une **sortie nord**, au-delà de l'extrémité des gradins (u < −90°, hors des massifs), jusqu'à l'escalier OpenStreetMap près de la maison du gardien. Fréquentation 140 sur 255 (lieu touristique), zone résidentielle (la même que le sommet). Les escaliers latéraux du bas, qui finissent sur le premier rang (le podium fait 1,5 m), ne sont pas dans le graphe.
+- **Idempotente et réversible** : nœuds ajoutés marqués du drapeau 64 (inutilisé pour les piétons), arêtes ajoutées avec la référence de la voie OpenStreetMap du théâtre (`153779957`). Une passe retire d'abord ce qu'elle avait ajouté et recolle les arêtes coupées (la longueur d'origine est partagée entre les deux morceaux, le point de coupe disparaît au recollage), puis refait l'ajout : une deuxième passe ne change rien, et le retrait rend exactement le fichier de `build_nav.py` (vérifié).
+- **Altitudes** : les passants prennent la surface du jeu avec leur altitude actuelle (D93) : ils montent sur les tabliers des gradins et de la scène comme le joueur.
+
+**Vérifié en jeu** (150 passants demandés, 13 h, joueur dans la cavea) : 12 à 20 des 27 passants présents dans les 75 m du théâtre, sur l'allée de la précinction (à −8,55 m, l'altitude de son tablier), dans l'orchestre, sur la scène, à la sortie nord ; altitude des passants = surface du jeu.
+
+**Tests** : le graphe du théâtre est relié au reste de la ville (plus de 500 nœuds atteints depuis l'orchestre) ; en suivant chaque chemin dans les deux sens, aucune marche de plus de `STEP_UP` ; aucun obstacle du théâtre ne coupe un chemin. Le test « files hors des bâtiments » ignore désormais les bâtiments masqués (l'ancienne emprise du théâtre).
+
+**Pas encore** : les passants ne s'assoient pas sur les gradins (la simulation n'a pas de place assise) ; les barrières dessinées de la scène, le poteau d'éclairage et les bancs (étape 4).
+
+![La navigation, avant et après (recouvrement de `nav_debug.py`)](captures/d135-theatre-navigation.jpg)
+![Des passants dans l'orchestre et sur la scène, vus de la précinction](captures/d135-theatre-passants.jpg)
+![Depuis l'extrémité nord](captures/d135-theatre-passants-nord.jpg)
+
+## 2026-10-31 — D136. Bâtiments d'après photos, étape 16 : le théâtre romain, barrières, poteaux et arbustes
+
+**Suite et fin du plan validé (D133), étape 4.** Mobilier moderne vu sur les photos de l'utilisateur.
+
+**Correction de ma lecture des photos** : j'avais lu « des bancs le long de l'allée » sur la photo de drone (à droite, au nord-est). L'orthophotographie montre à cet endroit **quatre arbustes taillés en boule**, en rangée sur un îlot d'herbe entre deux allées, et pas de banc. Ce sont donc des arbustes. Aucun banc n'est visible ailleurs, ni dans OpenStreetMap.
+
+**Mesures** (`build_monuments.py`, `poles` et `shrubs` du site `theatre`) :
+- **Poteaux d'éclairage** : aucun n'est dans OpenStreetMap ni dans le mobilier des tuiles. Sur l'orthophotographie, deux ombres fines d'environ 13 m, sans couronne : leur pied donne la position (`poles` de `manual.json`). L'un au sud-est de l'orchestre (photo 2 : au-delà de la scène ; photo de drone : dans la pelouse au premier plan), l'autre près des arbustes (photo de drone, à droite). Hauteur : plus haut point du modèle de surface à moins d'1 m du pied, **9,2 m** pour le premier ; le second est trop fin pour le relevé (2,4 m) : il prend la hauteur du premier (ombres de même longueur). **Le premier était dans la carte comme un arbre** (couronne d'1,2 m de rayon, 10,4 m) : cet « arbre » n'est plus dessiné ni un obstacle.
+- **Arbustes** : positions sur l'orthophotographie (`shrubs`), hauteur = plus haut point du modèle de surface à moins de 75 cm, bornée à 0,6-1,4 m (0,6 à 0,65 m).
+
+**Rendu** (`src/render/theatre.ts`) :
+- **Barrières de la scène** (photos) : barrières galvanisées le long de ses deux côtés, panneaux de 2,4 m, poteaux, lisses haute et basse, barreaux tous les 20 cm, au niveau des marches puis du plateau. Elles correspondent aux obstacles de D133 (1,1 m, escaladables).
+- **Poteaux** : fût effilé, traverse et deux projecteurs tournés vers le milieu de l'orchestre ; **jamais allumés** (choix de l'utilisateur : le théâtre n'est pas éclairé la nuit).
+- **Arbustes** : octogones qui se resserrent en haut, vert sombre.
+- Poteaux (20 cm) et arbustes (70 cm) sont des obstacles ronds (`landmarkCircles`).
+- **10 930 triangles** pour tout le théâtre (9 518 avant ; borne du test : 12 000).
+
+**Tests** : deux poteaux de 7 à 12 m, quatre arbustes, tous obstacles ; l'arbre du pied du premier poteau est bien retiré.
+
+**Bilan du théâtre (D133 à D136)** : cavea mesurée, gradins restaurés en bas et dans deux coins du haut, précinction, coins herbus et massifs ruinés, escaliers, orchestre, scène et ses barrières, poteaux, arbustes ; tout est praticable, les passants y entrent, la piste du stade est en terre. **Pas fait** : les sièges des passants sur les gradins (la simulation n'a pas de place assise) ; pas de mur de scène ni de vomitoire (rien de lisible sur les photos ni dans le relevé).
+
+![La scène et ses barrières, un poteau à gauche](captures/d136-theatre-scene.jpg)
+![Les arbustes taillés et le second poteau](captures/d136-theatre-arbustes.jpg)
+![Du haut de l'extrémité nord, comme la photo 2](captures/d136-theatre-nord.jpg)
+![Vue de drone](captures/d136-theatre-drone.jpg)

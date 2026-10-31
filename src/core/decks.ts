@@ -21,9 +21,26 @@ interface Flat {
   z: number;
 }
 
+/**
+ * Secteur d'anneau praticable (gradins du théâtre romain, D133) : centre, angle du milieu et demi-ouverture (radians), rayons ; altitude
+ * linéaire en rayon de z0 (à r0) à z1 (à r1).
+ */
+export interface DeckSector {
+  id: string;
+  cx: number;
+  cy: number;
+  a: number;
+  h: number;
+  r0: number;
+  r1: number;
+  z0: number;
+  z1: number;
+}
+
 interface Entry {
   segs: Seg[];
   flats: Flat[];
+  sectors: DeckSector[];
   cells: number[];
   refs: Set<string>;
 }
@@ -75,7 +92,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [], cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [], sectors: [], cells: [], refs: new Set([tile]) };
       const p = d.p;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i + 5 < p.length; i += 3) {
@@ -96,13 +113,36 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], sectors: [], cells: [], refs: new Set([tile]) };
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < pl.r.length; i += 2) {
         x0 = Math.min(x0, pl.r[i]!); x1 = Math.max(x1, pl.r[i]!); y0 = Math.min(y0, pl.r[i + 1]!); y1 = Math.max(y1, pl.r[i + 1]!);
       }
       this.entries.set(pl.id, e);
       this.index(e, x0, y0, x1, y1);
+    }
+  }
+
+  /** Secteurs d'anneau d'une tuile (gradins, D133) ; même règle de références que les tabliers. */
+  addSectors(tile: string, sectors: readonly DeckSector[]): void {
+    for (const sc of sectors) {
+      const id = `s${sc.id}`;
+      const known = this.entries.get(id);
+      if (known) {
+        known.refs.add(tile);
+        continue;
+      }
+      const e: Entry = { segs: [], flats: [], sectors: [sc], cells: [], refs: new Set([tile]) };
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let k = 0; k <= 8; k++) {
+        const th = sc.a - sc.h + (2 * sc.h * k) / 8;
+        for (const r of [sc.r0, sc.r1]) {
+          const x = sc.cx + r * Math.cos(th), y = sc.cy + r * Math.sin(th);
+          x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+        }
+      }
+      this.entries.set(id, e);
+      this.index(e, x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5);
     }
   }
 
@@ -143,6 +183,16 @@ export class Decks {
       }
       if (rail) continue;
       for (const f of e.flats) if (f.z > best && f.z <= limit && inRing(x, y, f.ring)) best = f.z;
+      for (const sc of e.sectors) {
+        const dx = x - sc.cx, dy = y - sc.cy;
+        const r = Math.hypot(dx, dy);
+        if (r < sc.r0 || r > sc.r1) continue;
+        let u = Math.atan2(dy, dx) - sc.a;
+        u -= 2 * Math.PI * Math.round(u / (2 * Math.PI));
+        if (Math.abs(u) > sc.h) continue;
+        const z = sc.z0 + ((sc.z1 - sc.z0) * (r - sc.r0)) / (sc.r1 - sc.r0);
+        if (z > best && z <= limit) best = z;
+      }
     }
     return best;
   }
