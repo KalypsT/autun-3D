@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Building, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { at, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
@@ -469,5 +469,155 @@ describe("monuments (D95)", () => {
         }
       }
     });
+  });
+});
+
+describe("magasins d'après photo : Lidl, pharmacie et abri à chariots (D143)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const LIDL = "BATIMENT0000000348858792", PHARMACY = "BATIMENT0000002202684554", CART = "BATIMENT0000002101118190";
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const roofAt = (r: [number, number, number, number], x: number, y: number): number => r[0] * x + r[1] * y + r[2];
+  const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
+  const cell = JSON.parse(readFileSync("public/data/nav/s7_10.json", "utf8")) as { poi: number[] };
+  const commerce = (): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    return out;
+  };
+  const distToEdge = (b: { ring: number[] }, e: number, x: number, y: number): number => {
+    const f = edgeFrame(b.ring, e);
+    const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+    return Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o);
+  };
+
+  it("toit plan : murs et pans suivent le plan mesuré, l'égout est son point le plus bas", () => {
+    const b = bOf(LIDL), roof = kinds.buildings[LIDL]!.roof!;
+    const r = reshapeBuilding(b, "retail", roof);
+    for (let i = 0; i < b.ring.length; i += 2) expect(r.top[i / 2]).toBeCloseTo(roofAt(roof, b.ring[i]!, b.ring[i + 1]!) + roof[3], 6);
+    for (const f of r.faces) expect(f.p).toEqual([roof[0], roof[1], roof[2]]);
+    expect(r.eave).toBeCloseTo(Math.min(...r.top) - roof[3], 6);
+    expect(r.roofKind).toBe("flat");
+    // Sans plan, le toit reste plat comme avant.
+    expect(reshapeBuilding(b, "retail").top.every((z) => Math.abs(z - (b.eave + PARAPET)) < 1e-9)).toBe(true);
+  });
+
+  it("Lidl : toit incliné vers le nord-ouest mesuré, façade vitrée sur le mur ouest, sas entre deux panneaux, zone hachurée sur le mur sud-est", () => {
+    const k = kinds.buildings[LIDL]!, b = bOf(LIDL), st = k.store!, roof = k.roof!;
+    expect(k.k).toBe("retail");
+    expect(st.style).toBe("lidl");
+    // Toit à 5 – 8 m au-dessus du sol, plus haut au sud-est (pente de 3 à 10 %), acrotère de 15 à 70 cm.
+    const hs = Array.from({ length: b.ring.length / 2 }, (_, i) => roofAt(roof, b.ring[2 * i]!, b.ring[2 * i + 1]!) - b.ground);
+    expect(Math.min(...hs)).toBeGreaterThan(4.8);
+    expect(Math.max(...hs)).toBeLessThan(8.2);
+    const slope = Math.hypot(roof[0], roof[1]);
+    expect(slope).toBeGreaterThan(0.03);
+    expect(slope).toBeLessThan(0.1);
+    expect(roof[1]).toBeLessThan(0);
+    expect(roof[3]).toBeGreaterThanOrEqual(0.15);
+    expect(roof[3]).toBeLessThanOrEqual(0.7);
+    // Mur vitré : l'arête 0, de 33 m, regarde l'ouest-sud-ouest ; le vitrage tient dans le mur.
+    const f = edgeFrame(b.ring, st.e);
+    expect(f.len).toBeGreaterThan(31);
+    expect(f.len).toBeLessThan(35);
+    expect(compass(f)).toBeGreaterThan(225);
+    expect(compass(f)).toBeLessThan(260);
+    expect(st.glass[0]).toBeGreaterThanOrEqual(0);
+    expect(st.glass[1]).toBeLessThanOrEqual(f.len);
+    // Sas près du coin sud (fin de l'arête), de 4 à 5 m ; un panneau de chaque côté.
+    const [c, w] = st.door!;
+    expect(c + w / 2).toBeLessThan(st.glass[1]);
+    expect(f.len - c).toBeGreaterThan(5);
+    expect(f.len - c).toBeLessThan(12);
+    expect(w).toBeGreaterThan(3.5);
+    expect(w).toBeLessThan(6);
+    expect(st.blades!.length).toBe(2);
+    expect(st.blades![0]!).toBeLessThan(c - w / 2);
+    expect(st.blades![1]!).toBeGreaterThan(c + w / 2);
+    // Long mur plein : l'arête 1 (70 m), casier et grilles dedans, zone hachurée entre 1 et 4 m du mur.
+    const g = edgeFrame(b.ring, st.side!.e);
+    expect(g.len).toBeGreaterThan(65);
+    expect(compass(g)).toBeGreaterThan(130);
+    expect(compass(g)).toBeLessThan(175);
+    expect(st.side!.locker[0] + st.side!.locker[1] / 2).toBeLessThan(g.len);
+    for (const s of st.side!.vents) expect(s + 1).toBeLessThan(g.len);
+    const [h0, h1, d0, d1] = st.side!.hatch;
+    expect(h0).toBeLessThan(h1);
+    expect(h1).toBeLessThan(g.len);
+    expect(d0).toBeGreaterThan(0.5);
+    expect(d1).toBeLessThan(5);
+  });
+
+  it("pharmacie : grande surface à toit plat, façade au nord-ouest, galerie de 2 m, croix sur la façade et sur le toit", () => {
+    const k = kinds.buildings[PHARMACY]!, b = bOf(PHARMACY), st = k.store!, roof = k.roof!;
+    expect(k.k).toBe("retail");
+    expect(k.n).toBe("Pharmacie de Saint-Pan");
+    expect(st.style).toBe("pharmacy");
+    // Toit plat (pente de moins de 2 %) à 3 – 4 m du sol à la façade.
+    expect(Math.hypot(roof[0], roof[1])).toBeLessThan(0.02);
+    const f = edgeFrame(b.ring, st.e);
+    const zf = roofAt(roof, f.x, f.y) - b.ground;
+    expect(zf).toBeGreaterThan(2.9);
+    expect(zf).toBeLessThan(4.2);
+    expect(f.len).toBeGreaterThan(27);
+    expect(compass(f)).toBeGreaterThan(315);
+    expect(st.gallery!).toBeGreaterThan(1.5);
+    expect(st.gallery!).toBeLessThan(3);
+    expect(st.glass[0]).toBeGreaterThan(0);
+    expect(st.glass[1]).toBeLessThan(f.len);
+    expect(st.cross![0]).toBeLessThan(f.len);
+    expect(st.cross![1]).toBeLessThan(f.len);
+  });
+
+  it("abri à chariots du Lidl : emprise de 5 × 7 m sur le parking, côté ouvert au bord du contour, style Lidl", () => {
+    const k = kinds.buildings[CART]!, b = bOf(CART);
+    expect(k.k).toBe("cart");
+    expect(k.style).toBe("lidl");
+    const [ox, oy] = k.open!;
+    let near = Infinity;
+    for (let i = 0; i < b.ring.length / 2; i++) near = Math.min(near, distToEdge(b, i, ox, oy));
+    expect(near).toBeLessThan(0.3);
+    const sides = Array.from({ length: 4 }, (_, i) => edgeFrame(b.ring, i).len).sort((a, c) => a - c);
+    expect(sides[0]).toBeGreaterThan(4.3);
+    expect(sides[3]).toBeLessThan(7.5);
+  });
+
+  it("obstacles : le sas et le casier bloquent, le mur vitré et la zone hachurée se longent", () => {
+    const b = bOf(LIDL), st = kinds.buildings[LIDL]!.store!;
+    const c = new Colliders();
+    c.addRing(b.ring.reduce<number[]>((a, v) => a.concat(v), []));
+    const circles = storeCircles(b, st);
+    expect(circles.length).toBe(4);
+    for (const [x, y, r] of circles) c.addCircle(x, y, r);
+    const f = edgeFrame(b.ring, st.e), g = edgeFrame(b.ring, st.side!.e);
+    const at = (e: typeof f, s: number, o: number): [number, number] => [e.x + e.tx * s + e.nx * o, e.y + e.ty * s + e.ny * o];
+    // Devant le sas (à 0,8 m) et contre le casier : bloqué ; à 4 m du sas, et le long de la zone hachurée à 2 m du mur : libre.
+    expect(c.resolve(...at(f, st.door![0], 0.8), 0.35).hit).toBe(true);
+    expect(c.resolve(...at(g, st.side!.locker[0], 0.3), 0.35).hit).toBe(true);
+    expect(c.resolve(...at(f, st.door![0], 4), 0.35).hit).toBe(false);
+    expect(c.resolve(...at(g, 14, 2.4), 0.35).hit).toBe(false);
+    expect(landmarkCircles(kinds, world.tile.buildings).filter(([x, y]) => circles.some(([cx, cy]) => Math.hypot(x - cx, y - cy) < 1e-6)).length).toBe(4);
+    // La pharmacie n'ajoute pas d'obstacle (sa galerie est dans son contour).
+    expect(storeCircles(bOf(PHARMACY), kinds.buildings[PHARMACY]!.store!)).toEqual([]);
+  });
+
+  it("passants : un seul point « commerce » par magasin, devant le mur d'entrée, plus d'ancien point sur les autres murs", () => {
+    for (const [id, edge] of [[LIDL, 0], [PHARMACY, 0]] as const) {
+      const b = bOf(id), n = b.ring.length / 2;
+      const near = commerce().filter(([x, y]) => Array.from({ length: n }, (_, e) => distToEdge(b, e, x, y)).some((d) => d < 2));
+      expect(near.length).toBe(1);
+      const [x, y] = near[0]!;
+      expect(distToEdge(b, edge, x, y)).toBeCloseTo(0.8, 0);
+      const f = edgeFrame(b.ring, edge);
+      expect((x - f.x) * f.nx + (y - f.y) * f.ny).toBeGreaterThan(0);
+      for (let e = 1; e < n; e++) expect(distToEdge(b, e, x, y)).toBeGreaterThan(1.5);
+    }
+  });
+
+  it("aucune cache d'arme dans les magasins, leur sas, leur galerie ni leur abri", () => {
+    for (const id of [LIDL, PHARMACY, CART]) {
+      const b = bOf(id), n = b.ring.length / 2;
+      for (const q of CACHES) expect(Array.from({ length: n }, (_, e) => distToEdge(b, e, q.x, q.y)).every((d) => d > 3)).toBe(true);
+    }
   });
 });

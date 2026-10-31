@@ -353,7 +353,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const kinds = tile.kinds;
   const kindOf = (id: string): BuildingKind | undefined => kinds?.buildings[id];
   // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
-  const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k));
+  const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k, kindOf(b.id)?.roof));
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
   const names = new UvMeshBuilder();

@@ -8,6 +8,7 @@ import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
+import { buildStore, lidlCartShelter } from "./store";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
@@ -38,7 +39,7 @@ export function landmarkWallColor(kind: BuildingKind | undefined, id: string): T
   if (!kind) return null;
   const key = idKey(id);
   switch (kind.k) {
-    case "retail": return C(kind.c ? "#ece6d8" : pick(CLADDING, key, 3));
+    case "retail": return kind.store ? C(kind.store.style === "lidl" ? "#efede6" : "#e9e6df") : C(kind.c ? "#ece6d8" : pick(CLADDING, key, 3));
     case "industrial": return C(pick(CLADDING, key, 1)).multiplyScalar(0.95 + key * 0.08);
     case "sports": return C("#ebe4d3");
     case "greenhouse": return C("#cfe3df");
@@ -50,7 +51,7 @@ export function landmarkWallColor(kind: BuildingKind | undefined, id: string): T
 /** Couleur des toits des gabarits « boîte » (null : celle de la fiche). */
 export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color | null {
   switch (kind?.k) {
-    case "retail": return C("#b8b2a6");
+    case "retail": return kind.store ? C(kind.store.style === "lidl" ? "#eeeeec" : "#8d706c") : C("#b8b2a6");
     case "industrial": case "sports": return C("#8fa3a8");
     case "greenhouse": return C("#d8ece8");
     case "canopy": return kind.style === "marquise" ? MARQUISE.clone() : C("#efebe3");
@@ -60,7 +61,8 @@ export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color |
 
 /** Le gabarit dessine-t-il ses propres murs (auvents : aucun) ? */
 export function drawsWalls(kind: BuildingKind | undefined): boolean {
-  return kind?.k !== "canopy";
+  // Pharmacie d'après photo (D143) : ses murs, dont la galerie en retrait, sont dessinés par le magasin.
+  return kind?.k !== "canopy" && !kind?.store?.gallery;
 }
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
@@ -926,7 +928,8 @@ export function buildLandmarks(
         const o: RetailOptions = {};
         if (fiche?.ground.signAt !== undefined) o.signAt = fiche.ground.signAt;
         if (fiche?.ground.signZ !== undefined) o.signZ = fiche.ground.signZ;
-        retail(sinks, b, kind, segs, terrain, wall, o);
+        if (kind.store) buildStore(sinks, b, kind, terrain, wall);
+        else retail(sinks, b, kind, segs, terrain, wall, o);
         break;
       }
       case "industrial": industrial(sinks, b, segs, terrain, wall); break;
@@ -941,7 +944,7 @@ export function buildLandmarks(
       }
       case "church": case "chapel": church(sinks, b, kind, segs, terrain, wall); break;
       case "hidden": break;
-      case "cart": cartShelter(sinks.solid, b, kind, terrain); break;
+      case "cart": if (kind.style === "lidl") lidlCartShelter(sinks, b, kind, terrain); else cartShelter(sinks.solid, b, kind, terrain); break;
       case "house": if (kind.house) buildHouse(sinks.solid, sinks.glow, kind.house, terrain); break;
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.

@@ -4,7 +4,7 @@ Usage : python3 tools/data/build_carts.py       (après build_kinds.py, qui ré�
 Entrées : public/data/world.json, tiles/*.json (emprises), kinds/*.json (grandes surfaces), parkings OpenStreetMap (.cache/shared/raw/osm,
           les blocs téléchargés par fetch.py ou build_shop_fronts.py).
 Sortie : kinds/<tuile>.json, type `cart` pour chaque abri, avec `open` : milieu du petit côté ouvert (vers la grande surface la plus proche) ;
-          et les types imposés à la main d'après photo (`kinds` de tools/data/manual.json, D122 : la marquise de l'entrée d'E.Leclerc).
+          et les types imposés à la main d'après photo (`kinds` de tools/data/manual.json : la marquise de l'entrée d'E.Leclerc, D122 ; la pharmacie et l'abri à chariots du Lidl, D143).
 
 Un abri : emprise rectangulaire (≥ 85 % de son rectangle orienté), 1,8 à 3,2 m sur 6 à 12 m, sur un parking OpenStreetMap (à moins de 3 m)
 et à moins de 60 m d'une grande surface, sans y être collé. Règle prudente : les six abris d'E.Leclerc (2,3 × 8,2 m, photo de l'utilisateur) ;
@@ -109,7 +109,7 @@ def main():
             k["buildings"] = dict(sorted(k["buildings"].items()))
             changed.add(tid)
     for tid, k in kinds.items():
-        for bid in [bid for bid, e in k["buildings"].items() if e["k"] == "cart" and (tid, bid) not in found]:
+        for bid in [bid for bid, e in k["buildings"].items() if e["k"] == "cart" and (tid, bid) not in found and bid not in manual]:
             del k["buildings"][bid]
             changed.add(tid)
     for (tid, bid), end in found.items():
