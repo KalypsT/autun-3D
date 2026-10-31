@@ -6,7 +6,8 @@ import type { LodBuilding, Site, Tree } from "../data/types";
 import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildFarTower, buildFountain, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildGate } from "./gates";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -17,9 +18,12 @@ describe("monuments (D95) : géométrie", () => {
     for (const s of kinds.sites) {
       if (s.t !== "gate") continue;
       const mb = new MeshBuilder();
-      buildGate(mb, s, world.terrain);
+      const glow = new MeshBuilder();
+      buildGate(mb, glow, s, world.terrain);
       expect(mb.positions.every(Number.isFinite)).toBe(true);
-    expect(tris(mb)).toBeLessThan(3000);
+      // D137 : moins de 4 000 triangles par porte (Arroux : 2 372), autant au plus pour l'éclairage de nuit, seulement si le modèle l'a.
+      expect(tris(mb)).toBeLessThan(4000);
+      expect(tris(glow)).toBe(s.gm?.light ? tris(mb) : 0);
     }
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();

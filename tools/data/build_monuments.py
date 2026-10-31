@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -7,7 +7,8 @@ Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilis
 Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour dans ce repère, hauteurs mesurées) ; `sign: false` retire
           l'inscription (`n`) ; cathédrale (modèle `cathedral`, D127) : champ `cath`, clocher lointain (`tower` et kinds/index.json) ;
           silhouettes lointaines (lod/<tuile>.json) ; fontaine (modèle `fountain`, D131) : site `fountain` de la tuile où elle se trouve ;
-          théâtre romain (modèle `theatre`, D133) : site `theatre`, bâtiment BD TOPO masqué ; revêtement des pistes (`tracks`, D133).
+          théâtre romain (modèle `theatre`, D133) : site `theatre`, bâtiment BD TOPO masqué ; revêtement des pistes (`tracks`, D133) ;
+          portes romaines (modèle `gate`, D137) : champ `gm` du site `gate` (écrit par build_kinds.py) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -619,6 +620,114 @@ def theatre(tid, bid, b, spec, k):
     return True
 
 
+COMPASS = {"N": 90, "NNE": 67.5, "NE": 45, "ENE": 22.5, "E": 0, "ESE": -22.5, "SE": -45, "SSE": -67.5, "S": -90, "SSW": -112.5, "SW": -135,
+           "WSW": -157.5, "W": 180, "WNW": 157.5, "NW": 135, "NNW": 112.5}
+
+
+def side_of(site, name):
+    """+1 si la direction `name` (rose des vents) est du côté t > 0 de la porte (v = u tourné d'un quart de tour), sinon −1."""
+    th = math.radians(COMPASS[name])
+    return 1 if -math.sin(site["a"]) * math.cos(th) + math.cos(site["a"]) * math.sin(th) > 0 else -1
+
+
+def measure_gate(spec, site):
+    """Porte romaine d'après photo (D137) : la position (x, y, a, l) vient du contour OpenStreetMap (build_kinds.py, D95) ; on mesure au
+    LiDAR le décalage en travers et l'épaisseur du corps (profil médian du MNS sur la partie de la longueur que le relevé contient, `mns` :
+    cellules à plus de 4 m au-dessus de la rue), le haut du corps (médiane du MNS sur ce corps, pour contrôle), la rue (médiane du MNT sur
+    l'axe) et le niveau de la rue de chaque côté (à 3 m des faces). Le reste vient de la photo de face (`manual.json`), en mètres mesurés
+    depuis son bout gauche : travées (piles et arches, ramenées à la longueur), naissances, archivoltes, corniche, attique, galerie, profil
+    du dessus ruiné, zones de blocage apparent ; rendu en abscisses s du repère de la porte."""
+    x, y, a, l = site["x"], site["y"], site["a"], site["l"]
+    u, v = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
+    P = lambda s, t: (x + u[0] * s + v[0] * t, y + u[1] * s + v[1] * t)
+    key = f"gate_{spec['st']}"
+    R = l / 2 + 12
+    mns = Raster("MNS", key, math.floor(x - R), math.floor(y - R), math.ceil(x + R), math.ceil(y + R))
+    mnt = Raster("MNT", key, math.floor(x - R), math.floor(y - R), math.ceil(x + R), math.ceil(y + R))
+    g0 = float(np.median([mnt(*P(s, 0)) for s in np.arange(-l / 2, l / 2 + 0.01, 0.5)]))
+    m0, m1 = spec["mns"]
+    ts = np.arange(-6, 6.01, 0.25)
+    prof = [float(np.median([mns(*P(s, t)) for s in np.arange(m0, m1 + 0.01, 0.5)])) - g0 for t in ts]
+    i = int(np.argmax(prof))
+    j0, j1 = i, i
+    while j0 > 0 and prof[j0 - 1] > 4:
+        j0 -= 1
+    while j1 + 1 < len(ts) and prof[j1 + 1] > 4:
+        j1 += 1
+    t0, t1 = float(ts[j0]) - 0.125, float(ts[j1]) + 0.125
+    dt, w = (t0 + t1) / 2, t1 - t0
+    cx, cy = P(0, dt)
+    g = float(np.median([mnt(*P(s, dt)) for s in np.arange(-l / 2, l / 2 + 0.01, 0.5)]))
+    body = float(np.median([mns(*P(s, t)) for s in np.arange(m0, m1 + 0.01, 0.5) for t in np.arange(t0 + 0.5, t1 - 0.49, 0.5)])) - g
+    street = [float(np.median([mnt(*P(s, dt + side * (w / 2 + 3))) for s in np.arange(-l / 2, l / 2 + 0.01, 1)])) for side in (-1, 1)]
+    # Photo : de quel côté (t) elle est prise, donc où est son bout gauche (en regardant vers −t depuis t > 0, la gauche est +s).
+    left = side_of(site, spec["photoFrom"])
+    S = lambda d: round(left * (l / 2 - d), 3)
+    bays = spec["bays"]
+    k = l / sum(bays)
+    edges = [0.0]
+    for b in bays:
+        edges.append(edges[-1] + b * k)
+    arches, piers = [], []
+    for n in range(len(bays)):
+        a0, a1 = sorted((S(edges[n]), S(edges[n + 1])))
+        (arches if n % 2 else piers).append([a0, a1] + ([spec["springs"][n // 2]] if n % 2 else []))
+    gal = spec["gallery"]
+    gs = [S(gal["from"] + gal["pitch"] * n) for n in range(gal["n"] + 1)]
+    gt = side_of(site, gal["face"])
+    gt0 = -w / 2 if gt < 0 else w / 2 - gal["depth"]
+    top = [[S(d), z] for d, z in spec["top"]]
+    if left > 0:
+        top.reverse()  # profil dans le sens des s croissants
+    r2 = lambda q: round(float(q), 2)
+    gm = {
+        "c": [r2(cx), r2(cy)], "w": r2(w), "g": r2(g), "street": [r2(z) for z in street], "body": r2(body),
+        "piers": [[round(q, 2) for q in p] for p in sorted(piers)], "arches": [[round(q, 2) for q in p] for p in sorted(arches)],
+        "band": spec["band"], "cornice": spec["cornice"], "attic": spec["attic"],
+        "gal": {"s": sorted(gs) if left < 0 else sorted(gs)[::-1], "open": gal["open"], "crown": gal["crown"], "ent": gal["ent"],
+                "keep": gal["keep"], "t": [r2(gt0), r2(gt0 + gal["depth"])]},
+        "top": top, "rubble": [sorted([S(d0), S(d1)]) + [z0, z1] for d0, d1, z0, z1 in spec["rubble"]],
+    }
+    if "block" in spec:
+        b0, b1, bz = spec["block"]
+        gm["block"] = sorted([S(b0), S(b1)]) + [bz]
+    if spec.get("light"):
+        gm["light"] = 1
+    return gm
+
+
+def gate(spec, kinds_all):
+    """Écrit le modèle `gm` dans le site `gate` de la porte (kinds/<tuile>.json, écrit par build_kinds.py, D95) et sa silhouette lointaine
+    (lod/<tuile>.json) ; rend (tuile des types si elle change, tuile des silhouettes si elle change)."""
+    for tid, k in kinds_all():
+        site = next((q for q in k["sites"] if q.get("t") == "gate" and q.get("st") == spec["st"]), None)
+        if site:
+            break
+    else:
+        print(f"  porte {spec['st']} absente de public/data/kinds (lancer build_kinds.py)")
+        return None, False
+    gm = measure_gate(spec, site)
+    print(f"  {site['n']} : corps de {gm['w']} m d'épaisseur décalé au centre ({gm['c'][0]}, {gm['c'][1]}), rue à {gm['g']} m"
+          f" ({gm['street'][0]} / {gm['street'][1]} de chaque côté), corps au relevé {gm['body']} m (attique d'après la photo : {gm['attic']} m),"
+          f" arches {', '.join(f'{q[1] - q[0]:.2f}' for q in gm['arches'])} m")
+    # Silhouette lointaine (aucune avant D137) : corps jusqu'au haut de son profil, galerie conservée jusqu'à l'entablement.
+    a, l, (cx, cy), hw = site["a"], site["l"], gm["c"], gm["w"] / 2
+    xy = lambda s, t: [round(cx + math.cos(a) * s - math.sin(a) * t, 1), round(cy + math.sin(a) * s + math.cos(a) * t, 1)]
+    rect = lambda s0, s1, t0, t1: [xy(s0, t0), xy(s1, t0), xy(s1, t1), xy(s0, t1)]
+    zt = gm["g"] + float(np.median([q[1] for q in gm["top"]]))
+    polys = [(rect(-l / 2, l / 2, -hw, hw), zt, zt)]
+    gal = gm["gal"]
+    if gal["keep"][1] >= gal["keep"][0]:
+        ss = gal["s"][gal["keep"][0]:gal["keep"][1] + 2]
+        ze = gm["g"] + gal["ent"][1]
+        polys.append((rect(min(ss), max(ss), *gal["t"]), ze, ze))
+    lod = tid if replace_lod(tid, f"gate-{spec['st']}", polys, {"w": "#cdc6b5", "t": "#cdc6b5", "m": "terrasse", "a": "medieval", "k": zlib.crc32(f"gate-{spec['st']}".encode())}) else None
+    if site.get("gm") == gm:
+        return None, lod
+    site["gm"] = gm
+    return tid, lod
+
+
 def track_surfaces(fixes):
     """Revêtement des pistes d'après photo (`tracks` de manual.json) : la piste de kinds/<tuile>.json dont un sommet est à moins de 15 m
     du point donné prend `s` (« dirt » : terre battue, dessinée rouge-brun au lieu du rouge des pistes synthétiques). Rend les tuiles changées."""
@@ -659,7 +768,18 @@ def main():
         tid = found[bid][0]
         return kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))["buildings"][bid]["mon"]
 
+    def kinds_all():
+        for p in sorted(KINDS.glob("*_*.json")):
+            yield p.stem, kinds.setdefault(p.stem, json.loads(p.read_text()))
+
     for bid, spec in manual.items():
+        if spec["model"] == "gate":
+            tid, lod = gate(spec, kinds_all)
+            if tid:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
         if spec["model"] == "fountain":
             if fountain(bid, spec, world, kinds_mon):
                 print(f"  site de {bid} réécrit")
@@ -752,22 +872,23 @@ def lod_cathedral(tid, bid, m):
     return replace_lod(tid, bid, [([xy(*q) for q in pts], e, top) for pts, e, top in polys])
 
 
-def replace_lod(tid, bid, polys):
+def replace_lod(tid, bid, polys, base=None):
     """Remplace les prismes du bâtiment (même clé) dans lod/<tuile>.json par `polys` (contour en [x, y], égout, haut), à la place du premier ;
-    le reste du fichier est inchangé. Vrai si réécrit."""
+    le reste du fichier est inchangé. Avec `base` (couleurs, toit, époque), les ajoute à la fin s'il n'y en a pas (monument sans bâtiment,
+    D137). Vrai si réécrit."""
     path = LOD / f"{tid}.json"
     if not path.exists():
         return False
     lod = json.loads(path.read_text())
     key = zlib.crc32(bid.encode())
     mine = [e for e in lod if e["k"] == key]
-    if not mine:
+    if not mine and base is None:
         return False
-    base = {k: v for k, v in mine[0].items() if k not in ("r", "e", "g")}
+    base = base or {k: v for k, v in mine[0].items() if k not in ("r", "e", "g")}
     new = [{"r": [v for q in pts for v in q], "e": round(e, 1), "g": round(g, 1), **base} for pts, e, g in polys]
     if mine == new:
         return False
-    i = lod.index(mine[0])
+    i = lod.index(mine[0]) if mine else len(lod)
     rest = [e for e in lod if e["k"] != key]
     path.write_text(json.dumps(rest[:i] + new + rest[i:], separators=(",", ":")))
     return True

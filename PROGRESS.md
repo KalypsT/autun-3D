@@ -926,3 +926,22 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![La scène et ses barrières](docs/captures/d136-theatre-scene.jpg)
 ![Les arbustes et le second poteau](docs/captures/d136-theatre-arbustes.jpg)
 ![Vue de drone](docs/captures/d136-theatre-drone.jpg)
+
+**Bâtiments d'après photos, étape 17 : la porte d'Arroux (31 octobre 2026)** (D137)
+- La porte d'Arroux suit ta photo :
+  - deux grandes arches à archivoltes moulurées et deux petites à demi enterrées ;
+  - le blocage de moellons apparent là où le parement est tombé ;
+  - la corniche et l'attique ;
+  - la galerie conservée seulement sur la partie gauche (7 arcades sur pilastres à chapiteaux, entablement, bloc au sommet) et le bout gauche en gradins.
+- Le relevé LiDAR n'a qu'une partie de la porte (pas la galerie). Il donne l'épaisseur (4,25 m), le recalage (1,5 m) et la rue. Les hauteurs viennent de ta photo, à l'échelle de la longueur de la porte. Le haut du blocage mesuré concorde à moins d'1 m.
+- La nuit, la porte est éclairée par en dessous, comme sur ta photo 4.
+- Elle a une silhouette lointaine (elle disparaissait de loin).
+- Voitures sous les grandes arches et piétons sous les petites, comme avant.
+- 2 372 triangles. 736 tests.
+- Suite : la porte Saint-André avec l'église et sa tour ronde, puis le temple de Janus (à (−795 ; 1211), tuile 22_40).
+- À essayer : `?at=-262,1060&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d137-arroux-avant.jpg)
+![Après](docs/captures/d137-arroux-apres.jpg)
+![La nuit](docs/captures/d137-arroux-nuit.jpg)
+![Côté faubourg](docs/captures/d137-arroux-exterieur.jpg)

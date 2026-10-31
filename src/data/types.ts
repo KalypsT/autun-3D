@@ -325,13 +325,53 @@ export type Site =
   | { t: "track"; r: number[]; s?: "dirt" }
   | { t: "cemetery"; r: number[] }
   /** Porte romaine (D95) : centre, angle du grand côté, longueur, épaisseur, haut mesuré (altitude) ; `st` : disposition (Arroux, Saint-André). */
-  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number }
+  | { t: "gate"; st: "arroux" | "andre"; n: string; x: number; y: number; a: number; l: number; w: number; top?: number; gm?: GateModel }
   /**
    * Fontaine modélisée d'après photo (D131) : centre de l'édicule, orientation, mobilier OpenStreetMap remplacé (`id`), sol, haut et rayon
    * du bassin mesurés (altitudes absolues).
    */
   | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
   | TheatreSite;
+
+/**
+ * Porte romaine d'après photo (D137, tools/data/build_monuments.py) : centre et épaisseur du corps mesurés au LiDAR, rue (altitude absolue),
+ * le reste lu sur la photo de face. Abscisses `s` le long de la porte depuis le centre `c` (sens de l'angle `a` du site), hauteurs au-dessus
+ * de la rue `g`.
+ */
+export interface GateModel {
+  c: [number, number];
+  /** Épaisseur du corps. */
+  w: number;
+  g: number;
+  /** Rue de chaque côté (t < 0, t > 0), à 3 m des faces. */
+  street: [number, number];
+  /** Haut du corps au relevé (contrôle). */
+  body: number;
+  piers: [number, number][];
+  /** Arches : s0, s1, naissance de l'arc. */
+  arches: [number, number, number][];
+  /** Largeur des archivoltes. */
+  band: number;
+  /** Corniche au-dessus des arches (bas, haut). */
+  cornice: [number, number];
+  /** Haut de l'attique (appui de la galerie). */
+  attic: number;
+  /**
+   * Galerie : abscisses des pilastres (n + 1, depuis le bout gauche de la photo), largeur des arcades, haut de leur arc, entablement (bas,
+   * haut), arcades conservées (indices, bornes comprises), épaisseur (t0, t1).
+   */
+  gal: { s: number[]; open: number; crown: number; ent: [number, number]; keep: [number, number]; t: [number, number] };
+  /** Haut du corps (s, z), dans le sens des s croissants ; deux points de même s font une marche (ruine). */
+  top: [number, number][];
+  /** Blocage apparent, parement perdu (s0, s1, z0, z1), sur les deux faces. */
+  rubble: [number, number, number, number][];
+  /** Bloc en saillie au sommet de la galerie (s0, s1, haut). */
+  block?: [number, number, number];
+  /** Toit de tuiles au-dessus de la galerie (égout, faîtage). */
+  roof?: [number, number];
+  /** Éclairée la nuit (projecteurs au pied). */
+  light?: 1;
+}
 
 /**
  * Théâtre romain modélisé d'après photo (D133), mesuré au LiDAR (tools/data/build_monuments.py). Repère polaire : centre `c`, axe `a` (du

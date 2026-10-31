@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { CathedralModel, CathedralSpec, HeightField, Site, TownHallSpec } from "../data/types";
-import { at, frameOf, gateLayout, porchLayout, type Frame, type GateLayout } from "../core/landmarks";
+import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
 
@@ -33,85 +33,6 @@ function box(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, t1: 
   q(mb, f, [s0, t1, z0], [s0, t0, z0], [s0, t0, z1], [s0, t1, z1], N(f, -1, 0), shade(col, 0.92));
   q(mb, f, [s1, t0, z0], [s1, t1, z0], [s1, t1, z1], [s1, t0, z1], N(f, 1, 0), shade(col, 0.92));
   q(mb, f, [s0, t0, z1], [s1, t0, z1], [s1, t1, z1], [s0, t1, z1], [0, 1, 0], top);
-}
-
-// --- Portes romaines ------------------------------------------------------------------------------------------------------------------
-
-/** Haut de l'ouverture en s (arc en plein cintre au-dessus de la naissance), ou null hors de l'ouverture. */
-function openingTop(o: { s0: number; s1: number; spring: number }, s: number): number | null {
-  if (s <= o.s0 || s >= o.s1) return null;
-  const r = (o.s1 - o.s0) / 2, c = (o.s0 + o.s1) / 2;
-  return o.spring + Math.sqrt(Math.max(0, r * r - (s - c) ** 2));
-}
-
-/**
- * Porte romaine : murs de face percés d'arches et d'arcades (colonnes de 25 cm entre le sol et le haut, moins les ouvertures), tranches des
- * arches (piédroits et intrados), corniches et pilastres en saillie, dessus et bouts.
- */
-export function buildGate(mb: MeshBuilder, site: Extract<Site, { t: "gate" }>, terrain: HeightField): void {
-  const g = terrain.heightAt(site.x, site.y);
-  const lay: GateLayout = gateLayout(site, g);
-  const f = lay.frame, H = lay.height, hw = f.hw;
-  const z = (h: number): number => g + h;
-  const stone = STONE, inner = shade(STONE, 0.72);
-  // Faces : colonnes de 25 cm.
-  const cuts = new Set<number>([-f.hl, f.hl]);
-  for (const o of lay.openings) {
-    cuts.add(o.s0);
-    cuts.add(o.s1);
-  }
-  const edges = [...cuts].sort((a, b) => a - b);
-  const cols: number[] = [];
-  for (let i = 0; i + 1 < edges.length; i++) {
-    const a = edges[i]!, b = edges[i + 1]!;
-    const n = Math.max(1, Math.ceil((b - a) / 0.25));
-    for (let k = 0; k < n; k++) cols.push(a + ((b - a) * k) / n);
-  }
-  cols.push(f.hl);
-  for (let i = 0; i + 1 < cols.length; i++) {
-    const s0 = cols[i]!, s1 = cols[i + 1]!, sm = (s0 + s1) / 2;
-    // Intervalles pleins de la colonne : du sol au haut, moins les ouvertures qui la traversent.
-    const holes = lay.openings.filter((o) => sm > o.s0 && sm < o.s1).sort((a, b) => a.zb - b.zb);
-    let base = -0.6;
-    const solid = (zlo0: number, zlo1: number, zhi0: number, zhi1: number): void => {
-      for (const side of [1, -1]) {
-        const t = side * hw;
-        const [a, b] = side === 1 ? [s1, s0] : [s0, s1];
-        const [la, lb, ha, hb] = side === 1 ? [zlo1, zlo0, zhi1, zhi0] : [zlo0, zlo1, zhi0, zhi1];
-        q(mb, f, [a, t, z(la)], [b, t, z(lb)], [b, t, z(hb)], [a, t, z(ha)], N(f, 0, side), stone);
-      }
-    };
-    for (const o of holes) {
-      const t0 = openingTop(o, s0) ?? o.spring, t1 = openingTop(o, s1) ?? o.spring;
-      if (o.zb > base + 0.01) solid(base, base, o.zb, o.zb);
-      // Intrados : le dessous de l'arc entre les deux faces.
-      q(mb, f, [s0, -hw, z(t0)], [s1, -hw, z(t1)], [s1, hw, z(t1)], [s0, hw, z(t0)], [0, -1, 0], inner);
-      if (o.zb > 0) q(mb, f, [s0, hw, z(o.zb)], [s1, hw, z(o.zb)], [s1, -hw, z(o.zb)], [s0, -hw, z(o.zb)], [0, 1, 0], shade(stone, 1.05));
-      // Le haut de l'arc suit la courbe : colonne de t0 / t1 jusqu'à l'ouverture suivante ou au haut.
-      const next = holes.find((h) => h.zb > o.zb);
-      const top = next ? next.zb : H;
-      solid(t0, t1, top, top);
-      base = top;
-      if (!next) break;
-    }
-    if (!holes.length) solid(base, base, H, H);
-  }
-  // Piédroits des ouvertures (côtés verticaux du passage).
-  for (const o of lay.openings) {
-    for (const [s, dir] of [[o.s0, 1], [o.s1, -1]] as const) {
-      q(mb, f, [s, -hw, z(Math.max(o.zb, -0.6))], [s, hw, z(Math.max(o.zb, -0.6))], [s, hw, z(o.spring)], [s, -hw, z(o.spring)], N(f, dir, 0), inner);
-    }
-  }
-  // Dessus, bouts, corniches, pilastres de la galerie.
-  q(mb, f, [-f.hl, -hw, z(H)], [f.hl, -hw, z(H)], [f.hl, hw, z(H)], [-f.hl, hw, z(H)], [0, 1, 0], shade(stone, 1.05));
-  for (const side of [1, -1]) {
-    const s = side * f.hl;
-    q(mb, f, [s, side * hw, z(-0.6)], [s, -side * hw, z(-0.6)], [s, -side * hw, z(H)], [s, side * hw, z(H)], N(f, side, 0), shade(stone, 0.9));
-  }
-  for (const [c0, c1] of lay.cornices) box(mb, f, -f.hl - 0.15, f.hl + 0.15, -hw - 0.18, hw + 0.18, z(c0), z(c1), shade(stone, 1.08));
-  for (const s of lay.pilasters) {
-    for (const side of [1, -1]) box(mb, f, s - 0.14, s + 0.14, side === 1 ? hw : -hw - 0.1, side === 1 ? hw + 0.1 : -hw, z(lay.gallery[0]), z(lay.cornices[1]![0]), shade(stone, 1.04));
-  }
 }
 
 // --- Cathédrale -------------------------------------------------------------------------------------------------------------------

@@ -139,7 +139,7 @@ describe("monuments (D95)", () => {
     const sorted = [...ground].sort((a, b) => a.s0 - b.s0);
     for (let i = 0; i + 1 < sorted.length; i++) expect(sorted[i]!.s1).toBeLessThan(sorted[i + 1]!.s0);
     expect(sorted[0]!.s0).toBeGreaterThan(-gate.l / 2);
-    for (const o of ground) expect(o.spring + (o.s1 - o.s0) / 2).toBeLessThan(lay.gallery[0]);
+    for (const o of ground) expect(o.spring + (o.s1 - o.s0) / 2).toBeLessThan(lay.m.attic);
     // Piles + ouvertures couvrent toute la longueur.
     const piers = lay.piers.reduce((sum, [a, b]) => sum + b - a, 0);
     expect(piers + widths.reduce((a, b) => a + b, 0)).toBeCloseTo(gate.l);
@@ -188,6 +188,38 @@ describe("monuments (D95)", () => {
         expect(h).toBeLessThan(18);
       }
       expect(Object.values(kinds.buildings).filter((k) => k.k === "hidden").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("porte d'Arroux d'après photo (D137) : corps mesuré, galerie conservée sur 7 arcades côté ville, passages pour les voitures et les piétons", () => {
+      const s = kinds.sites.find((q): q is Extract<Site, { t: "gate" }> => q.t === "gate" && q.st === "arroux")!;
+      const m = s.gm!;
+      expect(m).toBeDefined();
+      expect(m.w).toBeGreaterThan(3.5);
+      expect(m.w).toBeLessThan(5);
+      // L'attique lu sur la photo (échelle : la longueur) et le haut du corps au relevé concordent à 1 m près.
+      expect(Math.abs(m.attic - m.body)).toBeLessThan(1);
+      const lay = gateLayout(s, world.terrain.heightAt(s.x, s.y));
+      expect(lay.height).toBeGreaterThan(12);
+      expect(lay.height).toBeLessThan(15);
+      const arcades = lay.openings.filter((o) => o.zb > 0);
+      expect(arcades.length).toBe(7);
+      // Galerie : la partie gauche de la photo prise côté ville, sur la face côté ville.
+      const f = lay.frame, [gx, gy] = at(f, (lay.gallery!.s0 + lay.gallery!.s1) / 2, (lay.gallery!.t0 + lay.gallery!.t1) / 2);
+      expect(lay.gallery!.s0 + lay.gallery!.s1).toBeGreaterThan(0);
+      expect(gy - m.c[1]).toBeLessThan(0);
+      expect(Math.hypot(gx - m.c[0], gy - m.c[1])).toBeLessThan(10);
+      const passages = lay.openings.filter((o) => o.zb < 0).map((o) => o.s1 - o.s0).sort((a, b) => a - b);
+      expect(passages[0]).toBeGreaterThan(1.5);
+      expect(passages[3]).toBeGreaterThan(3.4);
+      // Une voiture passe au milieu de chaque grande arche, un piéton dans chaque petite, sans toucher les piles.
+      const c = new Colliders();
+      for (const r of landmarkRings({ sites: [s] }, () => 0)) c.addRing(r);
+      for (const o of lay.openings.filter((q) => q.zb < 0)) {
+        for (const t of [-f.hw - 1, 0, f.hw + 1]) {
+          const [x, y] = at(f, (o.s0 + o.s1) / 2, t);
+          expect(c.resolve(x, y, o.s1 - o.s0 > 3 ? 1.0 : 0.35).hit).toBe(false);
+        }
+      }
     });
   });
 });

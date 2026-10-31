@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Site, Tree } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, Site, Tree } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -138,51 +138,78 @@ export interface Opening {
 
 export interface GateLayout {
   frame: Frame;
-  /** Hauteur totale au-dessus du sol. */
+  /** Rue au centre (altitude absolue) ; les hauteurs du modèle sont au-dessus. */
+  g: number;
+  /** Hauteur totale au-dessus de la rue. */
   height: number;
+  /** Arches (zb < 0 : passages) et arcades conservées de la galerie (zb = appui). */
   openings: Opening[];
   /** Piles au niveau du sol (s0, s1), obstacles. */
   piers: [number, number][];
-  /** Corniches : (bas, haut) au-dessus du sol. */
-  cornices: [number, number][];
-  /** Pilastres de la galerie (abscisses) et leurs bas et haut. */
-  pilasters: number[];
-  gallery: [number, number];
+  m: GateModel;
+  /** Galerie conservée : étendue, épaisseur, abscisses des pilastres ; null si elle a disparu. */
+  gallery: { s0: number; s1: number; t0: number; t1: number; pilasters: number[] } | null;
+}
+
+/** Haut du corps en s (profil du modèle, linéaire entre ses points ; au droit d'une marche, le plus haut). */
+export function gateTop(m: GateModel, s: number): number {
+  const p = m.top;
+  let best = -Infinity;
+  for (let i = 0; i + 1 < p.length; i++) {
+    const [s0, z0] = p[i]!, [s1, z1] = p[i + 1]!;
+    if (s < s0 - 1e-6 || s > s1 + 1e-6) continue;
+    best = Math.max(best, s1 - s0 < 1e-6 ? Math.max(z0, z1) : z0 + ((z1 - z0) * (s - s0)) / (s1 - s0));
+  }
+  return best === -Infinity ? m.attic : best;
 }
 
 /**
- * Disposition d'une porte romaine d'Autun (D95) : deux grandes arches au centre (voitures), deux petites aux bouts (piétons), corniche,
- * galerie de dix arcades à pilastres, corniche haute. Largeurs de la porte d'Arroux (18,7 m), mises à l'échelle de la longueur ; hauteurs en
- * fractions de la hauteur mesurée au LiDAR.
+ * Modèle par défaut d'une porte sans lecture de photo (D95) : disposition de la porte d'Arroux mise à l'échelle de la longueur (deux grandes
+ * arches de 4,3 m, deux petites de 2,2 m), galerie complète de dix arcades, hauteurs en fractions de la hauteur mesurée au LiDAR.
+ */
+function defaultGateModel(site: Extract<Site, { t: "gate" }>, ground: number): GateModel {
+  const H = Math.min(Math.max((site.top ?? ground + 12) - ground, 7), 20);
+  const k = site.l / 18.7, half = site.l / 2;
+  const widths = [0.9, 2.2, 1.4, 4.3].map((v) => v * k);
+  const mid = site.l - 2 * widths.reduce((a, b) => a + b, 0);
+  const seq = [...widths, mid, ...[...widths].reverse()];
+  const edges = [-half];
+  for (const w of seq) edges.push(edges[edges.length - 1]! + w);
+  const piers: [number, number][] = [], arches: [number, number, number][] = [];
+  const springs = [0.36 * H - 1.1 * k, 0.58 * H - 2.15 * k];
+  for (let i = 0; i < seq.length; i++) {
+    if (i % 2 === 0) piers.push([edges[i]!, edges[i + 1]!]);
+    else arches.push([edges[i]!, edges[i + 1]!, i === 1 || i === 7 ? springs[0]! : springs[1]!]);
+  }
+  const pitch = (site.l - 1.2) / 10;
+  return {
+    c: [site.x, site.y], w: site.w, g: ground, street: [ground, ground], body: H, piers, arches, band: 0.5 * k,
+    cornice: [0.63 * H, 0.68 * H], attic: 0.7 * H,
+    gal: { s: Array.from({ length: 11 }, (_, i) => -half + 0.6 + pitch * i), open: pitch * 0.62, crown: 0.92 * H, ent: [0.93 * H, H], keep: [0, 9], t: [-site.w / 2, site.w / 2] },
+    top: [[-half, 0.7 * H], [half, 0.7 * H]], rubble: [],
+  };
+}
+
+/**
+ * Disposition d'une porte romaine d'Autun : le modèle lu sur photo et mesuré (`gm`, D137), sinon le modèle par défaut (D95). Deux grandes
+ * arches au centre (voitures), deux petites aux bouts (piétons), corniche, attique, galerie à arcades sur pilastres, entablement.
  */
 export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): GateLayout {
-  const frame = frameOf(site.x, site.y, site.a, site.l, site.w);
-  const H = Math.min(Math.max((site.top ?? ground + 12) - ground, 7), 20);
-  const k = site.l / 18.7;
-  const outer = 0.9 * k, small = 2.2 * k, mid = 1.4 * k, big = 4.3 * k;
-  const half = site.l / 2;
-  const openings: Opening[] = [];
-  const piers: [number, number][] = [];
-  const bigTop = 0.58 * H, smallTop = 0.36 * H;
-  for (const side of [-1, 1]) {
-    const e0 = side * half, e1 = side * (half - outer), e2 = side * (half - outer - small), e3 = side * (half - outer - small - mid);
-    const e4 = side * (half - outer - small - mid - big);
-    const lo = (a: number, b: number): [number, number] => [Math.min(a, b), Math.max(a, b)];
-    const [s0, s1] = lo(e1, e2), [b0, b1] = lo(e3, e4);
-    openings.push({ s0, s1, zb: -0.5, spring: smallTop - small / 2 }, { s0: b0, s1: b1, zb: -0.5, spring: bigTop - big / 2 });
-    piers.push(lo(e0, e1), lo(e2, e3));
+  const m = site.gm ?? defaultGateModel(site, ground);
+  const frame = frameOf(m.c[0], m.c[1], site.a, site.l, m.w);
+  const openings: Opening[] = m.arches.map(([s0, s1, spring]) => ({ s0, s1, zb: -1, spring }));
+  const [i0, i1] = m.gal.keep;
+  let gallery: GateLayout["gallery"] = null;
+  if (i1 >= i0) {
+    const pil = m.gal.s.slice(i0, i1 + 2);
+    for (let i = i0; i <= i1; i++) {
+      const c = (m.gal.s[i]! + m.gal.s[i + 1]!) / 2, r = m.gal.open / 2;
+      openings.push({ s0: c - r, s1: c + r, zb: m.attic, spring: m.gal.crown - r });
+    }
+    gallery = { s0: Math.min(...pil), s1: Math.max(...pil), t0: m.gal.t[0], t1: m.gal.t[1], pilasters: pil };
   }
-  piers.push([-(half - outer - small - mid - big), half - outer - small - mid - big]);
-  const sill = 0.7 * H, galTop = 0.92 * H;
-  const pitch = (site.l - 1.2) / 10, aw = pitch * 0.62;
-  const pilasters: number[] = [];
-  for (let i = 0; i < 10; i++) {
-    const c = -half + 0.6 + pitch * (i + 0.5);
-    openings.push({ s0: c - aw / 2, s1: c + aw / 2, zb: sill, spring: galTop - aw / 2 });
-    pilasters.push(-half + 0.6 + pitch * i);
-  }
-  pilasters.push(half - 0.6);
-  return { frame, height: H, openings, piers, cornices: [[0.63 * H, 0.68 * H], [0.93 * H, 0.98 * H]], pilasters, gallery: [sill, galTop] };
+  const height = Math.max(gallery ? m.gal.ent[1] : 0, m.block?.[2] ?? 0, m.roof?.[1] ?? 0, ...m.top.map((p) => p[1]));
+  return { frame, g: site.gm ? m.g : ground, height, openings, piers: m.piers, m, gallery };
 }
 
 /** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches). */

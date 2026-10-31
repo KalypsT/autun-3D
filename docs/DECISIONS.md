@@ -1954,3 +1954,37 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Les arbustes taillés et le second poteau](captures/d136-theatre-arbustes.jpg)
 ![Du haut de l'extrémité nord, comme la photo 2](captures/d136-theatre-nord.jpg)
 ![Vue de drone](captures/d136-theatre-drone.jpg)
+
+## 2026-10-31 — D137. Bâtiments d'après photos, étape 17 : la porte d'Arroux
+
+**Demande de l'utilisateur** : refaire d'après ses photos les portes d'Arroux et Saint-André (D95), avec un modèle commun et ses variantes, puis modéliser le temple de Janus ; trois étapes séparées. Choix de l'utilisateur : rien de praticable en hauteur (on passe sous les arches), les trois monuments éclairés la nuit (pour ceux sans photo de nuit, un éclairage par en dessous comme à Arroux). Points de vue confirmés : porte d'Arroux de face depuis la rue côté ville (sud-sud-est), de jour et de nuit.
+
+**Lecture de la photo** (`photo` de l'entrée `porte-arroux` de `manual.json`) : deux grandes arches au centre (archivoltes à claveaux moulurés, pile centrale à imposte), deux petites aux bouts, à demi enterrées ; grand appareil de calcaire gris clair ; parement perdu au-dessus des arches, de la droite de la grande arche gauche jusqu'au bout : blocage de moellons ocre-brun ; corniche, attique de deux assises ; **galerie conservée sur la partie gauche seulement** (7 arcades sur 10, pilastres à chapiteaux, entablement, bloc en saillie au sommet) ; bout gauche déchiqueté en gradins ; maison accolée à droite, haie et arceaux à vélos à gauche. La nuit, projecteurs chauds au pied.
+
+**Mesures** (`build_monuments.py`, modèle `gate`, champ `gm` du site `gate` de `kinds/25_39.json`) :
+- **Le relevé LiDAR ne contient qu'une partie de la porte** (comme les tours du porche de la cathédrale) : le MNS la voit sur une douzaine de mètres depuis la maison, à 8,8 m (médiane ; 9,4 m au plus haut) au-dessus de la rue, et rien au-dessus de sa partie ouest-sud-ouest, là où l'orthophotographie montre les arcades. La galerie n'y est pas.
+- Ce qu'on mesure : **épaisseur du corps 4,25 m** et son décalage en travers (profil médian du MNS sur la partie relevée : le centre OpenStreetMap est 1,5 m trop au nord-nord-ouest) ; **rue à −32,4 m** au droit de la porte (médiane du MNT sur l'axe), −32,8 m côté faubourg et −32,1 m côté ville (elle monte vers la ville).
+- **L'ombre sur l'orthophotographie est illisible** (enrobé sombre, arbres, ombres des maisons) : la hauteur de la galerie vient de la photo, prise de face et à niveau (verticales parallèles), donc à échelle constante sur le plan de la façade. Échelle : la longueur de la porte (18,7 m, D95) sur la largeur qu'elle occupe dans la photo. Lu ainsi : grandes arches de 3,7 m (naissance à 4,9 m), petites de 1,7 m (naissance à 1,5 m : elles sont enterrées), archivoltes de 0,95 m, corniche à 8,2-8,5 m, **attique à 9,55 m** (le relevé donne 8,8 à 9,4 m pour le haut du blocage : recoupement à moins d'1 m, test), arcades de 0,9 m au pas de 1,63 m, haut des arcs à 11,8 m, entablement de 12,1 à 12,9 m, bloc sommital à 13,55 m. Ces valeurs sont dans `manual.json`, en mètres depuis le bout gauche de la photo ; l'étape les place dans le repère de la porte d'après le côté de la photo (`photoFrom`).
+- **La galerie est sur la face côté ville** : sur la photo, l'attique et la galerie sont dans le plan de la façade. Premier essai écarté : galerie en retrait au nord-nord-ouest, d'après le rang d'arcades claires au bord nord-ouest de l'orthophotographie ; en fait c'est l'orthophotographie qui penche (prise du sud-est, plus un point est haut, plus il est déporté vers le nord-ouest), et depuis la rue la galerie en retrait était presque cachée.
+- Une deuxième passe ne réécrit rien.
+
+**Modèle commun** (`gateLayout`, `src/core/landmarks.ts` ; rendu `src/render/gates.ts`, dans le maillage plein de la tuile) : il sert aussi au modèle par défaut de D95 (porte sans lecture de photo), et servira à Saint-André avec ses variantes (galerie complète, toit, tours). Corps percé des arches (passages voûtés sur toute l'épaisseur, piédroits, intrados), dessus suivant le profil ruiné (`top`, marches comprises), **blocage apparent** (zones `rubble`, sur les deux faces : moellons ocre-brun à lits sombres), **assises** du grand appareil tous les 62 cm, **archivoltes** à claveaux en relief nuancés un sur deux, **impostes**, **corniche** interrompue là où le parement est perdu, **galerie** des arcades conservées (pilastres à base et chapiteau sur les deux faces, entablement, bloc sommital). **2 372 triangles** (1 446 pour l'ancienne porte ; borne du test : 4 000).
+
+**La nuit** : chaque pan est doublé dans le maillage des vitres allumées (visible la nuit seulement, comme la cathédrale, D132), en dégradé chaud du pied (projecteurs) vers le haut, modulé par la teinte de la pierre ; intrados et piédroits compris (les voûtes sont claires sur la photo). Autant de triangles que la porte, seulement la nuit.
+
+**Silhouette lointaine** : les portes n'en avaient pas (elles disparaissaient au-delà du rayon de détail). La porte d'Arroux a maintenant deux prismes dans `lod/25_39.json` (corps, galerie conservée).
+
+**Jeu** : rien ne change pour la circulation (D95) : seules les piles sont des obstacles ; une voiture passe au milieu de chaque grande arche (3,7 m), un piéton dans chaque petite (test). Les passants passent déjà par les deux petites arches (`nav_debug.py`).
+
+**Tests** : épaisseur mesurée, attique et relevé concordants, 12 à 15 m de haut, 7 arcades, galerie du côté ville, passages libres ; budget de triangles et éclairage seulement pour une porte éclairée.
+
+**Limites** : l'autre face (côté faubourg) n'a pas de photo : elle reprend la lecture de la face côté ville (blocage, corniche). La petite arche cassée contre la maison est dessinée entière.
+
+![Avant, depuis la rue côté ville](captures/d137-arroux-avant.jpg)
+![Après, comme la photo](captures/d137-arroux-apres.jpg)
+![La nuit, avant](captures/d137-arroux-nuit-avant.jpg)
+![La nuit, après](captures/d137-arroux-nuit.jpg)
+![Côté faubourg, avant](captures/d137-arroux-exterieur-avant.jpg)
+![Côté faubourg, après](captures/d137-arroux-exterieur.jpg)
+![La galerie vue d'en haut](captures/d137-arroux-galerie.jpg)
+![Le quartier, détail à 120 m](captures/d137-arroux-quartier.jpg)
