@@ -1037,3 +1037,28 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d142-rondpoint-apres.jpg)
 ![Vue du dessus](docs/captures/d142-rondpoint-haut-apres.jpg)
 ![La nuit](docs/captures/d142-rondpoint-nuit-apres.jpg)
+
+**Le Lidl de Saint-Pantaléon, sa pharmacie et son abri à chariots d'après photos (31 octobre 2026)** (D143)
+- Le Lidl suit tes photos :
+  - mur vitré sur toute la longueur du **mur ouest** (côté parking), bande de bardage gris au-dessus, sas d'entrée en saillie près du coin sud ;
+  - deux panneaux « LIDL » (carré bleu, disque jaune) perpendiculaires au mur de part et d'autre du sas ;
+  - toit plat à garde-corps ;
+  - long mur sud-est blanc et gris avec ses grilles, le casier rose et la zone jaune et noire hachurée au sol.
+- L'entrée n'était pas au bon endroit : elle était au milieu du long mur sud-est ; elle passe sur le mur ouest.
+- Mesures au LiDAR : le toit du Lidl n'est pas plat, il penche de 6,9 % vers le nord-ouest (5,3 m à 7,5 m au-dessus du sol, écart de 3 cm) ; avant, il était à plat à 8,6 m.
+- La pharmacie (« Pharmacie de Saint-Pan ») : galerie à poteaux gris-bleu et potelets inox, vitrage en retrait, bandeau gris à croix vertes, grande croix verte sur le toit ; toit plat mesuré à 3,3 m.
+- L'abri à chariots du Lidl : toit sombre, côtés vitrés, panneau Lidl au fond, chariots gris. Le LiDAR ne le voit pas : sa hauteur vient de la photo.
+- Le sas et le casier bloquent les passants ; le point « commerce » du Lidl et celui de la pharmacie passent devant leur entrée. Aucune cache d'arme n'est touchée.
+- Environ 1 990 triangles pour les trois, dans les maillages de la tuile. 757 tests.
+- Nouvelle étape `tools/data/build_stores.py` (après `build_carts.py`) ; `build_carts.py` ne supprime plus les abris imposés à la main.
+- Limites : positions le long des murs lues sur des photos en perspective (à un mètre près) ; potelets sans obstacle ; silhouettes lointaines inchangées.
+- À essayer : `?at=962,1338&h=14` (devant le Lidl), `?at=1014,1374&h=14` (devant la pharmacie), puis `?h=23` pour la nuit.
+
+![Du parking, comme ta photo 3, avant](docs/captures/d143-lidl-photo3-avant.jpg)
+![Après](docs/captures/d143-lidl-photo3-apres.jpg)
+![De près, avant](docs/captures/d143-lidl-entree-avant.jpg)
+![Après](docs/captures/d143-lidl-entree-apres.jpg)
+![La pharmacie, avant](docs/captures/d143-pharmacie-avant.jpg)
+![Après](docs/captures/d143-pharmacie-apres.jpg)
+![Pharmacie et abri à chariots, après](docs/captures/d143-abri-apres.jpg)
+![La nuit](docs/captures/d143-lidl-nuit-apres.jpg)

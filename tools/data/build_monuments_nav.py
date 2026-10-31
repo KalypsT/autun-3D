@@ -132,10 +132,13 @@ def shop_pois(index):
     """Commerces vus sur une photo, absents d'OpenStreetMap (D141, `shop` des `fronts` de manual.json) : le point d'intérêt « commerce »
     que build_nav.py poserait (milieu du mur d'entrée, 80 cm devant, cap vers la file piétonne la plus proche), ajouté à la seule
     super-tuile du commerce. Un point « commerce » déjà à moins de 30 cm est remplacé : une deuxième passe ne change rien. Rend le nombre
-    de super-tuiles réécrites."""
+    de super-tuiles réécrites.
+
+    Commerce d'OpenStreetMap dont la photo change le mur d'entrée (`poi` des `fronts`, Lidl et pharmacie, D143) : son ancien point
+    « commerce » (à moins de 2 m du contour, dans toute super-tuile qu'il touche) est retiré, le nouveau posé comme ci-dessus."""
     from shapely.geometry import LineString, Point, Polygon
     fronts = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text()).get("fronts", {})
-    wanted = {bid: m for bid, m in fronts.items() if m.get("shop")}
+    wanted = {bid: m for bid, m in fronts.items() if m.get("shop") or m.get("poi")}
     if not wanted:
         return 0
     world = json.loads((c.OUT / "world.json").read_text())
@@ -148,7 +151,8 @@ def shop_pois(index):
             if b["id"] not in wanted:
                 continue
             fi = next(f for f in tile["fiches"] if f["id"] == b["id"])
-            w = fi["walls"][wanted.pop(b["id"])["wall"]]
+            entry = wanted.pop(b["id"])
+            w = fi["walls"][entry["wall"]]
             ring = b["ring"]
             (ax, ay), (bx, by) = (ring[2 * w["a"]], ring[2 * w["a"] + 1]), (ring[2 * w["b"]], ring[2 * w["b"] + 1])
             mx, my = (ax + bx) / 2, (ay + by) / 2
@@ -158,6 +162,19 @@ def shop_pois(index):
                 nx, ny = -nx, -ny
             x, y = round(mx + nx / n * 0.8, 1), round(my + ny / n * 0.8, 1)
             cid = cell_of(x, y, index)
+            poly = Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)])
+            if entry.get("poi"):
+                for oc in {cell_of(ring[i], ring[i + 1], index) for i in range(0, len(ring), 2)} | {cid}:
+                    op = NAV / f"{oc}.json"
+                    otext = op.read_text()
+                    odoc = json.loads(otext)
+                    P = odoc["poi"]
+                    odoc["poi"] = [v for i in range(0, len(P), 5) if not (P[i] == 2 and poly.distance(Point(P[i + 1], P[i + 2])) < 2.0) for v in P[i:i + 5]]
+                    onew = json.dumps(odoc, separators=(",", ":"))
+                    if onew != otext:
+                        op.write_text(onew)
+                        index["cells"] = [dict(e, bytes=len(onew), poi=len(odoc["poi"]) // 5) if e["id"] == oc else e for e in index["cells"]]
+                        (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
             path = NAV / f"{cid}.json"
             text = path.read_text()
             doc = json.loads(text)
@@ -177,7 +194,7 @@ def shop_pois(index):
                 index["cells"] = [dict(e, bytes=len(new), poi=len(doc["poi"]) // 5) if e["id"] == cid else e for e in index["cells"]]
                 (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
                 done += 1
-            print(f"{fi['ground']['shops'][0]['name']} : point « commerce » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
+            print(f"{(fi['ground'].get('shops') or [{'name': b['id']}])[0]['name']} : point « commerce » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
     return done
 
 

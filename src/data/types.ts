@@ -299,7 +299,11 @@ export interface BuildingKind {
   c?: string;
   tc?: string;
   /** Auvent : « marquise » anthracite sur poteaux fins, le long d'une façade (correction à la main d'après photo, D122). */
-  style?: "marquise";
+  style?: "marquise" | "lidl";
+  /** Plan du toit mesuré au LiDAR (D143) : z = a·x + b·y + c (repère local) et hauteur de l'acrotère ; remplace le toit plat du gabarit. */
+  roof?: [number, number, number, number];
+  /** Magasin d'après photo (D143) : façade vitrée, sas, panneaux, galerie… (remplace l'entrée générique de la grande surface). */
+  store?: StoreModel;
   /** Abri à chariots : milieu du petit côté ouvert (D121). */
   open?: [number, number];
   /** 1 : bâtiment principal de son site (inscription, drapeaux). */
@@ -316,6 +320,23 @@ export interface BuildingKind {
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   house?: HouseModel;
+}
+
+/**
+ * Magasin d'après photo (D143, tools/data/build_stores.py). `e` : arête du contour (sommet e vers e + 1) qui porte la façade ; les abscisses
+ * `s` se comptent en mètres depuis le sommet e. Lidl : mur vitré sur `glass`, sas `door` (centre, largeur), panneaux perpendiculaires aux
+ * abscisses `blades`, long mur plein `side` (arête, casier [s, largeur], grilles, zone hachurée [s0, s1, distance mini, distance maxi]).
+ * Pharmacie : vitrage sur `glass` en retrait de `gallery` mètres sous la galerie, croix de la façade et du toit (`cross`).
+ */
+export interface StoreModel {
+  style: "lidl" | "pharmacy";
+  e: number;
+  glass: [number, number];
+  door?: [number, number];
+  blades?: number[];
+  side?: { e: number; locker: [number, number]; vents: number[]; hatch: [number, number, number, number] };
+  gallery?: number;
+  cross?: [number, number];
 }
 
 /** Ouverture d'une maison (D140) : mur du L, distance depuis son début, genre, largeur, hauteur, appui. */

@@ -2228,3 +2228,61 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![La nuit, après](captures/d142-rondpoint-nuit-apres.jpg)
 ![De loin (35 m de haut), avant](captures/d142-rondpoint-loin-avant.jpg)
 ![De loin, après](captures/d142-rondpoint-loin-apres.jpg)
+
+## 2026-10-31 — D143. Le Lidl de Saint-Pantaléon, sa pharmacie et son abri à chariots d'après photos
+
+**Demande de l'utilisateur** : modéliser le Lidl (bâtiment, entrée, enseigne, abris à chariots, parking) d'après ses photos, en une seule étape, avec les gabarits existants (retail, `fronts` et `kinds` de `manual.json`, `build_carts.py`, `build_shop_fronts.py`) et un modèle dédié seulement si les gabarits ne suffisent pas ; puis, après le plan validé, traiter aussi la pharmacie voisine et confirmer que le petit bâtiment à l'entrée du parking est l'abri à chariots. Photos (captures Google Street View de juillet 2025, photo de presse, capture Google Maps ; non versionnées, elles servent seulement à décrire) : le Lidl vu du parking, deux fois ; la pharmacie et l'abri à chariots côte à côte.
+
+**Dans les données** :
+- Lidl : BD TOPO `BATIMENT0000000348858792` (tuile 30_40, 94 avenue de la République, 2016), le « Lidl » d'OpenStreetMap (way 124227036). Contour de 7 points, sol à −23,15 m, fiche « shop » estimée.
+- Pharmacie : `BATIMENT0000002202684554`, un « bâtiment industriel » de 29 × 14 m pour BD TOPO, sans type commerce.
+- Abri : `BATIMENT0000002101118190`, 5,0 × 6,8 m, haut de 1,8 m, laissé en bâtiment par D121 (règle prudente : abris de 1,8 à 3,2 m de large).
+- Le Google Maps de la photo 1 place l'épingle « Lidl » à l'entrée du parking, pas sur le toit ; les étiquettes « H et N Market » et « Pharmacie » qui flottent sur le toit du Lidl ne le concernent pas.
+
+**Lecture des photos** (`stores`, `fronts` et `kinds` de `manual.json`) :
+- *Côté des photos* (déduit, plan validé) : prises du parking, au sud du coin sud du Lidl (point 1 du contour), en regardant vers le nord-nord-est. Indices : la tour de 12 étages à gauche est celle de (948 ; 1466) ; la zone hachurée jaune au sol est à droite du coin, le long du long mur sud-est (orthophoto : 20 m, de 4 m du coin jusqu'à 24 m, à 1,2 – 3,6 m du mur) ; le bâtiment bas à vitrage sombre à droite est la pharmacie. Le mur vitré à gauche est donc le **mur ouest** (arête 0, 33,3 m) et le mur plein à droite le **long mur sud-est** (arête 1, 70 m). Avant, le calcul « le plus de parking devant » (D120) avait mis l'entrée au milieu du long mur sud-est et laissé le mur ouest nu.
+- *Lidl* : façade vitrée sur toute la longueur du mur ouest (baies de 2,2 m, montants et traverse sombres, jusqu'à 4,3 m), bande de bardage gris au-dessus (et sur tout le tour, à partir de 4,4 m), sas d'entrée en saillie à marquise plate près du coin sud (centre à 8 m du coin, 4,5 m de large, double porte), **deux panneaux « LIDL » perpendiculaires au mur** de part et d'autre du sas (carré bleu, disque jaune cerclé de rouge, lisibles de face depuis le mur de la photo), toit plat à acrotère et garde-corps tubulaire de 1,1 m. Long mur sud-est : enduit blanc, bardage gris en haut, deux grilles de ventilation, casier rose (point relais) à 4,5 m du coin, socle gris.
+- *Pharmacie* : bâtiment bas à toit plat ; le mur de façade est l'arête 0 (29 m, face nord-ouest, vue de gauche à droite du coin nord-est au coin ouest) ; galerie couverte de 2,2 m à poteaux gris-bleu, vitrage en retrait (baies de 1,8 m), potelets inox devant, large bandeau gris avec l'inscription « Pharmacie de Saint-Pan » et des croix vertes, grande croix verte lumineuse sur le toit côté ouest, pignon ouest en enduit blanc plein.
+- *Abri à chariots* : toit plat sombre sur poteaux gris, petits côtés vitrés, grand côté arrière plein avec le panneau Lidl, chariots gris emboîtés, ouvert sur le long côté est (vers le parking). Le panneau vert « point de rassemblement » et la poubelle de la photo ne sont pas dessinés.
+
+**Mesures** (nouvelle étape autonome `tools/data/build_stores.py`, modèle de surface LiDAR HD à 0,5 m ; une deuxième passe ne réécrit rien) : plan du toit ajusté aux moindres carrés sur les cellules à plus de 1,5 m des murs (trois passes, écart retenu de 25 cm), acrotère = médiane de l'écart au plan sur une bande de 40 cm le long des murs (de 15 à 70 cm).
+- **Lidl** : z = 0,03325·x − 0,06074·y + 34,177 (écart quadratique de **3 cm** sur 8 129 cellules). Le toit n'est pas plat mais **penche de 6,9 % vers le nord-ouest** : 5,3 m au-dessus du sol au mur nord-ouest, 7,5 m au coin sud ; acrotère à 15 cm (le minimum). Avant, le gabarit le mettait à plat à 8,6 m (égout BD TOPO + 0,8 m d'acrotère), soit 1,1 m trop haut au coin d'entrée et 3,3 m au mur nord-ouest.
+- **Pharmacie** : toit **plat** (pente de 1,2 %, écart de 4 cm sur 1 149 cellules) à 3,3 m au-dessus du sol de la façade. Le sol descend d'environ 1 m vers le sud-est : le mur sud-est atteint 4,3 m (c'est la hauteur de BD TOPO).
+- **Abri** : le LiDAR ne le voit pas (le toit est classé en sol, `MNS − MNT` ≈ 0) ; hauteur de 2,6 m d'après la photo (chariots d'un mètre).
+- Les positions le long des murs (sas, panneaux, casier, grilles, poteaux, croix) sont lues sur des photos prises en perspective : elles sont plausibles à un mètre près, pas mesurées. La zone hachurée est lue sur l'orthophoto.
+
+**Données** : `kinds` de `manual.json` impose la pharmacie en `retail` (« Pharmacie de Saint-Pan », croix verte) et l'abri en `cart` de style `lidl` (côté ouvert : le milieu du long côté est) ; `build_carts.py` les applique (et ne supprime plus les abris imposés à la main, qui n'étaient pas dans sa détection). `stores` décrit la lecture de chaque magasin ; `build_stores.py` ajoute `store` et `roof` (plan z = a·x + b·y + c et acrotère) à l'entrée du bâtiment dans `kinds`. `fronts` donne le mur d'entrée (Lidl : mur 5 de la fiche, soit l'arête 0 ; pharmacie : mur 2) et `poi: true`.
+
+**Rendu** (`src/render/store.ts`, nouveau ; `reshapeBuilding` et `drawsWalls` dans `src/core/landmarks.ts` et `src/render/landmarks.ts`) : les gabarits ne suffisaient pas (un seul mur d'entrée à sas centré, toit toujours plat, pas de panneaux perpendiculaires ni de galerie), d'où un modèle dédié, mais court, qui réutilise les murs, le toit et les sinks existants :
+- `reshapeBuilding(b, kind, roof)` : toit plat à plan mesuré (pans remplacés par ce plan, murs à plan + acrotère à chaque sommet) ; sans plan, comportement inchangé.
+- **Lidl** : bardage gris et socle sur tout le tour, mur vitré en baies, sas en saillie de 1,3 m à marquise de 2,8 m, panneaux à deux faces (disque rouge, disque jaune, « LIDL » en lettres de l'atlas), garde-corps (montants tous les 4 m, une lisse), casier rose avec sa façade sombre, grilles à lames, zone jaune et noire hachurée posée sur le relief. Vitrages allumés la nuit.
+- **Pharmacie** : les murs sont dessinés par le magasin (sinon le mur plein de façade aurait caché la galerie) : mur de fond en retrait de 2,2 m, retours, plafond et dallage de la galerie, six poteaux, vitrage allumé à 80 % la nuit, bandeau gris à filet sombre, nom, croix de la façade, potelets, croix verte du toit (face et dos, allumée la nuit).
+- **Abri** : `lidlCartShelter` (toit, poteaux, fond plein à panneau Lidl, côtés vitrés, deux files de six chariots gris).
+- **Coût** : Lidl 1 256 triangles (+ 34 allumés, 8 de lettres), pharmacie 298 (+ 30, 2), abri 356 (+ 2), soit environ **1 990 triangles** pour les trois, dans les maillages de la tuile : aucun appel de dessin de plus. Avant, le Lidl était la boîte générique des grandes surfaces, la pharmacie et l'abri deux boîtes simples.
+
+**Jeu** :
+- *Obstacles* (`storeCircles`) : le sas (trois cercles de 75 cm devant la porte) et le casier (65 cm) bloquent ; le mur vitré, la zone hachurée et les potelets se longent ; la pharmacie n'ajoute rien (sa galerie est dans son contour BD TOPO) ; l'abri garde l'emprise (D121).
+- *Passants* : `build_monuments_nav.py` retire l'ancien point « commerce » du Lidl (sur le mur nord-ouest, qui n'a pas d'entrée) et pose celui du Lidl au milieu du mur ouest (975,5 ; 1372,7) et celui de la pharmacie au milieu de sa façade (1000,3 ; 1351,0), à 80 cm devant le mur, seule super-tuile s7_10 (c'est ce que `build_nav.py` poserait à sa prochaine régénération, d'après les fiches). Aucune file piétonne ne passe à moins de 2,9 m du sas ou du casier (vérifié) ; une deuxième passe ne change rien.
+- *Caches d'armes* : aucune à moins de 3 m des trois bâtiments (test).
+- *Parking* : les places, les arbres et les files de circulation restent ceux d'OpenStreetMap et de D94 ; seule s'y ajoute la zone hachurée devant le long mur.
+
+**Tests** (+10, 757 au total) : plan de toit (pans et murs sur le plan, égout au plus bas, sans plan toit plat comme avant) ; Lidl (pente de 3 à 10 % vers le nord-ouest, hauteurs de 4,8 à 8,2 m, mur vitré de 31 à 35 m face à l'ouest-sud-ouest, sas de 3,5 à 6 m à 5 – 12 m du coin entre deux panneaux, zone hachurée dans le long mur) ; pharmacie (toit à moins de 2 % de pente, 2,9 – 4,2 m à la façade, face nord-ouest, galerie de 1,5 à 3 m) ; abri (emprise 4,3 – 7,5 m, côté ouvert sur le contour, style Lidl) ; obstacles ; point « commerce » unique par magasin, devant le mur d'entrée ; aucune cache d'arme ; géométrie finie, vitrages allumés, inscriptions, coût borné, tout à moins de 5 m du contour.
+
+**Limites** : positions le long des murs à un mètre près (voir plus haut) ; ouvertures du Lidl vues d'un seul côté (rien sur le mur nord-ouest, qui reçoit seulement bardage, socle et garde-corps) ; poteaux de la pharmacie régulièrement espacés (la photo les montre irréguliers), vitrage uniforme (la photo distingue des locaux voisins) ; potelets sans obstacle (les passants les traversent, comme les terrasses de D92) ; pas de chariots devant l'entrée du Lidl ; pas de lumière pour les panneaux ni pour les croix de la façade (seulement la croix du toit de la pharmacie) ; silhouettes lointaines (LOD) inchangées ; `build_nav.py` complet n'a pas été relancé.
+
+![Du parking, comme ta photo 3, avant](captures/d143-lidl-photo3-avant.jpg)
+![Du parking, après](captures/d143-lidl-photo3-apres.jpg)
+![De près, comme ta photo 2, avant](captures/d143-lidl-entree-avant.jpg)
+![De près, après](captures/d143-lidl-entree-apres.jpg)
+![Le long mur sud-est, avant](captures/d143-lidl-sud-est-avant.jpg)
+![Le long mur sud-est, après](captures/d143-lidl-sud-est-apres.jpg)
+![La pharmacie, comme ta photo, avant](captures/d143-pharmacie-avant.jpg)
+![La pharmacie, après](captures/d143-pharmacie-apres.jpg)
+![Pharmacie et abri à chariots vus de l'ouest, avant](captures/d143-abri-avant.jpg)
+![Pharmacie et abri à chariots, après](captures/d143-abri-apres.jpg)
+![Vue du dessus, avant](captures/d143-haut-avant.jpg)
+![Vue du dessus, après](captures/d143-haut-apres.jpg)
+![L'entrée du Lidl la nuit, avant](captures/d143-lidl-nuit-avant.jpg)
+![L'entrée du Lidl la nuit, après](captures/d143-lidl-nuit-apres.jpg)
+![La pharmacie la nuit, avant](captures/d143-pharmacie-nuit-avant.jpg)
+![La pharmacie la nuit, après](captures/d143-pharmacie-nuit-apres.jpg)

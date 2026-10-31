@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, Tree, Wall } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -14,9 +14,10 @@ export const PARAPET = 0.8;
  * à faible pente. Les pans gardent leur découpage : on écrase leur hauteur au-dessus de l'égout (z' = égout + k·(z − égout)), ce qui
  * garde des pans plans et des murs qui les rejoignent. Renvoie le bâtiment tel quel pour les autres types.
  */
-export function reshapeBuilding(b: Building, kind: BuildingKindId | undefined): Building {
+export function reshapeBuilding(b: Building, kind: BuildingKindId | undefined, roof?: [number, number, number, number]): Building {
   const k = kind === undefined ? undefined : ROOF_SCALE[kind];
   if (k === undefined || k === 1) return b;
+  if (roof && kind === "retail") return plannedRoof(b, roof);
   const e0 = b.eave;
   const squash = (z: number): number => (z <= e0 ? z : e0 + k * (z - e0));
   const parapet = k === 0 && kind !== "canopy" ? PARAPET : 0;
@@ -37,6 +38,23 @@ export function reshapeBuilding(b: Building, kind: BuildingKindId | undefined): 
     ridge: squash(b.ridge),
     roofKind: k === 0 ? "flat" : b.roofKind,
   };
+}
+
+/**
+ * Grande surface au toit plat mesuré au LiDAR (D143) : un seul plan z = a·x + b·y + c (qui peut pencher de quelques pour cent), et des
+ * murs qui montent de `par` mètres au-dessus de lui en chaque sommet (acrotère). `eave` est le point le plus bas du plan sur le contour.
+ */
+function plannedRoof(b: Building, [ra, rb, rc, par]: [number, number, number, number]): Building {
+  const at = (x: number, y: number): number => ra * x + rb * y + rc;
+  const tops = (ring: number[]): number[] => ring.length ? Array.from({ length: ring.length / 2 }, (_, i) => at(ring[2 * i]!, ring[2 * i + 1]!) + par) : [];
+  const top = tops(b.ring);
+  const eave = Math.min(...top) - par;
+  const faces = b.faces.map((f) => {
+    const out = { ...f, p: [ra, rb, rc] as [number, number, number] };
+    delete out.z;
+    return out;
+  });
+  return { ...b, top, holeTop: b.holes.map(tops), faces, steps: [], chim: [], eave, ridge: Math.max(...top) - par, roofKind: "flat" };
 }
 
 /** Repère d'un auvent ou d'un rectangle orienté : centre, axe du grand côté (ux, uy), axe du petit (vx, vy), demi-côtés. */
@@ -111,11 +129,49 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
     if (h) out.push([...housePost(h), 0.12]);
+    const st = kinds.buildings[b.id]?.store;
+    if (st) out.push(...storeCircles(b, st));
   }
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;
     for (let i = 0; i < b.ring.length; i += 2) out.push([b.ring[i]!, b.ring[i + 1]!, 0.3]);
+  }
+  return out;
+}
+
+/** Repère d'une arête du contour (sommet e vers e + 1) : origine, tangente, normale sortante (contour direct) et longueur. */
+export interface EdgeFrame {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  nx: number;
+  ny: number;
+  len: number;
+}
+
+export function edgeFrame(ring: readonly number[], e: number): EdgeFrame {
+  const n = ring.length / 2;
+  const i = e % n, j = (i + 1) % n;
+  const x = ring[2 * i]!, y = ring[2 * i + 1]!;
+  const dx = ring[2 * j]! - x, dy = ring[2 * j + 1]! - y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x, y, tx: dx / len, ty: dy / len, nx: dy / len, ny: -dx / len, len };
+}
+
+/** Obstacles d'un magasin d'après photo (D143) : le sas du Lidl (en saillie de 1,3 m sur le mur vitré) et le casier du long mur. */
+export function storeCircles(b: Building, st: StoreModel): [number, number, number][] {
+  const out: [number, number, number][] = [];
+  const at = (f: EdgeFrame, s: number, off: number): [number, number] => [f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off];
+  if (st.style !== "lidl") return out;
+  if (st.door) {
+    const f = edgeFrame(b.ring, st.e), [c, w] = st.door;
+    for (const s of [c - w / 2 + 0.7, c, c + w / 2 - 0.7]) out.push([...at(f, s, 0.8), 0.75]);
+  }
+  if (st.side) {
+    const f = edgeFrame(b.ring, st.side.e);
+    out.push([...at(f, st.side.locker[0], 0.3), 0.65]);
   }
   return out;
 }
