@@ -1133,3 +1133,60 @@ describe("Lycée Bonaparte : volumes et toits mesurés (D148)", () => {
     expect(c.resolve(-110.2, -120.6, 0.3).hit).toBe(true);
   });
 });
+
+describe("Lycée Bonaparte : grille d'honneur et arbres taillés (D149)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const MAIN = "BATIMENT0000000348853321";
+  const g = kinds.buildings[MAIN]!.college!.grille!;
+  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const len = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+  const ux = (g.b[0] - g.a[0]) / len, uy = (g.b[1] - g.a[1]) / len;
+  const onLine = (s: number, off: number): [number, number] => [g.a[0] + ux * s - uy * off, g.a[1] + uy * s + ux * off];
+
+  it("la grille fait 32 m, le portail est au milieu, côté place ; les murs et la clôture du même tracé disparaissent", () => {
+    expect(len).toBeGreaterThan(31);
+    expect(len).toBeLessThan(33);
+    expect(Math.abs(g.portal[0] - len / 2)).toBeLessThan(2);
+    expect(g.portal[1]).toBeGreaterThan(3.5);
+    expect(g.portal[1]).toBeLessThan(5.5);
+    const kept = new Set(wallsOutsideMonuments(kinds, world.tile.walls).map((w) => w.id));
+    for (const id of g.walls) {
+      expect(world.tile.walls.some((w) => w.id === id)).toBe(true);
+      expect(kept.has(id)).toBe(false);
+    }
+  });
+
+  it("sept arbres taillés remplacent ceux de la carte à l'écran, mais leurs troncs restent des obstacles", () => {
+    expect(g.trees).toHaveLength(7);
+    const shown = treesOutsideMonuments(kinds, world.tile.trees);
+    for (const [x, y] of g.trees) {
+      expect(shown.some(([tx, ty]) => tx === x && ty === y)).toBe(false);
+      expect(landmarkCircles(kinds, world.tile.buildings).some(([cx, cy, r]) => cx === x && cy === y && r === 0.3)).toBe(true);
+    }
+  });
+
+  it("la grille arrête le joueur (de chaque côté, sur un côté comme au portail) et ne s'escalade pas", () => {
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    for (const s of [6, g.portal[0], len - 6]) {
+      for (const off of [0.15, -0.15]) {
+        const [x, y] = onLine(s, off);
+        const r = c.resolve(x, y, 0.3);
+        expect(r.hit).toBe(true);
+        // Pas d'escalade possible : le segment touché est haut et non franchissable.
+        expect(r.wall === undefined || r.wall < 0).toBe(true);
+      }
+    }
+  });
+
+  it("un point « école » est posé à 3 m devant le portail, côté place, hors des obstacles", () => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 12) pts.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    const [px, py] = onLine(g.portal[0], 3);
+    expect(pts.some(([x, y]) => Math.hypot(x - px, y - py) < 0.2)).toBe(true);
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    expect(c.resolve(px, py, 0.3).hit).toBe(false);
+  });
+});

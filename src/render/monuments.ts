@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CathedralModel, CathedralSpec, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
+import type { CathedralModel, CathedralSpec, CollegeGrille, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -1432,4 +1432,120 @@ export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec,
   }
   const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
   for (const w of m.wings) collegeRoof(mb, w, COLLEGE_STONE, tile);
+  if (m.grille) buildGrille(mb, m.grille, terrain);
+}
+
+// --- Grille d'honneur (D149) ---------------------------------------------------------------------------------------------------------
+
+const GRILLE_IRON = C("#23272b"), GILT = C("#d7a735"), GILT_HI = C("#f0c95a"), GRILLE_STONE = C("#cfc2a2");
+const CREST_BLUE = C("#2d52a0"), CREST_WHITE = C("#f1ede2"), CREST_RED = C("#c43a32");
+const TRUNK = C("#4a3a2c"), CROWN = C("#5f8f4a"), CROWN_TOP = C("#79a85c");
+/** Soubassement, haut de la ferronnerie des côtés et des vantaux, pas des barreaux (photo 2 : environ 3 m de fer sur un soubassement bas). */
+const SOCLE = 0.9, SIDE_TOP = 2.9, LEAF_TOP = 3.5, BAR_PITCH = 0.2;
+
+/**
+ * Grille d'honneur du lycée d'après photo (D149) : soubassement de pierre, barreaux de fer noir à fers de lance et bandeau doré à rosaces,
+ * piles de pierre aux bouts, de part et d'autre du portail et au milieu de chaque côté, deux vantaux fermés sous un écusson doré (bouclier
+ * bleu, blanc, rouge) sur ses volutes, urnes dorées sur les piles du portail ; derrière elle, des arbres taillés en rideau (tronc nu,
+ * couronne cubique). La ligne suit le terrain ; `t` positif est le côté de la place.
+ */
+function buildGrille(mb: MeshBuilder, g: CollegeGrille, terrain: HeightField): void {
+  const dx = g.b[0] - g.a[0], dy = g.b[1] - g.a[1], L = Math.hypot(dx, dy);
+  const f = frameOf(g.a[0], g.a[1], Math.atan2(dy, dx), 1, 1);
+  const gr = (s: number, t = 0): number => terrain.heightAt(...at(f, s, t));
+  const out = N(f, 0, 1), back = N(f, 0, -1);
+  const [pc, pw] = g.portal;
+  const p0 = pc - pw / 2, p1 = pc + pw / 2;
+  /** Panneau plan vertical (des deux côtés) : de s0 à s1, de z0 à z1 mesurés depuis le sol local. */
+  const flat = (s0: number, s1: number, t: number, z0: number, z1: number, col: THREE.Color, follow = true): void => {
+    const a = follow ? gr(s0) : 0, b = follow ? gr(s1) : 0;
+    q(mb, f, [s0, t, a + z0], [s1, t, b + z0], [s1, t, b + z1], [s0, t, a + z1], out, col);
+    q(mb, f, [s1, t, b + z0], [s0, t, a + z0], [s0, t, a + z1], [s1, t, b + z1], back, col);
+  };
+  /** Disque vertical (sur le plan t) centré en (s, z absolu). */
+  const disc2 = (s: number, t: number, z: number, r: number, col: THREE.Color, sides = 10): void => {
+    for (let i = 0; i < sides; i++) {
+      const a0 = (Math.PI * 2 * i) / sides, a1 = (Math.PI * 2 * (i + 1)) / sides;
+      const c = P(f, s, t, z), A = P(f, s + Math.cos(a0) * r, t, z + Math.sin(a0) * r), B = P(f, s + Math.cos(a1) * r, t, z + Math.sin(a1) * r);
+      mb.tri(c, A, B, out, col);
+      mb.tri(c, B, A, back, col);
+    }
+  };
+  /** Fer de lance doré sur un barreau : losange de 0,32 m. */
+  const spear = (s: number, z: number, t: number): void => {
+    const A = P(f, s - 0.05, t, z), B = P(f, s + 0.05, t, z), Cc = P(f, s, t, z + 0.32);
+    mb.tri(A, B, Cc, out, GILT);
+    mb.tri(B, A, Cc, back, GILT);
+  };
+  const pier = (s: number, top: number, wd = 0.7, col = GRILLE_STONE): void => {
+    const z0 = Math.min(gr(s - wd / 2), gr(s + wd / 2)) - 0.4;
+    box(mb, f, s - wd / 2, s + wd / 2, -wd / 2, wd / 2, z0, gr(s) + top, col, shade(col, 1.06));
+    box(mb, f, s - wd / 2 - 0.08, s + wd / 2 + 0.08, -wd / 2 - 0.08, wd / 2 + 0.08, gr(s) + top, gr(s) + top + 0.12, shade(col, 0.95), col);
+  };
+  const urn = (s: number): void => {
+    const z = gr(s) + 3.72;
+    for (let i = 0; i < 8; i++) {
+      const a0 = (Math.PI * i) / 4, a1 = a0 + Math.PI / 4, am = a0 + Math.PI / 8;
+      const r = 0.24;
+      q(mb, f, [s + Math.cos(a0) * r, Math.sin(a0) * r, z], [s + Math.cos(a1) * r, Math.sin(a1) * r, z], [s + Math.cos(a1) * r * 0.6, Math.sin(a1) * r * 0.6, z + 0.5],
+        [s + Math.cos(a0) * r * 0.6, Math.sin(a0) * r * 0.6, z + 0.5], N(f, Math.cos(am), Math.sin(am)), GILT);
+    }
+    q(mb, f, [s - 0.15, -0.15, z + 0.5], [s + 0.15, -0.15, z + 0.5], [s + 0.15, 0.15, z + 0.5], [s - 0.15, 0.15, z + 0.5], [0, 1, 0], GILT_HI);
+  };
+
+  // Piles : aux bouts, de part et d'autre du portail, au milieu de chaque côté.
+  const posts = [0, (p0) / 2, p0, p1, p1 + (L - p1) / 2, L];
+  for (const s of posts) pier(Math.min(Math.max(s, 0.35), L - 0.35), s === p0 || s === p1 ? 3.6 : SIDE_TOP + 0.2);
+  urn(p0);
+  urn(p1);
+
+  // Côtés : soubassement continu (par morceaux de 1 m qui suivent le terrain), barreaux, lisses, bandeau doré à rosaces.
+  const sides: [number, number][] = [[0.35, p0 - 0.35], [p1 + 0.35, L - 0.35]];
+  for (const [a, b] of sides) {
+    const n = Math.max(1, Math.ceil(b - a));
+    for (let i = 0; i < n; i++) {
+      const s0 = a + ((b - a) * i) / n, s1 = a + ((b - a) * (i + 1)) / n;
+      for (const t of [-0.22, 0.22]) flat(s0, s1, t, -0.4, SOCLE, GRILLE_STONE);
+      q(mb, f, [s0, -0.22, gr(s0) + SOCLE], [s1, -0.22, gr(s1) + SOCLE], [s1, 0.22, gr(s1) + SOCLE], [s0, 0.22, gr(s0) + SOCLE], [0, 1, 0], shade(GRILLE_STONE, 1.06));
+    }
+    for (let s = a + BAR_PITCH / 2; s < b; s += BAR_PITCH) flat(s - 0.018, s + 0.018, 0, SOCLE, SIDE_TOP, GRILLE_IRON);
+    flat(a, b, 0.02, SOCLE + 0.05, SOCLE + 0.12, GRILLE_IRON);
+    flat(a, b, 0.02, SIDE_TOP - 0.1, SIDE_TOP, GRILLE_IRON);
+    flat(a, b, 0.03, SOCLE + 1.15, SOCLE + 1.3, GILT);
+    for (let s = a + 0.4; s < b - 0.2; s += 1.6) disc2(s, 0.04, gr(s) + SOCLE + 1.22, 0.2, GILT_HI);
+    for (let s = a + 0.5 * BAR_PITCH; s < b; s += 2 * BAR_PITCH) spear(s, gr(s) + SIDE_TOP, 0);
+  }
+
+  // Portail : deux vantaux fermés (barreaux, lisses, rosace), bandeau et volutes dorés, écusson.
+  for (const [a, b] of [[p0 + 0.35, pc - 0.04], [pc + 0.04, p1 - 0.35]] as const) {
+    for (let s = a + BAR_PITCH / 2; s < b; s += BAR_PITCH) flat(s - 0.02, s + 0.02, 0, 0.15, LEAF_TOP, GRILLE_IRON);
+    flat(a, b, 0.02, 0.15, 0.3, GRILLE_IRON);
+    flat(a, b, 0.02, LEAF_TOP - 0.12, LEAF_TOP, GRILLE_IRON);
+    flat(a, b, 0.03, 1.4, 1.6, GILT);
+    disc2((a + b) / 2, 0.04, gr(pc) + 1.0, 0.32, GILT_HI);
+    for (let s = a + 0.5 * BAR_PITCH; s < b; s += 2 * BAR_PITCH) spear(s, gr(pc) + LEAF_TOP, 0);
+  }
+  flat(p0 + 0.35, p1 - 0.35, 0.03, LEAF_TOP + 0.35, LEAF_TOP + 0.5, GILT);
+  // Volutes dorées de part et d'autre de l'écusson : deux bandes obliques qui se rejoignent au sommet.
+  for (const sign of [-1, 1]) {
+    const s0 = pc + sign * (pw / 2 - 0.5), s1 = pc + sign * 0.55, z0 = gr(pc) + LEAF_TOP + 0.4, z1 = gr(pc) + LEAF_TOP + 1.9;
+    q(mb, f, [s0, 0.03, z0], [s0 + sign * -0.12, 0.03, z0], [s1 - sign * 0.12, 0.03, z1], [s1, 0.03, z1], out, GILT);
+    q(mb, f, [s0 - sign * 0.12, -0.03, z0], [s0, -0.03, z0], [s1, -0.03, z1], [s1 - sign * 0.12, -0.03, z1], back, GILT);
+  }
+  const zc = gr(pc) + LEAF_TOP + 1.8;
+  disc2(pc, 0.05, zc, 0.85, GILT);
+  disc2(pc, 0.06, zc, 0.65, CREST_BLUE, 12);
+  q(mb, f, [pc - 0.17, 0.07, zc - 0.6], [pc + 0.17, 0.07, zc - 0.6], [pc + 0.17, 0.07, zc + 0.6], [pc - 0.17, 0.07, zc + 0.6], out, CREST_WHITE);
+  q(mb, f, [pc + 0.17, 0.07, zc - 0.55], [pc + 0.5, 0.07, zc - 0.4], [pc + 0.5, 0.07, zc + 0.4], [pc + 0.17, 0.07, zc + 0.55], out, CREST_RED);
+  // Couronne sur l'écusson.
+  q(mb, f, [pc - 0.45, 0.05, zc + 0.8], [pc + 0.45, 0.05, zc + 0.8], [pc + 0.45, 0.05, zc + 1.05], [pc - 0.45, 0.05, zc + 1.05], out, GILT_HI);
+  for (const sg of [-0.35, 0, 0.35]) disc2(pc + sg, 0.05, zc + 1.2, 0.1, GILT_HI, 6);
+
+  // Arbres taillés en rideau : tronc nu jusqu'à 3,2 m, couronne cubique dessus.
+  for (const [x, y, z, h, r1, r2] of g.trees) {
+    const s = (x - g.a[0]) * f.ux + (y - g.a[1]) * f.uy, t = (x - g.a[0]) * f.vx + (y - g.a[1]) * f.vy;
+    const half = 0.9 * Math.max(r1, r2), cz = z + Math.max(2.6, h - 2.4);
+    box(mb, f, s - 0.16, s + 0.16, t - 0.16, t + 0.16, z - 0.2, cz, TRUNK);
+    box(mb, f, s - half, s + half, t - half, t + half, cz, z + h, CROWN, CROWN_TOP);
+  }
 }

@@ -126,6 +126,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
   // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
   for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
+  // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
+  for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
@@ -272,7 +274,10 @@ export function canopyPosts([s0, s1]: [number, number, number]): number[] {
 }
 
 /** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */
-export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, trees: readonly Tree[]): Tree[] {
+export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record<string, BuildingKind> } | undefined, trees: readonly Tree[]): Tree[] {
+  // Arbres taillés en rideau derrière la grille du lycée (D149) : le modèle les dessine, leurs troncs restent des obstacles (`landmarkCircles`).
+  const pleached = new Set(Object.values(kinds?.buildings ?? {}).flatMap((b) => (b.college?.grille?.trees ?? []).map(([x, y]) => `${x},${y}`)));
+  if (pleached.size) trees = trees.filter(([x, y]) => !pleached.has(`${x},${y}`));
   const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
   // Théâtre romain (D133) : rien ne pousse dans la cavea, l'orchestre ni sur la scène (les arbres du sommet restent).
   const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
@@ -300,8 +305,10 @@ export function furnitureOutsideMonuments(kinds: { sites: Site[] } | undefined, 
 }
 
 /** Murs et clôtures de la tuile, sauf ceux qu'un monument remplace (le mur OpenStreetMap fermé du temple de Janus, D139). */
-export function wallsOutsideMonuments(kinds: { sites: Site[] } | undefined, walls: readonly Wall[]): Wall[] {
-  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "janus" ? [s.wall] : [])));
+export function wallsOutsideMonuments(kinds: { sites: Site[]; buildings?: Record<string, BuildingKind> } | undefined, walls: readonly Wall[]): Wall[] {
+  const gone = new Set([...(kinds?.sites ?? []).flatMap((s) => (s.t === "janus" ? [s.wall] : [])),
+    // Grille d'honneur du lycée (D149) : elle remplace la clôture et les murs de parcelle du même tracé.
+    ...Object.values(kinds?.buildings ?? {}).flatMap((b) => b.college?.grille?.walls ?? [])]);
   return gone.size ? walls.filter((w) => !gone.has(w.id)) : [...walls];
 }
 

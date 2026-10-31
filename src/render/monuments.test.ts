@@ -216,7 +216,19 @@ describe("Lycée Bonaparte : modèle `college` (D148)", () => {
       expect(tris(glow)).toBeGreaterThan(0);
       total += tris(mb);
     }
-    // Moins de 6 000 triangles pour tout le collège (murs, fenêtres, corniches, huit toits) : 2 536 mesurés.
-    expect(total).toBeLessThan(6000);
+    // Moins de 9 000 triangles pour tout le collège (murs, fenêtres, corniches, huit toits, grille d'honneur et arbres : environ 2 540 + la grille).
+    expect(total).toBeLessThan(9000);
+  });
+
+  it("la grille d'honneur (D149) coûte moins de 5 000 triangles, a des fers dorés et suit le terrain", () => {
+    const id = "BATIMENT0000000348853321";
+    const spec = kinds.buildings[id]!.college!;
+    const full = new MeshBuilder(), bare = new MeshBuilder();
+    buildCollege(full, new MeshBuilder(), spec, bOf(id).ring, world.terrain);
+    buildCollege(bare, new MeshBuilder(), { wings: spec.wings }, bOf(id).ring, world.terrain);
+    expect(full.positions.every(Number.isFinite)).toBe(true);
+    const cost = tris(full) - tris(bare);
+    expect(cost).toBeGreaterThan(500);
+    expect(cost).toBeLessThan(5000);
   });
 });

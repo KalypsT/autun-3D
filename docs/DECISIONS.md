@@ -2549,3 +2549,43 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d148-sud-apres.jpg)
 ![La nuit, avant](captures/d148-nuit-avant.jpg)
 ![Après](captures/d148-nuit-apres.jpg)
+
+## 2026-10-31 — D149. Le lycée Bonaparte d'après photos, étape 2 : la grille d'honneur et ses arbres taillés
+
+**Demande de l'utilisateur** : enchaîner après D148 (photos 1 et 2 : la grille dorée sur la place du Champ de Mars, vue de loin puis de face). Décidé avec lui : grille fermée, non escaladable ; point « école » des passants devant la grille.
+
+**Lecture des photos** : soubassement bas de pierre ; barreaux de fer noir à fers de lance dorés ; bandeau doré à rosaces ; piles de pierre aux bouts, de part et d'autre du portail et au milieu de chaque côté, urnes dorées sur celles du portail ; deux vantaux fermés ; au-dessus, volutes dorées et grand écusson doré (bouclier bleu, blanc, rouge) sous une couronne ; derrière, de part et d'autre, des arbres taillés en rideau (tronc nu, couronne cubique ; nus l'hiver sur la photo 2, feuillus sur la photo 1).
+
+**Dans les données** : le tracé est la clôture OpenStreetMap `252880289` (de (−86,97 ; −90,03) à (−70,99 ; −117,86), 32,2 m, 1,8 m dans le jeu), doublée par trois murs de parcelle `−900005310` à `−900005312` (2 m, pierre) : le rendu était un mur de pierre percé de claires-voies, que le joueur pouvait escalader (`CLIMB_MAX` 2,5 m). Les sept arbres de la carte derrière la grille ((−93,5 ; −101,5), (−98 ; −103,5), (−102 ; −105), (−106,5 ; −107), (−85 ; −116,5), (−92,5 ; −121,5), (−98 ; −125)) étaient des arbres génériques. Le sol monte de 0,8 à 2,2 m le long de la grille (LiDAR).
+
+**Données** : `grille` dans l'entrée `…853321` de `monuments` (`manual.json`) : bouts, murs remplacés, arbres, portail [abscisse du milieu depuis `a`, largeur] = [16,1 ; 4,4]. `build_monuments.py` (`measure_grille`) vérifie que les murs et les arbres existent dans les tuiles (arrêt sinon) et écrit `college.grille` dans `kinds/25_34.json` (tuples des arbres recopiés). `build_monuments_nav.py` (`school_pois`) pose le point d'intérêt « école » (type 12) à 3 m devant le portail côté place, en (−76,4 ; −102,5), à 2,1 m de la file piétonne la plus proche, dans `nav/s6_8.json`. Chaîne `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav` rejouée deux fois : `public/data` identique (somme de contrôle) ; seuls `kinds/25_34.json`, `nav/s6_8.json` et `nav/index.json` changent.
+
+**Rendu** (`buildGrille` dans `src/render/monuments.ts`, appelée par `buildCollege`) : repère le long de la grille, tout suit le terrain. Soubassement de 0,9 m par morceaux de 1 m, barreaux tous les 20 cm (2,9 m sur les côtés, 3,5 m aux vantaux), lisses, bandeau doré à rosaces, un fer de lance doré sur deux ; six piles de pierre ; urnes dorées sur les piles du portail ; volutes et écusson de 1,7 m de diamètre à couronne, sur le portail. Arbres taillés : tronc de 32 cm jusqu'à 2,6 à 3,5 m, couronne cubique de côté 1,8 fois le rayon de la carte. **1 830 triangles** pour la grille et les sept arbres.
+
+**Jeu** :
+- `wallsOutsideMonuments` retire les quatre murs et clôtures remplacés (rendu et obstacles) ; `treesOutsideMonuments` retire les sept arbres de la carte, dont `landmarkCircles` rend les troncs (cercles de 30 cm, comme avant) ; `addTileColliders` pose la grille (segment de 3,4 m, bas : on voit et on tire à travers, non escaladable, comme la grille de la cathédrale D132).
+- Passants : un point « école » devant le portail, hors des obstacles. Les files piétonnes de la place (x ≈ −72) et leurs points sont inchangés. Aucune cache d'arme à moins de 3 m (test D148 conservé).
+
+**Tests** (+5, 794 au total) : longueur de 32 m, portail au milieu et de 3,5 à 5,5 m de large, murs retirés ; sept arbres remplacés dont les troncs restent des obstacles ; la grille arrête le joueur de chaque côté, aux côtés comme au portail, sans escalade ; point « école » à 3 m devant le portail et hors obstacles ; coût de la grille entre 500 et 5 000 triangles, sommets finis.
+
+**Limites** :
+- Hauteurs, pas des barreaux, nombre et position des piles, forme des volutes et de l'écusson lus sur la photo 2, à 30 cm près ; les photos ne montrent pas les piles intermédiaires ni les extrémités, qui sont des hypothèses. Le portail est au milieu de la grille (les deux photos le montrent à peu près centré) ; sa largeur de 4,4 m est lue sur la photo 2.
+- L'écusson est un aplat (bleu, blanc, rouge) : ni armes ni détail ; pas de drapeaux (D151, ils sont sur la façade) ; pas de cadenas ni de poignées.
+- Les arbres taillés sont des cubes de 4 m environ, sans branches ; en hiver comme en été ils sont verts. Trois arbres du côté de l'église et quatre côté aile nord-est : l'un des deux groupes de la photo 2 est peut-être plus haut que dans les données.
+- Le bassin de la cour d'honneur, visible à l'orthophotographie, n'est pas dessiné : le LiDAR ne voit rien et aucune photo ne le montre.
+- La cour reste le sol générique ; façades, église et cour dans D150 et D151.
+
+![Comme ta photo 1, avant](captures/d149-photo1-avant.jpg)
+![Après](captures/d149-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d149-photo2-avant.jpg)
+![Après](captures/d149-photo2-apres.jpg)
+![Le portail de plus près, avant](captures/d149-portail-avant.jpg)
+![Après](captures/d149-portail-apres.jpg)
+![Depuis la cour d'honneur, avant](captures/d149-cour-avant.jpg)
+![Après](captures/d149-cour-apres.jpg)
+![Vue du dessus, avant](captures/d149-haut-avant.jpg)
+![Après](captures/d149-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d149-ensemble-avant.jpg)
+![Après](captures/d149-ensemble-apres.jpg)
+![La nuit, avant](captures/d149-nuit-avant.jpg)
+![Après](captures/d149-nuit-apres.jpg)

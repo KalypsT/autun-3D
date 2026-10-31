@@ -1174,3 +1174,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Comme ta photo 1, avant](docs/captures/d148-photo1-avant.jpg)
 ![Après](docs/captures/d148-photo1-apres.jpg)
 ![Vue du dessus, après](docs/captures/d148-haut-apres.jpg)
+
+**Le lycée Bonaparte, étape 2 : la grille d'honneur (31 octobre 2026)** (D149)
+- La grille de la place du Champ de Mars n'est plus un mur de pierre (qu'on pouvait escalader) : soubassement bas, barreaux de fer noir à fers de lance dorés, bandeau à rosaces, six piles, portail fermé à deux vantaux sous des volutes et un écusson doré bleu, blanc, rouge, urnes dorées.
+- Derrière, sept arbres taillés en rideau (tronc nu, couronne cubique) remplacent les arbres génériques ; leurs troncs restent des obstacles.
+- La grille est fermée et non escaladable (on voit et on tire à travers) ; un point « école » est posé pour les passants à 3 m devant le portail.
+- 1 830 triangles ; 794 tests ; aucune cache d'arme à moins de 3 m.
+- Limites : piles intermédiaires, volutes et largeur du portail lues sur une seule photo ; écusson en aplat ; pas de drapeaux ni de bassin (le LiDAR ne le voit pas) ; façades et église dans les lots suivants.
+- À essayer : `?cam=-62,-100,1.7,-80,-104,3.2&h=14` (devant le portail), `?cam=-100,-110,1.7,-79,-104,3&h=14` (depuis la cour), puis `&h=23`.
+
+![Comme ta photo 2, avant](docs/captures/d149-photo2-avant.jpg)
+![Après](docs/captures/d149-photo2-apres.jpg)

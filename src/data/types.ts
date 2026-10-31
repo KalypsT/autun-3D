@@ -307,11 +307,26 @@ export interface CollegeWing {
   b: "hip" | "gable" | "ext";
 }
 
+/**
+ * Grille d'honneur d'un collège (D149) : de `a` à `b` (clôture OpenStreetMap), soubassement de pierre, ferronnerie dorée, portail central de largeur
+ * `portal[1]` à `portal[0]` mètres de `a` ; `walls` : murs et clôtures des tuiles qu'elle remplace (identifiants) ; `trees` : arbres de la carte
+ * (tuples des tuiles) remplacés par des arbres taillés en rideau derrière elle.
+ */
+export interface CollegeGrille {
+  a: [number, number];
+  b: [number, number];
+  walls: number[];
+  trees: Tree[];
+  portal: [number, number];
+}
+
 /** Collège d'après relevé LiDAR (D148) : ailes à toits mesurés ; les murs suivent le contour BD TOPO, chacun monte à l'égout de l'aile la plus proche. */
 export interface CollegeSpec {
   wings: CollegeWing[];
   /** Couleur de la couverture (tuiles brunes par défaut ; zinc gris pour l'aile de la rue aux Raz). */
   roof?: string;
+  /** Grille d'honneur sur la place du Champ de Mars et arbres taillés derrière elle (D149). */
+  grille?: CollegeGrille;
 }
 
 export interface BuildingKind {

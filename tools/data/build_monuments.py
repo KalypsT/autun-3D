@@ -1060,7 +1060,25 @@ def measure_college(bid, b, spec):
     out = {"wings": wings}
     if "roof" in spec:
         out["roof"] = spec["roof"]
+    if "grille" in spec:
+        out["grille"] = measure_grille(bid, spec["grille"])
     return out
+
+
+def measure_grille(bid, g):
+    """Grille d'honneur (D149) : le tracé et le portail sont lus dans `manual.json` (clôture OpenStreetMap, photos), les murs remplacés et les
+    arbres taillés sont vérifiés dans les tuiles (identifiants et tuples recopiés tels quels)."""
+    walls, trees = set(), []
+    for p in sorted((c.OUT / "tiles").glob("*_*.json")):
+        t = json.loads(p.read_text())
+        walls |= {w["id"] for w in t["walls"]}
+        for q in t["trees"]:
+            if any(math.hypot(q[0] - x, q[1] - y) < 0.05 for x, y in g["trees"]):
+                trees.append(q)
+    missing = [w for w in g["walls"] if w not in walls]
+    if missing or len(trees) != len(g["trees"]):
+        raise SystemExit(f"{bid} : grille : murs absents {missing}, arbres trouvés {len(trees)} sur {len(g['trees'])}")
+    return {"a": g["a"], "b": g["b"], "walls": g["walls"], "trees": trees, "portal": g["portal"]}
 
 
 def college(tid, bid, b, spec, k):
