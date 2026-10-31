@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Building, BuildingKind, FacadeFiche, HeightField, Site, TileKinds } from "../data/types";
+import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel, TileKinds } from "../data/types";
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
@@ -34,12 +34,16 @@ const WHITE = C("#f4efe4");
 const FLAG = { blue: C("#1f3f8f"), white: C("#f4f1ea"), red: C("#d3313a"), eu: C("#1f3f9f") };
 const STAINED: [string, string][] = [["#1f3f7f", "#c94a3a"], ["#2a4f8f", "#d9a03a"], ["#5a2f6f", "#2f6f8f"]];
 
+/** Murs et toits des magasins d'après photo (D143, D144). */
+const STORE_WALL: Record<StoreModel["style"], string> = { lidl: "#efede6", pharmacy: "#e9e6df", bricomarche: "#4a4e54", intermarche: "#34373c", but: "#ece9e2", jardinerie: "#e6dcc0" };
+const STORE_ROOF: Record<StoreModel["style"], string> = { lidl: "#eeeeec", pharmacy: "#8d706c", bricomarche: "#c6cacc", intermarche: "#bcc0c2", but: "#cfd2d3", jardinerie: "#9aa5aa" };
+
 /** Couleur des murs d'un gabarit (null : celle de la fiche). */
 export function landmarkWallColor(kind: BuildingKind | undefined, id: string): THREE.Color | null {
   if (!kind) return null;
   const key = idKey(id);
   switch (kind.k) {
-    case "retail": return kind.store ? C(kind.store.style === "lidl" ? "#efede6" : "#e9e6df") : C(kind.c ? "#ece6d8" : pick(CLADDING, key, 3));
+    case "retail": return kind.store ? C(STORE_WALL[kind.store.style]) : C(kind.c ? "#ece6d8" : pick(CLADDING, key, 3));
     case "industrial": return C(pick(CLADDING, key, 1)).multiplyScalar(0.95 + key * 0.08);
     case "sports": return C("#ebe4d3");
     case "greenhouse": return C("#cfe3df");
@@ -51,7 +55,7 @@ export function landmarkWallColor(kind: BuildingKind | undefined, id: string): T
 /** Couleur des toits des gabarits « boîte » (null : celle de la fiche). */
 export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color | null {
   switch (kind?.k) {
-    case "retail": return kind.store ? C(kind.store.style === "lidl" ? "#eeeeec" : "#8d706c") : C("#b8b2a6");
+    case "retail": return kind.store ? C(STORE_ROOF[kind.store.style]) : C("#b8b2a6");
     case "industrial": case "sports": return C("#8fa3a8");
     case "greenhouse": return C("#d8ece8");
     case "canopy": return kind.style === "marquise" ? MARQUISE.clone() : C("#efebe3");

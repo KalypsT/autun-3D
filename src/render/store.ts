@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import type { Building, BuildingKind, HeightField, StoreModel } from "../data/types";
-import { edgeFrame, type EdgeFrame } from "../core/landmarks";
+import { BRICO_PORTAL_O, canopyPosts, carportShape, edgeFrame, PAVILION_DEPTH, type EdgeFrame } from "../core/landmarks";
 import { hash01, toThree, type MeshBuilder, type Vec3 } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
 
 /**
  * Magasins d'après photo (D143) : le Lidl de Saint-Pantaléon (mur vitré, sas, panneaux perpendiculaires, garde-corps, long mur à casier et zone
  * hachurée) et la pharmacie voisine (galerie à poteaux, vitrage en retrait, bandeau à croix vertes), plus l'abri à chariots du Lidl.
+ * D144 : la zone commerciale de Bellevue : Bricomarché (auvent orange, portique), Intermarché (lames rouges, store du Drive, abris solaires),
+ * But (bloc central, auvent, enseigne carrée) et Jardinerie d'Autun (pavillons vitrés à pignon, bannière).
  * Style « affiche » : aplats, vitrages en dégradé, lettres de l'atlas. Tout s'écrit dans les maillages de la tuile (aucun appel de dessin de plus).
  */
 
@@ -282,12 +284,313 @@ function pharmacy(sinks: LandmarkSinks, b: Building, kind: BuildingKind, st: Sto
 
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 
+// --- Zone commerciale de Bellevue (D144) ---------------------------------------------------------------------------------------------
+
+type P3 = [number, number, number];
+
+/** Face plane de trois ou quatre points (repère local), tournée du côté de `hint` : l'ordre est inversé au besoin (sens direct vu du côté de la normale). */
+function face(mb: MeshBuilder, pts: P3[], hint: P3, color: THREE.Color): void {
+  const [a, b, c] = pts as [P3, P3, P3];
+  let nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
+  let ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+  let nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const l = Math.hypot(nx, ny, nz) || 1;
+  nx /= l; ny /= l; nz /= l;
+  const ordered = nx * hint[0] + ny * hint[1] + nz * hint[2] < 0 ? [...pts].reverse() : pts;
+  if (ordered !== pts) { nx = -nx; ny = -ny; nz = -nz; }
+  const v = ordered.map((p) => toThree(p[0], p[1], p[2])) as Vec3[];
+  const n = toThree(nx, ny, nz);
+  if (v.length === 3) mb.tri(v[0]!, v[1]!, v[2]!, n, color);
+  else mb.quad(v[0]!, v[1]!, v[2]!, v[3]!, n, color);
+}
+
+/** Poteau carré de demi-côté `hw` centré en (x, y), de z0 à z1. */
+function post(mb: MeshBuilder, x: number, y: number, z0: number, z1: number, hw: number, color: THREE.Color): void {
+  box(mb, planeFrame(x - hw, y + hw, 1, 0, 2 * hw), 0, 2 * hw, 0, 2 * hw, z0, z1, color, color);
+}
+
+/** Vitrage à meneaux : baies de `bay` mètres, montants et traverse de la couleur du cadre, de z + 0,05 à z + h. */
+function storefront(sinks: LandmarkSinks, f: EdgeFrame, zg: (s: number, o?: number) => number, g0: number, g1: number, h: number, bay: number, frame: THREE.Color, lit: number, o = 0.05): void {
+  const mb = sinks.solid;
+  const bays = Math.max(1, Math.round((g1 - g0) / bay));
+  for (let k = 0; k < bays; k++) {
+    const s0 = g0 + ((g1 - g0) * k) / bays, s1 = g0 + ((g1 - g0) * (k + 1)) / bays, z = zg((s0 + s1) / 2);
+    glass(sinks, f, s0 + 0.05, s1 - 0.05, z + 0.05, z + h, o, lit);
+    plate(mb, f, s0 + 0.04, s1 - 0.04, z + h - 0.12, z + h, o + 0.02, frame);
+  }
+  for (let k = 0; k <= bays; k++) {
+    const s = g0 + ((g1 - g0) * k) / bays, z = zg(s);
+    plate(mb, f, s - 0.06, s + 0.06, z, z + h + 0.02, o + 0.02, frame);
+  }
+}
+
+/** Porte coulissante centrale : deux vantaux de verre plus clair dans un cadre, de largeur w, centrés en c. */
+function slidingDoor(sinks: LandmarkSinks, f: EdgeFrame, zg: (s: number, o?: number) => number, c: number, w: number, h: number, frame: THREE.Color, o: number): void {
+  const z = zg(c);
+  plate(sinks.solid, f, c - w / 2, c + w / 2, z, z + h, o, frame);
+  glass(sinks, f, c - w / 2 + 0.08, c - 0.04, z + 0.05, z + h - 0.1, o + 0.02, 1);
+  glass(sinks, f, c + 0.04, c + w / 2 - 0.08, z + 0.05, z + h - 0.1, o + 0.02, 1);
+}
+
+/** Socle de béton sur tout le tour (hauteur 40 cm). */
+function socle(mb: MeshBuilder, b: Building, terrain: HeightField): void {
+  const n = b.ring.length / 2;
+  for (let i = 0; i < n; i++) {
+    const fi = edgeFrame(b.ring, i);
+    if (fi.len <= 2) continue;
+    const a: P2 = [fi.x, fi.y], e = pt(fi, fi.len, 0), [ox, oy] = [fi.nx * 0.03, fi.ny * 0.03];
+    vplate(mb, [a[0] + ox, a[1] + oy], [e[0] + ox, e[1] + oy], terrain.heightAt(a[0], a[1]) - 0.3, terrain.heightAt(e[0], e[1]) - 0.3,
+      terrain.heightAt(a[0], a[1]) + 0.4, terrain.heightAt(e[0], e[1]) + 0.4, CONCRETE);
+  }
+}
+
+// --- Bricomarché ---------------------------------------------------------------------------------------------------------------------
+
+const ANTHRACITE = C("#363a3f");
+const ORANGE = C("#e8570f");
+const ORANGE_LIGHT = C("#f27a2c");
+
+/**
+ * Bricomarché d'après photo : bardage anthracite, mur vitré sous un auvent orange continu sur poteaux fins, portique orange devant les portes
+ * coulissantes, enseigne « BRICO MARCHÉ MAISON-JARDIN » au bout du mur, tondeuses autoportées alignées devant, chariots jaunes à droite.
+ */
+function bricomarche(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  socle(mb, b, terrain);
+  const [g0, g1] = st.glass;
+  storefront(sinks, f, zg, g0, g1, 3.9, 2.4, ANTHRACITE, 0.7);
+  if (st.door) {
+    const [c, w] = st.door;
+    slidingDoor(sinks, f, zg, c, w, 3.2, ANTHRACITE, 0.09);
+    // Portique orange libre devant les portes : deux montants et une traverse.
+    const zp = zg(c, BRICO_PORTAL_O);
+    for (const s of [c - w / 2, c + w / 2]) box(mb, f, s - 0.18, s + 0.18, BRICO_PORTAL_O - 0.18, BRICO_PORTAL_O + 0.18, zp, zp + 4.2, ORANGE, ORANGE_LIGHT);
+    box(mb, f, c - w / 2 - 0.18, c + w / 2 + 0.18, BRICO_PORTAL_O - 0.18, BRICO_PORTAL_O + 0.18, zp + 3.6, zp + 4.2, ORANGE, ORANGE_LIGHT, shade(ORANGE, 0.8));
+  }
+  if (st.canopy) {
+    const [s0, s1, d] = st.canopy, zc = zg((s0 + s1) / 2) + 4.7;
+    box(mb, f, s0, s1, 0, d, zc, zc + 0.5, ORANGE, ORANGE_LIGHT, C("#d6d3cc"));
+    for (const s of canopyPosts(st.canopy)) box(mb, f, s - 0.06, s + 0.06, d - 0.31, d - 0.19, zg(s, d - 0.25) - 0.05, zc, ANTHRACITE);
+  }
+  if (st.sign) {
+    const [s, z] = st.sign, z0 = zg(s) + z;
+    label(sinks, f, s - 3.2, z0, 1.0, 0.06, "BRICO", "#aeb3b8");
+    label(sinks, f, s + 3.2, z0, 1.0, 0.06, "MARCHÉ", "#e0262e");
+    label(sinks, f, s, z0 - 0.5, 0.4, 0.06, "MAISON - JARDIN", "#c4c8cc");
+  }
+  if (st.display) {
+    const [d0, d1] = st.display, k = Math.max(1, Math.floor((d1 - d0) / 4.5));
+    for (let i = 0; i < k; i++) {
+      const s = d0 + 1.5 + ((d1 - d0 - 3) * i) / Math.max(1, k - 1), z = zg(s, 5);
+      const body = i % 3 === 1 ? C("#e8b21a") : i % 3 === 2 ? C("#2b2f33") : C("#d9331f");
+      box(mb, f, s - 0.6, s + 0.6, 4.55, 5.45, z + 0.15, z + 0.65, body, shade(body, 1.15));
+      box(mb, f, s - 0.55, s + 0.55, 4.6, 5.4, z, z + 0.15, C("#1e2124"));
+      box(mb, f, s - 0.3, s + 0.1, 4.65, 5.05, z + 0.65, z + 1.0, C("#26292c"));
+    }
+    // Chariots jaunes emboîtés à droite de l'entrée, sous l'auvent.
+    const [, e1] = st.canopy ?? [0, d1];
+    for (const s of [e1 - 2.4, e1 - 4.2]) {
+      const z = zg(s, 0.9);
+      box(mb, f, s - 0.7, s + 0.7, 0.2, 1.0, z + 0.15, z + 1.0, C("#f0c010"), C("#f7d84a"));
+    }
+  }
+}
+
+// --- Intermarché ---------------------------------------------------------------------------------------------------------------------
+
+const SLAT_RED = C("#c5271c");
+const SLAT_DARK = C("#8f1d17");
+
+/**
+ * Intermarché d'après photos : murs latéraux noirs, bloc de lames verticales rouges sur la façade sud-ouest, vitrage à meneaux blancs, grande
+ * enseigne blanche « Intermarché SUPER » allumée la nuit, store rouge du Drive au coin ouest, abris de parking solaires devant la façade.
+ */
+function intermarche(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  socle(mb, b, terrain);
+  if (st.slats) {
+    const [s0, s1] = st.slats, step = 0.3;
+    const top = (s: number): number => topAt(b, st.e, s, f.len);
+    // Fond sombre, puis une lame sur trois de plus : les lames verticales d'un mètre de large se lisent comme des aplats.
+    vplate(mb, pt(f, s0, 0.05), pt(f, s1, 0.05), zg(s0) + 4.2, zg(s1) + 4.2, top(s0) + 0.1, top(s1) + 0.1, SLAT_DARK);
+    for (let s = s0 + 0.05; s + 0.2 <= s1; s += step) {
+      const sm = s + 0.1;
+      vplate(mb, pt(f, s, 0.09), pt(f, s + 0.2, 0.09), zg(sm) + 4.2, zg(sm) + 4.2, top(sm) + 0.1, top(sm) + 0.1, SLAT_RED);
+    }
+  }
+  const [g0, g1] = st.glass;
+  const WHITE_FRAME = C("#e4e6e8");
+  storefront(sinks, f, zg, g0, g1, 4.1, 2.3, WHITE_FRAME, 0.9, 0.1);
+  plate(mb, f, g0, g1, zg((g0 + g1) / 2) + 4.1, zg((g0 + g1) / 2) + 4.3, 0.12, WHITE_FRAME);
+  if (st.door) slidingDoor(sinks, f, zg, st.door[0], st.door[1], 3.2, WHITE_FRAME, 0.13);
+  if (st.sign) {
+    const [s, z] = st.sign, z0 = zg(s) + z;
+    plate(mb, f, s - 4.4, s + 4.4, z0, z0 + 1.9, 0.14, C("#f3f1ec"));
+    plate(sinks.glow, f, s - 4.4, s + 4.4, z0, z0 + 1.9, 0.145, C("#fff0c8"));
+    label(sinks, f, s, z0 + 0.5, 1.15, 0.16, "Intermarché", "#e2231a");
+    label(sinks, f, s + 2.4, z0 + 0.08, 0.35, 0.16, "SUPER", "#6b7479");
+  }
+  if (st.tent) {
+    // Store rouge du Drive : quatre poteaux blancs, valance, pyramide ; aligné sur la façade.
+    const [cx, cy] = st.tent, h = 3.0;
+    const o: P2 = [cx - f.tx * h - f.nx * h, cy - f.ty * h - f.ny * h];
+    const ft = planeFrame(o[0], o[1], f.tx, f.ty, 2 * h);
+    const z = terrain.heightAt(cx, cy);
+    for (const [s, q] of [[0.3, 0.3], [2 * h - 0.3, 0.3], [0.3, 2 * h - 0.3], [2 * h - 0.3, 2 * h - 0.3]] as const) {
+      const [x, y] = pt(ft, s, q);
+      post(mb, x, y, z, z + 2.5, 0.07, C("#eceeef"));
+    }
+    const TENT = C("#d9232a"), TENT_DARK = C("#a81a20");
+    const corner = (s: number, q: number, dz: number): P3 => [...pt(ft, s, q), z + dz];
+    const ring4 = [[0, 0], [2 * h, 0], [2 * h, 2 * h], [0, 2 * h]] as const;
+    const apex: P3 = [cx, cy, z + 4.3];
+    for (let i = 0; i < 4; i++) {
+      const [s0, q0] = ring4[i]!, [s1, q1] = ring4[(i + 1) % 4]!;
+      const mx = (s0 + s1) / 2 - h, my = (q0 + q1) / 2 - h;
+      face(mb, [corner(s0, q0, 2.7), corner(s1, q1, 2.7), apex], [f.tx * mx + f.nx * my, f.ty * mx + f.ny * my, 1], i % 2 ? TENT : shade(TENT, 1.08));
+      face(mb, [corner(s0, q0, 2.25), corner(s1, q1, 2.25), corner(s1, q1, 2.7), corner(s0, q0, 2.7)], [f.tx * mx + f.nx * my, f.ty * mx + f.ny * my, 0], TENT_DARK);
+    }
+  }
+}
+
+const PANEL = C("#2d3a58"), PANEL_EDGE = C("#d5d9dc"), PANEL_UNDER = C("#aab0b4"), PANEL_POST = C("#8d969b");
+
+/** Abris de parking solaires (D144) : dalle de panneaux sombres à plan mesuré (pente de 15 % vers le sud-est), tranche claire, dessous clair, poteaux au bord haut. */
+function carports(sinks: LandmarkSinks, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  for (const cp of st.carports ?? []) {
+    const sh = carportShape(cp);
+    const top = sh.corners.map(([x, y]) => [x, y, sh.zAt(x, y)] as P3);
+    const bot = top.map(([x, y, z]) => [x, y, z - sh.thick] as P3);
+    face(mb, top, [0, 0, 1], PANEL);
+    face(mb, [...bot].reverse(), [0, 0, -1], PANEL_UNDER);
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4, [x0, y0] = top[i]!, [x1, y1] = top[j]!;
+      const mx = (x0 + x1) / 2 - cp[0], my = (y0 + y1) / 2 - cp[1];
+      face(mb, [top[i]!, top[j]!, bot[j]!, bot[i]!], [mx, my, 0], PANEL_EDGE);
+    }
+    for (const [x, y] of sh.posts) post(mb, x, y, terrain.heightAt(x, y) - 0.1, sh.zAt(x, y) - sh.thick, 0.14, PANEL_POST);
+  }
+}
+
+// --- But -----------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * But d'Autun d'après photo (magasin ouvert) : façade sud-est avec bloc central anthracite plus haut que les ailes blanches, vitrine et portes
+ * sous un auvent sombre à bandeau brun-rouge, enseigne carrée rouge « BUT » et « Cosy », triangles gris sur les ailes. Ni volets ni pylône.
+ */
+function but(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  const n = b.ring.length / 2;
+  socle(mb, b, terrain);
+  const top = (s: number): number => topAt(b, st.e, s, f.len);
+  const DARK = C("#35383d");
+  if (st.block) {
+    const [b0, b1] = st.block;
+    vplate(mb, pt(f, b0, 0.05), pt(f, b1, 0.05), zg(b0) - 0.2, zg(b1) - 0.2, top(b0), top(b1), DARK);
+    // Le bloc central dépasse du toit d'un mètre et de 5,5 m en profondeur (lecture de la photo : plus haut que les ailes).
+    const zt = top((b0 + b1) / 2) - 0.1;
+    box(mb, f, b0, b1, -5.5, 0.12, zt, zt + 1.0, DARK, shade(DARK, 1.25));
+  }
+  const [g0, g1] = st.glass;
+  storefront(sinks, f, zg, g0, g1, 3.7, 2.1, C("#2c2f33"), 0.85, 0.1);
+  if (st.door) slidingDoor(sinks, f, zg, st.door[0], st.door[1], 3.1, C("#2c2f33"), 0.13);
+  if (st.canopy) {
+    const [s0, s1, d] = st.canopy, zc = zg((s0 + s1) / 2) + 3.95;
+    box(mb, f, s0, s1, 0, d, zc, zc + 0.45, C("#2a2d31"), C("#3b3f45"), C("#c9ccce"));
+    plate(mb, f, s0, s1, zc + 0.05, zc + 0.38, d + 0.01, C("#7d2b27"));
+    for (const s of [s0 + 0.4, s1 - 0.4]) post(mb, pt(f, s, d - 0.2)[0], pt(f, s, d - 0.2)[1], zg(s, d - 0.2) - 0.05, zc, 0.07, C("#2a2d31"));
+  }
+  if (st.sign) {
+    const [s, z] = st.sign, z0 = zg(s) + z;
+    plate(mb, f, s - 1.8, s + 1.8, z0, z0 + 1.9, 0.14, C("#d2201e"));
+    plate(sinks.glow, f, s - 1.8, s + 1.8, z0, z0 + 1.9, 0.145, C("#ff4f3d"));
+    label(sinks, f, s, z0 + 0.82, 0.9, 0.16, "BUT", "#ffffff");
+    label(sinks, f, s, z0 + 0.2, 0.42, 0.16, "Cosy", "#ffffff", true);
+  }
+  // Triangles gris sur les ailes blanches : une pointe au sommet du mur, la base au sol.
+  for (const e of st.wings ?? []) {
+    const fe = edgeFrame(b.ring, e), len = Math.min(fe.len, 10);
+    const a = pt(fe, 0.02, 0.04), c = pt(fe, len, 0.04);
+    const z0a = terrain.heightAt(a[0], a[1]) + 0.4, z0c = terrain.heightAt(c[0], c[1]) + 0.4;
+    face(mb, [[a[0], a[1], z0a], [c[0], c[1], z0c], [a[0], a[1], b.top[e % n]!]], [fe.nx, fe.ny, 0], C("#9a9ea2"));
+  }
+}
+
+// --- Jardinerie d'Autun --------------------------------------------------------------------------------------------------------------
+
+const TIMBER = C("#7d6f5d");
+const TIMBER_DARK = C("#5d5144");
+const CREAM_TRIM = C("#f6f3ea");
+const LEAF = C("#3e8e41");
+
+/**
+ * Jardinerie d'Autun d'après photos : mur crème en tôle ondulée, bannière blanche à la feuille verte, deux pavillons vitrés à pignon de bois en
+ * saillie devant le mur nord-ouest (le grand, avec la porte, à gauche du petit).
+ */
+function jardinerie(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  socle(mb, b, terrain);
+  if (st.banner) {
+    const [e, s0, s1, z0, z1] = st.banner;
+    const fb = edgeFrame(b.ring, e);
+    const zb = terrain.heightAt(...pt(fb, (s0 + s1) / 2, 0));
+    plate(mb, fb, s0, s1, zb + z0, zb + z1, 0.07, CREAM_TRIM);
+    plate(mb, fb, s0, s0 + 0.9, zb + z0, zb + z1, 0.075, C("#8b5a36"));
+    plate(mb, fb, s1 - 0.9, s1, zb + z0, zb + z1, 0.075, C("#8b5a36"));
+    // Feuille verte posée sur un pot : deux triangles et une petite cuvette.
+    const lx = s0 + 2.3, zc = zb + z0 + (z1 - z0) * 0.55;
+    face(mb, [[...pt(fb, lx, 0.09), zc - 0.55], [...pt(fb, lx + 0.55, 0.09), zc + 0.1], [...pt(fb, lx, 0.09), zc + 0.7]], [fb.nx, fb.ny, 0], LEAF);
+    face(mb, [[...pt(fb, lx, 0.09), zc - 0.55], [...pt(fb, lx, 0.09), zc + 0.7], [...pt(fb, lx - 0.5, 0.09), zc + 0.2]], [fb.nx, fb.ny, 0], shade(LEAF, 1.2));
+    plate(mb, fb, lx - 0.4, lx + 0.4, zc - 0.85, zc - 0.55, 0.09, C("#c59a2b"));
+    label(sinks, fb, (s0 + s1) / 2 + 1.2, zc - 0.05, 1.0, 0.1, "Jardinerie", "#3b3a2c", true);
+    label(sinks, fb, (s0 + s1) / 2 + 1.2, zc - 0.7, 0.55, 0.1, "D'AUTUN", "#2d2d2d");
+  }
+  const D = PAVILION_DEPTH;
+  (st.pavilions ?? []).forEach(([e, s0, s1, eave, ridge], idx) => {
+    const fp = edgeFrame(b.ring, e);
+    const zg = (s: number, o = 0): number => terrain.heightAt(...pt(fp, s, o));
+    const z = zg((s0 + s1) / 2, D) , sm = (s0 + s1) / 2;
+    const at3 = (s: number, o: number, dz: number): P3 => [...pt(fp, s, o), z + dz];
+    // Façade vitrée (meneaux de bois) et pignon vitré au-dessus.
+    storefront(sinks, fp, zg, s0, s1, eave - 0.1, 2.2, TIMBER_DARK, 0.9, D);
+    face(mb, [at3(s0, D + 0.02, eave), at3(s1, D + 0.02, eave), at3(sm, D + 0.02, ridge)], [fp.nx, fp.ny, 0], C("#8fb0ba"));
+    face(sinks.glow, [at3(s0 + 0.6, D + 0.03, eave + 0.1), at3(s1 - 0.6, D + 0.03, eave + 0.1), at3(sm, D + 0.03, ridge - 0.4)], [fp.nx, fp.ny, 0], C("#ffd89a"));
+    // Côtés vitrés.
+    for (const [s, dir] of [[s0, -1], [s1, 1]] as const) {
+      const a = pt(fp, s, dir < 0 ? 0 : D), c = pt(fp, s, dir < 0 ? D : 0);
+      vplate(mb, a, c, z + 0.05, z + 0.05, z + eave - 0.1, z + eave - 0.1, GLASS_LO, GLASS_HI);
+    }
+    // Toit à deux pans de bois, faîtage perpendiculaire au mur, léger débord devant.
+    face(mb, [at3(s0 - 0.2, -0.1, eave), at3(s0 - 0.2, D + 0.3, eave), at3(sm, D + 0.3, ridge), at3(sm, -0.1, ridge)], [-fp.tx * 0.6, -fp.ty * 0.6, 1], TIMBER);
+    face(mb, [at3(s1 + 0.2, -0.1, eave), at3(s1 + 0.2, D + 0.3, eave), at3(sm, D + 0.3, ridge), at3(sm, -0.1, ridge)], [fp.tx * 0.6, fp.ty * 0.6, 1], shade(TIMBER, 1.12));
+    if (idx === 0 && st.door) {
+      const [c, w] = st.door;
+      plate(mb, fp, c - w / 2, c + w / 2, zg(c, D), zg(c, D) + 2.6, D + 0.05, C("#2b2f2c"));
+      glass(sinks, fp, c - w / 2 + 0.1, c + w / 2 - 0.1, zg(c, D) + 0.05, zg(c, D) + 2.5, D + 0.07, 1);
+    }
+  });
+}
+
 /** Entrée de la tuile : dessine le magasin d'après photo de ce bâtiment. */
 export function buildStore(sinks: LandmarkSinks, b: Building, kind: BuildingKind, terrain: HeightField, wall: THREE.Color): void {
   const st = kind.store;
   if (!st) return;
-  if (st.style === "lidl") lidl(sinks, b, st, terrain);
-  else pharmacy(sinks, b, kind, st, terrain, wall);
+  switch (st.style) {
+    case "lidl": lidl(sinks, b, st, terrain); break;
+    case "pharmacy": pharmacy(sinks, b, kind, st, terrain, wall); break;
+    case "bricomarche": bricomarche(sinks, b, st, terrain); break;
+    case "intermarche": intermarche(sinks, b, st, terrain); break;
+    case "but": but(sinks, b, st, terrain); break;
+    case "jardinerie": jardinerie(sinks, b, st, terrain); break;
+  }
+  carports(sinks, st, terrain);
 }
 
 // --- Abri à chariots du Lidl ----------------------------------------------------------------------------------------------------------

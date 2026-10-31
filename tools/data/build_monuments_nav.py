@@ -134,7 +134,8 @@ def shop_pois(index):
     super-tuile du commerce. Un point « commerce » déjà à moins de 30 cm est remplacé : une deuxième passe ne change rien. Rend le nombre
     de super-tuiles réécrites.
 
-    Commerce d'OpenStreetMap dont la photo change le mur d'entrée (`poi` des `fronts`, Lidl et pharmacie, D143) : son ancien point
+    Commerce d'OpenStreetMap dont la photo change le mur d'entrée (`poi` des `fronts`, Lidl et pharmacie, D143 ; But, Bricomarché, Intermarché et
+    Jardinerie, D144 ; `poiOffset` : mètres de plus devant le mur, pour une entrée en saillie ; `poiClear` : rayon (2 m par défaut) où l'ancien point est retiré) : son ancien point
     « commerce » (à moins de 2 m du contour, dans toute super-tuile qu'il touche) est retiré, le nouveau posé comme ci-dessus."""
     from shapely.geometry import LineString, Point, Polygon
     fronts = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text()).get("fronts", {})
@@ -160,7 +161,8 @@ def shop_pois(index):
             n = math.hypot(nx, ny)
             if Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)]).contains(Point(mx + nx / n, my + ny / n)):
                 nx, ny = -nx, -ny
-            x, y = round(mx + nx / n * 0.8, 1), round(my + ny / n * 0.8, 1)
+            off = 0.8 + entry.get("poiOffset", 0.0)  # D144 : le pavillon de la Jardinerie avance de 2,4 m devant son mur
+            x, y = round(mx + nx / n * off, 1), round(my + ny / n * off, 1)
             cid = cell_of(x, y, index)
             poly = Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)])
             if entry.get("poi"):
@@ -169,7 +171,7 @@ def shop_pois(index):
                     otext = op.read_text()
                     odoc = json.loads(otext)
                     P = odoc["poi"]
-                    odoc["poi"] = [v for i in range(0, len(P), 5) if not (P[i] == 2 and poly.distance(Point(P[i + 1], P[i + 2])) < 2.0) for v in P[i:i + 5]]
+                    odoc["poi"] = [v for i in range(0, len(P), 5) if not (P[i] == 2 and poly.distance(Point(P[i + 1], P[i + 2])) < entry.get("poiClear", 2.0)) for v in P[i:i + 5]]
                     onew = json.dumps(odoc, separators=(",", ":"))
                     if onew != otext:
                         op.write_text(onew)

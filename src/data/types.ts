@@ -323,13 +323,17 @@ export interface BuildingKind {
 }
 
 /**
- * Magasin d'après photo (D143, tools/data/build_stores.py). `e` : arête du contour (sommet e vers e + 1) qui porte la façade ; les abscisses
+ * Magasin d'après photo (D143, D144, tools/data/build_stores.py). `e` : arête du contour (sommet e vers e + 1) qui porte la façade ; les abscisses
  * `s` se comptent en mètres depuis le sommet e. Lidl : mur vitré sur `glass`, sas `door` (centre, largeur), panneaux perpendiculaires aux
  * abscisses `blades`, long mur plein `side` (arête, casier [s, largeur], grilles, zone hachurée [s0, s1, distance mini, distance maxi]).
  * Pharmacie : vitrage sur `glass` en retrait de `gallery` mètres sous la galerie, croix de la façade et du toit (`cross`).
+ * Bricomarché : vitrage `glass` et portique `door` sous l'auvent `canopy` [s0, s1, profondeur], enseigne `sign` [s, hauteur], tondeuses `display`
+ * [s0, s1]. Intermarché : lames rouges `slats` [s0, s1], vitrage, porte, enseigne, store du Drive `tent` (x, y) et abris solaires `carports`.
+ * But : bloc central `block` [s0, s1] plus haut, auvent, vitrine, enseigne carrée, triangles gris sur les arêtes `wings`.
+ * Jardinerie : pavillons vitrés à pignon `pavilions` [arête, s0, s1, égout, faîtage] et bannière `banner` [arête, s0, s1, bas, haut].
  */
 export interface StoreModel {
-  style: "lidl" | "pharmacy";
+  style: "lidl" | "pharmacy" | "bricomarche" | "intermarche" | "but" | "jardinerie";
   e: number;
   glass: [number, number];
   door?: [number, number];
@@ -337,7 +341,20 @@ export interface StoreModel {
   side?: { e: number; locker: [number, number]; vents: number[]; hatch: [number, number, number, number] };
   gallery?: number;
   cross?: [number, number];
+  canopy?: [number, number, number];
+  sign?: [number, number];
+  display?: [number, number];
+  slats?: [number, number];
+  tent?: [number, number];
+  carports?: Carport[];
+  block?: [number, number];
+  wings?: number[];
+  pavilions?: [number, number, number, number, number][];
+  banner?: [number, number, number, number, number];
 }
+
+/** Abri de parking solaire mesuré au LiDAR (D144) : centre (x, y), angle du grand côté (degrés, x vers l'est), longueur, largeur, plan du dessus z = a·x + b·y + c. */
+export type Carport = [number, number, number, number, number, number, number, number];
 
 /** Ouverture d'une maison (D140) : mur du L, distance depuis son début, genre, largeur, hauteur, appui. */
 export type HouseOpening = [number, number, "lamp"] | [number, number, "door2" | "door4" | "window1" | "window2", number, number, number?];

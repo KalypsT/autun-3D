@@ -60,4 +60,47 @@ describe("magasins d'après photo (D143) : géométrie", () => {
     expect(tris(s.solid)).toBeGreaterThan(100);
     expect(tris(s.solid)).toBeLessThan(700);
   });
+
+  it("zone commerciale de Bellevue (D144) : sommets finis, vitrages allumés, inscriptions, coût borné", () => {
+    const BRICO = "BATIMENT0000000348847158", INTER = "BATIMENT0000000348847156", BUT = "BATIMENT0000000348852219", JARD = "BATIMENT0000000348847180";
+    const want: [string, string[], number, number][] = [
+      [BRICO, ["BRICO", "MARCHÉ", "MAISON - JARDIN"], 250, 2500],
+      [INTER, ["Intermarché", "SUPER"], 200, 2500],
+      [BUT, ["BUT", "Cosy"], 80, 1800],
+      [JARD, ["Jardinerie", "D'AUTUN"], 80, 1800],
+    ];
+    let total = 0;
+    for (const [id, labels, lo, hi] of want) {
+      names.length = 0;
+      const s = sinks();
+      buildStore(s, bOf(id), kinds.buildings[id]!, world.terrain, wall);
+      expect(finite(s)).toBe(true);
+      expect(tris(s.glow)).toBeGreaterThan(8);
+      for (const l of labels) expect(names).toContain(l);
+      expect(tris(s.solid)).toBeGreaterThan(lo);
+      expect(tris(s.solid)).toBeLessThan(hi);
+      total += tris(s.solid) + tris(s.glow);
+    }
+    // Les quatre ensemble (sans les six abris solaires, environ 360 triangles) restent sous 3 000 triangles.
+    expect(total).toBeLessThan(3000);
+  });
+
+  it("Jardinerie et But : rien ne dépasse de plus de 6 m le contour ni de 14 m en hauteur", () => {
+    for (const id of ["BATIMENT0000000348847180", "BATIMENT0000000348852219"]) {
+      const s = sinks();
+      const b = bOf(id);
+      // Sans les abris solaires, que la tuile range avec le magasin le plus proche.
+      const k = kinds.buildings[id]!;
+      buildStore(s, b, { ...k, store: { ...k.store!, carports: [] } }, world.terrain, wall);
+      const xs = b.ring.filter((_, i) => i % 2 === 0), ys = b.ring.filter((_, i) => i % 2 === 1);
+      const p = s.solid.positions;
+      for (let i = 0; i < p.length; i += 3) {
+        expect(p[i]!).toBeGreaterThan(Math.min(...xs) - 6);
+        expect(p[i]!).toBeLessThan(Math.max(...xs) + 6);
+        expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 6);
+        expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 6);
+        expect(p[i + 1]! - b.ground).toBeLessThan(14);
+      }
+    }
+  });
 });
