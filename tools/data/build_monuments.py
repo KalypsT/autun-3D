@@ -1141,6 +1141,8 @@ def college(tid, bid, b, spec, k):
         print(f"  annexe {aid[-8:]} : plan de toit {plane} (écart {rms * 100:.0f} cm sur {n} cellules)")
         ae = dict(k["buildings"][aid])
         ae["roof"] = plane
+        if "annexRoof" in spec:
+            ae["zinc"] = spec["annexRoof"]
         if k["buildings"][aid] != ae:
             k["buildings"][aid] = ae
             changed = True

@@ -1280,3 +1280,49 @@ describe("Lycée Bonaparte : lucarnes, avant-corps, inscription (D151)", () => {
     expect(Math.abs(along - g.portal[0])).toBeLessThan(12);
   });
 });
+
+describe("Lycée Bonaparte : sols des cours et zinc des annexes (D152)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const t = JSON.parse(readFileSync("public/data/tiles/25_34.json", "utf8")) as { ground: Record<string, number[][][]> };
+  const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { courts: { site: [number, number][]; courts: { at: [number, number]; class: string }[] } };
+  const inRing = (r: readonly number[], x: number, y: number): boolean => {
+    let inside = false;
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      if ((r[i + 1]! > y) !== (r[j + 1]! > y) && x < ((r[j]! - r[i]!) * (y - r[i + 1]!)) / (r[j + 1]! - r[i + 1]!) + r[i]!) inside = !inside;
+    }
+    return inside;
+  };
+  const inPoly = (p: number[][], x: number, y: number): boolean => inRing(p[0]!, x, y) && !p.slice(1).some((h) => inRing(h, x, y));
+  const site = manual.courts.site.flat();
+  /** Les cours posées par build_courts.py : les polygones des classes demandées qui contiennent le point de chaque cour. */
+  const courtOf = (at: [number, number], cls: string): number[][] =>
+    t.ground[cls]!.find((p) => inPoly(p, at[0], at[1]))!;
+
+  it("chaque cour est un polygone de sa classe de sol, à l'intérieur de l'enceinte", () => {
+    expect(manual.courts.courts).toHaveLength(3);
+    for (const c of manual.courts.courts) {
+      const p = courtOf(c.at, c.class);
+      expect(p).toBeDefined();
+      // Échantillon de points de la cour : tous à l'intérieur de l'enceinte (à 1 m près, par recoupement avec l'emprise).
+      let n = 0;
+      for (let x = -175; x < -65; x += 2) for (let y = -190; y < -60; y += 2) if (inPoly(p, x, y)) { n++; expect(inRing(site, x, y)).toBe(true); }
+      expect(n).toBeGreaterThan(200);
+    }
+  });
+
+  it("aucune cour ne recouvre un bâtiment (échantillon à 1 m)", () => {
+    for (const c of manual.courts.courts) {
+      const p = courtOf(c.at, c.class);
+      for (let x = -175; x < -65; x += 1) for (let y = -190; y < -60; y += 1) {
+        if (!inPoly(p, x, y)) continue;
+        for (const b of world.tile.buildings) if (b.ring[0]! > -190 && b.ring[0]! < -50 && inRing(b.ring, x, y)) throw new Error(`cour sur le bâtiment ${b.id} en (${x}, ${y})`);
+      }
+    }
+  });
+
+  it("les annexes à toit mesuré ont une couverture de zinc ; la petite annexe à croupes garde la sienne", () => {
+    for (const id of ["BATIMENT0000000348853490", "BATIMENT0000000348853491", "BATIMENT0000000348853507"]) expect(kinds.buildings[id]!.zinc).toMatch(/^#[0-9a-f]{6}$/);
+    expect(kinds.buildings["BATIMENT0000000348853506"]!.zinc).toBeUndefined();
+  });
+});

@@ -384,6 +384,8 @@ export interface BuildingKind {
   mon?: CathedralSpec;
   /** Cathédrale d'après photo (D127) : modèle dédié (remplace murs, toit et façade génériques, et le gabarit `mon`). */
   cath?: CathedralModel;
+  /** Couleur de la couverture imposée (zinc des annexes du lycée, D152) ; sinon celle du gabarit ou de la fiche. */
+  zinc?: string;
   /** Église Notre-Dame d'après photo (D150) : modèle dédié (remplace murs, toit et façade génériques). */
   nd?: NotreDameSpec;
   /** Partie de Notre-Dame dessinée par le modèle `nd` d'un autre bâtiment (le chevet, D150) : ni murs ni toit génériques. */

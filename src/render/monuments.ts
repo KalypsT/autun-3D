@@ -1775,8 +1775,8 @@ function collegeDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, terr
     block(mb, f, wall, -0.15, 2 * hw + 0.15, top - 0.55, top, 0, 0.2, COLLEGE_TRIM);
     block(mb, f, wall, -0.1, 2 * hw + 0.1, gl + 3.1, gl + 3.45, 0, 0.07, COLLEGE_TRIM);
     for (const u of [hw * 0.5, hw * 1.5]) {
-      for (let r = 0, z0 = gl + 4.3; z0 + 1.7 < top - 2.3; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.9, true, false, r % 2 === 0);
-      bay(mb, glow, f, wall, u, 1.0, gl + 1.0, 1.9, true, false, false);
+      for (let z0 = gl + 4.3; z0 + 1.7 < top - 2.3; z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.9, true, false, true);
+      bay(mb, glow, f, wall, u, 1.0, gl + 1.0, 1.9, true, false, true);
     }
     bay(mb, glow, f, wall, hw, 1.7, gl, 2.9, true, true, false);
     // Fronton cintré au-dessus de la corniche, œil-de-bœuf.

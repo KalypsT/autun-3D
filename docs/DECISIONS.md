@@ -2682,3 +2682,45 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d151-haut-apres.jpg)
 ![Vue d'ensemble, avant](captures/d151-ensemble-avant.jpg)
 ![Après](captures/d151-ensemble-apres.jpg)
+
+## 2026-10-31 — D152. Le lycée Bonaparte d'après photos, étape 5 : sols des cours, zinc des annexes, nuit
+
+**Demande de l'utilisateur** : enchaîner sans photo de plus. Ce qui est traité ne demande aucune lecture nouvelle : les sols se lisent sur l'orthophotographie, les annexes ont déjà leur toit mesuré (D148).
+
+**Constat** : les cours (cour d'honneur, cour nord, cour sud) n'avaient aucune classe de sol : elles prenaient la couleur du relief. L'orthophotographie montre du gravier beige dans la cour d'honneur et la cour sud, de l'enrobé sombre dans la cour nord (où des voitures sont garées). Les annexes `…490`, `…491` et `…507` avaient la couleur de tuile ou d'ardoise de la fiche, alors que l'orthophotographie les montre en zinc gris.
+
+**Données** :
+- Nouvelle étape `tools/data/build_courts.py` (après `build_public_space.py`, qui réécrit les sols des tuiles ; avant `build_nav.py`) : l'enceinte (contour OpenStreetMap du lycée, way 80175797, dans `courts` de `manual.json`), moins les contours BD TOPO épaissis de 40 cm, moins la grille (80 cm), arrondie à 25 cm ; chaque cour est le morceau qui contient le point lu sur l'orthophotographie, rangé dans sa classe de sol (`plaza_gravel` : cour d'honneur 1 107 m² et cour sud 2 189 m² ; `plaza_asphalt` : cour nord 909 m²) dans `tiles/25_34.json`. Les polygones déjà posés sont retirés puis reposés : une deuxième passe ne change rien. `bytes` de la tuile est mis à jour dans `world.json`. Le client étend ce sol sur le relief comme celui des places.
+- `annexRoof` de l'entrée `…853321` de `monuments` : `build_monuments.py` écrit `zinc` (`#8d989e`) dans les `kinds` des annexes à toit mesuré ; `landmarkRoofColor` le lit. `…506` (toit à croupes, tuiles) ne l'a pas.
+- Chaîne `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav`, `build_courts` rejouée deux fois : `public/data` identique ; changent `kinds/25_34.json`, `tiles/25_34.json` et `world.json` (un nombre d'octets).
+
+**Rendu** : les trois cours ont leur revêtement ; les trois annexes ont un toit de zinc gris ; la nuit, toutes les baies de l'avant-corps « LYCÉE » sont allumées (une sur deux avant), comme si le fronton était éclairé. La vue d'ensemble passe de 438 094 à 436 351 triangles (le gain vient surtout des faces planes du soubassement de D151).
+
+**Jeu** : aucun obstacle ni passant de plus : `build_nav.py` complet n'est pas relancé, les places de la navigation ne contiennent donc pas les cours (elles sont fermées par la grille, les passants n'y vont pas).
+
+**Silhouettes lointaines** : déjà à jour (D148 pour le collège et l'aile de la rue aux Raz, D150 pour Notre-Dame) ; je n'y ai rien changé.
+
+**Tests** (+3, 805 au total) : chaque cour est un polygone de sa classe, à l'intérieur de l'enceinte (échantillon de points) ; aucune cour ne recouvre un bâtiment (échantillon à 1 m) ; les trois annexes ont du zinc, la petite annexe à croupes n'en a pas.
+
+**Limites** :
+- Les classes de sol sont lues à l'orthophotographie (gravier ou terre battue, enrobé), pas sur photo : les marquages, les carrés de terre des arbres, les pelouses, les bandes pavées du pourtour de la cour d'honneur ne sont pas dessinés. Le sol de la cour est un aplat.
+- Le parking sud (vers (−122 ; −165)), séparé de la cour sud par les annexes, n'est pas un espace libre de l'enceinte : il garde son sol d'avant.
+- Le **bassin** de la cour d'honneur n'est pas dessiné : le LiDAR ne voit rien (eau et sol au même niveau, hauteur nulle) et aucune photo ne le montre.
+- Le zinc (`#8d989e`) est une teinte lue à l'orthophotographie (gris bleuté pâle) ; le zinc de l'aile de la rue aux Raz (`#8e999e`) en est proche mais distinct.
+- Éclairage de nuit : celui des baies seulement ; ni lampadaires ni lanternes dans les cours (la photo 1 montre une lanterne murale vers l'angle de l'aile est, non dessinée).
+- Façades des rues Bulliot et aux Raz, cour sud (arbres, sol réel), fenêtres à linteau cintré : toujours sans photo.
+
+![Vue du dessus, avant](captures/d152-haut-avant.jpg)
+![Après : les cours](captures/d152-haut-apres.jpg)
+![La cour sud et les annexes, avant](captures/d152-sud-avant.jpg)
+![Après](captures/d152-sud-apres.jpg)
+![La cour d'honneur, avant](captures/d152-cour-avant.jpg)
+![Après](captures/d152-cour-apres.jpg)
+![Comme ta photo 2, avant](captures/d152-photo2-avant.jpg)
+![Après](captures/d152-photo2-apres.jpg)
+![L'avant-corps la nuit, avant](captures/d152-nuit-avant.jpg)
+![Après](captures/d152-nuit-apres.jpg)
+![Du nord, avant](captures/d152-nord-avant.jpg)
+![Après](captures/d152-nord-apres.jpg)
+![Vue d'ensemble, avant](captures/d152-ensemble-avant.jpg)
+![Après](captures/d152-ensemble-apres.jpg)

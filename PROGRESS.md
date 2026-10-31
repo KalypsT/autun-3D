@@ -1208,3 +1208,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![L'avant-corps](docs/captures/d151-pavillon-apres.jpg)
 ![Du nord](docs/captures/d151-nord-apres.jpg)
+
+**Le lycée Bonaparte, étape 5 : sols des cours, zinc des annexes (31 octobre 2026)** (D152)
+- Les cours ont leur sol : gravier beige dans la cour d'honneur et la cour sud, enrobé sombre dans la cour nord (lus à l'orthophotographie) ; nouvelle étape `build_courts.py`.
+- Les annexes `…490`, `…491` et `…507` ont un toit de zinc gris ; la nuit, toutes les baies de l'avant-corps « LYCÉE » sont allumées.
+- 805 tests ; aucun obstacle ni passant de plus ; la vue d'ensemble perd 1 700 triangles.
+- Limites : sols en aplat (ni marquages, ni bandes pavées, ni pelouses) ; le bassin de la cour d'honneur n'est pas dessiné (invisible au LiDAR, aucune photo) ; pas de lampadaires ni de lanterne ; façades des rues Bulliot et aux Raz sans photo.
+- À essayer : `?cam=-125,-175,22,-140,-135,3&h=14` (cour sud et annexes), `?cam=-115,-125,150,-115,-124,0&h=14` (de dessus).
+
+![Les cours vues du dessus](docs/captures/d152-haut-apres.jpg)
+![La cour sud](docs/captures/d152-sud-apres.jpg)

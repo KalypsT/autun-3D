@@ -54,6 +54,7 @@ export function landmarkWallColor(kind: BuildingKind | undefined, id: string): T
 
 /** Couleur des toits des gabarits « boîte » (null : celle de la fiche). */
 export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color | null {
+  if (kind?.zinc) return C(kind.zinc);
   switch (kind?.k) {
     case "retail": return kind.store ? C(kind.store.roofc ?? STORE_ROOF[kind.store.style]) : C("#b8b2a6");
     case "industrial": case "sports": return C("#8fa3a8");
