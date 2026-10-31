@@ -9,7 +9,7 @@ import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
-import { reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
+import { furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
 import { buildDevanture } from "./devanture";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
 import { buildStructures, buildWater } from "./structures";
@@ -446,9 +446,8 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (!skip.includes("stairs")) buildStairs(detail, (tile.stairs ?? []).filter((z) => !perrons.has(z.id)), terrain, C("#e6d9b8"), C("#bba98a"));
   const halo = new MeshBuilder();
   target();
-  // Le mobilier remplacé par un monument d'après photo (fontaine Saint-Lazare, D131) n'est pas dessiné.
-  const replaced = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [s.id] : [])));
-  if (!skip.includes("furn")) buildFurniture(detail, tile.furniture.filter((f) => !replaced.has(f.id)), terrain, glow, halo);
+  // Le mobilier remplacé ou retiré par un monument d'après photo (fontaine Saint-Lazare, D131 ; lampadaire d'un îlot, D142) n'est pas dessiné.
+  if (!skip.includes("furn")) buildFurniture(detail, furnitureOutsideMonuments(kinds, tile.furniture), terrain, glow, halo);
   yield;
 
   const group = new THREE.Group();

@@ -28,5 +28,9 @@
   "tracks": [
     {"at": [960, 300], "s": "dirt", "photo": "Piste du stade du Théâtre romain : allée de terre rouge-brun autour du pré (photo de drone de l'utilisateur et orthophotographie), pas une piste synthétique"}
   ],
+  "_roundabouts": "roundabouts : îlot de rond-point d'après photo (D142) {\"name\", \"at\": point près du centre (x, y locaux), \"curb\": largeur de la bordure, \"tree\": arbre du centre (cedar), \"bed\": massif de fleurs (rayons autour du tronc), \"flowers\": couleurs, \"photo\": référence} ; build_roundabouts.py mesure le reste (orthophoto, LiDAR).",
+  "roundabouts": [
+    {"name": "Rond-point de la Croix Verte", "at": [619.8, 642.8], "curb": 0.5, "tree": "cedar", "bed": [1.2, 3.4], "flowers": ["#d8343a", "#f2c230", "#e86fa0", "#f08a2a", "#f4f0e6"], "photo": "Rond-point de la Croix Verte : capture Google Street View de l'utilisateur (juillet 2026) depuis le boulevard Mazagran (34), à l'ouest-sud-ouest, en regardant l'îlot vers l'est-nord-est. Îlot rond en pelouse, légèrement bombé, bordure basse claire ; au centre un grand cèdre seul, couronne bleu-vert en plateaux étagés, très large, branches basses jusqu'au massif ; massif de fleurs rouges, jaunes, roses et orangées au pied, avec quelques arbustes bas ; pas de lampadaire ni de croix sur l'îlot. Au premier plan, îlot séparateur à bord blanc, ligne de cédez-le-passage, abribus à gauche, long mur à droite (hors de cette étape). Massif `bed` [rayons intérieur et extérieur autour du tronc] et couleurs des fleurs lus sur la photo ; bordure `curb` (largeur)."}
+  ],
   "fenceHeights": {"fence": 1.8, "gate": 2.4}
 }

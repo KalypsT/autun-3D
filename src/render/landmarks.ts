@@ -7,6 +7,7 @@ import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
+import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
@@ -900,6 +901,8 @@ export function buildSitesGround(mb: MeshBuilder, kinds: TileKinds | undefined, 
     surface.forEach(([poly, hex], i) => fillOnTerrain(mb, poly, i === 0 ? 0.07 : 0.085, C(hex), terrain));
     for (const poly of lines) fillOnTerrain(mb, poly, 0.1, white, terrain);
   }
+  // Îlots de rond-point d'après photo (D142) : pelouse et massif.
+  for (const s of kinds.sites) if (s.t === "roundabout") buildRoundaboutGround(mb, s, terrain);
 }
 
 // --- Entrée ---------------------------------------------------------------------------------------------------------------------------
@@ -954,5 +957,6 @@ export function buildLandmarks(
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
     else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain);
+    else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
   }
 }

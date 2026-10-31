@@ -2187,3 +2187,44 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![La nuit, après : vitrines allumées](captures/d141-boutique-nuit-apres.jpg)
 ![Depuis le sud de la rue, avant](captures/d141-boutique-rue-avant.jpg)
 ![Depuis le sud de la rue, après](captures/d141-boutique-rue-apres.jpg)
+
+## 2026-10-31 — D142. Petits éléments d'après photos, étape 3 : le rond-point de la Croix Verte
+
+**Suite de la demande de D140, étape 3.** Photo : capture Google Street View de l'utilisateur (juillet 2026) depuis le boulevard Mazagran (n° 34), à l'ouest-sud-ouest, en regardant l'îlot vers l'est-nord-est (confirmé). Choix de l'utilisateur : seulement l'îlot central, son arbre et ses fleurs (ni îlots séparateurs, ni abribus), pas d'éclairage de nuit pour le cèdre.
+
+**Dans les données** : rond-point de la tuile 28_37, au centre vers (620 ; 642,5), super-tuile de navigation `s7_9`. Il était dessiné par `build_public_space.py` (D94) en pelouse irrégulière à bande de trottoir, avec **trois « arbres » génériques de 13 m** (c'est le cèdre vu en trois morceaux par le relevé LiDAR) et un lampadaire posé au bord de l'îlot, absent des photos.
+
+**Lecture de la photo** (`roundabouts` de `manual.json`) : îlot rond en pelouse, légèrement bombé, bordure basse claire ; au centre un grand cèdre seul, couronne bleu-vert en plateaux étagés, très large, aux branches basses jusqu'au massif ; massif de fleurs rouges, jaunes, roses et orangées au pied, avec quelques arbustes bas ; pas de lampadaire sur l'îlot. Au premier plan : îlot séparateur à bord blanc, cédez-le-passage, abribus, long mur (hors de cette étape).
+
+**Mesures** (nouvelle étape autonome `tools/data/build_roundabouts.py`, orthophotographie à 0,25 m et MNS/MNT LiDAR HD) :
+- **Bordure** : sur 144 rayons tous les 2,5°, le pixel le plus clair entre 11 et 16,5 m, retenu s'il a de l'herbe juste à l'intérieur (les rayons dans l'ombre du cèdre n'en ont pas) ; cercle ajusté aux moindres carrés sur 100 rayons : **rayon 13,69 m** au milieu de la bordure, centre (619,82 ; 642,52), écart médian **6 cm**.
+- **Bombé** : médiane du terrain dans l'îlot moins celle de la chaussée autour : **41 cm** (déjà dans le relief LiDAR, rien à poser).
+- **Cèdre** : **13,7 m** au-dessus du terrain, couronne de **10,4 m de rayon** à 1,5 m de haut, 8,3 m à 5,5 m, 6,6 m à 10,5 m ; tronc à (620,8 ; 642,4), centre de la couronne sur ses deux premiers tiers (le sommet penche un peu).
+- **Voitures** : les files du graphe routier passent à **16,95 m** au moins du centre, soit 3 m au-delà de la bordure : on ne les touche pas (la circulation, ses files et ses carrefours restent exactement ceux de D94).
+- Une deuxième passe ne change rien.
+
+**Pourquoi une étape à part** : `build_public_space.py` réécrit toutes les tuiles (≈ 15 min, puis la navigation et la carte) ; `build_roundabouts.py` n'écrit qu'un site `roundabout` dans `kinds/28_37.json` (et l'index), sans toucher aux tuiles. À relancer après `build_kinds.py`.
+
+**Rendu** (`src/render/roundabout.ts`) :
+- **Sols** (maillage des sols de la tuile) : pelouse jusqu'à la bordure, terre du massif en anneau autour du tronc ; elle recouvre la pelouse et le trottoir de D94 dans l'îlot (la bordure cache leur contour).
+- **Bordure** : anneau bas (50 cm de large, 26 cm de haut) à faces intérieure et extérieure.
+- **Massif** : des coussins de fleurs aux cinq couleurs de la photo, semés au hasard, et six arbustes bas en dômes à facettes.
+- **Cèdre** : tronc conique, puis un étage de branches tous les 1,6 m à partir de 2 m, chacun fait de trois ou quatre plateaux irréguliers aux bords échancrés qui retombent, dont l'ensemble atteint le rayon mesuré à cette hauteur ; pointe arrondie.
+- **1 956 triangles** pour l'îlot, le massif et le cèdre, 252 pour les sols (borne du test : 3 000). Pas d'éclairage la nuit.
+
+**Retraits sans réécrire la tuile** : les arbres de l'îlot (`treesOutsideMonuments`) et le lampadaire posé au bord (`furnitureOutsideMonuments`, qui remplace la liste des objets remplacés de D131 : fontaine Saint-Lazare, lampadaire de l'îlot).
+
+**Jeu** : l'îlot se traverse (bordure basse, comme avant) ; seul le tronc du cèdre est un obstacle (cercle de 45 cm). Aucun chemin de passants n'entre dans l'îlot (vérifié : leur file la plus proche reste hors de la bordure), donc rien à faire dans la navigation. Aucune cache d'arme n'est dans l'îlot.
+
+**Tests** : rayon, écart d'ajustement et bombé plausibles ; cèdre de 11 à 16 m, couronne plus large en bas qu'en haut, tronc dans l'îlot ; trois arbres et un lampadaire retirés ; tronc bloquant, îlot franchissable ; files des voitures à plus de 2 m de la bordure ; aucune file de passants dans l'îlot ; aucune cache d'arme ; sommets finis et coût borné.
+
+**Limites** : la couronne est une évocation à plateaux, pas un relevé (le LiDAR donne l'enveloppe, pas les branches) ; fleurs et arbustes d'après la photo, positions au hasard ; le massif n'est pas dans les données ; les îlots séparateurs, l'abribus et le long mur de la photo restent comme avant.
+
+![Depuis le boulevard Mazagran, avant](captures/d142-rondpoint-avant.jpg)
+![Depuis le boulevard Mazagran, après](captures/d142-rondpoint-apres.jpg)
+![Vue du dessus, avant](captures/d142-rondpoint-haut-avant.jpg)
+![Vue du dessus, après](captures/d142-rondpoint-haut-apres.jpg)
+![La nuit, avant](captures/d142-rondpoint-nuit-avant.jpg)
+![La nuit, après](captures/d142-rondpoint-nuit-apres.jpg)
+![De loin (35 m de haut), avant](captures/d142-rondpoint-loin-avant.jpg)
+![De loin, après](captures/d142-rondpoint-loin-apres.jpg)
