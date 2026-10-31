@@ -5,12 +5,12 @@ Entrées : public/data/world.json, tiles/*.json (bâtiments et fiches), kinds/*.
           OpenStreetMap par blocs de 500 m (.cache/shared/raw/osm, téléchargés au besoin ; --force les retélécharge) : commerces avec leur
           `addr:street`, portes (`entrance`), parkings.
 Sorties : dans les fiches des tuiles seulement, `ground.front` (indice du mur d'entrée), `wall` et `s` de chaque commerce de `ground.shops`,
-          et le rôle « street » du mur choisi s'il était classé « court ». Rien d'autre ne change (les tuiles se relisent à l'octet près).
+          et le rôle « street » du mur choisi s'il était classé « court » ; pour un commerce vu sur une photo (`shop`, D141), sa fiche. Rien d'autre ne change (les tuiles se relisent à l'octet près).
 
 Avant (build_facades.py), la vitrine allait sur le mur « de rue » le plus long, ou le plus proche du point OSM du commerce. Or ce point est
 souvent au milieu du bâtiment, et un mur arrière à moins de 10 m d'une ruelle compte comme mur de rue : 345 vitrines sans nom sur 499
 et 50 enseignes nommées sur 201 regardaient une autre rue que celle de leur adresse. Ordre de choix du mur, du plus sûr au moins sûr :
-  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "signAt": milieu de l'enseigne en mètres depuis le début de ce mur, "signZ": bas d'une enseigne basse au-dessus du sol, "photo": ...}, d'après une photo) ;
+  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "signAt": milieu de l'enseigne en mètres depuis le début de ce mur, "signZ": bas d'une enseigne basse au-dessus du sol, "shop": commerce absent d'OpenStreetMap et sa devanture (D141, voir `apply_shop`), "photo": ...}, d'après une photo) ;
   1. une porte OpenStreetMap posée sur le contour (commerce, entrée principale) ;
   2. le point du commerce lui-même s'il est sur le contour (cartographié à sa porte) ;
   3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m) ;
@@ -144,6 +144,28 @@ class Walls:
         return min(among, key=lambda i: self.lines[i].distance(p))
 
 
+def apply_shop(fi, m):
+    """Commerce vu sur une photo, absent d'OpenStreetMap (D141) : la fiche devient « shop », avec son commerce au milieu du mur d'entrée,
+    la couleur de sa devanture, sa devanture dessinée telle quelle (`devanture`) et l'étage d'après la photo (enduit, menuiseries, volets) ;
+    `status` passe à « observed ». Rien d'autre ne change, et une deuxième passe donne la même fiche."""
+    sh = m["shop"]
+    g = fi["ground"]
+    g["kind"] = "shop"
+    g["shopfront"] = {"color": sh["color"], "glazing": "full"}
+    g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}]
+    g["devanture"] = sh["devanture"]
+    up = sh.get("fiche", {})
+    if "wall" in up:
+        fi["materials"]["wall"]["color"] = up["wall"]
+    if "frame" in up:
+        fi["facade"]["window"]["frameColor"] = up["frame"]
+    if "shutters" in up:
+        fi["facade"]["shutters"]["kind"] = up["shutters"]
+    fi["status"] = "observed"
+    src = {"kind": "photo", "ref": m["photo"][:80]}
+    fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [src]
+
+
 def main():
     world = json.load(open(c.OUT / "world.json"))
     places = json.load(open(c.OUT / "map" / "places.json"))
@@ -166,6 +188,8 @@ def main():
     for tid, rec in tiles.items():
         B = {b["id"]: b for b in rec["buildings"]}
         for fi in rec["fiches"]:
+            if fi["id"] in B and fi["id"] in manual and manual[fi["id"]].get("shop"):
+                apply_shop(fi, manual[fi["id"]])
             if fi["id"] in B and (fi["ground"]["kind"] == "shop" or fi["id"] in retail):
                 todo.append((tid, B[fi["id"]], fi))
     shops, entrances, parkings = load_osm([(b["ring"][0], b["ring"][1]) for _t, b, _f in todo])
@@ -243,7 +267,7 @@ def main():
             chosen.append(g["signWall"])
         stats[f"bâtiment : {why}"] += 1
         for sh in g.get("shops", []):
-            t, p = shops.get(sh["osm"], ({}, None))
+            t, p = shops.get(sh.get("osm"), ({}, None))
             if p is None:
                 stats["commerce absent d'OSM"] += 1
                 continue

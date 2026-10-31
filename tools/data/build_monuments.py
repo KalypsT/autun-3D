@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -10,7 +10,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           théâtre romain (modèle `theatre`, D133) : site `theatre`, bâtiment BD TOPO masqué ; revêtement des pistes (`tracks`, D133) ;
           portes romaines (modèle `gate`, D137, D138) : champ `gm` du site `gate` (écrit par build_kinds.py) et silhouette lointaine ;
           église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
-          temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine.
+          temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
+          maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -838,6 +839,200 @@ def chapel(tid, bid, b, spec, k, kinds_all):
     return True, lod
 
 
+# --- Maison d'après photo (D140) -----------------------------------------------------------------------------------------------------
+
+def house_frame(b, spec):
+    """Repère de la maison : origine au sommet `o` du contour BD TOPO, s vers le sommet `s`, t du côté du contour. Rend (origine, angle,
+    sommets en (s, t))."""
+    ring = pairs(b["ring"])
+    o, q = ring[spec["o"]], ring[spec["s"]]
+    a = math.atan2(q[1] - o[1], q[0] - o[0])
+    u, v = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
+    st = [((x - o[0]) * u[0] + (y - o[1]) * u[1], (x - o[0]) * v[0] + (y - o[1]) * v[1]) for x, y in ring]
+    sign = -1 if sum(p[1] for p in st) < 0 else 1  # t du côté du contour
+    return o, a, sign, [(s, sign * t) for s, t in st]
+
+
+def l_rects(st, notch):
+    """Le contour en L comme réunion de deux rectangles du repère : corps [0, L] × [0, W1] et aile [sB, L] × [0, W2] ; `notch` est le
+    sommet rentrant (B), précédé du bout du corps (A) et suivi du coin de l'aile (C)."""
+    n = len(st)
+    A, B, C = st[(notch - 1) % n], st[notch], st[(notch + 1) % n]
+    D = st[(notch + 2) % n]
+    L = max(p[0] for p in st)
+    W1 = (A[1] + B[1]) / 2
+    sB = (B[0] + C[0]) / 2
+    W2 = (C[1] + D[1]) / 2
+    return L, W1, sB, W2
+
+
+def roof_union(rects, z0, p, ov):
+    """Toit à croupes de pente constante `p` sur une réunion de rectangles (s0, s1, t0, t1) élargis du débord `ov` : chaque rectangle est
+    un toit à quatre pans d'égout z0 − ov·p, et le toit est leur maximum (noues aux rencontres). Rend les pans : contour (s, t) et plan
+    z = a·s + b·t + c."""
+    from shapely.geometry import Polygon, box
+    big = box(-100, -100, 100, 100)
+
+    def half(a, b, c):  # a·s + b·t + c ≤ 0
+        pts = []
+        corners = [(-100, -100), (100, -100), (100, 100), (-100, 100)]
+        for i in range(4):
+            p0, p1 = corners[i], corners[(i + 1) % 4]
+            f0, f1 = a * p0[0] + b * p0[1] + c, a * p1[0] + b * p1[1] + c
+            if f0 <= 0:
+                pts.append(p0)
+            if (f0 < 0) != (f1 < 0) and abs(f0 - f1) > 1e-12:
+                k = f0 / (f0 - f1)
+                pts.append((p0[0] + (p1[0] - p0[0]) * k, p0[1] + (p1[1] - p0[1]) * k))
+        return Polygon(pts) if len(pts) >= 3 else Polygon()
+
+    ze = z0 - ov * p
+    R = []
+    for s0, s1, t0, t1 in rects:
+        s0, s1, t0, t1 = s0 - ov, s1 + ov, t0 - ov, t1 + ov
+        planes = [(p, 0, ze - p * s0), (-p, 0, ze + p * s1), (0, p, ze - p * t0), (0, -p, ze + p * t1)]
+        R.append((box(s0, t0, s1, t1), planes))
+    faces = []
+    for i, (ri, pi) in enumerate(R):
+        for k, (a, b, c) in enumerate(pi):
+            reg = ri
+            for j, (a2, b2, c2) in enumerate(pi):
+                if j != k:
+                    reg = reg.intersection(half(a - a2, b - b2, c - c2))
+            for o, (ro, po) in enumerate(R):
+                if o == i:
+                    continue
+                # Là où l'autre toit est plus haut que ce pan ; à égalité (pans coplanaires), le premier rectangle garde le pan.
+                eps = -1e-4 if o < i else 1e-4
+                above = ro
+                for (a2, b2, c2) in po:
+                    above = above.intersection(half(a - a2, b - b2, c - c2 + eps))
+                reg = reg.difference(above)
+            # Ouverture morphologique : la différence laisse des pointes sans surface le long des arêtiers communs.
+            reg = reg.buffer(-0.002, join_style="mitre").buffer(0.002, join_style="mitre")
+            for g in getattr(reg, "geoms", [reg]):
+                if g.geom_type == "Polygon" and g.area > 0.05:
+                    g = g.simplify(0.01)
+                    faces.append({"r": [round(v, 3) for q in list(g.exterior.coords)[:-1] for v in q], "k": [a, b, round(c, 3)]})
+    return faces
+
+
+def house_fit(mns, P, g, rects0):
+    """Toit en L mesuré au MNS. Le relevé est flou d'environ 25 cm au bord, et un bord de toit flou se confond avec un débord plus large et
+    plus bas : on ajuste d'abord les pans sur le seul haut du toit (plus de 3 m) — contour du L à 3 m de haut (bords du corps s0, s1, t0, t1 ;
+    de l'aile sw, tw) et pente, moindres carrés robustes puis chaque bord affiné à 10 cm près —, puis l'égout : la hauteur ze telle que le
+    MNS vaille ze / 2 là où les pans prolongés descendent à ze (mi-hauteur, médiane sur les quatre grands bords). Le contour BD TOPO ne sert
+    que de départ (il peut être décalé). Rend (bords du toit à l'égout, égout, pente, part du haut du toit à 30 cm près)."""
+    from scipy.optimize import least_squares
+    (s0, s1, t0, t1), (sw, _, _, tw) = rects0
+    S, T = np.meshgrid(np.arange(s0 - 2, s1 + 2, 0.5), np.arange(t0 - 2, tw + 2, 0.5))
+    S, T = S.ravel(), T.ravel()
+    Z = np.array([mns(*P(a, b)) - g for a, b in zip(S, T)])
+    top = Z > 3.0
+    S, T, Z = S[top], T[top], Z[top]
+    Z3 = 3.0
+
+    def model(x):
+        a0, a1, b0, b1, aw, bw, p = x
+        rect = lambda u0, u1, v0, v1: (lambda d: np.where(d >= 0, Z3 + p * d, -np.inf))(np.minimum.reduce([S - u0, u1 - S, T - v0, v1 - T]))
+        z = np.maximum(rect(a0, a1, b0, b1), rect(aw, a1, b0, bw))
+        return np.where(np.isfinite(z), z, 0.0)
+
+    x = list(least_squares(lambda x: model(x) - Z, [s0, s1, t0, t1, sw, tw, 1.0], loss="soft_l1", f_scale=0.3, diff_step=0.02).x)
+    for _ in range(3):
+        for k in range(6):
+            cands = np.arange(x[k] - 1, x[k] + 1.01, 0.1)
+            errs = [np.sum(np.minimum(np.abs(model(x[:k] + [c] + x[k + 1:]) - Z), 1.0)) for c in cands]
+            x[k] = float(cands[int(np.argmin(errs))])
+        x[6] = float(least_squares(lambda q: model(x[:6] + [q[0]]) - Z, [x[6]], loss="soft_l1", f_scale=0.3).x[0])
+    a0, a1, b0, b1, aw, bw, p = x
+    share = float(np.mean(np.abs(model(x) - Z) < 0.3))
+    # Égout à mi-hauteur : profils perpendiculaires aux bords du corps (s0, s1, t0) et au bout de l'aile (tw).
+    edges = [((a0, None), (-1, 0), (b0 + 1, b1 - 1)), ((a1, None), (1, 0), (b0 + 1, bw - 1)),
+             ((None, b0), (0, -1), (a0 + 1, a1 - 1)), ((None, bw), (0, 1), (aw + 1, a1 - 1))]
+    zes = []
+    for (es, et), (ns, nt), (m0, m1) in edges:
+        for m in np.arange(m0, m1, 0.5):
+            def crossing(ze):
+                d = (Z3 - ze) / p
+                ps, pt = (es + ns * d, m) if es is not None else (m, et + nt * d)
+                return mns(*P(ps, pt)) - g - ze / 2
+            grid = np.arange(1.2, 4.0, 0.05)
+            vals = [crossing(z) for z in grid]
+            k = next((k for k in range(1, len(grid)) if vals[k - 1] < 0 <= vals[k]), None)
+            if k is not None:
+                zes.append(float(grid[k]))
+    ze = float(np.median(zes))
+    d = (Z3 - ze) / p
+    return (a0 - d, a1 + d, b0 - d, b1 + d, aw - d, bw + d), ze, p, share
+
+
+def house_roof_z(rects, z0, p, s, t):
+    """Haut du toit (au nu des murs, sans débord) en (s, t), ou None hors des rectangles."""
+    best = None
+    for s0, s1, t0, t1 in rects:
+        if s0 <= s <= s1 and t0 <= t <= t1:
+            z = z0 + p * min(s - s0, s1 - s, t - t0, t1 - t)
+            best = z if best is None else max(best, z)
+    return best
+
+
+def measure_house(bid, b, spec):
+    """Maison (D140). Repère : orientation du contour BD TOPO (origine au sommet `o`, s vers le sommet `s`, t du côté du contour).
+    Contour du toit en L et pente ajustés au MNS (`house_fit`) ; murs = ce contour moins le débord `ov` (photo : gouttière) ; égout au nu des
+    murs = haut ajusté au bord + débord × pente. Sol : médiane du terrain à 1,5-3 m du contour. Le reste vient de la photo (`manual.json`), dont la cheminée, trop fine pour le relevé."""
+    from shapely.geometry import Point, Polygon
+    o, a, sign, st = house_frame(b, spec)
+    u, v = (math.cos(a), math.sin(a)), (-math.sin(a) * sign, math.cos(a) * sign)
+    P = lambda s, t: (o[0] + u[0] * s + v[0] * t, o[1] + u[1] * s + v[1] * t)
+    L, W1, sB, W2 = l_rects(st, spec["notch"])
+    ring = pairs(b["ring"])
+    xs, ys = [q[0] for q in ring], [q[1] for q in ring]
+    key = "house_" + bid
+    box_ = (math.floor(min(xs) - 8), math.floor(min(ys) - 8), math.ceil(max(xs) + 8), math.ceil(max(ys) + 8))
+    mns, mnt = Raster("MNS", key, *box_), Raster("MNT", key, *box_)
+    poly = Polygon(ring)
+    outer = poly.buffer(3).exterior
+    g = float(np.median([mnt(*outer.interpolate(d).coords[0]) for d in np.arange(0, outer.length, 0.5)
+                         if not poly.buffer(1.5).contains(Point(outer.interpolate(d).coords[0]))]))
+    (s0, s1, t0, t1, sw, tw), zedge, p, share = house_fit(mns, P, g, [(0.0, L, 0.0, W1), (sB, L, 0.0, W2)])
+    ov = spec["ov"]
+    walls = [(s0 + ov, s1 - ov, t0 + ov, t1 - ov), (sw + ov, s1 - ov, t0 + ov, tw - ov)]
+    e = zedge + ov * p
+    r2 = lambda q: round(float(q), 2)
+    out = {"o": [r2(o[0]), r2(o[1])], "a": round(a, 5), "sg": sign, "g": r2(g), "eave": r2(e), "pitch": round(float(p), 3), "ov": ov,
+           "walls": [[r2(q) for q in r] for r in walls], "fit": round(share, 2),
+           "roof": roof_union(walls, e, p, ov), **{k: spec[k] for k in ("porch", "dormers", "openings", "colors")}}
+    # Cheminée (photo : trop fine pour le relevé à 0,5 m) : à `ds` du bout sud-ouest, `dt` du faîtage du corps, `dz` au-dessus de lui.
+    ds, dt, dz = spec["chimney"]
+    ridge = e + p * (walls[0][3] - walls[0][2]) / 2
+    out["chim"] = [r2(walls[0][0] + ds), r2((walls[0][2] + walls[0][3]) / 2 + dt), r2(ridge + dz)]
+    return out
+
+
+def house(tid, bid, b, spec, k):
+    """Écrit le modèle `house` de la maison (kinds/<tuile>.json, type « house ») et sa silhouette lointaine (corps et aile). Rend (types
+    changés, tuile des silhouettes si elle change)."""
+    m = measure_house(bid, b, spec)
+    (s0, s1, t0, t1), (sw, _, _, tw) = m["walls"]
+    ridge = m["eave"] + m["pitch"] * (t1 - t0) / 2
+    wing = m["eave"] + m["pitch"] * (s1 - sw) / 2
+    print(f"  {bid} : corps de {s1 - s0:.2f} × {t1 - t0:.2f} m, aile de {s1 - sw:.2f} m avançant de {tw - t1:.2f} m (repère BD TOPO :"
+          f" s {s0:.2f}, t {t0:.2f}) ; sol {m['g']}, égout {m['eave']} m, pente {math.degrees(math.atan(m['pitch'])):.0f}°, faîtages {ridge:.2f}"
+          f" et {wing:.2f} m ; {m['fit']:.0%} du relevé à 30 cm près")
+    o, a, sg = m["o"], m["a"], m["sg"]
+    xy = lambda s, t: [round(o[0] + math.cos(a) * s - math.sin(a) * sg * t, 1), round(o[1] + math.sin(a) * s + math.cos(a) * sg * t, 1)]
+    polys = [([xy(s0, t0), xy(s1, t0), xy(s1, t1), xy(s0, t1)], m["g"] + m["eave"], m["g"] + ridge),
+             ([xy(sw, t1), xy(s1, t1), xy(s1, tw), xy(sw, tw)], m["g"] + m["eave"], m["g"] + wing)]
+    lod = tid if replace_lod(tid, bid, polys) else None
+    e = dict(k["buildings"].get(bid, {"k": "house"}))
+    e["house"] = m
+    if k["buildings"].get(bid) == e:
+        return False, lod
+    k["buildings"][bid] = e
+    return True, lod
+
+
 def simplify(pts, tol):
     """Douglas-Peucker sur une polyligne (d, z)."""
     if len(pts) < 3:
@@ -1067,6 +1262,13 @@ def main():
         if spec["model"] == "theatre":
             if theatre(tid, bid, b, spec, k):
                 changed.add(tid)
+            continue
+        if spec["model"] == "house":
+            ch, lod = house(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
             continue
         if spec["model"] == "chapel":
             ch, lod = chapel(tid, bid, b, spec, k, kinds_all)

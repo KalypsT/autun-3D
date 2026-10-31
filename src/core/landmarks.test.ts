@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Building, JanusSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, fuelLayout, gateLayout, inJanus, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { at, fuelLayout, gateLayout, houseEdges, houseFrame, houseRing, housePost, inJanus, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
 
@@ -272,6 +272,75 @@ describe("monuments (D95)", () => {
       expect(ty).toBeLessThan(oy);
       // Aucune arche ne tombe sous la tour.
       for (const o of lay.openings) expect(o.s1 <= t0 || o.s0 >= t1).toBe(true);
+    });
+
+    it("maison du 7 allée de l'Acaron (D140) : plan en L, égout et pente mesurés, toit couvrant, obstacle aux murs mesurés, entrée couverte", () => {
+      const id = "BATIMENT0000000348848724";
+      const m = kinds.buildings[id]!.house!;
+      const [[s0, s1, t0, t1], [sw, , , tw]] = m.walls;
+      // Corps d'environ 13 × 7,5 m, aile de 7 à 8 m qui avance de 3 m (relevé LiDAR ; le contour BD TOPO, 12,4 × 6,7 m, est décalé).
+      expect(s1 - s0).toBeGreaterThan(12);
+      expect(s1 - s0).toBeLessThan(14.5);
+      expect(t1 - t0).toBeGreaterThan(6.5);
+      expect(t1 - t0).toBeLessThan(8.5);
+      expect(s1 - sw).toBeGreaterThan(6);
+      expect(s1 - sw).toBeLessThan(9);
+      expect(tw - t1).toBeGreaterThan(2.5);
+      expect(tw - t1).toBeLessThan(4);
+      // Plain-pied avec combles : égout vers 3 m, pente vers 45°, faîtage vers 6,5 m.
+      expect(m.eave).toBeGreaterThan(2.4);
+      expect(m.eave).toBeLessThan(3.4);
+      const deg = (Math.atan(m.pitch) * 180) / Math.PI;
+      expect(deg).toBeGreaterThan(38);
+      expect(deg).toBeLessThan(52);
+      const ridge = m.eave + (m.pitch * (t1 - t0)) / 2;
+      expect(ridge).toBeGreaterThan(5.8);
+      expect(ridge).toBeLessThan(7.5);
+      // Les pans couvrent le L et son débord, sans se chevaucher.
+      const area = (r: number[]): number => {
+        let a = 0;
+        for (let i = 0; i < r.length; i += 2) a += r[i]! * r[(i + 3) % r.length]! - r[(i + 2) % r.length]! * r[i + 1]!;
+        return Math.abs(a) / 2;
+      };
+      const o = m.ov, cover = (s1 - s0 + 2 * o) * (t1 - t0 + 2 * o) + (s1 - sw + 2 * o) * (tw - t1);
+      expect(m.roof.reduce((a, f) => a + area(f.r), 0)).toBeCloseTo(cover, 0);
+      // Chaque pan reste au-dessus de l'égout du débord et sous le faîtage.
+      for (const f of m.roof) {
+        for (let i = 0; i < f.r.length; i += 2) {
+          const z = f.k[0] * f.r[i]! + f.k[1] * f.r[i + 1]! + f.k[2];
+          expect(z).toBeGreaterThan(m.eave - o * m.pitch - 0.05);
+          expect(z).toBeLessThan(ridge + 0.6);
+        }
+      }
+      // Obstacle : les murs mesurés et le poteau ; on entre sous l'auvent jusqu'à la porte.
+      const f = houseFrame(m);
+      const c = new Colliders();
+      c.addRing(houseRing(m));
+      const [px, py] = housePost(m);
+      c.addCircle(px, py, 0.12);
+      // Contre le mur mesuré du corps, là où le contour BD TOPO (décalé d'environ 0,6 m) laissait passer.
+      expect(c.resolve(...at(f, (s0 + s1) / 2, t0 + 0.1), 0.35).hit).toBe(true);
+      expect(c.resolve(...at(f, sw + m.porch[0] / 2, tw - m.porch[1] + 0.5), 0.35).hit).toBe(false);
+      expect(c.resolve(px, py, 0.35).hit).toBe(true);
+      expect(landmarkCircles(kinds, world.tile.buildings).some(([x, y]) => Math.hypot(x - px, y - py) < 1e-6)).toBe(true);
+      // Ouvertures : sur un mur existant, dans sa longueur.
+      const edges = houseEdges(m);
+      for (const op of m.openings) {
+        const e = edges[op[0]]!;
+        expect(op[1]).toBeGreaterThan(0);
+        expect(op[1] + (op[2] === "lamp" ? 0 : op[3] / 2)).toBeLessThan(e.len);
+      }
+      // Rien de la carte (arbres, mobilier) ne tombe dans la maison ni contre ses murs.
+      const ring = houseRing(m);
+      const inside = (x: number, y: number): boolean => {
+        let r = false;
+        for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+          if (ring[i + 1]! > y !== ring[j + 1]! > y && x < ring[i]! + ((y - ring[i + 1]!) * (ring[j]! - ring[i]!)) / (ring[j + 1]! - ring[i + 1]!)) r = !r;
+        }
+        return r || c.resolve(x, y, 0.5).hit;
+      };
+      for (const [x, y] of world.tile.trees) expect(inside(x, y)).toBe(false);
+      for (const fu of world.tile.furniture) expect(inside(fu.x, fu.y)).toBe(false);
     });
 
     it("église Saint-André (D138) : nef et tour ronde mesurées, plus basses que la porte, tour ronde plus basse que la nef", () => {

@@ -1,6 +1,6 @@
 import type { HeightField, TileData } from "../data/types";
 import { Colliders, type Top } from "./collision";
-import { cathedralWalls, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, houseRing, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { parapetLines } from "./bridges";
 import { theatreWalls } from "./theatre";
 
@@ -44,7 +44,9 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
       for (const h of b.holes) c.addRing(h);
       continue;
     }
-    c.addRing(b.ring);
+    // Maison d'après photo (D140) : ses murs mesurés (le contour BD TOPO est décalé), renfoncement de l'entrée compris.
+    const house = tile.kinds?.buildings[b.id]?.house;
+    c.addRing(house ? houseRing(house) : b.ring);
     for (const h of b.holes) c.addRing(h);
   }
   // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).

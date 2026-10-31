@@ -5,6 +5,7 @@ import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geomet
 import { fillOnTerrain } from "./ground";
 import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
+import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
@@ -63,7 +64,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall);
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.house);
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -938,6 +939,7 @@ export function buildLandmarks(
       case "church": case "chapel": church(sinks, b, kind, segs, terrain, wall); break;
       case "hidden": break;
       case "cart": cartShelter(sinks.solid, b, kind, terrain); break;
+      case "house": if (kind.house) buildHouse(sinks.solid, sinks.glow, kind.house, terrain); break;
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.
         if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));

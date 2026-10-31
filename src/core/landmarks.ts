@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, JanusSite, JanusWall, Site, Tree, Wall } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, HouseModel, JanusSite, JanusWall, Site, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -105,6 +105,11 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   }
   // Fontaine d'après photo (D131) : son bassin.
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
+  // Maison d'après photo (D140) : le poteau de l'entrée couverte.
+  for (const b of buildings) {
+    const h = kinds.buildings[b.id]?.house;
+    if (h) out.push([...housePost(h), 0.12]);
+  }
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;
@@ -171,6 +176,55 @@ export function janusRings(s: JanusSite): number[][] {
     }
   }
   return out;
+}
+
+// --- Maison d'après photo (D140) ------------------------------------------------------------------------------------------------------
+
+/** Repère de la maison : origine `o`, s selon l'angle `a`, t de son côté (`sg`). */
+export function houseFrame(m: HouseModel): Frame {
+  const c = Math.cos(m.a), n = Math.sin(m.a);
+  return { x: m.o[0], y: m.o[1], ux: c, uy: n, vx: -n * m.sg, vy: c * m.sg, hl: 1, hw: 1 };
+}
+
+/** Un mur du L : de `a` à `b` en (s, t), normale extérieure `n`. */
+export interface HouseEdge {
+  a: [number, number];
+  b: [number, number];
+  n: [number, number];
+  len: number;
+}
+
+/**
+ * Les six murs du L, dans l'ordre des ouvertures de `manual.json` : 0 le long du corps (t0), 1 le bout de l'aile côté s1, 2 le bout de
+ * l'aile (tw), 3 le côté de l'aile (sw), 4 le mur du corps entre l'aile et le bout (t1), 5 le bout du corps (s0).
+ */
+export function houseEdges(m: HouseModel): HouseEdge[] {
+  const [[s0, s1, t0, t1], [sw, , , tw]] = m.walls;
+  const pts: [number, number][] = [[s0, t0], [s1, t0], [s1, tw], [sw, tw], [sw, t1], [s0, t1]];
+  return pts.map((a, i) => {
+    const b = pts[(i + 1) % pts.length]!;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return { a, b, len, n: [(b[1] - a[1]) / len, -(b[0] - a[0]) / len] };
+  });
+}
+
+/** Contour des murs en (s, t), avec le renfoncement de l'entrée couverte au coin (sw, tw). */
+export function houseOutline(m: HouseModel): [number, number][] {
+  const [[s0, s1, t0, t1], [sw, , , tw]] = m.walls;
+  const [pw, pd] = m.porch;
+  return [[s0, t0], [s1, t0], [s1, tw], [sw + pw, tw], [sw + pw, tw - pd], [sw, tw - pd], [sw, t1], [s0, t1]];
+}
+
+/** Obstacle de la maison (à la place du contour BD TOPO, décalé) : ses murs mesurés ; on entre sous l'auvent jusqu'à la porte. */
+export function houseRing(m: HouseModel): number[] {
+  const f = houseFrame(m);
+  return houseOutline(m).flatMap(([s, t]) => at(f, s, t));
+}
+
+/** Poteau de l'entrée couverte (x, y). */
+export function housePost(m: HouseModel): [number, number] {
+  const [, [sw, , , tw]] = m.walls;
+  return at(houseFrame(m), sw + 0.12, tw - 0.12);
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */

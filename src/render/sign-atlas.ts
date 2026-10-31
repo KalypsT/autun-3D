@@ -27,9 +27,9 @@ export class SignAtlas {
     this.texture = canvasTexture(this.canvas, { srgb: true });
   }
 
-  /** Rectangle de texture du nom (dessiné à la première demande), en lettres de la couleur donnée. */
-  get(text: string, color: string): SignRect {
-    const key = `${text}|${color}`;
+  /** Rectangle de texture du nom (dessiné à la première demande), en lettres de la couleur donnée ; `script` : italique à empattements (enseigne peinte, D141). */
+  get(text: string, color: string, script = false): SignRect {
+    const key = `${text}|${color}${script ? "|script" : ""}`;
     let slot = this.slots.get(key);
     if (slot === undefined) {
       slot = this.next;
@@ -38,14 +38,14 @@ export class SignAtlas {
       if (old) this.slots.delete(old);
       this.owner[slot] = key;
       this.slots.set(key, slot);
-      this.draw(slot, text, color);
+      this.draw(slot, text, color, script);
     }
     const col = slot % COLS, row = Math.floor(slot / COLS);
     const cw = W * COLS, ch = H * ROWS;
     return { u0: (col * W) / cw, u1: ((col + 1) * W) / cw, v0: 1 - ((row + 1) * H) / ch, v1: 1 - (row * H) / ch };
   }
 
-  private draw(slot: number, text: string, color: string): void {
+  private draw(slot: number, text: string, color: string, script: boolean): void {
     const x = (slot % COLS) * W, y = Math.floor(slot / COLS) * H;
     const g = this.ctx;
     g.clearRect(x, y, W, H);
@@ -53,10 +53,11 @@ export class SignAtlas {
     g.textAlign = "center";
     g.textBaseline = "middle";
     let size = H * 0.82;
-    g.font = `700 ${size}px "Trebuchet MS", system-ui, sans-serif`;
+    const font = (px: number): string => (script ? `italic 700 ${px}px Georgia, "Times New Roman", serif` : `700 ${px}px "Trebuchet MS", system-ui, sans-serif`);
+    g.font = font(size);
     while (g.measureText(text).width > W * 0.94 && size > 9) {
       size -= 1;
-      g.font = `700 ${size}px "Trebuchet MS", system-ui, sans-serif`;
+      g.font = font(size);
     }
     g.fillText(text, x + W / 2, y + H / 2 + 1);
     this.dirty = true;

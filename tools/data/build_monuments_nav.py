@@ -3,7 +3,9 @@
 Usage : python3 tools/data/build_monuments_nav.py     (après build_monuments.py, qui écrit le modèle des portes, et après build_nav.py, qui
         réécrit toute la navigation à partir d'OpenStreetMap : relancer celle-ci ensuite)
 Entrées : sites `gate` de public/data/kinds (modèle `gm`, D137), public/data/nav/<super-tuile>.json.
-Sortie : les super-tuiles de navigation qui contiennent une porte ou le temple de Janus, et leurs entrées dans nav/index.json ; rien d'autre.
+Sortie : les super-tuiles de navigation qui contiennent une porte, le temple de Janus ou un commerce vu sur une photo, et leurs entrées dans nav/index.json ; rien d'autre.
+
+Commerces vus sur une photo (D141) : leur point d'intérêt « commerce », que build_nav.py ne connaît pas (voir `shop_pois`).
 
 Temple de Janus (D139) : aucun chemin n'y entrait ; une boucle passe par une arche du mur ouest, le milieu de la cella et l'arche du mur sud,
 raccordée aux chemins voisins (voir `janus_paths` ; réversible, comme build_theatre_nav.py).
@@ -126,6 +128,59 @@ def reroute(G, site):
     return n
 
 
+def shop_pois(index):
+    """Commerces vus sur une photo, absents d'OpenStreetMap (D141, `shop` des `fronts` de manual.json) : le point d'intérêt « commerce »
+    que build_nav.py poserait (milieu du mur d'entrée, 80 cm devant, cap vers la file piétonne la plus proche), ajouté à la seule
+    super-tuile du commerce. Un point « commerce » déjà à moins de 30 cm est remplacé : une deuxième passe ne change rien. Rend le nombre
+    de super-tuiles réécrites."""
+    from shapely.geometry import LineString, Point, Polygon
+    fronts = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text()).get("fronts", {})
+    wanted = {bid: m for bid, m in fronts.items() if m.get("shop")}
+    if not wanted:
+        return 0
+    world = json.loads((c.OUT / "world.json").read_text())
+    done = 0
+    for m in world["tiles"]:
+        if not wanted or not m.get("buildings"):
+            continue
+        tile = json.loads((c.OUT / "tiles" / f"{m['id']}.json").read_text())
+        for b in tile["buildings"]:
+            if b["id"] not in wanted:
+                continue
+            fi = next(f for f in tile["fiches"] if f["id"] == b["id"])
+            w = fi["walls"][wanted.pop(b["id"])["wall"]]
+            ring = b["ring"]
+            (ax, ay), (bx, by) = (ring[2 * w["a"]], ring[2 * w["a"] + 1]), (ring[2 * w["b"]], ring[2 * w["b"] + 1])
+            mx, my = (ax + bx) / 2, (ay + by) / 2
+            nx, ny = -(by - ay), bx - ax
+            n = math.hypot(nx, ny)
+            if Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)]).contains(Point(mx + nx / n, my + ny / n)):
+                nx, ny = -nx, -ny
+            x, y = round(mx + nx / n * 0.8, 1), round(my + ny / n * 0.8, 1)
+            cid = cell_of(x, y, index)
+            path = NAV / f"{cid}.json"
+            text = path.read_text()
+            doc = json.loads(text)
+            G = Graph(doc["ped"])
+            # Files des trottoirs, chemins, rues piétonnes et places (comme build_nav.py).
+            lines = [LineString(e["pts"]) for e in G.edges if e["attr"][0] in (0, 5, 7, 9) and len(e["pts"]) >= 2]
+            near_line = min(lines, key=lambda ln: ln.distance(Point(x, y)))
+            near = near_line.interpolate(near_line.project(Point(x, y)))
+            dist = Point(x, y).distance(near)
+            poi = [2, x, y, round(math.atan2(near.x - x, near.y - y), 2) if dist > 0.05 else 0.0, min(255, round(dist * 10))]
+            P = doc["poi"]
+            keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 2 and math.hypot(P[i + 1] - x, P[i + 2] - y) < 0.3)]
+            doc["poi"] = [v for q in keep + [poi] for v in q]
+            new = json.dumps(doc, separators=(",", ":"))
+            if new != text:
+                path.write_text(new)
+                index["cells"] = [dict(e, bytes=len(new), poi=len(doc["poi"]) // 5) if e["id"] == cid else e for e in index["cells"]]
+                (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+                done += 1
+            print(f"{fi['ground']['shops'][0]['name']} : point « commerce » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
+    return done
+
+
 def write(cid, doc, G, index, text_before):
     doc["ped"] = G.dump()
     text = json.dumps(doc, separators=(",", ":"))
@@ -139,6 +194,7 @@ def write(cid, doc, G, index, text_before):
 
 def main():
     index = json.loads((NAV / "index.json").read_text())
+    shop_pois(index)
     s = janus_site()
     if s:
         cid = cell_of(*s["o"], index)
