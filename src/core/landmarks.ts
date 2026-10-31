@@ -1,4 +1,6 @@
 import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Site, Tree } from "../data/types";
+import type { DeckSector } from "./decks";
+import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
 /** Gabarits « boîte » : leur façade d'habitation est remplacée (bardage, quais, vitrage d'entrée). */
 export const BOX_KINDS: ReadonlySet<BuildingKindId> = new Set(["retail", "industrial", "annex", "sports", "greenhouse", "canopy"]);
@@ -108,7 +110,10 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
 /** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */
 export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, trees: readonly Tree[]): Tree[] {
   const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
-  return basins.length ? trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r)) : [...trees];
+  // Théâtre romain (D133) : rien ne pousse dans la cavea, l'orchestre ni sur la scène (les arbres du sommet restent).
+  const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
+  if (!basins.length && !theatres.length) return [...trees];
+  return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y)));
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
@@ -219,9 +224,17 @@ export function porchDecks(m: CathedralModel): Deck[] {
   ];
 }
 
-/** Tabliers des monuments d'une tuile (porche de la cathédrale). */
-export function landmarkDecks(kinds: { buildings: Record<string, BuildingKind> } | undefined): Deck[] {
-  return Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.cath?.entry ? porchDecks(k.cath) : []));
+/** Tabliers des monuments d'une tuile (porche de la cathédrale ; escaliers et scène du théâtre romain, D133). */
+export function landmarkDecks(kinds: { buildings: Record<string, BuildingKind>; sites?: Site[] } | undefined): Deck[] {
+  return [
+    ...Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.cath?.entry ? porchDecks(k.cath) : [])),
+    ...(kinds?.sites ?? []).flatMap((s) => (s.t === "theatre" ? theatreDecks(s) : [])),
+  ];
+}
+
+/** Tabliers en secteurs d'anneau (gradins, précinction et massifs du théâtre romain, D133). */
+export function landmarkSectors(kinds: { sites?: Site[] } | undefined): DeckSector[] {
+  return (kinds?.sites ?? []).flatMap((s) => (s.t === "theatre" ? theatreSectors(s) : []));
 }
 
 /**

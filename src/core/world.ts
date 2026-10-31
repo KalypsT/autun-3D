@@ -2,6 +2,7 @@ import type { HeightField, TileData } from "../data/types";
 import { Colliders, type Top } from "./collision";
 import { cathedralWalls, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments } from "./landmarks";
 import { parapetLines } from "./bridges";
+import { theatreWalls } from "./theatre";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -56,6 +57,13 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   for (const [x, y] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3);
   for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
   for (const ring of landmarkRings(tile.kinds, (x, y) => terrain?.heightAt(x, y) ?? 0)) c.addRing(ring);
+  // Théâtre romain (D133) : podium, bords des massifs plus hauts que ce qui les jouxte, barrières de la scène.
+  if (terrain) {
+    const bare = terrain.ground ?? terrain;
+    for (const s of tile.kinds?.sites ?? []) {
+      if (s.t === "theatre") for (const w of theatreWalls(s, (x, y) => bare.heightAt(x, y))) c.addPolyline(w.pts, w.low, w.top);
+    }
+  }
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
   for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line, false, PARAPET);
   c.currentTag = null;

@@ -878,3 +878,18 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![L'entrée](docs/captures/d132-entree-apres.jpg)
 ![La nuit, avant](docs/captures/d132-nuit-avant.jpg)
 ![La nuit, après](docs/captures/d132-nuit-apres.jpg)
+
+**Bâtiments d'après photos, étape 13 : le théâtre romain, volumes mesurés (31 octobre 2026)** (D133)
+- Le théâtre n'est plus un immeuble de six étages en fer à cheval : d'après tes photos et le relevé LiDAR, la cavea s'ouvre vers l'est-nord-est (orchestre de 26,5 m de rayon, 148 m de diamètre au haut de la pente, 17 m de dénivelé).
+- Orchestre en terre battue, podium, 15 rangs de gradins restaurés en pierre grise (de −58° à +61° autour de l'axe, mesurés sur l'orthophoto), allée herbue, sept coins herbus séparés par six escaliers, massifs ruinés aux extrémités, scène moderne avec ses marches.
+- On y marche déjà : gradins, allée, coins et escaliers sont praticables (tabliers invisibles alignés sur les marches) ; le podium et les hauts massifs sont des obstacles qu'on escalade.
+- La piste du stade du Théâtre romain est en terre rouge-brun, plus en rouge synthétique.
+- Pas d'éclairage la nuit, comme demandé.
+- 6 966 triangles. 732 tests.
+- Suite : le détail des ruines (moellons, coins du haut à gradins restaurés, marches de bois), puis les passants, puis les barrières de la scène, le poteau d'éclairage et les bancs.
+- À essayer : `?at=845,290&h=14` (dans l'orchestre), monter par l'escalier central ; `?at=765.3,298&yaw=2.14&h=14&train=3170` (le petit train).
+
+![Avant](docs/captures/d133-theatre-avant.jpg)
+![Après](docs/captures/d133-theatre-apres.jpg)
+![Du haut de l'extrémité nord](docs/captures/d133-theatre-nord.jpg)
+![Depuis l'aile sud](docs/captures/d133-theatre-sud.jpg)
