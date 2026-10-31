@@ -6,6 +6,8 @@ Entrées : public/data/world.json et public/data/tiles/*.json (bâtiments, murs,
           BD TOPO tronçons de route de chaque bloc (.cache/blocks/*/raw/bdtopo_route.json : largeurs, vitesses, voies).
 Sorties : public/data/nav/index.json et nav/s<i>_<j>.json, un fichier par super-tuile de la grille mondiale (les mêmes 1 km que les sols grossiers).
 Étape autonome (comme build_map.py) : ne touche à aucune tuile ; se relance librement (≈ 0,1 Mo). Format : D40.
+`--only s6_8[,s6_9…]` (D153) : ne reconstruit que ces super-tuiles, à partir des seuls blocs OpenStreetMap, tronçons BD TOPO et tuiles qui les touchent
+(téléchargés au besoin dans .cache/shared) ; le graphe routier de ces super-tuiles reste celui du fichier existant (l'extrait OpenStreetMap a changé depuis la dernière régénération complète) ; les autres fichiers de nav/ et leurs entrées de l'index ne sont pas touchés, la couture n'est pas contrôlée.
 Ensuite : build_theatre_nav.py (chemins du théâtre romain, D135 : l'emprise BD TOPO masquée du théâtre en retire les voies).
 """
 
@@ -46,10 +48,22 @@ def load_world():
     return w, gx, gy, cells
 
 
-def load_tiles(world):
+def only_box(world, only, margin=150.0):
+    """Emprise locale (x0, y0, x1, y1) des super-tuiles demandées, élargie de `margin` m (None : tout le monde)."""
+    if not only:
+        return None
+    gx, gy = world["gridOrigin"]
+    cs = [tuple(int(v) for v in i[1:].split("_")) for i in only]
+    return (gx + min(i for i, _ in cs) * SIZE - margin, gy + min(j for _, j in cs) * SIZE - margin,
+            gx + (max(i for i, _ in cs) + 1) * SIZE + margin, gy + (max(j for _, j in cs) + 1) * SIZE + margin)
+
+
+def load_tiles(world, box=None):
     """Obstacles et données des tuiles : bâtiments (anneaux), murs, arbres, mobilier, fiches de commerces."""
     buildings, walls, trees, furniture, shops, plazas = [], [], [], [], [], defaultdict(list)
     for t in world["tiles"]:
+        if box and (t["bounds"][2] < box[0] or t["bounds"][0] > box[2] or t["bounds"][3] < box[1] or t["bounds"][1] > box[3]):
+            continue
         d = json.loads((c.OUT / "tiles" / f"{t['id']}.json").read_text())
         for b in d["buildings"]:
             buildings.append([b["ring"]] + list(b["holes"]))
@@ -111,9 +125,21 @@ def plaza_zone(tiles, ways):
     return unary_union(kept + [S.intersection(P.buffer(1.0))]), len(seeds)
 
 
-def load_osm():
+def load_osm(box=None):
     els = {}
-    for f in glob.glob(str(c.SHARED / "raw" / "osm" / "*.json")):
+    files = glob.glob(str(c.SHARED / "raw" / "osm" / "*.json"))
+    if box:
+        # Seuls les blocs de 500 m qui touchent l'emprise, téléchargés au besoin (comme build_shop_fronts.py).
+        import fetch
+        o = c.ORIGIN
+        files = []
+        for bx in range(math.floor((box[0] + o[0]) / fetch.OSM_BLOCK), math.floor((box[2] + o[0]) / fetch.OSM_BLOCK) + 1):
+            for by in range(math.floor((box[1] + o[1]) / fetch.OSM_BLOCK), math.floor((box[3] + o[1]) / fetch.OSM_BLOCK) + 1):
+                part = c.SHARED / "raw" / "osm" / f"{bx}_{by}.json"
+                if not part.exists():
+                    log(f"  osm {bx},{by} : {fetch.osm_api_block(bx, by, part)} éléments")
+                files.append(str(part))
+    for f in files:
         for e in json.loads(Path(f).read_text())["elements"]:
             els[(e["type"], e["id"])] = e
     ways = [e for (t, _), e in els.items() if t == "way" and "geometry" in e and "tags" in e]
@@ -124,10 +150,23 @@ def load_osm():
     return ways, node_tags, nodes, restrictions, els
 
 
-def load_routes():
+def load_routes(box=None):
     routes = []
     seen = set()
-    for f in sorted(glob.glob(str(c.ROOT / ".cache" / "blocks" / "*" / "raw" / "bdtopo_route.json"))):
+    files = sorted(glob.glob(str(c.ROOT / ".cache" / "blocks" / "*" / "raw" / "bdtopo_route.json")))
+    if box:
+        # Tronçons de l'emprise seule (WFS), gardés dans .cache/shared/nav_routes_<emprise>.json.
+        import fetch
+        o = c.ORIGIN
+        bb = [box[0] + o[0], box[1] + o[1], box[2] + o[0], box[3] + o[1]]
+        dest = c.SHARED / "nav_routes" / ("_".join(str(round(v)) for v in bb) + ".json")
+        if not dest.exists():
+            r = fetch.get("https://data.geopf.fr/wfs/ows", params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature", "TYPENAMES": "BDTOPO_V3:troncon_de_route",
+                                                                   "OUTPUTFORMAT": "application/json", "SRSNAME": "EPSG:2154", "BBOX": ",".join(map(str, bb)) + ",EPSG:2154"})
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(r.content)
+        files = [str(dest)]
+    for f in files:
         for line, props in sl.load_bd_routes(f):
             key = (round(line.coords[0][0], 1), round(line.coords[0][1], 1), round(line.length, 1))
             if key in seen:
@@ -337,12 +376,17 @@ ROAD_STRIDE = {"n": 3, "e": 11, "s": 3, "r": 3}
 def main():
     t0 = time.time()
     world, gx, gy, cells = load_world()
+    only = []
+    if "--only" in sys.argv:
+        only = sys.argv[sys.argv.index("--only") + 1].split(",")
+        cells = {tuple(int(v) for v in i[1:].split("_")) for i in only}
+    box = only_box(world, only)
     log(f"monde : {len(world['tiles'])} tuiles, {len(cells)} super-tuiles de {SIZE:.0f} m, origine de grille ({gx}, {gy})")
-    tiles = load_tiles(world)
+    tiles = load_tiles(world, box)
     obst = nl.Obstacles(tiles["buildings"], tiles["walls"])
     log(f"obstacles : {len(tiles['buildings'])} bâtiments, {len(tiles['walls'])} murs ({time.time() - t0:.0f} s)")
-    ways, node_tags, nodes, restrictions, _ = load_osm()
-    routes = load_routes()
+    ways, node_tags, nodes, restrictions, _ = load_osm(box)
+    routes = load_routes(box)
     streets = [s for s in (trim_to_land(s) for s in sl.build_street_list(ways, routes, 2)) if s]
     # Une même voie peut venir de deux blocs : l'extrait OpenStreetMap est déjà dédoublonné par (type, id).
     log(f"voies : {len(streets)} ({Counter(s['kind'] for s in streets).most_common()}), {len(routes)} tronçons BD TOPO, {len(restrictions)} restrictions")
@@ -375,8 +419,10 @@ def main():
     road_cells = nl.cut_into_cells(gr, gx, gy, SIZE, cells)
 
     OUT.mkdir(parents=True, exist_ok=True)
-    for f in OUT.glob("s*.json"):
-        f.unlink()
+    if not only:
+        for f in OUT.glob("s*.json"):
+            f.unlink()
+    old_index = json.loads((OUT / "index.json").read_text()) if only else None
     index = {"version": 1, "cell": SIZE, "gridOrigin": [gx, gy], "stride": {"ped": PED_STRIDE, "road": ROAD_STRIDE, "poi": 5}, "poiKinds": POI_KINDS,
              "pedTypes": PED_TYPES, "stats": {"ped": pst, "road": rst}, "cells": []}
     total = 0
@@ -405,6 +451,10 @@ def main():
         for kind, x, y, h, d in pois:
             if cx0 <= x < cx0 + SIZE and cy0 <= y < cy0 + SIZE:
                 p_out += [kind, q(x), q(y), round(h, 2), d]
+        if only and (OUT / f"{cid}.json").exists():
+            # Le graphe routier de la super-tuile reste celui de la dernière régénération complète : D153 n'y touche pas, et l'extrait OpenStreetMap
+            # d'aujourd'hui n'est plus celui d'alors (voies redécoupées, classes changées) : le refaire ici déplacerait les files des voitures.
+            road = json.loads((OUT / f"{cid}.json").read_text())["road"]
         doc = {"v": 1, "id": cid, "bounds": [cx0, cy0, cx0 + SIZE, cy0 + SIZE], "ped": {**ped}, "road": {**road}, "poi": p_out}
         docs[cell] = doc
         text = json.dumps(doc, separators=(",", ":"))
@@ -412,6 +462,14 @@ def main():
         total += len(text)
         index["cells"].append({"id": cid, "bytes": len(text), "ped": {"nodes": len(ped["n"]) // 3, "edges": len(ped["e"]) // 11},
                                "road": {"nodes": len(road["n"]) // 3, "edges": len(road["e"]) // 11}, "poi": len(p_out) // 5})
+    if only:
+        # Les autres super-tuiles ne sont pas touchées : on remplace seulement leurs entrées et on garde les statistiques.
+        keep = [e for e in old_index["cells"] if e["id"] not in {f"s{i}_{j}" for i, j in cells}]
+        old_index["cells"] = sorted(keep + index["cells"], key=lambda e: e["id"])
+        index = old_index
+        (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+        log(f"+ {OUT.relative_to(c.ROOT)} : {len(docs)} fichier(s) remplacé(s), couture non contrôlée ({time.time() - t0:.0f} s)")
+        return 0
     problems = check_seams(docs, SIZE)
     index["stats"]["seams"] = problems
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")))

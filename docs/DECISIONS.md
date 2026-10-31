@@ -2724,3 +2724,53 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d152-nord-apres.jpg)
 ![Vue d'ensemble, avant](captures/d152-ensemble-avant.jpg)
 ![Après](captures/d152-ensemble-apres.jpg)
+
+
+## 2026-10-31 — D153. Centre-ville, lot 1 : la chaussée de la place du Champ de Mars
+
+**Demande de l'utilisateur** : revoir le centre-ville d'Autun d'après ses 17 images (plan : `docs/plans/centre-ville.md`, D153 à D158) ; après la phase A, « oui pour la rue Demetz, ajoute `--only s6_8`, enchaîne D153 ». Les autres questions du plan (largeur de l'avenue dans la navigation, clôtures du centre) n'ont pas reçu de réponse : voir les limites.
+
+**Constat** (plan, §0.1) : `build_public_space.py` prenait toute voie nommée « Place du Champ de Mars » pour une allée de parking (`is_lot`). Les quatre tronçons `tertiary` de la route de la place (OSM 671039846, 1333715967, 671039850, 1343418270 ; 5,5 m, BD TOPO) n'avaient donc ni chaussée, ni axe, ni passages piétons, et des traits de places de stationnement étaient tirés le long de la route (on les voyait à l'entrée de la rue aux Cordiers, photos 1, 2, 4, 12). Les voitures de la circulation y passaient quand même : la navigation lit `streets_lib`.
+
+**Mesure** : profil en travers de l'avenue Charles-de-Gaulle au MNT LiDAR (de 30 à 90 m de la place) : caniveaux à −3,5 m et +3,7 m de l'axe, soit **7,2 m** entre eux (le « 8 m » du plan était trop large : corrigé dans le plan). Le jeu a 6,5 m : l'écart est de 35 cm par côté, **rien n'est changé** à l'avenue. Les trottoirs de l'avenue côté sud sont en enrobé comme la chaussée (même teinte à l'orthophotographie) : le jeu les dessine en trottoir beige, non traité ici.
+
+**Données** :
+- `is_lot` ne garde plus que `service=parking_aisle` (`build_public_space.py`) : la prochaine régénération complète des sols donnera la bonne chaussée ; elle n'a pas été lancée (elle réécrit toute la ville).
+- Nouvelle étape `tools/data/build_streetscape.py` et clé `streetscape` de `manual.json` (tuiles réécrites, identifiants OSM des voies) : pour chaque voie, chaussée `road_asphalt` à la largeur de `public/data/streets.json` (la même que pour la navigation), coupée aux bâtiments et lissée (1 m) ; elle est retirée des places `plaza_*` qu'elle traversait ; les traits fins de moins de 5,3 m qui touchent la chaussée (à 50 cm) sont retirés (34) ; axe discontinu sur la voie de 44 m et passages piétons du mobilier OSM à moins de 3 m (24 marques). Seule la tuile 26_35 change (575 m² de chaussée). Idempotente : deux passes, même somme de contrôle de `public/data` (`find public/data -type f | sort | xargs sha256sum | sha256sum`) ; vérifié aussi avec `build_nav.py --only s6_8` et `build_monuments_nav.py` rejoués par-dessus.
+- `build_nav.py --only s6_8[,…]` (nouveau, demandé) : ne reconstruit que les super-tuiles demandées, avec les seuls blocs OpenStreetMap (téléchargés dans `.cache/shared/raw/osm`), tronçons BD TOPO (WFS sur l'emprise) et tuiles qui les touchent (marge 150 m) ; les autres fichiers et entrées de l'index sont intacts ; le graphe routier de la super-tuile n'est pas refait (celui du fichier existant est gardé). Contrôle des coutures sur toutes les super-tuiles : 0 portail sans jumeau ; les points « école » et « lieu de culte » de s6_8 sont effacés par la reconstruction, d'où un `build_monuments_nav.py` ensuite.
+- **Le résultat de `--only s6_8` n'est pas gardé dans le dépôt.** Avec l'extrait OpenStreetMap d'aujourd'hui (voies redécoupées, classes et vitesses changées depuis la dernière régénération complète), le graphe routier refait faisait échouer cinq tests (itinéraire 56 % au lieu de 85 %, chocs de la circulation, poursuites) : d'où la règle « graphe routier gardé ». Même ainsi, les files des piétons refaites changent assez la foule pour que `police-soak` dépasse ses seuils (519 contre 500 à trois étoiles, 3 170 contre 2 700 à cinq), **avec ou sans** mes sols (vérifié en refaisant la navigation sur les anciennes tuiles) : c'est la fraîcheur d'OpenStreetMap, pas D153. Le dépôt garde donc la navigation de `main` pour s6_8 ; relancer `--only s6_8` puis `build_monuments_nav.py` quand on acceptera de recalibrer ces seuils.
+
+**Rendu** : aucun code client ; `?cam=…` : voir les captures. La route de la place a sa chaussée, son axe et ses passages ; les traits parasites ont disparu. Le même gris que les places (`road_asphalt` contre `plaza_asphalt` plus clair de 12 %) : la chaussée se lit surtout par ses marquages.
+
+**Jeu** : aucune file de voiture ne bouge. La navigation des piétons est celle de `main` : les passants peuvent donc encore flâner sur la route de la place (zone « place » de l'ancienne navigation). Aucun obstacle de plus.
+
+**Coût** : +1 524 triangles sur les tuiles chargées de la vue d'ensemble (440 175 → 441 699), aucun appel de dessin de plus.
+
+**Tests** (+6, `src/data/streetscape.test.ts`) : quatre tronçons présents ; chaussée sur l'axe et sur les deux bords (−40 cm) tous les 2 m ; aucune place de stationnement sous la chaussée ; aucun trait de stationnement à moins de 1,2 m ; axe et passages dans la chaussée ; plus de 100 places restantes. Les 811 tests passent avec la navigation de `main`.
+
+**Limites** :
+- La chaussée suit l'axe OpenStreetMap à 5,5 m. Sur l'orthophotographie, la route de la place est plus large (≈ 10 – 12 m dans la courbe, avec zébras et arrêt de bus) ; ni zébras, ni plateau en enrobé clair, ni rampes, ni flèches de présélection (OSM `turn:lanes` de 1163981589) : à faire avec des photos.
+- Pas de bordure le long de la route (le sol ne dessine des bordures qu'aux trottoirs).
+- Traits de stationnement de la place est (épis) laissés tels quels : ils seront refaits en D154.
+- Rue du Champ de Mars, trottoirs en enrobé de l'avenue : reportés (D154 pour la rue du Champ de Mars, avec le parking qu'elle borde).
+- Largeur de l'avenue dans la navigation : non touchée (question 3 du plan).
+- Navigation des piétons non régénérée (voir plus haut).
+
+![Photo 1, avant](captures/d153-photo1-avant.jpg)
+![Après](captures/d153-photo1-apres.jpg)
+![Photo 2, avant](captures/d153-photo2-avant.jpg)
+![Après](captures/d153-photo2-apres.jpg)
+![Photo 4, avant](captures/d153-photo4-avant.jpg)
+![Après](captures/d153-photo4-apres.jpg)
+![Photo 12, avant](captures/d153-photo12-avant.jpg)
+![Après](captures/d153-photo12-apres.jpg)
+![Photo 15, avant](captures/d153-photo15-avant.jpg)
+![Après](captures/d153-photo15-apres.jpg)
+![Vue du dessus de la place, avant](captures/d153-place-haut-avant.jpg)
+![Après](captures/d153-place-haut-apres.jpg)
+![Vue du dessus du centre, avant](captures/d153-haut-avant.jpg)
+![Après](captures/d153-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d153-ensemble-avant.jpg)
+![Après](captures/d153-ensemble-apres.jpg)
+![Photo 1 la nuit, avant](captures/d153-photo1-nuit-avant.jpg)
+![Après](captures/d153-photo1-nuit-apres.jpg)

@@ -1218,3 +1218,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Les cours vues du dessus](docs/captures/d152-haut-apres.jpg)
 ![La cour sud](docs/captures/d152-sud-apres.jpg)
+
+**Centre-ville, lot 1 : la chaussée de la place du Champ de Mars (31 octobre 2026)** (D153)
+- La route de la place du Champ de Mars (quatre tronçons, 5,5 m) n'avait pas de chaussée : D94 la prenait pour une allée de parking, d'où une nappe grise parsemée de traits de places. Elle a maintenant sa chaussée, son axe discontinu et ses passages piétons ; 34 traits de stationnement parasites sont retirés. Étape `build_streetscape.py` (nouvelle) ; une seule tuile change (26_35).
+- `build_nav.py --only s6_8` existe (une seule super-tuile, graphe routier gardé, 0 portail sans jumeau) mais son résultat n'est **pas** gardé : avec l'OpenStreetMap d'aujourd'hui, il fait dépasser leurs seuils à deux tests de poursuite (`police-soak`), même sans mes sols ; la navigation reste celle de `main` (les passants peuvent encore flâner sur la route de la place).
+- +1 524 triangles, aucun appel de dessin de plus ; 6 tests de plus ; aucune file de voiture ne bouge ; 811 tests. L'avenue Charles-de-Gaulle mesure 7,2 m entre caniveaux (6,5 m dans le jeu) : inchangée.
+- Limites : la route est plus large sur l'orthophotographie (≈ 10 – 12 m dans la courbe) ; ni zébras, ni plateau clair, ni bordures ; épis de la place est, rue du Champ de Mars et trottoirs en enrobé de l'avenue reportés (D154) ; largeur de l'avenue dans la navigation non décidée.
+- À essayer : `?cam=-9,7,1.7,30,-35,1.5&h=14` (comme ta photo 1), `?cam=63,-53,1.7,10,40,6&h=14` (photo 2), `?cam=25,-15,95,25,-14,0&h=14` (de dessus).
+
+![Comme ta photo 1, avant](docs/captures/d153-photo1-avant.jpg)
+![Après](docs/captures/d153-photo1-apres.jpg)
+![De dessus, avant](docs/captures/d153-place-haut-avant.jpg)
+![Après](docs/captures/d153-place-haut-apres.jpg)

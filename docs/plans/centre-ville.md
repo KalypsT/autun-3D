@@ -66,7 +66,7 @@ mesurée entre murs BD TOPO en travers de l'axe (médiane, profils tous les 12 m
 
 | Rue | OSM | kind, sens | Largeur (source) | Revêtement OSM | Façades / emprise mesurées |
 |---|---|---|---|---|---|
-| Avenue Charles-de-Gaulle | 324703656 | tertiary, double | 6,5 (type) | asphalt | façades 15,5 – 16 ; LiDAR : **≈ 8 m d'enrobé entre caniveaux**, trottoirs 4,3 m (ouest-sud-ouest) et 2,5 m |
+| Avenue Charles-de-Gaulle | 324703656 | tertiary, double | 6,5 (type) | asphalt | façades 15,5 – 16 ; LiDAR : **7,2 m entre les caniveaux** (−3,5 m et +3,7 m de l'axe ; D153 : le « 8 m » de la première lecture était trop large), trottoirs 4,3 m (ouest-sud-ouest) et 2,5 m |
 | Place du Champ de Mars | 671039846, 1333715967, 671039850, 1343418270 | tertiary, double (2 voies sur 671039846) ; plateau sur les deux derniers | 5,5 (BD TOPO) | asphalt | **pas de chaussée dessinée** (voir 0.1) |
 | Rue du Champ de Mars | 250821471, 1163981589 | residential, sens unique S-O → N-E (confirmé photo 12) | 3,0 (BD TOPO) | asphalt | façades 22 – 26 (rangée N-O ↔ parking) ; chaussée lue sur photo 14 : 3,5 – 4 m le long du parking |
 | Rue de Lattre-de-Tassigny | 250821488 (puis 250821490, 838001039) | living_street, `motor_vehicle=no` | 4,0 (BD TOPO) | concrete | façades ≈ 20 (rideau d'arbres compris) |

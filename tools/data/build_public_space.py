@@ -176,7 +176,8 @@ def main():
 
     def is_lot(s):
         t = tags_of.get(s["id"], {})
-        return t.get("service") == "parking_aisle" or t.get("name") == "Place du Champ de Mars"
+        # D153 : seules les allées de parking sont des allées. La « Place du Champ de Mars » (route tertiary) en était une jusqu'ici : elle n'avait plus de chaussée.
+        return t.get("service") == "parking_aisle"
 
     carr = [s for s in streets if s["kind"] in drivable_kinds and s["motor"] and not s["tunnel"]]
     lots = [s for s in carr if is_lot(s)]
