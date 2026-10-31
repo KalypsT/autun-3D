@@ -1154,3 +1154,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](captures/d146-aubade-haut-apres.jpg)
 ![Vue d'ensemble, avant](captures/d146-aubade-ensemble-avant.jpg)
 ![Après](captures/d146-aubade-ensemble-apres.jpg)
+
+**Bellevue : jambes de force des auvents et silhouettes lointaines (31 octobre 2026)** (D147)
+- Les auvents vitrés des deux galeries ont leurs jambes de force (poteau vers le mur), comme sur tes photos aériennes.
+- De loin, l'aile Centrakor apparaît et l'ancien gros volume d'Aubade est remplacé par ses quatre volumes.
+- Environ 250 triangles de plus ; aucun obstacle de plus. 783 tests.
+- Reste, faute de photos : unités des galeries à ± 5 m, murs de bout, détails d'Aubade, navigation des passants (`build_nav.py` complet non relancé).
+
+![Les jambes de force](docs/captures/d147-jambes-photo3-apres.jpg)

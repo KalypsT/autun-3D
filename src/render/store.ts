@@ -662,6 +662,12 @@ function arcade(mb: MeshBuilder, b: Building, a: Arcade, terrain: HeightField): 
     posts.forEach(([x, y], i) => {
       const s = s0 + 0.3 + ((s1 - s0 - 0.6) * i) / Math.max(1, posts.length - 1);
       post(mb, x, y, terrain.heightAt(x, y) - 0.05, at(s) - 0.3, 0.07, CANOPY_GREEN);
+      // Jambe de force : ruban incliné du haut du poteau (1,8 m plus bas) au mur, sous la dalle, visible des deux côtés.
+      const q = (ss: number, o: number, z: number): P3 => [...pt(f, ss, o), z];
+      const zs = at(s) - 0.25;
+      const strut = [q(s - 0.05, o1 - 0.2, zs - 1.8), q(s + 0.05, o1 - 0.2, zs - 1.8), q(s + 0.05, o0 + 0.1, zs), q(s - 0.05, o0 + 0.1, zs)];
+      face(mb, strut, [f.tx, f.ty, 0], CANOPY_GREEN);
+      face(mb, strut, [-f.tx, -f.ty, 0], CANOPY_GREEN);
       if (i > 0 && i < posts.length - 1) slab(mb, f, s - 0.05, s + 0.05, o0, o1, at(s - 0.05) + 0.01, at(s + 0.05) + 0.01, CANOPY_RIB, true);
     });
   }

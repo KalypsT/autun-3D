@@ -2492,3 +2492,15 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d146-aubade-haut-apres.jpg)
 ![Vue d'ensemble, avant](captures/d146-aubade-ensemble-avant.jpg)
 ![Après](captures/d146-aubade-ensemble-apres.jpg)
+
+## 2026-10-31 — D147. Bellevue : jambes de force des auvents et silhouettes lointaines
+
+**Demande de l'utilisateur** : continuer sans nouvelles photos. Deux restes de D145 et D146, faisables sans photo :
+- **Jambes de force** : les photos aériennes des galeries montrent des jambes de force entre les poteaux et le mur. `arcade` (`src/render/store.ts`) les dessine : un ruban incliné du haut de chaque poteau (1,8 m plus bas que la dalle) au mur, visible des deux côtés, 4 triangles par poteau (62 poteaux, environ 250 triangles de plus pour toute la zone, soit environ 2 750). Elles sont au-dessus de la tête (6 m) : aucun obstacle de plus.
+- **Silhouettes lointaines** : `build_extras.py` écrit aussi `lod/<tuile>.json` : l'aile Centrakor y entre (le fichier de la tuile 16_45 est créé, `lod` de `world.json` mis à jour) et l'ancien volume d'Aubade (8,4 m, un seul toit) en sort, remplacé par les quatre volumes (`replaces` dans `extra`), à leur hauteur mesurée. Chaîne rejouée deux fois : fichiers identiques.
+- +1 test (783) : l'aile et les quatre volumes sont dans les silhouettes, l'ancien contour n'y est plus.
+
+**Pas fait** : la navigation des passants (`build_nav.py` complet non relancé : l'aile n'y est pas, le point de la rotonde reste à 31 m de la file la plus proche) ; les silhouettes des galeries gardent les hauteurs BD TOPO (« croupes ») ; tout ce qui dépend de photos (unités des galeries, murs de bout, détails d'Aubade, autres bâtiments).
+
+![Les jambes de force, vues du parking](captures/d147-jambes-photo3-apres.jpg)
+![Galerie nord-est](captures/d147-jambes-ne-apres.jpg)

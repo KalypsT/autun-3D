@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_extras.py     (après build_tiles.py ; avant build_carts.py, build_stores.py et build_shop_fronts.py)
 Entrées : `extra` de tools/data/manual.json (identifiant -> contour direct, hauteur du toit au-dessus du sol, photo), world.json, tiles/*.json.
-Sortie : le bâtiment et sa fiche dans la tuile qui contient son centre (tiles/<tuile>.json), et le compte de bâtiments de cette tuile dans world.json.
+Sortie : le bâtiment, sa fiche et sa silhouette lointaine (lod/<tuile>.json) dans la tuile qui contient son centre (tiles/<tuile>.json), et le compte de bâtiments de cette tuile dans world.json.
           Le type (`kinds` de manual.json) vient de build_carts.py, le plan du toit mesuré de build_stores.py. Une deuxième passe ne change rien ;
           une régénération des tuiles (build_tiles.py) retire ces bâtiments : relancer cette étape.
 
@@ -76,6 +76,23 @@ def main():
         if meta[tid]["buildings"] != count or meta[tid]["bytes"] != len(new.encode()):
             meta[tid]["buildings"] = count
             meta[tid]["bytes"] = len(new.encode())
+            changed_world = True
+        # Silhouettes lointaines (lod/<tuile>.json) : le bâtiment s'y ajoute, celui qu'il remplace (`replaces`, anneau identique) en sort.
+        lp = c.OUT / "lod" / f"{tid}.json"
+        lod = json.loads(lp.read_text()) if lp.exists() else []
+        before = json.dumps(lod, ensure_ascii=False, separators=(",", ":"))
+        if spec.get("replaces"):
+            for t2 in (json.loads(f.read_text()) for f in (c.OUT / "tiles").glob("*.json")):
+                for ob in t2["buildings"]:
+                    if ob["id"] == spec["replaces"]:
+                        lod = [r for r in lod if r["r"] != ob["ring"]]
+        lod = [r for r in lod if r.get("x") != bid]
+        lod.append({"r": ring, "e": top, "g": top, "w": "#e6e0d0", "t": "#9aa5aa", "m": "ardoise", "a": "contemporary", "k": sum(ord(ch) * (i + 1) for i, ch in enumerate(bid)), "x": bid})
+        after = json.dumps(lod, ensure_ascii=False, separators=(",", ":"))
+        if after != before:
+            lp.write_text(after)
+        if meta[tid].get("lod") != len(lod):
+            meta[tid]["lod"] = len(lod)
             changed_world = True
         print(f"  {bid} : tuile {tid}, {poly.area:.0f} m², toit à {spec['height']} m")
     if changed_world:

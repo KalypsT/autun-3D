@@ -1037,4 +1037,12 @@ describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)"
   it("aucune cache d'arme à moins de 3 m des quatre volumes, de la rotonde ni de Norauto", () => {
     for (const id of [...PIECES, ROT, NOR]) for (const q of CACHES) expect(distToRing(bOf(id), q.x, q.y)).toBeGreaterThan(3);
   });
+
+  it("silhouettes lointaines (D145, D146) : l'aile et les quatre volumes d'Aubade y sont, l'ancien volume de 8,4 m n'y est plus", () => {
+    const lod = (t: string): { r: number[]; x?: string }[] => JSON.parse(readFileSync(`public/data/lod/${t}.json`, "utf8"));
+    expect(lod("16_45").some((r) => r.x === "BATIMENT0000EXTRA0145")).toBe(true);
+    const l = lod("18_43"), old = bOf(AUB).ring;
+    for (const id of PIECES) expect(l.filter((r) => r.x === id).length).toBe(1);
+    expect(l.some((r) => r.r.length === old.length && r.r.every((v, i) => v === old[i]))).toBe(false);
+  });
 });

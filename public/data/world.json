@@ -4873,7 +4873,7 @@
    "trees": 136,
    "walls": 23,
    "furniture": 12,
-   "lod": 11,
+   "lod": 15,
    "bytes": 134785
   },
   {
@@ -5519,7 +5519,7 @@
    "trees": 58,
    "walls": 5,
    "furniture": 4,
-   "lod": 0,
+   "lod": 1,
    "bytes": 11575
   },
   {
