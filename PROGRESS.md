@@ -1004,3 +1004,21 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d140-maison-drone-apres.jpg)
 ![Depuis l'est-sud-est](docs/captures/d140-maison-apres.jpg)
 ![La nuit](docs/captures/d140-maison-nuit-apres.jpg)
+
+**Petits éléments d'après photos, étape 2 : la boutique du 21 rue Guérin (31 octobre 2026)** (D141)
+- L'Armoire de Julie suit ta photo :
+  - devanture en bois bleu lavande avec ses pilastres, sa frise et sa corniche ;
+  - la porte d'immeuble du 21, la vitrine « DEPOT VENTE » et la porte du magasin ;
+  - la seconde vitrine à mannequins ;
+  - les soubassements de pierre à grecque et l'enseigne rouge en italique ;
+  - l'étage en enduit blanc.
+- Le bâtiment était une maison sans commerce (la boutique n'est pas dans OpenStreetMap) ; il devient un commerce, et les passants y ont leur point « commerce ».
+- La nuit, les vitrines s'allument, et les vêtements restent visibles derrière.
+- 398 triangles. 746 tests.
+- Suite : le rond-point de la Croix Verte.
+- À essayer : `?at=133,266&h=10` (en face de la boutique), puis `?h=23`.
+
+![De face, avant](docs/captures/d141-boutique-avant.jpg)
+![Après](docs/captures/d141-boutique-apres.jpg)
+![La nuit](docs/captures/d141-boutique-nuit-apres.jpg)
+![Depuis le sud de la rue](docs/captures/d141-boutique-rue-apres.jpg)

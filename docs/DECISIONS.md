@@ -2124,3 +2124,66 @@ Les photos sont prises de biais : elles ne donnent que l'ordre et les proportion
 ![La nuit, après](captures/d140-maison-nuit-apres.jpg)
 ![Le côté nord-ouest (sans photo), avant](captures/d140-maison-nord-ouest-avant.jpg)
 ![Le côté nord-ouest, après](captures/d140-maison-nord-ouest-apres.jpg)
+
+## 2026-10-31 — D141. Petits éléments d'après photos, étape 2 : la boutique du 21 rue Guérin
+
+**Suite de la demande de D140, étape 2.** Photo : capture Google Street View de l'utilisateur (juillet 2026), presque de face, depuis la rue, face à l'ouest. Le n° 19 est à gauche, au sud (confirmé). Nom confirmé : « L'Armoire de Julie », dépôt-vente de vêtements. La nuit, les vitrines sont allumées et la porte du 21 reste éteinte (choix de l'utilisateur).
+
+**Dans les données** : bâtiment BD TOPO `BATIMENT0000000348856843` (tuile 26_36), mur 7 de sa fiche sur la rue Guérin : 7,88 m, face à l'est. La fiche était une habitation (porte et fenêtres à volets au rez-de-chaussée), sans commerce : la boutique n'est pas dans OpenStreetMap.
+
+**Lecture de la photo** (`fronts` de `manual.json`, champ `shop`) : devanture en applique en bois peint bleu lavande sur toute la largeur. De gauche à droite :
+- pilastre ;
+- porte d'immeuble pleine à deux vantaux et panneaux, avec imposte ;
+- pilastre portant le n° 21 ;
+- grande vitrine « DEPOT VENTE » en lettres blanches ;
+- pilastre ;
+- porte vitrée du magasin, à imposte ;
+- pilastre ;
+- seconde vitrine à mannequins devant un fond vert ;
+- pilastre.
+Au-dessus : pilastres à chapiteaux, frise, corniche, bandeau haut. Panneau rouge décalé à droite, « L'Armoire de Julie » en italique blanc. Soubassements de pierre blanche à grecque. À l'étage : enduit blanc, fenêtres à petits bois blanches, pas de volets visibles.
+
+**Mesures** :
+- **Largeurs** lues sur la photo, presque de face, et ramenées à la longueur du mur (7,68 m de devanture, 10 cm de marge à chaque bout).
+- **Hauteurs** à la même échelle : porte de 2,47 m et imposte, appui des vitrines 0,8 m, haut des baies 2,83 m, frise de 2,93 à 3,40 m, corniche à 3,52 m, haut du bandeau 4,37 m. La fiche donne 4,4 m au rez-de-chaussée.
+- Seule la façade compte ici : rien à mesurer au LiDAR.
+- Les proportions viennent d'une seule photo, prise presque de face.
+
+**Données** : `build_shop_fronts.py` (D120) applique la correction (`apply_shop`). La fiche devient « shop » :
+- son commerce est au milieu du mur ;
+- la couleur de devanture vient de la photo ;
+- la devanture est décrite telle quelle (`ground.devanture`, nouveau champ, ajouté au schéma des fiches) ;
+- enduit, menuiseries et volets de l'étage suivent la photo ;
+- `status` passe à `observed`, avec une source « photo ».
+Seule la tuile 26_36 est réécrite ; une deuxième passe ne change rien.
+Remarque : le cache OpenStreetMap de l'étape était vide et a été retéléchargé. Aucune autre fiche n'a changé (vérifié : une seule tuile réécrite).
+
+**Rendu** (`src/render/devanture.ts`, placée par `planFacades` à la place des modules de vitrine génériques) :
+- panneau de fond, frise, corniche et bandeau en saillie ;
+- pilastres à base de pierre, fût à panneau, chapiteau ;
+- porte d'immeuble à panneaux en creux, imposte, bouton de laiton ;
+- porte du magasin ;
+- soubassements à grecque ;
+- vêtements en aplats : sur un rayon dans la première vitrine, sur des mannequins devant un fond vert dans la seconde ;
+- enseigne rouge en avant de la corniche, nom en italique (l'atlas des noms accepte maintenant une écriture `script`) ;
+- « DEPOT VENTE » sur la vitre, « 21 » sur le pilastre.
+Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent générés, en blanc. Une fiche `observed` prend l'enduit de sa fiche, et non plus la palette de son époque (c'est la seule fiche `observed`). **398 triangles**, 8 allumés la nuit (vitrines, porte et imposte du magasin), devant lesquels restent les vêtements.
+
+**Passants** : `build_monuments_nav.py` ajoute le point d'intérêt « commerce » que `build_nav.py` aurait posé (milieu du mur d'entrée, 80 cm devant, cap vers la file la plus proche), dans la seule super-tuile s6_9. Un point déjà à moins de 30 cm est remplacé : une deuxième passe ne change rien, et le reste de la super-tuile est identique (vérifié).
+
+**Tests** : fiche « observed » et commerce, devanture contenue dans le mur, ordre des travées de la photo, enseigne au-dessus de la devanture ; la façade pose la devanture et aucune fenêtre ni porte générique au rez-de-chaussée de ce mur ; géométrie finie, coût borné, vitrines allumées ; point « commerce » des passants. 746 tests.
+
+**Limites** :
+- trottoir générique (la photo montre des pavés) ;
+- l'étage a les fenêtres générées, sans photo de détail ;
+- les voisins (n° 19, devanture verte au nord) restent génériques ;
+- l'enseigne et les vêtements ne s'animent pas.
+
+![De face, comme la photo (10 h), avant](captures/d141-boutique-avant.jpg)
+![De face, après](captures/d141-boutique-apres.jpg)
+![À 14 h (façade à l'ombre), avant](captures/d141-boutique-14h-avant.jpg)
+![À 14 h, après](captures/d141-boutique-14h-apres.jpg)
+![La nuit, avant](captures/d141-boutique-nuit-avant.jpg)
+![La nuit, après : vitrines allumées](captures/d141-boutique-nuit-apres.jpg)
+![Depuis le sud de la rue, avant](captures/d141-boutique-rue-avant.jpg)
+![Depuis le sud de la rue, après](captures/d141-boutique-rue-apres.jpg)

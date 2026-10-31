@@ -219,7 +219,16 @@ export function* planFacadesSteps(
         const centers: { name: string | null; s: number; kind: string | null }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind }));
         if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2, kind: null });
         const sf = f.ground.shopfront;
-        if (wantsShop && sf) {
+        const dev = f.ground.devanture;
+        if (wantsShop && dev && mainWall) {
+          // Devanture d'après photo (D141) : dessinée telle quelle (stylized.ts, `devantureGeometry`) ; pas de fenêtre au rez-de-chaussée derrière.
+          const width = dev.bays.reduce((a, q) => a + q[1], 0);
+          const mid = sampleAt(pl, dev.s0 + width / 2);
+          plan.requests.push({ key: `dev|${b.id}`, wm: width, hm: dev.h });
+          place(`dev|${b.id}`, "facade", sampleAt(pl, 0), terrain.heightAt(mid.x, mid.y), 0);
+          plan.stats.shops++;
+          for (let i = 0; i < nBays; i++) if (center(i) > dev.s0 - 0.5 && center(i) < dev.s0 + width + 0.5) blocked.add(i);
+        } else if (wantsShop && sf) {
           for (const c of centers.slice(0, 2)) {
             const mods = Math.max(3, Math.min(5, Math.round((c.name ? 5.0 : 4.2) / SHOP_MODULE_W)));
             const width = mods * SHOP_MODULE_W;

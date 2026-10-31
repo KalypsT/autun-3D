@@ -629,6 +629,29 @@ export interface Shop {
   osm?: number;
 }
 
+/**
+ * Devanture en applique d'après photo (D141, `fronts` de manual.json) : travées de gauche à droite vu de la rue, à partir de `s0` mètres du
+ * début du mur d'entrée ; hauteurs au-dessus du trottoir.
+ */
+export interface Devanture {
+  s0: number;
+  /** Haut du bandeau supérieur. */
+  h: number;
+  /** Appui des vitrines (haut des soubassements de pierre). */
+  sill: number;
+  /** Haut des baies (vitrines et portes). */
+  top: number;
+  frieze: [number, number];
+  /** Haut de la corniche (posée sur la frise). */
+  cornice: number;
+  bays: ["pilaster" | "door" | "window" | "shopdoor", number][];
+  stone: string;
+  sign: { text: string; bg: string; fg: string; s: [number, number]; z: [number, number] };
+  /** Inscription sur une vitrine, numéro sur un pilastre : [travée, texte]. */
+  label?: [number, string];
+  number?: [number, string];
+}
+
 export interface FacadeFiche {
   id: string;
   status: "estimated" | "observed";
@@ -666,6 +689,8 @@ export interface FacadeFiche {
     signAt?: number;
     /** Enseigne basse d'après photo : bas du panneau, en mètres au-dessus du sol (D122) ; absent : en haut du mur. */
     signZ?: number;
+    /** Devanture d'après photo (D141), dessinée telle quelle sur le mur d'entrée à la place des vitrines génériques. */
+    devanture?: Devanture;
   };
   walls: WallRun[];
 }

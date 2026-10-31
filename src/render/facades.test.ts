@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
+import { buildDevanture } from "./devanture";
 import { planFacades } from "./facades";
+import { MeshBuilder } from "./geometry";
 
 const { terrain, tile } = loadRealWorld();
 const buildings = tile.buildings;
@@ -71,5 +74,58 @@ describe("planFacades", () => {
     // Sur toute la ville (8 200 bâtiments, D105) : 1 552 sprites distincts. L'atlas est rempli à la demande pour les tuiles proches et
     // recyclé ; ce plafond garde seulement la variété des façades sous contrôle.
     expect(new Set(plan.requests.map((r) => r.key)).size).toBeLessThan(2000);
+  });
+});
+
+describe("devanture d'après photo (D141) : L'Armoire de Julie, 21 rue Guérin", () => {
+  const id = "BATIMENT0000000348856843";
+  const f = fiches.get(id)!;
+  const d = f.ground.devanture!;
+
+  it("la fiche est un commerce vu sur photo, sa devanture tient dans le mur d'entrée", () => {
+    expect(f.status).toBe("observed");
+    expect(f.ground.kind).toBe("shop");
+    expect(f.ground.shops?.[0]?.name).toBe("L'Armoire de Julie");
+    const wall = f.walls[f.ground.front!]!;
+    expect(wall.role).toBe("street");
+    const width = d.bays.reduce((a, q) => a + q[1], 0);
+    expect(d.s0).toBeGreaterThanOrEqual(0);
+    expect(d.s0 + width).toBeLessThanOrEqual(wall.length + 0.01);
+    // Porte d'immeuble, deux vitrines, porte du magasin, cinq pilastres (photo).
+    expect(d.bays.map((q) => q[0]).filter((k) => k !== "pilaster")).toEqual(["door", "window", "shopdoor", "window"]);
+    expect(d.sill).toBeLessThan(d.top);
+    expect(d.top).toBeLessThan(d.frieze[0] + 0.2);
+    expect(d.frieze[1]).toBeLessThan(d.cornice);
+    expect(d.cornice).toBeLessThan(d.h);
+    expect(d.sign.s[0]).toBeGreaterThanOrEqual(d.s0);
+    expect(d.sign.s[1]).toBeLessThanOrEqual(d.s0 + width);
+    expect(d.bays[d.label![0]]![0]).toBe("window");
+    expect(d.bays[d.number![0]]![0]).toBe("pilaster");
+  });
+
+  it("la façade pose la devanture à la place des vitrines génériques, sans fenêtre au rez-de-chaussée derrière", () => {
+    const b = buildings.find((q) => q.id === id)!;
+    const plan = planFacades([b], fiches, terrain);
+    expect(plan.placements.filter((p) => p.key === `dev|${id}`)).toHaveLength(1);
+    expect(plan.placements.some((p) => p.key.startsWith("shop|"))).toBe(false);
+    const dev = plan.placements.find((p) => p.key === `dev|${id}`)!;
+    const onWall = plan.placements.filter((p) => (p.key.startsWith("win|") || p.key.startsWith("door|")) && Math.hypot(p.nx - dev.nx, p.ny - dev.ny) < 0.05);
+    expect(onWall.length).toBeGreaterThan(0);
+    for (const p of onWall) expect(p.z - dev.z).toBeGreaterThan(d.h - 0.5);
+  });
+
+  it("géométrie : sommets finis, coût borné, vitrines allumées la nuit", () => {
+    const mb = new MeshBuilder(), glow = new MeshBuilder();
+    buildDevanture(mb, glow, null, { x: 0, y: 0, z: 0, tx: 1, ty: 0, nx: 0, ny: -1 }, d, "#7389cc");
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    expect(mb.positions.length / 9).toBeLessThan(1500);
+    expect(glow.positions.length / 9).toBeGreaterThanOrEqual(6);
+  });
+
+  it("passants : le point « commerce » est devant la devanture (build_monuments_nav.py)", () => {
+    const poi = (JSON.parse(readFileSync("public/data/nav/s6_9.json", "utf8")) as { poi: number[] }).poi;
+    let found = false;
+    for (let i = 0; i < poi.length; i += 5) if (poi[i] === 2 && Math.hypot(poi[i + 1]! - 127, poi[i + 2]! - 267.2) < 0.5) found = true;
+    expect(found).toBe(true);
   });
 });

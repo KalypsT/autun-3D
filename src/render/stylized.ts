@@ -10,6 +10,7 @@ import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 import { reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
+import { buildDevanture } from "./devanture";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
 import { buildStructures, buildWater } from "./structures";
 
@@ -371,7 +372,8 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123 ;
     // cathédrale, D127 ; église Saint-André, D138 ; maison, D140) : ni murs ni toit génériques.
     if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.cath || kind?.chap || kind?.house) continue;
-    const wc = landmarkWallColor(kind, b.id) ?? wallColor(f?.era ?? "xix", key);
+    // Fiche remplie d'après photo (D141) : son enduit ; sinon la palette de l'époque.
+    const wc = landmarkWallColor(kind, b.id) ?? (f?.status === "observed" ? C(f.materials.wall.color) : wallColor(f?.era ?? "xix", key));
     wallColors.set(b.id, wc);
     if (drawsWalls(kind)) {
       if (!skip.includes("wall")) wall(walls, b.ring, b.top, terrain, wc);
@@ -423,10 +425,16 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
       case "shop": shopGeometry(detail, p, parts); break;
       case "railing": railingGeometry(detail, p); break;
       case "sign": signGeometry(detail, p, parts, sizes.get(p.key) ?? 2); break;
+      case "dev": {
+        // Devanture d'après photo (D141) : la fiche la décrit.
+        const fi = fiches.get(parts[1] ?? "");
+        if (fi?.ground.devanture) buildDevanture(detail, glowTarget, signText, p, fi.ground.devanture, fi.ground.shopfront?.color ?? "#7f93c0");
+        break;
+      }
       default: break;
     }
     // Une enseigne dessine son nom dans l'atlas (texte sur canevas) : coûteux, on rend la main après chacune.
-    if (parts[0] === "sign" || ++count % PLACEMENTS_PER_STEP === 0) yield;
+    if (parts[0] === "sign" || parts[0] === "dev" || ++count % PLACEMENTS_PER_STEP === 0) yield;
   }
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
