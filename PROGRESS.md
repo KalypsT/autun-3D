@@ -1162,3 +1162,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Reste, faute de photos : unités des galeries à ± 5 m, murs de bout, détails d'Aubade, navigation des passants (`build_nav.py` complet non relancé).
 
 ![Les jambes de force](docs/captures/d147-jambes-photo3-apres.jpg)
+
+**Le lycée Bonaparte, étape 1 : volumes et toits mesurés (31 octobre 2026)** (D148)
+- Le lycée n'était qu'un seul toit à 21,3 m sur 36 sommets : le LiDAR y lit six ailes, quatre à 21 m et deux plus basses (18 m) ; le sol va de −3 à +1,7 m d'une cour à l'autre.
+- Nouveau modèle `college` (murs sur le contour, fenêtres à leur niveau, un toit à deux pans par aile) pour l'ensemble et l'aile de la rue aux Raz, plans de toit mesurés pour trois annexes, silhouette lointaine par aile.
+- 2 536 triangles ; la vue d'ensemble en perd 8 000. Aucun obstacle ni passant de plus ; aucune cache d'arme dans l'enceinte. 789 tests.
+- Le bâtiment du 2c rue Saint-Saulge perd l'enseigne « LYCÉE BONAPARTE » (non confirmé). `?view=bonaparte` (l'ancien `?view=lycee` regardait ailleurs).
+- Limites : fenêtres génériques, ni lucarnes, ni cheminées, ni inscription ; église, grille et cour d'honneur encore génériques (D149, D150) ; façades d'après photo : D151.
+- À essayer : `?view=bonaparte&h=14`, `?cam=-62,-96,2,-105,-121,7&h=14` (devant la grille), puis `&h=23`.
+
+![Comme ta photo 1, avant](docs/captures/d148-photo1-avant.jpg)
+![Après](docs/captures/d148-photo1-apres.jpg)
+![Vue du dessus, après](docs/captures/d148-haut-apres.jpg)

@@ -15,9 +15,10 @@ export const PARAPET = 0.8;
  * garde des pans plans et des murs qui les rejoignent. Renvoie le bâtiment tel quel pour les autres types.
  */
 export function reshapeBuilding(b: Building, kind: BuildingKindId | undefined, roof?: [number, number, number, number]): Building {
+  // Plan de toit mesuré au LiDAR (D143 ; annexes du lycée, D148) : prioritaire sur la pente du gabarit.
+  if (roof && (kind === "retail" || kind === "school")) return plannedRoof(b, roof);
   const k = kind === undefined ? undefined : ROOF_SCALE[kind];
   if (k === undefined || k === 1) return b;
-  if (roof && kind === "retail") return plannedRoof(b, roof);
   const e0 = b.eave;
   const squash = (z: number): number => (z <= e0 ? z : e0 + k * (z - e0));
   const parapet = k === 0 && kind !== "canopy" ? PARAPET : 0;

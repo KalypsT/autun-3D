@@ -291,6 +291,29 @@ export interface TownHallSpec {
   chim?: [number, number, number, number][];
 }
 
+/**
+ * Aile d'un collège (D148) : toit à deux pans sur l'axe p → q (bouts du faîtage), demi-largeurs `wl` (à gauche de l'axe) et `wr`, égouts `el` et
+ * `er` de chaque côté et faîtage `r` (altitudes). Chaque bout est `hip` (croupe), `gable` (pignon plein) ou `ext` (pignon prolongé dans l'aile voisine).
+ */
+export interface CollegeWing {
+  p: [number, number];
+  q: [number, number];
+  wl: number;
+  wr: number;
+  el: number;
+  er: number;
+  r: number;
+  a: "hip" | "gable" | "ext";
+  b: "hip" | "gable" | "ext";
+}
+
+/** Collège d'après relevé LiDAR (D148) : ailes à toits mesurés ; les murs suivent le contour BD TOPO, chacun monte à l'égout de l'aile la plus proche. */
+export interface CollegeSpec {
+  wings: CollegeWing[];
+  /** Couleur de la couverture (tuiles brunes par défaut ; zinc gris pour l'aile de la rue aux Raz). */
+  roof?: string;
+}
+
 export interface BuildingKind {
   k: BuildingKindId;
   /** Texte de l'enseigne ou de l'inscription (bâtiment principal d'un site). */
@@ -314,6 +337,8 @@ export interface BuildingKind {
   mon?: CathedralSpec;
   /** Cathédrale d'après photo (D127) : modèle dédié (remplace murs, toit et façade génériques, et le gabarit `mon`). */
   cath?: CathedralModel;
+  /** Collège d'après relevé (D148) : modèle dédié (remplace murs, toit et façade génériques). */
+  college?: CollegeSpec;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
   hall?: TownHallSpec;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */

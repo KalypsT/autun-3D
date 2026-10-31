@@ -1046,3 +1046,90 @@ describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)"
     expect(l.some((r) => r.r.length === old.length && r.r.every((v, i) => v === old[i]))).toBe(false);
   });
 });
+
+describe("Lycée Bonaparte : volumes et toits mesurés (D148)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const MAIN = "BATIMENT0000000348853321", LONG = "BATIMENT0000000348853307", HOUSE = "BATIMENT0000000348853470";
+  const ANNEXES = ["BATIMENT0000000348853490", "BATIMENT0000000348853491", "BATIMENT0000000348853507"];
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const wings = (id: string) => kinds.buildings[id]!.college!.wings;
+
+  it("l'ensemble est lu en six ailes : quatre faîtages à 21 m, deux ailes plus basses à 18 m ; l'aile de la rue aux Raz a deux pans bas", () => {
+    const w = wings(MAIN);
+    expect(w).toHaveLength(6);
+    for (const x of w.slice(0, 4)) {
+      expect(x.r).toBeGreaterThan(20.5);
+      expect(x.r).toBeLessThan(21.5);
+    }
+    for (const x of w.slice(4)) {
+      expect(x.r).toBeGreaterThan(17.5);
+      expect(x.r).toBeLessThan(18.5);
+    }
+    for (const x of w) {
+      expect(x.el).toBeLessThan(x.r - 3);
+      expect(x.er).toBeLessThan(x.r - 3);
+      expect(x.el).toBeGreaterThan(x.r - 6);
+    }
+    for (const x of wings(LONG)) {
+      expect(x.r).toBeGreaterThan(10.5);
+      expect(x.r).toBeLessThan(11.2);
+    }
+  });
+
+  it("chaque aile est sur le contour BD TOPO : son axe tombe à moins de 6 m d'un mur de chaque côté", () => {
+    const ring = bOf(MAIN).ring;
+    const near = (x: number, y: number): number => {
+      let d = Infinity;
+      for (let e = 0; e < ring.length / 2; e++) {
+        const f = edgeFrame(ring, e);
+        const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+        d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+      }
+      return d;
+    };
+    for (const x of wings(MAIN)) for (const t of [0.3, 0.5, 0.7]) expect(near(x.p[0] + (x.q[0] - x.p[0]) * t, x.p[1] + (x.q[1] - x.p[1]) * t)).toBeLessThan(6);
+  });
+
+  it("les annexes ont un plan de toit mesuré (pente de moins de 12 %, toit de 2,5 à 9 m au-dessus du sol BD TOPO) ; le bâtiment de la rue Saint-Saulge n'a plus l'enseigne", () => {
+    for (const id of ANNEXES) {
+      const r = kinds.buildings[id]!.roof!;
+      expect(Math.hypot(r[0], r[1])).toBeLessThan(0.12);
+      const ring = bOf(id).ring;
+      let cx = 0, cy = 0;
+      for (let i = 0; i < ring.length; i += 2) {
+        cx += ring[i]!;
+        cy += ring[i + 1]!;
+      }
+      cx /= ring.length / 2;
+      cy /= ring.length / 2;
+      const h = r[0] * cx + r[1] * cy + r[2] - bOf(id).ground;
+      expect(h).toBeGreaterThan(2.5);
+    expect(h).toBeLessThan(9);
+    }
+    expect(kinds.buildings[HOUSE]!.main).toBeUndefined();
+    expect(kinds.buildings[HOUSE]!.n).toBeUndefined();
+  });
+
+  it("aucune cache d'arme à moins de 3 m des bâtiments du lycée", () => {
+    for (const id of [MAIN, LONG, ...ANNEXES, HOUSE]) {
+      const ring = bOf(id).ring;
+      for (const q of CACHES) {
+        let d = Infinity;
+        for (let e = 0; e < ring.length / 2; e++) {
+          const f = edgeFrame(ring, e);
+          const s = (q.x - f.x) * f.tx + (q.y - f.y) * f.ty, o = (q.x - f.x) * f.nx + (q.y - f.y) * f.ny;
+          d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+        }
+        expect(d).toBeGreaterThan(3);
+      }
+    }
+  });
+
+  it("l'emprise reste un obstacle (le modèle ne change pas les colliders)", () => {
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    // Un joueur posé contre le mur est de ce côté : devant la face est de l'aile centrale, à 0,2 m du mur, il touche.
+    expect(c.resolve(-110.2, -120.6, 0.3).hit).toBe(true);
+  });
+});

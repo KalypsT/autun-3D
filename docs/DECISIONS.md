@@ -2504,3 +2504,48 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Les jambes de force, vues du parking](captures/d147-jambes-photo3-apres.jpg)
 ![Galerie nord-est](captures/d147-jambes-ne-apres.jpg)
+
+## 2026-10-31 — D148. Le lycée Bonaparte d'après photos, étape 1 : volumes et toits mesurés
+
+**Demande de l'utilisateur** : refaire le lycée Bonaparte d'Autun d'après ses photos, en commençant par une enquête (rien n'était modifié), puis lot par lot. Photos (non versionnées, elles servent seulement à décrire) : 1, vue large depuis le parking de la place du Champ de Mars, vers l'ouest-sud-ouest (environ 240°), l'église à gauche, la grille au milieu, l'aile est à droite ; 2, gros plan de la grille dans l'axe du portail ; 3, capture satellite Google Maps, nord en haut. Réponses de l'utilisateur après l'enquête : inclure la petite église accolée (Notre-Dame, lot D150) ; le bâtiment du 2c rue Saint-Saulge, il ne sait pas ; site Leclerc hors périmètre ; grille fermée ; local de 19 m² : il ne sait pas (ignoré).
+
+**Dans les données** (tuile 25_34) : l'ensemble est le BD TOPO `…853321` (1 618 m², 36 sommets, 35 murs de fiche, mur 0 = arête 15), l'aile de la rue aux Raz `…853307`, les annexes `…853490`, `…491`, `…506`, `…507`, deux petits socles `…913` et `…914`, le bâtiment `…470` (zone BD TOPO « Lycée Bonaparte » de 9 481 m², mais ni OpenStreetMap ni l'utilisateur ne le confirment) et l'église Notre-Dame `…854392` avec son bout sud-ouest `…854391` (typé « school »). Le contour OpenStreetMap du lycée (way 80175797, MH PA00113150) fait 6 978 m². Aucun bâtiment ne manque : les composantes du MNH hors BD TOPO sont des arbres.
+
+**Mesures** (`build_monuments.py`, modèle `college` ; MNS à 0,5 m, WMS) : six ailes lues sur le contour (deux faces parallèles, demi-largeur 4,5 m) et sur l'axe du faîtage au LiDAR ; faîtage = médiane de la crête sur le milieu de l'aile, égout de chaque côté = droite ajustée sur la pente (de 1 m de l'axe à 0,7 m du mur, médiane le long de l'aile : les lucarnes sont écartées) prolongée jusqu'au mur.
+- W1 pavillon ouest : faîtage 21,06, égouts 16,55 et 16,18 ; W2 aile sud-ouest : 21,05, 17,68 et 17,01 ; W3 aile centrale : 20,88, 15,87 et 15,28 ; W4 aile nord-est : 20,92, 16,20 et 16,05 ; **W5 aile est : 18,01, 14,61 et 13,88 ; W6 aile nord-ouest : 17,88, 12,86 et 13,77** (altitudes locales). Le sol va de −3 (rue aux Raz) à +1,7 (cours) : un seul toit à 21,3 m (BD TOPO) était faux de 3 m sur deux ailes.
+- Aile de la rue aux Raz (`…307`, deux ailes S1 et S2) : deux pans bas, faîtage 10,86 / 10,91, égouts de 7,3 à 8,5 ; BD TOPO annonçait un faîtage 1,4 m trop haut.
+- Annexes : plan de toit mesuré (`fit_roof` de `build_stores.py`) : `…490` plat, `…491` et `…507` à pente unique de 7 à 8 %. `…506` (37 m², toit à croupes : un plan ne convient pas) garde le toit générique.
+
+**Modèle** (`buildCollege`, `src/render/monuments.ts`, champ `college` de `BuildingKind`, `CollegeSpec` et `CollegeWing` dans `src/data/types.ts`) : remplace murs, toit et façade génériques (comme la mairie) ; murs de pierre sur le contour BD TOPO, chacun montant à l'égout de l'aile dont il longe le toit, corniche, une rangée de fenêtres par niveau (3,3 m) tous les 3,2 m, alignées sur le sol local de chaque mur (une nuit sur trois allumée) ; un toit à deux pans par aile (tuiles brunes ; zinc gris pour la rue aux Raz), croupes ou pignons, bouts prolongés dans l'aile voisine. **2 536 triangles** et 282 de vitres allumées pour tout le collège (le rendu générique en coûtait plus : la vue d'ensemble passe de 438 000 à 430 000 triangles).
+- `replaces`/`hide` : `replacesFacade` et la boucle des murs de `stylized.ts` connaissent `college` ; `reshapeBuilding` applique un plan de toit mesuré aussi aux bâtiments « school ».
+- Silhouette lointaine : le prisme unique devient un prisme par aile, à son égout et son faîtage (`lod/25_34.json`).
+- `…470` : l'enseigne « LYCÉE BONAPARTE » et les drapeaux disparaissent (`kinds` de `manual.json`, `main` et `n` retirés) faute de confirmation.
+- Repère `?view=bonaparte` dans `src/game/viewer.ts` (`?view=lycee` regardait (250, 120), à 440 m).
+
+**Chaîne** : `build_carts.py` → `build_stores.py` (il rétablit `store` et `roof` que `build_carts.py` retire aux types imposés) → `build_monuments.py`. Rejouée deux fois : `public/data` identique (somme de contrôle). Seuls `kinds/25_34.json` et `lod/25_34.json` changent. `build_nav.py` complet n'est pas relancé.
+
+**Jeu** : les obstacles sont inchangés (le contour BD TOPO reste le collider ; test de collision contre la face est de l'aile centrale) ; aucune cache d'arme à moins de 3 m (la plus proche : Monument aux morts, ~95 m) ; aucun passant de plus pour l'instant (point « école » devant la grille : lot D149).
+
+**Tests** (+6, 789 au total) : six ailes (quatre faîtages à 21 m, deux à 18 m), ailes sur le contour, plans de toit des annexes, `…470` sans enseigne, caches à plus de 3 m, collision, géométrie finie et faîtage de rendu égal au faîtage mesuré, moins de 6 000 triangles.
+
+**Limites** :
+- Demi-largeurs lues sur le contour (±0,3 m) ; bouts « ext », « hip » ou « gable » choisis à l'orthophoto et au profil du faîtage (le coin nord-est, où l'aile nord-est monte à 21 m contre l'aile est à 18 m, est une croupe d'après le profil ; à revoir sur photo).
+- Pentes du toit (40 à 55°) déduites des profils, pas mesurées plan par plan ; le LiDAR ne dit ni la couleur ni le matériau : tuiles brunes lues à l'orthophoto, zinc gris pour l'aile de la rue aux Raz (hypothèse), le zinc des annexes `…491` et `…507` reste la couleur générique.
+- Fenêtres génériques (1 × 1,7 m, travées de 3,2 m) : ni lucarnes, ni cheminées, ni frontons, ni pavillon « LYCÉE », ni inscription ni drapeaux (lot D151) ; murs plats sans soubassement.
+- L'église (`…854392`, `…854391`), la grille, la cour d'honneur, les arbres taillés restent génériques (D149, D150).
+- Le petit local de 19 m² vers (−133, −107) (3 à 8 m de haut, absent de BD TOPO et d'OpenStreetMap) n'est pas dessiné.
+
+![Comme ta photo 1, avant](captures/d148-photo1-avant.jpg)
+![Après](captures/d148-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d148-photo2-avant.jpg)
+![Après](captures/d148-photo2-apres.jpg)
+![Vue du dessus, avant](captures/d148-haut-avant.jpg)
+![Après](captures/d148-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d148-ensemble-avant.jpg)
+![Après](captures/d148-ensemble-apres.jpg)
+![Rue Bulliot, avant](captures/d148-nord-avant.jpg)
+![Après](captures/d148-nord-apres.jpg)
+![Rue aux Raz et cour sud, avant](captures/d148-sud-avant.jpg)
+![Après](captures/d148-sud-apres.jpg)
+![La nuit, avant](captures/d148-nuit-avant.jpg)
+![Après](captures/d148-nuit-apres.jpg)

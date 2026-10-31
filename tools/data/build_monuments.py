@@ -1033,6 +1033,72 @@ def house(tid, bid, b, spec, k):
     return True, lod
 
 
+def measure_college(bid, b, spec):
+    """Ailes d'un collège (D148) : pour chaque aile lue dans `manual.json` (bouts du faîtage, demi-largeur, bouts), le faîtage est la médiane de
+    la crête (maximum à ±0,75 m de l'axe) sur le milieu de l'aile (20 à 80 %) et chaque égout est la droite ajustée sur la pente du toit
+    (de 1 m de l'axe à 0,7 m du mur, médiane le long de l'aile : les lucarnes sont écartées) prolongée jusqu'au mur."""
+    pts = [q for w in spec["wings"] for q in (w["p"], w["q"])]
+    mns = Raster("MNS", bid[-8:] + "c", min(p[0] for p in pts) - 10, min(p[1] for p in pts) - 10, max(p[0] for p in pts) + 10, max(p[1] for p in pts) + 10)
+    wings = []
+    for w in spec["wings"]:
+        (px, py), (qx, qy) = w["p"], w["q"]
+        L = math.hypot(qx - px, qy - py)
+        ux, uy = (qx - px) / L, (qy - py) / L
+        nx, ny = -uy, ux
+        hw = w["hw"]
+        ss = [0.2 * L + 0.5 * i for i in range(int(0.6 * L / 0.5))]
+        at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
+        ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
+        eaves = []
+        for sign in (1, -1):
+            os_ = [1.0 + 0.25 * i for i in range(int((hw - 0.7 - 1.0) / 0.25) + 1)]
+            zs = [float(np.median([at(s_, sign * o) for s_ in ss])) for o in os_]
+            k, c0 = np.polyfit(os_, zs, 1)
+            eaves.append(float(k * hw + c0))
+        wings.append({"p": w["p"], "q": w["q"], "wl": hw, "wr": hw, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]})
+        print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
+    out = {"wings": wings}
+    if "roof" in spec:
+        out["roof"] = spec["roof"]
+    return out
+
+
+def college(tid, bid, b, spec, k):
+    """Écrit le modèle `college` (kinds/<tuile>.json), le plan de toit mesuré des annexes (`roof`) et la silhouette lointaine. Rend (types
+    changés, tuile des silhouettes si elle change)."""
+    from build_stores import fit_roof
+
+    m = measure_college(bid, b, spec)
+    e = dict(k["buildings"].get(bid, {"k": "school"}))
+    e["college"] = m
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    polys = []
+    for w in m["wings"]:
+        (px, py), (qx, qy) = w["p"], w["q"]
+        L = math.hypot(qx - px, qy - py)
+        ux, uy = (qx - px) / L, (qy - py) / L
+        pt = lambda s_, v: [round(px + ux * s_ - uy * v, 1), round(py + uy * s_ + ux * v, 1)]
+        polys.append(([pt(0, w["wl"]), pt(L, w["wl"]), pt(L, -w["wr"]), pt(0, -w["wr"])], (w["el"] + w["er"]) / 2, w["r"]))
+    lod = tid if replace_lod(tid, bid, polys) else None
+    for aid in spec.get("annexes", []):
+        ab = next((q for q in json.loads((c.OUT / "tiles" / f"{tid}.json").read_text())["buildings"] if q["id"] == aid), None)
+        if ab is None or aid not in k["buildings"]:
+            print(f"  annexe {aid} absente de {tid}")
+            continue
+        ring = ab["ring"]
+        xs, ys = ring[0::2], ring[1::2]
+        am = Raster("MNS", aid[-8:], min(xs) - 3, min(ys) - 3, max(xs) + 3, max(ys) + 3)
+        plane, rms, n = fit_roof(ring, am)
+        print(f"  annexe {aid[-8:]} : plan de toit {plane} (écart {rms * 100:.0f} cm sur {n} cellules)")
+        ae = dict(k["buildings"][aid])
+        ae["roof"] = plane
+        if k["buildings"][aid] != ae:
+            k["buildings"][aid] = ae
+            changed = True
+    return changed, lod
+
+
 def simplify(pts, tol):
     """Douglas-Peucker sur une polyligne (d, z)."""
     if len(pts) < 3:
@@ -1265,6 +1331,13 @@ def main():
             continue
         if spec["model"] == "house":
             ch, lod = house(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "college":
+            ch, lod = college(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

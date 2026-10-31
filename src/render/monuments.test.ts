@@ -6,7 +6,7 @@ import type { LodBuilding, Site, Tree } from "../data/types";
 import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -193,5 +193,30 @@ describe("monuments (D95) : géométrie", () => {
     const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
     expect(parts).toHaveLength(5);
     expect(Math.max(...parts.map((e) => e.g))).toBeGreaterThan(Math.max(...parts.map((e) => e.e)) + 8);
+  });
+});
+
+describe("Lycée Bonaparte : modèle `college` (D148)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const tris = (mb: MeshBuilder): number => mb.positions.length / 9;
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+
+  it("géométrie finie, toit au faîtage mesuré, coût en triangles borné", () => {
+    let total = 0;
+    for (const [id, ridge] of [["BATIMENT0000000348853321", 21.06], ["BATIMENT0000000348853307", 10.91]] as const) {
+      const mb = new MeshBuilder(), glow = new MeshBuilder();
+      buildCollege(mb, glow, kinds.buildings[id]!.college!, bOf(id).ring, world.terrain);
+      expect(mb.positions.every(Number.isFinite)).toBe(true);
+      // Dans le repère de rendu, z monte sur l'axe y : le point le plus haut est le faîtage.
+      let top = -Infinity;
+      for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+      expect(top).toBeGreaterThan(ridge - 0.2);
+      expect(top).toBeLessThan(ridge + 0.2);
+      expect(tris(glow)).toBeGreaterThan(0);
+      total += tris(mb);
+    }
+    // Moins de 6 000 triangles pour tout le collège (murs, fenêtres, corniches, huit toits) : 2 536 mesurés.
+    expect(total).toBeLessThan(6000);
   });
 });

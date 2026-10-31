@@ -3,7 +3,7 @@ import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
-import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -71,7 +71,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.house);
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house);
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -953,6 +953,7 @@ export function buildLandmarks(
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.
         if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
+        else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain);
         else civic(sinks, kind, fiche, segs, terrain);
         break;
     }

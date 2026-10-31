@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CathedralModel, CathedralSpec, HeightField, Site, TownHallSpec } from "../data/types";
+import type { CathedralModel, CathedralSpec, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -1355,4 +1355,81 @@ export function buildFarTower(mb: MeshBuilder, t: [number, number, number, numbe
   const h = side / 2;
   box(mb, f, -h, h, -h, h, terrain.heightAt(x, y) - 1, body, STONE);
   if (tip - body > 0.8) spire(mb, f, 0, 0, h * (tip - body > 6 ? 0.95 : 1.1), body, tip, tip - body > 6 ? 8 : 4, C(T.roofs.ardoise));
+}
+
+// --- Collège (D148) -----------------------------------------------------------------------------------------------------------------
+
+const COLLEGE_STONE = C("#d2c4a4");
+const COLLEGE_TILE = C("#9a5a3e");
+const COLLEGE_TRIM = C("#e6dcc4");
+/** Débord du toit (m), travée des fenêtres (fiche : 3,2 m), hauteur d'un niveau. */
+const COLLEGE_OVERHANG = 0.25, COLLEGE_BAY = 3.2, COLLEGE_STOREY = 3.3;
+
+/** Aile la plus proche (au sens du bord de son toit) d'un point du plan, et côté (+1 gauche, −1 droite). */
+function nearestWing(wings: readonly CollegeWing[], x: number, y: number): { w: CollegeWing; side: number } {
+  let best = wings[0]!, bestSide = 1, bestD = Infinity;
+  for (const w of wings) {
+    const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], l2 = dx * dx + dy * dy || 1;
+    const u = Math.min(1, Math.max(0, ((x - w.p[0]) * dx + (y - w.p[1]) * dy) / l2));
+    const cx = w.p[0] + dx * u, cy = w.p[1] + dy * u;
+    const side = (x - cx) * -dy + (y - cy) * dx >= 0 ? 1 : -1;
+    const d = Math.abs(Math.hypot(x - cx, y - cy) - (side > 0 ? w.wl : w.wr));
+    if (d < bestD) [best, bestSide, bestD] = [w, side, d];
+  }
+  return { w: best, side: bestSide };
+}
+
+/** Toit d'une aile : deux pans (égouts propres à chaque côté), croupes, pignons pleins ou prolongés dans l'aile voisine. */
+function collegeRoof(mb: MeshBuilder, w: CollegeWing, wall: THREE.Color, tile: THREE.Color): void {
+  const f = frameOf(0, 0, 0, 1, 1);
+  const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], L = Math.hypot(dx, dy);
+  const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+  const wl = w.wl + COLLEGE_OVERHANG, wr = w.wr + COLLEGE_OVERHANG;
+  // Les égouts se prolongent sous le débord : même pente qu'entre le mur et le faîtage.
+  const el = w.el - ((w.r - w.el) * COLLEGE_OVERHANG) / w.wl, er = w.er - ((w.r - w.er) * COLLEGE_OVERHANG) / w.wr;
+  const k = (wl + wr) / 2;
+  const a0 = w.a === "hip" ? k : 0, a1 = w.b === "hip" ? L - k : L;
+  const X = (u: number, v: number): [number, number] => [w.p[0] + ux * u + nx * v, w.p[1] + uy * u + ny * v];
+  const pt = (u: number, v: number, z: number): [number, number, number] => [...X(u, v), z];
+  pan(mb, f, pt(0, wl, el), pt(L, wl, el), pt(a1, 0, w.r), pt(a0, 0, w.r), tile);
+  pan(mb, f, pt(L, -wr, er), pt(0, -wr, er), pt(a0, 0, w.r), pt(a1, 0, w.r), shade(tile, 0.94));
+  for (const [end, u, ridgeU, out] of [[w.a, 0, a0, -1], [w.b, L, a1, 1]] as const) {
+    if (end === "hip") pan(mb, f, pt(u, wl, el), pt(u, -wr, er), pt(ridgeU, 0, w.r), null, shade(tile, 0.88));
+    else {
+      const A = P(f, ...pt(u, wl, el)), B = P(f, ...pt(u, -wr, er)), Cc = P(f, ...pt(u, 0, w.r));
+      mb.tri(A, B, Cc, N(f, ux * out, uy * out), wall);
+    }
+  }
+}
+
+/**
+ * Collège d'après relevé LiDAR (D148) : murs sur le contour BD TOPO (pierre blonde, corniche, rangées de fenêtres tous les 3,2 m, chacune à son
+ * niveau au-dessus du sol local), chaque mur montant à l'égout de l'aile dont il longe le toit, puis un toit à deux pans par aile.
+ */
+export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, ring: readonly number[], terrain: HeightField): void {
+  const f = frameOf(0, 0, 0, 1, 1);
+  const ground = (s: number, t: number): number => terrain.heightAt(s, t);
+  const n = ring.length / 2;
+  for (let i = 0; i < n; i++) {
+    const a: ST = [ring[2 * i]!, ring[2 * i + 1]!], b: ST = [ring[2 * ((i + 1) % n)]!, ring[2 * ((i + 1) % n) + 1]!];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 0.3) continue;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const { w: wing, side } = nearestWing(m.wings, mx, my);
+    const top = side > 0 ? wing.el : wing.er;
+    // Contour dans le sens trigonométrique : l'extérieur est à droite.
+    const wall: HallWall = { a, b, out: [(b[1] - a[1]) / len, -(b[0] - a[0]) / len], top, front: false };
+    wallBands(mb, f, wall, ground, [], [COLLEGE_STONE]);
+    if (len < 1.5) continue;
+    course(mb, f, wall, top - 0.7, top - 0.15, 0.22, COLLEGE_TRIM);
+    const bays = Math.floor((len - 2.4) / COLLEGE_BAY);
+    for (let j = 0; j < bays; j++) {
+      const u = len / 2 + (j - (bays - 1) / 2) * COLLEGE_BAY;
+      const [sx, sy] = onWall(wall, u, 0);
+      const g = ground(sx, sy);
+      for (let r = 0, z0 = g + 1.0; z0 + 1.8 < top - 0.9; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.7, false, false, (i + j + r) % 3 === 0);
+    }
+  }
+  const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
+  for (const w of m.wings) collegeRoof(mb, w, COLLEGE_STONE, tile);
 }

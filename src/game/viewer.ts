@@ -16,6 +16,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   church: [-40, -95, 1.7, -86, -136, 12],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
+  // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.
+  bonaparte: [-40, -92, 1.7, -92, -119, 5],
   parking: [-60, 150, 1.7, -20, 170, 3],
   // Galerie des personnages (startGallery) : le départ du jeu.
   characters: [-10, -40, 1.7, -10, -20, 1.2],
