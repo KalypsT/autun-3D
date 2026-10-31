@@ -1909,3 +1909,22 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![L'extrémité nord depuis l'est : massifs cassés](captures/d134-theatre-extremite-nord.jpg)
 ![Dans un coin restauré de la partie haute](captures/d134-theatre-coin-restaure.jpg)
 ![Vue de drone](captures/d134-theatre-drone.jpg)
+
+## 2026-10-31 — D135. Bâtiments d'après photos, étape 15 : le théâtre romain, les passants
+
+**Suite du plan validé (D133), étape 3.** **Constat** : la navigation des passants (D40) ne passait pas dans la cavea. `build_nav.py` retire les voies OpenStreetMap qui traversent un bâtiment ; l'emprise BD TOPO du théâtre (masquée dans le jeu depuis D133) couvrait toute la cavea : il ne restait que le chemin du sommet (`249622262`), et l'escalier qui en descend près de la maison du gardien.
+
+**Choix : une étape autonome, `tools/data/build_theatre_nav.py`, qui ne réécrit que la super-tuile du théâtre** (`nav/s7_9.json`) et son entrée dans `nav/index.json`. Régénérer la navigation repartirait de tout OpenStreetMap et réécrirait toute la ville ; et `build_nav.py` ne sait pas dessiner des chemins sur des gradins. Après une régénération, il suffit de relancer cette étape (README).
+- **Ce qui est ajouté** (31 arêtes, aux mesures du site `theatre`) : l'**allée de la précinction** (chemin), d'un bout des gradins restaurés à l'autre ; l'**escalier de l'axe**, de la précinction à l'orchestre (escalier) ; les **six escaliers du haut**, jusqu'au chemin du sommet (raccord : l'arête la plus proche, à moins de 12 m, est coupée en deux ; les six le sont) ; un **carrefour au milieu de l'orchestre**, la **scène** (marches, plateau, sortie à l'est, contournée à 1,5 m) et une **sortie nord**, au-delà de l'extrémité des gradins (u < −90°, hors des massifs), jusqu'à l'escalier OpenStreetMap près de la maison du gardien. Fréquentation 140 sur 255 (lieu touristique), zone résidentielle (la même que le sommet). Les escaliers latéraux du bas, qui finissent sur le premier rang (le podium fait 1,5 m), ne sont pas dans le graphe.
+- **Idempotente et réversible** : nœuds ajoutés marqués du drapeau 64 (inutilisé pour les piétons), arêtes ajoutées avec la référence de la voie OpenStreetMap du théâtre (`153779957`). Une passe retire d'abord ce qu'elle avait ajouté et recolle les arêtes coupées (la longueur d'origine est partagée entre les deux morceaux, le point de coupe disparaît au recollage), puis refait l'ajout : une deuxième passe ne change rien, et le retrait rend exactement le fichier de `build_nav.py` (vérifié).
+- **Altitudes** : les passants prennent la surface du jeu avec leur altitude actuelle (D93) : ils montent sur les tabliers des gradins et de la scène comme le joueur.
+
+**Vérifié en jeu** (150 passants demandés, 13 h, joueur dans la cavea) : 12 à 20 des 27 passants présents dans les 75 m du théâtre, sur l'allée de la précinction (à −8,55 m, l'altitude de son tablier), dans l'orchestre, sur la scène, à la sortie nord ; altitude des passants = surface du jeu.
+
+**Tests** : le graphe du théâtre est relié au reste de la ville (plus de 500 nœuds atteints depuis l'orchestre) ; en suivant chaque chemin dans les deux sens, aucune marche de plus de `STEP_UP` ; aucun obstacle du théâtre ne coupe un chemin. Le test « files hors des bâtiments » ignore désormais les bâtiments masqués (l'ancienne emprise du théâtre).
+
+**Pas encore** : les passants ne s'assoient pas sur les gradins (la simulation n'a pas de place assise) ; les barrières dessinées de la scène, le poteau d'éclairage et les bancs (étape 4).
+
+![La navigation, avant et après (recouvrement de `nav_debug.py`)](captures/d135-theatre-navigation.jpg)
+![Des passants dans l'orchestre et sur la scène, vus de la précinction](captures/d135-theatre-passants.jpg)
+![Depuis l'extrémité nord](captures/d135-theatre-passants-nord.jpg)

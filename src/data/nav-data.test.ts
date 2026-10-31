@@ -90,7 +90,9 @@ describe("données de navigation (public/data/nav)", () => {
     const grid = new Map<string, number[][]>();
     const CELL = 64;
     const key = (i: number, j: number): string => `${i},${j}`;
+    // Bâtiments masqués (remplacés par un monument, D95, D133) : le théâtre romain a ses chemins à l'intérieur de l'ancienne emprise.
     for (const b of tile.buildings) {
+      if (tile.kinds?.buildings[b.id]?.k === "hidden") continue;
       const xs = b.ring.filter((_, i) => i % 2 === 0), ys = b.ring.filter((_, i) => i % 2 === 1);
       for (let i = Math.floor(Math.min(...xs) / CELL); i <= Math.floor(Math.max(...xs) / CELL); i++) {
         for (let j = Math.floor(Math.min(...ys) / CELL); j <= Math.floor(Math.max(...ys) / CELL); j++) {

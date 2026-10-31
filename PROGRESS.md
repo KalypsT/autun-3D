@@ -905,3 +905,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Du haut de l'extrémité nord](docs/captures/d134-theatre-nord-apres.jpg)
 ![L'extrémité nord](docs/captures/d134-theatre-extremite-nord.jpg)
 ![Dans un coin restauré](docs/captures/d134-theatre-coin-restaure.jpg)
+
+**Bâtiments d'après photos, étape 15 : le théâtre romain, les passants (31 octobre 2026)** (D135)
+- Les passants entrent dans le théâtre : allée de la précinction, escalier central jusqu'à l'orchestre, six escaliers jusqu'au chemin du sommet, scène, sortie au nord vers la maison du gardien.
+- Ils montent sur les gradins et la scène à leur vraie hauteur.
+- Nouvelle étape `tools/data/build_theatre_nav.py` : elle ne touche que la navigation autour du théâtre, sans régénérer la ville (à relancer après `build_nav.py`).
+- 734 tests.
+- Suite : les barrières de la scène, le poteau d'éclairage et les bancs.
+
+![La navigation, avant et après](docs/captures/d135-theatre-navigation.jpg)
+![Des passants dans l'orchestre et sur la scène](docs/captures/d135-theatre-passants.jpg)

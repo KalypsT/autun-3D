@@ -108,6 +108,64 @@ describe("théâtre romain (D133)", () => {
     }
   });
 
+  it("passants (D135) : chemins et escaliers du théâtre reliés au réseau, sans marche trop haute ni obstacle en travers", () => {
+    const nav = JSON.parse(readFileSync("public/data/nav/s7_9.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } };
+    const { n, e, g } = nav.ped;
+    const REF = 153779957;
+    const lines: [number, number][][] = [];
+    const adj = new Map<number, number[]>();
+    for (let i = 0; i < e.length; i += 11) {
+      const [a, b, , , , , , , ref, p0, np] = e.slice(i, i + 11) as number[];
+      (adj.get(a!) ?? adj.set(a!, []).get(a!)!).push(b!);
+      (adj.get(b!) ?? adj.set(b!, []).get(b!)!).push(a!);
+      if (ref !== REF) continue;
+      const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
+      for (let k = 0; k < np!; k++) pts.push([g[2 * (p0! + k)]!, g[2 * (p0! + k) + 1]!]);
+      pts.push([n[3 * b!]!, n[3 * b! + 1]!]);
+      lines.push(pts);
+    }
+    expect(lines.length).toBeGreaterThan(25);
+    // Relié : depuis le carrefour de l'orchestre, on atteint plus de 500 nœuds de la super-tuile (le reste de la ville).
+    const [hx, hy] = xyOf(L, 10, 0);
+    let hub = 0;
+    for (let k = 0; k < n.length / 3; k++) if (Math.hypot(n[3 * k]! - hx, n[3 * k + 1]! - hy) < Math.hypot(n[3 * hub]! - hx, n[3 * hub + 1]! - hy)) hub = k;
+    const seen = new Set([hub]), todo = [hub];
+    while (todo.length) for (const m of adj.get(todo.pop()!) ?? []) if (!seen.has(m)) { seen.add(m); todo.push(m); }
+    expect(seen.size).toBeGreaterThan(500);
+    // En marchant le long de chaque chemin, dans les deux sens, aucune marche de plus de STEP_UP.
+    const decks = new Decks();
+    decks.add("29_36", theatreDecks(s));
+    decks.addSectors("29_36", theatreSectors(s));
+    for (const pts of lines) {
+      for (const way of [pts, [...pts].reverse()]) {
+        let z = decks.surface(way[0]![0], way[0]![1], bare(way[0]![0], way[0]![1]));
+        for (let i = 0; i + 1 < way.length; i++) {
+          const [ax, ay] = way[i]!, [bx, by] = way[i + 1]!;
+          const m = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.2);
+          for (let k = 1; k <= m; k++) {
+            const x = ax + ((bx - ax) * k) / m, y = ay + ((by - ay) * k) / m;
+            const nz = decks.surface(x, y, bare(x, y), z);
+            expect(nz - z).toBeLessThan(STEP_UP);
+            z = nz;
+          }
+        }
+      }
+    }
+    // Aucun obstacle du théâtre ne coupe un chemin.
+    const cross = (p: number[], q: number[], r: number[], t: number[]): boolean => {
+      const d = (a: number[], b: number[], c: number[]): number => (b[0]! - a[0]!) * (c[1]! - a[1]!) - (b[1]! - a[1]!) * (c[0]! - a[0]!);
+      return d(p, q, r) * d(p, q, t) < 0 && d(r, t, p) * d(r, t, q) < 0;
+    };
+    let hits = 0;
+    for (const w of theatreWalls(s, bare)) {
+      for (let i = 0; i + 3 < w.pts.length; i += 2) {
+        const p = [w.pts[i]!, w.pts[i + 1]!], q = [w.pts[i + 2]!, w.pts[i + 3]!];
+        for (const pts of lines) for (let k = 0; k + 1 < pts.length; k++) if (cross(p, q, pts[k]!, pts[k + 1]!)) hits++;
+      }
+    }
+    expect(hits).toBe(0);
+  });
+
   it("obstacles : podium coupé par l'escalier de l'axe, barrières de la scène, massifs ; arbres retirés de la cavea", () => {
     const walls = theatreWalls(s, bare);
     const podium = walls.filter((w) => w.low && w.top.height > 1.2);

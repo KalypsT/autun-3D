@@ -6,6 +6,7 @@ Entrées : public/data/world.json et public/data/tiles/*.json (bâtiments, murs,
           BD TOPO tronçons de route de chaque bloc (.cache/blocks/*/raw/bdtopo_route.json : largeurs, vitesses, voies).
 Sorties : public/data/nav/index.json et nav/s<i>_<j>.json, un fichier par super-tuile de la grille mondiale (les mêmes 1 km que les sols grossiers).
 Étape autonome (comme build_map.py) : ne touche à aucune tuile ; se relance librement (≈ 0,1 Mo). Format : D40.
+Ensuite : build_theatre_nav.py (chemins du théâtre romain, D135 : l'emprise BD TOPO masquée du théâtre en retire les voies).
 """
 
 import glob
