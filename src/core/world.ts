@@ -1,6 +1,6 @@
 import type { HeightField, TileData } from "../data/types";
 import { Colliders, type Top } from "./collision";
-import { cathedralWalls, houseRing, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { parapetLines } from "./bridges";
 import { theatreWalls } from "./theatre";
 
@@ -52,7 +52,7 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
   // Chacun garde sa hauteur : on saute par-dessus les plus bas, on escalade les grilles (voir `player.ts`).
   for (const w of wallsOutsideMonuments(tile.kinds, tile.walls)) c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID, wallTop(w.kind, w.height));
-  for (const f of tile.furniture) {
+  for (const f of furnitureOutsideMonuments(tile.kinds, tile.furniture)) {
     const r = FURNITURE_RADIUS[f.kind];
     if (r !== undefined) c.addCircle(f.x, f.y, r);
   }

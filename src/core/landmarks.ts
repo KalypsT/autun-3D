@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, HouseModel, JanusSite, JanusWall, Site, Tree, Wall } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -105,6 +105,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   }
   // Fontaine d'après photo (D131) : son bassin.
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
+  // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
+  for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
@@ -125,9 +127,25 @@ export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, tree
   const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
   // Temple de Janus (D139) : les « arbres » de 20 m posés sur ses murs étaient les murs eux-mêmes vus par le LiDAR.
   const temples = (kinds?.sites ?? []).filter((s): s is JanusSite => s.t === "janus");
-  if (!basins.length && !theatres.length && !temples.length) return [...trees];
+  // Îlot de rond-point (D142) : le relevé avait posé trois arbres de 13 m dans la couronne du cèdre ; l'arbre du site les remplace.
+  const islands = (kinds?.sites ?? []).filter((s): s is RoundaboutSite => s.t === "roundabout");
+  if (!basins.length && !theatres.length && !temples.length && !islands.length) return [...trees];
   return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
-    && temples.every((t) => !inJanus(t, x, y, 1)));
+    && temples.every((t) => !inJanus(t, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)));
+}
+
+/** Rayon du tronc de l'arbre d'un îlot de rond-point (obstacle). */
+export const TRUNK_R = 0.45;
+
+/** Dans l'îlot du rond-point (bordure comprise, élargi de `margin`) ? */
+export function inRoundabout(s: RoundaboutSite, x: number, y: number, margin = 0): boolean {
+  return Math.hypot(x - s.c[0], y - s.c[1]) < s.r + s.curb / 2 + margin;
+}
+
+/** Mobilier de la tuile, sauf celui qu'un monument remplace (la fontaine Saint-Lazare, D131) ou retire (lampadaire d'un îlot, D142). */
+export function furnitureOutsideMonuments(kinds: { sites: Site[] } | undefined, furniture: readonly Furniture[]): Furniture[] {
+  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [s.id] : s.t === "roundabout" ? s.drop : [])));
+  return gone.size ? furniture.filter((f) => !gone.has(f.id)) : [...furniture];
 }
 
 /** Murs et clôtures de la tuile, sauf ceux qu'un monument remplace (le mur OpenStreetMap fermé du temple de Janus, D139). */

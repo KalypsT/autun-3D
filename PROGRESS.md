@@ -1022,3 +1022,18 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d141-boutique-apres.jpg)
 ![La nuit](docs/captures/d141-boutique-nuit-apres.jpg)
 ![Depuis le sud de la rue](docs/captures/d141-boutique-rue-apres.jpg)
+
+**Petits éléments d'après photos, étape 3 : le rond-point de la Croix Verte (31 octobre 2026)** (D142)
+- Le rond-point a son îlot : pelouse bordée d'une bordure claire, massif de fleurs au pied et, au centre, un grand cèdre à plateaux étagés bleu-vert, comme sur ta photo.
+- Mesuré à l'orthophoto et au LiDAR : îlot de 13,7 m de rayon, bombé de 41 cm, cèdre de 13,7 m, couronne de 10,4 m de rayon.
+- Avant, le cèdre était trois arbres génériques ; ils disparaissent, avec un lampadaire posé au bord de l'îlot.
+- La circulation ne change pas (ses files restent à 3 m de la bordure), les passants non plus.
+- Nouvelle étape `tools/data/build_roundabouts.py` : elle n'écrit que le site de l'îlot, sans régénérer les sols de toute la ville.
+- 1 956 triangles pour l'îlot, 252 pour les sols. 747 tests.
+- Le plan des trois petits éléments est terminé (D140 à D142).
+- À essayer : `?at=600,632&h=14`, puis `?h=23` pour la nuit.
+
+![Depuis le boulevard Mazagran, avant](docs/captures/d142-rondpoint-avant.jpg)
+![Après](docs/captures/d142-rondpoint-apres.jpg)
+![Vue du dessus](docs/captures/d142-rondpoint-haut-apres.jpg)
+![La nuit](docs/captures/d142-rondpoint-nuit-apres.jpg)

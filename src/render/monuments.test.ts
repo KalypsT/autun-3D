@@ -10,6 +10,7 @@ import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTo
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
+import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -50,6 +51,15 @@ describe("monuments (D95) : géométrie", () => {
     expect(tris(hb)).toBeLessThan(4000);
     expect(tris(hg)).toBeGreaterThan(4);
     expect(tris(hg)).toBeLessThan(200);
+    // Îlot du rond-point de la Croix Verte (D142) : bordure, massif et cèdre, moins de 3 000 triangles ; sols à part.
+    const island = kinds.sites.find((q) => q.t === "roundabout")!;
+    if (island.t !== "roundabout") throw new Error("rond-point absent");
+    const rb = new MeshBuilder(), rg = new MeshBuilder();
+    buildRoundabout(rb, island, world.terrain);
+    buildRoundaboutGround(rg, island, world.terrain);
+    expect(rb.positions.every(Number.isFinite)).toBe(true);
+    expect(rg.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(rb)).toBeLessThan(3000);
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();
     buildCathedral(mb, k.mon!, world.terrain, new THREE.Color("#405060"));

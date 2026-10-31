@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import type { Building, JanusSite, Site, TileKinds } from "../data/types";
+import type { Building, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, fuelLayout, gateLayout, houseEdges, houseFrame, houseRing, housePost, inJanus, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { at, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
 
@@ -341,6 +342,60 @@ describe("monuments (D95)", () => {
       };
       for (const [x, y] of world.tile.trees) expect(inside(x, y)).toBe(false);
       for (const fu of world.tile.furniture) expect(inside(fu.x, fu.y)).toBe(false);
+    });
+
+    it("rond-point de la Croix Verte (D142) : îlot et cèdre mesurés, faux arbres et lampadaire retirés, tronc seul obstacle, voitures et passants à l'écart", () => {
+      const s = kinds.sites.find((q): q is RoundaboutSite => q.t === "roundabout")!;
+      expect(s).toBeDefined();
+      // Bordure ajustée sur l'orthophoto : environ 13,7 m de rayon, à quelques centimètres près sur une centaine de rayons.
+      expect(s.r).toBeGreaterThan(12.5);
+      expect(s.r).toBeLessThan(15);
+      expect(s.fit![0]).toBeGreaterThan(50);
+      expect(s.fit![1]).toBeLessThan(0.2);
+      expect(s.mound).toBeGreaterThan(0);
+      expect(s.mound).toBeLessThan(1);
+      // Cèdre : environ 13,7 m, couronne large en bas et plus étroite en haut, tronc dans l'îlot.
+      expect(s.tree.top).toBeGreaterThan(11);
+      expect(s.tree.top).toBeLessThan(16);
+      const t = s.tree.tiers;
+      expect(t[0]![1]).toBeGreaterThan(t[t.length - 1]![1]);
+      expect(t[0]![1]).toBeLessThan(s.r);
+      expect(inRoundabout(s, s.tree.x, s.tree.y)).toBe(true);
+      expect(Math.hypot(s.tree.x - s.c[0], s.tree.y - s.c[1])).toBeLessThan(3);
+      // Les trois « arbres » de 13 m du relevé dans la couronne et le lampadaire posé au bord de l'îlot sont retirés.
+      const near = world.tile.trees.filter(([x, y]) => inRoundabout(s, x, y, 0.5));
+      expect(near.length).toBe(3);
+      expect(treesOutsideMonuments(kinds, near)).toHaveLength(0);
+      const lamps = world.tile.furniture.filter((f) => inRoundabout(s, f.x, f.y, 0.5));
+      expect(lamps.map((f) => f.id)).toEqual(s.drop);
+      expect(furnitureOutsideMonuments(kinds, lamps)).toHaveLength(0);
+      // Obstacles : le tronc ; l'îlot (bordure basse) se traverse.
+      const c = new Colliders();
+      for (const [x, y, r] of landmarkCircles(kinds, world.tile.buildings)) if (Math.hypot(x - s.c[0], y - s.c[1]) < 20) c.addCircle(x, y, r);
+      expect(c.resolve(s.tree.x + 0.5, s.tree.y, 0.35).hit).toBe(true);
+      expect(c.resolve(s.c[0] + s.r, s.c[1], 0.35).hit).toBe(false);
+      // Voitures : les files du graphe routier passent à plus de 2 m de la bordure ; passants : aucune file ne traverse l'îlot.
+      const nav = JSON.parse(readFileSync("public/data/nav/s7_9.json", "utf8")) as { road: { n: number[]; e: number[]; g: number[] }; ped: { n: number[]; e: number[]; g: number[] } };
+      const dist = (gr: { n: number[]; e: number[]; g: number[] }): number => {
+        let best = Infinity;
+        for (let i = 0; i < gr.e.length; i += 11) {
+          const [a, b, , , , , , , , p0, np] = gr.e.slice(i, i + 11) as number[];
+          const pts: [number, number][] = [[gr.n[3 * a!]!, gr.n[3 * a! + 1]!]];
+          for (let k = 0; k < np!; k++) pts.push([gr.g[2 * (p0! + k)]!, gr.g[2 * (p0! + k) + 1]!]);
+          pts.push([gr.n[3 * b!]!, gr.n[3 * b! + 1]!]);
+          for (let j = 0; j + 1 < pts.length; j++) {
+            const [ax, ay] = pts[j]!, [bx, by] = pts[j + 1]!;
+            const L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1e-9;
+            const u = Math.max(0, Math.min(1, ((s.c[0] - ax) * (bx - ax) + (s.c[1] - ay) * (by - ay)) / L2));
+            best = Math.min(best, Math.hypot(ax + u * (bx - ax) - s.c[0], ay + u * (by - ay) - s.c[1]));
+          }
+        }
+        return best;
+      };
+      expect(dist(nav.road)).toBeGreaterThan(s.r + s.curb / 2 + 2);
+      expect(dist(nav.ped)).toBeGreaterThan(s.r + s.curb / 2);
+      // Aucune cache d'arme dans l'îlot.
+      for (const q of CACHES) expect(inRoundabout(s, q.x, q.y, 2)).toBe(false);
     });
 
     it("église Saint-André (D138) : nef et tour ronde mesurées, plus basses que la porte, tour ronde plus basse que la nef", () => {

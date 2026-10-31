@@ -386,7 +386,28 @@ export type Site =
    */
   | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
   | TheatreSite
-  | JanusSite;
+  | JanusSite
+  | RoundaboutSite;
+
+/**
+ * Îlot de rond-point d'après photo (D142, tools/data/build_roundabouts.py) : centre et rayon du milieu de la bordure (orthophoto), largeur
+ * de la bordure, chaussée autour `g` et bombé de l'îlot (LiDAR) ; arbre du centre (tronc, haut et rayon de la couronne par palier, au-dessus
+ * du terrain) ; massif de fleurs (rayons autour du tronc, couleurs, photo) ; mobilier de la carte retiré de l'îlot (`drop`).
+ */
+export interface RoundaboutSite {
+  t: "roundabout";
+  n: string;
+  c: [number, number];
+  r: number;
+  curb: number;
+  g: number;
+  mound: number;
+  fit?: [number, number];
+  tree: { k: "cedar"; x: number; y: number; top: number; tiers: [number, number][] };
+  bed: [number, number];
+  flowers: string[];
+  drop: number[];
+}
 
 /** Mur debout du temple de Janus (D139) : abscisses d depuis le coin extérieur commun, hauteurs au-dessus du sol `g` du site. */
 export interface JanusWall {
