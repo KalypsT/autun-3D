@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import type { Building, Site, TileKinds } from "../data/types";
+import type { Building, JanusSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, fuelLayout, gateLayout, isOpen, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding } from "./landmarks";
+import { at, fuelLayout, gateLayout, inJanus, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
 
@@ -188,6 +188,66 @@ describe("monuments (D95)", () => {
         expect(h).toBeLessThan(18);
       }
       expect(Object.values(kinds.buildings).filter((k) => k.k === "hidden").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("temple de Janus (D139) : cella mesurée, deux murs debout de 20 m, on passe par les arches, ni faux arbres ni mur OpenStreetMap", () => {
+      const t = kinds.sites.find((q): q is JanusSite => q.t === "janus")!;
+      expect(t).toBeDefined();
+      // 16,6 m de côté dans les sources.
+      for (const L of t.L) {
+        expect(L).toBeGreaterThan(15.5);
+        expect(L).toBeLessThan(17.5);
+      }
+      for (const w of t.tw) {
+        expect(w).toBeGreaterThan(1.6);
+        expect(w).toBeLessThan(3);
+      }
+      for (const w of [t.S, t.W]) {
+        const hi = Math.max(...w.top.map((p) => p[1]));
+        expect(hi).toBeGreaterThan(18);
+        expect(hi).toBeLessThan(24);
+      }
+      expect(t.pod).toBeGreaterThan(0.3);
+      expect(t.pod).toBeLessThan(1.5);
+      const c = new Colliders();
+      for (const r of landmarkRings({ sites: [t] }, () => 0)) c.addRing(r);
+      for (const sl of janusSlabs(t)) {
+        const tm = (sl.tA + sl.tB) / 2;
+        for (const [ac] of sl.wall.arches) {
+          const [x, y] = at(sl.f, ac, tm);
+          expect(c.resolve(x, y, 0.35).hit).toBe(false);
+        }
+        // Contre la face, entre le coin et la première arche : bloqué.
+        const solid = (sl.d0 + Math.min(...sl.wall.arches.map((q) => q[0] - q[1] / 2))) / 2;
+        const [x, y] = at(sl.f, solid, sl.tB + 0.2);
+        expect(c.resolve(x, y, 0.35).hit).toBe(true);
+      }
+      expect(treesOutsideMonuments({ sites: [t] }, [[t.o[0] + 5, t.o[1] + 1, 0, 20, 1.2, 4.5], [t.o[0] - 30, t.o[1], 0, 8, 3, 3]] as never).length).toBe(1);
+      expect(wallsOutsideMonuments({ sites: [t] }, [{ id: t.wall, kind: "wall", height: 3.5, pts: [] }, { id: 1, kind: "wall", height: 1, pts: [] }] as never).map((w) => w.id)).toEqual([1]);
+    });
+
+    it("passants (D139) : une boucle traverse le temple par ses arches, sans traverser un mur", () => {
+      const t = kinds.sites.find((q): q is JanusSite => q.t === "janus")!;
+      const c = new Colliders();
+      for (const r of landmarkRings({ sites: [t] }, () => 0)) c.addRing(r);
+      const { n, e, g } = (JSON.parse(readFileSync("public/data/nav/s5_10.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+      let inside = 0;
+      for (let i = 0; i < e.length; i += 11) {
+        const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
+        const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
+        for (let k = 0; k < np!; k++) pts.push([g[2 * (p0! + k)]!, g[2 * (p0! + k) + 1]!]);
+        pts.push([n[3 * b!]!, n[3 * b! + 1]!]);
+        for (let j = 0; j + 1 < pts.length; j++) {
+          const [ax, ay] = pts[j]!, [bx, by] = pts[j + 1]!;
+          const steps = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.25);
+          for (let q = 0; q <= steps; q++) {
+            const x = ax + ((bx - ax) * q) / steps, y = ay + ((by - ay) * q) / steps;
+            if (inJanus(t, x, y)) inside++;
+            expect(c.resolve(x, y, 0.2).hit).toBe(false);
+          }
+        }
+      }
+      expect(inside).toBeGreaterThan(20);
     });
 
     it("porte Saint-André d'après photo (D138) : bouts mesurés, galerie complète sur les deux faces, toit, tour plus haute que le toit", () => {

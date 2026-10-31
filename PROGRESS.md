@@ -963,3 +963,25 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d138-andre-apres.jpg)
 ![Vue de drone](docs/captures/d138-andre-drone.jpg)
 ![La nuit](docs/captures/d138-andre-nuit.jpg)
+
+**Bâtiments d'après photos, étape 19 : le temple de Janus (31 octobre 2026)** (D139)
+- Le temple est à (−795 ; 1211), tuile 22_40, et non à la position de la demande.
+- Avant, c'était un mur fermé de 4 côtés, avec trois « arbres » de 20 m qui étaient en fait ses murs vus par le LiDAR. Mur et faux arbres ont disparu.
+- Les deux murs debout suivent tes photos :
+  - cella de 16,6 m mesurée, murs de 2,3 à 2,5 m, jusqu'à 21,7 m de haut ;
+  - dessus cassé en paliers et herbu ;
+  - en bas, trois arches traversantes et des niches ;
+  - à l'étage, trois baies par mur sous des arcs de brique ;
+  - trous de boulin et lichen orange ;
+  - souches des murs nord et est au ras du terre-plein.
+- On passe par les arches ; les passants font une boucle par le temple.
+- Éclairé la nuit par en dessous, comme les portes.
+- Les captures ne photographient plus une ancienne construction (un serveur restait ouvert, corrigé).
+- 2 302 triangles. 741 tests.
+- Le plan des portes et du temple est terminé (D137 à D139).
+- À essayer : `?at=-806,1196&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d139-janus-avant.jpg)
+![Après](docs/captures/d139-janus-apres.jpg)
+![Depuis l'intérieur](docs/captures/d139-janus-interieur.jpg)
+![La nuit](docs/captures/d139-janus-nuit.jpg)

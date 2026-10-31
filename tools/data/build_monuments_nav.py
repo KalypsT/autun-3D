@@ -3,7 +3,10 @@
 Usage : python3 tools/data/build_monuments_nav.py     (après build_monuments.py, qui écrit le modèle des portes, et après build_nav.py, qui
         réécrit toute la navigation à partir d'OpenStreetMap : relancer celle-ci ensuite)
 Entrées : sites `gate` de public/data/kinds (modèle `gm`, D137), public/data/nav/<super-tuile>.json.
-Sortie : les super-tuiles de navigation qui contiennent une porte, et leurs entrées dans nav/index.json ; rien d'autre.
+Sortie : les super-tuiles de navigation qui contiennent une porte ou le temple de Janus, et leurs entrées dans nav/index.json ; rien d'autre.
+
+Temple de Janus (D139) : aucun chemin n'y entrait ; une boucle passe par une arche du mur ouest, le milieu de la cella et l'arche du mur sud,
+raccordée aux chemins voisins (voir `janus_paths` ; réversible, comme build_theatre_nav.py).
 
 build_nav.py trace les chemins d'OpenStreetMap, qui ignorent les piles : à la porte Saint-André, un chemin de la placette traverse la porte
 en biais et passait par la pile centrale. Chaque arête piétonne qui traverse le plan médian d'une porte ailleurs que dans une arche (à 50 cm
@@ -15,8 +18,53 @@ Une deuxième passe ne change rien (le chemin passe alors par l'arche).
 import json
 import math
 
+import numpy as np
+
 import config as c
-from build_theatre_nav import ES, KINDS, NAV, Graph, cell_of, length
+import build_theatre_nav as btn
+from build_theatre_nav import ES, KINDS, NAV, PATH, Graph, cell_of, length
+
+JANUS_REF = 542936385  # voie OpenStreetMap du temple de Janus (D139)
+
+
+def janus_site():
+    for p in sorted(KINDS.glob("*_*.json")):
+        for s in json.loads(p.read_text())["sites"]:
+            if s.get("t") == "janus":
+                return s
+    return None
+
+
+def janus_paths(G, s):
+    """Boucle des passants dans le temple de Janus (D139) : du chemin OpenStreetMap à l'ouest, par l'arche nord du mur ouest, au milieu de
+    la cella, puis par l'arche du mur sud jusqu'au chemin au sud. Nœuds marqués (drapeau 64) et arêtes à la référence du temple : une passe
+    retire d'abord ce qu'elle avait ajouté (et recolle les arêtes coupées), puis le refait. Rend le nombre d'arêtes ajoutées."""
+    btn.REF = JANUS_REF
+    G.unpatch()
+    (ox, oy), a = s["o"], s["a"]
+    u, v = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
+    P = lambda ss, t: (ox + u[0] * ss + v[0] * t, oy + u[1] * ss + v[1] * t)
+    Ls, Lt = s["L"]
+    twS, twW = s["tw"]
+    wa = max(s["W"]["arches"], key=lambda q: q[0])[0]
+    sa = s["S"]["arches"][0][0]
+    hub = G.node(*P(Ls / 2, Lt / 2))
+    w_in, w_out = G.node(*P(twW + 1.5, wa)), G.node(*P(-2.5, wa))
+    s_in, s_out = G.node(*P(sa, twS + 1.5)), G.node(*P(sa, -2.5))
+    for a_, b_ in ((w_out, w_in), (w_in, hub), (hub, s_in), (s_in, s_out)):
+        G.add(a_, b_, [], PATH, 0, 2)
+    n = 4
+    for k, far in ((w_out, 15), (s_out, 25)):
+        x, y = G.nodes[k][:2]
+        m = G.split_nearest(x, y, far, types=tuple(range(32)))
+        if m is not None and m != k:
+            # Un raccord qui couperait la cella passe devant le coin extérieur commun des deux murs.
+            mx, my = G.nodes[m][:2]
+            to = lambda q: ((q[0] - ox) * u[0] + (q[1] - oy) * u[1], (q[0] - ox) * v[0] + (q[1] - oy) * v[1])
+            cut = any(-1 < ss < Ls + 1 and -1 < tt < Lt + 1 for ss, tt in (to((x + (mx - x) * f, y + (my - y) * f)) for f in np.linspace(0, 1, 41)))
+            G.add(k, m, [P(-2.5, -2.5)] if cut else [], PATH, 0, 2)
+            n += 1
+    return n
 
 
 def gates():
@@ -78,8 +126,27 @@ def reroute(G, site):
     return n
 
 
+def write(cid, doc, G, index, text_before):
+    doc["ped"] = G.dump()
+    text = json.dumps(doc, separators=(",", ":"))
+    if text == text_before:
+        return False
+    (NAV / f"{cid}.json").write_text(text)
+    index["cells"] = [dict(e, bytes=len(text), ped={"nodes": len(G.nodes), "edges": len(G.edges)}) if e["id"] == cid else e for e in index["cells"]]
+    (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+    return True
+
+
 def main():
     index = json.loads((NAV / "index.json").read_text())
+    s = janus_site()
+    if s:
+        cid = cell_of(*s["o"], index)
+        text = (NAV / f"{cid}.json").read_text()
+        doc = json.loads(text)
+        G = Graph(doc["ped"])
+        n = janus_paths(G, s)
+        print(f"{s['n']} : {n} arêtes dans {cid}" + ("" if write(cid, doc, G, index, text) else ", rien à réécrire"))
     for site in gates():
         cid = cell_of(*site["gm"]["c"], index)
         path = NAV / f"{cid}.json"

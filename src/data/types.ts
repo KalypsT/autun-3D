@@ -354,7 +354,43 @@ export type Site =
    * du bassin mesurés (altitudes absolues).
    */
   | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
-  | TheatreSite;
+  | TheatreSite
+  | JanusSite;
+
+/** Mur debout du temple de Janus (D139) : abscisses d depuis le coin extérieur commun, hauteurs au-dessus du sol `g` du site. */
+export interface JanusWall {
+  /** Arches traversantes : milieu, largeur, naissance de l'arc. */
+  arches: [number, number, number][];
+  /** Niches (sur les deux faces) : milieu, largeur, bas, haut (arc compris). */
+  niches: [number, number, number, number][];
+  /** Baies traversantes de l'étage : milieu, largeur, appui, naissance de l'arc. */
+  windows: [number, number, number, number][];
+  /** Dessus ruiné (d, z). */
+  top: [number, number][];
+}
+
+/**
+ * Temple de Janus d'après photo (D139, tools/data/build_monuments.py) : cella carrée, repère au coin extérieur commun des deux murs debout
+ * (`o`), s le long du mur `S` (angle `a`), t le long du mur `W` ; longueurs et épaisseurs mesurées au LiDAR ; terre-plein et souches des
+ * murs arasés (hauteurs au-dessus de `g`) ; mur OpenStreetMap remplacé (`wall`).
+ */
+export interface JanusSite {
+  t: "janus";
+  n: string;
+  o: [number, number];
+  a: number;
+  L: [number, number];
+  tw: [number, number];
+  g: number;
+  pod: number;
+  low: number;
+  wall: number;
+  S: JanusWall;
+  W: JanusWall;
+  /** Trous de boulin : pas horizontal et vertical. */
+  putlog: [number, number];
+  light?: 1;
+}
 
 /**
  * Porte romaine d'après photo (D137, tools/data/build_monuments.py) : centre et épaisseur du corps mesurés au LiDAR, rue (altitude absolue),

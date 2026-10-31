@@ -23,7 +23,7 @@ const FLOOD_LOW = C("#ffcf86"), FLOOD_HIGH = C("#b98a58");
 
 type S3 = [number, number, number];
 
-class GateDraw {
+export class GateDraw {
   constructor(readonly mb: MeshBuilder, readonly glow: MeshBuilder | null, readonly f: Frame, readonly g: number, readonly span: number) {}
 
   P(s: number, t: number, z: number): Vec3 {
@@ -61,14 +61,14 @@ class GateDraw {
 }
 
 /** Haut de l'ouverture en s (arc en plein cintre au-dessus de la naissance), ou null hors de l'ouverture. */
-function openingTop(o: Opening, s: number): number | null {
+export function openingTop(o: Opening, s: number): number | null {
   if (s <= o.s0 || s >= o.s1) return null;
   const r = (o.s1 - o.s0) / 2, c = (o.s0 + o.s1) / 2;
   return o.spring + Math.sqrt(Math.max(0, r * r - (s - c) ** 2));
 }
 
 /** Colonnes [s0, s1] entre les coupes ; celles qui tombent dans une ouverture sont redivisées tous les 25 cm (arcs). */
-function columns(cuts: number[], arcs: Opening[]): [number, number][] {
+export function columns(cuts: number[], arcs: Opening[]): [number, number][] {
   const e = [...new Set(cuts.map((v) => Math.round(v * 1000) / 1000))].sort((a, b) => a - b);
   const out: [number, number][] = [];
   for (let i = 0; i + 1 < e.length; i++) {

@@ -5,6 +5,7 @@ import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geomet
 import { fillOnTerrain } from "./ground";
 import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
+import { buildJanus } from "./janus";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
@@ -950,5 +951,6 @@ export function buildLandmarks(
     else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain);
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
+    else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain);
   }
 }

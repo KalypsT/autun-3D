@@ -8,6 +8,7 @@ import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
 import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
+import { buildJanus } from "./janus";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -31,6 +32,15 @@ describe("monuments (D95) : géométrie", () => {
     buildChapel(cb, null, chap, world.terrain);
     expect(cb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(cb)).toBeLessThan(2000);
+    // Temple de Janus (D139) : moins de 6 000 triangles, à peine moins pour l'éclairage de nuit (les niches restent sombres).
+    const temple = kinds.sites.find((q) => q.t === "janus")!;
+    if (temple.t !== "janus") throw new Error("temple de Janus absent");
+    const jb = new MeshBuilder(), jg = new MeshBuilder();
+    buildJanus(jb, jg, temple, world.terrain);
+    expect(jb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(jb)).toBeLessThan(6000);
+    expect(tris(jg)).toBeGreaterThan(tris(jb) * 0.9);
+    expect(tris(jg)).toBeLessThanOrEqual(tris(jb));
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();
     buildCathedral(mb, k.mon!, world.terrain, new THREE.Color("#405060"));

@@ -9,7 +9,7 @@ import { canvasTexture, rng } from "./canvas";
 import { buildFurniture, buildWalls, fenceMaterial } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
-import { reshapeBuilding, treesOutsideMonuments } from "../core/landmarks";
+import { reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
 import { buildStructures, buildWater } from "./structures";
 
@@ -431,7 +431,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
 
   const fence = new UvMeshBuilder(), posts = new MeshBuilder();
   yield;
-  if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, tile.walls, terrain);
+  if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
   yield;
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
   const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));

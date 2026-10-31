@@ -2027,3 +2027,41 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![L'église depuis le nord, après](captures/d138-eglise.jpg)
 ![De loin, détail à 120 m](captures/d138-andre-loin.jpg)
 ![La navigation, avant et après (le chemin de la placette passe par une arche)](captures/d138-andre-navigation.jpg)
+
+## 2026-10-31 — D139. Bâtiments d'après photos, étape 19 : le temple de Janus
+
+**Suite de la demande de D137, étape 3.** Points de vue confirmés : de l'extérieur depuis le sud-ouest, et de l'intérieur de la cella depuis le nord-est (lumière du matin). **Position** : la demande donnait (−834 ; 775), tuile 22_38, où il n'y a qu'un champ ; OpenStreetMap (`way/542936385`) et le LiDAR placent le temple à **(−795 ; 1211), tuile 22_40**.
+
+**Constat** : le temple était le contour OpenStreetMap (`barrier=wall`), dessiné comme un mur fermé sur quatre côtés ; **trois « arbres » de 20 à 21 m** étaient posés sur ses murs : c'étaient les murs eux-mêmes vus par le LiDAR (comme le poteau du théâtre, D136).
+
+**Lecture des photos** (`temple-de-janus` de `manual.json`) : cella carrée dont il reste les murs ouest et sud, en L, très épais ; en bas, grandes ouvertures cintrées traversantes (deux dans le mur ouest, une dans le mur sud) et niches ; à l'étage, trois baies par mur sous des arcs de brique gris-rose ; rangées régulières de trous de boulin ; petit appareil beige-rose couvert de lichen orange ; dessus ruiné et herbu, en paliers ; pré, clôture.
+
+**Mesures** (`build_monuments.py`, modèle `janus`, site `janus` de `kinds/22_40.json`, fichier créé et ajouté à l'index) :
+- **Murs debout** : les côtés du contour dont le MNS médian dépasse 6 m (ouest et sud) ; leur coin commun est l'origine du repère.
+- **Faces** à mi-hauteur du profil médian en travers (le relevé à 0,5 m est flou) : murs de **2,5 et 2,25 m**, à ±25 cm près. **Longueurs** là où le dessus retombe sous la moitié de sa médiane (bouts cassés net) : **16,63 × 16,6 m**, comme dans les sources (16,6 m) ; le contour OpenStreetMap est plus petit (15 × 15,5 m) et décalé.
+- **Dessus** : plus haut point de la section tous les 50 cm, médiane glissante sur 2,5 m, simplifié à 1,5 m près : **jusqu'à 21,7 m** (mur sud) et 20,4 m (mur ouest), avec des creux vers 14-15 m (premier essai écarté : simplifié à 60 cm, le dessus était hérissé de pointes).
+- **Terre-plein** intérieur 0,8 m au-dessus du pré (le relief LiDAR l'a déjà, en pente douce : pas de tablier), **souches** des murs nord et est au ras du terre-plein (0,94 m).
+- **Ouvertures** : photos (positions en mètres depuis le coin sud-ouest, ramenées à la longueur mesurée ; les photos de biais ne donnent que leur ordre et leur taille approchée).
+
+**Rendu** (`src/render/janus.ts`, dans le maillage plein de la tuile) : chaque mur est une dalle percée (arches traversantes, baies traversantes à appui, intrados et piédroits) ; dessus en **paliers de 1,2 m** qui suivent le profil mesuré à ±40 cm (les photos montrent un dessus cassé en gradins), herbu ; arcs de brique sur les arches et les baies, niches sombres, trous de boulin en quinconce, plaques de lichen orange ; souches basses des murs nord et est. **La nuit**, éclairé par en dessous comme les portes (choix de l'utilisateur). **2 302 triangles** (borne du test : 6 000). Silhouette lointaine : deux prismes (les deux murs).
+
+**Retraits sans réécrire la tuile** : le mur OpenStreetMap fermé n'est plus dessiné ni un obstacle (`wallsOutsideMonuments`, le site nomme la voie qu'il remplace) ; les arbres dans la cella et à moins d'1 m disparaissent (`treesOutsideMonuments`).
+
+**Jeu** : les morceaux pleins des murs, entre les arches, sont des obstacles ; on passe par les trois arches ; on entre aussi par les côtés nord et est, ouverts. **Passants** : aucun chemin n'entrait ; `build_monuments_nav.py` ajoute une boucle (arche nord du mur ouest, milieu de la cella, arche du mur sud) raccordée aux chemins voisins à l'ouest et au sud, en passant devant le coin quand le raccord couperait la cella ; nœuds marqués et arêtes à la référence du temple : une passe retire d'abord ce qu'elle avait ajouté, une deuxième ne change rien, et le retrait rend exactement le fichier de `build_nav.py` (vérifié).
+
+**Outil de capture** : `tools/shot.sh` (et `play.sh`, `proto.sh`, `sounds.sh`, `ui.sh`) lançait le serveur par `npx`, dont l'arrêt laissait le serveur `node` ouvert ; une capture suivante tombant sur le même port photographiait une ancienne construction (c'est arrivé ici pour une capture « avant », refaite). Le serveur est maintenant lancé directement, et son arrêt est effectif.
+
+**Tests** : cella de 15,5 à 17,5 m, murs de 1,6 à 3 m, hauts de 18 à 24 m ; on passe par chaque arche, pas à travers un mur ; arbres et mur OpenStreetMap retirés ; la boucle des passants entre dans la cella sans traverser un mur ; budget de triangles et éclairage de nuit.
+
+**Limites** : les positions des ouvertures sont approchées (photos de biais) ; les baies hautes sont toutes traversantes ; pas de clôture ni de panneaux autour.
+
+![Depuis le sud-ouest, avant : un mur fermé et trois faux arbres](captures/d139-janus-avant.jpg)
+![Depuis le sud-ouest, après, comme la photo](captures/d139-janus-apres.jpg)
+![Depuis l'intérieur, avant](captures/d139-janus-interieur-avant.jpg)
+![Depuis l'intérieur, après, comme la photo du matin](captures/d139-janus-interieur.jpg)
+![La nuit, avant](captures/d139-janus-nuit-avant.jpg)
+![La nuit, après](captures/d139-janus-nuit.jpg)
+![Dans son pré, avant](captures/d139-janus-pre-avant.jpg)
+![Dans son pré, après](captures/d139-janus-pre.jpg)
+![De loin, détail à 120 m](captures/d139-janus-loin.jpg)
+![La navigation, avant et après : la boucle par les arches](captures/d139-janus-navigation.jpg)

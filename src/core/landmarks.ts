@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, Site, Tree } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, JanusSite, JanusWall, Site, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -118,8 +118,59 @@ export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, tree
   const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
   // Théâtre romain (D133) : rien ne pousse dans la cavea, l'orchestre ni sur la scène (les arbres du sommet restent).
   const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
-  if (!basins.length && !theatres.length) return [...trees];
-  return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y)));
+  // Temple de Janus (D139) : les « arbres » de 20 m posés sur ses murs étaient les murs eux-mêmes vus par le LiDAR.
+  const temples = (kinds?.sites ?? []).filter((s): s is JanusSite => s.t === "janus");
+  if (!basins.length && !theatres.length && !temples.length) return [...trees];
+  return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
+    && temples.every((t) => !inJanus(t, x, y, 1)));
+}
+
+/** Murs et clôtures de la tuile, sauf ceux qu'un monument remplace (le mur OpenStreetMap fermé du temple de Janus, D139). */
+export function wallsOutsideMonuments(kinds: { sites: Site[] } | undefined, walls: readonly Wall[]): Wall[] {
+  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "janus" ? [s.wall] : [])));
+  return gone.size ? walls.filter((w) => !gone.has(w.id)) : [...walls];
+}
+
+// --- Temple de Janus (D139) ---------------------------------------------------------------------------------------------------------
+
+/** Mur debout du temple : repère local (s le long du mur, depuis le coin extérieur commun ; t en travers, de tA à tB), de d0 à d1. */
+export interface JanusSlab {
+  f: Frame;
+  d0: number;
+  d1: number;
+  tA: number;
+  tB: number;
+  wall: JanusWall;
+}
+
+/** Les deux murs debout : `S` le long de s ; `W` le long de t, à partir de la face intérieure de `S` (le coin appartient à `S`). */
+export function janusSlabs(s: JanusSite): JanusSlab[] {
+  const [Ls, Lt] = s.L, [twS, twW] = s.tw;
+  return [
+    { f: frameOf(s.o[0], s.o[1], s.a, 1, 1), d0: 0, d1: Ls, tA: 0, tB: twS, wall: s.S },
+    { f: frameOf(s.o[0], s.o[1], s.a + Math.PI / 2, 1, 1), d0: twS, d1: Lt, tA: -twW, tB: 0, wall: s.W },
+  ];
+}
+
+/** Dans le carré de la cella (élargi de `margin`) ? */
+export function inJanus(s: JanusSite, x: number, y: number, margin = 0): boolean {
+  const dx = x - s.o[0], dy = y - s.o[1], c = Math.cos(s.a), n = Math.sin(s.a);
+  const ls = dx * c + dy * n, lt = -dx * n + dy * c;
+  return ls > -margin && ls < s.L[0] + margin && lt > -margin && lt < s.L[1] + margin;
+}
+
+/** Morceaux pleins des murs du temple, entre les arches traversantes : obstacles (on passe par les arches). */
+export function janusRings(s: JanusSite): number[][] {
+  const out: number[][] = [];
+  for (const sl of janusSlabs(s)) {
+    const cuts = [sl.d0, ...sl.wall.arches.flatMap(([c, w]) => [c - w / 2, c + w / 2]), sl.d1].filter((v) => v >= sl.d0 && v <= sl.d1).sort((a, b) => a - b);
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const a = cuts[i]!, b = cuts[i + 1]!, m = (a + b) / 2;
+      if (b - a < 0.05 || sl.wall.arches.some(([c, w]) => Math.abs(m - c) < w / 2)) continue;
+      out.push([at(sl.f, a, sl.tA), at(sl.f, b, sl.tA), at(sl.f, b, sl.tB), at(sl.f, a, sl.tB)].flat());
+    }
+  }
+  return out;
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
@@ -212,10 +263,11 @@ export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): 
   return { frame, g: site.gm ? m.g : ground, height, openings, piers: m.piers, m, gallery };
 }
 
-/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour. */
+/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour, murs du temple de Janus. */
 export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
   const out: number[][] = [];
   for (const s of kinds?.sites ?? []) {
+    if (s.t === "janus") out.push(...janusRings(s));
     if (s.t !== "gate") continue;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;

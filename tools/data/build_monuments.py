@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -9,7 +9,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           silhouettes lointaines (lod/<tuile>.json) ; fontaine (modèle `fountain`, D131) : site `fountain` de la tuile où elle se trouve ;
           théâtre romain (modèle `theatre`, D133) : site `theatre`, bâtiment BD TOPO masqué ; revêtement des pistes (`tracks`, D133) ;
           portes romaines (modèle `gate`, D137, D138) : champ `gm` du site `gate` (écrit par build_kinds.py) et silhouette lointaine ;
-          église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine.
+          église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
+          temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -837,6 +838,154 @@ def chapel(tid, bid, b, spec, k, kinds_all):
     return True, lod
 
 
+def simplify(pts, tol):
+    """Douglas-Peucker sur une polyligne (d, z)."""
+    if len(pts) < 3:
+        return list(pts)
+    (x0, y0), (x1, y1) = pts[0], pts[-1]
+    L = math.hypot(x1 - x0, y1 - y0) or 1e-9
+    dist = [abs((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0)) / L for x, y in pts[1:-1]]
+    i = int(np.argmax(dist)) + 1
+    if dist[i - 1] <= tol:
+        return [pts[0], pts[-1]]
+    return simplify(pts[:i + 1], tol)[:-1] + simplify(pts[i:], tol)
+
+
+def measure_janus(spec, wall):
+    """Temple de Janus (D139) : cella carrée, contour OpenStreetMap (voie `wall` de la tuile). Les murs encore debout sont les côtés dont le
+    MNS médian sur l'axe dépasse 6 m ; leur coin commun est l'origine, le repère suit le premier (s) puis le second (t). Au MNS : faces
+    extérieure et intérieure de chaque mur debout (profil médian en travers, à mi-hauteur : le relevé est flou), profil du dessus le long de l'axe (plus
+    haut point de la section, tous les 50 cm à 50 cm des bouts, médiane glissante sur 2,5 m, simplifié à 1,5 m près ; les photos montrent un dessus irrégulier mais pas hérissé) ; terre-plein intérieur (médiane du MNS à plus de 3,5 m des murs) et
+    souches des murs arasés (médiane sur leur axe). Longueur de chaque mur : là où son dessus retombe sous la moitié de sa médiane
+    (bouts cassés net ; le contour OpenStreetMap est plus petit). Sol : médiane du MNT à 5-9 m autour du carré. Ouvertures : photos (`manual.json`)."""
+    P = pairs(wall["pts"])[:4]
+    x0 = min(q[0] for q in P) - 12
+    y0 = min(q[1] for q in P) - 12
+    x1 = max(q[0] for q in P) + 12
+    y1 = max(q[1] for q in P) + 12
+    key = f"janus_{wall['id']}"
+    mns = Raster("MNS", key, math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1))
+    mnt = Raster("MNT", key, math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1))
+    cx, cy = sum(q[0] for q in P) / 4, sum(q[1] for q in P) / 4
+    ring = [(cx + r * math.cos(th), cy + r * math.sin(th)) for r in (13, 15) for th in np.arange(0, 2 * math.pi, math.pi / 24)]
+    g = float(np.median([mnt(*q) for q in ring]))
+    sides = []
+    for i in range(4):
+        a, b = P[i], P[(i + 1) % 4]
+        L = math.dist(a, b)
+        med = float(np.median([mns(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k) for k in np.linspace(0.15, 0.85, 15)
+                               for _ in [0]] + [0])) - g
+        # L'axe OSM n'est pas forcément sur le mur : on prend le meilleur décalage vers l'intérieur.
+        n = ((cx - (a[0] + b[0]) / 2), (cy - (a[1] + b[1]) / 2))
+        nl = math.hypot(*n)
+        n = (n[0] / nl, n[1] / nl)
+        med = max(float(np.median([mns(a[0] + (b[0] - a[0]) * k + n[0] * o, a[1] + (b[1] - a[1]) * k + n[1] * o) for k in np.linspace(0.15, 0.85, 15)])) - g
+                  for o in np.arange(-1, 3.01, 0.25))
+        sides.append((i, med, L))
+    up = [i for i, med, _ in sides if med > 6]
+    if len(up) != 2 or (up[1] - up[0]) % 4 not in (1, 3):
+        raise SystemExit(f"temple de Janus : murs debout inattendus {sides}")
+    i0, i1 = (up[0], up[1]) if (up[1] - up[0]) % 4 == 1 else (up[1], up[0])
+    O = P[i1]  # coin commun : fin du côté i0, début du côté i1
+    # Repère : s le long du mur i1 (depuis O), t le long du mur i0 vers son début (depuis O).
+    A, B = P[(i1 + 1) % 4], P[i0]
+    ua = ((A[0] - O[0]) / math.dist(O, A), (A[1] - O[1]) / math.dist(O, A))
+    va = (-ua[1], ua[0])
+    if (B[0] - O[0]) * va[0] + (B[1] - O[1]) * va[1] < 0:
+        raise SystemExit("temple de Janus : repère non direct")
+    Ls, Lt = math.dist(O, A), math.dist(O, B)
+    XY = lambda s, t: (O[0] + ua[0] * s + va[0] * t, O[1] + ua[1] * s + va[1] * t)
+
+    def faces(along_s):
+        """Faces du mur couché le long de s (along_s) ou de t : bornes de la section à plus de 6 m."""
+        L = Ls if along_s else Lt
+        cs = np.arange(-3, 5.01, 0.25)
+        prof = [float(np.median([mns(*(XY(d, c) if along_s else XY(c, d))) for d in np.arange(3, L - 3, 0.5)])) - g for c in cs]
+        k = int(np.argmax(prof))
+        half = prof[k] / 2  # mi-hauteur : le relevé (0,5 m) est flou sur les faces
+        j0, j1 = k, k
+        while j0 > 0 and prof[j0 - 1] > half:
+            j0 -= 1
+        while j1 + 1 < len(cs) and prof[j1 + 1] > half:
+            j1 += 1
+        return float(cs[j0]) - 0.125, float(cs[j1]) + 0.125
+
+    tS0, tS1 = faces(True)   # mur le long de s : épaisseur en t
+    sW0, sW1 = faces(False)  # mur le long de t : épaisseur en s
+    # Nouvelle origine au coin extérieur mesuré.
+    O = XY(sW0, tS0)
+    Ls, Lt = Ls - sW0, Lt - tS0
+    XY = lambda s, t: (O[0] + ua[0] * s + va[0] * t, O[1] + ua[1] * s + va[1] * t)
+    twS, twW = tS1 - tS0, sW1 - sW0
+    # Longueurs : là où le dessus du mur retombe sous la moitié de sa médiane (bout cassé net), près du coin OpenStreetMap.
+    def end(along_s, L, tw):
+        hz = lambda d: max(mns(*(XY(d, c) if along_s else XY(c, d))) for c in np.arange(0.25, tw - 0.24, 0.25)) - g
+        half = float(np.median([hz(d) for d in np.arange(2, L - 2, 1.0)])) / 2
+        return next(float(d) for d in np.arange(L - 4, L + 4, 0.25) if hz(d) < half)
+    Ls, Lt = end(True, Ls, twS), end(False, Lt, twW)
+
+    def top(along_s):
+        L, tw = (Ls, twS) if along_s else (Lt, twW)
+        ds = list(np.arange(0.5, L - 0.49, 0.5))
+        zs = [max(mns(*(XY(d, c) if along_s else XY(c, d))) for c in np.arange(0.25, tw - 0.24, 0.25)) - g for d in ds]
+        zs = [float(np.median(zs[max(0, i - 2):i + 3])) for i in range(len(zs))]  # médiane glissante sur 2,5 m
+        pts = [(0.0, zs[0])] + list(zip(map(float, ds), zs)) + [(float(L), zs[-1])]
+        return [[round(d, 2), round(z, 1)] for d, z in simplify(pts, 1.5)]
+
+    inner = [mns(*XY(s, t)) for s in np.arange(twW + 3.5, Ls - 3.5, 0.5) for t in np.arange(twS + 3.5, Lt - 3.5, 0.5)]
+    pod = float(np.median(inner)) - g
+    low = float(np.median([mns(*XY(Ls - 1, t)) for t in np.arange(3, Lt - 3, 0.5)] + [mns(*XY(s, Lt - 1)) for s in np.arange(3, Ls - 3, 0.5)])) - g
+    r2 = lambda q: round(float(q), 2)
+    site = {"t": "janus", "n": spec["name"], "o": [r2(O[0]), r2(O[1])], "a": round(math.atan2(ua[1], ua[0]), 4), "L": [r2(Ls), r2(Lt)],
+            "tw": [r2(twS), r2(twW)], "g": r2(g), "pod": r2(pod), "low": r2(low), "wall": wall["id"],
+            "S": dict(spec["walls"]["S"], top=top(True)), "W": dict(spec["walls"]["W"], top=top(False)), "putlog": spec["putlog"]}
+    if spec.get("light"):
+        site["light"] = 1
+    return site
+
+
+def janus(spec, world):
+    """Écrit le site `janus` dans kinds/<tuile>.json (créé s'il n'existe pas, et ajouté à l'index) et sa silhouette lointaine. Rend
+    (tuile des types si elle change, tuile des silhouettes si elle change)."""
+    for m in world["tiles"]:
+        path = c.OUT / "tiles" / f"{m['id']}.json"
+        if not path.exists():
+            continue
+        w = next((q for q in json.loads(path.read_text()).get("walls", []) if q["id"] == spec["osm"]), None)
+        if w:
+            break
+    else:
+        print(f"  temple : voie {spec['osm']} absente des murs des tuiles")
+        return None, None
+    tid = m["id"]
+    site = measure_janus(spec, w)
+    hS = max(q[1] for q in site["S"]["top"])
+    hW = max(q[1] for q in site["W"]["top"])
+    print(f"  {site['n']} : cella de {site['L'][0]} × {site['L'][1]} m, murs de {site['tw'][0]} / {site['tw'][1]} m d'épaisseur, jusqu'à"
+          f" {hS} / {hW} m ; terre-plein à {site['pod']} m, souches à {site['low']} m (sol {site['g']})")
+    a, (ox, oy) = site["a"], site["o"]
+    xy = lambda s, t: [round(ox + math.cos(a) * s - math.sin(a) * t, 1), round(oy + math.sin(a) * s + math.cos(a) * t, 1)]
+    Ls, Lt = site["L"]
+    twS, twW = site["tw"]
+    med = lambda tp: site["g"] + float(np.median([q[1] for q in tp]))
+    polys = [([xy(0, 0), xy(Ls, 0), xy(Ls, twS), xy(0, twS)], med(site["S"]["top"]), med(site["S"]["top"])),
+             ([xy(0, twS), xy(twW, twS), xy(twW, Lt), xy(0, Lt)], med(site["W"]["top"]), med(site["W"]["top"]))]
+    lod = tid if replace_lod(tid, "temple-janus", polys, {"w": "#c59f6c", "t": "#8f8c4e", "m": "terrasse", "a": "medieval", "k": zlib.crc32(b"temple-janus")}) else None
+    kp = KINDS / f"{tid}.json"
+    k = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+    sites = [q for q in k["sites"] if q.get("t") != "janus"] + [site]
+    if sites == k["sites"]:
+        return None, lod
+    k["sites"] = sites
+    kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+    index = json.loads((KINDS / "index.json").read_text())
+    if tid not in index["tiles"]:
+        index["tiles"] = sorted(index["tiles"] + [tid])
+    index["stats"]["sites"]["janus"] = 1
+    (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    return tid, lod
+
+
 def track_surfaces(fixes):
     """Revêtement des pistes d'après photo (`tracks` de manual.json) : la piste de kinds/<tuile>.json dont un sommet est à moins de 15 m
     du point donné prend `s` (« dirt » : terre battue, dessinée rouge-brun au lieu du rouge des pistes synthétiques). Rend les tuiles changées."""
@@ -894,6 +1043,11 @@ def main():
             tid, lod = gate(spec, kinds_all, ring_of)
             if tid:
                 changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "janus":
+            _, lod = janus(spec, world)
             if lod:
                 changed_lod.add(lod)
             continue
