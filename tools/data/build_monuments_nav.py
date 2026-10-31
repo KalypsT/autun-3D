@@ -135,7 +135,7 @@ def shop_pois(index):
     de super-tuiles réécrites.
 
     Commerce d'OpenStreetMap dont la photo change le mur d'entrée (`poi` des `fronts`, Lidl et pharmacie, D143 ; But, Bricomarché, Intermarché et
-    Jardinerie, D144 ; `poiOffset` : mètres de plus devant le mur, pour une entrée en saillie ; `poiClear` : rayon (2 m par défaut) où l'ancien point est retiré) : son ancien point
+    Jardinerie, D144 ; `pois` : une entrée par unité des galeries, [mur, abscisse], D145 ; `poiOffset` : mètres de plus devant le mur, pour une entrée en saillie ; `poiClear` : rayon (2 m par défaut) où l'ancien point est retiré) : son ancien point
     « commerce » (à moins de 2 m du contour, dans toute super-tuile qu'il touche) est retiré, le nouveau posé comme ci-dessus."""
     from shapely.geometry import LineString, Point, Polygon
     fronts = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text()).get("fronts", {})
@@ -153,20 +153,24 @@ def shop_pois(index):
                 continue
             fi = next(f for f in tile["fiches"] if f["id"] == b["id"])
             entry = wanted.pop(b["id"])
-            w = fi["walls"][entry["wall"]]
             ring = b["ring"]
-            (ax, ay), (bx, by) = (ring[2 * w["a"]], ring[2 * w["a"] + 1]), (ring[2 * w["b"]], ring[2 * w["b"] + 1])
-            mx, my = (ax + bx) / 2, (ay + by) / 2
-            nx, ny = -(by - ay), bx - ax
-            n = math.hypot(nx, ny)
-            if Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)]).contains(Point(mx + nx / n, my + ny / n)):
-                nx, ny = -nx, -ny
-            off = 0.8 + entry.get("poiOffset", 0.0)  # D144 : le pavillon de la Jardinerie avance de 2,4 m devant son mur
-            x, y = round(mx + nx / n * off, 1), round(my + ny / n * off, 1)
-            cid = cell_of(x, y, index)
             poly = Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)])
+            # Un point par entrée : le milieu du mur d'entrée, ou chaque `pois` [mur, abscisse en mètres depuis le début du mur] (galeries, D145).
+            spots = [tuple(q) for q in entry["pois"]] if "pois" in entry else [(entry["wall"], None)]  # `pois` vide : aucun point, seulement le retrait des anciens
+            placed = []
+            for wi, along in spots:
+                w = fi["walls"][wi]
+                (ax, ay), (bx, by) = (ring[2 * w["a"]], ring[2 * w["a"] + 1]), (ring[2 * w["b"]], ring[2 * w["b"] + 1])
+                t = 0.5 if along is None else along / math.hypot(bx - ax, by - ay)
+                mx, my = ax + (bx - ax) * t, ay + (by - ay) * t
+                nx, ny = -(by - ay), bx - ax
+                n = math.hypot(nx, ny)
+                if poly.contains(Point(mx + nx / n, my + ny / n)):
+                    nx, ny = -nx, -ny
+                off = 0.8 + entry.get("poiOffset", 0.0)  # D144 : le pavillon de la Jardinerie avance de 2,4 m devant son mur
+                placed.append((round(mx + nx / n * off, 1), round(my + ny / n * off, 1)))
             if entry.get("poi"):
-                for oc in {cell_of(ring[i], ring[i + 1], index) for i in range(0, len(ring), 2)} | {cid}:
+                for oc in {cell_of(ring[i], ring[i + 1], index) for i in range(0, len(ring), 2)} | {cell_of(x, y, index) for x, y in placed}:
                     op = NAV / f"{oc}.json"
                     otext = op.read_text()
                     odoc = json.loads(otext)
@@ -177,26 +181,28 @@ def shop_pois(index):
                         op.write_text(onew)
                         index["cells"] = [dict(e, bytes=len(onew), poi=len(odoc["poi"]) // 5) if e["id"] == oc else e for e in index["cells"]]
                         (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
-            path = NAV / f"{cid}.json"
-            text = path.read_text()
-            doc = json.loads(text)
-            G = Graph(doc["ped"])
-            # Files des trottoirs, chemins, rues piétonnes et places (comme build_nav.py).
-            lines = [LineString(e["pts"]) for e in G.edges if e["attr"][0] in (0, 5, 7, 9) and len(e["pts"]) >= 2]
-            near_line = min(lines, key=lambda ln: ln.distance(Point(x, y)))
-            near = near_line.interpolate(near_line.project(Point(x, y)))
-            dist = Point(x, y).distance(near)
-            poi = [2, x, y, round(math.atan2(near.x - x, near.y - y), 2) if dist > 0.05 else 0.0, min(255, round(dist * 10))]
-            P = doc["poi"]
-            keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 2 and math.hypot(P[i + 1] - x, P[i + 2] - y) < 0.3)]
-            doc["poi"] = [v for q in keep + [poi] for v in q]
-            new = json.dumps(doc, separators=(",", ":"))
-            if new != text:
-                path.write_text(new)
-                index["cells"] = [dict(e, bytes=len(new), poi=len(doc["poi"]) // 5) if e["id"] == cid else e for e in index["cells"]]
-                (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
-                done += 1
-            print(f"{(fi['ground'].get('shops') or [{'name': b['id']}])[0]['name']} : point « commerce » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
+            for x, y in placed:
+                cid = cell_of(x, y, index)
+                path = NAV / f"{cid}.json"
+                text = path.read_text()
+                doc = json.loads(text)
+                G = Graph(doc["ped"])
+                # Files des trottoirs, chemins, rues piétonnes et places (comme build_nav.py).
+                lines = [LineString(e["pts"]) for e in G.edges if e["attr"][0] in (0, 5, 7, 9) and len(e["pts"]) >= 2]
+                near_line = min(lines, key=lambda ln: ln.distance(Point(x, y)))
+                near = near_line.interpolate(near_line.project(Point(x, y)))
+                dist = Point(x, y).distance(near)
+                poi = [2, x, y, round(math.atan2(near.x - x, near.y - y), 2) if dist > 0.05 else 0.0, min(255, round(dist * 10))]
+                P = doc["poi"]
+                keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 2 and math.hypot(P[i + 1] - x, P[i + 2] - y) < 0.3)]
+                doc["poi"] = [v for q in keep + [poi] for v in q]
+                new = json.dumps(doc, separators=(",", ":"))
+                if new != text:
+                    path.write_text(new)
+                    index["cells"] = [dict(e, bytes=len(new), poi=len(doc["poi"]) // 5) if e["id"] == cid else e for e in index["cells"]]
+                    (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+                    done += 1
+                print(f"{(fi['ground'].get('shops') or [{'name': b['id']}])[0]['name']} : point « commerce » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
     return done
 
 

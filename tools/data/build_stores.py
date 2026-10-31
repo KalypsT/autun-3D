@@ -1,4 +1,4 @@
-"""Magasins d'après photo (D143, D144) : plan du toit mesuré au LiDAR et modèle du magasin (Lidl, pharmacie, But, Bricomarché, Intermarché, Jardinerie) dans public/data/kinds.
+"""Magasins d'après photo (D143, D144, D145) : plan du toit mesuré au LiDAR et modèle du magasin (Lidl, pharmacie, But, Bricomarché, Intermarché, Jardinerie, galeries marchandes de Bellevue, GiFi, Action) dans public/data/kinds.
 
 Usage : python3 tools/data/build_stores.py     (après build_kinds.py puis build_carts.py, qui réécrivent kinds ; puis relancer celle-ci)
 Entrées : `stores` de tools/data/manual.json (lecture des photos), tiles/*.json (contours), kinds/*.json (le type du bâtiment : grande
@@ -135,7 +135,9 @@ def main():
             box = (math.floor(min(xs) - MARGIN), math.floor(min(ys) - MARGIN), math.ceil(max(xs) + MARGIN), math.ceil(max(ys) + MARGIN))
             mns = Raster("MNS", b["id"], *box)
             roof, rms, n = fit_roof(b["ring"], mns, specs[b["id"]].get("fit", {}).get("half"))
-            store = {k: v for k, v in specs[b["id"]].items() if k not in ("photo", "fit")}
+            if "par" in specs[b["id"]]:
+                roof[3] = specs[b["id"]]["par"]  # D145 : l'auvent vitré au bord du contour fausse la bande de mesure de l'acrotère
+            store = {k: v for k, v in specs[b["id"]].items() if k not in ("photo", "fit", "par")}
             if tid in carports and designated[tid] == b["id"]:
                 store["carports"] = sorted(carports[tid], key=lambda q: (q[1], q[0]))
             new = dict(e, roof=roof, store=store)

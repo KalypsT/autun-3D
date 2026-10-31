@@ -4869,12 +4869,12 @@
     -1770.0,
     2188.0
    ],
-   "buildings": 11,
+   "buildings": 15,
    "trees": 136,
    "walls": 23,
    "furniture": 12,
-   "lod": 11,
-   "bytes": 125948
+   "lod": 15,
+   "bytes": 134785
   },
   {
    "id": "19_43",
@@ -5231,7 +5231,7 @@
    "walls": 70,
    "furniture": 35,
    "lod": 18,
-   "bytes": 119742
+   "bytes": 119761
   },
   {
    "id": "18_44",
@@ -5515,12 +5515,12 @@
     -2270.0,
     2688.0
    ],
-   "buildings": 0,
+   "buildings": 1,
    "trees": 58,
    "walls": 5,
    "furniture": 4,
-   "lod": 0,
-   "bytes": 9809
+   "lod": 1,
+   "bytes": 11575
   },
   {
    "id": "17_45",

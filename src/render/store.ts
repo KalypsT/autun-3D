@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { Building, BuildingKind, HeightField, StoreModel } from "../data/types";
-import { BRICO_PORTAL_O, canopyPosts, carportShape, edgeFrame, PAVILION_DEPTH, type EdgeFrame } from "../core/landmarks";
+import type { Arcade, Building, BuildingKind, HeightField, StoreModel, StoreUnit } from "../data/types";
+import { arcadePosts, BRICO_PORTAL_O, canopyPosts, carportShape, edgeFrame, GIFI_CANOPY_D, PAVILION_DEPTH, playLayout, playPoint, type EdgeFrame } from "../core/landmarks";
 import { hash01, toThree, type MeshBuilder, type Vec3 } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
 
@@ -9,6 +9,7 @@ import type { LandmarkSinks } from "./landmarks";
  * hachurée) et la pharmacie voisine (galerie à poteaux, vitrage en retrait, bandeau à croix vertes), plus l'abri à chariots du Lidl.
  * D144 : la zone commerciale de Bellevue : Bricomarché (auvent orange, portique), Intermarché (lames rouges, store du Drive, abris solaires),
  * But (bloc central, auvent, enseigne carrée) et Jardinerie d'Autun (pavillons vitrés à pignon, bannière).
+ * D145 : les galeries marchandes de Bellevue (unités à enseigne, auvent vitré, aires de jeux), GiFi (tour d'entrée orange) et Action (bandeau bleu).
  * Style « affiche » : aplats, vitrages en dégradé, lettres de l'atlas. Tout s'écrit dans les maillages de la tuile (aucun appel de dessin de plus).
  */
 
@@ -578,6 +579,230 @@ function jardinerie(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: 
   });
 }
 
+// --- Galeries marchandes de Bellevue, GiFi, Action (D145) ----------------------------------------------------------------------------
+
+const PIER = C("#4a4e54");
+const CANOPY_TOP = C("#9fbab4"), CANOPY_UNDER = C("#dde8e5"), CANOPY_GREEN = C("#47674c"), CANOPY_RIB = C("#52705a");
+const BOARD = C("#9a6b3a");
+const GIFI_ORANGE = C("#e0501c");
+
+/** Dalle horizontale dans le repère (s de s0 à s1, o de o0 à o1), de l'altitude za (en s0) à zb (en s1) : dessus (face vers le haut) ou dessous. */
+function slab(mb: MeshBuilder, f: EdgeFrame, s0: number, s1: number, o0: number, o1: number, za: number, zb: number, color: THREE.Color, up: boolean): void {
+  const c = [pt(f, s0, o0), pt(f, s0, o1), pt(f, s1, o1), pt(f, s1, o0)];
+  const z = [za, za, zb, zb];
+  const v = c.map(([x, y], i) => toThree(x, y, z[i]!)) as [Vec3, Vec3, Vec3, Vec3];
+  if (up) mb.quad(v[0], v[1], v[2], v[3], [0, 1, 0], color);
+  else mb.quad(v[3], v[2], v[1], v[0], [0, -1, 0], color);
+}
+
+/**
+ * Unités d'une galerie ou d'un magasin : sur chaque unité, vitrine à meneaux et porte coulissante (ou mur plein à porte étroite, ou vitrine condamnée),
+ * bandeau d'enseigne coloré avec son nom (allumé la nuit), piles sombres entre les unités (galeries).
+ */
+function unitFronts(sinks: LandmarkSinks, b: Building, units: StoreUnit[], terrain: HeightField, o: { piers: boolean; glassH: number; signZ: number; signH: number }): void {
+  const mb = sinks.solid;
+  for (const [e, s0, s1, name, bg, fg, mode = "glass", doorAt] of units) {
+    const f = edgeFrame(b.ring, e);
+    const zg = (s: number, off = 0): number => terrain.heightAt(...pt(f, s, off));
+    const top = (s: number): number => topAt(b, e, s, f.len);
+    const w = s1 - s0, mid = (s0 + s1) / 2;
+    const FR = C("#2c3034");
+    if (o.piers) {
+      plate(mb, f, s0, s0 + 0.7, zg(s0) - 0.2, top(s0), 0.05, PIER);
+      if (!units.some((u) => u[0] === e && Math.abs(u[1] - s1) < 0.3)) plate(mb, f, s1 - 0.7, s1, zg(s1) - 0.2, top(s1), 0.05, PIER);
+    }
+    const g0 = s0 + (o.piers ? 0.9 : 0.4), g1 = s1 - (o.piers ? 0.9 : 0.4);
+    const dc = s0 + (doorAt ?? w / 2), dw = Math.min(2.6, w - 2);
+    if (mode === "glass" && g1 - g0 > 2) {
+      storefront(sinks, f, zg, g0, g1, o.glassH, 2.6, FR, 0.85, 0.08);
+      if (dw > 1.6) slidingDoor(sinks, f, zg, dc, dw, o.glassH - 0.5, FR, 0.11);
+    } else if (mode === "bay" && g1 - g0 > 1) {
+      storefront(sinks, f, zg, g0, g1, o.glassH, 3.0, FR, 0.8, 0.08);
+    } else if (mode === "garage") {
+      // Porte d'atelier sectionnelle : panneau gris, rangée de hublots, joints, montants sombres.
+      const gw = Math.min(3.6, w - 0.8), z = zg(mid), D = C("#8d959b");
+      plate(mb, f, mid - gw / 2, mid + gw / 2, z, z + 3.0, 0.09, D);
+      glass(sinks, f, mid - gw / 2 + 0.2, mid + gw / 2 - 0.2, z + 1.9, z + 2.6, 0.1, 0.5);
+      for (const zz of [0.9, 1.9, 2.6]) plate(mb, f, mid - gw / 2, mid + gw / 2, z + zz, z + zz + 0.05, 0.11, FR);
+      for (const s of [mid - gw / 2, mid + gw / 2]) plate(mb, f, s - 0.07, s + 0.07, z, z + 3.05, 0.11, FR);
+    } else if (mode === "blank") {
+      // Mur plein : seulement le bandeau.
+    } else if (mode === "board" && g1 - g0 > 2) {
+      plate(mb, f, g0, g1, zg(mid) + 0.05, zg(mid) + o.glassH, 0.08, BOARD);
+      for (let s = g0 + 1.1; s < g1 - 0.5; s += 1.1) plate(mb, f, s - 0.03, s + 0.03, zg(s) + 0.05, zg(s) + o.glassH, 0.09, shade(BOARD, 0.75));
+    } else if (dw > 1.6) {
+      // Mur plein : une porte étroite avec son vitrage.
+      slidingDoor(sinks, f, zg, dc, Math.min(2.2, dw), o.glassH - 0.5, FR, 0.1);
+    }
+    if (bg) {
+      const col = C(bg), z0 = zg(mid) + o.signZ;
+      plate(mb, f, s0 + (o.piers ? 0.7 : 0.1), s1 - (o.piers ? 0.7 : 0.1), z0, z0 + o.signH, 0.1, col);
+      plate(sinks.glow, f, s0 + (o.piers ? 0.9 : 0.3), s1 - (o.piers ? 0.9 : 0.3), z0 + 0.1, z0 + o.signH - 0.1, 0.105, col.clone().lerp(C("#fff3d0"), 0.4));
+      if (name) {
+        const h = Math.max(0.3, Math.min(0.9, (w - 2.5) / 6.4, o.signH * 0.68));
+        label(sinks, f, mid, z0 + (o.signH - h) / 2, h, 0.12, name, fg);
+      }
+    }
+  }
+}
+
+/** Auvent vitré continu (D145) : dalle de verre teinté, dessous clair, nervures vertes tous les 6 m, poutre avant verte, poteaux fins verts au bord avant. */
+function arcade(mb: MeshBuilder, b: Building, a: Arcade, terrain: HeightField): void {
+  const [o0, o1] = a.o;
+  for (const run of a.runs) {
+    const [e, s0, s1] = run;
+    const f = edgeFrame(b.ring, e);
+    const za = terrain.heightAt(...pt(f, s0, 0)) + a.z, zb = terrain.heightAt(...pt(f, s1, 0)) + a.z;
+    const at = (s: number): number => za + ((zb - za) * (s - s0)) / (s1 - s0);
+    slab(mb, f, s0, s1, o0, o1, za, zb, CANOPY_TOP, true);
+    slab(mb, f, s0, s1, o0, o1, za - 0.25, zb - 0.25, CANOPY_UNDER, false);
+    // Poutre avant (face vers l'extérieur) et nervures posées sur le dessus.
+    vplate(mb, pt(f, s0, o1), pt(f, s1, o1), za - 0.3, zb - 0.3, za + 0.05, zb + 0.05, CANOPY_GREEN);
+    const posts = arcadePosts(b, { runs: [run], o: a.o, z: a.z });
+    posts.forEach(([x, y], i) => {
+      const s = s0 + 0.3 + ((s1 - s0 - 0.6) * i) / Math.max(1, posts.length - 1);
+      post(mb, x, y, terrain.heightAt(x, y) - 0.05, at(s) - 0.3, 0.07, CANOPY_GREEN);
+      // Jambe de force : ruban incliné du haut du poteau (1,8 m plus bas) au mur, sous la dalle, visible des deux côtés.
+      const q = (ss: number, o: number, z: number): P3 => [...pt(f, ss, o), z];
+      const zs = at(s) - 0.25;
+      const strut = [q(s - 0.05, o1 - 0.2, zs - 1.8), q(s + 0.05, o1 - 0.2, zs - 1.8), q(s + 0.05, o0 + 0.1, zs), q(s - 0.05, o0 + 0.1, zs)];
+      face(mb, strut, [f.tx, f.ty, 0], CANOPY_GREEN);
+      face(mb, strut, [-f.tx, -f.ty, 0], CANOPY_GREEN);
+      if (i > 0 && i < posts.length - 1) slab(mb, f, s - 0.05, s + 0.05, o0, o1, at(s - 0.05) + 0.01, at(s + 0.05) + 0.01, CANOPY_RIB, true);
+    });
+  }
+}
+
+/** Aire de jeux d'un parking (D145) : tapis de caoutchouc vert, tour de jeux à toit vert et toboggan argenté, trampoline enterré, banc rouge. */
+function playground(mb: MeshBuilder, p: [number, number, number], terrain: HeightField): void {
+  const l = playLayout(p), fr = l.frame;
+  const P = (u: number, v: number): [number, number] => playPoint(l, u, v);
+  const lay = (pts: [number, number][], lift: number, color: THREE.Color): void => {
+    const v = pts.map(([x, y]) => toThree(x, y, terrain.heightAt(x, y) + lift)) as [Vec3, Vec3, Vec3, Vec3];
+    mb.quad(v[0], v[1], v[2], v[3], [0, 1, 0], color);
+  };
+  const [mu, mv] = l.mat;
+  lay([P(-mu / 2, -mv / 2), P(mu / 2, -mv / 2), P(mu / 2, mv / 2), P(-mu / 2, mv / 2)].reverse(), 0.06, C("#5da06f"));
+  // Trampoline : disque sombre cerclé de gris, au ras du sol.
+  const [tu, tv, tr] = l.trampoline;
+  const ring = (r: number, lift: number, color: THREE.Color): void => {
+    const [cx, cy] = P(tu, tv), z = terrain.heightAt(cx, cy) + lift;
+    for (let i = 0; i < 10; i++) {
+      const a0 = (2 * Math.PI * i) / 10, a1 = (2 * Math.PI * (i + 1)) / 10;
+      mb.tri(toThree(cx, cy, z), toThree(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, z), toThree(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, z), [0, 1, 0], color);
+    }
+  };
+  ring(tr, 0.075, C("#8f979b"));
+  ring(tr * 0.75, 0.09, C("#2f3a36"));
+  // Repère (s = u, o vers la droite = -v) pour les pavés.
+  const f = planeFrame(fr.x, fr.y, fr.ux, fr.uy, mu);
+  const [wu, wv] = l.tower, z = terrain.heightAt(...P(wu, wv));
+  const GREEN = C("#2f9a54"), WOOD_BROWN = C("#7a5a3c");
+  for (const [du, dv] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]] as const) box(mb, f, wu + du - 0.06, wu + du + 0.06, -(wv + dv) - 0.06, -(wv + dv) + 0.06, z, z + 2.1, WOOD_BROWN);
+  box(mb, f, wu - 0.7, wu + 0.7, -(wv + 0.7), -(wv - 0.7), z + 1.1, z + 1.2, WOOD_BROWN);
+  box(mb, f, wu - 0.8, wu + 0.8, -(wv + 0.8), -(wv - 0.8), z + 2.1, z + 2.3, GREEN, shade(GREEN, 1.15));
+  // Toboggan : plan incliné du plancher au sol, deux rebords.
+  const [su, sv, sl] = l.slide;
+  const sp = (u: number, off: number, dz: number): P3 => [...P(u, sv + off), terrain.heightAt(...P(u, sv + off)) + dz];
+  face(mb, [sp(su, -0.25, 1.15), sp(su, 0.25, 1.15), sp(su + sl, 0.25, 0.12), sp(su + sl, -0.25, 0.12)], [0, 0, 1], C("#b2bac0"));
+  for (const sd of [-0.25, 0.25]) face(mb, [sp(su, sd, 1.15), sp(su, sd, 1.4), sp(su + sl, sd, 0.4), sp(su + sl, sd, 0.12)], [fr.vx * sd, fr.vy * sd, 0], C("#8f989e"));
+  // Banc rouge.
+  const [bu, bv] = l.bench, zb = terrain.heightAt(...P(bu, bv));
+  box(mb, f, bu - 0.8, bu + 0.8, -(bv + 0.2), -(bv - 0.2), zb + 0.4, zb + 0.5, C("#c0392b"), C("#d9503f"));
+  box(mb, f, bu - 0.7, bu - 0.6, -(bv + 0.15), -(bv - 0.15), zb, zb + 0.4, FRAME);
+  box(mb, f, bu + 0.6, bu + 0.7, -(bv + 0.15), -(bv - 0.15), zb, zb + 0.4, FRAME);
+}
+
+/** Galerie marchande : bardage bois miel entre des piles anthracite, bandeaux d'enseigne par unité, auvent vitré, aires de jeux. */
+function galerie(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  socle(sinks.solid, b, terrain);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: true, glassH: 3.5, signZ: 3.75, signH: 1.35 });
+  if (st.arcade) arcade(sinks.solid, b, st.arcade, terrain);
+  for (const p of st.play ?? []) playground(sinks.solid, p, terrain);
+}
+
+/** GiFi d'après photo : bardage gris à bande haute claire, tour d'entrée orange à enseigne « GiFi » et auvent bas sur deux poteaux, vitrage de part et d'autre. */
+function gifi(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const n = b.ring.length / 2;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  socle(mb, b, terrain);
+  for (let i = 0; i < n; i++) band(mb, b, i, terrain, 4.7, C("#c9cdd0"));
+  const [g0, g1] = st.glass;
+  storefront(sinks, f, zg, g0, g1, 3.2, 2.4, C("#33383c"), 0.8, 0.08);
+  if (st.tower) {
+    const [c, w, h] = st.tower, z = zg(c, 1.2), D = GIFI_CANOPY_D;
+    box(mb, f, c - w / 2, c + w / 2, 0, 1.2, zg(c) - 0.3, zg(c) + h, GIFI_ORANGE, shade(GIFI_ORANGE, 1.15));
+    plate(mb, f, c - w / 2, c + w / 2, zg(c) + h - 1.5, zg(c) + h - 1.1, 1.22, C("#ffd23a"));
+    plate(sinks.glow, f, c - w / 2 + 0.3, c + w / 2 - 0.3, zg(c) + h - 3.6, zg(c) + h - 1.7, 1.225, C("#ff8a4a"));
+    label(sinks, f, c, zg(c) + h - 3.4, 1.0, 1.23, "GiFi", "#ffffff");
+    const dw = st.door?.[1] ?? 4.8;
+    slidingDoor(sinks, f, zg, c, dw, 2.9, C("#33383c"), 1.24);
+    // Auvent d'entrée bas, orange, sur deux poteaux fins.
+    box(mb, f, c - dw / 2 - 0.8, c + dw / 2 + 0.8, 1.2, D, z + 3.3, z + 3.55, GIFI_ORANGE, shade(GIFI_ORANGE, 1.15), C("#d6d3cc"));
+    for (const s of [c - dw / 2 - 0.4, c + dw / 2 + 0.4]) box(mb, f, s - 0.07, s + 0.07, D - 0.27, D - 0.13, zg(s, D - 0.2) - 0.05, z + 3.3, C("#33383c"));
+  }
+}
+
+/** Action d'après photo : bandeau d'enseigne bleu au bout sud-ouest, entrée sous l'enseigne, puis des vitrines dont une condamnée par une planche. */
+function action(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  socle(sinks.solid, b, terrain);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.3, signZ: 3.9, signH: 1.5 });
+}
+
+const NORAUTO_BLUE = C("#1f3fc4"), NORAUTO_DARK = C("#16206a");
+
+/**
+ * Norauto d'après photos : mur blanc à bande sombre en haut de la façade, quatre portes d'atelier sous des bandeaux bleus (« Atelier » sur la deuxième),
+ * bloc d'entrée bleu un peu plus haut et en saillie (vitrage, porte coulissante, « Norauto »), grand panneau bleu sur le mur de droite.
+ */
+function norauto(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  const top = (s: number): number => topAt(b, st.e, s, f.len);
+  socle(mb, b, terrain);
+  vplate(mb, pt(f, 0, 0.05), pt(f, f.len, 0.05), top(0) - 0.35, top(f.len) - 0.35, top(0) + 0.02, top(f.len) + 0.02, NORAUTO_DARK);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.0, signZ: 3.6, signH: 1.0 });
+  if (st.block) {
+    const [b0, b1] = st.block, h = 0.9, zt = top((b0 + b1) / 2);
+    box(mb, f, b0, b1, 0, 0.5, zg((b0 + b1) / 2) - 0.2, zt + h, NORAUTO_BLUE, shade(NORAUTO_BLUE, 1.2));
+    const [g0, g1] = st.glass;
+    storefront(sinks, f, zg, g0, g1, 3.0, 2.8, C("#e6e8ea"), 0.9, 0.55);
+    if (st.door) slidingDoor(sinks, f, zg, st.door[0], st.door[1], 2.6, C("#e6e8ea"), 0.58);
+    plate(sinks.glow, f, b0 + 0.4, b1 - 0.4, zt - 2.0, zt + h - 0.2, 0.52, C("#3a5ce0"));
+    label(sinks, f, (b0 + b1) / 2, zt - 1.6, 1.1, 0.53, "Norauto", "#ffe14a");
+  }
+  if (st.panel) {
+    const [s0, s1, z0, z1] = st.panel, z = zg((s0 + s1) / 2);
+    plate(mb, f, s0 - 0.08, s1 + 0.08, z + z0 - 0.08, z + z1 + 0.08, 0.06, C("#c9ced2"));
+    plate(mb, f, s0, s1, z + z0, z + z1, 0.08, C("#2a4fbf"));
+  }
+}
+
+/** Rotonde d'entrée d'Espace Aubade : vitrage à poteaux bleus tout autour de l'arc, bandeau blanc arrondi au-dessus (« ENTRÉE »). */
+function rotonde(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const BLUE = C("#2948c4");
+  for (const [e, s0, s1, name] of st.units ?? []) {
+    const f = edgeFrame(b.ring, e);
+    const zg = (s: number, off = 0): number => terrain.heightAt(...pt(f, s, off));
+    const n = b.ring.length / 2;
+    storefront(sinks, f, zg, s0, s1, 3.0, 2.0, BLUE, 0.85, 0.06);
+    const z0 = zg((s0 + s1) / 2) + 3.0;
+    vplate(mb, pt(f, 0, 0.1), pt(f, f.len, 0.1), z0, z0, b.top[e % n]! + 0.05, b.top[(e + 1) % n]! + 0.05, C("#f6f6f4"));
+    if (name) label(sinks, f, (s0 + s1) / 2, z0 + 0.3, 0.32, 0.12, name, "#1f3fa8");
+  }
+}
+
+
+/** Espace Aubade et Comptoir des Fers : murs et toits à la couleur de chaque volume ; seules les enseignes, vitrages et portes d'atelier des `units` s'ajoutent. */
+function comptoir(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  socle(sinks.solid, b, terrain);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.6, signZ: 4.0, signH: 1.3 });
+}
+
 /** Entrée de la tuile : dessine le magasin d'après photo de ce bâtiment. */
 export function buildStore(sinks: LandmarkSinks, b: Building, kind: BuildingKind, terrain: HeightField, wall: THREE.Color): void {
   const st = kind.store;
@@ -589,6 +814,12 @@ export function buildStore(sinks: LandmarkSinks, b: Building, kind: BuildingKind
     case "intermarche": intermarche(sinks, b, st, terrain); break;
     case "but": but(sinks, b, st, terrain); break;
     case "jardinerie": jardinerie(sinks, b, st, terrain); break;
+    case "galerie": galerie(sinks, b, st, terrain); break;
+    case "gifi": gifi(sinks, b, st, terrain); break;
+    case "action": action(sinks, b, st, terrain); break;
+    case "comptoir": comptoir(sinks, b, st, terrain); break;
+    case "rotonde": rotonde(sinks, b, st, terrain); break;
+    case "norauto": norauto(sinks, b, st, terrain); break;
   }
   carports(sinks, st, terrain);
 }

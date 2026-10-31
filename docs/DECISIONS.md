@@ -2358,3 +2358,149 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d144-zone-apres.jpg)
 ![Vue du dessus, avant](captures/d144-haut-avant.jpg)
 ![Après](captures/d144-haut-apres.jpg)
+
+## 2026-10-31 — D145. La zone commerciale nord-ouest de Bellevue d'après photos : deux galeries marchandes, GiFi et Action
+
+**Demande de l'utilisateur** : modéliser d'après ses photos la partie nord-ouest de la zone commerciale de Bellevue (la partie sud-est est D144), par familles de gabarits, un style par famille et un modèle dédié seulement si nécessaire ; enquête d'abord (rien n'était modifié), puis plan validé (« Ok pour le reste ») : D145 traite les deux galeries, l'aile manquante, GiFi et Action ; D146 reprend Aubade et Norauto (photos reçues après le plan). Photos (captures Google Street View de juillet 2023 et juillet 2026, photos aériennes de l'utilisateur, capture Google Maps ; non versionnées, elles servent seulement à décrire).
+
+**Constat de l'enquête (avant toute modification)** :
+- Les enseignes des photos ne sont pas à x ≈ −2100 à −1900 mais plus au nord-ouest : deux galeries marchandes de part et d'autre d'un grand parking (OpenStreetMap 917804160), x de −2340 à −2160 et y de 2310 à 2545 ; GiFi et Action sont juste au sud-est de la première.
+- **Une aile entière manque** : au LiDAR, la galerie nord-est a une aile de 50 × 34 m au nord-ouest (Centrakor) que ni BD TOPO ni OpenStreetMap ne connaissent (l'orthophotographie, plus ancienne, y montre du gravier). Le repère « Centrakor » de Google Maps tombe dessus.
+- Les toits sont plats (pente de 0,1 à 0,3 %) ; les « croupes » de BD TOPO sont fausses (GiFi, galerie nord-est) et les hauteurs de BD TOPO sont de 0,5 à 2 m trop hautes. La bande de 4,6 m × 174 m « industrielle » de 10,4 m le long de la galerie sud-ouest est l'auvent vitré ; le jeu la dessinait en mur plein.
+
+**Dans les données** :
+- Galerie sud-ouest : BD TOPO `BATIMENT0000002222388078` (tuile 17_44, 8 sommets, 174 m en V de 25 m de large, 5 222 m², OpenStreetMap way 917804154 sans nom). Son auvent : `…2222388080` (789 m²), maintenant `hidden`.
+- Galerie nord-est : `…2222388083` (17_45, 2 229 m²) et `…2479786224` (1 477 m², sa fiche dit « dwelling »), OpenStreetMap way 917804153 sans nom ; plus l'aile `BATIMENT0000EXTRA0145`, ajoutée (tuile 16_45).
+- GiFi : `…0357310923` (17_44, 1 703 m², OpenStreetMap way 90417738). Action et ses voisins : `…0348857700` (17_44, 2 494 m² : Action way 661356779 de 956 m², way 90417761 de 1 514 m², nœud « Mangeons Frais »).
+- Le mur d'entrée de la fiche n'est pas l'arête du contour (D144) ; la galerie sud-ouest avait son entrée sur le mur de bout nord-ouest ; elle passe sur ses deux longs murs nord-est (murs 0 et 1, `also`).
+
+**Lecture des photos** (`stores`, `fronts`, `kinds`, `extra`) :
+- *Côté des photos* (déduit, confirmé par « Ok pour le reste ») : P3 (Intersport, Gémo) et P1 (Générale d'Optique…) depuis le parking nord-est de la galerie sud-ouest, P1 près de son bout sud-est ; P2 et P4 depuis le parking sud-ouest de la galerie nord-est ; GiFi de l'est-sud-est (mur 2 du contour, 48,5 m, le bâtiment bleu à droite est Action) ; Action du sud-sud-est (mur 1, 71,4 m, Action au bout sud-ouest). Indices : le repère Google Maps d'Intersport tombe au coin nord-ouest du contour, ceux de Maxi Zoo et de Maison de la Literie sur la galerie nord-est dans le même ordre que sur les photos, l'aire de jeux de la photo 4 est devant Maxi Zoo sur l'orthophotographie.
+- *Galeries* : bardage bois miel entre des piles gris anthracite, vitrines à meneaux sous des bandeaux d'enseigne colorés, auvent vitré continu (plus haut que le toit) sur poteaux fins verts. Enseignes, du sud-est au nord-ouest : Basic-Fit (carte seule, non vue sur photo), Générale d'Optique (vert), Studio Comme j'aime, SCHMIDT, Optical Center, une enseigne noire illisible, Chaussea (lecture douteuse), Gémo, Intersport (blanc, lettres bleues) ; du nord-ouest au sud-est : Centrakor (orange, d'après la carte), une unité sans enseigne lue, Maxi Zoo, Stokomani (vert), Maison de la Literie (bleu marine, lettres jaunes).
+- *GiFi* : bardage gris à bande haute claire, tour d'entrée orange au centre du mur, enseigne « GiFi », auvent d'entrée sur deux poteaux, vitrage de part et d'autre.
+- *Action* (photo de 2023) : bandeau bleu « ACTION » au bout sud-ouest, entrée sous l'enseigne, puis des vitrines, dont une condamnée par une planche.
+
+**Mesures** (LiDAR HD, MNS à 0,5 m, une deuxième passe ne réécrit rien) :
+- Plans de toit (`build_stores.py`) : tous plats à moins de 1 %, 5,5 à 6,7 m au-dessus du sol (galerie sud-ouest 6,6 m ; galerie nord-est 6,4 et 6,7 m ; aile 6,4 m ; GiFi 5,6 m ; Action 6,2 m). Acrotère de 20 cm imposé pour les deux galeries (`par` : l'auvent au bord du contour fausse la bande de mesure, 45 cm), 15 cm ailleurs.
+- **Auvents vitrés** (profils perpendiculaires au mur, relevé à la main de l'enquête, reporté dans `arcade` de `manual.json`) : dessus plat à 8,3 – 8,6 m au-dessus du sol, 3 m de profondeur côté sud-ouest de la galerie sud-ouest (continu sur ses 174 m), 2,5 m côté nord-est de la galerie nord-est (le contour BD TOPO empiète de 1,2 m sur l'auvent). Le verre renvoie en partie le LiDAR : ± 0,3 m.
+- **Aile manquante** : composante du MNS hors des contours BD TOPO ; 50,2 × 34 m (même profondeur que l'unité voisine), toit à 6,4 m ; deux sommets communs avec le mur nord-ouest de l'unité voisine.
+- Aires de jeux : deux îlots de parking à tapis vert sur l'orthophotographie (centres (−2230 ; 2458) et (−2260,5 ; 2398)).
+
+**Données** :
+- Nouvelle étape `tools/data/build_extras.py` (`extra` de `manual.json`, avant `build_carts.py`) : ajoute le bâtiment et sa fiche à la tuile de son centre (16_45, dont le compte de bâtiments passe de 0 à 1 dans `world.json`, pour que les autres étapes la lisent). Une régénération des tuiles (`build_tiles.py`) la retire : relancer l'étape.
+- `stores` : trois styles (`galerie`, `gifi`, `action`) et des champs (`units`, `arcade`, `play`, `tower`, `par`) ; `kinds` : l'aile (`retail`), l'auvent sud-ouest (`hidden`) ; `fronts` : murs d'entrée, `also`, et `pois` : un point « commerce » par unité (mur, abscisse en mètres).
+- Chaîne : `build_extras.py`, `build_carts.py`, `build_stores.py`, `build_shop_fronts.py`, `build_monuments_nav.py` (étendue : `pois`). Rejouée deux fois : fichiers identiques (somme de contrôle de `public/data`). `build_kinds.py` et `build_nav.py` n'ont pas été relancés.
+
+**Rendu** (`src/render/store.ts` étendu ; `arcadePosts`, `playLayout`, `playCircles`, `storeCircles` dans `src/core/landmarks.ts`) : les gabarits (retail) ne suffisaient pas (unités à enseigne, auvent vitré de 174 m, aires de jeux), mais le modèle de D143 et D144 les accueille (mêmes murs, mêmes toits à plan mesuré, mêmes aides `storefront`, `slidingDoor`, `socle`, `plate`, `box`, `post`) :
+- `unitFronts` : sur chaque unité, vitrine à meneaux et porte coulissante (ou mur plein à porte étroite, ou vitrine condamnée d'une planche), bandeau d'enseigne coloré et son nom (allumé la nuit), piles anthracite entre les unités.
+- `arcade` : dalle de verre teinté, dessous clair, nervures et poutre avant vertes, poteaux fins verts tous les 6 m au plus.
+- `playground` : tapis vert, tour de jeux à toit vert et toboggan argenté, trampoline enterré, banc rouge.
+- `gifi` (tour orange, enseigne, auvent sur deux poteaux), `action` (unités à bandeau bleu).
+- **Coût** : galerie sud-ouest 890 triangles (+ 130 allumés, 16 de lettres), partie sud-est de la galerie nord-est 434 (+ 50, 4), partie centrale 234 (+ 38, 2), aile 258 (+ 34, 2), GiFi 128 (+ 22, 2), Action 194 (+ 56, 2), aires de jeux comprises : **environ 2 500 triangles** pour toute la zone, dans les maillages de la tuile ; aucun appel de dessin de plus.
+**Jeu** :
+- *Obstacles* (`storeCircles`) : poteaux des auvents (62 cercles de 20 cm), tour de jeux (90 cm) et banc (60 cm) des deux aires, deux poteaux d'entrée du GiFi. Le tapis, le toboggan et le trampoline se traversent ; on passe entre deux poteaux et sous l'auvent le long du mur.
+- *Files des passants* : les files du réseau piéton (hors la grille des places de parking, classe 7, qui couvre tout le parking) passent à plus de 30 cm des 68 cercles (écart le plus faible : 1,2 m, vérifié par un script). Un premier essai, banc au milieu du bord du tapis, posait le banc sur le chemin qui traverse chaque îlot (− 0,5 m) : il est au coin du tapis.
+- *Passants* : 18 points « commerce », un par entrée, à 80 cm devant le mur, hors des obstacles ; les anciens points (milieu du mur de bout, nœuds OpenStreetMap) sont retirés (`poiClear`).
+- *Caches d'armes* : aucune à moins de 3 m des six bâtiments ni à moins de 8 m des aires de jeux (test).
+
+**Tests** (+10, 776 au total) : aile ajoutée (aire, toit, sommets communs, idempotente) ; toits plats et hauteurs ; auvent masqué ; côté et longueur de chaque mur d'entrée ; unités contiguës, enseignes ; auvents (hauteur, profondeur, espacement des poteaux, longueur couverte) ; obstacles (listés dans la tuile, passage libre) ; un point « commerce » par entrée ; aucune cache ; géométrie finie, vitrages allumés, inscriptions, coût borné, rien ne dépasse de plus de 5 m.
+
+**Limites** :
+- Largeur et position de chaque unité le long du mur estimées à ± 5 m (lues sur des photos d'ensemble et sur les repères de Google Maps) ; plusieurs enseignes (Basic-Fit, Chaussea, Centrakor, l'unité noire et l'unité sans nom) sont des hypothèses ; couleurs de bandeau lues, sans logo ; Cuisinella (nœud OpenStreetMap au mur nord-ouest) non placé.
+- Auvent : poteaux verticaux sans les jambes de force des photos ; profondeur et hauteur mesurées, mais sur trois profils seulement ; côté nord-est de la galerie nord-est, l'auvent est étroit de 1,2 m (le contour BD TOPO empiète dessus).
+- Murs arrière et de bout : bardage miel comme la façade (les photos montrent de l'anthracite aux bouts) ; pas de bande haute sombre sous l'acrotère.
+- Aires de jeux à l'orthophotographie (taille du tapis à 1 m près, structures de la photo 4 simplifiées).
+- GiFi : tour de 7,6 m lue sur la photo ; Action : état de 2023, avec les mêmes vitrines pour tout le mur sud-ouest de son aile.
+- Pas de LOD (silhouettes lointaines inchangées) ; l'aile n'est pas dans la navigation des passants (`build_nav.py` non relancé) ; le sol de la tuile 16_45 est celui du relief du jeu.
+
+![La galerie sud-ouest, comme ta photo 3, avant](captures/d145-galerie-so-photo3-avant.jpg)
+![Après](captures/d145-galerie-so-photo3-apres.jpg)
+![Vers le bout sud-est, comme ta photo 1, avant](captures/d145-galerie-so-photo1-avant.jpg)
+![Après](captures/d145-galerie-so-photo1-apres.jpg)
+![La galerie nord-est, comme ta photo 2, avant](captures/d145-galerie-ne-photo2-avant.jpg)
+![Après](captures/d145-galerie-ne-photo2-apres.jpg)
+![L'aire de jeux, comme ta photo 4, avant](captures/d145-jeux-photo4-avant.jpg)
+![Après](captures/d145-jeux-photo4-apres.jpg)
+![L'aile nord-ouest (Centrakor), absente avant, avant](captures/d145-aile-avant.jpg)
+![Après](captures/d145-aile-apres.jpg)
+![GiFi, comme ta photo 5, avant](captures/d145-gifi-avant.jpg)
+![Après](captures/d145-gifi-apres.jpg)
+![Action, comme ta photo 6, avant](captures/d145-action-avant.jpg)
+![Après](captures/d145-action-apres.jpg)
+![La galerie sud-ouest la nuit, avant](captures/d145-galerie-so-nuit-avant.jpg)
+![Après](captures/d145-galerie-so-nuit-apres.jpg)
+![La galerie nord-est la nuit, avant](captures/d145-galerie-ne-nuit-avant.jpg)
+![Après](captures/d145-galerie-ne-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d145-haut-avant.jpg)
+![Après](captures/d145-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d145-zone-avant.jpg)
+![Après](captures/d145-zone-apres.jpg)
+
+## 2026-10-31 — D146. Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto d'après photos
+
+**Demande de l'utilisateur** : après le plan de D145, photos d'Espace Aubade et de Comptoir des Fers (captures Google Street View de juillet 2026 depuis le parking nord-est, de juillet 2025 depuis la D978) et de Norauto (capture de juillet 2026 et photo de l'enseigne d'il y a un an ; non versionnées, elles servent seulement à décrire). Même méthode : gabarits `stores`, volumes mesurés au LiDAR, un modèle dédié seulement si nécessaire.
+
+**Dans les données** :
+- Espace Aubade : BD TOPO `BATIMENT0000000348852203` (tuile 18_43, 21 sommets, 2 915 m², 8,4 m « à croupes », OpenStreetMap way 90417719 « Espace Aubade » en (−1985 ; 2145)). Au LiDAR ce n'est **pas un seul toit** : un hangar et un Comptoir des Fers à **6,8 m**, une partie centrale à **5,5 m**, une salle arrondie à **4,2 m** (pentes de 0,1 à 1,2 %, écart de 8 à 14 cm). Le toit de 8,4 m de BD TOPO est faux de 1,6 à 4,2 m selon l'endroit.
+- Rotonde d'entrée : `…348852221` (31 m², neuf sommets en arc, 6,6 m dans BD TOPO, 4,2 m au LiDAR), le « ENTREE » de la photo.
+- Norauto : `…348852206` (18_43, 849 m², 40,4 × 21 m, OpenStreetMap way 90417895), toit **penché de 3,2 %** vers le nord-est (écart de 3 cm : 5,2 à 5,4 m au mur de façade, 6,0 m au fond ; BD TOPO le donne plat à 7,1 m).
+
+**Lecture des photos** (`stores`, `fronts`, `kinds`, `extra`) :
+- *Côté des photos* (déduit, certain à 90 %) : photo 1 prise du parking nord-est, regardant vers le sud-ouest (hangar anthracite à gauche, au sud-est ; rotonde et enseigne « Aubade » à droite, au nord-ouest : l'orthophotographie montre le hangar à toit sombre au sud-est et l'arc d'Aubade au nord-ouest) ; photo 2 prise de la D978, au sud-ouest (angle vitré d'Aubade à gauche, long mur anthracite à droite). Norauto : prises du parking à l'est-nord-est, face au long mur nord-est (arête 2) qui fait face au grand parking de l'Intermarché ; la forêt derrière la photo 3 est à l'ouest.
+- *Espace Aubade et Comptoir des Fers* : hangar anthracite (porte à rayonnages ouverte), mur clair à ruban de bardage « COMPTOIR DES FERS » (lettres bleues, sur le mur nord-est comme sur le mur sud-ouest côté route), rotonde d'entrée (vitrage à poteaux bleus sous un bandeau blanc arrondi « ENTREE » à flèches bleues), mur blanc et enseigne « Aubade » bleue sur fond blanc, angle vitré arrondi côté route.
+- *Norauto* : bardage blanc, bande bleu sombre au bord du toit, de gauche (sud-est) à droite : quatre portes d'atelier sectionnelles à hublots sous des bandeaux bleus (« Atelier » sur la deuxième), bloc d'entrée bleu un peu plus haut et en saillie (vitrage, porte coulissante, « Norauto » jaune), mur blanc à grand panneau bleu.
+
+**Données** :
+- Le bâtiment d'Aubade est **redécoupé en quatre volumes** (`extra`, étape `build_extras.py` de D145) : trois droites à 20° (par les jarrets du contour sud-ouest : (−1990,2110), (−1997,2139), (−2010,2160)) le coupent en hangar (1 121 m²), Comptoir (713 m²), partie centrale (585 m²) et salle arrondie (497 m²) ; la somme fait exactement l'ancienne emprise. Le bâtiment BD TOPO devient `hidden` (plus dessiné, plus d'obstacle) et chaque volume a son plan de toit mesuré (`build_stores.py`).
+- `stores` : trois styles de plus (`comptoir`, `rotonde`, `norauto`) et des champs (`wall`, `roofc` : couleurs des murs et du toit d'un volume ; `panel`) ; deux modes d'unités (`garage`, `blank`, `bay`).
+- `fronts` : un point « commerce » devant la rotonde et un devant l'entrée de Norauto ; le hangar (`pois` vide) ne sert qu'à retirer l'ancien point d'Aubade, posé sur son mur sud-ouest.
+- Chaîne rejouée deux fois : fichiers identiques.
+
+**Rendu** (`src/render/store.ts` étendu, mêmes aides) :
+- `comptoir` : murs et toits à la couleur du volume (anthracite, gris clair, blanc), enseigne « COMPTOIR DES FERS » sur chaque long mur du Comptoir, « Aubade » sur la salle arrondie, six baies vitrées sur son arc, porte d'atelier du hangar.
+- `rotonde` : vitrage allumé la nuit à poteaux bleus sur les sept côtés de l'arc, bandeau blanc au-dessus, « ENTRÉE ».
+- `norauto` : bande sombre au bord du toit, quatre portes d'atelier (hublots allumés), bloc d'entrée en saillie de 50 cm et 90 cm plus haut, enseigne « Norauto » allumée, panneau bleu.
+- **Coût** : environ **410 triangles de détails** (hangar 24, Comptoir 16, partie centrale 16, salle arrondie 134, rotonde 84, Norauto 136), plus les murs et les toits génériques de quatre volumes au lieu d'un ; aucun appel de dessin de plus.
+**Jeu** :
+- *Obstacles* : aucun nouvel obstacle (le bloc de Norauto et la rotonde se longent ; l'ancien contour d'Aubade ne bloque plus, les quatre volumes bloquent exactement la même emprise).
+- *Passants* : un point « commerce » devant l'entrée de Norauto (à 80 cm du bloc, −1862,1 ; 1963,4) et un devant la rotonde ; l'ancien point d'Aubade (sur le mur sud-ouest du hangar) et celui de Norauto sont retirés. Celui de la rotonde est à 31 m de la file piétonne la plus proche (le parking d'Aubade n'a pas de trottoir dans la navigation) : comme avant pour ce commerce.
+- *Caches d'armes* : aucune à moins de 3 m (test).
+
+**Tests** (+6, 782 au total) : volumes d'Aubade (recouvrent l'emprise à 6 m² près, masqué, noms) ; niveaux de toit (6 – 7,5 ; 4,8 – 6,2 ; 3,5 – 5 m, hangar et Comptoir au même niveau) ; Norauto (pente de 2 à 4 % vers le nord-est, façade à 30 – 70°, quatre portes, bloc entre les portes et le panneau) ; obstacles et passants ; aucune cache ; géométrie finie, inscriptions, vitrages allumés, coût borné.
+
+**Limites** :
+- Les limites entre les quatre volumes d'Aubade sont déduites des jarrets du contour et des teintes de l'orthophotographie, à 2 m près ; les niveaux de toit sont mesurés, mais les teintes des murs sont lues sur des photos sans les couleurs exactes (un mur « gris clair » et un mur « blanc »).
+- Pas de cube du logo Comptoir des Fers, pas de flèches bleues du bandeau, pas d'enseigne verticale « Aubade » à l'angle vitré, pas de rayonnages ni de racks du hangar ; la salle arrondie a six baies identiques ; la rotonde est un arc de sept petits pans (pas un cylindre) et son toit a une pente de 3,7 % (ajustement sur 30 m²).
+- Norauto : la quatrième porte (cachée par un arbre sur la photo 3) vient de la photo de l'enseigne ; le bloc, de 10,5 m, et le panneau sont lus à 1 m près ; hauteur du bloc (+ 0,9 m) lue sur la photo ; pas de bande « www.norauto.fr », ni d'affiches, ni de bornes ; trois des bandeaux d'atelier n'ont pas leur liste de services.
+- Aubade : le parking à l'arrière et les palettes de la photo ne sont pas dessinés ; silhouettes lointaines (LOD) inchangées (l'ancien volume de 8,4 m y reste) ; `build_nav.py` complet non relancé.
+
+![Aubade et Comptoir des Fers, depuis le parking (ta photo 1), avant](captures/d146-aubade-photo1-avant.jpg)
+![Après](captures/d146-aubade-photo1-apres.jpg)
+![Depuis la route (ta photo 2), avant](captures/d146-aubade-photo2-avant.jpg)
+![Après](captures/d146-aubade-photo2-apres.jpg)
+![La rotonde d'entrée, avant](captures/d146-rotonde-avant.jpg)
+![Après](captures/d146-rotonde-apres.jpg)
+![Norauto, comme ta photo 3, avant](captures/d146-norauto-photo3-avant.jpg)
+![Après](captures/d146-norauto-photo3-apres.jpg)
+![Norauto, de biais, avant](captures/d146-norauto-angle-avant.jpg)
+![Après](captures/d146-norauto-angle-apres.jpg)
+![La rotonde la nuit, avant](captures/d146-rotonde-nuit-avant.jpg)
+![Après](captures/d146-rotonde-nuit-apres.jpg)
+![Norauto la nuit, avant](captures/d146-norauto-nuit-avant.jpg)
+![Après](captures/d146-norauto-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d146-aubade-haut-avant.jpg)
+![Après](captures/d146-aubade-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d146-aubade-ensemble-avant.jpg)
+![Après](captures/d146-aubade-ensemble-apres.jpg)
+
+## 2026-10-31 — D147. Bellevue : jambes de force des auvents et silhouettes lointaines
+
+**Demande de l'utilisateur** : continuer sans nouvelles photos. Deux restes de D145 et D146, faisables sans photo :
+- **Jambes de force** : les photos aériennes des galeries montrent des jambes de force entre les poteaux et le mur. `arcade` (`src/render/store.ts`) les dessine : un ruban incliné du haut de chaque poteau (1,8 m plus bas que la dalle) au mur, visible des deux côtés, 4 triangles par poteau (62 poteaux, environ 250 triangles de plus pour toute la zone, soit environ 2 750). Elles sont au-dessus de la tête (6 m) : aucun obstacle de plus.
+- **Silhouettes lointaines** : `build_extras.py` écrit aussi `lod/<tuile>.json` : l'aile Centrakor y entre (le fichier de la tuile 16_45 est créé, `lod` de `world.json` mis à jour) et l'ancien volume d'Aubade (8,4 m, un seul toit) en sort, remplacé par les quatre volumes (`replaces` dans `extra`), à leur hauteur mesurée. Chaîne rejouée deux fois : fichiers identiques.
+- +1 test (783) : l'aile et les quatre volumes sont dans les silhouettes, l'ancien contour n'y est plus.
+
+**Pas fait** : la navigation des passants (`build_nav.py` complet non relancé : l'aile n'y est pas, le point de la rotonde reste à 31 m de la file la plus proche) ; les silhouettes des galeries gardent les hauteurs BD TOPO (« croupes ») ; tout ce qui dépend de photos (unités des galeries, murs de bout, détails d'Aubade, autres bâtiments).
+
+![Les jambes de force, vues du parking](captures/d147-jambes-photo3-apres.jpg)
+![Galerie nord-est](captures/d147-jambes-ne-apres.jpg)

@@ -103,4 +103,76 @@ describe("magasins d'après photo (D143) : géométrie", () => {
       }
     }
   });
+
+  it("galeries de Bellevue, GiFi, Action (D145) : sommets finis, enseignes, vitrages allumés, coût borné", () => {
+    const S1 = "BATIMENT0000002222388078", S2A = "BATIMENT0000002222388083", S2B = "BATIMENT0000002479786224", WING = "BATIMENT0000EXTRA0145";
+    const GIFI = "BATIMENT0000000357310923", ACT = "BATIMENT0000000348857700";
+    const want: [string, string[], number, number][] = [
+      [S1, ["INTERSPORT", "GÉMO", "SCHMIDT", "OPTICAL CENTER", "Comme j'aime"], 500, 4500],
+      [S2A, ["STOKOMANI", "MAISON de la LITERIE"], 250, 2500],
+      [S2B, ["MAXI ZOO"], 100, 1500],
+      [WING, ["CENTRAKOR"], 100, 1200],
+      [GIFI, ["GiFi"], 100, 800],
+      [ACT, ["ACTION"], 100, 800],
+    ];
+    let total = 0;
+    for (const [id, labels, lo, hi] of want) {
+      names.length = 0;
+      const s = sinks();
+      buildStore(s, bOf(id), kinds.buildings[id]!, world.terrain, wall);
+      expect(finite(s)).toBe(true);
+      expect(tris(s.glow)).toBeGreaterThan(8);
+      for (const l of labels) expect(names).toContain(l);
+      expect(tris(s.solid)).toBeGreaterThan(lo);
+      expect(tris(s.solid)).toBeLessThan(hi);
+      total += tris(s.solid) + tris(s.glow);
+    }
+    // Toute la zone (deux galeries, aile, GiFi, Action, deux aires de jeux) reste sous 9 000 triangles.
+    expect(total).toBeLessThan(9000);
+  });
+
+  it("galeries : rien ne dépasse de plus de 5 m le contour (sauf les aires de jeux), ni de 10 m en hauteur ; l'auvent est plus haut que le toit", () => {
+    for (const id of ["BATIMENT0000002222388078", "BATIMENT0000002479786224", "BATIMENT0000EXTRA0145"]) {
+      const s = sinks();
+      const b = bOf(id), k = kinds.buildings[id]!;
+      buildStore(s, b, { ...k, store: { ...k.store!, play: [] } }, world.terrain, wall);
+      const xs = b.ring.filter((_, i) => i % 2 === 0), ys = b.ring.filter((_, i) => i % 2 === 1);
+      const p = s.solid.positions;
+      let top = -Infinity;
+      for (let i = 0; i < p.length; i += 3) {
+        expect(p[i]!).toBeGreaterThan(Math.min(...xs) - 5);
+        expect(p[i]!).toBeLessThan(Math.max(...xs) + 5);
+        expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 5);
+        expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 5);
+        top = Math.max(top, p[i + 1]! - b.ground);
+      }
+      expect(top).toBeGreaterThan(8);
+      expect(top).toBeLessThan(10);
+    }
+  });
+
+  it("Aubade, Comptoir des Fers, rotonde et Norauto (D146) : sommets finis, enseignes, vitrages allumés, coût borné", () => {
+    const want: [string, string[], number, number][] = [
+      ["BATIMENT0000EXTRA0146M", ["COMPTOIR DES FERS"], 10, 400],
+      ["BATIMENT0000EXTRA0146F", ["Aubade"], 50, 600],
+      ["BATIMENT0000EXTRA0146H", [], 20, 400],
+      ["BATIMENT0000000348852221", ["ENTRÉE"], 20, 300],
+      ["BATIMENT0000000348852206", ["Atelier", "Norauto"], 60, 1200],
+    ];
+    let total = 0;
+    for (const [id, labels, lo, hi] of want) {
+      names.length = 0;
+      const s = sinks();
+      buildStore(s, bOf(id), kinds.buildings[id]!, world.terrain, wall);
+      expect(finite(s)).toBe(true);
+      for (const l of labels) expect(names).toContain(l);
+      expect(tris(s.solid)).toBeGreaterThan(lo);
+      expect(tris(s.solid)).toBeLessThan(hi);
+      total += tris(s.solid) + tris(s.glow);
+    }
+    expect(total).toBeLessThan(2500);
+    const s = sinks();
+    buildStore(s, bOf("BATIMENT0000000348852206"), kinds.buildings["BATIMENT0000000348852206"]!, world.terrain, wall);
+    expect(tris(s.glow)).toBeGreaterThan(8);
+  });
 });
