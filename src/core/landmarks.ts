@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, Carport, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -160,20 +160,65 @@ export function edgeFrame(ring: readonly number[], e: number): EdgeFrame {
   return { x, y, tx: dx / len, ty: dy / len, nx: dy / len, ny: -dx / len, len };
 }
 
-/** Obstacles d'un magasin d'après photo (D143) : le sas du Lidl (en saillie de 1,3 m sur le mur vitré) et le casier du long mur. */
+/** Disposition d'un abri solaire (D144) : coins du rectangle, altitude du dessus en un point, poteaux le long du bord haut. */
+export interface CarportShape {
+  corners: [number, number][];
+  zAt: (x: number, y: number) => number;
+  posts: [number, number][];
+  /** Épaisseur de la dalle de panneaux. */
+  thick: number;
+}
+
+export function carportShape([cx, cy, ang, L, W, a, b, c]: Carport): CarportShape {
+  const r = (ang * Math.PI) / 180, ux = Math.cos(r), uy = Math.sin(r), vx = -uy, vy = ux;
+  const pt = (s: number, t: number): [number, number] => [cx + ux * s + vx * t, cy + uy * s + vy * t];
+  const zAt = (x: number, y: number): number => a * x + b * y + c;
+  // Le bord haut est le long côté (t = ±W/2) où le plan est le plus haut ; les poteaux y sont, à 1,5 m du bord (une file piétonne longe ce bord).
+  const side = zAt(...pt(0, W / 2)) >= zAt(...pt(0, -W / 2)) ? 1 : -1;
+  const n = Math.max(2, Math.ceil(L / 7) + 1);
+  const posts = Array.from({ length: n }, (_, i) => pt(-L / 2 + 0.8 + ((L - 1.6) * i) / (n - 1), side * (W / 2 - 1.5)));
+  return { corners: [pt(-L / 2, -W / 2), pt(L / 2, -W / 2), pt(L / 2, W / 2), pt(-L / 2, W / 2)], zAt, posts, thick: 0.18 };
+}
+
+/** Obstacles d'un magasin d'après photo (D143, D144) : sas et casier du Lidl, portique et poteaux de l'auvent du Bricomarché, poteaux de l'auvent du
+ *  But, poteaux des abris solaires, angles des pavillons de la Jardinerie. Le store du Drive (une file piétonne passe dessous), les tondeuses
+ *  et les potelets se traversent ou se longent. */
 export function storeCircles(b: Building, st: StoreModel): [number, number, number][] {
   const out: [number, number, number][] = [];
   const at = (f: EdgeFrame, s: number, off: number): [number, number] => [f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off];
-  if (st.style !== "lidl") return out;
-  if (st.door) {
-    const f = edgeFrame(b.ring, st.e), [c, w] = st.door;
-    for (const s of [c - w / 2 + 0.7, c, c + w / 2 - 0.7]) out.push([...at(f, s, 0.8), 0.75]);
-  }
-  if (st.side) {
-    const f = edgeFrame(b.ring, st.side.e);
-    out.push([...at(f, st.side.locker[0], 0.3), 0.65]);
+  const f = edgeFrame(b.ring, st.e);
+  for (const cp of st.carports ?? []) for (const [x, y] of carportShape(cp).posts) out.push([x, y, 0.3]);
+  if (st.style === "lidl") {
+    if (st.door) {
+      const [c, w] = st.door;
+      for (const s of [c - w / 2 + 0.7, c, c + w / 2 - 0.7]) out.push([...at(f, s, 0.8), 0.75]);
+    }
+    if (st.side) {
+      const fs = edgeFrame(b.ring, st.side.e);
+      out.push([...at(fs, st.side.locker[0], 0.3), 0.65]);
+    }
+  } else if (st.style === "bricomarche") {
+    if (st.door) for (const s of [st.door[0] - st.door[1] / 2, st.door[0] + st.door[1] / 2]) out.push([...at(f, s, BRICO_PORTAL_O), 0.4]);
+    if (st.canopy) for (const s of canopyPosts(st.canopy)) out.push([...at(f, s, st.canopy[2] - 0.25), 0.2]);
+  } else if (st.style === "but") {
+    if (st.canopy) for (const s of [st.canopy[0] + 0.4, st.canopy[1] - 0.4]) out.push([...at(f, s, st.canopy[2] - 0.2), 0.2]);
+  } else if (st.style === "jardinerie") {
+    for (const [e, s0, s1] of st.pavilions ?? []) {
+      const fp = edgeFrame(b.ring, e);
+      for (const s of [s0 + 0.5, s1 - 0.5]) out.push([...at(fp, s, PAVILION_DEPTH - 0.4), 0.45]);
+    }
   }
   return out;
+}
+
+/** Distance du portique d'entrée du Bricomarché au mur (m) et saillie des pavillons vitrés de la Jardinerie (m). */
+export const BRICO_PORTAL_O = 2.3;
+export const PAVILION_DEPTH = 2.4;
+
+/** Abscisses des poteaux d'un auvent [s0, s1, profondeur] : tous les 6 m au plus, aux deux bouts. */
+export function canopyPosts([s0, s1]: [number, number, number]): number[] {
+  const n = Math.max(1, Math.ceil((s1 - s0 - 0.6) / 6));
+  return Array.from({ length: n + 1 }, (_, i) => s0 + 0.3 + ((s1 - s0 - 0.6) * i) / n);
 }
 
 /** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */

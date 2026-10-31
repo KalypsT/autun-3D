@@ -2286,3 +2286,75 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![L'entrée du Lidl la nuit, après](captures/d143-lidl-nuit-apres.jpg)
 ![La pharmacie la nuit, avant](captures/d143-pharmacie-nuit-avant.jpg)
 ![La pharmacie la nuit, après](captures/d143-pharmacie-nuit-apres.jpg)
+
+## 2026-10-31 — D144. La zone commerciale de Bellevue d'après photos : But, Bricomarché, Intermarché et Jardinerie d'Autun
+
+**Demande de l'utilisateur** : modéliser d'après ses photos une partie de la zone commerciale de Bellevue (But, Bricomarché, Intermarché, Jardinerie d'Autun, qui remplace l'« Agri Sud Est » du jeu), en une seule décision, avec les gabarits existants et un modèle dédié seulement si nécessaire. Photos (captures Google Street View de juillet 2026, photos de l'utilisateur, photo aérienne de l'Intermarché, capture Google Maps ; non versionnées, elles servent seulement à décrire). Après l'enquête (rien n'était modifié), l'utilisateur a validé : photo du But prise du parking sud-est, magasin ouvert sans volets ni pylône, entrée du Bricomarché centrée sur son mur sud-ouest, abris solaires de l'Intermarché à modéliser, Jardinerie vue du nord-ouest.
+
+**Dans les données** :
+- Bricomarché : BD TOPO `BATIMENT0000000348847158` (tuile 18_43), « Bricomarché » d'OpenStreetMap (way 90417642), 3 851 m², mur d'entrée 4 de la fiche (arête 0, face sud-ouest, 58,6 m).
+- Intermarché : `BATIMENT0000000348847156` (tuile 19_43), OpenStreetMap way 90417908, 3 038 m², mur d'entrée 0 (arête 2, face sud-ouest, 23,4 m). La fiche est « dwelling » (sans effet : `kinds` est juste).
+- But : `BATIMENT0000000348852219` (tuile 18_44), OpenStreetMap way 90417654 (`shop=furniture`), 2 329 m². L'entrée de la fiche était sur la face sud-ouest (arête 2, 36 m) ; elle passe sur la face **sud-est** (arête 4, 31,4 m).
+- **Ancien « Agri Sud Est »** : BD TOPO `BATIMENT0000000348847180` (tuile 19_42), 2 829 m², nom venu du way OpenStreetMap 90417693 (`shop=garden_centre`) ; un nœud OpenStreetMap du même bâtiment s'appelle « Jardinerie d'Autun ». `kinds` de `manual.json` lui impose le nom « Jardinerie d'Autun » (plus aucun « Agri Sud Est » dans `kinds`).
+- Le petit bâtiment BD TOPO de 98 m² (5,4 m) collé au mur sud-ouest du Bricomarché, vers son bout sud-est (`…348852209`), était dessiné comme un second magasin à entrée vitrée. C'est un abri ouvert : il devient une marquise (`kinds` de `manual.json`), et son ancien point « commerce » disparaît.
+
+**Lecture des photos** (`stores`, `fronts`, `kinds`, `carports` de `manual.json`) :
+- *Côté des photos* (déduit, confirmé par l'utilisateur) : But du sud-est (la haie dense longe son côté nord-est puis continue vers le sud-est, à droite de la photo ; les marquages du parking sont au sud-est) ; Bricomarché et Intermarché du sud-ouest (le store rouge du Drive est au coin ouest de l'Intermarché, le Bricomarché est derrière à gauche sur la photo aérienne) ; Jardinerie du nord-ouest (le passage piéton rouge et blanc de la photo est celui de l'orthophoto devant l'arête 9).
+- *Bricomarché* : bardage anthracite, auvent orange continu de 36 m et de 3,2 m de profondeur sur poteaux fins (de 13 à 49 m), mur vitré dessous (de 17 à 46 m), portique orange libre à 2,3 m devant les portes coulissantes centrées (29,3 m), enseigne « BRICO MARCHÉ » avec « MAISON - JARDIN » au bout nord-ouest du mur, six tondeuses autoportées (rouge, jaune, noir) alignées devant, deux piles de chariots jaunes à droite de l'entrée.
+- *Intermarché* : murs latéraux noirs, bloc de lames verticales rouges sur toute l'arête 2 (23,4 m) à partir de 4,2 m de haut, vitrage à meneaux blancs et porte coulissante, enseigne blanche « Intermarché SUPER » allumée la nuit, store rouge du Drive (pyramide) au coin ouest (−1778,6 ; 1975,2), sans collision (une file piétonne passe dessous).
+- *But* : magasin ouvert (vitrine allumée la nuit, ni volets ni affiches), bloc central anthracite (de 4 à 27,5 m) plus haut que les ailes blanches (+1 m, sur 5,5 m de profondeur), vitrine et portes au centre sous un auvent sombre à bandeau brun-rouge, enseigne carrée rouge « BUT » avec « Cosy » en dessous, triangles gris sur l'arête 3 et sur le début de l'arête 5. Ni pylône ni polygone orange (voulu par l'utilisateur).
+- *Jardinerie* : mur crème en tôle, bannière blanche « Jardinerie D'AUTUN » (feuille verte sur un pot, bouts bruns) sur l'arête 7, deux pavillons vitrés à pignon de bois en saillie de 2,4 m : le grand (arête 9, 13 m, avec la porte) et le petit en retrait (arête 1, 12 m).
+
+**Mesures** (`build_stores.py` étendue ; LiDAR HD, MNS à 0,5 m, une deuxième passe ne réécrit rien) :
+- Plans de toit, ajustés aux moindres carrés : **Bricomarché plat** (pente de 0,4 %, 6,6 m au-dessus du sol ; BD TOPO le donne « à croupes » avec un faîtage 4,6 m plus haut, ce qui est faux), **Intermarché plat** (0,2 %, 7,7 m), **But plat** (0,2 %, 5,4 m au plan ; le profil monte de 0,5 m vers le milieu de la face sud-est), **Jardinerie** : la halle sud-est est plate à 6,7 m, la partie nord-ouest est 1 m plus basse (5,5 m) et un lanterneau monte à 8,9 m. Acrotère de 15 cm partout (le minimum).
+- Pour la Jardinerie, un seul plan sur toute l'emprise donnait 2,7 % de pente (faux) : le champ `fit` (demi-plan) de `stores` limite l'ajustement à la halle sud-est (écart de 8 cm sur 3 248 cellules).
+- **Abris de parking solaires** (`carports` de `manual.json`, six centres lus sur la photo aérienne) : mesurés par composante du MNS à 2,3 – 7,5 m au-dessus du sol hors bâtiments, rectangle orienté et plan du dessus. Ce sont six dalles en rangée devant la face sud-ouest, de 23,5 à 26,3 m de long sur 13,7 m pour quatre, 19 × 9,3 m et 25 × 9,2 m pour deux (le LiDAR le montre : ce ne sont pas des erreurs de détection), grand côté à 39 – 45° (repère x vers l'est), plan incliné de 11 à 15 % qui monte vers le nord-ouest (dessus à environ 4 – 6 m). Chaque abri est rangé dans le `store` du magasin de sa tuile (quatre dans celui du Bricomarché, deux dans celui de la Jardinerie).
+- L'orthophoto ne montre pas ces abris (elle est antérieure) : seul le LiDAR les voit.
+
+**Données** : `stores` (quatre styles de plus : `bricomarche`, `intermarche`, `but`, `jardinerie`), `kinds` (Jardinerie, marquise du Bricomarché), `fronts` (mur d'entrée de chacun et `poi: true`, plus `poiOffset` et `poiClear` pour les points « commerce » des passants), `carports`. Chaîne : `build_carts.py` (types imposés), `build_stores.py` (toits, abris), `build_shop_fronts.py` (murs d'entrée : le But passe du mur 0 au mur 2, la Jardinerie du mur 6 au mur 8), `build_monuments_nav.py` (passants). `build_kinds.py` et `build_nav.py` n'ont pas été relancés ; la chaîne rejouée trois fois donne les mêmes fichiers.
+
+**Rendu** (`src/render/store.ts`, étendu ; `carportShape` et `storeCircles` dans `src/core/landmarks.ts`) : les gabarits ne suffisaient pas (entrées à auvent et portique, lames, bloc surélevé, pavillons à pignon, abris solaires), mais le modèle de D143 les accueille : même toit à plan mesuré (`reshapeBuilding`), mêmes murs, mêmes sinks.
+- Aides communes : `storefront` (baies à meneaux, vitrage allumé la nuit), `slidingDoor`, `socle`, `face` (face plane à sens corrigé par une normale d'appui), `post`.
+- Couleurs de murs et de toits par style (Bricomarché anthracite, Intermarché noir, But blanc, Jardinerie crème).
+- **Coût** : Bricomarché 388 triangles (+ 24 allumés, 6 de lettres), Intermarché 288 (+ 20, 4), But 114 (+ 16, 4), Jardinerie 122 (+ 24, 4), plus 362 pour les six abris solaires : **environ 1 400 triangles** pour toute la zone, dans les maillages de la tuile ; aucun appel de dessin de plus. La vue d'ensemble reste à 290 000 – 355 000 triangles comme avant.
+
+**Jeu** :
+- *Obstacles* (`storeCircles`) : montants du portique du Bricomarché (2) et poteaux de son auvent (7), poteaux de l'auvent du But (2), angles des pavillons de la Jardinerie (4), poteaux des abris solaires (29, à 1,5 m du bord haut). Les tondeuses, les potelets, le store du Drive et les chariots se traversent.
+- *Passants* : un seul point « commerce » par magasin, devant le mur d'entrée : Bricomarché (−1825,1 ; 2038,6), Intermarché (−1761,1 ; 1958,6), But (−1874,0 ; 2165,0) au milieu de la face sud-est, Jardinerie (−1741,0 ; 1877,4) à 3,2 m du mur, devant le pavillon. Les anciens points sont retirés : But (face sud-ouest), Jardinerie (mur nord-est), Intermarché (bosse nord-ouest, à 2,5 m du contour, d'où `poiClear`), Bricomarché (l'ancienne annexe). Les files du réseau piéton (hors grille des places, qui couvre tout le parking) passent à plus de 30 cm des poteaux ; un premier essai, poteaux au bord du plan, en avait seize sur ces files, d'où les 1,5 m d'écart.
+- *Caches d'armes* : aucune à moins de 2 km (la plus proche est à la gare routière ; test à 3 m des contours).
+
+**Tests** (+9, 766 au total) : toits plats de 0 à 3 % et hauteurs de 5 à 8 m ; « Agri Sud Est » remplacé ; côté et longueur de chaque mur d'entrée, entrée du Bricomarché au milieu ; six abris solaires de 17 – 28 × 8,5 – 15 m, pente de 8 à 20 % vers le nord-ouest, hors bâtiments, poteaux sous le bord haut ; obstacles (portique, tondeuses libres, liste de la tuile) ; un seul point « commerce » par magasin, bon mur, hors obstacles ; aucune cache ; géométrie finie, vitrages allumés, inscriptions, coût borné, rien ne dépasse de plus de 6 m du contour (But et Jardinerie, abris à part).
+
+**Limites** :
+- Positions le long des murs lues sur des photos en perspective, à un mètre près (auvent, bloc, bannière, sas, enseignes, pavillons, store du Drive) ; hauteurs de l'auvent, du portique, des tondeuses et des pavillons à 0,3 m près, d'après les photos.
+- Le LiDAR ne voit pas les toits vitrés : les pavillons vitrés de la Jardinerie sont dessinés d'après la photo.
+- But : les triangles gris des ailes et la différence de hauteur du bloc central (+1 m) sont lus sur la photo, le LiDAR n'en montre que la moitié (0,5 m) ; la photo laisse le doute sur la longueur du bloc (22 m retenus) ; pas de pylône, ni de volets ni d'affiches (demandé).
+- Jardinerie : le toit n'a qu'un plan (celui de la halle) ; la partie nord-ouest, 1 m plus basse, est donc trop haute d'un mètre, et le lanterneau comme la serre sud-ouest, le patio clos et l'abri à chariots de la photo 6 ne sont pas dessinés ; le mur crème à bannière de la photo 5 est lu comme l'arête 7 (19 m), sans certitude.
+- Bricomarché : la serre et la cour de vente du bout sud-est, absentes des photos, restent des volumes génériques ; le bardage est uni (pas de lames horizontales).
+- Intermarché : le sas d'entrée n'est pas en saillie (la photo en montre un) ; la bande couverte le long de la façade vue sur l'orthophoto n'est pas dessinée ; les panneaux solaires sont un aplat bleu sans quadrillage ; les voitures garées sous les abris sont celles des places d'OpenStreetMap.
+- Les sept petites boîtes de 9 m² (1,4 à 2,1 m, `wall=no` dans OpenStreetMap) dans les parkings, probablement des abris à chariots, ne sont pas traitées faute de photo : elles restent des boîtes beiges.
+- Les silhouettes lointaines (LOD) ne changent pas ; `build_kinds.py` et `build_nav.py` complets n'ont pas été relancés.
+
+![Le But, comme ta photo, avant](captures/d144-but-avant.jpg)
+![Après](captures/d144-but-apres.jpg)
+![Le But la nuit, avant](captures/d144-but-nuit-avant.jpg)
+![Après](captures/d144-but-nuit-apres.jpg)
+![Le Bricomarché, comme ta photo, avant](captures/d144-brico-avant.jpg)
+![Après](captures/d144-brico-apres.jpg)
+![L'entrée, de plus près, après](captures/d144-brico-entree-apres.jpg)
+![Le Bricomarché la nuit, avant](captures/d144-brico-nuit-avant.jpg)
+![Après](captures/d144-brico-nuit-apres.jpg)
+![L'Intermarché de face, avant](captures/d144-inter-avant.jpg)
+![Après](captures/d144-inter-apres.jpg)
+![Le parking vu d'en haut, comme ta photo aérienne, avant](captures/d144-inter-abris-avant.jpg)
+![Après : les abris solaires](captures/d144-inter-abris-apres.jpg)
+![L'Intermarché la nuit, avant](captures/d144-inter-nuit-avant.jpg)
+![Après](captures/d144-inter-nuit-apres.jpg)
+![La Jardinerie depuis le passage piéton, avant](captures/d144-jard-avant.jpg)
+![Après](captures/d144-jard-apres.jpg)
+![La Jardinerie la nuit, avant](captures/d144-jard-nuit-avant.jpg)
+![Après](captures/d144-jard-nuit-apres.jpg)
+![La zone vue du sud-ouest, avant](captures/d144-zone-avant.jpg)
+![Après](captures/d144-zone-apres.jpg)
+![Vue du dessus, avant](captures/d144-haut-avant.jpg)
+![Après](captures/d144-haut-apres.jpg)

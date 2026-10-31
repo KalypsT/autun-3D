@@ -1062,3 +1062,33 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d143-pharmacie-apres.jpg)
 ![Pharmacie et abri à chariots, après](docs/captures/d143-abri-apres.jpg)
 ![La nuit](docs/captures/d143-lidl-nuit-apres.jpg)
+
+**La zone commerciale de Bellevue d'après photos : But, Bricomarché, Intermarché et Jardinerie d'Autun (31 octobre 2026)** (D144)
+- Quatre magasins suivent tes photos, dans une seule décision :
+  - **Bricomarché** : bardage anthracite, auvent orange continu sur poteaux fins, portique orange devant les portes centrées sur le mur sud-ouest, enseigne « BRICO MARCHÉ », tondeuses alignées devant, chariots jaunes à droite ;
+  - **Intermarché** : bloc de lames rouges, vitrage à meneaux blancs, enseigne « Intermarché SUPER » allumée la nuit, store rouge du Drive au coin ouest ;
+  - **But** : magasin ouvert, bloc central anthracite plus haut que les ailes blanches, auvent sombre, enseigne carrée rouge « BUT » et « Cosy », sans volets ni pylône ;
+  - **Jardinerie d'Autun** : elle remplace « Agri Sud Est » (nom d'OpenStreetMap du même bâtiment) ; deux pavillons vitrés à pignon de bois au nord-ouest, bannière blanche à feuille verte sur le mur crème.
+- Six abris de parking solaires devant l'Intermarché, mesurés au LiDAR (plans inclinés de 11 à 15 %).
+- L'entrée du But n'était pas au bon endroit (face sud-ouest) : elle passe sur la face sud-est. Le petit bâtiment collé au Bricomarché n'est plus un second magasin mais un abri ouvert.
+- Mesures au LiDAR : les toits du Bricomarché, de l'Intermarché et du But sont plats (le Bricomarché n'a pas le toit « à croupes » de BD TOPO) ; la Jardinerie a trois niveaux (la halle seule est mesurée).
+- Les passants ont un point « commerce » devant chaque entrée, les anciens points mal placés sont retirés. Les poteaux (portique, auvents, abris solaires, pavillons) bloquent ; tondeuses et store du Drive se traversent. Aucune cache d'arme dans le secteur.
+- Environ 1 400 triangles pour toute la zone ; aucun appel de dessin de plus. 766 tests.
+- `build_stores.py` mesure aussi les toits à plusieurs niveaux (`fit`) et les abris solaires (`carports`).
+- Limites : positions sur les murs à un mètre près ; pavillons vitrés d'après la photo (le LiDAR ne voit pas le verre) ; toit de la Jardinerie à un seul plan (partie nord-ouest 1 m trop haute) ; sept petites boîtes de parking (abris à chariots probables) non traitées.
+- À essayer : `?at=-1851,2016&h=14` (devant le Bricomarché), `?at=-1792,1937&h=14` (devant l'Intermarché), `?at=-1858,2140&h=14` (devant le But), `?at=-1757,1897&h=14` (devant la Jardinerie), puis `?h=23` pour la nuit.
+
+![Le But, avant](docs/captures/d144-but-avant.jpg)
+![Après](docs/captures/d144-but-apres.jpg)
+![Le Bricomarché, avant](docs/captures/d144-brico-avant.jpg)
+![Après](docs/captures/d144-brico-apres.jpg)
+![L'Intermarché, avant](docs/captures/d144-inter-avant.jpg)
+![Après](docs/captures/d144-inter-apres.jpg)
+![Le parking vu d'en haut, avant](docs/captures/d144-inter-abris-avant.jpg)
+![Après : les abris solaires](docs/captures/d144-inter-abris-apres.jpg)
+![La Jardinerie, avant](docs/captures/d144-jard-avant.jpg)
+![Après](docs/captures/d144-jard-apres.jpg)
+![Le Bricomarché la nuit](docs/captures/d144-brico-nuit-apres.jpg)
+![Le But la nuit](docs/captures/d144-but-nuit-apres.jpg)
+![L'Intermarché la nuit](docs/captures/d144-inter-nuit-apres.jpg)
+![La Jardinerie la nuit](docs/captures/d144-jard-nuit-apres.jpg)

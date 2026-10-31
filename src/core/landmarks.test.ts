@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Building, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { at, carportShape, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
@@ -619,5 +619,143 @@ describe("magasins d'après photo : Lidl, pharmacie et abri à chariots (D143)",
       const b = bOf(id), n = b.ring.length / 2;
       for (const q of CACHES) expect(Array.from({ length: n }, (_, e) => distToEdge(b, e, q.x, q.y)).every((d) => d > 3)).toBe(true);
     }
+  });
+});
+
+describe("zone commerciale de Bellevue : But, Bricomarché, Intermarché, Jardinerie (D144)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const BRICO = "BATIMENT0000000348847158", INTER = "BATIMENT0000000348847156", BUT = "BATIMENT0000000348852219", JARD = "BATIMENT0000000348847180";
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const roofAt = (r: [number, number, number, number], x: number, y: number): number => r[0] * x + r[1] * y + r[2];
+  const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
+  const cell = JSON.parse(readFileSync("public/data/nav/s4_10.json", "utf8")) as { poi: number[] };
+  const commerce = (): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    return out;
+  };
+  const distToRing = (b: { ring: number[] }, x: number, y: number): number => {
+    let d = Infinity;
+    for (let e = 0; e < b.ring.length / 2; e++) {
+      const f = edgeFrame(b.ring, e);
+      const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+      d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+    }
+    return d;
+  };
+
+  it("toits mesurés : plats (moins de 3 % de pente), hauteurs de 5 à 8 m, acrotère de 15 à 70 cm", () => {
+    const want: [string, number, number][] = [[BRICO, 6.0, 7.2], [INTER, 7.2, 8.2], [BUT, 4.8, 6.6], [JARD, 5.0, 7.2]];
+    for (const [id, lo, hi] of want) {
+      const k = kinds.buildings[id]!, b = bOf(id), roof = k.roof!;
+      expect(k.k).toBe("retail");
+      expect(Math.hypot(roof[0], roof[1])).toBeLessThan(0.03);
+      expect(roof[3]).toBeGreaterThanOrEqual(0.15);
+      expect(roof[3]).toBeLessThanOrEqual(0.7);
+      const h = roofAt(roof, ...(b.ring.slice(0, 2) as [number, number])) - b.ground;
+      expect(h).toBeGreaterThan(lo);
+      expect(h).toBeLessThan(hi);
+    }
+  });
+
+  it("l'ancien « Agri Sud Est » est la Jardinerie d'Autun", () => {
+    expect(kinds.buildings[JARD]!.n).toBe("Jardinerie d'Autun");
+    expect(Object.values(kinds.buildings).some((k) => k.n === "Agri Sud Est")).toBe(false);
+    expect(kinds.buildings[JARD]!.store!.style).toBe("jardinerie");
+  });
+
+  it("côté des façades : Bricomarché et Intermarché au sud-ouest, But au sud-est, pavillons de la Jardinerie au nord-ouest", () => {
+    const want: [string, string, number, number, number, number][] = [
+      [BRICO, "bricomarche", 200, 260, 55, 62], [INTER, "intermarche", 200, 260, 22, 25], [BUT, "but", 120, 160, 30, 33], [JARD, "jardinerie", 295, 345, 12, 15],
+    ];
+    for (const [id, style, c0, c1, l0, l1] of want) {
+      const st = kinds.buildings[id]!.store!, f = edgeFrame(bOf(id).ring, st.e);
+      expect(st.style).toBe(style);
+      expect(compass(f)).toBeGreaterThan(c0);
+      expect(compass(f)).toBeLessThan(c1);
+      expect(f.len).toBeGreaterThan(l0);
+      expect(f.len).toBeLessThan(l1);
+      expect(st.glass[0]).toBeGreaterThanOrEqual(0);
+      expect(st.glass[1]).toBeLessThanOrEqual(f.len);
+      if (st.door) expect(st.door[0] + st.door[1] / 2).toBeLessThanOrEqual(st.glass[1] + 0.01);
+    }
+    // Bricomarché : entrée centrée sur le mur (au mètre près).
+    const bs = kinds.buildings[BRICO]!.store!, bf = edgeFrame(bOf(BRICO).ring, bs.e);
+    expect(Math.abs(bs.door![0] - bf.len / 2)).toBeLessThan(1);
+    // Jardinerie : le grand pavillon porte la porte, le petit est en retrait ; faîtage plus haut que l'égout.
+    const js = kinds.buildings[JARD]!.store!;
+    expect(js.pavilions!.length).toBe(2);
+    for (const [, s0, s1, eave, ridge] of js.pavilions!) { expect(s1).toBeGreaterThan(s0 + 8); expect(ridge).toBeGreaterThan(eave + 0.8); }
+  });
+
+  it("abris solaires de l'Intermarché : six, devant le mur sud-ouest, de 9 à 14 m de large, plan de 8 à 20 % qui monte vers le nord-ouest", () => {
+    const all = [BRICO, INTER, JARD].flatMap((id) => kinds.buildings[id]!.store!.carports ?? []);
+    expect(all.length).toBe(6);
+    const inter = bOf(INTER);
+    for (const cp of all) {
+      const [x, y, , L, W, a, b] = cp;
+      expect(L).toBeGreaterThan(17);
+      expect(L).toBeLessThan(28);
+      expect(W).toBeGreaterThan(8.5);
+      expect(W).toBeLessThan(15);
+      const slope = Math.hypot(a, b);
+      expect(slope).toBeGreaterThan(0.08);
+      expect(slope).toBeLessThan(0.2);
+      expect(a).toBeLessThan(0);
+      expect(b).toBeGreaterThan(0);
+      // Hors des bâtiments, à moins de 60 m de la façade de l'Intermarché.
+      for (const id of [BRICO, INTER, BUT, JARD]) expect(distToRing(bOf(id), x, y)).toBeGreaterThan(3);
+      expect(distToRing(inter, x, y)).toBeLessThan(60);
+      const sh = carportShape(cp);
+      expect(sh.posts.length).toBeGreaterThanOrEqual(3);
+      // Poteaux sous le bord haut : le dessus y est plus haut qu'au milieu.
+      for (const [px, py] of sh.posts) expect(sh.zAt(px, py)).toBeGreaterThan(sh.zAt(x, y));
+    }
+  });
+
+  it("obstacles : portique et poteaux d'auvent, poteaux des abris, angles des pavillons ; les tondeuses se longent", () => {
+    const brico = kinds.buildings[BRICO]!.store!;
+    const circles = (id: string): [number, number, number][] => storeCircles(bOf(id), kinds.buildings[id]!.store!);
+    // Bricomarché : 2 montants du portique, 1 + ceil(...) poteaux d'auvent, + les abris solaires de sa tuile.
+    const own = circles(BRICO).length - (brico.carports ?? []).reduce((n, cp) => n + carportShape(cp).posts.length, 0);
+    expect(own).toBe(2 + 7);
+    expect(circles(INTER).length).toBe((kinds.buildings[INTER]!.store!.carports ?? []).reduce((n, cp) => n + carportShape(cp).posts.length, 0));
+    expect(circles(BUT).length).toBe(2);
+    expect(circles(JARD).length).toBeGreaterThanOrEqual(4);
+    const f = edgeFrame(bOf(BRICO).ring, brico.e);
+    const at = (s: number, o: number): [number, number] => [f.x + f.tx * s + f.nx * o, f.y + f.ty * s + f.ny * o];
+    const c = new Colliders();
+    for (const [x, y, r] of circles(BRICO)) c.addCircle(x, y, r);
+    expect(c.resolve(...at(brico.door![0] - brico.door![1] / 2, 2.3), 0.3).hit).toBe(true);
+    // Entre les montants du portique, devant les portes : libre ; en travers d'une tondeuse (à 5 m du mur) : libre aussi.
+    expect(c.resolve(...at(brico.door![0], 2.3), 0.3).hit).toBe(false);
+    expect(c.resolve(...at(brico.display![0] + 1.5, 5), 0.3).hit).toBe(false);
+    // Tous ces cercles sont dans la liste des obstacles de la tuile.
+    const all = landmarkCircles(kinds, world.tile.buildings);
+    for (const id of [BRICO, INTER, BUT, JARD]) for (const [x, y] of circles(id)) expect(all.some(([ax, ay]) => Math.hypot(ax - x, ay - y) < 1e-6)).toBe(true);
+  });
+
+  it("passants : un seul point « commerce » par magasin, du côté de l'entrée et hors des obstacles", () => {
+    const pts = commerce();
+    for (const [id, minD, maxD] of [[BRICO, 0.5, 1.2], [INTER, 0.5, 1.2], [BUT, 0.5, 1.2], [JARD, 2.5, 3.6]] as const) {
+      const b = bOf(id), st = kinds.buildings[id]!.store!;
+      const near = pts.filter(([x, y]) => distToRing(b, x, y) < 4.2);
+      expect(near.length).toBe(1);
+      const [x, y] = near[0]!;
+      const d = distToRing(b, x, y);
+      expect(d).toBeGreaterThan(minD);
+      expect(d).toBeLessThan(maxD);
+      for (const [cx, cy, r] of storeCircles(b, st)) expect(Math.hypot(x - cx, y - cy)).toBeGreaterThan(r + 0.4);
+    }
+    // Le but et la jardinerie ont perdu leur ancien point sur l'autre face : celui du But est bien sur le mur sud-est, pas sud-ouest.
+    const but = bOf(BUT), [bx, by] = pts.find(([x, y]) => distToRing(but, x, y) < 2)!;
+    const f = edgeFrame(but.ring, 4);
+    expect((bx - f.x) * f.nx + (by - f.y) * f.ny).toBeGreaterThan(0.5);
+    expect(Math.abs((bx - f.x) * f.tx + (by - f.y) * f.ty - f.len / 2)).toBeLessThan(1);
+  });
+
+  it("aucune cache d'arme à moins de 3 m des quatre magasins ni de leurs abris", () => {
+    for (const id of [BRICO, INTER, BUT, JARD]) for (const q of CACHES) expect(distToRing(bOf(id), q.x, q.y)).toBeGreaterThan(3);
   });
 });
