@@ -83,3 +83,50 @@ describe("la place du Champ de Mars a une chaussée (D153)", () => {
     expect(total).toBeGreaterThan(100);
   });
 });
+
+/** D154 : les rangées du grand parking (orthophotographie redressée de 32,7°). */
+describe("les places du grand parking du Champ de Mars (D154)", () => {
+  const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { streetscape: { lots: { frame: { o: number[]; angle: number }; zone: number[]; strips: { u: number[]; v: number[] }[] }[] } };
+  const lot = manual.streetscape.lots[0]!;
+  const a = (lot.frame.angle * Math.PI) / 180;
+  const uv = (x: number, y: number): [number, number] => {
+    const dx = x - lot.frame.o[0]!, dy = y - lot.frame.o[1]!;
+    return [dx * Math.cos(a) + dy * Math.sin(a), dx * Math.sin(a) - dy * Math.cos(a)];
+  };
+  const stalls = tiles.flatMap((t) => findStalls(t.ground["marks"] ?? [])).filter((s) => {
+    const [u, v] = uv(s.x, s.y);
+    return u > lot.zone[0]! && u < lot.zone[2]! && v > lot.zone[1]! && v < lot.zone[3]!;
+  });
+
+  it("entre 75 et 105 places dans les rangées lues (94 tracées)", () => {
+    expect(stalls.length).toBeGreaterThan(75); // 94 tracées : celles que la limite des tuiles (x = −20, y = −62) coupe ne sont plus retrouvées
+    expect(stalls.length).toBeLessThan(105);
+  });
+
+  it("toutes les places sont perpendiculaires à la rangée (à 5° près)", () => {
+    for (const s of stalls) {
+      const along = Math.atan2(Math.cos(a), Math.sin(a)); // cap de l'axe u (0 = nord)
+      const perp = along + Math.PI / 2;
+      const d = Math.abs(((s.heading - perp + Math.PI * 3) % Math.PI) - Math.PI / 2) ;
+      expect(Math.min(d, Math.PI - d)).toBeGreaterThan(Math.PI / 2 - 0.09);
+    }
+  });
+
+  it("aucune place dans l'allée piétonne centrale", () => {
+    const strip = lot.strips[0]!;
+    for (const s of stalls) {
+      const [u] = uv(s.x, s.y);
+      expect(u < strip.u[0]! - 0.5 || u > strip.u[1]! + 0.5).toBe(true);
+    }
+  });
+
+  it("l'allée piétonne est en dallage clair, hors des places de stationnement noires", () => {
+    const strip = lot.strips[0]!;
+    const mid = [(strip.u[0]! + strip.u[1]!) / 2, 0];
+    const a2 = a;
+    const x = lot.frame.o[0]! + mid[0]! * Math.cos(a2) + mid[1]! * Math.sin(a2);
+    const y = lot.frame.o[1]! + mid[0]! * Math.sin(a2) - mid[1]! * Math.cos(a2);
+    expect(tiles.some((t) => (t.ground["plaza_paving"] ?? []).some((p) => inPolygon(x, y, p)))).toBe(true);
+    expect(tiles.some((t) => (t.ground["plaza_asphalt"] ?? []).some((p) => inPolygon(x, y, p)))).toBe(false);
+  });
+});

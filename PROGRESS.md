@@ -1230,3 +1230,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d153-photo1-apres.jpg)
 ![De dessus, avant](docs/captures/d153-place-haut-avant.jpg)
 ![Après](docs/captures/d153-place-haut-apres.jpg)
+
+**Centre-ville, lot 2 : les rangées du grand parking du Champ de Mars (31 octobre 2026)** (D154)
+- Le grand parking a ses vraies rangées : cinq rangées lues à l'orthophotographie redressée (O1, O2, O3 à l'ouest de l'allée piétonne, E1, E2 à l'est ; 94 places tracées, pas de 2,5 m ajusté sur les pics de lignes blanches), l'allée piétonne centrale en dallage clair, et les anciens traits (et les carrés blancs de « passages piétons » tombés sur les allées) retirés. Les voitures garées se posent sur ces places sans changer `vehicles.ts`.
+- L'asphalte des places ne recouvre plus le dallage ni les trottoirs (taches beiges qui changeaient avec la triangulation).
+- Navigation de `main` gardée comme demandé (aucun `build_nav.py`). 815 tests (4 de plus).
+- Limites : pas fait : parking est (épis dont les lignes sont cachées par les voitures), parkings devant la mairie, massifs, zébras, flèches, colonne de places de la bordure ouest, rangée sud ; pas de bordure ; 83 places retrouvées sur 94 (la limite des tuiles coupe des traits).
+- À essayer : `?cam=-55,-55,115,-55,-54,0&h=14` (de dessus), `?cam=-92,-72,1.7,-45,-45,1.5&h=14` (depuis l'angle ouest), `?cam=-75,-62,2.4,-35,-40,1&h=14`.
+
+![Le parking de dessus, avant](docs/captures/d154-parking-haut-avant.jpg)
+![Après](docs/captures/d154-parking-haut-apres.jpg)
+![De biais, avant](docs/captures/d154-parking-biais-avant.jpg)
+![Après](docs/captures/d154-parking-biais-apres.jpg)

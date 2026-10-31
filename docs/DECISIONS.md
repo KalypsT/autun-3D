@@ -2774,3 +2774,40 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d153-ensemble-apres.jpg)
 ![Photo 1 la nuit, avant](captures/d153-photo1-nuit-avant.jpg)
 ![Après](captures/d153-photo1-nuit-apres.jpg)
+
+
+## 2026-10-31 — D154. Centre-ville, lot 2 : les rangées du grand parking du Champ de Mars
+
+**Demande de l'utilisateur** : enchaîner après D153 en gardant la navigation de `main` (aucun `build_nav.py`, même `--only`, n'est donc relancé ici ; le fichier `nav/s6_8.json` n'est pas touché).
+
+**Constat** (plan, §0.2) : les places du grand parking (relation OSM 11356384) étaient des traits de 4,8 m tirés tous les 2,5 m le long d'allées OpenStreetMap : quelques dizaines de traits épars et mal orientés (D94). L'orthophotographie montre des rangées régulières, des doubles rangées dos à dos, une allée piétonne centrale.
+
+**Lecture de l'orthophotographie** (20 cm, redressée de 32,7° : la rue du Champ de Mars devient horizontale, `u` le long d'elle vers le nord-est, `v` vers le sud-est ; repère d'origine (−45 ; −57)) :
+- cinq rangées : **O1** (13 places le long de la rue, `v` −18,6 à −13,8), **O2** (double rangée, ligne de fond à `v` = −2,7), **O3** (double rangée, ligne de fond à `v` = 13,5) à l'ouest de l'allée piétonne ; **E1** et **E2** (même disposition) à l'est ; 94 places tracées.
+- pas et phase de chaque rangée **ajustés sur les pics de lignes blanches** (profil le long de `u`, pics retenus à ± 35 cm d'une grille de pas libre : pas de 2,49 à 2,56 m, écart quadratique de 0,0 à 0,16 m selon la rangée) ; vérifié en superposant les traits à l'orthophotographie redressée ;
+- allée piétonne centrale : `u` de 8,3 à 13,4 (5,1 m), `v` de −20,5 à 19,5, en dallage clair (`plaza_paving`) ; le LiDAR ne voit ni l'une ni l'autre, tout vient de l'orthophotographie.
+
+**Données** : clé `lots` de `streetscape` dans `manual.json` (repère, zone de nettoyage, rangées {premier trait, pas, nombre, tronçons de traits, ligne de fond}, bandes de sol) ; `build_streetscape.py` : toutes les anciennes marques de la zone sont retirées (traits de stationnement, mais aussi des « passages piétons » de D94 posés en carrés blancs sur les allées du parking), remplacées par 116 polygones (traits de 4,7 m s'arrêtant à 7 cm de la ligne de fond, pour que les polygones fusionnés ne deviennent pas un peigne que `findStalls` ne reconnaît pas ; lignes de fond), et l'allée piétonne est retirée de l'asphalte pour être posée en dallage. L'asphalte des places est aussi débarrassé de ses recouvrements avec le dallage, le gravier et les trottoirs (de 0,1 à 12 m² dans les tuiles du centre, laissés par D94 : deux sols à la même hauteur se disputaient l'écran, d'où des taches beiges qui changeaient avec la triangulation). Quatre tuiles changent (25_34, 26_34, 25_35, 26_35). Idempotente : deux passes, même somme de contrôle de `public/data` ; ses propres marques sont retirées et reposées dans le même ordre.
+
+**Jeu** : les voitures garées se posent sur les places par `findStalls` sans changer `vehicles.ts` ; 83 places sont retrouvées dans la zone (94 tracées : la limite des tuiles à x = −20 et y = −62 coupe quelques traits en dessous de 3,6 m, ce que `findStalls` ne retient pas, comme avant). Aucun obstacle de plus ; navigation inchangée.
+
+**Tests** (+4, `src/data/streetscape.test.ts`) : entre 75 et 105 places dans la zone ; toutes perpendiculaires à la rangée (à 5°) ; aucune dans l'allée piétonne ; l'allée est en dallage et non en asphalte.
+
+**Limites** :
+- **Pas fait : le parking est** (OSM 80175800, épis à 60° dont les traits sont cachés par les voitures sur l'orthophotographie), **le parking devant la mairie** (80175794) et ses deux voisins : leurs anciens traits restent, y compris la fonction « épi » approximative de D94. Il faudra une photo ou une orthophotographie d'un jour sans voitures.
+- Pas fait non plus : les **massifs** (angles ouest et est), les **zébras** et les **flèches** des allées (visibles sur l'orthophotographie), la **colonne de places de la bordure ouest** (stationnement longitudinal le long de la grille du lycée), la **rangée sud** le long des tilleuls, la **rangée basse de l'est** (lignes cachées par les voitures), la **barrière basse à croisillons** et les potelets de la photo 1 (leur position n'est pas lue). Bordures et horodateurs : aucune photo au sol.
+- Les premières places de chaque rangée (sous les voitures) sont extrapolées au pas : à ± 20 cm.
+- Pas de bordure autour du parking (le sol ne dessine des bordures qu'aux trottoirs).
+
+![Le parking vu du dessus, avant](captures/d154-parking-haut-avant.jpg)
+![Après](captures/d154-parking-haut-apres.jpg)
+![Depuis l'angle ouest, avant](captures/d154-parking-ouest-avant.jpg)
+![Après](captures/d154-parking-ouest-apres.jpg)
+![Depuis la rue du Champ de Mars, avant](captures/d154-parking-rue-avant.jpg)
+![Après](captures/d154-parking-rue-apres.jpg)
+![De biais, avant](captures/d154-parking-biais-avant.jpg)
+![Après](captures/d154-parking-biais-apres.jpg)
+![La nuit, avant](captures/d154-parking-nuit-avant.jpg)
+![Après](captures/d154-parking-nuit-apres.jpg)
+![Comme ta photo 1, avant](captures/d154-photo1-avant.jpg)
+![Après](captures/d154-photo1-apres.jpg)
