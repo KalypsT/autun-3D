@@ -545,7 +545,13 @@ def measure_theatre(bid, b, spec):
             prof = [top(R, q0, q1) for R in np.linspace(r2, r4, 9)]
         else:
             prof = [top(R, q0, q1) for R in (r2 + 0.5, r3, r4)]
-        cun.append([round(a0, 4), round(a1, 4), int(ruin), prof])
+        cun.append([round(a0, 4), round(a1, 4), int(ruin), prof, 0])
+    # Coins du haut à gradins restaurés (photos, et rythme des rangs sur l'orthophotographie pour le coin de 12° à 33°) : sur la pente, de la
+    # hauteur des rangs du bas.
+    rise = (zp - rows[3]) / (n - 1)
+    for i in spec.get("upperRows", []):
+        q = cun[i]
+        q[4] = max(2, round((q[3][1] - q[3][0]) / rise))
     # Massifs ruinés du bas, au-delà des gradins restaurés, jusqu'au diamètre.
     ends = []
     for a0, a1 in ((-math.pi / 2, rest[0]), (rest[1], math.pi / 2)):

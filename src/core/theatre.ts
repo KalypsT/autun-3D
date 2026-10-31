@@ -40,6 +40,63 @@ export interface TheatreBlock {
   step: number;
   /** Ruine au bout de la cavea (dessinée sans gradins). */
   ruin: boolean;
+  /** Rangs restaurés sur la pente (coins du haut, D134). */
+  rows: number;
+}
+
+/**
+ * Morceau dessiné et praticable d'un massif (D134) : secteur d'anneau, dessus linéaire en rayon. `ruin` : bloc de maçonnerie en ruine ;
+ * `grass` : pente ou terrasse herbue ; `row` : rang restauré.
+ */
+export interface BlockPiece {
+  u0: number;
+  u1: number;
+  r0: number;
+  r1: number;
+  z0: number;
+  z1: number;
+  kind: "ruin" | "grass" | "row";
+}
+
+/** Bruit déterministe [0, 1) (ruines irrégulières, mêmes partout : dessin, tabliers, obstacles). */
+export function noise(i: number, j: number, k = 0): number {
+  const v = Math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/**
+ * Morceaux d'un massif : les ruines en blocs d'environ 7 m de large, chaque palier un peu plus haut ou plus bas que la mesure (−0,5 à
+ * +0,3 m : la maçonnerie est cassée, pas taillée en marches) ; les coins du haut en pente, ou en rangs restaurés jusqu'à la terrasse.
+ */
+export function blockPieces(b: TheatreBlock, index: number): BlockPiece[] {
+  const out: BlockPiece[] = [];
+  if (b.stepped) {
+    const t = terraces(b);
+    const rm = (t[0]![0] + t[t.length - 1]![1]) / 2;
+    const m = Math.max(1, Math.round(((b.u1 - b.u0) * rm) / 7));
+    for (let i = 0; i < m; i++) {
+      const ua = b.u0 + ((b.u1 - b.u0) * i) / m, ub = b.u0 + ((b.u1 - b.u0) * (i + 1)) / m;
+      t.forEach(([r0, r1, z], j) => {
+        const zz = z + (noise(index, i, j) - 0.62) * 0.8;
+        // Au bout de la cavea (sur le diamètre), la maçonnerie s'arrête en dents de scie : 0 à 2 m en retrait.
+        const cut = (noise(index, i, j + 50) * 2) / ((r0 + r1) / 2);
+        const a = i === 0 && b.u0 <= -HALF + 1e-3 ? ua + cut : ua, e = i === m - 1 && b.u1 >= HALF - 1e-3 ? ub - cut : ub;
+        out.push({ u0: a, u1: e, r0, r1, z0: zz, z1: zz, kind: "ruin" });
+      });
+    }
+    return out;
+  }
+  for (let j = 0; j + 1 < b.prof.length; j++) {
+    const [r0, z0] = b.prof[j]!, [r1, z1] = b.prof[j + 1]!;
+    if (j === 0 && b.rows > 1) {
+      const d = (r1 - r0) / b.rows;
+      for (let k = 0; k < b.rows; k++) {
+        const z = z0 + ((z1 - z0) * k) / (b.rows - 1);
+        out.push({ u0: b.u0, u1: b.u1, r0: r0 + k * d, r1: r0 + (k + 1) * d, z0: z, z1: z, kind: "row" });
+      }
+    } else out.push({ u0: b.u0, u1: b.u1, r0, r1, z0, z1, kind: "grass" });
+  }
+  return out;
 }
 
 export interface TheatreLayout {
@@ -59,6 +116,8 @@ export interface TheatreLayout {
   lanesLow: TheatreLane[];
   lanesUp: TheatreLane[];
   blocks: TheatreBlock[];
+  /** Morceaux de tous les massifs. */
+  pieces: BlockPiece[];
   stage: StageLayout;
 }
 
@@ -111,21 +170,22 @@ export function theatreLayout(s: TheatreSite): TheatreLayout {
   const lanesUp = s.lanes[1].map(([u, z]): TheatreLane => ({ u, w: lane, pieces: [{ r0: r2, r1: r4, z0: zp, z1: z, steps: Math.max(4, Math.round((r4 - r2) / 0.75)) }] }));
   const blocks: TheatreBlock[] = [];
   const trim = lane / 2 / r3;
-  for (const [u0, u1, ruin, prof] of s.cun) {
+  for (const [u0, u1, ruin, prof, nrows] of s.cun) {
     const a0 = u0 <= -HALF + 1e-3 ? -HALF : u0 + trim, a1 = u1 >= HALF - 1e-3 ? HALF : u1 - trim;
     if (ruin) {
       const step = (r4 - r2) / (prof.length - 1);
-      blocks.push({ u0: a0, u1: a1, prof: prof.map((z, i) => [r2 + i * step, z]), stepped: true, step, ruin: true });
+      blocks.push({ u0: a0, u1: a1, prof: prof.map((z, i) => [r2 + i * step, z]), stepped: true, step, ruin: true, rows: 0 });
     } else {
-      blocks.push({ u0: a0, u1: a1, prof: [[r2, prof[0]!], [r3, prof[1]!], [r4, prof[2]!]], stepped: false, step: 0, ruin: false });
+      blocks.push({ u0: a0, u1: a1, prof: [[r2, prof[0]!], [r3, prof[1]!], [r4, prof[2]!]], stepped: false, step: 0, ruin: false, rows: nrows ?? 0 });
     }
   }
   for (const [u0, u1, prof] of s.ends) {
     const step = (r2 - s.ro) / (prof.length - 1);
-    blocks.push({ u0, u1, prof: prof.map((z, i) => [s.ro + i * step, z]), stepped: true, step, ruin: true });
+    blocks.push({ u0, u1, prof: prof.map((z, i) => [s.ro + i * step, z]), stepped: true, step, ruin: true, rows: 0 });
   }
+  const pieces = blocks.flatMap((b, i) => blockPieces(b, i));
   return {
-    s, cx: s.c[0], cy: s.c[1], rows, rise, zpod, rw0, zp, r1, r2, r3, r4, rest: s.rest, lanesLow, lanesUp, blocks, stage: stageLayout(s, s.zo),
+    s, cx: s.c[0], cy: s.c[1], rows, rise, zpod, rw0, zp, r1, r2, r3, r4, rest: s.rest, lanesLow, lanesUp, blocks, pieces, stage: stageLayout(s, s.zo),
   };
 }
 
@@ -210,9 +270,13 @@ export function designedZ(L: TheatreLayout, R: number, u: number): number | null
     return row.z;
   }
   if (inRest && R >= L.r1 && R < L.r2) return L.zp;
-  for (const b of L.blocks) {
-    const [r0, r1] = blockSpan(b);
-    if (u >= b.u0 && u <= b.u1 && R >= r0 && R <= r1) return blockTop(b, R);
+  return pieceAt(L, R, u)?.z ?? null;
+}
+
+/** Morceau de massif en (R, u) et l'altitude de son dessus. */
+export function pieceAt(L: TheatreLayout, R: number, u: number): { p: BlockPiece; z: number } | null {
+  for (const p of L.pieces) {
+    if (u >= p.u0 && u <= p.u1 && R >= p.r0 && R <= p.r1) return { p, z: p.z0 + ((p.z1 - p.z0) * (R - p.r0)) / (p.r1 - p.r0) };
   }
   return null;
 }
@@ -244,10 +308,7 @@ export function theatreSectors(s: TheatreSite): DeckSector[] {
     splitByLanes(L.lanesLow, L.rest[0], L.rest[1], (row.r0 + row.r1) / 2).forEach(([a, b], i) => out.push(sectorOf(L, `th:r${k}:${i}`, a, b, row.r0, row.r1, row.z, row.z)));
   });
   out.push(sectorOf(L, "th:pr", L.rest[0], L.rest[1], L.r1, L.r2, L.zp, L.zp));
-  L.blocks.forEach((b, i) => {
-    if (b.stepped) terraces(b).forEach(([r0, r1, z], j) => out.push(sectorOf(L, `th:b${i}:${j}`, b.u0, b.u1, r0, r1, z, z)));
-    else for (let j = 0; j + 1 < b.prof.length; j++) out.push(sectorOf(L, `th:b${i}:${j}`, b.u0, b.u1, b.prof[j]![0], b.prof[j + 1]![0], b.prof[j]![1], b.prof[j + 1]![1]));
-  });
+  L.pieces.forEach((p, i) => out.push(sectorOf(L, `th:b${i}`, p.u0, p.u1, p.r0, p.r1, p.z0, p.z1)));
   return out;
 }
 
@@ -318,21 +379,13 @@ export function theatreWalls(s: TheatreSite, ground: (x: number, y: number) => n
     return Array.from({ length: n + 1 }, (_, i) => [r0 + ((r1 - r0) * i) / n, u] as [number, number]);
   };
   const EPS = 0.35;
-  for (const b of L.blocks) {
-    const [r0, r1] = blockSpan(b);
-    const top = (R: number): number => blockTop(b, Math.min(r1, Math.max(r0, R)));
+  for (const p of L.pieces) {
+    const top = (R: number): number => p.z0 + ((p.z1 - p.z0) * (Math.min(p.r1, Math.max(p.r0, R)) - p.r0)) / (p.r1 - p.r0);
     const du = (R: number): number => EPS / R;
-    edge(ray(b.u0, r0, r1), (R) => top(R), (R, u) => [R, u - du(R)]);
-    edge(ray(b.u1, r0, r1), (R) => top(R), (R, u) => [R, u + du(R)]);
-    edge(arc(r0, b.u0, b.u1), () => top(r0), (R, u) => [R - EPS, u]);
-    edge(arc(r1, b.u0, b.u1), () => top(r1), (R, u) => [R + EPS, u]);
-    if (b.stepped) {
-      const t = terraces(b);
-      for (let i = 0; i + 1 < t.length; i++) {
-        const dz = Math.abs(t[i + 1]![2] - t[i]![2]);
-        if (dz > DROP) out.push({ pts: arc(t[i]![1], b.u0, b.u1).flatMap(([R, u]) => xyOf(L, R, u)), top: { height: dz, climb: dz <= 2.5 }, low: false });
-      }
-    }
+    edge(ray(p.u0, p.r0, p.r1), (R) => top(R), (R, u) => [R, u - du(R)]);
+    edge(ray(p.u1, p.r0, p.r1), (R) => top(R), (R, u) => [R, u + du(R)]);
+    edge(arc(p.r0, p.u0, p.u1), () => top(p.r0), (R, u) => [R - EPS, u]);
+    edge(arc(p.r1, p.u0, p.u1), () => top(p.r1), (R, u) => [R + EPS, u]);
   }
   // Podium : on voit par-dessus ; l'escalier de l'axe y passe.
   const central = L.lanesLow.filter((l) => l.pieces.length > 1);

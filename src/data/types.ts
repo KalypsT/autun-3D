@@ -359,8 +359,11 @@ export interface TheatreSite {
   up: [number, number, number, number, number];
   /** Escaliers : angles en bas ; en haut, angle et altitude du haut ; largeur des escaliers du haut. */
   lanes: [number[], [number, number][], number];
-  /** Coins de la partie haute : u0, u1, ruiné (1 : profil en paliers de r2 à r4) ou non (altitudes à r2, r3, r4). */
-  cun: [number, number, number, number[]][];
+  /**
+   * Coins de la partie haute : u0, u1, ruiné (1 : profil en paliers de r2 à r4) ou non (altitudes à r2, r3, r4), nombre de rangs restaurés
+   * sur la pente de r2 à r3 (0 : herbe ; photos, D134).
+   */
+  cun: [number, number, number, number[], number][];
   /** Massifs ruinés du bas, au-delà des gradins : u0, u1, profil en paliers de ro à r2. */
   ends: [number, number, number[]][];
   /** Scène moderne : quatre coins (le premier côté face à l'orchestre), dessus, profondeur des marches. */

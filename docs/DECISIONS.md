@@ -1884,3 +1884,28 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Depuis le passage du petit train, au-dessus de la cavea](captures/d133-theatre-train.jpg)
 ![La nuit : pas d'éclairage](captures/d133-theatre-nuit.jpg)
 ![Silhouette lointaine : plus d'immeuble](captures/d133-theatre-silhouette.jpg)
+
+## 2026-10-31 — D134. Bâtiments d'après photos, étape 14 : le théâtre romain, ruines et détails
+
+**Suite du plan validé (D133), étape 2.** Ce qui se voit sur les photos de l'utilisateur et que l'étape 1 ne dessinait pas : les massifs des extrémités sont des blocs de maçonnerie cassés (pas de grandes marches régulières), deux coins de la partie haute ont retrouvé leurs gradins, les murs des voûtes affleurent dans l'herbe des autres coins, les escaliers du haut ont des marches d'herbe tenues par des traverses de bois.
+
+**Coins restaurés : d'après les photos, la mesure ne suffit pas.** Recherche du rythme des rangs (période de 0,6 à 1 m) dans le profil radial de l'orthophotographie, coin par coin : les gradins du bas, restaurés, donnent un rapport de 0,31 ; seul le coin de 12° à 33° au sud de l'axe, sur sa pente (42 à 56 m), en donne autant (0,28), le coin de l'axe 0,12, les autres moins de 0,1. La photo de drone montre des gradins dans ces deux coins (au centre et au centre-gauche, vue depuis l'est). Choix : ces deux coins (`upperRows` de `manual.json`, indices 3 et 4 depuis l'extrémité nord) ; nombre de rangs = hauteur de la pente divisée par celle des rangs du bas, mesurée : **20 et 19 rangs** d'environ 35 × 78 cm, comme en bas (`build_monuments.py`, 5ᵉ valeur de chaque coin de `cun`).
+
+**Morceaux** (`blockPieces`, `src/core/theatre.ts`) : chaque massif est découpé en morceaux (secteurs d'anneau) qui servent à la fois au dessin, aux tabliers invisibles et aux obstacles :
+- **ruines** : blocs d'environ 7 m de large ; chaque palier mesuré est relevé ou abaissé de −0,5 à +0,3 m par un bruit déterministe (la maçonnerie est cassée, pas taillée en marches) ; au bout de la cavea, sur le diamètre, chaque bloc s'arrête 0 à 2 m en retrait (dents de scie, comme sur la photo de drone) ;
+- **coins restaurés** : la pente devient des rangs (secteurs plats, exactement à la hauteur dessinée), la terrasse reste herbue ;
+- **autres coins** : pente et terrasse herbues.
+
+**Rendu** (`src/render/theatre.ts`) : maçonnerie en moellons (teinte nuancée d'une face à l'autre, assises sombres tous les 90 cm à hauteur absolue, alignées d'une face à l'autre, sur les faces de plus de 1,3 m) ; dessus moussus des ruines, jamais sous le relief ; murs rayonnants des voûtes en bandes de maçonnerie de 90 cm affleurant de 12 cm dans l'herbe des coins non restaurés (le relevé montre des bandes plus hautes dans chaque coin) ; escaliers du haut à marches d'herbe et contremarches de bois ; arcs dessinés tous les 5° (4° avant). **9 518 triangles** (6 966 à l'étape 1 ; borne du test : 12 000).
+
+**Tests** : 39 rangs restaurés dans la partie haute, de 30 à 45 cm ; plus de 60 blocs de ruine, de hauteurs variées ; la surface du jeu est exactement le dessus de chaque rang et de chaque bloc (ou le relief s'il est plus haut).
+
+**Pas encore** (étapes suivantes) : les passants (navigation), les barrières dessinées de la scène, le poteau d'éclairage et les bancs.
+
+![Du haut de l'extrémité nord, avant](captures/d134-theatre-nord-avant.jpg)
+![Du haut de l'extrémité nord, après : coins restaurés, murs des voûtes](captures/d134-theatre-nord-apres.jpg)
+![Depuis l'aile sud, avant](captures/d134-theatre-sud-avant.jpg)
+![Depuis l'aile sud, après](captures/d134-theatre-sud-apres.jpg)
+![L'extrémité nord depuis l'est : massifs cassés](captures/d134-theatre-extremite-nord.jpg)
+![Dans un coin restauré de la partie haute](captures/d134-theatre-coin-restaure.jpg)
+![Vue de drone](captures/d134-theatre-drone.jpg)

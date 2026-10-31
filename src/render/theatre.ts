@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { HeightField, TheatreSite } from "../data/types";
 import {
-  designedZ, laneHalf, splitByLanes, terraces, theatreLayout, xyOf, type TheatreLane, type TheatreLayout,
+  designedZ, laneHalf, noise, splitByLanes, theatreLayout, xyOf, type TheatreLane, type TheatreLayout,
 } from "../core/theatre";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -16,13 +16,14 @@ import { T } from "./style";
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const ROW = C("#bdb6a8"), ROW_FRONT = C("#958d80");
 const PODIUM = C("#a39989"), COPING = C("#cbc3b2");
-const MASONRY = C("#8c7f6b"), MASONRY_DARK = C("#776b59");
+const MASONRY = C("#8c7f6b"), MASONRY_DARK = C("#776b59"), COURSE = C("#615646");
+const WOOD = C("#6b4a32");
 const STEP = C("#b3ab9c"), STEP_FRONT = C("#8d8577");
 const SAND = C("#d6ad85"), PAVE = C("#b4ab9b");
 const STAGE_TOP = C("#d8d5ce"), STAGE_SIDE = C("#77746e"), STAGE_STEP = C("#c2bfb7"), STAGE_FRONT = C("#9a978f");
 
 /** Pas angulaire maximal des arcs (rad). */
-const DU = (4 * Math.PI) / 180;
+const DU = (5 * Math.PI) / 180;
 
 interface Ctx {
   mb: MeshBuilder;
@@ -71,7 +72,7 @@ function piece(c: Ctx, u0: number, u1: number, r0: number, r1: number, z0: numbe
       const ba = Math.min(z, beyond(c, out, ua)), bb = Math.min(z, beyond(c, out, ub));
       if (z - ba < 0.02 && z - bb < 0.02) continue;
       const um = (ua + ub) / 2;
-      mb.quad(P(c, R, ua, ba), P(c, R, ub, bb), P(c, R, ub, z), P(c, R, ua, z), radial(c, um, sign), front);
+      face(c, [R, ua], [R, ub], ba, bb, z, z, radial(c, um, sign), front);
     }
   }
   // Flancs rayonnants.
@@ -82,8 +83,28 @@ function piece(c: Ctx, u0: number, u1: number, r0: number, r1: number, z0: numbe
       const za = z0 + ((z1 - z0) * j) / m, zb = z0 + ((z1 - z0) * (j + 1)) / m;
       const ba = Math.min(za, beyond(c, ra, u + (sign * E) / ra)), bb = Math.min(zb, beyond(c, rb, u + (sign * E) / rb));
       if (za - ba < 0.02 && zb - bb < 0.02) continue;
-      mb.quad(P(c, ra, u, ba), P(c, rb, u, bb), P(c, rb, u, zb), P(c, ra, u, za), tangent(c, u, sign), side);
+      face(c, [ra, u], [rb, u], ba, bb, za, zb, tangent(c, u, sign), side);
     }
+  }
+}
+
+/**
+ * Face verticale entre (R, u) a et b, du bas (ba, bb) au haut (za, zb). La maçonnerie (D134) est en moellons : teinte nuancée d'une face à
+ * l'autre et assises plus sombres tous les 90 cm (à hauteur absolue, alignées d'une face à l'autre).
+ */
+function face(c: Ctx, a: [number, number], b: [number, number], ba: number, bb: number, za: number, zb: number, n: Vec3, col: THREE.Color): void {
+  const masonry = col === MASONRY || col === MASONRY_DARK;
+  const k = masonry ? 0.88 + 0.24 * noise(Math.round(a[0] * 3), Math.round(a[1] * 400), Math.round(ba)) : 1;
+  c.mb.quad(P(c, a[0], a[1], ba), P(c, b[0], b[1], bb), P(c, b[0], b[1], zb), P(c, a[0], a[1], za), n, k === 1 ? col : col.clone().multiplyScalar(k));
+  if (!masonry) return;
+  const lo = Math.max(ba, bb) + 0.4, hi = Math.min(za, zb) - 0.3;
+  if (hi - lo < 0.6) return;
+  const off = (R: number, u: number, z: number): Vec3 => {
+    const q = P(c, R, u, z);
+    return [q[0] + n[0] * 0.02, q[1], q[2] + n[2] * 0.02];
+  };
+  for (let z = Math.ceil(lo / 0.9) * 0.9; z + 0.12 < hi; z += 0.9) {
+    c.mb.quad(off(a[0], a[1], z), off(b[0], b[1], z), off(b[0], b[1], z + 0.12), off(a[0], a[1], z + 0.12), n, COURSE);
   }
 }
 
@@ -116,12 +137,13 @@ function floor(c: Ctx, u0: number, u1: number, r0: number, r1: number, lift: num
   }
 }
 
-function lane(c: Ctx, l: TheatreLane): void {
+/** Escalier : marches de pierre en bas ; en haut, marches d'herbe tenues par des traverses de bois (photo depuis l'aile sud, D134). */
+function lane(c: Ctx, l: TheatreLane, top: THREE.Color, front: THREE.Color): void {
   for (const p of l.pieces) {
     const t = (p.r1 - p.r0) / p.steps, h = (p.z1 - p.z0) / p.steps;
     for (let i = 0; i < p.steps; i++) {
       const ra = p.r0 + i * t, rb = ra + t, hw = laneHalf(l, (ra + rb) / 2);
-      flat(c, l.u - hw, l.u + hw, ra, rb, p.z0 + (i + 1) * h, STEP, STEP_FRONT, MASONRY_DARK);
+      flat(c, l.u - hw, l.u + hw, ra, rb, p.z0 + (i + 1) * h, top, front, MASONRY_DARK);
     }
   }
 }
@@ -164,17 +186,27 @@ export function buildTheatre(mb: MeshBuilder, s: TheatreSite, terrain: HeightFie
     for (const [a, b] of splitByLanes(L.lanesLow, L.rest[0], L.rest[1], (row.r0 + row.r1) / 2)) flat(c, a, b, row.r0, row.r1, row.z, ROW, ROW_FRONT);
   }
   flat(c, L.rest[0], L.rest[1], L.r1, L.r2, L.zp, grass, MASONRY);
-  // Coins de la partie haute et massifs ruinés.
+  // Coins de la partie haute (herbe, ou rangs restaurés) et massifs ruinés (blocs de maçonnerie au dessus moussu).
+  for (const p of L.pieces) {
+    if (p.kind === "row") piece(c, p.u0, p.u1, p.r0, p.r1, p.z0, p.z1, ROW, ROW_FRONT, MASONRY_DARK);
+    else if (p.kind === "ruin") flat(c, p.u0, p.u1, p.r0, p.r1, p.z0, moss, MASONRY, MASONRY_DARK);
+    else piece(c, p.u0, p.u1, p.r0, p.r1, p.z0, p.z1, grass, MASONRY, MASONRY_DARK);
+  }
+  // Murs rayonnants des voûtes qui affleurent dans l'herbe des coins non restaurés (photos, relevé : bandes plus hautes dans chaque coin).
   for (const b of L.blocks) {
-    if (b.stepped) {
-      for (const [r0, r1, z] of terraces(b)) piece(c, b.u0, b.u1, r0, r1, z, z, moss, MASONRY, MASONRY_DARK);
-    } else {
+    if (b.stepped || b.rows > 1) continue;
+    for (const f of [0.3, 0.7]) {
+      const u = b.u0 + (b.u1 - b.u0) * f;
       for (let j = 0; j + 1 < b.prof.length; j++) {
         const [r0, z0] = b.prof[j]!, [r1, z1] = b.prof[j + 1]!;
-        piece(c, b.u0, b.u1, r0, r1, z0, z1, grass, MASONRY, MASONRY_DARK);
+        const ra = j === 0 ? r0 + 1.5 : r0, rb = j + 2 === b.prof.length ? r1 - 1.5 : r1;
+        const za = z0 + ((z1 - z0) * (ra - r0)) / (r1 - r0), zb = z0 + ((z1 - z0) * (rb - r0)) / (r1 - r0);
+        const hw = 0.45 / ((ra + rb) / 2);
+        piece(c, u - hw, u + hw, ra, rb, za + 0.12, zb + 0.12, MASONRY, MASONRY, MASONRY_DARK);
       }
     }
   }
-  for (const l of [...L.lanesLow, ...L.lanesUp]) lane(c, l);
+  for (const l of L.lanesLow) lane(c, l, STEP, STEP_FRONT);
+  for (const l of L.lanesUp) lane(c, l, grass, WOOD);
   stage(c);
 }

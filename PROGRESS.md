@@ -893,3 +893,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d133-theatre-apres.jpg)
 ![Du haut de l'extrémité nord](docs/captures/d133-theatre-nord.jpg)
 ![Depuis l'aile sud](docs/captures/d133-theatre-sud.jpg)
+
+**Bâtiments d'après photos, étape 14 : le théâtre romain, ruines et détails (31 octobre 2026)** (D134)
+- Les massifs des extrémités ne sont plus de grandes marches : blocs de maçonnerie cassés, de hauteurs inégales, en dents de scie au bout de la cavea.
+- Deux coins de la partie haute ont leurs gradins restaurés (20 et 19 rangs), comme sur tes photos : le relevé ne les distingue que pour l'un des deux, l'autre vient de ta photo de drone.
+- Maçonnerie en moellons nuancés à assises sombres, murs des voûtes qui affleurent dans l'herbe, escaliers du haut à traverses de bois.
+- Tout reste praticable, à la hauteur dessinée.
+- 9 518 triangles. 733 tests.
+- Suite : les passants, puis les barrières de la scène, le poteau d'éclairage et les bancs.
+
+![Du haut de l'extrémité nord](docs/captures/d134-theatre-nord-apres.jpg)
+![L'extrémité nord](docs/captures/d134-theatre-extremite-nord.jpg)
+![Dans un coin restauré](docs/captures/d134-theatre-coin-restaure.jpg)

@@ -88,6 +88,26 @@ describe("théâtre romain (D133)", () => {
     expect(z).toBeGreaterThan(s.zo + 13);
   });
 
+  it("détails (D134) : coins du haut à rangs restaurés, ruines en blocs irréguliers, chaque morceau praticable à sa hauteur", () => {
+    const rows = L.pieces.filter((p) => p.kind === "row");
+    expect(rows.length).toBe(39);
+    for (const b of L.blocks.filter((q) => q.rows > 1)) {
+      const r = L.pieces.filter((p) => p.kind === "row" && p.u0 === b.u0);
+      const rise = (r[r.length - 1]!.z0 - r[0]!.z0) / (r.length - 1);
+      expect(rise).toBeGreaterThan(0.3);
+      expect(rise).toBeLessThan(0.45);
+    }
+    const ruins = L.pieces.filter((p) => p.kind === "ruin");
+    expect(ruins.length).toBeGreaterThan(60);
+    expect(new Set(ruins.map((p) => p.z0.toFixed(2))).size).toBeGreaterThan(40);
+    const decks = new Decks();
+    decks.addSectors("29_36", theatreSectors(s));
+    for (const p of [...rows, ...ruins]) {
+      const [x, y] = xyOf(L, (p.r0 + p.r1) / 2, (p.u0 + p.u1) / 2);
+      expect(decks.surface(x, y, bare(x, y))).toBeCloseTo(Math.max(p.z0, bare(x, y)), 5);
+    }
+  });
+
   it("obstacles : podium coupé par l'escalier de l'axe, barrières de la scène, massifs ; arbres retirés de la cavea", () => {
     const walls = theatreWalls(s, bare);
     const podium = walls.filter((w) => w.low && w.top.height > 1.2);
