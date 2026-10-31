@@ -936,3 +936,105 @@ describe("galeries marchandes de Bellevue, GiFi, Action (D145)", () => {
     for (const p of [S1, S2A].flatMap((id) => kinds.buildings[id]!.store!.play ?? [])) for (const q of CACHES) expect(Math.hypot(q.x - p[0], q.y - p[1])).toBeGreaterThan(8);
   });
 });
+
+describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const AUB = "BATIMENT0000000348852203", ROT = "BATIMENT0000000348852221", NOR = "BATIMENT0000000348852206";
+  const H = "BATIMENT0000EXTRA0146H", M = "BATIMENT0000EXTRA0146M", X = "BATIMENT0000EXTRA0146X", F = "BATIMENT0000EXTRA0146F";
+  const PIECES = [H, M, X, F];
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
+  const cell = JSON.parse(readFileSync("public/data/nav/s4_10.json", "utf8")) as { poi: number[] };
+  const commerce = (): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    return out;
+  };
+  const distToRing = (b: { ring: number[] }, x: number, y: number): number => {
+    let d = Infinity;
+    for (let e = 0; e < b.ring.length / 2; e++) {
+      const f = edgeFrame(b.ring, e);
+      const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+      d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+    }
+    return d;
+  };
+  const area = (r: number[]): number => {
+    let a = 0;
+    for (let i = 0; i < r.length; i += 2) a += r[i]! * r[(i + 3) % r.length]! - r[(i + 2) % r.length]! * r[i + 1]!;
+    return Math.abs(a) / 2;
+  };
+  const heightAt = (id: string, x: number, y: number): number => {
+    const r = kinds.buildings[id]!.roof!;
+    return r[0] * x + r[1] * y + r[2] - bOf(id).ground;
+  };
+
+  it("le bâtiment BD TOPO d'Aubade est remplacé par quatre volumes qui le recouvrent exactement, et il est masqué", () => {
+    expect(kinds.buildings[AUB]!.k).toBe("hidden");
+    expect(isOpen(kinds, AUB)).toBe(true);
+    const total = PIECES.reduce((n, id) => n + area(bOf(id).ring), 0);
+    expect(Math.abs(total - area(bOf(AUB).ring))).toBeLessThan(6);
+    for (const id of PIECES) {
+      expect(world.tile.buildings.filter((q) => q.id === id).length).toBe(1);
+      expect(kinds.buildings[id]!.k).toBe("retail");
+    }
+    expect(kinds.buildings[M]!.n).toBe("Comptoir des Fers");
+    expect(kinds.buildings[F]!.n).toBe("Espace Aubade");
+  });
+
+  it("niveaux de toit mesurés : hangar et Comptoir à 6 – 7,5 m, partie centrale à 4,8 – 6,2 m, salle arrondie à 3,5 – 5 m, rotonde à 3,5 – 5 m ; BD TOPO disait 8,4 m", () => {
+    const c = (id: string): [number, number] => {
+      const r = bOf(id).ring, n = r.length / 2;
+      return [r.filter((_, i) => i % 2 === 0).reduce((a, b) => a + b, 0) / n, r.filter((_, i) => i % 2 === 1).reduce((a, b) => a + b, 0) / n];
+    };
+    for (const [id, lo, hi] of [[H, 6, 7.5], [M, 6, 7.5], [X, 4.8, 6.2], [F, 3.5, 5], [ROT, 3.5, 5]] as [string, number, number][]) {
+      const h = heightAt(id, ...c(id));
+      expect(h).toBeGreaterThan(lo);
+      expect(h).toBeLessThan(hi);
+      expect(kinds.buildings[id]!.roof![3]).toBeGreaterThanOrEqual(0.15);
+      expect(kinds.buildings[id]!.roof![3]).toBeLessThanOrEqual(0.7);
+    }
+    // Hangar et Comptoir : même niveau (à 40 cm près).
+    expect(Math.abs(heightAt(H, ...c(H)) - heightAt(M, ...c(M)))).toBeLessThan(0.5);
+  });
+
+  it("Norauto : toit penché de 2 à 4 % vers le nord-est, façade au nord-est (40 m), quatre portes d'atelier, bloc d'entrée entre deux murs", () => {
+    const k = kinds.buildings[NOR]!, st = k.store!, b = bOf(NOR), f = edgeFrame(b.ring, st.e);
+    expect(st.style).toBe("norauto");
+    const slope = Math.hypot(k.roof![0], k.roof![1]);
+    expect(slope).toBeGreaterThan(0.02);
+    expect(slope).toBeLessThan(0.04);
+    // Plus bas au mur de façade qu'au mur du fond.
+    const mid = (e: number): [number, number] => { const g = edgeFrame(b.ring, e); return [g.x + g.tx * g.len / 2, g.y + g.ty * g.len / 2]; };
+    expect(heightAt(NOR, ...mid(2))).toBeLessThan(heightAt(NOR, ...mid(0)));
+    expect(compass(f)).toBeGreaterThan(30);
+    expect(compass(f)).toBeLessThan(70);
+    expect(f.len).toBeGreaterThan(39);
+    expect(f.len).toBeLessThan(42);
+    expect(st.units!.filter((u) => u[6] === "garage").length).toBe(4);
+    expect(st.units!.some((u) => u[3] === "Atelier")).toBe(true);
+    const [b0, b1] = st.block!;
+    expect(b1 - b0).toBeGreaterThan(8);
+    expect(b0).toBeGreaterThan(Math.max(...st.units!.map((u) => u[2])));
+    expect(b1).toBeLessThan(st.panel![0]);
+    expect(st.door![0]).toBeGreaterThan(b0);
+    expect(st.door![0]).toBeLessThan(b1);
+  });
+
+  it("obstacles : aucun (le bloc d'entrée de Norauto et la rotonde se longent) ; passants : un point devant l'entrée de Norauto et de la rotonde, plus d'ancien point sur le hangar", () => {
+    for (const id of [NOR, ROT, H, M, X, F]) expect(storeCircles(bOf(id), kinds.buildings[id]!.store!).length).toBe(0);
+    const pts = commerce();
+    const nor = pts.filter(([x, y]) => distToRing(bOf(NOR), x, y) < 1.3);
+    expect(nor.length).toBe(1);
+    const f = edgeFrame(bOf(NOR).ring, 2), [nx, ny] = nor[0]!;
+    expect(Math.abs((nx - f.x) * f.tx + (ny - f.y) * f.ty - kinds.buildings[NOR]!.store!.door![0])).toBeLessThan(1);
+    expect(distToRing(bOf(NOR), nx, ny)).toBeGreaterThan(0.5);
+    expect(pts.filter(([x, y]) => distToRing(bOf(ROT), x, y) < 1.3).length).toBe(1);
+    for (const id of PIECES) expect(pts.filter(([x, y]) => distToRing(bOf(id), x, y) < 3).length).toBe(0);
+  });
+
+  it("aucune cache d'arme à moins de 3 m des quatre volumes, de la rotonde ni de Norauto", () => {
+    for (const id of [...PIECES, ROT, NOR]) for (const q of CACHES) expect(distToRing(bOf(id), q.x, q.y)).toBeGreaterThan(3);
+  });
+});

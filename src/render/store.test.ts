@@ -150,4 +150,29 @@ describe("magasins d'après photo (D143) : géométrie", () => {
       expect(top).toBeLessThan(10);
     }
   });
+
+  it("Aubade, Comptoir des Fers, rotonde et Norauto (D146) : sommets finis, enseignes, vitrages allumés, coût borné", () => {
+    const want: [string, string[], number, number][] = [
+      ["BATIMENT0000EXTRA0146M", ["COMPTOIR DES FERS"], 10, 400],
+      ["BATIMENT0000EXTRA0146F", ["Aubade"], 50, 600],
+      ["BATIMENT0000EXTRA0146H", [], 20, 400],
+      ["BATIMENT0000000348852221", ["ENTRÉE"], 20, 300],
+      ["BATIMENT0000000348852206", ["Atelier", "Norauto"], 60, 1200],
+    ];
+    let total = 0;
+    for (const [id, labels, lo, hi] of want) {
+      names.length = 0;
+      const s = sinks();
+      buildStore(s, bOf(id), kinds.buildings[id]!, world.terrain, wall);
+      expect(finite(s)).toBe(true);
+      for (const l of labels) expect(names).toContain(l);
+      expect(tris(s.solid)).toBeGreaterThan(lo);
+      expect(tris(s.solid)).toBeLessThan(hi);
+      total += tris(s.solid) + tris(s.glow);
+    }
+    expect(total).toBeLessThan(2500);
+    const s = sinks();
+    buildStore(s, bOf("BATIMENT0000000348852206"), kinds.buildings["BATIMENT0000000348852206"]!, world.terrain, wall);
+    expect(tris(s.glow)).toBeGreaterThan(8);
+  });
 });

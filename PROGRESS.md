@@ -1126,3 +1126,31 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](captures/d145-haut-apres.jpg)
 ![Vue d'ensemble, avant](captures/d145-zone-avant.jpg)
 ![Après](captures/d145-zone-apres.jpg)
+
+**Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto d'après photos (31 octobre 2026)** (D146)
+- Espace Aubade n'était pas un seul toit : le LiDAR y mesure un hangar et un Comptoir des Fers à 6,8 m, une partie centrale à 5,5 m et une salle arrondie à 4,2 m (BD TOPO : un seul toit de 8,4 m). Le bâtiment est redécoupé en quatre volumes de même emprise, chacun à son niveau de toit.
+- Hangar anthracite, mur clair « COMPTOIR DES FERS » (nord-est et côté route), rotonde d'entrée à poteaux bleus et bandeau blanc « ENTRÉE », mur blanc « Aubade », six baies vitrées sur l'arc de la salle arrondie.
+- Norauto : toit penché de 3,2 % vers le nord-est (mesuré, écart de 3 cm), quatre portes d'atelier sous des bandeaux bleus (« Atelier » sur la deuxième), bloc d'entrée bleu en saillie et plus haut, enseigne « Norauto » allumée la nuit, panneau bleu, bande sombre au bord du toit.
+- Un point « commerce » devant la rotonde et un devant l'entrée de Norauto ; les anciens points sont retirés ; aucun obstacle de plus, aucune cache d'arme dans le secteur.
+- Environ 410 triangles de détails ; aucun appel de dessin de plus. 782 tests.
+- Limites : limites entre les quatre volumes à 2 m près ; ni logo, ni flèches, ni rayonnages, ni enseigne verticale d'Aubade ; quatrième porte de Norauto lue sur la photo de l'enseigne ; LOD inchangé.
+- À essayer : `?at=-1966,2172&h=14` (devant la rotonde), `?at=-1846,1971&h=14` (devant Norauto), puis `?h=23` pour la nuit.
+
+![Aubade et Comptoir des Fers, depuis le parking (ta photo 1), avant](captures/d146-aubade-photo1-avant.jpg)
+![Après](captures/d146-aubade-photo1-apres.jpg)
+![Depuis la route (ta photo 2), avant](captures/d146-aubade-photo2-avant.jpg)
+![Après](captures/d146-aubade-photo2-apres.jpg)
+![La rotonde d'entrée, avant](captures/d146-rotonde-avant.jpg)
+![Après](captures/d146-rotonde-apres.jpg)
+![Norauto, comme ta photo 3, avant](captures/d146-norauto-photo3-avant.jpg)
+![Après](captures/d146-norauto-photo3-apres.jpg)
+![Norauto, de biais, avant](captures/d146-norauto-angle-avant.jpg)
+![Après](captures/d146-norauto-angle-apres.jpg)
+![La rotonde la nuit, avant](captures/d146-rotonde-nuit-avant.jpg)
+![Après](captures/d146-rotonde-nuit-apres.jpg)
+![Norauto la nuit, avant](captures/d146-norauto-nuit-avant.jpg)
+![Après](captures/d146-norauto-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d146-aubade-haut-avant.jpg)
+![Après](captures/d146-aubade-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d146-aubade-ensemble-avant.jpg)
+![Après](captures/d146-aubade-ensemble-apres.jpg)

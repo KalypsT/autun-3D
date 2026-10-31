@@ -2435,3 +2435,60 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d145-haut-apres.jpg)
 ![Vue d'ensemble, avant](captures/d145-zone-avant.jpg)
 ![Après](captures/d145-zone-apres.jpg)
+
+## 2026-10-31 — D146. Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto d'après photos
+
+**Demande de l'utilisateur** : après le plan de D145, photos d'Espace Aubade et de Comptoir des Fers (captures Google Street View de juillet 2026 depuis le parking nord-est, de juillet 2025 depuis la D978) et de Norauto (capture de juillet 2026 et photo de l'enseigne d'il y a un an ; non versionnées, elles servent seulement à décrire). Même méthode : gabarits `stores`, volumes mesurés au LiDAR, un modèle dédié seulement si nécessaire.
+
+**Dans les données** :
+- Espace Aubade : BD TOPO `BATIMENT0000000348852203` (tuile 18_43, 21 sommets, 2 915 m², 8,4 m « à croupes », OpenStreetMap way 90417719 « Espace Aubade » en (−1985 ; 2145)). Au LiDAR ce n'est **pas un seul toit** : un hangar et un Comptoir des Fers à **6,8 m**, une partie centrale à **5,5 m**, une salle arrondie à **4,2 m** (pentes de 0,1 à 1,2 %, écart de 8 à 14 cm). Le toit de 8,4 m de BD TOPO est faux de 1,6 à 4,2 m selon l'endroit.
+- Rotonde d'entrée : `…348852221` (31 m², neuf sommets en arc, 6,6 m dans BD TOPO, 4,2 m au LiDAR), le « ENTREE » de la photo.
+- Norauto : `…348852206` (18_43, 849 m², 40,4 × 21 m, OpenStreetMap way 90417895), toit **penché de 3,2 %** vers le nord-est (écart de 3 cm : 5,2 à 5,4 m au mur de façade, 6,0 m au fond ; BD TOPO le donne plat à 7,1 m).
+
+**Lecture des photos** (`stores`, `fronts`, `kinds`, `extra`) :
+- *Côté des photos* (déduit, certain à 90 %) : photo 1 prise du parking nord-est, regardant vers le sud-ouest (hangar anthracite à gauche, au sud-est ; rotonde et enseigne « Aubade » à droite, au nord-ouest : l'orthophotographie montre le hangar à toit sombre au sud-est et l'arc d'Aubade au nord-ouest) ; photo 2 prise de la D978, au sud-ouest (angle vitré d'Aubade à gauche, long mur anthracite à droite). Norauto : prises du parking à l'est-nord-est, face au long mur nord-est (arête 2) qui fait face au grand parking de l'Intermarché ; la forêt derrière la photo 3 est à l'ouest.
+- *Espace Aubade et Comptoir des Fers* : hangar anthracite (porte à rayonnages ouverte), mur clair à ruban de bardage « COMPTOIR DES FERS » (lettres bleues, sur le mur nord-est comme sur le mur sud-ouest côté route), rotonde d'entrée (vitrage à poteaux bleus sous un bandeau blanc arrondi « ENTREE » à flèches bleues), mur blanc et enseigne « Aubade » bleue sur fond blanc, angle vitré arrondi côté route.
+- *Norauto* : bardage blanc, bande bleu sombre au bord du toit, de gauche (sud-est) à droite : quatre portes d'atelier sectionnelles à hublots sous des bandeaux bleus (« Atelier » sur la deuxième), bloc d'entrée bleu un peu plus haut et en saillie (vitrage, porte coulissante, « Norauto » jaune), mur blanc à grand panneau bleu.
+
+**Données** :
+- Le bâtiment d'Aubade est **redécoupé en quatre volumes** (`extra`, étape `build_extras.py` de D145) : trois droites à 20° (par les jarrets du contour sud-ouest : (−1990,2110), (−1997,2139), (−2010,2160)) le coupent en hangar (1 121 m²), Comptoir (713 m²), partie centrale (585 m²) et salle arrondie (497 m²) ; la somme fait exactement l'ancienne emprise. Le bâtiment BD TOPO devient `hidden` (plus dessiné, plus d'obstacle) et chaque volume a son plan de toit mesuré (`build_stores.py`).
+- `stores` : trois styles de plus (`comptoir`, `rotonde`, `norauto`) et des champs (`wall`, `roofc` : couleurs des murs et du toit d'un volume ; `panel`) ; deux modes d'unités (`garage`, `blank`, `bay`).
+- `fronts` : un point « commerce » devant la rotonde et un devant l'entrée de Norauto ; le hangar (`pois` vide) ne sert qu'à retirer l'ancien point d'Aubade, posé sur son mur sud-ouest.
+- Chaîne rejouée deux fois : fichiers identiques.
+
+**Rendu** (`src/render/store.ts` étendu, mêmes aides) :
+- `comptoir` : murs et toits à la couleur du volume (anthracite, gris clair, blanc), enseigne « COMPTOIR DES FERS » sur chaque long mur du Comptoir, « Aubade » sur la salle arrondie, six baies vitrées sur son arc, porte d'atelier du hangar.
+- `rotonde` : vitrage allumé la nuit à poteaux bleus sur les sept côtés de l'arc, bandeau blanc au-dessus, « ENTRÉE ».
+- `norauto` : bande sombre au bord du toit, quatre portes d'atelier (hublots allumés), bloc d'entrée en saillie de 50 cm et 90 cm plus haut, enseigne « Norauto » allumée, panneau bleu.
+- **Coût** : environ **410 triangles de détails** (hangar 24, Comptoir 16, partie centrale 16, salle arrondie 134, rotonde 84, Norauto 136), plus les murs et les toits génériques de quatre volumes au lieu d'un ; aucun appel de dessin de plus.
+**Jeu** :
+- *Obstacles* : aucun nouvel obstacle (le bloc de Norauto et la rotonde se longent ; l'ancien contour d'Aubade ne bloque plus, les quatre volumes bloquent exactement la même emprise).
+- *Passants* : un point « commerce » devant l'entrée de Norauto (à 80 cm du bloc, −1862,1 ; 1963,4) et un devant la rotonde ; l'ancien point d'Aubade (sur le mur sud-ouest du hangar) et celui de Norauto sont retirés. Celui de la rotonde est à 31 m de la file piétonne la plus proche (le parking d'Aubade n'a pas de trottoir dans la navigation) : comme avant pour ce commerce.
+- *Caches d'armes* : aucune à moins de 3 m (test).
+
+**Tests** (+6, 782 au total) : volumes d'Aubade (recouvrent l'emprise à 6 m² près, masqué, noms) ; niveaux de toit (6 – 7,5 ; 4,8 – 6,2 ; 3,5 – 5 m, hangar et Comptoir au même niveau) ; Norauto (pente de 2 à 4 % vers le nord-est, façade à 30 – 70°, quatre portes, bloc entre les portes et le panneau) ; obstacles et passants ; aucune cache ; géométrie finie, inscriptions, vitrages allumés, coût borné.
+
+**Limites** :
+- Les limites entre les quatre volumes d'Aubade sont déduites des jarrets du contour et des teintes de l'orthophotographie, à 2 m près ; les niveaux de toit sont mesurés, mais les teintes des murs sont lues sur des photos sans les couleurs exactes (un mur « gris clair » et un mur « blanc »).
+- Pas de cube du logo Comptoir des Fers, pas de flèches bleues du bandeau, pas d'enseigne verticale « Aubade » à l'angle vitré, pas de rayonnages ni de racks du hangar ; la salle arrondie a six baies identiques ; la rotonde est un arc de sept petits pans (pas un cylindre) et son toit a une pente de 3,7 % (ajustement sur 30 m²).
+- Norauto : la quatrième porte (cachée par un arbre sur la photo 3) vient de la photo de l'enseigne ; le bloc, de 10,5 m, et le panneau sont lus à 1 m près ; hauteur du bloc (+ 0,9 m) lue sur la photo ; pas de bande « www.norauto.fr », ni d'affiches, ni de bornes ; trois des bandeaux d'atelier n'ont pas leur liste de services.
+- Aubade : le parking à l'arrière et les palettes de la photo ne sont pas dessinés ; silhouettes lointaines (LOD) inchangées (l'ancien volume de 8,4 m y reste) ; `build_nav.py` complet non relancé.
+
+![Aubade et Comptoir des Fers, depuis le parking (ta photo 1), avant](captures/d146-aubade-photo1-avant.jpg)
+![Après](captures/d146-aubade-photo1-apres.jpg)
+![Depuis la route (ta photo 2), avant](captures/d146-aubade-photo2-avant.jpg)
+![Après](captures/d146-aubade-photo2-apres.jpg)
+![La rotonde d'entrée, avant](captures/d146-rotonde-avant.jpg)
+![Après](captures/d146-rotonde-apres.jpg)
+![Norauto, comme ta photo 3, avant](captures/d146-norauto-photo3-avant.jpg)
+![Après](captures/d146-norauto-photo3-apres.jpg)
+![Norauto, de biais, avant](captures/d146-norauto-angle-avant.jpg)
+![Après](captures/d146-norauto-angle-apres.jpg)
+![La rotonde la nuit, avant](captures/d146-rotonde-nuit-avant.jpg)
+![Après](captures/d146-rotonde-nuit-apres.jpg)
+![Norauto la nuit, avant](captures/d146-norauto-nuit-avant.jpg)
+![Après](captures/d146-norauto-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d146-aubade-haut-avant.jpg)
+![Après](captures/d146-aubade-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d146-aubade-ensemble-avant.jpg)
+![Après](captures/d146-aubade-ensemble-apres.jpg)

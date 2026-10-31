@@ -156,7 +156,7 @@ def shop_pois(index):
             ring = b["ring"]
             poly = Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)])
             # Un point par entrée : le milieu du mur d'entrée, ou chaque `pois` [mur, abscisse en mètres depuis le début du mur] (galeries, D145).
-            spots = [tuple(q) for q in entry["pois"]] if entry.get("pois") else [(entry["wall"], None)]
+            spots = [tuple(q) for q in entry["pois"]] if "pois" in entry else [(entry["wall"], None)]  # `pois` vide : aucun point, seulement le retrait des anciens
             placed = []
             for wi, along in spots:
                 w = fi["walls"][wi]

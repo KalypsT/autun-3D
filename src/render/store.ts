@@ -616,6 +616,17 @@ function unitFronts(sinks: LandmarkSinks, b: Building, units: StoreUnit[], terra
     if (mode === "glass" && g1 - g0 > 2) {
       storefront(sinks, f, zg, g0, g1, o.glassH, 2.6, FR, 0.85, 0.08);
       if (dw > 1.6) slidingDoor(sinks, f, zg, dc, dw, o.glassH - 0.5, FR, 0.11);
+    } else if (mode === "bay" && g1 - g0 > 1) {
+      storefront(sinks, f, zg, g0, g1, o.glassH, 3.0, FR, 0.8, 0.08);
+    } else if (mode === "garage") {
+      // Porte d'atelier sectionnelle : panneau gris, rangée de hublots, joints, montants sombres.
+      const gw = Math.min(3.6, w - 0.8), z = zg(mid), D = C("#8d959b");
+      plate(mb, f, mid - gw / 2, mid + gw / 2, z, z + 3.0, 0.09, D);
+      glass(sinks, f, mid - gw / 2 + 0.2, mid + gw / 2 - 0.2, z + 1.9, z + 2.6, 0.1, 0.5);
+      for (const zz of [0.9, 1.9, 2.6]) plate(mb, f, mid - gw / 2, mid + gw / 2, z + zz, z + zz + 0.05, 0.11, FR);
+      for (const s of [mid - gw / 2, mid + gw / 2]) plate(mb, f, s - 0.07, s + 0.07, z, z + 3.05, 0.11, FR);
+    } else if (mode === "blank") {
+      // Mur plein : seulement le bandeau.
     } else if (mode === "board" && g1 - g0 > 2) {
       plate(mb, f, g0, g1, zg(mid) + 0.05, zg(mid) + o.glassH, 0.08, BOARD);
       for (let s = g0 + 1.1; s < g1 - 0.5; s += 1.1) plate(mb, f, s - 0.03, s + 0.03, zg(s) + 0.05, zg(s) + o.glassH, 0.09, shade(BOARD, 0.75));
@@ -734,6 +745,58 @@ function action(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: Heig
   unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.3, signZ: 3.9, signH: 1.5 });
 }
 
+const NORAUTO_BLUE = C("#1f3fc4"), NORAUTO_DARK = C("#16206a");
+
+/**
+ * Norauto d'après photos : mur blanc à bande sombre en haut de la façade, quatre portes d'atelier sous des bandeaux bleus (« Atelier » sur la deuxième),
+ * bloc d'entrée bleu un peu plus haut et en saillie (vitrage, porte coulissante, « Norauto »), grand panneau bleu sur le mur de droite.
+ */
+function norauto(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const f = edgeFrame(b.ring, st.e);
+  const zg = (s: number, o = 0): number => terrain.heightAt(...pt(f, s, o));
+  const top = (s: number): number => topAt(b, st.e, s, f.len);
+  socle(mb, b, terrain);
+  vplate(mb, pt(f, 0, 0.05), pt(f, f.len, 0.05), top(0) - 0.35, top(f.len) - 0.35, top(0) + 0.02, top(f.len) + 0.02, NORAUTO_DARK);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.0, signZ: 3.6, signH: 1.0 });
+  if (st.block) {
+    const [b0, b1] = st.block, h = 0.9, zt = top((b0 + b1) / 2);
+    box(mb, f, b0, b1, 0, 0.5, zg((b0 + b1) / 2) - 0.2, zt + h, NORAUTO_BLUE, shade(NORAUTO_BLUE, 1.2));
+    const [g0, g1] = st.glass;
+    storefront(sinks, f, zg, g0, g1, 3.0, 2.8, C("#e6e8ea"), 0.9, 0.55);
+    if (st.door) slidingDoor(sinks, f, zg, st.door[0], st.door[1], 2.6, C("#e6e8ea"), 0.58);
+    plate(sinks.glow, f, b0 + 0.4, b1 - 0.4, zt - 2.0, zt + h - 0.2, 0.52, C("#3a5ce0"));
+    label(sinks, f, (b0 + b1) / 2, zt - 1.6, 1.1, 0.53, "Norauto", "#ffe14a");
+  }
+  if (st.panel) {
+    const [s0, s1, z0, z1] = st.panel, z = zg((s0 + s1) / 2);
+    plate(mb, f, s0 - 0.08, s1 + 0.08, z + z0 - 0.08, z + z1 + 0.08, 0.06, C("#c9ced2"));
+    plate(mb, f, s0, s1, z + z0, z + z1, 0.08, C("#2a4fbf"));
+  }
+}
+
+/** Rotonde d'entrée d'Espace Aubade : vitrage à poteaux bleus tout autour de l'arc, bandeau blanc arrondi au-dessus (« ENTRÉE »). */
+function rotonde(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  const mb = sinks.solid;
+  const BLUE = C("#2948c4");
+  for (const [e, s0, s1, name] of st.units ?? []) {
+    const f = edgeFrame(b.ring, e);
+    const zg = (s: number, off = 0): number => terrain.heightAt(...pt(f, s, off));
+    const n = b.ring.length / 2;
+    storefront(sinks, f, zg, s0, s1, 3.0, 2.0, BLUE, 0.85, 0.06);
+    const z0 = zg((s0 + s1) / 2) + 3.0;
+    vplate(mb, pt(f, 0, 0.1), pt(f, f.len, 0.1), z0, z0, b.top[e % n]! + 0.05, b.top[(e + 1) % n]! + 0.05, C("#f6f6f4"));
+    if (name) label(sinks, f, (s0 + s1) / 2, z0 + 0.3, 0.32, 0.12, name, "#1f3fa8");
+  }
+}
+
+
+/** Espace Aubade et Comptoir des Fers : murs et toits à la couleur de chaque volume ; seules les enseignes, vitrages et portes d'atelier des `units` s'ajoutent. */
+function comptoir(sinks: LandmarkSinks, b: Building, st: StoreModel, terrain: HeightField): void {
+  socle(sinks.solid, b, terrain);
+  unitFronts(sinks, b, st.units ?? [], terrain, { piers: false, glassH: 3.6, signZ: 4.0, signH: 1.3 });
+}
+
 /** Entrée de la tuile : dessine le magasin d'après photo de ce bâtiment. */
 export function buildStore(sinks: LandmarkSinks, b: Building, kind: BuildingKind, terrain: HeightField, wall: THREE.Color): void {
   const st = kind.store;
@@ -748,6 +811,9 @@ export function buildStore(sinks: LandmarkSinks, b: Building, kind: BuildingKind
     case "galerie": galerie(sinks, b, st, terrain); break;
     case "gifi": gifi(sinks, b, st, terrain); break;
     case "action": action(sinks, b, st, terrain); break;
+    case "comptoir": comptoir(sinks, b, st, terrain); break;
+    case "rotonde": rotonde(sinks, b, st, terrain); break;
+    case "norauto": norauto(sinks, b, st, terrain); break;
   }
   carports(sinks, st, terrain);
 }
