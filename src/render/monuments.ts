@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CathedralModel, CathedralSpec, CollegeGrille, NotreDameSpec, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
+import type { CathedralModel, CathedralSpec, CollegeGrille, CollegePavilion, NotreDameSpec, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -1361,7 +1361,7 @@ export function buildFarTower(mb: MeshBuilder, t: [number, number, number, numbe
 
 const COLLEGE_STONE = C("#d2c4a4");
 const COLLEGE_TILE = C("#9a5a3e");
-const COLLEGE_TRIM = C("#e6dcc4");
+const COLLEGE_TRIM = C("#e6dcc4"), COLLEGE_PLINTH = C("#a79f8e"), COLLEGE_LIGHT = C("#e3d7b6");
 /** Débord du toit (m), travée des fenêtres (fiche : 3,2 m), hauteur d'un niveau. */
 const COLLEGE_OVERHANG = 0.25, COLLEGE_BAY = 3.2, COLLEGE_STOREY = 3.3;
 
@@ -1422,16 +1422,25 @@ export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec,
     wallBands(mb, f, wall, ground, [], [COLLEGE_STONE]);
     if (len < 1.5) continue;
     course(mb, f, wall, top - 0.7, top - 0.15, 0.22, COLLEGE_TRIM);
+    // Soubassement de pierre grise et bandeau entre le rez-de-chaussée et l'étage (D151), par morceaux qui suivent le sol.
+    const pieces = Math.max(1, Math.ceil(len / 3));
+    for (let k = 0; k < pieces; k++) {
+      const u0 = (len * k) / pieces, u1 = (len * (k + 1)) / pieces, [gx, gy] = onWall(wall, (u0 + u1) / 2, 0), gl = ground(gx, gy);
+      block(mb, f, wall, u0, u1, gl - 0.4, gl + 1.1, 0, 0.05, COLLEGE_PLINTH, true);
+      if (top - gl > 6) block(mb, f, wall, u0, u1, gl + 3.1, gl + 3.45, 0, 0.07, COLLEGE_TRIM, true);
+    }
     const bays = Math.floor((len - 2.4) / COLLEGE_BAY);
     for (let j = 0; j < bays; j++) {
       const u = len / 2 + (j - (bays - 1) / 2) * COLLEGE_BAY;
       const [sx, sy] = onWall(wall, u, 0);
+      if ((m.pavilions ?? []).some((pv) => inPavilion(m, pv, sx, sy))) continue;
       const g = ground(sx, sy);
       for (let r = 0, z0 = g + 1.0; z0 + 1.8 < top - 0.9; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.7, false, false, (i + j + r) % 3 === 0);
     }
   }
   const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
   for (const w of m.wings) collegeRoof(mb, w, COLLEGE_STONE, tile);
+  collegeDetails(mb, glow, m, terrain);
   if (m.grille) buildGrille(mb, m.grille, terrain);
 }
 
@@ -1688,4 +1697,116 @@ export function buildNotreDame(mb: MeshBuilder, glow: MeshBuilder, m: NotreDameS
     }
   }
   box(mb, f, tx - 0.06, tx + 0.06, tt - 0.06, tt + 0.06, zl + 2.3, m.turret.top, ND_DARK);
+}
+
+// --- Collège : lucarnes, avant-corps (D151) -------------------------------------------------------------------------------
+
+/** Repère d'un pan d'aile dont la normale sortante est −t (comme les façades du modèle de la mairie) : `t` mesure la distance horizontale depuis la ligne d'égout. */
+function slopeFrame(w: CollegeWing, left: boolean): { f: Frame; L: number; sOf: (u: number) => number; el: number; wd: number } {
+  const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+  const a = Math.atan2(uy, ux);
+  return left
+    ? { f: frameOf(w.q[0] - uy * w.wl, w.q[1] + ux * w.wl, a + Math.PI, 1, 1), L, sOf: (u) => L - u, el: w.el, wd: w.wl }
+    : { f: frameOf(w.p[0] + uy * w.wr, w.p[1] - ux * w.wr, a, 1, 1), L, sOf: (u) => u, el: w.er, wd: w.wr };
+}
+
+/** Le point (x, y) est-il dans l'avant-corps (élargi de 40 cm) ? */
+function inPavilion(m: CollegeSpec, pv: CollegePavilion, x: number, y: number): boolean {
+  const w = m.wings[pv.w]!;
+  const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+  const u = (x - w.p[0]) * ux + (y - w.p[1]) * uy, v = (x - w.p[0]) * -uy + (y - w.p[1]) * ux;
+  const wd = pv.left ? w.wl : w.wr;
+  const across = pv.left ? v - wd : -v - wd;
+  return Math.abs(u - pv.u) < pv.hw + 0.4 && across > -1.2 && across < 1.2;
+}
+
+/** Le point est-il sous le toit d'une autre aile (ou d'une croupe de la sienne) : pas de lucarne à cet endroit ? */
+function coveredByOther(m: CollegeSpec, own: number, x: number, y: number): boolean {
+  return m.wings.some((o, i) => {
+    if (i === own) return false;
+    const dx = o.q[0] - o.p[0], dy = o.q[1] - o.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+    const u = (x - o.p[0]) * ux + (y - o.p[1]) * uy, v = (x - o.p[0]) * -uy + (y - o.p[1]) * ux;
+    return u > -0.5 && u < L + 0.5 && v > -o.wr - 0.6 && v < o.wl + 0.6;
+  });
+}
+
+function collegeDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, terrain: HeightField): void {
+  const glass = C(T.glass[0]);
+  // Lucarnes : fronton triangulaire (« ped ») ou chien-assis (« rect ») sur chaque pan qui en a, une par travée.
+  m.wings.forEach((w, wi) => {
+    for (const left of [true, false]) {
+      const spec = left ? w.dl : w.dr;
+      if (!spec) continue;
+      const [kind, pitch] = spec;
+      const { f, L, sOf, el, wd } = slopeFrame(w, left);
+      const hip = wd + 0.8, margin = Math.max(2.4, hip);
+      const n = Math.floor((L - 2 * margin) / pitch) + 1;
+      const roofZ = (t: number): number => el + ((w.r - el) * (t - COLLEGE_OVERHANG)) / wd;
+      const tRoof = (z: number): number => COLLEGE_OVERHANG + ((z - el) / (w.r - el)) * wd;
+      const tF = COLLEGE_OVERHANG + 0.9;
+      for (let i = 0; i < n; i++) {
+        const u = margin + (L - 2 * margin - (n - 1) * pitch) / 2 + i * pitch;
+        const sc = sOf(u);
+        if (coveredByOther(m, wi, ...at(f, sc, 0.0))) continue;
+        const zb = roofZ(tF) - 0.1;
+        if (kind === "ped") {
+          const c = 0.62, zs = zb + 1.5, rise = 0.85;
+          dormer(mb, f, tF, [[sc + c, zb], [sc + c, zs], [sc, zs + rise], [sc - c, zs], [sc - c, zb]], roofZ(tF), tRoof, COLLEGE_LIGHT, COLLEGE_TILE);
+          q(mb, f, [sc - 0.36, tF - 0.03, zb + 0.35], [sc + 0.36, tF - 0.03, zb + 0.35], [sc + 0.36, tF - 0.03, zb + 1.3], [sc - 0.36, tF - 0.03, zb + 1.3], N(f, 0, -1), glass);
+          q(glow, f, [sc - 0.36, tF - 0.035, zb + 0.35], [sc + 0.36, tF - 0.035, zb + 0.35], [sc + 0.36, tF - 0.035, zb + 1.3], [sc - 0.36, tF - 0.035, zb + 1.3], N(f, 0, -1), GLOW_LO);
+        } else {
+          const c = 0.5, zs = zb + 1.0;
+          dormer(mb, f, tF, [[sc + c, zb], [sc + c, zs], [sc - c, zs], [sc - c, zb]], roofZ(tF), tRoof, COLLEGE_LIGHT, COLLEGE_TILE);
+          q(mb, f, [sc - 0.3, tF - 0.03, zb + 0.2], [sc + 0.3, tF - 0.03, zb + 0.2], [sc + 0.3, tF - 0.03, zb + 0.85], [sc - 0.3, tF - 0.03, zb + 0.85], N(f, 0, -1), glass);
+        }
+      }
+    }
+  });
+  // Avant-corps central : saillie de 55 cm, deux colonnes de baies et une porte, bandeau « LYCÉE », fronton cintré à œil-de-bœuf, deux drapeaux.
+  for (const pv of m.pavilions ?? []) {
+    const w = m.wings[pv.w]!;
+    const { f, sOf, el } = slopeFrame(w, pv.left);
+    const sc = sOf(pv.u), hw = pv.hw;
+    const gl = terrain.heightAt(...at(f, sc, -0.3));
+    const top = el + 0.2;
+    box(mb, f, sc - hw, sc + hw, -0.3, 0.45, gl - 0.5, top, COLLEGE_LIGHT, COLLEGE_LIGHT);
+    const wall: HallWall = { a: [sc - hw, -0.3], b: [sc + hw, -0.3], out: [0, -1], top, front: true };
+    block(mb, f, wall, 0, 2 * hw, gl - 0.5, gl + 1.1, 0, 0.04, COLLEGE_PLINTH);
+    block(mb, f, wall, -0.15, 2 * hw + 0.15, top - 0.55, top, 0, 0.2, COLLEGE_TRIM);
+    block(mb, f, wall, -0.1, 2 * hw + 0.1, gl + 3.1, gl + 3.45, 0, 0.07, COLLEGE_TRIM);
+    for (const u of [hw * 0.5, hw * 1.5]) {
+      for (let r = 0, z0 = gl + 4.3; z0 + 1.7 < top - 2.3; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.9, true, false, r % 2 === 0);
+      bay(mb, glow, f, wall, u, 1.0, gl + 1.0, 1.9, true, false, false);
+    }
+    bay(mb, glow, f, wall, hw, 1.7, gl, 2.9, true, true, false);
+    // Fronton cintré au-dessus de la corniche, œil-de-bœuf.
+    segmentPediment(mb, f, wall, 0.9, 2 * hw - 0.9, top, 1.5, 0.22, COLLEGE_LIGHT);
+    roundOn(mb, f, wall.a, wall.b, hw, top + 0.55, 0.5, HALL_GRILLE, 0.24);
+    // Inscription « LYCÉE » incisée sur la frise sous le fronton.
+    lyceeLetters(mb, f, wall, hw, top - 2.0);
+    // Drapeaux : tricolore à gauche, européen à droite, aux baies de l'étage.
+    hallFlag(mb, f, sc - hw * 0.5, -0.3, gl + 5.0, -1, false);
+    hallFlag(mb, f, sc + hw * 0.5, -0.3, gl + 5.0, 1, true);
+  }
+}
+
+/** « LYCÉE » en lettres capitales de 80 cm, tracées en traits de 12 cm (chaque lettre : quelques blocs plaqués sur le mur), centré sur le mur à `u0` du début. */
+function lyceeLetters(mb: MeshBuilder, f: Frame, w: HallWall, uc: number, z0: number): void {
+  const H = 0.8, W = 0.55, T = 0.12, gap = 0.22, col = C("#4a4337");
+  type Stroke = [number, number, number, number]; // x0, x1, y0, y1 en fractions de W et H
+  const bar = (x0: number, x1: number, y0: number, y1: number): Stroke => [x0, x1, y0, y1];
+  const glyphs: Record<string, Stroke[]> = {
+    L: [bar(0, T / W, 0, 1), bar(0, 1, 0, T / H)],
+    Y: [bar(0.5 - T / W / 2, 0.5 + T / W / 2, 0, 0.5), bar(0, 0.5 - T / W / 2, 0.5, 1), bar(0.5 + T / W / 2, 1, 0.5, 1)],
+    C: [bar(0, T / W, 0, 1), bar(0, 1, 0, T / H), bar(0, 1, 1 - T / H, 1)],
+    E: [bar(0, T / W, 0, 1), bar(0, 1, 0, T / H), bar(0, 1, 1 - T / H, 1), bar(0, 0.8, 0.5 - T / H / 2, 0.5 + T / H / 2)],
+  };
+  const word = ["L", "Y", "C", "E", "E"];
+  const total = word.length * W + (word.length - 1) * gap;
+  word.forEach((ch, i) => {
+    const x = uc - total / 2 + i * (W + gap);
+    for (const [a, b, c0, c1] of glyphs[ch]!) block(mb, f, w, x + a * W, x + b * W, z0 + c0 * H, z0 + c1 * H, 0, 0.03, col, true);
+    // Accent aigu du É (la quatrième lettre).
+    if (i === 3) block(mb, f, w, x + 0.3 * W, x + 0.75 * W, z0 + H + 0.12, z0 + H + 0.2, 0, 0.03, col, true);
+  });
 }

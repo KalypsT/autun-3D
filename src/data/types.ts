@@ -305,6 +305,17 @@ export interface CollegeWing {
   r: number;
   a: "hip" | "gable" | "ext";
   b: "hip" | "gable" | "ext";
+  /** Lucarnes (D151) sur le pan gauche (`dl`) et le pan droit (`dr`) : [« ped » (fronton triangulaire) ou « rect » (chien-assis), pas en m]. */
+  dl?: ["ped" | "rect", number];
+  dr?: ["ped" | "rect", number];
+}
+
+/** Avant-corps central d'une façade (D151) : sur le pan `left` ou droit de l'aile `w`, à `u` mètres de son début, demi-largeur `hw`. */
+export interface CollegePavilion {
+  w: number;
+  left: boolean;
+  u: number;
+  hw: number;
 }
 
 /**
@@ -346,6 +357,8 @@ export interface CollegeSpec {
   roof?: string;
   /** Grille d'honneur sur la place du Champ de Mars et arbres taillés derrière elle (D149). */
   grille?: CollegeGrille;
+  /** Avant-corps à fronton cintré, inscription et drapeaux (D151). */
+  pavilions?: CollegePavilion[];
 }
 
 export interface BuildingKind {

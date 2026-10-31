@@ -2634,3 +2634,51 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d150-ensemble-apres.jpg)
 ![La façade la nuit, avant](captures/d150-nuit-avant.jpg)
 ![Après](captures/d150-nuit-apres.jpg)
+
+## 2026-10-31 — D151. Le lycée Bonaparte d'après photos, étape 4 : façades, lucarnes, avant-corps « LYCÉE »
+
+**Demande de l'utilisateur** : enchaîner sans photo de plus. Ce qui est fait vient de ce que lisent déjà les photos 1 et 2, du relevé LiDAR et de l'orthophotographie.
+
+**Constat** : D148 avait des murs plats à fenêtres génériques, sans lucarnes ni soubassement ; l'axe du faîtage mesuré au LiDAR n'est **pas** au milieu du bâtiment : l'écart entre l'axe et les murs du contour BD TOPO va de 0,3 à 0,9 m selon l'aile (aile centrale : 5,15 m côté cour d'honneur, 4,13 m côté cour sud ; aile est : 4,18 et 5,39 m). Les demi-largeurs de 4,5 m de D148 étaient donc justes en moyenne mais fausses de 0,5 m sur un côté, de sorte qu'un avant-corps posé sur le mur disparaissait dedans.
+
+**Mesures** (`build_monuments.py`, `measure_college` étendu) : demi-largeur de chaque côté = médiane de la distance de l'axe aux murs du contour parallèles à l'aile (à moins de 1,2 m de la lecture ; `wl` et `wr` séparés), égouts ajustés sur la pente jusqu'à ce mur. Résultats : W1 5,05 et 4,25 m, W2 4,09 et 4,92, W3 5,15 et 4,13, W4 4,80 et 5,44, W5 4,18 et 5,39, W6 4,42 et 4,56, aile de la rue aux Raz 4,1 à 4,7 m. Faîtages inchangés. Nouveau volume : **pavillon d'angle** `W5a` à l'angle nord-est (le LiDAR y monte à 21,6 m, 3,6 m au-dessus de l'aile est, sur 8 m) : pyramide à 21,07 m, égouts 16,2 m imposés (`eave` : l'aile est trop courte pour ajuster une pente).
+
+**Lecture** (`dl` et `dr` des ailes de `manual.json`, `pavilions` de l'entrée) : lucarnes à fronton triangulaire (« ped ») sur les pans qui regardent la cour d'honneur, la cour sud et la place (aile sud-ouest et aile nord-est, côté sud, tous les 3,2 m ; aile centrale, côté cour d'honneur, tous les 6,4 m ; aile est, côté place, tous les 3,5 m : la photo 1 en montre trois, le LiDAR trois pics) ; chiens-assis (« rect ») sur les pans côté cour nord (aile sud-ouest et nord-est, tous les 3,2 m ; aile est, côté cour, tous les 3,5 m). Les pas viennent des pics du LiDAR (pas de 3,2 m = travée de la fiche, 6,4 m sur l'aile centrale) et de l'orthophotographie (fronton triangulaire de l'ombre, chien-assis blanc). Avant-corps de 6,4 m au milieu de la face est de l'aile centrale, dans l'axe du fronton cintré vu à l'orthophotographie (à 24 m du début de l'aile).
+
+**Rendu** (`collegeDetails`, `lyceeLetters`, `src/render/monuments.ts` ; types `CollegePavilion`, `dl`, `dr` de `CollegeWing`, `pavilions` de `CollegeSpec`) :
+- **Lucarnes** posées sur le pan par `dormer` (aide de la mairie, repère `slopeFrame` dont la normale sortante est −t) : fronton triangulaire de 1,25 m de large et de 2,3 m de haut, ou chien-assis de 1 m ; vitrage, une sur deux allumée la nuit ; pas de lucarne sous le toit d'une autre aile ni dans les croupes.
+- **Murs** : soubassement de pierre grise de 1,5 m et bandeau entre le rez-de-chaussée et l'étage, par morceaux qui suivent le sol (faces seules : 5 cm de saillie).
+- **Avant-corps** : saillie de 30 cm devant le mur, pierre claire, soubassement, bandeau et corniche, deux colonnes de baies en plein cintre à chaque étage, porte en plein cintre au rez-de-chaussée, **« LYCÉE »** (lettres de 80 cm tracées en traits de 12 cm, brun sombre, sur la frise sous la corniche), fronton cintré de 1,5 m de flèche à œil-de-bœuf, drapeaux tricolore et européen aux baies de l'étage.
+- Coût : **5 124 triangles** et 302 de vitres allumées pour l'ensemble (grille d'honneur et arbres de D149 comprise : 1 830). Les faces planes seules du soubassement ont économisé 2 200 triangles par rapport à une première version.
+
+**Chaîne** : `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav` rejouée deux fois : `public/data` identique ; seuls `kinds/25_34.json` et `lod/25_34.json` changent.
+
+**Jeu** : aucun obstacle ni passant de plus (l'avant-corps est dans le contour ; la grille et les arbres sont ceux de D149) ; aucune cache d'arme à moins de 3 m.
+
+**Tests** (+4, 802 au total) : lucarnes lues sur les bons pans, avant-corps au milieu de la face est et à moins de 12 m de la perpendiculaire à la grille, coût entre 300 et 4 000 triangles, rien au-dessus du faîtage de plus de 60 cm ; test des six ailes devenu sept (le pavillon d'angle, 21 m).
+
+**Limites** :
+- **Pas de cheminées** : un essai de détection au LiDAR (ce qui dépasse le faîtage de plus de 60 cm) prend les bosses de toit (pavillon d'angle, lucarnes) pour des souches ; je l'ai retiré plutôt que de poser des cheminées hasardeuses. La seule cheminée de BD TOPO, (−94,3 ; −87,3), est sous le sommet du pavillon d'angle et n'est pas dessinée.
+- Les fenêtres sont des rectangles de 1 × 1,7 m à encadrement clair, toutes pareilles, sans linteaux cintrés ni volets (la photo 2 montre des linteaux cintrés et des encadrements bruns) ; le bandeau est à 3,1 m du sol local, pas à la hauteur réelle des planchers.
+- L'avant-corps est lu sur l'orthophotographie (largeur de 6,4 m = deux travées) et la photo 2 (fronton, inscription, drapeaux) : sa largeur, la position des drapeaux et le tracé des lettres sont à 30 cm près ; son fronton est posé sur la corniche sans toit derrière (vu de haut, un bloc de pierre) ; l'inscription est de couleur unie, sans relief.
+- Les lucarnes sont régulières ; certaines de la réalité manquent ou sont décalées, surtout aux angles ; leurs tailles sont une hypothèse (aucune mesure fine).
+- Les façades des rues Bulliot et aux Raz, les cours nord et sud et l'aile de la rue aux Raz n'ont pas de photo : mêmes fenêtres que les autres murs.
+
+![Comme ta photo 1, avant](captures/d151-photo1-avant.jpg)
+![Après](captures/d151-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d151-photo2-avant.jpg)
+![Après](captures/d151-photo2-apres.jpg)
+![L'avant-corps « LYCÉE », avant](captures/d151-pavillon-avant.jpg)
+![Après](captures/d151-pavillon-apres.jpg)
+![La cour d'honneur, avant](captures/d151-cour-avant.jpg)
+![Après](captures/d151-cour-apres.jpg)
+![La cour d'honneur la nuit, avant](captures/d151-nuit-avant.jpg)
+![Après](captures/d151-nuit-apres.jpg)
+![Du nord, avant](captures/d151-nord-avant.jpg)
+![Après : les chiens-assis et le pavillon d'angle](captures/d151-nord-apres.jpg)
+![Du sud, avant](captures/d151-sud-avant.jpg)
+![Après](captures/d151-sud-apres.jpg)
+![Vue du dessus, avant](captures/d151-haut-avant.jpg)
+![Après](captures/d151-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d151-ensemble-avant.jpg)
+![Après](captures/d151-ensemble-apres.jpg)

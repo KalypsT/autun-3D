@@ -1057,18 +1057,21 @@ describe("Lycée Bonaparte : volumes et toits mesurés (D148)", () => {
 
   it("l'ensemble est lu en six ailes : quatre faîtages à 21 m, deux ailes plus basses à 18 m ; l'aile de la rue aux Raz a deux pans bas", () => {
     const w = wings(MAIN);
-    expect(w).toHaveLength(6);
+    expect(w).toHaveLength(7);
     for (const x of w.slice(0, 4)) {
       expect(x.r).toBeGreaterThan(20.5);
       expect(x.r).toBeLessThan(21.5);
     }
-    for (const x of w.slice(4)) {
+    for (const x of w.slice(4, 6)) {
       expect(x.r).toBeGreaterThan(17.5);
       expect(x.r).toBeLessThan(18.5);
     }
+    // Pavillon d'angle (D151) : pyramide à 21 m au croisement de l'aile nord-est et de l'aile est.
+    expect(w[6]!.r).toBeGreaterThan(20.5);
+    expect(w[6]!.r).toBeLessThan(21.6);
     for (const x of w) {
-      expect(x.el).toBeLessThan(x.r - 3);
-      expect(x.er).toBeLessThan(x.r - 3);
+      expect(x.el).toBeLessThan(x.r - 2.5);
+      expect(x.er).toBeLessThan(x.r - 2.5);
       expect(x.el).toBeGreaterThan(x.r - 6);
     }
     for (const x of wings(LONG)) {
@@ -1243,5 +1246,37 @@ describe("Notre-Dame : église d'après photo (D150)", () => {
     // Devant la façade (côté place) : plus loin de l'axe du chevet que du milieu de la façade.
     expect(Math.hypot(x - nd.o[0], y - nd.o[1])).toBeLessThan(3.5);
     for (const q of CACHES) for (const id of [NAVE, CHEVET]) expect(dist(id, q.x, q.y)).toBeGreaterThan(3);
+  });
+});
+
+describe("Lycée Bonaparte : lucarnes, avant-corps, inscription (D151)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const spec = kinds.buildings["BATIMENT0000000348853321"]!.college!;
+
+  it("les lucarnes sont lues sur les pans visibles à l'orthophotographie : frontons côté cours d'honneur et cour sud, chiens-assis côté cour nord", () => {
+    const [, w2, w3, w4, w5] = spec.wings;
+    expect(w2!.dr).toEqual(["ped", 3.2]);
+    expect(w2!.dl).toEqual(["rect", 3.2]);
+    expect(w3!.dl).toEqual(["ped", 6.4]);
+    expect(w3!.dr).toBeUndefined();
+    expect(w4!.dr).toEqual(["ped", 3.2]);
+    expect(w5!.dr).toEqual(["ped", 3.5]);
+  });
+
+  it("l'avant-corps est au milieu de la face est de l'aile centrale, côté cour d'honneur, dans l'axe de la grille à quelques mètres près", () => {
+    const [pv] = spec.pavilions!;
+    expect(pv!.w).toBe(2);
+    expect(pv!.left).toBe(true);
+    const w = spec.wings[2]!;
+    const L = Math.hypot(w.q[0] - w.p[0], w.q[1] - w.p[1]);
+    expect(Math.abs(pv!.u - L / 2)).toBeLessThan(4);
+    // Le centre de l'avant-corps, côté cour : à moins de 12 m de la perpendiculaire à la grille qui passe par son portail.
+    const g = spec.grille!;
+    const ux = w.q[0] - w.p[0], uy = w.q[1] - w.p[1];
+    const cx = w.p[0] + (ux / L) * pv!.u + (-uy / L) * w.wl, cy = w.p[1] + (uy / L) * pv!.u + (ux / L) * w.wl;
+    const gl = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+    const along = ((cx - g.a[0]) * (g.b[0] - g.a[0]) + (cy - g.a[1]) * (g.b[1] - g.a[1])) / gl;
+    expect(Math.abs(along - g.portal[0])).toBeLessThan(12);
   });
 });

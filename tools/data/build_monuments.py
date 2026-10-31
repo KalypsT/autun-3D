@@ -1046,19 +1046,48 @@ def measure_college(bid, b, spec):
         ux, uy = (qx - px) / L, (qy - py) / L
         nx, ny = -uy, ux
         hw = w["hw"]
+        # Demi-largeurs de chaque côté (D151) : distance de l'axe aux murs du contour BD TOPO parallèles à l'aile, médiane (l'axe du faîtage n'est pas
+        # au milieu du bâtiment : 0,5 m d'écart sur l'aile centrale) ; à défaut de mur à moins de 1,2 m de `hw`, la demi-largeur lue.
+        ring = b["ring"]
+        side = {1: [], -1: []}
+        n_ring = len(ring) // 2
+        for e in range(n_ring):
+            ax_, ay_ = ring[2 * e], ring[2 * e + 1]
+            bx_, by_ = ring[2 * ((e + 1) % n_ring)], ring[2 * ((e + 1) % n_ring) + 1]
+            le = math.hypot(bx_ - ax_, by_ - ay_)
+            if le < 6 or abs((bx_ - ax_) * uy - (by_ - ay_) * ux) / le > 0.18:
+                continue
+            for fr in (0.25, 0.5, 0.75):
+                x_, y_ = ax_ + (bx_ - ax_) * fr, ay_ + (by_ - ay_) * fr
+                u_ = (x_ - px) * ux + (y_ - py) * uy
+                v_ = -(x_ - px) * uy + (y_ - py) * ux
+                if 2 < u_ < L - 2 and abs(abs(v_) - hw) < 1.2:
+                    side[1 if v_ > 0 else -1].append(abs(v_))
+        wl = round(float(np.median(side[1])), 2) if len(side[1]) >= 2 else hw
+        wr = round(float(np.median(side[-1])), 2) if len(side[-1]) >= 2 else hw
         lo, hi = w.get("win", [0.2, 0.8])
         ss = [lo * L + 0.5 * i for i in range(int((hi - lo) * L / 0.5))]
         at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
         ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
         eaves = []
         for sign in (1, -1):
-            os_ = [1.0 + 0.25 * i for i in range(int((hw - 0.7 - 1.0) / 0.25) + 1)]
+            wside = wl if sign == 1 else wr
+            os_ = [1.0 + 0.25 * i for i in range(int((wside - 0.7 - 1.0) / 0.25) + 1)]
             zs = [float(np.median([at(s_, sign * o) for s_ in ss])) for o in os_]
             k, c0 = np.polyfit(os_, zs, 1)
-            eaves.append(float(k * hw + c0))
-        wings.append({"p": w["p"], "q": w["q"], "wl": hw, "wr": hw, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]})
-        print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
+            eaves.append(float(k * wside + c0))
+        if "eave" in w:  # aile trop courte pour ajuster une pente : égout imposé (repris d'une aile voisine)
+            eaves = [w["eave"], w["eave"]]
+        wing = {"p": w["p"], "q": w["q"], "wl": wl, "wr": wr, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]}
+        for key in ("dl", "dr"):
+            if key in w:
+                kind, pitch = w[key].split(":")
+                wing[key] = [kind, float(pitch)]
+        wings.append(wing)
+        print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, demi-largeurs {wl} et {wr}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
     out = {"wings": wings}
+    if "pavilions" in spec:
+        out["pavilions"] = spec["pavilions"]
     if "roof" in spec:
         out["roof"] = spec["roof"]
     if "grille" in spec:

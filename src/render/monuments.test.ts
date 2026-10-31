@@ -249,3 +249,32 @@ describe("Notre-Dame : modèle `nd` (D150)", () => {
     expect(glow.positions.length / 9).toBeGreaterThan(0);
   });
 });
+
+describe("Lycée Bonaparte : détails du collège (D151)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const id = "BATIMENT0000000348853321";
+  const spec = kinds.buildings[id]!.college!;
+  const ring = world.tile.buildings.find((b) => b.id === id)!.ring;
+  const count = (s: typeof spec): number => {
+    const mb = new MeshBuilder();
+    buildCollege(mb, new MeshBuilder(), s, ring, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    return mb.positions.length / 9;
+  };
+
+  it("lucarnes et avant-corps ajoutent des triangles (moins de 4 000 pour les deux), sans trou : sommets finis", () => {
+    const bare = count({ ...spec, wings: spec.wings.map((w) => ({ p: w.p, q: w.q, wl: w.wl, wr: w.wr, el: w.el, er: w.er, r: w.r, a: w.a, b: w.b })), pavilions: [] });
+    const full = count(spec);
+    expect(full - bare).toBeGreaterThan(300);
+    expect(full - bare).toBeLessThan(4000);
+  });
+
+  it("les lucarnes ne montent pas au-dessus du faîtage de leur aile (plus de 60 cm)", () => {
+    const mb = new MeshBuilder();
+    buildCollege(mb, new MeshBuilder(), { wings: spec.wings, pavilions: [] }, ring, world.terrain);
+    let top = -Infinity;
+    for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+    expect(top).toBeLessThan(Math.max(...spec.wings.map((w) => w.r)) + 0.6);
+  });
+});

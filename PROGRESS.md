@@ -1197,3 +1197,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Comme ta photo 1, avant](docs/captures/d150-photo1-avant.jpg)
 ![Après](docs/captures/d150-photo1-apres.jpg)
 ![La façade](docs/captures/d150-facade-apres.jpg)
+
+**Le lycée Bonaparte, étape 4 : façades, lucarnes et avant-corps « LYCÉE » (31 octobre 2026)** (D151)
+- Les murs ont leur soubassement et leur bandeau ; des lucarnes à fronton triangulaire (côté cours d'honneur et sud, côté place) et des chiens-assis (côté cour nord) tous les 3,2 m, lues au LiDAR et à l'orthophotographie.
+- Au milieu de la face est de l'aile centrale : avant-corps à porte et baies en plein cintre, inscription « LYCÉE », fronton cintré à œil-de-bœuf, drapeaux tricolore et européen, dans l'axe de la grille.
+- Les largeurs des ailes sont recalées sur les murs du contour (l'axe du faîtage n'est pas au milieu : jusqu'à 0,9 m d'écart) ; un pavillon d'angle à 21 m est ajouté à l'angle nord-est.
+- 5 124 triangles pour tout le lycée (grille comprise) ; 802 tests ; aucun obstacle ni passant de plus.
+- Limites : pas de cheminées (le LiDAR ne les distingue pas des bosses du toit) ; fenêtres toutes pareilles ; façades des rues Bulliot et aux Raz sans photo.
+- À essayer : `?cam=-104.6,-114.4,2,-112.6,-118.6,7&h=14` (devant l'avant-corps), `?cam=-112,-52,38,-112,-95,12&h=14` (vue du nord), puis `&h=23`.
+
+![L'avant-corps](docs/captures/d151-pavillon-apres.jpg)
+![Du nord](docs/captures/d151-nord-apres.jpg)
