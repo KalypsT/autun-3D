@@ -331,9 +331,11 @@ export interface BuildingKind {
  * [s0, s1]. Intermarché : lames rouges `slats` [s0, s1], vitrage, porte, enseigne, store du Drive `tent` (x, y) et abris solaires `carports`.
  * But : bloc central `block` [s0, s1] plus haut, auvent, vitrine, enseigne carrée, triangles gris sur les arêtes `wings`.
  * Jardinerie : pavillons vitrés à pignon `pavilions` [arête, s0, s1, égout, faîtage] et bannière `banner` [arête, s0, s1, bas, haut].
+ * D145 : galeries marchandes (`galerie`) : `units` (une enseigne par unité, sur l'arête e entre s0 et s1), auvent vitré `arcade`, aires de jeux `play` ;
+ * GiFi (`gifi`) : tour d'entrée orange `tower` [s, largeur, haut] ; Action (`action`) : unités vitrées dont une condamnée.
  */
 export interface StoreModel {
-  style: "lidl" | "pharmacy" | "bricomarche" | "intermarche" | "but" | "jardinerie";
+  style: "lidl" | "pharmacy" | "bricomarche" | "intermarche" | "but" | "jardinerie" | "galerie" | "gifi" | "action";
   e: number;
   glass: [number, number];
   door?: [number, number];
@@ -351,6 +353,24 @@ export interface StoreModel {
   wings?: number[];
   pavilions?: [number, number, number, number, number][];
   banner?: [number, number, number, number, number];
+  tower?: [number, number, number];
+  units?: StoreUnit[];
+  arcade?: Arcade;
+  play?: [number, number, number][];
+}
+
+/**
+ * Unité d'une galerie ou d'un magasin à plusieurs enseignes (D145) : arête du contour, s0, s1 (mètres depuis le sommet de l'arête), nom, couleur du
+ * bandeau (vide : pas de bandeau), couleur des lettres, mode (« glass » : vitrine et porte, « wall » : mur plein et porte étroite, « board » : vitrine
+ * condamnée), position de la porte depuis s0 (sinon au milieu).
+ */
+export type StoreUnit = [number, number, number, string, string, string, ("glass" | "wall" | "board")?, number?];
+
+/** Auvent vitré continu sur poteaux fins (D145) : tronçons [arête, s0, s1], distances au mur du bord arrière et du bord avant (m), hauteur du dessus au-dessus du sol (m). */
+export interface Arcade {
+  runs: [number, number, number][];
+  o: [number, number];
+  z: number;
 }
 
 /** Abri de parking solaire mesuré au LiDAR (D144) : centre (x, y), angle du grand côté (degrés, x vers l'est), longueur, largeur, plan du dessus z = a·x + b·y + c. */

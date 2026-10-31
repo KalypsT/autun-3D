@@ -1092,3 +1092,37 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le But la nuit](docs/captures/d144-but-nuit-apres.jpg)
 ![L'Intermarché la nuit](docs/captures/d144-inter-nuit-apres.jpg)
 ![La Jardinerie la nuit](docs/captures/d144-jard-nuit-apres.jpg)
+
+**La zone commerciale nord-ouest de Bellevue d'après photos : deux galeries marchandes, GiFi et Action (31 octobre 2026)** (D145)
+- Les enseignes de tes photos ne sont pas où on les cherchait : deux galeries marchandes de part et d'autre d'un grand parking (x −2340 à −2160, y 2310 à 2545), GiFi et Action au sud-est.
+- **Une aile entière manquait** : la galerie nord-est a, au nord-ouest, une aile de 50 × 34 m (Centrakor) que ni BD TOPO ni OpenStreetMap ne connaissent ; le LiDAR la voit, elle est ajoutée (nouvelle étape `build_extras.py`).
+- Deux galeries : bardage bois miel entre des piles anthracite, une unité par enseigne (Intersport, Gémo, Schmidt, Optical Center, Générale d'Optique, Comme j'aime, Maxi Zoo, Stokomani, Maison de la Literie, Centrakor…) avec vitrine, porte et bandeau coloré allumé la nuit, **auvent vitré continu** sur poteaux fins verts (mesuré au LiDAR : dessus à 8,3 – 8,6 m ; la bande « industrielle » de 10 m qui le figurait en mur plein est retirée), deux aires de jeux (toboggan, trampoline, banc).
+- GiFi : bardage gris, tour d'entrée orange à enseigne ; Action : bandeau bleu, entrée, vitrines dont une condamnée par une planche (état de 2023).
+- Mesures au LiDAR : tous les toits sont plats (les « croupes » de BD TOPO sont fausses) à 5,6 – 6,7 m ; le mur d'entrée de la galerie sud-ouest passe du mur de bout à ses deux longs murs.
+- Les poteaux des auvents, les tours de jeux et les poteaux d'entrée du GiFi bloquent (68 obstacles) ; un point « commerce » par entrée pour les passants (18) ; aucune cache d'arme dans le secteur.
+- Environ 2 500 triangles pour toute la zone, aucun appel de dessin de plus. 776 tests. `build_monuments_nav.py` sait poser plusieurs points par bâtiment (`pois`).
+- Limites : largeur et position des unités à ± 5 m (photos d'ensemble) ; Basic-Fit, Chaussea, Centrakor et deux unités sont des hypothèses ; poteaux sans jambes de force ; murs arrière en bardage miel ; Aubade et Norauto à suivre (D146).
+- À essayer : `?at=-2213,2360&h=14` (devant la galerie sud-ouest), `?at=-2199,2455&h=14` (devant la galerie nord-est), `?at=-2114,2292&h=14` (devant GiFi), `?at=-2082,2309&h=14` (devant Action), puis `?h=23` pour la nuit.
+
+![La galerie sud-ouest, comme ta photo 3, avant](captures/d145-galerie-so-photo3-avant.jpg)
+![Après](captures/d145-galerie-so-photo3-apres.jpg)
+![Vers le bout sud-est, comme ta photo 1, avant](captures/d145-galerie-so-photo1-avant.jpg)
+![Après](captures/d145-galerie-so-photo1-apres.jpg)
+![La galerie nord-est, comme ta photo 2, avant](captures/d145-galerie-ne-photo2-avant.jpg)
+![Après](captures/d145-galerie-ne-photo2-apres.jpg)
+![L'aire de jeux, comme ta photo 4, avant](captures/d145-jeux-photo4-avant.jpg)
+![Après](captures/d145-jeux-photo4-apres.jpg)
+![L'aile nord-ouest (Centrakor), absente avant, avant](captures/d145-aile-avant.jpg)
+![Après](captures/d145-aile-apres.jpg)
+![GiFi, comme ta photo 5, avant](captures/d145-gifi-avant.jpg)
+![Après](captures/d145-gifi-apres.jpg)
+![Action, comme ta photo 6, avant](captures/d145-action-avant.jpg)
+![Après](captures/d145-action-apres.jpg)
+![La galerie sud-ouest la nuit, avant](captures/d145-galerie-so-nuit-avant.jpg)
+![Après](captures/d145-galerie-so-nuit-apres.jpg)
+![La galerie nord-est la nuit, avant](captures/d145-galerie-ne-nuit-avant.jpg)
+![Après](captures/d145-galerie-ne-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d145-haut-avant.jpg)
+![Après](captures/d145-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d145-zone-avant.jpg)
+![Après](captures/d145-zone-apres.jpg)

@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, Carport, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -188,6 +188,10 @@ export function storeCircles(b: Building, st: StoreModel): [number, number, numb
   const at = (f: EdgeFrame, s: number, off: number): [number, number] => [f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off];
   const f = edgeFrame(b.ring, st.e);
   for (const cp of st.carports ?? []) for (const [x, y] of carportShape(cp).posts) out.push([x, y, 0.3]);
+  // Galeries marchandes (D145) : poteaux de l'auvent vitré, tour de jeux des aires de jeux.
+  for (const [x, y] of arcadePosts(b, st.arcade)) out.push([x, y, ARCADE_POST_R]);
+  for (const p of st.play ?? []) out.push(...playCircles(p));
+  if (st.style === "gifi" && st.door) for (const s of [st.door[0] - st.door[1] / 2 - 0.4, st.door[0] + st.door[1] / 2 + 0.4]) out.push([...at(f, s, GIFI_CANOPY_D - 0.2), 0.2]);
   if (st.style === "lidl") {
     if (st.door) {
       const [c, w] = st.door;
@@ -209,6 +213,51 @@ export function storeCircles(b: Building, st: StoreModel): [number, number, numb
     }
   }
   return out;
+}
+
+/** Rayon des poteaux de l'auvent vitré des galeries (m, obstacle) ; profondeur de l'auvent d'entrée du GiFi (m). */
+export const ARCADE_POST_R = 0.2;
+export const GIFI_CANOPY_D = 2.6;
+
+/** Poteaux de l'auvent vitré d'une galerie (D145) : tous les 6 m au plus, aux deux bouts de chaque tronçon, le long du bord avant. */
+export function arcadePosts(b: Building, a: Arcade | undefined): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [e, s0, s1] of a?.runs ?? []) {
+    const f = edgeFrame(b.ring, e);
+    const n = Math.max(1, Math.ceil((s1 - s0 - 0.6) / 6));
+    for (let i = 0; i <= n; i++) {
+      const s = s0 + 0.3 + ((s1 - s0 - 0.6) * i) / n, o = a!.o[1] - 0.2;
+      out.push([f.x + f.tx * s + f.nx * o, f.y + f.ty * s + f.ny * o]);
+    }
+  }
+  return out;
+}
+
+/** Aire de jeux d'un parking (D145) : centre (x, y), angle (degrés) ; repère local (u le long de l'angle, v à sa gauche) : tapis de 9 × 7 m, tour du toboggan, trampoline, banc (à l'écart du chemin qui traverse l'îlot : à plus de 3 m de toute file piétonne). */
+export interface PlayLayout {
+  frame: { x: number; y: number; ux: number; uy: number; vx: number; vy: number };
+  mat: [number, number];
+  tower: [number, number];
+  slide: [number, number, number];
+  trampoline: [number, number, number];
+  bench: [number, number];
+}
+
+export function playLayout([x, y, ang]: [number, number, number]): PlayLayout {
+  const r = (ang * Math.PI) / 180, ux = Math.cos(r), uy = Math.sin(r);
+  return { frame: { x, y, ux, uy, vx: -uy, vy: ux }, mat: [9, 7], tower: [-2.3, -0.9], slide: [-2.3 + 0.7, -0.9, 3.4], trampoline: [2.1, 1.7, 0.9], bench: [-3.4, 2.7] };
+}
+
+/** Point du repère d'une aire de jeux en coordonnées du monde. */
+export function playPoint(l: PlayLayout, u: number, v: number): [number, number] {
+  const f = l.frame;
+  return [f.x + f.ux * u + f.vx * v, f.y + f.uy * u + f.vy * v];
+}
+
+/** Obstacles d'une aire de jeux : la tour du toboggan et le banc ; le tapis, le toboggan (bas) et le trampoline enterré se traversent. */
+export function playCircles(p: [number, number, number]): [number, number, number][] {
+  const l = playLayout(p);
+  return [[...playPoint(l, ...l.tower), 0.9], [...playPoint(l, ...l.bench), 0.6]];
 }
 
 /** Distance du portique d'entrée du Bricomarché au mur (m) et saillie des pavillons vitrés de la Jardinerie (m). */

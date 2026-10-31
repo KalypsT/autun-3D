@@ -2358,3 +2358,80 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d144-zone-apres.jpg)
 ![Vue du dessus, avant](captures/d144-haut-avant.jpg)
 ![Après](captures/d144-haut-apres.jpg)
+
+## 2026-10-31 — D145. La zone commerciale nord-ouest de Bellevue d'après photos : deux galeries marchandes, GiFi et Action
+
+**Demande de l'utilisateur** : modéliser d'après ses photos la partie nord-ouest de la zone commerciale de Bellevue (la partie sud-est est D144), par familles de gabarits, un style par famille et un modèle dédié seulement si nécessaire ; enquête d'abord (rien n'était modifié), puis plan validé (« Ok pour le reste ») : D145 traite les deux galeries, l'aile manquante, GiFi et Action ; D146 reprend Aubade et Norauto (photos reçues après le plan). Photos (captures Google Street View de juillet 2023 et juillet 2026, photos aériennes de l'utilisateur, capture Google Maps ; non versionnées, elles servent seulement à décrire).
+
+**Constat de l'enquête (avant toute modification)** :
+- Les enseignes des photos ne sont pas à x ≈ −2100 à −1900 mais plus au nord-ouest : deux galeries marchandes de part et d'autre d'un grand parking (OpenStreetMap 917804160), x de −2340 à −2160 et y de 2310 à 2545 ; GiFi et Action sont juste au sud-est de la première.
+- **Une aile entière manque** : au LiDAR, la galerie nord-est a une aile de 50 × 34 m au nord-ouest (Centrakor) que ni BD TOPO ni OpenStreetMap ne connaissent (l'orthophotographie, plus ancienne, y montre du gravier). Le repère « Centrakor » de Google Maps tombe dessus.
+- Les toits sont plats (pente de 0,1 à 0,3 %) ; les « croupes » de BD TOPO sont fausses (GiFi, galerie nord-est) et les hauteurs de BD TOPO sont de 0,5 à 2 m trop hautes. La bande de 4,6 m × 174 m « industrielle » de 10,4 m le long de la galerie sud-ouest est l'auvent vitré ; le jeu la dessinait en mur plein.
+
+**Dans les données** :
+- Galerie sud-ouest : BD TOPO `BATIMENT0000002222388078` (tuile 17_44, 8 sommets, 174 m en V de 25 m de large, 5 222 m², OpenStreetMap way 917804154 sans nom). Son auvent : `…2222388080` (789 m²), maintenant `hidden`.
+- Galerie nord-est : `…2222388083` (17_45, 2 229 m²) et `…2479786224` (1 477 m², sa fiche dit « dwelling »), OpenStreetMap way 917804153 sans nom ; plus l'aile `BATIMENT0000EXTRA0145`, ajoutée (tuile 16_45).
+- GiFi : `…0357310923` (17_44, 1 703 m², OpenStreetMap way 90417738). Action et ses voisins : `…0348857700` (17_44, 2 494 m² : Action way 661356779 de 956 m², way 90417761 de 1 514 m², nœud « Mangeons Frais »).
+- Le mur d'entrée de la fiche n'est pas l'arête du contour (D144) ; la galerie sud-ouest avait son entrée sur le mur de bout nord-ouest ; elle passe sur ses deux longs murs nord-est (murs 0 et 1, `also`).
+
+**Lecture des photos** (`stores`, `fronts`, `kinds`, `extra`) :
+- *Côté des photos* (déduit, confirmé par « Ok pour le reste ») : P3 (Intersport, Gémo) et P1 (Générale d'Optique…) depuis le parking nord-est de la galerie sud-ouest, P1 près de son bout sud-est ; P2 et P4 depuis le parking sud-ouest de la galerie nord-est ; GiFi de l'est-sud-est (mur 2 du contour, 48,5 m, le bâtiment bleu à droite est Action) ; Action du sud-sud-est (mur 1, 71,4 m, Action au bout sud-ouest). Indices : le repère Google Maps d'Intersport tombe au coin nord-ouest du contour, ceux de Maxi Zoo et de Maison de la Literie sur la galerie nord-est dans le même ordre que sur les photos, l'aire de jeux de la photo 4 est devant Maxi Zoo sur l'orthophotographie.
+- *Galeries* : bardage bois miel entre des piles gris anthracite, vitrines à meneaux sous des bandeaux d'enseigne colorés, auvent vitré continu (plus haut que le toit) sur poteaux fins verts. Enseignes, du sud-est au nord-ouest : Basic-Fit (carte seule, non vue sur photo), Générale d'Optique (vert), Studio Comme j'aime, SCHMIDT, Optical Center, une enseigne noire illisible, Chaussea (lecture douteuse), Gémo, Intersport (blanc, lettres bleues) ; du nord-ouest au sud-est : Centrakor (orange, d'après la carte), une unité sans enseigne lue, Maxi Zoo, Stokomani (vert), Maison de la Literie (bleu marine, lettres jaunes).
+- *GiFi* : bardage gris à bande haute claire, tour d'entrée orange au centre du mur, enseigne « GiFi », auvent d'entrée sur deux poteaux, vitrage de part et d'autre.
+- *Action* (photo de 2023) : bandeau bleu « ACTION » au bout sud-ouest, entrée sous l'enseigne, puis des vitrines, dont une condamnée par une planche.
+
+**Mesures** (LiDAR HD, MNS à 0,5 m, une deuxième passe ne réécrit rien) :
+- Plans de toit (`build_stores.py`) : tous plats à moins de 1 %, 5,5 à 6,7 m au-dessus du sol (galerie sud-ouest 6,6 m ; galerie nord-est 6,4 et 6,7 m ; aile 6,4 m ; GiFi 5,6 m ; Action 6,2 m). Acrotère de 20 cm imposé pour les deux galeries (`par` : l'auvent au bord du contour fausse la bande de mesure, 45 cm), 15 cm ailleurs.
+- **Auvents vitrés** (profils perpendiculaires au mur, relevé à la main de l'enquête, reporté dans `arcade` de `manual.json`) : dessus plat à 8,3 – 8,6 m au-dessus du sol, 3 m de profondeur côté sud-ouest de la galerie sud-ouest (continu sur ses 174 m), 2,5 m côté nord-est de la galerie nord-est (le contour BD TOPO empiète de 1,2 m sur l'auvent). Le verre renvoie en partie le LiDAR : ± 0,3 m.
+- **Aile manquante** : composante du MNS hors des contours BD TOPO ; 50,2 × 34 m (même profondeur que l'unité voisine), toit à 6,4 m ; deux sommets communs avec le mur nord-ouest de l'unité voisine.
+- Aires de jeux : deux îlots de parking à tapis vert sur l'orthophotographie (centres (−2230 ; 2458) et (−2260,5 ; 2398)).
+
+**Données** :
+- Nouvelle étape `tools/data/build_extras.py` (`extra` de `manual.json`, avant `build_carts.py`) : ajoute le bâtiment et sa fiche à la tuile de son centre (16_45, dont le compte de bâtiments passe de 0 à 1 dans `world.json`, pour que les autres étapes la lisent). Une régénération des tuiles (`build_tiles.py`) la retire : relancer l'étape.
+- `stores` : trois styles (`galerie`, `gifi`, `action`) et des champs (`units`, `arcade`, `play`, `tower`, `par`) ; `kinds` : l'aile (`retail`), l'auvent sud-ouest (`hidden`) ; `fronts` : murs d'entrée, `also`, et `pois` : un point « commerce » par unité (mur, abscisse en mètres).
+- Chaîne : `build_extras.py`, `build_carts.py`, `build_stores.py`, `build_shop_fronts.py`, `build_monuments_nav.py` (étendue : `pois`). Rejouée deux fois : fichiers identiques (somme de contrôle de `public/data`). `build_kinds.py` et `build_nav.py` n'ont pas été relancés.
+
+**Rendu** (`src/render/store.ts` étendu ; `arcadePosts`, `playLayout`, `playCircles`, `storeCircles` dans `src/core/landmarks.ts`) : les gabarits (retail) ne suffisaient pas (unités à enseigne, auvent vitré de 174 m, aires de jeux), mais le modèle de D143 et D144 les accueille (mêmes murs, mêmes toits à plan mesuré, mêmes aides `storefront`, `slidingDoor`, `socle`, `plate`, `box`, `post`) :
+- `unitFronts` : sur chaque unité, vitrine à meneaux et porte coulissante (ou mur plein à porte étroite, ou vitrine condamnée d'une planche), bandeau d'enseigne coloré et son nom (allumé la nuit), piles anthracite entre les unités.
+- `arcade` : dalle de verre teinté, dessous clair, nervures et poutre avant vertes, poteaux fins verts tous les 6 m au plus.
+- `playground` : tapis vert, tour de jeux à toit vert et toboggan argenté, trampoline enterré, banc rouge.
+- `gifi` (tour orange, enseigne, auvent sur deux poteaux), `action` (unités à bandeau bleu).
+- **Coût** : galerie sud-ouest 890 triangles (+ 130 allumés, 16 de lettres), partie sud-est de la galerie nord-est 434 (+ 50, 4), partie centrale 234 (+ 38, 2), aile 258 (+ 34, 2), GiFi 128 (+ 22, 2), Action 194 (+ 56, 2), aires de jeux comprises : **environ 2 500 triangles** pour toute la zone, dans les maillages de la tuile ; aucun appel de dessin de plus.
+**Jeu** :
+- *Obstacles* (`storeCircles`) : poteaux des auvents (62 cercles de 20 cm), tour de jeux (90 cm) et banc (60 cm) des deux aires, deux poteaux d'entrée du GiFi. Le tapis, le toboggan et le trampoline se traversent ; on passe entre deux poteaux et sous l'auvent le long du mur.
+- *Files des passants* : les files du réseau piéton (hors la grille des places de parking, classe 7, qui couvre tout le parking) passent à plus de 30 cm des 68 cercles (écart le plus faible : 1,2 m, vérifié par un script). Un premier essai, banc au milieu du bord du tapis, posait le banc sur le chemin qui traverse chaque îlot (− 0,5 m) : il est au coin du tapis.
+- *Passants* : 18 points « commerce », un par entrée, à 80 cm devant le mur, hors des obstacles ; les anciens points (milieu du mur de bout, nœuds OpenStreetMap) sont retirés (`poiClear`).
+- *Caches d'armes* : aucune à moins de 3 m des six bâtiments ni à moins de 8 m des aires de jeux (test).
+
+**Tests** (+10, 776 au total) : aile ajoutée (aire, toit, sommets communs, idempotente) ; toits plats et hauteurs ; auvent masqué ; côté et longueur de chaque mur d'entrée ; unités contiguës, enseignes ; auvents (hauteur, profondeur, espacement des poteaux, longueur couverte) ; obstacles (listés dans la tuile, passage libre) ; un point « commerce » par entrée ; aucune cache ; géométrie finie, vitrages allumés, inscriptions, coût borné, rien ne dépasse de plus de 5 m.
+
+**Limites** :
+- Largeur et position de chaque unité le long du mur estimées à ± 5 m (lues sur des photos d'ensemble et sur les repères de Google Maps) ; plusieurs enseignes (Basic-Fit, Chaussea, Centrakor, l'unité noire et l'unité sans nom) sont des hypothèses ; couleurs de bandeau lues, sans logo ; Cuisinella (nœud OpenStreetMap au mur nord-ouest) non placé.
+- Auvent : poteaux verticaux sans les jambes de force des photos ; profondeur et hauteur mesurées, mais sur trois profils seulement ; côté nord-est de la galerie nord-est, l'auvent est étroit de 1,2 m (le contour BD TOPO empiète dessus).
+- Murs arrière et de bout : bardage miel comme la façade (les photos montrent de l'anthracite aux bouts) ; pas de bande haute sombre sous l'acrotère.
+- Aires de jeux à l'orthophotographie (taille du tapis à 1 m près, structures de la photo 4 simplifiées).
+- GiFi : tour de 7,6 m lue sur la photo ; Action : état de 2023, avec les mêmes vitrines pour tout le mur sud-ouest de son aile.
+- Pas de LOD (silhouettes lointaines inchangées) ; l'aile n'est pas dans la navigation des passants (`build_nav.py` non relancé) ; le sol de la tuile 16_45 est celui du relief du jeu.
+
+![La galerie sud-ouest, comme ta photo 3, avant](captures/d145-galerie-so-photo3-avant.jpg)
+![Après](captures/d145-galerie-so-photo3-apres.jpg)
+![Vers le bout sud-est, comme ta photo 1, avant](captures/d145-galerie-so-photo1-avant.jpg)
+![Après](captures/d145-galerie-so-photo1-apres.jpg)
+![La galerie nord-est, comme ta photo 2, avant](captures/d145-galerie-ne-photo2-avant.jpg)
+![Après](captures/d145-galerie-ne-photo2-apres.jpg)
+![L'aire de jeux, comme ta photo 4, avant](captures/d145-jeux-photo4-avant.jpg)
+![Après](captures/d145-jeux-photo4-apres.jpg)
+![L'aile nord-ouest (Centrakor), absente avant, avant](captures/d145-aile-avant.jpg)
+![Après](captures/d145-aile-apres.jpg)
+![GiFi, comme ta photo 5, avant](captures/d145-gifi-avant.jpg)
+![Après](captures/d145-gifi-apres.jpg)
+![Action, comme ta photo 6, avant](captures/d145-action-avant.jpg)
+![Après](captures/d145-action-apres.jpg)
+![La galerie sud-ouest la nuit, avant](captures/d145-galerie-so-nuit-avant.jpg)
+![Après](captures/d145-galerie-so-nuit-apres.jpg)
+![La galerie nord-est la nuit, avant](captures/d145-galerie-ne-nuit-avant.jpg)
+![Après](captures/d145-galerie-ne-nuit-apres.jpg)
+![Vue du dessus, avant](captures/d145-haut-avant.jpg)
+![Après](captures/d145-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d145-zone-avant.jpg)
+![Après](captures/d145-zone-apres.jpg)

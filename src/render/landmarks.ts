@@ -35,8 +35,8 @@ const FLAG = { blue: C("#1f3f8f"), white: C("#f4f1ea"), red: C("#d3313a"), eu: C
 const STAINED: [string, string][] = [["#1f3f7f", "#c94a3a"], ["#2a4f8f", "#d9a03a"], ["#5a2f6f", "#2f6f8f"]];
 
 /** Murs et toits des magasins d'après photo (D143, D144). */
-const STORE_WALL: Record<StoreModel["style"], string> = { lidl: "#efede6", pharmacy: "#e9e6df", bricomarche: "#4a4e54", intermarche: "#34373c", but: "#ece9e2", jardinerie: "#e6dcc0" };
-const STORE_ROOF: Record<StoreModel["style"], string> = { lidl: "#eeeeec", pharmacy: "#8d706c", bricomarche: "#c6cacc", intermarche: "#bcc0c2", but: "#cfd2d3", jardinerie: "#9aa5aa" };
+const STORE_WALL: Record<StoreModel["style"], string> = { lidl: "#efede6", pharmacy: "#e9e6df", bricomarche: "#4a4e54", intermarche: "#34373c", but: "#ece9e2", jardinerie: "#e6dcc0", galerie: "#bd9254", gifi: "#9aa0a5", action: "#dad8d1" };
+const STORE_ROOF: Record<StoreModel["style"], string> = { lidl: "#eeeeec", pharmacy: "#8d706c", bricomarche: "#c6cacc", intermarche: "#bcc0c2", but: "#cfd2d3", jardinerie: "#9aa5aa", galerie: "#b9bdbf", gifi: "#b9bec2", action: "#c6cacc" };
 
 /** Couleur des murs d'un gabarit (null : celle de la fiche). */
 export function landmarkWallColor(kind: BuildingKind | undefined, id: string): THREE.Color | null {

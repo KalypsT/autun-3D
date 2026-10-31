@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Building, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { at, carportShape, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { arcadePosts, at, carportShape, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, playCircles, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
@@ -757,5 +757,182 @@ describe("zone commerciale de Bellevue : But, Bricomarché, Intermarché, Jardin
 
   it("aucune cache d'arme à moins de 3 m des quatre magasins ni de leurs abris", () => {
     for (const id of [BRICO, INTER, BUT, JARD]) for (const q of CACHES) expect(distToRing(bOf(id), q.x, q.y)).toBeGreaterThan(3);
+  });
+});
+
+describe("galeries marchandes de Bellevue, GiFi, Action (D145)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const S1 = "BATIMENT0000002222388078", S1C = "BATIMENT0000002222388080", S2A = "BATIMENT0000002222388083", S2B = "BATIMENT0000002479786224", WING = "BATIMENT0000EXTRA0145";
+  const GIFI = "BATIMENT0000000357310923", ACT = "BATIMENT0000000348857700";
+  const GALLERIES = [S1, S2A, S2B, WING];
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
+  const cell = JSON.parse(readFileSync("public/data/nav/s4_11.json", "utf8")) as { poi: number[] };
+  const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { fronts: Record<string, { pois?: [number, number][] }> };
+  const commerce = (): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    return out;
+  };
+  const distToRing = (b: { ring: number[] }, x: number, y: number): number => {
+    let d = Infinity;
+    for (let e = 0; e < b.ring.length / 2; e++) {
+      const f = edgeFrame(b.ring, e);
+      const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+      d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+    }
+    return d;
+  };
+  const area = (r: number[]): number => {
+    let a = 0;
+    for (let i = 0; i < r.length; i += 2) a += r[i]! * r[(i + 3) % r.length]! - r[(i + 2) % r.length]! * r[i + 1]!;
+    return Math.abs(a) / 2;
+  };
+
+  it("l'aile nord-ouest absente de BD TOPO est ajoutée d'après le LiDAR : 50 × 34 m, toit plat à 6 – 7 m, prolonge le mur de l'unité voisine", () => {
+    const w = bOf(WING), b = bOf(S2B);
+    expect(area(w.ring)).toBeGreaterThan(1500);
+    expect(area(w.ring)).toBeLessThan(1900);
+    expect(kinds.buildings[WING]!.k).toBe("retail");
+    const roof = kinds.buildings[WING]!.roof!;
+    expect(Math.hypot(roof[0], roof[1])).toBeLessThan(0.03);
+    const h = roof[0] * w.ring[0]! + roof[1] * w.ring[1]! + roof[2] - w.ground;
+    expect(h).toBeGreaterThan(5.8);
+    expect(h).toBeLessThan(7.2);
+    // Deux sommets communs avec l'unité voisine (le mur nord-ouest de l'ancien bâtiment).
+    const shared = [0, 1, 2, 3].filter((i) => [0, 1, 2, 3].some((j) => Math.hypot(w.ring[2 * i]! - b.ring[2 * j]!, w.ring[2 * i + 1]! - b.ring[2 * j + 1]!) < 0.2));
+    expect(shared.length).toBe(2);
+    // L'ajout est idempotent : un seul bâtiment de cet identifiant.
+    expect(world.tile.buildings.filter((q) => q.id === WING).length).toBe(1);
+  });
+
+  it("toits mesurés : plats (moins de 3 %), de 5 à 7,5 m au-dessus du sol, acrotère de 15 à 70 cm ; l'auvent BD TOPO de 10 m est masqué", () => {
+    for (const id of [...GALLERIES, GIFI, ACT]) {
+      const k = kinds.buildings[id]!, b = bOf(id), roof = k.roof!;
+      expect(k.k).toBe("retail");
+      expect(Math.hypot(roof[0], roof[1])).toBeLessThan(0.03);
+      expect(roof[3]).toBeGreaterThanOrEqual(0.15);
+      expect(roof[3]).toBeLessThanOrEqual(0.7);
+      const h = roof[0] * b.ring[0]! + roof[1] * b.ring[1]! + roof[2] - b.ground;
+      expect(h).toBeGreaterThan(5);
+      expect(h).toBeLessThan(7.5);
+    }
+    expect(kinds.buildings[S1C]!.k).toBe("hidden");
+    expect(isOpen(kinds, S1C)).toBe(true);
+  });
+
+  it("côté des façades : galerie sud-ouest au nord-est, galerie nord-est au sud-ouest, GiFi à l'est-sud-est, Action au sud-sud-est", () => {
+    const want: [string, string, number, number, number, number][] = [
+      [S1, "galerie", 20, 70, 105, 115], [S2A, "galerie", 200, 250, 58, 60], [S2B, "galerie", 200, 250, 42, 45], [WING, "galerie", 200, 250, 49, 51],
+      [GIFI, "gifi", 90, 130, 47, 50], [ACT, "action", 150, 185, 70, 73],
+    ];
+    for (const [id, style, c0, c1, l0, l1] of want) {
+      const st = kinds.buildings[id]!.store!, f = edgeFrame(bOf(id).ring, st.e);
+      expect(st.style).toBe(style);
+      expect(compass(f)).toBeGreaterThan(c0);
+      expect(compass(f)).toBeLessThan(c1);
+      expect(f.len).toBeGreaterThan(l0);
+      expect(f.len).toBeLessThan(l1);
+    }
+  });
+
+  it("unités : contiguës sur leur arête, dans la longueur du mur, enseignes lues sur les photos ; Intersport est la plus large", () => {
+    const names = new Set<string>();
+    for (const id of [...GALLERIES, ACT]) {
+      const b = bOf(id), us = kinds.buildings[id]!.store!.units!;
+      expect(us.length).toBeGreaterThan(0);
+      for (const [e, s0, s1, name] of us) {
+        expect(s1).toBeGreaterThan(s0 + 3);
+        expect(s1).toBeLessThanOrEqual(edgeFrame(b.ring, e).len + 0.01);
+        if (name) names.add(name);
+      }
+      // Pas de recouvrement le long d'une arête.
+      for (const [e, s0, s1] of us) for (const [e2, t0, t1] of us) if (e === e2 && (s0 !== t0 || s1 !== t1)) expect(Math.min(s1, t1) - Math.max(s0, t0)).toBeLessThan(0.01);
+    }
+    for (const n of ["INTERSPORT", "GÉMO", "SCHMIDT", "OPTICAL CENTER", "Générale d'Optique", "Comme j'aime", "CENTRAKOR", "MAXI ZOO", "STOKOMANI", "MAISON de la LITERIE", "ACTION"]) expect(names.has(n)).toBe(true);
+    const widths = kinds.buildings[S1]!.store!.units!.map(([, s0, s1]) => s1 - s0);
+    const inter = kinds.buildings[S1]!.store!.units!.find((u) => u[3] === "INTERSPORT")!;
+    expect(inter[2] - inter[1]).toBeGreaterThanOrEqual(Math.max(...widths.filter((w) => w < 45)));
+  });
+
+  it("auvents vitrés : dessus à 8 – 9 m, 2 à 3,5 m de profondeur, poteaux tous les 6 m au plus, de part et d'autre du mur sur toute la longueur de la façade", () => {
+    for (const id of [S1, S2A, S2B, WING]) {
+      const b = bOf(id), a = kinds.buildings[id]!.store!.arcade!;
+      expect(a.z).toBeGreaterThan(8);
+      expect(a.z).toBeLessThan(9);
+      expect(a.o[1] - a.o[0]).toBeGreaterThan(2);
+      expect(a.o[1] - a.o[0]).toBeLessThan(3.5);
+      const posts = arcadePosts(b, a);
+      expect(posts.length).toBeGreaterThanOrEqual(a.runs.length * 2);
+      // Poteaux au bord avant : à 1,2 – 3,1 m du contour, d'un tronçon à l'autre espacés de 6 m au plus.
+      for (const [x, y] of posts) {
+        expect(distToRing(b, x, y)).toBeGreaterThan(1.1);
+        expect(distToRing(b, x, y)).toBeLessThan(3.3);
+      }
+      for (const run of a.runs) {
+        const mine = arcadePosts(b, { ...a, runs: [run] });
+        for (let i = 1; i < mine.length; i++) expect(Math.hypot(mine[i]![0] - mine[i - 1]![0], mine[i]![1] - mine[i - 1]![1])).toBeLessThanOrEqual(6.01);
+      }
+    }
+    // La galerie sud-ouest couvre ses deux pans de façade (174 m).
+    const runs = kinds.buildings[S1]!.store!.arcade!.runs;
+    expect(runs.reduce((n, [, s0, s1]) => n + s1 - s0, 0)).toBeGreaterThan(165);
+  });
+
+  it("obstacles : poteaux d'auvent, tour de jeux et banc des deux aires, poteaux d'entrée du GiFi ; le tapis et le trampoline se traversent", () => {
+    const circles = (id: string): [number, number, number][] => storeCircles(bOf(id), kinds.buildings[id]!.store!);
+    for (const id of [S1, S2A, S2B, WING]) {
+      const posts = arcadePosts(bOf(id), kinds.buildings[id]!.store!.arcade!).length;
+      const plays = (kinds.buildings[id]!.store!.play ?? []).length * 2;
+      expect(circles(id).length).toBe(posts + plays);
+    }
+    expect(circles(GIFI).length).toBe(2);
+    expect(circles(ACT).length).toBe(0);
+    const plays = [S1, S2A].flatMap((id) => kinds.buildings[id]!.store!.play ?? []);
+    expect(plays.length).toBe(2);
+    for (const p of plays) {
+      const [tower, bench] = playCircles(p);
+      const c = new Colliders();
+      c.addCircle(tower![0], tower![1], tower![2]);
+      c.addCircle(bench![0], bench![1], bench![2]);
+      expect(c.resolve(tower![0], tower![1], 0.3).hit).toBe(true);
+      // Le centre du tapis (entre la tour et le banc) est libre ; hors des bâtiments.
+      expect(c.resolve(p[0], p[1], 0.3).hit).toBe(false);
+      for (const id of [S1, S2A, S2B, WING, GIFI, ACT]) expect(distToRing(bOf(id), p[0], p[1])).toBeGreaterThan(8);
+    }
+    const all = landmarkCircles(kinds, world.tile.buildings);
+    for (const id of [S1, S2A, S2B, WING, GIFI]) for (const [x, y] of circles(id)) expect(all.some(([ax, ay]) => Math.hypot(ax - x, ay - y) < 1e-6)).toBe(true);
+    // Une personne passe entre deux poteaux d'auvent (6 m) et sous l'auvent le long du mur.
+    const b = bOf(S2A), f = edgeFrame(b.ring, 0), c = new Colliders();
+    for (const [x, y, r] of circles(S2A)) c.addCircle(x, y, r);
+    for (const s of [3, 9, 21, 32.5]) expect(c.resolve(f.x + f.tx * s + f.nx * 0.8, f.y + f.ty * s + f.ny * 0.8, 0.3).hit).toBe(false);
+  });
+
+  it("passants : un point « commerce » par entrée, à 0,5 – 1,2 m du mur, hors des obstacles ; plus aucun ancien point sur le mur de bout", () => {
+    const pts = commerce();
+    for (const id of [S1, S2A, S2B, WING, GIFI, ACT]) {
+      const b = bOf(id);
+      const near = pts.filter(([x, y]) => distToRing(b, x, y) < 1.3);
+      expect(near.length).toBe(manual.fronts[id]!.pois!.length);
+      for (const [x, y] of near) {
+        expect(distToRing(b, x, y)).toBeGreaterThan(0.5);
+        for (const [cx, cy, r] of storeCircles(b, kinds.buildings[id]!.store!)) expect(Math.hypot(x - cx, y - cy)).toBeGreaterThan(r + 0.3);
+      }
+    }
+    // Chaque point d'une unité tombe devant l'une des unités (entre s0 et s1) de la galerie.
+    const b = bOf(S1), us = kinds.buildings[S1]!.store!.units!;
+    for (const [x, y] of pts.filter(([px, py]) => distToRing(b, px, py) < 1.3)) {
+      const ok = us.some(([e, s0, s1]) => {
+        const f = edgeFrame(b.ring, e), s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+        return s >= s0 - 0.5 && s <= s1 + 0.5 && o > 0.4 && o < 1.3;
+      });
+      expect(ok).toBe(true);
+    }
+  });
+
+  it("aucune cache d'arme à moins de 3 m des galeries, de GiFi, d'Action ni des aires de jeux", () => {
+    for (const id of [S1, S2A, S2B, WING, GIFI, ACT]) for (const q of CACHES) expect(distToRing(bOf(id), q.x, q.y)).toBeGreaterThan(3);
+    for (const p of [S1, S2A].flatMap((id) => kinds.buildings[id]!.store!.play ?? [])) for (const q of CACHES) expect(Math.hypot(q.x - p[0], q.y - p[1])).toBeGreaterThan(8);
   });
 });
