@@ -985,3 +985,22 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d139-janus-apres.jpg)
 ![Depuis l'intérieur](docs/captures/d139-janus-interieur.jpg)
 ![La nuit](docs/captures/d139-janus-nuit.jpg)
+
+**Petits éléments d'après photos, étape 1 : la maison du 7 allée de l'Acaron (31 octobre 2026)** (D140)
+- La maison suit tes photos de drone :
+  - plain-pied avec combles, enduit crème ;
+  - grand toit raide de tuiles plates brunes tachées de lichen, en L, à croupes ;
+  - deux lucarnes, la cheminée et sa parabole ;
+  - l'entrée couverte dans l'angle, avec son poteau de bois ;
+  - les portes-fenêtres cintrées à volets persiennés bruns ;
+  - la terrasse et l'allée claire.
+- Mesures au LiDAR : corps de 13,3 × 7,7 m, aile de 7,8 m qui avance de 3,15 m, égout à 3 m, pente de 44°, faîtage à 6,6 m. Le contour cadastral était plus petit et décalé : la maison et son obstacle suivent maintenant le relevé.
+- On entre sous l'auvent jusqu'à la porte. La nuit, quelques fenêtres et les appliques s'allument.
+- 1 154 triangles. 742 tests.
+- Suite : la boutique du 21 rue Guérin.
+- À essayer : `?at=709,900&h=14`, puis `?h=23` pour la nuit.
+
+![Comme ta photo de drone, avant](docs/captures/d140-maison-drone-avant.jpg)
+![Après](docs/captures/d140-maison-drone-apres.jpg)
+![Depuis l'est-sud-est](docs/captures/d140-maison-apres.jpg)
+![La nuit](docs/captures/d140-maison-nuit-apres.jpg)

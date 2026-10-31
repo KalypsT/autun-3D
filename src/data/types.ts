@@ -186,7 +186,7 @@ export interface StairsZone {
 
 export type BuildingKindId =
   | "retail" | "industrial" | "annex" | "sports" | "greenhouse" | "canopy" | "station" | "school" | "townhall" | "civic" | "post" | "hospital"
-  | "care" | "culture" | "church" | "chapel" | "hidden" | "cart";
+  | "care" | "culture" | "church" | "chapel" | "hidden" | "cart" | "house";
 
 /** Volumes d'une cathédrale mesurés au LiDAR (D95) : repère (centre, angle de l'axe, chevet vers les s positifs), abscisses, hauteurs. */
 export interface CathedralSpec {
@@ -314,6 +314,37 @@ export interface BuildingKind {
   hall?: TownHallSpec;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
+  /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
+  house?: HouseModel;
+}
+
+/** Ouverture d'une maison (D140) : mur du L, distance depuis son début, genre, largeur, hauteur, appui. */
+export type HouseOpening = [number, number, "lamp"] | [number, number, "door2" | "door4" | "window1" | "window2", number, number, number?];
+
+/**
+ * Maison d'après photo (D140, tools/data/build_monuments.py), dans son repère (origine `o`, angle `a` de l'axe s, `sg` : sens de t) ;
+ * hauteurs au-dessus du sol `g`. Plan en L : corps [s0, s1] × [t0, t1] et aile [sw, s1] × [t0, tw] (murs, mesurés au LiDAR) ; toit à croupes
+ * de pente `pitch`, débord `ov`, pans précalculés (contour en (s, t), plan z = a·s + b·t + c).
+ */
+export interface HouseModel {
+  o: [number, number];
+  a: number;
+  sg: 1 | -1;
+  g: number;
+  eave: number;
+  pitch: number;
+  ov: number;
+  walls: [[number, number, number, number], [number, number, number, number]];
+  roof: { r: number[]; k: [number, number, number] }[];
+  /** Entrée couverte au coin (sw, tw) : côtés du renfoncement (le long du bout de l'aile, le long de son côté), porte d'entrée (largeur, hauteur). */
+  porch: [number, number, number, number];
+  /** Lucarnes : pan (« main » : pan sud-est du corps ; « wing » : bout de l'aile), abscisse s, largeur. */
+  dormers: ["main" | "wing", number, number][];
+  /** Cheminée : s, t, haut. */
+  chim: [number, number, number];
+  openings: HouseOpening[];
+  colors: { wall: string; roof: string; shutter: string };
+  fit?: number;
 }
 
 /**

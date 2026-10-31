@@ -8,6 +8,7 @@ import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
 import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
+import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 
 describe("monuments (D95) : géométrie", () => {
@@ -41,6 +42,14 @@ describe("monuments (D95) : géométrie", () => {
     expect(tris(jb)).toBeLessThan(6000);
     expect(tris(jg)).toBeGreaterThan(tris(jb) * 0.9);
     expect(tris(jg)).toBeLessThanOrEqual(tris(jb));
+    // Maison du 7 allée de l'Acaron (D140) : moins de 4 000 triangles ; quelques vitres et les appliques allumées la nuit.
+    const house = Object.values(kinds.buildings).find((b) => b.house)!.house!;
+    const hb = new MeshBuilder(), hg = new MeshBuilder();
+    buildHouse(hb, hg, house, world.terrain);
+    expect(hb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(hb)).toBeLessThan(4000);
+    expect(tris(hg)).toBeGreaterThan(4);
+    expect(tris(hg)).toBeLessThan(200);
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();
     buildCathedral(mb, k.mon!, world.terrain, new THREE.Color("#405060"));

@@ -2065,3 +2065,62 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Dans son pré, après](captures/d139-janus-pre.jpg)
 ![De loin, détail à 120 m](captures/d139-janus-loin.jpg)
 ![La navigation, avant et après : la boucle par les arches](captures/d139-janus-navigation.jpg)
+
+## 2026-10-31 — D140. Petits éléments d'après photos, étape 1 : la maison du 7 allée de l'Acaron
+
+**Demande de l'utilisateur** : intégrer d'après ses photos trois petits éléments, en trois étapes séparées : une maison (7 allée de l'Acaron), une boutique (21 rue Guérin), le rond-point de la Croix Verte. Points de vue confirmés : photo de drone basse depuis l'est-sud-est, face au mur de l'aile ; photo de drone haute depuis le sud-est, au-dessus de la terrasse, face à l'angle rentrant ; vue aérienne, nord en haut. Côtés sans photo : sobres, mêmes volets ; au jardin, la terrasse et l'allée seulement.
+
+**Dans les données** : bâtiment BD TOPO `BATIMENT0000000348848724` (tuile 28_38, vers (703 ; 905)), en L, tourné de 45°. Il était dessiné comme une maison générique à deux niveaux : égout à 5,6 m, quatre fenêtres carrées, toit rouge à 35°.
+
+**Lecture des photos** (`BATIMENT0000000348848724` dans `monuments` de `manual.json`) :
+- plain-pied avec combles, enduit crème, soubassement clair ;
+- toit raide de tuiles plates brunes tachées de lichen, croupes à chaque bout ; corps et aile à faîtages perpendiculaires ;
+- deux lucarnes à croupe : volets fermés sur le pan sud-est du corps, fenêtre ouverte sur le bout de l'aile ;
+- cheminée crépie à chapeau métallique, parabole ;
+- entrée couverte dans l'angle rentrant : poteau de bois à jambe de force, porte au fond ;
+- mur du corps : grande porte-fenêtre cintrée à quatre volets persiennés repliés ; mur de l'aile : petite fenêtre cintrée à un volet et porte-fenêtre cintrée à deux volets ; appliques, gouttières et descentes grises ;
+- terrasse de dalles claires, allée gravillonnée claire le long de l'aile.
+Les photos sont prises de biais : elles ne donnent que l'ordre et les proportions des ouvertures.
+
+**Mesures** (`build_monuments.py`, modèle `house`, MNS et MNT LiDAR HD par WMS) :
+- **Le contour BD TOPO est trop petit et décalé** : 12,4 × 6,7 m pour le corps, une aile de 5,7 m. Le toit relevé déborde de plus d'un mètre au sud-ouest et au sud-est. On ne garde du contour que l'orientation et le point de départ.
+- **Deux temps**, parce qu'un bord flou se confond avec un débord plus large et plus bas :
+  1. Les pans sont ajustés sur le seul haut du toit (plus de 3 m) : contour en L à 3 m de haut, six bords, et pente (moindres carrés robustes, puis chaque bord affiné à 10 cm près ; 94 % du haut du toit à 30 cm près).
+  2. L'égout est la hauteur où le MNS vaut la moitié de celle des pans prolongés (mi-hauteur, médiane sur les quatre grands bords) : **2,6 m au bord du toit**.
+  Premier essai écarté : un ajustement sur toute la fenêtre donnait un toit de 15 m sur 9,6 m, avec un égout à 2,1 m.
+- **Murs** : le contour du toit moins le débord de la gouttière (0,4 m, photo). Corps de **13,3 × 7,7 m** ; aile de **7,8 m** de large qui avance de **3,15 m**.
+- Égout au nu des murs **3,0 m**, pente **44°**, faîtages **6,6 et 6,7 m**. Le relevé donne 6,3 à 6,7 m sur la ligne de faîtage, flou compris.
+- Sol −33,95 (médiane du terrain à 1,5-3 m du contour).
+- **Cheminée** : trop fine pour le relevé à 0,5 m ; sa position et sa hauteur viennent de la photo.
+- Une deuxième passe ne réécrit rien.
+
+**Toit** : le toit d'un L à pente constante est le plus haut des toits à quatre pans de ses deux rectangles. `build_monuments.py` découpe les pans avec shapely : chaque pan est gardé là où il est au-dessus de l'autre toit. Les pans coplanaires (le long côté nord-est commun au corps et à l'aile) sont gardés par le premier rectangle. Une ouverture morphologique retire les pointes sans surface le long des arêtiers. Résultat : 7 pans, contour en (s, t) et plan, dans `kinds/28_38.json` (type `house`).
+
+**Rendu** (`src/render/house.ts`, dans le maillage plein de la tuile) :
+- murs enduits suivant le sol et soubassement ;
+- pans triangulés, dessous du débord, un rang de tuiles tous les 32 cm de montée, taches de lichen à 30 cm au moins des bords, arêtiers et faîtages coiffés ;
+- rive et gouttière, quatre descentes ;
+- lucarnes à croupe (façade enduite, joues et toit de tuiles) ;
+- cheminée à chapeau, parabole ;
+- ouvertures à arc surbaissé, volets persiennés repliés contre le mur, appliques ;
+- entrée couverte (porte au fond, poteau, sablières, jambe de force) ;
+- terrasse de dalles et allée gravillonnée posées sur le relief.
+**1 154 triangles** (borne du test : 4 000). La nuit, 40 triangles allumés : la porte-fenêtre et la petite fenêtre de l'aile, la lucarne de l'aile, l'imposte de la porte d'entrée, les appliques. Silhouette lointaine : deux prismes, corps et aile. La maison est trop petite pour se voir de loin.
+
+**Jeu** :
+- L'obstacle est celui des murs mesurés (`houseRing`), et non plus du contour BD TOPO décalé. On entre sous l'auvent jusqu'à la porte d'entrée ; le poteau est un obstacle.
+- Aucun arbre, mobilier ni mur de la carte ne tombe dans la maison ou contre ses murs. Il n'y a pas de cache d'arme à moins de 200 m.
+- La maison est dans un jardin privé : rien à changer pour les passants.
+
+**Tests** : dimensions, égout, pente et faîtage plausibles ; les pans couvrent exactement le L et son débord, sans se chevaucher, entre l'égout et le faîtage ; obstacle aux murs mesurés, entrée et poteau ; ouvertures dans leurs murs ; rien de la carte dans la maison ; budget de triangles et éclairage de nuit.
+
+**Limites** : ouvertures placées en proportions (photos de biais) ; côtés nord-ouest, nord-est et sud-ouest sans photo ; ni mobilier de jardin, ni voitures, ni haie.
+
+![Comme la photo de drone haute, avant](captures/d140-maison-drone-avant.jpg)
+![Comme la photo de drone haute, après](captures/d140-maison-drone-apres.jpg)
+![Depuis l'est-sud-est, avant](captures/d140-maison-avant.jpg)
+![Depuis l'est-sud-est, après](captures/d140-maison-apres.jpg)
+![La nuit, avant](captures/d140-maison-nuit-avant.jpg)
+![La nuit, après](captures/d140-maison-nuit-apres.jpg)
+![Le côté nord-ouest (sans photo), avant](captures/d140-maison-nord-ouest-avant.jpg)
+![Le côté nord-ouest, après](captures/d140-maison-nord-ouest-apres.jpg)
