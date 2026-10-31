@@ -147,8 +147,8 @@ export interface GateLayout {
   /** Piles au niveau du sol (s0, s1), obstacles. */
   piers: [number, number][];
   m: GateModel;
-  /** Galerie conservée : étendue, épaisseur, abscisses des pilastres ; null si elle a disparu. */
-  gallery: { s0: number; s1: number; t0: number; t1: number; pilasters: number[] } | null;
+  /** Galerie conservée : étendue, murs à arcades (t0, t1), abscisses des pilastres ; null si elle a disparu. */
+  gallery: { s0: number; s1: number; walls: [number, number][]; pilasters: number[] } | null;
 }
 
 /** Haut du corps en s (profil du modèle, linéaire entre ses points ; au droit d'une marche, le plus haut). */
@@ -185,7 +185,7 @@ function defaultGateModel(site: Extract<Site, { t: "gate" }>, ground: number): G
   return {
     c: [site.x, site.y], w: site.w, g: ground, street: [ground, ground], body: H, piers, arches, band: 0.5 * k,
     cornice: [0.63 * H, 0.68 * H], attic: 0.7 * H,
-    gal: { s: Array.from({ length: 11 }, (_, i) => -half + 0.6 + pitch * i), open: pitch * 0.62, crown: 0.92 * H, ent: [0.93 * H, H], keep: [0, 9], t: [-site.w / 2, site.w / 2] },
+    gal: { s: Array.from({ length: 11 }, (_, i) => -half + 0.6 + pitch * i), open: pitch * 0.62, crown: 0.92 * H, ent: [0.93 * H, H], keep: [0, 9], t: [[-site.w / 2, site.w / 2]] },
     top: [[-half, 0.7 * H], [half, 0.7 * H]], rubble: [],
   };
 }
@@ -196,7 +196,7 @@ function defaultGateModel(site: Extract<Site, { t: "gate" }>, ground: number): G
  */
 export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): GateLayout {
   const m = site.gm ?? defaultGateModel(site, ground);
-  const frame = frameOf(m.c[0], m.c[1], site.a, site.l, m.w);
+  const frame = frameOf(m.c[0], m.c[1], site.a, m.l ?? site.l, m.w);
   const openings: Opening[] = m.arches.map(([s0, s1, spring]) => ({ s0, s1, zb: -1, spring }));
   const [i0, i1] = m.gal.keep;
   let gallery: GateLayout["gallery"] = null;
@@ -206,13 +206,13 @@ export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): 
       const c = (m.gal.s[i]! + m.gal.s[i + 1]!) / 2, r = m.gal.open / 2;
       openings.push({ s0: c - r, s1: c + r, zb: m.attic, spring: m.gal.crown - r });
     }
-    gallery = { s0: Math.min(...pil), s1: Math.max(...pil), t0: m.gal.t[0], t1: m.gal.t[1], pilasters: pil };
+    gallery = { s0: Math.min(...pil), s1: Math.max(...pil), walls: m.gal.t, pilasters: pil };
   }
-  const height = Math.max(gallery ? m.gal.ent[1] : 0, m.block?.[2] ?? 0, m.roof?.[1] ?? 0, ...m.top.map((p) => p[1]));
+  const height = Math.max(gallery ? m.gal.ent[1] : 0, m.block?.[2] ?? 0, m.roof?.[1] ?? 0, m.tower?.[4] ?? 0, ...m.top.map((p) => p[1]));
   return { frame, g: site.gm ? m.g : ground, height, openings, piers: m.piers, m, gallery };
 }
 
-/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches). */
+/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour. */
 export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
   const out: number[][] = [];
   for (const s of kinds?.sites ?? []) {
@@ -222,6 +222,11 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     for (const [s0, s1] of lay.piers) {
       const pts = [at(f, s0, -f.hw), at(f, s1, -f.hw), at(f, s1, f.hw), at(f, s0, f.hw)];
       out.push(pts.flat());
+    }
+    // Tour de moellons à un bout (Saint-André, D138), qui déborde des faces.
+    if (lay.m.tower) {
+      const [s0, s1, t0, t1] = lay.m.tower;
+      out.push([at(f, s0, t0), at(f, s1, t0), at(f, s1, t1), at(f, s0, t1)].flat());
     }
   }
   return out;

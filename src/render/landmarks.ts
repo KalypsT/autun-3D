@@ -4,7 +4,7 @@ import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
 import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
-import { buildGate } from "./gates";
+import { buildChapel, buildGate } from "./gates";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
@@ -633,6 +633,11 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
   // Cathédrale d'après photo (D127) : modèle dédié, ni baies ni portail génériques.
   if (kind.cath) {
     buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
+    return;
+  }
+  // Église Saint-André d'après photo (D138) : modèle dédié.
+  if (kind.chap) {
+    buildChapel(sinks.solid, sinks.glow, kind.chap, terrain);
     return;
   }
   const stained = pick(STAINED, idKey(b.id), 5);

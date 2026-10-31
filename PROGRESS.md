@@ -945,3 +945,21 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d137-arroux-apres.jpg)
 ![La nuit](docs/captures/d137-arroux-nuit.jpg)
 ![Côté faubourg](docs/captures/d137-arroux-exterieur.jpg)
+
+**Bâtiments d'après photos, étape 18 : la porte Saint-André et l'église Saint-André (31 octobre 2026)** (D138)
+- La porte Saint-André suit tes deux photos :
+  - galerie complète de 10 arcades sur les deux faces, sous un toit de tuiles ;
+  - deux grandes arches, deux petites, archivoltes ;
+  - la tour de moellons au bout sud-sud-est.
+- Ses bouts sont mesurés au LiDAR : le contour OpenStreetMap était décalé de 2 m. Elle fait 20,8 m de la tour à l'église.
+- L'église Saint-André a son modèle : nef à pignons, tour ronde à toit conique plus basse que la nef, porte claire, baies en plein cintre. Elle remplace l'église générique.
+- Tout est éclairé la nuit par en dessous, comme Arroux.
+- Les passants passent par les arches (nouvelle étape `build_monuments_nav.py`). La cache d'arme de la porte n'est plus dans une pile.
+- 2 850 triangles pour la porte, 202 pour l'église. 739 tests.
+- Suite : le temple de Janus.
+- À essayer : `?at=536,830&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d138-andre-avant.jpg)
+![Après](docs/captures/d138-andre-apres.jpg)
+![Vue de drone](docs/captures/d138-andre-drone.jpg)
+![La nuit](docs/captures/d138-andre-nuit.jpg)

@@ -7,7 +7,7 @@ import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
 import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
-import { buildGate } from "./gates";
+import { buildChapel, buildGate } from "./gates";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -25,6 +25,12 @@ describe("monuments (D95) : géométrie", () => {
       expect(tris(mb)).toBeLessThan(4000);
       expect(tris(glow)).toBe(s.gm?.light ? tris(mb) : 0);
     }
+    // Église Saint-André (D138) : moins de 2 000 triangles.
+    const chap = Object.values(kinds.buildings).find((b) => b.chap)!.chap!;
+    const cb = new MeshBuilder();
+    buildChapel(cb, null, chap, world.terrain);
+    expect(cb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(cb)).toBeLessThan(2000);
     const k = Object.values(kinds.buildings).find((b) => b.mon)!;
     const mb = new MeshBuilder();
     buildCathedral(mb, k.mon!, world.terrain, new THREE.Color("#405060"));

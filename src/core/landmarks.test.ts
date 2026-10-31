@@ -190,6 +190,69 @@ describe("monuments (D95)", () => {
       expect(Object.values(kinds.buildings).filter((k) => k.k === "hidden").length).toBeGreaterThanOrEqual(1);
     });
 
+    it("porte Saint-André d'après photo (D138) : bouts mesurés, galerie complète sur les deux faces, toit, tour plus haute que le toit", () => {
+      const s = kinds.sites.find((q): q is Extract<Site, { t: "gate" }> => q.t === "gate" && q.st === "andre")!;
+      const m = s.gm!;
+      // De la tour (bout libre au LiDAR) à l'église (emprise BD TOPO) : environ 21 m, 19,1 m dans les sources sans la tour.
+      expect(m.l).toBeGreaterThan(19);
+      expect(m.l).toBeLessThan(23);
+      const lay = gateLayout(s, world.terrain.heightAt(s.x, s.y));
+      expect(lay.openings.filter((o) => o.zb > 0).length).toBe(10);
+      expect(lay.gallery!.walls.length).toBe(2);
+      const [eave, ridge] = m.roof!;
+      expect(ridge).toBeGreaterThan(eave);
+      expect(ridge).toBeGreaterThan(12.5);
+      expect(ridge).toBeLessThan(15);
+      const [t0, t1, , , top] = m.tower!;
+      expect(top).toBeGreaterThan(ridge + 0.4);
+      expect(t1 - t0).toBeGreaterThan(1.5);
+      expect(t1 - t0).toBeLessThan(4);
+      // La tour est au bout sud-sud-est (y le plus petit des deux bouts).
+      const [, ty] = at(lay.frame, (t0 + t1) / 2, 0), [, oy] = at(lay.frame, -(t0 + t1) / 2, 0);
+      expect(ty).toBeLessThan(oy);
+      // Aucune arche ne tombe sous la tour.
+      for (const o of lay.openings) expect(o.s1 <= t0 || o.s0 >= t1).toBe(true);
+    });
+
+    it("église Saint-André (D138) : nef et tour ronde mesurées, plus basses que la porte, tour ronde plus basse que la nef", () => {
+      const k = Object.values(kinds.buildings).find((b) => b.chap)!;
+      const c = k.chap!;
+      const [s0, s1, t0, t1] = c.nave;
+      expect(s1 - s0).toBeGreaterThan(8);
+      expect(t1 - t0).toBeGreaterThan(10);
+      expect(c.ridge).toBeGreaterThan(c.eave);
+      expect(c.ridge).toBeLessThan(14);
+      const [, , r, reave, apex] = c.round;
+      expect(r).toBeGreaterThan(3.5);
+      expect(r).toBeLessThan(7);
+      expect(apex).toBeGreaterThan(reave);
+      expect(apex).toBeLessThan(c.ridge);
+    });
+
+    it("passants (D138) : aucun chemin ne traverse une pile ou la tour d'une porte", () => {
+      const c = new Colliders();
+      const gates = kinds.sites.filter((q): q is Extract<Site, { t: "gate" }> => q.t === "gate");
+      for (const r of landmarkRings({ sites: gates }, () => 0)) c.addRing(r);
+      for (const cell of ["s6_9", "s7_9"]) {
+        const { n, e, g } = (JSON.parse(readFileSync(`public/data/nav/${cell}.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+        for (let i = 0; i < e.length; i += 11) {
+          const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
+          const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
+          for (let k = 0; k < np!; k++) pts.push([g[2 * (p0! + k)]!, g[2 * (p0! + k) + 1]!]);
+          pts.push([n[3 * b!]!, n[3 * b! + 1]!]);
+          for (let j = 0; j + 1 < pts.length; j++) {
+            const [ax, ay] = pts[j]!, [bx, by] = pts[j + 1]!;
+            const steps = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.25);
+            for (let q = 0; q <= steps; q++) {
+              const x = ax + ((bx - ax) * q) / steps, y = ay + ((by - ay) * q) / steps;
+              if (gates.every((s) => Math.hypot(x - s.gm!.c[0], y - s.gm!.c[1]) > 15)) continue;
+              expect(c.resolve(x, y, 0.2).hit).toBe(false);
+            }
+          }
+        }
+      }
+    });
+
     it("porte d'Arroux d'après photo (D137) : corps mesuré, galerie conservée sur 7 arcades côté ville, passages pour les voitures et les piétons", () => {
       const s = kinds.sites.find((q): q is Extract<Site, { t: "gate" }> => q.t === "gate" && q.st === "arroux")!;
       const m = s.gm!;
@@ -204,7 +267,8 @@ describe("monuments (D95)", () => {
       const arcades = lay.openings.filter((o) => o.zb > 0);
       expect(arcades.length).toBe(7);
       // Galerie : la partie gauche de la photo prise côté ville, sur la face côté ville.
-      const f = lay.frame, [gx, gy] = at(f, (lay.gallery!.s0 + lay.gallery!.s1) / 2, (lay.gallery!.t0 + lay.gallery!.t1) / 2);
+      const [[gt0, gt1]] = lay.gallery!.walls as [[number, number]];
+      const f = lay.frame, [gx, gy] = at(f, (lay.gallery!.s0 + lay.gallery!.s1) / 2, (gt0 + gt1) / 2);
       expect(lay.gallery!.s0 + lay.gallery!.s1).toBeGreaterThan(0);
       expect(gy - m.c[1]).toBeLessThan(0);
       expect(Math.hypot(gx - m.c[0], gy - m.c[1])).toBeLessThan(10);

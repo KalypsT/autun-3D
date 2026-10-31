@@ -312,6 +312,29 @@ export interface BuildingKind {
   cath?: CathedralModel;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
   hall?: TownHallSpec;
+  /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
+  chap?: ChapelModel;
+}
+
+/**
+ * Église accolée à une porte romaine (D138, tools/data/build_monuments.py), dans le repère de la porte (origine `o`, angle `a`) ; hauteurs
+ * au-dessus du sol `g`.
+ */
+export interface ChapelModel {
+  o: [number, number];
+  a: number;
+  /** Nef : s0, s1 (largeur), t0 (côté de la tour ronde), t1 (pignon d'entrée). */
+  nave: [number, number, number, number];
+  g: number;
+  eave: number;
+  ridge: number;
+  /** Tour ronde : centre (s, t), rayon, égout, pointe du toit conique. */
+  round: [number, number, number, number, number];
+  /** Porte du pignon d'entrée : décalage depuis son milieu, largeur, hauteur. */
+  door: [number, number, number];
+  /** Baies en plein cintre : côté (−1 : mur s0, 1 : mur s1), distance depuis le pignon d'entrée, largeur, appui, hauteur. */
+  windows: [number, number, number, number, number][];
+  light?: 1;
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
@@ -340,6 +363,8 @@ export type Site =
  */
 export interface GateModel {
   c: [number, number];
+  /** Longueur mesurée (D138 : bouts au LiDAR et contre l'emprise d'un bâtiment) ; sinon celle du site. */
+  l?: number;
   /** Épaisseur du corps. */
   w: number;
   g: number;
@@ -358,17 +383,22 @@ export interface GateModel {
   attic: number;
   /**
    * Galerie : abscisses des pilastres (n + 1, depuis le bout gauche de la photo), largeur des arcades, haut de leur arc, entablement (bas,
-   * haut), arcades conservées (indices, bornes comprises), épaisseur (t0, t1).
+   * haut), arcades conservées (indices, bornes comprises), murs à arcades (t0, t1 : un sur une face, ou un sur chaque face avec le couloir
+   * entre les deux).
    */
-  gal: { s: number[]; open: number; crown: number; ent: [number, number]; keep: [number, number]; t: [number, number] };
+  gal: { s: number[]; open: number; crown: number; ent: [number, number]; keep: [number, number]; t: [number, number][] };
   /** Haut du corps (s, z), dans le sens des s croissants ; deux points de même s font une marche (ruine). */
   top: [number, number][];
   /** Blocage apparent, parement perdu (s0, s1, z0, z1), sur les deux faces. */
   rubble: [number, number, number, number][];
   /** Bloc en saillie au sommet de la galerie (s0, s1, haut). */
   block?: [number, number, number];
-  /** Toit de tuiles au-dessus de la galerie (égout, faîtage). */
+  /** Toit de tuiles à croupes au-dessus de la galerie (égout, faîtage). */
   roof?: [number, number];
+  /** Tour de moellons à un bout (s0, s1, t0, t1, haut). */
+  tower?: [number, number, number, number, number];
+  /** Teinte de la pierre (sinon le calcaire gris clair d'Arroux). */
+  stone?: string;
   /** Éclairée la nuit (projecteurs au pied). */
   light?: 1;
 }

@@ -1988,3 +1988,42 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Côté faubourg, après](captures/d137-arroux-exterieur.jpg)
 ![La galerie vue d'en haut](captures/d137-arroux-galerie.jpg)
 ![Le quartier, détail à 120 m](captures/d137-arroux-quartier.jpg)
+
+## 2026-10-31 — D138. Bâtiments d'après photos, étape 18 : la porte Saint-André, sa tour et l'église Saint-André
+
+**Suite de la demande de D137, étape 2.** Points de vue confirmés : photo de face depuis la rue côté ville (ouest-sud-ouest, de biais), vue de drone depuis l'est-nord-est. « Tour médiévale accolée » : les deux, d'après l'utilisateur (la tour de moellons au bout sud-sud-est et l'église à tour ronde au bout nord-nord-ouest).
+
+**Lecture des photos** (`porte-saint-andre` et `BATIMENT0000000348848796` de `manual.json`) : même schéma qu'Arroux (deux grandes arches, deux petites, archivoltes moulurées), passages voûtés profonds ; **galerie complète de 10 arcades sur les deux faces**, couloir entre les deux sous un **toit de tuiles à faible pente** ; calcaire blanc-gris restauré ; au bout sud-sud-est, **tour de moellons bruns** un peu plus haute que la porte, à chapeau de tuiles ; au bout nord-nord-ouest, l'**église Saint-André** : nef à pignons en moellons et brique, porte claire au pignon ouest-sud-ouest, baie en plein cintre sur le long mur, et côté est-nord-est une **tour ronde à toit conique** plus basse que la nef.
+
+**Mesures** (`build_monuments.py`) :
+- **Le contour OpenStreetMap est décalé d'environ 2 m** le long de la porte. On mesure les bouts : **bout libre** (sud-sud-est) là où le MNS retombe à mi-hauteur sur l'axe, **bout contre l'église** là où l'axe entre dans son emprise BD TOPO (`ends`). Porte de **20,8 m** de la tour à l'église (19,1 m dans les sources, sans la tour), corps de **5,25 m** d'épaisseur, rue à −27,65 m.
+- **Toit** : faîtage à **13,65 m** (90ᵉ centile du MNS sur le corps), égout au haut de l'entablement (photo, 12,9 m). **Tour** : depuis le bout, la partie du MNS plus haute que le faîtage de 40 cm (en passant le bord flou du relevé) : **2,75 m**, sommet à **14,4 m**.
+- **Travées** : les deux photos sont de biais (largeurs déformées) ; proportions lues en largeurs de grande arche, ramenées à la longueur mesurée sans la tour : grandes arches de 3,34 m, petites de 2,17 m. Hauteurs sur la photo de face (verticales parallèles), à l'échelle du toit mesuré : naissances à 3,5 et 1,9 m, corniche à 7,5-7,9 m, attique à 8,2 m, arcades de 1,05 m jusqu'à 11,2 m, entablement de 11,6 à 12,9 m.
+- **Église** (modèle `chapel`, dans le repère de la porte) : nef = rectangle de l'emprise BD TOPO (10,3 × 15,3 m), tour ronde = cercle ajusté sur les sommets de l'emprise côté est-nord-est (**5,3 m de rayon**) ; au MNS : égout de la nef 10,75 m, faîtage 12,9 m, égout de la tour 7,7 m, pointe de son toit conique 10,6 m (plus basse que la nef, comme sur la photo de drone). Porte et baies : photos.
+- Le bâtiment BD TOPO sous la porte (son toit) reste masqué (D95). Une deuxième passe ne réécrit rien.
+
+**Modèle commun, variantes** (`src/render/gates.ts`) : galerie sur une face (Arroux) ou sur les deux (`face: both`, couloir entre les deux, pilastres sur les faces extérieures), toit à croupes de la tour à l'autre bout, tour de moellons à lits sombres et chapeau de tuiles, teinte de la pierre ; longueur mesurée (`l`). **2 850 triangles** pour la porte (borne : 4 000), **202** pour l'église (borne : 2 000). L'église remplace murs, toit et façade génériques (oculi violets, deux portes) : nef à lits de brique, toit à deux pans, tour ronde, porte claire, baies à encadrement clair.
+
+**La nuit** : porte, tour et église éclairées par en dessous, comme Arroux (choix de l'utilisateur : pas de photo de nuit, même éclairage) ; toits à peine éclairés.
+
+**Silhouettes lointaines** : la porte (corps, galerie et toit, tour) et l'église (nef, tour ronde) remplacent le prisme générique.
+
+**Jeu et passants** :
+- La tour est un obstacle (elle déborde des faces), en plus des piles.
+- Ici la rue ne passe pas sous la porte (elle la contourne ; la porte est sur une placette). Mais un chemin de la placette (OpenStreetMap) traversait la porte en biais par la pile centrale, et un nœud du trottoir d'Arroux tombait dans une pile du nouveau modèle. **Nouvelle étape `tools/data/build_monuments_nav.py`** : chaque arête piétonne qui traverse une porte hors d'une arche est détournée par le milieu de l'arche la plus proche, et un nœud dans une pile ou dans la tour est poussé devant la face ; seules les super-tuiles des portes sont réécrites, une deuxième passe ne change rien ; à relancer après `build_nav.py`. Test : aucun chemin ne traverse une pile ou une tour.
+- La cache d'arme de la porte Saint-André (`pickups.ts`) tombait dans une pile : elle est au milieu de la grande arche ouest.
+
+**Tests** : longueur, 10 arcades sur deux murs, toit, tour plus haute que le toit et au bout sud-sud-est, aucune arche sous la tour ; église plausible (tour ronde plus basse que la nef) ; chemins libres ; budgets.
+
+**Limites** : le monticule devant la porte côté ville est dans le relief LiDAR (il était déjà là) ; les genévriers devant l'église ne sont pas dessinés.
+
+![Depuis la rue côté ville, avant](captures/d138-andre-avant.jpg)
+![Après, comme la photo de face](captures/d138-andre-apres.jpg)
+![Vue de drone, avant](captures/d138-andre-drone-avant.jpg)
+![Vue de drone, après : toit, tour, église à tour ronde](captures/d138-andre-drone.jpg)
+![La nuit, avant](captures/d138-andre-nuit-avant.jpg)
+![La nuit, après](captures/d138-andre-nuit.jpg)
+![L'église depuis le nord, avant](captures/d138-eglise-avant.jpg)
+![L'église depuis le nord, après](captures/d138-eglise.jpg)
+![De loin, détail à 120 m](captures/d138-andre-loin.jpg)
+![La navigation, avant et après (le chemin de la placette passe par une arche)](captures/d138-andre-navigation.jpg)
