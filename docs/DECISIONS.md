@@ -1713,3 +1713,142 @@ Le mur choisi passe en rôle « rue » s'il était « cour » (49 murs : il reç
 ![De face](captures/d126-mairie-face.jpg)
 ![Vue haute](captures/d126-mairie-haut.jpg)
 ![Silhouette lointaine, avant (en haut) et après](captures/d126-mairie-silhouette.jpg)
+
+## 2026-10-30 — D127. Bâtiments d'après photos, étape 7 : la cathédrale Saint-Lazare, volumes mesurés
+
+**Demande de l'utilisateur** : modéliser la cathédrale d'après ses photos, avec la même méthode que pour l'hôtel de ville. Photos fournies (non versionnées, elles servent seulement à décrire), points de vue confirmés par l'utilisateur : vue de drone au-dessus du chevet (sud-sud-est) vers la ville ; le chevet au sol depuis le sud-est ; le flanc est de nuit, flèche à gauche et tour est du porche à droite. Lecture : nef de 7 travées entre le porche (nord-nord-ouest) et la croisée, chapelles gothiques le long des bas-côtés (grandes baies, pinacles, balustrade), toits de tuiles plates brun-ocre ; abside polygonale, bloc carré au bout du bras ouest du transept et petite tourelle, couverts de tuiles vernissées en losanges ; tour de croisée à baies jumelles, galerie, flèche octogonale de pierre grise à gâbles, crochets et clochetons ; deux tours carrées au porche, à flèches de pierre ; portail roman au pignon du bras est. Plan validé : (1) volumes mesurés et couleurs, (2) chevet et tuiles vernissées, (3) tour de croisée et flèche, (4) flancs et porche.
+
+**Constat** : la nef était le bâtiment générique (grand mur nu, œils-de-bœuf et portes de maison), `buildCathedral` (D95) y ajoutait des volumes approximatifs couverts d'ardoise bleue, flèche comprise ; de loin, le clocher lointain était un mât de 54 m (haut de la tour mal mesuré : l'anneau autour de la flèche prenait la flèche elle-même).
+
+**Mesures** (`build_monuments.py`, modèle `cathedral`, dans le repère de `mon` de build_kinds : s le long de la nef vers le chevet, t vers l'est-nord-est ; profils médians du modèle de surface LiDAR, ce qui écarte pinacles et arbres ; murs = chutes de plus de 3 m entre deux échantillons de 0,5 m ; égouts = droite du pan ramenée au mur ; hauteurs au-dessus du sol du bâtiment) :
+- porche de 13 m de large et 11,4 m de long, faîtage à 20,1 m ; nef de 38 m (7 travées de 5,5 m) et 14,5 m de large, égout 19,0 m, faîtage 30,0 m ;
+- bas-côtés en appentis de 5 m (13,5 m contre la nef, 11,4 et 12,6 m au mur extérieur) ; chapelles par travée jusqu'au bord de l'emprise BD TOPO, plus basses à l'ouest (6 à 8 m) qu'à l'est (12 m, celles de la photo de nuit) ;
+- transept de 14,5 m entre pignons à 46 m l'un de l'autre, égout 20,6 m, faîtage 25,1 m (plus bas que la nef) ; au bout du bras ouest, le bloc carré (11 × 15 m), égout 10,8 m, pointe du toit 25,4 m ;
+- tour de croisée de 12,5 m de côté, corps à 40,3 m, flèche à 85,6 m ;
+- chœur de 13,5 m de large, égout 20,0 m, faîtage 30,6 m ; abside de 6,75 m de rayon, corniche à 24,7 m (relevée à 75 cm du mur sur l'axe, plus haute que celle du chœur) ; elle finit au bout de l'emprise, le toit débordant d'1 m au-delà ; bas-côtés du chœur en appentis.
+- **Tours du porche : le relevé ne les voit pas.** Aux coins avant du porche, le modèle de surface reste au niveau du sol (le parvis, 3 m plus bas que le bâtiment), alors que l'orthophotographie de l'IGN et les photos de l'utilisateur montrent deux tours carrées à flèche de pierre. Seule une arête fine de 30 à 32 m longe le bord ouest du porche (non identifiée). Côté pris sur l'emprise (6 et 5,3 m), hauteurs d'après les photos (corps à 26 m, pointe à 36 m, `towers` dans `manual.json`), les deux tours identiques (symétrie validée par l'utilisateur).
+
+Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le clocher lointain (`tower` du bâtiment et son repère dans `kinds/index.json` : tour de 12,5 m jusqu'à 40,3 m, flèche à 85,6 m) et remplace le prisme unique de la silhouette lointaine (`lod/26_32.json`) par douze (porche, tours, nef, bas-côtés, transept, bloc, tour de croisée, chœur et abside, bas-côtés du chœur). `mon` reste (repère, et gabarit D95 des cathédrales sans modèle). Une deuxième passe ne réécrit rien.
+
+**Rendu** (`buildSaintLazare`, `src/render/monuments.ts`, dans le maillage plein de la tuile : aucun appel de dessin de plus, 1 043 triangles) : murs, toit et baies génériques ne sont plus dessinés (comme pour la mairie) ; la collision reste l'emprise. Volumes à pans nets, murs qui suivent le relief (le sol monte de 5 m du parvis au chevet) ; toits de tuiles brun-ocre (nef, porche, transept, bloc, chœur, abside, bas-côté ouest), gris-vert sur le bas-côté est et toutes les chapelles (d'après l'orthophotographie) ; flèches en pierre grise. Baies sombres en plein cintre : fenêtres hautes de la nef par travée, grandes baies des chapelles, baies de l'abside, portail et grande baie au pignon est du transept, baies jumelles des tours, grand arc du porche.
+
+**Pas encore** (étapes suivantes du plan) : les tuiles vernissées et la tourelle du chevet (étape 2), le détail de la tour de croisée et de la flèche (3), les chapelles gothiques, les fenêtres en arc brisé, les marches et le portail du porche (4) ; la fontaine Saint-Lazare au pied de la tour est (photo de nuit), à confirmer.
+
+![Avant](captures/d127-cathedrale-avant.jpg)
+![Après](captures/d127-cathedrale-apres.jpg)
+![Le flanc est, avant](captures/d127-cathedrale-flanc-avant.jpg)
+![Le flanc est, après](captures/d127-cathedrale-flanc-apres.jpg)
+![Le chevet](captures/d127-cathedrale-chevet.jpg)
+![Depuis le nord-ouest : le porche et ses tours](captures/d127-cathedrale-nord-ouest.jpg)
+![Silhouette lointaine, avant (à gauche) et après](captures/d127-cathedrale-silhouette.jpg)
+
+## 2026-10-30 — D128. Bâtiments d'après photos, étape 8 : la cathédrale, le chevet et ses tuiles vernissées
+
+**D'après les photos de l'utilisateur** (drone au-dessus du chevet, chevet au sol depuis le sud-est) : l'abside polygonale à contreforts et hautes baies, le bloc carré au bout du bras ouest du transept et une petite tourelle entre lui et le chœur sont couverts de tuiles vernissées en losanges (jaune d'ocre, vert, brun-noir, rouge) ; le bloc a de grandes baies.
+
+**Mesure** (`build_monuments.py`) : la **tourelle** se voit dans le modèle de surface (pointe à 22 m au-dessus du sol du bâtiment, au-dessus du bas-côté du chœur à 10-12 m et du toit du bloc) : point le plus haut juste derrière le transept, au coin du bloc ; centre = médiane des cellules à moins de 1,5 m de ce haut ; côté d'après la photo (3 m, `turret` dans `manual.json`). Champ `turret` de `cath` ; une deuxième passe ne change rien.
+
+**Rendu** (`src/render/monuments.ts`) :
+- **Tuiles vernissées** (`glazedPan`) : sur un pan quelconque (quadrilatère ou triangle), rangs de losanges en quinconce, chaque losange fait de deux triangles de part et d'autre d'une ligne de rang ; couleur selon les deux diagonales du réseau : tous les quatre losanges, une résille verte dans un sens et brun-noir dans l'autre, un losange rouge au cœur de chaque maille, fond jaune. En aplats, sans texture (D17). Sur le cône de l'abside, le toit en croupe du bloc et la pyramide de la tourelle (`hipRoof` accepte maintenant un dessin de pan).
+- **Abside** : corniche saillante, contreforts à glacis aux angles du polygone, deux étages de baies en arc brisé par pan (hautes baies en haut, petites en bas).
+- **Bloc** : deux grandes baies en arc brisé par face libre, contreforts d'angle. **Tourelle** : corps carré, corniche, baie, pyramide vernissée jusqu'à la pointe mesurée.
+- `archOn` dessine aussi l'arc brisé équilatéral ; `buttress` pose un contrefort dans n'importe quelle direction.
+- 2 643 triangles pour toute la cathédrale (1 043 à l'étape 1).
+
+**Pas encore** : le motif exact de chaque toit (la photo du drone montre aussi des chevrons) est stylisé, le même pour les trois toits ; le détail de la tour de croisée et de la flèche (étape 3), les flancs et le porche (étape 4).
+
+![Avant](captures/d128-chevet-avant.jpg)
+![Après](captures/d128-chevet-apres.jpg)
+![Depuis le sud-ouest, avant](captures/d128-chevet-ouest-avant.jpg)
+![Depuis le sud-ouest, après](captures/d128-chevet-ouest-apres.jpg)
+![Vue haute du chevet](captures/d128-chevet-haut.jpg)
+
+## 2026-10-30 — D129. Bâtiments d'après photos, étape 9 : la cathédrale, tour de croisée et flèche
+
+**D'après les photos de l'utilisateur** (chevet au sol depuis le sud-est, drone) : tour carrée à contreforts d'angle, deux hautes baies jumelles en arc brisé par face, galerie à balustrade ajourée ; flèche octogonale de pierre grise à crochets sur les arêtes, gâbles ajourés au pied des faces, grands clochetons aux angles de la tour, croix.
+
+**Mesures** (`build_monuments.py`) : **rayon de la flèche au pied**, 5,4 m (octogone presque aussi large que la tour de 12,5 m) : pour chaque altitude, rayon de l'octogone de même aire que les cellules du modèle de surface plus hautes ; droite en altitude entre 8 m au-dessus de la tour et 6 m sous la pointe (plus bas, gâbles et clochetons élargissent la coupe), ramenée au haut de la tour. Les **clochetons et les gâbles** sont trop fins pour le relevé à 0,5 m : un seul angle de la tour monte à 9,5 m au-dessus de la galerie, les trois autres à 4-5 m, et les gâbles ne se distinguent pas du cône de la flèche ; hauteurs d'après la photo (clochetons à 9 m au-dessus de la tour, ce que confirme l'angle mesuré ; gâbles de 6 m), dans `spire` de `manual.json`. Champs `tower` (rayon ajouté) et `spire` de `cath` ; une deuxième passe ne change rien.
+
+**Rendu** (`src/render/monuments.ts`) : deux contreforts à glacis à chaque angle de la tour, au-dessus des toits ; par face, un arc de décharge en retrait et deux baies en arc brisé ; corniche et balustrade (parapet de 1,1 m percé de jours tous les 60 cm, `rectOn`) ; flèche au rayon mesuré, crochets tous les 2,8 m sur les huit arêtes (ailettes vues des deux côtés) ; quatre gâbles au pied des faces tournées vers la nef, le chœur et les bras, avec leur petit toit qui rejoint la flèche et une lucarne en arc brisé ; clochetons d'angle (fût carré et pyramide) ; croix en fer. 3 299 triangles pour toute la cathédrale.
+
+**Pas encore** : les flancs (chapelles gothiques, fenêtres en arc brisé, pinacles et balustrade) et le porche (marches, portail, tours), étape 4.
+
+![Avant](captures/d129-fleche-avant.jpg)
+![Après](captures/d129-fleche-apres.jpg)
+![Depuis le sud-est, avant](captures/d129-tour-avant.jpg)
+![Depuis le sud-est, après](captures/d129-tour-apres.jpg)
+
+## 2026-10-30 — D130. Bâtiments d'après photos, étape 10 : la cathédrale, flancs et porche
+
+**D'après les photos de l'utilisateur** : le flanc est de nuit (chapelles gothiques à grandes baies, contreforts surmontés de pinacles, balustrade ajourée le long des toits ; fenêtres hautes de la nef en plein cintre ; portail roman à petit pignon au bras est du transept ; tour est du porche à deux étages de baies jumelles, contreforts et flèche de pierre à clochetons) et la vue de drone (les deux tours du porche).
+
+**Rendu** (`src/render/monuments.ts`, aucune donnée nouvelle) :
+- **Chapelles** : grande baie en arc brisé à meneau par travée, contreforts à glacis entre les travées ; côté est seulement (photo de nuit), pinacles au-dessus des contreforts et balustrade ajourée (parapet de 90 cm, jours tous les 60 cm). Les chapelles de l'ouest, plus basses (6 à 8 m mesurés), n'ont pas de photo : baies et contreforts seulement.
+- **Nef** : bandeau sous l'égout.
+- **Transept** : avant-corps du portail au pignon est (6 m de large, petit pignon couvert de tuiles), voussure claire et porte.
+- **Tours du porche** : deux étages de baies jumelles en plein cintre dans un encadrement en retrait sur chaque face, cordon entre les étages, contreforts aux angles extérieurs jusqu'au cordon, clochetons aux angles de la flèche.
+- 4 163 triangles pour toute la cathédrale (1 043 à l'étape 1 ; la mairie en a 5 431). Le test borne le monument à 8 000.
+
+**Pas encore** (faute de photo ou de validation) : la façade du porche (portail, marches depuis le parvis, plus bas de 3 m : le relevé ne montre pas de marches devant le porche), les chapelles de l'ouest, la fontaine Saint-Lazare au pied de la tour est ; l'éclairage de nuit de la cathédrale (la photo de nuit la montre illuminée, le jeu la laisse dans l'ombre comme les autres bâtiments).
+
+![Le flanc est, avant](captures/d130-flanc-avant.jpg)
+![Le flanc est, après](captures/d130-flanc-apres.jpg)
+![Les chapelles au sol, avant](captures/d130-chapelles-avant.jpg)
+![Les chapelles au sol, après](captures/d130-chapelles-apres.jpg)
+![Le porche et ses tours, avant](captures/d130-porche-avant.jpg)
+![Le porche et ses tours, après](captures/d130-porche-apres.jpg)
+![La nuit](captures/d130-nuit.jpg)
+![Vue de drone depuis le chevet, comme la photo](captures/d130-cathedrale-drone.jpg)
+
+## 2026-10-30 — D131. Bâtiments d'après photos, étape 11 : le portail de la cathédrale et la fontaine Saint-Lazare
+
+**Photos de l'utilisateur** (non versionnées) : le portail au fond du porche, de face ; la fontaine Saint-Lazare vue du nord-est, avec derrière elle les chapelles de l'est et le flanc du porche ; l'utilisateur confirme que c'est l'édicule vu au pied de la tour est sur la photo de nuit (D127). Lecture :
+- **Porche et portail** : porche ouvert sous une voûte en berceau, arcs sur les murs latéraux, escalier jusqu'au seuil entre deux grilles à pointes ; deux portes de bois à panneaux, trumeau portant une statue, colonnes à chapiteaux dans les ébrasements, linteau sculpté, tympan du Jugement dernier (Christ en mandorle au centre, figures en registres), trois voussures dont une à médaillons. Sur le flanc du porche (photo de la fontaine), arcades jumelles en arc brisé et oculus.
+- **Fontaine** : emmarchement et bassin bas à lobes en pierre sombre, vasque sur pied avec jet au centre, édicule Renaissance de pierre claire à quatre piles (piédestaux, colonnes cannelées), arcs en plein cintre sur chaque face, entablement à inscription, frontons, vases aux angles ; lanterne ronde à colonnettes et niche, coupolette, pélican au sommet.
+
+**Mesures** (`build_monuments.py`, modèle `fountain` dans `monuments` de `manual.json`) : la fontaine est dans OpenStreetMap (mobilier `fountain` « Fontaine Saint-Lazare », 13 m à l'est de la tour est du porche, comme sur les photos). Sur le modèle de surface : centre de l'édicule (cellules à plus de 2 m au-dessus du sol), haut 8,3 m, bassin de 3,0 m de rayon (premier cercle où la médiane du relevé retombe à moins de 10 cm du sol) ; orientation de la cathédrale. Site `fountain` dans `kinds/26_33.json` (et le compte des sites de `kinds/index.json`) ; une deuxième passe ne change rien. Le porche n'a pas de nouvelle donnée : le seuil des portes est pris au sol du bâtiment (BD TOPO), faute de mesure possible sous le toit ; le pied de l'escalier est au plus haut point du relief du jeu, 4,2 m devant les portes, soit 11 marches.
+
+**Rendu** (`src/render/monuments.ts`) :
+- **Porche** : le mur avant est percé d'un vrai grand arc (`archWall`, intrados et piédroits `archSoffit`), ce qui laisse voir l'intérieur : voûte en berceau, murs intérieurs à arcs aveugles, escalier et grilles, **portail** (`portal`) sur le mur ouest de la nef. Le tympan est stylisé en aplats : demi-disque, mandorle plus sombre, Christ plus clair, deux registres de figures de part et d'autre, frise du linteau, médaillons de la voussure. Proportions d'après la photo (portes de 5 m sur 4,2 m, tympan de 6,4 m). La collision reste l'emprise : on ne monte pas dans le porche.
+- **Fontaine** (`buildFountain`, dessinée par la tuile où elle se trouve) : modèle complet, hauteurs d'après la photo mises à l'échelle du haut mesuré. Le cylindre générique du mobilier n'est plus dessiné (même identifiant OpenStreetMap). Le bassin devient un obstacle de son rayon. Un arbre de la carte poussait au milieu : les arbres à l'intérieur du bassin ne sont plus ni dessinés ni des obstacles (`treesOutsideMonuments`).
+- 5 275 triangles pour la cathédrale (4 163 avant), 1 112 pour la fontaine.
+
+**Pas encore** : on ne peut pas entrer dans le porche (la collision suit l'emprise) ; la façade extérieure du porche n'a pas de photo (un seul grand arc) ; la navigation des passants garde l'ancien rayon de la fontaine (1 m) ; l'éclairage de nuit.
+
+![Le porche, avant](captures/d131-porche-avant.jpg)
+![Le porche et le portail, après](captures/d131-porche-apres.jpg)
+![Depuis le parvis](captures/d131-porche-parvis.jpg)
+![La fontaine, avant](captures/d131-fontaine-avant.jpg)
+![La fontaine Saint-Lazare, après](captures/d131-fontaine-apres.jpg)
+
+## 2026-10-30 — D132. Bâtiments d'après photos, étape 12 : la façade du porche, l'entrée dans le porche, la fontaine pour les passants, la cathédrale la nuit
+
+**Demande de l'utilisateur** : traiter les quatre points laissés en D131, avec deux nouvelles photos (captures Google Street View d'août 2018, non versionnées) de la façade du porche, du parvis Chanoine-Denis-Grivot. Lecture :
+- **Bas** : trois larges marches sur toute la façade, puis le palier sous le porche ; des grilles à pointes de part et d'autre de la volée qui monte au portail (passage ouvert au milieu) ; arcs plus bas sous les tours, fermés de grilles.
+- **Haut** : grand arc à voussure moulurée sur colonnes engagées, contreforts massifs de part et d'autre, cordon au-dessus de l'arc, galerie de petites arcades dont trois ajourées, corniche et pignon bas ; deux tours carrées à baies jumelles.
+
+**1. Façade du porche** (`src/render/monuments.ts`) : voussure (deux anneaux), colonnes engagées et chapiteaux du grand arc, cordon, galerie de cinq arcades aveugles dont trois percées, corniche, contreforts entre l'arc et les tours ; sous chaque tour, un arc ouvert en façade (62 % de la largeur de la tour, sommet aux deux tiers de celui du grand arc), avec intrados, fond sombre et grille.
+
+**2. On entre dans le porche** (`porchLayout`, `porchDecks`, `cathedralWalls`, `src/core/landmarks.ts`) :
+- **Niveaux** (`build_monuments.py`, champ `entry` de `cath`) : parvis = terrain LiDAR médian sur toute la largeur de la façade, 2,5 m devant elle (3,3 m sous le sol du bâtiment) ; palier = parvis + 3 marches de 16 cm (photo, `entrySteps` dans `manual.json`) ; seuil = sol du bâtiment (le relevé ne voit pas sous le toit). Une deuxième passe ne change rien.
+- **Surface** : deux tabliers invisibles (comme les ponts, D93), enregistrés avec ceux de la tuile : les trois marches de la façade, puis le palier, la volée (17 marches de 16 cm) et le palier des portes. Le jeu prend toujours le plus haut du relief et du tablier ; au dessin, chaque marche est posée au-dessus des deux (le relief du jeu remonte par endroits sous le porche), la marche visible et le sol de marche restent à quelques centimètres.
+- **Obstacles** : l'emprise BD TOPO n'est plus un obstacle devant le porche ; à sa place, les tours pleines, les piles du grand arc, les murs de la salle et le mur des portes (fermées), et les grilles de part et d'autre de la volée (1,2 m, on ne les escalade pas). Test : du parvis on va jusqu'aux portes, pas dans la nef ; les grilles barrent les côtés de la volée ; les tours sont pleines.
+
+**3. Les passants et la fontaine** : la navigation actuelle contourne déjà la fontaine (les arêtes les plus proches passent à 3,5 et 3,8 m du centre, hors du bassin de 3 m). `build_nav.py` prend désormais le bassin mesuré (site `fountain`) comme rayon d'obstacle et écarte les arbres qui y poussaient, comme le jeu (D131). La navigation n'est pas régénérée : `build_nav.py` repart de tout OpenStreetMap et réécrirait toute la ville ; la correction s'appliquera à la prochaine génération.
+
+**4. La cathédrale la nuit** (photo de nuit, D127) : pendant `buildSaintLazare`, murs, contreforts et flèches sont doublés dans le maillage des vitres allumées (visible la nuit seulement, aucun appel de dessin de plus), en dégradé chaud du pied (projecteurs) vers le haut. Les toits restent sombres. Les flancs des contreforts sont plus sombres que leur face pour qu'ils se détachent du mur. Les baies et encadrements sont redessinés dans le même maillage, après les murs : sans quoi, de loin, la lumière (tirée vers la caméra) les recouvrait. Les baies restent sombres.
+
+**Coût** : 6 253 triangles pour la cathédrale (5 275 avant) et 2 378 d'éclairage, dessinés la nuit seulement (test : moins de 8 000 et 4 000).
+
+**Pas encore** : l'intérieur de la nef (les portes restent fermées) ; les sculptures du portail restent en aplats ; la navigation des passants ne passe pas dans le porche.
+
+![Façade, avant](captures/d132-facade-avant.jpg)
+![Façade, après](captures/d132-facade-apres.jpg)
+![Entrée, avant](captures/d132-entree-avant.jpg)
+![Entrée, après : marches, grilles, arcs sous les tours](captures/d132-entree-apres.jpg)
+![Sur la volée, devant les portes](captures/d132-escalier.jpg)
+![La nuit, avant](captures/d132-nuit-avant.jpg)
+![La nuit, après](captures/d132-nuit-apres.jpg)
+![La nuit, le porche](captures/d132-nuit-porche.jpg)
+![Vue de drone la nuit, avant](captures/d132-nuit-drone-avant.jpg)
+![Vue de drone la nuit, après](captures/d132-nuit-drone-apres.jpg)

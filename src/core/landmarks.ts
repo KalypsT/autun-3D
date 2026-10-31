@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, Site } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Site, Tree } from "../data/types";
 
 /** Gabarits « boîte » : leur façade d'habitation est remplacée (bardage, quais, vitrage d'entrée). */
 export const BOX_KINDS: ReadonlySet<BuildingKindId> = new Set(["retail", "industrial", "annex", "sports", "greenhouse", "canopy"]);
@@ -95,12 +95,20 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
     out.push([lay.totem[0], lay.totem[1], 0.5]);
   }
+  // Fontaine d'après photo (D131) : son bassin.
+  for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;
     for (let i = 0; i < b.ring.length; i += 2) out.push([b.ring[i]!, b.ring[i + 1]!, 0.3]);
   }
   return out;
+}
+
+/** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */
+export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, trees: readonly Tree[]): Tree[] {
+  const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
+  return basins.length ? trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r)) : [...trees];
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
@@ -179,4 +187,75 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     }
   }
   return out;
+}
+
+// --- Porche praticable de la cathédrale (D132) -----------------------------------------------------------------------------------------
+
+/**
+ * Disposition du porche (repère de la cathédrale, s vers le chevet, t vers l'est-nord-est) : murs de 1 m, salle entre iA et iB, grand arc de
+ * largeur `Wo` en façade, voûte de naissance zV ; parvis zA, palier zP, seuil zD (mesurés) ; trois marches devant la façade de sE à p0 sur
+ * toute sa largeur (tE0 à tE1, tours comprises) ; volée intérieure de sR0 à sR1, puis le palier des portes jusqu'au mur ouest de la nef (n0).
+ */
+export function porchLayout(m: CathedralModel) {
+  const [p0, n0, pA, pB, pe] = m.porch;
+  const [w0, w1] = m.towers;
+  const [zA, zP, zD] = m.entry;
+  const TH = 1.0, iA = pA + TH, iB = pB - TH, Rv = (iB - iA) / 2;
+  return {
+    p0, n0, pA, pB, pc: (pA + pB) / 2, TH, iA, iB, Rv, zV: Math.min(zD + 7.5, pe - 0.8 - Rv), Wo: Math.min(7.5, iB - iA - 1.5),
+    zA, zP, zD, sE: p0 - 1.6, sR0: p0 + TH + 0.2, sR1: n0 - 1.5, tE0: pA - w0, tE1: pB + w1, w0, w1,
+  };
+}
+
+/** Tabliers invisibles du porche : les marches de la façade (du parvis au palier) et la volée intérieure jusqu'au seuil des portes. */
+export function porchDecks(m: CathedralModel): Deck[] {
+  const L = porchLayout(m);
+  const f = frameOf(m.c[0], m.c[1], m.a, 1, 1);
+  const axis = (t: number, pts: [number, number][]): number[] => pts.flatMap(([s, z]) => [...at(f, s, t), z]);
+  const deck = (id: number, w: number, p: number[]): Deck => ({ id, k: "foot", w, p, st: "light", sp: [], pc: [] });
+  return [
+    deck(-132001, L.tE1 - L.tE0, axis((L.tE0 + L.tE1) / 2, [[L.sE, L.zA], [L.p0, L.zP]])),
+    deck(-132002, L.iB - L.iA, axis(L.pc, [[L.p0, L.zP], [L.sR0, L.zP], [L.sR1, L.zD], [L.n0 + 0.2, L.zD]])),
+  ];
+}
+
+/** Tabliers des monuments d'une tuile (porche de la cathédrale). */
+export function landmarkDecks(kinds: { buildings: Record<string, BuildingKind> } | undefined): Deck[] {
+  return Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.cath?.entry ? porchDecks(k.cath) : []));
+}
+
+/**
+ * Obstacles de la cathédrale (lignes) : l'emprise, sauf devant le porche (marches et grand arc), plus les tours, les piles de l'arc, les
+ * murs de la salle du porche et les portes fermées, et les grilles de part et d'autre de la volée (on passe entre elles).
+ */
+export function cathedralWalls(b: Building, m: CathedralModel): { lines: number[][]; grilles: number[][] } {
+  const L = porchLayout(m);
+  const f = frameOf(m.c[0], m.c[1], m.a, 1, 1);
+  const ca = Math.cos(m.a), sa = Math.sin(m.a);
+  const st = (x: number, y: number): [number, number] => [(x - m.c[0]) * ca + (y - m.c[1]) * sa, -(x - m.c[0]) * sa + (y - m.c[1]) * ca];
+  const line = (pts: [number, number][]): number[] => pts.flatMap(([s, t]) => at(f, s, t));
+  const rect = (s0: number, s1: number, t0: number, t1: number): number[] => line([[s0, t0], [s1, t0], [s1, t1], [s0, t1], [s0, t0]]);
+  const lines: number[][] = [];
+  const r = b.ring, n = r.length / 2;
+  let run: number[] = [];
+  for (let i = 0; i <= n; i++) {
+    const j = i % n, k = (i + 1) % n;
+    const [ms, mt] = st((r[2 * j]! + r[2 * k]!) / 2, (r[2 * j + 1]! + r[2 * k + 1]!) / 2);
+    const open = i === n || (ms < L.p0 + 0.5 && mt > L.tE0 - 1 && mt < L.tE1 + 1);
+    if (!open) {
+      if (!run.length) run.push(r[2 * j]!, r[2 * j + 1]!);
+      run.push(r[2 * k]!, r[2 * k + 1]!);
+    } else if (run.length) {
+      lines.push(run);
+      run = [];
+    }
+  }
+  if (run.length) lines.push(run);
+  const { p0, n0, pA, pB, pc, TH, iA, iB, Wo, w0, w1 } = L;
+  lines.push(rect(p0, p0 + w0, pA - w0, pA), rect(p0, p0 + w1, pB, pB + w1));
+  lines.push(rect(p0, p0 + TH, pA, pc - Wo / 2), rect(p0, p0 + TH, pc + Wo / 2, pB));
+  lines.push(line([[p0 + TH, iA], [n0, iA], [n0, iB], [p0 + TH, iB]]));
+  const sg = p0 + TH + 0.15;
+  const grilles = [line([[sg, iA], [sg, pc - 1.6]]), line([[sg, pc + 1.6], [sg, iB]])];
+  return { lines, grilles };
 }

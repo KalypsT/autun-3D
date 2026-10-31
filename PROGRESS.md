@@ -807,3 +807,74 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d126-mairie-toits-avant.jpg)
 ![Après](docs/captures/d126-mairie-toits-apres.jpg)
 ![De face](docs/captures/d126-mairie-face.jpg)
+
+**Bâtiments d'après photos, étape 7 : la cathédrale, volumes mesurés (30 octobre 2026)** (D127)
+- La cathédrale n'est plus un bâtiment générique avec un clocher : d'après tes photos et le relevé LiDAR, elle a son porche et ses deux tours, sa nef haute (30 m au faîtage) avec ses fenêtres hautes, ses bas-côtés et ses chapelles, son transept plus bas, le bloc carré au bout du bras ouest, sa tour de croisée (40 m) et sa flèche (86 m), son chœur et son abside polygonale.
+- Les toits sont en tuiles brun-ocre (gris-vert sur les chapelles) et les flèches en pierre grise, plus en ardoise bleue.
+- Les deux tours du porche n'apparaissent pas dans le relevé LiDAR, alors qu'on les voit sur tes photos et sur l'orthophoto : leur hauteur vient des photos (26 m au corps, 36 m à la pointe).
+- De loin, on voit la tour de croisée et le vaisseau, plus un mât de 54 m.
+- 724 tests.
+- Suite : le chevet et ses tuiles vernissées.
+
+![Avant](docs/captures/d127-cathedrale-avant.jpg)
+![Après](docs/captures/d127-cathedrale-apres.jpg)
+![Le flanc est](docs/captures/d127-cathedrale-flanc-apres.jpg)
+![Le chevet](docs/captures/d127-cathedrale-chevet.jpg)
+![Le porche et ses tours](docs/captures/d127-cathedrale-nord-ouest.jpg)
+
+**Bâtiments d'après photos, étape 8 : la cathédrale, le chevet (30 octobre 2026)** (D128)
+- L'abside, le bloc carré au bout du transept et la petite tourelle (retrouvée dans le relevé LiDAR, pointe à 22 m) ont leurs toits en tuiles vernissées : losanges jaunes, résille verte et brun-noir, losanges rouges, en aplats.
+- L'abside a ses contreforts, sa corniche et deux étages de baies en arc brisé ; le bloc a ses grandes baies.
+- 724 tests.
+- Suite : la tour de croisée et la flèche.
+
+![Avant](docs/captures/d128-chevet-avant.jpg)
+![Après](docs/captures/d128-chevet-apres.jpg)
+![Depuis le sud-ouest](docs/captures/d128-chevet-ouest-apres.jpg)
+
+**Bâtiments d'après photos, étape 9 : la cathédrale, tour de croisée et flèche (30 octobre 2026)** (D129)
+- La tour de croisée a ses contreforts, ses baies jumelles en arc brisé et sa balustrade ajourée ; la flèche a sa vraie largeur au pied (mesurée au LiDAR), ses crochets sur les arêtes, ses gâbles, ses clochetons d'angle et sa croix.
+- Les clochetons et les gâbles sont trop fins pour le relevé : leur hauteur vient de ta photo.
+- 724 tests.
+- Suite : les flancs et le porche.
+
+![Avant](docs/captures/d129-fleche-avant.jpg)
+![Après](docs/captures/d129-fleche-apres.jpg)
+![Depuis le sud-est](docs/captures/d129-tour-apres.jpg)
+
+**Bâtiments d'après photos, étape 10 : la cathédrale, flancs et porche (30 octobre 2026)** (D130)
+- Côté est, les chapelles ont leurs grandes baies en arc brisé à meneau, leurs contreforts surmontés de pinacles et leur balustrade ajourée, comme sur ta photo de nuit ; le bras est du transept a son portail roman à petit pignon.
+- Les tours du porche ont deux étages de baies jumelles, leurs contreforts et des clochetons au pied de leur flèche.
+- Toute la cathédrale : 4 163 triangles (moins que la mairie).
+- 724 tests.
+- Il manque, faute de photo : la façade du porche (portail, marches), les chapelles de l'ouest, la fontaine Saint-Lazare. La nuit, la cathédrale n'est pas illuminée comme sur ta photo : à faire si tu veux.
+
+![Le flanc est, avant](docs/captures/d130-flanc-avant.jpg)
+![Le flanc est, après](docs/captures/d130-flanc-apres.jpg)
+![Le porche et ses tours](docs/captures/d130-porche-apres.jpg)
+![Vue de drone depuis le chevet](docs/captures/d130-cathedrale-drone.jpg)
+
+**Bâtiments d'après photos, étape 11 : le portail et la fontaine Saint-Lazare (30 octobre 2026)** (D131)
+- Le porche s'ouvre maintenant sur le parvis par un grand arc. On y voit la voûte, l'escalier entre ses grilles et le portail de ta photo : portes de bois, trumeau et statue, colonnes, linteau, tympan du Jugement dernier (Christ en mandorle et figures, en aplats), voussures à médaillons.
+- La fontaine Saint-Lazare est à sa vraie place (OpenStreetMap), à sa hauteur mesurée au LiDAR (8,3 m) : bassin à lobes, vasque et jet, édicule à arcs, entablement, vases, lanterne et pélican. On ne la traverse plus, et l'arbre qui poussait au milieu a disparu.
+- On ne peut pas encore entrer dans le porche (la collision suit l'emprise du bâtiment).
+- 725 tests.
+
+![Le porche, avant](docs/captures/d131-porche-avant.jpg)
+![Le porche et le portail](docs/captures/d131-porche-apres.jpg)
+![La fontaine, avant](docs/captures/d131-fontaine-avant.jpg)
+![La fontaine Saint-Lazare](docs/captures/d131-fontaine-apres.jpg)
+
+**Bâtiments d'après photos, étape 12 : façade et entrée du porche, la cathédrale la nuit (30 octobre 2026)** (D132)
+- La façade du porche suit tes deux photos : grand arc à voussure sur colonnes, contreforts, galerie de petites arcades, corniche, arcs plus bas sous les tours avec leurs grilles.
+- On entre dans le porche : trois marches depuis le parvis, puis la volée entre les grilles jusqu'aux portes (fermées).
+- La nuit, la cathédrale est illuminée, comme sur ta photo : murs et flèches dorés, plus clairs en bas, toits sombres, baies sombres.
+- Les passants contournaient déjà la fontaine ; la génération de la navigation prend désormais son bassin en compte.
+- 728 tests.
+- À essayer de ton côté : `?at=13.4,-531` (sur le parvis), monter jusqu'aux portes ; `?h=23` pour la nuit.
+
+![Façade, avant](docs/captures/d132-facade-avant.jpg)
+![Façade, après](docs/captures/d132-facade-apres.jpg)
+![L'entrée](docs/captures/d132-entree-apres.jpg)
+![La nuit, avant](docs/captures/d132-nuit-avant.jpg)
+![La nuit, après](docs/captures/d132-nuit-apres.jpg)

@@ -53,8 +53,12 @@ def load_tiles(world):
         for b in d["buildings"]:
             buildings.append([b["ring"]] + list(b["holes"]))
         walls.extend(w["pts"] for w in d["walls"])
-        trees.extend((x, y) for x, y, *_ in d["trees"])
-        furniture.extend(d["furniture"])
+        # Fontaines d'après photo (D131, D132) : leur bassin (site `fountain` de kinds) remplace le mobilier OpenStreetMap, sans arbre dedans.
+        kp = c.OUT / "kinds" / f"{t['id']}.json"
+        basins = {q["id"]: q for q in (json.loads(kp.read_text())["sites"] if kp.exists() else []) if q.get("t") == "fountain"}
+        trees.extend((x, y) for x, y, *_ in d["trees"] if all(math.hypot(x - q["x"], y - q["y"]) > q["rb"] + 0.6 for q in basins.values()))
+        furniture.extend(dict(f, x=basins[f["id"]]["x"], y=basins[f["id"]]["y"], r=basins[f["id"]]["rb"] + 0.2) if f["id"] in basins else f
+                         for f in d["furniture"])
         fiches = {f["id"]: f for f in d["fiches"]}
         for b in d["buildings"]:
             f = fiches.get(b["id"])

@@ -719,7 +719,7 @@ class Circles:
     def __init__(self, trees, furniture):
         geoms = [Point(x, y).buffer(TREE_RADIUS, 4) for x, y in trees]
         for f in furniture:
-            r = FURNITURE_RADIUS.get(f["kind"])
+            r = f.get("r", FURNITURE_RADIUS.get(f["kind"]))
             if r is not None:
                 geoms.append(Point(f["x"], f["y"]).buffer(r, 4))
         self.tree = STRtree(geoms)
