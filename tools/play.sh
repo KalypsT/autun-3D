@@ -4,7 +4,9 @@ set -e
 out="$1"; scenario="${2:-walk}"; query="${3:-}"
 port=$((4200 + $$ % 700))
 npx vite build > /dev/null
-npx vite preview --port "$port" --strictPort > /dev/null 2>&1 &
+# Le serveur lancé directement (sans npx) : son pid est celui de node, que le trap arrête vraiment (avec npx, il restait ouvert,
+# et une capture suivante tombant sur le même port photographiait une ancienne construction).
+node_modules/.bin/vite preview --port "$port" --strictPort > /dev/null 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null' EXIT
 for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -o /dev/null "http://localhost:$port/" && break; sleep 1; done

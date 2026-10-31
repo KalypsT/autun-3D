@@ -1954,3 +1954,114 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Les arbustes taillés et le second poteau](captures/d136-theatre-arbustes.jpg)
 ![Du haut de l'extrémité nord, comme la photo 2](captures/d136-theatre-nord.jpg)
 ![Vue de drone](captures/d136-theatre-drone.jpg)
+
+## 2026-10-31 — D137. Bâtiments d'après photos, étape 17 : la porte d'Arroux
+
+**Demande de l'utilisateur** : refaire d'après ses photos les portes d'Arroux et Saint-André (D95), avec un modèle commun et ses variantes, puis modéliser le temple de Janus ; trois étapes séparées. Choix de l'utilisateur : rien de praticable en hauteur (on passe sous les arches), les trois monuments éclairés la nuit (pour ceux sans photo de nuit, un éclairage par en dessous comme à Arroux). Points de vue confirmés : porte d'Arroux de face depuis la rue côté ville (sud-sud-est), de jour et de nuit.
+
+**Lecture de la photo** (`photo` de l'entrée `porte-arroux` de `manual.json`) : deux grandes arches au centre (archivoltes à claveaux moulurés, pile centrale à imposte), deux petites aux bouts, à demi enterrées ; grand appareil de calcaire gris clair ; parement perdu au-dessus des arches, de la droite de la grande arche gauche jusqu'au bout : blocage de moellons ocre-brun ; corniche, attique de deux assises ; **galerie conservée sur la partie gauche seulement** (7 arcades sur 10, pilastres à chapiteaux, entablement, bloc en saillie au sommet) ; bout gauche déchiqueté en gradins ; maison accolée à droite, haie et arceaux à vélos à gauche. La nuit, projecteurs chauds au pied.
+
+**Mesures** (`build_monuments.py`, modèle `gate`, champ `gm` du site `gate` de `kinds/25_39.json`) :
+- **Le relevé LiDAR ne contient qu'une partie de la porte** (comme les tours du porche de la cathédrale) : le MNS la voit sur une douzaine de mètres depuis la maison, à 8,8 m (médiane ; 9,4 m au plus haut) au-dessus de la rue, et rien au-dessus de sa partie ouest-sud-ouest, là où l'orthophotographie montre les arcades. La galerie n'y est pas.
+- Ce qu'on mesure : **épaisseur du corps 4,25 m** et son décalage en travers (profil médian du MNS sur la partie relevée : le centre OpenStreetMap est 1,5 m trop au nord-nord-ouest) ; **rue à −32,4 m** au droit de la porte (médiane du MNT sur l'axe), −32,8 m côté faubourg et −32,1 m côté ville (elle monte vers la ville).
+- **L'ombre sur l'orthophotographie est illisible** (enrobé sombre, arbres, ombres des maisons) : la hauteur de la galerie vient de la photo, prise de face et à niveau (verticales parallèles), donc à échelle constante sur le plan de la façade. Échelle : la longueur de la porte (18,7 m, D95) sur la largeur qu'elle occupe dans la photo. Lu ainsi : grandes arches de 3,7 m (naissance à 4,9 m), petites de 1,7 m (naissance à 1,5 m : elles sont enterrées), archivoltes de 0,95 m, corniche à 8,2-8,5 m, **attique à 9,55 m** (le relevé donne 8,8 à 9,4 m pour le haut du blocage : recoupement à moins d'1 m, test), arcades de 0,9 m au pas de 1,63 m, haut des arcs à 11,8 m, entablement de 12,1 à 12,9 m, bloc sommital à 13,55 m. Ces valeurs sont dans `manual.json`, en mètres depuis le bout gauche de la photo ; l'étape les place dans le repère de la porte d'après le côté de la photo (`photoFrom`).
+- **La galerie est sur la face côté ville** : sur la photo, l'attique et la galerie sont dans le plan de la façade. Premier essai écarté : galerie en retrait au nord-nord-ouest, d'après le rang d'arcades claires au bord nord-ouest de l'orthophotographie ; en fait c'est l'orthophotographie qui penche (prise du sud-est, plus un point est haut, plus il est déporté vers le nord-ouest), et depuis la rue la galerie en retrait était presque cachée.
+- Une deuxième passe ne réécrit rien.
+
+**Modèle commun** (`gateLayout`, `src/core/landmarks.ts` ; rendu `src/render/gates.ts`, dans le maillage plein de la tuile) : il sert aussi au modèle par défaut de D95 (porte sans lecture de photo), et servira à Saint-André avec ses variantes (galerie complète, toit, tours). Corps percé des arches (passages voûtés sur toute l'épaisseur, piédroits, intrados), dessus suivant le profil ruiné (`top`, marches comprises), **blocage apparent** (zones `rubble`, sur les deux faces : moellons ocre-brun à lits sombres), **assises** du grand appareil tous les 62 cm, **archivoltes** à claveaux en relief nuancés un sur deux, **impostes**, **corniche** interrompue là où le parement est perdu, **galerie** des arcades conservées (pilastres à base et chapiteau sur les deux faces, entablement, bloc sommital). **2 372 triangles** (1 446 pour l'ancienne porte ; borne du test : 4 000).
+
+**La nuit** : chaque pan est doublé dans le maillage des vitres allumées (visible la nuit seulement, comme la cathédrale, D132), en dégradé chaud du pied (projecteurs) vers le haut, modulé par la teinte de la pierre ; intrados et piédroits compris (les voûtes sont claires sur la photo). Autant de triangles que la porte, seulement la nuit.
+
+**Silhouette lointaine** : les portes n'en avaient pas (elles disparaissaient au-delà du rayon de détail). La porte d'Arroux a maintenant deux prismes dans `lod/25_39.json` (corps, galerie conservée).
+
+**Jeu** : rien ne change pour la circulation (D95) : seules les piles sont des obstacles ; une voiture passe au milieu de chaque grande arche (3,7 m), un piéton dans chaque petite (test). Les passants passent déjà par les deux petites arches (`nav_debug.py`).
+
+**Tests** : épaisseur mesurée, attique et relevé concordants, 12 à 15 m de haut, 7 arcades, galerie du côté ville, passages libres ; budget de triangles et éclairage seulement pour une porte éclairée.
+
+**Limites** : l'autre face (côté faubourg) n'a pas de photo : elle reprend la lecture de la face côté ville (blocage, corniche). La petite arche cassée contre la maison est dessinée entière.
+
+![Avant, depuis la rue côté ville](captures/d137-arroux-avant.jpg)
+![Après, comme la photo](captures/d137-arroux-apres.jpg)
+![La nuit, avant](captures/d137-arroux-nuit-avant.jpg)
+![La nuit, après](captures/d137-arroux-nuit.jpg)
+![Côté faubourg, avant](captures/d137-arroux-exterieur-avant.jpg)
+![Côté faubourg, après](captures/d137-arroux-exterieur.jpg)
+![La galerie vue d'en haut](captures/d137-arroux-galerie.jpg)
+![Le quartier, détail à 120 m](captures/d137-arroux-quartier.jpg)
+
+## 2026-10-31 — D138. Bâtiments d'après photos, étape 18 : la porte Saint-André, sa tour et l'église Saint-André
+
+**Suite de la demande de D137, étape 2.** Points de vue confirmés : photo de face depuis la rue côté ville (ouest-sud-ouest, de biais), vue de drone depuis l'est-nord-est. « Tour médiévale accolée » : les deux, d'après l'utilisateur (la tour de moellons au bout sud-sud-est et l'église à tour ronde au bout nord-nord-ouest).
+
+**Lecture des photos** (`porte-saint-andre` et `BATIMENT0000000348848796` de `manual.json`) : même schéma qu'Arroux (deux grandes arches, deux petites, archivoltes moulurées), passages voûtés profonds ; **galerie complète de 10 arcades sur les deux faces**, couloir entre les deux sous un **toit de tuiles à faible pente** ; calcaire blanc-gris restauré ; au bout sud-sud-est, **tour de moellons bruns** un peu plus haute que la porte, à chapeau de tuiles ; au bout nord-nord-ouest, l'**église Saint-André** : nef à pignons en moellons et brique, porte claire au pignon ouest-sud-ouest, baie en plein cintre sur le long mur, et côté est-nord-est une **tour ronde à toit conique** plus basse que la nef.
+
+**Mesures** (`build_monuments.py`) :
+- **Le contour OpenStreetMap est décalé d'environ 2 m** le long de la porte. On mesure les bouts : **bout libre** (sud-sud-est) là où le MNS retombe à mi-hauteur sur l'axe, **bout contre l'église** là où l'axe entre dans son emprise BD TOPO (`ends`). Porte de **20,8 m** de la tour à l'église (19,1 m dans les sources, sans la tour), corps de **5,25 m** d'épaisseur, rue à −27,65 m.
+- **Toit** : faîtage à **13,65 m** (90ᵉ centile du MNS sur le corps), égout au haut de l'entablement (photo, 12,9 m). **Tour** : depuis le bout, la partie du MNS plus haute que le faîtage de 40 cm (en passant le bord flou du relevé) : **2,75 m**, sommet à **14,4 m**.
+- **Travées** : les deux photos sont de biais (largeurs déformées) ; proportions lues en largeurs de grande arche, ramenées à la longueur mesurée sans la tour : grandes arches de 3,34 m, petites de 2,17 m. Hauteurs sur la photo de face (verticales parallèles), à l'échelle du toit mesuré : naissances à 3,5 et 1,9 m, corniche à 7,5-7,9 m, attique à 8,2 m, arcades de 1,05 m jusqu'à 11,2 m, entablement de 11,6 à 12,9 m.
+- **Église** (modèle `chapel`, dans le repère de la porte) : nef = rectangle de l'emprise BD TOPO (10,3 × 15,3 m), tour ronde = cercle ajusté sur les sommets de l'emprise côté est-nord-est (**5,3 m de rayon**) ; au MNS : égout de la nef 10,75 m, faîtage 12,9 m, égout de la tour 7,7 m, pointe de son toit conique 10,6 m (plus basse que la nef, comme sur la photo de drone). Porte et baies : photos.
+- Le bâtiment BD TOPO sous la porte (son toit) reste masqué (D95). Une deuxième passe ne réécrit rien.
+
+**Modèle commun, variantes** (`src/render/gates.ts`) : galerie sur une face (Arroux) ou sur les deux (`face: both`, couloir entre les deux, pilastres sur les faces extérieures), toit à croupes de la tour à l'autre bout, tour de moellons à lits sombres et chapeau de tuiles, teinte de la pierre ; longueur mesurée (`l`). **2 850 triangles** pour la porte (borne : 4 000), **202** pour l'église (borne : 2 000). L'église remplace murs, toit et façade génériques (oculi violets, deux portes) : nef à lits de brique, toit à deux pans, tour ronde, porte claire, baies à encadrement clair.
+
+**La nuit** : porte, tour et église éclairées par en dessous, comme Arroux (choix de l'utilisateur : pas de photo de nuit, même éclairage) ; toits à peine éclairés.
+
+**Silhouettes lointaines** : la porte (corps, galerie et toit, tour) et l'église (nef, tour ronde) remplacent le prisme générique.
+
+**Jeu et passants** :
+- La tour est un obstacle (elle déborde des faces), en plus des piles.
+- Ici la rue ne passe pas sous la porte (elle la contourne ; la porte est sur une placette). Mais un chemin de la placette (OpenStreetMap) traversait la porte en biais par la pile centrale, et un nœud du trottoir d'Arroux tombait dans une pile du nouveau modèle. **Nouvelle étape `tools/data/build_monuments_nav.py`** : chaque arête piétonne qui traverse une porte hors d'une arche est détournée par le milieu de l'arche la plus proche, et un nœud dans une pile ou dans la tour est poussé devant la face ; seules les super-tuiles des portes sont réécrites, une deuxième passe ne change rien ; à relancer après `build_nav.py`. Test : aucun chemin ne traverse une pile ou une tour.
+- La cache d'arme de la porte Saint-André (`pickups.ts`) tombait dans une pile : elle est au milieu de la grande arche ouest.
+
+**Tests** : longueur, 10 arcades sur deux murs, toit, tour plus haute que le toit et au bout sud-sud-est, aucune arche sous la tour ; église plausible (tour ronde plus basse que la nef) ; chemins libres ; budgets.
+
+**Limites** : le monticule devant la porte côté ville est dans le relief LiDAR (il était déjà là) ; les genévriers devant l'église ne sont pas dessinés.
+
+![Depuis la rue côté ville, avant](captures/d138-andre-avant.jpg)
+![Après, comme la photo de face](captures/d138-andre-apres.jpg)
+![Vue de drone, avant](captures/d138-andre-drone-avant.jpg)
+![Vue de drone, après : toit, tour, église à tour ronde](captures/d138-andre-drone.jpg)
+![La nuit, avant](captures/d138-andre-nuit-avant.jpg)
+![La nuit, après](captures/d138-andre-nuit.jpg)
+![L'église depuis le nord, avant](captures/d138-eglise-avant.jpg)
+![L'église depuis le nord, après](captures/d138-eglise.jpg)
+![De loin, détail à 120 m](captures/d138-andre-loin.jpg)
+![La navigation, avant et après (le chemin de la placette passe par une arche)](captures/d138-andre-navigation.jpg)
+
+## 2026-10-31 — D139. Bâtiments d'après photos, étape 19 : le temple de Janus
+
+**Suite de la demande de D137, étape 3.** Points de vue confirmés : de l'extérieur depuis le sud-ouest, et de l'intérieur de la cella depuis le nord-est (lumière du matin). **Position** : la demande donnait (−834 ; 775), tuile 22_38, où il n'y a qu'un champ ; OpenStreetMap (`way/542936385`) et le LiDAR placent le temple à **(−795 ; 1211), tuile 22_40**.
+
+**Constat** : le temple était le contour OpenStreetMap (`barrier=wall`), dessiné comme un mur fermé sur quatre côtés ; **trois « arbres » de 20 à 21 m** étaient posés sur ses murs : c'étaient les murs eux-mêmes vus par le LiDAR (comme le poteau du théâtre, D136).
+
+**Lecture des photos** (`temple-de-janus` de `manual.json`) : cella carrée dont il reste les murs ouest et sud, en L, très épais ; en bas, grandes ouvertures cintrées traversantes (deux dans le mur ouest, une dans le mur sud) et niches ; à l'étage, trois baies par mur sous des arcs de brique gris-rose ; rangées régulières de trous de boulin ; petit appareil beige-rose couvert de lichen orange ; dessus ruiné et herbu, en paliers ; pré, clôture.
+
+**Mesures** (`build_monuments.py`, modèle `janus`, site `janus` de `kinds/22_40.json`, fichier créé et ajouté à l'index) :
+- **Murs debout** : les côtés du contour dont le MNS médian dépasse 6 m (ouest et sud) ; leur coin commun est l'origine du repère.
+- **Faces** à mi-hauteur du profil médian en travers (le relevé à 0,5 m est flou) : murs de **2,5 et 2,25 m**, à ±25 cm près. **Longueurs** là où le dessus retombe sous la moitié de sa médiane (bouts cassés net) : **16,63 × 16,6 m**, comme dans les sources (16,6 m) ; le contour OpenStreetMap est plus petit (15 × 15,5 m) et décalé.
+- **Dessus** : plus haut point de la section tous les 50 cm, médiane glissante sur 2,5 m, simplifié à 1,5 m près : **jusqu'à 21,7 m** (mur sud) et 20,4 m (mur ouest), avec des creux vers 14-15 m (premier essai écarté : simplifié à 60 cm, le dessus était hérissé de pointes).
+- **Terre-plein** intérieur 0,8 m au-dessus du pré (le relief LiDAR l'a déjà, en pente douce : pas de tablier), **souches** des murs nord et est au ras du terre-plein (0,94 m).
+- **Ouvertures** : photos (positions en mètres depuis le coin sud-ouest, ramenées à la longueur mesurée ; les photos de biais ne donnent que leur ordre et leur taille approchée).
+
+**Rendu** (`src/render/janus.ts`, dans le maillage plein de la tuile) : chaque mur est une dalle percée (arches traversantes, baies traversantes à appui, intrados et piédroits) ; dessus en **paliers de 1,2 m** qui suivent le profil mesuré à ±40 cm (les photos montrent un dessus cassé en gradins), herbu ; arcs de brique sur les arches et les baies, niches sombres, trous de boulin en quinconce, plaques de lichen orange ; souches basses des murs nord et est. **La nuit**, éclairé par en dessous comme les portes (choix de l'utilisateur). **2 302 triangles** (borne du test : 6 000). Silhouette lointaine : deux prismes (les deux murs).
+
+**Retraits sans réécrire la tuile** : le mur OpenStreetMap fermé n'est plus dessiné ni un obstacle (`wallsOutsideMonuments`, le site nomme la voie qu'il remplace) ; les arbres dans la cella et à moins d'1 m disparaissent (`treesOutsideMonuments`).
+
+**Jeu** : les morceaux pleins des murs, entre les arches, sont des obstacles ; on passe par les trois arches ; on entre aussi par les côtés nord et est, ouverts. **Passants** : aucun chemin n'entrait ; `build_monuments_nav.py` ajoute une boucle (arche nord du mur ouest, milieu de la cella, arche du mur sud) raccordée aux chemins voisins à l'ouest et au sud, en passant devant le coin quand le raccord couperait la cella ; nœuds marqués et arêtes à la référence du temple : une passe retire d'abord ce qu'elle avait ajouté, une deuxième ne change rien, et le retrait rend exactement le fichier de `build_nav.py` (vérifié).
+
+**Outil de capture** : `tools/shot.sh` (et `play.sh`, `proto.sh`, `sounds.sh`, `ui.sh`) lançait le serveur par `npx`, dont l'arrêt laissait le serveur `node` ouvert ; une capture suivante tombant sur le même port photographiait une ancienne construction (c'est arrivé ici pour une capture « avant », refaite). Le serveur est maintenant lancé directement, et son arrêt est effectif.
+
+**Tests** : cella de 15,5 à 17,5 m, murs de 1,6 à 3 m, hauts de 18 à 24 m ; on passe par chaque arche, pas à travers un mur ; arbres et mur OpenStreetMap retirés ; la boucle des passants entre dans la cella sans traverser un mur ; budget de triangles et éclairage de nuit.
+
+**Limites** : les positions des ouvertures sont approchées (photos de biais) ; les baies hautes sont toutes traversantes ; pas de clôture ni de panneaux autour.
+
+![Depuis le sud-ouest, avant : un mur fermé et trois faux arbres](captures/d139-janus-avant.jpg)
+![Depuis le sud-ouest, après, comme la photo](captures/d139-janus-apres.jpg)
+![Depuis l'intérieur, avant](captures/d139-janus-interieur-avant.jpg)
+![Depuis l'intérieur, après, comme la photo du matin](captures/d139-janus-interieur.jpg)
+![La nuit, avant](captures/d139-janus-nuit-avant.jpg)
+![La nuit, après](captures/d139-janus-nuit.jpg)
+![Dans son pré, avant](captures/d139-janus-pre-avant.jpg)
+![Dans son pré, après](captures/d139-janus-pre.jpg)
+![De loin, détail à 120 m](captures/d139-janus-loin.jpg)
+![La navigation, avant et après : la boucle par les arches](captures/d139-janus-navigation.jpg)

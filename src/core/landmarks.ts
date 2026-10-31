@@ -1,4 +1,4 @@
-import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, Site, Tree } from "../data/types";
+import type { Building, BuildingKind, BuildingKindId, CathedralModel, Deck, GateModel, JanusSite, JanusWall, Site, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -118,8 +118,59 @@ export function treesOutsideMonuments(kinds: { sites: Site[] } | undefined, tree
   const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
   // Théâtre romain (D133) : rien ne pousse dans la cavea, l'orchestre ni sur la scène (les arbres du sommet restent).
   const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
-  if (!basins.length && !theatres.length) return [...trees];
-  return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y)));
+  // Temple de Janus (D139) : les « arbres » de 20 m posés sur ses murs étaient les murs eux-mêmes vus par le LiDAR.
+  const temples = (kinds?.sites ?? []).filter((s): s is JanusSite => s.t === "janus");
+  if (!basins.length && !theatres.length && !temples.length) return [...trees];
+  return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
+    && temples.every((t) => !inJanus(t, x, y, 1)));
+}
+
+/** Murs et clôtures de la tuile, sauf ceux qu'un monument remplace (le mur OpenStreetMap fermé du temple de Janus, D139). */
+export function wallsOutsideMonuments(kinds: { sites: Site[] } | undefined, walls: readonly Wall[]): Wall[] {
+  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "janus" ? [s.wall] : [])));
+  return gone.size ? walls.filter((w) => !gone.has(w.id)) : [...walls];
+}
+
+// --- Temple de Janus (D139) ---------------------------------------------------------------------------------------------------------
+
+/** Mur debout du temple : repère local (s le long du mur, depuis le coin extérieur commun ; t en travers, de tA à tB), de d0 à d1. */
+export interface JanusSlab {
+  f: Frame;
+  d0: number;
+  d1: number;
+  tA: number;
+  tB: number;
+  wall: JanusWall;
+}
+
+/** Les deux murs debout : `S` le long de s ; `W` le long de t, à partir de la face intérieure de `S` (le coin appartient à `S`). */
+export function janusSlabs(s: JanusSite): JanusSlab[] {
+  const [Ls, Lt] = s.L, [twS, twW] = s.tw;
+  return [
+    { f: frameOf(s.o[0], s.o[1], s.a, 1, 1), d0: 0, d1: Ls, tA: 0, tB: twS, wall: s.S },
+    { f: frameOf(s.o[0], s.o[1], s.a + Math.PI / 2, 1, 1), d0: twS, d1: Lt, tA: -twW, tB: 0, wall: s.W },
+  ];
+}
+
+/** Dans le carré de la cella (élargi de `margin`) ? */
+export function inJanus(s: JanusSite, x: number, y: number, margin = 0): boolean {
+  const dx = x - s.o[0], dy = y - s.o[1], c = Math.cos(s.a), n = Math.sin(s.a);
+  const ls = dx * c + dy * n, lt = -dx * n + dy * c;
+  return ls > -margin && ls < s.L[0] + margin && lt > -margin && lt < s.L[1] + margin;
+}
+
+/** Morceaux pleins des murs du temple, entre les arches traversantes : obstacles (on passe par les arches). */
+export function janusRings(s: JanusSite): number[][] {
+  const out: number[][] = [];
+  for (const sl of janusSlabs(s)) {
+    const cuts = [sl.d0, ...sl.wall.arches.flatMap(([c, w]) => [c - w / 2, c + w / 2]), sl.d1].filter((v) => v >= sl.d0 && v <= sl.d1).sort((a, b) => a - b);
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const a = cuts[i]!, b = cuts[i + 1]!, m = (a + b) / 2;
+      if (b - a < 0.05 || sl.wall.arches.some(([c, w]) => Math.abs(m - c) < w / 2)) continue;
+      out.push([at(sl.f, a, sl.tA), at(sl.f, b, sl.tA), at(sl.f, b, sl.tB), at(sl.f, a, sl.tB)].flat());
+    }
+  }
+  return out;
 }
 
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
@@ -138,63 +189,96 @@ export interface Opening {
 
 export interface GateLayout {
   frame: Frame;
-  /** Hauteur totale au-dessus du sol. */
+  /** Rue au centre (altitude absolue) ; les hauteurs du modèle sont au-dessus. */
+  g: number;
+  /** Hauteur totale au-dessus de la rue. */
   height: number;
+  /** Arches (zb < 0 : passages) et arcades conservées de la galerie (zb = appui). */
   openings: Opening[];
   /** Piles au niveau du sol (s0, s1), obstacles. */
   piers: [number, number][];
-  /** Corniches : (bas, haut) au-dessus du sol. */
-  cornices: [number, number][];
-  /** Pilastres de la galerie (abscisses) et leurs bas et haut. */
-  pilasters: number[];
-  gallery: [number, number];
+  m: GateModel;
+  /** Galerie conservée : étendue, murs à arcades (t0, t1), abscisses des pilastres ; null si elle a disparu. */
+  gallery: { s0: number; s1: number; walls: [number, number][]; pilasters: number[] } | null;
+}
+
+/** Haut du corps en s (profil du modèle, linéaire entre ses points ; au droit d'une marche, le plus haut). */
+export function gateTop(m: GateModel, s: number): number {
+  const p = m.top;
+  let best = -Infinity;
+  for (let i = 0; i + 1 < p.length; i++) {
+    const [s0, z0] = p[i]!, [s1, z1] = p[i + 1]!;
+    if (s < s0 - 1e-6 || s > s1 + 1e-6) continue;
+    best = Math.max(best, s1 - s0 < 1e-6 ? Math.max(z0, z1) : z0 + ((z1 - z0) * (s - s0)) / (s1 - s0));
+  }
+  return best === -Infinity ? m.attic : best;
 }
 
 /**
- * Disposition d'une porte romaine d'Autun (D95) : deux grandes arches au centre (voitures), deux petites aux bouts (piétons), corniche,
- * galerie de dix arcades à pilastres, corniche haute. Largeurs de la porte d'Arroux (18,7 m), mises à l'échelle de la longueur ; hauteurs en
- * fractions de la hauteur mesurée au LiDAR.
+ * Modèle par défaut d'une porte sans lecture de photo (D95) : disposition de la porte d'Arroux mise à l'échelle de la longueur (deux grandes
+ * arches de 4,3 m, deux petites de 2,2 m), galerie complète de dix arcades, hauteurs en fractions de la hauteur mesurée au LiDAR.
  */
-export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): GateLayout {
-  const frame = frameOf(site.x, site.y, site.a, site.l, site.w);
+function defaultGateModel(site: Extract<Site, { t: "gate" }>, ground: number): GateModel {
   const H = Math.min(Math.max((site.top ?? ground + 12) - ground, 7), 20);
-  const k = site.l / 18.7;
-  const outer = 0.9 * k, small = 2.2 * k, mid = 1.4 * k, big = 4.3 * k;
-  const half = site.l / 2;
-  const openings: Opening[] = [];
-  const piers: [number, number][] = [];
-  const bigTop = 0.58 * H, smallTop = 0.36 * H;
-  for (const side of [-1, 1]) {
-    const e0 = side * half, e1 = side * (half - outer), e2 = side * (half - outer - small), e3 = side * (half - outer - small - mid);
-    const e4 = side * (half - outer - small - mid - big);
-    const lo = (a: number, b: number): [number, number] => [Math.min(a, b), Math.max(a, b)];
-    const [s0, s1] = lo(e1, e2), [b0, b1] = lo(e3, e4);
-    openings.push({ s0, s1, zb: -0.5, spring: smallTop - small / 2 }, { s0: b0, s1: b1, zb: -0.5, spring: bigTop - big / 2 });
-    piers.push(lo(e0, e1), lo(e2, e3));
+  const k = site.l / 18.7, half = site.l / 2;
+  const widths = [0.9, 2.2, 1.4, 4.3].map((v) => v * k);
+  const mid = site.l - 2 * widths.reduce((a, b) => a + b, 0);
+  const seq = [...widths, mid, ...[...widths].reverse()];
+  const edges = [-half];
+  for (const w of seq) edges.push(edges[edges.length - 1]! + w);
+  const piers: [number, number][] = [], arches: [number, number, number][] = [];
+  const springs = [0.36 * H - 1.1 * k, 0.58 * H - 2.15 * k];
+  for (let i = 0; i < seq.length; i++) {
+    if (i % 2 === 0) piers.push([edges[i]!, edges[i + 1]!]);
+    else arches.push([edges[i]!, edges[i + 1]!, i === 1 || i === 7 ? springs[0]! : springs[1]!]);
   }
-  piers.push([-(half - outer - small - mid - big), half - outer - small - mid - big]);
-  const sill = 0.7 * H, galTop = 0.92 * H;
-  const pitch = (site.l - 1.2) / 10, aw = pitch * 0.62;
-  const pilasters: number[] = [];
-  for (let i = 0; i < 10; i++) {
-    const c = -half + 0.6 + pitch * (i + 0.5);
-    openings.push({ s0: c - aw / 2, s1: c + aw / 2, zb: sill, spring: galTop - aw / 2 });
-    pilasters.push(-half + 0.6 + pitch * i);
-  }
-  pilasters.push(half - 0.6);
-  return { frame, height: H, openings, piers, cornices: [[0.63 * H, 0.68 * H], [0.93 * H, 0.98 * H]], pilasters, gallery: [sill, galTop] };
+  const pitch = (site.l - 1.2) / 10;
+  return {
+    c: [site.x, site.y], w: site.w, g: ground, street: [ground, ground], body: H, piers, arches, band: 0.5 * k,
+    cornice: [0.63 * H, 0.68 * H], attic: 0.7 * H,
+    gal: { s: Array.from({ length: 11 }, (_, i) => -half + 0.6 + pitch * i), open: pitch * 0.62, crown: 0.92 * H, ent: [0.93 * H, H], keep: [0, 9], t: [[-site.w / 2, site.w / 2]] },
+    top: [[-half, 0.7 * H], [half, 0.7 * H]], rubble: [],
+  };
 }
 
-/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches). */
+/**
+ * Disposition d'une porte romaine d'Autun : le modèle lu sur photo et mesuré (`gm`, D137), sinon le modèle par défaut (D95). Deux grandes
+ * arches au centre (voitures), deux petites aux bouts (piétons), corniche, attique, galerie à arcades sur pilastres, entablement.
+ */
+export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): GateLayout {
+  const m = site.gm ?? defaultGateModel(site, ground);
+  const frame = frameOf(m.c[0], m.c[1], site.a, m.l ?? site.l, m.w);
+  const openings: Opening[] = m.arches.map(([s0, s1, spring]) => ({ s0, s1, zb: -1, spring }));
+  const [i0, i1] = m.gal.keep;
+  let gallery: GateLayout["gallery"] = null;
+  if (i1 >= i0) {
+    const pil = m.gal.s.slice(i0, i1 + 2);
+    for (let i = i0; i <= i1; i++) {
+      const c = (m.gal.s[i]! + m.gal.s[i + 1]!) / 2, r = m.gal.open / 2;
+      openings.push({ s0: c - r, s1: c + r, zb: m.attic, spring: m.gal.crown - r });
+    }
+    gallery = { s0: Math.min(...pil), s1: Math.max(...pil), walls: m.gal.t, pilasters: pil };
+  }
+  const height = Math.max(gallery ? m.gal.ent[1] : 0, m.block?.[2] ?? 0, m.roof?.[1] ?? 0, m.tower?.[4] ?? 0, ...m.top.map((p) => p[1]));
+  return { frame, g: site.gm ? m.g : ground, height, openings, piers: m.piers, m, gallery };
+}
+
+/** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour, murs du temple de Janus. */
 export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
   const out: number[][] = [];
   for (const s of kinds?.sites ?? []) {
+    if (s.t === "janus") out.push(...janusRings(s));
     if (s.t !== "gate") continue;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;
     for (const [s0, s1] of lay.piers) {
       const pts = [at(f, s0, -f.hw), at(f, s1, -f.hw), at(f, s1, f.hw), at(f, s0, f.hw)];
       out.push(pts.flat());
+    }
+    // Tour de moellons à un bout (Saint-André, D138), qui déborde des faces.
+    if (lay.m.tower) {
+      const [s0, s1, t0, t1] = lay.m.tower;
+      out.push([at(f, s0, t0), at(f, s1, t0), at(f, s1, t1), at(f, s0, t1)].flat());
     }
   }
   return out;

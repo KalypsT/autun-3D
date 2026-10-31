@@ -926,3 +926,62 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![La scène et ses barrières](docs/captures/d136-theatre-scene.jpg)
 ![Les arbustes et le second poteau](docs/captures/d136-theatre-arbustes.jpg)
 ![Vue de drone](docs/captures/d136-theatre-drone.jpg)
+
+**Bâtiments d'après photos, étape 17 : la porte d'Arroux (31 octobre 2026)** (D137)
+- La porte d'Arroux suit ta photo :
+  - deux grandes arches à archivoltes moulurées et deux petites à demi enterrées ;
+  - le blocage de moellons apparent là où le parement est tombé ;
+  - la corniche et l'attique ;
+  - la galerie conservée seulement sur la partie gauche (7 arcades sur pilastres à chapiteaux, entablement, bloc au sommet) et le bout gauche en gradins.
+- Le relevé LiDAR n'a qu'une partie de la porte (pas la galerie). Il donne l'épaisseur (4,25 m), le recalage (1,5 m) et la rue. Les hauteurs viennent de ta photo, à l'échelle de la longueur de la porte. Le haut du blocage mesuré concorde à moins d'1 m.
+- La nuit, la porte est éclairée par en dessous, comme sur ta photo 4.
+- Elle a une silhouette lointaine (elle disparaissait de loin).
+- Voitures sous les grandes arches et piétons sous les petites, comme avant.
+- 2 372 triangles. 736 tests.
+- Suite : la porte Saint-André avec l'église et sa tour ronde, puis le temple de Janus (à (−795 ; 1211), tuile 22_40).
+- À essayer : `?at=-262,1060&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d137-arroux-avant.jpg)
+![Après](docs/captures/d137-arroux-apres.jpg)
+![La nuit](docs/captures/d137-arroux-nuit.jpg)
+![Côté faubourg](docs/captures/d137-arroux-exterieur.jpg)
+
+**Bâtiments d'après photos, étape 18 : la porte Saint-André et l'église Saint-André (31 octobre 2026)** (D138)
+- La porte Saint-André suit tes deux photos :
+  - galerie complète de 10 arcades sur les deux faces, sous un toit de tuiles ;
+  - deux grandes arches, deux petites, archivoltes ;
+  - la tour de moellons au bout sud-sud-est.
+- Ses bouts sont mesurés au LiDAR : le contour OpenStreetMap était décalé de 2 m. Elle fait 20,8 m de la tour à l'église.
+- L'église Saint-André a son modèle : nef à pignons, tour ronde à toit conique plus basse que la nef, porte claire, baies en plein cintre. Elle remplace l'église générique.
+- Tout est éclairé la nuit par en dessous, comme Arroux.
+- Les passants passent par les arches (nouvelle étape `build_monuments_nav.py`). La cache d'arme de la porte n'est plus dans une pile.
+- 2 850 triangles pour la porte, 202 pour l'église. 739 tests.
+- Suite : le temple de Janus.
+- À essayer : `?at=536,830&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d138-andre-avant.jpg)
+![Après](docs/captures/d138-andre-apres.jpg)
+![Vue de drone](docs/captures/d138-andre-drone.jpg)
+![La nuit](docs/captures/d138-andre-nuit.jpg)
+
+**Bâtiments d'après photos, étape 19 : le temple de Janus (31 octobre 2026)** (D139)
+- Le temple est à (−795 ; 1211), tuile 22_40, et non à la position de la demande.
+- Avant, c'était un mur fermé de 4 côtés, avec trois « arbres » de 20 m qui étaient en fait ses murs vus par le LiDAR. Mur et faux arbres ont disparu.
+- Les deux murs debout suivent tes photos :
+  - cella de 16,6 m mesurée, murs de 2,3 à 2,5 m, jusqu'à 21,7 m de haut ;
+  - dessus cassé en paliers et herbu ;
+  - en bas, trois arches traversantes et des niches ;
+  - à l'étage, trois baies par mur sous des arcs de brique ;
+  - trous de boulin et lichen orange ;
+  - souches des murs nord et est au ras du terre-plein.
+- On passe par les arches ; les passants font une boucle par le temple.
+- Éclairé la nuit par en dessous, comme les portes.
+- Les captures ne photographient plus une ancienne construction (un serveur restait ouvert, corrigé).
+- 2 302 triangles. 741 tests.
+- Le plan des portes et du temple est terminé (D137 à D139).
+- À essayer : `?at=-806,1196&h=14`, puis `?h=23` pour la nuit.
+
+![Avant](docs/captures/d139-janus-avant.jpg)
+![Après](docs/captures/d139-janus-apres.jpg)
+![Depuis l'intérieur](docs/captures/d139-janus-interieur.jpg)
+![La nuit](docs/captures/d139-janus-nuit.jpg)

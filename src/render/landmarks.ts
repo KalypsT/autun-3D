@@ -3,7 +3,9 @@ import type { Building, BuildingKind, FacadeFiche, HeightField, Site, TileKinds 
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
-import { buildCathedral, buildFountain, buildGate, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildChapel, buildGate } from "./gates";
+import { buildJanus } from "./janus";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
@@ -634,6 +636,11 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
     buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
     return;
   }
+  // Église Saint-André d'après photo (D138) : modèle dédié.
+  if (kind.chap) {
+    buildChapel(sinks.solid, sinks.glow, kind.chap, terrain);
+    return;
+  }
   const stained = pick(STAINED, idKey(b.id), 5);
   const frame = shade(STONE, 0.86);
   const longest = segs.reduce((m, s) => Math.max(m, s.len), 0);
@@ -941,8 +948,9 @@ export function buildLandmarks(
   for (const s of kinds.sites) {
     if (s.t === "fuel") fuel(sinks, s, s.roof ? tile.buildings.find((b) => b.id === s.roof) : undefined, terrain);
     else if (s.t === "cemetery") cemetery(sinks, s, terrain);
-    else if (s.t === "gate") buildGate(sinks.solid, s, terrain);
+    else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain);
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
+    else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain);
   }
 }

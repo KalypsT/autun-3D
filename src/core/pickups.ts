@@ -27,7 +27,7 @@ export const CACHES: readonly CacheSite[] = [
   { weapon: "pistol", x: 183.4, y: -494.9, label: "Parc" },
   { weapon: "pistol", x: 101.1, y: 398.4, label: "Tour de l'Horloge" },
   { weapon: "shotgun", x: 787.4, y: 294.0, label: "Théâtre romain" },
-  { weapon: "shotgun", x: 546.0, y: 846.5, label: "Porte Saint-André" },
+  { weapon: "shotgun", x: 542.8, y: 847.3, label: "Porte Saint-André" },
   { weapon: "rifle", x: 1197.5, y: -750.1, label: "Pyramide de Couhard" },
 ];
 
