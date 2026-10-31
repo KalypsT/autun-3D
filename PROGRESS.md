@@ -1185,3 +1185,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Comme ta photo 2, avant](docs/captures/d149-photo2-avant.jpg)
 ![Après](docs/captures/d149-photo2-apres.jpg)
+
+**Le lycée Bonaparte, étape 3 : l'église Notre-Dame (31 octobre 2026)** (D150)
+- L'église n'est plus le gabarit d'église (oculi violets, toit unique) : nef et transept de même faîtage (25,5 m, mesuré) en croix, bas-côtés en appentis côté façade, clocheton à dôme sur le faîtage (34 m au LiDAR).
+- Façade d'après ta photo 1 : quatre pilastres, trois portes en plein cintre, étage de la nef à fronton, cadran, croix ; flancs à hautes baies en plein cintre.
+- Son chevet (autre bâtiment BD TOPO, typé « école » à tort) est dessiné avec elle. Le point « lieu de culte » des passants passe du milieu de la nef à 3 m devant la porte.
+- 932 triangles ; 798 tests ; aucun obstacle de plus, aucune cache d'arme à moins de 3 m.
+- Limites : façade lue sur une photo de biais (volutes en simples rampes), flancs et chevet sans photo, clocheton simplifié ; pas d'enseigne.
+- À essayer : `?cam=-52,-112,1.8,-66,-127,9&h=14` (devant la façade), `?view=bonaparte&h=14`, puis `&h=23`.
+
+![Comme ta photo 1, avant](docs/captures/d150-photo1-avant.jpg)
+![Après](docs/captures/d150-photo1-apres.jpg)
+![La façade](docs/captures/d150-facade-apres.jpg)

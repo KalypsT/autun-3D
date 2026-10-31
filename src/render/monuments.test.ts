@@ -6,7 +6,7 @@ import type { LodBuilding, Site, Tree } from "../data/types";
 import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildCollege, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildNotreDame, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -230,5 +230,22 @@ describe("Lycée Bonaparte : modèle `college` (D148)", () => {
     const cost = tris(full) - tris(bare);
     expect(cost).toBeGreaterThan(500);
     expect(cost).toBeLessThan(5000);
+  });
+});
+
+describe("Notre-Dame : modèle `nd` (D150)", () => {
+  const world = loadRealWorld();
+  const nd = world.tile.kinds!.buildings["BATIMENT0000000348854392"]!.nd!;
+
+  it("géométrie finie, le sommet est celui du clocheton, coût borné, vitrages allumés la nuit", () => {
+    const mb = new MeshBuilder(), glow = new MeshBuilder();
+    buildNotreDame(mb, glow, nd, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    let top = -Infinity;
+    for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+    expect(top).toBeGreaterThan(nd.turret.top - 0.1);
+    expect(top).toBeLessThan(nd.turret.top + 0.5);
+    expect(mb.positions.length / 9).toBeLessThan(5000);
+    expect(glow.positions.length / 9).toBeGreaterThan(0);
   });
 });

@@ -2589,3 +2589,48 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d149-ensemble-apres.jpg)
 ![La nuit, avant](captures/d149-nuit-avant.jpg)
 ![Après](captures/d149-nuit-apres.jpg)
+
+## 2026-10-31 — D150. Le lycée Bonaparte d'après photos, étape 3 : l'église Notre-Dame
+
+**Demande de l'utilisateur** : inclure la petite église accolée au lycée (D150, après D149). Pas de nouvelle photo : la photo 1 (façade à gauche, clocheton derrière) et le relevé LiDAR.
+
+**Dans les données** : Notre-Dame (OpenStreetMap way 80175793, « Église Notre-Dame », ancienne chapelle du collège des jésuites) est le BD TOPO `…854392` (755 m², type `church`, avec un clocher générique du gabarit des églises) et son chevet `…854391` (73 m²), typé « school » à tort. Le rendu était le gabarit d'église : oculi violets, deux portes, toit unique à croupes, clocher carré au mauvais endroit. Son point d'intérêt « lieu de culte » d'OpenStreetMap tombait au milieu de la nef, en (−85,5 ; −136,7).
+
+**Mesures** (LiDAR, MNS à 0,5 m) : axe de la nef de la façade (milieu du mur nord-est du contour, (−65,7 ; −126,5)) vers le chevet, cap 240° ; ce qu'on prenait pour un transept plus bas est en fait une croix à deux faîtages égaux.
+- Nef : 44 m, faîtage 25,60 m, égouts 19,5 et 20,7 m, pignon côté façade, croupe côté chevet. Transept : 23,2 m, faîtage 25,51 m, égouts 21,0 m, deux croupes ; les deux ailes de 11 m de large.
+- Bas-côtés en appentis côté façade (jusqu'à la croisée, 18,9 m) : haut contre la nef 15,9 / 14,7 m, égout 13,3 / 12,9 m (droite ajustée sur la pente, à plus de 1,5 m du mur de la nef pour écarter le bord flou). Leurs faces extérieures sont lues sur le contour (−9,6 et +9,2 m de l'axe).
+- Clocheton sur le faîtage, à 38 m de la façade ((−98,2 ; −144,0)) : sommet mesuré 34,20 m (le LiDAR donne l'épi).
+
+**Données** : `monuments` de `manual.json` (`model: "notredame"` : axe, nef et transept à bouts et fenêtre de mesure, bas-côtés, étage bas de la façade à 16 m lu au MNS de la façade, clocheton, `part` : le chevet) ; `build_monuments.py` (`notredame`, réemploi de `measure_college`) écrit `nd` dans `kinds/25_34.json`, type le chevet `church` + `ndPart`, et remplace les prismes lointains par trois (nef, transept, bas-côtés). `build_monuments_nav.py` (`church_pois`) retire le point « lieu de culte » d'OpenStreetMap tombé dans l'emprise et en pose un à 3 m devant le milieu de la façade, en (−63,1 ; −125,0), à 1,1 m de la file la plus proche. Chaîne rejouée deux fois : `public/data` identique ; changent `kinds/25_34.json`, `lod/25_34.json`, `nav/s6_8.json`, `nav/index.json`.
+
+**Rendu** (`buildNotreDame`, `src/render/monuments.ts`, champs `nd` et `ndPart` de `BuildingKind`, `NotreDameSpec` dans `src/data/types.ts` ; `stylized.ts` ne dessine plus ni murs ni toit génériques des deux bâtiments, `landmarks.ts` dispatch) : repère à la façade, tout suit le terrain ; réemploi des aides du collège et de la mairie (murs par bandes, corniches, baies, toits à deux pans et croupes).
+- **Façade** (photo 1) : étage bas sur 19 m (quatre pilastres, trois portes en plein cintre, entablement), étage de la nef à deux baies, fronton dont la corniche rampante suit le pignon, cadran (disque sombre, fond clair, deux aiguilles), croix de 2,9 m au sommet, deux rampes de pierre qui relient les deux étages.
+- **Flancs** : hautes baies en plein cintre sur la nef (au-dessus des bas-côtés et du chevet), baies plus basses sur les bas-côtés, baie à chaque bout du transept ; toits d'ardoise (nef, transept) et appentis des bas-côtés.
+- **Clocheton** : lanterne octogonale à fentes, dôme d'ardoise en quatre anneaux, épi jusqu'au sommet mesuré.
+- **Nuit** : une baie sur trois allumée. **932 triangles** et 72 de vitres (le gabarit en coûtait à peu près autant).
+
+**Jeu** : obstacles inchangés (les contours BD TOPO des deux bâtiments restent les colliders, test) ; un seul point « lieu de culte » près de l'église, devant la façade ; aucune cache d'arme à moins de 3 m.
+
+**Tests** (+4, 798 au total) : faîtages et égouts mesurés (nef et transept égaux à 25,5 m), bas-côtés plus bas, clocheton à 34 m ; chevet `ndPart` et deux obstacles ; point « lieu de culte » devant la façade, plus au milieu de la nef ; caches à plus de 3 m ; géométrie finie, sommet = clocheton, moins de 5 000 triangles, vitrages allumés.
+
+**Limites** :
+- La façade est lue sur la photo 1, vue de biais et de loin : nombre et position des pilastres et des portes, hauteur de l'étage bas (16 m, LiDAR), diamètre du cadran (2,7 m) à 50 cm près ; les volutes sont de simples rampes triangulaires (les enroulements de la photo ne sont pas dessinés) ; pas de niche, de statue ni de moulures.
+- Les flancs ne sont pas sur photo : baies tous les 4 m, plein cintre, d'après le gabarit des églises et l'orthophotographie ; les faces nord-ouest et sud-est du transept, le chevet et le côté de la rue Saint-Saulge sont des murs lisses à baies régulières.
+- Le clocheton est simplifié (la photo montre un dôme sombre à lanterne ; la lanterne de 3,2 m de large, le dôme et l'épi sont des hypothèses sur le LiDAR) ; pas de cloche ni d'horloge sur le clocheton.
+- Ardoise grise lue à l'orthophotographie ; pierre blonde comme le lycée. Aucune enseigne ni inscription.
+- L'étage bas de la façade fait 16 m au MNS à la façade, ce qui peut inclure un attique : à confirmer sur une photo de face.
+
+![Comme ta photo 1, avant](captures/d150-photo1-avant.jpg)
+![Après](captures/d150-photo1-apres.jpg)
+![La façade de plus près, avant](captures/d150-facade-avant.jpg)
+![Après](captures/d150-facade-apres.jpg)
+![Le flanc nord-ouest depuis la cour, avant](captures/d150-flanc-avant.jpg)
+![Après](captures/d150-flanc-apres.jpg)
+![Vue du dessus, avant](captures/d150-haut-avant.jpg)
+![Après : la croix des toits et le clocheton](captures/d150-haut-apres.jpg)
+![Vue du nord-ouest, avant](captures/d150-nord-ouest-avant.jpg)
+![Après](captures/d150-nord-ouest-apres.jpg)
+![Vue d'ensemble, avant](captures/d150-ensemble-avant.jpg)
+![Après](captures/d150-ensemble-apres.jpg)
+![La façade la nuit, avant](captures/d150-nuit-avant.jpg)
+![Après](captures/d150-nuit-apres.jpg)

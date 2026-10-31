@@ -1046,7 +1046,8 @@ def measure_college(bid, b, spec):
         ux, uy = (qx - px) / L, (qy - py) / L
         nx, ny = -uy, ux
         hw = w["hw"]
-        ss = [0.2 * L + 0.5 * i for i in range(int(0.6 * L / 0.5))]
+        lo, hi = w.get("win", [0.2, 0.8])
+        ss = [lo * L + 0.5 * i for i in range(int((hi - lo) * L / 0.5))]
         at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
         ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
         eaves = []
@@ -1114,6 +1115,53 @@ def college(tid, bid, b, spec, k):
         if k["buildings"][aid] != ae:
             k["buildings"][aid] = ae
             changed = True
+    return changed, lod
+
+
+def notredame(tid, bid, b, spec, k):
+    """Écrit le modèle `nd` de Notre-Dame (D150) : nef et transept mesurés comme les ailes d'un collège (`measure_college`), bas-côtés (pente de
+    leur toit, du haut contre la nef à l'égout, ajustée sur le relevé et extrapolée aux deux bouts), sommet du clocheton ; le chevet (`part`,
+    autre bâtiment BD TOPO) devient une partie du modèle. Rend (types changés, tuile des silhouettes si elle change)."""
+    m = measure_college(bid, b, spec)
+    a = spec["a"]
+    ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+    o = spec["o"]
+    mns = Raster("MNS", bid[-8:] + "n", o[0] - 70, o[1] - 50, o[0] + 20, o[1] + 20)
+    at = lambda s_, t: mns(o[0] + ux * s_ + vx * t, o[1] + uy * s_ + vy * t)
+    tops, eaves = [], []
+    for tin, tout in ((spec["t0"] - spec["hw"], spec["aisles"]["tNW"]), (spec["t0"] + spec["hw"], spec["aisles"]["tSE"])):
+        sg = 1 if tout > tin else -1
+        width = abs(tout - tin)
+        ds = [1.5 + 0.25 * i for i in range(int((width - 2.4) / 0.25) + 1)]
+        zs = [float(np.median([at(s_, tin + sg * d) for s_ in np.arange(3, spec["aisles"]["s1"] - 3, 0.5)])) for d in ds]
+        kk, c0 = np.polyfit(ds, zs, 1)
+        tops.append(float(c0))
+        eaves.append(float(kk * width + c0))
+    tu = spec["turret"]
+    top = max(mns(tu["x"] + dx * 0.5, tu["y"] + dy * 0.5) for dx in range(-5, 6) for dy in range(-5, 6))
+    nd = {"o": o, "a": a, "wings": m["wings"], "t0": spec["t0"], "hw": spec["hw"], "transept": spec["transept"],
+          "aisles": {"s1": spec["aisles"]["s1"], "tNW": spec["aisles"]["tNW"], "tSE": spec["aisles"]["tSE"], "top": round(sum(tops) / 2, 2), "eave": round(sum(eaves) / 2, 2)},
+          "front": spec["front"], "turret": {"x": tu["x"], "y": tu["y"], "r": tu["r"], "lantern": tu["lantern"], "top": round(float(top), 2)}}
+    print(f"  bas-côtés : haut {tops[0]:.2f} / {tops[1]:.2f}, égout {eaves[0]:.2f} / {eaves[1]:.2f} ; clocheton jusqu'à {top:.2f}")
+    e = dict(k["buildings"].get(bid, {"k": "church"}))
+    e["nd"] = nd
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    for pid in spec.get("part", []):
+        pe = {"k": "church", "ndPart": 1}
+        if k["buildings"].get(pid) != pe:
+            k["buildings"][pid] = pe
+            changed = True
+    A = nd["aisles"]
+    pt = lambda s_, t: [round(o[0] + ux * s_ + vx * t, 1), round(o[1] + uy * s_ + vy * t, 1)]
+    nv, tr = nd["wings"]
+    ne = (nv["el"] + nv["er"]) / 2
+    sL = math.hypot(nv["q"][0] - o[0], nv["q"][1] - o[1])
+    t0, hw = spec["t0"], spec["hw"]
+    polys = [([pt(0, t0 - hw), pt(sL, t0 - hw), pt(sL, t0 + hw), pt(0, t0 + hw)], ne, nv["r"]),
+             ([pt(spec["transept"][0], -12.2), pt(spec["transept"][1], -12.2), pt(spec["transept"][1], 11.0), pt(spec["transept"][0], 11.0)], (tr["el"] + tr["er"]) / 2, tr["r"]),
+             ([pt(0, A["tNW"]), pt(A["s1"], A["tNW"]), pt(A["s1"], A["tSE"]), pt(0, A["tSE"])], A["eave"], A["top"])]
+    lod = tid if replace_lod(tid, bid, polys) else None
     return changed, lod
 
 
@@ -1356,6 +1404,13 @@ def main():
             continue
         if spec["model"] == "college":
             ch, lod = college(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "notredame":
+            ch, lod = notredame(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

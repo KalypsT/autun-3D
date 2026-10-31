@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CathedralModel, CathedralSpec, CollegeGrille, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
+import type { CathedralModel, CathedralSpec, CollegeGrille, NotreDameSpec, CollegeSpec, CollegeWing, HeightField, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
@@ -1548,4 +1548,144 @@ function buildGrille(mb: MeshBuilder, g: CollegeGrille, terrain: HeightField): v
     box(mb, f, s - 0.16, s + 0.16, t - 0.16, t + 0.16, z - 0.2, cz, TRUNK);
     box(mb, f, s - half, s + half, t - half, t + half, cz, z + h, CROWN, CROWN_TOP);
   }
+}
+
+// --- Église Notre-Dame (D150) --------------------------------------------------------------------------------------------------------
+
+const ND_STONE = C("#d9c9a2"), ND_TRIM = C("#ece2c8"), ND_SLATE = C("#4f5862"), ND_DARK = C("#2b3440"), ND_CLOCK = C("#f0ead8");
+const ND_LANTERN = C("#3b434d");
+
+/** Disque vertical posé sur une face de normale −s (façade) : centre (t, z), rayon r. */
+function faceDisc(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, r: number, col: THREE.Color, sides = 16): void {
+  for (let i = 0; i < sides; i++) {
+    const a0 = (Math.PI * 2 * i) / sides, a1 = (Math.PI * 2 * (i + 1)) / sides;
+    mb.tri(P(f, s, t, z), P(f, s, t + Math.cos(a0) * r, z + Math.sin(a0) * r), P(f, s, t + Math.cos(a1) * r, z + Math.sin(a1) * r), N(f, -1, 0), col);
+  }
+}
+
+/**
+ * Notre-Dame d'Autun (D150), ancienne chapelle du collège des jésuites, d'après la photo 1 et le relevé LiDAR : nef et transept à toits d'ardoise
+ * de même faîtage (croisée en croix), bas-côtés en appentis côté façade, façade en deux étages (quatre pilastres, trois portes en plein
+ * cintre, étage de la nef à fronton portant le cadran et la croix, volutes), flancs à hautes baies en plein cintre, clocheton à dôme sur le faîtage
+ * près du chevet.
+ */
+export function buildNotreDame(mb: MeshBuilder, glow: MeshBuilder, m: NotreDameSpec, terrain: HeightField): void {
+  const f = frameOf(m.o[0], m.o[1], m.a, 1, 1);
+  const ground = (s: number, t: number): number => terrain.heightAt(...at(f, s, t));
+  const nave = m.wings[0]!, tr = m.wings[1]!;
+  const eave = Math.min(nave.el, nave.er), ridge = nave.r;
+  const tn0 = m.t0 - m.hw, tn1 = m.t0 + m.hw;
+  const [ts0, ts1] = m.transept;
+  const sEnd = Math.hypot(nave.q[0] - m.o[0], nave.q[1] - m.o[1]) + 0.1;
+  const tT0 = (tr.p[0] - m.o[0]) * f.vx + (tr.p[1] - m.o[1]) * f.vy, tT1 = (tr.q[0] - m.o[0]) * f.vx + (tr.q[1] - m.o[1]) * f.vy;
+  const W = (a: ST, b: ST, out: ST, top: number): HallWall => ({ a, b, out, top, front: false });
+  const stone = [ND_STONE];
+  const lit = (i: number): boolean => i % 3 === 0;
+
+  // Murs de la nef au-dessus des bas-côtés et du transept, de part et d'autre de la croisée ; pignon du chevet.
+  const naveWalls: HallWall[] = [
+    W([0, tn0], [ts0, tn0], [0, -1], eave), W([ts1, tn0], [sEnd, tn0], [0, -1], eave),
+    W([ts0, tn1], [0, tn1], [0, 1], eave), W([sEnd, tn1], [ts1, tn1], [0, 1], eave),
+    W([sEnd, tn0], [sEnd, tn1], [1, 0], eave),
+  ];
+  // Transept : bouts, faces côté façade et côté chevet de ses bras.
+  const transWalls: HallWall[] = [
+    W([ts0, tT0], [ts1, tT0], [0, -1], tr.el), W([ts1, tT1], [ts0, tT1], [0, 1], tr.el),
+    W([ts0, tn0], [ts0, tT0], [-1, 0], tr.el), W([ts0, tT1], [ts0, tn1], [-1, 0], tr.el),
+    W([ts1, tT0], [ts1, tn0], [1, 0], tr.el), W([ts1, tn1], [ts1, tT1], [1, 0], tr.el),
+  ];
+  // Bas-côtés : mur extérieur et mur de la nef au-dessus de leur toit.
+  const A = m.aisles;
+  const aisleWalls: HallWall[] = [W([0, A.tNW], [ts0, A.tNW], [0, -1], A.eave), W([ts0, A.tSE], [0, A.tSE], [0, 1], A.eave)];
+  for (const w of [...naveWalls, ...transWalls, ...aisleWalls]) wallBands(mb, f, w, ground, [], stone);
+  // Façade : étage bas sur toute la largeur, étage de la nef au-dessus.
+  const front = W([0, A.tSE], [0, A.tNW], [-1, 0], m.front);
+  wallBands(mb, f, front, ground, [], stone);
+  wallBands(mb, f, W([-0.04, tn1], [-0.04, tn0], [-1, 0], eave), ground, [], stone);
+
+  // Corniches : chaque mur de la nef, du transept et des bas-côtés ; entablement de l'étage bas de la façade.
+  for (const w of [...naveWalls, ...transWalls, ...aisleWalls]) {
+    const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+    if (len > 1.5) course(mb, f, w, w.top - 0.6, w.top - 0.1, 0.25, ND_TRIM);
+  }
+  course(mb, f, front, m.front - 0.9, m.front - 0.1, 0.3, ND_TRIM);
+
+  // Façade : quatre pilastres, trois portes en plein cintre, baies de l'étage de la nef, cadran sur le fronton.
+  const gz = ground(0, m.t0);
+  const uOf = (t: number): number => A.tSE - t; // abscisse sur le mur d'étage bas (de tSE vers tNW)
+  for (const dt of [-7.4, -3.1, 3.1, 7.4]) block(mb, f, front, uOf(m.t0 + dt) - 0.45, uOf(m.t0 + dt) + 0.45, gz - 0.2, m.front - 0.9, 0, 0.28, ND_TRIM);
+  bay(mb, glow, f, front, uOf(m.t0), 3.0, gz, 5.4, true, true, false);
+  for (const dt of [-5.2, 5.2]) bay(mb, glow, f, front, uOf(m.t0 + dt), 1.9, gz, 4.2, true, true, false);
+  const upper = W([-0.04, tn1], [-0.04, tn0], [-1, 0], eave);
+  for (const dt of [-3, 3]) bay(mb, glow, f, upper, tn1 - (m.t0 + dt), 1.1, m.front + 0.9, 2.6, true, false, lit(dt > 0 ? 1 : 0));
+  course(mb, f, upper, eave - 0.6, eave - 0.1, 0.22, ND_TRIM);
+  // Fronton : corniche rampante qui suit les deux pentes du pignon, cadran, croix.
+  for (const sg of [-1, 1]) {
+    const t1 = m.t0 + sg * m.hw, zb = eave, zt = ridge;
+    q(mb, f, [-0.34, t1, zb], [-0.34, m.t0, zt], [-0.34, m.t0, zt + 0.32], [-0.34, t1, zb + 0.32], N(f, -1, 0), ND_TRIM);
+    q(mb, f, [-0.04, t1, zb + 0.32], [-0.04, m.t0, zt + 0.32], [-0.34, m.t0, zt + 0.32], [-0.34, t1, zb + 0.32], [0, 1, 0], shade(ND_TRIM, 1.05));
+  }
+  faceDisc(mb, f, -0.06, m.t0, eave + 1.6, 1.35, ND_DARK);
+  faceDisc(mb, f, -0.09, m.t0, eave + 1.6, 1.12, ND_CLOCK);
+  box(mb, f, -0.14, -0.09, m.t0 - 0.05, m.t0 + 0.05, eave + 1.6, eave + 2.55, ND_DARK);
+  box(mb, f, -0.14, -0.09, m.t0, m.t0 + 0.75, eave + 1.55, eave + 1.65, ND_DARK);
+  // Croix au sommet du pignon.
+  box(mb, f, -0.12, 0.12, m.t0 - 0.09, m.t0 + 0.09, ridge, ridge + 2.9, ND_DARK);
+  box(mb, f, -0.12, 0.12, m.t0 - 0.6, m.t0 + 0.6, ridge + 1.9, ridge + 2.08, ND_DARK);
+  // Volutes de part et d'autre de l'étage de la nef : rampes de pierre de l'étage bas à la nef.
+  for (const sg of [-1, 1]) {
+    const tin = m.t0 + sg * m.hw, tout = m.t0 + sg * (m.hw + 3.6);
+    const zl = m.front, zh = m.front + 3.0;
+    mb.tri(P(f, -0.04, tin, zl), P(f, -0.04, tout, zl), P(f, -0.04, tin, zh), N(f, -1, 0), ND_STONE);
+    q(mb, f, [-0.3, tin, zh], [-0.3, tout, zl + 0.1], [-0.04, tout, zl + 0.1], [-0.04, tin, zh], [0, 1, 0], shade(ND_TRIM, 1.05));
+    q(mb, f, [-0.3, tin, zh], [-0.3, tin, zh - 0.3], [-0.3, tout, zl - 0.1], [-0.3, tout, zl + 0.1], N(f, -1, 0), ND_TRIM);
+  }
+
+  // Flancs : hautes baies en plein cintre sur la nef et le chevet, baies plus basses sur les bas-côtés et aux bouts du transept.
+  const arches = (w: HallWall, from: number, to: number, z0: number, h: number, wd: number, pitch: number, k0: number): void => {
+    const n = Math.max(0, Math.floor((to - from) / pitch));
+    for (let i = 0; i < n; i++) bay(mb, glow, f, w, from + ((to - from) * (i + 0.5)) / n, wd, z0, h, true, false, lit(i + k0));
+  };
+  arches(naveWalls[0]!, 1.2, ts0 - 1.2, A.top + 0.8, 3.6, 1.3, 4, 0);
+  arches(naveWalls[1]!, 1.5, sEnd - ts1 - 1.5, eave - 6.2, 4.4, 1.3, 4.2, 1);
+  arches(naveWalls[2]!, 1.2, ts0 - 1.2, A.top + 0.8, 3.6, 1.3, 4, 2);
+  arches(naveWalls[3]!, 1.5, sEnd - ts1 - 1.5, eave - 6.2, 4.4, 1.3, 4.2, 3);
+  arches(aisleWalls[0]!, 1.5, ts0 - 1.5, ground(2, A.tNW) + 2.4, 3.2, 1.2, 4, 4);
+  arches(aisleWalls[1]!, 1.5, ts0 - 1.5, ground(2, A.tSE) + 2.4, 3.2, 1.2, 4, 5);
+  for (const w of [transWalls[0]!, transWalls[1]!]) {
+    const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+    bay(mb, glow, f, w, len / 2, 1.6, w.top - 7.2, 5.0, true, false, true);
+  }
+
+  // Toits : nef et transept d'ardoise, bas-côtés en appentis.
+  collegeRoof(mb, nave, ND_STONE, ND_SLATE);
+  collegeRoof(mb, tr, ND_STONE, ND_SLATE);
+  for (const [tin, tout, edge] of [[tn0, A.tNW - 0.3, A.tNW], [tn1, A.tSE + 0.3, A.tSE]] as const) {
+    // Pente de l'appentis (du haut contre la nef à l'égout) prolongée sous le débord de 30 cm.
+    const zOut = A.eave - ((A.top - A.eave) * 0.3) / Math.max(0.5, Math.abs(tin - edge));
+    pan(mb, f, [0, tout, zOut], [ts0, tout, zOut], [ts0, tin, A.top], [0, tin, A.top], ND_SLATE);
+  }
+
+  // Clocheton : lanterne octogonale à fentes sur le faîtage, dôme d'ardoise, épi.
+  const tx = (m.turret.x - m.o[0]) * f.ux + (m.turret.y - m.o[1]) * f.uy, tt = (m.turret.x - m.o[0]) * f.vx + (m.turret.y - m.o[1]) * f.vy;
+  const r = m.turret.r, zb = ridge - 0.6, zl = m.turret.lantern;
+  for (let i = 0; i < 8; i++) {
+    const a0 = (Math.PI * 2 * i) / 8 + Math.PI / 8, a1 = a0 + Math.PI / 4, am = (a0 + a1) / 2;
+    q(mb, f, [tx + Math.cos(a0) * r, tt + Math.sin(a0) * r, zb], [tx + Math.cos(a1) * r, tt + Math.sin(a1) * r, zb], [tx + Math.cos(a1) * r, tt + Math.sin(a1) * r, zl],
+      [tx + Math.cos(a0) * r, tt + Math.sin(a0) * r, zl], N(f, Math.cos(am), Math.sin(am)), ND_LANTERN);
+    const ro = r + 0.03, h = (zl - zb) * 0.55;
+    const c0 = am - 0.16, c1 = am + 0.16;
+    q(mb, f, [tx + Math.cos(c0) * ro, tt + Math.sin(c0) * ro, zb + 1.2], [tx + Math.cos(c1) * ro, tt + Math.sin(c1) * ro, zb + 1.2],
+      [tx + Math.cos(c1) * ro, tt + Math.sin(c1) * ro, zb + 1.2 + h], [tx + Math.cos(c0) * ro, tt + Math.sin(c0) * ro, zb + 1.2 + h], N(f, Math.cos(am), Math.sin(am)), ND_DARK);
+  }
+  const dome: [number, number][] = [[r + 0.2, zl], [r + 0.25, zl + 0.5], [r * 0.7, zl + 1.4], [r * 0.25, zl + 2.3]];
+  for (let k = 0; k + 1 < dome.length; k++) {
+    for (let i = 0; i < 8; i++) {
+      const a0 = (Math.PI * 2 * i) / 8, a1 = a0 + Math.PI / 4, am = (a0 + a1) / 2;
+      const [r0, z0] = dome[k]!, [r1, z1] = dome[k + 1]!;
+      mb.quad(P(f, tx + Math.cos(a0) * r0, tt + Math.sin(a0) * r0, z0), P(f, tx + Math.cos(a1) * r0, tt + Math.sin(a1) * r0, z0),
+        P(f, tx + Math.cos(a1) * r1, tt + Math.sin(a1) * r1, z1), P(f, tx + Math.cos(a0) * r1, tt + Math.sin(a0) * r1, z1), N(f, Math.cos(am), Math.sin(am)), ND_DARK);
+    }
+  }
+  box(mb, f, tx - 0.06, tx + 0.06, tt - 0.06, tt + 0.06, zl + 2.3, m.turret.top, ND_DARK);
 }

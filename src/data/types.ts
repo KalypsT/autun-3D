@@ -320,6 +320,25 @@ export interface CollegeGrille {
   portal: [number, number];
 }
 
+/**
+ * Église Notre-Dame d'après photo et relevé LiDAR (D150). Repère : origine `o` au milieu de la façade (côté place), `s` vers le chevet (cap `a`),
+ * `t` à sa gauche (vers le sud-est). `wings` : nef (toit à deux pans, pignon côté façade, croupe côté chevet) puis transept (deux croupes) ;
+ * `aisles` : bas-côtés en appentis côté façade (de s = 0 à `s1`, entre le mur de la nef et les faces extérieures `tNW` et `tSE`, haut mesuré
+ * à la nef `top` et égout `eave`) ; `front` : haut de l'étage bas de la façade ; `transept` : s0, s1 ; `turret` : clocheton (x, y, rayon, haut
+ * de la lanterne, sommet mesuré) ; `t0`, `hw` : axe et demi-largeur de la nef.
+ */
+export interface NotreDameSpec {
+  o: [number, number];
+  a: number;
+  wings: CollegeWing[];
+  t0: number;
+  hw: number;
+  transept: [number, number];
+  aisles: { s1: number; tNW: number; tSE: number; top: number; eave: number };
+  front: number;
+  turret: { x: number; y: number; r: number; lantern: number; top: number };
+}
+
 /** Collège d'après relevé LiDAR (D148) : ailes à toits mesurés ; les murs suivent le contour BD TOPO, chacun monte à l'égout de l'aile la plus proche. */
 export interface CollegeSpec {
   wings: CollegeWing[];
@@ -352,6 +371,10 @@ export interface BuildingKind {
   mon?: CathedralSpec;
   /** Cathédrale d'après photo (D127) : modèle dédié (remplace murs, toit et façade génériques, et le gabarit `mon`). */
   cath?: CathedralModel;
+  /** Église Notre-Dame d'après photo (D150) : modèle dédié (remplace murs, toit et façade génériques). */
+  nd?: NotreDameSpec;
+  /** Partie de Notre-Dame dessinée par le modèle `nd` d'un autre bâtiment (le chevet, D150) : ni murs ni toit génériques. */
+  ndPart?: 1;
   /** Collège d'après relevé (D148) : modèle dédié (remplace murs, toit et façade génériques). */
   college?: CollegeSpec;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */

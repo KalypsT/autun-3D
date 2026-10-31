@@ -3,7 +3,7 @@ import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
-import { buildCathedral, buildCollege, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildNotreDame, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -642,6 +642,12 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
   // Cathédrale d'après photo (D127) : modèle dédié, ni baies ni portail génériques.
   if (kind.cath) {
     buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
+    return;
+  }
+  // Notre-Dame d'après photo (D150) : modèle dédié ; son chevet (autre bâtiment BD TOPO) est dessiné avec elle.
+  if (kind.ndPart) return;
+  if (kind.nd) {
+    buildNotreDame(sinks.solid, sinks.glow, kind.nd, terrain);
     return;
   }
   // Église Saint-André d'après photo (D138) : modèle dédié.

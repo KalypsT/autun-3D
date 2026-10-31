@@ -1190,3 +1190,58 @@ describe("Lycée Bonaparte : grille d'honneur et arbres taillés (D149)", () => 
     expect(c.resolve(px, py, 0.3).hit).toBe(false);
   });
 });
+
+describe("Notre-Dame : église d'après photo (D150)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const NAVE = "BATIMENT0000000348854392", CHEVET = "BATIMENT0000000348854391";
+  const nd = kinds.buildings[NAVE]!.nd!;
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const dist = (id: string, x: number, y: number): number => {
+    const ring = bOf(id).ring;
+    let d = Infinity;
+    for (let e = 0; e < ring.length / 2; e++) {
+      const f = edgeFrame(ring, e);
+      const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+      d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+    }
+    return d;
+  };
+
+  it("nef et transept ont le même faîtage mesuré (25,5 m), des égouts de 19 à 22 m ; bas-côtés plus bas, clocheton à 34 m", () => {
+    const [nave, trans] = nd.wings;
+    expect(nave!.r).toBeGreaterThan(25);
+    expect(nave!.r).toBeLessThan(26);
+    expect(Math.abs(trans!.r - nave!.r)).toBeLessThan(0.5);
+    for (const w of nd.wings) for (const e of [w.el, w.er]) {
+      expect(e).toBeGreaterThan(19);
+      expect(e).toBeLessThan(22);
+    }
+    expect(nd.aisles.top).toBeGreaterThan(14);
+    expect(nd.aisles.top).toBeLessThan(17);
+    expect(nd.aisles.eave).toBeGreaterThan(12);
+    expect(nd.aisles.eave).toBeLessThan(14.5);
+    expect(nd.turret.top).toBeGreaterThan(33);
+    expect(nd.turret.top).toBeLessThan(35);
+  });
+
+  it("le chevet (autre bâtiment BD TOPO) est une partie du modèle ; les deux restent des obstacles", () => {
+    expect(kinds.buildings[CHEVET]!.ndPart).toBe(1);
+    expect(isOpen(kinds, NAVE)).toBe(false);
+    expect(isOpen(kinds, CHEVET)).toBe(false);
+  });
+
+  it("le point « lieu de culte » est devant la porte de la façade, plus au milieu de la nef ; aucune cache d'arme à moins de 3 m", () => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 9) pts.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    const near = pts.filter(([x, y]) => dist(NAVE, x, y) < 8);
+    expect(near).toHaveLength(1);
+    expect(dist(NAVE, near[0]![0], near[0]![1])).toBeGreaterThan(1.5);
+    expect(dist(NAVE, near[0]![0], near[0]![1])).toBeLessThan(4);
+    const [x, y] = near[0]!;
+    // Devant la façade (côté place) : plus loin de l'axe du chevet que du milieu de la façade.
+    expect(Math.hypot(x - nd.o[0], y - nd.o[1])).toBeLessThan(3.5);
+    for (const q of CACHES) for (const id of [NAVE, CHEVET]) expect(dist(id, q.x, q.y)).toBeGreaterThan(3);
+  });
+});
