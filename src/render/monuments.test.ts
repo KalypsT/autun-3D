@@ -117,8 +117,11 @@ describe("monuments (D95) : géométrie", () => {
     expect(m.tower[4]).toBeGreaterThan(m.tower[1] * 0.3);
     expect(m.tower[4]).toBeLessThan(m.tower[1] * 0.55);
     expect(m.spire[0]).toBeGreaterThan(m.tower[2] + 3);
-    const mb = new MeshBuilder();
-    buildSaintLazare(mb, m, world.terrain);
+    const mb = new MeshBuilder(), lights = new MeshBuilder();
+    buildSaintLazare(mb, lights, m, world.terrain);
+    // Éclairage de nuit (D132) : murs et flèches doublés dans le maillage des vitres allumées.
+    expect(tris(lights)).toBeGreaterThan(200);
+    expect(tris(lights)).toBeLessThan(4000);
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
     expect(tris(mb)).toBeLessThan(8000);

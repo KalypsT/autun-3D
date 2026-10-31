@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
+import { landmarkDecks } from "../core/landmarks";
 import { addTileColliders } from "../core/world";
 import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
@@ -206,13 +207,18 @@ export class TileManager {
    */
   private registerDecks(id: string, data: TileData): void {
     const st = data.structures;
-    if (!st) return;
+    // Marches et volée du porche de la cathédrale (D132), invisibles : les monuments les dessinent.
+    const extra = landmarkDecks(data.kinds);
+    if (!st) {
+      if (extra.length) this.terrain.decks.add(id, extra);
+      return;
+    }
     const platforms = st.platforms.map((p, i) => {
       let z = -Infinity;
       for (let k = 0; k < p.r.length; k += 2) z = Math.max(z, this.terrain.groundAt(p.r[k]!, p.r[k + 1]!));
       return { ...p, z: z + p.h, id: `q:${id}:${i}` };
     });
-    this.terrain.decks.add(id, st.decks, platforms);
+    this.terrain.decks.add(id, [...st.decks, ...extra], platforms);
   }
 
   private unload(e: Entry): void {

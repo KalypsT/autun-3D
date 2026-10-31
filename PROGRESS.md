@@ -864,3 +864,17 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le porche et le portail](docs/captures/d131-porche-apres.jpg)
 ![La fontaine, avant](docs/captures/d131-fontaine-avant.jpg)
 ![La fontaine Saint-Lazare](docs/captures/d131-fontaine-apres.jpg)
+
+**Bâtiments d'après photos, étape 12 : façade et entrée du porche, la cathédrale la nuit (30 octobre 2026)** (D132)
+- La façade du porche suit tes deux photos : grand arc à voussure sur colonnes, contreforts, galerie de petites arcades, corniche, arcs plus bas sous les tours avec leurs grilles.
+- On entre dans le porche : trois marches depuis le parvis, puis la volée entre les grilles jusqu'aux portes (fermées).
+- La nuit, la cathédrale est illuminée, comme sur ta photo : murs et flèches dorés, plus clairs en bas, toits sombres, baies sombres.
+- Les passants contournaient déjà la fontaine ; la génération de la navigation prend désormais son bassin en compte.
+- 728 tests.
+- À essayer de ton côté : `?at=13.4,-531` (sur le parvis), monter jusqu'aux portes ; `?h=23` pour la nuit.
+
+![Façade, avant](docs/captures/d132-facade-avant.jpg)
+![Façade, après](docs/captures/d132-facade-apres.jpg)
+![L'entrée](docs/captures/d132-entree-apres.jpg)
+![La nuit, avant](docs/captures/d132-nuit-avant.jpg)
+![La nuit, après](docs/captures/d132-nuit-apres.jpg)

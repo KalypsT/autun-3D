@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { CathedralModel, CathedralSpec, HeightField, Site, TownHallSpec } from "../data/types";
-import { at, frameOf, gateLayout, type Frame, type GateLayout } from "../core/landmarks";
+import { at, frameOf, gateLayout, porchLayout, type Frame, type GateLayout } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { T } from "./style";
 
@@ -144,6 +144,7 @@ function spire(mb: MeshBuilder, f: Frame, s: number, t: number, r: number, zb: n
     const p0 = P(f, s + Math.cos(a0) * r, t + Math.sin(a0) * r, zb), p1 = P(f, s + Math.cos(a1) * r, t + Math.sin(a1) * r, zb);
     const n = N(f, Math.cos(am) / nl, Math.sin(am) / nl);
     mb.tri(p0, p1, apex, [n[0], slope / nl, n[2]], shade(color, 0.92 + (i % 2) * 0.1));
+    if (flood) flood.glow.quadGradient(p0, p1, apex, apex, [n[0], slope / nl, n[2]], floodAt(zb), floodAt(zt));
   }
 }
 
@@ -236,6 +237,37 @@ const GLAZE_FILL = C("#d9a83a"), GLAZE_NET = C("#2f6a48"), GLAZE_RED = C("#a8432
 
 type Pt = [number, number];
 
+/**
+ * Éclairage de nuit de la cathédrale (D132, photo de nuit) : pendant `buildSaintLazare`, les murs et les flèches sont doublés dans le maillage
+ * des vitres allumées (visible la nuit seulement), en dégradé chaud du pied (projecteurs) vers le haut ; les toits restent sombres.
+ */
+let flood: { glow: MeshBuilder; g: number } | null = null;
+const FLOOD_LOW = C("#ffd08a"), FLOOD_HIGH = C("#9e7a52");
+function floodAt(z: number): THREE.Color {
+  const k = Math.min(1, Math.max(0, (z - flood!.g) / 60));
+  return FLOOD_LOW.clone().lerp(FLOOD_HIGH, Math.sqrt(k));
+}
+/**
+ * Baies et encadrements la nuit : redessinés dans le maillage éclairé, après le mur (sans quoi l'éclairage, tiré vers la caméra, les couvre
+ * de loin) ; les baies restent sombres, les encadrements prennent la lumière, un peu plus sombre.
+ */
+const NIGHT_BAY = C("#1c2436");
+function nightCopy(col: THREE.Color, z: number, draw: (glow: MeshBuilder, col: THREE.Color) => void): void {
+  if (!flood) return;
+  const fl = flood, c = col === BAY ? NIGHT_BAY : shade(floodAt(z), 0.8);
+  flood = null;
+  try {
+    draw(fl.glow, c);
+  } finally {
+    flood = fl;
+  }
+}
+
+/** Double éclairé d'un quad du repère (a, b en bas, c, d en haut). */
+function lit(f: Frame, a: [number, number, number], b: [number, number, number], c: [number, number, number], d: [number, number, number], n: Vec3, k = 1): void {
+  if (flood) flood.glow.quadGradient(P(f, ...a), P(f, ...b), P(f, ...c), P(f, ...d), n, shade(floodAt((a[2] + b[2]) / 2), k), shade(floodAt((c[2] + d[2]) / 2), k));
+}
+
 /** Mur droit de a à b (s, t), normale `out`, du sol jusqu'aux hauts za (en a) et zb (en b), en pans de 6 m au plus pour suivre le relief. */
 function wallST(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, za: number, zb: number, ground: (s: number, t: number) => number, col: THREE.Color): void {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -247,6 +279,7 @@ function wallST(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, za: number, zb: number,
     const p0: Pt = [a[0] + (b[0] - a[0]) * u0, a[1] + (b[1] - a[1]) * u0], p1: Pt = [a[0] + (b[0] - a[0]) * u1, a[1] + (b[1] - a[1]) * u1];
     const z0 = za + (zb - za) * u0, z1 = za + (zb - za) * u1;
     q(mb, f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n, col);
+    lit(f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n);
   }
 }
 
@@ -265,6 +298,7 @@ const rectST = (s0: number, s1: number, t0: number, t1: number): Pt[] => [[s0, t
  * au sommet de l'arc z1.
  */
 function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.04, pointed = false): void {
+  nightCopy(col, (z0 + z1) / 2, (glow, c) => archOn(glow, f, a, b, u, w, z0, z1, c, off, pointed));
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
   const os = dt * off, ot = -ds * off;
@@ -291,6 +325,7 @@ function archOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z
 
 /** Ouverture rectangulaire sur le mur de a à b (normale sortante à droite de a → b), centrée à `u` mètres de a, de z0 à z1. */
 function rectOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: number, z0: number, z1: number, col: THREE.Color, off = 0.03): void {
+  nightCopy(col, (z0 + z1) / 2, (glow, c) => rectOn(glow, f, a, b, u, w, z0, z1, c, off));
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
   const p = (v: number, z: number): [number, number, number] => [a[0] + ds * (u + v) + dt * off, a[1] + dt * (u + v) - ds * off, z];
@@ -312,6 +347,7 @@ function archWall(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, zt: number, u: number
     const t0 = Math.PI - (Math.PI * i) / 8, t1 = Math.PI - (Math.PI * (i + 1)) / 8;
     const v0 = u + (w / 2) * Math.cos(t0), v1 = u + (w / 2) * Math.cos(t1);
     q(mb, f, [...pt(v0), zs + (w / 2) * Math.sin(t0)], [...pt(v1), zs + (w / 2) * Math.sin(t1)], [...pt(v1), zt], [...pt(v0), zt], n, col);
+    lit(f, [...pt(v0), zs + (w / 2) * Math.sin(t0)], [...pt(v1), zs + (w / 2) * Math.sin(t1)], [...pt(v1), zt], [...pt(v0), zt], n);
   }
 }
 
@@ -335,6 +371,7 @@ function archSoffit(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, w: numbe
 
 /** Disque (oculus) sur le mur de a à b, centré à `u` mètres de a et à l'altitude zc. */
 function roundOn(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, u: number, zc: number, r: number, col: THREE.Color, off = 0.04): void {
+  nightCopy(col, zc, (glow, c) => roundOn(glow, f, a, b, u, zc, r, c, off));
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const ds = (b[0] - a[0]) / len, dt = (b[1] - a[1]) / len;
   const p = (v: number, z: number): Vec3 => P(f, a[0] + ds * (u + v) + dt * off, a[1] + dt * (u + v) - ds * off, z);
@@ -407,7 +444,16 @@ function hipRoof(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, 
  * pans, bas-côtés en appentis, chapelles par travée, transept à pignons et bloc carré à toit en croupe au bout du bras ouest, tour de croisée
  * et flèche octogonale à clochetons, chœur, abside polygonale, bas-côtés du chœur. Remplace murs, toit et baies génériques du bâtiment.
  */
-export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: HeightField): void {
+export function buildSaintLazare(mb: MeshBuilder, glow: MeshBuilder | null, m: CathedralModel, terrain: HeightField): void {
+  flood = glow ? { glow, g: m.g } : null;
+  try {
+    lazare(mb, m, terrain);
+  } finally {
+    flood = null;
+  }
+}
+
+function lazare(mb: MeshBuilder, m: CathedralModel, terrain: HeightField): void {
   const f = frameOf(m.c[0], m.c[1], m.a, 1, 1);
   const ground = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y) - 0.3; };
   const wall = STONE;
@@ -423,22 +469,75 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   const OV = 0.35;
   const flat = (z: number) => (): number => z;
 
-  // Porche (D131, photo du portail) : ouvert sur le parvis par un grand arc, voûte en berceau, arcs aveugles sur les murs latéraux,
-  // escalier jusqu'au seuil des portes entre deux grilles, portail au fond (sur le mur ouest de la nef) ; arcades jumelles et oculus sur
-  // ses flancs, au-delà des tours (photo de la fontaine).
+  // Porche (D131, D132) : façade d'après les photos (grand arc à voussure et colonnes, cordon, galerie de cinq arcades dont trois ajourées,
+  // corniche, contreforts entre l'arc et les tours, arcs plus bas sous les tours, fermés de grilles), trois marches sur toute la largeur,
+  // salle voûtée en berceau à arcs aveugles, palier, volée jusqu'au seuil entre deux grilles, portail au fond ; arcades jumelles et oculus
+  // sur ses flancs au-delà des tours (photo de la fontaine). On y entre : tabliers et obstacles dans `core/landmarks.ts` (porchLayout).
+  const L = porchLayout(m);
+  const { pc, TH, iA, iB, Rv, zV, Wo, zA, zP, zD } = L;
+  const hAt = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y); };
+  const above = (s0: number, s1: number, t0: number, t1: number, z: number): number => {
+    let h = z;
+    for (let s = s0; s <= s1 + 0.01; s += Math.max(0.25, (s1 - s0) / 2)) for (let t = t0; t <= t1 + 0.01; t += 0.5) h = Math.max(h, hAt(s, t) + 0.02);
+    return h;
+  };
   gable(mb, f, p0 - OV, n0, pA - OV, pB + OV, pe - 0.2, pr, TILE_BROWN, wall);
-  const pc = (pA + pB) / 2, TH = 1.0, iA = pA + TH, iB = pB - TH, Rv = (iB - iA) / 2;
-  const zD = m.g, zV = Math.min(zD + 7.5, pe - 0.8 - Rv), Wo = Math.min(7.5, iB - iA - 1.5);
   wallST(mb, f, [p0, pA], [n0, pA], pe, pe, ground, wall);
   wallST(mb, f, [n0, pB], [p0, pB], pe, pe, ground, wall);
   archWall(mb, f, [p0, pB], [p0, pA], pe, pB - pc, Wo, zV, ground, wall);
   archSoffit(mb, f, [p0, pB], [p0, pA], pB - pc, Wo, zV, TH, ground, wall);
   archWall(mb, f, [p0 + TH, pA], [p0 + TH, pB], zV + Rv, pc - pA, Wo, zV, ground, PORCH_IN);
+  // Voussure, colonnes engagées et chapiteaux du grand arc ; cordon, galerie d'arcades, corniche ; contreforts entre l'arc et les tours.
+  const ring = (off: number, r0: number, r1: number, col: THREE.Color): void => {
+    for (let i = 0; i < 12; i++) {
+      const b0 = (Math.PI * i) / 12, b1 = (Math.PI * (i + 1)) / 12;
+      const p = (r_: number, b: number): [number, number, number] => [p0 - off, pc + r_ * Math.cos(b), zV + r_ * Math.sin(b)];
+      q(mb, f, p(r0, b0), p(r1, b0), p(r1, b1), p(r0, b1), N(f, -1, 0), col);
+    }
+  };
+  ring(0.06, Wo / 2 + 0.05, Wo / 2 + 0.55, shade(wall, 1.08));
+  ring(0.04, Wo / 2 + 0.55, Wo / 2 + 0.8, shade(wall, 0.86));
+  for (const k of [-1, 1]) {
+    const tc = pc + k * (Wo / 2 + 0.3);
+    column(mb, f, p0 - 0.1, tc, 0.24, ground(p0, tc), zV - 0.5, shade(wall, 1.04));
+    box(mb, f, p0 - 0.45, p0 + 0.2, tc - 0.4, tc + 0.4, zV - 0.55, zV, shade(wall, 1.1));
+  }
+  const zc = zV + Wo / 2 + 1.0;
+  box(mb, f, p0 - 0.3, p0, pA, pB, zc, zc + 0.3, shade(wall, 1.06));
+  const front: [Pt, Pt] = [[p0, pB], [p0, pA]];
+  for (let k = 0; k < 5; k++) {
+    const u = pB - pc + (k - 2) * 1.55;
+    archOn(mb, f, front[0], front[1], u, 1.3, zc + 0.6, pe - 0.7, shade(wall, 0.84));
+    if (k > 0 && k < 4) archOn(mb, f, front[0], front[1], u, 0.7, zc + 1.0, pe - 1.0, BAY, 0.07);
+  }
+  box(mb, f, p0 - 0.4, p0, pA - 0.2, pB + 0.2, pe - 0.35, pe, shade(wall, 1.06));
+  for (const t of [pA, pB]) buttress(mb, f, m.a, p0, t, Math.PI, ground(p0, t), tb - 7.5);
+  // Marches de la façade, sol du porche, volée et palier des portes : chaque marche au-dessus du relief (le joueur marche sur le plus haut
+  // du relief et de la rampe).
+  for (let k = 0; k < 3; k++) {
+    const s0 = L.sE + (k * (p0 - L.sE)) / 3;
+    box(mb, f, s0, p0 + 0.05, L.tE0, L.tE1, zA - 0.8, above(s0, p0, L.tE0, L.tE1, zA + ((k + 1) * (zP - zA)) / 3), RISER, TREAD);
+  }
+  box(mb, f, p0, p0 + TH, pc - Wo / 2, pc + Wo / 2, zP - 0.8, above(p0, p0 + TH, pc - Wo / 2, pc + Wo / 2, zP), RISER, TREAD);
+  let zStep = above(p0 + TH, L.sR0, iA, iB, zP);
+  box(mb, f, p0 + TH, L.sR0, iA, iB, zP - 0.8, zStep, RISER, TREAD);
+  const nSteps = Math.max(1, Math.round((zD - zP) / 0.16)), dep = (L.sR1 - L.sR0) / nSteps;
+  for (let k = 0; k < nSteps; k++) {
+    const s0 = L.sR0 + k * dep;
+    zStep = Math.max(zStep, above(s0, s0 + dep, iA, iB, zP + ((k + 1) * (zD - zP)) / nSteps));
+    box(mb, f, s0, k === nSteps - 1 ? n0 : s0 + dep, iA, iB, zP - 0.8, zStep, RISER, TREAD);
+  }
+  // Grilles à pointes de part et d'autre de la volée (passage de 3,2 m au milieu), comme sur la photo.
+  const sg = p0 + TH + 0.15;
+  for (const [t0, t1] of [[iA, pc - 1.6], [pc + 1.6, iB]] as const) {
+    box(mb, f, sg - 0.03, sg + 0.03, t0, t1, hAt(sg, (t0 + t1) / 2) + 1.0, hAt(sg, (t0 + t1) / 2) + 1.06, IRON);
+    for (let t = t0 + 0.08; t <= t1; t += 0.16) box(mb, f, sg - 0.015, sg + 0.015, t - 0.015, t + 0.015, hAt(sg, t) - 0.05, hAt(sg, t) + 1.2, IRON);
+  }
   wallST(mb, f, [n0, iA], [p0 + TH, iA], zV, zV, ground, PORCH_IN);
   wallST(mb, f, [p0 + TH, iB], [n0, iB], zV, zV, ground, PORCH_IN);
   for (const u of [0.3, 0.7]) {
-    archOn(mb, f, [n0, iA], [p0 + TH, iA], (n0 - p0 - TH) * u, 2.8, ground(n0 - 3, iA) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
-    archOn(mb, f, [p0 + TH, iB], [n0, iB], (n0 - p0 - TH) * u, 2.8, ground(n0 - 3, iB) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
+    archOn(mb, f, [n0, iA], [p0 + TH, iA], (n0 - p0 - TH) * u, 2.8, hAt(n0 - (n0 - p0 - TH) * u, iA) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
+    archOn(mb, f, [p0 + TH, iB], [n0, iB], (n0 - p0 - TH) * u, 2.8, hAt(p0 + TH + (n0 - p0 - TH) * u, iB) + 0.6, zV - 0.6, shade(PORCH_IN, 0.86));
   }
   for (let i = 0; i < 10; i++) {
     const t0 = (Math.PI * i) / 10, t1 = (Math.PI * (i + 1)) / 10, tm = (t0 + t1) / 2;
@@ -447,29 +546,27 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
     const nh = N(f, 0, Math.cos(tm));
     q(mb, f, [p0 + TH, ta, za], [n0, ta, za], [n0, tb_, zb], [p0 + TH, tb_, zb], [nh[0], -Math.sin(tm), nh[2]], shade(PORCH_IN, 0.94 + 0.06 * Math.sin(tm)));
   }
-  // Escalier : du sol du porche (le plus haut point du relief au pied) au seuil, marches de 16 cm environ sur 4,2 m ; grilles au pied.
-  const sf = n0 - 4.2;
-  let zF = -Infinity;
-  for (let t = iA; t <= iB; t += 0.5) zF = Math.max(zF, ground(sf, t) + 0.3);
-  if (zD - zF > 0.3) {
-    const nSteps = Math.round((zD - zF) / 0.16), dep = 4.2 / nSteps;
-    for (let k = 0; k < nSteps; k++) box(mb, f, sf + k * dep, n0, iA, iB, zF - 0.6, zF + ((k + 1) * (zD - zF)) / nSteps, RISER, TREAD);
-    for (const [t0, t1] of [[iA + 0.2, pc - 2.1], [pc + 2.1, iB - 0.2]] as const) {
-      box(mb, f, sf - 0.3, sf - 0.25, t0, t1, zF + 1.0, zF + 1.06, IRON);
-      for (let t = t0; t <= t1 + 0.01; t += 0.16) box(mb, f, sf - 0.3, sf - 0.27, t - 0.015, t + 0.015, ground(sf - 0.3, t), zF + 1.18, IRON);
-    }
-  }
   portal(mb, f, n0, pc, zD);
   for (const [a, b, uc] of [[[p0, pA], [n0, pA], (w0 + n0 - p0) / 2], [[n0, pB], [p0, pB], (n0 - p0 - w1) / 2]] as const) {
     const zg = ground(...(a as Pt));
     for (const k of [-1, 1]) archOn(mb, f, a as Pt, b as Pt, uc + k * 0.85, 1.3, zg + 1, zg + 4.4, BAY, 0.04, true);
     roundOn(mb, f, a as Pt, b as Pt, uc, zg + 5.4, 0.6, BAY);
   }
-  // Tours du porche (D130, photo de nuit et drone) : contreforts aux angles extérieurs, deux étages de baies jumelles en plein cintre dans un
-  // encadrement en retrait, cordon et corniche, flèche de pierre à quatre pans, clochetons à ses angles.
+  // Tours du porche (D130, D132) : arc ouvert sous chaque tour en façade (plus bas que le grand arc, fermé d'une grille), contreforts aux
+  // angles extérieurs, deux étages de baies jumelles en plein cintre dans un encadrement en retrait, cordon et corniche, flèche de pierre à
+  // quatre pans, clochetons à ses angles.
   for (const [t0, t1, side] of [[pA - w0, pA, -1], [pB, pB + w1, 1]] as const) {
     const w = t1 - t0, s1 = p0 + w, tOut = side < 0 ? t0 : t1;
-    prismST(mb, f, rectST(p0, s1, t0, t1), flat(tb), ground, wall);
+    wallST(mb, f, [p0, t0], [s1, t0], tb, tb, ground, wall);
+    wallST(mb, f, [s1, t0], [s1, t1], tb, tb, ground, wall);
+    wallST(mb, f, [s1, t1], [p0, t1], tb, tb, ground, wall);
+    const ws = w * 0.62, top = zP + 0.62 * (zV + Wo / 2 - zP), spring = top - ws / 2;
+    archWall(mb, f, [p0, t1], [p0, t0], tb, w / 2, ws, spring, ground, wall);
+    archSoffit(mb, f, [p0, t1], [p0, t0], w / 2, ws, spring, 1.2, ground, wall);
+    archOn(mb, f, [p0 + 1.2, t1], [p0 + 1.2, t0], w / 2, ws, ground(p0 + 1.2, (t0 + t1) / 2), top, BAY, 0);
+    const tm = (t0 + t1) / 2;
+    for (let t = tm - ws / 2 + 0.1; t < tm + ws / 2; t += 0.16) box(mb, f, p0 + 0.58, p0 + 0.62, t - 0.015, t + 0.015, ground(p0 + 0.6, t), ground(p0 + 0.6, t) + 2.4, IRON);
+    box(mb, f, p0 + 0.57, p0 + 0.63, tm - ws / 2, tm + ws / 2, ground(p0 + 0.6, tm) + 2.2, ground(p0 + 0.6, tm) + 2.27, IRON);
     box(mb, f, p0 - 0.25, s1 + 0.25, t0 - 0.25, t1 + 0.25, tb - 0.5, tb, shade(wall, 1.06));
     box(mb, f, p0 - 0.15, s1 + 0.15, t0 - 0.15, t1 + 0.15, tb - 7.2, tb - 6.9, shade(wall, 1.06));
     spire(mb, f, (p0 + s1) / 2, (t0 + t1) / 2, (w / 2 + 0.25) * Math.SQRT2, tb, tt, 4, SPIRE_STONE);
@@ -557,7 +654,7 @@ export function buildSaintLazare(mb: MeshBuilder, m: CathedralModel, terrain: He
   // ajourée ; flèche octogonale (rayon mesuré), gâbles ajourés au pied des faces tournées vers la nef, le chœur et les bras, crochets sur
   // les arêtes, clochetons d'angle (photo), croix.
   const h = side / 2, c0 = m.t0, zt = Math.min(ne, te);
-  box(mb, f, sx - h, sx + h, c0 - h, c0 + h, zt - 1, body, shade(wall, 0.97), shade(wall, 0.85));
+  prismST(mb, f, rectST(sx - h, sx + h, c0 - h, c0 + h), flat(body), () => zt - 1, shade(wall, 0.97));
   for (const ks of [-1, 1]) for (const kt of [-1, 1]) {
     buttress(mb, f, m.a, sx + ks * h, c0 + kt * (h - 0.8), ks > 0 ? 0 : Math.PI, zt, body - 3);
     buttress(mb, f, m.a, sx + ks * (h - 0.8), c0 + kt * h, kt > 0 ? Math.PI / 2 : -Math.PI / 2, zt, body - 3);
@@ -788,6 +885,9 @@ function buttress(mb: MeshBuilder, f: Frame, a: number, s: number, t: number, di
   const [x, y] = at(f, s, t);
   const fb = frameOf(x, y, a + dir, 1, 1);
   box(mb, fb, -0.3, 1.3, -0.55, 0.55, z0, z1 - 1.6, STONE, shade(STONE, 0.9));
+  // La nuit, flancs plus sombres que la face : le contrefort se détache du mur éclairé.
+  lit(fb, [1.3, -0.55, z0], [1.3, 0.55, z0], [1.3, 0.55, z1 - 1.6], [1.3, -0.55, z1 - 1.6], N(fb, 1, 0), 0.92);
+  for (const k of [-1, 1]) lit(fb, [-0.3, k * 0.55, z0], [1.3, k * 0.55, z0], [1.3, k * 0.55, z1 - 1.6], [-0.3, k * 0.55, z1 - 1.6], N(fb, 0, k), 0.72);
   pan(mb, fb, [1.3, -0.55, z1 - 1.6], [1.3, 0.55, z1 - 1.6], [-0.3, 0.55, z1], [-0.3, -0.55, z1], shade(STONE, 1.05));
   for (const k of [-1, 1]) mb.tri(P(fb, 1.3, k * 0.55, z1 - 1.6), P(fb, -0.3, k * 0.55, z1 - 1.6), P(fb, -0.3, k * 0.55, z1), N(fb, 0, k), STONE);
 }

@@ -1820,3 +1820,35 @@ Champ `cath` du bâtiment dans `kinds/26_32.json` ; l'étape corrige aussi le cl
 ![Depuis le parvis](captures/d131-porche-parvis.jpg)
 ![La fontaine, avant](captures/d131-fontaine-avant.jpg)
 ![La fontaine Saint-Lazare, après](captures/d131-fontaine-apres.jpg)
+
+## 2026-10-30 — D132. Bâtiments d'après photos, étape 12 : la façade du porche, l'entrée dans le porche, la fontaine pour les passants, la cathédrale la nuit
+
+**Demande de l'utilisateur** : traiter les quatre points laissés en D131, avec deux nouvelles photos (captures Google Street View d'août 2018, non versionnées) de la façade du porche, du parvis Chanoine-Denis-Grivot. Lecture :
+- **Bas** : trois larges marches sur toute la façade, puis le palier sous le porche ; des grilles à pointes de part et d'autre de la volée qui monte au portail (passage ouvert au milieu) ; arcs plus bas sous les tours, fermés de grilles.
+- **Haut** : grand arc à voussure moulurée sur colonnes engagées, contreforts massifs de part et d'autre, cordon au-dessus de l'arc, galerie de petites arcades dont trois ajourées, corniche et pignon bas ; deux tours carrées à baies jumelles.
+
+**1. Façade du porche** (`src/render/monuments.ts`) : voussure (deux anneaux), colonnes engagées et chapiteaux du grand arc, cordon, galerie de cinq arcades aveugles dont trois percées, corniche, contreforts entre l'arc et les tours ; sous chaque tour, un arc ouvert en façade (62 % de la largeur de la tour, sommet aux deux tiers de celui du grand arc), avec intrados, fond sombre et grille.
+
+**2. On entre dans le porche** (`porchLayout`, `porchDecks`, `cathedralWalls`, `src/core/landmarks.ts`) :
+- **Niveaux** (`build_monuments.py`, champ `entry` de `cath`) : parvis = terrain LiDAR médian sur toute la largeur de la façade, 2,5 m devant elle (3,3 m sous le sol du bâtiment) ; palier = parvis + 3 marches de 16 cm (photo, `entrySteps` dans `manual.json`) ; seuil = sol du bâtiment (le relevé ne voit pas sous le toit). Une deuxième passe ne change rien.
+- **Surface** : deux tabliers invisibles (comme les ponts, D93), enregistrés avec ceux de la tuile : les trois marches de la façade, puis le palier, la volée (17 marches de 16 cm) et le palier des portes. Le jeu prend toujours le plus haut du relief et du tablier ; au dessin, chaque marche est posée au-dessus des deux (le relief du jeu remonte par endroits sous le porche), la marche visible et le sol de marche restent à quelques centimètres.
+- **Obstacles** : l'emprise BD TOPO n'est plus un obstacle devant le porche ; à sa place, les tours pleines, les piles du grand arc, les murs de la salle et le mur des portes (fermées), et les grilles de part et d'autre de la volée (1,2 m, on ne les escalade pas). Test : du parvis on va jusqu'aux portes, pas dans la nef ; les grilles barrent les côtés de la volée ; les tours sont pleines.
+
+**3. Les passants et la fontaine** : la navigation actuelle contourne déjà la fontaine (les arêtes les plus proches passent à 3,5 et 3,8 m du centre, hors du bassin de 3 m). `build_nav.py` prend désormais le bassin mesuré (site `fountain`) comme rayon d'obstacle et écarte les arbres qui y poussaient, comme le jeu (D131). La navigation n'est pas régénérée : `build_nav.py` repart de tout OpenStreetMap et réécrirait toute la ville ; la correction s'appliquera à la prochaine génération.
+
+**4. La cathédrale la nuit** (photo de nuit, D127) : pendant `buildSaintLazare`, murs, contreforts et flèches sont doublés dans le maillage des vitres allumées (visible la nuit seulement, aucun appel de dessin de plus), en dégradé chaud du pied (projecteurs) vers le haut. Les toits restent sombres. Les flancs des contreforts sont plus sombres que leur face pour qu'ils se détachent du mur. Les baies et encadrements sont redessinés dans le même maillage, après les murs : sans quoi, de loin, la lumière (tirée vers la caméra) les recouvrait. Les baies restent sombres.
+
+**Coût** : 6 253 triangles pour la cathédrale (5 275 avant) et 2 378 d'éclairage, dessinés la nuit seulement (test : moins de 8 000 et 4 000).
+
+**Pas encore** : l'intérieur de la nef (les portes restent fermées) ; les sculptures du portail restent en aplats ; la navigation des passants ne passe pas dans le porche.
+
+![Façade, avant](captures/d132-facade-avant.jpg)
+![Façade, après](captures/d132-facade-apres.jpg)
+![Entrée, avant](captures/d132-entree-avant.jpg)
+![Entrée, après : marches, grilles, arcs sous les tours](captures/d132-entree-apres.jpg)
+![Sur la volée, devant les portes](captures/d132-escalier.jpg)
+![La nuit, avant](captures/d132-nuit-avant.jpg)
+![La nuit, après](captures/d132-nuit-apres.jpg)
+![La nuit, le porche](captures/d132-nuit-porche.jpg)
+![Vue de drone la nuit, avant](captures/d132-nuit-drone-avant.jpg)
+![Vue de drone la nuit, après](captures/d132-nuit-drone-apres.jpg)

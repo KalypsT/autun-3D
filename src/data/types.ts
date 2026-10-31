@@ -217,6 +217,8 @@ export interface CathedralModel {
   /** Axe de la nef (t du faîtage). */
   t0: number;
   g: number;
+  /** Entrée (D132) : parvis devant la façade, palier sous le porche, seuil des portes (altitudes). */
+  entry: [number, number, number];
   /** Porche : s0, s1, t0, t1, égout, faîtage. */
   porch: [number, number, number, number, number, number];
   /** Tours du porche : côté de la tour ouest, de la tour est, haut du corps, pointe (d'après photo). */

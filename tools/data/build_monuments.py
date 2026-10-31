@@ -326,8 +326,15 @@ def measure_cathedral(bid, b, spec, mon):
     top = max(z for *_, z in win)
     hi = [(s, t) for s, t, z in win if z > top - 1.5]
     turret = [r2(med(q[0] for q in hi)), r2(med(q[1] for q in hi)), spec["turret"], r2(g + top)]
+    # Entrée (D132) : parvis = terrain médian sur la largeur de la façade 2,5 m devant elle ; palier sous le porche = parvis + les trois
+    # marches de la photo (48 cm) ; seuil des portes = sol du bâtiment (BD TOPO : le relevé ne voit pas sous le porche).
+    mnt = Raster("MNT", bid, *box)
+    t_ext = [t for t in rng(pA - 5, pB + 5, 0.5)]
+    z_parvis = med(mnt(*xy(porch0 - 2.5, t)) - g for t in t_ext)
+    entry = [r2(g + z_parvis), r2(g + z_parvis + spec["entrySteps"] * 0.16), r2(g)]
     tw = spec["towers"]
     return {
+        "entry": entry,
         "c": [r2(cx), r2(cy)], "a": a, "t0": r2(t0), "g": r2(g),
         "porch": porch,
         "towers": [r2(min(tw["w"], pA - extent(porch0 + 0.5, nave0 - 0.5, -1))), r2(min(tw["w"], extent(porch0 + 0.5, nave0 - 0.5, 1) - pB)), r2(g + tw["body"]), r2(g + tw["tip"])],

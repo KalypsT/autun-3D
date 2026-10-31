@@ -630,7 +630,7 @@ function civic(sinks: LandmarkSinks, kind: BuildingKind, fiche: FacadeFiche | un
 function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg[], terrain: HeightField, wall: THREE.Color): void {
   // Cathédrale d'après photo (D127) : modèle dédié, ni baies ni portail génériques.
   if (kind.cath) {
-    buildSaintLazare(sinks.solid, kind.cath, terrain);
+    buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
     return;
   }
   const stained = pick(STAINED, idKey(b.id), 5);
