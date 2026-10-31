@@ -2504,3 +2504,223 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Les jambes de force, vues du parking](captures/d147-jambes-photo3-apres.jpg)
 ![Galerie nord-est](captures/d147-jambes-ne-apres.jpg)
+
+## 2026-10-31 — D148. Le lycée Bonaparte d'après photos, étape 1 : volumes et toits mesurés
+
+**Demande de l'utilisateur** : refaire le lycée Bonaparte d'Autun d'après ses photos, en commençant par une enquête (rien n'était modifié), puis lot par lot. Photos (non versionnées, elles servent seulement à décrire) : 1, vue large depuis le parking de la place du Champ de Mars, vers l'ouest-sud-ouest (environ 240°), l'église à gauche, la grille au milieu, l'aile est à droite ; 2, gros plan de la grille dans l'axe du portail ; 3, capture satellite Google Maps, nord en haut. Réponses de l'utilisateur après l'enquête : inclure la petite église accolée (Notre-Dame, lot D150) ; le bâtiment du 2c rue Saint-Saulge, il ne sait pas ; site Leclerc hors périmètre ; grille fermée ; local de 19 m² : il ne sait pas (ignoré).
+
+**Dans les données** (tuile 25_34) : l'ensemble est le BD TOPO `…853321` (1 618 m², 36 sommets, 35 murs de fiche, mur 0 = arête 15), l'aile de la rue aux Raz `…853307`, les annexes `…853490`, `…491`, `…506`, `…507`, deux petits socles `…913` et `…914`, le bâtiment `…470` (zone BD TOPO « Lycée Bonaparte » de 9 481 m², mais ni OpenStreetMap ni l'utilisateur ne le confirment) et l'église Notre-Dame `…854392` avec son bout sud-ouest `…854391` (typé « school »). Le contour OpenStreetMap du lycée (way 80175797, MH PA00113150) fait 6 978 m². Aucun bâtiment ne manque : les composantes du MNH hors BD TOPO sont des arbres.
+
+**Mesures** (`build_monuments.py`, modèle `college` ; MNS à 0,5 m, WMS) : six ailes lues sur le contour (deux faces parallèles, demi-largeur 4,5 m) et sur l'axe du faîtage au LiDAR ; faîtage = médiane de la crête sur le milieu de l'aile, égout de chaque côté = droite ajustée sur la pente (de 1 m de l'axe à 0,7 m du mur, médiane le long de l'aile : les lucarnes sont écartées) prolongée jusqu'au mur.
+- W1 pavillon ouest : faîtage 21,06, égouts 16,55 et 16,18 ; W2 aile sud-ouest : 21,05, 17,68 et 17,01 ; W3 aile centrale : 20,88, 15,87 et 15,28 ; W4 aile nord-est : 20,92, 16,20 et 16,05 ; **W5 aile est : 18,01, 14,61 et 13,88 ; W6 aile nord-ouest : 17,88, 12,86 et 13,77** (altitudes locales). Le sol va de −3 (rue aux Raz) à +1,7 (cours) : un seul toit à 21,3 m (BD TOPO) était faux de 3 m sur deux ailes.
+- Aile de la rue aux Raz (`…307`, deux ailes S1 et S2) : deux pans bas, faîtage 10,86 / 10,91, égouts de 7,3 à 8,5 ; BD TOPO annonçait un faîtage 1,4 m trop haut.
+- Annexes : plan de toit mesuré (`fit_roof` de `build_stores.py`) : `…490` plat, `…491` et `…507` à pente unique de 7 à 8 %. `…506` (37 m², toit à croupes : un plan ne convient pas) garde le toit générique.
+
+**Modèle** (`buildCollege`, `src/render/monuments.ts`, champ `college` de `BuildingKind`, `CollegeSpec` et `CollegeWing` dans `src/data/types.ts`) : remplace murs, toit et façade génériques (comme la mairie) ; murs de pierre sur le contour BD TOPO, chacun montant à l'égout de l'aile dont il longe le toit, corniche, une rangée de fenêtres par niveau (3,3 m) tous les 3,2 m, alignées sur le sol local de chaque mur (une nuit sur trois allumée) ; un toit à deux pans par aile (tuiles brunes ; zinc gris pour la rue aux Raz), croupes ou pignons, bouts prolongés dans l'aile voisine. **2 536 triangles** et 282 de vitres allumées pour tout le collège (le rendu générique en coûtait plus : la vue d'ensemble passe de 438 000 à 430 000 triangles).
+- `replaces`/`hide` : `replacesFacade` et la boucle des murs de `stylized.ts` connaissent `college` ; `reshapeBuilding` applique un plan de toit mesuré aussi aux bâtiments « school ».
+- Silhouette lointaine : le prisme unique devient un prisme par aile, à son égout et son faîtage (`lod/25_34.json`).
+- `…470` : l'enseigne « LYCÉE BONAPARTE » et les drapeaux disparaissent (`kinds` de `manual.json`, `main` et `n` retirés) faute de confirmation.
+- Repère `?view=bonaparte` dans `src/game/viewer.ts` (`?view=lycee` regardait (250, 120), à 440 m).
+
+**Chaîne** : `build_carts.py` → `build_stores.py` (il rétablit `store` et `roof` que `build_carts.py` retire aux types imposés) → `build_monuments.py`. Rejouée deux fois : `public/data` identique (somme de contrôle). Seuls `kinds/25_34.json` et `lod/25_34.json` changent. `build_nav.py` complet n'est pas relancé.
+
+**Jeu** : les obstacles sont inchangés (le contour BD TOPO reste le collider ; test de collision contre la face est de l'aile centrale) ; aucune cache d'arme à moins de 3 m (la plus proche : Monument aux morts, ~95 m) ; aucun passant de plus pour l'instant (point « école » devant la grille : lot D149).
+
+**Tests** (+6, 789 au total) : six ailes (quatre faîtages à 21 m, deux à 18 m), ailes sur le contour, plans de toit des annexes, `…470` sans enseigne, caches à plus de 3 m, collision, géométrie finie et faîtage de rendu égal au faîtage mesuré, moins de 6 000 triangles.
+
+**Limites** :
+- Demi-largeurs lues sur le contour (±0,3 m) ; bouts « ext », « hip » ou « gable » choisis à l'orthophoto et au profil du faîtage (le coin nord-est, où l'aile nord-est monte à 21 m contre l'aile est à 18 m, est une croupe d'après le profil ; à revoir sur photo).
+- Pentes du toit (40 à 55°) déduites des profils, pas mesurées plan par plan ; le LiDAR ne dit ni la couleur ni le matériau : tuiles brunes lues à l'orthophoto, zinc gris pour l'aile de la rue aux Raz (hypothèse), le zinc des annexes `…491` et `…507` reste la couleur générique.
+- Fenêtres génériques (1 × 1,7 m, travées de 3,2 m) : ni lucarnes, ni cheminées, ni frontons, ni pavillon « LYCÉE », ni inscription ni drapeaux (lot D151) ; murs plats sans soubassement.
+- L'église (`…854392`, `…854391`), la grille, la cour d'honneur, les arbres taillés restent génériques (D149, D150).
+- Le petit local de 19 m² vers (−133, −107) (3 à 8 m de haut, absent de BD TOPO et d'OpenStreetMap) n'est pas dessiné.
+
+![Comme ta photo 1, avant](captures/d148-photo1-avant.jpg)
+![Après](captures/d148-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d148-photo2-avant.jpg)
+![Après](captures/d148-photo2-apres.jpg)
+![Vue du dessus, avant](captures/d148-haut-avant.jpg)
+![Après](captures/d148-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d148-ensemble-avant.jpg)
+![Après](captures/d148-ensemble-apres.jpg)
+![Rue Bulliot, avant](captures/d148-nord-avant.jpg)
+![Après](captures/d148-nord-apres.jpg)
+![Rue aux Raz et cour sud, avant](captures/d148-sud-avant.jpg)
+![Après](captures/d148-sud-apres.jpg)
+![La nuit, avant](captures/d148-nuit-avant.jpg)
+![Après](captures/d148-nuit-apres.jpg)
+
+## 2026-10-31 — D149. Le lycée Bonaparte d'après photos, étape 2 : la grille d'honneur et ses arbres taillés
+
+**Demande de l'utilisateur** : enchaîner après D148 (photos 1 et 2 : la grille dorée sur la place du Champ de Mars, vue de loin puis de face). Décidé avec lui : grille fermée, non escaladable ; point « école » des passants devant la grille.
+
+**Lecture des photos** : soubassement bas de pierre ; barreaux de fer noir à fers de lance dorés ; bandeau doré à rosaces ; piles de pierre aux bouts, de part et d'autre du portail et au milieu de chaque côté, urnes dorées sur celles du portail ; deux vantaux fermés ; au-dessus, volutes dorées et grand écusson doré (bouclier bleu, blanc, rouge) sous une couronne ; derrière, de part et d'autre, des arbres taillés en rideau (tronc nu, couronne cubique ; nus l'hiver sur la photo 2, feuillus sur la photo 1).
+
+**Dans les données** : le tracé est la clôture OpenStreetMap `252880289` (de (−86,97 ; −90,03) à (−70,99 ; −117,86), 32,2 m, 1,8 m dans le jeu), doublée par trois murs de parcelle `−900005310` à `−900005312` (2 m, pierre) : le rendu était un mur de pierre percé de claires-voies, que le joueur pouvait escalader (`CLIMB_MAX` 2,5 m). Les sept arbres de la carte derrière la grille ((−93,5 ; −101,5), (−98 ; −103,5), (−102 ; −105), (−106,5 ; −107), (−85 ; −116,5), (−92,5 ; −121,5), (−98 ; −125)) étaient des arbres génériques. Le sol monte de 0,8 à 2,2 m le long de la grille (LiDAR).
+
+**Données** : `grille` dans l'entrée `…853321` de `monuments` (`manual.json`) : bouts, murs remplacés, arbres, portail [abscisse du milieu depuis `a`, largeur] = [16,1 ; 4,4]. `build_monuments.py` (`measure_grille`) vérifie que les murs et les arbres existent dans les tuiles (arrêt sinon) et écrit `college.grille` dans `kinds/25_34.json` (tuples des arbres recopiés). `build_monuments_nav.py` (`school_pois`) pose le point d'intérêt « école » (type 12) à 3 m devant le portail côté place, en (−76,4 ; −102,5), à 2,1 m de la file piétonne la plus proche, dans `nav/s6_8.json`. Chaîne `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav` rejouée deux fois : `public/data` identique (somme de contrôle) ; seuls `kinds/25_34.json`, `nav/s6_8.json` et `nav/index.json` changent.
+
+**Rendu** (`buildGrille` dans `src/render/monuments.ts`, appelée par `buildCollege`) : repère le long de la grille, tout suit le terrain. Soubassement de 0,9 m par morceaux de 1 m, barreaux tous les 20 cm (2,9 m sur les côtés, 3,5 m aux vantaux), lisses, bandeau doré à rosaces, un fer de lance doré sur deux ; six piles de pierre ; urnes dorées sur les piles du portail ; volutes et écusson de 1,7 m de diamètre à couronne, sur le portail. Arbres taillés : tronc de 32 cm jusqu'à 2,6 à 3,5 m, couronne cubique de côté 1,8 fois le rayon de la carte. **1 830 triangles** pour la grille et les sept arbres.
+
+**Jeu** :
+- `wallsOutsideMonuments` retire les quatre murs et clôtures remplacés (rendu et obstacles) ; `treesOutsideMonuments` retire les sept arbres de la carte, dont `landmarkCircles` rend les troncs (cercles de 30 cm, comme avant) ; `addTileColliders` pose la grille (segment de 3,4 m, bas : on voit et on tire à travers, non escaladable, comme la grille de la cathédrale D132).
+- Passants : un point « école » devant le portail, hors des obstacles. Les files piétonnes de la place (x ≈ −72) et leurs points sont inchangés. Aucune cache d'arme à moins de 3 m (test D148 conservé).
+
+**Tests** (+5, 794 au total) : longueur de 32 m, portail au milieu et de 3,5 à 5,5 m de large, murs retirés ; sept arbres remplacés dont les troncs restent des obstacles ; la grille arrête le joueur de chaque côté, aux côtés comme au portail, sans escalade ; point « école » à 3 m devant le portail et hors obstacles ; coût de la grille entre 500 et 5 000 triangles, sommets finis.
+
+**Limites** :
+- Hauteurs, pas des barreaux, nombre et position des piles, forme des volutes et de l'écusson lus sur la photo 2, à 30 cm près ; les photos ne montrent pas les piles intermédiaires ni les extrémités, qui sont des hypothèses. Le portail est au milieu de la grille (les deux photos le montrent à peu près centré) ; sa largeur de 4,4 m est lue sur la photo 2.
+- L'écusson est un aplat (bleu, blanc, rouge) : ni armes ni détail ; pas de drapeaux (D151, ils sont sur la façade) ; pas de cadenas ni de poignées.
+- Les arbres taillés sont des cubes de 4 m environ, sans branches ; en hiver comme en été ils sont verts. Trois arbres du côté de l'église et quatre côté aile nord-est : l'un des deux groupes de la photo 2 est peut-être plus haut que dans les données.
+- Le bassin de la cour d'honneur, visible à l'orthophotographie, n'est pas dessiné : le LiDAR ne voit rien et aucune photo ne le montre.
+- La cour reste le sol générique ; façades, église et cour dans D150 et D151.
+
+![Comme ta photo 1, avant](captures/d149-photo1-avant.jpg)
+![Après](captures/d149-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d149-photo2-avant.jpg)
+![Après](captures/d149-photo2-apres.jpg)
+![Le portail de plus près, avant](captures/d149-portail-avant.jpg)
+![Après](captures/d149-portail-apres.jpg)
+![Depuis la cour d'honneur, avant](captures/d149-cour-avant.jpg)
+![Après](captures/d149-cour-apres.jpg)
+![Vue du dessus, avant](captures/d149-haut-avant.jpg)
+![Après](captures/d149-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d149-ensemble-avant.jpg)
+![Après](captures/d149-ensemble-apres.jpg)
+![La nuit, avant](captures/d149-nuit-avant.jpg)
+![Après](captures/d149-nuit-apres.jpg)
+
+## 2026-10-31 — D150. Le lycée Bonaparte d'après photos, étape 3 : l'église Notre-Dame
+
+**Demande de l'utilisateur** : inclure la petite église accolée au lycée (D150, après D149). Pas de nouvelle photo : la photo 1 (façade à gauche, clocheton derrière) et le relevé LiDAR.
+
+**Dans les données** : Notre-Dame (OpenStreetMap way 80175793, « Église Notre-Dame », ancienne chapelle du collège des jésuites) est le BD TOPO `…854392` (755 m², type `church`, avec un clocher générique du gabarit des églises) et son chevet `…854391` (73 m²), typé « school » à tort. Le rendu était le gabarit d'église : oculi violets, deux portes, toit unique à croupes, clocher carré au mauvais endroit. Son point d'intérêt « lieu de culte » d'OpenStreetMap tombait au milieu de la nef, en (−85,5 ; −136,7).
+
+**Mesures** (LiDAR, MNS à 0,5 m) : axe de la nef de la façade (milieu du mur nord-est du contour, (−65,7 ; −126,5)) vers le chevet, cap 240° ; ce qu'on prenait pour un transept plus bas est en fait une croix à deux faîtages égaux.
+- Nef : 44 m, faîtage 25,60 m, égouts 19,5 et 20,7 m, pignon côté façade, croupe côté chevet. Transept : 23,2 m, faîtage 25,51 m, égouts 21,0 m, deux croupes ; les deux ailes de 11 m de large.
+- Bas-côtés en appentis côté façade (jusqu'à la croisée, 18,9 m) : haut contre la nef 15,9 / 14,7 m, égout 13,3 / 12,9 m (droite ajustée sur la pente, à plus de 1,5 m du mur de la nef pour écarter le bord flou). Leurs faces extérieures sont lues sur le contour (−9,6 et +9,2 m de l'axe).
+- Clocheton sur le faîtage, à 38 m de la façade ((−98,2 ; −144,0)) : sommet mesuré 34,20 m (le LiDAR donne l'épi).
+
+**Données** : `monuments` de `manual.json` (`model: "notredame"` : axe, nef et transept à bouts et fenêtre de mesure, bas-côtés, étage bas de la façade à 16 m lu au MNS de la façade, clocheton, `part` : le chevet) ; `build_monuments.py` (`notredame`, réemploi de `measure_college`) écrit `nd` dans `kinds/25_34.json`, type le chevet `church` + `ndPart`, et remplace les prismes lointains par trois (nef, transept, bas-côtés). `build_monuments_nav.py` (`church_pois`) retire le point « lieu de culte » d'OpenStreetMap tombé dans l'emprise et en pose un à 3 m devant le milieu de la façade, en (−63,1 ; −125,0), à 1,1 m de la file la plus proche. Chaîne rejouée deux fois : `public/data` identique ; changent `kinds/25_34.json`, `lod/25_34.json`, `nav/s6_8.json`, `nav/index.json`.
+
+**Rendu** (`buildNotreDame`, `src/render/monuments.ts`, champs `nd` et `ndPart` de `BuildingKind`, `NotreDameSpec` dans `src/data/types.ts` ; `stylized.ts` ne dessine plus ni murs ni toit génériques des deux bâtiments, `landmarks.ts` dispatch) : repère à la façade, tout suit le terrain ; réemploi des aides du collège et de la mairie (murs par bandes, corniches, baies, toits à deux pans et croupes).
+- **Façade** (photo 1) : étage bas sur 19 m (quatre pilastres, trois portes en plein cintre, entablement), étage de la nef à deux baies, fronton dont la corniche rampante suit le pignon, cadran (disque sombre, fond clair, deux aiguilles), croix de 2,9 m au sommet, deux rampes de pierre qui relient les deux étages.
+- **Flancs** : hautes baies en plein cintre sur la nef (au-dessus des bas-côtés et du chevet), baies plus basses sur les bas-côtés, baie à chaque bout du transept ; toits d'ardoise (nef, transept) et appentis des bas-côtés.
+- **Clocheton** : lanterne octogonale à fentes, dôme d'ardoise en quatre anneaux, épi jusqu'au sommet mesuré.
+- **Nuit** : une baie sur trois allumée. **932 triangles** et 72 de vitres (le gabarit en coûtait à peu près autant).
+
+**Jeu** : obstacles inchangés (les contours BD TOPO des deux bâtiments restent les colliders, test) ; un seul point « lieu de culte » près de l'église, devant la façade ; aucune cache d'arme à moins de 3 m.
+
+**Tests** (+4, 798 au total) : faîtages et égouts mesurés (nef et transept égaux à 25,5 m), bas-côtés plus bas, clocheton à 34 m ; chevet `ndPart` et deux obstacles ; point « lieu de culte » devant la façade, plus au milieu de la nef ; caches à plus de 3 m ; géométrie finie, sommet = clocheton, moins de 5 000 triangles, vitrages allumés.
+
+**Limites** :
+- La façade est lue sur la photo 1, vue de biais et de loin : nombre et position des pilastres et des portes, hauteur de l'étage bas (16 m, LiDAR), diamètre du cadran (2,7 m) à 50 cm près ; les volutes sont de simples rampes triangulaires (les enroulements de la photo ne sont pas dessinés) ; pas de niche, de statue ni de moulures.
+- Les flancs ne sont pas sur photo : baies tous les 4 m, plein cintre, d'après le gabarit des églises et l'orthophotographie ; les faces nord-ouest et sud-est du transept, le chevet et le côté de la rue Saint-Saulge sont des murs lisses à baies régulières.
+- Le clocheton est simplifié (la photo montre un dôme sombre à lanterne ; la lanterne de 3,2 m de large, le dôme et l'épi sont des hypothèses sur le LiDAR) ; pas de cloche ni d'horloge sur le clocheton.
+- Ardoise grise lue à l'orthophotographie ; pierre blonde comme le lycée. Aucune enseigne ni inscription.
+- L'étage bas de la façade fait 16 m au MNS à la façade, ce qui peut inclure un attique : à confirmer sur une photo de face.
+
+![Comme ta photo 1, avant](captures/d150-photo1-avant.jpg)
+![Après](captures/d150-photo1-apres.jpg)
+![La façade de plus près, avant](captures/d150-facade-avant.jpg)
+![Après](captures/d150-facade-apres.jpg)
+![Le flanc nord-ouest depuis la cour, avant](captures/d150-flanc-avant.jpg)
+![Après](captures/d150-flanc-apres.jpg)
+![Vue du dessus, avant](captures/d150-haut-avant.jpg)
+![Après : la croix des toits et le clocheton](captures/d150-haut-apres.jpg)
+![Vue du nord-ouest, avant](captures/d150-nord-ouest-avant.jpg)
+![Après](captures/d150-nord-ouest-apres.jpg)
+![Vue d'ensemble, avant](captures/d150-ensemble-avant.jpg)
+![Après](captures/d150-ensemble-apres.jpg)
+![La façade la nuit, avant](captures/d150-nuit-avant.jpg)
+![Après](captures/d150-nuit-apres.jpg)
+
+## 2026-10-31 — D151. Le lycée Bonaparte d'après photos, étape 4 : façades, lucarnes, avant-corps « LYCÉE »
+
+**Demande de l'utilisateur** : enchaîner sans photo de plus. Ce qui est fait vient de ce que lisent déjà les photos 1 et 2, du relevé LiDAR et de l'orthophotographie.
+
+**Constat** : D148 avait des murs plats à fenêtres génériques, sans lucarnes ni soubassement ; l'axe du faîtage mesuré au LiDAR n'est **pas** au milieu du bâtiment : l'écart entre l'axe et les murs du contour BD TOPO va de 0,3 à 0,9 m selon l'aile (aile centrale : 5,15 m côté cour d'honneur, 4,13 m côté cour sud ; aile est : 4,18 et 5,39 m). Les demi-largeurs de 4,5 m de D148 étaient donc justes en moyenne mais fausses de 0,5 m sur un côté, de sorte qu'un avant-corps posé sur le mur disparaissait dedans.
+
+**Mesures** (`build_monuments.py`, `measure_college` étendu) : demi-largeur de chaque côté = médiane de la distance de l'axe aux murs du contour parallèles à l'aile (à moins de 1,2 m de la lecture ; `wl` et `wr` séparés), égouts ajustés sur la pente jusqu'à ce mur. Résultats : W1 5,05 et 4,25 m, W2 4,09 et 4,92, W3 5,15 et 4,13, W4 4,80 et 5,44, W5 4,18 et 5,39, W6 4,42 et 4,56, aile de la rue aux Raz 4,1 à 4,7 m. Faîtages inchangés. Nouveau volume : **pavillon d'angle** `W5a` à l'angle nord-est (le LiDAR y monte à 21,6 m, 3,6 m au-dessus de l'aile est, sur 8 m) : pyramide à 21,07 m, égouts 16,2 m imposés (`eave` : l'aile est trop courte pour ajuster une pente).
+
+**Lecture** (`dl` et `dr` des ailes de `manual.json`, `pavilions` de l'entrée) : lucarnes à fronton triangulaire (« ped ») sur les pans qui regardent la cour d'honneur, la cour sud et la place (aile sud-ouest et aile nord-est, côté sud, tous les 3,2 m ; aile centrale, côté cour d'honneur, tous les 6,4 m ; aile est, côté place, tous les 3,5 m : la photo 1 en montre trois, le LiDAR trois pics) ; chiens-assis (« rect ») sur les pans côté cour nord (aile sud-ouest et nord-est, tous les 3,2 m ; aile est, côté cour, tous les 3,5 m). Les pas viennent des pics du LiDAR (pas de 3,2 m = travée de la fiche, 6,4 m sur l'aile centrale) et de l'orthophotographie (fronton triangulaire de l'ombre, chien-assis blanc). Avant-corps de 6,4 m au milieu de la face est de l'aile centrale, dans l'axe du fronton cintré vu à l'orthophotographie (à 24 m du début de l'aile).
+
+**Rendu** (`collegeDetails`, `lyceeLetters`, `src/render/monuments.ts` ; types `CollegePavilion`, `dl`, `dr` de `CollegeWing`, `pavilions` de `CollegeSpec`) :
+- **Lucarnes** posées sur le pan par `dormer` (aide de la mairie, repère `slopeFrame` dont la normale sortante est −t) : fronton triangulaire de 1,25 m de large et de 2,3 m de haut, ou chien-assis de 1 m ; vitrage, une sur deux allumée la nuit ; pas de lucarne sous le toit d'une autre aile ni dans les croupes.
+- **Murs** : soubassement de pierre grise de 1,5 m et bandeau entre le rez-de-chaussée et l'étage, par morceaux qui suivent le sol (faces seules : 5 cm de saillie).
+- **Avant-corps** : saillie de 30 cm devant le mur, pierre claire, soubassement, bandeau et corniche, deux colonnes de baies en plein cintre à chaque étage, porte en plein cintre au rez-de-chaussée, **« LYCÉE »** (lettres de 80 cm tracées en traits de 12 cm, brun sombre, sur la frise sous la corniche), fronton cintré de 1,5 m de flèche à œil-de-bœuf, drapeaux tricolore et européen aux baies de l'étage.
+- Coût : **5 124 triangles** et 302 de vitres allumées pour l'ensemble (grille d'honneur et arbres de D149 comprise : 1 830). Les faces planes seules du soubassement ont économisé 2 200 triangles par rapport à une première version.
+
+**Chaîne** : `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav` rejouée deux fois : `public/data` identique ; seuls `kinds/25_34.json` et `lod/25_34.json` changent.
+
+**Jeu** : aucun obstacle ni passant de plus (l'avant-corps est dans le contour ; la grille et les arbres sont ceux de D149) ; aucune cache d'arme à moins de 3 m.
+
+**Tests** (+4, 802 au total) : lucarnes lues sur les bons pans, avant-corps au milieu de la face est et à moins de 12 m de la perpendiculaire à la grille, coût entre 300 et 4 000 triangles, rien au-dessus du faîtage de plus de 60 cm ; test des six ailes devenu sept (le pavillon d'angle, 21 m).
+
+**Limites** :
+- **Pas de cheminées** : un essai de détection au LiDAR (ce qui dépasse le faîtage de plus de 60 cm) prend les bosses de toit (pavillon d'angle, lucarnes) pour des souches ; je l'ai retiré plutôt que de poser des cheminées hasardeuses. La seule cheminée de BD TOPO, (−94,3 ; −87,3), est sous le sommet du pavillon d'angle et n'est pas dessinée.
+- Les fenêtres sont des rectangles de 1 × 1,7 m à encadrement clair, toutes pareilles, sans linteaux cintrés ni volets (la photo 2 montre des linteaux cintrés et des encadrements bruns) ; le bandeau est à 3,1 m du sol local, pas à la hauteur réelle des planchers.
+- L'avant-corps est lu sur l'orthophotographie (largeur de 6,4 m = deux travées) et la photo 2 (fronton, inscription, drapeaux) : sa largeur, la position des drapeaux et le tracé des lettres sont à 30 cm près ; son fronton est posé sur la corniche sans toit derrière (vu de haut, un bloc de pierre) ; l'inscription est de couleur unie, sans relief.
+- Les lucarnes sont régulières ; certaines de la réalité manquent ou sont décalées, surtout aux angles ; leurs tailles sont une hypothèse (aucune mesure fine).
+- Les façades des rues Bulliot et aux Raz, les cours nord et sud et l'aile de la rue aux Raz n'ont pas de photo : mêmes fenêtres que les autres murs.
+
+![Comme ta photo 1, avant](captures/d151-photo1-avant.jpg)
+![Après](captures/d151-photo1-apres.jpg)
+![Comme ta photo 2, avant](captures/d151-photo2-avant.jpg)
+![Après](captures/d151-photo2-apres.jpg)
+![L'avant-corps « LYCÉE », avant](captures/d151-pavillon-avant.jpg)
+![Après](captures/d151-pavillon-apres.jpg)
+![La cour d'honneur, avant](captures/d151-cour-avant.jpg)
+![Après](captures/d151-cour-apres.jpg)
+![La cour d'honneur la nuit, avant](captures/d151-nuit-avant.jpg)
+![Après](captures/d151-nuit-apres.jpg)
+![Du nord, avant](captures/d151-nord-avant.jpg)
+![Après : les chiens-assis et le pavillon d'angle](captures/d151-nord-apres.jpg)
+![Du sud, avant](captures/d151-sud-avant.jpg)
+![Après](captures/d151-sud-apres.jpg)
+![Vue du dessus, avant](captures/d151-haut-avant.jpg)
+![Après](captures/d151-haut-apres.jpg)
+![Vue d'ensemble, avant](captures/d151-ensemble-avant.jpg)
+![Après](captures/d151-ensemble-apres.jpg)
+
+## 2026-10-31 — D152. Le lycée Bonaparte d'après photos, étape 5 : sols des cours, zinc des annexes, nuit
+
+**Demande de l'utilisateur** : enchaîner sans photo de plus. Ce qui est traité ne demande aucune lecture nouvelle : les sols se lisent sur l'orthophotographie, les annexes ont déjà leur toit mesuré (D148).
+
+**Constat** : les cours (cour d'honneur, cour nord, cour sud) n'avaient aucune classe de sol : elles prenaient la couleur du relief. L'orthophotographie montre du gravier beige dans la cour d'honneur et la cour sud, de l'enrobé sombre dans la cour nord (où des voitures sont garées). Les annexes `…490`, `…491` et `…507` avaient la couleur de tuile ou d'ardoise de la fiche, alors que l'orthophotographie les montre en zinc gris.
+
+**Données** :
+- Nouvelle étape `tools/data/build_courts.py` (après `build_public_space.py`, qui réécrit les sols des tuiles ; avant `build_nav.py`) : l'enceinte (contour OpenStreetMap du lycée, way 80175797, dans `courts` de `manual.json`), moins les contours BD TOPO épaissis de 40 cm, moins la grille (80 cm), arrondie à 25 cm ; chaque cour est le morceau qui contient le point lu sur l'orthophotographie, rangé dans sa classe de sol (`plaza_gravel` : cour d'honneur 1 107 m² et cour sud 2 189 m² ; `plaza_asphalt` : cour nord 909 m²) dans `tiles/25_34.json`. Les polygones déjà posés sont retirés puis reposés : une deuxième passe ne change rien. `bytes` de la tuile est mis à jour dans `world.json`. Le client étend ce sol sur le relief comme celui des places.
+- `annexRoof` de l'entrée `…853321` de `monuments` : `build_monuments.py` écrit `zinc` (`#8d989e`) dans les `kinds` des annexes à toit mesuré ; `landmarkRoofColor` le lit. `…506` (toit à croupes, tuiles) ne l'a pas.
+- Chaîne `build_carts`, `build_stores`, `build_monuments`, `build_monuments_nav`, `build_courts` rejouée deux fois : `public/data` identique ; changent `kinds/25_34.json`, `tiles/25_34.json` et `world.json` (un nombre d'octets).
+
+**Rendu** : les trois cours ont leur revêtement ; les trois annexes ont un toit de zinc gris ; la nuit, toutes les baies de l'avant-corps « LYCÉE » sont allumées (une sur deux avant), comme si le fronton était éclairé. La vue d'ensemble passe de 438 094 à 436 351 triangles (le gain vient surtout des faces planes du soubassement de D151).
+
+**Jeu** : aucun obstacle ni passant de plus : `build_nav.py` complet n'est pas relancé, les places de la navigation ne contiennent donc pas les cours (elles sont fermées par la grille, les passants n'y vont pas).
+
+**Silhouettes lointaines** : déjà à jour (D148 pour le collège et l'aile de la rue aux Raz, D150 pour Notre-Dame) ; je n'y ai rien changé.
+
+**Tests** (+3, 805 au total) : chaque cour est un polygone de sa classe, à l'intérieur de l'enceinte (échantillon de points) ; aucune cour ne recouvre un bâtiment (échantillon à 1 m) ; les trois annexes ont du zinc, la petite annexe à croupes n'en a pas.
+
+**Limites** :
+- Les classes de sol sont lues à l'orthophotographie (gravier ou terre battue, enrobé), pas sur photo : les marquages, les carrés de terre des arbres, les pelouses, les bandes pavées du pourtour de la cour d'honneur ne sont pas dessinés. Le sol de la cour est un aplat.
+- Le parking sud (vers (−122 ; −165)), séparé de la cour sud par les annexes, n'est pas un espace libre de l'enceinte : il garde son sol d'avant.
+- Le **bassin** de la cour d'honneur n'est pas dessiné : le LiDAR ne voit rien (eau et sol au même niveau, hauteur nulle) et aucune photo ne le montre.
+- Le zinc (`#8d989e`) est une teinte lue à l'orthophotographie (gris bleuté pâle) ; le zinc de l'aile de la rue aux Raz (`#8e999e`) en est proche mais distinct.
+- Éclairage de nuit : celui des baies seulement ; ni lampadaires ni lanternes dans les cours (la photo 1 montre une lanterne murale vers l'angle de l'aile est, non dessinée).
+- Façades des rues Bulliot et aux Raz, cour sud (arbres, sol réel), fenêtres à linteau cintré : toujours sans photo.
+
+![Vue du dessus, avant](captures/d152-haut-avant.jpg)
+![Après : les cours](captures/d152-haut-apres.jpg)
+![La cour sud et les annexes, avant](captures/d152-sud-avant.jpg)
+![Après](captures/d152-sud-apres.jpg)
+![La cour d'honneur, avant](captures/d152-cour-avant.jpg)
+![Après](captures/d152-cour-apres.jpg)
+![Comme ta photo 2, avant](captures/d152-photo2-avant.jpg)
+![Après](captures/d152-photo2-apres.jpg)
+![L'avant-corps la nuit, avant](captures/d152-nuit-avant.jpg)
+![Après](captures/d152-nuit-apres.jpg)
+![Du nord, avant](captures/d152-nord-avant.jpg)
+![Après](captures/d152-nord-apres.jpg)
+![Vue d'ensemble, avant](captures/d152-ensemble-avant.jpg)
+![Après](captures/d152-ensemble-apres.jpg)

@@ -206,6 +206,82 @@ def shop_pois(index):
     return done
 
 
+def school_pois(index):
+    """Point d'intérêt « école » (type 12) devant le portail de la grille d'honneur du lycée (D149), à 3 m côté place, cap vers le portail, avec
+    la distance à la file piétonne la plus proche (comme les points « commerce »). Ajouté à la seule super-tuile du portail ; un point « école »
+    déjà à moins de 1 m est remplacé : une deuxième passe ne change rien. Rend le nombre de super-tuiles réécrites."""
+    from shapely.geometry import LineString, Point
+    done = 0
+    for p in sorted(KINDS.glob("*_*.json")):
+        for bid, e in json.loads(p.read_text())["buildings"].items():
+            g = e.get("college", {}).get("grille")
+            if not g:
+                continue
+            (ax, ay), (bx, by) = g["a"], g["b"]
+            L = math.hypot(bx - ax, by - ay)
+            ux, uy = (bx - ax) / L, (by - ay) / L
+            cx, cy = ax + ux * g["portal"][0], ay + uy * g["portal"][0]
+            x, y = round(cx - uy * 3.0, 1), round(cy + ux * 3.0, 1)
+            cid = cell_of(x, y, index)
+            path = NAV / f"{cid}.json"
+            text = path.read_text()
+            doc = json.loads(text)
+            G = Graph(doc["ped"])
+            lines = [LineString(q["pts"]) for q in G.edges if q["attr"][0] in (0, 5, 7, 9) and len(q["pts"]) >= 2]
+            dist = min(ln.distance(Point(x, y)) for ln in lines)
+            poi = [12, x, y, round(math.atan2(cx - x, cy - y), 2), min(255, round(dist * 10))]
+            P = doc["poi"]
+            keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 12 and math.hypot(P[i + 1] - x, P[i + 2] - y) < 1.0)]
+            doc["poi"] = [v for q in keep + [poi] for v in q]
+            new = json.dumps(doc, separators=(",", ":"))
+            if new != text:
+                path.write_text(new)
+                index["cells"] = [dict(q, bytes=len(new), poi=len(doc["poi"]) // 5) if q["id"] == cid else q for q in index["cells"]]
+                (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+                done += 1
+            print(f"Lycée {bid[-8:]} : point « école » en ({x}, {y}) dans {cid}, à {dist:.1f} m de la file")
+    return done
+
+
+def church_pois(index):
+    """Point d'intérêt « lieu de culte » (type 9) de Notre-Dame devant la porte de sa façade (D150) : celui d'OpenStreetMap tombait au milieu de la
+    nef. Il est posé à 3 m devant le milieu de la façade, cap vers la porte, avec la distance à la file piétonne la plus proche ; tout point de ce type
+    à moins de 1 m de l'emprise de l'église est retiré. Une deuxième passe ne change rien. Rend le nombre de super-tuiles réécrites."""
+    from shapely.geometry import LineString, Point, Polygon
+    done = 0
+    for p in sorted(KINDS.glob("*_*.json")):
+        kinds = json.loads(p.read_text())["buildings"]
+        for bid, e in kinds.items():
+            nd = e.get("nd")
+            if not nd:
+                continue
+            ring = next(b["ring"] for b in json.loads((c.OUT / "tiles" / f"{p.stem}.json").read_text())["buildings"] if b["id"] == bid)
+            poly = Polygon([(ring[i], ring[i + 1]) for i in range(0, len(ring), 2)])
+            ox, oy = nd["o"]
+            x, y = round(ox - math.cos(nd["a"]) * 3.0, 1), round(oy - math.sin(nd["a"]) * 3.0, 1)
+            for cid in {cell_of(x, y, index), cell_of(ox, oy, index)}:
+                path = NAV / f"{cid}.json"
+                text = path.read_text()
+                doc = json.loads(text)
+                P = doc["poi"]
+                keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 9 and poly.distance(Point(P[i + 1], P[i + 2])) < 1.0)]
+                if cid == cell_of(x, y, index):
+                    G = Graph(doc["ped"])
+                    lines = [LineString(q["pts"]) for q in G.edges if q["attr"][0] in (0, 5, 7, 9) and len(q["pts"]) >= 2]
+                    dist = min(ln.distance(Point(x, y)) for ln in lines)
+                    keep = [q for q in keep if not (q[0] == 9 and math.hypot(q[1] - x, q[2] - y) < 0.3)]
+                    keep.append([9, x, y, round(math.atan2(ox - x, oy - y), 2), min(255, round(dist * 10))])
+                doc["poi"] = [v for q in keep for v in q]
+                new = json.dumps(doc, separators=(",", ":"))
+                if new != text:
+                    path.write_text(new)
+                    index["cells"] = [dict(q, bytes=len(new), poi=len(doc["poi"]) // 5) if q["id"] == cid else q for q in index["cells"]]
+                    (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+                    done += 1
+            print(f"Notre-Dame {bid[-8:]} : point « lieu de culte » en ({x}, {y})")
+    return done
+
+
 def write(cid, doc, G, index, text_before):
     doc["ped"] = G.dump()
     text = json.dumps(doc, separators=(",", ":"))
@@ -220,6 +296,8 @@ def write(cid, doc, G, index, text_before):
 def main():
     index = json.loads((NAV / "index.json").read_text())
     shop_pois(index)
+    school_pois(index)
+    church_pois(index)
     s = janus_site()
     if s:
         cid = cell_of(*s["o"], index)

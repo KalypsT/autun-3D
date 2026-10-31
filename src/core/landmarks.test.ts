@@ -1046,3 +1046,283 @@ describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)"
     expect(l.some((r) => r.r.length === old.length && r.r.every((v, i) => v === old[i]))).toBe(false);
   });
 });
+
+describe("Lycée Bonaparte : volumes et toits mesurés (D148)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const MAIN = "BATIMENT0000000348853321", LONG = "BATIMENT0000000348853307", HOUSE = "BATIMENT0000000348853470";
+  const ANNEXES = ["BATIMENT0000000348853490", "BATIMENT0000000348853491", "BATIMENT0000000348853507"];
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const wings = (id: string) => kinds.buildings[id]!.college!.wings;
+
+  it("l'ensemble est lu en six ailes : quatre faîtages à 21 m, deux ailes plus basses à 18 m ; l'aile de la rue aux Raz a deux pans bas", () => {
+    const w = wings(MAIN);
+    expect(w).toHaveLength(7);
+    for (const x of w.slice(0, 4)) {
+      expect(x.r).toBeGreaterThan(20.5);
+      expect(x.r).toBeLessThan(21.5);
+    }
+    for (const x of w.slice(4, 6)) {
+      expect(x.r).toBeGreaterThan(17.5);
+      expect(x.r).toBeLessThan(18.5);
+    }
+    // Pavillon d'angle (D151) : pyramide à 21 m au croisement de l'aile nord-est et de l'aile est.
+    expect(w[6]!.r).toBeGreaterThan(20.5);
+    expect(w[6]!.r).toBeLessThan(21.6);
+    for (const x of w) {
+      expect(x.el).toBeLessThan(x.r - 2.5);
+      expect(x.er).toBeLessThan(x.r - 2.5);
+      expect(x.el).toBeGreaterThan(x.r - 6);
+    }
+    for (const x of wings(LONG)) {
+      expect(x.r).toBeGreaterThan(10.5);
+      expect(x.r).toBeLessThan(11.2);
+    }
+  });
+
+  it("chaque aile est sur le contour BD TOPO : son axe tombe à moins de 6 m d'un mur de chaque côté", () => {
+    const ring = bOf(MAIN).ring;
+    const near = (x: number, y: number): number => {
+      let d = Infinity;
+      for (let e = 0; e < ring.length / 2; e++) {
+        const f = edgeFrame(ring, e);
+        const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+        d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+      }
+      return d;
+    };
+    for (const x of wings(MAIN)) for (const t of [0.3, 0.5, 0.7]) expect(near(x.p[0] + (x.q[0] - x.p[0]) * t, x.p[1] + (x.q[1] - x.p[1]) * t)).toBeLessThan(6);
+  });
+
+  it("les annexes ont un plan de toit mesuré (pente de moins de 12 %, toit de 2,5 à 9 m au-dessus du sol BD TOPO) ; le bâtiment de la rue Saint-Saulge n'a plus l'enseigne", () => {
+    for (const id of ANNEXES) {
+      const r = kinds.buildings[id]!.roof!;
+      expect(Math.hypot(r[0], r[1])).toBeLessThan(0.12);
+      const ring = bOf(id).ring;
+      let cx = 0, cy = 0;
+      for (let i = 0; i < ring.length; i += 2) {
+        cx += ring[i]!;
+        cy += ring[i + 1]!;
+      }
+      cx /= ring.length / 2;
+      cy /= ring.length / 2;
+      const h = r[0] * cx + r[1] * cy + r[2] - bOf(id).ground;
+      expect(h).toBeGreaterThan(2.5);
+    expect(h).toBeLessThan(9);
+    }
+    expect(kinds.buildings[HOUSE]!.main).toBeUndefined();
+    expect(kinds.buildings[HOUSE]!.n).toBeUndefined();
+  });
+
+  it("aucune cache d'arme à moins de 3 m des bâtiments du lycée", () => {
+    for (const id of [MAIN, LONG, ...ANNEXES, HOUSE]) {
+      const ring = bOf(id).ring;
+      for (const q of CACHES) {
+        let d = Infinity;
+        for (let e = 0; e < ring.length / 2; e++) {
+          const f = edgeFrame(ring, e);
+          const s = (q.x - f.x) * f.tx + (q.y - f.y) * f.ty, o = (q.x - f.x) * f.nx + (q.y - f.y) * f.ny;
+          d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+        }
+        expect(d).toBeGreaterThan(3);
+      }
+    }
+  });
+
+  it("l'emprise reste un obstacle (le modèle ne change pas les colliders)", () => {
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    // Un joueur posé contre le mur est de ce côté : devant la face est de l'aile centrale, à 0,2 m du mur, il touche.
+    expect(c.resolve(-110.2, -120.6, 0.3).hit).toBe(true);
+  });
+});
+
+describe("Lycée Bonaparte : grille d'honneur et arbres taillés (D149)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const MAIN = "BATIMENT0000000348853321";
+  const g = kinds.buildings[MAIN]!.college!.grille!;
+  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const len = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+  const ux = (g.b[0] - g.a[0]) / len, uy = (g.b[1] - g.a[1]) / len;
+  const onLine = (s: number, off: number): [number, number] => [g.a[0] + ux * s - uy * off, g.a[1] + uy * s + ux * off];
+
+  it("la grille fait 32 m, le portail est au milieu, côté place ; les murs et la clôture du même tracé disparaissent", () => {
+    expect(len).toBeGreaterThan(31);
+    expect(len).toBeLessThan(33);
+    expect(Math.abs(g.portal[0] - len / 2)).toBeLessThan(2);
+    expect(g.portal[1]).toBeGreaterThan(3.5);
+    expect(g.portal[1]).toBeLessThan(5.5);
+    const kept = new Set(wallsOutsideMonuments(kinds, world.tile.walls).map((w) => w.id));
+    for (const id of g.walls) {
+      expect(world.tile.walls.some((w) => w.id === id)).toBe(true);
+      expect(kept.has(id)).toBe(false);
+    }
+  });
+
+  it("sept arbres taillés remplacent ceux de la carte à l'écran, mais leurs troncs restent des obstacles", () => {
+    expect(g.trees).toHaveLength(7);
+    const shown = treesOutsideMonuments(kinds, world.tile.trees);
+    for (const [x, y] of g.trees) {
+      expect(shown.some(([tx, ty]) => tx === x && ty === y)).toBe(false);
+      expect(landmarkCircles(kinds, world.tile.buildings).some(([cx, cy, r]) => cx === x && cy === y && r === 0.3)).toBe(true);
+    }
+  });
+
+  it("la grille arrête le joueur (de chaque côté, sur un côté comme au portail) et ne s'escalade pas", () => {
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    for (const s of [6, g.portal[0], len - 6]) {
+      for (const off of [0.15, -0.15]) {
+        const [x, y] = onLine(s, off);
+        const r = c.resolve(x, y, 0.3);
+        expect(r.hit).toBe(true);
+        // Pas d'escalade possible : le segment touché est haut et non franchissable.
+        expect(r.wall === undefined || r.wall < 0).toBe(true);
+      }
+    }
+  });
+
+  it("un point « école » est posé à 3 m devant le portail, côté place, hors des obstacles", () => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 12) pts.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    const [px, py] = onLine(g.portal[0], 3);
+    expect(pts.some(([x, y]) => Math.hypot(x - px, y - py) < 0.2)).toBe(true);
+    const c = new Colliders();
+    addTileColliders(c, world.tile, null, world.terrain);
+    expect(c.resolve(px, py, 0.3).hit).toBe(false);
+  });
+});
+
+describe("Notre-Dame : église d'après photo (D150)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const NAVE = "BATIMENT0000000348854392", CHEVET = "BATIMENT0000000348854391";
+  const nd = kinds.buildings[NAVE]!.nd!;
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const dist = (id: string, x: number, y: number): number => {
+    const ring = bOf(id).ring;
+    let d = Infinity;
+    for (let e = 0; e < ring.length / 2; e++) {
+      const f = edgeFrame(ring, e);
+      const s = (x - f.x) * f.tx + (y - f.y) * f.ty, o = (x - f.x) * f.nx + (y - f.y) * f.ny;
+      d = Math.min(d, Math.hypot(Math.min(Math.max(s, 0), f.len) - s, o));
+    }
+    return d;
+  };
+
+  it("nef et transept ont le même faîtage mesuré (25,5 m), des égouts de 19 à 22 m ; bas-côtés plus bas, clocheton à 34 m", () => {
+    const [nave, trans] = nd.wings;
+    expect(nave!.r).toBeGreaterThan(25);
+    expect(nave!.r).toBeLessThan(26);
+    expect(Math.abs(trans!.r - nave!.r)).toBeLessThan(0.5);
+    for (const w of nd.wings) for (const e of [w.el, w.er]) {
+      expect(e).toBeGreaterThan(19);
+      expect(e).toBeLessThan(22);
+    }
+    expect(nd.aisles.top).toBeGreaterThan(14);
+    expect(nd.aisles.top).toBeLessThan(17);
+    expect(nd.aisles.eave).toBeGreaterThan(12);
+    expect(nd.aisles.eave).toBeLessThan(14.5);
+    expect(nd.turret.top).toBeGreaterThan(33);
+    expect(nd.turret.top).toBeLessThan(35);
+  });
+
+  it("le chevet (autre bâtiment BD TOPO) est une partie du modèle ; les deux restent des obstacles", () => {
+    expect(kinds.buildings[CHEVET]!.ndPart).toBe(1);
+    expect(isOpen(kinds, NAVE)).toBe(false);
+    expect(isOpen(kinds, CHEVET)).toBe(false);
+  });
+
+  it("le point « lieu de culte » est devant la porte de la façade, plus au milieu de la nef ; aucune cache d'arme à moins de 3 m", () => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 9) pts.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
+    const near = pts.filter(([x, y]) => dist(NAVE, x, y) < 8);
+    expect(near).toHaveLength(1);
+    expect(dist(NAVE, near[0]![0], near[0]![1])).toBeGreaterThan(1.5);
+    expect(dist(NAVE, near[0]![0], near[0]![1])).toBeLessThan(4);
+    const [x, y] = near[0]!;
+    // Devant la façade (côté place) : plus loin de l'axe du chevet que du milieu de la façade.
+    expect(Math.hypot(x - nd.o[0], y - nd.o[1])).toBeLessThan(3.5);
+    for (const q of CACHES) for (const id of [NAVE, CHEVET]) expect(dist(id, q.x, q.y)).toBeGreaterThan(3);
+  });
+});
+
+describe("Lycée Bonaparte : lucarnes, avant-corps, inscription (D151)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const spec = kinds.buildings["BATIMENT0000000348853321"]!.college!;
+
+  it("les lucarnes sont lues sur les pans visibles à l'orthophotographie : frontons côté cours d'honneur et cour sud, chiens-assis côté cour nord", () => {
+    const [, w2, w3, w4, w5] = spec.wings;
+    expect(w2!.dr).toEqual(["ped", 3.2]);
+    expect(w2!.dl).toEqual(["rect", 3.2]);
+    expect(w3!.dl).toEqual(["ped", 6.4]);
+    expect(w3!.dr).toBeUndefined();
+    expect(w4!.dr).toEqual(["ped", 3.2]);
+    expect(w5!.dr).toEqual(["ped", 3.5]);
+  });
+
+  it("l'avant-corps est au milieu de la face est de l'aile centrale, côté cour d'honneur, dans l'axe de la grille à quelques mètres près", () => {
+    const [pv] = spec.pavilions!;
+    expect(pv!.w).toBe(2);
+    expect(pv!.left).toBe(true);
+    const w = spec.wings[2]!;
+    const L = Math.hypot(w.q[0] - w.p[0], w.q[1] - w.p[1]);
+    expect(Math.abs(pv!.u - L / 2)).toBeLessThan(4);
+    // Le centre de l'avant-corps, côté cour : à moins de 12 m de la perpendiculaire à la grille qui passe par son portail.
+    const g = spec.grille!;
+    const ux = w.q[0] - w.p[0], uy = w.q[1] - w.p[1];
+    const cx = w.p[0] + (ux / L) * pv!.u + (-uy / L) * w.wl, cy = w.p[1] + (uy / L) * pv!.u + (ux / L) * w.wl;
+    const gl = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+    const along = ((cx - g.a[0]) * (g.b[0] - g.a[0]) + (cy - g.a[1]) * (g.b[1] - g.a[1])) / gl;
+    expect(Math.abs(along - g.portal[0])).toBeLessThan(12);
+  });
+});
+
+describe("Lycée Bonaparte : sols des cours et zinc des annexes (D152)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const t = JSON.parse(readFileSync("public/data/tiles/25_34.json", "utf8")) as { ground: Record<string, number[][][]> };
+  const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { courts: { site: [number, number][]; courts: { at: [number, number]; class: string }[] } };
+  const inRing = (r: readonly number[], x: number, y: number): boolean => {
+    let inside = false;
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      if ((r[i + 1]! > y) !== (r[j + 1]! > y) && x < ((r[j]! - r[i]!) * (y - r[i + 1]!)) / (r[j + 1]! - r[i + 1]!) + r[i]!) inside = !inside;
+    }
+    return inside;
+  };
+  const inPoly = (p: number[][], x: number, y: number): boolean => inRing(p[0]!, x, y) && !p.slice(1).some((h) => inRing(h, x, y));
+  const site = manual.courts.site.flat();
+  /** Les cours posées par build_courts.py : les polygones des classes demandées qui contiennent le point de chaque cour. */
+  const courtOf = (at: [number, number], cls: string): number[][] =>
+    t.ground[cls]!.find((p) => inPoly(p, at[0], at[1]))!;
+
+  it("chaque cour est un polygone de sa classe de sol, à l'intérieur de l'enceinte", () => {
+    expect(manual.courts.courts).toHaveLength(3);
+    for (const c of manual.courts.courts) {
+      const p = courtOf(c.at, c.class);
+      expect(p).toBeDefined();
+      // Échantillon de points de la cour : tous à l'intérieur de l'enceinte (à 1 m près, par recoupement avec l'emprise).
+      let n = 0;
+      for (let x = -175; x < -65; x += 2) for (let y = -190; y < -60; y += 2) if (inPoly(p, x, y)) { n++; expect(inRing(site, x, y)).toBe(true); }
+      expect(n).toBeGreaterThan(200);
+    }
+  });
+
+  it("aucune cour ne recouvre un bâtiment (échantillon à 1 m)", () => {
+    for (const c of manual.courts.courts) {
+      const p = courtOf(c.at, c.class);
+      for (let x = -175; x < -65; x += 1) for (let y = -190; y < -60; y += 1) {
+        if (!inPoly(p, x, y)) continue;
+        for (const b of world.tile.buildings) if (b.ring[0]! > -190 && b.ring[0]! < -50 && inRing(b.ring, x, y)) throw new Error(`cour sur le bâtiment ${b.id} en (${x}, ${y})`);
+      }
+    }
+  });
+
+  it("les annexes à toit mesuré ont une couverture de zinc ; la petite annexe à croupes garde la sienne", () => {
+    for (const id of ["BATIMENT0000000348853490", "BATIMENT0000000348853491", "BATIMENT0000000348853507"]) expect(kinds.buildings[id]!.zinc).toMatch(/^#[0-9a-f]{6}$/);
+    expect(kinds.buildings["BATIMENT0000000348853506"]!.zinc).toBeUndefined();
+  });
+});

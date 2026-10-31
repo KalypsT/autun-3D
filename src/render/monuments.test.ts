@@ -6,7 +6,7 @@ import type { LodBuilding, Site, Tree } from "../data/types";
 import { landmarkCircles, treesOutsideMonuments } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
-import { buildCathedral, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildNotreDame, buildFarTower, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -193,5 +193,88 @@ describe("monuments (D95) : géométrie", () => {
     const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
     expect(parts).toHaveLength(5);
     expect(Math.max(...parts.map((e) => e.g))).toBeGreaterThan(Math.max(...parts.map((e) => e.e)) + 8);
+  });
+});
+
+describe("Lycée Bonaparte : modèle `college` (D148)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const tris = (mb: MeshBuilder): number => mb.positions.length / 9;
+  const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
+
+  it("géométrie finie, toit au faîtage mesuré, coût en triangles borné", () => {
+    let total = 0;
+    for (const [id, ridge] of [["BATIMENT0000000348853321", 21.06], ["BATIMENT0000000348853307", 10.91]] as const) {
+      const mb = new MeshBuilder(), glow = new MeshBuilder();
+      buildCollege(mb, glow, kinds.buildings[id]!.college!, bOf(id).ring, world.terrain);
+      expect(mb.positions.every(Number.isFinite)).toBe(true);
+      // Dans le repère de rendu, z monte sur l'axe y : le point le plus haut est le faîtage.
+      let top = -Infinity;
+      for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+      expect(top).toBeGreaterThan(ridge - 0.2);
+      expect(top).toBeLessThan(ridge + 0.2);
+      expect(tris(glow)).toBeGreaterThan(0);
+      total += tris(mb);
+    }
+    // Moins de 9 000 triangles pour tout le collège (murs, fenêtres, corniches, huit toits, grille d'honneur et arbres : environ 2 540 + la grille).
+    expect(total).toBeLessThan(9000);
+  });
+
+  it("la grille d'honneur (D149) coûte moins de 5 000 triangles, a des fers dorés et suit le terrain", () => {
+    const id = "BATIMENT0000000348853321";
+    const spec = kinds.buildings[id]!.college!;
+    const full = new MeshBuilder(), bare = new MeshBuilder();
+    buildCollege(full, new MeshBuilder(), spec, bOf(id).ring, world.terrain);
+    buildCollege(bare, new MeshBuilder(), { wings: spec.wings }, bOf(id).ring, world.terrain);
+    expect(full.positions.every(Number.isFinite)).toBe(true);
+    const cost = tris(full) - tris(bare);
+    expect(cost).toBeGreaterThan(500);
+    expect(cost).toBeLessThan(5000);
+  });
+});
+
+describe("Notre-Dame : modèle `nd` (D150)", () => {
+  const world = loadRealWorld();
+  const nd = world.tile.kinds!.buildings["BATIMENT0000000348854392"]!.nd!;
+
+  it("géométrie finie, le sommet est celui du clocheton, coût borné, vitrages allumés la nuit", () => {
+    const mb = new MeshBuilder(), glow = new MeshBuilder();
+    buildNotreDame(mb, glow, nd, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    let top = -Infinity;
+    for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+    expect(top).toBeGreaterThan(nd.turret.top - 0.1);
+    expect(top).toBeLessThan(nd.turret.top + 0.5);
+    expect(mb.positions.length / 9).toBeLessThan(5000);
+    expect(glow.positions.length / 9).toBeGreaterThan(0);
+  });
+});
+
+describe("Lycée Bonaparte : détails du collège (D151)", () => {
+  const world = loadRealWorld();
+  const kinds = world.tile.kinds!;
+  const id = "BATIMENT0000000348853321";
+  const spec = kinds.buildings[id]!.college!;
+  const ring = world.tile.buildings.find((b) => b.id === id)!.ring;
+  const count = (s: typeof spec): number => {
+    const mb = new MeshBuilder();
+    buildCollege(mb, new MeshBuilder(), s, ring, world.terrain);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    return mb.positions.length / 9;
+  };
+
+  it("lucarnes et avant-corps ajoutent des triangles (moins de 4 000 pour les deux), sans trou : sommets finis", () => {
+    const bare = count({ ...spec, wings: spec.wings.map((w) => ({ p: w.p, q: w.q, wl: w.wl, wr: w.wr, el: w.el, er: w.er, r: w.r, a: w.a, b: w.b })), pavilions: [] });
+    const full = count(spec);
+    expect(full - bare).toBeGreaterThan(300);
+    expect(full - bare).toBeLessThan(4000);
+  });
+
+  it("les lucarnes ne montent pas au-dessus du faîtage de leur aile (plus de 60 cm)", () => {
+    const mb = new MeshBuilder();
+    buildCollege(mb, new MeshBuilder(), { wings: spec.wings, pavilions: [] }, ring, world.terrain);
+    let top = -Infinity;
+    for (let i = 1; i < mb.positions.length; i += 3) top = Math.max(top, mb.positions[i]!);
+    expect(top).toBeLessThan(Math.max(...spec.wings.map((w) => w.r)) + 0.6);
   });
 });

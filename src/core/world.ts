@@ -16,6 +16,8 @@ const HEDGE_CLIMB = 1.5;
 const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge"]);
 /** Grilles du porche de la cathédrale (D132) : hautes et à pointes, on ne les escalade pas. */
 const GRILLE: Top = { height: 1.2, climb: false };
+/** Grille d'honneur du lycée (D149) : trois mètres de fer, ni franchie ni escaladée ; on voit et on tire à travers. */
+const GRILLE_HONNEUR: Top = { height: 3.4, climb: false };
 /** Parapet d'un pont : on l'enjambe (et l'on tombe dans la rivière). */
 const PARAPET: Top = { height: 1.1, climb: true };
 
@@ -52,6 +54,10 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
   // Chacun garde sa hauteur : on saute par-dessus les plus bas, on escalade les grilles (voir `player.ts`).
   for (const w of wallsOutsideMonuments(tile.kinds, tile.walls)) c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID, wallTop(w.kind, w.height));
+  for (const k of Object.values(tile.kinds?.buildings ?? {})) {
+    const g = k.college?.grille;
+    if (g) c.addPolyline([...g.a, ...g.b], true, GRILLE_HONNEUR);
+  }
   for (const f of furnitureOutsideMonuments(tile.kinds, tile.furniture)) {
     const r = FURNITURE_RADIUS[f.kind];
     if (r !== undefined) c.addCircle(f.x, f.y, r);

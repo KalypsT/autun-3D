@@ -1033,6 +1033,169 @@ def house(tid, bid, b, spec, k):
     return True, lod
 
 
+def measure_college(bid, b, spec):
+    """Ailes d'un collège (D148) : pour chaque aile lue dans `manual.json` (bouts du faîtage, demi-largeur, bouts), le faîtage est la médiane de
+    la crête (maximum à ±0,75 m de l'axe) sur le milieu de l'aile (20 à 80 %) et chaque égout est la droite ajustée sur la pente du toit
+    (de 1 m de l'axe à 0,7 m du mur, médiane le long de l'aile : les lucarnes sont écartées) prolongée jusqu'au mur."""
+    pts = [q for w in spec["wings"] for q in (w["p"], w["q"])]
+    mns = Raster("MNS", bid[-8:] + "c", min(p[0] for p in pts) - 10, min(p[1] for p in pts) - 10, max(p[0] for p in pts) + 10, max(p[1] for p in pts) + 10)
+    wings = []
+    for w in spec["wings"]:
+        (px, py), (qx, qy) = w["p"], w["q"]
+        L = math.hypot(qx - px, qy - py)
+        ux, uy = (qx - px) / L, (qy - py) / L
+        nx, ny = -uy, ux
+        hw = w["hw"]
+        # Demi-largeurs de chaque côté (D151) : distance de l'axe aux murs du contour BD TOPO parallèles à l'aile, médiane (l'axe du faîtage n'est pas
+        # au milieu du bâtiment : 0,5 m d'écart sur l'aile centrale) ; à défaut de mur à moins de 1,2 m de `hw`, la demi-largeur lue.
+        ring = b["ring"]
+        side = {1: [], -1: []}
+        n_ring = len(ring) // 2
+        for e in range(n_ring):
+            ax_, ay_ = ring[2 * e], ring[2 * e + 1]
+            bx_, by_ = ring[2 * ((e + 1) % n_ring)], ring[2 * ((e + 1) % n_ring) + 1]
+            le = math.hypot(bx_ - ax_, by_ - ay_)
+            if le < 6 or abs((bx_ - ax_) * uy - (by_ - ay_) * ux) / le > 0.18:
+                continue
+            for fr in (0.25, 0.5, 0.75):
+                x_, y_ = ax_ + (bx_ - ax_) * fr, ay_ + (by_ - ay_) * fr
+                u_ = (x_ - px) * ux + (y_ - py) * uy
+                v_ = -(x_ - px) * uy + (y_ - py) * ux
+                if 2 < u_ < L - 2 and abs(abs(v_) - hw) < 1.2:
+                    side[1 if v_ > 0 else -1].append(abs(v_))
+        wl = round(float(np.median(side[1])), 2) if len(side[1]) >= 2 else hw
+        wr = round(float(np.median(side[-1])), 2) if len(side[-1]) >= 2 else hw
+        lo, hi = w.get("win", [0.2, 0.8])
+        ss = [lo * L + 0.5 * i for i in range(int((hi - lo) * L / 0.5))]
+        at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
+        ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
+        eaves = []
+        for sign in (1, -1):
+            wside = wl if sign == 1 else wr
+            os_ = [1.0 + 0.25 * i for i in range(int((wside - 0.7 - 1.0) / 0.25) + 1)]
+            zs = [float(np.median([at(s_, sign * o) for s_ in ss])) for o in os_]
+            k, c0 = np.polyfit(os_, zs, 1)
+            eaves.append(float(k * wside + c0))
+        if "eave" in w:  # aile trop courte pour ajuster une pente : égout imposé (repris d'une aile voisine)
+            eaves = [w["eave"], w["eave"]]
+        wing = {"p": w["p"], "q": w["q"], "wl": wl, "wr": wr, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]}
+        for key in ("dl", "dr"):
+            if key in w:
+                kind, pitch = w[key].split(":")
+                wing[key] = [kind, float(pitch)]
+        wings.append(wing)
+        print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, demi-largeurs {wl} et {wr}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
+    out = {"wings": wings}
+    if "pavilions" in spec:
+        out["pavilions"] = spec["pavilions"]
+    if "roof" in spec:
+        out["roof"] = spec["roof"]
+    if "grille" in spec:
+        out["grille"] = measure_grille(bid, spec["grille"])
+    return out
+
+
+def measure_grille(bid, g):
+    """Grille d'honneur (D149) : le tracé et le portail sont lus dans `manual.json` (clôture OpenStreetMap, photos), les murs remplacés et les
+    arbres taillés sont vérifiés dans les tuiles (identifiants et tuples recopiés tels quels)."""
+    walls, trees = set(), []
+    for p in sorted((c.OUT / "tiles").glob("*_*.json")):
+        t = json.loads(p.read_text())
+        walls |= {w["id"] for w in t["walls"]}
+        for q in t["trees"]:
+            if any(math.hypot(q[0] - x, q[1] - y) < 0.05 for x, y in g["trees"]):
+                trees.append(q)
+    missing = [w for w in g["walls"] if w not in walls]
+    if missing or len(trees) != len(g["trees"]):
+        raise SystemExit(f"{bid} : grille : murs absents {missing}, arbres trouvés {len(trees)} sur {len(g['trees'])}")
+    return {"a": g["a"], "b": g["b"], "walls": g["walls"], "trees": trees, "portal": g["portal"]}
+
+
+def college(tid, bid, b, spec, k):
+    """Écrit le modèle `college` (kinds/<tuile>.json), le plan de toit mesuré des annexes (`roof`) et la silhouette lointaine. Rend (types
+    changés, tuile des silhouettes si elle change)."""
+    from build_stores import fit_roof
+
+    m = measure_college(bid, b, spec)
+    e = dict(k["buildings"].get(bid, {"k": "school"}))
+    e["college"] = m
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    polys = []
+    for w in m["wings"]:
+        (px, py), (qx, qy) = w["p"], w["q"]
+        L = math.hypot(qx - px, qy - py)
+        ux, uy = (qx - px) / L, (qy - py) / L
+        pt = lambda s_, v: [round(px + ux * s_ - uy * v, 1), round(py + uy * s_ + ux * v, 1)]
+        polys.append(([pt(0, w["wl"]), pt(L, w["wl"]), pt(L, -w["wr"]), pt(0, -w["wr"])], (w["el"] + w["er"]) / 2, w["r"]))
+    lod = tid if replace_lod(tid, bid, polys) else None
+    for aid in spec.get("annexes", []):
+        ab = next((q for q in json.loads((c.OUT / "tiles" / f"{tid}.json").read_text())["buildings"] if q["id"] == aid), None)
+        if ab is None or aid not in k["buildings"]:
+            print(f"  annexe {aid} absente de {tid}")
+            continue
+        ring = ab["ring"]
+        xs, ys = ring[0::2], ring[1::2]
+        am = Raster("MNS", aid[-8:], min(xs) - 3, min(ys) - 3, max(xs) + 3, max(ys) + 3)
+        plane, rms, n = fit_roof(ring, am)
+        print(f"  annexe {aid[-8:]} : plan de toit {plane} (écart {rms * 100:.0f} cm sur {n} cellules)")
+        ae = dict(k["buildings"][aid])
+        ae["roof"] = plane
+        if "annexRoof" in spec:
+            ae["zinc"] = spec["annexRoof"]
+        if k["buildings"][aid] != ae:
+            k["buildings"][aid] = ae
+            changed = True
+    return changed, lod
+
+
+def notredame(tid, bid, b, spec, k):
+    """Écrit le modèle `nd` de Notre-Dame (D150) : nef et transept mesurés comme les ailes d'un collège (`measure_college`), bas-côtés (pente de
+    leur toit, du haut contre la nef à l'égout, ajustée sur le relevé et extrapolée aux deux bouts), sommet du clocheton ; le chevet (`part`,
+    autre bâtiment BD TOPO) devient une partie du modèle. Rend (types changés, tuile des silhouettes si elle change)."""
+    m = measure_college(bid, b, spec)
+    a = spec["a"]
+    ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+    o = spec["o"]
+    mns = Raster("MNS", bid[-8:] + "n", o[0] - 70, o[1] - 50, o[0] + 20, o[1] + 20)
+    at = lambda s_, t: mns(o[0] + ux * s_ + vx * t, o[1] + uy * s_ + vy * t)
+    tops, eaves = [], []
+    for tin, tout in ((spec["t0"] - spec["hw"], spec["aisles"]["tNW"]), (spec["t0"] + spec["hw"], spec["aisles"]["tSE"])):
+        sg = 1 if tout > tin else -1
+        width = abs(tout - tin)
+        ds = [1.5 + 0.25 * i for i in range(int((width - 2.4) / 0.25) + 1)]
+        zs = [float(np.median([at(s_, tin + sg * d) for s_ in np.arange(3, spec["aisles"]["s1"] - 3, 0.5)])) for d in ds]
+        kk, c0 = np.polyfit(ds, zs, 1)
+        tops.append(float(c0))
+        eaves.append(float(kk * width + c0))
+    tu = spec["turret"]
+    top = max(mns(tu["x"] + dx * 0.5, tu["y"] + dy * 0.5) for dx in range(-5, 6) for dy in range(-5, 6))
+    nd = {"o": o, "a": a, "wings": m["wings"], "t0": spec["t0"], "hw": spec["hw"], "transept": spec["transept"],
+          "aisles": {"s1": spec["aisles"]["s1"], "tNW": spec["aisles"]["tNW"], "tSE": spec["aisles"]["tSE"], "top": round(sum(tops) / 2, 2), "eave": round(sum(eaves) / 2, 2)},
+          "front": spec["front"], "turret": {"x": tu["x"], "y": tu["y"], "r": tu["r"], "lantern": tu["lantern"], "top": round(float(top), 2)}}
+    print(f"  bas-côtés : haut {tops[0]:.2f} / {tops[1]:.2f}, égout {eaves[0]:.2f} / {eaves[1]:.2f} ; clocheton jusqu'à {top:.2f}")
+    e = dict(k["buildings"].get(bid, {"k": "church"}))
+    e["nd"] = nd
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    for pid in spec.get("part", []):
+        pe = {"k": "church", "ndPart": 1}
+        if k["buildings"].get(pid) != pe:
+            k["buildings"][pid] = pe
+            changed = True
+    A = nd["aisles"]
+    pt = lambda s_, t: [round(o[0] + ux * s_ + vx * t, 1), round(o[1] + uy * s_ + vy * t, 1)]
+    nv, tr = nd["wings"]
+    ne = (nv["el"] + nv["er"]) / 2
+    sL = math.hypot(nv["q"][0] - o[0], nv["q"][1] - o[1])
+    t0, hw = spec["t0"], spec["hw"]
+    polys = [([pt(0, t0 - hw), pt(sL, t0 - hw), pt(sL, t0 + hw), pt(0, t0 + hw)], ne, nv["r"]),
+             ([pt(spec["transept"][0], -12.2), pt(spec["transept"][1], -12.2), pt(spec["transept"][1], 11.0), pt(spec["transept"][0], 11.0)], (tr["el"] + tr["er"]) / 2, tr["r"]),
+             ([pt(0, A["tNW"]), pt(A["s1"], A["tNW"]), pt(A["s1"], A["tSE"]), pt(0, A["tSE"])], A["eave"], A["top"])]
+    lod = tid if replace_lod(tid, bid, polys) else None
+    return changed, lod
+
+
 def simplify(pts, tol):
     """Douglas-Peucker sur une polyligne (d, z)."""
     if len(pts) < 3:
@@ -1265,6 +1428,20 @@ def main():
             continue
         if spec["model"] == "house":
             ch, lod = house(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "college":
+            ch, lod = college(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "notredame":
+            ch, lod = notredame(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

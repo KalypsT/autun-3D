@@ -1162,3 +1162,59 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Reste, faute de photos : unités des galeries à ± 5 m, murs de bout, détails d'Aubade, navigation des passants (`build_nav.py` complet non relancé).
 
 ![Les jambes de force](docs/captures/d147-jambes-photo3-apres.jpg)
+
+**Le lycée Bonaparte, étape 1 : volumes et toits mesurés (31 octobre 2026)** (D148)
+- Le lycée n'était qu'un seul toit à 21,3 m sur 36 sommets : le LiDAR y lit six ailes, quatre à 21 m et deux plus basses (18 m) ; le sol va de −3 à +1,7 m d'une cour à l'autre.
+- Nouveau modèle `college` (murs sur le contour, fenêtres à leur niveau, un toit à deux pans par aile) pour l'ensemble et l'aile de la rue aux Raz, plans de toit mesurés pour trois annexes, silhouette lointaine par aile.
+- 2 536 triangles ; la vue d'ensemble en perd 8 000. Aucun obstacle ni passant de plus ; aucune cache d'arme dans l'enceinte. 789 tests.
+- Le bâtiment du 2c rue Saint-Saulge perd l'enseigne « LYCÉE BONAPARTE » (non confirmé). `?view=bonaparte` (l'ancien `?view=lycee` regardait ailleurs).
+- Limites : fenêtres génériques, ni lucarnes, ni cheminées, ni inscription ; église, grille et cour d'honneur encore génériques (D149, D150) ; façades d'après photo : D151.
+- À essayer : `?view=bonaparte&h=14`, `?cam=-62,-96,2,-105,-121,7&h=14` (devant la grille), puis `&h=23`.
+
+![Comme ta photo 1, avant](docs/captures/d148-photo1-avant.jpg)
+![Après](docs/captures/d148-photo1-apres.jpg)
+![Vue du dessus, après](docs/captures/d148-haut-apres.jpg)
+
+**Le lycée Bonaparte, étape 2 : la grille d'honneur (31 octobre 2026)** (D149)
+- La grille de la place du Champ de Mars n'est plus un mur de pierre (qu'on pouvait escalader) : soubassement bas, barreaux de fer noir à fers de lance dorés, bandeau à rosaces, six piles, portail fermé à deux vantaux sous des volutes et un écusson doré bleu, blanc, rouge, urnes dorées.
+- Derrière, sept arbres taillés en rideau (tronc nu, couronne cubique) remplacent les arbres génériques ; leurs troncs restent des obstacles.
+- La grille est fermée et non escaladable (on voit et on tire à travers) ; un point « école » est posé pour les passants à 3 m devant le portail.
+- 1 830 triangles ; 794 tests ; aucune cache d'arme à moins de 3 m.
+- Limites : piles intermédiaires, volutes et largeur du portail lues sur une seule photo ; écusson en aplat ; pas de drapeaux ni de bassin (le LiDAR ne le voit pas) ; façades et église dans les lots suivants.
+- À essayer : `?cam=-62,-100,1.7,-80,-104,3.2&h=14` (devant le portail), `?cam=-100,-110,1.7,-79,-104,3&h=14` (depuis la cour), puis `&h=23`.
+
+![Comme ta photo 2, avant](docs/captures/d149-photo2-avant.jpg)
+![Après](docs/captures/d149-photo2-apres.jpg)
+
+**Le lycée Bonaparte, étape 3 : l'église Notre-Dame (31 octobre 2026)** (D150)
+- L'église n'est plus le gabarit d'église (oculi violets, toit unique) : nef et transept de même faîtage (25,5 m, mesuré) en croix, bas-côtés en appentis côté façade, clocheton à dôme sur le faîtage (34 m au LiDAR).
+- Façade d'après ta photo 1 : quatre pilastres, trois portes en plein cintre, étage de la nef à fronton, cadran, croix ; flancs à hautes baies en plein cintre.
+- Son chevet (autre bâtiment BD TOPO, typé « école » à tort) est dessiné avec elle. Le point « lieu de culte » des passants passe du milieu de la nef à 3 m devant la porte.
+- 932 triangles ; 798 tests ; aucun obstacle de plus, aucune cache d'arme à moins de 3 m.
+- Limites : façade lue sur une photo de biais (volutes en simples rampes), flancs et chevet sans photo, clocheton simplifié ; pas d'enseigne.
+- À essayer : `?cam=-52,-112,1.8,-66,-127,9&h=14` (devant la façade), `?view=bonaparte&h=14`, puis `&h=23`.
+
+![Comme ta photo 1, avant](docs/captures/d150-photo1-avant.jpg)
+![Après](docs/captures/d150-photo1-apres.jpg)
+![La façade](docs/captures/d150-facade-apres.jpg)
+
+**Le lycée Bonaparte, étape 4 : façades, lucarnes et avant-corps « LYCÉE » (31 octobre 2026)** (D151)
+- Les murs ont leur soubassement et leur bandeau ; des lucarnes à fronton triangulaire (côté cours d'honneur et sud, côté place) et des chiens-assis (côté cour nord) tous les 3,2 m, lues au LiDAR et à l'orthophotographie.
+- Au milieu de la face est de l'aile centrale : avant-corps à porte et baies en plein cintre, inscription « LYCÉE », fronton cintré à œil-de-bœuf, drapeaux tricolore et européen, dans l'axe de la grille.
+- Les largeurs des ailes sont recalées sur les murs du contour (l'axe du faîtage n'est pas au milieu : jusqu'à 0,9 m d'écart) ; un pavillon d'angle à 21 m est ajouté à l'angle nord-est.
+- 5 124 triangles pour tout le lycée (grille comprise) ; 802 tests ; aucun obstacle ni passant de plus.
+- Limites : pas de cheminées (le LiDAR ne les distingue pas des bosses du toit) ; fenêtres toutes pareilles ; façades des rues Bulliot et aux Raz sans photo.
+- À essayer : `?cam=-104.6,-114.4,2,-112.6,-118.6,7&h=14` (devant l'avant-corps), `?cam=-112,-52,38,-112,-95,12&h=14` (vue du nord), puis `&h=23`.
+
+![L'avant-corps](docs/captures/d151-pavillon-apres.jpg)
+![Du nord](docs/captures/d151-nord-apres.jpg)
+
+**Le lycée Bonaparte, étape 5 : sols des cours, zinc des annexes (31 octobre 2026)** (D152)
+- Les cours ont leur sol : gravier beige dans la cour d'honneur et la cour sud, enrobé sombre dans la cour nord (lus à l'orthophotographie) ; nouvelle étape `build_courts.py`.
+- Les annexes `…490`, `…491` et `…507` ont un toit de zinc gris ; la nuit, toutes les baies de l'avant-corps « LYCÉE » sont allumées.
+- 805 tests ; aucun obstacle ni passant de plus ; la vue d'ensemble perd 1 700 triangles.
+- Limites : sols en aplat (ni marquages, ni bandes pavées, ni pelouses) ; le bassin de la cour d'honneur n'est pas dessiné (invisible au LiDAR, aucune photo) ; pas de lampadaires ni de lanterne ; façades des rues Bulliot et aux Raz sans photo.
+- À essayer : `?cam=-125,-175,22,-140,-135,3&h=14` (cour sud et annexes), `?cam=-115,-125,150,-115,-124,0&h=14` (de dessus).
+
+![Les cours vues du dessus](docs/captures/d152-haut-apres.jpg)
+![La cour sud](docs/captures/d152-sud-apres.jpg)

@@ -3,7 +3,7 @@ import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
-import { buildCathedral, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
+import { buildCathedral, buildCollege, buildNotreDame, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
@@ -54,6 +54,7 @@ export function landmarkWallColor(kind: BuildingKind | undefined, id: string): T
 
 /** Couleur des toits des gabarits « boîte » (null : celle de la fiche). */
 export function landmarkRoofColor(kind: BuildingKind | undefined): THREE.Color | null {
+  if (kind?.zinc) return C(kind.zinc);
   switch (kind?.k) {
     case "retail": return kind.store ? C(kind.store.roofc ?? STORE_ROOF[kind.store.style]) : C("#b8b2a6");
     case "industrial": case "sports": return C("#8fa3a8");
@@ -71,7 +72,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.house);
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house);
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -644,6 +645,12 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
     buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
     return;
   }
+  // Notre-Dame d'après photo (D150) : modèle dédié ; son chevet (autre bâtiment BD TOPO) est dessiné avec elle.
+  if (kind.ndPart) return;
+  if (kind.nd) {
+    buildNotreDame(sinks.solid, sinks.glow, kind.nd, terrain);
+    return;
+  }
   // Église Saint-André d'après photo (D138) : modèle dédié.
   if (kind.chap) {
     buildChapel(sinks.solid, sinks.glow, kind.chap, terrain);
@@ -953,6 +960,7 @@ export function buildLandmarks(
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.
         if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
+        else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain);
         else civic(sinks, kind, fiche, segs, terrain);
         break;
     }

@@ -291,6 +291,76 @@ export interface TownHallSpec {
   chim?: [number, number, number, number][];
 }
 
+/**
+ * Aile d'un collège (D148) : toit à deux pans sur l'axe p → q (bouts du faîtage), demi-largeurs `wl` (à gauche de l'axe) et `wr`, égouts `el` et
+ * `er` de chaque côté et faîtage `r` (altitudes). Chaque bout est `hip` (croupe), `gable` (pignon plein) ou `ext` (pignon prolongé dans l'aile voisine).
+ */
+export interface CollegeWing {
+  p: [number, number];
+  q: [number, number];
+  wl: number;
+  wr: number;
+  el: number;
+  er: number;
+  r: number;
+  a: "hip" | "gable" | "ext";
+  b: "hip" | "gable" | "ext";
+  /** Lucarnes (D151) sur le pan gauche (`dl`) et le pan droit (`dr`) : [« ped » (fronton triangulaire) ou « rect » (chien-assis), pas en m]. */
+  dl?: ["ped" | "rect", number];
+  dr?: ["ped" | "rect", number];
+}
+
+/** Avant-corps central d'une façade (D151) : sur le pan `left` ou droit de l'aile `w`, à `u` mètres de son début, demi-largeur `hw`. */
+export interface CollegePavilion {
+  w: number;
+  left: boolean;
+  u: number;
+  hw: number;
+}
+
+/**
+ * Grille d'honneur d'un collège (D149) : de `a` à `b` (clôture OpenStreetMap), soubassement de pierre, ferronnerie dorée, portail central de largeur
+ * `portal[1]` à `portal[0]` mètres de `a` ; `walls` : murs et clôtures des tuiles qu'elle remplace (identifiants) ; `trees` : arbres de la carte
+ * (tuples des tuiles) remplacés par des arbres taillés en rideau derrière elle.
+ */
+export interface CollegeGrille {
+  a: [number, number];
+  b: [number, number];
+  walls: number[];
+  trees: Tree[];
+  portal: [number, number];
+}
+
+/**
+ * Église Notre-Dame d'après photo et relevé LiDAR (D150). Repère : origine `o` au milieu de la façade (côté place), `s` vers le chevet (cap `a`),
+ * `t` à sa gauche (vers le sud-est). `wings` : nef (toit à deux pans, pignon côté façade, croupe côté chevet) puis transept (deux croupes) ;
+ * `aisles` : bas-côtés en appentis côté façade (de s = 0 à `s1`, entre le mur de la nef et les faces extérieures `tNW` et `tSE`, haut mesuré
+ * à la nef `top` et égout `eave`) ; `front` : haut de l'étage bas de la façade ; `transept` : s0, s1 ; `turret` : clocheton (x, y, rayon, haut
+ * de la lanterne, sommet mesuré) ; `t0`, `hw` : axe et demi-largeur de la nef.
+ */
+export interface NotreDameSpec {
+  o: [number, number];
+  a: number;
+  wings: CollegeWing[];
+  t0: number;
+  hw: number;
+  transept: [number, number];
+  aisles: { s1: number; tNW: number; tSE: number; top: number; eave: number };
+  front: number;
+  turret: { x: number; y: number; r: number; lantern: number; top: number };
+}
+
+/** Collège d'après relevé LiDAR (D148) : ailes à toits mesurés ; les murs suivent le contour BD TOPO, chacun monte à l'égout de l'aile la plus proche. */
+export interface CollegeSpec {
+  wings: CollegeWing[];
+  /** Couleur de la couverture (tuiles brunes par défaut ; zinc gris pour l'aile de la rue aux Raz). */
+  roof?: string;
+  /** Grille d'honneur sur la place du Champ de Mars et arbres taillés derrière elle (D149). */
+  grille?: CollegeGrille;
+  /** Avant-corps à fronton cintré, inscription et drapeaux (D151). */
+  pavilions?: CollegePavilion[];
+}
+
 export interface BuildingKind {
   k: BuildingKindId;
   /** Texte de l'enseigne ou de l'inscription (bâtiment principal d'un site). */
@@ -314,6 +384,14 @@ export interface BuildingKind {
   mon?: CathedralSpec;
   /** Cathédrale d'après photo (D127) : modèle dédié (remplace murs, toit et façade génériques, et le gabarit `mon`). */
   cath?: CathedralModel;
+  /** Couleur de la couverture imposée (zinc des annexes du lycée, D152) ; sinon celle du gabarit ou de la fiche. */
+  zinc?: string;
+  /** Église Notre-Dame d'après photo (D150) : modèle dédié (remplace murs, toit et façade génériques). */
+  nd?: NotreDameSpec;
+  /** Partie de Notre-Dame dessinée par le modèle `nd` d'un autre bâtiment (le chevet, D150) : ni murs ni toit génériques. */
+  ndPart?: 1;
+  /** Collège d'après relevé (D148) : modèle dédié (remplace murs, toit et façade génériques). */
+  college?: CollegeSpec;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
   hall?: TownHallSpec;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
