@@ -3115,3 +3115,24 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Pyramide, arêtes, six murs](captures/hexagone-lot0-toit.jpg)
 ![Parking : sept blocs](captures/hexagone-lot0-parking.jpg)
 
+## 2026-11-01 — D165. L'Hexagone, lot 1 : volumes et toit (plan `docs/plans/hexagone.md`, §9)
+
+**Demande de l'utilisateur** : « Continue » après le lot 0 (D164).
+
+**Constat** : le toit du jeu (14 plans, pente 0,70, faîtage à 9,2 m) et son bâtiment à façade générique ne ressemblaient pas au LiDAR (pyramide à 12 pans, 12,8 m).
+
+**Modèle** (`HexagoneModel`, `src/data/types.ts` ; mesures recopiées de `survey_hexagone.py` dans `manual.json`, modèle `hexagone` ; `hexagone()` de `build_monuments.py` écrit le champ `hex` et la silhouette lointaine) :
+- pyramide régulière à 12 pans : sommet +9,17 en (383,63 ; 183,57), arêtes à 20° + 30°·k, pente 0,21 jusqu'à 14 m du sommet (z +6,2), puis jupon à 0,72 jusqu'au pied (16,5 m, z +4,4) ; tambour de 12 pans entre la terrasse et le pied (bleu-gris sombre : proche du liseré d'égout des photos, provisoire) ;
+- couronne : contour BD TOPO (le même que les collisions), six secteurs de normales 35° + 60°·k ± 30° aux niveaux +2,2 / −0,3 / −3,0 / −0,7 / +1,1 / +1,1, dessus en quadrilatères radiaux entre le mur et le pied, acrotère de 45 cm, marches entre secteurs voisins ; annexe sombre à l'est (toit +3,1) ;
+- `src/render/hexagone.ts` (rendu), `hexagoneShape` / `hexagoneFootAt` dans `src/core/landmarks.ts` ; l'ancien volume n'est plus dessiné (`stylized.ts`), `replacesFacade` mis à jour.
+
+**Données** : seulement `kinds/27_35.json` (le bâtiment …694) et `lod/27_35.json` (deux prismes : couronne, pyramide au lieu d'un). Rien d'autre n'a changé.
+
+**Tests** (+9, 880 au total, `src/render/hexagone.test.ts`) : sommet à 12,8 ± 0,5 m, pente du plan entre 0,17 et 0,24, jupon plus raide, douze arêtes à 20° + 30°·k, façade principale à 30 m et NE le côté le plus haut, contour = emprise BD TOPO, moins de 15 000 triangles, point le plus haut au sommet, douze pans vers le haut et l'extérieur, silhouette lointaine (sommet, pied à 4,4, contour).
+
+**Limites** : façade lisse (lot 2) ; bord extérieur des bandeaux (jusqu'à 1,8 m plus loin que le mur à l'ouest) non dessiné ; lanterneaux, souche et bardage sombre du nord-est absents ; le tambour de 3 m au-dessus des terrasses vient du LiDAR mais les photos 4 et 5 montrent le toit presque posé sur le bandeau haut : à contrôler au lot 2 ; une marche étroite au sud-est paraît très sombre sur la vue aérienne ; collisions et navigation inchangées (la porte d'entrée doit rester accessible).
+
+![Vue aérienne](captures/hexagone-lot1-aerien.jpg)
+![Face ouest](captures/hexagone-lot1-ouest.jpg)
+![Face nord-est](captures/hexagone-lot1-nord-est.jpg)
+

@@ -392,8 +392,8 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     const key = idKey(b.id);
     const kind = kindOf(b.id);
     // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123 ;
-    // cathédrale, D127 ; église Saint-André, D138 ; maison, D140) : ni murs ni toit génériques.
-    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house) continue;
+    // cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165) : ni murs ni toit génériques.
+    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex) continue;
     // Fiche remplie d'après photo (D141) : son enduit ; sinon la palette de l'époque.
     const wc = landmarkWallColor(kind, b.id) ?? (f?.status === "observed" ? C(f.materials.wall.color) : wallColor(f?.era ?? "xix", key));
     wallColors.set(b.id, wc);

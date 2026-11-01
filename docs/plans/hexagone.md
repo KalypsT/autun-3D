@@ -94,7 +94,7 @@ Chaque lot : un commit, une décision `D164…` dans `docs/DECISIONS.md`, captur
 | Lot | Contenu | Fichiers principaux | Tests (cible) |
 |---|---|---|---|
 | **0. Relevés (fait, §8)** | redresser l'orthophotographie autour de (389 ; 186) ; mesurer largeur de façade, nombre et largeur des travées, orientation exacte (compas du mur le plus proche de 250°), sol du parvis ; confirmer l'enseigne ; coupe LiDAR de la pyramide | `tools/data/` (script jetable), notes dans la décision | — |
-| **1. Volumes et toit** | type `hexagone` : `HexagoneSpec` dans `types.ts`, mesure dans `build_monuments.py` (pyramide, couronne), rendu `buildHexagone` dans `monuments.ts`, rattachement dans `landmarks.ts` ; l'ancien bâtiment …694 passe en `hidden` ou est remplacé | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | arête entre 8,5 et 10 m ; douze pans ; pas de plan plus penché que sa mesure ; l'ancien volume n'est plus rendu |
+| **1. Volumes et toit (fait, D165)** | type `hexagone` : `HexagoneSpec` dans `types.ts`, mesure dans `build_monuments.py` (pyramide, couronne), rendu `buildHexagone` dans `monuments.ts`, rattachement dans `landmarks.ts` ; l'ancien bâtiment …694 passe en `hidden` ou est remplacé | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | arête entre 8,5 et 10 m ; douze pans ; pas de plan plus penché que sa mesure ; l'ancien volume n'est plus rendu |
 | **2. Façade** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
 | **3. Parvis** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
 | **4. Mobilier** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
@@ -176,3 +176,15 @@ Les six murs de la couronne ont leurs normales alignées sur un pan sur deux de 
 - **Lot 2** : la façade principale est la face à 275° (milieu en (353,5 ; 186,2), ≈ 34,6 m). La face nord-est (35°) a un étage en bardage sombre sur poteaux fins, à ajouter au périmètre du lot (photo 5) ; sa hauteur est de 5,8 m, pas 4,7.
 - **Lot 5** : sept blocs à ajuster séparément ; décompte à faire alors.
 - **Reste ouvert** : mur est (95°), largeur de l'étage sombre, souche, lanterneaux, nombre exact de portes de la façade principale (photos 1, 2 et 4 donnent quatre à cinq ensembles ; la photo 4 en montre trois ensembles centraux, un à gauche et un à droite derrière la sphère) : tout cela se règle en lot 1 et 2 sur les vues de face.
+
+## 9. Lot 1 : volumes et toit (D165)
+
+Fait. Le bâtiment BD TOPO …694 est remplacé par un modèle dédié (`hex` dans `kinds/27_35.json`) : pyramide à 12 pans (pente 0,21, jupon plus raide de 14 à 16,5 m du sommet),
+tambour de 12 pans, couronne de six terrasses à niveaux par secteur (contour BD TOPO, acrotère, marches entre secteurs), annexe haute sombre à l'est, silhouette lointaine
+corrigée (sommet à 12,8 m au lieu de 9,2).
+
+- **Correction du relevé** : un plan unique de 0,205 jusqu'au pied faisait un sommet 1,5 m trop haut au pied ; les coupes montrent un plan à 0,205 jusqu'à 14 m du sommet (z = +6,2) puis un **jupon à ≈ 0,72** jusqu'au pied (16,5 m, z = +4,4). C'est le « deux tons par pan » de l'orthophotographie.
+- **Changement de méthode en cours de lot** : mes six distances de murs ne faisaient pas un hexagone propre (pointes à 34 m, SE à 19 m). Les murs suivent donc le contour BD TOPO, découpé aux limites des six secteurs ; les distances du §8.2 restent dans le modèle (`sides`) comme bord extérieur des futurs bandeaux (lot 2).
+- **Reproduire** : `python3 tools/data/build_monuments.py hexagone` (le paramètre limite le passage à ce modèle ; les autres demandent les rasters LiDAR de leur zone).
+- **Pas fait, volontairement** : façade (murs unis pour l'instant), enseigne, lanterneaux, souche, bardage sombre du nord-est. Collisions et navigation inchangées (emprise BD TOPO).
+- Captures : `docs/captures/hexagone-lot1-*.jpg`.

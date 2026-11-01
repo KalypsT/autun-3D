@@ -1297,3 +1297,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La façade principale (portes vitrées, bandeaux) est à l'**ouest**, normale 275°, à 30 m du sommet ; la face nord-est a un étage en bardage sombre, 1,1 m plus haut que le reste.
 - Le parking : sept blocs de places, traits à 143°, pas 2,5 m. Prochain lot : le volume et le toit (lot 1).
 
+**L'Hexagone, lot 1 : volumes et toit (1er novembre 2026)** (D165)
+- Le bâtiment a sa vraie forme : pyramide à 12 pans de 12,8 m (au lieu d'un amas hérissé de 9 m), tambour, six terrasses étagées autour, annexe sombre à l'est. Le contour est celui du bâtiment d'origine (collisions et navigation inchangées).
+- Les murs sont encore unis : la façade (bandeaux, portes vitrées, enseigne) vient au lot 2.
+- 880 tests (9 de plus). À regarder : une vue du parvis (`?view=custom&cam=335,176,8,385,186,5`) et une vue aérienne (`cam=380,110,60,385,186,0`).
+

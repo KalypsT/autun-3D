@@ -398,6 +398,8 @@ export interface BuildingKind {
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   house?: HouseModel;
+  /** L'Hexagone d'après relevés LiDAR et photos (D165) : modèle dédié (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
+  hex?: HexagoneModel;
 }
 
 /**
@@ -507,6 +509,32 @@ export interface ChapelModel {
   /** Baies en plein cintre : côté (−1 : mur s0, 1 : mur s1), distance depuis le pignon d'entrée, largeur, appui, hauteur. */
   windows: [number, number, number, number, number][];
   light?: 1;
+}
+
+/**
+ * L'Hexagone d'Autun (D165, tools/data/build_monuments.py, relevés de tools/data/survey_hexagone.py) : une pyramide régulière à 12 pans posée sur
+ * une couronne de six terrasses. Altitudes absolues (locales) ; caps en degrés depuis le nord, sens horaire.
+ */
+export interface HexagoneModel {
+  /** Sommet de la pyramide (x, y). */
+  c: [number, number];
+  /** Sol au pied du bâtiment. */
+  g: number;
+  /** Altitude du sommet et du pied de la pyramide ; apothème du pied (rayon du cercle inscrit du 12-gone). */
+  apex: number;
+  foot: number;
+  apothem: number;
+  /** Jupon plus raide au bas des pans : apothème et altitude où la pente passe de la pente du sommet (≈ 0,2) à celle du jupon (≈ 0,7) jusqu'au pied. */
+  skirt: [number, number];
+  /** Cap de la première arête de la pyramide ; les suivantes tous les 30°. */
+  hip: number;
+  /** Contour des murs (x, y, …) : emprise BD TOPO, la même que les collisions. */
+  ring: number[];
+  /** Six secteurs de la couronne, de normales 35° + 60°·k (chacun couvre ± 30°) : distance au sommet du bord extérieur des terrasses (bandeaux en débord compris), altitude du dessus. */
+  sides: [number, number][];
+  /** Annexe haute : contour (x, y, …) et altitude de son toit. */
+  annex?: { r: number[]; z: number };
+  colors: { wall: string; roof: string; deck: string; drum: string; annex: string };
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
