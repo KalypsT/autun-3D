@@ -3070,3 +3070,31 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Entrée du bloc vitré](captures/d161-parpas-entree.jpg)
 ![L'aile crème et son passage](captures/d161-parpas-aile.jpg)
 ![Vue d'ensemble](captures/d161-parpas-aerien.jpg)
+
+## 2026-11-01 — D163. Centre hospitalier, site Latouche : bâtiments d'après photos, réveil devant l'entrée principale (lot 4 de D161)
+
+**Demande de l'utilisateur** : refaire les bâtiments de Latouche d'après trois photos prises du même point (capture : 46,951935 ; 4,301921, soit (241,9 ; 196,6) dans le repère du jeu) vers le nord-nord-ouest, l'ouest-sud-ouest et le sud-sud-est, plus la capture Street View de la loge.
+
+**Qui est qui** : la carte de l'utilisateur est tournée de 33° (le boulevard Latouche descend presque à la verticale) ; j'ai redessiné les emprises BD TOPO tournées de même et reconnu les formes une à une.
+- **…48848381** (554 m²) : le bâtiment blanc à auvent de la photo 1 ; son **mur 3 (46,3 m)**, de normale sortante vers le parking, est la façade photographiée (la largeur mesurée sur la photo, 46 m, tombe juste).
+- **…48848382** (29 m², « 5 m » de haut) : **c'est l'auvent d'entrée**, que BD TOPO compte comme un bâtiment (un rectangle de 10,4 × 2,9 m collé au mur 3) ; il s'affichait comme une petite maison à toit rouge devant l'entrée.
+- **…48844713** : le bloc de trois niveaux à bandeaux (photos 2 et 3). **…48844702** : l'aile de briques jaunes (photo 3). **…48844714** : l'ancien bâtiment de pierre derrière (photos 1 à 3). **…48848386** : la loge d'entrée du boulevard.
+
+**Façades** (`fronts` et nouveau `fiches` de `manual.json`, appliqués par `build_shop_fronts.py`) :
+- **Accueil (…381)** : enduit blanc crème, deux niveaux de fenêtres à volets roulants (`levels` 2 : la photo en montre deux ; BD TOPO en compte trois et 10,4 m de mur, contre ≈ 7 m vus sur la photo, d'où un bandeau de mur plein au-dessus), rez-de-chaussée vitré (deux portes entre deux baies) sous un **auvent** de béton clair (13 m, sur cinq poteaux fins, nouveau champ `canopy` du gabarit moderne). Échelle prise sur la porte (2,1 m) : 25 px/m, largeurs ± 0,5 m.
+- **Bloc à bandeaux (…713)** : enduit blanc cassé, bandeaux horizontaux de vitrage gris-bleu (fenêtres de 3,2 m sur 0,95 m) séparés par des allèges, toit-terrasse. **Aile de briques (…702)** : briques jaune ocre, une rangée de petites fenêtres carrées. **Ancien bâtiment (…714)** : pierre gris-blanc, hautes fenêtres à six carreaux et encadrement de pierre, corniche moulurée, ardoise, aucun volet. **Loge (…386)** : enduit ocre-beige, petites fenêtres, bord de toit débordant.
+- `apply_overrides` (refonte de `apply_shop`) accepte maintenant `levels`, `storeys` et `materials` ; `fiches` règle un bâtiment sans devanture.
+
+**Bâtiment retiré** : nouvelle entrée `dropBuildings` de `manual.json`, appliquée par `drop_buildings` de `build_shop_fronts.py` (bâtiment, fiche, type de `kinds/`, silhouette de `lod/`, compteurs de `world.json`) : …382 disparaît, l'auvent de la devanture le remplace.
+
+**Réveil et croix de soin déplacés** : l'ancien point (211,4 ; 216,6) était **derrière** le bâtiment d'accueil (côté nord-ouest, dans la cour de l'ancien bâtiment). Le réveil de Latouche est maintenant **devant l'auvent**, sur le parking : (237 ; 204), à 6 m du mur 3 en face des portes (s ≈ 28 m), cap vers le parking (2,6 rad) ; la croix de soin à (231,5 ; 201,5), 6 m plus loin. `HOSPITAL_SPAWN` suit.
+
+**Données** : tuiles 26_35, 26_36, 27_35, 27_36, `kinds/27_36`, `lod/27_36` et `world.json`.
+
+**Tests** (+3, 871 au total) : cinq bâtiments observés, mur d'accueil de 46 m, auvent sur le mur et au-dessus des portes, bâtiment 382 retiré, réveil à l'air libre, devant l'auvent, croix à moins de 10 m (+ les tests existants : dégagement de 2 m du réveil).
+
+**Limites** : la hauteur et la toiture des bâtiments viennent de BD TOPO / LiDAR (toits à pans, alors que les photos montrent des toits-terrasses ; l'accueil est plus haut que sur la photo) ; façades des autres bâtiments du site et côtés non photographiés restent des estimations ; pas de porte latérale ni d'inscription sur l'accueil ; les autres murs de l'ancien bâtiment partagent le même style ; les arbres et la pelouse au conifère de la photo 3 ne sont pas vérifiés.
+
+![L'accueil et son auvent](captures/d163-latouche-accueil.jpg)
+![Vers l'ouest-sud-ouest : le bloc à bandeaux](captures/d163-latouche-ouest.jpg)
+![Vue d'ensemble](captures/d163-latouche-aerien.jpg)

@@ -84,3 +84,83 @@ describe("Centre hospitalier, site Parpas (D161)", () => {
     expect(glow.positions.length / 9).toBeGreaterThan(20);
   });
 });
+
+/** D163 : Centre hospitalier d'Autun, site Latouche, d'après les photos prises sur le parking d'accueil (46,951935 ; 4,301921). */
+describe("Centre hospitalier, site Latouche (D163)", () => {
+  const tiles = ["26_35", "26_36", "27_35", "27_36"].map((id) => JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData);
+  const fiches = tiles.flatMap((t) => t.fiches), buildings = tiles.flatMap((t) => t.buildings);
+  const id = (n: string): string => `BATIMENT00000003${n}`;
+  const reception = fiches.find((f) => f.id === id("48848381"))!;
+
+  it("cinq bâtiments vus sur photo, dont le bâtiment d'accueil à devanture moderne sur son mur de 46 m", () => {
+    for (const n of ["48848381", "48844713", "48844702", "48844714", "48848386"]) expect(fiches.find((f) => f.id === id(n))?.status, n).toBe("observed");
+    expect(reception.ground.front).toBe(3);
+    const wall = reception.walls[3]!;
+    expect(wall.role).toBe("street");
+    expect(wall.length).toBeGreaterThan(46);
+    expect(wall.length).toBeLessThan(46.5);
+    expect(reception.levels).toBe(2);
+    expect(reception.facade.shutters.kind).toBe("roulant");
+  });
+
+  it("l'auvent : sur le mur, au-dessus des portes vitrées, poteaux sous la dalle ; le « bâtiment » de BD TOPO qui le figurait est retiré", () => {
+    const d = reception.ground.devanture!, m = d.modern!, c = m.canopy!;
+    const wall = reception.walls[3]!;
+    let s = d.s0, doors = 0;
+    for (const [kind, w] of d.bays) {
+      if (kind === "shopdoor") {
+        doors = s + w / 2;
+        expect(s).toBeGreaterThan(c.s[0] - 0.01);
+        expect(s + w).toBeLessThan(c.s[1] + 0.01);
+      }
+      s += w;
+    }
+    expect(doors).toBeGreaterThan(24);
+    expect(doors).toBeLessThan(28);
+    expect(c.s[1]).toBeLessThan(wall.length);
+    expect(c.z).toBeGreaterThan(d.top);
+    expect(c.z).toBeLessThan(d.h);
+    expect(c.depth).toBeGreaterThan(2);
+    expect(c.depth).toBeLessThan(3.5);
+    for (const p of c.pillars) {
+      expect(p).toBeGreaterThan(c.s[0]);
+      expect(p).toBeLessThan(c.s[1]);
+    }
+    expect(buildings.some((b) => b.id === id("48848382"))).toBe(false);
+    expect(fiches.some((f) => f.id === id("48848382"))).toBe(false);
+    const mb = new MeshBuilder();
+    buildDevanture(mb, null, null, { x: 0, y: 0, z: 0, tx: 1, ty: 0, nx: 0, ny: -1 }, d, "#e8e5dc");
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    expect(mb.positions.length / 9).toBeLessThan(2500);
+  });
+
+  it("le réveil de Latouche : devant l'entrée, à l'air libre (hors de tout bâtiment), côté parvis, et la croix de soin est à côté", async () => {
+    const { HOSPITALS } = await import("../core/health");
+    const { HEAL_SITES } = await import("../core/pickups");
+    const spawn = HOSPITALS.find((h) => h.id === "latouche")!;
+    const inside = (x: number, y: number, ring: number[]): boolean => {
+      let c = false;
+      const n = ring.length / 2;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = ring[2 * i]!, yi = ring[2 * i + 1]!, xj = ring[2 * j]!, yj = ring[2 * j + 1]!;
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    const heal = HEAL_SITES.find((h) => h.label === "Centre hospitalier, site Latouche")!;
+    for (const [x, y] of [[spawn.x, spawn.y], [heal.x, heal.y]] as const) expect(buildings.some((b) => inside(x, y, b.ring)), `${x},${y}`).toBe(false);
+    // Devant le mur de 46 m : du côté de sa normale sortante, entre 3 et 12 m, à hauteur de l'auvent.
+    const b = buildings.find((q) => q.id === id("48848381"))!;
+    const w = reception.walls[3]!;
+    const p = [b.ring[2 * w.a]!, b.ring[2 * w.a + 1]!], q = [b.ring[2 * w.b]!, b.ring[2 * w.b + 1]!];
+    const L = Math.hypot(q[0]! - p[0]!, q[1]! - p[1]!);
+    const tx = (q[0]! - p[0]!) / L, ty = (q[1]! - p[1]!) / L, nx = ty, ny = -tx;
+    const along = (spawn.x - p[0]!) * tx + (spawn.y - p[1]!) * ty, out = (spawn.x - p[0]!) * nx + (spawn.y - p[1]!) * ny;
+    const c = reception.ground.devanture!.modern!.canopy!;
+    expect(out).toBeGreaterThan(3);
+    expect(out).toBeLessThan(12);
+    expect(along).toBeGreaterThan(c.s[0]);
+    expect(along).toBeLessThan(c.s[1]);
+    expect(Math.hypot(heal.x - spawn.x, heal.y - spawn.y)).toBeLessThan(10);
+  });
+});

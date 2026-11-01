@@ -29,7 +29,7 @@ export interface Hospital {
  * faubourg Saint-Andoche (≈ 600 m à l'ouest de Latouche). Après une mort on se réveille au plus proche des deux (à vol d'oiseau).
  */
 export const HOSPITALS: readonly Hospital[] = [
-  { id: "latouche", name: "Latouche", x: 211.4, y: 216.6, heading: 0 },
+  { id: "latouche", name: "Latouche", x: 237, y: 204, heading: 2.6 },
   { id: "parpas", name: "Parpas", x: -354, y: 130, heading: 1.01 },
 ];
 

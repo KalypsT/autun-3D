@@ -46,7 +46,7 @@ export const HEAL_SITES: readonly HealSite[] = [
   { x: 267.0, y: 707.1, label: "Pharmacie de la Croix Blanche" },
   { x: 999.4, y: 1353.3, label: "Pharmacie de Saint-Pan" },
   // Centre hospitalier (D161) : à 6-7 m du point de réveil de chaque site, qu'on voit en se réveillant.
-  { x: 217.0, y: 221.0, label: "Centre hospitalier, site Latouche" },
+  { x: 231.5, y: 201.5, label: "Centre hospitalier, site Latouche" },
   { x: -355.0, y: 136.0, label: "Centre hospitalier, site Parpas" },
 ];
 

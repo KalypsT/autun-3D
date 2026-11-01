@@ -126,6 +126,13 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
   }
   if (m.sub) words(m.sub.text, m.sub.at, m.sub.z, m.sub.h, 0.075, m.sub.color);
 
+  // Auvent d'entrée : dalle de béton clair en saillie, poteaux fins sur le parvis.
+  if (m.canopy) {
+    const c = m.canopy, slabCol = C("#e2dfd6"), post = C("#d4d1c8");
+    slab(c.s[0], c.s[1], c.z, c.z + 0.22, 0.05, c.depth, slabCol);
+    for (const ps of c.pillars) slab(ps - 0.07, ps + 0.07, 0.0, c.z, c.depth - 0.25, c.depth - 0.11, post);
+  }
+
   // Emblème du Centre hospitalier : croissant rouge ouvert vers la droite, H bleu, sur un panneau blanc.
   if (m.emblem) {
     const e = m.emblem, red = C("#cf2e2e"), blue = C("#1d4f9c");
