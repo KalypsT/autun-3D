@@ -134,12 +134,12 @@ Budget : le jeu rend environ 395 000 triangles sur cette vue (capture « bâtime
 ## 6. Questions pour l'utilisateur (réponses du 1ᵉʳ novembre : **option B**, **pas de passants**, **camion sur les places du repère**, grille « fermée » ; deux points restent ouverts, en gras)
 
 1. **Option B ou A ?** Par défaut : B (modèle dédié).
-2. **Grille** : vous avez écrit « fermée comme tu proposes » ; or j'avais recommandé « toujours ouverte ». **Je lis : fermée en dehors des heures de classe** (le jeu n'a ni calendrier ni vacances, D116 : une règle d'horaire seulement), par exemple ouverte de 7 h 30 à 18 h, fermée la nuit, comme le camion de D115 est absent hors service. **À confirmer** : cette lecture, ou « fermée tout le temps », ou « toujours ouverte » ? Sans réponse avant le lot 3, je prends la lecture ci-dessus.
+2. **Grille** : vous avez écrit « fermée comme tu proposes » ; or j'avais recommandé « toujours ouverte ». **Je lis : fermée en dehors des heures de classe** (le jeu n'a ni calendrier ni vacances, D116 : une règle d'horaire seulement), par exemple ouverte de 7 h 30 à 18 h, fermée la nuit, comme le camion de D115 est absent hors service. **Confirmé le 1ᵉʳ novembre : fermée en dehors des heures de classe** (horaires exacts à fixer au lot 3, par défaut 7 h 30 à 18 h).
 3. **Camion pizza** : réponse : sur les places de parking, au repère (499,1 ; 1102,5). Le lot 0 montre que le repère tombe dans la **rangée nord** (places perpendiculaires à l'avenue) ; voir §9.5.
 4. **Photos en plus** : reçue, la cour est (photo 8). Restent, par défaut estimés : les plateaux de sport, le gymnase, la face nord et la face sud du bloc principal, la cour vue depuis la grille.
 5. **Passants** : exclus.
 6. **Ordre** : 0 → 1 → 2 → 3 → 4 → 5 → 6 (par défaut).
-7. **Cap de la photo 8** : vous avez écrit « est-sud-est » ; **les ailes visibles me placent plutôt vers l'ouest-sud-ouest** (≈ 250°, §9.2). **À confirmer** (une erreur d'orientation fausserait la façade est).
+7. **Cap de la photo 8** : vous avez écrit « est-sud-est » ; **les ailes visibles me placent plutôt vers l'ouest-sud-ouest** (≈ 250°, §9.2). **Confirmé le 1ᵉʳ novembre par l'utilisateur : ouest-sud-ouest** (l'indication « est-sud-est » était une erreur).
 
 ## 7. Captures « avant »
 
@@ -180,7 +180,7 @@ Toutes les ailes sont tournées de **17,5°** : leurs murs ont les caps 72° et 
 
 ### 9.2 Rattachement des photos
 
-- **Photo 8** (cour est, ci-dessus) : le repère (46,960231 ; 4,307759) tombe en **(670,6 ; 1125,3)**, sur l'îlot circulaire planté du bord est de la cour (visible sur l'orthophotographie). Les ailes relevées montrent une vue vers le **sud-ouest à l'ouest-sud-ouest (cap 250° environ)** : à gauche la barre sud et sa cage d'escalier extérieure (cap 199°), à droite le préau et ses voûtes (cap 254°). Un cap de 112° (est-sud-est) ne mène qu'à la cour et à des maisons. **Hypothèse forte**, à confirmer. Vue en hauteur (étage ou haut d'un mur) : le point de vue est donc plus haut que le sol.
+- **Photo 8** (cour est, ci-dessus) : le repère (46,960231 ; 4,307759) tombe en **(670,6 ; 1125,3)**, sur l'îlot circulaire planté du bord est de la cour (visible sur l'orthophotographie). Les ailes relevées montrent une vue vers le **sud-ouest à l'ouest-sud-ouest (cap 250° environ)** : à gauche la barre sud et sa cage d'escalier extérieure (cap 199°), à droite le préau et ses voûtes (cap 254°). Un cap de 112° (est-sud-est) ne mène qu'à la cour et à des maisons. **Confirmé par l'utilisateur.** Vue en hauteur (étage ou haut d'un mur) : le point de vue est donc plus haut que le sol.
 - **Photo 3** (cour, bloc vitré à deux niveaux, volume aveugle à gauche, barre à droite) : **hypothèse** : prise dans la **cour ouest**, face à l'est : barre sud à droite, aile ouest vitrée au centre, extrémité ouest du bloc nord (mur aveugle) à gauche. Façade d'entrée du collège = face **ouest** de l'aile ouest (cap 252°). Les marches, bacs roses et rochers sont donc à l'ouest, pas dans la cour de la photo 8.
 - **Photo 4** (avenue de la République, vers le sud) : le petit bâtiment bas gris à gauche est **`…849030`** (701 ; 1153), **4,3 m** (BD TOPO : 7,1 m, **faux de 2,8 m**) ; le grand bâtiment blanc à étage et escalier extérieur est le bloc nord ; le grand toit rouge à gauche est la grange de rue des Drémeaux, hors collège.
 
