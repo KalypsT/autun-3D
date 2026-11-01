@@ -3512,3 +3512,42 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d181-optic-rue-apres.jpg)
 ![Optic 2000, côté place, avant](captures/d181-optic-place-avant.jpg)
 ![Après](captures/d181-optic-place-apres.jpg)
+
+## 2026-11-01 — D183. Huit boutiques d'après photos : rue Jeannin, avenue Charles de Gaulle, rue Guérin
+
+**Demande de l'utilisateur** : six captures Street View (adresses de prise de vue : 1 rue Guérin, 13 et 15 rue Jeannin, 13 et 3 avenue de Gaulle). Réponses aux doutes : Le Cyrano au **11 avenue de Gaulle** seulement (le doublon du 13 est retiré), la **porte cochère grise** appartient au restaurant, terrasses dessinées pour **les deux** (restaurant et boulangerie), et on dessine aussi Jardin d'Intérieur, l'agence Premier Immobilier et la façade de BNP Paribas (pas « le journal »).
+
+**Où** (adresses de prise de vue ≠ commerces ; plan à plat des anneaux et des indices de mur, sens anti-horaire : `s` croît de gauche à droite vu de la rue) :
+- Le Châteaubriant : `…348854275` (14 rue Jeannin), mur 10 de 9,1 m ; la boulangerie `…348854277` (13 rue Jeannin) est à sa droite, mur 0 de 8,1 m (la fin de l'un est le début de l'autre) ;
+- Le Cyrano : `…348854312` (11 av. de Gaulle), mur 3 de 5,4 m ; Premier Immobilier : `…348854313` (13), mur 1 de 6,8 m, à sa droite ;
+- Surplus Eduen : `…348852378` (3 av. de Gaulle), mur 7 de 4,9 m, qui finit au sommet où commence le mur 7 de BNP Paribas `…348852379` (5), de 18,1 m ;
+- Jardin d'Intérieur : `…348854265` (2 rue Jeannin), mur 0 de 6 m ; « Aux trésors des dines » : `…348854266` (1 rue Jeannin), mur 4 de 6,4 m, dans son prolongement ; les deux donnent sur la rue Guérin.
+
+**Dessin** (`manual.json`, `fronts[…].shop`, gabarit moderne) :
+- restaurant : ocre doré, quatre panneaux vert sapin (à la place des baies en arc, non dessinables) dont la porte vitrée à la troisième, plaque brune « RESTAURANT », store vert « Restaurant Le Chateaubriant », porte cochère grise à droite (2,15 m), terrasse sur gazon synthétique à barrière verte, sans parasol (la photo n'en a pas) ;
+- boulangerie : bandeau mauve-gris « Artisan Boulanger / Maison Benzaabar » **au-dessus** d'un grand store blanc, vitrine à cadres noirs, porte d'immeuble brune, terrasse à barrière verte (`unchecked` : le test « sol libre » refuse ce trottoir) ;
+- Cyrano : bois brun, grand store bordeaux « TABAC LE CYRANO COTE CADEAUX », rideau sombre, carotte rouge ; Premier Immobilier : pilastre, vitrine, porte verte à plaque, plaque verte ;
+- Surplus Eduen : porte cochère en passage couvert (2,47 m), bandeau blanc « SURPLUS EDUEN », deux banderoles vertes « MILITAIRE & LOISIRS », moellons (`materials.wall.kind = rubble`) ; BNP : pilastre gris, grand panneau bleu marine, porte bleu nuit, bandeau gris et carré vert du logo (les 7 premiers mètres) ;
+- Jardin d'Intérieur : bandeau vert à panneaux, grande vitrine, porte verte, rideau blanc, petit store ; « Aux trésors des dines » : bandeau blanc à lettres rouges, guirlande verte, piliers rouges, bannières « WELCOME » et fleurie.
+
+**Textes d'enseigne** : les noms sont posés par `texts` et non par `words` (limite connue : un texte à moins de 10 cm du mur passe derrière une plaque ; constaté ici sur quatre enseignes avant correction).
+
+**Tests** (+9, 985 au total, `src/render/boutiques-jeannin.test.ts`) : statut, nom, type, devanture dans son mur de rue ; devantures voisines consécutives (fin du mur = début du suivant) ; doublons retirés (Cyrano, Jardin d'Intérieur) ; restaurant (9,1 m, porte cochère en dernière travée, terrasse sans parasol) ; boulangerie (store sous le bandeau) ; Surplus (passage de 2,47 m, moellons) ; Cyrano, Premier Immobilier, BNP ; rue Guérin ; géométrie finie et bornée.
+
+**Limites** :
+- couleurs des volets de l'étage prises dans la palette du jeu ; arcs du restaurant et du Surplus non dessinables (baies droites, passage rectangulaire) ; l'arrière-boutique vitrée du Surplus est noire ;
+- Châteaubriant : le portail blanc de fer forgé de gauche (8 av. de Gaulle) et la terrasse qui tourne au coin ne sont pas dessinés ; les largeurs sont lues sur des photos très obliques (± 30 à 50 cm) ; la photo de 2018 montre la porte cochère verte, celle de 2026 grise (grise ici) ;
+- BNP : seuls les 7 premiers mètres du mur de 18,1 m sont dessinés (pas de photo du reste) ; Premier Immobilier : les 1,5 m de droite sont du pilastre ; « le journal » (9 av. de Gaulle) garde sa devanture générique ;
+- Jardin d'Intérieur : enseigne en lettres droites (cursives sur la photo) ; Aux trésors des dines : l'échelle de la photo varie d'une boutique à l'autre, mannequins non dessinés (vitrines vides) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Le Châteaubriant et la boulangerie, avant](captures/d183-chateaubriant-avant.jpg)
+![Après](captures/d183-chateaubriant-apres.jpg)
+![La boulangerie Benzaabar, avant](captures/d183-benzaabar-avant.jpg)
+![Après](captures/d183-benzaabar-apres.jpg)
+![Le Cyrano et Premier Immobilier, avant](captures/d183-cyrano-avant.jpg)
+![Après](captures/d183-cyrano-apres.jpg)
+![Surplus Eduen et BNP, avant](captures/d183-surplus-avant.jpg)
+![Après](captures/d183-surplus-apres.jpg)
+![Jardin d'Intérieur et Aux trésors des dines, avant](captures/d183-guerin-avant.jpg)
+![Après](captures/d183-guerin-apres.jpg)

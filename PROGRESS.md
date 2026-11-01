@@ -1386,3 +1386,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Optic 2000 a sa façade courbe : une devanture par petit mur du coin arrondi, avec un bandeau noir continu.
 - Pas encore : arcs du Crédit Agricole, perron de la cordonnerie, vitrines vides (pas de mannequins ni de lunettes) ; couleurs des volets de la palette. 976 tests (5 de plus).
 - À regarder : `?view=custom&cam=70,-54,2.4,55,-63,2&h=14` (Optic 2000), `cam=59.1,7.3,2.2,68.6,6.3,2` (Le Faro), `cam=122.8,240.5,2.2,118.9,250,2` (la pâtisserie).
+
+**Huit boutiques d'après photos : rue Jeannin, avenue de Gaulle, rue Guérin (1er novembre 2026)** (D183)
+- Refaits d'après tes six captures : Le Châteaubriant (store vert, terrasse sur gazon) et la boulangerie Maison Benzaabar de la rue Jeannin (bandeau mauve, grand store blanc, terrasse à barrière verte) ; Le Cyrano (store bordeaux) et l'agence Premier Immobilier ; Surplus Eduen (porte cochère, banderoles) et la façade de BNP Paribas ; Jardin d'Intérieur et « Aux trésors des dines » sur la rue Guérin.
+- Les doublons d'OpenStreetMap (Cyrano au 13, Jardin d'Intérieur au 1 rue Jeannin) sont retirés ; la porte cochère grise est au restaurant, comme tu l'as choisi.
+- Pas encore : arcs du restaurant et du Surplus, portail blanc voisin du restaurant, mannequins des vitrines ; BNP dessinée sur ses 7 premiers mètres seulement (18 m en tout) ; volets de la palette. 985 tests (9 de plus).
+- À regarder : `?view=custom&cam=-30,93,2.2,-38,100,2.4&h=14` (restaurant et boulangerie), `cam=-41,59.5,2.2,-50.5,59.3,2.4` (Cyrano), `cam=-25.5,36.4,2.2,-33,33.5,2.8` (Surplus et BNP), `cam=91.2,177,2.2,86,185,2.4` (rue Guérin).
