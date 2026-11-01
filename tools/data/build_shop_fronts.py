@@ -230,6 +230,10 @@ def apply_shop(fi, m):
     if "terrace" in sh:  # terrasse d'après photo (D178) devant la devanture
         g["shops"][0]["terrace"] = sh["terrace"]
     g["devanture"] = sh["devanture"]
+    if "corner" in sh:  # boutique d'angle (D179) : devanture du même commerce sur le mur voisin
+        g["corner"] = sh["corner"]
+    else:
+        g.pop("corner", None)
     apply_overrides(fi, sh.get("fiche", {}))
     fi["status"] = "observed"
     src = {"kind": "photo", "ref": m["photo"][:80]}
@@ -306,7 +310,7 @@ def main():
         # Les murs d'une correction à la main sont des murs de rue avant tout choix (une seule passe suffit).
         m = manual.get(fi["id"], {})
         over = m.get("shopWalls", {})
-        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o]]:
+        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o], (m.get("shop", {}).get("corner") or {}).get("wall")]:
             if i is not None and fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"
                 stats["mur passé en rue"] += 1

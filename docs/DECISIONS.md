@@ -3406,3 +3406,33 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d178-point-plus-apres.jpg)
 ![Festival des Pains, avant](captures/d178-festival-avant.jpg)
 ![Après](captures/d178-festival-apres.jpg)
+
+## 2026-11-01 — D179. Boutiques d'angle : une devanture sur chacun des deux murs du coin ; Les Remparts et Point Plus corrigés
+
+**Demande de l'utilisateur** : les boutiques en angle doivent avoir leur façade sur les deux murs qui font le coin (cas de Les Remparts et de Point Plus « Le Marigny ») ; photo de l'autre façade des Remparts (« 23 bd Laureau », juillet 2026).
+
+**Constat** : une devanture d'après photo ne se posait que sur un seul mur (`front`) ; `frontWalls` ne sert qu'aux grandes surfaces (vitrage générique). Un comptage sur les fiches : **23 commerces sur 240** ont leur porte à moins de 4 m d'un coin avec un mur de rue voisin (Le Commerce et Optic 2000 déjà signalés en D157 et D158 ; les autres n'ont qu'une devanture générique sur un seul mur).
+
+**Erreur de D178 corrigée** : j'avais posé Point Plus sur le long mur du boulevard Mazagran, à 5-10 m du coin. En refaisant la géométrie (sens de lecture gauche-droite d'un mur vu de la rue) : la photo 3 (22 bd Laureau) montre le **mur 8** (10,7 m, face au sud-ouest), porte et losange « PRESSE » vers le coin ; la photo 2 montre le retour sur le **mur 0** (24,8 m), juste après le coin.
+
+**Concept** : `ground.corner` = `{ wall, devanture, terrace? }` (`FacadeFiche`, `docs/facade-fiche.schema.json`) : la devanture du même commerce sur le mur voisin de `front`, avec la même forme que `devanture`. Dans `manual.json`, `fronts[…].shop.corner` ; `build_shop_fronts.py` le copie (`apply_shop`) et classe ce mur en « rue ». Rendu : `facades.ts` pose la devanture sur ce mur (clé `dev|id|c`, lue par `stylized.ts`), la terrasse éventuelle aussi ; aucun appel de dessin de plus.
+
+**Les Remparts** (mur 9, 10,6 m, face au boulevard Laureau) : grande fenêtre à petits carreaux et cadre bleu-gris de 4,1 m, à 3,1 m du coin, bac fleuri dessous, pas de store ; cordon d'étage (`stringCourse`) sur toute la maison.
+
+**Point Plus** : principale sur le mur 8 (bandeau noir « POINT PLUS / LE MARIGNY », petits mots à gauche et à droite, panneau d'horaires, porte vers le coin, losange « PRESSE » au coin), retour sur le mur 0 depuis le coin (vitrine et bandeau noir « POINT PLUS »). Le texte du bandeau est posé en `texts` : `words` du gabarit moderne passait derrière une plaque de bandeau (7,5 cm contre 10 cm).
+
+**Tests** (+1, 967 au total, `boutiques-mazagran.test.ts`) : les deux murs sont voisins dans le contour (la fin de l'un est le début de l'autre), en rue, la devanture d'angle tient dans son mur ; Point Plus : principale sur le mur court, retour sur le long ; retour des Remparts sans store.
+
+**Limites** :
+- colombage de l'étage des Remparts (poutres bleu-gris, photo) non dessiné ; l'étage a des fenêtres à volets de la palette ;
+- lecture du retour de Point Plus de biais (± 60 cm), affiches de vitrine non dessinées ;
+- les 21 autres commerces d'angle gardent leur devanture générique sur un seul mur (à décider : étendre automatiquement ?).
+
+![Les Remparts, retour sur le boulevard Laureau, avant](captures/d179-remparts-retour-avant.jpg)
+![Après](captures/d179-remparts-retour-apres.jpg)
+![Le coin des Remparts, avant](captures/d179-carrefour-avant.jpg)
+![Après](captures/d179-carrefour-apres.jpg)
+![Point Plus, façade du boulevard Laureau, avant](captures/d179-point-plus-laureau-avant.jpg)
+![Après](captures/d179-point-plus-laureau-apres.jpg)
+![Point Plus, retour sur le boulevard Mazagran, avant](captures/d179-point-plus-retour-avant.jpg)
+![Après](captures/d179-point-plus-retour-apres.jpg)

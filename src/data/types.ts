@@ -1113,6 +1113,8 @@ export interface FacadeFiche {
     signZ?: number;
     /** Devanture d'après photo (D141), dessinée telle quelle sur le mur d'entrée à la place des vitrines génériques. */
     devanture?: Devanture;
+    /** Boutique d'angle (D179) : devanture du même commerce sur le mur voisin de `front` (qui partage son sommet d'angle), dessinée comme `devanture` ; `terrace` : terrasse devant ce mur. */
+    corner?: { wall: number; devanture: Devanture; terrace?: Terrace };
   };
   walls: WallRun[];
 }

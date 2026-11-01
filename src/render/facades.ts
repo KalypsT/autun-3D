@@ -215,20 +215,24 @@ export function* planFacadesSteps(
       const shops = (f.ground.shops ?? []).filter((sh) => sh.wall === runIdx);
       const wantsShop = f.ground.kind === "shop";
       // Le mur principal reçoit la porte ou les vitrines ; un autre mur sur rue, seulement les commerces qu'OpenStreetMap y place.
-      if (isStreet && f.ground.kind !== "blank" && (mainWall || (wantsShop && shops.length > 0))) {
+      // Boutique d'angle (D179) : la devanture du même commerce sur le mur voisin de l'entrée.
+      const corner = wantsShop && f.ground.corner?.wall === runIdx ? f.ground.corner : undefined;
+      if (isStreet && f.ground.kind !== "blank" && (mainWall || corner || (wantsShop && shops.length > 0))) {
         const centers: { name: string | null; s: number; kind: string | null; terrace?: Terrace | undefined }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind, terrace: sh.terrace }));
         if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2, kind: null });
         const sf = f.ground.shopfront;
-        const dev = f.ground.devanture;
-        if (wantsShop && dev && mainWall) {
+        const dev = corner ? corner.devanture : mainWall ? f.ground.devanture : undefined;
+        if (wantsShop && dev && (mainWall || corner)) {
           // Devanture d'après photo (D141) : dessinée telle quelle (stylized.ts, `devantureGeometry`) ; pas de fenêtre au rez-de-chaussée derrière.
           const width = dev.bays.reduce((a, q) => a + q[1], 0);
           const mid = sampleAt(pl, dev.s0 + width / 2);
-          plan.requests.push({ key: `dev|${b.id}`, wm: width, hm: dev.h });
-          place(`dev|${b.id}`, "facade", sampleAt(pl, 0), terrain.heightAt(mid.x, mid.y), 0);
+          const devKey = corner ? `dev|${b.id}|c` : `dev|${b.id}`;
+          plan.requests.push({ key: devKey, wm: width, hm: dev.h });
+          place(devKey, "facade", sampleAt(pl, 0), terrain.heightAt(mid.x, mid.y), 0);
           plan.stats.shops++;
           // Terrasse d'après photo (D178) devant la devanture : sur sol libre seulement (sinon rien, la devanture porte déjà son store).
-          const withTerrace = shops.find((sh) => sh.terrace);
+          const terr = corner ? corner.terrace : shops.find((sh) => sh.terrace)?.terrace;
+          const withTerrace = terr ? { terrace: terr } : undefined;
           if (withTerrace?.terrace) {
             const span = withTerrace.terrace.span ?? [dev.s0, dev.s0 + width];
             const tm = sampleAt(pl, (span[0] + span[1]) / 2);

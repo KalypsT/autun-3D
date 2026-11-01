@@ -113,4 +113,31 @@ describe("boutiques de la rue Mazagran (D178)", () => {
     buildDevanture(e, null, null, frame, { ...dm, modern: { ...dm.modern!, lozenge: undefined } } as never, g.ground.shopfront!.color);
     expect(c.positions.length).toBeGreaterThan(e.positions.length);
   });
+
+  it("boutiques d'angle (D179) : Les Remparts et Point Plus ont une seconde devanture sur le mur voisin, qui partage leur sommet d'angle", () => {
+    for (const [tile, id, name] of [SHOPS[2]!, SHOPS[3]!]) {
+      const f = fiche(tile, id);
+      const g = f.ground, c = g.corner!;
+      expect(c, name).toBeDefined();
+      const front = f.walls[g.front!]!, side = f.walls[c.wall]!;
+      expect(c.wall).not.toBe(g.front);
+      expect(side.role, name).toBe("street");
+      // Murs voisins dans le contour : la fin de l'un est le début de l'autre.
+      const adjacent = front.b === side.a || side.b === front.a;
+      expect(adjacent, name).toBe(true);
+      const width = c.devanture.bays.reduce((a, q) => a + q[1], 0);
+      expect(c.devanture.s0 + width, name).toBeLessThanOrEqual(side.length + 0.01);
+      expect(c.devanture.sill).toBeLessThan(c.devanture.top);
+      expect(c.devanture.h).toBeLessThanOrEqual(f.storeys.ground + 0.7);
+      const mb = new MeshBuilder();
+      buildDevanture(mb, null, null, frame, c.devanture, g.shopfront!.color);
+      expect(mb.positions.every(Number.isFinite), name).toBe(true);
+      expect(mb.positions.length / 9, name).toBeLessThan(2500);
+    }
+    // Point Plus : la façade principale est sur le mur court (boulevard Laureau), le retour sur le long mur du boulevard Mazagran.
+    const pp = fiche("27_37", "348848405");
+    expect(pp.walls[pp.ground.front!]!.length).toBeLessThan(pp.walls[pp.ground.corner!.wall]!.length);
+    // Les Remparts : le retour est sans store.
+    expect(fiche("26_37", "348848399").ground.corner!.devanture.awning).toBeUndefined();
+  });
 });

@@ -1368,3 +1368,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le pub est retiré du bâtiment voisin où OpenStreetMap le liait à tort, et deux murs qui cachaient sa façade disparaissent.
 - Pas encore : perron et panneau « À VENDRE » de Festival, affiches de la vitrine de Point Plus, boutique grise vide à gauche du pub ; volets de l'étage de couleur de palette (pas ceux des photos). 966 tests (6 de plus).
 - À regarder : `?view=custom&cam=218.7,408.1,2,225.7,424.3,2&h=14` (rue Mazagran), `cam=189.6,381.7,2,183.6,388.4,2.2&h=22` (le pub la nuit), `cam=258.5,432.8,2.2,253.5,441.5,2` (Point Plus), `cam=562.1,852.4,2.4,568.7,860,2.2` (Festival).
+
+**Boutiques d'angle (1er novembre 2026)** (D179)
+- Une boutique peut maintenant avoir sa devanture sur les deux murs du coin. Les Remparts a sa fenêtre à petits carreaux et son bac fleuri sur le boulevard Laureau ; Point Plus est corrigé : sa façade principale est sur le boulevard Laureau (porte et losange « PRESSE » au coin), avec un retour sur le boulevard Mazagran.
+- 23 commerces sur 240 sont près d'un coin ; les 21 autres n'ont toujours qu'une devanture générique d'un seul côté (à décider).
+- Pas encore : colombage de l'étage des Remparts. 967 tests (1 de plus).
+- À regarder : `?view=custom&cam=248.5,425.5,2.3,237.5,433.5,2&h=14` (le coin des Remparts) et `cam=237,437.2,2.2,244.6,441.1,2` (Point Plus).
