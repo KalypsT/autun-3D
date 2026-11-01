@@ -20,9 +20,10 @@ export interface UniqueSpot {
 export const UNIQUES: readonly UniqueSpot[] = [
   // Jeep militaire, dans l'enceinte du Lycée militaire d'Autun, le long de l'allée à l'est du bâtiment principal.
   { id: "unique-jeep-militaire", model: "jeep-militaire", x: 676, y: 36, heading: 2.36 },
-  // Camion Pizza du Vallon, sur le parking à l'ouest du Collège du Vallon, de 17 h à 22 h : dos à la route qui longe le parking au nord, dans son axe,
-  // la cabine vers l'ouest ; son comptoir (à gauche) donne sur le parking.
-  { id: "unique-pizza-du-vallon", model: "pizza-du-vallon", x: 503.5, y: 1105, heading: 4.23, hours: [17, 22] },
+  // Camion Pizza du Vallon, sur le parking à l'ouest du Collège du Vallon, de 17 h à 22 h : sur les places de la rangée nord (D177, au repère donné par
+  // l'utilisateur), dans le sens des traits (cap 165°), le dos à l'avenue qui longe le parking au nord, la cabine vers le sud ; son comptoir (à gauche, à l'est)
+  // donne sur la place voisine, laissée libre.
+  { id: "unique-pizza-du-vallon", model: "pizza-du-vallon", x: 499.1, y: 1102.3, heading: 2.88, hours: [17, 22] },
   // Rôtisserie du marché, de 7 h à 13 h, sur le petit parking devant la mairie (entre la rue et le parvis), le long de sa rangée de places,
   // la cabine vers la place du Champ de Mars ; son comptoir (à droite) donne sur les places et la mairie.
   { id: "unique-rotisserie", model: "rotisserie-champ-de-mars", x: 30, y: 41.5, heading: 4.11, hours: [7, 13] },

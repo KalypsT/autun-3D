@@ -1327,3 +1327,38 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Trois petits bâtiments du voisinage ont encore un toit trop haut (hauteur BD TOPO prise pour l'égout) : à traiter pour toute la ville, pas ici.
 - 903 tests (5 de plus). À regarder : `?view=custom&cam=392,270,38,408,270,6` et `cam=345,215,35,365,250,9`.
 
+**Collège du Vallon, lot 0 : relevés (1er novembre 2026)** (D171)
+- Rien n'a changé dans le jeu : relevés LiDAR et orthophotographie du collège (`tools/data/survey_college.py`), résultats au §9 de `docs/plans/college-vallon.md`.
+- Le bâtiment principal est fait d'une barre de 4 niveaux (13,6 m), de blocs à 2 niveaux (7,7 m) et d'un préau (3,8 m) ; le gymnase a un toit presque plat (faîtage 5,3 m, le jeu le fait à 9 m) ; le parking compte à peu près 42 places ; les plateaux sont en enrobé gris, sans grillage.
+- À confirmer de ta part : le cap de la photo de la cour (je lis ouest-sud-ouest, pas est-sud-est) et ce que « grille fermée » veut dire (fermée en dehors des heures de classe, par défaut).
+- Réponses du 1er novembre : la photo de la cour est vise bien l'ouest-sud-ouest ; la grille sera fermée en dehors des heures de classe.
+
+**Collège du Vallon, lot 1 : volumes et toits (1er novembre 2026)** (D172)
+- Le bâtiment principal n'est plus une boîte : six ailes à toit plat (barre de quatre niveaux, blocs de deux niveaux), le préau a ses quatre voûtes, le gymnase son toit à deux pentes (plus bas de 3,7 m qu'avant). Murs encore unis : les façades sont le lot 2.
+- Le petit bâtiment gris au nord-est (photo de l'avenue) est ramené à 4,3 m. 917 tests (14 de plus).
+- À regarder : `?view=custom&cam=640,1160,25,625,1100,0` et `cam=598,1108,3,630,1108,5` (cour ouest).
+
+**Collège du Vallon, lot 2 : façades (1er novembre 2026)** (D173)
+- Le collège a ses façades : mur-rideau à panneaux bleu-vert et double porte à l'entrée (côté ouest), barre de quatre étages à bandes de fenêtres avec sa bande orangée, bardage bleu-gris du noyau, escalier extérieur en béton, préau ouvert sur poteaux bleu-vert.
+- Pas encore : marches, bacs, rochers et sol de la cour (lot 4), grille (lot 3). On ne peut pas encore marcher sous le préau. 926 tests (9 de plus).
+- À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5` (entrée) et `cam=668,1122,4,646,1114,4` (cour est).
+
+**Collège du Vallon, lot 3 : l'entrée (1er novembre 2026)** (D174)
+- Le collège a une vraie entrée : le mur qui barrait le bout du pont est coupé, il y a une grille à barreaux noirs, un portillon, un pilier à interphone, le panneau « Collège le Vallon » et deux lampadaires à tête en disque. Le pont est plus large (6 m).
+- La grille est ouverte de 7 h 30 à 18 h et fermée le reste du temps : fermée, elle arrête le joueur. L'enceinte est ramenée à 1,8 m.
+- Pas encore : le panneau « P » et le marquage de la chaussée (lot 6), les marches, bacs et rochers de la cour (lot 4). 938 tests (12 de plus).
+- À regarder : `?at=538,1080&yaw=1.152&h=22` (fermée) et `h=12` (ouverte).
+
+**Collège du Vallon, lot 4 : la cour et les abords (1er novembre 2026)** (D175)
+- Les cours du collège ont leur enrobé gris (elles étaient couleur de sable) et l'entrée de la façade ouest ses abords : marches de gravier, trois bacs roses, rochers, haie taillée et bouleau pleureur, comme sur la photo de la cour.
+- La clôture noire de l'avenue reste (rien ne prouve qu'elle n'existe pas). 947 tests (9 de plus).
+- À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5`.
+
+**Collège du Vallon, lot 5 : les terrains de sport (1er novembre 2026)** (D176)
+- Les trois plateaux sont en enrobé gris sombre (ils étaient rouge et bleu) et ont leurs cinq paniers de basket (panneau blanc, anneau orange), sans grillage comme sur l'orthophotographie.
+- 952 tests (5 de plus). À regarder : `?view=custom&cam=600,1047,6,625,1015,3`.
+
+**Collège du Vallon, lot 6 : le parking et le camion pizza (1er novembre 2026)** (D177)
+- Le parking a ses vraies rangées de places (33 places en quatre blocs), ses flèches de sens, trois lampadaires et son panneau « P ». Le camion pizza est maintenant garé sur une vraie place de la rangée nord, au repère que tu avais donné, le dos à l'avenue ; la place voisine à sa gauche reste libre.
+- Pas encore : le texte « Rue de l'Acaron » peint sur la chaussée. 960 tests (8 de plus).
+- À regarder : `?at=504,1094&yaw=5.76&h=18` (le camion à 18 h).

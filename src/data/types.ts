@@ -402,6 +402,8 @@ export interface BuildingKind {
   house?: HouseModel;
   /** L'Hexagone d'après relevés LiDAR et photos (D165) : modèle dédié (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
   hex?: HexagoneModel;
+  /** Collège du Vallon d'après relevés LiDAR (D172) : ailes à toit plat, gymnase à deux pentes ou préau à voûtes (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
+  vallon?: VallonModel;
 }
 
 /**
@@ -589,13 +591,71 @@ export interface HexagoneNorthEast {
   oriel: [number, number];
 }
 
+/**
+ * Collège du Vallon (D172, tools/data/build_monuments.py, relevés de tools/data/survey_college.py, docs/plans/college-vallon.md §9) : volumes mesurés au
+ * LiDAR dans le repère tourné du bâtiment principal (origine `o`, axe u au cap 90° − `rot`, axe v à 90° de lui vers la gauche : caps 72° et 342° pour 17,5°).
+ * Altitudes absolues (locales). Un bâtiment porte l'une des trois parties : `wings` (ailes à toit plat), `gym` ou `preau`.
+ */
+/**
+ * Objet des abords du collège (lot 4), en (u, v) du repère du bâtiment : `steps` : volée de trois marches et palier face à la porte, largeur `w` (le long de v),
+ * descendant vers −u ; `rock` : rocher de rayon `r` ; `pot` : bac rose ; `hedge` : haie taillée de longueur `w` le long de v, à partir de `v` ; `birch` : bouleau pleureur de hauteur `h`.
+ */
+export interface VallonProp {
+  k: "steps" | "rock" | "pot" | "hedge" | "birch" | "psign";
+  u: number;
+  v: number;
+  /** `psign` : cap (degrés) vers lequel regarde le panneau. */
+  a?: number;
+  w?: number;
+  r?: number;
+  h?: number;
+}
+
+/** Côté d'un rectangle : `s` (v = v0, vers −v), `e` (u = u1, vers +u), `n` (v = v1, vers +v), `w` (u = u0, vers −u). */
+export type VallonSide = "s" | "e" | "n" | "w";
+
+/**
+ * Style d'une face d'aile : `bands` (bandes de fenêtres et lignes d'étage ; `strip` : bande verticale orangée [s, largeur], `cam` : s de la caméra),
+ * `curtain` (mur-rideau à deux niveaux, panneaux bleu-vert en haut ; `door` : s des portes doubles), `blank` (mur aveugle à joints), `clad` (bardage
+ * bleu-gris), `stairs` (escalier extérieur en béton), `plain` (rien). `s` se compte depuis le début de la face vue de l'extérieur, vers la droite.
+ */
+export interface VallonFace {
+  w: string;
+  f: VallonSide | "*";
+  k: "bands" | "curtain" | "blank" | "clad" | "stairs" | "plain";
+  floors?: number;
+  strip?: [number, number];
+  door?: number[];
+  cam?: number;
+}
+
+export interface VallonModel {
+  o: [number, number];
+  rot: number;
+  /** Ailes à toit plat avec acrotère : rectangle [u0, u1, v0, v1] et altitude du toit. */
+  wings?: { n: string; r: [number, number, number, number]; z: number }[];
+  /** Gymnase : emprise (x, y, …) découpée en bandes selon u ; plate (`z`) ou à deux pentes (`ridge` : u et altitude du faîtage, `eave` : altitude des égouts). */
+  gym?: { ring: number[]; strips: { u: [number, number]; z?: number; ridge?: [number, number]; eave?: number }[] };
+  /** Préau : rectangle [u0, u1, v0, v1], égout (creux entre voûtes), sommet des voûtes, nombre de voûtes (axe le long de u) ; `open` : côtés sans mur (poteaux à la place, lot 2). */
+  preau?: { r: [number, number, number, number]; eave: number; crown: number; n: number; open?: VallonSide[] };
+  /** Façades des ailes (lot 2) : un style par face qui s'écarte du style par défaut (bandes de fenêtres). */
+  faces?: VallonFace[];
+  /** Entrée (lot 3) : grille à l'extrémité du pont (extrémité nord-ouest, normale sortante, longueur), voir `core/school-gate.ts`. */
+  gate?: { o: [number, number]; n: [number, number]; len: number };
+  /** Abords de l'entrée ouest (lot 4) : marches, bac, rochers, haie, bouleau pleureur, placés dans le repère du bâtiment. */
+  props?: VallonProp[];
+  /** Volumes voisins qui masquent le pied des murs sans être des ailes (le préau) : rectangle et altitude du dessus. */
+  bury?: { r: [number, number, number, number]; z: number }[];
+  colors: { wall: string; roof: string; parapet: string; vault: string; hall: string };
+}
+
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";
 
 export type Site =
   /** Station-service : auvent l × w centré en (x, y), grand côté orienté de `a` radians ; `roof` : bâtiment-auvent existant. */
   | { t: "fuel"; x: number; y: number; a: number; l: number; w: number; n?: string; c?: string; roof?: string }
   /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
-  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
+  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number]; surf?: string; court?: string; hoops?: [number, number, number][] }
   /** Piste ; `s` : « dirt », terre battue (correction d'après photo, D133), sinon synthétique. */
   | { t: "track"; r: number[]; s?: "dirt" }
   | { t: "cemetery"; r: number[] }

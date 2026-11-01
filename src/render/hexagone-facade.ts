@@ -38,7 +38,7 @@ export function frameOf(m: HexagoneModel, cap: number, d: number): Frame {
 }
 
 /** Outils de dessin dans un repère : plaques verticales et pavés, au-dessus du relief si le bas est `null`. */
-class Draw {
+export class Draw {
   constructor(readonly f: Frame, readonly sinks: LandmarkSinks, readonly terrain: HeightField) {}
 
   get mb(): MeshBuilder { return this.sinks.solid; }

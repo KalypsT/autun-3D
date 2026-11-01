@@ -3246,3 +3246,120 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Barre nord-ouest](captures/hexagone-lot6-barre-nord-ouest.jpg)
 ![Vue aérienne](captures/hexagone-lot6-aerien.jpg)
 
+## 2026-11-01 — D171. Collège du Vallon, lot 0 : relevés (plan `docs/plans/college-vallon.md`)
+
+**Demande de l'utilisateur** : option B (modèle dédié), grille « fermée », camion pizza sur les places de parking au repère donné, pas de passants à la grille ; une photo de la cour est (photo 8) avec son repère, cap indiqué est-sud-est ; lancer le lot 0.
+
+**Aucun changement du jeu** : un script de relevé (`tools/data/survey_college.py`, MNS/MNT LiDAR HD à 25 cm, orthophotographie à 10 cm, dans `.cache/college/`), le §9 du plan et quatre vues (`docs/captures/college-lot0-*.jpg`).
+
+**Résultats** (détail au §9) :
+- **Bloc principal** : ailes tournées de 17,5° ; barre sud à **13,6 m (4 niveaux)**, ailes ouest, est et bloc nord à **7,7 m (2 niveaux)**, **préau à 3,8 m** (BD TOPO `…848974`, toit en quatre berceaux). BD TOPO `…848973` : 9,3 m partout, faux ; type `culture` à corriger.
+- **Gymnase** `…848924` : toit à deux pentes de pente ≈ 0,2, égout 3,0 m, faîtage 5,3 m ; le jeu le dessine en croupes, faîtage 9,0 m (3,7 m trop haut). `…849030` (photo 4) : 4,3 m, BD TOPO 7,1 m.
+- **Photo 8** : le repère tombe en (670,6 ; 1125,3) ; les ailes visibles indiquent un cap d'environ **250°**, pas 112° (à confirmer). Photo 3 supposée prise dans la cour ouest vers l'est : façade d'entrée = face ouest de l'aile ouest.
+- **Entrée** : tablier (522 ; 1072) à (546 ; 1087), 5 à 6 m de large, grille vers (547 ; 1087). **Parking** : N ≈ 42 (décompte visuel, à refaire au lot 6), repère du camion dans la rangée nord. **Terrains** : enrobé gris sombre, quatre panneaux de basket, pas de grillage ; sol rouge et bleu du jeu faux.
+
+**Limites** : cap de la photo 8 et orientation de la photo 3 sont des lectures ; la détection automatique des traits du parking a échoué (décompte à la main, ± 6) ; hauteur des parapets non mesurable à 25 cm ; **la lecture de « grille fermée » est une hypothèse** (j'avais recommandé « toujours ouverte »), posée en question au §6. Aucun test (aucun code de jeu touché).
+
+![Ailes et cap de la photo 8](captures/college-lot0-ensemble.jpg)
+![Parking](captures/college-lot0-parking.jpg)
+![Terrains](captures/college-lot0-terrains.jpg)
+![Entrée](captures/college-lot0-entree.jpg)
+
+## 2026-11-01 — D172. Collège du Vallon, lot 1 : volumes et toits (plan `docs/plans/college-vallon.md`, §10)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 1 » (après confirmation du cap de la photo 8 et de la grille fermée hors heures de classe).
+
+**Données** : modèle `vallon` (`VallonModel`, `src/data/types.ts`) écrit par `build_monuments.py` (modèle `vallon` de `manual.json`) dans `kinds/28_39.json` pour `…848973` (six ailes), `…848974` (préau à quatre voûtes) et `…848924` (gymnase en trois bandes) ; `…848973` passe de `culture` à `school`. Silhouettes lointaines par aile et par bande. `…849030` : toit plat à 4,3 m du sol (`flatRoofs`, 7,1 m avant). `world.json` : octets de la tuile 28_39 seulement.
+
+**Rendu** (`src/render/vallon.ts`) : ailes dans le repère tourné de 17,5° (murs suivant le relief, acrotère de 0,45 m), voûtes du préau (six segments par voûte), gymnase découpé en bandes (murs et dessus suivent le toit, marche entre bandes). Murs unis ; `stylized.ts` et `landmarks.ts` les excluent des murs génériques.
+
+**Corrections de relevé** : aile est à 8,9 m (pas 7,7) ; pente du hall du gymnase 0,12 (pas 0,2) ; noyau d'escalier en u 1 à 8 (le §9.1 l'avait décalé).
+
+**Tests** (+14, 917 au total, `src/render/vallon.test.ts`) : repère, hauteurs de toit contre le LiDAR, ailes dans l'emprise BD TOPO à 3 m, ailes jointives, bandes du gymnase et pente, découpe en bande, `…849030`, bloc ouest inchangé, triangles (ailes < 6 000, préau < 1 500, gymnase < 1 500, ensemble < 9 000).
+
+**Limites** : façades unies ; préau fermé ; la cage extérieure est (toit posé à −26,1, le LiDAR donne 9,0 m au-dessus du sol) est à reprendre avec l'escalier au lot 2 ; hauteur de l'acrotère (0,45 m) supposée ; `build_nav.py` non relancé.
+
+![Vue aérienne](captures/college-lot1-aerien.jpg)
+![Cour est](captures/college-lot1-cour-est.jpg)
+![Cour ouest](captures/college-lot1-cour-ouest.jpg)
+
+## 2026-11-01 — D173. Collège du Vallon, lot 2 : façades (plan `docs/plans/college-vallon.md`, §11)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 2 ». Pas de photo de plus : lecture des photos 3 (cour ouest) et 8 (cour est).
+
+**Données** : `faces` (style par face : `bands`, `curtain`, `blank`, `clad`, `stairs`, `plain`) et `bury` (le préau, qui masque le pied de l'aile ouest) dans le modèle `vallon` de `…848973` (`manual.json`, `build_monuments.py`) ; `open` (côtés sans mur) dans le préau `…848974`. `kinds/28_39.json` seulement.
+
+**Rendu** (`src/render/vallon-facade.ts`, appelé par `landmarks.ts` après `buildVallon`) : repère de face (`faceGeom`), parties masquées par un voisin (`buriedParts`), bandes de fenêtres par étage, mur-rideau à panneaux bleu-vert, mur aveugle à joints, bardage du noyau, escalier extérieur ; poteaux, poutres et plafond du préau dans `vallon.ts`. `Draw` de `hexagone-facade.ts` est exporté et réutilisé. Façade d'entrée = face ouest de l'aile ouest.
+
+**Tests** (+9, 926 au total, `src/render/vallon-facade.test.ts`) : normales des quatre faces (162,5°, 72,5°, 342,5°, 252,5°), longueurs, retombée sur le mur, parties masquées (aile ouest contre bloc nord et contre le préau, barre libre), maillage fini et moins de 12 000 triangles, rien au-dessus de l'acrotère, préau ouvert.
+
+**Limites** : les collisions gardent l'emprise BD TOPO (le préau reste infranchissable) ; teintes lues sur photo, à valider à l'écran en été ; faces sans photo au style par défaut ; volées d'escalier dessinées en plans inclinés sombres, sans marches ; `build_nav.py` non relancé.
+
+![Cour ouest](captures/college-lot2-cour-ouest.jpg)
+![Cour est](captures/college-lot2-cour-est.jpg)
+
+## 2026-11-01 — D174. Collège du Vallon, lot 3 : l'entrée (plan `docs/plans/college-vallon.md`, §12)
+
+**Demande de l'utilisateur** : « Enchaîne avec le lot 3 » (grille fermée en dehors des heures de classe, confirmé avant le lot 1).
+
+**Constat** : l'enceinte OSM (`249352113`) passait à travers le bout du pont, à 1,2 m du tablier : l'entrée était un mur plein de 3,5 m, hauteur due à des arbres et bâtiments voisins pris pour le mur par le LiDAR.
+
+**Données** : `tools/data/build_school_gate.py` (`schoolGate` de `manual.json`) coupe l'enceinte en deux tracés à la grille, la ramène à 1,8 m, élargit le tablier d'accès à 6,0 m (`tiles/28_39.json`, `structures/28_39.json`, octets de `world.json`) ; champ `gate` du modèle `vallon` de `…848973` (`kinds/28_39.json`).
+
+**Logique** (`src/core/school-gate.ts`) : grille ouverte de 7 h 30 à 18 h ; disposition le long de la grille (poteaux, vantail de 4,4 m, portillon de 1,1 m, pilier) ; `syncGate` pose ou retire l'obstacle étiqueté `school-gate` selon l'heure (ligne de 6,8 m, haute de 2,4 m, ajourée). `landmarkCircles` ajoute poteaux, pilier et lampadaires.
+
+**Rendu** : partie fixe cuite dans la tuile (`vallon-gate.ts`, `buildGatePosts`) ; vantaux fermés en un maillage à part (`buildGateLeaves`) que `src/game/school-gate.ts` montre ou cache, appelé à chaque image depuis `game.ts`.
+
+**Tests** (+12, 938 au total ; `src/core/school-gate.test.ts`, `src/render/vallon-gate.test.ts`) : horaires, disposition sans trou, grille dans l'axe du pont à 1,5 m et perpendiculaire à 8°, enceinte coupée et à 1,8 m, passage du pont à l'esplanade libre ouverte et arrêté fermée (collisions réelles de la tuile), obstacle posé et retiré sans doublon, passage libre de 3 m, maillages finis et bornés.
+
+**Limites** : le portail n'est pas animé ; heures fixes (le jeu n'a pas de calendrier : ni week-end ni vacances, D116) ; barrière à chevrons, panneau « P » et marquage de la chaussée non faits ; `build_nav.py` non relancé.
+
+![Fermée la nuit](captures/college-lot3-ferme-pres.jpg)
+![Ouverte le jour](captures/college-lot3-ouverte.jpg)
+
+## 2026-11-01 — D175. Collège du Vallon, lot 4 : la cour et les abords (plan `docs/plans/college-vallon.md`, §13)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 4 ».
+
+**Données** : `build_courts.py` accepte une seconde entrée, `courtsVallon` (`manual.json`), à plusieurs morceaux de contour (`sites`) ; `build_courts.py courtsVallon` pose un polygone d'enrobé de 6 872 m² dans `tiles/28_39.json` (octets de `world.json`). Champ `props` du modèle `vallon` de `…848973` (`kinds/28_39.json`).
+
+**Rendu** (`src/render/vallon-props.ts`) : marches et palier, bacs, rochers (icosaèdres déformés), haie, bouleau pleureur. Constantes et obstacles ronds dans `src/core/vallon-props.ts` (`landmarkCircles` les ajoute).
+
+**Constat** : `build_courts.py` sans argument réécrit la tuile 25_34 (lycée) à l'identique de son code mais pas du fichier : la tuile a dérivé depuis D152 ; elle n'est pas touchée ici, à reprendre séparément.
+
+**Tests** (+9, 947 au total ; `src/render/vallon-props.test.ts`) : marches face à la porte du mur-rideau, bacs et rochers au sud, haie et bouleau au nord, aucun obstacle sur le mur-rideau ni dans le couloir de 3 m de la porte, enrobé dans les quatre cours et pas dans les bâtiments, la pelouse ni sur le pont, maillage fini (150 à 2 000 triangles), palier à trois marches de haut.
+
+**Limites** : clôture de l'avenue conservée faute de preuve ; bouleau feuillu (photo hivernale) ; marches traversables ; `build_nav.py` non relancé.
+
+![Cour ouest](captures/college-lot4-cour-ouest.jpg)
+![Vue aérienne](captures/college-lot4-aerien.jpg)
+
+## 2026-11-01 — D176. Collège du Vallon, lot 5 : les terrains de sport (plan `docs/plans/college-vallon.md`, §14)
+
+**Demande de l'utilisateur** : « Continue » (après le lot 4).
+
+**Données** : `pitches` de `manual.json` (revêtement, rectangle de jeu, paniers lus à l'orthophotographie à 7 cm) ; `build_monuments.py` les pose dans les sites `pitch` de `kinds/28_39.json` (champs `surf`, `court`, `hoops` du type `Site`).
+
+**Rendu** : `pitchPolys` lit `surf` et `court` ; `buildHoops` (`src/render/hoops.ts`) dessine les paniers ; constantes et poteau dans `src/core/hoops.ts`, obstacles ronds ajoutés par `landmarkCircles`.
+
+**Tests** (+5, 952 au total ; `src/render/hoops.test.ts`) : trois plateaux gris, cinq paniers tournés vers leur terrain et à moins de 26 m de son centre, poteau à 1,2 m derrière le panneau et obstacle de la tuile, panneau à 2,9 m et anneau à 3,05 m, moins de 150 triangles par panier.
+
+**Limites** : tracés du gabarit (pas ceux, croisés et effacés, du grand plateau) ; aucun grillage (aucun visible) ; paniers au 1/10 de mètre près ; `build_nav.py` non relancé.
+
+![Paniers](captures/college-lot5-paniers.jpg)
+![Les trois plateaux](captures/college-lot5-aerien.jpg)
+
+## 2026-11-01 — D177. Collège du Vallon, lot 6 : le parking et le camion pizza (plan `docs/plans/college-vallon.md`, §15)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 6 » ; décision antérieure : le camion sur les places de parking, comme sur son repère.
+
+**Données** : quatre entrées `parkings` dans `manual.json` (colonne ouest, îlot central, bloc est, rangée nord : leurs traits n'ont pas la même direction), lues à l'orthophotographie à 5 cm par pixel ; `build_parking.py` accepte `arrows` (flèches de sens) et `furniture` (lampadaires) ; la première entrée porte la zone de nettoyage (39 anciens traits retirés). Champ `props` du modèle `vallon` : panneau « P » (`psign`). `uniques.ts` : le camion passe de (503,5 ; 1105, cap 242°) à (499,1 ; 1102,3, cap 165°).
+
+**Résultat** : 33 places retrouvées par `findStalls` (12 + 7 + 8 + 6), quatre flèches, trois lampadaires, un panneau « P » ; le camion est sur la place de la rangée nord centrée sur le repère, dans le sens des traits, le dos à l'avenue, sa voisine de gauche libre (`keepClear`).
+
+**Tests** (+8, 960 au total ; `src/data/parking-vallon.test.ts`) : 30 à 37 places sans doublon, direction de chaque bloc à 3°, aucune place dans un bâtiment, lampadaires à plus de 2 m des places, quatre flèches, panneau « P », camion à moins de 1 m d'une place de la rangée nord et du repère, cap des traits et dos à l'avenue, place voisine libre à 2,3-2,7 m.
+
+**Limites** : traits droits dans leur bloc (éventail réel de l'ouest non reproduit) ; sens de circulation des flèches supposé ; marquage « Rue de l'Acaron » sur la chaussée, petit bloc du coin nord-est et coin sud-est non faits ; lampadaires de 4,4 m (mâts de 10 m sur les photos) ; `build_nav.py` non relancé.
+
+![Parking vu de dessus](captures/college-lot6-aerien.jpg)
+![Le camion pizza à 18 h](captures/college-lot6-camion.jpg)

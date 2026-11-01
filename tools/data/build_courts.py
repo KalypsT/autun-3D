@@ -1,4 +1,4 @@
-"""Sols des cours du lycée Bonaparte (D152) : ce que l'enceinte laisse libre entre les bâtiments (cour d'honneur, cour nord, cour sud, parking sud) reçoit son
+"""Sols des cours du lycée Bonaparte (D152) et du collège du Vallon (D175, `courtsVallon`, contour en plusieurs morceaux `sites`) : ce que l'enceinte laisse libre entre les bâtiments (cour d'honneur, cour nord, cour sud, parking sud) reçoit son
 revêtement d'après l'orthophotographie, comme les places de la tuile.
 
 Usage : python3 tools/data/build_courts.py     (après build_public_space.py, qui réécrit les sols des tuiles ; avant build_nav.py)
@@ -10,6 +10,7 @@ Sortie : la classe de sol (`plaza_gravel`, `plaza_asphalt`…) de la tuile reço
 """
 
 import json
+import sys
 
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
@@ -26,14 +27,21 @@ def rings_of(poly):
 
 
 def main():
-    spec = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text())["courts"]
+    manual = json.loads((c.ROOT / "tools" / "data" / "manual.json").read_text())
+    only = sys.argv[1] if len(sys.argv) > 1 else None  # `build_courts.py courtsVallon` : un seul site
+    for key in ("courts", "courtsVallon"):
+        if key in manual and only in (None, key):
+            lay(manual[key])
+
+
+def lay(spec):
     world = json.loads((c.OUT / "world.json").read_text())
     tid = spec["tile"]
     path = c.OUT / "tiles" / f"{tid}.json"
     text = path.read_text()
     tile = json.loads(text)
     x0, y0, x1, y1 = tile["bounds"]
-    site = Polygon(spec["site"])
+    site = unary_union([Polygon(r) for r in spec["sites"]]) if "sites" in spec else Polygon(spec["site"])
     buildings = []
     for m in world["tiles"]:
         if not m.get("buildings"):

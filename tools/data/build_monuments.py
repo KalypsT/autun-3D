@@ -12,6 +12,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
+          collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
+          terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -881,6 +883,48 @@ def hexagone(tid, bid, b, spec, k):
     return True, lod
 
 
+# --- Collège du Vallon (D172) ---------------------------------------------------------------------------------------------------------
+
+VALLON_COLORS = {"wall": "#d8d1c0", "roof": "#8d8a84", "parapet": "#cbc3b1", "vault": "#6f8c7c", "hall": "#c8cdd0"}
+
+
+def vallon(tid, bid, b, spec, k):
+    """Collège du Vallon (D172) : champ `vallon` du bâtiment (kinds/<tuile>.json) et silhouette lointaine. Les mesures (ailes, niveaux de toit, bandes du
+    gymnase, voûtes du préau, dans le repère tourné de 17,5° du bloc principal) viennent des relevés du lot 0 (tools/data/survey_college.py,
+    docs/plans/college-vallon.md §9), recopiés dans `manual.json` ; le type du bâtiment est celui de `kind` (« school » : l'ancien « culture » du bloc
+    principal venait d'une étiquette OpenStreetMap). Rend (changé, silhouette)."""
+    m = {"o": spec["o"], "rot": spec["rot"], "colors": {**VALLON_COLORS, **spec.get("colors", {})}}
+    ca, sa = math.cos(math.radians(spec["rot"])), math.sin(math.radians(spec["rot"]))
+    pt = lambda u, v: [round(spec["o"][0] + u * ca - v * sa, 1), round(spec["o"][1] + u * sa + v * ca, 1)]
+    polys = []
+    g = round(b["ground"], 1)
+    if spec.get("wings"):
+        m["wings"] = [{"n": w["n"], "r": w["r"], "z": w["z"]} for w in spec["wings"]]
+        for key in ("faces", "bury", "gate", "props"):  # façades (D173) et volumes voisins qui masquent le pied des murs
+            if spec.get(key):
+                m[key] = spec[key]
+        for w in m["wings"]:
+            u0, u1, v0, v1 = w["r"]
+            polys.append(([pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)], g, round(w["z"] + 0.45, 1)))
+        print(f"  {bid} : {len(m['wings'])} ailes, toits à " + ", ".join(f"{w['n']} {w['z'] - g:+.1f}" for w in m["wings"]) + f" m du sol ({g})")
+    if spec.get("gym"):
+        m["gym"] = {"ring": b["ring"], "strips": spec["gym"]["strips"]}
+        top = max(s.get("z", s.get("ridge", [0, -99])[1]) for s in spec["gym"]["strips"])
+        polys.append(([[round(b["ring"][i], 1), round(b["ring"][i + 1], 1)] for i in range(0, len(b["ring"]), 2)], g, round(top, 1)))
+        print(f"  {bid} : gymnase en {len(m['gym']['strips'])} bandes, faîtage à {top - g:.1f} m du sol ({g})")
+    if spec.get("preau"):
+        m["preau"] = spec["preau"]
+        print(f"  {bid} : préau à {spec['preau']['crown'] - g:.1f} m du sol ({g}), {spec['preau']['n']} voûtes")
+    lod = tid if polys and replace_lod(tid, bid, polys) else None
+    e = dict(k["buildings"].get(bid, {"k": spec["kind"]}))
+    e["k"] = spec["kind"]
+    e["vallon"] = m
+    if k["buildings"].get(bid) == e:
+        return False, lod
+    k["buildings"][bid] = e
+    return True, lod
+
+
 # --- Maison d'après photo (D140) -----------------------------------------------------------------------------------------------------
 
 def house_frame(b, spec):
@@ -1491,6 +1535,13 @@ def main():
             if lod:
                 changed_lod.add(lod)
             continue
+        if spec["model"] == "vallon":
+            ch, lod = vallon(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
         if spec["model"] == "hexagone":
             ch, lod = hexagone(tid, bid, b, spec, k)
             if ch:
@@ -1521,9 +1572,31 @@ def main():
               f" ailes {hall['wingEave'] - hall['g']:.1f} / {hall['wingRidge'] - hall['g']:.1f} m")
         if lod_silhouette(tid, bid, hall):
             changed_lod.add(tid)
+    if not sys.argv[1:] or sys.argv[1] in ("vallon", "pitches"):
+        spec = data.get("pitches")
+        if spec and pitches(spec, kinds):
+            changed.add(spec["tile"])
     for tid in changed:
         (KINDS / f"{tid}.json").write_text(json.dumps(kinds[tid], ensure_ascii=False, separators=(",", ":")))
     print(f"{len(manual)} monument(s) d'après photo ; {len(changed)} fichier(s) de types et {len(changed_lod)} de silhouettes réécrit(s)")
+
+
+def pitches(spec, kinds):
+    """Terrains du collège (D176) : revêtement (`surf`), rectangle de jeu (`court`) et paniers (`hoops`) posés dans les sites `pitch` de kinds/<tuile>.json,
+    retrouvés par le centre de leur rectangle (à 3 m près). Vrai si le fichier change."""
+    tid = spec["tile"]
+    k = kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))
+    changed = False
+    for want in spec["list"]:
+        site = min((q for q in k["sites"] if q.get("t") == "pitch"), key=lambda q: math.dist(q["box"][:2], want["at"]), default=None)
+        if site is None or math.dist(site["box"][:2], want["at"]) > 3:
+            raise SystemExit(f"terrain en {want['at']} : absent de {tid}")
+        for key in ("surf", "court", "hoops"):
+            if key in want and site.get(key) != want[key]:
+                site[key] = want[key]
+                changed = True
+        print(f"  terrain {site['s']} en {want['at']} : {want.get('surf')} ; {len(want.get('hoops', []))} panier(s)")
+    return changed
 
 
 def cathedral(tid, bid, b, spec, k):
