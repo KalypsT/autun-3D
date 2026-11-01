@@ -3316,3 +3316,20 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Fermée la nuit](captures/college-lot3-ferme-pres.jpg)
 ![Ouverte le jour](captures/college-lot3-ouverte.jpg)
+
+## 2026-11-01 — D175. Collège du Vallon, lot 4 : la cour et les abords (plan `docs/plans/college-vallon.md`, §13)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 4 ».
+
+**Données** : `build_courts.py` accepte une seconde entrée, `courtsVallon` (`manual.json`), à plusieurs morceaux de contour (`sites`) ; `build_courts.py courtsVallon` pose un polygone d'enrobé de 6 872 m² dans `tiles/28_39.json` (octets de `world.json`). Champ `props` du modèle `vallon` de `…848973` (`kinds/28_39.json`).
+
+**Rendu** (`src/render/vallon-props.ts`) : marches et palier, bacs, rochers (icosaèdres déformés), haie, bouleau pleureur. Constantes et obstacles ronds dans `src/core/vallon-props.ts` (`landmarkCircles` les ajoute).
+
+**Constat** : `build_courts.py` sans argument réécrit la tuile 25_34 (lycée) à l'identique de son code mais pas du fichier : la tuile a dérivé depuis D152 ; elle n'est pas touchée ici, à reprendre séparément.
+
+**Tests** (+9, 947 au total ; `src/render/vallon-props.test.ts`) : marches face à la porte du mur-rideau, bacs et rochers au sud, haie et bouleau au nord, aucun obstacle sur le mur-rideau ni dans le couloir de 3 m de la porte, enrobé dans les quatre cours et pas dans les bâtiments, la pelouse ni sur le pont, maillage fini (150 à 2 000 triangles), palier à trois marches de haut.
+
+**Limites** : clôture de l'avenue conservée faute de preuve ; bouleau feuillu (photo hivernale) ; marches traversables ; `build_nav.py` non relancé.
+
+![Cour ouest](captures/college-lot4-cour-ouest.jpg)
+![Vue aérienne](captures/college-lot4-aerien.jpg)

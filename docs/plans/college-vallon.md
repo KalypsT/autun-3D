@@ -115,7 +115,7 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 | **1. Volumes et toits (fait, §10)** | type `college-vallon` (comme `hexagone` et `college`) : ailes, toits mesurés, gymnase ; les BD TOPO fusionnées sont masquées ; `kind` corrigé en `school` si le relevé le confirme | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | emprise dans le contour BD TOPO ± 2 m ; sommet à ± 0,5 m du LiDAR ; aucun triangle caché |
 | **2. Façades (fait, §11)** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
 | **3. Entrée (fait, §12)** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
-| **4. Cour et abords** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
+| **4. Cour et abords (fait, §13)** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
 | **5. Terrains de sport** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
 | **6. Parking et camion pizza** | rangées lues à l'orthophotographie, flèches, lampadaires ; ancienne marque retirée ; place du camion contrôlée | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts`, `src/core/uniques.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; camion hors de toute place |
 | ~~7. Passants à la grille~~ | **exclu** (réponse du 1ᵉʳ novembre) | — | — |
@@ -275,3 +275,19 @@ Fait. La grille est un vrai passage : fermée en dehors des heures de classe (r�
 ![De près](../captures/college-lot3-ferme-pres.jpg)
 ![Ouverte le jour](../captures/college-lot3-ouverte.jpg)
 ![Depuis l'esplanade](../captures/college-lot3-dedans.jpg)
+
+## 13. Lot 4 : la cour et les abords (D175)
+
+Fait. La cour a son enrobé et la façade d'entrée ses abords ; la clôture de l'avenue est conservée (voir plus bas).
+
+- **Sols** (`build_courts.py courtsVallon`, `courtsVallon` de `manual.json`) : quatre morceaux de contour lus sur l'orthophotographie (accès depuis la grille, cour ouest, cour nord le long du bloc nord, grande cour est), moins les bâtiments (marge de 40 cm), arrondis à 25 cm : **une seule pièce d'enrobé de 6 872 m²** (`plaza_asphalt`) à la place du sable. Le lycée n'est pas touché : sans argument, `build_courts.py` réécrit aussi la tuile 25_34, qui avait dérivé depuis D152 ; on ne lance donc que `build_courts.py courtsVallon`.
+- **Abords de l'entrée ouest** (`src/render/vallon-props.ts`, `props` du modèle `vallon`, d'après la photo 3) : **volée de trois marches de gravier et palier** (5,2 m de large) devant la double porte, **trois bacs roses** et **trois rochers** à droite (au sud), **haie taillée** de 5 m et **bouleau pleureur** de 7 m à gauche (au nord). Obstacles : rochers, bacs, tronc du bouleau, haie (un cercle par mètre) ; les marches se traversent (le palier reste sous la porte, qui ne s'ouvre pas) ; la porte reste dégagée dans un couloir de 3 m.
+- **Clôture de l'avenue : conservée.** L'orthophotographie ne montre ni clôture ni cour ouverte entre l'avenue et le bloc nord : un rideau d'arbres (conifères) les sépare, qui pourrait la cacher ; la photo 4 est cadrée trop bas pour trancher. Les clôtures de 1,5 m restent donc, sans raison de les retirer.
+- **Pas fait** : mobilier de la cour est (bancs, arceaux à vélos : aucune photo), sol du préau (c'est un bâtiment BD TOPO, exclu de l'enrobé), marquages au sol, gravier sous les marches, arbre remarquable derrière la grille (le grand hêtre de la photo 2 est dans les arbres de la tuile à l'est du pont, à contrôler plus tard), saison du bouleau (photo hivernale : arbre nu ; le jeu le montre feuillu).
+- **Reproduire** : `python3 tools/data/build_courts.py courtsVallon` (après `build_public_space.py`, avant `build_nav.py`), puis `python3 tools/data/build_monuments.py vallon`.
+- Captures : `docs/captures/college-lot4-*.jpg`.
+
+![Cour ouest : marches, bacs, rochers, haie, bouleau](../captures/college-lot4-cour-ouest.jpg)
+![Entrée vue de haut](../captures/college-lot4-entree-haut.jpg)
+![Vue aérienne : l'enrobé des cours](../captures/college-lot4-aerien.jpg)
+![Du nord-est](../captures/college-lot4-nord-est.jpg)

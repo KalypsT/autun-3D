@@ -596,6 +596,19 @@ export interface HexagoneNorthEast {
  * LiDAR dans le repère tourné du bâtiment principal (origine `o`, axe u au cap 90° − `rot`, axe v à 90° de lui vers la gauche : caps 72° et 342° pour 17,5°).
  * Altitudes absolues (locales). Un bâtiment porte l'une des trois parties : `wings` (ailes à toit plat), `gym` ou `preau`.
  */
+/**
+ * Objet des abords du collège (lot 4), en (u, v) du repère du bâtiment : `steps` : volée de trois marches et palier face à la porte, largeur `w` (le long de v),
+ * descendant vers −u ; `rock` : rocher de rayon `r` ; `pot` : bac rose ; `hedge` : haie taillée de longueur `w` le long de v, à partir de `v` ; `birch` : bouleau pleureur de hauteur `h`.
+ */
+export interface VallonProp {
+  k: "steps" | "rock" | "pot" | "hedge" | "birch";
+  u: number;
+  v: number;
+  w?: number;
+  r?: number;
+  h?: number;
+}
+
 /** Côté d'un rectangle : `s` (v = v0, vers −v), `e` (u = u1, vers +u), `n` (v = v1, vers +v), `w` (u = u0, vers −u). */
 export type VallonSide = "s" | "e" | "n" | "w";
 
@@ -627,6 +640,8 @@ export interface VallonModel {
   faces?: VallonFace[];
   /** Entrée (lot 3) : grille à l'extrémité du pont (extrémité nord-ouest, normale sortante, longueur), voir `core/school-gate.ts`. */
   gate?: { o: [number, number]; n: [number, number]; len: number };
+  /** Abords de l'entrée ouest (lot 4) : marches, bac, rochers, haie, bouleau pleureur, placés dans le repère du bâtiment. */
+  props?: VallonProp[];
   /** Volumes voisins qui masquent le pied des murs sans être des ailes (le préau) : rectangle et altitude du dessus. */
   bury?: { r: [number, number, number, number]; z: number }[];
   colors: { wall: string; roof: string; parapet: string; vault: string; hall: string };

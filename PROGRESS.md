@@ -1348,3 +1348,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La grille est ouverte de 7 h 30 à 18 h et fermée le reste du temps : fermée, elle arrête le joueur. L'enceinte est ramenée à 1,8 m.
 - Pas encore : le panneau « P » et le marquage de la chaussée (lot 6), les marches, bacs et rochers de la cour (lot 4). 938 tests (12 de plus).
 - À regarder : `?at=538,1080&yaw=1.152&h=22` (fermée) et `h=12` (ouverte).
+
+**Collège du Vallon, lot 4 : la cour et les abords (1er novembre 2026)** (D175)
+- Les cours du collège ont leur enrobé gris (elles étaient couleur de sable) et l'entrée de la façade ouest ses abords : marches de gravier, trois bacs roses, rochers, haie taillée et bouleau pleureur, comme sur la photo de la cour.
+- La clôture noire de l'avenue reste (rien ne prouve qu'elle n'existe pas). 947 tests (9 de plus).
+- À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5`.
