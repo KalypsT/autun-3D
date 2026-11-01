@@ -4,7 +4,7 @@ import { T } from "./style";
 import type { HeightField } from "../data/types";
 
 /** Index de la couleur du thème (T.ground : asphalte, pavés, gravier, herbe, trottoir, dallage) et hauteur au-dessus du relief. */
-const LAYERS: Record<string, { color: number | "water" | "pitch"; lift: number; tint?: number }> = {
+const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${number}`; lift: number; tint?: number }> = {
   road_asphalt: { color: 0, lift: 0.045 },
   road_sett: { color: 1, lift: 0.045 },
   road_gravel: { color: 2, lift: 0.045 },
@@ -13,6 +13,11 @@ const LAYERS: Record<string, { color: number | "water" | "pitch"; lift: number; 
   plaza_sett: { color: 1, lift: 0.035 },
   plaza_gravel: { color: 2, lift: 0.035 },
   plaza_asphalt: { color: 0, lift: 0.035, tint: 1.12 },
+  // Rues piétonnes du centre (D156) : pavés de granit, pavés de béton, béton clair ; caniveau par-dessus.
+  plaza_granite: { color: "paving0", lift: 0.035 },
+  plaza_pavers: { color: "paving1", lift: 0.035 },
+  plaza_concrete: { color: "paving2", lift: 0.035 },
+  gutter: { color: "paving3", lift: 0.05 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },
@@ -50,7 +55,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
   for (const [name, spec] of Object.entries(LAYERS)) {
     const polys = layers[name];
     if (!polys) continue;
-    const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : T.ground[spec.color]!;
+    const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : typeof spec.color === "string" ? T.paving[Number(spec.color.slice(6))]! : T.ground[spec.color]!;
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     for (const poly of polys) {
       fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" ? bare : terrain, true);

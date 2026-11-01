@@ -2857,3 +2857,123 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d155-photo4-apres.jpg)
 ![Le kiosque la nuit, avant](captures/d155-kiosque-nuit-avant.jpg)
 ![Après](captures/d155-kiosque-nuit-apres.jpg)
+
+
+## 2026-11-01 — D156. Centre-ville, lot 4 : rues piétonnes d'une façade à l'autre, plus de clôtures de parcelle
+
+**Demande de l'utilisateur** : « je pense qu'il n'y a pas besoin de clôtures en centre-ville » ; zone proposée (300 m autour de la mairie, sauf ce que remplace un monument) acceptée (« Ok, continue ») ; pas de photo plus précise. Navigation de `main` gardée.
+
+**Constat** (plan, §0.4, §0.5) : un ruban de 6 m sur l'axe OpenStreetMap, alors que les façades sont à 7,5 – 9,5 m l'une de l'autre rue aux Cordiers (6,2 – 7 m rue Saint-Saulge) ; 177 m de « clôtures de parcelle » (murs de 2 m, grilles de 1,5 m) devant les vitrines de la rue aux Cordiers (D94, `parcel_fences`), qui barraient l'accès aux portes.
+
+**Photos lues** : 5, 6, 9, 10, 11 (rue aux Cordiers : pavés de granit gris clair, caniveau central légèrement courbe, potelets), 7 (rue Saint-Saulge : pavés de béton gris à bandes sombres), 3 et 4 (rue Demetz, rue de Lattre : béton clair balayé, zone de rencontre).
+
+**Données** (`build_streetscape.py`, `pedestrian` et `fences` de `manual.json`) :
+- sol des rues piétonnes : l'axe élargi de 5,2 m (rue aux Cordiers), 5,0 m (rue Saint-Saulge, Grande Rue Chauchien) ou 5,5 m (rues Demetz, de Lattre et du Lycée-Bonaparte), moins les bâtiments, la chaussée, les pelouses et les trottoirs, ouvert de 60 cm (coupe les filets entre les angles), ne garde que ce qui touche l'axe ; les groupes sont disjoints (le premier l'emporte aux carrefours : sans cela deux passes s'inversaient) ;
+- nouvelles classes de sol `plaza_granite` (rue aux Cordiers), `plaza_pavers` (rue Saint-Saulge), `plaza_concrete` (rues Demetz, de Lattre, du Lycée) et `gutter` (caniveau de 30 cm sur l'axe de la rue aux Cordiers, lu sur la photo 6, invisible au LiDAR), retirées des anciens sols de place qu'elles recouvrent ; couleurs de jour et de nuit dans `style.ts` (`paving`), `ground.ts`, carte (`build_map.py`, à la prochaine régénération) ;
+- clôtures de parcelle (identifiants −(900 000 000 + n)) retirées dans un rayon de 300 m autour de la mairie : **304 tronçons, 2 427 m, 9 tuiles** ; celles que la grille d'honneur du lycée remplace (D149 : `grille.walls`) restent dans les tuiles, `build_monuments.py` les vérifie ; les murs et grilles d'OpenStreetMap ne sont pas touchés. `build_public_space.py` ne trace plus de clôture dans ce rayon (`NO_FENCE_R`) pour la prochaine régénération complète ; il n'a pas été relancé. Aucune autre ville touchée.
+- potelets (`bollard`) : fût marron et tête blanche (`props.ts`), comme sur les photos 2, 4 et 5 ; ceux d'OpenStreetMap seulement (aucune ajoutée : leurs positions ne sont pas lues).
+- Idempotente : deux passes, même somme de contrôle de `public/data`.
+
+**Coût** : **−1 600 à −3 500 triangles** selon la vue (mesuré sur les mêmes vues avant et après : les 304 clôtures retirées coûtaient plus que les sols ajoutés), aucun appel de dessin de plus.
+
+**Jeu** : plus de clôture devant les vitrines ; aucun obstacle de plus ; navigation inchangée (ses files longent les façades comme avant) ; aucune cache d'arme touchée.
+
+**Tests** (+4, `src/data/streetscape.test.ts`) : plus aucune clôture de parcelle à moins de 300 m de la mairie hors celles de la grille ; les murs d'OpenStreetMap restent ; le sol de chaque rue est dans sa classe de l'axe à 1,5 m de chaque côté (hors bâtiments), tous les 2 m ; caniveau sur 85 % de la rue aux Cordiers et nulle part ailleurs ; plus de dallage, de pavés ni d'asphalte de place sous les rues.
+
+**Limites** :
+- **Seuils de maisons : non faits.** Le plan en parlait, mais je n'ai pas de mesure de niveau du seuil : le terrain du LiDAR est la rue, et le niveau `datum` de chaque mur de la fiche est celui de cette rue.
+- Pas de totems, bornes à feu rouge, arbre en bac à banc circulaire (photos 4 et 5), ni jardinières : leurs positions ne sont pas lues ; bandes sombres de bordure de la rue Saint-Saulge (photo 7) non dessinées.
+- Les sols suivent le relief (pente de 3 à 5 %) sans marches ni bordures ; sous les rideaux de tilleuls de la rue Demetz, le sol est du béton clair, comme sur la photo 3, jusqu'à 5,5 m de l'axe seulement.
+- Partie nord de la rue Saint-Saulge, rue du Lycée-Bonaparte, Grande Rue Chauchien : revêtement supposé identique (une seule photo de la rue Saint-Saulge), sans photo de la partie nord.
+- `plaza_granite`, `plaza_pavers`, `plaza_concrete` sont des « places » pour la navigation à sa prochaine régénération (les files des passants s'étaleront alors) ; non fait ici.
+
+![Rue aux Cordiers, comme ta photo 6, avant](captures/d156-cordiers-photo6-avant.jpg)
+![Après](captures/d156-cordiers-photo6-apres.jpg)
+![Devant Carrefour City, comme ta photo 9, avant](captures/d156-cordiers-photo9-avant.jpg)
+![Après](captures/d156-cordiers-photo9-apres.jpg)
+![Rue aux Cordiers, comme ta photo 10, avant](captures/d156-cordiers-photo10-avant.jpg)
+![Après](captures/d156-cordiers-photo10-apres.jpg)
+![Rue aux Cordiers, comme ta photo 11, avant](captures/d156-cordiers-photo11-avant.jpg)
+![Après](captures/d156-cordiers-photo11-apres.jpg)
+![Rue aux Cordiers, comme ta photo 5, avant](captures/d156-cordiers-photo5-avant.jpg)
+![Après](captures/d156-cordiers-photo5-apres.jpg)
+![Rue Saint-Saulge, comme ta photo 7, avant](captures/d156-saulge-photo7-avant.jpg)
+![Après](captures/d156-saulge-photo7-apres.jpg)
+![Rue Demetz, comme ta photo 3, avant](captures/d156-demetz-photo3-avant.jpg)
+![Après](captures/d156-demetz-photo3-apres.jpg)
+![Rue de Lattre, comme ta photo 4, avant](captures/d156-lattre-photo4-avant.jpg)
+![Après](captures/d156-lattre-photo4-apres.jpg)
+![De dessus, avant](captures/d156-cordiers-haut-avant.jpg)
+![Après](captures/d156-cordiers-haut-apres.jpg)
+![La nuit, avant](captures/d156-cordiers-nuit-avant.jpg)
+![Après](captures/d156-cordiers-nuit-apres.jpg)
+
+## 2026-11-01 — D157. Centre-ville, lot 5 : les cafés de la rue du Champ de Mars sur la place
+
+**Demande de l'utilisateur** : enchaîner (plan D157). Photos 12 (2024), 13 et 14 (juillet 2026), Street View.
+
+**Constat** (plan, §0.6) : L'Augusto, Havas Voyages (et Le Commerce) avaient leur vitrine sur le mur arrière ou latéral de leur fiche (rôle « cour »), pas sur la place : mur 7 de `…854061` (5 m, face à 326°, côté rue de Rome) au lieu du mur 0 (13,6 m, face à 136°) ; Havas Voyages était aussi dans la fiche de L'Augusto (son nœud OpenStreetMap est sur la limite des deux bâtiments).
+
+**Lecture des photos** (`fronts[…].shopWalls`, nouveau, de `manual.json`) :
+- L'Augusto (photo 13) : grand store rouge, terrasse sur une estrade de dalles claires bordée de tonneaux plantés, parasols bordeaux à guirlandes ;
+- Le Central (photo 14) : stores noirs, terrasse fermée de panneaux gris ajourés (panneaux découpés au laser), parasols noirs ;
+- Le Commerce (photo 12, 2024) : stores rouges, parasols bordeaux (la terrasse a pu changer) ;
+- couleurs lues sur les photos ; profondeurs des terrasses (2,4 à 2,8 m), position de L'Augusto sur son mur (7,4 m) et dimensions des bacs estimées.
+
+**Données** (`build_shop_fronts.py`) : `shopWalls` donne, par identifiant OpenStreetMap, le mur du commerce, sa position `s` et sa `terrace` (ou `null` : le commerce n'est pas dans ce bâtiment) ; L'Augusto passe sur le mur 0 de `…854061` (« cour » → « rue »), Havas Voyages sur le mur 3 de `…854060` et quitte la fiche de `…854061`, Le Central garde son mur 0 et reçoit sa terrasse ; deux murs passent en rue. Seule la tuile 25_35 est réécrite ; une deuxième passe ne change rien.
+
+**Rendu** (`shopfront.ts`, `styledTerrace`) : store de la couleur lue ; estrade de 10 cm de dalles claires de la largeur de la devanture, tonneaux plantés (bois et deux verts) tous les 90 cm sur son bord extérieur ou panneau gris de 1,1 m sur trois poteaux ; tables, chaises et parasols de la couleur lue posés dessus ; seulement sur sol libre (`free` : trottoir ou place), sinon on retombe sur la terrasse générique. Le coût de D157 et de D158 est mesuré ensemble (voir D158).
+
+**Jeu** : la terrasse n'a pas d'obstacle (comme les terrasses de D92) ; **les points « commerce » des passants n'ont pas été déplacés** (`build_monuments_nav.py` aurait réécrit s6_8 : navigation de `main` gardée) : ils restent sur l'ancien mur.
+
+**Tests** (+4, `src/render/terrace.test.ts`) : L'Augusto et Havas Voyages sur le mur qui regarde la rue du Champ de Mars (136° ± 6°), plus sur le mur arrière, Havas absent de la fiche voisine ; terrasses des fiches ; estrade à tonneaux (sommets finis, 100 à 900 triangles) ; sol non libre : repli.
+
+**Limites** : Le Commerce reste sur le mur de l'avenue (terrasse d'angle non dessinée) ; Havas Voyages : seulement la devanture générique du gabarit (bandeau bleu « VOYAGES » non lu au détail) ; guirlandes, plaque et plantes réelles non dessinées ; les panneaux du Central sont pleins (l'ajourage n'est pas dessiné) ; photo 12 de 2024.
+
+![L'Augusto, comme ta photo 13, avant](captures/d157-cafes-photo13-avant.jpg)
+![Après](captures/d157-cafes-photo13-apres.jpg)
+![Le Central, comme ta photo 14, avant](captures/d157-cafes-photo14-avant.jpg)
+![Après](captures/d157-cafes-photo14-apres.jpg)
+![Le Commerce, comme ta photo 12, avant](captures/d157-cafes-photo12-avant.jpg)
+![Après](captures/d157-cafes-photo12-apres.jpg)
+![La rangée de cafés, avant](captures/d157-cafes-angle-avant.jpg)
+![Après](captures/d157-cafes-angle-apres.jpg)
+![La nuit, avant](captures/d157-cafes-nuit-avant.jpg)
+![Après](captures/d157-cafes-nuit-apres.jpg)
+
+## 2026-11-01 — D158. Centre-ville, lot 6 : trois boutiques de la rue aux Cordiers
+
+**Demande de l'utilisateur** : enchaîner (plan D158). Photos 9 (Carrefour City), 10 (La Promesse de l'Aube), 11 (Territoire d'Homme) ; Optic 2000 (photo 15) et la devanture de droite de la photo 10 ne sont pas faites (voir les limites).
+
+**Dans les données** : `…853330` (11-13 rue aux Cordiers, mur 0 de 12,56 m face à 287°), `…853544` (30 rue aux Cordiers, mur 0 de 5,55 m face à 124°), `…853291` (20 rue aux Cordiers, mur 0 de 9,0 m face à 120°), tous dans la tuile 26_34 ; tous les contours sont anti-horaires, donc les travées lues de gauche à droite vu de la rue vont dans le sens des murs (vérifié sur Carrefour City : le sud, où est Diagonal Coiffure, est à droite).
+
+**Lecture des photos** (`fronts[…].shop.devanture`, gabarit de D141) :
+- La Promesse de l'Aube : devanture en applique rouge, porte entre deux vitrines, bandeau rouge sombre portant « LA PROMESSE DE L'AUBE » en lettres droites, pilastres aux bouts ;
+- Territoire d'Homme : cadre blanc, bandeau blanc à lettres noires, grandes vitrines à mannequins de part et d'autre d'une porte vitrée, soubassement bas sombre ;
+- Carrefour City : façade de pierre claire, grandes baies à cadre noir (vitrage clair), deux portes vitrées, lettres vertes « Carrefour city » posées sur la pierre sans panneau ; « Diagonal Coiffure » retiré de sa fiche (il est dans le bâtiment voisin `…853303`, qui garde son commerce) ;
+- largeurs ramenées à la longueur de chaque mur, hauteurs à l'échelle de la porte : à ± 20 à ± 40 cm près, une photo par boutique (Carrefour City et Territoire d'Homme sont vues de biais).
+
+**Nouvelles options du gabarit** (`devanture.ts`, `Devanture`) : `frame` (couleur des cadres de baies et de porte), `glass` (vitres plus claires), `display` (« none » : rien derrière les vitres ; « plain » : mannequins devant un fond neutre), `sign.bg` vide (lettres posées sans panneau) et `sign.script` (lettres droites ou italique). Les devantures D141 sont inchangées.
+
+**Données** : `build_shop_fronts.py` applique (`apply_shop`) ; trois fiches deviennent `observed` ; seule la tuile 26_34 est réécrite ; une deuxième passe ne change rien.
+
+**Coût** : **+1 820 triangles pour D157 et D158 ensemble**, mesuré sur les mêmes vues (435 571 → 437 391), les deux changent les mêmes tuiles ; aucun appel de dessin de plus.
+
+**Tests** (+4, `src/render/boutiques.test.ts`) : fiches observées, seules dans leur fiche, devanture dans le mur d'entrée (travées, enseigne, corniche) ; Diagonal Coiffure dans le bâtiment voisin ; cadres noirs et lettres sans panneau ; sommets finis, coût borné, vitrines allumées la nuit.
+
+**Limites** :
+- **Optic 2000** (angle arrondi de `…853987`, quatre murs de 0,5 à 2,3 m) et **La Promesse de l'Aube (jeux)**, **La Manufacture** (`…853545`, question 5 du plan restée sans réponse), **Diagonal Coiffure**, Kalista, James, Chantal & Co, Crêperie des Remparts, Orange : pas refaits (photos de biais, trop anciennes, ou pas de photo de face).
+- Enseigne drapeau verte et vitrophanie à dessins de ville de Carrefour City, caisse bleue, vêtements de Territoire d'Homme : pas dessinés ; les vitrines de Carrefour City et de La Promesse sont vides.
+- L'étage de ces trois bâtiments reste celui de la fiche générée (pas de volets blancs à persiennes, balcons de fer forgé, n° 30, de la photo 10).
+- Les points « commerce » des passants restent ceux de `main` (navigation non régénérée).
+
+![Carrefour City, comme ta photo 9, avant](captures/d158-boutiques-photo9-avant.jpg)
+![Après](captures/d158-boutiques-photo9-apres.jpg)
+![De face, avant](captures/d158-boutiques-carrefour-avant.jpg)
+![Après](captures/d158-boutiques-carrefour-apres.jpg)
+![Territoire d'Homme, comme ta photo 11, avant](captures/d158-boutiques-photo11-avant.jpg)
+![Après](captures/d158-boutiques-photo11-apres.jpg)
+![La Promesse de l'Aube, comme ta photo 10, avant](captures/d158-boutiques-photo10-avant.jpg)
+![Après](captures/d158-boutiques-photo10-apres.jpg)
+![Carrefour City la nuit, avant](captures/d158-boutiques-nuit-avant.jpg)
+![Après](captures/d158-boutiques-nuit-apres.jpg)

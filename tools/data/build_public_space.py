@@ -49,6 +49,7 @@ FENCE_ID = 900_000_000  # identifiants des clôtures de parcelle : −(FENCE_ID 
 LAMP_ID = 800_000_000  # lampadaires replacés : −(LAMP_ID + n)
 LAMP_STEP = 30.0
 CENTER = (0.0, 0.0)  # la mairie : vieille ville autour
+NO_FENCE_R = 300.0  # D156 : aucune clôture de parcelle dans ce rayon (m) autour de la mairie
 
 
 # --- Raster de l'orthophoto ------------------------------------------------------------------------------------------------------
@@ -540,6 +541,9 @@ def parcel_fences(parcels, D, B, R, PK, osm, zone, wet):
             if ln.length < 1.5:
                 continue
             mid = ln.interpolate(0.5, normalized=True)
+            # D156 : pas de clôture de parcelle en centre-ville (décision de l'utilisateur ; même disque que `fences` de `streetscape` dans manual.json).
+            if math.hypot(mid.x - CENTER[0], mid.y - CENTER[1]) < NO_FENCE_R:
+                continue
             if not street_p.contains(mid) or wet_p.contains(mid) or open_p.contains(mid):
                 continue
             kind = ("wall" if key < 0.8 else "fence") if old else ("wall" if key < 0.35 else "fence" if key < 0.75 else "hedge")

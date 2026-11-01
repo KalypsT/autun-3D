@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { HeightField } from "../data/types";
+import type { HeightField, Terrace } from "../data/types";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 
 /** Devanture : milieu du bas de la vitrine sur le mur, tangente et normale sortante, largeur, haut des vitrines, bas de l'enseigne. */
@@ -100,15 +100,15 @@ export function tobaccoSign(mb: MeshBuilder, f: Front): void {
 }
 
 /** Terrasse : tables rondes, chaises et parasols devant la devanture, seulement sur trottoir ou place (`free`). */
-export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, color: THREE.Color): number {
+export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, color: THREE.Color, depths: number[] = [1.9, 3.3], lift = 0): number {
   const metal = C("#3d4446"), top = C("#e8e2d4"), chair = C("#7a5a3a");
   let n = 0;
-  for (const d of [1.9, 3.3]) {
+  for (const d of depths) {
     for (let s = -f.width / 2 + 0.6; s <= f.width / 2 - 0.4 && n < 8; s += 1.7) {
       const [x, y] = point(f, s, d);
       // Le trottoir doit continuer derrière la table (place pour passer) et entre la table et la façade.
       if (!free(x, y) || !free(...point(f, s, d + 1.1)) || !free(...point(f, s, 0.8))) continue;
-      const z = terrain.heightAt(x, y) + 0.15;
+      const z = terrain.heightAt(x, y) + 0.15 + lift;
       box(mb, x, y, f.tx, f.ty, 0.04, 0.04, z, z + 0.72, metal);
       box(mb, x, y, f.tx, f.ty, 0.33, 0.33, z + 0.72, z + 0.76, top);
       for (const side of [-1, 1]) {
@@ -137,8 +137,52 @@ function parasol(mb: MeshBuilder, x: number, y: number, z: number, color: THREE.
   }
 }
 
+/**
+ * Terrasse d'après photo (D157) : estrade de dalles claires (L'Augusto, photo 13) bordée de bacs ou de tonneaux plantés, ou terrasse fermée de panneaux gris
+ * ajourés (Le Central, photo 14) ; tables, chaises et parasols de la couleur lue. Seulement sur sol libre (`free`) : si les coins de l'emprise n'y sont pas,
+ * on retombe sur la terrasse générique.
+ */
+export function styledTerrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, t: Terrace): boolean {
+  const depth = t.depth ?? 2.6;
+  const corners: [number, number][] = [point(f, -f.width / 2, 0.4), point(f, f.width / 2, 0.4), point(f, -f.width / 2, depth), point(f, f.width / 2, depth)];
+  if (!corners.every(([x, y]) => free(x, y))) return false;
+  const mid = point(f, 0, depth / 2 + 0.2);
+  const z0 = terrain.heightAt(mid[0], mid[1]) + 0.15;
+  const lift = t.platform ? 0.1 : 0;
+  if (t.platform) box(mb, mid[0], mid[1], f.tx, f.ty, f.width / 2, (depth - 0.4) / 2, z0 - 0.02, z0 + lift, C(t.platform));
+  // Bord extérieur : tonneaux plantés ou panneau ajouré.
+  const edge = depth - 0.15;
+  if (t.planters === "barrel") {
+    const n = Math.max(2, Math.round(f.width / 0.9));
+    for (let i = 0; i < n; i++) {
+      const [x, y] = point(f, -f.width / 2 + ((i + 0.5) * f.width) / n, edge);
+      box(mb, x, y, f.tx, f.ty, 0.26, 0.26, z0 + lift, z0 + lift + 0.55, C("#6b4a2e"));
+      box(mb, x, y, f.tx, f.ty, 0.22, 0.22, z0 + lift + 0.55, z0 + lift + 0.85, C(i % 2 ? "#4f8a4a" : "#6a9a46"));
+    }
+  } else if (t.screen) {
+    const [x, y] = point(f, 0, edge);
+    box(mb, x, y, f.tx, f.ty, f.width / 2, 0.04, z0, z0 + 1.1, C(t.screen));
+    for (let i = 0; i <= 2; i++) {
+      const [px, py] = point(f, -f.width / 2 + (f.width * i) / 2, edge);
+      box(mb, px, py, f.tx, f.ty, 0.14, 0.14, z0, z0 + 1.35, shadeOf(C(t.screen), 0.8));
+    }
+  }
+  const parasol = C(t.parasol ?? "#8a2a2a");
+  // Tables et chaises sur l'estrade, à 1,0 et 2,0 m de la façade.
+  terrace(mb, { ...f, key: f.key + "|t" }, terrain, () => true, parasol, [0.95 + 0.3, depth - 0.8], lift);
+  return true;
+}
+
+function shadeOf(c: THREE.Color, k: number): THREE.Color {
+  return c.clone().multiplyScalar(k);
+}
+
 /** Ce qu'ajoute une devanture selon le commerce : store, terrasse, croix de pharmacie, carotte de tabac. */
-export function shopfrontExtras(mb: MeshBuilder, f: Front, kind: string | null, color: THREE.Color, terrain: HeightField, free: (x: number, y: number) => boolean): void {
+export function shopfrontExtras(mb: MeshBuilder, f: Front, kind: string | null, color: THREE.Color, terrain: HeightField, free: (x: number, y: number) => boolean, terr?: Terrace | undefined): void {
+  if (terr) {
+    awning(mb, f, C(terr.awning ?? "#a8242c"));
+    if (styledTerrace(mb, f, terrain, free, terr)) return;
+  }
   if (kind === "pharmacy" || kind === "chemist") pharmacyCross(mb, f);
   else if (kind === "tobacco" || kind === "newsagent" || kind === "e-cigarette") tobaccoSign(mb, f);
   if ((kind && AWNING.has(kind)) || (kind !== "pharmacy" && hash01(f.key, 77) < 0.3)) awning(mb, f, color);

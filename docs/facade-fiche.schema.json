@@ -147,7 +147,8 @@
               "kind": { "type": "string" },
               "wall": { "type": "integer", "minimum": 0 },
               "s": { "type": "number", "minimum": 0 },
-              "osm": { "type": "integer" }
+              "osm": { "type": "integer" },
+              "terrace": { "type": "object" }
             }
           }
         }

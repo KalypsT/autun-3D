@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findStalls } from "../core/parking";
 import type { TileData } from "./types";
@@ -128,5 +128,83 @@ describe("les places du grand parking du Champ de Mars (D154)", () => {
     const y = lot.frame.o[1]! + mid[0]! * Math.sin(a2) - mid[1]! * Math.cos(a2);
     expect(tiles.some((t) => (t.ground["plaza_paving"] ?? []).some((p) => inPolygon(x, y, p)))).toBe(true);
     expect(tiles.some((t) => (t.ground["plaza_asphalt"] ?? []).some((p) => inPolygon(x, y, p)))).toBe(false);
+  });
+});
+
+/** D156 : rues piétonnes d'une façade à l'autre, caniveau, plus de clôtures de parcelle au centre. */
+describe("rues piétonnes du centre (D156)", () => {
+  const all = (() => {
+    const out: TileData[] = [];
+    for (const name of readdirSync("public/data/tiles")) out.push(JSON.parse(readFileSync(`public/data/tiles/${name}`, "utf8")) as TileData);
+    return out;
+  })();
+  const buildings = all.flatMap((t) => t.buildings.map((b) => [b.ring] as number[][]));
+  const inBuilding = (x: number, y: number): boolean => buildings.some((b) => inPolygon(x, y, b));
+  const inLayer = (layer: string, x: number, y: number): boolean => all.some((t) => (t.ground[layer] ?? []).some((p) => inPolygon(x, y, p)));
+  const streetsById = new Map(streets.map((s) => [s.id, s]));
+  const groups: [string, number[]][] = [["plaza_granite", [55921185]], ["plaza_pavers", [55921186]], ["plaza_concrete", [55921182, 250821488]]];
+
+  it("aucune clôture de parcelle à moins de 300 m de la mairie (sauf celles que la grille d'honneur du lycée remplace)", () => {
+    const replaced = new Set<number>();
+    for (const name of readdirSync("public/data/kinds")) {
+      if (name === "index.json") continue;
+      const k = JSON.parse(readFileSync(`public/data/kinds/${name}`, "utf8")) as { buildings: Record<string, { college?: { grille?: { walls: number[] } } }> };
+      for (const b of Object.values(k.buildings)) for (const w of b.college?.grille?.walls ?? []) replaced.add(w);
+    }
+    let remaining = 0;
+    for (const t of all) {
+      for (const w of t.walls) {
+        if (w.id <= -900_000_000 && Math.hypot(w.pts[0]!, w.pts[1]!) < 300) {
+          expect(replaced.has(w.id), `clôture ${w.id}`).toBe(true);
+          remaining++;
+        }
+      }
+    }
+    expect(remaining).toBeLessThan(6);
+    // Les murs et grilles d'OpenStreetMap ne sont pas touchés : il en reste dans le centre.
+    const left = all.flatMap((t) => t.walls).filter((w) => w.id > -900_000_000 && Math.hypot(w.pts[0]!, w.pts[1]!) < 300);
+    expect(left.length).toBeGreaterThan(20);
+  });
+
+  it("le sol de chaque rue est dans sa classe, de l'axe à 1,5 m de chaque côté (hors bâtiments)", () => {
+    for (const [layer, ids] of groups) {
+      for (const id of ids) {
+        const s = streetsById.get(id)!;
+        let checked = 0;
+        for (const p of along(s.pts)) {
+          const margin = 8;
+          const d = Math.hypot(p.x - s.pts[0]!, p.y - s.pts[1]!), e = Math.hypot(p.x - s.pts[s.pts.length - 2]!, p.y - s.pts[s.pts.length - 1]!);
+          if (d < margin || e < margin) continue; // les bouts débouchent sur des places
+          for (const o of [0, 1.5, -1.5]) {
+            const x = p.x + p.nx * o, y = p.y + p.ny * o;
+            if (inBuilding(x, y)) continue;
+            expect(inLayer(layer, x, y), `${s.id} en (${x.toFixed(1)}, ${y.toFixed(1)})`).toBe(true);
+            checked++;
+          }
+        }
+        expect(checked).toBeGreaterThan(20);
+      }
+    }
+  });
+
+  it("la rue aux Cordiers a son caniveau central, et lui seule", () => {
+    const s = streetsById.get(55921185)!;
+    const pts = along(s.pts).filter((p) => !inBuilding(p.x, p.y));
+    const withGutter = pts.filter((p) => inLayer("gutter", p.x, p.y));
+    expect(withGutter.length / pts.length).toBeGreaterThan(0.85);
+    const sts = streetsById.get(55921186)!;
+    expect(along(sts.pts).some((p) => inLayer("gutter", p.x, p.y))).toBe(false);
+  });
+
+  it("une classe de sol à la fois : le dallage n'est plus posé sous les rues piétonnes", () => {
+    for (const [, ids] of groups) {
+      for (const id of ids) {
+        const s = streetsById.get(id)!;
+        for (const p of along(s.pts)) {
+          if (inBuilding(p.x, p.y)) continue;
+          for (const other of ["plaza_paving", "plaza_sett", "plaza_asphalt"]) expect(inLayer(other, p.x, p.y), `${other} sous ${id}`).toBe(false);
+        }
+      }
+    }
   });
 });

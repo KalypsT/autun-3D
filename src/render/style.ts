@@ -30,6 +30,8 @@ export interface Theme {
   pitch: string;
   /** asphalte, pavés, gravier, herbe, trottoir, dallage */
   ground: [string, string, string, string, string, string];
+  /** Rues piétonnes du centre (D156) : pavés de granit, pavés de béton, béton clair des zones de rencontre, caniveau. */
+  paving: [string, string, string, string];
 }
 
 export const THEMES: Record<string, Theme> = {
@@ -44,6 +46,7 @@ export const THEMES: Record<string, Theme> = {
     shutters: ["#2f7f8f", "#d9472b", "#f1b24a", "#1f4a63"], doors: ["#1f4a63", "#d9472b", "#2f7f8f"], shops: ["#d9472b", "#1f4a63", "#2f7f8f", "#f1b24a"],
     trim: "#fff3d6", glass: ["#1f4a63", "#7fc1c9"], trees: ["#2f7f6a", "#3f9a6f", "#5aa874", "#2a6b5e", "#3f9a6f", "#5aa874", "#e0a030", "#d9642b"], trunk: "#6b4a3a", water: "#4fb0c6", pitch: "#57a06a",
     ground: ["#7d8a8e", "#c79a6b", "#e3bf86", "#5fa06e", "#efdcb4", "#d6b98a"],
+    paving: ["#b4b3ad", "#9c9b99", "#dcd6c8", "#585e61"],
   },
   nuit: {
     id: "nuit", label: "Autun la nuit",
@@ -56,6 +59,7 @@ export const THEMES: Record<string, Theme> = {
     shutters: ["#2b4a5e", "#5a3550", "#3c5a50"], doors: ["#3a2f45", "#2b4a5e"], shops: ["#5a3550", "#2b4a5e", "#3c5a50"],
     trim: "#9aa0b8", glass: ["#10182e", "#2a3a5e"], trees: ["#1f4a4a", "#25564f", "#1c3f47"], trunk: "#2a2530", water: "#1d3a6e", pitch: "#2f4a48",
     ground: ["#4a5273", "#6a6480", "#7d7690", "#3f6a6a", "#7a80a0", "#666c8c"],
+    paving: ["#6b7090", "#5d6280", "#868aa4", "#343a58"],
   },
 };
 

@@ -1254,3 +1254,18 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d155-kiosque-photo8-apres.jpg)
 ![Les rideaux de dessus, avant](docs/captures/d155-tilleuls-haut-avant.jpg)
 ![Après](docs/captures/d155-tilleuls-haut-apres.jpg)
+
+**Centre-ville, lots 4 à 6 : rues piétonnes, cafés, boutiques (1er novembre 2026)** (D156, D157, D158)
+- Les rues piétonnes ont leur sol d'une façade à l'autre, dans leur matière : pavés de granit gris clair (rue aux Cordiers, avec son caniveau central), pavés de béton gris (rue Saint-Saulge), béton clair (rues Demetz, de Lattre). Plus aucune clôture de parcelle à moins de 300 m de la mairie (304 tronçons, 2 427 m retirés, dont les 177 m de la rue aux Cordiers ; la grille du lycée est gardée). Potelets marron à tête blanche.
+- L'Augusto, Havas Voyages et Le Central ont leur vitrine sur la place, avec leur terrasse (estrade et tonneaux plantés, panneaux gris) ; Le Commerce reçoit ses stores et ses parasols.
+- Trois boutiques de la rue aux Cordiers d'après tes photos : Carrefour City (pierre claire, cadres noirs, lettres vertes), La Promesse de l'Aube (devanture rouge), Territoire d'Homme (cadre blanc) ; nouvelles options du gabarit de devanture (cadres, vitres claires, vitrines vides, lettres sans panneau).
+- Triangles : D156 en retire 1 600 à 3 500 (les clôtures), D157 et D158 ensemble en ajoutent 1 820 ; aucun appel de dessin de plus ; 12 tests de plus ; navigation de `main` gardée (les points « commerce » ne sont pas déplacés).
+- Limites : seuils de maisons, totems et bornes, Optic 2000 et les autres devantures, terrasse d'angle du Commerce non faits ; sol des parties nord supposé.
+- À essayer : `?cam=-6,-207,1.7,25,-158,3&h=14` (comme ta photo 6), `?cam=50,-100,1.7,60,-108,2.5&h=14` (Carrefour City), `?cam=-62,-33,1.7,-100,-62,3&h=14` (Le Central), `?cam=-44,-26,1.7,-48,-8,3&h=14` (L'Augusto), puis `&h=23`.
+
+![Rue aux Cordiers, avant](docs/captures/d156-cordiers-photo6-avant.jpg)
+![Après](docs/captures/d156-cordiers-photo6-apres.jpg)
+![Carrefour City, avant](docs/captures/d158-boutiques-carrefour-avant.jpg)
+![Après](docs/captures/d158-boutiques-carrefour-apres.jpg)
+![Le Central, avant](docs/captures/d157-cafes-photo14-avant.jpg)
+![Après](docs/captures/d157-cafes-photo14-apres.jpg)

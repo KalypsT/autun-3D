@@ -10,7 +10,7 @@ Sorties : dans les fiches des tuiles seulement, `ground.front` (indice du mur d'
 Avant (build_facades.py), la vitrine allait sur le mur « de rue » le plus long, ou le plus proche du point OSM du commerce. Or ce point est
 souvent au milieu du bâtiment, et un mur arrière à moins de 10 m d'une ruelle compte comme mur de rue : 345 vitrines sans nom sur 499
 et 50 enseignes nommées sur 201 regardaient une autre rue que celle de leur adresse. Ordre de choix du mur, du plus sûr au moins sûr :
-  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "signAt": milieu de l'enseigne en mètres depuis le début de ce mur, "signZ": bas d'une enseigne basse au-dessus du sol, "shop": commerce absent d'OpenStreetMap et sa devanture (D141, voir `apply_shop`), "photo": ...}, d'après une photo) ;
+  0. une correction à la main (tools/data/manual.json, `fronts` : identifiant du bâtiment -> {"wall": indice du mur, "also": [autres murs de l'entrée, vitrés], "sign": mur de la grande enseigne, "signAt": milieu de l'enseigne en mètres depuis le début de ce mur, "signZ": bas d'une enseigne basse au-dessus du sol, "shop": commerce absent d'OpenStreetMap et sa devanture (D141, voir `apply_shop`), "shopWalls": {identifiant OpenStreetMap: {mur, s, terrasse} ou null} commerces d'OpenStreetMap lus sur photo (D157), "photo": ...}, d'après une photo) ;
   1. une porte OpenStreetMap posée sur le contour (commerce, entrée principale) ;
   2. le point du commerce lui-même s'il est sur le contour (cartographié à sa porte) ;
   3. grande surface : le mur qui a le plus de parking devant lui (bande de 25 m) ;
@@ -231,7 +231,8 @@ def main():
     for tid, b, fi in todo:
         # Les murs d'une correction à la main sont des murs de rue avant tout choix (une seule passe suffit).
         m = manual.get(fi["id"], {})
-        for i in [m.get("wall"), m.get("sign"), *m.get("also", [])]:
+        over = m.get("shopWalls", {})
+        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o]]:
             if i is not None and fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"
                 stats["mur passé en rue"] += 1
@@ -280,6 +281,28 @@ def main():
             sh["wall"] = wall
             sh["s"] = round(W.lines[wall].project(p), 2)
             chosen.append(wall)
+        # D157 : mur, position et terrasse d'un commerce lus sur photo (`shopWalls` de `fronts` : identifiant OpenStreetMap -> {wall, s, terrace}, ou null : le
+        # commerce n'est pas dans ce bâtiment).
+        if over:
+            kept = []
+            for sh in g.get("shops", []):
+                key = str(sh.get("osm"))
+                if key not in over:
+                    kept.append(sh)
+                    continue
+                o = over[key]
+                if o is None:
+                    stats["commerce : retiré (photo)"] += 1
+                    continue
+                sh["wall"] = o["wall"]
+                if "s" in o:
+                    sh["s"] = o["s"]
+                if "terrace" in o:
+                    sh["terrace"] = o["terrace"]
+                stats["commerce : mur lu sur photo"] += 1
+                chosen.append(o["wall"])
+                kept.append(sh)
+            g["shops"] = kept
         for i in chosen:
             if fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"

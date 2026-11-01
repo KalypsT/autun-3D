@@ -830,12 +830,23 @@ export interface WallRun {
   datum: number;
 }
 
+/** Terrasse d'après photo (D157) : estrade (couleur), bord (tonneaux plantés ou panneaux ajourés de cette couleur), couleur du store et des parasols, profondeur (m). */
+export interface Terrace {
+  platform?: string;
+  planters?: "barrel";
+  screen?: string;
+  awning?: string;
+  parasol?: string;
+  depth?: number;
+}
+
 export interface Shop {
   name: string | null;
   kind: string;
   wall: number;
   s: number;
   osm?: number;
+  terrace?: Terrace;
 }
 
 /**
@@ -855,7 +866,14 @@ export interface Devanture {
   cornice: number;
   bays: ["pilaster" | "door" | "window" | "shopdoor", number][];
   stone: string;
-  sign: { text: string; bg: string; fg: string; s: [number, number]; z: [number, number] };
+  /** `bg` vide : lettres posées sur le mur, sans panneau ; `script` faux : lettres droites (D158). */
+  sign: { text: string; bg: string; fg: string; s: [number, number]; z: [number, number]; script?: boolean };
+  /** Couleur des cadres des baies et de la porte (D158) ; absent : celle de la devanture. */
+  frame?: string;
+  /** Vitres plus claires [bas, haut] (D158) ; absent : vitres sombres de D141. */
+  glass?: [string, string];
+  /** Derrière les vitres (D158) : « none » rien, « plain » mannequins devant un fond neutre ; absent : vêtements et fond vert de D141. */
+  display?: "none" | "plain";
   /** Inscription sur une vitrine, numéro sur un pilastre : [travée, texte]. */
   label?: [number, string];
   number?: [number, string];
