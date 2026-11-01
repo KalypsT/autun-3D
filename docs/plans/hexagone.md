@@ -96,7 +96,7 @@ Chaque lot : un commit, une décision `D164…` dans `docs/DECISIONS.md`, captur
 | **0. Relevés (fait, §8)** | redresser l'orthophotographie autour de (389 ; 186) ; mesurer largeur de façade, nombre et largeur des travées, orientation exacte (compas du mur le plus proche de 250°), sol du parvis ; confirmer l'enseigne ; coupe LiDAR de la pyramide | `tools/data/` (script jetable), notes dans la décision | — |
 | **1. Volumes et toit (fait, D165)** | type `hexagone` : `HexagoneSpec` dans `types.ts`, mesure dans `build_monuments.py` (pyramide, couronne), rendu `buildHexagone` dans `monuments.ts`, rattachement dans `landmarks.ts` ; l'ancien bâtiment …694 passe en `hidden` ou est remplacé | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | arête entre 8,5 et 10 m ; douze pans ; pas de plan plus penché que sa mesure ; l'ancien volume n'est plus rendu |
 | **2. Façade (fait, D166)** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
-| **3. Parvis** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
+| **3. Parvis (fait, D167)** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
 | **4. Mobilier** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
 | **5. Parking** | rangées lues à l'orthophotographie, anciennes marques retirées, îlots, passage piéton | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; aucune dans une allée |
 | **6. (option) Toits voisins** | si la coupe LiDAR le confirme : `roofKind: flat` pour les barres …377, …387 | `manual.json`, `build_roofs.py` | pente des toits plats nulle ; hauteur inchangée |
@@ -200,3 +200,14 @@ Fait pour les deux faces photographiées ; les quatre autres côtés restent des
 - **Pas fait** : bandeaux et enseigne sur les autres côtés (aucune photo), lanterneaux, souche, liseré d'égout bleu sombre, drapeaux et colonne Morris (lot 4).
 - **À traiter au lot 3** : de nombreuses « clôtures de parcelle » basses en enduit barrent le parvis sur les captures ; à comparer à la réalité (aucun muret sur les photos 1, 2 et 4).
 - Captures : `docs/captures/hexagone-lot2-*.jpg`.
+
+## 11. Lot 3 : parvis (D167)
+
+Fait : dallage géométrique en trois classes de sol et plus de murets sur le parvis.
+
+- **Les « murets » étaient des clôtures de parcelle** générées (D94 : hauteur 2 m, identifiants −9000042xx) le long des limites cadastrales ; aucune de vos photos n'en montre. Elles sont retirées dans un disque de 50 m autour de (335 ; 172) : 20 tronçons, 173 m (même mécanisme que D156 au centre-ville).
+- **Dallage** (`plaza_filet`, `plaza_brick`, `plaza_slate`, `tools/data/build_plaza.py`, formes dans `plazas` de `manual.json`) : fond clair (≈ 300 m²) dont les vides entre motifs font les filets, **octogone de brique rose** de 248 m² autour de la sphère, **139 m² d'ardoise** : deux hexagones, des bandes le long de la diagonale ouest, deux triangles et deux bandes à l'est ; chaussée, trottoirs, pelouses et anciennes places retirés sous l'emprise ; les motifs sont disjoints.
+- **Méthode** : l'orthophotographie sert de référence (`tools/data/survey_plaza.py`, superposition `hexagone-lot3-dallage-releve.jpg`). La classification automatique des couleurs était trop bruitée (ombres, JPEG) pour être vectorisée telle quelle : les formes sont dessinées à la main aux positions lues (± 1 m).
+- **Pas fait** : la moitié ouest du parvis (dallage clair à filets en zigzag, x de 305 à 322), les socles et objets (sphère, bacs et topiaires, drapeaux, lampadaire, colonne Morris : lot 4), la haie et les arbres du parvis.
+- Un défaut corrigé en route : le relief bosse autour du socle de la sphère et perçait la dalle (taches vertes) : les trois classes sont relevées de 3 à 4 cm au-dessus des autres places.
+- Captures : `docs/captures/hexagone-lot3-*.jpg`.

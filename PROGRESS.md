@@ -1307,3 +1307,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les autres côtés restent des murs unis. On s'arrête encore 1 à 3 m avant les vitres (collisions inchangées).
 - 885 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` (façade) et `cam=398,225,2.5,384,208,0` (nord-est).
 
+**L'Hexagone, lot 3 : le parvis (1er novembre 2026)** (D167)
+- Le parvis a son dallage : un grand octogone de brique rose, des hexagones et bandes gris ardoise, un fond clair. Les murets de 2 m qui barraient la place sont partis (c'étaient des clôtures de parcelle générées).
+- Pas encore : la sphère, les bacs et topiaires, les drapeaux, la colonne Morris, le lampadaire (lot 4), ni la moitié ouest du parvis (dallage clair à zigzags).
+- 890 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` et `cam=345,200,14,335,170,-2`.
+

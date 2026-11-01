@@ -2372,10 +2372,10 @@
    ],
    "buildings": 73,
    "trees": 182,
-   "walls": 51,
+   "walls": 40,
    "furniture": 52,
    "lod": 73,
-   "bytes": 274663
+   "bytes": 276009
   },
   {
    "id": "28_35",
@@ -2695,10 +2695,10 @@
    ],
    "buildings": 55,
    "trees": 166,
-   "walls": 110,
+   "walls": 101,
    "furniture": 28,
    "lod": 55,
-   "bytes": 224030
+   "bytes": 223484
   },
   {
    "id": "28_36",

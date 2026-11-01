@@ -3157,3 +3157,24 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Face nord-est](captures/hexagone-lot2-nord-est.jpg)
 ![Vue aérienne](captures/hexagone-lot2-aerien.jpg)
 
+## 2026-11-01 — D167. L'Hexagone, lot 3 : le parvis (plan `docs/plans/hexagone.md`, §11)
+
+**Demande de l'utilisateur** : « Continue avec le lot 3 ».
+
+**Constat** : le parvis n'avait presque aucune couche de sol (le terrain nu apparaissait), une bande d'asphalte de 322 m² recouvrait le motif d'ardoise, et des murets de 2 m barraient la place sur les captures du lot 2.
+
+**Les murets** : clôtures de parcelle de `build_public_space.py` (ids −9000042xx, kind `wall`, 2,0 m, D94) ; D156 les avait retirées au centre-ville seulement (disque de 300 m autour de l'origine). Retirées aussi dans un disque de 50 m (centre (335 ; 172)) : **20 tronçons, 173 m**, tuiles 27_35 et 27_36. Le mur de 3,5 m d'OSM (id 249413461) n'est pas touché.
+
+**Dallage** : trois classes de sol nouvelles, `plaza_filet` (fond clair et filets, #e4dac8), `plaza_brick` (brique rose, #cf9483), `plaza_slate` (ardoise, #74808a) ; couleurs de jour et de nuit dans `T.paving` (7 teintes au lieu de 4), classes déclarées dans `ground.ts` (relevées à 6,5-7,2 cm au-dessus du relief pour ne pas être percées par ses bosses) et `build_map.py`. Elles comptent comme sol libre pour les terrasses (`plaza_*`). `build_plaza.py` (nouveau, idempotent) lit `plazas` de `manual.json`, retire l'emprise des couches `road_asphalt`, `walk`, `lawn`, `plaza_*`, pose les polygones coupés par tuile et recalcule `bytes` de `world.json`. Les formes sont dessinées à la main d'après l'orthophotographie (± 1 m) : la classification automatique (`survey_plaza.py`) n'a servi que de référence.
+
+**Données** : `tiles/27_35.json`, `tiles/27_36.json`, `world.json` (bytes) ; navigation inchangée (`build_nav.py` non relancé).
+
+**Tests** (+5, 890 au total, `src/data/plaza.test.ts`) : trois classes d'étendues plausibles, brique autour de la sphère et motifs sans recouvrement (grille de 0,5 m), au moins deux hexagones d'ardoise, aucun sommet de dallage dans l'emprise du bâtiment et aucune autre couche sous la brique, plus de clôture de parcelle commençant à moins de 50 m (le mur OSM reste).
+
+**Limites** : positions des motifs à ± 1 m, nombre d'éléments simplifié (12 pièces d'ardoise contre une trentaine sur l'orthophotographie) ; moitié ouest du parvis (dallage clair à filets) non dessinée ; les clôtures retirées comprennent peut-être de vraies grilles de propriété dans le disque de 50 m ; relancer `build_public_space.py` les remettrait (relancer ensuite `build_streetscape.py` et `build_plaza.py`) ; navigation non régénérée.
+
+![Parvis vu de l'ouest](captures/hexagone-lot3-parvis.jpg)
+![Dallage vu du nord-est](captures/hexagone-lot3-dallage.jpg)
+![Vue aérienne](captures/hexagone-lot3-aerien.jpg)
+![Relevé : formes sur l'orthophotographie (classification automatique)](captures/hexagone-lot3-dallage-releve.jpg)
+
