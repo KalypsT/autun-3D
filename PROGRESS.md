@@ -1317,3 +1317,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Positions de la sphère et du lampadaire lues sur l'orthophotographie ; le reste estimé (± 3 m). Pas encore cassable, ni corbeille, ni bancs.
 - 894 tests (4 de plus). À regarder : `?view=custom&cam=334,166,3.2,345,182,1.5` et `cam=330,185,6,342,176,1`.
 
+**L'Hexagone, lot 5 : le parking (1er novembre 2026)** (D169)
+- Le parking a ses vraies rangées : six rangées lues à l'orthophotographie redressée, 110 places en traits propres au pas de 2,5 m ; les 236 anciens traits au hasard sont partis. Les voitures garées se posent sur ces places.
+- Pas fait : les hachures aux bouts de rangées, les flèches et le passage piétons ; places cachées par les voitures ou l'ombre extrapolées.
+- 898 tests (4 de plus). À regarder : `?view=custom&cam=340,230,45,335,245,0`.
+

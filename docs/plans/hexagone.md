@@ -98,7 +98,7 @@ Chaque lot : un commit, une décision `D164…` dans `docs/DECISIONS.md`, captur
 | **2. Façade (fait, D166)** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
 | **3. Parvis (fait, D167)** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
 | **4. Mobilier (fait, D168)** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
-| **5. Parking** | rangées lues à l'orthophotographie, anciennes marques retirées, îlots, passage piéton | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; aucune dans une allée |
+| **5. Parking (fait, D169)** | rangées lues à l'orthophotographie, anciennes marques retirées, îlots, passage piéton | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; aucune dans une allée |
 | **6. (option) Toits voisins** | si la coupe LiDAR le confirme : `roofKind: flat` pour les barres …377, …387 | `manual.json`, `build_roofs.py` | pente des toits plats nulle ; hauteur inchangée |
 
 Budget : le jeu rend déjà environ 610 000 triangles autour de l'Hexagone ; le modèle (pyramide, couronne, bandeaux, portes) doit rester sous 15 000 triangles et les sept à dix props sous 8 000.
@@ -221,3 +221,13 @@ Fait : onze objets sur le parvis, avec collisions.
 - **Obstacles** : sphère (rayon 1,4 m), colonne (0,9), bacs (1,5), lampadaire (0,15), mâts (0,1) ; les arceaux se franchissent ; passage par `landmarkCircles` comme les poteaux d'auvent.
 - **Pas fait** : objets cassables (D160) pour ces éléments, corbeille verte et bancs de la photo 4, haie du parvis, arbres taillés de la photo 2, affiches lisibles sur la colonne.
 - Captures : `docs/captures/hexagone-lot4-*.jpg`.
+
+## 13. Lot 5 : parking (D169)
+
+Fait : six rangées, **110 places**, et un parking qui n'a plus ses traits au hasard.
+
+- **Un seul repère redressé** (angle 37°, origine (325 ; 245)) suffit : les traits y sont tous verticaux. Le §8.3 (« sept blocs à ajuster un par un ») venait de l'imprécision de ma mesure d'angle par bloc (voitures, ombres) ; sur l'image redressée les rangées sont alignées.
+- **Rangées** (`survey_parking.py` affine pas et phase sur les traits visibles ; superposition `hexagone-lot5-parking-releve.jpg`) : une rangée simple au nord (9 traits, 8 places), une double au nord-est (18 traits, 34 places), une rangée de 19 places devant le bâtiment (lignes sous les voitures à l'ouest, 7 places de plus en seconde moitié), une double de 18 places à l'ouest, une double de 24 places au sud-ouest. Pas de 2,48 à 2,51 m. Total **110**.
+- **Mécanique** : `build_parking.py` lit `parkings` de `manual.json` (même format que `streetscape.lots`, D154), retire les 236 anciennes marques de la zone, pose 123 polygones de traits et de lignes de fond découpés au bâtiment et à l'asphalte du parking ; `findStalls` retrouve exactement 110 places (aucun doublon).
+- **Pas fait** : les triangles de hachures aux bouts des rangées, les flèches de sens, le passage piétons du nord-est ; les places cachées par des voitures ou l'ombre sont extrapolées au pas (surtout à l'ouest de la rangée devant le bâtiment et au sud-ouest) ; la rangée de voitures du bord sud, dans l'ombre, n'est pas relevée.
+- Captures : `docs/captures/hexagone-lot5-*.jpg`.

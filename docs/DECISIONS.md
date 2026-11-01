@@ -3199,3 +3199,32 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Parvis vu du nord-est](captures/hexagone-lot4-parvis-haut.jpg)
 ![Vue aérienne](captures/hexagone-lot4-aerien.jpg)
 
+## 2026-11-01 — D169. L'Hexagone, lot 5 : les rangées du parking (plan `docs/plans/hexagone.md`, §13)
+
+**Demande de l'utilisateur** : « Continue avec le lot 5 ».
+
+**Constat** : comme le Champ de Mars avant D154, les traits étaient posés au hasard le long d'allées OpenStreetMap (236 marques dans la zone, orientations variées).
+
+**Lecture** : orthophotographie à 20 cm redressée de 37° (traits verticaux : la mesure par bloc du lot 0, 143° ± 4°, n'était qu'un bruit de mesure). Six rangées, pas et phase affinés sur les traits blancs visibles (`tools/data/survey_parking.py`) :
+
+| Rangée | Premier trait u | Pas | Traits | Tronçons v (m) | Places |
+|---|---|---|---|---|---|
+| N (bord nord) | 11,26 | 2,480 | 9 | −39,6 à −34,8 | 8 |
+| R1 (nord-est, double) | 1,35 | 2,480 | 18 | −27,0 à −17,0, fond −22,0 | 34 |
+| R2 (devant le bâtiment) | −9,42 | 2,500 | 20 | −10,3 à −5,0 | 19 |
+| R2b (sa seconde moitié, ouest) | −9,74 | 2,510 | 8 | −5,0 à −0,6 | 7 |
+| R3 (ouest, double) | −15,22 | 2,490 | 10 | 5,9 à 16,2, fond 11,0 | 18 |
+| R4 (sud-ouest, double) | −27,40 | 2,500 | 13 | 21,8 à 32,0, fond 27,0 | 24 |
+
+**Données** : clé `parkings` de `manual.json` (repère, zone de nettoyage, rangées, couches de sol où poser les traits) ; `build_parking.py` (nouveau, idempotent) retire toutes les marques de la zone (236), pose 123 polygones (traits de 5 m à 7 cm de la ligne de fond, lignes de fond), les découpe aux bâtiments (marge 30 cm) et à l'asphalte de la tuile ; tuile 27_36 et `bytes` de `world.json` ; navigation inchangée.
+
+**Jeu** : les voitures garées utilisent ces places par `findStalls` sans changer `vehicles.ts` : 110 places retrouvées dans la zone (les marques voisines, hors zone, restent : 55 places de plus à moins de 60 m).
+
+**Tests** (+4, 898 au total, `src/data/parking-hexagone.test.ts`) : entre 99 et 121 places retrouvées, sans doublon ; toutes à 143° ± 3° ; pas de 2,4 à 2,6 m entre voisines (plus de 80 mesures) ; plus aucune ancienne marque (toutes les marques de la zone sont des traits à 143° ou des fonds à 53°) ; aucun trait dans un bâtiment.
+
+**Limites** : les places dont les traits sont cachés (voitures, ombre) sont extrapolées au pas, à ± 20 cm ; hachures, flèches et passage piétons non faits ; les marques des 55 places hors zone (le long de la route, au nord-est) n'ont pas été relues ; navigation non régénérée.
+
+![Parking vu d'en haut](captures/hexagone-lot5-parking-haut.jpg)
+![Parking vu du sol](captures/hexagone-lot5-parking-sol.jpg)
+![Relevé : traits prédits sur l'image redressée](captures/hexagone-lot5-parking-releve.jpg)
+
