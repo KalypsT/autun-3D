@@ -227,6 +227,8 @@ def apply_shop(fi, m):
     g["kind"] = "shop"
     g["shopfront"] = {"color": sh["color"], "glazing": "full"}
     g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}]
+    if "terrace" in sh:  # terrasse d'après photo (D178) devant la devanture
+        g["shops"][0]["terrace"] = sh["terrace"]
     g["devanture"] = sh["devanture"]
     apply_overrides(fi, sh.get("fiche", {}))
     fi["status"] = "observed"

@@ -1362,3 +1362,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le parking a ses vraies rangées de places (33 places en quatre blocs), ses flèches de sens, trois lampadaires et son panneau « P ». Le camion pizza est maintenant garé sur une vraie place de la rangée nord, au repère que tu avais donné, le dos à l'avenue ; la place voisine à sa gauche reste libre.
 - Pas encore : le texte « Rue de l'Acaron » peint sur la chaussée. 960 tests (8 de plus).
 - À regarder : `?at=504,1094&yaw=5.76&h=18` (le camion à 18 h).
+
+**Boutiques d'après photos : rue Mazagran et alentours (1er novembre 2026)** (D178)
+- Cinq boutiques refaites d'après tes huit captures : Maison Benzaabar (terrasse sur estrade de bois, barrière verte, parasols blancs), Guinness Irish Pub (store noir à fanions, bacs plantés devant), restaurant Les Remparts (store gris foncé lettré, terrasse), Point Plus « Le Marigny » (bandeau noir, losange « PRESSE ») et Festival des Pains (devanture rouge sombre, ouverte comme avant).
+- Le pub est retiré du bâtiment voisin où OpenStreetMap le liait à tort, et deux murs qui cachaient sa façade disparaissent.
+- Pas encore : perron et panneau « À VENDRE » de Festival, affiches de la vitrine de Point Plus, boutique grise vide à gauche du pub ; volets de l'étage de couleur de palette (pas ceux des photos). 966 tests (6 de plus).
+- À regarder : `?view=custom&cam=218.7,408.1,2,225.7,424.3,2&h=14` (rue Mazagran), `cam=189.6,381.7,2,183.6,388.4,2.2&h=22` (le pub la nuit), `cam=258.5,432.8,2.2,253.5,441.5,2` (Point Plus), `cam=562.1,852.4,2.4,568.7,860,2.2` (Festival).

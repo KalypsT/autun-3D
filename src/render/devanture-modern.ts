@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Devanture } from "../data/types";
 import type { DevantureFrame } from "./devanture";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { crossFlag } from "./shopfront";
+import { crossFlag, tobaccoSign } from "./shopfront";
 import type { SignAtlas } from "./sign-atlas";
 
 /**
@@ -15,12 +15,14 @@ import type { SignAtlas } from "./sign-atlas";
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 const GLASS_LO = C("#26313a"), GLASS_HI = C("#4f6270"), GLOW_LO = C("#ffcf86"), GLOW_HI = C("#fff3d6");
-const ALU = C("#8b9298"), ALU_DARK = C("#5d646a"), DOOR = C("#8e9296"), PLINTH = C("#7d7a73"), SPOT = C("#f3f1ea");
+const ALU_GREY = C("#8b9298"), ALU_DARK = C("#5d646a"), DOOR_GREY = C("#8e9296"), PLINTH = C("#7d7a73"), SPOT = C("#f3f1ea");
 /** Pas d'un caractère du texte d'enseigne, en fraction de la hauteur de ligne (cases de 256 × 40 px : lettres de 0,82 de la hauteur). */
 const ADVANCE = 0.51;
 
 export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
   const m = d.modern!;
+  /** Cadres et porte pleine : gris par défaut, ou la couleur lue sur photo (D178). */
+  const ALU = m.frame ? C(m.frame) : ALU_GREY, DOOR = m.doorColor ? C(m.doorColor) : DOOR_GREY;
   const at = (s: number, z: number, off: number): Vec3 => toThree(f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off, f.z + z);
   const front = toThree(f.nx, f.ny, 0);
   const panel = (target: MeshBuilder, s0: number, s1: number, z0: number, z1: number, off: number, lo: THREE.Color, hi: THREE.Color = lo): void => {
@@ -168,6 +170,12 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
 
   // Projecteurs blancs au-dessus des lettres.
   for (const ss of m.spots?.s ?? []) slab(ss - 0.07, ss + 0.07, (m.spots?.z ?? 3.4) - 0.05, (m.spots?.z ?? 3.4) + 0.05, 0.05, 0.27, SPOT);
+
+  // Losange en drapeau (« PRESSE », tabac) : posé par `tobaccoSign` à 0,45 m à gauche du milieu de sa devanture, d'où une devanture de largeur nulle décalée.
+  if (m.lozenge) {
+    const lz = m.lozenge;
+    tobaccoSign(mb, { x: f.x + f.tx * (lz.s + 0.45), y: f.y + f.ty * (lz.s + 0.45), tx: f.tx, ty: f.ty, nx: f.nx, ny: f.ny, width: 0, zTop: 0, zSign: f.z + lz.z - 0.5, key: "lozenge" }, C(lz.color));
+  }
 
   // Croix verte en drapeau, perpendiculaire au mur.
   if (m.cross) {

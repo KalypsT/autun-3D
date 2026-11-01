@@ -3363,3 +3363,46 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Parking vu de dessus](captures/college-lot6-aerien.jpg)
 ![Le camion pizza à 18 h](captures/college-lot6-camion.jpg)
+
+## 2026-11-01 — D178. Boutiques d'après photos : rue Mazagran, boulevard Mazagran, rue des Fusiliers Marins
+
+**Demande de l'utilisateur** : intégrer de nouvelles façades de boutiques d'après huit captures Google Street View (juillet 2025 et juillet 2026) ; identifier le bon endroit de chacune, proposer un plan, demander en cas de doute. Réponses : Festival des Pains **ouverte comme avant**, sans le panneau « La Maison des Gourmandises » posé au sol ; terrasse de Benzaabar : version à estrade acceptée.
+
+**Qui est qui** (les adresses affichées sur les captures sont celles du point de prise de vue, pas des boutiques) :
+- photos 5 et 6 : Maison Benzaabar, `…348856879` (tuile 26_36), mur 0 de 16,1 m sur la rue Mazagran ;
+- photos 7 et 8 : Guinness Irish Pub, `…348856897` (26_36), mur 0 de 5,4 m ; OpenStreetMap lie ce pub aussi à `…901` (pierre de taille, porte cochère verte, photo 7 à droite) : lien retiré ;
+- photo 4 : restaurant Les Remparts, `…348848399` (26_37), mur 8 de 10,2 m ; l'étage a trois travées à 3,4 m comme la photo (3 volets) ;
+- photos 2 et 3 : Point Plus « Le Marigny » (même boutique, de loin puis de près), `…348848405` (27_37), mur 0 de 24,8 m sur le boulevard Mazagran ; l'ordre Benzaabar, Les Remparts, Point Plus d'ouest en est colle avec les photos 4 à 6 ;
+- photo 1 : Festival des Pains, `…348848798` (28_38), mur 0 de 12 m face au carrefour rue des Fusiliers Marins / rue du Faubourg Saint-André ; la rue des Fusiliers Marins n'est pas dans `streets.json` (seulement dans `places.json`).
+
+**Données** (`manual.json`, `fronts[…].shop`, gabarit « moderne » de D159) : cinq devantures lues sur les photos (travées, couleurs, enseignes) ; `build_shop_fronts.py` copie `terrace` du commerce (`apply_shop`). Largeurs ramenées à la longueur de chaque mur : ± 30 à 60 cm, une ou deux photos de biais par boutique. Deux murs OpenStreetMap qui cachaient la façade du pub (−900008728 et −900008869, sur son alignement) sont retirés (`dropWalls`, comme en D161). Seules les tuiles 26_36, 26_37, 27_37 et 28_38 sont réécrites.
+
+**Rendu** :
+- `devanture.ts` : **store banne** (`Devanture.awning`) : toile unie inclinée, lambrequin lettré, mot sur la pente, guirlande de fanions bleu-blanc-rouge ;
+- `devanture-modern.ts` : couleur des cadres (`frame`) et de la porte pleine (`doorColor`), **losange en drapeau** (`lozenge`, « PRESSE ») ;
+- `shopfront.ts` (`styledTerrace`) : bord en **barrière de fer ajourée** avec bacs (`planters: "fence"`) ou **rangée de bacs plantés** (`"boxes"`), `tables: false`, `parasol: "none"`, `span` (tronçon du mur), `unchecked` ; une terrasse n'exige plus que son bord extérieur soit sur un trottoir (une bande de 1 m au pied de la façade n'est pas classée « walk » dans les données) ; `facades.ts` dessine désormais la terrasse d'une boutique à devanture (avant, seul le gabarit générique en avait une).
+
+**Coût** : 6 tests de plus, 966 au total (`src/render/boutiques-mazagran.test.ts`) ; la terrasse de Benzaabar et les bacs ajoutent quelques centaines de triangles (aucun appel de dessin de plus : même maillage de tuile).
+
+**Limites** :
+- les volets de l'étage viennent de la palette de l'époque (la couleur de la fiche n'est pas lue) : Benzaabar a des volets rouges au lieu de persiennes grises, le pub des volets bleu-vert au lieu de verts ;
+- Festival : perron de trois marches, panneau « À VENDRE » et logo « Festival » en script non dessinés ; la hauteur du rez-de-chaussée dans les données (4,4 m) est plus grande que sur la photo (≈ 3,2 m) : une bande de mur plein au-dessus de l'enseigne ;
+- Point Plus : affiches de la vitrine, pictogrammes de l'enseigne et boutique voisine de gauche non dessinés ; Les Remparts : seule la façade sur la rue Mazagran est refaite, pas le retour sur le boulevard ;
+- Benzaabar : porte de garage et panneaux en teinte unie, logo en relief non dessiné ; terrasse de Benzaabar et des Remparts sur un trottoir qui n'est pas vérifié pour Les Remparts (`unchecked` : la façade est dans une tuile, son trottoir dans la voisine) ;
+- le bâtiment voisin du pub (`…901`) garde une devanture générique sans nom (comme Havas Voyages en D157) ; le local gris vide à gauche du pub n'est pas refait ;
+- `build_nav.py` non relancé (points « commerce » des passants inchangés) ; `build_shop_fronts.py` réécrit aussi la tuile 24_35 (`front` d'un bâtiment de Parpas en moins) : remise à l'état d'origine.
+
+![Benzaabar, avant](captures/d178-benzaabar-avant.jpg)
+![Après](captures/d178-benzaabar-apres.jpg)
+![La rue Mazagran, avant](captures/d178-rue-mazagran-avant.jpg)
+![Après](captures/d178-rue-mazagran-apres.jpg)
+![Le pub, avant](captures/d178-pub-avant.jpg)
+![Après](captures/d178-pub-apres.jpg)
+![Le pub la nuit, avant](captures/d178-pub-nuit-avant.jpg)
+![Après](captures/d178-pub-nuit-apres.jpg)
+![Les Remparts, avant](captures/d178-remparts-avant.jpg)
+![Après](captures/d178-remparts-apres.jpg)
+![Point Plus, avant](captures/d178-point-plus-avant.jpg)
+![Après](captures/d178-point-plus-apres.jpg)
+![Festival des Pains, avant](captures/d178-festival-avant.jpg)
+![Après](captures/d178-festival-apres.jpg)

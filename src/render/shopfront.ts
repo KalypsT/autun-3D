@@ -97,8 +97,8 @@ export function pharmacyCross(mb: MeshBuilder, f: Front): void {
 }
 
 /** « Carotte » rouge du bureau de tabac : losange vertical en drapeau. */
-export function tobaccoSign(mb: MeshBuilder, f: Front): void {
-  const red = C("#d32f2f");
+export function tobaccoSign(mb: MeshBuilder, f: Front, color: THREE.Color = C("#d32f2f")): void {
+  const red = color;
   const zc = f.zSign + 0.5;
   const [cx, cy] = point(f, -f.width / 2 - 0.45, 0.7);
   const P = (d: number, z: number, side: number): Vec3 => toThree(cx + f.nx * d + f.tx * side * 0.07, cy + f.ny * d + f.ty * side * 0.07, z);
@@ -119,7 +119,7 @@ export function tobaccoSign(mb: MeshBuilder, f: Front): void {
 }
 
 /** Terrasse : tables rondes, chaises et parasols devant la devanture, seulement sur trottoir ou place (`free`). */
-export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, color: THREE.Color, depths: number[] = [1.9, 3.3], lift = 0): number {
+export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, color: THREE.Color, depths: number[] = [1.9, 3.3], lift = 0, parasols = true): number {
   const metal = C("#3d4446"), top = C("#e8e2d4"), chair = C("#7a5a3a");
   let n = 0;
   for (const d of depths) {
@@ -136,7 +136,7 @@ export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (
         const [bx, by] = [cx + f.tx * side * 0.18, cy + f.ty * side * 0.18];
         box(mb, bx, by, f.tx, f.ty, 0.03, 0.2, z + 0.45, z + 0.9, chair);
       }
-      if (hash01(f.key, n) < 0.6) parasol(mb, x, y, z, n % 2 === 0 ? color : CREAM);
+      if (parasols && hash01(f.key, n) < 0.6) parasol(mb, x, y, z, n % 2 === 0 ? color : CREAM);
       n++;
     }
   }
@@ -163,8 +163,11 @@ function parasol(mb: MeshBuilder, x: number, y: number, z: number, color: THREE.
  */
 export function styledTerrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (x: number, y: number) => boolean, t: Terrace): boolean {
   const depth = t.depth ?? 2.6;
-  const corners: [number, number][] = [point(f, -f.width / 2, 0.4), point(f, f.width / 2, 0.4), point(f, -f.width / 2, depth), point(f, f.width / 2, depth)];
-  if (!corners.every(([x, y]) => free(x, y))) return false;
+  // Les coins sont rentrés de 0,3 m : le contour du trottoir passe souvent au ras des bouts du mur (D178).
+  const hw = Math.max(0.1, f.width / 2 - 0.3);
+  // Seul le bord extérieur doit être libre : une bande de 1 m au pied de la façade n'est parfois pas classée trottoir (« walk ») dans les données.
+  const corners: [number, number][] = [point(f, -hw, depth - 0.1), point(f, 0, depth - 0.1), point(f, hw, depth - 0.1)];
+  if (!t.unchecked && !corners.every(([x, y]) => free(x, y))) return false;
   const mid = point(f, 0, depth / 2 + 0.2);
   const z0 = terrain.heightAt(mid[0], mid[1]) + 0.15;
   const lift = t.platform ? 0.1 : 0;
@@ -185,10 +188,44 @@ export function styledTerrace(mb: MeshBuilder, f: Front, terrain: HeightField, f
       const [px, py] = point(f, -f.width / 2 + (f.width * i) / 2, edge);
       box(mb, px, py, f.tx, f.ty, 0.14, 0.14, z0, z0 + 1.35, shadeOf(C(t.screen), 0.8));
     }
+  } else if (t.planters === "fence") {
+    // Barrière de fer ajourée (montants tous les 1,4 m, lisses haute et basse, croisillons pleins) et quelques bacs gris plantés derrière (D178).
+    const col = C(t.edge ?? "#2f4a3a"), n = Math.max(2, Math.round(f.width / 1.4));
+    const [x, y] = point(f, 0, edge);
+    box(mb, x, y, f.tx, f.ty, f.width / 2, 0.02, z0 + lift + 0.12, z0 + lift + 0.17, col);
+    box(mb, x, y, f.tx, f.ty, f.width / 2, 0.02, z0 + lift + 0.9, z0 + lift + 0.95, col);
+    for (let i = 0; i <= n; i++) {
+      const [px, py] = point(f, -f.width / 2 + (f.width * i) / n, edge);
+      box(mb, px, py, f.tx, f.ty, 0.03, 0.03, z0 + lift, z0 + lift + 1.0, col);
+      if (i < n) {
+        const [cx, cy] = point(f, -f.width / 2 + (f.width * (i + 0.5)) / n, edge);
+        box(mb, cx, cy, f.tx, f.ty, 0.015, 0.015, z0 + lift + 0.17, z0 + lift + 0.9, shadeOf(col, 1.15));
+      }
+    }
+    for (let i = 0; i < Math.floor(f.width / 3); i++) {
+      const [px, py] = point(f, -f.width / 2 + 0.9 + i * 3, edge - 0.45);
+      box(mb, px, py, f.tx, f.ty, 0.38, 0.22, z0 + lift, z0 + lift + 0.45, C("#6f7478"));
+      box(mb, px, py, f.tx, f.ty, 0.3, 0.16, z0 + lift + 0.45, z0 + lift + 0.95, C(i % 2 ? "#4f8a4a" : "#6a9a46"));
+    }
+  } else if (t.planters === "boxes") {
+    // Rangée de bacs sombres sur pieds, plantés d'arbustes (pyramides vertes) et de fleurs : devant la façade, au bord extérieur de l'emprise (D178).
+    const col = C(t.edge ?? "#2b2f31"), n = Math.max(2, Math.round(f.width / 1.25));
+    for (let i = 0; i < n; i++) {
+      const [x, y] = point(f, -f.width / 2 + ((i + 0.5) * f.width) / n, edge);
+      box(mb, x, y, f.tx, f.ty, 0.5, 0.2, z0 + lift + 0.4, z0 + lift + 0.7, col);
+      box(mb, x, y, f.tx, f.ty, 0.02, 0.02, z0 + lift, z0 + lift + 0.4, col);
+      box(mb, x, y, f.tx, f.ty, 0.46, 0.17, z0 + lift + 0.7, z0 + lift + 0.82, C(i % 3 === 0 ? "#c8505a" : i % 3 === 1 ? "#4f8a4a" : "#f0eadd"));
+      if (i % 2 === 0) {
+        box(mb, x, y, f.tx, f.ty, 0.22, 0.22, z0 + lift + 0.82, z0 + lift + 1.5, C("#48783f"));
+        box(mb, x, y, f.tx, f.ty, 0.13, 0.13, z0 + lift + 1.5, z0 + lift + 1.9, C("#5d8c46"));
+      }
+    }
   }
-  const parasol = C(t.parasol ?? "#8a2a2a");
+  if (t.tables === false) return true;
+  const parasol = C(t.parasol && t.parasol !== "none" ? t.parasol : "#8a2a2a");
   // Tables et chaises sur l'estrade, à 1,0 et 2,0 m de la façade.
-  terrace(mb, { ...f, key: f.key + "|t" }, terrain, () => true, parasol, [0.95 + 0.3, depth - 0.8], lift);
+  // Une seule rangée quand la terrasse est peu profonde (bacs au bord, D178).
+  terrace(mb, { ...f, key: f.key + "|t" }, terrain, () => true, parasol, depth < 2 ? [depth - 0.75] : [0.95 + 0.3, depth - 0.8], lift, t.parasol !== "none");
   return true;
 }
 
