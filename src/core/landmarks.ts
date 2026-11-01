@@ -1,4 +1,5 @@
 import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import { gateCircles } from "./school-gate";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -140,6 +141,9 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     }
     const st = kinds.buildings[b.id]?.store;
     if (st) out.push(...storeCircles(b, st));
+    // Entrée du collège du Vallon (D174) : poteaux, pilier, lampadaires.
+    const vg = kinds.buildings[b.id]?.vallon?.gate;
+    if (vg) out.push(...gateCircles(vg));
   }
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {

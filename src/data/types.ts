@@ -625,6 +625,8 @@ export interface VallonModel {
   preau?: { r: [number, number, number, number]; eave: number; crown: number; n: number; open?: VallonSide[] };
   /** Façades des ailes (lot 2) : un style par face qui s'écarte du style par défaut (bandes de fenêtres). */
   faces?: VallonFace[];
+  /** Entrée (lot 3) : grille à l'extrémité du pont (extrémité nord-ouest, normale sortante, longueur), voir `core/school-gate.ts`. */
+  gate?: { o: [number, number]; n: [number, number]; len: number };
   /** Volumes voisins qui masquent le pied des murs sans être des ailes (le préau) : rectangle et altitude du dessus. */
   bury?: { r: [number, number, number, number]; z: number }[];
   colors: { wall: string; roof: string; parapet: string; vault: string; hall: string };

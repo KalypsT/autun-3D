@@ -3297,3 +3297,22 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Cour ouest](captures/college-lot2-cour-ouest.jpg)
 ![Cour est](captures/college-lot2-cour-est.jpg)
+
+## 2026-11-01 — D174. Collège du Vallon, lot 3 : l'entrée (plan `docs/plans/college-vallon.md`, §12)
+
+**Demande de l'utilisateur** : « Enchaîne avec le lot 3 » (grille fermée en dehors des heures de classe, confirmé avant le lot 1).
+
+**Constat** : l'enceinte OSM (`249352113`) passait à travers le bout du pont, à 1,2 m du tablier : l'entrée était un mur plein de 3,5 m, hauteur due à des arbres et bâtiments voisins pris pour le mur par le LiDAR.
+
+**Données** : `tools/data/build_school_gate.py` (`schoolGate` de `manual.json`) coupe l'enceinte en deux tracés à la grille, la ramène à 1,8 m, élargit le tablier d'accès à 6,0 m (`tiles/28_39.json`, `structures/28_39.json`, octets de `world.json`) ; champ `gate` du modèle `vallon` de `…848973` (`kinds/28_39.json`).
+
+**Logique** (`src/core/school-gate.ts`) : grille ouverte de 7 h 30 à 18 h ; disposition le long de la grille (poteaux, vantail de 4,4 m, portillon de 1,1 m, pilier) ; `syncGate` pose ou retire l'obstacle étiqueté `school-gate` selon l'heure (ligne de 6,8 m, haute de 2,4 m, ajourée). `landmarkCircles` ajoute poteaux, pilier et lampadaires.
+
+**Rendu** : partie fixe cuite dans la tuile (`vallon-gate.ts`, `buildGatePosts`) ; vantaux fermés en un maillage à part (`buildGateLeaves`) que `src/game/school-gate.ts` montre ou cache, appelé à chaque image depuis `game.ts`.
+
+**Tests** (+14, 940 au total ; `src/core/school-gate.test.ts`, `src/render/vallon-gate.test.ts`) : horaires, disposition sans trou, grille dans l'axe du pont à 1,5 m et perpendiculaire à 8°, enceinte coupée et à 1,8 m, passage du pont à l'esplanade libre ouverte et arrêté fermée (collisions réelles de la tuile), obstacle posé et retiré sans doublon, passage libre de 3 m, maillages finis et bornés.
+
+**Limites** : le portail n'est pas animé ; heures fixes (le jeu n'a pas de calendrier : ni week-end ni vacances, D116) ; barrière à chevrons, panneau « P » et marquage de la chaussée non faits ; `build_nav.py` non relancé.
+
+![Fermée la nuit](captures/college-lot3-ferme-pres.jpg)
+![Ouverte le jour](captures/college-lot3-ouverte.jpg)

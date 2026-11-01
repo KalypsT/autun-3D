@@ -899,7 +899,7 @@ def vallon(tid, bid, b, spec, k):
     g = round(b["ground"], 1)
     if spec.get("wings"):
         m["wings"] = [{"n": w["n"], "r": w["r"], "z": w["z"]} for w in spec["wings"]]
-        for key in ("faces", "bury"):  # façades (D173) et volumes voisins qui masquent le pied des murs
+        for key in ("faces", "bury", "gate"):  # façades (D173) et volumes voisins qui masquent le pied des murs
             if spec.get(key):
                 m[key] = spec[key]
         for w in m["wings"]:

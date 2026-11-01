@@ -1342,3 +1342,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le collège a ses façades : mur-rideau à panneaux bleu-vert et double porte à l'entrée (côté ouest), barre de quatre étages à bandes de fenêtres avec sa bande orangée, bardage bleu-gris du noyau, escalier extérieur en béton, préau ouvert sur poteaux bleu-vert.
 - Pas encore : marches, bacs, rochers et sol de la cour (lot 4), grille (lot 3). On ne peut pas encore marcher sous le préau. 926 tests (9 de plus).
 - À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5` (entrée) et `cam=668,1122,4,646,1114,4` (cour est).
+
+**Collège du Vallon, lot 3 : l'entrée (1er novembre 2026)** (D174)
+- Le collège a une vraie entrée : le mur qui barrait le bout du pont est coupé, il y a une grille à barreaux noirs, un portillon, un pilier à interphone, le panneau « Collège le Vallon » et deux lampadaires à tête en disque. Le pont est plus large (6 m).
+- La grille est ouverte de 7 h 30 à 18 h et fermée le reste du temps : fermée, elle arrête le joueur. L'enceinte est ramenée à 1,8 m.
+- Pas encore : le panneau « P » et le marquage de la chaussée (lot 6), les marches, bacs et rochers de la cour (lot 4). 938 tests (12 de plus).
+- À regarder : `?at=538,1080&yaw=1.152&h=22` (fermée) et `h=12` (ouverte).
