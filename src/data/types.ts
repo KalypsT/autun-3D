@@ -973,7 +973,16 @@ export interface WallRun {
 /** Terrasse d'après photo (D157) : estrade (couleur), bord (tonneaux plantés ou panneaux ajourés de cette couleur), couleur du store et des parasols, profondeur (m). */
 export interface Terrace {
   platform?: string;
-  planters?: "barrel";
+  /** Bord extérieur : tonneaux plantés (D157), barrière de fer ajourée verte avec bacs (D178) ou rangée de bacs plantés (D178). */
+  planters?: "barrel" | "fence" | "boxes";
+  /** Couleur de la barrière (`planters: "fence"`) ou des bacs (`"boxes"`), D178. */
+  edge?: string;
+  /** Tronçon du mur (abscisses de début et de fin, m) où la terrasse se pose, pour une devanture plus large que la terrasse (D178) ; absent : toute la devanture. */
+  span?: [number, number];
+  /** Vrai : ne pas vérifier que le sol est un trottoir (la façade est dans une tuile, son trottoir dans la voisine : `free` ne connaît que sa tuile), D178. */
+  unchecked?: boolean;
+  /** Faux : ni tables ni chaises (le pub n'a que ses bacs devant la façade), D178. */
+  tables?: boolean;
   screen?: string;
   awning?: string;
   parasol?: string;
@@ -987,6 +996,8 @@ export interface Shop {
   s: number;
   osm?: number;
   terrace?: Terrace;
+  /** Boutique d'angle générique (D179) : vitrine du même commerce, nom compris, sur le mur de rue voisin, centrée à l'abscisse `s` de ce mur. */
+  corner?: { wall: number; s: number };
 }
 
 /**
@@ -1014,6 +1025,11 @@ export interface Devanture {
   glass?: [string, string];
   /** Derrière les vitres (D158) : « none » rien, « plain » mannequins devant un fond neutre ; absent : vêtements et fond vert de D141. */
   display?: "none" | "plain";
+  /**
+   * Store banne d'après photo (D178), posé au-dessus des baies : de `s[0]` à `s[1]`, accroché à l'altitude `z`, saillie `depth`, retombée `drop`, toile unie
+   * de la couleur `color`, lambrequin de 0,3 m portant `text` (lettres `fg`), `top` : mot écrit sur la pente, `bunting` : guirlande de fanions bleu-blanc-rouge.
+   */
+  awning?: { s: [number, number]; z: number; depth: number; drop: number; color: string; text?: string; fg?: string; top?: string; bunting?: boolean };
   /** Inscription sur une vitrine, numéro sur un pilastre : [travée, texte]. */
   label?: [number, string];
   number?: [number, string];
@@ -1036,6 +1052,12 @@ export interface ModernFront {
   banners?: [number, string][];
   /** Croix de pharmacie en drapeau perpendiculaire au mur : abscisse, altitude du centre, hauteur. */
   cross?: { s: number; z: number; size: number };
+  /** Couleur des cadres des baies (D178) ; absent : aluminium gris. */
+  frame?: string;
+  /** Couleur de la porte pleine « door » (D178) ; absent : gris. */
+  doorColor?: string;
+  /** Losange en drapeau « PRESSE » ou de tabac, perpendiculaire au mur (D178) : abscisse, altitude du centre, couleur. */
+  lozenge?: { s: number; z: number; color: string };
   /** Disques de logo posés sur le mur ou la vitre : [abscisse, altitude, rayon, couleur, lettre, couleur de la lettre]. */
   logos?: [number, number, number, string, string, string][];
   /** Plaques (panneau d'horaires, interphone) : [abscisse du centre, bas, haut, demi-largeur, couleur]. */
@@ -1093,6 +1115,10 @@ export interface FacadeFiche {
     signZ?: number;
     /** Devanture d'après photo (D141), dessinée telle quelle sur le mur d'entrée à la place des vitrines génériques. */
     devanture?: Devanture;
+    /** Boutique d'angle (D179) : devanture du même commerce sur le mur voisin de `front` (qui partage son sommet d'angle), dessinée comme `devanture` ; `terrace` : terrasse devant ce mur. */
+    corner?: { wall: number; devanture: Devanture; terrace?: Terrace };
+    /** Façade courbe ou à plusieurs pans (Optic 2000, D182) : devantures supplémentaires sur d'autres murs consécutifs du contour, dessinées comme `corner`. */
+    corners?: { wall: number; devanture: Devanture; terrace?: Terrace }[];
   };
   walls: WallRun[];
 }

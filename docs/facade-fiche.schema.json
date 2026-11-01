@@ -136,6 +136,7 @@
         "signZ": { "type": "number", "minimum": 0, "maximum": 12, "description": "Enseigne basse d'une grande surface : bas du panneau en mètres au-dessus du sol (correction à la main, D122)." },
         "frontWalls": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Autres murs de l'entrée d'une grande surface, vitrés au rez-de-chaussée (correction à la main, D120)." },
         "devanture": { "type": "object", "required": ["s0", "h", "sill", "top", "frieze", "cornice", "bays", "stone", "sign"], "description": "Devanture en applique d'après photo, dessinée telle quelle sur le mur d'entrée (correction à la main, build_shop_fronts.py, D141)." },
+        "corner": { "type": "object", "required": ["wall", "devanture"], "description": "Boutique d'angle : devanture du même commerce sur le mur voisin de `front` (même sommet d'angle), avec sa terrasse éventuelle (D179)." },
         "shops": {
           "type": "array",
           "items": {

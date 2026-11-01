@@ -36,6 +36,60 @@ const CLOTHES: [string, number, number, number][][] = [
 const BACKDROP = ["", "#7ea04a"];
 
 export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
+  buildFront(mb, glow, text, f, d, color);
+  if (d.awning) buildAwning(mb, text, f, d.awning);
+}
+
+/**
+ * Store banne d'après photo (D178) : toile unie inclinée du mur vers la rue, dessous visible, lambrequin lettré, mot écrit sur la pente, guirlande de fanions.
+ * Même repère que la devanture : abscisses `s` depuis le début du mur, altitude `z` d'accroche au-dessus du trottoir.
+ */
+function buildAwning(mb: MeshBuilder, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, a: NonNullable<Devanture["awning"]>): void {
+  const at = (s: number, z: number, off: number): Vec3 => toThree(f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off, f.z + z);
+  const [s0, s1] = a.s, col = C(a.color), len = s1 - s0, z1 = a.z - a.drop, valance = 0.3;
+  const slope = a.drop / a.depth, nl = Math.hypot(1, slope);
+  const up = toThree((f.nx * slope) / nl, (f.ny * slope) / nl, 1 / nl);
+  const down: Vec3 = [-up[0], -up[1], -up[2]];
+  const front = toThree(f.nx, f.ny, 0), back: Vec3 = [-front[0], -front[1], -front[2]];
+  // Toile (dessus et dessous), côtés triangulaires, lambrequin (face avant et face arrière).
+  mb.quad(at(s0, a.z, 0.06), at(s1, a.z, 0.06), at(s1, z1, a.depth), at(s0, z1, a.depth), up, col);
+  mb.quad(at(s0, a.z, 0.06), at(s1, a.z, 0.06), at(s1, z1, a.depth), at(s0, z1, a.depth), down, shade(col, 0.75));
+  for (const [s, n] of [[s0, toThree(-f.tx, -f.ty, 0)], [s1, toThree(f.tx, f.ty, 0)]] as const) {
+    mb.tri(at(s, a.z, 0.06), at(s, z1, a.depth), at(s, z1, 0.06), n, shade(col, 0.85));
+  }
+  mb.quad(at(s0, z1 - valance, a.depth), at(s1, z1 - valance, a.depth), at(s1, z1, a.depth), at(s0, z1, a.depth), front, shade(col, 1.05));
+  mb.quad(at(s0, z1 - valance, a.depth), at(s1, z1 - valance, a.depth), at(s1, z1, a.depth), at(s0, z1, a.depth), back, shade(col, 0.75));
+  if (text) {
+    // Cases de texte de 6,4 de large pour 1 de haut : la police se réduit pour tenir en 94 % de la largeur ; on règle la largeur de la case pour avoir des lettres d'environ 0,2 m.
+    const cell = (str: string, max: number): number => Math.min(Math.max(0.27 * str.length / 1.51, 1.2), max);
+    if (a.text) {
+      const w = cell(a.text, len - 0.3), h = w / 6.4, sc = (s0 + s1) / 2, zc = z1 - valance / 2, r = text.atlas.get(a.text, a.fg ?? "#f2efe6", false);
+      text.mb.quad(at(sc - w / 2, zc - h / 2, a.depth + 0.012), at(sc + w / 2, zc - h / 2, a.depth + 0.012), at(sc + w / 2, zc + h / 2, a.depth + 0.012), at(sc - w / 2, zc + h / 2, a.depth + 0.012), front,
+        [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], C("#ffffff"));
+    }
+    if (a.top) {
+      // Mot sur la pente : la case suit la toile, le haut des lettres vers le mur.
+      const w = cell(a.top, len - 0.4), h = w / 6.4, sc = (s0 + s1) / 2, r = text.atlas.get(a.top, a.fg ?? "#f2efe6", false);
+      const L = Math.hypot(a.depth - 0.06, a.drop);
+      const P = (u: number, v: number): Vec3 => {
+        const t = 0.5 - (v * h) / 2 / L;
+        return at(sc + (u * w) / 2, a.z - t * a.drop, 0.06 + t * (a.depth - 0.06) + 0.012);
+      };
+      text.mb.quad(P(-1, -1), P(1, -1), P(1, 1), P(-1, 1), up, [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], C("#ffffff"));
+    }
+  }
+  if (a.bunting) {
+    // Fanions : un triangle tous les 12 cm sous le bord du lambrequin, bleu, blanc, rouge.
+    const n = Math.floor(len / 0.14), colors = [C("#2a4a9a"), C("#f2efe6"), C("#c8242c")];
+    for (let i = 0; i < n; i++) {
+      const sa = s0 + 0.05 + (i * (len - 0.1)) / n, sb = sa + (len - 0.1) / n * 0.8, sm = (sa + sb) / 2;
+      mb.tri(at(sa, z1 - valance, a.depth + 0.015), at(sb, z1 - valance, a.depth + 0.015), at(sm, z1 - valance - 0.2, a.depth + 0.015), front, colors[i % 3]!);
+      mb.tri(at(sa, z1 - valance, a.depth + 0.015), at(sm, z1 - valance - 0.2, a.depth + 0.015), at(sb, z1 - valance, a.depth + 0.015), back, colors[i % 3]!);
+    }
+  }
+}
+
+function buildFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
   // Façade moderne d'après photo (D159) : un autre dessin (mur plein, baies d'aluminium), voir devanture-modern.ts.
   if (d.modern) {
     buildModernFront(mb, glow, text, f, d, color);

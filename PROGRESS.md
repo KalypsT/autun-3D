@@ -1362,3 +1362,27 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le parking a ses vraies rangées de places (33 places en quatre blocs), ses flèches de sens, trois lampadaires et son panneau « P ». Le camion pizza est maintenant garé sur une vraie place de la rangée nord, au repère que tu avais donné, le dos à l'avenue ; la place voisine à sa gauche reste libre.
 - Pas encore : le texte « Rue de l'Acaron » peint sur la chaussée. 960 tests (8 de plus).
 - À regarder : `?at=504,1094&yaw=5.76&h=18` (le camion à 18 h).
+
+**Boutiques d'après photos : rue Mazagran et alentours (1er novembre 2026)** (D178)
+- Cinq boutiques refaites d'après tes huit captures : Maison Benzaabar (terrasse sur estrade de bois, barrière verte, parasols blancs), Guinness Irish Pub (store noir à fanions, bacs plantés devant), restaurant Les Remparts (store gris foncé lettré, terrasse), Point Plus « Le Marigny » (bandeau noir, losange « PRESSE ») et Festival des Pains (devanture rouge sombre, ouverte comme avant).
+- Le pub est retiré du bâtiment voisin où OpenStreetMap le liait à tort, et deux murs qui cachaient sa façade disparaissent.
+- Pas encore : perron et panneau « À VENDRE » de Festival, affiches de la vitrine de Point Plus, boutique grise vide à gauche du pub ; volets de l'étage de couleur de palette (pas ceux des photos). 966 tests (6 de plus).
+- À regarder : `?view=custom&cam=218.7,408.1,2,225.7,424.3,2&h=14` (rue Mazagran), `cam=189.6,381.7,2,183.6,388.4,2.2&h=22` (le pub la nuit), `cam=258.5,432.8,2.2,253.5,441.5,2` (Point Plus), `cam=562.1,852.4,2.4,568.7,860,2.2` (Festival).
+
+**Boutiques d'angle (1er novembre 2026)** (D179)
+- Une boutique peut maintenant avoir sa devanture sur les deux murs du coin. Les Remparts a sa fenêtre à petits carreaux et son bac fleuri sur le boulevard Laureau ; Point Plus est corrigé : sa façade principale est sur le boulevard Laureau (porte et losange « PRESSE » au coin), avec un retour sur le boulevard Mazagran.
+- 23 commerces sur 240 sont près d'un coin ; les 21 autres n'ont toujours qu'une devanture générique d'un seul côté (à décider).
+- Pas encore : colombage de l'étage des Remparts. 967 tests (1 de plus).
+- À regarder : `?view=custom&cam=248.5,425.5,2.3,237.5,433.5,2&h=14` (le coin des Remparts) et `cam=237,437.2,2.2,244.6,441.1,2` (Point Plus).
+
+**Boutiques d'angle : les autres commerces, et Le Commerce (1er novembre 2026)** (D180)
+- Onze commerces d'angle ont maintenant leur vitrine (nom, enseigne, store) aussi sur le mur voisin : Pulsat, Le Pacha, Dupallut, Merinis, La Trattoria, Bouygues Telecom, Passionail's, Flammenkeuche, l'Ibis, Le Fairway. Les autres cas (murs de cour, murs trop courts, vitrines trop proches) restent d'un seul côté.
+- La brasserie Le Commerce a sa façade sur la place d'après ta photo : store bordeaux « BRASSERIE LE COMMERCE BAR », deux baies sur panneaux bruns, porte vitrée.
+- Pas encore : véranda et terrasse de la place, balcon de l'étage qui n'existe pas sur la photo. 971 tests (4 de plus).
+- À regarder : `?view=custom&cam=-15.7,2.2,2.2,-21.5,8.4,2&h=14` (Le Commerce), `cam=-8,6,2.4,-21,12,2.4`.
+
+**Sept boutiques d'après photos : rue Guérin, rue de Lattre de Tassigny, Optic 2000 (1er novembre 2026)** (D181, D182)
+- Refaits d'après tes photos : Restaurant Saigon (12 rue Guérin), le tabac cadeaux (1 rue Guérin), Les Gourmandises d'Aurélien (15 rue Guérin, grand store rouge), le Crédit Agricole (8 rue de Lattre), la Cordonnerie Multiservices (11) et Le Faro (18, avec sa terrasse sur la place pavée).
+- Optic 2000 a sa façade courbe : une devanture par petit mur du coin arrondi, avec un bandeau noir continu.
+- Pas encore : arcs du Crédit Agricole, perron de la cordonnerie, vitrines vides (pas de mannequins ni de lunettes) ; couleurs des volets de la palette. 976 tests (5 de plus).
+- À regarder : `?view=custom&cam=70,-54,2.4,55,-63,2&h=14` (Optic 2000), `cam=59.1,7.3,2.2,68.6,6.3,2` (Le Faro), `cam=122.8,240.5,2.2,118.9,250,2` (la pâtisserie).

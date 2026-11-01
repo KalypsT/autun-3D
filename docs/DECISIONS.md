@@ -3363,3 +3363,152 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Parking vu de dessus](captures/college-lot6-aerien.jpg)
 ![Le camion pizza à 18 h](captures/college-lot6-camion.jpg)
+
+## 2026-11-01 — D178. Boutiques d'après photos : rue Mazagran, boulevard Mazagran, rue des Fusiliers Marins
+
+**Demande de l'utilisateur** : intégrer de nouvelles façades de boutiques d'après huit captures Google Street View (juillet 2025 et juillet 2026) ; identifier le bon endroit de chacune, proposer un plan, demander en cas de doute. Réponses : Festival des Pains **ouverte comme avant**, sans le panneau « La Maison des Gourmandises » posé au sol ; terrasse de Benzaabar : version à estrade acceptée.
+
+**Qui est qui** (les adresses affichées sur les captures sont celles du point de prise de vue, pas des boutiques) :
+- photos 5 et 6 : Maison Benzaabar, `…348856879` (tuile 26_36), mur 0 de 16,1 m sur la rue Mazagran ;
+- photos 7 et 8 : Guinness Irish Pub, `…348856897` (26_36), mur 0 de 5,4 m ; OpenStreetMap lie ce pub aussi à `…901` (pierre de taille, porte cochère verte, photo 7 à droite) : lien retiré ;
+- photo 4 : restaurant Les Remparts, `…348848399` (26_37), mur 8 de 10,2 m ; l'étage a trois travées à 3,4 m comme la photo (3 volets) ;
+- photos 2 et 3 : Point Plus « Le Marigny » (même boutique, de loin puis de près), `…348848405` (27_37), mur 0 de 24,8 m sur le boulevard Mazagran ; l'ordre Benzaabar, Les Remparts, Point Plus d'ouest en est colle avec les photos 4 à 6 ;
+- photo 1 : Festival des Pains, `…348848798` (28_38), mur 0 de 12 m face au carrefour rue des Fusiliers Marins / rue du Faubourg Saint-André ; la rue des Fusiliers Marins n'est pas dans `streets.json` (seulement dans `places.json`).
+
+**Données** (`manual.json`, `fronts[…].shop`, gabarit « moderne » de D159) : cinq devantures lues sur les photos (travées, couleurs, enseignes) ; `build_shop_fronts.py` copie `terrace` du commerce (`apply_shop`). Largeurs ramenées à la longueur de chaque mur : ± 30 à 60 cm, une ou deux photos de biais par boutique. Deux murs OpenStreetMap qui cachaient la façade du pub (−900008728 et −900008869, sur son alignement) sont retirés (`dropWalls`, comme en D161). Seules les tuiles 26_36, 26_37, 27_37 et 28_38 sont réécrites.
+
+**Rendu** :
+- `devanture.ts` : **store banne** (`Devanture.awning`) : toile unie inclinée, lambrequin lettré, mot sur la pente, guirlande de fanions bleu-blanc-rouge ;
+- `devanture-modern.ts` : couleur des cadres (`frame`) et de la porte pleine (`doorColor`), **losange en drapeau** (`lozenge`, « PRESSE ») ;
+- `shopfront.ts` (`styledTerrace`) : bord en **barrière de fer ajourée** avec bacs (`planters: "fence"`) ou **rangée de bacs plantés** (`"boxes"`), `tables: false`, `parasol: "none"`, `span` (tronçon du mur), `unchecked` ; une terrasse n'exige plus que son bord extérieur soit sur un trottoir (une bande de 1 m au pied de la façade n'est pas classée « walk » dans les données) ; `facades.ts` dessine désormais la terrasse d'une boutique à devanture (avant, seul le gabarit générique en avait une).
+
+**Coût** : 6 tests de plus, 966 au total (`src/render/boutiques-mazagran.test.ts`) ; la terrasse de Benzaabar et les bacs ajoutent quelques centaines de triangles (aucun appel de dessin de plus : même maillage de tuile).
+
+**Limites** :
+- les volets de l'étage viennent de la palette de l'époque (la couleur de la fiche n'est pas lue) : Benzaabar a des volets rouges au lieu de persiennes grises, le pub des volets bleu-vert au lieu de verts ;
+- Festival : perron de trois marches, panneau « À VENDRE » et logo « Festival » en script non dessinés ; la hauteur du rez-de-chaussée dans les données (4,4 m) est plus grande que sur la photo (≈ 3,2 m) : une bande de mur plein au-dessus de l'enseigne ;
+- Point Plus : affiches de la vitrine, pictogrammes de l'enseigne et boutique voisine de gauche non dessinés ; Les Remparts : seule la façade sur la rue Mazagran est refaite, pas le retour sur le boulevard ;
+- Benzaabar : porte de garage et panneaux en teinte unie, logo en relief non dessiné ; terrasse de Benzaabar et des Remparts sur un trottoir qui n'est pas vérifié pour Les Remparts (`unchecked` : la façade est dans une tuile, son trottoir dans la voisine) ;
+- le bâtiment voisin du pub (`…901`) garde une devanture générique sans nom (comme Havas Voyages en D157) ; le local gris vide à gauche du pub n'est pas refait ;
+- `build_nav.py` non relancé (points « commerce » des passants inchangés) ; `build_shop_fronts.py` réécrit aussi la tuile 24_35 (`front` d'un bâtiment de Parpas en moins) : remise à l'état d'origine.
+
+![Benzaabar, avant](captures/d178-benzaabar-avant.jpg)
+![Après](captures/d178-benzaabar-apres.jpg)
+![La rue Mazagran, avant](captures/d178-rue-mazagran-avant.jpg)
+![Après](captures/d178-rue-mazagran-apres.jpg)
+![Le pub, avant](captures/d178-pub-avant.jpg)
+![Après](captures/d178-pub-apres.jpg)
+![Le pub la nuit, avant](captures/d178-pub-nuit-avant.jpg)
+![Après](captures/d178-pub-nuit-apres.jpg)
+![Les Remparts, avant](captures/d178-remparts-avant.jpg)
+![Après](captures/d178-remparts-apres.jpg)
+![Point Plus, avant](captures/d178-point-plus-avant.jpg)
+![Après](captures/d178-point-plus-apres.jpg)
+![Festival des Pains, avant](captures/d178-festival-avant.jpg)
+![Après](captures/d178-festival-apres.jpg)
+
+## 2026-11-01 — D179. Boutiques d'angle : une devanture sur chacun des deux murs du coin ; Les Remparts et Point Plus corrigés
+
+**Demande de l'utilisateur** : les boutiques en angle doivent avoir leur façade sur les deux murs qui font le coin (cas de Les Remparts et de Point Plus « Le Marigny ») ; photo de l'autre façade des Remparts (« 23 bd Laureau », juillet 2026).
+
+**Constat** : une devanture d'après photo ne se posait que sur un seul mur (`front`) ; `frontWalls` ne sert qu'aux grandes surfaces (vitrage générique). Un comptage sur les fiches : **23 commerces sur 240** ont leur porte à moins de 4 m d'un coin avec un mur de rue voisin (Le Commerce et Optic 2000 déjà signalés en D157 et D158 ; les autres n'ont qu'une devanture générique sur un seul mur).
+
+**Erreur de D178 corrigée** : j'avais posé Point Plus sur le long mur du boulevard Mazagran, à 5-10 m du coin. En refaisant la géométrie (sens de lecture gauche-droite d'un mur vu de la rue) : la photo 3 (22 bd Laureau) montre le **mur 8** (10,7 m, face au sud-ouest), porte et losange « PRESSE » vers le coin ; la photo 2 montre le retour sur le **mur 0** (24,8 m), juste après le coin.
+
+**Concept** : `ground.corner` = `{ wall, devanture, terrace? }` (`FacadeFiche`, `docs/facade-fiche.schema.json`) : la devanture du même commerce sur le mur voisin de `front`, avec la même forme que `devanture`. Dans `manual.json`, `fronts[…].shop.corner` ; `build_shop_fronts.py` le copie (`apply_shop`) et classe ce mur en « rue ». Rendu : `facades.ts` pose la devanture sur ce mur (clé `dev|id|c`, lue par `stylized.ts`), la terrasse éventuelle aussi ; aucun appel de dessin de plus.
+
+**Les Remparts** (mur 9, 10,6 m, face au boulevard Laureau) : grande fenêtre à petits carreaux et cadre bleu-gris de 4,1 m, à 3,1 m du coin, bac fleuri dessous, pas de store ; cordon d'étage (`stringCourse`) sur toute la maison.
+
+**Point Plus** : principale sur le mur 8 (bandeau noir « POINT PLUS / LE MARIGNY », petits mots à gauche et à droite, panneau d'horaires, porte vers le coin, losange « PRESSE » au coin), retour sur le mur 0 depuis le coin (vitrine et bandeau noir « POINT PLUS »). Le texte du bandeau est posé en `texts` : `words` du gabarit moderne passait derrière une plaque de bandeau (7,5 cm contre 10 cm).
+
+**Tests** (+1, 967 au total, `boutiques-mazagran.test.ts`) : les deux murs sont voisins dans le contour (la fin de l'un est le début de l'autre), en rue, la devanture d'angle tient dans son mur ; Point Plus : principale sur le mur court, retour sur le long ; retour des Remparts sans store.
+
+**Limites** :
+- colombage de l'étage des Remparts (poutres bleu-gris, photo) non dessiné ; l'étage a des fenêtres à volets de la palette ;
+- lecture du retour de Point Plus de biais (± 60 cm), affiches de vitrine non dessinées ;
+- les 21 autres commerces d'angle gardent leur devanture générique sur un seul mur (à décider : étendre automatiquement ?).
+
+![Les Remparts, retour sur le boulevard Laureau, avant](captures/d179-remparts-retour-avant.jpg)
+![Après](captures/d179-remparts-retour-apres.jpg)
+![Le coin des Remparts, avant](captures/d179-carrefour-avant.jpg)
+![Après](captures/d179-carrefour-apres.jpg)
+![Point Plus, façade du boulevard Laureau, avant](captures/d179-point-plus-laureau-avant.jpg)
+![Après](captures/d179-point-plus-laureau-apres.jpg)
+![Point Plus, retour sur le boulevard Mazagran, avant](captures/d179-point-plus-retour-avant.jpg)
+![Après](captures/d179-point-plus-retour-apres.jpg)
+
+## 2026-11-01 — D180. Boutiques d'angle génériques et façade de la brasserie Le Commerce sur la place
+
+**Demande de l'utilisateur** : « Tu peux traiter les 21 autres » (commerces d'angle de D179) ; une photo de la façade manquante de la brasserie Le Commerce (« 2-6 av. Charles de Gaulle », Street View, juillet 2026) « pour la faire aussi correctement ».
+
+**Boutiques d'angle génériques** (`build_shop_fronts.py`, `corner_wrap`) : un commerce nommé, à moins de 4 m du coin de son mur, reçoit sa vitrine générique aussi sur le mur de rue voisin si : l'angle des deux murs est de 55° à 125° ; le mur voisin est de rue (pas de cour : une vitrine sur une cour changerait la fonction du mur), long d'au moins 5,5 m et sans autre vitrine à moins de 6 m ; la fiche n'a pas de devanture d'après photo ; ce n'est ni une grande surface ni un hôtel. La vitrine est centrée à 3,2 m du coin. Donnée : `Shop.corner = { wall, s }` (le mur passe en « rue ») ; le commerce n'est pas dupliqué (compteurs, navigation inchangés). Rendu (`facades.ts`) : les vitrines d'angle des murs voisins s'ajoutent aux commerces du mur, avec leur nom, leur enseigne et leur store (pas de terrasse).
+
+**Résultat** : **11 vitrines d'angle** (le comptage de D179, 23, comprenait des commerces sur des murs de cour, une grande surface, un commerce sans nom et des vitrines qui se chevauchaient) : Pulsat, Le Pacha, Boulangerie Dupallut, Antiquités Merinis, La Trattoria, Bouygues Telecom, Passionail's, Flammenkeuche (deux fiches), Hôtel-Restaurant Ibis (restaurant) et Le Fairway. Chez Nico, L'ideal Coffee, Alain Afflelou et Calipage Walpi restent d'un seul côté (vitrines trop proches ou mur voisin trop court) ; Le Petit Creux (E.Leclerc), Hair Création, Nella Butti et Le Djudjura (murs de cour) aussi.
+
+**Le Commerce** (`…348854064`, tuile 25_35) : la photo montre le **mur 0** (7 m, face à la place du Champ de Mars), vu de face ; la façade de l'avenue (mur 1, 20,7 m, D157) ne change pas. Le mur 0 passe en rue (`corner` de `fronts`, sans `shop` : nouvelle forme, la fiche garde son commerce OpenStreetMap et sa terrasse) :
+- enduit crème, grand store bordeaux sombre portant « BRASSERIE LE COMMERCE BAR » ;
+- rez-de-chaussée, de gauche à droite : jambage 0,75 m, baie à cadre brun foncé (2,05 m) sur panneau brun, pilastre, porte vitrée à deux vantaux (0,97 m), pilastre, seconde baie sur panneau brun, jambage ;
+- à l'étage, « LE COMMERCE » peint entre les deux fenêtres ; largeurs lues sur la photo à 93 px/m (± 20 cm).
+
+**Tests** (+4, 971 au total) : `src/render/boutiques-angles.test.ts` : une dizaine de vitrines d'angle nommées et sans devanture photo ; mur voisin de rue, sommet commun, longueur, milieu à 3,2 m du coin ; pas de chevauchement dans une fiche ; Le Commerce (mur 0 en rue, store lettré, façade de l'avenue inchangée, géométrie finie et bornée).
+
+**Limites** :
+- la fiche de Le Commerce a un balcon filant (pour l'avenue) qui se dessine aussi sur le mur 0, où la photo n'en a pas ; la véranda vitrée et la terrasse sur la place (photo, à gauche) ne sont pas dessinées ; le toit à croupes et la lucarne ne sont pas retouchés ;
+- les vitrines d'angle génériques sont des vitrines types (comme les autres commerces sans photo), sans terrasse ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 (`front` de Parpas en moins) : remise à l'état d'origine.
+
+![Le Commerce côté place, avant](captures/d180-commerce-place-avant.jpg)
+![Après](captures/d180-commerce-place-apres.jpg)
+![Le coin, avant](captures/d180-commerce-carrefour-avant.jpg)
+![Après](captures/d180-commerce-carrefour-apres.jpg)
+![Passionail's, vitrine d'angle, avant](captures/d180-passionails-avant.jpg)
+![Après](captures/d180-passionails-apres.jpg)
+![Flammenkeuche, vitrine d'angle, avant](captures/d180-flammenkeuche-2-avant.jpg)
+![Après](captures/d180-flammenkeuche-2-apres.jpg)
+
+## 2026-11-01 — D181. Six boutiques d'après photos : Saigon, tabac, Crédit Agricole, cordonnerie, Le Faro, pâtisserie d'Aurélien
+
+**Demande de l'utilisateur** : sept photos de commerces (dont Optic 2000, traité en D182) ; réponses aux doutes : la pâtisserie est au **15 rue Guérin** (en face du 14, photo prise vers la rue Jeannin) ; le tabac est au **1 rue Guérin** ; la cordonnerie (11) à l'estime ; Le Faro donne sur la **place pavée**, avec terrasse possible.
+
+**Où** (aucun de ces commerces, sauf Saigon, n'est dans OpenStreetMap ; les adresses viennent des légendes des captures, de l'utilisateur et de pages publiques — Wanderlog pour Le Faro, Mappy pour la cordonnerie, credit-agricole.fr pour l'agence) :
+- Saigon : `…348856847` (12 rue Guérin), mur 3 de 7,8 m, face à l'ouest ; la façade lue fait 7,8 m à 118 px/m ;
+- tabac : `…348854366` (1 rue Guérin), mur 0 de 6 m, face à l'est ; ce bâtiment (39 m de long) passe à trois niveaux ; « Aux trésors des dines » (OpenStreetMap) quitte cette fiche ;
+- Crédit Agricole : `…348854348` (8 rue de Lattre de Tassigny), mur 3 de 18,2 m (le bâtiment de BD TOPO réunit l'agence et ses voisins : devanture posée à 3,3 m du début, à l'estime ± 1 m) ;
+- cordonnerie : `…348854372` (11 rue de Lattre de Tassigny), mur 7 de 10,2 m ; trois niveaux ;
+- Le Faro : `…348854049` (18 rue de Lattre de Tassigny), mur 8 de 6,6 m face à l'ouest, sur la place pavée (« plaza_asphalt » des données) ; trois niveaux (la fiche en avait un) ;
+- pâtisserie : `…348856865` (15 rue Guérin, îlot entre les deux chaussées), mur 3 de 7,4 m face à la chaussée est ; trois niveaux.
+
+**Dessin** (`manual.json`, `fronts[…].shop`, gabarit moderne) : Saigon (travertin rosé, porte rouge, baie à cadre rouge, panneau orange « Restaurant SAIGON ») ; tabac (porte « 1 », bande FDJ bleue, bandeau brun « tabac cadeaux », carotte rouge en drapeau) ; Crédit Agricole (piliers blancs, entrée et deux baies, carré « CA » vert ; les arcs ne sont pas dessinés) ; cordonnerie (bandeau bordeaux, deux vitrines, double porte blanche, porte cochère verte) ; Le Faro (store blanc, poteaux jaunes, « LE FARO » noir, tables grises sur la place) ; pâtisserie (devanture gris bleu, bandeau « LES GOURMANDISES D'AURÉLIEN », grand store rouge « Aurélien & Virginie Ferré »). Les étages suivent les photos autant que les fiches le permettent (niveaux, enduit, persiennes, balcons) ; **les couleurs des volets viennent de la palette du jeu** (limite connue de D178).
+
+**Limites** : la pâtisserie est lue sur une photo oblique de 2018 (± 50 cm) ; la devanture du Crédit Agricole est à l'estime sur son mur ; la cordonnerie : portail de fer forgé de gauche, perron et vinyles de vitrine non dessinés ; Saigon : panneau plus bas en vrai (2,1 m) que dessiné (0,8 m) pour ne pas cacher les fenêtres de l'étage ; Le Faro : terrasse de tables seulement (pas de bacs).
+
+## 2026-11-01 — D182. Optic 2000 : façade courbe (devantures sur plusieurs murs consécutifs)
+
+**Demande de l'utilisateur** : Optic 2000 n'est pas un commerce d'angle classique car son angle est arrondi (capture du « 1 rue de l'Arbalète », juillet 2026).
+
+**Constat** : `…348853987` a, entre ses murs 1 (10,4 m, face à l'est) et 7 (11,7 m, face au nord), **cinq petits murs** (1,1 ; 0,8 ; 0,5 ; 1,9 ; 2,3 m) qui forment la courbe. D158 l'avait laissé de côté.
+
+**Concept** : `ground.corners` (en plus de `corner`, D179) = liste de devantures sur d'autres murs consécutifs du contour, chacune dessinée comme une devanture normale (clé `dev|id|c|n° du mur`). Optic 2000 : devanture principale sur le mur 1, `corners` sur les murs 2 à 7. Un même bandeau sombre (mêmes couleur et hauteur, 2,85 à 3,4 m) se raccorde d'un mur au suivant ; une baie par petit mur (un pilastre sur le plus court) ; « Optic 2000 » en blanc sur les murs 1 et 7 ; cadres noirs, rez-de-chaussée jaune pâle ; étages beige à persiennes et garde-corps filants. `apply_shop` accepte `keepOsm` : « Le Gourmet » (voisin, OpenStreetMap) est gardé dans la fiche.
+
+**Tests** (+5, 976 au total, `src/render/boutiques-lattre.test.ts`) : les sept boutiques d'après photos (statut, nom, devanture dans son mur de rue, hauteurs) ; emplacements (tabac au n° 1, Faro 6,6 m avec terrasse et trois niveaux, pâtisserie au n° 15) ; stores lettrés ; **Optic 2000 : murs 2 à 7 consécutifs dans le contour (fin de l'un = début du suivant), tous en rue, bandeau identique, voisin conservé** ; géométrie finie et bornée.
+
+**Limites** : la courbe est approchée par les cinq petits murs des données (arrondi lisse non dessiné) ; vitrines vides (mannequins, écrans et lunettes de la photo non dessinés) ; les deux logos de la photo sont ramenés à un texte ; l'étage garde le balcon filant de la fiche.
+
+![Saigon, avant](captures/d181-saigon-avant.jpg)
+![Après](captures/d181-saigon-apres.jpg)
+![Le tabac, avant](captures/d181-tabac-avant.jpg)
+![Après](captures/d181-tabac-apres.jpg)
+![Crédit Agricole, avant](captures/d181-credit-agricole-avant.jpg)
+![Après](captures/d181-credit-agricole-apres.jpg)
+![La cordonnerie, avant](captures/d181-cordonnerie-avant.jpg)
+![Après](captures/d181-cordonnerie-apres.jpg)
+![Le Faro, avant](captures/d181-faro-avant.jpg)
+![Après](captures/d181-faro-apres.jpg)
+![La pâtisserie, avant](captures/d181-patisserie-avant.jpg)
+![Après](captures/d181-patisserie-apres.jpg)
+![Optic 2000, le coin, avant](captures/d181-optic-angle-avant.jpg)
+![Après](captures/d181-optic-angle-apres.jpg)
+![Optic 2000, côté rue, avant](captures/d181-optic-rue-avant.jpg)
+![Après](captures/d181-optic-rue-apres.jpg)
+![Optic 2000, côté place, avant](captures/d181-optic-place-avant.jpg)
+![Après](captures/d181-optic-place-apres.jpg)
