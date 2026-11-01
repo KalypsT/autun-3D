@@ -161,6 +161,8 @@ def apply_shop(fi, m):
         fi["facade"]["window"]["frameColor"] = up["frame"]
     if "shutters" in up:
         fi["facade"]["shutters"]["kind"] = up["shutters"]
+    if "balcony" in up:
+        fi["facade"]["balcony"] = up["balcony"]
     fi["status"] = "observed"
     src = {"kind": "photo", "ref": m["photo"][:80]}
     fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [src]

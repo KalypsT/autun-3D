@@ -877,6 +877,33 @@ export interface Devanture {
   /** Inscription sur une vitrine, numéro sur un pilastre : [travée, texte]. */
   label?: [number, string];
   number?: [number, string];
+  /** Façade moderne d'après photo (D159) : mur plein, baies à cadre d'aluminium, lettres posées de plusieurs couleurs, projecteurs, croix en drapeau. */
+  modern?: ModernFront;
+}
+
+/**
+ * Façade moderne (Grande Pharmacie Bonaparte, D159). Les travées de `bays` se lisent ainsi : « pilaster » mur plein, « window » baie vitrée,
+ * « shopdoor » porte vitrée, « door » porte pleine grise. Abscisses `s` en mètres depuis le début du mur, altitudes `z` au-dessus du sol.
+ */
+export interface ModernFront {
+  /** Lettres posées sur le mur, mots de couleurs différentes à la suite : centre `at`, altitude `z` du milieu, hauteur de ligne `h`. */
+  words: { parts: [string, string][]; at: number; z: number; h: number };
+  /** Petite ligne sous l'enseigne (sous-enseigne du réseau). */
+  sub?: { text: string; color: string; at: number; z: number; h: number };
+  /** Projecteurs blancs au-dessus des lettres : abscisses et altitude. */
+  spots?: { s: number[]; z: number };
+  /** Bandeaux clairs en haut d'une baie : [travée, texte]. */
+  banners?: [number, string][];
+  /** Croix de pharmacie en drapeau perpendiculaire au mur : abscisse, altitude du centre, hauteur. */
+  cross?: { s: number; z: number; size: number };
+  /** Disques de logo posés sur le mur ou la vitre : [abscisse, altitude, rayon, couleur, lettre, couleur de la lettre]. */
+  logos?: [number, number, number, string, string, string][];
+  /** Plaques (panneau d'horaires, interphone) : [abscisse du centre, bas, haut, demi-largeur, couleur]. */
+  plates?: [number, number, number, number, string][];
+  /** Bande de couleur au pied des vitrines de la pharmacie : [début, fin, hauteur, couleur]. */
+  base?: [number, number, number, string];
+  /** Texte posé sur une plaque ou un logo : [abscisse, altitude, hauteur de ligne, texte, couleur]. */
+  texts?: [number, number, number, string, string][];
 }
 
 export interface FacadeFiche {

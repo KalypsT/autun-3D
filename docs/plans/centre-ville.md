@@ -161,7 +161,7 @@ Le numéro de mur est celui de la **fiche** (`walls[k]`), pas l'arête du contou
 | Havas Voyages | `…854060`, 25_35 | **3 / 0, 6,4 m, 136°, rôle « court »** | shop sur le mur 0 (239°) ; aussi listé dans `…854061` | `fronts` (mur 3), bandeau bleu « VOYAGES » |
 | Le Central | `…853814`, 25_35 | 0 / 1, 6,9 m, 141° | shop, sans `front` | stores noirs, terrasse fermée de panneaux gris |
 | Le Commerce | `…854064`, 25_35 | 0 / 4, 7,0 m, 137° (« court ») et 1 / 5, 20,7 m, 57° | shop, `front` 1 | `fronts` (mur 1 + `also` 0), stores rouges, terrasse en angle ; photo de 2024 |
-| Grande Pharmacie Bonaparte, La Poste | `…854039`, 26_35 (2 305 m², un seul bâtiment BD TOPO pour tout l'îlot) | 9 / 18, 18,5 m | shop | hors périmètre sauf photo de face |
+| Grande Pharmacie Bonaparte, La Poste | `…854039`, 26_35 (2 305 m², un seul bâtiment BD TOPO pour tout l'îlot) | 9 / 18, 18,5 m | shop | **fait en D159** (photo de face reçue : façade moderne, dessin `devanture-modern.ts`) |
 | James, Chantal & Co | `…853608`, 26_34 | 2 / 4, 8,6 m | shop | photo 6 trop de biais : à faire si photo de face |
 | Crêperie des Remparts, Orange | `…853621`, `…853618`, 25_34 | 4 / 0 ; 7 / 0 | shop | photo 7 trop de biais (et ancienne) |
 

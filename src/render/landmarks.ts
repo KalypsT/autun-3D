@@ -623,7 +623,8 @@ function civic(sinks: LandmarkSinks, kind: BuildingKind, fiche: FacadeFiche | un
     }
     return;
   }
-  if (kind.n) {
+  // Un bâtiment dont la devanture est dessinée d'après photo (D159 : La Poste et la Grande Pharmacie Bonaparte) porte ses propres enseignes.
+  if (kind.n && !fiche?.ground.devanture) {
     const post = kind.k === "post";
     const hosp = kind.k === "hospital" || kind.k === "care";
     const panel = post ? C(kind.c ?? "#ffcc00") : hosp ? C("#1f4a8a") : C("#f1e6c8");
