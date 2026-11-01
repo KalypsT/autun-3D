@@ -3310,7 +3310,7 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 **Rendu** : partie fixe cuite dans la tuile (`vallon-gate.ts`, `buildGatePosts`) ; vantaux fermés en un maillage à part (`buildGateLeaves`) que `src/game/school-gate.ts` montre ou cache, appelé à chaque image depuis `game.ts`.
 
-**Tests** (+14, 940 au total ; `src/core/school-gate.test.ts`, `src/render/vallon-gate.test.ts`) : horaires, disposition sans trou, grille dans l'axe du pont à 1,5 m et perpendiculaire à 8°, enceinte coupée et à 1,8 m, passage du pont à l'esplanade libre ouverte et arrêté fermée (collisions réelles de la tuile), obstacle posé et retiré sans doublon, passage libre de 3 m, maillages finis et bornés.
+**Tests** (+12, 938 au total ; `src/core/school-gate.test.ts`, `src/render/vallon-gate.test.ts`) : horaires, disposition sans trou, grille dans l'axe du pont à 1,5 m et perpendiculaire à 8°, enceinte coupée et à 1,8 m, passage du pont à l'esplanade libre ouverte et arrêté fermée (collisions réelles de la tuile), obstacle posé et retiré sans doublon, passage libre de 3 m, maillages finis et bornés.
 
 **Limites** : le portail n'est pas animé ; heures fixes (le jeu n'a pas de calendrier : ni week-end ni vacances, D116) ; barrière à chevrons, panneau « P » et marquage de la chaussée non faits ; `build_nav.py` non relancé.
 
