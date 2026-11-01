@@ -16,6 +16,8 @@ import { buildStructures, buildWater } from "./structures";
 
 const SKIRT = 0.4;
 const CHIMNEY = new THREE.Color("#a07a62");
+/** Édicules de toit-terrasse (D170) : béton gris, dessus plus clair. */
+const ROOFTOP = new THREE.Color("#bab4a8"), ROOFTOP_TOP = new THREE.Color("#d2cdc2");
 const FOOT = 1.2;
 
 export interface TileStats {
@@ -72,6 +74,21 @@ export function planeUV(a: number, bb: number, x: number, y: number, size: numbe
   if (g < 1e-3) return [x / size, y / size];
   const hx = -bb / g, hy = a / g;
   return [(x * hx + y * hy) / size, (((x * a + y * bb) / g) * Math.sqrt(1 + g * g)) / size];
+}
+
+/** Édicule de toit-terrasse (D170) : pavé béton (côté `sx` le long de `angle`, `sy` perpendiculaire), dessus plus clair, appui de 15 cm sous le toit. */
+export function rooftopBox(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number, z0: number, z1: number, angle: number): void {
+  const a = (angle * Math.PI) / 180, ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
+  const hx = sx / 2, hy = sy / 2;
+  const p = (s: number, t: number, z: number): Vec3 => toThree(cx + ux * s + vx * t, cy + uy * s + vy * t, z);
+  const c = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]] as const;
+  for (let i = 0; i < 4; i++) {
+    const [s0, t0] = c[i]!, [s1, t1] = c[(i + 1) % 4]!;
+    const ds = s1 - s0, dt = t1 - t0, l = Math.hypot(ds, dt);
+    const n = toThree((dt * ux - ds * vx) / l, (dt * uy - ds * vy) / l, 0);
+    mb.quad(p(s0, t0, z0 - 0.15), p(s1, t1, z0 - 0.15), p(s1, t1, z1), p(s0, t0, z1), n, ROOFTOP);
+  }
+  mb.quad(p(-hx, -hy, z1), p(hx, -hy, z1), p(hx, hy, z1), p(-hx, hy, z1), [0, 1, 0], ROOFTOP_TOP);
 }
 
 export function chimney(mb: MeshBuilder, cx: number, cy: number, sx: number, sy: number, z0: number, z1: number): void {
@@ -408,13 +425,15 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
       const [x1, y1, l1, h1, x2, y2, l2, h2] = s as [number, number, number, number, number, number, number, number];
       const len = Math.hypot(x2 - x1, y2 - y1);
       const dz = Math.max(h1 - l1, h2 - l2);
-      if (len < 1e-3 || dz > 4 || dz < 1.5) continue;
+      // Un redan de toit-terrasse (D170) est bas (≥ 40 cm) ; sur un toit à pans, les petits raccords sont du bruit (≥ 1,5 m).
+      if (len < 1e-3 || dz > 4 || dz < (b.roofKind === "flat" ? 0.4 : 1.5)) continue;
       const nrm = toThree((y2 - y1) / len, -(x2 - x1) / len, 0);
       const q: [Vec3, Vec3, Vec3, Vec3] = [toThree(x1, y1, l1), toThree(x2, y2, l2), toThree(x2, y2, h2), toThree(x1, y1, h1)];
       walls.quad(...q, nrm, wc);
       walls.quad(q[0], q[3], q[2], q[1], [-nrm[0], 0, -nrm[2]], wc);
     }
     for (const [cx, cy, sx, sy, z0, z1] of b.chim as [number, number, number, number, number, number][]) chimney(detail, cx, cy, sx, sy, z0, z1);
+    for (const [cx, cy, sx, sy, z0, z1, ang] of (b.rooftop ?? []) as [number, number, number, number, number, number, number][]) rooftopBox(detail, cx, cy, sx, sy, z0, z1, ang);
     if (++count % BUILDINGS_PER_STEP === 0) yield;
   }
 

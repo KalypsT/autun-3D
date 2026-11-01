@@ -80,6 +80,8 @@ export interface Building {
   steps: number[][];
   /** Cheminées : cx, cy, largeur, profondeur, zbase, zhaut. */
   chim: number[][];
+  /** Édicules sur un toit-terrasse (D170) : cx, cy, côté le long de l'angle, côté perpendiculaire, zbas, zhaut, angle (degrés). */
+  rooftop?: number[][];
   roofKind: "flat" | "shed" | "gable" | "hip" | "complex";
   eave: number;
   ridge: number;

@@ -3228,3 +3228,21 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Parking vu du sol](captures/hexagone-lot5-parking-sol.jpg)
 ![Relevé : traits prédits sur l'image redressée](captures/hexagone-lot5-parking-releve.jpg)
 
+## 2026-11-01 — D170. L'Hexagone, lot 6 : toits-terrasses de deux barres voisines (plan `docs/plans/hexagone.md`, §14)
+
+**Demande de l'utilisateur** : vérifier avant d'agir, puis « lot 6 réduit aux deux barres, avec les édicules ».
+
+**Vérification** : comparaison, pour 23 bâtiments à moins de 150 m, du relief du toit dessiné et du MNS LiDAR. Seules …848387 (relief LiDAR 0,16 m contre 1,2 m dessiné) et …848377 sont plates en réalité ; aucun bâtiment n'est plat dans le jeu en étant pentu au LiDAR. Mon premier critère (pente d'un plan ajusté) était invalide pour les toits symétriques ; …377 est en plus à **deux niveaux** (+8,43 et +7,28), ce que la comparaison par tranches de 2 m a révélé.
+
+**Changements** : toit plat (`roofKind` « flat ») aux niveaux mesurés, une face par niveau, huit sommets d'emprise (deux paires de part et d'autre du redan, la seconde à 2 cm de la première), mur de raccord de 1,15 m, murs montés à leur niveau, fiche en matériau « terrasse », silhouette lointaine au niveau du toit, 3 + 12 édicules (`Building.rooftop`, `rooftopBox`). `stylized.ts` dessine les raccords de toit plat dès 40 cm (1,5 m pour un toit à pans, inchangé).
+
+**Données** : `tiles/27_36.json`, `lod/27_36.json`, `world.json` (bytes) ; `flatRoofs` dans `manual.json` ; `build_flat_roofs.py` laisse intact un bâtiment qui porte déjà `rooftop`. Navigation inchangée.
+
+**Tests** (+5, 903 au total, `src/data/flat-roofs.test.ts`) : niveaux et faces de …387, deux niveaux et redan de …377 (sommets au bon niveau selon leur côté de la droite, aucun côté de longueur nulle), édicules (nombre, 3 m² au moins, dans l'emprise, posés sur leur niveau, moins de 3 m), matériau et silhouette, jumeau …380 inchangé, géométrie d'un édicule.
+
+**Limites** : les édicules sont des pavés (ni lanterneaux ni garde-corps), leur hauteur est mesurée à 50 cm près ; l'angle de la barre …377 (5,7°) n'est pas suivi par les édicules alignés sur les axes ; le redan est supposé perpendiculaire à l'axe ; trois autres bâtiments ont un toit trop haut (voir §14 du plan), non traités.
+
+![Barre est, deux niveaux](captures/hexagone-lot6-barre-est.jpg)
+![Barre nord-ouest](captures/hexagone-lot6-barre-nord-ouest.jpg)
+![Vue aérienne](captures/hexagone-lot6-aerien.jpg)
+

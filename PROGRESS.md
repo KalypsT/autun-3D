@@ -1322,3 +1322,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pas fait : les hachures aux bouts de rangées, les flèches et le passage piétons ; places cachées par les voitures ou l'ombre extrapolées.
 - 898 tests (4 de plus). À regarder : `?view=custom&cam=340,230,45,335,245,0`.
 
+**L'Hexagone, lot 6 : deux barres à toit-terrasse (1er novembre 2026)** (D170)
+- Les deux grandes barres voisines (au nord-ouest et à l'est du parking) n'ont plus de toit à croupes : toits plats mesurés au LiDAR avec leurs édicules ; celle de l'est a deux niveaux (redan de 1,15 m).
+- Trois petits bâtiments du voisinage ont encore un toit trop haut (hauteur BD TOPO prise pour l'égout) : à traiter pour toute la ville, pas ici.
+- 903 tests (5 de plus). À regarder : `?view=custom&cam=392,270,38,408,270,6` et `cam=345,215,35,365,250,9`.
+
