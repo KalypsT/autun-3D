@@ -212,7 +212,9 @@ export function* planFacadesSteps(
       // Rez-de-chaussée : porte et vitrines.
       const blocked = new Set<number>();
       const mainWall = runIdx === mainIdx;
-      const shops = (f.ground.shops ?? []).filter((sh) => sh.wall === runIdx);
+      // Les commerces du mur, plus les vitrines d'angle (D179) des commerces des murs voisins.
+      const shops = (f.ground.shops ?? []).filter((sh) => sh.wall === runIdx || sh.corner?.wall === runIdx)
+        .map((sh) => (sh.wall === runIdx ? sh : { ...sh, wall: runIdx, s: sh.corner!.s, corner: undefined, terrace: undefined }));
       const wantsShop = f.ground.kind === "shop";
       // Le mur principal reçoit la porte ou les vitrines ; un autre mur sur rue, seulement les commerces qu'OpenStreetMap y place.
       // Boutique d'angle (D179) : la devanture du même commerce sur le mur voisin de l'entrée.

@@ -3436,3 +3436,32 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d179-point-plus-laureau-apres.jpg)
 ![Point Plus, retour sur le boulevard Mazagran, avant](captures/d179-point-plus-retour-avant.jpg)
 ![Après](captures/d179-point-plus-retour-apres.jpg)
+
+## 2026-11-01 — D180. Boutiques d'angle génériques et façade de la brasserie Le Commerce sur la place
+
+**Demande de l'utilisateur** : « Tu peux traiter les 21 autres » (commerces d'angle de D179) ; une photo de la façade manquante de la brasserie Le Commerce (« 2-6 av. Charles de Gaulle », Street View, juillet 2026) « pour la faire aussi correctement ».
+
+**Boutiques d'angle génériques** (`build_shop_fronts.py`, `corner_wrap`) : un commerce nommé, à moins de 4 m du coin de son mur, reçoit sa vitrine générique aussi sur le mur de rue voisin si : l'angle des deux murs est de 55° à 125° ; le mur voisin est de rue (pas de cour : une vitrine sur une cour changerait la fonction du mur), long d'au moins 5,5 m et sans autre vitrine à moins de 6 m ; la fiche n'a pas de devanture d'après photo ; ce n'est ni une grande surface ni un hôtel. La vitrine est centrée à 3,2 m du coin. Donnée : `Shop.corner = { wall, s }` (le mur passe en « rue ») ; le commerce n'est pas dupliqué (compteurs, navigation inchangés). Rendu (`facades.ts`) : les vitrines d'angle des murs voisins s'ajoutent aux commerces du mur, avec leur nom, leur enseigne et leur store (pas de terrasse).
+
+**Résultat** : **11 vitrines d'angle** (le comptage de D179, 23, comprenait des commerces sur des murs de cour, une grande surface, un commerce sans nom et des vitrines qui se chevauchaient) : Pulsat, Le Pacha, Boulangerie Dupallut, Antiquités Merinis, La Trattoria, Bouygues Telecom, Passionail's, Flammenkeuche (deux fiches), Hôtel-Restaurant Ibis (restaurant) et Le Fairway. Chez Nico, L'ideal Coffee, Alain Afflelou et Calipage Walpi restent d'un seul côté (vitrines trop proches ou mur voisin trop court) ; Le Petit Creux (E.Leclerc), Hair Création, Nella Butti et Le Djudjura (murs de cour) aussi.
+
+**Le Commerce** (`…348854064`, tuile 25_35) : la photo montre le **mur 0** (7 m, face à la place du Champ de Mars), vu de face ; la façade de l'avenue (mur 1, 20,7 m, D157) ne change pas. Le mur 0 passe en rue (`corner` de `fronts`, sans `shop` : nouvelle forme, la fiche garde son commerce OpenStreetMap et sa terrasse) :
+- enduit crème, grand store bordeaux sombre portant « BRASSERIE LE COMMERCE BAR » ;
+- rez-de-chaussée, de gauche à droite : jambage 0,75 m, baie à cadre brun foncé (2,05 m) sur panneau brun, pilastre, porte vitrée à deux vantaux (0,97 m), pilastre, seconde baie sur panneau brun, jambage ;
+- à l'étage, « LE COMMERCE » peint entre les deux fenêtres ; largeurs lues sur la photo à 93 px/m (± 20 cm).
+
+**Tests** (+4, 971 au total) : `src/render/boutiques-angles.test.ts` : une dizaine de vitrines d'angle nommées et sans devanture photo ; mur voisin de rue, sommet commun, longueur, milieu à 3,2 m du coin ; pas de chevauchement dans une fiche ; Le Commerce (mur 0 en rue, store lettré, façade de l'avenue inchangée, géométrie finie et bornée).
+
+**Limites** :
+- la fiche de Le Commerce a un balcon filant (pour l'avenue) qui se dessine aussi sur le mur 0, où la photo n'en a pas ; la véranda vitrée et la terrasse sur la place (photo, à gauche) ne sont pas dessinées ; le toit à croupes et la lucarne ne sont pas retouchés ;
+- les vitrines d'angle génériques sont des vitrines types (comme les autres commerces sans photo), sans terrasse ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 (`front` de Parpas en moins) : remise à l'état d'origine.
+
+![Le Commerce côté place, avant](captures/d180-commerce-place-avant.jpg)
+![Après](captures/d180-commerce-place-apres.jpg)
+![Le coin, avant](captures/d180-commerce-carrefour-avant.jpg)
+![Après](captures/d180-commerce-carrefour-apres.jpg)
+![Passionail's, vitrine d'angle, avant](captures/d180-passionails-avant.jpg)
+![Après](captures/d180-passionails-apres.jpg)
+![Flammenkeuche, vitrine d'angle, avant](captures/d180-flammenkeuche-2-avant.jpg)
+![Après](captures/d180-flammenkeuche-2-apres.jpg)

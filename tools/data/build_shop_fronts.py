@@ -218,6 +218,46 @@ def drop_buildings(world, ids):
     return n
 
 
+CORNER_D = 3.2  # m : milieu de la vitrine d'angle, à cette distance du coin sur le mur voisin
+CORNER_NEAR = 4.0  # m : un commerce à moins de cette distance d'un coin déborde sur le mur voisin
+CORNER_MIN_WALL = 5.5  # m : longueur minimale du mur voisin (une vitrine y demande 4 à 5 m)
+
+
+def corner_wrap(fi, b, sh, taken):
+    """Boutique d'angle (D179) : `{wall, s}` de la vitrine du commerce `sh` sur le mur de rue voisin, ou None.
+    Le commerce doit être à moins de CORNER_NEAR du coin de son mur ; l'angle entre les deux murs de 55° à 125° ; le mur voisin de rue, long d'au moins
+    CORNER_MIN_WALL et sans autre vitrine à moins de 6 m (`taken` : mur -> abscisses déjà prises)."""
+    W = fi["walls"]
+    ring = b["ring"]
+    n = len(ring) // 2
+    w = W[sh["wall"]]
+    if w.get("hole") is not None:
+        return None
+    L, s = w["length"], sh["s"]
+
+    def vec(i, j):
+        return ring[2 * j] - ring[2 * i], ring[2 * j + 1] - ring[2 * i + 1]
+
+    for near, V, key in ((s <= CORNER_NEAR, w["a"], "b"), (L - s <= CORNER_NEAR, w["b"], "a")):
+        if not near:
+            continue
+        adj = [(j, x) for j, x in enumerate(W) if j != sh["wall"] and x.get("hole") is None and x[key] == V]
+        if not adj:
+            continue
+        j, x = adj[0]
+        if x["role"] != "street" or x["length"] < CORNER_MIN_WALL:
+            continue
+        v1, v2 = (vec(V, (V + 1) % n), vec(V, (V - 1) % n)) if key == "b" else (vec(V, (V - 1) % n), vec(V, (V + 1) % n))
+        cos = (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2))
+        if not 55 <= math.degrees(math.acos(max(-1, min(1, cos)))) <= 125:
+            continue
+        sa = CORNER_D if x["a"] == V else x["length"] - CORNER_D
+        if any(abs(sa - t) < 6.0 for t in taken.get(j, [])):
+            return None
+        return {"wall": j, "s": round(sa, 2)}
+    return None
+
+
 def apply_shop(fi, m):
     """Commerce vu sur une photo, absent d'OpenStreetMap (D141) : la fiche devient « shop », avec son commerce au milieu du mur d'entrée,
     la couleur de sa devanture, sa devanture dessinée telle quelle (`devanture`) et l'étage d'après la photo (enduit, menuiseries, volets) ;
@@ -310,7 +350,7 @@ def main():
         # Les murs d'une correction à la main sont des murs de rue avant tout choix (une seule passe suffit).
         m = manual.get(fi["id"], {})
         over = m.get("shopWalls", {})
-        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o], (m.get("shop", {}).get("corner") or {}).get("wall")]:
+        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o], (m.get("shop", {}).get("corner") or m.get("corner") or {}).get("wall")]:
             if i is not None and fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"
                 stats["mur passé en rue"] += 1
@@ -381,6 +421,26 @@ def main():
                 chosen.append(o["wall"])
                 kept.append(sh)
             g["shops"] = kept
+        # D179 : boutique d'angle photographiée (`corner` d'une entrée sans `shop`) ; sinon, vitrine générique sur le mur voisin des commerces proches d'un coin.
+        if m.get("corner") and not m.get("shop"):
+            g["corner"] = m["corner"]
+            chosen.append(m["corner"]["wall"])
+        elif not m.get("shop"):
+            g.pop("corner", None)
+        taken = {}
+        for sh in g.get("shops", []):
+            sh.pop("corner", None)
+            taken.setdefault(sh["wall"], []).append(sh["s"])
+        if g["kind"] == "shop" and not g.get("devanture") and not g.get("corner") and not big:
+            for sh in g.get("shops", []):
+                if not sh.get("name") or sh.get("kind") in ("hotel", "guest_house"):
+                    continue
+                cw = corner_wrap(fi, b, sh, taken)
+                if cw:
+                    sh["corner"] = cw
+                    taken.setdefault(cw["wall"], []).append(cw["s"])
+                    chosen.append(cw["wall"])
+                    stats["boutique d'angle (vitrine sur le mur voisin)"] += 1
         for i in chosen:
             if fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"

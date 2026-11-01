@@ -996,6 +996,8 @@ export interface Shop {
   s: number;
   osm?: number;
   terrace?: Terrace;
+  /** Boutique d'angle générique (D179) : vitrine du même commerce, nom compris, sur le mur de rue voisin, centrée à l'abscisse `s` de ce mur. */
+  corner?: { wall: number; s: number };
 }
 
 /**

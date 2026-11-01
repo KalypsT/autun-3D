@@ -1374,3 +1374,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - 23 commerces sur 240 sont près d'un coin ; les 21 autres n'ont toujours qu'une devanture générique d'un seul côté (à décider).
 - Pas encore : colombage de l'étage des Remparts. 967 tests (1 de plus).
 - À regarder : `?view=custom&cam=248.5,425.5,2.3,237.5,433.5,2&h=14` (le coin des Remparts) et `cam=237,437.2,2.2,244.6,441.1,2` (Point Plus).
+
+**Boutiques d'angle : les autres commerces, et Le Commerce (1er novembre 2026)** (D180)
+- Onze commerces d'angle ont maintenant leur vitrine (nom, enseigne, store) aussi sur le mur voisin : Pulsat, Le Pacha, Dupallut, Merinis, La Trattoria, Bouygues Telecom, Passionail's, Flammenkeuche, l'Ibis, Le Fairway. Les autres cas (murs de cour, murs trop courts, vitrines trop proches) restent d'un seul côté.
+- La brasserie Le Commerce a sa façade sur la place d'après ta photo : store bordeaux « BRASSERIE LE COMMERCE BAR », deux baies sur panneaux bruns, porte vitrée.
+- Pas encore : véranda et terrasse de la place, balcon de l'étage qui n'existe pas sur la photo. 971 tests (4 de plus).
+- À regarder : `?view=custom&cam=-15.7,2.2,2.2,-21.5,8.4,2&h=14` (Le Commerce), `cam=-8,6,2.4,-21,12,2.4`.
