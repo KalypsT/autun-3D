@@ -1353,3 +1353,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les cours du collège ont leur enrobé gris (elles étaient couleur de sable) et l'entrée de la façade ouest ses abords : marches de gravier, trois bacs roses, rochers, haie taillée et bouleau pleureur, comme sur la photo de la cour.
 - La clôture noire de l'avenue reste (rien ne prouve qu'elle n'existe pas). 947 tests (9 de plus).
 - À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5`.
+
+**Collège du Vallon, lot 5 : les terrains de sport (1er novembre 2026)** (D176)
+- Les trois plateaux sont en enrobé gris sombre (ils étaient rouge et bleu) et ont leurs cinq paniers de basket (panneau blanc, anneau orange), sans grillage comme sur l'orthophotographie.
+- 952 tests (5 de plus). À regarder : `?view=custom&cam=600,1047,6,625,1015,3`.

@@ -3333,3 +3333,18 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Cour ouest](captures/college-lot4-cour-ouest.jpg)
 ![Vue aérienne](captures/college-lot4-aerien.jpg)
+
+## 2026-11-01 — D176. Collège du Vallon, lot 5 : les terrains de sport (plan `docs/plans/college-vallon.md`, §14)
+
+**Demande de l'utilisateur** : « Continue » (après le lot 4).
+
+**Données** : `pitches` de `manual.json` (revêtement, rectangle de jeu, paniers lus à l'orthophotographie à 7 cm) ; `build_monuments.py` les pose dans les sites `pitch` de `kinds/28_39.json` (champs `surf`, `court`, `hoops` du type `Site`).
+
+**Rendu** : `pitchPolys` lit `surf` et `court` ; `buildHoops` (`src/render/hoops.ts`) dessine les paniers ; constantes et poteau dans `src/core/hoops.ts`, obstacles ronds ajoutés par `landmarkCircles`.
+
+**Tests** (+5, 952 au total ; `src/render/hoops.test.ts`) : trois plateaux gris, cinq paniers tournés vers leur terrain et à moins de 26 m de son centre, poteau à 1,2 m derrière le panneau et obstacle de la tuile, panneau à 2,9 m et anneau à 3,05 m, moins de 150 triangles par panier.
+
+**Limites** : tracés du gabarit (pas ceux, croisés et effacés, du grand plateau) ; aucun grillage (aucun visible) ; paniers au 1/10 de mètre près ; `build_nav.py` non relancé.
+
+![Paniers](captures/college-lot5-paniers.jpg)
+![Les trois plateaux](captures/college-lot5-aerien.jpg)

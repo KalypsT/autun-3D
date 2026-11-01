@@ -10,6 +10,7 @@ import { buildVallon } from "./vallon";
 import { buildVallonFacades } from "./vallon-facade";
 import { buildGatePosts } from "./vallon-gate";
 import { buildVallonProps } from "./vallon-props";
+import { buildHoops } from "./hoops";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
@@ -831,7 +832,8 @@ const SURFACE: Record<string, string> = {
 export function pitchPolys(site: Extract<Site, { t: "pitch" }>): { surface: [number[][], string][]; lines: number[][][] } {
   const [cx, cy, a, l, w] = site.box;
   const f = frameOf(cx, cy, a, l, w);
-  const surface: [number[][], string][] = [[[site.r], SURFACE[site.s] ?? SURFACE["other"]!]];
+  const surface: [number[][], string][] = [[[site.r], site.surf ?? SURFACE[site.s] ?? SURFACE["other"]!]];
+  const court = site.court ?? "#c8603f";
   const lines: number[][][] = [];
   const lw = 0.12;
   const outline = (hl: number, hw: number): void => {
@@ -857,7 +859,7 @@ export function pitchPolys(site: Extract<Site, { t: "pitch" }>): { surface: [num
   } else if (site.s === "tennis") {
     const hl = Math.min(11.885, l / 2 - 1), hw = Math.min(5.485, w / 2 - 1);
     if (hl < 6 || hw < 3) return { surface, lines };
-    surface.push([rectPoly(f, -hl, hl, -hw, hw), "#c8603f"]);
+    surface.push([rectPoly(f, -hl, hl, -hw, hw), court]);
     outline(hl, hw);
     lines.push(rectPoly(f, -lw / 2, lw / 2, -hw - 0.9, hw + 0.9));
     const sv = Math.min(6.4, hl * 0.54), sw = hw * 0.75;
@@ -866,7 +868,7 @@ export function pitchPolys(site: Extract<Site, { t: "pitch" }>): { surface: [num
   } else if (site.s !== "other" && site.s !== "athletics") {
     const hl = Math.min(14, l / 2 - 1), hw = Math.min(7.5, w / 2 - 1);
     if (hl < 5 || hw < 3) return { surface, lines };
-    surface.push([rectPoly(f, -hl, hl, -hw, hw), "#c8603f"]);
+    surface.push([rectPoly(f, -hl, hl, -hw, hw), court]);
     outline(hl, hw);
     lines.push(rectPoly(f, -lw / 2, lw / 2, -hw, hw));
     lines.push(...circlePolys(f, 1.8, lw, 14));
@@ -984,5 +986,6 @@ export function buildLandmarks(
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);
+    else if (s.t === "pitch" && s.hoops) buildHoops(sinks.solid, s.hoops, terrain);
   }
 }

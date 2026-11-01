@@ -13,6 +13,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
+          terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -1571,9 +1572,31 @@ def main():
               f" ailes {hall['wingEave'] - hall['g']:.1f} / {hall['wingRidge'] - hall['g']:.1f} m")
         if lod_silhouette(tid, bid, hall):
             changed_lod.add(tid)
+    if not sys.argv[1:] or sys.argv[1] in ("vallon", "pitches"):
+        spec = data.get("pitches")
+        if spec and pitches(spec, kinds):
+            changed.add(spec["tile"])
     for tid in changed:
         (KINDS / f"{tid}.json").write_text(json.dumps(kinds[tid], ensure_ascii=False, separators=(",", ":")))
     print(f"{len(manual)} monument(s) d'après photo ; {len(changed)} fichier(s) de types et {len(changed_lod)} de silhouettes réécrit(s)")
+
+
+def pitches(spec, kinds):
+    """Terrains du collège (D176) : revêtement (`surf`), rectangle de jeu (`court`) et paniers (`hoops`) posés dans les sites `pitch` de kinds/<tuile>.json,
+    retrouvés par le centre de leur rectangle (à 3 m près). Vrai si le fichier change."""
+    tid = spec["tile"]
+    k = kinds.setdefault(tid, json.loads((KINDS / f"{tid}.json").read_text()))
+    changed = False
+    for want in spec["list"]:
+        site = min((q for q in k["sites"] if q.get("t") == "pitch"), key=lambda q: math.dist(q["box"][:2], want["at"]), default=None)
+        if site is None or math.dist(site["box"][:2], want["at"]) > 3:
+            raise SystemExit(f"terrain en {want['at']} : absent de {tid}")
+        for key in ("surf", "court", "hoops"):
+            if key in want and site.get(key) != want[key]:
+                site[key] = want[key]
+                changed = True
+        print(f"  terrain {site['s']} en {want['at']} : {want.get('surf')} ; {len(want.get('hoops', []))} panier(s)")
+    return changed
 
 
 def cathedral(tid, bid, b, spec, k):

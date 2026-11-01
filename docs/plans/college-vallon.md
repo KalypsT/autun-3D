@@ -116,7 +116,7 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 | **2. Façades (fait, §11)** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
 | **3. Entrée (fait, §12)** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
 | **4. Cour et abords (fait, §13)** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
-| **5. Terrains de sport** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
+| **5. Terrains de sport (fait, §14)** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
 | **6. Parking et camion pizza** | rangées lues à l'orthophotographie, flèches, lampadaires ; ancienne marque retirée ; place du camion contrôlée | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts`, `src/core/uniques.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; camion hors de toute place |
 | ~~7. Passants à la grille~~ | **exclu** (réponse du 1ᵉʳ novembre) | — | — |
 
@@ -291,3 +291,18 @@ Fait. La cour a son enrobé et la façade d'entrée ses abords ; la clôture de 
 ![Entrée vue de haut](../captures/college-lot4-entree-haut.jpg)
 ![Vue aérienne : l'enrobé des cours](../captures/college-lot4-aerien.jpg)
 ![Du nord-est](../captures/college-lot4-nord-est.jpg)
+
+## 14. Lot 5 : les terrains de sport (D176)
+
+Fait. Les trois plateaux ont leur revêtement et leurs paniers ; ils n'ont pas de grillage, comme à l'orthophotographie.
+
+- **Revêtement** (`pitches` de `manual.json`, appliqué par `build_monuments.py` aux sites `pitch` de `kinds/28_39.json`, retrouvés par le centre de leur rectangle) : enrobé **gris sombre** (`#5e6264`) et rectangle de jeu un peu plus clair (`#6a6e70`), au lieu du bleu et de l'orange du jeu (lot 0, §9.6). Les tracés blancs restent ceux du gabarit (rectangle de basket, rond central, cercles) : l'orthophotographie montre de nombreux tracés croisés et effacés sur le grand plateau (tennis et basket superposés), pas relevés un par un.
+- **Cinq paniers** (`src/core/hoops.ts`, `src/render/hoops.ts`) : les extrémités blanches vues sur l'orthophotographie sont les panneaux (les rectangles noirs sont leurs ombres, portées vers l'ouest) : un au nord du plateau du milieu, deux sur le bord ouest et deux sur le bord est du grand plateau, tous tournés vers le terrain. Poteau carré à 1,2 m derrière le panneau, potence, **panneau blanc de 1,8 m à 2,9 m du sol**, **anneau orange à 3,05 m**, filet. Chaque poteau est un obstacle rond de 13 cm.
+- **Correction du plan** (§9.6 annonçait quatre panneaux) : **cinq** panneaux. Le sixième éventuel (sud du plateau du milieu) est caché par les arbres.
+- **Pas fait** : les tracés exacts du grand plateau, les poteaux de filet de tennis, l'usure du revêtement, les buts de handball (aucun relevé), le gymnase.
+- **Reproduire** : `python3 tools/data/build_monuments.py pitches` (après `build_kinds.py`).
+- Captures : `docs/captures/college-lot5-*.jpg`.
+
+![Les trois plateaux vus de dessus](../captures/college-lot5-aerien.jpg)
+![Paniers du plateau du milieu et du grand plateau](../captures/college-lot5-paniers.jpg)
+![Du sud](../captures/college-lot5-sud.jpg)

@@ -1,5 +1,6 @@
 import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
+import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
@@ -148,6 +149,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     const vm = kinds.buildings[b.id]?.vallon;
     if (vm?.props) out.push(...vallonPropCircles(vm));
   }
+  // Paniers de basket des terrains (D176) : le poteau, derrière le panneau.
+  for (const s of kinds.sites) if (s.t === "pitch") for (const h of s.hoops ?? []) out.push([...hoopPole(h), HOOP.poleRadius]);
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;

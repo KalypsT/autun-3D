@@ -653,7 +653,7 @@ export type Site =
   /** Station-service : auvent l × w centré en (x, y), grand côté orienté de `a` radians ; `roof` : bâtiment-auvent existant. */
   | { t: "fuel"; x: number; y: number; a: number; l: number; w: number; n?: string; c?: string; roof?: string }
   /** Terrain de sport : contour et rectangle orienté le plus petit (centre, angle du grand côté, longueur, largeur). */
-  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number] }
+  | { t: "pitch"; s: PitchSport; r: number[]; box: [number, number, number, number, number]; surf?: string; court?: string; hoops?: [number, number, number][] }
   /** Piste ; `s` : « dirt », terre battue (correction d'après photo, D133), sinon synthétique. */
   | { t: "track"; r: number[]; s?: "dirt" }
   | { t: "cemetery"; r: number[] }
