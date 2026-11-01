@@ -1357,3 +1357,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Collège du Vallon, lot 5 : les terrains de sport (1er novembre 2026)** (D176)
 - Les trois plateaux sont en enrobé gris sombre (ils étaient rouge et bleu) et ont leurs cinq paniers de basket (panneau blanc, anneau orange), sans grillage comme sur l'orthophotographie.
 - 952 tests (5 de plus). À regarder : `?view=custom&cam=600,1047,6,625,1015,3`.
+
+**Collège du Vallon, lot 6 : le parking et le camion pizza (1er novembre 2026)** (D177)
+- Le parking a ses vraies rangées de places (33 places en quatre blocs), ses flèches de sens, trois lampadaires et son panneau « P ». Le camion pizza est maintenant garé sur une vraie place de la rangée nord, au repère que tu avais donné, le dos à l'avenue ; la place voisine à sa gauche reste libre.
+- Pas encore : le texte « Rue de l'Acaron » peint sur la chaussée. 960 tests (8 de plus).
+- À regarder : `?at=504,1094&yaw=5.76&h=18` (le camion à 18 h).

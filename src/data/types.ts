@@ -601,9 +601,11 @@ export interface HexagoneNorthEast {
  * descendant vers −u ; `rock` : rocher de rayon `r` ; `pot` : bac rose ; `hedge` : haie taillée de longueur `w` le long de v, à partir de `v` ; `birch` : bouleau pleureur de hauteur `h`.
  */
 export interface VallonProp {
-  k: "steps" | "rock" | "pot" | "hedge" | "birch";
+  k: "steps" | "rock" | "pot" | "hedge" | "birch" | "psign";
   u: number;
   v: number;
+  /** `psign` : cap (degrés) vers lequel regarde le panneau. */
+  a?: number;
   w?: number;
   r?: number;
   h?: number;

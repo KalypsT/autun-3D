@@ -3348,3 +3348,18 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Paniers](captures/college-lot5-paniers.jpg)
 ![Les trois plateaux](captures/college-lot5-aerien.jpg)
+
+## 2026-11-01 — D177. Collège du Vallon, lot 6 : le parking et le camion pizza (plan `docs/plans/college-vallon.md`, §15)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 6 » ; décision antérieure : le camion sur les places de parking, comme sur son repère.
+
+**Données** : quatre entrées `parkings` dans `manual.json` (colonne ouest, îlot central, bloc est, rangée nord : leurs traits n'ont pas la même direction), lues à l'orthophotographie à 5 cm par pixel ; `build_parking.py` accepte `arrows` (flèches de sens) et `furniture` (lampadaires) ; la première entrée porte la zone de nettoyage (39 anciens traits retirés). Champ `props` du modèle `vallon` : panneau « P » (`psign`). `uniques.ts` : le camion passe de (503,5 ; 1105, cap 242°) à (499,1 ; 1102,3, cap 165°).
+
+**Résultat** : 33 places retrouvées par `findStalls` (12 + 7 + 8 + 6), quatre flèches, trois lampadaires, un panneau « P » ; le camion est sur la place de la rangée nord centrée sur le repère, dans le sens des traits, le dos à l'avenue, sa voisine de gauche libre (`keepClear`).
+
+**Tests** (+8, 960 au total ; `src/data/parking-vallon.test.ts`) : 30 à 37 places sans doublon, direction de chaque bloc à 3°, aucune place dans un bâtiment, lampadaires à plus de 2 m des places, quatre flèches, panneau « P », camion à moins de 1 m d'une place de la rangée nord et du repère, cap des traits et dos à l'avenue, place voisine libre à 2,3-2,7 m.
+
+**Limites** : traits droits dans leur bloc (éventail réel de l'ouest non reproduit) ; sens de circulation des flèches supposé ; marquage « Rue de l'Acaron » sur la chaussée, petit bloc du coin nord-est et coin sud-est non faits ; lampadaires de 4,4 m (mâts de 10 m sur les photos) ; `build_nav.py` non relancé.
+
+![Parking vu de dessus](captures/college-lot6-aerien.jpg)
+![Le camion pizza à 18 h](captures/college-lot6-camion.jpg)

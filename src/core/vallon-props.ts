@@ -21,6 +21,7 @@ export function vallonPropCircles(m: VallonModel): [number, number, number][] {
   for (const p of m.props ?? []) {
     if (p.k === "rock") out.push([...vallonPoint(m, p.u, p.v), (p.r ?? 0.6) * 0.9]);
     else if (p.k === "pot") out.push([...vallonPoint(m, p.u, p.v), 0.35]);
+    else if (p.k === "psign") out.push([...vallonPoint(m, p.u, p.v), 0.1]);
     else if (p.k === "birch") out.push([...vallonPoint(m, p.u, p.v), 0.2]);
     else if (p.k === "hedge") for (let s = 0.5; s < (p.w ?? 0); s += 1) out.push([...vallonPoint(m, p.u, p.v + s), HEDGE.width * 0.6]);
   }

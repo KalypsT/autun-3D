@@ -117,7 +117,7 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 | **3. Entrée (fait, §12)** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
 | **4. Cour et abords (fait, §13)** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
 | **5. Terrains de sport (fait, §14)** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
-| **6. Parking et camion pizza** | rangées lues à l'orthophotographie, flèches, lampadaires ; ancienne marque retirée ; place du camion contrôlée | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts`, `src/core/uniques.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; camion hors de toute place |
+| **6. Parking et camion pizza (fait, §15)** | rangées lues à l'orthophotographie, flèches, lampadaires ; ancienne marque retirée ; place du camion contrôlée | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts`, `src/core/uniques.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; camion hors de toute place |
 | ~~7. Passants à la grille~~ | **exclu** (réponse du 1ᵉʳ novembre) | — | — |
 
 Budget : le jeu rend environ 395 000 triangles sur cette vue (capture « bâtiments ») ; le modèle (ailes, façades, portes) doit rester sous 20 000 triangles, les props de l'entrée, de la cour et des terrains sous 8 000.
@@ -306,3 +306,20 @@ Fait. Les trois plateaux ont leur revêtement et leurs paniers ; ils n'ont pas d
 ![Les trois plateaux vus de dessus](../captures/college-lot5-aerien.jpg)
 ![Paniers du plateau du milieu et du grand plateau](../captures/college-lot5-paniers.jpg)
 ![Du sud](../captures/college-lot5-sud.jpg)
+
+## 15. Lot 6 : le parking et le camion pizza (D177)
+
+Fait. Le parking a ses rangées, ses flèches, ses lampadaires et son panneau « P », et le camion est sur la place du repère.
+
+- **Rangées** (`parkings` de `manual.json`, `build_parking.py`, méthode D169) : les traits du parking n'ont pas tous la même direction (bords courbes), donc **quatre entrées**, une par bloc, lues sur l'orthophotographie à 5 cm par pixel : colonne **ouest** (traits à 90°, 12 places), **îlot central** contre sa ligne de fond (79°, 7 places), bloc **est** (80°, 8 places), rangée **nord** le long de l'avenue (165°, 6 places). **33 places** retrouvées par `findStalls` (mon décompte à vue du lot 0 : 42 ± 6 ; il comptait le petit bloc du coin nord-est et les deux places du coin sud-est, laissés de côté). Les 39 anciens traits au hasard de la zone sont partis ; les traits restent droits dans leur bloc alors que les rangées de l'ouest forment un éventail sur l'orthophotographie.
+- **Flèches de sens** : quatre flèches peintes (fût, pointe) qui font tourner la circulation dans le sens inverse des aiguilles d'une montre autour de l'îlot ; le sens est supposé (l'orthophotographie montre les fûts, la photo 5 deux flèches sans que je puisse les replacer).
+- **Lampadaires** : trois (mobilier `street_lamp`, donc cassables, D160), sur les bords ouest, est et nord, hors des places.
+- **Panneau « P »** : plaque bleue de 0,7 m sur mât, à l'entrée nord-est du parking (512 ; 1108,3), tourné vers l'avenue (cap 340°).
+- **Camion pizza** : sur la place centrée sur le repère, à **(499,1 ; 1102,3)** (le repère : 499,05 ; 1102,53), **dans le sens des traits** (cap 165°), le **dos à l'avenue**, la cabine vers le sud-sud-est ; ouvert à gauche (à l'est), son comptoir donne sur la place voisine, que `keepClear` (4,5 m autour du camion) laisse libre. Heures inchangées : 17 h à 22 h. Il n'était pas sur une place avant (cap 242°, 5 m plus au nord-est).
+- **Pas fait** : marquage « Rue de l'Acaron » peint sur la chaussée (photo 1 : du texte au sol, hors du gabarit des marquages), petit bloc du coin nord-est et deux places du coin sud-est, hachures, éventail réel des traits de l'ouest, mâts de 10 m des photos 1 et 5 (les lampadaires du jeu font 4,4 m).
+- **Reproduire** : `python3 tools/data/build_parking.py` (après `build_public_space.py`, `build_streetscape.py`, `build_plaza.py`, avant `build_nav.py`), puis `python3 tools/data/build_monuments.py vallon` pour le panneau.
+- Captures : `docs/captures/college-lot6-*.jpg`.
+
+![Parking vu de dessus](../captures/college-lot6-aerien.jpg)
+![Parking vu du sol, de l'ouest](../captures/college-lot6-sol.jpg)
+![Le camion pizza sur sa place, à 18 h](../captures/college-lot6-camion.jpg)

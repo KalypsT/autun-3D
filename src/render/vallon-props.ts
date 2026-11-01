@@ -55,6 +55,7 @@ export function buildVallonProps(sinks: LandmarkSinks, m: VallonModel, terrain: 
       const w = p.w ?? 4, h = HEDGE.height, z0 = zg - 0.1;
       slab(p.u - HEDGE.width / 2, p.u + HEDGE.width / 2, p.v, p.v + w, z0, z0 + h, shade(COL.hedge, 1.15), COL.hedge);
     } else if (p.k === "birch") birch(p, x, y, zg);
+    else if (p.k === "psign") psign(p, x, y, zg);
   }
 
   function steps(p: VallonProp, fr: VallonFrame, zg: number): void {
@@ -83,6 +84,24 @@ export function buildVallonProps(sinks: LandmarkSinks, m: VallonModel, terrain: 
       const l = Math.hypot(cx, cy, cz) || 1;
       mb.tri(toThree(...[A[0], A[1], A[2]] as [number, number, number]), toThree(B[0], B[1], B[2]), toThree(Cc[0], Cc[1], Cc[2]), toThree(cx / l, cy / l, cz / l), shade(COL.rock, 0.86 + 0.28 * hash01(`${x.toFixed(1)}${a}${b}${c}`)));
     }
+  }
+
+  /** Panneau « P » de parking : mât, plaque bleue carrée de 0,7 m, lettre blanche en quatre barres, regardant `p.a` (cap en degrés). */
+  function psign(p: VallonProp, x: number, y: number, zg: number): void {
+    const a = ((p.a ?? 0) * Math.PI) / 180, dx = Math.sin(a), dy = Math.cos(a), rx = Math.cos(a), ry = -Math.sin(a);
+    const BLUE = C("#1f5fa8"), WHITE = C("#f4f2ea"), STEEL = C("#7d8790");
+    const at2 = (s: number, z: number, t = 0): Vec3 => toThree(x + rx * s + dx * t, y + ry * s + dy * t, z);
+    const n = toThree(dx, dy, 0);
+    const bar = (s0: number, s1: number, z0: number, z1: number, t: number, col: THREE.Color): void => mb.quad(at2(s0, z0, t), at2(s1, z0, t), at2(s1, z1, t), at2(s0, z1, t), n, col);
+    const z0 = zg + 1.9, z1 = z0 + 0.7;
+    cone(x, y, 0.045, 0.045, zg - 0.1, z0, 6, STEEL, false);
+    bar(-0.35, 0.35, z0, z1, 0.05, BLUE);
+    bar(-0.2, -0.1, z0 + 0.1, z1 - 0.1, 0.07, WHITE);
+    bar(-0.2, 0.15, z1 - 0.2, z1 - 0.1, 0.07, WHITE);
+    bar(-0.2, 0.15, z0 + 0.32, z0 + 0.42, 0.07, WHITE);
+    bar(0.15, 0.25, z0 + 0.32, z1 - 0.1, 0.07, WHITE);
+    mb.quad(at2(-0.35, z0, 0.05), at2(0.35, z0, 0.05), at2(0.35, z0, -0.02), at2(-0.35, z0, -0.02), toThree(0, 0, -1), shade(BLUE, 0.7));
+    mb.quad(at2(0.35, z0, -0.02), at2(-0.35, z0, -0.02), at2(-0.35, z1, -0.02), at2(0.35, z1, -0.02), toThree(-dx, -dy, 0), shade(STEEL, 0.9));
   }
 
   function birch(p: VallonProp, x: number, y: number, zg: number): void {
