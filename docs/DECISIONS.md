@@ -3465,3 +3465,50 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d180-passionails-apres.jpg)
 ![Flammenkeuche, vitrine d'angle, avant](captures/d180-flammenkeuche-2-avant.jpg)
 ![Après](captures/d180-flammenkeuche-2-apres.jpg)
+
+## 2026-11-01 — D181. Six boutiques d'après photos : Saigon, tabac, Crédit Agricole, cordonnerie, Le Faro, pâtisserie d'Aurélien
+
+**Demande de l'utilisateur** : sept photos de commerces (dont Optic 2000, traité en D182) ; réponses aux doutes : la pâtisserie est au **15 rue Guérin** (en face du 14, photo prise vers la rue Jeannin) ; le tabac est au **1 rue Guérin** ; la cordonnerie (11) à l'estime ; Le Faro donne sur la **place pavée**, avec terrasse possible.
+
+**Où** (aucun de ces commerces, sauf Saigon, n'est dans OpenStreetMap ; les adresses viennent des légendes des captures, de l'utilisateur et de pages publiques — Wanderlog pour Le Faro, Mappy pour la cordonnerie, credit-agricole.fr pour l'agence) :
+- Saigon : `…348856847` (12 rue Guérin), mur 3 de 7,8 m, face à l'ouest ; la façade lue fait 7,8 m à 118 px/m ;
+- tabac : `…348854366` (1 rue Guérin), mur 0 de 6 m, face à l'est ; ce bâtiment (39 m de long) passe à trois niveaux ; « Aux trésors des dines » (OpenStreetMap) quitte cette fiche ;
+- Crédit Agricole : `…348854348` (8 rue de Lattre de Tassigny), mur 3 de 18,2 m (le bâtiment de BD TOPO réunit l'agence et ses voisins : devanture posée à 3,3 m du début, à l'estime ± 1 m) ;
+- cordonnerie : `…348854372` (11 rue de Lattre de Tassigny), mur 7 de 10,2 m ; trois niveaux ;
+- Le Faro : `…348854049` (18 rue de Lattre de Tassigny), mur 8 de 6,6 m face à l'ouest, sur la place pavée (« plaza_asphalt » des données) ; trois niveaux (la fiche en avait un) ;
+- pâtisserie : `…348856865` (15 rue Guérin, îlot entre les deux chaussées), mur 3 de 7,4 m face à la chaussée est ; trois niveaux.
+
+**Dessin** (`manual.json`, `fronts[…].shop`, gabarit moderne) : Saigon (travertin rosé, porte rouge, baie à cadre rouge, panneau orange « Restaurant SAIGON ») ; tabac (porte « 1 », bande FDJ bleue, bandeau brun « tabac cadeaux », carotte rouge en drapeau) ; Crédit Agricole (piliers blancs, entrée et deux baies, carré « CA » vert ; les arcs ne sont pas dessinés) ; cordonnerie (bandeau bordeaux, deux vitrines, double porte blanche, porte cochère verte) ; Le Faro (store blanc, poteaux jaunes, « LE FARO » noir, tables grises sur la place) ; pâtisserie (devanture gris bleu, bandeau « LES GOURMANDISES D'AURÉLIEN », grand store rouge « Aurélien & Virginie Ferré »). Les étages suivent les photos autant que les fiches le permettent (niveaux, enduit, persiennes, balcons) ; **les couleurs des volets viennent de la palette du jeu** (limite connue de D178).
+
+**Limites** : la pâtisserie est lue sur une photo oblique de 2018 (± 50 cm) ; la devanture du Crédit Agricole est à l'estime sur son mur ; la cordonnerie : portail de fer forgé de gauche, perron et vinyles de vitrine non dessinés ; Saigon : panneau plus bas en vrai (2,1 m) que dessiné (0,8 m) pour ne pas cacher les fenêtres de l'étage ; Le Faro : terrasse de tables seulement (pas de bacs).
+
+## 2026-11-01 — D182. Optic 2000 : façade courbe (devantures sur plusieurs murs consécutifs)
+
+**Demande de l'utilisateur** : Optic 2000 n'est pas un commerce d'angle classique car son angle est arrondi (capture du « 1 rue de l'Arbalète », juillet 2026).
+
+**Constat** : `…348853987` a, entre ses murs 1 (10,4 m, face à l'est) et 7 (11,7 m, face au nord), **cinq petits murs** (1,1 ; 0,8 ; 0,5 ; 1,9 ; 2,3 m) qui forment la courbe. D158 l'avait laissé de côté.
+
+**Concept** : `ground.corners` (en plus de `corner`, D179) = liste de devantures sur d'autres murs consécutifs du contour, chacune dessinée comme une devanture normale (clé `dev|id|c|n° du mur`). Optic 2000 : devanture principale sur le mur 1, `corners` sur les murs 2 à 7. Un même bandeau sombre (mêmes couleur et hauteur, 2,85 à 3,4 m) se raccorde d'un mur au suivant ; une baie par petit mur (un pilastre sur le plus court) ; « Optic 2000 » en blanc sur les murs 1 et 7 ; cadres noirs, rez-de-chaussée jaune pâle ; étages beige à persiennes et garde-corps filants. `apply_shop` accepte `keepOsm` : « Le Gourmet » (voisin, OpenStreetMap) est gardé dans la fiche.
+
+**Tests** (+5, 976 au total, `src/render/boutiques-lattre.test.ts`) : les sept boutiques d'après photos (statut, nom, devanture dans son mur de rue, hauteurs) ; emplacements (tabac au n° 1, Faro 6,6 m avec terrasse et trois niveaux, pâtisserie au n° 15) ; stores lettrés ; **Optic 2000 : murs 2 à 7 consécutifs dans le contour (fin de l'un = début du suivant), tous en rue, bandeau identique, voisin conservé** ; géométrie finie et bornée.
+
+**Limites** : la courbe est approchée par les cinq petits murs des données (arrondi lisse non dessiné) ; vitrines vides (mannequins, écrans et lunettes de la photo non dessinés) ; les deux logos de la photo sont ramenés à un texte ; l'étage garde le balcon filant de la fiche.
+
+![Saigon, avant](captures/d181-saigon-avant.jpg)
+![Après](captures/d181-saigon-apres.jpg)
+![Le tabac, avant](captures/d181-tabac-avant.jpg)
+![Après](captures/d181-tabac-apres.jpg)
+![Crédit Agricole, avant](captures/d181-credit-agricole-avant.jpg)
+![Après](captures/d181-credit-agricole-apres.jpg)
+![La cordonnerie, avant](captures/d181-cordonnerie-avant.jpg)
+![Après](captures/d181-cordonnerie-apres.jpg)
+![Le Faro, avant](captures/d181-faro-avant.jpg)
+![Après](captures/d181-faro-apres.jpg)
+![La pâtisserie, avant](captures/d181-patisserie-avant.jpg)
+![Après](captures/d181-patisserie-apres.jpg)
+![Optic 2000, le coin, avant](captures/d181-optic-angle-avant.jpg)
+![Après](captures/d181-optic-angle-apres.jpg)
+![Optic 2000, côté rue, avant](captures/d181-optic-rue-avant.jpg)
+![Après](captures/d181-optic-rue-apres.jpg)
+![Optic 2000, côté place, avant](captures/d181-optic-place-avant.jpg)
+![Après](captures/d181-optic-place-apres.jpg)

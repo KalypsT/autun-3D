@@ -470,7 +470,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
         // Devanture d'après photo (D141) : la fiche la décrit.
         const fi = fiches.get(parts[1] ?? "");
         // `|c` : devanture d'angle sur le mur voisin (D179).
-        const dev = parts[2] === "c" ? fi?.ground.corner?.devanture : fi?.ground.devanture;
+        const dev = parts[2] === "c" ? [fi?.ground.corner, ...(fi?.ground.corners ?? [])].find((c) => c?.wall === Number(parts[3]))?.devanture : fi?.ground.devanture;
         if (dev) buildDevanture(detail, glowTarget, signText, p, dev, fi?.ground.shopfront?.color ?? "#7f93c0");
         break;
       }

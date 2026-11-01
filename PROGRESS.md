@@ -1380,3 +1380,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La brasserie Le Commerce a sa façade sur la place d'après ta photo : store bordeaux « BRASSERIE LE COMMERCE BAR », deux baies sur panneaux bruns, porte vitrée.
 - Pas encore : véranda et terrasse de la place, balcon de l'étage qui n'existe pas sur la photo. 971 tests (4 de plus).
 - À regarder : `?view=custom&cam=-15.7,2.2,2.2,-21.5,8.4,2&h=14` (Le Commerce), `cam=-8,6,2.4,-21,12,2.4`.
+
+**Sept boutiques d'après photos : rue Guérin, rue de Lattre de Tassigny, Optic 2000 (1er novembre 2026)** (D181, D182)
+- Refaits d'après tes photos : Restaurant Saigon (12 rue Guérin), le tabac cadeaux (1 rue Guérin), Les Gourmandises d'Aurélien (15 rue Guérin, grand store rouge), le Crédit Agricole (8 rue de Lattre), la Cordonnerie Multiservices (11) et Le Faro (18, avec sa terrasse sur la place pavée).
+- Optic 2000 a sa façade courbe : une devanture par petit mur du coin arrondi, avec un bandeau noir continu.
+- Pas encore : arcs du Crédit Agricole, perron de la cordonnerie, vitrines vides (pas de mannequins ni de lunettes) ; couleurs des volets de la palette. 976 tests (5 de plus).
+- À regarder : `?view=custom&cam=70,-54,2.4,55,-63,2&h=14` (Optic 2000), `cam=59.1,7.3,2.2,68.6,6.3,2` (Le Faro), `cam=122.8,240.5,2.2,118.9,250,2` (la pâtisserie).

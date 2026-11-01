@@ -1117,6 +1117,8 @@ export interface FacadeFiche {
     devanture?: Devanture;
     /** Boutique d'angle (D179) : devanture du même commerce sur le mur voisin de `front` (qui partage son sommet d'angle), dessinée comme `devanture` ; `terrace` : terrasse devant ce mur. */
     corner?: { wall: number; devanture: Devanture; terrace?: Terrace };
+    /** Façade courbe ou à plusieurs pans (Optic 2000, D182) : devantures supplémentaires sur d'autres murs consécutifs du contour, dessinées comme `corner`. */
+    corners?: { wall: number; devanture: Devanture; terrace?: Terrace }[];
   };
   walls: WallRun[];
 }

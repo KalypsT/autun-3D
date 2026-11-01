@@ -218,7 +218,7 @@ export function* planFacadesSteps(
       const wantsShop = f.ground.kind === "shop";
       // Le mur principal reçoit la porte ou les vitrines ; un autre mur sur rue, seulement les commerces qu'OpenStreetMap y place.
       // Boutique d'angle (D179) : la devanture du même commerce sur le mur voisin de l'entrée.
-      const corner = wantsShop && f.ground.corner?.wall === runIdx ? f.ground.corner : undefined;
+      const corner = wantsShop ? [f.ground.corner, ...(f.ground.corners ?? [])].find((c) => c?.wall === runIdx) : undefined;
       if (isStreet && f.ground.kind !== "blank" && (mainWall || corner || (wantsShop && shops.length > 0))) {
         const centers: { name: string | null; s: number; kind: string | null; terrace?: Terrace | undefined }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind, terrace: sh.terrace }));
         if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2, kind: null });
@@ -228,7 +228,7 @@ export function* planFacadesSteps(
           // Devanture d'après photo (D141) : dessinée telle quelle (stylized.ts, `devantureGeometry`) ; pas de fenêtre au rez-de-chaussée derrière.
           const width = dev.bays.reduce((a, q) => a + q[1], 0);
           const mid = sampleAt(pl, dev.s0 + width / 2);
-          const devKey = corner ? `dev|${b.id}|c` : `dev|${b.id}`;
+          const devKey = corner ? `dev|${b.id}|c|${runIdx}` : `dev|${b.id}`;
           plan.requests.push({ key: devKey, wm: width, hm: dev.h });
           place(devKey, "facade", sampleAt(pl, 0), terrain.heightAt(mid.x, mid.y), 0);
           plan.stats.shops++;

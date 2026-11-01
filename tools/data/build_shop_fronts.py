@@ -266,7 +266,8 @@ def apply_shop(fi, m):
     g = fi["ground"]
     g["kind"] = "shop"
     g["shopfront"] = {"color": sh["color"], "glazing": "full"}
-    g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}]
+    kept = [x for x in g.get("shops", []) if x.get("osm") in sh.get("keepOsm", [])]  # commerces voisins gardés (identifiants OpenStreetMap)
+    g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}] + kept
     if "terrace" in sh:  # terrasse d'après photo (D178) devant la devanture
         g["shops"][0]["terrace"] = sh["terrace"]
     g["devanture"] = sh["devanture"]
@@ -274,6 +275,10 @@ def apply_shop(fi, m):
         g["corner"] = sh["corner"]
     else:
         g.pop("corner", None)
+    if "corners" in sh:  # façade courbe ou à plusieurs pans (D182) : devantures sur d'autres murs consécutifs
+        g["corners"] = sh["corners"]
+    else:
+        g.pop("corners", None)
     apply_overrides(fi, sh.get("fiche", {}))
     fi["status"] = "observed"
     src = {"kind": "photo", "ref": m["photo"][:80]}
@@ -350,7 +355,7 @@ def main():
         # Les murs d'une correction à la main sont des murs de rue avant tout choix (une seule passe suffit).
         m = manual.get(fi["id"], {})
         over = m.get("shopWalls", {})
-        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o], (m.get("shop", {}).get("corner") or m.get("corner") or {}).get("wall")]:
+        for i in [m.get("wall"), m.get("sign"), *m.get("also", []), *[o["wall"] for o in over.values() if o], (m.get("shop", {}).get("corner") or m.get("corner") or {}).get("wall"), *[q["wall"] for q in m.get("shop", {}).get("corners", [])]]:
             if i is not None and fi["walls"][i]["role"] != "street":
                 fi["walls"][i]["role"] = "street"
                 stats["mur passé en rue"] += 1
