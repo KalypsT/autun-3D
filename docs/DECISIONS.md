@@ -2977,3 +2977,37 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d158-boutiques-photo10-apres.jpg)
 ![Carrefour City la nuit, avant](captures/d158-boutiques-nuit-avant.jpg)
 ![Après](captures/d158-boutiques-nuit-apres.jpg)
+
+## 2026-11-01 — D159. Les croix de pharmacie : soin à 100 %, ramassage automatique, façade de la Grande Pharmacie Bonaparte
+
+**Demande de l'utilisateur** : un système de restauration de santé (un objet ramassable devant les pharmacies, la croix verte, qui remet la santé à 100 %) ; refaire la façade de la Grande Pharmacie Bonaparte d'après deux photos ; se demander si la croix doit être une enseigne perpendiculaire à la façade ; et, en cours de route, **ramasser tous les objets au sol en marchant dessus**, sans bouton.
+
+**Pharmacies de la carte** (5, pas 2) : Grande Pharmacie Bonaparte, Pharmacie de l'Arbalète (43 m plus loin), de la Gare, de la Croix Blanche (OpenStreetMap), et Pharmacie de Saint-Pan, modélisée en D143 mais **absente de `places.json`** : ajoutée (`MANUAL_PHARMACIES` de `build_map.py`, et le fichier généré à la main, l'étape a besoin du réseau). « E.Leclerc Parapharmacie » est un rayon de supermarché : exclu.
+
+**Choix validés** (propositions de l'assistant, acceptées) : la croix revient **120 s** après avoir été prise (les caches d'armes : 300 s) ; à **santé pleine** elle reste là et n'est pas prise ; **Saint-Pan** garde sa croix de toit de D143 (pas de drapeau sans photo).
+
+**Soin** (`src/core/pickups.ts`) : un objet au sol a un `kind` (`weapon` ou `heal`) ; `HEAL_SITES` : cinq points de la navigation piétonne, en face de la devanture, dégagés sur 50 cm (test) : Bonaparte (60,5 ; −32,7, au milieu de la place, à 4,5 m de la porte : les jardinières et potelets sont plus près), Arbalète, Gare (à 7,5 m : le trottoir devant la porte n'est pas dégagé), Croix Blanche, Saint-Pan (3,5 m devant la galerie, pas sous elle). `take` appelle `health.heal(MAX_HEALTH)`, pas `restore()` (qui sert à la reprise après la mort) ; une croix ne soigne ni un mort ni un joueur en pleine santé. La régénération s'arrête toujours à 50 % : l'hôpital et les pharmacies sont les seuls moyens de remonter à 100 %.
+
+**Ramassage automatique** (tous les objets, armes comprises) : `Pickups.collect(x, y, inventaire, santé)` prend ce qui est à moins de **1,3 m** (avant 1,8 m avec bouton) et ramassable ; une arme qu'on n'avait pas passe dans la main (la sélection est dans `take`) ; une arme blanche déjà possédée ou une réserve de balles pleine restent au sol. À pied seulement, vivant et debout. **Plus de bouton « Ramasser »** : `act()` ne ramasse plus, l'étiquette du bouton d'action ne la propose plus. Carillon de soin (`heal` du catalogue et de `GameAudio`).
+
+**Rendu** : dans `fx.ts`, la croix est deux barres vertes qui tournent à hauteur de ceinture avec un faisceau vert (le même maillage instancié : aucun appel de dessin de plus) ; sur la minimap, une croix verte à la place du losange orange des armes.
+
+**Enseigne perpendiculaire** : la question était déjà réglée en partie : `pharmacyCross` posait une croix en drapeau (0,76 m). Elle devient `crossFlag` : croix grecque de **0,85 m** (mesurée sur la photo de face : 104 px à 0,8 cm par pixel, l'échelle étant celle du rez-de-chaussée de 4,15 m), épaisse de 22 cm, corps vert sombre, face vert vif encadrée de sombre comme l'enseigne à diodes de l'image fournie, potence de fer. Les quatre pharmacies génériques la reçoivent ; Saint-Pan garde ses croix de façade et de toit (D143).
+
+**Façade de la Grande Pharmacie Bonaparte** (`fronts` de `manual.json`, mur 9 de la fiche, 18,5 m) : la photo de face montre une façade moderne, pas une devanture en applique : nouveau dessin `devanture-modern.ts`, choisi par l'option `modern` du gabarit (`ModernFront`). Mur d'enduit ocre-brun sur le rez-de-chaussée, étage crème à balcons de fer forgé (`fiche.balcony`, nouveau) ; de gauche à droite La Poste (vitrine, décalcomanie « Bienvenue à La Poste », logo jaune et « LA POSTE » sur le mur), pilier à interphone, pharmacie (baie à bandeau « MATÉRIEL MÉDICAL », porte du guichet de garde, pilier à panneau d'horaires, baie à bandeau « ORTHOPÉDIE » et porte à disque rouge Mediprix), pilier, porte pleine grise ; menuiseries d'aluminium gris ; lettres blanches posées « GRANDE PHARMACIE BONAPARTE » dont PHARMACIE en vert (un mot par couleur), « MEDIPRIX » dessous, six projecteurs, croix verte en drapeau à gauche des lettres. La nuit, vitres et croix s'allument (maillage lumineux). Le bandeau jaune « La Poste » que `civic()` collait sur l'étage (le bâtiment est typé « poste ») disparaît quand la fiche a une devanture d'après photo.
+
+**Mesures** : échelle de la photo de face tirée de la hauteur du rez-de-chaussée (4,15 m) ; largeurs à ± 30 cm ; **la moitié gauche** (Poste, mur plein) est lue sur la capture Street View, de biais : ± 60 cm. La fiche d'OpenStreetMap place La Poste à 5,9 m et la pharmacie à 12,1 m du début du mur : cohérent avec les travées dessinées (Poste à 6,6 m, pharmacie à 13,6 m).
+
+**Données** : `build_shop_fronts.py` (`apply_shop`, qui gère maintenant `balcony`) ; seule la tuile 26_35 est réécrite ; `world.json` : l'octet de cette tuile.
+
+**Tests** (+9) : `pickups.test.ts` (ramassage automatique, arme déjà possédée, soin, réapparition, santé pleine, mort, cinq sites sur la navigation et près d'une pharmacie de la carte) ; `pharmacie.test.ts` (fiche observée, devanture dans le mur, ordre des travées et de l'enseigne, croix de 0,85 m au-dessus des vitrines, sommets finis, coût borné, vitrines allumées, croix perpendiculaire). 843 tests au total.
+
+**Limites** : le texte des enseignes n'est pas allumé la nuit (comme toutes les enseignes du jeu) ; les croix des pharmacies génériques ne s'allument pas la nuit (pas de maillage lumineux dans les extras de devanture) ; la gauche de la façade (3,6 m de mur plein) est une lecture ; pas de vitrophanie intérieure, de moquette ni de mobilier derrière les vitres ; la place devant Bonaparte a des jardinières et un bassin qui ne sont pas ceux de la photo (autre sujet).
+
+![La façade, avant](captures/d159-bonaparte-facade-avant.jpg)
+![Après](captures/d159-bonaparte-facade-apres.jpg)
+![De nuit, avant](captures/d159-bonaparte-nuit-avant.jpg)
+![Après](captures/d159-bonaparte-nuit-apres.jpg)
+![La croix de l'Arbalète, avant](captures/d159-bonaparte-croix-avant.jpg)
+![Après](captures/d159-bonaparte-croix-apres.jpg)
+![La croix verte à ramasser devant la pharmacie](captures/d159-croix-ramassable.jpg)

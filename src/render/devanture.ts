@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Devanture } from "../data/types";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
+import { buildModernFront } from "./devanture-modern";
 import type { SignAtlas } from "./sign-atlas";
 
 /**
@@ -35,6 +36,11 @@ const CLOTHES: [string, number, number, number][][] = [
 const BACKDROP = ["", "#7ea04a"];
 
 export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
+  // Façade moderne d'après photo (D159) : un autre dessin (mur plein, baies d'aluminium), voir devanture-modern.ts.
+  if (d.modern) {
+    buildModernFront(mb, glow, text, f, d, color);
+    return;
+  }
   const at = (s: number, z: number, off: number): Vec3 => toThree(f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off, f.z + z);
   const front = toThree(f.nx, f.ny, 0);
   const panel = (target: MeshBuilder, s0: number, s1: number, z0: number, z1: number, off: number, lo: THREE.Color, hi: THREE.Color = lo): void => {

@@ -66,15 +66,34 @@ export function awning(mb: MeshBuilder, f: Front, color: THREE.Color): void {
   }
 }
 
-/** Croix verte de pharmacie, en drapeau perpendiculaire au mur, à gauche de la devanture. */
+const CROSS_BODY = C("#1d6a37"), CROSS_FACE = C("#3fd16f"), CROSS_IRON = C("#3a3a3a");
+
+/**
+ * Croix verte de pharmacie en drapeau (D159) : une croix grecque aux bras égaux de côté `size`, dans le plan perpendiculaire au mur, comme
+ * l'enseigne lumineuse à diodes de la photo : corps vert sombre épais de 0,22 m, face vert vif encadrée de sombre, bras de fer vers le mur.
+ * (cx, cy) : pied de la potence sur le mur ; (nx, ny) : normale sortante ; `zc` : altitude du centre. `face` reçoit en plus les
+ * faces vives (maillage lumineux de la nuit), s'il y en a un.
+ */
+export function crossFlag(mb: MeshBuilder, cx: number, cy: number, nx: number, ny: number, zc: number, size: number, face?: MeshBuilder | null): void {
+  const h = size / 2, arm = size * 0.165, off = size * 1.0, th = 0.11;
+  const x = cx + nx * off, y = cy + ny * off;
+  // Corps : deux barres.
+  box(mb, x, y, nx, ny, arm, th, zc - h, zc + h, CROSS_BODY);
+  box(mb, x, y, nx, ny, h, th, zc - arm, zc + arm, CROSS_BODY);
+  // Faces vives, un peu plus épaisses que le corps : un cadre sombre reste visible autour.
+  const f = 0.03, tf = th + 0.004;
+  for (const target of face ? [mb, face] : [mb]) {
+    box(target, x, y, nx, ny, arm - f, tf, zc - h + f, zc + h - f, CROSS_FACE);
+    box(target, x, y, nx, ny, h - f, tf, zc - arm + f, zc + arm - f, CROSS_FACE);
+  }
+  // Potence : une barre de fer du mur à la croix.
+  box(mb, cx + nx * (off - h) * 0.5, cy + ny * (off - h) * 0.5, nx, ny, Math.max(0.05, (off - h) * 0.5), 0.025, zc - 0.03, zc + 0.03, CROSS_IRON);
+}
+
+/** Croix verte de pharmacie en drapeau, à gauche de la devanture (D159 : 0,85 m, comme celle de la Grande Pharmacie Bonaparte sur photo). */
 export function pharmacyCross(mb: MeshBuilder, f: Front): void {
-  const green = C("#2fae4e");
-  const [x, y] = point(f, -f.width / 2 - 0.45, 0.75);
-  const zc = f.zSign + 0.45;
-  box(mb, x, y, f.nx, f.ny, 0.12, 0.07, zc - 0.38, zc + 0.38, green);
-  box(mb, x, y, f.nx, f.ny, 0.38, 0.07, zc - 0.12, zc + 0.12, green);
-  const [bx, by] = point(f, -f.width / 2 - 0.45, 0.2);
-  box(mb, bx, by, f.nx, f.ny, 0.2, 0.03, zc - 0.03, zc + 0.03, C("#3a3a3a"));
+  const [x, y] = point(f, -f.width / 2 - 0.45, 0);
+  crossFlag(mb, x, y, f.nx, f.ny, f.zSign + 0.5, 0.85);
 }
 
 /** « Carotte » rouge du bureau de tabac : losange vertical en drapeau. */

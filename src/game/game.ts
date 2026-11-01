@@ -30,11 +30,11 @@ import { DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
-import { CACHE_ROUNDS, PICKUP_REACH, Pickups } from "../core/pickups";
+import { CACHE_ROUNDS, Pickups } from "../core/pickups";
 import { Fx, type PickupView } from "../render/fx";
 import { Melee } from "../core/melee";
 import { WeaponHud } from "../ui/weapon-hud";
-import { icon, vehicleIcon, weaponIcon } from "../ui/icons";
+import { icon, vehicleIcon } from "../ui/icons";
 import { ARREST_HOURS, ARREST_SPAWN, PoliceController } from "./police";
 import type { VehicleModel } from "../render/vehicle-model";
 import { gameSpawn } from "./start";
@@ -762,15 +762,6 @@ export function startGame(ctx: GameContext): void {
       else leaving = true;
       return;
     }
-    // Une arme au sol à portée de main passe avant un véhicule.
-    const pk = pickups.nearest(player.x, player.y, PICKUP_REACH);
-    if (pk && pickups.canTake(pk, inventory)) {
-      const fresh = !inventory.has(pk.weapon);
-      pickups.take(pk, inventory);
-      audio.pickup();
-      if (fresh) inventory.select(pk.weapon);
-      return;
-    }
     const r = reachable();
     if (r.traffic) carjack();
     else if (r.fleet) {
@@ -887,9 +878,7 @@ export function startGame(ctx: GameContext): void {
   const updateHud = (): void => {
     let verb = "", what = "", ico = "";
     const r = riding ? null : reachable();
-    const pk = riding ? null : pickups.nearest(player.x, player.y, PICKUP_REACH);
-    if (pk && pickups.canTake(pk, inventory)) [verb, what, ico] = ["Ramasser", WEAPONS[pk.weapon].name, weaponIcon(pk.weapon)];
-    else if (riding) [verb, ico] = ["Descendre", icon("exit")];
+    if (riding) [verb, ico] = ["Descendre", icon("exit")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
     const label = what ? `${verb} : ${what}` : verb;
@@ -1196,10 +1185,16 @@ export function startGame(ctx: GameContext): void {
       reticleEl.style.top = `${((1 - reticleV.y) / 2) * window.innerHeight}px`;
     } else reticleEl.style.display = "none";
     pickups.update(dt);
+    // Ramassage automatique (D159) : à pied, vivant et debout, on prend ce qu'on foule (arme, balles, croix de pharmacie), sans bouton.
+    if (!riding && !health.dead && downFor <= 0) {
+      const pk = pickups.collect(player.x, player.y, inventory, health);
+      if (pk?.kind === "heal") audio.heal();
+      else if (pk) audio.pickup();
+    }
     pickViews.length = 0;
     for (const pk of pickups.list) {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
-      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon });
+      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal" });
     }
     fx.update(dt, pickViews, pickups.time);
     ui.caches.length = 0;

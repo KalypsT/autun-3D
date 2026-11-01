@@ -1269,3 +1269,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d158-boutiques-carrefour-apres.jpg)
 ![Le Central, avant](docs/captures/d157-cafes-photo14-avant.jpg)
 ![Après](docs/captures/d157-cafes-photo14-apres.jpg)
+
+**Les croix de pharmacie, le ramassage automatique et la façade de Bonaparte (1er novembre 2026)** (D159)
+- Devant chacune des cinq pharmacies d'Autun (Bonaparte, l'Arbalète, la Gare, la Croix Blanche, Saint-Pan, ajoutée à la carte), une croix verte tourne et brille : **la ramasser remet la santé à 100 %**. Elle revient après 2 minutes ; à santé pleine, elle reste là. La minimap les montre en croix verte.
+- **Tous les objets au sol (armes, balles, croix) se ramassent en marchant dessus** : plus de bouton « Ramasser ».
+- Les croix de pharmacie des façades sont des drapeaux perpendiculaires au mur, à la taille de la photo (0,85 m), en vert sombre et vif comme l'enseigne à diodes.
+- La façade de la Grande Pharmacie Bonaparte est refaite d'après tes deux photos : enduit ocre, La Poste à gauche, baies d'aluminium aux bandeaux « MATÉRIEL MÉDICAL » et « ORTHOPÉDIE », lettres blanches dont PHARMACIE en vert, projecteurs, croix en drapeau, étage crème à balcons ; allumée la nuit.
+- Limites : les croix de Gare, Arbalète et Croix Blanche ne s'allument pas la nuit ; la moitié gauche de la façade est lue sur une photo de biais.
+- À essayer : `?hurt=40&at=54,-32.7&yaw=1.5708&h=14` (devant Bonaparte, blessé : avance sur la croix), `?cam=44,-31,1.6,65,-32.7,2.4&h=14` (la façade de face), puis `&h=22` ; `?hurt=40&at=91.8,-62` (l'Arbalète).
+
+![La façade, avant](docs/captures/d159-bonaparte-facade-avant.jpg)
+![Après](docs/captures/d159-bonaparte-facade-apres.jpg)
+![La croix à ramasser](docs/captures/d159-croix-ramassable.jpg)

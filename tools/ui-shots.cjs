@@ -192,7 +192,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   if (want("thumb")) {
-    // Groupe du pouce droit à pied (D103) : pistolet en main (bouton de rechargement) à côté d'une voiture garée (« Monter »), puis devant une batte au sol (« Ramasser »).
+    // Groupe du pouce droit à pied (D103) : pistolet en main (bouton de rechargement) à côté d'une voiture garée (« Monter »), puis sur une batte au sol (ramassée automatiquement, D159 : plus de bouton « Ramasser »).
     const ctx = await open("arms=pistol&h=15");
     await page.addStyleTag({ content: "#weapon.flash button { animation: none !important; }" });
     await page.evaluate(() => {
@@ -205,10 +205,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await shot("p-pouce-monter");
     await page.evaluate(() => {
       const a = window.__autun, p = a.player, c = a.pickups.list.find((q) => q.weapon === "bat");
-      if (c) { p.x = c.x + 1; p.y = c.y; }
+      if (c) { p.x = c.x + 0.5; p.y = c.y; }
     });
     await sleep(2500);
-    await shot("p-pouce-ramasser");
+    await shot("p-pouce-ramasse");
     await ctx.close();
   }
 
