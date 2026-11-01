@@ -3136,3 +3136,24 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Face ouest](captures/hexagone-lot1-ouest.jpg)
 ![Face nord-est](captures/hexagone-lot1-nord-est.jpg)
 
+## 2026-11-01 — D166. L'Hexagone, lot 2 : façades ouest et nord-est (plan `docs/plans/hexagone.md`, §10)
+
+**Demande de l'utilisateur** : « Continue avec le lot 2 ».
+
+**Mesures nouvelles** (coupes LiDAR) : la façade ouest est un mur droit d'environ 32 m (s de −15 à +17 dans son repère, ligne à 26,4 m du sommet) avec un auvent central de 10,5 m saillant de 2,2 m ; la face nord-est a son dessus à +2,2 m sur 21 m, en porte-à-faux de 2-3 m sur le contour BD TOPO. Cela corrige le §8.2 (qui lisait des bandeaux débordants sur toute la façade).
+
+**Rendu** (`hexagone-facade.ts`, `buildFront`, `buildNorthEast`) :
+- ouest : vitrage en travées de 2 m, piliers tous les 4 m, cinq portes doubles à cadre clair, bandeau bas / bandeau-fenêtre sombre / bandeau haut de part et d'autre de l'auvent, auvent plein portant l'enseigne « HEXAGONE » ; niveaux −0,85 / 0,15 / 1,0 / 1,55 (4,7 à 5,15 m au-dessus du sol) ;
+- nord-est : rez-de-chaussée enduit (portes vitrées), étage en bardage à lattes alternées sur 5 poteaux de 14 cm, oriel à stores, fenêtre ;
+- `buildHexagone` reçoit maintenant les `LandmarkSinks` (solide, lumière, texte) ; les pièces du contour dans une face ne sont plus dessinées et un tablier de 4,5 m comble l'écart avec la ligne de la façade.
+
+**Données** : champs `front` et `ne` et quatre couleurs de plus dans `hex` (`kinds/27_35.json`), lus de `manual.json` ; la silhouette lointaine ne change pas.
+
+**Tests** (+5, 885 au total) : dimensions de la façade (32 m, auvent 10 m saillant de 2 m, hauteur 4,7-5,3 m), ligne de façade proche du contour (le joueur s'arrête à moins de 3 m des vitres), portes (au moins quatre, trois sous l'auvent, sans chevauchement), face nord-est (la plus haute, au moins 4 poteaux, tous ses éléments dans son étendue), enseigne « HEXAGONE » une fois, vitrages allumés, moins de 15 000 triangles.
+
+**Limites** : collisions et navigation inchangées (l'emprise BD TOPO reste de 1 à 3 m en retrait de la façade, donc le joueur s'arrête avant les vitres) ; positions des portes (cinq) et de l'oriel estimées sur les photos 2, 4 et 5 (± 1 m) ; autres côtés, lanterneaux, souche et liseré d'égout non faits ; vitrage et bardage sont des teintes moyennes.
+
+![Façade ouest](captures/hexagone-lot2-facade.jpg)
+![Face nord-est](captures/hexagone-lot2-nord-est.jpg)
+![Vue aérienne](captures/hexagone-lot2-aerien.jpg)
+

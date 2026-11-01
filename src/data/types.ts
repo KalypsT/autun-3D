@@ -534,7 +534,46 @@ export interface HexagoneModel {
   sides: [number, number][];
   /** Annexe haute : contour (x, y, …) et altitude de son toit. */
   annex?: { r: number[]; z: number };
-  colors: { wall: string; roof: string; deck: string; drum: string; annex: string };
+  /** Façade principale (ouest, lot 2) : mur droit, auvent d'entrée central, portes vitrées et enseigne. */
+  front?: HexagoneFront;
+  /** Face nord-est (lot 2) : étage en bardage sombre en porte-à-faux sur poteaux. */
+  ne?: HexagoneNorthEast;
+  colors: { wall: string; roof: string; deck: string; drum: string; annex: string; band: string; glass: string; zinc: string; frame: string };
+}
+
+/**
+ * Mur droit d'une face, dans son repère : `s` le long du mur vu de l'extérieur (vers la droite), `t` vers l'extérieur, origine sur la normale `cap`
+ * passant par le sommet, à `d` m de lui.
+ */
+export interface HexagoneFront {
+  cap: number;
+  d: number;
+  /** Étendue du mur (s0, s1). */
+  s: [number, number];
+  /** Altitudes : haut du vitrage, haut du bandeau bas, haut du bandeau-fenêtre, haut du bandeau haut (acrotère compris). */
+  levels: [number, number, number, number];
+  /** Auvent d'entrée : s0, s1, saillie, haut. */
+  canopy: [number, number, number, number];
+  /** Centres des portes doubles (largeur 2,4 m). */
+  doors: number[];
+  /** Enseigne : texte et s du centre. */
+  sign: [string, number];
+}
+
+export interface HexagoneNorthEast {
+  cap: number;
+  /** Mur du rez-de-chaussée. */
+  d: number;
+  s: [number, number];
+  /** Altitude du dessous de l'étage, du dessus, saillie de l'étage. */
+  floor: number;
+  top: number;
+  over: number;
+  poles: number[];
+  doors: number[];
+  /** Fenêtre carrée (s, largeur) et oriel à stores (s, largeur). */
+  window: [number, number];
+  oriel: [number, number];
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";

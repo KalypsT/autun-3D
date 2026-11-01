@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { HexagoneModel, HeightField, LodBuilding, TileKinds } from "../data/types";
 import { HEX_SIDES, hexagoneFootAt, hexagoneShape } from "../core/landmarks";
 import { buildHexagone } from "./hexagone";
+import { UvMeshBuilder } from "./geometry";
+import type { LandmarkSinks } from "./landmarks";
+import type { SignAtlas } from "./sign-atlas";
 import { MeshBuilder } from "./geometry";
 
 /** D165 : l'Hexagone (lot 1 de docs/plans/hexagone.md) : pyramide à 12 pans mesurée au LiDAR sur une couronne de six terrasses. */
@@ -66,9 +69,87 @@ describe("L'Hexagone (D165) : modèle de données", () => {
   });
 });
 
+describe("L'Hexagone (D166) : façades", () => {
+  const F = m.front!, N = m.ne!;
+
+  it("façade ouest : mur droit à la hauteur du contour, mesurée d'après le relevé (32 m de large, auvent central de 10 m saillant de 2 m)", () => {
+    expect(F.cap).toBe(275);
+    expect(F.s[1] - F.s[0]).toBeGreaterThan(30);
+    expect(F.s[1] - F.s[0]).toBeLessThan(36);
+    expect(F.canopy[1] - F.canopy[0]).toBeGreaterThan(9);
+    expect(F.canopy[2]).toBeGreaterThan(1.5);
+    expect(F.canopy[2]).toBeLessThan(3);
+    expect(F.canopy[0]).toBeGreaterThan(F.s[0]);
+    expect(F.canopy[1]).toBeLessThan(F.s[1]);
+    const [gl, low, rib, top] = F.levels;
+    expect(gl).toBeLessThan(low);
+    expect(low).toBeLessThan(rib);
+    expect(rib).toBeLessThan(top);
+    // Hauteur du bandeau haut : 4,7 à 5,3 m au-dessus du sol.
+    expect(top - m.g).toBeGreaterThan(4.7);
+    expect(top - m.g).toBeLessThan(5.3);
+  });
+
+  it("la ligne de la façade passe près des sommets du contour de ce côté (le joueur s'arrête au plus à 3 m des vitres)", () => {
+    const n = [Math.sin((F.cap * Math.PI) / 180), Math.cos((F.cap * Math.PI) / 180)];
+    const proj: number[] = [];
+    for (let i = 0; i < m.ring.length; i += 2) {
+      const dx = m.ring[i]! - m.c[0], dy = m.ring[i + 1]! - m.c[1];
+      const lat = -dx * n[1]! + dy * n[0]!;
+      const d = dx * n[0]! + dy * n[1]!;
+      if (d > 15 && lat > F.s[0] + 2 && lat < F.s[1] - 2) proj.push(d);
+    }
+    expect(proj.length).toBeGreaterThan(5);
+    expect(F.d - Math.max(...proj)).toBeGreaterThan(-3);
+    expect(F.d - Math.min(...proj)).toBeLessThan(6);
+  });
+
+  it("quatre portes doubles au moins dont trois sous l'auvent, toutes à l'intérieur du mur et sans se chevaucher", () => {
+    expect(F.doors.length).toBeGreaterThanOrEqual(4);
+    const sorted = [...F.doors].sort((a, b) => a - b);
+    sorted.forEach((c, i) => {
+      expect(c - 1.2).toBeGreaterThan(F.s[0]);
+      expect(c + 1.2).toBeLessThan(F.s[1]);
+      if (i) expect(c - sorted[i - 1]!).toBeGreaterThan(2.5);
+    });
+    expect(F.doors.filter((c) => c - 1.2 >= F.canopy[0] && c + 1.2 <= F.canopy[1]).length).toBeGreaterThanOrEqual(3);
+    expect(F.sign[0]).toBe("HEXAGONE");
+    expect(F.sign[1]).toBeGreaterThan(F.canopy[0]);
+    expect(F.sign[1]).toBeLessThan(F.canopy[1]);
+  });
+
+  it("face nord-est : étage en porte-à-faux sur des poteaux, le plus haut des côtés (+1,1 m sur la façade)", () => {
+    expect(N.cap).toBe(35);
+    expect(N.over).toBeGreaterThan(1);
+    expect(N.floor).toBeGreaterThan(m.g + 2.8);
+    expect(N.top).toBeGreaterThan(N.floor + 2);
+    expect(N.top - m.sides[4]![1]).toBeGreaterThan(0.9);
+    expect(N.poles.length).toBeGreaterThanOrEqual(4);
+    for (const s of [...N.poles, ...N.doors, N.window[0], N.oriel[0]]) {
+      expect(s).toBeGreaterThan(N.s[0]);
+      expect(s).toBeLessThan(N.s[1]);
+    }
+  });
+
+  it("le maillage porte l'enseigne « HEXAGONE » (une fois), des vitrages allumés la nuit et reste sous 15 000 triangles", () => {
+    const names: string[] = [];
+    const atlas = { get: (text: string) => { names.push(text); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
+    const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
+    buildHexagone(sinks, m, flat);
+    expect(names).toEqual(["HEXAGONE"]);
+    expect(sinks.names.positions.length).toBeGreaterThan(0);
+    expect(sinks.glow.positions.length).toBeGreaterThan(0);
+    expect(sinks.solid.triangleCount).toBeLessThan(15000);
+    expect(sinks.solid.positions.every(Number.isFinite) && sinks.glow.positions.every(Number.isFinite) && sinks.names.positions.every(Number.isFinite)).toBe(true);
+  });
+});
+
 describe("L'Hexagone (D165) : maillage et silhouette", () => {
-  const mb = new MeshBuilder();
-  buildHexagone(mb, null, m, flat);
+  const texts: string[] = [];
+  const atlas = { get: (text: string) => { texts.push(text); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
+  const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
+  const mb = sinks.solid;
+  buildHexagone(sinks, m, flat);
 
   it("quelques milliers de triangles au plus, sans valeur absurde", () => {
     expect(mb.triangleCount).toBeGreaterThan(300);

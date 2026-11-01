@@ -95,7 +95,7 @@ Chaque lot : un commit, une décision `D164…` dans `docs/DECISIONS.md`, captur
 |---|---|---|---|
 | **0. Relevés (fait, §8)** | redresser l'orthophotographie autour de (389 ; 186) ; mesurer largeur de façade, nombre et largeur des travées, orientation exacte (compas du mur le plus proche de 250°), sol du parvis ; confirmer l'enseigne ; coupe LiDAR de la pyramide | `tools/data/` (script jetable), notes dans la décision | — |
 | **1. Volumes et toit (fait, D165)** | type `hexagone` : `HexagoneSpec` dans `types.ts`, mesure dans `build_monuments.py` (pyramide, couronne), rendu `buildHexagone` dans `monuments.ts`, rattachement dans `landmarks.ts` ; l'ancien bâtiment …694 passe en `hidden` ou est remplacé | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | arête entre 8,5 et 10 m ; douze pans ; pas de plan plus penché que sa mesure ; l'ancien volume n'est plus rendu |
-| **2. Façade** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
+| **2. Façade (fait, D166)** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
 | **3. Parvis** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
 | **4. Mobilier** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
 | **5. Parking** | rangées lues à l'orthophotographie, anciennes marques retirées, îlots, passage piéton | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; aucune dans une allée |
@@ -188,3 +188,15 @@ corrigée (sommet à 12,8 m au lieu de 9,2).
 - **Reproduire** : `python3 tools/data/build_monuments.py hexagone` (le paramètre limite le passage à ce modèle ; les autres demandent les rasters LiDAR de leur zone).
 - **Pas fait, volontairement** : façade (murs unis pour l'instant), enseigne, lanterneaux, souche, bardage sombre du nord-est. Collisions et navigation inchangées (emprise BD TOPO).
 - Captures : `docs/captures/hexagone-lot1-*.jpg`.
+
+## 10. Lot 2 : façades (D166)
+
+Fait pour les deux faces photographiées ; les quatre autres côtés restent des murs unis.
+
+- **Lecture du LiDAR qui corrige le plan** : la façade ouest n'a pas de bandeaux débordant sur toute sa largeur. C'est un **mur droit** (≈ 32 m, ligne à 26,4 m du sommet, la même que le contour BD TOPO à 1-3 m près) avec un **auvent d'entrée central** de 10,5 m qui avance de 2,2 m (le seul endroit où le dessus atteint 28,5 m). Le §8.2 (« bandeaux de 3 à 4 m ») est donc à lire comme cet auvent.
+- **Façade ouest** : vitrage du rez-de-chaussée en travées de 2 m (meneaux clairs, piliers enduits tous les 4 m), cinq portes doubles (trois sous l'auvent), bandeau bas, bandeau-fenêtre sombre, bandeau haut ; l'auvent porte l'enseigne « HEXAGONE » (lettres brun sombre) ; vitrages allumés la nuit pour une part.
+- **Face nord-est** : le dessus à +2,2 m s'étend sur ≈ 21 m et dépasse le contour de 2-3 m : étage en bardage sombre à joints debout sur 5 poteaux blancs fins, rez-de-chaussée enduit à deux portes vitrées, fenêtre carrée et oriel à stores beiges.
+- **Mécanique** : `src/render/hexagone-facade.ts` (repère `s`/`t`, pavés, plaques, portes, texte) ; les murs du contour tombant dans une face ne sont plus tracés, un tablier au niveau de la terrasse comble l'écart ; données `front` et `ne` du modèle (manual.json).
+- **Pas fait** : bandeaux et enseigne sur les autres côtés (aucune photo), lanterneaux, souche, liseré d'égout bleu sombre, drapeaux et colonne Morris (lot 4).
+- **À traiter au lot 3** : de nombreuses « clôtures de parcelle » basses en enduit barrent le parvis sur les captures ; à comparer à la réalité (aucun muret sur les photos 1, 2 et 4).
+- Captures : `docs/captures/hexagone-lot2-*.jpg`.

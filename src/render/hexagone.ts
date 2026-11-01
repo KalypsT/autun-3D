@@ -1,13 +1,15 @@
 import * as THREE from "three";
 import type { HeightField, HexagoneModel } from "../data/types";
 import { HEX_SIDES, hexagoneFootAt, hexagoneShape } from "../core/landmarks";
-import { MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { toThree, type Vec3 } from "./geometry";
+import { buildFront, buildNorthEast, frameOf, type Frame } from "./hexagone-facade";
+import type { LandmarkSinks } from "./landmarks";
 
 /**
  * L'Hexagone d'Autun (D165), d'après les relevés LiDAR du lot 0 (docs/plans/hexagone.md §8) : pyramide régulière à 12 pans (pente 0,2, bac acier
  * bleu-gris) posée sur un tambour de 12 pans, au-dessus d'une couronne de six terrasses de niveaux différents (contour BD TOPO, six secteurs de
- * 35° + 60°·k ± 30° autour du sommet, acrotère, marches entre secteurs voisins) et d'une annexe haute à l'est. Lot 1 : volumes et toit seulement ; façade (bandeaux en débord,
- * portes vitrées, enseigne) au lot 2, d'où `glow` encore inutilisé.
+ * 35° + 60°·k ± 30° autour du sommet, acrotère, marches entre secteurs voisins) et d'une annexe haute à l'est. Lot 2 (D166) : les façades ouest et nord-est sont dessinées par
+ * hexagone-facade.ts à la place des murs de leur secteur ; les autres côtés restent des murs unis.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -23,7 +25,8 @@ const dirOf = (cap: number): XY => [Math.sin((cap * Math.PI) / 180), Math.cos((c
 const capOf = (dx: number, dy: number): number => ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
 const up = toThree(0, 0, 1);
 
-export function buildHexagone(mb: MeshBuilder, _glow: MeshBuilder | null, m: HexagoneModel, terrain: HeightField): void {
+export function buildHexagone(sinks: LandmarkSinks, m: HexagoneModel, terrain: HeightField): void {
+  const mb = sinks.solid;
   const { foot, mid } = hexagoneShape(m);
   const WALL = C(m.colors.wall), ROOF = C(m.colors.roof), DECK = C(m.colors.deck), DRUM = C(m.colors.drum), ANNEX = C(m.colors.annex);
   const ground = (x: number, y: number): number => terrain.heightAt(x, y) - 0.3;
@@ -76,6 +79,17 @@ export function buildHexagone(mb: MeshBuilder, _glow: MeshBuilder | null, m: Hex
   const ring: XY[] = [];
   for (let i = 0; i < m.ring.length; i += 2) ring.push([m.ring[i]!, m.ring[i + 1]!]);
   const capTo = (p: XY): number => capOf(p[0] - m.c[0], p[1] - m.c[1]);
+  // Faces dessinées à part (façade ouest, face nord-est) : leurs murs de contour ne sont pas tracés, un tablier au niveau de la terrasse comble l'écart.
+  const faces: { f: Frame; s: [number, number]; z: number }[] = [];
+  const addFace = (cap: number, d: number, sr: [number, number]): void => {
+    faces.push({ f: frameOf(m, cap, d), s: [sr[0] - 0.5, sr[1] + 0.5], z: 0 });
+  };
+  if (m.front) addFace(m.front.cap, m.front.d, m.front.s);
+  if (m.ne) addFace(m.ne.cap, m.ne.d, m.ne.s);
+  const inFace = (p: XY): boolean => faces.some(({ f, s: sr }) => {
+    const [ss, tt] = f.st(p);
+    return ss > sr[0] && ss < sr[1] && tt > -4.5 && tt < 3.5;
+  });
   const bounds = HEX_SIDES.map((n) => (n + 30) % 360);
   const pieces: [XY, XY][] = [];
   const crossings: Map<number, XY[]> = new Map();
@@ -114,11 +128,12 @@ export function buildHexagone(mb: MeshBuilder, _glow: MeshBuilder | null, m: Hex
     const z = deck[k]!;
     // Mur extérieur (normale sortante d'après le sens du contour) et acrotère.
     const n: XY = [(dirSign * (q0[1] - p0[1])) / len, (-dirSign * (q0[0] - p0[0])) / len];
-    wall(p0, q0, null, z + PARAPET, n, WALL);
+    const own = inFace([(p0[0] + q0[0]) / 2, (p0[1] + q0[1]) / 2]);
+    if (!own) wall(p0, q0, null, z + PARAPET, n, WALL);
     const t = 0.3;
     const A2: XY = [p0[0] - n[0] * t, p0[1] - n[1] * t], B2: XY = [q0[0] - n[0] * t, q0[1] - n[1] * t];
-    wall(A2, B2, z, z + PARAPET, [-n[0], -n[1]], shade(WALL, 0.9));
-    quad(toThree(...p0, z + PARAPET), toThree(...q0, z + PARAPET), toThree(...B2, z + PARAPET), toThree(...A2, z + PARAPET), up, shade(WALL, 1.05));
+    if (!own) wall(A2, B2, z, z + PARAPET, [-n[0], -n[1]], shade(WALL, 0.9));
+    if (!own) quad(toThree(...p0, z + PARAPET), toThree(...q0, z + PARAPET), toThree(...B2, z + PARAPET), toThree(...A2, z + PARAPET), up, shade(WALL, 1.05));
     // Dessus : du mur au pied de la pyramide, le long des deux rayons et des sommets du pied entre eux.
     let [pa, qa] = [p0, q0];
     let ca = capTo(pa), cb = capTo(qa);
@@ -135,6 +150,14 @@ export function buildHexagone(mb: MeshBuilder, _glow: MeshBuilder | null, m: Hex
     const tris = THREE.ShapeUtils.triangulateShape(poly.map(([x, y]) => new THREE.Vector2(x, y)), []);
     for (const [i, j, l] of tris) mb.tri(toThree(...poly[i!]!, z), toThree(...poly[j!]!, z), toThree(...poly[l!]!, z), up, DECK);
   }
+
+  for (const fc of faces) {
+    const k = sectorOf(capOf(fc.f.n[0], fc.f.n[1]));
+    const z = deck[k]!;
+    quad(toThree(...fc.f.pt(fc.s[0], -4.5), z), toThree(...fc.f.pt(fc.s[1], -4.5), z), toThree(...fc.f.pt(fc.s[1], 0), z), toThree(...fc.f.pt(fc.s[0], 0), z), up, DECK);
+  }
+  if (m.front) buildFront(sinks, m, terrain);
+  if (m.ne) buildNorthEast(sinks, m, terrain);
 
   // --- Marches entre secteurs voisins de niveaux différents : du pied de la pyramide au contour, le long de la limite -------------------
   bounds.forEach((bc, j) => {

@@ -844,7 +844,8 @@ def chapel(tid, bid, b, spec, k, kinds_all):
 # --- L'Hexagone (D165) ---------------------------------------------------------------------------------------------------------------
 
 HEX_SIDES = (35, 95, 155, 215, 275, 335)
-HEX_COLORS = {"wall": "#dccab6", "roof": "#6c7b90", "deck": "#8c8d8b", "drum": "#56616f", "annex": "#4a5360"}
+HEX_COLORS = {"wall": "#dccab6", "roof": "#6c7b90", "deck": "#8c8d8b", "drum": "#56616f", "annex": "#4a5360",
+              "band": "#d9c3ab", "glass": "#3a5662", "zinc": "#566377", "frame": "#ecebe6"}
 
 
 def hexagone_shape(m):
@@ -862,6 +863,9 @@ def hexagone(tid, bid, b, spec, k):
          "ring": b["ring"], "sides": spec["sides"], "colors": {**HEX_COLORS, **spec.get("colors", {})}}
     if spec.get("annex"):
         m["annex"] = spec["annex"]
+    for key in ("front", "ne"):
+        if spec.get(key):
+            m[key] = spec[key]
     foot = hexagone_shape(m)
     print(f"  {bid} : pyramide à 12 pans de {m['apex'] - m['g']:.1f} m (pente {(m['apex'] - m['skirt'][1]) / m['skirt'][0]:.3f}, jupon {(m['skirt'][1] - m['foot']) / (m['apothem'] - m['skirt'][0]):.2f}), couronne de six secteurs"
           f" à {', '.join(f'{s[0]:.1f}' for s in m['sides'])} m, terrasses à {', '.join(f'{s[1]:+.1f}' for s in m['sides'])}")

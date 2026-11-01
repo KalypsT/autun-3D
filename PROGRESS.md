@@ -1302,3 +1302,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les murs sont encore unis : la façade (bandeaux, portes vitrées, enseigne) vient au lot 2.
 - 880 tests (9 de plus). À regarder : une vue du parvis (`?view=custom&cam=335,176,8,385,186,5`) et une vue aérienne (`cam=380,110,60,385,186,0`).
 
+**L'Hexagone, lot 2 : façades (1er novembre 2026)** (D166)
+- La façade ouest a ses portes vitrées, ses bandeaux, son auvent d'entrée et l'enseigne « HEXAGONE » ; la face nord-est a son étage en bardage sombre sur poteaux (d'après tes photos).
+- Les autres côtés restent des murs unis. On s'arrête encore 1 à 3 m avant les vitres (collisions inchangées).
+- 885 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` (façade) et `cam=398,225,2.5,384,208,0` (nord-est).
+

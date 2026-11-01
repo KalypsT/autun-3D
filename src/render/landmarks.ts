@@ -962,7 +962,7 @@ export function buildLandmarks(
       case "house": if (kind.house) buildHouse(sinks.solid, sinks.glow, kind.house, terrain); break;
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.
-        if (kind.hex) buildHexagone(sinks.solid, sinks.glow, kind.hex, terrain);
+        if (kind.hex) buildHexagone(sinks, kind.hex, terrain);
         else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
         else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain);
         else civic(sinks, kind, fiche, segs, terrain);
