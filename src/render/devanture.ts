@@ -58,6 +58,10 @@ export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: 
   };
 
   const BLUE = C(color), DEEP = shade(BLUE, 0.78), STONE = C(d.stone), KEY = shade(STONE, 0.62);
+  /** Cadres des baies et de la porte : la couleur de la devanture, ou celle de `frame` (cadres noirs d'une façade de pierre, D158). */
+  const FRAME = C(d.frame ?? color);
+  /** Vitres plus claires (reflets) pour les façades modernes, D158. */
+  const [GLO, GHI] = d.glass ? [C(d.glass[0]), C(d.glass[1])] : [GLASS_LO, GLASS_HI];
   const width = d.bays.reduce((a, q) => a + q[1], 0);
   const S0 = d.s0, S1 = d.s0 + width, [f0, f1] = d.frieze;
 
@@ -69,7 +73,7 @@ export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: 
 
   let s = S0;
   const lit = (s0: number, s1: number, z0: number, z1: number, off: number): void => {
-    panel(mb, s0, s1, z0, z1, off, GLASS_LO, GLASS_HI);
+    panel(mb, s0, s1, z0, z1, off, GLO, GHI);
     if (glow) panel(glow, s0, s1, z0, z1, off + 0.006, GLOW_LO, GLOW_HI);
   };
   let windows = 0;
@@ -102,8 +106,8 @@ export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: 
     if (kind === "shopdoor") {
       // Porte vitrée du magasin : cadre bleu, bas plein, vitre, imposte ; marche de pierre.
       slab(a, b, -0.3, 0.12, 0.05, 0.14, STONE);
-      panel(mb, a, b, 0.12, d.top, 0.07, BLUE);
-      panel(mb, a + 0.08, b - 0.08, 0.2, 0.62, 0.085, DEEP);
+      panel(mb, a, b, 0.12, d.top, 0.07, FRAME);
+      panel(mb, a + 0.08, b - 0.08, 0.2, 0.62, 0.085, shade(FRAME, 0.78));
       lit(a + 0.1, b - 0.1, 0.7, d.top - 0.5, 0.085);
       lit(a + 0.1, b - 0.1, d.top - 0.42, d.top - 0.08, 0.085);
       panel(mb, a + 0.1, a + 0.14, 1.0, 1.2, 0.1, BRASS);
@@ -123,10 +127,12 @@ export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: 
       panel(mb, u + 0.21, u + 0.24, zk0 + 0.1, zk1 - 0.08, 0.135, KEY);
       panel(mb, u + 0.13, u + 0.24, zk0 + 0.1, zk0 + 0.13, 0.135, KEY);
     }
-    panel(mb, a, b, d.sill, d.top, 0.07, BLUE);
+    panel(mb, a, b, d.sill, d.top, 0.07, FRAME);
     lit(a + 0.07, b - 0.07, d.sill + 0.07, d.top - 0.07, 0.08);
     // Vêtements en aplats derrière la vitre : sur un rayon (première vitrine) ou des mannequins devant un fond (seconde).
-    const set = CLOTHES[windows % CLOTHES.length]!, back = BACKDROP[windows % BACKDROP.length]!;
+    // `display` : « none » (rien derrière la vitre : épicerie, librairie), « plain » (mannequins devant un fond neutre) ; absent : comme la photo de D141.
+    const set = d.display === "none" ? [] : CLOTHES[d.display === "plain" ? 1 : windows % CLOTHES.length]!;
+    const back = d.display === "plain" ? "#d9d4c8" : d.display === "none" ? "" : BACKDROP[windows % BACKDROP.length]!;
     const top = Math.min(d.sill + 1.3, d.top - 0.62), inner = w - 0.3;
     // Devant la lumière de nuit de la vitre (0,086), pour rester visibles le soir.
     if (back) panel(mb, a + inner * 0.55, b - 0.1, d.sill + 0.25, top + 0.25, 0.09, C(back));
@@ -139,13 +145,14 @@ export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: 
         panel(mb, c - 0.07, c + 0.07, top, top + 0.12, 0.092, C("#d9c7b0"));
       }
     }
-    if (!back) panel(mb, a + 0.12, b - 0.12, top + 0.04, top + 0.08, 0.094, STAND);
+    if (!back && d.display !== "none") panel(mb, a + 0.12, b - 0.12, top + 0.04, top + 0.08, 0.094, STAND);
     if (d.label?.[0] === bi) words(d.label[1], m, d.top - 0.42, 0.28, 0.095, "#ffffff");
     windows++;
   });
 
   // Enseigne peinte : panneau rouge en avant de la corniche, nom en italique blanc.
   const { s: [ss0, ss1], z: [sz0, sz1] } = d.sign;
-  slab(ss0, ss1, sz0, sz1, 0.05, 0.32, C(d.sign.bg));
-  words(d.sign.text, (ss0 + ss1) / 2, (sz0 + sz1) / 2, Math.min(sz1 - sz0 - 0.12, (ss1 - ss0 - 0.1) / 6.4) * 1.0, 0.325, d.sign.fg, true);
+  // Sans fond (`bg` vide) : lettres posées sur le mur (Carrefour City, D158) ; `script` : écriture italique (D141), sinon lettres droites.
+  if (d.sign.bg) slab(ss0, ss1, sz0, sz1, 0.05, 0.32, C(d.sign.bg));
+  words(d.sign.text, (ss0 + ss1) / 2, (sz0 + sz1) / 2, Math.min(sz1 - sz0 - (d.sign.bg ? 0.12 : 0.02), (ss1 - ss0 - 0.1) / 6.4) * 1.0, d.sign.bg ? 0.325 : 0.17, d.sign.fg, d.sign.script ?? true);
 }

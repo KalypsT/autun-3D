@@ -1218,3 +1218,54 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Les cours vues du dessus](docs/captures/d152-haut-apres.jpg)
 ![La cour sud](docs/captures/d152-sud-apres.jpg)
+
+**Centre-ville, lot 1 : la chaussée de la place du Champ de Mars (31 octobre 2026)** (D153)
+- La route de la place du Champ de Mars (quatre tronçons, 5,5 m) n'avait pas de chaussée : D94 la prenait pour une allée de parking, d'où une nappe grise parsemée de traits de places. Elle a maintenant sa chaussée, son axe discontinu et ses passages piétons ; 34 traits de stationnement parasites sont retirés. Étape `build_streetscape.py` (nouvelle) ; une seule tuile change (26_35).
+- `build_nav.py --only s6_8` existe (une seule super-tuile, graphe routier gardé, 0 portail sans jumeau) mais son résultat n'est **pas** gardé : avec l'OpenStreetMap d'aujourd'hui, il fait dépasser leurs seuils à deux tests de poursuite (`police-soak`), même sans mes sols ; la navigation reste celle de `main` (les passants peuvent encore flâner sur la route de la place).
+- +1 524 triangles, aucun appel de dessin de plus ; 6 tests de plus ; aucune file de voiture ne bouge ; 811 tests. L'avenue Charles-de-Gaulle mesure 7,2 m entre caniveaux (6,5 m dans le jeu) : inchangée.
+- Limites : la route est plus large sur l'orthophotographie (≈ 10 – 12 m dans la courbe) ; ni zébras, ni plateau clair, ni bordures ; épis de la place est, rue du Champ de Mars et trottoirs en enrobé de l'avenue reportés (D154) ; largeur de l'avenue dans la navigation non décidée.
+- À essayer : `?cam=-9,7,1.7,30,-35,1.5&h=14` (comme ta photo 1), `?cam=63,-53,1.7,10,40,6&h=14` (photo 2), `?cam=25,-15,95,25,-14,0&h=14` (de dessus).
+
+![Comme ta photo 1, avant](docs/captures/d153-photo1-avant.jpg)
+![Après](docs/captures/d153-photo1-apres.jpg)
+![De dessus, avant](docs/captures/d153-place-haut-avant.jpg)
+![Après](docs/captures/d153-place-haut-apres.jpg)
+
+**Centre-ville, lot 2 : les rangées du grand parking du Champ de Mars (31 octobre 2026)** (D154)
+- Le grand parking a ses vraies rangées : cinq rangées lues à l'orthophotographie redressée (O1, O2, O3 à l'ouest de l'allée piétonne, E1, E2 à l'est ; 94 places tracées, pas de 2,5 m ajusté sur les pics de lignes blanches), l'allée piétonne centrale en dallage clair, et les anciens traits (et les carrés blancs de « passages piétons » tombés sur les allées) retirés. Les voitures garées se posent sur ces places sans changer `vehicles.ts`.
+- L'asphalte des places ne recouvre plus le dallage ni les trottoirs (taches beiges qui changeaient avec la triangulation).
+- Navigation de `main` gardée comme demandé (aucun `build_nav.py`). 815 tests (4 de plus).
+- Limites : pas fait : parking est (épis dont les lignes sont cachées par les voitures), parkings devant la mairie, massifs, zébras, flèches, colonne de places de la bordure ouest, rangée sud ; pas de bordure ; 83 places retrouvées sur 94 (la limite des tuiles coupe des traits).
+- À essayer : `?cam=-55,-55,115,-55,-54,0&h=14` (de dessus), `?cam=-92,-72,1.7,-45,-45,1.5&h=14` (depuis l'angle ouest), `?cam=-75,-62,2.4,-35,-40,1&h=14`.
+
+![Le parking de dessus, avant](docs/captures/d154-parking-haut-avant.jpg)
+![Après](docs/captures/d154-parking-haut-apres.jpg)
+![De biais, avant](docs/captures/d154-parking-biais-avant.jpg)
+![Après](docs/captures/d154-parking-biais-apres.jpg)
+
+**Centre-ville, lot 3 : les tilleuls en rideau et le kiosque à musique (1er novembre 2026)** (D155)
+- Les six blocs de tilleuls taillés de la promenade (rue Demetz) sont dessinés en rideaux : couronne à dessus chanfreiné de 6,5 à 6,8 m (LiDAR) sur deux files de troncs nus, à la place des 29 arbres ronds génériques ; leurs troncs (une soixantaine) restent des obstacles.
+- Le kiosque à musique n'est plus une maison de trois niveaux : octogone de fonte sur socle de pierre à marches, huit colonnes, garde-corps, lambrequins, toit à huit pans et épi, d'après la photo 8 ; maison masquée, silhouette lointaine octogonale.
+- Nouvelle étape `build_square.py` (rien d'autre que `kinds` et `lod` ne change) ; +984 triangles, aucun appel de dessin de plus ; 7 tests de plus ; navigation de `main` gardée (aucune file de passants à moins de 55 cm d'un tronc).
+- Limites : monument aux morts non refait (pas de photo de près) ; rideau de la rue de Lattre non traité ; hauteur des troncs (3 m), pas (4 m) et détail du kiosque lus sur photo à un mètre près ; on ne monte pas sur le kiosque.
+- À essayer : `?cam=-6,-88,1.7,-19,-72,4&h=14` (comme ta photo 8), `?cam=-36,-62,2.5,-19,-72,4&h=14`, `?cam=-10,-50,95,-10,-70,0&h=14` (de dessus), puis `&h=23`.
+
+![Comme ta photo 8, avant](docs/captures/d155-kiosque-photo8-avant.jpg)
+![Après](docs/captures/d155-kiosque-photo8-apres.jpg)
+![Les rideaux de dessus, avant](docs/captures/d155-tilleuls-haut-avant.jpg)
+![Après](docs/captures/d155-tilleuls-haut-apres.jpg)
+
+**Centre-ville, lots 4 à 6 : rues piétonnes, cafés, boutiques (1er novembre 2026)** (D156, D157, D158)
+- Les rues piétonnes ont leur sol d'une façade à l'autre, dans leur matière : pavés de granit gris clair (rue aux Cordiers, avec son caniveau central), pavés de béton gris (rue Saint-Saulge), béton clair (rues Demetz, de Lattre). Plus aucune clôture de parcelle à moins de 300 m de la mairie (304 tronçons, 2 427 m retirés, dont les 177 m de la rue aux Cordiers ; la grille du lycée est gardée). Potelets marron à tête blanche.
+- L'Augusto, Havas Voyages et Le Central ont leur vitrine sur la place, avec leur terrasse (estrade et tonneaux plantés, panneaux gris) ; Le Commerce reçoit ses stores et ses parasols.
+- Trois boutiques de la rue aux Cordiers d'après tes photos : Carrefour City (pierre claire, cadres noirs, lettres vertes), La Promesse de l'Aube (devanture rouge), Territoire d'Homme (cadre blanc) ; nouvelles options du gabarit de devanture (cadres, vitres claires, vitrines vides, lettres sans panneau).
+- Triangles : D156 en retire 1 600 à 3 500 (les clôtures), D157 et D158 ensemble en ajoutent 1 820 ; aucun appel de dessin de plus ; 12 tests de plus ; navigation de `main` gardée (les points « commerce » ne sont pas déplacés).
+- Limites : seuils de maisons, totems et bornes, Optic 2000 et les autres devantures, terrasse d'angle du Commerce non faits ; sol des parties nord supposé.
+- À essayer : `?cam=-6,-207,1.7,25,-158,3&h=14` (comme ta photo 6), `?cam=50,-100,1.7,60,-108,2.5&h=14` (Carrefour City), `?cam=-62,-33,1.7,-100,-62,3&h=14` (Le Central), `?cam=-44,-26,1.7,-48,-8,3&h=14` (L'Augusto), puis `&h=23`.
+
+![Rue aux Cordiers, avant](docs/captures/d156-cordiers-photo6-avant.jpg)
+![Après](docs/captures/d156-cordiers-photo6-apres.jpg)
+![Carrefour City, avant](docs/captures/d158-boutiques-carrefour-avant.jpg)
+![Après](docs/captures/d158-boutiques-carrefour-apres.jpg)
+![Le Central, avant](docs/captures/d157-cafes-photo14-avant.jpg)
+![Après](docs/captures/d157-cafes-photo14-apres.jpg)

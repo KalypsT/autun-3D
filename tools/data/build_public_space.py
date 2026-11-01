@@ -49,6 +49,7 @@ FENCE_ID = 900_000_000  # identifiants des clôtures de parcelle : −(FENCE_ID 
 LAMP_ID = 800_000_000  # lampadaires replacés : −(LAMP_ID + n)
 LAMP_STEP = 30.0
 CENTER = (0.0, 0.0)  # la mairie : vieille ville autour
+NO_FENCE_R = 300.0  # D156 : aucune clôture de parcelle dans ce rayon (m) autour de la mairie
 
 
 # --- Raster de l'orthophoto ------------------------------------------------------------------------------------------------------
@@ -176,7 +177,8 @@ def main():
 
     def is_lot(s):
         t = tags_of.get(s["id"], {})
-        return t.get("service") == "parking_aisle" or t.get("name") == "Place du Champ de Mars"
+        # D153 : seules les allées de parking sont des allées. La « Place du Champ de Mars » (route tertiary) en était une jusqu'ici : elle n'avait plus de chaussée.
+        return t.get("service") == "parking_aisle"
 
     carr = [s for s in streets if s["kind"] in drivable_kinds and s["motor"] and not s["tunnel"]]
     lots = [s for s in carr if is_lot(s)]
@@ -539,6 +541,9 @@ def parcel_fences(parcels, D, B, R, PK, osm, zone, wet):
             if ln.length < 1.5:
                 continue
             mid = ln.interpolate(0.5, normalized=True)
+            # D156 : pas de clôture de parcelle en centre-ville (décision de l'utilisateur ; même disque que `fences` de `streetscape` dans manual.json).
+            if math.hypot(mid.x - CENTER[0], mid.y - CENTER[1]) < NO_FENCE_R:
+                continue
             if not street_p.contains(mid) or wet_p.contains(mid) or open_p.contains(mid):
                 continue
             kind = ("wall" if key < 0.8 else "fence") if old else ("wall" if key < 0.35 else "fence" if key < 0.75 else "hedge")

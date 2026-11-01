@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -126,6 +126,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
   // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
   for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
+  // Rideaux de tilleuls de la place du Champ de Mars (D155) : leurs troncs.
+  for (const s of kinds.sites) if (s.t === "curtain") for (const [x, y] of curtainTrunks(s)) out.push([x, y, 0.25]);
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
   for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
@@ -285,9 +287,31 @@ export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record
   const temples = (kinds?.sites ?? []).filter((s): s is JanusSite => s.t === "janus");
   // Îlot de rond-point (D142) : le relevé avait posé trois arbres de 13 m dans la couronne du cèdre ; l'arbre du site les remplace.
   const islands = (kinds?.sites ?? []).filter((s): s is RoundaboutSite => s.t === "roundabout");
-  if (!basins.length && !theatres.length && !temples.length && !islands.length) return [...trees];
+  // Rideaux de tilleuls (D155) : le modèle dessine leurs couronnes et leurs troncs (obstacles : `landmarkCircles`).
+  const curtains = (kinds?.sites ?? []).filter((s): s is CurtainSite => s.t === "curtain");
+  if (!basins.length && !theatres.length && !temples.length && !islands.length && !curtains.length) return [...trees];
   return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
-    && temples.every((t) => !inJanus(t, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)));
+    && temples.every((t) => !inJanus(t, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3)));
+}
+
+/** Troncs d'un rideau de tilleuls (D155) : files de troncs tous les `pitch` m le long du grand côté. */
+export function curtainTrunks(s: CurtainSite): [number, number][] {
+  const f = frameOf(s.c[0], s.c[1], s.a, s.l, s.w);
+  const n = Math.max(1, Math.round(s.l / s.pitch));
+  const out: [number, number][] = [];
+  for (const r of s.rows) for (let i = 0; i < n; i++) out.push(at(f, -s.l / 2 + (s.l * (i + 0.5)) / n, r * s.w));
+  return out;
+}
+
+/** Dans le rectangle d'un rideau de tilleuls (élargi de `margin`) ? */
+export function inCurtain(s: CurtainSite, x: number, y: number, margin = 0): boolean {
+  const dx = x - s.c[0], dy = y - s.c[1];
+  return Math.abs(dx * Math.cos(s.a) + dy * Math.sin(s.a)) < s.l / 2 + margin && Math.abs(-dx * Math.sin(s.a) + dy * Math.cos(s.a)) < s.w / 2 + margin;
+}
+
+/** Sommets de l'octogone du kiosque, à `r` m du centre (D155). */
+export function bandstandRing(s: BandstandSite, r = s.r): [number, number][] {
+  return Array.from({ length: s.nv }, (_, i) => [s.c[0] + r * Math.cos(s.ph + (2 * Math.PI * i) / s.nv), s.c[1] + r * Math.sin(s.ph + (2 * Math.PI * i) / s.nv)]);
 }
 
 /** Rayon du tronc de l'arbre d'un îlot de rond-point (obstacle). */
@@ -498,6 +522,8 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
   const out: number[][] = [];
   for (const s of kinds?.sites ?? []) {
     if (s.t === "janus") out.push(...janusRings(s));
+    // Kiosque à musique (D155) : le contour BD TOPO (le toit déborde du socle de 50 cm), comme avant ; on n'y monte pas.
+    if (s.t === "bandstand") out.push(bandstandRing(s).flat());
     if (s.t !== "gate") continue;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;

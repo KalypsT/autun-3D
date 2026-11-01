@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Building, FacadeFiche, HeightField, WallRun } from "../data/types";
+import type { Building, FacadeFiche, HeightField, Terrace, WallRun } from "../data/types";
 import { finish, hash01, MeshBuilder, toThree, type Steps, type Vec3 } from "./geometry";
 import { shopfrontExtras } from "./shopfront";
 import {
@@ -216,7 +216,7 @@ export function* planFacadesSteps(
       const wantsShop = f.ground.kind === "shop";
       // Le mur principal reçoit la porte ou les vitrines ; un autre mur sur rue, seulement les commerces qu'OpenStreetMap y place.
       if (isStreet && f.ground.kind !== "blank" && (mainWall || (wantsShop && shops.length > 0))) {
-        const centers: { name: string | null; s: number; kind: string | null }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind }));
+        const centers: { name: string | null; s: number; kind: string | null; terrace?: Terrace | undefined }[] = shops.map((sh) => ({ name: sh.name, s: sh.s, kind: sh.kind, terrace: sh.terrace }));
         if (wantsShop && centers.length === 0) centers.push({ name: null, s: run.length / 2, kind: null });
         const sf = f.ground.shopfront;
         const dev = f.ground.devanture;
@@ -275,7 +275,7 @@ export function* planFacadesSteps(
             shopfrontExtras(plan.misc, {
               x: front.x, y: front.y, tx: front.tx, ty: front.ty, nx: front.nx, ny: front.ny, width: used,
               zTop: topZ, zSign: run.datum + gh - 0.72, key: `${b.id}|${c.s.toFixed(1)}`,
-            }, c.kind, new THREE.Color(sf.color), terrain, free);
+            }, c.kind, new THREE.Color(sf.color), terrain, free, c.terrace);
             plan.stats.shops++;
             for (let i = 0; i < nBays; i++) if (center(i) > s0 - 0.5 && center(i) < s0 + used + 0.5) blocked.add(i);
           }

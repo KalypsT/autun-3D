@@ -40,7 +40,7 @@ function disc(mb: MeshBuilder, cx: number, cy: number, z: number, r: number, col
 }
 
 const COLORS = {
-  wood: new THREE.Color("#7a5a3a"), iron: new THREE.Color("#2f3433"), green: new THREE.Color("#3d5a43"), steel: new THREE.Color("#8d9296"),
+  wood: new THREE.Color("#7a5a3a"), iron: new THREE.Color("#2f3433"), green: new THREE.Color("#3d5a43"), steel: new THREE.Color("#8d9296"), bollard: new THREE.Color("#5a3a2c"), bollardCap: new THREE.Color("#ece8de"),
   yellow: new THREE.Color("#e8b923"), stone: new THREE.Color("#b6ad9c"), sanisette: new THREE.Color("#9aa09c"), water: new THREE.Color("#6f8f9a"),
 };
 
@@ -58,7 +58,8 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         for (const sx of [-0.65, 0.65]) box(mb, f.x + Math.cos(rot) * sx, f.y + Math.sin(rot) * sx, 0.03, 0.2, rot, z, z + 0.4, COLORS.iron);
         break;
       case "waste_basket": cylinder(mb, f.x, f.y, 0.2, z, z + 0.85, COLORS.green); break;
-      case "bollard": cylinder(mb, f.x, f.y, 0.09, z, z + 0.85, COLORS.steel); break;
+      // Potelet du centre-ville (photos 2, 4, 5 : fût marron, tête blanche).
+      case "bollard": cylinder(mb, f.x, f.y, 0.08, z, z + 0.78, COLORS.bollard); cylinder(mb, f.x, f.y, 0.1, z + 0.78, z + 0.88, COLORS.bollardCap); break;
       case "post_box": box(mb, f.x, f.y, 0.22, 0.17, rot, z, z + 1.2, COLORS.yellow); break;
       case "toilets": box(mb, f.x, f.y, 0.9, 0.9, rot, z, z + 2.5, COLORS.sanisette); break;
       case "drinking_water": cylinder(mb, f.x, f.y, 0.1, z, z + 1.0, COLORS.steel); break;
