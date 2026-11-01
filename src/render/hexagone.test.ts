@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { HexagoneModel, HeightField, LodBuilding, TileKinds } from "../data/types";
-import { HEX_SIDES, hexagoneFootAt, hexagoneShape } from "../core/landmarks";
+import type { HexagoneModel, HeightField, LodBuilding, TileData, TileKinds } from "../data/types";
+import { HEX_PROP_RADIUS, HEX_SIDES, hexagoneFootAt, hexagoneShape, landmarkCircles } from "../core/landmarks";
 import { buildHexagone } from "./hexagone";
 import { UvMeshBuilder } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
@@ -12,6 +12,9 @@ import { MeshBuilder } from "./geometry";
 const BID = "BATIMENT0000000348844694";
 const kinds = JSON.parse(readFileSync("public/data/kinds/27_35.json", "utf8")) as TileKinds;
 const m = kinds.buildings[BID]!.hex as HexagoneModel;
+/** Le bâtiment seul, sans le mobilier du parvis (qui s'étend jusqu'à 45 m du sommet). */
+const bare: HexagoneModel = { ...m };
+delete bare.props;
 const flat: HeightField = { heightAt: () => m.g, xMin: -1e9, xMax: 1e9, yMin: -1e9, yMax: 1e9 };
 
 describe("L'Hexagone (D165) : modèle de données", () => {
@@ -144,12 +147,80 @@ describe("L'Hexagone (D166) : façades", () => {
   });
 });
 
+describe("L'Hexagone (D168) : mobilier du parvis", () => {
+  const props = m.props!;
+  const of = (k: string): typeof props => props.filter((q) => q.k === k);
+
+  it("la sphère (au pied de la brique), une colonne Morris, un lampadaire, trois drapeaux (France, Europe, un autre), au moins deux bacs, trois arceaux", () => {
+    expect(of("sphere")).toHaveLength(1);
+    expect(of("column")).toHaveLength(1);
+    expect(of("lamp")).toHaveLength(1);
+    expect(of("flag").map((q) => q.v).sort()).toEqual([0, 1, 2]);
+    expect(of("planter").length).toBeGreaterThanOrEqual(2);
+    expect(of("rack").length).toBeGreaterThanOrEqual(3);
+    // Sphère : position lue sur l'orthophotographie (rond de 2 m et son ombre).
+    expect(Math.hypot(of("sphere")[0]!.x - 340.4, of("sphere")[0]!.y - 175.2)).toBeLessThan(1);
+  });
+
+  it("tout est sur le parvis ou près de lui, hors du bâtiment, à plus de 3 m de la façade ; deux objets ne se chevauchent pas", () => {
+    const tile = JSON.parse(readFileSync("public/data/tiles/27_35.json", "utf8")) as TileData;
+    const inRing = (r: readonly number[], x: number, y: number): boolean => {
+      let inside = false;
+      for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+        if (r[i + 1]! > y !== r[j + 1]! > y && x < ((r[j]! - r[i]!) * (y - r[i + 1]!)) / (r[j + 1]! - r[i + 1]!) + r[i]!) inside = !inside;
+      }
+      return inside;
+    };
+    const plaza = tile.ground["plaza_filet"] ?? [];
+    for (const q of props) {
+      expect(inRing(m.ring, q.x, q.y), `${q.k} dans le bâtiment`).toBe(false);
+      expect(Math.hypot(q.x - 340, q.y - 176)).toBeLessThan(20);
+      const n = [Math.sin((m.front!.cap * Math.PI) / 180), Math.cos((m.front!.cap * Math.PI) / 180)];
+      const t = (q.x - m.c[0]) * n[0]! + (q.y - m.c[1]) * n[1]! - m.front!.d;
+      expect(t, `${q.k} trop près de la façade`).toBeGreaterThan(3);
+    }
+    expect(plaza.length).toBeGreaterThan(0);
+    for (let i = 0; i < props.length; i++) {
+      for (let j = i + 1; j < props.length; j++) {
+        const d = Math.hypot(props[i]!.x - props[j]!.x, props[i]!.y - props[j]!.y);
+        const r = (HEX_PROP_RADIUS[props[i]!.k] ?? 0) + (HEX_PROP_RADIUS[props[j]!.k] ?? 0);
+        expect(d, `${props[i]!.k} / ${props[j]!.k}`).toBeGreaterThan(r * 0.9);
+      }
+    }
+  });
+
+  it("la sphère, la colonne, les bacs, le lampadaire et les mâts sont des obstacles ; les arceaux se franchissent", () => {
+    const tile = JSON.parse(readFileSync("public/data/tiles/27_35.json", "utf8")) as TileData;
+    const circles = landmarkCircles(kinds, tile.buildings);
+    const at = (x: number, y: number): number | undefined => circles.find(([cx, cy]) => Math.hypot(cx - x, cy - y) < 0.01)?.[2];
+    for (const q of props) {
+      const want = HEX_PROP_RADIUS[q.k]!;
+      if (want > 0) expect(at(q.x, q.y), q.k).toBe(want);
+      else expect(at(q.x, q.y)).toBeUndefined();
+    }
+    expect(HEX_PROP_RADIUS["sphere"]).toBeGreaterThan(1.2);
+  });
+
+  it("maillage : hauteurs vraisemblables (drapeaux à 7,5 m, sphère à 3,2 m), couleurs finies, moins de 15 000 triangles en tout", () => {
+    const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas: { get: () => ({ u0: 0, v0: 0, u1: 1, v1: 1 }) } as unknown as SignAtlas };
+    buildHexagone(sinks, bare, flat);
+    const before = sinks.solid.triangleCount;
+    const only: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas: sinks.atlas };
+    buildHexagone(only, m, flat);
+    const added = only.solid.triangleCount - before;
+    expect(added).toBeGreaterThan(1000);
+    expect(only.solid.triangleCount).toBeLessThan(15000);
+    expect(only.solid.colors.every((v) => Number.isFinite(v) && v >= 0 && v <= 1.5)).toBe(true);
+    expect(only.glow.positions.length).toBeGreaterThan(sinks.glow.positions.length);
+  });
+});
+
 describe("L'Hexagone (D165) : maillage et silhouette", () => {
   const texts: string[] = [];
   const atlas = { get: (text: string) => { texts.push(text); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
   const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
   const mb = sinks.solid;
-  buildHexagone(sinks, m, flat);
+  buildHexagone(sinks, bare, flat);
 
   it("quelques milliers de triangles au plus, sans valeur absurde", () => {
     expect(mb.triangleCount).toBeGreaterThan(300);

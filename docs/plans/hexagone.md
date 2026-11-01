@@ -97,7 +97,7 @@ Chaque lot : un commit, une décision `D164…` dans `docs/DECISIONS.md`, captur
 | **1. Volumes et toit (fait, D165)** | type `hexagone` : `HexagoneSpec` dans `types.ts`, mesure dans `build_monuments.py` (pyramide, couronne), rendu `buildHexagone` dans `monuments.ts`, rattachement dans `landmarks.ts` ; l'ancien bâtiment …694 passe en `hidden` ou est remplacé | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | arête entre 8,5 et 10 m ; douze pans ; pas de plan plus penché que sa mesure ; l'ancien volume n'est plus rendu |
 | **2. Façade (fait, D166)** | bandeaux en débord, piliers, portes vitrées, enseigne, émissif de nuit | `monuments.ts`, texture d'enseigne (`sign-atlas.ts`), `manual.json` | bandeau bas dans l'emprise et en débord ; au moins quatre travées de portes sur la façade ; lettres dans le bandeau |
 | **3. Parvis (fait, D167)** | gabarit de dallage et zone de nettoyage dans `streetscape` ; sol de la place retiré de l'ancien aplat | `manual.json`, `build_streetscape.py`, tuile 27_35 | dallage trois couleurs, aucune dalle dans l'emprise du bâtiment ni sur la chaussée |
-| **4. Mobilier** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
+| **4. Mobilier (fait, D168)** | sphère, bacs et topiaires, mâts et drapeaux, lampadaire, colonne Morris, arceaux ; collisions, objets cassables selon D160 | `src/render/props.ts`, `src/core/breakables.ts`, `manual.json` | chaque objet à plus de 1,5 m de la façade ; le joueur ne reste pas coincé entre deux bacs |
 | **5. Parking** | rangées lues à l'orthophotographie, anciennes marques retirées, îlots, passage piéton | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; aucune dans une allée |
 | **6. (option) Toits voisins** | si la coupe LiDAR le confirme : `roofKind: flat` pour les barres …377, …387 | `manual.json`, `build_roofs.py` | pente des toits plats nulle ; hauteur inchangée |
 
@@ -211,3 +211,13 @@ Fait : dallage géométrique en trois classes de sol et plus de murets sur le pa
 - **Pas fait** : la moitié ouest du parvis (dallage clair à filets en zigzag, x de 305 à 322), les socles et objets (sphère, bacs et topiaires, drapeaux, lampadaire, colonne Morris : lot 4), la haie et les arbres du parvis.
 - Un défaut corrigé en route : le relief bosse autour du socle de la sphère et perçait la dalle (taches vertes) : les trois classes sont relevées de 3 à 4 cm au-dessus des autres places.
 - Captures : `docs/captures/hexagone-lot3-*.jpg`.
+
+## 12. Lot 4 : mobilier du parvis (D168)
+
+Fait : onze objets sur le parvis, avec collisions.
+
+- **Objets** (`src/render/hexagone-props.ts`, champ `props` du modèle) : sphère rayée blanc cassé et sombre de 2,5 m sur son pied de pierre ; colonne Morris à quatre affiches et toit vert sombre ; lampadaire à tête triangulaire (éclairée la nuit) ; trois mâts de 7,5 m (drapeaux France, Europe, un troisième rouge et or) ; deux bacs hexagonaux blancs à gravier sombre portant quatre topiaires en spirale chacun ; trois arceaux à vélos. Tout est de révolution ou de plaques (≈ 1 300 triangles en tout).
+- **Positions** : la sphère et le lampadaire sont lus sur l'orthophotographie (rond de 2 m avec son ombre ; ombre fine d'un mât à (335 ; 176)) ; le second bac est le rond clair de (350 ; 165,6) ; la colonne, les drapeaux et les arceaux sont **estimés** sur les photos 2 et 4 (le bord nord du parvis), à ± 3 m.
+- **Obstacles** : sphère (rayon 1,4 m), colonne (0,9), bacs (1,5), lampadaire (0,15), mâts (0,1) ; les arceaux se franchissent ; passage par `landmarkCircles` comme les poteaux d'auvent.
+- **Pas fait** : objets cassables (D160) pour ces éléments, corbeille verte et bancs de la photo 4, haie du parvis, arbres taillés de la photo 2, affiches lisibles sur la colonne.
+- Captures : `docs/captures/hexagone-lot4-*.jpg`.

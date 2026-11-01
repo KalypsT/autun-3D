@@ -538,6 +538,8 @@ export interface HexagoneModel {
   front?: HexagoneFront;
   /** Face nord-est (lot 2) : étage en bardage sombre en porte-à-faux sur poteaux. */
   ne?: HexagoneNorthEast;
+  /** Mobilier du parvis (lot 4) : sphère, colonne Morris, mâts à drapeaux, lampadaire, bacs de topiaires, arceaux à vélos. */
+  props?: HexagoneProp[];
   colors: { wall: string; roof: string; deck: string; drum: string; annex: string; band: string; glass: string; zinc: string; frame: string };
 }
 
@@ -558,6 +560,15 @@ export interface HexagoneFront {
   doors: number[];
   /** Enseigne : texte et s du centre. */
   sign: [string, number];
+}
+
+/** Objet du parvis : position locale, cap `a` (degrés : sens des drapeaux, orientation des bacs et des arceaux), `v` : variante (drapeaux : 0 France, 1 Europe, 2 autre). */
+export interface HexagoneProp {
+  k: "sphere" | "column" | "lamp" | "flag" | "planter" | "rack";
+  x: number;
+  y: number;
+  a?: number;
+  v?: number;
 }
 
 export interface HexagoneNorthEast {

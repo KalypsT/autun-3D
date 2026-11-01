@@ -12,7 +12,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
-          Hexagone (modèle `hexagone`, D165) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses) et silhouette lointaine.
+          Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -863,7 +863,7 @@ def hexagone(tid, bid, b, spec, k):
          "ring": b["ring"], "sides": spec["sides"], "colors": {**HEX_COLORS, **spec.get("colors", {})}}
     if spec.get("annex"):
         m["annex"] = spec["annex"]
-    for key in ("front", "ne"):
+    for key in ("front", "ne", "props"):
         if spec.get(key):
             m[key] = spec[key]
     foot = hexagone_shape(m)

@@ -1312,3 +1312,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pas encore : la sphère, les bacs et topiaires, les drapeaux, la colonne Morris, le lampadaire (lot 4), ni la moitié ouest du parvis (dallage clair à zigzags).
 - 890 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` et `cam=345,200,14,335,170,-2`.
 
+**L'Hexagone, lot 4 : le mobilier du parvis (1er novembre 2026)** (D168)
+- Le parvis a sa sphère rayée, sa colonne Morris, ses trois mâts à drapeaux (France, Europe, un autre), son lampadaire à tête triangulaire, deux bacs de topiaires en spirale et trois arceaux à vélos ; on ne traverse ni la sphère, ni la colonne, ni les bacs.
+- Positions de la sphère et du lampadaire lues sur l'orthophotographie ; le reste estimé (± 3 m). Pas encore cassable, ni corbeille, ni bancs.
+- 894 tests (4 de plus). À regarder : `?view=custom&cam=334,166,3.2,345,182,1.5` et `cam=330,185,6,342,176,1`.
+

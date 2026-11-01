@@ -3178,3 +3178,24 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Vue aérienne](captures/hexagone-lot3-aerien.jpg)
 ![Relevé : formes sur l'orthophotographie (classification automatique)](captures/hexagone-lot3-dallage-releve.jpg)
 
+## 2026-11-01 — D168. L'Hexagone, lot 4 : le mobilier du parvis (plan `docs/plans/hexagone.md`, §12)
+
+**Demande de l'utilisateur** : « Continue avec le lot 4 ».
+
+**Choix** : le mobilier est dans le modèle de l'Hexagone (`hex.props`), non dans les `furniture` des tuiles ni dans un site de plus : un seul endroit à relire (`manual.json`), même chaîne que la façade, collisions ajoutées à `landmarkCircles` (comme le poteau de la maison, D140). Les `furniture` d'OpenStreetMap (un lampadaire et une boîte aux lettres près du parvis) ne changent pas.
+
+**Objets** (`HexagoneProp`, `buildHexagoneProps`) : sphère (pied tronconique de pierre, sphère de 1,25 m à bandes horizontales sur dix bandes), colonne Morris (socle gris, affiches de couleurs alternées par pan, coiffe verte), lampadaire (mât de 5,2 m, plaque triangulaire inclinée, dessous allumé la nuit), mâts de 7,5 m à drapeaux double face (France en trois bandes, Europe à douze étoiles, un troisième bicolore), bacs hexagonaux (30 à 42 cm, gravier sombre) à quatre topiaires en spirale (étages de dômes décalés), arceaux (deux poteaux et une barre).
+
+**Positions** (repère local) : sphère (340,4 ; 175,2), lampadaire (335,4 ; 176,4), bacs (343,8 ; 183) et (350 ; 165,6), colonne (341,5 ; 186,4), drapeaux (347 ; 186,2), (348,2 ; 185,6), (349,4 ; 185), arceaux (344 à 345,6 ; 186,9).
+
+**Données** : `props` du modèle (`manual.json` -> `kinds/27_35.json` par `build_monuments.py hexagone`) ; aucune autre donnée ; navigation inchangée.
+
+**Tests** (+4, 894 au total) : composition (une sphère proche de la position lue, trois drapeaux de variantes 0 à 2, au moins deux bacs et trois arceaux), tout hors du bâtiment et à plus de 3 m de la façade, sans chevauchement, collisions (cercles aux positions, rayons attendus, arceaux franchissables), maillage (plus de mille triangles de plus, moins de 15 000 en tout, couleurs finies, lueur de nuit en plus).
+
+**Limites** : positions de la colonne, des drapeaux et des arceaux estimées (± 3 m) ; pas de corbeille ni de bancs ; ces objets ne sont pas cassables (D160) ; la sphère est plus petite que sur les photos (2,5 m pour environ 1,1 fois la largeur d'une porte, soit ≈ 2,6 m : à vérifier) ; la haie et les arbres taillés des photos 1 et 2 manquent.
+
+![Sphère et drapeaux](captures/hexagone-lot4-sphere.jpg)
+![Colonne Morris, bac et drapeaux](captures/hexagone-lot4-colonne.jpg)
+![Parvis vu du nord-est](captures/hexagone-lot4-parvis-haut.jpg)
+![Vue aérienne](captures/hexagone-lot4-aerien.jpg)
+

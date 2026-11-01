@@ -134,6 +134,10 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
     if (h) out.push([...housePost(h), 0.12]);
+    for (const q of kinds.buildings[b.id]?.hex?.props ?? []) {
+      const r = HEX_PROP_RADIUS[q.k];
+      if (r) out.push([q.x, q.y, r]);
+    }
     const st = kinds.buildings[b.id]?.store;
     if (st) out.push(...storeCircles(b, st));
   }
@@ -620,6 +624,9 @@ export function cathedralWalls(b: Building, m: CathedralModel): { lines: number[
 }
 
 // --- L'Hexagone (D165) ------------------------------------------------------------------------------------------------------------
+
+/** Rayon d'obstacle du mobilier du parvis de l'Hexagone (D168) ; les arceaux à vélos se franchissent. */
+export const HEX_PROP_RADIUS: Readonly<Record<string, number>> = { sphere: 1.4, column: 0.9, lamp: 0.15, flag: 0.1, planter: 1.5, rack: 0 };
 
 /** Normales des six côtés de la couronne de l'Hexagone (caps, degrés). */
 export const HEX_SIDES = [35, 95, 155, 215, 275, 335] as const;

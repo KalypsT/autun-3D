@@ -3,6 +3,7 @@ import type { HeightField, HexagoneModel } from "../data/types";
 import { HEX_SIDES, hexagoneFootAt, hexagoneShape } from "../core/landmarks";
 import { toThree, type Vec3 } from "./geometry";
 import { buildFront, buildNorthEast, frameOf, type Frame } from "./hexagone-facade";
+import { buildHexagoneProps } from "./hexagone-props";
 import type { LandmarkSinks } from "./landmarks";
 
 /**
@@ -158,6 +159,7 @@ export function buildHexagone(sinks: LandmarkSinks, m: HexagoneModel, terrain: H
   }
   if (m.front) buildFront(sinks, m, terrain);
   if (m.ne) buildNorthEast(sinks, m, terrain);
+  if (m.props) buildHexagoneProps(sinks.solid, sinks.glow, m.props, terrain);
 
   // --- Marches entre secteurs voisins de niveaux différents : du pied de la pyramide au contour, le long de la limite -------------------
   bounds.forEach((bc, j) => {
