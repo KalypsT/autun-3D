@@ -144,6 +144,80 @@ class Walls:
         return min(among, key=lambda i: self.lines[i].distance(p))
 
 
+def apply_overrides(fi, up):
+    """Réglages d'étage d'après photo (D141, D161, D163) : enduit, menuiseries, volets, balcons, époque, niveaux, matériaux et réglages fins de
+    façade (largeur de travée, fenêtres, volets, corniche, cordon, soubassement). Un dictionnaire se fusionne, le reste se remplace."""
+    if "wall" in up:
+        fi["materials"]["wall"]["color"] = up["wall"]
+    if "frame" in up:
+        fi["facade"]["window"]["frameColor"] = up["frame"]
+    if "shutters" in up:
+        fi["facade"]["shutters"]["kind"] = up["shutters"]
+    if "balcony" in up:
+        fi["facade"]["balcony"] = up["balcony"]
+    if "era" in up:
+        fi["era"] = up["era"]
+    if "levels" in up:
+        fi["levels"] = up["levels"]
+    if "storeys" in up:
+        fi["storeys"].update(up["storeys"])
+    for k, v in up.get("materials", {}).items():
+        if isinstance(v, dict):
+            fi["materials"][k].update(v)
+        else:
+            fi["materials"][k] = v
+    for k, v in up.get("facade", {}).items():
+        if isinstance(v, dict) and isinstance(fi["facade"].get(k), dict):
+            fi["facade"][k].update(v)
+        else:
+            fi["facade"][k] = v
+
+
+def apply_observed(fi, m):
+    """Bâtiment vu sur une photo sans devanture (D163, `fiches` de manual.json) : réglages de façade, `status` « observed », source « photo »."""
+    apply_overrides(fi, m)
+    fi["status"] = "observed"
+    src = {"kind": "photo", "ref": m["photo"][:80]}
+    fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [src]
+
+
+def drop_buildings(world, ids):
+    """Retire des tuiles les bâtiments BD TOPO qui ne sont pas des bâtiments (D163 : l'auvent d'entrée de l'hôpital de Latouche, que BD TOPO compte comme
+    un bâtiment de 4,7 m) : bâtiment et fiche de la tuile, type de `kinds/`, silhouette lointaine de `lod/`. Les compteurs de `world.json` suivent."""
+    meta = {m["id"]: m for m in world["tiles"]}
+    n = 0
+    for tid, m in meta.items():
+        tp = c.OUT / "tiles" / f"{tid}.json"
+        if not m.get("buildings") or not tp.exists():
+            continue
+        rec = json.loads(tp.read_text())
+        gone = [b for b in rec["buildings"] if b["id"] in ids]
+        if not gone:
+            continue
+        rings = [b["ring"] for b in gone]
+        rec["buildings"] = [b for b in rec["buildings"] if b["id"] not in ids]
+        rec["fiches"] = [f for f in rec["fiches"] if f["id"] not in ids]
+        text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
+        tp.write_text(text)
+        m["buildings"] = len(rec["buildings"])
+        m["bytes"] = len(text)
+        kp = c.OUT / "kinds" / f"{tid}.json"
+        if kp.exists():
+            k = json.loads(kp.read_text())
+            for b in gone:
+                k["buildings"].pop(b["id"], None)
+            kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+        lp = c.OUT / "lod" / f"{tid}.json"
+        if lp.exists():
+            lod = json.loads(lp.read_text())
+            kept = [r for r in lod if r["r"] not in rings]
+            if len(kept) != len(lod):
+                lp.write_text(json.dumps(kept, ensure_ascii=False, separators=(",", ":")))
+                m["lod"] = len(kept)
+        n += len(gone)
+    return n
+
+
 def apply_shop(fi, m):
     """Commerce vu sur une photo, absent d'OpenStreetMap (D141) : la fiche devient « shop », avec son commerce au milieu du mur d'entrée,
     la couleur de sa devanture, sa devanture dessinée telle quelle (`devanture`) et l'étage d'après la photo (enduit, menuiseries, volets) ;
@@ -154,15 +228,7 @@ def apply_shop(fi, m):
     g["shopfront"] = {"color": sh["color"], "glazing": "full"}
     g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}]
     g["devanture"] = sh["devanture"]
-    up = sh.get("fiche", {})
-    if "wall" in up:
-        fi["materials"]["wall"]["color"] = up["wall"]
-    if "frame" in up:
-        fi["facade"]["window"]["frameColor"] = up["frame"]
-    if "shutters" in up:
-        fi["facade"]["shutters"]["kind"] = up["shutters"]
-    if "balcony" in up:
-        fi["facade"]["balcony"] = up["balcony"]
+    apply_overrides(fi, sh.get("fiche", {}))
     fi["status"] = "observed"
     src = {"kind": "photo", "ref": m["photo"][:80]}
     fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [src]
@@ -175,7 +241,9 @@ def main():
     for s in places["streets"]:
         for pl in s["lines"]:
             by_name.setdefault(norm(s["name"]), []).append(LineString([(pl[i], pl[i + 1]) for i in range(0, len(pl), 2)]))
-    manual = json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("fronts", {})
+    manual_all = json.load(open(c.ROOT / "tools" / "data" / "manual.json"))
+    manual = manual_all.get("fronts", {})
+    fiches_manual = manual_all.get("fiches", {})
     retail = set()
     for f in glob.glob(str(c.OUT / "kinds" / "*.json")):
         for bid, k in json.load(open(f)).get("buildings", {}).items():
@@ -192,6 +260,8 @@ def main():
         for fi in rec["fiches"]:
             if fi["id"] in B and fi["id"] in manual and manual[fi["id"]].get("shop"):
                 apply_shop(fi, manual[fi["id"]])
+            if fi["id"] in B and fi["id"] in fiches_manual:
+                apply_observed(fi, fiches_manual[fi["id"]])
             if fi["id"] in B and (fi["ground"]["kind"] == "shop" or fi["id"] in retail):
                 todo.append((tid, B[fi["id"]], fi))
     shops, entrances, parkings = load_osm([(b["ring"][0], b["ring"][1]) for _t, b, _f in todo])
@@ -312,7 +382,12 @@ def main():
 
     manifest = {m["id"]: m for m in world["tiles"]}
     changed = 0
+    dropped = set(json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("dropWalls", []))
     for tid, rec in tiles.items():
+        if dropped:
+            kept = [w for w in rec.get("walls", []) if w["id"] not in dropped]
+            stats["mur retiré (D161)"] += len(rec.get("walls", [])) - len(kept)
+            rec["walls"] = kept
         text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
         path = c.OUT / "tiles" / f"{tid}.json"
         if path.read_text() != text:
@@ -320,6 +395,10 @@ def main():
             manifest[tid]["bytes"] = len(text)
             changed += 1
     (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
+    dropped_b = drop_buildings(world, set(manual_all.get("dropBuildings", [])))
+    if dropped_b:
+        stats["bâtiment retiré (D163)"] += dropped_b
+        (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
     for k, v in sorted(stats.items()):
         print(f"  {k} : {v}")
     print(f"{changed} tuiles réécrites")

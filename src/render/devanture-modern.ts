@@ -30,9 +30,9 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
   /** Pavé en saillie : face avant, côtés, dessus. */
   const slab = (s0: number, s1: number, z0: number, z1: number, off0: number, off1: number, col: THREE.Color): void => {
     panel(mb, s0, s1, z0, z1, off1, col);
-    const side = shade(col, 0.82);
-    mb.quad(at(s0, z0, off0), at(s0, z0, off1), at(s0, z1, off1), at(s0, z1, off0), toThree(-f.tx, -f.ty, 0), side);
-    mb.quad(at(s1, z0, off1), at(s1, z0, off0), at(s1, z1, off0), at(s1, z1, off1), toThree(f.tx, f.ty, 0), side);
+    const flank = shade(col, 0.82);
+    mb.quad(at(s0, z0, off0), at(s0, z0, off1), at(s0, z1, off1), at(s0, z1, off0), toThree(-f.tx, -f.ty, 0), flank);
+    mb.quad(at(s1, z0, off1), at(s1, z0, off0), at(s1, z1, off0), at(s1, z1, off1), toThree(f.tx, f.ty, 0), flank);
     mb.quad(at(s0, z1, off0), at(s1, z1, off0), at(s1, z1, off1), at(s0, z1, off1), [0, 1, 0], shade(col, 1.1));
   };
   const words = (s: string, sc: number, zc: number, h: number, off: number, col: string): void => {
@@ -57,6 +57,7 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
   panel(mb, S0, S1, -0.3, d.h, 0.05, WALL);
   slab(S0, S1, -0.3, 0.15, 0.05, 0.09, PLINTH);
   slab(S0 - 0.03, S1 + 0.03, d.h - 0.14, d.h, 0.05, 0.2, shade(WALL, 1.12));
+  for (const [t0, t1, col] of m.tint ?? []) panel(mb, t0, t1, -0.3, d.h - 0.14, 0.06, C(col));
 
   const lit = (s0: number, s1: number, z0: number, z1: number, off: number): void => {
     panel(mb, s0, s1, z0, z1, off, GLASS_LO, GLASS_HI);
@@ -73,6 +74,14 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
       panel(mb, (a + b) / 2 - 0.015, (a + b) / 2 + 0.015, 0.0, d.top - 0.1, 0.075, ALU_DARK);
       panel(mb, (a + b) / 2 - 0.09, (a + b) / 2 - 0.06, 0.9, 1.15, 0.08, ALU);
       panel(mb, (a + b) / 2 + 0.06, (a + b) / 2 + 0.09, 0.9, 1.15, 0.08, ALU);
+      return;
+    }
+    if (kind === "passage") {
+      // Passage couvert : ouverture sombre, encadrement de pierre, linteau.
+      panel(mb, a, b, 0.0, d.top + 0.5, 0.07, C("#1b1d20"), C("#2a2d31"));
+      slab(a - 0.12, a, 0.0, d.top + 0.62, 0.05, 0.12, PLINTH);
+      slab(b, b + 0.12, 0.0, d.top + 0.62, 0.05, 0.12, PLINTH);
+      slab(a - 0.12, b + 0.12, d.top + 0.5, d.top + 0.62, 0.05, 0.12, PLINTH);
       return;
     }
     // Baie (vitrine ou porte vitrée) : cadre d'aluminium, vitre, montants tous les mètres environ ; la porte a un montant central et des poignées.
@@ -116,6 +125,46 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
     cursor += len + h * ADVANCE;
   }
   if (m.sub) words(m.sub.text, m.sub.at, m.sub.z, m.sub.h, 0.075, m.sub.color);
+
+  // Auvent d'entrée : dalle de béton clair en saillie, poteaux fins sur le parvis.
+  if (m.canopy) {
+    const c = m.canopy, slabCol = C("#e2dfd6"), post = C("#d4d1c8");
+    slab(c.s[0], c.s[1], c.z, c.z + 0.22, 0.05, c.depth, slabCol);
+    for (const ps of c.pillars) slab(ps - 0.07, ps + 0.07, 0.0, c.z, c.depth - 0.25, c.depth - 0.11, post);
+  }
+
+  // Emblème du Centre hospitalier : croissant rouge ouvert vers la droite, H bleu, sur un panneau blanc.
+  if (m.emblem) {
+    const e = m.emblem, red = C("#cf2e2e"), blue = C("#1d4f9c");
+    slab(e.s - e.w / 2, e.s + e.w / 2, e.z - e.h / 2, e.z + e.h / 2, 0.05, 0.1, C("#f3f1ea"));
+    const r = e.w * 0.36, cx = e.s - e.w * 0.08;
+    disc(cx, e.z, r, 0.12, red);
+    disc(cx + r * 0.32, e.z, r * 0.84, 0.125, C("#f3f1ea"));
+    const hx = e.s + e.w * 0.13, hh = e.h * 0.3, hw = e.w * 0.17, tk = e.w * 0.06;
+    panel(mb, hx - hw, hx - hw + tk, e.z - hh, e.z + hh, 0.13, blue);
+    panel(mb, hx + hw - tk, hx + hw, e.z - hh, e.z + hh, 0.13, blue);
+    panel(mb, hx - hw, hx + hw, e.z - tk / 2, e.z + tk / 2, 0.13, blue);
+  }
+
+  // Mur-rideau des étages : ossature d'aluminium, allège claire au pied de chaque niveau, bandeaux vitrés entre les montants.
+  if (m.curtain) {
+    const k = m.curtain, FR = C(k.frame), SP = C(k.spandrel);
+    const [CG0, CG1] = k.glass ? [C(k.glass[0]), C(k.glass[1])] : [GLASS_LO, GLASS_HI];
+    const [c0, c1] = k.s, [z0, z1] = k.z;
+    panel(mb, c0, c1, z0, z1, 0.14, FR);
+    const level = (z1 - z0) / k.rows;
+    const cols = Math.max(1, Math.round((c1 - c0) / k.mullion));
+    for (let r = 0; r < k.rows; r++) {
+      const b0 = z0 + r * level, b1 = b0 + level;
+      panel(mb, c0 + 0.04, c1 - 0.04, b0 + 0.03, b0 + level * 0.36, 0.16, SP);
+      for (let q = 0; q < cols; q++) {
+        const u0 = c0 + ((c1 - c0) * q) / cols + 0.045, u1 = c0 + ((c1 - c0) * (q + 1)) / cols - 0.045;
+        panel(mb, u0, u1, b0 + level * 0.4, b1 - 0.06, 0.16, CG0, CG1);
+        if (glow) panel(glow, u0, u1, b0 + level * 0.4, b1 - 0.06, 0.166, GLOW_LO, GLOW_HI);
+      }
+    }
+    slab(c0 - 0.05, c1 + 0.05, z1 - 0.02, z1 + 0.14, 0.14, 0.28, shade(FR, 0.8));
+  }
 
   // Projecteurs blancs au-dessus des lettres.
   for (const ss of m.spots?.s ?? []) slab(ss - 0.07, ss + 0.07, (m.spots?.z ?? 3.4) - 0.05, (m.spots?.z ?? 3.4) + 0.05, 0.05, 0.27, SPOT);

@@ -864,7 +864,7 @@ export interface Devanture {
   frieze: [number, number];
   /** Haut de la corniche (posée sur la frise). */
   cornice: number;
-  bays: ["pilaster" | "door" | "window" | "shopdoor", number][];
+  bays: ["pilaster" | "door" | "window" | "shopdoor" | "passage", number][];
   stone: string;
   /** `bg` vide : lettres posées sur le mur, sans panneau ; `script` faux : lettres droites (D158). */
   sign: { text: string; bg: string; fg: string; s: [number, number]; z: [number, number]; script?: boolean };
@@ -904,6 +904,14 @@ export interface ModernFront {
   base?: [number, number, number, string];
   /** Texte posé sur une plaque ou un logo : [abscisse, altitude, hauteur de ligne, texte, couleur]. */
   texts?: [number, number, number, string, string][];
+  /** Aplats de couleur du mur du rez-de-chaussée par-dessus la couleur de la devanture : [début, fin, couleur]. */
+  tint?: [number, number, string][];
+  /** Auvent d'entrée sur poteaux fins (Centre hospitalier, site Latouche, D163) : de `s[0]` à `s[1]`, dalle à l'altitude `z`, saillie `depth`, poteaux aux abscisses `pillars`. */
+  canopy?: { s: [number, number]; z: number; depth: number; pillars: number[] };
+  /** Emblème du Centre hospitalier (croissant rouge et H bleu sur un panneau blanc) : abscisse et altitude du centre, largeur et hauteur du panneau. */
+  emblem?: { s: number; z: number; w: number; h: number };
+  /** Mur-rideau vitré des étages : de `s[0]` à `s[1]`, de `z[0]` à `z[1]`, `rows` niveaux, un montant tous les `mullion` mètres environ ; allège claire au pied de chaque niveau. */
+  curtain?: { s: [number, number]; z: [number, number]; rows: number; mullion: number; frame: string; spandrel: string; glass?: [string, string] };
 }
 
 export interface FacadeFiche {

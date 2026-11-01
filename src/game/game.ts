@@ -26,7 +26,7 @@ import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { VehicleNameHud } from "../ui/vehicle-name";
-import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
+import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, nearestHospital } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
@@ -1010,9 +1010,10 @@ export function startGame(ctx: GameContext): void {
     ui.save();
   };
 
-  // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital trois heures plus tard, santé pleine, sans étoile.
+  // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital le plus proche (D161) trois heures plus tard, santé pleine, sans étoile.
   const die = (): void => {
     if (riding) dismount();
+    const hospital = nearestHospital(player.x, player.y);
     police.reset();
     lastStars = 0;
     audio.death();
@@ -1020,13 +1021,13 @@ export function startGame(ctx: GameContext): void {
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
-    const r = colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, PLAYER_RADIUS);
-    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: HOSPITAL_SPAWN.heading });
+    const r = colliders.resolve(hospital.x, hospital.y, PLAYER_RADIUS);
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: hospital.heading });
     groundPlayer(player);
-    yaw = HOSPITAL_SPAWN.heading;
+    yaw = hospital.heading;
     if (atmosphere.speed > 0) atmosphere.advance(DEATH_HOURS / atmosphere.speed);
     health.restore();
-    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital, ${DEATH_HOURS} heures plus tard.`, true);
+    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital de ${hospital.name}, ${DEATH_HOURS} heures plus tard.`, true);
     controls.reset();
     ui.save();
   };

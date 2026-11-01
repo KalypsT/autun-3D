@@ -3,7 +3,7 @@ import { reserveCap, WEAPONS, type Inventory, type WeaponId } from "./weapons";
 
 /**
  * Objets au sol (J5-3, D84 ; D159) : treize caches d'armes fixes dans la ville, qui réapparaissent, les armes lâchées (par les gendarmes tués, J5-5)
- * et, devant chaque pharmacie, une croix verte qui rend toute la santé. Logique pure. **On les ramasse en marchant dessus** (D159), sans bouton.
+ * et, devant chaque pharmacie, une croix verte qui rend toute la santé (et deux devant les sites du Centre hospitalier, D161). Logique pure. **On les ramasse en marchant dessus** (D159), sans bouton.
  *
  * Les positions sont des points de la navigation piétonne près de lieux d'Autun, dégagés sur 80 cm (test) ; les armes blanches sont près du départ,
  * les pistolets à 300 à 600 m, les fusils à pompe à 800 m et plus, le fusil d'assaut tout au bout. Il n'y a pas d'argent avant J6 : trouver une arme
@@ -45,6 +45,9 @@ export const HEAL_SITES: readonly HealSite[] = [
   { x: -317.0, y: 464.7, label: "Pharmacie de la Gare" },
   { x: 267.0, y: 707.1, label: "Pharmacie de la Croix Blanche" },
   { x: 999.4, y: 1353.3, label: "Pharmacie de Saint-Pan" },
+  // Centre hospitalier (D161) : à 6-7 m du point de réveil de chaque site, qu'on voit en se réveillant.
+  { x: 231.5, y: 201.5, label: "Centre hospitalier, site Latouche" },
+  { x: -355.0, y: 136.0, label: "Centre hospitalier, site Parpas" },
 ];
 
 export interface HealSite {

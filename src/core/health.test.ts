@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bailOutDamage, BAIL_SAFE, canStepOut, DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN, MAX_HEALTH, REGEN_CAP, REGEN_DELAY } from "./health";
+import { bailOutDamage, BAIL_SAFE, canStepOut, DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN, HOSPITALS, MAX_HEALTH, nearestHospital, REGEN_CAP, REGEN_DELAY } from "./health";
 import { loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -78,18 +78,43 @@ describe("santé du joueur", () => {
     expect(new Health(900).hp).toBe(MAX_HEALTH);
   });
 
-  it("la reprise à l'hôpital est dans la zone, hors des obstacles, avec 2 m de dégagement", () => {
+  it("chaque reprise à l'hôpital est dans la zone, hors des obstacles, avec 2 m de dégagement", () => {
     const { terrain, tile } = loadRealWorld();
     const colliders = buildColliders(tile);
-    expect(HOSPITAL_SPAWN.x).toBeGreaterThan(terrain.xMin + 30);
-    expect(HOSPITAL_SPAWN.x).toBeLessThan(terrain.xMax - 30);
-    expect(HOSPITAL_SPAWN.y).toBeGreaterThan(terrain.yMin + 30);
-    expect(HOSPITAL_SPAWN.y).toBeLessThan(terrain.yMax - 30);
-    let blocked = 0;
-    for (let a = 0; a < 2 * Math.PI; a += 0.4) if (colliders.resolve(HOSPITAL_SPAWN.x + Math.cos(a) * 2, HOSPITAL_SPAWN.y + Math.sin(a) * 2, 0.35).hit) blocked++;
-    expect(colliders.resolve(HOSPITAL_SPAWN.x, HOSPITAL_SPAWN.y, 0.35).hit).toBe(false);
-    expect(blocked).toBe(0);
+    expect(HOSPITALS.map((h) => h.id)).toEqual(["latouche", "parpas"]);
+    expect(HOSPITAL_SPAWN).toBe(HOSPITALS[0]);
+    for (const h of HOSPITALS) {
+      expect(h.x, h.id).toBeGreaterThan(terrain.xMin + 30);
+      expect(h.x, h.id).toBeLessThan(terrain.xMax - 30);
+      expect(h.y, h.id).toBeGreaterThan(terrain.yMin + 30);
+      expect(h.y, h.id).toBeLessThan(terrain.yMax - 30);
+      let blocked = 0;
+      for (let a = 0; a < 2 * Math.PI; a += 0.4) if (colliders.resolve(h.x + Math.cos(a) * 2, h.y + Math.sin(a) * 2, 0.35).hit) blocked++;
+      expect(colliders.resolve(h.x, h.y, 0.35).hit, h.id).toBe(false);
+      expect(blocked, h.id).toBe(0);
+    }
     expect(DEATH_HOURS).toBeGreaterThan(0);
+  });
+
+  it("on se réveille au site le plus proche à vol d'oiseau", () => {
+    const [lat, par] = HOSPITALS as [(typeof HOSPITALS)[number], (typeof HOSPITALS)[number]];
+    // Chaque site est son propre plus proche.
+    expect(nearestHospital(lat.x, lat.y).id).toBe("latouche");
+    expect(nearestHospital(par.x, par.y).id).toBe("parpas");
+    // Le centre-ville (mairie, place du Champ de Mars) et l'est reviennent à Latouche, l'ouest à Parpas.
+    expect(nearestHospital(0, -40).id).toBe("latouche");
+    expect(nearestHospital(1758, 612).id).toBe("latouche");
+    expect(nearestHospital(-600, 100).id).toBe("parpas");
+    expect(nearestHospital(-1000, 400).id).toBe("parpas");
+    // De part et d'autre de la médiatrice (milieu des deux sites).
+    const mx = (lat.x + par.x) / 2, my = (lat.y + par.y) / 2;
+    const ux = (lat.x - par.x) / Math.hypot(lat.x - par.x, lat.y - par.y), uy = (lat.y - par.y) / Math.hypot(lat.x - par.x, lat.y - par.y);
+    expect(nearestHospital(mx + ux * 5, my + uy * 5).id).toBe("latouche");
+    expect(nearestHospital(mx - ux * 5, my - uy * 5).id).toBe("parpas");
+    // Sur la médiatrice même : Latouche (premier de la liste), de façon déterministe.
+    expect(nearestHospital(mx, my).id).toBe("latouche");
+    // Les deux sites sont à plus de 500 m l'un de l'autre.
+    expect(Math.hypot(lat.x - par.x, lat.y - par.y)).toBeGreaterThan(500);
   });
 });
 
