@@ -3029,3 +3029,19 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 **Tests** (+18, 861 au total) : `breakables.test.ts` (core : seuils, voiture contre lampadaire et contre mur, dégâts réduits, vélo/trottinette/moto, rechargement de tuile, obstacles d'une tuile) ; `damage.test.ts` (barème, plafond, second choc) ; `health.test.ts` (seuil de sortie, blessure) ; `render/breakables.test.ts` (séparation du mobilier, lanternes et halos retirés avec le poteau, chute et durée de vie) ; `vehicles.test.ts` (feux réservés aux voitures du joueur). Vérifié dans le jeu (`?ride=citadine`, voiture lancée à 50 km/h vers un lampadaire dégagé) : le lampadaire cesse d'être un obstacle, la voiture passe de 50 à 42 km/h et poursuit sa route avec 7 points de dégâts (mesure faite avec un coefficient de 0,7 ; ≈ 11 avec 0,85).
 
 **Limites** : la chute du poteau et le saut hors de la voiture ne sont pas vérifiés à l'image (le rendu logiciel de l'environnement est trop lent pour une capture lisible) : à regarder sur ton appareil ; pas de son propre au poteau arraché (le bruit de choc est celui de la voiture) ; un feu arraché ne s'éteint pas dans la logique de circulation ; pas de blessure de la voiture sans conducteur sur les passants.
+
+## 2026-11-01 — D161. Deux sites hospitaliers : réveil au plus proche, croix de soin à chaque site
+
+**Demande de l'utilisateur** : le Centre hospitalier d'Autun a deux sites (Latouche et Parpas) ; après une mort, le personnage doit se réveiller au plus proche ; ajouter un objet de santé près de chaque point de réveil ; revoir les bâtiments et façades des deux sites d'après photos (lots 3 et 4, à suivre).
+
+**Choix validés** (propositions acceptées) : distance **à vol d'oiseau** (la navigation piétonne ne couvre pas la cour de Latouche) ; **croix verte réutilisée** pour l'hôpital.
+
+**Lot 1, réveil** (`src/core/health.ts`) : `HOSPITAL_SPAWN` devient la liste `HOSPITALS` (`latouche`, `parpas`) et `nearestHospital(x, y)` (à égalité, Latouche : déterministe) ; `HOSPITAL_SPAWN` reste un alias de Latouche. `die()` (`game.ts`) choisit le site d'après la position du joueur à sa mort ; le bandeau dit « Réveil à l'hôpital de Latouche / de Parpas ». La médiatrice des deux sites passe vers x ≈ −87 m : mairie, centre-ville et est vont à Latouche, l'ouest à Parpas. Les sites sont à 604 m l'un de l'autre.
+- **Latouche** : point historique (211,4 ; 216,6), la cour d'accueil devant l'entrée principale, cap 0.
+- **Parpas** : (−354 ; 130), le trottoir devant la façade de 18 m du faubourg Saint-Andoche (mur de (−353,8 ; 118,9) à (−363,5 ; 134,3)), dégagé sur 3 m et sur la navigation ; cap vers la rue (1,01 rad). **Position déduite des emprises BD TOPO et des rues, pas d'une vue du jeu** : à contrôler en jeu avec les photos de l'entrée.
+
+**Lot 2, croix de soin** : deux entrées de plus dans `HEAL_SITES` (7 au total), à 6-7 m du réveil : Latouche (217,0 ; 221,0), Parpas (−355 ; 136). On se réveille à pleine santé : la croix ne se ramasse pas au réveil, elle sert à un blessé qui revient à pied (comme celles des pharmacies, 120 s de réapparition). Aucune logique nouvelle.
+
+**Tests** (+2, 863 au total) : chaque site dégagé sur 2 m et dans la zone ; site le plus proche de part et d'autre de la médiatrice, sur la médiatrice, au centre-ville, à l'est et à l'ouest ; croix à 4-10 m du réveil, qui ne soigne qu'un blessé. Le test des croix de pharmacie ne demande plus de file piétonne pour Latouche (la cour est hors navigation) ni de pharmacie voisine pour les croix d'hôpital.
+
+**Limites** : pas de façade nouvelle dans ce lot (lots 3 et 4 : Parpas d'après photos, puis Latouche) ; l'écran de réveil ne montre pas le site, seulement le bandeau.

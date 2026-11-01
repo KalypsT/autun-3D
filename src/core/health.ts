@@ -14,8 +14,40 @@ export const REGEN_DELAY = 6;
 export const REGEN_RATE = 2.5;
 /** Heures de jeu passées à l'hôpital après une mort. */
 export const DEATH_HOURS = 3;
-/** Reprise après une mort : la cour du Centre hospitalier d'Autun (site Latouche, ≈ 300 m à l'est de la mairie), dégagée sur 2 m autour (test). */
-export const HOSPITAL_SPAWN = { x: 211.4, y: 216.6, heading: 0 } as const;
+/** Un site du Centre hospitalier d'Autun : où l'on se réveille après une mort (devant l'entrée publique, dégagé sur 2 m, test) et vers où l'on regarde. */
+export interface Hospital {
+  id: "latouche" | "parpas";
+  name: string;
+  x: number;
+  y: number;
+  /** Cap au réveil (radians, convention du joueur : avant = (sin cap, cos cap)). */
+  heading: number;
+}
+
+/**
+ * Les deux sites (D161) : Latouche, la cour d'accueil du site principal (≈ 300 m à l'est de la mairie), et Parpas, le trottoir devant la façade d'entrée du
+ * faubourg Saint-Andoche (≈ 600 m à l'ouest de Latouche). Après une mort on se réveille au plus proche des deux (à vol d'oiseau).
+ */
+export const HOSPITALS: readonly Hospital[] = [
+  { id: "latouche", name: "Latouche", x: 211.4, y: 216.6, heading: 0 },
+  { id: "parpas", name: "Parpas", x: -354, y: 130, heading: 1.01 },
+];
+
+/** Reprise de Latouche (le site historique) : gardée pour les essais qui n'ont besoin que d'un point. */
+export const HOSPITAL_SPAWN = HOSPITALS[0]!;
+
+/** Le site le plus proche de (x, y) à vol d'oiseau ; à égalité, le premier de la liste (Latouche). */
+export function nearestHospital(x: number, y: number): Hospital {
+  let best = HOSPITALS[0]!, bd = Infinity;
+  for (const h of HOSPITALS) {
+    const d = Math.hypot(h.x - x, h.y - y);
+    if (d < bd - 1e-9) {
+      bd = d;
+      best = h;
+    }
+  }
+  return best;
+}
 
 export class Health {
   /** Points de vie, 0 (mort) à `MAX_HEALTH`. */

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NavGraph } from "./nav-graph";
 import { MASK_ZONE } from "./pedestrians";
-import { Health, MAX_HEALTH } from "./health";
+import { Health, HOSPITALS, MAX_HEALTH } from "./health";
 import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, DROP_LIFE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
@@ -127,18 +127,39 @@ describe("croix de pharmacie (D159)", () => {
     for (const c of cells) nav.add(c);
     const bad: string[] = [];
     for (const c of HEAL_SITES) {
-      if (!nav.nearest(c.x, c.y, 1.5, MASK_ZONE)) bad.push(`${c.label}: pas de file piétonne`);
+      // La cour de Latouche est hors de la navigation piétonne : seules les croix des pharmacies et du site de Parpas doivent s'y trouver.
+      if (!c.label.includes("Latouche") && !nav.nearest(c.x, c.y, 1.5, MASK_ZONE)) bad.push(`${c.label}: pas de file piétonne`);
       if (colliders.resolve(c.x, c.y, 0.3).hit) bad.push(`${c.label}: dans un obstacle`);
       for (let a = 0; a < 6.3; a += 0.8) if (colliders.resolve(c.x + Math.cos(a) * 0.5, c.y + Math.sin(a) * 0.5, 0.3).hit) bad.push(`${c.label}: obstacle`);
     }
     expect(bad).toEqual([]);
-    expect(HEAL_SITES).toHaveLength(5);
+    expect(HEAL_SITES).toHaveLength(7);
     expect(new Set(HEAL_SITES.map((c) => `${c.x},${c.y}`)).size).toBe(HEAL_SITES.length);
     // Chaque croix est près du lieu « pharmacie » de la carte (la porte est à moins de 8 m du point d'OpenStreetMap, sauf Saint-Pan).
     const places = JSON.parse(readFileSync("public/data/map/places.json", "utf8")) as { places: { cat: string; name: string; x: number; y: number }[] };
-    for (const c of HEAL_SITES) {
+    for (const c of HEAL_SITES.filter((h) => !h.label.startsWith("Centre hospitalier"))) {
       const near = places.places.filter((q) => q.cat === "pharmacie").some((q) => Math.hypot(q.x - c.x, q.y - c.y) < 12);
       expect(near, c.label).toBe(true);
+    }
+  });
+});
+
+describe("croix de soin du Centre hospitalier (D161)", () => {
+  it("chaque site en a une à 4-10 m de son point de réveil, et elle soigne", () => {
+    for (const h of HOSPITALS) {
+      const cross = HEAL_SITES.find((c) => c.label === `Centre hospitalier, site ${h.name}`);
+      expect(cross, h.name).toBeDefined();
+      const d = Math.hypot(cross!.x - h.x, cross!.y - h.y);
+      expect(d, h.name).toBeGreaterThan(4);
+      expect(d, h.name).toBeLessThan(10);
+      // On se réveille à pleine santé : la croix ne se ramasse pas tout de suite, mais soigne un blessé qui revient.
+      const pk = new Pickups([], [cross!]);
+      const hp = new Health();
+      const inv = new Inventory();
+      expect(pk.collect(cross!.x, cross!.y, inv, hp)).toBeNull();
+      hp.damage(70);
+      expect(pk.collect(cross!.x, cross!.y, inv, hp)).not.toBeNull();
+      expect(hp.hp).toBe(MAX_HEALTH);
     }
   });
 });
