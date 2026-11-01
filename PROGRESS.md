@@ -1290,3 +1290,40 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Seul ton véhicule arrache : la circulation et la police les trouvent solides comme avant. Jusqu'à 2 appels de dessin de plus par tuile qui a du mobilier cassable ; 861 tests (18 de plus).
 - Limites : chute du poteau et saut hors de la voiture non vérifiés à l'image ; un feu arraché reste obéi par la circulation ; pas de son propre au poteau arraché.
 - À essayer : `?ride=citadine` puis foncer dans un lampadaire (≥ 25 km/h) ; foncer dans un mur à 90 km/h (fumée noire, pas de feu) ; appuyer sur E (Descendre) à 40 km/h.
+
+**L'Hexagone, lot 0 : relevés (1er novembre 2026)** (D164)
+- Rien ne change dans le jeu : mesures sur le LiDAR et l'orthophotographie, notées dans `docs/plans/hexagone.md` §8.
+- Le toit de l'Hexagone est une **pyramide à 12 pans, pente 0,205**, 12,8 m de haut ; le jeu la dessine avec une pente de 0,70 et 3,6 m trop bas (d'où l'amas bleu nuit hérissé).
+- La façade principale (portes vitrées, bandeaux) est à l'**ouest**, normale 275°, à 30 m du sommet ; la face nord-est a un étage en bardage sombre, 1,1 m plus haut que le reste.
+- Le parking : sept blocs de places, traits à 143°, pas 2,5 m. Prochain lot : le volume et le toit (lot 1).
+
+**L'Hexagone, lot 1 : volumes et toit (1er novembre 2026)** (D165)
+- Le bâtiment a sa vraie forme : pyramide à 12 pans de 12,8 m (au lieu d'un amas hérissé de 9 m), tambour, six terrasses étagées autour, annexe sombre à l'est. Le contour est celui du bâtiment d'origine (collisions et navigation inchangées).
+- Les murs sont encore unis : la façade (bandeaux, portes vitrées, enseigne) vient au lot 2.
+- 880 tests (9 de plus). À regarder : une vue du parvis (`?view=custom&cam=335,176,8,385,186,5`) et une vue aérienne (`cam=380,110,60,385,186,0`).
+
+**L'Hexagone, lot 2 : façades (1er novembre 2026)** (D166)
+- La façade ouest a ses portes vitrées, ses bandeaux, son auvent d'entrée et l'enseigne « HEXAGONE » ; la face nord-est a son étage en bardage sombre sur poteaux (d'après tes photos).
+- Les autres côtés restent des murs unis. On s'arrête encore 1 à 3 m avant les vitres (collisions inchangées).
+- 885 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` (façade) et `cam=398,225,2.5,384,208,0` (nord-est).
+
+**L'Hexagone, lot 3 : le parvis (1er novembre 2026)** (D167)
+- Le parvis a son dallage : un grand octogone de brique rose, des hexagones et bandes gris ardoise, un fond clair. Les murets de 2 m qui barraient la place sont partis (c'étaient des clôtures de parcelle générées).
+- Pas encore : la sphère, les bacs et topiaires, les drapeaux, la colonne Morris, le lampadaire (lot 4), ni la moitié ouest du parvis (dallage clair à zigzags).
+- 890 tests (5 de plus). À regarder : `?view=custom&cam=322,172,2.5,355,186,-0.5` et `cam=345,200,14,335,170,-2`.
+
+**L'Hexagone, lot 4 : le mobilier du parvis (1er novembre 2026)** (D168)
+- Le parvis a sa sphère rayée, sa colonne Morris, ses trois mâts à drapeaux (France, Europe, un autre), son lampadaire à tête triangulaire, deux bacs de topiaires en spirale et trois arceaux à vélos ; on ne traverse ni la sphère, ni la colonne, ni les bacs.
+- Positions de la sphère et du lampadaire lues sur l'orthophotographie ; le reste estimé (± 3 m). Pas encore cassable, ni corbeille, ni bancs.
+- 894 tests (4 de plus). À regarder : `?view=custom&cam=334,166,3.2,345,182,1.5` et `cam=330,185,6,342,176,1`.
+
+**L'Hexagone, lot 5 : le parking (1er novembre 2026)** (D169)
+- Le parking a ses vraies rangées : six rangées lues à l'orthophotographie redressée, 110 places en traits propres au pas de 2,5 m ; les 236 anciens traits au hasard sont partis. Les voitures garées se posent sur ces places.
+- Pas fait : les hachures aux bouts de rangées, les flèches et le passage piétons ; places cachées par les voitures ou l'ombre extrapolées.
+- 898 tests (4 de plus). À regarder : `?view=custom&cam=340,230,45,335,245,0`.
+
+**L'Hexagone, lot 6 : deux barres à toit-terrasse (1er novembre 2026)** (D170)
+- Les deux grandes barres voisines (au nord-ouest et à l'est du parking) n'ont plus de toit à croupes : toits plats mesurés au LiDAR avec leurs édicules ; celle de l'est a deux niveaux (redan de 1,15 m).
+- Trois petits bâtiments du voisinage ont encore un toit trop haut (hauteur BD TOPO prise pour l'égout) : à traiter pour toute la ville, pas ici.
+- 903 tests (5 de plus). À regarder : `?view=custom&cam=392,270,38,408,270,6` et `cam=345,215,35,365,250,9`.
+

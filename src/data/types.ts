@@ -80,6 +80,8 @@ export interface Building {
   steps: number[][];
   /** Cheminées : cx, cy, largeur, profondeur, zbase, zhaut. */
   chim: number[][];
+  /** Édicules sur un toit-terrasse (D170) : cx, cy, côté le long de l'angle, côté perpendiculaire, zbas, zhaut, angle (degrés). */
+  rooftop?: number[][];
   roofKind: "flat" | "shed" | "gable" | "hip" | "complex";
   eave: number;
   ridge: number;
@@ -398,6 +400,8 @@ export interface BuildingKind {
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   house?: HouseModel;
+  /** L'Hexagone d'après relevés LiDAR et photos (D165) : modèle dédié (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
+  hex?: HexagoneModel;
 }
 
 /**
@@ -507,6 +511,82 @@ export interface ChapelModel {
   /** Baies en plein cintre : côté (−1 : mur s0, 1 : mur s1), distance depuis le pignon d'entrée, largeur, appui, hauteur. */
   windows: [number, number, number, number, number][];
   light?: 1;
+}
+
+/**
+ * L'Hexagone d'Autun (D165, tools/data/build_monuments.py, relevés de tools/data/survey_hexagone.py) : une pyramide régulière à 12 pans posée sur
+ * une couronne de six terrasses. Altitudes absolues (locales) ; caps en degrés depuis le nord, sens horaire.
+ */
+export interface HexagoneModel {
+  /** Sommet de la pyramide (x, y). */
+  c: [number, number];
+  /** Sol au pied du bâtiment. */
+  g: number;
+  /** Altitude du sommet et du pied de la pyramide ; apothème du pied (rayon du cercle inscrit du 12-gone). */
+  apex: number;
+  foot: number;
+  apothem: number;
+  /** Jupon plus raide au bas des pans : apothème et altitude où la pente passe de la pente du sommet (≈ 0,2) à celle du jupon (≈ 0,7) jusqu'au pied. */
+  skirt: [number, number];
+  /** Cap de la première arête de la pyramide ; les suivantes tous les 30°. */
+  hip: number;
+  /** Contour des murs (x, y, …) : emprise BD TOPO, la même que les collisions. */
+  ring: number[];
+  /** Six secteurs de la couronne, de normales 35° + 60°·k (chacun couvre ± 30°) : distance au sommet du bord extérieur des terrasses (bandeaux en débord compris), altitude du dessus. */
+  sides: [number, number][];
+  /** Annexe haute : contour (x, y, …) et altitude de son toit. */
+  annex?: { r: number[]; z: number };
+  /** Façade principale (ouest, lot 2) : mur droit, auvent d'entrée central, portes vitrées et enseigne. */
+  front?: HexagoneFront;
+  /** Face nord-est (lot 2) : étage en bardage sombre en porte-à-faux sur poteaux. */
+  ne?: HexagoneNorthEast;
+  /** Mobilier du parvis (lot 4) : sphère, colonne Morris, mâts à drapeaux, lampadaire, bacs de topiaires, arceaux à vélos. */
+  props?: HexagoneProp[];
+  colors: { wall: string; roof: string; deck: string; drum: string; annex: string; band: string; glass: string; zinc: string; frame: string };
+}
+
+/**
+ * Mur droit d'une face, dans son repère : `s` le long du mur vu de l'extérieur (vers la droite), `t` vers l'extérieur, origine sur la normale `cap`
+ * passant par le sommet, à `d` m de lui.
+ */
+export interface HexagoneFront {
+  cap: number;
+  d: number;
+  /** Étendue du mur (s0, s1). */
+  s: [number, number];
+  /** Altitudes : haut du vitrage, haut du bandeau bas, haut du bandeau-fenêtre, haut du bandeau haut (acrotère compris). */
+  levels: [number, number, number, number];
+  /** Auvent d'entrée : s0, s1, saillie, haut. */
+  canopy: [number, number, number, number];
+  /** Centres des portes doubles (largeur 2,4 m). */
+  doors: number[];
+  /** Enseigne : texte et s du centre. */
+  sign: [string, number];
+}
+
+/** Objet du parvis : position locale, cap `a` (degrés : sens des drapeaux, orientation des bacs et des arceaux), `v` : variante (drapeaux : 0 France, 1 Europe, 2 autre). */
+export interface HexagoneProp {
+  k: "sphere" | "column" | "lamp" | "flag" | "planter" | "rack";
+  x: number;
+  y: number;
+  a?: number;
+  v?: number;
+}
+
+export interface HexagoneNorthEast {
+  cap: number;
+  /** Mur du rez-de-chaussée. */
+  d: number;
+  s: [number, number];
+  /** Altitude du dessous de l'étage, du dessus, saillie de l'étage. */
+  floor: number;
+  top: number;
+  over: number;
+  poles: number[];
+  doors: number[];
+  /** Fenêtre carrée (s, largeur) et oriel à stores (s, largeur). */
+  window: [number, number];
+  oriel: [number, number];
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";

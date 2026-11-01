@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
 
@@ -134,6 +134,10 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
     if (h) out.push([...housePost(h), 0.12]);
+    for (const q of kinds.buildings[b.id]?.hex?.props ?? []) {
+      const r = HEX_PROP_RADIUS[q.k];
+      if (r) out.push([q.x, q.y, r]);
+    }
     const st = kinds.buildings[b.id]?.store;
     if (st) out.push(...storeCircles(b, st));
   }
@@ -617,4 +621,42 @@ export function cathedralWalls(b: Building, m: CathedralModel): { lines: number[
   const sg = p0 + TH + 0.15;
   const grilles = [line([[sg, iA], [sg, pc - 1.6]]), line([[sg, pc + 1.6], [sg, iB]])];
   return { lines, grilles };
+}
+
+// --- L'Hexagone (D165) ------------------------------------------------------------------------------------------------------------
+
+/** Rayon d'obstacle du mobilier du parvis de l'Hexagone (D168) ; les arceaux à vélos se franchissent. */
+export const HEX_PROP_RADIUS: Readonly<Record<string, number>> = { sphere: 1.4, column: 0.9, lamp: 0.15, flag: 0.1, planter: 1.5, rack: 0 };
+
+/** Normales des six côtés de la couronne de l'Hexagone (caps, degrés). */
+export const HEX_SIDES = [35, 95, 155, 215, 275, 335] as const;
+
+export interface HexagoneShape {
+  /** Les 12 sommets du pied de la pyramide, le premier au cap `hip`. */
+  foot: [number, number][];
+  /** Les 12 sommets de la rupture de pente (haut du jupon). */
+  mid: [number, number][];
+}
+
+const dir = (cap: number): [number, number] => [Math.sin((cap * Math.PI) / 180), Math.cos((cap * Math.PI) / 180)];
+
+/** Pied et rupture de pente de la pyramide à 12 pans de l'Hexagone. */
+export function hexagoneShape(m: HexagoneModel): HexagoneShape {
+  const ring = (apothem: number): [number, number][] => {
+    const R = apothem / Math.cos(Math.PI / 12);
+    return Array.from({ length: 12 }, (_, i) => {
+      const [dx, dy] = dir(m.hip + 30 * i);
+      return [m.c[0] + R * dx, m.c[1] + R * dy] as [number, number];
+    });
+  };
+  return { foot: ring(m.apothem), mid: ring(m.skirt[0]) };
+}
+
+/** Point du pied de la pyramide dans la direction `cap` (cap depuis le sommet). */
+export function hexagoneFootAt(m: HexagoneModel, cap: number): [number, number] {
+  const face = m.hip + 15;
+  const off = ((((cap - face) % 30) + 45) % 30) - 15;
+  const r = m.apothem / Math.cos((off * Math.PI) / 180);
+  const [dx, dy] = dir(cap);
+  return [m.c[0] + r * dx, m.c[1] + r * dy];
 }

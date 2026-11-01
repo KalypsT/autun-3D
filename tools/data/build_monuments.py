@@ -1,6 +1,6 @@
 """Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
-Usage : python3 tools/data/build_monuments.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
+Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
           tiles/*.json (emprise BD TOPO), modèles de surface et de terrain LiDAR HD de l'IGN (WMS, fenêtre autour du bâtiment, 0,5 m,
           gardée dans .cache/shared/raw/monuments).
@@ -11,7 +11,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           portes romaines (modèle `gate`, D137, D138) : champ `gm` du site `gate` (écrit par build_kinds.py) et silhouette lointaine ;
           église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
-          maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine.
+          maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
+          Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
 Mesures (hauteurs en altitudes locales, comme les tuiles) :
@@ -26,6 +27,7 @@ Le relevé ne sert qu'à mesurer : le client dessine des pans plans (un toit mai
 import io
 import json
 import math
+import sys
 import zlib
 
 import numpy as np
@@ -839,6 +841,46 @@ def chapel(tid, bid, b, spec, k, kinds_all):
     return True, lod
 
 
+# --- L'Hexagone (D165) ---------------------------------------------------------------------------------------------------------------
+
+HEX_SIDES = (35, 95, 155, 215, 275, 335)
+HEX_COLORS = {"wall": "#dccab6", "roof": "#6c7b90", "deck": "#8c8d8b", "drum": "#56616f", "annex": "#4a5360",
+              "band": "#d9c3ab", "glass": "#3a5662", "zinc": "#566377", "frame": "#ecebe6"}
+
+
+def hexagone_shape(m):
+    """Pied à 12 pans de la pyramide ; même calcul que `hexagoneShape` (src/core/landmarks.ts)."""
+    R = m["apothem"] / math.cos(math.radians(15))
+    d = lambda cap: (math.sin(math.radians(cap)), math.cos(math.radians(cap)))
+    return [[m["c"][0] + R * d(m["hip"] + 30 * i)[0], m["c"][1] + R * d(m["hip"] + 30 * i)[1]] for i in range(12)]
+
+
+def hexagone(tid, bid, b, spec, k):
+    """L'Hexagone (D165) : champ `hex` du bâtiment (kinds/<tuile>.json) et silhouette lointaine (couronne, pyramide). Les mesures viennent des
+    relevés du lot 0 (tools/data/survey_hexagone.py, docs/plans/hexagone.md §8), recopiés dans `manual.json` : sommet, pied et apothème de la
+    pyramide, cap de ses arêtes, distance et niveau de chacun des six côtés, annexe ; le sol est celui du bâtiment BD TOPO. Rend (changé, silhouette)."""
+    m = {"c": spec["c"], "g": round(b["ground"], 2), "apex": spec["apex"], "foot": spec["foot"], "apothem": spec["apothem"], "skirt": spec["skirt"], "hip": spec["hip"],
+         "ring": b["ring"], "sides": spec["sides"], "colors": {**HEX_COLORS, **spec.get("colors", {})}}
+    if spec.get("annex"):
+        m["annex"] = spec["annex"]
+    for key in ("front", "ne", "props"):
+        if spec.get(key):
+            m[key] = spec[key]
+    foot = hexagone_shape(m)
+    print(f"  {bid} : pyramide à 12 pans de {m['apex'] - m['g']:.1f} m (pente {(m['apex'] - m['skirt'][1]) / m['skirt'][0]:.3f}, jupon {(m['skirt'][1] - m['foot']) / (m['apothem'] - m['skirt'][0]):.2f}), couronne de six secteurs"
+          f" à {', '.join(f'{s[0]:.1f}' for s in m['sides'])} m, terrasses à {', '.join(f'{s[1]:+.1f}' for s in m['sides'])}")
+    r1 = lambda pts: [[round(x, 1), round(y, 1)] for x, y in pts]
+    zs = [s[1] for s in m["sides"]]
+    polys = [(r1(zip(b["ring"][0::2], b["ring"][1::2])), round(sum(zs) / 6, 1), round(max(zs) + 0.45, 1)), (r1(foot), m["foot"], m["apex"])]
+    lod = tid if replace_lod(tid, bid, polys) else None
+    e = dict(k["buildings"].get(bid, {"k": "culture"}))
+    e["hex"] = m
+    if k["buildings"].get(bid) == e:
+        return False, lod
+    k["buildings"][bid] = e
+    return True, lod
+
+
 # --- Maison d'après photo (D140) -----------------------------------------------------------------------------------------------------
 
 def house_frame(b, spec):
@@ -1369,6 +1411,8 @@ def main():
     if fixed:
         print(f"  revêtement des pistes : {', '.join(sorted(fixed))}")
     manual = data.get("monuments", {})
+    if len(sys.argv) > 1:  # `python3 build_monuments.py <modèle>` : un seul modèle (les autres demandent les rasters LiDAR de leur zone)
+        manual = {k: v for k, v in manual.items() if v["model"] == sys.argv[1]}
     world = json.load(open(c.OUT / "world.json"))
     found = {}
     for m in world["tiles"]:
@@ -1442,6 +1486,13 @@ def main():
             continue
         if spec["model"] == "notredame":
             ch, lod = notredame(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "hexagone":
+            ch, lod = hexagone(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

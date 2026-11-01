@@ -44,6 +44,9 @@ COLORS = {
     "water": "#4fb0c6",
     "plaza_paving": "#d6b98a",
     "plaza_granite": "#b4b3ad",
+    "plaza_brick": "#cf9483",
+    "plaza_slate": "#74808a",
+    "plaza_filet": "#e4dac8",
     "plaza_pavers": "#9c9b99",
     "plaza_concrete": "#dcd6c8",
     "plaza_sett": "#c79a6b",
@@ -55,7 +58,7 @@ COLORS = {
     "road_paving": "#d6b98a",
     "walk": "#fbf3dc",
 }
-ORDER = ["lawn", "pitch", "water", "plaza_gravel", "plaza_paving", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
+ORDER = ["lawn", "pitch", "water", "plaza_gravel", "plaza_paving", "plaza_filet", "plaza_brick", "plaza_slate", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
 BUILDING = "#e58d73"
 BUILDING_EDGE = "#b9573f"
 MONUMENT = "#d9472b"

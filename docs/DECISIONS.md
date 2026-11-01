@@ -3098,3 +3098,151 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![L'accueil et son auvent](captures/d163-latouche-accueil.jpg)
 ![Vers l'ouest-sud-ouest : le bloc à bandeaux](captures/d163-latouche-ouest.jpg)
 ![Vue d'ensemble](captures/d163-latouche-aerien.jpg)
+
+## 2026-11-01 — D164. L'Hexagone, lot 0 : relevés (plan `docs/plans/hexagone.md`)
+
+**Demande de l'utilisateur** : option B (modèle dédié), ordre par défaut, lancer le lot 0 ; deux photos de plus (la façade principale vue de plus loin, la face nord-est).
+
+**Aucun changement du jeu** : un script de relevé (`tools/data/survey_hexagone.py`, MNS/MNT LiDAR HD à 25 cm, orthophotographie à 10 et 20 cm, téléchargés dans `.cache/`), le §8 du plan et deux vues annotées (`docs/captures/hexagone-lot0-*.jpg`).
+
+**Résultats** (détail au §8 du plan) :
+- Toit : **pyramide régulière à 12 pans**, sommet +9,17 en (383,63 ; 183,57) (12,8 m au-dessus du sol), pied à 16,5 m (+4,4), **pente 0,205** (le jeu : 0,70, faîtage 3,6 m trop bas), arêtes à 20° + 30°·k. La phase des arêtes est lue à l'œil (l'ajustement LiDAR concorde mais ne la discrimine pas).
+- Murs : six murs aux normales 35° + 60°·k, à 19 à 30 m du sommet, dessus de la couronne à +1,1 (ouest, nord-ouest), −0,7 (sud-ouest), −0,5 (est), **+2,2 (nord-est : l'étage en bardage sombre de la photo 5)**. **Façade principale : normale 275°**, milieu (353,5 ; 186,2), ≈ 34,6 m (ma lecture du plan, 250°, était fausse). Mur est non mesuré (la fenêtre atteint un immeuble voisin).
+- Parking : sept blocs de places, traits à 143° ± 4°, pas 2,49 m ; aucun décompte (voitures).
+
+**Limites** : phase des arêtes et direction des blocs ± 3° ; mur est, souche, lanterneaux, largeur de l'étage sombre et nombre de portes restent à fixer aux lots 1 et 2 ; aucun nouveau test (aucun code de jeu touché).
+
+![Pyramide, arêtes, six murs](captures/hexagone-lot0-toit.jpg)
+![Parking : sept blocs](captures/hexagone-lot0-parking.jpg)
+
+## 2026-11-01 — D165. L'Hexagone, lot 1 : volumes et toit (plan `docs/plans/hexagone.md`, §9)
+
+**Demande de l'utilisateur** : « Continue » après le lot 0 (D164).
+
+**Constat** : le toit du jeu (14 plans, pente 0,70, faîtage à 9,2 m) et son bâtiment à façade générique ne ressemblaient pas au LiDAR (pyramide à 12 pans, 12,8 m).
+
+**Modèle** (`HexagoneModel`, `src/data/types.ts` ; mesures recopiées de `survey_hexagone.py` dans `manual.json`, modèle `hexagone` ; `hexagone()` de `build_monuments.py` écrit le champ `hex` et la silhouette lointaine) :
+- pyramide régulière à 12 pans : sommet +9,17 en (383,63 ; 183,57), arêtes à 20° + 30°·k, pente 0,21 jusqu'à 14 m du sommet (z +6,2), puis jupon à 0,72 jusqu'au pied (16,5 m, z +4,4) ; tambour de 12 pans entre la terrasse et le pied (bleu-gris sombre : proche du liseré d'égout des photos, provisoire) ;
+- couronne : contour BD TOPO (le même que les collisions), six secteurs de normales 35° + 60°·k ± 30° aux niveaux +2,2 / −0,3 / −3,0 / −0,7 / +1,1 / +1,1, dessus en quadrilatères radiaux entre le mur et le pied, acrotère de 45 cm, marches entre secteurs voisins ; annexe sombre à l'est (toit +3,1) ;
+- `src/render/hexagone.ts` (rendu), `hexagoneShape` / `hexagoneFootAt` dans `src/core/landmarks.ts` ; l'ancien volume n'est plus dessiné (`stylized.ts`), `replacesFacade` mis à jour.
+
+**Données** : seulement `kinds/27_35.json` (le bâtiment …694) et `lod/27_35.json` (deux prismes : couronne, pyramide au lieu d'un). Rien d'autre n'a changé.
+
+**Tests** (+9, 880 au total, `src/render/hexagone.test.ts`) : sommet à 12,8 ± 0,5 m, pente du plan entre 0,17 et 0,24, jupon plus raide, douze arêtes à 20° + 30°·k, façade principale à 30 m et NE le côté le plus haut, contour = emprise BD TOPO, moins de 15 000 triangles, point le plus haut au sommet, douze pans vers le haut et l'extérieur, silhouette lointaine (sommet, pied à 4,4, contour).
+
+**Limites** : façade lisse (lot 2) ; bord extérieur des bandeaux (jusqu'à 1,8 m plus loin que le mur à l'ouest) non dessiné ; lanterneaux, souche et bardage sombre du nord-est absents ; le tambour de 3 m au-dessus des terrasses vient du LiDAR mais les photos 4 et 5 montrent le toit presque posé sur le bandeau haut : à contrôler au lot 2 ; une marche étroite au sud-est paraît très sombre sur la vue aérienne ; collisions et navigation inchangées (la porte d'entrée doit rester accessible).
+
+![Vue aérienne](captures/hexagone-lot1-aerien.jpg)
+![Face ouest](captures/hexagone-lot1-ouest.jpg)
+![Face nord-est](captures/hexagone-lot1-nord-est.jpg)
+
+## 2026-11-01 — D166. L'Hexagone, lot 2 : façades ouest et nord-est (plan `docs/plans/hexagone.md`, §10)
+
+**Demande de l'utilisateur** : « Continue avec le lot 2 ».
+
+**Mesures nouvelles** (coupes LiDAR) : la façade ouest est un mur droit d'environ 32 m (s de −15 à +17 dans son repère, ligne à 26,4 m du sommet) avec un auvent central de 10,5 m saillant de 2,2 m ; la face nord-est a son dessus à +2,2 m sur 21 m, en porte-à-faux de 2-3 m sur le contour BD TOPO. Cela corrige le §8.2 (qui lisait des bandeaux débordants sur toute la façade).
+
+**Rendu** (`hexagone-facade.ts`, `buildFront`, `buildNorthEast`) :
+- ouest : vitrage en travées de 2 m, piliers tous les 4 m, cinq portes doubles à cadre clair, bandeau bas / bandeau-fenêtre sombre / bandeau haut de part et d'autre de l'auvent, auvent plein portant l'enseigne « HEXAGONE » ; niveaux −0,85 / 0,15 / 1,0 / 1,55 (4,7 à 5,15 m au-dessus du sol) ;
+- nord-est : rez-de-chaussée enduit (portes vitrées), étage en bardage à lattes alternées sur 5 poteaux de 14 cm, oriel à stores, fenêtre ;
+- `buildHexagone` reçoit maintenant les `LandmarkSinks` (solide, lumière, texte) ; les pièces du contour dans une face ne sont plus dessinées et un tablier de 4,5 m comble l'écart avec la ligne de la façade.
+
+**Données** : champs `front` et `ne` et quatre couleurs de plus dans `hex` (`kinds/27_35.json`), lus de `manual.json` ; la silhouette lointaine ne change pas.
+
+**Tests** (+5, 885 au total) : dimensions de la façade (32 m, auvent 10 m saillant de 2 m, hauteur 4,7-5,3 m), ligne de façade proche du contour (le joueur s'arrête à moins de 3 m des vitres), portes (au moins quatre, trois sous l'auvent, sans chevauchement), face nord-est (la plus haute, au moins 4 poteaux, tous ses éléments dans son étendue), enseigne « HEXAGONE » une fois, vitrages allumés, moins de 15 000 triangles.
+
+**Limites** : collisions et navigation inchangées (l'emprise BD TOPO reste de 1 à 3 m en retrait de la façade, donc le joueur s'arrête avant les vitres) ; positions des portes (cinq) et de l'oriel estimées sur les photos 2, 4 et 5 (± 1 m) ; autres côtés, lanterneaux, souche et liseré d'égout non faits ; vitrage et bardage sont des teintes moyennes.
+
+![Façade ouest](captures/hexagone-lot2-facade.jpg)
+![Face nord-est](captures/hexagone-lot2-nord-est.jpg)
+![Vue aérienne](captures/hexagone-lot2-aerien.jpg)
+
+## 2026-11-01 — D167. L'Hexagone, lot 3 : le parvis (plan `docs/plans/hexagone.md`, §11)
+
+**Demande de l'utilisateur** : « Continue avec le lot 3 ».
+
+**Constat** : le parvis n'avait presque aucune couche de sol (le terrain nu apparaissait), une bande d'asphalte de 322 m² recouvrait le motif d'ardoise, et des murets de 2 m barraient la place sur les captures du lot 2.
+
+**Les murets** : clôtures de parcelle de `build_public_space.py` (ids −9000042xx, kind `wall`, 2,0 m, D94) ; D156 les avait retirées au centre-ville seulement (disque de 300 m autour de l'origine). Retirées aussi dans un disque de 50 m (centre (335 ; 172)) : **20 tronçons, 173 m**, tuiles 27_35 et 27_36. Le mur de 3,5 m d'OSM (id 249413461) n'est pas touché.
+
+**Dallage** : trois classes de sol nouvelles, `plaza_filet` (fond clair et filets, #e4dac8), `plaza_brick` (brique rose, #cf9483), `plaza_slate` (ardoise, #74808a) ; couleurs de jour et de nuit dans `T.paving` (7 teintes au lieu de 4), classes déclarées dans `ground.ts` (relevées à 6,5-7,2 cm au-dessus du relief pour ne pas être percées par ses bosses) et `build_map.py`. Elles comptent comme sol libre pour les terrasses (`plaza_*`). `build_plaza.py` (nouveau, idempotent) lit `plazas` de `manual.json`, retire l'emprise des couches `road_asphalt`, `walk`, `lawn`, `plaza_*`, pose les polygones coupés par tuile et recalcule `bytes` de `world.json`. Les formes sont dessinées à la main d'après l'orthophotographie (± 1 m) : la classification automatique (`survey_plaza.py`) n'a servi que de référence.
+
+**Données** : `tiles/27_35.json`, `tiles/27_36.json`, `world.json` (bytes) ; navigation inchangée (`build_nav.py` non relancé).
+
+**Tests** (+5, 890 au total, `src/data/plaza.test.ts`) : trois classes d'étendues plausibles, brique autour de la sphère et motifs sans recouvrement (grille de 0,5 m), au moins deux hexagones d'ardoise, aucun sommet de dallage dans l'emprise du bâtiment et aucune autre couche sous la brique, plus de clôture de parcelle commençant à moins de 50 m (le mur OSM reste).
+
+**Limites** : positions des motifs à ± 1 m, nombre d'éléments simplifié (12 pièces d'ardoise contre une trentaine sur l'orthophotographie) ; moitié ouest du parvis (dallage clair à filets) non dessinée ; les clôtures retirées comprennent peut-être de vraies grilles de propriété dans le disque de 50 m ; relancer `build_public_space.py` les remettrait (relancer ensuite `build_streetscape.py` et `build_plaza.py`) ; navigation non régénérée.
+
+![Parvis vu de l'ouest](captures/hexagone-lot3-parvis.jpg)
+![Dallage vu du nord-est](captures/hexagone-lot3-dallage.jpg)
+![Vue aérienne](captures/hexagone-lot3-aerien.jpg)
+![Relevé : formes sur l'orthophotographie (classification automatique)](captures/hexagone-lot3-dallage-releve.jpg)
+
+## 2026-11-01 — D168. L'Hexagone, lot 4 : le mobilier du parvis (plan `docs/plans/hexagone.md`, §12)
+
+**Demande de l'utilisateur** : « Continue avec le lot 4 ».
+
+**Choix** : le mobilier est dans le modèle de l'Hexagone (`hex.props`), non dans les `furniture` des tuiles ni dans un site de plus : un seul endroit à relire (`manual.json`), même chaîne que la façade, collisions ajoutées à `landmarkCircles` (comme le poteau de la maison, D140). Les `furniture` d'OpenStreetMap (un lampadaire et une boîte aux lettres près du parvis) ne changent pas.
+
+**Objets** (`HexagoneProp`, `buildHexagoneProps`) : sphère (pied tronconique de pierre, sphère de 1,25 m à bandes horizontales sur dix bandes), colonne Morris (socle gris, affiches de couleurs alternées par pan, coiffe verte), lampadaire (mât de 5,2 m, plaque triangulaire inclinée, dessous allumé la nuit), mâts de 7,5 m à drapeaux double face (France en trois bandes, Europe à douze étoiles, un troisième bicolore), bacs hexagonaux (30 à 42 cm, gravier sombre) à quatre topiaires en spirale (étages de dômes décalés), arceaux (deux poteaux et une barre).
+
+**Positions** (repère local) : sphère (340,4 ; 175,2), lampadaire (335,4 ; 176,4), bacs (343,8 ; 183) et (350 ; 165,6), colonne (341,5 ; 186,4), drapeaux (347 ; 186,2), (348,2 ; 185,6), (349,4 ; 185), arceaux (344 à 345,6 ; 186,9).
+
+**Données** : `props` du modèle (`manual.json` -> `kinds/27_35.json` par `build_monuments.py hexagone`) ; aucune autre donnée ; navigation inchangée.
+
+**Tests** (+4, 894 au total) : composition (une sphère proche de la position lue, trois drapeaux de variantes 0 à 2, au moins deux bacs et trois arceaux), tout hors du bâtiment et à plus de 3 m de la façade, sans chevauchement, collisions (cercles aux positions, rayons attendus, arceaux franchissables), maillage (plus de mille triangles de plus, moins de 15 000 en tout, couleurs finies, lueur de nuit en plus).
+
+**Limites** : positions de la colonne, des drapeaux et des arceaux estimées (± 3 m) ; pas de corbeille ni de bancs ; ces objets ne sont pas cassables (D160) ; la sphère est plus petite que sur les photos (2,5 m pour environ 1,1 fois la largeur d'une porte, soit ≈ 2,6 m : à vérifier) ; la haie et les arbres taillés des photos 1 et 2 manquent.
+
+![Sphère et drapeaux](captures/hexagone-lot4-sphere.jpg)
+![Colonne Morris, bac et drapeaux](captures/hexagone-lot4-colonne.jpg)
+![Parvis vu du nord-est](captures/hexagone-lot4-parvis-haut.jpg)
+![Vue aérienne](captures/hexagone-lot4-aerien.jpg)
+
+## 2026-11-01 — D169. L'Hexagone, lot 5 : les rangées du parking (plan `docs/plans/hexagone.md`, §13)
+
+**Demande de l'utilisateur** : « Continue avec le lot 5 ».
+
+**Constat** : comme le Champ de Mars avant D154, les traits étaient posés au hasard le long d'allées OpenStreetMap (236 marques dans la zone, orientations variées).
+
+**Lecture** : orthophotographie à 20 cm redressée de 37° (traits verticaux : la mesure par bloc du lot 0, 143° ± 4°, n'était qu'un bruit de mesure). Six rangées, pas et phase affinés sur les traits blancs visibles (`tools/data/survey_parking.py`) :
+
+| Rangée | Premier trait u | Pas | Traits | Tronçons v (m) | Places |
+|---|---|---|---|---|---|
+| N (bord nord) | 11,26 | 2,480 | 9 | −39,6 à −34,8 | 8 |
+| R1 (nord-est, double) | 1,35 | 2,480 | 18 | −27,0 à −17,0, fond −22,0 | 34 |
+| R2 (devant le bâtiment) | −9,42 | 2,500 | 20 | −10,3 à −5,0 | 19 |
+| R2b (sa seconde moitié, ouest) | −9,74 | 2,510 | 8 | −5,0 à −0,6 | 7 |
+| R3 (ouest, double) | −15,22 | 2,490 | 10 | 5,9 à 16,2, fond 11,0 | 18 |
+| R4 (sud-ouest, double) | −27,40 | 2,500 | 13 | 21,8 à 32,0, fond 27,0 | 24 |
+
+**Données** : clé `parkings` de `manual.json` (repère, zone de nettoyage, rangées, couches de sol où poser les traits) ; `build_parking.py` (nouveau, idempotent) retire toutes les marques de la zone (236), pose 123 polygones (traits de 5 m à 7 cm de la ligne de fond, lignes de fond), les découpe aux bâtiments (marge 30 cm) et à l'asphalte de la tuile ; tuile 27_36 et `bytes` de `world.json` ; navigation inchangée.
+
+**Jeu** : les voitures garées utilisent ces places par `findStalls` sans changer `vehicles.ts` : 110 places retrouvées dans la zone (les marques voisines, hors zone, restent : 55 places de plus à moins de 60 m).
+
+**Tests** (+4, 898 au total, `src/data/parking-hexagone.test.ts`) : entre 99 et 121 places retrouvées, sans doublon ; toutes à 143° ± 3° ; pas de 2,4 à 2,6 m entre voisines (plus de 80 mesures) ; plus aucune ancienne marque (toutes les marques de la zone sont des traits à 143° ou des fonds à 53°) ; aucun trait dans un bâtiment.
+
+**Limites** : les places dont les traits sont cachés (voitures, ombre) sont extrapolées au pas, à ± 20 cm ; hachures, flèches et passage piétons non faits ; les marques des 55 places hors zone (le long de la route, au nord-est) n'ont pas été relues ; navigation non régénérée.
+
+![Parking vu d'en haut](captures/hexagone-lot5-parking-haut.jpg)
+![Parking vu du sol](captures/hexagone-lot5-parking-sol.jpg)
+![Relevé : traits prédits sur l'image redressée](captures/hexagone-lot5-parking-releve.jpg)
+
+## 2026-11-01 — D170. L'Hexagone, lot 6 : toits-terrasses de deux barres voisines (plan `docs/plans/hexagone.md`, §14)
+
+**Demande de l'utilisateur** : vérifier avant d'agir, puis « lot 6 réduit aux deux barres, avec les édicules ».
+
+**Vérification** : comparaison, pour 23 bâtiments à moins de 150 m, du relief du toit dessiné et du MNS LiDAR. Seules …848387 (relief LiDAR 0,16 m contre 1,2 m dessiné) et …848377 sont plates en réalité ; aucun bâtiment n'est plat dans le jeu en étant pentu au LiDAR. Mon premier critère (pente d'un plan ajusté) était invalide pour les toits symétriques ; …377 est en plus à **deux niveaux** (+8,43 et +7,28), ce que la comparaison par tranches de 2 m a révélé.
+
+**Changements** : toit plat (`roofKind` « flat ») aux niveaux mesurés, une face par niveau, huit sommets d'emprise (deux paires de part et d'autre du redan, la seconde à 2 cm de la première), mur de raccord de 1,15 m, murs montés à leur niveau, fiche en matériau « terrasse », silhouette lointaine au niveau du toit, 3 + 12 édicules (`Building.rooftop`, `rooftopBox`). `stylized.ts` dessine les raccords de toit plat dès 40 cm (1,5 m pour un toit à pans, inchangé).
+
+**Données** : `tiles/27_36.json`, `lod/27_36.json`, `world.json` (bytes) ; `flatRoofs` dans `manual.json` ; `build_flat_roofs.py` laisse intact un bâtiment qui porte déjà `rooftop`. Navigation inchangée.
+
+**Tests** (+5, 903 au total, `src/data/flat-roofs.test.ts`) : niveaux et faces de …387, deux niveaux et redan de …377 (sommets au bon niveau selon leur côté de la droite, aucun côté de longueur nulle), édicules (nombre, 3 m² au moins, dans l'emprise, posés sur leur niveau, moins de 3 m), matériau et silhouette, jumeau …380 inchangé, géométrie d'un édicule.
+
+**Limites** : les édicules sont des pavés (ni lanterneaux ni garde-corps), leur hauteur est mesurée à 50 cm près ; l'angle de la barre …377 (5,7°) n'est pas suivi par les édicules alignés sur les axes ; le redan est supposé perpendiculaire à l'axe ; trois autres bâtiments ont un toit trop haut (voir §14 du plan), non traités.
+
+![Barre est, deux niveaux](captures/hexagone-lot6-barre-est.jpg)
+![Barre nord-ouest](captures/hexagone-lot6-barre-nord-ouest.jpg)
+![Vue aérienne](captures/hexagone-lot6-aerien.jpg)
+

@@ -18,6 +18,10 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   plaza_pavers: { color: "paving1", lift: 0.035 },
   plaza_concrete: { color: "paving2", lift: 0.035 },
   gutter: { color: "paving3", lift: 0.05 },
+  // Parvis de l'Hexagone (D167) : fond clair et filets, brique rose, ardoise ; les motifs se posent sans se recouvrir, un peu plus haut que les autres places (le relief bosse autour du socle de la sphère et perçait la dalle).
+  plaza_brick: { color: "paving4", lift: 0.072 },
+  plaza_slate: { color: "paving5", lift: 0.072 },
+  plaza_filet: { color: "paving6", lift: 0.065 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },
