@@ -402,6 +402,8 @@ export interface BuildingKind {
   house?: HouseModel;
   /** L'Hexagone d'après relevés LiDAR et photos (D165) : modèle dédié (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
   hex?: HexagoneModel;
+  /** Collège du Vallon d'après relevés LiDAR (D172) : ailes à toit plat, gymnase à deux pentes ou préau à voûtes (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
+  vallon?: VallonModel;
 }
 
 /**
@@ -587,6 +589,23 @@ export interface HexagoneNorthEast {
   /** Fenêtre carrée (s, largeur) et oriel à stores (s, largeur). */
   window: [number, number];
   oriel: [number, number];
+}
+
+/**
+ * Collège du Vallon (D172, tools/data/build_monuments.py, relevés de tools/data/survey_college.py, docs/plans/college-vallon.md §9) : volumes mesurés au
+ * LiDAR dans le repère tourné du bâtiment principal (origine `o`, axe u au cap 90° − `rot`, axe v à 90° de lui vers la gauche : caps 72° et 342° pour 17,5°).
+ * Altitudes absolues (locales). Un bâtiment porte l'une des trois parties : `wings` (ailes à toit plat), `gym` ou `preau`.
+ */
+export interface VallonModel {
+  o: [number, number];
+  rot: number;
+  /** Ailes à toit plat avec acrotère : rectangle [u0, u1, v0, v1] et altitude du toit. */
+  wings?: { n: string; r: [number, number, number, number]; z: number }[];
+  /** Gymnase : emprise (x, y, …) découpée en bandes selon u ; plate (`z`) ou à deux pentes (`ridge` : u et altitude du faîtage, `eave` : altitude des égouts). */
+  gym?: { ring: number[]; strips: { u: [number, number]; z?: number; ridge?: [number, number]; eave?: number }[] };
+  /** Préau : rectangle [u0, u1, v0, v1], égout (creux entre voûtes), sommet des voûtes, nombre de voûtes (axe le long de u). */
+  preau?: { r: [number, number, number, number]; eave: number; crown: number; n: number };
+  colors: { wall: string; roof: string; parapet: string; vault: string; hall: string };
 }
 
 export type PitchSport = "soccer" | "rugby" | "tennis" | "basketball" | "handball" | "multi" | "athletics" | "other";

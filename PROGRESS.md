@@ -1332,3 +1332,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le bâtiment principal est fait d'une barre de 4 niveaux (13,6 m), de blocs à 2 niveaux (7,7 m) et d'un préau (3,8 m) ; le gymnase a un toit presque plat (faîtage 5,3 m, le jeu le fait à 9 m) ; le parking compte à peu près 42 places ; les plateaux sont en enrobé gris, sans grillage.
 - À confirmer de ta part : le cap de la photo de la cour (je lis ouest-sud-ouest, pas est-sud-est) et ce que « grille fermée » veut dire (fermée en dehors des heures de classe, par défaut).
 - Réponses du 1er novembre : la photo de la cour est vise bien l'ouest-sud-ouest ; la grille sera fermée en dehors des heures de classe.
+
+**Collège du Vallon, lot 1 : volumes et toits (1er novembre 2026)** (D172)
+- Le bâtiment principal n'est plus une boîte : six ailes à toit plat (barre de quatre niveaux, blocs de deux niveaux), le préau a ses quatre voûtes, le gymnase son toit à deux pentes (plus bas de 3,7 m qu'avant). Murs encore unis : les façades sont le lot 2.
+- Le petit bâtiment gris au nord-est (photo de l'avenue) est ramené à 4,3 m. 917 tests (14 de plus).
+- À regarder : `?view=custom&cam=640,1160,25,625,1100,0` et `cam=598,1108,3,630,1108,5` (cour ouest).

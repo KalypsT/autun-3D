@@ -112,7 +112,7 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 | Lot | Contenu | Fichiers principaux | Tests (cible) |
 |---|---|---|---|
 | **0. Relevés (fait, §9)** | MNS/MNT LiDAR HD et orthophotographie 10 cm : contour exact de chaque aile, hauteurs et égouts, forme du toit du gymnase, nature du bloc ouest, position et axe de la grille, hauteur des parapets, rayon de l'îlot de béton, **nombre et direction des rangées du parking**, revêtement des plateaux ; rattachement des photos 3 et 4 à leur aile ; type `culture` de `…848973` | script jetable `tools/data/survey_college.py`, notes dans le plan (§8) | — |
-| **1. Volumes et toits** | type `college-vallon` (comme `hexagone` et `college`) : ailes, toits mesurés, gymnase ; les BD TOPO fusionnées sont masquées ; `kind` corrigé en `school` si le relevé le confirme | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | emprise dans le contour BD TOPO ± 2 m ; sommet à ± 0,5 m du LiDAR ; aucun triangle caché |
+| **1. Volumes et toits (fait, §10)** | type `college-vallon` (comme `hexagone` et `college`) : ailes, toits mesurés, gymnase ; les BD TOPO fusionnées sont masquées ; `kind` corrigé en `school` si le relevé le confirme | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | emprise dans le contour BD TOPO ± 2 m ; sommet à ± 0,5 m du LiDAR ; aucun triangle caché |
 | **2. Façades** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
 | **3. Entrée** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
 | **4. Cour et abords** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
@@ -219,3 +219,21 @@ Pas un toit à croupes : **un toit à deux pentes de très faible pente** (≈ 0
 
 ![Ailes, cap de la photo 8 (rouge : relevé, orange : cap donné)](../captures/college-lot0-ensemble.jpg)
 ![Entrée : tablier, barrière, grille](../captures/college-lot0-entree.jpg)
+
+## 10. Lot 1 : volumes et toits (D172)
+
+Fait. Trois bâtiments BD TOPO portent maintenant un modèle (`vallon` dans `kinds/28_39.json`), dessiné par `src/render/vallon.ts` à la place des murs et du toit génériques ; les collisions gardent l'emprise BD TOPO.
+
+- **Bloc principal `…848973`** (type corrigé : `school`, plus `culture`) : six ailes à toit plat avec acrotère de 0,45 m, dans le repère tourné de 17,5° du §9.1 : barre sud (toit à 12,7 m du sol), noyau d'escalier, cage extérieure est, aile ouest, bloc nord, aile est (plus haute que l'aile ouest : 8,9 m au-dessus de son sol d'après la mesure fine, pas 7,7). Rectangles affinés au LiDAR à 0,25 m (le §9.1, tiré d'une grille de 2 m, est à ± 1 m).
+- **Préau `…848974`** : murs jusqu'aux creux, **quatre voûtes** d'axe u (creux −30,75, sommet −30,1). Les murs sont pleins pour l'instant (lot 2 : poteaux bleu-vert et côtés ouverts).
+- **Gymnase `…848924`** : l'emprise est découpée en **trois bandes** selon u : bas-côté plat à 3,0 m, **hall à deux pentes** (faîtage à 5,3 m en u = 27,7, égouts à 4,3 m, pente 0,12 ; le §9.3, tiré de coupes en x, donnait 0,2 : la coupe en u, dans le repère du bâtiment, est la bonne), bas-côté plat. L'ancien toit à croupes (faîtage à 9,0 m) a disparu.
+- **`…849030`** (photo 4) : toit plat ramené de 7,1 m (BD TOPO) à 4,3 m du sol, par `flatRoofs` (D170).
+- **Photo 3 confirmée** : la capture « cour ouest » (vue vers l'est) a le bloc nord à gauche, l'aile ouest au centre et la barre à droite, comme la photo.
+- **Silhouettes lointaines** (`lod/28_39.json`) : un prisme par aile et par bande à la place de l'ancien prisme unique.
+- **Pas fait, volontairement** : façades (murs unis), bandeaux, escalier extérieur, édicules et lanterneaux, ouverture du préau ; bloc ouest `…849004` (8,8 m, correct) laissé tel quel.
+- **Reproduire** : `python3 tools/data/build_monuments.py vallon`, puis `python3 tools/data/build_flat_roofs.py` pour `…849030`.
+
+![Vue aérienne](../captures/college-lot1-aerien.jpg)
+![Du nord-est](../captures/college-lot1-nord-est.jpg)
+![Cour est (photo 8)](../captures/college-lot1-cour-est.jpg)
+![Cour ouest (photo 3)](../captures/college-lot1-cour-ouest.jpg)

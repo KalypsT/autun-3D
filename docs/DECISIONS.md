@@ -3265,3 +3265,20 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Terrains](captures/college-lot0-terrains.jpg)
 ![Entrée](captures/college-lot0-entree.jpg)
 
+## 2026-11-01 — D172. Collège du Vallon, lot 1 : volumes et toits (plan `docs/plans/college-vallon.md`, §10)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 1 » (après confirmation du cap de la photo 8 et de la grille fermée hors heures de classe).
+
+**Données** : modèle `vallon` (`VallonModel`, `src/data/types.ts`) écrit par `build_monuments.py` (modèle `vallon` de `manual.json`) dans `kinds/28_39.json` pour `…848973` (six ailes), `…848974` (préau à quatre voûtes) et `…848924` (gymnase en trois bandes) ; `…848973` passe de `culture` à `school`. Silhouettes lointaines par aile et par bande. `…849030` : toit plat à 4,3 m du sol (`flatRoofs`, 7,1 m avant). `world.json` : octets de la tuile 28_39 seulement.
+
+**Rendu** (`src/render/vallon.ts`) : ailes dans le repère tourné de 17,5° (murs suivant le relief, acrotère de 0,45 m), voûtes du préau (six segments par voûte), gymnase découpé en bandes (murs et dessus suivent le toit, marche entre bandes). Murs unis ; `stylized.ts` et `landmarks.ts` les excluent des murs génériques.
+
+**Corrections de relevé** : aile est à 8,9 m (pas 7,7) ; pente du hall du gymnase 0,12 (pas 0,2) ; noyau d'escalier en u 1 à 8 (le §9.1 l'avait décalé).
+
+**Tests** (+14, 917 au total, `src/render/vallon.test.ts`) : repère, hauteurs de toit contre le LiDAR, ailes dans l'emprise BD TOPO à 3 m, ailes jointives, bandes du gymnase et pente, découpe en bande, `…849030`, bloc ouest inchangé, triangles (ailes < 6 000, préau < 1 500, gymnase < 1 500, ensemble < 9 000).
+
+**Limites** : façades unies ; préau fermé ; la cage extérieure est (toit posé à −26,1, le LiDAR donne 9,0 m au-dessus du sol) est à reprendre avec l'escalier au lot 2 ; hauteur de l'acrotère (0,45 m) supposée ; `build_nav.py` non relancé.
+
+![Vue aérienne](captures/college-lot1-aerien.jpg)
+![Cour est](captures/college-lot1-cour-est.jpg)
+![Cour ouest](captures/college-lot1-cour-ouest.jpg)
