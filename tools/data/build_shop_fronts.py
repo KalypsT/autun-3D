@@ -267,7 +267,8 @@ def apply_shop(fi, m):
     g["kind"] = "shop"
     g["shopfront"] = {"color": sh["color"], "glazing": "full"}
     kept = [x for x in g.get("shops", []) if x.get("osm") in sh.get("keepOsm", [])]  # commerces voisins gardés (identifiants OpenStreetMap)
-    g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": round(fi["walls"][m["wall"]]["length"] / 2, 2)}] + kept
+    # `s` (facultatif) : abscisse du commerce quand sa devanture n'est pas au milieu du mur (D184)
+    g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": sh.get("s", round(fi["walls"][m["wall"]]["length"] / 2, 2))}] + kept
     if "terrace" in sh:  # terrasse d'après photo (D178) devant la devanture
         g["shops"][0]["terrace"] = sh["terrace"]
     g["devanture"] = sh["devanture"]

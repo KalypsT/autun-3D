@@ -3551,3 +3551,52 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d183-surplus-apres.jpg)
 ![Jardin d'Intérieur et Aux trésors des dines, avant](captures/d183-guerin-avant.jpg)
 ![Après](captures/d183-guerin-apres.jpg)
+
+## 2026-11-01 — D184. Sept boutiques d'après photos : avenue de Gaulle, avenue de la République, rues des Ormes et de l'Arquebuse
+
+**Demande de l'utilisateur** : neuf captures Street View (prises aux 10, 16, 32 et 53 av. de Gaulle, 1 rue Pernette, 20 av. de la République, 53 rue de la Grille, 33 rue des Ormes, 9 rue de l'Arquebuse). Réponses aux doutes : Kebab Autun **au milieu** du mur de 30,7 m ; boucherie HN **vers le nord-est** de la bande de 42 m ; hôtel : **les deux murs** (façade et retour rue de la Grille), le commerce garde le nom « Le Côté à Côté » ; Au Royaume des Fleurs lu comme proposé (nom et porte sur l'avenue, grande vitrine sur le carrefour).
+
+**Où** (adresses de prise de vue ≠ commerces ; plan à plat des anneaux, indices de mur ; sources : [Kebab Autun, 17b av. de Gaulle](https://www.bourgogne-tourisme.com/restaurants/kebab-autun), [Hôtel du Commerce, 20 av. de la République](https://www.hotelducommerce-autun.fr/en_GB/)) :
+- Kebab Autun : `…348854304` (17bis av. de Gaulle, 25_35), mur 2 de 30,7 m, classé « cour » par les données, passé en rue ; devanture de 10,7 m de s 10 à 20,7 ; absent d'OpenStreetMap ;
+- Au Royaume des Fleurs : `…348854245` (21ter, 25_35), boutique d'angle : mur 11 (20,3 m, avenue, nom, porte) et mur 10 (11,8 m, carrefour, grande vitrine), en `shop.corner` (D179) ;
+- Emmaüs en ville : `…348856222` (32, 25_36), mur 4 de 12,3 m : la façade lue (≈ 12 m) y correspond ;
+- Tabac Presse de la Gare : `…348856228` (53, 24_37), mur 8 de 16,9 m : City Kebab (gardé, `keepOsm`) à gauche, le tabac aux 5,5 derniers mètres (s 11,35 à 16,9), Allo Pizza à droite ; le doublon d'OpenStreetMap sur le 22 av. de la République (`…348856295`) est retiré (`shopWalls` à `null`) ;
+- hôtel : `…348856297` (20 av. de la République, 24_37), **pas** rue de la Grille : façade principale sur le mur 6 (13 m) et retour sur le mur 7 (30,4 m, rue de la Grille) en `shop.corner` ;
+- boucherie & épicerie HN : `…348858747` (33 rue des Ormes, 30_40), bande d'un niveau de 42,2 m, devanture de s 24 à 40,65 ; La Poste (OpenStreetMap, à 6 m de l'autre bout) est gardée ;
+- Morvan Pêche : `…348854022` (9ter rue de l'Arquebuse, 26_35), mur 1 de 13,5 m : la façade lue (≈ 13,5 m) y correspond.
+
+**Outil** : `shop.s` (facultatif, `build_shop_fronts.py`) : abscisse du commerce quand sa devanture n'est pas au milieu du mur (le nom et la navigation suivent la devanture). Les plaques, textes et losanges (`modern`) sont à l'abscisse **du mur**, pas de la devanture : un test le vérifie (trois devantures décalées de ce lot avaient d'abord leurs plaques au début du mur).
+
+**Dessin** (gabarit moderne) :
+- Kebab Autun : trois corbeaux de pierre, frise bleue, bandeau « Kebab Autun » et « Spécialité Grecque » en lettres dorées, grande vitrine, porte, seconde vitrine, soubassement noir à liseré bleu ;
+- Fleurs : bandeau sombre « au royaume des Fleurs » à orchidée rose, grands stores gris-beige sur les deux murs, bacs de fleurs sur le trottoir ;
+- Emmaüs : bandeau bordeaux « emmaüs en ville » (plaque plane), trois baies à cadres bruns, porte vitrée, porte de bois ; balcon filant à l'étage ;
+- tabac : devanture noire, bandeau vert à deux plaques dorées « TABAC » et « PRESSE », logo FDJ, losange jaune en drapeau ;
+- hôtel : boiseries brunes, deux baies, porte à double vantail, auvent blanc « HOTEL RESTAURANT / DU COMMERCE », terrasse à claustras noirs sans parasol ; retour rue de la Grille en soubassement orange (`tint`), bandeau rose pâle, fenêtres, porte vitrée, porte de garage blanche ;
+- boucherie : deux bandeaux rouges de part et d'autre d'un panneau blanc « H boucherie & épicerie N », vitrines à cadres noirs ; Morvan Pêche : passage de garage sous un panneau noir « MORVAN PÊCHE », bandeaux noirs « NAUTISME » et « PÊCHE », porte à interphone.
+
+**Tests** (+8, 993 au total, `src/render/boutiques-gaulle.test.ts`) : statut, nom, type, devanture dans son mur de rue (il a trouvé une devanture d'Emmaüs trop large de 10 cm) ; plaques et textes dans la devanture ; Kebab (mur de 30,7 m, s 10) ; boutiques d'angle (sommet commun, stores, terrasses, `tint`, auvent) ; tabac (bout du mur, City Kebab gardé, doublon retiré) ; boucherie (La Poste gardée) ; Emmaüs et Morvan Pêche ; géométrie finie et bornée.
+
+**Limites** :
+- **hauteurs de BD TOPO** : Emmaüs (7,8 m) et Morvan Pêche (7,7 m) sont plus bas que sur les photos (deux ou trois niveaux) : le moteur ne pose pas de fenêtres au-dessus de l'égout, donc Emmaüs et Morvan Pêche n'ont qu'un mur plein au-dessus de la devanture (pas de balcon, pas de fenêtres) ; l'hôtel ne montre que deux rangées sur trois (égout à 9,7 m) ; il faudrait pouvoir corriger la hauteur d'un bâtiment ;
+- couleurs des volets de la palette ; arcs (Kebab, auto-école, baies du restaurant de l'hôtel, passage de Surplus), auvent courbe et enseigne en drapeau « HOTEL » non dessinés ; les carreaux sont sombres même là où la photo montre des vitrines claires ;
+- Kebab Autun : sa position sur le mur de 30,7 m est un choix (la photo est prise de l'autre côté de l'avenue) ; onglerie et auto-école voisines non dessinées ; Fleurs : orchidée en simple disque ; tabac : affiches de vitrine non dessinées ;
+- hôtel : le mur 7 n'est dessiné que sur ses 17 premiers mètres (largeurs à ± 50 cm, vues obliques) ; boucherie : toit de bac acier, étal de bois et pharmacie voisins non dessinés, devanture lue à ≈ 70 px/m (± 40 cm) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Kebab Autun, avant](captures/d184-kebab-avant.jpg)
+![Après](captures/d184-kebab-apres.jpg)
+![Au Royaume des Fleurs, avant](captures/d184-fleurs-avant.jpg)
+![Après](captures/d184-fleurs-apres.jpg)
+![Emmaüs en ville, avant](captures/d184-emmaus-avant.jpg)
+![Après](captures/d184-emmaus-apres.jpg)
+![Le tabac, avant](captures/d184-tabac-avant.jpg)
+![Après](captures/d184-tabac-apres.jpg)
+![L'hôtel du Commerce, façade, avant](captures/d184-hotel-avant.jpg)
+![Après](captures/d184-hotel-apres.jpg)
+![L'hôtel du Commerce, l'angle, avant](captures/d184-hotel-angle-avant.jpg)
+![Après](captures/d184-hotel-angle-apres.jpg)
+![Boucherie HN, avant](captures/d184-boucherie-avant.jpg)
+![Après](captures/d184-boucherie-apres.jpg)
+![Morvan Pêche, avant](captures/d184-morvan-avant.jpg)
+![Après](captures/d184-morvan-apres.jpg)
