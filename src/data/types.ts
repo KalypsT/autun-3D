@@ -528,7 +528,9 @@ export type Site =
   | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
   | TheatreSite
   | JanusSite
-  | RoundaboutSite;
+  | RoundaboutSite
+  | CurtainSite
+  | BandstandSite;
 
 /**
  * Îlot de rond-point d'après photo (D142, tools/data/build_roundabouts.py) : centre et rayon du milieu de la bordure (orthophoto), largeur
@@ -548,6 +550,51 @@ export interface RoundaboutSite {
   bed: [number, number];
   flowers: string[];
   drop: number[];
+}
+
+/**
+ * Tilleuls taillés en rideau de la place du Champ de Mars (D155, tools/data/build_square.py) : rectangle orienté (centre `c`, cap `a` du grand côté,
+ * longueur `l`, largeur `w`), sol médian `g`, haut mesuré au LiDAR `top` au-dessus du sol local ; les files de troncs (`rows`, en part de la largeur)
+ * ont un pas `pitch`, un tronc nu jusqu'à `trunk` et une couronne de `crown` m d'épaisseur sous le haut (photos et orthophotographie). Les arbres
+ * génériques de la carte qui sont dedans ne sont plus dessinés.
+ */
+export interface CurtainSite {
+  t: "curtain";
+  n: string;
+  c: [number, number];
+  a: number;
+  l: number;
+  w: number;
+  g: number;
+  top: number;
+  fill: number;
+  trunk: number;
+  pitch: number;
+  rows: number[];
+  crown: number;
+}
+
+/**
+ * Kiosque à musique d'après photo et relevé LiDAR (D155) : octogone de cercle circonscrit `r` (contour BD TOPO, masqué), sommets à partir du cap `ph`,
+ * `nv` sommets ; terrain sur le contour de `lo` à `hi`, plancher à `hi + floor`, sommet de l'épi `top` ; marches du côté bas (cap `low`) ; colonnes de
+ * `post` m de côté, égout à `eave` m au-dessus du plancher.
+ */
+export interface BandstandSite {
+  t: "bandstand";
+  n: string;
+  id: string;
+  c: [number, number];
+  r: number;
+  ph: number;
+  nv: number;
+  lo: number;
+  hi: number;
+  top: number;
+  low: number;
+  floor: number;
+  post: number;
+  eave: number;
+  steps: number;
 }
 
 /** Mur debout du temple de Janus (D139) : abscisses d depuis le coin extérieur commun, hauteurs au-dessus du sol `g` du site. */

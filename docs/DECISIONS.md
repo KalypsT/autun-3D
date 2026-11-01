@@ -2811,3 +2811,49 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d154-parking-nuit-apres.jpg)
 ![Comme ta photo 1, avant](captures/d154-photo1-avant.jpg)
 ![Après](captures/d154-photo1-apres.jpg)
+
+
+## 2026-11-01 — D155. Centre-ville, lot 3 : les tilleuls en rideau et le kiosque à musique
+
+**Demande de l'utilisateur** : « pas de photo du monument, enchaîne D155 sans lui ». Le monument aux morts reste donc le pavé générique de `props.ts` (voir les limites). Navigation de `main` gardée (aucun `build_nav.py`).
+
+**Constat** (plan, §0.3) : les six blocs de tilleuls taillés de la promenade (rue Demetz) étaient 29 arbres ronds génériques ; le kiosque de l'orthophotographie (octogone de fonte) était le bâtiment BD TOPO `…854030` (56 m², « dwelling » de trois niveaux, toit à croupes de 8,2 m : une maison à volets sur les captures « avant »).
+
+**Photos lues** : photo 8 (kiosque : banque d'images, vu du sud-est vers le nord-ouest) ; photos 3 et 15 (rue Demetz, troncs nus sous des couronnes serrées) ; photo 4 (rideau de la rue de Lattre, à gauche) ; orthophotographie à 20 cm (fente sombre au milieu de chaque bloc : deux files de troncs sous une couronne commune).
+
+**Mesures** (`build_square.py`, LiDAR MNS − MNT à 0,5 m, WMS ; composante des cellules à plus de 2,5 m hors bâtiments BD TOPO, rectangle minimal orienté) :
+- six rideaux de 40,5 × 9,5 m, 46,8 × 9,4, 20,5 × 9,1, 25,0 × 9,1, 21,1 × 9,8 et 21,1 × 9,5 m, cap de 35° à 38° (la rue Demetz : 37,8°), **haut de 6,5 à 6,8 m** au-dessus du sol (médiane loin des bords), remplissage de 81 à 89 % du rectangle (le reste : angles arrondis des couronnes et fente) ;
+- kiosque : octogone de 4,46 m de rayon (cercle circonscrit du contour), terrain de 1,18 à 2,96 m sur le contour (1,8 m de pente), sommet de l'épi à 9,37 m (**6,2 m au-dessus du plancher** posé 15 cm au-dessus du terrain le plus haut), marches du côté bas (cap 105°).
+- Lu sur photo, pas mesuré : hauteur des troncs nus (3,0 m), pas des troncs (4 m), épaisseur de la couronne (3,4 m), position des deux files (± 25 % de la largeur), tout le dessin du kiosque (huit colonnes, garde-corps, lambrequins, toit à huit pans, épi, plaque bleue, hauteur de l'égout à 3,5 m). Le LiDAR ne voit pas sous les couronnes.
+
+**Données** : clé `square` de `manual.json` ; `build_square.py` (après `build_kinds.py`, `build_monuments.py` ; tuiles non touchées) écrit un site `curtain` par rideau et un site `bandstand` dans `kinds/<tuile>.json` (tuile 25_34 pour le kiosque et les rideaux ouest, 26_34 pour les rideaux est), le bâtiment du kiosque en `hidden` et sa silhouette lointaine (`lod/25_34.json`) en octogone. Idempotente : somme de contrôle de `public/data` identique après une deuxième passe.
+
+**Rendu** (`src/render/square.ts`, dans le maillage plein de la tuile) : rideau = un tronçon de couronne par pas de troncs (le relief le suit), dessus chanfreiné de 50 cm, deux files de troncs de 30 cm ; kiosque = socle de pierre, volée de marches (nombre de degrés d'après la hauteur du plancher, 19 cm), huit colonnes de fonte, garde-corps sauf devant l'escalier, lambrequins crème, toit à huit pans de faible pente, épi, plaque bleue. Les arbres de la carte dans les rideaux ne sont plus dessinés (`treesOutsideMonuments`). **+984 triangles** pour tout (mesuré sur les mêmes vues, 436 581 → 437 565), aucun appel de dessin de plus.
+
+**Jeu** : les troncs (60 environ, cercles de 25 cm) sont des obstacles à la place des arbres génériques ; le contour du kiosque (octogone de 4,46 m, le toit déborde du socle de 50 cm) est un obstacle (`landmarkRings`), comme l'était le bâtiment ; les passants : aucune file de s6_8 ni s6_9 ne passe à moins de 55 cm d'un tronc (30 cm de marge + son rayon, vérifié tous les 25 cm) ; aucune cache d'arme à moins de 3 m d'un rideau ou du kiosque.
+
+**Tests** (+7, `src/render/square.test.ts`, 822 au total) : six rideaux plausibles (taille, haut, cap de la rue Demetz) ; arbres génériques retirés de l'affichage (au moins 15) et troncs obstacles ; files de troncs ; files des passants ; kiosque (rayon, bâtiment masqué, contour obstacle, 6 – 7 m du plancher à l'épi) ; caches d'armes ; géométrie finie et coût borné.
+
+**Limites** :
+- **Le monument aux morts n'est pas refait** (aucune photo de près, décision de l'utilisateur) : il garde son pavé générique de 1,9 m (le LiDAR lui donne 7,9 m).
+- Le **rideau de la rue de Lattre** (56 × 7,4 m, 6,5 m) n'est pas traité : la photo 4 ne montre pas s'il a des troncs nus ou s'il descend jusqu'au sol (un massif plutôt qu'un rideau de tilleuls).
+- Couronnes en pavés à dessus chanfreiné (comme les arbres taillés de D149), sans le détail des feuilles ; sol sous les rideaux inchangé (le gravier de la promenade n'est pas posé ; pelouse de la carte).
+- On ne monte pas sur le kiosque (son contour est un obstacle) ; ni musiciens ni mobilier ; la lecture du nom sur la plaque (« Louis Renault ») est probable, pas sûre ; une seule photo, à un mètre près.
+- Les troncs ne sont pas sur la grille réelle des arbres (pas supposé de 4 m).
+
+![Comme ta photo 8, avant](captures/d155-kiosque-photo8-avant.jpg)
+![Après](captures/d155-kiosque-photo8-apres.jpg)
+![Le kiosque et la promenade, avant](captures/d155-kiosque-rue-avant.jpg)
+![Après](captures/d155-kiosque-rue-apres.jpg)
+![Le kiosque de dessus, avant](captures/d155-kiosque-haut-avant.jpg)
+![Après](captures/d155-kiosque-haut-apres.jpg)
+![Les rideaux de dessus, avant](captures/d155-tilleuls-haut-avant.jpg)
+![Après](captures/d155-tilleuls-haut-apres.jpg)
+![Rue Demetz, comme ta photo 3, avant](captures/d155-rue-demetz-photo3-avant.jpg)
+![Après](captures/d155-rue-demetz-photo3-apres.jpg)
+![Sous les tilleuls, avant](captures/d155-tilleuls-photo8b-avant.jpg)
+![Après](captures/d155-tilleuls-photo8b-apres.jpg)
+![Comme ta photo 4, avant](captures/d155-photo4-avant.jpg)
+![Après](captures/d155-photo4-apres.jpg)
+![Le kiosque la nuit, avant](captures/d155-kiosque-nuit-avant.jpg)
+![Après](captures/d155-kiosque-nuit-apres.jpg)

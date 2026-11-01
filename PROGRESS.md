@@ -1242,3 +1242,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Après](docs/captures/d154-parking-haut-apres.jpg)
 ![De biais, avant](docs/captures/d154-parking-biais-avant.jpg)
 ![Après](docs/captures/d154-parking-biais-apres.jpg)
+
+**Centre-ville, lot 3 : les tilleuls en rideau et le kiosque à musique (1er novembre 2026)** (D155)
+- Les six blocs de tilleuls taillés de la promenade (rue Demetz) sont dessinés en rideaux : couronne à dessus chanfreiné de 6,5 à 6,8 m (LiDAR) sur deux files de troncs nus, à la place des 29 arbres ronds génériques ; leurs troncs (une soixantaine) restent des obstacles.
+- Le kiosque à musique n'est plus une maison de trois niveaux : octogone de fonte sur socle de pierre à marches, huit colonnes, garde-corps, lambrequins, toit à huit pans et épi, d'après la photo 8 ; maison masquée, silhouette lointaine octogonale.
+- Nouvelle étape `build_square.py` (rien d'autre que `kinds` et `lod` ne change) ; +984 triangles, aucun appel de dessin de plus ; 7 tests de plus ; navigation de `main` gardée (aucune file de passants à moins de 55 cm d'un tronc).
+- Limites : monument aux morts non refait (pas de photo de près) ; rideau de la rue de Lattre non traité ; hauteur des troncs (3 m), pas (4 m) et détail du kiosque lus sur photo à un mètre près ; on ne monte pas sur le kiosque.
+- À essayer : `?cam=-6,-88,1.7,-19,-72,4&h=14` (comme ta photo 8), `?cam=-36,-62,2.5,-19,-72,4&h=14`, `?cam=-10,-50,95,-10,-70,0&h=14` (de dessus), puis `&h=23`.
+
+![Comme ta photo 8, avant](docs/captures/d155-kiosque-photo8-avant.jpg)
+![Après](docs/captures/d155-kiosque-photo8-apres.jpg)
+![Les rideaux de dessus, avant](docs/captures/d155-tilleuls-haut-avant.jpg)
+![Après](docs/captures/d155-tilleuls-haut-apres.jpg)
