@@ -34,7 +34,7 @@ export interface MinimapState {
   police?: readonly { x: number; y: number }[];
   flash?: boolean;
   /** Armes au sol disponibles (J5-3) : petits losanges orange. */
-  caches?: readonly { x: number; y: number }[];
+  caches?: readonly { x: number; y: number; kind?: string }[];
   /** Garages de réparation (D113) : pastilles bleu-vert marquées d'une clé. */
   garages?: readonly { x: number; y: number }[];
   /** Zone de recherche quand la police a perdu la piste : cercle autour de la dernière position connue. */
@@ -195,14 +195,25 @@ export class Minimap {
       ctx.restore();
     }
 
-    // Armes au sol : un losange orange dans le disque (hors du disque, rien : le repère « arme » du jeu indique la plus proche).
+    // Objets au sol : un losange orange pour une arme, une croix verte pour une pharmacie (dans le disque seulement).
     if (s.caches) {
-      ctx.fillStyle = "#f1b24a";
       ctx.strokeStyle = "#1b1f27";
       ctx.lineWidth = 1.2;
       for (const c of s.caches) {
         const [px, py] = worldToScreen(view, c.x, c.y);
         if (Math.hypot(px - size / 2, py - size / 2) > r - 6) continue;
+        if (c.kind === "heal") {
+          ctx.fillStyle = "#3fbf62";
+          ctx.beginPath();
+          const a = 1.9, b = 5.5;
+          ctx.moveTo(px - a, py - b);
+          for (const [dx, dy] of [[a, -b], [a, -a], [b, -a], [b, a], [a, a], [a, b], [-a, b], [-a, a], [-b, a], [-b, -a], [-a, -a]] as const) ctx.lineTo(px + dx, py + dy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          continue;
+        }
+        ctx.fillStyle = "#f1b24a";
         ctx.beginPath();
         ctx.moveTo(px, py - 5);
         ctx.lineTo(px + 4, py);

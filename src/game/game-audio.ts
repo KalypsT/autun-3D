@@ -281,6 +281,13 @@ export class GameAudio {
     S.jingle(kit, this.sys.buses!.sfx, t + 0.15, [660, 990], 0.08, "sine", 0.5);
   }
 
+  /** Croix de pharmacie ramassée (D159) : petit carillon montant. */
+  heal(): void {
+    const kit = this.kit;
+    if (!kit) return;
+    S.jingle(kit, this.sys.buses!.sfx, kit.ctx.currentTime, [523, 659, 784, 1047], 0.09, "sine", 0.45);
+  }
+
   // --- Joueur : santé, recherche ---------------------------------------------------------------------------------------------
 
   hurt(): void {

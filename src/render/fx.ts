@@ -24,16 +24,20 @@ const COLORS: Record<WeaponId, [number, number, number]> = {
   rifle: [0.35, 0.65, 0.95],
 };
 const BEAM: [number, number, number] = [1, 0.8, 0.35];
+/** Croix verte de pharmacie (soin) : la croix et son faisceau. */
+const HEAL: [number, number, number] = [0.25, 0.85, 0.42];
+const HEAL_BEAM: [number, number, number] = [0.55, 1, 0.65];
 const TRACER: [number, number, number] = [1, 0.93, 0.62];
 const SPARK_WALL: [number, number, number] = [1, 0.6, 0.2];
 const SPARK_BODY: [number, number, number] = [1, 0.97, 0.85];
 
-/** Une arme au sol à dessiner. */
+/** Un objet au sol à dessiner : une arme, ou (`heal`) la croix verte d'une pharmacie. */
 export interface PickupView {
   x: number;
   y: number;
   z: number;
-  weapon: WeaponId;
+  weapon: WeaponId | null;
+  heal?: boolean;
 }
 
 interface Item {
@@ -160,6 +164,24 @@ export class Fx {
       }
     }
     for (const pk of pickups) {
+      if (pk.heal || !pk.weapon) {
+        // Croix verte (D159) : deux barres qui tournent sur elles-mêmes en flottant à hauteur de ceinture, et un faisceau vert.
+        const bobH = Math.sin(time * 2 + pk.x) * 0.1;
+        this.e.set(0, time * 1.6 + pk.y, 0);
+        this.q.setFromEuler(this.e);
+        for (const [sx, sy] of [[0.28, 0.9], [0.9, 0.28]] as const) {
+          this.p.set(pk.x, pk.z + 1.05 + bobH, -pk.y);
+          this.s.set(sx, sy, 0.28);
+          m.compose(this.p, this.q, this.s);
+          put(HEAL[0], HEAL[1], HEAL[2]);
+        }
+        this.p.set(pk.x, pk.z + 1.9, -pk.y);
+        this.s.set(0.16, 2.6, 0.16);
+        this.q.identity();
+        m.compose(this.p, this.q, this.s);
+        put(HEAL_BEAM[0], HEAL_BEAM[1], HEAL_BEAM[2]);
+        continue;
+      }
       const c = COLORS[pk.weapon];
       const bob = Math.sin(time * 2.4 + pk.x) * 0.08;
       this.e.set(0.25, time * 1.3 + pk.y, 0);

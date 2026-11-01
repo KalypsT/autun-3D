@@ -2,7 +2,7 @@
  * Santé du joueur (J5-0, D80) : logique pure. Des points de vie, une régénération lente qui s'arrête à mi-chemin, une mort.
  *
  * Analogie : un réservoir à fuite. Les coups le vident ; au repos (six secondes sans coup), il se remplit goutte à goutte, mais seulement
- * jusqu'au repère de mi-hauteur : pour le remplir à fond, il faut passer par l'hôpital (reprise après une mort) ou, plus tard, par la caisse (J6).
+ * jusqu'au repère de mi-hauteur : pour le remplir à fond, il faut passer par l'hôpital (reprise après une mort), par la croix verte d'une pharmacie (D159) ou, plus tard, par la caisse (J6).
  */
 
 export const MAX_HEALTH = 100;

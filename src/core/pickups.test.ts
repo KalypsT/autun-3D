@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NavGraph } from "./nav-graph";
 import { MASK_ZONE } from "./pedestrians";
-import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, DROP_LIFE, PICKUP_REACH, Pickups } from "./pickups";
+import { Health, MAX_HEALTH } from "./health";
+import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, DROP_LIFE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
@@ -31,7 +33,7 @@ describe("armes au sol (J5-3)", () => {
   });
 
   it("ramasser : l'arme et ses balles vont dans l'inventaire, la cache réapparaît après 5 minutes, pas deux fois la même arme blanche", () => {
-    const p = new Pickups([{ weapon: "pistol", x: 0, y: 0, label: "a" }, { weapon: "knife", x: 10, y: 0, label: "b" }]);
+    const p = new Pickups([{ weapon: "pistol", x: 0, y: 0, label: "a" }, { weapon: "knife", x: 10, y: 0, label: "b" }], []);
     const inv = new Inventory();
     expect(p.nearest(1, 0, PICKUP_REACH)).toBe(p.list[0]);
     expect(p.nearest(5, 0, PICKUP_REACH)).toBeNull();
@@ -59,7 +61,7 @@ describe("armes au sol (J5-3)", () => {
   });
 
   it("une arme lâchée disparaît quand on la ramasse, ou d'elle-même après trois minutes", () => {
-    const p = new Pickups([]);
+    const p = new Pickups([], []);
     const a = p.drop(5, 5, "pistol", 12);
     const b = p.drop(6, 6, "rifle", 30);
     expect(p.list).toHaveLength(2);
@@ -68,5 +70,75 @@ describe("armes au sol (J5-3)", () => {
     expect(p.list).toEqual([b]);
     p.update(DROP_LIFE + 1);
     expect(p.list).toHaveLength(0);
+  });
+
+  it("ramassage automatique : on prend l'arme en marchant dessus, la nouvelle arme passe dans la main, pas deux fois la même arme blanche", () => {
+    const p = new Pickups([{ weapon: "bat", x: 0, y: 0, label: "a" }, { weapon: "pistol", x: 20, y: 0, label: "b" }], []);
+    const inv = new Inventory();
+    expect(p.collect(PICKUP_REACH + 0.5, 0, inv)).toBeNull();
+    expect(p.collect(0.5, 0, inv)).toBe(p.list[0]);
+    expect(inv.has("bat")).toBe(true);
+    expect(inv.current.id).toBe("bat");
+    // Elle réapparaît : on l'a déjà, on ne la reprend pas en passant dessus.
+    p.update(CACHE_RESPAWN + 1);
+    expect(p.collect(0, 0, inv)).toBeNull();
+    // Une arme à feu dont la réserve est pleine reste au sol.
+    inv.grant("pistol", 1000);
+    expect(p.collect(20, 0, inv)).toBeNull();
+    expect(p.available(p.list[1]!)).toBe(true);
+  });
+});
+
+describe("croix de pharmacie (D159)", () => {
+  const sites = [{ x: 0, y: 0, label: "p" }];
+
+  it("rend toute la santé au contact, puis revient après deux minutes", () => {
+    const p = new Pickups([], sites);
+    const inv = new Inventory();
+    const h = new Health(30);
+    expect(p.collect(0.4, 0.2, inv, h)).toBe(p.list[0]);
+    expect(h.hp).toBe(MAX_HEALTH);
+    expect(p.available(p.list[0]!)).toBe(false);
+    h.damage(40);
+    expect(p.collect(0, 0, inv, h)).toBeNull();
+    p.update(HEAL_RESPAWN - 1);
+    expect(p.collect(0, 0, inv, h)).toBeNull();
+    p.update(2);
+    expect(p.collect(0, 0, inv, h)).toBe(p.list[0]);
+    expect(h.hp).toBe(MAX_HEALTH);
+  });
+
+  it("à santé pleine ou sans joueur vivant, elle reste là", () => {
+    const p = new Pickups([], sites);
+    const inv = new Inventory();
+    expect(p.collect(0, 0, inv, new Health())).toBeNull();
+    expect(p.available(p.list[0]!)).toBe(true);
+    expect(p.collect(0, 0, inv)).toBeNull();
+    const dead = new Health(0);
+    expect(p.collect(0, 0, inv, dead)).toBeNull();
+    expect(dead.hp).toBe(0);
+  });
+
+  it("une par pharmacie, sur le trottoir ou la place, dégagée sur 50 cm, à 8 m au plus de la porte", () => {
+    const { tile } = loadRealWorld();
+    const { cells } = loadRealNav();
+    const colliders = buildColliders(tile);
+    const nav = new NavGraph();
+    for (const c of cells) nav.add(c);
+    const bad: string[] = [];
+    for (const c of HEAL_SITES) {
+      if (!nav.nearest(c.x, c.y, 1.5, MASK_ZONE)) bad.push(`${c.label}: pas de file piétonne`);
+      if (colliders.resolve(c.x, c.y, 0.3).hit) bad.push(`${c.label}: dans un obstacle`);
+      for (let a = 0; a < 6.3; a += 0.8) if (colliders.resolve(c.x + Math.cos(a) * 0.5, c.y + Math.sin(a) * 0.5, 0.3).hit) bad.push(`${c.label}: obstacle`);
+    }
+    expect(bad).toEqual([]);
+    expect(HEAL_SITES).toHaveLength(5);
+    expect(new Set(HEAL_SITES.map((c) => `${c.x},${c.y}`)).size).toBe(HEAL_SITES.length);
+    // Chaque croix est près du lieu « pharmacie » de la carte (la porte est à moins de 8 m du point d'OpenStreetMap, sauf Saint-Pan).
+    const places = JSON.parse(readFileSync("public/data/map/places.json", "utf8")) as { places: { cat: string; name: string; x: number; y: number }[] };
+    for (const c of HEAL_SITES) {
+      const near = places.places.filter((q) => q.cat === "pharmacie").some((q) => Math.hypot(q.x - c.x, q.y - c.y) < 12);
+      expect(near, c.label).toBe(true);
+    }
   });
 });

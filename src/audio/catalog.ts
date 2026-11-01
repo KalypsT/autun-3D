@@ -198,6 +198,7 @@ export const SCENES: readonly SoundScene[] = [
     S.reload(k, o, t, true, { ...NEAR, gain: 0.5 });
     S.jingle(k, o, t + 0.15, [660, 990], 0.08, "sine", 0.5);
   }),
+  shot("heal", "Joueur", "Croix de pharmacie ramassée", 0.8, (k, o, t) => S.jingle(k, o, t, [523, 659, 784, 1047], 0.09, "sine", 0.45)),
   shot("hurt", "Joueur", "Coup reçu", 0.6, (k, o, t) => S.hurt(k, o, t)),
   shot("death", "Joueur", "Mort", 2.5, (k, o, t) => S.death(k, o, t)),
   shot("arrest", "Joueur", "Arrestation (menottes, portière)", 1.5, (k, o, t) => {

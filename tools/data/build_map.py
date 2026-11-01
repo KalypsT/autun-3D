@@ -318,6 +318,12 @@ def dedupe(places):
     return kept
 
 
+# Pharmacies modélisées d'après photo mais sans fiche OpenStreetMap (D143, D159) : elles portent une croix de soin dans le jeu.
+MANUAL_PHARMACIES = [
+    {"id": "manual:pharmacie-saint-pan", "cat": "pharmacie", "name": "Pharmacie de Saint-Pan", "x": 1000.3, "y": 1351.0},
+]
+
+
 def perso_places(zone):
     if not PERSO.exists():
         return []
@@ -432,7 +438,7 @@ def main():
     print("== OpenStreetMap")
     elements = fetch_osm(zone)
     osm_places, ways = osm_places_and_streets(elements, zone)
-    places = dedupe(osm_places)
+    places = dedupe(osm_places) + [dict(m, kind=None) for m in MANUAL_PHARMACIES if zone[0] <= m["x"] <= zone[2] and zone[1] <= m["y"] <= zone[3]]
     places += monument_places(monuments, places)
     places += perso_places(zone)
     places = [p for p in places if coast.on_land(p["x"], p["y"])]

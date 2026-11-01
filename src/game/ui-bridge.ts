@@ -64,7 +64,7 @@ export class UiBridge {
 
   /** Police et zone de recherche à montrer sur la minimap (J4) : le jeu les tient à jour. */
   /** Armes au sol disponibles à montrer sur la minimap (J5-3) : le jeu les tient à jour. */
-  caches: { x: number; y: number }[] = [];
+  caches: { x: number; y: number; kind?: string }[] = [];
   /** Garages de réparation (D113), connus quand les lieux de la carte sont chargés. */
   garages: Garage[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
