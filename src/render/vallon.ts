@@ -81,6 +81,25 @@ export function buildVallon(sinks: LandmarkSinks, m: VallonModel, terrain: Heigh
   const up = toThree(0, 0, 1);
   const ground = (x: number, y: number): number => terrain.heightAt(x, y) - 0.3;
   const quad = (a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, col: THREE.Color): void => mb.quad(a, b, c, d, n, col);
+  const POST = C("#2f8c8e"), CEILING = C("#8c908f");
+  /** Poteau carré de demi-côté `h`, du bas z0 au haut z1. */
+  const box = (c: XY, h: number, z0: number, z1: number, col: THREE.Color): void => {
+    const P = (dx: number, dy: number, z: number): Vec3 => toThree(c[0] + dx, c[1] + dy, z);
+    quad(P(-h, -h, z0), P(h, -h, z0), P(h, -h, z1), P(-h, -h, z1), toThree(0, -1, 0), shade(col, 0.95));
+    quad(P(h, -h, z0), P(h, h, z0), P(h, h, z1), P(h, -h, z1), toThree(1, 0, 0), shade(col, 0.85));
+    quad(P(h, h, z0), P(-h, h, z0), P(-h, h, z1), P(h, h, z1), toThree(0, 1, 0), col);
+    quad(P(-h, h, z0), P(-h, -h, z0), P(-h, -h, z1), P(-h, h, z1), toThree(-1, 0, 0), shade(col, 0.9));
+    quad(P(-h, -h, z1), P(h, -h, z1), P(h, h, z1), P(-h, h, z1), toThree(0, 0, 1), shade(col, 1.08));
+  };
+  /** Poutre de p à q, épaisse de 0,35 m centrée sur la ligne, de z0 à z1 (deux faces, dessus et dessous). */
+  const beam = (p: XY, q: XY, nn: XY, z0: number, z1: number, col: THREE.Color): void => {
+    const w = 0.175, a: XY = [p[0] + nn[0] * w, p[1] + nn[1] * w], b: XY = [q[0] + nn[0] * w, q[1] + nn[1] * w];
+    const a2: XY = [p[0] - nn[0] * w, p[1] - nn[1] * w], b2: XY = [q[0] - nn[0] * w, q[1] - nn[1] * w];
+    quad(toThree(...a, z0), toThree(...b, z0), toThree(...b, z1), toThree(...a, z1), toThree(nn[0], nn[1], 0), col);
+    quad(toThree(...b2, z0), toThree(...a2, z0), toThree(...a2, z1), toThree(...b2, z1), toThree(-nn[0], -nn[1], 0), shade(col, 0.9));
+    quad(toThree(...a, z1), toThree(...b, z1), toThree(...b2, z1), toThree(...a2, z1), up, shade(col, 1.1));
+    quad(toThree(...a, z0), toThree(...b, z0), toThree(...b2, z0), toThree(...a2, z0), toThree(0, 0, -1), shade(col, 0.7));
+  };
 
   /** Mur vertical de p à q, du sol (ou de `z0`) jusqu'à `top(point)` ; normale horizontale n. */
   const wall = (p: XY, q: XY, z0: number | null, top: (x: number, y: number) => number, n: XY, col: THREE.Color): void => {
@@ -126,7 +145,22 @@ export function buildVallon(sinks: LandmarkSinks, m: VallonModel, terrain: Heigh
   if (m.preau) {
     const pr = m.preau;
     const { poly, n } = outward(rectCorners(f, pr.r));
-    poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]!; wall(p, q, null, () => pr.eave, n(p, q), WALL); });
+    const SIDE = ["s", "e", "n", "w"] as const;
+    const open = new Set(pr.open ?? []);
+    poly.forEach((p, i) => {
+      const q = poly[(i + 1) % poly.length]!;
+      if (!open.has(SIDE[i]!)) { wall(p, q, null, () => pr.eave, n(p, q), WALL); return; }
+      // Côté ouvert : poteaux bleu-vert tous les 4,5 m et poutre de rive.
+      const len = Math.hypot(q[0] - p[0], q[1] - p[1]), k = Math.max(1, Math.ceil(len / 4.5));
+      for (let j = 0; j <= k; j++) {
+        const c: XY = [p[0] + ((q[0] - p[0]) * j) / k, p[1] + ((q[1] - p[1]) * j) / k];
+        box(c, 0.15, ground(...c), pr.eave + 0.1, POST);
+      }
+      beam(p, q, n(p, q), pr.eave - 0.35, pr.eave + 0.12, shade(POST, 0.85));
+    });
+    // Dessous des voûtes : plafond plat sombre à hauteur des creux.
+    const ceil = poly.map((p) => toThree(...p, pr.eave - 0.05));
+    quad(ceil[0]!, ceil[1]!, ceil[2]!, ceil[3]!, toThree(0, 0, -1), CEILING);
     const [u0, u1, v0, v1] = pr.r;
     const dv = (v1 - v0) / pr.n, sag = pr.crown - pr.eave;
     for (let k = 0; k < pr.n; k++) {

@@ -113,7 +113,7 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 |---|---|---|---|
 | **0. Relevés (fait, §9)** | MNS/MNT LiDAR HD et orthophotographie 10 cm : contour exact de chaque aile, hauteurs et égouts, forme du toit du gymnase, nature du bloc ouest, position et axe de la grille, hauteur des parapets, rayon de l'îlot de béton, **nombre et direction des rangées du parking**, revêtement des plateaux ; rattachement des photos 3 et 4 à leur aile ; type `culture` de `…848973` | script jetable `tools/data/survey_college.py`, notes dans le plan (§8) | — |
 | **1. Volumes et toits (fait, §10)** | type `college-vallon` (comme `hexagone` et `college`) : ailes, toits mesurés, gymnase ; les BD TOPO fusionnées sont masquées ; `kind` corrigé en `school` si le relevé le confirme | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | emprise dans le contour BD TOPO ± 2 m ; sommet à ± 0,5 m du LiDAR ; aucun triangle caché |
-| **2. Façades** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
+| **2. Façades (fait, §11)** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
 | **3. Entrée** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
 | **4. Cour et abords** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
 | **5. Terrains de sport** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
@@ -237,3 +237,23 @@ Fait. Trois bâtiments BD TOPO portent maintenant un modèle (`vallon` dans `kin
 ![Du nord-est](../captures/college-lot1-nord-est.jpg)
 ![Cour est (photo 8)](../captures/college-lot1-cour-est.jpg)
 ![Cour ouest (photo 3)](../captures/college-lot1-cour-ouest.jpg)
+
+## 11. Lot 2 : façades (D173)
+
+Fait pour les faces vues sur les photos 3 et 8 ; le reste des murs prend le style par défaut (bandes de fenêtres), sans photo pour le contrôler. Dessin dans `src/render/vallon-facade.ts` (même mécanique que `hexagone-facade.ts` : repère de face `s` vers la droite, `t` vers l'extérieur), données `faces` et `bury` du modèle de `…848973` dans `manual.json`.
+
+- **Façade d'entrée (face ouest de l'aile ouest, photo 3)** : mur-rideau à deux niveaux, meneaux clairs tous les 1,5 m, vitrage sombre, **panneaux bleu-vert** sous l'acrotère, ligne d'étage, **double porte vitrée** au centre. La face est de la même aile (photo 8, derrière le préau) est traitée de même.
+- **Barre sud** : quatre étages de bandes de fenêtres (travées de 2,4 m, appuis saillants), lignes d'étage et bandeau d'acrotère saillants ; sur la face ouest, la **bande verticale orangée** (largeur 2,2 m, du sol au toit) et la **caméra de surveillance** (3,3 m).
+- **Autres ailes** : bandes de fenêtres sur un ou deux étages ; **bout ouest du bloc nord** : mur aveugle à joints verticaux (le « volume aveugle » de la photo 3).
+- **Noyau d'escalier** : bardage bleu-gris à lames verticales alternées, deux fenêtres étroites (photo 8, au centre).
+- **Cage extérieure est** : paliers saillants et trois volées en Z (photo 8, à gauche).
+- **Préau ouvert** : côtés sud et est sans mur, **poteaux bleu-vert** tous les 4,5 m et poutre de rive, plafond sombre sous les voûtes. Les collisions gardent l'emprise BD TOPO : le joueur ne peut pas encore marcher sous le préau (lot 4 ou plus tard).
+- **Masquage** : les parties de mur collées à un voisin (aile contre aile, préau contre l'aile ouest) ne reçoivent pas de fenêtres jusqu'à la hauteur du voisin.
+- **Nuit** : vitrages allumés par part (30 % des bandes, 60 % du rez-de-chaussée du mur-rideau).
+- **Pas fait** : enseigne sur le bâtiment (aucune sur les photos 3 et 8 ; le panneau est à la grille, lot 3), marches, bacs et rochers (lot 4), volets et stores, lanterneaux, édicules de toit, gymnase (aucune photo : murs unis) ; faces nord et sud de l'aile est, face nord du bloc nord et face sud de la barre au style par défaut.
+- Captures : `docs/captures/college-lot2-*.jpg`.
+
+![Cour ouest : mur-rideau, barre, bande orangée](../captures/college-lot2-cour-ouest.jpg)
+![Cour est : cage d'escalier, noyau, préau ouvert](../captures/college-lot2-cour-est.jpg)
+![Face sud de la barre](../captures/college-lot2-barre-sud.jpg)
+![Du nord-est](../captures/college-lot2-nord-est.jpg)

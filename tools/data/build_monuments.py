@@ -899,6 +899,9 @@ def vallon(tid, bid, b, spec, k):
     g = round(b["ground"], 1)
     if spec.get("wings"):
         m["wings"] = [{"n": w["n"], "r": w["r"], "z": w["z"]} for w in spec["wings"]]
+        for key in ("faces", "bury"):  # façades (D173) et volumes voisins qui masquent le pied des murs
+            if spec.get(key):
+                m[key] = spec[key]
         for w in m["wings"]:
             u0, u1, v0, v1 = w["r"]
             polys.append(([pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)], g, round(w["z"] + 0.45, 1)))

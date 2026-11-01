@@ -3282,3 +3282,18 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Vue aérienne](captures/college-lot1-aerien.jpg)
 ![Cour est](captures/college-lot1-cour-est.jpg)
 ![Cour ouest](captures/college-lot1-cour-ouest.jpg)
+
+## 2026-11-01 — D173. Collège du Vallon, lot 2 : façades (plan `docs/plans/college-vallon.md`, §11)
+
+**Demande de l'utilisateur** : « Oui, lance le lot 2 ». Pas de photo de plus : lecture des photos 3 (cour ouest) et 8 (cour est).
+
+**Données** : `faces` (style par face : `bands`, `curtain`, `blank`, `clad`, `stairs`, `plain`) et `bury` (le préau, qui masque le pied de l'aile ouest) dans le modèle `vallon` de `…848973` (`manual.json`, `build_monuments.py`) ; `open` (côtés sans mur) dans le préau `…848974`. `kinds/28_39.json` seulement.
+
+**Rendu** (`src/render/vallon-facade.ts`, appelé par `landmarks.ts` après `buildVallon`) : repère de face (`faceGeom`), parties masquées par un voisin (`buriedParts`), bandes de fenêtres par étage, mur-rideau à panneaux bleu-vert, mur aveugle à joints, bardage du noyau, escalier extérieur ; poteaux, poutres et plafond du préau dans `vallon.ts`. `Draw` de `hexagone-facade.ts` est exporté et réutilisé. Façade d'entrée = face ouest de l'aile ouest.
+
+**Tests** (+9, 926 au total, `src/render/vallon-facade.test.ts`) : normales des quatre faces (162,5°, 72,5°, 342,5°, 252,5°), longueurs, retombée sur le mur, parties masquées (aile ouest contre bloc nord et contre le préau, barre libre), maillage fini et moins de 12 000 triangles, rien au-dessus de l'acrotère, préau ouvert.
+
+**Limites** : les collisions gardent l'emprise BD TOPO (le préau reste infranchissable) ; teintes lues sur photo, à valider à l'écran en été ; faces sans photo au style par défaut ; volées d'escalier dessinées en plans inclinés sombres, sans marches ; `build_nav.py` non relancé.
+
+![Cour ouest](captures/college-lot2-cour-ouest.jpg)
+![Cour est](captures/college-lot2-cour-est.jpg)

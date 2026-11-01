@@ -596,6 +596,24 @@ export interface HexagoneNorthEast {
  * LiDAR dans le repère tourné du bâtiment principal (origine `o`, axe u au cap 90° − `rot`, axe v à 90° de lui vers la gauche : caps 72° et 342° pour 17,5°).
  * Altitudes absolues (locales). Un bâtiment porte l'une des trois parties : `wings` (ailes à toit plat), `gym` ou `preau`.
  */
+/** Côté d'un rectangle : `s` (v = v0, vers −v), `e` (u = u1, vers +u), `n` (v = v1, vers +v), `w` (u = u0, vers −u). */
+export type VallonSide = "s" | "e" | "n" | "w";
+
+/**
+ * Style d'une face d'aile : `bands` (bandes de fenêtres et lignes d'étage ; `strip` : bande verticale orangée [s, largeur], `cam` : s de la caméra),
+ * `curtain` (mur-rideau à deux niveaux, panneaux bleu-vert en haut ; `door` : s des portes doubles), `blank` (mur aveugle à joints), `clad` (bardage
+ * bleu-gris), `stairs` (escalier extérieur en béton), `plain` (rien). `s` se compte depuis le début de la face vue de l'extérieur, vers la droite.
+ */
+export interface VallonFace {
+  w: string;
+  f: VallonSide | "*";
+  k: "bands" | "curtain" | "blank" | "clad" | "stairs" | "plain";
+  floors?: number;
+  strip?: [number, number];
+  door?: number[];
+  cam?: number;
+}
+
 export interface VallonModel {
   o: [number, number];
   rot: number;
@@ -603,8 +621,12 @@ export interface VallonModel {
   wings?: { n: string; r: [number, number, number, number]; z: number }[];
   /** Gymnase : emprise (x, y, …) découpée en bandes selon u ; plate (`z`) ou à deux pentes (`ridge` : u et altitude du faîtage, `eave` : altitude des égouts). */
   gym?: { ring: number[]; strips: { u: [number, number]; z?: number; ridge?: [number, number]; eave?: number }[] };
-  /** Préau : rectangle [u0, u1, v0, v1], égout (creux entre voûtes), sommet des voûtes, nombre de voûtes (axe le long de u). */
-  preau?: { r: [number, number, number, number]; eave: number; crown: number; n: number };
+  /** Préau : rectangle [u0, u1, v0, v1], égout (creux entre voûtes), sommet des voûtes, nombre de voûtes (axe le long de u) ; `open` : côtés sans mur (poteaux à la place, lot 2). */
+  preau?: { r: [number, number, number, number]; eave: number; crown: number; n: number; open?: VallonSide[] };
+  /** Façades des ailes (lot 2) : un style par face qui s'écarte du style par défaut (bandes de fenêtres). */
+  faces?: VallonFace[];
+  /** Volumes voisins qui masquent le pied des murs sans être des ailes (le préau) : rectangle et altitude du dessus. */
+  bury?: { r: [number, number, number, number]; z: number }[];
   colors: { wall: string; roof: string; parapet: string; vault: string; hall: string };
 }
 

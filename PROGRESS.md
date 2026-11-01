@@ -1337,3 +1337,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le bâtiment principal n'est plus une boîte : six ailes à toit plat (barre de quatre niveaux, blocs de deux niveaux), le préau a ses quatre voûtes, le gymnase son toit à deux pentes (plus bas de 3,7 m qu'avant). Murs encore unis : les façades sont le lot 2.
 - Le petit bâtiment gris au nord-est (photo de l'avenue) est ramené à 4,3 m. 917 tests (14 de plus).
 - À regarder : `?view=custom&cam=640,1160,25,625,1100,0` et `cam=598,1108,3,630,1108,5` (cour ouest).
+
+**Collège du Vallon, lot 2 : façades (1er novembre 2026)** (D173)
+- Le collège a ses façades : mur-rideau à panneaux bleu-vert et double porte à l'entrée (côté ouest), barre de quatre étages à bandes de fenêtres avec sa bande orangée, bardage bleu-gris du noyau, escalier extérieur en béton, préau ouvert sur poteaux bleu-vert.
+- Pas encore : marches, bacs, rochers et sol de la cour (lot 4), grille (lot 3). On ne peut pas encore marcher sous le préau. 926 tests (9 de plus).
+- À regarder : `?view=custom&cam=596,1112,3.5,630,1106,5` (entrée) et `cam=668,1122,4,646,1114,4` (cour est).
