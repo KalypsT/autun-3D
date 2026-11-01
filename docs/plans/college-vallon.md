@@ -76,8 +76,7 @@ Relevé sur la tuile 28_39 et ses captures (`docs/captures/college-avant-*.jpg`)
 - **Rampe-pont** : parapets bas en béton (≈ 1 m, à mesurer), enceinte ramenée à sa vraie hauteur (le mur du jeu fait 3,5 m, mesuré 5,8 : à contrôler au LiDAR, il a pu viser un arbre).
 - **Grille** : portail coulissant (≈ 4,5 m) à barreaux noirs avec **barre d'arrêt**, portillon, pilier de béton avec interphone et boîte aux lettres, **panneau « Collège le Vallon »** (dessiné, logo en silhouettes stylisées), panneau d'affichage.
 - **Mobilier** : lampadaire à tête en disque, borne, panneau « P », marquage « Rue de l'Acaron » sur la chaussée, **grand arbre** derrière la grille (vérifier qu'il est bien dans `trees`).
-- **Comportement** (à choisir, §6) : grille **toujours ouverte** (le plus simple, aucune règle d'horaire) ou ouverte aux heures de classe seulement. Je recommande « toujours ouverte » : la grille de photo 2 est fermée pour la rentrée et, une fois fermée, elle
-  couperait le collège sans que le joueur en voie la raison (D114 a pris le même parti : un camion qui disparaît plutôt qu'un camion qui bloque).
+- **Comportement** (§6, point 2 à confirmer) : grille **fermée en dehors des heures de classe** (lecture de « fermée »), ouverte par exemple de 7 h 30 à 18 h ; une règle d'horaire seulement (le jeu n'a pas de calendrier, D116), sur le modèle du camion de D115. Fermée, elle est un obstacle plein (collision), et la barrière à chevrons au bout du tablier reste visible.
 
 ### 3.3 La cour et les abords
 
@@ -96,13 +95,13 @@ Relevé sur la tuile 28_39 et ses captures (`docs/captures/college-avant-*.jpg`)
 - **Méthode D154/D169** : redresser l'orthophotographie, lire les pics de lignes blanches, fixer pas et phase de chaque rangée, ajouter une entrée `lots` à `streetscape` dans `manual.json` ; `build_streetscape.py` remplace les 78 traits par des polygones propres,
   sans toucher à `vehicles.ts`. Ajouter les **flèches de sens**, le panneau « P », deux ou trois lampadaires à mât long (photo 5), le passage piéton peint de la photo 1.
 - **Attendu** : trois à cinq rangées, le nombre de places est à **compter** sur l'orthophotographie (je ne le chiffre pas avant lecture ; la vue satellite 7 en laisse voir une quarantaine à vue d'œil).
-- **Camion pizza** : le repère (499,1 ; 1102,5) est dans le parking, sur la lisière nord, à 5 m de la place actuelle (503,5 ; 1105). Deux choix : **garder la place actuelle** (D115 l'a prise pour que le camion soit à l'axe de la chaussée, cabine vers l'ouest) ou **la ramener au repère**. Dans les deux cas :
+- **Camion pizza** (décidé : sur les places du repère ; §9.5) : le repère (499,1 ; 1102,5) est dans le parking, sur la lisière nord, à 5 m de la place actuelle (503,5 ; 1105). Deux choix : **garder la place actuelle** (D115 l'a prise pour que le camion soit à l'axe de la chaussée, cabine vers l'ouest) ou **la ramener au repère**. Dans les deux cas :
   `Fleet.keepClear` écarte les voitures garées sur sa place, et un test (nouveau) vérifie qu'aucune place de stationnement ne coupe son emprise et qu'il tient dans la lisière ; son cap suit la direction des rangées relevée.
 - **Piège connu (D154)** : les voitures cachent les lignes ; si l'orthophotographie est prise un jour de forte occupation, certaines places seront extrapolées au pas. La photo 5 montre un parking quasi vide : bon signe.
 
-### 3.6 En option
+### 3.6 Exclu (réponse du 1ᵉʳ novembre)
 
-- **Passants (élèves, surveillants)** devant la grille, aux heures d'entrée et de sortie : le jeu a déjà un point « école » pour le lycée Bonaparte (D149) ; même mécanique ici (`build_monuments_nav.py`). **Hors de ce plan sauf demande** : il faudrait relancer la navigation de cette super-tuile.
+- ~~Passants (élèves, surveillants)~~ **exclus** : devant la grille, aux heures d'entrée et de sortie : le jeu a déjà un point « école » pour le lycée Bonaparte (D149) ; même mécanique ici (`build_monuments_nav.py`). **Hors de ce plan sauf demande** : il faudrait relancer la navigation de cette super-tuile.
 - **Cloche ou sonnerie** : pas prévu, rien dans le catalogue sonore actuel ne s'y prête simplement.
 
 ## 4. Plan d'implémentation
@@ -112,14 +111,14 @@ Aucune relance de `build_nav.py` (navigation de `main` gardée comme en D154), s
 
 | Lot | Contenu | Fichiers principaux | Tests (cible) |
 |---|---|---|---|
-| **0. Relevés** | MNS/MNT LiDAR HD et orthophotographie 10 cm : contour exact de chaque aile, hauteurs et égouts, forme du toit du gymnase, nature du bloc ouest, position et axe de la grille, hauteur des parapets, rayon de l'îlot de béton, **nombre et direction des rangées du parking**, revêtement des plateaux ; rattachement des photos 3 et 4 à leur aile ; type `culture` de `…848973` | script jetable `tools/data/survey_college.py`, notes dans le plan (§8) | — |
+| **0. Relevés (fait, §9)** | MNS/MNT LiDAR HD et orthophotographie 10 cm : contour exact de chaque aile, hauteurs et égouts, forme du toit du gymnase, nature du bloc ouest, position et axe de la grille, hauteur des parapets, rayon de l'îlot de béton, **nombre et direction des rangées du parking**, revêtement des plateaux ; rattachement des photos 3 et 4 à leur aile ; type `culture` de `…848973` | script jetable `tools/data/survey_college.py`, notes dans le plan (§8) | — |
 | **1. Volumes et toits** | type `college-vallon` (comme `hexagone` et `college`) : ailes, toits mesurés, gymnase ; les BD TOPO fusionnées sont masquées ; `kind` corrigé en `school` si le relevé le confirme | `src/data/types.ts`, `tools/data/build_monuments.py`, `src/render/monuments.ts`, `src/render/landmarks.ts`, `manual.json` | emprise dans le contour BD TOPO ± 2 m ; sommet à ± 0,5 m du LiDAR ; aucun triangle caché |
 | **2. Façades** | bloc d'entrée vitré, barre de quatre niveaux, volume aveugle, bandes de fenêtres, bande orangée, enseigne, caméra, émissif de nuit | `monuments.ts`, `sign-atlas.ts`, fichier de façade comme `hexagone-facade.ts`, `manual.json` | porte vitrée dans le bloc d'entrée ; allèges dans l'emprise ; enseigne lisible |
 | **3. Entrée** | parapets bas, portail et portillon, piliers, panneau, lampadaire à disque, borne, panneau « P », marquage « Rue de l'Acaron » ; grille ouverte (§3.2) | `props.ts`, `breakables.ts`, `manual.json` (`fronts`), `build_streetscape.py` | passage libre de 3 m ; aucun prop dans l'axe de la rampe ; joueur non coincé |
 | **4. Cour et abords** | enrobé de la cour, marches, gravier, bacs roses, rochers, bouleau, haie ; clôture de l'avenue réexaminée | `build_courts.py` (`courts` : site du collège), `props.ts`, `manual.json` | aucun sol dans l'emprise des ailes ni sur la rue ; chaque prop à plus de 1,5 m de la façade |
 | **5. Terrains de sport** | revêtement lu, tracés, grillage, paniers et buts | `manual.json`, `build_ground.py`, `props.ts` | paniers aux extrémités de leur terrain, à 3,05 m du sol |
 | **6. Parking et camion pizza** | rangées lues à l'orthophotographie, flèches, lampadaires ; ancienne marque retirée ; place du camion contrôlée | `manual.json` (`lots`), `build_streetscape.py`, `src/data/streetscape.test.ts`, `src/core/uniques.ts` | entre N − 10 % et N + 10 % places (N compté au lot 0) ; toutes perpendiculaires à leur rangée à 5° ; camion hors de toute place |
-| **7. En option** | passants à la grille (§3.6) | `build_monuments_nav.py` | — |
+| ~~7. Passants à la grille~~ | **exclu** (réponse du 1ᵉʳ novembre) | — | — |
 
 Budget : le jeu rend environ 395 000 triangles sur cette vue (capture « bâtiments ») ; le modèle (ailes, façades, portes) doit rester sous 20 000 triangles, les props de l'entrée, de la cour et des terrains sous 8 000.
 
@@ -132,14 +131,15 @@ Budget : le jeu rend environ 395 000 triangles sur cette vue (capture « bâtime
 - **Droits** : Street View, photos de presse et captures satellites ne servent que de référence de lecture, comme pour les lots précédents ; rien n'en est copié (textures et enseignes sont dessinées, le logo du collège est stylisé).
 - **Mon analyse n'a pas vu l'orthophotographie** : tout ce que je dis des terrains et du parking vient de vos captures et des données du jeu ; le lot 0 est précisément l'étape qui le vérifie.
 
-## 6. Questions pour l'utilisateur
+## 6. Questions pour l'utilisateur (réponses du 1ᵉʳ novembre : **option B**, **pas de passants**, **camion sur les places du repère**, grille « fermée » ; deux points restent ouverts, en gras)
 
 1. **Option B ou A ?** Par défaut : B (modèle dédié).
-2. **Grille** : toujours ouverte (recommandé) ou fermée la nuit, le dimanche et pendant les vacances ?
-3. **Camion pizza** : garder la place actuelle (503,5 ; 1105) ou le ramener exactement à votre repère (499,1 ; 1102,5) ?
-4. **Photos en plus** (par défaut, estimations) : les plateaux de sport, le gymnase et le toit blanc, l'arrière du bloc principal, la cour vue depuis la grille, le parking vu du nord (côté avenue).
-5. **Passants** (§3.6) : lot 7 inclus ou exclu d'office ?
-6. **Ordre** : par défaut 0 → 1 → 2 → 3 → 4 → 5 → 6, le parking en dernier car il ne dépend pas des bâtiments ; dites-moi si le parking ou l'entrée passent avant.
+2. **Grille** : vous avez écrit « fermée comme tu proposes » ; or j'avais recommandé « toujours ouverte ». **Je lis : fermée en dehors des heures de classe** (le jeu n'a ni calendrier ni vacances, D116 : une règle d'horaire seulement), par exemple ouverte de 7 h 30 à 18 h, fermée la nuit, comme le camion de D115 est absent hors service. **À confirmer** : cette lecture, ou « fermée tout le temps », ou « toujours ouverte » ? Sans réponse avant le lot 3, je prends la lecture ci-dessus.
+3. **Camion pizza** : réponse : sur les places de parking, au repère (499,1 ; 1102,5). Le lot 0 montre que le repère tombe dans la **rangée nord** (places perpendiculaires à l'avenue) ; voir §9.5.
+4. **Photos en plus** : reçue, la cour est (photo 8). Restent, par défaut estimés : les plateaux de sport, le gymnase, la face nord et la face sud du bloc principal, la cour vue depuis la grille.
+5. **Passants** : exclus.
+6. **Ordre** : 0 → 1 → 2 → 3 → 4 → 5 → 6 (par défaut).
+7. **Cap de la photo 8** : vous avez écrit « est-sud-est » ; **les ailes visibles me placent plutôt vers l'ouest-sud-ouest** (≈ 250°, §9.2). **À confirmer** (une erreur d'orientation fausserait la façade est).
 
 ## 7. Captures « avant »
 
@@ -154,3 +154,68 @@ Budget : le jeu rend environ 395 000 triangles sur cette vue (capture « bâtime
 - Pas, phase et direction de chaque rangée du parking, nombre de places, orientation des flèches de sens.
 - Sol des trois plateaux (couleur, tracés), présence d'un grillage.
 - Hauteur des parapets du pont, rayon de l'îlot de béton, position de l'arbre remarquable.
+
+## 9. Relevés du lot 0 (1ᵉʳ novembre 2026)
+
+Mesurés sur l'IGN : MNS et MNT LiDAR HD à 25 cm, orthophotographie à 10 cm. Script reproductible : `python3 tools/data/survey_college.py [--images DOSSIER] [--overview | --crop NOM x0 y0 x1 y1 [res]]`
+(rasters en cache dans `.cache/college/`, rien d'écrit dans le jeu). Hauteurs au-dessus du sol du bâtiment (MNS − MNT), ± 0,3 m ; plan ± 0,5 m ; caps ± 3°.
+
+### 9.1 Le bloc principal : ailes, hauteurs, orientation
+
+Toutes les ailes sont tournées de **17,5°** : leurs murs ont les caps 72° et 342°. Repère du bâtiment : origine (630 ; 1110), **u** vers le cap 72°, **v** vers le cap 342°.
+
+| Aile | u (m) | v (m) | Dessus (m) | Niveaux | Lecture |
+|---|---|---|---|---|---|
+| **Barre sud** | −24 à +13 | −33,5 à −10 | **13,6** | 4 | la barre à bandes de fenêtres, 37 × 23,5 m ; sol −35,4 |
+| Noyau sur sa face nord | −8 à +1 | −10 à −5 | 13,6 | cage | sort de la barre côté cour |
+| Cage extérieure est | +13 à +20 | −25,5 à −21,5 | 7,7 | — | l'escalier de béton de la photo 8, à gauche |
+| Aile ouest | −7 à +9 | −5 à +13,5 | 7,7 | 2 | porte le bloc d'entrée vitré (§9.2) |
+| **Préau** | +9 à +27 | −5 à +12,5 | **3,8** | 1 | 18 × 17,5 m, toit en quatre berceaux (visibles sur l'orthophotographie) : les voûtes vertes de la photo 8. C'est le BD TOPO `…848974` |
+| Aile est | +27 à +44 | +6 à +28,5 | 7,7 | 2 | bandeau vitré bleu-vert de la photo 8 (au fond) |
+| Bloc nord | −16 à +27 | +13,5 à +35,5 | 7,7 | 2 | long volume à toit plat, nombreux édicules (acrotère visible) |
+
+- **BD TOPO `…848973`** (65 × 80 m, 9,3 m, 3 niveaux) fond la barre (13,6 m), les ailes à 7,7 m et le noyau : sa hauteur unique de 9,3 m est fausse partout. **Le préau est un bâtiment à part** (`…848974`, 4 m, bien mesuré).
+- **Bloc ouest `…849004`** (554 ; 1110) : 8,8 m sur sol −35,0, donc bien deux niveaux hauts (≈ 4,4 m chacun), toit plat ; c'est le bâtiment de béton clair derrière la grille sur la photo 2, pas le « petit bâtiment bas » de la photo 4.
+- **Type `culture`** de `…848973` : il vient d'un tag OpenStreetMap `amenity` de la famille théâtre, cinéma, bibliothèque, centre d'arts ou centre communautaire (`build_kinds.py`, `AREA_AMENITY`) ; je n'ai pas relu l'objet OSM. À corriger en `school` au lot 1.
+
+### 9.2 Rattachement des photos
+
+- **Photo 8** (cour est, ci-dessus) : le repère (46,960231 ; 4,307759) tombe en **(670,6 ; 1125,3)**, sur l'îlot circulaire planté du bord est de la cour (visible sur l'orthophotographie). Les ailes relevées montrent une vue vers le **sud-ouest à l'ouest-sud-ouest (cap 250° environ)** : à gauche la barre sud et sa cage d'escalier extérieure (cap 199°), à droite le préau et ses voûtes (cap 254°). Un cap de 112° (est-sud-est) ne mène qu'à la cour et à des maisons. **Hypothèse forte**, à confirmer. Vue en hauteur (étage ou haut d'un mur) : le point de vue est donc plus haut que le sol.
+- **Photo 3** (cour, bloc vitré à deux niveaux, volume aveugle à gauche, barre à droite) : **hypothèse** : prise dans la **cour ouest**, face à l'est : barre sud à droite, aile ouest vitrée au centre, extrémité ouest du bloc nord (mur aveugle) à gauche. Façade d'entrée du collège = face **ouest** de l'aile ouest (cap 252°). Les marches, bacs roses et rochers sont donc à l'ouest, pas dans la cour de la photo 8.
+- **Photo 4** (avenue de la République, vers le sud) : le petit bâtiment bas gris à gauche est **`…849030`** (701 ; 1153), **4,3 m** (BD TOPO : 7,1 m, **faux de 2,8 m**) ; le grand bâtiment blanc à étage et escalier extérieur est le bloc nord ; le grand toit rouge à gauche est la grange de rue des Drémeaux, hors collège.
+
+### 9.3 Le gymnase `…848924`
+
+Pas un toit à croupes : **un toit à deux pentes de très faible pente** (≈ 0,2), faîtage orienté nord-sud vers **x ≈ 672**, égouts à **3,0 m** (ouest) et ≈ 2,5 m (est), faîtage à **5,2 à 5,4 m** (il monte de 4,7 m au sud à 5,4 m au nord : léger rampant). Le jeu le dessine en croupes à égout 4,4 m et **faîtage 9,0 m, soit 3,7 m trop haut**. Sol −35,3 ; emprise ≈ 22 × 40 m, vue de dessus : toit blanc, lames de bac acier.
+
+### 9.4 L'entrée
+
+- Le tablier va de **(522 ; 1072) à (546 ; 1087)**, cap **58°**, **5 à 6 m de large** à l'orthophotographie (le jeu : 4,5 m), sur le ruisseau de Brisecou. À son extrémité nord-est, **barrière à chevrons jaunes et noirs** et la grille : axe de la grille ≈ **(547 ; 1087)**, perpendiculaire au tablier. Derrière : l'esplanade (550 ; 1090).
+- **Parapets** : invisibles au MNS à 25 cm (écart ≤ 0,2 m par rapport au tablier) ; leur hauteur (≈ 1 m) reste une lecture de photo. Le grand arbre de la photo 2 est dans la masse d'arbres à l'est du tablier ; à mesurer au lot 3.
+
+### 9.5 Le parking (ouest du collège)
+
+![Parking : lot, rangées, repère](../captures/college-lot0-parking.jpg)
+
+- **Emprise** : ≈ x 486 à 512, y 1068 à 1108, bord nord-ouest arrondi, bordée à l'ouest par la rue de l'Acaron, au nord par l'avenue, à l'est par le mur du ruisseau.
+- **Rangées lues** : une rangée **nord** de places perpendiculaires à l'avenue (7 à 8), une colonne **ouest** (≈ 11, traits obliques), une colonne **est** (≈ 9 à 10, traits obliques), un **îlot central** de deux rangées dos à dos (≈ 14), un petit bloc marqué dans l'angle nord-est, **deux flèches de sens** peintes au centre. **N ≈ 42 places (36 à 48)** : décompte visuel, **pas de détection automatique** (mes essais de pics de luminosité ont échoué : traits obliques, trop fins). Le décompte définitif se fait au lot 6, à l'orthophotographie redressée par rangée (méthode D154).
+- **Repère du camion** : (499,1 ; 1102,5), au milieu de la **rangée nord**, à 5,5 m du bord de l'avenue : c'est une place (ou deux) de cette rangée, à axe nord-sud. La place actuelle (503,5 ; 1105, cap 242°) est au bord de la lisière, orientée à l'ouest : elle **ne suit pas** les places. Au lot 6, le camion sera aligné sur la rangée (cap 0° ou 180° ; « dos à la route » = tournée vers le sud) sur **deux places voisines** centrées sur le repère, et `keepClear` écartera les voitures de ces deux places.
+
+### 9.6 Les terrains
+
+![Trois plateaux](../captures/college-lot0-terrains.jpg)
+
+- Trois plateaux **en enrobé gris sombre** à tracés blancs fins, séparés par des bandes de terre battue : l'ouest (565 à 585 ; 1028 à 1046, tracé de demi-cercle), le milieu (580 à 606 ; 1002 à 1040), l'est, le grand « multi » (604 à 643 ; 991 à 1040) à nombreux tracés croisés. Positions et dimensions du jeu **concordent** à 2 m près ; **le sol rouge et bleu du jeu est faux**.
+- **Quatre panneaux de basket** (rectangles sombres et leur ombre) vers (592 ; 1038), (607 ; 1011), (638 ; 1026), (631 ; 1002) : aux extrémités des plateaux milieu et est, à ± 2 m. **Aucun grillage visible** : les plateaux sont ouverts.
+
+### 9.7 Ce que cela change au plan
+
+- **Lot 1** : cinq volumes à poser (barre, ailes ouest et est, bloc nord, préau) dans un repère tourné de 17,5° ; hauteurs et niveaux de §9.1 ; gymnase à corriger (§9.3), `…849030` à ramener à 4,3 m.
+- **Lot 2** : façade d'entrée = **face ouest de l'aile ouest** (hypothèse photo 3) ; barre et cage d'escalier côté cour est (photo 8), bandeau vitré bleu-vert de l'aile est, **préau à poteaux bleu-vert et toit en berceaux** (nouveau, absent du plan initial).
+- **Lot 3** : tablier élargi à 5-6 m, grille au (547 ; 1087), barrière à chevrons.
+- **Lot 5** : sol gris sombre, quatre panneaux, **pas de grillage**.
+- **Lot 6** : N ≈ 42, camion sur la rangée nord (§9.5).
+- **Restent ouverts** : cap exact de la photo 8 ; orientation de la photo 3 ; hauteur des parapets ; décompte précis des places ; luminaires et arbres de la cour.
+
+![Ailes, cap de la photo 8 (rouge : relevé, orange : cap donné)](../captures/college-lot0-ensemble.jpg)
+![Entrée : tablier, barrière, grille](../captures/college-lot0-entree.jpg)

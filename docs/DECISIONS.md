@@ -3246,3 +3246,22 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Barre nord-ouest](captures/hexagone-lot6-barre-nord-ouest.jpg)
 ![Vue aérienne](captures/hexagone-lot6-aerien.jpg)
 
+## 2026-11-01 — D171. Collège du Vallon, lot 0 : relevés (plan `docs/plans/college-vallon.md`)
+
+**Demande de l'utilisateur** : option B (modèle dédié), grille « fermée », camion pizza sur les places de parking au repère donné, pas de passants à la grille ; une photo de la cour est (photo 8) avec son repère, cap indiqué est-sud-est ; lancer le lot 0.
+
+**Aucun changement du jeu** : un script de relevé (`tools/data/survey_college.py`, MNS/MNT LiDAR HD à 25 cm, orthophotographie à 10 cm, dans `.cache/college/`), le §9 du plan et quatre vues (`docs/captures/college-lot0-*.jpg`).
+
+**Résultats** (détail au §9) :
+- **Bloc principal** : ailes tournées de 17,5° ; barre sud à **13,6 m (4 niveaux)**, ailes ouest, est et bloc nord à **7,7 m (2 niveaux)**, **préau à 3,8 m** (BD TOPO `…848974`, toit en quatre berceaux). BD TOPO `…848973` : 9,3 m partout, faux ; type `culture` à corriger.
+- **Gymnase** `…848924` : toit à deux pentes de pente ≈ 0,2, égout 3,0 m, faîtage 5,3 m ; le jeu le dessine en croupes, faîtage 9,0 m (3,7 m trop haut). `…849030` (photo 4) : 4,3 m, BD TOPO 7,1 m.
+- **Photo 8** : le repère tombe en (670,6 ; 1125,3) ; les ailes visibles indiquent un cap d'environ **250°**, pas 112° (à confirmer). Photo 3 supposée prise dans la cour ouest vers l'est : façade d'entrée = face ouest de l'aile ouest.
+- **Entrée** : tablier (522 ; 1072) à (546 ; 1087), 5 à 6 m de large, grille vers (547 ; 1087). **Parking** : N ≈ 42 (décompte visuel, à refaire au lot 6), repère du camion dans la rangée nord. **Terrains** : enrobé gris sombre, quatre panneaux de basket, pas de grillage ; sol rouge et bleu du jeu faux.
+
+**Limites** : cap de la photo 8 et orientation de la photo 3 sont des lectures ; la détection automatique des traits du parking a échoué (décompte à la main, ± 6) ; hauteur des parapets non mesurable à 25 cm ; **la lecture de « grille fermée » est une hypothèse** (j'avais recommandé « toujours ouverte »), posée en question au §6. Aucun test (aucun code de jeu touché).
+
+![Ailes et cap de la photo 8](captures/college-lot0-ensemble.jpg)
+![Parking](captures/college-lot0-parking.jpg)
+![Terrains](captures/college-lot0-terrains.jpg)
+![Entrée](captures/college-lot0-entree.jpg)
+

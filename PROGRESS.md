@@ -1327,3 +1327,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Trois petits bâtiments du voisinage ont encore un toit trop haut (hauteur BD TOPO prise pour l'égout) : à traiter pour toute la ville, pas ici.
 - 903 tests (5 de plus). À regarder : `?view=custom&cam=392,270,38,408,270,6` et `cam=345,215,35,365,250,9`.
 
+**Collège du Vallon, lot 0 : relevés (1er novembre 2026)** (D171)
+- Rien n'a changé dans le jeu : relevés LiDAR et orthophotographie du collège (`tools/data/survey_college.py`), résultats au §9 de `docs/plans/college-vallon.md`.
+- Le bâtiment principal est fait d'une barre de 4 niveaux (13,6 m), de blocs à 2 niveaux (7,7 m) et d'un préau (3,8 m) ; le gymnase a un toit presque plat (faîtage 5,3 m, le jeu le fait à 9 m) ; le parking compte à peu près 42 places ; les plateaux sont en enrobé gris, sans grillage.
+- À confirmer de ta part : le cap de la photo de la cour (je lis ouest-sud-ouest, pas est-sud-est) et ce que « grille fermée » veut dire (fermée en dehors des heures de classe, par défaut).
+
