@@ -269,8 +269,11 @@ def apply_shop(fi, m):
     kept = [x for x in g.get("shops", []) if x.get("osm") in sh.get("keepOsm", [])]  # commerces voisins gardés (identifiants OpenStreetMap)
     # `s` (facultatif) : abscisse du commerce quand sa devanture n'est pas au milieu du mur (D184)
     g["shops"] = [{"name": sh["name"], "kind": sh["kind"], "wall": m["wall"], "s": sh.get("s", round(fi["walls"][m["wall"]]["length"] / 2, 2))}] + kept
+    if sh.get("noShop"):  # façade d'après photo sans commerce (D185 : hôtel fermé) : la devanture reste, le commerce disparaît
+        g["shops"] = kept
     if "terrace" in sh:  # terrasse d'après photo (D178) devant la devanture
-        g["shops"][0]["terrace"] = sh["terrace"]
+        if g["shops"]:
+            g["shops"][0]["terrace"] = sh["terrace"]
     g["devanture"] = sh["devanture"]
     if "corner" in sh:  # boutique d'angle (D179) : devanture du même commerce sur le mur voisin
         g["corner"] = sh["corner"]
@@ -427,6 +430,10 @@ def main():
                 chosen.append(o["wall"])
                 kept.append(sh)
             g["shops"] = kept
+        if m.get("dwelling"):  # D185 : bâtiment sans commerce d'après photo (le commerce d'OpenStreetMap était dans le voisin) : plus de vitrine générique
+            g["kind"] = "dwelling"
+            g["shops"] = []
+            g.pop("corner", None)
         # D179 : boutique d'angle photographiée (`corner` d'une entrée sans `shop`) ; sinon, vitrine générique sur le mur voisin des commerces proches d'un coin.
         if m.get("corner") and not m.get("shop"):
             g["corner"] = m["corner"]

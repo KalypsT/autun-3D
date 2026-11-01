@@ -3600,3 +3600,42 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d184-boucherie-apres.jpg)
 ![Morvan Pêche, avant](captures/d184-morvan-avant.jpg)
 ![Après](captures/d184-morvan-apres.jpg)
+
+## 2026-11-01 — D185. Hôtel Saint-Louis, La Trattoria, Le Lutrin, Chez Daddy et la fresque d'Autun
+
+**Demande de l'utilisateur** : sept captures (hôtel Saint-Louis et de la Poste, La Trattoria en deux vues, la maison à colombages du Lutrin, Chez Daddy en deux vues, la fresque du mur est). Réponses aux doutes : l'hôtel en **façade seule, sans commerce** ; La Trattoria au **4 rue des Bancs**, bout nord du mur 5 ; Le Lutrin : **rez-de-chaussée en pierre + enseigne, étages crème** ; la fresque en **fausses fenêtres en plaques + lettres** (retirées ensuite, voir limites).
+
+**Où** (plan à plat ; sources : [Hôtel Saint-Louis, 6 rue de l'Arbalète](https://fr.wikipedia.org/wiki/H%C3%B4tel_Saint-Louis_et_de_la_Poste)) :
+- hôtel : `…348853299` (26_34), 6 rue de l'Arbalète, classé « monument » ; la façade est le **mur 5** (27,3 m), le seul qui donne sur la rue (la « place » triangulaire du plan est une cour intérieure) ; huit travées de 3,415 m ;
+- La Trattoria : `…348852942` (4 rue des Bancs, 26_33), mur 5, s 4,9 à 9,0 ; OpenStreetMap la met aussi sur le 2 (`…348852941`, nœud 3371630550) : retirée, et ce bâtiment passe en `dwelling` (plus de vitrine générique) ; Don Cabillaud est gardé ;
+- Le Lutrin : `…348853042` (1 place du Terreau), angle nord-ouest : mur 5 (29,8 m, face à la place, restaurant, s 0,4 à 8) et mur 4 (11,3 m, face à la rue, porte de garage), en `shop.corner` ;
+- Chez Daddy : `…348854035` (3 rue de l'Arquebuse, 26_35), mur 2 (26,6 m) : entrée de l'immeuble (s 15,9 à 18,3), café aux cinq baies (s 18,3 à 26,2, OpenStreetMap le place à 14,6 m) ; mur 3 (11,5 m, face à l'est, parking de l'Arquebuse) en `shop.corner` pour la fresque.
+
+**Outils** (`build_shop_fronts.py`) : `shop.noShop` (façade d'après photo sans commerce : la devanture reste, les commerces disparaissent, sauf `keepOsm`) ; `fronts[…].dwelling` (le bâtiment perd ses commerces et sa vitrine générique : cas où le commerce d'OpenStreetMap était dans le voisin) ; `terrace` est ignorée quand il n'y a pas de commerce.
+
+**Dessin** (gabarit moderne) :
+- hôtel : rez-de-chaussée taupe, persiennes closes (plaques claires), porte d'entrée à deux lanternes, portes de garage grises, lettres dorées « HOTEL St LOUIS / ET DE LA POSTE » entre le premier et le deuxième étage ; enduit beige pâle à persiennes ;
+- Trattoria : devanture de bois vert foncé, porte, ardoises noires « PIZZAS », bandeau « La Trattoria », guirlande de verdure, terrasse à canisses (`screen`), balcon filant ;
+- Lutrin : pilier d'angle de pierre, vitrines et porte, panneau blanc « TERRASSE OMBRAGÉE / SALLE CLIMATISÉE / le Lutrin », porte de garage grise sur la rue ; étages crème à fenêtres rouge sombre (colombages non dessinables) ;
+- Chez Daddy : rez-de-chaussée pêche, entrée à porte vitrée et encadrement blanc (`tint`), cinq baies sous un store jaune, « Chez Daddy » et « PLUS QU'UN CAFÉ ! » ; mur est : vitrines peintes ocre, porte verte, pilastres gris, balcon noir, « LA FRESQUE D'AUTUN ».
+
+**Tests** (+6, 999 au total, `src/render/boutiques-terreau.test.ts`) : devantures dans leur mur de rue, plaques et textes dans la devanture ; hôtel (8 travées, sans commerce) ; Trattoria (voisin gardé, doublon retiré, `dwelling`) ; Lutrin (sommet commun entre murs 4 et 5) ; Chez Daddy (café à droite, fresque sur le mur voisin) ; géométrie finie et bornée.
+
+**Limites** :
+- **fresque** : le moteur n'a pas de peinture murale. Des plaques bleu-gris posées pour les huit fausses fenêtres se superposaient aux fenêtres de la fiche : retirées ; les fenêtres de la fiche tiennent lieu de fausses fenêtres, sans personnages ; seuls le balcon, le texte, les vitrines peintes et la porte sont dessinés ;
+- **hôtel** : colombages peints, lanternes en relief et enseigne en lettres creuses non dessinés ; le bâtiment fait 9 m de haut dans BD TOPO (trois niveaux au lieu de quatre) ; fermé depuis 2013 : sans commerce ni navigation ;
+- **Lutrin** : colombages, encorbellement et pignon non dessinables ; nom lu sur la photo approximatif (« le Lutrin » dans les données) ; une seule photo, très oblique (± 50 cm) ;
+- **Trattoria** : seul le côté de la rue des Bancs est dessiné, pas les citrons de la guirlande ni le panneau en potence ; la canisse est un mur plein de 1,6 m ;
+- **Chez Daddy** : cinq baies à stores uniques (la photo a six petits stores) ; l'entrée de l'immeuble est une porte droite (arc non dessinable) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Hôtel Saint-Louis, avant](captures/d185-hotel-avant.jpg)
+![Après](captures/d185-hotel-apres.jpg)
+![La Trattoria, avant](captures/d185-trattoria-avant.jpg)
+![Après](captures/d185-trattoria-apres.jpg)
+![Le Lutrin, avant](captures/d185-lutrin-avant.jpg)
+![Après](captures/d185-lutrin-apres.jpg)
+![Chez Daddy, avant](captures/d185-daddy-avant.jpg)
+![Après](captures/d185-daddy-apres.jpg)
+![La fresque d'Autun, avant](captures/d185-fresque-avant.jpg)
+![Après](captures/d185-fresque-apres.jpg)
