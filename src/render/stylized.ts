@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import type { Building, BuildingKind, FacadeFiche, HeightField, RoofMaterial, TileData } from "../data/types";
+import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
 import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
 import { buildGroundSteps } from "./ground";
 import { buildStairs } from "./stairs";
 import { SignAtlas } from "./sign-atlas";
 import { canvasTexture, rng } from "./canvas";
-import { buildFurniture, buildWalls, fenceMaterial } from "./props";
+import { buildBreakables, buildFurniture, buildWalls, fenceMaterial, splitBreakable } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 import { furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
@@ -30,6 +30,28 @@ export interface TileStats {
 export interface TileMeshes {
   group: THREE.Group;
   stats: TileStats;
+  /** Mobilier cassable de la tuile (D160) et celui qui est déjà arraché : leurs maillages se refont seuls (`rebuildBreakables`). */
+  soft: readonly Furniture[];
+  broken: Set<number>;
+}
+
+/** Noms des maillages du mobilier cassable : matière des murs, lanternes allumées, taches de lumière. */
+const SOFT_MESHES = ["mobilier", "lanternes", "halos"] as const;
+
+/** Arrache le mobilier `id` de la tuile : refait les trois maillages du mobilier cassable sans lui (quelques centaines de triangles). */
+export function breakFurniture(t: TileMeshes, id: number, terrain: HeightField): Furniture | null {
+  const f = t.soft.find((x) => x.id === id);
+  if (!f || t.broken.has(id)) return null;
+  t.broken.add(id);
+  const b = buildBreakables(t.soft, terrain, t.broken);
+  const parts: Record<(typeof SOFT_MESHES)[number], MeshBuilder> = { mobilier: b.solid, lanternes: b.glow, halos: b.halo };
+  for (const name of SOFT_MESHES) {
+    const m = t.group.getObjectByName(name) as THREE.Mesh | undefined;
+    if (!m) continue;
+    m.geometry.dispose();
+    m.geometry = parts[name].build();
+  }
+  return f;
 }
 
 function dispose(group: THREE.Object3D): void {
@@ -444,10 +466,12 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
   const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));
   if (!skip.includes("stairs")) buildStairs(detail, (tile.stairs ?? []).filter((z) => !perrons.has(z.id)), terrain, C("#e6d9b8"), C("#bba98a"));
-  const halo = new MeshBuilder();
   target();
   // Le mobilier remplacé ou retiré par un monument d'après photo (fontaine Saint-Lazare, D131 ; lampadaire d'un îlot, D142) n'est pas dessiné.
-  if (!skip.includes("furn")) buildFurniture(detail, furnitureOutsideMonuments(kinds, tile.furniture), terrain, glow, halo);
+  // Le mobilier cassable (lampadaires, feux, poubelles…, D160) a ses maillages à part : un véhicule peut l'arracher.
+  const { plain, soft } = splitBreakable(skip.includes("furn") ? [] : furnitureOutsideMonuments(kinds, tile.furniture));
+  buildFurniture(detail, plain, terrain, null, null);
+  const breakables = buildBreakables(soft, terrain);
   yield;
 
   const group = new THREE.Group();
@@ -455,7 +479,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
     const m = new THREE.Mesh(geometry, mat);
     m.name = name;
-    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "halos" && name !== "sol" && name !== "enseignes";
+    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -472,7 +496,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   res.signAtlas.flush();
   yield;
   add("enseignes", names, res.signMat);
-  add("halos", halo, res.haloMat);
+  add("mobilier", breakables.solid, res.wallMat);
+  add("lanternes", breakables.glow, res.glowMat);
+  add("halos", breakables.halo, res.haloMat);
   yield;
   // L'eau des ouvrages (surfaces complètes, multipolygones compris) remplace la couche d'eau de la tuile.
   const layers = st ? Object.fromEntries(Object.entries(tile.ground ?? {}).filter(([k]) => k !== "water")) : tile.ground ?? {};
@@ -487,7 +513,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     group.add(treesStyled(res, trees));
     draws += 2;
   }
-  return { group, stats: { triangles, ...plan.stats, draws } };
+  return { group, stats: { triangles, ...plan.stats, draws }, soft, broken: new Set<number>() };
 }
 
 function roofFaces(rb: UvMeshBuilder, b: Building, base: THREE.Color): void {

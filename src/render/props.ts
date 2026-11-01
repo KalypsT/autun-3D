@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Furniture, HeightField, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { canvasTexture } from "./canvas";
+import { isBreakable } from "../core/breakables";
 
 const THICK = 0.3;
 
@@ -176,4 +177,27 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
       s += len;
     }
   }
+}
+
+/** Mobilier de ces natures : cassable (D160), dessiné à part pour pouvoir être retiré sans refaire toute la tuile. */
+export interface BreakableMeshes {
+  solid: MeshBuilder;
+  /** Lanternes allumées la nuit. */
+  glow: MeshBuilder;
+  /** Taches de lumière au sol. */
+  halo: MeshBuilder;
+}
+
+/** Sépare le mobilier d'une tuile en mobilier plein et mobilier cassable. */
+export function splitBreakable(items: readonly Furniture[]): { plain: Furniture[]; soft: Furniture[] } {
+  const plain: Furniture[] = [], soft: Furniture[] = [];
+  for (const f of items) (isBreakable(f.kind) ? soft : plain).push(f);
+  return { plain, soft };
+}
+
+/** Dessine le mobilier cassable, hors celui dont l'identifiant est dans `broken` (arraché par un véhicule). */
+export function buildBreakables(items: readonly Furniture[], terrain: HeightField, broken: ReadonlySet<number> | null = null): BreakableMeshes {
+  const out: BreakableMeshes = { solid: new MeshBuilder(), glow: new MeshBuilder(), halo: new MeshBuilder() };
+  buildFurniture(out.solid, broken ? items.filter((f) => !broken.has(f.id)) : items, terrain, out.glow, out.halo);
+  return out;
 }

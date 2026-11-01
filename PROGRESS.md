@@ -1281,3 +1281,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![La façade, avant](docs/captures/d159-bonaparte-facade-avant.jpg)
 ![Après](docs/captures/d159-bonaparte-facade-apres.jpg)
 ![La croix à ramasser](docs/captures/d159-croix-ramassable.jpg)
+
+**Mobilier cassable, voitures plus solides, saut hors d'une voiture en marche (1er novembre 2026)** (D160)
+- **Lampadaires, feux, poubelles, boîtes aux lettres, potelets et bornes à eau s'arrachent** : la voiture (ou tout véhicule de plus de 500 kg) que tu conduis, si elle les heurte assez vite, les casse au lieu de s'arrêter net. À 50 km/h contre un lampadaire : elle garde environ 84 % de sa vitesse et prend moitié moins de dégâts qu'un mur. Le poteau bascule, reste couché 20 s, puis disparaît ; il revient quand la zone est rechargée. Vélos, trottinettes et motos butent toujours dessus ; bancs, fontaines et arbres restent solides.
+- **Les voitures tiennent mieux** : dégâts réduits de 15 % et un choc coûte au plus 75 points : une voiture neuve ne prend plus jamais feu d'un seul choc (au pire fumée noire). Mur de face : 50 km/h → 29 points, 70 km/h → 55, 90 km/h et plus → 75 (fumée noire).
+- **On peut quitter une voiture en marche** : jusqu'à 8 km/h, descente normale tout de suite ; au-delà, on saute par la portière, on tombe et on perd de la santé (17 points à 50 km/h, 33 à 90, jamais mortel). La voiture finit sa course toute seule.
+- Les feux tricolores n'étaient pas des obstacles : ils le deviennent **pour les voitures que tu conduis seulement** (la circulation et les passants les traversent, sinon elle se bloquait).
+- Seul ton véhicule arrache : la circulation et la police les trouvent solides comme avant. Jusqu'à 2 appels de dessin de plus par tuile qui a du mobilier cassable ; 861 tests (18 de plus).
+- Limites : chute du poteau et saut hors de la voiture non vérifiés à l'image ; un feu arraché reste obéi par la circulation ; pas de son propre au poteau arraché.
+- À essayer : `?ride=citadine` puis foncer dans un lampadaire (≥ 25 km/h) ; foncer dans un mur à 90 km/h (fumée noire, pas de feu) ; appuyer sur E (Descendre) à 40 km/h.

@@ -26,6 +26,19 @@ export interface Circle {
   x: number;
   y: number;
   r: number;
+  /** Mobilier cassable (D160) : identifiant et nature ; absent pour un obstacle plein. */
+  brk?: { id: number; kind: string };
+}
+
+/** Un mobilier arraché par un véhicule : où, de quelle nature, et la direction (unitaire) et la vitesse (m/s) du véhicule qui l'a heurté. */
+export interface BrokenEvent {
+  id: number;
+  kind: string;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  speed: number;
 }
 
 export interface Resolution {
@@ -37,6 +50,9 @@ export interface Resolution {
   hit: boolean;
   /** Segment escaladable touché (indice dans `segments`), ou −1. */
   wall?: number;
+  /** Cercle cassable touché (indice dans `circles`), ou −1 ; `soft` : tous les contacts de ce pas sont des cercles cassables. */
+  brk?: number;
+  soft?: boolean;
 }
 
 const CELL = 8;
@@ -57,6 +73,8 @@ export class Colliders {
   private readonly freeCircle: number[] = [];
   /** Étiquette appliquée aux obstacles ajoutés ensuite. */
   currentTag: string | null = null;
+  /** Mobilier arraché depuis le dernier appel de `takeBroken` (le jeu le lit à chaque image). */
+  private readonly broken: BrokenEvent[] = [];
   private readonly segGrid = new Map<number, number[]>();
   private readonly circleGrid = new Map<number, number[]>();
   private stamp = 0;
@@ -93,8 +111,8 @@ export class Colliders {
     }
   }
 
-  addCircle(x: number, y: number, r: number): void {
-    const rec = { x, y, r };
+  addCircle(x: number, y: number, r: number, brk?: { id: number; kind: string }): void {
+    const rec: Circle = brk ? { x, y, r, brk } : { x, y, r };
     const reuse = this.freeCircle.pop();
     let id: number;
     if (reuse === undefined) {
@@ -147,6 +165,23 @@ export class Colliders {
     this.tagged.delete(tag);
   }
 
+  /**
+   * Arrache le cercle cassable `id` (D160) : il ne gêne plus rien et un événement est mis en file. Il reste réservé à son étiquette,
+   * qui le libérera avec la tuile : une tuile rechargée le remet en place.
+   */
+  breakCircle(id: number, dx: number, dy: number, speed: number): void {
+    const c = this.circles[id];
+    if (!c?.brk || this.deadCircle.has(id)) return;
+    this.unlink(this.circleGrid, id, Math.floor((c.x - c.r) / CELL), Math.floor((c.x + c.r) / CELL), Math.floor((c.y - c.r) / CELL), Math.floor((c.y + c.r) / CELL));
+    this.deadCircle.add(id);
+    this.broken.push({ id: c.brk.id, kind: c.brk.kind, x: c.x, y: c.y, dx, dy, speed });
+  }
+
+  /** Mobilier arraché depuis le dernier appel. */
+  takeBroken(): BrokenEvent[] {
+    return this.broken.splice(0);
+  }
+
   /** Retire l'obstacle `id` des cellules de la grille qu'il touchait. */
   private unlink(grid: Map<number, number[]>, id: number, x0: number, x1: number, y0: number, y1: number): void {
     for (let ix = x0; ix <= x1; ix++) {
@@ -190,7 +225,7 @@ export class Colliders {
 
   /** Comme `resolve`, sans allouer : écrit le résultat dans `out` (réutilisable) et le renvoie. Pour les foules, appelée à chaque image. */
   resolveInto(out: Resolution, x: number, y: number, r: number, clear = 0): Resolution {
-    let sx = 0, sy = 0, hits = 0, wall = -1;
+    let sx = 0, sy = 0, hits = 0, wall = -1, brk = -1, hard = 0;
     for (let pass = 0; pass < 4; pass++) {
       let moved = false;
       const stamp = ++this.stamp;
@@ -226,6 +261,7 @@ export class Colliders {
             sx += ex;
             sy += ey;
             hits++;
+            hard++;
             if (s.climb) wall = id;
             moved = true;
           }
@@ -250,6 +286,8 @@ export class Colliders {
             sx += ex;
             sy += ey;
             hits++;
+            if (c.brk) brk = id;
+            else hard++;
             moved = true;
           }
         }
@@ -263,6 +301,8 @@ export class Colliders {
     out.ny = l > 1e-9 ? sy / l : 0;
     out.hit = hits > 0;
     out.wall = wall;
+    out.brk = brk;
+    out.soft = hits > 0 && hard === 0;
     return out;
   }
 
