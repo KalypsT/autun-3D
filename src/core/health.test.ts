@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN, MAX_HEALTH, REGEN_CAP, REGEN_DELAY } from "./health";
+import { bailOutDamage, BAIL_SAFE, canStepOut, DEATH_HOURS, fallDamage, Health, HOSPITAL_SPAWN, MAX_HEALTH, REGEN_CAP, REGEN_DELAY } from "./health";
 import { loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -103,5 +103,23 @@ describe("chute d'un deux-roues (D98)", () => {
     expect(h.hp).toBe(1);
     expect(h.dead).toBe(false);
     expect(fallDamage(30 / 3.6, 1)).toBe(0);
+  });
+});
+
+describe("sortie d'un véhicule en marche", () => {
+  const kmh = (v: number): number => v / 3.6;
+  it("descente normale jusqu'à 8 km/h, en avant comme en marche arrière", () => {
+    expect(canStepOut(0)).toBe(true);
+    expect(canStepOut(kmh(7.9))).toBe(true);
+    expect(canStepOut(-kmh(7.9))).toBe(true);
+    expect(canStepOut(kmh(8.5))).toBe(false);
+    expect(canStepOut(BAIL_SAFE)).toBe(true);
+  });
+  it("blessure proportionnelle à la vitesse au-delà du seuil, nulle en dessous, jamais mortelle", () => {
+    expect(bailOutDamage(kmh(8), 100)).toBe(0);
+    expect(bailOutDamage(kmh(50), 100)).toBeCloseTo(16.8, 1);
+    expect(bailOutDamage(kmh(90), 100)).toBeCloseTo(32.8, 1);
+    expect(bailOutDamage(kmh(200), 20)).toBe(19);
+    expect(bailOutDamage(kmh(200), 1)).toBe(0);
   });
 });

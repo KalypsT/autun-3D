@@ -22,11 +22,16 @@ export const END_MODE: { current: EndMode } = { current: "explosion" };
 
 export const DAMAGE = {
   max: 100,
-  /** Vitesse d'impact (m/s) en dessous de laquelle un choc n'abîme rien (≈ 12 km/h). */
+  /** Vitesse d'impact (m/s) en dessous de laquelle un choc n'abîme rien (≈ 12 km/h). Gardé à 3,3 : plus haut, deux voitures collées ne s'usent plus et la poursuite s'enlise (police-soak). */
   threshold: 3.3,
-  /** Points retirés : scale × (impact − threshold)^power, divisé par la solidité du modèle. Un mur à 50 km/h de face : ≈ 35 points ; à 90 km/h : le feu. */
-  scale: 1.0,
+  /** Points retirés : scale × (impact − threshold)^power, divisé par la solidité du modèle. Un mur à 50 km/h de face : ≈ 29 points ; à 70 : ≈ 55 ; à 90 et au-delà : le plafond. */
+  scale: 0.85,
   power: 1.5,
+  /**
+   * Plafond d'un seul choc (points) : un choc, même violent, ne met jamais une voiture neuve en feu ; il la laisse en fumée noire (25 points).
+   * Le feu demande un second choc, des balles ou une explosion.
+   */
+  maxPerHit: 75,
   /** Une réception de saut abîme moitié moins qu'un choc de même vitesse (les pneus et la suspension encaissent). */
   landing: 0.5,
   /** Seuils de santé des paliers. */
@@ -112,7 +117,7 @@ export class VehicleDamage {
   /** Choc de cette vitesse d'impact (m/s), venu de cet angle (NaN : réception de saut, sous le véhicule). Renvoie les points retirés. */
   hit(speed: number, angle: number): number {
     const landing = Number.isNaN(angle);
-    const points = impactPoints(speed, this.profile.toughness) * (landing ? DAMAGE.landing : 1);
+    const points = Math.min(DAMAGE.maxPerHit, impactPoints(speed, this.profile.toughness) * (landing ? DAMAGE.landing : 1));
     this.damage(points, angle);
     return points;
   }

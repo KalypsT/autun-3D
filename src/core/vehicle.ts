@@ -1,3 +1,4 @@
+import { BREAKABLE, BREAK_IMPACT_KEEP, breaks, speedKept } from "./breakables";
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
 import { BIKE_DEPTH, CAR_DEPTH, onDeck, shoreNormal, waterDepth } from "./shore";
@@ -529,7 +530,7 @@ function wheelieLift(s: VehicleState, spec: VehicleSpec): number {
  * Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. `fly` : il peut quitter le sol (véhicule
  * du joueur) ; sinon, il suit toujours le relief (circulation, gendarmes).
  */
-export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null, fly = false): void {
+export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null, fly = false, breaker = false): void {
   // Altitude de la trajectoire libre au début du pas (la suspension détendue en plus) ; on ne décolle pas du bout d'un tablier (voir `onDeck`).
   const z0 = s.z - wheelieLift(s, spec) + Math.min(s.air, SUSPENSION);
   const deck0 = fly && s.air < 1 && onDeck(terrain, s.x, s.y, terrain.heightAt(s.x, s.y, z0));
@@ -541,9 +542,9 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
     const px = s.x, py = s.y;
     integrate(s, spec, input, h, terrain);
     const clear = Math.max(0, s.air - SUSPENSION);
-    collide(s, spec, colliders, clear);
+    collide(s, spec, colliders, clear, breaker);
     // Obstacles propres à certains véhicules (escaliers pour une voiture).
-    if (extra) collide(s, spec, extra, clear);
+    if (extra) collide(s, spec, extra, clear, breaker);
     wade(s, spec, terrain, px, py, h);
   }
   // Limites du monde (3 m de marge).
@@ -933,8 +934,11 @@ function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: numb
   }
 }
 
-/** `clear` : hauteur des roues au-dessus du sol, en vol ; on passe au-dessus des murets et clôtures moins hauts. */
-function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear = 0): void {
+/**
+ * `clear` : hauteur des roues au-dessus du sol, en vol ; on passe au-dessus des murets et clôtures moins hauts.
+ * `breaker` : ce véhicule arrache le mobilier cassable (D160) ; seul celui du joueur le fait, la circulation et la police les gardent pleins.
+ */
+function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear = 0, breaker = false): void {
   const inertia = spec.yawInertia;
   for (const [off, r] of spec.hull) {
     const sin = Math.sin(s.heading), cos = Math.cos(s.heading);
@@ -942,12 +946,29 @@ function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear
     const res = colliders.resolve(cx, cy, r, clear);
     if (!res.hit) continue;
     const nx = res.nx, ny = res.ny;
-    s.x += res.x - cx;
-    s.y += res.y - cy;
     // Point de contact relatif au centre de gravité ; vitesse de ce point (lacet horaire : ω × r = (w·ry, −w·rx)).
     const rx = sin * off - nx * r, ry = cos * off - ny * r;
     const pvx = s.vx + s.yawRate * ry, pvy = s.vy - s.yawRate * rx;
     const vn = pvx * nx + pvy * ny;
+    // Mobilier cassable (D160) : assez lourd et assez vite, le véhicule l'arrache sans rebondir, ralenti par sa masse, et le choc compte moins.
+    const brk = breaker && res.brk !== undefined && res.brk >= 0 && res.soft ? colliders.circles[res.brk]!.brk : undefined;
+    if (brk && vn < 0) {
+      const soft = BREAKABLE[brk.kind];
+      if (soft && breaks(soft, spec.mass, -vn)) {
+        const sp = Math.hypot(s.vx, s.vy);
+        colliders.breakCircle(res.brk!, sp > 1e-6 ? s.vx / sp : 0, sp > 1e-6 ? s.vy / sp : 0, sp);
+        const keep = speedKept(soft, spec.mass);
+        s.vx *= keep;
+        s.vy *= keep;
+        if (-vn * BREAK_IMPACT_KEEP > s.impact) {
+          s.impact = -vn * BREAK_IMPACT_KEEP;
+          s.impactAngle = contactAngle(s, rx, ry);
+        }
+        continue;
+      }
+    }
+    s.x += res.x - cx;
+    s.y += res.y - cy;
     if (vn >= 0) continue;
     // Bras de levier en sens trigonométrique ; le lacet horaire en est l'opposé.
     const rn = rx * ny - ry * nx;

@@ -1,4 +1,5 @@
 import type { HeightField, TileData } from "../data/types";
+import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, type Top } from "./collision";
 import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { parapetLines } from "./bridges";
@@ -6,8 +7,8 @@ import { theatreWalls } from "./theatre";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
-  bench: 0.55, waste_basket: 0.25, post_box: 0.3, atm: 0.4, public_bookcase: 0.4,
-  bollard: 0.15, memorial: 1.2, fountain: 1.0, street_lamp: 0.2, toilets: 1.0, drinking_water: 0.25,
+  bench: 0.55, atm: 0.4, public_bookcase: 0.4,
+  memorial: 1.2, fountain: 1.0, toilets: 1.0,
 };
 
 /** Hauteur maximale (m) d'une grille, d'un mur ou d'une portail qu'on escalade ; une haie au-delà de HEDGE_CLIMB se traverse mal : on ne l'escalade pas. */
@@ -59,8 +60,14 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     if (g) c.addPolyline([...g.a, ...g.b], true, GRILLE_HONNEUR);
   }
   for (const f of furnitureOutsideMonuments(tile.kinds, tile.furniture)) {
-    const r = FURNITURE_RADIUS[f.kind];
-    if (r !== undefined) c.addCircle(f.x, f.y, r);
+    // Lampadaires, feux, poubelles, boîtes aux lettres, potelets et bornes à eau : un véhicule lourd et rapide les arrache (D160).
+    const soft = BREAKABLE[f.kind];
+    if (soft && CAR_ONLY.has(f.kind)) continue;
+    if (soft) c.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind });
+    else {
+      const r = FURNITURE_RADIUS[f.kind];
+      if (r !== undefined) c.addCircle(f.x, f.y, r);
+    }
   }
   for (const [x, y] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3);
   for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);

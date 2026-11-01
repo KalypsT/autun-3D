@@ -26,11 +26,13 @@ import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { VehicleNameHud } from "../ui/vehicle-name";
-import { DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
+import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, HOSPITAL_SPAWN } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
 import { CACHE_ROUNDS, Pickups } from "../core/pickups";
+import type { BrokenEvent } from "../core/collision";
+import { FallingProps } from "../render/falling-props";
 import { Fx, type PickupView } from "../render/fx";
 import { Melee } from "../core/melee";
 import { WeaponHud } from "../ui/weapon-hud";
@@ -179,8 +181,8 @@ export function startGame(ctx: GameContext): void {
   let rideModel: VehicleModel | null = null;
   /** Feux du véhicule conduit (D90). */
   let lights: VehicleLights | null = null;
-  /** Descente demandée en roulant : on freine d'abord. */
-  let leaving = false;
+  /** Véhicules abandonnés en roulant (saut hors d'une voiture en marche) : ils finissent leur course sur leur élan, sans conducteur. */
+  const rolling: { v: Vehicle; t: number }[] = [];
   let crank = 0;
   let lookIdle = 0;
   /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
@@ -326,7 +328,6 @@ export function startGame(ctx: GameContext): void {
   const vehicleName = new VehicleNameHud(document.getElementById("vname")!);
   const mount = (v: Vehicle): void => {
     riding = v;
-    leaving = false;
     // Un deux-roues tombé se relève quand on remonte dessus.
     Object.assign(v.state, { lean: 0, wheelie: 0, wheelieRate: 0, fallen: false, impact: 0, vz: 0, air: 0 });
     rideModel = fleet.take(v);
@@ -348,8 +349,11 @@ export function startGame(ctx: GameContext): void {
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
     vehicleName.show(v.def.badge);
   };
-  /** Descend du véhicule ; `lean` : inclinaison où on le laisse (un deux-roues tombé reste couché). */
-  const dismount = (lean = 0): void => {
+  /**
+   * Descend du véhicule ; `lean` : inclinaison où on le laisse (un deux-roues tombé reste couché) ; `roll` : le véhicule garde sa vitesse
+   * et finit sa course seul (`rolling`) au lieu d'être garé net.
+   */
+  const dismount = (lean = 0, roll = false): void => {
     const v = riding!;
     vehicleName.hide();
     const s = v.state;
@@ -359,10 +363,12 @@ export function startGame(ctx: GameContext): void {
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: s.heading });
     groundPlayer(player);
     landWheelie(s, v.spec);
-    s.vx = s.vy = s.yawRate = s.steer = 0;
+    if (!roll) {
+      s.vx = s.vy = s.yawRate = s.steer = 0;
+      s.speed = 0;
+    }
     s.lean = lean;
     s.fallen = false;
-    s.speed = 0;
     stunt.end();
     rideModel?.update(s);
     lights?.dispose();
@@ -370,9 +376,9 @@ export function startGame(ctx: GameContext): void {
     scene.add(model.group);
     model.group.visible = true;
     rideModel = null;
-    fleet.park(v);
+    if (roll) rolling.push({ v, t: 0 });
+    else fleet.park(v);
     riding = null;
-    leaving = false;
     controls.mode = "foot";
     document.body.classList.remove("driving", "car");
     audio.setRide(null);
@@ -534,6 +540,19 @@ export function startGame(ctx: GameContext): void {
       fleet.refresh();
       return;
     }
+  };
+  // Mobilier arraché (D160) : il disparaît de sa tuile, tombe dans le sens de la marche du véhicule et lance des étincelles.
+  const fallen = new FallingProps(scene, terrain);
+  const breakOne = (b: BrokenEvent): void => {
+    const f = tiles.breakProp(b.id);
+    if (!f) return;
+    fallen.spawn(f, b.dx, b.dy);
+    fx.sparks(b.x, b.y, terrain.heightAt(b.x, b.y) + (b.kind === "street_lamp" || b.kind === "traffic_signals" ? 1 : 0.4), false, Math.random);
+  };
+  const updateBroken = (dt: number): void => {
+    for (const b of colliders.takeBroken()) breakOne(b);
+    for (const b of fleet.carOnly.takeBroken()) breakOne(b);
+    fallen.update(dt);
   };
   /** Étincelles au point du choc (au bord de la carrosserie, dans la direction du choc). */
   const crashSparks = (v: Vehicle, angle: number): void => {
@@ -755,11 +774,64 @@ export function startGame(ctx: GameContext): void {
     downSide = back ? 1 : -1;
     health.damage(fallDamage(speed, health.hp));
   };
+  /**
+   * Saut hors d'une voiture qui roule (au-delà de 8 km/h) : le joueur est projeté par la portière, dans le sens de la marche, glisse et reste au sol ;
+   * la voiture, sans conducteur, finit sa course sur son élan. Blessure selon la vitesse, jamais mortelle.
+   */
+  const bailOut = (): void => {
+    const v = riding!;
+    const s = v.state;
+    const speed = Math.hypot(s.vx, s.vy);
+    const dx = s.vx / speed, dy = s.vy / speed;
+    // Côté de la portière, à gauche du véhicule.
+    const lx = -Math.cos(s.heading), ly = Math.sin(s.heading);
+    audio.impact(Math.min(4 + speed / 3, 8));
+    haptics.crash(Math.min(4 + speed / 3, 8));
+    shake.impact(Math.min(2 + speed / 5, 7));
+    const x = s.x, y = s.y, side = familyOf(v).dismount;
+    dismount(0, true);
+    const r = colliders.resolve(x + lx * side, y + ly * side, PLAYER_RADIUS);
+    // Projeté à 60 % de la vitesse du véhicule, vers l'avant et vers l'extérieur.
+    const throw_ = 0.6 * speed;
+    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_ + lx * 1.5, vy: dy * throw_ + ly * 1.5, speed: 0, heading: Math.atan2(dx, dy) });
+    groundPlayer(player);
+    downFor = DOWN_TIME;
+    downSide = -1;
+    health.damage(bailOutDamage(speed, health.hp));
+  };
+  /** Un pas de la course des voitures abandonnées en roulant : elles ralentissent seules (frein léger), cognent ce qu'elles trouvent, puis se garent où elles s'arrêtent. */
+  const stepRolling = (dt: number): void => {
+    for (let i = rolling.length - 1; i >= 0; i--) {
+      const r = rolling[i]!, v = r.v, s = v.state;
+      r.t += dt;
+      stepVehicle(s, drivenSpec(v), { throttle: 0, brake: 0.2, steer: 0 }, dt, terrain, colliders, fleet.carOnly, true, true);
+      if (s.impact > 0) {
+        if (v.damage.hit(s.impact, s.impactAngle) > 0) {
+          damaged.add(v);
+          crashSparks(v, s.impactAngle);
+          hitParked(v, s.impact, s.impactAngle);
+        }
+        const d = Math.hypot(s.x - player.x, s.y - player.y);
+        if (d < 60) audio.impact(Math.min(s.impact, 8));
+        s.impact = 0;
+      }
+      v.model?.update(s);
+      // Arrêtée (ou trop longtemps en route) : elle redevient un obstacle garé à sa place.
+      if (Math.abs(s.speed) < 0.3 || r.t > 25) {
+        s.vx = s.vy = s.yawRate = s.steer = 0;
+        s.speed = 0;
+        rolling.splice(i, 1);
+        fleet.park(v);
+      }
+    }
+  };
   const act = (): void => {
     if (downFor > 0) return;
     if (riding) {
-      if (Math.abs(riding.state.speed) < 1.2) dismount();
-      else leaving = true;
+      // Descente normale jusqu'à 8 km/h ; au-delà, un deux-roues tombe (D98), une voiture est quittée en sautant.
+      if (canStepOut(riding.state.speed)) dismount();
+      else if (riding.spec.leans) fall(Math.hypot(riding.state.vx, riding.state.vy));
+      else bailOut();
       return;
     }
     const r = reachable();
@@ -1011,9 +1083,9 @@ export function startGame(ctx: GameContext): void {
     const rideSpeed = riding ? Math.hypot(riding.state.vx, riding.state.vy) : 0;
     while (acc >= STEP) {
       if (riding) {
-        throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, leaving ? 0 : input.throttle, STEP) : input.throttle;
-        const drive = leaving ? { throttle: 0, brake: 1, steer: 0 } : { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
-        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true);
+        throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, input.throttle, STEP) : input.throttle;
+        const drive = { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
+        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true, true);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
@@ -1026,6 +1098,7 @@ export function startGame(ctx: GameContext): void {
           jumpNow = false;
         }
       }
+      if (rolling.length) stepRolling(STEP);
       (traffic as Traffic | null)?.step(STEP, riding ? { kind: "vehicle", state: riding.state, spec: riding.spec } : { kind: "foot", x: player.x, y: player.y, vx: player.vx, vy: player.vy });
       acc -= STEP;
     }
@@ -1041,6 +1114,7 @@ export function startGame(ctx: GameContext): void {
       const hurt = dropDamage(drop);
       if (hurt > 0 && !health.dead) health.damage(hurt);
     }
+    updateBroken(dt);
     updateDamage(dt);
     updateUniques(dt);
     updateTrain(dt);
@@ -1053,17 +1127,16 @@ export function startGame(ctx: GameContext): void {
         crashSparks(riding, s.impactAngle);
         hitParked(riding, s.impact, s.impactAngle);
       }
-      if (leaving && Math.abs(s.speed) < 0.4) dismount();
-      else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
+      if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {
         player.x = s.x;
         player.y = s.y;
         player.z = s.z;
         audio.impact(s.impact);
-        audio.drive(dt, s, leaving ? 0 : input.throttle, leaving ? 1 : input.brake);
+        audio.drive(dt, s, input.throttle, input.brake);
         haptics.crash(s.impact);
         if (s.impact >= 1.2) shake.impact(s.impact);
-        lights?.update(atmosphere.night, (leaving || input.brake > 0.05) && s.speed > 0.5, s.speed < -0.3);
+        lights?.update(atmosphere.night, input.brake > 0.05 && s.speed > 0.5, s.speed < -0.3);
         s.impact = 0;
         // Caméra de poursuite : se recale derrière le véhicule, sauf si l'on vient de regarder ailleurs.
         lookIdle = input.looking ? 0 : lookIdle + dt;

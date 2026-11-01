@@ -15,16 +15,31 @@ afterEach(() => {
 });
 
 describe("dégâts : barème des chocs", () => {
-  it("rien sous 12 km/h ; un mur de face à 50 km/h retire environ un tiers de la santé ; à 90 km/h, la voiture prend feu", () => {
+  it("rien sous 12 km/h ; un mur de face à 50 km/h retire moins d'un tiers de la santé ; à 90 km/h, fumée noire (25 points restants), pas de feu", () => {
     expect(impactPoints(kmh(11), 1)).toBe(0);
     expect(impactPoints(kmh(50), 1)).toBeGreaterThan(25);
-    expect(impactPoints(kmh(50), 1)).toBeLessThan(45);
-    expect(DAMAGE.max - impactPoints(kmh(90), 1)).toBeLessThanOrEqual(DAMAGE.fire);
+    expect(impactPoints(kmh(50), 1)).toBeLessThan(33);
+    const d = car();
+    d.hit(kmh(70), 0);
+    expect(d.tier).toBe("smoke");
+    const e = car();
+    e.hit(kmh(90), 0);
+    expect(e.tier).toBe("heavy");
+  });
+
+  it("un seul choc, même à 200 km/h, laisse au moins 25 points : jamais de feu d'un coup ; le second l'achève", () => {
+    const d = car();
+    const p = d.hit(kmh(200), 0);
+    expect(p).toBe(DAMAGE.maxPerHit);
+    expect(d.health).toBe(DAMAGE.max - DAMAGE.maxPerHit);
+    expect(d.tier).toBe("heavy");
+    d.hit(kmh(90), 0);
+    expect(d.tier).toBe("fire");
   });
 
   it("plus le choc est fort, plus il abîme, et un modèle plus solide encaisse mieux", () => {
     let last = 0;
-    for (let v = 4; v < 30; v += 2) {
+    for (let v = 6; v < 30; v += 2) {
       expect(impactPoints(v, 1)).toBeGreaterThan(last);
       last = impactPoints(v, 1);
     }

@@ -107,6 +107,22 @@ export function fallDamage(speed: number, hp: number): number {
   return Math.max(0, Math.min(Math.abs(speed) * 3.6 * FALL_DAMAGE_PER_KMH, hp - 1));
 }
 
+/** Sortie d'un véhicule en marche : jusqu'à cette vitesse (m/s, 8 km/h), on descend normalement ; au-delà, on saute et on tombe. */
+export const BAIL_SAFE = 8 / 3.6;
+/** Points de vie perdus par km/h au-delà de 8 km/h, quand on saute d'un véhicule en marche (plus doux qu'une chute de deux-roues). */
+export const BAIL_DAMAGE_PER_KMH = 0.4;
+
+/** On peut descendre sans tomber à cette vitesse (m/s, signe indifférent). */
+export function canStepOut(speed: number): boolean {
+  return Math.abs(speed) <= BAIL_SAFE;
+}
+
+/** Blessure d'un saut hors d'un véhicule roulant à `speed` m/s : 17 points à 50 km/h, 33 à 90, jamais mortelle (on garde au moins un point sur les `hp`). */
+export function bailOutDamage(speed: number, hp: number): number {
+  const over = Math.max(0, Math.abs(speed) - BAIL_SAFE) * 3.6;
+  return Math.max(0, Math.min(over * BAIL_DAMAGE_PER_KMH, hp - 1));
+}
+
 /** Chute à pied : sans blessure jusqu'à SAFE_DROP (m), puis DROP_DAMAGE points par mètre ; au-delà de 15 m environ, elle tue. */
 export const SAFE_DROP = 4;
 export const DROP_DAMAGE = 9;

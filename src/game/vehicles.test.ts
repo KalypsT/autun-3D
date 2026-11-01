@@ -159,3 +159,18 @@ describe("modèle articulé seulement à la conduite", () => {
   });
 });
 
+
+describe("feux tricolores et voitures du joueur (D160)", () => {
+  it("les feux ne gênent que les voitures du joueur (carOnly) : la circulation et les passants les traversent ; une tuile déchargée les retire", () => {
+    const colliders = new Colliders();
+    const fleet = new Fleet(new THREE.Scene(), colliders, flatTerrain());
+    const furniture = [{ kind: "traffic_signals", x: 10, y: 10, name: null, id: 42 }, { kind: "street_lamp", x: 20, y: 10, name: null, id: 43 }];
+    fleet.addFromTile({ id: "t1", buildings: 0, furniture, stairs: [], marks: [] });
+    expect(fleet.carOnly.resolve(10, 10, 0.5).hit).toBe(true);
+    expect(colliders.resolve(10, 10, 0.5).hit).toBe(false);
+    // Le lampadaire n'est pas un obstacle réservé aux voitures : c'est `addTileColliders` qui s'en charge.
+    expect(fleet.carOnly.resolve(20, 10, 0.5).hit).toBe(false);
+    fleet.removeTile("t1");
+    expect(fleet.carOnly.resolve(10, 10, 0.5).hit).toBe(false);
+  });
+});

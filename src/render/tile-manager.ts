@@ -9,7 +9,7 @@ import type { TiledTerrain } from "../data/terrain";
 import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
-import { disposeTile, type TileMeshes, type TileStats } from "./stylized";
+import { breakFurniture, disposeTile, type TileMeshes, type TileStats } from "./stylized";
 import { FINE_RANGE, VIEW_RANGE } from "./terrain";
 
 /**
@@ -251,6 +251,19 @@ export class TileManager {
       (d) => { e.data = d; e.fetching = false; },
       (err: unknown) => { e.fetching = false; this.release(e); console.error(`tuile ${e.info.id}`, err); },
     );
+  }
+
+  /**
+   * Un véhicule a arraché le mobilier `id` (D160) : il disparaît du maillage de sa tuile (les trois petits maillages du mobilier cassable
+   * sont refaits). Renvoie le mobilier, ou null s'il n'est dans aucune tuile détaillée. Une tuile rechargée le remet en place.
+   */
+  breakProp(id: number): Furniture | null {
+    for (const e of this.entries.values()) {
+      if (!e.detail) continue;
+      const f = breakFurniture(e.detail, id, this.terrain);
+      if (f) return f;
+    }
+    return null;
   }
 
   /** La tuile n'a plus rien en mémoire ni en cours : elle n'est plus suivie pour le déchargement. */

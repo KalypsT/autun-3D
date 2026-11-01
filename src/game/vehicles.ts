@@ -1,4 +1,5 @@
 import type * as THREE from "three";
+import { BREAKABLE, CAR_ONLY } from "../core/breakables";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
@@ -225,6 +226,11 @@ export class Fleet {
       }
     }
     this.carOnly.currentTag = t.id;
+    // Les feux ne gênent que les voitures du joueur, et cèdent comme les lampadaires (D160).
+    for (const f of t.furniture) {
+      const soft = BREAKABLE[f.kind];
+      if (soft && CAR_ONLY.has(f.kind)) this.carOnly.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind });
+    }
     for (const st of t.stairs) {
       const [x0, y0, x1, y1] = st.bbox;
       this.carOnly.addRing([x0!, y0!, x1!, y0!, x1!, y1!, x0!, y1!]);
