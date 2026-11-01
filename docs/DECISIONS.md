@@ -3098,3 +3098,20 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![L'accueil et son auvent](captures/d163-latouche-accueil.jpg)
 ![Vers l'ouest-sud-ouest : le bloc à bandeaux](captures/d163-latouche-ouest.jpg)
 ![Vue d'ensemble](captures/d163-latouche-aerien.jpg)
+
+## 2026-11-01 — D164. L'Hexagone, lot 0 : relevés (plan `docs/plans/hexagone.md`)
+
+**Demande de l'utilisateur** : option B (modèle dédié), ordre par défaut, lancer le lot 0 ; deux photos de plus (la façade principale vue de plus loin, la face nord-est).
+
+**Aucun changement du jeu** : un script de relevé (`tools/data/survey_hexagone.py`, MNS/MNT LiDAR HD à 25 cm, orthophotographie à 10 et 20 cm, téléchargés dans `.cache/`), le §8 du plan et deux vues annotées (`docs/captures/hexagone-lot0-*.jpg`).
+
+**Résultats** (détail au §8 du plan) :
+- Toit : **pyramide régulière à 12 pans**, sommet +9,17 en (383,63 ; 183,57) (12,8 m au-dessus du sol), pied à 16,5 m (+4,4), **pente 0,205** (le jeu : 0,70, faîtage 3,6 m trop bas), arêtes à 20° + 30°·k. La phase des arêtes est lue à l'œil (l'ajustement LiDAR concorde mais ne la discrimine pas).
+- Murs : six murs aux normales 35° + 60°·k, à 19 à 30 m du sommet, dessus de la couronne à +1,1 (ouest, nord-ouest), −0,7 (sud-ouest), −0,5 (est), **+2,2 (nord-est : l'étage en bardage sombre de la photo 5)**. **Façade principale : normale 275°**, milieu (353,5 ; 186,2), ≈ 34,6 m (ma lecture du plan, 250°, était fausse). Mur est non mesuré (la fenêtre atteint un immeuble voisin).
+- Parking : sept blocs de places, traits à 143° ± 4°, pas 2,49 m ; aucun décompte (voitures).
+
+**Limites** : phase des arêtes et direction des blocs ± 3° ; mur est, souche, lanterneaux, largeur de l'étage sombre et nombre de portes restent à fixer aux lots 1 et 2 ; aucun nouveau test (aucun code de jeu touché).
+
+![Pyramide, arêtes, six murs](captures/hexagone-lot0-toit.jpg)
+![Parking : sept blocs](captures/hexagone-lot0-parking.jpg)
+

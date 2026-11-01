@@ -1290,3 +1290,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Seul ton véhicule arrache : la circulation et la police les trouvent solides comme avant. Jusqu'à 2 appels de dessin de plus par tuile qui a du mobilier cassable ; 861 tests (18 de plus).
 - Limites : chute du poteau et saut hors de la voiture non vérifiés à l'image ; un feu arraché reste obéi par la circulation ; pas de son propre au poteau arraché.
 - À essayer : `?ride=citadine` puis foncer dans un lampadaire (≥ 25 km/h) ; foncer dans un mur à 90 km/h (fumée noire, pas de feu) ; appuyer sur E (Descendre) à 40 km/h.
+
+**L'Hexagone, lot 0 : relevés (1er novembre 2026)** (D164)
+- Rien ne change dans le jeu : mesures sur le LiDAR et l'orthophotographie, notées dans `docs/plans/hexagone.md` §8.
+- Le toit de l'Hexagone est une **pyramide à 12 pans, pente 0,205**, 12,8 m de haut ; le jeu la dessine avec une pente de 0,70 et 3,6 m trop bas (d'où l'amas bleu nuit hérissé).
+- La façade principale (portes vitrées, bandeaux) est à l'**ouest**, normale 275°, à 30 m du sommet ; la face nord-est a un étage en bardage sombre, 1,1 m plus haut que le reste.
+- Le parking : sept blocs de places, traits à 143°, pas 2,5 m. Prochain lot : le volume et le toit (lot 1).
+
