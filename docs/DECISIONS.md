@@ -3045,3 +3045,28 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 **Tests** (+2, 863 au total) : chaque site dégagé sur 2 m et dans la zone ; site le plus proche de part et d'autre de la médiatrice, sur la médiatrice, au centre-ville, à l'est et à l'ouest ; croix à 4-10 m du réveil, qui ne soigne qu'un blessé. Le test des croix de pharmacie ne demande plus de file piétonne pour Latouche (la cour est hors navigation) ni de pharmacie voisine pour les croix d'hôpital.
 
 **Limites** : pas de façade nouvelle dans ce lot (lots 3 et 4 : Parpas d'après photos, puis Latouche) ; l'écran de réveil ne montre pas le site, seulement le bandeau.
+
+## 2026-11-01 — D162. Centre hospitalier, site Parpas : façade d'après photos (lot 3 de D161)
+
+**Demande de l'utilisateur** : refaire les bâtiments et façades des deux sites d'après photos ; ici Parpas (deux photos de face, une vue satellite, un plan).
+
+**Ce que les données cachaient** : BD TOPO coupe le site en deux bâtiments sur la rue du Faubourg Saint-Andoche. **…093** (le gros bâtiment, 2 175 m²) porte le **bloc vitré** sur son mur 30 (7,3 m) ; **…094** (156 m², 3 niveaux, 10,3 m) est l'**aile crème** qui longe la rue sur un mur de 38,8 m (mur 9), accolée au mur 32 de 093 (qui est « party » : une devanture posée dessus, ma première tentative, disparaissait derrière 094). Le décrochement de 1 m entre les deux plans de façade est celui de la photo.
+
+**Façade** (gabarit moderne de D159, `devanture-modern.ts`, étendu ; `fronts` de `manual.json` pour les deux bâtiments, appliqués par `build_shop_fronts.py`) :
+- **Bloc vitré (093, mur 30)** : rez-de-chaussée de 3,4 m d'enduit gris clair, portes automatiques vitrées entre deux baies, panneau blanc à **emblème** (croissant rouge, H bleu), « centre hospitalier » et « site Parpas » en bleu ; au-dessus, un **mur-rideau** de trois niveaux (ossature d'aluminium gris-bleu, allèges claires, vitrage bleu-gris, allumé la nuit).
+- **Aile crème (094, mur 9)** : enduit crème, rez-de-chaussée plein avec un **passage couvert** (ouverture sombre à encadrement de pierre) vers les urgences et le parking, **sens interdit** à sa droite ; étages de petites fenêtres à encadrement de pierre, cordon et corniche (volets roulants blancs : le jeu ne les dessine pas).
+- Nouveautés du gabarit : travée `passage`, aplats `tint`, `emblem`, `curtain` (types `Devanture` et `ModernFront`) ; `apply_shop` accepte `era` et un bloc `facade` (largeur de travée, fenêtres, volets, corniche, cordon, soubassement) pour régler les étages d'après photo.
+
+**Murs retirés** : OpenStreetMap place devant l'entrée un muret de 2 m, une grille de 1,5 m et un second mur de 2 m, absents des photos (barrières basses et trottoir) ; ils cachaient tout le rez-de-chaussée. Nouvelle entrée `dropWalls` de `manual.json` (identifiants de `walls` des tuiles), appliquée par `build_shop_fronts.py` ; le trottoir devant l'hôpital est libre (le réveil de Parpas, D161, y est).
+
+**Mesures** : échelle prise sur les portes (≈ 2,5 m) et le rez-de-chaussée (3,4 m, donnée de la fiche) ; largeurs et position du passage lues sur des photos de biais : **± 1 m**. La partie vitrée est un rectangle de 7,3 m, deux plans, sans retrait ni bandeau saillant. Les photos de l'utilisateur ont été prises à peu près du même endroit (nord-nord-ouest, ouest-sud-ouest, sud-sud-est) : ce sont celles de Latouche.
+
+**Données** : seule la tuile 24_35 est réécrite (fiches de 093 et 094, murs) ; `world.json` : l'octet de cette tuile. `pip install pyproj shapely tifffile` suffit à lancer le script pour ces deux fiches ; la chaîne complète demande le réseau (OpenStreetMap).
+
+**Tests** (+5, 868 au total) : `hopital.test.ts` (fiches observées, murs d'entrée et largeur des travées, emblème au-dessus des portes, mur-rideau sous l'égout, passage et sens interdit, murs retirés, sommets finis, coût borné, vitres allumées).
+
+**Limites** : l'aile crème est dessinée sur 18 m, mais ses fenêtres et sa couleur s'étendent aux 38,8 m du mur (maisons voisines comprises) ; ni colonnade en retrait ni auvent sur piliers ronds (la photo 2) ; ni barrières vertes, panneau « arrêt autorisé 5 minutes » ni passage piéton peint devant l'entrée ; le passage est une ouverture noire sans profondeur ; pas de vitrophanie. Le bloc vitré et l'aile sont rendus par le même gabarit que la Grande Pharmacie Bonaparte (D159).
+
+![Entrée du bloc vitré](captures/d161-parpas-entree.jpg)
+![L'aile crème et son passage](captures/d161-parpas-aile.jpg)
+![Vue d'ensemble](captures/d161-parpas-aerien.jpg)

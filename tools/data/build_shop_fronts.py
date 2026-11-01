@@ -163,6 +163,14 @@ def apply_shop(fi, m):
         fi["facade"]["shutters"]["kind"] = up["shutters"]
     if "balcony" in up:
         fi["facade"]["balcony"] = up["balcony"]
+    if "era" in up:
+        fi["era"] = up["era"]
+    # D161 : réglages de façade plus fins (largeur de travée, fenêtres, volets, corniche, cordon, soubassement) ; un dictionnaire se fusionne, le reste se remplace.
+    for k, v in up.get("facade", {}).items():
+        if isinstance(v, dict) and isinstance(fi["facade"].get(k), dict):
+            fi["facade"][k].update(v)
+        else:
+            fi["facade"][k] = v
     fi["status"] = "observed"
     src = {"kind": "photo", "ref": m["photo"][:80]}
     fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [src]
@@ -312,7 +320,12 @@ def main():
 
     manifest = {m["id"]: m for m in world["tiles"]}
     changed = 0
+    dropped = set(json.load(open(c.ROOT / "tools" / "data" / "manual.json")).get("dropWalls", []))
     for tid, rec in tiles.items():
+        if dropped:
+            kept = [w for w in rec.get("walls", []) if w["id"] not in dropped]
+            stats["mur retiré (D161)"] += len(rec.get("walls", [])) - len(kept)
+            rec["walls"] = kept
         text = json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
         path = c.OUT / "tiles" / f"{tid}.json"
         if path.read_text() != text:
