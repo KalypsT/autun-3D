@@ -57,7 +57,7 @@ Nouveau module pur `src/core/calendar.ts` (avec ses tests) :
 | Marché de Noël | hiver j1 et j2 (après-midi, soir) | chalets sur la place du Champ de Mars (il existe vraiment à Autun) |
 | Noël | hiver j2 | rues calmes, cloches |
 | Fête de la musique | été j1, de 18 h à 1 h | musiciens sur les places, foule le soir |
-| 14 juillet | été j3, vers 23 h | feu d'artifice (lieu à vérifier ; le plan d'eau du Vallon est un candidat) |
+| 14 juillet | été j3, vers 23 h | feu d'artifice tiré depuis le plan d'eau du Vallon (lac d'Autun), confirmé par l'utilisateur |
 
 - **Nouvelle partie** : été, 1er jour (lundi), 16 h. Une ancienne sauvegarde (version 4, `day` = jour de l'année) est migrée vers la date
   dont le `doy` est le plus proche, un lundi de cette saison (le jour de la semaine n'existait pas : on ne perd rien).
@@ -225,8 +225,9 @@ Selon le tableau du § 1 :
 - **Marché de Noël** : chalets en bois sur la place (variante des étals), foule le soir, vin chaud (son).
 - **Fête de la musique** : trois ou quatre groupes de musiciens (passants à instruments, pose dédiée) sur les places, musique synthétisée
   simple par groupe, foule autour.
-- **14 juillet** : feu d'artifice à 23 h (particules en un appel de dessin, détonations décalées selon la distance) ; lieu à vérifier avec
-  l'utilisateur.
+- **14 juillet** : feu d'artifice à 23 h, **tiré depuis le plan d'eau du Vallon (lac d'Autun)**, confirmé par l'utilisateur : gerbes
+  au-dessus du lac et reflets sur l'eau si c'est simple, foule sur les rives à partir de 22 h (particules en un appel de dessin,
+  détonations décalées selon la distance).
 
 ## 9. Les animaux (lot 2-3, Opus)
 
@@ -289,8 +290,7 @@ une décision dans `docs/DECISIONS.md` (à partir de D194), l'avancement dans `P
 - **Nuanceurs** : injecter les uniformes (`uWet`, `uSnow`, saison) sans multiplier les variantes de programmes (temps de compilation au
   chargement des tuiles) ; vérifier qu'aucun matériau partagé ne se recompile à chaque changement de météo.
 - **Sauvegarde** : migration de la version 4 à la version 5 ; tests de lecture des anciennes versions.
-- **Données** : horaires d'ouverture d'OpenStreetMap souvent absents ou incomplets (repli sur le type) ; lignes de bus à vérifier ; lieu
-  du feu d'artifice à vérifier.
+- **Données** : horaires d'ouverture d'OpenStreetMap souvent absents ou incomplets (repli sur le type) ; lignes de bus à vérifier.
 - **Simulation des passants** : nouveaux états (`sit`, groupes, chien) à faire cohabiter avec la fuite, les combats, la police, le passage
   Balthus et le théâtre ; garder les bancs de combat et d'endurance verts.
 
