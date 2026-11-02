@@ -152,7 +152,7 @@ def measure_roof(ax, mns, mnt, poly):
     return float(np.median(zs)) if zs else None
 
 
-def cut_building(ax, b, f, flat_h):
+def cut_building(ax, b, f, flat_h, flat_from=0.0):
     """Bâtiment et fiche privés du couloir. Renvoie (bâtiment, fiche) ou None si le couloir ne le touche plus."""
     ring = pairs(b["ring"])
     poly = Polygon(ring)
@@ -163,6 +163,9 @@ def cut_building(ax, b, f, flat_h):
         raise SystemExit(f"{b['id']} : {len(left)} morceaux après la découpe")
     P = orient(left[0], 1.0)
     H = flat_h
+    # Le toit n'est aplati qu'à partir de l'abscisse `flat_from` (D193) : devant, c'est le pavillon de la rue Demetz, dont le toit en pente garde les pans de BD TOPO.
+    behind = Polygon([ax.at(flat_from, -80), ax.at(flat_from, 80), ax.at(400, 80), ax.at(400, -80)])
+    s_of = lambda x, y: (x - ax.x0) * ax.ux + (y - ax.y0) * ax.uy
 
     # --- Pans de toit : coupés par le couloir, aplatis au niveau H là où le plan le dépasse ----------------------------------------------------
     faces, hi = [], []
@@ -170,6 +173,12 @@ def cut_building(ax, b, f, flat_h):
         a, bb, cc = fa["p"]
         fr = Polygon(pairs(fa["r"][:-2]), [pairs(h) for h in fa["h"]])
         part = fr.difference(ax.strip)
+        if H is not None:
+            front = part.difference(behind)
+            part = part.intersection(behind)
+            for q in polys_of(front):
+                if q.area > 0.05:
+                    faces.append({"p": fa["p"], "poly": q})
         if H is not None and math.hypot(a, bb) > 1e-6:
             up = halfplane(a, bb, H - cc)
             hi += polys_of(part.intersection(up))
@@ -199,12 +208,21 @@ def cut_building(ax, b, f, flat_h):
         return best
 
     # --- Contour et haut des murs -------------------------------------------------------------------------------------------------------------
-    new = list(orient(P, 1.0).exterior.coords)[:-1]
+    new0 = list(orient(P, 1.0).exterior.coords)[:-1]
+    new = []
+    for i, (x, y) in enumerate(new0):
+        new.append((x, y))
+        # Un sommet là où l'arête traverse la limite de l'aplatissement : le haut du mur y change de loi.
+        x2, y2 = new0[(i + 1) % len(new0)]
+        sa, sb = s_of(x, y), s_of(x2, y2)
+        if H is not None and (sa - flat_from) * (sb - flat_from) < 0:
+            k = (flat_from - sa) / (sb - sa)
+            new.append((x + (x2 - x) * k, y + (y2 - y) * k))
     top = []
     for x, y in new:
         k = next((i for i, (ox, oy) in enumerate(ring) if abs(ox - x) < EPS and abs(oy - y) < EPS), None)
         z = b["top"][k] if k is not None else (plane_z(x, y) if plane_z(x, y) is not None else b["eave"])
-        top.append(round(min(z, H) if H is not None else z, 2))
+        top.append(round(min(z, H) if H is not None and s_of(x, y) >= flat_from - 1e-6 else z, 2))
     new_ring = [round(v, 2) for p in new for v in p]
     n = len(new)
 
@@ -283,12 +301,27 @@ def cut_building(ax, b, f, flat_h):
             gr["front"] = wi
 
     # --- Bâtiment ------------------------------------------------------------------------------------------------------------------------------
-    chim = [q for q in b["chim"] if P.contains(Point(q[0], q[1])) and (H is None or q[4] <= H + 0.1)]
+    chim = [q for q in b["chim"] if P.contains(Point(q[0], q[1])) and (H is None or q[4] <= H + 0.1 or s_of(q[0], q[1]) < flat_from)]
+    # Mur de raccord entre le pan en pente du pavillon et le toit plat de la galerie, sur la limite de l'aplatissement.
+    steps = []
+    if H is not None:
+        cut_line = LineString([ax.at(flat_from, -80), ax.at(flat_from, 80)]).intersection(P)
+        segs = [cut_line] if cut_line.geom_type == "LineString" else [g for g in getattr(cut_line, "geoms", []) if g.geom_type == "LineString"]
+        orig_faces = [(Polygon(pairs(fa["r"][:-2])), fa["p"]) for fa in b["faces"]]
+
+        def orig_z(x, y):
+            zs = [pl[0] * x + pl[1] * y + pl[2] for poly_, pl in orig_faces if poly_.buffer(0.05).contains(Point(x, y))]
+            return max(zs) if zs else b["eave"]
+        for g in segs:
+            (x1, y1), (x2, y2) = g.coords[0], g.coords[-1]
+            z1, z2 = orig_z(x1, y1), orig_z(x2, y2)
+            if max(z1, z2) > H + 0.05:
+                steps.append([round(x1, 2), round(y1, 2), round(H, 2), round(max(z1, H), 2), round(x2, 2), round(y2, 2), round(H, 2), round(max(z2, H), 2)])
     ridge = max([fa["p"][0] * x + fa["p"][1] * y + fa["p"][2] for fa in out_faces for x, y in pairs(fa["r"][:-2])] + top)
-    flat_only = all(fa["p"][0] == 0.0 and fa["p"][1] == 0.0 for fa in out_faces)
+    flat_only = all(fa["p"][0] == 0.0 and fa["p"][1] == 0.0 for fa in out_faces) and not steps
     b2 = dict(b)
-    b2.update({"ring": new_ring, "top": top, "holes": [], "holeTop": [], "faces": out_faces, "steps": [], "chim": chim,
-               "eave": round(min(top), 2), "ridge": round(min(ridge, H) if H is not None else ridge, 2),
+    b2.update({"ring": new_ring, "top": top, "holes": [], "holeTop": [], "faces": out_faces, "steps": steps, "chim": chim,
+               "eave": round(min(top), 2), "ridge": round(ridge, 2),
                "roofKind": "flat" if flat_only else b["roofKind"]})
     return b2, f2
 
@@ -322,7 +355,7 @@ def main():
         if opt.get("flat") and poly.intersection(ax.strip).area >= 0.3:
             flat_h = measure_roof(ax, mns, mnt, poly.difference(ax.strip))
             flat_h = round(flat_h, 2)
-        res = cut_building(ax, b, f, flat_h)
+        res = cut_building(ax, b, f, flat_h, manual.get("flatFrom", 0.0))
         b2, f2 = res if res is not None else (b, f)
         # Devanture d'après photo (D189) sur le mur de rue de ce qui reste du bâtiment : les murs ont de nouveaux indices.
         fr = manual.get("fronts", {}).get(bid)
@@ -357,8 +390,19 @@ def main():
             z0 = round(zl + head[ei], 2)
             z1 = round(max(float(np.median(tops)), z0 + 0.6), 2)
             lin.append([round(s0, 2), round(s1, 2), z0, z1])
+    # Lucarnes de la façade de la rue Demetz (D193) : [t, s, altitude du toit] ; le toit est lu sur les pans des deux immeubles.
+    roofs = [(Polygon(pairs(fa["r"][:-2])), fa["p"]) for bi2 in manual["buildings"] for b2 in tile["buildings"] if b2["id"] == bi2 for fa in b2["faces"]]
+
+    def roof_z(x, y):
+        zs = [pl[0] * x + pl[1] * y + pl[2] for poly_, pl in roofs if poly_.buffer(0.05).contains(Point(x, y))]
+        return round(max(zs), 2) if zs else None
+    dorm = []
+    for t in manual.get("dormers", {}).get("t", []):
+        z = roof_z(*ax.at(manual["dormers"]["s"], t))
+        if z is not None:
+            dorm.append([t, manual["dormers"]["s"], z])
     site = {"t": "passage", "n": manual["name"], "c": [ax.x0, ax.y0], "a": round(ax.angle, 4), "L": round(L, 2), "hw": ax.hw,
-            "zf": round(zf, 2), "zc": round(zc, 2), "st": [st["s0"], st["s1"], st["n"]], "lin": lin}
+            "zf": round(zf, 2), "zc": round(zc, 2), "st": [st["s0"], st["s1"], st["n"]], "lin": lin, "dorm": dorm}
     print(f"  sol de la galerie {zf:.2f} m, palier de la rue aux Cordiers {zc:.2f} m, {len(lin)} linteaux")
 
     nground = clear_ground(tile["ground"], ax.strip)

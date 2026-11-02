@@ -3787,3 +3787,20 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Le fronton de la rue Demetz](captures/d192-fronton.jpg)
 ![L'imposte au-dessus de la grille, de l'intérieur de l'arc](captures/d192-imposte.jpg)
+
+## 2026-11-02 — D193. Passage Balthus : la façade de la rue Demetz
+
+**Demande de l'utilisateur** : « Oui, réalise la façade de la rue Demetz » (photo 3 : façade de pierre blonde, grand arc, boutique de chaque côté, balcons de fer forgé à l'étage, fronton entre deux lucarnes, toit d'ardoise).
+
+**Pavillon à toit en pente** (`flatFrom` de `passage`, `build_passage.py`) : en D187 j'avais aplati les toits du 12 et du 12 bis à 13,21 m sur toute leur longueur, ce qui arasait aussi le pavillon de la rue Demetz, que le LiDAR montre en pente (12,9 à 16,1 m le long de l'axe). L'aplatissement ne commence plus qu'à 8,5 m de la façade ; devant, les pans de BD TOPO sont gardés (coupés par le couloir), avec un sommet ajouté là où les murs changent de loi et un mur de raccord (`steps`) sur la limite. Les cheminées du pavillon reviennent. Une passe depuis les bâtiments d'origine donne ce résultat ; une deuxième ne change rien (les tuiles d'origine : `git show e7b6ef3:public/data/tiles/26_34.json`, puis relancer l'étape).
+
+**Façade** : enduit de pierre blonde (`#dccfae`), balcons individuels de fer forgé à l'étage, fenêtres à cadre blanc sans volets, sur les deux immeubles ; une devanture de part et d'autre de l'arc (`fronts` de `passage`) : à droite le Tabac Presse (bandeau vert sombre, enseigne), à gauche une boutique sans enseigne (la photo montre des affiches, pas de nom lisible : le commerce n'est pas inventé), 0,5 m de pierre contre l'arc.
+
+**Au-dessus de l'arc** (`src/render/passage.ts`) : le toit du linteau n'est plus en gradins mais une rampe qui suit les hauteurs mesurées (de 12,9 à 16,1 m), en ardoise, avec ses flancs et son extrémité côté galerie ; **lucarnes** : deux volumes à fenêtre sombre et toit à deux pans, posés sur les pans en pente de chaque côté (`dorm` du site : abscisse, distance à la façade, altitude du toit lue sur les pans), un fronton (D192) au milieu.
+
+**Tests** : inchangés (1020) ; les tests existants couvrent le contour (rien ne recouvre le couloir), la triangulation des toits, le rendu et le site.
+
+**Limites** : le fronton et les lucarnes sont à l'échelle de la photo, pas mesurés ; les lucarnes sont de simples volumes (pas d'encadrement, ni de volets) ; les balcons sont ceux du générateur de façades (garde-corps standards), pas le dessin de la photo ; le rez-de-chaussée à gauche n'a pas de nom ; pas de marches devant l'arc (la rampe du relief les remplace).
+
+![La façade de la rue Demetz, depuis la place](captures/d193-facade-demetz.jpg)
+![Pavillon : fronton, rampe d'ardoise et lucarnes](captures/d193-facade-demetz-haut.jpg)

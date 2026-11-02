@@ -1442,3 +1442,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Passage Balthus : l'imposte et le fronton (2 novembre 2026)** (D192)
 - L'arc de la rue Demetz porte un fronton triangulaire (corniche, tympan, œil-de-bœuf) ; chaque grille a son imposte en éventail.
 - Pas encore : les balcons et lucarnes de la façade de la rue Demetz, les passants dans les boutiques. 1020 tests.
+
+**Passage Balthus : la façade de la rue Demetz (2 novembre 2026)** (D193)
+- La façade a sa pierre blonde, ses balcons, une boutique de chaque côté de l'arc (Tabac Presse à droite), son toit en pente avec deux lucarnes et son fronton, qui n'est plus arasé comme avant.
+- Pas encore : les marches devant l'arc, le dessin exact des balcons, un nom pour la boutique de gauche. 1020 tests.
+- À regarder : `?view=custom&cam=-36,-100,3,-25.3,-115.7,9&h=13`.

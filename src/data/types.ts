@@ -731,6 +731,8 @@ export interface PassageSite {
   zc: number;
   st: [number, number, number];
   lin: [number, number, number, number][];
+  /** Lucarnes de la façade de la rue Demetz (D193) : abscisse t en travers, s depuis la façade, altitude du toit à cet endroit. */
+  dorm?: [number, number, number][];
 }
 
 /**
