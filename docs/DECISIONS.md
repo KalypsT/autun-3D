@@ -3804,3 +3804,27 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![La façade de la rue Demetz, depuis la place](captures/d193-facade-demetz.jpg)
 ![Pavillon : fronton, rampe d'ardoise et lucarnes](captures/d193-facade-demetz-haut.jpg)
+
+## 2026-11-02 — D194. Ville vivante, lot 1-1 : le calendrier du jeu (plan `docs/plans/ville-vivante.md`, § 1)
+
+**Demande de l'utilisateur** : réaliser tout le plan « ville vivante », sous-lot par sous-lot, dans l'ordre du § 12. Premier sous-lot : le calendrier, dont dépendent la météo, les saisons et la semaine.
+
+**Module** (`src/core/calendar.ts`, logique pure) : la seule valeur enregistrée est `date`, le nombre de jours de jeu écoulés depuis le début de la partie. Jour de la semaine `date % 7` (0 = lundi) ; saison `floor(date / L) % 4` (`L` = 7 jours par défaut, 14 en option) ; avancement dans la saison `t` (avec l'heure) ; jour astronomique `doy = 79 + (saison + t) × 91,25`, que `sunPosition` reçoit sans changer. Fêtes du tableau du plan (`activeFeasts`), placées par jour de saison avec leurs heures (la fête de la musique déborde jusqu'à 1 h) ; une fête d'un jour reste d'un jour quand la saison dure 14 jours, une plage (illuminations) s'étire.
+
+**Branchements** :
+- `Atmosphere` garde `date` (au lieu de `day`) et un accesseur `calendar` ; `day` reste en lecture (jour astronomique arrondi) pour le son et les notes de lieu.
+- **Sauvegarde version 5** : `clock: { hour, date }`. Les versions 1 à 4 (`day` = jour de l'année) sont migrées vers le lundi de la saison qui contient ce jour (`dateFromDoy`) : on garde la saison, le jour de la semaine n'existait pas.
+- **Nouvelle partie** : été, 1er jour (un lundi), 16 h. Le soleil de départ est celui du 21 juin environ (avant : 19 juillet, jour 200), écart invisible à 16 h.
+- **Réglages** : « Durée d'une saison » (7 ou 14 jours) et « Saison » (« Qui passe » ou l'une des quatre). Changer la durée garde la saison, l'avancement et le jour de la semaine (`rescaleDate`) ; une saison figée garde le soleil du milieu de la saison et laisse tourner la semaine (ses fêtes reviennent chaque semaine, lundi = 1er jour).
+- **Interface** : « Lun. · Été, 1er jour » sous l'horloge, en lettres crème cernées d'encre (comme le bandeau du véhicule) ; masqué en conduite, où le compteur occupe la place. La figure en cours (`#stunt`) descend de 4 px.
+- **URL** (dans `FORCING_PARAMS`, ils coupent la sauvegarde) : `?date=N`, `?season=printemps|ete|automne|hiver` (1er jour de la saison), `?weekday=1..7`. `?day=` reste accepté et converti comme une ancienne sauvegarde.
+
+**Écarts au plan** : (1) la saison figée prend le **milieu** de la saison pour le soleil (le plan disait « ceux du jour figé », ambigu : le milieu donne la saison la plus franche) ; (2) l'audio reçoit toujours le jour astronomique par `atmosphere.day` (le jour de la semaine viendra au lot 2 avec les cloches du dimanche) ; (3) la date est masquée en conduite.
+
+**Tests** (+13, 1033 au total) : `calendar.test.ts` (semaine, saisons de 7 et 14 jours, jour astronomique, saison figée, texte, fêtes et leurs heures, nouvelle partie, conversion d'un jour de l'année, changement de durée, paramètres d'URL) ; `save.test.ts` (version 5, migration de la version 4) ; `atmosphere.test.ts` (la date avance à minuit, le calendrier suit).
+
+**Limites** : les anciennes captures prises avec `&day=` ont un soleil légèrement différent (le jour est ramené au lundi de sa saison) ; rien d'autre ne change à l'écran pour l'instant (la météo, les saisons et la semaine sont les sous-lots suivants). Le rendu ne change pas : pas de mesure au banc.
+
+![Avant](captures/d194-avant.jpg)
+![Après : la date sous l'horloge](captures/d194-apres.jpg)
+![Les deux nouveaux réglages](captures/d194-reglages.jpg)

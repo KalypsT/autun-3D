@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { addDays } from "../core/save";
+import { calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay } from "../core/calendar";
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
@@ -46,8 +46,11 @@ export class Atmosphere {
   hour: number;
   /** Heures de jeu écoulées par seconde réelle (0 : horloge arrêtée). */
   speed: number;
-  /** Jour de l'année (1 à 365) : avance à chaque minuit du jeu. */
-  day: number;
+  /** Date du jeu : jours écoulés depuis le début de la partie (avance à chaque minuit). Voir `core/calendar.ts`. */
+  date: number;
+  /** Durée des saisons et saison figée (réglages). */
+  private config: CalendarConfig = DEFAULT_CALENDAR;
+  private cal: CalendarDay;
   /** Direction vers la source de lumière (soleil, puis lune) dans le repère three ; modifiée sur place. */
   readonly lightDir = new THREE.Vector3(0, 1, 0);
   private lastApplied = -1;
@@ -55,7 +58,7 @@ export class Atmosphere {
   constructor(
     hour: number,
     speed: number,
-    day: number,
+    date: number,
     private readonly scene: THREE.Scene,
     private readonly renderer: THREE.WebGLRenderer,
     private readonly sunLight: THREE.DirectionalLight,
@@ -65,17 +68,45 @@ export class Atmosphere {
   ) {
     this.hour = hour;
     this.speed = speed;
-    this.day = day;
+    this.date = Math.max(0, Math.floor(date));
+    this.cal = calendarAt(this.date, hour, this.config);
     this.apply();
   }
 
   advance(dt: number): void {
     if (this.speed === 0) return;
     const next = this.hour + dt * this.speed;
-    if (next >= 24) this.day = addDays(this.day, 1);
+    if (next >= 24) this.date++;
     this.hour = next % 24;
     // Réglage à 4 images/s : assez fin pour un cycle de plusieurs minutes.
     if (Math.abs(this.hour - this.lastApplied) > 0.01 || this.hour < this.lastApplied) this.apply();
+  }
+
+  /** Le calendrier à l'heure actuelle (saison, jour de la semaine, jour astronomique) ; recalculé à chaque réglage de l'ambiance. */
+  get calendar(): CalendarDay {
+    return this.cal;
+  }
+
+  /** Jour astronomique de l'année (1 à 365) : soleil, oiseaux, notes de lieu. */
+  get day(): number {
+    return Math.round(this.cal.doy);
+  }
+
+  get calendarConfig(): CalendarConfig {
+    return this.config;
+  }
+
+  /** Change la durée des saisons ou fige une saison ; la date reste celle donnée (voir `rescaleDate`). */
+  setCalendar(config: CalendarConfig, date = this.date): void {
+    this.config = { ...config };
+    this.date = Math.max(0, Math.floor(date));
+    this.apply();
+  }
+
+  /** Impose la date (jours de jeu) ; l'ambiance suit tout de suite. */
+  setDate(date: number): void {
+    this.date = Math.max(0, Math.floor(date));
+    this.apply();
   }
 
   /** Nuit pour les lumières allumées (fenêtres, lampadaires, feux des voitures) : 0 le jour, 1 la nuit noire, de 3° à −6° de hauteur du soleil. */
@@ -109,7 +140,8 @@ export class Atmosphere {
 
   private apply(): void {
     this.lastApplied = this.hour;
-    const sun = sunPosition(this.day, this.hour);
+    this.cal = calendarAt(this.date, this.hour, this.config);
+    const sun = sunPosition(this.cal.doy, this.hour);
     const [sx, sy, sz] = sunDirection(sun);
     const elev = (sun.elevation * 180) / Math.PI;
     const p = this.palette(elev);

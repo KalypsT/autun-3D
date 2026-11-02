@@ -1447,3 +1447,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La façade a sa pierre blonde, ses balcons, une boutique de chaque côté de l'arc (Tabac Presse à droite), son toit en pente avec deux lucarnes et son fronton, qui n'est plus arasé comme avant.
 - Pas encore : les marches devant l'arc, le dessin exact des balcons, un nom pour la boutique de gauche. 1020 tests.
 - À regarder : `?view=custom&cam=-36,-100,3,-25.3,-115.7,9&h=13`.
+
+**Ville vivante, lot 1-1 : le calendrier (2 novembre 2026)** (D194, plan `docs/plans/ville-vivante.md`)
+- Le jeu a son calendrier : une saison dure une semaine de jeu (7 jours, ou 14 dans les réglages), l'année 28 jours. La date s'affiche sous l'horloge (« Lun. · Été, 1er jour ») ; le soleil suit la saison (jours courts l'hiver).
+- Nouveaux réglages « Durée d'une saison » et « Saison » (« Qui passe » ou une saison figée). Une nouvelle partie commence le lundi du 1er jour de l'été ; une ancienne sauvegarde est reprise au lundi de sa saison (sauvegarde version 5).
+- Pas encore : la météo, les arbres et les tenues selon la saison, la semaine (marché, écoles, dimanche), les fêtes (le calendrier les connaît déjà). 1033 tests (13 de plus).
+- À regarder : `?season=hiver&h=17` (la nuit tombe plus tôt), `?date=9` (mercredi).

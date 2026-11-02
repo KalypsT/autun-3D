@@ -1,6 +1,6 @@
 # Ville vivante : calendrier, météo, saisons, passants, rythme de la semaine, petits gestes (plan)
 
-**Avancement** : plan seul, rien n'est codé. Rédigé le 2 novembre 2026 après D193, à la demande de l'utilisateur, après une discussion sur
+**Avancement** : lot 1-1 (calendrier) fait (D194). Suivant : lot 1-2 (météo, partie logique). Rédigé le 2 novembre 2026 après D193, à la demande de l'utilisateur, après une discussion sur
 « comment rendre le monde plus vivant et donner plus envie de se balader » (sans histoire ni missions, qui viendront plus tard).
 
 Coordonnées et conventions habituelles : repère local du jeu (x vers l'est, y vers le nord), en mètres ; heures en heures de jeu (0 à 24).

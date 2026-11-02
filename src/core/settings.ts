@@ -4,6 +4,7 @@
  */
 
 import { browserStorage, type StorageLike } from "./save";
+import { SEASON_LENGTHS, type Season, type SeasonLength } from "./calendar";
 
 export interface Settings {
   /** Définition : densité de pixels maximale (1 à 3). */
@@ -26,9 +27,13 @@ export interface Settings {
   vibration: boolean;
   /** Plein écran (et paysage verrouillé) au premier appui sur le jeu. */
   fullscreen: boolean;
+  /** Durée d'une saison, en jours de jeu (D194). */
+  seasonLength: SeasonLength;
+  /** Saison figée (0 printemps … 3 hiver), ou -1 : les saisons passent (D194). */
+  season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -57,6 +62,8 @@ export function parseSettings(raw: unknown): Settings {
     volume: volume === null ? d.volume : roundVolume(volume),
     vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
     fullscreen: typeof o["fullscreen"] === "boolean" ? o["fullscreen"] : d.fullscreen,
+    seasonLength: (SEASON_LENGTHS as readonly unknown[]).includes(o["seasonLength"]) ? (o["seasonLength"] as SeasonLength) : d.seasonLength,
+    season: [-1, 0, 1, 2, 3].includes(o["season"] as number) ? (o["season"] as Season | -1) : d.season,
   };
 }
 

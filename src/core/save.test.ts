@@ -3,7 +3,7 @@ import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, t
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
-  version: 4,
+  version: 5,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
@@ -12,11 +12,14 @@ const sample = (): SaveGame => ({
     { id: "voiture-12,34", model: "citadine", variant: 3, x: 5, y: 6, heading: 1.2 },
     { id: "velo-7-0", model: "velo-ville", variant: 1, x: -20, y: 14, heading: 0 },
   ],
-  clock: { hour: 17.25, day: 200 },
+  clock: { hour: 17.25, date: 9 },
   waypoint: { x: 400, y: -300 },
   health: 72,
   arms: { owned: ["knife", "pistol"], mag: { pistol: 7 }, ammo: { pistol: 30 }, current: "pistol" },
 });
+
+/** Horloge des versions 1 à 4 : jour de l'année. */
+const OLD_CLOCK = { hour: 17.25, day: 200 };
 
 const fakeStorage = (initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } => {
   const data = { ...initial };
@@ -33,11 +36,12 @@ describe("sauvegarde", () => {
     expect(parseSave("")).toBeNull();
     expect(parseSave("{pas du json")).toBeNull();
     expect(parseSave("[1,2]")).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), version: 5 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 6 }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), version: undefined }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: "1", y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: 1e9, y: 2 } }))).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: null, day: 3 } }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: null, date: 3 } }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: 3, day: 3 } }))).toBeNull();
   });
 
   it("santé (version 3) : bornée à 1..100 ; absente (versions 1 et 2) : pleine", () => {
@@ -46,8 +50,8 @@ describe("sauvegarde", () => {
     expect(parseSave(JSON.stringify({ ...sample(), health: "x" }))!.health).toBe(100);
     const old: Partial<SaveGame> = sample();
     delete old.health;
-    expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.health).toBe(100);
-    expect(parseSave(JSON.stringify({ ...old, version: 2 }))!.version).toBe(SAVE_VERSION);
+    expect(parseSave(JSON.stringify({ ...old, version: 2, clock: OLD_CLOCK }))!.health).toBe(100);
+    expect(parseSave(JSON.stringify({ ...old, version: 2, clock: OLD_CLOCK }))!.version).toBe(SAVE_VERSION);
   });
 
   it("armes (version 4) : lues avec méfiance ; absentes (versions 1 à 3) : les seuls poings", () => {
@@ -58,13 +62,14 @@ describe("sauvegarde", () => {
     expect(parseSave(JSON.stringify({ ...sample(), arms: { owned: ["pistol"], mag: {}, ammo: { pistol: 9999 }, current: "pistol" } }))!.arms.ammo.pistol).toBe(72);
     const old: Partial<SaveGame> = sample();
     delete old.arms;
-    for (const v of [1, 2, 3]) expect(parseSave(JSON.stringify({ ...old, version: v }))!.arms).toEqual({ owned: [], mag: {}, ammo: {}, current: "fists" });
+    for (const v of [1, 2, 3]) expect(parseSave(JSON.stringify({ ...old, version: v, clock: OLD_CLOCK }))!.arms).toEqual({ owned: [], mag: {}, ammo: {}, current: "fists" });
   });
 
   it("migre une sauvegarde de version 1 : chaque type devient son modèle d'alors, le reste est conservé", () => {
     const v1 = {
       ...sample(),
       version: 1,
+      clock: OLD_CLOCK,
       vehicles: [
         { id: "voiture-12,34", kind: "car", variant: 3, x: 5, y: 6, heading: 1.2 },
         { id: "velo-7-0", kind: "bike", variant: 1, x: -20, y: 14, heading: 0 },
@@ -84,7 +89,7 @@ describe("sauvegarde", () => {
   });
 
   it("une sauvegarde de version 1 reste lisible après un aller-retour par le stockage (relue en version 2)", () => {
-    const st = fakeStorage({ [SAVE_KEY]: JSON.stringify({ ...sample(), version: 1, vehicles: [{ id: "voiture-1,1", kind: "car", variant: 0, x: 0, y: 0, heading: 0 }], riding: null }) });
+    const st = fakeStorage({ [SAVE_KEY]: JSON.stringify({ ...sample(), version: 1, clock: OLD_CLOCK, vehicles: [{ id: "voiture-1,1", kind: "car", variant: 0, x: 0, y: 0, heading: 0 }], riding: null }) });
     const store = new SaveStore(st);
     const loaded = store.load()!;
     expect(store.write(loaded)).toBe(true);
@@ -98,13 +103,25 @@ describe("sauvegarde", () => {
     expect(p.riding).toBeNull();
   });
 
-  it("ramène l'heure dans [0, 24), le jour dans [1, 365] et borne le tangage", () => {
-    const p = parseSave(JSON.stringify({ ...sample(), clock: { hour: 25.5, day: 400 }, camera: { yaw: 1, pitch: 9 } }))!;
+  it("ramène l'heure dans [0, 24), la date à un entier positif et borne le tangage", () => {
+    const p = parseSave(JSON.stringify({ ...sample(), clock: { hour: 25.5, date: 12.7 }, camera: { yaw: 1, pitch: 9 } }))!;
     expect(p.clock.hour).toBeCloseTo(1.5);
-    expect(p.clock.day).toBe(35);
+    expect(p.clock.date).toBe(12);
+    expect(parseSave(JSON.stringify({ ...sample(), clock: { hour: 2, date: -4 } }))!.clock.date).toBe(0);
     expect(p.camera.pitch).toBe(1.5);
     expect(addDays(365, 1)).toBe(1);
     expect(addDays(1, -1)).toBe(365);
+  });
+
+  it("version 4 (jour de l'année) : migrée vers le lundi de la saison qui contient ce jour", () => {
+    const v4 = (day: number): string => JSON.stringify({ ...sample(), version: 4, clock: { hour: 8, day } });
+    // 200 (19 juillet) : été, 1er jour (date 7) ; 30 (30 janvier) : hiver (date 21) ; 400 : ramené à 35 (4 février), hiver aussi.
+    expect(parseSave(v4(200))!.clock).toEqual({ hour: 8, date: 7 });
+    expect(parseSave(v4(30))!.clock.date).toBe(21);
+    expect(parseSave(v4(400))!.clock.date).toBe(21);
+    expect(parseSave(v4(100))!.clock.date).toBe(0);
+    expect(parseSave(v4(290))!.clock.date).toBe(14);
+    expect(parseSave(v4(200))!.version).toBe(SAVE_VERSION);
   });
 
   it("un repère invalide devient « pas de repère »", () => {
@@ -142,7 +159,8 @@ describe("stockage", () => {
 describe("réglages", () => {
   it("valeurs invalides : retour aux valeurs par défaut champ par champ ; valeurs proches : on prend le choix le plus proche", () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, minimapNorth: "oui", crowd: 120 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true });
+    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, minimapNorth: "oui", crowd: 120, seasonLength: 10, season: 4 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 });
+    expect(parseSettings({ seasonLength: 14, season: 2 })).toMatchObject({ seasonLength: 14, season: 2 });
     expect(parseSettings({ dpr: 2.4, minimapNorth: true }).dpr).toBe(2.5);
     expect(parseSettings({ minimapNorth: true }).minimapNorth).toBe(true);
   });

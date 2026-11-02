@@ -1,3 +1,4 @@
+import { rescaleDate } from "../core/calendar";
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
@@ -163,6 +164,11 @@ export function startGame(ctx: GameContext): void {
     }
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("vibration")) haptics.enabled = v.vibration;
+    // Calendrier (D194) : une autre durée de saison garde la saison et le jour de la semaine ; figer une saison ne touche pas à la date.
+    if (changed.includes("seasonLength") || changed.includes("season")) {
+      const old = atmosphere.calendarConfig;
+      atmosphere.setCalendar({ length: v.seasonLength, frozen: v.season === -1 ? null : v.season }, rescaleDate(atmosphere.date, old.length, v.seasonLength));
+    }
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
     // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
     if (changed.includes("traffic")) startTraffic(v.traffic);

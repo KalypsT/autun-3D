@@ -13,6 +13,7 @@ import { SaveStore } from "./core/save";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
+import { dateFromParams, newGameDate } from "./core/calendar";
 import { createSea } from "./render/sea";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
@@ -126,7 +127,11 @@ async function main(): Promise<void> {
   const clock = startState?.save?.clock;
   const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : 16));
   const speed = Number(params.get("speed") ?? (night || viewerMode || testMode ? 0 : 1 / 50));
-  const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? clock?.day ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  // Date du jeu (D194) : celle de la sauvegarde, sinon le 1er jour de l'été ; ?date=, ?day=, ?season=, ?weekday= l'imposent.
+  const seasonLength = storedSettings.seasonLength;
+  const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
+  const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
