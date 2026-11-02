@@ -3667,3 +3667,140 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d186-fresque-apres.jpg)
 ![L'hôtel, avant](captures/d186-hotel-avant.jpg)
 ![Après](captures/d186-hotel-apres.jpg)
+
+## 2026-11-02 — D187. Passage Balthus, lot 1 : le couloir s'ouvre (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Ok pour le bleu et or, commence le lot 1. » Le plan (D186 + lot 0) proposait un modèle dédié en quatre lots ; ce premier lot ouvre le passage (emprises, sol, marches, linteaux, obstacles) sans encore décorer la galerie. État retenu pour la suite : consoles bleu et or (photos 4 à 6).
+
+**Données** (`tools/data/build_passage.py`, `passage` de `manual.json` ; à relancer après `build_shop_fronts.py` et `build_streetscape.py`, avant `build_nav.py` ; une deuxième passe ne change rien, une régénération des tuiles rend les bâtiments entiers) :
+- **Découpe** : une bande de 5 m sur l'axe OpenStreetMap (way 80940956, prolongée de 1,5 m à chaque bout) est retirée des quatre bâtiments BD TOPO qu'elle recouvre (12 et 12 bis rue Demetz : 356 → 229 et 364 → 221 m² ; 28 et 26 rue aux Cordiers : 74 → 46 et 66 → 43 m²). Contour, haut des murs, pans de toit (coupés par la bande), cheminées, murs de la fiche, boutiques (`wall` et `s` refaits : Tabac Presse, La Promesse de l'Aube, La Manufacture gardés), mur d'entrée et silhouette lointaine suivent. Les murs du couloir sont des murs mitoyens sans fenêtres (le décor est le lot 2). Les contours découpés sont aussi les obstacles : aucun code de collision de plus.
+- **Toits du 12 et du 12 bis aplatis à 13,21 m** (médiane du modèle de surface à moins de 6 m de l'axe) : les faîtages de BD TOPO tombaient sur l'axe, à 15,8 m, 2,5 m trop haut. La correction du plan (§2) : les égouts de BD TOPO (13,6 m) étaient justes, c'est le faîtage qui ne l'était pas. Les toits du 28 et du 26 (quatre étages, croupes) restent ceux de BD TOPO.
+- **Relief aplani** : sous un bâtiment, le LiDAR est interpolé et remonte de 10 à 40 cm vers les murs ; avec un maillage de 2,5 m, le sol du couloir bombait par-dessus tout ce qu'on y posait. Les 378 cases de 1 m du couloir (et 1,5 m de plus de chaque côté), de s = 1 à 46,7 m, sont mises à 3,98 m dans `terrain/25_34.bin` et `26_34.bin`. Les sols vectoriels (2 polygones) qui recouvraient le couloir sont retaillés (`25_34` et `26_34`).
+- **Site `passage`** dans `kinds/26_34.json` : repère de l'axe (départ, cap), longueur 64,26 m, demi-largeur 2,5 m, sol de la galerie 3,98 m (médiane du MNT de s = 12 à 44), palier de la rue aux Cordiers 6,42 m, volée (s de 46,2 à 51,6 m, 15 marches de 15,7 cm), 17 linteaux.
+- **Linteaux** : là où le bâtiment passe au-dessus du couloir (pavillon de la rue Demetz, s de 0 à 8 ; porche et escalier de la rue aux Cordiers, s de 46,6 à 64,2), des tranches de 1,5 m bouchent la découpe, de 4,0 m (rue Demetz) ou 3,6 m (rue aux Cordiers) au-dessus du sol jusqu'au toit mesuré au LiDAR par tranche (de 11,6 à 21,6 m).
+
+**Jeu** (`src/core/landmarks.ts`, `src/render/passage.ts`) :
+- `passageDecks` : un tablier invisible (comme le porche de la cathédrale, D132) suit le seuil de la rue Demetz, la galerie (dalle de 8 cm, `PASSAGE_SLAB`), la volée et le palier : le relief interpolé de la rue aux Cordiers (de 4,0 à 6,4 m sur 18 m) est sous le sol réel, et les pas sont portés à la hauteur du sol dessiné.
+- `buildPassage` : sol de la galerie en mailles de 1 m, 15 marches avec contremarches, palier pavé, linteaux (façade, toit, plafond). Dans le maillage plein de la tuile : aucun appel de dessin de plus, 736 triangles.
+
+**Tests** (+6, 1009 au total, `src/core/passage.test.ts`) : site et niveaux mesurés ; aucun des quatre bâtiments ne recouvre le couloir (tous les 50 cm, à t = 0 et ± 2,3 m) ; marche d'une rue à l'autre avec un cercle de 35 cm, sans un choc ; les murs du couloir bloquent ; sol plat à 5 cm près dans la galerie, volée et palier à la bonne hauteur ; linteaux sans trou et à plus de 3,5 m au-dessus du sol. Le test de triangulation des toits a servi : mes premiers pans, avec un trou parasite, ne se triangulaient pas.
+
+**Limites** :
+- **Les linteaux sont des blocs unis** : pas d'arc, ni de grille, ni de fronton, ni de plaque ; leur dessus est en gradins (une tranche de 1,5 m par hauteur mesurée) et ne suit pas les croupes voisines. C'est le lot 3.
+- **Pas de verrière** : le couloir est ouvert au ciel de s = 8 à 46,5 m (lot 2). Les murs sont nus, de 9 m de haut.
+- **Position de la volée à ± 1,5 m** (le toit bas du LiDAR commence à s = 46,7) ; 15 marches d'après la photo 2, la hauteur du palier (6,42 m) est mesurée.
+- **Les quatre marches de la façade de la rue Demetz** ne sont qu'une rampe (le relief a lissé 3,2 → 3,98 m sur 2 m).
+- **Les passants ne traversent pas encore** (`build_nav.py` non relancé : il repartirait de tout OpenStreetMap) ; lot 4.
+- Les bords du sol laissent voir par endroits le maillage du relief (quelques centimètres).
+- **Sous l'ombre le sol paraît verdâtre** (le beige y prend la teinte froide des ombres du jeu) ; au soleil il est beige.
+
+![Vue aérienne : la galerie est une tranchée au milieu des toits](captures/d187-vue-aerienne.jpg)
+![La galerie depuis l'entrée de la rue Demetz, vers la volée](captures/d187-galerie.jpg)
+![L'entrée de la rue Demetz : un linteau plein au-dessus de l'ouverture](captures/d187-entree-demetz.jpg)
+![L'entrée de la rue aux Cordiers, entre les deux immeubles](captures/d187-entree-cordiers.jpg)
+
+## 2026-11-02 — D188. Passage Balthus, lot 2 : le décor de la galerie (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Continue » après D187, décor bleu et or confirmé. Lecture des photos 2, 4 et 5 : devantures vitrées à cadres blancs entre des pilastres à consoles bleu et or, globes sur potences, frise blanche de rinceaux, colonnes blanches à chapiteaux dorés devant des fenêtres à l'étage, corniche dorée, verrière à deux pans sur fermes fines.
+
+**Rendu** (`src/render/passage-gallery.ts`, appelé par `buildPassage`) : la galerie va d'un linteau à l'autre (s de 8,0 à 46,6 m) et se divise en 13 travées de 2,97 m, de chaque côté.
+- *Rez-de-chaussée* : pilastre crème, console bleue à chapiteau doré, globe (aussi dans le maillage des vitres allumées : il brille la nuit) ; entre eux, verre sombre, soubassement, meneau central, cadre et imposte blancs.
+- *Frise* : bandeau blanc à deux rosaces par travée. *Étage* : colonne blanche à chapiteau doré à chaque pilastre, fenêtre sombre sur appui, cordon doré le long de toute la galerie (haut à 13,11 m).
+- *Verrière* : une ferme à chaque pilastre et au milieu de chaque travée (deux arbalétriers du cordon à la faîtière, un tirant), faîtière à 14,5 m et deux pannes ; sol à carreaux beige et beige foncé (mailles de 1 m).
+- **Pas de verre** : le jeu n'a pas de matière transparente qui ne porte pas d'ombre ; des plaques opaques feraient un tunnel sombre (le verre existant, `glass` de `store.ts`, porte ombre). Les fermes se lisent comme des meneaux, le ciel passe entre elles. Un vrai verre demanderait un appel de dessin de plus et une matière à part (à décider).
+- Coût : environ 5 000 triangles de plus dans le maillage plein de la tuile 26_34, aucun appel de dessin de plus.
+
+**Tests** (+3, 1012 au total, `src/render/passage.test.ts`) : la galerie va d'un linteau à l'autre et ses travées font 2,7 à 3,2 m ; géométrie finie, coût entre 2 000 et 9 000 triangles, globes allumés ; altitudes entre le sol et 23 m.
+
+**Limites** :
+- les rinceaux de la frise sont des rosaces en aplat (pas de relief sculpté), les chapiteaux des boîtes dorées, les consoles des boîtes ; les couleurs sont lues sur les photos 4 à 6, sans pipette ;
+- les pilastres et les colonnes ne sont pas des obstacles (ils font 20 à 30 cm de saillie et on passe dedans), de même que les vitrines : on ne peut pas entrer dans les boutiques ;
+- le nombre de travées (13) est une hypothèse (longueur de la galerie divisée par la largeur lue sur la photo 2) ; l'enseigne et le contenu des boutiques ne sont pas modélisés ; la statue du chien et les entrées sont aux lots suivants ;
+- le sol paraît verdâtre à l'ombre (teinte froide des ombres du jeu).
+
+![La galerie de jour, depuis la rue Demetz](captures/d188-galerie-jour.jpg)
+![La galerie de nuit : les globes brillent](captures/d188-galerie-nuit.jpg)
+![Vers la rue Demetz, depuis le milieu](captures/d188-galerie-retour.jpg)
+
+## 2026-11-02 — D189. Passage Balthus, lot 3 : les deux entrées, les boutiques de la rue aux Cordiers et le chien
+
+**Demande de l'utilisateur** : le magasin « Chaussures M… » n'existe plus, c'est une extension de La Promesse de l'Aube ; photo de la rue aux Cordiers (devanture de l'extension, entrée du passage, autre partie du magasin) ; nouvelle photo de la statue du chien, plaque entière ; grilles ouvertes de 7 h à 20 h (traité au lot 4 avec les passants).
+
+**Boutiques** (`fronts` de `passage` dans `manual.json`, appliqués par `build_passage.py` avec `apply_shop` de `build_shop_fronts.py`, sur le mur de rue de ce que la découpe laisse des bâtiments) :
+- 28 rue aux Cordiers (à gauche de l'arc) : devanture rouge de La Promesse de l'Aube, 3,5 m, laissant 0,9 m de pierre contre l'arc ;
+- 26 rue aux Cordiers (à droite) : l'extension, grande devanture rouge en applique de 3,9 m (grande baie, porte vitrée, enseigne « LA PROMESSE DE L'AUBE »), 0,95 m de pierre contre l'arc ; **La Manufacture disparaît** de la fiche (le magasin de la photo 1 de D158 n'est plus d'actualité). Une deuxième passe ne change rien.
+
+**Entrées** (`src/render/passage-entries.ts`) : un arc segmentaire en pierre à chaque bout : remplissage entre l'arc et le linteau, archivolte plus claire, piédroits de 45 cm ; rue Demetz, flèche 1,4 m, pierre blonde ; rue aux Cordiers, flèche 0,9 m, pierre miel, plaque bleue « PASSAGE BALTHUS » sur le piédroit gauche (lettres de l'atlas).
+
+**Le chien** : un briard assis en bronze sur un socle de pierre (base, fût, corniche), plaque « ŒUVRE DE P. LATOUCHE, 1922 PARIS 1956, BRIARD » (lue sur la photo : « Œuvre de Paulette Latouche, Autun 1922 – Paris 1956, Briard, don des parents de l'artiste »), à s = 16 m, côté sud-ouest ; obstacle de 55 cm de rayon (`landmarkCircles`).
+
+**Tests** (+2, 1014) : plaque et plaque du chien écrites ; le chien est un obstacle, pas le milieu de l'allée.
+
+**Limites** : l'arc est pris à la largeur du couloir (5 m ; l'ouverture réelle de la photo 1 semble plus étroite) ; pas de grille, d'imposte en éventail, ni de fronton (photo 3) ; la porte vitrée rouge à imposte au fond du porche de la rue aux Cordiers n'est pas dessinée ; l'emplacement du chien est une estimation (milieu de la galerie sur les photos, côté droit en venant de la rue Demetz) ; plaque de la rue aux Cordiers et textes du socle en petit (illisibles de loin).
+
+![La rue aux Cordiers : l'arc entre les deux devantures rouges](captures/d189-entree-cordiers.jpg)
+![L'arc de la rue Demetz](captures/d189-entree-demetz.jpg)
+![La volée vue de la galerie](captures/d189-volee.jpg)
+
+## 2026-11-02 — D190. Passage Balthus, lot 4 : les grilles de 7 h à 20 h et les passants (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Enchaîne sur le lot 4 » ; horaire donné avant : grilles ouvertes de 7 h à 20 h.
+
+**Grilles** (même principe que la grille du collège, D174) : `src/core/passage-gate.ts` (logique pure : horaire, deux lignes d'obstacle étiquetées, retirées à l'ouverture), `src/render/passage-gate.ts` (barreaux de fer tous les 14 cm, trois lisses, traverse à pointes : un maillage à part de 700 triangles environ), `src/game/passage-gate.ts` (montrées et posées de 20 h à 7 h, d'après `atmosphere.hour`). Une grille est à 1,2 m de l'arc de la rue Demetz, l'autre à 1,2 m de celui de la rue aux Cordiers. **Elles ne se ferment pas sur le joueur** qui est resté dans le couloir : la fermeture attend qu'il en sorte (sans quoi il y passerait la nuit, soit neuf minutes réelles). Constantes (axe, niveaux) copiées du site mesuré, avec un test qui les compare aux données.
+
+**Passants** (`tools/data/build_passage_nav.py`, sur le modèle de `build_theatre_nav.py`, dont il reprend le graphe) : une file droite sur l'axe, trois arêtes (galerie, volée en escalier, porte cochère) de 4,6 m de large, raccordée de chaque bout à l'arête piétonne la plus proche (à moins de 14 m) ; nœuds au drapeau 128, arêtes de la voie OpenStreetMap 80940956 ; deuxième passe identique. Vérifié dans le jeu : un passant marche dans la galerie, de jour. Pas de point « commerce » (les passants n'entrent pas dans les boutiques) ; ils n'évitent pas la grille fermée (la nuit, ils sont presque absents).
+
+**Tests** (+5 : `src/core/passage-gate.test.ts` : horaire, concordance avec le site, grilles fermées et ouvertes, attente du joueur ; `src/render/passage.test.ts` : maillage des grilles). **Trois essais d'endurance changent**, parce que le graphe piéton est différent et qu'ils sont chaotiques (une graine fixe, un millier de décisions aléatoires) :
+- `traffic.test.ts` (« 30 voitures et 100 passants à l'arrêt ») : la graine 7 donne une minute à 1 102 pas de contact, puis plus rien (série : 5, 2, 0, 322, 1, 0, 40, 1 102, 5). Mesuré sur huit graines : le pire de chaque partie va de 5 à 419 pas avant, de 22 à 373 après, sauf la graine 7. L'interblocage que le test garde (D69) durait 1 000 à 2 300 pas **chaque** minute : le critère devient la durée (jamais deux minutes de suite à 700 pas ou plus, jamais plus de 1 500 pas) ;
+- `combat-soak.test.ts` : un passant renversé par une voiture 52 s avant la fin laissait un cadavre « de trop » (graine 11). Le test compte maintenant les morts survenues après les meurtres (`restDeaths`) : les cadavres restants ne peuvent venir que d'elles ;
+- `police-soak.test.ts` (cinq étoiles) : le départ 5 se coince deux minutes de suite (2 990 et 3 039 pas sur 3 600), alors que sur sept départs mesurés avec le nouveau graphe il est le seul à dépasser 2 700 (avant : 798 au pire). Les départs deviennent 6 et 8 ; **c'est un changement de graines, pas de critère**, comme en D94. Un graphe réduit à l'île du passage, non raccordée, produit déjà le même écart : le graphe pris pour un tout, sans le passage, n'est pas en cause.
+
+**Limites** : pas de verre (D188) ; les passants ne vont pas dans les boutiques ; la grille fermée est dessinée mais ne se ferme pas devant un passant ; le sol de la galerie dans les grilles est celui des données (3,98 et 6,42 m).
+
+![La grille de la rue Demetz, la nuit : les globes brillent derrière](captures/d190-grille-nuit.jpg)
+![La même, de jour : ouverte, un passant dans la galerie, le chien au fond](captures/d190-passant-jour.jpg)
+
+## 2026-11-02 — D191. Passage Balthus : le verre de la verrière
+
+**Demande de l'utilisateur** : « Ok, continue » (reste de D190 : le verre de la verrière).
+
+**Matière** (`StyleResources.glassMat`, `src/render/stylized.ts`) : un `MeshBasicMaterial` à couleurs de sommets, translucide (opacité 0,3), sans écriture de profondeur, double face ; le maillage `verrieres` ne porte ni ne reçoit d'ombre de plus que les autres (`castShadow` faux, comme `vitres`). C'est ce qui manquait en D188 : les plaques de verre du jeu sont opaques et portent ombre, ce qui aurait fait un tunnel sombre ; ici le soleil passe. `LandmarkSinks.glass` est facultatif (les gabarits qui n'en ont pas n'ont rien à changer).
+
+**Rendu** (`passage-gallery.ts`) : 104 triangles, un panneau par demi-travée et par pan, de la corniche à la faîtière, dégradé bleuté (du pied du pan à la faîtière). **Un appel de dessin de plus**, dans la seule tuile 26_34.
+
+**Test** (+1, 1020) : le nombre de triangles du verre (deux par panneau, deux pans, 26 demi-travées) et leur finitude.
+
+**Limites** : le verre est très discret vu de l'intérieur (translucide à 30 %, on voit surtout le ciel et les fermes) ; pas de reflets, ni de saleté ; la nuit il ne s'éclaire pas.
+
+![La verrière vue de dessus : verre et fermes entre les toits](captures/d191-verriere-dessus.jpg)
+![La verrière vue de l'intérieur](captures/d191-verriere-dessous.jpg)
+
+## 2026-11-02 — D192. Passage Balthus : l'imposte en éventail et le fronton de la rue Demetz
+
+**Demande de l'utilisateur** : « Continue avec l'imposte et le fronton » (restes de D190 et D191).
+
+**Imposte** (`fan`, `src/render/passage-entries.ts`) : au-dessus de chaque grille (photo 4), dans la fente entre le haut des barreaux (3 m) et l'archivolte, des rayons de fer partis du milieu du haut de la grille (13 au plus) et une bande qui suit l'arc ; les rayons que l'arc ne dépasse pas ne sont pas tirés. Fixe (elle se voit grille ouverte), dans le maillage plein : une centaine de triangles.
+
+**Fronton** (`pediment`) : au-dessus de l'arc de la rue Demetz (photo 3), à la hauteur du linteau mesuré : corniche en bloc de 14 cm de saillie, triangle de pierre de 1,35 m de haut, tympan plus sombre en retrait, cadre mouluré le long des rampants, œil-de-bœuf octogonal.
+
+**Limites** : la photo 3 montre le fronton entre deux lucarnes et des balcons de fer forgé à l'étage, qui ne sont pas dessinés (les fenêtres sont celles des fiches des deux immeubles) ; le fronton est à l'échelle de l'arc (6,6 m), non mesuré ; l'imposte rue aux Cordiers est à peine visible (fente de 55 cm).
+
+![Le fronton de la rue Demetz](captures/d192-fronton.jpg)
+![L'imposte au-dessus de la grille, de l'intérieur de l'arc](captures/d192-imposte.jpg)
+
+## 2026-11-02 — D193. Passage Balthus : la façade de la rue Demetz
+
+**Demande de l'utilisateur** : « Oui, réalise la façade de la rue Demetz » (photo 3 : façade de pierre blonde, grand arc, boutique de chaque côté, balcons de fer forgé à l'étage, fronton entre deux lucarnes, toit d'ardoise).
+
+**Pavillon à toit en pente** (`flatFrom` de `passage`, `build_passage.py`) : en D187 j'avais aplati les toits du 12 et du 12 bis à 13,21 m sur toute leur longueur, ce qui arasait aussi le pavillon de la rue Demetz, que le LiDAR montre en pente (12,9 à 16,1 m le long de l'axe). L'aplatissement ne commence plus qu'à 8,5 m de la façade ; devant, les pans de BD TOPO sont gardés (coupés par le couloir), avec un sommet ajouté là où les murs changent de loi et un mur de raccord (`steps`) sur la limite. Les cheminées du pavillon reviennent. Une passe depuis les bâtiments d'origine donne ce résultat ; une deuxième ne change rien (les tuiles d'origine : `git show e7b6ef3:public/data/tiles/26_34.json`, puis relancer l'étape).
+
+**Façade** : enduit de pierre blonde (`#dccfae`), balcons individuels de fer forgé à l'étage, fenêtres à cadre blanc sans volets, sur les deux immeubles ; une devanture de part et d'autre de l'arc (`fronts` de `passage`) : à droite le Tabac Presse (bandeau vert sombre, enseigne), à gauche une boutique sans enseigne (la photo montre des affiches, pas de nom lisible : le commerce n'est pas inventé), 0,5 m de pierre contre l'arc.
+
+**Au-dessus de l'arc** (`src/render/passage.ts`) : le toit du linteau n'est plus en gradins mais une rampe qui suit les hauteurs mesurées (de 12,9 à 16,1 m), en ardoise, avec ses flancs et son extrémité côté galerie ; **lucarnes** : deux volumes à fenêtre sombre et toit à deux pans, posés sur les pans en pente de chaque côté (`dorm` du site : abscisse, distance à la façade, altitude du toit lue sur les pans), un fronton (D192) au milieu.
+
+**Tests** : inchangés (1020) ; les tests existants couvrent le contour (rien ne recouvre le couloir), la triangulation des toits, le rendu et le site.
+
+**Limites** : le fronton et les lucarnes sont à l'échelle de la photo, pas mesurés ; les lucarnes sont de simples volumes (pas d'encadrement, ni de volets) ; les balcons sont ceux du générateur de façades (garde-corps standards), pas le dessin de la photo ; le rez-de-chaussée à gauche n'a pas de nom ; pas de marches devant l'arc (la rampe du relief les remplace).
+
+![La façade de la rue Demetz, depuis la place](captures/d193-facade-demetz.jpg)
+![Pavillon : fronton, rampe d'ardoise et lucarnes](captures/d193-facade-demetz-haut.jpg)

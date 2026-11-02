@@ -19,11 +19,14 @@ import { buildStore, lidlCartShelter } from "./store";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
 import { idKey, pick, T } from "./style";
+import { buildPassage } from "./passage";
 
 /** Où dessinent les gabarits : volumes (matière des murs), vitres allumées la nuit, lettres des enseignes. */
 export interface LandmarkSinks {
   solid: MeshBuilder;
   glow: MeshBuilder;
+  /** Verre translucide sans ombre (verrière du passage Balthus, D191) ; absent : pas de verre. */
+  glass?: MeshBuilder;
   names: UvMeshBuilder;
   atlas: SignAtlas;
 }
@@ -986,6 +989,7 @@ export function buildLandmarks(
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);
+    else if (s.t === "passage") buildPassage(sinks, s, terrain);
     else if (s.t === "pitch" && s.hoops) buildHoops(sinks.solid, s.hoops, terrain);
   }
 }

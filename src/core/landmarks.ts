@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -119,6 +119,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
     out.push([lay.totem[0], lay.totem[1], 0.5]);
   }
+  // Statue du chien du passage Balthus (D189).
+  for (const s of kinds.sites) if (s.t === "passage") out.push([...passagePoint(s, PASSAGE_DOG.s, PASSAGE_DOG.t), PASSAGE_DOG.r]);
   // Théâtre romain (D136) : poteaux d'éclairage et arbustes taillés.
   for (const s of kinds.sites) {
     if (s.t !== "theatre") continue;
@@ -584,10 +586,45 @@ export function porchDecks(m: CathedralModel): Deck[] {
   ];
 }
 
-/** Tabliers des monuments d'une tuile (porche de la cathédrale ; escaliers et scène du théâtre romain, D133). */
+// --- Passage Balthus (D187) ---------------------------------------------------------------------------------------------------------
+
+/** Point de l'axe du passage (s depuis la façade de la rue Demetz, t vers le nord-est). */
+export function passagePoint(s: PassageSite, d: number, t = 0): [number, number] {
+  return at(frameOf(s.c[0], s.c[1], s.a, 1, 1), d, t);
+}
+
+/**
+ * Dalle du sol de la galerie au-dessus du relief aplani (m) : le maillage du relief, en mailles de 2 m, bombe de quelques centimètres et recouvrirait un
+ * sol posé à ras ; le tablier de la galerie porte les pas à la hauteur du sol dessiné.
+ */
+export const PASSAGE_SLAB = 0.08;
+
+/** Statue du chien (D189) : abscisse et côté dans la galerie, rayon du socle (obstacle). */
+export const PASSAGE_DOG = { s: 16, t: -0.9, r: 0.55 };
+
+/** Niveau du sol (altitude) à l'abscisse d : galerie plate, volée de `st[2]` marches de `st[0]` à `st[1]`, puis palier de la rue aux Cordiers. */
+export function passageFloor(s: PassageSite, d: number): number {
+  const [s0, s1] = s.st;
+  const zg = s.zf + PASSAGE_SLAB;
+  return d <= s0 ? zg : d >= s1 ? s.zc : zg + ((s.zc - zg) * (d - s0)) / (s1 - s0);
+}
+
+/**
+ * Tablier invisible du passage : le seuil de la rue Demetz, la galerie, la volée et le palier jusqu'à la rue aux Cordiers (le relief du LiDAR y est un
+ * talus interpolé sous le bâtiment).
+ */
+export function passageDecks(s: PassageSite): Deck[] {
+  const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
+  const zg = s.zf + PASSAGE_SLAB;
+  const pts: [number, number][] = [[-0.5, s.zf - 0.35], [1.5, zg], [s.st[0], zg], [s.st[1], s.zc], [s.L + 0.4, s.zc]];
+  return [{ id: -187001, k: "foot", w: 2 * s.hw - 0.1, p: pts.flatMap(([d, z]) => [...at(f, d, 0), z]), st: "light", sp: [], pc: [] }];
+}
+
+/** Tabliers des monuments d'une tuile (porche de la cathédrale ; escaliers et scène du théâtre romain, D133 ; volée du passage Balthus, D187). */
 export function landmarkDecks(kinds: { buildings: Record<string, BuildingKind>; sites?: Site[] } | undefined): Deck[] {
   return [
     ...Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.cath?.entry ? porchDecks(k.cath) : [])),
+    ...(kinds?.sites ?? []).flatMap((s) => (s.t === "passage" ? passageDecks(s) : [])),
     ...(kinds?.sites ?? []).flatMap((s) => (s.t === "theatre" ? theatreDecks(s) : [])),
   ];
 }

@@ -670,7 +670,8 @@ export type Site =
   | JanusSite
   | RoundaboutSite
   | CurtainSite
-  | BandstandSite;
+  | BandstandSite
+  | PassageSite;
 
 /**
  * Îlot de rond-point d'après photo (D142, tools/data/build_roundabouts.py) : centre et rayon du milieu de la bordure (orthophoto), largeur
@@ -712,6 +713,26 @@ export interface CurtainSite {
   pitch: number;
   rows: number[];
   crown: number;
+}
+
+/**
+ * Passage couvert Balthus (D187, tools/data/build_passage.py) : axe (point de départ `c`, cap `a` en radians, longueur `L`), demi-largeur `hw`, sol de la
+ * galerie `zf` et palier de la rue aux Cordiers `zc` (altitudes), volée (abscisses du pied et du palier, nombre de marches) et linteaux : tronçons
+ * couverts d'un bâtiment (s0, s1, dessous z0, dessus z1). Les bâtiments voisins sont déjà découpés du couloir dans les tuiles.
+ */
+export interface PassageSite {
+  t: "passage";
+  n: string;
+  c: [number, number];
+  a: number;
+  L: number;
+  hw: number;
+  zf: number;
+  zc: number;
+  st: [number, number, number];
+  lin: [number, number, number, number][];
+  /** Lucarnes de la façade de la rue Demetz (D193) : abscisse t en travers, s depuis la façade, altitude du toit à cet endroit. */
+  dorm?: [number, number, number][];
 }
 
 /**

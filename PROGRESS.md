@@ -1411,3 +1411,39 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les lettres de l'hôtel Saint-Louis font 0,85 m, brun foncé sur un bandeau crème.
 - Pas encore : l'encorbellement et le toit à pans du Lutrin, le relief de la fresque, l'éclairage de nuit des images. 1003 tests (4 de plus).
 - À regarder : `?view=custom&cam=168.6,-36.3,4,153.7,-42.2,8&h=14` (la fresque), `cam=52,-538,3,64,-546,3` (le Lutrin), `cam=117.1,-63.8,2.8,112.5,-77,5.5` (l'hôtel).
+
+**Passage Balthus, lot 1 : le couloir s'ouvre (2 novembre 2026)** (D187, plan `docs/plans/passage-balthus.md`)
+- Le passage couvert entre la rue Demetz et la rue aux Cordiers se traverse à pied d'un bout à l'autre : les quatre immeubles qui le bouchaient sont découpés d'une bande de 5 m, le sol est plat (3,98 m), on monte une volée de 15 marches vers la rue aux Cordiers (+2,44 m), et le bâtiment passe au-dessus de chaque entrée (pavillon rue Demetz, porche rue aux Cordiers).
+- Corrigé au passage : les toits du 12 et du 12 bis, 2,5 m trop hauts sur l'axe d'après BD TOPO, sont aplatis au niveau mesuré au LiDAR ; le relief interpolé sous les bâtiments, qui bombait le sol, est aplani.
+- Pas encore : le décor (consoles bleu et or, vitrines, verrière, frise, statue du chien), les arcs et la façade à fronton des deux entrées, les passants. Aujourd'hui : un couloir nu, ouvert au ciel, des linteaux unis. 1009 tests (6 de plus).
+- À regarder : `?view=custom&cam=-22,-122,9.5,6,-164,4&h=13` (la galerie), `cam=-30.3,-108.2,5.2,-22.5,-119.9,5.2` (entrée de la rue Demetz), `cam=14.7,-175.5,9.2,5.3,-161.4,9.6` (rue aux Cordiers) ; ou `?at=-25.3,-115.7` (départ à l'entrée de la rue Demetz) et marcher vers le sud-est.
+
+**Passage Balthus, lot 2 : le décor de la galerie (2 novembre 2026)** (D188)
+- La galerie a ses 13 travées de chaque côté : vitrines à cadres blancs, pilastres à consoles bleu et or, globes (allumés la nuit), frise blanche, colonnes à chapiteaux dorés, corniche dorée, sol à carreaux, et la charpente de la verrière dans le ciel (les fermes, sans le verre).
+- Pas encore : le verre (sans ombre, à décider), la façade et l'arc des deux entrées, la statue du chien, les passants. 1012 tests (3 de plus).
+- À regarder : `?view=custom&cam=-22,-122,7.2,6,-164,6&h=13` (de jour), même caméra avec `&style=nuit` (de nuit).
+
+**Passage Balthus, lot 3 : les entrées et le chien (2 novembre 2026)** (D189)
+- Les deux bouts du passage ont leur arc en pierre ; rue aux Cordiers, plaque bleue « PASSAGE BALTHUS » entre deux devantures rouges de La Promesse de l'Aube (l'extension remplace l'ancien magasin de chaussures et La Manufacture) ; le chien de bronze trône dans la galerie, sur son socle à plaque.
+- Pas encore : les grilles ouvertes de 7 h à 20 h, les passants dans le passage (lot 4), le verre, le fronton de la rue Demetz. 1014 tests (2 de plus).
+- À regarder : `?view=custom&cam=18.6,-178.2,2.6,3,-160,5.2&h=13` (rue aux Cordiers), `cam=-31,-108,2.4,-22,-120,4.5&h=13` (rue Demetz).
+
+**Passage Balthus, lot 4 : les grilles et les passants (2 novembre 2026)** (D190)
+- Les grilles du passage sont ouvertes de 7 h à 20 h, fermées la nuit (barreaux de fer à pointes aux deux entrées, on ne peut plus passer) ; elles attendent que tu sois sorti du couloir pour se fermer.
+- Les passants traversent le passage (galerie, escalier, porte cochère), de la rue Demetz à la rue aux Cordiers.
+- Le plan du passage Balthus est complet. Pas encore : le verre de la verrière, les passants qui entrent dans les boutiques, la grille et l'imposte dessinées plus finement, le fronton de la rue Demetz.
+- Trois essais d'endurance (circulation, combat, poursuite) ont dû être ajustés : le graphe piéton a changé et ils sont chaotiques ; voir D190. 1019 tests (5 de plus).
+- À regarder : `?at=-30.5,-108&yaw=2.55&h=23` (la grille la nuit), `&h=12` (de jour, avec les passants).
+
+**Passage Balthus : le verre de la verrière (2 novembre 2026)** (D191)
+- La verrière a son verre : translucide, sans ombre, on voit les fermes à travers depuis la galerie et le toit vitré entre les immeubles depuis le dessus.
+- Pas encore : l'imposte en éventail et le fronton de la rue Demetz, les passants qui entrent dans les boutiques. 1020 tests (1 de plus).
+
+**Passage Balthus : l'imposte et le fronton (2 novembre 2026)** (D192)
+- L'arc de la rue Demetz porte un fronton triangulaire (corniche, tympan, œil-de-bœuf) ; chaque grille a son imposte en éventail.
+- Pas encore : les balcons et lucarnes de la façade de la rue Demetz, les passants dans les boutiques. 1020 tests.
+
+**Passage Balthus : la façade de la rue Demetz (2 novembre 2026)** (D193)
+- La façade a sa pierre blonde, ses balcons, une boutique de chaque côté de l'arc (Tabac Presse à droite), son toit en pente avec deux lucarnes et son fronton, qui n'est plus arasé comme avant.
+- Pas encore : les marches devant l'arc, le dessin exact des balcons, un nom pour la boutique de gauche. 1020 tests.
+- À regarder : `?view=custom&cam=-36,-100,3,-25.3,-115.7,9&h=13`.

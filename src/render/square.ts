@@ -17,7 +17,7 @@ const STONE = C("#c9b99a"), IRON = C("#4a3a30"), ROOF = C("#6a5a4c"), ROOF_UNDER
 const CHAMFER = 0.5, TRUNK_HALF = 0.15;
 
 /** Pavé droit orienté (repère f) : s0..s1, t0..t1 (m depuis le centre), z0..z1 absolus. */
-function slab(mb: MeshBuilder, f: ReturnType<typeof frameOf>, s0: number, s1: number, t0: number, t1: number, z0: number, z1: number, col: THREE.Color, top: THREE.Color = col, ends = true): void {
+export function slab(mb: MeshBuilder, f: ReturnType<typeof frameOf>, s0: number, s1: number, t0: number, t1: number, z0: number, z1: number, col: THREE.Color, top: THREE.Color = col, ends = true): void {
   const P = (s: number, t: number, z: number): Vec3 => toThree(...at(f, s, t), z);
   const N = (us: number, vt: number): Vec3 => toThree(f.ux * us + f.vx * vt, f.uy * us + f.vy * vt, 0);
   mb.quad(P(s0, t0, z0), P(s1, t0, z0), P(s1, t0, z1), P(s0, t0, z1), N(0, -1), col);
