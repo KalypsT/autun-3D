@@ -1411,3 +1411,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les lettres de l'hôtel Saint-Louis font 0,85 m, brun foncé sur un bandeau crème.
 - Pas encore : l'encorbellement et le toit à pans du Lutrin, le relief de la fresque, l'éclairage de nuit des images. 1003 tests (4 de plus).
 - À regarder : `?view=custom&cam=168.6,-36.3,4,153.7,-42.2,8&h=14` (la fresque), `cam=52,-538,3,64,-546,3` (le Lutrin), `cam=117.1,-63.8,2.8,112.5,-77,5.5` (l'hôtel).
+
+**Passage Balthus, lot 1 : le couloir s'ouvre (2 novembre 2026)** (D187, plan `docs/plans/passage-balthus.md`)
+- Le passage couvert entre la rue Demetz et la rue aux Cordiers se traverse à pied d'un bout à l'autre : les quatre immeubles qui le bouchaient sont découpés d'une bande de 5 m, le sol est plat (3,98 m), on monte une volée de 15 marches vers la rue aux Cordiers (+2,44 m), et le bâtiment passe au-dessus de chaque entrée (pavillon rue Demetz, porche rue aux Cordiers).
+- Corrigé au passage : les toits du 12 et du 12 bis, 2,5 m trop hauts sur l'axe d'après BD TOPO, sont aplatis au niveau mesuré au LiDAR ; le relief interpolé sous les bâtiments, qui bombait le sol, est aplani.
+- Pas encore : le décor (consoles bleu et or, vitrines, verrière, frise, statue du chien), les arcs et la façade à fronton des deux entrées, les passants. Aujourd'hui : un couloir nu, ouvert au ciel, des linteaux unis. 1009 tests (6 de plus).
+- À regarder : `?view=custom&cam=-22,-122,9.5,6,-164,4&h=13` (la galerie), `cam=-30.3,-108.2,5.2,-22.5,-119.9,5.2` (entrée de la rue Demetz), `cam=14.7,-175.5,9.2,5.3,-161.4,9.6` (rue aux Cordiers) ; ou `?at=-25.3,-115.7` (départ à l'entrée de la rue Demetz) et marcher vers le sud-est.

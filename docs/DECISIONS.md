@@ -3667,3 +3667,34 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d186-fresque-apres.jpg)
 ![L'hôtel, avant](captures/d186-hotel-avant.jpg)
 ![Après](captures/d186-hotel-apres.jpg)
+
+## 2026-11-02 — D187. Passage Balthus, lot 1 : le couloir s'ouvre (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Ok pour le bleu et or, commence le lot 1. » Le plan (D186 + lot 0) proposait un modèle dédié en quatre lots ; ce premier lot ouvre le passage (emprises, sol, marches, linteaux, obstacles) sans encore décorer la galerie. État retenu pour la suite : consoles bleu et or (photos 4 à 6).
+
+**Données** (`tools/data/build_passage.py`, `passage` de `manual.json` ; à relancer après `build_shop_fronts.py` et `build_streetscape.py`, avant `build_nav.py` ; une deuxième passe ne change rien, une régénération des tuiles rend les bâtiments entiers) :
+- **Découpe** : une bande de 5 m sur l'axe OpenStreetMap (way 80940956, prolongée de 1,5 m à chaque bout) est retirée des quatre bâtiments BD TOPO qu'elle recouvre (12 et 12 bis rue Demetz : 356 → 229 et 364 → 221 m² ; 28 et 26 rue aux Cordiers : 74 → 46 et 66 → 43 m²). Contour, haut des murs, pans de toit (coupés par la bande), cheminées, murs de la fiche, boutiques (`wall` et `s` refaits : Tabac Presse, La Promesse de l'Aube, La Manufacture gardés), mur d'entrée et silhouette lointaine suivent. Les murs du couloir sont des murs mitoyens sans fenêtres (le décor est le lot 2). Les contours découpés sont aussi les obstacles : aucun code de collision de plus.
+- **Toits du 12 et du 12 bis aplatis à 13,21 m** (médiane du modèle de surface à moins de 6 m de l'axe) : les faîtages de BD TOPO tombaient sur l'axe, à 15,8 m, 2,5 m trop haut. La correction du plan (§2) : les égouts de BD TOPO (13,6 m) étaient justes, c'est le faîtage qui ne l'était pas. Les toits du 28 et du 26 (quatre étages, croupes) restent ceux de BD TOPO.
+- **Relief aplani** : sous un bâtiment, le LiDAR est interpolé et remonte de 10 à 40 cm vers les murs ; avec un maillage de 2,5 m, le sol du couloir bombait par-dessus tout ce qu'on y posait. Les 378 cases de 1 m du couloir (et 1,5 m de plus de chaque côté), de s = 1 à 46,7 m, sont mises à 3,98 m dans `terrain/25_34.bin` et `26_34.bin`. Les sols vectoriels (2 polygones) qui recouvraient le couloir sont retaillés (`25_34` et `26_34`).
+- **Site `passage`** dans `kinds/26_34.json` : repère de l'axe (départ, cap), longueur 64,26 m, demi-largeur 2,5 m, sol de la galerie 3,98 m (médiane du MNT de s = 12 à 44), palier de la rue aux Cordiers 6,42 m, volée (s de 46,2 à 51,6 m, 15 marches de 15,7 cm), 17 linteaux.
+- **Linteaux** : là où le bâtiment passe au-dessus du couloir (pavillon de la rue Demetz, s de 0 à 8 ; porche et escalier de la rue aux Cordiers, s de 46,6 à 64,2), des tranches de 1,5 m bouchent la découpe, de 4,0 m (rue Demetz) ou 3,6 m (rue aux Cordiers) au-dessus du sol jusqu'au toit mesuré au LiDAR par tranche (de 11,6 à 21,6 m).
+
+**Jeu** (`src/core/landmarks.ts`, `src/render/passage.ts`) :
+- `passageDecks` : un tablier invisible (comme le porche de la cathédrale, D132) suit le seuil de la rue Demetz, la galerie (dalle de 8 cm, `PASSAGE_SLAB`), la volée et le palier : le relief interpolé de la rue aux Cordiers (de 4,0 à 6,4 m sur 18 m) est sous le sol réel, et les pas sont portés à la hauteur du sol dessiné.
+- `buildPassage` : sol de la galerie en mailles de 1 m, 15 marches avec contremarches, palier pavé, linteaux (façade, toit, plafond). Dans le maillage plein de la tuile : aucun appel de dessin de plus, 736 triangles.
+
+**Tests** (+6, 1009 au total, `src/core/passage.test.ts`) : site et niveaux mesurés ; aucun des quatre bâtiments ne recouvre le couloir (tous les 50 cm, à t = 0 et ± 2,3 m) ; marche d'une rue à l'autre avec un cercle de 35 cm, sans un choc ; les murs du couloir bloquent ; sol plat à 5 cm près dans la galerie, volée et palier à la bonne hauteur ; linteaux sans trou et à plus de 3,5 m au-dessus du sol. Le test de triangulation des toits a servi : mes premiers pans, avec un trou parasite, ne se triangulaient pas.
+
+**Limites** :
+- **Les linteaux sont des blocs unis** : pas d'arc, ni de grille, ni de fronton, ni de plaque ; leur dessus est en gradins (une tranche de 1,5 m par hauteur mesurée) et ne suit pas les croupes voisines. C'est le lot 3.
+- **Pas de verrière** : le couloir est ouvert au ciel de s = 8 à 46,5 m (lot 2). Les murs sont nus, de 9 m de haut.
+- **Position de la volée à ± 1,5 m** (le toit bas du LiDAR commence à s = 46,7) ; 15 marches d'après la photo 2, la hauteur du palier (6,42 m) est mesurée.
+- **Les quatre marches de la façade de la rue Demetz** ne sont qu'une rampe (le relief a lissé 3,2 → 3,98 m sur 2 m).
+- **Les passants ne traversent pas encore** (`build_nav.py` non relancé : il repartirait de tout OpenStreetMap) ; lot 4.
+- Les bords du sol laissent voir par endroits le maillage du relief (quelques centimètres).
+- **Sous l'ombre le sol paraît verdâtre** (le beige y prend la teinte froide des ombres du jeu) ; au soleil il est beige.
+
+![Vue aérienne : la galerie est une tranchée au milieu des toits](captures/d187-vue-aerienne.jpg)
+![La galerie depuis l'entrée de la rue Demetz, vers la volée](captures/d187-galerie.jpg)
+![L'entrée de la rue Demetz : un linteau plein au-dessus de l'ouverture](captures/d187-entree-demetz.jpg)
+![L'entrée de la rue aux Cordiers, entre les deux immeubles](captures/d187-entree-cordiers.jpg)

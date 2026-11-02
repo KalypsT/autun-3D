@@ -1,5 +1,7 @@
 # Passage Balthus : passage couvert entre la rue du Général-André-Demetz et la rue aux Cordiers (plan, lot 0)
 
+**Avancement** : lot 1 fait (D187) ; lots 2 à 4 à faire. État retenu : consoles bleu et or (photos 4 à 6).
+
 Enquête du 2 novembre 2026, sur la branche de travail (après D186). Rien n'a été modifié dans le dépôt, sauf ce fichier. Les six photos de
 l'utilisateur ne sont pas versionnées : seule leur lecture est écrite ici. Coordonnées : repère local du jeu (x vers l'est, y vers le nord),
 en mètres ; altitudes au-dessus de `originZ` (330 m) ; caps en degrés depuis le nord, sens horaire.
@@ -59,8 +61,9 @@ Tuile **26_34**, super-tuile de navigation **s6_8** (comme la rue aux Cordiers, 
 
 **Coupe transversale** (pas de 25 cm, tous les 2 m de s = 10 à 46) : le sol est visible sur 1,5 à 2 m autour de l'axe (centre à −0,1 m ±
 0,2) ; la hauteur remonte jusqu'à 9 m entre |t| = 1 et 2,5 m (le laser frappe en partie le verre et les corniches). Les ailes latérales
-sont plates à 8,7 – 9,2 m jusqu'à |t| = 9 m, sans pente d'ardoise visible : la hauteur BD TOPO (13,5 m d'égout pour le 12 bis) est
-fausse au-dessus de la galerie.
+sont plates à 8,7 – 9,2 m au-dessus du sol de la galerie, soit 12,7 – 13,2 m d'altitude, jusqu'à |t| = 6 m. **Correction (D187)** : j'avais d'abord
+lu ce chiffre contre les 13,5 m d'égout de BD TOPO, qui sont des altitudes (le 12 bis a 9,5 m de haut) : les égouts sont justes ; ce sont les
+faîtages de BD TOPO, tombés sur l'axe à 15,8 m, qui sont 2,5 m trop hauts.
 
 ## 3. Propositions
 
@@ -91,7 +94,7 @@ Chaque lot fait l'objet d'une décision (D187, D188…) avec ses captures avant/
 `npm run typecheck && npm run lint && npm test && npm run build`, avec des captures `tools/shot.sh` à la même place que les photos de
 l'utilisateur.
 
-### Lot 1 : ouvrir le passage (emprises, sols, obstacles)
+### Lot 1 : ouvrir le passage (emprises, sols, obstacles) — fait, D187
 
 - `manual.json`, nouvelle entrée `monuments.balthus` : axe OSM, demi-largeur 2,5 m, abscisses des pièces (pavillon, galerie, escalier,
   porte cochère), niveaux mesurés (3,22 / 3,97 / 6,43), nombre de marches (4 et 15), relevés de la photo.
