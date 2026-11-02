@@ -4056,3 +4056,25 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Limites** : les animaux traversent les murs et les voitures (pas d'obstacles) ; les chats ne grimpent nulle part ; à 45 m et plus, un chien ou un chat est petit à l'écran (on les voit surtout en passant près d'eux) ; les canards ne s'envolent pas ; pas de pigeons nouveaux (ceux de J2 restent).
 
 ![Galerie (`?view=characters&animals=1`) : chien, chats, canards, héron posé, oiseaux en vol](captures/d203-animaux.jpg)
+
+## 2026-11-02 — D204. Ville vivante, lot 2-4 : les véhicules de service (plan `docs/plans/ville-vivante.md`, § 10)
+
+**Ce qui est fait** : trois sortes de véhicules de service dans la circulation, selon le jour et l'heure (`servicesWanted` dans `src/core/week.ts`) :
+- **Bus urbain** (« Navette Éduenne », bleu à bande claire), du lundi au samedi de 6 h 30 à 20 h 30 : il roule dans la circulation et **s'arrête une dizaine de secondes** quand il passe à moins de 9 m d'un arrêt de bus d'OpenStreetMap (points `bus_stop` déjà dans les données de navigation), puis repart (pas de nouvel arrêt pendant 25 s).
+- **Camion poubelle** (benne blanche à liseré vert), le mardi et le vendredi de 5 h à 8 h : il **s'arrête 5 s tous les 30 m**, comme pendant une tournée.
+- **Camionnettes de livraison** (deux, du lundi au samedi de 6 h à 10 h) : une fois entrées dans le centre, elles **s'arrêtent 35 s ou plus** sur la chaussée, une fois par trajet, puis repartent ; les voitures derrière attendent ou doublent comme pour un véhicule arrêté.
+
+**Comment** : un arrêt est un compte à rebours `holdT` sur la voiture simulée (`traffic-sim.ts`) : tant qu'il court, le conducteur freine et reste à l'arrêt (même entrée que pour une voiture qui abandonne). Les véhicules de service sont des entrées du catalogue marquées `service` : la circulation ordinaire ne les tire jamais, le contrôleur de circulation (`updateServices`) en fait apparaître hors de vue, comme les autres voitures, tant qu'il en manque. Fiche de conduite : celle du grumier (porteur bridé à 90 km/h) ; carrosseries dans `car-model.ts`, sons dans `sound-model.ts`.
+
+**Écarts au plan, et pourquoi** :
+- **Pas de ligne de bus en boucle ni de montée et descente de passants** : la boucle suppose un itinéraire fixe dans le graphe routier, que la circulation actuelle (trajets tirés au hasard autour du joueur, véhicules qui disparaissent au loin) ne sait pas suivre ; et faire monter des passants demande de les faire marcher jusqu'à une porte puis de les retirer. J'ai préféré un bus qui s'arrête aux vrais arrêts qu'il croise : on le voit faire son travail sans changer la circulation. La boucle et les passagers restent à faire.
+- **Pas de scooters, motos ni cyclistes dans la circulation** : la circulation ne connaît que des voitures (dépassements, gabarits, collisions à quatre roues) et les deux-roues demandent un pilote assis animé par véhicule (plusieurs appels de dessin chacun aujourd'hui). C'est un chantier à part entière ; je le note pour plus tard plutôt que de livrer des deux-roues sans pilote.
+- **Pas de tracteur ni de TER** : le TER demande les passages à niveau et l'arrêt en gare (voie ferrée D93) ; le tracteur n'a pas de modèle. Laissés pour plus tard.
+- Le camion poubelle et les livraisons, prévus au lot 2-1, sont faits ici (ce sont des véhicules de la circulation).
+- Le camion poubelle n'a pas d'éboueurs à l'arrière (il faudrait des personnages accrochés au véhicule).
+
+**Tests** (+2, et deux adaptés) : un bus qui croise un arrêt s'y arrête puis repart ; la benne s'arrête tous les 30 m ; les véhicules de service ne sortent jamais dans la circulation ordinaire ; performances (fourchette poids lourd) et dimensions des carrosseries comme le grumier.
+
+**Mesure** : rien au banc (il ne fait pas rouler les véhicules de service) ; trois véhicules de plus au plus, du même coût qu'une voiture de la circulation.
+
+![Galerie (`?view=vehicles&ids=bus-urbain,benne-ordures,grumier-morvan`) : grumier, bus urbain, camion poubelle](captures/d204-bus-benne.jpg)

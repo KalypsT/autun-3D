@@ -3,7 +3,7 @@ import { Seats } from "../core/seats";
 import { MarketController } from "./market";
 import { FeastsController } from "./feasts";
 import { AnimalsController } from "./animals";
-import { marketCenter, marketLevel, trafficWeek } from "../core/week";
+import { marketCenter, marketLevel, servicesWanted, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
@@ -1165,7 +1165,7 @@ export function startGame(ctx: GameContext): void {
     setDriverCaution(wxTraffic.caution);
     passageGates.update(atmosphere.hour, player.x, player.y);
     (traffic as Traffic | null)?.setNight(atmosphere.headlights);
-    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density * trafficWeek(atmosphere.calendar.weekday) });
+    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density * trafficWeek(atmosphere.calendar.weekday), services: servicesWanted(atmosphere.calendar.weekday, atmosphere.hour) });
     if (riding) {
       const s = riding.state;
       // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.

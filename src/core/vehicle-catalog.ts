@@ -61,6 +61,8 @@ export interface VehicleDef {
   toughness?: number;
   /** Exemplaire unique (D114) : jamais dans la circulation ni sur les places ordinaires ; il a sa place fixe (`src/core/uniques.ts`). */
   unique?: boolean;
+  /** Véhicule de service de la circulation (D204 : bus, camion poubelle) : ni garé, ni tiré au hasard ; le jeu le fait rouler à ses heures. */
+  service?: boolean;
   /**
    * Locomotive du petit train (D118) : dessinée avec ses wagons par le train (`src/game/tourist-train.ts`), pas par le générateur de carrosserie ;
    * pas de place fixe (le train tourne sur son circuit), jamais enregistrée (une partie le remet sur son circuit).
@@ -88,6 +90,9 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "rotisserie-champ-de-mars", family: "car", name: "Rôtisserie", unique: true, badge: { make: "Couhard", model: "Rôtisserie du Champ de Mars" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 2.9 }, palette: ["#ece6da"] },
   { id: "petit-train", family: "car", name: "Petit train", unique: true, train: true, badge: { make: "Couhard", model: "Petit Train d'Autun" }, toughness: 2, spec: TRAIN_LOCO, size: { length: 4.4, width: 1.9, height: 2.6 }, palette: ["#2f6b4f"] },
   { id: "grumier-morvan", family: "car", name: "Grumier", unique: true, badge: { make: "Couhard", model: "Grumier du Morvan" }, toughness: 2.4, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.33 }, palette: ["#a8322a"] },
+  // Véhicules de service de la circulation (D204) : ni garés ni tirés au hasard ; le jeu les fait rouler à leurs heures.
+  { id: "bus-urbain", family: "car", name: "Bus urbain", service: true, badge: { make: "Couhard", model: "Navette Éduenne" }, icon: "🚌", toughness: 2.2, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.1 }, palette: ["#2f6fa8", "#e8e4da"] },
+  { id: "benne-ordures", family: "car", name: "Camion poubelle", service: true, badge: { make: "Couhard", model: "Benne Bibracte" }, toughness: 2.4, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.3 }, palette: ["#e8e4da"] },
   { id: "scooter-125", family: "moto", name: "Scooter 125", badge: { make: "Éduen", model: "Zéphyr 125" }, icon: "🛵", toughness: 0.6, spec: SCOOTER_125, size: { length: 1.92, width: 0.72, height: 1.26 }, palette: ["#efe3c8", "#9fb8a6", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a", "#8fa8c4"] },
   { id: "moto-routiere", family: "moto", name: "Moto routière", badge: { make: "Bibracte", model: "Druide" }, toughness: 0.7, spec: MOTO, size: { length: 2.09, width: 0.74, height: 1.28 }, palette: ["#7a2e2e", "#1f3a52", "#1b1d22", "#3f7d4e", "#c9b98a", "#d9472b"] },
   { id: "moto-sportive", family: "moto", name: "Moto sportive", badge: { make: "Bibracte", model: "Celte R" }, toughness: 0.65, spec: SPORT_MOTO, size: { length: 2.04, width: 0.63, height: 1.15 }, palette: ["#d9472b", "#f1b24a", "#2d6fb8", "#1b1d22", "#3f7d4e"] },

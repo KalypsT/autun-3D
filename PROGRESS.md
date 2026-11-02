@@ -1499,3 +1499,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 **Ville vivante, lot 2-3 : les animaux (2 novembre 2026)** (D203)
 - Chiens seuls dans les quartiers d'habitation (ils aboient quand tu passes près d'eux), chats la nuit (ils détalent), canards en petits groupes sur l'eau, hérons au bord de l'eau (ils s'envolent), martinets l'été au-dessus de la cathédrale, chauves-souris au crépuscule. `?animals=0` les coupe ; `?view=characters&animals=1` les montre de près.
+
+**Ville vivante, lot 2-4 : les véhicules de service (2 novembre 2026)** (D204)
+- Bus urbain (du lundi au samedi, il s'arrête aux arrêts de bus qu'il croise), camion poubelle le mardi et le vendredi tôt (il s'arrête tous les 30 m), camionnettes de livraison le matin en centre-ville (arrêtées sur la chaussée).
+- Pas encore : boucle du bus et passagers, scooters et cyclistes dans la circulation, tracteur, TER (voir D204).
+- **Lot 2 terminé** (sans les élèves : proportions des enfants à décider).

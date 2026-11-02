@@ -57,8 +57,8 @@ describe("générateur de carrosserie", () => {
     expect(signedVolume(paint)).toBeGreaterThan(1);
     expect(triangles(paint)).toBeLessThan(340);
     // Un véhicule unique (D114, D115), seul de son modèle, a droit à plus de détails (capote, roue de secours ; comptoir, lettrage, rôtissoire).
-    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique ? 2300 : 1000);
-    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique ? 2700 : 1300);
+    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique || def.service ? 2300 : 1000);
+    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique || def.service ? 2700 : 1300);
     expect(triangles(glass)).toBeGreaterThan(0);
   });
 

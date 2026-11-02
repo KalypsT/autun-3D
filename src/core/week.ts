@@ -111,3 +111,16 @@ export function crowdFeast(feasts: readonly string[], x: number, y: number, lake
   }
   return k;
 }
+
+/**
+ * Véhicules de service voulus (D204) : un bus de 6 h 30 à 20 h 30 du lundi au samedi ; le camion poubelle le mardi et le vendredi de 5 h à 8 h ;
+ * deux camionnettes de livraison du lundi au samedi de 6 h à 10 h.
+ */
+export function servicesWanted(weekday: number, hour: number): { bus: number; benne: number; livraison: number } {
+  const workday = weekday <= 5;
+  return {
+    bus: workday && hour >= 6.5 && hour < 20.5 ? 1 : 0,
+    benne: (weekday === 1 || weekday === 4) && hour >= 5 && hour < 8 ? 1 : 0,
+    livraison: workday && hour >= 6 && hour < 10 ? 2 : 0,
+  };
+}

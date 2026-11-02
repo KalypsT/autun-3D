@@ -32,6 +32,8 @@ export interface SimCar {
   damage: VehicleDamage;
   /** Voiture de police. */
   police: boolean;
+  /** Arrêt de service en cours (D204 : bus à l'arrêt, camion poubelle, livraison en double file) : secondes restantes, 0 sinon. */
+  holdT?: number;
 }
 
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
@@ -223,7 +225,8 @@ export class TrafficSim {
           seen = list;
         }
       }
-      const input = !c.driver ? PARKED : abandons(c.damage) ? STOPPING : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
+      if (c.holdT && c.holdT > 0) c.holdT = Math.max(0, c.holdT - dt);
+      const input = !c.driver ? PARKED : abandons(c.damage) || (c.holdT ?? 0) > 0 ? STOPPING : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
       stepVehicle(c.state, deratedSpec(c.spec, c.damage.power), input, dt, this.terrain, this.colliders);
       c.age += dt;
     }
