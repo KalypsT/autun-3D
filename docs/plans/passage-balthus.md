@@ -1,6 +1,6 @@
 # Passage Balthus : passage couvert entre la rue du Général-André-Demetz et la rue aux Cordiers (plan, lot 0)
 
-**Avancement** : lot 1 fait (D187) ; lots 2 à 4 à faire. État retenu : consoles bleu et or (photos 4 à 6).
+**Avancement** : lots 1 (D187) et 2 (D188) faits ; lots 3 et 4 à faire. État retenu : consoles bleu et or (photos 4 à 6).
 
 Enquête du 2 novembre 2026, sur la branche de travail (après D186). Rien n'a été modifié dans le dépôt, sauf ce fichier. Les six photos de
 l'utilisateur ne sont pas versionnées : seule leur lecture est écrite ici. Coordonnées : repère local du jeu (x vers l'est, y vers le nord),
@@ -111,7 +111,7 @@ l'utilisateur.
 - Tests : on va d'une rue à l'autre à pied, en restant dans la bande ; on ne traverse pas les vitrines ; les marches montent bien de 2,45 m ;
   à vélo, on ne passe pas l'escalier (comme la volée du porche) ; idempotence de la chaîne.
 
-### Lot 2 : la galerie (décor intérieur)
+### Lot 2 : la galerie (décor intérieur) — fait, D188 (sans verre)
 
 - 13 travées d'environ 2,95 m de chaque côté sur 38,5 m (nombre à recompter sur la photo 2).
 - Rez-de-chaussée : vitrines à cadres blancs entre pilastres, consoles bleu et or, globes sur potences.

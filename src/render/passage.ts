@@ -3,23 +3,25 @@ import type { HeightField, PassageSite } from "../data/types";
 import { at, frameOf, passageFloor } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { slab } from "./square";
+import { buildGallery } from "./passage-gallery";
 
 /**
  * Passage Balthus (D187, lot 1) : le sol de la galerie, la volée de la rue aux Cordiers (marches et contremarches) et les linteaux, ces tronçons où
  * le bâtiment passe au-dessus du couloir (le pavillon de la rue Demetz et le porche de la rue aux Cordiers). Les murs du couloir sont ceux des
- * bâtiments voisins, découpés dans les tuiles (tools/data/build_passage.py) ; le décor de la galerie et les entrées viennent aux lots suivants.
+ * bâtiments voisins, découpés dans les tuiles (tools/data/build_passage.py) ; le décor de la galerie est dans `passage-gallery.ts` (D188), les entrées viennent au lot 3.
  * Dans le maillage plein de la tuile : aucun appel de dessin de plus.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
-const FLOOR = C("#dcbfa0"), PAVING = C("#a39b8e"), TREAD = C("#cfc7b8"), WALL = C("#d9c9a8"), ROOF = C("#707d88"), CEILING = C("#8a7a66");
+const FLOOR = C("#dcbfa0"), FLOOR_B = C("#cfae8c"), PAVING = C("#a39b8e"), TREAD = C("#cfc7b8"), WALL = C("#d9c9a8"), ROOF = C("#707d88"), CEILING = C("#8a7a66");
 /** Sol posé juste au-dessus du tablier du passage (m). */
 const LIFT = 0.02;
 /** Maille du sol de la galerie (m). */
 const CELL = 1;
 
-export function buildPassage(mb: MeshBuilder, s: PassageSite, terrain: HeightField): void {
+export function buildPassage(mb: MeshBuilder, s: PassageSite, terrain: HeightField, glow?: MeshBuilder): void {
+  if (glow) buildGallery(mb, glow, s);
   const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
   const P = (d: number, t: number, z: number): Vec3 => toThree(...at(f, d, t), z);
   const UP: Vec3 = [0, 1, 0];
@@ -37,7 +39,7 @@ export function buildPassage(mb: MeshBuilder, s: PassageSite, terrain: HeightFie
     const d0 = (i * s0) / ns, d1 = ((i + 1) * s0) / ns;
     for (let j = 0; j < nt; j++) {
       const t0 = -hw + (j * 2 * hw) / nt, t1 = -hw + ((j + 1) * 2 * hw) / nt;
-      mb.quad(P(d0, t0, ground(d0, t0)), P(d1, t0, ground(d1, t0)), P(d1, t1, ground(d1, t1)), P(d0, t1, ground(d0, t1)), UP, FLOOR);
+      mb.quad(P(d0, t0, ground(d0, t0)), P(d1, t0, ground(d1, t0)), P(d1, t1, ground(d1, t1)), P(d0, t1, ground(d0, t1)), UP, (i + j) % 2 ? FLOOR_B : FLOOR);
     }
   }
   // Volée : n marches, chacune monte de sa contremarche à sa dalle.

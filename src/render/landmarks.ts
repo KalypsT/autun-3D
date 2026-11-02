@@ -987,7 +987,7 @@ export function buildLandmarks(
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);
-    else if (s.t === "passage") buildPassage(sinks.solid, s, terrain);
+    else if (s.t === "passage") buildPassage(sinks.solid, s, terrain, sinks.glow);
     else if (s.t === "pitch" && s.hoops) buildHoops(sinks.solid, s.hoops, terrain);
   }
 }

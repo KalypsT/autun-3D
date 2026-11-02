@@ -3698,3 +3698,26 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![La galerie depuis l'entrée de la rue Demetz, vers la volée](captures/d187-galerie.jpg)
 ![L'entrée de la rue Demetz : un linteau plein au-dessus de l'ouverture](captures/d187-entree-demetz.jpg)
 ![L'entrée de la rue aux Cordiers, entre les deux immeubles](captures/d187-entree-cordiers.jpg)
+
+## 2026-11-02 — D188. Passage Balthus, lot 2 : le décor de la galerie (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Continue » après D187, décor bleu et or confirmé. Lecture des photos 2, 4 et 5 : devantures vitrées à cadres blancs entre des pilastres à consoles bleu et or, globes sur potences, frise blanche de rinceaux, colonnes blanches à chapiteaux dorés devant des fenêtres à l'étage, corniche dorée, verrière à deux pans sur fermes fines.
+
+**Rendu** (`src/render/passage-gallery.ts`, appelé par `buildPassage`) : la galerie va d'un linteau à l'autre (s de 8,0 à 46,6 m) et se divise en 13 travées de 2,97 m, de chaque côté.
+- *Rez-de-chaussée* : pilastre crème, console bleue à chapiteau doré, globe (aussi dans le maillage des vitres allumées : il brille la nuit) ; entre eux, verre sombre, soubassement, meneau central, cadre et imposte blancs.
+- *Frise* : bandeau blanc à deux rosaces par travée. *Étage* : colonne blanche à chapiteau doré à chaque pilastre, fenêtre sombre sur appui, cordon doré le long de toute la galerie (haut à 13,11 m).
+- *Verrière* : une ferme à chaque pilastre et au milieu de chaque travée (deux arbalétriers du cordon à la faîtière, un tirant), faîtière à 14,5 m et deux pannes ; sol à carreaux beige et beige foncé (mailles de 1 m).
+- **Pas de verre** : le jeu n'a pas de matière transparente qui ne porte pas d'ombre ; des plaques opaques feraient un tunnel sombre (le verre existant, `glass` de `store.ts`, porte ombre). Les fermes se lisent comme des meneaux, le ciel passe entre elles. Un vrai verre demanderait un appel de dessin de plus et une matière à part (à décider).
+- Coût : environ 5 000 triangles de plus dans le maillage plein de la tuile 26_34, aucun appel de dessin de plus.
+
+**Tests** (+3, 1012 au total, `src/render/passage.test.ts`) : la galerie va d'un linteau à l'autre et ses travées font 2,7 à 3,2 m ; géométrie finie, coût entre 2 000 et 9 000 triangles, globes allumés ; altitudes entre le sol et 23 m.
+
+**Limites** :
+- les rinceaux de la frise sont des rosaces en aplat (pas de relief sculpté), les chapiteaux des boîtes dorées, les consoles des boîtes ; les couleurs sont lues sur les photos 4 à 6, sans pipette ;
+- les pilastres et les colonnes ne sont pas des obstacles (ils font 20 à 30 cm de saillie et on passe dedans), de même que les vitrines : on ne peut pas entrer dans les boutiques ;
+- le nombre de travées (13) est une hypothèse (longueur de la galerie divisée par la largeur lue sur la photo 2) ; l'enseigne et le contenu des boutiques ne sont pas modélisés ; la statue du chien et les entrées sont aux lots suivants ;
+- le sol paraît verdâtre à l'ombre (teinte froide des ombres du jeu).
+
+![La galerie de jour, depuis la rue Demetz](captures/d188-galerie-jour.jpg)
+![La galerie de nuit : les globes brillent](captures/d188-galerie-nuit.jpg)
+![Vers la rue Demetz, depuis le milieu](captures/d188-galerie-retour.jpg)

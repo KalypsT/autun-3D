@@ -1417,3 +1417,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Corrigé au passage : les toits du 12 et du 12 bis, 2,5 m trop hauts sur l'axe d'après BD TOPO, sont aplatis au niveau mesuré au LiDAR ; le relief interpolé sous les bâtiments, qui bombait le sol, est aplani.
 - Pas encore : le décor (consoles bleu et or, vitrines, verrière, frise, statue du chien), les arcs et la façade à fronton des deux entrées, les passants. Aujourd'hui : un couloir nu, ouvert au ciel, des linteaux unis. 1009 tests (6 de plus).
 - À regarder : `?view=custom&cam=-22,-122,9.5,6,-164,4&h=13` (la galerie), `cam=-30.3,-108.2,5.2,-22.5,-119.9,5.2` (entrée de la rue Demetz), `cam=14.7,-175.5,9.2,5.3,-161.4,9.6` (rue aux Cordiers) ; ou `?at=-25.3,-115.7` (départ à l'entrée de la rue Demetz) et marcher vers le sud-est.
+
+**Passage Balthus, lot 2 : le décor de la galerie (2 novembre 2026)** (D188)
+- La galerie a ses 13 travées de chaque côté : vitrines à cadres blancs, pilastres à consoles bleu et or, globes (allumés la nuit), frise blanche, colonnes à chapiteaux dorés, corniche dorée, sol à carreaux, et la charpente de la verrière dans le ciel (les fermes, sans le verre).
+- Pas encore : le verre (sans ombre, à décider), la façade et l'arc des deux entrées, la statue du chien, les passants. 1012 tests (3 de plus).
+- À regarder : `?view=custom&cam=-22,-122,7.2,6,-164,6&h=13` (de jour), même caméra avec `&style=nuit` (de nuit).
