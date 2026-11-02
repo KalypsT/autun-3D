@@ -51,7 +51,7 @@ describe("catalogue de pièces", () => {
     const bySlot = (slot: number): string[] => PART_SPECS.filter((s) => s.slot === slot).map((s) => s.id);
     expect(bySlot(SLOT.hair).every((i) => i.startsWith("hair") || i === "mustache" || i === "beard")).toBe(true);
     expect(bySlot(SLOT.shoes).sort()).toEqual(["bootShaft", "foot"]);
-    expect(bySlot(SLOT.bag).sort()).toEqual(["backpack", "handbag", "shoulderBag"]);
+    expect(bySlot(SLOT.bag).sort()).toEqual(["backpack", "handbag", "shoulderBag", "umbrella"]);
   });
 
   it("garde un nombre de pièces raisonnable par personnage", () => {

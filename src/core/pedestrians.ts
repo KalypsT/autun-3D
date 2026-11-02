@@ -2,7 +2,7 @@ import { PED, ZONE } from "../data/nav";
 import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
-import { coldAt, dressForCold } from "./dress";
+import { coldAt, dressForCold, umbrellaShare } from "./dress";
 import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
@@ -121,8 +121,9 @@ export interface Observer {
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
   hour?: number;
-  /** Météo (D195) : part des passants dehors (`crowd`, 1 par beau temps) et allure (`walk`, plus vive sous la pluie). Défaut : beau temps. */
-  weather?: { crowd: number; walk: number };
+  /** Météo (D195) : part des passants dehors (`crowd`, 1 par beau temps) et allure (`walk`, plus vive sous la pluie) ; saison (0 à 3) et
+   * pluie (0 à 1) pour leurs tenues et leurs parapluies (D197). Défaut : beau temps, l'été. */
+  weather?: { crowd: number; walk: number; season?: number; rain?: number };
 }
 
 /** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
@@ -262,6 +263,8 @@ export class PedSim {
   private hour = 12;
   /** Allure selon la météo (D195), 1 par beau temps. */
   private walk = 1;
+  /** Dernière météo reçue, pour habiller les passants qui naissent (D197). */
+  private weather: Observer["weather"] | null = null;
   private excessCursor = 0;
   private spawned = 0;
   private spawnRng = 0;
@@ -305,6 +308,7 @@ export class PedSim {
   /** Remplit tous les emplacements d'un coup (départ du jeu, du banc, des tests). */
   prefill(obs: Observer): void {
     this.hour = obs.hour ?? 12;
+    this.weather = obs.weather ?? null;
     const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
     this.stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
     this.stats.target = crowdTarget(this.free, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy), obs.weather?.crowd);
@@ -336,6 +340,7 @@ export class PedSim {
     }
     stats.target = crowdTarget(this.free, this.hour, stats.zone, v, obs.weather?.crowd);
     this.walk = obs.weather?.walk ?? 1;
+    this.weather = obs.weather ?? null;
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
     let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0, corpses = 0, sinking = 0;
@@ -479,7 +484,10 @@ export class PedSim {
     for (let guard = 0; guard < 8 && this.taken(i, seed); guard++) seed = hash32(seed, guard + 1);
     this.rng[i] = seed ^ 0xa511e9b3;
     this.id[i] = seed;
-    const recipe = dressForCold(recipeFromSeed(seed), seed, coldAt(this.hour));
+    const season = this.weather?.season ?? 1, rain = this.weather?.rain ?? 0;
+    let recipe = dressForCold(recipeFromSeed(seed), seed, coldAt(this.hour, season, rain));
+    // Sous la pluie, une partie des passants (pas ceux en tenue de sport) ouvre un parapluie (D197).
+    if (recipe.outfit !== "sport" && ((seed >>> 7) % 1000) / 1000 < umbrellaShare(rain)) recipe = { ...recipe, umbrella: true };
     this.state.recipes[i] = recipe;
     this.edge[i] = edge;
     this.gen[i] = this.graph.generation(edge);

@@ -1,4 +1,4 @@
-import { weatherize } from "./weather-fx";
+import { crownDepthMaterial, weatherize } from "./weather-fx";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
@@ -183,6 +183,10 @@ export class StyleResources {
   readonly fenceMat = fenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
   readonly crownMat = weatherize(this.lit({ flatShading: true }), "crown");
+  /** Feuillage taillé (tilleuls de la place du Champ de Mars) : couleurs de sommets, même saison que les arbres (D197). */
+  readonly leavesMat = weatherize(this.lit({ vertexColors: true }), "crown");
+  /** Ombre du feuillage, qui suit la saison (arbres nus, D197). */
+  readonly crownDepthMat = crownDepthMaterial();
 }
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -369,6 +373,7 @@ function treesStyled(res: StyleResources, trees: TileData["trees"]): THREE.Group
   const trunks = new THREE.InstancedMesh(trunkGeo, res.trunkMat, trees.length);
   // Deux boules par arbre : une grosse et une plus petite au sommet, pour une silhouette de conte.
   const crowns = new THREE.InstancedMesh(crownGeo, res.crownMat, trees.length * 2);
+  crowns.customDepthMaterial = res.crownDepthMat;
   const m = new THREE.Matrix4();
   const color = new THREE.Color();
   trees.forEach(([x, y, z, h, r, trunk], i) => {
@@ -414,7 +419,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
   const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k, kindOf(b.id)?.roof));
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
-  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(), glass = new MeshBuilder();
+  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(), glass = new MeshBuilder(), leaves = new MeshBuilder();
   const names = new UvMeshBuilder();
   const decalMeshes = new Map<string, UvMeshBuilder>();
   // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
@@ -473,7 +478,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Gabarits : grandes surfaces, hangars, services publics, églises, stations-service, cimetières.
   target();
   if (!skip.includes("kinds")) {
-    buildLandmarks({ solid: detail, glow, glass, names, atlas: res.signAtlas }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
+    buildLandmarks({ solid: detail, glow, glass, names, atlas: res.signAtlas, leaves }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
       (b) => wallColors.get(b.id) ?? C(T.walls.xix[0]!));
   }
   yield;
@@ -541,6 +546,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (solid > 0) put("bati", yield* walls.buildSteps([detail, posts]), solid, res.wallMat);
   if (glow.triangleCount > 0) put("vitres", yield* glow.buildSteps(), glow.triangleCount, res.glowMat);
   add("verrieres", glass, res.glassMat);
+  add("feuillage", leaves, res.leavesMat);
   res.signAtlas.flush();
   yield;
   add("enseignes", names, res.signMat);

@@ -1,3 +1,4 @@
+import { coldAt, dressForCold, umbrellaShare } from "../core/dress";
 import * as THREE from "three";
 import { summarizeFrames, type FrameSummary } from "./bench-stats";
 import { deviceInfo, measureMemory } from "./bench";
@@ -7,7 +8,7 @@ import { followSun, gameSpawn } from "./game";
 import { showReportPanel } from "./report-panel";
 import { createCrowd } from "../render/crowd/crowd";
 import { createCrowdState, type CrowdRenderer, type CrowdState } from "../render/crowd/crowd-types";
-import { recipeFromSeed } from "../core/character";
+import { recipeFromSeed, type Recipe } from "../core/character";
 import { createVehicle } from "../core/vehicle";
 import { createPlayerModel } from "../render/player-model";
 import { vehicleDef } from "../core/vehicle-catalog";
@@ -261,7 +262,13 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   // `walk=1.4` : tout le monde marche à cette vitesse (m/s), phases réparties sur un cycle (pour juger la démarche d'un coup d'œil).
   const walkAll = params.has("walk") ? Number(params.get("walk")) : null;
   const place = (): CrowdState => {
-    const state = createCrowdState(Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i)));
+    // Tenues de la saison et parapluies sous la pluie, comme dans la rue (D197) : `&season=hiver`, `&weather=pluie`.
+    const season = atmosphere.calendar.season, rain = atmosphere.weather.rain;
+    const dressed = (k: number): Recipe => {
+      const r = dressForCold(recipeFromSeed(k), k, coldAt(atmosphere.hour, season, rain));
+      return r.outfit !== "sport" && ((k >>> 7) % 1000) / 1000 < umbrellaShare(rain) ? { ...r, umbrella: true } : r;
+    };
+    const state = createCrowdState(Array.from({ length: n }, (_, i) => dressed(seed * 1000 + i)));
     for (let i = 0; i < n; i++) {
       const row = i % 2, col = Math.floor(i / 2);
       state.x[i] = camX + (col - (perRow - 1) / 2) * spacing + (row ? spacing / 2 : 0);

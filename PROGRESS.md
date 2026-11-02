@@ -1465,3 +1465,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À mesurer sur ton téléphone : `?bench=1`, puis `?bench=1&weather=pluie` et `?bench=1&weather=neige` (ici, en rendu logiciel, seuls les appels de dessin se mesurent : +1 sous la pluie ou la neige).
 - Pas encore : pluie arrêtée par les abris, éclaboussures, neige sur les voitures et les passants. 1056 tests (9 de plus).
 - À regarder : `?weather=pluie`, `?weather=neige`, `?weather=brume&h=8`, `?weather=orage&h=22`.
+
+**Ville vivante, lot 1-4 : les saisons à l'écran (2 novembre 2026)** (D197)
+- Les arbres suivent les saisons : vert tendre au printemps, vert franc l'été, jaune, orangé ou rouge à l'automne (chacun à son rythme), puis nus et bruns (un sur huit reste vert) ; leur ombre suit. Les tilleuls taillés de la place aussi.
+- L'herbe jaunit à la fin de l'été et se ternit l'hiver ; des feuilles mortes jonchent le sol en automne.
+- Les passants s'habillent selon la saison (manteaux et bonnets l'hiver, t-shirts l'été) et ouvrent des parapluies sous la pluie.
+- Changement : les arbres orangés de la palette sont maintenant verts au printemps et l'été (l'orangé est réservé à l'automne) ; dis-moi si tu en veux quelques-uns orangés l'été.
+- À mesurer sur ton téléphone : `?bench=1&season=hiver&h=12` contre `?bench=1&h=12` (coût de l'ajourage des arbres nus). 1065 tests (9 de plus).
+- À regarder : `?season=automne&weekday=4`, `?season=hiver`, `?view=characters&weather=pluie`.

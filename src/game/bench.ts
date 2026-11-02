@@ -625,7 +625,7 @@ export function startBench(ctx: GameContext): void {
     if (pedSim && crowd && nav && nav.graph.edgeCount > 0) {
       const obs: Observer = {
         x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), onFoot: !phase?.drive,
-        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather) },
+        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather), season: atmosphere.calendar.season, rain: atmosphere.weather.rain },
         vehicle: phase?.drive ? { x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy } : null,
         ...(traffic ? { vehicles: traffic.bodies(), honks: traffic.takeHonks() } : {}),
       };

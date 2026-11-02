@@ -1333,7 +1333,7 @@ export function startGame(ctx: GameContext): void {
       // Les passants jouent avec le temps du jeu : la pause fige tout (cette partie de la boucle n'est pas atteinte).
       const obs: Observer = {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
-        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather) },
+        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather), season: atmosphere.calendar.season, rain: atmosphere.weather.rain },
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
         ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),

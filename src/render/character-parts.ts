@@ -270,6 +270,11 @@ const SHAPES: Record<string, Shape> = {
     box(0.28, 0.2, 0.09, -0.03, -0.02, 0.165),
     ...(c.lod === 0 ? [placed(box(0.035, 0.7, 0.012, 0, 0, 0), 0, 0.2, -0.122, 0, 0, -0.62)] : []),
   ]),
+  // Parapluie (D197) : dôme aplati au-dessus de la tête, un peu en avant, et manche qui descend vers la main droite.
+  umbrella: (c) => merge([
+    ellipsoid(0.04, HC + 0.34, -0.06, 0.52, 0.13, 0.52, c.lod === 0 ? 10 : 6, c.lod === 0 ? 4 : 3),
+    ...(c.lod === 0 ? [placed(box(0.016, 0.56, 0.016, 0, 0, 0), 0.13, HC + 0.06, -0.12, 0, 0, -0.18), box(0.02, 0.04, 0.02, 0, HC + 0.48, -0.06)] : []),
+  ]),
   handbag: (c) => merge([box(0.2, 0.15, 0.07, 0.01, -R.forearm - 0.13, 0), ...(c.lod === 0 ? [box(0.012, 0.1, 0.012, 0.01, -R.forearm - 0.045, 0)] : [])]),
   // Armes tenues dans la main droite (repère de l'avant-bras : l'origine est le coude, la main est à y = −forearm − 0,045). Le manche traverse le poing,
   // la lame ou le fût prolonge l'avant-bras. Un peu plus gros que nature : de la caméra, à 3,6 m, il faut qu'on le lise.

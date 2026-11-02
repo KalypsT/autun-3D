@@ -4,7 +4,8 @@ import { fixedWeather, weatherAt, type WeatherKind, type WeatherState } from "..
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
-import { setGroundWeather } from "./weather-fx";
+import { setGroundWeather, setSeasonLook } from "./weather-fx";
+import { hourlyT, seasonLook } from "../core/seasons";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
 
 /** Une ambiance à une hauteur de soleil donnée. */
@@ -266,6 +267,9 @@ export class Atmosphere {
     u["disc"]!.value = wx.cloud < 0.55 ? 1 : 0;
     if (u["cover"]) u["cover"].value = wx.cloud;
     if (u["clouds"]) u["clouds"].value = wx.cloud > 0.05 ? 1 : 0;
+    // Saison (D197) : arbres, herbe, feuilles mortes ; l'avancement est arrondi à l'heure de jeu.
+    const c0 = this.cal;
+    setSeasonLook(seasonLook(c0.season, this.config.frozen === null ? hourlyT(c0.dayInSeason, this.hour, this.config.length) : c0.t));
     // Le sol mouillé reflète le bas du ciel.
     setGroundWeather(wx.wet, wx.snow, horizon.multiplyScalar(0.9));
 

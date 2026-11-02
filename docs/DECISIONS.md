@@ -3884,3 +3884,32 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Vue aérienne sous la neige](captures/d196-aerien-neige.jpg)
 ![Rue aux Cordiers, avant](captures/d196-cordiers-avant.jpg)
 ![Rue aux Cordiers sous la pluie](captures/d196-cordiers-pluie.jpg)
+
+## 2026-11-02 — D197. Ville vivante, lot 1-4 : les saisons à l'écran (plan `docs/plans/ville-vivante.md`, § 4)
+
+**Ce que la saison change** (`src/core/seasons.ts`, logique pure) : six valeurs de 0 à 1 tirées de la saison et de l'avancement, **arrondi à l'heure de jeu** (le décor change au plus une fois par heure) : vert tendre (printemps), couleurs d'automne (dès le début de l'automne), arbres nus (fin de l'automne, hiver, et encore au tout début du printemps), herbe jaunie (fin de l'été), herbe terne (hiver), feuilles mortes au sol (mi-automne au début de l'hiver). Une saison figée prend le milieu de la saison.
+
+**Arbres** (nuanceur du feuillage, mêmes uniformes partagés que la météo, D196 : aucune couleur d'instance réécrite, aucune reconstruction) :
+- chaque arbre tire un nombre de sa position (la profondeur de l'instance, commune à ses deux boules) : **un sur huit est persistant** (reste vert) ; les autres changent avec un décalage propre (pas tous le même jour) et prennent l'une de trois couleurs d'automne (jaune, orangé, rouge), puis brunissent ;
+- **arbre nu** : la couronne rétrécit de 30 % et s'ajoure (trous tirés d'un bruit, `discard`), brun-gris ; l'**ombre portée suit** (matière de profondeur propre aux couronnes, `crownDepthMaterial`), sinon un arbre nu aurait porté l'ombre d'un arbre feuillu ;
+- **écart à l'existant** : la palette des arbres avait des couronnes orangées toute l'année (D17) ; elles sont maintenant **vertes au printemps et l'été**, l'orangé est réservé à l'automne. Dis-moi si tu veux garder quelques arbres orangés l'été ;
+- les **tilleuls taillés** de la place du Champ de Mars (D155) suivent aussi les saisons (ils passent dans un maillage « feuillage » à part : +1 appel de dessin dans la tuile de la place), jaunes à l'automne, bruns et ajourés l'hiver, sans rétrécir ; le **cèdre** de la Croix Verte (D142) n'est pas touché (il reste vert).
+
+**Sol** : l'herbe (repérée à sa couleur : le vert domine) jaunit à la fin de l'été et se ternit l'hiver ; **feuilles mortes** en taches orangées et brunes, sur l'herbe surtout, tirées d'un bruit sur tout le sol tourné vers le ciel. Écart au plan : il les voulait « près des arbres » ; il aurait fallu donner au sol la position des arbres (données ou texture de plus) : à faire si les taches loin des arbres gênent.
+
+**Passants** (`dress.ts`) : la fraîcheur qui choisit les tenues (D46) dépend maintenant de la saison (moyennes de 3 °C l'hiver à 18 °C l'été) et de la pluie (−3 °C) ; par grand froid, une partie des vestes et des pulls devient un manteau. **Parapluies** : une pièce du kit (`umbrella`, portée par la tête pour rester au-dessus quel que soit le geste du bras, couleur du sac), donnée à la naissance à 20 à 75 % des passants selon la pluie (pas aux sportifs) ; un passant né sous la pluie garde son parapluie jusqu'à sa disparition. Toujours **un seul appel de dessin** pour la foule. La galerie `?view=characters` accepte `&season=` et `&weather=`. Le joueur ne change pas de tenue (son apparence est celle du menu).
+
+**Mesure** (`?bench=court`, rendu logiciel : appels de dessin et triangles exacts, durées sans portée) : l'été 153 appels et 1 416 k triangles à l'arrêt sur la place, l'hiver 174 et 1 498 k. **L'écart ne vient pas des arbres** : le banc tourne à 16 h, et le premier jour de l'hiver (solstice) le soleil n'y est plus qu'à 1,4° : fenêtres, lanternes et halos s'allument (un maillage par tuile), comme n'importe quel soir. Les arbres nus n'ajoutent ni appel ni triangle ; l'ajourage (`discard`) a un coût de fragments qu'il faut **mesurer sur le téléphone** : `?bench=1&season=hiver&h=12` contre `?bench=1&h=12`. Les tilleuls taillés ajoutent un appel de dessin dans la tuile de la place.
+
+**Tests** (+6) : `seasons.test.ts` (calendrier des arbres et du sol, arrondi à l'heure), `dress.test.ts` (froid selon la saison et la pluie, manteaux l'hiver, parapluies), `weather-fx.test.ts` (nuanceurs du feuillage et de l'ombre), `character-kit.test.ts` (le parapluie prend la couleur du sac).
+
+**Limites** : les arbres nus sont des couronnes ajourées, pas des branches ; le haut de la couronne d'un arbre nu reste une forme ronde ; les feuilles mortes sont partout, pas seulement sous les arbres ; le parapluie ne suit pas la main (il est porté par la tête) et reste ouvert quand la pluie cesse ; les tenues ne changent qu'à la naissance du passant ; les arbres de la silhouette lointaine (au-delà du rayon de détail) n'existent pas, rien à y changer.
+
+![Vue de la place, printemps (jeudi, 14 h)](captures/d197-printemps.jpg)
+![Été](captures/d197-ete.jpg)
+![Automne](captures/d197-automne.jpg)
+![Fin de l'automne : arbres nus, feuilles au sol](captures/d197-fin-automne.jpg)
+![Hiver (soleil bas, ombres longues)](captures/d197-hiver.jpg)
+![Parapluies sous la pluie (galerie, automne)](captures/d197-parapluies.jpg)
+![Tenues d'hiver](captures/d197-tenues-hiver.jpg)
+![Tenues d'été](captures/d197-tenues-ete.jpg)

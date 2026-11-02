@@ -77,6 +77,8 @@ export interface Recipe {
   beard: BeardKind;
   /** Famille de tenue : sert à la cohérence du tirage et à l'affichage, pas au rendu. */
   outfit: Outfit;
+  /** Parapluie ouvert (D197) : donné aux passants qui sortent sous la pluie ; absent ailleurs (joueur, gendarmes, recettes enregistrées). */
+  umbrella?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

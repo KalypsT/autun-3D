@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
-import { setGroundWeather, weatherize, weatherUniforms } from "./weather-fx";
+import { crownDepthMaterial, setGroundWeather, setSeasonLook, weatherize, weatherUniforms } from "./weather-fx";
 
 /** Le programme tel que `onBeforeCompile` le reçoit (avec ses `#include` pas encore dépliés, D116). */
 function compile(mat: THREE.Material, lib: "toon" | "lambert" | "standard"): THREE.WebGLProgramParametersWithUniforms {
@@ -53,6 +53,33 @@ describe("météo à l'écran : matières patinées (D196)", () => {
     expect(weatherUniforms.uSnow.value).toBe(0.2);
     expect(m.version).toBe(version);
     setGroundWeather(0, 0, new THREE.Color());
+  });
+});
+
+describe("saisons à l'écran (D197)", () => {
+  it("le feuillage rétrécit (instances seulement) et s'ajoure ; son ombre aussi", () => {
+    const crown = compile(weatherize(new THREE.MeshToonMaterial(), "crown"), "toon");
+    expect(crown.uniforms["uLeaf"]).toBe(weatherUniforms.uLeaf);
+    expect(crown.vertexShader).toContain("transformed *= 1.0 - 0.3 * vWxBare;");
+    expect(crown.fragmentShader).toContain("discard");
+    const depth = crownDepthMaterial();
+    const lib = THREE.ShaderLib.depth!;
+    expect(lib.fragmentShader).toContain("#include <alphatest_fragment>");
+    const shader = { vertexShader: lib.vertexShader, fragmentShader: lib.fragmentShader, uniforms: {} } as unknown as THREE.WebGLProgramParametersWithUniforms;
+    depth.onBeforeCompile(shader, null as unknown as THREE.WebGLRenderer);
+    expect(shader.vertexShader).toContain("vWxBare");
+    expect(shader.fragmentShader).toContain("discard");
+    expect(shader.uniforms["uLeaf"]).toBe(weatherUniforms.uLeaf);
+  });
+
+  it("le sol reçoit l'herbe et les feuilles mortes ; la saison ne touche qu'aux uniformes", () => {
+    const ground = compile(weatherize(new THREE.MeshLambertMaterial(), "ground"), "lambert");
+    expect(ground.fragmentShader).toContain("wxGrass");
+    expect(ground.fragmentShader).toContain("wxLeaf");
+    setSeasonLook({ fresh: 0.1, turn: 0.2, bare: 0.3, dry: 0.4, dull: 0.5, litter: 0.6 });
+    expect(weatherUniforms.uLeaf.value.toArray()).toEqual([0.1, 0.2, 0.3, 0.4]);
+    expect(weatherUniforms.uSoil.value.toArray()).toEqual([0.6, 0.5]);
+    setSeasonLook({ fresh: 0, turn: 0, bare: 0, dry: 0, dull: 0, litter: 0 });
   });
 });
 
