@@ -11,6 +11,7 @@ import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 import { furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
 import { buildDevanture } from "./devanture";
+import type { DecalSink } from "./devanture-modern";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
 import { buildStructures, buildWater } from "./structures";
 
@@ -161,6 +162,19 @@ export class StyleResources {
   readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false });
   readonly signAtlas = new SignAtlas();
   readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  private readonly decalMats = new Map<string, THREE.Material>();
+  /** Matière d'une image collée sur un mur (D186) : fichier de `public/decals/`, transparence découpée ; posée à 9 cm du mur, derrière les plaques de la devanture (pas de décalage de profondeur). */
+  decalMat(src: string): THREE.Material {
+    let m = this.decalMats.get(src);
+    if (!m) {
+      const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}decals/${src}`);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      m = this.lit({ map: tex, transparent: true, alphaTest: 0.5 });
+      this.decalMats.set(src, m);
+    }
+    return m;
+  }
   readonly groundMat = this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   readonly fenceMat = fenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
@@ -200,6 +214,8 @@ function panel(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
 const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"], ["#f08a3a", "#ffd27a"]];
 let glowTarget: MeshBuilder | null = null;
 let signText: { mb: UvMeshBuilder; atlas: SignAtlas } | null = null;
+/** Images collées sur les murs de la tuile en cours (D186) : un maillage par fichier. */
+let decalSink: DecalSink | null = null;
 
 /** Vitre : dégradé bleuté ; une partie des fenêtres (tirées au hasard) reçoit en plus une couche chaude qui s'allume à la tombée de la nuit. */
 function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number, z1: number, off: number, litShare = 0.62): void {
@@ -396,10 +412,16 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
   const names = new UvMeshBuilder();
+  const decalMeshes = new Map<string, UvMeshBuilder>();
   // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
   const target = (): void => {
     glowTarget = glow;
     signText = { mb: names, atlas: res.signAtlas };
+    decalSink = (src) => {
+      let b = decalMeshes.get(src);
+      if (!b) decalMeshes.set(src, (b = new UvMeshBuilder()));
+      return b;
+    };
   };
 
   let count = 0;
@@ -471,7 +493,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
         const fi = fiches.get(parts[1] ?? "");
         // `|c` : devanture d'angle sur le mur voisin (D179).
         const dev = parts[2] === "c" ? [fi?.ground.corner, ...(fi?.ground.corners ?? [])].find((c) => c?.wall === Number(parts[3]))?.devanture : fi?.ground.devanture;
-        if (dev) buildDevanture(detail, glowTarget, signText, p, dev, fi?.ground.shopfront?.color ?? "#7f93c0");
+        if (dev) buildDevanture(detail, glowTarget, signText, p, dev, fi?.ground.shopfront?.color ?? "#7f93c0", decalSink ?? undefined);
         break;
       }
       default: break;
@@ -500,7 +522,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
     const m = new THREE.Mesh(geometry, mat);
     m.name = name;
-    m.castShadow = name !== "grilles" && name !== "vitres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
+    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -517,6 +539,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   res.signAtlas.flush();
   yield;
   add("enseignes", names, res.signMat);
+  for (const [src, mb] of decalMeshes) add(`decal|${src}`, mb, res.decalMat(src));
   add("mobilier", breakables.solid, res.wallMat);
   add("lanternes", breakables.glow, res.glowMat);
   add("halos", breakables.halo, res.haloMat);

@@ -3639,3 +3639,31 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d185-daddy-apres.jpg)
 ![La fresque d'Autun, avant](captures/d185-fresque-avant.jpg)
 ![Après](captures/d185-fresque-apres.jpg)
+
+## 2026-11-02 — D186. Images collées sur les murs : la vraie fresque d'Autun, les colombages du Lutrin, lettres de l'hôtel agrandies
+
+**Demande de l'utilisateur** (retours sur D185) : le Lutrin est à revoir, quitte à refaire le bâtiment sur toute la hauteur ; l'enseigne de l'hôtel Saint-Louis est trop peu visible (l'agrandir, changer un peu la couleur) ; on ne voit pas la fresque : « coller une image de la vraie fresque sur le mur ».
+
+**Concept : le décalque** (`Decal`, `ModernFront.decals`) : une image PNG de `public/decals/`, étirée sur un mur de l'abscisse `s[0]` à `s[1]` et de l'altitude `z[0]` à `z[1]`, posée à 9 cm du mur (derrière les plaques de la devanture, devant le mur). Les pixels transparents laissent voir le mur (silhouette d'un pignon, ciel). `bare: true` : plus de fenêtres de la fiche sur ce tronçon (`bareSpans`, `facades.ts`), l'image les porte. Une devanture qui porte un décalque perd son soubassement et sa corniche (la corniche coupait la fresque d'une ligne). Rendu (`stylized.ts`) : un maillage `decal|<fichier>` par image et par tuile, une matière par fichier (`decalMat`, chargée une fois par `TextureLoader`, sans ombre portée) ; `buildDevanture` reçoit un `DecalSink` facultatif. Les images se fabriquent avec `tools/data/build_decals.py`.
+
+**La fresque** (`fresque.png`, 640 × 801) : recadrée dans la photo de l'utilisateur (mur est de Chez Daddy, juillet 2026), du sol au faîte ; ce qui est hors du mur (ciel, bords) est transparent. Le mur fait 11,49 × 15,2 m, l'image 628 × 786 px avant réduction : mêmes proportions (écart de 5 %), sans redressement de perspective (la photo coupe le bas des deux côtés du mur). Elle remplace les plaques, le texte et la porte de D185 ; le mur 3 n'a plus de fenêtres de la fiche.
+
+**Le Lutrin** (`lutrin-long.png` 640 × 627, `lutrin-pignon.png` 722 × 729) : deux façades à colombages **tracées** (plâtre crème de teinte variable, poutres et lisses rouge sombre, croix de Saint-André, fenêtres sombres à petit bois, combles à petites fenêtres) ; la photo, oblique, n'est pas redressable. Le long pan sur la place (mur 5) porte 10 m de colombages sur trois niveaux, de 3,6 à 13,4 m ; le pignon sur la rue (mur 4) les 11,3 m du mur, de 3,6 à 15 m. La fiche passe à 4 niveaux de 3,6 m. Le rez-de-chaussée de pierre et le panneau « TERRASSE OMBRAGÉE » sont inchangés (le panneau reste devant l'image).
+
+**L'hôtel** : bandeau crème de 0,9 m au-dessus du rez-de-chaussée, lettres brun foncé de 0,85 m (elles étaient de 0,5 m, dorées, entre deux rangées de fenêtres) ; le bandeau se lit à l'ombre, ce que ne faisaient ni le doré ni le noir.
+
+**Tests** (+4, 1003 au total, `src/render/decalques.test.ts`, et `boutiques-terreau.test.ts` adapté) : chaque image référencée existe, est un PNG, et son rectangle est valide ; `bareSpans` rend les bons tronçons (Lutrin murs 5 et 4, fresque mur 3, rien sur le mur 2 de Chez Daddy) ; un quadrilatère (2 triangles) par image, coordonnées de texture dans [0, 1] ; sans récepteur d'images la devanture se dessine, et le soubassement et la corniche disparaissent avec une image.
+
+**Limites** :
+- les décalques sont des images plates : la fresque ne reçoit pas de relief (balcon, encadrements), et sa perspective de photo (verticales qui convergent légèrement) reste ; la nuit, ils ne s'éclairent pas ;
+- les colombages du Lutrin sont **tracés**, pas photographiés : poutres régulières, pas d'encorbellement ni de pignon à pans ; le toit est celui des données ;
+- l'image du pignon est tendue sur tout le mur 4, y compris au-dessus de la porte de garage (rez-de-chaussée de pierre en dessous) ;
+- chaque image ajoute un appel de dessin et une texture par tuile qui la porte (≈ 0,2 à 0,8 Mo de PNG chacune) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Le Lutrin, avant](captures/d186-lutrin-avant.jpg)
+![Après](captures/d186-lutrin-apres.jpg)
+![La fresque, avant](captures/d186-fresque-avant.jpg)
+![Après](captures/d186-fresque-apres.jpg)
+![L'hôtel, avant](captures/d186-hotel-avant.jpg)
+![Après](captures/d186-hotel-apres.jpg)

@@ -97,8 +97,7 @@ describe("boutiques d'après photos, lot D185", () => {
     near(ends("26_35", "348854035", 2).b, ends("26_35", "348854035", 3).a);
     const c = f.ground.corner!.devanture;
     expect(width(c)).toBeCloseTo(11.3, 1);
-    expect(c.modern!.texts!.some((q) => q[3] === "LA FRESQUE D'AUTUN")).toBe(true);
-    expect(c.bays.some((q) => q[0] === "door")).toBe(true);
+    expect(c.modern!.decals![0]!.src).toBe("fresque.png"); // la vraie fresque (D186)
   });
 
   it("géométrie : sommets finis, coût borné, le store ajoute des triangles", () => {

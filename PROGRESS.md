@@ -1404,3 +1404,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Doublon d'OpenStreetMap retiré (Trattoria au 2 rue des Bancs, qui perd aussi sa vitrine générique). Nouveaux outils du script : `noShop` (façade sans commerce) et `dwelling`.
 - Pas encore : colombages et encorbellement du Lutrin, personnages et fausses fenêtres de la fresque (les fenêtres de la fiche en tiennent lieu), colombages peints de l'hôtel, citrons de la Trattoria. 999 tests (6 de plus que D184).
 - À regarder : `?view=custom&cam=117.1,-63.8,2.8,112.5,-77,5.5&h=14` (l'hôtel), `cam=34.2,-461.9,2.2,27.8,-464.6,2.2` (Trattoria), `cam=52,-538,3,64,-546,3` (Lutrin), `cam=156.8,-60.6,4.5,150.9,-50.2,2.8` (Chez Daddy), `cam=168.6,-36.3,4,153.7,-42.2,8` (la fresque).
+
+**Images collées sur les murs : la vraie fresque, le Lutrin à colombages, l'hôtel (2 novembre 2026)** (D186)
+- Nouvelle fonction : une image peut être collée sur un mur (avec une silhouette transparente), et le mur perd alors les fenêtres de la fiche. La fresque d'Autun est maintenant ta photo recadrée, du sol au faîte du mur est de Chez Daddy.
+- Le Lutrin a deux façades à colombages sur toute sa hauteur (quatre niveaux) : poutres rouges, croix de Saint-André, fenêtres à petit bois, le long pan sur la place et le pignon sur la rue.
+- Les lettres de l'hôtel Saint-Louis font 0,85 m, brun foncé sur un bandeau crème.
+- Pas encore : l'encorbellement et le toit à pans du Lutrin, le relief de la fresque, l'éclairage de nuit des images. 1003 tests (4 de plus).
+- À regarder : `?view=custom&cam=168.6,-36.3,4,153.7,-42.2,8&h=14` (la fresque), `cam=52,-538,3,64,-546,3` (le Lutrin), `cam=117.1,-63.8,2.8,112.5,-77,5.5` (l'hôtel).

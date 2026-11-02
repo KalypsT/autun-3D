@@ -8,6 +8,12 @@ import {
 } from "./facade-specs";
 
 /** Un élément posé sur un mur : sprite de façade ou enseigne. */
+/** Tronçons du mur `wall` (abscisses de début et de fin) que couvre une image collée « nue » de sa devanture (D186). */
+export function bareSpans(f: FacadeFiche, wall: number): [number, number][] {
+  const dev = f.ground.front === wall ? f.ground.devanture : [f.ground.corner, ...(f.ground.corners ?? [])].find((c) => c?.wall === wall)?.devanture;
+  return (dev?.modern?.decals ?? []).filter((d) => d.bare).map((d) => d.s);
+}
+
 export interface Placement {
   key: string;
   atlas: "facade" | "sign";
@@ -191,6 +197,9 @@ export function* planFacadesSteps(
       const usable = run.length - 2 * margin;
       if (usable < 0.9) continue;
       const nBays = Math.max(1, Math.round(usable / bayW));
+      // Tronçons de ce mur couverts par une image collée (D186) : pas de fenêtres de la fiche dessous.
+      const bare = bareSpans(f, runIdx);
+      const isBare = (s: number): boolean => bare.some(([a, c]) => s > a - 0.3 && s < c + 0.3);
       const bay = usable / nBays;
       const center = (i: number): number => margin + (i + 0.5) * bay;
 
@@ -328,6 +337,7 @@ export function* planFacadesSteps(
         const req = windowRequest(cs);
         let any = false;
         for (let i = 0; i < nBays; i++) {
+          if (isBare(center(i))) continue;
           if (level === 0 && blocked.has(i)) continue;
           if (level === 0 && !isStreet && hash01(b.id, 100 + i) < 0.35) continue;
           const s = sampleAt(pl, center(i));
