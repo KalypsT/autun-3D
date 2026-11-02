@@ -3512,3 +3512,158 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Après](captures/d181-optic-rue-apres.jpg)
 ![Optic 2000, côté place, avant](captures/d181-optic-place-avant.jpg)
 ![Après](captures/d181-optic-place-apres.jpg)
+
+## 2026-11-01 — D183. Huit boutiques d'après photos : rue Jeannin, avenue Charles de Gaulle, rue Guérin
+
+**Demande de l'utilisateur** : six captures Street View (adresses de prise de vue : 1 rue Guérin, 13 et 15 rue Jeannin, 13 et 3 avenue de Gaulle). Réponses aux doutes : Le Cyrano au **11 avenue de Gaulle** seulement (le doublon du 13 est retiré), la **porte cochère grise** appartient au restaurant, terrasses dessinées pour **les deux** (restaurant et boulangerie), et on dessine aussi Jardin d'Intérieur, l'agence Premier Immobilier et la façade de BNP Paribas (pas « le journal »).
+
+**Où** (adresses de prise de vue ≠ commerces ; plan à plat des anneaux et des indices de mur, sens anti-horaire : `s` croît de gauche à droite vu de la rue) :
+- Le Châteaubriant : `…348854275` (14 rue Jeannin), mur 10 de 9,1 m ; la boulangerie `…348854277` (13 rue Jeannin) est à sa droite, mur 0 de 8,1 m (la fin de l'un est le début de l'autre) ;
+- Le Cyrano : `…348854312` (11 av. de Gaulle), mur 3 de 5,4 m ; Premier Immobilier : `…348854313` (13), mur 1 de 6,8 m, à sa droite ;
+- Surplus Eduen : `…348852378` (3 av. de Gaulle), mur 7 de 4,9 m, qui finit au sommet où commence le mur 7 de BNP Paribas `…348852379` (5), de 18,1 m ;
+- Jardin d'Intérieur : `…348854265` (2 rue Jeannin), mur 0 de 6 m ; « Aux trésors des dines » : `…348854266` (1 rue Jeannin), mur 4 de 6,4 m, dans son prolongement ; les deux donnent sur la rue Guérin.
+
+**Dessin** (`manual.json`, `fronts[…].shop`, gabarit moderne) :
+- restaurant : ocre doré, quatre panneaux vert sapin (à la place des baies en arc, non dessinables) dont la porte vitrée à la troisième, plaque brune « RESTAURANT », store vert « Restaurant Le Chateaubriant », porte cochère grise à droite (2,15 m), terrasse sur gazon synthétique à barrière verte, sans parasol (la photo n'en a pas) ;
+- boulangerie : bandeau mauve-gris « Artisan Boulanger / Maison Benzaabar » **au-dessus** d'un grand store blanc, vitrine à cadres noirs, porte d'immeuble brune, terrasse à barrière verte (`unchecked` : le test « sol libre » refuse ce trottoir) ;
+- Cyrano : bois brun, grand store bordeaux « TABAC LE CYRANO COTE CADEAUX », rideau sombre, carotte rouge ; Premier Immobilier : pilastre, vitrine, porte verte à plaque, plaque verte ;
+- Surplus Eduen : porte cochère en passage couvert (2,47 m), bandeau blanc « SURPLUS EDUEN », deux banderoles vertes « MILITAIRE & LOISIRS », moellons (`materials.wall.kind = rubble`) ; BNP : pilastre gris, grand panneau bleu marine, porte bleu nuit, bandeau gris et carré vert du logo (les 7 premiers mètres) ;
+- Jardin d'Intérieur : bandeau vert à panneaux, grande vitrine, porte verte, rideau blanc, petit store ; « Aux trésors des dines » : bandeau blanc à lettres rouges, guirlande verte, piliers rouges, bannières « WELCOME » et fleurie.
+
+**Textes d'enseigne** : les noms sont posés par `texts` et non par `words` (limite connue : un texte à moins de 10 cm du mur passe derrière une plaque ; constaté ici sur quatre enseignes avant correction).
+
+**Tests** (+9, 985 au total, `src/render/boutiques-jeannin.test.ts`) : statut, nom, type, devanture dans son mur de rue ; devantures voisines consécutives (fin du mur = début du suivant) ; doublons retirés (Cyrano, Jardin d'Intérieur) ; restaurant (9,1 m, porte cochère en dernière travée, terrasse sans parasol) ; boulangerie (store sous le bandeau) ; Surplus (passage de 2,47 m, moellons) ; Cyrano, Premier Immobilier, BNP ; rue Guérin ; géométrie finie et bornée.
+
+**Limites** :
+- couleurs des volets de l'étage prises dans la palette du jeu ; arcs du restaurant et du Surplus non dessinables (baies droites, passage rectangulaire) ; l'arrière-boutique vitrée du Surplus est noire ;
+- Châteaubriant : le portail blanc de fer forgé de gauche (8 av. de Gaulle) et la terrasse qui tourne au coin ne sont pas dessinés ; les largeurs sont lues sur des photos très obliques (± 30 à 50 cm) ; la photo de 2018 montre la porte cochère verte, celle de 2026 grise (grise ici) ;
+- BNP : seuls les 7 premiers mètres du mur de 18,1 m sont dessinés (pas de photo du reste) ; Premier Immobilier : les 1,5 m de droite sont du pilastre ; « le journal » (9 av. de Gaulle) garde sa devanture générique ;
+- Jardin d'Intérieur : enseigne en lettres droites (cursives sur la photo) ; Aux trésors des dines : l'échelle de la photo varie d'une boutique à l'autre, mannequins non dessinés (vitrines vides) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Le Châteaubriant et la boulangerie, avant](captures/d183-chateaubriant-avant.jpg)
+![Après](captures/d183-chateaubriant-apres.jpg)
+![La boulangerie Benzaabar, avant](captures/d183-benzaabar-avant.jpg)
+![Après](captures/d183-benzaabar-apres.jpg)
+![Le Cyrano et Premier Immobilier, avant](captures/d183-cyrano-avant.jpg)
+![Après](captures/d183-cyrano-apres.jpg)
+![Surplus Eduen et BNP, avant](captures/d183-surplus-avant.jpg)
+![Après](captures/d183-surplus-apres.jpg)
+![Jardin d'Intérieur et Aux trésors des dines, avant](captures/d183-guerin-avant.jpg)
+![Après](captures/d183-guerin-apres.jpg)
+
+## 2026-11-01 — D184. Sept boutiques d'après photos : avenue de Gaulle, avenue de la République, rues des Ormes et de l'Arquebuse
+
+**Demande de l'utilisateur** : neuf captures Street View (prises aux 10, 16, 32 et 53 av. de Gaulle, 1 rue Pernette, 20 av. de la République, 53 rue de la Grille, 33 rue des Ormes, 9 rue de l'Arquebuse). Réponses aux doutes : Kebab Autun **au milieu** du mur de 30,7 m ; boucherie HN **vers le nord-est** de la bande de 42 m ; hôtel : **les deux murs** (façade et retour rue de la Grille), le commerce garde le nom « Le Côté à Côté » ; Au Royaume des Fleurs lu comme proposé (nom et porte sur l'avenue, grande vitrine sur le carrefour).
+
+**Où** (adresses de prise de vue ≠ commerces ; plan à plat des anneaux, indices de mur ; sources : [Kebab Autun, 17b av. de Gaulle](https://www.bourgogne-tourisme.com/restaurants/kebab-autun), [Hôtel du Commerce, 20 av. de la République](https://www.hotelducommerce-autun.fr/en_GB/)) :
+- Kebab Autun : `…348854304` (17bis av. de Gaulle, 25_35), mur 2 de 30,7 m, classé « cour » par les données, passé en rue ; devanture de 10,7 m de s 10 à 20,7 ; absent d'OpenStreetMap ;
+- Au Royaume des Fleurs : `…348854245` (21ter, 25_35), boutique d'angle : mur 11 (20,3 m, avenue, nom, porte) et mur 10 (11,8 m, carrefour, grande vitrine), en `shop.corner` (D179) ;
+- Emmaüs en ville : `…348856222` (32, 25_36), mur 4 de 12,3 m : la façade lue (≈ 12 m) y correspond ;
+- Tabac Presse de la Gare : `…348856228` (53, 24_37), mur 8 de 16,9 m : City Kebab (gardé, `keepOsm`) à gauche, le tabac aux 5,5 derniers mètres (s 11,35 à 16,9), Allo Pizza à droite ; le doublon d'OpenStreetMap sur le 22 av. de la République (`…348856295`) est retiré (`shopWalls` à `null`) ;
+- hôtel : `…348856297` (20 av. de la République, 24_37), **pas** rue de la Grille : façade principale sur le mur 6 (13 m) et retour sur le mur 7 (30,4 m, rue de la Grille) en `shop.corner` ;
+- boucherie & épicerie HN : `…348858747` (33 rue des Ormes, 30_40), bande d'un niveau de 42,2 m, devanture de s 24 à 40,65 ; La Poste (OpenStreetMap, à 6 m de l'autre bout) est gardée ;
+- Morvan Pêche : `…348854022` (9ter rue de l'Arquebuse, 26_35), mur 1 de 13,5 m : la façade lue (≈ 13,5 m) y correspond.
+
+**Outil** : `shop.s` (facultatif, `build_shop_fronts.py`) : abscisse du commerce quand sa devanture n'est pas au milieu du mur (le nom et la navigation suivent la devanture). Les plaques, textes et losanges (`modern`) sont à l'abscisse **du mur**, pas de la devanture : un test le vérifie (trois devantures décalées de ce lot avaient d'abord leurs plaques au début du mur).
+
+**Dessin** (gabarit moderne) :
+- Kebab Autun : trois corbeaux de pierre, frise bleue, bandeau « Kebab Autun » et « Spécialité Grecque » en lettres dorées, grande vitrine, porte, seconde vitrine, soubassement noir à liseré bleu ;
+- Fleurs : bandeau sombre « au royaume des Fleurs » à orchidée rose, grands stores gris-beige sur les deux murs, bacs de fleurs sur le trottoir ;
+- Emmaüs : bandeau bordeaux « emmaüs en ville » (plaque plane), trois baies à cadres bruns, porte vitrée, porte de bois ; balcon filant à l'étage ;
+- tabac : devanture noire, bandeau vert à deux plaques dorées « TABAC » et « PRESSE », logo FDJ, losange jaune en drapeau ;
+- hôtel : boiseries brunes, deux baies, porte à double vantail, auvent blanc « HOTEL RESTAURANT / DU COMMERCE », terrasse à claustras noirs sans parasol ; retour rue de la Grille en soubassement orange (`tint`), bandeau rose pâle, fenêtres, porte vitrée, porte de garage blanche ;
+- boucherie : deux bandeaux rouges de part et d'autre d'un panneau blanc « H boucherie & épicerie N », vitrines à cadres noirs ; Morvan Pêche : passage de garage sous un panneau noir « MORVAN PÊCHE », bandeaux noirs « NAUTISME » et « PÊCHE », porte à interphone.
+
+**Tests** (+8, 993 au total, `src/render/boutiques-gaulle.test.ts`) : statut, nom, type, devanture dans son mur de rue (il a trouvé une devanture d'Emmaüs trop large de 10 cm) ; plaques et textes dans la devanture ; Kebab (mur de 30,7 m, s 10) ; boutiques d'angle (sommet commun, stores, terrasses, `tint`, auvent) ; tabac (bout du mur, City Kebab gardé, doublon retiré) ; boucherie (La Poste gardée) ; Emmaüs et Morvan Pêche ; géométrie finie et bornée.
+
+**Limites** :
+- **hauteurs de BD TOPO** : Emmaüs (7,8 m) et Morvan Pêche (7,7 m) sont plus bas que sur les photos (deux ou trois niveaux) : le moteur ne pose pas de fenêtres au-dessus de l'égout, donc Emmaüs et Morvan Pêche n'ont qu'un mur plein au-dessus de la devanture (pas de balcon, pas de fenêtres) ; l'hôtel ne montre que deux rangées sur trois (égout à 9,7 m) ; il faudrait pouvoir corriger la hauteur d'un bâtiment ;
+- couleurs des volets de la palette ; arcs (Kebab, auto-école, baies du restaurant de l'hôtel, passage de Surplus), auvent courbe et enseigne en drapeau « HOTEL » non dessinés ; les carreaux sont sombres même là où la photo montre des vitrines claires ;
+- Kebab Autun : sa position sur le mur de 30,7 m est un choix (la photo est prise de l'autre côté de l'avenue) ; onglerie et auto-école voisines non dessinées ; Fleurs : orchidée en simple disque ; tabac : affiches de vitrine non dessinées ;
+- hôtel : le mur 7 n'est dessiné que sur ses 17 premiers mètres (largeurs à ± 50 cm, vues obliques) ; boucherie : toit de bac acier, étal de bois et pharmacie voisins non dessinés, devanture lue à ≈ 70 px/m (± 40 cm) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Kebab Autun, avant](captures/d184-kebab-avant.jpg)
+![Après](captures/d184-kebab-apres.jpg)
+![Au Royaume des Fleurs, avant](captures/d184-fleurs-avant.jpg)
+![Après](captures/d184-fleurs-apres.jpg)
+![Emmaüs en ville, avant](captures/d184-emmaus-avant.jpg)
+![Après](captures/d184-emmaus-apres.jpg)
+![Le tabac, avant](captures/d184-tabac-avant.jpg)
+![Après](captures/d184-tabac-apres.jpg)
+![L'hôtel du Commerce, façade, avant](captures/d184-hotel-avant.jpg)
+![Après](captures/d184-hotel-apres.jpg)
+![L'hôtel du Commerce, l'angle, avant](captures/d184-hotel-angle-avant.jpg)
+![Après](captures/d184-hotel-angle-apres.jpg)
+![Boucherie HN, avant](captures/d184-boucherie-avant.jpg)
+![Après](captures/d184-boucherie-apres.jpg)
+![Morvan Pêche, avant](captures/d184-morvan-avant.jpg)
+![Après](captures/d184-morvan-apres.jpg)
+
+## 2026-11-01 — D185. Hôtel Saint-Louis, La Trattoria, Le Lutrin, Chez Daddy et la fresque d'Autun
+
+**Demande de l'utilisateur** : sept captures (hôtel Saint-Louis et de la Poste, La Trattoria en deux vues, la maison à colombages du Lutrin, Chez Daddy en deux vues, la fresque du mur est). Réponses aux doutes : l'hôtel en **façade seule, sans commerce** ; La Trattoria au **4 rue des Bancs**, bout nord du mur 5 ; Le Lutrin : **rez-de-chaussée en pierre + enseigne, étages crème** ; la fresque en **fausses fenêtres en plaques + lettres** (retirées ensuite, voir limites).
+
+**Où** (plan à plat ; sources : [Hôtel Saint-Louis, 6 rue de l'Arbalète](https://fr.wikipedia.org/wiki/H%C3%B4tel_Saint-Louis_et_de_la_Poste)) :
+- hôtel : `…348853299` (26_34), 6 rue de l'Arbalète, classé « monument » ; la façade est le **mur 5** (27,3 m), le seul qui donne sur la rue (la « place » triangulaire du plan est une cour intérieure) ; huit travées de 3,415 m ;
+- La Trattoria : `…348852942` (4 rue des Bancs, 26_33), mur 5, s 4,9 à 9,0 ; OpenStreetMap la met aussi sur le 2 (`…348852941`, nœud 3371630550) : retirée, et ce bâtiment passe en `dwelling` (plus de vitrine générique) ; Don Cabillaud est gardé ;
+- Le Lutrin : `…348853042` (1 place du Terreau), angle nord-ouest : mur 5 (29,8 m, face à la place, restaurant, s 0,4 à 8) et mur 4 (11,3 m, face à la rue, porte de garage), en `shop.corner` ;
+- Chez Daddy : `…348854035` (3 rue de l'Arquebuse, 26_35), mur 2 (26,6 m) : entrée de l'immeuble (s 15,9 à 18,3), café aux cinq baies (s 18,3 à 26,2, OpenStreetMap le place à 14,6 m) ; mur 3 (11,5 m, face à l'est, parking de l'Arquebuse) en `shop.corner` pour la fresque.
+
+**Outils** (`build_shop_fronts.py`) : `shop.noShop` (façade d'après photo sans commerce : la devanture reste, les commerces disparaissent, sauf `keepOsm`) ; `fronts[…].dwelling` (le bâtiment perd ses commerces et sa vitrine générique : cas où le commerce d'OpenStreetMap était dans le voisin) ; `terrace` est ignorée quand il n'y a pas de commerce.
+
+**Dessin** (gabarit moderne) :
+- hôtel : rez-de-chaussée taupe, persiennes closes (plaques claires), porte d'entrée à deux lanternes, portes de garage grises, lettres dorées « HOTEL St LOUIS / ET DE LA POSTE » entre le premier et le deuxième étage ; enduit beige pâle à persiennes ;
+- Trattoria : devanture de bois vert foncé, porte, ardoises noires « PIZZAS », bandeau « La Trattoria », guirlande de verdure, terrasse à canisses (`screen`), balcon filant ;
+- Lutrin : pilier d'angle de pierre, vitrines et porte, panneau blanc « TERRASSE OMBRAGÉE / SALLE CLIMATISÉE / le Lutrin », porte de garage grise sur la rue ; étages crème à fenêtres rouge sombre (colombages non dessinables) ;
+- Chez Daddy : rez-de-chaussée pêche, entrée à porte vitrée et encadrement blanc (`tint`), cinq baies sous un store jaune, « Chez Daddy » et « PLUS QU'UN CAFÉ ! » ; mur est : vitrines peintes ocre, porte verte, pilastres gris, balcon noir, « LA FRESQUE D'AUTUN ».
+
+**Tests** (+6, 999 au total, `src/render/boutiques-terreau.test.ts`) : devantures dans leur mur de rue, plaques et textes dans la devanture ; hôtel (8 travées, sans commerce) ; Trattoria (voisin gardé, doublon retiré, `dwelling`) ; Lutrin (sommet commun entre murs 4 et 5) ; Chez Daddy (café à droite, fresque sur le mur voisin) ; géométrie finie et bornée.
+
+**Limites** :
+- **fresque** : le moteur n'a pas de peinture murale. Des plaques bleu-gris posées pour les huit fausses fenêtres se superposaient aux fenêtres de la fiche : retirées ; les fenêtres de la fiche tiennent lieu de fausses fenêtres, sans personnages ; seuls le balcon, le texte, les vitrines peintes et la porte sont dessinés ;
+- **hôtel** : colombages peints, lanternes en relief et enseigne en lettres creuses non dessinés ; le bâtiment fait 9 m de haut dans BD TOPO (trois niveaux au lieu de quatre) ; fermé depuis 2013 : sans commerce ni navigation ;
+- **Lutrin** : colombages, encorbellement et pignon non dessinables ; nom lu sur la photo approximatif (« le Lutrin » dans les données) ; une seule photo, très oblique (± 50 cm) ;
+- **Trattoria** : seul le côté de la rue des Bancs est dessiné, pas les citrons de la guirlande ni le panneau en potence ; la canisse est un mur plein de 1,6 m ;
+- **Chez Daddy** : cinq baies à stores uniques (la photo a six petits stores) ; l'entrée de l'immeuble est une porte droite (arc non dessinable) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Hôtel Saint-Louis, avant](captures/d185-hotel-avant.jpg)
+![Après](captures/d185-hotel-apres.jpg)
+![La Trattoria, avant](captures/d185-trattoria-avant.jpg)
+![Après](captures/d185-trattoria-apres.jpg)
+![Le Lutrin, avant](captures/d185-lutrin-avant.jpg)
+![Après](captures/d185-lutrin-apres.jpg)
+![Chez Daddy, avant](captures/d185-daddy-avant.jpg)
+![Après](captures/d185-daddy-apres.jpg)
+![La fresque d'Autun, avant](captures/d185-fresque-avant.jpg)
+![Après](captures/d185-fresque-apres.jpg)
+
+## 2026-11-02 — D186. Images collées sur les murs : la vraie fresque d'Autun, les colombages du Lutrin, lettres de l'hôtel agrandies
+
+**Demande de l'utilisateur** (retours sur D185) : le Lutrin est à revoir, quitte à refaire le bâtiment sur toute la hauteur ; l'enseigne de l'hôtel Saint-Louis est trop peu visible (l'agrandir, changer un peu la couleur) ; on ne voit pas la fresque : « coller une image de la vraie fresque sur le mur ».
+
+**Concept : le décalque** (`Decal`, `ModernFront.decals`) : une image PNG de `public/decals/`, étirée sur un mur de l'abscisse `s[0]` à `s[1]` et de l'altitude `z[0]` à `z[1]`, posée à 9 cm du mur (derrière les plaques de la devanture, devant le mur). Les pixels transparents laissent voir le mur (silhouette d'un pignon, ciel). `bare: true` : plus de fenêtres de la fiche sur ce tronçon (`bareSpans`, `facades.ts`), l'image les porte. Une devanture qui porte un décalque perd son soubassement et sa corniche (la corniche coupait la fresque d'une ligne). Rendu (`stylized.ts`) : un maillage `decal|<fichier>` par image et par tuile, une matière par fichier (`decalMat`, chargée une fois par `TextureLoader`, sans ombre portée) ; `buildDevanture` reçoit un `DecalSink` facultatif. Les images se fabriquent avec `tools/data/build_decals.py`.
+
+**La fresque** (`fresque.png`, 640 × 801) : recadrée dans la photo de l'utilisateur (mur est de Chez Daddy, juillet 2026), du sol au faîte ; ce qui est hors du mur (ciel, bords) est transparent. Le mur fait 11,49 × 15,2 m, l'image 628 × 786 px avant réduction : mêmes proportions (écart de 5 %), sans redressement de perspective (la photo coupe le bas des deux côtés du mur). Elle remplace les plaques, le texte et la porte de D185 ; le mur 3 n'a plus de fenêtres de la fiche.
+
+**Le Lutrin** (`lutrin-long.png` 640 × 627, `lutrin-pignon.png` 722 × 729) : deux façades à colombages **tracées** (plâtre crème de teinte variable, poutres et lisses rouge sombre, croix de Saint-André, fenêtres sombres à petit bois, combles à petites fenêtres) ; la photo, oblique, n'est pas redressable. Le long pan sur la place (mur 5) porte 10 m de colombages sur trois niveaux, de 3,6 à 13,4 m ; le pignon sur la rue (mur 4) les 11,3 m du mur, de 3,6 à 15 m. La fiche passe à 4 niveaux de 3,6 m. Le rez-de-chaussée de pierre et le panneau « TERRASSE OMBRAGÉE » sont inchangés (le panneau reste devant l'image).
+
+**L'hôtel** : bandeau crème de 0,9 m au-dessus du rez-de-chaussée, lettres brun foncé de 0,85 m (elles étaient de 0,5 m, dorées, entre deux rangées de fenêtres) ; le bandeau se lit à l'ombre, ce que ne faisaient ni le doré ni le noir.
+
+**Tests** (+4, 1003 au total, `src/render/decalques.test.ts`, et `boutiques-terreau.test.ts` adapté) : chaque image référencée existe, est un PNG, et son rectangle est valide ; `bareSpans` rend les bons tronçons (Lutrin murs 5 et 4, fresque mur 3, rien sur le mur 2 de Chez Daddy) ; un quadrilatère (2 triangles) par image, coordonnées de texture dans [0, 1] ; sans récepteur d'images la devanture se dessine, et le soubassement et la corniche disparaissent avec une image.
+
+**Limites** :
+- les décalques sont des images plates : la fresque ne reçoit pas de relief (balcon, encadrements), et sa perspective de photo (verticales qui convergent légèrement) reste ; la nuit, ils ne s'éclairent pas ;
+- les colombages du Lutrin sont **tracés**, pas photographiés : poutres régulières, pas d'encorbellement ni de pignon à pans ; le toit est celui des données ;
+- l'image du pignon est tendue sur tout le mur 4, y compris au-dessus de la porte de garage (rez-de-chaussée de pierre en dessous) ;
+- chaque image ajoute un appel de dessin et une texture par tuile qui la porte (≈ 0,2 à 0,8 Mo de PNG chacune) ;
+- `build_shop_fronts.py` réécrit aussi la tuile 24_35 : remise à l'état d'origine.
+
+![Le Lutrin, avant](captures/d186-lutrin-avant.jpg)
+![Après](captures/d186-lutrin-apres.jpg)
+![La fresque, avant](captures/d186-fresque-avant.jpg)
+![Après](captures/d186-fresque-apres.jpg)
+![L'hôtel, avant](captures/d186-hotel-avant.jpg)
+![Après](captures/d186-hotel-apres.jpg)

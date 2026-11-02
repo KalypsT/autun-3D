@@ -1386,3 +1386,28 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Optic 2000 a sa façade courbe : une devanture par petit mur du coin arrondi, avec un bandeau noir continu.
 - Pas encore : arcs du Crédit Agricole, perron de la cordonnerie, vitrines vides (pas de mannequins ni de lunettes) ; couleurs des volets de la palette. 976 tests (5 de plus).
 - À regarder : `?view=custom&cam=70,-54,2.4,55,-63,2&h=14` (Optic 2000), `cam=59.1,7.3,2.2,68.6,6.3,2` (Le Faro), `cam=122.8,240.5,2.2,118.9,250,2` (la pâtisserie).
+
+**Huit boutiques d'après photos : rue Jeannin, avenue de Gaulle, rue Guérin (1er novembre 2026)** (D183)
+- Refaits d'après tes six captures : Le Châteaubriant (store vert, terrasse sur gazon) et la boulangerie Maison Benzaabar de la rue Jeannin (bandeau mauve, grand store blanc, terrasse à barrière verte) ; Le Cyrano (store bordeaux) et l'agence Premier Immobilier ; Surplus Eduen (porte cochère, banderoles) et la façade de BNP Paribas ; Jardin d'Intérieur et « Aux trésors des dines » sur la rue Guérin.
+- Les doublons d'OpenStreetMap (Cyrano au 13, Jardin d'Intérieur au 1 rue Jeannin) sont retirés ; la porte cochère grise est au restaurant, comme tu l'as choisi.
+- Pas encore : arcs du restaurant et du Surplus, portail blanc voisin du restaurant, mannequins des vitrines ; BNP dessinée sur ses 7 premiers mètres seulement (18 m en tout) ; volets de la palette. 985 tests (9 de plus).
+- À regarder : `?view=custom&cam=-30,93,2.2,-38,100,2.4&h=14` (restaurant et boulangerie), `cam=-41,59.5,2.2,-50.5,59.3,2.4` (Cyrano), `cam=-25.5,36.4,2.2,-33,33.5,2.8` (Surplus et BNP), `cam=91.2,177,2.2,86,185,2.4` (rue Guérin).
+
+**Sept boutiques d'après photos : avenue de Gaulle, hôtel du Commerce, rues des Ormes et de l'Arquebuse (1er novembre 2026)** (D184)
+- Refaits d'après tes neuf captures : Kebab Autun (17b av. de Gaulle, bandeau bleu et lettres dorées), Au Royaume des Fleurs (boutique d'angle : nom et porte sur l'avenue, grande vitrine à store sur le carrefour), Emmaüs en ville, le Tabac Presse de la Gare (à droite de City Kebab, qui est gardé), l'hôtel du Commerce avec son restaurant Le Côté à Côté (façade, terrasse, auvent, et retour orange rue de la Grille), la boucherie & épicerie HN (rue des Ormes) et Morvan Pêche (rue de l'Arquebuse).
+- Doublons d'OpenStreetMap retirés (tabac sur le 22 av. de la République) ; La Poste gardée dans la bande de la rue des Ormes. Le restaurant de l'hôtel est bien au 20 avenue de la République, pas rue de la Grille.
+- Pas encore : les étages d'Emmaüs et de Morvan Pêche (la hauteur de BD TOPO, 7,7 m, est plus basse que la photo : mur plein au-dessus de la devanture), l'hôtel avec deux rangées de fenêtres sur trois, les arcs, l'auvent courbe, l'onglerie et l'auto-école voisines du Kebab. 993 tests (17 de plus que D182).
+- À regarder : `?view=custom&cam=-124,176,2.2,-136.5,185,2.4&h=14` (Fleurs), `cam=-432,466,2.2,-420,458.5,2.6` (l'hôtel), `cam=-366.5,476.8,2.2,-367.9,468.9,2.4` (le tabac), `cam=1102.5,1399.6,2.2,1096.6,1410,2.2` (la boucherie), `cam=205.5,-26,2.2,200.7,-18.4,2.4` (Morvan Pêche).
+
+**Hôtel Saint-Louis, La Trattoria, Le Lutrin, Chez Daddy et la fresque (1er novembre 2026)** (D185)
+- Refaits d'après tes sept captures : la façade de l'hôtel Saint-Louis et de la Poste (rue de l'Arbalète, sans commerce, lettres dorées, porte à lanternes), La Trattoria (4 rue des Bancs, devanture verte, canisses, balcon), Le Lutrin (rez-de-chaussée de pierre sur l'angle de la place du Terreau, étages crème), Chez Daddy (entrée de l'immeuble, café sous son store jaune) et le mur est à la fresque d'Autun (vitrines peintes, porte verte, balcon, texte).
+- Doublon d'OpenStreetMap retiré (Trattoria au 2 rue des Bancs, qui perd aussi sa vitrine générique). Nouveaux outils du script : `noShop` (façade sans commerce) et `dwelling`.
+- Pas encore : colombages et encorbellement du Lutrin, personnages et fausses fenêtres de la fresque (les fenêtres de la fiche en tiennent lieu), colombages peints de l'hôtel, citrons de la Trattoria. 999 tests (6 de plus que D184).
+- À regarder : `?view=custom&cam=117.1,-63.8,2.8,112.5,-77,5.5&h=14` (l'hôtel), `cam=34.2,-461.9,2.2,27.8,-464.6,2.2` (Trattoria), `cam=52,-538,3,64,-546,3` (Lutrin), `cam=156.8,-60.6,4.5,150.9,-50.2,2.8` (Chez Daddy), `cam=168.6,-36.3,4,153.7,-42.2,8` (la fresque).
+
+**Images collées sur les murs : la vraie fresque, le Lutrin à colombages, l'hôtel (2 novembre 2026)** (D186)
+- Nouvelle fonction : une image peut être collée sur un mur (avec une silhouette transparente), et le mur perd alors les fenêtres de la fiche. La fresque d'Autun est maintenant ta photo recadrée, du sol au faîte du mur est de Chez Daddy.
+- Le Lutrin a deux façades à colombages sur toute sa hauteur (quatre niveaux) : poutres rouges, croix de Saint-André, fenêtres à petit bois, le long pan sur la place et le pignon sur la rue.
+- Les lettres de l'hôtel Saint-Louis font 0,85 m, brun foncé sur un bandeau crème.
+- Pas encore : l'encorbellement et le toit à pans du Lutrin, le relief de la fresque, l'éclairage de nuit des images. 1003 tests (4 de plus).
+- À regarder : `?view=custom&cam=168.6,-36.3,4,153.7,-42.2,8&h=14` (la fresque), `cam=52,-538,3,64,-546,3` (le Lutrin), `cam=117.1,-63.8,2.8,112.5,-77,5.5` (l'hôtel).

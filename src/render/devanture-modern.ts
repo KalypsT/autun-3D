@@ -19,7 +19,10 @@ const ALU_GREY = C("#8b9298"), ALU_DARK = C("#5d646a"), DOOR_GREY = C("#8e9296")
 /** Pas d'un caractère du texte d'enseigne, en fraction de la hauteur de ligne (cases de 256 × 40 px : lettres de 0,82 de la hauteur). */
 const ADVANCE = 0.51;
 
-export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
+/** Un maillage à coordonnées de texture par image collée (D186). */
+export type DecalSink = (src: string) => UvMeshBuilder;
+
+export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string, decals?: DecalSink): void {
   const m = d.modern!;
   /** Cadres et porte pleine : gris par défaut, ou la couleur lue sur photo (D178). */
   const ALU = m.frame ? C(m.frame) : ALU_GREY, DOOR = m.doorColor ? C(m.doorColor) : DOOR_GREY;
@@ -57,8 +60,11 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
 
   // Mur du rez-de-chaussée, soubassement, petite corniche sous l'étage.
   panel(mb, S0, S1, -0.3, d.h, 0.05, WALL);
-  slab(S0, S1, -0.3, 0.15, 0.05, 0.09, PLINTH);
-  slab(S0 - 0.03, S1 + 0.03, d.h - 0.14, d.h, 0.05, 0.2, shade(WALL, 1.12));
+  if (!m.decals?.length) {
+    // Soubassement et corniche : pas sous une image collée sur le mur (D186).
+    slab(S0, S1, -0.3, 0.15, 0.05, 0.09, PLINTH);
+    slab(S0 - 0.03, S1 + 0.03, d.h - 0.14, d.h, 0.05, 0.2, shade(WALL, 1.12));
+  }
   for (const [t0, t1, col] of m.tint ?? []) panel(mb, t0, t1, -0.3, d.h - 0.14, 0.06, C(col));
 
   const lit = (s0: number, s1: number, z0: number, z1: number, off: number): void => {
@@ -108,6 +114,12 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
 
   // Pied des vitrines : bande rouge visible derrière la vitre (la moquette de la photo).
   if (m.base) panel(mb, m.base[0], m.base[1], d.sill + 0.06, d.sill + 0.06 + m.base[2], 0.1, C(m.base[3]));
+
+  // Images collées sur le mur (D186) : un quadrilatère par image, derrière les plaques (0,1 m) et devant le mur.
+  for (const dc of m.decals ?? []) {
+    const target = decals?.(dc.src);
+    if (target) target.quad(at(dc.s[0], dc.z[0], 0.09), at(dc.s[1], dc.z[0], 0.09), at(dc.s[1], dc.z[1], 0.09), at(dc.s[0], dc.z[1], 0.09), front, [0, 0], [1, 0], [1, 1], [0, 1], C("#ffffff"));
+  }
 
   // Plaques (horaires, interphone), logos, textes posés.
   for (const [sc, z0, z1, hw, col] of m.plates ?? []) slab(sc - hw, sc + hw, z0, z1, 0.05, 0.1, C(col));

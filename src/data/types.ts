@@ -1041,7 +1041,20 @@ export interface Devanture {
  * Façade moderne (Grande Pharmacie Bonaparte, D159). Les travées de `bays` se lisent ainsi : « pilaster » mur plein, « window » baie vitrée,
  * « shopdoor » porte vitrée, « door » porte pleine grise. Abscisses `s` en mètres depuis le début du mur, altitudes `z` au-dessus du sol.
  */
+/**
+ * Image collée sur le mur (D186) : `src` est un fichier de `public/decals/` (PNG à transparence : tout ce qui est transparent laisse voir le mur), étirée de
+ * l'abscisse `s[0]` à `s[1]` du mur et de l'altitude `z[0]` à `z[1]`. `bare` : le mur n'a plus de fenêtres de la fiche sur ce tronçon (l'image les porte).
+ */
+export interface Decal {
+  src: string;
+  s: [number, number];
+  z: [number, number];
+  bare?: boolean;
+}
+
 export interface ModernFront {
+  /** Images collées sur le mur (fresque, façade à colombages), D186. */
+  decals?: Decal[];
   /** Lettres posées sur le mur, mots de couleurs différentes à la suite : centre `at`, altitude `z` du milieu, hauteur de ligne `h`. */
   words: { parts: [string, string][]; at: number; z: number; h: number };
   /** Petite ligne sous l'enseigne (sous-enseigne du réseau). */

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Devanture } from "../data/types";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
-import { buildModernFront } from "./devanture-modern";
+import { buildModernFront, type DecalSink } from "./devanture-modern";
 import type { SignAtlas } from "./sign-atlas";
 
 /**
@@ -35,8 +35,8 @@ const CLOTHES: [string, number, number, number][][] = [
 ];
 const BACKDROP = ["", "#7ea04a"];
 
-export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
-  buildFront(mb, glow, text, f, d, color);
+export function buildDevanture(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string, decals?: DecalSink): void {
+  buildFront(mb, glow, text, f, d, color, decals);
   if (d.awning) buildAwning(mb, text, f, d.awning);
 }
 
@@ -89,10 +89,10 @@ function buildAwning(mb: MeshBuilder, text: { mb: UvMeshBuilder; atlas: SignAtla
   }
 }
 
-function buildFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string): void {
+function buildFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMeshBuilder; atlas: SignAtlas } | null, f: DevantureFrame, d: Devanture, color: string, decals?: DecalSink): void {
   // Façade moderne d'après photo (D159) : un autre dessin (mur plein, baies d'aluminium), voir devanture-modern.ts.
   if (d.modern) {
-    buildModernFront(mb, glow, text, f, d, color);
+    buildModernFront(mb, glow, text, f, d, color, decals);
     return;
   }
   const at = (s: number, z: number, off: number): Vec3 => toThree(f.x + f.tx * s + f.nx * off, f.y + f.ty * s + f.ny * off, f.z + z);
