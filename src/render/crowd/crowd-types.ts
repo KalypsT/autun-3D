@@ -29,11 +29,22 @@ export interface CrowdState {
   speed: Float32Array;
 }
 
+/**
+ * Regard dans une lunette (D207) : direction (unitaire, repère de la scène : x, z), cosinus du demi-angle du champ (un peu élargi) et grossissement.
+ * Les personnages dans ce champ gardent le détail complet jusqu'à `NEAR_DISTANCE × zoom`.
+ */
+export interface CrowdScope {
+  dirX: number;
+  dirZ: number;
+  cos: number;
+  zoom: number;
+}
+
 /** Une façon de dessiner une foule. Les trois approches comparées à l'étape P ont cette même interface. */
 export interface CrowdRenderer {
   readonly name: string;
   /** Anime et affiche l'état courant, vu depuis la caméra en (camX, camZ). */
-  update(state: CrowdState, camX: number, camZ: number): void;
+  update(state: CrowdState, camX: number, camZ: number, scope?: CrowdScope | null): void;
   /** Habille l'emplacement i d'une nouvelle recette (les passants naissent et disparaissent). */
   assign?(i: number, recipe: Recipe): void;
   /** Ombres portées des personnages proches. */

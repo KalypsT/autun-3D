@@ -19,16 +19,18 @@ export function createCrowd(scene: THREE.Scene, state: CrowdState): CrowdRendere
   return {
     name: "B · instances et nuanceur",
     assign: (i, recipe) => rigs.assign(i, recipe),
-    update(st, camX, camZ) {
+    update(st, camX, camZ, scope = null) {
       batches[0].clear();
       batches[1].clear();
       near = far = 0;
-      const nd2 = NEAR_DISTANCE * NEAR_DISTANCE;
+      const nd2 = NEAR_DISTANCE * NEAR_DISTANCE, sd2 = scope ? nd2 * scope.zoom * scope.zoom : 0;
       const alive = st.alive;
       for (let i = 0; i < st.count; i++) {
         if (alive && !alive[i]) continue;
         const dx = st.x[i]! - camX, dz = st.z[i]! - camZ;
-        const lod = dx * dx + dz * dz < nd2 ? 0 : 1;
+        const d2 = dx * dx + dz * dz;
+        // Dans la lunette (D207), le détail complet porte aussi loin que le grossissement : seulement dans son champ étroit.
+        const lod = d2 < nd2 || (scope && d2 < sd2 && dx * scope.dirX + dz * scope.dirZ > scope.cos * Math.sqrt(d2)) ? 0 : 1;
         if (lod === 0) near++;
         else far++;
         rigs.solve(st, i);

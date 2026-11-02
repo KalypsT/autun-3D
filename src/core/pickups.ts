@@ -31,10 +31,12 @@ export const CACHES: readonly CacheSite[] = [
   { weapon: "shotgun", x: 787.4, y: 294.0, label: "Théâtre romain" },
   { weapon: "shotgun", x: 542.8, y: 847.3, label: "Porte Saint-André" },
   { weapon: "rifle", x: 1197.5, y: -750.1, label: "Pyramide de Couhard" },
+  // Fusil de précision (D207) : à 10 m du fusil d'assaut, au pied de la Pierre de Couhard (la même pyramide), 70 m au-dessus de la ville.
+  { weapon: "sniper", x: 1193.3, y: -741.0, label: "Pierre de Couhard" },
 ];
 
 /** Balles d'une cache (armes à feu) : un chargeur plein et autant en réserve ; le fusil d'assaut deux chargeurs en réserve. */
-export const CACHE_ROUNDS: Partial<Record<WeaponId, number>> = { pistol: 24, shotgun: 18, rifle: 90 };
+export const CACHE_ROUNDS: Partial<Record<WeaponId, number>> = { pistol: 24, shotgun: 18, rifle: 90, sniper: 15 };
 /**
  * Croix vertes de soin (D159), une devant chaque pharmacie : points de la navigation piétonne sur le trottoir ou la place, en face de la devanture,
  * dégagés sur 50 cm (test). Ramasser une croix rend toute la santé ; elle revient après `HEAL_RESPAWN` s.

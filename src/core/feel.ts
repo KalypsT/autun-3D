@@ -90,9 +90,9 @@ export class Haptics {
     if (speed >= 1.2) this.pulse(Math.round(20 + Math.min(speed / 12, 1) * 120));
   }
 
-  /** Coup de feu du joueur : bref pour le fusil d'assaut (dix par seconde), plus long pour le fusil à pompe. */
-  shot(gun: "pistol" | "shotgun" | "rifle"): void {
-    this.pulse(gun === "shotgun" ? 45 : gun === "pistol" ? 18 : 9);
+  /** Coup de feu du joueur : bref pour le fusil d'assaut (dix par seconde), plus long pour le fusil à pompe et le fusil de précision. */
+  shot(gun: "pistol" | "shotgun" | "rifle" | "sniper"): void {
+    this.pulse(gun === "shotgun" ? 45 : gun === "sniper" ? 55 : gun === "pistol" ? 18 : 9);
   }
 
   /** Coup qui porte (corps à corps), passant heurté au volant. */

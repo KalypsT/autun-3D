@@ -162,6 +162,26 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   a[BONE.head * 3 + 2] = -0.2 * roll;
 }
 
+/** Torsion maximale du bassin (rad) vers la direction de la marche en pas de côté (T4, D208). */
+export const STRAFE_TWIST = 1.0;
+
+/** Marche-t-on à reculons (direction de la marche à plus de ≈ 100° du regard) ? Le cycle de marche se joue alors à l'envers. */
+export const walksBackward = (rel: number): boolean => Math.cos(rel) < -0.2;
+
+/**
+ * Pas de côté et à reculons (T4, D208), par-dessus `walkPose` : `rel` est la direction de la marche par rapport au regard (rad, positif vers la
+ * droite), `w` (0 à 1) la part de l'effet (0 à l'arrêt). Le bassin et les jambes se tournent vers la marche (ou, à reculons, vers l'opposé de la
+ * marche), d'au plus `STRAFE_TWIST` ; le buste tourne d'autant dans l'autre sens : le haut du corps et l'arme restent face au regard.
+ */
+export function strafePose(pose: Pose, rel: number, w: number): void {
+  const a = pose.angles;
+  const dir = walksBackward(rel) ? rel - Math.PI * Math.sign(rel || 1) : rel;
+  const twist = clamp(dir, -STRAFE_TWIST, STRAFE_TWIST) * clamp(w, 0, 1);
+  // Lacet positif : le personnage tourne vers sa gauche (son avant est −z, sa droite +x).
+  a[BONE.pelvis * 3 + 1] = a[BONE.pelvis * 3 + 1]! - twist;
+  a[BONE.torso * 3 + 1] = a[BONE.torso * 3 + 1]! + twist;
+}
+
 /**
  * En l'air (saut, chute), par-dessus une pose debout : jambes repliées et bras écartés vers le haut ; en tombant vite, les jambes se déplient
  * pour la réception. `vz` : vitesse verticale (m/s). Le bassin garde sa hauteur debout : les pieds remontent sous le corps.

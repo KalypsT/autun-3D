@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { airPose, climbPose, createPose, cycleLength, HIT_POSE, hitPose, walkPose, type Pose } from "../core/character-rig";
+import { airPose, climbPose, createPose, cycleLength, HIT_POSE, hitPose, strafePose, walkPose, walksBackward, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
@@ -17,7 +17,8 @@ import type { VehicleModel } from "./vehicle-model";
 export interface PlayerModel {
   group: THREE.Group;
   /** À pied : place et anime le personnage (position en repère données, cap, phase de pas du joueur, vitesse). */
-  update(x: number, y: number, z: number, heading: number, stride: number, speed: number): void;
+  /** `move` : direction de la marche par rapport au regard (rad, positif vers la droite ; T4, D208) : pas de côté et à reculons. */
+  update(x: number, y: number, z: number, heading: number, stride: number, speed: number, move?: number): void;
   /** Sur un véhicule : pose selon `vehicle.pose` (pédalage au rythme de `crank`, assis, debout), mains et pieds sur les appuis du véhicule. */
   ride(vehicle: VehicleModel, crank: number): void;
   /** Change d'apparence. */
@@ -53,6 +54,8 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   const root = { x: 0, y: 0, z: 0, yaw: 0 };
   let phase = 0;
   let lastStride: number | null = null;
+  /** Direction de la marche par rapport au regard, lissée (pas de côté, D208). */
+  let moveRel = 0;
   let held: string | null = null;
   let heldStyle: AttackStyle | null = null;
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
@@ -85,7 +88,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     get phase() {
       return phase;
     },
-    update(x, y, z, heading, stride, speed) {
+    update(x, y, z, heading, stride, speed, move = 0) {
       group.position.set(x, z, -y);
       group.rotation.set(0, -heading, 0);
       const d = rigs.dims[0]!;
@@ -93,7 +96,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       if (lastStride !== null && v > 0.02) {
         const metres = (stride - lastStride) / STRIDE_PER_METRE;
         // Une téléportation ou un arrêt brutal ne doit pas faire sauter la phase.
-        if (metres > 0 && metres < 2) phase = (phase + (metres * Math.PI * 2) / cycleLength(v, d.height)) % (Math.PI * 2);
+        // À reculons, le cycle se joue à l'envers (les pieds reculent).
+        const step = (metres * Math.PI * 2) / cycleLength(v, d.height);
+        if (metres > 0 && metres < 2) phase = (((phase + (walksBackward(moveRel) ? -step : step)) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
       }
       lastStride = stride;
       mounted = false;
@@ -112,6 +117,10 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
         return;
       }
       walkPose(pose, phase, air ? 0 : v, d);
+      // Pas de côté (D208) : la direction de la marche est lissée (elle saute quand on change de sens au joystick) en passant par le plus court.
+      moveRel += Math.atan2(Math.sin(move - moveRel), Math.cos(move - moveRel)) * 0.25;
+      moveRel = Math.atan2(Math.sin(moveRel), Math.cos(moveRel));
+      if (!air && v > 0.05) strafePose(pose, moveRel, v / 1.2);
       if (air) airPose(pose, air.vz);
       // Arme blanche en main : garde du bras droit ; un coup en cours se joue par-dessus.
       if (heldStyle && held) guardPose(pose, heldStyle);

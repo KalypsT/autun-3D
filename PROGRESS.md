@@ -1504,3 +1504,25 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Bus urbain (du lundi au samedi, il s'arrête aux arrêts de bus qu'il croise), camion poubelle le mardi et le vendredi tôt (il s'arrête tous les 30 m), camionnettes de livraison le matin en centre-ville (arrêtées sur la chaussée).
 - Pas encore : boucle du bus et passagers, scooters et cyclistes dans la circulation, tracteur, TER (voir D204).
 - **Lot 2 terminé** (sans les élèves : proportions des enfants à décider).
+
+**Tir, lot T1 : le mode visée (2 novembre 2026)** (D205)
+- Bouton **Viser** (à gauche du bouton de tir, ou V, ou clic droit) avec une arme à feu en main : caméra à l'épaule, viseur au centre de l'écran (rouge sur une personne), on marche de côté et à reculons au joystick en gardant la cible en face. Glisser le doigt posé sur le bouton de tir ajuste la visée sans le lever. Réglage « Sensibilité en visée » dans le menu.
+- Les balles ont une hauteur : elles passent au-dessus d'une tête ou d'une voiture, s'arrêtent dans une pente ; **une balle dans la tête fait trois fois plus mal**. Le tir à la hanche (bouton de tir seul) reste assisté comme avant.
+- À juger en jouant : sensibilité, distance de la caméra, s'il faut une aide à la visée (lot T2). Ensuite : T2 aide à la visée, T3 fusil de précision et lunette.
+
+**Tir, lot T2 : l'aide à la visée (2 novembre 2026)** (D206)
+- En mode visée, le viseur **colle** un peu aux passants (le doigt tourne moins vite dessus) et les **suit** quand tu tournes ou marches. Il ne vise jamais tout seul, ni la tête. Réglage « Aide à la visée » : Aucune, Légère (par défaut), Forte.
+- Le tir à la hanche est plus étroit (±20° au lieu de ±40°) et moins précis : viser vaut maintenant le coup.
+- Ensuite : T3 fusil de précision et lunette.
+
+**Tir, lot T3 : le fusil de précision (2 novembre 2026)** (D207)
+- **Fusil de précision** au pied de la Pierre de Couhard (à 10 m du fusil d'assaut, la même pyramide), touche 7 : un tir tue, portée 150 m, 5 balles, lent à réarmer, très imprécis à la hanche.
+- **Lunette** : le bouton Viser l'ouvre (vue à l'œil, ×5, cache noir et réticule). Le souffle fait bouger le réticule (plus fort juste après un tir), le tir fait monter le regard. On ne marche pas : le joystick gauche balaie lentement la lunette. Pas d'aide à la visée dedans.
+- Pas encore (T4) : témoins autour de la victime d'un tir lointain, pas de côté animés, indicateur de la direction d'un tir.
+
+**Tir, lot T4 : témoins, pas de côté, tirs reçus (2 novembre 2026)** (D208)
+- Une victime touchée à plus de 25 m a ses propres témoins : les passants autour d'elle s'enfuient et appellent ; la police fouille **autour de la victime**, pas du tireur.
+- En visée (ou en tirant), le personnage marche de côté (bassin tourné vers la marche, buste face au viseur) et à reculons (pas à l'envers) au lieu de glisser.
+- Quand un gendarme te tire dessus, un arc rouge au bord de l'écran montre d'où vient le tir (vif s'il t'a touché), puis s'efface.
+- **Chantier Tir terminé** (T1 à T4).
+

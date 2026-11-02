@@ -227,8 +227,10 @@ export class GameAudio {
     const spot = own ? { ...NEAR, gain: 0.85, echo: 0.45 } : this.spot(x, y, 8, 500, 0.5);
     if (!spot) return;
     const t = kit.ctx.currentTime;
-    S.gunshot(kit, this.sys.buses!.sfx, t, gun, spot);
+    S.gunshot(kit, this.sys.buses!.sfx, t, gun, gun === "sniper" ? { ...spot, echo: Math.max(spot.echo, 0.8) } : spot);
     if (own && gun === "shotgun") S.pump(kit, this.sys.buses!.sfx, t + 0.35, { ...NEAR, gain: 0.5 });
+    // Culasse du fusil de précision : on réarme après chaque tir.
+    if (own && gun === "sniper") S.reload(kit, this.sys.buses!.sfx, t + 0.55, true, { ...NEAR, gain: 0.5 });
   }
 
   /** Explosion d'un véhicule (D111), entendue de loin. */

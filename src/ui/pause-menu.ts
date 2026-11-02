@@ -7,7 +7,7 @@ import {
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
 import { SEASON_LENGTHS, SEASON_NAMES } from "../core/calendar";
-import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
+import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -180,6 +180,23 @@ export class PauseMenu {
     const sens = h("div", "pm-slider");
     sens.append(range, out);
     row("Sensibilité de la caméra", "Vitesse de rotation au doigt.", "sensitivity", sens);
+    const aimRange = h("input");
+    aimRange.type = "range";
+    aimRange.min = String(AIM_SENSITIVITY_RANGE.min);
+    aimRange.max = String(AIM_SENSITIVITY_RANGE.max);
+    aimRange.step = String(AIM_SENSITIVITY_RANGE.step);
+    aimRange.value = String(values.aimSensitivity);
+    const aimOut = h("span", "pm-value", `×${values.aimSensitivity.toFixed(1).replace(".", ",")}`);
+    aimRange.addEventListener("input", () => {
+      const v = Number(aimRange.value);
+      aimOut.textContent = `×${v.toFixed(1).replace(".", ",")}`;
+      this.hooks.setSettings({ aimSensitivity: v });
+    });
+    const aimSens = h("div", "pm-slider");
+    aimSens.append(aimRange, aimOut);
+    row("Aide à la visée", "En mode visée : le viseur colle aux passants et les suit quand on tourne ou qu'on marche. Jamais sur la tête.", "aimAssist",
+      choices("aimAssist", [{ value: 0, label: "Aucune" }, { value: 1, label: "Légère" }, { value: 2, label: "Forte" }], values.aimAssist));
+    row("Sensibilité en visée", "Rotation au doigt quand on vise, en plus de la précédente : plus bas, plus précis.", "aimSensitivity", aimSens);
     const vol = h("input");
     vol.type = "range";
     vol.min = "0";

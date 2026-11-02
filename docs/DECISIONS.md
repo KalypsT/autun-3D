@@ -4078,3 +4078,77 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Mesure** : rien au banc (il ne fait pas rouler les véhicules de service) ; trois véhicules de plus au plus, du même coût qu'une voiture de la circulation.
 
 ![Galerie (`?view=vehicles&ids=bus-urbain,benne-ordures,grumier-morvan`) : grumier, bus urbain, camion poubelle](captures/d204-bus-benne.jpg)
+
+## 2026-11-02 — D205. Tir, lot T1 : mode visée, caméra à l'épaule, balles en hauteur, tirs dans la tête
+
+**Demande** : remplacer la seule visée assistée par un vrai système de tir (viser où l'on veut), et à terme un fusil de précision avec lunette. Choix de l'utilisateur : se déplacer au joystick pendant qu'on vise (le doigt droit vise), **garder le tir à la hanche**, bouton Viser **à bascule**, **tirs dans la tête**. Découpage proposé : T1 (ce lot) base de la visée ; T2 aide à la visée réglable (ralentissement et aimant sur une cible), hanche resserrée ; T3 fusil de précision et lunette ; T4 pas de côté animés, témoins autour de la victime, indicateur de la direction d'un tir.
+
+**Ce qui est fait** :
+- **Deux façons de tirer**. À la hanche (bouton de tir seul) : inchangé, visée assistée dans le cône de ±40° (`GUN_ASSIST_ANGLE`). En visée : **bouton Viser** (`#aim`, à gauche du bouton de tir, arme à feu en main, à pied ; ou V, ou clic droit) qui entre en visée et en sort ; on en sort tout seul en montant dans un véhicule, en changeant pour une arme de mêlée, à terre ou mort.
+- **Caméra à l'épaule** : en visée, la caméra tourne autour d'un point 0,55 m à droite de la tête (raccourci s'il y a un mur de ce côté), à 1,55 m au lieu de 3,6 m, champ de vision serré de 18 %, et elle regarde **dans l'axe du regard** au lieu de regarder le joueur : le **viseur** (`#crosshair`, crème cerné de sombre, rouge brique sur une personne) est au centre de l'écran. Fondu de 0,1 à 0,2 s. On regarde plus haut en visée (jusqu'à 49° au-dessus de l'horizon) ; en changeant de mode, un regard hors des nouvelles bornes y revient doucement.
+- **Corps** : en visée, il reste tourné vers le point visé (`MoveInput.face`) ; le joystick fait marcher de côté et à reculons, à 75 % de l'allure, sans courir. Pas d'animation de pas de côté (les jambes marchent vers l'avant) : T4.
+- **Pouce droit** : en visée, **glisser le doigt posé sur le bouton de tir tourne aussi le regard** (on tire et on ajuste sans lever le pouce) ; la moitié droite de l'écran tourne toujours le regard. Nouveau réglage **« Sensibilité en visée »** (×0,3 à ×1,5, défaut ×0,6), multiplié par la sensibilité de la caméra.
+- **Balles en hauteur** (`src/core/gun.ts`, `trace`) : le rayon a une altitude. En visée, un rayon part de la caméra par le viseur (à partir de son point le plus proche du tireur : rien derrière lui n'est visé), le premier obstacle est le point visé, puis la balle part de l'arme (1,35 m, à l'épaule) vers ce point. Le relief est suivi tous les 1,5 m (une butte ou une pente arrête la balle) ; une balle plus haute que 1,55 m au-dessus du sol passe par-dessus une voiture ; un passant a une hauteur (`PedSim.span` : sa taille debout, 0,75 assis, 0,8 en trébuchant, 0,45 m à terre) : une balle peut **passer au-dessus d'une tête** ou d'une personne à terre et toucher quelqu'un derrière. En visée, la dispersion est **divisée par deux**.
+- **Tirs dans la tête** : les 28 cm du haut d'un corps debout ; **dégâts ×3** (un passant meurt d'une balle de pistolet, deux du fusil d'assaut). `GunResult.heads` les compte.
+- **À la hanche avec la hauteur** : la balle part vers la poitrine de la cible assistée (une cible en contrebas ou sur une butte est touchée) ; sans cible, le tir reste à plat et sans hauteur comme avant (sinon, un tir droit devant en montée finirait dans la pente à 13 m).
+- Traits et étincelles partent et arrivent à la bonne hauteur (`Shot.z0`, `z1`).
+
+**Ce qui ne change pas** : le banc et le tireur automatique (`combat-bot.ts`) tirent à plat (sans `view`), comme avant ; les gendarmes tirent comme avant (leurs tirs sont des chances de toucher, pas des rayons).
+
+**Limites** : les murets (`low`) ne retiennent toujours pas les balles (ni à plat ni en hauteur) ; les bâtiments sont des murs sans fin (on ne tire pas par-dessus un toit) ; la hauteur d'un gendarme est celle du passant de son emplacement ; aucune aide à la visée en mode visée (T2) : à juger sur le téléphone.
+
+**Tests** (+7) : en visée, la balle va au viseur et non à la personne la plus proche, le tireur se tourne vers le point visé ; tête (dégâts ×3, un tir de pistolet tue), au-dessus de la tête rien n'est touché ; au-dessus d'une personne à terre, la personne debout derrière est touchée ; un talus arrête la balle ; une balle au-dessus du toit d'une voiture continue, plus bas la voiture la prend ; à la hanche, la balle descend vers une cible en contrebas ; le corps tourné vers le cap voulu en marchant de côté et à reculons. Capture : `tools/ui.sh <dossier> aim`.
+
+![Mode visée (`tools/ui.sh <dossier> aim`) : caméra à l'épaule, viseur rouge sur le passant, trait du tir du pistolet à hauteur de poitrine](captures/d205-visee-tir.jpg)
+
+## 2026-11-02 — D206. Tir, lot T2 : aide à la visée réglable, tir à la hanche resserré
+
+**Ce qui est fait** :
+- **Aide à la visée du mode visée** (`src/core/aim-assist.ts`, `AimAssist`), réglage **« Aide à la visée »** : Aucune, **Légère** (par défaut), Forte. Deux effets, seulement quand la caméra est à l'épaule :
+  - **le viseur colle** : près de la poitrine d'un passant visible, le geste du doigt est freiné (jusqu'à 35 % en Légère, 55 % en Forte, au centre ; rien au bord de la zone) : on ne dépasse plus la cible d'un coup de pouce ;
+  - **il est attiré** vers la poitrine (3 et 7 par seconde au centre de la zone), **seulement si l'on tourne ou qu'on marche** : sans geste, rien ne bouge tout seul ; l'attraction ne dépasse jamais la cible.
+  - **Zone** : un cercle de 0,9 m (Légère) ou 1,4 m (Forte) autour de la poitrine, ramené en angle à la distance de la cible (bornes 1,7° à 9° et 2,9° à 14°) : large de près, étroite de loin. La plus proche du viseur est choisie, parmi les passants debout à portée de l'arme, sans mur entre eux et le tireur.
+  - **Jamais la tête** : l'aide vise la poitrine ; un regard posé sur la tête est ramené vers le bas dès qu'on tourne. Le tir dans la tête reste au joueur.
+- **Tir à la hanche resserré** : cône de visée assistée ramené de ±40° à **±20°** (`GUN_ASSIST_ANGLE` 0,35) et dispersion **+40 %** (`HIP_SPREAD`). Viser devient plus précis que tirer à la hanche ; la hanche reste utile de près et pour se défendre.
+
+**Choix** : l'aide part de la caméra de l'image précédente (une image de retard, invisible) ; elle ne touche pas au tir lui-même (la balle va toujours au viseur). Le tireur automatique du banc se tourne vers sa cible : le cône plus étroit ne le gêne pas, seule la dispersion élargie peut lui faire rater quelques balles de plus (à relire au prochain banc).
+
+**Tests** (+5, et deux adaptés) : sans cible ou réglée sur Aucune, rien ne change ; freinage plus fort en Forte qu'en Légère ; attraction en marchant sans dépasser, rien sans geste ; vers la poitrine et non la tête ; hors de la zone ou derrière un mur, rien, et la cible la plus proche du viseur est choisie ; cône de la hanche à ±20° ; dispersion élargie à la hanche.
+
+## 2026-11-02 — D207. Tir, lot T3 : fusil de précision et lunette
+
+**Ce qui est fait** :
+- **Fusil de précision** (`WEAPONS.sniper`, septième arme, touche 7) : 120 points par balle (**un tir dans le corps tue** un passant ou un gendarme), portée **150 m** (au-delà, le brouillard de 110 à 150 m cache tout), **0,8 tir par seconde** (culasse : on entend le réarmement), chargeur de 5 balles, rechargement 2,6 s, réserve de 30. Dispersion presque nulle dans la lunette (≈ 22 cm à 150 m), énorme à la hanche (`hipSpread` 0,1 rad, ±10 m à 100 m) : il est fait pour viser.
+- **Cache à la Pierre de Couhard** (choix de l'utilisateur) : c'est la même pyramide que la cache du fusil d'assaut (« Pyramide de Couhard », D84). Le fusil de précision est donc posé **à 10 m de lui**, au pied de la pyramide (point d'une file piétonne, dégagé, 70 m au-dessus de la ville), 15 balles.
+- **Lunette** (`src/core/scope.ts`) : avec le fusil de précision, le bouton Viser ouvre la lunette au lieu de la caméra à l'épaule. **Vue à l'œil** (personnage caché), **grossissement ×5** (champ divisé par 5), **cache noir** autour d'un cercle avec un réticule fin gradué et un point rouge (`#scope`, en CSS et SVG, aucun coût de rendu). Rotation au doigt divisée par le grossissement (le réticule bouge à l'écran comme sans lunette), en plus de la sensibilité en visée.
+- **Souffle** : le regard dessine lentement un petit huit (± 2 mrad, ≈ 30 cm à 150 m), trois fois plus ample juste après un tir, de retour en 1,2 s. **Recul** : le regard monte de 2° au tir. On tire là où le réticule est **à l'instant du tir** (le rayon du viseur part de la caméra, souffle compris).
+- **On ne marche pas dans la lunette** : le joystick gauche **balaie lentement** (0,12 rad/s à fond, ×5) ; c'est le seul endroit où un joystick sert à viser (D205 : plus précis au doigt ailleurs). **Pas d'aide à la visée** dans la lunette.
+- **Détail des passants au loin** : dans la lunette, les passants **dans son champ** gardent le détail complet jusqu'à 28 × 5 = 140 m (`CrowdScope`, `crowd.ts`) ; ailleurs rien ne change. Le champ est étroit (≈ 14° de large), donc peu de passants en plus ; le coût n'est pas mesuré : à vérifier sur le téléphone (`?debug`, nombre de personnages proches).
+- **Véhicules touchés au loin** : la balle cherche les véhicules jusqu'à sa portée (170 m au plus) au lieu de 80 m.
+- Pièce du kit `weaponSniper` (crosse en bois, canon long, lunette) : 62 pièces sur 66 ; son (`gunshot` « sniper » : claquement sec, souffle long, écho fort) ; vibration de 55 ms ; trait violet ; icône.
+
+**Limites** :
+- Les passants n'existent qu'autour du joueur : au-delà de ≈ 140 m il n'y a souvent personne à viser, même dans la lunette.
+- **Un meurtre de loin n'a pas de témoin** : les témoins sont cherchés à 25 m du tireur, pas de la victime. Tirer au fusil de précision reste un coup de feu entendu à 40 m du tireur (alarme et police comme avant). Prévu en T4.
+- Un seul grossissement ; pas de souffle retenu ; le recul n'a pas d'animation à la 3ᵉ personne différente du fusil d'assaut (même pose).
+
+- Dans la lunette, pas d'éclair de bouche et le trait du tir commence à 6 m (l'arme est sous l'œil : sinon un faisceau barre la lunette).
+
+**Tests** (+4, un adapté) : un tir dans le corps tue à 140 m dans la lunette, chargeur de cinq, culasse lente ; dispersion à la hanche contre dans la lunette ; balancement (petit au repos, ×3 après un tir, retour) ; balayage au joystick divisé par le grossissement ; caches (le fusil de précision existe, loin du départ). Capture : `tools/ui.sh <dossier> scope`.
+
+![Lunette (`tools/ui.sh <dossier> scope`) : passants à 50 m, cache noir, réticule gradué](captures/d207-lunette.jpg)
+
+## 2026-11-02 — D208. Tir, lot T4 : témoins autour de la victime, pas de côté, arcs des tirs reçus
+
+**Ce qui est fait** :
+- **Témoins autour de la victime** : une personne touchée **à plus de 25 m** du tireur (`FAR_VICTIM`, `farImpacts` dans `gun.ts`) a ses propres témoins. Les passants à moins de 25 m d'elle **s'enfuient**, et s'il en reste un debout (la victime blessée compte, une victime tuée non), il appelle : agression ou meurtre **signalé à l'endroit où elle est tombée**, par la police si elle voit cet endroit. La zone de recherche est donc autour de la victime, **pas du tireur**, qu'aucun témoin n'a vu : un tireur à 120 m est souvent hors du cercle (80 à 240 m de rayon selon les étoiles) et perd la piste plus vite. Ce qui existait reste : les témoins autour du tireur (25 m) et le coup de feu entendu à 40 m de lui.
+- **Pas de côté et à reculons** (`strafePose`, `walksBackward` dans `character-rig.ts`) : quand le corps ne suit pas la marche (en visée, ou en tirant à la hanche), le bassin et les jambes se tournent vers la marche (au plus 57°), le buste d'autant dans l'autre sens (l'arme reste sur le viseur) ; à reculons (au-delà de ≈ 100° du regard), le cycle de marche se joue **à l'envers**. La direction est lissée. En balade, rien ne change.
+- **Arcs des tirs reçus** (`src/core/threat.ts`, `#threats`) : chaque balle d'un gendarme laisse au bord d'un cercle centré sur l'écran un **arc rouge brique tourné vers le tireur** (selon le regard de la caméra), vif si elle a porté, pâle si elle a manqué, qui s'éteint en 1,6 s ; les tirs d'une même direction (à moins de 20°) ravivent le même arc ; quatre arcs au plus. En CSS (bord d'un cercle masqué à ±25°), aucun coût de rendu.
+
+**Limites** : pas de vraie animation de pas chassés (les jambes font le cycle de marche, tourné) ; les témoins d'une victime lointaine ne décrivent pas le tireur (la police ne sait pas d'où venait le tir) ; les arcs ne montrent que les tirs des gendarmes (aucun autre tireur dans le jeu).
+
+**Tests** (+5) : impacts lointains (seulement au-delà de 25 m, un par victime) ; bassin tourné vers la marche et buste face au regard, demi-torsion à demi-vitesse ; à reculons, jambes vers l'avant et biais arrière ; arcs (direction à l'écran, plus vif quand la balle porte, regroupement, extinction, quatre au plus). Capture : `tools/ui.sh <dossier> strafe`.
+
+**Bilan du chantier Tir** (D205 à D208) : mode visée (caméra à l'épaule, viseur, balles en hauteur, tête ×3), aide à la visée réglable et hanche resserrée, fusil de précision et lunette, témoins de la victime, pas de côté, arcs des tirs reçus. 1 137 tests.
+
+![Arcs des tirs reçus (`tools/ui.sh <dossier> strafe`) : deux gendarmes derrière, à gauche et à droite](captures/d208-tirs-recus.jpg)
