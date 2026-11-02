@@ -208,6 +208,8 @@ export function climbPose(pose: Pose, climbed: number): void {
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
 /** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
+/** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains). */
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,35 s pour tomber, environ 2,3 s au sol, 0,9 s pour se relever. */
 export const DOWN_TIME = 3.6;
@@ -437,4 +439,49 @@ export function solveBones(out: Float32Array, world: Float32Array, offsets: Floa
     out[o + 14] = world[o + 14]!;
     out[o + 15] = 1;
   }
+}
+
+/**
+ * Assis (D198), `t` s après s'être assis : cuisses à l'horizontale, jambes pendantes, mains posées sur les cuisses, buste droit ; le bassin
+ * descend à 52 cm au-dessus du sol du personnage (l'assise est à 45 cm). Les 0,4 premières secondes, il s'assoit (on plie les genoux).
+ */
+export function sitPose(pose: Pose, t: number, d: BodyDims): void {
+  const a = pose.angles;
+  a.fill(0);
+  pose.rootDx = 0;
+  const f = smooth(t / 0.4);
+  for (const [thigh, shin, foot, side] of [[BONE.thighL, BONE.shinL, BONE.footL, -1], [BONE.thighR, BONE.shinR, BONE.footR, 1]] as const) {
+    a[thigh * 3] = 1.45 * f;
+    a[thigh * 3 + 2] = side * 0.08 * f;
+    a[shin * 3] = -1.4 * f;
+    a[foot * 3] = -0.05 * f;
+  }
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 0.35 * f;
+    a[arm * 3 + 2] = side * 0.12;
+    a[fore * 3] = 0.95 * f;
+  }
+  a[BONE.torso * 3] = 0.06 * f - d.stoop;
+  a[BONE.head * 3] = 0.1 * f;
+  pose.rootDy = (0.52 - d.hipY) * f;
+}
+
+/** Téléphone en main (D198), par-dessus la pose de marche ou d'arrêt : la main droite tient le téléphone devant la poitrine, la tête penchée dessus. */
+export function phonePose(pose: Pose): void {
+  const a = pose.angles;
+  a[BONE.armR * 3] = 0.4;
+  a[BONE.armR * 3 + 1] = 0.75;
+  a[BONE.armR * 3 + 2] = 0.08;
+  a[BONE.forearmR * 3] = 2.45;
+  a[BONE.head * 3]! -= 0.35;
+}
+
+/** Discussion (D198), par-dessus la pose d'arrêt : les avant-bras bougent doucement, l'un après l'autre (`t` en s). */
+export function talkPose(pose: Pose, t: number): void {
+  const a = pose.angles;
+  a[BONE.armL * 3] = 0.25 + 0.15 * Math.sin(t * 2.1);
+  a[BONE.armR * 3] = 0.25 + 0.15 * Math.sin(t * 1.7 + 1.3);
+  a[BONE.forearmL * 3] = 0.9 + 0.35 * Math.sin(t * 2.6 + 0.4);
+  a[BONE.forearmR * 3] = 0.9 + 0.35 * Math.sin(t * 2.3 + 2.1);
+  a[BONE.head * 3 + 1]! += 0.15 * Math.sin(t * 0.9);
 }

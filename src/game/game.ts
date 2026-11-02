@@ -1,4 +1,5 @@
 import { rescaleDate } from "../core/calendar";
+import { Seats } from "../core/seats";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
@@ -139,6 +140,10 @@ export function startGame(ctx: GameContext): void {
   // Sons (J7, D89) : rien ne joue avant le premier geste (règle des navigateurs) ; `?sound=0` les coupe.
   const audioSys = new AudioSystem(settings.values.volume);
   const audio = new GameAudio(audioSys);
+  // Places assises des tuiles chargées (bancs, terrasses, D198), que les passants réservent.
+  const seats = new Seats();
+  tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
+  tiles.forEachSeats((id, list) => seats.addTile(id, list));
   // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
   atmosphere.onThunder = (delay, strength) => audio.thunder(delay, strength);
   // Ressenti (D90) : vibrations du téléphone, tremblement de la caméra.
@@ -228,7 +233,7 @@ export function startGame(ctx: GameContext): void {
   const startPeds = (capacity: number): void => {
     if (capacity <= 0) return;
     if (!peds) {
-      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7);
+      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7, seats);
       peds.setSignals(signals);
       peds.setShadows(ctx.settings!.values.shadows !== 0);
     } else peds.setCapacity(capacity);
@@ -242,7 +247,7 @@ export function startGame(ctx: GameContext): void {
   /** La foule, même vide (« Foule : Aucune ») : les gendarmes à pied y sont dessinés (J4-5). */
   const needPeds = (): PedsController => {
     if (!peds) {
-      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7);
+      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7, seats);
       peds.setSignals(signals);
       peds.setShadows(ctx.settings!.values.shadows !== 0);
     }

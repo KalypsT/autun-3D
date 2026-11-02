@@ -1,4 +1,5 @@
 import { SEASON_KEYS } from "../core/calendar";
+import { Seats } from "../core/seats";
 import { crowdWeather, surfaceGrip, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
 import { setSurfaceGrip } from "../core/vehicle";
@@ -370,7 +371,12 @@ export function startBench(ctx: GameContext): void {
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
-        pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN + (police ? OFFICER.max : 0), reserved: police ? OFFICER.max : 0, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0" });
+        pedSim = new PedSim(nav!.graph, terrain, ctx.colliders, { capacity: crowdN + (police ? OFFICER.max : 0), reserved: police ? OFFICER.max : 0, seed: 7, tiers: params.get("tiers") !== "0", avoid: params.get("avoid") !== "0", life: params.get("life") !== "0" });
+        // Vie de quartier (D198) : bancs et terrasses des tuiles chargées ; `&life=0` pour comparer.
+        const seats = new Seats();
+        ctx.tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
+        ctx.tiles.forEachSeats((id, list) => seats.addTile(id, list));
+        pedSim.seats = seats;
         crowd = createCrowd(scene, pedSim.state);
         pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
         if (combatMode) bot = new CombatBot(pedSim, ctx.colliders);

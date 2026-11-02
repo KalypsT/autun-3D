@@ -1,3 +1,5 @@
+import type { SeatDef } from "../core/seats";
+import { closeSeats, openSeats } from "./seat-sink";
 import { crownDepthMaterial, weatherize } from "./weather-fx";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
@@ -37,6 +39,8 @@ export interface TileMeshes {
   /** Mobilier cassable de la tuile (D160) et celui qui est déjà arraché : leurs maillages se refont seuls (`rebuildBreakables`). */
   soft: readonly Furniture[];
   broken: Set<number>;
+  /** Places assises (bancs, chaises de terrasse, D198). */
+  seats?: SeatDef[];
 }
 
 /** Noms des maillages du mobilier cassable : matière des murs, lanternes allumées, taches de lumière. */
@@ -412,6 +416,8 @@ const PLACEMENTS_PER_STEP = 12;
 
 /** Comme `buildTileStyled`, découpé en tranches de quelques millisecondes (cf. `TileManager`). */
 export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: HeightField): Steps<TileMeshes> {
+  // Places assises (D198) : ouvertes avant tout, les devantures (terrasses) se dessinent dès le plan des façades.
+  const seats = openSeats();
   const skip = new URLSearchParams(location.search).get("skip") ?? "";
   const fiches = new Map(tile.fiches.map((f) => [f.id, f]));
   const kinds = tile.kinds;
@@ -568,7 +574,8 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     group.add(treesStyled(res, trees));
     draws += 2;
   }
-  return { group, stats: { triangles, ...plan.stats, draws }, soft, broken: new Set<number>() };
+  closeSeats();
+  return { group, stats: { triangles, ...plan.stats, draws }, soft, broken: new Set<number>(), seats };
 }
 
 function roofFaces(rb: UvMeshBuilder, b: Building, base: THREE.Color): void {

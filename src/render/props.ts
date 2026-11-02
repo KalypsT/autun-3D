@@ -1,3 +1,5 @@
+import { benchSeats } from "../core/seats";
+import { pushSeat } from "./seat-sink";
 import * as THREE from "three";
 import type { Furniture, HeightField, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
@@ -54,6 +56,7 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
     const rot = f.rot ?? hash01(String(f.id), 1) * Math.PI;
     switch (f.kind) {
       case "bench":
+        pushSeat(...benchSeats(f.x, f.y, z, rot));
         box(mb, f.x, f.y, 0.8, 0.22, rot, z + 0.4, z + 0.46, COLORS.wood);
         box(mb, f.x - Math.sin(rot) * -0.2, f.y + Math.cos(rot) * -0.2, 0.8, 0.03, rot, z + 0.5, z + 0.88, COLORS.wood);
         for (const sx of [-0.65, 0.65]) box(mb, f.x + Math.cos(rot) * sx, f.y + Math.sin(rot) * sx, 0.03, 0.2, rot, z, z + 0.4, COLORS.iron);

@@ -1,3 +1,4 @@
+import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { landmarkDecks, landmarkSectors } from "../core/landmarks";
@@ -105,6 +106,12 @@ export class TileManager {
   private frame = 0;
   private job: Job | null = null;
   hidden = new Set<string>();
+  /** Places assises des tuiles déjà construites (pour qui s'abonne après le chargement initial). */
+  forEachSeats(cb: (tile: string, seats: readonly SeatDef[]) => void): void {
+    for (const [id, e] of this.entries) if (e.detail?.seats?.length) cb(id, e.detail.seats);
+  }
+  /** Places assises d'une tuile construite (sa liste) ou déchargée (liste vide), D198. */
+  onSeats: ((tile: string, seats: readonly SeatDef[]) => void) | null = null;
   /** Temps de construction passé pendant la dernière image (ms), 0 sans construction. */
   sliceMs = 0;
   /** Dernières constructions de tuiles, pour le banc de test. */
@@ -181,6 +188,7 @@ export class TileManager {
   /** Fin de construction : la tuile entre dans la scène, maillages masqués, et ses obstacles comptent tout de suite. */
   private finishBuild(e: Entry, data: TileData, meshes: TileMeshes, revealAll: boolean): void {
     e.detail = meshes;
+    this.onSeats?.(e.info.id, meshes.seats ?? []);
     e.pending = [];
     for (const m of meshes.group.children) {
       if (this.hidden.has(m.name)) m.visible = false;
@@ -236,6 +244,7 @@ export class TileManager {
       this.group.remove(e.detail.group);
       disposeTile(e.detail);
       e.detail = null;
+      this.onSeats?.(e.info.id, []);
       e.pending = [];
       e.extras = null;
       this.colliders?.removeTag(e.info.id);

@@ -3913,3 +3913,48 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Parapluies sous la pluie (galerie, automne)](captures/d197-parapluies.jpg)
 ![Tenues d'hiver](captures/d197-tenues-hiver.jpg)
 ![Tenues d'été](captures/d197-tenues-ete.jpg)
+
+## 2026-11-02 — D198. Ville vivante, lot 1-5 (1) : des passants qui s'assoient, marchent en groupe, regardent leur téléphone (plan `docs/plans/ville-vivante.md`, § 5)
+
+**Places assises** (`src/core/seats.ts`) : chaque tuile déclare ses places en se construisant (`render/seat-sink.ts`) : trois par **banc** (64 dans OpenStreetMap, orientés comme le dessin les pose, dos au dossier) et une par **chaise de terrasse** (calculée avec les devantures, face à la table) ; 352 places autour du centre au départ. Le jeu les rassemble (`Seats`, `TileManager.onSeats`) ; un passant **réserve** sa place (une personne par place).
+
+**Nouvel état `sit`** (`pedestrians.ts`) : en fin de file, 3 chances sur 10, un passant seul va à une place libre à moins de 9 m (sans mur entre elle et lui, d'après les murs des obstacles), en marchant ; il s'assoit (pose `sitPose`, tirée de celle du train, D119, mais en angles comme les autres poses de la foule : cuisses à l'horizontale, mains sur les cuisses), reste, puis se relève et rejoint sa file en glissant doucement. Bancs ouverts de 7 h à 21 h 30, terrasses de 8 h à 23 h 30, personne dehors sous la pluie ; au plus 30 % des passants assis. Il **se lève et fuit** à une alarme ou s'il a peur ; renversé par un véhicule, il tombe et sa place se libère.
+- Écart au plan : « 2 à 15 minutes de jeu », c'est 2 à 12 s réelles (une journée dure 20 min) : on ne les verrait pas s'asseoir. **20 à 90 s réelles** sur un banc, 35 à 120 s en terrasse.
+- **Au chargement**, 4 chaises de terrasse sur 10 et un banc sur 4, les plus proches du joueur d'abord, sont déjà occupés (des passants « déjà là ») ; ensuite, un passant sur cinq naît directement assis à une place libre hors de vue (jusqu'à 40 m). Sans cela, les terrasses vues en arrivant étaient vides, le temps que les passants viennent.
+- **Défaut trouvé en chemin** : les états « à terre » se repèrent par `mode >= stumble` ; `sit` est donc numéroté **avant** `stumble` (un passant assis est debout au sens des chocs et des alarmes). Les numéros de `stumble`, `down` et `dead` changent (4, 5, 6 → 5, 6, 7) ; rien ne les écrivait en dur.
+
+**En groupe** : un passant sur huit naît avec un ou deux compagnons qui marchent à sa hauteur (à 55 cm de côté, même file, mêmes décisions) ; quand il s'arrête, ils se tournent les uns vers les autres et parlent avec les mains (`talkPose`). Un meneur ne va pas s'asseoir ; s'il tombe, fuit ou disparaît, ses compagnons redeviennent seuls. L'évitement les ignore entre eux.
+
+**Téléphone en main** (7 % des passants, à pied ou à l'arrêt, `phonePose`) : la main droite tient le téléphone devant la poitrine, la tête penchée dessus. Écart au plan (« une main à l'oreille ») : avec les seuls angles des os, la main à l'oreille faisait plutôt un salut ; regarder son téléphone est un geste aussi courant et se lit mieux.
+
+**Joggeurs** : de 7 h à 9 h et de 18 h à 20 h 30, sans pluie, 30 % des passants nés sur un chemin (parcs, bords de l'eau) et 6 % ailleurs courent à 2,7 à 3,3 m/s, en tenue de sport.
+
+**Réactions douces** : au klaxon, au-delà de la distance d'esquive (12 m au plus), on **tourne la tête** vers le véhicule au lieu de sursauter ; en fin de file, trois fois sur dix, on regarde une fontaine, un monument ou un lieu de culte à moins de 18 m. Tête tournée de 70° au plus (`CrowdState.look`).
+
+**Pour les essais** : tout cela s'active avec l'option `life` de `PedSim` (le jeu, le banc ; `&life=0` au banc pour comparer). Ses tirages viennent d'un hachage à part : **les essais d'endurance existants (circulation, combat, police) ne changent pas** (ils tournent sans `life`). La galerie accepte `&pose=sit|phone|talk`.
+
+**Mesure** (`?bench=court&crowd=100&sim=1`, avec et sans `&life=0`, rendu logiciel) : simulation de 100 passants de 0,19 à 0,30 ms par image avec la vie de quartier, de 0,25 à 0,34 ms sans : pas de différence mesurable (la recherche de place, le suivi des groupes et les têtes tournées ne coûtent presque rien). Les poses assise, téléphone et discussion se calculent comme la marche : même coût par personnage.
+
+**Tests** (+7, `pedestrians-life.test.ts`) : des passants s'assoient, une personne par place, à la place même, sans valeur absurde ; une alarme les fait lever et fuir, places libérées ; un passant assis renversé tombe et libère sa place ; des groupes se forment ; joggeurs le matin plus qu'à 13 h 30 et seulement avec la vie de quartier ; au klaxon de loin, des têtes tournées et moins de sursauts ; sans `life`, rien de tout cela.
+
+**Limites** : 64 bancs seulement (OpenStreetMap) ; on se lève d'une terrasse fermée de bacs en glissant à travers eux ; les places ne sont pas montrées sur la carte ; personne n'entre dans les cafés ; les groupes ne traversent pas toujours ensemble (ils copient la file du meneur, pas son attente au passage) ; le téléphone n'est pas dessiné (seulement le geste) ; la tête tournée l'est aussi pour les passants éloignés (sans coût : c'est un angle de plus) ; le chien en laisse est la suite (D199).
+
+![La terrasse de L'Augusto à midi, avant](captures/d198-terrasse-avant.jpg)
+![Après : des clients attablés](captures/d198-terrasse-apres.jpg)
+![Pose assise (galerie, `&pose=sit`)](captures/d198-pose-assis.jpg)
+![Téléphone en main (`&pose=phone`)](captures/d198-pose-telephone.jpg)
+![Discussion (`&pose=talk`)](captures/d198-pose-discussion.jpg)
+
+## 2026-11-02 — D199. Ville vivante, lot 1-5 (2) : le chien en laisse (plan `docs/plans/ville-vivante.md`, § 5.5)
+
+**Qui** : 5 % des passants (pas les sportifs ni les joggeurs) promènent un chien ; ils marchent un peu moins vite (1,15 m/s au plus). Vie de quartier seulement (`life`, D198). 24 chiens au plus à la fois.
+
+**Simulation** (`src/core/dogs.ts`, logique pure) : le chien vise une place un peu derrière et à côté de son maître (côté tiré une fois), au pas, au trot ou au galop selon l'écart ; il s'arrête de temps en temps **renifler** un point à côté (tête baissée) ; la **laisse** (2 m) le ramène s'il s'éloigne ; maître **assis** : il s'assoit à ses pieds ; maître **en fuite** : il court avec lui, sans flâner ; maître à terre ou mort : il disparaît avec lui (la laisse lâchée). Taille (0,7 à 1,25, soit 35 à 63 cm au garrot) et pelage (six couleurs) tirés de la graine du maître : un passant a toujours le même chien.
+
+**Dessin** (`src/render/dogs.ts`) : **un appel de dessin pour tous les chiens** (maillage instancié de boîtes : corps, tête, museau, oreilles, queue, quatre pattes ; 132 triangles), le trot des pattes, la queue qui remue, la tête baissée et l'assise calculés par le nuanceur à partir d'un attribut d'instance (phase, allure, pose) ; **un appel pour toutes les laisses** (segments de la main du maître au collier). Aucun appel quand il n'y a pas de chien. La galerie accepte `&dogs=1`. Ce modèle servira aux chiens seuls (lot 2-3) et au geste « caresser » (lot 3).
+
+**Tests** (+5) : le chien suit sans dépasser la laisse et à l'allure du maître ; il s'assoit aux pieds d'un maître assis et court sans renifler avec un maître qui fuit ; même maître, même chien ; géométrie (sept parties, au sol, tournée vers −z) ; un seul maillage pour les chiens et un pour les laisses, invisibles sans chien.
+
+**Limites** : le chien traverse les murs et les voitures (il suit la laisse, sans obstacles) ; il n'aboie pas encore (sons au lot 2-3) ; la main du maître est estimée (côté du chien, à hauteur de hanche), pas celle du squelette ; les passants ne l'évitent pas ; le pelage est uni.
+
+![Chiens dans la galerie (`?view=characters&dogs=1`) : au trot, à l'arrêt, en train de renifler, assis](captures/d199-chiens.jpg)

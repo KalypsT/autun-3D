@@ -1473,3 +1473,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Changement : les arbres orangés de la palette sont maintenant verts au printemps et l'été (l'orangé est réservé à l'automne) ; dis-moi si tu en veux quelques-uns orangés l'été.
 - À mesurer sur ton téléphone : `?bench=1&season=hiver&h=12` contre `?bench=1&h=12` (coût de l'ajourage des arbres nus). 1065 tests (9 de plus).
 - À regarder : `?season=automne&weekday=4`, `?season=hiver`, `?view=characters&weather=pluie`.
+
+**Ville vivante, lot 1-5 : des passants qui font quelque chose (2 novembre 2026)** (D198, D199)
+- Les passants s'assoient sur les bancs et aux terrasses des cafés (attablés face à la table), puis repartent ; personne en terrasse sous la pluie. Au chargement, une partie des terrasses et des bancs sont déjà occupés.
+- Certains marchent à deux ou trois et s'arrêtent pour discuter (gestes des mains), d'autres regardent leur téléphone ; des joggeurs courent le matin et le soir, surtout dans les parcs et au bord de l'eau.
+- Au klaxon, de loin, on se retourne au lieu de sursauter ; on regarde parfois une fontaine ou un monument en passant.
+- 5 % des passants promènent un chien en laisse : il trotte derrière, s'arrête renifler, s'assoit aux pieds de son maître assis, fuit avec lui.
+- À regarder : la terrasse de L'Augusto à midi (`?at=-43,-21&yaw=-0.55&h=12.5`), la galerie `?view=characters&dogs=1` et `&pose=sit|phone|talk`. 1077 tests (12 de plus que D197).

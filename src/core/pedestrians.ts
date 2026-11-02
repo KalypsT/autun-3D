@@ -8,6 +8,9 @@ import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
 import type { Signals } from "./signals";
 import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
+import type { Seat, Seats } from "./seats";
+import { applyAppearance } from "./character";
+import { LIFE_POSE } from "./character-rig";
 
 /**
  * Simulation des passants (J2) : des promeneurs qui suivent le graphe piéton, évitent les autres et le joueur, attendent aux passages quand un
@@ -21,7 +24,17 @@ import { createCrowdState, type CrowdState } from "../render/crowd/crowd-types";
  * `fear` (0 à 1), `flags` réservés ; les autres systèmes liront ou pousseront les passants par `bodies` / `events` en J2-6.
  */
 
-export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, stumble: 4, down: 5, dead: 6 } as const;
+/** Un passant assis (`sit`, D198) est debout au sens des chocs et des alarmes : tout ce qui vaut `stumble` ou plus est à terre ou mort. */
+export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, sit: 4, stumble: 5, down: 6, dead: 7 } as const;
+
+/** Vie de quartier (D198) : traits tirés à la naissance. */
+const TRAIT = { phone: 1, jogger: 2, dog: 4 } as const;
+/** Durée (s réelles) sur un banc, à une terrasse ; allure (m/s) pour aller s'asseoir et revenir à la file. */
+const SIT_TIME = { bench: [20, 90], terrace: [35, 120] } as const;
+const SIT_WALK = 1.1;
+/** Distance (m) au-delà de laquelle on ne va pas s'asseoir, et chance de s'arrêter s'asseoir à une fin de file quand une place est libre tout près. */
+const SIT_REACH = 9;
+const SIT_CHANCE = 0.3;
 
 /** Distances (m) des paliers : près (évitement, collisions, tous les pas), milieu (un pas sur 3), loin (un pas sur 12). */
 export const TIER_RANGE = [28, 80] as const;
@@ -78,6 +91,8 @@ export interface PedSimOptions {
   spawnPerStep?: number;
   /** true : les passants peuvent naître dans le champ de vision (captures du viewer) ; défaut false (jeu). */
   spawnInView?: boolean;
+  /** Vie de quartier (D198) : bancs et terrasses, groupes, téléphone, joggeurs, têtes tournées. Défaut : non (les essais d'endurance restent ceux d'avant). */
+  life?: boolean;
   /**
    * Emplacements réservés en fin de tableau (J4 : les gendarmes à pied) : la simulation ne les fait ni naître ni marcher, un autre système les place
    * (`setExternal`) ; ils sont dessinés par la même foule, vus par les voitures (`forEachNear`) et évités par les passants.
@@ -168,9 +183,14 @@ export interface PedStats {
   /** Nombre de passants visé à cette heure, dans ce quartier, à cette vitesse ; zone du graphe piéton autour du joueur. */
   target: number;
   zone: number;
+  /** Passants assis (bancs, terrasses) et en groupe (suiveurs) au dernier pas (D198). */
+  sitting?: number;
+  grouped?: number;
 }
 
 export const MASK_ZONE = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner) | (1 << PED.crossing);
+/** Points d'intérêt qu'un passant regarde en passant (D198) : fontaine, monument, lieu de culte. */
+const POI_LOOK = (1 << 3) | (1 << 8) | (1 << 9);
 const MASK_WALK = (1 << PED.lane) | (1 << PED.path) | (1 << PED.pedestrianStreet) | (1 << PED.plaza) | (1 << PED.corner);
 
 const TAU = Math.PI * 2;
@@ -255,6 +275,15 @@ export class PedSim {
   private readonly rng: Uint32Array;
   private readonly id: Uint32Array;
   private readonly tier: Uint8Array;
+  /** Vie de quartier (D198) : place réservée, étape (0 y va, 1 assis, 2 revient), meneur du groupe (−1 : seul), écart latéral dans le groupe, traits, regard (s restantes). */
+  private readonly seat: (Seat | null)[];
+  private readonly sitPhase: Uint8Array;
+  private readonly buddy: Int32Array;
+  private readonly buddyLat: Float32Array;
+  private readonly trait: Uint8Array;
+  private readonly lookT: Float32Array;
+  /** Places assises (bancs, terrasses) des tuiles chargées ; null : personne ne s'assoit. */
+  seats: Seats | null = null;
   // Grille de voisinage : tête de liste par case (table de hachage) et chaînage.
   private readonly head = new Int32Array(4096).fill(-1);
   private readonly link: Int32Array;
@@ -275,6 +304,7 @@ export class PedSim {
   private readonly tiers: boolean;
   private readonly avoid: boolean;
   private readonly spawnPerStep: number;
+  private readonly life: boolean;
 
   constructor(
     private readonly graph: NavGraph,
@@ -287,6 +317,7 @@ export class PedSim {
     this.tiers = opt.tiers ?? true;
     this.avoid = opt.avoid ?? true;
     this.spawnPerStep = opt.spawnPerStep ?? 2;
+    this.life = opt.life ?? false;
     this.spawnRng = hash32(opt.seed, 0x51ed);
     this.state = createCrowdState(Array.from({ length: n }, () => recipeFromSeed(0)));
     this.state.alive = new Uint8Array(n);
@@ -294,6 +325,13 @@ export class PedSim {
     this.state.poseT = new Float32Array(n);
     this.state.poseSide = new Int8Array(n);
     this.state.held = new Uint8Array(n);
+    this.state.look = new Float32Array(n);
+    this.seat = new Array<Seat | null>(n).fill(null);
+    this.sitPhase = new Uint8Array(n);
+    this.buddy = new Int32Array(n).fill(-1);
+    this.buddyLat = new Float32Array(n);
+    this.trait = new Uint8Array(n);
+    this.lookT = new Float32Array(n);
     this.jx = new Float32Array(n); this.jy = new Float32Array(n); this.kx = new Float32Array(n); this.ky = new Float32Array(n);
     this.x = new Float32Array(n); this.y = new Float32Array(n); this.heading = new Float32Array(n);
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
@@ -320,6 +358,57 @@ export class PedSim {
         if (this.spawn(i, obs, 8, 35, 125, true)) alive++;
       }
     }
+    if (this.life) this.fillSeats(obs);
+  }
+
+  /**
+   * Au chargement (D198) : une partie des places proches du joueur sont déjà prises (4 chaises de terrasse sur 10, un banc sur 4), par des
+   * passants qui marchaient plus loin ; sinon les terrasses vues au départ seraient vides, le temps que les passants arrivent.
+   */
+  private fillSeats(obs: Observer): void {
+    if (!this.seats) return;
+    const h = this.hour, rain = this.weather?.rain ?? 0;
+    const alive = this.state.alive!;
+    let cursor = this.free - 1, k = 0;
+    // Les plus proches d'abord : ce sont celles qu'on voit en arrivant.
+    const near = [...this.seats.all()].filter((t) => t.occupant === -1 && Math.hypot(t.x - obs.x, t.y - obs.y) < 90);
+    near.sort((a, b) => Math.hypot(a.x - obs.x, a.y - obs.y) - Math.hypot(b.x - obs.x, b.y - obs.y));
+    for (const seat of near) {
+      const open = seat.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1;
+      if (!open || hash32(hash32(Math.round(seat.x * 10), Math.round(seat.y * 10)), this.opt.seed) / 4294967296 > (seat.kind === "terrace" ? 0.4 : 0.25)) continue;
+      // Le passant le plus loin du joueur, seul, debout : il « était déjà là ».
+      while (cursor >= 0 && (!alive[cursor] || this.mode[cursor] !== PED_STATE.walk || this.buddy[cursor]! >= 0 || this.leads(cursor) || this.trait[cursor]! & TRAIT.jogger)) cursor--;
+      if (cursor < 0) return;
+      const hit = this.graph.nearest(seat.x, seat.y, 25, MASK_WALK);
+      if (hit && this.seatNow(cursor, seat, hit)) k++;
+      cursor--;
+    }
+    this.stats.sitting = k;
+  }
+
+  /**
+   * Assied tout de suite le passant i à sa place, relié à la file `hit` (pour qu'il la rejoigne en se levant). Sans contrôle des murs :
+   * une terrasse fermée de bacs (L'Augusto) se remplit aussi ; en se levant, on en sort en glissant à travers les bacs.
+   */
+  private seatNow(i: number, seat: Seat, hit: { edge: number; s: number; x: number; y: number }): boolean {
+    this.edge[i] = hit.edge;
+    this.gen[i] = this.graph.generation(hit.edge);
+    this.s[i] = hit.s;
+    this.startSit(i, seat);
+    const st = this.state;
+    st.x[i] = this.x[i] = seat.x;
+    this.y[i] = seat.y;
+    st.z[i] = -seat.y;
+    this.sitPhase[i] = 1;
+    this.heading[i] = seat.heading;
+    st.yaw[i] = -seat.heading;
+    st.y[i] = seat.z - 0.45;
+    st.pose![i] = LIFE_POSE.sit;
+    st.poseT![i] = 1;
+    st.speed[i] = 0;
+    this.jx[i] = seat.x - hit.x;
+    this.jy[i] = seat.y - hit.y;
+    return true;
   }
 
   /** Fait avancer la simulation de `dt` secondes autour de l'observateur. */
@@ -342,6 +431,8 @@ export class PedSim {
     this.walk = obs.weather?.walk ?? 1;
     this.weather = obs.weather ?? null;
     if (this.avoid) this.buildGrid();
+    if (this.life) this.lifeCleanup();
+    let sitting = 0, grouped = 0;
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
     let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0, corpses = 0, sinking = 0;
     for (let i = 0; i < this.free; i++) {
@@ -379,6 +470,24 @@ export class PedSim {
         knocked++;
         continue;
       }
+      if (this.life) {
+        this.lookStep(i, dt);
+        if (this.mode[i] === PED_STATE.sit) {
+          if (this.panic[i]! > 0 || this.fear[i]! > 0.6) this.standUp(i);
+          else {
+            this.sitStep(i, dt);
+            sitting++;
+            continue;
+          }
+        }
+        const b = this.buddy[i]!;
+        if (b >= 0 && this.panic[i]! <= 0 && this.follow(i, b, tier, dt)) {
+          grouped++;
+          const m2 = this.mode[i]!;
+          if (m2 === PED_STATE.wait) waiting++; else if (m2 === PED_STATE.cross) crossing++; else if (m2 === PED_STATE.idle) idle++;
+          continue;
+        }
+      }
       this.acc[i]! += dt;
       const period = TIER_PERIOD[tier]!;
       if (period === 1 || (this.frame + this.id[i]!) % period === 0) {
@@ -398,6 +507,11 @@ export class PedSim {
       this.place(i, tier, dt);
       const m2 = this.mode[i]!;
       if (m2 === PED_STATE.wait) waiting++; else if (m2 === PED_STATE.cross) crossing++; else if (m2 === PED_STATE.idle) idle++;
+    }
+    if (this.life) {
+      this.groupTalk();
+      stats.sitting = sitting;
+      stats.grouped = grouped;
     }
     // Trop de monde pour l'heure ou le quartier : les passants à l'écart (hors de vue, ou à plus de 60 m) s'en vont, deux au plus par pas.
     // Les écarts à la cible se comptent en entiers : sans cela, un déficit de 1 faisait naître 2 passants, l'excès de 1 en retirait 2 (souvent les nouveaux-nés,
@@ -469,6 +583,7 @@ export class PedSim {
         if (dist < rin + 40) return false;
       }
       this.place0(i, hit.edge, hit.s, hit.x, hit.y);
+      if (this.life) this.lifeAtBirth(i, anywhere, obs);
       return true;
     }
     return false;
@@ -509,6 +624,10 @@ export class PedSim {
     this.hp[i] = PED_HP;
     this.age[i] = this.sink[i] = 0;
     this.fleeDir[i] = NaN;
+    this.trait[i] = 0;
+    this.buddy[i] = -1;
+    this.lookT[i] = 0;
+    this.state.look![i] = 0;
     this.x[i] = x;
     this.y[i] = y;
     this.heading[i] = this.dir[i]! > 0 ? this.graph.pointAt(edge, s, this.pt) : this.graph.pointAt(edge, s, this.pt) + Math.PI;
@@ -646,6 +765,7 @@ export class PedSim {
     } else if (this.mode[i] === PED_STATE.cross) {
       this.mode[i] = PED_STATE.walk;
     }
+    if (this.life && this.mode[i] === PED_STATE.walk && this.lifeArrive(i)) return;
     // Un arrêt de temps en temps (vitrine, banc, conversation) : un peu plus sur les places et dans les rues fréquentées.
     if (this.mode[i] === PED_STATE.walk && nextRandom(this.rng, i) < (typ === PED.plaza ? 0.1 : 0.03)) {
       this.mode[i] = PED_STATE.idle;
@@ -700,6 +820,7 @@ export class PedSim {
     st.yaw[i] = -hd;
     st.speed[i] = v;
     st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
+    if (this.life && this.mode[i]! <= PED_STATE.idle) st.pose![i] = this.trait[i]! & TRAIT.phone ? LIFE_POSE.phone : 0;
   }
 
   // --- Chocs, esquives, klaxon -----------------------------------------------------------------------------------
@@ -827,6 +948,12 @@ export class PedSim {
       const dx = this.x[i]! - v.x, dy = this.y[i]! - v.y, d = Math.hypot(dx, dy);
       if (d > range || d < 1 || Math.abs(angleDiff(Math.atan2(dx, dy), h)) > 0.8) continue;
       const side = dx * fy - dy * fx >= 0 ? 1 : -1;
+      // Vie de quartier (D198) : au-delà de la distance d'esquive, on se retourne vers le klaxon plutôt que de sursauter.
+      if (this.life && d >= jump) {
+        this.lookAt(i, v.x, v.y, 1.6);
+        this.fear[i] = Math.max(this.fear[i]!, 0.3);
+        continue;
+      }
       this.startle(i, fy * side, -fx * side, d < jump ? 4 : 0, false);
       this.fear[i] = 1;
     }
@@ -962,6 +1089,250 @@ export class PedSim {
       }
     }
     return n;
+  }
+
+  // --- Vie de quartier (D198) ----------------------------------------------------------------------------------
+
+  /** Tirage propre à la vie de quartier (le hasard des essais d'endurance reste celui d'avant) : 0 à 1, selon le passant, la clé et le pas. */
+  private lifeRand(i: number, key: number): number {
+    return hash32(hash32(this.id[i]!, key), this.frame) / 4294967296;
+  }
+
+  /** Places libérées par ceux qui ne sont plus assis (relevés, renversés, partis), groupes défaits quand le meneur n'est plus là. */
+  private lifeCleanup(): void {
+    const alive = this.state.alive!;
+    for (let i = 0; i < this.free; i++) {
+      const seat = this.seat[i];
+      if (seat && (!alive[i] || this.mode[i] !== PED_STATE.sit)) {
+        if (seat.occupant === i) seat.occupant = -1;
+        this.seat[i] = null;
+      }
+      const b = this.buddy[i]!;
+      if (b >= 0 && (!alive[i] || !alive[b] || this.mode[b]! >= PED_STATE.stumble || this.buddy[b]! >= 0)) this.buddy[i] = -1;
+    }
+  }
+
+  /** À la naissance : téléphone (7 %), joggeur le matin et le soir (surtout sur les chemins), parfois un groupe de deux ou trois. */
+  private lifeAtBirth(i: number, start: boolean, obs: Observer): void {
+    const h = this.hour, edgeType = this.graph.edgeType(this.edge[i]!);
+    const recipe = this.state.recipes[i]!;
+    const r1 = this.lifeRand(i, 11), r2 = this.lifeRand(i, 12), r3 = this.lifeRand(i, 13);
+    const jogHours = (h >= 7 && h < 9) || (h >= 18 && h < 20.5);
+    const rain = this.weather?.rain ?? 0;
+    if (jogHours && rain < 0.3 && recipe.age === "adult" && r2 < (edgeType === PED.path ? 0.3 : 0.06)) {
+      this.trait[i] = TRAIT.jogger;
+      this.want[i] = this.speed[i] = 2.7 + r3 * 0.6;
+      const sport = applyAppearance({ ...recipe, umbrella: false }, { top: "sport", bottom: r3 < 0.5 ? "shorts" : "jogging", shoes: "sneakers", bag: "none", hat: "none", scarf: false });
+      this.state.recipes[i] = sport;
+      this.onSpawn?.(i, sport);
+      return;
+    }
+    if (r1 < 0.07) this.trait[i] = TRAIT.phone;
+    // Chien en laisse (D199) : 5 % des passants, pas les sportifs ; un maître marche un peu moins vite.
+    else if (r1 < 0.12 && recipe.outfit !== "sport" && this.want[i]! < 2) {
+      this.trait[i] = TRAIT.dog;
+      this.want[i] = this.speed[i] = Math.min(this.want[i]!, 1.15);
+      return;
+    }
+    if (r3 < 0.12 && this.want[i]! < 2) {
+      this.spawnGroup(i, r2 < 0.65 ? 1 : 2);
+      return;
+    }
+    // Certains naissent déjà assis (hors de vue, ou au chargement) : les terrasses et les bancs ne sont pas vides au départ.
+    if (this.lifeRand(i, 14) < (start ? 0.1 : 0.2)) {
+      // Une place libre jusqu'à 40 m, hors du champ de vision (sauf au chargement), reliée à une file piétonne toute proche.
+      const seat = this.freeSeatNear(i, 40, start ? null : obs);
+      const hit = seat ? this.graph.nearest(seat.x, seat.y, 25, MASK_WALK) : null;
+      if (seat && hit) this.seatNow(i, seat, hit);
+    }
+  }
+
+  /**
+   * Une place libre à portée, ouverte à cette heure et par ce temps, sans mur entre elle et le passant (à moins de `SIT_REACH`) ;
+   * avec `hidden`, une place hors du champ de vision de cet observateur (naissance d'un passant déjà assis).
+   */
+  private freeSeatNear(i: number, reach = SIT_REACH, hidden: Observer | null = null): Seat | null {
+    if (!this.seats || (this.stats.sitting ?? 0) >= 0.3 * Math.max(this.stats.alive, this.stats.target, 10)) return null;
+    const x = this.x[i]!, y = this.y[i]!, h = this.hour, rain = this.weather?.rain ?? 0;
+    return this.seats.nearestFree(x, y, reach, (s) =>
+      (s.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1) &&
+      (hidden ? Math.abs(angleDiff(Math.atan2(s.x - hidden.x, s.y - hidden.y), hidden.yaw)) > 1.0 || Math.hypot(s.x - hidden.x, s.y - hidden.y) > 140
+        : reach > SIT_REACH || !this.colliders || this.colliders.raycast(x, y, s.x, s.y) === null));
+  }
+
+  /** Un groupe : un ou deux compagnons naissent à côté du meneur, marchent à sa hauteur, s'arrêtent avec lui (D198). */
+  private spawnGroup(lead: number, n: number): void {
+    const alive = this.state.alive!;
+    let placed = 0;
+    for (let j = 0; j < this.free && placed < n; j++) {
+      if (alive[j] || j === lead) continue;
+      this.place0(j, this.edge[lead]!, this.s[lead]!, this.x[lead]!, this.y[lead]!, hash32(this.id[lead]!, 0x6a09 + placed));
+      this.buddy[j] = lead;
+      this.buddyLat[j] = placed === 0 ? 0.55 : -0.55;
+      this.dir[j] = this.dir[lead]!;
+      this.heading[j] = this.heading[lead]!;
+      this.want[j] = this.want[lead]!;
+      placed++;
+    }
+  }
+
+  /** Un compagnon suit son meneur : même file, même avancée, côte à côte. Faux si le meneur n'est plus là (le compagnon redevient seul). */
+  private follow(i: number, b: number, tier: number, dt: number): boolean {
+    const alive = this.state.alive!;
+    const m = this.mode[b]!;
+    if (!alive[b] || m >= PED_STATE.stumble || m === PED_STATE.sit || this.buddy[b]! >= 0 || this.graph.generation(this.edge[b]!) !== this.gen[b]) {
+      this.buddy[i] = -1;
+      return false;
+    }
+    this.edge[i] = this.edge[b]!;
+    this.gen[i] = this.gen[b]!;
+    this.s[i] = this.s[b]!;
+    this.dir[i] = this.dir[b]!;
+    this.mode[i] = m;
+    this.speed[i] = this.speed[b]!;
+    this.timer[i] = this.timer[b]!;
+    const half = Math.max(0.3, this.graph.edgeWidth(this.edge[i]!) / 2);
+    this.lat[i] = this.latTarget[i] = Math.max(-half, Math.min(half, this.lat[b]! + this.buddyLat[i]!));
+    this.place(i, tier, dt);
+    return true;
+  }
+
+  /** Groupes arrêtés : on se tourne les uns vers les autres et on parle avec les mains. */
+  private groupTalk(): void {
+    const st = this.state, alive = st.alive!;
+    for (let i = 0; i < this.free; i++) {
+      const b = this.buddy[i]!;
+      if (b < 0 || !alive[i] || this.mode[i] !== PED_STATE.idle || this.mode[b] !== PED_STATE.idle) continue;
+      const dx = this.x[b]! - this.x[i]!, dy = this.y[b]! - this.y[i]!;
+      st.yaw[i] = -Math.atan2(dx, dy);
+      st.yaw[b] = -Math.atan2(-dx, -dy);
+      st.pose![i] = LIFE_POSE.talk;
+      st.pose![b] = LIFE_POSE.talk;
+      st.poseT![i]! += 1 / 60;
+      st.poseT![b] = st.poseT![i]!;
+    }
+  }
+
+  /** Fin de file : aller s'asseoir sur une place libre toute proche, ou tourner la tête vers une fontaine, un monument. Vrai s'il va s'asseoir. */
+  private lifeArrive(i: number): boolean {
+    if (this.buddy[i]! >= 0 || this.panic[i]! > 0 || this.trait[i]! & TRAIT.jogger || this.want[i]! > 2) return false;
+    const x = this.x[i]!, y = this.y[i]!;
+    // Au plus 30 % des passants assis : la rue reste animée (près d'une terrasse pleine, tout le monde s'y serait arrêté).
+    if (this.seats && this.lifeRand(i, 21) < SIT_CHANCE && !this.leads(i)) {
+      const seat = this.freeSeatNear(i);
+      if (seat) {
+        this.startSit(i, seat);
+        return true;
+      }
+    }
+    if (this.lifeRand(i, 22) < 0.3) {
+      this.graph.forEachPoi(POI_LOOK, x, y, 18, (_k, px, py) => {
+        if (this.lookT[i]! <= 0) this.lookAt(i, px, py, 2.5);
+      });
+    }
+    return false;
+  }
+
+  /** Le passant mène-t-il un groupe ? (un meneur ne va pas s'asseoir : son groupe resterait debout à côté) */
+  private leads(i: number): boolean {
+    for (let j = 0; j < this.free; j++) if (this.buddy[j] === i && this.state.alive![j]) return true;
+    return false;
+  }
+
+  private startSit(i: number, seat: Seat): void {
+    seat.occupant = i;
+    this.seat[i] = seat;
+    this.mode[i] = PED_STATE.sit;
+    this.sitPhase[i] = 0;
+    const [a, b] = SIT_TIME[seat.kind];
+    this.timer[i] = a + this.lifeRand(i, 23) * (b - a);
+    this.kx[i] = this.ky[i] = 0;
+  }
+
+  /** Aller à sa place (en marchant), puis rester assis ; le décalage (jx, jy) garde l'écart à la file, pour que le retour se fasse en douceur. */
+  private sitStep(i: number, dt: number): void {
+    const seat = this.seat[i], st = this.state;
+    if (!seat || seat.occupant !== i) {
+      this.standUp(i);
+      return;
+    }
+    let px = this.x[i]!, py = this.y[i]!, v = 0;
+    if (this.sitPhase[i] === 0) {
+      const dx = seat.x - px, dy = seat.y - py, d = Math.hypot(dx, dy), step = SIT_WALK * dt;
+      if (d <= step + 0.02) {
+        px = seat.x;
+        py = seat.y;
+        this.sitPhase[i] = 1;
+        this.heading[i] = seat.heading;
+        st.pose![i] = LIFE_POSE.sit;
+        st.poseT![i] = 0;
+      } else {
+        px += (dx / d) * step;
+        py += (dy / d) * step;
+        this.heading[i] = Math.atan2(dx, dy);
+        v = SIT_WALK;
+      }
+    } else {
+      st.poseT![i]! += dt;
+      this.timer[i]! -= dt;
+      if (this.timer[i]! <= 0) {
+        this.standUp(i);
+        return;
+      }
+    }
+    this.graph.pointAt(this.edge[i]!, this.s[i]!, this.pt);
+    this.jx[i] = px - this.pt.x;
+    this.jy[i] = py - this.pt.y;
+    this.lat[i] = 0;
+    this.x[i] = st.x[i] = px;
+    this.y[i] = py;
+    st.z[i] = -py;
+    st.y[i] = this.sitPhase[i] === 1 ? seat.z - 0.45 : this.terrain.heightAt(px, py, st.y[i]);
+    st.yaw[i] = -this.heading[i]!;
+    st.speed[i] = v;
+    if (v === 0 && this.sitPhase[i] === 0) st.pose![i] = 0;
+    st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
+  }
+
+  /** Se lever : la place est libérée, on rejoint sa file en marchant (le décalage s'efface). */
+  private standUp(i: number): void {
+    const seat = this.seat[i];
+    if (seat && seat.occupant === i) seat.occupant = -1;
+    this.seat[i] = null;
+    this.mode[i] = PED_STATE.walk;
+    this.sitPhase[i] = 0;
+    this.state.pose![i] = 0;
+    this.speed[i] = this.want[i]! * 0.6;
+    this.ox[i] = this.oy[i] = 0;
+  }
+
+  /** Tourner la tête vers (x, y) pendant `t` s (au plus 70° de chaque côté). */
+  private lookAt(i: number, x: number, y: number, t: number): void {
+    const a = angleDiff(Math.atan2(x - this.x[i]!, y - this.y[i]!), this.heading[i]!);
+    if (Math.abs(a) > 2.2) return;
+    this.state.look![i] = -Math.max(-1.2, Math.min(1.2, a));
+    this.lookT[i] = t;
+  }
+
+  private lookStep(i: number, dt: number): void {
+    if (this.lookT[i]! > 0) this.lookT[i]! -= dt;
+    else if (this.state.look![i] !== 0) {
+      this.state.look![i]! *= Math.exp(-dt * 3);
+      if (Math.abs(this.state.look![i]!) < 0.01) this.state.look![i] = 0;
+    }
+  }
+
+  /**
+   * Maîtres de chiens vivants et debout ou assis (D199) : emplacement, identifiant (la graine du passant : un emplacement réutilisé change
+   * d'identifiant), position, cap, vitesse, assis, en fuite. Les morts et ceux à terre lâchent la laisse (le chien n'est plus suivi).
+   */
+  forEachDogOwner(visit: (slot: number, id: number, x: number, y: number, heading: number, speed: number, sitting: boolean, fleeing: boolean) => void): void {
+    const alive = this.state.alive!;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i] || !(this.trait[i]! & TRAIT.dog) || this.mode[i]! >= PED_STATE.stumble) continue;
+      const m = this.mode[i]!, moving = m === PED_STATE.walk || m === PED_STATE.cross || (m === PED_STATE.sit && this.sitPhase[i] === 0);
+      visit(i, this.id[i]!, this.x[i]!, this.y[i]!, this.heading[i]!, moving ? this.speed[i]! : 0, m === PED_STATE.sit && this.sitPhase[i] === 1, this.panic[i]! > 0);
+    }
   }
 
   // --- Voisinage -------------------------------------------------------------------------------------------------
