@@ -3828,3 +3828,25 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Avant](captures/d194-avant.jpg)
 ![Après : la date sous l'horloge](captures/d194-apres.jpg)
 ![Les deux nouveaux réglages](captures/d194-reglages.jpg)
+
+## 2026-11-02 — D195. Ville vivante, lot 1-2 : la météo, partie logique (plan `docs/plans/ville-vivante.md`, § 2)
+
+**Module** (`src/core/weather.ts`, logique pure, rien à enregistrer) :
+- **Épisodes** de 2 à 4 heures de jeu, tirés d'une graine dérivée de la date (`dayEpisodes`) : la même partie retrouve la même météo après un rechargement. Genre tiré selon le tableau du plan pour la saison du jour ; **un épisode sur deux garde le genre du précédent** (le temps dure un peu ; cela ne change pas les parts du tableau). Ajout au plan, qui ne disait rien de l'enchaînement : sans cela, beau, pluie et beau s'alternaient toutes les deux heures.
+- **Contraintes** : l'orage ne commence qu'entre 15 h 30 et 21 h 30 (et finit avant minuit), la brume entre 4 h 30 et 8 h (et finit à 10 h 30) ; dans leur fenêtre, leur part est relevée (×4 et ×5) pour garder à peu près celle du tableau sur la journée (mesuré sur 4 000 jours : orage 2 à 3 % des heures d'été, brume 2 à 4 % en automne) ; pas de neige au printemps ni en été ; jamais deux jours de pluie complets d'affilée (re-tirage).
+- **Transitions** de 20 à 40 minutes : vers un temps plus humide, les nuages se forment d'abord, la pluie tombe ensuite ; vers un temps plus sec, la pluie cesse avant que le ciel se dégage (chaque moitié dure la transition, l'épisode dure au moins 2 h : pas de transition coupée).
+- **État continu** (`weatherAt`) : `{ kind, cloud, rain, fog, snowfall, snow, wet, storm }`, entre 0 et 1. Écart au plan : la neige est séparée en **neige qui tombe** (`snowfall`) et **neige au sol** (`snow`), dont le rendu a besoin séparément. Le sol mouillé est le plus mouillé des 1 h 30 passées, diminué du temps écoulé ; la neige au sol suit une moyenne d'une heure de chute (une heure blanchit le sol) et fond en 5 heures ; **givre** l'hiver par temps clair, de 5 h à 10 h (au plus fort vers 7 h, `snow` ≤ 0,25). Coût : 0,03 ms par calcul, fait avec l'ambiance (environ deux fois par seconde).
+- **`?weather=beau|nuageux|pluie|orage|brume|neige`** impose et fige la météo, sol compris (`fixedWeather`), coupe la sauvegarde (`FORCING_PARAMS`) et sert au banc (`&weather=`). Le banc et le viewer sont **par beau temps** sans ce paramètre, pour que leurs mesures restent comparables.
+
+**Effets sur le jeu** :
+- **Adhérence** : `setSurfaceGrip` (`vehicle.ts`) multiplie l'adhérence des pneus de tous les véhicules (sec 1, mouillé 0,8, neige 0,6), appliquée en un seul endroit, au début de `stepVehicle` (fiche dérivée gardée en mémoire tant que l'adhérence ne change pas).
+- **Passants** : `crowdTarget` × facteur météo (pluie 0,45 à pleine pluie, orage 0,3, neige 0,6 à 0,7, brume 0,9) ; allure +20 % sous une pluie pleine.
+- **Circulation** : `trafficTarget` × 0,8 sous la pluie ou sur la neige ; conducteurs plus prudents (`setDriverCaution` : vitesse de croisière et accélération latérale de confort × 0,9), pris en compte quand ils recalculent leur tracé.
+- `?debug` affiche la météo (genre, nuages, pluie, sol mouillé…).
+
+**Tests** (+14) : `weather.test.ts` (durée des épisodes, déterminisme, fenêtres, parts sur 4 000 jours, pas deux jours de pluie, continuité minute par minute et à minuit, sol qui sèche, neige qui tient, nuages avant la pluie, `?weather=`, facteurs ; une voiture freine plus long sur sol mouillé et enneigé). Les tests existants (endurance de la circulation, des passants, de la police) gardent la météo neutre : aucun n'a changé.
+
+**Limites** : rien ne se voit encore à l'écran (lot 1-3) ; la météo est la même dans toute la ville ; l'adhérence ne dépend pas du revêtement (pavés, herbe) ; le joueur n'a aucun indicateur de météo hors `?debug` (le ciel le dira au lot 1-3). Pas de mesure au banc : le rendu ne change pas.
+
+![Midi sur la place du Champ de Mars, beau temps](captures/d195-beau.jpg)
+![Même lieu, `?weather=pluie` : moins de passants ; le ciel ne change qu'au lot 1-3](captures/d195-pluie.jpg)

@@ -59,6 +59,8 @@ export interface TrafficEnv {
   speed: number;
   hour: number;
   vehicle: { x: number; y: number } | null;
+  /** Part des voitures de l'heure qui circulent par ce temps (D195) ; défaut 1. */
+  weather?: number;
 }
 
 /** Une voiture qui s'éloigne de plus que cela de la couronne de naissance disparaît (si le joueur ne la voit pas). */
@@ -332,7 +334,7 @@ export class Traffic {
       const hit = graph.nearest(env.x, env.y, 80, MASK_ZONE);
       this.zone = hit ? graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
-    this.target = trafficTarget(this.max, env.hour, this.zone, env.speed);
+    this.target = trafficTarget(this.max, env.hour, this.zone, env.speed, env.weather);
     this.beaconClock += dt;
     const { rOut } = spawnRing(env.speed);
     // Au-delà de 400 m on ne voit plus une voiture (les murs lointains ne sont pas chargés : sans cette borne, une voiture droit devant à 1 km passait pour vue

@@ -14,6 +14,7 @@ import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
 import { dateFromParams, newGameDate } from "./core/calendar";
+import { weatherParam } from "./core/weather";
 import { createSea } from "./render/sea";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
@@ -132,6 +133,8 @@ async function main(): Promise<void> {
   const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
   const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
+  // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
+  atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).

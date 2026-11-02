@@ -1453,3 +1453,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Nouveaux réglages « Durée d'une saison » et « Saison » (« Qui passe » ou une saison figée). Une nouvelle partie commence le lundi du 1er jour de l'été ; une ancienne sauvegarde est reprise au lundi de sa saison (sauvegarde version 5).
 - Pas encore : la météo, les arbres et les tenues selon la saison, la semaine (marché, écoles, dimanche), les fêtes (le calendrier les connaît déjà). 1033 tests (13 de plus).
 - À regarder : `?season=hiver&h=17` (la nuit tombe plus tôt), `?date=9` (mercredi).
+
+**Ville vivante, lot 1-2 : la météo, partie logique (2 novembre 2026)** (D195)
+- Le jeu tire sa météo selon la saison (plutôt beau, averses au printemps, orages d'été le soir, brume d'automne le matin, neige et givre l'hiver), par épisodes de 2 à 4 heures, toujours la même pour une date donnée.
+- Elle agit déjà sur le jeu : moins de passants sous la pluie (et ils pressent le pas), un peu moins de voitures et des conducteurs plus prudents, des pneus qui accrochent moins sur sol mouillé ou enneigé.
+- Pas encore : le ciel gris, la pluie, les flaques, la neige à l'écran (lot 1-3). `?debug` affiche la météo ; `?weather=pluie` (ou beau, nuageux, orage, brume, neige) l'impose. 1047 tests (14 de plus).

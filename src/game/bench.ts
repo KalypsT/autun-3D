@@ -1,3 +1,7 @@
+import { SEASON_KEYS } from "../core/calendar";
+import { crowdWeather, surfaceGrip, trafficWeather, walkWeather } from "../core/weather";
+import { setDriverCaution } from "../core/driver";
+import { setSurfaceGrip } from "../core/vehicle";
 import * as THREE from "three";
 import { DETAIL_DISTANCE } from "../render/tile-manager";
 import { BENCH_ROUTE } from "./bench-route";
@@ -286,6 +290,9 @@ export function startBench(ctx: GameContext): void {
   const settingsShadows = renderer.shadowMap.enabled, settingsPixelRatio = renderer.getPixelRatio();
   const settings = {
     crowd: crowdN,
+    // Météo et saison (D195) : beau temps et 1er jour de l'été sauf &weather= et &season=.
+    weather: atmosphere.weather.kind,
+    season: SEASON_KEYS[atmosphere.calendar.season],
     sim: simMode ? `simulation${params.get("tiers") === "0" ? ", sans paliers" : ""}${params.get("avoid") === "0" ? ", sans évitement" : ""}` : "",
     soak,
     fast: fastKmh,
@@ -554,8 +561,10 @@ export function startBench(ctx: GameContext): void {
       }
       const u0 = performance.now();
       traffic.setNight(atmosphere.night);
+      setSurfaceGrip(surfaceGrip(atmosphere.weather));
+      setDriverCaution(trafficWeather(atmosphere.weather).caution);
       traffic.setPeds(pedSim);
-      traffic.update(dt, { x: pos.x, y: pos.y, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), speed: Math.hypot(pos.vx, pos.vy), hour: atmosphere.hour, vehicle: null });
+      traffic.update(dt, { x: pos.x, y: pos.y, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), speed: Math.hypot(pos.vx, pos.vy), hour: atmosphere.hour, vehicle: null, weather: trafficWeather(atmosphere.weather).density });
       const ud = performance.now() - u0;
       if (measuring) {
         trafficCost.updMs += ud;
@@ -616,6 +625,7 @@ export function startBench(ctx: GameContext): void {
     if (pedSim && crowd && nav && nav.graph.edgeCount > 0) {
       const obs: Observer = {
         x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), onFoot: !phase?.drive,
+        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather) },
         vehicle: phase?.drive ? { x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy } : null,
         ...(traffic ? { vehicles: traffic.bodies(), honks: traffic.takeHonks() } : {}),
       };

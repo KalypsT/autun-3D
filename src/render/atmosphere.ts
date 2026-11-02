@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay } from "../core/calendar";
+import { calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay, type Season } from "../core/calendar";
+import { fixedWeather, weatherAt, type WeatherKind, type WeatherState } from "../core/weather";
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
@@ -51,6 +52,11 @@ export class Atmosphere {
   /** Durée des saisons et saison figée (réglages). */
   private config: CalendarConfig = DEFAULT_CALENDAR;
   private cal: CalendarDay;
+  /** Météo imposée (`?weather=`), ou null : celle du calendrier. */
+  private forced: WeatherKind | null = null;
+  private wx: WeatherState = fixedWeather("beau");
+  /** Saison d'une date avec les réglages en cours (pour la météo des jours voisins). */
+  private readonly seasonOf = (d: number): Season => calendarAt(d, 12, this.config).season;
   /** Direction vers la source de lumière (soleil, puis lune) dans le repère three ; modifiée sur place. */
   readonly lightDir = new THREE.Vector3(0, 1, 0);
   private lastApplied = -1;
@@ -103,6 +109,17 @@ export class Atmosphere {
     this.apply();
   }
 
+  /** La météo à l'heure actuelle (D195), recalculée avec l'ambiance (environ deux fois par seconde réelle). */
+  get weather(): WeatherState {
+    return this.wx;
+  }
+
+  /** Impose une météo (et la fige), ou rend celle du calendrier (null). */
+  setWeather(kind: WeatherKind | null): void {
+    this.forced = kind;
+    this.apply();
+  }
+
   /** Impose la date (jours de jeu) ; l'ambiance suit tout de suite. */
   setDate(date: number): void {
     this.date = Math.max(0, Math.floor(date));
@@ -141,6 +158,7 @@ export class Atmosphere {
   private apply(): void {
     this.lastApplied = this.hour;
     this.cal = calendarAt(this.date, this.hour, this.config);
+    this.wx = this.forced ? fixedWeather(this.forced) : weatherAt(this.date, this.hour, this.seasonOf);
     const sun = sunPosition(this.cal.doy, this.hour);
     const [sx, sy, sz] = sunDirection(sun);
     const elev = (sun.elevation * 180) / Math.PI;

@@ -33,11 +33,11 @@ export function trafficDensity(hour: number, zone: number): number {
 
 /**
  * Nombre de voitures visé : capacité × densité, réduit quand on roule vite (on ne voit les voitures qu'un instant et le budget d'images
- * est plus serré : de 12 à 25 m/s la cible baisse jusqu'à la moitié), jamais zéro tant que la capacité n'est pas nulle et que la zone n'est pas la nature.
+ * est plus serré : de 12 à 25 m/s la cible baisse jusqu'à la moitié) et par mauvais temps (`weather`, D195), jamais zéro tant que la capacité n'est pas nulle et que la zone n'est pas la nature.
  */
-export function trafficTarget(capacity: number, hour: number, zone: number, speed: number): number {
+export function trafficTarget(capacity: number, hour: number, zone: number, speed: number, weather = 1): number {
   if (capacity <= 0) return 0;
   const fast = Math.min(Math.max((speed - 12) / 13, 0), 1);
-  const n = Math.round(capacity * trafficDensity(hour, zone) * (1 - 0.5 * fast));
+  const n = Math.round(capacity * trafficDensity(hour, zone) * (1 - 0.5 * fast) * weather);
   return zone === ZONE.nature ? n : Math.max(n, 1);
 }

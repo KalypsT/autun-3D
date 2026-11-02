@@ -235,6 +235,15 @@ export interface PathStyle {
   aDec: number;
 }
 export const CALM: PathStyle = { centered: false, factor: SPEED_FACTOR, floor: SPEED_FLOOR, aLat: A_LAT, aDec: A_DEC };
+/** Conduite par mauvais temps (D195) : vitesse de croisière réduite (×0,9 sous la pluie), réglée par le jeu. */
+let caution = 1;
+let calmNow = CALM;
+export function setDriverCaution(k: number): void {
+  const c = Math.round(Math.min(Math.max(k, 0.5), 1) * 100) / 100;
+  if (c === caution) return;
+  caution = c;
+  calmNow = c === 1 ? CALM : { ...CALM, factor: SPEED_FACTOR * c, aLat: A_LAT * c };
+}
 export const CHASE: PathStyle = { centered: true, factor: 1.45, floor: 50 / 3.6, aLat: 4.5, aDec: 5 };
 
 /**
@@ -529,7 +538,7 @@ export class Driver {
       this.extend(rank);
       this.gens.length = 0;
       for (const m of this.route) this.gens.push(this.nav.generation(moveEdge(m)));
-      this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended, this.chase ? CHASE : CALM);
+      this.path = buildPath(this.road, this.route, this.pathStart, this.limitOf, this.colliders, this.spec, this.ended, this.chase ? CHASE : calmNow);
       const bad = this.closedJunction(this.path, rank);
       if (bad < 0) return;
       this.banned.add(`${this.route[bad]}>${this.route[bad + 1]}`);

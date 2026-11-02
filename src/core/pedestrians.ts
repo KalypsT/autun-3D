@@ -121,6 +121,8 @@ export interface Observer {
   horn?: boolean;
   /** Heure de jeu (0 à 24) : règle le nombre de passants (D39). Défaut : midi. */
   hour?: number;
+  /** Météo (D195) : part des passants dehors (`crowd`, 1 par beau temps) et allure (`walk`, plus vive sous la pluie). Défaut : beau temps. */
+  weather?: { crowd: number; walk: number };
 }
 
 /** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
@@ -258,6 +260,8 @@ export class PedSim {
 
   private frame = 0;
   private hour = 12;
+  /** Allure selon la météo (D195), 1 par beau temps. */
+  private walk = 1;
   private excessCursor = 0;
   private spawned = 0;
   private spawnRng = 0;
@@ -303,7 +307,7 @@ export class PedSim {
     this.hour = obs.hour ?? 12;
     const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
     this.stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
-    this.stats.target = crowdTarget(this.free, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy));
+    this.stats.target = crowdTarget(this.free, this.hour, this.stats.zone, Math.hypot(obs.vx, obs.vy), obs.weather?.crowd);
     let alive = 0;
     for (let pass = 0; pass < 12 && alive < this.stats.target; pass++) {
       for (let i = 0; i < this.free && alive < this.stats.target; i++) {
@@ -330,7 +334,8 @@ export class PedSim {
       const hit = this.graph.nearest(obs.x, obs.y, 80, MASK_ZONE);
       stats.zone = hit ? this.graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
-    stats.target = crowdTarget(this.free, this.hour, stats.zone, v);
+    stats.target = crowdTarget(this.free, this.hour, stats.zone, v, obs.weather?.crowd);
+    this.walk = obs.weather?.walk ?? 1;
     if (this.avoid) this.buildGrid();
     const t0 = TIER_RANGE[0] * TIER_RANGE[0], t1 = TIER_RANGE[1] * TIER_RANGE[1];
     let near = 0, mid = 0, far = 0, waiting = 0, crossing = 0, idle = 0, nAlive = 0, knocked = 0, corpses = 0, sinking = 0;
@@ -522,7 +527,7 @@ export class PedSim {
       return;
     }
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
-    let target = this.want[i]! * (1 + 0.6 * this.fear[i]!);
+    let target = this.want[i]! * this.walk * (1 + 0.6 * this.fear[i]!);
     if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
     if (this.hp[i]! < WOUNDED_HP) target *= 0.7;
     if (this.tiers && tier > 0) {
