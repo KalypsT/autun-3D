@@ -5,7 +5,8 @@
  * Analogie : le plan de salle d'un restaurant ; chaque place a sa chaise et son occupant (ou personne).
  */
 
-export type SeatKind = "bench" | "terrace";
+/** `market` : la place debout d'un marchand derrière son étal (D201). */
+export type SeatKind = "bench" | "terrace" | "market";
 
 /** Une place : position (repère du jeu), cap du regard une fois assis (rad, 0 = nord, sens horaire), hauteur de l'assise (m). */
 export interface Seat {

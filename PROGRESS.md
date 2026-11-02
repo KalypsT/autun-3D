@@ -1487,3 +1487,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Corrigé : les nuages du ciel, clairs ou bruns la nuit, sont maintenant à peine plus clairs que le ciel. 1087 tests (10 de plus).
 - À regarder : `?h=23`, `?weekday=7&h=15` (dimanche), `?season=hiver&weekday=3&h=18` (vitrines ouvertes la nuit tombée).
 - **Le lot 1 du plan « ville vivante » est terminé.**
+
+**Ville vivante, lot 2-1 : le rythme de la semaine, sans les élèves (2 novembre 2026)** (D201)
+- Marché le mercredi et le vendredi matin sur la place du Champ de Mars : étals à bâches rayées, marchands, foule, brouhaha ; les voitures garées là laissent la place et reviennent après.
+- La grille du collège suit les jours de classe ; le dimanche, les cloches sonnent la messe à 10 h 15, le parvis s'anime à la sortie, les parcs se remplissent l'après-midi, il y a moins de voitures.
+- Pas encore : les élèves (proportions à décider avec toi), les livraisons (lot 2-4). À regarder : `?weekday=3&h=10` (mercredi), `?weekday=7&h=11.7&at=36,-590` (sortie de la messe).

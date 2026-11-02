@@ -1,3 +1,4 @@
+import { massPeal } from "../core/week";
 import type { AudioSystem } from "../audio/audio-system";
 import { NEAR, type Kit, type Spot } from "../audio/kit";
 import * as S from "../audio/synth";
@@ -76,6 +77,10 @@ export class GameAudio {
   private sirenVoices: SirenVoice[] = [];
   private amb: AmbienceVoice | null = null;
   private prevHour = Number.NaN;
+  /** Jour de la semaine (0 = lundi), donné par le jeu (cloches du dimanche, D201). */
+  weekday = 0;
+  /** Brouhaha du marché tout proche (0 à 1), donné par le jeu (D201). */
+  crowd = 0;
   private birdTimer = 2;
   private owlTimer = 20;
   private wipeTimer = 0;
@@ -456,7 +461,7 @@ export class GameAudio {
     const a = ambience(hour, day);
     // Météo (D196) : le vent forcit par temps couvert, la pluie couvre les grillons et les oiseaux se taisent.
     const wet = weather.rain;
-    this.amb.update(a.city * 0.7 * (1 - 0.3 * wet), 0.6 + 0.6 * weather.cloud, a.crickets * (1 - wet), wet);
+    this.amb.update(a.city * 0.7 * (1 - 0.3 * wet), 0.6 + 0.6 * weather.cloud, a.crickets * (1 - wet), wet, this.crowd);
     a.birds *= 1 - 0.8 * Math.max(wet, weather.cloud * 0.5);
     // Essuie-glaces : en voiture, sous la pluie, un aller toutes les 1,2 s (0,8 s sous une averse).
     this.wipeTimer -= dt;
@@ -487,6 +492,9 @@ export class GameAudio {
         for (let i = 0; i < b.strikes; i++) S.bell(kit, buses.sfx, t + 0.2 + i * BELL_GAP, BELL_PRIME, bell);
         if (b.peal) S.peal(kit, buses.sfx, t + 0.2 + b.strikes * BELL_GAP + 1.5, PEAL_SECONDS, bell);
       }
+      // Le dimanche, une longue volée appelle à la messe de 10 h 30 (D201).
+      const msp = massPeal(this.weekday, this.prevHour, hour) && this.spot(CATHEDRAL.x, CATHEDRAL.y, 150, 4000, 0.3, 0.8);
+      if (msp) S.peal(kit, buses.sfx, t + 0.2, PEAL_SECONDS * 2, { ...msp, cutoff: Math.max(msp.cutoff, 1600) });
     }
     this.prevHour = hour;
     this.voices = (this.ride ? 3 : 0) + this.carVoices.length + this.sirenVoices.length + (this.amb ? 1 : 0);

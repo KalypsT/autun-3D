@@ -201,6 +201,14 @@ export const SCENES: readonly SoundScene[] = [
       at(t0 + 7.8, () => a.stop(0.2));
     },
   },
+  {
+    id: "market", section: "Ville", label: "Brouhaha du marché (D201)", seconds: 6,
+    play(kit, dest, t0, at) {
+      const a = new AmbienceVoice(kit, dest);
+      at(t0, () => a.update(0.5, 0.5, 0, 0, 1));
+      at(t0 + 5.8, () => a.stop(0.2));
+    },
+  },
   shot("thunder-near", "Ville", "Tonnerre tout proche (D196)", 6, (k, o, t) => S.thunder(k, o, t, 1)),
   shot("thunder-far", "Ville", "Tonnerre lointain (D196)", 6, (k, o, t) => S.thunder(k, o, t, 0.25)),
   shot("wipers", "Véhicules", "Essuie-glaces (D196)", 3, (k, o, t, i) => S.wiper(k, o, t + i * 1.1), 3, 0),

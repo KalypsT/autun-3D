@@ -298,6 +298,7 @@ export class AmbienceVoice extends Voice {
   private readonly crickets: GainNode;
   private readonly rain: GainNode;
   private readonly downpour: GainNode;
+  private readonly crowd: GainNode;
 
   constructor(kit: Kit, dest: AudioNode) {
     super(kit, dest);
@@ -322,11 +323,18 @@ export class AmbienceVoice extends Voice {
     chain(this.loop(false), filter(ctx, "highpass", 1100, 0.5), filter(ctx, "lowpass", 7000, 0.5), this.rain, this.out);
     this.downpour = gainNode(ctx, 0);
     chain(brown, filter(ctx, "lowpass", 520, 0.6), this.downpour, this.out);
+    // Brouhaha d'une foule (marché, D201) : bruit dans la bande des voix, qui enfle et retombe comme des conversations.
+    this.crowd = gainNode(ctx, 0);
+    const murmur = gainNode(ctx, 0.6);
+    chain(this.osc("sine", 0.7), gainNode(ctx, 0.25)).connect(murmur.gain);
+    chain(this.osc("sine", 1.9), gainNode(ctx, 0.15)).connect(murmur.gain);
+    chain(this.loop(false), filter(ctx, "bandpass", 650, 0.9), filter(ctx, "lowpass", 1800, 0.7), murmur, this.crowd, this.out);
     this.out.gain.value = 1;
   }
 
   /** `rain` : intensité de la pluie (0 à 1) ; `shelter` : on est à l'abri (passage couvert, véhicule), le son est plus sourd et plus fort au toit. */
-  update(city: number, wind: number, crickets: number, rain = 0): void {
+  update(city: number, wind: number, crickets: number, rain = 0, crowd = 0): void {
+    this.set(this.crowd.gain, crowd * 0.22, 1);
     this.set(this.city.gain, city * 0.5, 0.5);
     this.set(this.wind.gain, wind * 0.25, 0.5);
     this.set(this.crickets.gain, crickets * 0.03, 0.5);

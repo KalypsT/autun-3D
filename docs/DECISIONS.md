@@ -3987,3 +3987,27 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![Rue aux Cordiers, mercredi 15 h : boutiques ouvertes](captures/d200-cordiers-mercredi.jpg)
 ![Dimanche 15 h : rideaux de fer baissés](captures/d200-cordiers-dimanche.jpg)
 ![Mercredi d'hiver, 18 h : vitrines ouvertes allumées](captures/d200-cordiers-hiver-18h.jpg)
+
+## 2026-11-02 — D201. Ville vivante, lot 2-1 : le rythme de la semaine, sans les élèves (plan `docs/plans/ville-vivante.md`, § 7)
+
+**Module** (`src/core/week.ts`, logique pure) : marché, jours d'école, dimanche.
+
+**Le marché** : mercredi et vendredi matin sur le grand parking du Champ de Mars (rangées de D154). Installation de 5 h à 7 h (les étals apparaissent un à un), plein de 7 h à 12 h 30, remballage jusqu'à 13 h 30.
+- **Étals** (`render/market-stalls.ts`) sur 8 places de stationnement sur 10 (jusqu'à 85 étals ; tréteaux, plateau à nappe, six cagettes garnies, bâche rayée de six couleurs) : **deux appels de dessin** pour tout le marché (structure et bâches), aucun hors marché. L'étal tourne le dos à sa voisine des rangées doubles (il regarde l'allée). Les étals sont des obstacles.
+- **Voitures** : celles garées sur le marché (à leur place d'origine, intactes, non conduites) s'en vont dès l'installation et reviennent au remballage (`game/market.ts`).
+- **Marchands** : une place « debout » derrière chaque étal (sorte `market` des places de D198), occupée comme un banc par un passant, qui y reste 1 min 30 à 5 min, face à l'allée.
+- **Foule** deux fois et demie plus dense autour du marché (la cible des passants est multipliée, à 160 m elle redevient normale) ; **brouhaha** (bruit dans la bande des voix, qui enfle et retombe), à son plus fort au milieu des étals.
+- Écarts au plan : pas de marché sous les halles de la mairie le vendredi (rien n'y est modélisé pour y poser des étals) ; pas de camionnettes de marchands garées derrière ni de cris des marchands (lot 2-4 pour les camionnettes).
+
+**Les écoles** : la grille du collège du Vallon (D174) est ouverte les jours de classe (lundi, mardi, jeudi, vendredi de 7 h 30 à 18 h ; mercredi jusqu'à 12 h 30) et fermée le week-end. **Les élèves ne sont pas faits** : leurs proportions sont à décider avec toi (plan § 7).
+
+**Le dimanche** : volée des cloches de Saint-Lazare à 10 h 15 (la messe de 10 h 30), parvis animé à la sortie (11 h 30 à 12 h, foule deux fois et demie plus dense autour de la cathédrale), promeneurs plus nombreux l'après-midi dans les parcs et au bord de l'eau (zone « nature », ×2,2) ; les boutiques sont fermées (D200) ; **moins de voitures** le samedi (×0,85) et le dimanche (×0,6).
+
+**Écart au plan** : les camionnettes de livraison en double file (6 h à 10 h) passent au lot 2-4, avec le camion poubelle : ce sont les mêmes nouveaux comportements de circulation (s'arrêter en double file, repartir).
+
+**Tests** (+7) : `week.test.ts` (marché et ses heures, emprise : plus de 60 places de stationnement, école, foule du marché, de la messe et du dimanche, voitures du week-end, volée), `market.test.ts` (rien hors marché ; au plus fort, étals, obstacles, marchands, voitures parties, deux maillages ; au remballage, tout revient).
+
+**Limites** : les étals sont posés droit sur chaque place (pas d'allées marchandes redessinées) ; les clients ne s'arrêtent pas devant les étals (ils marchent, comme les autres) ; le marché n'existe que si les tuiles du parking sont chargées ; le joueur qui part de la place un matin de marché peut naître contre un étal.
+
+![Jeudi 10 h : le parking](captures/d201-jeudi.jpg)
+![Mercredi 10 h : le marché, étals et marchands](captures/d201-marche-mercredi.jpg)

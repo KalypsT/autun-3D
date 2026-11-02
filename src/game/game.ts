@@ -1,5 +1,7 @@
 import { rescaleDate } from "../core/calendar";
 import { Seats } from "../core/seats";
+import { MarketController } from "./market";
+import { marketCenter, marketLevel, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
@@ -142,6 +144,13 @@ export function startGame(ctx: GameContext): void {
   const audio = new GameAudio(audioSys);
   // Places assises des tuiles chargées (bancs, terrasses, D198), que les passants réservent.
   const seats = new Seats();
+  // Marché du mercredi et du vendredi matin sur la place du Champ de Mars (D201) : étals, marchands, voitures qui laissent la place.
+  const market = new MarketController(scene, fleet, colliders, seats, terrain);
+  for (const extras of tiles.loadedExtras()) market.addTile(extras);
+  tiles.onBuild = (extras) => {
+    fleet.addFromTile(extras);
+    market.addTile(extras);
+  };
   tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
   tiles.forEachSeats((id, list) => seats.addTile(id, list));
   // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
@@ -1140,14 +1149,15 @@ export function startGame(ctx: GameContext): void {
     updateDamage(dt);
     updateUniques(dt);
     updateTrain(dt);
-    schoolGate.update(atmosphere.hour);
+    schoolGate.update(atmosphere.hour, atmosphere.calendar.weekday);
+    market.update(atmosphere.calendar.weekday, atmosphere.hour);
     // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
     const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
     setSurfaceGrip(surfaceGrip(wx));
     setDriverCaution(wxTraffic.caution);
     passageGates.update(atmosphere.hour, player.x, player.y);
     (traffic as Traffic | null)?.setNight(atmosphere.headlights);
-    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density });
+    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density * trafficWeek(atmosphere.calendar.weekday) });
     if (riding) {
       const s = riding.state;
       // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.
@@ -1339,6 +1349,7 @@ export function startGame(ctx: GameContext): void {
       const obs: Observer = {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather), season: atmosphere.calendar.season, rain: atmosphere.weather.rain },
+        weekday: atmosphere.calendar.weekday,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
         ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
@@ -1421,6 +1432,12 @@ export function startGame(ctx: GameContext): void {
       lastStars = wanted.stars;
     }
     audio.traffic(dt, eachCar);
+    audio.weekday = atmosphere.calendar.weekday;
+    {
+      // Brouhaha du marché : à son plus fort au milieu des étals, éteint à 120 m.
+      const [mx, my] = marketCenter(), d = Math.hypot(player.x - mx, player.y - my);
+      audio.crowd = marketLevel(atmosphere.calendar.weekday, atmosphere.hour) * Math.max(0, Math.min(1, (120 - d) / 80));
+    }
     audio.update(dt, atmosphere.hour, atmosphere.day, atmosphere.weather);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);

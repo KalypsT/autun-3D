@@ -1,4 +1,5 @@
 import type { Colliders } from "./collision";
+import { schoolOpen } from "./week";
 
 /**
  * Grille du collège du Vallon (D174, lot 3 de docs/plans/college-vallon.md) : à l'extrémité nord-est du pont de la rue de l'Acaron, perpendiculaire
@@ -36,10 +37,10 @@ export const GATE_LAYOUT = {
 /** Étiquette des obstacles de la grille fermée (retirés à l'ouverture). */
 export const GATE_TAG = "school-gate";
 
-/** La grille est-elle ouverte à cette heure ? */
-export function gateOpen(hour: number): boolean {
+/** La grille est-elle ouverte à cette heure, ce jour-là (D201 : jours de classe ; mercredi matin seulement ; fermée le week-end) ? Sans jour : un jour de classe. */
+export function gateOpen(hour: number, weekday = 0): boolean {
   const h = ((hour % 24) + 24) % 24;
-  return h >= GATE_LAYOUT.hours[0] && h < GATE_LAYOUT.hours[1];
+  return schoolOpen(weekday, h, GATE_LAYOUT.hours[0], GATE_LAYOUT.hours[1]);
 }
 
 export interface GateFrame {
@@ -73,8 +74,8 @@ export function gateLine(g: SchoolGateSpec = SCHOOL_GATE): number[] {
 }
 
 /** Pose ou retire l'obstacle de la grille selon l'heure ; `state.closed` retient ce qui est en place (null : rien encore). Vrai si l'état a changé. */
-export function syncGate(colliders: Colliders, hour: number, state: { closed: boolean | null }, g: SchoolGateSpec = SCHOOL_GATE): boolean {
-  const closed = !gateOpen(hour);
+export function syncGate(colliders: Colliders, hour: number, state: { closed: boolean | null }, g: SchoolGateSpec = SCHOOL_GATE, weekday = 0): boolean {
+  const closed = !gateOpen(hour, weekday);
   if (state.closed === closed) return false;
   if (state.closed) colliders.removeTag(GATE_TAG);
   if (closed) {
