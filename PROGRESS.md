@@ -1438,3 +1438,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Passage Balthus : le verre de la verrière (2 novembre 2026)** (D191)
 - La verrière a son verre : translucide, sans ombre, on voit les fermes à travers depuis la galerie et le toit vitré entre les immeubles depuis le dessus.
 - Pas encore : l'imposte en éventail et le fronton de la rue Demetz, les passants qui entrent dans les boutiques. 1020 tests (1 de plus).
+
+**Passage Balthus : l'imposte et le fronton (2 novembre 2026)** (D192)
+- L'arc de la rue Demetz porte un fronton triangulaire (corniche, tympan, œil-de-bœuf) ; chaque grille a son imposte en éventail.
+- Pas encore : les balcons et lucarnes de la façade de la rue Demetz, les passants dans les boutiques. 1020 tests.

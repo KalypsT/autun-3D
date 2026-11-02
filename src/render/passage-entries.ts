@@ -4,6 +4,7 @@ import { at, frameOf, PASSAGE_DOG, PASSAGE_SLAB } from "../core/landmarks";
 import { toThree, type MeshBuilder, type UvMeshBuilder, type Vec3 } from "./geometry";
 import type { SignAtlas } from "./sign-atlas";
 import { slab } from "./square";
+import { PASSAGE_GATE } from "../core/passage-gate";
 
 /**
  * Passage Balthus, lot 3 (D189) : les deux entrées et la statue du chien.
@@ -14,7 +15,7 @@ import { slab } from "./square";
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
-const STONE_D = C("#d8c9a6"), STONE_C = C("#c9b997"), BAND = C("#e6dcc0"), BRONZE = C("#34423a"), BRONZE_L = C("#46564a"), PLINTH = C("#d9d3c4"), PLAQUE = C("#c8c2b2"), BLUE = C("#1f4a9a"), WHITE = C("#f4efe4");
+const IRON = C("#23272b"), STONE_D = C("#d8c9a6"), STONE_C = C("#c9b997"), BAND = C("#e6dcc0"), BRONZE = C("#34423a"), BRONZE_L = C("#46564a"), PLINTH = C("#d9d3c4"), PLAQUE = C("#c8c2b2"), BLUE = C("#1f4a9a"), WHITE = C("#f4efe4");
 
 export interface Sinks { solid: MeshBuilder; names: UvMeshBuilder; atlas: SignAtlas }
 
@@ -89,6 +90,53 @@ function dog(sinks: Sinks, s: PassageSite, zg: number): void {
   box(0.18, 0.3, 0.04, 0.16, z0 + 0.1, z0 + 0.6, BRONZE_L);
 }
 
+/** Imposte en éventail au-dessus d'une grille (photo 4) : des rayons de fer du haut de la grille à l'archivolte, et une bande qui suit l'arc. Fixe : elle se voit grille ouverte. */
+function fan(sinks: Sinks, s: PassageSite, plane: number, out: 1 | -1, top: number, rise: number, zbar: number): void {
+  const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
+  const P = (t: number, z: number, o = 0): Vec3 => toThree(...at(f, plane + o, t), z);
+  const hw = s.hw, R = (hw * hw + rise * rise) / (2 * rise), zc = top - R;
+  const za = (t: number): number => zc + Math.sqrt(Math.max(0, R * R - t * t)) - 0.3;
+  const bar = (t0: number, z0: number, t1: number, z1: number, w: number): void => {
+    const L = Math.hypot(t1 - t0, z1 - z0), nt = -(z1 - z0) / L * w / 2, nz = (t1 - t0) / L * w / 2;
+    for (const sgn of [1, -1]) {
+      const n: Vec3 = toThree(f.ux * out * sgn, f.uy * out * sgn, 0);
+      sinks.solid.quad(P(t0 - nt, z0 - nz), P(t1 - nt, z1 - nz), P(t1 + nt, z1 + nz), P(t0 + nt, z0 + nz), n, IRON);
+    }
+  };
+  const N = 12;
+  for (let k = 0; k <= N; k++) {
+    const t = -hw + (2 * hw * k) / N;
+    if (za(t) > zbar + 0.08) bar(0, zbar, t * 0.98, za(t * 0.98), 0.03);
+  }
+  for (let k = 0; k < N; k++) {
+    const t0 = -hw + (2 * hw * k) / N, t1 = -hw + (2 * hw * (k + 1)) / N;
+    if (za(t0) > zbar + 0.08 && za(t1) > zbar + 0.08) bar(t0, za(t0), t1, za(t1), 0.05);
+  }
+}
+
+/** Fronton de la façade de la rue Demetz (photo 3) : corniche, triangle de pierre à cadre mouluré, tympan plus sombre, œil-de-bœuf. */
+function pediment(sinks: Sinks, s: PassageSite, base: number): void {
+  const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
+  const hw = s.hw + 0.4, depth = 0.14;
+  const P = (t: number, z: number, o = 0): Vec3 => toThree(...at(f, -(depth + o), t), z);
+  const n: Vec3 = toThree(-f.ux, -f.uy, 0);
+  // Corniche : bloc qui déborde de la façade.
+  slab(sinks.solid, f, -depth, 0, -hw, hw, base, base + 0.3, BAND, BAND);
+  const zb = base + 0.3, apex = zb + 1.35, w = hw - 0.2;
+  sinks.solid.tri(P(-w, zb), P(w, zb), P(0, apex), n, STONE_D);
+  // Tympan (en retrait), cadre mouluré le long des deux rampants.
+  sinks.solid.tri(P(-w + 0.4, zb + 0.08, 0.02), P(w - 0.4, zb + 0.08, 0.02), P(0, apex - 0.5, 0.02), n, STONE_C);
+  for (const sg of [-1, 1]) sinks.solid.quad(P(sg * w, zb, 0.03), P(sg * 0.0, apex, 0.03), P(sg * 0.0, apex - 0.24, 0.03), P(sg * (w - 0.45), zb, 0.03), n, BAND);
+  // Œil-de-bœuf : octogone sombre dans un cadre clair.
+  const cz = zb + 0.52;
+  for (const [r, col, o] of [[0.3, BAND, 0.04], [0.22, C("#2e3d44"), 0.05]] as const) {
+    for (let i = 0; i < 8; i++) {
+      const a0 = (i * Math.PI) / 4, a1 = a0 + Math.PI / 4;
+      sinks.solid.tri(P(0, cz, o), P(Math.cos(a0) * r, cz + Math.sin(a0) * r, o), P(Math.cos(a1) * r, cz + Math.sin(a1) * r, o), n, col);
+    }
+  }
+}
+
 export function buildEntries(sinks: Sinks, s: PassageSite): void {
   const zg = s.zf + PASSAGE_SLAB;
   // Rue Demetz : le linteau le plus bas côté rue ; arc à plein cintre surbaissé de 1,4 m.
@@ -96,5 +144,10 @@ export function buildEntries(sinks: Sinks, s: PassageSite): void {
   arch(sinks, s, 0, -1, lo[2], 1.4, zg, STONE_D);
   arch(sinks, s, hi[1], 1, hi[2], 0.9, s.zc, STONE_C);
   plaque(sinks, s, hi[1], 1, -(s.hw - 0.22), s.zc + 1.9);
+  // Impostes en éventail au-dessus des grilles (D192), fronton de la rue Demetz.
+  const G = PASSAGE_GATE;
+  fan(sinks, s, G.planes[0], -1, lo[2], 1.4, G.floors[0] + 0.05 + G.height);
+  fan(sinks, s, G.planes[1], 1, hi[2], 0.9, G.floors[1] + 0.05 + G.height);
+  pediment(sinks, s, lo[3]);
   dog(sinks, s, zg);
 }

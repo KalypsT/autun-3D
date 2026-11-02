@@ -3774,3 +3774,16 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![La verrière vue de dessus : verre et fermes entre les toits](captures/d191-verriere-dessus.jpg)
 ![La verrière vue de l'intérieur](captures/d191-verriere-dessous.jpg)
+
+## 2026-11-02 — D192. Passage Balthus : l'imposte en éventail et le fronton de la rue Demetz
+
+**Demande de l'utilisateur** : « Continue avec l'imposte et le fronton » (restes de D190 et D191).
+
+**Imposte** (`fan`, `src/render/passage-entries.ts`) : au-dessus de chaque grille (photo 4), dans la fente entre le haut des barreaux (3 m) et l'archivolte, des rayons de fer partis du milieu du haut de la grille (13 au plus) et une bande qui suit l'arc ; les rayons que l'arc ne dépasse pas ne sont pas tirés. Fixe (elle se voit grille ouverte), dans le maillage plein : une centaine de triangles.
+
+**Fronton** (`pediment`) : au-dessus de l'arc de la rue Demetz (photo 3), à la hauteur du linteau mesuré : corniche en bloc de 14 cm de saillie, triangle de pierre de 1,35 m de haut, tympan plus sombre en retrait, cadre mouluré le long des rampants, œil-de-bœuf octogonal.
+
+**Limites** : la photo 3 montre le fronton entre deux lucarnes et des balcons de fer forgé à l'étage, qui ne sont pas dessinés (les fenêtres sont celles des fiches des deux immeubles) ; le fronton est à l'échelle de l'arc (6,6 m), non mesuré ; l'imposte rue aux Cordiers est à peine visible (fente de 55 cm).
+
+![Le fronton de la rue Demetz](captures/d192-fronton.jpg)
+![L'imposte au-dessus de la grille, de l'intérieur de l'arc](captures/d192-imposte.jpg)
