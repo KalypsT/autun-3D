@@ -45,6 +45,8 @@ export interface TileExtras {
   furniture: Furniture[];
   stairs: StairsZone[];
   marks: number[][][];
+  /** Polygones d'eau de la tuile (rivières, plan d'eau ; anneau extérieur puis trous), pour les animaux de l'eau (D203). */
+  water?: number[][][];
 }
 
 interface Entry {
@@ -218,7 +220,7 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
-    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);

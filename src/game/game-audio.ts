@@ -478,6 +478,13 @@ export class GameAudio {
     }
   }
 
+  /** Cri d'un animal (D203) à sa position : aboiement, coin-coin, envol, cri de martinet. */
+  animal(kind: "bark" | "quack" | "flap" | "swift", x: number, y: number): void {
+    const kit = this.kit;
+    const sp = kit && this.spot(x, y, kind === "swift" ? 25 : 8, kind === "swift" ? 200 : 90, 0.2, kind === "bark" ? 0.9 : 0.6);
+    if (kit && sp) S.animalCall(kit, this.sys.buses!.ambience, kit.ctx.currentTime + 0.02, kind, sp);
+  }
+
   /** Coup de tonnerre (D196), `delay` secondes après l'éclair. */
   thunder(delay: number, strength: number): void {
     const kit = this.kit;

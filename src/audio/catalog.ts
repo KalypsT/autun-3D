@@ -211,6 +211,7 @@ export const SCENES: readonly SoundScene[] = [
   },
   shot("firework", "Ville", "Fusée du feu d'artifice, à 400 m (D202)", 4, (k, o, t) => S.firework(k, o, t, 1, { gain: 0.6, pan: 0.3, cutoff: 2500, echo: 0.5 })),
   shot("music", "Ville", "Fête de la musique : quelques notes (D202)", 3, (k, o, t, i) => S.musicNote(k, o, t, [110, 220, 277, 330, 440][i]!, [0, 1, 1, 1, 2][i]!, 1, { gain: 0.6, pan: 0, cutoff: 6000, echo: 0.2 }), 5, 0.3),
+  shot("animals", "Ville", "Animaux : aboiement, canard, envol, martinet (D203)", 4, (k, o, t, i) => S.animalCall(k, o, t, (["bark", "quack", "flap", "swift"] as const)[i]!, { gain: 0.6, pan: 0, cutoff: 8000, echo: 0.1 }), 4, 0.9),
   shot("thunder-near", "Ville", "Tonnerre tout proche (D196)", 6, (k, o, t) => S.thunder(k, o, t, 1)),
   shot("thunder-far", "Ville", "Tonnerre lointain (D196)", 6, (k, o, t) => S.thunder(k, o, t, 0.25)),
   shot("wipers", "Véhicules", "Essuie-glaces (D196)", 3, (k, o, t, i) => S.wiper(k, o, t + i * 1.1), 3, 0),

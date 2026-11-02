@@ -4034,3 +4034,25 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Illuminations : le sapin de la place](captures/d202-illuminations.jpg)
 ![Marché de Noël : les chalets](captures/d202-marche-noel.jpg)
 ![Fête de la musique sur la place](captures/d202-fete-musique.jpg)
+
+## 2026-11-02 — D203. Ville vivante, lot 2-3 : les animaux (plan `docs/plans/ville-vivante.md`, § 9)
+
+**Logique** (`src/core/animals.ts`) et **jeu** (`src/game/animals.ts`) : chaque espèce naît hors du champ de vision autour du joueur (une naissance par espèce et par demi-seconde au plus), selon l'heure, la saison et le lieu, et disparaît quand on s'éloigne (150 m à terre) ou que son heure passe. Plafonds : 6 chiens, 8 chats, 18 canards, 3 hérons, 30 martinets, 14 chauves-souris. **`?animals=0`** les coupe tous.
+- **Chiens seuls** (modèle de D199, `DogView`) : de 7 h à 20 h, dans les quartiers d'habitation et la périphérie (zones du graphe piéton) ; ils trottent d'un point à l'autre et reniflent ; le joueur passe à moins de 7 m : ils s'arrêtent, le regardent et **aboient** (aussitôt, puis toutes les 4 à 7 s).
+- **Chats** (même nuanceur, géométrie à oreilles pointues et queue dressée, six robes) : la nuit, au pied des façades, assis ou qui marchent un peu ; ils **détalent** à 5 m/s quand on approche à moins de 6 m. Écart au plan : pas sur les murets, les capots ni les marches (il faudrait leurs hauteurs) : au sol.
+- **Canards** : en groupes de 3 à 5 sur l'eau (polygones d'eau des tuiles, rivières et plan d'eau du Vallon) ; le premier choisit sa route, les autres le suivent ; ils restent toujours sur l'eau, s'écartent du joueur, cancanent de temps en temps.
+- **Hérons** : sur la rive (sommets des polygones d'eau), immobiles, ailes repliées ; ils **s'envolent** quand on approche à moins de 18 m (battements d'ailes, son).
+- **Martinets** : l'été de 18 h à 21 h 30, en bande qui tourne vite au-dessus de la cathédrale (entre 18 et 55 m), quand on est à moins de 700 m ; cris stridents.
+- **Chauves-souris** : au crépuscule (sauf l'hiver), en vol zigzagant serré autour des tours de la cathédrale. Écart au plan : pas autour des remparts (pas de tracé à portée).
+
+**Dessin** : **un appel de dessin par espèce présente** (maillages instanciés ; `render/birds.ts` pour les canards, hérons, martinets et chauves-souris, dont les ailes battent dans le nuanceur). La galerie accepte `&animals=1` (un spécimen de chaque).
+
+**Sons** (`animalCall`, page `?sounds`) : aboiement, coin-coin, envol, cri du martinet.
+
+**Tests** (+7) : heures et saisons de chaque espèce ; le chien flâne puis aboie près du joueur ; le chat détale, le héron s'envole ; les canards restent sur l'eau et suivent leur meneur ; martinets et chauves-souris tournent autour de leur centre, à leur hauteur ; géométries ; un maillage par espèce, invisible sans animal.
+
+**Mesure** : rien au banc (il ne fait pas vivre les animaux) ; au plus six appels de dessin de plus, quelques centaines de triangles, et une simulation de moins de 80 animaux (quelques opérations chacun).
+
+**Limites** : les animaux traversent les murs et les voitures (pas d'obstacles) ; les chats ne grimpent nulle part ; à 45 m et plus, un chien ou un chat est petit à l'écran (on les voit surtout en passant près d'eux) ; les canards ne s'envolent pas ; pas de pigeons nouveaux (ceux de J2 restent).
+
+![Galerie (`?view=characters&animals=1`) : chien, chats, canards, héron posé, oiseaux en vol](captures/d203-animaux.jpg)

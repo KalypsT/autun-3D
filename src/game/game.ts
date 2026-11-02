@@ -2,6 +2,7 @@ import { rescaleDate } from "../core/calendar";
 import { Seats } from "../core/seats";
 import { MarketController } from "./market";
 import { FeastsController } from "./feasts";
+import { AnimalsController } from "./animals";
 import { marketCenter, marketLevel, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
@@ -154,6 +155,8 @@ export function startGame(ctx: GameContext): void {
   };
   tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
   tiles.forEachSeats((id, list) => seats.addTile(id, list));
+  // Animaux (D203) : chiens seuls, chats, canards, hérons, martinets, chauves-souris ; `?animals=0` les coupe.
+  const animals = new AnimalsController(scene, terrain, () => (nav as NavManager | null)?.graph ?? null, () => tiles.loadedExtras(), audio, params.get("animals") !== "0");
   // Fêtes (D202) : illuminations, feu d'artifice du 14 juillet, fête de la musique.
   const feasts = new FeastsController(scene, terrain, colliders, seats, audio, () => tiles.loadedExtras());
   // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
@@ -1155,6 +1158,7 @@ export function startGame(ctx: GameContext): void {
     schoolGate.update(atmosphere.hour, atmosphere.calendar.weekday);
     market.update(atmosphere.calendar.weekday, atmosphere.hour, atmosphere.feasts.includes("marche-noel"));
     feasts.update(dt, atmosphere.feasts, atmosphere.hour, atmosphere.night);
+    animals.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, night: atmosphere.night, season: atmosphere.calendar.season });
     // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
     const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
     setSurfaceGrip(surfaceGrip(wx));
@@ -1477,6 +1481,8 @@ export function startGame(ctx: GameContext): void {
     },
     /** Essais : les fêtes en cours et ce qu'elles montrent (D202). */
     feasts: () => ({ list: atmosphere.feasts, ...feasts.state }),
+    /** Essais : animaux présents par espèce (D203). */
+    animals: () => animals.counts(),
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

@@ -1496,3 +1496,6 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Ville vivante, lot 2-2 : les fêtes (2 novembre 2026)** (D202)
 - Illuminations de Noël (guirlandes entre les lampadaires du centre, sapin sur la place), marché de Noël en chalets, fête de la musique (quatre groupes qui jouent sur les places), feu d'artifice du 14 juillet au-dessus du plan d'eau du Vallon, avec son reflet et ses détonations.
 - À regarder : `?date=9&h=23.3&at=960,430&yaw=1.4` (feu d'artifice, lever la caméra), `?date=7&h=20.5` (fête de la musique), `?date=20&h=19` (illuminations), `?date=21&h=17` (marché de Noël).
+
+**Ville vivante, lot 2-3 : les animaux (2 novembre 2026)** (D203)
+- Chiens seuls dans les quartiers d'habitation (ils aboient quand tu passes près d'eux), chats la nuit (ils détalent), canards en petits groupes sur l'eau, hérons au bord de l'eau (ils s'envolent), martinets l'été au-dessus de la cathédrale, chauves-souris au crépuscule. `?animals=0` les coupe ; `?view=characters&animals=1` les montre de près.

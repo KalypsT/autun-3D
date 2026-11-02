@@ -362,6 +362,23 @@ export function musicNote(kit: Kit, dest: AudioNode, t: number, freq: number, vo
   else tone(kit, out, t, "sawtooth", freq, freq, 0, 0.09, 0.01, length * 0.6);
 }
 
+/** Animaux (D203) : aboiement (deux « ouaf » rauques), coin-coin, envol (battements d'ailes), cri du martinet (sifflement strident). */
+export function animalCall(kit: Kit, dest: AudioNode, t: number, kind: "bark" | "quack" | "flap" | "swift", spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  if (kind === "bark") {
+    for (const dt of [0, 0.28]) {
+      tone(kit, out, t + dt, "sawtooth", 520, 330, 0.12, 0.35, 0.005, 0.14);
+      burst(kit, out, t + dt, "bandpass", 900, 1.5, 0.3, 0.004, 0.12);
+    }
+  } else if (kind === "quack") {
+    for (const dt of [0, 0.22]) tone(kit, out, t + dt, "square", 340, 280, 0.12, 0.12, 0.01, 0.13);
+  } else if (kind === "flap") {
+    for (let i = 0; i < 5; i++) burst(kit, out, t + i * 0.13, "lowpass", 600, 0.7, 0.4, 0.01, 0.08, true);
+  } else {
+    tone(kit, out, t, "sawtooth", 4200, 5600, 0.22, 0.05, 0.01, 0.24);
+  }
+}
+
 /** Un aller des essuie-glaces : frottement du caoutchouc sur le verre mouillé, et le petit choc en butée. */
 export function wiper(kit: Kit, dest: AudioNode, t: number): void {
   const out = spotOut(kit, dest, { gain: 0.35, pan: 0, cutoff: 5000, echo: 0 });

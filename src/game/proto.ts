@@ -1,5 +1,6 @@
 import { createDog } from "../core/dogs";
 import { DogView } from "../render/dogs";
+import { BirdView, type BirdKind } from "../render/birds";
 import { LIFE_POSE } from "../core/character-rig";
 import { coldAt, dressForCold, umbrellaShare } from "../core/dress";
 import * as THREE from "three";
@@ -294,6 +295,27 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   };
   let state = place();
   let crowd = FACTORIES.B(scene, state);
+  // `&animals=1` : un spécimen de chaque animal de la ville devant la caméra (D203) : chien, chat assis, canards, héron posé et en vol,
+  // martinets et chauves-souris en vol.
+  if (params.has("animals")) {
+    const gy = (x: number, z: number): number => groundAt(x, z);
+    const dx = camX, dz = camZ - dist + 1.5;
+    const cat = new DogView(scene, 2, true), dog = new DogView(scene, 1);
+    const d0 = createDog(5, 0, { x: dx - 1.8, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(d0, { x: dx - 1.8, y: -dz, heading: Math.PI / 2, speed: 1.4, phase: 1 });
+    dog.update([d0], (x, y) => gy(x, -y), () => false);
+    const c0 = createDog(6, 0, { x: dx - 0.4, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(c0, { x: dx - 0.4, y: -dz, heading: Math.PI * 0.8, size: 0.55, pose: 2, coat: 2 });
+    const c1 = createDog(7, 1, { x: dx + 0.4, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(c1, { x: dx + 0.4, y: -dz, heading: Math.PI / 2, size: 0.55, speed: 1, phase: 2, coat: 0 });
+    cat.update([c0, c1], (x, y) => gy(x, -y), () => false);
+    const birds = (kind: BirdKind, items: { x: number; y: number; z: number; flying: boolean; heading: number }[]): void =>
+      new BirdView(scene, kind, items.length).update(items.map((b, i) => ({ ...b, phase: i * 1.7, coat: i, size: 1 })));
+    birds("duck", [0, 1, 2].map((i) => ({ x: dx + 1.2 + i * 0.5, y: -dz + 0.3 * i, z: gy(dx + 1.2, dz), flying: false, heading: 2 })));
+    birds("heron", [{ x: dx + 3, y: -dz - 1, z: gy(dx + 3, dz + 1), flying: false, heading: -1 }, { x: dx + 1, y: -dz - 2, z: gy(dx + 1, dz) + 3.2, flying: true, heading: 1.6 }]);
+    birds("swift", [0, 1, 2].map((i) => ({ x: dx - 2 + i, y: -dz - 2, z: gy(dx, dz) + 2.6 + i * 0.3, flying: true, heading: 1.6 })));
+    birds("bat", [0, 1].map((i) => ({ x: dx - 3 + i * 0.8, y: -dz - 1, z: gy(dx, dz) + 2.2, flying: true, heading: -1.2 })));
+  }
   // `&dogs=1` : un chien à côté de chaque personnage, à l'arrêt, au trot, en train de renifler ou assis (D199).
   if (params.has("dogs")) {
     const view = new DogView(scene, n);

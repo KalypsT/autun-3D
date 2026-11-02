@@ -8,6 +8,9 @@ import { DOG_POSE } from "../core/dogs";
  * attributs d'instance), et **un seul** pour toutes les laisses (segments). Le chien mesure 0,5 m au garrot à la taille 1.
  */
 
+/** Pelages des chats (D203) : noir, tigré gris, roux, blanc, écaille, gris bleu. */
+const CAT_COATS = ["#262422", "#7a7670", "#d0782e", "#ece8e0", "#6a4a32", "#5a6470"].map((c) => new THREE.Color(c));
+
 /** Pelages : fauve, noir, blanc cassé, gris, brun, roux. */
 const COATS = ["#c89a5a", "#2a2624", "#ece4d4", "#8a8a88", "#6a4a32", "#b8642e"].map((c) => new THREE.Color(c));
 
@@ -24,6 +27,24 @@ function box(out: { p: number[]; n: number[]; part: number[]; shade: number[] },
     out.shade.push(shade);
   }
   g.dispose();
+}
+
+/** Chat (D203) : oreilles pointues, queue dressée, tête plus ronde ; mêmes parties que le chien (le nuanceur l'anime pareil). */
+export function catGeometry(): THREE.BufferGeometry {
+  const o = { p: [] as number[], n: [] as number[], part: [] as number[], shade: [] as number[] };
+  // Aux proportions du chien (hanches à 0,31, pattes à ± 0,22 : le même nuanceur les anime), réduit par la taille d'instance (0,55 environ).
+  box(o, 0, 0.42, 0, 0.2, 0.2, 0.6, 0);
+  box(o, 0, 0.56, -0.36, 0.2, 0.18, 0.18, 1);
+  box(o, -0.06, 0.69, -0.36, 0.05, 0.1, 0.04, 1, 0.8);
+  box(o, 0.06, 0.69, -0.36, 0.05, 0.1, 0.04, 1, 0.8);
+  box(o, 0, 0.72, 0.34, 0.05, 0.5, 0.05, 2);
+  for (const [x, z, part] of [[-0.07, -0.22, 3], [0.07, -0.22, 4], [-0.07, 0.22, 5], [0.07, 0.22, 6]] as const) box(o, x, 0.155, z, 0.06, 0.31, 0.06, part, 0.85);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(o.p, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(o.n, 3));
+  g.setAttribute("part", new THREE.Float32BufferAttribute(o.part, 1));
+  g.setAttribute("shade", new THREE.Float32BufferAttribute(o.shade, 1));
+  return g;
 }
 
 /** Géométrie du chien, tourné vers −z (comme les personnages), pattes au sol à y = 0. */
@@ -82,7 +103,11 @@ export class DogView {
   private readonly v = new THREE.Vector3();
   private readonly s = new THREE.Vector3();
 
-  constructor(scene: THREE.Scene, readonly capacity = 24) {
+  private readonly coats: THREE.Color[];
+
+  /** `cat` : des chats (D203) au lieu de chiens. */
+  constructor(scene: THREE.Scene, readonly capacity = 24, cat = false) {
+    this.coats = cat ? CAT_COATS : COATS;
     const mat = new THREE.MeshLambertMaterial({ color: "#ffffff" });
     mat.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
@@ -93,7 +118,7 @@ export class DogView {
         .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= vShade;");
     };
     mat.customProgramCacheKey = () => "dog";
-    const geo = dogGeometry();
+    const geo = cat ? catGeometry() : dogGeometry();
     this.anim = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
     this.anim.setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute("aAnim", this.anim);
@@ -103,7 +128,7 @@ export class DogView {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
     this.mesh.frustumCulled = false;
-    this.mesh.name = "chiens";
+    this.mesh.name = cat ? "chats" : "chiens";
     for (let i = 0; i < capacity; i++) this.mesh.setColorAt(i, COATS[0]!);
     this.leashPos = new Float32Array(capacity * 6);
     const lg = new THREE.BufferGeometry();
@@ -128,7 +153,7 @@ export class DogView {
       this.s.setScalar(d.size);
       this.m.compose(this.v.set(d.x, z, -d.y), this.q, this.s);
       this.mesh.setMatrixAt(i, this.m);
-      this.mesh.setColorAt(i, COATS[d.coat % COATS.length]!);
+      this.mesh.setColorAt(i, this.coats[d.coat % this.coats.length]!);
       anim[i * 3] = d.phase;
       anim[i * 3 + 1] = Math.min(1, d.speed / 1.5);
       anim[i * 3 + 2] = d.pose === DOG_POSE.sit ? 2 : d.pose === DOG_POSE.sniff ? 1 : 0;
