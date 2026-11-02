@@ -12,6 +12,7 @@ const PATHS = {
   pistol: `<path fill="currentColor" d="M3 7h16l2 2v3h-9l-1 2.5H8L7 20H3.5l1.2-7H3z"/>`,
   shotgun: `<path fill="currentColor" d="M1.5 9H20l2.5 1v2.2H11L10 14H7.4l-2 4.5H2.2L4 13H1.5z"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M13 14.5h4"/>`,
   rifle: `<path fill="currentColor" d="M1.5 9h13V6.5h2V9h6v2.4h-8.3l-1 4.1h-2.3l.6-4.1H9l-3.2 5.4H2.4l2.4-5.4H1.5z"/>`,
+  sniper: `<path fill="currentColor" d="M1 11.2h22.5v1.6H11.5l-1.2 1.4H7.8l-3 4.3H1.6l2.6-5.7H1z"/><rect fill="currentColor" x="7.5" y="7.2" width="7.5" height="2.6" rx="1.2"/><path fill="currentColor" d="M9 9.6h1.2v1.8H9zM12.3 9.6h1.2v1.8h-1.2z"/>`,
   bike: `<circle ${STROKE} cx="5.5" cy="16" r="3.5"/><circle ${STROKE} cx="18.5" cy="16" r="3.5"/><path ${STROKE} d="M5.5 16L9.5 9h6.5l2.5 7M9.5 9l3.5 7H5.5M14.5 5.5h2.5L16 9M8 6.5h3"/>`,
   kickscooter: `<circle ${STROKE} cx="5.5" cy="18" r="2.5"/><circle ${STROKE} cx="18.5" cy="18" r="2.5"/><path ${STROKE} d="M8 18h8M17.5 15.6L14.5 4H11"/>`,
   car: `<path ${STROKE} d="M4 14.5l1.8-4.6A2 2 0 0 1 7.7 8.5h8.6a2 2 0 0 1 1.9 1.4L20 14.5v2.5H4z"/><circle fill="currentColor" cx="7.5" cy="19" r="2.4"/><circle fill="currentColor" cx="16.5" cy="19" r="2.4"/>`,

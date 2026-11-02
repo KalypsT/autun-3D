@@ -268,7 +268,7 @@ export class Gun {
       pitch = Math.atan2(this.body.z + this.body.h * 0.7 - mz, Math.max(0.5, Math.hypot(this.pos.x - mx, this.pos.y - my)));
       flat = false;
     }
-    const spread = weapon.spread * (this.aiming ? AIM_SPREAD : HIP_SPREAD);
+    const spread = this.aiming ? weapon.spread * AIM_SPREAD : weapon.hipSpread > 0 ? weapon.hipSpread : weapon.spread * HIP_SPREAD;
     const per = (d: number): number => (weapon.falloff ? Math.max(FALLOFF_MIN, 1 - (d / weapon.range) * (1 - FALLOFF_MIN)) : 1);
     for (let k = 0; k < weapon.pellets && res.fxCount < MAX_SHOTS; k++) {
       // Dispersion : triangulaire (plus de tirs près de l'axe qu'au bord du cône), à l'horizontale et, hors du tir à plat, en hauteur.

@@ -338,3 +338,48 @@ describe("visée libre et tir en hauteur (D205)", () => {
     expect(r.shots[0]!.z1).toBeLessThan(0);
   });
 });
+
+describe("fusil de précision (D207)", () => {
+  const scoped = (tx: number, ty: number, tz: number): AimRay => {
+    // Lunette : la caméra est à l'œil (1,6 m), le rayon va droit au point visé.
+    const l = Math.hypot(tx, ty, tz - 1.6);
+    return { ox: 0, oy: 0, oz: 1.6, dx: tx / l, dy: ty / l, dz: (tz - 1.6) / l };
+  };
+
+  it("dans la lunette, une balle dans le corps tue à 140 m ; le chargeur a cinq balles et la culasse est lente", () => {
+    const inv = new Inventory();
+    inv.grant("sniper", 15);
+    inv.select("sniper");
+    expect(inv.magOf("sniper")).toBe(5);
+    expect(WEAPONS.sniper.scope).toBeGreaterThan(1);
+    const w = world([{ x: 1, y: 140, hp: 100 }]);
+    const g = new Gun(5);
+    const r = g.step(DT, true, false, WEAPONS.sniper, inv, 0, 0, 0, { ...w, ground: () => 0 }, { z: 0, aim: scoped(1, 140, 1.1) });
+    expect(r.hits).toBe(1);
+    expect(r.killed).toBe(1);
+    // Un tir par 1,25 s.
+    let fired = 0;
+    for (let k = 0; k < 60; k++) fired += g.step(DT, true, false, WEAPONS.sniper, inv, 0, 0, 0, w, { z: 0, aim: scoped(1, 140, 1.1) }).fired;
+    expect(fired).toBe(0);
+    expect(WEAPONS.sniper.range).toBeGreaterThanOrEqual(140);
+  });
+
+  it("à la hanche, il disperse beaucoup plus qu'en visée", () => {
+    const spreadOf = (aim: boolean): number => {
+      let worst = 0;
+      for (let seed = 1; seed < 40; seed++) {
+        const inv = new Inventory();
+        inv.grant("sniper", 15);
+        inv.select("sniper");
+        const r = new Gun(seed).step(DT, true, false, WEAPONS.sniper, inv, 0, 0, 0, world([]), { z: 0, aim: aim ? scoped(0, 100, 1.6) : null });
+        worst = Math.max(worst, Math.abs(Math.atan2(r.shots[0]!.x1 - r.shots[0]!.x0, r.shots[0]!.y1 - r.shots[0]!.y0)));
+      }
+      return worst;
+    };
+    const hip = spreadOf(false), aimed = spreadOf(true);
+    expect(hip).toBeGreaterThan(0.04);
+    expect(hip).toBeLessThanOrEqual(WEAPONS.sniper.hipSpread + 1e-9);
+    expect(aimed).toBeLessThan(0.003);
+  });
+});
+

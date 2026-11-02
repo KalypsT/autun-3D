@@ -39,6 +39,8 @@ import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
 import { AimAssist, type AimAssistInput } from "../core/aim-assist";
+import { KICK, scopePan, scopeSway } from "../core/scope";
+import type { CrowdScope } from "../render/crowd/crowd-types";
 import { CACHE_ROUNDS, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
@@ -238,6 +240,16 @@ export function startGame(ctx: GameContext): void {
   /** Aide à la visée (D206) : le viseur colle aux passants et les suit, en visée seulement, selon le réglage. */
   const assist = new AimAssist();
   const assistIn: AimAssistInput = { cx: 0, cy: 0, cz: 0, yaw: 0, pitch: 0, dYaw: 0, dPitch: 0, x: 0, y: 0, speed: 0, range: 0 };
+  /**
+   * Lunette (T3, D207) : en visée avec une arme qui en a une, vue à l'œil, champ divisé par le grossissement, cache noir autour ; on ne marche pas,
+   * le joystick balaie. `scopeB` : fondu (0 à 1) ; balancement du souffle et temps depuis le dernier tir.
+   */
+  let scopeB = 0;
+  let scopeT = 0;
+  let sinceShot = Infinity;
+  const sway = { yaw: 0, pitch: 0 };
+  const pan = { yaw: 0, pitch: 0 };
+  const crowdScope: CrowdScope = { dirX: 0, dirZ: 1, cos: 1, zoom: 1 };
   /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
   let downFor = 0;
   let downSide = -1;
@@ -993,8 +1005,10 @@ export function startGame(ctx: GameContext): void {
     // Véhicules visés (D113) : ceux de la flotte et de la circulation à moins de 80 m ; la balle les abîme du côté où elle entre.
     rayVehicle: (x, y, dx, dy, maxDist) => {
       shotTargets.length = 0;
-      for (const v of fleet.around(x, y, 80, near)) if (!v.ridden) shotTargets.push(v);
-      for (const c of (traffic as Traffic | null)?.cars ?? []) if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < 80) shotTargets.push({ state: c.sim.state, spec: c.sim.spec, damage: c.sim.damage });
+      // Jusqu'à 80 m, et plus loin pour un tir qui porte plus loin (fusil de précision, D207).
+      const reach = Math.min(170, Math.max(80, maxDist + 10));
+      for (const v of fleet.around(x, y, reach, near)) if (!v.ridden) shotTargets.push(v);
+      for (const c of (traffic as Traffic | null)?.cars ?? []) if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < reach) shotTargets.push({ state: c.sim.state, spec: c.sim.spec, damage: c.sim.damage });
       let best: { dist: number; id: number } | null = null;
       shotTargets.forEach((t, id) => {
         const d = rayHull(x, y, dx, dy, t, best?.dist ?? maxDist);
@@ -1154,12 +1168,25 @@ export function startGame(ctx: GameContext): void {
       controls.aiming = aiming;
       document.body.classList.toggle("aiming", aiming);
     }
-    controls.lookScale = aiming ? settings.values.aimSensitivity : 1;
+    // Lunette (D207) : la rotation au doigt est divisée par le grossissement (le réticule bouge à l'écran comme sans lunette).
+    const zoom = aiming ? inventory.current.scope : 0, scoped = zoom > 0;
+    if (document.body.classList.contains("scoped") !== scoped) document.body.classList.toggle("scoped", scoped);
+    controls.lookScale = aiming ? settings.values.aimSensitivity / (scoped ? zoom : 1) : 1;
     aimB += ((aiming ? 1 : 0) - aimB) * Math.min(1, dt * 12);
     if (Math.abs(aimB - (aiming ? 1 : 0)) < 0.002) aimB = aiming ? 1 : 0;
+    scopeB += ((scoped ? 1 : 0) - scopeB) * Math.min(1, dt * 14);
+    if (Math.abs(scopeB - (scoped ? 1 : 0)) < 0.002) scopeB = scoped ? 1 : 0;
+    scopeT += dt;
+    sinceShot += dt;
     let dYaw = input.lookYaw, dPitch = input.lookPitch;
-    // Aide à la visée (D206) : une fois la caméra à l'épaule (l'axe de la caméra est alors le viseur), d'après la caméra de l'image précédente.
-    if (aiming && aimB > 0.9 && settings.values.aimAssist > 0) {
+    if (scoped) {
+      // Dans la lunette, le joystick gauche balaie lentement au lieu de faire marcher.
+      scopePan(input.right, input.forward, zoom, dt, pan);
+      dYaw += pan.yaw;
+      dPitch += pan.pitch;
+    }
+    // Aide à la visée (D206) : une fois la caméra à l'épaule (l'axe de la caméra est alors le viseur), d'après la caméra de l'image précédente ; pas dans la lunette.
+    if (aiming && !scoped && aimB > 0.9 && settings.values.aimAssist > 0) {
       const ai = assistIn;
       ai.cx = camera.position.x;
       ai.cy = -camera.position.z;
@@ -1194,7 +1221,7 @@ export function startGame(ctx: GameContext): void {
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
-        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : aiming ? AIM_WALK : gun.idle < 0.35 ? 0.6 : 1);
+        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : scoped ? 0 : aiming ? AIM_WALK : gun.idle < 0.35 ? 0.6 : 1);
         if (downFor > 0) {
           downFor = Math.max(0, downFor - STEP);
           slidePlayer(player, STEP, terrain, colliders);
@@ -1285,15 +1312,26 @@ export function startGame(ctx: GameContext): void {
     haptics.step(dt);
     shake.step(dt, riding ? speed : 0);
     const sx = shake.offset.x, sy = shake.offset.y;
-    camera.position.set(cx + Math.cos(yaw) * sx, cz + sy, -(cy - Math.sin(yaw) * sx));
+    // Lunette (D207) : la caméra passe à l'œil, 15 cm devant le centre de la tête ; le regard suit le souffle.
+    let ex = cx, ey = cy, ez = cz;
+    if (scopeB > 0) {
+      const eyeX = player.x + Math.sin(yaw) * 0.15, eyeY = player.y + Math.cos(yaw) * 0.15, eyeZ = player.z + HEAD_HEIGHT + 0.05;
+      ex += (eyeX - cx) * scopeB;
+      ey += (eyeY - cy) * scopeB;
+      ez += (eyeZ - cz) * scopeB;
+      scopeSway(scopeT, sinceShot, sway);
+    }
+    camera.position.set(ex + Math.cos(yaw) * sx, ez + sy, -(ey - Math.sin(yaw) * sx));
     if (aimB > 0) {
       // Visée : la caméra regarde droit devant, dans l'axe du regard (le viseur, au centre de l'écran, est l'axe de la caméra) ; fondu depuis le joueur.
-      const cp = Math.cos(pitch), fx = Math.sin(yaw) * cp * 30, fy = Math.cos(yaw) * cp * 30, fz = -Math.sin(pitch) * 30;
-      const lx = player.x + (cx + fx - player.x) * aimB, ly = player.y + (cy + fy - player.y) * aimB, lz = tz - 0.1 + (cz + fz - (tz - 0.1)) * aimB;
+      const vy = yaw + sway.yaw * scopeB, vp = pitch + sway.pitch * scopeB;
+      const cp = Math.cos(vp), fx = Math.sin(vy) * cp * 30, fy = Math.cos(vy) * cp * 30, fz = -Math.sin(vp) * 30;
+      const lx = player.x + (ex + fx - player.x) * aimB, ly = player.y + (ey + fy - player.y) * aimB, lz = tz - 0.1 + (ez + fz - (tz - 0.1)) * aimB;
       camera.lookAt(lx, lz, -ly);
     } else camera.lookAt(player.x, tz - 0.1, -player.y);
     audio.listen(cx, cy, yaw, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
-    const fov = camera.fov + (speedFov(speed, !!riding) * (1 - AIM_ZOOM * aimB) - camera.fov) * Math.min(1, dt * (aiming ? 10 : 3));
+    const zoomNow = 1 + (Math.max(zoom, 1) - 1) * scopeB;
+    const fov = camera.fov + (speedFov(speed, !!riding) * (1 - AIM_ZOOM * aimB) / zoomNow - camera.fov) * Math.min(1, dt * (aiming ? 10 : 3));
     if (Math.abs(camera.fov - fov) > 0.02) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1362,15 +1400,20 @@ export function startGame(ctx: GameContext): void {
         reticle = { x: tp.x, y: tp.y, z: terrain.heightAt(tp.x, tp.y) + 1.1 };
       }
       if (res.fired > 0) {
+        // Lunette (D207) : le recul lève le regard et le souffle s'emballe un instant.
+        sinceShot = 0;
+        if (scoped) pitch -= KICK;
         // Traits, éclair de bouche et étincelles (un seul maillage, D84) ; le coup de feu effraie tout dans 40 m et la police l'entend si elle voit.
         const z0 = res.shots[0]!.z0;
         const mx = player.x + Math.sin(gun.facing) * MUZZLE, my = player.y + Math.cos(gun.facing) * MUZZLE;
-        fx.flash(mx, my, z0);
+        // Dans la lunette (D207), l'arme est juste sous l'œil : ni éclair, et le trait ne commence qu'à 6 m (sinon un faisceau barre la lunette).
+        if (!scoped) fx.flash(mx, my, z0);
         audio.shot(weapon.id as GunId, mx, my, true);
         haptics.shot(weapon.id as GunId);
         for (let k = 0; k < res.fxCount; k++) {
           const sh = res.shots[k]!;
-          fx.tracer(sh.x0, sh.y0, sh.z0, sh.x1, sh.y1, sh.z1);
+          const len = Math.hypot(sh.x1 - sh.x0, sh.y1 - sh.y0), cut = scoped && len > 0 ? Math.min(6, len * 0.8) / len : 0;
+          fx.tracer(sh.x0 + (sh.x1 - sh.x0) * cut, sh.y0 + (sh.y1 - sh.y0) * cut, sh.z0 + (sh.z1 - sh.z0) * cut, sh.x1, sh.y1, sh.z1);
           if (sh.kind > 0) fx.sparks(sh.x1, sh.y1, sh.z1, sh.kind === 2, Math.random);
         }
         pedsNow0?.alarm(player.x, player.y, ALARM_SHOT, ALARM_SHOT_FLEE);
@@ -1422,7 +1465,8 @@ export function startGame(ctx: GameContext): void {
       model.setDown(downFor > 0 ? { t: DOWN_TIME - downFor, side: downSide } : null);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
-      model.group.visible = camDist > 0.9;
+      // Dans la lunette, la caméra est dans la tête : le personnage est caché.
+      model.group.visible = camDist > 0.9 && scopeB < 0.5;
       if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);
       lastPhase = model.phase;
     }
@@ -1460,6 +1504,19 @@ export function startGame(ctx: GameContext): void {
       };
       for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
       (traffic as Traffic | null)?.setPeds(pedsNow);
+      // Lunette (D207) : les passants dans son champ gardent le détail complet aussi loin que le grossissement.
+      if (pedsNow) {
+        if (scoped && scopeB > 0.5) {
+          camera.getWorldDirection(camDir);
+          const h = Math.hypot(camDir.x, camDir.z) || 1;
+          const half = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect) * 1.25;
+          crowdScope.dirX = camDir.x / h;
+          crowdScope.dirZ = camDir.z / h;
+          crowdScope.cos = Math.cos(Math.min(half, 1.2));
+          crowdScope.zoom = zoom;
+          pedsNow.scope = crowdScope;
+        } else pedsNow.scope = null;
+      }
       pedsNow?.update(dt, obs, camera.position.x, camera.position.z);
       if (pedsNow) audio.pedEvents(pedsNow.events);
       (traffic as Traffic | null)?.applyImpacts();

@@ -7,11 +7,11 @@
  * Les valeurs viennent du cadrage de D80 (à régler en jouant) : un passant a 100 points de vie.
  */
 
-export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "shotgun" | "rifle";
+export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "shotgun" | "rifle" | "sniper";
 export type WeaponKind = "melee" | "gun";
 /** Geste du coup : coup de poing (alterné gauche et droite), coup de couteau (estoc), coup de batte (balayage). */
 export type AttackStyle = "punch" | "stab" | "swing";
-export type GunId = "pistol" | "shotgun" | "rifle";
+export type GunId = "pistol" | "shotgun" | "rifle" | "sniper";
 
 export interface WeaponDef {
   id: WeaponId;
@@ -42,6 +42,9 @@ export interface WeaponDef {
   reload: number;
   spread: number;
   falloff: boolean;
+  /** Armes à feu (D206, D207) : dispersion à la hanche (demi-angle, rad ; 0 : celle de visée × `HIP_SPREAD` de `gun.ts`) et grossissement de la lunette (0 : pas de lunette, la visée se fait à l'épaule). */
+  hipSpread: number;
+  scope: number;
   /** Pièce du kit de personnage (`character-kit.ts`) tenue dans la main droite ; null : les poings. */
   part: string | null;
 }
@@ -49,8 +52,8 @@ export interface WeaponDef {
 /** Impulsion (m/s) d'un coup qui fait tomber (au-dessus du seuil de chute de `PedSim`, 3,5 m/s). */
 export const KNOCKDOWN_IMPULSE = 4.4;
 
-const melee = (w: Omit<WeaponDef, "kind" | "mag" | "pellets" | "reload" | "spread" | "falloff">): WeaponDef => ({ ...w, kind: "melee", mag: 0, pellets: 1, reload: 0, spread: 0, falloff: false });
-const gun = (w: Omit<WeaponDef, "kind" | "style" | "hitAt" | "maxTargets" | "knockdown">): WeaponDef => ({ ...w, kind: "gun", style: "aim", hitAt: 0, maxTargets: 1, knockdown: false });
+const melee = (w: Omit<WeaponDef, "kind" | "mag" | "pellets" | "reload" | "spread" | "falloff" | "hipSpread" | "scope">): WeaponDef => ({ ...w, kind: "melee", mag: 0, pellets: 1, reload: 0, spread: 0, falloff: false, hipSpread: 0, scope: 0 });
+const gun = (w: Omit<WeaponDef, "kind" | "style" | "hitAt" | "maxTargets" | "knockdown" | "hipSpread" | "scope"> & { hipSpread?: number; scope?: number }): WeaponDef => ({ hipSpread: 0, scope: 0, ...w, kind: "gun", style: "aim", hitAt: 0, maxTargets: 1, knockdown: false });
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
   fists: melee({ id: "fists", name: "Poings", icon: "👊", style: "punch", range: 1.2, damage: 12, rate: 2.5, hitAt: 0.45, maxTargets: 1, impulse: 1.4, knockdown: false, part: null }),
@@ -59,10 +62,12 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   pistol: gun({ id: "pistol", name: "Pistolet", icon: "🔫", range: 35, damage: 34, rate: 4, impulse: 1.6, mag: 12, pellets: 1, reload: 1.2, spread: 0.02, falloff: false, part: "weaponPistol" }),
   shotgun: gun({ id: "shotgun", name: "Fusil à pompe", icon: "💥", range: 15, damage: 12, rate: 1, impulse: 2.4, mag: 6, pellets: 8, reload: 2.2, spread: 0.09, falloff: true, part: "weaponShotgun" }),
   rifle: gun({ id: "rifle", name: "Fusil d'assaut", icon: "🎯", range: 60, damage: 22, rate: 10, impulse: 1.4, mag: 30, pellets: 1, reload: 1.8, spread: 0.035, falloff: false, part: "weaponRifle" }),
+  // Fusil de précision (T3, D207) : un tir tue (120 points), à 150 m (au-delà, le brouillard cache tout) ; lunette ×5 ; presque rien à la hanche.
+  sniper: gun({ id: "sniper", name: "Fusil de précision", icon: "🔭", range: 150, damage: 120, rate: 0.8, impulse: 3, mag: 5, pellets: 1, reload: 2.6, spread: 0.003, hipSpread: 0.1, falloff: false, part: "weaponSniper", scope: 5 }),
 };
 
 /** Ordre de la molette : les poings d'abord, puis du plus court au plus long. */
-export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "shotgun", "rifle"];
+export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "shotgun", "rifle", "sniper"];
 
 /** Balles en réserve au plus pour une arme à feu : six chargeurs. */
 export const reserveCap = (w: WeaponDef): number => w.mag * 6;

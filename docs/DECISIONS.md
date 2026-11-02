@@ -4114,3 +4114,26 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Choix** : l'aide part de la caméra de l'image précédente (une image de retard, invisible) ; elle ne touche pas au tir lui-même (la balle va toujours au viseur). Le tireur automatique du banc se tourne vers sa cible : le cône plus étroit ne le gêne pas, seule la dispersion élargie peut lui faire rater quelques balles de plus (à relire au prochain banc).
 
 **Tests** (+5, et deux adaptés) : sans cible ou réglée sur Aucune, rien ne change ; freinage plus fort en Forte qu'en Légère ; attraction en marchant sans dépasser, rien sans geste ; vers la poitrine et non la tête ; hors de la zone ou derrière un mur, rien, et la cible la plus proche du viseur est choisie ; cône de la hanche à ±20° ; dispersion élargie à la hanche.
+
+## 2026-11-02 — D207. Tir, lot T3 : fusil de précision et lunette
+
+**Ce qui est fait** :
+- **Fusil de précision** (`WEAPONS.sniper`, septième arme, touche 7) : 120 points par balle (**un tir dans le corps tue** un passant ou un gendarme), portée **150 m** (au-delà, le brouillard de 110 à 150 m cache tout), **0,8 tir par seconde** (culasse : on entend le réarmement), chargeur de 5 balles, rechargement 2,6 s, réserve de 30. Dispersion presque nulle dans la lunette (≈ 22 cm à 150 m), énorme à la hanche (`hipSpread` 0,1 rad, ±10 m à 100 m) : il est fait pour viser.
+- **Cache à la Pierre de Couhard** (choix de l'utilisateur) : c'est la même pyramide que la cache du fusil d'assaut (« Pyramide de Couhard », D84). Le fusil de précision est donc posé **à 10 m de lui**, au pied de la pyramide (point d'une file piétonne, dégagé, 70 m au-dessus de la ville), 15 balles.
+- **Lunette** (`src/core/scope.ts`) : avec le fusil de précision, le bouton Viser ouvre la lunette au lieu de la caméra à l'épaule. **Vue à l'œil** (personnage caché), **grossissement ×5** (champ divisé par 5), **cache noir** autour d'un cercle avec un réticule fin gradué et un point rouge (`#scope`, en CSS et SVG, aucun coût de rendu). Rotation au doigt divisée par le grossissement (le réticule bouge à l'écran comme sans lunette), en plus de la sensibilité en visée.
+- **Souffle** : le regard dessine lentement un petit huit (± 2 mrad, ≈ 30 cm à 150 m), trois fois plus ample juste après un tir, de retour en 1,2 s. **Recul** : le regard monte de 2° au tir. On tire là où le réticule est **à l'instant du tir** (le rayon du viseur part de la caméra, souffle compris).
+- **On ne marche pas dans la lunette** : le joystick gauche **balaie lentement** (0,12 rad/s à fond, ×5) ; c'est le seul endroit où un joystick sert à viser (D205 : plus précis au doigt ailleurs). **Pas d'aide à la visée** dans la lunette.
+- **Détail des passants au loin** : dans la lunette, les passants **dans son champ** gardent le détail complet jusqu'à 28 × 5 = 140 m (`CrowdScope`, `crowd.ts`) ; ailleurs rien ne change. Le champ est étroit (≈ 14° de large), donc peu de passants en plus ; le coût n'est pas mesuré : à vérifier sur le téléphone (`?debug`, nombre de personnages proches).
+- **Véhicules touchés au loin** : la balle cherche les véhicules jusqu'à sa portée (170 m au plus) au lieu de 80 m.
+- Pièce du kit `weaponSniper` (crosse en bois, canon long, lunette) : 62 pièces sur 66 ; son (`gunshot` « sniper » : claquement sec, souffle long, écho fort) ; vibration de 55 ms ; trait violet ; icône.
+
+**Limites** :
+- Les passants n'existent qu'autour du joueur : au-delà de ≈ 140 m il n'y a souvent personne à viser, même dans la lunette.
+- **Un meurtre de loin n'a pas de témoin** : les témoins sont cherchés à 25 m du tireur, pas de la victime. Tirer au fusil de précision reste un coup de feu entendu à 40 m du tireur (alarme et police comme avant). Prévu en T4.
+- Un seul grossissement ; pas de souffle retenu ; le recul n'a pas d'animation à la 3ᵉ personne différente du fusil d'assaut (même pose).
+
+- Dans la lunette, pas d'éclair de bouche et le trait du tir commence à 6 m (l'arme est sous l'œil : sinon un faisceau barre la lunette).
+
+**Tests** (+4, un adapté) : un tir dans le corps tue à 140 m dans la lunette, chargeur de cinq, culasse lente ; dispersion à la hanche contre dans la lunette ; balancement (petit au repos, ×3 après un tir, retour) ; balayage au joystick divisé par le grossissement ; caches (le fusil de précision existe, loin du départ). Capture : `tools/ui.sh <dossier> scope`.
+
+![Lunette (`tools/ui.sh <dossier> scope`) : passants à 50 m, cache noir, réticule gradué](captures/d207-lunette.jpg)

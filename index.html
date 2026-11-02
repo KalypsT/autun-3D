@@ -82,6 +82,12 @@
       #crosshair.hot { color: #d9472b; }
       body.aiming #crosshair { display: block; }
       body.aiming #reticle { display: none !important; }
+      /* Lunette du fusil de précision (D207) : cache noir autour d'un cercle, réticule fin noir à graduations, point rouge au centre. */
+      #scope { position: fixed; inset: 0; z-index: 3; display: none; pointer-events: none; --r: min(46vh, 46vw);
+               background: radial-gradient(circle at 50% 50%, transparent 0 calc(var(--r) - 3px), rgba(10, 12, 16, .9) calc(var(--r) - 2px) calc(var(--r) + 4px), #0b0d11 calc(var(--r) + 5px)); }
+      #scope svg { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%); }
+      body.scoped #scope { display: block; }
+      body.scoped #crosshair { display: none; }
       /* Réticule de la visée assistée (J5-3) : un anneau crème qui suit la cible de l'arme à feu. */
       #reticle { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 3; display: none; pointer-events: none; border-radius: 50%;
                  border: 3px solid #fff8e6; box-shadow: 0 0 0 2px rgba(27, 31, 39, .55), inset 0 0 0 2px rgba(27, 31, 39, .35); }
@@ -188,7 +194,7 @@
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
       body.paused #minimap, body.paused #clock, body.paused #calendar, body.paused #status, body.paused #hurt, body.paused #speedlines,
-      body.paused #action, body.paused #attack, body.paused #jump, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      body.paused #action, body.paused #attack, body.paused #jump, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #scope, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
@@ -289,6 +295,7 @@
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="reticle"></div>
+    <div id="scope"><svg viewBox="-100 -100 200 200" aria-hidden="true"><g stroke="#111" fill="none"><path stroke-width="0.6" d="M-100 0h94M6 0h94M0 -100v94M0 6v94"/><path stroke-width="2.4" d="M-100 0h40M60 0h40M0 60v40"/><path stroke-width="0.8" d="M-48 -3v6M-36 -2v4M-24 -3v6M-12 -2v4M12 -2v4M24 -3v6M36 -2v4M48 -3v6M-3 12h6M-2 24h4M-3 36h6M-2 48h4"/></g><circle r="1.1" fill="#d9472b"/></svg></div>
     <div id="crosshair"><svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M17 3v8M17 23v8M3 17h8M23 17h8"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg></div>
     <div id="attack" role="button" aria-label="Frapper"></div>
     <div id="jump" role="button" aria-label="Sauter" title="Sauter (espace)"></div>

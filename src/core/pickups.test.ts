@@ -24,11 +24,12 @@ describe("armes au sol (J5-3)", () => {
     }
     expect(bad).toEqual([]);
     const kinds = new Set(CACHES.map((c) => c.weapon));
-    for (const w of ["knife", "bat", "pistol", "shotgun", "rifle"] as const) expect(kinds.has(w)).toBe(true);
+    for (const w of ["knife", "bat", "pistol", "shotgun", "rifle", "sniper"] as const) expect(kinds.has(w)).toBe(true);
     // Les armes blanches sont près du départ (place du Champ de Mars), le fusil d'assaut tout au bout.
     const d = (c: (typeof CACHES)[number]): number => Math.hypot(c.x + 10, c.y + 40);
     expect(Math.min(...CACHES.filter((c) => c.weapon === "bat").map(d))).toBeLessThan(100);
     expect(Math.min(...CACHES.filter((c) => c.weapon === "rifle").map(d))).toBeGreaterThan(1000);
+    expect(Math.min(...CACHES.filter((c) => c.weapon === "sniper").map(d))).toBeGreaterThan(1000);
     expect(new Set(CACHES.map((c) => `${c.x},${c.y}`)).size).toBe(CACHES.length);
   });
 

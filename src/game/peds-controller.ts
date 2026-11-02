@@ -9,7 +9,7 @@ import { gendarmeRecipe } from "../core/character";
 import { OFFICER, Officers, type Officer } from "../core/officers";
 import type { HeightField } from "../data/types";
 import { createCrowd } from "../render/crowd/crowd";
-import type { CrowdRenderer } from "../render/crowd/crowd-types";
+import type { CrowdRenderer, CrowdScope } from "../render/crowd/crowd-types";
 import type { Signals } from "../core/signals";
 import type { NavManager } from "./nav-manager";
 
@@ -187,6 +187,9 @@ export class PedsController implements Arena {
   }
 
   /** À appeler à chaque image où le jeu tourne (pas en pause) ; `camX`, `camZ` : caméra dans le repère three (niveaux de détail). */
+  /** Regard dans une lunette (D207), ou null : voir `CrowdScope`. */
+  scope: CrowdScope | null = null;
+
   update(dt: number, obs: Observer, camX: number, camZ: number): void {
     const sim = this.sim, crowd = this.crowd;
     if (!sim || !crowd || this.nav.graph.edgeCount === 0) return;
@@ -198,7 +201,7 @@ export class PedsController implements Arena {
     const t0 = performance.now();
     sim.step(dt, obs);
     const t1 = performance.now();
-    crowd.update(sim.state, camX, camZ);
+    crowd.update(sim.state, camX, camZ, this.scope);
     this.updateDogs(dt, sim);
     const t2 = performance.now();
     this.simMs += (t1 - t0 - this.simMs) * 0.05;

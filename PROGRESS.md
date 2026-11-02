@@ -1515,3 +1515,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le tir à la hanche est plus étroit (±20° au lieu de ±40°) et moins précis : viser vaut maintenant le coup.
 - Ensuite : T3 fusil de précision et lunette.
 
+**Tir, lot T3 : le fusil de précision (2 novembre 2026)** (D207)
+- **Fusil de précision** au pied de la Pierre de Couhard (à 10 m du fusil d'assaut, la même pyramide), touche 7 : un tir tue, portée 150 m, 5 balles, lent à réarmer, très imprécis à la hanche.
+- **Lunette** : le bouton Viser l'ouvre (vue à l'œil, ×5, cache noir et réticule). Le souffle fait bouger le réticule (plus fort juste après un tir), le tir fait monter le regard. On ne marche pas : le joystick gauche balaie lentement la lunette. Pas d'aide à la visée dedans.
+- Pas encore (T4) : témoins autour de la victime d'un tir lointain, pas de côté animés, indicateur de la direction d'un tir.
+
