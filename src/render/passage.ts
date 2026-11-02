@@ -21,9 +21,9 @@ const LIFT = 0.02;
 /** Maille du sol de la galerie (m). */
 const CELL = 1;
 
-export function buildPassage(sinks: Sinks & { glow: MeshBuilder }, s: PassageSite, terrain: HeightField): void {
+export function buildPassage(sinks: Sinks & { glow: MeshBuilder; glass?: MeshBuilder }, s: PassageSite, terrain: HeightField): void {
   const mb = sinks.solid;
-  buildGallery(mb, sinks.glow, s);
+  buildGallery(mb, sinks.glow, s, sinks.glass);
   buildEntries(sinks, s);
   const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
   const P = (d: number, t: number, z: number): Vec3 => toThree(...at(f, d, t), z);

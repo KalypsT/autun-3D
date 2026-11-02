@@ -16,7 +16,7 @@ describe("rendu du passage Balthus", () => {
   world.terrain.decks.add("passage", landmarkDecks(world.tile.kinds));
   const texts: string[] = [];
   const atlas = { get: (text: string) => { texts.push(text); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
-  const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
+  const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), glass: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
   buildPassage(sinks, site, world.terrain);
   const { solid, glow } = sinks;
   const tris = (m: MeshBuilder): number => m.positions.length / 9;
@@ -36,6 +36,12 @@ describe("rendu du passage Balthus", () => {
     expect(tris(solid)).toBeGreaterThan(2000);
     expect(tris(solid)).toBeLessThan(9000);
     expect(tris(glow)).toBeGreaterThan(2 * (BAYS + 1) * 8);
+  });
+
+  it("la verrière a son verre : un panneau par travée et par pan, au-dessus du sol", () => {
+    const g = sinks.glass!;
+    expect(tris(g)).toBe(2 * 2 * 2 * BAYS * 2 / 2);
+    expect(g.positions.every(Number.isFinite)).toBe(true);
   });
 
   it("la plaque de la rue aux Cordiers et celle du chien sont écrites", () => {

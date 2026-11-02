@@ -3759,3 +3759,18 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![La grille de la rue Demetz, la nuit : les globes brillent derrière](captures/d190-grille-nuit.jpg)
 ![La même, de jour : ouverte, un passant dans la galerie, le chien au fond](captures/d190-passant-jour.jpg)
+
+## 2026-11-02 — D191. Passage Balthus : le verre de la verrière
+
+**Demande de l'utilisateur** : « Ok, continue » (reste de D190 : le verre de la verrière).
+
+**Matière** (`StyleResources.glassMat`, `src/render/stylized.ts`) : un `MeshBasicMaterial` à couleurs de sommets, translucide (opacité 0,3), sans écriture de profondeur, double face ; le maillage `verrieres` ne porte ni ne reçoit d'ombre de plus que les autres (`castShadow` faux, comme `vitres`). C'est ce qui manquait en D188 : les plaques de verre du jeu sont opaques et portent ombre, ce qui aurait fait un tunnel sombre ; ici le soleil passe. `LandmarkSinks.glass` est facultatif (les gabarits qui n'en ont pas n'ont rien à changer).
+
+**Rendu** (`passage-gallery.ts`) : 104 triangles, un panneau par demi-travée et par pan, de la corniche à la faîtière, dégradé bleuté (du pied du pan à la faîtière). **Un appel de dessin de plus**, dans la seule tuile 26_34.
+
+**Test** (+1, 1020) : le nombre de triangles du verre (deux par panneau, deux pans, 26 demi-travées) et leur finitude.
+
+**Limites** : le verre est très discret vu de l'intérieur (translucide à 30 %, on voit surtout le ciel et les fermes) ; pas de reflets, ni de saleté ; la nuit il ne s'éclaire pas.
+
+![La verrière vue de dessus : verre et fermes entre les toits](captures/d191-verriere-dessus.jpg)
+![La verrière vue de l'intérieur](captures/d191-verriere-dessous.jpg)

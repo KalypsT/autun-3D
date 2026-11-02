@@ -26,7 +26,7 @@ export function galleryRange(s: PassageSite): [number, number] {
   return [Math.max(...s.lin.filter((l) => l[1] < mid).map((l) => l[1])), Math.min(...s.lin.filter((l) => l[0] > mid).map((l) => l[0]))];
 }
 
-export function buildGallery(mb: MeshBuilder, glow: MeshBuilder, s: PassageSite): void {
+export function buildGallery(mb: MeshBuilder, glow: MeshBuilder, s: PassageSite, glass?: MeshBuilder): void {
   const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
   const P = (d: number, t: number, z: number): Vec3 => toThree(...at(f, d, t), z);
   const NT = (u: number): Vec3 => toThree(f.vx * u, f.vy * u, 0);
@@ -93,6 +93,14 @@ export function buildGallery(mb: MeshBuilder, glow: MeshBuilder, s: PassageSite)
     bar(P(d, -hw, zc), P(d, 0, ridge), 0.1);
     bar(P(d, hw, zc), P(d, 0, ridge), 0.1);
     if (k % 2 === 0) bar(P(d, -hw, zc - 0.05), P(d, hw, zc - 0.05), 0.08);
+  }
+  // Verre : un panneau par travée et par pan, d'une ferme à l'autre, un peu sous les arbalétriers. Matière translucide à part : ni ombre, ni écriture de profondeur.
+  if (glass) {
+    const GL = new THREE.Color("#bcd8e0"), GH = new THREE.Color("#e6f2f5");
+    for (let k = 0; k < 2 * BAYS; k++) {
+      const d0 = g0 + (k * b) / 2, d1 = d0 + b / 2;
+      for (const sg of [-1, 1]) glass.quadGradient(P(d0, sg * hw, zc), P(d1, sg * hw, zc), P(d1, 0, ridge), P(d0, 0, ridge), [0, 1, 0], GL, GH);
+    }
   }
   bar(P(g0, 0, ridge), P(g1, 0, ridge), 0.14);
   for (const t of [-hw / 2, hw / 2]) bar(P(g0, t, zc + (ridge - zc) / 2), P(g1, t, zc + (ridge - zc) / 2), 0.08);

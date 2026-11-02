@@ -158,6 +158,8 @@ export class StyleResources {
   readonly glowMat = new THREE.MeshBasicMaterial({
     vertexColors: true, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
   });
+  /** Verrières (passage Balthus, D191) : verre translucide sans éclairage, qui ne porte pas d'ombre et n'en reçoit pas. */
+  readonly glassMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
   /** Taches de lumière des lampadaires : translucides, sans écriture de profondeur ; l'atmosphère règle l'opacité. */
   readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false });
   readonly signAtlas = new SignAtlas();
@@ -410,7 +412,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
   const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k, kindOf(b.id)?.roof));
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
-  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder();
+  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(), glass = new MeshBuilder();
   const names = new UvMeshBuilder();
   const decalMeshes = new Map<string, UvMeshBuilder>();
   // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
@@ -469,7 +471,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Gabarits : grandes surfaces, hangars, services publics, églises, stations-service, cimetières.
   target();
   if (!skip.includes("kinds")) {
-    buildLandmarks({ solid: detail, glow, names, atlas: res.signAtlas }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
+    buildLandmarks({ solid: detail, glow, glass, names, atlas: res.signAtlas }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
       (b) => wallColors.get(b.id) ?? C(T.walls.xix[0]!));
   }
   yield;
@@ -522,7 +524,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
     const m = new THREE.Mesh(geometry, mat);
     m.name = name;
-    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
+    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "verrieres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -536,6 +538,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const solid = walls.triangleCount + detail.triangleCount + posts.triangleCount;
   if (solid > 0) put("bati", yield* walls.buildSteps([detail, posts]), solid, res.wallMat);
   if (glow.triangleCount > 0) put("vitres", yield* glow.buildSteps(), glow.triangleCount, res.glowMat);
+  add("verrieres", glass, res.glassMat);
   res.signAtlas.flush();
   yield;
   add("enseignes", names, res.signMat);

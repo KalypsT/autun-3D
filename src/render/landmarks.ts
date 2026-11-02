@@ -25,6 +25,8 @@ import { buildPassage } from "./passage";
 export interface LandmarkSinks {
   solid: MeshBuilder;
   glow: MeshBuilder;
+  /** Verre translucide sans ombre (verrière du passage Balthus, D191) ; absent : pas de verre. */
+  glass?: MeshBuilder;
   names: UvMeshBuilder;
   atlas: SignAtlas;
 }

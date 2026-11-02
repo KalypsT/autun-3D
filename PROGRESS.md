@@ -1434,3 +1434,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le plan du passage Balthus est complet. Pas encore : le verre de la verrière, les passants qui entrent dans les boutiques, la grille et l'imposte dessinées plus finement, le fronton de la rue Demetz.
 - Trois essais d'endurance (circulation, combat, poursuite) ont dû être ajustés : le graphe piéton a changé et ils sont chaotiques ; voir D190. 1019 tests (5 de plus).
 - À regarder : `?at=-30.5,-108&yaw=2.55&h=23` (la grille la nuit), `&h=12` (de jour, avec les passants).
+
+**Passage Balthus : le verre de la verrière (2 novembre 2026)** (D191)
+- La verrière a son verre : translucide, sans ombre, on voit les fermes à travers depuis la galerie et le toit vitré entre les immeubles depuis le dessus.
+- Pas encore : l'imposte en éventail et le fronton de la rue Demetz, les passants qui entrent dans les boutiques. 1020 tests (1 de plus).
