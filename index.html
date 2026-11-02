@@ -88,6 +88,13 @@
       #scope svg { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%); }
       body.scoped #scope { display: block; }
       body.scoped #crosshair { display: none; }
+      /* Tirs reçus (D208) : des arcs rouge brique au bord d'un cercle centré, tournés vers le tireur, qui s'éteignent. */
+      #threats { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+      #threats .threat { position: absolute; left: 50%; top: 50%; width: calc(min(42vh, 42vw) * 2); height: calc(min(42vh, 42vw) * 2); box-sizing: border-box;
+                         margin: calc(min(42vh, 42vw) * -1) 0 0 calc(min(42vh, 42vw) * -1); border-radius: 50%; border: 9px solid transparent; border-top-color: #d9472b;
+                         filter: drop-shadow(0 0 4px rgba(217, 71, 43, .9)); display: none;
+                         -webkit-mask: conic-gradient(from -25deg, #000 0 50deg, transparent 50deg); mask: conic-gradient(from -25deg, #000 0 50deg, transparent 50deg); }
+      body.paused #threats { visibility: hidden; }
       /* Réticule de la visée assistée (J5-3) : un anneau crème qui suit la cible de l'arme à feu. */
       #reticle { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 3; display: none; pointer-events: none; border-radius: 50%;
                  border: 3px solid #fff8e6; box-shadow: 0 0 0 2px rgba(27, 31, 39, .55), inset 0 0 0 2px rgba(27, 31, 39, .35); }
@@ -294,6 +301,7 @@
     <div id="stunt" aria-live="polite"></div>
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
+    <div id="threats"><div class="threat"></div><div class="threat"></div><div class="threat"></div><div class="threat"></div></div>
     <div id="reticle"></div>
     <div id="scope"><svg viewBox="-100 -100 200 200" aria-hidden="true"><g stroke="#111" fill="none"><path stroke-width="0.6" d="M-100 0h94M6 0h94M0 -100v94M0 6v94"/><path stroke-width="2.4" d="M-100 0h40M60 0h40M0 60v40"/><path stroke-width="0.8" d="M-48 -3v6M-36 -2v4M-24 -3v6M-12 -2v4M12 -2v4M24 -3v6M36 -2v4M48 -3v6M-3 12h6M-2 24h4M-3 36h6M-2 48h4"/></g><circle r="1.1" fill="#d9472b"/></svg></div>
     <div id="crosshair"><svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M17 3v8M17 23v8M3 17h8M23 17h8"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg></div>

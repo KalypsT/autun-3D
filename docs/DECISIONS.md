@@ -4137,3 +4137,18 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Tests** (+4, un adapté) : un tir dans le corps tue à 140 m dans la lunette, chargeur de cinq, culasse lente ; dispersion à la hanche contre dans la lunette ; balancement (petit au repos, ×3 après un tir, retour) ; balayage au joystick divisé par le grossissement ; caches (le fusil de précision existe, loin du départ). Capture : `tools/ui.sh <dossier> scope`.
 
 ![Lunette (`tools/ui.sh <dossier> scope`) : passants à 50 m, cache noir, réticule gradué](captures/d207-lunette.jpg)
+
+## 2026-11-02 — D208. Tir, lot T4 : témoins autour de la victime, pas de côté, arcs des tirs reçus
+
+**Ce qui est fait** :
+- **Témoins autour de la victime** : une personne touchée **à plus de 25 m** du tireur (`FAR_VICTIM`, `farImpacts` dans `gun.ts`) a ses propres témoins. Les passants à moins de 25 m d'elle **s'enfuient**, et s'il en reste un debout (la victime blessée compte, une victime tuée non), il appelle : agression ou meurtre **signalé à l'endroit où elle est tombée**, par la police si elle voit cet endroit. La zone de recherche est donc autour de la victime, **pas du tireur**, qu'aucun témoin n'a vu : un tireur à 120 m est souvent hors du cercle (80 à 240 m de rayon selon les étoiles) et perd la piste plus vite. Ce qui existait reste : les témoins autour du tireur (25 m) et le coup de feu entendu à 40 m de lui.
+- **Pas de côté et à reculons** (`strafePose`, `walksBackward` dans `character-rig.ts`) : quand le corps ne suit pas la marche (en visée, ou en tirant à la hanche), le bassin et les jambes se tournent vers la marche (au plus 57°), le buste d'autant dans l'autre sens (l'arme reste sur le viseur) ; à reculons (au-delà de ≈ 100° du regard), le cycle de marche se joue **à l'envers**. La direction est lissée. En balade, rien ne change.
+- **Arcs des tirs reçus** (`src/core/threat.ts`, `#threats`) : chaque balle d'un gendarme laisse au bord d'un cercle centré sur l'écran un **arc rouge brique tourné vers le tireur** (selon le regard de la caméra), vif si elle a porté, pâle si elle a manqué, qui s'éteint en 1,6 s ; les tirs d'une même direction (à moins de 20°) ravivent le même arc ; quatre arcs au plus. En CSS (bord d'un cercle masqué à ±25°), aucun coût de rendu.
+
+**Limites** : pas de vraie animation de pas chassés (les jambes font le cycle de marche, tourné) ; les témoins d'une victime lointaine ne décrivent pas le tireur (la police ne sait pas d'où venait le tir) ; les arcs ne montrent que les tirs des gendarmes (aucun autre tireur dans le jeu).
+
+**Tests** (+5) : impacts lointains (seulement au-delà de 25 m, un par victime) ; bassin tourné vers la marche et buste face au regard, demi-torsion à demi-vitesse ; à reculons, jambes vers l'avant et biais arrière ; arcs (direction à l'écran, plus vif quand la balle porte, regroupement, extinction, quatre au plus). Capture : `tools/ui.sh <dossier> strafe`.
+
+**Bilan du chantier Tir** (D205 à D208) : mode visée (caméra à l'épaule, viseur, balles en hauteur, tête ×3), aide à la visée réglable et hanche resserrée, fusil de précision et lunette, témoins de la victime, pas de côté, arcs des tirs reçus. 1 137 tests.
+
+![Arcs des tirs reçus (`tools/ui.sh <dossier> strafe`) : deux gendarmes derrière, à gauche et à droite](captures/d208-tirs-recus.jpg)

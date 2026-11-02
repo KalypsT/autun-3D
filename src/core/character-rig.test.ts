@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STUMBLE_TIME, walkPose } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -238,5 +238,37 @@ describe("peau souple aux articulations (D99)", () => {
         expect(w).toBeLessThanOrEqual(0.5);
       }
     }
+  });
+});
+
+describe("pas de côté et à reculons (D208)", () => {
+  /** Direction de l'avant d'un os (son axe −z) dans le plan, en cap (0 : avant du personnage, positif vers sa droite). */
+  const facing = (m: Float32Array, bone: number): number => Math.atan2(-m[bone * 16 + 8]!, m[bone * 16 + 10]!);
+  const posed = (rel: number, w: number): Float32Array => {
+    const d = REF_DIMS, pose = createPose();
+    walkPose(pose, 0, 0, d);
+    strafePose(pose, rel, w);
+    const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+    solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+    return world;
+  };
+
+  it("en marchant vers la droite, le bassin se tourne vers la droite et le buste reste face au regard", () => {
+    const w = posed(Math.PI / 2, 1);
+    expect(facing(w, BONE.pelvis)).toBeCloseTo(STRAFE_TWIST, 5);
+    expect(facing(w, BONE.torso)).toBeCloseTo(0, 5);
+    expect(facing(posed(-Math.PI / 2, 1), BONE.pelvis)).toBeCloseTo(-STRAFE_TWIST, 5);
+    // À demi-vitesse, demi-torsion ; à l'arrêt, rien.
+    expect(facing(posed(Math.PI / 2, 0.5), BONE.pelvis)).toBeCloseTo(STRAFE_TWIST / 2, 5);
+    expect(facing(posed(Math.PI / 2, 0), BONE.pelvis)).toBeCloseTo(0, 5);
+  });
+
+  it("à reculons, les jambes restent tournées vers l'avant (le cycle se joue à l'envers) ; en biais arrière droit, le bassin se tourne vers la gauche", () => {
+    expect(walksBackward(Math.PI)).toBe(true);
+    expect(walksBackward(0.3)).toBe(false);
+    expect(walksBackward(Math.PI / 2)).toBe(false);
+    expect(facing(posed(Math.PI, 1), BONE.pelvis)).toBeCloseTo(0, 5);
+    expect(facing(posed(Math.PI * 0.75, 1), BONE.pelvis)).toBeCloseTo(-Math.PI / 4, 5);
+    expect(facing(posed(Math.PI * 0.75, 1), BONE.torso)).toBeCloseTo(0, 5);
   });
 });

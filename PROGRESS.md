@@ -1520,3 +1520,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **Lunette** : le bouton Viser l'ouvre (vue à l'œil, ×5, cache noir et réticule). Le souffle fait bouger le réticule (plus fort juste après un tir), le tir fait monter le regard. On ne marche pas : le joystick gauche balaie lentement la lunette. Pas d'aide à la visée dedans.
 - Pas encore (T4) : témoins autour de la victime d'un tir lointain, pas de côté animés, indicateur de la direction d'un tir.
 
+**Tir, lot T4 : témoins, pas de côté, tirs reçus (2 novembre 2026)** (D208)
+- Une victime touchée à plus de 25 m a ses propres témoins : les passants autour d'elle s'enfuient et appellent ; la police fouille **autour de la victime**, pas du tireur.
+- En visée (ou en tirant), le personnage marche de côté (bassin tourné vers la marche, buste face au viseur) et à reculons (pas à l'envers) au lieu de glisser.
+- Quand un gendarme te tire dessus, un arc rouge au bord de l'écran montre d'où vient le tir (vif s'il t'a touché), puis s'efface.
+- **Chantier Tir terminé** (T1 à T4).
+

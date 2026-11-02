@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GUN_ASSIST_ANGLE, Gun, HEAD_MULT, HIP_SPREAD, MUZZLE, MUZZLE_Z, type AimRay, type ShootWorld } from "./gun";
+import { FAR_VICTIM, farImpacts, GUN_ASSIST_ANGLE, Gun, HEAD_MULT, HIP_SPREAD, MUZZLE, MUZZLE_Z, type AimRay, type ShootWorld } from "./gun";
 import { Inventory, WEAPONS } from "./weapons";
 
 const DT = 1 / 60;
@@ -380,6 +380,27 @@ describe("fusil de précision (D207)", () => {
     expect(hip).toBeGreaterThan(0.04);
     expect(hip).toBeLessThanOrEqual(WEAPONS.sniper.hipSpread + 1e-9);
     expect(aimed).toBeLessThan(0.003);
+  });
+});
+
+describe("victimes touchées de loin (D208)", () => {
+  it("seuls les impacts sur une personne au-delà de 25 m comptent, un par victime", () => {
+    const g = new Gun(1), res = g.result;
+    const set = (k: number, x1: number, y1: number, kind: 0 | 1 | 2): void => {
+      Object.assign(res.shots[k]!, { x0: 0, y0: 0, z0: 1.35, x1, y1, z1: 1.2, kind });
+    };
+    set(0, 0, 60, 2);
+    set(1, 0.5, 60.5, 2);
+    set(2, 0, 10, 2);
+    set(3, 40, 0, 1);
+    set(4, -30, 30, 2);
+    res.fxCount = 5;
+    const out: { x: number; y: number }[] = [];
+    expect(farImpacts(res, 0, 0, FAR_VICTIM, out)).toBe(2);
+    expect(out).toEqual([{ x: 0, y: 60 }, { x: -30, y: 30 }]);
+    // Vu d'un tireur en (0, 50) : la victime à 10 m a ses témoins avec les siens, les deux autres non.
+    expect(farImpacts(res, 0, 50, FAR_VICTIM, out)).toBe(2);
+    expect(out).toEqual([{ x: 0, y: 10 }, { x: -30, y: 30 }]);
   });
 });
 

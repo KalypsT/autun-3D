@@ -37,9 +37,10 @@ import { VehicleNameHud } from "../ui/vehicle-name";
 import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, nearestHospital } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
-import { Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
+import { FAR_VICTIM, farImpacts, Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
 import { AimAssist, type AimAssistInput } from "../core/aim-assist";
 import { KICK, scopePan, scopeSway } from "../core/scope";
+import { Threats } from "../core/threat";
 import type { CrowdScope } from "../render/crowd/crowd-types";
 import { CACHE_ROUNDS, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
@@ -388,6 +389,8 @@ export function startGame(ctx: GameContext): void {
   let heldId: WeaponId | null = null;
   let aimW = 0;
   const pedWitnesses: number[] = [];
+  /** Victimes touchées loin du tireur à ce tir (T4, D208). */
+  const farHits: { x: number; y: number }[] = [];
   if (params.has("wanted")) wanted.set(Number(params.get("wanted")) || 0, spawn.x, spawn.y);
 
   const vehicleName = new VehicleNameHud(document.getElementById("vname")!);
@@ -968,6 +971,9 @@ export function startGame(ctx: GameContext): void {
   const reticleEl = document.getElementById("reticle")!;
   /** Viseur du mode visée (D205), au centre de l'écran ; rouge sur une personne. */
   const crosshairEl = document.getElementById("crosshair")!;
+  /** Tirs reçus (T4, D208) : arcs au bord de l'écran tournés vers le tireur. */
+  const threats = new Threats();
+  const threatEls = [...document.querySelectorAll<HTMLElement>("#threats .threat")];
   let crosshairHot = false;
   const reticleV = new THREE.Vector3();
   const shootWorld: ShootWorld = {
@@ -1420,6 +1426,16 @@ export function startGame(ctx: GameContext): void {
         pedWitnesses.length = 0;
         police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0);
         violence(res.hits, res.killed);
+        // Victime touchée de loin (T4, D208) : les passants autour d'elle s'enfuient, et s'il en reste un debout, il appelle (le crime est signalé
+        // là où elle est tombée : la police fouille autour de la victime, pas du tireur, qu'aucun d'eux n'a vu).
+        if (res.hits > 0) {
+          for (let k = farImpacts(res, player.x, player.y, FAR_VICTIM, farHits) - 1; k >= 0; k--) {
+            const v = farHits[k]!;
+            pedsNow0?.alarm(v.x, v.y, FAR_VICTIM, ALARM_SHOT_FLEE);
+            pedWitnesses.length = 0;
+            police.crime(res.killed > 0 ? "murder" : "assault", v.x, v.y, (pedsNow0?.queryCircle(v.x, v.y, FAR_VICTIM, pedWitnesses) ?? 0) > 0);
+          }
+        }
       }
     }
     // Position de tir : fondu de la garde à la visée, secousse du tir. Arme blanche : garde ; mains nues : rien.
@@ -1464,7 +1480,9 @@ export function startGame(ctx: GameContext): void {
     } else {
       model.setDown(downFor > 0 ? { t: DOWN_TIME - downFor, side: downSide } : null);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
-      model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed);
+      // Pas de côté et à reculons (T4, D208) : la direction de la marche par rapport au corps, quand il ne suit pas la marche (visée, tir).
+      const moveRel = player.speed > 0.3 && weapon.kind === "gun" && (aiming || gun.aim > 0) ? angleDelta(player.heading, Math.atan2(player.vx, player.vy)) : 0;
+      model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed, moveRel);
       // Dans la lunette, la caméra est dans la tête : le personnage est caché.
       model.group.visible = camDist > 0.9 && scopeB < 0.5;
       if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);
@@ -1556,6 +1574,7 @@ export function startGame(ctx: GameContext): void {
       if (dmg > 0 && riding) riding.damage.shot(dmg);
       if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
       if (police.shots.length > 0) {
+        for (const sh of police.shots) threats.add(sh.x0, sh.y0, player.x, player.y, sh.hit);
         for (let i = 0; i < police.shots.length && i < 4; i++) {
           const sh = police.shots[i]!;
           audio.shot("pistol", sh.x0, sh.y0, false);
@@ -1569,6 +1588,18 @@ export function startGame(ctx: GameContext): void {
         }
         (peds as PedsController | null)?.alarm(police.shots[0]!.x0, police.shots[0]!.y0, ALARM_SHOT, ALARM_SHOT_FLEE);
         police.clearShots();
+      }
+      // Arcs des tirs reçus : tournés vers le tireur selon le regard de la caméra.
+      threats.step(dt);
+      for (let i = 0; i < threatEls.length; i++) {
+        const el = threatEls[i]!, t = threats.list[i];
+        if (!t) {
+          if (el.style.display !== "none") el.style.display = "none";
+          continue;
+        }
+        el.style.display = "block";
+        el.style.opacity = Threats.alpha(t).toFixed(2);
+        el.style.transform = `rotate(${Threats.screenAngle(t, yaw).toFixed(3)}rad)`;
       }
       drops.length = 0;
       police.takeDrops(drops);

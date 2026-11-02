@@ -110,6 +110,24 @@ export interface GunResult {
 
 const MAX_SHOTS = 12;
 
+/** Au-delà de cette distance du tireur (m), une personne touchée a ses propres témoins (T4, D208) : ceux du tireur ne la voient plus. */
+export const FAR_VICTIM = 25;
+
+/**
+ * Personnes touchées loin du tireur (T4, D208) : les points d'impact des balles de `res` sur une personne à plus de `min` m de (x, y), un par
+ * victime (deux impacts à moins de 2 m n'en font qu'un), dans `out` (vidé d'abord). Renvoie leur nombre.
+ */
+export function farImpacts(res: GunResult, x: number, y: number, min: number, out: { x: number; y: number }[]): number {
+  out.length = 0;
+  for (let k = 0; k < res.fxCount; k++) {
+    const s = res.shots[k]!;
+    if (s.kind !== 2 || Math.hypot(s.x1 - x, s.y1 - y) <= min) continue;
+    if (out.some((o) => Math.hypot(o.x - s.x1, o.y - s.y1) < 2)) continue;
+    out.push({ x: s.x1, y: s.y1 });
+  }
+  return out.length;
+}
+
 export class Gun {
   /** Cap voulu (rad) : vers la cible assistée, sinon le regard ; le jeu y tourne le joueur. */
   facing = 0;

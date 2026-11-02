@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -337,6 +337,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1200);
     await shot("t3-lunette-tir");
     await page.evaluate(() => { window.__autun.ui.paused = false; });
+    await ctx.close();
+  }
+
+  if (want("strafe")) {
+    // T4 (D208) : en visée, pas de côté vers la droite (touche D) ; puis deux gendarmes armés, derrière et à gauche, tirent : arcs des tirs reçus.
+    const ctx = await open("arms=pistol&h=15&wanted=4");
+    await sleep(1500);
+    await page.evaluate(() => { const a = window.__autun; a.inventory.select("pistol"); a.player.x = -10; a.player.y = -40; a.player.heading = 0; a.look(0); });
+    await touch("touchStart", [[915 - 170, 412 - 66]]);
+    await touch("touchEnd", []);
+    await page.waitForFunction(() => document.body.classList.contains("aiming"), null, { timeout: 120000, polling: "raf" });
+    await page.keyboard.down("KeyD");
+    await sleep(2500);
+    await page.evaluate(() => { window.__autun.ui.paused = true; });
+    await page.keyboard.up("KeyD");
+    await sleep(800);
+    await shot("t4-pas-de-cote");
+    await page.evaluate(() => {
+      const a = window.__autun;
+      a.ui.paused = false;
+      const o = a.police.officers;
+      o.spawn(a.player.x - 12, a.player.y - 8, 0, 0, 11);
+      o.spawn(a.player.x + 4, a.player.y - 15, 0, 0, 23);
+    });
+    await page.waitForFunction(() => document.querySelectorAll("#threats .threat[style*='block']").length >= 1, null, { timeout: 900000, polling: "raf" });
+    await page.evaluate(() => { window.__autun.ui.paused = true; });
+    await sleep(1200);
+    await shot("t4-tirs-recus");
     await ctx.close();
   }
 
