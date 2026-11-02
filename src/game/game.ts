@@ -55,6 +55,7 @@ import { GameAudio, type TrafficVisit } from "./game-audio";
 import { CameraShake, Haptics, speedFov, speedLines } from "../core/feel";
 import { VehicleLights } from "../render/vehicle-lights";
 import { SchoolGate } from "./school-gate";
+import { PassageGates } from "./passage-gate";
 import { TouristTrain, TRAIN_CLEAR, type TrainEnv } from "./tourist-train";
 
 export { gameSpawn } from "./start";
@@ -439,6 +440,8 @@ export function startGame(ctx: GameContext): void {
   const trainParked: TrainEnv["parked"][number][] = [];
   // Grille du collège du Vallon (D174) : fermée en dehors des heures de classe.
   const schoolGate = new SchoolGate(scene, colliders, terrain);
+  // Grilles du passage Balthus (D190) : fermées de 20 h à 7 h.
+  const passageGates = new PassageGates(scene, colliders);
   const updateTrain = (dt: number): void => {
     const t = traffic as Traffic | null, at = train.position;
     trainCars.length = 0;
@@ -1123,6 +1126,7 @@ export function startGame(ctx: GameContext): void {
     updateUniques(dt);
     updateTrain(dt);
     schoolGate.update(atmosphere.hour);
+    passageGates.update(atmosphere.hour, player.x, player.y);
     (traffic as Traffic | null)?.setNight(atmosphere.night);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
     if (riding) {

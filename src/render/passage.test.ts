@@ -62,3 +62,17 @@ describe("rendu du passage Balthus", () => {
     expect(Math.max(...zs)).toBeLessThan(23);
   });
 });
+
+describe("grilles fermées du passage Balthus (D190)", () => {
+  it("un maillage fini de quelques centaines de triangles, du sol au sommet des pointes", async () => {
+    const { buildPassageGates } = await import("./passage-gate");
+    const geo = buildPassageGates();
+    const p = geo.getAttribute("position");
+    expect(p.count / 3).toBeGreaterThan(300);
+    expect(p.count / 3).toBeLessThan(2500);
+    let ys = 0, ok = true;
+    for (let i = 0; i < p.count; i++) { ys = Math.max(ys, p.getY(i)); ok &&= Number.isFinite(p.getX(i) + p.getY(i) + p.getZ(i)); }
+    expect(ok).toBe(true);
+    expect(ys).toBeGreaterThan(9);
+  });
+});

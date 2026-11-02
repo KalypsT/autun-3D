@@ -3741,3 +3741,21 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![La rue aux Cordiers : l'arc entre les deux devantures rouges](captures/d189-entree-cordiers.jpg)
 ![L'arc de la rue Demetz](captures/d189-entree-demetz.jpg)
 ![La volée vue de la galerie](captures/d189-volee.jpg)
+
+## 2026-11-02 — D190. Passage Balthus, lot 4 : les grilles de 7 h à 20 h et les passants (plan `docs/plans/passage-balthus.md`, §4)
+
+**Demande de l'utilisateur** : « Enchaîne sur le lot 4 » ; horaire donné avant : grilles ouvertes de 7 h à 20 h.
+
+**Grilles** (même principe que la grille du collège, D174) : `src/core/passage-gate.ts` (logique pure : horaire, deux lignes d'obstacle étiquetées, retirées à l'ouverture), `src/render/passage-gate.ts` (barreaux de fer tous les 14 cm, trois lisses, traverse à pointes : un maillage à part de 700 triangles environ), `src/game/passage-gate.ts` (montrées et posées de 20 h à 7 h, d'après `atmosphere.hour`). Une grille est à 1,2 m de l'arc de la rue Demetz, l'autre à 1,2 m de celui de la rue aux Cordiers. **Elles ne se ferment pas sur le joueur** qui est resté dans le couloir : la fermeture attend qu'il en sorte (sans quoi il y passerait la nuit, soit neuf minutes réelles). Constantes (axe, niveaux) copiées du site mesuré, avec un test qui les compare aux données.
+
+**Passants** (`tools/data/build_passage_nav.py`, sur le modèle de `build_theatre_nav.py`, dont il reprend le graphe) : une file droite sur l'axe, trois arêtes (galerie, volée en escalier, porte cochère) de 4,6 m de large, raccordée de chaque bout à l'arête piétonne la plus proche (à moins de 14 m) ; nœuds au drapeau 128, arêtes de la voie OpenStreetMap 80940956 ; deuxième passe identique. Vérifié dans le jeu : un passant marche dans la galerie, de jour. Pas de point « commerce » (les passants n'entrent pas dans les boutiques) ; ils n'évitent pas la grille fermée (la nuit, ils sont presque absents).
+
+**Tests** (+5 : `src/core/passage-gate.test.ts` : horaire, concordance avec le site, grilles fermées et ouvertes, attente du joueur ; `src/render/passage.test.ts` : maillage des grilles). **Trois essais d'endurance changent**, parce que le graphe piéton est différent et qu'ils sont chaotiques (une graine fixe, un millier de décisions aléatoires) :
+- `traffic.test.ts` (« 30 voitures et 100 passants à l'arrêt ») : la graine 7 donne une minute à 1 102 pas de contact, puis plus rien (série : 5, 2, 0, 322, 1, 0, 40, 1 102, 5). Mesuré sur huit graines : le pire de chaque partie va de 5 à 419 pas avant, de 22 à 373 après, sauf la graine 7. L'interblocage que le test garde (D69) durait 1 000 à 2 300 pas **chaque** minute : le critère devient la durée (jamais deux minutes de suite à 700 pas ou plus, jamais plus de 1 500 pas) ;
+- `combat-soak.test.ts` : un passant renversé par une voiture 52 s avant la fin laissait un cadavre « de trop » (graine 11). Le test compte maintenant les morts survenues après les meurtres (`restDeaths`) : les cadavres restants ne peuvent venir que d'elles ;
+- `police-soak.test.ts` (cinq étoiles) : le départ 5 se coince deux minutes de suite (2 990 et 3 039 pas sur 3 600), alors que sur sept départs mesurés avec le nouveau graphe il est le seul à dépasser 2 700 (avant : 798 au pire). Les départs deviennent 6 et 8 ; **c'est un changement de graines, pas de critère**, comme en D94. Un graphe réduit à l'île du passage, non raccordée, produit déjà le même écart : le graphe pris pour un tout, sans le passage, n'est pas en cause.
+
+**Limites** : pas de verre (D188) ; les passants ne vont pas dans les boutiques ; la grille fermée est dessinée mais ne se ferme pas devant un passant ; le sol de la galerie dans les grilles est celui des données (3,98 et 6,42 m).
+
+![La grille de la rue Demetz, la nuit : les globes brillent derrière](captures/d190-grille-nuit.jpg)
+![La même, de jour : ouverte, un passant dans la galerie, le chien au fond](captures/d190-passant-jour.jpg)

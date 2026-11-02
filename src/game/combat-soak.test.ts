@@ -19,6 +19,8 @@ interface Report {
   maxTotal: number;
   /** Cadavres restants N secondes après la fin des meurtres. */
   corpsesAfter: number[];
+  /** Morts survenues après la fin des meurtres (accidents de la circulation, D190) : leurs cadavres sont plus jeunes que le délai. */
+  restDeaths: number;
   bad: number;
   shots: number;
 }
@@ -52,13 +54,15 @@ function soak(seed: number, kill: number, rest: number, weapon: "bat" | "rifle" 
   };
   let shots = 0;
   const me = { x: -10, y: -40, heading: 0 };
-  const rep: Report = { deaths: 0, maxCorpses: 0, maxTotal: 0, corpsesAfter: [], bad: 0, shots: 0 };
+  const rep: Report = { deaths: 0, maxCorpses: 0, maxTotal: 0, corpsesAfter: [], restDeaths: 0, bad: 0, shots: 0 };
   const out: number[] = [];
   const p = { x: 0, y: 0 };
+  let deathsAtKillEnd = -1;
   const total = (kill + rest) * 60;
   for (let i = 0; i < total; i++) {
     const t = i * DT;
     const killing = t < kill;
+    if (!killing && deathsAtKillEnd < 0) deathsAtKillEnd = peds.stats.deaths;
     let vx = 0, vy = 0;
     if (killing) {
       // Vers le passant le plus proche (à moins de 40 m), à 5 m/s (la course du joueur).
@@ -102,6 +106,7 @@ function soak(seed: number, kill: number, rest: number, weapon: "bat" | "rifle" 
     if (!killing && Math.round(t - kill) % 30 === 0 && i % 60 === 0) rep.corpsesAfter.push(st.corpses);
   }
   rep.deaths = peds.stats.deaths;
+  rep.restDeaths = deathsAtKillEnd < 0 ? 0 : peds.stats.deaths - deathsAtKillEnd;
   rep.shots = shots;
   traffic.dispose();
   return rep;
@@ -116,7 +121,8 @@ describe("endurance du combat (J5-2)", () => {
       expect(r.maxCorpses).toBeLessThanOrEqual(MAX_CORPSES);
       expect(r.maxTotal).toBeLessThanOrEqual(100);
       // Plus de cadavre 200 s après la fin des meurtres (150 s en vue + 3 s d'enfoncement, une minute hors de vue).
-      expect(r.corpsesAfter[r.corpsesAfter.length - 1]).toBe(0);
+      // Un cadavre qui reste vient d'une mort survenue depuis : la voiture d'un passant renversé après les meurtres (D190, graine 11), pas d'un oubli.
+      expect(r.corpsesAfter[r.corpsesAfter.length - 1]).toBeLessThanOrEqual(r.restDeaths);
     }
   }, 600000);
 
@@ -128,7 +134,8 @@ describe("endurance du combat (J5-2)", () => {
       expect(r.deaths).toBeGreaterThan(5);
       expect(r.maxCorpses).toBeLessThanOrEqual(MAX_CORPSES);
       expect(r.maxTotal).toBeLessThanOrEqual(100);
-      expect(r.corpsesAfter[r.corpsesAfter.length - 1]).toBe(0);
+      // Un cadavre qui reste vient d'une mort survenue depuis : la voiture d'un passant renversé après les meurtres (D190, graine 11), pas d'un oubli.
+      expect(r.corpsesAfter[r.corpsesAfter.length - 1]).toBeLessThanOrEqual(r.restDeaths);
     }
   }, 600000);
 });

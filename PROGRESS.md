@@ -1427,3 +1427,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les deux bouts du passage ont leur arc en pierre ; rue aux Cordiers, plaque bleue « PASSAGE BALTHUS » entre deux devantures rouges de La Promesse de l'Aube (l'extension remplace l'ancien magasin de chaussures et La Manufacture) ; le chien de bronze trône dans la galerie, sur son socle à plaque.
 - Pas encore : les grilles ouvertes de 7 h à 20 h, les passants dans le passage (lot 4), le verre, le fronton de la rue Demetz. 1014 tests (2 de plus).
 - À regarder : `?view=custom&cam=18.6,-178.2,2.6,3,-160,5.2&h=13` (rue aux Cordiers), `cam=-31,-108,2.4,-22,-120,4.5&h=13` (rue Demetz).
+
+**Passage Balthus, lot 4 : les grilles et les passants (2 novembre 2026)** (D190)
+- Les grilles du passage sont ouvertes de 7 h à 20 h, fermées la nuit (barreaux de fer à pointes aux deux entrées, on ne peut plus passer) ; elles attendent que tu sois sorti du couloir pour se fermer.
+- Les passants traversent le passage (galerie, escalier, porte cochère), de la rue Demetz à la rue aux Cordiers.
+- Le plan du passage Balthus est complet. Pas encore : le verre de la verrière, les passants qui entrent dans les boutiques, la grille et l'imposte dessinées plus finement, le fronton de la rue Demetz.
+- Trois essais d'endurance (circulation, combat, poursuite) ont dû être ajustés : le graphe piéton a changé et ils sont chaotiques ; voir D190. 1019 tests (5 de plus).
+- À regarder : `?at=-30.5,-108&yaw=2.55&h=23` (la grille la nuit), `&h=12` (de jour, avec les passants).
