@@ -1,7 +1,15 @@
+import { rescaleDate } from "../core/calendar";
+import { Seats } from "../core/seats";
+import { MarketController } from "./market";
+import { FeastsController } from "./feasts";
+import { AnimalsController } from "./animals";
+import { marketCenter, marketLevel, servicesWanted, trafficWeek } from "../core/week";
+import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
+import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
-import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, stepVehicle } from "../core/vehicle";
+import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, setSurfaceGrip, stepVehicle } from "../core/vehicle";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
@@ -136,6 +144,23 @@ export function startGame(ctx: GameContext): void {
   // Sons (J7, D89) : rien ne joue avant le premier geste (règle des navigateurs) ; `?sound=0` les coupe.
   const audioSys = new AudioSystem(settings.values.volume);
   const audio = new GameAudio(audioSys);
+  // Places assises des tuiles chargées (bancs, terrasses, D198), que les passants réservent.
+  const seats = new Seats();
+  // Marché du mercredi et du vendredi matin sur la place du Champ de Mars (D201) : étals, marchands, voitures qui laissent la place.
+  const market = new MarketController(scene, fleet, colliders, seats, terrain);
+  for (const extras of tiles.loadedExtras()) market.addTile(extras);
+  tiles.onBuild = (extras) => {
+    fleet.addFromTile(extras);
+    market.addTile(extras);
+  };
+  tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
+  tiles.forEachSeats((id, list) => seats.addTile(id, list));
+  // Animaux (D203) : chiens seuls, chats, canards, hérons, martinets, chauves-souris ; `?animals=0` les coupe.
+  const animals = new AnimalsController(scene, terrain, () => (nav as NavManager | null)?.graph ?? null, () => tiles.loadedExtras(), audio, params.get("animals") !== "0");
+  // Fêtes (D202) : illuminations, feu d'artifice du 14 juillet, fête de la musique.
+  const feasts = new FeastsController(scene, terrain, colliders, seats, audio, () => tiles.loadedExtras());
+  // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
+  atmosphere.onThunder = (delay, strength) => audio.thunder(delay, strength);
   // Ressenti (D90) : vibrations du téléphone, tremblement de la caméra.
   const haptics = new Haptics(typeof navigator.vibrate === "function" ? (p) => void navigator.vibrate(p) : null);
   haptics.enabled = settings.values.vibration;
@@ -163,6 +188,11 @@ export function startGame(ctx: GameContext): void {
     }
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("vibration")) haptics.enabled = v.vibration;
+    // Calendrier (D194) : une autre durée de saison garde la saison et le jour de la semaine ; figer une saison ne touche pas à la date.
+    if (changed.includes("seasonLength") || changed.includes("season")) {
+      const old = atmosphere.calendarConfig;
+      atmosphere.setCalendar({ length: v.seasonLength, frozen: v.season === -1 ? null : v.season }, rescaleDate(atmosphere.date, old.length, v.seasonLength));
+    }
     if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
     // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
     if (changed.includes("traffic")) startTraffic(v.traffic);
@@ -218,7 +248,7 @@ export function startGame(ctx: GameContext): void {
   const startPeds = (capacity: number): void => {
     if (capacity <= 0) return;
     if (!peds) {
-      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7);
+      peds = new PedsController(scene, startNav(), terrain, colliders, capacity, 7, seats);
       peds.setSignals(signals);
       peds.setShadows(ctx.settings!.values.shadows !== 0);
     } else peds.setCapacity(capacity);
@@ -232,7 +262,7 @@ export function startGame(ctx: GameContext): void {
   /** La foule, même vide (« Foule : Aucune ») : les gendarmes à pied y sont dessinés (J4-5). */
   const needPeds = (): PedsController => {
     if (!peds) {
-      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7);
+      peds = new PedsController(scene, startNav(), terrain, colliders, 0, 7, seats);
       peds.setSignals(signals);
       peds.setShadows(ctx.settings!.values.shadows !== 0);
     }
@@ -273,7 +303,7 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()} · ${audio.info}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · ${weatherInfo(atmosphere.weather)} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()} · ${audio.info}`);
 
   const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -1125,10 +1155,17 @@ export function startGame(ctx: GameContext): void {
     updateDamage(dt);
     updateUniques(dt);
     updateTrain(dt);
-    schoolGate.update(atmosphere.hour);
+    schoolGate.update(atmosphere.hour, atmosphere.calendar.weekday);
+    market.update(atmosphere.calendar.weekday, atmosphere.hour, atmosphere.feasts.includes("marche-noel"));
+    feasts.update(dt, atmosphere.feasts, atmosphere.hour, atmosphere.night);
+    animals.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, night: atmosphere.night, season: atmosphere.calendar.season });
+    // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
+    const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
+    setSurfaceGrip(surfaceGrip(wx));
+    setDriverCaution(wxTraffic.caution);
     passageGates.update(atmosphere.hour, player.x, player.y);
-    (traffic as Traffic | null)?.setNight(atmosphere.night);
-    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null });
+    (traffic as Traffic | null)?.setNight(atmosphere.headlights);
+    (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density * trafficWeek(atmosphere.calendar.weekday), services: servicesWanted(atmosphere.calendar.weekday, atmosphere.hour) });
     if (riding) {
       const s = riding.state;
       // Dégâts (D109) : chaque choc de l'image abîme le véhicule, à l'endroit où il a porté.
@@ -1145,7 +1182,7 @@ export function startGame(ctx: GameContext): void {
         audio.drive(dt, s, input.throttle, input.brake);
         haptics.crash(s.impact);
         if (s.impact >= 1.2) shake.impact(s.impact);
-        lights?.update(atmosphere.night, input.brake > 0.05 && s.speed > 0.5, s.speed < -0.3);
+        lights?.update(atmosphere.headlights, input.brake > 0.05 && s.speed > 0.5, s.speed < -0.3);
         s.impact = 0;
         // Caméra de poursuite : se recale derrière le véhicule, sauf si l'on vient de regarder ailleurs.
         lookIdle = input.looking ? 0 : lookIdle + dt;
@@ -1319,6 +1356,9 @@ export function startGame(ctx: GameContext): void {
       // Les passants jouent avec le temps du jeu : la pause fige tout (cette partie de la boucle n'est pas atteinte).
       const obs: Observer = {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
+        weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather), season: atmosphere.calendar.season, rain: atmosphere.weather.rain },
+        weekday: atmosphere.calendar.weekday,
+        feasts: atmosphere.feasts,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
         ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
@@ -1401,7 +1441,13 @@ export function startGame(ctx: GameContext): void {
       lastStars = wanted.stars;
     }
     audio.traffic(dt, eachCar);
-    audio.update(dt, atmosphere.hour, atmosphere.day);
+    audio.weekday = atmosphere.calendar.weekday;
+    {
+      // Brouhaha du marché : à son plus fort au milieu des étals, éteint à 120 m.
+      const [mx, my] = marketCenter(), d = Math.hypot(player.x - mx, player.y - my);
+      audio.crowd = marketLevel(atmosphere.calendar.weekday, atmosphere.hour) * Math.max(0, Math.min(1, (120 - d) / 80));
+    }
+    audio.update(dt, atmosphere.hour, atmosphere.day, atmosphere.weather);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);
@@ -1429,6 +1475,14 @@ export function startGame(ctx: GameContext): void {
     look: (v: number) => {
       yaw = v;
     },
+    /** Captures : incliner la caméra (rad, positif : on regarde plus bas). */
+    tilt: (v: number) => {
+      pitch = v;
+    },
+    /** Essais : les fêtes en cours et ce qu'elles montrent (D202). */
+    feasts: () => ({ list: atmosphere.feasts, ...feasts.state }),
+    /** Essais : animaux présents par espèce (D203). */
+    animals: () => animals.counts(),
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

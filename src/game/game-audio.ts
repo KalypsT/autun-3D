@@ -1,3 +1,4 @@
+import { massPeal } from "../core/week";
 import type { AudioSystem } from "../audio/audio-system";
 import { NEAR, type Kit, type Spot } from "../audio/kit";
 import * as S from "../audio/synth";
@@ -76,8 +77,14 @@ export class GameAudio {
   private sirenVoices: SirenVoice[] = [];
   private amb: AmbienceVoice | null = null;
   private prevHour = Number.NaN;
+  /** Jour de la semaine (0 = lundi), donné par le jeu (cloches du dimanche, D201). */
+  weekday = 0;
+  /** Brouhaha du marché tout proche (0 à 1), donné par le jeu (D201). */
+  crowd = 0;
   private birdTimer = 2;
   private owlTimer = 20;
+  private wipeTimer = 0;
+  private inCar = false;
   private cryCool = 0;
   private crashCool = 0;
   private dryCool = 0;
@@ -126,6 +133,7 @@ export class GameAudio {
     }
     this.ride = null;
     this.hornOn = false;
+    this.inCar = v?.family === "car";
     this.pendingRide = v;
     if (v && kit) this.build(v, true);
   }
@@ -435,8 +443,56 @@ export class GameAudio {
     }
   }
 
-  /** À chaque image : minuteries, ambiance (heure 0-24, jour de l'année), cloches. */
-  update(dt: number, hour: number, day: number): void {
+  /** Éclatement d'une fusée du feu d'artifice (D202), entendu avec le retard de la distance. */
+  firework(x: number, y: number, z: number, size: number): void {
+    const kit = this.kit;
+    const d = Math.hypot(x - this.L.x, y - this.L.y, z - 300);
+    const sp = kit && this.spot(x, y, 200, 6000, 0.5, 1);
+    if (kit && sp) S.firework(kit, this.sys.buses!.ambience, kit.ctx.currentTime + d / 343, size, { ...sp, cutoff: Math.max(sp.cutoff, 900) });
+  }
+
+  private musicStep = 0;
+  private musicTimer = 0;
+  /**
+   * Fête de la musique (D202) : chaque groupe joue une boucle de quatre accords (basse, accord, mélodie) dans sa tonalité, qu'on entend
+   * à 150 m. Appelé à chaque image pendant la fête.
+   */
+  music(dt: number, groups: readonly { x: number; y: number; key: number }[]): void {
+    const kit = this.kit;
+    if (!kit) return;
+    this.musicTimer -= dt;
+    if (this.musicTimer > 0) return;
+    const beat = 0.32;
+    this.musicTimer += beat;
+    this.musicStep = (this.musicStep + 1) % 32;
+    const t = kit.ctx.currentTime + 0.02, step = this.musicStep, bar = Math.floor(step / 8) % 4;
+    const progression = [0, 5, 7, 3], scale = [0, 2, 4, 7, 9, 12, 14, 16];
+    for (const g of groups) {
+      const sp = this.spot(g.x, g.y, 12, 150, 0.25, 0.7);
+      if (!sp) continue;
+      const root = 110 * Math.pow(2, (g.key + progression[bar]!) / 12);
+      if (step % 4 === 0) S.musicNote(kit, this.sys.buses!.sfx, t, root, 0, beat * 3, sp);
+      if (step % 2 === 1) for (const iv of [12, 16, 19]) S.musicNote(kit, this.sys.buses!.sfx, t, root * Math.pow(2, iv / 12), 1, beat, sp);
+      const note = scale[(step * 5 + g.key) % scale.length]!;
+      if ((step * 7 + g.key) % 3 !== 0) S.musicNote(kit, this.sys.buses!.sfx, t, root * 4 * Math.pow(2, note / 12), 2, beat, sp);
+    }
+  }
+
+  /** Cri d'un animal (D203) à sa position : aboiement, coin-coin, envol, cri de martinet. */
+  animal(kind: "bark" | "quack" | "flap" | "swift", x: number, y: number): void {
+    const kit = this.kit;
+    const sp = kit && this.spot(x, y, kind === "swift" ? 25 : 8, kind === "swift" ? 200 : 90, 0.2, kind === "bark" ? 0.9 : 0.6);
+    if (kit && sp) S.animalCall(kit, this.sys.buses!.ambience, kit.ctx.currentTime + 0.02, kind, sp);
+  }
+
+  /** Coup de tonnerre (D196), `delay` secondes après l'éclair. */
+  thunder(delay: number, strength: number): void {
+    const kit = this.kit;
+    if (kit) S.thunder(kit, this.sys.buses!.ambience, kit.ctx.currentTime + delay, strength);
+  }
+
+  /** À chaque image : minuteries, ambiance (heure 0-24, jour de l'année, météo), cloches, essuie-glaces. */
+  update(dt: number, hour: number, day: number, weather: { rain: number; cloud: number } = { rain: 0, cloud: 0 }): void {
     this.cryCool -= dt;
     this.crashCool -= dt;
     this.dryCool -= dt;
@@ -445,7 +501,16 @@ export class GameAudio {
     const buses = this.sys.buses!;
     if (!this.amb) this.amb = new AmbienceVoice(kit, buses.ambience);
     const a = ambience(hour, day);
-    this.amb.update(a.city * 0.7, 0.6, a.crickets);
+    // Météo (D196) : le vent forcit par temps couvert, la pluie couvre les grillons et les oiseaux se taisent.
+    const wet = weather.rain;
+    this.amb.update(a.city * 0.7 * (1 - 0.3 * wet), 0.6 + 0.6 * weather.cloud, a.crickets * (1 - wet), wet, this.crowd);
+    a.birds *= 1 - 0.8 * Math.max(wet, weather.cloud * 0.5);
+    // Essuie-glaces : en voiture, sous la pluie, un aller toutes les 1,2 s (0,8 s sous une averse).
+    this.wipeTimer -= dt;
+    if (this.inCar && wet > 0.15 && this.wipeTimer <= 0) {
+      this.wipeTimer = wet > 0.7 ? 0.8 : 1.2;
+      S.wiper(kit, buses.sfx, kit.ctx.currentTime);
+    }
     const t = kit.ctx.currentTime;
     // Oiseaux et chouettes : au hasard autour de l'oreille, d'autant plus souvent que l'heure s'y prête.
     this.birdTimer -= dt * a.birds;
@@ -469,6 +534,9 @@ export class GameAudio {
         for (let i = 0; i < b.strikes; i++) S.bell(kit, buses.sfx, t + 0.2 + i * BELL_GAP, BELL_PRIME, bell);
         if (b.peal) S.peal(kit, buses.sfx, t + 0.2 + b.strikes * BELL_GAP + 1.5, PEAL_SECONDS, bell);
       }
+      // Le dimanche, une longue volée appelle à la messe de 10 h 30 (D201).
+      const msp = massPeal(this.weekday, this.prevHour, hour) && this.spot(CATHEDRAL.x, CATHEDRAL.y, 150, 4000, 0.3, 0.8);
+      if (msp) S.peal(kit, buses.sfx, t + 0.2, PEAL_SECONDS * 2, { ...msp, cutoff: Math.max(msp.cutoff, 1600) });
     }
     this.prevHour = hour;
     this.voices = (this.ride ? 3 : 0) + this.carVoices.length + this.sirenVoices.length + (this.amb ? 1 : 0);

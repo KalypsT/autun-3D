@@ -37,7 +37,11 @@ interface TrafficCar {
   driver: number;
   /** Depuis combien de secondes le conducteur est perdu (le joueur la regardait : elle n'a pas pu disparaître). */
   lostFor: number;
+  /** Service (D204) : bus (arrêts), camion poubelle (tous les 30 m), livraison (une fois en double file) ; distance parcourue, attente avant le prochain arrêt. */
+  service?: { kind: ServiceKind; dist: number; cool: number; done: boolean; px: number; py: number };
 }
+
+export type ServiceKind = "bus" | "benne" | "livraison";
 
 /** Une voiture abandonnée par son conducteur (D112), à remettre à la flotte. */
 export interface Abandoned {
@@ -59,6 +63,10 @@ export interface TrafficEnv {
   speed: number;
   hour: number;
   vehicle: { x: number; y: number } | null;
+  /** Véhicules de service voulus en ce moment (D204), selon le jour et l'heure ; absent : aucun. */
+  services?: { bus: number; benne: number; livraison: number };
+  /** Part des voitures de l'heure qui circulent par ce temps (D195) ; défaut 1. */
+  weather?: number;
 }
 
 /** Une voiture qui s'éloigne de plus que cela de la couronne de naissance disparaît (si le joueur ne la voit pas). */
@@ -332,7 +340,7 @@ export class Traffic {
       const hit = graph.nearest(env.x, env.y, 80, MASK_ZONE);
       this.zone = hit ? graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
-    this.target = trafficTarget(this.max, env.hour, this.zone, env.speed);
+    this.target = trafficTarget(this.max, env.hour, this.zone, env.speed, env.weather);
     this.beaconClock += dt;
     const { rOut } = spawnRing(env.speed);
     // Au-delà de 400 m on ne voit plus une voiture (les murs lointains ne sont pas chargés : sans cette borne, une voiture droit devant à 1 km passait pour vue
@@ -371,6 +379,7 @@ export class Traffic {
     }
     this.dropAbandoned();
     this.updatePursuit(dt, env);
+    this.updateServices(dt, env);
     this.cooldown -= dt;
     // Au début, on remplit vite (jusqu'à 3 par image tant qu'il manque la moitié) ; ensuite une naissance toutes les 0,25 s.
     let budget = this.cars.length < this.target / 2 ? 3 : 1;
@@ -380,6 +389,50 @@ export class Traffic {
     }
     this.render();
   }
+
+  /** Véhicules de service (D204) : naissance à leurs heures, puis leurs arrêts (bus aux arrêts, benne tous les 30 m, livraison en double file). */
+  private updateServices(dt: number, env: TrafficEnv): void {
+    const want = env.services;
+    if (want) {
+      this.serviceTimer -= dt;
+      if (this.serviceTimer <= 0) {
+        this.serviceTimer = 3;
+        for (const kind of ["bus", "benne", "livraison"] as const) {
+          const n = this.cars.filter((c) => c.service?.kind === kind).length;
+          if (n >= want[kind]) continue;
+          const def = CATALOG.find((d) => d.id === (kind === "bus" ? "bus-urbain" : kind === "benne" ? "benne-ordures" : "camionnette"));
+          const car = def ? this.spawn(env, false, undefined, def) : null;
+          if (car) car.service = { kind, dist: 0, cool: kind === "bus" ? 5 : 0, done: false, px: car.sim.state.x, py: car.sim.state.y };
+        }
+      }
+    }
+    for (const c of this.cars) {
+      const sv = c.service;
+      if (!sv || c.sim.chase) continue;
+      const s = c.sim.state;
+      sv.dist += Math.hypot(s.x - sv.px, s.y - sv.py);
+      sv.px = s.x;
+      sv.py = s.y;
+      sv.cool -= dt;
+      if ((c.sim.holdT ?? 0) > 0 || sv.cool > 0) continue;
+      if (sv.kind === "benne" && sv.dist > 30) {
+        c.sim.holdT = 5;
+        sv.dist = 0;
+      } else if (sv.kind === "bus") {
+        // Un arrêt de bus (point d'intérêt d'OpenStreetMap) à moins de 12 m devant : arrêt de 10 s.
+        let stop = false;
+        this.nav.graph.forEachPoi(1 << 1, s.x + Math.sin(s.heading) * 6, s.y + Math.cos(s.heading) * 6, 9, () => (stop = true));
+        if (stop && s.speed < 9) {
+          c.sim.holdT = 10;
+          sv.cool = 25;
+        }
+      } else if (sv.kind === "livraison" && !sv.done && sv.dist > 60 && this.zone === ZONE.centre) {
+        c.sim.holdT = 35 + (c.driver % 30);
+        sv.done = true;
+      }
+    }
+  }
+  private serviceTimer = 0;
 
   /** Voitures en poursuite. */
   get chasing(): number {
@@ -441,7 +494,7 @@ export class Traffic {
   }
 
   /** Fait naître une voiture (de police si `police`) sur une voie libre de la couronne ; null s'il n'y en a pas (rien n'est alors créé). */
-  private spawn(env: TrafficEnv, police = false, around?: { x: number; y: number }): TrafficCar | null {
+  private spawn(env: TrafficEnv, police = false, around?: { x: number; y: number }, forced?: VehicleDef): TrafficCar | null {
     const rnd = (): number => {
       let h = Math.imul((this.seed + 1) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(++this.serial, 0xc2b2ae35);
       h ^= h >>> 15;
@@ -451,9 +504,10 @@ export class Traffic {
     // Sans les véhicules uniques (D114). Défaut connu, laissé tel quel (D114) : `find` refait un tirage pour chaque modèle examiné, si bien que la
     // répartition par quartier (D55) n'est pas respectée ; le corriger change toute la circulation, et l'endurance de la poursuite (D76) révèle
     // alors des embouteillages de l'IA de conduite : à reprendre dans un chantier de la circulation.
-    const cars = CATALOG.filter((d) => d.family === "car" && !d.unique);
+    const cars = CATALOG.filter((d) => d.family === "car" && !d.unique && !d.service);
     let def = cars.find((d) => d.id === pickModel("car", this.zone, rnd())) ?? cars[0]!;
     if ((rnd() < PATROL_SHARE && this.policeCount < MAX_PATROLS) || police) def = POLICE;
+    if (forced) def = forced;
     const taken: { x: number; y: number }[] = this.cars.map((c) => c.sim.state);
     if (env.vehicle) taken.push(env.vehicle);
     else taken.push({ x: env.x, y: env.y });

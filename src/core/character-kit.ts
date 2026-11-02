@@ -135,6 +135,8 @@ export const PART_SPECS: readonly PartSpec[] = [
   spec("backpack", TORSO, SLOT.bag, true, (r) => r.bag === "backpack"),
   spec("shoulderBag", TORSO, SLOT.bag, false, (r) => r.bag === "shoulder"),
   spec("handbag", [BONE.forearmR], SLOT.bag, false, (r) => r.bag === "handbag"),
+  // Parapluie (D197) : porté par la tête (il reste au-dessus d'elle quel que soit le geste du bras), de la couleur du sac.
+  spec("umbrella", HEAD, SLOT.bag, true, (r) => r.umbrella === true),
   spec("scarf", TORSO, SLOT.scarf, false, (r) => r.scarf),
   // Armes tenues (J5, D80) : jamais dans une recette ; `addPart` les ajoute au masque du personnage qui les tient (le joueur, puis les gendarmes).
   spec("weaponKnife", [BONE.forearmR], SLOT.none, false, () => false),

@@ -3804,3 +3804,277 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![La façade de la rue Demetz, depuis la place](captures/d193-facade-demetz.jpg)
 ![Pavillon : fronton, rampe d'ardoise et lucarnes](captures/d193-facade-demetz-haut.jpg)
+
+## 2026-11-02 — D194. Ville vivante, lot 1-1 : le calendrier du jeu (plan `docs/plans/ville-vivante.md`, § 1)
+
+**Demande de l'utilisateur** : réaliser tout le plan « ville vivante », sous-lot par sous-lot, dans l'ordre du § 12. Premier sous-lot : le calendrier, dont dépendent la météo, les saisons et la semaine.
+
+**Module** (`src/core/calendar.ts`, logique pure) : la seule valeur enregistrée est `date`, le nombre de jours de jeu écoulés depuis le début de la partie. Jour de la semaine `date % 7` (0 = lundi) ; saison `floor(date / L) % 4` (`L` = 7 jours par défaut, 14 en option) ; avancement dans la saison `t` (avec l'heure) ; jour astronomique `doy = 79 + (saison + t) × 91,25`, que `sunPosition` reçoit sans changer. Fêtes du tableau du plan (`activeFeasts`), placées par jour de saison avec leurs heures (la fête de la musique déborde jusqu'à 1 h) ; une fête d'un jour reste d'un jour quand la saison dure 14 jours, une plage (illuminations) s'étire.
+
+**Branchements** :
+- `Atmosphere` garde `date` (au lieu de `day`) et un accesseur `calendar` ; `day` reste en lecture (jour astronomique arrondi) pour le son et les notes de lieu.
+- **Sauvegarde version 5** : `clock: { hour, date }`. Les versions 1 à 4 (`day` = jour de l'année) sont migrées vers le lundi de la saison qui contient ce jour (`dateFromDoy`) : on garde la saison, le jour de la semaine n'existait pas.
+- **Nouvelle partie** : été, 1er jour (un lundi), 16 h. Le soleil de départ est celui du 21 juin environ (avant : 19 juillet, jour 200), écart invisible à 16 h.
+- **Réglages** : « Durée d'une saison » (7 ou 14 jours) et « Saison » (« Qui passe » ou l'une des quatre). Changer la durée garde la saison, l'avancement et le jour de la semaine (`rescaleDate`) ; une saison figée garde le soleil du milieu de la saison et laisse tourner la semaine (ses fêtes reviennent chaque semaine, lundi = 1er jour).
+- **Interface** : « Lun. · Été, 1er jour » sous l'horloge, en lettres crème cernées d'encre (comme le bandeau du véhicule) ; masqué en conduite, où le compteur occupe la place. La figure en cours (`#stunt`) descend de 4 px.
+- **URL** (dans `FORCING_PARAMS`, ils coupent la sauvegarde) : `?date=N`, `?season=printemps|ete|automne|hiver` (1er jour de la saison), `?weekday=1..7`. `?day=` reste accepté et converti comme une ancienne sauvegarde.
+
+**Écarts au plan** : (1) la saison figée prend le **milieu** de la saison pour le soleil (le plan disait « ceux du jour figé », ambigu : le milieu donne la saison la plus franche) ; (2) l'audio reçoit toujours le jour astronomique par `atmosphere.day` (le jour de la semaine viendra au lot 2 avec les cloches du dimanche) ; (3) la date est masquée en conduite.
+
+**Tests** (+13, 1033 au total) : `calendar.test.ts` (semaine, saisons de 7 et 14 jours, jour astronomique, saison figée, texte, fêtes et leurs heures, nouvelle partie, conversion d'un jour de l'année, changement de durée, paramètres d'URL) ; `save.test.ts` (version 5, migration de la version 4) ; `atmosphere.test.ts` (la date avance à minuit, le calendrier suit).
+
+**Limites** : les anciennes captures prises avec `&day=` ont un soleil légèrement différent (le jour est ramené au lundi de sa saison) ; rien d'autre ne change à l'écran pour l'instant (la météo, les saisons et la semaine sont les sous-lots suivants). Le rendu ne change pas : pas de mesure au banc.
+
+![Avant](captures/d194-avant.jpg)
+![Après : la date sous l'horloge](captures/d194-apres.jpg)
+![Les deux nouveaux réglages](captures/d194-reglages.jpg)
+
+## 2026-11-02 — D195. Ville vivante, lot 1-2 : la météo, partie logique (plan `docs/plans/ville-vivante.md`, § 2)
+
+**Module** (`src/core/weather.ts`, logique pure, rien à enregistrer) :
+- **Épisodes** de 2 à 4 heures de jeu, tirés d'une graine dérivée de la date (`dayEpisodes`) : la même partie retrouve la même météo après un rechargement. Genre tiré selon le tableau du plan pour la saison du jour ; **un épisode sur deux garde le genre du précédent** (le temps dure un peu ; cela ne change pas les parts du tableau). Ajout au plan, qui ne disait rien de l'enchaînement : sans cela, beau, pluie et beau s'alternaient toutes les deux heures.
+- **Contraintes** : l'orage ne commence qu'entre 15 h 30 et 21 h 30 (et finit avant minuit), la brume entre 4 h 30 et 8 h (et finit à 10 h 30) ; dans leur fenêtre, leur part est relevée (×4 et ×5) pour garder à peu près celle du tableau sur la journée (mesuré sur 4 000 jours : orage 2 à 3 % des heures d'été, brume 2 à 4 % en automne) ; pas de neige au printemps ni en été ; jamais deux jours de pluie complets d'affilée (re-tirage).
+- **Transitions** de 20 à 40 minutes : vers un temps plus humide, les nuages se forment d'abord, la pluie tombe ensuite ; vers un temps plus sec, la pluie cesse avant que le ciel se dégage (chaque moitié dure la transition, l'épisode dure au moins 2 h : pas de transition coupée).
+- **État continu** (`weatherAt`) : `{ kind, cloud, rain, fog, snowfall, snow, wet, storm }`, entre 0 et 1. Écart au plan : la neige est séparée en **neige qui tombe** (`snowfall`) et **neige au sol** (`snow`), dont le rendu a besoin séparément. Le sol mouillé est le plus mouillé des 1 h 30 passées, diminué du temps écoulé ; la neige au sol suit une moyenne d'une heure de chute (une heure blanchit le sol) et fond en 5 heures ; **givre** l'hiver par temps clair, de 5 h à 10 h (au plus fort vers 7 h, `snow` ≤ 0,25). Coût : 0,03 ms par calcul, fait avec l'ambiance (environ deux fois par seconde).
+- **`?weather=beau|nuageux|pluie|orage|brume|neige`** impose et fige la météo, sol compris (`fixedWeather`), coupe la sauvegarde (`FORCING_PARAMS`) et sert au banc (`&weather=`). Le banc et le viewer sont **par beau temps** sans ce paramètre, pour que leurs mesures restent comparables.
+
+**Effets sur le jeu** :
+- **Adhérence** : `setSurfaceGrip` (`vehicle.ts`) multiplie l'adhérence des pneus de tous les véhicules (sec 1, mouillé 0,8, neige 0,6), appliquée en un seul endroit, au début de `stepVehicle` (fiche dérivée gardée en mémoire tant que l'adhérence ne change pas).
+- **Passants** : `crowdTarget` × facteur météo (pluie 0,45 à pleine pluie, orage 0,3, neige 0,6 à 0,7, brume 0,9) ; allure +20 % sous une pluie pleine.
+- **Circulation** : `trafficTarget` × 0,8 sous la pluie ou sur la neige ; conducteurs plus prudents (`setDriverCaution` : vitesse de croisière et accélération latérale de confort × 0,9), pris en compte quand ils recalculent leur tracé.
+- `?debug` affiche la météo (genre, nuages, pluie, sol mouillé…).
+
+**Tests** (+14) : `weather.test.ts` (durée des épisodes, déterminisme, fenêtres, parts sur 4 000 jours, pas deux jours de pluie, continuité minute par minute et à minuit, sol qui sèche, neige qui tient, nuages avant la pluie, `?weather=`, facteurs ; une voiture freine plus long sur sol mouillé et enneigé). Les tests existants (endurance de la circulation, des passants, de la police) gardent la météo neutre : aucun n'a changé.
+
+**Limites** : rien ne se voit encore à l'écran (lot 1-3) ; la météo est la même dans toute la ville ; l'adhérence ne dépend pas du revêtement (pavés, herbe) ; le joueur n'a aucun indicateur de météo hors `?debug` (le ciel le dira au lot 1-3). Pas de mesure au banc : le rendu ne change pas.
+
+![Midi sur la place du Champ de Mars, beau temps](captures/d195-beau.jpg)
+![Même lieu, `?weather=pluie` : moins de passants ; le ciel ne change qu'au lot 1-3](captures/d195-pluie.jpg)
+
+## 2026-11-02 — D196. Ville vivante, lot 1-3 : la météo à l'écran (plan `docs/plans/ville-vivante.md`, § 3)
+
+**Sol mouillé, flaques, neige au sol** (`src/render/weather-fx.ts`, fait en premier comme le demandait le plan) : `weatherize(matière, surface)` ajoute quelques lignes aux nuanceurs du sol vectoriel, du relief, du bâti, des toits, du feuillage, des silhouettes lointaines et des clochers lointains. Toutes lisent **les mêmes uniformes** (`uWet`, `uSnow`, `uSkyTint`) : changer la météo ne recompile rien et ne touche aucune matière (test). Chaque sorte de surface a sa clé de programme (`customProgramCacheKey`), sans quoi deux nuanceurs enchaînés différents auraient partagé un programme. Aucune texture : un bruit en coordonnées du monde.
+- *Mouillé* : faces tournées vers le ciel plus sombres (−32 %) ; **flaques** au sol seulement (taches de 2 à 3 m, qui s'étendent un peu avec la pluie), plus sombres, avec le **reflet du bas du ciel à jour frisant** (lumière émise, terme de Fresnel). Écart au plan : il parlait de rugosité plus basse ; les matières du style « affiche » (toon, Lambert) n'ont pas de reflets, l'émission en tient lieu. Premier essai : flaques larges et claires, qu'on prenait pour de la neige ; corrigé (plus petites, sombres, reflet seulement de loin).
+- *Neige* : par plaques (bruit), puis partout, sur les faces tournées vers le ciel (seuils propres au sol, aux toits en pente, au bâti et au feuillage) ; givre = neige faible du matin (D195).
+- Dans le nuanceur, tout est sauté (`if`) par beau temps sec : il ne reste qu'un passage de deux vecteurs entre sommet et fragment.
+
+**Ciel et lumière** (`Atmosphere`, `sky.ts`) : couleurs du ciel, du brouillard et de la lumière d'ambiance tirées vers leur propre luminance selon la couverture (le gris suit donc le jour et la nuit) ; soleil voilé (jusqu'à −78 %), lumière d'ambiance relevée (+30 %) : ombres plus douces ; disque solaire et étoiles cachés par un ciel couvert ; **nuages du ciel** (déjà dans le nuanceur, jamais allumés) : le seuil baisse avec la couverture, ils s'étendent et grisent. Brouillard : pluie et neige rapprochent l'horizon (−35 % et −30 %), la brume le ramène à 170 m. Fenêtres et lampadaires s'allument plus tôt par temps très couvert.
+
+**Pluie et neige qui tombent** (`src/render/precipitation.ts`) : 6 000 gouttes (traits de 55 cm) ou 4 500 flocons (disques de 5 cm qui flottent), dans une boîte qui suit la caméra ; tout est calculé par le nuanceur (chute, vent, repli dans la boîte), **un appel de dessin** par sorte, et aucun quand il ne pleut pas. La densité choisit combien de gouttes sont dessinées.
+
+**Orage** : éclairs de 0,18 s (deux fois sur dix, un second) qui éclairent la lumière d'ambiance (×3,5) et les nuages ; tonnerre décalé selon une distance tirée (0,4 à 5,4 km : 1 à 16 s), claquement sec seulement de près.
+
+**Sons** (`synth.ts`, `voices.ts`, page `?sounds` et `tools/sounds.sh`) : pluie (crépitement de bruit blanc, grondement sourd sous l'averse), tonnerre (claquement, roulement de bouffées graves), vent qui forcit par temps couvert, oiseaux qui se taisent et grillons couverts par la pluie, **essuie-glaces** en voiture sous la pluie (toutes les 1,2 s, 0,8 s sous l'averse). Hors ligne : pluie crête −8,6 dB, tonnerre proche −10,4 dB, lointain −16,6 dB, essuie-glaces −23,4 dB.
+
+**Phares** (`Atmosphere.headlights`) : allumés aussi de jour dans la brume, sous une forte pluie ou sous la neige (circulation et véhicule du joueur).
+
+**Mesure** (`?bench=court`, rendu logiciel : appels de dessin et triangles exacts, durées sans portée) : à l'arrêt sur la place, beau 150 appels et 1 415 k triangles, pluie 151 et 1 428 k, neige 151 et 1 425 k ; la durée médiane d'une image (où le rendu logiciel paie surtout les fragments) ne bouge pas au-delà du bruit (1 166, 1 183 et 1 150 ms). **Le coût réel des nuanceurs sur le téléphone reste à mesurer** : `?bench=1` puis `?bench=1&weather=pluie` et `&weather=neige`.
+
+**Tests** (+9, 1056) : `weather-fx.test.ts` (chaque ligne remplacée existe dans les nuanceurs toon, Lambert et standard de Three.js ; uniformes partagés ; flaques au sol seulement ; nuanceur d'origine gardé ; clés de programme distinctes ; changer la météo ne change pas la version des matières ; une goutte = deux triangles ; invisible sans pluie ; densité) ; `atmosphere.test.ts` (soleil voilé, horizon rapproché, phares, éclairs suivis du tonnerre).
+
+**Limites** : la pluie tombe aussi sous les abris (passage Balthus, porches) et traverse les toits quand on est dessous ; pas d'éclaboussures ni de gouttes sur l'écran ; les murs ne ruissellent pas ; les flaques ne reflètent que la couleur du ciel (pas les façades) ; la neige ne s'accumule pas sur les voitures garées, les personnages ni le mobilier à part (ils n'ont pas la matière patinée) ; le son de la pluie n'est pas plus fort sous un abri (prévu « si c'est simple » : il faudrait savoir qu'on est sous un toit) ; les éclairs n'éclairent pas d'un coup les ombres portées. La neige reste blanche au crépuscule (elle suit la lumière, pas le ciel).
+
+![La place du Champ de Mars, 14 h, avant](captures/d196-place-avant.jpg)
+![Nuageux](captures/d196-place-nuageux.jpg)
+![Pluie : flaques, sol sombre, gouttes](captures/d196-place-pluie.jpg)
+![Brume, 8 h](captures/d196-place-brume.jpg)
+![Neige](captures/d196-place-neige.jpg)
+![Orage, 22 h](captures/d196-place-orage-nuit.jpg)
+![Vue aérienne, avant](captures/d196-aerien-avant.jpg)
+![Vue aérienne sous la neige](captures/d196-aerien-neige.jpg)
+![Rue aux Cordiers, avant](captures/d196-cordiers-avant.jpg)
+![Rue aux Cordiers sous la pluie](captures/d196-cordiers-pluie.jpg)
+
+## 2026-11-02 — D197. Ville vivante, lot 1-4 : les saisons à l'écran (plan `docs/plans/ville-vivante.md`, § 4)
+
+**Ce que la saison change** (`src/core/seasons.ts`, logique pure) : six valeurs de 0 à 1 tirées de la saison et de l'avancement, **arrondi à l'heure de jeu** (le décor change au plus une fois par heure) : vert tendre (printemps), couleurs d'automne (dès le début de l'automne), arbres nus (fin de l'automne, hiver, et encore au tout début du printemps), herbe jaunie (fin de l'été), herbe terne (hiver), feuilles mortes au sol (mi-automne au début de l'hiver). Une saison figée prend le milieu de la saison.
+
+**Arbres** (nuanceur du feuillage, mêmes uniformes partagés que la météo, D196 : aucune couleur d'instance réécrite, aucune reconstruction) :
+- chaque arbre tire un nombre de sa position (la profondeur de l'instance, commune à ses deux boules) : **un sur huit est persistant** (reste vert) ; les autres changent avec un décalage propre (pas tous le même jour) et prennent l'une de trois couleurs d'automne (jaune, orangé, rouge), puis brunissent ;
+- **arbre nu** : la couronne rétrécit de 30 % et s'ajoure (trous tirés d'un bruit, `discard`), brun-gris ; l'**ombre portée suit** (matière de profondeur propre aux couronnes, `crownDepthMaterial`), sinon un arbre nu aurait porté l'ombre d'un arbre feuillu ;
+- **écart à l'existant** : la palette des arbres avait des couronnes orangées toute l'année (D17) ; elles sont maintenant **vertes au printemps et l'été**, l'orangé est réservé à l'automne. Dis-moi si tu veux garder quelques arbres orangés l'été ;
+- les **tilleuls taillés** de la place du Champ de Mars (D155) suivent aussi les saisons (ils passent dans un maillage « feuillage » à part : +1 appel de dessin dans la tuile de la place), jaunes à l'automne, bruns et ajourés l'hiver, sans rétrécir ; le **cèdre** de la Croix Verte (D142) n'est pas touché (il reste vert).
+
+**Sol** : l'herbe (repérée à sa couleur : le vert domine) jaunit à la fin de l'été et se ternit l'hiver ; **feuilles mortes** en taches orangées et brunes, sur l'herbe surtout, tirées d'un bruit sur tout le sol tourné vers le ciel. Écart au plan : il les voulait « près des arbres » ; il aurait fallu donner au sol la position des arbres (données ou texture de plus) : à faire si les taches loin des arbres gênent.
+
+**Passants** (`dress.ts`) : la fraîcheur qui choisit les tenues (D46) dépend maintenant de la saison (moyennes de 3 °C l'hiver à 18 °C l'été) et de la pluie (−3 °C) ; par grand froid, une partie des vestes et des pulls devient un manteau. **Parapluies** : une pièce du kit (`umbrella`, portée par la tête pour rester au-dessus quel que soit le geste du bras, couleur du sac), donnée à la naissance à 20 à 75 % des passants selon la pluie (pas aux sportifs) ; un passant né sous la pluie garde son parapluie jusqu'à sa disparition. Toujours **un seul appel de dessin** pour la foule. La galerie `?view=characters` accepte `&season=` et `&weather=`. Le joueur ne change pas de tenue (son apparence est celle du menu).
+
+**Mesure** (`?bench=court`, rendu logiciel : appels de dessin et triangles exacts, durées sans portée) : l'été 153 appels et 1 416 k triangles à l'arrêt sur la place, l'hiver 174 et 1 498 k. **L'écart ne vient pas des arbres** : le banc tourne à 16 h, et le premier jour de l'hiver (solstice) le soleil n'y est plus qu'à 1,4° : fenêtres, lanternes et halos s'allument (un maillage par tuile), comme n'importe quel soir. Les arbres nus n'ajoutent ni appel ni triangle ; l'ajourage (`discard`) a un coût de fragments qu'il faut **mesurer sur le téléphone** : `?bench=1&season=hiver&h=12` contre `?bench=1&h=12`. Les tilleuls taillés ajoutent un appel de dessin dans la tuile de la place.
+
+**Tests** (+6) : `seasons.test.ts` (calendrier des arbres et du sol, arrondi à l'heure), `dress.test.ts` (froid selon la saison et la pluie, manteaux l'hiver, parapluies), `weather-fx.test.ts` (nuanceurs du feuillage et de l'ombre), `character-kit.test.ts` (le parapluie prend la couleur du sac).
+
+**Limites** : les arbres nus sont des couronnes ajourées, pas des branches ; le haut de la couronne d'un arbre nu reste une forme ronde ; les feuilles mortes sont partout, pas seulement sous les arbres ; le parapluie ne suit pas la main (il est porté par la tête) et reste ouvert quand la pluie cesse ; les tenues ne changent qu'à la naissance du passant ; les arbres de la silhouette lointaine (au-delà du rayon de détail) n'existent pas, rien à y changer.
+
+![Vue de la place, printemps (jeudi, 14 h)](captures/d197-printemps.jpg)
+![Été](captures/d197-ete.jpg)
+![Automne](captures/d197-automne.jpg)
+![Fin de l'automne : arbres nus, feuilles au sol](captures/d197-fin-automne.jpg)
+![Hiver (soleil bas, ombres longues)](captures/d197-hiver.jpg)
+![Parapluies sous la pluie (galerie, automne)](captures/d197-parapluies.jpg)
+![Tenues d'hiver](captures/d197-tenues-hiver.jpg)
+![Tenues d'été](captures/d197-tenues-ete.jpg)
+
+## 2026-11-02 — D198. Ville vivante, lot 1-5 (1) : des passants qui s'assoient, marchent en groupe, regardent leur téléphone (plan `docs/plans/ville-vivante.md`, § 5)
+
+**Places assises** (`src/core/seats.ts`) : chaque tuile déclare ses places en se construisant (`render/seat-sink.ts`) : trois par **banc** (64 dans OpenStreetMap, orientés comme le dessin les pose, dos au dossier) et une par **chaise de terrasse** (calculée avec les devantures, face à la table) ; 352 places autour du centre au départ. Le jeu les rassemble (`Seats`, `TileManager.onSeats`) ; un passant **réserve** sa place (une personne par place).
+
+**Nouvel état `sit`** (`pedestrians.ts`) : en fin de file, 3 chances sur 10, un passant seul va à une place libre à moins de 9 m (sans mur entre elle et lui, d'après les murs des obstacles), en marchant ; il s'assoit (pose `sitPose`, tirée de celle du train, D119, mais en angles comme les autres poses de la foule : cuisses à l'horizontale, mains sur les cuisses), reste, puis se relève et rejoint sa file en glissant doucement. Bancs ouverts de 7 h à 21 h 30, terrasses de 8 h à 23 h 30, personne dehors sous la pluie ; au plus 30 % des passants assis. Il **se lève et fuit** à une alarme ou s'il a peur ; renversé par un véhicule, il tombe et sa place se libère.
+- Écart au plan : « 2 à 15 minutes de jeu », c'est 2 à 12 s réelles (une journée dure 20 min) : on ne les verrait pas s'asseoir. **20 à 90 s réelles** sur un banc, 35 à 120 s en terrasse.
+- **Au chargement**, 4 chaises de terrasse sur 10 et un banc sur 4, les plus proches du joueur d'abord, sont déjà occupés (des passants « déjà là ») ; ensuite, un passant sur cinq naît directement assis à une place libre hors de vue (jusqu'à 40 m). Sans cela, les terrasses vues en arrivant étaient vides, le temps que les passants viennent.
+- **Défaut trouvé en chemin** : les états « à terre » se repèrent par `mode >= stumble` ; `sit` est donc numéroté **avant** `stumble` (un passant assis est debout au sens des chocs et des alarmes). Les numéros de `stumble`, `down` et `dead` changent (4, 5, 6 → 5, 6, 7) ; rien ne les écrivait en dur.
+
+**En groupe** : un passant sur huit naît avec un ou deux compagnons qui marchent à sa hauteur (à 55 cm de côté, même file, mêmes décisions) ; quand il s'arrête, ils se tournent les uns vers les autres et parlent avec les mains (`talkPose`). Un meneur ne va pas s'asseoir ; s'il tombe, fuit ou disparaît, ses compagnons redeviennent seuls. L'évitement les ignore entre eux.
+
+**Téléphone en main** (7 % des passants, à pied ou à l'arrêt, `phonePose`) : la main droite tient le téléphone devant la poitrine, la tête penchée dessus. Écart au plan (« une main à l'oreille ») : avec les seuls angles des os, la main à l'oreille faisait plutôt un salut ; regarder son téléphone est un geste aussi courant et se lit mieux.
+
+**Joggeurs** : de 7 h à 9 h et de 18 h à 20 h 30, sans pluie, 30 % des passants nés sur un chemin (parcs, bords de l'eau) et 6 % ailleurs courent à 2,7 à 3,3 m/s, en tenue de sport.
+
+**Réactions douces** : au klaxon, au-delà de la distance d'esquive (12 m au plus), on **tourne la tête** vers le véhicule au lieu de sursauter ; en fin de file, trois fois sur dix, on regarde une fontaine, un monument ou un lieu de culte à moins de 18 m. Tête tournée de 70° au plus (`CrowdState.look`).
+
+**Pour les essais** : tout cela s'active avec l'option `life` de `PedSim` (le jeu, le banc ; `&life=0` au banc pour comparer). Ses tirages viennent d'un hachage à part : **les essais d'endurance existants (circulation, combat, police) ne changent pas** (ils tournent sans `life`). La galerie accepte `&pose=sit|phone|talk`.
+
+**Mesure** (`?bench=court&crowd=100&sim=1`, avec et sans `&life=0`, rendu logiciel) : simulation de 100 passants de 0,19 à 0,30 ms par image avec la vie de quartier, de 0,25 à 0,34 ms sans : pas de différence mesurable (la recherche de place, le suivi des groupes et les têtes tournées ne coûtent presque rien). Les poses assise, téléphone et discussion se calculent comme la marche : même coût par personnage.
+
+**Tests** (+7, `pedestrians-life.test.ts`) : des passants s'assoient, une personne par place, à la place même, sans valeur absurde ; une alarme les fait lever et fuir, places libérées ; un passant assis renversé tombe et libère sa place ; des groupes se forment ; joggeurs le matin plus qu'à 13 h 30 et seulement avec la vie de quartier ; au klaxon de loin, des têtes tournées et moins de sursauts ; sans `life`, rien de tout cela.
+
+**Limites** : 64 bancs seulement (OpenStreetMap) ; on se lève d'une terrasse fermée de bacs en glissant à travers eux ; les places ne sont pas montrées sur la carte ; personne n'entre dans les cafés ; les groupes ne traversent pas toujours ensemble (ils copient la file du meneur, pas son attente au passage) ; le téléphone n'est pas dessiné (seulement le geste) ; la tête tournée l'est aussi pour les passants éloignés (sans coût : c'est un angle de plus) ; le chien en laisse est la suite (D199).
+
+![La terrasse de L'Augusto à midi, avant](captures/d198-terrasse-avant.jpg)
+![Après : des clients attablés](captures/d198-terrasse-apres.jpg)
+![Pose assise (galerie, `&pose=sit`)](captures/d198-pose-assis.jpg)
+![Téléphone en main (`&pose=phone`)](captures/d198-pose-telephone.jpg)
+![Discussion (`&pose=talk`)](captures/d198-pose-discussion.jpg)
+
+## 2026-11-02 — D199. Ville vivante, lot 1-5 (2) : le chien en laisse (plan `docs/plans/ville-vivante.md`, § 5.5)
+
+**Qui** : 5 % des passants (pas les sportifs ni les joggeurs) promènent un chien ; ils marchent un peu moins vite (1,15 m/s au plus). Vie de quartier seulement (`life`, D198). 24 chiens au plus à la fois.
+
+**Simulation** (`src/core/dogs.ts`, logique pure) : le chien vise une place un peu derrière et à côté de son maître (côté tiré une fois), au pas, au trot ou au galop selon l'écart ; il s'arrête de temps en temps **renifler** un point à côté (tête baissée) ; la **laisse** (2 m) le ramène s'il s'éloigne ; maître **assis** : il s'assoit à ses pieds ; maître **en fuite** : il court avec lui, sans flâner ; maître à terre ou mort : il disparaît avec lui (la laisse lâchée). Taille (0,7 à 1,25, soit 35 à 63 cm au garrot) et pelage (six couleurs) tirés de la graine du maître : un passant a toujours le même chien.
+
+**Dessin** (`src/render/dogs.ts`) : **un appel de dessin pour tous les chiens** (maillage instancié de boîtes : corps, tête, museau, oreilles, queue, quatre pattes ; 132 triangles), le trot des pattes, la queue qui remue, la tête baissée et l'assise calculés par le nuanceur à partir d'un attribut d'instance (phase, allure, pose) ; **un appel pour toutes les laisses** (segments de la main du maître au collier). Aucun appel quand il n'y a pas de chien. La galerie accepte `&dogs=1`. Ce modèle servira aux chiens seuls (lot 2-3) et au geste « caresser » (lot 3).
+
+**Tests** (+5) : le chien suit sans dépasser la laisse et à l'allure du maître ; il s'assoit aux pieds d'un maître assis et court sans renifler avec un maître qui fuit ; même maître, même chien ; géométrie (sept parties, au sol, tournée vers −z) ; un seul maillage pour les chiens et un pour les laisses, invisibles sans chien.
+
+**Limites** : le chien traverse les murs et les voitures (il suit la laisse, sans obstacles) ; il n'aboie pas encore (sons au lot 2-3) ; la main du maître est estimée (côté du chien, à hauteur de hanche), pas celle du squelette ; les passants ne l'évitent pas ; le pelage est uni.
+
+![Chiens dans la galerie (`?view=characters&dogs=1`) : au trot, à l'arrêt, en train de renifler, assis](captures/d199-chiens.jpg)
+
+## 2026-11-02 — D200. Ville vivante, lot 1-6 : les lumières de la ville (plan `docs/plans/ville-vivante.md`, § 6)
+
+**Principe** : chaque sommet du verre allumé, des halos et des rideaux de fer porte une **étiquette** (`aTag`, posée à la construction de la tuile : `MeshBuilder(true)`), et trois uniformes partagés (`render/city-lights.ts`) disent ce qui est allumé. Aucune tuile à reconstruire, aucune recompilation en cours de partie. Étiquettes : 0 toujours allumé avec la nuit (globes, lanternes du passage) ; ]0, 1[ une fenêtre (son seuil d'allumage, tiré de sa position) ; [1, 2[ un lampadaire (1 + son seuil, tiré de son identifiant) ; 2 + i un commerce d'horaire type i.
+
+**Fenêtres une à une** (`core/city-lights.ts`) : la part des fenêtres « habitées » allumées passe de 25 % à la tombée de la nuit à 90 % à 21 h, redescend de 22 h à 1 h jusqu'à 12 % (allumées toute la nuit), remonte à 40 % de 6 h à 7 h (le réveil, en hiver quand il fait encore nuit). Une fenêtre s'allume quand cette part dépasse son seuil.
+
+**Lampadaires** : chacun s'allume à son tour pendant la tombée de la nuit (tous allumés aux deux tiers), son halo au sol avec lui ; le matin, dans l'ordre inverse.
+
+**Heures d'ouverture** (`core/opening.ts`) : douze horaires types à la française (boulangerie 7 h-19 h 30 et le dimanche matin ; café 7 h-minuit ; bar 11 h-1 h ; restaurant midi et soir, fermé le lundi ; restauration rapide 11 h-23 h ; boutique 9 h 30-19 h, le lundi après-midi seulement, fermée le dimanche ; supérette 8 h 30-20 h et le dimanche matin ; pharmacie avec coupure de midi ; tabac 7 h-19 h 30 et le dimanche matin ; services 9 h-12 h et 14 h-18 h du mardi au samedi ; hôpital toujours ; local vacant jamais). Le genre OpenStreetMap de chaque commerce donne son horaire. **Écart au plan** : les horaires réels d'OpenStreetMap (`opening_hours`) ne sont pas repris : la chaîne de données ne les garde pas et ne se relance pas ici (aucun des 243 commerces des tuiles n'en a) ; à faire avec la prochaine régénération des boutiques.
+- **Vitrines** : allumées le soir seulement si le commerce est ouvert (vitrines génériques et devantures d'après photo ; la croix des pharmacies des devantures modernes aussi).
+- **Rideaux de fer** baissés devant les vitrines et les portes quand le commerce est fermé (tôle grise, un maillage « rideaux » par tuile à commerces). Ce maillage n'est montré que si l'un de ses commerces est fermé : sinon il ne coûte rien.
+
+**Correction** : en D196, j'avais allumé les nuages du ciel ; la nuit, ils sortaient clairs (couleurs du jour) puis, assombris, en taches brunes. Ils sont maintenant à peine plus clairs que le ciel la nuit (la lune), et presque absents par nuit claire.
+
+**Pas fait** (plan § 6.5) : les passants ne vont pas vers les commerces ouverts (les points « commerce » de la navigation n'ont pas de genre) ; le monde de la rue suit déjà l'heure et le quartier (D39). À reprendre avec le marché et les écoles (lot 2-1) si tu le juges utile.
+
+**Mesure** (`?bench=court`, rendu logiciel, appels et triangles exacts) : à l'arrêt sur la place, un lundi à 16 h, 157 appels (153 avant : les rideaux des restaurants et des services, fermés le lundi, un maillage par tuile concernée) et 1 417 k triangles ; un dimanche à 16 h (`&weekday=7`), 161 appels et 1 453 k triangles (+5 %) : presque tout est fermé. Le coût des fenêtres et des lampadaires est un test par fragment de verre allumé, la nuit seulement.
+
+**Tests** (+10) : `opening.test.ts` (boulangerie, boutique, bar après minuit, restaurant, pharmacie, genres inconnus) ; `city-lights.test.ts` (part des fenêtres sans saut sur 24 h, lampadaires ; étiquettes d'un maillage ; nuanceurs du verre et des rideaux ; chaque vitrine générique connaît son horaire ; une devanture dessine ses rideaux avec la bonne étiquette).
+
+**Limites** : les enseignes peintes (bandeaux) ne s'éteignent pas ; la carotte de tabac des devantures génériques n'est pas lumineuse (elle ne l'était pas) ; un rideau de fer descend d'un coup (pas d'animation) ; les vitrines n'ont pas d'intérieur ; le lundi matin, les boutiques ont leur rideau (c'est voulu, à juger).
+
+![La place à 23 h, avant : toutes les fenêtres « habitées » allumées](captures/d200-nuit-avant.jpg)
+![Après : une partie seulement, le restaurant fermé (23 h), ciel clair](captures/d200-nuit-apres.jpg)
+![Nuit nuageuse : nuages sombres, à peine plus clairs que le ciel](captures/d200-nuit-nuageuse.jpg)
+![Rue aux Cordiers, mercredi 15 h : boutiques ouvertes](captures/d200-cordiers-mercredi.jpg)
+![Dimanche 15 h : rideaux de fer baissés](captures/d200-cordiers-dimanche.jpg)
+![Mercredi d'hiver, 18 h : vitrines ouvertes allumées](captures/d200-cordiers-hiver-18h.jpg)
+
+## 2026-11-02 — D201. Ville vivante, lot 2-1 : le rythme de la semaine, sans les élèves (plan `docs/plans/ville-vivante.md`, § 7)
+
+**Module** (`src/core/week.ts`, logique pure) : marché, jours d'école, dimanche.
+
+**Le marché** : mercredi et vendredi matin sur le grand parking du Champ de Mars (rangées de D154). Installation de 5 h à 7 h (les étals apparaissent un à un), plein de 7 h à 12 h 30, remballage jusqu'à 13 h 30.
+- **Étals** (`render/market-stalls.ts`) sur 8 places de stationnement sur 10 (jusqu'à 85 étals ; tréteaux, plateau à nappe, six cagettes garnies, bâche rayée de six couleurs) : **deux appels de dessin** pour tout le marché (structure et bâches), aucun hors marché. L'étal tourne le dos à sa voisine des rangées doubles (il regarde l'allée). Les étals sont des obstacles.
+- **Voitures** : celles garées sur le marché (à leur place d'origine, intactes, non conduites) s'en vont dès l'installation et reviennent au remballage (`game/market.ts`).
+- **Marchands** : une place « debout » derrière chaque étal (sorte `market` des places de D198), occupée comme un banc par un passant, qui y reste 1 min 30 à 5 min, face à l'allée.
+- **Foule** deux fois et demie plus dense autour du marché (la cible des passants est multipliée, à 160 m elle redevient normale) ; **brouhaha** (bruit dans la bande des voix, qui enfle et retombe), à son plus fort au milieu des étals.
+- Écarts au plan : pas de marché sous les halles de la mairie le vendredi (rien n'y est modélisé pour y poser des étals) ; pas de camionnettes de marchands garées derrière ni de cris des marchands (lot 2-4 pour les camionnettes).
+
+**Les écoles** : la grille du collège du Vallon (D174) est ouverte les jours de classe (lundi, mardi, jeudi, vendredi de 7 h 30 à 18 h ; mercredi jusqu'à 12 h 30) et fermée le week-end. **Les élèves ne sont pas faits** : leurs proportions sont à décider avec toi (plan § 7).
+
+**Le dimanche** : volée des cloches de Saint-Lazare à 10 h 15 (la messe de 10 h 30), parvis animé à la sortie (11 h 30 à 12 h, foule deux fois et demie plus dense autour de la cathédrale), promeneurs plus nombreux l'après-midi dans les parcs et au bord de l'eau (zone « nature », ×2,2) ; les boutiques sont fermées (D200) ; **moins de voitures** le samedi (×0,85) et le dimanche (×0,6).
+
+**Écart au plan** : les camionnettes de livraison en double file (6 h à 10 h) passent au lot 2-4, avec le camion poubelle : ce sont les mêmes nouveaux comportements de circulation (s'arrêter en double file, repartir).
+
+**Tests** (+7) : `week.test.ts` (marché et ses heures, emprise : plus de 60 places de stationnement, école, foule du marché, de la messe et du dimanche, voitures du week-end, volée), `market.test.ts` (rien hors marché ; au plus fort, étals, obstacles, marchands, voitures parties, deux maillages ; au remballage, tout revient).
+
+**Limites** : les étals sont posés droit sur chaque place (pas d'allées marchandes redessinées) ; les clients ne s'arrêtent pas devant les étals (ils marchent, comme les autres) ; le marché n'existe que si les tuiles du parking sont chargées ; le joueur qui part de la place un matin de marché peut naître contre un étal.
+
+![Jeudi 10 h : le parking](captures/d201-jeudi.jpg)
+![Mercredi 10 h : le marché, étals et marchands](captures/d201-marche-mercredi.jpg)
+
+## 2026-11-02 — D202. Ville vivante, lot 2-2 : les fêtes (plan `docs/plans/ville-vivante.md`, § 8)
+
+Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.feasts`) ; `game/feasts.ts` les met en scène.
+
+**Illuminations de Noël** (automne j7 → hiver j3, `render/feast-lights.ts`) : des **guirlandes d'ampoules** tendues à 5,6 m entre les lampadaires qui se font face dans le centre (chaque lampadaire relié au plus proche voisin entre 7 et 18 m, à moins de 450 m entre la mairie et la cathédrale) et un **sapin illuminé** de 9 m dans l'allée centrale du parking du Champ de Mars (obstacle). Deux appels de dessin, seulement pendant les illuminations ; les ampoules brillent avec la nuit. Écart au plan : les guirlandes ne sont pas posées rue par rue (Grande Rue Chauchien, rue aux Cordiers) mais entre les lampadaires d'OpenStreetMap, faute de tracé des rues à portée ; il y en a donc là où il y a des lampadaires.
+
+**Marché de Noël** (hiver j1 et j2, de 14 h à 22 h) : un tiers des places du marché portent des **chalets** de bois à toit rouge ou vert et guirlande (variante des étals, D201), avec leurs marchands, la foule doublée autour (le soir surtout, puisqu'il fait nuit tôt l'hiver). Pas de son de vin chaud (le brouhaha du marché ne joue que le mercredi et le vendredi : à brancher si tu le veux).
+
+**Fête de la musique** (été j1, de 18 h à 1 h) : quatre groupes de trois musiciens (place du Champ de Mars, place du Terreau, parvis de Saint-Lazare, rue aux Cordiers), places « scène » tenues par des passants qui viennent les occuper (ils jouent avec les mains, `talkPose` : pas de pose ni d'instrument dédiés) ; chaque groupe joue une **boucle de quatre accords** dans sa tonalité (basse, accord, mélodie, synthèse), qu'on entend à 150 m ; foule doublée autour. Les marchands du marché sont appelés de la même façon (chaque seconde, une place libre reçoit le passant seul le plus proche, à moins de 30 m).
+
+**14 juillet** (été j3) : **feu d'artifice au-dessus du plan d'eau du Vallon** (`core/fireworks.ts`, `render/fireworks.ts`) : fusées tirées de ± 60 m autour du centre du lac, gerbes de six couleurs qui éclatent entre 90 et 160 m, étincelles freinées par l'air qui retombent en s'éteignant, bouquet final ; **un appel de dessin** pour toutes les particules (2 400 au plus) et un pour leur **reflet** dans l'eau ; détonations décalées selon la distance (le son à 343 m/s). Foule triplée au bord du lac à partir de 22 h. Le jeu va vite : le spectacle dure l'heure de 23 h à minuit, soit 50 s réelles.
+
+**Essais existants** : deux essais de circulation (`traffic-sim.test.ts`, 30 voitures pendant 2 minutes ; `traffic.test.ts`, remplissage de la couronne) dépassaient parfois la limite de 5 s sous la charge de toute la suite (3 s seuls, même durée avant et après ces changements) ; ils ont maintenant 20 s. Aucun critère ne change.
+
+**Tests** (+4) : feu (rien hors spectacle, éclatements au-dessus du lac, tout retombe et s'éteint), foule des fêtes, guirlandes (paires de lampadaires), illuminations (deux maillages, montrés seulement pendant la fête).
+
+**Limites** : le feu n'est pas visible depuis le centre-ville (le lac est à 1,3 km, au-delà de la distance d'affichage de 1,2 km) : il faut aller au bord du lac ; les musiciens n'ont pas d'instruments ; les guirlandes n'existent que dans les tuiles chargées au moment où les illuminations commencent ; les feuilles mortes de fin d'automne couvrent aussi l'asphalte du parking.
+
+![Le feu d'artifice vu de la rive ouest du plan d'eau du Vallon](captures/d202-feu-artifice.jpg)
+![Illuminations : le sapin de la place](captures/d202-illuminations.jpg)
+![Marché de Noël : les chalets](captures/d202-marche-noel.jpg)
+![Fête de la musique sur la place](captures/d202-fete-musique.jpg)
+
+## 2026-11-02 — D203. Ville vivante, lot 2-3 : les animaux (plan `docs/plans/ville-vivante.md`, § 9)
+
+**Logique** (`src/core/animals.ts`) et **jeu** (`src/game/animals.ts`) : chaque espèce naît hors du champ de vision autour du joueur (une naissance par espèce et par demi-seconde au plus), selon l'heure, la saison et le lieu, et disparaît quand on s'éloigne (150 m à terre) ou que son heure passe. Plafonds : 6 chiens, 8 chats, 18 canards, 3 hérons, 30 martinets, 14 chauves-souris. **`?animals=0`** les coupe tous.
+- **Chiens seuls** (modèle de D199, `DogView`) : de 7 h à 20 h, dans les quartiers d'habitation et la périphérie (zones du graphe piéton) ; ils trottent d'un point à l'autre et reniflent ; le joueur passe à moins de 7 m : ils s'arrêtent, le regardent et **aboient** (aussitôt, puis toutes les 4 à 7 s).
+- **Chats** (même nuanceur, géométrie à oreilles pointues et queue dressée, six robes) : la nuit, au pied des façades, assis ou qui marchent un peu ; ils **détalent** à 5 m/s quand on approche à moins de 6 m. Écart au plan : pas sur les murets, les capots ni les marches (il faudrait leurs hauteurs) : au sol.
+- **Canards** : en groupes de 3 à 5 sur l'eau (polygones d'eau des tuiles, rivières et plan d'eau du Vallon) ; le premier choisit sa route, les autres le suivent ; ils restent toujours sur l'eau, s'écartent du joueur, cancanent de temps en temps.
+- **Hérons** : sur la rive (sommets des polygones d'eau), immobiles, ailes repliées ; ils **s'envolent** quand on approche à moins de 18 m (battements d'ailes, son).
+- **Martinets** : l'été de 18 h à 21 h 30, en bande qui tourne vite au-dessus de la cathédrale (entre 18 et 55 m), quand on est à moins de 700 m ; cris stridents.
+- **Chauves-souris** : au crépuscule (sauf l'hiver), en vol zigzagant serré autour des tours de la cathédrale. Écart au plan : pas autour des remparts (pas de tracé à portée).
+
+**Dessin** : **un appel de dessin par espèce présente** (maillages instanciés ; `render/birds.ts` pour les canards, hérons, martinets et chauves-souris, dont les ailes battent dans le nuanceur). La galerie accepte `&animals=1` (un spécimen de chaque).
+
+**Sons** (`animalCall`, page `?sounds`) : aboiement, coin-coin, envol, cri du martinet.
+
+**Tests** (+7) : heures et saisons de chaque espèce ; le chien flâne puis aboie près du joueur ; le chat détale, le héron s'envole ; les canards restent sur l'eau et suivent leur meneur ; martinets et chauves-souris tournent autour de leur centre, à leur hauteur ; géométries ; un maillage par espèce, invisible sans animal.
+
+**Mesure** : rien au banc (il ne fait pas vivre les animaux) ; au plus six appels de dessin de plus, quelques centaines de triangles, et une simulation de moins de 80 animaux (quelques opérations chacun).
+
+**Limites** : les animaux traversent les murs et les voitures (pas d'obstacles) ; les chats ne grimpent nulle part ; à 45 m et plus, un chien ou un chat est petit à l'écran (on les voit surtout en passant près d'eux) ; les canards ne s'envolent pas ; pas de pigeons nouveaux (ceux de J2 restent).
+
+![Galerie (`?view=characters&animals=1`) : chien, chats, canards, héron posé, oiseaux en vol](captures/d203-animaux.jpg)
+
+## 2026-11-02 — D204. Ville vivante, lot 2-4 : les véhicules de service (plan `docs/plans/ville-vivante.md`, § 10)
+
+**Ce qui est fait** : trois sortes de véhicules de service dans la circulation, selon le jour et l'heure (`servicesWanted` dans `src/core/week.ts`) :
+- **Bus urbain** (« Navette Éduenne », bleu à bande claire), du lundi au samedi de 6 h 30 à 20 h 30 : il roule dans la circulation et **s'arrête une dizaine de secondes** quand il passe à moins de 9 m d'un arrêt de bus d'OpenStreetMap (points `bus_stop` déjà dans les données de navigation), puis repart (pas de nouvel arrêt pendant 25 s).
+- **Camion poubelle** (benne blanche à liseré vert), le mardi et le vendredi de 5 h à 8 h : il **s'arrête 5 s tous les 30 m**, comme pendant une tournée.
+- **Camionnettes de livraison** (deux, du lundi au samedi de 6 h à 10 h) : une fois entrées dans le centre, elles **s'arrêtent 35 s ou plus** sur la chaussée, une fois par trajet, puis repartent ; les voitures derrière attendent ou doublent comme pour un véhicule arrêté.
+
+**Comment** : un arrêt est un compte à rebours `holdT` sur la voiture simulée (`traffic-sim.ts`) : tant qu'il court, le conducteur freine et reste à l'arrêt (même entrée que pour une voiture qui abandonne). Les véhicules de service sont des entrées du catalogue marquées `service` : la circulation ordinaire ne les tire jamais, le contrôleur de circulation (`updateServices`) en fait apparaître hors de vue, comme les autres voitures, tant qu'il en manque. Fiche de conduite : celle du grumier (porteur bridé à 90 km/h) ; carrosseries dans `car-model.ts`, sons dans `sound-model.ts`.
+
+**Écarts au plan, et pourquoi** :
+- **Pas de ligne de bus en boucle ni de montée et descente de passants** : la boucle suppose un itinéraire fixe dans le graphe routier, que la circulation actuelle (trajets tirés au hasard autour du joueur, véhicules qui disparaissent au loin) ne sait pas suivre ; et faire monter des passants demande de les faire marcher jusqu'à une porte puis de les retirer. J'ai préféré un bus qui s'arrête aux vrais arrêts qu'il croise : on le voit faire son travail sans changer la circulation. La boucle et les passagers restent à faire.
+- **Pas de scooters, motos ni cyclistes dans la circulation** : la circulation ne connaît que des voitures (dépassements, gabarits, collisions à quatre roues) et les deux-roues demandent un pilote assis animé par véhicule (plusieurs appels de dessin chacun aujourd'hui). C'est un chantier à part entière ; je le note pour plus tard plutôt que de livrer des deux-roues sans pilote.
+- **Pas de tracteur ni de TER** : le TER demande les passages à niveau et l'arrêt en gare (voie ferrée D93) ; le tracteur n'a pas de modèle. Laissés pour plus tard.
+- Le camion poubelle et les livraisons, prévus au lot 2-1, sont faits ici (ce sont des véhicules de la circulation).
+- Le camion poubelle n'a pas d'éboueurs à l'arrière (il faudrait des personnages accrochés au véhicule).
+
+**Tests** (+2, et deux adaptés) : un bus qui croise un arrêt s'y arrête puis repart ; la benne s'arrête tous les 30 m ; les véhicules de service ne sortent jamais dans la circulation ordinaire ; performances (fourchette poids lourd) et dimensions des carrosseries comme le grumier.
+
+**Mesure** : rien au banc (il ne fait pas rouler les véhicules de service) ; trois véhicules de plus au plus, du même coût qu'une voiture de la circulation.
+
+![Galerie (`?view=vehicles&ids=bus-urbain,benne-ordures,grumier-morvan`) : grumier, bus urbain, camion poubelle](captures/d204-bus-benne.jpg)

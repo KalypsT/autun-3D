@@ -6,6 +6,7 @@ import {
   AGES, applyAppearance, BAGS, BEARDS, bottomColorChoices, BOTTOM_COLORS, BOTTOMS, BUILDS, CLOTH_COLORS, DEFAULT_RECIPE, GLASSES, HAIR_COLORS, HAIR_STYLES, HATS, hatColorChoices,
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
+import { SEASON_LENGTHS, SEASON_NAMES } from "../core/calendar";
 import { CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
@@ -198,6 +199,10 @@ export class PauseMenu {
     row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
     row("Vibrations", "Le téléphone vibre aux chocs, aux tirs et aux coups reçus.", "vibration", choices("vibration", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.vibration));
     row("Plein écran", "Le jeu passe en plein écran, en paysage, au premier appui.", "fullscreen", choices("fullscreen", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.fullscreen));
+    row("Durée d'une saison", "Le jeu a son propre calendrier : une saison dure une ou deux semaines de jeu (20 minutes par jour).", "seasonLength",
+      choices("seasonLength", SEASON_LENGTHS.map((v) => ({ value: v, label: v === 7 ? "7 jours" : "14 jours" })), values.seasonLength));
+    row("Saison", "Laisser les saisons passer, ou en garder une (la semaine continue de tourner).", "season",
+      choices("season", [{ value: -1, label: "Qui passe" }, ...SEASON_NAMES.map((n, i) => ({ value: i, label: n }))], values.season));
     row("Minimap", "Tourner avec la caméra, ou garder le nord en haut.", "minimapNorth", choices("minimapNorth", [{ value: false, label: "Tourne" }, { value: true, label: "Nord en haut" }], values.minimapNorth));
     c.append(h("p", "pm-muted", "Les réglages sont enregistrés sur cet appareil. Un paramètre dans l'adresse de la page (?dpr=, ?shadowmap=, ?detail=, ?peds=, ?sound=0) reste prioritaire."));
   }

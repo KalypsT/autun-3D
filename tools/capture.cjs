@@ -20,7 +20,7 @@ const fs = require("fs");
     await page.goto(`${base}?view=${view}&debug${extra ? "&" + extra : ""}`);
     await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 120000 });
     await page.waitForTimeout(2500);
-    const file = `${out}/${view}${extra ? "-" + extra.replace(/[=&,.]/g, "_").slice(0, 40) : ""}.png`;
+    const file = `${out}/${view}${extra ? "-" + extra.replace(/[=&,.]/g, "_").slice(0, 90) : ""}.png`;
     await page.screenshot({ path: file, timeout: 180000 });
     console.log("ok", file);
     await page.close();

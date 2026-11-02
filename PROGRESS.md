@@ -1447,3 +1447,60 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La façade a sa pierre blonde, ses balcons, une boutique de chaque côté de l'arc (Tabac Presse à droite), son toit en pente avec deux lucarnes et son fronton, qui n'est plus arasé comme avant.
 - Pas encore : les marches devant l'arc, le dessin exact des balcons, un nom pour la boutique de gauche. 1020 tests.
 - À regarder : `?view=custom&cam=-36,-100,3,-25.3,-115.7,9&h=13`.
+
+**Ville vivante, lot 1-1 : le calendrier (2 novembre 2026)** (D194, plan `docs/plans/ville-vivante.md`)
+- Le jeu a son calendrier : une saison dure une semaine de jeu (7 jours, ou 14 dans les réglages), l'année 28 jours. La date s'affiche sous l'horloge (« Lun. · Été, 1er jour ») ; le soleil suit la saison (jours courts l'hiver).
+- Nouveaux réglages « Durée d'une saison » et « Saison » (« Qui passe » ou une saison figée). Une nouvelle partie commence le lundi du 1er jour de l'été ; une ancienne sauvegarde est reprise au lundi de sa saison (sauvegarde version 5).
+- Pas encore : la météo, les arbres et les tenues selon la saison, la semaine (marché, écoles, dimanche), les fêtes (le calendrier les connaît déjà). 1033 tests (13 de plus).
+- À regarder : `?season=hiver&h=17` (la nuit tombe plus tôt), `?date=9` (mercredi).
+
+**Ville vivante, lot 1-2 : la météo, partie logique (2 novembre 2026)** (D195)
+- Le jeu tire sa météo selon la saison (plutôt beau, averses au printemps, orages d'été le soir, brume d'automne le matin, neige et givre l'hiver), par épisodes de 2 à 4 heures, toujours la même pour une date donnée.
+- Elle agit déjà sur le jeu : moins de passants sous la pluie (et ils pressent le pas), un peu moins de voitures et des conducteurs plus prudents, des pneus qui accrochent moins sur sol mouillé ou enneigé.
+- Pas encore : le ciel gris, la pluie, les flaques, la neige à l'écran (lot 1-3). `?debug` affiche la météo ; `?weather=pluie` (ou beau, nuageux, orage, brume, neige) l'impose. 1047 tests (14 de plus).
+
+**Ville vivante, lot 1-3 : la météo à l'écran (2 novembre 2026)** (D196)
+- On voit le temps qu'il fait : ciel gris et soleil voilé par temps couvert, pluie qui tombe autour de toi, sol mouillé et flaques, brume du matin, neige qui tombe et qui blanchit les toits, les rues et les arbres, orage avec éclairs et tonnerre.
+- Sons : pluie, tonnerre, vent plus fort par temps couvert, essuie-glaces en voiture. Les phares s'allument aussi de jour dans la brume, sous la pluie forte et la neige.
+- À mesurer sur ton téléphone : `?bench=1`, puis `?bench=1&weather=pluie` et `?bench=1&weather=neige` (ici, en rendu logiciel, seuls les appels de dessin se mesurent : +1 sous la pluie ou la neige).
+- Pas encore : pluie arrêtée par les abris, éclaboussures, neige sur les voitures et les passants. 1056 tests (9 de plus).
+- À regarder : `?weather=pluie`, `?weather=neige`, `?weather=brume&h=8`, `?weather=orage&h=22`.
+
+**Ville vivante, lot 1-4 : les saisons à l'écran (2 novembre 2026)** (D197)
+- Les arbres suivent les saisons : vert tendre au printemps, vert franc l'été, jaune, orangé ou rouge à l'automne (chacun à son rythme), puis nus et bruns (un sur huit reste vert) ; leur ombre suit. Les tilleuls taillés de la place aussi.
+- L'herbe jaunit à la fin de l'été et se ternit l'hiver ; des feuilles mortes jonchent le sol en automne.
+- Les passants s'habillent selon la saison (manteaux et bonnets l'hiver, t-shirts l'été) et ouvrent des parapluies sous la pluie.
+- Changement : les arbres orangés de la palette sont maintenant verts au printemps et l'été (l'orangé est réservé à l'automne) ; dis-moi si tu en veux quelques-uns orangés l'été.
+- À mesurer sur ton téléphone : `?bench=1&season=hiver&h=12` contre `?bench=1&h=12` (coût de l'ajourage des arbres nus). 1065 tests (9 de plus).
+- À regarder : `?season=automne&weekday=4`, `?season=hiver`, `?view=characters&weather=pluie`.
+
+**Ville vivante, lot 1-5 : des passants qui font quelque chose (2 novembre 2026)** (D198, D199)
+- Les passants s'assoient sur les bancs et aux terrasses des cafés (attablés face à la table), puis repartent ; personne en terrasse sous la pluie. Au chargement, une partie des terrasses et des bancs sont déjà occupés.
+- Certains marchent à deux ou trois et s'arrêtent pour discuter (gestes des mains), d'autres regardent leur téléphone ; des joggeurs courent le matin et le soir, surtout dans les parcs et au bord de l'eau.
+- Au klaxon, de loin, on se retourne au lieu de sursauter ; on regarde parfois une fontaine ou un monument en passant.
+- 5 % des passants promènent un chien en laisse : il trotte derrière, s'arrête renifler, s'assoit aux pieds de son maître assis, fuit avec lui.
+- À regarder : la terrasse de L'Augusto à midi (`?at=-43,-21&yaw=-0.55&h=12.5`), la galerie `?view=characters&dogs=1` et `&pose=sit|phone|talk`. 1077 tests (12 de plus que D197).
+
+**Ville vivante, lot 1-6 : les lumières de la ville (2 novembre 2026)** (D200)
+- Le soir, les fenêtres s'allument une à une jusqu'à 21 h, s'éteignent peu à peu jusqu'à 1 h ; quelques-unes restent allumées, d'autres se rallument au réveil. Les lampadaires s'allument chacun à son tour.
+- Les commerces ont leurs heures d'ouverture (par type : boulangerie, café, bar, restaurant, boutique, pharmacie, tabac…) : vitrines éclairées le soir si c'est ouvert, rideaux de fer baissés quand c'est fermé (le dimanche, presque tout).
+- Corrigé : les nuages du ciel, clairs ou bruns la nuit, sont maintenant à peine plus clairs que le ciel. 1087 tests (10 de plus).
+- À regarder : `?h=23`, `?weekday=7&h=15` (dimanche), `?season=hiver&weekday=3&h=18` (vitrines ouvertes la nuit tombée).
+- **Le lot 1 du plan « ville vivante » est terminé.**
+
+**Ville vivante, lot 2-1 : le rythme de la semaine, sans les élèves (2 novembre 2026)** (D201)
+- Marché le mercredi et le vendredi matin sur la place du Champ de Mars : étals à bâches rayées, marchands, foule, brouhaha ; les voitures garées là laissent la place et reviennent après.
+- La grille du collège suit les jours de classe ; le dimanche, les cloches sonnent la messe à 10 h 15, le parvis s'anime à la sortie, les parcs se remplissent l'après-midi, il y a moins de voitures.
+- Pas encore : les élèves (proportions à décider avec toi), les livraisons (lot 2-4). À regarder : `?weekday=3&h=10` (mercredi), `?weekday=7&h=11.7&at=36,-590` (sortie de la messe).
+
+**Ville vivante, lot 2-2 : les fêtes (2 novembre 2026)** (D202)
+- Illuminations de Noël (guirlandes entre les lampadaires du centre, sapin sur la place), marché de Noël en chalets, fête de la musique (quatre groupes qui jouent sur les places), feu d'artifice du 14 juillet au-dessus du plan d'eau du Vallon, avec son reflet et ses détonations.
+- À regarder : `?date=9&h=23.3&at=960,430&yaw=1.4` (feu d'artifice, lever la caméra), `?date=7&h=20.5` (fête de la musique), `?date=20&h=19` (illuminations), `?date=21&h=17` (marché de Noël).
+
+**Ville vivante, lot 2-3 : les animaux (2 novembre 2026)** (D203)
+- Chiens seuls dans les quartiers d'habitation (ils aboient quand tu passes près d'eux), chats la nuit (ils détalent), canards en petits groupes sur l'eau, hérons au bord de l'eau (ils s'envolent), martinets l'été au-dessus de la cathédrale, chauves-souris au crépuscule. `?animals=0` les coupe ; `?view=characters&animals=1` les montre de près.
+
+**Ville vivante, lot 2-4 : les véhicules de service (2 novembre 2026)** (D204)
+- Bus urbain (du lundi au samedi, il s'arrête aux arrêts de bus qu'il croise), camion poubelle le mardi et le vendredi tôt (il s'arrête tous les 30 m), camionnettes de livraison le matin en centre-ville (arrêtées sur la chaussée).
+- Pas encore : boucle du bus et passagers, scooters et cyclistes dans la circulation, tracteur, TER (voir D204).
+- **Lot 2 terminé** (sans les élèves : proportions des enfants à décider).

@@ -1,3 +1,4 @@
+import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { landmarkDecks, landmarkSectors } from "../core/landmarks";
@@ -9,6 +10,7 @@ import type { TiledTerrain } from "../data/terrain";
 import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
+import { weatherize } from "./weather-fx";
 import { breakFurniture, disposeTile, type TileMeshes, type TileStats } from "./stylized";
 import { FINE_RANGE, VIEW_RANGE } from "./terrain";
 
@@ -43,6 +45,8 @@ export interface TileExtras {
   furniture: Furniture[];
   stairs: StairsZone[];
   marks: number[][][];
+  /** Polygones d'eau de la tuile (rivières, plan d'eau ; anneau extérieur puis trous), pour les animaux de l'eau (D203). */
+  water?: number[][][];
 }
 
 interface Entry {
@@ -104,6 +108,30 @@ export class TileManager {
   private frame = 0;
   private job: Job | null = null;
   hidden = new Set<string>();
+  /** Rideaux de fer (D200) : chaque maillage n'est montré que si l'un de ses commerces est fermé (`open[i]` : horaire type i ouvert). */
+  updateShutters(open: readonly number[]): void {
+    this.open = [...open];
+    for (const e of this.entries.values()) {
+      for (const m of e.detail?.group.children ?? []) {
+        if (m.name !== "rideaux") continue;
+        const scheds = m.userData["scheds"] as number[] | undefined;
+        m.visible = !this.hidden.has(m.name) && (scheds ?? []).some((s) => !open[s]);
+      }
+    }
+  }
+  /** Dernière table d'ouverture reçue (null : pas encore, tout est montré). */
+  private open: number[] | null = null;
+  /** Un maillage révélé est visible ; les rideaux de fer, seulement si un de leurs commerces est fermé. */
+  private shutterShown(m: THREE.Object3D): boolean {
+    if (m.name !== "rideaux" || !this.open) return true;
+    return ((m.userData["scheds"] as number[] | undefined) ?? []).some((s) => !this.open![s]);
+  }
+  /** Places assises des tuiles déjà construites (pour qui s'abonne après le chargement initial). */
+  forEachSeats(cb: (tile: string, seats: readonly SeatDef[]) => void): void {
+    for (const [id, e] of this.entries) if (e.detail?.seats?.length) cb(id, e.detail.seats);
+  }
+  /** Places assises d'une tuile construite (sa liste) ou déchargée (liste vide), D198. */
+  onSeats: ((tile: string, seats: readonly SeatDef[]) => void) | null = null;
   /** Temps de construction passé pendant la dernière image (ms), 0 sans construction. */
   sliceMs = 0;
   /** Dernières constructions de tuiles, pour le banc de test. */
@@ -161,7 +189,7 @@ export class TileManager {
 
   private async loadFar(): Promise<void> {
     const list = await loadLandmarks();
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+    const mat = weatherize(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), "wall");
     for (const l of list) {
       const e = this.entries.get(l.tile);
       if (!e) continue;
@@ -180,17 +208,19 @@ export class TileManager {
   /** Fin de construction : la tuile entre dans la scène, maillages masqués, et ses obstacles comptent tout de suite. */
   private finishBuild(e: Entry, data: TileData, meshes: TileMeshes, revealAll: boolean): void {
     e.detail = meshes;
+    this.onSeats?.(e.info.id, meshes.seats ?? []);
     e.pending = [];
     for (const m of meshes.group.children) {
       if (this.hidden.has(m.name)) m.visible = false;
-      else if (!revealAll) {
+      else if (revealAll) m.visible = this.shutterShown(m);
+      else {
         m.visible = false;
         e.pending.push(m);
       }
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
-    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);
@@ -235,6 +265,7 @@ export class TileManager {
       this.group.remove(e.detail.group);
       disposeTile(e.detail);
       e.detail = null;
+      this.onSeats?.(e.info.id, []);
       e.pending = [];
       e.extras = null;
       this.colliders?.removeTag(e.info.id);
@@ -295,8 +326,8 @@ export class TileManager {
   private dropLod(e: Entry): void {
     if (e.lod) {
       this.group.remove(e.lod);
+      // La matière est partagée par toutes les silhouettes (D196) : seule la géométrie est libérée.
       e.lod.geometry.dispose();
-      (e.lod.material as THREE.Material).dispose();
       e.lod = null;
     }
     e.lodData = null;
@@ -347,7 +378,8 @@ export class TileManager {
       if (d >= this.load) continue;
       if (e.detail) {
         if (!revealed && e.pending.length) {
-          e.pending.shift()!.visible = true;
+          const m = e.pending.shift()!;
+          m.visible = this.shutterShown(m);
           revealed = true;
           this.show(e);
         }

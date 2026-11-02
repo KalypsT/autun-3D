@@ -1,3 +1,4 @@
+import { weatherize } from "./weather-fx";
 import * as THREE from "three";
 import { loadGround } from "../data/load";
 import type { TiledTerrain } from "../data/terrain";
@@ -31,6 +32,7 @@ function weightTexture(img: HTMLImageElement | null, flat: [number, number, numb
 /** Matériau du relief : mélange de six teintes de sol selon deux textures de poids, placées par `ground` = (x ouest, y sud, 1/largeur, 1/hauteur). */
 function groundMaterial(wA: THREE.Texture, wB: THREE.Texture, ground: THREE.Vector4, palette: readonly string[]): THREE.MeshStandardMaterial {
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, side: THREE.DoubleSide });
+  // Pas de `weatherize` ici : il enchaîne avec ce nuanceur une fois celui-ci posé (fin de la fonction).
   mat.onBeforeCompile = (shader) => {
     shader.uniforms["wA"] = { value: wA };
     shader.uniforms["wB"] = { value: wB };
@@ -50,7 +52,9 @@ gcol *= 1.0 - 0.35 * b.b;
 diffuseColor.rgb *= gcol;`,
       );
   };
-  return mat;
+  // Clé de programme propre au relief : `weatherize` la complète (sinon tous les nuanceurs enchaînés auraient le même texte).
+  mat.customProgramCacheKey = () => "terrain-ground";
+  return weatherize(mat, "ground");
 }
 
 /** Deux textures de poids et le matériau qui les utilise. */

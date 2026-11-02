@@ -1,3 +1,4 @@
+import { shutterTarget } from "./shutter-sink";
 import * as THREE from "three";
 import type { Devanture } from "../data/types";
 import type { DevantureFrame } from "./devanture";
@@ -15,6 +16,8 @@ import type { SignAtlas } from "./sign-atlas";
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 const GLASS_LO = C("#26313a"), GLASS_HI = C("#4f6270"), GLOW_LO = C("#ffcf86"), GLOW_HI = C("#fff3d6");
+/** Rideau de fer (D200) : tôle ondulée grise. */
+const SHUTTER_LO = C("#7f858a"), SHUTTER_HI = C("#a2a7ab");
 const ALU_GREY = C("#8b9298"), ALU_DARK = C("#5d646a"), DOOR_GREY = C("#8e9296"), PLINTH = C("#7d7a73"), SPOT = C("#f3f1ea");
 /** Pas d'un caractère du texte d'enseigne, en fraction de la hauteur de ligne (cases de 256 × 40 px : lettres de 0,82 de la hauteur). */
 const ADVANCE = 0.51;
@@ -70,6 +73,9 @@ export function buildModernFront(mb: MeshBuilder, glow: MeshBuilder | null, text
   const lit = (s0: number, s1: number, z0: number, z1: number, off: number): void => {
     panel(mb, s0, s1, z0, z1, off, GLASS_LO, GLASS_HI);
     if (glow) panel(glow, s0, s1, z0, z1, off + 0.006, GLOW_LO, GLOW_HI);
+    // Rideau de fer (D200) : baissé devant la baie quand le commerce est fermé (étiquette posée par la tuile).
+    const sh = shutterTarget();
+    if (sh && sh.tag >= 2) panel(sh, s0, s1, z0, z1, off + 0.03, SHUTTER_LO, SHUTTER_HI);
   };
   let s = S0;
   d.bays.forEach(([kind, w], bi) => {

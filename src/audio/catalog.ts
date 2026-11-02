@@ -192,6 +192,29 @@ export const SCENES: readonly SoundScene[] = [
       at(t0 + 5.8, () => a.stop(0.2));
     },
   },
+  {
+    id: "rain", section: "Ville", label: "Pluie, puis averse (D196)", seconds: 8,
+    play(kit, dest, t0, at) {
+      const a = new AmbienceVoice(kit, dest);
+      at(t0, () => a.update(0.3, 0.8, 0, 0.5));
+      at(t0 + 4, () => a.update(0.3, 1, 0, 1));
+      at(t0 + 7.8, () => a.stop(0.2));
+    },
+  },
+  {
+    id: "market", section: "Ville", label: "Brouhaha du marché (D201)", seconds: 6,
+    play(kit, dest, t0, at) {
+      const a = new AmbienceVoice(kit, dest);
+      at(t0, () => a.update(0.5, 0.5, 0, 0, 1));
+      at(t0 + 5.8, () => a.stop(0.2));
+    },
+  },
+  shot("firework", "Ville", "Fusée du feu d'artifice, à 400 m (D202)", 4, (k, o, t) => S.firework(k, o, t, 1, { gain: 0.6, pan: 0.3, cutoff: 2500, echo: 0.5 })),
+  shot("music", "Ville", "Fête de la musique : quelques notes (D202)", 3, (k, o, t, i) => S.musicNote(k, o, t, [110, 220, 277, 330, 440][i]!, [0, 1, 1, 1, 2][i]!, 1, { gain: 0.6, pan: 0, cutoff: 6000, echo: 0.2 }), 5, 0.3),
+  shot("animals", "Ville", "Animaux : aboiement, canard, envol, martinet (D203)", 4, (k, o, t, i) => S.animalCall(k, o, t, (["bark", "quack", "flap", "swift"] as const)[i]!, { gain: 0.6, pan: 0, cutoff: 8000, echo: 0.1 }), 4, 0.9),
+  shot("thunder-near", "Ville", "Tonnerre tout proche (D196)", 6, (k, o, t) => S.thunder(k, o, t, 1)),
+  shot("thunder-far", "Ville", "Tonnerre lointain (D196)", 6, (k, o, t) => S.thunder(k, o, t, 0.25)),
+  shot("wipers", "Véhicules", "Essuie-glaces (D196)", 3, (k, o, t, i) => S.wiper(k, o, t + i * 1.1), 3, 0),
   shot("stars-up", "Joueur", "Étoile de recherche gagnée", 0.6, (k, o, t) => S.jingle(k, o, t, [988, 740], 0.09, "square", 0.3)),
   shot("stars-lost", "Joueur", "Police semée", 0.8, (k, o, t) => S.jingle(k, o, t, [660, 880, 1175], 0.1, "sine", 0.3)),
   shot("pickup", "Joueur", "Arme ramassée", 0.8, (k, o, t) => {

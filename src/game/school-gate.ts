@@ -24,7 +24,7 @@ export class SchoolGate {
     return this.state.closed === true;
   }
 
-  update(hour: number): void {
-    if (syncGate(this.colliders, hour, this.state, this.spec)) this.mesh.visible = this.state.closed === true;
+  update(hour: number, weekday = 0): void {
+    if (syncGate(this.colliders, hour, this.state, this.spec, weekday)) this.mesh.visible = this.state.closed === true;
   }
 }

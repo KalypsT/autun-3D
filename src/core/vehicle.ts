@@ -526,11 +526,29 @@ function wheelieLift(s: VehicleState, spec: VehicleSpec): number {
   return s.wheelie === 0 ? 0 : (s.wheelie > 0 ? spec.rear : spec.front) * Math.sin(Math.abs(s.wheelie));
 }
 
+/** Adhérence du sol (météo, D195) : 1 au sec, 0,8 mouillé, 0,6 sous la neige. Une seule valeur pour toute la ville, réglée par le jeu. */
+let surfaceGrip = 1;
+const gripped = new Map<VehicleSpec, { k: number; spec: VehicleSpec }>();
+
+/** Règle l'adhérence du sol pour tous les véhicules (arrondie au centième). */
+export function setSurfaceGrip(k: number): void {
+  surfaceGrip = Math.round(Math.min(Math.max(k, 0.3), 1) * 100) / 100;
+}
+
+/** La fiche du véhicule avec l'adhérence du sol (gardée en mémoire tant que l'adhérence ne change pas). */
+function onSurface(spec: VehicleSpec): VehicleSpec {
+  if (surfaceGrip === 1) return spec;
+  let hit = gripped.get(spec);
+  if (!hit || hit.k !== surfaceGrip) gripped.set(spec, (hit = { k: surfaceGrip, spec: { ...spec, grip: spec.grip * surfaceGrip } }));
+  return hit.spec;
+}
+
 /**
  * Fait avancer le véhicule de `dt` secondes : forces, pneus, relief, puis chocs contre les obstacles. `fly` : il peut quitter le sol (véhicule
  * du joueur) ; sinon, il suit toujours le relief (circulation, gendarmes).
  */
 export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null, fly = false, breaker = false): void {
+  spec = onSurface(spec);
   // Altitude de la trajectoire libre au début du pas (la suspension détendue en plus) ; on ne décolle pas du bout d'un tablier (voir `onDeck`).
   const z0 = s.z - wheelieLift(s, spec) + Math.min(s.air, SUSPENSION);
   const deck0 = fly && s.air < 1 && onDeck(terrain, s.x, s.y, terrain.heightAt(s.x, s.y, z0));

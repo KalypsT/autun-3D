@@ -1,7 +1,11 @@
+import { weatherize } from "./weather-fx";
 import * as THREE from "three";
 import type { HeightField, LodBuilding } from "../data/types";
 import { MeshBuilder, toThree } from "./geometry";
 import { roofColor, wallColor } from "./style";
+
+/** Silhouettes lointaines : une matière pour toutes les tuiles (elle porte la neige des toits plats, D196). */
+const LOD_MAT = weatherize(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), "wall");
 
 const WALL_SHADE = 0.92;
 
@@ -39,7 +43,7 @@ export function buildLodTile(buildings: readonly LodBuilding[], terrain: HeightF
     }
   }
   if (mb.triangleCount === 0) return null;
-  const mesh = new THREE.Mesh(mb.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }));
+  const mesh = new THREE.Mesh(mb.build(), LOD_MAT);
   mesh.receiveShadow = true;
   return mesh;
 }

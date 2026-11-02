@@ -13,6 +13,8 @@ import { SaveStore } from "./core/save";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
+import { dateFromParams, newGameDate } from "./core/calendar";
+import { weatherParam } from "./core/weather";
 import { createSea } from "./render/sea";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
@@ -126,11 +128,20 @@ async function main(): Promise<void> {
   const clock = startState?.save?.clock;
   const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : 16));
   const speed = Number(params.get("speed") ?? (night || viewerMode || testMode ? 0 : 1 / 50));
-  const atmosphere = new Atmosphere(hour, speed, Number(params.get("day") ?? clock?.day ?? 200), scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  // Date du jeu (D194) : celle de la sauvegarde, sinon le 1er jour de l'été ; ?date=, ?day=, ?season=, ?weekday= l'imposent.
+  const seasonLength = storedSettings.seasonLength;
+  const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
+  const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
+  // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
+  atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
   sunDir.copy(atmosphere.lightDir);
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
   const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, effective.detail, Number(params.get("budget") ?? 4));
+  // Rideaux de fer (D200) : montrés seulement si un commerce de la tuile est fermé.
+  atmosphere.onShops = (open) => tiles.updateShutters(open);
+  tiles.updateShutters(atmosphere.shopTable);
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);

@@ -7,7 +7,8 @@ import { bodyOnlyGeometry, TrafficModels, type TrafficItem } from "./traffic-mod
 
 const flat = { heightAt: () => 0, xMin: -1e4, xMax: 1e4, yMin: -1e4, yMax: 1e4 };
 // Les véhicules uniques (D114) ne roulent jamais dans la circulation.
-const cars = CATALOG.filter((d) => d.family === "car" && !d.unique);
+// Les voitures ordinaires de la circulation (sans les véhicules de service, D204, qui ne roulent qu'à leurs heures, un à la fois).
+const cars = CATALOG.filter((d) => d.family === "car" && !d.unique && !d.service);
 
 function stateAt(x: number, y: number, heading: number): VehicleState {
   const s = createVehicle(x, y, heading, flat);

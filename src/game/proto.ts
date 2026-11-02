@@ -1,3 +1,8 @@
+import { createDog } from "../core/dogs";
+import { DogView } from "../render/dogs";
+import { BirdView, type BirdKind } from "../render/birds";
+import { LIFE_POSE } from "../core/character-rig";
+import { coldAt, dressForCold, umbrellaShare } from "../core/dress";
 import * as THREE from "three";
 import { summarizeFrames, type FrameSummary } from "./bench-stats";
 import { deviceInfo, measureMemory } from "./bench";
@@ -7,7 +12,7 @@ import { followSun, gameSpawn } from "./game";
 import { showReportPanel } from "./report-panel";
 import { createCrowd } from "../render/crowd/crowd";
 import { createCrowdState, type CrowdRenderer, type CrowdState } from "../render/crowd/crowd-types";
-import { recipeFromSeed } from "../core/character";
+import { recipeFromSeed, type Recipe } from "../core/character";
 import { createVehicle } from "../core/vehicle";
 import { createPlayerModel } from "../render/player-model";
 import { vehicleDef } from "../core/vehicle-catalog";
@@ -261,7 +266,20 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   // `walk=1.4` : tout le monde marche à cette vitesse (m/s), phases réparties sur un cycle (pour juger la démarche d'un coup d'œil).
   const walkAll = params.has("walk") ? Number(params.get("walk")) : null;
   const place = (): CrowdState => {
-    const state = createCrowdState(Array.from({ length: n }, (_, i) => recipeFromSeed(seed * 1000 + i)));
+    // Tenues de la saison et parapluies sous la pluie, comme dans la rue (D197) : `&season=hiver`, `&weather=pluie`.
+    const season = atmosphere.calendar.season, rain = atmosphere.weather.rain;
+    const dressed = (k: number): Recipe => {
+      const r = dressForCold(recipeFromSeed(k), k, coldAt(atmosphere.hour, season, rain));
+      return r.outfit !== "sport" && ((k >>> 7) % 1000) / 1000 < umbrellaShare(rain) ? { ...r, umbrella: true } : r;
+    };
+    const state = createCrowdState(Array.from({ length: n }, (_, i) => dressed(seed * 1000 + i)));
+    // `&pose=sit|phone|talk` : tous dans une pose de la vie de quartier (D198).
+    const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk }[params.get("pose") ?? ""] ?? 0;
+    if (lifePose) {
+      state.pose = new Uint8Array(n).fill(lifePose);
+      state.poseT = new Float32Array(n).fill(1);
+      state.poseSide = new Int8Array(n);
+    }
     for (let i = 0; i < n; i++) {
       const row = i % 2, col = Math.floor(i / 2);
       state.x[i] = camX + (col - (perRow - 1) / 2) * spacing + (row ? spacing / 2 : 0);
@@ -277,6 +295,42 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   };
   let state = place();
   let crowd = FACTORIES.B(scene, state);
+  // `&animals=1` : un spécimen de chaque animal de la ville devant la caméra (D203) : chien, chat assis, canards, héron posé et en vol,
+  // martinets et chauves-souris en vol.
+  if (params.has("animals")) {
+    const gy = (x: number, z: number): number => groundAt(x, z);
+    const dx = camX, dz = camZ - dist + 1.5;
+    const cat = new DogView(scene, 2, true), dog = new DogView(scene, 1);
+    const d0 = createDog(5, 0, { x: dx - 1.8, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(d0, { x: dx - 1.8, y: -dz, heading: Math.PI / 2, speed: 1.4, phase: 1 });
+    dog.update([d0], (x, y) => gy(x, -y), () => false);
+    const c0 = createDog(6, 0, { x: dx - 0.4, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(c0, { x: dx - 0.4, y: -dz, heading: Math.PI * 0.8, size: 0.55, pose: 2, coat: 2 });
+    const c1 = createDog(7, 1, { x: dx + 0.4, y: -dz, heading: 0, speed: 0, sitting: false, fleeing: false });
+    Object.assign(c1, { x: dx + 0.4, y: -dz, heading: Math.PI / 2, size: 0.55, speed: 1, phase: 2, coat: 0 });
+    cat.update([c0, c1], (x, y) => gy(x, -y), () => false);
+    const birds = (kind: BirdKind, items: { x: number; y: number; z: number; flying: boolean; heading: number }[]): void =>
+      new BirdView(scene, kind, items.length).update(items.map((b, i) => ({ ...b, phase: i * 1.7, coat: i, size: 1 })));
+    birds("duck", [0, 1, 2].map((i) => ({ x: dx + 1.2 + i * 0.5, y: -dz + 0.3 * i, z: gy(dx + 1.2, dz), flying: false, heading: 2 })));
+    birds("heron", [{ x: dx + 3, y: -dz - 1, z: gy(dx + 3, dz + 1), flying: false, heading: -1 }, { x: dx + 1, y: -dz - 2, z: gy(dx + 1, dz) + 3.2, flying: true, heading: 1.6 }]);
+    birds("swift", [0, 1, 2].map((i) => ({ x: dx - 2 + i, y: -dz - 2, z: gy(dx, dz) + 2.6 + i * 0.3, flying: true, heading: 1.6 })));
+    birds("bat", [0, 1].map((i) => ({ x: dx - 3 + i * 0.8, y: -dz - 1, z: gy(dx, dz) + 2.2, flying: true, heading: -1.2 })));
+  }
+  // `&dogs=1` : un chien à côté de chaque personnage, à l'arrêt, au trot, en train de renifler ou assis (D199).
+  if (params.has("dogs")) {
+    const view = new DogView(scene, n);
+    const dogs = Array.from({ length: n }, (_, i) => {
+      const d = createDog(seed * 1000 + i, i, { x: state.x[i]! + 0.55, y: -state.z[i]! - 0.4, heading: 0, speed: 0, sitting: false, fleeing: false });
+      d.x = state.x[i]! + 0.5;
+      d.y = -state.z[i]! + 0.3;
+      d.heading = Math.PI / 2 + (i % 3) * 0.6;
+      d.speed = i % 4 === 1 ? 1.5 : 0;
+      d.phase = i * 1.1;
+      d.pose = i % 4 === 2 ? 1 : i % 4 === 3 ? 2 : 0;
+      return d;
+    });
+    view.update(dogs, (x, y) => groundAt(x, -y), (d, out) => (out.set(state.x[d.slot]! + 0.25, state.y[d.slot]! + 0.82, state.z[d.slot]!), true));
+  }
   const eye = Number(params.get("eye") ?? 1.6);
   camera.position.set(camX, ground + eye, camZ);
   camera.lookAt(camX, ground + eye - 0.45 * (dist / 5.2), camZ - dist - 1);

@@ -45,8 +45,8 @@ describe("voitures du catalogue : performances", () => {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
     "jeep-militaire": [12, 18], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
-  /** Poids lourd bridé à 90 km/h (D116) : 0 à 80 km/h (s), d'après un porteur chargé. */
-  const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40] };
+  /** Poids lourds bridés à 90 km/h (D116, bus et benne D204 : même fiche que le grumier) : 0 à 80 km/h (s), d'après un porteur chargé. */
+  const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40], "bus-urbain": [20, 40], "benne-ordures": [20, 40] };
   /** Petit train (D118, 25 km/h au plus, sans passagers) : 0 à 20 km/h (s). */
   const T20: Record<string, [number, number]> = { "petit-train": [4, 12] };
 

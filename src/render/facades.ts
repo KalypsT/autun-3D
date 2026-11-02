@@ -1,3 +1,4 @@
+import { scheduleOf } from "../core/opening";
 import * as THREE from "three";
 import type { Building, FacadeFiche, HeightField, Terrace, WallRun } from "../data/types";
 import { finish, hash01, MeshBuilder, toThree, type Steps, type Vec3 } from "./geometry";
@@ -28,6 +29,8 @@ export interface Placement {
   ny: number;
   /** Largeur imposée en mètres (sinon celle du sprite) : balcons étirés. */
   width?: number;
+  /** Horaire type du commerce de cette vitrine (`core/opening.ts`, D200) : vitrine allumée et rideau de fer selon l'ouverture. */
+  sched?: number;
 }
 
 export interface FacadePlan {
@@ -142,9 +145,10 @@ export function* planFacadesSteps(
   const railing = railingRequest();
   plan.requests.push(railing);
 
-  const place = (key: string, atlas: Placement["atlas"], s: Sample, z: number, offset: number, width?: number): void => {
+  const place = (key: string, atlas: Placement["atlas"], s: Sample, z: number, offset: number, width?: number, sched?: number): void => {
     const p: Placement = { key, atlas, x: s.x + s.nx * offset, y: s.y + s.ny * offset, z, tx: s.tx, ty: s.ty, nx: s.nx, ny: s.ny };
     if (width !== undefined) p.width = width;
+    if (sched !== undefined) p.sched = sched;
     plan.placements.push(p);
   };
 
@@ -267,7 +271,7 @@ export function* planFacadesSteps(
               const req = shopModuleRequest(sf.color, sf.glazing, hv, isDoor);
               plan.requests.push(req);
               const w = isDoor ? 1.2 : SHOP_MODULE_W;
-              place(req.key, "facade", sampleAt(pl, cursor + w / 2), topZ - hv, 0.07);
+              place(req.key, "facade", sampleAt(pl, cursor + w / 2), topZ - hv, 0.07, undefined, scheduleOf(c.kind));
               cursor += w;
             }
             const used = cursor - s0;

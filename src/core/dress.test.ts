@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isValidRecipe, recipeFromSeed, type Recipe } from "./character";
-import { airTemperature, coldAt, dressForCold } from "./dress";
+import { airTemperature, coldAt, dressForCold, umbrellaShare } from "./dress";
 
 const people = (hour: number, n = 1500): Recipe[] => Array.from({ length: n }, (_, i) => dressForCold(recipeFromSeed(i + 1), i + 1, coldAt(hour)));
 const share = (list: Recipe[], f: (r: Recipe) => boolean): number => list.filter(f).length / list.length;
@@ -31,5 +31,34 @@ describe("vêtements selon l'heure", () => {
       expect([a.sex, a.age, a.height, a.build, a.skin, a.hairStyle, a.hairColor]).toEqual([base.sex, base.age, base.height, base.build, base.skin, base.hairStyle, base.hairColor]);
       if (base.outfit === "work") expect(a).toBe(base);
     }
+  });
+});
+
+describe("tenues selon la saison et la pluie (D197)", () => {
+  it("l'hiver est froid à toute heure, l'été chaud l'après-midi ; la pluie rafraîchit", () => {
+    expect(coldAt(15, 3)).toBe(1);
+    expect(coldAt(15, 1)).toBe(0);
+    expect(coldAt(9, 1, 1)).toBeGreaterThan(coldAt(9, 1));
+    expect(coldAt(15)).toBe(coldAt(15, 1, 0));
+  });
+
+  it("en hiver, plus de manteaux et aucun t-shirt de ville ; l'été, l'inverse", () => {
+    const count = (season: number, top: string): number => {
+      let n = 0;
+      for (let s = 0; s < 2000; s++) {
+        const r = recipeFromSeed(s);
+        if (r.outfit === "city" && dressForCold(r, s, coldAt(15, season)).top === top) n++;
+      }
+      return n;
+    };
+    expect(count(3, "coat")).toBeGreaterThan(count(1, "coat") * 3);
+    expect(count(3, "tshirt")).toBeLessThan(count(1, "tshirt") / 4);
+  });
+
+  it("parapluies : aucun sans pluie, la moitié environ sous une bonne pluie", () => {
+    expect(umbrellaShare(0)).toBe(0);
+    expect(umbrellaShare(0.1)).toBe(0);
+    expect(umbrellaShare(0.75)).toBeCloseTo(0.65);
+    expect(umbrellaShare(1)).toBe(0.75);
   });
 });

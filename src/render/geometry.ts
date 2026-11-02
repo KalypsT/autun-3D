@@ -28,6 +28,16 @@ export class MeshBuilder {
   readonly positions: number[] = [];
   readonly normals: number[] = [];
   readonly colors: number[] = [];
+  /**
+   * Étiquette par sommet (attribut `aTag`, D200), seulement si le maillage en porte (`tagged`) : les lumières de la ville s'en servent
+   * (seuil d'allumage d'une fenêtre, d'un lampadaire, horaire d'un commerce). `tag` est la valeur donnée aux sommets suivants.
+   */
+  readonly tags: number[] | null;
+  tag = 0;
+
+  constructor(tagged = false) {
+    this.tags = tagged ? [] : null;
+  }
 
   /** Ajoute un triangle ; l'ordre des sommets est corrigé pour que la face regarde dans le sens de `n`. */
   tri(a: Vec3, b: Vec3, c: Vec3, n: Vec3, color: THREE.Color): void {
@@ -41,6 +51,7 @@ export class MeshBuilder {
       this.normals.push(n[0], n[1], n[2]);
       this.colors.push(color.r, color.g, color.b);
     }
+    this.tags?.push(this.tag, this.tag, this.tag);
   }
 
   quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
@@ -63,6 +74,7 @@ export class MeshBuilder {
         this.positions.push(p[0], p[1], p[2]);
         this.normals.push(n[0], n[1], n[2]);
         this.colors.push(col.r, col.g, col.b);
+        this.tags?.push(this.tag);
       }
     }
   }
@@ -98,6 +110,16 @@ export class MeshBuilder {
     g.setAttribute("position", new THREE.BufferAttribute(out.positions, 3));
     g.setAttribute("normal", new THREE.BufferAttribute(out.normals, 3));
     g.setAttribute("color", new THREE.BufferAttribute(out.colors, 3));
+    // Étiquettes (D200) : celles des maillages qui en portent, 0 pour les autres.
+    if (parts.some((p) => p.tags)) {
+      const tags = new Float32Array(n / 3);
+      let o = 0;
+      for (const p of parts) {
+        if (p.tags) tags.set(p.tags, o);
+        o += p.positions.length / 3;
+      }
+      g.setAttribute("aTag", new THREE.BufferAttribute(tags, 1));
+    }
     g.computeBoundingBox();
     yield;
     g.computeBoundingSphere();

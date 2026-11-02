@@ -47,7 +47,7 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(traffic.cars.length).toBeGreaterThanOrEqual(traffic.target - 2);
     expect(inView).toBe(0);
     traffic.dispose();
-  });
+  }, 20000); // 3 s seul, plus de 5 s sous la charge de toute la suite (D202).
 
   it("la nuit, la circulation se réduit à la cible nocturne : les voitures en surnombre sont retirées hors de la vue", () => {
     const { traffic } = make(20);
@@ -213,3 +213,30 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
   }, 120000);
 });
 
+
+describe("véhicules de service (D204)", () => {
+  it("le bus et le camion poubelle naissent à leurs heures ; la benne s'arrête tous les 30 m, sans quitter la circulation", () => {
+    const { traffic } = make(10);
+    const e = env({ hour: 6, services: { bus: 1, benne: 1, livraison: 0 } });
+    let held = 0;
+    for (let i = 0; i < 60 * 60; i++) {
+      traffic.step(DT, { kind: "foot", x: 0, y: 0, vx: 0, vy: 0 });
+      traffic.update(DT, e);
+      for (const c of traffic.cars) if (c.service?.kind === "benne" && (c.sim.holdT ?? 0) > 0) held++;
+    }
+    const kinds = traffic.cars.map((c) => c.service?.kind).filter(Boolean).sort();
+    expect(kinds).toEqual(["benne", "bus"]);
+    expect(traffic.cars.find((c) => c.service?.kind === "bus")!.def.id).toBe("bus-urbain");
+    expect(held).toBeGreaterThan(0);
+    for (const c of traffic.cars) expect(Number.isFinite(c.sim.state.x + c.sim.state.y)).toBe(true);
+  }, 60000);
+
+  it("sans service demandé, ni bus ni benne (les véhicules de service ne sont jamais tirés au hasard)", () => {
+    const { traffic } = make(20);
+    for (let i = 0; i < 60 * 20; i++) {
+      traffic.step(DT, { kind: "foot", x: 0, y: 0, vx: 0, vy: 0 });
+      traffic.update(DT, env({ hour: 12 }));
+    }
+    expect(traffic.cars.some((c) => c.def.service)).toBe(false);
+  }, 60000);
+});

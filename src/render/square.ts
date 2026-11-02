@@ -30,7 +30,7 @@ export function slab(mb: MeshBuilder, f: ReturnType<typeof frameOf>, s0: number,
 }
 
 /** Rideau de tilleuls : un tronçon de couronne par pas de troncs (le relief le suit), les troncs nus dessous. */
-export function buildCurtain(mb: MeshBuilder, s: CurtainSite, terrain: HeightField): void {
+export function buildCurtain(mb: MeshBuilder, s: CurtainSite, terrain: HeightField, leaves: MeshBuilder = mb): void {
   const f = frameOf(s.c[0], s.c[1], s.a, s.l, s.w);
   const n = Math.max(1, Math.round(s.l / s.pitch));
   const step = s.l / n;
@@ -41,8 +41,8 @@ export function buildCurtain(mb: MeshBuilder, s: CurtainSite, terrain: HeightFie
     const zTop = gr(um) + s.top;
     const zLow = Math.min(gr(um, -s.w / 2), gr(um, s.w / 2), gr(um)) + s.trunk;
     // Couronne : pavé jusqu'au chanfrein, puis un dessus plus étroit.
-    slab(mb, f, u0, u1, -s.w / 2, s.w / 2, zLow, zTop - CHAMFER, CROWN, shade(CROWN, 0.9), i === 0 || i === n - 1);
-    slab(mb, f, u0 + (i === 0 ? CHAMFER : 0), u1 - (i === n - 1 ? CHAMFER : 0), -s.w / 2 + CHAMFER, s.w / 2 - CHAMFER, zTop - CHAMFER, zTop, CROWN_TOP, CROWN_TOP, false);
+    slab(leaves, f, u0, u1, -s.w / 2, s.w / 2, zLow, zTop - CHAMFER, CROWN, shade(CROWN, 0.9), i === 0 || i === n - 1);
+    slab(leaves, f, u0 + (i === 0 ? CHAMFER : 0), u1 - (i === n - 1 ? CHAMFER : 0), -s.w / 2 + CHAMFER, s.w / 2 - CHAMFER, zTop - CHAMFER, zTop, CROWN_TOP, CROWN_TOP, false);
     for (const r of s.rows) {
       const t = r * s.w;
       slab(mb, f, um - TRUNK_HALF, um + TRUNK_HALF, t - TRUNK_HALF, t + TRUNK_HALF, Math.min(g, gr(um, t)) - 0.2, zLow, TRUNK, TRUNK, false);

@@ -332,6 +332,61 @@ export function owl(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
 }
 
 /**
+ * Tonnerre (D196) : `strength` 1 pour la foudre toute proche (claquement sec puis roulement), 0,2 pour un orage lointain (roulement
+ * sourd seulement). Le retard de la distance est donné par l'appelant (`t`).
+ */
+export function thunder(kit: Kit, dest: AudioNode, t: number, strength: number): void {
+  const out = spotOut(kit, dest, { gain: 0.25 + 0.75 * strength, pan: rnd() * 1.2 - 0.6, cutoff: 600 + 3000 * strength, echo: 0.6 });
+  if (strength > 0.55) burst(kit, out, t, "highpass", 1800, 0.6, 0.7 * strength, 0.002, 0.12);
+  // Roulement : quatre à six bouffées de bruit grave qui se chevauchent et s'éteignent sur plusieurs secondes.
+  const n = 4 + Math.floor(rnd() * 3);
+  for (let i = 0; i < n; i++) {
+    const at = t + 0.05 + i * (0.35 + rnd() * 0.5);
+    burst(kit, out, at, "lowpass", 160 + rnd() * 220, 0.8, (1 - i / (n + 1)) * 0.9, 0.08 + rnd() * 0.15, 1.2 + rnd() * 1.8, true);
+  }
+}
+
+/** Éclatement d'une fusée (D202) : claquement, souffle grave qui roule, puis un crépitement d'étincelles. */
+export function firework(kit: Kit, dest: AudioNode, t: number, size: number, spot: Spot): void {
+  const out = spotOut(kit, dest, { ...spot, echo: Math.max(spot.echo, 0.5) });
+  burst(kit, out, t, "highpass", 1200, 0.7, 0.8, 0.001, 0.08);
+  burst(kit, out, t, "lowpass", 140 + 60 * size, 0.8, 1, 0.01, 0.9 + 0.4 * size, true);
+  for (let i = 0; i < 10; i++) burst(kit, out, t + 0.4 + rnd() * 1.2, "bandpass", 3000 + rnd() * 2500, 3, 0.12, 0.001, 0.025);
+}
+
+/** Une note d'un groupe de la fête de la musique (D202) : `voice` 0 basse (triangle), 1 accord (carré doux), 2 mélodie (scie, brève). */
+export function musicNote(kit: Kit, dest: AudioNode, t: number, freq: number, voice: number, length: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  if (voice === 0) tone(kit, out, t, "triangle", freq, freq, 0, 0.5, 0.01, length);
+  else if (voice === 1) tone(kit, out, t, "square", freq, freq, 0, 0.07, 0.02, length * 0.8);
+  else tone(kit, out, t, "sawtooth", freq, freq, 0, 0.09, 0.01, length * 0.6);
+}
+
+/** Animaux (D203) : aboiement (deux « ouaf » rauques), coin-coin, envol (battements d'ailes), cri du martinet (sifflement strident). */
+export function animalCall(kit: Kit, dest: AudioNode, t: number, kind: "bark" | "quack" | "flap" | "swift", spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  if (kind === "bark") {
+    for (const dt of [0, 0.28]) {
+      tone(kit, out, t + dt, "sawtooth", 520, 330, 0.12, 0.35, 0.005, 0.14);
+      burst(kit, out, t + dt, "bandpass", 900, 1.5, 0.3, 0.004, 0.12);
+    }
+  } else if (kind === "quack") {
+    for (const dt of [0, 0.22]) tone(kit, out, t + dt, "square", 340, 280, 0.12, 0.12, 0.01, 0.13);
+  } else if (kind === "flap") {
+    for (let i = 0; i < 5; i++) burst(kit, out, t + i * 0.13, "lowpass", 600, 0.7, 0.4, 0.01, 0.08, true);
+  } else {
+    tone(kit, out, t, "sawtooth", 4200, 5600, 0.22, 0.05, 0.01, 0.24);
+  }
+}
+
+/** Un aller des essuie-glaces : frottement du caoutchouc sur le verre mouillé, et le petit choc en butée. */
+export function wiper(kit: Kit, dest: AudioNode, t: number): void {
+  const out = spotOut(kit, dest, { gain: 0.35, pan: 0, cutoff: 5000, echo: 0 });
+  burst(kit, out, t, "bandpass", 1400, 1.2, 0.25, 0.12, 0.3);
+  tone(kit, out, t + 0.42, "sine", 180, 120, 0.05, 0.25, 0.002, 0.06);
+}
+
+/**
  * Cloche (frappée une fois) : partiels d'une cloche d'église accordée (bourdon, fondamentale, tierce mineure, quinte, nominale…),
  * les graves sonnent le plus longtemps. `prime` : note de la cloche (Hz).
  */

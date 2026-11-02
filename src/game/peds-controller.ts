@@ -1,4 +1,7 @@
-import type * as THREE from "three";
+import type { Seats } from "../core/seats";
+import * as THREE from "three";
+import { createDog, stepDog, type Dog, type DogOwner } from "../core/dogs";
+import { DogView } from "../render/dogs";
 import type { Colliders } from "../core/collision";
 import { PedSim, type Observer } from "../core/pedestrians";
 import type { Arena } from "../core/melee";
@@ -29,6 +32,10 @@ export class PedsController implements Arena {
   /** Durée moyenne (ms, lissée) de la simulation et de la mise à jour du dessin par image, pour la ligne de diagnostic. */
   simMs = 0;
   drawMs = 0;
+  /** Chiens en laisse (D199) : un par maître vivant, et leur dessin (un appel pour les chiens, un pour les laisses). */
+  readonly dogs: Dog[] = [];
+  private dogView: DogView | null = null;
+  private readonly owner: DogOwner = { x: 0, y: 0, heading: 0, speed: 0, sitting: false, fleeing: false };
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -37,6 +44,8 @@ export class PedsController implements Arena {
     private readonly colliders: Colliders,
     capacity: number,
     private readonly seed = 1,
+    /** Places assises des tuiles chargées (D198) ; null : personne ne s'assoit. */
+    private readonly seats: Seats | null = null,
   ) {
     this.setCapacity(capacity);
   }
@@ -123,9 +132,11 @@ export class PedsController implements Arena {
     this.sim = null;
     this.filled = false;
     this.officerSeeds.fill(-1);
+    this.dogs.length = 0;
     // Même sans passants (« Foule : Aucune »), la foule existe pour les gendarmes à pied ; vide, elle ne coûte aucun appel de dessin.
-    this.sim = new PedSim(this.nav.graph, this.terrain, this.colliders, { capacity: n + OFFICER.max, seed: this.seed, reserved: OFFICER.max });
+    this.sim = new PedSim(this.nav.graph, this.terrain, this.colliders, { capacity: n + OFFICER.max, seed: this.seed, reserved: OFFICER.max, life: true });
     this.sim.signals = this.signals;
+    this.sim.seats = this.seats;
     this.crowd = createCrowd(this.scene, this.sim.state);
     this.crowd.setShadows(this.shadows);
     this.sim.onSpawn = (slot, recipe) => this.crowd?.assign?.(slot, recipe);
@@ -138,6 +149,7 @@ export class PedsController implements Arena {
 
   setShadows(on: boolean): void {
     this.shadows = on;
+    this.dogView?.setShadows(on);
     this.crowd?.setShadows(on);
   }
 
@@ -178,14 +190,49 @@ export class PedsController implements Arena {
     sim.step(dt, obs);
     const t1 = performance.now();
     crowd.update(sim.state, camX, camZ);
+    this.updateDogs(dt, sim);
     const t2 = performance.now();
     this.simMs += (t1 - t0 - this.simMs) * 0.05;
     this.drawMs += (t2 - t1 - this.drawMs) * 0.05;
+  }
+
+  /** Chiens : naissent avec leur maître, le suivent, disparaissent avec lui (ou quand il tombe). */
+  private updateDogs(dt: number, sim: PedSim): void {
+    const seen = new Set<number>();
+    const o = this.owner;
+    sim.forEachDogOwner((slot, id, x, y, heading, speed, sitting, fleeing) => {
+      o.x = x; o.y = y; o.heading = heading; o.speed = speed; o.sitting = sitting; o.fleeing = fleeing;
+      let d = this.dogs.find((k) => k.slot === slot && k.owner === id);
+      if (!d) {
+        if (this.dogs.length >= 24) return;
+        d = createDog(id, slot, o);
+        this.dogs.push(d);
+      }
+      seen.add(slot);
+      stepDog(d, o, dt);
+    });
+    for (let k = this.dogs.length - 1; k >= 0; k--) if (!seen.has(this.dogs[k]!.slot)) this.dogs.splice(k, 1);
+    if (!this.dogView && this.dogs.length) {
+      this.dogView = new DogView(this.scene);
+      this.dogView.setShadows(this.shadows);
+    }
+    const st = sim.state;
+    this.dogView?.update(this.dogs, (x, y) => this.terrain.heightAt(x, y), (d, out) => {
+      const i = d.slot;
+      // La main gauche du maître (côté du chien), à hauteur de hanche (un peu plus bas assis).
+      const h = -st.yaw[i]!, rx = Math.cos(h) * d.side, ry = -Math.sin(h) * d.side;
+      const sit = st.pose![i] === 5;
+      out.set(st.x[i]! + rx * 0.24, st.y[i]! + (sit ? 0.62 : 0.82) * (st.recipes[i]!.height / 1.75), st.z[i]! - ry * 0.24);
+      return true;
+    });
   }
 
   dispose(): void {
     this.crowd?.dispose();
     this.crowd = null;
     this.sim = null;
+    this.dogView?.dispose();
+    this.dogView = null;
+    this.dogs.length = 0;
   }
 }

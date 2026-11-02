@@ -4,14 +4,17 @@ import { MAX_HEALTH } from "./health";
 import { WEAPON_ORDER, WEAPONS, type SavedArms, type WeaponId } from "./weapons";
 import { LEGACY_MODELS, vehicleDef } from "./vehicle-catalog";
 import type { Waypoint } from "./waypoint";
+import { dateFromDoy } from "./calendar";
 
 /**
  * Version 2 (D50) : un véhicule est enregistré par son modèle du catalogue (`model`) et non plus par son type (`kind`).
  * La version 1 est migrée à la lecture : chaque type devient son modèle d'alors (voir `LEGACY_MODELS`).
  * Version 3 (D80) : la santé du joueur ; les versions 1 et 2 sont lues avec la santé pleine.
  * Version 4 (D84) : les armes (possédées, balles, arme en main) ; les versions 1 à 3 sont lues avec les seuls poings.
+ * Version 5 (D194) : l'horloge garde la date du jeu (`date`, jours écoulés, voir `calendar.ts`) au lieu du jour de l'année (`day`) ;
+ * les versions 1 à 4 sont migrées vers le lundi de la saison qui contient leur jour de l'année (`dateFromDoy`).
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const SAVE_KEY = "autun3d.save";
 
 /** Un véhicule qui n'est plus à sa place d'origine (ou que l'on conduit). */
@@ -52,7 +55,8 @@ export interface SaveGame {
   /** Identifiant du véhicule conduit, s'il y en a un. */
   riding: string | null;
   vehicles: SavedVehicle[];
-  clock: { hour: number; day: number };
+  /** Heure (0 à 24) et date du jeu (jours écoulés depuis le début de la partie). */
+  clock: { hour: number; date: number };
   waypoint: Waypoint | null;
   /** Points de vie du joueur (1 à `MAX_HEALTH` : un mort ne s'enregistre pas, il est déjà à l'hôpital). Versions 1 et 2 : santé pleine. */
   health: number;
@@ -120,11 +124,11 @@ export function parseSave(text: string | null): SaveGame | null {
   const r = o as Record<string, unknown>;
   // Version inconnue (plus récente que ce jeu) : on n'y touche pas. Les anciennes versions sont migrées ici.
   const version = r["version"];
-  if (version !== SAVE_VERSION && version !== 3 && version !== 2 && version !== 1) return null;
+  if (version !== SAVE_VERSION && version !== 4 && version !== 3 && version !== 2 && version !== 1) return null;
   const p = r["player"] as Record<string, unknown> | undefined;
   const cam = r["camera"] as Record<string, unknown> | undefined;
   const clock = r["clock"] as Record<string, unknown> | undefined;
-  if (!p || !cam || !clock || !coord(p["x"]) || !coord(p["y"]) || !finite(cam["yaw"]) || !finite(cam["pitch"]) || !finite(clock["hour"]) || !finite(clock["day"])) return null;
+  if (!p || !cam || !clock || !coord(p["x"]) || !coord(p["y"]) || !finite(cam["yaw"]) || !finite(cam["pitch"]) || !finite(clock["hour"]) || !finite(version === SAVE_VERSION ? clock["date"] : clock["day"])) return null;
   const vehicles: SavedVehicle[] = [];
   if (Array.isArray(r["vehicles"])) {
     for (const v of r["vehicles"] as Record<string, unknown>[]) {
@@ -145,7 +149,10 @@ export function parseSave(text: string | null): SaveGame | null {
     camera: { yaw: cam["yaw"], pitch: Math.min(Math.max(cam["pitch"], -1.5), 1.5) },
     riding,
     vehicles,
-    clock: { hour: ((clock["hour"] % 24) + 24) % 24, day: addDays(clock["day"], 0) },
+    clock: {
+      hour: ((clock["hour"] % 24) + 24) % 24,
+      date: version === SAVE_VERSION ? Math.min(Math.max(Math.floor(clock["date"] as number), 0), 1e6) : dateFromDoy(addDays(clock["day"] as number, 0)),
+    },
     waypoint: w && coord(w["x"]) && coord(w["y"]) ? { x: w["x"], y: w["y"] } : null,
     arms: parseArms(r["arms"]),
     health: finite(r["health"]) ? Math.min(Math.max(r["health"], 1), MAX_HEALTH) : MAX_HEALTH,

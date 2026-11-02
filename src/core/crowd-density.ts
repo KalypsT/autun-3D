@@ -41,9 +41,9 @@ export function crowdDensity(hour: number, zone: number): number {
 
 /**
  * Nombre de passants visé : capacité × densité, réduit quand on roule vite (on ne voit les gens qu'une seconde ou deux : de 6 à 12 m/s la cible
- * baisse jusqu'à la moitié).
+ * baisse jusqu'à la moitié) ; `weather` : part des passants qui restent dehors par ce temps (D195).
  */
-export function crowdTarget(capacity: number, hour: number, zone: number, speed: number): number {
+export function crowdTarget(capacity: number, hour: number, zone: number, speed: number, weather = 1): number {
   const fast = Math.min(Math.max((speed - 6) / 6, 0), 1);
-  return Math.round(capacity * crowdDensity(hour, zone) * (1 - 0.5 * fast));
+  return Math.round(capacity * crowdDensity(hour, zone) * (1 - 0.5 * fast) * weather);
 }

@@ -1,8 +1,15 @@
 import * as THREE from "three";
-import { addDays } from "../core/save";
+import { activeFeasts, calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay, type Season } from "../core/calendar";
+import { fixedWeather, weatherAt, type WeatherKind, type WeatherState } from "../core/weather";
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
+import { setGroundWeather, setSeasonLook } from "./weather-fx";
+import { setCityLights } from "./city-lights";
+import { lampLevel, litWindowShare } from "../core/city-lights";
+import { openingTable } from "../core/opening";
+import { hourlyT, seasonLook } from "../core/seasons";
+import { Precipitation, RAIN, SNOW } from "./precipitation";
 
 /** Une ambiance à une hauteur de soleil donnée. */
 interface Palette {
@@ -36,6 +43,13 @@ const STOPS: [number, Palette][] = [
 ];
 
 const col = (hex: string): THREE.Color => new THREE.Color(hex);
+const GREY = new THREE.Color();
+/** Couleur grisée par les nuages : vers sa propre luminance (légèrement bleutée), d'autant plus que `k` est grand ; `lift` l'éclaircit. */
+function overcast(hex: string, k: number, lift = 1): THREE.Color {
+  const c = col(hex);
+  const l = (0.3 * c.r + 0.59 * c.g + 0.11 * c.b) * lift;
+  return c.lerp(GREY.setRGB(l * 0.97, l * 0.99, l * 1.04), k);
+}
 const smooth = (a: number, b: number, x: number): number => {
   const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
   return t * t * (3 - 2 * t);
@@ -46,16 +60,47 @@ export class Atmosphere {
   hour: number;
   /** Heures de jeu écoulées par seconde réelle (0 : horloge arrêtée). */
   speed: number;
-  /** Jour de l'année (1 à 365) : avance à chaque minuit du jeu. */
-  day: number;
+  /** Date du jeu : jours écoulés depuis le début de la partie (avance à chaque minuit). Voir `core/calendar.ts`. */
+  date: number;
+  /** Durée des saisons et saison figée (réglages). */
+  private config: CalendarConfig = DEFAULT_CALENDAR;
+  private cal: CalendarDay;
+  /** Météo imposée (`?weather=`), ou null : celle du calendrier. */
+  private forced: WeatherKind | null = null;
+  private wx: WeatherState = fixedWeather("beau");
+  /** Saison d'une date avec les réglages en cours (pour la météo des jours voisins). */
+  private readonly seasonOf = (d: number): Season => calendarAt(d, 12, this.config).season;
   /** Direction vers la source de lumière (soleil, puis lune) dans le repère three ; modifiée sur place. */
   readonly lightDir = new THREE.Vector3(0, 1, 0);
   private lastApplied = -1;
+  /** Éclairs (D196) : intensités de base (sans éclair), temps avant le prochain, éclair en cours. */
+  private baseHemi = 1;
+  private baseCloudLight = 1;
+  private nextFlash = 5;
+  private flash = 0;
+  private flashes: number[] = [];
+  /** Table d'ouverture des commerces au dernier réglage (1 ouvert, 0 fermé, par horaire type). */
+  get shopTable(): readonly number[] {
+    return this.shops;
+  }
+
+  /** Ouverture des commerces (D200), à chaque réglage de l'ambiance : le gestionnaire de tuiles montre ou cache les rideaux de fer. */
+  onShops: ((open: readonly number[]) => void) | null = null;
+  /** Coup de tonnerre : délai (s) depuis l'éclair, selon la distance de la foudre, et force (0 à 1). Branché par le jeu (son). */
+  onThunder: ((delay: number, strength: number) => void) | null = null;
+  /** Pluie et neige qui tombent autour de la caméra (créées à la première averse). */
+  private rain: Precipitation | null = null;
+  private snowfall: Precipitation | null = null;
+  private time = 0;
+  private feastList: string[] = [];
+  /** Nuit pour les lumières (0 à 1), et table d'ouverture des commerces (réutilisée). */
+  private nightLevel = 0;
+  private readonly shops: number[] = [];
 
   constructor(
     hour: number,
     speed: number,
-    day: number,
+    date: number,
     private readonly scene: THREE.Scene,
     private readonly renderer: THREE.WebGLRenderer,
     private readonly sunLight: THREE.DirectionalLight,
@@ -65,22 +110,110 @@ export class Atmosphere {
   ) {
     this.hour = hour;
     this.speed = speed;
-    this.day = day;
+    this.date = Math.max(0, Math.floor(date));
+    this.cal = calendarAt(this.date, hour, this.config);
     this.apply();
   }
 
+  /** À chaque image : l'heure avance (sauf horloge arrêtée), la pluie tombe, les éclairs passent. */
   advance(dt: number): void {
+    this.tick(dt);
     if (this.speed === 0) return;
     const next = this.hour + dt * this.speed;
-    if (next >= 24) this.day = addDays(this.day, 1);
+    if (next >= 24) this.date++;
     this.hour = next % 24;
     // Réglage à 4 images/s : assez fin pour un cycle de plusieurs minutes.
     if (Math.abs(this.hour - this.lastApplied) > 0.01 || this.hour < this.lastApplied) this.apply();
   }
 
+  /** Le calendrier à l'heure actuelle (saison, jour de la semaine, jour astronomique) ; recalculé à chaque réglage de l'ambiance. */
+  get calendar(): CalendarDay {
+    return this.cal;
+  }
+
+  /** Fêtes en cours (D202), recalculées avec l'ambiance. */
+  get feasts(): readonly string[] {
+    return this.feastList;
+  }
+
+  /** Jour astronomique de l'année (1 à 365) : soleil, oiseaux, notes de lieu. */
+  get day(): number {
+    return Math.round(this.cal.doy);
+  }
+
+  get calendarConfig(): CalendarConfig {
+    return this.config;
+  }
+
+  /** Change la durée des saisons ou fige une saison ; la date reste celle donnée (voir `rescaleDate`). */
+  setCalendar(config: CalendarConfig, date = this.date): void {
+    this.config = { ...config };
+    this.date = Math.max(0, Math.floor(date));
+    this.apply();
+  }
+
+  /** La météo à l'heure actuelle (D195), recalculée avec l'ambiance (environ deux fois par seconde réelle). */
+  get weather(): WeatherState {
+    return this.wx;
+  }
+
+  /** Impose une météo (et la fige), ou rend celle du calendrier (null). */
+  setWeather(kind: WeatherKind | null): void {
+    this.forced = kind;
+    this.apply();
+  }
+
+  /** Impose la date (jours de jeu) ; l'ambiance suit tout de suite. */
+  setDate(date: number): void {
+    this.date = Math.max(0, Math.floor(date));
+    this.apply();
+  }
+
+  /**
+   * À chaque image (même horloge arrêtée) : éclairs d'orage. Un éclair dure 0,1 à 0,2 s (parfois deux de suite) ; il éclaire le ciel et
+   * la lumière d'ambiance, puis le tonnerre suit avec le retard de la distance.
+   */
+  private tick(dt: number): void {
+    this.time += dt;
+    const light = 1 - 0.7 * this.night;
+    if (this.wx.rain > 0.005 && !this.rain) this.scene.add((this.rain = new Precipitation(RAIN)).mesh);
+    if (this.wx.snowfall > 0.005 && !this.snowfall) this.scene.add((this.snowfall = new Precipitation(SNOW)).mesh);
+    this.rain?.update(this.wx.rain, this.time, light);
+    this.snowfall?.update(this.wx.snowfall, this.time, light);
+    const storm = this.wx.storm;
+    const u = this.skyMat.uniforms;
+    if (storm > 0.3) {
+      this.nextFlash -= dt * storm;
+      if (this.nextFlash <= 0) {
+        this.nextFlash = 4 + Math.random() * 12;
+        this.flashes = Math.random() < 0.4 ? [0, 0.22 + Math.random() * 0.15] : [0];
+        this.flash = 0;
+        const km = 0.4 + Math.random() * 5;
+        this.onThunder?.((km * 1000) / 343, Math.min(1, 1.6 / (0.6 + km)));
+      }
+    }
+    let f = 0;
+    if (this.flashes.length) {
+      this.flash += dt;
+      for (const t0 of this.flashes) {
+        const t = this.flash - t0;
+        if (t >= 0 && t < 0.18) f = Math.max(f, 1 - t / 0.18);
+      }
+      if (this.flash > Math.max(...this.flashes) + 0.2) this.flashes = [];
+    }
+    this.hemi.intensity = this.baseHemi * (1 + 2.5 * f);
+    u["cloudLight"]!.value = this.baseCloudLight + 1.2 * f;
+  }
+
   /** Nuit pour les lumières allumées (fenêtres, lampadaires, feux des voitures) : 0 le jour, 1 la nuit noire, de 3° à −6° de hauteur du soleil. */
   get night(): number {
-    return this.res.glowMat.opacity;
+    return this.nightLevel;
+  }
+
+  /** Phares (D196) : la nuit, et aussi de jour dans la brume, sous une forte pluie ou sous la neige. */
+  get headlights(): number {
+    const wx = this.wx;
+    return Math.max(this.night, Math.min(1, wx.fog * 1.5), wx.rain > 0.6 ? 1 : 0, wx.snowfall > 0.5 ? 1 : 0);
   }
 
   get clock(): string {
@@ -109,10 +242,18 @@ export class Atmosphere {
 
   private apply(): void {
     this.lastApplied = this.hour;
-    const sun = sunPosition(this.day, this.hour);
+    this.cal = calendarAt(this.date, this.hour, this.config);
+    this.feastList = activeFeasts(this.date, this.hour, this.config);
+    this.wx = this.forced ? fixedWeather(this.forced) : weatherAt(this.date, this.hour, this.seasonOf);
+    const sun = sunPosition(this.cal.doy, this.hour);
     const [sx, sy, sz] = sunDirection(sun);
     const elev = (sun.elevation * 180) / Math.PI;
     const p = this.palette(elev);
+    const wx = this.wx;
+    // Météo (D196) : ciel et brouillard grisés par les nuages, soleil voilé, lumière d'ambiance un peu relevée (ombres plus douces).
+    const grey = 0.85 * smooth(0.25, 1, wx.cloud);
+    const veil = smooth(0.35, 0.95, wx.cloud);
+    const lift = 1 + 0.15 * wx.fog;
 
     // Lumière : le soleil (jamais sous 5° pour ne pas éclairer par en dessous), puis la lune du côté opposé.
     const lo = Math.max(sun.elevation, 0.09);
@@ -122,30 +263,44 @@ export class Atmosphere {
     const w = smooth(-4, -12, elev);
     this.lightDir.copy(sunL).lerp(moonL, w).normalize();
 
-    this.sunLight.color.set(p.sun);
-    this.sunLight.intensity = p.sunI;
-    this.hemi.color.set(p.hemiSky);
-    this.hemi.groundColor.set(p.hemiGround);
-    this.hemi.intensity = p.hemiI;
-    this.renderer.toneMappingExposure = p.exposure;
+    this.sunLight.color.copy(overcast(p.sun, grey * 0.6));
+    this.sunLight.intensity = p.sunI * (1 - 0.78 * veil);
+    this.hemi.color.copy(overcast(p.hemiSky, grey));
+    this.hemi.groundColor.copy(overcast(p.hemiGround, grey * 0.7));
+    this.hemi.intensity = this.baseHemi = p.hemiI * (1 + 0.3 * veil);
+    this.renderer.toneMappingExposure = p.exposure * (1 - 0.05 * wx.cloud);
     const fog = this.scene.fog as THREE.Fog;
-    fog.color.set(p.fog);
-    fog.near = p.fogNear;
-    fog.far = p.fogFar;
+    fog.color.copy(overcast(p.fog, Math.max(grey, 0.8 * wx.fog), lift));
+    // Pluie et neige rapprochent l'horizon ; la brume le ramène à moins de 200 m.
+    const far = p.fogFar * (1 - 0.35 * wx.rain - 0.3 * wx.snowfall);
+    fog.far = far + (170 - far) * wx.fog;
+    fog.near = p.fogNear * (1 - 0.4 * wx.rain) * (1 - 0.95 * wx.fog);
 
     const u = this.skyMat.uniforms;
-    (u["horizon"]!.value as THREE.Color).set(p.horizon);
-    (u["mid"]!.value as THREE.Color).set(p.mid);
-    (u["zenith"]!.value as THREE.Color).set(p.zenith);
+    const horizon = overcast(p.horizon, Math.max(grey, 0.8 * wx.fog), lift);
+    (u["horizon"]!.value as THREE.Color).copy(horizon);
+    (u["mid"]!.value as THREE.Color).copy(overcast(p.mid, grey));
+    (u["zenith"]!.value as THREE.Color).copy(overcast(p.zenith, grey));
     (u["sun"]!.value as THREE.Vector3).set(sx, sz, -sy);
-    u["stars"]!.value = smooth(-4, -10, elev);
-    u["cloudLight"]!.value = 0.18 + 0.82 * smooth(-8, 8, elev);
-    u["disc"]!.value = 1;
+    u["stars"]!.value = smooth(-4, -10, elev) * (1 - wx.cloud);
+    u["cloudLight"]!.value = this.baseCloudLight = 0.18 + 0.82 * smooth(-8, 8, elev);
+    u["disc"]!.value = wx.cloud < 0.55 ? 1 : 0;
+    if (u["cover"]) u["cover"].value = wx.cloud;
+    if (u["clouds"]) u["clouds"].value = wx.cloud > 0.05 ? 1 : 0;
+    // Saison (D197) : arbres, herbe, feuilles mortes ; l'avancement est arrondi à l'heure de jeu.
+    const c0 = this.cal;
+    setSeasonLook(seasonLook(c0.season, this.config.frozen === null ? hourlyT(c0.dayInSeason, this.hour, this.config.length) : c0.t));
+    // Le sol mouillé reflète le bas du ciel.
+    setGroundWeather(wx.wet, wx.snow, horizon.multiplyScalar(0.9));
 
-    // Fenêtres et lampadaires : s'allument de 3° à -6°.
-    const glow = smooth(3, -6, elev);
+    // Fenêtres et lampadaires : s'allument de 3° à -6° (plus tôt par temps très couvert).
+    const glow = smooth(3 + 5 * veil, -6, elev);
+    this.nightLevel = glow;
     this.res.glowMat.opacity = glow;
     this.res.glowMat.visible = glow > 0.01;
+    // Lumières de la ville (D200) : fenêtres une à une, lampadaires chacun à son tour, commerces selon leurs heures d'ouverture.
+    setCityLights(litWindowShare(this.hour), lampLevel(glow), openingTable(this.cal.weekday, this.hour, this.shops));
+    this.onShops?.(this.shops);
     this.res.haloMat.opacity = 0.32 * glow;
     this.res.haloMat.visible = glow > 0.01;
   }

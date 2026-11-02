@@ -1,6 +1,7 @@
 import { MAX_HEALTH } from "../core/health";
 import type { SavedArms } from "../core/weapons";
-import { addDays, SAVE_VERSION, type SaveGame, type SaveStore } from "../core/save";
+import { calendarLabel } from "../core/calendar";
+import { SAVE_VERSION, type SaveGame, type SaveStore } from "../core/save";
 import type { Recipe } from "../core/character";
 import { AppearancePreview } from "../render/appearance-preview";
 import { NotesStore } from "../core/notes-store";
@@ -48,7 +49,9 @@ export class UiBridge {
   private bigmap: BigMap | null = null;
   private readonly menu: PauseMenu;
   private readonly clockEl = document.getElementById("clock")!;
+  private readonly dateEl = document.getElementById("calendar");
   private clockText = "";
+  private dateText = "";
   private clockTimer = 0;
   private miniTimer = 0;
   private shot: HTMLCanvasElement | null = null;
@@ -246,7 +249,7 @@ export class UiBridge {
       camera: { yaw: s.yaw, pitch: s.pitch },
       riding: s.ridingId,
       vehicles: this.fleet.savedVehicles(),
-      clock: { hour: atmosphere.hour, day: addDays(atmosphere.day, 0) },
+      clock: { hour: atmosphere.hour, date: atmosphere.date },
       waypoint: this.waypoint,
       health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
       arms: s.arms,
@@ -280,6 +283,11 @@ export class UiBridge {
       if (t !== this.clockText) {
         this.clockText = t;
         this.clockEl.textContent = t;
+      }
+      const d = calendarLabel(atmosphere.calendar);
+      if (d !== this.dateText && this.dateEl) {
+        this.dateText = d;
+        this.dateEl.textContent = d;
       }
     }
     this.miniTimer -= dt;

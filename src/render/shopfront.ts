@@ -1,3 +1,4 @@
+import { pushSeat } from "./seat-sink";
 import * as THREE from "three";
 import type { HeightField, Terrace } from "../data/types";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
@@ -133,6 +134,8 @@ export function terrace(mb: MeshBuilder, f: Front, terrain: HeightField, free: (
       for (const side of [-1, 1]) {
         const [cx, cy] = [x + f.tx * side * 0.6, y + f.ty * side * 0.6];
         box(mb, cx, cy, f.tx, f.ty, 0.2, 0.2, z, z + 0.45, chair);
+        // Place assise (D198) : face à la table.
+        pushSeat({ x: cx, y: cy, heading: Math.atan2(x - cx, y - cy), z: z + 0.45, kind: "terrace" });
         const [bx, by] = [cx + f.tx * side * 0.18, cy + f.ty * side * 0.18];
         box(mb, bx, by, f.tx, f.ty, 0.03, 0.2, z + 0.45, z + 0.9, chair);
       }
