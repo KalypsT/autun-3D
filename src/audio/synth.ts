@@ -332,6 +332,28 @@ export function owl(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
 }
 
 /**
+ * Tonnerre (D196) : `strength` 1 pour la foudre toute proche (claquement sec puis roulement), 0,2 pour un orage lointain (roulement
+ * sourd seulement). Le retard de la distance est donné par l'appelant (`t`).
+ */
+export function thunder(kit: Kit, dest: AudioNode, t: number, strength: number): void {
+  const out = spotOut(kit, dest, { gain: 0.25 + 0.75 * strength, pan: rnd() * 1.2 - 0.6, cutoff: 600 + 3000 * strength, echo: 0.6 });
+  if (strength > 0.55) burst(kit, out, t, "highpass", 1800, 0.6, 0.7 * strength, 0.002, 0.12);
+  // Roulement : quatre à six bouffées de bruit grave qui se chevauchent et s'éteignent sur plusieurs secondes.
+  const n = 4 + Math.floor(rnd() * 3);
+  for (let i = 0; i < n; i++) {
+    const at = t + 0.05 + i * (0.35 + rnd() * 0.5);
+    burst(kit, out, at, "lowpass", 160 + rnd() * 220, 0.8, (1 - i / (n + 1)) * 0.9, 0.08 + rnd() * 0.15, 1.2 + rnd() * 1.8, true);
+  }
+}
+
+/** Un aller des essuie-glaces : frottement du caoutchouc sur le verre mouillé, et le petit choc en butée. */
+export function wiper(kit: Kit, dest: AudioNode, t: number): void {
+  const out = spotOut(kit, dest, { gain: 0.35, pan: 0, cutoff: 5000, echo: 0 });
+  burst(kit, out, t, "bandpass", 1400, 1.2, 0.25, 0.12, 0.3);
+  tone(kit, out, t + 0.42, "sine", 180, 120, 0.05, 0.25, 0.002, 0.06);
+}
+
+/**
  * Cloche (frappée une fois) : partiels d'une cloche d'église accordée (bourdon, fondamentale, tierce mineure, quinte, nominale…),
  * les graves sonnent le plus longtemps. `prime` : note de la cloche (Hz).
  */

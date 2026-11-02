@@ -1458,3 +1458,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le jeu tire sa météo selon la saison (plutôt beau, averses au printemps, orages d'été le soir, brume d'automne le matin, neige et givre l'hiver), par épisodes de 2 à 4 heures, toujours la même pour une date donnée.
 - Elle agit déjà sur le jeu : moins de passants sous la pluie (et ils pressent le pas), un peu moins de voitures et des conducteurs plus prudents, des pneus qui accrochent moins sur sol mouillé ou enneigé.
 - Pas encore : le ciel gris, la pluie, les flaques, la neige à l'écran (lot 1-3). `?debug` affiche la météo ; `?weather=pluie` (ou beau, nuageux, orage, brume, neige) l'impose. 1047 tests (14 de plus).
+
+**Ville vivante, lot 1-3 : la météo à l'écran (2 novembre 2026)** (D196)
+- On voit le temps qu'il fait : ciel gris et soleil voilé par temps couvert, pluie qui tombe autour de toi, sol mouillé et flaques, brume du matin, neige qui tombe et qui blanchit les toits, les rues et les arbres, orage avec éclairs et tonnerre.
+- Sons : pluie, tonnerre, vent plus fort par temps couvert, essuie-glaces en voiture. Les phares s'allument aussi de jour dans la brume, sous la pluie forte et la neige.
+- À mesurer sur ton téléphone : `?bench=1`, puis `?bench=1&weather=pluie` et `?bench=1&weather=neige` (ici, en rendu logiciel, seuls les appels de dessin se mesurent : +1 sous la pluie ou la neige).
+- Pas encore : pluie arrêtée par les abris, éclaboussures, neige sur les voitures et les passants. 1056 tests (9 de plus).
+- À regarder : `?weather=pluie`, `?weather=neige`, `?weather=brume&h=8`, `?weather=orage&h=22`.

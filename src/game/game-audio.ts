@@ -78,6 +78,8 @@ export class GameAudio {
   private prevHour = Number.NaN;
   private birdTimer = 2;
   private owlTimer = 20;
+  private wipeTimer = 0;
+  private inCar = false;
   private cryCool = 0;
   private crashCool = 0;
   private dryCool = 0;
@@ -126,6 +128,7 @@ export class GameAudio {
     }
     this.ride = null;
     this.hornOn = false;
+    this.inCar = v?.family === "car";
     this.pendingRide = v;
     if (v && kit) this.build(v, true);
   }
@@ -435,8 +438,14 @@ export class GameAudio {
     }
   }
 
-  /** À chaque image : minuteries, ambiance (heure 0-24, jour de l'année), cloches. */
-  update(dt: number, hour: number, day: number): void {
+  /** Coup de tonnerre (D196), `delay` secondes après l'éclair. */
+  thunder(delay: number, strength: number): void {
+    const kit = this.kit;
+    if (kit) S.thunder(kit, this.sys.buses!.ambience, kit.ctx.currentTime + delay, strength);
+  }
+
+  /** À chaque image : minuteries, ambiance (heure 0-24, jour de l'année, météo), cloches, essuie-glaces. */
+  update(dt: number, hour: number, day: number, weather: { rain: number; cloud: number } = { rain: 0, cloud: 0 }): void {
     this.cryCool -= dt;
     this.crashCool -= dt;
     this.dryCool -= dt;
@@ -445,7 +454,16 @@ export class GameAudio {
     const buses = this.sys.buses!;
     if (!this.amb) this.amb = new AmbienceVoice(kit, buses.ambience);
     const a = ambience(hour, day);
-    this.amb.update(a.city * 0.7, 0.6, a.crickets);
+    // Météo (D196) : le vent forcit par temps couvert, la pluie couvre les grillons et les oiseaux se taisent.
+    const wet = weather.rain;
+    this.amb.update(a.city * 0.7 * (1 - 0.3 * wet), 0.6 + 0.6 * weather.cloud, a.crickets * (1 - wet), wet);
+    a.birds *= 1 - 0.8 * Math.max(wet, weather.cloud * 0.5);
+    // Essuie-glaces : en voiture, sous la pluie, un aller toutes les 1,2 s (0,8 s sous une averse).
+    this.wipeTimer -= dt;
+    if (this.inCar && wet > 0.15 && this.wipeTimer <= 0) {
+      this.wipeTimer = wet > 0.7 ? 0.8 : 1.2;
+      S.wiper(kit, buses.sfx, kit.ctx.currentTime);
+    }
     const t = kit.ctx.currentTime;
     // Oiseaux et chouettes : au hasard autour de l'oreille, d'autant plus souvent que l'heure s'y prête.
     this.birdTimer -= dt * a.birds;

@@ -560,7 +560,7 @@ export function startBench(ctx: GameContext): void {
         trafficAcc -= 1 / 60;
       }
       const u0 = performance.now();
-      traffic.setNight(atmosphere.night);
+      traffic.setNight(atmosphere.headlights);
       setSurfaceGrip(surfaceGrip(atmosphere.weather));
       setDriverCaution(trafficWeather(atmosphere.weather).caution);
       traffic.setPeds(pedSim);

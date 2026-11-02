@@ -1,3 +1,4 @@
+import { weatherize } from "./weather-fx";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
@@ -152,8 +153,9 @@ export class StyleResources {
   private lit<P extends object>(p: P): THREE.Material {
     return this.gradient ? new THREE.MeshToonMaterial({ ...p, gradientMap: this.gradient }) : new THREE.MeshLambertMaterial(p);
   }
-  readonly wallMat = this.lit({ vertexColors: true });
-  readonly roofMat = this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+  // Bâti, toits, sol et feuillage portent la météo (D196 : sol mouillé, flaques, neige).
+  readonly wallMat = weatherize(this.lit({ vertexColors: true }), "wall");
+  readonly roofMat = weatherize(this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide }), "roof");
   /** Vitres allumées (nuit) : sans éclairage. */
   readonly glowMat = new THREE.MeshBasicMaterial({
     vertexColors: true, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
@@ -177,10 +179,10 @@ export class StyleResources {
     }
     return m;
   }
-  readonly groundMat = this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  readonly groundMat = weatherize(this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), "ground");
   readonly fenceMat = fenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
-  readonly crownMat = this.lit({ flatShading: true });
+  readonly crownMat = weatherize(this.lit({ flatShading: true }), "crown");
 }
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);

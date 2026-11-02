@@ -139,6 +139,8 @@ export function startGame(ctx: GameContext): void {
   // Sons (J7, D89) : rien ne joue avant le premier geste (règle des navigateurs) ; `?sound=0` les coupe.
   const audioSys = new AudioSystem(settings.values.volume);
   const audio = new GameAudio(audioSys);
+  // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
+  atmosphere.onThunder = (delay, strength) => audio.thunder(delay, strength);
   // Ressenti (D90) : vibrations du téléphone, tremblement de la caméra.
   const haptics = new Haptics(typeof navigator.vibrate === "function" ? (p) => void navigator.vibrate(p) : null);
   haptics.enabled = settings.values.vibration;
@@ -1139,7 +1141,7 @@ export function startGame(ctx: GameContext): void {
     setSurfaceGrip(surfaceGrip(wx));
     setDriverCaution(wxTraffic.caution);
     passageGates.update(atmosphere.hour, player.x, player.y);
-    (traffic as Traffic | null)?.setNight(atmosphere.night);
+    (traffic as Traffic | null)?.setNight(atmosphere.headlights);
     (traffic as Traffic | null)?.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, vehicle: riding ? { x: riding.state.x, y: riding.state.y } : null, weather: wxTraffic.density });
     if (riding) {
       const s = riding.state;
@@ -1157,7 +1159,7 @@ export function startGame(ctx: GameContext): void {
         audio.drive(dt, s, input.throttle, input.brake);
         haptics.crash(s.impact);
         if (s.impact >= 1.2) shake.impact(s.impact);
-        lights?.update(atmosphere.night, input.brake > 0.05 && s.speed > 0.5, s.speed < -0.3);
+        lights?.update(atmosphere.headlights, input.brake > 0.05 && s.speed > 0.5, s.speed < -0.3);
         s.impact = 0;
         // Caméra de poursuite : se recale derrière le véhicule, sauf si l'on vient de regarder ailleurs.
         lookIdle = input.looking ? 0 : lookIdle + dt;
@@ -1414,7 +1416,7 @@ export function startGame(ctx: GameContext): void {
       lastStars = wanted.stars;
     }
     audio.traffic(dt, eachCar);
-    audio.update(dt, atmosphere.hour, atmosphere.day);
+    audio.update(dt, atmosphere.hour, atmosphere.day, atmosphere.weather);
     if (signals) (signals as Signals).clock.t += dt;
     atmosphere.advance(dt);
     placeSun(player.x, player.y, player.z);

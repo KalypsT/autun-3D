@@ -9,7 +9,7 @@ function make(hour: number, speed: number, date: number): Atmosphere {
   const sky = new THREE.ShaderMaterial({
     uniforms: {
       horizon: { value: new THREE.Color() }, mid: { value: new THREE.Color() }, zenith: { value: new THREE.Color() }, sun: { value: new THREE.Vector3() },
-      stars: { value: 0 }, cloudLight: { value: 1 }, disc: { value: 1 },
+      stars: { value: 0 }, cloudLight: { value: 1 }, disc: { value: 1 }, cover: { value: 0 }, clouds: { value: 0 },
     },
   });
   const res = { glowMat: { opacity: 0, visible: false }, haloMat: { opacity: 0, visible: false } } as unknown as StyleResources;
@@ -46,5 +46,46 @@ describe("horloge du jeu", () => {
     expect(a.calendar.season).toBe(3);
     a.setCalendar({ length: 14, frozen: null });
     expect(a.calendar.season).toBe(0);
+  });
+});
+
+describe("météo à l'écran (D196)", () => {
+  const sunOf = (a: Atmosphere): number => (a as unknown as { sunLight: THREE.DirectionalLight }).sunLight.intensity;
+  const fogOf = (a: Atmosphere): THREE.Fog => (a as unknown as { scene: THREE.Scene }).scene.fog as THREE.Fog;
+
+  it("par temps couvert, le soleil est voilé ; sous la pluie et dans la brume, l'horizon se rapproche", () => {
+    const a = make(14, 0, 9);
+    a.setWeather("beau");
+    const sun = sunOf(a), far = fogOf(a).far;
+    a.setWeather("nuageux");
+    expect(sunOf(a)).toBeLessThan(sun * 0.7);
+    a.setWeather("pluie");
+    expect(fogOf(a).far).toBeLessThan(far * 0.8);
+    a.setWeather("brume");
+    expect(fogOf(a).far).toBeLessThan(200);
+  });
+
+  it("les phares s'allument de jour dans la brume et sous la pluie, pas par beau temps", () => {
+    const a = make(14, 0, 9);
+    a.setWeather("beau");
+    expect(a.headlights).toBe(0);
+    a.setWeather("brume");
+    expect(a.headlights).toBe(1);
+    a.setWeather("pluie");
+    expect(a.headlights).toBe(1);
+  });
+
+  it("l'orage fait des éclairs, chacun suivi d'un coup de tonnerre", () => {
+    const a = make(22, 0, 9);
+    a.setWeather("orage");
+    const thunders: number[] = [];
+    a.onThunder = (delay) => thunders.push(delay);
+    for (let i = 0; i < 60 * 60; i++) a.advance(1 / 60);
+    expect(thunders.length).toBeGreaterThan(2);
+    for (const d of thunders) expect(d).toBeGreaterThan(1);
+    a.setWeather("beau");
+    thunders.length = 0;
+    for (let i = 0; i < 60 * 60; i++) a.advance(1 / 60);
+    expect(thunders.length).toBe(0);
   });
 });

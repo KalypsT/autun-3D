@@ -9,6 +9,7 @@ import type { TiledTerrain } from "../data/terrain";
 import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
+import { weatherize } from "./weather-fx";
 import { breakFurniture, disposeTile, type TileMeshes, type TileStats } from "./stylized";
 import { FINE_RANGE, VIEW_RANGE } from "./terrain";
 
@@ -161,7 +162,7 @@ export class TileManager {
 
   private async loadFar(): Promise<void> {
     const list = await loadLandmarks();
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+    const mat = weatherize(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), "wall");
     for (const l of list) {
       const e = this.entries.get(l.tile);
       if (!e) continue;
@@ -295,8 +296,8 @@ export class TileManager {
   private dropLod(e: Entry): void {
     if (e.lod) {
       this.group.remove(e.lod);
+      // La matière est partagée par toutes les silhouettes (D196) : seule la géométrie est libérée.
       e.lod.geometry.dispose();
-      (e.lod.material as THREE.Material).dispose();
       e.lod = null;
     }
     e.lodData = null;

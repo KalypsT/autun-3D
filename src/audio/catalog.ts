@@ -192,6 +192,18 @@ export const SCENES: readonly SoundScene[] = [
       at(t0 + 5.8, () => a.stop(0.2));
     },
   },
+  {
+    id: "rain", section: "Ville", label: "Pluie, puis averse (D196)", seconds: 8,
+    play(kit, dest, t0, at) {
+      const a = new AmbienceVoice(kit, dest);
+      at(t0, () => a.update(0.3, 0.8, 0, 0.5));
+      at(t0 + 4, () => a.update(0.3, 1, 0, 1));
+      at(t0 + 7.8, () => a.stop(0.2));
+    },
+  },
+  shot("thunder-near", "Ville", "Tonnerre tout proche (D196)", 6, (k, o, t) => S.thunder(k, o, t, 1)),
+  shot("thunder-far", "Ville", "Tonnerre lointain (D196)", 6, (k, o, t) => S.thunder(k, o, t, 0.25)),
+  shot("wipers", "Véhicules", "Essuie-glaces (D196)", 3, (k, o, t, i) => S.wiper(k, o, t + i * 1.1), 3, 0),
   shot("stars-up", "Joueur", "Étoile de recherche gagnée", 0.6, (k, o, t) => S.jingle(k, o, t, [988, 740], 0.09, "square", 0.3)),
   shot("stars-lost", "Joueur", "Police semée", 0.8, (k, o, t) => S.jingle(k, o, t, [660, 880, 1175], 0.1, "sine", 0.3)),
   shot("pickup", "Joueur", "Arme ramassée", 0.8, (k, o, t) => {

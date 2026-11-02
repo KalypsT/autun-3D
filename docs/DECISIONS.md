@@ -3850,3 +3850,37 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Midi sur la place du Champ de Mars, beau temps](captures/d195-beau.jpg)
 ![Même lieu, `?weather=pluie` : moins de passants ; le ciel ne change qu'au lot 1-3](captures/d195-pluie.jpg)
+
+## 2026-11-02 — D196. Ville vivante, lot 1-3 : la météo à l'écran (plan `docs/plans/ville-vivante.md`, § 3)
+
+**Sol mouillé, flaques, neige au sol** (`src/render/weather-fx.ts`, fait en premier comme le demandait le plan) : `weatherize(matière, surface)` ajoute quelques lignes aux nuanceurs du sol vectoriel, du relief, du bâti, des toits, du feuillage, des silhouettes lointaines et des clochers lointains. Toutes lisent **les mêmes uniformes** (`uWet`, `uSnow`, `uSkyTint`) : changer la météo ne recompile rien et ne touche aucune matière (test). Chaque sorte de surface a sa clé de programme (`customProgramCacheKey`), sans quoi deux nuanceurs enchaînés différents auraient partagé un programme. Aucune texture : un bruit en coordonnées du monde.
+- *Mouillé* : faces tournées vers le ciel plus sombres (−32 %) ; **flaques** au sol seulement (taches de 2 à 3 m, qui s'étendent un peu avec la pluie), plus sombres, avec le **reflet du bas du ciel à jour frisant** (lumière émise, terme de Fresnel). Écart au plan : il parlait de rugosité plus basse ; les matières du style « affiche » (toon, Lambert) n'ont pas de reflets, l'émission en tient lieu. Premier essai : flaques larges et claires, qu'on prenait pour de la neige ; corrigé (plus petites, sombres, reflet seulement de loin).
+- *Neige* : par plaques (bruit), puis partout, sur les faces tournées vers le ciel (seuils propres au sol, aux toits en pente, au bâti et au feuillage) ; givre = neige faible du matin (D195).
+- Dans le nuanceur, tout est sauté (`if`) par beau temps sec : il ne reste qu'un passage de deux vecteurs entre sommet et fragment.
+
+**Ciel et lumière** (`Atmosphere`, `sky.ts`) : couleurs du ciel, du brouillard et de la lumière d'ambiance tirées vers leur propre luminance selon la couverture (le gris suit donc le jour et la nuit) ; soleil voilé (jusqu'à −78 %), lumière d'ambiance relevée (+30 %) : ombres plus douces ; disque solaire et étoiles cachés par un ciel couvert ; **nuages du ciel** (déjà dans le nuanceur, jamais allumés) : le seuil baisse avec la couverture, ils s'étendent et grisent. Brouillard : pluie et neige rapprochent l'horizon (−35 % et −30 %), la brume le ramène à 170 m. Fenêtres et lampadaires s'allument plus tôt par temps très couvert.
+
+**Pluie et neige qui tombent** (`src/render/precipitation.ts`) : 6 000 gouttes (traits de 55 cm) ou 4 500 flocons (disques de 5 cm qui flottent), dans une boîte qui suit la caméra ; tout est calculé par le nuanceur (chute, vent, repli dans la boîte), **un appel de dessin** par sorte, et aucun quand il ne pleut pas. La densité choisit combien de gouttes sont dessinées.
+
+**Orage** : éclairs de 0,18 s (deux fois sur dix, un second) qui éclairent la lumière d'ambiance (×3,5) et les nuages ; tonnerre décalé selon une distance tirée (0,4 à 5,4 km : 1 à 16 s), claquement sec seulement de près.
+
+**Sons** (`synth.ts`, `voices.ts`, page `?sounds` et `tools/sounds.sh`) : pluie (crépitement de bruit blanc, grondement sourd sous l'averse), tonnerre (claquement, roulement de bouffées graves), vent qui forcit par temps couvert, oiseaux qui se taisent et grillons couverts par la pluie, **essuie-glaces** en voiture sous la pluie (toutes les 1,2 s, 0,8 s sous l'averse). Hors ligne : pluie crête −8,6 dB, tonnerre proche −10,4 dB, lointain −16,6 dB, essuie-glaces −23,4 dB.
+
+**Phares** (`Atmosphere.headlights`) : allumés aussi de jour dans la brume, sous une forte pluie ou sous la neige (circulation et véhicule du joueur).
+
+**Mesure** (`?bench=court`, rendu logiciel : appels de dessin et triangles exacts, durées sans portée) : à l'arrêt sur la place, beau 150 appels et 1 415 k triangles, pluie 151 et 1 428 k, neige 151 et 1 425 k ; la durée médiane d'une image (où le rendu logiciel paie surtout les fragments) ne bouge pas au-delà du bruit (1 166, 1 183 et 1 150 ms). **Le coût réel des nuanceurs sur le téléphone reste à mesurer** : `?bench=1` puis `?bench=1&weather=pluie` et `&weather=neige`.
+
+**Tests** (+9, 1056) : `weather-fx.test.ts` (chaque ligne remplacée existe dans les nuanceurs toon, Lambert et standard de Three.js ; uniformes partagés ; flaques au sol seulement ; nuanceur d'origine gardé ; clés de programme distinctes ; changer la météo ne change pas la version des matières ; une goutte = deux triangles ; invisible sans pluie ; densité) ; `atmosphere.test.ts` (soleil voilé, horizon rapproché, phares, éclairs suivis du tonnerre).
+
+**Limites** : la pluie tombe aussi sous les abris (passage Balthus, porches) et traverse les toits quand on est dessous ; pas d'éclaboussures ni de gouttes sur l'écran ; les murs ne ruissellent pas ; les flaques ne reflètent que la couleur du ciel (pas les façades) ; la neige ne s'accumule pas sur les voitures garées, les personnages ni le mobilier à part (ils n'ont pas la matière patinée) ; le son de la pluie n'est pas plus fort sous un abri (prévu « si c'est simple » : il faudrait savoir qu'on est sous un toit) ; les éclairs n'éclairent pas d'un coup les ombres portées. La neige reste blanche au crépuscule (elle suit la lumière, pas le ciel).
+
+![La place du Champ de Mars, 14 h, avant](captures/d196-place-avant.jpg)
+![Nuageux](captures/d196-place-nuageux.jpg)
+![Pluie : flaques, sol sombre, gouttes](captures/d196-place-pluie.jpg)
+![Brume, 8 h](captures/d196-place-brume.jpg)
+![Neige](captures/d196-place-neige.jpg)
+![Orage, 22 h](captures/d196-place-orage-nuit.jpg)
+![Vue aérienne, avant](captures/d196-aerien-avant.jpg)
+![Vue aérienne sous la neige](captures/d196-aerien-neige.jpg)
+![Rue aux Cordiers, avant](captures/d196-cordiers-avant.jpg)
+![Rue aux Cordiers sous la pluie](captures/d196-cordiers-pluie.jpg)
