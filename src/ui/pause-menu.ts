@@ -194,6 +194,8 @@ export class PauseMenu {
     });
     const aimSens = h("div", "pm-slider");
     aimSens.append(aimRange, aimOut);
+    row("Aide à la visée", "En mode visée : le viseur colle aux passants et les suit quand on tourne ou qu'on marche. Jamais sur la tête.", "aimAssist",
+      choices("aimAssist", [{ value: 0, label: "Aucune" }, { value: 1, label: "Légère" }, { value: 2, label: "Forte" }], values.aimAssist));
     row("Sensibilité en visée", "Rotation au doigt quand on vise, en plus de la précédente : plus bas, plus précis.", "aimSensitivity", aimSens);
     const vol = h("input");
     vol.type = "range";

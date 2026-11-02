@@ -4100,3 +4100,17 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Tests** (+7) : en visée, la balle va au viseur et non à la personne la plus proche, le tireur se tourne vers le point visé ; tête (dégâts ×3, un tir de pistolet tue), au-dessus de la tête rien n'est touché ; au-dessus d'une personne à terre, la personne debout derrière est touchée ; un talus arrête la balle ; une balle au-dessus du toit d'une voiture continue, plus bas la voiture la prend ; à la hanche, la balle descend vers une cible en contrebas ; le corps tourné vers le cap voulu en marchant de côté et à reculons. Capture : `tools/ui.sh <dossier> aim`.
 
 ![Mode visée (`tools/ui.sh <dossier> aim`) : caméra à l'épaule, viseur rouge sur le passant, trait du tir du pistolet à hauteur de poitrine](captures/d205-visee-tir.jpg)
+
+## 2026-11-02 — D206. Tir, lot T2 : aide à la visée réglable, tir à la hanche resserré
+
+**Ce qui est fait** :
+- **Aide à la visée du mode visée** (`src/core/aim-assist.ts`, `AimAssist`), réglage **« Aide à la visée »** : Aucune, **Légère** (par défaut), Forte. Deux effets, seulement quand la caméra est à l'épaule :
+  - **le viseur colle** : près de la poitrine d'un passant visible, le geste du doigt est freiné (jusqu'à 35 % en Légère, 55 % en Forte, au centre ; rien au bord de la zone) : on ne dépasse plus la cible d'un coup de pouce ;
+  - **il est attiré** vers la poitrine (3 et 7 par seconde au centre de la zone), **seulement si l'on tourne ou qu'on marche** : sans geste, rien ne bouge tout seul ; l'attraction ne dépasse jamais la cible.
+  - **Zone** : un cercle de 0,9 m (Légère) ou 1,4 m (Forte) autour de la poitrine, ramené en angle à la distance de la cible (bornes 1,7° à 9° et 2,9° à 14°) : large de près, étroite de loin. La plus proche du viseur est choisie, parmi les passants debout à portée de l'arme, sans mur entre eux et le tireur.
+  - **Jamais la tête** : l'aide vise la poitrine ; un regard posé sur la tête est ramené vers le bas dès qu'on tourne. Le tir dans la tête reste au joueur.
+- **Tir à la hanche resserré** : cône de visée assistée ramené de ±40° à **±20°** (`GUN_ASSIST_ANGLE` 0,35) et dispersion **+40 %** (`HIP_SPREAD`). Viser devient plus précis que tirer à la hanche ; la hanche reste utile de près et pour se défendre.
+
+**Choix** : l'aide part de la caméra de l'image précédente (une image de retard, invisible) ; elle ne touche pas au tir lui-même (la balle va toujours au viseur). Le tireur automatique du banc se tourne vers sa cible : le cône plus étroit ne le gêne pas, seule la dispersion élargie peut lui faire rater quelques balles de plus (à relire au prochain banc).
+
+**Tests** (+5, et deux adaptés) : sans cible ou réglée sur Aucune, rien ne change ; freinage plus fort en Forte qu'en Légère ; attraction en marchant sans dépasser, rien sans geste ; vers la poitrine et non la tête ; hors de la zone ou derrière un mur, rien, et la cible la plus proche du viseur est choisie ; cône de la hanche à ±20° ; dispersion élargie à la hanche.

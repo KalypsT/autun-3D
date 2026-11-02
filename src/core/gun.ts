@@ -34,8 +34,8 @@ export interface ShootWorld extends Arena {
   hurtVehicle?(id: number, damage: number, x: number, y: number): void;
 }
 
-/** Demi-angle (rad) du cône de visée assistée autour du regard de la caméra. */
-export const GUN_ASSIST_ANGLE = 0.7;
+/** Demi-angle (rad) du cône de visée assistée (tir à la hanche) autour du regard de la caméra : ±20° (±40° avant le mode visée, D206). */
+export const GUN_ASSIST_ANGLE = 0.35;
 /** Les armes pointent à la hauteur de la poitrine : le trait part d'un peu devant le joueur. */
 export const MUZZLE = 0.55;
 /** Après un tir, le personnage reste en position de tir (s). */
@@ -47,8 +47,9 @@ export const MUZZLE_Z = 1.35;
 /** Tir dans la tête (D205) : la part haute du corps (m) et le multiplicateur des dégâts (un passant meurt d'une balle de pistolet dans la tête). */
 export const HEAD_SIZE = 0.28;
 export const HEAD_MULT = 3;
-/** En visée, la dispersion est réduite de moitié (on prend le temps de viser). */
+/** En visée, la dispersion est réduite de moitié (on prend le temps de viser) ; à la hanche, elle est augmentée de 40 % (D206). */
 export const AIM_SPREAD = 0.5;
+export const HIP_SPREAD = 1.4;
 /** Pas (m, à l'horizontale) du contrôle du relief le long d'un rayon. */
 const GROUND_STEP = 1.5;
 /** Hauteur d'une carrosserie (m) : une balle plus haute passe au-dessus. */
@@ -267,7 +268,7 @@ export class Gun {
       pitch = Math.atan2(this.body.z + this.body.h * 0.7 - mz, Math.max(0.5, Math.hypot(this.pos.x - mx, this.pos.y - my)));
       flat = false;
     }
-    const spread = weapon.spread * (this.aiming ? AIM_SPREAD : 1);
+    const spread = weapon.spread * (this.aiming ? AIM_SPREAD : HIP_SPREAD);
     const per = (d: number): number => (weapon.falloff ? Math.max(FALLOFF_MIN, 1 - (d / weapon.range) * (1 - FALLOFF_MIN)) : 1);
     for (let k = 0; k < weapon.pellets && res.fxCount < MAX_SHOTS; k++) {
       // Dispersion : triangulaire (plus de tirs près de l'axe qu'au bord du cône), à l'horizontale et, hors du tir à plat, en hauteur.

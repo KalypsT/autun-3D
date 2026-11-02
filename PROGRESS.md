@@ -1510,3 +1510,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les balles ont une hauteur : elles passent au-dessus d'une tête ou d'une voiture, s'arrêtent dans une pente ; **une balle dans la tête fait trois fois plus mal**. Le tir à la hanche (bouton de tir seul) reste assisté comme avant.
 - À juger en jouant : sensibilité, distance de la caméra, s'il faut une aide à la visée (lot T2). Ensuite : T2 aide à la visée, T3 fusil de précision et lunette.
 
+**Tir, lot T2 : l'aide à la visée (2 novembre 2026)** (D206)
+- En mode visée, le viseur **colle** un peu aux passants (le doigt tourne moins vite dessus) et les **suit** quand tu tournes ou marches. Il ne vise jamais tout seul, ni la tête. Réglage « Aide à la visée » : Aucune, Légère (par défaut), Forte.
+- Le tir à la hanche est plus étroit (±20° au lieu de ±40°) et moins précis : viser vaut maintenant le coup.
+- Ensuite : T3 fusil de précision et lunette.
+

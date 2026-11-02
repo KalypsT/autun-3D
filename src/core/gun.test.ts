@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GUN_ASSIST_ANGLE, Gun, HEAD_MULT, MUZZLE, MUZZLE_Z, type AimRay, type ShootWorld } from "./gun";
+import { GUN_ASSIST_ANGLE, Gun, HEAD_MULT, HIP_SPREAD, MUZZLE, MUZZLE_Z, type AimRay, type ShootWorld } from "./gun";
 import { Inventory, WEAPONS } from "./weapons";
 
 const DT = 1 / 60;
@@ -97,11 +97,11 @@ describe("armes à feu (J5-3)", () => {
   });
 
   it("la visée assistée tourne le tir vers la cible dans le cône du regard ; hors du cône, le tir part droit devant", () => {
-    const side = world([{ x: 6, y: 10, hp: 100 }]);
+    const side = world([{ x: 3, y: 10, hp: 100 }]);
     const g = new Gun(5);
     const r = g.step(DT, true, false, WEAPONS.pistol, armed("pistol", 24), 0, 0, 0, side);
     expect(g.targeted).toBe(true);
-    expect(g.facing).toBeCloseTo(Math.atan2(6, 10), 6);
+    expect(g.facing).toBeCloseTo(Math.atan2(3, 10), 6);
     expect(r.fired).toBe(1);
     expect(r.hits).toBe(1);
     const out = world([{ x: 20, y: 5, hp: 100 }]);
@@ -110,7 +110,12 @@ describe("armes à feu (J5-3)", () => {
     expect(g2.targeted).toBe(false);
     expect(g2.facing).toBe(0);
     expect(r2.hits).toBe(0);
-    expect(GUN_ASSIST_ANGLE).toBeGreaterThan(0.5);
+    // Cône resserré à ±20° depuis le mode visée (D206) : une cible à 31° n'est plus visée.
+    expect(GUN_ASSIST_ANGLE).toBeCloseTo(0.35, 5);
+    const wide = world([{ x: 6, y: 10, hp: 100 }]);
+    const g3 = new Gun(5);
+    g3.step(DT, true, false, WEAPONS.pistol, armed("pistol", 24), 0, 0, 0, wide);
+    expect(g3.targeted).toBe(false);
   });
 
   it("un mur arrête le tir et empêche de viser ce qu'il cache ; le trait s'arrête sur le mur", () => {
@@ -213,7 +218,7 @@ describe("armes à feu (J5-3)", () => {
     expect(g.step(DT, true, false, WEAPONS.fists, inv, 0, 0, 0, w).fired).toBe(0);
   });
 
-  it("la dispersion est reproductible pour une graine et reste dans le cône de l'arme", () => {
+  it("la dispersion est reproductible pour une graine et reste dans le cône de l'arme (élargi à la hanche)", () => {
     const shoot = (seed: number): number[] => {
       const g = new Gun(seed), inv = armed("rifle", 200), w = world([]), out: number[] = [];
       for (let k = 0; k < 120; k++) {
@@ -225,7 +230,8 @@ describe("armes à feu (J5-3)", () => {
     const a = shoot(3), b = shoot(3), c = shoot(4);
     expect(a).toEqual(b);
     expect(a).not.toEqual(c);
-    for (const angle of a) expect(Math.abs(angle)).toBeLessThanOrEqual(WEAPONS.rifle.spread + 1e-9);
+    for (const angle of a) expect(Math.abs(angle)).toBeLessThanOrEqual(WEAPONS.rifle.spread * HIP_SPREAD + 1e-9);
+    expect(Math.max(...a.map(Math.abs))).toBeGreaterThan(WEAPONS.rifle.spread * 0.8);
   });
 });
 

@@ -17,6 +17,8 @@ export interface Settings {
   sensitivity: number;
   /** Sensibilité en mode visée (D205), multipliée par la précédente : plus bas, plus précis. */
   aimSensitivity: number;
+  /** Aide à la visée en mode visée (D206) : 0 aucune, 1 légère, 2 forte. */
+  aimAssist: 0 | 1 | 2;
   /** Minimap : nord toujours en haut au lieu de tourner avec la caméra. */
   minimapNorth: boolean;
   /** Foule : nombre maximal de passants à la fois (0 = aucun). Le nombre réel suit l'heure et le lieu (D39). */
@@ -35,7 +37,7 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, aimSensitivity: 0.6, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -60,6 +62,7 @@ export function parseSettings(raw: unknown): Settings {
     detail: detail === null ? d.detail : nearest(DETAIL_CHOICES, detail),
     sensitivity: sens === null ? d.sensitivity : Math.min(Math.max(Math.round(sens * 10) / 10, SENSITIVITY_RANGE.min), SENSITIVITY_RANGE.max),
     aimSensitivity: aimSens === null ? d.aimSensitivity : Math.min(Math.max(Math.round(aimSens * 10) / 10, AIM_SENSITIVITY_RANGE.min), AIM_SENSITIVITY_RANGE.max),
+    aimAssist: [0, 1, 2].includes(o["aimAssist"] as number) ? (o["aimAssist"] as 0 | 1 | 2) : d.aimAssist,
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),

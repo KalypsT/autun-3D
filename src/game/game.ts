@@ -38,6 +38,7 @@ import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health,
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
+import { AimAssist, type AimAssistInput } from "../core/aim-assist";
 import { CACHE_ROUNDS, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
@@ -234,6 +235,9 @@ export function startGame(ctx: GameContext): void {
   const camDir = new THREE.Vector3();
   const gunView: GunView = { z: 0, aim: null };
   const aimRay = { ox: 0, oy: 0, oz: 0, dx: 0, dy: 1, dz: 0 };
+  /** Aide à la visée (D206) : le viseur colle aux passants et les suit, en visée seulement, selon le réglage. */
+  const assist = new AimAssist();
+  const assistIn: AimAssistInput = { cx: 0, cy: 0, cz: 0, yaw: 0, pitch: 0, dYaw: 0, dPitch: 0, x: 0, y: 0, speed: 0, range: 0 };
   /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
   let downFor = 0;
   let downSide = -1;
@@ -1153,10 +1157,29 @@ export function startGame(ctx: GameContext): void {
     controls.lookScale = aiming ? settings.values.aimSensitivity : 1;
     aimB += ((aiming ? 1 : 0) - aimB) * Math.min(1, dt * 12);
     if (Math.abs(aimB - (aiming ? 1 : 0)) < 0.002) aimB = aiming ? 1 : 0;
-    yaw += input.lookYaw;
+    let dYaw = input.lookYaw, dPitch = input.lookPitch;
+    // Aide à la visée (D206) : une fois la caméra à l'épaule (l'axe de la caméra est alors le viseur), d'après la caméra de l'image précédente.
+    if (aiming && aimB > 0.9 && settings.values.aimAssist > 0) {
+      const ai = assistIn;
+      ai.cx = camera.position.x;
+      ai.cy = -camera.position.z;
+      ai.cz = camera.position.y;
+      ai.yaw = yaw;
+      ai.pitch = pitch;
+      ai.dYaw = dYaw;
+      ai.dPitch = dPitch;
+      ai.x = player.x;
+      ai.y = player.y;
+      ai.speed = player.speed;
+      ai.range = inventory.current.range;
+      assist.step(dt, settings.values.aimAssist, ai, shootWorld);
+      dYaw = assist.dYaw;
+      dPitch = assist.dPitch;
+    }
+    yaw += dYaw;
     // Bornes du regard : celles de la visée ou de la balade. En changeant de mode, un regard hors des nouvelles bornes y revient doucement au lieu de sauter.
     const loP = aiming ? AIM_MIN_PITCH : MIN_PITCH, hiP = aiming ? AIM_MAX_PITCH : MAX_PITCH;
-    pitch = Math.min(Math.max(pitch + input.lookPitch, Math.min(loP, pitch)), Math.max(hiP, pitch));
+    pitch = Math.min(Math.max(pitch + dPitch, Math.min(loP, pitch)), Math.max(hiP, pitch));
     if (pitch < loP) pitch = Math.min(loP, pitch + (loP - pitch) * Math.min(1, dt * 8) + dt * 0.05);
     else if (pitch > hiP) pitch = Math.max(hiP, pitch - (pitch - hiP) * Math.min(1, dt * 8) - dt * 0.05);
 
