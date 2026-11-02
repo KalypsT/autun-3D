@@ -4011,3 +4011,26 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 
 ![Jeudi 10 h : le parking](captures/d201-jeudi.jpg)
 ![Mercredi 10 h : le marché, étals et marchands](captures/d201-marche-mercredi.jpg)
+
+## 2026-11-02 — D202. Ville vivante, lot 2-2 : les fêtes (plan `docs/plans/ville-vivante.md`, § 8)
+
+Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.feasts`) ; `game/feasts.ts` les met en scène.
+
+**Illuminations de Noël** (automne j7 → hiver j3, `render/feast-lights.ts`) : des **guirlandes d'ampoules** tendues à 5,6 m entre les lampadaires qui se font face dans le centre (chaque lampadaire relié au plus proche voisin entre 7 et 18 m, à moins de 450 m entre la mairie et la cathédrale) et un **sapin illuminé** de 9 m dans l'allée centrale du parking du Champ de Mars (obstacle). Deux appels de dessin, seulement pendant les illuminations ; les ampoules brillent avec la nuit. Écart au plan : les guirlandes ne sont pas posées rue par rue (Grande Rue Chauchien, rue aux Cordiers) mais entre les lampadaires d'OpenStreetMap, faute de tracé des rues à portée ; il y en a donc là où il y a des lampadaires.
+
+**Marché de Noël** (hiver j1 et j2, de 14 h à 22 h) : un tiers des places du marché portent des **chalets** de bois à toit rouge ou vert et guirlande (variante des étals, D201), avec leurs marchands, la foule doublée autour (le soir surtout, puisqu'il fait nuit tôt l'hiver). Pas de son de vin chaud (le brouhaha du marché ne joue que le mercredi et le vendredi : à brancher si tu le veux).
+
+**Fête de la musique** (été j1, de 18 h à 1 h) : quatre groupes de trois musiciens (place du Champ de Mars, place du Terreau, parvis de Saint-Lazare, rue aux Cordiers), places « scène » tenues par des passants qui viennent les occuper (ils jouent avec les mains, `talkPose` : pas de pose ni d'instrument dédiés) ; chaque groupe joue une **boucle de quatre accords** dans sa tonalité (basse, accord, mélodie, synthèse), qu'on entend à 150 m ; foule doublée autour. Les marchands du marché sont appelés de la même façon (chaque seconde, une place libre reçoit le passant seul le plus proche, à moins de 30 m).
+
+**14 juillet** (été j3) : **feu d'artifice au-dessus du plan d'eau du Vallon** (`core/fireworks.ts`, `render/fireworks.ts`) : fusées tirées de ± 60 m autour du centre du lac, gerbes de six couleurs qui éclatent entre 90 et 160 m, étincelles freinées par l'air qui retombent en s'éteignant, bouquet final ; **un appel de dessin** pour toutes les particules (2 400 au plus) et un pour leur **reflet** dans l'eau ; détonations décalées selon la distance (le son à 343 m/s). Foule triplée au bord du lac à partir de 22 h. Le jeu va vite : le spectacle dure l'heure de 23 h à minuit, soit 50 s réelles.
+
+**Essais existants** : deux essais de circulation (`traffic-sim.test.ts`, 30 voitures pendant 2 minutes ; `traffic.test.ts`, remplissage de la couronne) dépassaient parfois la limite de 5 s sous la charge de toute la suite (3 s seuls, même durée avant et après ces changements) ; ils ont maintenant 20 s. Aucun critère ne change.
+
+**Tests** (+4) : feu (rien hors spectacle, éclatements au-dessus du lac, tout retombe et s'éteint), foule des fêtes, guirlandes (paires de lampadaires), illuminations (deux maillages, montrés seulement pendant la fête).
+
+**Limites** : le feu n'est pas visible depuis le centre-ville (le lac est à 1,3 km, au-delà de la distance d'affichage de 1,2 km) : il faut aller au bord du lac ; les musiciens n'ont pas d'instruments ; les guirlandes n'existent que dans les tuiles chargées au moment où les illuminations commencent ; les feuilles mortes de fin d'automne couvrent aussi l'asphalte du parking.
+
+![Le feu d'artifice vu de la rive ouest du plan d'eau du Vallon](captures/d202-feu-artifice.jpg)
+![Illuminations : le sapin de la place](captures/d202-illuminations.jpg)
+![Marché de Noël : les chalets](captures/d202-marche-noel.jpg)
+![Fête de la musique sur la place](captures/d202-fete-musique.jpg)

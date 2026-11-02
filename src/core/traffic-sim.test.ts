@@ -164,7 +164,7 @@ describe("circulation à plusieurs (J3-2)", () => {
     console.log(`30 voitures : ${contactSteps} pas avec contact, pire impact ${worst.toFixed(1)} m/s, ${sim.cars.length} restantes`);
     expect(worst).toBeLessThan(3);
     expect(contactSteps).toBeLessThan(60);
-  });
+  }, 20000); // Deux minutes simulées : 4 à 6 s, à la limite des 5 s par défaut sous la charge de toute la suite (D202).
 });
 
 describe("passants et circulation (J3-3b)", () => {

@@ -36,10 +36,13 @@ export class MarketController {
   private readonly places: (StallPlace & { key: number; order: number })[] = [];
   private readonly keys = new Set<number>();
   private readonly view: MarketStalls;
+  /** Chalets du marché de Noël (D202), créés à la première occasion. */
+  private chalets: MarketStalls | null = null;
+  private christmas = false;
   private shown = -1;
   private readonly stash: Stashed[] = [];
 
-  constructor(scene: THREE.Scene, private readonly fleet: Fleet, private readonly colliders: Colliders, private readonly seats: Seats | null, private readonly terrain: HeightField) {
+  constructor(private readonly scene: THREE.Scene, private readonly fleet: Fleet, private readonly colliders: Colliders, private readonly seats: Seats | null, private readonly terrain: HeightField) {
     this.view = new MarketStalls(scene);
   }
 
@@ -60,18 +63,24 @@ export class MarketController {
     this.shown = -1;
   }
 
-  /** Nombre d'étals montrés à cette heure, ce jour-là. */
-  count(weekday: number, hour: number): number {
+  /** Nombre d'étals montrés à cette heure, ce jour-là (marché de Noël : un tiers des places, en chalets). */
+  count(weekday: number, hour: number, christmas = false): number {
+    if (christmas) return Math.round(this.places.length * 0.35);
     return Math.round(marketLevel(weekday, hour) * this.places.length * STALL_SHARE);
   }
 
-  update(weekday: number, hour: number): void {
-    const n = this.count(weekday, hour);
-    if (n === this.shown) return;
+  update(weekday: number, hour: number, christmas = false): void {
+    const n = this.count(weekday, hour, christmas);
+    if (n === this.shown && christmas === this.christmas) return;
     const was = this.shown;
     this.shown = n;
+    this.christmas = christmas;
     const live = this.places.slice(0, n);
-    this.view.update(live, (x, y) => this.terrain.heightAt(x, y));
+    const ground = (x: number, y: number): number => this.terrain.heightAt(x, y);
+    if (christmas && !this.chalets) this.chalets = new MarketStalls(this.scene, 60, true);
+    // Les chalets ont des toits rouge sombre ou vert sapin.
+    this.chalets?.update(christmas ? live.map((s) => ({ ...s, color: s.color % 2 ? 0 : 2 })) : [], ground);
+    this.view.update(christmas ? [] : live, ground);
     this.colliders.removeTag(STALL_TAG);
     if (n > 0) {
       this.colliders.currentTag = STALL_TAG;

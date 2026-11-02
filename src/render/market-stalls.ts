@@ -54,6 +54,18 @@ export function stallFrameGeometry(): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/** Chalet du marché de Noël (D202) : planches brunes au fond et sur les côtés, comptoir devant, guirlande sous le toit. */
+export function chaletFrameGeometry(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const wood = "#7a5232", dark = "#5a3a22";
+  boxInto(parts, 2.3, 2.1, 0.08, 0, 1.05, 0.65, wood);
+  for (const x of [-1.15, 1.15]) boxInto(parts, 0.08, 2.1, 1.4, x, 1.05, -0.05, dark);
+  boxInto(parts, 2.3, 0.95, 0.08, 0, 0.475, -0.7, wood);
+  boxInto(parts, 2.4, 0.06, 0.4, 0, 0.98, -0.62, "#c8a070");
+  for (let i = 0; i < 9; i++) boxInto(parts, 0.06, 0.06, 0.06, -1.05 + i * 0.26, 2.0, -0.72, i % 2 ? "#ffd27a" : "#ff6a5a");
+  return merge(parts);
+}
+
 /** Bâche en pente douce, rayée : la couleur de sommet est le masque des rayures (1 couleur de la bâche, 0 blanc). */
 export function stallAwningGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
@@ -93,8 +105,9 @@ export class MarketStalls {
   private readonly one = new THREE.Vector3(1, 1, 1);
   private readonly p = new THREE.Vector3();
 
-  constructor(scene: THREE.Scene, readonly capacity = 120) {
-    this.frame = new THREE.InstancedMesh(stallFrameGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), capacity);
+  /** `chalet` : les chalets du marché de Noël (même toit, couleur unie), au lieu des étals. */
+  constructor(scene: THREE.Scene, readonly capacity = 120, readonly chalet = false) {
+    this.frame = new THREE.InstancedMesh(chalet ? chaletFrameGeometry() : stallFrameGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), capacity);
     const awningMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
     // Rayures : la couleur de sommet sert de masque (1 : couleur de la bâche, attribut d'instance `aTint` ; 0 : blanc cassé).
     awningMat.onBeforeCompile = (shader) => {
@@ -107,6 +120,8 @@ export class MarketStalls {
     };
     awningMat.customProgramCacheKey = () => "market-awning";
     const awningGeo = stallAwningGeometry();
+    // Chalet : toit uni (le masque des rayures partout à 1).
+    if (chalet) (awningGeo.getAttribute("color").array as Float32Array).fill(1);
     this.tint = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
     awningGeo.setAttribute("aTint", this.tint);
     this.awning = new THREE.InstancedMesh(awningGeo, awningMat, capacity);
@@ -118,8 +133,8 @@ export class MarketStalls {
       mesh.frustumCulled = false;
       scene.add(mesh);
     }
-    this.frame.name = "etals";
-    this.awning.name = "baches";
+    this.frame.name = chalet ? "chalets" : "etals";
+    this.awning.name = chalet ? "toits-chalets" : "baches";
   }
 
   /** Montre les étals `places` (au plus `capacity`), posés au sol (`ground`). Aucun appel de dessin sans étal. */

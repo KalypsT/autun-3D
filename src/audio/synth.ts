@@ -346,6 +346,22 @@ export function thunder(kit: Kit, dest: AudioNode, t: number, strength: number):
   }
 }
 
+/** Éclatement d'une fusée (D202) : claquement, souffle grave qui roule, puis un crépitement d'étincelles. */
+export function firework(kit: Kit, dest: AudioNode, t: number, size: number, spot: Spot): void {
+  const out = spotOut(kit, dest, { ...spot, echo: Math.max(spot.echo, 0.5) });
+  burst(kit, out, t, "highpass", 1200, 0.7, 0.8, 0.001, 0.08);
+  burst(kit, out, t, "lowpass", 140 + 60 * size, 0.8, 1, 0.01, 0.9 + 0.4 * size, true);
+  for (let i = 0; i < 10; i++) burst(kit, out, t + 0.4 + rnd() * 1.2, "bandpass", 3000 + rnd() * 2500, 3, 0.12, 0.001, 0.025);
+}
+
+/** Une note d'un groupe de la fête de la musique (D202) : `voice` 0 basse (triangle), 1 accord (carré doux), 2 mélodie (scie, brève). */
+export function musicNote(kit: Kit, dest: AudioNode, t: number, freq: number, voice: number, length: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  if (voice === 0) tone(kit, out, t, "triangle", freq, freq, 0, 0.5, 0.01, length);
+  else if (voice === 1) tone(kit, out, t, "square", freq, freq, 0, 0.07, 0.02, length * 0.8);
+  else tone(kit, out, t, "sawtooth", freq, freq, 0, 0.09, 0.01, length * 0.6);
+}
+
 /** Un aller des essuie-glaces : frottement du caoutchouc sur le verre mouillé, et le petit choc en butée. */
 export function wiper(kit: Kit, dest: AudioNode, t: number): void {
   const out = spotOut(kit, dest, { gain: 0.35, pan: 0, cutoff: 5000, echo: 0 });

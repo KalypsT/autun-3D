@@ -1,6 +1,7 @@
 import { rescaleDate } from "../core/calendar";
 import { Seats } from "../core/seats";
 import { MarketController } from "./market";
+import { FeastsController } from "./feasts";
 import { marketCenter, marketLevel, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
@@ -153,6 +154,8 @@ export function startGame(ctx: GameContext): void {
   };
   tiles.onSeats = (id, list) => (list.length ? seats.addTile(id, list) : seats.removeTile(id));
   tiles.forEachSeats((id, list) => seats.addTile(id, list));
+  // Fêtes (D202) : illuminations, feu d'artifice du 14 juillet, fête de la musique.
+  const feasts = new FeastsController(scene, terrain, colliders, seats, audio, () => tiles.loadedExtras());
   // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
   atmosphere.onThunder = (delay, strength) => audio.thunder(delay, strength);
   // Ressenti (D90) : vibrations du téléphone, tremblement de la caméra.
@@ -1150,7 +1153,8 @@ export function startGame(ctx: GameContext): void {
     updateUniques(dt);
     updateTrain(dt);
     schoolGate.update(atmosphere.hour, atmosphere.calendar.weekday);
-    market.update(atmosphere.calendar.weekday, atmosphere.hour);
+    market.update(atmosphere.calendar.weekday, atmosphere.hour, atmosphere.feasts.includes("marche-noel"));
+    feasts.update(dt, atmosphere.feasts, atmosphere.hour, atmosphere.night);
     // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
     const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
     setSurfaceGrip(surfaceGrip(wx));
@@ -1350,6 +1354,7 @@ export function startGame(ctx: GameContext): void {
         x: player.x, y: player.y, vx, vy, yaw, onFoot: !riding, hour: atmosphere.hour,
         weather: { crowd: crowdWeather(atmosphere.weather), walk: walkWeather(atmosphere.weather), season: atmosphere.calendar.season, rain: atmosphere.weather.rain },
         weekday: atmosphere.calendar.weekday,
+        feasts: atmosphere.feasts,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
         horn: hornPressed && !!riding,
         ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
@@ -1466,6 +1471,12 @@ export function startGame(ctx: GameContext): void {
     look: (v: number) => {
       yaw = v;
     },
+    /** Captures : incliner la caméra (rad, positif : on regarde plus bas). */
+    tilt: (v: number) => {
+      pitch = v;
+    },
+    /** Essais : les fêtes en cours et ce qu'elles montrent (D202). */
+    feasts: () => ({ list: atmosphere.feasts, ...feasts.state }),
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

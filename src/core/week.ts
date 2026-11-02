@@ -84,3 +84,30 @@ export function trafficWeek(weekday: number): number {
 export function massPeal(weekday: number, prev: number, hour: number): boolean {
   return weekday === 6 && prev < 10.25 && hour >= 10.25 && hour - prev < 0.25;
 }
+
+/** Places de la fête de la musique (D202) : place du Champ de Mars (kiosque), place du Terreau, parvis de Saint-Lazare, rue aux Cordiers. */
+export const MUSIC_SPOTS: readonly { x: number; y: number; heading: number; key: number }[] = [
+  { x: -18, y: -48, heading: 0.6, key: 0 },
+  { x: 60, y: -528, heading: 2.4, key: 5 },
+  { x: 30, y: -548, heading: 3.4, key: 7 },
+  { x: 14, y: -186, heading: -0.6, key: 3 },
+];
+
+/**
+ * Foule des fêtes (D202) : deux fois plus de monde autour des musiciens le soir de la fête de la musique, le triple au bord du plan
+ * d'eau du Vallon pour le feu du 14 juillet, le double sur le marché de Noël. `feasts` : fêtes en cours (`activeFeasts`).
+ */
+export function crowdFeast(feasts: readonly string[], x: number, y: number, lake: { x: number; y: number }): number {
+  let k = 1;
+  if (feasts.includes("fete-musique")) {
+    let near = 0;
+    for (const s of MUSIC_SPOTS) near = Math.max(near, 1 - smooth(40, 120, Math.hypot(x - s.x, y - s.y)));
+    k *= 1 + 1.2 * near;
+  }
+  if (feasts.includes("14-juillet")) k *= 1 + 2 * (1 - smooth(300, 600, Math.hypot(x - lake.x, y - lake.y)));
+  if (feasts.includes("marche-noel")) {
+    const [cx, cy] = marketCenter();
+    k *= 1 + 1.2 * (1 - smooth(60, 160, Math.hypot(x - cx, y - cy)));
+  }
+  return k;
+}

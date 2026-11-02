@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay, type Season } from "../core/calendar";
+import { activeFeasts, calendarAt, DEFAULT_CALENDAR, type CalendarConfig, type CalendarDay, type Season } from "../core/calendar";
 import { fixedWeather, weatherAt, type WeatherKind, type WeatherState } from "../core/weather";
 import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
@@ -92,6 +92,7 @@ export class Atmosphere {
   private rain: Precipitation | null = null;
   private snowfall: Precipitation | null = null;
   private time = 0;
+  private feastList: string[] = [];
   /** Nuit pour les lumières (0 à 1), et table d'ouverture des commerces (réutilisée). */
   private nightLevel = 0;
   private readonly shops: number[] = [];
@@ -128,6 +129,11 @@ export class Atmosphere {
   /** Le calendrier à l'heure actuelle (saison, jour de la semaine, jour astronomique) ; recalculé à chaque réglage de l'ambiance. */
   get calendar(): CalendarDay {
     return this.cal;
+  }
+
+  /** Fêtes en cours (D202), recalculées avec l'ambiance. */
+  get feasts(): readonly string[] {
+    return this.feastList;
   }
 
   /** Jour astronomique de l'année (1 à 365) : soleil, oiseaux, notes de lieu. */
@@ -237,6 +243,7 @@ export class Atmosphere {
   private apply(): void {
     this.lastApplied = this.hour;
     this.cal = calendarAt(this.date, this.hour, this.config);
+    this.feastList = activeFeasts(this.date, this.hour, this.config);
     this.wx = this.forced ? fixedWeather(this.forced) : weatherAt(this.date, this.hour, this.seasonOf);
     const sun = sunPosition(this.cal.doy, this.hour);
     const [sx, sy, sz] = sunDirection(sun);

@@ -3,7 +3,8 @@ import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
 import { coldAt, dressForCold, umbrellaShare } from "./dress";
-import { crowdWeek } from "./week";
+import { crowdFeast, crowdWeek } from "./week";
+import { LAKE } from "./fireworks";
 import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
@@ -31,7 +32,7 @@ export const PED_STATE = { walk: 0, wait: 1, cross: 2, idle: 3, sit: 4, stumble:
 /** Vie de quartier (D198) : traits tirés à la naissance. */
 const TRAIT = { phone: 1, jogger: 2, dog: 4 } as const;
 /** Durée (s réelles) sur un banc, à une terrasse ; allure (m/s) pour aller s'asseoir et revenir à la file. */
-const SIT_TIME = { bench: [20, 90], terrace: [35, 120], market: [90, 300] } as const;
+const SIT_TIME = { bench: [20, 90], terrace: [35, 120], market: [90, 300], stage: [300, 600] } as const;
 const SIT_WALK = 1.1;
 /** Distance (m) au-delà de laquelle on ne va pas s'asseoir, et chance de s'arrêter s'asseoir à une fin de file quand une place est libre tout près. */
 const SIT_REACH = 9;
@@ -142,6 +143,8 @@ export interface Observer {
   weather?: { crowd: number; walk: number; season?: number; rain?: number };
   /** Jour de la semaine (0 = lundi), pour le rythme de la semaine (D201 : marché, messe, promeneurs du dimanche) ; absent : sans effet. */
   weekday?: number;
+  /** Fêtes en cours (D202 : foule autour des musiciens, au bord du lac, au marché de Noël). */
+  feasts?: readonly string[];
 }
 
 /** Ce qui s'est passé à un passant à ce pas : pour les autres systèmes (J4 : témoins ; J5 : dégâts). `speed` : vitesse relative du choc (m/s). */
@@ -377,8 +380,8 @@ export class PedSim {
     const near = [...this.seats.all()].filter((t) => t.occupant === -1 && Math.hypot(t.x - obs.x, t.y - obs.y) < 90);
     near.sort((a, b) => Math.hypot(a.x - obs.x, a.y - obs.y) - Math.hypot(b.x - obs.x, b.y - obs.y));
     for (const seat of near) {
-      const open = seat.kind === "market" || (seat.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1);
-      if (!open || hash32(hash32(Math.round(seat.x * 10), Math.round(seat.y * 10)), this.opt.seed) / 4294967296 > (seat.kind === "market" ? 0.9 : seat.kind === "terrace" ? 0.4 : 0.25)) continue;
+      const open = seat.kind === "market" || seat.kind === "stage" || (seat.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1);
+      if (!open || hash32(hash32(Math.round(seat.x * 10), Math.round(seat.y * 10)), this.opt.seed) / 4294967296 > (seat.kind === "market" || seat.kind === "stage" ? 0.9 : seat.kind === "terrace" ? 0.4 : 0.25)) continue;
       // Le passant le plus loin du joueur, seul, debout : il « était déjà là ».
       while (cursor >= 0 && (!alive[cursor] || this.mode[cursor] !== PED_STATE.walk || this.buddy[cursor]! >= 0 || this.leads(cursor) || this.trait[cursor]! & TRAIT.jogger)) cursor--;
       if (cursor < 0) return;
@@ -406,7 +409,7 @@ export class PedSim {
     this.heading[i] = seat.heading;
     st.yaw[i] = -seat.heading;
     st.y[i] = seat.z - 0.45;
-    st.pose![i] = seat.kind === "market" ? 0 : LIFE_POSE.sit;
+    st.pose![i] = seat.kind === "market" ? 0 : seat.kind === "stage" ? LIFE_POSE.talk : LIFE_POSE.sit;
     st.poseT![i] = 1;
     st.speed[i] = 0;
     this.jx[i] = seat.x - hit.x;
@@ -512,6 +515,7 @@ export class PedSim {
       if (m2 === PED_STATE.wait) waiting++; else if (m2 === PED_STATE.cross) crossing++; else if (m2 === PED_STATE.idle) idle++;
     }
     if (this.life) {
+      if (this.frame % 60 === 7) this.summonStaff();
       this.groupTalk();
       stats.sitting = sitting;
       stats.grouped = grouped;
@@ -1097,7 +1101,8 @@ export class PedSim {
   /** Part de la foule de l'heure : la météo (D195), le jour et l'endroit (D201). */
   private crowdFactor(obs: Observer): number {
     const w = obs.weather?.crowd ?? 1;
-    return obs.weekday === undefined ? w : w * crowdWeek(obs.weekday, this.hour, obs.x, obs.y, this.stats.zone);
+    const week = obs.weekday === undefined ? 1 : crowdWeek(obs.weekday, this.hour, obs.x, obs.y, this.stats.zone);
+    return w * week * (obs.feasts?.length ? crowdFeast(obs.feasts, obs.x, obs.y, LAKE) : 1);
   }
 
   // --- Vie de quartier (D198) ----------------------------------------------------------------------------------
@@ -1164,7 +1169,7 @@ export class PedSim {
     if (!this.seats || (this.stats.sitting ?? 0) >= 0.3 * Math.max(this.stats.alive, this.stats.target, 10)) return null;
     const x = this.x[i]!, y = this.y[i]!, h = this.hour, rain = this.weather?.rain ?? 0;
     return this.seats.nearestFree(x, y, reach, (s) =>
-      (s.kind === "market" || (s.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1)) &&
+      (s.kind === "market" || s.kind === "stage" || (s.kind === "bench" ? h >= 7 && h < 21.5 && rain < 0.2 : h >= 8 && h < 23.5 && rain < 0.1)) &&
       (hidden ? Math.abs(angleDiff(Math.atan2(s.x - hidden.x, s.y - hidden.y), hidden.yaw)) > 1.0 || Math.hypot(s.x - hidden.x, s.y - hidden.y) > 140
         : reach > SIT_REACH || !this.colliders || this.colliders.raycast(x, y, s.x, s.y) === null));
   }
@@ -1242,6 +1247,28 @@ export class PedSim {
     return false;
   }
 
+  /**
+   * Places à tenir (marchands, musiciens, D201 et D202) : chaque seconde, une place libre reçoit le passant seul le plus proche (à moins
+   * de 30 m, sans mur entre eux), qui y va en marchant.
+   */
+  private summonStaff(): void {
+    if (!this.seats) return;
+    const alive = this.state.alive!;
+    for (const seat of this.seats.all()) {
+      if (seat.occupant !== -1 || (seat.kind !== "market" && seat.kind !== "stage")) continue;
+      let best = -1, bd = 30 * 30;
+      for (let i = 0; i < this.free; i++) {
+        if (!alive[i] || this.mode[i] !== PED_STATE.walk || this.buddy[i]! >= 0 || this.panic[i]! > 0 || this.trait[i]! & (TRAIT.jogger | TRAIT.dog)) continue;
+        const dx = this.x[i]! - seat.x, dy = this.y[i]! - seat.y, d = dx * dx + dy * dy;
+        if (d < bd && (!this.colliders || this.colliders.raycast(this.x[i]!, this.y[i]!, seat.x, seat.y) === null) && !this.leads(i)) [best, bd] = [i, d];
+      }
+      if (best >= 0) {
+        this.startSit(best, seat);
+        return;
+      }
+    }
+  }
+
   /** Le passant mène-t-il un groupe ? (un meneur ne va pas s'asseoir : son groupe resterait debout à côté) */
   private leads(i: number): boolean {
     for (let j = 0; j < this.free; j++) if (this.buddy[j] === i && this.state.alive![j]) return true;
@@ -1274,7 +1301,7 @@ export class PedSim {
         this.sitPhase[i] = 1;
         this.heading[i] = seat.heading;
         // Un marchand (D201) reste debout derrière son étal.
-        st.pose![i] = seat.kind === "market" ? 0 : LIFE_POSE.sit;
+        st.pose![i] = seat.kind === "market" ? 0 : seat.kind === "stage" ? LIFE_POSE.talk : LIFE_POSE.sit;
         st.poseT![i] = 0;
       } else {
         px += (dx / d) * step;

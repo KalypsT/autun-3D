@@ -1492,3 +1492,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Marché le mercredi et le vendredi matin sur la place du Champ de Mars : étals à bâches rayées, marchands, foule, brouhaha ; les voitures garées là laissent la place et reviennent après.
 - La grille du collège suit les jours de classe ; le dimanche, les cloches sonnent la messe à 10 h 15, le parvis s'anime à la sortie, les parcs se remplissent l'après-midi, il y a moins de voitures.
 - Pas encore : les élèves (proportions à décider avec toi), les livraisons (lot 2-4). À regarder : `?weekday=3&h=10` (mercredi), `?weekday=7&h=11.7&at=36,-590` (sortie de la messe).
+
+**Ville vivante, lot 2-2 : les fêtes (2 novembre 2026)** (D202)
+- Illuminations de Noël (guirlandes entre les lampadaires du centre, sapin sur la place), marché de Noël en chalets, fête de la musique (quatre groupes qui jouent sur les places), feu d'artifice du 14 juillet au-dessus du plan d'eau du Vallon, avec son reflet et ses détonations.
+- À regarder : `?date=9&h=23.3&at=960,430&yaw=1.4` (feu d'artifice, lever la caméra), `?date=7&h=20.5` (fête de la musique), `?date=20&h=19` (illuminations), `?date=21&h=17` (marché de Noël).

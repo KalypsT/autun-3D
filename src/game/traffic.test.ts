@@ -47,7 +47,7 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     expect(traffic.cars.length).toBeGreaterThanOrEqual(traffic.target - 2);
     expect(inView).toBe(0);
     traffic.dispose();
-  });
+  }, 20000); // 3 s seul, plus de 5 s sous la charge de toute la suite (D202).
 
   it("la nuit, la circulation se réduit à la cible nocturne : les voitures en surnombre sont retirées hors de la vue", () => {
     const { traffic } = make(20);

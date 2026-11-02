@@ -443,6 +443,41 @@ export class GameAudio {
     }
   }
 
+  /** Éclatement d'une fusée du feu d'artifice (D202), entendu avec le retard de la distance. */
+  firework(x: number, y: number, z: number, size: number): void {
+    const kit = this.kit;
+    const d = Math.hypot(x - this.L.x, y - this.L.y, z - 300);
+    const sp = kit && this.spot(x, y, 200, 6000, 0.5, 1);
+    if (kit && sp) S.firework(kit, this.sys.buses!.ambience, kit.ctx.currentTime + d / 343, size, { ...sp, cutoff: Math.max(sp.cutoff, 900) });
+  }
+
+  private musicStep = 0;
+  private musicTimer = 0;
+  /**
+   * Fête de la musique (D202) : chaque groupe joue une boucle de quatre accords (basse, accord, mélodie) dans sa tonalité, qu'on entend
+   * à 150 m. Appelé à chaque image pendant la fête.
+   */
+  music(dt: number, groups: readonly { x: number; y: number; key: number }[]): void {
+    const kit = this.kit;
+    if (!kit) return;
+    this.musicTimer -= dt;
+    if (this.musicTimer > 0) return;
+    const beat = 0.32;
+    this.musicTimer += beat;
+    this.musicStep = (this.musicStep + 1) % 32;
+    const t = kit.ctx.currentTime + 0.02, step = this.musicStep, bar = Math.floor(step / 8) % 4;
+    const progression = [0, 5, 7, 3], scale = [0, 2, 4, 7, 9, 12, 14, 16];
+    for (const g of groups) {
+      const sp = this.spot(g.x, g.y, 12, 150, 0.25, 0.7);
+      if (!sp) continue;
+      const root = 110 * Math.pow(2, (g.key + progression[bar]!) / 12);
+      if (step % 4 === 0) S.musicNote(kit, this.sys.buses!.sfx, t, root, 0, beat * 3, sp);
+      if (step % 2 === 1) for (const iv of [12, 16, 19]) S.musicNote(kit, this.sys.buses!.sfx, t, root * Math.pow(2, iv / 12), 1, beat, sp);
+      const note = scale[(step * 5 + g.key) % scale.length]!;
+      if ((step * 7 + g.key) % 3 !== 0) S.musicNote(kit, this.sys.buses!.sfx, t, root * 4 * Math.pow(2, note / 12), 2, beat, sp);
+    }
+  }
+
   /** Coup de tonnerre (D196), `delay` secondes après l'éclair. */
   thunder(delay: number, strength: number): void {
     const kit = this.kit;
