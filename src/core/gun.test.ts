@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GUN_ASSIST_ANGLE, Gun, MUZZLE, type ShootWorld } from "./gun";
+import { GUN_ASSIST_ANGLE, Gun, HEAD_MULT, MUZZLE, MUZZLE_Z, type AimRay, type ShootWorld } from "./gun";
 import { Inventory, WEAPONS } from "./weapons";
 
 const DT = 1 / 60;
 
-interface Target { x: number; y: number; hp: number }
+/** Une cible : position, points de vie et, pour le tir en hauteur (D205), altitude des pieds et hauteur du corps (1,75 m debout par défaut). */
+interface Target { x: number; y: number; hp: number; z?: number; h?: number }
 
 /** Un monde de cibles immobiles (cercles de 0,4 m) et, au besoin, un mur vertical à x = `wallX`. */
 function world(targets: Target[], wallX: number | null = null): ShootWorld & { hurts: { slot: number; damage: number }[] } {
@@ -26,6 +27,7 @@ function world(targets: Target[], wallX: number | null = null): ShootWorld & { h
       return out.length;
     },
     position: (slot, out) => Object.assign(out, { x: targets[slot]!.x, y: targets[slot]!.y }),
+    span: (slot, out) => Object.assign(out, { z: targets[slot]!.z ?? 0, h: targets[slot]!.h ?? 1.75 }),
     hurt(slot, damage) {
       hurts.push({ slot, damage });
       targets[slot]!.hp -= damage;
@@ -224,5 +226,109 @@ describe("armes à feu (J5-3)", () => {
     expect(a).toEqual(b);
     expect(a).not.toEqual(c);
     for (const angle of a) expect(Math.abs(angle)).toBeLessThanOrEqual(WEAPONS.rifle.spread + 1e-9);
+  });
+});
+
+describe("visée libre et tir en hauteur (D205)", () => {
+  /** Rayon du viseur depuis une caméra à l'épaule (0,5 m à droite, 1,5 m derrière, à 1,6 m) vers le point (x, y, z). */
+  const ray = (x: number, y: number, z: number): AimRay => {
+    const ox = 0.5, oy = -1.5, oz = 1.6, l = Math.hypot(x - ox, y - oy, z - oz);
+    return { ox, oy, oz, dx: (x - ox) / l, dy: (y - oy) / l, dz: (z - oz) / l };
+  };
+  const fire = (w: ShootWorld, aim: AimRay | null, id: "pistol" | "rifle" = "pistol", seed = 5): { g: Gun; r: ReturnType<Gun["step"]> } => {
+    const g = new Gun(seed);
+    const r = g.step(DT, true, false, WEAPONS[id], armed(id, 60), 0, 0, 0, w, { z: 0, aim });
+    return { g, r };
+  };
+
+  it("la balle part vers le viseur, pas vers la personne la plus proche du regard ; le tireur se tourne vers le point visé", () => {
+    const w = world([{ x: -3, y: 8, hp: 100 }, { x: 4, y: 20, hp: 100 }]);
+    const { g, r } = fire(w, ray(4, 20, 1.2));
+    expect(g.aiming).toBe(true);
+    expect(g.targeted).toBe(false);
+    expect(g.aimKind).toBe(2);
+    expect(g.facing).toBeCloseTo(Math.atan2(4, 20), 1);
+    expect(r.fired).toBe(1);
+    expect(w.hurts.map((h) => h.slot)).toEqual([1]);
+    // La balle part de l'arme, à l'épaule, et finit sur la cible, à hauteur de poitrine.
+    expect(r.shots[0]!.z0).toBeCloseTo(MUZZLE_Z, 5);
+    expect(r.shots[0]!.z1).toBeGreaterThan(0.9);
+    expect(r.shots[0]!.z1).toBeLessThan(1.45);
+    expect(g.aim).toBe(1);
+  });
+
+  it("dans la tête, les dégâts sont triplés : une balle de pistolet tue ; au-dessus de la tête, rien n'est touché", () => {
+    const w = world([{ x: 0, y: 12, hp: 100 }]);
+    const { g, r } = fire(w, ray(0, 12, 1.63));
+    expect(g.aimKind).toBe(3);
+    expect(r.heads).toBe(1);
+    expect(r.killed).toBe(1);
+    expect(w.hurts[0]!.damage).toBeCloseTo(WEAPONS.pistol.damage * HEAD_MULT, 5);
+    const over = world([{ x: 0, y: 12, hp: 100 }]);
+    const o = fire(over, ray(0, 12, 2.4));
+    expect(o.g.aimKind).toBe(0);
+    expect(o.r.hits).toBe(0);
+    // Dans le corps : dégâts normaux.
+    const chest = world([{ x: 0, y: 12, hp: 100 }]);
+    fire(chest, ray(0, 12, 1.1));
+    expect(chest.hurts[0]!.damage).toBeCloseTo(WEAPONS.pistol.damage, 5);
+  });
+
+  it("une balle à hauteur de poitrine passe au-dessus d'une personne à terre et touche celle qui est debout derrière", () => {
+    const w = world([{ x: 0, y: 8, hp: 100, h: 0.45 }, { x: 0, y: 16, hp: 100 }]);
+    const { r } = fire(w, ray(0, 16, 1.2));
+    expect(r.hits).toBe(1);
+    expect(w.hurts.map((h) => h.slot)).toEqual([1]);
+    // En visant la personne à terre, on la touche.
+    const down = world([{ x: 0, y: 8, hp: 100, h: 0.45 }, { x: 0, y: 16, hp: 100 }]);
+    fire(down, ray(0, 8, 0.25));
+    expect(down.hurts.map((h) => h.slot)).toEqual([0]);
+  });
+
+  it("le relief arrête la balle : un talus entre le tireur et la cible la protège", () => {
+    const base = world([{ x: 0, y: 20, hp: 100, z: 3 }]);
+    const bank: ShootWorld = { ...base, ground: (_x, y) => (y > 10 ? 3 : 0) };
+    const { g, r } = fire(bank, ray(0, 20, 1.3));
+    expect(g.aimKind).toBe(1);
+    expect(r.hits).toBe(0);
+    expect(r.shots[0]!.kind).toBe(1);
+    expect(r.shots[0]!.y1).toBeGreaterThan(9);
+    expect(r.shots[0]!.y1).toBeLessThan(11.5);
+    // Une cible plus près du bord du talus, visée à la poitrine : la balle passe au-dessus du bord et la touche.
+    const near = world([{ x: 0, y: 14, hp: 100, z: 3 }]);
+    const ok = fire({ ...near, ground: (_x, y) => (y > 10 ? 3 : 0) }, ray(0, 14, 4.2));
+    expect(ok.r.hits).toBe(1);
+  });
+
+  it("une balle qui passe au-dessus du toit d'une voiture continue ; plus bas, la carrosserie l'arrête", () => {
+    const run = (z: number): { car: number; hits: number } => {
+      const w = world([{ x: 0, y: 20, hp: 100, z: 0, h: 3.5 }]);
+      let car = 0;
+      const shielded: ShootWorld = {
+        ...w,
+        ground: () => 0,
+        rayVehicle: (_x, y, _dx, dy, maxDist) => (dy > 0.9 && 9 - y <= maxDist ? { dist: 9 - y, id: 3 } : null),
+        hurtVehicle: () => car++,
+      };
+      const hits = fire(shielded, ray(0, 20, z)).r.hits;
+      return { car, hits };
+    };
+    // Visée haute (3 m à 20 m) : la balle est à ≈ 2,1 m au-dessus de la voiture, elle passe.
+    expect(run(3).hits).toBe(1);
+    // Visée basse (0,5 m) : la voiture l'arrête et prend les dégâts.
+    const low = run(0.5);
+    expect(low.hits).toBe(0);
+    expect(low.car).toBe(1);
+    expect(run(3).car).toBe(0);
+  });
+
+  it("à la hanche, avec l'altitude du tireur, la balle part vers la poitrine de la cible assistée, même en contrebas", () => {
+    const w = world([{ x: 1, y: 10, hp: 100, z: -2.5 }]);
+    const ground: ShootWorld = { ...w, ground: (_x, y) => -0.25 * y };
+    const g = new Gun(5);
+    const r = g.step(DT, true, false, WEAPONS.pistol, armed("pistol", 24), 0, 0, 0, ground, { z: 0, aim: null });
+    expect(g.targeted).toBe(true);
+    expect(r.hits).toBe(1);
+    expect(r.shots[0]!.z1).toBeLessThan(0);
   });
 });

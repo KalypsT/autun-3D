@@ -4078,3 +4078,25 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Mesure** : rien au banc (il ne fait pas rouler les véhicules de service) ; trois véhicules de plus au plus, du même coût qu'une voiture de la circulation.
 
 ![Galerie (`?view=vehicles&ids=bus-urbain,benne-ordures,grumier-morvan`) : grumier, bus urbain, camion poubelle](captures/d204-bus-benne.jpg)
+
+## 2026-11-02 — D205. Tir, lot T1 : mode visée, caméra à l'épaule, balles en hauteur, tirs dans la tête
+
+**Demande** : remplacer la seule visée assistée par un vrai système de tir (viser où l'on veut), et à terme un fusil de précision avec lunette. Choix de l'utilisateur : se déplacer au joystick pendant qu'on vise (le doigt droit vise), **garder le tir à la hanche**, bouton Viser **à bascule**, **tirs dans la tête**. Découpage proposé : T1 (ce lot) base de la visée ; T2 aide à la visée réglable (ralentissement et aimant sur une cible), hanche resserrée ; T3 fusil de précision et lunette ; T4 pas de côté animés, témoins autour de la victime, indicateur de la direction d'un tir.
+
+**Ce qui est fait** :
+- **Deux façons de tirer**. À la hanche (bouton de tir seul) : inchangé, visée assistée dans le cône de ±40° (`GUN_ASSIST_ANGLE`). En visée : **bouton Viser** (`#aim`, à gauche du bouton de tir, arme à feu en main, à pied ; ou V, ou clic droit) qui entre en visée et en sort ; on en sort tout seul en montant dans un véhicule, en changeant pour une arme de mêlée, à terre ou mort.
+- **Caméra à l'épaule** : en visée, la caméra tourne autour d'un point 0,55 m à droite de la tête (raccourci s'il y a un mur de ce côté), à 1,55 m au lieu de 3,6 m, champ de vision serré de 18 %, et elle regarde **dans l'axe du regard** au lieu de regarder le joueur : le **viseur** (`#crosshair`, crème cerné de sombre, rouge brique sur une personne) est au centre de l'écran. Fondu de 0,1 à 0,2 s. On regarde plus haut en visée (jusqu'à 49° au-dessus de l'horizon) ; en changeant de mode, un regard hors des nouvelles bornes y revient doucement.
+- **Corps** : en visée, il reste tourné vers le point visé (`MoveInput.face`) ; le joystick fait marcher de côté et à reculons, à 75 % de l'allure, sans courir. Pas d'animation de pas de côté (les jambes marchent vers l'avant) : T4.
+- **Pouce droit** : en visée, **glisser le doigt posé sur le bouton de tir tourne aussi le regard** (on tire et on ajuste sans lever le pouce) ; la moitié droite de l'écran tourne toujours le regard. Nouveau réglage **« Sensibilité en visée »** (×0,3 à ×1,5, défaut ×0,6), multiplié par la sensibilité de la caméra.
+- **Balles en hauteur** (`src/core/gun.ts`, `trace`) : le rayon a une altitude. En visée, un rayon part de la caméra par le viseur (à partir de son point le plus proche du tireur : rien derrière lui n'est visé), le premier obstacle est le point visé, puis la balle part de l'arme (1,35 m, à l'épaule) vers ce point. Le relief est suivi tous les 1,5 m (une butte ou une pente arrête la balle) ; une balle plus haute que 1,55 m au-dessus du sol passe par-dessus une voiture ; un passant a une hauteur (`PedSim.span` : sa taille debout, 0,75 assis, 0,8 en trébuchant, 0,45 m à terre) : une balle peut **passer au-dessus d'une tête** ou d'une personne à terre et toucher quelqu'un derrière. En visée, la dispersion est **divisée par deux**.
+- **Tirs dans la tête** : les 28 cm du haut d'un corps debout ; **dégâts ×3** (un passant meurt d'une balle de pistolet, deux du fusil d'assaut). `GunResult.heads` les compte.
+- **À la hanche avec la hauteur** : la balle part vers la poitrine de la cible assistée (une cible en contrebas ou sur une butte est touchée) ; sans cible, le tir reste à plat et sans hauteur comme avant (sinon, un tir droit devant en montée finirait dans la pente à 13 m).
+- Traits et étincelles partent et arrivent à la bonne hauteur (`Shot.z0`, `z1`).
+
+**Ce qui ne change pas** : le banc et le tireur automatique (`combat-bot.ts`) tirent à plat (sans `view`), comme avant ; les gendarmes tirent comme avant (leurs tirs sont des chances de toucher, pas des rayons).
+
+**Limites** : les murets (`low`) ne retiennent toujours pas les balles (ni à plat ni en hauteur) ; les bâtiments sont des murs sans fin (on ne tire pas par-dessus un toit) ; la hauteur d'un gendarme est celle du passant de son emplacement ; aucune aide à la visée en mode visée (T2) : à juger sur le téléphone.
+
+**Tests** (+7) : en visée, la balle va au viseur et non à la personne la plus proche, le tireur se tourne vers le point visé ; tête (dégâts ×3, un tir de pistolet tue), au-dessus de la tête rien n'est touché ; au-dessus d'une personne à terre, la personne debout derrière est touchée ; un talus arrête la balle ; une balle au-dessus du toit d'une voiture continue, plus bas la voiture la prend ; à la hanche, la balle descend vers une cible en contrebas ; le corps tourné vers le cap voulu en marchant de côté et à reculons. Capture : `tools/ui.sh <dossier> aim`.
+
+![Mode visée (`tools/ui.sh <dossier> aim`) : caméra à l'épaule, viseur rouge sur le passant, trait du tir du pistolet à hauteur de poitrine](captures/d205-visee-tir.jpg)

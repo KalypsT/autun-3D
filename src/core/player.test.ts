@@ -22,6 +22,16 @@ describe("stepPlayer", () => {
     expect(Math.abs(p.x)).toBeLessThan(1e-6);
   });
 
+  it("en visée (D205), le corps reste tourné vers le cap voulu : on marche de côté et à reculons", () => {
+    const p = createPlayer(0, 0, terrain);
+    run(120, () => stepPlayer(p, { forward: 0, right: 1, run: false, face: 0 }, 0, DT, terrain, new Colliders()));
+    expect(p.x).toBeGreaterThan(2);
+    expect(Math.abs(p.heading)).toBeLessThan(1e-3);
+    run(120, () => stepPlayer(p, { forward: -1, right: 0, run: false, face: 0.5 }, 0, DT, terrain, new Colliders()));
+    expect(p.heading).toBeCloseTo(0.5, 3);
+    expect(p.vy).toBeLessThan(-1);
+  });
+
   it("court plus vite que la marche", () => {
     const p = createPlayer(0, 0, terrain);
     run(120, () => stepPlayer(p, { forward: 1, right: 0, run: true }, 0, DT, terrain, new Colliders()));

@@ -3,6 +3,8 @@
  * en véhicule, direction en glissant horizontalement à gauche, pédales Accélérer et Freiner à droite ; sur un deux-roues, le même doigt
  * tiré vers le bas lève la roue avant (roue arrière), poussé vers le haut en freinant lève la roue arrière (roue avant).
  * À pied, bouton Sauter (ou espace). Clavier et souris dans les deux cas.
+ * Arme à feu en main (D205) : le bouton Viser (ou V, ou le clic droit) passe en visée et en sort ; en visée, glisser le doigt posé sur le bouton de tir
+ * tourne aussi le regard (on tire et on ajuste sans lever le pouce), et toute rotation est réduite par la sensibilité en visée.
  */
 
 export interface ControlSample {
@@ -25,6 +27,8 @@ export interface ControlSample {
   attack: boolean;
   /** À pied : bouton Sauter tenu (ou espace). */
   jump: boolean;
+  /** Bouton Viser touché (ou V, ou clic droit) depuis le dernier appel : entrer en visée ou en sortir (D205). */
+  aim: boolean;
   /** Le regard a été touché depuis le dernier appel (la caméra de poursuite attend avant de se recaler). */
   looking: boolean;
 }
@@ -56,10 +60,18 @@ export class Controls {
   private lookPitch = 0;
   private stickX = 0;
   private stickY = 0;
-  private readonly pedals = new Map<number, "gas" | "brake" | "handbrake" | "horn" | "attack" | "jump">();
+  private readonly pedals = new Map<number, "gas" | "brake" | "handbrake" | "horn" | "attack" | "jump" | "aim">();
   private looked = false;
   /** Saut demandé depuis le dernier appel : un appui bref, entre deux images, n'est pas perdu. */
   private jumpTap = false;
+  /** Visée demandée (ou quittée) depuis le dernier appel. */
+  private aimTap = false;
+  /** Doigt posé sur le bouton de tir, dont le glissement tourne le regard en visée. */
+  private fireDrag: Pointer | null = null;
+  /** En visée (le jeu le tient à jour) : le glissement du bouton de tir tourne le regard. */
+  aiming = false;
+  /** Multiplicateur de rotation en plus de `sensitivity` (sensibilité en visée, 1 hors visée). */
+  lookScale = 1;
   /** À pied ou en véhicule : change le rôle du doigt de gauche et affiche les pédales. */
   mode: ControlMode = "foot";
   /** En véhicule : le joystick sert aussi à lever une roue (deux-roues) ; faux en voiture. */
@@ -79,6 +91,7 @@ export class Controls {
     horn: HTMLElement | null = null,
     attack: HTMLElement | null = null,
     jump: HTMLElement | null = null,
+    aim: HTMLElement | null = null,
   ) {
     const on = (el: EventTarget, type: string, fn: (e: Event) => void): void => {
       el.addEventListener(type, fn);
@@ -87,6 +100,7 @@ export class Controls {
     on(window, "keydown", (e) => {
       const code = (e as KeyboardEvent).code;
       if (code === "Space" && !this.keys.has(code)) this.jumpTap = true;
+      if (code === "KeyV" && !this.keys.has(code)) this.aimTap = true;
       this.keys.add(code);
     });
     on(window, "keyup", (e) => this.keys.delete((e as KeyboardEvent).code));
@@ -96,7 +110,7 @@ export class Controls {
     on(surface, "pointermove", (e) => this.move(e as PointerEvent));
     on(surface, "pointerup", (e) => this.up(e as PointerEvent));
     on(surface, "pointercancel", (e) => this.up(e as PointerEvent));
-    for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"], [horn, "horn"], [attack, "attack"], [jump, "jump"]] as const) {
+    for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"], [horn, "horn"], [attack, "attack"], [jump, "jump"], [aim, "aim"]] as const) {
       if (!el) continue;
       this.pedalEls.push(el);
       const press = (e: Event): void => {
@@ -105,22 +119,41 @@ export class Controls {
         el.setPointerCapture(p.pointerId);
         this.pedals.set(p.pointerId, kind);
         if (kind === "jump") this.jumpTap = true;
+        if (kind === "aim") this.aimTap = true;
+        if (kind === "attack") this.fireDrag = { id: p.pointerId, x: p.clientX, y: p.clientY };
         el.classList.add("on");
       };
       const release = (e: Event): void => {
+        if (this.fireDrag?.id === (e as PointerEvent).pointerId) this.fireDrag = null;
         this.pedals.delete((e as PointerEvent).pointerId);
         if (![...this.pedals.values()].includes(kind)) el.classList.remove("on");
       };
       on(el, "pointerdown", press);
+      if (kind === "attack") on(el, "pointermove", (e) => this.dragFire(e as PointerEvent));
       on(el, "pointerup", release);
       on(el, "pointercancel", release);
       on(el, "contextmenu", (e) => e.preventDefault());
     }
   }
 
+  /** Glissement du doigt posé sur le bouton de tir : en visée, il tourne le regard comme la moitié droite de l'écran. */
+  private dragFire(e: PointerEvent): void {
+    const f = this.fireDrag;
+    if (!f || f.id !== e.pointerId) return;
+    if (this.aiming) {
+      const k = TOUCH_LOOK * this.sensitivity * this.lookScale;
+      this.lookYaw += (e.clientX - f.x) * k;
+      this.lookPitch += (e.clientY - f.y) * k;
+      this.looked = true;
+    }
+    f.x = e.clientX;
+    f.y = e.clientY;
+  }
+
   private down(e: PointerEvent): void {
     this.surface.setPointerCapture(e.pointerId);
     if (e.pointerType === "mouse") {
+      if (e.button === 2) this.aimTap = true;
       this.looks.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY, mouse: true });
       return;
     }
@@ -165,7 +198,7 @@ export class Controls {
     const look = this.looks.get(e.pointerId);
     if (!look) return;
     if (look.mouse && e.buttons === 0) return;
-    const k = (look.mouse ? MOUSE_LOOK : TOUCH_LOOK) * this.sensitivity;
+    const k = (look.mouse ? MOUSE_LOOK : TOUCH_LOOK) * this.sensitivity * this.lookScale;
     this.lookYaw += (e.clientX - look.x) * k;
     this.lookPitch += (e.clientY - look.y) * k;
     this.looked = true;
@@ -195,6 +228,8 @@ export class Controls {
     this.lookYaw = this.lookPitch = 0;
     this.looked = false;
     this.jumpTap = false;
+    this.aimTap = false;
+    this.fireDrag = null;
     this.base.style.display = this.knob.style.display = "none";
     for (const el of this.pedalEls) el.classList.remove("on");
   }
@@ -222,7 +257,10 @@ export class Controls {
     let steer = this.stickX, throttle = 0, brake = 0, handbrake = 0, horn = k.has("KeyH"), attack = k.has("KeyJ");
     let jump = this.mode === "foot" && (k.has("Space") || this.jumpTap);
     this.jumpTap = false;
+    const aim = this.aimTap;
+    this.aimTap = false;
     for (const p of this.pedals.values()) {
+      if (p === "aim") continue;
       if (p === "jump") jump = this.mode === "foot";
       else if (p === "gas") throttle = 1;
       else if (p === "brake") brake = 1;
@@ -239,7 +277,7 @@ export class Controls {
     let lift = Math.abs(ly) > LIFT_DEAD ? (Math.sign(ly) * (Math.abs(ly) - LIFT_DEAD)) / (1 - LIFT_DEAD) : 0;
     if (k.has("ShiftLeft") || k.has("ShiftRight")) lift = 1;
     if (k.has("KeyC")) lift = -1;
-    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, lift, horn, attack, jump, looking: this.looked || this.looks.size > 0 };
+    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, lift, horn, attack, jump, aim, looking: this.looked || this.looks.size > 0 };
     this.lookYaw = this.lookPitch = 0;
     this.looked = false;
     return sample;

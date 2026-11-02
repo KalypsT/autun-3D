@@ -1602,6 +1602,16 @@ export class PedSim {
     out.y = this.y[i]!;
   }
 
+  /**
+   * Altitude des pieds et hauteur du corps d'un passant pour le tir (D205) : debout, sa taille ; assis 0,75 de sa taille ; qui trébuche 0,8 ;
+   * à terre ou mort 0,45 m.
+   */
+  span(i: number, out: { z: number; h: number }): void {
+    const st = this.state, mode = this.mode[i]!, tall = st.recipes[i]?.height ?? 1.75;
+    out.z = st.y[i]!;
+    out.h = mode >= PED_STATE.down ? 0.45 : mode === PED_STATE.stumble ? tall * 0.8 : mode === PED_STATE.sit ? tall * 0.75 : tall;
+  }
+
   /** Empreinte de l'état (tests de reproductibilité) : somme pondérée des positions, caps et modes des passants vivants. */
   checksum(): number {
     let h = 0;

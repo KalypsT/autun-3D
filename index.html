@@ -69,6 +69,19 @@
                 border: 2px solid var(--cream); background: var(--panel); color: var(--cream); font-size: 24px; box-shadow: var(--lift); touch-action: manipulation; }
       body.game.gun:not(.driving) #reload { display: grid; }
       #reload:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); }
+      /* Bouton Viser (D205) : à gauche du bouton de tir, arme à feu en main, à pied ; plein en visée. */
+      #aim { position: fixed; right: 138px; bottom: 34px; width: 64px; height: 64px; box-sizing: border-box; z-index: 4; display: none; place-items: center; touch-action: none;
+             user-select: none; -webkit-user-select: none; border-radius: 50%; border: 2px solid var(--cream); background: var(--panel); color: var(--cream); box-shadow: var(--lift); }
+      #aim .ico { width: 34px; height: 34px; }
+      body.game.gun:not(.driving) #aim { display: grid; }
+      body.aiming #aim { background: var(--brick); }
+      #aim.on { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); }
+      /* Viseur du mode visée (D205) : au centre de l'écran, crème cerné de sombre ; rouge brique sur une personne. */
+      #crosshair { position: fixed; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 3; display: none; pointer-events: none; color: #fff8e6;
+                   filter: drop-shadow(0 0 1.5px rgba(27, 31, 39, .9)); }
+      #crosshair.hot { color: #d9472b; }
+      body.aiming #crosshair { display: block; }
+      body.aiming #reticle { display: none !important; }
       /* Réticule de la visée assistée (J5-3) : un anneau crème qui suit la cible de l'arme à feu. */
       #reticle { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 3; display: none; pointer-events: none; border-radius: 50%;
                  border: 3px solid #fff8e6; box-shadow: 0 0 0 2px rgba(27, 31, 39, .55), inset 0 0 0 2px rgba(27, 31, 39, .35); }
@@ -175,7 +188,7 @@
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
       body.paused #minimap, body.paused #clock, body.paused #calendar, body.paused #status, body.paused #hurt, body.paused #speedlines,
-      body.paused #action, body.paused #attack, body.paused #jump, body.paused #reload, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      body.paused #action, body.paused #attack, body.paused #jump, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
@@ -276,8 +289,10 @@
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="reticle"></div>
+    <div id="crosshair"><svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M17 3v8M17 23v8M3 17h8M23 17h8"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg></div>
     <div id="attack" role="button" aria-label="Frapper"></div>
     <div id="jump" role="button" aria-label="Sauter" title="Sauter (espace)"></div>
+    <div id="aim" role="button" aria-label="Viser" title="Viser (V ou clic droit)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></svg></div>
     <button id="reload" title="Recharger" aria-label="Recharger"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4"/></svg></button>
     <button id="action"></button>
     <div id="speedlines"></div>

@@ -15,6 +15,8 @@ export interface Settings {
   detail: number;
   /** Sensibilité de la caméra au doigt (1 = comme avant). */
   sensitivity: number;
+  /** Sensibilité en mode visée (D205), multipliée par la précédente : plus bas, plus précis. */
+  aimSensitivity: number;
   /** Minimap : nord toujours en haut au lieu de tourner avec la caméra. */
   minimapNorth: boolean;
   /** Foule : nombre maximal de passants à la fois (0 = aucun). Le nombre réel suit l'heure et le lieu (D39). */
@@ -33,7 +35,7 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, aimSensitivity: 0.6, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -41,6 +43,7 @@ export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
+export const AIM_SENSITIVITY_RANGE = { min: 0.3, max: 1.5, step: 0.1 } as const;
 export const VOLUME_STEP = 0.05;
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -50,12 +53,13 @@ const nearest = <T extends number>(choices: readonly T[], v: number): T => choic
 export function parseSettings(raw: unknown): Settings {
   const o = (typeof raw === "object" && raw ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_SETTINGS;
-  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), crowd = num(o["crowd"]), traffic = num(o["traffic"]), volume = num(o["volume"]);
+  const dpr = num(o["dpr"]), shadows = num(o["shadows"]), detail = num(o["detail"]), sens = num(o["sensitivity"]), aimSens = num(o["aimSensitivity"]), crowd = num(o["crowd"]), traffic = num(o["traffic"]), volume = num(o["volume"]);
   return {
     dpr: dpr === null ? d.dpr : nearest(DPR_CHOICES, dpr),
     shadows: shadows === null ? d.shadows : nearest(SHADOW_CHOICES, shadows),
     detail: detail === null ? d.detail : nearest(DETAIL_CHOICES, detail),
     sensitivity: sens === null ? d.sensitivity : Math.min(Math.max(Math.round(sens * 10) / 10, SENSITIVITY_RANGE.min), SENSITIVITY_RANGE.max),
+    aimSensitivity: aimSens === null ? d.aimSensitivity : Math.min(Math.max(Math.round(aimSens * 10) / 10, AIM_SENSITIVITY_RANGE.min), AIM_SENSITIVITY_RANGE.max),
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),

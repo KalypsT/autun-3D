@@ -49,6 +49,8 @@ export interface MoveInput {
   run: boolean;
   /** Bouton de saut pressé à ce pas (pas tenu : un appui, un saut). */
   jump?: boolean;
+  /** En visée (D205) : le corps reste tourné vers ce cap (rad) au lieu de suivre la marche ; on se déplace en pas de côté et à reculons. */
+  face?: number | undefined;
 }
 
 export const PLAYER_RADIUS = 0.35;
@@ -184,7 +186,8 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   } else z = ground;
   p.z = z;
   p.speed = Math.hypot(p.vx, p.vy);
-  if (p.speed > 0.15) {
+  if (input.face !== undefined) p.heading += angleDelta(p.heading, input.face) * Math.min(1, TURN_RATE * 1.5 * dt);
+  else if (p.speed > 0.15) {
     const target = Math.atan2(p.vx, p.vy);
     p.heading += angleDelta(p.heading, target) * Math.min(1, TURN_RATE * dt);
   }

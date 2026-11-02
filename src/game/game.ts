@@ -37,7 +37,7 @@ import { VehicleNameHud } from "../ui/vehicle-name";
 import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, nearestHospital } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
-import { Gun, MUZZLE, type ShootWorld } from "../core/gun";
+import { Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
 import { CACHE_ROUNDS, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
@@ -70,6 +70,16 @@ export { gameSpawn } from "./start";
 const STEP = 1 / 60;
 const MIN_PITCH = -0.3;
 const MAX_PITCH = 1.25;
+/**
+ * Mode visée (D205) : caméra à l'épaule, plus près (m), décalée à droite (m), plus serrée (part du champ de vision retirée) ; on y regarde plus haut
+ * et moins bas qu'en balade ; on y marche à 75 % de l'allure, sans courir.
+ */
+const AIM_DIST = 1.55;
+const AIM_SHOULDER = 0.55;
+const AIM_ZOOM = 0.18;
+const AIM_MIN_PITCH = -0.85;
+const AIM_MAX_PITCH = 0.95;
+const AIM_WALK = 0.75;
 const SHADOW_HALF = 80;
 /** Vitesse (m/s) sous laquelle on peut prendre une voiture de la circulation avec son conducteur (J4-1). */
 const CARJACK_SPEED = 3;
@@ -136,6 +146,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("horn"),
     document.getElementById("attack"),
     document.getElementById("jump"),
+    document.getElementById("aim"),
   );
   if (params.has("debug")) debugEl.style.display = "block";
 
@@ -217,6 +228,12 @@ export function startGame(ctx: GameContext): void {
   const rolling: { v: Vehicle; t: number }[] = [];
   let crank = 0;
   let lookIdle = 0;
+  /** Mode visée (D205), basculé par le bouton Viser ; `aimB` : fondu de la caméra (0 à 1). */
+  let aiming = false;
+  let aimB = 0;
+  const camDir = new THREE.Vector3();
+  const gunView: GunView = { z: 0, aim: null };
+  const aimRay = { ox: 0, oy: 0, oz: 0, dx: 0, dy: 1, dz: 0 };
   /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
   let downFor = 0;
   let downSide = -1;
@@ -933,6 +950,9 @@ export function startGame(ctx: GameContext): void {
   const fx = new Fx(scene);
   const pickViews: PickupView[] = [];
   const reticleEl = document.getElementById("reticle")!;
+  /** Viseur du mode visée (D205), au centre de l'écran ; rouge sur une personne. */
+  const crosshairEl = document.getElementById("crosshair")!;
+  let crosshairHot = false;
   const reticleV = new THREE.Vector3();
   const shootWorld: ShootWorld = {
     pick: (x, y, h, r, a, m, out) => {
@@ -944,6 +964,16 @@ export function startGame(ctx: GameContext): void {
       return p.pick(x, y, h, r, a, m, out);
     },
     position: (slot, out) => (peds as PedsController | null)?.position(slot, out),
+    // Hauteur des corps et relief (D205) : une balle peut passer au-dessus d'une tête ou finir dans une pente.
+    span: (slot, out) => {
+      const p = peds as PedsController | null;
+      if (p) p.span(slot, out);
+      else {
+        out.z = 0;
+        out.h = 0;
+      }
+    },
+    ground: (x, y, z) => terrain.heightAt(x, y, z),
     hurt: (slot, d, ux, uy, i) => (peds as PedsController | null)?.hurt(slot, d, ux, uy, i) ?? 0,
     rayPed: (x, y, dx, dy, m, out) => {
       const p = peds as PedsController | null;
@@ -1112,8 +1142,23 @@ export function startGame(ctx: GameContext): void {
     if (hornPressed && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
     audio.horn(input.horn && !!riding);
     bumpTimer = Math.max(0, bumpTimer - dt);
+    // Visée (D205) : seulement à pied, debout, vivant, une arme à feu en main ; on en sort tout seul sinon.
+    const canAim = !riding && !health.dead && downFor <= 0 && inventory.current.kind === "gun";
+    if (input.aim && canAim) aiming = !aiming;
+    if (!canAim) aiming = false;
+    if (controls.aiming !== aiming) {
+      controls.aiming = aiming;
+      document.body.classList.toggle("aiming", aiming);
+    }
+    controls.lookScale = aiming ? settings.values.aimSensitivity : 1;
+    aimB += ((aiming ? 1 : 0) - aimB) * Math.min(1, dt * 12);
+    if (Math.abs(aimB - (aiming ? 1 : 0)) < 0.002) aimB = aiming ? 1 : 0;
     yaw += input.lookYaw;
-    pitch = Math.min(Math.max(pitch + input.lookPitch, MIN_PITCH), MAX_PITCH);
+    // Bornes du regard : celles de la visée ou de la balade. En changeant de mode, un regard hors des nouvelles bornes y revient doucement au lieu de sauter.
+    const loP = aiming ? AIM_MIN_PITCH : MIN_PITCH, hiP = aiming ? AIM_MAX_PITCH : MAX_PITCH;
+    pitch = Math.min(Math.max(pitch + input.lookPitch, Math.min(loP, pitch)), Math.max(hiP, pitch));
+    if (pitch < loP) pitch = Math.min(loP, pitch + (loP - pitch) * Math.min(1, dt * 8) + dt * 0.05);
+    else if (pitch > hiP) pitch = Math.max(hiP, pitch - (pitch - hiP) * Math.min(1, dt * 8) - dt * 0.05);
 
     acc += dt;
     // Vitesse avant ce pas : celle d'une éventuelle chute (le choc l'a déjà réduite).
@@ -1126,12 +1171,12 @@ export function startGame(ctx: GameContext): void {
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
-        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : gun.idle < 0.35 ? 0.6 : 1);
+        const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : aiming ? AIM_WALK : gun.idle < 0.35 ? 0.6 : 1);
         if (downFor > 0) {
           downFor = Math.max(0, downFor - STEP);
           slidePlayer(player, STEP, terrain, colliders);
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && gun.idle > 0.35, jump: jumpNow }, yaw, STEP, terrain, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, terrain, colliders);
           jumpNow = false;
         }
       }
@@ -1197,21 +1242,35 @@ export function startGame(ctx: GameContext): void {
     // Caméra : la distance revient doucement quand l'obstacle disparaît, se resserre aussitôt à l'approche d'un mur.
     const speed = Math.abs(speedOf());
     const chase = riding ? chaseOf(riding) : null;
-    const targetDist = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance;
+    const targetDist = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance + (AIM_DIST - distance) * aimB;
     const focusZ = chase ? player.z + chase.height : player.z;
-    const rig = solveCamera({ x: player.x, y: player.y, z: focusZ, yaw, pitch, distance: targetDist }, colliders, terrain);
+    // En visée (D205), la caméra tourne autour d'un point à droite de la tête (à l'épaule), rapproché s'il y a un mur de ce côté.
+    let px = player.x, py = player.y;
+    if (aimB > 0) {
+      const side = AIM_SHOULDER * aimB, rx = Math.cos(yaw), ry = -Math.sin(yaw);
+      const t = colliders.raycast(player.x, player.y, player.x + rx * side, player.y + ry * side);
+      const d = t === null ? side : Math.max(0, t * side - 0.2);
+      px += rx * d;
+      py += ry * d;
+    }
+    const rig = solveCamera({ x: px, y: py, z: focusZ, yaw, pitch, distance: targetDist }, colliders, terrain);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
     const tz = focusZ + HEAD_HEIGHT;
-    const cx = player.x + (rig.x - player.x) * k, cy = player.y + (rig.y - player.y) * k, cz = tz + (rig.z - tz) * k;
+    const cx = px + (rig.x - px) * k, cy = py + (rig.y - py) * k, cz = tz + (rig.z - tz) * k;
     // Sensation de vitesse (D90) : tremblement (vers la droite de l'écran et vers le haut), champ de vision qui s'ouvre, traits au-delà de 100 km/h.
     haptics.step(dt);
     shake.step(dt, riding ? speed : 0);
     const sx = shake.offset.x, sy = shake.offset.y;
     camera.position.set(cx + Math.cos(yaw) * sx, cz + sy, -(cy - Math.sin(yaw) * sx));
-    camera.lookAt(player.x, tz - 0.1, -player.y);
+    if (aimB > 0) {
+      // Visée : la caméra regarde droit devant, dans l'axe du regard (le viseur, au centre de l'écran, est l'axe de la caméra) ; fondu depuis le joueur.
+      const cp = Math.cos(pitch), fx = Math.sin(yaw) * cp * 30, fy = Math.cos(yaw) * cp * 30, fz = -Math.sin(pitch) * 30;
+      const lx = player.x + (cx + fx - player.x) * aimB, ly = player.y + (cy + fy - player.y) * aimB, lz = tz - 0.1 + (cz + fz - (tz - 0.1)) * aimB;
+      camera.lookAt(lx, lz, -ly);
+    } else camera.lookAt(player.x, tz - 0.1, -player.y);
     audio.listen(cx, cy, yaw, riding ? riding.state.vx : player.vx, riding ? riding.state.vy : player.vy);
-    const fov = camera.fov + (speedFov(speed, !!riding) - camera.fov) * Math.min(1, dt * 3);
+    const fov = camera.fov + (speedFov(speed, !!riding) * (1 - AIM_ZOOM * aimB) - camera.fov) * Math.min(1, dt * (aiming ? 10 : 3));
     if (Math.abs(camera.fov - fov) > 0.02) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1254,12 +1313,26 @@ export function startGame(ctx: GameContext): void {
     } else {
       melee.cancel();
       model.setStrike(null);
-      const res = gun.step(dt, input.attack, reloadAsked, weapon, inventory, player.x, player.y, yaw, shootWorld);
+      // Visée (D205) : le rayon du viseur est l'axe de la caméra (repère du monde : x est, y nord, z haut).
+      gunView.z = player.z;
+      gunView.aim = null;
+      if (aiming) {
+        camera.getWorldDirection(camDir);
+        aimRay.ox = camera.position.x;
+        aimRay.oy = -camera.position.z;
+        aimRay.oz = camera.position.y;
+        aimRay.dx = camDir.x;
+        aimRay.dy = -camDir.z;
+        aimRay.dz = camDir.y;
+        gunView.aim = aimRay;
+      }
+      const res = gun.step(dt, input.attack, reloadAsked, weapon, inventory, player.x, player.y, yaw, shootWorld, gunView);
       reloadAsked = false;
       if (res.dry) audio.dry();
       if (res.reloadStarted) audio.reload(false);
       if (res.reloadDone) audio.reload(true);
       if (input.attack || gun.aim > 0) player.heading += angleDelta(player.heading, gun.facing) * Math.min(1, 18 * dt);
+      if (crosshairHot !== (aiming && gun.aimKind >= 2)) crosshairEl.classList.toggle("hot", (crosshairHot = aiming && gun.aimKind >= 2));
       if (gun.targeted && pedsNow0) {
         const tp = { x: 0, y: 0 };
         pedsNow0.position(gun.target, tp);
@@ -1267,16 +1340,15 @@ export function startGame(ctx: GameContext): void {
       }
       if (res.fired > 0) {
         // Traits, éclair de bouche et étincelles (un seul maillage, D84) ; le coup de feu effraie tout dans 40 m et la police l'entend si elle voit.
-        const z0 = player.z + 1.3;
+        const z0 = res.shots[0]!.z0;
         const mx = player.x + Math.sin(gun.facing) * MUZZLE, my = player.y + Math.cos(gun.facing) * MUZZLE;
         fx.flash(mx, my, z0);
         audio.shot(weapon.id as GunId, mx, my, true);
         haptics.shot(weapon.id as GunId);
         for (let k = 0; k < res.fxCount; k++) {
           const sh = res.shots[k]!;
-          const z1 = sh.kind === 2 ? terrain.heightAt(sh.x1, sh.y1) + 1.1 : z0;
-          fx.tracer(sh.x0, sh.y0, z0, sh.x1, sh.y1, z1);
-          if (sh.kind > 0) fx.sparks(sh.x1, sh.y1, z1, sh.kind === 2, Math.random);
+          fx.tracer(sh.x0, sh.y0, sh.z0, sh.x1, sh.y1, sh.z1);
+          if (sh.kind > 0) fx.sparks(sh.x1, sh.y1, sh.z1, sh.kind === 2, Math.random);
         }
         pedsNow0?.alarm(player.x, player.y, ALARM_SHOT, ALARM_SHOT_FLEE);
         pedWitnesses.length = 0;

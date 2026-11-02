@@ -159,7 +159,7 @@ describe("stockage", () => {
 describe("réglages", () => {
   it("valeurs invalides : retour aux valeurs par défaut champ par champ ; valeurs proches : on prend le choix le plus proche", () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, minimapNorth: "oui", crowd: 120, seasonLength: 10, season: 4 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 });
+    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, aimSensitivity: 0.04, minimapNorth: "oui", crowd: 120, seasonLength: 10, season: 4 })).toEqual({ dpr: 2.5, shadows: 2048, detail: 400, sensitivity: 2, aimSensitivity: 0.3, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 });
     expect(parseSettings({ seasonLength: 14, season: 2 })).toMatchObject({ seasonLength: 14, season: 2 });
     expect(parseSettings({ dpr: 2.4, minimapNorth: true }).dpr).toBe(2.5);
     expect(parseSettings({ minimapNorth: true }).minimapNorth).toBe(true);

@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -266,6 +266,40 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await page.evaluate(() => { window.__autun.ui.paused = false; window.__autun.gun.cancel(); });
       await sleep(800);
     }
+    await ctx.close();
+  }
+
+  if (want("aim")) {
+    // Mode visée (D205) : pistolet en main face à un passant à 7 m, bouton Viser touché (caméra à l'épaule, viseur au centre), puis un tir figé à l'image.
+    const ctx = await open("arms=pistol,rifle&h=15");
+    await sleep(1500);
+    await page.evaluate(() => window.__autun.inventory.select("pistol"));
+    await sleep(800);
+    const placed = await page.evaluate(() => {
+      const a = window.__autun, c = a.pedsController(), out = [], p = { x: 0, y: 0 };
+      c.pick(a.player.x, a.player.y, 0, 80, Math.PI, 1, out);
+      if (!out.length) return false;
+      c.position(out[0], p);
+      a.player.x = p.x - 0.8; a.player.y = p.y - 7; a.player.heading = 0;
+      a.look(0.05);
+      return true;
+    });
+    if (!placed) console.log("pas de passant à portée");
+    await shot("t1-avant-visee");
+    // Bouton Viser : à gauche du bouton de tir (right 138 px, bottom 34 px, 64 px).
+    await touch("touchStart", [[915 - 170, 412 - 66]]);
+    await touch("touchEnd", []);
+    await page.waitForFunction(() => document.body.classList.contains("aiming") && window.__autun.gun.aiming, null, { timeout: 120000, polling: "raf" });
+    await sleep(2500);
+    await shot("t1-visee");
+    console.log("visée :", JSON.stringify(await page.evaluate(() => { const g = window.__autun.gun; return { kind: g.aimKind, point: g.aimPoint, facing: g.facing }; })));
+    // Bouton de tir : son centre (right 26 px, bottom 30 px, 96 px).
+    await touch("touchStart", [[915 - 74, 412 - 78]]);
+    await page.waitForFunction(() => { const a = window.__autun; if (a.fx.count > 0 && a.gun.recoil > 0.5) { a.ui.paused = true; return true; } return false; }, null, { timeout: 600000, polling: "raf" });
+    await touch("touchEnd", []);
+    await sleep(1200);
+    await shot("t1-visee-tir");
+    await page.evaluate(() => { window.__autun.ui.paused = false; });
     await ctx.close();
   }
 

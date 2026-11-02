@@ -97,6 +97,15 @@ export class PedsController implements Arena {
     this.sim?.position(slot, out);
   }
 
+  /** Pieds et hauteur du corps (tir, D205) : voir `PedSim.span`. */
+  span(slot: number, out: { z: number; h: number }): void {
+    if (this.sim) this.sim.span(slot, out);
+    else {
+      out.z = 0;
+      out.h = 0;
+    }
+  }
+
   hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
     const sim = this.sim;
     if (!sim) return 0;
