@@ -3721,3 +3721,23 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 ![La galerie de jour, depuis la rue Demetz](captures/d188-galerie-jour.jpg)
 ![La galerie de nuit : les globes brillent](captures/d188-galerie-nuit.jpg)
 ![Vers la rue Demetz, depuis le milieu](captures/d188-galerie-retour.jpg)
+
+## 2026-11-02 — D189. Passage Balthus, lot 3 : les deux entrées, les boutiques de la rue aux Cordiers et le chien
+
+**Demande de l'utilisateur** : le magasin « Chaussures M… » n'existe plus, c'est une extension de La Promesse de l'Aube ; photo de la rue aux Cordiers (devanture de l'extension, entrée du passage, autre partie du magasin) ; nouvelle photo de la statue du chien, plaque entière ; grilles ouvertes de 7 h à 20 h (traité au lot 4 avec les passants).
+
+**Boutiques** (`fronts` de `passage` dans `manual.json`, appliqués par `build_passage.py` avec `apply_shop` de `build_shop_fronts.py`, sur le mur de rue de ce que la découpe laisse des bâtiments) :
+- 28 rue aux Cordiers (à gauche de l'arc) : devanture rouge de La Promesse de l'Aube, 3,5 m, laissant 0,9 m de pierre contre l'arc ;
+- 26 rue aux Cordiers (à droite) : l'extension, grande devanture rouge en applique de 3,9 m (grande baie, porte vitrée, enseigne « LA PROMESSE DE L'AUBE »), 0,95 m de pierre contre l'arc ; **La Manufacture disparaît** de la fiche (le magasin de la photo 1 de D158 n'est plus d'actualité). Une deuxième passe ne change rien.
+
+**Entrées** (`src/render/passage-entries.ts`) : un arc segmentaire en pierre à chaque bout : remplissage entre l'arc et le linteau, archivolte plus claire, piédroits de 45 cm ; rue Demetz, flèche 1,4 m, pierre blonde ; rue aux Cordiers, flèche 0,9 m, pierre miel, plaque bleue « PASSAGE BALTHUS » sur le piédroit gauche (lettres de l'atlas).
+
+**Le chien** : un briard assis en bronze sur un socle de pierre (base, fût, corniche), plaque « ŒUVRE DE P. LATOUCHE, 1922 PARIS 1956, BRIARD » (lue sur la photo : « Œuvre de Paulette Latouche, Autun 1922 – Paris 1956, Briard, don des parents de l'artiste »), à s = 16 m, côté sud-ouest ; obstacle de 55 cm de rayon (`landmarkCircles`).
+
+**Tests** (+2, 1014) : plaque et plaque du chien écrites ; le chien est un obstacle, pas le milieu de l'allée.
+
+**Limites** : l'arc est pris à la largeur du couloir (5 m ; l'ouverture réelle de la photo 1 semble plus étroite) ; pas de grille, d'imposte en éventail, ni de fronton (photo 3) ; la porte vitrée rouge à imposte au fond du porche de la rue aux Cordiers n'est pas dessinée ; l'emplacement du chien est une estimation (milieu de la galerie sur les photos, côté droit en venant de la rue Demetz) ; plaque de la rue aux Cordiers et textes du socle en petit (illisibles de loin).
+
+![La rue aux Cordiers : l'arc entre les deux devantures rouges](captures/d189-entree-cordiers.jpg)
+![L'arc de la rue Demetz](captures/d189-entree-demetz.jpg)
+![La volée vue de la galerie](captures/d189-volee.jpg)

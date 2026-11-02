@@ -24,6 +24,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.polygon import orient
 
 import build_monuments as bm
+from build_shop_fronts import apply_shop
 import config as c
 
 KINDS = c.OUT / "kinds"
@@ -322,9 +323,15 @@ def main():
             flat_h = measure_roof(ax, mns, mnt, poly.difference(ax.strip))
             flat_h = round(flat_h, 2)
         res = cut_building(ax, b, f, flat_h)
+        b2, f2 = res if res is not None else (b, f)
+        # Devanture d'après photo (D189) sur le mur de rue de ce qui reste du bâtiment : les murs ont de nouveaux indices.
+        fr = manual.get("fronts", {}).get(bid)
+        if fr:
+            wi = next(i for i, w in enumerate(f2["walls"]) if w["role"] == "street")
+            apply_shop(f2, {"wall": wi, "shop": fr["shop"], "photo": fr["photo"]})
+            tile["buildings"][bi], tile["fiches"][bi] = b2, f2
         if res is None:
             continue
-        b2, f2 = res
         # Silhouette lointaine : l'entrée qui recouvrait l'ancien contour reçoit le nouveau.
         old_poly = poly
         k = next((i for i, r in enumerate(lod) if Polygon(pairs(r["r"])).is_valid and Polygon(pairs(r["r"])).symmetric_difference(old_poly).area < 0.15 * old_poly.area), None)

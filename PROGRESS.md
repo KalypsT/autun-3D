@@ -1422,3 +1422,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La galerie a ses 13 travées de chaque côté : vitrines à cadres blancs, pilastres à consoles bleu et or, globes (allumés la nuit), frise blanche, colonnes à chapiteaux dorés, corniche dorée, sol à carreaux, et la charpente de la verrière dans le ciel (les fermes, sans le verre).
 - Pas encore : le verre (sans ombre, à décider), la façade et l'arc des deux entrées, la statue du chien, les passants. 1012 tests (3 de plus).
 - À regarder : `?view=custom&cam=-22,-122,7.2,6,-164,6&h=13` (de jour), même caméra avec `&style=nuit` (de nuit).
+
+**Passage Balthus, lot 3 : les entrées et le chien (2 novembre 2026)** (D189)
+- Les deux bouts du passage ont leur arc en pierre ; rue aux Cordiers, plaque bleue « PASSAGE BALTHUS » entre deux devantures rouges de La Promesse de l'Aube (l'extension remplace l'ancien magasin de chaussures et La Manufacture) ; le chien de bronze trône dans la galerie, sur son socle à plaque.
+- Pas encore : les grilles ouvertes de 7 h à 20 h, les passants dans le passage (lot 4), le verre, le fronton de la rue Demetz. 1014 tests (2 de plus).
+- À regarder : `?view=custom&cam=18.6,-178.2,2.6,3,-160,5.2&h=13` (rue aux Cordiers), `cam=-31,-108,2.4,-22,-120,4.5&h=13` (rue Demetz).

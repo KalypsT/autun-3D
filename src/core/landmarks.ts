@@ -119,6 +119,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
     out.push([lay.totem[0], lay.totem[1], 0.5]);
   }
+  // Statue du chien du passage Balthus (D189).
+  for (const s of kinds.sites) if (s.t === "passage") out.push([...passagePoint(s, PASSAGE_DOG.s, PASSAGE_DOG.t), PASSAGE_DOG.r]);
   // Théâtre romain (D136) : poteaux d'éclairage et arbustes taillés.
   for (const s of kinds.sites) {
     if (s.t !== "theatre") continue;
@@ -596,6 +598,9 @@ export function passagePoint(s: PassageSite, d: number, t = 0): [number, number]
  * sol posé à ras ; le tablier de la galerie porte les pas à la hauteur du sol dessiné.
  */
 export const PASSAGE_SLAB = 0.08;
+
+/** Statue du chien (D189) : abscisse et côté dans la galerie, rayon du socle (obstacle). */
+export const PASSAGE_DOG = { s: 16, t: -0.9, r: 0.55 };
 
 /** Niveau du sol (altitude) à l'abscisse d : galerie plate, volée de `st[2]` marches de `st[0]` à `st[1]`, puis palier de la rue aux Cordiers. */
 export function passageFloor(s: PassageSite, d: number): number {

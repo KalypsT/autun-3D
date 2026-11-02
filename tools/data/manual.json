@@ -102,6 +102,10 @@
   "passage": {
     "tile": "26_34", "name": "Passage Balthus", "axis": [[-25.3, -115.7], [10.3, -169.2]], "ext": 1.5, "half": 2.5,
     "buildings": {"BATIMENT0000000348853287": {"flat": true}, "BATIMENT0000000348853288": {"flat": true}, "BATIMENT0000000348853543": {}, "BATIMENT0000000348853545": {}},
+    "fronts": {
+      "BATIMENT0000000348853543": {"photo": "Photo de l'utilisateur (novembre 2026) : à gauche de l'arc de la rue aux Cordiers, la boutique rouge de La Promesse de l'Aube (cartes postales sur des tourniquets devant)", "shop": {"name": "La Promesse de l'Aube", "kind": "books", "color": "#b3242b", "devanture": {"s0": 0.0, "h": 4.0, "sill": 0.4, "top": 2.6, "frieze": [2.65, 3.35], "cornice": 3.5, "bays": [["pilaster", 0.25], ["window", 1.2], ["shopdoor", 1.0], ["window", 0.8], ["pilaster", 0.25]], "stone": "#d9d2c2", "sign": {"text": "LA PROMESSE DE L'AUBE", "bg": "#8f1e24", "fg": "#f2e6cf", "s": [0.4, 3.3], "z": [2.7, 3.3], "script": false}, "glass": ["#4d7f8c", "#8fb9c0"], "display": "none"}}},
+      "BATIMENT0000000348853545": {"photo": "Photo de l'utilisateur (novembre 2026) : à droite de l'arc, l'extension de La Promesse de l'Aube (ancien magasin de chaussures) : grande devanture en applique rouge, grande baie à imposte, porte vitrée, store gris", "shop": {"name": "La Promesse de l'Aube", "kind": "books", "color": "#b3242b", "devanture": {"s0": 0.95, "h": 4.0, "sill": 0.45, "top": 2.7, "frieze": [2.75, 3.45], "cornice": 3.6, "bays": [["pilaster", 0.3], ["window", 2.3], ["shopdoor", 1.0], ["pilaster", 0.3]], "stone": "#d9d2c2", "sign": {"text": "LA PROMESSE DE L'AUBE", "bg": "#8f1e24", "fg": "#f2e6cf", "s": [1.35, 4.5], "z": [2.8, 3.4], "script": false}, "glass": ["#4d7f8c", "#8fb9c0"], "display": "none"}}}
+    },
     "stairs": {"s0": 46.2, "s1": 51.6, "n": 15}, "ends": [[0.0, 8.0], [46.6, 64.2]], "slab": 1.5, "head": [4.0, 3.6],
     "photo": "Photos de l'utilisateur : porte cochère de la rue aux Cordiers (arc surbaissé en pierre, plaque bleue), vue en enfilade depuis le haut de l'escalier, façade de la rue Demetz (grand arc, fronton), galerie bleu et or, statue du chien."
   }

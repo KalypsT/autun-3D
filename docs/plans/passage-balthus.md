@@ -1,6 +1,6 @@
 # Passage Balthus : passage couvert entre la rue du Général-André-Demetz et la rue aux Cordiers (plan, lot 0)
 
-**Avancement** : lots 1 (D187) et 2 (D188) faits ; lots 3 et 4 à faire. État retenu : consoles bleu et or (photos 4 à 6).
+**Avancement** : lots 1 (D187), 2 (D188) et 3 (D189, avec le chien) faits ; lot 4 : grilles 7 h – 20 h et passants. État retenu : consoles bleu et or (photos 4 à 6).
 
 Enquête du 2 novembre 2026, sur la branche de travail (après D186). Rien n'a été modifié dans le dépôt, sauf ce fichier. Les six photos de
 l'utilisateur ne sont pas versionnées : seule leur lecture est écrite ici. Coordonnées : repère local du jeu (x vers l'est, y vers le nord),

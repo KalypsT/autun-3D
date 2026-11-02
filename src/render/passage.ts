@@ -4,6 +4,7 @@ import { at, frameOf, passageFloor } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { slab } from "./square";
 import { buildGallery } from "./passage-gallery";
+import { buildEntries, type Sinks } from "./passage-entries";
 
 /**
  * Passage Balthus (D187, lot 1) : le sol de la galerie, la volée de la rue aux Cordiers (marches et contremarches) et les linteaux, ces tronçons où
@@ -20,8 +21,10 @@ const LIFT = 0.02;
 /** Maille du sol de la galerie (m). */
 const CELL = 1;
 
-export function buildPassage(mb: MeshBuilder, s: PassageSite, terrain: HeightField, glow?: MeshBuilder): void {
-  if (glow) buildGallery(mb, glow, s);
+export function buildPassage(sinks: Sinks & { glow: MeshBuilder }, s: PassageSite, terrain: HeightField): void {
+  const mb = sinks.solid;
+  buildGallery(mb, sinks.glow, s);
+  buildEntries(sinks, s);
   const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
   const P = (d: number, t: number, z: number): Vec3 => toThree(...at(f, d, t), z);
   const UP: Vec3 = [0, 1, 0];
