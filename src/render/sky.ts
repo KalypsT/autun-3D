@@ -48,7 +48,11 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
           float c1 = step(th, cloudField(p + vec2(0.05, -0.09)));
           vec3 lit = mix(vec3(1.0, 0.95, 0.84), vec3(0.8, 0.82, 0.85), cover), shade = mix(vec3(0.93, 0.74, 0.6), vec3(0.55, 0.58, 0.63), cover);
           float fade = smoothstep(0.02, 0.12, vDir.y);
-          col = mix(col, mix(shade, lit, c1) * cloudLight, c0 * fade);
+          // La nuit (D200), un nuage est un peu plus clair que le ciel (la lune), et une nuit claire n'en montre presque pas.
+          vec3 dayCloud = mix(shade, lit, c1) * cloudLight;
+          vec3 nightCloud = col * 1.35 + vec3(0.004);
+          float vis = c0 * fade * mix(clamp(cover * 1.6, 0.0, 1.0), 1.0, cloudLight * cloudLight);
+          col = mix(col, mix(nightCloud, dayCloud, cloudLight * cloudLight), vis);
         }
         col = mix(col, horizon, smoothstep(0.0, -0.25, vDir.y));
         gl_FragColor = vec4(col, 1.0);

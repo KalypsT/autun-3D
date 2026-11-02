@@ -106,6 +106,24 @@ export class TileManager {
   private frame = 0;
   private job: Job | null = null;
   hidden = new Set<string>();
+  /** Rideaux de fer (D200) : chaque maillage n'est montré que si l'un de ses commerces est fermé (`open[i]` : horaire type i ouvert). */
+  updateShutters(open: readonly number[]): void {
+    this.open = [...open];
+    for (const e of this.entries.values()) {
+      for (const m of e.detail?.group.children ?? []) {
+        if (m.name !== "rideaux") continue;
+        const scheds = m.userData["scheds"] as number[] | undefined;
+        m.visible = !this.hidden.has(m.name) && (scheds ?? []).some((s) => !open[s]);
+      }
+    }
+  }
+  /** Dernière table d'ouverture reçue (null : pas encore, tout est montré). */
+  private open: number[] | null = null;
+  /** Un maillage révélé est visible ; les rideaux de fer, seulement si un de leurs commerces est fermé. */
+  private shutterShown(m: THREE.Object3D): boolean {
+    if (m.name !== "rideaux" || !this.open) return true;
+    return ((m.userData["scheds"] as number[] | undefined) ?? []).some((s) => !this.open![s]);
+  }
   /** Places assises des tuiles déjà construites (pour qui s'abonne après le chargement initial). */
   forEachSeats(cb: (tile: string, seats: readonly SeatDef[]) => void): void {
     for (const [id, e] of this.entries) if (e.detail?.seats?.length) cb(id, e.detail.seats);
@@ -192,7 +210,8 @@ export class TileManager {
     e.pending = [];
     for (const m of meshes.group.children) {
       if (this.hidden.has(m.name)) m.visible = false;
-      else if (!revealAll) {
+      else if (revealAll) m.visible = this.shutterShown(m);
+      else {
         m.visible = false;
         e.pending.push(m);
       }
@@ -357,7 +376,8 @@ export class TileManager {
       if (d >= this.load) continue;
       if (e.detail) {
         if (!revealed && e.pending.length) {
-          e.pending.shift()!.visible = true;
+          const m = e.pending.shift()!;
+          m.visible = this.shutterShown(m);
           revealed = true;
           this.show(e);
         }

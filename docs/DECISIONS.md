@@ -3958,3 +3958,32 @@ Pas de fenêtre générique au rez-de-chaussée derrière ; les étages restent 
 **Limites** : le chien traverse les murs et les voitures (il suit la laisse, sans obstacles) ; il n'aboie pas encore (sons au lot 2-3) ; la main du maître est estimée (côté du chien, à hauteur de hanche), pas celle du squelette ; les passants ne l'évitent pas ; le pelage est uni.
 
 ![Chiens dans la galerie (`?view=characters&dogs=1`) : au trot, à l'arrêt, en train de renifler, assis](captures/d199-chiens.jpg)
+
+## 2026-11-02 — D200. Ville vivante, lot 1-6 : les lumières de la ville (plan `docs/plans/ville-vivante.md`, § 6)
+
+**Principe** : chaque sommet du verre allumé, des halos et des rideaux de fer porte une **étiquette** (`aTag`, posée à la construction de la tuile : `MeshBuilder(true)`), et trois uniformes partagés (`render/city-lights.ts`) disent ce qui est allumé. Aucune tuile à reconstruire, aucune recompilation en cours de partie. Étiquettes : 0 toujours allumé avec la nuit (globes, lanternes du passage) ; ]0, 1[ une fenêtre (son seuil d'allumage, tiré de sa position) ; [1, 2[ un lampadaire (1 + son seuil, tiré de son identifiant) ; 2 + i un commerce d'horaire type i.
+
+**Fenêtres une à une** (`core/city-lights.ts`) : la part des fenêtres « habitées » allumées passe de 25 % à la tombée de la nuit à 90 % à 21 h, redescend de 22 h à 1 h jusqu'à 12 % (allumées toute la nuit), remonte à 40 % de 6 h à 7 h (le réveil, en hiver quand il fait encore nuit). Une fenêtre s'allume quand cette part dépasse son seuil.
+
+**Lampadaires** : chacun s'allume à son tour pendant la tombée de la nuit (tous allumés aux deux tiers), son halo au sol avec lui ; le matin, dans l'ordre inverse.
+
+**Heures d'ouverture** (`core/opening.ts`) : douze horaires types à la française (boulangerie 7 h-19 h 30 et le dimanche matin ; café 7 h-minuit ; bar 11 h-1 h ; restaurant midi et soir, fermé le lundi ; restauration rapide 11 h-23 h ; boutique 9 h 30-19 h, le lundi après-midi seulement, fermée le dimanche ; supérette 8 h 30-20 h et le dimanche matin ; pharmacie avec coupure de midi ; tabac 7 h-19 h 30 et le dimanche matin ; services 9 h-12 h et 14 h-18 h du mardi au samedi ; hôpital toujours ; local vacant jamais). Le genre OpenStreetMap de chaque commerce donne son horaire. **Écart au plan** : les horaires réels d'OpenStreetMap (`opening_hours`) ne sont pas repris : la chaîne de données ne les garde pas et ne se relance pas ici (aucun des 243 commerces des tuiles n'en a) ; à faire avec la prochaine régénération des boutiques.
+- **Vitrines** : allumées le soir seulement si le commerce est ouvert (vitrines génériques et devantures d'après photo ; la croix des pharmacies des devantures modernes aussi).
+- **Rideaux de fer** baissés devant les vitrines et les portes quand le commerce est fermé (tôle grise, un maillage « rideaux » par tuile à commerces). Ce maillage n'est montré que si l'un de ses commerces est fermé : sinon il ne coûte rien.
+
+**Correction** : en D196, j'avais allumé les nuages du ciel ; la nuit, ils sortaient clairs (couleurs du jour) puis, assombris, en taches brunes. Ils sont maintenant à peine plus clairs que le ciel la nuit (la lune), et presque absents par nuit claire.
+
+**Pas fait** (plan § 6.5) : les passants ne vont pas vers les commerces ouverts (les points « commerce » de la navigation n'ont pas de genre) ; le monde de la rue suit déjà l'heure et le quartier (D39). À reprendre avec le marché et les écoles (lot 2-1) si tu le juges utile.
+
+**Mesure** (`?bench=court`, rendu logiciel, appels et triangles exacts) : à l'arrêt sur la place, un lundi à 16 h, 157 appels (153 avant : les rideaux des restaurants et des services, fermés le lundi, un maillage par tuile concernée) et 1 417 k triangles ; un dimanche à 16 h (`&weekday=7`), 161 appels et 1 453 k triangles (+5 %) : presque tout est fermé. Le coût des fenêtres et des lampadaires est un test par fragment de verre allumé, la nuit seulement.
+
+**Tests** (+10) : `opening.test.ts` (boulangerie, boutique, bar après minuit, restaurant, pharmacie, genres inconnus) ; `city-lights.test.ts` (part des fenêtres sans saut sur 24 h, lampadaires ; étiquettes d'un maillage ; nuanceurs du verre et des rideaux ; chaque vitrine générique connaît son horaire ; une devanture dessine ses rideaux avec la bonne étiquette).
+
+**Limites** : les enseignes peintes (bandeaux) ne s'éteignent pas ; la carotte de tabac des devantures génériques n'est pas lumineuse (elle ne l'était pas) ; un rideau de fer descend d'un coup (pas d'animation) ; les vitrines n'ont pas d'intérieur ; le lundi matin, les boutiques ont leur rideau (c'est voulu, à juger).
+
+![La place à 23 h, avant : toutes les fenêtres « habitées » allumées](captures/d200-nuit-avant.jpg)
+![Après : une partie seulement, le restaurant fermé (23 h), ciel clair](captures/d200-nuit-apres.jpg)
+![Nuit nuageuse : nuages sombres, à peine plus clairs que le ciel](captures/d200-nuit-nuageuse.jpg)
+![Rue aux Cordiers, mercredi 15 h : boutiques ouvertes](captures/d200-cordiers-mercredi.jpg)
+![Dimanche 15 h : rideaux de fer baissés](captures/d200-cordiers-dimanche.jpg)
+![Mercredi d'hiver, 18 h : vitrines ouvertes allumées](captures/d200-cordiers-hiver-18h.jpg)

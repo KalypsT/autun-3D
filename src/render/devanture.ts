@@ -1,3 +1,4 @@
+import { shutterTarget } from "./shutter-sink";
 import * as THREE from "three";
 import type { Devanture } from "../data/types";
 import { MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
@@ -25,6 +26,8 @@ export interface DevantureFrame {
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 const GLASS_LO = C("#26313a"), GLASS_HI = C("#4a5a66"), GLOW_LO = C("#ffcf86"), GLOW_HI = C("#fff3d6"), BRASS = C("#c9a24a"), STAND = C("#3a3029");
+/** Rideau de fer (D200) : tôle ondulée grise. */
+const SHUTTER_LO = C("#7f858a"), SHUTTER_HI = C("#a2a7ab");
 /**
  * Vêtements de la photo [couleur, position dans la vitrine (0 à 1), largeur, longueur] : rayon de gauche (robe fleurie, pantalon rose, haut
  * blanc, jupe blanche), mannequins de droite devant un fond vert (robe à pois, chemise bleu ciel, robe corail).
@@ -135,6 +138,9 @@ function buildFront(mb: MeshBuilder, glow: MeshBuilder | null, text: { mb: UvMes
   const lit = (s0: number, s1: number, z0: number, z1: number, off: number): void => {
     panel(mb, s0, s1, z0, z1, off, GLO, GHI);
     if (glow) panel(glow, s0, s1, z0, z1, off + 0.006, GLOW_LO, GLOW_HI);
+    // Rideau de fer (D200) : baissé devant la baie quand le commerce est fermé (étiquette posée par la tuile).
+    const sh = shutterTarget();
+    if (sh && sh.tag >= 2) panel(sh, s0, s1, z0, z1, off + 0.03, SHUTTER_LO, SHUTTER_HI);
   };
   let windows = 0;
   d.bays.forEach(([kind, w], bi) => {

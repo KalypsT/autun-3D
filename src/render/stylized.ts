@@ -1,6 +1,9 @@
 import type { SeatDef } from "../core/seats";
 import { closeSeats, openSeats } from "./seat-sink";
 import { crownDepthMaterial, weatherize } from "./weather-fx";
+import { cityLights, TAG } from "./city-lights";
+import { setShutterTarget, shutterTarget } from "./shutter-sink";
+import { scheduleOf } from "../core/opening";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
 import { planFacadesSteps, type Placement } from "./facades";
@@ -161,13 +164,15 @@ export class StyleResources {
   readonly wallMat = weatherize(this.lit({ vertexColors: true }), "wall");
   readonly roofMat = weatherize(this.lit({ vertexColors: true, map: roofTexture(), side: THREE.DoubleSide, shadowSide: THREE.BackSide }), "roof");
   /** Vitres allumées (nuit) : sans éclairage. */
-  readonly glowMat = new THREE.MeshBasicMaterial({
+  readonly glowMat = cityLights(new THREE.MeshBasicMaterial({
     vertexColors: true, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
-  });
+  }), "glow");
   /** Verrières (passage Balthus, D191) : verre translucide sans éclairage, qui ne porte pas d'ombre et n'en reçoit pas. */
   readonly glassMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
   /** Taches de lumière des lampadaires : translucides, sans écriture de profondeur ; l'atmosphère règle l'opacité. */
-  readonly haloMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false });
+  readonly haloMat = cityLights(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false }), "glow");
+  /** Rideaux de fer des commerces fermés (D200) : dessinés seulement hors des heures d'ouverture. */
+  readonly shutterMat = cityLights(this.lit({ vertexColors: true }), "shutter");
   readonly signAtlas = new SignAtlas();
   readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   private readonly decalMats = new Map<string, THREE.Material>();
@@ -225,6 +230,7 @@ function panel(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
 
 const WARM: [string, string][] = [["#ff9d3c", "#ffe08a"], ["#ffb04a", "#fff0b0"], ["#f08a3a", "#ffd27a"]];
 let glowTarget: MeshBuilder | null = null;
+
 let signText: { mb: UvMeshBuilder; atlas: SignAtlas } | null = null;
 /** Images collées sur les murs de la tuile en cours (D186) : un maillage par fichier. */
 let decalSink: DecalSink | null = null;
@@ -236,7 +242,10 @@ function glass(mb: MeshBuilder, p: Placement, s0: number, s1: number, z0: number
   const h = idKey(`${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
   if (h < litShare) {
     const [lo, hi] = pick(WARM, h * 13, 6);
+    // Une vitrine suit l'horaire de son commerce ; une fenêtre a son seuil d'allumage, tiré de sa position (D200).
+    glowTarget.tag = p.sched !== undefined ? TAG.shop + p.sched : 0.01 + 0.98 * idKey(`${p.x.toFixed(1)}|${p.y.toFixed(1)}|${p.z.toFixed(1)}`);
     panel(glowTarget, p, s0, s1, z0, z1, off + 0.006, C(lo), C(hi));
+    glowTarget.tag = 0;
   }
 }
 
@@ -290,6 +299,13 @@ function shopGeometry(mb: MeshBuilder, p: Placement, parts: string[]): void {
   panel(mb, p, -w / 2, w / 2, 0, hm, 0.05, col);
   const bulk = door ? 0.15 : 0.55;
   glass(mb, p, -w / 2 + 0.07, w / 2 - 0.07, bulk, hm - 0.08, 0.07, 0.9);
+  // Rideau de fer (D200) : baissé devant la vitrine et la porte quand le commerce est fermé.
+  const sh = shutterTarget();
+  if (sh && p.sched !== undefined) {
+    sh.tag = TAG.shop + p.sched;
+    panel(sh, p, -w / 2 + 0.05, w / 2 - 0.05, 0.02, hm - 0.04, 0.09, C("#8a8f93"), C("#a4a9ad"));
+    sh.tag = 0;
+  }
   if (!door) panel(mb, p, -w / 2 + 0.1, w / 2 - 0.1, 0.07, bulk - 0.06, 0.065, darker(col, 0.8));
   if (door) panel(mb, p, -0.03, 0.03, bulk, hm - 0.08, 0.085, col);
 }
@@ -425,12 +441,13 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
   const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k, kindOf(b.id)?.roof));
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
-  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(), glass = new MeshBuilder(), leaves = new MeshBuilder();
+  const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(true), glass = new MeshBuilder(), leaves = new MeshBuilder(), shutters = new MeshBuilder(true);
   const names = new UvMeshBuilder();
   const decalMeshes = new Map<string, UvMeshBuilder>();
   // Les éléments de façade écrivent les vitres et les enseignes dans ces cibles ; une seule tuile se construit à la fois.
   const target = (): void => {
     glowTarget = glow;
+    setShutterTarget(shutters);
     signText = { mb: names, atlas: res.signAtlas };
     decalSink = (src) => {
       let b = decalMeshes.get(src);
@@ -508,7 +525,16 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
         const fi = fiches.get(parts[1] ?? "");
         // `|c` : devanture d'angle sur le mur voisin (D179).
         const dev = parts[2] === "c" ? [fi?.ground.corner, ...(fi?.ground.corners ?? [])].find((c) => c?.wall === Number(parts[3]))?.devanture : fi?.ground.devanture;
-        if (dev) buildDevanture(detail, glowTarget, signText, p, dev, fi?.ground.shopfront?.color ?? "#7f93c0", decalSink ?? undefined);
+        if (dev) {
+          // La devanture suit l'horaire de son commerce (vitrines allumées le soir, rideaux de fer, D200).
+          const tag = TAG.shop + scheduleOf(fi?.ground.shops?.[0]?.kind ?? null);
+          const sh = shutterTarget();
+          if (glowTarget) glowTarget.tag = tag;
+          if (sh) sh.tag = tag;
+          buildDevanture(detail, glowTarget, signText, p, dev, fi?.ground.shopfront?.color ?? "#7f93c0", decalSink ?? undefined);
+          if (glowTarget) glowTarget.tag = 0;
+          if (sh) sh.tag = 0;
+        }
         break;
       }
       default: break;
@@ -537,7 +563,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
     const m = new THREE.Mesh(geometry, mat);
     m.name = name;
-    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "verrieres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes";
+    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "verrieres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes" && name !== "rideaux";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -553,6 +579,11 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (glow.triangleCount > 0) put("vitres", yield* glow.buildSteps(), glow.triangleCount, res.glowMat);
   add("verrieres", glass, res.glassMat);
   add("feuillage", leaves, res.leavesMat);
+  if (shutters.triangleCount > 0) {
+    add("rideaux", shutters, res.shutterMat);
+    // Horaires présents dans ce maillage : il n'est dessiné que si l'un d'eux est fermé (D200 ; sinon un appel de dessin pour rien).
+    group.children[group.children.length - 1]!.userData["scheds"] = [...new Set(shutters.tags!.map((t) => Math.round(t - TAG.shop)))];
+  }
   res.signAtlas.flush();
   yield;
   add("enseignes", names, res.signMat);

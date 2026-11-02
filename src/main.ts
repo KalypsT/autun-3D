@@ -139,6 +139,9 @@ async function main(): Promise<void> {
   sunLight.position.copy(sunDir).multiplyScalar(400);
   // ?budget=4 : temps de construction des tuiles par image (ms) ; ?budget=1000 construit d'un bloc (comparaison).
   const tiles = new TileManager(world, (d) => buildTileSteps(styleRes, d, world.terrain), colliders, effective.detail, Number(params.get("budget") ?? 4));
+  // Rideaux de fer (D200) : montrés seulement si un commerce de la tuile est fermé.
+  atmosphere.onShops = (open) => tiles.updateShutters(open);
+  tiles.updateShutters(atmosphere.shopTable);
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);

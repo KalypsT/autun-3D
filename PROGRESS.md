@@ -1480,3 +1480,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Au klaxon, de loin, on se retourne au lieu de sursauter ; on regarde parfois une fontaine ou un monument en passant.
 - 5 % des passants promènent un chien en laisse : il trotte derrière, s'arrête renifler, s'assoit aux pieds de son maître assis, fuit avec lui.
 - À regarder : la terrasse de L'Augusto à midi (`?at=-43,-21&yaw=-0.55&h=12.5`), la galerie `?view=characters&dogs=1` et `&pose=sit|phone|talk`. 1077 tests (12 de plus que D197).
+
+**Ville vivante, lot 1-6 : les lumières de la ville (2 novembre 2026)** (D200)
+- Le soir, les fenêtres s'allument une à une jusqu'à 21 h, s'éteignent peu à peu jusqu'à 1 h ; quelques-unes restent allumées, d'autres se rallument au réveil. Les lampadaires s'allument chacun à son tour.
+- Les commerces ont leurs heures d'ouverture (par type : boulangerie, café, bar, restaurant, boutique, pharmacie, tabac…) : vitrines éclairées le soir si c'est ouvert, rideaux de fer baissés quand c'est fermé (le dimanche, presque tout).
+- Corrigé : les nuages du ciel, clairs ou bruns la nuit, sont maintenant à peine plus clairs que le ciel. 1087 tests (10 de plus).
+- À regarder : `?h=23`, `?weekday=7&h=15` (dimanche), `?season=hiver&weekday=3&h=18` (vitrines ouvertes la nuit tombée).
+- **Le lot 1 du plan « ville vivante » est terminé.**

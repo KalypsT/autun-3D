@@ -5,6 +5,9 @@ import { sunDirection, sunPosition } from "../core/sun";
 import { THEMES } from "./style";
 import type { StyleResources } from "./stylized";
 import { setGroundWeather, setSeasonLook } from "./weather-fx";
+import { setCityLights } from "./city-lights";
+import { lampLevel, litWindowShare } from "../core/city-lights";
+import { openingTable } from "../core/opening";
 import { hourlyT, seasonLook } from "../core/seasons";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
 
@@ -76,12 +79,22 @@ export class Atmosphere {
   private nextFlash = 5;
   private flash = 0;
   private flashes: number[] = [];
+  /** Table d'ouverture des commerces au dernier réglage (1 ouvert, 0 fermé, par horaire type). */
+  get shopTable(): readonly number[] {
+    return this.shops;
+  }
+
+  /** Ouverture des commerces (D200), à chaque réglage de l'ambiance : le gestionnaire de tuiles montre ou cache les rideaux de fer. */
+  onShops: ((open: readonly number[]) => void) | null = null;
   /** Coup de tonnerre : délai (s) depuis l'éclair, selon la distance de la foudre, et force (0 à 1). Branché par le jeu (son). */
   onThunder: ((delay: number, strength: number) => void) | null = null;
   /** Pluie et neige qui tombent autour de la caméra (créées à la première averse). */
   private rain: Precipitation | null = null;
   private snowfall: Precipitation | null = null;
   private time = 0;
+  /** Nuit pour les lumières (0 à 1), et table d'ouverture des commerces (réutilisée). */
+  private nightLevel = 0;
+  private readonly shops: number[] = [];
 
   constructor(
     hour: number,
@@ -188,7 +201,7 @@ export class Atmosphere {
 
   /** Nuit pour les lumières allumées (fenêtres, lampadaires, feux des voitures) : 0 le jour, 1 la nuit noire, de 3° à −6° de hauteur du soleil. */
   get night(): number {
-    return this.res.glowMat.opacity;
+    return this.nightLevel;
   }
 
   /** Phares (D196) : la nuit, et aussi de jour dans la brume, sous une forte pluie ou sous la neige. */
@@ -275,8 +288,12 @@ export class Atmosphere {
 
     // Fenêtres et lampadaires : s'allument de 3° à -6° (plus tôt par temps très couvert).
     const glow = smooth(3 + 5 * veil, -6, elev);
+    this.nightLevel = glow;
     this.res.glowMat.opacity = glow;
     this.res.glowMat.visible = glow > 0.01;
+    // Lumières de la ville (D200) : fenêtres une à une, lampadaires chacun à son tour, commerces selon leurs heures d'ouverture.
+    setCityLights(litWindowShare(this.hour), lampLevel(glow), openingTable(this.cal.weekday, this.hour, this.shops));
+    this.onShops?.(this.shops);
     this.res.haloMat.opacity = 0.32 * glow;
     this.res.haloMat.visible = glow > 0.01;
   }

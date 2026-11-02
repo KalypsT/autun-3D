@@ -1,3 +1,4 @@
+import { TAG } from "./city-lights";
 import { benchSeats } from "../core/seats";
 import { pushSeat } from "./seat-sink";
 import * as THREE from "three";
@@ -93,9 +94,19 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         const ax = f.x + Math.cos(rot) * 0.5, ay = f.y + Math.sin(rot) * 0.5;
         box(mb, f.x + Math.cos(rot) * 0.25, f.y + Math.sin(rot) * 0.25, 0.25, 0.03, rot, z + 4.35, z + 4.42, COLORS.iron);
         box(mb, ax, ay, 0.16, 0.16, rot, z + 4.12, z + 4.38, COLORS.steel);
-        if (glow) box(glow, ax, ay, 0.17, 0.17, rot, z + 4.115, z + 4.385, LAMP_LIT);
+        // Chaque lampadaire s'allume à son tour (D200) : son seuil, tiré de son identifiant.
+        const lampTag = TAG.lamp + hash01(String(f.id), 31) * 0.95;
+        if (glow) {
+          glow.tag = lampTag;
+          box(glow, ax, ay, 0.17, 0.17, rot, z + 4.115, z + 4.385, LAMP_LIT);
+          glow.tag = 0;
+        }
         box(mb, ax, ay, 0.2, 0.2, rot, z + 4.38, z + 4.45, COLORS.iron);
-        if (halo) disc(halo, ax, ay, z + 0.2, 3.4, LAMP_HALO);
+        if (halo) {
+          halo.tag = lampTag;
+          disc(halo, ax, ay, z + 0.2, 3.4, LAMP_HALO);
+          halo.tag = 0;
+        }
         break;
       }
       default: continue;
@@ -200,7 +211,7 @@ export function splitBreakable(items: readonly Furniture[]): { plain: Furniture[
 
 /** Dessine le mobilier cassable, hors celui dont l'identifiant est dans `broken` (arraché par un véhicule). */
 export function buildBreakables(items: readonly Furniture[], terrain: HeightField, broken: ReadonlySet<number> | null = null): BreakableMeshes {
-  const out: BreakableMeshes = { solid: new MeshBuilder(), glow: new MeshBuilder(), halo: new MeshBuilder() };
+  const out: BreakableMeshes = { solid: new MeshBuilder(), glow: new MeshBuilder(true), halo: new MeshBuilder(true) };
   buildFurniture(out.solid, broken ? items.filter((f) => !broken.has(f.id)) : items, terrain, out.glow, out.halo);
   return out;
 }
