@@ -1,7 +1,8 @@
-import type { HeightField, TileData } from "../data/types";
+import type { Building, HeightField, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
-import { Colliders, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { Colliders, WALL_STEP, type Top } from "./collision";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { roofPlanes } from "./roofs";
 import { parapetLines } from "./bridges";
 import { theatreWalls } from "./theatre";
 
@@ -48,9 +49,15 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
       continue;
     }
     // Maison d'après photo (D140) : ses murs mesurés (le contour BD TOPO est décalé), renfoncement de l'entrée compris.
-    const house = tile.kinds?.buildings[b.id]?.house;
-    c.addRing(house ? houseRing(house) : b.ring);
-    for (const h of b.holes) c.addRing(h);
+    const kind = tile.kinds?.buildings[b.id];
+    const house = kind?.house;
+    if (house || !walkableRoof(kind)) {
+      c.addRing(house ? houseRing(house) : b.ring);
+      for (const h of b.holes) c.addRing(h);
+      continue;
+    }
+    // Toit praticable (D214) : les pans dessinés (bâtiment remis à la forme de son gabarit, comme au rendu) et des murs à leur hauteur.
+    addRoofedBuilding(c, reshapeBuilding(b, kind?.k, kind?.roof), tag);
   }
   // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
   // Chacun garde sa hauteur : on saute par-dessus les plus bas, on escalade les grilles (voir `player.ts`).
@@ -82,6 +89,33 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
   for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line, false, PARAPET);
   c.currentTag = null;
+}
+
+/** Plus petit côté (m) d'une cheminée, comme au rendu. */
+const CHIMNEY_MIN = 0.5;
+/** Raccords entre pans (D170) qui font un mur : plus hauts que la marche qu'on franchit, et pas plus que ce que dessine le rendu. */
+const STEP_MIN = WALL_STEP;
+const STEP_MAX = 4;
+
+/** Bâtiment à toit praticable : murs à hauteur (contour, cours), pans de toit, cheminées et édicules, raccords entre pans. */
+function addRoofedBuilding(c: Colliders, b: Building, tag: string | null): void {
+  c.addRing(b.ring, b.top);
+  b.holes.forEach((h, i) => c.addRing(h, b.holeTop[i] ?? null));
+  c.roofs.add(roofPlanes(b), tag);
+  for (const [cx, cy, sx, sy, , z1] of b.chim as [number, number, number, number, number, number][]) {
+    const hx = Math.max(sx, CHIMNEY_MIN) / 2, hy = Math.max(sy, CHIMNEY_MIN) / 2;
+    c.addRing([cx - hx, cy - hy, cx + hx, cy - hy, cx + hx, cy + hy, cx - hx, cy + hy], [z1, z1, z1, z1]);
+  }
+  for (const [cx, cy, sx, sy, , z1, ang] of (b.rooftop ?? []) as [number, number, number, number, number, number, number][]) {
+    const a = (ang * Math.PI) / 180, ux = Math.cos(a), uy = Math.sin(a);
+    const pt = (s: number, t: number): [number, number] => [cx + ux * s - uy * t, cy + uy * s + ux * t];
+    c.addRing([...pt(-sx / 2, -sy / 2), ...pt(sx / 2, -sy / 2), ...pt(sx / 2, sy / 2), ...pt(-sx / 2, sy / 2)], [z1, z1, z1, z1]);
+  }
+  for (const s of b.steps) {
+    const [x1, y1, l1, h1, x2, y2, l2, h2] = s as [number, number, number, number, number, number, number, number];
+    const dz = Math.max(h1 - l1, h2 - l2);
+    if (dz >= STEP_MIN && dz <= STEP_MAX) c.addSegment(x1, y1, x2, y2, false, null, [h1, h2]);
+  }
 }
 
 export function buildColliders(sources: ColliderSources): Colliders {

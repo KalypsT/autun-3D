@@ -4266,3 +4266,106 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Résultat mesuré** : au plus 4 cm et 0,11 rad par image autour du relevé (chutes légère, forte, violente, trébuchement), contre 3,15 m et un quart de tour avant.
 
 **Tests** (+2) : relevé sans saut de place ni de cap pour quatre chocs ; gendarme qui se tourne sans sauter hors chute, cap exact pendant une chute.
+
+## 2026-11-03 — D214. Toits praticables, lot 1 : le socle (surfaces de toit, murs à hauteur)
+
+**Demande de l'utilisateur** : après un tremplin, la voiture s'arrêtait en plein vol au-dessus d'une maison, comme contre un mur. Plan validé : `docs/plans/toits.md` (5 lots). Ce lot pose le socle ; **rien ne change encore en jeu**.
+
+**Cause** : les collisions sont en 2D ; un bâtiment était le contour de son emprise, sans hauteur, donc un mur infini.
+
+**Mesures sur les données** (8 170 bâtiments, toutes les tuiles) :
+- Les pans de toit (`Building.faces`, après `reshapeBuilding`, comme au rendu) couvrent **99,97 %** de l'emprise ; aucun bâtiment n'est sans pans (567 ont des pans de secours, `q.fallback`, mais couvrants).
+- Un point à 40 cm à l'intérieur d'un mur : le pan y est en moyenne 26 cm plus haut que le mur (pente de 35° partant de l'égout) ; 99 % à moins de 70 cm. Les toits plats à acrotère (grandes surfaces) sont, comme voulu, jusqu'à 80 cm sous le haut du mur.
+- **Pentes** : tous les pans font au plus 35°, et la plupart exactement 35°. Avec le seuil de glissade de 30° prévu au plan, **presque tous les toits en pente feraient glisser** : à trancher avec l'utilisateur avant les lots 2 et 3.
+- Mur le plus bas : 2,26 m au-dessus du sol ; **780 bâtiments** ont au moins un mur de 2,5 m ou moins (côté bas d'une pente, annexes) : prises pour l'escalade du lot 3.
+- Bâtiments mitoyens : 11 061 côtés partagés exactement, seulement 171 laissent une fente de 10 à 80 cm (dans une tuile).
+- Seule **1 maison** est modélisée d'après photo (D140) : elle garde ses murs mesurés, infinis (son toit est celui de son modèle).
+
+**Décisions** :
+- **Toits** (`src/core/roofs.ts`) : `Roofs`, pans rangés dans une grille de 8 m, chargés et déchargés avec la tuile (tenus par `Colliders.roofs`, retirés par `removeTag`). `planeAt` / `surface` : le pan le plus haut sous le point, mais pas plus de **`ROOF_STEP` = 1,5 m** au-dessus de l'altitude de qui demande (comme les tabliers, D93) ; au-delà, on est dans la rue au pied du mur. Cours intérieures : pas de toit. `withRoofs(terrain, roofs)` : le relief avec les toits, pour le joueur et son véhicule seulement (lots 2 et 3) ; le relief nu ne change pas.
+- **Murs à hauteur** (`collision.ts`) : un segment de bâtiment porte l'altitude absolue de son haut à chaque bout (`topA`, `topB` ; un pignon suit le rampant). `resolve` reçoit en option l'**altitude des pieds** (`feet`) : un mur dont le haut est à moins de **`WALL_STEP` = 0,3 m** au-dessus est ignoré. **Sans `feet`, le mur reste infini** : circulation, passants, gendarmes et, pour l'instant, le joueur ne voient aucune différence.
+- **Bâtiments concernés** (`walkableRoof`, `landmarks.ts`) : ceux dont le rendu dessine le toit générique (`drawsGenericRoof`, condition sortie de `stylized.ts` pour qu'elle serve aux deux), sauf églises, chapelles, clochers (`tower`), cathédrale (`mon`) et auvents. 8 128 bâtiments sur 8 170 ; les autres gardent des murs infinis.
+- **Obstacles sur les toits** : cheminées (côté d'au moins 0,5 m, comme au rendu) et édicules (D170) deviennent de petits contours à leur hauteur. Raccords entre pans (`steps`, 3 dans toute la ville) : murs à hauteur entre 0,3 et 4 m de dénivelé.
+- `pointInRing` passe dans `src/core/ring.ts` (réexporté par `collision.ts`) pour éviter un cycle entre `collision.ts` et `roofs.ts`.
+
+**Coût** : 39 579 pans en mémoire pour toute la ville ; environ **0,2 µs** par recherche d'altitude ; 2 727 cheminées et 15 édicules en plus dans la grille des obstacles.
+
+**Tests** (+15, `roofs.test.ts`) : pans, rue au pied du mur, essieu plus haut sur le pan, cour intérieure, redan, déchargement ; murs à hauteur (pignon, `WALL_STEP`, obstacles bas inchangés, mur infini sans `feet`) ; sur la vraie ville : part des toits praticables, monuments infinis, couverture et identité des pans avec le rendu, continuité entre bord du toit et haut du mur, hauteur des murs, coût.
+
+## 2026-11-03 — D215. Toits praticables, lot 2 : la voiture (et le joueur) sur les toits
+
+**Demande de l'utilisateur** : lot 2 du plan `docs/plans/toits.md`, avec le choix du seuil de pente tranché : **le véhicule glisse au-delà de 30°, le piéton tient debout** (option 3, après la mesure de D214 : tous les pans à 35° au plus, presque tous à 35°).
+
+**Ce qui change en jeu** :
+- **Le bug constaté est corrigé** : après un tremplin, la voiture du joueur passe au-dessus d'une maison moins haute que son vol, ou se pose sur son toit, au lieu de rebondir en plein ciel. Un immeuble plus haut que le vol l'arrête toujours.
+- Elle **roule sur les toits** et **tombe de leur bord** (vol, puis réception avec choc), sans se téléporter dans la rue. Sur un **pan de plus de 30°**, elle **glisse** vers le bas du pan et finit par tomber.
+- **Descendre du véhicule sur un toit** pose le joueur sur le toit ; au bord du vide, il garde son altitude et tombe (dégâts de chute habituels). Chute d'un deux-roues et saut hors d'une voiture qui roule : idem.
+- Le **joueur à pied marche sur les toits** (dans ce lot plutôt qu'au lot 3, sinon descendre du véhicule sur un toit l'aurait enfermé dans le bâtiment) : il passe sur un toit voisin de même hauteur, bute contre un voisin plus haut, tombe du bord. Il tient debout sur les pans à 35°.
+- La **caméra** ne bute plus sur les murs du bâtiment sous les pieds (avancée du lot 4 : sans elle, la conduite sur un toit était impossible à regarder). Les tirs et la vue des gendarmes restent en 2D (lot 4).
+- Une **partie enregistrée sur un toit** reprend sur le toit, et un véhicule laissé sur un toit y reste : la sauvegarde ne garde que x et y, et un point dans l'emprise d'un bâtiment ne peut être que sur son toit, d'où la surface la plus haute au chargement.
+- Circulation, passants, gendarmes, pigeons : rien ne change, ils trouvent les murs infinis.
+
+**Décisions** :
+- `game.ts` : `surface = withRoofs(terrain, colliders.roofs)` sert au véhicule conduit et aux voitures abandonnées qui roulent (`stepVehicle`), au joueur (`stepPlayer`, `slidePlayer`, création), aux véhicules garés (`Fleet`), aux traces de pneus et à la caméra. `footZ` pose le joueur après une descente de véhicule (au-dessus du vide : il garde son altitude).
+- `stepVehicle` : avec `fly` (véhicule du joueur), le **bas des roues** (`s.z`, moins le cabrage) est passé aux collisions comme altitude des pieds (D214). Sans `fly`, rien ne change.
+- **Glissade** (`slideOnRoof`, `vehicle.ts`) : sur un pan plus raide que **`ROOF_SLIP` = 30°**, roues au sol, les pneus ne tiennent plus : pesanteur vers le bas du pan, frottement de Coulomb (0,35 × l'adhérence de la fiche, moins que tan 35° ≈ 0,7), le reste comme en vol (élan, rotation qui s'amortit ; ni moteur, ni freins, ni direction). Un premier essai (adhérence réduite et pesanteur en travers dans le modèle de pneus) ne glissait qu'à 0,2 m/s : à basse vitesse, le modèle de pneus annule la vitesse latérale.
+- **Un toit n'est pas un tablier** (`onDeck`, `shore.ts`) : `HeightField.roofless` (la surface sans les toits) permet de les distinguer ; sans cela, au bord d'un toit, la voiture et le piéton auraient rejoint la rue d'un coup, comme au bout d'un pont.
+- `HeightField.roofAt` : le pan sous le point (pour la glissade).
+- **Glissade au sol d'un pilote tombé** (`slidePlayer`) : un dénivelé de plus de 0,6 m l'arrête (bord d'un toit, mais aussi d'un quai, où il passait d'un coup en bas ; changement mineur).
+- **Caméra** : `Colliders.raycast` reçoit en option l'altitude du rayon à ses deux bouts ; un mur de bâtiment que le rayon passe par-dessus ne l'arrête pas.
+- Mesuré sur la ville réelle : une voiture posée sur le toit plat d'une grande surface en descend par-dessus son acrotère quand il est bas (relevé LiDAR de 20 cm, sous `WALL_STEP`) ; sur une maison à 35°, elle glisse et tombe (choc de réception 4 m/s).
+
+**Pas encore** : escalade des bâtiments bas, saut long en course, tolérance aux fentes entre toits mitoyens (lot 3) ; tirs et vue des gendarmes en 3D (lot 4) ; gendarmes qui attendent au pied du bâtiment (lot 5). Une voiture en travers d'un pan n'est pas inclinée de côté (le relief non plus ne fait pas pencher les voitures en travers).
+
+**Tests** (+11, `roofs-play.test.ts`) : le cas constaté (tremplin à 90 km/h, maison de 3 m), immeuble de 15 m toujours bloquant, circulation inchangée, atterrissage sur un toit plat puis chute du bord, glissade à 35° et tenue à 20° ; joueur : mur depuis la rue, marche sur le toit et chute avec hauteur comptée, toit voisin de même hauteur ou plus haut, tenue sur un pan à 35° ; un toit n'est pas un tablier ; caméra sur un toit et dans la rue ; rayon avec altitudes. Essai dans le jeu (navigateur sans écran) : départ sur un toit de maison, marche jusqu'au faîtage, caméra correcte, aucune erreur.
+
+## 2026-11-03 — D216. Toits praticables, lot 4 : vue et tirs en 3D
+
+**Demande de l'utilisateur** : lot 4 du plan `docs/plans/toits.md`, choisi avant le lot 3. Après D215, deux trous : sur un toit, **les gendarmes ne voyaient ni ne touchaient le joueur** (le mur du bâtiment sous ses pieds, infini en 2D, les cachait : une cachette parfaite), et **le joueur ne pouvait pas tirer depuis un toit** (ses balles s'arrêtaient sur les murs de son propre bâtiment).
+
+**Décisions** :
+- **Ligne de vue en 3D** (`Colliders.sight`) : entre deux points (x, y, altitude), ni mur de bâtiment que le rayon ne passe pas par-dessus (`raycast` avec altitudes, D215), **ni toit** (`Roofs.blocks` : on suit le rayon tous les mètres, sans les 0,6 premiers et derniers mètres ; un point sous un pan est caché). Effets : de la rue, on voit le joueur au bord d'un toit plat, pas au milieu (le bord le cache, d'autant moins qu'on est loin) ; on voit le pan tourné vers soi, pas celui de derrière le faîtage.
+- **Gendarmes** : yeux à **1,5 m** au-dessus du sol (relief et ponts, sans les toits : ils ne montent pas), visée au **milieu du corps** du joueur (1,1 m au-dessus de ses pieds). En 3D : la vue (étoiles, fouille : `policeSees`), le tir des gendarmes à pied (`Officers`, nouveau paramètre `ground`) et en voiture, la décision de faire descendre un équipage, les infractions vues par la police (`crime` reçoit l'altitude de l'auteur quand il est le joueur : vol, agression, coups de feu). `PolicePlayer.z` et `Suspect.z` portent l'altitude du joueur ; sans elle (essais, anciens appels), tout reste en 2D.
+- **Conduite des voitures de police : reste en 2D** (`chase.ts`) : elle décide s'il faut foncer droit sur le fugitif ; vers un toit, la voiture ne peut pas y aller, les murs infinis sont la bonne réponse. Idem pour les déplacements des gendarmes à pied (lot 5).
+- **Tirs du joueur** (`gun.ts`) : `ShootWorld.wall` reçoit en option l'altitude de la balle à ses deux bouts ; le relief de `ground` devient la surface avec les toits (une balle s'arrête dans un toit) ; la visée assistée vérifie la ligne de tir de l'arme à la poitrine de la cible. Tir « à plat » (essais, banc) : inchangé.
+- La caméra en visée (épaule) teste son décalage à hauteur de tête.
+
+**Inchangé** : la conduite des voitures de police, les passants (témoins à moins de 25 m, en 2D), les obstacles ronds (voitures garées, troncs) qui restent des colonnes sans fin pour les lignes de tir. Le tracé lumineux d'une balle de gendarme qui manque le joueur reste horizontal.
+
+**Pas encore** : les gendarmes à pied foncent toujours vers le joueur et s'arrêtent contre le mur ; ils l'attendront au pied du bâtiment au lot 5.
+
+**Tests** (+7, `roofs-combat.test.ts`) : vue entre la rue et un toit plat (bord, milieu, de près et de loin), un toit à deux pans (pan visible, pan caché derrière le faîtage), deux personnes au sol de part et d'autre d'une maison ; `policeSees` en 3D et en 2D ; gendarme armé qui tire sur le joueur au bord du toit, pas au milieu ; joueur qui touche une cible dans la rue depuis le bord du toit (et ne la touchait pas avant), cible au pied du bâtiment cachée par le bord du toit. Essai dans le jeu : démarrage sur un toit sans erreur (les combats n'y ont pas été joués).
+
+## 2026-11-03 — D217. Toits praticables, lot 5 : la police attend au pied du bâtiment
+
+**Demande de l'utilisateur** : lot 5 du plan `docs/plans/toits.md` (« ils attendent en bas »). Avant : les gendarmes à pied fonçaient en ligne droite vers le joueur perché et s'arrêtaient contre le mur ; un gendarme collé au mur pouvait même l'**arrêter à travers le toit** (contact compté en 2D).
+
+**Décisions** (`src/core/officers.ts`) :
+- **Joueur perché** (`Officers.perched`) : ses pieds à plus de **`PERCH` = 1,5 m** au-dessus du sol sous lui (relief et ponts, sans les toits ; sur un pont, il n'est donc pas perché).
+- **Postes** : tous les 0,75 s (ou dès que le joueur a bougé de 2 m), 16 directions depuis le joueur ; dans chacune, on sort du toit (plus de pan sous le point, pas de 0,5 m), puis on essaie des postes à **3, 8, 15 et 25 m** du bord, dans la rue : pas sous un autre toit (un autre bâtiment barre la direction), pas contre un obstacle. On note si le joueur s'y voit (ligne de vue 3D, D216).
+- **Répartition** : chaque gendarme debout prend le poste le moins coûteux : sa distance, **+25 m** si l'on n'y voit pas le joueur, **+40 m** par collègue posté à moins de 4 m. Les gendarmes **reculent donc pour voir** quand c'est possible (toit de 20 × 20 m : invisible du pied du mur, visible à 25 m), et se répartissent autour du bâtiment.
+- Arrivé (à 0,7 m de son poste), le gendarme **s'arrête et regarde le joueur** ; armé, il tire s'il le voit (D216), sinon il attend. Le déplacement ne suit plus le cap du corps mais la direction du but (sans quoi le gendarme qui se tourne vers le joueur avançait vers lui) ; changement invisible ailleurs.
+- **Pas d'arrestation à travers un toit** : le contact ne compte que si le joueur est à moins de 1,5 m au-dessus du sol sous le gendarme.
+- Le joueur redescendu, les postes sont oubliés et la poursuite reprend.
+- **Poings et armes de contact** : perché, le joueur n'atteint personne (`game.ts`, les passants et gendarmes sont en bas ; le corps à corps se calculait à plat).
+- Inchangé : les voitures de police (conduite en 2D, D216), la règle des étoiles (hors de vue, la recherche retombe comme ailleurs : un toit d'où personne ne voit le joueur reste une cachette, mais les gendarmes y restent postés).
+
+**Limites** : les gendarmes vont en ligne droite vers leur poste (il n'y a pas de chemin calculé pour eux, comme avant) ; un bâtiment entre eux et leur poste les arrête. Le poste le plus proche est en général de leur côté.
+
+**Mesure sur téléphone** (`?bench=1`) : à faire par l'utilisateur ; le chantier ajoute du calcul (0,2 µs par altitude, quelques centaines de recherches de toit par poste recalculé), pas de rendu.
+
+**Tests** (+3, et un test de D216 adapté : les gendarmes se déplacent désormais pour voir) : postés autour du bâtiment, hors de l'emprise, à l'écart les uns des autres, tournés vers le joueur, sans arrestation ; poursuite et arrestation reprises quand le joueur redescend ; armés, tir au bord, attente sans tir au milieu d'un toit de 40 × 40 m, recul pour voir et tirer sur un toit de 20 × 20 m.
+
+## 2026-11-03 — D218. Toits praticables, lot 3 : escalade, saut long, fentes entre toits
+
+**Demande de l'utilisateur** : dernier lot du plan `docs/plans/toits.md` (fait après les lots 4 et 5).
+
+**Décisions** :
+- **Escalade des bâtiments bas** : un mur de bâtiment s'escalade comme un muret (pousser contre lui et appuyer sur Sauter, ou l'attraper en retombant) quand son haut dépasse d'au plus **`BUILDING_CLIMB` = 2,5 m** le sol, ou le toit, d'où l'on part. La règle se mesure depuis là, pas depuis les pieds en l'air : sans cela, un saut aurait fait attraper des murs de 3,6 m. Même règle d'un toit à l'autre : on monte sur un voisin plus haut d'au plus 2,5 m. L'escalade vise le haut du mur en altitude absolue (`topA`, `topB`, le long du segment), puis le joueur passe par-dessus et retombe sur le toit. `resolve` signale ces murs (`wall`) quand ils sont à moins de 2,5 m au-dessus des pieds ; le joueur vérifie la règle depuis son sol.
+- Sur la vraie ville : **54 essais sur 60** réussis au pied d'annexes dont le mur fait 1,8 à 2,3 m au milieu du côté ; les 6 autres sont en pente, où le mur dépasse 2,5 m au point touché (comportement voulu).
+- **Saut long** : un saut pris à plus de 90 % de la vitesse de course porte la vitesse horizontale à **`LONG_JUMP_SPEED` = 7,4 m/s** (5 m/s avant) : environ **4,7 m** sur le plat (3,2 m avant), à la même hauteur. Une clôture de 1,6 m arrête toujours. En l'air, la commande infléchit la course sans ramener la vitesse à celle de la course (sans quoi le saut long perdait la moitié de son élan) ; un saut ordinaire est inchangé. **Chiffre à régler avec l'utilisateur en jouant** (plan, § 4).
+- **Fentes entre toits mitoyens** : sans toit sous le point, la surface du joueur et de son véhicule regarde aussi à **`ROOF_GAP` = 30 cm** autour (huit points). Une fente de quelques centimètres à 30 cm (171 côtés dans la ville, D214) ne fait plus tomber ; le bord d'un toit « dépasse » d'autant, moins que le rayon du joueur (35 cm).
+
+**Tests** (+5, `roofs-play.test.ts`) : escalade d'un garage de 2,4 m puis de la maison voisine 2 m plus haute, pas d'un mur de 3 m ; portée du saut long et du saut en marchant ; clôture de 1,6 m toujours infranchissable ; d'un toit à l'autre au-dessus d'une ruelle de 4 m en courant, chute dans la ruelle sans élan ; fente de 25 cm traversée sans tomber.
+
+**Chantier « toits praticables » terminé** (D214 à D218).

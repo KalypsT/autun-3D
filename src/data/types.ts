@@ -18,6 +18,10 @@ export interface HeightField {
   readonly yMax: number;
   /** Niveau de la mer qui entoure le monde (z local, D105) ; absent : pas de mer. */
   readonly seaLevel?: number | undefined;
+  /** Surface avec les toits (D214) : la même sans les toits (relief et tabliers) ; absent : pas de toits. */
+  readonly roofless?: HeightField;
+  /** Surface avec les toits (D214) : le pan de toit sous le point (plan z = a·x + b·y + c), ou null ; absent : pas de toits. */
+  roofAt?(x: number, y: number, zHint?: number): { a: number; b: number; c: number } | null;
 }
 
 export interface TerrainMeta {

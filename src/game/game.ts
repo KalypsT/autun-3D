@@ -1,3 +1,5 @@
+import { PERCH } from "../core/officers";
+import { withRoofs } from "../core/roofs";
 import { rescaleDate } from "../core/calendar";
 import { Seats } from "../core/seats";
 import { MarketController } from "./market";
@@ -114,10 +116,21 @@ export function followSun(ctx: GameContext): (x: number, y: number, z: number) =
 export function startGame(ctx: GameContext): void {
   const { camera, renderer, scene, sky, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
   const { terrain } = world;
+  // Toits praticables (D214, D215) : la surface du joueur et de son véhicule ; tout le reste (circulation, passants, gendarmes) suit le relief.
+  const surface = withRoofs(terrain, colliders.roofs);
+  /**
+   * Altitude où poser le joueur en (x, y), lui qui était à l'altitude z (descente de véhicule, chute) : la surface, toits compris ; au-dessus
+   * du vide (au bord d'un toit), il garde son altitude et tombe au pas suivant.
+   */
+  const footZ = (x: number, y: number, z: number): number => {
+    const g = surface.heightAt(x, y, z);
+    return z - g > 0.5 ? z : g;
+  };
   const spawn = ctx.start ?? { ...gameSpawn(params), save: null, noSave: true };
   const startYaw = spawn.yaw;
   const saved = spawn.save;
-  const player = createPlayer(spawn.x, spawn.y, terrain, startYaw);
+  // La sauvegarde ne garde que x et y : un point dans l'emprise d'un bâtiment est sur son toit (D215), d'où la surface la plus haute.
+  const player = createPlayer(spawn.x, spawn.y, surface, startYaw);
   // Apparence du joueur : enregistrée à part de la partie (survit à « nouvelle partie »), appliquée tout de suite.
   const appearanceStore = new AppearanceStore();
   let appearance: Recipe = appearanceStore.load();
@@ -127,7 +140,7 @@ export function startGame(ctx: GameContext): void {
   const placeSun = followSun(ctx);
 
   // Véhicules garés : aux parkings à vélos des tuiles déjà construites, puis de chaque nouvelle tuile.
-  const fleet = new Fleet(scene, colliders, terrain);
+  const fleet = new Fleet(scene, colliders, surface);
   // Départ neuf : aucune voiture garée sur le joueur. Partie reprise : les véhicules laissés ailleurs reviennent où ils étaient.
   if (saved) fleet.restore(saved.vehicles);
   else fleet.keepClear(spawn.x, spawn.y, 4);
@@ -372,7 +385,8 @@ export function startGame(ctx: GameContext): void {
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
   const wantedHud = new WantedHud(document.getElementById("wanted")!);
-  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic);
+  // Vue et tirs des gendarmes en 3D (D216) : ils sont au sol (relief et ponts, sans les toits), le joueur peut être sur un toit.
+  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic, (x, y) => terrain.heightAt(x, y));
   police.minPursuers = chaseParam;
   // Santé (J5-0, D80) : reprise de la sauvegarde ; `?hurt=N` impose N points de vie (0 : mort au départ, essais et captures).
   const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
@@ -438,8 +452,8 @@ export function startGame(ctx: GameContext): void {
     const s = v.state;
     // Pied à terre du côté gauche (portière d'une voiture), hors des obstacles.
     const side = familyOf(v).dismount;
-    const r = colliders.resolve(s.x - Math.cos(s.heading) * side, s.y + Math.sin(s.heading) * side, PLAYER_RADIUS);
-    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: s.heading });
+    const r = colliders.resolve(s.x - Math.cos(s.heading) * side, s.y + Math.sin(s.heading) * side, PLAYER_RADIUS, 0, s.z);
+    Object.assign(player, { x: r.x, y: r.y, z: footZ(r.x, r.y, s.z), vx: 0, vy: 0, speed: 0, heading: s.heading });
     groundPlayer(player);
     landWheelie(s, v.spec);
     if (!roll) {
@@ -849,9 +863,9 @@ export function startGame(ctx: GameContext): void {
     dismount(s.lean >= 0 ? FALLEN_LEAN : -FALLEN_LEAN);
     // Devant le deux-roues (ou derrière, s'il a basculé en arrière), hors de sa coque.
     const ahead = back ? -1.2 : 1.2;
-    const r = colliders.resolve(x + dx * ahead, y + dy * ahead, PLAYER_RADIUS);
+    const r = colliders.resolve(x + dx * ahead, y + dy * ahead, PLAYER_RADIUS, 0, s.z);
     const throw_ = back ? 0 : 0.6 * speed;
-    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_, vy: dy * throw_, speed: 0, heading: Math.atan2(dx, dy) });
+    Object.assign(player, { x: r.x, y: r.y, z: footZ(r.x, r.y, s.z), vx: dx * throw_, vy: dy * throw_, speed: 0, heading: Math.atan2(dx, dy) });
     groundPlayer(player);
     startFall(speed, back ? 1 : -1);
     health.damage(fallDamage(speed, health.hp));
@@ -872,10 +886,10 @@ export function startGame(ctx: GameContext): void {
     shake.impact(Math.min(2 + speed / 5, 7));
     const x = s.x, y = s.y, side = familyOf(v).dismount;
     dismount(0, true);
-    const r = colliders.resolve(x + lx * side, y + ly * side, PLAYER_RADIUS);
+    const r = colliders.resolve(x + lx * side, y + ly * side, PLAYER_RADIUS, 0, s.z);
     // Projeté à 60 % de la vitesse du véhicule, vers l'avant et vers l'extérieur.
     const throw_ = 0.6 * speed;
-    Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_ + lx * 1.5, vy: dy * throw_ + ly * 1.5, speed: 0, heading: Math.atan2(dx, dy) });
+    Object.assign(player, { x: r.x, y: r.y, z: footZ(r.x, r.y, s.z), vx: dx * throw_ + lx * 1.5, vy: dy * throw_ + ly * 1.5, speed: 0, heading: Math.atan2(dx, dy) });
     groundPlayer(player);
     startFall(speed, -1);
     health.damage(bailOutDamage(speed, health.hp));
@@ -885,7 +899,7 @@ export function startGame(ctx: GameContext): void {
     for (let i = rolling.length - 1; i >= 0; i--) {
       const r = rolling[i]!, v = r.v, s = v.state;
       r.t += dt;
-      stepVehicle(s, drivenSpec(v), { throttle: 0, brake: 0.2, steer: 0 }, dt, terrain, colliders, fleet.carOnly, true, true);
+      stepVehicle(s, drivenSpec(v), { throttle: 0, brake: 0.2, steer: 0 }, dt, surface, colliders, fleet.carOnly, true, true);
       if (s.impact > 0) {
         if (v.damage.hit(s.impact, s.impactAngle) > 0) {
           damaged.add(v);
@@ -919,7 +933,7 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false, player.z);
       mount(r.fleet);
     }
   };
@@ -969,7 +983,7 @@ export function startGame(ctx: GameContext): void {
     for (const [axle, off, on] of [["av", v.spec.front, s.lockedFront || sliding], ["ar", -v.spec.rear, s.lockedRear || sliding]] as const) {
       for (const side of track > 0 ? [-1, 1] : [0]) {
         const x = s.x + fx * off + rx * track * side, y = s.y + fy * off + ry * track * side;
-        marks.trail(`${v.id}-${axle}${side}`, x, y, terrain.heightAt(x, y, s.z), on, width);
+        marks.trail(`${v.id}-${axle}${side}`, x, y, surface.heightAt(x, y, s.z), on, width);
       }
     }
   };
@@ -1004,7 +1018,7 @@ export function startGame(ctx: GameContext): void {
         out.h = 0;
       }
     },
-    ground: (x, y, z) => terrain.heightAt(x, y, z),
+    ground: (x, y, z) => surface.heightAt(x, y, z),
     hurt: (slot, d, ux, uy, i) => (peds as PedsController | null)?.hurt(slot, d, ux, uy, i) ?? 0,
     rayPed: (x, y, dx, dy, m, out) => {
       const p = peds as PedsController | null;
@@ -1016,7 +1030,8 @@ export function startGame(ctx: GameContext): void {
       return p.rayPed(x, y, dx, dy, m, out);
     },
     // Les balles s'arrêtent aussi sur les obstacles ronds : véhicules garés, troncs, poteaux (D113).
-    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by, true),
+    // Avec les altitudes (D216), un mur de bâtiment passé par-dessus n'arrête pas la balle (tirs depuis un toit) ; les toits l'arrêtent (`ground`).
+    wall: (ax, ay, bx, by, az, bz) => colliders.raycast(ax, ay, bx, by, true, az, bz),
     // Véhicules visés (D113) : ceux de la flotte et de la circulation à moins de 80 m ; la balle les abîme du côté où elle entre.
     rayVehicle: (x, y, dx, dy, maxDist) => {
       shotTargets.length = 0;
@@ -1232,25 +1247,25 @@ export function startGame(ctx: GameContext): void {
       if (riding) {
         throttle = riding.family === "car" || riding.family === "moto" ? rampThrottle(throttle, input.throttle, STEP) : input.throttle;
         const drive = { throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake, lift: input.lift };
-        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, terrain, colliders, riding.family === "car" ? fleet.carOnly : null, true, true);
+        stepVehicle(riding.state, drivenSpec(riding), drive, STEP, surface, colliders, riding.family === "car" ? fleet.carOnly : null, true, true);
         if (drive.throttle > 0 && rideModel?.pose === "pedal") crank += (Math.max(riding.state.speed, 0.8) / riding.spec.wheelRadius) * 0.45 * STEP;
       } else {
         // Un coup en cours ralentit : on ne court pas en frappant.
         const k = (bumpTimer > 0 ? 0.7 : 1) * (melee.active ? 0.45 : scoped ? 0 : aiming ? AIM_WALK : gun.idle < 0.35 ? 0.6 : 1);
         if (downFor > 0) {
           downFor = Math.max(0, downFor - STEP);
-          slidePlayer(player, STEP, terrain, colliders);
+          slidePlayer(player, STEP, surface, colliders);
           // D212 : en basculant, le corps s'éloigne de l'endroit où étaient les pieds (en arrière sur le dos, en avant à plat ventre).
           const t = downTotal - downFor, h = appearance.height;
           const shift = fallShift(t, downSide, downAmp, h) - fallShift(t - STEP, downSide, downAmp, h);
           if (shift !== 0) {
             const s = downSide > 0 ? -shift : shift;
-            const r = colliders.resolve(player.x + Math.sin(player.heading) * s, player.y + Math.cos(player.heading) * s, PLAYER_RADIUS);
+            const r = colliders.resolve(player.x + Math.sin(player.heading) * s, player.y + Math.cos(player.heading) * s, PLAYER_RADIUS, 0, player.z);
             player.x = r.x;
             player.y = r.y;
           }
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, terrain, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
           jumpNow = false;
         }
       }
@@ -1322,12 +1337,13 @@ export function startGame(ctx: GameContext): void {
     let px = player.x, py = player.y;
     if (aimB > 0) {
       const side = AIM_SHOULDER * aimB, rx = Math.cos(yaw), ry = -Math.sin(yaw);
-      const t = colliders.raycast(player.x, player.y, player.x + rx * side, player.y + ry * side);
+      const hz = player.z + HEAD_HEIGHT;
+      const t = colliders.raycast(player.x, player.y, player.x + rx * side, player.y + ry * side, false, hz, hz);
       const d = t === null ? side : Math.max(0, t * side - 0.2);
       px += rx * d;
       py += ry * d;
     }
-    const rig = solveCamera({ x: px, y: py, z: focusZ, yaw, pitch, distance: targetDist }, colliders, terrain);
+    const rig = solveCamera({ x: px, y: py, z: focusZ, yaw, pitch, distance: targetDist }, colliders, surface);
     camDist = rig.distance < camDist ? rig.distance : Math.min(rig.distance, camDist + dt * 6);
     const k = rig.distance > 0 ? camDist / rig.distance : 1;
     const tz = focusZ + HEAD_HEIGHT;
@@ -1377,7 +1393,7 @@ export function startGame(ctx: GameContext): void {
     const violence = (hits: number, killed: number): void => {
       if (hits <= 0) return;
       pedWitnesses.length = 0;
-      police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
+      police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0, player.z);
     };
     let reticle: { x: number; y: number; z: number } | null = null;
     if (riding || health.dead || downFor > 0) {
@@ -1386,7 +1402,9 @@ export function startGame(ctx: GameContext): void {
       model.setStrike(null);
     } else if (weapon.kind === "melee") {
       gun.cancel();
-      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, pedsNow0);
+      // Perché sur un toit (D217), les poings n'atteignent personne : tout le monde est en bas.
+      const perched = player.z - terrain.heightAt(player.x, player.y, player.z) > PERCH;
+      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, perched ? null : pedsNow0);
       if (res.started && weapon.style !== "aim") audio.swing(weapon.style as AttackStyle);
       if (res.hits > 0) {
         audio.meleeHit(weapon.id);
@@ -1442,7 +1460,7 @@ export function startGame(ctx: GameContext): void {
         }
         pedsNow0?.alarm(player.x, player.y, ALARM_SHOT, ALARM_SHOT_FLEE);
         pedWitnesses.length = 0;
-        police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0);
+        police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0, player.z);
         violence(res.hits, res.killed);
         // Victime touchée de loin (T4, D208) : les passants autour d'elle s'enfuient, et s'il en reste un debout, il appelle (le crime est signalé
         // là où elle est tombée : la police fouille autour de la victime, pas du tireur, qu'aucun d'eux n'a vu).
@@ -1575,7 +1593,7 @@ export function startGame(ctx: GameContext): void {
       const imp = (peds as PedsController | null)?.impact;
       const s = riding?.state;
       police.update(dt, {
-        x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        x: player.x, y: player.y, z: player.z, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
         vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
         pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
         witnesses: (x, y, r) => {

@@ -15,7 +15,7 @@ import { canvasTexture, rng } from "./canvas";
 import { buildBreakables, buildFurniture, buildWalls, fenceMaterial, splitBreakable } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
-import { furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
+import { drawsGenericRoof, furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
 import { buildDevanture } from "./devanture";
 import type { DecalSink } from "./devanture-modern";
 import { buildLandmarks, buildSitesGround, drawsWalls, landmarkRoofColor, landmarkWallColor, replacesFacade } from "./landmarks";
@@ -464,7 +464,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     const kind = kindOf(b.id);
     // Caché (remplacé par un monument), abri à chariots (dessiné ouvert par les gabarits) ou monument modélisé (hôtel de ville, D123 ;
     // cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165) : ni murs ni toit génériques.
-    if (kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon) continue;
+    if (!drawsGenericRoof(kind)) continue;
     // Fiche remplie d'après photo (D141) : son enduit ; sinon la palette de l'époque.
     const wc = landmarkWallColor(kind, b.id) ?? (f?.status === "observed" ? C(f.materials.wall.color) : wallColor(f?.era ?? "xix", key));
     wallColors.set(b.id, wc);

@@ -1550,3 +1550,30 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 **Relevé sans saut (3 novembre 2026)** (D213)
 - Après une chute ou une bousculade, un passant ne saute plus (jusqu'à 3 m d'un coup) en se relevant : il repart d'où il est tombé et rejoint son trottoir en marchant, en biais ; il se tourne vers son chemin au lieu de pivoter d'un coup ; il accélère au lieu de passer de l'arrêt à la marche rapide. Les gendarmes se tournent aussi sans à-coup.
+
+**Toits praticables, lot 1 : le socle (3 novembre 2026)** (D214, plan `docs/plans/toits.md`)
+- Rien ne change encore en jeu : les toits existent maintenant comme surfaces (les pans que l'on voit), et les murs des bâtiments ont leur vraie hauteur. Cheminées et édicules sont des obstacles sur les toits.
+- Les monuments (cathédrale, mairie, églises, maison d'après photo…) gardent des murs infranchissables.
+- Suivant : lot 2, la voiture survole les maisons et se pose sur les toits.
+
+**Toits praticables, lot 2 : la voiture sur les toits (3 novembre 2026)** (D215)
+- Après un tremplin, la voiture passe au-dessus des maisons moins hautes que son vol, ou se pose sur leur toit, au lieu de s'arrêter en plein ciel. Elle roule sur les toits, tombe de leur bord, et glisse sur les pans de plus de 30°.
+- En sortant de la voiture sur un toit, on reste sur le toit : on y marche, on passe sur le toit voisin de même hauteur, on tombe du bord (avec les dégâts de chute). À pied, on tient debout même sur les pans raides.
+- La caméra suit correctement sur un toit. Une partie enregistrée sur un toit reprend sur le toit.
+- Pas encore : escalade des bâtiments bas et saut long (lot 3), tirs depuis les toits (lot 4), gendarmes qui attendent en bas (lot 5).
+
+**Toits praticables, lot 4 : vue et tirs en 3D (3 novembre 2026)** (D216)
+- Sur un toit, on n'est plus invisible : un gendarme dans la rue te voit (et te tire dessus) si tu es près du bord ou s'il est assez loin pour voir le toit ; au milieu d'un toit plat, ou derrière le faîtage d'un toit en pente, tu es caché.
+- Tu peux tirer depuis un toit sur la rue ; une cible collée au pied du bâtiment reste cachée par le bord du toit.
+- Pas encore : les gendarmes à pied s'arrêtent contre le mur au lieu de t'attendre autour du bâtiment (lot 5).
+
+**Toits praticables, lot 5 : la police attend en bas (3 novembre 2026)** (D217)
+- Quand tu es sur un toit, les gendarmes à pied ne foncent plus dans le mur : ils se répartissent dans la rue autour du bâtiment, reculent s'il le faut pour te voir, et te regardent. Armés, ils tirent dès qu'ils te voient ; au milieu d'un grand toit, ils attendent.
+- Ils ne peuvent plus t'arrêter à travers le toit, et tu ne peux plus frapper quelqu'un en bas depuis un toit.
+- Reste du chantier : l'escalade des bâtiments bas et le saut long (lot 3).
+
+**Toits praticables, lot 3 : escalade et saut long (3 novembre 2026)** (D218)
+- On escalade les bâtiments bas (garages, annexes : mur de 2,5 m au plus), et d'un toit, le toit voisin s'il n'est pas plus haut de 2,5 m.
+- En pleine course, le saut porte à environ 4,7 m au lieu de 3,2 : on passe une ruelle de toit en toit. Il ne monte pas plus haut (les clôtures restent des obstacles). Portée à régler en jouant.
+- Les petites fentes entre deux toits mitoyens ne font plus tomber.
+- **Chantier « toits praticables » terminé** (lots 1 à 5).

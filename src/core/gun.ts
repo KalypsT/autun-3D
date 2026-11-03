@@ -23,8 +23,11 @@ export interface ShootWorld extends Arena {
   /** Altitude du sol en (x, y), la plus haute sous `z` (ponts, terrasses). Absent : pas de relief, rien ne s'arrête dans le sol. */
   ground?(x: number, y: number, z: number): number;
   rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean;
-  /** Premier obstacle (mur, et pour les balles aussi les obstacles ronds : véhicules garés, troncs, poteaux) : fraction 0-1 du segment, ou null. */
-  wall(ax: number, ay: number, bx: number, by: number): number | null;
+  /**
+   * Premier obstacle (mur, et pour les balles aussi les obstacles ronds : véhicules garés, troncs, poteaux) : fraction 0-1 du segment, ou null.
+   * `az`, `bz` : altitude du rayon à ses deux bouts (D216) ; un mur de bâtiment passé par-dessus ne l'arrête pas (tirs depuis un toit).
+   */
+  wall(ax: number, ay: number, bx: number, by: number, az?: number, bz?: number): number | null;
   /**
    * Premier véhicule touché par le rayon (garé ou de la circulation, D113) à moins de `maxDist` : sa distance et un numéro à rendre à `hurtVehicle`,
    * ou null. Absent : les balles ignorent les véhicules (essais).
@@ -222,7 +225,12 @@ export class Gun {
       // Visée assistée (à la hanche) : la personne la plus proche du regard dans le cône, à portée, sans mur entre elle et nous.
       for (const slot of this.found) {
         world.position(slot, this.pos);
-        const wall = world.wall(x, y, this.pos.x, this.pos.y);
+        // Avec les hauteurs (D216) : de l'arme à la poitrine de la cible, par-dessus les murs moins hauts (depuis un toit).
+        let wall: number | null;
+        if (view && world.span) {
+          world.span(slot, this.body);
+          wall = world.wall(x, y, this.pos.x, this.pos.y, view.z + MUZZLE_Z, this.body.z + this.body.h * 0.7);
+        } else wall = world.wall(x, y, this.pos.x, this.pos.y);
         if (wall !== null && wall < 0.98) continue;
         this.target = slot;
         this.targeted = true;
@@ -347,7 +355,7 @@ export class Gun {
     let s = range * h;
     c.s = s;
     if (!world) return c;
-    const wall = world.wall(ox, oy, ox + ux * s, oy + uy * s);
+    const wall = flat ? world.wall(ox, oy, ox + ux * s, oy + uy * s) : world.wall(ox, oy, ox + ux * s, oy + uy * s, oz, oz + slope * s);
     if (wall !== null) {
       s = wall * s;
       c.s = s;
