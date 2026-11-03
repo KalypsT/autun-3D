@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { recipeFromSeed } from "./character";
+import { downTime, fallTurn, lyingTime, STRONG_FALL } from "./character-rig";
 import { pointInRing } from "./collision";
 import { NavGraph } from "./nav-graph";
 import { FLEE_SPEED, FLEE_TIME, PedSim, pushDir, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
@@ -394,6 +395,43 @@ describe("entrées pour les autres systèmes", () => {
     expect(sim.state.pose![a]).toBe(0);
     expect(sim.state.pose![b]).toBe(0);
     expect(sim.stats.knocked).toBe(0);
+  });
+
+  it("chute selon le choc (D212) : légère vite relevée, violente plus longue ; le cap pivote vers la poussée ; un mort finit couché", () => {
+    const sim = makeSim(graph(), 80, 3);
+    const obs = still(0, -20);
+    sim.prefill(obs);
+    run(sim, 30, obs);
+    const found: number[] = [];
+    sim.queryCircle(0, -20, 120, found);
+    const [a, b] = found as [number, number];
+    const st = sim.state;
+    const yawA = st.yaw[a]!, headingA = -yawA;
+    // Poussé vers sa droite (D211 : direction π/2), légèrement : chute légère, quart de tour vers la poussée.
+    const rx = Math.cos(headingA), ry = -Math.sin(headingA);
+    sim.applyImpulse(a, rx * 4.4, ry * 4.4);
+    sim.applyImpulse(b, 8.5, 0);
+    sim.step(STEP, obs);
+    expect(st.pose![a]).toBe(2);
+    expect(st.poseDir![a]!).toBeCloseTo(Math.PI / 2, 5);
+    const turned = Math.atan2(Math.sin(-st.yaw[a]! - headingA), Math.cos(-st.yaw[a]! - headingA));
+    expect(turned).toBeCloseTo(fallTurn(Math.PI / 2, st.poseSide![a]!, 4.4), 5);
+    let upA = -1, upB = -1;
+    for (let k = 1; k < 60 * 6; k++) {
+      sim.step(STEP, obs);
+      if (upA < 0 && st.pose![a] === 0) upA = k * STEP;
+      if (upB < 0 && st.pose![b] === 0) upB = k * STEP;
+    }
+    expect(upA).toBeGreaterThan(downTime(4.4) - 0.1);
+    expect(upA).toBeLessThan(downTime(4.4) + 0.1);
+    expect(upB).toBeGreaterThan(downTime(8.5) - 0.1);
+    expect(upB).toBeGreaterThan(upA + 1);
+    // Un passant tué d'un coup léger tombe comme une chute forte (il finit couché) et garde la pose couchée.
+    const [, , c] = found as [number, number, number];
+    sim.damage(c, 1000, 1, 0, 1.6);
+    expect(st.poseAmp![c]!).toBeGreaterThanOrEqual(STRONG_FALL);
+    run(sim, 60 * 3, obs);
+    expect(st.poseT![c]!).toBeCloseTo(lyingTime(st.poseAmp![c]!), 5);
   });
 
   it("fait sortir un conducteur (J4) : il apparaît à la portière avec sa recette, trébuche, s'enfuit en courant loin du joueur, puis se calme", () => {

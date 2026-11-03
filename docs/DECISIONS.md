@@ -4222,3 +4222,29 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Tests** (+3, un remplacé) : la tête part dans le sens de la poussée (avant, arrière, droite) puis revient en dépassant ; pieds au sol à chaque instant ; debout immobile à la fin ; des pas d'au moins 30 cm, plus marqués quand la poussée est forte ; direction d'une poussée quel que soit le cap.
 
 ![Trébuchements (une rangée par poussée, de 0,04 à 0,55 s) : vers l'avant (de profil), vers l'arrière (de profil), vers la droite (de face)](captures/d211-trebuchement.jpg)
+
+## 2026-11-03 — D212. Chutes et bousculades, lot 3 : intensité et direction du choc, pieds fixes
+
+**Constat** (plan de D209) : une chute se faisait toujours sur le dos ou le ventre, de la même façon et pour la même durée quel que soit le choc (une batte comme une voiture à 60 km/h) ; un choc de côté faisait tomber en avant ou en arrière ; les pieds glissaient d'environ un mètre pendant la bascule (le bassin restait à la position du personnage).
+
+**Ce qui est fait** :
+- **Trois intensités** (`downTier`, d'après la poussée du choc, m/s) :
+  - **légère** (moins de 5 m/s : batte, coup de poing final, voiture à moins de ≈ 18 km/h) : il tombe **assis** en appui sur les mains (choc de face) ou **à genoux sur les mains** (par derrière), sans s'étaler, et se relève en **2,2 s** ;
+  - **forte** (5 à 7,5 m/s : voiture de ≈ 18 à 31 km/h) : la chute de D210 (3,6 s) ;
+  - **violente** (au-delà : voiture rapide, chute de moto rapide) : **fauché** (jambes emportées, bras qui s'envolent), **vol plané** à l'horizontale (25 à 55 cm du sol selon le choc, de 0,06 à 0,42 s), gros rebond, il **tourne sur lui-même en glissant** (jusqu'à 3,2 rad), et reste plus longtemps à terre (**4,6 s**).
+  Les simulations comptent la durée de la chute correspondante (`downTime`) ; le joueur aussi (poussée 0,7 × v + 1,5, de 4 à 9 m/s, comme un passant renversé). **Un mort tombe au moins comme une chute forte** (il finit couché, `lyingTime`), y compris le coup de grâce sur un passant tombé assis (la pose passe alors directement à la chute forte : saut de pose, rare).
+- **Quart de tour** (`fallTurn`) : poussé de côté, il pivote vers la poussée (jusqu'à un quart de tour) puis tombe sur le dos ou le ventre. Les simulations tournent le cap au choc ; le rendu part de l'ancien cap et rejoint le nouveau pendant la chute (0,45 s ; 1,1 s pour une chute violente, qui y ajoute sa rotation). Les gendarmes gardent la direction de la poussée d'avant ce quart de tour (`Officer.pushDir`, `pushAmp`) et la transmettent à `setExternal`, qui fige aussi lui-même la pose couchée d'un mort.
+- **Pieds fixes** (`fallShift`) : en basculant, le corps s'éloigne de l'endroit où étaient ses pieds (en arrière sur le dos, en avant à plat ventre) ; les simulations (passants, gendarmes, joueur, murs compris) le déplacent d'autant. Les pieds restent à moins de 12 cm de leur place (≈ 90 cm avant) ; il se relève là où son corps était couché. Rien pour une chute violente (le choc l'emporte).
+- **Petits défauts corrigés** : en se relevant du genou, il ne passe plus sur la pointe du pied arrière (nouvelle pose `F_RISE`, il pousse sur le pied de devant) ; les gendarmes freinent un trébuchement comme les passants (e^(−4t)) : leurs pas de rattrapage suivent leur chemin ; le rebond du dos levait le buste dans le mauvais sens (il l'enfonçait) ; les mains posées (D210) vérifient aussi le coude, et le repli du bras vers le sol n'est tenté que sur un corps couché.
+- Code : les poses écrites sont nommées (`B_…`, `F_…`, `V_…`), le relevé est une fonction de son instant de départ (`backGetup`, `frontGetup`), une suite de clés par intensité et par côté (`TIERS`).
+
+**Test de poursuite** (`police-soak`, « Dense ») : le départ 10 coince maintenant le fugitif quatre minutes parmi les voitures de police (2 719 à 3 499 pas de contact par minute, seuil 2 700) : la poursuite est chaotique et les passants ne tombent plus de la même façon. Mesuré : les départs 11 à 13 donnent exactement les mêmes minutes avant et après, et le départ 13 dépassait déjà le seuil avant (3 445). Remplacé par le départ 12, comme le départ 5 en D190.
+
+**Limites** :
+- Le sol est toujours supposé plat sous un corps couché (sur une pente, quelques centimètres s'enfoncent ou flottent). Ce serait une inclinaison du corps selon le terrain, que la foule ne connaît pas aujourd'hui (seulement la hauteur sous le personnage).
+- Une chute de côté reste un pivot puis une chute sur le dos ou le ventre : pas de chute sur le flanc à proprement parler, ni de roulade d'un côté sur l'autre.
+- Une chute violente n'est pas reliée à la vitesse verticale réelle : le vol plané est une hauteur dessinée, pas une trajectoire.
+
+**Tests** (+5, un départ changé) : intensités (seuils, durées, un mort couché, assis ou à quatre pattes sans jamais se coucher, debout à la fin) ; contact avec le sol à chaque instant, vol plané seulement en chute violente ; quart de tour (sens, rendu qui part de l'ancien cap) ; pieds fixes ; simulation (durée au sol selon le choc, cap tourné, mort couché).
+
+![Intensités (une rangée par chute) : légère sur le dos (assis puis relevé) ; légère par derrière (à genoux, quatre pattes, relevé) ; violente (fauché, vol plané, retombée) ; poussé de côté (quart de tour, puis sur le dos)](captures/d212-intensites.jpg)

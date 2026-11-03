@@ -1,4 +1,5 @@
-import { DOWN_TIME, GUN_POSE, HIT_POSE, STUMBLE_TIME } from "./character-rig";
+import { downTime, fallShift, fallTurn, GUN_POSE, HIT_POSE, STRONG_FALL, STUMBLE_TIME } from "./character-rig";
+import { pushDir } from "./pedestrians";
 import type { Colliders, Resolution } from "./collision";
 import type { VehicleSpec, VehicleState } from "./vehicle";
 
@@ -53,6 +54,9 @@ export interface OfficerShot {
   hit: boolean;
 }
 
+/** Taille moyenne d'un gendarme (m) pour le déplacement d'une chute (sa recette n'est connue que du rendu). */
+const OFFICER_HEIGHT = 1.76;
+
 export type OfficerMode = "run" | "back" | "stumble" | "down" | "dead";
 
 export interface Officer {
@@ -67,6 +71,12 @@ export interface Officer {
   /** Glissade après un choc (m/s). */
   kx: number;
   ky: number;
+  /**
+   * Poussée du dernier choc (D211, D212) : direction par rapport au cap d'avant le choc (rad, 0 vers l'avant, positif vers la droite ; le cap
+   * pivote ensuite pour une chute) et intensité (m/s). Elle donne au rendu le sens et la forme du trébuchement ou de la chute.
+   */
+  pushDir: number;
+  pushAmp: number;
   /** Voiture d'où il vient (identifiant de la simulation) et graine de sa recette. */
   car: number;
   seed: number;
@@ -125,7 +135,7 @@ export class Officers {
     const used = new Set(this.list.map((o) => o.slot));
     let slot = 0;
     while (used.has(slot)) slot++;
-    const o: Officer = { x, y, heading, speed: 0, mode: "run", timer: 0, poseT: 0, kx: 0, ky: 0, car, seed, slot, hp: OFFICER.hp, armed: false, aiming: false, sinceShot: 9, aimT: 0, cool: 0, age: 0, rng: (seed ^ 0x9e3779b9) >>> 0 || 1 };
+    const o: Officer = { x, y, heading, speed: 0, mode: "run", timer: 0, poseT: 0, kx: 0, ky: 0, pushDir: Math.PI, pushAmp: 0, car, seed, slot, hp: OFFICER.hp, armed: false, aiming: false, sinceShot: 9, aimT: 0, cool: 0, age: 0, rng: (seed ^ 0x9e3779b9) >>> 0 || 1 };
     this.list.push(o);
     return o;
   }
@@ -181,8 +191,11 @@ export class Officers {
   }
 
   private die(o: Officer, ux: number, uy: number, impulse: number): void {
-    // Il tombe depuis le début de la chute, sauf s'il était déjà à terre.
-    if (o.mode !== "down") o.poseT = 0;
+    // Il tombe depuis le début de la chute, sauf s'il était déjà à terre ; au moins comme une chute forte (D212).
+    if (o.mode !== "down") {
+      o.poseT = 0;
+      this.push(o, ux, uy, Math.max(impulse, STRONG_FALL), true);
+    } else o.pushAmp = Math.max(o.pushAmp, STRONG_FALL);
     o.mode = "dead";
     o.hp = 0;
     o.age = 0;
@@ -250,6 +263,7 @@ export class Officers {
         o.poseT += dt;
         o.x += o.kx * dt;
         o.y += o.ky * dt;
+        this.fallStep(o, dt);
         const damp = Math.exp(-dt * 3);
         o.kx *= damp;
         o.ky *= damp;
@@ -270,7 +284,9 @@ export class Officers {
         o.poseT += dt;
         o.x += o.kx * dt;
         o.y += o.ky * dt;
-        const damp = Math.exp(-dt * 3);
+        if (o.mode === "down") this.fallStep(o, dt);
+        // Un trébuchement freine comme celui d'un passant (D211 : ses pas de rattrapage suivent ce chemin), une chute un peu moins.
+        const damp = Math.exp(-dt * (o.mode === "stumble" ? 4 : 3));
         o.kx *= damp;
         o.ky *= damp;
         o.speed = 0;
@@ -365,12 +381,29 @@ export class Officers {
   /** Chute ou trébuchement sans compter d'infraction « policier bousculé » (coup du joueur : c'est `hurt` qui en répond). */
   private knockSoft(o: Officer, kind: number, ux: number, uy: number, impulse: number): void {
     o.mode = kind === HIT_POSE.down ? "down" : "stumble";
-    o.timer = kind === HIT_POSE.down ? DOWN_TIME : STUMBLE_TIME;
+    o.timer = kind === HIT_POSE.down ? downTime(impulse) : STUMBLE_TIME;
+    this.push(o, ux, uy, impulse, kind === HIT_POSE.down);
     o.poseT = 0;
     o.kx = ux * impulse;
     o.ky = uy * impulse;
     o.speed = 0;
     o.aiming = false;
+  }
+
+  /** Retient la poussée d'un choc (D212) ; une chute fait pivoter le cap vers le sens de la chute (le rendu part de l'ancien cap). */
+  private push(o: Officer, ux: number, uy: number, impulse: number, fall: boolean): void {
+    o.pushDir = pushDir(ux, uy, o.heading);
+    o.pushAmp = impulse;
+    if (fall) o.heading += fallTurn(o.pushDir, Math.cos(o.pushDir) > 0 ? -1 : 1, impulse);
+  }
+
+  /** En basculant, le corps s'éloigne de l'endroit où étaient ses pieds (D212) : ils ne glissent pas. */
+  private fallStep(o: Officer, dt: number): void {
+    const side = Math.cos(o.pushDir) > 0 ? -1 : 1, h = OFFICER_HEIGHT;
+    const step = fallShift(o.poseT, side, o.pushAmp, h) - fallShift(o.poseT - dt, side, o.pushAmp, h);
+    const s = side > 0 ? -step : step;
+    o.x += Math.sin(o.heading) * s;
+    o.y += Math.cos(o.heading) * s;
   }
 
   /** La coque du véhicule touche le gendarme : poussé au pas, il trébuche jusqu'à 3,5 m/s, tombe au-delà (D44). */

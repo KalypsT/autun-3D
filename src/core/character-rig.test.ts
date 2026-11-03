@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_BLEND, HIT_POSE, hitPose, lowestPoint, LYING_T, LYING_VARIANTS, lyingPose, stumblePose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_BLEND, HIT_POSE, hitPose, lowestPoint, LYING_T, LYING_VARIANTS, lyingPose, stumblePose, downTier, DOWN_TIERS, downTime, lyingTime, fallTurn, fallShift, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -324,6 +324,103 @@ describe("poses d'un passant heurté", () => {
     for (let k = 0; k < BONE_COUNT * 3; k++) diff = Math.max(diff, Math.abs(a.angles[k]! - b.angles[k]!));
     expect(diff).toBeGreaterThan(0.005);
     expect(diff).toBeLessThan(0.07);
+  });
+
+  it("intensités (D212) : légère (assis ou à genoux, vite relevé), forte, violente (plus longue) ; un mort finit couché", () => {
+    expect(downTier(4.4)).toBe(DOWN_TIERS.light);
+    expect(downTier(6)).toBe(DOWN_TIERS.strong);
+    expect(downTier(8.5)).toBe(DOWN_TIERS.violent);
+    expect(downTime(4.4)).toBeLessThan(downTime(6));
+    expect(downTime(6)).toBe(DOWN_TIME);
+    expect(downTime(8.5)).toBeGreaterThan(DOWN_TIME);
+    // Un mort tombe au moins comme une chute forte : à `lyingTime`, couché.
+    expect(lyingTime(4.4)).toBe(lyingTime(6));
+    for (const imp of [6, 8.5]) {
+      for (const side of [1, -1]) {
+        const p = createPose();
+        hitPose(p, HIT_POSE.down, lyingTime(imp), side, d, null, 0, side > 0 ? Math.PI : 0, imp);
+        const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+        solveBones(render, world, restOffsets(d), geometryScales(d), p, root);
+        expect(world[BONE.pelvis * 16 + 13]!).toBeLessThan(0.16);
+        expect(world[BONE.head * 16 + 13]!).toBeLessThan(0.2);
+      }
+    }
+    // Légère : assis sur les fesses, la tête haute (choc de face) ; à quatre pattes (par derrière) ; jamais couché.
+    const at = (side: number, t: number): { pelvis: number; head: number } => {
+      const p = createPose();
+      hitPose(p, HIT_POSE.down, t, side, d, null, 0, side > 0 ? Math.PI : 0, 4.4);
+      const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+      solveBones(render, world, restOffsets(d), geometryScales(d), p, root);
+      return { pelvis: world[BONE.pelvis * 16 + 13]!, head: world[BONE.head * 16 + 13]! };
+    };
+    const sit = at(1, 0.9), fours = at(-1, 0.9);
+    expect(sit.pelvis).toBeLessThan(0.25);
+    expect(sit.head).toBeGreaterThan(0.6);
+    expect(fours.pelvis).toBeGreaterThan(0.35);
+    expect(fours.head).toBeGreaterThan(0.45);
+    for (let k = 0; k <= 22; k++) expect(at(k % 2 ? 1 : -1, k / 10).head).toBeGreaterThan(0.4);
+    // Debout au bout de la chute, quelle que soit l'intensité.
+    const rest = stand();
+    for (const imp of [4.4, 6, 8.5]) {
+      const p = createPose();
+      hitPose(p, HIT_POSE.down, downTime(imp), 1, d, null, 0, Math.PI, imp);
+      expect(p.angles.every((v, k) => Math.abs(v - rest[k]!) < 1e-9)).toBe(true);
+    }
+  });
+
+  it("intensités (D212) : le corps touche toujours le sol et rien ne s'y enfonce ; une chute violente décolle (vol plané)", () => {
+    for (const imp of [4.4, 8.5]) {
+      for (const side of [1, -1]) {
+        for (let v = 0; v < LYING_VARIANTS; v += 3) {
+          let flew = 0;
+          for (let k = 0; k <= Math.round(downTime(imp) * 50); k++) {
+            const p = createPose();
+            hitPose(p, HIT_POSE.down, k / 50, side, d, null, v, side > 0 ? Math.PI : 0, imp);
+            const low = lowestPoint(p, d), t = k / 50;
+            expect(low).toBeGreaterThan(-0.03);
+            if (imp > 8 && t > 0.05 && t < 0.43) {
+              if (low > 0.2) flew++;
+            } else expect(low).toBeLessThan(1e-6);
+          }
+          if (imp === 8.5) expect(flew).toBeGreaterThan(5);
+          else expect(flew).toBe(0);
+        }
+      }
+    }
+  });
+
+  it("quart de tour (D212) : poussé de côté, il pivote vers la poussée puis tombe sur le dos ou le ventre ; violent, il tourne en plus sur lui-même", () => {
+    // Poussé vers sa droite, tombant sur le dos : un quart de tour vers sa gauche (son dos face à la poussée).
+    expect(fallTurn(Math.PI / 2, 1, 6)).toBeCloseTo(-Math.PI / 2, 9);
+    // Tombant en avant : un quart de tour vers sa droite.
+    expect(fallTurn(Math.PI / 2, -1, 6)).toBeCloseTo(Math.PI / 2, 9);
+    expect(fallTurn(0, -1, 6)).toBeCloseTo(0, 9);
+    expect(Math.abs(fallTurn(0, -1, 8.5))).toBeGreaterThan(1);
+    // Au choc, le corps fait face à l'ancien cap (le cap du personnage est déjà tourné) ; une fois posé, au nouveau.
+    const p0 = createPose(), p1 = createPose();
+    hitPose(p0, HIT_POSE.down, 0, 1, d, null, 0, Math.PI / 2, 6);
+    hitPose(p1, HIT_POSE.down, 1, 1, d, null, 0, Math.PI / 2, 6);
+    expect(p0.angles[BONE.pelvis * 3 + 1]!).toBeCloseTo(fallTurn(Math.PI / 2, 1, 6), 6);
+    expect(Math.abs(p1.angles[BONE.pelvis * 3 + 1]!)).toBeLessThan(1e-6);
+  });
+
+  it("pieds fixes (D212) : avec le déplacement `fallShift`, les pieds restent à quelques centimètres de leur place pendant la bascule", () => {
+    for (const imp of [4.4, 6]) {
+      for (const side of [1, -1]) {
+        let z0 = 0, worst = 0;
+        for (let k = 0; k <= 45; k++) {
+          const t = k / 50;
+          const p = createPose();
+          hitPose(p, HIT_POSE.down, t, side, d, null, 0, side > 0 ? Math.PI : 0, imp);
+          const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+          solveBones(render, world, restOffsets(d), geometryScales(d), p, root);
+          const feet = (world[BONE.footL * 16 + 14]! + world[BONE.footR * 16 + 14]!) / 2 + (side > 0 ? 1 : -1) * fallShift(t, side, imp, d.height);
+          if (k === 0) z0 = feet;
+          if (t > 0.55) worst = Math.max(worst, Math.abs(feet - z0));
+        }
+        expect(worst).toBeLessThan(0.12); // une fois tombé (au lieu de ≈ 0,9 m sans déplacement)
+      }
+    }
   });
 
   it("pose au sol : chaque variante et sa symétrique (gauche ↔ droite) sont distinctes", () => {
