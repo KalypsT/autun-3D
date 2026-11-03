@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Deck } from "../data/types";
-import { DeckAxis, parapetLines } from "./bridges";
+import { DeckAxis, deckGaps, deckPiers, parapetLines } from "./bridges";
 import { Decks, STEP_UP } from "./decks";
 import { createPlayer, stepPlayer } from "./player";
 import { loadRealWorld } from "./testing";
@@ -41,6 +41,38 @@ describe("tabliers de pont", () => {
     expect(lines.length).toBe(4);
     for (const l of lines) for (let i = 1; i < l.length; i += 2) expect(Math.abs(Math.abs(l[i]!) - 4)).toBeLessThan(1e-9);
     expect(new DeckAxis(deck).length).toBeCloseTo(40);
+  });
+});
+
+describe("sol des rues sous les ponts", () => {
+  // Le même pont, qui enjambe une voie entre 14 et 26 m.
+  const over: Deck = { ...deck, id: 2, pc: [[0.4, 14], [26, 39.6]] };
+  const decks = new Decks();
+  decks.add("t", [over]);
+
+  it("tronçons au-dessus d'une voie : le complément des parapets", () => {
+    expect(deckGaps(over, 40)).toEqual([[14, 26]]);
+    expect(deckGaps(deck, 40)).toEqual([]);
+    expect(deckGaps({ ...deck, pc: [] }, 40)).toEqual([[0.4, 39.6]]);
+  });
+
+  it("sur le tablier, le tablier ; dessous une voie, rien ; à côté, le relief", () => {
+    expect(decks.pave(5, 1, 0)).toBe(5);
+    expect(decks.pave(20, 1, 0)).toBeNaN();
+    expect(decks.pave(20, 6, 0)).toBe(0);
+    // Le jeu, lui, garde la surface la plus haute (on marche sur le pont).
+    expect(decks.surface(20, 1, 0)).toBe(5);
+  });
+
+  it("une pile au milieu de la voie du bas est poussée au bord", () => {
+    const piers = deckPiers({ ...over, sp: [10, 19, 30] }, 40, 0.6);
+    expect(piers.length).toBe(3);
+    expect(piers[0]).toBe(10);
+    expect(piers[1]).toBeCloseTo(13.1);
+    expect(piers[2]).toBe(30);
+    // Plus de place avant le tronçon (pile à 10 m trop proche) : après.
+    const crowded = deckPiers({ ...over, sp: [11, 20] }, 40, 0.6);
+    expect(crowded[1]).toBeCloseTo(26.9);
   });
 });
 

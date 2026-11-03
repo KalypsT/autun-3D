@@ -124,8 +124,16 @@ export class TiledTerrain implements HeightField {
     return this.decks.empty ? z : this.decks.surface(x, y, z, zHint);
   }
 
-  /** Relief nu (sans tabliers). */
+  /** Relief nu (sans tabliers), corrigé sous les ponts qui enjambent une voie (`Decks.carve`). */
   groundAt(x: number, y: number): number {
+    const z = this.rawGroundAt(x, y);
+    return this.decks.empty ? z : this.decks.carve(x, y, z, this.raw);
+  }
+
+  private readonly raw = (x: number, y: number): number => this.rawGroundAt(x, y);
+
+  /** Relief des données, sans correction. */
+  private rawGroundAt(x: number, y: number): number {
     const i = this.slot(x, y);
     const b = i < 0 ? undefined : this.blocks[i];
     return b ? b.heightAt(x, y) : this.coarse.heightAt(x, y);
@@ -137,6 +145,12 @@ export class TiledTerrain implements HeightField {
     get xMin(): number { return t.xMin; }, get xMax(): number { return t.xMax; }, get yMin(): number { return t.yMin; }, get yMax(): number { return t.yMax; },
     get seaLevel(): number | undefined { return t.seaLevel; },
   }))(this);
+
+  /** Altitude du sol dessiné des rues : le relief ou le tablier, NaN sous un tablier qui enjambe une autre voie (`Decks.pave`). */
+  paveAt(x: number, y: number): number {
+    const z = this.groundAt(x, y);
+    return this.decks.empty ? z : this.decks.pave(x, y, z);
+  }
 
   /** Altitude des rails : le tablier ferroviaire s'il y en a un, sinon le relief. */
   railAt(x: number, y: number): number {

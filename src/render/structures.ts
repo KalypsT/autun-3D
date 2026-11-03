@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Deck, HeightField, TileStructures } from "../data/types";
-import { DeckAxis } from "../core/bridges";
+import { DeckAxis, deckGaps, deckPiers } from "../core/bridges";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
 import { T } from "./style";
@@ -55,7 +55,15 @@ export function buildDeck(mb: MeshBuilder, d: Deck, ground: HeightField): void {
   const thick = d.st === "light" ? 0.35 : d.k === "rail" ? 1.2 : 0.9;
   const body = d.st === "stone" ? STONE : d.k === "rail" ? STEEL : d.st === "light" ? STEEL : CONCRETE;
   const top = d.k === "rail" ? BALLAST : d.st === "light" ? WOOD : C(T.ground[4]);
-  const ss = stations(L, 2, d.sp);
+  // Au-dessus d'une autre voie, le sol des rues n'est pas posé (D93, `Decks.pave`) : le dessus d'un pont routier y porte lui-même
+  // chaussée et trottoirs. Les piles sortent de la voie du bas.
+  const gaps = deckGaps(d, L);
+  const half = d.st === "stone" ? 1.1 : 0.6;
+  const piers = deckPiers(d, L, half);
+  const inGap = (s: number): boolean => gaps.some(([a, b]) => s >= a && s <= b);
+  const asphalt = C(T.ground[0]);
+  const walkW = d.k === "road" && d.w >= 7 ? 2.2 : 0;
+  const ss = stations(L, 2, [...piers, ...gaps.flat()]);
   const pts = ss.map((s) => axis.at(s));
   const edge = (i: number, side: number, inset = 0): [number, number] => {
     const a = pts[i]!;
@@ -66,7 +74,22 @@ export function buildDeck(mb: MeshBuilder, d: Deck, ground: HeightField): void {
     const a = pts[i]!, b = pts[i + 1]!;
     const [al, bl, ar, br] = [edge(i, 1), edge(i + 1, 1), edge(i, -1), edge(i + 1, -1)];
     // Dessus (sous les chaussées et trottoirs qui s'y posent : couvre ce qu'ils laissent) et dessous.
-    mb.quad(toThree(al[0], al[1], a.z + 0.01), toThree(bl[0], bl[1], b.z + 0.01), toThree(br[0], br[1], b.z + 0.01), toThree(ar[0], ar[1], a.z + 0.01), [0, 1, 0], top);
+    if (d.k === "road" && inGap((ss[i]! + ss[i + 1]!) / 2)) {
+      // Trottoirs le long des parapets, chaussée au milieu, un peu au-dessus du dessus.
+      const [al2, bl2, ar2, br2] = [edge(i, 1, walkW), edge(i + 1, 1, walkW), edge(i, -1, walkW), edge(i + 1, -1, walkW)];
+      const lift = 0.045;
+      mb.quad(toThree(al2[0], al2[1], a.z + lift), toThree(bl2[0], bl2[1], b.z + lift), toThree(br2[0], br2[1], b.z + lift), toThree(ar2[0], ar2[1], a.z + lift), [0, 1, 0], asphalt);
+      if (walkW > 0) {
+        const kerb = 0.15;
+        mb.quad(toThree(al[0], al[1], a.z + kerb), toThree(bl[0], bl[1], b.z + kerb), toThree(bl2[0], bl2[1], b.z + kerb), toThree(al2[0], al2[1], a.z + kerb), [0, 1, 0], top);
+        mb.quad(toThree(ar2[0], ar2[1], a.z + kerb), toThree(br2[0], br2[1], b.z + kerb), toThree(br[0], br[1], b.z + kerb), toThree(ar[0], ar[1], a.z + kerb), [0, 1, 0], top);
+        for (const [p, q, side] of [[al2, bl2, -1], [ar2, br2, 1]] as const) {
+          wallQuad(mb, p[0], p[1], a.z + lift, a.z + kerb, q[0], q[1], b.z + lift, b.z + kerb, a.ty * side, -a.tx * side, shade(top, 0.8));
+        }
+      }
+    } else {
+      mb.quad(toThree(al[0], al[1], a.z + 0.01), toThree(bl[0], bl[1], b.z + 0.01), toThree(br[0], br[1], b.z + 0.01), toThree(ar[0], ar[1], a.z + 0.01), [0, 1, 0], top);
+    }
     mb.quad(toThree(al[0], al[1], a.z - thick), toThree(bl[0], bl[1], b.z - thick), toThree(br[0], br[1], b.z - thick), toThree(ar[0], ar[1], a.z - thick), [0, -1, 0], shade(body, 0.7));
     for (const side of [1, -1]) {
       const [p, q] = side === 1 ? [al, bl] : [ar, br];
@@ -85,13 +108,12 @@ export function buildDeck(mb: MeshBuilder, d: Deck, ground: HeightField): void {
   if (d.k === "rail") girders(mb, axis, hw);
 
   // Piles et voûtes.
-  const bounds = [0, ...d.sp, L];
-  for (const s of d.sp) {
+  const bounds = [0, ...piers, L];
+  for (const s of piers) {
     const a = axis.at(s);
     const zg = ground.heightAt(a.x, a.y) - 1.0;
     const zt = a.z - thick;
     if (zt - zg < 0.8) continue;
-    const half = d.st === "stone" ? 1.1 : 0.6;
     box(mb, a.x, a.y, a.tx, a.ty, half, hw + 0.15, zg, zt, shade(body, 0.95));
     if (d.st === "stone") {
       // Avant-becs : prismes triangulaires de part et d'autre, face au courant.
