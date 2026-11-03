@@ -1571,3 +1571,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Quand tu es sur un toit, les gendarmes à pied ne foncent plus dans le mur : ils se répartissent dans la rue autour du bâtiment, reculent s'il le faut pour te voir, et te regardent. Armés, ils tirent dès qu'ils te voient ; au milieu d'un grand toit, ils attendent.
 - Ils ne peuvent plus t'arrêter à travers le toit, et tu ne peux plus frapper quelqu'un en bas depuis un toit.
 - Reste du chantier : l'escalade des bâtiments bas et le saut long (lot 3).
+
+**Toits praticables, lot 3 : escalade et saut long (3 novembre 2026)** (D218)
+- On escalade les bâtiments bas (garages, annexes : mur de 2,5 m au plus), et d'un toit, le toit voisin s'il n'est pas plus haut de 2,5 m.
+- En pleine course, le saut porte à environ 4,7 m au lieu de 3,2 : on passe une ruelle de toit en toit. Il ne monte pas plus haut (les clôtures restent des obstacles). Portée à régler en jouant.
+- Les petites fentes entre deux toits mitoyens ne font plus tomber.
+- **Chantier « toits praticables » terminé** (lots 1 à 5).

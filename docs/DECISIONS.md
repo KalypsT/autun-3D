@@ -4355,3 +4355,17 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Mesure sur téléphone** (`?bench=1`) : à faire par l'utilisateur ; le chantier ajoute du calcul (0,2 µs par altitude, quelques centaines de recherches de toit par poste recalculé), pas de rendu.
 
 **Tests** (+3, et un test de D216 adapté : les gendarmes se déplacent désormais pour voir) : postés autour du bâtiment, hors de l'emprise, à l'écart les uns des autres, tournés vers le joueur, sans arrestation ; poursuite et arrestation reprises quand le joueur redescend ; armés, tir au bord, attente sans tir au milieu d'un toit de 40 × 40 m, recul pour voir et tirer sur un toit de 20 × 20 m.
+
+## 2026-11-03 — D218. Toits praticables, lot 3 : escalade, saut long, fentes entre toits
+
+**Demande de l'utilisateur** : dernier lot du plan `docs/plans/toits.md` (fait après les lots 4 et 5).
+
+**Décisions** :
+- **Escalade des bâtiments bas** : un mur de bâtiment s'escalade comme un muret (pousser contre lui et appuyer sur Sauter, ou l'attraper en retombant) quand son haut dépasse d'au plus **`BUILDING_CLIMB` = 2,5 m** le sol, ou le toit, d'où l'on part. La règle se mesure depuis là, pas depuis les pieds en l'air : sans cela, un saut aurait fait attraper des murs de 3,6 m. Même règle d'un toit à l'autre : on monte sur un voisin plus haut d'au plus 2,5 m. L'escalade vise le haut du mur en altitude absolue (`topA`, `topB`, le long du segment), puis le joueur passe par-dessus et retombe sur le toit. `resolve` signale ces murs (`wall`) quand ils sont à moins de 2,5 m au-dessus des pieds ; le joueur vérifie la règle depuis son sol.
+- Sur la vraie ville : **54 essais sur 60** réussis au pied d'annexes dont le mur fait 1,8 à 2,3 m au milieu du côté ; les 6 autres sont en pente, où le mur dépasse 2,5 m au point touché (comportement voulu).
+- **Saut long** : un saut pris à plus de 90 % de la vitesse de course porte la vitesse horizontale à **`LONG_JUMP_SPEED` = 7,4 m/s** (5 m/s avant) : environ **4,7 m** sur le plat (3,2 m avant), à la même hauteur. Une clôture de 1,6 m arrête toujours. En l'air, la commande infléchit la course sans ramener la vitesse à celle de la course (sans quoi le saut long perdait la moitié de son élan) ; un saut ordinaire est inchangé. **Chiffre à régler avec l'utilisateur en jouant** (plan, § 4).
+- **Fentes entre toits mitoyens** : sans toit sous le point, la surface du joueur et de son véhicule regarde aussi à **`ROOF_GAP` = 30 cm** autour (huit points). Une fente de quelques centimètres à 30 cm (171 côtés dans la ville, D214) ne fait plus tomber ; le bord d'un toit « dépasse » d'autant, moins que le rayon du joueur (35 cm).
+
+**Tests** (+5, `roofs-play.test.ts`) : escalade d'un garage de 2,4 m puis de la maison voisine 2 m plus haute, pas d'un mur de 3 m ; portée du saut long et du saut en marchant ; clôture de 1,6 m toujours infranchissable ; d'un toit à l'autre au-dessus d'une ruelle de 4 m en courant, chute dans la ruelle sans élan ; fente de 25 cm traversée sans tomber.
+
+**Chantier « toits praticables » terminé** (D214 à D218).

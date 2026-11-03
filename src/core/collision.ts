@@ -27,6 +27,8 @@ export interface Segment {
 
 /** Hauteur (m) dont les pieds peuvent être sous le haut d'un mur de bâtiment et passer quand même : le bord d'un toit, une petite marche. */
 export const WALL_STEP = 0.3;
+/** Mur de bâtiment qu'on escalade (D218) : son haut à au plus … m au-dessus des pieds (garage, annexe, toit voisin un peu plus haut). */
+export const BUILDING_CLIMB = 2.5;
 
 /** Hauteur et escalade d'un obstacle franchissable. */
 export interface Top {
@@ -266,7 +268,8 @@ export class Colliders {
             const dx = s.bx - s.ax, dy = s.by - s.ay;
             const len2 = dx * dx + dy * dy;
             const t = Math.min(Math.max(((x - s.ax) * dx + (y - s.ay) * dy) / len2, 0), 1);
-            if (feet !== undefined && s.topA !== undefined && feet >= s.topA + t * (s.topB! - s.topA) - WALL_STEP) continue;
+            const above = feet !== undefined && s.topA !== undefined ? s.topA + t * (s.topB! - s.topA) - feet : Infinity;
+            if (above <= WALL_STEP) continue;
             const cx = s.ax + t * dx, cy = s.ay + t * dy;
             let ex = x - cx, ey = y - cy;
             const d = Math.hypot(ex, ey);
@@ -286,7 +289,7 @@ export class Colliders {
             sy += ey;
             hits++;
             hard++;
-            if (s.climb) wall = id;
+            if (s.climb || above <= BUILDING_CLIMB) wall = id;
             moved = true;
           }
           const circs = this.circleGrid.get(k);

@@ -14,6 +14,11 @@ import { pointInRing } from "./ring";
  * tabliers. Au-delà, on est sous le toit (au pied du mur, dans la rue).
  */
 export const ROOF_STEP = 1.5;
+/**
+ * Fente (m) entre deux toits qu'on franchit sans tomber (D218) : les contours de deux bâtiments mitoyens se touchent presque toujours
+ * (11 061 côtés partagés), mais 171 laissent 10 à 80 cm. Le bord d'un toit « dépasse » d'autant pour le joueur et son véhicule.
+ */
+export const ROOF_GAP = 0.3;
 
 /** Un pan : plan z = a·x + b·y + c sur son contour (trous exclus). */
 export interface RoofPlane {
@@ -153,10 +158,21 @@ export class Roofs {
     return false;
   }
 
-  /** Altitude de la surface : le toit sous le point s'il est plus haut que `ground` (voir `planeAt`), sinon `ground`. */
-  surface(x: number, y: number, ground: number, zHint?: number): number {
+  /**
+   * Altitude de la surface : le toit sous le point s'il est plus haut que `ground` (voir `planeAt`), sinon `ground`. `gap` (m, D218) : sans
+   * toit sous le point, on regarde aussi à cette distance autour (huit points) ; une fente entre deux toits mitoyens ne fait pas tomber.
+   */
+  surface(x: number, y: number, ground: number, zHint?: number, gap = 0): number {
     const p = this.planeAt(x, y, zHint, ground);
-    return p ? p.a * x + p.b * y + p.c : ground;
+    if (p) return p.a * x + p.b * y + p.c;
+    if (gap <= 0) return ground;
+    let best = ground;
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4;
+      const q = this.planeAt(x + Math.sin(a) * gap, y + Math.cos(a) * gap, zHint, best);
+      if (q) best = Math.max(best, q.a * x + q.b * y + q.c);
+    }
+    return best;
   }
 }
 
@@ -166,7 +182,7 @@ export class Roofs {
  */
 export function withRoofs(terrain: HeightField, roofs: Roofs): HeightField {
   const field: HeightField = {
-    heightAt: (x, y, zHint) => roofs.surface(x, y, terrain.heightAt(x, y, zHint), zHint),
+    heightAt: (x, y, zHint) => roofs.surface(x, y, terrain.heightAt(x, y, zHint), zHint, ROOF_GAP),
     ground: terrain.ground ?? terrain,
     get xMin(): number { return terrain.xMin; },
     get xMax(): number { return terrain.xMax; },

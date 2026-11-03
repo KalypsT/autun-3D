@@ -204,3 +204,101 @@ describe("surface avec les toits : ponts, caméra", () => {
     expect(c.raycast(0, -5, 0, 5, false, 0.5, 5.5)).not.toBeNull();
   });
 });
+
+describe("escalade, saut long, fentes entre toits (D218)", () => {
+  /** Avance vers le nord `seconds` secondes ; `jumpAt` : appuie sur Sauter quand y dépasse cette valeur (une fois). */
+  const go = (p: PlayerState, t: HeightField, c: Colliders, seconds: number, run: boolean, jumpAt = Infinity): void => {
+    let jumped = false;
+    for (let i = 0; i < seconds * 60; i++) {
+      const jump = !jumped && p.y >= jumpAt;
+      if (jump) jumped = true;
+      stepPlayer(p, { forward: 1, right: 0, run, jump }, 0, DT, t, c);
+    }
+  };
+  /** Pousse vers le nord contre ce qui est devant, puis appuie sur Sauter ; laisse finir l'escalade. */
+  const climbNorth = (p: PlayerState, t: HeightField, c: Colliders): void => {
+    go(p, t, c, 1.5, false);
+    stepPlayer(p, { forward: 1, right: 0, run: false, jump: true }, 0, DT, t, c);
+    go(p, t, c, 2, false);
+  };
+
+  it("on escalade un garage de 2,4 m, puis la maison voisine plus haute de 2 m ; pas un mur de 3 m", () => {
+    const c = new Colliders();
+    flatHouse(c, -5, 0, 5, 6, 2.4);
+    flatHouse(c, -5, 6, 5, 16, 4.4);
+    const t = withRoofs(flatTerrain(), c.roofs);
+    const p = createPlayer(0, -2, flatTerrain());
+    climbNorth(p, t, c);
+    expect(p.z).toBeCloseTo(2.4, 5);
+    expect(p.y).toBeGreaterThan(0);
+    climbNorth(p, t, c);
+    expect(p.z).toBeCloseTo(4.4, 5);
+    expect(p.y).toBeGreaterThan(6);
+
+    const high = new Colliders();
+    flatHouse(high, -5, 0, 5, 6, 3);
+    const th = withRoofs(flatTerrain(), high.roofs);
+    const q = createPlayer(0, -2, flatTerrain());
+    climbNorth(q, th, high);
+    expect(q.z).toBe(0);
+    expect(q.y).toBeLessThan(0);
+  });
+
+  it("saut long : en pleine course, environ 4,7 m sur le plat (3,2 m avant) ; en marchant, un petit saut", () => {
+    const flat = flatTerrain();
+    const reach = (run: boolean): number => {
+      const p = createPlayer(0, -30, flat);
+      go(p, flat, new Colliders(), 2, run);
+      stepPlayer(p, { forward: 1, right: 0, run, jump: true }, 0, DT, flat, new Colliders());
+      const y0 = p.y;
+      for (let i = 0; i < 120 && p.air; i++) stepPlayer(p, { forward: 1, right: 0, run }, 0, DT, flat, new Colliders());
+      return p.y - y0;
+    };
+    const long = reach(true);
+    expect(long).toBeGreaterThan(4.3);
+    expect(long).toBeLessThan(5.2);
+    expect(reach(false)).toBeLessThan(1.6);
+  });
+
+  it("le saut long ne monte pas plus haut : une clôture de 1,6 m arrête toujours", () => {
+    const c = new Colliders();
+    c.addPolyline([-5, 0, 5, 0], true, { height: 1.6, climb: false });
+    const flat = flatTerrain();
+    const p = createPlayer(0, -12, flat);
+    go(p, flat, c, 3, true, -2);
+    expect(p.y).toBeLessThan(0);
+  });
+
+  it("de toit en toit au-dessus d'une ruelle de 4 m : en courant et en sautant au bord ; sans élan, on tombe dans la ruelle", () => {
+    const run = (long: boolean): PlayerState => {
+      const c = new Colliders();
+      flatHouse(c, -5, 0, 5, 10, 6);
+      flatHouse(c, -5, 14, 5, 24, 6);
+      const t = withRoofs(flatTerrain(), c.roofs);
+      const p = createPlayer(0, 1, t);
+      // Assez longtemps pour atteindre le bord (la marche est lente), pas assez pour courir au bout du second toit.
+      go(p, t, c, long ? 3 : 7, long, 9.6);
+      return p;
+    };
+    const ok = run(true);
+    expect(ok.z).toBe(6);
+    expect(ok.y).toBeGreaterThan(14);
+    const fell = run(false);
+    expect(fell.z).toBe(0);
+  });
+
+  it("une fente de 25 cm entre deux toits mitoyens ne fait pas tomber", () => {
+    const c = new Colliders();
+    flatHouse(c, -5, 0, 5, 10, 4);
+    flatHouse(c, -5, 10.25, 5, 20, 4);
+    const t = withRoofs(flatTerrain(), c.roofs);
+    const p = createPlayer(0, 5, t);
+    let low = Infinity;
+    for (let i = 0; i < 4 * 60; i++) {
+      stepPlayer(p, { forward: 1, right: 0, run: false }, 0, DT, t, c);
+      if (p.y < 19) low = Math.min(low, p.z);
+    }
+    expect(p.y).toBeGreaterThan(12);
+    expect(low).toBe(4);
+  });
+});

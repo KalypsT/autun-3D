@@ -1,4 +1,4 @@
-import type { Colliders, Segment } from "./collision";
+import { BUILDING_CLIMB, type Colliders, type Segment } from "./collision";
 import type { HeightField } from "../data/types";
 import { holdShore, onDeck, WADE_DEPTH } from "./shore";
 
@@ -67,6 +67,12 @@ export const JUMP_HEIGHT = 1.1;
 const TUCK = 0.3;
 export const JUMP_CLEAR = JUMP_HEIGHT + TUCK;
 const JUMP_SPEED = Math.sqrt(2 * FOOT_GRAVITY * JUMP_HEIGHT);
+/**
+ * Saut long (D218) : à plus de `LONG_JUMP_FROM` de la vitesse de course, la vitesse horizontale passe à `LONG_JUMP_SPEED` (m/s) au départ du
+ * saut ; sur le plat, il porte à environ 4,7 m (3,2 m pour un saut ordinaire en courant).
+ */
+export const LONG_JUMP_SPEED = 7.4;
+const LONG_JUMP_FROM = 0.9;
 /** En l'air, on infléchit à peine sa course (m/s²). */
 const AIR_ACCEL = 5;
 /** Escalade : vitesse de montée (m/s), durée du passage par-dessus (s), distance franchie (m, d'un côté à l'autre de l'obstacle). */
@@ -107,7 +113,8 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   const dirY = input.forward * cos - input.right * sin;
   const len = Math.hypot(dirX, dirY);
   const top = input.run ? RUN_SPEED : WALK_SPEED;
-  const targetSpeed = mag * top;
+  // En l'air, on infléchit sa course sans perdre l'élan d'un saut long (D218).
+  const targetSpeed = p.air ? Math.max(mag * top, Math.hypot(p.vx, p.vy)) : mag * top;
   const tx = len > 1e-6 ? (dirX / len) * targetSpeed : 0;
   const ty = len > 1e-6 ? (dirY / len) * targetSpeed : 0;
 
@@ -131,6 +138,12 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
     p.air = true;
     p.vz = JUMP_SPEED;
     p.peak = p.z;
+    // Saut long (D218) : en pleine course, l'élan porte plus loin (même hauteur : on ne franchit rien de plus haut qu'avant).
+    const v = Math.hypot(p.vx, p.vy);
+    if (input.run && v >= LONG_JUMP_FROM * RUN_SPEED) {
+      p.vx *= LONG_JUMP_SPEED / v;
+      p.vy *= LONG_JUMP_SPEED / v;
+    }
   }
   let z = p.z;
   if (p.air) {
@@ -154,7 +167,7 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
     }
     // Contre une grille ou un muret qu'on pousse : un appui sur Sauter (ou l'obstacle attrapé en retombant d'un saut) fait escalader.
     const push = len > 1e-6 ? -(dirX * r.nx + dirY * r.ny) / len : 0;
-    if (r.wall !== undefined && r.wall >= 0 && mag > 0.3 && push > 0.5 && (input.jump || (p.air && p.vz < 0))) {
+    if (r.wall !== undefined && r.wall >= 0 && mag > 0.3 && push > 0.5 && (input.jump || (p.air && p.vz < 0)) && climbable(colliders.segments[r.wall]!, x, y, terrain.heightAt(x, y, p.z))) {
       startClimb(p, colliders.segments[r.wall]!, x, y, Math.max(z, p.z), terrain);
       return;
     }
@@ -195,6 +208,21 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   if (!p.air) p.stride += p.speed * dt * 2.2;
 }
 
+/** Altitude du haut d'un mur de bâtiment au point de `seg` le plus proche de (x, y) (D218). */
+function wallTop(seg: Segment, x: number, y: number): number {
+  const sx = seg.bx - seg.ax, sy = seg.by - seg.ay;
+  const t = Math.min(Math.max(((x - seg.ax) * sx + (y - seg.ay) * sy) / (sx * sx + sy * sy), 0), 1);
+  return seg.topA! + t * (seg.topB! - seg.topA!);
+}
+
+/**
+ * Un mur de bâtiment s'escalade s'il ne dépasse pas de plus de `BUILDING_CLIMB` le sol (ou le toit) d'où l'on part, `base` (D218) :
+ * mesuré depuis là, pas depuis les pieds en l'air (sans quoi un saut ferait attraper un mur de 3,6 m). Muret, grille : leur règle (`climb`).
+ */
+function climbable(seg: Segment, x: number, y: number, base: number): boolean {
+  return seg.topA === undefined || wallTop(seg, x, y) - base <= BUILDING_CLIMB;
+}
+
 /** Commence l'escalade de l'obstacle `seg` touché en (x, y), à l'altitude `z`. */
 function startClimb(p: PlayerState, seg: Segment, x: number, y: number, z: number, terrain: HeightField): void {
   const sx = seg.bx - seg.ax, sy = seg.by - seg.ay;
@@ -202,7 +230,9 @@ function startClimb(p: PlayerState, seg: Segment, x: number, y: number, z: numbe
   const ex = x - (seg.ax + t * sx), ey = y - (seg.ay + t * sy);
   const d = Math.hypot(ex, ey) || 1;
   const base = terrain.heightAt(x, y, p.z);
-  p.climb = { x, y, dx: -ex / d, dy: -ey / d, top: base + (seg.height ?? 0), over: false, t: 0 };
+  // Mur de bâtiment (D218) : son haut est une altitude absolue (le long du segment) ; muret, grille : une hauteur au-dessus du sol.
+  const top = seg.topA !== undefined ? wallTop(seg, x, y) : base + (seg.height ?? 0);
+  p.climb = { x, y, dx: -ex / d, dy: -ey / d, top, over: false, t: 0 };
   p.x = x;
   p.y = y;
   p.z = Math.max(z, base);

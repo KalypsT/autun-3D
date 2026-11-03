@@ -1,6 +1,6 @@
 # Toits praticables : on survole, on se pose, on marche sur les toits (plan)
 
-**Avancement** : **lot 1 fait** (D214), **lot 2 fait** (D215 ; seuil de glissade tranché : le véhicule glisse au-delà de 30°, le piéton tient ; la marche sur les toits et la caméra, prévues aux lots 3 et 4, y sont avancées), **lot 4 fait** (D216, avant le lot 3 à la demande de l'utilisateur). **lot 5 fait** (D217). Suivant : lot 3 (escalade, saut long, fentes entre toits mitoyens).
+**Avancement** : **lot 1 fait** (D214), **lot 2 fait** (D215 ; seuil de glissade tranché : le véhicule glisse au-delà de 30°, le piéton tient ; la marche sur les toits et la caméra, prévues aux lots 3 et 4, y sont avancées), **lot 4 fait** (D216, avant le lot 3 à la demande de l'utilisateur). **lot 5 fait** (D217). **lot 3 fait** (D218) : **chantier terminé**. Reste à régler en jouant : la portée du saut long (4,7 m) et la vitesse de glissade des véhicules.
 la voiture passe au-dessus d'une maison, mais s'arrête en plein ciel comme contre un mur.
 
 Coordonnées et conventions habituelles : repère local du jeu (x vers l'est, y vers le nord, z altitude), en mètres.
