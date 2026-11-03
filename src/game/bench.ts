@@ -596,7 +596,7 @@ export function startBench(ctx: GameContext): void {
             out[o.slot] = 1;
             const fresh = officerSeeds[o.slot] !== o.seed;
             officerSeeds[o.slot] = o.seed;
-            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.mode === "dead" ? Math.min(o.poseT, LYING_T) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT, dt, o.armed && o.mode !== "dead", o.mode === "dead");
+            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.mode === "dead" ? Math.min(o.poseT, LYING_T) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT, dt, o.armed && o.mode !== "dead", o.mode === "dead", o.kx, o.ky);
           }
           for (let k = 0; k < OFFICER.max; k++) {
             if (out[k] || officerSeeds[k]! < 0) continue;

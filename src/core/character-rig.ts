@@ -731,31 +731,88 @@ export function fallPose(pose: Pose, t: number, side: number, variant: number, d
   pose.rootDy = 0;
 }
 
+// --- Trébuchement (D211) ---------------------------------------------------------------------------------------------
+
+/** Freinage de la poussée d'un passant qui trébuche (1/s) : sa vitesse décroît en e^(−4t) (`PedSim.knockedStep`), il parcourt I / 4 m. */
+const STUMBLE_DECAY = 4;
+/** Longueur d'un cycle de deux pas de rattrapage, relative au cycle de marche : des pas courts et rapides. */
+const STUMBLE_STRIDE = 0.55;
+
 /**
- * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (penché, bras en avant, retrouve l'équilibre) ou chute (tombe en
- * `FALL_TIME`, reste à terre, se relève). `side` : +1 il tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière).
+ * Réponse d'un ressort amorti à un choc (D211), normalisée à 1 au maximum : le buste part dans le sens de la poussée (au plus vers 0,15 s),
+ * revient en dépassant un peu dans l'autre sens, puis se pose ; nulle à t = 0 (le trébuchement l'éteint à `STUMBLE_TIME`).
+ */
+function sway(t: number): number {
+  if (t <= 0) return 0;
+  const w = (2 * Math.PI) / 0.8, z = 0.42, wd = w * Math.sqrt(1 - z * z);
+  return 1.55 * Math.exp(-z * w * t) * Math.sin(wd * t);
+}
+
+/**
+ * Trébuchement (D211) : un passant poussé à `impulse` m/s dans la direction `dir` (rad, par rapport à son regard : 0 poussé vers l'avant, π vers
+ * l'arrière, positif vers sa droite) rattrape son équilibre. Il fait un ou deux pas courts dans le sens de la poussée, au rythme exact de son
+ * déplacement (les pieds ne glissent pas) ; le buste penche dans ce sens en ressort amorti (il dépasse un peu en revenant), la tête suit avec
+ * retard, les bras partent en balancier (écartés, en avant pour se retenir), les genoux amortissent. `phase` : phase de marche au choc (le
+ * premier pas part de la jambe libre). Amplitude selon la poussée ; à `STUMBLE_TIME` il est debout, immobile.
+ */
+export function stumblePose(pose: Pose, t: number, dir: number, impulse: number, phase: number, d: BodyDims): void {
+  const a = pose.angles;
+  const fade = 1 - smooth((t - 0.55) / (STUMBLE_TIME - 0.55));
+  // Intensité, éteinte en fin de trébuchement : debout et immobile à `STUMBLE_TIME`, exactement.
+  const k = clamp(impulse / 2.2, 0.35, 1.3) * fade;
+  // Pas de rattrapage : la phase avance avec le chemin parcouru, à reculons si la poussée vient de face.
+  const travelled = (impulse / STUMBLE_DECAY) * (1 - Math.exp(-STUMBLE_DECAY * t));
+  const v = impulse * Math.exp(-STUMBLE_DECAY * t);
+  const back = walksBackward(dir);
+  const cycle = STUMBLE_STRIDE * cycleLength(1.4, d.height);
+  const ph = phase + ((back ? -1 : 1) * 2 * Math.PI * travelled) / cycle;
+  const legs = clamp(1.3 * v, 0, 2.2) * fade;
+  walkPose(pose, ph, legs, d);
+  if (legs > 0.05) strafePose(pose, dir, legs / 1.2);
+  // Le buste penche dans le sens de la poussée (avant : rx négatif ; droite : rz négatif) ; le bassin en prend un peu.
+  const f = Math.cos(dir), r = Math.sin(dir);
+  const lean = 0.42 * k * sway(t);
+  a[BONE.torso * 3]! += -f * lean;
+  a[BONE.torso * 3 + 2]! += -r * lean;
+  a[BONE.pelvis * 3 + 2]! += -r * 0.25 * lean;
+  // La tête reste en arrière au début (elle n'est pas poussée), puis rattrape le buste.
+  const lag = 0.42 * k * sway(t - 0.08) - lean;
+  a[BONE.head * 3]! += -f * lag * 0.9;
+  a[BONE.head * 3 + 2]! += -r * lag * 0.9;
+  // Bras en balancier : écartés, portés en avant (pour se retenir ou contrebalancer), le bras du côté de la chute plus haut ; avec un léger décalage.
+  const armsL = k * Math.max(0, sway(t - 0.03)), armsR = k * Math.max(0, sway(t - 0.06));
+  a[BONE.armL * 3]! += (0.75 + 0.35 * f) * armsL;
+  a[BONE.armR * 3]! += (0.65 + 0.35 * f) * armsR;
+  a[BONE.armL * 3 + 2]! += -(0.45 + 0.6 * Math.max(0, -r)) * armsL;
+  a[BONE.armR * 3 + 2]! += (0.45 + 0.6 * Math.max(0, r)) * armsR;
+  a[BONE.forearmL * 3]! += 0.55 * armsL;
+  a[BONE.forearmR * 3]! += 0.55 * armsR;
+  // Les genoux amortissent le choc (flexion brève), pied à plat.
+  const dip = 0.16 * k * Math.max(0, sway(t - 0.02));
+  for (const [thigh, shin, foot] of [[BONE.thighL, BONE.shinL, BONE.footL], [BONE.thighR, BONE.shinR, BONE.footR]] as const) {
+    a[thigh * 3]! += dip;
+    a[shin * 3]! -= 2 * dip;
+    a[foot * 3]! += dip;
+  }
+  // Les pieds restent au sol.
+  pose.rootDy = 0;
+  pose.rootDy = -lowestPoint(pose, d);
+}
+
+/**
+ * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (`stumblePose` : pas de rattrapage dans le sens de la poussée `dir`,
+ * d'intensité `impulse` m/s, partant de la phase de marche `phase`) ou chute (tombe en `FALL_TIME`, reste à terre, se relève). `side` : +1 il
+ * tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière) ; sans `dir`, la poussée vient de face (+1) ou de dos (−1).
  * D209 : la pose part de `from` (la pose d'avant le choc : marche, course, deux-roues ; debout si absente) par un fondu de `HIT_BLEND` s, et
  * revient à la pose debout immobile, d'où la marche reprend sans saut. Au sol, l'une des `LYING_VARIANTS` poses (`variant`), le corps posé à plat :
  * le point le plus bas du corps touche le sol pendant toute la chute (le corps bascule sur les pieds, puis repose sur le dos ou le ventre).
  */
-export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims, from: Pose | null = null, variant = 0): void {
-  const a = pose.angles;
+export function hitPose(
+  pose: Pose, kind: number, t: number, side: number, d: BodyDims, from: Pose | null = null, variant = 0,
+  dir = side > 0 ? Math.PI : 0, impulse = 2, phase = 0,
+): void {
   if (kind === HIT_POSE.stumble) {
-    standPose(pose, d);
-    const env = Math.sin(Math.PI * clamp(t / STUMBLE_TIME, 0, 1));
-    a[BONE.pelvis * 3]! += side * 0.5 * env;
-    a[BONE.torso * 3]! += side * 0.25 * env;
-    a[BONE.head * 3]! += -side * 0.2 * env;
-    a[BONE.armL * 3]! += 1.1 * env;
-    a[BONE.armR * 3]! += 1.1 * env;
-    a[BONE.armL * 3 + 2]! += -0.7 * env;
-    a[BONE.armR * 3 + 2]! += 0.7 * env;
-    a[BONE.forearmL * 3]! += 0.5 * env;
-    a[BONE.forearmR * 3]! += 0.5 * env;
-    a[BONE.thighL * 3]! += 0.45 * env;
-    a[BONE.shinL * 3]! += -0.6 * env;
-    a[BONE.thighR * 3]! += -0.2 * env;
-    pose.rootDy += -0.05 * env;
+    stumblePose(pose, t, dir, impulse, phase, d);
     if (from && t < HIT_BLEND) blendPose(pose, from, pose, smooth(t / HIT_BLEND));
     return;
   }

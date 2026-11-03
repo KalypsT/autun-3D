@@ -284,6 +284,9 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
       state.poseT = Float32Array.from({ length: n }, (_, i) => ts[i % ts.length]!);
       state.poseSide = new Int8Array(n).fill(Number(params.get("side") ?? 1) < 0 ? -1 : 1);
       state.poseVar = Uint8Array.from({ length: n }, (_, i) => (params.has("var") ? Number(params.get("var")) : i) % LYING_VARIANTS);
+      // `dir=` (rad, 0 poussé vers l'avant, positif vers la droite) et `amp=` (m/s) : la poussée d'un trébuchement (D211).
+      if (params.has("dir")) state.poseDir = new Float32Array(n).fill(Number(params.get("dir")));
+      if (params.has("amp")) state.poseAmp = new Float32Array(n).fill(Number(params.get("amp")));
     }
     for (let i = 0; i < n; i++) {
       // `rows=1` : une seule rangée (pellicule vue de profil, D210).

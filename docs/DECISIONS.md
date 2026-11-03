@@ -4203,3 +4203,22 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Chute sur le dos et relevé (de haut en bas : 0,06 à 0,4 s ; 0,46 à 0,9 s ; relevé 2,2 à 2,8 s ; 2,95 à 3,6 s)](captures/d210-chute-dos.jpg)
 
 ![Chute à plat ventre et relevé (mêmes rangées ; relevé : pompe, quatre pattes, un genou à terre)](captures/d210-chute-ventre.jpg)
+
+## 2026-11-03 — D211. Chutes et bousculades, lot 4 (avancé) : trébuchement réaliste
+
+**Constat** (retour de l'utilisateur après D210) : la chute complète et le relevé sont plus cohérents, mais **un passant bousculé ou frappé sans tomber** gardait un mouvement très rigide. Le trébuchement (tous les chocs sous 3,5 m/s : bousculade à pied, coups de poing et de couteau, véhicule au pas, gendarmes compris) était un balancement symétrique sur place (`sin(πt)`), pieds plantés, toujours vers l'avant ou l'arrière, le même quelle que soit la force du choc. Le lot 4 passe donc avant le lot 3.
+
+**Ce qui est fait** (`stumblePose`) :
+- **Direction réelle de la poussée** (`CrowdState.poseDir`, `pushDir` : 0 poussé vers l'avant, π vers l'arrière, ± π/2 sur le côté), et **intensité** (`poseAmp`, la vitesse donnée par le choc, m/s). Pour les gendarmes, `setExternal` reçoit leur poussée (`kx`, `ky`) au passage à la pose de choc, et en tire aussi le côté d'une chute (qui n'était pas transmis : ils tombaient toujours à plat ventre).
+- **Pas de rattrapage** : un ou deux pas courts (cycle de marche raccourci à 55 %) dans le sens de la poussée, la phase avançant **avec le chemin réellement parcouru** (la poussée décroît en e^(−4t), `knockedStep`) : les pieds ne glissent pas ; à reculons si la poussée vient de face, bassin tourné vers la poussée si elle vient du côté (`strafePose`). Le premier pas part de la phase de marche au choc.
+- **Buste en ressort amorti** (`sway`) : il penche dans le sens de la poussée (au plus vers 0,15 s), revient en dépassant un peu dans l'autre sens, puis se pose. **La tête suit avec 0,08 s de retard** (elle reste en arrière au choc, puis rattrape) ; **les bras partent en balancier** (écartés, portés en avant, le bras du côté de la chute plus haut, l'un après l'autre) ; **les genoux amortissent** (flexion brève). Tout est proportionnel à la poussée (de 35 % à 130 % d'une poussée de 2,2 m/s) et s'éteint à 0,9 s : debout immobile, exactement, d'où la marche reprend sans saut (D209).
+- Les pieds restent au sol (`lowestPoint`) à chaque instant.
+- **Galerie** : `?view=characters&pose=stumble&dir=…&amp=…&t=…` (pellicule avec `rows=1`).
+
+**Coût** : ≈ 8 µs sur PC par passant qui trébuche, pendant 0,9 s.
+
+**Limites** : la poussée des gendarmes décroît en e^(−3t) et non e^(−4t) : leurs pas sont un peu courts pour le chemin parcouru (les pieds glissent légèrement). Un choc pendant un trébuchement est toujours ignoré (comme avant). Pas encore de chute dont la forme dépend de la violence du choc (lot 3).
+
+**Tests** (+3, un remplacé) : la tête part dans le sens de la poussée (avant, arrière, droite) puis revient en dépassant ; pieds au sol à chaque instant ; debout immobile à la fin ; des pas d'au moins 30 cm, plus marqués quand la poussée est forte ; direction d'une poussée quel que soit le cap.
+
+![Trébuchements (une rangée par poussée, de 0,04 à 0,55 s) : vers l'avant (de profil), vers l'arrière (de profil), vers la droite (de face)](captures/d211-trebuchement.jpg)

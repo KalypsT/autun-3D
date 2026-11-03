@@ -233,6 +233,15 @@ export function vehicleThreat(x: number, y: number, veh: { x: number; y: number;
   return ahead > -2 && ahead < 8 + speed * 3.5 && miss < 5;
 }
 
+/**
+ * Direction d'une poussée (ux, uy) par rapport au regard d'un personnage de cap `heading` (D211) : 0 poussé vers l'avant, π vers l'arrière,
+ * positif vers sa droite (le cap compte de 0 au nord, dans le sens des aiguilles d'une montre).
+ */
+export function pushDir(ux: number, uy: number, heading: number): number {
+  const fx = Math.sin(heading), fy = Math.cos(heading);
+  return Math.atan2(ux * fy - uy * fx, ux * fx + uy * fy);
+}
+
 export class PedSim {
   readonly state: CrowdState;
   readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, hits: 0, knocked: 0, corpses: 0, sinking: 0, deaths: 0, target: 0, zone: ZONE.outskirts };
@@ -332,6 +341,8 @@ export class PedSim {
     this.state.poseSide = new Int8Array(n);
     this.state.poseV = new Float32Array(n);
     this.state.poseVar = new Uint8Array(n);
+    this.state.poseDir = new Float32Array(n);
+    this.state.poseAmp = new Float32Array(n);
     this.state.held = new Uint8Array(n);
     this.state.look = new Float32Array(n);
     this.seat = new Array<Seat | null>(n).fill(null);
@@ -864,6 +875,8 @@ export class PedSim {
     // D209 : la pose de choc part de la marche (ou de la course) en cours, par un fondu ; chaque chute a sa pose au sol.
     if (st.pose![i]! !== HIT_POSE.stumble && st.pose![i]! !== HIT_POSE.down) st.poseV![i] = st.speed[i]!;
     st.poseVar![i] = lyingVariant(this.id[i]! + this.stats.hits);
+    st.poseDir![i] = pushDir(ux, uy, this.heading[i]!);
+    st.poseAmp![i] = impulse;
     st.pose![i] = kind;
     st.poseT![i] = 0;
     // Choc de face : sur le dos ; par derrière : vers l'avant.
@@ -1473,7 +1486,10 @@ export class PedSim {
    * (rad, 0 = nord), vitesse (m/s, l'animation de marche ou de course la suit), pose de choc (`HIT_POSE`, 0 debout) et temps écoulé depuis le choc.
    * `on` false : l'emplacement est vide (rien n'est dessiné).
    */
-  setExternal(i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number, armed = false, dead = false): void {
+  setExternal(
+    i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number,
+    armed = false, dead = false, pushX = 0, pushY = 0,
+  ): void {
     if (i < this.free || i >= this.n) return;
     const st = this.state;
     if (!on) {
@@ -1495,6 +1511,11 @@ export class PedSim {
     if (hit(pose) && !hit(st.pose![i]!)) {
       st.poseV![i] = st.speed[i]!;
       st.poseVar![i] = lyingVariant(i + Math.floor(x * 7 + y * 13));
+      // D211 : la poussée (m/s, `pushX`, `pushY`) donne le sens du trébuchement et de la chute.
+      const amp = Math.hypot(pushX, pushY);
+      st.poseDir![i] = amp > 1e-3 ? pushDir(pushX, pushY, heading) : Math.PI;
+      st.poseAmp![i] = amp > 1e-3 ? amp : 1.5;
+      st.poseSide![i] = Math.cos(st.poseDir![i]!) > 0 ? -1 : 1;
     }
     st.held![i] = armed ? 1 : 0;
     st.x[i] = x;

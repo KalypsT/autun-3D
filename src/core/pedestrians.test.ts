@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { recipeFromSeed } from "./character";
 import { pointInRing } from "./collision";
 import { NavGraph } from "./nav-graph";
-import { FLEE_SPEED, FLEE_TIME, PedSim, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
+import { FLEE_SPEED, FLEE_TIME, PedSim, pushDir, TIER_RANGE, vehicleThreat, type Observer, type PedEvent, type TrafficBody } from "./pedestrians";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
 
@@ -441,5 +441,17 @@ describe("entrées pour les autres systèmes", () => {
     expect(sim.stats.spawns - before).toBeLessThan(150);
     expect(sim.stats.alive).toBeGreaterThanOrEqual(sim.stats.target - 2);
     expect(sim.stats.alive).toBeLessThanOrEqual(sim.stats.target + 1);
+  });
+});
+
+describe("direction d'une poussée (D211)", () => {
+  it("0 vers l'avant, π vers l'arrière, +π/2 vers la droite du personnage, quel que soit son cap", () => {
+    for (const h of [0, 0.7, Math.PI / 2, 2.5, -1.2]) {
+      const fx = Math.sin(h), fy = Math.cos(h), rx = Math.cos(h), ry = -Math.sin(h);
+      expect(pushDir(fx, fy, h)).toBeCloseTo(0, 9);
+      expect(Math.abs(pushDir(-fx, -fy, h))).toBeCloseTo(Math.PI, 9);
+      expect(pushDir(rx, ry, h)).toBeCloseTo(Math.PI / 2, 9);
+      expect(pushDir(-rx, -ry, h)).toBeCloseTo(-Math.PI / 2, 9);
+    }
   });
 });

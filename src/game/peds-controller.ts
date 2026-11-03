@@ -178,7 +178,7 @@ export class PedsController implements Arena {
       // Visée : le temps passé à `setExternal` est celui depuis le dernier tir (la secousse du pistolet) ; un mort garde la pose de chute tenue.
       const pose = Officers.pose(o);
       const t = o.mode === "dead" ? Math.min(o.poseT, LYING_T) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT;
-      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, pose, t, dt, o.armed && o.mode !== "dead", o.mode === "dead");
+      sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, pose, t, dt, o.armed && o.mode !== "dead", o.mode === "dead", o.kx, o.ky);
     }
     for (let k = 0; k < OFFICER.max; k++) {
       if (seen[k]) continue;

@@ -78,7 +78,12 @@ export class CrowdRigs {
       const t = state.poseT![i]!;
       const from = t < HIT_BLEND ? this.from : null;
       if (from) walkPose(from, state.phase[i]!, state.poseV?.[i] ?? 0, this.dims[i]!);
-      hitPose(this.pose, hit, t, state.poseSide![i]!, this.dims[i]!, from, state.poseVar?.[i] ?? lyingVariant(i));
+      const side = state.poseSide![i]!;
+      // D211 : un trébuchement suit la poussée (direction, intensité) et fait ses pas de rattrapage depuis la phase de marche figée au choc.
+      hitPose(
+        this.pose, hit, t, side, this.dims[i]!, from, state.poseVar?.[i] ?? lyingVariant(i),
+        state.poseDir?.[i] ?? (side > 0 ? Math.PI : 0), state.poseAmp?.[i] ?? 2, state.phase[i]!,
+      );
     }
     else walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
     const look = state.look?.[i] ?? 0;

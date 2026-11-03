@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_BLEND, HIT_POSE, hitPose, lowestPoint, LYING_T, LYING_VARIANTS, lyingPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_BLEND, HIT_POSE, hitPose, lowestPoint, LYING_T, LYING_VARIANTS, lyingPose, stumblePose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -171,14 +171,50 @@ describe("poses d'un passant heurté", () => {
     return Array.from(p.angles);
   };
 
-  it("trébuche : se penche en milieu de mouvement, puis retrouve l'équilibre (debout immobile à la fin)", () => {
+  it("trébuche (D211) : penche dans le sens de la poussée puis se rattrape, pieds au sol, debout immobile à la fin", () => {
     const rest = stand();
-    const mid = joints(HIT_POSE.stumble, STUMBLE_TIME / 2, 1);
-    expect(mid.angles[BONE.pelvis * 3]!).toBeGreaterThan(0.4);
-    expect(joints(HIT_POSE.stumble, STUMBLE_TIME / 2, -1).angles[BONE.pelvis * 3]!).toBeLessThan(-0.4);
+    const headOffset = (dir: number, t: number): [number, number] => {
+      const pose = createPose();
+      stumblePose(pose, t, dir, 2.2, 0.3, d);
+      const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+      solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+      return [world[BONE.head * 16 + 12]! - world[12]!, world[BONE.head * 16 + 14]! - world[14]!];
+    };
+    // Avant du personnage : −z ; sa droite : +x.
+    expect(headOffset(0, 0.15)[1]).toBeLessThan(-0.15); // poussé vers l'avant : la tête part devant
+    expect(headOffset(Math.PI, 0.15)[1]).toBeGreaterThan(0.1); // vers l'arrière
+    expect(headOffset(Math.PI / 2, 0.15)[0]).toBeGreaterThan(0.12); // vers sa droite
+    // Il revient en dépassant un peu dans l'autre sens (ressort amorti), puis se pose.
+    expect(headOffset(0, 0.6)[1]).toBeGreaterThan(headOffset(0, 0)[1]);
+    for (const dir of [0, 1, 2, Math.PI, -1.5]) {
+      for (let k = 0; k <= 30; k++) {
+        const pose = createPose();
+        stumblePose(pose, (k / 30) * STUMBLE_TIME, dir, 2.5, 1, d);
+        expect(Math.abs(lowestPoint(pose, d))).toBeLessThan(1e-6); // les pieds restent au sol
+      }
+    }
     const end = joints(HIT_POSE.stumble, STUMBLE_TIME, 1);
     expect(end.angles.every((a, k) => Math.abs(a - rest[k]!) < 1e-9)).toBe(true);
     expect(Math.abs(end.rootDy)).toBeLessThan(1e-6);
+  });
+
+  it("trébuche (D211) : fait des pas dans le sens de la poussée, plus marqués quand elle est forte", () => {
+    const stride = (impulse: number, dir: number): number => {
+      let reach = 0;
+      for (let k = 0; k <= 30; k++) {
+        const pose = createPose();
+        stumblePose(pose, (k / 30) * 0.5, dir, impulse, 0.3, d);
+        const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+        solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+        // Écart des chevilles le long de la poussée (avant : −z).
+        const along = (b: number): number => -(world[b * 16 + 14]! * Math.cos(dir)) + world[b * 16 + 12]! * Math.sin(dir);
+        reach = Math.max(reach, Math.abs(along(BONE.footL) - along(BONE.footR)));
+      }
+      return reach;
+    };
+    expect(stride(2.5, 0)).toBeGreaterThan(0.3);
+    expect(stride(2.5, Math.PI)).toBeGreaterThan(0.3);
+    expect(stride(1, 0)).toBeLessThan(stride(2.5, 0));
   });
 
   it("tombe : au sol le corps repose à plat (bassin et tête au ras du sol, rien dessous) ; debout au début et à la fin (D209)", () => {
