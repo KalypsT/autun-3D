@@ -261,6 +261,7 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, params } = ctx;
   const n = Number(params.get("n") ?? 24);
   let seed = Number(params.get("seed") ?? 1);
+  const oneRow = params.get("rows") === "1";
   const perRow = Math.ceil(n / 2), spacing = Number(params.get("gap") ?? 0.95), dist = Number(params.get("dist") ?? 5.2);
   const turn = Number(params.get("turn") ?? 0);
   // `walk=1.4` : tout le monde marche à cette vitesse (m/s), phases réparties sur un cycle (pour juger la démarche d'un coup d'œil).
@@ -278,12 +279,15 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
     const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk, stumble: HIT_POSE.stumble, down: HIT_POSE.down }[params.get("pose") ?? ""] ?? 0;
     if (lifePose) {
       state.pose = new Uint8Array(n).fill(lifePose);
-      state.poseT = new Float32Array(n).fill(Number(params.get("t") ?? (lifePose === HIT_POSE.down ? LYING_T : 1)));
+      // `t=0.1,0.3,…` : un instant par personnage (pellicule d'une chute, D210) ; `var=` : la même variante pour tous.
+      const ts = (params.get("t") ?? String(lifePose === HIT_POSE.down ? LYING_T : 1)).split(",").map(Number);
+      state.poseT = Float32Array.from({ length: n }, (_, i) => ts[i % ts.length]!);
       state.poseSide = new Int8Array(n).fill(Number(params.get("side") ?? 1) < 0 ? -1 : 1);
-      state.poseVar = Uint8Array.from({ length: n }, (_, i) => i % LYING_VARIANTS);
+      state.poseVar = Uint8Array.from({ length: n }, (_, i) => (params.has("var") ? Number(params.get("var")) : i) % LYING_VARIANTS);
     }
     for (let i = 0; i < n; i++) {
-      const row = i % 2, col = Math.floor(i / 2);
+      // `rows=1` : une seule rangée (pellicule vue de profil, D210).
+      const row = oneRow ? 0 : i % 2, col = oneRow ? i + (perRow - n) / 2 : Math.floor(i / 2);
       state.x[i] = camX + (col - (perRow - 1) / 2) * spacing + (row ? spacing / 2 : 0);
       state.z[i] = camZ - dist - (row ? 2 : 0);
       state.y[i] = groundAt(state.x[i]!, state.z[i]!);

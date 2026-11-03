@@ -223,6 +223,73 @@ describe("poses d'un passant heurté", () => {
     }
   });
 
+  const height = (side: number, t: number, variant = 0): { pelvis: number; head: number; hands: number; knees: number; low: number } => {
+    const pose = createPose();
+    hitPose(pose, HIT_POSE.down, t, side, d, null, variant);
+    const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+    solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+    const hand = (b: number): number => world[b * 16 + 13]! - world[b * 16 + 5]! * (d.forearm + 0.05 * d.height);
+    return {
+      pelvis: world[BONE.pelvis * 16 + 13]!, head: world[BONE.head * 16 + 13]!, hands: Math.max(hand(BONE.forearmL), hand(BONE.forearmR)),
+      knees: Math.max(world[BONE.shinL * 16 + 13]!, world[BONE.shinR * 16 + 13]!), low: lowestPoint(pose, d),
+    };
+  };
+
+  it("chute en plusieurs temps (D210) : le corps touche toujours le sol, sans flotter, et rien ne s'y enfonce (mains posées)", () => {
+    for (const side of [1, -1]) {
+      for (let v = 0; v < LYING_VARIANTS; v++) {
+        let sunk = 0;
+        for (let k = 0; k <= 360; k++) {
+          const { low } = height(side, k / 100, v);
+          expect(low).toBeLessThan(1e-6); // quelque chose touche le sol : jamais de corps qui flotte
+          expect(low).toBeGreaterThan(-0.2);
+          if (low < -0.03) sunk++;
+        }
+        expect(sunk).toBeLessThan(3); // une main qui s'enfoncerait : au plus deux centièmes de seconde
+      }
+    }
+  });
+
+  it("chute en plusieurs temps (D210) : la tête suit le buste avec retard, le bassin descend avant de toucher", () => {
+    const rest = stand();
+    const early = createPose();
+    hitPose(early, HIT_POSE.down, 0.06, 1, d);
+    // À 0,06 s le buste a déjà basculé, la tête pas encore (elle fouette ensuite).
+    expect(Math.abs(early.angles[BONE.torso * 3]! - rest[BONE.torso * 3]!)).toBeGreaterThan(0.05);
+    expect(Math.abs(early.angles[BONE.head * 3]! - rest[BONE.head * 3]!)).toBeLessThan(0.02);
+    for (const side of [1, -1]) {
+      const mid = height(side, 0.38), low = height(side, 0.9);
+      expect(mid.pelvis).toBeLessThan(0.8);
+      expect(mid.pelvis).toBeGreaterThan(0.3);
+      expect(low.pelvis).toBeLessThan(0.16);
+    }
+  });
+
+  it("relevé (D210) : du dos, il s'assoit (bassin au sol, tête haute) ; du ventre, il passe à quatre pattes puis un genou à terre", () => {
+    const sit = height(1, DOWN_TIME - 1.1);
+    expect(sit.pelvis).toBeLessThan(0.25);
+    expect(sit.head).toBeGreaterThan(0.6);
+    expect(sit.hands).toBeLessThan(0.15); // en appui sur les mains
+    const fours = height(-1, DOWN_TIME - 0.7);
+    expect(fours.pelvis).toBeGreaterThan(0.35);
+    expect(fours.pelvis).toBeLessThan(0.65);
+    expect(fours.hands).toBeLessThan(0.12);
+    expect(fours.knees).toBeLessThan(0.12);
+    const kneel = height(-1, DOWN_TIME - 0.4);
+    expect(kneel.pelvis).toBeGreaterThan(0.45);
+    expect(kneel.pelvis).toBeLessThan(0.7);
+  });
+
+  it("au sol (D210) : il respire à peine, et un mort (temps figé à LYING_T) ne bouge pas", () => {
+    const a = createPose(), b = createPose();
+    hitPose(a, HIT_POSE.down, LYING_T, 1, d);
+    hitPose(b, HIT_POSE.down, LYING_T + 0.7, 1, d);
+    let diff = 0;
+    for (let k = 0; k < BONE_COUNT * 3; k++) diff = Math.max(diff, Math.abs(a.angles[k]! - b.angles[k]!));
+    expect(diff).toBeGreaterThan(0.005);
+    expect(diff).toBeLessThan(0.07);
+  });
+
   it("pose au sol : chaque variante et sa symétrique (gauche ↔ droite) sont distinctes", () => {
     const seen = new Set<string>();
     for (let v = 0; v < LYING_VARIANTS; v++) {
