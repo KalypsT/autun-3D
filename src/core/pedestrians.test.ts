@@ -434,6 +434,58 @@ describe("entrées pour les autres systèmes", () => {
     expect(st.poseT![c]!).toBeCloseTo(lyingTime(st.poseAmp![c]!), 5);
   });
 
+  it("se relève sans saut (D213) : ni sa place ni son cap ne sautent d'une image à l'autre, il rejoint sa file en marchant", () => {
+    for (const [impulse, side] of [[6, 1], [4.4, -1], [8.5, 1], [2.5, 1]] as const) {
+      const sim = makeSim(graph(), 80, 3);
+      const obs = still(0, -20);
+      sim.prefill(obs);
+      run(sim, 30, obs);
+      const found: number[] = [];
+      sim.queryCircle(0, -20, 120, found);
+      const a = found[0]!;
+      const st = sim.state;
+      // Poussé de côté (vers sa droite ou sa gauche) : la chute le tourne et l'écarte de sa file.
+      const h = -st.yaw[a]!;
+      sim.applyImpulse(a, side * Math.cos(h) * impulse, -side * Math.sin(h) * impulse);
+      let step = 0, turn = 0, upAt = -1;
+      let x = st.x[a]!, z = st.z[a]!, yaw = st.yaw[a]!;
+      for (let k = 0; k < 60 * 9; k++) {
+        sim.step(STEP, obs);
+        if (!st.alive![a]) break;
+        const dx = st.x[a]! - x, dz = st.z[a]! - z, dyaw = Math.abs(Math.atan2(Math.sin(st.yaw[a]! - yaw), Math.cos(st.yaw[a]! - yaw)));
+        if (upAt < 0 && st.pose![a] === 0) upAt = k;
+        // Autour du relevé et après (pendant la chute, le glissement du choc et le quart de tour ont leur propre rythme).
+        if (upAt >= 0) {
+          step = Math.max(step, Math.hypot(dx, dz));
+          turn = Math.max(turn, dyaw);
+        }
+        x = st.x[a]!;
+        z = st.z[a]!;
+        yaw = st.yaw[a]!;
+      }
+      expect(upAt).toBeGreaterThan(0);
+      // Mesuré (D213) : au plus 4 cm et 0,11 rad par image ; avant, jusqu'à 3,15 m d'un coup (retour sur l'axe de la file) et un quart de tour.
+      expect(step).toBeLessThan(0.06); // < 3,6 m/s : aucun saut de place
+      expect(turn).toBeLessThan(0.14); // < 8,4 rad/s : il se tourne, ne pivote pas d'un coup
+    }
+  });
+
+  it("gendarme (D213) : hors chute, le corps se tourne vers son cap sans y sauter ; pendant une chute, le cap exact", () => {
+    const sim = new PedSim(graph(), terrain, colliders, { capacity: 20, seed: 3, reserved: 2 });
+    const base = sim.reservedStart;
+    const recipe = recipeFromSeed(5);
+    sim.setExternal(base, true, recipe, 0, -20, 0, 3, 0, 0, STEP);
+    expect(sim.state.yaw[base]!).toBeCloseTo(0, 9);
+    sim.setExternal(base, true, null, 0, -20, Math.PI / 2, 3, 0, 0, STEP);
+    const y1 = -sim.state.yaw[base]!;
+    expect(y1).toBeGreaterThan(0.05);
+    expect(y1).toBeLessThan(Math.PI / 2 - 0.05);
+    for (let k = 0; k < 60; k++) sim.setExternal(base, true, null, 0, -20, Math.PI / 2, 3, 0, 0, STEP);
+    expect(-sim.state.yaw[base]!).toBeCloseTo(Math.PI / 2, 2);
+    sim.setExternal(base, true, null, 0, -20, -1, 0, 2, 0, STEP, false, false, Math.PI, 6);
+    expect(-sim.state.yaw[base]!).toBeCloseTo(-1, 9);
+  });
+
   it("fait sortir un conducteur (J4) : il apparaît à la portière avec sa recette, trébuche, s'enfuit en courant loin du joueur, puis se calme", () => {
     const sim = makeSim(graph(), 60, 5);
     const player = { x: 0, y: -20 };
