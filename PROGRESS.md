@@ -1547,3 +1547,6 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Poussé de côté, il pivote vers la poussée avant de tomber.
 - Les pieds ne glissent plus pendant la bascule : le corps tombe en s'éloignant d'eux, et se relève là où il était couché.
 - **Chantier chutes et bousculades terminé** (D209 à D212). Reste possible : inclinaison du corps sur une pente.
+
+**Relevé sans saut (3 novembre 2026)** (D213)
+- Après une chute ou une bousculade, un passant ne saute plus (jusqu'à 3 m d'un coup) en se relevant : il repart d'où il est tombé et rejoint son trottoir en marchant, en biais ; il se tourne vers son chemin au lieu de pivoter d'un coup ; il accélère au lieu de passer de l'arrêt à la marche rapide. Les gendarmes se tournent aussi sans à-coup.

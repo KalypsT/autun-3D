@@ -287,6 +287,14 @@ export class PedSim {
   private readonly sink: Float32Array;
   /** Cap de fuite d'un passant touché (rad), pris quand il se relève ; NaN : aucun. */
   private readonly fleeDir: Float32Array;
+  /**
+   * Après un relevé (D213) : écart (rad) entre le corps dessiné et le sens de la file, qui s'efface en quelques dixièmes de seconde (il se tourne
+   * vers sa file au lieu d'y sauter) ; et cap du corps au relevé, d'où part cet écart (NaN : rien à reprendre).
+   */
+  private readonly yawOff: Float32Array;
+  private readonly yawFrom: Float32Array;
+  /** Biais du corps (rad) quand il rejoint sa file en biais (D213), lissé. */
+  private readonly slant: Float32Array;
   private readonly rng: Uint32Array;
   private readonly id: Uint32Array;
   private readonly tier: Uint8Array;
@@ -345,6 +353,9 @@ export class PedSim {
     this.state.poseAmp = new Float32Array(n);
     this.state.held = new Uint8Array(n);
     this.state.look = new Float32Array(n);
+    this.yawOff = new Float32Array(n);
+    this.yawFrom = new Float32Array(n).fill(NaN);
+    this.slant = new Float32Array(n);
     this.seat = new Array<Seat | null>(n).fill(null);
     this.sitPhase = new Uint8Array(n);
     this.buddy = new Int32Array(n).fill(-1);
@@ -635,6 +646,9 @@ export class PedSim {
     this.lat[i] = this.latTarget[i] = (nextRandom(this.rng, i) - 0.5) * 0.5;
     this.ox[i] = this.oy[i] = 0;
     this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
+    this.yawOff[i] = 0;
+    this.yawFrom[i] = NaN;
+    this.slant[i] = 0;
     this.state.pose![i] = 0;
     this.mode[i] = PED_STATE.walk;
     this.timer[i] = 0;
@@ -678,7 +692,9 @@ export class PedSim {
     if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
     if (this.hp[i]! < WOUNDED_HP) target *= 0.7;
     if (this.tiers && tier > 0) {
-      this.speed[i] = target;
+      // Pas d'évitement au loin, mais une allure qui monte (3 m/s²) : après un relevé ou une attente, il ne passe pas de l'arrêt à la marche
+      // d'une image à l'autre (D213). Il ralentit d'un coup, comme avant.
+      this.speed[i] = Math.min(target, this.speed[i]! + 3 * dt);
       return;
     }
     if (this.avoid && tier === 0 && mode !== PED_STATE.idle) target = this.avoidNeighbors(i, target, obs);
@@ -801,6 +817,17 @@ export class PedSim {
     const g = this.graph, e = this.edge[i]!, dir = this.dir[i]!;
     const hd = g.pointAt(e, this.s[i]!, this.pt) + (dir > 0 ? 0 : Math.PI);
     this.heading[i] = hd;
+    // D213 : au premier pas après un relevé, le corps part du cap qu'il avait au sol, puis se tourne vers sa file.
+    if (!Number.isNaN(this.yawFrom[i]!)) {
+      this.yawOff[i] = angleDiff(this.yawFrom[i]!, hd);
+      this.yawFrom[i] = NaN;
+    }
+    if (this.yawOff[i] !== 0) {
+      // Il se tourne en douceur, à 6 rad/s au plus : un demi-tour (chute violente qui l'a fait tourner) prend un peu plus d'une demi-seconde.
+      const off = this.yawOff[i]!, turn = Math.min(Math.abs(off) * (1 - Math.exp(-dt * 6)), 6 * dt);
+      this.yawOff[i] = Math.abs(off) - turn < 1e-3 ? 0 : off - Math.sign(off) * turn;
+    }
+    let retX = 0, retY = 0;
     // Latéral : positif à droite du sens de marche.
     const lat = this.lat[i]!;
     // Écart d'esquive (klaxon, véhicule) : une vitesse qui s'amortit, puis un retour lent vers la file.
@@ -812,9 +839,20 @@ export class PedSim {
       this.ky[i]! *= damp;
       if (Math.abs(this.kx[i]!) + Math.abs(this.ky[i]!) < 0.05) this.kx[i] = this.ky[i] = 0;
     } else if (this.jx[i] !== 0 || this.jy[i] !== 0) {
+      // Retour vers la file, en marchant (D213) : pas plus vite qu'un pas de côté à l'allure du passant (il ne glisse pas sur le pavé).
       const back = Math.max(0, 1 - dt * 1.5);
-      this.jx[i]! *= back;
-      this.jy[i]! *= back;
+      let rx = this.jx[i]! * (back - 1), ry = this.jy[i]! * (back - 1);
+      const cap = (0.5 * this.speed[i]! + 0.1) * dt, len = Math.hypot(rx, ry);
+      if (len > cap) {
+        rx *= cap / len;
+        ry *= cap / len;
+      }
+      this.jx[i]! += rx;
+      this.jy[i]! += ry;
+      if (dt > 0) {
+        retX = rx / dt;
+        retY = ry / dt;
+      }
       if (Math.abs(this.jx[i]!) + Math.abs(this.jy[i]!) < 0.02) this.jx[i] = this.jy[i] = 0;
     }
     let px = this.pt.x + Math.cos(hd) * lat + this.jx[i]!, py = this.pt.y - Math.sin(hd) * lat + this.jy[i]!;
@@ -833,11 +871,16 @@ export class PedSim {
     py += this.oy[i]!;
     this.x[i] = px;
     this.y[i] = py;
-    const st = this.state, v = this.mode[i] === PED_STATE.walk || this.mode[i] === PED_STATE.cross ? this.speed[i]! : 0;
+    const st = this.state, walking = this.mode[i] === PED_STATE.walk || this.mode[i] === PED_STATE.cross, fwd = walking ? this.speed[i]! : 0;
+    // Le retour vers la file s'ajoute à la marche : le corps fait face à son vrai chemin (en biais) et ses pas suivent sa vraie vitesse (D213).
+    const vAlong = retX * Math.sin(hd) + retY * Math.cos(hd), vSide = retX * Math.cos(hd) - retY * Math.sin(hd);
+    const v = walking ? Math.hypot(fwd + vAlong, vSide) : fwd;
+    const slantTo = walking ? Math.max(-0.6, Math.min(0.6, Math.atan2(vSide, fwd + vAlong))) * Math.min(1, Math.max(0, (v - 0.1) / 0.5)) : 0;
+    const slant = (this.slant[i]! += (slantTo - this.slant[i]!) * Math.min(1, dt * 5));
     st.x[i] = px;
     st.z[i] = -py;
     st.y[i] = this.terrain.heightAt(px, py, st.y[i]);
-    st.yaw[i] = -hd;
+    st.yaw[i] = -(hd + this.yawOff[i]! + slant);
     st.speed[i] = v;
     st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
     if (this.life && this.mode[i]! <= PED_STATE.idle) st.pose![i] = this.trait[i]! & TRAIT.phone ? LIFE_POSE.phone : 0;
@@ -1041,12 +1084,16 @@ export class PedSim {
     this.edge[i] = hit.edge;
     this.gen[i] = g.generation(hit.edge);
     this.s[i] = hit.s;
+    // D213 : le corps garde, au relevé, son cap (tourné par la chute) et sa place ; il rejoint ensuite sa file en marchant.
+    this.yawFrom[i] = this.heading[i]!;
     const flee = this.fleeDir[i]!;
     if (this.panic[i]! > 0 && !Number.isNaN(flee)) this.heading[i] = flee;
     this.fleeDir[i] = NaN;
     const along = g.pointAt(hit.edge, hit.s, this.pt);
     this.dir[i] = Math.cos(this.heading[i]! - along) >= 0 ? 1 : -1;
-    this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
+    this.kx[i] = this.ky[i] = 0;
+    this.jx[i] = px - this.pt.x;
+    this.jy[i] = py - this.pt.y;
     this.ox[i] = this.oy[i] = 0;
     this.lat[i] = this.latTarget[i] = 0;
     // Il repart de l'arrêt (D209) : la pose de marche grandit avec la vitesse, sans saut depuis la pose debout où finit le relevé.
@@ -1509,6 +1556,7 @@ export class PedSim {
       st.alive![i] = 0;
       return;
     }
+    const appeared = !!recipe || !st.alive![i];
     if (recipe) {
       st.recipes[i] = recipe;
       this.onSpawn?.(i, recipe);
@@ -1539,7 +1587,9 @@ export class PedSim {
     st.x[i] = x;
     st.z[i] = -y;
     st.y[i] = this.terrain.heightAt(x, y);
-    st.yaw[i] = -heading;
+    // D213 : hors chute, le corps se tourne vers son cap en quelques centièmes de seconde au lieu d'y sauter (au relevé, le cap de poursuite peut
+    // être à un quart de tour de celui de la chute). Pendant une chute, le cap exact : la pose fait elle-même le quart de tour.
+    st.yaw[i] = appeared || hit(pose) ? -heading : -heading + angleDiff(st.yaw[i]!, -heading) * Math.exp(-dt * 10);
     st.speed[i] = pose === HIT_POSE.down || pose === HIT_POSE.stumble ? 0 : speed;
     st.pose![i] = pose;
     st.poseT![i] = poseT;

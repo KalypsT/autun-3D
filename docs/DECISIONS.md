@@ -4248,3 +4248,21 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Tests** (+5, un départ changé) : intensités (seuils, durées, un mort couché, assis ou à quatre pattes sans jamais se coucher, debout à la fin) ; contact avec le sol à chaque instant, vol plané seulement en chute violente ; quart de tour (sens, rendu qui part de l'ancien cap) ; pieds fixes ; simulation (durée au sol selon le choc, cap tourné, mort couché).
 
 ![Intensités (une rangée par chute) : légère sur le dos (assis puis relevé) ; légère par derrière (à genoux, quatre pattes, relevé) ; violente (fauché, vol plané, retombée) ; poussé de côté (quart de tour, puis sur le dos)](captures/d212-intensites.jpg)
+
+## 2026-11-03 — D213. Relevé sans saut (passants et gendarmes)
+
+**Constat** (retour de l'utilisateur après D212, en jeu) : après une chute ou un trébuchement, au moment de se relever, les passants sautaient parfois, comme téléportés. Trois causes, mesurées par un test (déplacement et rotation d'une image à l'autre autour du relevé) :
+- **Place** : au relevé, la simulation raccrochait le passant au point le plus proche de sa file piétonne et remettait à zéro tous ses écarts (`jx`, `jy`, `ox`, `oy`, `lat`) : il sautait sur l'axe de la file, **jusqu'à 3,15 m d'un coup** (mesuré). Le choc, la glissade et, depuis D212, le déplacement de la chute l'en écartent d'un à plusieurs mètres. Le défaut existait avant D212 (trébuchement compris), D212 l'a agrandi.
+- **Cap** : en marchant, le corps suit le sens de la file ; au relevé, il pivotait d'un coup du cap de sa chute (tourné d'un quart de tour, jusqu'à plus d'un demi-tour pour une chute violente, D212) à celui de sa file. Même chose pour un gendarme, dont le cap de poursuite est recalculé à chaque pas.
+- **Allure** : les passants simplifiés (palier au-delà du premier) passaient de l'arrêt à leur allure (souvent pressée après un choc) d'une image à l'autre : la pose de marche sautait de debout à la grande foulée.
+
+**Corrections** :
+- Au relevé, le passant **garde sa place** : l'écart avec sa file devient un écart d'esquive (`jx`, `jy`), qui revient vers la file **en marchant**, pas plus vite qu'un pas de côté à son allure (0,5 × vitesse + 0,1 m/s ; cela vaut aussi pour le retour après une esquive de klaxon, auparavant jusqu'à 1,5 × l'écart par seconde). Le corps **fait face à son vrai chemin** (en biais, ± 0,6 rad, lissé) et ses pas suivent sa vraie vitesse.
+- Au relevé, il **se tourne vers sa file** depuis le cap de sa chute (`yawOff`), à 6 rad/s au plus.
+- Les passants simplifiés **accélèrent** (3 m/s²) au lieu de passer de l'arrêt à leur allure ; ils ralentissent toujours d'un coup.
+- Gendarmes : hors chute, le corps dessiné **rejoint son cap** en quelques centièmes de seconde (`setExternal`, constante 0,1 s) au lieu d'y sauter ; pendant une chute, le cap exact (la pose fait elle-même le quart de tour). La simulation de poursuite n'est pas touchée.
+- Le joueur n'avait pas ce défaut (place et cap continus au relevé).
+
+**Résultat mesuré** : au plus 4 cm et 0,11 rad par image autour du relevé (chutes légère, forte, violente, trébuchement), contre 3,15 m et un quart de tour avant.
+
+**Tests** (+2) : relevé sans saut de place ni de cap pour quatre chocs ; gendarme qui se tourne sans sauter hors chute, cap exact pendant une chute.
