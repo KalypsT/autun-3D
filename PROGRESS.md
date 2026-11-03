@@ -1561,3 +1561,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - En sortant de la voiture sur un toit, on reste sur le toit : on y marche, on passe sur le toit voisin de même hauteur, on tombe du bord (avec les dégâts de chute). À pied, on tient debout même sur les pans raides.
 - La caméra suit correctement sur un toit. Une partie enregistrée sur un toit reprend sur le toit.
 - Pas encore : escalade des bâtiments bas et saut long (lot 3), tirs depuis les toits (lot 4), gendarmes qui attendent en bas (lot 5).
+
+**Toits praticables, lot 4 : vue et tirs en 3D (3 novembre 2026)** (D216)
+- Sur un toit, on n'est plus invisible : un gendarme dans la rue te voit (et te tire dessus) si tu es près du bord ou s'il est assez loin pour voir le toit ; au milieu d'un toit plat, ou derrière le faîtage d'un toit en pente, tu es caché.
+- Tu peux tirer depuis un toit sur la rue ; une cible collée au pied du bâtiment reste cachée par le bord du toit.
+- Pas encore : les gendarmes à pied s'arrêtent contre le mur au lieu de t'attendre autour du bâtiment (lot 5).

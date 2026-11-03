@@ -331,6 +331,14 @@ export class Colliders {
   }
 
   /**
+   * Ligne de vue en 3D (D216) entre deux points (x, y, altitude) : ni mur que le rayon ne passe pas par-dessus, ni toit entre eux.
+   * `circles` : les obstacles ronds (voitures garées, troncs) cachent aussi, comme pour `raycast`.
+   */
+  sight(ax: number, ay: number, az: number, bx: number, by: number, bz: number, circles = false): boolean {
+    return this.raycast(ax, ay, bx, by, circles, az, bz) === null && !this.roofs.blocks(ax, ay, az, bx, by, bz);
+  }
+
+  /**
    * Premier obstacle rencontré sur le segment (ax, ay) -> (bx, by) : fraction 0-1 de la longueur, ou null.
    * Par défaut, seuls les segments sont testés (murs) ; les cercles (mobilier, véhicules garés) ne gênent pas la caméra, ni les obstacles bas (clôtures).
    * `circles` : les cercles comptent aussi (balles et ligne de tir, D113 : on s'abrite derrière une voiture garée).

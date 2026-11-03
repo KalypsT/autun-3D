@@ -2,6 +2,7 @@ import { downTime, fallShift, fallTurn, GUN_POSE, HIT_POSE, STRONG_FALL, STUMBLE
 import { pushDir } from "./pedestrians";
 import type { Colliders, Resolution } from "./collision";
 import type { VehicleSpec, VehicleState } from "./vehicle";
+import { BODY_MID, POLICE_EYE } from "./police";
 
 /**
  * Gendarmes à pied (J4, D75) : logique pure. Ils descendent d'une voiture de police arrêtée près du joueur, courent vers lui (un peu moins vite que
@@ -101,6 +102,8 @@ export interface Suspect {
   vy: number;
   /** Le véhicule qu'il conduit, ou null à pied. */
   vehicle: { state: VehicleState; spec: VehicleSpec } | null;
+  /** Altitude de ses pieds (D216) : avec `ground` des gendarmes, la ligne de tir est en 3D (toits) ; absente : murs infinis. */
+  z?: number;
 }
 
 export class Officers {
@@ -120,7 +123,15 @@ export class Officers {
   private killed = 0;
   private readonly res: Resolution = { x: 0, y: 0, nx: 0, ny: 0, hit: false };
 
-  constructor(private readonly colliders: Colliders | null) {}
+  /** `ground` : altitude du sol sous un gendarme (lignes de tir en 3D, D216) ; absent : murs infinis. */
+  constructor(private readonly colliders: Colliders | null, private readonly ground: ((x: number, y: number) => number) | null = null) {}
+
+  /** Le gendarme `o` a-t-il le joueur en ligne de tir (ni mur, ni toit ; une voiture garée, un tronc ou un poteau l'abrite, D113) ? */
+  private lineOfFire(o: Officer, p: Suspect): boolean {
+    if (!this.colliders) return true;
+    if (p.z !== undefined && this.ground) return this.colliders.sight(o.x, o.y, this.ground(o.x, o.y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID, true);
+    return this.colliders.raycast(o.x, o.y, p.x, p.y, true) === null;
+  }
 
   /** Un gendarme descend de la voiture `car` en (x, y) ; null s'il y en a déjà `OFFICER.max` dehors. */
   spawn(x: number, y: number, heading: number, car: number, seed: number): Officer | null {
@@ -306,7 +317,7 @@ export class Officers {
         stopAt = OFFICER.holdDistance;
         const dd = Math.hypot(p.x - o.x, p.y - o.y);
         // Une voiture garée, un tronc ou un poteau entre le gendarme et le joueur l'abrite (D113).
-        if (dd <= OFFICER.shootRange && (!this.colliders || this.colliders.raycast(o.x, o.y, p.x, p.y, true) === null)) {
+        if (dd <= OFFICER.shootRange && this.lineOfFire(o, p)) {
           o.aiming = true;
           o.aimT += dt;
           if (dd > OFFICER.holdDistance + 4) speedCap = 2.2;

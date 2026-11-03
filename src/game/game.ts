@@ -384,7 +384,8 @@ export function startGame(ctx: GameContext): void {
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
   const wantedHud = new WantedHud(document.getElementById("wanted")!);
-  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic);
+  // Vue et tirs des gendarmes en 3D (D216) : ils sont au sol (relief et ponts, sans les toits), le joueur peut être sur un toit.
+  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic, (x, y) => terrain.heightAt(x, y));
   police.minPursuers = chaseParam;
   // Santé (J5-0, D80) : reprise de la sauvegarde ; `?hurt=N` impose N points de vie (0 : mort au départ, essais et captures).
   const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
@@ -931,7 +932,7 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false);
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false, player.z);
       mount(r.fleet);
     }
   };
@@ -1016,7 +1017,7 @@ export function startGame(ctx: GameContext): void {
         out.h = 0;
       }
     },
-    ground: (x, y, z) => terrain.heightAt(x, y, z),
+    ground: (x, y, z) => surface.heightAt(x, y, z),
     hurt: (slot, d, ux, uy, i) => (peds as PedsController | null)?.hurt(slot, d, ux, uy, i) ?? 0,
     rayPed: (x, y, dx, dy, m, out) => {
       const p = peds as PedsController | null;
@@ -1028,7 +1029,8 @@ export function startGame(ctx: GameContext): void {
       return p.rayPed(x, y, dx, dy, m, out);
     },
     // Les balles s'arrêtent aussi sur les obstacles ronds : véhicules garés, troncs, poteaux (D113).
-    wall: (ax, ay, bx, by) => colliders.raycast(ax, ay, bx, by, true),
+    // Avec les altitudes (D216), un mur de bâtiment passé par-dessus n'arrête pas la balle (tirs depuis un toit) ; les toits l'arrêtent (`ground`).
+    wall: (ax, ay, bx, by, az, bz) => colliders.raycast(ax, ay, bx, by, true, az, bz),
     // Véhicules visés (D113) : ceux de la flotte et de la circulation à moins de 80 m ; la balle les abîme du côté où elle entre.
     rayVehicle: (x, y, dx, dy, maxDist) => {
       shotTargets.length = 0;
@@ -1334,7 +1336,8 @@ export function startGame(ctx: GameContext): void {
     let px = player.x, py = player.y;
     if (aimB > 0) {
       const side = AIM_SHOULDER * aimB, rx = Math.cos(yaw), ry = -Math.sin(yaw);
-      const t = colliders.raycast(player.x, player.y, player.x + rx * side, player.y + ry * side);
+      const hz = player.z + HEAD_HEIGHT;
+      const t = colliders.raycast(player.x, player.y, player.x + rx * side, player.y + ry * side, false, hz, hz);
       const d = t === null ? side : Math.max(0, t * side - 0.2);
       px += rx * d;
       py += ry * d;
@@ -1389,7 +1392,7 @@ export function startGame(ctx: GameContext): void {
     const violence = (hits: number, killed: number): void => {
       if (hits <= 0) return;
       pedWitnesses.length = 0;
-      police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0);
+      police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0, player.z);
     };
     let reticle: { x: number; y: number; z: number } | null = null;
     if (riding || health.dead || downFor > 0) {
@@ -1454,7 +1457,7 @@ export function startGame(ctx: GameContext): void {
         }
         pedsNow0?.alarm(player.x, player.y, ALARM_SHOT, ALARM_SHOT_FLEE);
         pedWitnesses.length = 0;
-        police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0);
+        police.crime("gunfire", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, ALARM_SHOT, pedWitnesses) ?? 0) > 0, player.z);
         violence(res.hits, res.killed);
         // Victime touchée de loin (T4, D208) : les passants autour d'elle s'enfuient, et s'il en reste un debout, il appelle (le crime est signalé
         // là où elle est tombée : la police fouille autour de la victime, pas du tireur, qu'aucun d'eux n'a vu).
@@ -1587,7 +1590,7 @@ export function startGame(ctx: GameContext): void {
       const imp = (peds as PedsController | null)?.impact;
       const s = riding?.state;
       police.update(dt, {
-        x: player.x, y: player.y, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        x: player.x, y: player.y, z: player.z, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
         vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
         pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
         witnesses: (x, y, r) => {

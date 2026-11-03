@@ -3,7 +3,7 @@ import type { Colliders } from "../core/collision";
 import { RoadWatch } from "../core/offenses";
 import { OFFICER, Officers, shotHitChance, type OfficerShot } from "../core/officers";
 import type { VehicleSpec, VehicleState } from "../core/vehicle";
-import { EvadeWatch, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
+import { BODY_MID, EvadeWatch, POLICE_EYE, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
 import type { RoadGraph } from "../core/road-graph";
 import type { Signals } from "../core/signals";
 import { RAM_IMPACT, type Crime, type Wanted } from "../core/wanted";
@@ -28,6 +28,8 @@ export interface PolicePlayer {
   pedKills?: number;
   /** Passants à moins de `r` de (x, y) (témoins possibles). */
   witnesses(x: number, y: number, r: number): number;
+  /** Altitude des pieds du joueur (sur un toit, D216) : la vue et les tirs des gendarmes en tiennent compte ; absente : murs infinis. */
+  z?: number;
 }
 
 /**
@@ -87,9 +89,17 @@ export class PoliceController {
     signals: () => Signals | null,
     /** La circulation, créée au besoin (la police en a besoin même avec « Circulation : Aucune »). */
     private readonly traffic: (create: boolean) => Traffic | null,
+    /** Altitude du sol sous les gendarmes (vue et tirs en 3D, D216) ; absent : murs infinis. */
+    private readonly ground: ((x: number, y: number) => number) | null = null,
   ) {
     this.watch = new RoadWatch(road, signals);
-    this.officers = new Officers(colliders);
+    this.officers = new Officers(colliders, ground);
+  }
+
+  /** Ligne de vue d'un gendarme en (x, y) vers le joueur `p` : en 3D quand on connaît les altitudes (D216), sinon murs infinis. */
+  private sight(x: number, y: number, p: PolicePlayer, circles = false): boolean {
+    if (p.z !== undefined && this.ground) return this.colliders.sight(x, y, this.ground(x, y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID, circles);
+    return this.colliders.raycast(x, y, p.x, p.y, circles) === null;
   }
 
   /** Police armée (J5-5) : points de vie retirés au joueur par les tirs depuis le dernier appel (le jeu applique la moitié au volant). */
@@ -138,7 +148,7 @@ export class PoliceController {
     if (w.stars > 0 && (!p.driving || p.speed < 3)) {
       for (const c of cars) {
         if (!c.chasing || c.speed > 0.6 || off.countOf(c.id) > 0 || Math.hypot(c.x - p.x, c.y - p.y) > DEPLOY_REACH) continue;
-        if ((this.colliders.raycast(c.x, c.y, p.x, p.y) ?? null) !== null) continue;
+        if (!this.sight(c.x, c.y, p)) continue;
         // Portière gauche, et la droite pour le second à deux étoiles et plus.
         for (let k = 0; k < (w.stars >= 2 ? 2 : 1); k++) {
           const side = k === 0 ? -1 : 1;
@@ -157,7 +167,7 @@ export class PoliceController {
     }
     // Armés à quatre étoiles et plus (D85) ; au volant, seulement à cinq (à quatre ils cherchent encore à arrêter la voiture).
     const armed = w.stars >= 4 && (!p.driving || w.stars >= 5);
-    off.step(dt, { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle }, (id) => traffic.policeCar(id), armed);
+    off.step(dt, p.z === undefined ? { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle } : { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle, z: p.z }, (id) => traffic.policeCar(id), armed);
     this.damage += off.takeDamage();
     for (const sh of off.shots) if (this.shots.length < 48) this.shots.push(sh);
     off.clearShots();
@@ -192,7 +202,7 @@ export class PoliceController {
       if (this.officers.countOf(c.id) > 0) continue;
       const cd = (this.carCool.get(c.id) ?? 1.2) - dt;
       const d = Math.hypot(p.x - c.x, p.y - c.y);
-      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || (this.colliders.raycast(c.x, c.y, p.x, p.y, true) ?? null) !== null) {
+      if (cd > 0 || d > 35 || fired >= CAR_SHOOTERS || !this.sight(c.x, c.y, p, true)) {
         this.carCool.set(c.id, Math.max(cd, 0));
         continue;
       }
@@ -211,15 +221,18 @@ export class PoliceController {
   }
 
   /** La police voit-elle ce point en ce moment ? */
-  sees(x: number, y: number): boolean {
+  sees(x: number, y: number, z?: number): boolean {
     const t = this.traffic(false);
     if (!t) return false;
-    return policeSees(t.policeUnits(this.units), x, y, this.colliders);
+    return policeSees(t.policeUnits(this.units), x, y, this.colliders, z ?? this.ground?.(x, y), this.ground ?? undefined);
   }
 
-  /** Une infraction ponctuelle en (x, y) : comptée tout de suite si la police la voit, sinon signalée par un passant si `civilians` (et si l'infraction s'y prête). */
-  crime(kind: Crime, x: number, y: number, civilians: boolean): void {
-    if (this.sees(x, y)) this.wanted.report(kind, x, y, "police");
+  /**
+   * Une infraction ponctuelle en (x, y) : comptée tout de suite si la police la voit, sinon signalée par un passant si `civilians` (et si l'infraction s'y prête).
+   * `z` : altitude des pieds de l'auteur (sur un toit, D216) ; absente : au sol.
+   */
+  crime(kind: Crime, x: number, y: number, civilians: boolean, z?: number): void {
+    if (this.sees(x, y, z)) this.wanted.report(kind, x, y, "police");
     else if (civilians) this.wanted.report(kind, x, y, "civilian");
   }
 
@@ -233,7 +246,7 @@ export class PoliceController {
       else this.units.length = 0;
       // Les gendarmes à pied voient aussi (tout autour d'eux, comme en poursuite).
       for (const o of this.officers.list) if (o.mode === "run" || o.mode === "back") this.units.push({ x: o.x, y: o.y, heading: o.heading, chasing: true });
-      this.seen = policeSees(this.units, p.x, p.y, this.colliders);
+      this.seen = policeSees(this.units, p.x, p.y, this.colliders, p.z, this.ground ?? undefined);
     }
     // Infractions de conduite : seulement sous les yeux de la police.
     if (p.driving) {

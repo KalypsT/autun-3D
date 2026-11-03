@@ -48,6 +48,9 @@ export function roofPlanes(b: Building): RoofPlane[] {
 }
 
 const CELL = 8;
+/** Pas (m) et marge aux deux bouts (m) du contrôle des toits le long d'une ligne de vue (`Roofs.blocks`). */
+const ROOF_SIGHT_STEP = 1;
+const ROOF_SIGHT_END = 0.6;
 
 function key(ix: number, iy: number): number {
   return ix * 100003 + iy;
@@ -129,6 +132,25 @@ export class Roofs {
       bz = z;
     }
     return best;
+  }
+
+  /**
+   * Un toit coupe-t-il le segment (ax, ay, az) → (bx, by, bz) (D216) ? Le rayon passe sous un pan en un point (on le suit pas à pas,
+   * tous les `ROOF_SIGHT_STEP` m, sans les `ROOF_SIGHT_END` premiers et derniers mètres : celui qui est sur le toit ne se cache pas
+   * lui-même). Un gendarme dans la rue ne voit pas le joueur couché derrière le faîtage, ni au milieu d'un toit plat.
+   */
+  blocks(ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean {
+    const len = Math.hypot(bx - ax, by - ay);
+    if (len <= 2 * ROOF_SIGHT_END) return false;
+    const n = Math.ceil(len / ROOF_SIGHT_STEP);
+    for (let i = 1; i < n; i++) {
+      const t = i / n, d = t * len;
+      if (d < ROOF_SIGHT_END || len - d < ROOF_SIGHT_END) continue;
+      const x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t;
+      const p = this.planeAt(x, y);
+      if (p && p.a * x + p.b * y + p.c > z) return true;
+    }
+    return false;
   }
 
   /** Altitude de la surface : le toit sous le point s'il est plus haut que `ground` (voir `planeAt`), sinon `ground`. */

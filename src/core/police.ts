@@ -31,8 +31,15 @@ export interface PoliceUnit {
  */
 export const SIGHT = { chase: 90, patrol: 55, near: 15, halfAngle: 1.2 } as const;
 
-/** Un des policiers voit-il le point (x, y) ? */
-export function policeSees(units: readonly PoliceUnit[], x: number, y: number, colliders: Colliders | null): boolean {
+/** Hauteur des yeux d'un gendarme (à pied ou en voiture) et du milieu du corps de celui qu'on regarde, au-dessus de ses pieds (m, D216). */
+export const POLICE_EYE = 1.5;
+export const BODY_MID = 1.1;
+
+/**
+ * Un des policiers voit-il le point (x, y) ? `z` : altitude des pieds de qui est regardé, `ground` : altitude du sol sous les policiers (D216) ;
+ * avec les deux, la vue est en 3D (on voit par-dessus un mur plus bas, pas à travers un toit) ; sans, les murs sont infinis.
+ */
+export function policeSees(units: readonly PoliceUnit[], x: number, y: number, colliders: Colliders | null, z?: number, ground?: (x: number, y: number) => number): boolean {
   for (const u of units) {
     const dx = x - u.x, dy = y - u.y, d = Math.hypot(dx, dy);
     if (d > (u.chasing ? SIGHT.chase : SIGHT.patrol)) continue;
@@ -40,7 +47,8 @@ export function policeSees(units: readonly PoliceUnit[], x: number, y: number, c
       const off = Math.atan2(Math.sin(Math.atan2(dx, dy) - u.heading), Math.cos(Math.atan2(dx, dy) - u.heading));
       if (Math.abs(off) > SIGHT.halfAngle) continue;
     }
-    if (d < 1 || (colliders?.raycast(u.x, u.y, x, y) ?? null) === null) return true;
+    if (d < 1 || !colliders) return true;
+    if (z !== undefined && ground ? colliders.sight(u.x, u.y, ground(u.x, u.y) + POLICE_EYE, x, y, z + BODY_MID) : colliders.raycast(u.x, u.y, x, y) === null) return true;
   }
   return false;
 }
