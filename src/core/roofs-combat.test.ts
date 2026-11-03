@@ -67,8 +67,7 @@ describe("ligne de vue entre la rue et un toit (D216)", () => {
 
 describe("gendarmes armés et toits (D216)", () => {
   /** Coups de feu tirés en `seconds` par un gendarme armé posté dans la rue en (0, −10), vers le joueur immobile sur le toit en (x, y). */
-  const shotsAt = (x: number, y: number, seconds: number): number => {
-    const c = flatHouse();
+  const shotsAt = (x: number, y: number, seconds: number, c: Colliders = flatHouse()): number => {
     const o = new Officers(c, ground);
     o.spawn(0, -10, 0, 1, 42);
     const p: Suspect = { x, y, vx: 0, vy: 0, vehicle: null, z: 4 };
@@ -81,9 +80,13 @@ describe("gendarmes armés et toits (D216)", () => {
     return shots;
   };
 
-  it("tirent sur le joueur au bord du toit, pas sur celui qui se tient au milieu", () => {
+  it("tirent sur le joueur au bord du toit, pas sur celui qui se tient au milieu d'un grand toit (D217 : ils se postent d'où ils le voient, s'il y a un tel endroit)", () => {
     expect(shotsAt(0, 1, 6)).toBeGreaterThan(0);
-    expect(shotsAt(0, 8, 6)).toBe(0);
+    // Toit de 40 × 40 m : même reculé à 25 m, on ne voit pas son milieu.
+    const big = new Colliders();
+    big.addRing([-20, 0, 20, 0, 20, 40, -20, 40], [4, 4, 4, 4]);
+    big.roofs.add([plane(-20, 0, 20, 40, 0, 0, 4)]);
+    expect(shotsAt(0, 20, 6, big)).toBe(0);
   });
 });
 
@@ -140,5 +143,69 @@ describe("tirs du joueur depuis un toit (D216)", () => {
 
   it("du milieu du toit, une cible au pied du bâtiment est cachée par le bord du toit", () => {
     expect(fire(0, 8, 0, -3, 4)).toBe(0);
+  });
+});
+
+describe("la police attend au pied du bâtiment (D217)", () => {
+  /** Toit-terrasse rectangulaire à l'altitude `z`. */
+  const house = (x0: number, y0: number, x1: number, y1: number, z: number): Colliders => {
+    const c = new Colliders();
+    c.addRing([x0, y0, x1, y0, x1, y1, x0, y1], [z, z, z, z]);
+    c.roofs.add([plane(x0, y0, x1, y1, 0, 0, z)]);
+    return c;
+  };
+  const inside = (x: number, y: number, x0: number, y0: number, x1: number, y1: number): boolean => x > x0 && x < x1 && y > y0 && y < y1;
+
+  it("perché sur un toit, le joueur n'est pas rejoint : chacun se poste dans la rue autour du bâtiment, à l'écart des autres, tourné vers lui", () => {
+    const c = house(-5, 0, 5, 10, 4);
+    const o = new Officers(c, ground);
+    o.spawn(0, -20, 0, 1, 1);
+    o.spawn(20, 5, 0, 1, 2);
+    o.spawn(-20, 12, 0, 2, 3);
+    const p: Suspect = { x: 0, y: 5, vx: 0, vy: 0, vehicle: null, z: 4 };
+    expect(o.perched(p)).toBe(true);
+    for (let t = 0; t < 15; t += DT) o.step(DT, p, () => ({ x: -40, y: -40 }));
+    expect(o.arrested).toBe(false);
+    expect(o.progress).toBe(0);
+    for (const a of o.list) {
+      expect(inside(a.x, a.y, -5.5, -0.5, 5.5, 10.5)).toBe(false);
+      expect(a.speed).toBeLessThan(0.2);
+      // Tourné vers le joueur (à 0,3 rad près).
+      const want = Math.atan2(p.x - a.x, p.y - a.y);
+      expect(Math.abs(Math.atan2(Math.sin(a.heading - want), Math.cos(a.heading - want)))).toBeLessThan(0.3);
+      for (const b of o.list) if (a !== b) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(3);
+    }
+  });
+
+  it("redescendu dans la rue, le joueur est de nouveau poursuivi (et arrêté, sans arme)", () => {
+    const c = house(-5, 0, 5, 10, 4);
+    const o = new Officers(c, ground);
+    o.spawn(0, -20, 0, 1, 1);
+    const roof: Suspect = { x: 0, y: 5, vx: 0, vy: 0, vehicle: null, z: 4 };
+    for (let t = 0; t < 5; t += DT) o.step(DT, roof, () => ({ x: -40, y: -40 }));
+    const street: Suspect = { x: 0, y: -6, vx: 0, vy: 0, vehicle: null, z: 0 };
+    expect(o.perched(street)).toBe(false);
+    for (let t = 0; t < 15 && !o.arrested; t += DT) o.step(DT, street, () => ({ x: -40, y: -40 }));
+    expect(o.arrested).toBe(true);
+  });
+
+  it("armés : postés, ils tirent sur le joueur au bord du toit ; au milieu d'un très grand toit, ils attendent sans le voir", () => {
+    const shots = (c: Colliders, p: Suspect): number => {
+      const o = new Officers(c, ground);
+      o.spawn(0, -25, 0, 1, 7);
+      o.spawn(35, 20, 0, 1, 8);
+      let n = 0;
+      for (let t = 0; t < 12; t += DT) {
+        o.step(DT, p, () => ({ x: -60, y: -60 }), true);
+        n += o.shots.length;
+        o.clearShots();
+      }
+      for (const a of o.list) expect(inside(a.x, a.y, -20.5, -0.5, 20.5, 40.5)).toBe(false);
+      return n;
+    };
+    expect(shots(house(-20, 0, 20, 40, 4), { x: 0, y: 1, vx: 0, vy: 0, vehicle: null, z: 4 })).toBeGreaterThan(0);
+    expect(shots(house(-20, 0, 20, 40, 4), { x: 0, y: 20, vx: 0, vy: 0, vehicle: null, z: 4 })).toBe(0);
+    // Toit de 20 × 20 m : du pied du mur, le milieu est caché ; reculés à 25 m, ils le voient et tirent.
+    expect(shots(house(-10, 0, 10, 20, 4), { x: 0, y: 10, vx: 0, vy: 0, vehicle: null, z: 4 })).toBeGreaterThan(0);
   });
 });

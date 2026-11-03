@@ -92,7 +92,39 @@ export interface Officer {
   cool: number;
   age: number;
   rng: number;
+  /** Poste au pied du bâtiment où le joueur s'est perché (D217), ou NaN : il court vers le joueur. */
+  postX: number;
+  postY: number;
 }
+
+/** Un poste possible au pied du bâtiment du joueur perché : position, et le joueur s'y voit-il (D217). */
+interface Post {
+  x: number;
+  y: number;
+  sees: boolean;
+}
+
+/**
+ * Joueur perché sur un toit (D217) : ses pieds sont à plus de `PERCH` m au-dessus du sol sous lui (relief et ponts, sans les toits). Les
+ * gendarmes ne montent pas : ils se postent autour du bâtiment. `POST_DIRS` directions depuis le joueur, et dans chacune des postes à
+ * `POST_DIST` m du bord du toit ; recalcul tous les `POST_EVERY` s, ou dès que le joueur s'est déplacé de `POST_MOVE` m.
+ */
+export const PERCH = 1.5;
+const POST_DIRS = 16;
+const POST_DIST = [3, 8, 15, 25] as const;
+const POST_EVERY = 0.75;
+const POST_MOVE = 2;
+/** Pas (m) et portée (m) de la recherche du bord du toit le long d'une direction. */
+const EDGE_STEP = 0.5;
+const EDGE_MAX = 60;
+/** Choix d'un poste : malus (m) d'un poste d'où l'on ne voit pas le joueur, et d'un poste à moins de `POST_SPREAD` m de celui d'un collègue. */
+const BLIND_COST = 25;
+const CROWD_COST = 40;
+const POST_SPREAD = 4;
+/** Distance (m) à son poste où un gendarme s'arrête. */
+const POST_ARRIVE = 0.7;
+/** Hauteur (m) entre les pieds du joueur et le sol sous un gendarme au-delà de laquelle il ne peut pas l'attraper. */
+const REACH_UP = 1.5;
 
 /** Ce que les gendarmes savent du joueur. */
 export interface Suspect {
@@ -126,11 +158,76 @@ export class Officers {
   /** `ground` : altitude du sol sous un gendarme (lignes de tir en 3D, D216) ; absent : murs infinis. */
   constructor(private readonly colliders: Colliders | null, private readonly ground: ((x: number, y: number) => number) | null = null) {}
 
+  /** Postes autour du bâtiment du joueur perché, recalculés tous les `POST_EVERY` s (D217) ; listes réutilisées. */
+  private readonly posts: Post[] = [];
+  private readonly taken: Post[] = [];
+  private postT = 0;
+  private readonly postFrom = { x: NaN, y: NaN };
+
   /** Le gendarme `o` a-t-il le joueur en ligne de tir (ni mur, ni toit ; une voiture garée, un tronc ou un poteau l'abrite, D113) ? */
   private lineOfFire(o: Officer, p: Suspect): boolean {
     if (!this.colliders) return true;
     if (p.z !== undefined && this.ground) return this.colliders.sight(o.x, o.y, this.ground(o.x, o.y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID, true);
     return this.colliders.raycast(o.x, o.y, p.x, p.y, true) === null;
+  }
+
+  /** Le joueur est-il perché hors d'atteinte (sur un toit, D217) ? */
+  perched(p: Suspect): boolean {
+    return p.z !== undefined && this.ground !== null && p.z - this.ground(p.x, p.y) > PERCH;
+  }
+
+  /**
+   * Postes autour du bâtiment du joueur perché (D217) : dans chaque direction, on sort du toit (plus de pan sous le point), puis on essaie
+   * quelques distances, dans la rue (pas sous un autre toit, pas contre un obstacle) ; on note si le joueur s'y voit.
+   */
+  private findPosts(p: Suspect): void {
+    const posts = this.posts;
+    posts.length = 0;
+    const c = this.colliders, ground = this.ground;
+    if (!c || !ground || p.z === undefined) return;
+    for (let k = 0; k < POST_DIRS; k++) {
+      const a = (2 * Math.PI * k) / POST_DIRS, ux = Math.sin(a), uy = Math.cos(a);
+      let edge = -1;
+      for (let t = 0; t <= EDGE_MAX; t += EDGE_STEP) {
+        if (c.roofs.planeAt(p.x + ux * t, p.y + uy * t) === null) {
+          edge = t;
+          break;
+        }
+      }
+      if (edge < 0) continue;
+      for (const d of POST_DIST) {
+        const x = p.x + ux * (edge + d), y = p.y + uy * (edge + d);
+        // Sous un autre toit : un autre bâtiment barre cette direction.
+        if (c.roofs.planeAt(x, y) !== null) break;
+        if (c.resolveInto(this.res, x, y, OFFICER.radius + 0.1).hit) continue;
+        posts.push({ x, y, sees: c.sight(x, y, ground(x, y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID) });
+      }
+    }
+  }
+
+  /**
+   * Répartit les gendarmes debout sur les postes (D217) : chacun prend le plus proche de lui, de préférence d'où l'on voit le joueur, et pas
+   * sur le poste d'un collègue. Sans poste trouvé (bâtiment cerné d'autres bâtiments), il garde son ancien poste ou court vers le joueur.
+   */
+  private assignPosts(): void {
+    const taken = this.taken;
+    taken.length = 0;
+    for (const o of this.list) {
+      if (o.mode !== "run") continue;
+      let best: Post | null = null, bestCost = Infinity;
+      for (const q of this.posts) {
+        let cost = Math.hypot(q.x - o.x, q.y - o.y) + (q.sees ? 0 : BLIND_COST);
+        for (const t of taken) if (Math.hypot(t.x - q.x, t.y - q.y) < POST_SPREAD) cost += CROWD_COST;
+        if (cost < bestCost) {
+          bestCost = cost;
+          best = q;
+        }
+      }
+      if (!best) continue;
+      o.postX = best.x;
+      o.postY = best.y;
+      taken.push(best);
+    }
   }
 
   /** Un gendarme descend de la voiture `car` en (x, y) ; null s'il y en a déjà `OFFICER.max` dehors. */
@@ -146,7 +243,7 @@ export class Officers {
     const used = new Set(this.list.map((o) => o.slot));
     let slot = 0;
     while (used.has(slot)) slot++;
-    const o: Officer = { x, y, heading, speed: 0, mode: "run", timer: 0, poseT: 0, kx: 0, ky: 0, pushDir: Math.PI, pushAmp: 0, car, seed, slot, hp: OFFICER.hp, armed: false, aiming: false, sinceShot: 9, aimT: 0, cool: 0, age: 0, rng: (seed ^ 0x9e3779b9) >>> 0 || 1 };
+    const o: Officer = { x, y, heading, speed: 0, mode: "run", timer: 0, poseT: 0, kx: 0, ky: 0, pushDir: Math.PI, pushAmp: 0, car, seed, slot, hp: OFFICER.hp, armed: false, aiming: false, sinceShot: 9, aimT: 0, cool: 0, age: 0, rng: (seed ^ 0x9e3779b9) >>> 0 || 1, postX: NaN, postY: NaN };
     this.list.push(o);
     return o;
   }
@@ -258,6 +355,22 @@ export class Officers {
     const veh = p.vehicle;
     const vspeed = veh ? Math.hypot(veh.state.vx, veh.state.vy) : Math.hypot(p.vx, p.vy);
     let touching = false;
+    // Joueur perché sur un toit (D217) : les gendarmes se postent autour du bâtiment au lieu de foncer dans le mur.
+    const perched = this.perched(p);
+    if (perched) {
+      this.postT -= dt;
+      if (this.postT <= 0 || Math.hypot(p.x - this.postFrom.x, p.y - this.postFrom.y) > POST_MOVE) {
+        this.postT = POST_EVERY;
+        this.postFrom.x = p.x;
+        this.postFrom.y = p.y;
+        this.findPosts(p);
+        this.assignPosts();
+      }
+    } else if (this.postT !== 0) {
+      this.postT = 0;
+      this.postFrom.x = this.postFrom.y = NaN;
+      for (const o of this.list) o.postX = o.postY = NaN;
+    }
     // Armés : seuls les `maxShooters` plus proches tirent (les autres visent et attendent leur tour).
     if (armed) {
       const ds = this.ranks;
@@ -324,6 +437,13 @@ export class Officers {
           if (o.aimT >= OFFICER.reaction && o.cool <= 0 && dd <= this.fireLimit) this.fire(o, p, dd, vspeed, o.speed > 0.5);
         } else o.aimT = 0;
       } else o.aimT = 0;
+      // Poste au pied du bâtiment (D217) : il y va, puis cherche le joueur du regard.
+      const posted = perched && o.mode === "run" && !Number.isNaN(o.postX);
+      if (posted) {
+        tx = o.postX;
+        ty = o.postY;
+        stopAt = 0.4;
+      }
       if (o.mode === "back") {
         const c = carAt(o.car);
         if (!c) {
@@ -339,15 +459,22 @@ export class Officers {
         this.list.splice(i, 1);
         continue;
       }
-      const want = d > stopAt ? Math.min(speedCap, 1.5 * (d - stopAt) + 1) : 0;
+      // Arrivé à son poste (D217) : il s'arrête et regarde le joueur.
+      const arrived = posted && d < POST_ARRIVE;
+      const want = d > stopAt && !arrived ? Math.min(speedCap, 1.5 * (d - stopAt) + 1) : 0;
       o.speed += Math.max(-8 * dt, Math.min(6 * dt, want - o.speed));
-      if (d > 0.05) o.heading = Math.atan2(dx, dy);
-      o.x += Math.sin(o.heading) * o.speed * dt;
-      o.y += Math.cos(o.heading) * o.speed * dt;
+      // Il avance vers son but ; arrivé à son poste, il se tourne vers le joueur (le pas qui finit de le freiner suit encore son chemin).
+      const mx = d > 0.05 ? dx / d : 0, my = d > 0.05 ? dy / d : 0;
+      if (arrived) o.heading = Math.atan2(p.x - o.x, p.y - o.y);
+      else if (d > 0.05) o.heading = Math.atan2(dx, dy);
+      o.x += mx * o.speed * dt;
+      o.y += my * o.speed * dt;
       this.collide(o);
       if (o.mode === "run") {
         const reach = Math.hypot(p.x - o.x, p.y - o.y);
-        if (!armed && (veh ? reach < OFFICER.carReach && vspeed < 1 : reach < OFFICER.footReach)) touching = true;
+        // Pas d'arrestation à travers un toit : le joueur doit être à portée de main en hauteur aussi.
+        const within = !perched || p.z! - (this.ground?.(o.x, o.y) ?? p.z!) < REACH_UP;
+        if (!armed && within && (veh ? reach < OFFICER.carReach && vspeed < 1 : reach < OFFICER.footReach)) touching = true;
       }
     }
     // Arrestation : le contact s'accumule, et retombe deux fois moins vite quand il est rompu.

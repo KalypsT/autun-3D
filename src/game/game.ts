@@ -1,3 +1,4 @@
+import { PERCH } from "../core/officers";
 import { withRoofs } from "../core/roofs";
 import { rescaleDate } from "../core/calendar";
 import { Seats } from "../core/seats";
@@ -1401,7 +1402,9 @@ export function startGame(ctx: GameContext): void {
       model.setStrike(null);
     } else if (weapon.kind === "melee") {
       gun.cancel();
-      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, pedsNow0);
+      // Perché sur un toit (D217), les poings n'atteignent personne : tout le monde est en bas.
+      const perched = player.z - terrain.heightAt(player.x, player.y, player.z) > PERCH;
+      const res = melee.step(dt, input.attack, weapon, player.x, player.y, player.heading, perched ? null : pedsNow0);
       if (res.started && weapon.style !== "aim") audio.swing(weapon.style as AttackStyle);
       if (res.hits > 0) {
         audio.meleeHit(weapon.id);

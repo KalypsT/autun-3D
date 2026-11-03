@@ -1566,3 +1566,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Sur un toit, on n'est plus invisible : un gendarme dans la rue te voit (et te tire dessus) si tu es près du bord ou s'il est assez loin pour voir le toit ; au milieu d'un toit plat, ou derrière le faîtage d'un toit en pente, tu es caché.
 - Tu peux tirer depuis un toit sur la rue ; une cible collée au pied du bâtiment reste cachée par le bord du toit.
 - Pas encore : les gendarmes à pied s'arrêtent contre le mur au lieu de t'attendre autour du bâtiment (lot 5).
+
+**Toits praticables, lot 5 : la police attend en bas (3 novembre 2026)** (D217)
+- Quand tu es sur un toit, les gendarmes à pied ne foncent plus dans le mur : ils se répartissent dans la rue autour du bâtiment, reculent s'il le faut pour te voir, et te regardent. Armés, ils tirent dès qu'ils te voient ; au milieu d'un grand toit, ils attendent.
+- Ils ne peuvent plus t'arrêter à travers le toit, et tu ne peux plus frapper quelqu'un en bas depuis un toit.
+- Reste du chantier : l'escalade des bâtiments bas et le saut long (lot 3).

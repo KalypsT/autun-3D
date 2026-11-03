@@ -4335,3 +4335,23 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Pas encore** : les gendarmes à pied foncent toujours vers le joueur et s'arrêtent contre le mur ; ils l'attendront au pied du bâtiment au lot 5.
 
 **Tests** (+7, `roofs-combat.test.ts`) : vue entre la rue et un toit plat (bord, milieu, de près et de loin), un toit à deux pans (pan visible, pan caché derrière le faîtage), deux personnes au sol de part et d'autre d'une maison ; `policeSees` en 3D et en 2D ; gendarme armé qui tire sur le joueur au bord du toit, pas au milieu ; joueur qui touche une cible dans la rue depuis le bord du toit (et ne la touchait pas avant), cible au pied du bâtiment cachée par le bord du toit. Essai dans le jeu : démarrage sur un toit sans erreur (les combats n'y ont pas été joués).
+
+## 2026-11-03 — D217. Toits praticables, lot 5 : la police attend au pied du bâtiment
+
+**Demande de l'utilisateur** : lot 5 du plan `docs/plans/toits.md` (« ils attendent en bas »). Avant : les gendarmes à pied fonçaient en ligne droite vers le joueur perché et s'arrêtaient contre le mur ; un gendarme collé au mur pouvait même l'**arrêter à travers le toit** (contact compté en 2D).
+
+**Décisions** (`src/core/officers.ts`) :
+- **Joueur perché** (`Officers.perched`) : ses pieds à plus de **`PERCH` = 1,5 m** au-dessus du sol sous lui (relief et ponts, sans les toits ; sur un pont, il n'est donc pas perché).
+- **Postes** : tous les 0,75 s (ou dès que le joueur a bougé de 2 m), 16 directions depuis le joueur ; dans chacune, on sort du toit (plus de pan sous le point, pas de 0,5 m), puis on essaie des postes à **3, 8, 15 et 25 m** du bord, dans la rue : pas sous un autre toit (un autre bâtiment barre la direction), pas contre un obstacle. On note si le joueur s'y voit (ligne de vue 3D, D216).
+- **Répartition** : chaque gendarme debout prend le poste le moins coûteux : sa distance, **+25 m** si l'on n'y voit pas le joueur, **+40 m** par collègue posté à moins de 4 m. Les gendarmes **reculent donc pour voir** quand c'est possible (toit de 20 × 20 m : invisible du pied du mur, visible à 25 m), et se répartissent autour du bâtiment.
+- Arrivé (à 0,7 m de son poste), le gendarme **s'arrête et regarde le joueur** ; armé, il tire s'il le voit (D216), sinon il attend. Le déplacement ne suit plus le cap du corps mais la direction du but (sans quoi le gendarme qui se tourne vers le joueur avançait vers lui) ; changement invisible ailleurs.
+- **Pas d'arrestation à travers un toit** : le contact ne compte que si le joueur est à moins de 1,5 m au-dessus du sol sous le gendarme.
+- Le joueur redescendu, les postes sont oubliés et la poursuite reprend.
+- **Poings et armes de contact** : perché, le joueur n'atteint personne (`game.ts`, les passants et gendarmes sont en bas ; le corps à corps se calculait à plat).
+- Inchangé : les voitures de police (conduite en 2D, D216), la règle des étoiles (hors de vue, la recherche retombe comme ailleurs : un toit d'où personne ne voit le joueur reste une cachette, mais les gendarmes y restent postés).
+
+**Limites** : les gendarmes vont en ligne droite vers leur poste (il n'y a pas de chemin calculé pour eux, comme avant) ; un bâtiment entre eux et leur poste les arrête. Le poste le plus proche est en général de leur côté.
+
+**Mesure sur téléphone** (`?bench=1`) : à faire par l'utilisateur ; le chantier ajoute du calcul (0,2 µs par altitude, quelques centaines de recherches de toit par poste recalculé), pas de rendu.
+
+**Tests** (+3, et un test de D216 adapté : les gendarmes se déplacent désormais pour voir) : postés autour du bâtiment, hors de l'emprise, à l'écart les uns des autres, tournés vers le joueur, sans arrestation ; poursuite et arrestation reprises quand le joueur redescend ; armés, tir au bord, attente sans tir au milieu d'un toit de 40 × 40 m, recul pour voir et tirer sur un toit de 20 × 20 m.
