@@ -1537,3 +1537,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - On se relève vraiment : du dos, assis sur les mains, accroupi, debout ; du ventre, pompe, quatre pattes, un genou à terre, debout. Au sol, on respire.
 - Les mains se posent au sol au lieu de s'y enfoncer ou de soulever le corps.
 - Pas encore : direction et violence du choc (lot 3), trébuchement avec de vrais pas (lot 4).
+
+**Chutes et bousculades : trébuchement réaliste (3 novembre 2026)** (D211)
+- Un passant (ou un gendarme) bousculé ou frappé sans tomber se rattrape vraiment : il fait un ou deux pas dans le sens de la poussée (de côté et à reculons compris), le buste penche puis revient en dépassant un peu, la tête suit avec retard, les bras partent en balancier. Plus le coup est fort, plus c'est marqué.
+- Pas encore : chute dont la forme dépend de la violence du choc (lot 3).
+
+**Chutes et bousculades, lot 3 : intensité et direction du choc (3 novembre 2026)** (D212)
+- La chute dépend de la violence du choc : légère (assis ou à genoux, vite relevé), forte, ou violente (fauché par une voiture rapide : vol plané, rebond, il tourne sur lui-même en glissant, reste plus longtemps à terre). Le joueur aussi, selon sa vitesse en tombant de moto ou en sautant d'une voiture.
+- Poussé de côté, il pivote vers la poussée avant de tomber.
+- Les pieds ne glissent plus pendant la bascule : le corps tombe en s'éloignant d'eux, et se relève là où il était couché.
+- **Chantier chutes et bousculades terminé** (D209 à D212). Reste possible : inclinaison du corps sur une pente.

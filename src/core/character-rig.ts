@@ -331,54 +331,67 @@ function lowestFk(d: BodyDims, arms: boolean): number {
  * Mains posées (D210) : un bras dont la main passerait sous le sol plie le coude pour la poser au sol, au lieu de soulever tout le corps
  * (entre deux clés, un bras qui tourne passe par des angles où il est « trop long »). Cinématique inverse à deux os dans le plan du corps
  * (avant-arrière, vertical) : la main garde sa position avant-arrière et descend au sol ; l'épaule ne bouge pas. Un bras très écarté (qui
- * glisse à plat sur le sol) se déplie plutôt, juste assez. `fkWorld` doit être celui de la pose, `pose.rootDy` le déport qui fait reposer le corps.
+ * glisse à plat sur le sol), ou dont le coude passerait sous le sol, se rapproche plutôt du bras posé à plat, juste assez (D212). `pose.rootDy` est
+ * le déport qui fait reposer le corps ; en sortie, `fkWorld` est le squelette de la pose, déport compris.
  */
 /** Au plus, ce dont les bras peuvent soulever le corps qui repose au sol (m). */
 const ARM_LIFT = 0.03;
 
-function plantHands(pose: Pose, d: BodyDims): boolean {
-  const a = pose.angles, w = fkWorld, dy = pose.rootDy;
+function plantHands(pose: Pose, d: BodyDims): void {
+  // Squelette avec le déport `rootDy` (le corps qui repose) : les hauteurs lues sont celles au-dessus du sol.
+  solveFk(pose, d);
+  const a = pose.angles, w = fkWorld;
   const r = 0.035 * (d.limbRadius / REF_DIMS.limbRadius);
   const reach = d.forearm + 0.5 * d.hand;
-  let moved = false;
   for (const [arm, fore] of [[BONE.armL, BONE.forearmL], [BONE.armR, BONE.forearmR]] as const) {
-    const rz = a[arm * 3 + 2]!;
     const o = fore * 16;
-    const handY = (): number => w[o + 13]! - w[o + 5]! * reach + dy;
-    const hy = handY(), hz = w[o + 14]! - w[o + 6]! * reach;
-    if (hy >= r) continue;
-    if (Math.abs(rz) > 0.8) {
-      // Bras écarté qui glisse à plat sur le sol : on déplie l'épaule et le coude (vers le bras posé à plat) juste assez pour que la main
-      // reste au-dessus du sol (recherche par dichotomie).
-      const ax = a[arm * 3]!, fx = a[fore * 3]!;
-      let lo = 0, hi = 1;
-      for (let it = 0; it < 6; it++) {
-        const mid = 0.5 * (lo + hi);
-        a[arm * 3] = ax * mid;
-        a[fore * 3] = fx * mid;
-        solveFk(pose, d);
-        if (handY() >= r) lo = mid;
-        else hi = mid;
-      }
-      a[arm * 3] = ax * lo;
-      a[fore * 3] = fx * lo;
+    // Hauteur de la main et du coude (origine de l'avant-bras) au-dessus du sol.
+    const handY = (): number => w[o + 13]! - w[o + 5]! * reach;
+    const low = (): number => Math.min(handY(), w[o + 13]!);
+    if (low() >= r) continue;
+    const rz = a[arm * 3 + 2]!;
+    if (Math.abs(rz) <= 0.8 && handY() < r) {
+      // Longueurs vues dans le plan du corps (le bras écarté de `rz` en sort un peu).
+      const c = Math.cos(rz), l1 = d.upperArm * c, l2 = reach * c;
+      const hz = w[o + 14]! - w[o + 6]! * reach;
+      const ey = r - w[arm * 16 + 13]!, ez = hz - w[arm * 16 + 14]!;
+      const dist = clamp(Math.hypot(ey, ez), Math.abs(l1 - l2) + 1e-3, l1 + l2 - 1e-4);
+      // Angle d'un membre dans ce plan : 0 pendant, positif vers l'avant (−z) ; somme des `rx` de ses parents.
+      const toward = Math.atan2(-ez, -ey);
+      const bend = Math.PI - Math.acos(clamp((l1 * l1 + l2 * l2 - dist * dist) / (2 * l1 * l2), -1, 1));
+      const back = Math.acos(clamp((l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist), -1, 1));
+      a[arm * 3] = toward - back - a[BONE.pelvis * 3]! - a[BONE.torso * 3]!;
+      a[fore * 3] = bend;
       solveFk(pose, d);
-      moved = true;
+      if (low() >= r - 0.01) continue;
+    }
+    // Sinon (bras écarté qui glisse à plat sur le sol, ou coude qui passerait dessous) : sur un corps couché, on ramène l'épaule et le coude vers
+    // le bras posé à plat (rotations avant-arrière nulles), juste assez pour que coude et main restent au-dessus du sol (dichotomie). Ailleurs
+    // (assis, à genoux), un bras à zéro pendrait vers le sol : on garde la pose.
+    if (Math.abs(a[BONE.pelvis * 3]!) < 1.2) continue;
+    const ax = a[arm * 3]!, fx = a[fore * 3]!;
+    a[arm * 3] = 0;
+    a[fore * 3] = 0;
+    solveFk(pose, d);
+    if (low() < r) {
+      a[arm * 3] = ax;
+      a[fore * 3] = fx;
+      solveFk(pose, d);
       continue;
     }
-    // Longueurs vues dans le plan du corps (le bras écarté de `rz` en sort un peu).
-    const c = Math.cos(rz), l1 = d.upperArm * c, l2 = reach * c;
-    const ey = r - (w[arm * 16 + 13]! + dy), ez = hz - w[arm * 16 + 14]!;
-    const dist = clamp(Math.hypot(ey, ez), Math.abs(l1 - l2) + 1e-3, l1 + l2 - 1e-4);
-    // Angle d'un membre dans ce plan : 0 pendant, positif vers l'avant (−z) ; somme des `rx` de ses parents.
-    const toward = Math.atan2(-ez, -ey);
-    const bend = Math.PI - Math.acos(clamp((l1 * l1 + l2 * l2 - dist * dist) / (2 * l1 * l2), -1, 1));
-    const back = Math.acos(clamp((l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist), -1, 1));
-    a[arm * 3] = toward - back - a[BONE.pelvis * 3]! - a[BONE.torso * 3]!;
-    a[fore * 3] = bend;
-    moved = true;
+    let lo = 0, hi = 1;
+    for (let it = 0; it < 6; it++) {
+      const mid = 0.5 * (lo + hi);
+      a[arm * 3] = ax * mid;
+      a[fore * 3] = fx * mid;
+      solveFk(pose, d);
+      if (low() >= r) lo = mid;
+      else hi = mid;
+    }
+    a[arm * 3] = ax * lo;
+    a[fore * 3] = fx * lo;
+    solveFk(pose, d);
   }
-  return moved;
 }
 
 // --- Poses au sol (D209) ---------------------------------------------------------------------------------------------
@@ -485,160 +498,260 @@ interface Key {
   hold?: boolean;
 }
 
-/**
- * Chute sur le dos (choc de face). Le choc rejette le buste en arrière, la tête suit en retard (coup du lapin), les bras partent en avant ;
- * les genoux lâchent, le corps descend en arrière et se rattrape sur les mains ; il touche le sol par les fesses, puis le dos ; les jambes et la
- * tête rebondissent, puis tout se pose. Relevé : il s'assoit, ramène les pieds sous lui en s'appuyant d'une main, se redresse.
- */
-const FALL_BACK: readonly Key[] = [
-  { t: 0, kind: "stand", hold: true },
-  {
-    t: 0.12, kind: "spec", spec: [
-      [BONE.pelvis, 0.12, 0, 0], [BONE.torso, 0.3, 0, 0], [BONE.head, -0.4, 0, 0],
-      [BONE.armL, 0.9, 0, -0.45], [BONE.forearmL, 0.5, 0, 0], [BONE.armR, 0.8, 0, 0.5], [BONE.forearmR, 0.45, 0, 0],
-      [BONE.thighL, 0.2, 0, -0.05], [BONE.shinL, -0.35, 0, 0], [BONE.thighR, 0.1, 0, 0.05], [BONE.shinR, -0.25, 0, 0],
-    ],
-  },
-  {
-    t: 0.3, kind: "spec", spec: [
-      [BONE.pelvis, 0.55, 0, 0], [BONE.torso, 0.15, 0, 0], [BONE.head, -0.5, 0, 0],
-      [BONE.armL, -0.6, 0, -0.45], [BONE.forearmL, 0.25, 0, 0], [BONE.armR, -0.5, 0, 0.5], [BONE.forearmR, 0.25, 0, 0],
-      [BONE.thighL, 1.0, 0, -0.1], [BONE.shinL, -1.5, 0, 0], [BONE.footL, 0.3, 0, 0],
-      [BONE.thighR, 0.85, 0, 0.1], [BONE.shinR, -1.3, 0, 0], [BONE.footR, 0.3, 0, 0],
-    ],
-  },
-  {
-    t: 0.46, kind: "spec", spec: [
-      [BONE.pelvis, 1.05, 0, 0], [BONE.torso, 0.25, 0, 0], [BONE.head, -0.55, 0, 0],
-      [BONE.armL, -0.3, 0, -0.75], [BONE.forearmL, 0.2, 0, 0], [BONE.armR, -0.25, 0, 0.8], [BONE.forearmR, 0.2, 0, 0],
-      [BONE.thighL, 0.75, 0, -0.1], [BONE.shinL, -0.9, 0, 0], [BONE.footL, 0.2, 0, 0],
-      [BONE.thighR, 0.6, 0, 0.1], [BONE.shinR, -0.7, 0, 0], [BONE.footR, 0.2, 0, 0],
-    ],
-  },
-  // Le dos touche : les jambes et la tête rebondissent.
-  { t: 0.62, kind: "lie", delta: [[BONE.head, -0.35, 0, 0], [BONE.thighL, 0.35, 0, 0], [BONE.thighR, 0.3, 0, 0], [BONE.torso, 0.08, 0, 0]] },
-  { t: FALL_TIME, kind: "lie", hold: true },
-  { t: GETUP_AT, kind: "lie", hold: true },
-  // Assis, en appui sur les mains derrière soi.
-  {
-    t: GETUP_AT + 0.4, kind: "spec", spec: [
-      [BONE.pelvis, 0.45, 0, 0], [BONE.torso, -0.25, 0, 0], [BONE.head, -0.1, 0, 0],
-      [BONE.armL, -0.55, 0, -0.3], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, -0.55, 0, 0.3], [BONE.forearmR, 0.1, 0, 0],
-      [BONE.thighL, 1.75, 0, -0.08], [BONE.shinL, -1.3, 0, 0], [BONE.footL, 0.4, 0, 0],
-      [BONE.thighR, 1.15, 0, 0.08], [BONE.shinR, -0.1, 0, 0], [BONE.footR, -0.3, 0, 0],
-    ],
-  },
-  // Accroupi, les pieds ramenés sous le corps, une main au sol, l'autre sur le genou.
-  {
-    t: GETUP_AT + 0.85, kind: "spec", spec: [
-      [BONE.pelvis, -0.35, 0, 0], [BONE.torso, -0.35, 0, 0], [BONE.head, 0.45, 0, 0],
-      [BONE.armL, 0.9, 0, -0.2], [BONE.forearmL, 0.2, 0, 0], [BONE.armR, 0.7, 0, 0.15], [BONE.forearmR, 0.9, 0, 0],
-      [BONE.thighL, 1.9, 0, -0.12], [BONE.shinL, -2.0, 0, 0], [BONE.footL, 0.45, 0, 0],
-      [BONE.thighR, 1.75, 0, 0.12], [BONE.shinR, -1.95, 0, 0], [BONE.footR, 0.55, 0, 0],
-    ],
-  },
-  // À demi relevé.
-  {
-    t: GETUP_AT + 1.15, kind: "spec", spec: [
-      [BONE.pelvis, -0.25, 0, 0], [BONE.torso, -0.15, 0, 0], [BONE.head, 0.25, 0, 0],
-      [BONE.armL, 0.35, 0, -0.15], [BONE.forearmL, 0.3, 0, 0], [BONE.armR, 0.3, 0, 0.15], [BONE.forearmR, 0.6, 0, 0],
-      [BONE.thighL, 0.95, 0, -0.05], [BONE.shinL, -1.0, 0, 0], [BONE.footL, 0.3, 0, 0],
-      [BONE.thighR, 0.85, 0, 0.05], [BONE.shinR, -0.95, 0, 0], [BONE.footR, 0.35, 0, 0],
-    ],
-  },
-  { t: DOWN_TIME, kind: "stand", hold: true },
+// Poses écrites de la chute et du relevé (D210, D211), os non cités à zéro. Préfixe B : sur le dos ; F : à plat ventre ; V : chute violente.
+
+/** Le choc rejette le buste en arrière, la tête reste (coup du lapin), les bras partent en avant. */
+const B_RECOIL: Spec = [
+  [BONE.pelvis, 0.12, 0, 0], [BONE.torso, 0.3, 0, 0], [BONE.head, -0.4, 0, 0],
+  [BONE.armL, 0.9, 0, -0.45], [BONE.forearmL, 0.5, 0, 0], [BONE.armR, 0.8, 0, 0.5], [BONE.forearmR, 0.45, 0, 0],
+  [BONE.thighL, 0.2, 0, -0.05], [BONE.shinL, -0.35, 0, 0], [BONE.thighR, 0.1, 0, 0.05], [BONE.shinR, -0.25, 0, 0],
+];
+/** Les genoux lâchent, le corps descend en arrière, les mains partent se rattraper derrière. */
+const B_CROUCH: Spec = [
+  [BONE.pelvis, 0.55, 0, 0], [BONE.torso, 0.15, 0, 0], [BONE.head, -0.5, 0, 0],
+  [BONE.armL, -0.6, 0, -0.45], [BONE.forearmL, 0.25, 0, 0], [BONE.armR, -0.5, 0, 0.5], [BONE.forearmR, 0.25, 0, 0],
+  [BONE.thighL, 1.0, 0, -0.1], [BONE.shinL, -1.5, 0, 0], [BONE.footL, 0.3, 0, 0],
+  [BONE.thighR, 0.85, 0, 0.1], [BONE.shinR, -1.3, 0, 0], [BONE.footR, 0.3, 0, 0],
+];
+/** Les fesses touchent, le dos part en arrière. */
+const B_SEAT: Spec = [
+  [BONE.pelvis, 1.05, 0, 0], [BONE.torso, 0.25, 0, 0], [BONE.head, -0.55, 0, 0],
+  [BONE.armL, -0.3, 0, -0.75], [BONE.forearmL, 0.2, 0, 0], [BONE.armR, -0.25, 0, 0.8], [BONE.forearmR, 0.2, 0, 0],
+  [BONE.thighL, 0.75, 0, -0.1], [BONE.shinL, -0.9, 0, 0], [BONE.footL, 0.2, 0, 0],
+  [BONE.thighR, 0.6, 0, 0.1], [BONE.shinR, -0.7, 0, 0], [BONE.footR, 0.2, 0, 0],
+];
+/** Assis, en appui sur les mains derrière soi, un genou levé. */
+const B_SIT: Spec = [
+  [BONE.pelvis, 0.45, 0, 0], [BONE.torso, -0.25, 0, 0], [BONE.head, -0.1, 0, 0],
+  [BONE.armL, -0.55, 0, -0.3], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, -0.55, 0, 0.3], [BONE.forearmR, 0.1, 0, 0],
+  [BONE.thighL, 1.75, 0, -0.08], [BONE.shinL, -1.3, 0, 0], [BONE.footL, 0.4, 0, 0],
+  [BONE.thighR, 1.15, 0, 0.08], [BONE.shinR, -0.1, 0, 0], [BONE.footR, -0.3, 0, 0],
+];
+/** Accroupi, les pieds ramenés sous le corps, une main au sol, l'autre sur le genou. */
+const B_SQUAT: Spec = [
+  [BONE.pelvis, -0.35, 0, 0], [BONE.torso, -0.35, 0, 0], [BONE.head, 0.45, 0, 0],
+  [BONE.armL, 0.9, 0, -0.2], [BONE.forearmL, 0.2, 0, 0], [BONE.armR, 0.7, 0, 0.15], [BONE.forearmR, 0.9, 0, 0],
+  [BONE.thighL, 1.9, 0, -0.12], [BONE.shinL, -2.0, 0, 0], [BONE.footL, 0.45, 0, 0],
+  [BONE.thighR, 1.75, 0, 0.12], [BONE.shinR, -1.95, 0, 0], [BONE.footR, 0.55, 0, 0],
+];
+/** À demi relevé. */
+const B_HALF: Spec = [
+  [BONE.pelvis, -0.25, 0, 0], [BONE.torso, -0.15, 0, 0], [BONE.head, 0.25, 0, 0],
+  [BONE.armL, 0.35, 0, -0.15], [BONE.forearmL, 0.3, 0, 0], [BONE.armR, 0.3, 0, 0.15], [BONE.forearmR, 0.6, 0, 0],
+  [BONE.thighL, 0.95, 0, -0.05], [BONE.shinL, -1.0, 0, 0], [BONE.footL, 0.3, 0, 0],
+  [BONE.thighR, 0.85, 0, 0.05], [BONE.shinR, -0.95, 0, 0], [BONE.footR, 0.35, 0, 0],
+];
+/** Rebond quand le dos touche (ajouté à la pose au sol) : la tête et le haut du buste se soulèvent (sur le dos, un `rx` négatif les lève). */
+const B_BOUNCE: Spec = [[BONE.head, -0.35, 0, 0], [BONE.thighL, 0.35, 0, 0], [BONE.thighR, 0.3, 0, 0], [BONE.torso, -0.08, 0, 0]];
+
+/** Poussé par derrière : le bassin part en avant, le buste et la tête restent, les bras sont rejetés ; un pas pour se rattraper. */
+const F_PUSHED: Spec = [
+  [BONE.pelvis, -0.1, 0, 0], [BONE.torso, 0.2, 0, 0], [BONE.head, 0.35, 0, 0],
+  [BONE.armL, -0.45, 0, -0.35], [BONE.forearmL, 0.3, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 0.3, 0, 0],
+  [BONE.thighL, 0.55, 0, -0.05], [BONE.shinL, -0.5, 0, 0], [BONE.thighR, -0.1, 0, 0.05], [BONE.shinR, -0.15, 0, 0],
+];
+/** Les genoux lâchent, les bras partent en avant pour amortir. */
+const F_REACH: Spec = [
+  [BONE.pelvis, -0.55, 0, 0], [BONE.torso, -0.2, 0, 0], [BONE.head, 0.5, 0, 0],
+  [BONE.armL, 1.35, 0, -0.3], [BONE.forearmL, 0.35, 0, 0], [BONE.armR, 1.3, 0, 0.3], [BONE.forearmR, 0.35, 0, 0],
+  [BONE.thighL, 0.75, 0, -0.08], [BONE.shinL, -0.9, 0, 0], [BONE.footL, -0.2, 0, 0],
+  [BONE.thighR, 0.5, 0, 0.08], [BONE.shinR, -0.8, 0, 0], [BONE.footR, -0.2, 0, 0],
+];
+/** À genoux sur les mains. */
+const F_KNEES: Spec = [
+  [BONE.pelvis, -1.0, 0, 0], [BONE.torso, -0.3, 0, 0], [BONE.head, 0.7, 0, 0],
+  [BONE.armL, 1.5, 0, -0.35], [BONE.forearmL, 0.45, 0, 0], [BONE.armR, 1.45, 0, 0.35], [BONE.forearmR, 0.45, 0, 0],
+  [BONE.thighL, 0.55, 0, -0.1], [BONE.shinL, -1.2, 0, 0], [BONE.footL, -0.5, 0, 0],
+  [BONE.thighR, 0.45, 0, 0.1], [BONE.shinR, -1.1, 0, 0], [BONE.footR, -0.5, 0, 0],
+];
+/** Les coudes plient (ils montent au-dessus des épaules, avant-bras droits), la poitrine descend, les genoux glissent en arrière. */
+const F_ELBOWS: Spec = [
+  [BONE.pelvis, -1.3, 0, 0], [BONE.torso, -0.1, 0, 0], [BONE.head, 0.65, 0, 0],
+  [BONE.armL, -0.4, 0, -0.35], [BONE.forearmL, 2.0, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 2.0, 0, 0],
+  [BONE.thighL, 0.25, 0, -0.1], [BONE.shinL, -0.55, 0, 0], [BONE.footL, -0.8, 0, 0],
+  [BONE.thighR, 0.2, 0, 0.1], [BONE.shinR, -0.5, 0, 0], [BONE.footR, -0.8, 0, 0],
+];
+/** Rebond quand la poitrine touche (la tête se relève, les jambes rebondissent). */
+const F_BOUNCE: Spec = [[BONE.head, -0.35, 0, 0], [BONE.shinL, -0.25, 0, 0], [BONE.shinR, -0.15, 0, 0], [BONE.torso, 0.1, 0, 0]];
+/** Les mains se posent sous les épaules, coudes levés ; la tête se relève. */
+const F_HANDS: Spec = [
+  [BONE.pelvis, -Math.PI / 2, 0, 0], [BONE.head, 0.4, 0, 0],
+  [BONE.armL, -0.4, 0, -0.35], [BONE.forearmL, 2.0, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 2.0, 0, 0],
+  [BONE.thighL, 0, 0, -0.1], [BONE.shinL, -0.1, 0, 0], [BONE.footL, -0.8, 0, 0],
+  [BONE.thighR, 0, 0, 0.1], [BONE.shinR, -0.1, 0, 0], [BONE.footR, -0.8, 0, 0],
+];
+/** Pompe : le buste se soulève, le bassin reste au sol. */
+const F_PUSHUP: Spec = [
+  [BONE.pelvis, -1.45, 0, 0], [BONE.torso, 0.55, 0, 0], [BONE.head, 0.35, 0, 0],
+  [BONE.armL, 1.1, 0, -0.25], [BONE.forearmL, 0.9, 0, 0], [BONE.armR, 1.1, 0, 0.25], [BONE.forearmR, 0.9, 0, 0],
+  [BONE.thighL, -0.12, 0, -0.1], [BONE.shinL, -0.3, 0, 0], [BONE.footL, -0.7, 0, 0],
+  [BONE.thighR, -0.12, 0, 0.1], [BONE.shinR, -0.25, 0, 0], [BONE.footR, -0.7, 0, 0],
+];
+/** À quatre pattes : genoux sous le bassin, mains sous les épaules. */
+const F_FOURS: Spec = [
+  [BONE.pelvis, -1.15, 0, 0], [BONE.torso, 0.05, 0, 0], [BONE.head, 0.6, 0, 0],
+  [BONE.armL, 1.1, 0, -0.15], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, 1.1, 0, 0.15], [BONE.forearmR, 0.1, 0, 0],
+  [BONE.thighL, 1.15, 0, -0.08], [BONE.shinL, -1.6, 0, 0], [BONE.footL, -1.1, 0, 0],
+  [BONE.thighR, 1.1, 0, 0.08], [BONE.shinR, -1.55, 0, 0], [BONE.footR, -1.1, 0, 0],
+];
+/** Le pied gauche avance sous le corps, genou plié ; les mains restent au sol. */
+const F_FOOT: Spec = [
+  [BONE.pelvis, -0.75, 0, 0], [BONE.head, 0.55, 0, 0],
+  [BONE.armL, 0.9, 0, -0.15], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, 0.9, 0, 0.15], [BONE.forearmR, 0.1, 0, 0],
+  [BONE.thighL, 1.9, 0, -0.05], [BONE.shinL, -2.1, 0, 0], [BONE.footL, 0.95, 0, 0],
+  [BONE.thighR, 0.8, 0, 0.08], [BONE.shinR, -1.6, 0, 0], [BONE.footR, -0.45, 0, 0],
+];
+/** Un genou à terre (orteils repliés au sol, pied à 45°), l'autre pied posé devant, une main sur le genou. */
+const F_KNEEL: Spec = [
+  [BONE.pelvis, -0.2, 0, 0], [BONE.torso, -0.2, 0, 0], [BONE.head, 0.3, 0, 0],
+  [BONE.armL, 0.75, 0, -0.1], [BONE.forearmL, 0.5, 0, 0], [BONE.armR, 0.3, 0, 0.2], [BONE.forearmR, 0.3, 0, 0],
+  [BONE.thighL, 1.65, 0, -0.05], [BONE.shinL, -1.5, 0, 0], [BONE.footL, 0.05, 0, 0],
+  [BONE.thighR, 0.2, 0, 0.08], [BONE.shinR, -1.6, 0, 0], [BONE.footR, -0.45, 0, 0],
+];
+/** Il pousse sur le pied de devant ; le genou arrière quitte le sol, son pied revient à plat (pas de pointe de pied en se relevant). */
+const F_RISE: Spec = [
+  [BONE.pelvis, -0.12, 0, 0], [BONE.torso, -0.15, 0, 0], [BONE.head, 0.2, 0, 0],
+  [BONE.armL, 0.45, 0, -0.1], [BONE.forearmL, 0.45, 0, 0], [BONE.armR, 0.25, 0, 0.15], [BONE.forearmR, 0.35, 0, 0],
+  [BONE.thighL, 1.0, 0, -0.05], [BONE.shinL, -0.95, 0, 0], [BONE.footL, 0.1, 0, 0],
+  [BONE.thighR, 0.15, 0, 0.06], [BONE.shinR, -0.75, 0, 0], [BONE.footR, 0.5, 0, 0],
+];
+
+/** Fauché par l'avant d'un véhicule (D212) : les jambes partent en avant, le corps bascule en arrière, les bras s'envolent. */
+const V_SWEPT_B: Spec = [
+  [BONE.pelvis, 0.95, 0, 0], [BONE.torso, 0.15, 0, 0], [BONE.head, -0.6, 0, 0],
+  [BONE.armL, 2.1, 0, -0.7], [BONE.forearmL, 0.4, 0, 0], [BONE.armR, 1.9, 0, 0.8], [BONE.forearmR, 0.5, 0, 0],
+  [BONE.thighL, 0.7, 0, -0.15], [BONE.shinL, -0.3, 0, 0], [BONE.thighR, 0.45, 0, 0.15], [BONE.shinR, -0.5, 0, 0],
+];
+/** En l'air, presque à l'horizontale, membres écartés. */
+const V_AIR_B: Spec = [
+  [BONE.pelvis, 1.5, 0, 0], [BONE.torso, 0.05, 0, 0], [BONE.head, -0.45, 0, 0],
+  [BONE.armL, 1.5, 0, -1.0], [BONE.forearmL, 0.35, 0, 0], [BONE.armR, 1.3, 0, 1.1], [BONE.forearmR, 0.3, 0, 0],
+  [BONE.thighL, 0.55, 0, -0.25], [BONE.shinL, -0.7, 0, 0], [BONE.thighR, 0.25, 0, 0.2], [BONE.shinR, -0.35, 0, 0],
+];
+/** Fauché par l'arrière : les jambes partent en arrière, le corps plonge en avant, les bras partent devant. */
+const V_SWEPT_F: Spec = [
+  [BONE.pelvis, -0.85, 0, 0], [BONE.torso, -0.2, 0, 0], [BONE.head, 0.6, 0, 0],
+  [BONE.armL, 1.9, 0, -0.4], [BONE.forearmL, 0.3, 0, 0], [BONE.armR, 1.7, 0, 0.45], [BONE.forearmR, 0.35, 0, 0],
+  [BONE.thighL, -0.35, 0, -0.1], [BONE.shinL, -0.9, 0, 0], [BONE.thighR, -0.15, 0, 0.1], [BONE.shinR, -0.6, 0, 0],
+];
+/** En l'air à plat ventre, bras tendus devant la tête (pour amortir). */
+const V_AIR_F: Spec = [
+  [BONE.pelvis, -1.5, 0, 0], [BONE.torso, -0.05, 0, 0], [BONE.head, 0.6, 0, 0],
+  [BONE.armL, 2.85, 0, -0.5], [BONE.forearmL, 0.2, 0, 0], [BONE.armR, 2.75, 0, 0.55], [BONE.forearmR, 0.25, 0, 0],
+  [BONE.thighL, -0.1, 0, -0.2], [BONE.shinL, -0.6, 0, 0], [BONE.thighR, 0.05, 0, 0.2], [BONE.shinR, -0.35, 0, 0],
+];
+/** Gros rebond à l'atterrissage d'une chute violente. */
+const V_BOUNCE_B: Spec = [[BONE.head, -0.5, 0, 0], [BONE.thighL, 0.6, 0, 0], [BONE.thighR, 0.45, 0, 0], [BONE.torso, -0.15, 0, 0]];
+const V_BOUNCE_F: Spec = [[BONE.head, -0.45, 0, 0], [BONE.shinL, -0.5, 0, 0], [BONE.shinR, -0.35, 0, 0], [BONE.torso, 0.15, 0, 0]];
+
+const spec = (t: number, s: Spec): Key => ({ t, kind: "spec", spec: s });
+const held = (t: number, s: Spec): Key => ({ t, kind: "spec", spec: s, hold: true });
+const lie = (t: number, delta?: Spec): Key => (delta ? { t, kind: "lie", delta } : { t, kind: "lie", hold: true });
+const stand = (t: number): Key => ({ t, kind: "stand", hold: true });
+
+/** Relevé depuis le dos (D210), à partir de l'instant `at` : assis sur les mains, accroupi, debout (1,5 s). */
+const backGetup = (at: number): Key[] => [lie(at), spec(at + 0.4, B_SIT), spec(at + 0.85, B_SQUAT), spec(at + 1.15, B_HALF), stand(at + 1.5)];
+/** Relevé depuis le ventre : mains posées, pompe, quatre pattes, un pied devant, un genou à terre, debout (1,5 s). */
+const frontGetup = (at: number): Key[] => [
+  lie(at), spec(at + 0.2, F_HANDS), spec(at + 0.45, F_PUSHUP), spec(at + 0.8, F_FOURS), spec(at + 0.95, F_FOOT), spec(at + 1.1, F_KNEEL),
+  spec(at + 1.3, F_RISE), stand(at + 1.5),
 ];
 
 /**
- * Chute à plat ventre (choc par derrière). Le bassin part en avant, le buste et la tête restent en arrière, les bras sont rejetés ; un pas pour
- * se rattraper, puis les genoux lâchent, les bras partent en avant pour amortir ; à genoux sur les mains, puis la poitrine touche (la tête se
- * relève au choc) et tout se pose. Relevé : pompe sur les bras, à quatre pattes, un genou en avant, debout.
+ * Intensités d'une chute (D212), d'après la poussée du choc (m/s) : légère (batte, coup de poing final, voiture au ralenti : il tombe assis ou à
+ * genoux, sans s'étaler, et se relève vite), forte (la chute de D210), violente (voiture rapide : fauché, il décolle, retombe en rebondissant
+ * et tourne sur lui-même en glissant, reste plus longtemps à terre).
  */
-const FALL_FRONT: readonly Key[] = [
-  { t: 0, kind: "stand", hold: true },
+interface Tier {
+  /** Suites de clés : sur le dos, à plat ventre. */
+  keys: readonly [readonly Key[], readonly Key[]];
+  /** Durée totale (s), fin de la chute (le corps est posé), début du relevé. */
+  total: number;
+  fallEnd: number;
+  getupAt: number;
+  /** Le corps finit-il couché (respiration, pose d'un mort) ? */
+  lies: boolean;
+}
+export const DOWN_TIERS = { light: 0, strong: 1, violent: 2 } as const;
+/** Poussées (m/s) à partir desquelles une chute est forte, puis violente. */
+export const STRONG_FALL = 5, VIOLENT_FALL = 7.5;
+export const downTier = (impulse: number): number => (impulse < STRONG_FALL ? DOWN_TIERS.light : impulse < VIOLENT_FALL ? DOWN_TIERS.strong : DOWN_TIERS.violent);
+
+const LIGHT_TIME = 2.2, VIOLENT_TIME = 4.6;
+const TIERS: readonly Tier[] = [
   {
-    t: 0.12, kind: "spec", spec: [
-      [BONE.pelvis, -0.1, 0, 0], [BONE.torso, 0.2, 0, 0], [BONE.head, 0.35, 0, 0],
-      [BONE.armL, -0.45, 0, -0.35], [BONE.forearmL, 0.3, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 0.3, 0, 0],
-      [BONE.thighL, 0.55, 0, -0.05], [BONE.shinL, -0.5, 0, 0], [BONE.thighR, -0.1, 0, 0.05], [BONE.shinR, -0.15, 0, 0],
+    // Légère : sur les fesses (choc de face) ou à genoux sur les mains (choc par derrière).
+    keys: [
+      [stand(0), spec(0.1, B_RECOIL), spec(0.28, B_CROUCH), { t: 0.44, kind: "spec", spec: B_SIT, delta: [[BONE.torso, 0.2, 0, 0], [BONE.head, -0.3, 0, 0]] },
+        held(0.62, B_SIT), held(LIGHT_TIME - 1.1, B_SIT), spec(LIGHT_TIME - 0.65, B_SQUAT), spec(LIGHT_TIME - 0.35, B_HALF), stand(LIGHT_TIME)],
+      [stand(0), spec(0.12, F_PUSHED), spec(0.3, F_REACH), spec(0.45, F_KNEES), held(0.62, F_FOURS), held(LIGHT_TIME - 0.75, F_FOURS),
+        spec(LIGHT_TIME - 0.6, F_FOOT), spec(LIGHT_TIME - 0.45, F_KNEEL), spec(LIGHT_TIME - 0.25, F_RISE), stand(LIGHT_TIME)],
     ],
+    total: LIGHT_TIME, fallEnd: 0.62, getupAt: LIGHT_TIME - 1.1, lies: false,
   },
   {
-    t: 0.3, kind: "spec", spec: [
-      [BONE.pelvis, -0.55, 0, 0], [BONE.torso, -0.2, 0, 0], [BONE.head, 0.5, 0, 0],
-      [BONE.armL, 1.35, 0, -0.3], [BONE.forearmL, 0.35, 0, 0], [BONE.armR, 1.3, 0, 0.3], [BONE.forearmR, 0.35, 0, 0],
-      [BONE.thighL, 0.75, 0, -0.08], [BONE.shinL, -0.9, 0, 0], [BONE.footL, -0.2, 0, 0],
-      [BONE.thighR, 0.5, 0, 0.08], [BONE.shinR, -0.8, 0, 0], [BONE.footR, -0.2, 0, 0],
+    keys: [
+      [stand(0), spec(0.12, B_RECOIL), spec(0.3, B_CROUCH), spec(0.46, B_SEAT), lie(0.62, B_BOUNCE), lie(FALL_TIME), ...backGetup(GETUP_AT)],
+      [stand(0), spec(0.12, F_PUSHED), spec(0.3, F_REACH), spec(0.45, F_KNEES), spec(0.53, F_ELBOWS), lie(0.62, F_BOUNCE), lie(FALL_TIME), ...frontGetup(GETUP_AT)],
     ],
+    total: DOWN_TIME, fallEnd: FALL_TIME, getupAt: GETUP_AT, lies: true,
   },
   {
-    t: 0.45, kind: "spec", spec: [
-      [BONE.pelvis, -1.0, 0, 0], [BONE.torso, -0.3, 0, 0], [BONE.head, 0.7, 0, 0],
-      [BONE.armL, 1.5, 0, -0.35], [BONE.forearmL, 0.45, 0, 0], [BONE.armR, 1.45, 0, 0.35], [BONE.forearmR, 0.45, 0, 0],
-      [BONE.thighL, 0.55, 0, -0.1], [BONE.shinL, -1.2, 0, 0], [BONE.footL, -0.5, 0, 0],
-      [BONE.thighR, 0.45, 0, 0.1], [BONE.shinR, -1.1, 0, 0], [BONE.footR, -0.5, 0, 0],
+    keys: [
+      [stand(0), spec(0.1, V_SWEPT_B), spec(0.3, V_AIR_B), lie(0.48, V_BOUNCE_B), lie(0.66, B_BOUNCE), lie(1.2), ...backGetup(VIOLENT_TIME - 1.5)],
+      [stand(0), spec(0.1, V_SWEPT_F), spec(0.3, V_AIR_F), lie(0.48, V_BOUNCE_F), lie(0.66, F_BOUNCE), lie(1.2), ...frontGetup(VIOLENT_TIME - 1.5)],
     ],
+    total: VIOLENT_TIME, fallEnd: 1.2, getupAt: VIOLENT_TIME - 1.5, lies: true,
   },
-  // Les coudes plient (ils montent au-dessus des épaules, avant-bras droits), la poitrine descend vers le sol, les genoux glissent en arrière.
-  {
-    t: 0.53, kind: "spec", spec: [
-      [BONE.pelvis, -1.3, 0, 0], [BONE.torso, -0.1, 0, 0], [BONE.head, 0.65, 0, 0],
-      [BONE.armL, -0.4, 0, -0.35], [BONE.forearmL, 2.0, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 2.0, 0, 0],
-      [BONE.thighL, 0.25, 0, -0.1], [BONE.shinL, -0.55, 0, 0], [BONE.footL, -0.8, 0, 0],
-      [BONE.thighR, 0.2, 0, 0.1], [BONE.shinR, -0.5, 0, 0], [BONE.footR, -0.8, 0, 0],
-    ],
-  },
-  // La poitrine touche : la tête se relève, les jambes rebondissent.
-  { t: 0.62, kind: "lie", delta: [[BONE.head, -0.35, 0, 0], [BONE.shinL, -0.25, 0, 0], [BONE.shinR, -0.15, 0, 0], [BONE.torso, 0.1, 0, 0]] },
-  { t: FALL_TIME, kind: "lie", hold: true },
-  { t: GETUP_AT, kind: "lie", hold: true },
-  // Les mains se posent sous les épaules, coudes levés ; la tête se relève.
-  {
-    t: GETUP_AT + 0.2, kind: "spec", spec: [
-      [BONE.pelvis, -Math.PI / 2, 0, 0], [BONE.head, 0.4, 0, 0],
-      [BONE.armL, -0.4, 0, -0.35], [BONE.forearmL, 2.0, 0, 0], [BONE.armR, -0.4, 0, 0.35], [BONE.forearmR, 2.0, 0, 0],
-      [BONE.thighL, 0, 0, -0.1], [BONE.shinL, -0.1, 0, 0], [BONE.footL, -0.8, 0, 0],
-      [BONE.thighR, 0, 0, 0.1], [BONE.shinR, -0.1, 0, 0], [BONE.footR, -0.8, 0, 0],
-    ],
-  },
-  // Pompe : le buste se soulève, le bassin reste au sol.
-  {
-    t: GETUP_AT + 0.45, kind: "spec", spec: [
-      [BONE.pelvis, -1.45, 0, 0], [BONE.torso, 0.55, 0, 0], [BONE.head, 0.35, 0, 0],
-      [BONE.armL, 1.1, 0, -0.25], [BONE.forearmL, 0.9, 0, 0], [BONE.armR, 1.1, 0, 0.25], [BONE.forearmR, 0.9, 0, 0],
-      [BONE.thighL, -0.12, 0, -0.1], [BONE.shinL, -0.3, 0, 0], [BONE.footL, -0.7, 0, 0],
-      [BONE.thighR, -0.12, 0, 0.1], [BONE.shinR, -0.25, 0, 0], [BONE.footR, -0.7, 0, 0],
-    ],
-  },
-  // À quatre pattes : genoux sous le bassin, mains sous les épaules.
-  {
-    t: GETUP_AT + 0.8, kind: "spec", spec: [
-      [BONE.pelvis, -1.15, 0, 0], [BONE.torso, 0.05, 0, 0], [BONE.head, 0.6, 0, 0],
-      [BONE.armL, 1.1, 0, -0.15], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, 1.1, 0, 0.15], [BONE.forearmR, 0.1, 0, 0],
-      [BONE.thighL, 1.15, 0, -0.08], [BONE.shinL, -1.6, 0, 0], [BONE.footL, -1.1, 0, 0],
-      [BONE.thighR, 1.1, 0, 0.08], [BONE.shinR, -1.55, 0, 0], [BONE.footR, -1.1, 0, 0],
-    ],
-  },
-  // Le pied gauche avance sous le corps, genou plié ; les mains restent au sol.
-  {
-    t: GETUP_AT + 0.95, kind: "spec", spec: [
-      [BONE.pelvis, -0.75, 0, 0], [BONE.head, 0.55, 0, 0],
-      [BONE.armL, 0.9, 0, -0.15], [BONE.forearmL, 0.1, 0, 0], [BONE.armR, 0.9, 0, 0.15], [BONE.forearmR, 0.1, 0, 0],
-      [BONE.thighL, 1.9, 0, -0.05], [BONE.shinL, -2.1, 0, 0], [BONE.footL, 0.95, 0, 0],
-      [BONE.thighR, 0.8, 0, 0.08], [BONE.shinR, -1.6, 0, 0], [BONE.footR, -0.45, 0, 0],
-    ],
-  },
-  // Un genou à terre (orteils repliés au sol, pied à 45°), l'autre pied posé devant, une main sur le genou.
-  {
-    t: GETUP_AT + 1.1, kind: "spec", spec: [
-      [BONE.pelvis, -0.2, 0, 0], [BONE.torso, -0.2, 0, 0], [BONE.head, 0.3, 0, 0],
-      [BONE.armL, 0.75, 0, -0.1], [BONE.forearmL, 0.5, 0, 0], [BONE.armR, 0.3, 0, 0.2], [BONE.forearmR, 0.3, 0, 0],
-      [BONE.thighL, 1.65, 0, -0.05], [BONE.shinL, -1.5, 0, 0], [BONE.footL, 0.05, 0, 0],
-      [BONE.thighR, 0.2, 0, 0.08], [BONE.shinR, -1.6, 0, 0], [BONE.footR, -0.45, 0, 0],
-    ],
-  },
-  { t: DOWN_TIME, kind: "stand", hold: true },
 ];
+
+/** Durée d'une chute (s) selon la poussée du choc (D212) : c'est le temps à terre que comptent les simulations. */
+export const downTime = (impulse: number): number => TIERS[downTier(impulse)]!.total;
+/**
+ * Instant où le corps est couché, immobile : la pose que garde un mort (D209). Une chute légère ne couche pas : un mort tombe au moins
+ * comme une chute forte (les simulations relèvent sa poussée à `STRONG_FALL`).
+ */
+export const lyingTime = (impulse: number): number => TIERS[Math.max(DOWN_TIERS.strong, downTier(impulse))]!.fallEnd + 0.4;
+
+/**
+ * Hauteur (m) dont le corps décolle pendant une chute violente (D212) : un vol plané en arc de parabole, de 0,06 à 0,42 s, plus haut quand le
+ * choc est plus fort (de 25 à 55 cm).
+ */
+function flight(t: number, impulse: number): number {
+  if (downTier(impulse) !== DOWN_TIERS.violent || t <= 0.06 || t >= 0.42) return 0;
+  const u = (t - 0.06) / 0.36, h = clamp(0.25 + 0.2 * (impulse - VIOLENT_FALL), 0.25, 0.55);
+  return 4 * h * u * (1 - u);
+}
+
+/**
+ * Quart de tour d'une chute (D212) : le corps pivote pour tomber dans le sens de la poussée (de côté, il tourne de près d'un quart de tour vers
+ * elle, puis tombe sur le dos ou le ventre) ; une chute violente le fait en plus tourner sur lui-même en glissant (jusqu'à un demi-tour et plus).
+ * Rad, dans le sens du cap (positif : vers la droite). Les simulations tournent le cap d'autant au choc ; le rendu part de l'ancien cap et
+ * rejoint le nouveau pendant la chute (`turnLeft`).
+ */
+export function fallTurn(dir: number, side: number, impulse: number): number {
+  const base = side > 0 ? Math.PI : 0;
+  const residual = Math.atan2(Math.sin(dir - base), Math.cos(dir - base));
+  if (downTier(impulse) !== DOWN_TIERS.violent) return residual;
+  const spin = (Math.sin(dir) >= 0 ? 1 : -1) * clamp(0.35 * impulse, 1.2, 3.2);
+  return residual + spin;
+}
+/** Part du quart de tour qui reste à faire à l'instant t (1 au choc, 0 une fois le corps posé, plus tard pour une chute violente qui glisse). */
+function turnLeft(t: number, impulse: number): number {
+  return 1 - smooth(t / (downTier(impulse) === DOWN_TIERS.violent ? 1.1 : 0.45));
+}
+
+/**
+ * Chemin (m) dont le corps se déplace dans le sens de sa chute (D212, en arrière sur le dos, en avant à plat ventre), `t` s après le choc : au
+ * sol, le bassin est loin de l'endroit où étaient les pieds ; les simulations déplacent le personnage d'autant pour que les pieds ne glissent pas
+ * pendant qu'il bascule. Rien pour une chute violente (le choc l'emporte).
+ */
+export function fallShift(t: number, side: number, impulse: number, height: number): number {
+  const tier = downTier(impulse);
+  if (tier === DOWN_TIERS.violent) return 0;
+  if (tier === DOWN_TIERS.light) return side > 0 ? 0.42 * height * smooth((t - 0.1) / 0.35) : 0.25 * height * smooth((t - 0.2) / 0.3);
+  return side > 0 ? 0.46 * height * smooth((t - 0.15) / 0.45) : 0.42 * height * smooth((t - 0.2) / 0.4);
+}
 
 /**
  * Retard de chaque os sur le temps de la chute (s, D210) : les jambes lâchent les premières (de peu : la chaîne bassin, cuisse, jambe reste d'un bloc quand elle porte le corps), le bassin suit, puis le buste, les bras, et la tête
@@ -646,8 +759,8 @@ const FALL_FRONT: readonly Key[] = [
  */
 const BONE_LAG: readonly number[] = [0, 0.025, 0.07, 0.045, 0.075, 0.045, 0.075, -0.01, -0.01, -0.01, -0.01, -0.01, -0.01];
 
-/** Espace de travail : une pose par clé (la plus longue suite en compte 14). */
-const KEY_MAX = 16;
+/** Espace de travail : une pose par clé (la plus longue suite en compte 16). */
+const KEY_MAX = 20;
 const keyPoses: Pose[] = Array.from({ length: KEY_MAX }, () => createPose());
 /** Clés déjà calculées pour l'appel en cours (on ne calcule que celles qu'il faut : deux au sol, quatre au plus en mouvement). */
 const keyReady = new Uint8Array(KEY_MAX);
@@ -702,15 +815,16 @@ function slope(keys: readonly Key[], k: number, j: number): number {
  * Pose de chute (D210) à l'instant `t` : chaque os lit la suite de clés à son propre instant (`BONE_LAG`), par une courbe lisse qui passe par
  * les clés (Hermite) ; les clés tenues sont atteintes sans dépassement, les autres sont traversées avec leur élan.
  */
-export function fallPose(pose: Pose, t: number, side: number, variant: number, d: BodyDims): void {
-  const keys = side > 0 ? FALL_BACK : FALL_FRONT;
+export function fallPose(pose: Pose, t: number, side: number, variant: number, d: BodyDims, impulse = STRONG_FALL): void {
+  const tier = TIERS[downTier(impulse)]!;
+  const keys = tier.keys[side > 0 ? 0 : 1];
   keyReady.fill(0);
   keyArgs = { keys, side, variant, d };
-  const a = pose.angles;
+  const a = pose.angles, total = tier.total;
   // Les retards s'effacent au tout début et à la toute fin : debout à l'instant du choc et à la fin du relevé, à l'identique. Moitié moins au relevé.
-  const lag = Math.min(1, t / 0.05, (DOWN_TIME - t) / 0.05) * (t < GETUP_AT ? 1 : 0.5);
+  const lag = Math.min(1, t / 0.05, (total - t) / 0.05) * (t < tier.getupAt ? 1 : 0.5);
   for (let b = 0; b < BONE_COUNT; b++) {
-    const tb = clamp(t - lag * BONE_LAG[b]!, 0, DOWN_TIME);
+    const tb = clamp(t - lag * BONE_LAG[b]!, 0, total);
     let k = 0;
     while (k < keys.length - 2 && keys[k + 1]!.t <= tb) k++;
     const k0 = keys[k]!, k1 = keys[k + 1]!;
@@ -723,43 +837,103 @@ export function fallPose(pose: Pose, t: number, side: number, variant: number, d
     }
   }
   // Au sol, il respire : le buste se soulève doucement (rien chez un mort, dont le temps est figé).
-  if (t > FALL_TIME && t < GETUP_AT) {
-    const w = Math.min(1, (t - FALL_TIME) / 0.3, (GETUP_AT - t) / 0.2);
-    a[BONE.torso * 3]! += side * 0.03 * w * Math.sin(((t - FALL_TIME) * 2 * Math.PI) / 2.6);
+  if (tier.lies && t > tier.fallEnd && t < tier.getupAt) {
+    const w = Math.min(1, (t - tier.fallEnd) / 0.3, (tier.getupAt - t) / 0.2);
+    a[BONE.torso * 3]! += side * 0.03 * w * Math.sin(((t - tier.fallEnd) * 2 * Math.PI) / 2.6);
   }
   pose.rootDx = 0;
   pose.rootDy = 0;
 }
 
+// --- Trébuchement (D211) ---------------------------------------------------------------------------------------------
+
+/** Freinage de la poussée d'un passant qui trébuche (1/s) : sa vitesse décroît en e^(−4t) (`PedSim.knockedStep`), il parcourt I / 4 m. */
+const STUMBLE_DECAY = 4;
+/** Longueur d'un cycle de deux pas de rattrapage, relative au cycle de marche : des pas courts et rapides. */
+const STUMBLE_STRIDE = 0.55;
+
 /**
- * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (penché, bras en avant, retrouve l'équilibre) ou chute (tombe en
- * `FALL_TIME`, reste à terre, se relève). `side` : +1 il tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière).
+ * Réponse d'un ressort amorti à un choc (D211), normalisée à 1 au maximum : le buste part dans le sens de la poussée (au plus vers 0,15 s),
+ * revient en dépassant un peu dans l'autre sens, puis se pose ; nulle à t = 0 (le trébuchement l'éteint à `STUMBLE_TIME`).
+ */
+function sway(t: number): number {
+  if (t <= 0) return 0;
+  const w = (2 * Math.PI) / 0.8, z = 0.42, wd = w * Math.sqrt(1 - z * z);
+  return 1.55 * Math.exp(-z * w * t) * Math.sin(wd * t);
+}
+
+/**
+ * Trébuchement (D211) : un passant poussé à `impulse` m/s dans la direction `dir` (rad, par rapport à son regard : 0 poussé vers l'avant, π vers
+ * l'arrière, positif vers sa droite) rattrape son équilibre. Il fait un ou deux pas courts dans le sens de la poussée, au rythme exact de son
+ * déplacement (les pieds ne glissent pas) ; le buste penche dans ce sens en ressort amorti (il dépasse un peu en revenant), la tête suit avec
+ * retard, les bras partent en balancier (écartés, en avant pour se retenir), les genoux amortissent. `phase` : phase de marche au choc (le
+ * premier pas part de la jambe libre). Amplitude selon la poussée ; à `STUMBLE_TIME` il est debout, immobile.
+ */
+export function stumblePose(pose: Pose, t: number, dir: number, impulse: number, phase: number, d: BodyDims): void {
+  const a = pose.angles;
+  const fade = 1 - smooth((t - 0.55) / (STUMBLE_TIME - 0.55));
+  // Intensité, éteinte en fin de trébuchement : debout et immobile à `STUMBLE_TIME`, exactement.
+  const k = clamp(impulse / 2.2, 0.35, 1.3) * fade;
+  // Pas de rattrapage : la phase avance avec le chemin parcouru, à reculons si la poussée vient de face.
+  const travelled = (impulse / STUMBLE_DECAY) * (1 - Math.exp(-STUMBLE_DECAY * t));
+  const v = impulse * Math.exp(-STUMBLE_DECAY * t);
+  const back = walksBackward(dir);
+  const cycle = STUMBLE_STRIDE * cycleLength(1.4, d.height);
+  const ph = phase + ((back ? -1 : 1) * 2 * Math.PI * travelled) / cycle;
+  const legs = clamp(1.3 * v, 0, 2.2) * fade;
+  walkPose(pose, ph, legs, d);
+  if (legs > 0.05) strafePose(pose, dir, legs / 1.2);
+  // Le buste penche dans le sens de la poussée (avant : rx négatif ; droite : rz négatif) ; le bassin en prend un peu.
+  const f = Math.cos(dir), r = Math.sin(dir);
+  const lean = 0.42 * k * sway(t);
+  a[BONE.torso * 3]! += -f * lean;
+  a[BONE.torso * 3 + 2]! += -r * lean;
+  a[BONE.pelvis * 3 + 2]! += -r * 0.25 * lean;
+  // La tête reste en arrière au début (elle n'est pas poussée), puis rattrape le buste.
+  const lag = 0.42 * k * sway(t - 0.08) - lean;
+  a[BONE.head * 3]! += -f * lag * 0.9;
+  a[BONE.head * 3 + 2]! += -r * lag * 0.9;
+  // Bras en balancier : écartés, portés en avant (pour se retenir ou contrebalancer), le bras du côté de la chute plus haut ; avec un léger décalage.
+  const armsL = k * Math.max(0, sway(t - 0.03)), armsR = k * Math.max(0, sway(t - 0.06));
+  a[BONE.armL * 3]! += (0.75 + 0.35 * f) * armsL;
+  a[BONE.armR * 3]! += (0.65 + 0.35 * f) * armsR;
+  a[BONE.armL * 3 + 2]! += -(0.45 + 0.6 * Math.max(0, -r)) * armsL;
+  a[BONE.armR * 3 + 2]! += (0.45 + 0.6 * Math.max(0, r)) * armsR;
+  a[BONE.forearmL * 3]! += 0.55 * armsL;
+  a[BONE.forearmR * 3]! += 0.55 * armsR;
+  // Les genoux amortissent le choc (flexion brève), pied à plat.
+  const dip = 0.16 * k * Math.max(0, sway(t - 0.02));
+  for (const [thigh, shin, foot] of [[BONE.thighL, BONE.shinL, BONE.footL], [BONE.thighR, BONE.shinR, BONE.footR]] as const) {
+    a[thigh * 3]! += dip;
+    a[shin * 3]! -= 2 * dip;
+    a[foot * 3]! += dip;
+  }
+  // Les pieds restent au sol.
+  pose.rootDy = 0;
+  pose.rootDy = -lowestPoint(pose, d);
+}
+
+/**
+ * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (`stumblePose` : pas de rattrapage dans le sens de la poussée `dir`,
+ * d'intensité `impulse` m/s, partant de la phase de marche `phase`) ou chute (tombe en `FALL_TIME`, reste à terre, se relève). `side` : +1 il
+ * tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière) ; sans `dir`, la poussée vient de face (+1) ou de dos (−1).
  * D209 : la pose part de `from` (la pose d'avant le choc : marche, course, deux-roues ; debout si absente) par un fondu de `HIT_BLEND` s, et
  * revient à la pose debout immobile, d'où la marche reprend sans saut. Au sol, l'une des `LYING_VARIANTS` poses (`variant`), le corps posé à plat :
  * le point le plus bas du corps touche le sol pendant toute la chute (le corps bascule sur les pieds, puis repose sur le dos ou le ventre).
  */
-export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims, from: Pose | null = null, variant = 0): void {
-  const a = pose.angles;
+export function hitPose(
+  pose: Pose, kind: number, t: number, side: number, d: BodyDims, from: Pose | null = null, variant = 0,
+  dir = side > 0 ? Math.PI : 0, impulse = NaN, phase = 0,
+): void {
   if (kind === HIT_POSE.stumble) {
-    standPose(pose, d);
-    const env = Math.sin(Math.PI * clamp(t / STUMBLE_TIME, 0, 1));
-    a[BONE.pelvis * 3]! += side * 0.5 * env;
-    a[BONE.torso * 3]! += side * 0.25 * env;
-    a[BONE.head * 3]! += -side * 0.2 * env;
-    a[BONE.armL * 3]! += 1.1 * env;
-    a[BONE.armR * 3]! += 1.1 * env;
-    a[BONE.armL * 3 + 2]! += -0.7 * env;
-    a[BONE.armR * 3 + 2]! += 0.7 * env;
-    a[BONE.forearmL * 3]! += 0.5 * env;
-    a[BONE.forearmR * 3]! += 0.5 * env;
-    a[BONE.thighL * 3]! += 0.45 * env;
-    a[BONE.shinL * 3]! += -0.6 * env;
-    a[BONE.thighR * 3]! += -0.2 * env;
-    pose.rootDy += -0.05 * env;
+    stumblePose(pose, t, dir, Number.isNaN(impulse) ? 2 : impulse, phase, d);
     if (from && t < HIT_BLEND) blendPose(pose, from, pose, smooth(t / HIT_BLEND));
     return;
   }
-  fallPose(pose, t, side, variant, d);
+  const push = Number.isNaN(impulse) ? STRONG_FALL : impulse;
+  fallPose(pose, t, side, variant, d, push);
+  // D212 : le corps part de l'ancien cap et pivote vers le sens de sa chute (le cap du personnage est déjà tourné d'autant).
+  pose.angles[BONE.pelvis * 3 + 1]! += fallTurn(dir, side, push) * turnLeft(t, push);
   if (from && t < HIT_BLEND) blendPose(pose, from, pose, smooth(t / HIT_BLEND));
   // Le corps repose sur son point le plus bas : les pieds au début de la chute, le dos ou le ventre une fois à terre. Les bras ne le soulèvent
   // pas : une main qui passerait sous le sol s'y pose en pliant le coude (D210).
@@ -768,13 +942,12 @@ export function hitPose(pose: Pose, kind: number, t: number, side: number, d: Bo
   solveFk(pose, d);
   const body = -lowestFk(d, false);
   pose.rootDy = body;
-  if (plantHands(pose, d)) {
-    solveFk(pose, d);
-    pose.rootDy -= lowestFk(d, true);
-  } else pose.rootDy = -lowestFk(d, true);
+  // `plantHands` laisse le squelette à jour, déport compris : ce qui dépasse encore sous le sol (un coude, quelques centimètres) relève le corps.
+  plantHands(pose, d);
+  pose.rootDy -= lowestFk(d, true);
   // Un bras que la cinématique inverse n'a pas posé (couché sur le côté, hors d'atteinte) ne soulève pas le corps de plus de 3 cm : la main
   // s'enfonce un peu plutôt que tout le corps ne flotte.
-  pose.rootDy = Math.min(pose.rootDy, body + ARM_LIFT);
+  pose.rootDy = Math.min(pose.rootDy, body + ARM_LIFT) + flight(t, push);
 }
 
 /** Décalages d'articulation au repos (m), de chaque os par rapport à son parent, dans le repère du parent. 13 × 3 valeurs. */

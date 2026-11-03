@@ -18,7 +18,7 @@ import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { rayHull } from "../core/vehicle-contact";
 import { Smoke } from "../render/smoke";
-import { DOWN_TIME, LYING_VARIANTS } from "../core/character-rig";
+import { DOWN_TIME, downTime, fallShift, LYING_VARIANTS, STRONG_FALL } from "../core/character-rig";
 import { StuntMeter } from "../core/stunt";
 import { ALARM_SHOT, ALARM_SHOT_FLEE, type Observer, type TrafficBody } from "../core/pedestrians";
 import { pigeonCapacity } from "../core/pigeons";
@@ -254,8 +254,17 @@ export function startGame(ctx: GameContext): void {
   /** Tombé d'un deux-roues (D98) : temps restant au sol (s) et sens de la chute (+1 sur le dos, −1 en avant). */
   let downFor = 0;
   let downSide = -1;
-  /** Pose au sol de la dernière chute (D209), tirée à chaque chute. */
+  /** Pose au sol de la dernière chute (D209), tirée à chaque chute ; poussée du choc (D212 : intensité de la chute) et durée de la chute. */
   let downVariant = 0;
+  let downAmp = STRONG_FALL;
+  let downTotal = DOWN_TIME;
+  /** Le joueur tombe : durée et intensité selon sa vitesse (D212, comme un passant renversé : 0,7 × v + 1,5, de 4 à 9 m/s). */
+  const startFall = (speed: number, side: number): void => {
+    downAmp = Math.min(9, Math.max(4, 0.7 * speed + 1.5));
+    downTotal = downFor = downTime(downAmp);
+    downSide = side;
+    downVariant = Math.floor(Math.random() * LYING_VARIANTS);
+  };
   /** Roue arrière et roue avant : distance sur une roue, affichée au-dessus du compteur de vitesse. */
   const stunt = new StuntMeter();
   const stuntEl = document.getElementById("stunt");
@@ -844,9 +853,7 @@ export function startGame(ctx: GameContext): void {
     const throw_ = back ? 0 : 0.6 * speed;
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_, vy: dy * throw_, speed: 0, heading: Math.atan2(dx, dy) });
     groundPlayer(player);
-    downFor = DOWN_TIME;
-    downSide = back ? 1 : -1;
-    downVariant = Math.floor(Math.random() * LYING_VARIANTS);
+    startFall(speed, back ? 1 : -1);
     health.damage(fallDamage(speed, health.hp));
   };
   /**
@@ -870,9 +877,7 @@ export function startGame(ctx: GameContext): void {
     const throw_ = 0.6 * speed;
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y, player.z), vx: dx * throw_ + lx * 1.5, vy: dy * throw_ + ly * 1.5, speed: 0, heading: Math.atan2(dx, dy) });
     groundPlayer(player);
-    downFor = DOWN_TIME;
-    downSide = -1;
-    downVariant = Math.floor(Math.random() * LYING_VARIANTS);
+    startFall(speed, -1);
     health.damage(bailOutDamage(speed, health.hp));
   };
   /** Un pas de la course des voitures abandonnées en roulant : elles ralentissent seules (frein léger), cognent ce qu'elles trouvent, puis se garent où elles s'arrêtent. */
@@ -1235,6 +1240,15 @@ export function startGame(ctx: GameContext): void {
         if (downFor > 0) {
           downFor = Math.max(0, downFor - STEP);
           slidePlayer(player, STEP, terrain, colliders);
+          // D212 : en basculant, le corps s'éloigne de l'endroit où étaient les pieds (en arrière sur le dos, en avant à plat ventre).
+          const t = downTotal - downFor, h = appearance.height;
+          const shift = fallShift(t, downSide, downAmp, h) - fallShift(t - STEP, downSide, downAmp, h);
+          if (shift !== 0) {
+            const s = downSide > 0 ? -shift : shift;
+            const r = colliders.resolve(player.x + Math.sin(player.heading) * s, player.y + Math.cos(player.heading) * s, PLAYER_RADIUS);
+            player.x = r.x;
+            player.y = r.y;
+          }
         } else {
           stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, terrain, colliders);
           jumpNow = false;
@@ -1482,7 +1496,7 @@ export function startGame(ctx: GameContext): void {
       model.ride(rideModel, crank);
       stunt.update(riding.state.wheelie, riding.state.speed, dt);
     } else {
-      model.setDown(downFor > 0 ? { t: DOWN_TIME - downFor, side: downSide, variant: downVariant } : null);
+      model.setDown(downFor > 0 ? { t: downTotal - downFor, side: downSide, variant: downVariant, impulse: downAmp } : null);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
       // Pas de côté et à reculons (T4, D208) : la direction de la marche par rapport au corps, quand il ne suit pas la marche (visée, tir).
       const moveRel = player.speed > 0.3 && weapon.kind === "gun" && (aiming || gun.aim > 0) ? angleDelta(player.heading, Math.atan2(player.vx, player.vy)) : 0;

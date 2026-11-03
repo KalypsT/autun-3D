@@ -5,7 +5,7 @@ import { recipeFromSeed, type Recipe } from "./character";
 import { coldAt, dressForCold, umbrellaShare } from "./dress";
 import { crowdFeast, crowdWeek } from "./week";
 import { LAKE } from "./fireworks";
-import { DOWN_TIME, HIT_POSE, LYING_T, lyingVariant, phaseRate, STUMBLE_TIME } from "./character-rig";
+import { downTime, fallShift, fallTurn, HIT_POSE, lyingTime, lyingVariant, phaseRate, STRONG_FALL, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
 import type { Signals } from "./signals";
@@ -233,6 +233,15 @@ export function vehicleThreat(x: number, y: number, veh: { x: number; y: number;
   return ahead > -2 && ahead < 8 + speed * 3.5 && miss < 5;
 }
 
+/**
+ * Direction d'une poussée (ux, uy) par rapport au regard d'un personnage de cap `heading` (D211) : 0 poussé vers l'avant, π vers l'arrière,
+ * positif vers sa droite (le cap compte de 0 au nord, dans le sens des aiguilles d'une montre).
+ */
+export function pushDir(ux: number, uy: number, heading: number): number {
+  const fx = Math.sin(heading), fy = Math.cos(heading);
+  return Math.atan2(ux * fy - uy * fx, ux * fx + uy * fy);
+}
+
 export class PedSim {
   readonly state: CrowdState;
   readonly stats: PedStats = { spawns: 0, despawns: 0, alive: 0, tiers: [0, 0, 0], waiting: 0, crossing: 0, idle: 0, spawnFailures: 0, hits: 0, knocked: 0, corpses: 0, sinking: 0, deaths: 0, target: 0, zone: ZONE.outskirts };
@@ -332,6 +341,8 @@ export class PedSim {
     this.state.poseSide = new Int8Array(n);
     this.state.poseV = new Float32Array(n);
     this.state.poseVar = new Uint8Array(n);
+    this.state.poseDir = new Float32Array(n);
+    this.state.poseAmp = new Float32Array(n);
     this.state.held = new Uint8Array(n);
     this.state.look = new Float32Array(n);
     this.seat = new Array<Seat | null>(n).fill(null);
@@ -855,7 +866,8 @@ export class PedSim {
   /** Le passant est heurté : il trébuche (choc léger) ou tombe (`kind`), avec une vitesse (m/s) dans la direction (ux, uy). */
   private knock(i: number, kind: number, ux: number, uy: number, impulse: number): void {
     this.mode[i] = kind === HIT_POSE.down ? PED_STATE.down : PED_STATE.stumble;
-    this.timer[i] = kind === HIT_POSE.down ? DOWN_TIME : STUMBLE_TIME;
+    // D212 : une chute dure selon la violence du choc (légère, forte, violente).
+    this.timer[i] = kind === HIT_POSE.down ? downTime(impulse) : STUMBLE_TIME;
     this.kx[i] = ux * impulse;
     this.ky[i] = uy * impulse;
     this.fear[i] = 1;
@@ -864,10 +876,14 @@ export class PedSim {
     // D209 : la pose de choc part de la marche (ou de la course) en cours, par un fondu ; chaque chute a sa pose au sol.
     if (st.pose![i]! !== HIT_POSE.stumble && st.pose![i]! !== HIT_POSE.down) st.poseV![i] = st.speed[i]!;
     st.poseVar![i] = lyingVariant(this.id[i]! + this.stats.hits);
+    st.poseDir![i] = pushDir(ux, uy, this.heading[i]!);
+    st.poseAmp![i] = impulse;
     st.pose![i] = kind;
     st.poseT![i] = 0;
     // Choc de face : sur le dos ; par derrière : vers l'avant.
     st.poseSide![i] = ux * Math.sin(this.heading[i]!) + uy * Math.cos(this.heading[i]!) > 0 ? -1 : 1;
+    // D212 : il pivote pour tomber dans le sens de la poussée (le rendu part de l'ancien cap, `poseDir` lui est relatif).
+    if (kind === HIT_POSE.down) this.heading[i]! += fallTurn(st.poseDir![i]!, st.poseSide![i]!, impulse);
     this.stats.hits++;
   }
 
@@ -980,6 +996,14 @@ export class PedSim {
     const decay = Math.exp(-dt * (this.mode[i] === PED_STATE.down || dead ? 2.5 : 4));
     this.jx[i]! += this.kx[i]! * dt;
     this.jy[i]! += this.ky[i]! * dt;
+    if (this.mode[i] === PED_STATE.down || dead) {
+      // D212 : en basculant, le corps s'éloigne de l'endroit où étaient ses pieds (en arrière sur le dos, en avant à plat ventre) : ils ne glissent pas.
+      const side = st.poseSide![i]!, amp = st.poseAmp![i]!, t = st.poseT![i]!, h = st.recipes[i]!.height;
+      const step = fallShift(t, side, amp, h) - fallShift(t - dt, side, amp, h);
+      const s = side > 0 ? -step : step;
+      this.jx[i]! += Math.sin(this.heading[i]!) * s;
+      this.jy[i]! += Math.cos(this.heading[i]!) * s;
+    }
     this.kx[i]! *= decay;
     this.ky[i]! *= decay;
     g.pointAt(this.edge[i]!, this.s[i]!, this.pt);
@@ -1036,7 +1060,7 @@ export class PedSim {
     const st = this.state;
     this.age[i]! += dt;
     // La pose reste tenue au sol (ni relèvement ni retour à la marche).
-    st.poseT![i] = Math.min(st.poseT![i]!, LYING_T);
+    st.poseT![i] = Math.min(st.poseT![i]!, lyingTime(st.poseAmp![i]!));
     if (this.sink[i]! === 0) {
       const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
       const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
@@ -1054,6 +1078,8 @@ export class PedSim {
 
   /** Le passant meurt (J5-2) : il reste à terre pour de bon ; le plus ancien cadavre s'enfonce si l'on dépasse `MAX_CORPSES`. */
   private kill(i: number): void {
+    // Un mort tombe au moins comme une chute forte (D212) : il finit couché.
+    this.state.poseAmp![i] = Math.max(this.state.poseAmp![i]!, STRONG_FALL);
     this.mode[i] = PED_STATE.dead;
     this.hp[i] = 0;
     this.age[i] = 0;
@@ -1473,7 +1499,10 @@ export class PedSim {
    * (rad, 0 = nord), vitesse (m/s, l'animation de marche ou de course la suit), pose de choc (`HIT_POSE`, 0 debout) et temps écoulé depuis le choc.
    * `on` false : l'emplacement est vide (rien n'est dessiné).
    */
-  setExternal(i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number, armed = false, dead = false): void {
+  setExternal(
+    i: number, on: boolean, recipe: Recipe | null, x: number, y: number, heading: number, speed: number, pose: number, poseT: number, dt: number,
+    armed = false, dead = false, fallDir = NaN, fallAmp = 0,
+  ): void {
     if (i < this.free || i >= this.n) return;
     const st = this.state;
     if (!on) {
@@ -1495,6 +1524,16 @@ export class PedSim {
     if (hit(pose) && !hit(st.pose![i]!)) {
       st.poseV![i] = st.speed[i]!;
       st.poseVar![i] = lyingVariant(i + Math.floor(x * 7 + y * 13));
+      // D211, D212 : la poussée au choc (direction par rapport au cap d'avant le choc, `pushDir`, et intensité en m/s) donne le sens du
+      // trébuchement ou de la chute, et son intensité.
+      st.poseDir![i] = Number.isNaN(fallDir) ? Math.PI : fallDir;
+      st.poseAmp![i] = fallAmp > 0 ? fallAmp : 1.5;
+      st.poseSide![i] = Math.cos(st.poseDir![i]!) > 0 ? -1 : 1;
+    }
+    // Un mort tombe au moins comme une chute forte (D212), et garde la pose couchée.
+    if (dead) {
+      st.poseAmp![i] = Math.max(st.poseAmp![i]!, STRONG_FALL);
+      poseT = Math.min(poseT, lyingTime(st.poseAmp![i]!));
     }
     st.held![i] = armed ? 1 : 0;
     st.x[i] = x;

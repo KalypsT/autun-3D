@@ -20,6 +20,9 @@ export interface CrowdState {
   poseV?: Float32Array;
   /** Variante de la pose au sol (D209, `lyingPose`) ; absente : tirée de l'emplacement. */
   poseVar?: Uint8Array;
+  /** Poussée d'un choc (D211) : direction par rapport au regard (rad, 0 vers l'avant, positif vers la droite) et intensité (m/s). */
+  poseDir?: Float32Array;
+  poseAmp?: Float32Array;
   /** Arme tenue (J5-5) : 0 aucune, 1 un pistolet (la pièce `weaponPistol`, ajoutée au masque du personnage). */
   held?: Uint8Array;
   /** Tête tournée (rad, D198 : on regarde un klaxon, une fontaine) ; absent ou 0 : droit devant. */

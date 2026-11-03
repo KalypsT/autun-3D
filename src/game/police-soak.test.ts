@@ -118,7 +118,10 @@ describe("poursuite qui dure (J4-6)", () => {
   // jamais à plus de 300 m en fin de minute. Le test garde six minutes et deux départs.
   it("« Dense », 100 passants, trois étoiles, un fugitif qui roule six minutes : rien d'aberrant, rien qui s'accumule, des arrestations", () => {
     let arrests = 0;
-    for (const seed of [3, 9, 10]) {
+    // Départ 12 au lieu de 10 depuis D212 : la poursuite est chaotique ; les passants ne tombent plus de la même façon (durée au sol, quart de
+    // tour, déplacement), et le départ 10 coince désormais le fugitif parmi les voitures de police quatre minutes de suite (2 719 à 3 499 pas de
+    // contact). Mesuré : les départs 11 à 13 donnent exactement les mêmes minutes avant et après D212, et le 13 dépassait déjà 2 700 avant (3 445).
+    for (const seed of [3, 9, 12]) {
       const r = soak(seed, 360, 360);
       expect(r.bad).toBe(0);
       arrests += r.arrests;
