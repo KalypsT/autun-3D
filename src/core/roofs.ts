@@ -151,6 +151,8 @@ export function withRoofs(terrain: HeightField, roofs: Roofs): HeightField {
     get yMin(): number { return terrain.yMin; },
     get yMax(): number { return terrain.yMax; },
     get seaLevel(): number | undefined { return terrain.seaLevel; },
+    roofless: terrain,
+    roofAt: (x, y, zHint) => roofs.planeAt(x, y, zHint, terrain.heightAt(x, y, zHint)),
   };
   if (terrain.railAt) {
     const rail = terrain.railAt.bind(terrain);

@@ -530,6 +530,34 @@ function wheelieLift(s: VehicleState, spec: VehicleSpec): number {
 let surfaceGrip = 1;
 const gripped = new Map<VehicleSpec, { k: number; spec: VehicleSpec }>();
 
+/** Pan de toit plus raide que cela (rad) : un véhicule n'y tient pas (tuiles, ardoises), il glisse vers le bas (D215). Le piéton y tient. */
+export const ROOF_SLIP = (30 * Math.PI) / 180;
+/** Frottement des pneus sur un pan trop raide (part de l'adhérence de la fiche) : moins que ce qu'il faut pour tenir à 35° (tan 35° ≈ 0,7). */
+const ROOF_GRIP = 0.35;
+
+/** Pan de toit trop raide sous le véhicule (roues au sol), ou null. */
+function steepRoof(s: VehicleState, terrain: HeightField): { a: number; b: number } | null {
+  const roof = terrain.roofAt?.(s.x, s.y, s.z);
+  return roof && Math.hypot(roof.a, roof.b) > Math.tan(ROOF_SLIP) ? roof : null;
+}
+
+/**
+ * Glissade sur un pan trop raide : les pneus ne tiennent plus (ni moteur, ni freins, ni direction), la pesanteur tire vers le bas du pan et
+ * un frottement de Coulomb s'oppose au mouvement ; le reste comme en vol (élan, rotation qui s'amortit).
+ */
+function slideOnRoof(s: VehicleState, spec: VehicleSpec, input: DriveInput, roof: { a: number; b: number }, dt: number): void {
+  const g = Math.hypot(roof.a, roof.b), cos = 1 / Math.sqrt(1 + g * g), sin = g * cos;
+  s.vx += ((-roof.a / g) * GRAVITY * sin) * dt;
+  s.vy += ((-roof.b / g) * GRAVITY * sin) * dt;
+  const v = Math.hypot(s.vx, s.vy);
+  if (v > 1e-6) {
+    const k = Math.max(0, v - ROOF_GRIP * spec.grip * GRAVITY * cos * dt) / v;
+    s.vx *= k;
+    s.vy *= k;
+  }
+  fly(s, spec, input, dt);
+}
+
 /** Règle l'adhérence du sol pour tous les véhicules (arrondie au centième). */
 export function setSurfaceGrip(k: number): void {
   surfaceGrip = Math.round(Math.min(Math.max(k, 0.3), 1) * 100) / 100;
@@ -549,6 +577,11 @@ function onSurface(spec: VehicleSpec): VehicleSpec {
  */
 export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: number, terrain: HeightField, colliders: Colliders, extra: Colliders | null = null, fly = false, breaker = false): void {
   spec = onSurface(spec);
+  // Toits (D215) : un pan trop raide fait glisser le véhicule du joueur.
+  const steep = fly && !airborne(s) ? steepRoof(s, terrain) : null;
+  // Bas des roues (altitude absolue) : le véhicule du joueur passe au-dessus des murs de bâtiment moins hauts (D215) ; les autres les
+  // trouvent infinis, comme avant.
+  const feet = fly ? s.z - wheelieLift(s, spec) : undefined;
   // Altitude de la trajectoire libre au début du pas (la suspension détendue en plus) ; on ne décolle pas du bout d'un tablier (voir `onDeck`).
   const z0 = s.z - wheelieLift(s, spec) + Math.min(s.air, SUSPENSION);
   const deck0 = fly && s.air < 1 && onDeck(terrain, s.x, s.y, terrain.heightAt(s.x, s.y, z0));
@@ -558,11 +591,12 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
   const h = dt / n;
   for (let i = 0; i < n; i++) {
     const px = s.x, py = s.y;
-    integrate(s, spec, input, h, terrain);
+    if (steep) slideOnRoof(s, spec, input, steep, h);
+    else integrate(s, spec, input, h, terrain);
     const clear = Math.max(0, s.air - SUSPENSION);
-    collide(s, spec, colliders, clear, breaker);
+    collide(s, spec, colliders, clear, breaker, feet);
     // Obstacles propres à certains véhicules (escaliers pour une voiture).
-    if (extra) collide(s, spec, extra, clear, breaker);
+    if (extra) collide(s, spec, extra, clear, breaker, feet);
     wade(s, spec, terrain, px, py, h);
   }
   // Limites du monde (3 m de marge).
@@ -955,13 +989,14 @@ function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: numb
 /**
  * `clear` : hauteur des roues au-dessus du sol, en vol ; on passe au-dessus des murets et clôtures moins hauts.
  * `breaker` : ce véhicule arrache le mobilier cassable (D160) ; seul celui du joueur le fait, la circulation et la police les gardent pleins.
+ * `feet` : altitude du bas des roues ; les murs de bâtiment moins hauts sont survolés (D215).
  */
-function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear = 0, breaker = false): void {
+function collide(s: VehicleState, spec: VehicleSpec, colliders: Colliders, clear = 0, breaker = false, feet?: number): void {
   const inertia = spec.yawInertia;
   for (const [off, r] of spec.hull) {
     const sin = Math.sin(s.heading), cos = Math.cos(s.heading);
     const cx = s.x + sin * off, cy = s.y + cos * off;
-    const res = colliders.resolve(cx, cy, r, clear);
+    const res = colliders.resolve(cx, cy, r, clear, feet);
     if (!res.hit) continue;
     const nx = res.nx, ny = res.ny;
     // Point de contact relatif au centre de gravité ; vitesse de ce point (lacet horaire : ω × r = (w·ry, −w·rx)).

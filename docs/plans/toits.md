@@ -1,6 +1,6 @@
 # Toits praticables : on survole, on se pose, on marche sur les toits (plan)
 
-**Avancement** : **lot 1 fait** (D214). Avant le lot 2 : trancher le seuil de glissade (tous les pans font au plus 35°, presque tous exactement 35°, voir D214). Rédigé le 3 novembre 2026 après D213, à la demande de l'utilisateur. Constat de départ : après un tremplin,
+**Avancement** : **lot 1 fait** (D214), **lot 2 fait** (D215 ; seuil de glissade tranché : le véhicule glisse au-delà de 30°, le piéton tient ; la marche sur les toits et la caméra, prévues aux lots 3 et 4, y sont avancées). Suivant : lot 3 (escalade, saut long, fentes entre toits mitoyens).
 la voiture passe au-dessus d'une maison, mais s'arrête en plein ciel comme contre un mur.
 
 Coordonnées et conventions habituelles : repère local du jeu (x vers l'est, y vers le nord, z altitude), en mètres.

@@ -141,7 +141,8 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   let x = p.x + p.vx * dt, y = p.y + p.vy * dt;
   // En l'air, les murets, clôtures et haies plus bas que les pieds (repliés) ne gênent pas.
   const clear = p.air ? Math.max(0, z - terrain.heightAt(x, y, z)) + TUCK : 0;
-  const r = colliders.resolve(x, y, PLAYER_RADIUS, clear);
+  // Altitude des pieds (D215) : sur un toit, on passe le bord et les murs mitoyens pas plus hauts ; de la rue, les murs restent des murs.
+  const r = colliders.resolve(x, y, PLAYER_RADIUS, clear, z);
   x = r.x;
   y = r.y;
   if (r.hit) {
@@ -232,6 +233,9 @@ function climbStep(p: PlayerState, c: Climb, dt: number): void {
   p.vy = c.dy * 1.2;
 }
 
+/** Dénivelé (m) qui arrête une glissade au sol : le bord d'un toit, d'un quai. */
+const CLIFF = 0.6;
+
 /** Glissade au sol après une chute (D98) : décélération (m/s², pilote qui frotte sur la chaussée, ≈ 0,7 g). */
 export const SLIDE_DECEL = 7;
 
@@ -241,7 +245,7 @@ export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, co
   const k = v > 0 ? Math.max(v - SLIDE_DECEL * dt, 0) / v : 0;
   p.vx *= k;
   p.vy *= k;
-  const r = colliders.resolve(p.x + p.vx * dt, p.y + p.vy * dt, PLAYER_RADIUS);
+  const r = colliders.resolve(p.x + p.vx * dt, p.y + p.vy * dt, PLAYER_RADIUS, 0, p.z);
   if (r.hit) {
     const into = p.vx * r.nx + p.vy * r.ny;
     if (into < 0) {
@@ -250,9 +254,15 @@ export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, co
     }
   }
   const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH);
-  p.x = shore.x;
-  p.y = shore.y;
-  p.z = terrain.heightAt(p.x, p.y, p.z);
+  // Au bord d'un toit (D215), on s'arrête au lieu de passer d'un coup dans la rue.
+  const z = terrain.heightAt(shore.x, shore.y, p.z);
+  if (z < p.z - CLIFF && !onDeck(terrain, p.x, p.y, p.z)) {
+    p.vx = p.vy = 0;
+  } else {
+    p.x = shore.x;
+    p.y = shore.y;
+    p.z = z;
+  }
   p.speed = 0;
   p.air = false;
   p.vz = 0;

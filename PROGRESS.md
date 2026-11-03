@@ -1555,3 +1555,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Rien ne change encore en jeu : les toits existent maintenant comme surfaces (les pans que l'on voit), et les murs des bâtiments ont leur vraie hauteur. Cheminées et édicules sont des obstacles sur les toits.
 - Les monuments (cathédrale, mairie, églises, maison d'après photo…) gardent des murs infranchissables.
 - Suivant : lot 2, la voiture survole les maisons et se pose sur les toits.
+
+**Toits praticables, lot 2 : la voiture sur les toits (3 novembre 2026)** (D215)
+- Après un tremplin, la voiture passe au-dessus des maisons moins hautes que son vol, ou se pose sur leur toit, au lieu de s'arrêter en plein ciel. Elle roule sur les toits, tombe de leur bord, et glisse sur les pans de plus de 30°.
+- En sortant de la voiture sur un toit, on reste sur le toit : on y marche, on passe sur le toit voisin de même hauteur, on tombe du bord (avec les dégâts de chute). À pied, on tient debout même sur les pans raides.
+- La caméra suit correctement sur un toit. Une partie enregistrée sur un toit reprend sur le toit.
+- Pas encore : escalade des bâtiments bas et saut long (lot 3), tirs depuis les toits (lot 4), gendarmes qui attendent en bas (lot 5).

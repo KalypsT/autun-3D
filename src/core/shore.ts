@@ -39,5 +39,8 @@ export function shoreNormal(terrain: HeightField, x: number, y: number): [number
  * on y redescend sans tomber.
  */
 export function onDeck(terrain: HeightField, x: number, y: number, z: number): boolean {
-  return terrain.ground !== undefined && z - terrain.ground.heightAt(x, y) > 0.3;
+  if (terrain.ground === undefined) return false;
+  const g = terrain.ground.heightAt(x, y);
+  // Un toit (D214) n'est pas un tablier : on tombe de son bord au lieu de rejoindre la rue d'un coup.
+  return z - g > 0.3 && (terrain.roofless === undefined || terrain.roofless.heightAt(x, y, z) - g > 0.3);
 }

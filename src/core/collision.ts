@@ -334,8 +334,10 @@ export class Colliders {
    * Premier obstacle rencontré sur le segment (ax, ay) -> (bx, by) : fraction 0-1 de la longueur, ou null.
    * Par défaut, seuls les segments sont testés (murs) ; les cercles (mobilier, véhicules garés) ne gênent pas la caméra, ni les obstacles bas (clôtures).
    * `circles` : les cercles comptent aussi (balles et ligne de tir, D113 : on s'abrite derrière une voiture garée).
+   * `az`, `bz` : altitude du rayon à ses deux bouts (D215) ; un mur de bâtiment que le rayon passe par-dessus ne l'arrête pas. Sans elles,
+   * les murs de bâtiment sont infinis.
    */
-  raycast(ax: number, ay: number, bx: number, by: number, circles = false): number | null {
+  raycast(ax: number, ay: number, bx: number, by: number, circles = false, az?: number, bz?: number): number | null {
     let best: number | null = null;
     const stamp = ++this.stamp;
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
@@ -353,7 +355,9 @@ export class Colliders {
           if (Math.abs(den) < 1e-12) continue;
           const t = ((s.ax - ax) * sy - (s.ay - ay) * sx) / den;
           const u = ((s.ax - ax) * ry - (s.ay - ay) * rx) / den;
-          if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
+          if (t < 0 || t > 1 || u < 0 || u > 1 || (best !== null && t >= best)) continue;
+          if (az !== undefined && bz !== undefined && s.topA !== undefined && az + t * (bz - az) >= s.topA + u * (s.topB! - s.topA)) continue;
+          best = t;
         }
         if (!circles) continue;
         // Obstacles ronds (véhicules garés, troncs, poteaux, D113) : première entrée du rayon dans le cercle ; un départ dans le cercle ne compte pas.

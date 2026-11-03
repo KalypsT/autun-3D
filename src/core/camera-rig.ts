@@ -32,7 +32,8 @@ export function solveCamera(input: RigInput, colliders: Colliders, terrain: Heig
   let d = input.distance;
   const horizontal = Math.hypot(dx, dy) * d;
   if (horizontal > 1e-6) {
-    const t = colliders.raycast(input.x, input.y, input.x + dx * d, input.y + dy * d);
+    // Le rayon part de la tête : sur un toit (D215), les murs du bâtiment sous les pieds ne l'arrêtent pas.
+    const t = colliders.raycast(input.x, input.y, input.x + dx * d, input.y + dy * d, false, tz, tz + dz * d);
     if (t !== null) d = Math.max(MIN_DISTANCE, d * t - WALL_MARGIN / Math.max(Math.hypot(dx, dy), 0.2));
   }
   let x = input.x + dx * d, y = input.y + dy * d, z = tz + dz * d;
@@ -42,7 +43,7 @@ export function solveCamera(input: RigInput, colliders: Colliders, terrain: Heig
     z = floor;
   }
   // Un dernier contrôle : la caméra elle-même ne reste pas dans un mur.
-  const fix = colliders.resolve(x, y, 0.25);
+  const fix = colliders.resolve(x, y, 0.25, 0, z);
   x = fix.x;
   y = fix.y;
   return { x, y, z, distance: Math.hypot(x - input.x, y - input.y, z - tz) };

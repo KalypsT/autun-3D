@@ -4291,3 +4291,30 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Coût** : 39 579 pans en mémoire pour toute la ville ; environ **0,2 µs** par recherche d'altitude ; 2 727 cheminées et 15 édicules en plus dans la grille des obstacles.
 
 **Tests** (+15, `roofs.test.ts`) : pans, rue au pied du mur, essieu plus haut sur le pan, cour intérieure, redan, déchargement ; murs à hauteur (pignon, `WALL_STEP`, obstacles bas inchangés, mur infini sans `feet`) ; sur la vraie ville : part des toits praticables, monuments infinis, couverture et identité des pans avec le rendu, continuité entre bord du toit et haut du mur, hauteur des murs, coût.
+
+## 2026-11-03 — D215. Toits praticables, lot 2 : la voiture (et le joueur) sur les toits
+
+**Demande de l'utilisateur** : lot 2 du plan `docs/plans/toits.md`, avec le choix du seuil de pente tranché : **le véhicule glisse au-delà de 30°, le piéton tient debout** (option 3, après la mesure de D214 : tous les pans à 35° au plus, presque tous à 35°).
+
+**Ce qui change en jeu** :
+- **Le bug constaté est corrigé** : après un tremplin, la voiture du joueur passe au-dessus d'une maison moins haute que son vol, ou se pose sur son toit, au lieu de rebondir en plein ciel. Un immeuble plus haut que le vol l'arrête toujours.
+- Elle **roule sur les toits** et **tombe de leur bord** (vol, puis réception avec choc), sans se téléporter dans la rue. Sur un **pan de plus de 30°**, elle **glisse** vers le bas du pan et finit par tomber.
+- **Descendre du véhicule sur un toit** pose le joueur sur le toit ; au bord du vide, il garde son altitude et tombe (dégâts de chute habituels). Chute d'un deux-roues et saut hors d'une voiture qui roule : idem.
+- Le **joueur à pied marche sur les toits** (dans ce lot plutôt qu'au lot 3, sinon descendre du véhicule sur un toit l'aurait enfermé dans le bâtiment) : il passe sur un toit voisin de même hauteur, bute contre un voisin plus haut, tombe du bord. Il tient debout sur les pans à 35°.
+- La **caméra** ne bute plus sur les murs du bâtiment sous les pieds (avancée du lot 4 : sans elle, la conduite sur un toit était impossible à regarder). Les tirs et la vue des gendarmes restent en 2D (lot 4).
+- Une **partie enregistrée sur un toit** reprend sur le toit, et un véhicule laissé sur un toit y reste : la sauvegarde ne garde que x et y, et un point dans l'emprise d'un bâtiment ne peut être que sur son toit, d'où la surface la plus haute au chargement.
+- Circulation, passants, gendarmes, pigeons : rien ne change, ils trouvent les murs infinis.
+
+**Décisions** :
+- `game.ts` : `surface = withRoofs(terrain, colliders.roofs)` sert au véhicule conduit et aux voitures abandonnées qui roulent (`stepVehicle`), au joueur (`stepPlayer`, `slidePlayer`, création), aux véhicules garés (`Fleet`), aux traces de pneus et à la caméra. `footZ` pose le joueur après une descente de véhicule (au-dessus du vide : il garde son altitude).
+- `stepVehicle` : avec `fly` (véhicule du joueur), le **bas des roues** (`s.z`, moins le cabrage) est passé aux collisions comme altitude des pieds (D214). Sans `fly`, rien ne change.
+- **Glissade** (`slideOnRoof`, `vehicle.ts`) : sur un pan plus raide que **`ROOF_SLIP` = 30°**, roues au sol, les pneus ne tiennent plus : pesanteur vers le bas du pan, frottement de Coulomb (0,35 × l'adhérence de la fiche, moins que tan 35° ≈ 0,7), le reste comme en vol (élan, rotation qui s'amortit ; ni moteur, ni freins, ni direction). Un premier essai (adhérence réduite et pesanteur en travers dans le modèle de pneus) ne glissait qu'à 0,2 m/s : à basse vitesse, le modèle de pneus annule la vitesse latérale.
+- **Un toit n'est pas un tablier** (`onDeck`, `shore.ts`) : `HeightField.roofless` (la surface sans les toits) permet de les distinguer ; sans cela, au bord d'un toit, la voiture et le piéton auraient rejoint la rue d'un coup, comme au bout d'un pont.
+- `HeightField.roofAt` : le pan sous le point (pour la glissade).
+- **Glissade au sol d'un pilote tombé** (`slidePlayer`) : un dénivelé de plus de 0,6 m l'arrête (bord d'un toit, mais aussi d'un quai, où il passait d'un coup en bas ; changement mineur).
+- **Caméra** : `Colliders.raycast` reçoit en option l'altitude du rayon à ses deux bouts ; un mur de bâtiment que le rayon passe par-dessus ne l'arrête pas.
+- Mesuré sur la ville réelle : une voiture posée sur le toit plat d'une grande surface en descend par-dessus son acrotère quand il est bas (relevé LiDAR de 20 cm, sous `WALL_STEP`) ; sur une maison à 35°, elle glisse et tombe (choc de réception 4 m/s).
+
+**Pas encore** : escalade des bâtiments bas, saut long en course, tolérance aux fentes entre toits mitoyens (lot 3) ; tirs et vue des gendarmes en 3D (lot 4) ; gendarmes qui attendent au pied du bâtiment (lot 5). Une voiture en travers d'un pan n'est pas inclinée de côté (le relief non plus ne fait pas pencher les voitures en travers).
+
+**Tests** (+11, `roofs-play.test.ts`) : le cas constaté (tremplin à 90 km/h, maison de 3 m), immeuble de 15 m toujours bloquant, circulation inchangée, atterrissage sur un toit plat puis chute du bord, glissade à 35° et tenue à 20° ; joueur : mur depuis la rue, marche sur le toit et chute avec hauteur comptée, toit voisin de même hauteur ou plus haut, tenue sur un pan à 35° ; un toit n'est pas un tablier ; caméra sur un toit et dans la rue ; rayon avec altitudes. Essai dans le jeu (navigateur sans écran) : départ sur un toit de maison, marche jusqu'au faîtage, caméra correcte, aucune erreur.
