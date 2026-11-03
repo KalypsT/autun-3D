@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { airPose, climbPose, createPose, cycleLength, HIT_POSE, hitPose, strafePose, walkPose, walksBackward, type Pose } from "../core/character-rig";
+import { airPose, climbPose, copyPose, createPose, cycleLength, HIT_BLEND, HIT_POSE, hitPose, strafePose, walkPose, walksBackward, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
@@ -34,8 +34,11 @@ export interface PlayerModel {
   setGun(part: string | null, gun: GunId | null, aim: number, recoil: number): void;
   /** Coup en cours (progression 0 à 1, moment de la frappe, poing +1 droit ou −1 gauche) ; null hors coup. À pied seulement. */
   setStrike(strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null): void;
-  /** Chute (D98, tombé d'un deux-roues) : temps depuis la chute (s) et sens (+1 sur le dos, −1 en avant), pose des passants heurtés ; null debout. */
-  setDown(down: { t: number; side: number } | null): void;
+  /**
+   * Chute (D98, tombé d'un deux-roues) : temps depuis la chute (s), sens (+1 sur le dos, −1 en avant) et variante de la pose au sol (D209),
+   * pose des passants heurtés ; null debout. La chute part de la dernière pose dessinée (sur le véhicule ou à pied) par un fondu.
+   */
+  setDown(down: { t: number; side: number; variant?: number } | null): void;
   /** En l'air (`vz`, vitesse verticale) ou en escalade (`t`, altitude, pour le rythme des mains) ; null au sol. */
   setAir(air: { climb: boolean; vz: number; t: number } | null): void;
   dispose(): void;
@@ -60,7 +63,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let heldStyle: AttackStyle | null = null;
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
-  let down: { t: number; side: number } | null = null;
+  let down: { t: number; side: number; variant?: number } | null = null;
+  /** Dernière pose dessinée avant la chute (D209). */
+  const fromPose: Pose = createPose();
   let air: { climb: boolean; vz: number; t: number } | null = null;
   const mask = new Float32Array(4);
   /** Sur un véhicule : l'arme reste dans la poche. */
@@ -103,7 +108,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       lastStride = stride;
       mounted = false;
       if (down) {
-        hitPose(pose, HIT_POSE.down, down.t, down.side, d);
+        hitPose(pose, HIT_POSE.down, down.t, down.side, d, down.t < HIT_BLEND ? fromPose : null, down.variant ?? 0);
         rigs.solveWith(0, pose, root);
         publish();
         return;
@@ -163,6 +168,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
       strike = next;
     },
     setDown(next) {
+      if (next && !down) copyPose(fromPose, pose);
       down = next;
     },
     setAir(next) {

@@ -234,52 +234,217 @@ export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,35 s pour tomber, environ 2,3 s au sol, 0,9 s pour se relever. */
 export const DOWN_TIME = 3.6;
 const FALL_TIME = 0.35, GETUP_TIME = 0.9;
+/** Instant d'une chute où le corps est à terre, immobile : la pose que garde un mort (D209). */
+export const LYING_T = DOWN_TIME - GETUP_TIME - 0.5;
+/** Fondu (s) entre la pose d'avant le choc (marche, course, deux-roues) et la pose de choc (D209) : plus de saut d'une image à l'autre. */
+export const HIT_BLEND = 0.16;
 
 const smooth = (u: number): number => {
   const c = clamp(u, 0, 1);
   return c * c * (3 - 2 * c);
 };
 
+/** Copie une pose. */
+export function copyPose(out: Pose, src: Pose): void {
+  out.angles.set(src.angles);
+  out.rootDy = src.rootDy;
+  out.rootDx = src.rootDx;
+}
+
+/** Mélange deux poses (D209) : `w` = 0 donne `a`, 1 donne `b`. `out` peut être `a` ou `b`. Angle par angle : valable entre poses voisines. */
+export function blendPose(out: Pose, a: Pose, b: Pose, w: number): void {
+  const oa = out.angles, aa = a.angles, ba = b.angles;
+  for (let k = 0; k < oa.length; k++) oa[k] = aa[k]! + (ba[k]! - aa[k]!) * w;
+  out.rootDy = a.rootDy + (b.rootDy - a.rootDy) * w;
+  out.rootDx = a.rootDx + (b.rootDx - a.rootDx) * w;
+}
+
+/** Debout, immobile : la pose de marche à vitesse nulle (celle d'où part et où revient toute pose de choc). */
+export function standPose(pose: Pose, d: BodyDims): void {
+  walkPose(pose, 0, 0, d);
+}
+
+// --- Contact avec le sol (D209) ---------------------------------------------------------------------------------------
+
+const ONES = new Float32Array(BONE_COUNT * 3).fill(1);
+const ORIGIN: Root = { x: 0, y: 0, z: 0, yaw: 0 };
+const fkOffsets = new Float32Array(BONE_COUNT * 3), fkWorld = new Float32Array(BONE_COUNT * 16), fkRender = new Float32Array(BONE_COUNT * 16);
+
 /**
- * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (penché, bras en avant, retrouve l'équilibre) ou chute (tombe en
- * `FALL_TIME`, reste à terre, se relève). `side` : +1 il tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière).
- * Au sol, le bassin est à 24 cm du sol : tout le corps pivote autour des hanches (aucune autre pièce de rig nécessaire).
+ * Contact avec le sol : point le plus bas d'un tronçon de l'os (de y0 à y1 le long de l'os, dans son repère), de section elliptique
+ * (demi-largeur `a` en x, demi-profondeur `c` en z, centrée en `z`), ou d'un ellipsoïde (demi-axes `a`, `b`, `c`) centré en (0, y, z).
  */
-export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims): void {
+function lowestOfSegment(o: number, y0: number, y1: number, a: number, c: number, z = 0): number {
+  const w = fkWorld;
+  const py = w[o + 13]! + w[o + 9]! * z;
+  const yA = py + w[o + 5]! * y0, yB = py + w[o + 5]! * y1;
+  return Math.min(yA, yB) - Math.hypot(a * w[o + 1]!, c * w[o + 9]!);
+}
+function lowestOfEllipsoid(o: number, y: number, a: number, b: number, c: number, z = 0): number {
+  const w = fkWorld;
+  return w[o + 13]! + w[o + 5]! * y + w[o + 9]! * z - Math.hypot(a * w[o + 1]!, b * w[o + 5]!, c * w[o + 9]!);
+}
+
+/**
+ * Hauteur (m) du point le plus bas du corps au-dessus du sol du personnage, pour cette pose (déport `rootDy` compris). Debout, elle vaut 0
+ * (les semelles touchent le sol) ; au sol, c'est elle qui fait reposer le dos, le ventre, les bras et les jambes sur le pavé au lieu de flotter.
+ * Les volumes reprennent, à un ou deux centimètres près, ceux de la géométrie du kit (`character-parts.ts`), mis à l'échelle comme elle.
+ */
+export function lowestPoint(pose: Pose, d: BodyDims): number {
+  restOffsets(d, fkOffsets);
+  solveBones(fkRender, fkWorld, fkOffsets, ONES, pose, ORIGIN);
+  const R = REF_DIMS, s = d.height / R.height, depth = d.torsoDepth / R.torsoDepth;
+  const chest = (d.shoulderHalf + d.waistHalf) / (R.shoulderHalf + R.waistHalf), limb = d.limbRadius / R.limbRadius, head = d.headRadius / R.headRadius;
+  let low = Infinity;
+  const take = (v: number): void => {
+    if (v < low) low = v;
+  };
+  take(lowestOfSegment(BONE.pelvis * 16, -0.13 * s, 0.03 * s, 0.165 * (d.hipHalf / R.hipHalf), 0.1 * depth, 0.01 * depth));
+  take(lowestOfSegment(BONE.torso * 16, 0, 0.47 * (d.torso / R.torso), 0.17 * chest, 0.11 * depth));
+  take(lowestOfEllipsoid(BONE.head * 16, d.headCenterY - (d.neckY - 0.015 * d.height), 0.08 * head, 0.11 * head, 0.095 * head));
+  for (const [arm, fore] of [[BONE.armL, BONE.forearmL], [BONE.armR, BONE.forearmR]] as const) {
+    take(lowestOfSegment(arm * 16, -d.upperArm, 0, 0.045 * limb, 0.045 * limb));
+    take(lowestOfSegment(fore * 16, -d.forearm - 0.5 * d.hand, 0, 0.035 * limb, 0.035 * limb));
+  }
+  for (const [thigh, shin, foot] of [[BONE.thighL, BONE.shinL, BONE.footL], [BONE.thighR, BONE.shinR, BONE.footR]] as const) {
+    take(lowestOfSegment(thigh * 16, -d.thigh, -0.06 * s, 0.07 * limb, 0.07 * limb));
+    take(lowestOfSegment(shin * 16, -d.shin, 0, 0.048 * limb, 0.048 * limb));
+    // Talon et pointe : debout, ils touchent le sol (la cheville est à `ankleY`).
+    take(lowestOfEllipsoid(foot * 16, 0.03 - d.ankleY, 0.03, 0.03, 0.03, 0.025 * d.height));
+    take(lowestOfEllipsoid(foot * 16, 0.025 - d.ankleY, 0.025, 0.025, 0.025, -0.11 * d.height));
+  }
+  return low;
+}
+
+// --- Poses au sol (D209) ---------------------------------------------------------------------------------------------
+
+/** Os, puis angles (rx, ry, rz) : une pose écrite par ses seuls os qui bougent, les autres à zéro. */
+type Spec = readonly (readonly [number, number, number, number])[];
+
+/**
+ * Corps à terre. Sur le dos : bassin basculé de 90° en arrière, la face vers le ciel (un membre tourné en `rx` positif monte vers le ciel) ;
+ * à plat ventre : de 90° en avant (un `rx` positif enfonce le membre vers le sol). Dans les deux cas, `rz` d'un membre (et de son enfant) le fait
+ * glisser à plat sur le sol : c'est ainsi que se plient coudes et genoux posés au sol. `ry` du buste le roule un peu sur le côté, `ry` de la tête
+ * la tourne (joue au sol), `ry` d'un pied le tourne vers l'extérieur. (`ry` d'une cuisse ou d'un bras, lui, tourne autour de l'axe du parent :
+ * il soulèverait le membre, on ne s'en sert pas.)
+ */
+const LYING_BACK: readonly Spec[] = [
+  // Bras en croix, un genou levé, la tête tournée.
+  [
+    [BONE.pelvis, Math.PI / 2, 0, 0], [BONE.torso, 0, 0.06, 0], [BONE.head, -0.05, 0.85, 0],
+    [BONE.armL, 0, 0, -1.35], [BONE.forearmL, 0, 0, -0.5], [BONE.armR, 0, 0, 0.95], [BONE.forearmR, 0, 0, 0.6],
+    [BONE.thighL, 0.65, 0, -0.1], [BONE.shinL, -1.2, 0, 0], [BONE.footL, 0.2, 0, 0],
+    [BONE.thighR, 0, 0, 0.2], [BONE.shinR, -0.08, 0, 0], [BONE.footR, -0.7, -0.5, 0],
+  ],
+  // Bras le long du corps, une jambe tendue, l'autre pliée et tombée à plat sur le côté.
+  [
+    [BONE.pelvis, Math.PI / 2, 0, 0], [BONE.torso, 0, -0.05, 0], [BONE.head, -0.05, -0.6, 0],
+    [BONE.armL, 0, 0, -0.3], [BONE.forearmL, 0, 0, -0.15], [BONE.armR, 0, 0, 0.4], [BONE.forearmR, 0, 0, -0.35],
+    [BONE.thighL, 0.05, 0, -0.75], [BONE.shinL, 0, 0, 1.4], [BONE.footL, -0.6, 0.4, 0],
+    [BONE.thighR, 0, 0, 0.1], [BONE.shinR, -0.06, 0, 0], [BONE.footR, -0.75, -0.6, 0],
+  ],
+  // Un bras au-dessus de la tête, les deux jambes pliées et tombées du même côté.
+  [
+    [BONE.pelvis, Math.PI / 2, 0, 0], [BONE.torso, 0, 0.08, 0], [BONE.head, -0.1, 0.45, 0],
+    [BONE.armL, 0, 0, -2.6], [BONE.forearmL, 0, 0, -0.45], [BONE.armR, 0, 0, 0.6], [BONE.forearmR, 0, 0, 0.3],
+    [BONE.thighL, 0.05, 0, 0.35], [BONE.shinL, 0, 0, -1.1], [BONE.footL, -0.6, 0, 0],
+    [BONE.thighR, 0.05, 0, 0.55], [BONE.shinR, 0, 0, -1.2], [BONE.footR, -0.6, 0, 0],
+  ],
+];
+const LYING_FRONT: readonly Spec[] = [
+  // Un bras replié près de la tête, l'autre le long du corps, une jambe repliée sur le côté, la joue au sol.
+  [
+    [BONE.pelvis, -Math.PI / 2, 0, 0], [BONE.torso, 0, -0.06, 0], [BONE.head, 0.1, 1.3, 0],
+    [BONE.armL, 0, 0, -2.0], [BONE.forearmL, 0, 0, 1.5], [BONE.armR, 0, 0, 0.3], [BONE.forearmR, 0, 0, 0.1],
+    [BONE.thighL, 0, 0, -0.8], [BONE.shinL, 0, 0, 1.3], [BONE.footL, -0.7, 0.8, 0],
+    [BONE.thighR, 0, 0, 0.1], [BONE.shinR, -0.05, 0, 0], [BONE.footR, -0.7, -0.8, 0],
+  ],
+  // Bras le long du corps, jambes tendues, la tête tournée.
+  [
+    [BONE.pelvis, -Math.PI / 2, 0, 0], [BONE.torso, 0, 0.1, 0], [BONE.head, 0.1, -1.25, 0],
+    [BONE.armL, 0, 0, -0.3], [BONE.forearmL, 0, 0, -0.1], [BONE.armR, 0, 0, 0.25], [BONE.forearmR, 0, 0, 0.1],
+    [BONE.thighL, 0, 0, -0.15], [BONE.shinL, -0.1, 0, 0], [BONE.footL, -0.7, 0.9, 0],
+    [BONE.thighR, 0, 0, 0.2], [BONE.shinR, -0.15, 0, 0], [BONE.footR, -0.75, -0.7, 0],
+  ],
+  // Les deux bras en avant, comme pour amortir la chute, jambes écartées.
+  [
+    [BONE.pelvis, -Math.PI / 2, 0, 0], [BONE.torso, 0, 0.05, 0], [BONE.head, 0.1, 1.1, 0],
+    [BONE.armL, 0, 0, -2.6], [BONE.forearmL, 0, 0, 0.5], [BONE.armR, 0, 0, 2.3], [BONE.forearmR, 0, 0, -0.6],
+    [BONE.thighL, 0, 0, -0.3], [BONE.shinL, -0.2, 0, 0], [BONE.footL, -0.7, 0.8, 0],
+    [BONE.thighR, 0, 0, 0.25], [BONE.shinR, -0.15, 0, 0], [BONE.footR, -0.7, -0.9, 0],
+  ],
+];
+/** Nombre de poses au sol par côté de chute, symétriques comprises (chacune existe aussi en miroir gauche-droite). */
+export const LYING_VARIANTS = 2 * LYING_BACK.length;
+
+/** Os du côté opposé (gauche ↔ droite). */
+const MIRROR: readonly number[] = [0, 1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 12, 11];
+
+/**
+ * Pose au sol (D209) : `side` +1 sur le dos, −1 à plat ventre ; `variant` choisit l'une des `LYING_VARIANTS` poses (les impaires sont les
+ * symétriques des paires : ce qui était à gauche passe à droite, les rotations autour de y et de z changent de signe). Sans contact avec le sol :
+ * `rootDy` est fixé par `hitPose`.
+ */
+export function lyingPose(pose: Pose, side: number, variant: number): void {
   const a = pose.angles;
   a.fill(0);
   pose.rootDx = 0;
+  pose.rootDy = 0;
+  const list = side > 0 ? LYING_BACK : LYING_FRONT;
+  const v = ((Math.floor(variant) % LYING_VARIANTS) + LYING_VARIANTS) % LYING_VARIANTS;
+  const spec = list[v >> 1]!;
+  const mirror = (v & 1) === 1;
+  for (const [bone, rx, ry, rz] of spec) {
+    const b = mirror ? MIRROR[bone]! : bone;
+    a[b * 3] = rx;
+    a[b * 3 + 1] = mirror ? -ry : ry;
+    a[b * 3 + 2] = mirror ? -rz : rz;
+  }
+}
+
+/** Variante de pose au sol propre à un emplacement (les passants ne tombent pas tous de la même façon). */
+export const lyingVariant = (slot: number): number => (Math.imul(slot + 1, 0x9e3779b1) >>> 7) % LYING_VARIANTS;
+
+const lieTmp = createPose();
+
+/**
+ * Pose d'un passant heurté, `t` secondes après le choc. `kind` : trébuchement (penché, bras en avant, retrouve l'équilibre) ou chute (tombe en
+ * `FALL_TIME`, reste à terre, se relève). `side` : +1 il tombe sur le dos (choc de face), −1 vers l'avant (choc par derrière).
+ * D209 : la pose part de `from` (la pose d'avant le choc : marche, course, deux-roues ; debout si absente) par un fondu de `HIT_BLEND` s, et
+ * revient à la pose debout immobile, d'où la marche reprend sans saut. Au sol, l'une des `LYING_VARIANTS` poses (`variant`), le corps posé à plat :
+ * le point le plus bas du corps touche le sol pendant toute la chute (le corps bascule sur les pieds, puis repose sur le dos ou le ventre).
+ */
+export function hitPose(pose: Pose, kind: number, t: number, side: number, d: BodyDims, from: Pose | null = null, variant = 0): void {
+  const a = pose.angles;
+  standPose(pose, d);
   if (kind === HIT_POSE.stumble) {
     const env = Math.sin(Math.PI * clamp(t / STUMBLE_TIME, 0, 1));
-    a[BONE.pelvis * 3] = side * 0.5 * env;
-    a[BONE.torso * 3] = side * 0.25 * env;
-    a[BONE.head * 3] = -side * 0.2 * env;
-    a[BONE.armL * 3] = 1.1 * env;
-    a[BONE.armR * 3] = 1.1 * env;
-    a[BONE.armL * 3 + 2] = -0.7 * env;
-    a[BONE.armR * 3 + 2] = 0.7 * env;
-    a[BONE.forearmL * 3] = 0.5 * env;
-    a[BONE.forearmR * 3] = 0.5 * env;
-    a[BONE.thighL * 3] = 0.45 * env;
-    a[BONE.shinL * 3] = -0.6 * env;
-    a[BONE.thighR * 3] = -0.2 * env;
-    pose.rootDy = -0.05 * env;
+    a[BONE.pelvis * 3]! += side * 0.5 * env;
+    a[BONE.torso * 3]! += side * 0.25 * env;
+    a[BONE.head * 3]! += -side * 0.2 * env;
+    a[BONE.armL * 3]! += 1.1 * env;
+    a[BONE.armR * 3]! += 1.1 * env;
+    a[BONE.armL * 3 + 2]! += -0.7 * env;
+    a[BONE.armR * 3 + 2]! += 0.7 * env;
+    a[BONE.forearmL * 3]! += 0.5 * env;
+    a[BONE.forearmR * 3]! += 0.5 * env;
+    a[BONE.thighL * 3]! += 0.45 * env;
+    a[BONE.shinL * 3]! += -0.6 * env;
+    a[BONE.thighR * 3]! += -0.2 * env;
+    pose.rootDy += -0.05 * env;
+    if (from && t < HIT_BLEND) blendPose(pose, from, pose, smooth(t / HIT_BLEND));
     return;
   }
   const f = t < FALL_TIME ? smooth(t / FALL_TIME) : t < DOWN_TIME - GETUP_TIME ? 1 : 1 - smooth((t - (DOWN_TIME - GETUP_TIME)) / GETUP_TIME);
-  a[BONE.pelvis * 3] = side * 1.4 * f;
-  a[BONE.head * 3] = -side * 0.45 * f;
-  a[BONE.armL * 3] = 0.6 * f;
-  a[BONE.armR * 3] = 0.6 * f;
-  a[BONE.armL * 3 + 2] = -0.9 * f;
-  a[BONE.armR * 3 + 2] = 0.9 * f;
-  a[BONE.forearmL * 3] = 0.3 * f;
-  a[BONE.forearmR * 3] = 0.3 * f;
-  a[BONE.thighL * 3] = 0.15 * f;
-  a[BONE.shinL * 3] = -0.25 * f;
-  a[BONE.thighR * 3] = -0.05 * f;
-  // Le bassin descend à mesure que le corps bascule : toujours assez haut pour que les pieds ne passent pas sous le sol.
-  pose.rootDy = Math.max(0.24, (d.thigh + d.shin) * Math.cos(1.4 * f) + d.ankleY) - d.hipY;
+  if (f > 0) {
+    lyingPose(lieTmp, side, variant);
+    blendPose(pose, pose, lieTmp, f);
+  }
+  if (from && t < HIT_BLEND) blendPose(pose, from, pose, smooth(t / HIT_BLEND));
+  // Le corps repose sur son point le plus bas : les pieds au début de la chute, le dos ou le ventre une fois à terre.
+  pose.rootDx = 0;
+  pose.rootDy = 0;
+  pose.rootDy = -lowestPoint(pose, d);
 }
 
 /** Décalages d'articulation au repos (m), de chaque os par rapport à son parent, dans le repère du parent. 13 × 3 valeurs. */

@@ -1,7 +1,7 @@
 import { createDog } from "../core/dogs";
 import { DogView } from "../render/dogs";
 import { BirdView, type BirdKind } from "../render/birds";
-import { LIFE_POSE } from "../core/character-rig";
+import { HIT_POSE, LIFE_POSE, LYING_T, LYING_VARIANTS } from "../core/character-rig";
 import { coldAt, dressForCold, umbrellaShare } from "../core/dress";
 import * as THREE from "three";
 import { summarizeFrames, type FrameSummary } from "./bench-stats";
@@ -253,7 +253,7 @@ export function protoText(device: Record<string, unknown>, reports: PhaseReport[
 
 /**
  * ?proto=look et ?view=characters : une ou deux rangées de personnages devant la caméra, pour juger la variété (ou comparer les rendus).
- * `n` (24 par défaut), `seed`, `gap`, `dist`, `eye`, `turn` (cap des personnages : 0 de face, 3,14 de dos), `walk` (tous marchent à cette vitesse,
+ * `n` (24 par défaut), `seed`, `gap`, `dist`, `eye`, `look`, `turn` (cap des personnages : 0 de face, 3,14 de dos), `walk` (tous marchent à cette vitesse,
  * phases réparties sur un cycle). En galerie (`view=characters`),
  * un appui sur l'écran tire 24 autres recettes.
  */
@@ -273,12 +273,14 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
       return r.outfit !== "sport" && ((k >>> 7) % 1000) / 1000 < umbrellaShare(rain) ? { ...r, umbrella: true } : r;
     };
     const state = createCrowdState(Array.from({ length: n }, (_, i) => dressed(seed * 1000 + i)));
-    // `&pose=sit|phone|talk` : tous dans une pose de la vie de quartier (D198).
-    const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk }[params.get("pose") ?? ""] ?? 0;
+    // `&pose=sit|phone|talk` : tous dans une pose de la vie de quartier (D198). `&pose=down|stumble` : heurtés (D209), `t` s après le choc
+    // (au sol par défaut), `side` +1 sur le dos, −1 à plat ventre ; chacun dans une variante de pose au sol (le n-ième dans la n-ième).
+    const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk, stumble: HIT_POSE.stumble, down: HIT_POSE.down }[params.get("pose") ?? ""] ?? 0;
     if (lifePose) {
       state.pose = new Uint8Array(n).fill(lifePose);
-      state.poseT = new Float32Array(n).fill(1);
-      state.poseSide = new Int8Array(n);
+      state.poseT = new Float32Array(n).fill(Number(params.get("t") ?? (lifePose === HIT_POSE.down ? LYING_T : 1)));
+      state.poseSide = new Int8Array(n).fill(Number(params.get("side") ?? 1) < 0 ? -1 : 1);
+      state.poseVar = Uint8Array.from({ length: n }, (_, i) => i % LYING_VARIANTS);
     }
     for (let i = 0; i < n; i++) {
       const row = i % 2, col = Math.floor(i / 2);
@@ -333,7 +335,8 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
   }
   const eye = Number(params.get("eye") ?? 1.6);
   camera.position.set(camX, ground + eye, camZ);
-  camera.lookAt(camX, ground + eye - 0.45 * (dist / 5.2), camZ - dist - 1);
+  // `&look=` : hauteur visée au-dessus du sol (m), pour regarder de haut des personnages à terre (D209).
+  camera.lookAt(camX, ground + (params.has("look") ? Number(params.get("look")) : eye - 0.45 * (dist / 5.2)), camZ - dist - 1);
   const placeSun = followSun(ctx);
   const x = camX, y = -camZ;
   if (params.get("view") === "characters") {

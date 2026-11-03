@@ -5,7 +5,7 @@ import { recipeFromSeed, type Recipe } from "./character";
 import { coldAt, dressForCold, umbrellaShare } from "./dress";
 import { crowdFeast, crowdWeek } from "./week";
 import { LAKE } from "./fireworks";
-import { DOWN_TIME, HIT_POSE, phaseRate, STUMBLE_TIME } from "./character-rig";
+import { DOWN_TIME, HIT_POSE, LYING_T, lyingVariant, phaseRate, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
 import { NavGraph, type Move } from "./nav-graph";
 import type { Signals } from "./signals";
@@ -330,6 +330,8 @@ export class PedSim {
     this.state.pose = new Uint8Array(n);
     this.state.poseT = new Float32Array(n);
     this.state.poseSide = new Int8Array(n);
+    this.state.poseV = new Float32Array(n);
+    this.state.poseVar = new Uint8Array(n);
     this.state.held = new Uint8Array(n);
     this.state.look = new Float32Array(n);
     this.seat = new Array<Seat | null>(n).fill(null);
@@ -859,6 +861,9 @@ export class PedSim {
     this.fear[i] = 1;
     this.speed[i] = 0;
     const st = this.state;
+    // D209 : la pose de choc part de la marche (ou de la course) en cours, par un fondu ; chaque chute a sa pose au sol.
+    if (st.pose![i]! !== HIT_POSE.stumble && st.pose![i]! !== HIT_POSE.down) st.poseV![i] = st.speed[i]!;
+    st.poseVar![i] = lyingVariant(this.id[i]! + this.stats.hits);
     st.pose![i] = kind;
     st.poseT![i] = 0;
     // Choc de face : sur le dos ; par derrière : vers l'avant.
@@ -1020,7 +1025,8 @@ export class PedSim {
     this.jx[i] = this.jy[i] = this.kx[i] = this.ky[i] = 0;
     this.ox[i] = this.oy[i] = 0;
     this.lat[i] = this.latTarget[i] = 0;
-    this.speed[i] = this.want[i]! * 0.5;
+    // Il repart de l'arrêt (D209) : la pose de marche grandit avec la vitesse, sans saut depuis la pose debout où finit le relevé.
+    this.speed[i] = 0;
     this.mode[i] = PED_STATE.walk;
     st.pose![i] = 0;
   }
@@ -1030,7 +1036,7 @@ export class PedSim {
     const st = this.state;
     this.age[i]! += dt;
     // La pose reste tenue au sol (ni relèvement ni retour à la marche).
-    st.poseT![i] = Math.min(st.poseT![i]!, DOWN_TIME - 1.4);
+    st.poseT![i] = Math.min(st.poseT![i]!, LYING_T);
     if (this.sink[i]! === 0) {
       const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
       const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
@@ -1484,6 +1490,12 @@ export class PedSim {
     this.heading[i] = heading;
     this.speed[i] = speed;
     this.mode[i] = dead ? PED_STATE.dead : pose === HIT_POSE.down ? PED_STATE.down : PED_STATE.walk;
+    const hit = (p: number): boolean => p === HIT_POSE.down || p === HIT_POSE.stumble;
+    // D209 : au choc, la vitesse d'avant (fondu depuis la course) et une pose au sol propre à ce gendarme.
+    if (hit(pose) && !hit(st.pose![i]!)) {
+      st.poseV![i] = st.speed[i]!;
+      st.poseVar![i] = lyingVariant(i + Math.floor(x * 7 + y * 13));
+    }
     st.held![i] = armed ? 1 : 0;
     st.x[i] = x;
     st.z[i] = -y;
