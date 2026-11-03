@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bodyDims, DEFAULT_RECIPE, HEIGHT_RANGE, recipeFromSeed } from "./character";
-import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_POSE, hitPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
+import { BONE, BONE_COUNT, createPose, cycleLength, DOWN_TIME, geometryScales, HIT_BLEND, HIT_POSE, hitPose, lowestPoint, LYING_T, LYING_VARIANTS, lyingPose, jointBlend, PARENT, phaseRate, REF_DIMS, restOffsets, solveBones, STRAFE_TWIST, strafePose, STUMBLE_TIME, walkPose, walksBackward } from "./character-rig";
 
 const root = { x: 0, y: 0, z: 0, yaw: 0 };
 
@@ -165,23 +165,143 @@ describe("poses d'un passant heurté", () => {
     return { y: Array.from({ length: BONE_COUNT }, (_, b) => world[b * 16 + 13]!), pelvis: world[BONE.pelvis * 16 + 13]!, head: world[BONE.head * 16 + 13]!, rootDy: pose.rootDy, angles: Array.from(pose.angles) };
   };
 
-  it("trébuche : se penche en milieu de mouvement, puis retrouve l'équilibre (tout à zéro à la fin)", () => {
+  const stand = (): number[] => {
+    const p = createPose();
+    walkPose(p, 0, 0, d);
+    return Array.from(p.angles);
+  };
+
+  it("trébuche : se penche en milieu de mouvement, puis retrouve l'équilibre (debout immobile à la fin)", () => {
+    const rest = stand();
     const mid = joints(HIT_POSE.stumble, STUMBLE_TIME / 2, 1);
     expect(mid.angles[BONE.pelvis * 3]!).toBeGreaterThan(0.4);
     expect(joints(HIT_POSE.stumble, STUMBLE_TIME / 2, -1).angles[BONE.pelvis * 3]!).toBeLessThan(-0.4);
     const end = joints(HIT_POSE.stumble, STUMBLE_TIME, 1);
-    expect(end.angles.every((a) => Math.abs(a) < 1e-9)).toBe(true);
-    expect(Math.abs(end.rootDy)).toBeLessThan(1e-9);
+    expect(end.angles.every((a, k) => Math.abs(a - rest[k]!) < 1e-9)).toBe(true);
+    expect(Math.abs(end.rootDy)).toBeLessThan(1e-6);
   });
 
-  it("tombe : au sol le bassin est à 24 cm et la tête reste basse ; debout au début et à la fin", () => {
-    const start = joints(HIT_POSE.down, 0, 1), lying = joints(HIT_POSE.down, 1.5, 1), end = joints(HIT_POSE.down, DOWN_TIME, 1);
-    expect(start.pelvis).toBeCloseTo(d.hipY, 4);
-    expect(lying.pelvis).toBeCloseTo(0.24, 2);
-    expect(lying.head).toBeLessThan(0.45);
-    expect(Math.min(...lying.y)).toBeGreaterThan(-0.03); // aucun os ne passe sous le sol
-    expect(end.pelvis).toBeCloseTo(d.hipY, 4);
-    expect(end.angles.every((a) => Math.abs(a) < 1e-9)).toBe(true);
+  it("tombe : au sol le corps repose à plat (bassin et tête au ras du sol, rien dessous) ; debout au début et à la fin (D209)", () => {
+    const rest = stand();
+    for (const side of [1, -1]) {
+      for (let v = 0; v < LYING_VARIANTS; v++) {
+        const pose = createPose();
+        hitPose(pose, HIT_POSE.down, LYING_T, side, d, null, v);
+        const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+        solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+        expect(world[BONE.pelvis * 16 + 13]!).toBeLessThan(0.16);
+        expect(world[BONE.head * 16 + 13]!).toBeLessThan(0.18);
+        expect(Math.abs(lowestPoint(pose, d))).toBeLessThan(1e-6); // le point le plus bas touche le sol
+      }
+    }
+    const start = joints(HIT_POSE.down, 0, 1), end = joints(HIT_POSE.down, DOWN_TIME, 1);
+    expect(start.pelvis).toBeCloseTo(d.hipY, 3);
+    expect(end.pelvis).toBeCloseTo(d.hipY, 3);
+    expect(end.angles.every((a, k) => Math.abs(a - rest[k]!) < 1e-9)).toBe(true);
+  });
+
+  it("debout, le point le plus bas du corps est au sol (les semelles), à l'arrêt comme en marchant", () => {
+    const pose = createPose();
+    walkPose(pose, 0, 0, d);
+    expect(lowestPoint(pose, d)).toBeCloseTo(0, 3);
+    for (let k = 0; k < 8; k++) {
+      walkPose(pose, (k / 8) * Math.PI * 2, 1.4, d);
+      expect(Math.abs(lowestPoint(pose, d))).toBeLessThan(0.03);
+    }
+  });
+
+  it("fondu (D209) : au choc, la pose est celle d'avant (la marche), puis rejoint la pose de choc en HIT_BLEND s", () => {
+    const from = createPose();
+    walkPose(from, 1.2, 1.6, d);
+    for (const kind of [HIT_POSE.stumble, HIT_POSE.down]) {
+      const p0 = createPose(), p1 = createPose(), ref = createPose();
+      hitPose(p0, kind, 0, 1, d, from, 0);
+      for (let k = 0; k < BONE_COUNT * 3; k++) expect(p0.angles[k]!).toBeCloseTo(from.angles[k]!, 6);
+      hitPose(p1, kind, HIT_BLEND, 1, d, from, 0);
+      hitPose(ref, kind, HIT_BLEND, 1, d, null, 0);
+      for (let k = 0; k < BONE_COUNT * 3; k++) expect(p1.angles[k]!).toBeCloseTo(ref.angles[k]!, 6);
+    }
+  });
+
+  const height = (side: number, t: number, variant = 0): { pelvis: number; head: number; hands: number; knees: number; low: number } => {
+    const pose = createPose();
+    hitPose(pose, HIT_POSE.down, t, side, d, null, variant);
+    const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
+    solveBones(render, world, restOffsets(d), geometryScales(d), pose, root);
+    const hand = (b: number): number => world[b * 16 + 13]! - world[b * 16 + 5]! * (d.forearm + 0.05 * d.height);
+    return {
+      pelvis: world[BONE.pelvis * 16 + 13]!, head: world[BONE.head * 16 + 13]!, hands: Math.max(hand(BONE.forearmL), hand(BONE.forearmR)),
+      knees: Math.max(world[BONE.shinL * 16 + 13]!, world[BONE.shinR * 16 + 13]!), low: lowestPoint(pose, d),
+    };
+  };
+
+  it("chute en plusieurs temps (D210) : le corps touche toujours le sol, sans flotter, et rien ne s'y enfonce (mains posées)", () => {
+    for (const side of [1, -1]) {
+      for (let v = 0; v < LYING_VARIANTS; v++) {
+        let sunk = 0;
+        for (let k = 0; k <= 360; k++) {
+          const { low } = height(side, k / 100, v);
+          expect(low).toBeLessThan(1e-6); // quelque chose touche le sol : jamais de corps qui flotte
+          expect(low).toBeGreaterThan(-0.2);
+          if (low < -0.03) sunk++;
+        }
+        expect(sunk).toBeLessThan(3); // une main qui s'enfoncerait : au plus deux centièmes de seconde
+      }
+    }
+  });
+
+  it("chute en plusieurs temps (D210) : la tête suit le buste avec retard, le bassin descend avant de toucher", () => {
+    const rest = stand();
+    const early = createPose();
+    hitPose(early, HIT_POSE.down, 0.06, 1, d);
+    // À 0,06 s le buste a déjà basculé, la tête pas encore (elle fouette ensuite).
+    expect(Math.abs(early.angles[BONE.torso * 3]! - rest[BONE.torso * 3]!)).toBeGreaterThan(0.05);
+    expect(Math.abs(early.angles[BONE.head * 3]! - rest[BONE.head * 3]!)).toBeLessThan(0.02);
+    for (const side of [1, -1]) {
+      const mid = height(side, 0.38), low = height(side, 0.9);
+      expect(mid.pelvis).toBeLessThan(0.8);
+      expect(mid.pelvis).toBeGreaterThan(0.3);
+      expect(low.pelvis).toBeLessThan(0.16);
+    }
+  });
+
+  it("relevé (D210) : du dos, il s'assoit (bassin au sol, tête haute) ; du ventre, il passe à quatre pattes puis un genou à terre", () => {
+    const sit = height(1, DOWN_TIME - 1.1);
+    expect(sit.pelvis).toBeLessThan(0.25);
+    expect(sit.head).toBeGreaterThan(0.6);
+    expect(sit.hands).toBeLessThan(0.15); // en appui sur les mains
+    const fours = height(-1, DOWN_TIME - 0.7);
+    expect(fours.pelvis).toBeGreaterThan(0.35);
+    expect(fours.pelvis).toBeLessThan(0.65);
+    expect(fours.hands).toBeLessThan(0.12);
+    expect(fours.knees).toBeLessThan(0.12);
+    const kneel = height(-1, DOWN_TIME - 0.4);
+    expect(kneel.pelvis).toBeGreaterThan(0.45);
+    expect(kneel.pelvis).toBeLessThan(0.7);
+  });
+
+  it("au sol (D210) : il respire à peine, et un mort (temps figé à LYING_T) ne bouge pas", () => {
+    const a = createPose(), b = createPose();
+    hitPose(a, HIT_POSE.down, LYING_T, 1, d);
+    hitPose(b, HIT_POSE.down, LYING_T + 0.7, 1, d);
+    let diff = 0;
+    for (let k = 0; k < BONE_COUNT * 3; k++) diff = Math.max(diff, Math.abs(a.angles[k]! - b.angles[k]!));
+    expect(diff).toBeGreaterThan(0.005);
+    expect(diff).toBeLessThan(0.07);
+  });
+
+  it("pose au sol : chaque variante et sa symétrique (gauche ↔ droite) sont distinctes", () => {
+    const seen = new Set<string>();
+    for (let v = 0; v < LYING_VARIANTS; v++) {
+      const p = createPose();
+      lyingPose(p, 1, v);
+      seen.add(Array.from(p.angles, (x) => x.toFixed(3)).join(","));
+    }
+    expect(seen.size).toBe(LYING_VARIANTS);
+    const a = createPose(), b = createPose();
+    lyingPose(a, -1, 0);
+    lyingPose(b, -1, 1);
+    expect(b.angles[BONE.armR * 3 + 2]!).toBeCloseTo(-a.angles[BONE.armL * 3 + 2]!, 9);
   });
 
   it("tombe sur le dos (+1) ou vers l'avant (−1) : la tête passe derrière ou devant le bassin (axe z : l'avant du personnage est −z)", () => {
@@ -203,7 +323,7 @@ describe("poses d'un passant heurté", () => {
       for (const [kind, total] of [[HIT_POSE.stumble, STUMBLE_TIME], [HIT_POSE.down, DOWN_TIME]] as const) {
         for (let k = 0; k <= 20; k++) {
           const pose = createPose();
-          hitPose(pose, kind, (total * k) / 20, seed % 2 ? 1 : -1, dd);
+          hitPose(pose, kind, (total * k) / 20, seed % 2 ? 1 : -1, dd, null, seed);
           const world = new Float32Array(BONE_COUNT * 16), render = new Float32Array(BONE_COUNT * 16);
           solveBones(render, world, restOffsets(dd), geometryScales(dd), pose, root);
           for (let b = 0; b < BONE_COUNT; b++) if (!Number.isFinite(world[b * 16 + 13]!) || world[b * 16 + 13]! < -0.04) bad.push(`${seed} ${kind} ${k} ${b} ${world[b * 16 + 13]}`);

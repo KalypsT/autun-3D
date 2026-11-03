@@ -1526,3 +1526,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Quand un gendarme te tire dessus, un arc rouge au bord de l'écran montre d'où vient le tir (vif s'il t'a touché), puis s'efface.
 - **Chantier Tir terminé** (T1 à T4).
 
+
+**Chutes et bousculades, lot 1 : fondus et corps au sol (3 novembre 2026)** (D209)
+- Plus de saut de pose au moment du choc ni au retour à la marche : la chute part de la marche (ou du deux-roues pour le joueur) et finit debout immobile, le passant repart doucement.
+- Au sol, le corps repose vraiment à plat (il flottait à 20 cm, planche inclinée) ; six poses différentes sur le dos et six à plat ventre, tirées à chaque chute : les passants à terre et les morts ne sont plus des clones.
+- Pas encore : chute en plusieurs temps et vrai relevé (lot 2), direction et violence du choc (lot 3), trébuchement avec de vrais pas (lot 4).
+
+**Chutes et bousculades, lot 2 : chute en plusieurs temps et vrai relevé (3 novembre 2026)** (D210)
+- Une chute se déroule maintenant en plusieurs temps : le choc, les genoux qui lâchent, les mains qui partent se rattraper, l'impact, un petit rebond, puis le corps se pose ; la tête suit avec retard, les bras aussi.
+- On se relève vraiment : du dos, assis sur les mains, accroupi, debout ; du ventre, pompe, quatre pattes, un genou à terre, debout. Au sol, on respire.
+- Les mains se posent au sol au lieu de s'y enfoncer ou de soulever le corps.
+- Pas encore : direction et violence du choc (lot 3), trébuchement avec de vrais pas (lot 4).

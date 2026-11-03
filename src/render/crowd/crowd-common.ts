@@ -2,7 +2,7 @@ import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
 import { gunPose } from "../../core/character-attack";
-import { BONE, BONE_COUNT, createPose, geometryScales, GUN_POSE, hitPose, LIFE_POSE, phonePose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { BONE, BONE_COUNT, createPose, geometryScales, GUN_POSE, HIT_BLEND, hitPose, LIFE_POSE, lyingVariant, phonePose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
 
@@ -19,6 +19,8 @@ export class CrowdRigs {
   readonly render = new Float32Array(BONE_COUNT * 16);
   readonly world = new Float32Array(BONE_COUNT * 16);
   readonly pose: Pose = createPose();
+  /** Pose d'avant un choc, d'où part le fondu (D209). */
+  private readonly from: Pose = createPose();
   private readonly root = { x: 0, y: 0, z: 0, yaw: 0 };
 
   constructor(recipes: Recipe[]) {
@@ -71,7 +73,13 @@ export class CrowdRigs {
       walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
       if (hit === LIFE_POSE.phone) phonePose(this.pose);
       else talkPose(this.pose, state.poseT![i]!);
-    } else if (hit > 0) hitPose(this.pose, hit, state.poseT![i]!, state.poseSide![i]!, this.dims[i]!);
+    } else if (hit > 0) {
+      // D209 : fondu depuis la marche d'avant le choc (sa phase est figée pendant le choc), puis la pose au sol de ce passant.
+      const t = state.poseT![i]!;
+      const from = t < HIT_BLEND ? this.from : null;
+      if (from) walkPose(from, state.phase[i]!, state.poseV?.[i] ?? 0, this.dims[i]!);
+      hitPose(this.pose, hit, t, state.poseSide![i]!, this.dims[i]!, from, state.poseVar?.[i] ?? lyingVariant(i));
+    }
     else walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
     const look = state.look?.[i] ?? 0;
     if (look !== 0) this.pose.angles[BONE.head * 3 + 1]! += look;

@@ -6,6 +6,7 @@ import type { Colliders } from "../core/collision";
 import { PedSim, type Observer } from "../core/pedestrians";
 import type { Arena } from "../core/melee";
 import { gendarmeRecipe } from "../core/character";
+import { LYING_T } from "../core/character-rig";
 import { OFFICER, Officers, type Officer } from "../core/officers";
 import type { HeightField } from "../data/types";
 import { createCrowd } from "../render/crowd/crowd";
@@ -176,7 +177,7 @@ export class PedsController implements Arena {
       if (fresh) this.officerSeeds[o.slot] = o.seed;
       // Visée : le temps passé à `setExternal` est celui depuis le dernier tir (la secousse du pistolet) ; un mort garde la pose de chute tenue.
       const pose = Officers.pose(o);
-      const t = o.mode === "dead" ? Math.min(o.poseT, 2.2) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT;
+      const t = o.mode === "dead" ? Math.min(o.poseT, LYING_T) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT;
       sim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, pose, t, dt, o.armed && o.mode !== "dead", o.mode === "dead");
     }
     for (let k = 0; k < OFFICER.max; k++) {

@@ -1,5 +1,6 @@
 import { SEASON_KEYS } from "../core/calendar";
 import { Seats } from "../core/seats";
+import { LYING_T } from "../core/character-rig";
 import { crowdWeather, surfaceGrip, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
 import { setSurfaceGrip } from "../core/vehicle";
@@ -595,7 +596,7 @@ export function startBench(ctx: GameContext): void {
             out[o.slot] = 1;
             const fresh = officerSeeds[o.slot] !== o.seed;
             officerSeeds[o.slot] = o.seed;
-            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.mode === "dead" ? Math.min(o.poseT, 2.2) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT, dt, o.armed && o.mode !== "dead", o.mode === "dead");
+            pedSim.setExternal(base + o.slot, true, fresh ? gendarmeRecipe(o.seed) : null, o.x, o.y, o.heading, o.speed, Officers.pose(o), o.mode === "dead" ? Math.min(o.poseT, LYING_T) : o.armed && o.mode === "run" ? o.sinceShot : o.poseT, dt, o.armed && o.mode !== "dead", o.mode === "dead");
           }
           for (let k = 0; k < OFFICER.max; k++) {
             if (out[k] || officerSeeds[k]! < 0) continue;

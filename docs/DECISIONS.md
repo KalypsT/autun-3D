@@ -4152,3 +4152,54 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Bilan du chantier Tir** (D205 à D208) : mode visée (caméra à l'épaule, viseur, balles en hauteur, tête ×3), aide à la visée réglable et hanche resserrée, fusil de précision et lunette, témoins de la victime, pas de côté, arcs des tirs reçus. 1 137 tests.
 
 ![Arcs des tirs reçus (`tools/ui.sh <dossier> strafe`) : deux gendarmes derrière, à gauche et à droite](captures/d208-tirs-recus.jpg)
+
+## 2026-11-03 — D209. Chutes et bousculades, lot 1 : fondus, corps posé au sol, variantes
+
+**Constat** (analyse demandée par l'utilisateur, mouvement jugé rigide lors des chutes et des bousculades) : toute la chute tenait dans un seul curseur (debout → couché en 0,35 s, puis la même interpolation à l'envers pour se relever) ; la pose de choc partait de zéro (`a.fill(0)`), d'où un **saut d'une image à l'autre** au choc et au retour à la marche ; au sol, le corps était une **planche inclinée à 80°, à 20 cm du sol** (bassin à 24 cm, tête à 34 cm, coudes à 41 cm sur le dos, mesuré avec le squelette de référence) ; tous les passants tombaient et mouraient dans **la même pose**. Plan retenu en quatre lots : (1) fondus, pose au sol, variantes ; (2) chute en plusieurs temps et vrai relevé ; (3) direction réelle du choc et intensités ; (4) trébuchement avec de vrais pas. Un ragdoll léger (points pesants reliés) ne sera décidé qu'après le lot 2 ; un moteur physique complet est écarté (lourd pour le téléphone, disproportionné pour 13 os).
+
+**Ce qui est fait (lot 1)** :
+- **Fondus** (`blendPose`, `HIT_BLEND` = 0,16 s) : la pose de choc part de la pose d'avant le choc : la marche ou la course du passant (vitesse au choc gardée dans `CrowdState.poseV`, phase figée), celle du gendarme (relevée par `setExternal` au passage à la pose de choc), et pour le joueur **la dernière pose dessinée** (sur le deux-roues, à la portière). Les poses de choc reviennent maintenant à **la pose debout immobile** (la marche à vitesse nulle, `standPose`) et non à zéro ; le passant repart de l'arrêt (sa vitesse remonte en ≈ 0,3 s au lieu de reprendre d'un coup à mi-vitesse) : plus de saut ni au choc ni au retour.
+- **Contact avec le sol** (`lowestPoint`) : point le plus bas du corps pour une pose, d'après des volumes qui reprennent ceux du kit (tronçons à section elliptique pour bassin, buste et membres, ellipsoïde pour la tête, talon et pointe des pieds), mis à l'échelle comme la géométrie. Debout il vaut 0 (vérifié aussi en marchant, à 3 cm près). **Pendant toute la chute, ce point touche le sol** : le corps bascule sur les pieds, puis repose à plat ; le bassin n'est plus fixé à 24 cm.
+- **Poses au sol** (`lyingPose`) : corps à plat sur le dos ou sur le ventre, bassin à 90°, coudes et genoux pliés **à plat sur le sol** (rotation `rz`, l'axe `ry` d'une cuisse tournant autour du bassin et non de la cuisse), tête tournée (joue au sol à plat ventre), pieds tournés vers l'extérieur. **Six variantes par côté** : trois poses écrites (sur le dos : bras en croix et un genou levé ; bras le long du corps et une jambe pliée sur le côté ; un bras au-dessus de la tête et les deux jambes tombées du même côté ; à plat ventre : un bras replié près de la tête et une jambe repliée ; bras le long du corps ; bras en avant), chacune aussi **en miroir**. Variante tirée par chute (`poseVar`, d'après la graine du passant et le compte des chocs ; gendarmes d'après l'emplacement et la position ; joueur au hasard). Les morts gardent la pose au sol de leur chute (`LYING_T`) : plus de cadavres identiques.
+- **Galerie** : `?view=characters&pose=down` (et `stumble`), `&t=` (temps depuis le choc), `&side=1|-1`, `&look=` (hauteur visée, pour regarder de haut) ; le n-ième personnage est dans la n-ième variante.
+
+**Coût** : un calcul de squelette de plus par image pour chaque personnage **en train de tomber ou à terre** (pour le contact avec le sol), et la pose de marche recalculée pendant les 0,16 s du fondu. Quelques passants à la fois (huit cadavres au plus) : négligeable devant le dessin. Mémoire : deux tableaux de plus dans l'état de la foule (5 octets par emplacement).
+
+**Limites (pour les lots suivants)** :
+- La chute et le relevé restent **une seule interpolation** entre debout et couché : le corps bascule d'un bloc sur les pieds et se relève par le même chemin (lot 2). Les pieds glissent de près d'un mètre pendant la bascule (le bassin reste à la position du personnage) ; le recul du choc le masque en partie.
+- Toujours deux côtés de chute (dos ou ventre), même pose quelle que soit la violence du choc (lot 3) ; le trébuchement est inchangé, sinon qu'il part de la marche et y revient sans saut (lot 4).
+- Le sol est supposé plat sous le corps : sur une pente ou une bordure de trottoir, une partie du corps peut s'enfoncer ou flotter de quelques centimètres. Un sac à dos traverse le sol sous un corps couché sur le dos.
+
+**Tests** (+3, trois adaptés) : au sol, pour chaque variante et chaque côté, bassin sous 16 cm, tête sous 18 cm, point le plus bas au sol ; debout au début et à la fin d'une chute, debout immobile à la fin d'un trébuchement ; debout et en marchant, le point le plus bas est au sol ; fondu (pose d'avant au choc, pose de choc après `HIT_BLEND`) ; variantes distinctes et symétriques. Capture : `tools/proto.sh <dossier> "dos:view=characters&pose=down&side=1&n=6&gap=2.0&turn=1.5708&eye=2.4&look=0&dist=2.6"` (et `side=-1`).
+
+![Au sol sur le dos : les six variantes (rangée du fond : les trois poses ; devant : leurs symétriques)](captures/d209-au-sol-dos.jpg)
+
+![À plat ventre : les six variantes](captures/d209-au-sol-ventre.jpg)
+
+## 2026-11-03 — D210. Chutes et bousculades, lot 2 : chute en plusieurs temps, vrai relevé, mains posées
+
+**Constat** (suite de D209) : la chute restait une seule interpolation entre debout et couché, tous les os au même rythme : le corps basculait d'un bloc sur les pieds, comme une planche, et se relevait par le même chemin, à l'envers.
+
+**Ce qui est fait** :
+- **Suites de clés** (`FALL_BACK`, `FALL_FRONT`, `fallPose`) au lieu d'un curseur : chaque chute passe par des poses écrites, lissées par une courbe d'Hermite (tangentes de Catmull-Rom à demi-tension : les membres gardent leur élan sans dépasser les poses de contact) ; les poses tenues (debout, au sol) sont atteintes sans dépassement.
+  - **Sur le dos** (choc de face, 0,85 s) : le buste est rejeté en arrière, la tête suit en retard, les bras partent en avant ; les genoux lâchent, le corps descend en arrière et les mains partent se rattraper derrière ; les fesses touchent, puis le dos ; les jambes et la tête rebondissent, puis tout se pose dans la variante au sol (D209).
+  - **À plat ventre** (choc par derrière) : le bassin part en avant, le buste et la tête restent en arrière, un pas pour se rattraper, puis les genoux lâchent et les bras partent en avant ; à genoux sur les mains, les coudes plient, la poitrine touche (la tête se relève), tout se pose.
+- **Retard de chaque os** (`BONE_LAG`) : les jambes lâchent les premières (de 0,01 s : la chaîne bassin, cuisse, jambe doit rester d'un bloc quand elle porte le corps), puis le bassin, le buste (0,025 s), les bras (0,045 s), les avant-bras (0,075 s), la tête en dernier (0,07 s : elle fouette). Moitié moins au relevé ; les retards s'effacent à l'instant du choc et à la fin, pour partir et revenir exactement debout.
+- **Vrai relevé** (1,5 s au lieu de 0,9 ; durée totale inchangée, 3,6 s, donc ≈ 1,25 s immobile au sol) : **du dos**, il s'assoit en appui sur les mains derrière lui, ramène les pieds sous lui (accroupi, une main sur le genou), se redresse ; **du ventre**, il pose les mains sous les épaules, fait une pompe, passe à quatre pattes, avance un pied (genou plié), un genou à terre et une main sur l'autre genou, puis debout.
+- **Respiration** au sol : le buste se soulève doucement (± 0,03 rad, 2,6 s). Un mort a le temps figé (`LYING_T`, 1,25 s) : il ne respire pas.
+- **Mains posées** (`plantHands`) : le corps repose sur son point le plus bas **sans les bras** ; une main qui passerait sous le sol plie le coude pour s'y poser (cinématique inverse à deux os dans le plan du corps), ou, pour un bras écarté qui glisse à plat sur le sol, se déplie juste assez (dichotomie). Les bras ne peuvent soulever le corps de plus de 3 cm. Sans cela, entre deux clés, un bras qui tourne passe par des angles où il est « trop long » et le corps flottait de 30 à 50 cm sur une main (mesuré).
+- **Galerie** : `&t=` accepte une liste (un instant par personnage : pellicule d'une chute), `&var=` (même variante pour tous), `&rows=1` (une seule rangée, de profil avec `turn=1.5708`).
+
+**Coût** : ≈ 10 µs sur PC par personnage à terre ou en train de tomber, par image (contre ≈ 2 µs pour une pose de marche) : on ne calcule que les clés voisines de l'instant, un seul calcul de squelette en plus quand aucune main n'est à poser. Avec huit cadavres et quelques chutes, ≈ 0,1 ms sur PC. **À vérifier sur le téléphone** (`?debug`, coût du dessin de la foule) après un carnage.
+
+**Limites (pour les lots suivants)** :
+- Toujours deux chutes (dos, ventre), les mêmes quelle que soit la violence du choc (lot 3) ; trébuchement inchangé (lot 4).
+- Le bassin reste à la position du personnage : en tombant sur le dos, les pieds glissent vers l'avant d'environ un mètre (le recul du choc le masque en partie) ; au relevé, les pieds glissent sous le corps.
+- En se relevant du genou, il passe un instant (≈ 0,2 s) sur la pointe du pied arrière. Le dessus des pieds à quatre pattes reste à quelques centimètres du sol.
+- Le sol est supposé plat sous le corps (D209).
+
+**Tests** (+4, un adapté) : à chaque centième de seconde de la chute, pour chaque variante et chaque côté, quelque chose touche le sol (jamais de corps qui flotte) et rien ne s'y enfonce ; la tête suit le buste avec retard, le bassin descend avant de toucher ; relevé du dos assis sur les mains, du ventre à quatre pattes puis un genou à terre ; respiration faible, mort immobile. Captures (une rangée de profil, un instant par personnage) : `tools/proto.sh <dossier> "chute:view=characters&pose=down&rows=1&n=5&gap=1.6&turn=1.5708&eye=1.4&look=0.5&dist=4.6&var=0&side=1&t=0.06,0.14,0.24,0.32,0.4"`.
+
+![Chute sur le dos et relevé (de haut en bas : 0,06 à 0,4 s ; 0,46 à 0,9 s ; relevé 2,2 à 2,8 s ; 2,95 à 3,6 s)](captures/d210-chute-dos.jpg)
+
+![Chute à plat ventre et relevé (mêmes rangées ; relevé : pompe, quatre pattes, un genou à terre)](captures/d210-chute-ventre.jpg)
