@@ -1,8 +1,15 @@
 import type { Deck, Platform } from "../data/types";
+import { deckGaps } from "./bridges";
 
 /** Marche qu'une entité franchit pour monter sur un tablier ou un quai (m) : au-delà, la surface est au-dessus d'elle (un pont qu'elle longe par-dessous). */
 export const STEP_UP = 1.5;
 const CELL = 16;
+/** Marge de part et d'autre d'un tablier où le relief est corrigé sous une voie qui passe dessous (m), voir `Decks.carve`. */
+const CARVE = 3;
+/** Hauteur libre sous un tablier en dessous de laquelle `carve` corrige le relief (m, épaisseur du tablier comprise). */
+const HEADROOM = 4;
+/** Directions des droites de `carve`, autour de la perpendiculaire au tablier (radians). */
+const SKEW = [-0.7, -0.35, 0, 0.35, 0.7];
 
 interface Seg {
   ax: number;
@@ -14,6 +21,9 @@ interface Seg {
   len2: number;
   hw: number;
   rail: boolean;
+  /** Abscisse du début du segment le long du tablier, et sa longueur (m). */
+  s0: number;
+  len: number;
 }
 
 interface Flat {
@@ -41,6 +51,10 @@ interface Entry {
   segs: Seg[];
   flats: Flat[];
   sectors: DeckSector[];
+  /** Tronçons du tablier qui enjambent une autre voie (abscisses), voir `deckGaps`. */
+  gaps: [number, number][];
+  /** Longueur du tablier (m). */
+  length: number;
   cells: number[];
   refs: Set<string>;
 }
@@ -92,20 +106,25 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [], sectors: [], cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [], sectors: [], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
       const p = d.p;
+      let s0 = 0;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i + 5 < p.length; i += 3) {
         const ax = p[i]!, ay = p[i + 1]!, az = p[i + 2]!, bx = p[i + 3]!, by = p[i + 4]!, bz = p[i + 5]!;
         const dx = bx - ax, dy = by - ay;
         const len2 = dx * dx + dy * dy;
         if (len2 < 1e-6) continue;
-        e.segs.push({ ax, ay, az, dx, dy, dz: bz - az, len2, hw: d.w / 2, rail: d.k === "rail" });
+        const len = Math.sqrt(len2);
+        e.segs.push({ ax, ay, az, dx, dy, dz: bz - az, len2, hw: d.w / 2, rail: d.k === "rail", s0, len });
+        s0 += len;
         x0 = Math.min(x0, ax, bx); y0 = Math.min(y0, ay, by); x1 = Math.max(x1, ax, bx); y1 = Math.max(y1, ay, by);
       }
       if (!e.segs.length) continue;
+      e.gaps = deckGaps(d, s0);
+      e.length = s0;
       this.entries.set(id, e);
-      this.index(e, x0 - d.w, y0 - d.w, x1 + d.w, y1 + d.w);
+      this.index(e, x0 - d.w - CARVE, y0 - d.w - CARVE, x1 + d.w + CARVE, y1 + d.w + CARVE);
     }
     for (const pl of platforms) {
       const known = this.entries.get(pl.id);
@@ -113,7 +132,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], sectors: [], cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], sectors: [], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < pl.r.length; i += 2) {
         x0 = Math.min(x0, pl.r[i]!); x1 = Math.max(x1, pl.r[i]!); y0 = Math.min(y0, pl.r[i + 1]!); y1 = Math.max(y1, pl.r[i + 1]!);
@@ -132,7 +151,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [], sectors: [sc], cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [], sectors: [sc], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let k = 0; k <= 8; k++) {
         const th = sc.a - sc.h + (2 * sc.h * k) / 8;
@@ -184,16 +203,97 @@ export class Decks {
       if (rail) continue;
       for (const f of e.flats) if (f.z > best && f.z <= limit && inRing(x, y, f.ring)) best = f.z;
       for (const sc of e.sectors) {
-        const dx = x - sc.cx, dy = y - sc.cy;
-        const r = Math.hypot(dx, dy);
-        if (r < sc.r0 || r > sc.r1) continue;
-        let u = Math.atan2(dy, dx) - sc.a;
-        u -= 2 * Math.PI * Math.round(u / (2 * Math.PI));
-        if (Math.abs(u) > sc.h) continue;
-        const z = sc.z0 + ((sc.z1 - sc.z0) * (r - sc.r0)) / (sc.r1 - sc.r0);
-        if (z > best && z <= limit) best = z;
+        const z = this.sectorZ(sc, x, y);
+        if (z !== null && z > best && z <= limit) best = z;
       }
     }
     return best;
+  }
+
+  /**
+   * Altitude où poser le sol dessiné des rues (chaussées, trottoirs, places, marquages) : comme `surface` sans indication d'altitude,
+   * sauf sous les tronçons d'un tablier qui enjambent une autre voie (`gaps`) : là, NaN, rien à poser (on verrait sinon la route du bas
+   * relevée jusqu'au tablier, en rampe ou en mur). Le dessus du tablier, dessiné avec l'ouvrage, porte la chaussée du haut.
+   */
+  pave(x: number, y: number, ground: number): number {
+    const list = this.grid.get(this.key(Math.floor(x / CELL), Math.floor(y / CELL)));
+    if (!list) return ground;
+    let best = ground, on = false, under = false;
+    for (const e of list) {
+      for (const s of e.segs) {
+        const t = ((x - s.ax) * s.dx + (y - s.ay) * s.dy) / s.len2;
+        if (t < 0 || t > 1) continue;
+        const px = s.ax + s.dx * t - x, py = s.ay + s.dy * t - y;
+        if (px * px + py * py > s.hw * s.hw) continue;
+        const at = s.s0 + s.len * t;
+        if (e.gaps.some(([a, b]) => at > a && at < b)) {
+          under = true;
+          continue;
+        }
+        on = true;
+        best = Math.max(best, s.az + s.dz * t);
+      }
+      for (const f of e.flats) if (inRing(x, y, f.ring)) { on = true; best = Math.max(best, f.z); }
+      for (const sc of e.sectors) {
+        const z = this.sectorZ(sc, x, y);
+        if (z !== null) { on = true; best = Math.max(best, z); }
+      }
+    }
+    return under && !on ? NaN : best;
+  }
+
+  private sectorZ(sc: DeckSector, x: number, y: number): number | null {
+    const dx = x - sc.cx, dy = y - sc.cy;
+    const r = Math.hypot(dx, dy);
+    if (r < sc.r0 || r > sc.r1) return null;
+    let u = Math.atan2(dy, dx) - sc.a;
+    u -= 2 * Math.PI * Math.round(u / (2 * Math.PI));
+    if (Math.abs(u) > sc.h) return null;
+    return sc.z0 + ((sc.z1 - sc.z0) * (r - sc.r0)) / (sc.r1 - sc.r0);
+  }
+
+  /**
+   * Relief corrigé sous les tronçons d'un tablier qui enjambent une voie : le modèle de terrain y bouche parfois le passage (bosse de
+   * 4 m sous le pont-rail du boulevard Xavier Pauchard, le LiDAR ayant pris le tablier pour le sol). Sous l'emprise élargie de `CARVE` m
+   * de chaque côté, le relief ne dépasse pas la plus basse des droites tirées en travers du tablier entre les deux bords (la voie du bas),
+   * sans descendre à plus de HEADROOM sous le tablier ; fondu sur 1 m aux bouts du tronçon. `raw` : le relief brut, `rawAt` : le relief brut ailleurs.
+   */
+  carve(x: number, y: number, raw: number, rawAt: (x: number, y: number) => number): number {
+    const list = this.grid.get(this.key(Math.floor(x / CELL), Math.floor(y / CELL)));
+    if (!list) return raw;
+    let z = raw;
+    for (const e of list) {
+      if (!e.gaps.length) continue;
+      // Un tronçon qui va jusqu'au bout du tablier y garde toute sa correction, fondue sur le mètre suivant : l'axe OpenStreetMap du pont
+      // est souvent plus court que l'ouvrage (pont-rail du boulevard Pauchard : 6 m pour une trouée plus large).
+      const spans = e.gaps.map(([a, b]): [number, number] => [a <= 0.5 ? -1 : a, b >= e.length - 0.5 ? e.length + 1 : b]);
+      for (const s of e.segs) {
+        const t = ((x - s.ax) * s.dx + (y - s.ay) * s.dy) / s.len2;
+        const first = s.s0 === 0, last = s.s0 + s.len >= e.length - 1e-6;
+        if ((t < 0 && !first) || (t > 1 && !last)) continue;
+        const at = s.s0 + s.len * t;
+        const g = spans.find(([a, b]) => at > a && at < b);
+        if (!g) continue;
+        const nx = -s.dy / s.len, ny = s.dx / s.len;
+        const cx = s.ax + s.dx * t, cy = s.ay + s.dy * t;
+        const u = (x - cx) * nx + (y - cy) * ny;
+        const reach = s.hw + CARVE;
+        if (Math.abs(u) >= reach) continue;
+        // La voie du bas passe souvent en biais : droites tirées dans plusieurs directions autour de la perpendiculaire, la plus basse.
+        let line = Infinity;
+        for (const a of SKEW) {
+          const c = Math.cos(a), sn = Math.sin(a);
+          const ux = nx * c - ny * sn, uy = nx * sn + ny * c;
+          const k0 = (-reach - u) / c, k1 = (reach - u) / c;
+          const za = rawAt(x + ux * k0, y + uy * k0), zb = rawAt(x + ux * k1, y + uy * k1);
+          line = Math.min(line, za + ((zb - za) * -k0) / (k1 - k0));
+        }
+        // Jamais plus bas que nécessaire : le relief reste au plus à HEADROOM sous le tablier (une vallée sous un pont haut ne bouge pas).
+        line = Math.max(line, s.az + s.dz * Math.min(1, Math.max(0, t)) - HEADROOM);
+        const w = Math.min(1, at - g[0], g[1] - at);
+        if (line < z) z = Math.min(z, raw - w * (raw - line));
+      }
+    }
+    return z;
   }
 }

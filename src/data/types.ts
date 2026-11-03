@@ -12,6 +12,11 @@ export interface HeightField {
   readonly ground?: HeightField;
   /** Altitude des rails : tablier ferroviaire ou relief ; absent : `heightAt`. */
   railAt?(x: number, y: number): number;
+  /**
+   * Altitude où poser le sol dessiné des rues : comme `heightAt` sans indication, mais NaN sous un tablier qui enjambe une autre voie
+   * (rien à y poser : la route du bas n'est pas relevée jusqu'au tablier) ; absent : `heightAt`.
+   */
+  paveAt?(x: number, y: number): number;
   readonly xMin: number;
   readonly xMax: number;
   readonly yMin: number;

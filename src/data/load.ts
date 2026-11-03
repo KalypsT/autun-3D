@@ -1,4 +1,5 @@
 import { Terrain, TiledTerrain } from "./terrain";
+import { spanDeck } from "../core/bridges";
 import type { LodBuilding, TileData, TileKinds, TileStructures, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
@@ -68,7 +69,7 @@ export async function loadTile(id: string): Promise<TileData> {
     hasStructures ? loadJson<TileStructures>(`structures/${id}.json`) : null,
   ]);
   if (kinds) tile.kinds = kinds;
-  if (structures) tile.structures = structures;
+  if (structures) tile.structures = { ...structures, decks: structures.decks.map(spanDeck) };
   return tile;
 }
 

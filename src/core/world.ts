@@ -3,7 +3,7 @@ import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
 import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
-import { parapetLines } from "./bridges";
+import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
@@ -88,6 +88,12 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   }
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
   for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line, false, PARAPET);
+  // Piles (D220) : on ne les traverse plus par-dessous ; d'en haut (pieds sur le tablier) ou sans altitude (passants, circulation),
+  // elles ne comptent pas. Le relief nu écarte celles qu'on ne peut pas approcher debout.
+  const bare = terrain ? terrain.ground ?? terrain : null;
+  for (const d of tile.structures?.decks ?? []) {
+    for (const p of pierRings(d, bare ? (x, y) => bare.heightAt(x, y) : undefined)) c.addRing(p.ring, [p.top, p.top, p.top, p.top], true);
+  }
   c.currentTag = null;
 }
 

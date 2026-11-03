@@ -4369,3 +4369,38 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Tests** (+5, `roofs-play.test.ts`) : escalade d'un garage de 2,4 m puis de la maison voisine 2 m plus haute, pas d'un mur de 3 m ; portée du saut long et du saut en marchant ; clôture de 1,6 m toujours infranchissable ; d'un toit à l'autre au-dessus d'une ruelle de 4 m en courant, chute dans la ruelle sans élan ; fente de 25 cm traversée sans tomber.
 
 **Chantier « toits praticables » terminé** (D214 à D218).
+
+## 2026-11-03 — D219. Dessous des ponts : le sol des rues n'est plus relevé jusqu'au tablier
+
+**Constat de l'utilisateur** : sous les ponts, on passe (le jeu garde l'altitude de qui marche, D93), mais l'affichage montre un mur ou une montée. Cause : chaussées, trottoirs, places et marquages étaient posés sur la surface la plus haute (`heightAt` sans indication), donc sur le tablier ; la route du bas, sous l'emprise, était relevée jusqu'au tablier, et les triangles qui rejoignaient le relief à côté faisaient rampe ou mur (limite déjà notée en D93, jugée cachée dans l'ouvrage : elle ne l'était pas). Relevé sur les 44 tabliers : 8 enjambent une voie où l'on passe ; 5 montraient le défaut nettement (rue du Faubourg Saint-Andoche sous les trois ponts-rails, boulevard Xavier Pauchard sous le pont-rail, voie ferrée sous la rue de Paris, boulevard Pauchard sous la dernière arche du pont Saint-Andoche, pont sans nom du carrefour de la Légion) ; les ponts sur l'Arroux et les ruisseaux en avaient une version moindre sur leurs bords.
+
+**Décisions** :
+- **Tronçons qui enjambent une voie** (`deckGaps`, `src/core/bridges.ts`) : le complément des parapets (`pc`, D93) entre les deux bouts du tablier. Les tabliers invisibles des monuments (identifiants négatifs : escaliers, paliers, gradins) n'en ont pas.
+- **Sol des rues** (`Decks.pave`, `TiledTerrain.paveAt`, `fillOnTerrain` et les bordures de `src/render/ground.ts`) : sur un tablier, le tablier ; sous un tronçon qui enjambe une voie, rien (NaN) ; ailleurs, le relief. Un triangle (ou un bout de bordure) à cheval sur deux niveaux est recoupé jusqu'à 30 cm, et les morceaux qui iraient du tablier au relief ou passeraient sous le tronçon restent vides (le côté du tablier les cache). Au ras des culées, où tablier et relief se rejoignent à 50 cm près, rien n'est recoupé.
+- **Dessus du tablier** (`src/render/structures.ts`) : sur ces tronçons, un pont routier porte lui-même sa chaussée (enrobé) et, à partir de 7 m de large, deux trottoirs de 2,2 m avec bordure.
+- **Piles** (`deckPiers`) : une pile qui tombe dans la voie du bas est poussée juste avant ou après le tronçon (côté le plus proche, à plus de 3 m d'une autre pile), sinon supprimée. Pont Saint-Andoche : la pile de 67 m passe à 63,7 m, la dernière arche s'ouvre au-dessus du boulevard.
+- **Relief sous ces tronçons** (`Decks.carve`, dans `TiledTerrain.groundAt`, donc pour le dessin comme pour le jeu) : le modèle de terrain bouchait le passage sous le pont-rail du boulevard Pauchard (bosse de 4 m : le LiDAR y a pris le tablier pour le sol). Sous l'emprise élargie de 3 m de chaque côté, le relief ne dépasse plus la plus basse de cinq droites tirées en biais autour de la perpendiculaire au tablier (la voie du bas passe souvent en biais), sans descendre à plus de 4 m sous le tablier ; fondu sur 1 m aux bouts du tronçon, prolongé d'1 m au-delà quand le tronçon va jusqu'au bout du tablier (l'axe OpenStreetMap est souvent plus court que l'ouvrage). Effet mesuré : 7 tabliers, de 1,5 à 4,7 m creusés sur 35 à 175 m² chacun ; les vallées sous les ponts hauts ne bougent pas.
+
+**Vérifié par captures** avant et après aux cinq endroits : plus de rampe ni de mur, l'arche du pont Saint-Andoche est ouverte, le passage du boulevard Pauchard est plat (−30 m de part en part au lieu d'une bosse à −25,7 m).
+
+**Limites** :
+- Sous ces tronçons, la route du bas n'a plus son enrobé ni ses marquages dessinés sur quelques mètres : on voit le relief, teinté d'enrobé par les poids de sol.
+- Le pont sans nom du carrefour de la Légion n'a pas de voie du bas dans les données (parapets continus) : sa pile centrale reste à côté de la file piétonne, et elle n'est toujours pas un obstacle (D93). Traité en D220.
+- Boulevard Pauchard : le tablier OpenStreetMap (6 m) est plus court que le remblai ferroviaire ; le passage est dégagé, mais le remblai reste visible de part et d'autre. Traité en D220.
+- (Signalé ici à tort : les traits blancs sur l'Arroux près du pont de la route de Saulieu ne sont pas des marquages de chaussée mais les rides de l'eau, D93.)
+
+**Tests** (+6) : tronçons et piles (`decks.test.ts`) ; sol posé sous un pont qui enjambe une voie, sans sommet entre les deux niveaux, rien au niveau du tablier au-dessus de la route du bas, route du haut sur le tablier ailleurs (`ground.test.ts`).
+
+## 2026-11-03 — D220. Piles qu'on ne traverse plus, tabliers trop courts prolongés
+
+**Demande de l'utilisateur** : corriger les limites laissées par D219.
+
+**Décisions** :
+- **Piles en obstacle** (`pierRings`, `src/core/bridges.ts` ; `addTileColliders`) : chaque pile dessinée devient un contour d'obstacle dont le haut est le dessous du tablier (`topA`, comme les murs de bâtiment de D214), marqué `under` (`Segment.under`, `src/core/collision.ts`). Il arrête qui donne son altitude et passe dessous (joueur à pied, véhicule conduit, caméra, tirs et vues en 3D) ; d'en haut (sur le tablier, pieds au-dessus), il est franchi. **Sans altitude** (passants, gendarmes à pied, voitures de la circulation, recherche de place), il est ignoré : un mur infini, comme les bâtiments, les aurait arrêtés sur le pont. On ne l'escalade pas (on se retrouverait dans le tablier). Pas d'obstacle sous un tablier à moins de 1,5 m du relief. Dessin et obstacle partagent l'épaisseur du tablier et des piles (`deckThickness`, `pierHalf`).
+- **Tabliers trop courts** (`spanDeck`, appliqué au chargement des ouvrages, `loadTile`, et dans les données de test) : un tablier sans aucun parapet (il enjambe une voie sur toute sa longueur) plus court que ce que `build_structures.py` réserve à la voie croisée (sa largeur plus 4 m de chaque côté) est prolongé à plat dans l'axe, autant aux deux bouts. Pont-rail du boulevard Xavier Pauchard : 6 → 13 m ; le relief est corrigé sous toute la longueur (D219) et le passage s'ouvre à travers le remblai. La rue de Paris (15 → 19,4 m) suit la même règle ; les autres tabliers ne changent pas. À reporter dans `build_structures.py` à la prochaine régénération (le prolongement au chargement deviendrait alors sans effet).
+
+**Écarté** : un masque d'eau sous le sol des rues, essayé pour des « marquages sur l'Arroux » près du pont de la route de Saulieu : c'étaient les rides de l'eau (D93), dessinées exprès.
+
+**Limites** : les passants traversent toujours les piles (ils n'ont pas d'altitude dans `resolve`) ; leurs files contournent en général les ouvrages. La pile du carrefour de la Légion reste à sa place (aucune voie du bas dans les données pour la déplacer), mais on ne la traverse plus.
+
+**Tests** (+2, `decks.test.ts`) : une pile arrête qui passe dessous, pas qui est sur le tablier ni qui ne donne pas son altitude, arrête les tirs sous le pont et pas au-dessus, absente sous un tablier trop bas ; prolongement d'un tablier de 6 m à 13 m, à plat, et rien pour un tablier avec parapets.

@@ -196,5 +196,9 @@ export function withRoofs(terrain: HeightField, roofs: Roofs): HeightField {
     const rail = terrain.railAt.bind(terrain);
     field.railAt = (x, y) => rail(x, y);
   }
+  if (terrain.paveAt) {
+    const pave = terrain.paveAt.bind(terrain);
+    field.paveAt = (x, y) => pave(x, y);
+  }
   return field;
 }
