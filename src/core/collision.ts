@@ -23,6 +23,11 @@ export interface Segment {
    */
   topA?: number;
   topB?: number;
+  /**
+   * Obstacle sous un tablier (pile de pont, D220) : il n'arrête que qui donne son altitude (pieds, rayon) et passe sous `topA` ; sans
+   * altitude, il est ignoré (passants et voitures de la circulation sur le pont ne s'y heurtent pas).
+   */
+  under?: boolean;
 }
 
 /** Hauteur (m) dont les pieds peuvent être sous le haut d'un mur de bâtiment et passer quand même : le bord d'un toit, une petite marche. */
@@ -97,9 +102,10 @@ export class Colliders {
   private segSeen: number[] = [];
   private circleSeen: number[] = [];
 
-  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null, tops: readonly [number, number] | null = null): void {
+  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null, tops: readonly [number, number] | null = null, under = false): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
     const rec: Segment = low ? { ax, ay, bx, by, low } : { ax, ay, bx, by };
+    if (under) rec.under = true;
     if (top) {
       rec.height = top.height;
       if (top.climb) rec.climb = true;
@@ -224,13 +230,13 @@ export class Colliders {
 
   /**
    * Ajoute le contour d'un anneau fermé (x0, y0, x1, y1, …) comme suite de segments. `tops` : altitude absolue du haut du mur à chaque
-   * sommet (mur de bâtiment, D214) ; absent : mur infini.
+   * sommet (mur de bâtiment, D214) ; absent : mur infini. `under` : obstacle sous un tablier (voir `Segment.under`).
    */
-  addRing(coords: readonly number[], tops: readonly number[] | null = null): void {
+  addRing(coords: readonly number[], tops: readonly number[] | null = null, under = false): void {
     const n = coords.length / 2;
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
-      this.addSegment(coords[2 * i]!, coords[2 * i + 1]!, coords[2 * j]!, coords[2 * j + 1]!, false, null, tops ? [tops[i]!, tops[j]!] : null);
+      this.addSegment(coords[2 * i]!, coords[2 * i + 1]!, coords[2 * j]!, coords[2 * j + 1]!, false, null, tops ? [tops[i]!, tops[j]!] : null, under);
     }
   }
 
@@ -265,6 +271,7 @@ export class Colliders {
             this.segSeen[id] = stamp;
             const s = this.segments[id]!;
             if (clear > 0 && s.height !== undefined && s.height <= clear) continue;
+            if (s.under && feet === undefined) continue;
             const dx = s.bx - s.ax, dy = s.by - s.ay;
             const len2 = dx * dx + dy * dy;
             const t = Math.min(Math.max(((x - s.ax) * dx + (y - s.ay) * dy) / len2, 0), 1);
@@ -289,7 +296,7 @@ export class Colliders {
             sy += ey;
             hits++;
             hard++;
-            if (s.climb || above <= BUILDING_CLIMB) wall = id;
+            if (!s.under && (s.climb || above <= BUILDING_CLIMB)) wall = id;
             moved = true;
           }
           const circs = this.circleGrid.get(k);
@@ -360,7 +367,7 @@ export class Colliders {
           if (this.segSeen[id] === stamp || this.deadSeg.has(id)) continue;
           this.segSeen[id] = stamp;
           const s = this.segments[id]!;
-          if (s.low) continue;
+          if (s.low || (s.under && (az === undefined || bz === undefined))) continue;
           const sx = s.bx - s.ax, sy = s.by - s.ay;
           const den = rx * sy - ry * sx;
           if (Math.abs(den) < 1e-12) continue;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Deck } from "../data/types";
-import { DeckAxis, deckGaps, deckPiers, parapetLines } from "./bridges";
+import { DeckAxis, deckGaps, deckPiers, parapetLines, pierRings, spanDeck } from "./bridges";
+import { Colliders } from "./collision";
 import { Decks, STEP_UP } from "./decks";
 import { createPlayer, stepPlayer } from "./player";
 import { loadRealWorld } from "./testing";
@@ -73,6 +74,33 @@ describe("sol des rues sous les ponts", () => {
     // Plus de place avant le tronçon (pile à 10 m trop proche) : après.
     const crowded = deckPiers({ ...over, sp: [11, 20] }, 40, 0.6);
     expect(crowded[1]).toBeCloseTo(26.9);
+  });
+});
+
+describe("piles et tabliers trop courts (D220)", () => {
+  it("une pile arrête qui passe dessous, pas qui roule ou marche sur le tablier, ni qui ne donne pas son altitude", () => {
+    const c = new Colliders();
+    const piers = pierRings(deck, () => 0);
+    expect(piers.length).toBe(1);
+    c.addRing(piers[0]!.ring, [piers[0]!.top, piers[0]!.top, piers[0]!.top, piers[0]!.top], true);
+    expect(c.resolve(20.8, 0, 0.3, 0, 0).hit).toBe(true);
+    expect(c.resolve(20.8, 0, 0.3, 0, 5).hit).toBe(false);
+    expect(c.resolve(20.8, 0, 0.3).hit).toBe(false);
+    // Tirs : arrêtés sous le pont, pas au-dessus.
+    expect(c.sight(15, 0, 1, 25, 0, 1)).toBe(false);
+    expect(c.sight(15, 0, 6, 25, 0, 6)).toBe(true);
+    // Pas de pile sous un tablier trop bas pour s'y tenir debout.
+    expect(pierRings(deck, () => 3).length).toBe(0);
+  });
+
+  it("un tablier sans parapet plus court que la voie qu'il enjambe est prolongé à plat aux deux bouts", () => {
+    const short: Deck = { id: 3, k: "rail", w: 5, p: [0, 0, 5, 6, 0, 6], st: "beam", sp: [], pc: [] };
+    const long = new DeckAxis(spanDeck(short));
+    expect(long.length).toBeCloseTo(13);
+    expect(long.at(0).x).toBeCloseTo(-3.5);
+    expect(long.at(0).z).toBe(5);
+    expect(long.at(long.length).z).toBe(6);
+    expect(spanDeck(deck)).toBe(deck);
   });
 });
 

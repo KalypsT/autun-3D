@@ -1582,4 +1582,5 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Sous les ponts, la route ne remonte plus en rampe ou en mur jusqu'au tablier : rue du Faubourg Saint-Andoche et boulevard Pauchard sous la voie ferrée, voie ferrée sous la rue de Paris, boulevard Pauchard sous le pont Saint-Andoche (sa dernière arche est maintenant ouverte), pont du carrefour de la Légion, et les bords des ponts sur l'Arroux.
 - Sous le pont-rail du boulevard Pauchard, la bosse de 4 m du relief (on montait dessus en marchant) est aplanie.
 - Au-dessus d'une autre voie, le pont porte lui-même sa chaussée et ses trottoirs ; la pile qui tombait dans la route du bas est déplacée.
-- Reste : marquages de la route de Saulieu qui débordent sur l'Arroux ; pile du pont du carrefour de la Légion toujours traversable.
+- Les piles des ponts sont maintenant des obstacles quand on passe dessous (à pied ou en véhicule), pas quand on est sur le pont (D220).
+- Le pont-rail du boulevard Pauchard, trop court dans les données (6 m), est prolongé à 13 m : la route passe à travers le remblai (D220).

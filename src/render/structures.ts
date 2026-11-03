@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Deck, HeightField, TileStructures } from "../data/types";
-import { DeckAxis, deckGaps, deckPiers } from "../core/bridges";
+import { DeckAxis, deckGaps, deckPiers, deckThickness, pierHalf } from "../core/bridges";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
 import { T } from "./style";
@@ -52,13 +52,13 @@ export function buildDeck(mb: MeshBuilder, d: Deck, ground: HeightField): void {
   const L = axis.length;
   if (L < 1) return;
   const hw = d.w / 2;
-  const thick = d.st === "light" ? 0.35 : d.k === "rail" ? 1.2 : 0.9;
+  const thick = deckThickness(d);
   const body = d.st === "stone" ? STONE : d.k === "rail" ? STEEL : d.st === "light" ? STEEL : CONCRETE;
   const top = d.k === "rail" ? BALLAST : d.st === "light" ? WOOD : C(T.ground[4]);
   // Au-dessus d'une autre voie, le sol des rues n'est pas posé (D93, `Decks.pave`) : le dessus d'un pont routier y porte lui-même
   // chaussée et trottoirs. Les piles sortent de la voie du bas.
   const gaps = deckGaps(d, L);
-  const half = d.st === "stone" ? 1.1 : 0.6;
+  const half = pierHalf(d);
   const piers = deckPiers(d, L, half);
   const inGap = (s: number): boolean => gaps.some(([a, b]) => s >= a && s <= b);
   const asphalt = C(T.ground[0]);

@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { decodeNavCell, type NavCell, type NavIndex } from "../data/nav";
+import { spanDeck } from "./bridges";
 import { NavGraph } from "./nav-graph";
 import { buildColliders } from "./world";
 import type { Colliders } from "./collision";
@@ -45,7 +46,7 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     for (const d of st.decks) {
       if (seen.has(d.id)) continue;
       seen.add(d.id);
-      structures.decks.push(d);
+      structures.decks.push(spanDeck(d));
     }
     for (const k of ["water", "streams", "weirs", "rails", "platforms", "crossings"] as const) (structures[k] as unknown[]).push(...(st[k] as unknown[]));
   }

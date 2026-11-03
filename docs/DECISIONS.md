@@ -4385,8 +4385,22 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 
 **Limites** :
 - Sous ces tronçons, la route du bas n'a plus son enrobé ni ses marquages dessinés sur quelques mètres : on voit le relief, teinté d'enrobé par les poids de sol.
-- Le pont sans nom du carrefour de la Légion n'a pas de voie du bas dans les données (parapets continus) : sa pile centrale reste à côté de la file piétonne, et elle n'est toujours pas un obstacle (D93).
-- Route de Saulieu : des marquages de la chaussée débordent sur l'eau à côté du pont (axe du pont plus court que la rue) ; non traité.
-- Boulevard Pauchard : le tablier OpenStreetMap (6 m) est plus court que le remblai ferroviaire ; le passage est dégagé, mais le remblai reste visible de part et d'autre.
+- Le pont sans nom du carrefour de la Légion n'a pas de voie du bas dans les données (parapets continus) : sa pile centrale reste à côté de la file piétonne, et elle n'est toujours pas un obstacle (D93). Traité en D220.
+- Boulevard Pauchard : le tablier OpenStreetMap (6 m) est plus court que le remblai ferroviaire ; le passage est dégagé, mais le remblai reste visible de part et d'autre. Traité en D220.
+- (Signalé ici à tort : les traits blancs sur l'Arroux près du pont de la route de Saulieu ne sont pas des marquages de chaussée mais les rides de l'eau, D93.)
 
 **Tests** (+6) : tronçons et piles (`decks.test.ts`) ; sol posé sous un pont qui enjambe une voie, sans sommet entre les deux niveaux, rien au niveau du tablier au-dessus de la route du bas, route du haut sur le tablier ailleurs (`ground.test.ts`).
+
+## 2026-11-03 — D220. Piles qu'on ne traverse plus, tabliers trop courts prolongés
+
+**Demande de l'utilisateur** : corriger les limites laissées par D219.
+
+**Décisions** :
+- **Piles en obstacle** (`pierRings`, `src/core/bridges.ts` ; `addTileColliders`) : chaque pile dessinée devient un contour d'obstacle dont le haut est le dessous du tablier (`topA`, comme les murs de bâtiment de D214), marqué `under` (`Segment.under`, `src/core/collision.ts`). Il arrête qui donne son altitude et passe dessous (joueur à pied, véhicule conduit, caméra, tirs et vues en 3D) ; d'en haut (sur le tablier, pieds au-dessus), il est franchi. **Sans altitude** (passants, gendarmes à pied, voitures de la circulation, recherche de place), il est ignoré : un mur infini, comme les bâtiments, les aurait arrêtés sur le pont. On ne l'escalade pas (on se retrouverait dans le tablier). Pas d'obstacle sous un tablier à moins de 1,5 m du relief. Dessin et obstacle partagent l'épaisseur du tablier et des piles (`deckThickness`, `pierHalf`).
+- **Tabliers trop courts** (`spanDeck`, appliqué au chargement des ouvrages, `loadTile`, et dans les données de test) : un tablier sans aucun parapet (il enjambe une voie sur toute sa longueur) plus court que ce que `build_structures.py` réserve à la voie croisée (sa largeur plus 4 m de chaque côté) est prolongé à plat dans l'axe, autant aux deux bouts. Pont-rail du boulevard Xavier Pauchard : 6 → 13 m ; le relief est corrigé sous toute la longueur (D219) et le passage s'ouvre à travers le remblai. La rue de Paris (15 → 19,4 m) suit la même règle ; les autres tabliers ne changent pas. À reporter dans `build_structures.py` à la prochaine régénération (le prolongement au chargement deviendrait alors sans effet).
+
+**Écarté** : un masque d'eau sous le sol des rues, essayé pour des « marquages sur l'Arroux » près du pont de la route de Saulieu : c'étaient les rides de l'eau (D93), dessinées exprès.
+
+**Limites** : les passants traversent toujours les piles (ils n'ont pas d'altitude dans `resolve`) ; leurs files contournent en général les ouvrages. La pile du carrefour de la Légion reste à sa place (aucune voie du bas dans les données pour la déplacer), mais on ne la traverse plus.
+
+**Tests** (+2, `decks.test.ts`) : une pile arrête qui passe dessous, pas qui est sur le tablier ni qui ne donne pas son altitude, arrête les tirs sous le pont et pas au-dessus, absente sous un tablier trop bas ; prolongement d'un tablier de 6 m à 13 m, à plat, et rien pour un tablier avec parapets.
