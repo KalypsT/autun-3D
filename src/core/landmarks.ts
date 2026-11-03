@@ -449,6 +449,22 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
   return k === "canopy" || k === "hidden";
 }
 
+/**
+ * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165…).
+ */
+export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon);
+}
+
+/**
+ * Toit praticable (D214) : celui que dessine le rendu générique, sauf les églises et chapelles (clochers, gabarits de monument) et les
+ * auvents (pas de murs). Les autres bâtiments gardent des murs infinis.
+ */
+export function walkableRoof(kind: BuildingKind | undefined): boolean {
+  return drawsGenericRoof(kind) && kind?.k !== "church" && kind?.k !== "chapel" && kind?.k !== "canopy" && !kind?.mon && !kind?.tower;
+}
+
 /** Ouverture d'un mur : de s0 à s1 le long du mur, du bas `zb` jusqu'à la naissance de l'arc `spring` (arc en plein cintre au-dessus). */
 export interface Opening {
   s0: number;

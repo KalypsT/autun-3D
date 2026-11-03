@@ -4266,3 +4266,28 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Résultat mesuré** : au plus 4 cm et 0,11 rad par image autour du relevé (chutes légère, forte, violente, trébuchement), contre 3,15 m et un quart de tour avant.
 
 **Tests** (+2) : relevé sans saut de place ni de cap pour quatre chocs ; gendarme qui se tourne sans sauter hors chute, cap exact pendant une chute.
+
+## 2026-11-03 — D214. Toits praticables, lot 1 : le socle (surfaces de toit, murs à hauteur)
+
+**Demande de l'utilisateur** : après un tremplin, la voiture s'arrêtait en plein vol au-dessus d'une maison, comme contre un mur. Plan validé : `docs/plans/toits.md` (5 lots). Ce lot pose le socle ; **rien ne change encore en jeu**.
+
+**Cause** : les collisions sont en 2D ; un bâtiment était le contour de son emprise, sans hauteur, donc un mur infini.
+
+**Mesures sur les données** (8 170 bâtiments, toutes les tuiles) :
+- Les pans de toit (`Building.faces`, après `reshapeBuilding`, comme au rendu) couvrent **99,97 %** de l'emprise ; aucun bâtiment n'est sans pans (567 ont des pans de secours, `q.fallback`, mais couvrants).
+- Un point à 40 cm à l'intérieur d'un mur : le pan y est en moyenne 26 cm plus haut que le mur (pente de 35° partant de l'égout) ; 99 % à moins de 70 cm. Les toits plats à acrotère (grandes surfaces) sont, comme voulu, jusqu'à 80 cm sous le haut du mur.
+- **Pentes** : tous les pans font au plus 35°, et la plupart exactement 35°. Avec le seuil de glissade de 30° prévu au plan, **presque tous les toits en pente feraient glisser** : à trancher avec l'utilisateur avant les lots 2 et 3.
+- Mur le plus bas : 2,26 m au-dessus du sol ; **780 bâtiments** ont au moins un mur de 2,5 m ou moins (côté bas d'une pente, annexes) : prises pour l'escalade du lot 3.
+- Bâtiments mitoyens : 11 061 côtés partagés exactement, seulement 171 laissent une fente de 10 à 80 cm (dans une tuile).
+- Seule **1 maison** est modélisée d'après photo (D140) : elle garde ses murs mesurés, infinis (son toit est celui de son modèle).
+
+**Décisions** :
+- **Toits** (`src/core/roofs.ts`) : `Roofs`, pans rangés dans une grille de 8 m, chargés et déchargés avec la tuile (tenus par `Colliders.roofs`, retirés par `removeTag`). `planeAt` / `surface` : le pan le plus haut sous le point, mais pas plus de **`ROOF_STEP` = 1,5 m** au-dessus de l'altitude de qui demande (comme les tabliers, D93) ; au-delà, on est dans la rue au pied du mur. Cours intérieures : pas de toit. `withRoofs(terrain, roofs)` : le relief avec les toits, pour le joueur et son véhicule seulement (lots 2 et 3) ; le relief nu ne change pas.
+- **Murs à hauteur** (`collision.ts`) : un segment de bâtiment porte l'altitude absolue de son haut à chaque bout (`topA`, `topB` ; un pignon suit le rampant). `resolve` reçoit en option l'**altitude des pieds** (`feet`) : un mur dont le haut est à moins de **`WALL_STEP` = 0,3 m** au-dessus est ignoré. **Sans `feet`, le mur reste infini** : circulation, passants, gendarmes et, pour l'instant, le joueur ne voient aucune différence.
+- **Bâtiments concernés** (`walkableRoof`, `landmarks.ts`) : ceux dont le rendu dessine le toit générique (`drawsGenericRoof`, condition sortie de `stylized.ts` pour qu'elle serve aux deux), sauf églises, chapelles, clochers (`tower`), cathédrale (`mon`) et auvents. 8 128 bâtiments sur 8 170 ; les autres gardent des murs infinis.
+- **Obstacles sur les toits** : cheminées (côté d'au moins 0,5 m, comme au rendu) et édicules (D170) deviennent de petits contours à leur hauteur. Raccords entre pans (`steps`, 3 dans toute la ville) : murs à hauteur entre 0,3 et 4 m de dénivelé.
+- `pointInRing` passe dans `src/core/ring.ts` (réexporté par `collision.ts`) pour éviter un cycle entre `collision.ts` et `roofs.ts`.
+
+**Coût** : 39 579 pans en mémoire pour toute la ville ; environ **0,2 µs** par recherche d'altitude ; 2 727 cheminées et 15 édicules en plus dans la grille des obstacles.
+
+**Tests** (+15, `roofs.test.ts`) : pans, rue au pied du mur, essieu plus haut sur le pan, cour intérieure, redan, déchargement ; murs à hauteur (pignon, `WALL_STEP`, obstacles bas inchangés, mur infini sans `feet`) ; sur la vraie ville : part des toits praticables, monuments infinis, couverture et identité des pans avec le rendu, continuité entre bord du toit et haut du mur, hauteur des murs, coût.

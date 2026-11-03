@@ -1550,3 +1550,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 **Relevé sans saut (3 novembre 2026)** (D213)
 - Après une chute ou une bousculade, un passant ne saute plus (jusqu'à 3 m d'un coup) en se relevant : il repart d'où il est tombé et rejoint son trottoir en marchant, en biais ; il se tourne vers son chemin au lieu de pivoter d'un coup ; il accélère au lieu de passer de l'arrêt à la marche rapide. Les gendarmes se tournent aussi sans à-coup.
+
+**Toits praticables, lot 1 : le socle (3 novembre 2026)** (D214, plan `docs/plans/toits.md`)
+- Rien ne change encore en jeu : les toits existent maintenant comme surfaces (les pans que l'on voit), et les murs des bâtiments ont leur vraie hauteur. Cheminées et édicules sont des obstacles sur les toits.
+- Les monuments (cathédrale, mairie, églises, maison d'après photo…) gardent des murs infranchissables.
+- Suivant : lot 2, la voiture survole les maisons et se pose sur les toits.

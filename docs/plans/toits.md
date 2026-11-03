@@ -1,6 +1,6 @@
 # Toits praticables : on survole, on se pose, on marche sur les toits (plan)
 
-**Avancement** : rien de fait. Rédigé le 3 novembre 2026 après D213, à la demande de l'utilisateur. Constat de départ : après un tremplin,
+**Avancement** : **lot 1 fait** (D214). Avant le lot 2 : trancher le seuil de glissade (tous les pans font au plus 35°, presque tous exactement 35°, voir D214). Rédigé le 3 novembre 2026 après D213, à la demande de l'utilisateur. Constat de départ : après un tremplin,
 la voiture passe au-dessus d'une maison, mais s'arrête en plein ciel comme contre un mur.
 
 Coordonnées et conventions habituelles : repère local du jeu (x vers l'est, y vers le nord, z altitude), en mètres.

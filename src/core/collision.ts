@@ -2,6 +2,9 @@
  * Collisions 2D (plan x, y) : segments (murs de bâtiments, murs OSM) et cercles (mobilier, troncs).
  * Logique pure : aucune dépendance au rendu. Une grille spatiale limite les tests aux voisins.
  */
+import { Roofs } from "./roofs";
+
+export { pointInRing } from "./ring";
 
 export interface Segment {
   ax: number;
@@ -14,7 +17,16 @@ export interface Segment {
   height?: number;
   /** On peut l'escalader (grille, muret, haie basse). */
   climb?: boolean;
+  /**
+   * Mur de bâtiment (D214) : altitude absolue de son haut en A et en B (pignon : le haut suit le rampant). Qui donne l'altitude de ses
+   * pieds (`resolve`, `feet`) passe par-dessus quand ils sont à moins de `WALL_STEP` sous ce haut ; sans elle, le mur reste infini.
+   */
+  topA?: number;
+  topB?: number;
 }
+
+/** Hauteur (m) dont les pieds peuvent être sous le haut d'un mur de bâtiment et passer quand même : le bord d'un toit, une petite marche. */
+export const WALL_STEP = 0.3;
 
 /** Hauteur et escalade d'un obstacle franchissable. */
 export interface Top {
@@ -73,6 +85,8 @@ export class Colliders {
   private readonly freeCircle: number[] = [];
   /** Étiquette appliquée aux obstacles ajoutés ensuite. */
   currentTag: string | null = null;
+  /** Pans de toit (D214), chargés et déchargés avec les obstacles de leur tuile. */
+  readonly roofs = new Roofs();
   /** Mobilier arraché depuis le dernier appel de `takeBroken` (le jeu le lit à chaque image). */
   private readonly broken: BrokenEvent[] = [];
   private readonly segGrid = new Map<number, number[]>();
@@ -81,12 +95,16 @@ export class Colliders {
   private segSeen: number[] = [];
   private circleSeen: number[] = [];
 
-  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null): void {
+  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null, tops: readonly [number, number] | null = null): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
     const rec: Segment = low ? { ax, ay, bx, by, low } : { ax, ay, bx, by };
     if (top) {
       rec.height = top.height;
       if (top.climb) rec.climb = true;
+    }
+    if (tops) {
+      rec.topA = tops[0];
+      rec.topB = tops[1];
     }
     const reuse = this.freeSeg.pop();
     let id: number;
@@ -148,6 +166,7 @@ export class Colliders {
 
   /** Retire tous les obstacles ajoutés sous cette étiquette. */
   removeTag(tag: string): void {
+    this.roofs.removeTag(tag);
     const t = this.tagged.get(tag);
     if (!t) return;
     for (const id of t.segs) {
@@ -201,12 +220,15 @@ export class Colliders {
     return { segments: this.segments.length - this.freeSeg.length, circles: this.circles.length - this.freeCircle.length };
   }
 
-  /** Ajoute le contour d'un anneau fermé (x0, y0, x1, y1, …) comme suite de segments. */
-  addRing(coords: readonly number[]): void {
+  /**
+   * Ajoute le contour d'un anneau fermé (x0, y0, x1, y1, …) comme suite de segments. `tops` : altitude absolue du haut du mur à chaque
+   * sommet (mur de bâtiment, D214) ; absent : mur infini.
+   */
+  addRing(coords: readonly number[], tops: readonly number[] | null = null): void {
     const n = coords.length / 2;
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
-      this.addSegment(coords[2 * i]!, coords[2 * i + 1]!, coords[2 * j]!, coords[2 * j + 1]!);
+      this.addSegment(coords[2 * i]!, coords[2 * i + 1]!, coords[2 * j]!, coords[2 * j + 1]!, false, null, tops ? [tops[i]!, tops[j]!] : null);
     }
   }
 
@@ -217,14 +239,15 @@ export class Colliders {
 
   /**
    * Repousse un cercle (centre x, y ; rayon r) hors de tous les obstacles voisins. `clear` : hauteur des pieds au-dessus du sol (m), en saut ;
-   * les murs, clôtures et haies moins hauts sont ignorés.
+   * les murs, clôtures et haies moins hauts sont ignorés. `feet` : altitude absolue des pieds (D214) ; les murs de bâtiment dont le haut
+   * est à moins de `WALL_STEP` au-dessus sont ignorés (on passe d'un toit à l'autre, on survole une maison). Sans elle, ils sont infinis.
    */
-  resolve(x: number, y: number, r: number, clear = 0): Resolution {
-    return this.resolveInto({ x: 0, y: 0, nx: 0, ny: 0, hit: false }, x, y, r, clear);
+  resolve(x: number, y: number, r: number, clear = 0, feet?: number): Resolution {
+    return this.resolveInto({ x: 0, y: 0, nx: 0, ny: 0, hit: false }, x, y, r, clear, feet);
   }
 
   /** Comme `resolve`, sans allouer : écrit le résultat dans `out` (réutilisable) et le renvoie. Pour les foules, appelée à chaque image. */
-  resolveInto(out: Resolution, x: number, y: number, r: number, clear = 0): Resolution {
+  resolveInto(out: Resolution, x: number, y: number, r: number, clear = 0, feet?: number): Resolution {
     let sx = 0, sy = 0, hits = 0, wall = -1, brk = -1, hard = 0;
     for (let pass = 0; pass < 4; pass++) {
       let moved = false;
@@ -243,6 +266,7 @@ export class Colliders {
             const dx = s.bx - s.ax, dy = s.by - s.ay;
             const len2 = dx * dx + dy * dy;
             const t = Math.min(Math.max(((x - s.ax) * dx + (y - s.ay) * dy) / len2, 0), 1);
+            if (feet !== undefined && s.topA !== undefined && feet >= s.topA + t * (s.topB! - s.topA) - WALL_STEP) continue;
             const cx = s.ax + t * dx, cy = s.ay + t * dy;
             let ex = x - cx, ey = y - cy;
             const d = Math.hypot(ex, ey);
@@ -349,15 +373,4 @@ export class Colliders {
     }
     return best;
   }
-}
-
-/** Point dans un polygone (règle pair-impair), anneaux à plat : utile pour les tests et le placement. */
-export function pointInRing(x: number, y: number, ring: readonly number[]): boolean {
-  let inside = false;
-  const n = ring.length / 2;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = ring[2 * i]!, yi = ring[2 * i + 1]!, xj = ring[2 * j]!, yj = ring[2 * j + 1]!;
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
 }
