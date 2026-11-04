@@ -248,6 +248,7 @@ régénération, et `build_streetscape.py` reproduit localement le bon résultat
   Le contour BD TOPO ne bloque plus que par le socle (on monte par les marches). Hauteur mesurée : 7,0 m.
 - **Attend des photos** : le monument aux morts (une photo de face, de près : socle, statue, inscriptions, marches) ; sans elle, seulement
   un socle et une silhouette ailée lus de loin sur les photos 2 et 15, à la hauteur mesurée (7,9 m) : je propose d'attendre la photo.
+  **Fait en D227** (cinq photos de l'utilisateur, 4 novembre 2026).
   Le tronc et le pas des tilleuls : une photo sous les arbres les fixerait ; sans elle, troncs à 2,8 m, pas de 4 m (à écrire dans les
   limites).
 - **Étapes et fichiers** : `manual.json` (`monuments`), `build_monuments.py`, `src/render/monuments.ts`, `src/data/types.ts`, tests ;

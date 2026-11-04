@@ -5,7 +5,8 @@ Usage : python3 tools/data/build_monuments_nav.py     (après build_monuments.py
 Entrées : sites `gate` de public/data/kinds (modèle `gm`, D137), public/data/nav/<super-tuile>.json.
 Sortie : les super-tuiles de navigation qui contiennent une porte, le temple de Janus ou un commerce vu sur une photo, et leurs entrées dans nav/index.json ; rien d'autre.
 
-Commerces vus sur une photo (D141) : leur point d'intérêt « commerce », que build_nav.py ne connaît pas (voir `shop_pois`).
+Commerces vus sur une photo (D141) : leur point d'intérêt « commerce », que build_nav.py ne connaît pas (voir `shop_pois`). Monument aux morts
+(D227) : son point « monument » est sorti de l'esplanade (voir `memorial_pois`).
 
 Temple de Janus (D139) : aucun chemin n'y entrait ; une boucle passe par une arche du mur ouest, le milieu de la cella et l'arche du mur sud,
 raccordée aux chemins voisins (voir `janus_paths` ; réversible, comme build_theatre_nav.py).
@@ -282,6 +283,45 @@ def church_pois(index):
     return done
 
 
+def memorial_pois(index):
+    """Point d'intérêt « monument » (type 8) du monument aux morts de la place du Champ de Mars (D227) : celui d'OpenStreetMap tombait au milieu du
+    monument, dans l'esplanade devenue obstacle. Il est posé à 1,4 m devant le degré du bas, dans l'axe, cap vers le monument, avec la distance à la
+    file piétonne la plus proche ; tout point de ce type à moins de 1 m de l'esplanade est retiré. Une deuxième passe ne change rien. Rend le nombre
+    de super-tuiles réécrites."""
+    from shapely.geometry import LineString, Point, Polygon
+    done = 0
+    for p in sorted(KINDS.glob("*_*.json")):
+        for s in json.loads(p.read_text())["sites"]:
+            if s.get("t") != "memorial":
+                continue
+            (cx, cy), a = s["c"], s["a"]
+            ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+            d, w = s["steps"][0][0] / 2, s["steps"][0][1] / 2
+            poly = Polygon([(cx + ux * i * d + vx * j * w, cy + uy * i * d + vy * j * w) for i, j in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
+            x, y = round(cx + ux * (d + 1.4), 1), round(cy + uy * (d + 1.4), 1)
+            for cid in sorted({cell_of(x, y, index), cell_of(cx, cy, index)}):
+                path = NAV / f"{cid}.json"
+                text = path.read_text()
+                doc = json.loads(text)
+                P = doc["poi"]
+                keep = [P[i:i + 5] for i in range(0, len(P), 5) if not (P[i] == 8 and poly.distance(Point(P[i + 1], P[i + 2])) < 1.0)]
+                if cid == cell_of(x, y, index):
+                    G = Graph(doc["ped"])
+                    lines = [LineString(q["pts"]) for q in G.edges if q["attr"][0] in (0, 5, 7, 9) and len(q["pts"]) >= 2]
+                    dist = min(ln.distance(Point(x, y)) for ln in lines)
+                    keep = [q for q in keep if not (q[0] == 8 and math.hypot(q[1] - x, q[2] - y) < 0.3)]
+                    keep.append([8, x, y, round(math.atan2(cx - x, cy - y), 2), min(255, round(dist * 10))])
+                doc["poi"] = [v for q in keep for v in q]
+                new = json.dumps(doc, separators=(",", ":"))
+                if new != text:
+                    path.write_text(new)
+                    index["cells"] = [dict(q, bytes=len(new), poi=len(doc["poi"]) // 5) if q["id"] == cid else q for q in index["cells"]]
+                    (NAV / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+                    done += 1
+            print(f"{s['n']} : point « monument » en ({x}, {y})")
+    return done
+
+
 def write(cid, doc, G, index, text_before):
     doc["ped"] = G.dump()
     text = json.dumps(doc, separators=(",", ":"))
@@ -298,6 +338,7 @@ def main():
     shop_pois(index)
     school_pois(index)
     church_pois(index)
+    memorial_pois(index)
     s = janus_site()
     if s:
         cid = cell_of(*s["o"], index)

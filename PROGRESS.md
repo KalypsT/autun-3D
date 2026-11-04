@@ -1247,7 +1247,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les six blocs de tilleuls taillés de la promenade (rue Demetz) sont dessinés en rideaux : couronne à dessus chanfreiné de 6,5 à 6,8 m (LiDAR) sur deux files de troncs nus, à la place des 29 arbres ronds génériques ; leurs troncs (une soixantaine) restent des obstacles.
 - Le kiosque à musique n'est plus une maison de trois niveaux : octogone de fonte sur socle de pierre à marches, huit colonnes, garde-corps, lambrequins, toit à huit pans et épi, d'après la photo 8 ; maison masquée, silhouette lointaine octogonale.
 - Nouvelle étape `build_square.py` (rien d'autre que `kinds` et `lod` ne change) ; +984 triangles, aucun appel de dessin de plus ; 7 tests de plus ; navigation de `main` gardée (aucune file de passants à moins de 55 cm d'un tronc).
-- Limites : monument aux morts non refait (pas de photo de près) ; rideau de la rue de Lattre non traité ; hauteur des troncs (3 m), pas (4 m) et détail du kiosque lus sur photo à un mètre près ; on ne monte pas sur le kiosque.
+- Limites : monument aux morts non refait (pas de photo de près ; fait en D227) ; rideau de la rue de Lattre non traité ; hauteur des troncs (3 m), pas (4 m) et détail du kiosque lus sur photo à un mètre près ; on ne monte pas sur le kiosque.
 - À essayer : `?cam=-6,-88,1.7,-19,-72,4&h=14` (comme ta photo 8), `?cam=-36,-62,2.5,-19,-72,4&h=14`, `?cam=-10,-50,95,-10,-70,0&h=14` (de dessus), puis `&h=23`.
 
 ![Comme ta photo 8, avant](docs/captures/d155-kiosque-photo8-avant.jpg)
@@ -1629,3 +1629,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![De face](docs/captures/d226-theatre-face.jpg)
 ![L'arrière](docs/captures/d226-theatre-arriere.jpg)
+
+**Le monument aux morts (4 novembre 2026)** (D227)
+- Le monument de la place du Champ de Mars d'après tes cinq photos : esplanade à deux degrés, grand socle couvert de plaques de noms, bandeau « AUTUN À SES ENFANTS MORTS POUR LA PATRIE 1914-1918 », guirlande, fût à quatre niches (femme et enfant devant et derrière, femme voilée sur les côtés), génie ailé portant un homme.
+- Mesuré au LiDAR : 8,6 m au-dessus de l'esplanade. Face avant au nord-est, dans l'axe de l'allée entre les tilleuls (là où ta photo de dos est prise).
+- La bosse du relief sous le monument est aplanie ; l'« arbre » que le relevé y voyait (la statue) a disparu.
+- On ne monte pas sur l'esplanade (obstacle, comme le kiosque). La batte du monument est maintenant devant les marches, et les passants s'arrêtent devant.
+
+![De face](docs/captures/d227-monument-face.jpg)
+![De dos](docs/captures/d227-monument-dos.jpg)

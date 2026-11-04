@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -314,9 +314,12 @@ export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record
   const islands = (kinds?.sites ?? []).filter((s): s is RoundaboutSite => s.t === "roundabout");
   // Rideaux de tilleuls (D155) : le modèle dessine leurs couronnes et leurs troncs (obstacles : `landmarkCircles`).
   const curtains = (kinds?.sites ?? []).filter((s): s is CurtainSite => s.t === "curtain");
-  if (!basins.length && !theatres.length && !temples.length && !pyramids.length && !islands.length && !curtains.length) return [...trees];
+  // Monument aux morts (D227) : le relevé avait pris le génie ailé pour un arbre de 7,9 m.
+  const memorials = (kinds?.sites ?? []).filter((s): s is MemorialSite => s.t === "memorial");
+  if (!basins.length && !theatres.length && !temples.length && !pyramids.length && !islands.length && !curtains.length && !memorials.length) return [...trees];
   return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
-    && temples.every((t) => !inJanus(t, x, y, 1)) && pyramids.every((p) => !inCouhard(p, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3)));
+    && temples.every((t) => !inJanus(t, x, y, 1)) && pyramids.every((p) => !inCouhard(p, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3))
+    && memorials.every((s) => !inMemorial(s, x, y, 1)));
 }
 
 /** Troncs d'un rideau de tilleuls (D155) : files de troncs tous les `pitch` m le long du grand côté. */
@@ -339,6 +342,20 @@ export function bandstandRing(s: BandstandSite, r = s.r): [number, number][] {
   return Array.from({ length: s.nv }, (_, i) => [s.c[0] + r * Math.cos(s.ph + (2 * Math.PI * i) / s.nv), s.c[1] + r * Math.sin(s.ph + (2 * Math.PI * i) / s.nv)]);
 }
 
+/** Sur l'esplanade du monument aux morts (degré du bas élargi de `margin`, D227) ? */
+export function inMemorial(s: MemorialSite, x: number, y: number, margin = 0): boolean {
+  const dx = x - s.c[0], dy = y - s.c[1];
+  return Math.abs(dx * Math.cos(s.a) + dy * Math.sin(s.a)) < s.steps[0]![0] / 2 + margin && Math.abs(-dx * Math.sin(s.a) + dy * Math.cos(s.a)) < s.steps[0]![1] / 2 + margin;
+}
+
+/** Contour du degré du bas de l'esplanade du monument aux morts, élargi de `margin` (D227). */
+export function memorialRing(s: MemorialSite, margin = 0): [number, number][] {
+  const f = frameOf(s.c[0], s.c[1], s.a, 1, 1);
+  const [d, w] = s.steps[0]!;
+  const hs = d / 2 + margin, ht = w / 2 + margin;
+  return [at(f, -hs, -ht), at(f, hs, -ht), at(f, hs, ht), at(f, -hs, ht)];
+}
+
 /** Rayon du tronc de l'arbre d'un îlot de rond-point (obstacle). */
 export const TRUNK_R = 0.45;
 
@@ -349,7 +366,8 @@ export function inRoundabout(s: RoundaboutSite, x: number, y: number, margin = 0
 
 /** Mobilier de la tuile, sauf celui qu'un monument remplace (la fontaine Saint-Lazare, D131) ou retire (lampadaire d'un îlot, D142). */
 export function furnitureOutsideMonuments(kinds: { sites: Site[] } | undefined, furniture: readonly Furniture[]): Furniture[] {
-  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [s.id] : s.t === "roundabout" ? s.drop : [])));
+  // Monument aux morts d'après photos (D227) : il remplace le pavé générique du point OpenStreetMap.
+  const gone = new Set((kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" || s.t === "memorial" ? [s.id] : s.t === "roundabout" ? s.drop : [])));
   return gone.size ? furniture.filter((f) => !gone.has(f.id)) : [...furniture];
 }
 
@@ -626,6 +644,8 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     if (s.t === "couhard") out.push(couhardFoot(s, 0, 32).flat());
     // Kiosque à musique (D155) : le contour BD TOPO (le toit déborde du socle de 50 cm), comme avant ; on n'y monte pas.
     if (s.t === "bandstand") out.push(bandstandRing(s).flat());
+    // Monument aux morts (D227) : le degré du bas de l'esplanade ; on n'y monte pas.
+    if (s.t === "memorial") out.push(memorialRing(s).flat());
     if (s.t !== "gate") continue;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;

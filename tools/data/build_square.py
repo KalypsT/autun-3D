@@ -1,17 +1,19 @@
-"""Place du Champ de Mars (D155) : tilleuls taillés en rideau et kiosque à musique, mesurés au LiDAR.
+"""Place du Champ de Mars (D155) : tilleuls taillés en rideau et kiosque à musique, mesurés au LiDAR ; monument aux morts (D227).
 
 Usage : python3 tools/data/build_square.py      (après build_kinds.py, qui réécrit public/data/kinds, et build_monuments.py ; puis relancer celle-ci)
 Entrées : `square` de tools/data/manual.json (points des rideaux et photos), tiles/*.json (bâtiments, arbres), modèles de surface et de terrain LiDAR
           HD de l'IGN (WMS, 0,5 m, gardés dans .cache/shared/raw/monuments).
 Sorties : sites `curtain` (un par rideau) et `bandstand` (kiosque) dans kinds/<tuile>.json ; bâtiment BD TOPO du kiosque masqué (`hidden`) et sa silhouette
-          lointaine remplacée par un octogone. Rien d'autre. Une deuxième passe ne change rien.
+          lointaine remplacée par un octogone ; site `memorial` (monument aux morts, D227) et relief fin aplani sous son esplanade
+          (terrain/<tuile>.bin). Rien d'autre. Une deuxième passe ne change rien.
 
 Mesures :
 - rideau : composante connexe des cellules à plus de 2,5 m au-dessus du terrain (hors bâtiments BD TOPO) qui contient le point donné ; rectangle
   minimal orienté ; haut = médiane de la hauteur sur les cellules à plus de 1,5 m du bord du rectangle ; sol = médiane du terrain ; remplissage
   = part du rectangle couverte (contrôle) ;
 - kiosque : contour BD TOPO (octogone) ; sol du plancher = point le plus haut du terrain sur le contour ; sommet = maximum du modèle de surface
-  sur le contour ; côté bas = direction du point le plus bas du terrain sur le contour (côté des marches).
+  sur le contour ; côté bas = direction du point le plus bas du terrain sur le contour (côté des marches) ;
+- monument aux morts : voir `measure_memorial` ; orientation et proportions lues sur les photos (`memorial` de manual.json).
 Le LiDAR ne voit pas ce qui est sous les couronnes : hauteur des troncs et pas des arbres viennent de `manual.json` (photos).
 """
 
@@ -117,6 +119,76 @@ def measure_bandstand(spec, tiles):
                  "steps": spec["steps"]}
 
 
+def measure_memorial(spec, tiles):
+    """Monument aux morts (D227) : le point OpenStreetMap ; plan de la place ajusté sur le relief à 3,8 – 5,5 m (le MNT contient une bosse de 0,85 m
+    sous le monument : le LiDAR a classé le pied de l'esplanade en sol) ; centre = barycentre des cellules du modèle de surface à plus de 2 m au-dessus
+    du plan, à moins de 3 m du point ; sommet = maximum du modèle de surface. Esplanade posée au plus haut du plan sur le contour du degré du bas."""
+    tid, f = next((tid, f) for tid, t in tiles.items() for f in t.get("furniture", []) if f["id"] == spec["osm"])
+    x, y = f["x"], f["y"]
+    W = 12
+    x0, y0 = math.floor(x - W), math.floor(y - W)
+    mns, mnt = Raster("MNS", "square_memorial", x0, y0, x0 + 2 * W, y0 + 2 * W), Raster("MNT", "square_memorial", x0, y0, x0 + 2 * W, y0 + 2 * W)
+    ring = [(x + r * math.cos(th), y + r * math.sin(th)) for r in np.arange(3.8, 5.51, 0.25) for th in np.arange(0, 2 * math.pi, math.pi / 24)]
+    A = np.array([[px - x, py - y, 1.0] for px, py in ring])
+    zr = np.array([mnt(px, py) for px, py in ring])
+    plane, *_ = np.linalg.lstsq(A, zr, rcond=None)
+    res = float(np.percentile(np.abs(A @ plane - zr), 90))
+    pz = lambda px, py: float(plane[0] * (px - x) + plane[1] * (py - y) + plane[2])
+    cells = [(x + dx, y + dy) for dx in np.arange(-3, 3.01, 0.25) for dy in np.arange(-3, 3.01, 0.25) if dx * dx + dy * dy <= 9]
+    hi = [(px, py) for px, py in cells if mns(px, py) - pz(px, py) > 2]
+    cx, cy = float(np.mean([q[0] for q in hi])), float(np.mean([q[1] for q in hi]))
+    top = max(mns(px, py) for px, py in cells)
+    a = math.radians(spec["front"])
+    ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+    ls, lt, _ = spec["steps"][0]
+    edge = [(cx + ux * s + vx * t, cy + uy * s + vy * t) for s in np.linspace(-ls / 2, ls / 2, 9) for t in (-lt / 2, lt / 2)]
+    edge += [(cx + ux * s + vx * t, cy + uy * s + vy * t) for t in np.linspace(-lt / 2, lt / 2, 9) for s in (-ls / 2, ls / 2)]
+    g = max(pz(px, py) for px, py in edge)
+    site = {"t": "memorial", "n": spec["name"], "id": spec["osm"], "c": [round(cx, 2), round(cy, 2)], "a": round(a, 4), "g": round(g, 2),
+            "top": round(top, 2), "steps": spec["steps"], "socle": spec["socle"], "shaft": spec["shaft"]}
+    return tid, site, (x, y, [float(v) for v in plane]), res
+
+
+MEMORIAL_MARGIN, MEMORIAL_BLEND = 0.6, 2.5
+
+
+def memorial_terrain(site, plane):
+    """Relief fin (terrain/<tuile>.bin) : sous l'esplanade (élargie de 60 cm), le relief devient le plan de la place ; de là jusqu'à 2,5 m plus loin, il
+    est écrêté sous une pente de 15 % depuis ce plan (la bosse du MNT débordait de l'esplanade). Un `min` : une deuxième passe ne change rien. Rend
+    les blocs réécrits."""
+    px, py, (pa, pb, pk) = plane
+    cx, cy = site["c"]
+    a = site["a"]
+    ux, uy = math.cos(a), math.sin(a)
+    hs, ht = site["steps"][0][0] / 2 + MEMORIAL_MARGIN, site["steps"][0][1] / 2 + MEMORIAL_MARGIN
+    reach = math.hypot(hs, ht) + MEMORIAL_BLEND + 1
+    out = []
+    for path in sorted((c.OUT / "terrain").glob("*_*.bin")):
+        buf = path.read_bytes()
+        base, bx0, by1, n = (float(v) for v in np.frombuffer(buf[:16], dtype="<f4"))
+        n = int(n)
+        if not (bx0 - reach < cx < bx0 + n + reach and by1 - n - reach < cy < by1 + reach):
+            continue
+        cm = np.frombuffer(buf[16:], dtype="<u2").reshape(n, n).astype(np.int64)
+        new = cm.copy()
+        for row in range(max(0, int(by1 - cy - reach) - 1), min(n, int(by1 - cy + reach) + 2)):
+            for col in range(max(0, int(cx - bx0 - reach) - 1), min(n, int(cx - bx0 + reach) + 2)):
+                x, y = bx0 + col + 0.5, by1 - row - 0.5
+                s, t = (x - cx) * ux + (y - cy) * uy, -(x - cx) * uy + (y - cy) * ux
+                d = math.hypot(max(0.0, abs(s) - hs), max(0.0, abs(t) - ht))
+                if d > MEMORIAL_BLEND:
+                    continue
+                zp = pa * (x - px) + pb * (y - py) + pk
+                z0 = base + cm[row, col] * 0.01
+                new[row, col] = round((min(z0, zp + 0.15 * d) - base) * 100)
+        if (new < 0).any():
+            raise SystemExit(f"monument aux morts : relief sous la base du bloc {path.stem}")
+        if (new != cm).any():
+            path.write_bytes(buf[:16] + new.astype("<u2").tobytes())
+            out.append(path.stem)
+    return out
+
+
 def write(tid, site, key, hide=None):
     kp = KINDS / f"{tid}.json"
     k = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
@@ -154,7 +226,13 @@ def main():
     a = [(bs["c"][0] + bs["r"] * math.cos(bs["ph"] + 2 * math.pi * i / bs["nv"]), bs["c"][1] + bs["r"] * math.sin(bs["ph"] + 2 * math.pi * i / bs["nv"])) for i in range(bs["nv"])]
     if replace_lod(tid, bs["id"], [([[round(x, 1), round(y, 1)] for x, y in a], bs["hi"] + bs["eave"], bs["top"])]):
         print("  silhouette lointaine du kiosque remplacée")
-    print(f"{len(spec['curtains'])} rideaux et un kiosque ; {changed} fichier(s) de types réécrit(s)")
+    tid, ms, plane, res = measure_memorial(spec["memorial"], tiles)
+    print(f"  monument aux morts : centre ({ms['c'][0]} ; {ms['c'][1]}), esplanade posée à {ms['g']} m, sommet à {ms['top']} m"
+          f" ({ms['top'] - ms['g']:.2f} m au-dessus), plan de la place à ±{res:.2f} m")
+    changed += write(tid, ms, 1)
+    blocks = memorial_terrain(ms, plane)
+    print(f"  relief aplani sous l'esplanade : {', '.join(blocks) or 'déjà fait'}")
+    print(f"{len(spec['curtains'])} rideaux, un kiosque et le monument aux morts ; {changed} fichier(s) de types réécrit(s)")
 
 
 if __name__ == "__main__":

@@ -4520,3 +4520,36 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Les lucarnes et les pots-à-feu](captures/d226-theatre-detail.jpg)
 ![L'arrière : lyre et escalier de secours](captures/d226-theatre-arriere.jpg)
 ![Vue haute](captures/d226-theatre-haut.jpg)
+
+## 2026-11-04 — D227. Le monument aux morts de la place du Champ de Mars
+
+**Demande de l'utilisateur** : intégrer correctement le monument aux morts, d'après cinq photos (deux de face, une de trois quarts, une de dos depuis l'allée des tilleuls, une de dos au crépuscule). Il restait le pavé générique de 0,7 × 0,5 × 1,9 m de `props.ts` (D155, faute de photo).
+
+**Mesures** (`measure_memorial`, `tools/data/build_square.py`, site `memorial` de `kinds/26_35.json`) :
+- **Centre** (29,8 ; −52,7), à 0,7 m du point OpenStreetMap 943859188 : barycentre des cellules du modèle de surface LiDAR à plus de 2 m au-dessus de la place.
+- **Place** : plan ajusté sur le relief à 3,8 – 5,5 m du point (écart de 11 cm au 90ᵉ centile) ; **esplanade** posée au plus haut de ce plan sous le contour du degré du bas (2,44 m) ; **sommet** du génie ailé 8,57 m au-dessus (le plan disait 7,9 m : c'était au-dessus du MNT, qui contient une bosse).
+- **Relief** : le MNT contenait une bosse de 0,85 m sous le monument (le pied de l'esplanade classé en sol), qui aurait percé les degrés. Le relief fin (`terrain/26_35.bin`) devient le plan de la place sous l'esplanade élargie de 60 cm, et il est écrêté sous une pente de 15 % sur 2,5 m autour (un `min` : une deuxième passe ne change rien).
+- **Orientation** : face avant au nord-est, au cap des rideaux de tilleuls est (37,8°, en radians dans `a`). Les photos de face montrent les deux rideaux derrière le monument ; la photo de dos est prise dans l'allée entre eux, et l'axe de cette allée passe à moins de 1,5 m du centre mesuré (test).
+
+**Modèle** (`buildMemorial`, `src/render/square.ts`), proportions lues sur les photos de face et recalées sur la hauteur mesurée (à 30 cm près ; valeurs dans `memorial` de `manual.json`) :
+- **Esplanade** à deux degrés de 20 cm (5,2 × 4,8 m puis 4,4 × 4,0 m), plaque sur pied devant, à droite.
+- **Socle** de 2,9 × 3,3 × 1,8 m : plinthe, corniche ; **plaques de noms** sur les quatre faces (six panneaux sur les faces avant et arrière, comme sur les photos ; noms en lignes gravées) ; bandeau « AUTUN À SES ENFANTS MORTS POUR LA PATRIE 1914-1918 » sur la face avant (mots en aplat).
+- **Guirlande** au pied du fût (glacis et boutons de feuillage), socle du fût.
+- **Fût** à quatre piliers d'angle et **quatre niches cintrées** (intrados, fond plus sombre) : femme et enfant devant et derrière, femme voilée sur les côtés, en personnages drapés simplifiés.
+- **Chapiteau** évasé, plinthe, puis le **génie ailé** portant un homme contre lui, grandes ailes repliées jusqu'au sommet mesuré.
+- Calcaire blanc-crème ; 1 672 triangles, dans le maillage plein de la tuile (aucun appel de dessin de plus).
+
+**Jeu** :
+- Le pavé générique (mobilier OpenStreetMap) n'est plus dessiné ni obstacle ; l'« arbre » de 7,9 m que le relevé avait posé au milieu (c'était la statue) non plus.
+- **L'esplanade est un obstacle** (contour du degré du bas), comme le kiosque. **Écart avec ce qui était prévu** : on ne monte pas sur les marches. Un tablier invisible les aurait rendues praticables, mais le sol dessiné de la place suit les tabliers ; avec des degrés de 20 cm, il aurait formé des rampes autour de l'esplanade. À reprendre si l'on veut y monter.
+- La cache d'arme « Monument aux morts » passe de (30,8 ; −48,0), à 1,2 m de l'esplanade, à (34,5 ; −49,0), devant les marches (plus de 3 m, sur la file piétonne).
+- Passants : le point d'intérêt « monument » d'OpenStreetMap était au milieu du monument ; il est posé à 1,4 m devant le degré du bas, cap vers le monument (`memorial_pois`, `build_monuments_nav.py`, appliqué seul : relancer tout le script réécrirait aussi des points « commerce » d'autres super-tuiles qui ne sont plus à jour sur `main`, hors de ce lot). Aucune file piétonne ne passe sur l'esplanade (test).
+
+**Limites** : personnages et statue simplifiés (silhouettes drapées, pas de visages ni de plis) ; textes en aplat, illisibles ; nombre de panneaux des faces latérales et détail de la guirlande lus sur une seule photo de biais ; pas de massifs de fleurs ni d'éclairage la nuit.
+
+**Tests** (+6, `square.test.ts`) : mesure et orientation (allée des tilleuls) ; pavé générique remplacé et esplanade obstacle ; arbre parasite retiré ; relief sous le degré du bas ; caches et files piétonnes hors de l'esplanade ; point d'intérêt devant les marches ; géométrie finie, sommet au sommet mesuré, moins de 3 000 triangles.
+
+![De face, comme la photo 1](captures/d227-monument-face.jpg)
+![De dos, depuis l'allée des tilleuls](captures/d227-monument-dos.jpg)
+![De côté](captures/d227-monument-cote.jpg)
+![Le génie ailé](captures/d227-monument-statue.jpg)

@@ -16,7 +16,7 @@ import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 import { buildCouhard } from "./couhard";
 import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
-import { buildBandstand, buildCurtain } from "./square";
+import { buildBandstand, buildCurtain, buildMemorial } from "./square";
 import { buildStore, lidlCartShelter } from "./store";
 import { buildTheatre } from "./theatre";
 import type { SignAtlas } from "./sign-atlas";
@@ -995,6 +995,7 @@ export function buildLandmarks(
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain, sinks.leaves);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);
+    else if (s.t === "memorial") buildMemorial(sinks.solid, s, terrain);
     else if (s.t === "passage") buildPassage(sinks, s, terrain);
     else if (s.t === "pitch" && s.hoops) buildHoops(sinks.solid, s.hoops, terrain);
   }
