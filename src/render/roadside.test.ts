@@ -1,0 +1,180 @@
+import { describe, expect, it } from "vitest";
+import { loadRealWorld } from "../core/testing";
+import { at, bowlingBlocks, bowlingFrame, bowlingHallWalls, bowlingRings, drawsGenericRoof, isOpen, mcdoFrame, mcdoRings, mcdoVerandaOutline, walkableRoof } from "../core/landmarks";
+import { pointInRing } from "../core/collision";
+import { buildColliders } from "../core/world";
+import { buildBowling, buildMcdo } from "./roadside";
+import { MeshBuilder, UvMeshBuilder } from "./geometry";
+import { replacesFacade, type LandmarkSinks } from "./landmarks";
+import type { SignAtlas } from "./sign-atlas";
+
+const MCDO = "BATIMENT0000000348847408", BOWL = "BATIMENT0000000348847403", HIDDEN = "BATIMENT0000000348847402";
+
+const sinks = (): LandmarkSinks => ({ solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas: {} as SignAtlas });
+
+/** Sommets (x, y du monde) de la géométrie : three est en (x, z, −y). */
+function bounds(p: Float32Array | number[]): { x0: number; x1: number; y0: number; y1: number; z1: number } {
+  const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z1: -Infinity };
+  for (let i = 0; i < p.length; i += 3) {
+    b.x0 = Math.min(b.x0, p[i]!); b.x1 = Math.max(b.x1, p[i]!);
+    b.y0 = Math.min(b.y0, -p[i + 2]!); b.y1 = Math.max(b.y1, -p[i + 2]!);
+    b.z1 = Math.max(b.z1, p[i + 1]!);
+  }
+  return b;
+}
+
+describe("McDonald's de la route de Chalon (D234)", () => {
+  const world = loadRealWorld();
+  const kind = world.tile.kinds!.buildings[MCDO]!;
+  const m = kind.mcd!;
+  const b = world.tile.buildings.find((q) => q.id === MCDO)!;
+
+  it("volumes mesurés plausibles (photos et relevé)", () => {
+    expect(m).toBeDefined();
+    // Corps d'environ 17 × 27 m, le petit côté sur la route ; mansarde de 2,7 à 5,5 m autour d'un toit plat plus bas que son faîte.
+    expect(m.l).toBeGreaterThan(15);
+    expect(m.l).toBeLessThan(19);
+    expect(m.d).toBeGreaterThan(25);
+    expect(m.d).toBeLessThan(30);
+    expect(m.eave - m.g).toBeGreaterThan(2.2);
+    expect(m.crest - m.g).toBeGreaterThan(4.8);
+    expect(m.crest - m.g).toBeLessThan(6.5);
+    expect(m.roof).toBeLessThan(m.crest - 1);
+    expect(m.band).toBeGreaterThan(2);
+    expect(m.band).toBeLessThan(4);
+    for (const [s0, s1, t0, t1, z] of m.units) {
+      expect(s0).toBeGreaterThan(m.band - 0.5);
+      expect(s1).toBeLessThan(m.l - m.band + 0.5);
+      expect(t0).toBeGreaterThan(m.band - 0.5);
+      expect(t1).toBeLessThan(m.d - m.band + 0.5);
+      expect(z).toBeGreaterThan(m.roof);
+    }
+    // Véranda : plus basse que la mansarde, faîtage au-dessus de l'égout et de la noue ; côté route (t < 0) et côté ouest (s < 0).
+    const v = m.ver;
+    expect(v.o.length).toBe(v.r.length);
+    expect(v.o.length).toBe(v.i.length);
+    expect(v.ridge).toBeGreaterThan(v.eave);
+    expect(v.ridge).toBeGreaterThan(v.gut);
+    expect(v.ridge).toBeLessThan(m.crest);
+    expect(Math.min(...v.o.map((p) => p[1]))).toBeLessThan(-2.5);
+    expect(Math.min(...v.o.map((p) => p[0]))).toBeLessThan(-2.5);
+    expect(drawsGenericRoof(kind)).toBe(false);
+    expect(walkableRoof(kind)).toBe(false);
+    expect(replacesFacade(kind)).toBe(true);
+    // Le petit côté sur la route regarde le sud-sud-ouest : la normale sortante (−t) pointe vers le sud.
+    const f = mcdoFrame(m), [x0, y0] = at(f, 5, 0), [, y1] = at(f, 5, -1);
+    expect(y1 - y0).toBeLessThan(-0.7);
+    expect(pointInRing(...at(f, m.l / 2, m.d / 2), b.ring)).toBe(true);
+    expect(Number.isFinite(x0)).toBe(true);
+  });
+
+  it("obstacles : le corps et la véranda, on n'y entre pas depuis le parking ni depuis la route", () => {
+    const rings = mcdoRings(m);
+    expect(rings.length).toBe(2);
+    expect(mcdoVerandaOutline(m).length).toBeGreaterThan(5);
+    const f = mcdoFrame(m);
+    const c = buildColliders({ ...world.tile, buildings: [b] });
+    const out = at(f, m.l + 8, m.d / 2), inside = at(f, m.l / 2, m.d / 2);
+    expect(c.raycast(out[0], out[1], inside[0], inside[1])).not.toBeNull();
+    const road = at(f, 4, -12), ver = at(f, 4, -1.5);
+    expect(c.raycast(road[0], road[1], ver[0], ver[1])).not.toBeNull();
+  });
+
+  it("géométrie : sommets finis, près des volumes, coût borné, sous le faîte", () => {
+    const s = sinks();
+    buildMcdo(s, m, world.terrain);
+    const p = s.solid.positions;
+    expect(p.every(Number.isFinite)).toBe(true);
+    const tris = p.length / 9;
+    expect(tris).toBeGreaterThan(200);
+    expect(tris).toBeLessThan(4000);
+    expect(s.glow.positions.length).toBeGreaterThan(0);
+    const pts = mcdoRings(m).flat(), xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+    const bb = bounds(p);
+    expect(bb.x0).toBeGreaterThan(Math.min(...xs) - 1);
+    expect(bb.x1).toBeLessThan(Math.max(...xs) + 1);
+    expect(bb.y0).toBeGreaterThan(Math.min(...ys) - 1);
+    expect(bb.y1).toBeLessThan(Math.max(...ys) + 1);
+    expect(bb.z1).toBeLessThan(Math.max(m.crest, ...m.units.map((u) => u[4])) + 0.1);
+  });
+});
+
+describe("bowling Strike Bowl de la route de Chalon (D234)", () => {
+  const world = loadRealWorld();
+  const kind = world.tile.kinds!.buildings[BOWL]!;
+  const m = kind.bowl!;
+  const b = world.tile.buildings.find((q) => q.id === BOWL)!;
+
+  it("volumes mesurés plausibles (photos et relevé)", () => {
+    expect(m).toBeDefined();
+    // Halle d'environ 17 × 28 m, égout vers 5,3 m, faîtage vers 7,5 m ; ailes basses (moins de 5 m) plus basses que l'égout de la halle.
+    expect(m.w).toBeGreaterThan(15);
+    expect(m.w).toBeLessThan(19);
+    expect(m.l).toBeGreaterThan(26);
+    expect(m.l).toBeLessThan(30);
+    expect(m.eave - m.g).toBeGreaterThan(4.5);
+    expect(m.ridge - m.g).toBeGreaterThan(6.8);
+    expect(m.ridge - m.g).toBeLessThan(8.5);
+    expect(m.wing.length).toBe(2);
+    for (const q of [...bowlingBlocks(m), ...m.pergola]) {
+      expect(q[5]).toBeLessThan(m.eave);
+      expect(q[5] - m.g).toBeGreaterThan(2.2);
+      expect(q[1] - q[0]).toBeGreaterThan(2);
+      expect(q[3] - q[2]).toBeGreaterThan(5);
+    }
+    // L'aile ouest est à l'ouest de la halle, l'aile est et la pergola à l'est ; la pergola au sud (côté route).
+    for (const q of m.wing) expect(q[1]).toBeLessThanOrEqual(0.01);
+    for (const q of [...m.east, ...m.low, ...m.pergola]) expect(q[0]).toBeGreaterThanOrEqual(m.w - 0.01);
+    for (const q of m.pergola) expect(q[2]).toBeLessThan(0);
+    expect(drawsGenericRoof(kind)).toBe(false);
+    expect(walkableRoof(kind)).toBe(false);
+    expect(replacesFacade(kind)).toBe(true);
+    // La boîte BD TOPO collée à l'aile ouest est masquée.
+    expect(isOpen(world.tile.kinds, HIDDEN)).toBe(true);
+    const f = bowlingFrame(m);
+    expect(pointInRing(...at(f, m.w / 2, m.l / 2), b.ring)).toBe(true);
+  });
+
+  it("obstacles : la halle et les ailes ; on passe sous l'auvent du pignon et sous la pergola", () => {
+    const rings = bowlingRings(m);
+    const f = bowlingFrame(m);
+    const c = buildColliders({ ...world.tile, buildings: [b] });
+    // Depuis la route, on bute sur le mur vitré en retrait du pignon sud, après être passé sous l'auvent.
+    const road = at(f, m.w / 2, -10), hall = at(f, m.w / 2, m.l / 2);
+    const hit = c.raycast(road[0], road[1], hall[0], hall[1]);
+    expect(hit).not.toBeNull();
+    const [, , t0] = bowlingHallWalls(m);
+    expect(t0).toBeGreaterThan(1);
+    const under = at(f, m.w / 2, t0 / 2), front = at(f, m.w / 2, -3);
+    expect(c.raycast(front[0], front[1], under[0], under[1])).toBeNull();
+    // Dans l'aile ouest, on n'entre pas depuis le parking.
+    const [s0, s1, , t1] = m.wing[1]!;
+    const park = at(f, (s0 + s1) / 2, t1 + 8), wing = at(f, (s0 + s1) / 2, t1 - 3);
+    expect(c.raycast(park[0], park[1], wing[0], wing[1])).not.toBeNull();
+    // Sous la pergola, entre ses poteaux.
+    const [p0, p1, q0, q1] = m.pergola[0]!;
+    const a = at(f, (p0 + p1) / 2 + 1.7, q0 - 2), z = at(f, (p0 + p1) / 2 + 1.7, (q0 + q1) / 2);
+    expect(c.raycast(a[0], a[1], z[0], z[1])).toBeNull();
+    expect(rings.length).toBeGreaterThan(5);
+  });
+
+  it("géométrie : sommets finis, près des volumes, coût borné, sous le faîtage", () => {
+    const s = sinks();
+    buildBowling(s, m, world.terrain);
+    const p = s.solid.positions;
+    expect(p.every(Number.isFinite)).toBe(true);
+    const tris = p.length / 9;
+    expect(tris).toBeGreaterThan(300);
+    expect(tris).toBeLessThan(6000);
+    expect(s.glow.positions.length).toBeGreaterThan(0);
+    const f = bowlingFrame(m);
+    const pts = [...bowlingRings(m).flat(), ...m.pergola.flatMap(([a0, a1, b0, b1]) => [...at(f, a0, b0), ...at(f, a1, b1)]), ...at(f, 0, 0), ...at(f, m.w, m.l)];
+    const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+    const bb = bounds(p);
+    expect(bb.x0).toBeGreaterThan(Math.min(...xs) - 1);
+    expect(bb.x1).toBeLessThan(Math.max(...xs) + 1);
+    expect(bb.y0).toBeGreaterThan(Math.min(...ys) - 1);
+    expect(bb.y1).toBeLessThan(Math.max(...ys) + 1);
+    expect(bb.z1).toBeLessThan(m.ridge + 0.3);
+  });
+});

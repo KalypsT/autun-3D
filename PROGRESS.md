@@ -1703,3 +1703,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le parking](docs/captures/d233-eduen-parking.jpg)
 ![Mâts, haie et barrière](docs/captures/d233-eduen-mats.jpg)
 ![Le hall et la clôture](docs/captures/d233-eduen-hall.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 1 : les volumes (4 novembre 2026)** (D234)
+- Le McDonald's mesuré au LiDAR : corps de 17 × 27 m au bardage brun-orangé, mansarde brune (de 2,7 à 5,5 m) autour d'un toit plat avec ses édicules, véranda vitrée en L à toit de zinc à croupes côté route et côté ouest, pan coupé vers le drive.
+- Le bowling Strike Bowl : halle à deux pans de tôle rouge (faîtage à 7,6 m), pignons rouges sur la route et sur le parking, celui de la route en auvent sur deux poteaux devant un mur vitré ; aile ouest en L et aile est basses à acrotère, bande basse le long du mur est, pergola blanche au sud-est.
+- Fini les deux boîtes BD TOPO et la petite maison à toit rouge collée au bowling : les murs suivent le relevé, la véranda et les ailes arrêtent les déplacements.
+- Prochaine étape : les façades (mansarde à bandes blanches et M jaunes, inscriptions, drive, enseignes « STRIKE BOWL » et « BOWLING · BAR · CAVE À BIÈRE »).
+
+![Le McDonald's côté parking](docs/captures/d234-mcdo-parking-apres.jpg)
+![Le bowling depuis la route](docs/captures/d234-bowling-route-apres.jpg)
+![Vue haute](docs/captures/d234-haut-apres.jpg)
