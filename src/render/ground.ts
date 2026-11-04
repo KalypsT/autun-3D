@@ -28,6 +28,7 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   water: { color: "water", lift: 0.01 },
 };
 const MARK_LIFT = 0.08;
+const MARK_YELLOW = "#e8c12f";
 const MAX_EDGE = 5;
 const CURB_FOOT = 0.0;
 
@@ -73,6 +74,12 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
   const marks = new THREE.Color(T.trim);
   for (const poly of layers["marks"] ?? []) {
     fillOnTerrain(mb, poly, MARK_LIFT, marks, terrain, false);
+    yield;
+  }
+  // Marques jaunes (D230 : zigzag des arrêts de bus de la gare routière).
+  const yellow = new THREE.Color(MARK_YELLOW);
+  for (const poly of layers["marks_yellow"] ?? []) {
+    fillOnTerrain(mb, poly, MARK_LIFT, yellow, terrain, false);
     yield;
   }
   return mb;

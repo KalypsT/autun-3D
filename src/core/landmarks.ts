@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -157,6 +157,9 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     if (vg) out.push(...gateCircles(vg));
     const vm = kinds.buildings[b.id]?.vallon;
     if (vm?.props) out.push(...vallonPropCircles(vm));
+    // Quais de la gare (D229) : colonnes de l'abri parapluie, abri vitré.
+    const sta = kinds.buildings[b.id]?.sta;
+    if (sta) out.push(...stationCircles(sta));
   }
   // Paniers de basket des terrains (D176) : le poteau, derrière le panneau.
   for (const s of kinds.sites) if (s.t === "pitch") for (const h of s.hoops ?? []) out.push([...hoopPole(h), HOOP.poleRadius]);
@@ -529,6 +532,93 @@ export function playhouseRing(m: PlayhouseModel): number[] {
   return playhouseOutline(m).flatMap(([s, t]) => at(f, s, t));
 }
 
+// --- Gare (D228) -------------------------------------------------------------------------------------------------------------------
+
+/** Repère de la gare : origine au coin ouest de la façade des ailes sur le parvis, s le long de la façade, t vers les voies. */
+export function stationFrame(m: StationModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Contour des murs en (s, t), dans le sens trigonométrique : ailes, pavillon qui déborde des deux côtés, aile en retour vers le parvis. */
+export function stationOutline(m: StationModel): [number, number][] {
+  const [p0, p1, q0, q1] = m.pav, [r0, rt] = m.ret;
+  return [[0, 0], [p0, 0], [p0, q0], [p1, q0], [p1, 0], [r0, 0], [r0, rt], [m.l, rt], [m.l, m.d], [p1, m.d], [p1, q1], [p0, q1], [p0, m.d], [0, m.d]];
+}
+
+/** Colonnes de l'abri parapluie du quai central (D229), en (s, t) : deux files, environ tous les 4,5 m. */
+export function stationShelterColumns(m: StationModel): [number, number][] {
+  if (!m.quai) return [];
+  const [s0, s1, t0, t1] = m.quai.sh;
+  const tc = (t0 + t1) / 2, n = Math.max(2, Math.round((s1 - s0 - 3) / 4.5) + 1);
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (const k of [-1, 1]) out.push([s0 + 1.5 + ((s1 - s0 - 3) * i) / (n - 1), tc + k * 1.1]);
+  return out;
+}
+
+/** Petit abri vitré du quai central (D229) : longueur le long des voies, profondeur. */
+export const GLASS_SHELTER: readonly [number, number] = [3.2, 1.4];
+
+/** Abri de bus de la gare routière (D230) : longueur le long de l'axe de l'arrêt, profondeur. */
+export const BUS_SHELTER: readonly [number, number] = [4.2, 1.5];
+
+/** Point (s, t) du repère de l'arrêt de bus (D230) : u le long de l'axe du zigzag, w vers la gare. */
+export function busPoint(p: NonNullable<StationModel["parvis"]>, u: number, w: number): [number, number] {
+  const { o, dir } = p.bus;
+  return [o[0] + dir[0] * u - dir[1] * w, o[1] + dir[1] * u + dir[0] * w];
+}
+
+/** Point (s, t) du repère de l'abri de parking (D230) : u le long du bord bas, w vers l'intérieur. */
+export function carportPoint(p: NonNullable<StationModel["parvis"]>, u: number, w: number): [number, number] {
+  const [s0, t0, a, side] = p.carport;
+  const ux = Math.cos(a), uy = Math.sin(a), nx = side > 0 ? -uy : uy, ny = side > 0 ? ux : -ux;
+  return [s0 + ux * u + nx * w, t0 + uy * u + ny * w];
+}
+
+/** Poteaux de l'abri de parking (D230), en (u, w) : deux files, environ tous les 4 m. */
+export function carportPosts(p: NonNullable<StationModel["parvis"]>): [number, number][] {
+  const [, , , , L, W] = p.carport;
+  const n = Math.max(2, Math.round(L / 4) + 1), out: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (const w of [0.5, W - 0.5]) out.push([0.4 + ((L - 0.8) * i) / (n - 1), w]);
+  return out;
+}
+
+/**
+ * Obstacles des quais (D229 : colonnes de l'abri parapluie, petit abri vitré) et du parvis (D230 : lampadaires, vasques, banc, abri de bus,
+ * poteaux de l'abri de parking) de la gare.
+ */
+export function stationCircles(m: StationModel): [number, number, number][] {
+  const f = stationFrame(m);
+  const out: [number, number, number][] = [];
+  if (m.quai) {
+    out.push(...stationShelterColumns(m).map(([s, t]): [number, number, number] => [...at(f, s, t), 0.16]));
+    const [gs, gt] = m.quai.glass;
+    for (const k of [-1, 0, 1]) out.push([...at(f, gs + k * (GLASS_SHELTER[0] / 2 - 0.6), gt), 0.7]);
+  }
+  const p = m.parvis;
+  if (p) {
+    for (const [s, t] of p.lamps) out.push([...at(f, s, t), 0.15]);
+    for (const [s, t, r] of p.planters) out.push([...at(f, s, t), r]);
+    for (const k of [-1, 1]) out.push([...at(f, p.bench[0] + k * 0.8, p.bench[1]), 0.45]);
+    const [bu, bw] = p.bus.shelter;
+    for (const k of [-1, 0, 1]) out.push([...at(f, ...busPoint(p, bu + k * (BUS_SHELTER[0] / 2 - 0.7), bw)), 0.7]);
+    for (const [u, w] of carportPosts(p)) out.push([...at(f, ...carportPoint(p, u, w)), 0.15]);
+  }
+  return out;
+}
+
+/** Mur blanc du parvis (D230) : polyligne (x, y) en coordonnées du monde, ou null. */
+export function stationWall(m: StationModel): number[] | null {
+  if (!m.parvis) return null;
+  const f = stationFrame(m), [s0, s1, t] = m.parvis.wall;
+  return [...at(f, s0, t), ...at(f, s1, t)];
+}
+
+/** Obstacle de la gare (à la place du contour BD TOPO, décalé d'environ 1,2 m vers les voies) : ses murs mesurés. */
+export function stationRing(m: StationModel): number[] {
+  const f = stationFrame(m);
+  return stationOutline(m).flatMap(([s, t]) => at(f, s, t));
+}
+
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
   const k = kinds?.buildings[id]?.k;
@@ -537,10 +627,10 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
 
 /**
  * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
- * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223…).
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta);
 }
 
 /**

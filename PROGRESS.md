@@ -1638,3 +1638,34 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![De face](docs/captures/d227-monument-face.jpg)
 ![De dos](docs/captures/d227-monument-dos.jpg)
+
+**La gare, étape 1 : le bâtiment (4 novembre 2026)** (D228)
+- La gare d'après tes photos : pavillon central à deux niveaux et cinq travées, fronton à horloge sur le parvis et à œil-de-bœuf côté voies, cinq arcades vitrées, inscription « GARE D'AUTUN » sur le bandeau, fenêtres à balconnets, chaînes d'angle, toit de tuiles à croupes avec épis et cheminées.
+- Les ailes basses à croupes, enduites de crème, avec leurs baies cintrées entre pilastres plats (cinq par aile sur le parvis), le retour vers le parking à l'est, le cartouche « AUTUN » des pignons.
+- Mesurée au LiDAR : 57,7 m le long des voies, pavillon de 15,4 m ; ailes à 5,1 m à l'égout, pavillon à 9 m à la corniche, 11,9 m au faîtage. L'ancienne emprise était décalée de 1,2 m vers les voies : les murs (et l'obstacle) sont à leur vraie place.
+- `?view=gare` : de face depuis le parvis.
+- Prochaines étapes : les quais (marquise, abri parapluie du quai central, traversée), puis le parvis et le parking (marquage, gare routière, abri en bois).
+
+![Avant](docs/captures/d228-gare-avant.jpg)
+![Après](docs/captures/d228-gare-apres.jpg)
+![Vue haute](docs/captures/d228-gare-haut-apres.jpg)
+
+**La gare, étape 2 : les quais (4 novembre 2026)** (D229)
+- La marquise du quai 1 sur toute la longueur de la gare : consoles et fermes de fonte, tôle claire, lambrequin à festons, chéneau ; deux panneaux « AUTUN » suspendus.
+- Sur le quai central, l'abri parapluie (17,5 × 9,2 m, mesuré au LiDAR) sur ses colonnes de fonte rouillée, à la place du hangar à portes qui barrait une voie ; son panneau « AUTUN ».
+- La traversée à niveau (dalles grises, bandes jaunes et noires au bord des quais) et le petit abri vitré au bout du quai central.
+- Les quais au bon niveau (celui du parvis, plus de marche de 55 cm) et le quai 1 jusqu'au mur ; plus d'abri générique.
+- Prochaine étape : le parvis et le parking (marquage, gare routière, abri en bois).
+
+![Le quai 1](docs/captures/d229-gare-quai1-apres.jpg)
+![Le quai central](docs/captures/d229-gare-quai-central-apres.jpg)
+
+**La gare, étape 3 : le parvis et le parking (4 novembre 2026)** (D230)
+- Fini les traits de stationnement en tous sens : 24 places là où se garent les voitures (deux rangées dos à dos et une le long de l'avenue à l'est, six sous l'abri en bois), et les voitures du jeu s'y garent.
+- L'allée de brique à panneaux clairs de la porte à l'avenue, ses deux vasques fleuries, le banc rouillé, les lampadaires doubles.
+- La gare routière : quai de bus, zigzag jaune, abri de bus à cadre brun ; le mur blanc le long du quai.
+- L'abri de parking en bois mesuré au LiDAR (16 × 7,6 m, toit en pente couvert de panneaux solaires) à la place de la boîte à porte ; le gravier le long du retour.
+- **La gare est terminée** (étapes 1 à 3).
+
+![Vue haute](docs/captures/d230-parvis-haut-apres.jpg)
+![L'abri de parking](docs/captures/d230-parvis-abri-parking-apres.jpg)
