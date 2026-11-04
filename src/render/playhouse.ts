@@ -10,8 +10,9 @@ import { T } from "./style";
  * pavillons dont le retour fait une travée sur les côtés, côtés en léger retrait), toit d'ardoise brisé à croupes derrière l'attique ;
  * cage de scène plus haute, enduite de gris au-dessus de la corniche, à deux pans le long de l'axe, pignons à rampants et piles d'angle.
  * Niveaux et travées de la photo de face : portes et baies en plein cintre, fenêtres jumelées de l'entresol, grandes baies de l'étage
- * noble au centre ; quatre rangs de baies sur les côtés ; menuiseries rouges. Le détail de la façade (bossages, balcon, frontons,
- * perron, ornements du toit) viendra ensuite.
+ * noble au centre ; quatre rangs de baies sur les côtés ; menuiseries rouges. Détail de la façade (D224) : pilastres à chapiteaux,
+ * clés d'arcs, guirlandes, fenêtres des pavillons à fronton cintré et mascaron, modillons, attique à dés et panneaux sculptés, fronton
+ * central à cartouche et volutes, chaînes d'angle de la cage de scène. Balcon, perron à rampes et ornements du toit viendront ensuite.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -148,6 +149,90 @@ class Draw {
     this.plate(w, u - h + 0.1, u + h - 0.1, zt - 0.035, zt + 0.035, 0.045, 0.055, JOINERY, true);
     if (lit) this.shape(this.glow, w, u, h - 0.1, z0 + 0.1, z1 - 0.1, arched, 0.06, GLOW_LO, GLOW_HI);
   }
+
+  /** Clé d'arc saillante, son haut à z. */
+  keystone(w: PWall, u: number, z: number, wd = 0.36, h = 0.55): void {
+    this.plate(w, u - wd / 2, u + wd / 2, z - h, z, 0.02, 0.14, TRIM);
+  }
+
+  /** Pilastre de u − wd/2 à u + wd/2, de z0 à z1 : fût, base et chapiteau (gorgerin, corbeille évasée, abaque). */
+  pilaster(w: PWall, u: number, wd: number, z0: number, z1: number): void {
+    this.plate(w, u - wd / 2, u + wd / 2, z0 + 0.3, z1, 0, 0.1, shade(STONE, 1.03));
+    this.plate(w, u - wd / 2 - 0.06, u + wd / 2 + 0.06, z0, z0 + 0.3, 0, 0.15, TRIM);
+    this.plate(w, u - wd / 2 - 0.03, u + wd / 2 + 0.03, z1, z1 + 0.12, 0, 0.13, TRIM);
+    this.plate(w, u - wd / 2 - 0.05, u + wd / 2 + 0.05, z1 + 0.12, z1 + 0.42, 0.02, 0.18, shade(TRIM, 0.96));
+    this.plate(w, u - wd / 2 - 0.12, u + wd / 2 + 0.12, z1 + 0.42, z1 + 0.56, 0, 0.24, TRIM);
+  }
+
+  /** Fronton cintré (segment de cercle) : corde de u0 à u1 à l'altitude z, flèche `rise`, saillie `off` (face, dessus et tympan). */
+  segment(w: PWall, u0: number, u1: number, z: number, rise: number, off: number, col: THREE.Color, back = 0): void {
+    const c = (u1 - u0) / 2, um = (u0 + u1) / 2;
+    const R = (c * c + rise * rise) / (2 * rise), zc = z + rise - R, a = Math.asin(c / R);
+    const pt = (k: number, o: number): Vec3 => {
+      const th = -a + (2 * a * k) / 8;
+      return this.P(...this.on(w, um + Math.sin(th) * R, o), zc + Math.cos(th) * R);
+    };
+    const n = this.N(...w.out), nb = this.N(-w.out[0], -w.out[1]);
+    for (let k = 0; k < 8; k++) {
+      this.mb.tri(this.P(...this.on(w, um, off), z), pt(k, off), pt(k + 1, off), n, col);
+      if (back < 0) this.mb.tri(this.P(...this.on(w, um, back), z), pt(k, back), pt(k + 1, back), nb, shade(col, 0.85));
+      const A = pt(k, back), B = pt(k + 1, back), Cc = pt(k + 1, off), D = pt(k, off);
+      this.mb.quad(A, B, Cc, D, up(A, B, Cc), shade(col, 1.04));
+    }
+  }
+
+  /** Ovale plaqué sur le mur (mascaron, cartouche) : centre (u, z), demi-axes rs le long du mur et rz, à `off` devant lui. */
+  oval(w: PWall, u: number, z: number, rs: number, rz: number, off: number, col: THREE.Color, sides = 12): void {
+    const n = this.N(...w.out), c = this.P(...this.on(w, u, off), z);
+    for (let i = 0; i < sides; i++) {
+      const a0 = (Math.PI * 2 * i) / sides, a1 = (Math.PI * 2 * (i + 1)) / sides;
+      this.mb.tri(c, this.P(...this.on(w, u + Math.cos(a0) * rs, off), z + Math.sin(a0) * rz), this.P(...this.on(w, u + Math.cos(a1) * rs, off), z + Math.sin(a1) * rz), n, col);
+    }
+  }
+
+  /** Mascaron (photo : tête sculptée dans le tympan des pavillons) : visage ovale, chevelure en couronne, yeux et bouche en creux. */
+  mascaron(w: PWall, u: number, z: number, o = 0): void {
+    this.oval(w, u, z + 0.04, 0.34, 0.36, o + 0.05, shade(TRIM, 0.93), 14);
+    this.oval(w, u, z - 0.02, 0.22, 0.28, o + 0.09, TRIM, 12);
+    for (const k of [-1, 1]) this.oval(w, u + k * 0.08, z + 0.06, 0.035, 0.025, o + 0.1, shade(STONE, 0.55), 6);
+    this.oval(w, u, z - 0.16, 0.06, 0.025, o + 0.1, shade(STONE, 0.55), 6);
+  }
+
+  /** Guirlande en feston de u0 à u1, accrochée à z, flèche `drop` : bande épaisse au milieu, effilée aux bouts. */
+  swag(w: PWall, u0: number, u1: number, z: number, drop: number, col: THREE.Color): void {
+    const n = this.N(...w.out), steps = 8;
+    const at2 = (k: number, dz: number): Vec3 => {
+      const f = k / steps, u = u0 + (u1 - u0) * f;
+      return this.P(...this.on(w, u, 0.07), z - drop * Math.sin(Math.PI * f) + dz);
+    };
+    for (let k = 0; k < steps; k++) {
+      const th0 = 0.04 + 0.14 * Math.sin((Math.PI * k) / steps), th1 = 0.04 + 0.14 * Math.sin((Math.PI * (k + 1)) / steps);
+      this.mb.quad(at2(k, -th0), at2(k + 1, -th1), at2(k + 1, th1), at2(k, th0), n, col);
+    }
+  }
+
+  /** Panneau sculpté (attique) : cadre saillant, fond en léger creux, guirlande. */
+  panel(w: PWall, u0: number, u1: number, z0: number, z1: number): void {
+    for (const [a, b, c, e] of [[u0, u1, z0, z0 + 0.08], [u0, u1, z1 - 0.08, z1], [u0, u0 + 0.08, z0, z1], [u1 - 0.08, u1, z0, z1]] as const) {
+      this.plate(w, a, b, c, e, 0, 0.05, TRIM, true);
+    }
+    this.plate(w, u0 + 0.08, u1 - 0.08, z0 + 0.08, z1 - 0.08, 0, 0.01, shade(STONE, 0.9), true);
+    if (u1 - u0 > 1.2) this.swag(w, u0 + 0.3, u1 - 0.3, z1 - 0.2, (z1 - z0) * 0.4, shade(TRIM, 0.92));
+  }
+
+  /** Modillons sous le larmier de la corniche, tous les `pitch` mètres le long du mur. */
+  modillions(w: PWall, z0: number, z1: number, pitch: number): void {
+    for (let u = pitch / 2; u < w.len; u += pitch) this.plate(w, u - 0.08, u + 0.08, z0, z1, 0.15, 0.4, shade(TRIM, 0.95));
+  }
+
+  /** Chaîne d'angle : blocs alternés (90 et 50 cm) depuis un bout du mur, de z0 à z1. */
+  quoins(w: PWall, atEnd: boolean, z0: number, z1: number, phase: number): void {
+    for (let k = 0, z = z0; z + 0.3 < z1; k++, z += 0.6) {
+      const wd = (k + phase) % 2 ? 0.5 : 0.9;
+      const [u0, u1] = atEnd ? [w.len - wd, w.len] : [0, wd];
+      this.plate(w, u0, u1, z, Math.min(z + 0.55, z1), 0, 0.04, shade(TRIM, 0.95), true);
+    }
+  }
 }
 
 /** Normale (three) du triangle a, b, c, tournée vers le haut. */
@@ -245,11 +330,98 @@ export function buildPlayhouse(sinks: LandmarkSinks, m: PlayhouseModel, terrain:
     }
   }
 
-  // Inscription THEATRE sur l'attique, au milieu (lettres dorées).
+  // --- Détail de la façade (D224) ------------------------------------------------------------------------------------------------
+  const zCap = g + 13.9, zArch = zCap + 0.56;
+  // Pilastres : aux deux bords de chaque pavillon (doublés contre l'avant-corps) du cordon aux chapiteaux, entre les grandes baies de
+  // l'avant-corps au-dessus du balcon ; aux deux bouts des retours.
+  const pilasters: [PWall, number, number][] = [
+    [front, 0.35, cordon + 0.15], [front, pw - 0.3, cordon + 0.15], [front, pw + 0.3, band + 0.12],
+    [front, pw + cw / 3, band + 0.12], [front, pw + (2 * cw) / 3, band + 0.12],
+    [front, W - pw - 0.3, band + 0.12], [front, W - pw + 0.3, cordon + 0.15], [front, W - 0.35, cordon + 0.15],
+    [retR, 0.35, cordon + 0.15], [retR, ts - 0.35, cordon + 0.15], [retL, 0.35, cordon + 0.15], [retL, ts - 0.35, cordon + 0.15],
+  ];
+  for (const [wl, u, z0] of pilasters) d.pilaster(wl, u, 0.55, z0, zCap);
+  for (const wl of [front, retR, retL]) d.course(wl, zArch - 0.02, zArch + 0.2, 0.12, TRIM);
+  // Clés des arcs : portes et fenêtres cintrées du rez-de-chaussée, grandes baies ; guirlandes de part et d'autre de chaque clé.
+  for (let i = 0; i < 3; i++) {
+    const u = pw + (cw * (i + 0.5)) / 3, p0 = pw + (cw * i) / 3 + (i === 0 ? 0.3 : 0), p1 = pw + (cw * (i + 1)) / 3 - (i === 2 ? 0.3 : 0);
+    d.keystone(front, u, g + 5.35);
+    d.keystone(front, u, zCap + 0.25, 0.42, 0.6);
+    d.swag(front, p0 + 0.4, u - 0.3, zCap + 0.4, 0.4, shade(TRIM, 0.92));
+    d.swag(front, u + 0.3, p1 - 0.4, zCap + 0.4, 0.4, shade(TRIM, 0.92));
+  }
+  // Pavillons (façade et retours) : clé de la fenêtre du bas, appui à l'entresol, fenêtre haute à appui, corniche et fronton cintré à
+  // mascaron.
+  const pavDetail = (wl: PWall, u: number): void => {
+    d.keystone(wl, u, g + 5.15);
+    d.plate(wl, u - 0.7, u + 0.7, g + 6.52, g + 6.62, 0, 0.12, TRIM);
+    d.plate(wl, u - 0.95, u + 0.95, g + 9.9, g + 10.02, 0, 0.14, TRIM);
+    d.plate(wl, u - 1.05, u + 1.05, g + 12.98, g + 13.16, 0, 0.2, TRIM);
+    d.segment(wl, u - 1.05, u + 1.05, g + 13.16, 0.75, 0.2, TRIM);
+    d.mascaron(wl, u, g + 13.5, 0.2);
+  };
+  pavDetail(front, pw / 2);
+  pavDetail(front, W - pw / 2);
+  pavDetail(retR, ts / 2);
+  pavDetail(retL, ts / 2);
+  // Entresol de l'avant-corps : appuis des fenêtres jumelées.
+  for (let i = 0; i < 3; i++) d.plate(front, pw + (cw * (i + 0.5)) / 3 - 1.3, pw + (cw * (i + 0.5)) / 3 + 1.3, g + 6.52, g + 6.62, 0, 0.1, TRIM);
+  // Côtés : clés des arcades, appuis et corniches des fenêtres de l'étage noble.
+  for (const wl of [sideR, towerR, sideL, towerL]) {
+    const count = Math.max(1, Math.round(wl.len / 3.3));
+    for (let i = 0; i < count; i++) {
+      const u = (wl.len * (i + 0.5)) / count;
+      d.keystone(wl, u, g + 5.15);
+      d.plate(wl, u - 0.8, u + 0.8, g + 9.92, g + 10.02, 0, 0.12, TRIM);
+      d.plate(wl, u - 0.85, u + 0.85, g + 13.1, g + 13.25, 0, 0.16, TRIM);
+    }
+  }
+  // Modillons sous le larmier de la corniche (plus serrés sur la façade et les retours).
+  for (const wl of all) d.modillions(wl, corniceLo + 0.05, corniceLo + 0.35, wl === front || wl === retR || wl === retL ? 0.6 : 0.9);
+  // Chaînes d'angle de pierre aux coins arrière de la cage de scène, dans l'enduit.
+  d.quoins(towerR, true, corniceHi, zTe, 0);
+  d.quoins(rear, false, corniceHi, zTe, 1);
+  d.quoins(rear, true, corniceHi, zTe, 0);
+  d.quoins(towerL, false, corniceHi, zTe, 1);
+
+  // Attique : dés au-dessus des pilastres, panneaux sculptés entre eux (hors du fronton central).
+  const fw = 4.6, f0 = W / 2 - fw / 2, f1 = W / 2 + fw / 2, vol = 0.9;
+  const dice: [PWall, number[]][] = [[front, pilasters.filter(([wl]) => wl === front).map(([, u]) => u)], [retR, [0.35, ts - 0.35]], [retL, [0.35, ts - 0.35]]];
+  for (const [wl, us] of dice) {
+    const sorted = [...us].sort((a, b) => a - b);
+    for (const u of sorted) d.plate(wl, u - 0.4, u + 0.4, corniceHi, eave - 0.18, 0, 0.1, shade(STONE, 1.02));
+    for (let i = 0; i + 1 < sorted.length; i++) {
+      const a = sorted[i]! + 0.55, b = sorted[i + 1]! - 0.55;
+      if (wl === front && b > f0 - vol && a < f1 + vol) {
+        // Le fronton coupe la travée : un panneau de chaque côté.
+        if (f0 - vol - 0.15 - a > 0.6) d.panel(wl, a, f0 - vol - 0.15, corniceHi + 0.2, eave - 0.4);
+        if (b - (f1 + vol + 0.15) > 0.6) d.panel(wl, f1 + vol + 0.15, b, corniceHi + 0.2, eave - 0.4);
+        continue;
+      }
+      if (b - a > 0.6) d.panel(wl, a, b, corniceHi + 0.2, eave - 0.4);
+    }
+  }
+
+  // Fronton central (haut mesuré) : massif plus haut que l'attique, corniche, fronton cintré, cartouche ; volutes de chaque côté ;
+  // panneau à l'inscription THEATRE en lettres dorées.
+  const zF = eave + 0.55, rise = Math.max(0.5, m.fronton - zF - 0.1);
+  d.plate(front, f0, f1, corniceHi, zF, -0.8, 0.16, STONE);
+  d.plate(front, f0 - 0.12, f1 + 0.12, zF - 0.15, zF, -0.8, 0.26, TRIM);
+  d.segment(front, f0 - 0.12, f1 + 0.12, zF, rise, 0.26, TRIM, -0.8);
+  d.oval(front, W / 2, zF + rise * 0.42, 0.5, Math.min(0.42, rise * 0.4), 0.27, shade(TRIM, 0.92), 14);
+  d.oval(front, W / 2, zF + rise * 0.42, 0.36, Math.min(0.3, rise * 0.29), 0.3, TRIM, 14);
+  for (const dir of [-1, 1]) {
+    const e = W / 2 + (dir * fw) / 2, n = d.N(0, -1), base: Vec3 = d.P(...d.on(front, e, 0.1), corniceHi);
+    for (let i = 0; i < 6; i++) {
+      const a0 = (Math.PI / 2) * (i / 6), a1 = (Math.PI / 2) * ((i + 1) / 6), h = zF - 0.15 - corniceHi;
+      sinks.solid.tri(base, d.P(...d.on(front, e + dir * Math.sin(a0) * vol, 0.1), corniceHi + Math.cos(a0) * h),
+        d.P(...d.on(front, e + dir * Math.sin(a1) * vol, 0.1), corniceHi + Math.cos(a1) * h), n, shade(TRIM, 0.95));
+    }
+  }
   const label = sinks.atlas.get("THEATRE", "#c9a24a");
-  const th = 0.5, tw = th * 6.4, zt0 = eave - 0.95;
-  d.plate(front, W / 2 - 2.0, W / 2 + 2.0, zt0 - 0.12, zt0 + th + 0.12, 0, 0.06, TRIM);
-  const [ax, ay] = at(f, ...d.on(front, W / 2 - tw / 2, 0.07)), [bx, by] = at(f, ...d.on(front, W / 2 + tw / 2, 0.07));
+  const th = 0.5, tw = th * 6.4, zt0 = eave - 0.4;
+  d.plate(front, W / 2 - 1.9, W / 2 + 1.9, zt0 - 0.12, zt0 + th + 0.12, 0.16, 0.21, shade(STONE, 0.97));
+  const [ax, ay] = at(f, ...d.on(front, W / 2 - tw / 2, 0.22)), [bx, by] = at(f, ...d.on(front, W / 2 + tw / 2, 0.22));
   sinks.names.quad(toThree(ax, ay, zt0), toThree(bx, by, zt0), toThree(bx, by, zt0 + th), toThree(ax, ay, zt0 + th), d.N(0, -1),
     [label.u0, label.v0], [label.u1, label.v0], [label.u1, label.v1], [label.u0, label.v1], new THREE.Color(1, 1, 1));
 

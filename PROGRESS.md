@@ -1603,3 +1603,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d223-theatre-avant.jpg)
 ![Après](docs/captures/d223-theatre-apres.jpg)
 ![La cage de scène depuis la rue Jondeau](docs/captures/d223-theatre-arriere.jpg)
+
+**Le théâtre municipal, étape 2 : détail de la façade (4 novembre 2026)** (D224)
+- Pilastres à chapiteaux, clés d'arc, guirlandes au-dessus des grandes baies, fenêtres des pavillons à fronton cintré et mascaron, corniche à modillons.
+- Attique à dés et panneaux sculptés ; au milieu, le fronton cintré (hauteur mesurée au LiDAR) avec son cartouche, ses volutes et l'inscription « THEATRE ».
+- Chaînes d'angle en pierre aux coins de la cage de scène.
+- Prochaines étapes : balcon, perron à rampes et lanternes, puis ornements du toit.
+
+![Au pied de la façade](docs/captures/d224-theatre-detail.jpg)

@@ -254,6 +254,10 @@ def measure_playhouse(bid, b, spec):
     sm = (lR + rR) / 2
     # Corps avant : haut de l'attique (juste derrière la façade, hors du milieu), profil en travers (toit brisé), faîtage.
     eave = float(np.median([S(s, t) for s in np.arange(lF + 1, rF - 1, 0.5) if abs(s - mid) > 3.5 for t in (tf + 0.5, tf + 0.75, tf + 1.0)]))
+    # Fronton central de l'attique (photo : panneau à l'inscription sous un fronton cintré) : haut = 90e centile du modèle de surface sur
+    # 2 m de large au milieu de la façade, dans le premier mètre derrière le bord.
+    sc = (lF + rF) / 2
+    fronton = float(np.percentile([S(s, t) for s in np.arange(sc - 1.0, sc + 1.01, 0.25) for t in np.arange(tf + 0.25, tf + 1.26, 0.25)], 90))
     # Cage de scène : sur l'axe, le toit monte d'un coup ; le corps avant s'arrête là.
     prof_t = np.arange(tf + 4, tr, 0.25)
     near_wall = [float(np.median([S(lR + 1.5, t), S(rR - 1.5, t)])) for t in prof_t]
@@ -280,7 +284,7 @@ def measure_playhouse(bid, b, spec):
         "w": r2(W), "ts": r2(ts - tf - 2 * c), "iL": r2(iL), "iR": r2(iR), "tt": r2(tt - tf - c), "tr": r2(tr - tf - c),
         "g": r2(g0), "eave": r2(eave),
         "roof": [r2(z1 + k1 * c), r2(brk - c), r2(z1 + k1 * brk), r2(ridge)],
-        "tower": [r2(z3 + k3 * c), r2(tridge)],
+        "tower": [r2(z3 + k3 * c), r2(tridge)], "fronton": r2(fronton),
         "levels": spec["levels"], "pav": spec["pav"],
     }
     return out
@@ -294,7 +298,7 @@ def playhouse(tid, bid, b, spec, k):
     g = m["g"]
     print(f"  {bid} : façade {m['w']} m, ressaut à {m['ts']} m, cage de scène de {m['tt']} à {m['tr']} m ; attique {m['eave'] - g:.1f} m,"
           f" toit brisé {m['roof'][2] - g:.1f} m à {m['roof'][1]:.1f} m du mur, faîtage {m['roof'][3] - g:.1f} m ;"
-          f" cage {m['tower'][0] - g:.1f} / {m['tower'][1] - g:.1f} m au-dessus du sol devant")
+          f" cage {m['tower'][0] - g:.1f} / {m['tower'][1] - g:.1f} m, fronton {m['fronton'] - g:.1f} m au-dessus du sol devant")
     ch = k["buildings"].get(bid) != e
     if ch:
         k["buildings"][bid] = e

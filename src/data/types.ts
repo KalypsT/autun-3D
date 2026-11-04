@@ -422,7 +422,7 @@ export interface BuildingKind {
  * (`o`, mur extérieur), s le long de la façade selon l'angle `a`, t vers l'intérieur. Corps avant : façade de largeur `w`, retour des
  * pavillons jusqu'à `ts`, puis côtés en retrait de `iL` (gauche) et `iR` (droite) ; cage de scène de `tt` au mur arrière `tr`. Altitudes
  * locales : sol devant la façade `g`, haut de l'attique `eave` ; toit brisé à croupes du corps avant : pan bas au mur, retrait de la brisure
- * depuis le mur, altitude de la brisure, faîtage ; cage de scène à deux pans le long de t : égout, faîtage. `levels` (photo, au-dessus de
+ * depuis le mur, altitude de la brisure, faîtage ; cage de scène à deux pans le long de t : égout, faîtage ; haut du fronton central. `levels` (photo, au-dessus de
  * `g`) : sol du perron, cordon, bandeau du balcon, bas et haut de la corniche ; `pav` : largeur d'un pavillon (fraction de `w`).
  */
 export interface PlayhouseModel {
@@ -438,6 +438,8 @@ export interface PlayhouseModel {
   eave: number;
   roof: [number, number, number, number];
   tower: [number, number];
+  /** Haut du fronton central de l'attique (D224). */
+  fronton: number;
   levels: [number, number, number, number, number];
   pav: number;
 }

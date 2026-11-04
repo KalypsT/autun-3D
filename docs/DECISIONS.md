@@ -4463,3 +4463,23 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Vue haute, avant](captures/d223-theatre-haut-avant.jpg)
 ![Vue haute, après](captures/d223-theatre-haut-apres.jpg)
 ![La cage de scène depuis la rue Jondeau](captures/d223-theatre-arriere.jpg)
+
+## 2026-11-04 — D224. Le théâtre municipal, étape 2 : détail de la façade
+
+**D'après la photo de face de l'utilisateur** (D223), toujours dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Pilastres** à base et chapiteau (gorgerin, corbeille, abaque) : aux deux bords de chaque pavillon, doublés contre l'avant-corps, du cordon aux chapiteaux (13,9 m) ; entre les grandes baies de l'avant-corps, au-dessus du bandeau du balcon ; aux deux bouts des retours. Architrave continue au-dessus des chapiteaux.
+- **Clés d'arc** saillantes aux portes, aux fenêtres cintrées des pavillons et aux arcades des côtés, et, plus grandes, aux trois baies de l'étage noble ; **guirlandes** en feston de part et d'autre de chaque clé, entre les chapiteaux.
+- **Pavillons** (façade et retours) : appuis, corniche et **fronton cintré** au-dessus de la fenêtre haute, **mascaron** dans le tympan (visage ovale, chevelure, yeux et bouche en creux) ; appuis des fenêtres de l'entresol.
+- **Corniche à modillons** (tous les 60 cm sur la façade et les retours, 90 cm ailleurs) ; côtés : appuis et corniches des fenêtres de l'étage noble.
+- **Attique** : dés au-dessus des pilastres, panneaux sculptés entre eux (cadre, fond en creux, guirlande).
+- **Fronton central** : massif plus haut que l'attique, corniche, fronton cintré jusqu'au haut **mesuré** (`fronton`, 90ᵉ centile du modèle de surface sur 2 m au milieu de la façade : 19,8 m au-dessus de la place, la photo donne 19,6 m), cartouche, volutes de chaque côté ; l'inscription « THEATRE » passe sur un panneau de ce massif.
+- **Chaînes d'angle** de pierre aux coins arrière de la cage de scène, dans l'enduit.
+- 5 251 triangles pour tout le théâtre (2 057 à l'étape 1), aucun appel de dessin de plus.
+
+**Pas encore** : balcon et consoles, petits balcons des pavillons, perron à rampes et lanternes (étape 3) ; lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière, escalier de secours (étape 4). Le mascaron et les guirlandes restent des formes simples, lisibles à la distance de jeu.
+
+**Tests** : le fronton est au-dessus de l'attique et sous le faîtage (`playhouse.test.ts`).
+
+![De face](captures/d224-theatre-face.jpg)
+![Au pied de la façade](captures/d224-theatre-detail.jpg)
+![Depuis la place, côté hôtel de ville](captures/d224-theatre-angle.jpg)

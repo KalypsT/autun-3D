@@ -36,6 +36,9 @@ describe("théâtre municipal (D223)", () => {
     expect(m.tower[1]).toBeGreaterThan(m.roof[3]);
     // Le pignon avant de la cage de scène dépasse partout du toit du corps avant.
     expect(m.tower[0]).toBeGreaterThan(m.eave);
+    // Fronton central (D224) : au-dessus de l'attique, sous le faîtage du corps avant.
+    expect(m.fronton).toBeGreaterThan(m.eave + 1);
+    expect(m.fronton).toBeLessThan(m.roof[3]);
     expect(drawsGenericRoof(kind)).toBe(false);
   });
 
