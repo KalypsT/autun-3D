@@ -4654,3 +4654,36 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![La gare routière, après](captures/d230-parvis-gare-routiere-apres.jpg)
 ![L'abri de parking, avant](captures/d230-parvis-abri-parking-avant.jpg)
 ![L'abri de parking, après](captures/d230-parvis-abri-parking-apres.jpg)
+
+## 2026-11-04 — D231. Le parc des expositions l'Eduen, étape 1 : volumes mesurés
+
+**Demande de l'utilisateur** : intégrer correctement l'Eduen (parc des expositions de l'Autunois, route de Chalon et avenue André Frenaud), son bâtiment et son parking, en trois étapes : les volumes, puis les façades, puis le parking et les abords. Photos fournies (non versionnées, elles servent seulement à décrire) : une vue de drone du sud-est, une vue de face depuis le parking (été), des vues Google Street View (route de Chalon, juillet 2025 ; avenue André Frenaud, juillet 2026), le logo sur le pignon (septembre 2019), une vue satellite du parking. Lecture : grande salle à toit plat au bardage rouge-orange à joints verticaux, soubassement gris clair, couvertine blanche, deux rangées de lanterneaux ; trois blocs bas en béton contre chaque grand côté (panneaux d'affichage côté route, édicules techniques et portes grises côté parking), entrée sous un auvent bas côté parking ; hall en quart de cercle contre le petit côté sud-est : mur de béton, bandeau vitré continu sous un toit-auvent courbe à rive blanche (brise-soleil à lames sur la vue de drone) ; annexe en béton plus basse au nord du hall, à dalle débordante ; trois mâts à drapeaux devant le hall.
+
+**Constat** : l'Eduen était cinq bâtiments BD TOPO génériques (bâtiment d'habitation crème à trois rangs de fenêtres et une vitrine à store rayé, hall en couronne beige à petites fenêtres), découpés autrement que les volumes réels. L'emprise principale est **décalée d'environ 1 m vers le nord-ouest** par rapport au relevé.
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveau modèle `eduen` de `build_monuments.py`, entrée du bâtiment dans `monuments` de `manual.json`, champ `edu` du bâtiment dans `kinds/32_37.json`) :
+- **salle** : direction du grand côté par le rectangle d'aire minimale des cellules à plus de 9 m au-dessus du terrain (la plus grande composante : les arbres au nord-ouest sont écartés), redressée sur les droites des deux grands murs ; murs = passage à 80 % de la hauteur du toit, médianes sur les lignes. **55,75 × 39,38 m**, acrotère **10,8 m** au-dessus du sol médian ; 13 lanterneaux (bosses de plus de 15 cm sur le toit lissé), caissons de 2,1 m ;
+- **blocs** : leurs bouts (s) sont lus une fois sur le modèle de surface (`blocks` de l'entrée : une segmentation automatique coupait les blocs à édicules en morceaux) ; profondeur = premier passage sous 1,6 m au-dessus du terrain depuis le mur (médiane), toit = 30ᵉ centile du modèle de surface sur le bloc, hors de la bande de 1,25 m où le relevé bave depuis le mur de la salle. Côté route : **3,1 m** (12 m de long), **4,1 m**, raccord de 3,1 m, **4,1 m** ; côté parking : 3,3 m, 3,1 m, 4,5 m, et l'auvent de l'entrée à **2,2 m** (moins de 2,8 m : une dalle sur poteaux, on passe dessous). Deux édicules d'environ 6 m (sur le premier et le troisième bloc côté parking) : cellules à plus de 0,7 m au-dessus du bloc, d'au moins 1,2 m de côté (les panneaux d'affichage plaqués côté route sont plus minces) et de moins de 45 % du bloc ;
+- **hall courbe** : bord de l'auvent sur des lignes de t (passage sous le toit du hall moins 2 m), cercle ajusté (deux passes, écarts de plus de 0,6 m retirés) : rayon **53,9 m**, centre au-delà du parking, presque le même que le cercle des sommets BD TOPO de l'arc (50,6 m : le mur) ; mur **3 m** en retrait (bande blanche de l'orthophotographie) ; bord nord-est : droite ajustée sur les passages en t. Toit **7,7 m**, rive **7,9 m** ; annexe à **6,2 m**, de la salle à s = 65,4 m et au nord de t = 45,1 m (lus sur le modèle de surface).
+Une deuxième passe ne change rien.
+
+**Rendu** (`buildEduen`, `src/render/eduen.ts`, dans les maillages de la tuile : aucun appel de dessin de plus, **2 296 triangles** et 28 de vitres allumées) : salle au bardage rouge-orange à joints tous les 3 m, soubassement gris clair de 1,3 m, couvertine blanche saillante, toit en membrane grise sous l'acrotère, lanterneaux en caissons blancs à bulle ; blocs en béton clair à couvertine, édicules métalliques ; auvent de l'entrée sur deux poteaux ; hall : mur de béton, **bandeau vitré horizontal** de 2,7 m sous l'auvent (montants tous les 1,6 m, la moitié des pans allumés la nuit), toit-auvent à rive blanche relevée et sous-face claire, annexe en béton à dalle débordante d'1 m, ressauts entre les deux toits.
+
+**Obstacles** : la salle, ses blocs (pas l'auvent de l'entrée) et le contour du hall et de l'annexe à leurs murs (`eduenRings`), au lieu des emprises BD TOPO. **Masqués** (`hide` de l'entrée, sans silhouette lointaine) : les quatre bâtiments BD TOPO du hall courbe, de l'annexe, d'un bloc de l'annexe et d'un bloc côté route. **Silhouette lointaine** : la salle, les blocs et le toit du hall (contour non convexe) dans `lod/32_37.json`. Vues `?view=eduen` (depuis le parking, comme la photo de face), `eduen-haut` (drone, du sud), `eduen-route` (route de Chalon), `eduen-hall` (avenue André Frenaud).
+
+**Pas encore** (étapes suivantes) :
+- **Façades (étape 2)** : le logo « parc des expos de l'Autunois – l'éduen » sur le pignon, les portes grises et les fenêtres des blocs, l'entrée « ENTRÉE », le détail du bardage, les brise-soleil à lames de l'auvent, les entrées vitrées du hall, les panneaux d'affichage côté route, le bardage gris à bande violine de l'annexe, les mâts et drapeaux, les projecteurs du toit.
+- **Parking et abords (étape 3)** : marquage des places (épi, places PMR bleues), piste en lacets au nord-est, talus enherbés, chemin de tour, clôture verte, barrière, mâts d'éclairage, arbres d'alignement.
+- La navigation n'est pas régénérée : les passants suivent encore les anciens contours.
+- Le pignon nord-ouest (vers les arbres) et le dessous de l'auvent de l'entrée sont sans photo, approchés.
+
+**Tests** (+3 : `eduen.test.ts`) : volumes plausibles et bâtiments BD TOPO masqués, obstacles proches de l'emprise et grand côté tourné vers le sud-ouest (on n'entre ni dans la salle ni dans le hall, on passe sous l'auvent de l'entrée), géométrie finie et bornée.
+
+![Depuis le parking, avant](captures/d231-eduen-parking-avant.jpg)
+![Depuis le parking, après](captures/d231-eduen-parking-apres.jpg)
+![Vue haute, avant](captures/d231-eduen-haut-avant.jpg)
+![Vue haute, après](captures/d231-eduen-haut-apres.jpg)
+![Le hall depuis l'avenue André Frenaud, avant](captures/d231-eduen-hall-avant.jpg)
+![Le hall depuis l'avenue André Frenaud, après](captures/d231-eduen-hall-apres.jpg)
+![Route de Chalon, avant](captures/d231-eduen-route-avant.jpg)
+![Route de Chalon, après](captures/d231-eduen-route-apres.jpg)

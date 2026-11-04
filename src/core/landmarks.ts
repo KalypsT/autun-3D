@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -619,6 +619,76 @@ export function stationRing(m: StationModel): number[] {
   return stationOutline(m).flatMap(([s, t]) => at(f, s, t));
 }
 
+// --- Parc des expositions l'Eduen (D231) ------------------------------------------------------------------------------------------
+
+/** Repère de l'Eduen : origine au coin ouest de la grande salle, s le long de la route de Chalon (vers le sud-est), t vers le parking. */
+export function eduenFrame(m: EduenModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Un bloc plus bas que ceci au-dessus du sol est l'auvent de l'entrée (dalle sur poteaux, on passe dessous). */
+export const EDUEN_CANOPY_H = 2.8;
+
+/** Bord du hall courbe, en (s, t), décalé de `inset` vers l'intérieur (0 : l'auvent ; `rot.ov` : le mur). */
+export interface EduenEdge {
+  /** Angles (radians, autour du centre) du départ sur le mur de la salle et de la rencontre avec le bord nord-est. */
+  a0: number;
+  a1: number;
+  /** Rayon du cercle et ordonnée à l'origine de la droite nord-est (t = k·s + b) pour ce décalage. */
+  r: number;
+  b: number;
+}
+
+export function eduenEdge(m: EduenModel, inset: number): EduenEdge {
+  const { c: [cs, ct], ne: [k] } = m.rot;
+  const r = m.rot.r - inset, b = m.rot.ne[1] - inset * Math.hypot(1, k);
+  const a0 = Math.atan2(-Math.sqrt(Math.max(0, r * r - (m.l - cs) ** 2)), m.l - cs);
+  // Rencontre de l'arc et de la droite : dichotomie sur l'angle (une seule racine entre le départ et le quart de tour).
+  const f = (a: number): number => ct + r * Math.sin(a) - (k * (cs + r * Math.cos(a)) + b);
+  let lo = a0, hi = Math.PI / 2;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (f(lo) * f(mid) <= 0) hi = mid;
+    else lo = mid;
+  }
+  return { a0, a1: lo, r, b };
+}
+
+/** Points de l'arc (s, t) d'un bord, tous les 3° environ, du mur de la salle à la rencontre avec la droite nord-est. */
+export function eduenArc(m: EduenModel, e: EduenEdge): [number, number][] {
+  const [cs, ct] = m.rot.c;
+  const n = Math.max(8, Math.ceil((e.a1 - e.a0) / ((3 * Math.PI) / 180)));
+  const out: [number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = e.a0 + ((e.a1 - e.a0) * i) / n;
+    out.push([cs + e.r * Math.cos(a), ct + e.r * Math.sin(a)]);
+  }
+  out[0] = [m.l, out[0]![1]];
+  return out;
+}
+
+/** Contour des murs du hall courbe et de l'annexe (s, t), sens trigonométrique : arc, mur nord-est, mur ouest de l'annexe, mur de la salle. */
+export function eduenHallOutline(m: EduenModel): [number, number][] {
+  const e = eduenEdge(m, m.rot.ov), k = m.rot.ne[0];
+  return [...eduenArc(m, e), [m.l, k * m.l + e.b]];
+}
+
+/** Toit-auvent du hall courbe (s, t) : arc et bord nord-est de l'auvent jusqu'au bout de l'annexe, puis l'annexe contournée. */
+export function eduenCanopy(m: EduenModel): [number, number][] {
+  const e = eduenEdge(m, 0), [sA, tA] = m.rot.ann, k = m.rot.ne[0];
+  return [...eduenArc(m, e), [sA, k * sA + e.b], [sA, tA], [m.l, tA]];
+}
+
+/** Obstacles de l'Eduen (x, y) : la salle, ses blocs (pas l'auvent de l'entrée), le hall courbe et l'annexe à leurs murs. */
+export function eduenRings(m: EduenModel): number[][] {
+  const f = eduenFrame(m);
+  const rect = (s0: number, s1: number, t0: number, t1: number): number[] => [...at(f, s0, t0), ...at(f, s1, t0), ...at(f, s1, t1), ...at(f, s0, t1)];
+  const out = [rect(0, m.l, 0, m.d)];
+  for (const [s0, s1, t0, t1, z] of m.blocks) if (z - m.g >= EDUEN_CANOPY_H) out.push(rect(s0, s1, t0, t1));
+  out.push(eduenHallOutline(m).flatMap(([s, t]) => at(f, s, t)));
+  return out;
+}
+
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
   const k = kinds?.buildings[id]?.k;
@@ -627,10 +697,10 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
 
 /**
  * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
- * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228…).
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228 ; Eduen, D231…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu);
 }
 
 /**

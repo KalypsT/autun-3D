@@ -18,6 +18,11 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   municipal: [17, 7, 1.7, -4.1, 38.7, 9],
   // Gare (D228) : de face depuis le parvis, comme la photo de la façade.
   gare: [-420.5, 477.6, 1.7, -444.7, 509.4, 5],
+  // Parc des expositions l'Eduen (D231) : depuis le parking, comme la photo de face ; vue de drone du sud ; route de Chalon ; hall courbe.
+  eduen: [1672.6, 620.4, 1.7, 1657.4, 552.3, 5],
+  "eduen-haut": [1675.6, 458.2, 45, 1663.2, 554.9, 0],
+  "eduen-route": [1625.4, 514.9, 1.7, 1642.8, 537.4, 4],
+  "eduen-hall": [1708.0, 520.2, 1.7, 1679.5, 552.0, 4],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

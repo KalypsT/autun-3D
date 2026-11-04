@@ -1669,3 +1669,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Vue haute](docs/captures/d230-parvis-haut-apres.jpg)
 ![L'abri de parking](docs/captures/d230-parvis-abri-parking-apres.jpg)
+
+**L'Eduen, étape 1 : les volumes (4 novembre 2026)** (D231)
+- Le parc des expositions d'après tes photos et le LiDAR : la grande salle au bardage rouge-orange (55,8 × 39,4 m, 10,8 m de haut), son soubassement gris clair, sa couvertine blanche, son toit plat gris et ses 13 lanterneaux.
+- Les blocs bas en béton le long des deux grands côtés (3 à 4,5 m), les édicules techniques sur leurs toits, l'auvent bas de l'entrée côté parking (on passe dessous).
+- Le hall en quart de cercle : mur de béton, bandeau vitré continu, toit-auvent courbe qui déborde de 3 m (arc de 54 m de rayon mesuré au LiDAR), et l'annexe plus basse au nord.
+- Fini le bâtiment d'habitation à trois étages et la couronne beige à petites fenêtres : les cinq bâtiments BD TOPO sont remplacés par un seul modèle, aux vrais murs (l'ancienne emprise était décalée d'environ 1 m).
+- Prochaine étape : les façades (logo « l'éduen », portes, entrée, brise-soleil de l'auvent, panneaux d'affichage, mâts et drapeaux).
+
+![Depuis le parking](docs/captures/d231-eduen-parking-apres.jpg)
+![Vue haute](docs/captures/d231-eduen-haut-apres.jpg)
+![Le hall](docs/captures/d231-eduen-hall-apres.jpg)

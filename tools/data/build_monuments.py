@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, parc des expositions l'Eduen D231, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -20,6 +20,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           gare (modèle `station`, D228) : champ `sta` du bâtiment (ailes, pavillon et frontons, retour vers le parvis) et silhouette lointaine ;
           quais de la gare (`quai` de son entrée, D229) : champ `quai` de `sta`, quais 1 et central de structures/<tuile>.json redessinés au bord
           mesuré (à relancer après build_structures.py), bâtiment BD TOPO de l'abri parapluie masqué ;
+          parc des expositions l'Eduen (modèle `eduen`, D231) : champ `edu` du bâtiment (salle, blocs, édicules, hall courbe et annexe), bâtiments
+          BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -663,6 +665,230 @@ def station(tid, bid, b, spec, k):
              (rect(p[0], p[1], p[2], p[3]), m["pv"][0], m["pv"][1])]
     lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
     return ch, tid if lod else None
+
+
+CANOPY_H = 2.8  # Eduen : un « bloc » plus bas est l'auvent de l'entrée côté parking (dalle sur poteaux)
+
+
+def measure_eduen(bid, b, spec):
+    """Parc des expositions l'Eduen (D231) : grande salle à toit plat (acrotère, lanterneaux), blocs bas en béton le long des deux grands
+    côtés (édicules techniques sur leurs toits), hall en quart de cercle contre le petit côté sud-est (toit-auvent courbe qui déborde de
+    `overhang` devant le mur), annexe plus basse au nord du hall. Tout est lu sur le modèle de surface : le contour BD TOPO (décalé
+    d'environ 1 m vers le nord-ouest) ne sert qu'à la fenêtre de lecture et au premier repérage de l'arc.
+
+    Repère : origine au coin ouest de la salle (mur), s le long du grand côté sur la route de Chalon (`faces`), vers le sud-est ; t vers
+    l'intérieur (le parking). Murs de la salle = passage à mi-hauteur entre le toit du hall et l'acrotère, médianes sur les lignes.
+    """
+    from scipy import ndimage
+
+    ring = pairs(b["ring"])
+    xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+    box = (math.floor(min(xs) - 25), math.floor(min(ys) - 25), math.ceil(max(xs) + 25), math.ceil(max(ys) + 25))
+    mns, mnt = Raster("MNS", bid, *box), Raster("MNT", bid, *box)
+    r2 = lambda v: round(float(v), 2)
+    med = lambda v: float(np.median(v))
+    # Sol : terrain médian autour de l'emprise ; la salle = cellules à plus de 9 m au-dessus (le hall courbe s'arrête vers 8 m).
+    g0 = med([mnt(x, y) for x in np.arange(box[0] + 5, box[2] - 5, 2.0) for y in np.arange(box[1] + 5, box[3] - 5, 2.0)])
+    gx, gy = np.arange(box[0] + 1, box[2] - 1, 0.5), np.arange(box[1] + 1, box[3] - 1, 0.5)
+    hi = np.array([[mns(x, y) - mnt(x, y) > 9.0 for x in gx] for y in gy])
+    lab, n = ndimage.label(hi)
+    big = np.argmax(np.bincount(lab.ravel())[1:]) + 1  # la salle, pas les arbres
+    jj, ii = np.where(lab == big)
+    P = np.c_[gx[ii], gy[jj]]
+    # Rectangle d'aire minimale des cellules hautes : direction du grand côté.
+    best = None
+    for deg in np.arange(0, 180, 0.1):
+        th = math.radians(deg)
+        su = P @ np.array([math.cos(th), math.sin(th)])
+        tv = P @ np.array([-math.sin(th), math.cos(th)])
+        ar = (su.max() - su.min()) * (tv.max() - tv.min())
+        if (su.max() - su.min()) >= (tv.max() - tv.min()) and (best is None or ar < best[0]):
+            best = (ar, th)
+    th = best[1]
+    ux, uy = math.cos(th), math.sin(th)
+    # t vers l'intérieur depuis la façade `faces` : la normale gauche (-uy, ux) doit tourner le dos à `faces`.
+    fx, fy = math.cos(math.radians(COMPASS[spec["faces"]])), math.sin(math.radians(COMPASS[spec["faces"]]))
+    if -uy * fx + ux * fy > 0:
+        ux, uy = -ux, -uy
+    vx, vy = -uy, ux
+    cx, cy = P.mean(axis=0)
+    xy = lambda s, t: (cx + ux * s + vx * t, cy + uy * s + vy * t)
+    H = lambda s, t: mns(*xy(s, t))
+    su, tv = (P - (cx, cy)) @ (ux, uy), (P - (cx, cy)) @ (vx, vy)
+    s_lo, s_hi, t_lo, t_hi = su.min(), su.max(), tv.min(), tv.max()
+    edge = lambda f, a, b_, d, thr: next((float(x) for x in np.arange(a, b_, d) if f(x) < thr), None)
+    roof_mid = med([H(s, t) for s in np.linspace(s_lo + 5, s_hi - 5, 25) for t in np.linspace(t_lo + 5, t_hi - 5, 15)])
+    thr = g0 + 0.8 * (roof_mid - g0)
+    sm, tm = (s_lo + s_hi) / 2, (t_lo + t_hi) / 2
+    # Le rectangle d'aire minimale tourne d'un demi-degré selon la grille : on redresse l'axe sur les droites des deux grands murs.
+    for _ in range(3):
+        cs_ = np.arange(s_lo + 3, s_hi - 3, 1.0)
+        k0 = np.polyfit(cs_, [edge(lambda t: H(s, t), tm, t_lo - 6, -0.05, thr) for s in cs_], 1)[0]
+        k1 = np.polyfit(cs_, [edge(lambda t: H(s, t), tm, t_hi + 6, 0.05, thr) for s in cs_], 1)[0]
+        dth = math.atan((k0 + k1) / 2)
+        ux, uy = ux * math.cos(dth) - uy * math.sin(dth), ux * math.sin(dth) + uy * math.cos(dth)
+        vx, vy = -uy, ux
+    rows = np.arange(t_lo + 2, t_hi - 2, 0.5)
+    cols = np.arange(s_lo + 2, s_hi - 2, 0.5)
+    S0 = med([edge(lambda s: H(s, t), sm, s_lo - 6, -0.125, thr) for t in rows]) + 0.0625
+    S1 = med([edge(lambda s: H(s, t), sm, s_hi + 6, 0.125, thr) for t in rows]) - 0.0625
+    T0 = med([edge(lambda t: H(s, t), tm, t_lo - 6, -0.125, thr) for s in cols]) + 0.0625
+    T1 = med([edge(lambda t: H(s, t), tm, t_hi + 6, 0.125, thr) for s in cols]) - 0.0625
+    ox, oy = xy(S0, T0)
+    L, D = S1 - S0, T1 - T0
+    xy = lambda s, t: (ox + ux * s + vx * t, oy + uy * s + vy * t)
+    H = lambda s, t: mns(*xy(s, t))
+    G = lambda s, t: mnt(*xy(s, t))
+    # Acrotère : haut des cellules du bord ; toit : médiane de l'intérieur ; lanterneaux : bosses de plus de 25 cm sur le toit lissé.
+    rim = [H(s, t) for s in np.arange(1, L - 1, 1.0) for t in (0.25, D - 0.25)] + [H(s, t) for t in np.arange(1, D - 1, 1.0) for s in (0.25, L - 0.25)]
+    top = float(np.percentile(rim, 75))
+    gs, gt = np.arange(2, L - 2, 0.25), np.arange(2, D - 2, 0.25)
+    R = np.array([[H(s, t) for s in gs] for t in gt])
+    bump = R - ndimage.median_filter(R, size=17)
+    lab, n = ndimage.label(bump > 0.15)
+    sky, sizes = [], []
+    for k in range(1, n + 1):
+        ii, jj = np.where(lab == k)
+        if len(ii) < 5:
+            continue
+        sky.append([r2(gs[jj].mean()), r2(gt[ii].mean())])
+        sizes.append(((jj.max() - jj.min() + 1) * 0.25 + (ii.max() - ii.min() + 1) * 0.25) / 2)
+    sky.sort()
+    roof = med(R[np.abs(bump) < 0.1])
+    # Blocs bas des deux grands côtés : bouts (s) lus une fois sur le modèle de surface (`blocks` de l'entrée, côté route `sw` et côté parking
+    # `ne`) ; profondeur = médiane, sur les colonnes du bloc, du premier passage sous 1,6 m au-dessus du terrain depuis le mur ; toit =
+    # 30ᵉ centile du modèle de surface sur le bloc (les édicules n'en couvrent qu'une partie), hors de la bande de 1,25 m où le relevé bave
+    # depuis le mur de la salle.
+    blocks, units = [], []
+    for side, key in ((-1, "sw"), (1, "ne")):
+        t_wall = 0.0 if side < 0 else D
+        for s0, s1 in spec["blocks"][key]:
+            deps, zs = [], []
+            for s in np.arange(s0 + 0.5, s1 - 0.4, 0.5):
+                run_ = 0.0
+                for w in np.arange(0.25, 9, 0.25):
+                    t = t_wall + side * w
+                    if H(s, t) - G(s, t) < 1.6:
+                        break
+                    run_ = w
+                    if w > 1.25:
+                        zs.append(H(s, t))
+                deps.append(run_ + 0.125)
+            depth = med(deps)
+            z = float(np.percentile(zs, 30))
+            t0, t1 = sorted((t_wall, t_wall + side * depth))
+            blocks.append([r2(s0), r2(s1), r2(t0), r2(t1), r2(z)])
+            # Édicules : cellules à plus de 0,7 m au-dessus du toit du bloc, à plus de 1,25 m du mur de la salle (le relevé y bave), d'au
+            # moins 1,2 m de côté (les panneaux d'affichage plaqués sur les blocs sont plus minces) et de moins de 45 % du toit du bloc.
+            bs, bt = np.arange(s0 + 0.125, s1, 0.25), np.arange(t0 + 0.125, t1, 0.25)
+            B = np.array([[H(s, t) if abs(t - t_wall) > 1.25 else -1e9 for s in bs] for t in bt])
+            ul, un = ndimage.label(B > z + 0.7)
+            for k in range(1, un + 1):
+                ii, jj = np.where(ul == k)
+                ws, wt = (jj.max() - jj.min() + 1) * 0.25, (ii.max() - ii.min() + 1) * 0.25
+                if len(ii) < 16 or min(ws, wt) < 1.2 or ws * wt > 0.45 * (s1 - s0) * (t1 - t0) or z - g0 < CANOPY_H:  # rien sur l'auvent
+                    continue
+                units.append([r2(bs[jj.min()] - 0.125), r2(bs[jj.max()] + 0.125), r2(bt[ii.min()] - 0.125), r2(bt[ii.max()] + 0.125),
+                              r2(np.percentile(B[ii, jj], 75))])
+    # Hall courbe : bord de l'auvent sur des lignes de t, en partant du mur de la salle (au nord du bord sud de l'annexe, en partant du bout
+    # de l'annexe), passage sous le toit du hall moins 2 m ; cercle ajusté sur ces points. Toit du hall : médiane près du mur de la salle.
+    sA, tA = spec["annex"]
+    zr = med([H(L + 3, t) for t in np.arange(D * 0.4, D - 1, 0.5)])
+    pts = []
+    for t in np.arange(2, tA + 10, 0.5):
+        s_in = L + 1 if t < tA - 0.5 else sA + 1.5
+        if H(s_in, t) < zr - 2.0:
+            continue
+        s_ = edge(lambda s: H(s, t), s_in, s_in + 40, 0.1, zr - 2.0)
+        if s_ is not None:
+            pts.append((s_ - 0.05, t))
+    Q = np.array(pts)
+    M = np.c_[2 * Q, np.ones(len(Q))]
+    k_ = np.linalg.lstsq(M, (Q ** 2).sum(1), rcond=None)[0]
+    cc = k_[:2]
+    rc = math.sqrt(k_[2] + cc @ cc)
+    res = np.hypot(Q[:, 0] - cc[0], Q[:, 1] - cc[1]) - rc
+    keep = np.abs(res) < 0.6  # un arbre ou un mât devant l'auvent
+    k_ = np.linalg.lstsq(M[keep], (Q[keep] ** 2).sum(1), rcond=None)[0]
+    cc = k_[:2]
+    rc = math.sqrt(k_[2] + cc @ cc)
+    # Bord nord-est de l'auvent : droite ajustée sur les passages en t (lignes de s entre l'annexe et l'arc).
+    ne = []
+    for s in np.arange(sA + 1.5, cc[0] + rc - 4, 0.5):
+        t_ = edge(lambda t: H(s, t), D + 2, D + 40, 0.1, zr - 2.0)
+        if t_ is not None:
+            ne.append((s, t_))
+    ne = np.array(ne)
+    kk, bb = np.polyfit(ne[:, 0], ne[:, 1], 1)
+    ang = [math.atan2(t - cc[1], s - cc[0]) for s, t in Q[keep]]
+    zfa = float(np.percentile([H(*(cc + np.array([math.cos(a), math.sin(a)]) * (rc - 0.4))) for a in np.linspace(min(ang), max(ang), 40)], 75))
+    za = med([H(s, t) for s in np.arange(L + 1.5, sA - 1, 0.5) for t in np.arange(tA + 1, kk * s + bb - spec["overhang"] - 1.5, 0.5)])
+    return {
+        "o": [r2(ox), r2(oy)], "a": round(math.atan2(uy, ux), 5), "l": r2(L), "d": r2(D), "g": r2(g0),
+        "top": r2(top), "roof": r2(roof),
+        "sky": sky, "skyW": r2(min(2.4, max(1.2, med(sizes)))) if sizes else 1.6,
+        "blocks": blocks, "units": units,
+        "rot": {"c": [r2(cc[0]), r2(cc[1])], "r": r2(rc), "ov": spec["overhang"], "ne": [r2(kk), r2(bb)], "roof": r2(zr), "fascia": r2(zfa),
+                "ann": [sA, tA, r2(za)]},
+    }
+
+
+def eduen(tid, bid, b, spec, k):
+    """Parc des expositions l'Eduen (D231) : champ `edu` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = measure_eduen(bid, b, spec)
+    e = dict(k["buildings"].get(bid, {"k": "culture"}))
+    e["edu"] = m
+    g, r = m["g"], m["rot"]
+    print(f"  sol {g:.2f} ; salle de {m['l']} × {m['d']} m, acrotère {m['top'] - g:.1f} m, toit {m['roof'] - g:.1f} m, {len(m['sky'])} lanterneaux "
+          f"de {m['skyW']} m ; hall : auvent de rayon {r['r']} m (centre {r['c']}), toit {r['roof'] - g:.1f} m, rive {r['fascia'] - g:.1f} m, "
+          f"annexe {r['ann'][2] - g:.1f} m")
+    for q in m["blocks"]:
+        print(f"    bloc s {q[0]}..{q[1]} t {q[2]}..{q[3]} : {q[4] - g:.1f} m")
+    print(f"    {len(m['units'])} édicules")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    # Les bâtiments BD TOPO qui découpaient le hall courbe, l'annexe et un bloc sont dessinés par le modèle : masqués, sans silhouette.
+    lod_hid = False
+    for sid in spec.get("hide", []):
+        if k["buildings"].get(sid) != {"k": "hidden"}:
+            k["buildings"][sid] = {"k": "hidden"}
+            ch = True
+        lod_hid = replace_lod(tid, sid, []) or lod_hid
+    ca, sa = math.cos(m["a"]), math.sin(m["a"])
+    xy = lambda s, t: [round(m["o"][0] + ca * s - sa * t, 1), round(m["o"][1] + sa * s + ca * t, 1)]
+    rect = lambda a0, a1, b0, b1: [(a0, b0), (a1, b0), (a1, b1), (a0, b1)]
+    L, D = m["l"], m["d"]
+    polys = [(rect(0, L, 0, D), m["top"], m["top"])]
+    polys += [(rect(*q[:4]), q[4], q[4]) for q in m["blocks"]]
+    polys.append(([(s, t) for s, t in eduen_canopy(m)], r["roof"], r["roof"]))
+    lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
+    return ch, tid if lod or lod_hid else None
+
+
+def eduen_canopy(m):
+    """Contour (s, t) du toit-auvent du hall courbe (le même calcul que le client, `eduenCanopy`) : du mur de la salle le long de l'arc
+    jusqu'au bord nord-est, puis ce bord jusqu'au-dessus de l'annexe, et l'annexe contournée."""
+    r = m["rot"]
+    (cs, ct), R = r["c"], r["r"]
+    k_, b_ = r["ne"]
+    L, D = m["l"], m["d"]
+    sA, tA, _ = r["ann"]
+    a0 = math.atan2(-math.sqrt(max(0.0, R * R - (L - cs) ** 2)), L - cs)
+    # Fin de l'arc : intersection avec la droite t = k·s + b (par dichotomie sur l'angle).
+    lo, hi = a0, math.pi / 2
+    f = lambda a: (ct + R * math.sin(a)) - (k_ * (cs + R * math.cos(a)) + b_)
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if f(lo) * f(mid) <= 0:
+            hi = mid
+        else:
+            lo = mid
+    a1 = lo
+    n = max(8, int((a1 - a0) / math.radians(3)))
+    pts = [(L, ct + R * math.sin(a0))] + [(cs + R * math.cos(a0 + (a1 - a0) * i / n), ct + R * math.sin(a0 + (a1 - a0) * i / n)) for i in range(1, n + 1)]
+    pts += [(sA, k_ * sA + b_), (sA, tA), (L, tA)]
+    return [(round(s, 2), round(t, 2)) for s, t in pts]
 
 
 def run(f, x0, step, limit, test):
@@ -2189,6 +2415,13 @@ def main():
             continue
         if spec["model"] == "playhouse":
             ch, lod = playhouse(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "eduen":
+            ch, lod = eduen(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

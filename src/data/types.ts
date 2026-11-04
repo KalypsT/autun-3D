@@ -409,6 +409,8 @@ export interface BuildingKind {
   play?: PlayhouseModel;
   /** Gare d'après photos et relevé LiDAR (D228) : modèle dédié (remplace murs, toit, façade, inscription et obstacle génériques). */
   sta?: StationModel;
+  /** Parc des expositions l'Eduen d'après photos et relevé LiDAR (D231) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
+  edu?: EduenModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -446,6 +448,30 @@ export interface PlayhouseModel {
   perron: [number, number, number, number, number];
   levels: [number, number, number, number, number];
   pav: number;
+}
+
+/**
+ * Parc des expositions l'Eduen (D231, tools/data/build_monuments.py, modèle `eduen`). Repère : origine `o` au coin ouest de la grande
+ * salle (mur), s le long du grand côté sur la route de Chalon selon l'angle `a` (vers le sud-est), t vers l'intérieur (le parking). Salle de
+ * 0 à `l` sur 0 à `d`, acrotère `top`, toit `roof`, lanterneaux carrés de côté `skyW` centrés en `sky` (s, t). Blocs bas `blocks` (s0, s1,
+ * t0, t1, haut) contre les deux grands côtés, dont l'auvent bas de l'entrée côté parking ; édicules `units` (même forme) sur leurs toits.
+ * Hall courbe `rot` : bord de l'auvent sur le cercle de centre `c` et de rayon `r`, mur `ov` mètres en retrait ; bord nord-est de l'auvent
+ * sur la droite t = ne[0]·s + ne[1] ; toit `roof`, haut de la rive `fascia` ; annexe plus basse `ann` (bout est s, bord sud t, toit) entre
+ * le mur de la salle et ce bord. Altitudes locales ; `g` : sol médian autour.
+ */
+export interface EduenModel {
+  o: [number, number];
+  a: number;
+  l: number;
+  d: number;
+  g: number;
+  top: number;
+  roof: number;
+  sky: [number, number][];
+  skyW: number;
+  blocks: [number, number, number, number, number][];
+  units: [number, number, number, number, number][];
+  rot: { c: [number, number]; r: number; ov: number; ne: [number, number]; roof: number; fascia: number; ann: [number, number, number] };
 }
 
 /**
