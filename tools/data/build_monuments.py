@@ -16,7 +16,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
-          théâtre municipal (modèle `playhouse`, D223) : champ `play` du bâtiment (murs, toit brisé du corps avant, cage de scène) et silhouette lointaine ;
+          théâtre municipal (modèle `playhouse`, D223) : champ `play` du bâtiment (murs, toit brisé du corps avant, cage de scène, fronton D224, perron mesuré au relief D225) et silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -258,6 +258,16 @@ def measure_playhouse(bid, b, spec):
     # 2 m de large au milieu de la façade, dans le premier mètre derrière le bord.
     sc = (lF + rF) / 2
     fronton = float(np.percentile([S(s, t) for s in np.arange(sc - 1.0, sc + 1.01, 0.25) for t in np.arange(tf + 0.25, tf + 1.26, 0.25)], 90))
+    # Perron (relief du MNT devant l'avant-corps) : palier = terrain contre le mur, sol = terrain 6 à 8 m devant, pied = premier point revenu
+    # à 10 cm du sol, largeur = terrain au-dessus du quart de la hauteur, à mi-volée.
+    tw = tf + c
+    Tm = lambda t: float(np.median([mnt(*xy(s, t)) for s in np.arange(sc - 3, sc + 3.01, 0.5)]))
+    zl = float(np.median([Tm(t) for t in np.arange(tw - 0.75, tw - 0.24, 0.25)]))
+    far = float(np.median([Tm(t) for t in np.arange(tw - 8, tw - 5.99, 0.5)]))
+    tfoot = first(lambda t: Tm(t) < far + 0.1, tw - 0.5, tw - 12, -0.25)
+    tmid = (tw + tfoot) / 2
+    inside = [float(s_) for s_ in np.arange(sc - 12, sc + 12.01, 0.25) if mnt(*xy(s_, tmid)) > far + 0.25 * (zl - far)]
+    perron = [r2(min(inside) - s0), r2(max(inside) - s0), r2(tfoot - tw), r2(far), r2(zl)]
     # Cage de scène : sur l'axe, le toit monte d'un coup ; le corps avant s'arrête là.
     prof_t = np.arange(tf + 4, tr, 0.25)
     near_wall = [float(np.median([S(lR + 1.5, t), S(rR - 1.5, t)])) for t in prof_t]
@@ -284,7 +294,7 @@ def measure_playhouse(bid, b, spec):
         "w": r2(W), "ts": r2(ts - tf - 2 * c), "iL": r2(iL), "iR": r2(iR), "tt": r2(tt - tf - c), "tr": r2(tr - tf - c),
         "g": r2(g0), "eave": r2(eave),
         "roof": [r2(z1 + k1 * c), r2(brk - c), r2(z1 + k1 * brk), r2(ridge)],
-        "tower": [r2(z3 + k3 * c), r2(tridge)], "fronton": r2(fronton),
+        "tower": [r2(z3 + k3 * c), r2(tridge)], "fronton": r2(fronton), "perron": perron,
         "levels": spec["levels"], "pav": spec["pav"],
     }
     return out
@@ -298,7 +308,8 @@ def playhouse(tid, bid, b, spec, k):
     g = m["g"]
     print(f"  {bid} : façade {m['w']} m, ressaut à {m['ts']} m, cage de scène de {m['tt']} à {m['tr']} m ; attique {m['eave'] - g:.1f} m,"
           f" toit brisé {m['roof'][2] - g:.1f} m à {m['roof'][1]:.1f} m du mur, faîtage {m['roof'][3] - g:.1f} m ;"
-          f" cage {m['tower'][0] - g:.1f} / {m['tower'][1] - g:.1f} m, fronton {m['fronton'] - g:.1f} m au-dessus du sol devant")
+          f" cage {m['tower'][0] - g:.1f} / {m['tower'][1] - g:.1f} m, fronton {m['fronton'] - g:.1f} m au-dessus du sol devant ;"
+          f" perron de {m['perron'][1] - m['perron'][0]:.1f} m de large, {-m['perron'][2]:.1f} m de profondeur, palier à {m['perron'][4] - m['perron'][3]:.2f} m")
     ch = k["buildings"].get(bid) != e
     if ch:
         k["buildings"][bid] = e

@@ -440,6 +440,8 @@ export interface PlayhouseModel {
   tower: [number, number];
   /** Haut du fronton central de l'attique (D224). */
   fronton: number;
+  /** Perron mesuré au relief (D225) : s0, s1 (largeur à mi-volée), t du pied (devant la façade, négatif), sol au pied, palier. */
+  perron: [number, number, number, number, number];
   levels: [number, number, number, number, number];
   pav: number;
 }

@@ -74,7 +74,8 @@ describe("théâtre municipal (D223)", () => {
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
     expect(tris).toBeGreaterThan(1000);
-    expect(tris).toBeLessThan(8000);
+    // D225 : 7 895 triangles avec balcons, perron et lanternes ; marge pour les ornements du toit.
+    expect(tris).toBeLessThan(12000);
     expect(sinks.glow.positions.length).toBeGreaterThan(0);
     expect(texts).toEqual(["THEATRE"]);
     // three : (x, z, −y) ; tout tient à 5 m de l'emprise mesurée, et sous le faîtage de la cage de scène (pignons et piles compris).
@@ -86,6 +87,27 @@ describe("théâtre municipal (D223)", () => {
       expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 5);
       expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 5);
       expect(p[i + 1]!).toBeLessThan(m.tower[1] + 1);
+    }
+  });
+
+  it("perron (D225) : mesuré devant l'avant-corps, on marche sur des marches régulières à moins de 25 cm près", () => {
+    const [p0, p1, tFoot, zFoot, zLand] = m.perron;
+    expect(p1 - p0).toBeGreaterThan(9);
+    expect(Math.abs((p0 + p1) / 2 - m.w / 2)).toBeLessThan(1.5);
+    expect(tFoot).toBeLessThan(-1.5);
+    expect(tFoot).toBeGreaterThan(-4);
+    expect(zLand - zFoot).toBeGreaterThan(0.5);
+    expect(zLand - zFoot).toBeLessThan(1.6);
+    // Le relief sous les marches : du sol au palier, sans s'écarter du dessus des marches de plus de 25 cm (même pas que le rendu).
+    const f = playhouseFrame(m);
+    const steps = Math.max(2, Math.round((zLand - zFoot) / 0.15)), riser = (zLand - zFoot) / steps;
+    const landing = 0.9, tread = Math.max(0.25, (-tFoot - landing) / steps);
+    for (let i = 0; i < steps; i++) {
+      const t = -(landing + (steps - 1 - i) * tread) + tread / 2;
+      for (const s of [m.w / 2 - 3, m.w / 2, m.w / 2 + 3]) {
+        const z = world.terrain.heightAt(...at(f, s, t));
+        expect(Math.abs(z - (zFoot + riser * (i + 1)))).toBeLessThan(0.25);
+      }
     }
   });
 });

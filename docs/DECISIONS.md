@@ -4483,3 +4483,21 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![De face](captures/d224-theatre-face.jpg)
 ![Au pied de la façade](captures/d224-theatre-detail.jpg)
 ![Depuis la place, côté hôtel de ville](captures/d224-theatre-angle.jpg)
+
+## 2026-11-04 — D225. Le théâtre municipal, étape 3 : balcon, perron et lanternes
+
+**D'après la photo de face de l'utilisateur** (D223), dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Balcon de l'avant-corps** : dalle de 1 m de saillie sur toute la largeur de l'avant-corps, au bandeau du balcon (9,2 m), portée par **quatre consoles à volute** aux axes des pilastres (de 7,2 à 9 m) ; balustrade à balustres en poire tous les 28 cm, main courante, retours jusqu'au mur, dés au-dessus des consoles.
+- **Petits balcons des pavillons** (façade et retours) : dalle de 42 cm sur deux petites consoles, balustrade sur trois côtés, sous la fenêtre haute.
+- **Lanternes** suspendues à des potences entre les portes, sur les axes des pilastres (6,95 m) : cage de fer, vitres claires, chapeau en pyramide ; vitres allumées la nuit.
+- **Perron mesuré au relief** (`perron` du champ `play`, `build_monuments.py`) : palier = terrain contre le mur, sol = terrain 6 à 8 m devant, pied = premier point revenu à 10 cm du sol, largeur = terrain au-dessus du quart de la hauteur à mi-volée. Mesure : 13,0 m de large, 2,5 m de profondeur, **palier à 0,89 m** au-dessus du sol (la photo laissait croire à 1,4 m : on garde la mesure, sur laquelle on marche). Six marches de 15 cm, plus larges vers le bas comme sur la photo ; les portes partent du palier. **Rampes** en fer (main courante et barreaux) le long des deux bouts, jusqu'au mur.
+- On marche sur le relief, qui suit les marches à moins de 25 cm (test). Le sol vert-gris devant le perron est le dallage de la place (`plaza_paving`) tel que le dessine la palette, déjà là avant.
+- 7 895 triangles et 114 de vitres allumées pour tout le théâtre (5 251 à l'étape 2).
+
+**Pas encore** (étape 4) : lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière (forme approchée, pas de photo rapprochée), escalier de secours de l'arrière.
+
+**Tests** (+1) : perron mesuré au milieu de la façade, hauteur plausible, relief sous chaque marche à moins de 25 cm de son dessus (`playhouse.test.ts`) ; plafond de triangles relevé à 12 000.
+
+![Le balcon et les lanternes](captures/d225-theatre-balcon.jpg)
+![Le perron et ses rampes](captures/d225-theatre-perron.jpg)
+![La nuit](captures/d225-theatre-nuit.jpg)

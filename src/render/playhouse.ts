@@ -12,13 +12,14 @@ import { T } from "./style";
  * Niveaux et travées de la photo de face : portes et baies en plein cintre, fenêtres jumelées de l'entresol, grandes baies de l'étage
  * noble au centre ; quatre rangs de baies sur les côtés ; menuiseries rouges. Détail de la façade (D224) : pilastres à chapiteaux,
  * clés d'arcs, guirlandes, fenêtres des pavillons à fronton cintré et mascaron, modillons, attique à dés et panneaux sculptés, fronton
- * central à cartouche et volutes, chaînes d'angle de la cage de scène. Balcon, perron à rampes et ornements du toit viendront ensuite.
+ * central à cartouche et volutes, chaînes d'angle de la cage de scène. D225 : balcon sur consoles, petits balcons des pavillons, perron
+ * mesuré à rampes, lanternes. Les ornements du toit viendront ensuite.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 const STONE = C("#e4d7b8"), STONE_LOW = C("#d8c9a6"), TRIM = C("#efe6cf"), RENDER = C("#b2ab9d"), JOINERY = C("#8c2a25");
-const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
+const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0"), IRON = C("#25292a");
 /** Saillie de la corniche, épaisseur de l'attique, débord des pans de la cage de scène. */
 const CORNICE = 0.45, ATTIC = 0.3, OVERHANG = 0.2;
 
@@ -225,6 +226,126 @@ class Draw {
     for (let u = pitch / 2; u < w.len; u += pitch) this.plate(w, u - 0.08, u + 0.08, z0, z1, 0.15, 0.4, shade(TRIM, 0.95));
   }
 
+  /** Barre de fer de section carrée (côté 2·r) de a à b, en (s, t, z). */
+  bar(a: STZ, b: STZ, r: number): void {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1;
+    // Deux directions perpendiculaires à la barre.
+    let px = -dy, py = dx, pz = 0;
+    if (Math.hypot(px, py) < 1e-6) { px = 1; py = 0; }
+    const pl = Math.hypot(px, py, pz);
+    px /= pl; py /= pl; pz /= pl;
+    const qx = (dy * pz - dz * py) / L, qy = (dz * px - dx * pz) / L, qz = (dx * py - dy * px) / L;
+    const c = (k: number, j: number, e: STZ): Vec3 => this.P(e[0] + (px * k + qx * j) * r, e[1] + (py * k + qy * j) * r, e[2] + (pz * k + qz * j) * r);
+    const sides: [number, number, number, number][] = [[1, 1, 1, -1], [1, -1, -1, -1], [-1, -1, -1, 1], [-1, 1, 1, 1]];
+    for (const [k0, j0, k1, j1] of sides) {
+      const nk = (k0 + k1) / 2, nj = (j0 + j1) / 2;
+      const [nx, ny] = at(this.f, px * nk + qx * nj, py * nk + qy * nj);
+      const n0 = at(this.f, 0, 0);
+      const nz = pz * nk + qz * nj, nl = Math.hypot(nx - n0[0], ny - n0[1], nz) || 1;
+      this.mb.quad(c(k0, j0, a), c(k1, j1, a), c(k1, j1, b), c(k0, j0, b), toThree((nx - n0[0]) / nl, (ny - n0[1]) / nl, nz / nl), IRON);
+    }
+  }
+
+  /** Dalle horizontale de contour `pts` (s, t), de z0 à z1 : dessus, dessous, chants. */
+  slab(pts: ST[], z0: number, z1: number): void {
+    const n = pts.length;
+    for (let i = 1; i + 1 < n; i++) {
+      this.mb.tri(this.P(...pts[0]!, z1), this.P(...pts[i]!, z1), this.P(...pts[i + 1]!, z1), [0, 1, 0], TRIM);
+      this.mb.tri(this.P(...pts[0]!, z0), this.P(...pts[i]!, z0), this.P(...pts[i + 1]!, z0), [0, -1, 0], shade(TRIM, 0.82));
+    }
+    for (let i = 0; i < n; i++) {
+      const a = pts[i]!, b = pts[(i + 1) % n]!, l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nn = this.N((b[1] - a[1]) / l, -(b[0] - a[0]) / l);
+      this.mb.quad(this.P(...a, z0), this.P(...b, z0), this.P(...b, z1), this.P(...a, z1), nn, shade(TRIM, 0.95));
+      this.mb.quad(this.P(...a, z0), this.P(...b, z0), this.P(...b, z1), this.P(...a, z1), [-nn[0], -nn[1], -nn[2]], shade(TRIM, 0.95));
+    }
+  }
+
+  /** Balustrade de a à b (s, t) posée à z0, haute de h : plinthe, balustres en poire tous les 28 cm, main courante. */
+  balustrade(a: ST, b: ST, z0: number, h: number): void {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 0.05) return;
+    const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len, vx = -uy, vy = ux;
+    const rect = (u0: number, u1: number, hw: number, z1: number, z2: number, col: THREE.Color): void => {
+      const P = (u: number, v: number): ST => [a[0] + ux * u + vx * v, a[1] + uy * u + vy * v];
+      const q = [P(u0, -hw), P(u1, -hw), P(u1, hw), P(u0, hw)];
+      for (let i = 0; i < 4; i++) {
+        const p0 = q[i]!, p1 = q[(i + 1) % 4]!, l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+        this.mb.quad(this.P(...p0, z1), this.P(...p1, z1), this.P(...p1, z2), this.P(...p0, z2), this.N((p1[1] - p0[1]) / l, -(p1[0] - p0[0]) / l), col);
+      }
+      this.mb.quad(this.P(...q[0]!, z2), this.P(...q[1]!, z2), this.P(...q[2]!, z2), this.P(...q[3]!, z2), [0, 1, 0], shade(col, 1.04));
+    };
+    rect(0, len, 0.12, z0, z0 + 0.12, TRIM);
+    const top = z0 + h - 0.12;
+    const n = Math.max(1, Math.round(len / 0.28));
+    for (let i = 0; i < n; i++) {
+      const u = (len * (i + 0.5)) / n;
+      rect(u - 0.035, u + 0.035, 0.035, z0 + 0.12, top, shade(TRIM, 0.97));
+      rect(u - 0.065, u + 0.065, 0.065, z0 + 0.2, z0 + 0.2 + (top - z0 - 0.12) * 0.45, shade(TRIM, 0.97));
+    }
+    rect(-0.03, len + 0.03, 0.14, top, z0 + h, TRIM);
+  }
+
+  /** Console à volute sous un balcon : profil en quart d'ellipse du mur (bas, z1) à la saillie `depth` (haut, z0), largeur wd. */
+  console(w: PWall, u: number, z0: number, z1: number, depth: number, wd: number): void {
+    const prof: [number, number][] = [];
+    for (let i = 0; i <= 6; i++) {
+      const th = (Math.PI / 2) * (i / 6);
+      prof.push([depth * Math.sin(th), z1 + (z0 - z1) * (1 - Math.cos(th))]);
+    }
+    const tx = (w.b[0] - w.a[0]) / w.len, ty = (w.b[1] - w.a[1]) / w.len;
+    for (const k of [-1, 1]) {
+      const n = this.N(tx * k, ty * k), uu = u + (k * wd) / 2;
+      for (let i = 0; i < 6; i++) {
+        this.mb.tri(this.P(...this.on(w, uu, 0), z0), this.P(...this.on(w, uu, prof[i]![0]), prof[i]![1]), this.P(...this.on(w, uu, prof[i + 1]![0]), prof[i + 1]![1]), n, shade(TRIM, 0.9));
+      }
+    }
+    for (let i = 0; i < 6; i++) {
+      const [o0, z0a] = prof[i]!, [o1, z1a] = prof[i + 1]!;
+      const A = this.P(...this.on(w, u - wd / 2, o0), z0a), B = this.P(...this.on(w, u + wd / 2, o0), z0a);
+      const Cc = this.P(...this.on(w, u + wd / 2, o1), z1a), D = this.P(...this.on(w, u - wd / 2, o1), z1a);
+      // Normale du profil, vers l'avant et le bas (tangente (do, dz) → (dz, −do)).
+      const dO = o1 - o0, dZ = z1a - z0a, nl = Math.hypot(dO, dZ) || 1;
+      const ho = this.N(...w.out);
+      this.mb.quad(A, B, Cc, D, [(ho[0] * dZ) / nl, -dO / nl, (ho[2] * dZ) / nl], TRIM);
+    }
+    // Enroulement du bas : petit disque sur chaque joue.
+    for (const k of [-1, 1]) {
+      const tx2 = (w.b[0] - w.a[0]) / w.len, ty2 = (w.b[1] - w.a[1]) / w.len, n = this.N(tx2 * k, ty2 * k), uu = u + (k * wd) / 2 + k * 0.01;
+      const c = this.P(...this.on(w, uu, 0.16), z1 + 0.16);
+      for (let i = 0; i < 8; i++) {
+        const a0 = (Math.PI * 2 * i) / 8, a1 = (Math.PI * 2 * (i + 1)) / 8;
+        this.mb.tri(c, this.P(...this.on(w, uu, 0.16 + Math.cos(a0) * 0.13), z1 + 0.16 + Math.sin(a0) * 0.13), this.P(...this.on(w, uu, 0.16 + Math.cos(a1) * 0.13), z1 + 0.16 + Math.sin(a1) * 0.13), n, TRIM);
+      }
+    }
+  }
+
+  /** Lanterne suspendue à une potence qui sort du mur de `reach` mètres à l'altitude z : cage de fer, vitres allumées la nuit. */
+  lantern(w: PWall, u: number, z: number, reach: number): void {
+    const [s0, t0] = this.on(w, u, 0), [s1, t1] = this.on(w, u, reach);
+    this.bar([s0, t0, z], [s1, t1, z], 0.03);
+    this.bar([s0, t0, z - 0.45], [this.on(w, u, reach * 0.6)[0], this.on(w, u, reach * 0.6)[1], z], 0.025);
+    this.bar([s1, t1, z], [s1, t1, z - 0.2], 0.02);
+    const zb = z - 0.85, zt = z - 0.3, r = 0.16;
+    const glass = C("#f3e2b0");
+    const sides: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+    for (const [ds, dt] of sides) {
+      // Face vitrée (le repère du mur : ds le long, dt devant).
+      const tx = (w.b[0] - w.a[0]) / w.len, ty = (w.b[1] - w.a[1]) / w.len;
+      const ex = tx * ds + w.out[0] * dt, ey = ty * ds + w.out[1] * dt, fx = -ey, fy = ex;
+      const c0: ST = [s1 + ex * r + fx * r, t1 + ey * r + fy * r], c1: ST = [s1 + ex * r - fx * r, t1 + ey * r - fy * r];
+      const n = this.N(ex, ey);
+      this.mb.quad(this.P(...c0, zb), this.P(...c1, zb), this.P(...c1, zt), this.P(...c0, zt), n, glass);
+      this.glow.quadGradient(this.P(...c0, zb), this.P(...c1, zb), this.P(...c1, zt), this.P(...c0, zt), n, GLOW_LO, GLOW_HI);
+      this.bar([...c0, zb], [...c0, zt], 0.018);
+    }
+    box(this, s1 - r - 0.03, s1 + r + 0.03, t1 - r - 0.03, t1 + r + 0.03, zb - 0.08, zb, IRON);
+    // Chapeau en pyramide et anneau.
+    const tip: STZ = [s1, t1, zt + 0.22];
+    const cs: ST[] = [[s1 - r - 0.05, t1 - r - 0.05], [s1 + r + 0.05, t1 - r - 0.05], [s1 + r + 0.05, t1 + r + 0.05], [s1 - r - 0.05, t1 + r + 0.05]];
+    for (let i = 0; i < 4; i++) this.pan([...cs[i]!, zt], [...cs[(i + 1) % 4]!, zt], tip, null, IRON);
+  }
+
   /** Chaîne d'angle : blocs alternés (90 et 50 cm) depuis un bout du mur, de z0 à z1. */
   quoins(w: PWall, atEnd: boolean, z0: number, z1: number, phase: number): void {
     for (let k = 0, z = z0; z + 0.3 < z1; k++, z += 0.6) {
@@ -248,7 +369,9 @@ export function buildPlayhouse(sinks: LandmarkSinks, m: PlayhouseModel, terrain:
   const f = playhouseFrame(m);
   const d = new Draw(sinks.solid, sinks.glow, f, (s, t) => terrain.heightAt(...at(f, s, t)));
   const { w: W, ts, iL, iR, tt, tr, g, eave } = m;
-  const [floor, cordon, band, corniceLo, corniceHi] = m.levels.map((v) => g + v) as [number, number, number, number, number];
+  const [, cordon, band, corniceLo, corniceHi] = m.levels.map((v) => g + v) as [number, number, number, number, number];
+  // Sol des portes : le palier du perron mesuré (D225).
+  const floor = m.perron[4];
   const [zWall, brk, zBrk, zRidge] = m.roof;
   const [zTe, zTr] = m.tower;
   const sA = iL, sB = W - iR, mid = (sA + sB) / 2, half = (sB - sA) / 2;
@@ -425,13 +548,49 @@ export function buildPlayhouse(sinks: LandmarkSinks, m: PlayhouseModel, terrain:
   sinks.names.quad(toThree(ax, ay, zt0), toThree(bx, by, zt0), toThree(bx, by, zt0 + th), toThree(ax, ay, zt0 + th), d.N(0, -1),
     [label.u0, label.v0], [label.u1, label.v0], [label.u1, label.v1], [label.u0, label.v1], new THREE.Color(1, 1, 1));
 
-  // Perron devant l'avant-corps (photo : six marches, plus large que les trois portes) ; il recouvre le talus du relief. Détail (rampes,
-  // lanternes) plus tard.
-  const steps = 6, riser = (floor - g) / steps, tread = 0.34, landing = 0.9;
+  // --- Balcon, perron, lanternes (D225) ------------------------------------------------------------------------------------------
+  // Balcon de l'avant-corps sur quatre consoles (aux axes des pilastres), balustrade à balustres, dés aux consoles et aux bouts.
+  const bz = band - 0.2, bd = 1.0, consoles = [pw, pw + cw / 3, pw + (2 * cw) / 3, W - pw];
+  box(d, pw - 0.1, W - pw + 0.1, -bd, 0, bz, bz + 0.32, TRIM);
+  sinks.solid.quad(d.P(pw - 0.1, -bd, bz), d.P(W - pw + 0.1, -bd, bz), d.P(W - pw + 0.1, 0, bz), d.P(pw - 0.1, 0, bz), [0, -1, 0], shade(TRIM, 0.82));
+  for (const u of consoles) d.console(front, u, bz, bz - 1.8, bd - 0.05, 0.45);
+  const bTop = bz + 0.32;
+  const rail: [ST, ST][] = [[[pw - 0.05, -bd + 0.12], [W - pw + 0.05, -bd + 0.12]], [[pw - 0.05, -bd + 0.12], [pw - 0.05, 0]], [[W - pw + 0.05, -bd + 0.12], [W - pw + 0.05, 0]]];
+  for (const [p0, p1] of rail) d.balustrade(p0, p1, bTop, 0.9);
+  for (const u of consoles) box(d, u - 0.2, u + 0.2, -bd + 0.12 - 0.2, -bd + 0.12 + 0.2, bTop, bTop + 1.0, shade(TRIM, 1.02));
+  // Petits balcons des pavillons (façade et retours) : balustrade sur dalle, deux consoles.
+  for (const [wl, u] of [[front, pw / 2], [front, W - pw / 2], [retR, ts / 2], [retL, ts / 2]] as const) {
+    const a0 = d.on(wl, u - 0.95, 0), a1 = d.on(wl, u + 0.95, 0), b0 = d.on(wl, u - 0.95, 0.42), b1 = d.on(wl, u + 0.95, 0.42);
+    d.slab([a0, a1, b1, b0], bz + 0.2, bz + 0.38);
+    for (const k of [-0.7, 0.7]) d.console(wl, u + k, bz + 0.2, bz - 0.5, 0.38, 0.22);
+    const c0 = d.on(wl, u - 0.9, 0.34), c1 = d.on(wl, u + 0.9, 0.34);
+    d.balustrade(c0, c1, bz + 0.38, 0.62);
+    d.balustrade(d.on(wl, u - 0.9, 0), c0, bz + 0.38, 0.62);
+    d.balustrade(d.on(wl, u + 0.9, 0), c1, bz + 0.38, 0.62);
+  }
+  // Lanternes suspendues à des potences entre les portes (photo), allumées la nuit.
+  for (const u of [pw + cw / 3, pw + (2 * cw) / 3]) d.lantern(front, u, g + 6.95, 0.75);
+
+  // Perron mesuré (palier, pied, largeur à mi-volée) : marches régulières d'environ 15 cm, plus larges vers le bas (photo), posées sur le
+  // relief, qui monte avec elles ; rampes en fer le long des deux bouts.
+  const [p0, p1, tFoot, zFoot, zLand] = m.perron;
+  const pc = (p0 + p1) / 2, steps = Math.max(2, Math.round((zLand - zFoot) / 0.15)), riser = (zLand - zFoot) / steps;
+  const landing = 0.9, tread = Math.max(0.25, (-tFoot - landing) / steps);
+  const halfAt = (i: number): number => (p1 - p0) / 2 - 0.4 + (steps - 1 - i) * 0.2;
   for (let i = 0; i < steps; i++) {
-    const hw = cw / 2 + 2.4 + (steps - 1 - i) * 0.12, t0 = -(landing + (steps - 1 - i) * tread);
-    const zTop = g + riser * (i + 1);
-    box(d, W / 2 - hw, W / 2 + hw, t0, 0, Math.min(d.ground(W / 2, t0), g) - 0.4, zTop, i % 2 ? TRIM : shade(TRIM, 0.96));
+    const hw = halfAt(i), t0 = -(landing + (steps - 1 - i) * tread);
+    box(d, pc - hw, pc + hw, t0, 0, Math.min(d.ground(pc, t0), zFoot) - 0.4, zFoot + riser * (i + 1), i % 2 ? TRIM : shade(TRIM, 0.96));
+  }
+  for (const dir of [-1, 1]) {
+    const tB = -(landing + (steps - 1) * tread) + 0.15, sB = pc + dir * (halfAt(0) - 0.15), sT = pc + dir * (halfAt(steps - 1) - 0.15);
+    const zB = zFoot + riser + 0.9, zT = zLand + 0.9;
+    d.bar([sB, tB, zB], [sT, -landing, zT], 0.05);
+    d.bar([sT, -landing, zT], [sT, -0.05, zT], 0.05);
+    const n = Math.max(2, Math.ceil((landing + (steps - 1) * tread) / 0.9));
+    for (let k = 0; k <= n; k++) {
+      const f2 = k / n, s2 = sB + (sT - sB) * f2, t2 = tB + (-landing - tB) * f2, z2 = zB + (zT - zB) * f2;
+      d.bar([s2, t2, z2 - 0.92], [s2, t2, z2], 0.035);
+    }
   }
 
   // --- Toits ---------------------------------------------------------------------------------------------------------------------

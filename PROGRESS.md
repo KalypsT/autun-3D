@@ -1611,3 +1611,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Prochaines étapes : balcon, perron à rampes et lanternes, puis ornements du toit.
 
 ![Au pied de la façade](docs/captures/d224-theatre-detail.jpg)
+
+**Le théâtre municipal, étape 3 : balcon, perron et lanternes (4 novembre 2026)** (D225)
+- Le grand balcon de l'avant-corps sur ses quatre consoles à volute, avec sa balustrade ; de petits balcons sous les fenêtres hautes des pavillons.
+- Deux lanternes suspendues entre les portes, allumées la nuit.
+- Le perron, mesuré sur le relief : six marches plus larges vers le bas, deux rampes en fer ; on marche dessus sans s'enfoncer.
+- Dernière étape : les ornements du toit.
+
+![Le balcon et les lanternes](docs/captures/d225-theatre-balcon.jpg)
+![La nuit](docs/captures/d225-theatre-nuit.jpg)
