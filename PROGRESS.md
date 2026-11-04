@@ -1669,3 +1669,37 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Vue haute](docs/captures/d230-parvis-haut-apres.jpg)
 ![L'abri de parking](docs/captures/d230-parvis-abri-parking-apres.jpg)
+
+**L'Eduen, étape 1 : les volumes (4 novembre 2026)** (D231)
+- Le parc des expositions d'après tes photos et le LiDAR : la grande salle au bardage rouge-orange (55,8 × 39,4 m, 10,8 m de haut), son soubassement gris clair, sa couvertine blanche, son toit plat gris et ses 13 lanterneaux.
+- Les blocs bas en béton le long des deux grands côtés (3 à 4,5 m), les édicules techniques sur leurs toits, l'auvent bas de l'entrée côté parking (on passe dessous).
+- Le hall en quart de cercle : mur de béton, bandeau vitré continu, toit-auvent courbe qui déborde de 3 m (arc de 54 m de rayon mesuré au LiDAR), et l'annexe plus basse au nord.
+- Fini le bâtiment d'habitation à trois étages et la couronne beige à petites fenêtres : les cinq bâtiments BD TOPO sont remplacés par un seul modèle, aux vrais murs (l'ancienne emprise était décalée d'environ 1 m).
+- Prochaine étape : les façades (logo « l'éduen », portes, entrée, brise-soleil de l'auvent, panneaux d'affichage, mâts et drapeaux).
+
+![Depuis le parking](docs/captures/d231-eduen-parking-apres.jpg)
+![Vue haute](docs/captures/d231-eduen-haut-apres.jpg)
+![Le hall](docs/captures/d231-eduen-hall-apres.jpg)
+
+**L'Eduen, étape 2 : les façades (4 novembre 2026)** (D232)
+- Le logo « parc des expos de l'Autunois – l'éduen » d'après ta photo, sur le grand côté de la route de Chalon, près du coin sud (3,6 m de côté). Il n'est plus sur le pignon de l'avenue dans ta vue de 2026 : je ne l'y ai pas mis.
+- Côté route : les trois panneaux d'affichage devant les blocs (affiches simplifiées).
+- Côté parking : les deux grandes portes grises entre les blocs, les portes de service, l'entrée vitrée sous l'auvent « ENTRÉE », les projecteurs en haut du mur.
+- Le hall : brise-soleil à lames blanches tout autour de l'auvent, entrée en mur-rideau toute hauteur avec ses portes (éclairée la nuit), grilles de ventilation basses.
+- Le bardage blanc à bande violine entre la salle et l'annexe, la porte et la bouche ronde de l'annexe, les trois mâts avec les drapeaux du parc, de la France et de l'Europe.
+- Prochaine étape : le parking et les abords (marquage, places PMR, piste en lacets, talus, clôture, barrière, mât d'éclairage).
+
+![Route de Chalon](docs/captures/d232-eduen-route.jpg)
+![Le hall](docs/captures/d232-eduen-hall.jpg)
+![L'entrée](docs/captures/d232-eduen-entree.jpg)
+
+**L'Eduen, étape 3 : le parking et les abords (4 novembre 2026)** (D233)
+- Le parking redessiné d'après l'orthophotographie : 148 places en rangées régulières (pas de 2,5 m), dont 11 places PMR plus larges ; les voitures du jeu se garent sur les 133 autres. Fini les 658 traits en tous sens.
+- La piste en lacets au nord avec ses trois bandes engazonnées.
+- Les trois mâts à drapeaux remis à leur vraie place (sur la bande verte, retrouvés par leurs ombres), le mât d'éclairage de 15 m à quatre projecteurs, la haie de l'îlot, la barrière de l'allée de service.
+- La clôture verte en panneaux soudés le long de la route de Chalon et de l'avenue André Frenaud (tracé approché : elle se voit mal sur l'orthophotographie).
+- **L'Eduen est terminé** (étapes 1 à 3).
+
+![Le parking](docs/captures/d233-eduen-parking.jpg)
+![Mâts, haie et barrière](docs/captures/d233-eduen-mats.jpg)
+![Le hall et la clôture](docs/captures/d233-eduen-hall.jpg)

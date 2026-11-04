@@ -1,7 +1,7 @@
 import type { Building, HeightField, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
@@ -51,6 +51,17 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     // Maison d'après photo (D140) : ses murs mesurés (le contour BD TOPO est décalé), renfoncement de l'entrée compris.
     const kind = tile.kinds?.buildings[b.id];
     const house = kind?.house;
+    // Parc des expositions l'Eduen (D231) : ses volumes mesurés (salle, blocs, hall courbe) au lieu du contour BD TOPO, décalé d'environ 1 m.
+    if (kind?.edu) {
+      for (const r of eduenRings(kind.edu)) c.addRing(r);
+      // Abords (D233) : clôture verte (on voit à travers), haie de l'îlot, bras de la barrière (on passe dessous, pas les voitures).
+      for (const l of eduenLines(kind.edu)) {
+        if (l.kind === "fence") c.addPolyline(l.pts, true, wallTop("fence", EDUEN_FENCE_H));
+        else if (l.kind === "hedge") c.addPolyline(l.pts, false, wallTop("hedge", EDUEN_HEDGE_H));
+        else c.addPolyline(l.pts, true, wallTop("fence", EDUEN_BARRIER_H));
+      }
+      continue;
+    }
     if (house || !walkableRoof(kind)) {
       // Théâtre municipal (D223) : ses murs mesurés, le perron hors du bâtiment ; gare (D228) : ses murs mesurés.
       c.addRing(house ? houseRing(house) : kind?.play ? playhouseRing(kind.play) : kind?.sta ? stationRing(kind.sta) : b.ring);

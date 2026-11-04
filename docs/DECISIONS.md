@@ -4654,3 +4654,95 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![La gare routière, après](captures/d230-parvis-gare-routiere-apres.jpg)
 ![L'abri de parking, avant](captures/d230-parvis-abri-parking-avant.jpg)
 ![L'abri de parking, après](captures/d230-parvis-abri-parking-apres.jpg)
+
+## 2026-11-04 — D231. Le parc des expositions l'Eduen, étape 1 : volumes mesurés
+
+**Demande de l'utilisateur** : intégrer correctement l'Eduen (parc des expositions de l'Autunois, route de Chalon et avenue André Frenaud), son bâtiment et son parking, en trois étapes : les volumes, puis les façades, puis le parking et les abords. Photos fournies (non versionnées, elles servent seulement à décrire) : une vue de drone du sud-est, une vue de face depuis le parking (été), des vues Google Street View (route de Chalon, juillet 2025 ; avenue André Frenaud, juillet 2026), le logo sur le pignon (septembre 2019), une vue satellite du parking. Lecture : grande salle à toit plat au bardage rouge-orange à joints verticaux, soubassement gris clair, couvertine blanche, deux rangées de lanterneaux ; trois blocs bas en béton contre chaque grand côté (panneaux d'affichage côté route, édicules techniques et portes grises côté parking), entrée sous un auvent bas côté parking ; hall en quart de cercle contre le petit côté sud-est : mur de béton, bandeau vitré continu sous un toit-auvent courbe à rive blanche (brise-soleil à lames sur la vue de drone) ; annexe en béton plus basse au nord du hall, à dalle débordante ; trois mâts à drapeaux devant le hall.
+
+**Constat** : l'Eduen était cinq bâtiments BD TOPO génériques (bâtiment d'habitation crème à trois rangs de fenêtres et une vitrine à store rayé, hall en couronne beige à petites fenêtres), découpés autrement que les volumes réels. L'emprise principale est **décalée d'environ 1 m vers le nord-ouest** par rapport au relevé.
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveau modèle `eduen` de `build_monuments.py`, entrée du bâtiment dans `monuments` de `manual.json`, champ `edu` du bâtiment dans `kinds/32_37.json`) :
+- **salle** : direction du grand côté par le rectangle d'aire minimale des cellules à plus de 9 m au-dessus du terrain (la plus grande composante : les arbres au nord-ouest sont écartés), redressée sur les droites des deux grands murs ; murs = passage à 80 % de la hauteur du toit, médianes sur les lignes. **55,75 × 39,38 m**, acrotère **10,8 m** au-dessus du sol médian ; 13 lanterneaux (bosses de plus de 15 cm sur le toit lissé), caissons de 2,1 m ;
+- **blocs** : leurs bouts (s) sont lus une fois sur le modèle de surface (`blocks` de l'entrée : une segmentation automatique coupait les blocs à édicules en morceaux) ; profondeur = premier passage sous 1,6 m au-dessus du terrain depuis le mur (médiane), toit = 30ᵉ centile du modèle de surface sur le bloc, hors de la bande de 1,25 m où le relevé bave depuis le mur de la salle. Côté route : **3,1 m** (12 m de long), **4,1 m**, raccord de 3,1 m, **4,1 m** ; côté parking : 3,3 m, 3,1 m, 4,5 m, et l'auvent de l'entrée à **2,2 m** (moins de 2,8 m : une dalle sur poteaux, on passe dessous). Deux édicules d'environ 6 m (sur le premier et le troisième bloc côté parking) : cellules à plus de 0,7 m au-dessus du bloc, d'au moins 1,2 m de côté (les panneaux d'affichage plaqués côté route sont plus minces) et de moins de 45 % du bloc ;
+- **hall courbe** : bord de l'auvent sur des lignes de t (passage sous le toit du hall moins 2 m), cercle ajusté (deux passes, écarts de plus de 0,6 m retirés) : rayon **53,9 m**, centre au-delà du parking, presque le même que le cercle des sommets BD TOPO de l'arc (50,6 m : le mur) ; mur **3 m** en retrait (bande blanche de l'orthophotographie) ; bord nord-est : droite ajustée sur les passages en t. Toit **7,7 m**, rive **7,9 m** ; annexe à **6,2 m**, de la salle à s = 65,4 m et au nord de t = 45,1 m (lus sur le modèle de surface).
+Une deuxième passe ne change rien.
+
+**Rendu** (`buildEduen`, `src/render/eduen.ts`, dans les maillages de la tuile : aucun appel de dessin de plus, **2 296 triangles** et 28 de vitres allumées) : salle au bardage rouge-orange à joints tous les 3 m, soubassement gris clair de 1,3 m, couvertine blanche saillante, toit en membrane grise sous l'acrotère, lanterneaux en caissons blancs à bulle ; blocs en béton clair à couvertine, édicules métalliques ; auvent de l'entrée sur deux poteaux ; hall : mur de béton, **bandeau vitré horizontal** de 2,7 m sous l'auvent (montants tous les 1,6 m, la moitié des pans allumés la nuit), toit-auvent à rive blanche relevée et sous-face claire, annexe en béton à dalle débordante d'1 m, ressauts entre les deux toits.
+
+**Obstacles** : la salle, ses blocs (pas l'auvent de l'entrée) et le contour du hall et de l'annexe à leurs murs (`eduenRings`), au lieu des emprises BD TOPO. **Masqués** (`hide` de l'entrée, sans silhouette lointaine) : les quatre bâtiments BD TOPO du hall courbe, de l'annexe, d'un bloc de l'annexe et d'un bloc côté route. **Silhouette lointaine** : la salle, les blocs et le toit du hall (contour non convexe) dans `lod/32_37.json`. Vues `?view=eduen` (depuis le parking, comme la photo de face), `eduen-haut` (drone, du sud), `eduen-route` (route de Chalon), `eduen-hall` (avenue André Frenaud).
+
+**Pas encore** (étapes suivantes) :
+- **Façades (étape 2)** : le logo « parc des expos de l'Autunois – l'éduen » sur le pignon, les portes grises et les fenêtres des blocs, l'entrée « ENTRÉE », le détail du bardage, les brise-soleil à lames de l'auvent, les entrées vitrées du hall, les panneaux d'affichage côté route, le bardage gris à bande violine de l'annexe, les mâts et drapeaux, les projecteurs du toit.
+- **Parking et abords (étape 3)** : marquage des places (épi, places PMR bleues), piste en lacets au nord-est, talus enherbés, chemin de tour, clôture verte, barrière, mâts d'éclairage, arbres d'alignement.
+- La navigation n'est pas régénérée : les passants suivent encore les anciens contours.
+- Le pignon nord-ouest (vers les arbres) et le dessous de l'auvent de l'entrée sont sans photo, approchés.
+
+**Tests** (+3 : `eduen.test.ts`) : volumes plausibles et bâtiments BD TOPO masqués, obstacles proches de l'emprise et grand côté tourné vers le sud-ouest (on n'entre ni dans la salle ni dans le hall, on passe sous l'auvent de l'entrée), géométrie finie et bornée.
+
+![Depuis le parking, avant](captures/d231-eduen-parking-avant.jpg)
+![Depuis le parking, après](captures/d231-eduen-parking-apres.jpg)
+![Vue haute, avant](captures/d231-eduen-haut-avant.jpg)
+![Vue haute, après](captures/d231-eduen-haut-apres.jpg)
+![Le hall depuis l'avenue André Frenaud, avant](captures/d231-eduen-hall-avant.jpg)
+![Le hall depuis l'avenue André Frenaud, après](captures/d231-eduen-hall-apres.jpg)
+![Route de Chalon, avant](captures/d231-eduen-route-avant.jpg)
+![Route de Chalon, après](captures/d231-eduen-route-apres.jpg)
+
+## 2026-11-04 — D232. Le parc des expositions l'Eduen, étape 2 : les façades
+
+**D'après les photos de l'utilisateur** (D231 : vue de face depuis le parking, Street View de la route de Chalon de juillet 2025 et de l'avenue André Frenaud de juillet 2026, vue de drone, logo sur le bardage en septembre 2019). Tout est dans `buildEduen` (`src/render/eduen.ts`) ; les mesures de D231 ne changent pas.
+
+- **Logo** « parc des expos de l'Autunois – l'éduen » en gris ardoise, d'après la photo rapprochée : cadre en équerre ouvert en haut à droite, cadre intérieur décalé, arc, crochet, quatre rayons, trois lignes de texte et « l'éduen » en gros. **3,6 m** de côté (mis à l'échelle sur la photo : de la couvertine au haut du bloc voisin), **1 m** sous la couvertine, à **1,2 m** du coin sud, sur le grand côté de la route de Chalon (Street View 2019 et 2025). La vue de drone, plus ancienne, en montre un aussi sur le pignon sud-est : il n'y est plus sur la vue de l'avenue de juillet 2026, on ne le dessine pas. Lettres de l'atlas des enseignes (pas la police du logo).
+- **Côté parking** : une porte sectionnelle grise de 4,2 m dans chaque intervalle entre deux blocs (deux), une porte de service près du coin nord, une par bloc ; deux petites fenêtres hautes sur le bloc près de l'entrée ; **entrée** vitrée à deux battants sous l'auvent bas, rive sombre à l'inscription « ENTRÉE » ; cinq projecteurs en haut du mur (deux sur le pignon).
+- **Côté route** : trois **panneaux d'affichage** de 4 × 3 m sur deux poteaux devant les blocs (deux sur le bloc du milieu, un sur le bloc est, comme sur la vue Street View et les minces saillies du relevé). Les affiches sont simplifiées (un titre : « SALON DE LA MAISON », « AUTUN », « ITINÉRANCE CULTURELLE »).
+- **Hall courbe** : l'auvent n'est plus une dalle pleine : toit plein jusqu'à 50 cm devant le mur, puis **brise-soleil** à lames blanches tous les 45 cm jusqu'à la rive (radiales le long de l'arc, perpendiculaires au bord nord-est), comme sur la vue de drone ; **mur-rideau toute hauteur** sur la partie de l'arc de 50 % à 85 % depuis la salle (l'entrée, vue de l'avenue et vue de drone), traverse à 2,6 m, portes vitrées au milieu, éclairé la nuit ; ailleurs, grilles de ventilation basses dans le béton.
+- **Entre la salle et l'annexe** : bardage blanc à joints et **bande violine** (vue du parking) ; annexe : porte de service et bouche ronde à l'ouest, porte au nord.
+- **Trois mâts** blancs de 10 m sur le gazon au-delà du bout nord-est du hall (`eduenMasts`), drapeaux du parc (blanc à trois touches de couleur, forme approchée), de la France et de l'Europe ; les mâts sont des obstacles.
+
+**Coût** : **4 530 triangles** (2 296 à l'étape 1), 38 de vitres allumées, 8 inscriptions ; aucun appel de dessin de plus. Vues `?view=eduen-logo` (le logo depuis la route) et `eduen-entree` (l'entrée côté parking).
+
+**Pas encore** (étape 3) : marquage du parking, piste en lacets, talus, chemin de tour, clôture verte, barrière, mât d'éclairage à quatre projecteurs, arbres d'alignement ; panneau européen à l'entrée de l'avenue. Les affiches sont figées.
+
+**Tests** (`eduen.test.ts`, mis à jour) : un seul logo, l'inscription « ENTRÉE » et les trois affiches ; les mâts arrêtent les déplacements ; géométrie bornée (mâts compris).
+
+![Le logo depuis la route](captures/d232-eduen-logo.jpg)
+![Route de Chalon](captures/d232-eduen-route.jpg)
+![Depuis le parking](captures/d232-eduen-parking.jpg)
+![L'entrée](captures/d232-eduen-entree.jpg)
+![Le hall depuis l'avenue André Frenaud](captures/d232-eduen-hall.jpg)
+![Le hall la nuit](captures/d232-eduen-hall-nuit.jpg)
+![Vue haute](captures/d232-eduen-haut.jpg)
+
+## 2026-11-04 — D233. Le parc des expositions l'Eduen, étape 3 : le parking et les abords
+
+**D'après l'orthophotographie IGN** (20 cm, **redressée dans le repère de la salle** : s le long de la route de Chalon, t vers le parking ; à cette résolution les traits du parking sont nets) **et les photos de l'utilisateur** (vue de face depuis le parking, Street View de la route de Chalon et de l'avenue André Frenaud, vue de drone, vue satellite).
+
+**Constat** : le parking portait 658 traits retrouvés en tous sens par D94 ; la piste en lacets au nord était un aplat d'asphalte ; ni clôture, ni haie, ni barrière, ni mât d'éclairage ; les trois mâts à drapeaux de D232 étaient au-delà du bout du hall, sur l'herbe de l'avenue.
+
+**Lecture** (repère de la salle) :
+- **Places** : pics de blanc le long des rangées (contraste local de plus de 35 sur l'image redressée à 10 cm) : **pas de 2,5 m** partout, ce qui confirme le repère ; une rangée simple au nord (ligne de fond à t = 101,5 m), deux doubles rangées (lignes de fond à t = 85 et 68,2 m), une rangée à l'ouest de la salle (t 45 à 50) ; des allées de 6 m (s ≈ −33,7 à −27,7 et −1,7 à 4,3 m), des passages piétons d'un mètre bordés de places de 3,5 m (s 30,25 à 31,25) ; **places PMR** de 3,2 à 3,3 m au sud-est de la rangée sud (onze). Les traits mesurent 5,2 à 5,6 m sur l'image (la double ligne de fond compte) ; ils sont tracés à **5 m** depuis la ligne de fond, la longueur d'une place, que le jeu sait lire (`findStalls` refuse les traits de plus de 5,3 m).
+- **Piste en lacets** au nord : trois bandes engazonnées (vert de l'image) de 3 m, à t = 154 à 157, 141,8 à 144,8 et 124,9 à 127,6 m, sur 97 à 123 m de long.
+- **Mâts** : les bases de leurs **ombres** (longues lignes sombres de l'image) : trois mâts à drapeaux sur la bande verte entre l'allée de service et l'avenue (s 65,8 à 68,2, t 66,2 à 75,8 ; l'ordre parc, France, Europe vient des photos de face et de l'avenue), le mât d'éclairage au bout de l'îlot (s 54, t 84,2).
+- **Îlot** : haie taillée courbe de l'entrée du parking jusqu'au chemin qui longe la salle (bord blanc côté parking sur l'image).
+- **Barrière** : en travers de l'allée de service, au droit des hachures blanches de l'entrée (t = 80,5 m, bras de 7 m).
+- **Clôture verte** : à peine visible à 20 cm : **tracé approché** entre le trottoir et le gazon, le long de la route de Chalon (t = −17 m, depuis s = −28 m), autour du rond-point puis le long de l'avenue (s = 79,5 m), jusqu'au poteau de la barrière, d'après les vues Street View (elle tient le chemin qui fait le tour de la salle à l'intérieur).
+
+**Données** :
+- `parkings` de `manual.json`, entrée « Parking de l'Eduen (D233) » (`build_parking.py`, tuiles 32_37, 33_37 et 32_38) : repère de l'Eduen (u = s, v = −t), zone de nettoyage du parking et de la piste, 31 groupes de traits (un par série régulière), bandes `lawn` de la piste et de la bande verte des mâts. **148 places tracées, 133 retrouvées par le jeu** (les places PMR, plus larges, et les cases d'un mètre des passages ne le sont pas : les voitures du jeu ne s'y garent pas). Une deuxième passe ne change rien.
+- `site` de l'entrée de l'Eduen dans `monuments` (mâts, mât d'éclairage, haie, clôture, barrière), recopié tel quel dans le champ `edu` par `build_monuments.py`.
+
+**Rendu** (`buildEduen`, **8 736 triangles** pour tout l'Eduen, 4 530 à l'étape 2 ; aucun appel de dessin de plus) : mâts à drapeaux à leur place ; **mât d'éclairage** gris de 15 m à quatre projecteurs (allumés la nuit) ; **haie** de 1,3 m et 1,6 m de large ; **clôture** de panneaux soudés vert sombre (poteaux tous les 2,5 m, quatre lisses, fils verticaux tous les 40 cm, deux faces), 1,8 m ; **barrière** à poteau blanc et bras rayé rouge et blanc à 1 m.
+
+**Obstacles** : clôture et bras de la barrière en obstacles bas transparents aux rayons (on voit à travers ; la clôture de 1,8 m ne s'escalade pas, la barrière si), haie pleine, pieds des quatre mâts. Vues `?view=eduen-mats` (mâts, haie, barrière depuis l'avenue) et `eduen-parking` (le parking vu d'en haut).
+
+**Pas encore** : le pictogramme et le bleu des places PMR (la couche de marques n'a que le blanc et le jaune) ; les bandes des passages piétons (barres larges) ; les flèches de sens ; le panneau européen et le panneau STOP de l'allée de service (le STOP des données est conservé) ; les conteneurs près de l'annexe ; la navigation n'est pas régénérée (les passants ignorent la haie, la clôture et la barrière). **Le plan de l'Eduen est terminé** (D231 à D233).
+
+**Tests** (+2 : `src/data/parking-eduen.test.ts`) : environ 140 places, toutes dans les rangées ; mâts sur la bande verte ; on est repoussé par la clôture, la haie et la barrière ; `eduen.test.ts` : la géométrie tient abords compris, sous la tête du mât d'éclairage.
+
+![L'orthophotographie redressée dans le repère de la salle](captures/d233-eduen-ortho-redressee.jpg)
+![Le parking vu d'en haut](captures/d233-eduen-parking.jpg)
+![La piste en lacets](captures/d233-eduen-piste.jpg)
+![Mâts, haie et barrière depuis l'avenue](captures/d233-eduen-mats.jpg)
+![La nuit](captures/d233-eduen-mats-nuit.jpg)
+![Le hall et la clôture](captures/d233-eduen-hall.jpg)
+![Vue haute](captures/d233-eduen-haut.jpg)

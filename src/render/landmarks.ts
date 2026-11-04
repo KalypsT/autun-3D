@@ -8,6 +8,7 @@ import { buildChapel, buildGate } from "./gates";
 import { buildHexagone } from "./hexagone";
 import { buildPlayhouse } from "./playhouse";
 import { buildStation } from "./station";
+import { buildEduen } from "./eduen";
 import { buildVallon } from "./vallon";
 import { buildVallonFacades } from "./vallon-facade";
 import { buildGatePosts } from "./vallon-gate";
@@ -87,7 +88,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house || !!kind.hex || !!kind.vallon || !!kind.play || !!kind.sta);
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house || !!kind.hex || !!kind.vallon || !!kind.play || !!kind.sta || !!kind.edu);
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -980,6 +981,8 @@ export function buildLandmarks(
         else if (kind.play) buildPlayhouse(sinks, kind.play, terrain);
         // Gare d'après photos (D228) : modèle dédié, ni inscription ni horloge génériques.
         else if (kind.sta) buildStation(sinks, kind.sta, terrain);
+        // Parc des expositions l'Eduen d'après photos (D231) : modèle dédié.
+        else if (kind.edu) buildEduen(sinks, kind.edu, terrain);
         else if (kind.vallon) { buildVallon(sinks, kind.vallon, terrain); buildVallonFacades(sinks, kind.vallon, terrain); if (kind.vallon.gate) buildGatePosts(sinks, kind.vallon.gate, terrain); if (kind.vallon.props) buildVallonProps(sinks, kind.vallon, terrain); }
         else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
         else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain);

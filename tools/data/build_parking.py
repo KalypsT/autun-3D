@@ -1,4 +1,4 @@
-"""Parking de l'Hexagone (D169, lot 5 de docs/plans/hexagone.md) : les rangées de places lues à l'orthophotographie redressée (survey_parking.py).
+"""Parkings lus à l'orthophotographie : Hexagone (D169, lot 5 de docs/plans/hexagone.md), collège du Vallon (D177), gare (D230), Eduen (D233) : les rangées de places lues à l'orthophotographie redressée (survey_parking.py).
 
 Usage : python3 tools/data/build_parking.py      (après build_public_space.py, build_streetscape.py et build_plaza.py ; avant build_nav.py)
 Entrées : `parkings` de tools/data/manual.json (même format que `streetscape.lots`, D154 : repère redressé, zone de nettoyage, rangées {premier trait,
