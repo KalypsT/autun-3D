@@ -677,6 +677,7 @@ export type Site =
   | { t: "fountain"; st: "lazare"; n: string; x: number; y: number; a: number; id: number; g: number; top: number; rb: number }
   | TheatreSite
   | JanusSite
+  | CouhardSite
   | RoundaboutSite
   | CurtainSite
   | BandstandSite
@@ -765,6 +766,30 @@ export interface BandstandSite {
   post: number;
   eave: number;
   steps: number;
+}
+
+/**
+ * Pierre de Couhard d'après photo (D222, tools/data/build_monuments.py, docs/plans/couhard.md) : axe `c`, pré `g` ; sections mesurées sur le
+ * nuage LiDAR, un rayon par secteur de 15° (cap 0 = nord, sens horaire) à chaque niveau `lv` (m au-dessus de `g`, 0 = pied) ; sommet `top`
+ * au-dessus de `g`, décalé de `tip` ; cavité ; piquets (écart au pied, pas, hauteur),
+ * panneaux (caps), panneau d'information (cap, écart à la clôture), touffes [cap, niveau].
+ */
+export interface CouhardSite {
+  t: "couhard";
+  n: string;
+  c: [number, number];
+  g: number;
+  top: number;
+  tip: [number, number];
+  lv: number[];
+  r: number[][];
+  /** Creux concave (cap, demi-ouverture en degrés, bas et haut, profondeur) et trou ovale (largeur, hauteur, milieu). */
+  cav: { cap: number; half: number; z: [number, number]; d: number; hole: [number, number, number] };
+  fence: { gap: number; step: number; h: number };
+  signs: number[];
+  panel: [number, number];
+  tufts: [number, number][];
+  light?: 1;
 }
 
 /** Mur debout du temple de Janus (D139) : abscisses d depuis le coin extérieur commun, hauteurs au-dessus du sol `g` du site. */

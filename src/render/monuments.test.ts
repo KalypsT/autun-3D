@@ -10,6 +10,7 @@ import { buildCathedral, buildCollege, buildNotreDame, buildFarTower, buildFount
 import { buildChapel, buildGate } from "./gates";
 import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
+import { buildCouhard } from "./couhard";
 import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
 
 describe("monuments (D95) : géométrie", () => {
@@ -43,6 +44,15 @@ describe("monuments (D95) : géométrie", () => {
     expect(tris(jb)).toBeLessThan(6000);
     expect(tris(jg)).toBeGreaterThan(tris(jb) * 0.9);
     expect(tris(jg)).toBeLessThanOrEqual(tris(jb));
+    // Pierre de Couhard (D222) : moins de 6 000 triangles ; éclairée la nuit (le trou, les touffes et la clôture restent sombres).
+    const pyr = kinds.sites.find((q) => q.t === "couhard")!;
+    if (pyr.t !== "couhard") throw new Error("Pierre de Couhard absente");
+    const pb = new MeshBuilder(), pg = new MeshBuilder();
+    buildCouhard(pb, pg, pyr, world.terrain);
+    expect(pb.positions.every(Number.isFinite)).toBe(true);
+    expect(tris(pb)).toBeLessThan(6000);
+    expect(tris(pg)).toBeGreaterThan(tris(pb) * 0.6);
+    expect(tris(pg)).toBeLessThan(tris(pb));
     // Maison du 7 allée de l'Acaron (D140) : moins de 4 000 triangles ; quelques vitres et les appliques allumées la nuit.
     const house = Object.values(kinds.buildings).find((b) => b.house)!.house!;
     const hb = new MeshBuilder(), hg = new MeshBuilder();

@@ -1588,3 +1588,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Limite d'images par seconde (4 novembre 2026)** (D221)
 - Nouveau réglage « Images par seconde » dans le menu pause : 30, 60 (par défaut) ou sans limite. Jusqu'ici le jeu suivait l'écran : 120 images par seconde sur un téléphone à 120 Hz, deux fois plus de travail pour la puce, d'où la chauffe en partie.
 - `?fps=0` lève la limite, `?fps=30` l'impose (comparaisons).
+
+**La Pierre de Couhard (4 novembre 2026)** (D222)
+- La pyramide gallo-romaine existe enfin : à la place du cône d'herbe, un cône de moellons mesuré sur le LiDAR (23 m), avec son talus, son ressaut à mi-hauteur, sa pointe en cheminée et le trou de fouille au sud-sud-est.
+- Au pied : piquets en bois, panneaux « Interdit de pénétrer — Chute de pierres », panneau d'information. On ne l'escalade pas ; les fusils cachés à côté sont toujours là.
+- Éclairée la nuit comme le temple de Janus (l'éclairage des monuments sera revu) ; visible de loin depuis la ville.

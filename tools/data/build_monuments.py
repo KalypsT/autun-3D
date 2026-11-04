@@ -11,6 +11,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           portes romaines (modèle `gate`, D137, D138) : champ `gm` du site `gate` (écrit par build_kinds.py) et silhouette lointaine ;
           église accolée à une porte (modèle `chapel`, D138) : champ `chap` du bâtiment et silhouette lointaine ;
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
+          Pierre de Couhard (modèle `couhard`, D222) : site `couhard` mesuré sur le nuage LiDAR (lu à distance), relief fin aplani sous le pied
+          (terrain/<tuile>.bin) et silhouette lointaine ;
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
@@ -1430,6 +1432,164 @@ def janus(spec, world):
     return tid, lod
 
 
+# --- Pierre de Couhard (D222, docs/plans/couhard.md) ------------------------------------------------------------------------------------
+
+COUHARD_CAPS = 24  # secteurs de 15°, cap 0 = nord, sens horaire
+COUHARD_LEVELS = list(range(1, 23))  # niveaux mesurés (m au-dessus du pré) ; le niveau 0 (pied) est extrapolé
+
+
+def couhard_points(spec):
+    """Nuage LiDAR HD (dalle COPC lue à distance) dans une fenêtre de 70 m autour de `spec["at"]`, en repère local ; mis en cache."""
+    f = CACHE / "couhard_points.npz"
+    if not f.exists():
+        import laspy
+        X, Y = c.ORIGIN[0] + spec["at"][0], c.ORIGIN[1] + spec["at"][1]
+        meta = fetch.get("https://data.geopf.fr/wfs/ows", params={
+            "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature", "TYPENAMES": "IGNF_LIDAR-HD_METADONNEE:metadata",
+            "OUTPUTFORMAT": "application/json", "SRSNAME": "EPSG:2154", "COUNT": 5,
+            "BBOX": f"{X - 1},{Y - 1},{X + 1},{Y + 1},urn:ogc:def:crs:EPSG::2154"}).json()["features"]
+        with laspy.CopcReader.open(meta[0]["properties"]["url_npl"]) as r:
+            p = r.query(laspy.copc.Bounds(mins=np.array([X - 35, Y - 35]), maxs=np.array([X + 35, Y + 35])))
+        CACHE.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(f, x=np.array(p.x) - c.ORIGIN[0], y=np.array(p.y) - c.ORIGIN[1], z=np.array(p.z) - c.ORIGIN_Z,
+                            c=np.array(p.classification))
+    d = np.load(f)
+    return d["x"], d["y"], d["z"], d["c"]
+
+
+def measure_couhard(spec):
+    """Pierre de Couhard (D222) : le classement IGN range la maçonnerie en « sol », on la mesure sur le nuage (classes 1, 2 et 6).
+    - pré : plan ajusté sur le sol à 13-16 m de l'axe (médiane `g`) ;
+    - axe : centroïde de la section à +10 m (au-dessus du talus) ; sommet : point le plus haut à moins de 4 m de l'axe ;
+    - sections : par niveau de 1 m et par secteur de 15°, 90ᵉ centile du rayon des points à ± 0,5 m ; secteurs vides (ombres, cavité)
+      interpolés entre voisins ; pas de surplomb de plus de 20 cm d'un niveau au suivant (aucun au-dessus de +18 m, la cheminée) ; pied (niveau 0) prolongé du talus ;
+    - cavité, clôture, panneaux : photos (`manual.json`)."""
+    x, y, z, cl = couhard_points(spec)
+    stone = (cl <= 2) | (cl == 6)
+    x0, y0 = spec["at"]
+    r0 = np.hypot(x - x0, y - y0)
+    ring = (cl == 2) & (r0 > 13) & (r0 < 16)
+    g = float(np.median(z[ring]))
+    A = np.c_[x[ring] - x0, y[ring] - y0, np.ones(int(ring.sum()))]
+    plane = np.linalg.lstsq(A, z[ring], rcond=None)[0]
+    band = stone & (np.abs(z - g - 10) < 1) & (r0 < 10)
+    cx, cy = float(np.mean(x[band])), float(np.mean(y[band]))
+    r = np.hypot(x - cx, y - cy)
+    caps = np.degrees(np.arctan2(x - cx, y - cy)) % 360
+    near = lambda s, half: np.abs(((caps - s + 180) % 360) - 180) < half
+    k = int(np.argmax(np.where(stone & (r < 4), z, -1e9)))
+    top = float(z[k] - g)
+    rows = []
+    for lv in COUHARD_LEVELS:
+        row = []
+        for i in range(COUHARD_CAPS):
+            q = stone & near(i * 360 / COUHARD_CAPS, 180 / COUHARD_CAPS) & (np.abs(z - g - lv) < 0.5) & (r < 13)
+            row.append(float(np.percentile(r[q], 90)) if q.sum() >= 2 else math.nan)
+        rows.append(row)
+    R = np.array(rows)
+    for j in range(len(R)):  # secteurs vides : interpolation circulaire entre les secteurs mesurés du niveau
+        ok = np.isfinite(R[j])
+        if ok.sum() >= 3:
+            idx = np.arange(COUHARD_CAPS)
+            R[j] = np.interp(idx, np.r_[idx[ok] - COUHARD_CAPS, idx[ok], idx[ok] + COUHARD_CAPS], np.r_[R[j][ok], R[j][ok], R[j][ok]])
+        else:  # sommet : trop peu de points, anneau de la médiane du niveau (ou, sans rien, 0,9 m)
+            R[j] = float(np.nanmedian(R[j])) if ok.any() else 0.9
+    for j in range(1, len(R)):
+        R[j] = np.minimum(R[j], R[j - 1] + 0.2 if COUHARD_LEVELS[j] < 18 else R[j - 1])  # la cheminée ne s'évase pas
+    foot = np.minimum(R[0] + 0.6 * np.maximum(R[0] - R[1], 0), 12.5)
+    R = np.vstack([foot, R])
+    tip = [round(float(x[k] - cx), 2), round(float(y[k] - cy), 2)]
+    r2 = lambda q: round(float(q), 2)
+    site = {"t": "couhard", "n": spec["name"], "c": [r2(cx), r2(cy)], "g": r2(g), "top": r2(top), "tip": tip,
+            "lv": [0] + COUHARD_LEVELS, "r": [[round(float(v), 2) for v in row] for row in R],
+            "cav": spec["cavity"], "fence": spec["fence"], "signs": spec["signs"], "panel": spec["panel"],
+            "tufts": spec["tufts"]}
+    if spec.get("light"):
+        site["light"] = 1
+    return site, (x0, y0, [float(v) for v in plane])
+
+
+def couhard_foot(site, cap):
+    """Rayon du pied au cap (degrés), interpolé entre secteurs."""
+    f = site["r"][0]
+    u = (cap % 360) / (360 / COUHARD_CAPS)
+    i = int(math.floor(u)) % COUHARD_CAPS
+    return f[i] + (f[(i + 1) % COUHARD_CAPS] - f[i]) * (u - math.floor(u))
+
+
+def couhard_terrain(site, plane):
+    """Relief fin (terrain/<tuile>.bin) : le MNT contient la pyramide (classée en sol) ; jusqu'à 1,5 m au-delà du pied, le relief devient le
+    plan du pré (ajusté sur le nuage, pas sur les tuiles) ; de 1,5 à 4 m, il est écrêté sous une pente de 20 % depuis ce plan (le reste du
+    cône du MNT). Une deuxième passe ne change rien. Au-delà, le MNT est déjà le pré (dépassement de la pente rapporté). Les blocs débordent de leur tuile : tous ceux qui touchent le disque sont réécrits. Rend
+    (blocs réécrits, plus grande marche au bord)."""
+    px, py, (a, b, k0) = plane
+    cx, cy = site["c"]
+    reach = max(site["r"][0]) + 6
+    out, step = [], 0.0
+    for path in sorted((c.OUT / "terrain").glob("*_*.bin")):
+        buf = path.read_bytes()
+        base, bx0, by1, n = (float(v) for v in np.frombuffer(buf[:16], dtype="<f4"))
+        n = int(n)
+        if not (bx0 - reach < cx < bx0 + n + reach and by1 - n - reach < cy < by1 + reach):
+            continue
+        cm = np.frombuffer(buf[16:], dtype="<u2").reshape(n, n).astype(np.int64)
+        new = cm.copy()
+        for row in range(max(0, int(by1 - cy - reach) - 1), min(n, int(by1 - cy + reach) + 2)):
+            for col in range(max(0, int(cx - bx0 - reach) - 1), min(n, int(cx - bx0 + reach) + 2)):
+                x, y = bx0 + col + 0.5, by1 - row - 0.5
+                d = math.hypot(x - cx, y - cy) - couhard_foot(site, math.degrees(math.atan2(x - cx, y - cy)))
+                zp = a * (x - px) + b * (y - py) + k0
+                z0 = base + cm[row, col] * 0.01
+                if d <= 1.5:
+                    new[row, col] = round((zp - base) * 100)
+                elif d <= 4:  # écrêté sous une pente de 20 % depuis le plan : un `min`, donc stable d'une passe à l'autre
+                    new[row, col] = round((min(z0, zp + 0.2 * (d - 1.5)) - base) * 100)
+                elif d <= 5:
+                    step = max(step, z0 - (zp + 0.5))
+        if (new < 0).any():
+            raise SystemExit(f"Pierre de Couhard : relief sous la base du bloc {path.stem}")
+        if (new != cm).any():
+            path.write_bytes(buf[:16] + new.astype("<u2").tobytes())
+            out.append(path.stem)
+    return out, step
+
+
+def couhard(spec, world):
+    """Écrit le site `couhard` dans kinds/<tuile>.json (créé s'il n'existe pas, et ajouté à l'index), aplanit le relief sous le pied et pose
+    la silhouette lointaine (anneaux étagés). Rend (tuile des types si elle change, tuile des silhouettes si elle change)."""
+    site, plane = measure_couhard(spec)
+    cx, cy = site["c"]
+    m = next(t for t in world["tiles"] if t["bounds"][0] <= cx < t["bounds"][2] and t["bounds"][1] <= cy < t["bounds"][3])
+    tid = m["id"]
+    print(f"  {site['n']} : axe ({cx} ; {cy}), pré {site['g']}, sommet +{site['top']} m ; pied de {min(site['r'][0]):.1f} à {max(site['r'][0]):.1f} m,"
+          f" {np.median(site['r'][10]):.1f} m à +10 m")
+    blocks, step = couhard_terrain(site, plane)
+    print(f"  relief aplani sous le pied : {', '.join(blocks) or 'déjà fait'} ; dépassement de la pente à 4-5 m du pied : {step:.2f} m")
+    polys = []
+    for lo, hi in ((2, 10), (10, 13), (13, 17), (17, 21)):
+        ring = site["r"][lo]
+        pts = []
+        for i in range(0, COUHARD_CAPS, 2):
+            a = math.radians(i * 360 / COUHARD_CAPS)
+            pts.append([round(cx + ring[i] * math.sin(a), 1), round(cy + ring[i] * math.cos(a), 1)])
+        zt = site["g"] + (site["top"] if hi == 21 else hi)
+        polys.append((pts, zt, zt))
+    lod = tid if replace_lod(tid, "pierre-de-couhard", polys, {"w": "#8c8172", "t": "#8c8172", "m": "terrasse", "a": "medieval", "k": zlib.crc32(b"pierre-de-couhard")}) else None
+    kp = KINDS / f"{tid}.json"
+    k = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+    sites = [q for q in k["sites"] if q.get("t") != "couhard"] + [site]
+    if sites == k["sites"]:
+        return None, lod
+    k["sites"] = sites
+    kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+    index = json.loads((KINDS / "index.json").read_text())
+    if tid not in index["tiles"]:
+        index["tiles"] = sorted(index["tiles"] + [tid])
+    index["stats"]["sites"]["couhard"] = 1
+    (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    return tid, lod
+
+
 def track_surfaces(fixes):
     """Revêtement des pistes d'après photo (`tracks` de manual.json) : la piste de kinds/<tuile>.json dont un sommet est à moins de 15 m
     du point donné prend `s` (« dirt » : terre battue, dessinée rouge-brun au lieu du rouge des pistes synthétiques). Rend les tuiles changées."""
@@ -1494,6 +1654,11 @@ def main():
             continue
         if spec["model"] == "janus":
             _, lod = janus(spec, world)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "couhard":
+            _, lod = couhard(spec, world)
             if lod:
                 changed_lod.add(lod)
             continue

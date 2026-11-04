@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -133,6 +133,13 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
   // Rideaux de tilleuls de la place du Champ de Mars (D155) : leurs troncs.
   for (const s of kinds.sites) if (s.t === "curtain") for (const [x, y] of curtainTrunks(s)) out.push([x, y, 0.25]);
+  // Pierre de Couhard (D222) : piquets de la clôture et panneau d'information.
+  for (const s of kinds.sites) {
+    if (s.t !== "couhard") continue;
+    for (const [x, y] of couhardPosts(s)) out.push([x, y, 0.08]);
+    const [px, py] = couhardPanel(s);
+    out.push([px, py, 0.5]);
+  }
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
   for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
@@ -301,13 +308,15 @@ export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record
   const theatres = (kinds?.sites ?? []).filter((s) => s.t === "theatre");
   // Temple de Janus (D139) : les « arbres » de 20 m posés sur ses murs étaient les murs eux-mêmes vus par le LiDAR.
   const temples = (kinds?.sites ?? []).filter((s): s is JanusSite => s.t === "janus");
+  // Pierre de Couhard (D222) : rien ne pousse sur la maçonnerie (le modèle dessine ses touffes).
+  const pyramids = (kinds?.sites ?? []).filter((s): s is CouhardSite => s.t === "couhard");
   // Îlot de rond-point (D142) : le relevé avait posé trois arbres de 13 m dans la couronne du cèdre ; l'arbre du site les remplace.
   const islands = (kinds?.sites ?? []).filter((s): s is RoundaboutSite => s.t === "roundabout");
   // Rideaux de tilleuls (D155) : le modèle dessine leurs couronnes et leurs troncs (obstacles : `landmarkCircles`).
   const curtains = (kinds?.sites ?? []).filter((s): s is CurtainSite => s.t === "curtain");
-  if (!basins.length && !theatres.length && !temples.length && !islands.length && !curtains.length) return [...trees];
+  if (!basins.length && !theatres.length && !temples.length && !pyramids.length && !islands.length && !curtains.length) return [...trees];
   return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
-    && temples.every((t) => !inJanus(t, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3)));
+    && temples.every((t) => !inJanus(t, x, y, 1)) && pyramids.every((p) => !inCouhard(p, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3)));
 }
 
 /** Troncs d'un rideau de tilleuls (D155) : files de troncs tous les `pitch` m le long du grand côté. */
@@ -392,6 +401,47 @@ export function janusRings(s: JanusSite): number[][] {
     }
   }
   return out;
+}
+
+// --- Pierre de Couhard (D222) ----------------------------------------------------------------------------------------------------------
+
+/** Rayon de la section `li` (indice dans `lv`) au cap `cap` (degrés depuis le nord, sens horaire), interpolé entre secteurs. */
+export function couhardRadius(s: CouhardSite, li: number, cap: number): number {
+  const row = s.r[Math.min(Math.max(li, 0), s.r.length - 1)]!, n = row.length;
+  const u = (((cap % 360) + 360) % 360) / (360 / n), i = Math.floor(u) % n, k = u - Math.floor(u);
+  return row[i]! + (row[(i + 1) % n]! - row[i]!) * k;
+}
+
+/** Point à `r` m de l'axe au cap `cap`. */
+export function couhardAt(s: CouhardSite, cap: number, r: number): [number, number] {
+  const a = (cap * Math.PI) / 180;
+  return [s.c[0] + r * Math.sin(a), s.c[1] + r * Math.cos(a)];
+}
+
+/** Contour du pied (élargi de `margin`), `n` sommets. */
+export function couhardFoot(s: CouhardSite, margin = 0, n = 48): [number, number][] {
+  return Array.from({ length: n }, (_, i) => { const cap = (360 * i) / n; return couhardAt(s, cap, couhardRadius(s, 0, cap) + margin); });
+}
+
+/** Dans le pied de la pyramide (élargi de `margin`) ? */
+export function inCouhard(s: CouhardSite, x: number, y: number, margin = 0): boolean {
+  const cap = (Math.atan2(x - s.c[0], y - s.c[1]) * 180) / Math.PI;
+  return Math.hypot(x - s.c[0], y - s.c[1]) < couhardRadius(s, 0, cap) + margin;
+}
+
+/** Panneau d'information : au cap `panel[0]`, à `panel[1]` m au-delà de la clôture. */
+export function couhardPanel(s: CouhardSite): [number, number] {
+  const [cap, off] = s.panel;
+  return couhardAt(s, cap, couhardRadius(s, 0, cap) + s.fence.gap + off);
+}
+
+/** Piquets de la clôture : tous les `step` m environ sur le contour du pied élargi de `gap`. */
+export function couhardPosts(s: CouhardSite): [number, number][] {
+  const ring = couhardFoot(s, s.fence.gap, 96);
+  let len = 0;
+  for (let i = 0; i < ring.length; i++) len += Math.hypot(ring[(i + 1) % ring.length]![0] - ring[i]![0], ring[(i + 1) % ring.length]![1] - ring[i]![1]);
+  const n = Math.max(8, Math.round(len / s.fence.step));
+  return Array.from({ length: n }, (_, i) => { const cap = (360 * i) / n; return couhardAt(s, cap, couhardRadius(s, 0, cap) + s.fence.gap); });
 }
 
 // --- Maison d'après photo (D140) ------------------------------------------------------------------------------------------------------
@@ -554,6 +604,8 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
   const out: number[][] = [];
   for (const s of kinds?.sites ?? []) {
     if (s.t === "janus") out.push(...janusRings(s));
+    // Pierre de Couhard (D222) : le pied (on ne gravit pas le talus).
+    if (s.t === "couhard") out.push(couhardFoot(s, 0, 32).flat());
     // Kiosque à musique (D155) : le contour BD TOPO (le toit déborde du socle de 50 cm), comme avant ; on n'y monte pas.
     if (s.t === "bandstand") out.push(bandstandRing(s).flat());
     if (s.t !== "gate") continue;

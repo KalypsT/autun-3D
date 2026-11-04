@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import type { Building, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
+import type { Building, CouhardSite, JanusSite, RoundaboutSite, Site, TileKinds } from "../data/types";
 import { Colliders } from "./collision";
-import { arcadePosts, at, carportShape, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, playCircles, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
+import { arcadePosts, at, carportShape, couhardFoot, couhardPanel, couhardPosts, couhardRadius, inCouhard, fuelLayout, furnitureOutsideMonuments, gateLayout, houseEdges, edgeFrame, houseFrame, houseRing, housePost, inJanus, inRoundabout, isOpen, janusSlabs, landmarkCircles, landmarkRings, PARAPET, playCircles, reshapeBuilding, storeCircles, treesOutsideMonuments, wallsOutsideMonuments } from "./landmarks";
 import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
@@ -225,6 +225,53 @@ describe("monuments (D95)", () => {
       }
       expect(treesOutsideMonuments({ sites: [t] }, [[t.o[0] + 5, t.o[1] + 1, 0, 20, 1.2, 4.5], [t.o[0] - 30, t.o[1], 0, 8, 3, 3]] as never).length).toBe(1);
       expect(wallsOutsideMonuments({ sites: [t] }, [{ id: t.wall, kind: "wall", height: 3.5, pts: [] }, { id: 1, kind: "wall", height: 1, pts: [] }] as never).map((w) => w.id)).toEqual([1]);
+    });
+
+    it("Pierre de Couhard (D222) : sections mesurées, sommet à 23 m, pied en obstacle, relief aplani, caches d'armes et sentier dehors", () => {
+      const p = kinds.sites.find((q): q is CouhardSite => q.t === "couhard")!;
+      expect(p).toBeDefined();
+      expect(Math.hypot(p.c[0] - 1181.2, p.c[1] + 749.1)).toBeLessThan(1);
+      expect(p.top).toBeGreaterThan(21.5);
+      expect(p.top).toBeLessThan(24);
+      expect(p.lv.length).toBe(p.r.length);
+      // Profil : pied de 9 à 12,5 m, environ 6,5 m à +10 m, cheminée de moins de 1,5 m à +20 m, et jamais plus large en montant au-dessus de +18 m.
+      const med = (li: number): number => [...p.r[li]!].sort((a, b) => a - b)[12]!;
+      expect(Math.min(...p.r[0]!)).toBeGreaterThan(8);
+      expect(Math.max(...p.r[0]!)).toBeLessThanOrEqual(12.5);
+      expect(med(p.lv.indexOf(10))).toBeGreaterThan(5.5);
+      expect(med(p.lv.indexOf(10))).toBeLessThan(7.5);
+      expect(med(p.lv.indexOf(20))).toBeLessThan(1.5);
+      for (let li = p.lv.indexOf(18) + 1; li < p.r.length; li++) for (let k = 0; k < 24; k++) expect(p.r[li]![k]).toBeLessThanOrEqual(p.r[li - 1]![k]! + 1e-6);
+      expect(couhardRadius(p, 0, 7.5)).toBeCloseTo((p.r[0]![0]! + p.r[0]![1]!) / 2, 5);
+      // La cavité regarde le pré du sud-sud-est (photo 2, LiDAR).
+      expect(p.cav.cap).toBeGreaterThan(140);
+      expect(p.cav.cap).toBeLessThan(165);
+      // Relief : plus de cône d'herbe sous le pied (le MNT le contenait), à 30 cm du pré.
+      for (let cap = 0; cap < 360; cap += 30) {
+        for (const k of [0, 0.5, 1]) {
+          const [x, y] = [p.c[0] + couhardRadius(p, 0, cap) * k * Math.sin((cap * Math.PI) / 180), p.c[1] + couhardRadius(p, 0, cap) * k * Math.cos((cap * Math.PI) / 180)];
+          expect(Math.abs(world.terrain.heightAt(x, y) - p.g)).toBeLessThan(0.5);
+        }
+      }
+      // Obstacles : le pied bloque, les piquets sont dehors et les caches d'armes (D84, D207) et le sentier qui fait le tour restent libres.
+      const c = new Colliders();
+      for (const r of landmarkRings({ sites: [p] }, () => 0)) c.addRing(r);
+      for (const [x, y] of couhardFoot(p, 0.2, 8)) expect(c.resolve(x, y, 0.35).hit).toBe(true);
+      for (const [x, y] of couhardPosts(p)) expect(inCouhard(p, x, y)).toBe(false);
+      for (const [x, y] of [[1197.5, -750.1], [1193.3, -741.0]] as const) {
+        expect(inCouhard(p, x, y, 2)).toBe(false);
+        expect(c.resolve(x, y, 0.35).hit).toBe(false);
+      }
+      expect(inCouhard(p, ...couhardPanel(p))).toBe(false);
+      const { n, e, g } = (JSON.parse(readFileSync("public/data/nav/s7_8.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+      for (let i = 0; i < e.length; i += 11) {
+        const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
+        const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
+        for (let k = 0; k < np!; k++) pts.push([g[2 * (p0! + k)]!, g[2 * (p0! + k) + 1]!]);
+        pts.push([n[3 * b!]!, n[3 * b! + 1]!]);
+        for (const [x, y] of pts) expect(inCouhard(p, x, y, 1)).toBe(false);
+      }
+      expect(treesOutsideMonuments({ sites: [p] }, [[p.c[0] + 3, p.c[1], 0, 20, 1.2, 4.5], [p.c[0] - 30, p.c[1], 0, 8, 3, 3]] as never).length).toBe(1);
     });
 
     it("passants (D139) : une boucle traverse le temple par ses arches, sans traverser un mur", () => {
