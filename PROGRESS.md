@@ -1584,3 +1584,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Au-dessus d'une autre voie, le pont porte lui-même sa chaussée et ses trottoirs ; la pile qui tombait dans la route du bas est déplacée.
 - Les piles des ponts sont maintenant des obstacles quand on passe dessous (à pied ou en véhicule), pas quand on est sur le pont (D220).
 - Le pont-rail du boulevard Pauchard, trop court dans les données (6 m), est prolongé à 13 m : la route passe à travers le remblai (D220).
+
+**Limite d'images par seconde (4 novembre 2026)** (D221)
+- Nouveau réglage « Images par seconde » dans le menu pause : 30, 60 (par défaut) ou sans limite. Jusqu'ici le jeu suivait l'écran : 120 images par seconde sur un téléphone à 120 Hz, deux fois plus de travail pour la puce, d'où la chauffe en partie.
+- `?fps=0` lève la limite, `?fps=30` l'impose (comparaisons).

@@ -1,3 +1,4 @@
+import { FrameLimiter } from "../core/frame-limit";
 import { PERCH } from "../core/officers";
 import { withRoofs } from "../core/roofs";
 import { rescaleDate } from "../core/calendar";
@@ -1161,7 +1162,13 @@ export function startGame(ctx: GameContext): void {
   let last = performance.now();
   let acc = 0;
   let pausedRender = 0;
+  const limiter = new FrameLimiter();
   const frame = (now: number): void => {
+    // Limite d'images par seconde (D221) : un appel arrivé trop tôt est sauté, sans rien simuler ni dessiner.
+    if (!limiter.ready(now, settings.values.fps)) {
+      requestAnimationFrame(frame);
+      return;
+    }
     // Jamais négatif : l'horodatage de la première image peut précéder `last` (initialisation longue) ; un pas négatif faisait grimper la progression de l'arrestation sans gendarme (trouvé en J5-0).
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
