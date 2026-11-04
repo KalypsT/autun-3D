@@ -405,6 +405,8 @@ export interface BuildingKind {
   college?: CollegeSpec;
   /** Hôtel de ville : modèle dédié (remplace murs, toit et façade génériques). */
   hall?: TownHallSpec;
+  /** Théâtre municipal d'après photos et relevé LiDAR (D223) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
+  play?: PlayhouseModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -413,6 +415,35 @@ export interface BuildingKind {
   hex?: HexagoneModel;
   /** Collège du Vallon d'après relevés LiDAR (D172) : ailes à toit plat, gymnase à deux pentes ou préau à voûtes (remplace murs et toit génériques ; les collisions gardent l'emprise BD TOPO). */
   vallon?: VallonModel;
+}
+
+/**
+ * Théâtre municipal (D223, tools/data/build_monuments.py, modèle `playhouse`). Repère : origine au coin gauche de la façade vue de la place
+ * (`o`, mur extérieur), s le long de la façade selon l'angle `a`, t vers l'intérieur. Corps avant : façade de largeur `w`, retour des
+ * pavillons jusqu'à `ts`, puis côtés en retrait de `iL` (gauche) et `iR` (droite) ; cage de scène de `tt` au mur arrière `tr`. Altitudes
+ * locales : sol devant la façade `g`, haut de l'attique `eave` ; toit brisé à croupes du corps avant : pan bas au mur, retrait de la brisure
+ * depuis le mur, altitude de la brisure, faîtage ; cage de scène à deux pans le long de t : égout, faîtage ; haut du fronton central. `levels` (photo, au-dessus de
+ * `g`) : sol du perron, cordon, bandeau du balcon, bas et haut de la corniche ; `pav` : largeur d'un pavillon (fraction de `w`).
+ */
+export interface PlayhouseModel {
+  o: [number, number];
+  a: number;
+  w: number;
+  ts: number;
+  iL: number;
+  iR: number;
+  tt: number;
+  tr: number;
+  g: number;
+  eave: number;
+  roof: [number, number, number, number];
+  tower: [number, number];
+  /** Haut du fronton central de l'attique (D224). */
+  fronton: number;
+  /** Perron mesuré au relief (D225) : s0, s1 (largeur à mi-volée), t du pied (devant la façade, négatif), sol au pied, palier. */
+  perron: [number, number, number, number, number];
+  levels: [number, number, number, number, number];
+  pav: number;
 }
 
 /**

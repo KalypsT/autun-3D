@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -493,6 +493,24 @@ export function housePost(m: HouseModel): [number, number] {
   return at(houseFrame(m), sw + 0.12, tw - 0.12);
 }
 
+// --- Théâtre municipal (D223) ----------------------------------------------------------------------------------------------------------
+
+/** Repère du théâtre municipal : origine au coin gauche de la façade, s le long de la façade, t vers l'intérieur. */
+export function playhouseFrame(m: PlayhouseModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Contour des murs en (s, t), dans le sens trigonométrique : façade et retour des pavillons, côtés en retrait, cage de scène. */
+export function playhouseOutline(m: PlayhouseModel): [number, number][] {
+  return [[0, 0], [m.w, 0], [m.w, m.ts], [m.w - m.iR, m.ts], [m.w - m.iR, m.tr], [m.iL, m.tr], [m.iL, m.ts], [0, m.ts]];
+}
+
+/** Obstacle du théâtre (à la place du contour BD TOPO, plus étroit d'un mètre et qui compte le perron dans le bâtiment) : ses murs mesurés. */
+export function playhouseRing(m: PlayhouseModel): number[] {
+  const f = playhouseFrame(m);
+  return playhouseOutline(m).flatMap(([s, t]) => at(f, s, t));
+}
+
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
   const k = kinds?.buildings[id]?.k;
@@ -501,10 +519,10 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
 
 /**
  * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
- * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165…).
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play);
 }
 
 /**

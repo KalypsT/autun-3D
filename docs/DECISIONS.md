@@ -4434,3 +4434,89 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Limites** : la face nord-est (côté bois) n'est pas photographiée (même matière que les autres) ; la profondeur du trou n'est pas mesurée (le laser n'en voit pas le fond : un ovale sombre peint au fond du creux) ; la silhouette lointaine est en gradins ; clôture en piquets de bois choisie par défaut (la photo 1 montre un grillage sur poteaux métalliques : à confirmer).
 
 **Tests** (+1, +1 bloc) : sections, sommet, profil, cavité au sud-sud-est, relief aplani sous le pied, pied en obstacle, piquets, caches d'armes, panneau et sentier dehors, arbres retirés (`landmarks.test.ts`) ; géométrie finie, moins de 6 000 triangles, éclairage de nuit (`monuments.test.ts`).
+
+## 2026-11-04 — D223. Bâtiments d'après photos : le théâtre municipal, volumes, toits et travées
+
+**Demande de l'utilisateur** : intégrer correctement le théâtre municipal (place du Champ de Mars) d'après ses photos. Photos fournies (non versionnées, elles servent seulement à décrire) : la façade de face (Wikimedia Commons), deux vues anciennes de trois quarts, trois vues Google Street View de juillet 2026 (depuis la place côté hôtel de ville, l'arrière depuis la rue Jeannin et depuis la rue Jondeau). Pas de photo rapprochée de l'ornement au sommet du pignon arrière. Lecture : avant-corps central de trois travées (portes rouges en plein cintre au-dessus d'un perron de six marches, fenêtres jumelées à l'entresol, balcon, trois grandes baies cintrées) entre deux pavillons d'une travée, dont le retour fait une travée sur les côtés ; corniche à modillons, attique sculpté, inscription « THEATRE », toit d'ardoise ; côtés à quatre rangs de baies, arcades rouges au rez-de-chaussée ; derrière, une cage de scène plus haute, enduite de gris, à deux pans et pignons à rampants.
+
+**Constat** : le théâtre était un immeuble générique de cinq niveaux à petites fenêtres, coiffé d'un toit à croupes uniforme (type « culture », inscription générique). L'emprise BD TOPO est décalée : plus étroite d'environ 1,2 m côté hôtel de ville, et sa saillie de 2,5 m au milieu de la façade est en fait le perron (le relevé montre un mur de façade droit).
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveau modèle `playhouse` de `build_monuments.py`, entrée du bâtiment dans `monuments` de `manual.json`) : repère sur l'arête BD TOPO la plus longue tournée vers `faces` (sud-est) ; bords = passage du modèle de surface au-dessus de 8 m, médianes par ligne, murs 30 cm en dedans (saillie de la corniche). Façade de 23,7 m ; retour des pavillons sur 7,9 m, puis côtés en retrait de 1,0 m (gauche) et 0,5 m (droite) ; cage de scène de 19,2 m au mur arrière (30,5 m), ce dernier trouvé au seuil de 16 m pour ignorer les bâtiments accolés. Hauteurs au-dessus de la place (sol devant, hors du perron) : haut de l'attique 17,6 m ; **toit brisé à croupes** : pans raides (pente 0,8) jusqu'à 23,1 m à 7,6 m du mur, puis pans faibles (0,46) jusqu'au faîtage à 24,6 m ; **cage de scène** à deux pans le long de l'axe : égout 22,4 m, faîtage 27,4 m. Niveaux de la photo de face, mise à l'échelle du relevé : sol du perron 1,4 m, cordon 5,8 m, bandeau du balcon 9,2 m, corniche de 15,3 à 16,1 m ; pavillons : 28,75 % de la largeur chacun. Champ `play` du bâtiment dans `kinds/26_35.json` ; une deuxième passe ne change rien.
+
+**Rendu** (`buildPlayhouse`, `src/render/playhouse.ts`, dans les maillages de la tuile : aucun appel de dessin de plus, 2 057 triangles et 98 de vitres allumées) :
+- murs en pierre claire (rez-de-chaussée un peu plus soutenu, refends sur la façade et les retours), corniche (doucine et larmier) qui court aussi le long de la cage de scène, cordon, bandeau du balcon, attique à couronnement et face intérieure ; au-dessus de la corniche, la cage de scène est enduite de gris ;
+- façade : fenêtre cintrée, fenêtre et fenêtre haute dans chaque pavillon (et sur leurs retours), trois portes cintrées (imposte vitrée), six fenêtres jumelées à l'entresol, trois grandes baies cintrées à l'étage noble ; côtés : travées d'environ 3,3 m sur quatre rangs, arcades jusqu'au sol ; menuiseries rouges, encadrements clairs ; une baie sur trois environ allumée la nuit ;
+- inscription « THEATRE » en lettres dorées sur un panneau de l'attique, au milieu ;
+- toits d'ardoise : fond plat derrière l'attique, toit brisé à croupes à 45° (brisure et faîtage soulignés de zinc), cage de scène à deux pans avec débord, pignons avant et arrière à chaperons relevés et piles d'angle ;
+- perron simple de six marches devant l'avant-corps (il recouvre le talus du relief, auparavant caché dans l'emprise).
+
+**Obstacle** : les murs mesurés (`playhouseRing`, comme la maison de D140) au lieu de l'emprise BD TOPO ; le perron n'est plus dans le bâtiment. **Silhouette lointaine** : trois prismes (avant, corps à toit brisé, cage de scène) dans `lod/26_35.json`. Vue `?view=municipal` (de face depuis la place).
+
+**Pas encore** (étapes suivantes, comme pour l'hôtel de ville) : détail de la façade (bossages, pilastres et colonnes de l'avant-corps, frontons cintrés et mascarons des pavillons, modillons, panneaux sculptés de l'attique, fronton central) ; balcon, consoles, petits balcons des pavillons, perron à rampes et lanternes ; lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière (sans photo rapprochée : forme approchée), escalier de secours de l'arrière ; chaînes d'angle de la cage de scène. On marche encore sur le talus sous les marches dessinées.
+
+**Tests** (+3 : `playhouse.test.ts`) : volumes plausibles, obstacle proche de l'emprise BD TOPO et façade tournée vers le sud-est, géométrie finie et bornée, inscription. `world.test.ts` : le test « on n'entre pas dans un bâtiment » prend les murs mesurés du théâtre comme le jeu.
+
+![Avant](captures/d223-theatre-avant.jpg)
+![Après](captures/d223-theatre-apres.jpg)
+![Depuis la place, côté hôtel de ville, avant](captures/d223-theatre-angle-avant.jpg)
+![Depuis la place, côté hôtel de ville, après](captures/d223-theatre-angle-apres.jpg)
+![Vue haute, avant](captures/d223-theatre-haut-avant.jpg)
+![Vue haute, après](captures/d223-theatre-haut-apres.jpg)
+![La cage de scène depuis la rue Jondeau](captures/d223-theatre-arriere.jpg)
+
+## 2026-11-04 — D224. Le théâtre municipal, étape 2 : détail de la façade
+
+**D'après la photo de face de l'utilisateur** (D223), toujours dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Pilastres** à base et chapiteau (gorgerin, corbeille, abaque) : aux deux bords de chaque pavillon, doublés contre l'avant-corps, du cordon aux chapiteaux (13,9 m) ; entre les grandes baies de l'avant-corps, au-dessus du bandeau du balcon ; aux deux bouts des retours. Architrave continue au-dessus des chapiteaux.
+- **Clés d'arc** saillantes aux portes, aux fenêtres cintrées des pavillons et aux arcades des côtés, et, plus grandes, aux trois baies de l'étage noble ; **guirlandes** en feston de part et d'autre de chaque clé, entre les chapiteaux.
+- **Pavillons** (façade et retours) : appuis, corniche et **fronton cintré** au-dessus de la fenêtre haute, **mascaron** dans le tympan (visage ovale, chevelure, yeux et bouche en creux) ; appuis des fenêtres de l'entresol.
+- **Corniche à modillons** (tous les 60 cm sur la façade et les retours, 90 cm ailleurs) ; côtés : appuis et corniches des fenêtres de l'étage noble.
+- **Attique** : dés au-dessus des pilastres, panneaux sculptés entre eux (cadre, fond en creux, guirlande).
+- **Fronton central** : massif plus haut que l'attique, corniche, fronton cintré jusqu'au haut **mesuré** (`fronton`, 90ᵉ centile du modèle de surface sur 2 m au milieu de la façade : 19,8 m au-dessus de la place, la photo donne 19,6 m), cartouche, volutes de chaque côté ; l'inscription « THEATRE » passe sur un panneau de ce massif.
+- **Chaînes d'angle** de pierre aux coins arrière de la cage de scène, dans l'enduit.
+- 5 251 triangles pour tout le théâtre (2 057 à l'étape 1), aucun appel de dessin de plus.
+
+**Pas encore** : balcon et consoles, petits balcons des pavillons, perron à rampes et lanternes (étape 3) ; lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière, escalier de secours (étape 4). Le mascaron et les guirlandes restent des formes simples, lisibles à la distance de jeu.
+
+**Tests** : le fronton est au-dessus de l'attique et sous le faîtage (`playhouse.test.ts`).
+
+![De face](captures/d224-theatre-face.jpg)
+![Au pied de la façade](captures/d224-theatre-detail.jpg)
+![Depuis la place, côté hôtel de ville](captures/d224-theatre-angle.jpg)
+
+## 2026-11-04 — D225. Le théâtre municipal, étape 3 : balcon, perron et lanternes
+
+**D'après la photo de face de l'utilisateur** (D223), dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Balcon de l'avant-corps** : dalle de 1 m de saillie sur toute la largeur de l'avant-corps, au bandeau du balcon (9,2 m), portée par **quatre consoles à volute** aux axes des pilastres (de 7,2 à 9 m) ; balustrade à balustres en poire tous les 28 cm, main courante, retours jusqu'au mur, dés au-dessus des consoles.
+- **Petits balcons des pavillons** (façade et retours) : dalle de 42 cm sur deux petites consoles, balustrade sur trois côtés, sous la fenêtre haute.
+- **Lanternes** suspendues à des potences entre les portes, sur les axes des pilastres (6,95 m) : cage de fer, vitres claires, chapeau en pyramide ; vitres allumées la nuit.
+- **Perron mesuré au relief** (`perron` du champ `play`, `build_monuments.py`) : palier = terrain contre le mur, sol = terrain 6 à 8 m devant, pied = premier point revenu à 10 cm du sol, largeur = terrain au-dessus du quart de la hauteur à mi-volée. Mesure : 13,0 m de large, 2,5 m de profondeur, **palier à 0,89 m** au-dessus du sol (la photo laissait croire à 1,4 m : on garde la mesure, sur laquelle on marche). Six marches de 15 cm, plus larges vers le bas comme sur la photo ; les portes partent du palier. **Rampes** en fer (main courante et barreaux) le long des deux bouts, jusqu'au mur.
+- On marche sur le relief, qui suit les marches à moins de 25 cm (test). Le sol vert-gris devant le perron est le dallage de la place (`plaza_paving`) tel que le dessine la palette, déjà là avant.
+- 7 895 triangles et 114 de vitres allumées pour tout le théâtre (5 251 à l'étape 2).
+
+**Pas encore** (étape 4) : lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière (forme approchée, pas de photo rapprochée), escalier de secours de l'arrière.
+
+**Tests** (+1) : perron mesuré au milieu de la façade, hauteur plausible, relief sous chaque marche à moins de 25 cm de son dessus (`playhouse.test.ts`) ; plafond de triangles relevé à 12 000.
+
+![Le balcon et les lanternes](captures/d225-theatre-balcon.jpg)
+![Le perron et ses rampes](captures/d225-theatre-perron.jpg)
+![La nuit](captures/d225-theatre-nuit.jpg)
+
+## 2026-11-04 — D226. Le théâtre municipal, étape 4 : ornements du toit, escalier de secours
+
+**D'après les photos de l'utilisateur** (façade de face, vues Street View de l'arrière), dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Lucarnes des pavillons** : petit édicule de pierre posé sur l'attique au-dessus de chaque pavillon (2,1 m de large, haut à 18,8 m au-dessus de la place, lu sur la photo), fronton triangulaire à corniche, toit en zinc à deux pans, **oculus** cerclé (l'un des deux allumé la nuit).
+- **Pots-à-feu** (socle, vase à panse et col, flamme) aux deux coins de la façade et sur les dés doublés entre pavillons et avant-corps, et sur les quatre piles d'angle des pignons de la cage de scène (photos de l'arrière).
+- **Épis** au-dessus des pavillons, sur le pan avant (tiges fines jusqu'à 20,5 m, bagues) ; **paratonnerre** à la pointe du pignon avant de la cage de scène.
+- **Ornement du pignon arrière** : aucune photo rapprochée ; sur les vues Street View, une forme ajourée sombre en éventail. Dessiné comme une **lyre rayonnante** de métal sombre (bras courbes, cordes, neuf rayons) sur un socle de pierre, environ 3 m au-dessus de la pointe : **forme approchée**, à corriger si une photo la montre.
+- **Escalier de secours** sur le pignon arrière, près du coin sud-ouest (photo de la rue Jondeau) : quatre paliers de caillebotis de 8,5 à 19 m, volées alternées (limons, marches, main courante), garde-corps et consoles, au-dessus des bâtiments accolés.
+- 10 311 triangles et 126 de vitres allumées pour tout le théâtre, toujours sans appel de dessin de plus.
+
+**Le plan du théâtre municipal est terminé** (D223 à D226). Restent possibles plus tard : la vraie forme de l'ornement du pignon arrière (avec une photo), l'intérieur (hors du jeu pour l'instant).
+
+**Tests** : la hauteur maximale admise passe au faîtage de la cage de scène + 3,5 m (lyre, paratonnerre) (`playhouse.test.ts`).
+
+![De face](captures/d226-theatre-face.jpg)
+![Les lucarnes et les pots-à-feu](captures/d226-theatre-detail.jpg)
+![L'arrière : lyre et escalier de secours](captures/d226-theatre-arriere.jpg)
+![Vue haute](captures/d226-theatre-haut.jpg)

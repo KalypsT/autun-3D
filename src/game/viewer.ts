@@ -14,6 +14,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   place: [-95, -75, 2.0, 30, -20, 4],
   mairie: [10, 35, 1.7, 15, 95, 10],
   church: [-40, -95, 1.7, -86, -136, 12],
+  // Théâtre municipal (D223) : de face depuis la place, comme la photo de la façade.
+  municipal: [17, 7, 1.7, -4.1, 38.7, 9],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

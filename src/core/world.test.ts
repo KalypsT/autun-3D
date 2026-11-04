@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pointInRing } from "./collision";
+import { playhouseRing } from "./landmarks";
 import { createPlayer, stepPlayer } from "./player";
 import { loadRealWorld } from "./testing";
 import { buildColliders } from "./world";
@@ -9,7 +10,10 @@ const buildings = tile.buildings;
 const colliders = buildColliders(tile);
 
 // Les marches aléatoires restent à moins de 200 m de l'origine : inutile de tester contre les bâtiments de tout le monde.
-const boxes = buildings.map((b) => {
+// Le théâtre municipal (D223) a pour obstacle ses murs mesurés : le contour BD TOPO compte le perron dans le bâtiment.
+const boxes = buildings.map((b0) => {
+  const play = tile.kinds?.buildings[b0.id]?.play;
+  const b = play ? { ...b0, ring: playhouseRing(play) } : b0;
   const xs = b.ring.filter((_, i) => i % 2 === 0), ys = b.ring.filter((_, i) => i % 2 === 1);
   return { b, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
 }).filter(({ x0, x1, y0, y1 }) => x1 > -250 && x0 < 250 && y1 > -250 && y0 < 250);

@@ -1593,3 +1593,39 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La pyramide gallo-romaine existe enfin : à la place du cône d'herbe, un cône de moellons mesuré sur le LiDAR (23 m), avec son talus, son ressaut à mi-hauteur, sa pointe en cheminée et le trou de fouille au sud-sud-est.
 - Au pied : piquets en bois, panneaux « Interdit de pénétrer — Chute de pierres », panneau d'information. On ne l'escalade pas ; les fusils cachés à côté sont toujours là.
 - Éclairée la nuit comme le temple de Janus (l'éclairage des monuments sera revu) ; visible de loin depuis la ville.
+
+**Le théâtre municipal, étape 1 : volumes, toits et travées (4 novembre 2026)** (D223)
+- Le théâtre n'est plus un immeuble de cinq étages : d'après tes photos et le relevé LiDAR, un corps avant en pierre claire (façade de 23,7 m, attique à 17,6 m) sous un toit d'ardoise brisé à croupes, et derrière, la cage de scène plus haute (27,4 m au faîtage), enduite de gris, à deux pans et pignons relevés.
+- Façade : trois portes rouges en plein cintre, fenêtres jumelées à l'entresol, trois grandes baies cintrées, pavillons d'une travée ; côtés à quatre rangs de baies avec arcades au rez-de-chaussée ; inscription « THEATRE » dorée sur l'attique ; un perron de six marches.
+- Les murs mesurés servent d'obstacle (l'emprise des données était décalée d'un mètre et comptait le perron dans le bâtiment).
+- Prochaines étapes : détail de la façade, balcon, perron et lanternes, ornements du toit.
+
+![Avant](docs/captures/d223-theatre-avant.jpg)
+![Après](docs/captures/d223-theatre-apres.jpg)
+![La cage de scène depuis la rue Jondeau](docs/captures/d223-theatre-arriere.jpg)
+
+**Le théâtre municipal, étape 2 : détail de la façade (4 novembre 2026)** (D224)
+- Pilastres à chapiteaux, clés d'arc, guirlandes au-dessus des grandes baies, fenêtres des pavillons à fronton cintré et mascaron, corniche à modillons.
+- Attique à dés et panneaux sculptés ; au milieu, le fronton cintré (hauteur mesurée au LiDAR) avec son cartouche, ses volutes et l'inscription « THEATRE ».
+- Chaînes d'angle en pierre aux coins de la cage de scène.
+- Prochaines étapes : balcon, perron à rampes et lanternes, puis ornements du toit.
+
+![Au pied de la façade](docs/captures/d224-theatre-detail.jpg)
+
+**Le théâtre municipal, étape 3 : balcon, perron et lanternes (4 novembre 2026)** (D225)
+- Le grand balcon de l'avant-corps sur ses quatre consoles à volute, avec sa balustrade ; de petits balcons sous les fenêtres hautes des pavillons.
+- Deux lanternes suspendues entre les portes, allumées la nuit.
+- Le perron, mesuré sur le relief : six marches plus larges vers le bas, deux rampes en fer ; on marche dessus sans s'enfoncer.
+- Dernière étape : les ornements du toit.
+
+![Le balcon et les lanternes](docs/captures/d225-theatre-balcon.jpg)
+![La nuit](docs/captures/d225-theatre-nuit.jpg)
+
+**Le théâtre municipal, étape 4 : ornements du toit (4 novembre 2026)** (D226)
+- Lucarnes à oculus au-dessus des pavillons, pots-à-feu aux coins de l'attique et sur les piles de la cage de scène, épis, paratonnerre.
+- À la pointe du pignon arrière, une lyre rayonnante en métal sombre (forme approchée : pas de photo rapprochée de l'ornement).
+- L'escalier de secours en fer sur le pignon arrière, comme sur la photo de la rue Jondeau.
+- **Le théâtre municipal est terminé** (étapes 1 à 4).
+
+![De face](docs/captures/d226-theatre-face.jpg)
+![L'arrière](docs/captures/d226-theatre-arriere.jpg)
