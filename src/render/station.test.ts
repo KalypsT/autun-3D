@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
-import { at, drawsGenericRoof, isOpen, stationCircles, stationFrame, stationRing, stationShelterColumns, walkableRoof } from "../core/landmarks";
+import { at, carportPoint, carportPosts, drawsGenericRoof, isOpen, stationCircles, stationFrame, stationRing, stationShelterColumns, walkableRoof } from "../core/landmarks";
 import { pointInRing } from "../core/collision";
 import { buildColliders } from "../core/world";
 import { MeshBuilder, UvMeshBuilder } from "./geometry";
@@ -94,7 +94,10 @@ describe("gare (D228)", () => {
     expect(texts.sort()).toEqual([...Array<string>(8).fill("AUTUN"), "GARE D'AUTUN"]);
     // three : (x, z, −y) ; tout tient à 2 m des murs mesurés et des quais (abri parapluie, abri vitré), et sous les souches de cheminée.
     const f = stationFrame(m), q = m.quai!;
-    const ring = [...stationRing(m), ...at(f, q.glass[0] - 3, q.sh[3] + 1), ...at(f, q.sh[1] + 1, q.sh[3] + 1), ...at(f, q.glass[0] - 3, m.d)];
+    const pv = m.parvis!;
+    const ring = [...stationRing(m), ...at(f, q.glass[0] - 3, q.sh[3] + 1), ...at(f, q.sh[1] + 1, q.sh[3] + 1), ...at(f, q.glass[0] - 3, m.d),
+      // Parvis (D230) : du mur blanc à l'ouest à l'abri de parking à l'est, jusqu'à l'avenue.
+      ...at(f, pv.wall[0] - 1, pv.wall[2]), ...at(f, pv.wall[0] - 1, -40), ...at(f, 80, -40), ...at(f, 80, m.d)];
     const xs = ring.filter((_, i) => i % 2 === 0), ys = ring.filter((_, i) => i % 2 === 1);
     for (let i = 0; i < p.length; i += 3) {
       expect(p[i]!).toBeGreaterThan(Math.min(...xs) - 2);
@@ -141,9 +144,35 @@ describe("gare (D228)", () => {
     const [cs, ct] = cols[0]!;
     const b0 = at(f, cs, ct - 2), b1 = at(f, cs, ct + 0.5);
     expect(c.raycast(b0[0], b0[1], b1[0], b1[1], true)).not.toBeNull();
-    expect(stationCircles(m).length).toBe(cols.length + 3);
+    expect(stationCircles(m).length).toBeGreaterThanOrEqual(cols.length + 3);
     // Traversée à niveau du quai 1 au quai central.
     expect(q.cross[1]).toBeCloseTo(q.edges[0], 0);
     expect(q.cross[2]).toBeGreaterThan(q.cross[1] + 4);
+  });
+
+  it("parvis (D230) : abri de parking mesuré, obstacles du mobilier, mur blanc", () => {
+    const p = m.parvis!, f = stationFrame(m);
+    expect(p).toBeDefined();
+    // Abri de parking : environ 16 × 7,6 m, bord bas vers 2,4 m, haut vers 4,4 m au-dessus du parvis.
+    const [, , , , L, W, zLo, zHi] = p.carport;
+    expect(L).toBeGreaterThan(14);
+    expect(L).toBeLessThan(18);
+    expect(W).toBeGreaterThan(6.5);
+    expect(W).toBeLessThan(9);
+    expect(zLo - m.g).toBeGreaterThan(2);
+    expect(zHi - m.g).toBeLessThan(5);
+    expect(zHi).toBeGreaterThan(zLo + 1);
+    const posts = carportPosts(p);
+    expect(posts.length).toBeGreaterThanOrEqual(8);
+    expect(stationCircles(m).length).toBe(stationShelterColumns(m).length + 3 + p.lamps.length + p.planters.length + 2 + 3 + posts.length);
+    // On ne traverse pas le mur blanc ; on passe le long.
+    const c = buildColliders(world.tile);
+    const [s0, s1, t] = p.wall;
+    const a = at(f, (s0 + s1) / 2, t - 2), b = at(f, (s0 + s1) / 2, t + 2);
+    expect(c.raycast(a[0], a[1], b[0], b[1])).not.toBeNull();
+    // Un poteau de l'abri de parking bloque.
+    const [pu, pw] = posts[0]!, [ps, pt] = carportPoint(p, pu, pw);
+    const q0 = at(f, ps - 1.5, pt), q1 = at(f, ps + 1.5, pt);
+    expect(c.raycast(q0[0], q0[1], q1[0], q1[1], true)).not.toBeNull();
   });
 });

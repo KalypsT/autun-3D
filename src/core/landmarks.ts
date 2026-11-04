@@ -558,14 +558,59 @@ export function stationShelterColumns(m: StationModel): [number, number][] {
 /** Petit abri vitré du quai central (D229) : longueur le long des voies, profondeur. */
 export const GLASS_SHELTER: readonly [number, number] = [3.2, 1.4];
 
-/** Obstacles des quais de la gare (D229) : colonnes de l'abri parapluie, petit abri vitré (trois cercles). */
-export function stationCircles(m: StationModel): [number, number, number][] {
-  if (!m.quai) return [];
-  const f = stationFrame(m);
-  const out: [number, number, number][] = stationShelterColumns(m).map(([s, t]) => [...at(f, s, t), 0.16]);
-  const [gs, gt] = m.quai.glass;
-  for (const k of [-1, 0, 1]) out.push([...at(f, gs + k * (GLASS_SHELTER[0] / 2 - 0.6), gt), 0.7]);
+/** Abri de bus de la gare routière (D230) : longueur le long de l'axe de l'arrêt, profondeur. */
+export const BUS_SHELTER: readonly [number, number] = [4.2, 1.5];
+
+/** Point (s, t) du repère de l'arrêt de bus (D230) : u le long de l'axe du zigzag, w vers la gare. */
+export function busPoint(p: NonNullable<StationModel["parvis"]>, u: number, w: number): [number, number] {
+  const { o, dir } = p.bus;
+  return [o[0] + dir[0] * u - dir[1] * w, o[1] + dir[1] * u + dir[0] * w];
+}
+
+/** Point (s, t) du repère de l'abri de parking (D230) : u le long du bord bas, w vers l'intérieur. */
+export function carportPoint(p: NonNullable<StationModel["parvis"]>, u: number, w: number): [number, number] {
+  const [s0, t0, a, side] = p.carport;
+  const ux = Math.cos(a), uy = Math.sin(a), nx = side > 0 ? -uy : uy, ny = side > 0 ? ux : -ux;
+  return [s0 + ux * u + nx * w, t0 + uy * u + ny * w];
+}
+
+/** Poteaux de l'abri de parking (D230), en (u, w) : deux files, environ tous les 4 m. */
+export function carportPosts(p: NonNullable<StationModel["parvis"]>): [number, number][] {
+  const [, , , , L, W] = p.carport;
+  const n = Math.max(2, Math.round(L / 4) + 1), out: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (const w of [0.5, W - 0.5]) out.push([0.4 + ((L - 0.8) * i) / (n - 1), w]);
   return out;
+}
+
+/**
+ * Obstacles des quais (D229 : colonnes de l'abri parapluie, petit abri vitré) et du parvis (D230 : lampadaires, vasques, banc, abri de bus,
+ * poteaux de l'abri de parking) de la gare.
+ */
+export function stationCircles(m: StationModel): [number, number, number][] {
+  const f = stationFrame(m);
+  const out: [number, number, number][] = [];
+  if (m.quai) {
+    out.push(...stationShelterColumns(m).map(([s, t]): [number, number, number] => [...at(f, s, t), 0.16]));
+    const [gs, gt] = m.quai.glass;
+    for (const k of [-1, 0, 1]) out.push([...at(f, gs + k * (GLASS_SHELTER[0] / 2 - 0.6), gt), 0.7]);
+  }
+  const p = m.parvis;
+  if (p) {
+    for (const [s, t] of p.lamps) out.push([...at(f, s, t), 0.15]);
+    for (const [s, t, r] of p.planters) out.push([...at(f, s, t), r]);
+    for (const k of [-1, 1]) out.push([...at(f, p.bench[0] + k * 0.8, p.bench[1]), 0.45]);
+    const [bu, bw] = p.bus.shelter;
+    for (const k of [-1, 0, 1]) out.push([...at(f, ...busPoint(p, bu + k * (BUS_SHELTER[0] / 2 - 0.7), bw)), 0.7]);
+    for (const [u, w] of carportPosts(p)) out.push([...at(f, ...carportPoint(p, u, w)), 0.15]);
+  }
+  return out;
+}
+
+/** Mur blanc du parvis (D230) : polyligne (x, y) en coordonnées du monde, ou null. */
+export function stationWall(m: StationModel): number[] | null {
+  if (!m.parvis) return null;
+  const f = stationFrame(m), [s0, s1, t] = m.parvis.wall;
+  return [...at(f, s0, t), ...at(f, s1, t)];
 }
 
 /** Obstacle de la gare (à la place du contour BD TOPO, décalé d'environ 1,2 m vers les voies) : ses murs mesurés. */

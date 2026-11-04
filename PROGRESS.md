@@ -1659,3 +1659,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Le quai 1](docs/captures/d229-gare-quai1-apres.jpg)
 ![Le quai central](docs/captures/d229-gare-quai-central-apres.jpg)
+
+**La gare, étape 3 : le parvis et le parking (4 novembre 2026)** (D230)
+- Fini les traits de stationnement en tous sens : 24 places là où se garent les voitures (deux rangées dos à dos et une le long de l'avenue à l'est, six sous l'abri en bois), et les voitures du jeu s'y garent.
+- L'allée de brique à panneaux clairs de la porte à l'avenue, ses deux vasques fleuries, le banc rouillé, les lampadaires doubles.
+- La gare routière : quai de bus, zigzag jaune, abri de bus à cadre brun ; le mur blanc le long du quai.
+- L'abri de parking en bois mesuré au LiDAR (16 × 7,6 m, toit en pente couvert de panneaux solaires) à la place de la boîte à porte ; le gravier le long du retour.
+- **La gare est terminée** (étapes 1 à 3).
+
+![Vue haute](docs/captures/d230-parvis-haut-apres.jpg)
+![L'abri de parking](docs/captures/d230-parvis-abri-parking-apres.jpg)

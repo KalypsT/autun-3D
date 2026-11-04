@@ -563,9 +563,59 @@ def measure_station_quais(tid, m, spec, k):
     return out, rings, hs, path, struct, sid
 
 
+def measure_station_parvis(m, spec):
+    """Parvis de la gare (D230), dans le repère de la gare : mobilier lu sur les photos et l'orthophotographie (`parvis` de l'entrée), abri de
+    parking en bois mesuré au LiDAR (cellules de 1,3 à 4,9 m au-dessus du sol autour du point donné ; rectangle orienté, réduit du flou du
+    relevé, et plan du toit ajusté en trois passes à 25 cm). Rend le champ `parvis` du modèle."""
+    from scipy import ndimage
+    from shapely.geometry import MultiPoint
+
+    pv = dict(spec["parvis"])
+    pv.pop("hide", None)
+    a, (ox, oy) = m["a"], m["o"]
+    ca, sa = math.cos(a), math.sin(a)
+    xy = lambda s, t: (ox + ca * s - sa * t, oy + sa * s + ca * t)
+    cs, ct = pv.pop("carport")
+    corners = [xy(cs - 14, ct - 14), xy(cs + 14, ct - 14), xy(cs + 14, ct + 14), xy(cs - 14, ct + 14)]
+    box = (math.floor(min(p[0] for p in corners)), math.floor(min(p[1] for p in corners)), math.ceil(max(p[0] for p in corners)), math.ceil(max(p[1] for p in corners)))
+    mns, mnt = Raster("MNS", "gare-abri", *box), Raster("MNT", "gare-abri", *box)
+    ss, tt = np.arange(cs - 11, cs + 11, 0.5), np.arange(ct - 11, ct + 11, 0.5)
+    M = np.array([[mns(*xy(s, t)) for s in ss] for t in tt])
+    H = M - np.array([[mnt(*xy(s, t)) for s in ss] for t in tt])
+    mask = ndimage.binary_opening((H > 1.3) & (H < 4.9), iterations=1)
+    lab, n = ndimage.label(mask)
+    j0, i0 = np.unravel_index(np.argmin((ss[None, :] - cs) ** 2 + (tt[:, None] - ct) ** 2 + np.where(mask, 0, 1e6)), mask.shape)
+    jj, ii = np.where(lab == lab[j0, i0])
+    P = [(float(ss[i]), float(tt[j])) for j, i in zip(jj, ii)]
+    cc = list(MultiPoint(P).minimum_rotated_rectangle.exterior.coords)[:4]
+    A = np.c_[[p[0] for p in P], [p[1] for p in P], np.ones(len(P))]
+    z = M[jj, ii]
+    keep = np.ones(len(P), bool)
+    for _ in range(3):
+        co = np.linalg.lstsq(A[keep], z[keep], rcond=None)[0]
+        keep = np.abs(z - A @ co) < 0.25
+    zc = lambda p: co[0] * p[0] + co[1] * p[1] + co[2]
+    # Bord bas : le grand côté dont le milieu est le plus bas ; origine à son bout, u le long de lui, w vers l'intérieur.
+    sides = [(cc[k], cc[(k + 1) % 4]) for k in range(4)]
+    longs = [sd for sd in sides if math.dist(*sd) >= max(math.dist(*q) for q in sides) - 1e-6] or sides
+    p0, p1 = min(longs, key=lambda sd: zc(((sd[0][0] + sd[1][0]) / 2, (sd[0][1] + sd[1][1]) / 2)))
+    L = math.dist(p0, p1)
+    u = ((p1[0] - p0[0]) / L, (p1[1] - p0[1]) / L)
+    W = min(math.dist(*sd) for sd in sides)
+    inward = (-u[1], u[0]) if zc((p0[0] - u[1], p0[1] + u[0])) > zc(p0) else (u[1], -u[0])
+    shrink = 0.25
+    o = (p0[0] + u[0] * shrink + inward[0] * shrink, p0[1] + u[1] * shrink + inward[1] * shrink)
+    L, W = L - 2 * shrink, W - 2 * shrink
+    lo, hi = zc(o) , zc((o[0] + inward[0] * W, o[1] + inward[1] * W))
+    r2 = lambda v: round(float(v), 2)
+    pv["carport"] = [r2(o[0]), r2(o[1]), round(math.atan2(u[1], u[0]), 4), round(1 if inward == (-u[1], u[0]) else -1), r2(L), r2(W), r2(lo), r2(hi)]
+    return pv
+
+
 def station(tid, bid, b, spec, k):
     """Gare (D228) : champ `sta` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
     m = measure_station(bid, b, spec)
+    hid = False
     if "quai" in spec:
         m["quai"], rings, hs, spath, struct, sid = measure_station_quais(tid, m, spec, k)
         qd = m["quai"]
@@ -585,8 +635,15 @@ def station(tid, bid, b, spec, k):
         if k["buildings"].get(sid) != {"k": "hidden"}:
             k["buildings"][sid] = {"k": "hidden"}
             hid = True
-        else:
-            hid = False
+    if "parvis" in spec:
+        m["parvis"] = measure_station_parvis(m, spec)
+        # L'abri de parking est dessiné par la gare : le bâtiment BD TOPO qui le figurait (une boîte à porte) est masqué.
+        hide = spec["parvis"].get("hide")
+        if hide and k["buildings"].get(hide) != {"k": "hidden"}:
+            k["buildings"][hide] = {"k": "hidden"}
+            hid = True
+        c_ = m["parvis"]["carport"]
+        print(f"  parvis : abri de parking de {c_[4]} × {c_[5]} m, bord bas {c_[6] - m['g']:.2f} m, haut {c_[7] - m['g']:.2f} m au-dessus du parvis")
     e = dict(k["buildings"].get(bid, {"k": "station"}))
     e["sta"] = m
     g = m["g"]
@@ -595,7 +652,7 @@ def station(tid, bid, b, spec, k):
     print(f"  {bid} : corps de {m['l']} × {m['d']} m (égout {m['eave'] - g:.1f}, faîtage {m['ridge'] - g:.1f}) ; pavillon de {p[1] - p[0]:.1f} × "
           f"{p[3] - p[2]:.1f} m à {p[0]} m (corniche {m['pv'][0] - g:.1f}, faîtage {m['pv'][1] - g:.1f}, fronton {m['ped'][1] - g:.1f} m, "
           f"demi-largeur {m['ped'][0]} m) ; retour de {m['l'] - m['ret'][0]:.1f} m jusqu'à {m['ret'][1]} m")
-    ch = k["buildings"].get(bid) != e or ("quai" in spec and hid)
+    ch = k["buildings"].get(bid) != e or hid
     if ch:
         k["buildings"][bid] = e
     ca, sa = math.cos(m["a"]), math.sin(m["a"])

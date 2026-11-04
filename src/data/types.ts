@@ -473,6 +473,24 @@ export interface StationModel {
   levels: [number, number, number, number, number, number, number];
   /** Quais (D229), absents avant l'étape 2. */
   quai?: StationQuai;
+  /** Parvis (D230), absent avant l'étape 3. */
+  parvis?: StationParvis;
+}
+
+/**
+ * Parvis de la gare (D230), dans le repère de la gare (photos et orthophotographie, abri de parking mesuré au LiDAR). `lamps` : lampadaires
+ * doubles (s, t) ; `planters` : vasques rondes (s, t, rayon) ; `bench` : banc de métal rouillé (s, t) ; `wall` : mur blanc entre la gare
+ * routière et le quai (s0, s1, t, hauteur) ; `bus` : axe du zigzag de l'arrêt (origine, direction unitaire) et abri de bus (u le long de
+ * l'axe, w vers la gare) ; `carport` : abri de parking en bois (origine au bout du bord bas, angle du bord bas, côté de l'intérieur ±1,
+ * longueur, largeur, altitudes locales du bord bas et du bord haut).
+ */
+export interface StationParvis {
+  lamps: [number, number][];
+  planters: [number, number, number][];
+  bench: [number, number];
+  wall: [number, number, number, number];
+  bus: { o: [number, number]; dir: [number, number]; shelter: [number, number] };
+  carport: [number, number, number, number, number, number, number, number];
 }
 
 /**

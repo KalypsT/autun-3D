@@ -4620,3 +4620,37 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Vue haute, avant](captures/d229-gare-haut-avant.jpg)
 ![Vue haute, après](captures/d229-gare-haut-apres.jpg)
 ![La gare depuis le quai central](captures/d229-gare-depuis-quai-central-apres.jpg)
+
+## 2026-11-04 — D230. La gare d'Autun, étape 3 : le parvis et le parking
+
+**D'après les photos de l'utilisateur** (D228 : la façade de face avec l'allée et la vasque, les vues Street View du parvis, de la gare routière depuis l'avenue, du parking en gravier à l'est avec l'abri en bois) **et l'orthophotographie IGN** (20 cm, redressée dans le repère de la gare ; les traits des places sont illisibles à cette résolution et cachés par les voitures).
+
+**Constat** : tout le parvis était couvert de traits de stationnement retrouvés en tous sens par D94 (201 marques), y compris sur la gare routière, où il n'y a pas de places ; ni allée, ni gare routière, ni mobilier ; l'abri de parking était une boîte « industrielle » BD TOPO à porte (`BATIMENT0000002101118231`).
+
+**Lecture** (repère de la gare : s le long de la façade, t vers les voies) :
+- **Places**, d'après les voitures de l'orthophotographie, au pas de 2,5 m et 4,8 m de profondeur : deux rangées dos à dos à l'est (s 37,8 à 50,3, t −18,8 à −28,4, ligne de fond commune), une rangée le long de l'avenue (s 40,3 à 60,3), six places sous l'abri de parking (dans le repère de son bord bas) ; 24 places en tout.
+- **Allée devant la porte** : cadre de brique de 8,75 m (s 21,25 à 30) jusqu'à l'avenue, cinq panneaux clairs de 6 m ; deux vasques rondes sur son axe ; un banc de métal rouillé (photo).
+- **Gare routière** à l'ouest : zigzag jaune de 14,4 m le long d'un quai de bus (axe lu sur l'orthophotographie, à −31,5° de la façade), l'abri de bus au bout du quai (cadre brun, parois de verre, photo de l'avenue) ; mur blanc entre la gare routière et le quai (s −48 à −8).
+- **Gravier** le long de la face est du retour (le parking de la photo d'octobre 2022).
+- **Lampadaires doubles** : deux de part et d'autre du pavillon (photo de face), un sur la gare routière (orthophotographie).
+- **Abri de parking** mesuré au LiDAR (`measure_station_parvis`, `build_monuments.py` : cellules de 1,3 à 4,9 m au-dessus du sol, rectangle orienté réduit du flou du relevé, plan du toit en trois passes) : **16,1 × 7,6 m**, à 45° de la façade, toit incliné de 2,4 m (côté parking) à 4,4 m (côté haie) ; BD TOPO en faisait une boîte, masquée (`hidden`).
+
+**Données** :
+- `parkings` de `manual.json`, deux entrées « Parvis de la gare » (`build_parking.py`) : zone de nettoyage du parvis (toute ancienne marque y est retirée), rangées de places ; nouveau dans `build_parking.py` : **`grounds`** (bandes de sol posées dans leur classe, rectangle ou polygone du repère, retirées des autres sols, dans l'ordre : brique, panneaux clairs `plaza_concrete`, gravier, quai de bus `walk`, asphalte sous l'abri) et **`yellow`** (polylignes peintes en jaune, nouvelle couche `marks_yellow` dessinée par `src/render/ground.ts`). Les bâtiments masqués ne coupent plus les traits. Une marque déjà posée n'est pas remise (une rangée qui sortait de la zone se dédoublait à chaque passe).
+- `parvis` de l'entrée de la gare dans `monuments` (mobilier lu sur les photos, point de départ de la mesure de l'abri, bâtiment à masquer) → champ `parvis` du modèle `sta`.
+
+**Rendu** (`buildParvis`, `src/render/station.ts` ; **10 156 triangles** pour toute la gare, 8 596 à l'étape 2, aucun appel de dessin de plus) : abri de parking en bois (deux files de poteaux sur socles, jambes de force en Y, poutres, chevrons, sous-face de bois, panneaux solaires sombres à cadre clair, rives) ; abri de bus (cadre brun, verre, toit débordant, banc, panneau d'horaires) ; lampadaires doubles (fût vert, crosse, deux lanternes allumées la nuit) ; vasques de pierre à fleurs ; banc en acier rouillé ; mur blanc à chaperon.
+
+**Obstacles** : lampadaires, vasques, banc, abri de bus, poteaux de l'abri de parking (`stationCircles`), mur blanc (polyligne, `stationWall`). Les voitures garées du jeu (`findStalls`) prennent les 24 places.
+
+**Pas encore** : la navigation n'est pas régénérée (les passants ne savent rien du mur blanc, de l'abri de bus ni de l'allée) ; pas de bus garé à l'arrêt ; le dépôt de matériaux à l'ouest de la gare routière, la haie de l'avenue et le massif taillé restent ceux des données ; la photo ancienne montrait un parterre fleuri devant la porte, l'actuelle une vasque : on garde l'actuelle. **Le plan de la gare est terminé** (D228 à D230).
+
+**Tests** (+4 : `parvis-gare.test.ts`, `station.test.ts`) : 22 à 26 places retrouvées, toutes à l'est ; plus d'ancienne marque dans le parvis ; brique, panneaux, gravier et zigzag au bon endroit ; abri de parking mesuré, obstacles du mobilier, mur blanc infranchissable.
+
+![Vue haute, avant](captures/d230-parvis-haut-avant.jpg)
+![Vue haute, après](captures/d230-parvis-haut-apres.jpg)
+![Depuis l'avenue, avant](captures/d230-parvis-face-avant.jpg)
+![Depuis l'avenue, après](captures/d230-parvis-face-apres.jpg)
+![La gare routière, après](captures/d230-parvis-gare-routiere-apres.jpg)
+![L'abri de parking, avant](captures/d230-parvis-abri-parking-avant.jpg)
+![L'abri de parking, après](captures/d230-parvis-abri-parking-apres.jpg)

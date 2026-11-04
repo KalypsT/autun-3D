@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { HeightField, StationModel } from "../data/types";
-import { at, GLASS_SHELTER, stationFrame, stationShelterColumns } from "../core/landmarks";
+import { at, BUS_SHELTER, busPoint, carportPoint, carportPosts, GLASS_SHELTER, stationFrame, stationShelterColumns } from "../core/landmarks";
 import { toThree, type Vec3 } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
 import { Draw, up, wallOf, type PWall, type ST, type STZ } from "./playhouse";
@@ -332,6 +332,7 @@ export function buildStation(sinks: LandmarkSinks, m: StationModel, terrain: Hei
     box(d, s - 0.36, s + 0.36, t - 0.41, t + 0.41, zRidge + 1.1, zRidge + 1.25, shade(BRICK, 0.85));
   }
   if (m.quai) buildQuais(sinks, d, m, terrain);
+  if (m.parvis) buildParvis(sinks, d, m);
 }
 
 /** Pavé (s0..s1, t0..t1, z0..z1) aux faces verticales et au dessus. */
@@ -504,4 +505,147 @@ function buildQuais(sinks: LandmarkSinks, d: Draw, m: StationModel, terrain: Hei
   glassWall([ga, gt0], [ga, gt1], [-1, 0]);
   glassWall([gb, gt1], [gb, gt0], [1, 0]);
   box(d, ga + 0.2, gb - 0.2, gt1 - 0.45, gt1 - 0.05, gz + 0.42, gz + 0.48, C("#6b4a32"));
+}
+
+// --- Parvis (D230) ----------------------------------------------------------------------------------------------------------------
+
+const WOOD = C("#a9764a"), WOOD_DARK = C("#7d5434"), PV = C("#26385a"), PV_FRAME = C("#b9bec2"), LAMP_GREEN = C("#2e4b40");
+const BUS_FRAME = C("#6a3a2a"), STONE_BOWL = C("#cfc6b2"), SOIL = C("#5a4232"), CORTEN = C("#8b4a2a"), WALL_WHITE = C("#ecebe6");
+
+/** Pavé orienté : centre (s, t), demi-côtés le long de (ux, uy) et en travers, de z0 à z1. */
+function obox(d: Draw, s: number, t: number, ux: number, uy: number, hl: number, hw: number, z0: number, z1: number, col: THREE.Color): void {
+  const vx = -uy, vy = ux;
+  const q: ST[] = [[s - ux * hl - vx * hw, t - uy * hl - vy * hw], [s + ux * hl - vx * hw, t + uy * hl - vy * hw], [s + ux * hl + vx * hw, t + uy * hl + vy * hw],
+    [s - ux * hl + vx * hw, t - uy * hl + vy * hw]];
+  for (let i = 0; i < 4; i++) {
+    const a = q[i]!, b = q[(i + 1) % 4]!, len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    d.mb.quad(d.P(...a, z0), d.P(...b, z0), d.P(...b, z1), d.P(...a, z1), d.N((b[1] - a[1]) / len, -(b[0] - a[0]) / len), shade(col, i % 2 ? 0.92 : 1));
+  }
+  d.mb.quad(d.P(...q[0]!, z1), d.P(...q[1]!, z1), d.P(...q[2]!, z1), d.P(...q[3]!, z1), [0, 1, 0], shade(col, 1.05));
+}
+
+function buildParvis(sinks: LandmarkSinks, d: Draw, m: StationModel): void {
+  const p = m.parvis!;
+  const glass = sinks.glass ?? sinks.solid, pane = sinks.glass ? C("#cfe0e4") : C("#dfe6e2");
+
+  // --- Abri de parking en bois : deux files de poteaux, poutres, chevrons, toit en pente couvert de panneaux solaires --------------
+  const [, , a, , L, W, zLo, zHi] = p.carport;
+  const P = (u: number, w: number): ST => carportPoint(p, u, w);
+  const roofZ = (w: number): number => zLo + ((zHi - zLo) * w) / W;
+  const ux = Math.cos(a), uy = Math.sin(a);
+  for (const [u, w] of carportPosts(p)) {
+    const [s, t] = P(u, w), z0 = d.ground(s, t), zt = roofZ(w) - 0.42;
+    obox(d, s, t, ux, uy, 0.1, 0.1, z0 - 0.1, zt, WOOD);
+    // Jambes de force en Y vers la poutre de la file.
+    for (const k of [-1, 1]) {
+      const [s1, t1] = P(u + k * 1.1, w);
+      d.bar([s, t, zt - 1.1], [s1, t1, zt], 0.05, WOOD_DARK);
+    }
+    obox(d, s, t, ux, uy, 0.16, 0.16, z0 - 0.1, z0 + 0.12, C("#9a9a94"));
+  }
+  // Poutres le long des files, chevrons en travers tous les 1,2 m.
+  for (const w of [0.5, W - 0.5]) {
+    const [s0, t0] = P(0, w), [s1, t1] = P(L, w), z = roofZ(w) - 0.42;
+    obox(d, (s0 + s1) / 2, (t0 + t1) / 2, ux, uy, L / 2, 0.09, z, z + 0.26, WOOD_DARK);
+  }
+  const nr = Math.max(2, Math.round(L / 1.2));
+  for (let i = 0; i <= nr; i++) {
+    const u = (L * i) / nr, [s0, t0] = P(u, -0.2), [s1, t1] = P(u, W + 0.2);
+    d.bar([s0, t0, roofZ(-0.2) - 0.12], [s1, t1, roofZ(W + 0.2) - 0.12], 0.05, WOOD);
+  }
+  // Toit : sous-face de bois, panneaux solaires sombres à cadre clair, rive de bois.
+  const c4 = [P(-0.2, -0.2), P(L + 0.2, -0.2), P(L + 0.2, W + 0.2), P(-0.2, W + 0.2)];
+  const zc = [roofZ(-0.2), roofZ(-0.2), roofZ(W + 0.2), roofZ(W + 0.2)];
+  const R = c4.map(([s, t], i) => d.P(s, t, zc[i]!));
+  d.mb.quad(R[0]!, R[1]!, R[2]!, R[3]!, [0, -1, 0], shade(WOOD, 0.85));
+  d.mb.quad(R[0]!, R[1]!, R[2]!, R[3]!, up(R[0]!, R[1]!, R[2]!), PV_FRAME);
+  const cols = Math.max(1, Math.round(L / 1.7)), rows = Math.max(1, Math.round(W / 1.05));
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const u0 = -0.1 + ((L + 0.2) * i) / cols + 0.04, u1 = -0.1 + ((L + 0.2) * (i + 1)) / cols - 0.04;
+      const w0 = -0.1 + ((W + 0.2) * j) / rows + 0.04, w1 = -0.1 + ((W + 0.2) * (j + 1)) / rows - 0.04;
+      const q = [P(u0, w0), P(u1, w0), P(u1, w1), P(u0, w1)].map(([s, t], k) => d.P(s, t, roofZ(k < 2 ? w0 : w1) + 0.04));
+      d.mb.quad(q[0]!, q[1]!, q[2]!, q[3]!, up(q[0]!, q[1]!, q[2]!), PV);
+    }
+  }
+  for (const [ua, wa, ub, wb] of [[-0.2, -0.2, L + 0.2, -0.2], [L + 0.2, -0.2, L + 0.2, W + 0.2], [L + 0.2, W + 0.2, -0.2, W + 0.2], [-0.2, W + 0.2, -0.2, -0.2]] as const) {
+    const A = P(ua, wa), B = P(ub, wb), len = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, n = d.N((B[1] - A[1]) / len, -(B[0] - A[0]) / len);
+    d.mb.quad(d.P(...A, roofZ(wa) - 0.2), d.P(...B, roofZ(wb) - 0.2), d.P(...B, roofZ(wb) + 0.05), d.P(...A, roofZ(wa) + 0.05), n, WOOD_DARK);
+  }
+
+  // --- Abri de bus de la gare routière : cadre brun, parois de verre (fond et côtés), toit débordant, banc, panneau d'horaires -------
+  const [bu, bw] = p.bus.shelter, [bl, bd] = BUS_SHELTER, bh = 2.45;
+  const B = (u: number, w: number): ST => busPoint(p, bu + u, bw + w);
+  const [dx, dy] = p.bus.dir;
+  const [bs, bt] = B(0, 0), bz = d.ground(bs, bt);
+  for (const [u, w] of [[-bl / 2, -bd / 2], [bl / 2, -bd / 2], [-bl / 2, bd / 2], [bl / 2, bd / 2], [0, bd / 2]] as const) {
+    const [s, t] = B(u, w);
+    obox(d, s, t, dx, dy, 0.05, 0.05, bz, bz + bh, BUS_FRAME);
+  }
+  obox(d, bs, bt, dx, dy, bl / 2 + 0.25, bd / 2 + 0.3, bz + bh, bz + bh + 0.14, BUS_FRAME);
+  const gw = (u0: number, w0: number, u1: number, w1: number, n: [number, number]): void => {
+    const A = B(u0, w0), Bb = B(u1, w1);
+    glass.quad(d.P(...A, bz + 0.15), d.P(...Bb, bz + 0.15), d.P(...Bb, bz + bh - 0.1), d.P(...A, bz + bh - 0.1), d.N(...n), pane);
+  };
+  gw(-bl / 2, bd / 2, bl / 2, bd / 2, [-dy, dx]);
+  gw(-bl / 2, -bd / 2 + 0.4, -bl / 2, bd / 2, [-dx, -dy]);
+  gw(bl / 2, bd / 2, bl / 2, -bd / 2 + 0.4, [dx, dy]);
+  {
+    const [s, t] = B(0.3, bd / 2 - 0.35);
+    obox(d, s, t, dx, dy, 1.3, 0.2, bz + 0.44, bz + 0.5, C("#8a5a3a"));
+    const [s2, t2] = B(-bl / 2 + 0.75, bd / 2 - 0.1);
+    obox(d, s2, t2, dx, dy, 0.55, 0.04, bz + 0.9, bz + 2.0, C("#f2f1ea"));
+  }
+
+  // --- Lampadaires doubles : fût vert, crosse à deux lanternes -----------------------------------------------------------------
+  for (const [s, t] of p.lamps) {
+    const z0 = d.ground(s, t);
+    obox(d, s, t, 1, 0, 0.17, 0.17, z0 - 0.1, z0 + 0.5, LAMP_GREEN);
+    d.bar([s, t, z0 + 0.5], [s, t, z0 + 4.3], 0.07, LAMP_GREEN);
+    for (const k of [-1, 1]) {
+      const ls = s + k * 0.55;
+      d.bar([s, t, z0 + 3.9], [ls, t, z0 + 4.25], 0.035, LAMP_GREEN);
+      d.bar([ls, t, z0 + 4.25], [ls, t, z0 + 4.35], 0.05, LAMP_GREEN);
+      obox(d, ls, t, 1, 0, 0.14, 0.14, z0 + 4.35, z0 + 4.75, C("#e9e4cf"));
+      obox(d, ls, t, 1, 0, 0.17, 0.17, z0 + 4.75, z0 + 4.85, LAMP_GREEN);
+      const q = [d.P(ls - 0.15, t - 0.15, z0 + 4.4), d.P(ls + 0.15, t - 0.15, z0 + 4.4), d.P(ls + 0.15, t + 0.15, z0 + 4.4), d.P(ls - 0.15, t + 0.15, z0 + 4.4)];
+      sinks.glow.quad(q[0]!, q[1]!, q[2]!, q[3]!, [0, -1, 0], GLOW_HI);
+    }
+  }
+
+  // --- Vasques fleuries, banc de métal rouillé ----------------------------------------------------------------------------------
+  for (const [s, t, r] of p.planters) {
+    const z0 = d.ground(s, t), n = 16;
+    for (let i = 0; i < n; i++) {
+      const a0 = (Math.PI * 2 * i) / n, a1 = (Math.PI * 2 * (i + 1)) / n;
+      const A: ST = [s + Math.cos(a0) * r, t + Math.sin(a0) * r], Bq: ST = [s + Math.cos(a1) * r, t + Math.sin(a1) * r];
+      d.mb.quad(d.P(...A, z0 - 0.1), d.P(...Bq, z0 - 0.1), d.P(...Bq, z0 + 0.45), d.P(...A, z0 + 0.45), d.N(Math.cos((a0 + a1) / 2), Math.sin((a0 + a1) / 2)), STONE_BOWL);
+      const Ai: ST = [s + Math.cos(a0) * (r - 0.12), t + Math.sin(a0) * (r - 0.12)], Bi: ST = [s + Math.cos(a1) * (r - 0.12), t + Math.sin(a1) * (r - 0.12)];
+      d.mb.quad(d.P(...A, z0 + 0.45), d.P(...Bq, z0 + 0.45), d.P(...Bi, z0 + 0.45), d.P(...Ai, z0 + 0.45), [0, 1, 0], shade(STONE_BOWL, 1.06));
+      d.mb.tri(d.P(s, t, z0 + 0.38), d.P(...Ai, z0 + 0.38), d.P(...Bi, z0 + 0.38), [0, 1, 0], SOIL);
+    }
+    // Touffes de fleurs (rouges, roses, blanches) et de feuillage.
+    const flower = [C("#d23a4a"), C("#e98aa8"), C("#f4f0e6"), C("#4f8a46")];
+    for (let i = 0; i < 9; i++) {
+      const a0 = i * 2.4, rr = (r - 0.3) * Math.sqrt((i + 0.5) / 9), fs = s + Math.cos(a0) * rr, ft = t + Math.sin(a0) * rr;
+      obox(d, fs, ft, Math.cos(a0), Math.sin(a0), 0.16, 0.16, z0 + 0.38, z0 + 0.62 + (i % 3) * 0.05, flower[i % 4]!);
+    }
+  }
+  {
+    const [s, t] = p.bench, z0 = d.ground(s, t);
+    obox(d, s, t, 1, 0, 1.25, 0.32, z0 + 0.42, z0 + 0.5, CORTEN);
+    for (const k of [-1, 1]) obox(d, s + k * 1.05, t, 1, 0, 0.06, 0.3, z0 - 0.05, z0 + 0.42, shade(CORTEN, 0.85));
+    obox(d, s, t + 0.3, 1, 0, 1.25, 0.03, z0 + 0.5, z0 + 0.95, shade(CORTEN, 0.92));
+  }
+
+  // --- Mur blanc entre la gare routière et le quai -------------------------------------------------------------------------------
+  {
+    const [s0, s1, t, h] = p.wall, n = Math.max(1, Math.ceil((s1 - s0) / 4));
+    for (let i = 0; i < n; i++) {
+      const a0 = s0 + ((s1 - s0) * i) / n, a1 = s0 + ((s1 - s0) * (i + 1)) / n, sm = (a0 + a1) / 2;
+      const z0 = Math.min(d.ground(a0, t), d.ground(a1, t));
+      obox(d, sm, t, 1, 0, (a1 - a0) / 2, 0.12, z0 - 0.2, z0 + h, WALL_WHITE);
+      obox(d, sm, t, 1, 0, (a1 - a0) / 2, 0.17, z0 + h, z0 + h + 0.08, shade(WALL_WHITE, 0.93));
+    }
+  }
 }

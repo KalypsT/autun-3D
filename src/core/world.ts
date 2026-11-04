@@ -1,7 +1,7 @@
 import type { Building, HeightField, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
@@ -54,6 +54,9 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     if (house || !walkableRoof(kind)) {
       // Théâtre municipal (D223) : ses murs mesurés, le perron hors du bâtiment ; gare (D228) : ses murs mesurés.
       c.addRing(house ? houseRing(house) : kind?.play ? playhouseRing(kind.play) : kind?.sta ? stationRing(kind.sta) : b.ring);
+      // Mur blanc du parvis de la gare (D230).
+      const sw = kind?.sta ? stationWall(kind.sta) : null;
+      if (sw) c.addPolyline(sw);
       for (const h of b.holes) c.addRing(h);
       continue;
     }
