@@ -4404,3 +4404,16 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Limites** : les passants traversent toujours les piles (ils n'ont pas d'altitude dans `resolve`) ; leurs files contournent en général les ouvrages. La pile du carrefour de la Légion reste à sa place (aucune voie du bas dans les données pour la déplacer), mais on ne la traverse plus.
 
 **Tests** (+2, `decks.test.ts`) : une pile arrête qui passe dessous, pas qui est sur le tablier ni qui ne donne pas son altitude, arrête les tirs sous le pont et pas au-dessus, absente sous un tablier trop bas ; prolongement d'un tablier de 6 m à 13 m, à plat, et rien pour un tablier avec parapets.
+
+## 2026-11-04 — D221. Limite d'images par seconde (60 par défaut)
+
+**Constat** (mesures de l'utilisateur, téléphone Android à Adreno 840, écran 120 Hz) : le téléphone chauffe en jouant, pas pendant le banc. Le banc tourne à 60 i/s, le jeu à 115-121 i/s (`?debug`) : l'écran passe à 60 Hz quand on ne le touche pas, à 120 Hz en jouant, et la boucle (`requestAnimationFrame`) dessine à chaque rafraîchissement, sans limite. Les réglages pèsent aussi (batterie : 4 à 5 % en 10 minutes en réglages hauts, ~3 % en réglages bas ; les ombres doublent les triangles), mais la cadence double tout le travail.
+
+**Décisions** :
+- **Réglage `fps`** (`src/core/settings.ts`) : 30, 60 ou 0 (sans limite), 60 par défaut ; ligne « Images par seconde » du menu pause ; `?fps=` l'impose (0 : sans limite ; jusqu'à 45 : 30 ; au-delà : 60).
+- **`FrameLimiter`** (`src/core/frame-limit.ts`), en tête de la boucle du jeu : un appel arrivé trop tôt est sauté sans rien simuler ni dessiner (le pas de temps suivant couvre l'intervalle entier). L'échéance avance d'un intervalle fixe, pas de « maintenant + intervalle » : 60 i/s de moyenne aussi sur un écran à 90 ou 144 Hz ; tolérance de 2 ms pour ne pas perdre d'image sur un écran à 60 Hz ; après une longue image, on repart sans rafale.
+- Le banc (`?bench=1`), les galeries et `?proto=` restent sans limite : ils mesurent ce que le rendu peut tenir.
+
+**Limites** : gain sur la chauffe et la batterie non encore mesuré sur le téléphone (refaire le test de 10 minutes en réglages hauts). Réglages par défaut (définition ×2,5, ombres fines) inchangés pour l'instant.
+
+**Tests** (+7) : cadence obtenue sur des écrans à 60, 90, 120 et 144 Hz, horodatages irréguliers, sans limite, reprise après une longue image (`frame-limit.test.ts`) ; lecture du réglage et `?fps=` (`settings.test.ts`).

@@ -94,3 +94,24 @@ describe("réglage « Plein écran »", () => {
     expect(parseSettings({}).fullscreen).toBe(true);
   });
 });
+
+describe("images par seconde (D221)", () => {
+  it("limite à 60 par défaut, garde un choix valide, retombe sur 60 sinon", () => {
+    expect(DEFAULT_SETTINGS.fps).toBe(60);
+    expect(parseSettings({}).fps).toBe(60);
+    expect(parseSettings({ fps: 30 }).fps).toBe(30);
+    expect(parseSettings({ fps: 0 }).fps).toBe(0);
+    expect(parseSettings({ fps: 45 }).fps).toBe(60);
+    expect(parseSettings({ fps: "vite" }).fps).toBe(60);
+  });
+
+  it("?fps= impose la limite et la verrouille", () => {
+    const off = effectiveSettings(DEFAULT_SETTINGS, new URLSearchParams("fps=0"));
+    expect(off.values.fps).toBe(0);
+    expect(off.locked.has("fps")).toBe(true);
+    expect(effectiveSettings(DEFAULT_SETTINGS, new URLSearchParams("fps=30")).values.fps).toBe(30);
+    const none = effectiveSettings({ ...DEFAULT_SETTINGS, fps: 30 }, new URLSearchParams("dpr=2"));
+    expect(none.values.fps).toBe(30);
+    expect(none.locked.has("fps")).toBe(false);
+  });
+});

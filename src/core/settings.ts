@@ -1,5 +1,5 @@
 /**
- * Réglages du joueur, enregistrés localement. Les paramètres d'URL (`?dpr=`, `?shadowmap=`, `?shadow=0`, `?detail=`, `?peds=`) restent prioritaires :
+ * Réglages du joueur, enregistrés localement. Les paramètres d'URL (`?dpr=`, `?shadowmap=`, `?shadow=0`, `?detail=`, `?peds=`, `?fps=`) restent prioritaires :
  * le réglage correspondant est alors imposé et l'écran des réglages le signale.
  */
 
@@ -11,6 +11,8 @@ export interface Settings {
   dpr: number;
   /** Ombres : 0 = aucune, sinon taille de la carte d'ombres (2048 ou 4096). */
   shadows: 0 | 2048 | 4096;
+  /** Images par seconde au plus : 30, 60, ou 0 = sans limite (suit l'écran, 120 Hz sur beaucoup de téléphones) (D221). */
+  fps: 0 | 30 | 60;
   /** Rayon de chargement des tuiles détaillées (m). */
   detail: number;
   /** Sensibilité de la caméra au doigt (1 = comme avant). */
@@ -37,10 +39,11 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
+export const FPS_CHOICES = [30, 60, 0] as const;
 export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
@@ -59,6 +62,7 @@ export function parseSettings(raw: unknown): Settings {
   return {
     dpr: dpr === null ? d.dpr : nearest(DPR_CHOICES, dpr),
     shadows: shadows === null ? d.shadows : nearest(SHADOW_CHOICES, shadows),
+    fps: (FPS_CHOICES as readonly unknown[]).includes(o["fps"]) ? (o["fps"] as Settings["fps"]) : d.fps,
     detail: detail === null ? d.detail : nearest(DETAIL_CHOICES, detail),
     sensitivity: sens === null ? d.sensitivity : Math.min(Math.max(Math.round(sens * 10) / 10, SENSITIVITY_RANGE.min), SENSITIVITY_RANGE.max),
     aimSensitivity: aimSens === null ? d.aimSensitivity : Math.min(Math.max(Math.round(aimSens * 10) / 10, AIM_SENSITIVITY_RANGE.min), AIM_SENSITIVITY_RANGE.max),
@@ -102,6 +106,12 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
       values.shadows = m as Settings["shadows"];
       locked.add("shadows");
     }
+  }
+  // ?fps=0 lève la limite d'images par seconde, ?fps=30 l'impose (comparaisons de chauffe, D221).
+  const fps = num(params.get("fps") === null ? null : Number(params.get("fps")));
+  if (fps !== null && fps >= 0) {
+    values.fps = fps === 0 ? 0 : fps <= 45 ? 30 : 60;
+    locked.add("fps");
   }
   const detail = num(params.get("detail") === null ? null : Number(params.get("detail")));
   if (detail !== null && detail > 0) {
