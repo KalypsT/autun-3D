@@ -18,7 +18,7 @@ export interface CacheSite {
 }
 
 export const CACHES: readonly CacheSite[] = [
-  { weapon: "bat", x: 30.8, y: -48.0, label: "Monument aux morts" },
+  { weapon: "bat", x: 34.5, y: -49.0, label: "Monument aux morts" }, // D227 : devant les marches, à plus de 3 m de l'esplanade
   { weapon: "bat", x: -11.7, y: -206.7, label: "Hôtel de Chevannes" },
   { weapon: "bat", x: -206.4, y: -285.2, label: "Remparts romains" },
   { weapon: "knife", x: 0.0, y: 56.0, label: "Théâtre municipal" },

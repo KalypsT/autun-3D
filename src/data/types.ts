@@ -712,6 +712,7 @@ export type Site =
   | RoundaboutSite
   | CurtainSite
   | BandstandSite
+  | MemorialSite
   | PassageSite;
 
 /**
@@ -797,6 +798,25 @@ export interface BandstandSite {
   post: number;
   eave: number;
   steps: number;
+}
+
+/**
+ * Monument aux morts de la place du Champ de Mars d'après photos (D227, tools/data/build_square.py) : centre `c` (LiDAR), cap `a` de la face avant
+ * (radians, vers le nord-est), pied de l'esplanade `g` (plus haut point de la place sous le contour du degré du bas), sommet du génie ailé `top`
+ * (altitudes) ; degrés de l'esplanade [profondeur le long de `a`, largeur, hauteur], du bas vers le haut ; socle [profondeur, largeur, hauteur] et
+ * fût [profondeur, largeur, haut au-dessus de l'esplanade] lus sur les photos. Remplace le mobilier OpenStreetMap `id`.
+ */
+export interface MemorialSite {
+  t: "memorial";
+  n: string;
+  id: number;
+  c: [number, number];
+  a: number;
+  g: number;
+  top: number;
+  steps: [number, number, number][];
+  socle: [number, number, number];
+  shaft: [number, number, number];
 }
 
 /**
