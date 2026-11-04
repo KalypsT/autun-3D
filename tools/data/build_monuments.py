@@ -18,6 +18,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
           théâtre municipal (modèle `playhouse`, D223) : champ `play` du bâtiment (murs, toit brisé du corps avant, cage de scène, fronton D224, perron mesuré au relief D225) et silhouette lointaine ;
           gare (modèle `station`, D228) : champ `sta` du bâtiment (ailes, pavillon et frontons, retour vers le parvis) et silhouette lointaine ;
+          quais de la gare (`quai` de son entrée, D229) : champ `quai` de `sta`, quais 1 et central de structures/<tuile>.json redessinés au bord
+          mesuré (à relancer après build_structures.py), bâtiment BD TOPO de l'abri parapluie masqué ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -443,9 +445,148 @@ def measure_station(bid, b, spec):
     return out
 
 
+def measure_station_quais(tid, m, spec, k):
+    """Quais de la gare (D229), dans le repère de la gare (s le long des voies, t vers elles) : bord des quais 1 et central lu sur le modèle
+    de terrain (le relief porte déjà les quais, à la hauteur du parvis : les contours OpenStreetMap, décalés comme l'emprise BD TOPO et posés
+    55 cm plus haut, sont redessinés au bord mesuré, le quai 1 jusqu'au mur), toit de l'abri parapluie du quai central lu sur le modèle de
+    surface (le bâtiment BD TOPO qui le représentait est masqué). La marquise, translucide, n'apparaît pas au LiDAR : `marquise` de la photo.
+    Rend (champ `quai` du modèle, contours des quais en coordonnées du monde, identifiant du bâtiment masqué)."""
+    q = spec["quai"]
+    a, (ox, oy) = m["a"], m["o"]
+    ca, sa = math.cos(a), math.sin(a)
+    xy = lambda s, t: (ox + ca * s - sa * t, oy + sa * s + ca * t)
+    st = lambda x, y: ((x - ox) * ca + (y - oy) * sa, -(x - ox) * sa + (y - oy) * ca)
+    path = c.OUT / "structures" / f"{tid}.json"
+    struct = json.loads(path.read_text())
+    plats = []
+    for i, p in enumerate(struct["platforms"]):
+        r0_ = p["osm"][0] if "osm" in p else p["r"]  # contour OpenStreetMap d'origine (gardé à côté du quai redessiné)
+        P = [st(r0_[j], r0_[j + 1]) for j in range(0, len(r0_), 2)]
+        plats.append((i, P, sum(v[1] for v in P) / len(P)))
+    near = [x for x in plats if -60 < min(v[0] for v in x[1]) and max(v[0] for v in x[1]) < m["l"] + 120 and m["d"] < x[2] < m["d"] + 25]
+    near.sort(key=lambda x: x[2])
+    if len(near) < 2:
+        raise SystemExit("gare : quais 1 et central introuvables dans les ouvrages")
+    (i1, P1, _), (i2, P2, _) = near[0], near[1]
+    S0 = min(v[0] for v in P1 + P2) - 2
+    S1 = max(v[0] for v in P1 + P2) + 2
+    corners = [xy(S0, m["d"] - 2), xy(S1, m["d"] - 2), xy(S1, m["d"] + 32), xy(S0, m["d"] + 32)]
+    box = (math.floor(min(p[0] for p in corners)), math.floor(min(p[1] for p in corners)), math.ceil(max(p[0] for p in corners)), math.ceil(max(p[1] for p in corners)))
+    mnt, mns = Raster("MNT", "gare-quais", *box), Raster("MNS", "gare-quais", *box)
+    G = lambda s, t: mnt(*xy(s, t))
+    med = lambda v: float(np.median(v))
+    r2 = lambda v: round(float(v), 2)
+
+    def centre(P, s):
+        """Milieu en t du contour OpenStreetMap à l'abscisse s (None hors du quai)."""
+        ts = []
+        for j in range(len(P)):
+            (sa_, ta), (sb, tb) = P[j], P[(j + 1) % len(P)]
+            if (sa_ - s) * (sb - s) <= 0 and sa_ != sb:
+                ts.append(ta + (tb - ta) * (s - sa_) / (sb - sa_))
+        return (min(ts) + max(ts)) / 2 if len(ts) >= 2 else None
+
+    def edge(s, t0, dirn, thr):
+        for t in np.arange(t0, t0 + dirn * 9, dirn * 0.25):
+            if G(s, t) < thr:
+                return float(t) - dirn * 0.125
+        return None
+
+    # Quai 1 : du mur de la gare (prolongé à l'ouest et à l'est) au bord mesuré.
+    s1a, s1b = min(v[0] for v in P1), max(v[0] for v in P1)
+    outer = []
+    for s in np.arange(s1a, s1b + 0.01, (s1b - s1a) / max(1, round((s1b - s1a) / 4))):
+        top = med([G(s, t) for t in np.arange(m["d"] + 0.5, m["d"] + 2.5, 0.25)])
+        low = min(G(s, t) for t in np.arange(m["d"] + 3, m["d"] + 10, 0.25))
+        e = edge(s, m["d"] + 1.5, 1, (top + low) / 2) if top - low > 0.25 else None
+        if e is not None:
+            outer.append((float(s), e))
+    # Médiane glissante sur trois points : le bord mesuré au pas de 0,25 m tremble de ±0,4 m.
+    smooth = lambda pts: [(x, med([p[1] for p in pts[max(0, j - 1):j + 2]])) for j, (x, _) in enumerate(pts)]
+    outer = smooth(outer)
+    ring1 = [(outer[0][0], m["d"])] + outer + [(outer[-1][0], m["d"])]
+    # Quai central : bords des deux côtés du milieu OpenStreetMap.
+    s2a, s2b = min(v[0] for v in P2), max(v[0] for v in P2)
+    lo, hi = [], []
+    for s in np.arange(s2a + 0.5, s2b - 0.49, (s2b - s2a - 1) / max(1, round((s2b - s2a) / 4))):
+        cm = centre(P2, s)
+        if cm is None:
+            continue
+        top = med([G(s, t) for t in np.arange(cm - 1, cm + 1.01, 0.25)])
+        low = min(G(s, t) for t in np.arange(cm - 9, cm + 9, 0.25))
+        if top - low < 0.25:
+            continue
+        a_, b_ = edge(s, cm, -1, (top + low) / 2), edge(s, cm, 1, (top + low) / 2)
+        if a_ is not None and b_ is not None:
+            lo.append((float(s), a_))
+            hi.append((float(s), b_))
+    lo, hi = smooth(lo), smooth(hi)
+    ring2 = lo + hi[::-1]
+    w1 = med([t - m["d"] for _, t in outer])
+    w2 = med([b_ - a_ for (_, a_), (_, b_) in zip(lo, hi)])
+    # Abri parapluie : toit au-dessus de 2,2 m dans l'emprise BD TOPO élargie de 4 m.
+    sid = q["shelter"]
+    tile = json.loads((c.OUT / "tiles" / f"{tid}.json").read_text())
+    sb_ = next(x for x in tile["buildings"] if x["id"] == sid)
+    R = [st(sb_["ring"][j], sb_["ring"][j + 1]) for j in range(0, len(sb_["ring"]), 2)]
+    rs0, rs1 = min(v[0] for v in R), max(v[0] for v in R)
+    rt0, rt1 = min(v[1] for v in R), max(v[1] for v in R)
+    H = lambda s, t: mns(*xy(s, t)) - m["g"]
+    ms, mt = (rs0 + rs1) / 2, (rt0 + rt1) / 2
+    scan = lambda f, x0, d: next(float(x) - d / 2 for x in np.arange(x0, x0 + 40 * np.sign(d), d) if f(x) < 2.2)
+    sh_s0 = med([scan(lambda s: H(s, t), ms, -0.25) for t in np.arange(mt - 2, mt + 2.01, 0.5)])
+    sh_s1 = med([scan(lambda s: H(s, t), ms, 0.25) for t in np.arange(mt - 2, mt + 2.01, 0.5)])
+    sh_t0 = med([scan(lambda t: H(s, t), mt, -0.25) for s in np.arange(ms - 5, ms + 5.01, 0.5)])
+    sh_t1 = med([scan(lambda t: H(s, t), mt, 0.25) for s in np.arange(ms - 5, ms + 5.01, 0.5)])
+    rim = med([H(s, t) for s in np.arange(sh_s0 + 2, sh_s1 - 2, 0.5) for t in (sh_t0 + 0.75, sh_t1 - 0.75)])
+    crown = float(np.percentile([H(s, t) for s in np.arange(sh_s0 + 2, sh_s1 - 2, 0.5) for t in np.arange(sh_t0 + 1, sh_t1 - 1, 0.25)], 95))
+    top2 = med([G(s, t) for s, t in [(x, (a_ + b_) / 2) for (x, a_), (_, b_) in zip(lo, hi)] if sh_s0 < s < sh_s1]) - m["g"]
+    near_t = lambda pts, s: min(pts, key=lambda p: abs(p[0] - s))[1]  # bord mesuré le plus proche de l'abscisse s
+    out = {
+        "plat": [r2(w1), r2(w2), r2(top2)],
+        "mq": q["marquise"],
+        "sh": [r2(sh_s0), r2(sh_s1), r2(sh_t0), r2(sh_t1), r2(m["g"] + rim), r2(m["g"] + crown)],
+        "cross": [r2(sh_s0 + q["cross"]), r2(near_t(outer, sh_s0 + q["cross"])), r2(near_t(lo, sh_s0 + q["cross"]))],
+        "glass": [q["glass"], r2((near_t(lo, q["glass"]) + near_t(hi, q["glass"])) / 2)],
+        "edges": [r2(med([t for _, t in outer])), r2(med([t for _, t in lo]))],
+    }
+    rings = {i1: [v for p in ring1 for v in (round(xy(*p)[0], 2), round(xy(*p)[1], 2))],
+             i2: [v for p in ring2 for v in (round(xy(*p)[0], 2), round(xy(*p)[1], 2))]}
+
+    def lift(ring):
+        """Hauteur du quai au-dessus du plus haut de ses sommets (le jeu pose la dalle là) : assez pour couvrir le relief à l'intérieur."""
+        top_v = max(G(*p) for p in ring)
+        inside = [G(s, t) for (s, ta), (_, tb) in zip(ring[1:len(ring) // 2], ring[::-1][1:len(ring) // 2]) for t in np.linspace(ta, tb, 6)[1:-1]]
+        return r2(max(0.03, max(inside) - top_v + 0.06))
+    inner1 = [(x, (m["d"] + t) / 2) for x, t in outer]  # milieu du quai 1, entre le mur et le bord
+    hs = {i1: r2(max(0.03, max(G(*p) for p in inner1 + outer) - max(G(*p) for p in ring1) + 0.06)), i2: lift(ring2)}
+    return out, rings, hs, path, struct, sid
+
+
 def station(tid, bid, b, spec, k):
     """Gare (D228) : champ `sta` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
     m = measure_station(bid, b, spec)
+    if "quai" in spec:
+        m["quai"], rings, hs, spath, struct, sid = measure_station_quais(tid, m, spec, k)
+        qd = m["quai"]
+        print(f"  quais : quai 1 de {qd['plat'][0]} m depuis le mur, quai central de {qd['plat'][1]} m (dessus à {qd['plat'][2]:+.2f} m du parvis) ;"
+              f" abri parapluie de {qd['sh'][1] - qd['sh'][0]:.1f} × {qd['sh'][3] - qd['sh'][2]:.1f} m, rive {qd['sh'][4] - m['g']:.1f} m,"
+              f" faîte {qd['sh'][5] - m['g']:.1f} m ; dalles relevées de {', '.join(str(v) for v in hs.values())} m")
+        # Quais redessinés au bord mesuré, au niveau du relief (qui les porte déjà), sans l'abri générique (D229).
+        new_p = [dict(p) for p in struct["platforms"]]
+        for i, r in rings.items():
+            p = struct["platforms"][i]
+            new_p[i] = {"r": r, "h": hs[i], "bare": 1, "osm": p.get("osm", [p["r"], p["h"]])}
+        if new_p != struct["platforms"]:
+            struct["platforms"] = new_p
+            spath.write_text(json.dumps(struct, separators=(",", ":")))
+            print(f"  ouvrages {tid} : quais 1 et central réécrits")
+        # L'abri parapluie est dessiné par la gare : le bâtiment BD TOPO qui le représentait est masqué.
+        if k["buildings"].get(sid) != {"k": "hidden"}:
+            k["buildings"][sid] = {"k": "hidden"}
+            hid = True
+        else:
+            hid = False
     e = dict(k["buildings"].get(bid, {"k": "station"}))
     e["sta"] = m
     g = m["g"]
@@ -454,7 +595,7 @@ def station(tid, bid, b, spec, k):
     print(f"  {bid} : corps de {m['l']} × {m['d']} m (égout {m['eave'] - g:.1f}, faîtage {m['ridge'] - g:.1f}) ; pavillon de {p[1] - p[0]:.1f} × "
           f"{p[3] - p[2]:.1f} m à {p[0]} m (corniche {m['pv'][0] - g:.1f}, faîtage {m['pv'][1] - g:.1f}, fronton {m['ped'][1] - g:.1f} m, "
           f"demi-largeur {m['ped'][0]} m) ; retour de {m['l'] - m['ret'][0]:.1f} m jusqu'à {m['ret'][1]} m")
-    ch = k["buildings"].get(bid) != e
+    ch = k["buildings"].get(bid) != e or ("quai" in spec and hid)
     if ch:
         k["buildings"][bid] = e
     ca, sa = math.cos(m["a"]), math.sin(m["a"])

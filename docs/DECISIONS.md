@@ -4586,3 +4586,37 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Vue haute, après](captures/d228-gare-haut-apres.jpg)
 ![Le retour depuis le parking à l'est](captures/d228-gare-retour-est.jpg)
 ![Côté voies](captures/d228-gare-voies.jpg)
+
+## 2026-11-04 — D229. La gare d'Autun, étape 2 : les quais
+
+**D'après les photos de l'utilisateur** (D228 : la marquise du quai 1 vue de dessous et le long du quai, le quai central et son abri parapluie, la traversée à niveau, le petit abri vitré au loin).
+
+**Constat** : le quai 1 d'OpenStreetMap, décalé comme l'emprise BD TOPO, s'arrêtait à 1 m du mur (une bande de terre en contrebas le long de la gare) ; les deux quais étaient posés **55 cm au-dessus du relief**, alors que le relief LiDAR les porte déjà (le dessus des quais est au niveau du parvis, 40 cm au-dessus des voies) ; un abri générique (quatre poteaux, toit bleu) au milieu de chacun ; l'abri parapluie du quai central était un « bâtiment industriel » BD TOPO de 17 × 8,6 m, une boîte à portes posée en travers d'une voie (`BATIMENT0000000035041726`) ; pas de marquise.
+
+**Mesures** (`measure_station_quais`, `build_monuments.py`, champ `quai` du modèle `sta` ; entrée `quai` de la gare dans `monuments` de `manual.json`) :
+- **Bords des quais** lus sur le modèle de terrain tous les 4 m (mi-hauteur de la marche entre le dessus du quai et le fond des voies, médiane glissante sur trois points) : quai 1 de **4,6 m** depuis le mur, quai central de **7,0 m**. Les deux contours de `structures/24_37.json` sont redessinés au bord mesuré, le quai 1 **jusqu'au mur** (prolongé à l'ouest et à l'est de la gare), **sans abri générique** (`bare`), le contour OpenStreetMap gardé à côté (`osm`) pour qu'une deuxième passe ne change rien. Leur hauteur au-dessus du plus haut de leurs sommets (là où le jeu pose la dalle) est juste assez pour couvrir le relief à l'intérieur : 3 cm (quai 1), 34 cm (quai central, dont les sommets tombent au milieu de la marche).
+- **Abri parapluie** : toit au-dessus de 2,2 m dans l'emprise BD TOPO élargie : **17,5 × 9,2 m**, plus large que le quai (il déborde au-dessus des voies, comme sur la photo), rive à 4,4 m et faîte à 4,7 m au-dessus du parvis. Le bâtiment BD TOPO est masqué (type `hidden` : ni murs, ni toit, ni obstacle).
+- **Marquise** : sa couverture translucide n'apparaît pas au LiDAR. Lue sur les photos : 3,5 m de saillie, 4,45 m au mur et 4,15 m au bord, sous la corniche des ailes.
+- **Traversée à niveau** : au bout ouest de l'abri (photo prise sous la marquise), du bord du quai 1 au bord du quai central mesurés à cette abscisse. **Petit abri vitré** au milieu du quai central, 25 m à l'ouest du pignon (au loin sur la photo).
+
+**Rendu** (`buildQuais`, `src/render/station.ts` ; **8 596 triangles** pour toute la gare, 5 606 à l'étape 1, aucun appel de dessin de plus) :
+- **Marquise** sur toute la longueur du corps (au droit du pavillon, elle part de son mur) : tôle laiteuse (dessus et sous-face), chevrons et pannes de fonte crème, **consoles** tous les 3,5 m environ (montant contre le mur, ferme du mur à la rive, arc cintré, jambe de force), chéneau de zinc, **lambrequin à festons** sur la rive et les deux retours ; deux panneaux « AUTUN » suspendus (cadre bleu, deux faces, lisibles le long du quai) de part et d'autre du pavillon.
+- **Abri parapluie** : toit de tôle à faible pente, sous-face sombre, bandeau de rive rouillé qui remonte vers les angles (rive cintrée de la photo) ; **deux files de colonnes** de fonte à 1,1 m de l'axe, environ tous les 4,5 m (socle, chapiteau), consoles cintrées vers les rives, poutres sous la tôle ; panneau « AUTUN » au milieu.
+- **Traversée** : dalles grises entre les quais, à 20 cm au-dessus du fond des voies ; bandes jaunes et noires en biais au bord des deux quais.
+- **Abri vitré** : cadre sombre, parois de verre (fond et côtés), toit plat, banc.
+
+**Obstacles** (`stationCircles`, dans `landmarkCircles`) : les colonnes de l'abri parapluie, l'abri vitré (trois cercles) ; on passe sous la marquise et sous l'abri.
+
+**Réglage** : la tôle de la marquise dans le verre translucide du jeu (D191) était invisible ; elle est opaque et claire. **À relancer** : `build_monuments.py station` après `build_structures.py` (qui réécrit les quais).
+
+**Pas encore** : les rails ne sont pas déplacés (deux files OpenStreetMap à 3 m l'une de l'autre entre les quais ; la photo n'en montre qu'une, herbue) ; la traversée ne descend pas en pente (on saute du quai comme ailleurs) ; signalétique (« Sortie », « Direction Étang-sur-Arroux, quai 1 »), bancs et composteur du quai 1, lampadaires des quais. **Étape 3** : le parvis et le parking.
+
+**Tests** (+1 : `station.test.ts`) : largeurs des quais, marquise sous la corniche ; on marche sur les quais à la hauteur du parvis ; abri plus large que le quai, colonnes sur le quai ; le bâtiment masqué ne bloque plus, les colonnes bloquent ; traversée d'un quai à l'autre.
+
+![Le quai 1, avant](captures/d229-gare-quai1-avant.jpg)
+![Le quai 1, après](captures/d229-gare-quai1-apres.jpg)
+![Le quai central, avant](captures/d229-gare-quai-central-avant.jpg)
+![Le quai central, après](captures/d229-gare-quai-central-apres.jpg)
+![Vue haute, avant](captures/d229-gare-haut-avant.jpg)
+![Vue haute, après](captures/d229-gare-haut-apres.jpg)
+![La gare depuis le quai central](captures/d229-gare-depuis-quai-central-apres.jpg)

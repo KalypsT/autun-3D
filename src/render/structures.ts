@@ -387,7 +387,7 @@ export function buildStations(mb: MeshBuilder, st: TileStructures, surface: (x: 
       mb.tri(toThree(a.x, a.y, zTop), toThree(b.x, b.y, zTop), toThree(c.x, c.y, zTop), [0, 1, 0], C("#d8d2c4"));
     }
     // Abri de quai au milieu : quatre poteaux et un toit.
-    if (inRing(cx, cy, r)) {
+    if (!pl.bare && inRing(cx, cy, r)) {
       let ux = 1, uy = 0, best = 0;
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;

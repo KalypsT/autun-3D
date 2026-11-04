@@ -471,6 +471,24 @@ export interface StationModel {
   ped: [number, number];
   bays: [number, number];
   levels: [number, number, number, number, number, number, number];
+  /** Quais (D229), absents avant l'étape 2. */
+  quai?: StationQuai;
+}
+
+/**
+ * Quais de la gare (D229), dans le repère de la gare. `plat` : largeur du quai 1 depuis le mur, du quai central, dessus du quai central
+ * au-dessus du parvis ; `mq` (photo) : saillie de la marquise depuis le mur, hauteur au mur et au bord au-dessus du parvis ; `sh` : toit de
+ * l'abri parapluie du quai central (s0, s1, t0, t1, altitudes locales de la rive et du faîte) ; `cross` : traversée à niveau (abscisse du
+ * milieu, bord du quai 1, bord du quai central) ; `glass` : petit abri vitré du quai central (s, t) ; `edges` : bords médians du quai 1
+ * (côté voie) et du quai central (côté gare).
+ */
+export interface StationQuai {
+  plat: [number, number, number];
+  mq: [number, number, number];
+  sh: [number, number, number, number, number, number];
+  cross: [number, number, number];
+  glass: [number, number];
+  edges: [number, number];
 }
 
 /**
@@ -1020,6 +1038,9 @@ export interface Platform {
   /** Contour du quai (anneau aplati) et hauteur au-dessus du relief. */
   r: number[];
   h: number;
+  /** Quai redessiné d'après relevé (gare, D229) : sans l'abri générique (la gare dessine les siens) ; `osm` : contour et hauteur d'origine. */
+  bare?: number;
+  osm?: [number[], number];
 }
 
 export interface TileStructures {

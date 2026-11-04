@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
-import { at, drawsGenericRoof, stationFrame, stationRing, walkableRoof } from "../core/landmarks";
+import { at, drawsGenericRoof, isOpen, stationCircles, stationFrame, stationRing, stationShelterColumns, walkableRoof } from "../core/landmarks";
 import { pointInRing } from "../core/collision";
 import { buildColliders } from "../core/world";
 import { MeshBuilder, UvMeshBuilder } from "./geometry";
@@ -90,9 +90,11 @@ describe("gare (D228)", () => {
     expect(tris).toBeGreaterThan(1500);
     expect(tris).toBeLessThan(12000);
     expect(sinks.glow.positions.length).toBeGreaterThan(0);
-    expect(texts.sort()).toEqual(["AUTUN", "AUTUN", "GARE D'AUTUN"]);
-    // three : (x, z, −y) ; tout tient à 2 m des murs mesurés, et sous les souches de cheminée.
-    const ring = stationRing(m);
+    // Cartouches des deux pignons, trois panneaux suspendus (deux faces chacun) sous la marquise et l'abri parapluie.
+    expect(texts.sort()).toEqual([...Array<string>(8).fill("AUTUN"), "GARE D'AUTUN"]);
+    // three : (x, z, −y) ; tout tient à 2 m des murs mesurés et des quais (abri parapluie, abri vitré), et sous les souches de cheminée.
+    const f = stationFrame(m), q = m.quai!;
+    const ring = [...stationRing(m), ...at(f, q.glass[0] - 3, q.sh[3] + 1), ...at(f, q.sh[1] + 1, q.sh[3] + 1), ...at(f, q.glass[0] - 3, m.d)];
     const xs = ring.filter((_, i) => i % 2 === 0), ys = ring.filter((_, i) => i % 2 === 1);
     for (let i = 0; i < p.length; i += 3) {
       expect(p[i]!).toBeGreaterThan(Math.min(...xs) - 2);
@@ -101,5 +103,47 @@ describe("gare (D228)", () => {
       expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 2);
       expect(p[i + 1]!).toBeLessThan(m.pv[1] + 1.4);
     }
+  });
+
+  it("quais (D229) : quai 1 jusqu'au mur et quai central au niveau du parvis, abri parapluie et abri vitré", () => {
+    const q = m.quai!, f = stationFrame(m);
+    expect(q).toBeDefined();
+    // Quai 1 de 4 à 5,5 m depuis le mur, quai central de 6 à 8 m ; marquise moins profonde que le quai 1, sous la corniche des ailes.
+    expect(q.plat[0]).toBeGreaterThan(4);
+    expect(q.plat[0]).toBeLessThan(5.5);
+    expect(q.plat[1]).toBeGreaterThan(6);
+    expect(q.plat[1]).toBeLessThan(8);
+    expect(q.mq[0]).toBeLessThan(q.plat[0]);
+    expect(m.g + q.mq[1]).toBeLessThan(m.eave - 0.3);
+    // On marche sur les quais à la hauteur du parvis (le relief les porte déjà) : plus de marche de 55 cm.
+    for (const [s, t] of [[10, m.d + 1], [40, m.d + 3], [25, q.edges[1] + q.plat[1] / 2]] as const) {
+      const [x, y] = at(f, s, t);
+      expect(Math.abs(world.terrain.heightAt(x, y) - m.g)).toBeLessThan(0.45);
+    }
+    const plats = world.tile.structures!.platforms.filter((p) => p.bare);
+    expect(plats.length).toBe(2);
+    // Abri parapluie : sur le quai central, plus large que lui (il déborde au-dessus des voies), rive vers 4,4 m.
+    expect(q.sh[2]).toBeLessThan(q.edges[1]);
+    expect(q.sh[3]).toBeGreaterThan(q.edges[1] + q.plat[1] - 1);
+    expect(q.sh[4] - m.g).toBeGreaterThan(3.8);
+    expect(q.sh[5]).toBeGreaterThan(q.sh[4]);
+    const cols = stationShelterColumns(m);
+    expect(cols.length).toBeGreaterThanOrEqual(6);
+    for (const [, t] of cols) {
+      expect(t).toBeGreaterThan(q.edges[1] + 0.5);
+      expect(t).toBeLessThan(q.edges[1] + q.plat[1] - 0.5);
+    }
+    // Le bâtiment BD TOPO qui figurait l'abri est masqué et ne bloque plus ; les colonnes et l'abri vitré sont des obstacles.
+    expect(isOpen(world.tile.kinds, "BATIMENT0000000035041726")).toBe(true);
+    const c = buildColliders(world.tile);
+    const a0 = at(f, q.sh[0] - 2, q.sh[3] - 0.5), a1 = at(f, q.sh[1] + 2, q.sh[3] - 0.5);
+    expect(c.raycast(a0[0], a0[1], a1[0], a1[1], true)).toBeNull();
+    const [cs, ct] = cols[0]!;
+    const b0 = at(f, cs, ct - 2), b1 = at(f, cs, ct + 0.5);
+    expect(c.raycast(b0[0], b0[1], b1[0], b1[1], true)).not.toBeNull();
+    expect(stationCircles(m).length).toBe(cols.length + 3);
+    // Traversée à niveau du quai 1 au quai central.
+    expect(q.cross[1]).toBeCloseTo(q.edges[0], 0);
+    expect(q.cross[2]).toBeGreaterThan(q.cross[1] + 4);
   });
 });

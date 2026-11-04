@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import type { HeightField, StationModel } from "../data/types";
-import { at, stationFrame } from "../core/landmarks";
+import { at, GLASS_SHELTER, stationFrame, stationShelterColumns } from "../core/landmarks";
 import { toThree, type Vec3 } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
-import { Draw, up, wallOf, type PWall, type ST } from "./playhouse";
+import { Draw, up, wallOf, type PWall, type ST, type STZ } from "./playhouse";
 import { T } from "./style";
 
 /**
@@ -331,6 +331,7 @@ export function buildStation(sinks: LandmarkSinks, m: StationModel, terrain: Hei
     box(d, s - 0.3, s + 0.3, t - 0.35, t + 0.35, zr - 0.5, zRidge + 1.1, BRICK);
     box(d, s - 0.36, s + 0.36, t - 0.41, t + 0.41, zRidge + 1.1, zRidge + 1.25, shade(BRICK, 0.85));
   }
+  if (m.quai) buildQuais(sinks, d, m, terrain);
 }
 
 /** Pavé (s0..s1, t0..t1, z0..z1) aux faces verticales et au dessus. */
@@ -341,4 +342,166 @@ function box(d: Draw, s0: number, s1: number, t0: number, t1: number, z0: number
     d.mb.quad(d.P(...a, z0), d.P(...b, z0), d.P(...b, z1), d.P(...a, z1), d.N((b[1] - a[1]) / len, -(b[0] - a[0]) / len), shade(col, i % 2 ? 0.92 : 1));
   }
   d.mb.quad(d.P(s0, t0, z1), d.P(s1, t0, z1), d.P(s1, t1, z1), d.P(s0, t1, z1), [0, 1, 0], shade(col, 1.05));
+}
+
+// --- Quais (D229) -----------------------------------------------------------------------------------------------------------------
+
+/** Fonte peinte de la marquise (crème jaunie), fonte rouillée de l'abri parapluie, tôle de son toit. */
+const CAST = C("#d8c78c"), RUST = C("#8a4a2c"), RUST_DARK = C("#5e3a28"), SHEET = C("#6d5a4c"), SLAB = C("#a9a69e");
+const HATCH_Y = C("#e7c12e"), HATCH_K = C("#2b2b2b"), SIGN_BLUE = "#2c3f8c";
+
+/** Panneau « AUTUN » suspendu, perpendiculaire aux voies (lisible le long du quai) : cadre bleu, fond blanc, deux faces. */
+function hangingSign(sinks: LandmarkSinks, d: Draw, f: ReturnType<typeof stationFrame>, s: number, t: number, z: number, zHook: number): void {
+  const hw = 1.1, hh = 0.26;
+  for (const k of [-1, 1]) d.bar([s, t + k * 0.8, z + hh], [s, t + k * 0.8, zHook], 0.012, IRON);
+  for (const dir of [-1, 1]) {
+    const n = d.N(dir, 0), o = dir * 0.03;
+    d.mb.quad(d.P(s + o, t - hw, z - hh), d.P(s + o, t + hw, z - hh), d.P(s + o, t + hw, z + hh), d.P(s + o, t - hw, z + hh), n, C(SIGN_BLUE));
+    d.mb.quad(d.P(s + o * 1.3, t - hw + 0.05, z - hh + 0.05), d.P(s + o * 1.3, t + hw - 0.05, z - hh + 0.05), d.P(s + o * 1.3, t + hw - 0.05, z + hh - 0.05),
+      d.P(s + o * 1.3, t - hw + 0.05, z + hh - 0.05), n, C("#f6f5ef"));
+    const label = sinks.atlas.get("AUTUN", SIGN_BLUE);
+    const th = 0.36, tw = Math.min(2 * hw - 0.2, th * 6.4);
+    // Vu de la face dir, la gauche du lecteur est du côté −dir·t.
+    const a = at(f, s + o * 1.6, t - dir * tw / 2), b = at(f, s + o * 1.6, t + dir * tw / 2);
+    sinks.names.quad(toThree(a[0], a[1], z - th / 2), toThree(b[0], b[1], z - th / 2), toThree(b[0], b[1], z + th / 2), toThree(a[0], a[1], z + th / 2), n,
+      [label.u0, label.v0], [label.u1, label.v0], [label.u1, label.v1], [label.u0, label.v1], new THREE.Color(1, 1, 1));
+  }
+  // Chants du cadre.
+  for (const k of [-1, 1]) d.mb.quad(d.P(s - 0.03, t + k * hw, z - hh), d.P(s + 0.03, t + k * hw, z - hh), d.P(s + 0.03, t + k * hw, z + hh), d.P(s - 0.03, t + k * hw, z + hh), d.N(0, k), C(SIGN_BLUE));
+}
+
+/** Arc de fonte (quart d'ellipse en barres) de (t0, z0) à (t1, z1) dans le plan s : il part horizontal en t0 et finit vertical en t1, ou l'inverse. */
+function arc(d: Draw, s: number, t0: number, z0: number, t1: number, z1: number, r: number, col: THREE.Color, steps = 6): void {
+  let prev: STZ = [s, t0, z0];
+  for (let i = 1; i <= steps; i++) {
+    const th = (Math.PI / 2) * (i / steps);
+    const p: STZ = [s, t0 + (t1 - t0) * Math.sin(th), z0 + (z1 - z0) * (1 - Math.cos(th))];
+    d.bar(prev, p, r, col);
+    prev = p;
+  }
+}
+
+function buildQuais(sinks: LandmarkSinks, d: Draw, m: StationModel, terrain: HeightField): void {
+  const q = m.quai!, f = d.f, g = m.g, D = m.d, L = m.l;
+  const [p0, p1, , q1] = m.pav;
+  const glass = sinks.glass ?? sinks.solid;
+  const pane = sinks.glass ? C("#cfe0e4") : C("#dfe6e2");
+  // La couverture de la marquise est une tôle ondulée translucide, laiteuse : opaque et claire (le verre du jeu la rendait invisible).
+  const sheet = C("#e4e6df");
+
+  // --- Marquise du quai 1 : fermes de fonte sur consoles, couverture translucide, lambrequin, chéneau --------------------------------
+  const [dm, hW, hE] = q.mq;
+  const zW = g + hW, zE = g + hE, tE = D + dm, ma = 0.25, mb = L - 0.25;
+  const wallT = (s: number): number => (s > p0 && s < p1 ? q1 : D);
+  const roofZ = (t: number): number => zW + ((zE - zW) * (t - D)) / dm;
+  // Couverture : tôles translucides par travées de 1,75 m (au droit du pavillon, elle part de son mur).
+  const nb = Math.max(1, Math.round((mb - ma) / 1.75));
+  for (let i = 0; i < nb; i++) {
+    const a = ma + ((mb - ma) * i) / nb, b = ma + ((mb - ma) * (i + 1)) / nb, sm = (a + b) / 2, tw = wallT(sm);
+    const A = d.P(a, tw, roofZ(tw)), B = d.P(b, tw, roofZ(tw)), Cc = d.P(b, tE, zE), Dd = d.P(a, tE, zE);
+    d.mb.quad(A, B, Cc, Dd, up(A, B, Cc), sheet);
+    d.mb.quad(A, B, Cc, Dd, [0, -1, 0], C("#bfc5bf"));
+    // Chevron de fonte entre deux tôles, du mur au bord.
+    d.bar([a, tw, roofZ(tw) - 0.05], [a, tE, zE - 0.05], 0.035, CAST);
+  }
+  d.bar([mb, D, roofZ(D) - 0.05], [mb, tE, zE - 0.05], 0.035, CAST);
+  // Pannes le long des voies.
+  for (const fr of [0.33, 0.66]) {
+    const t = D + dm * fr;
+    d.bar([ma, t, roofZ(t) - 0.07], [mb, t, roofZ(t) - 0.07], 0.03, CAST);
+  }
+  // Consoles : une ferme cintrée tous les 3,5 m environ, de la console du mur à la panne de rive ; jambe de force droite.
+  const nc = Math.max(2, Math.round((mb - ma) / 3.5));
+  for (let i = 0; i <= nc; i++) {
+    const s = ma + 0.1 + ((mb - ma - 0.2) * i) / nc, tw = wallT(s);
+    d.bar([s, tw, zW - 1.7], [s, tw, zW], 0.05, CAST);
+    d.bar([s, tw + 0.02, roofZ(tw) - 0.12], [s, tE, zE - 0.12], 0.06, CAST);
+    arc(d, s, tw + 0.02, zW - 1.6, Math.min(tE - 0.4, tw + 2.4), roofZ(Math.min(tE - 0.4, tw + 2.4)) - 0.14, 0.04, CAST);
+    d.bar([s, tw, zW - 1.0], [s, tw + 1.4, roofZ(tw + 1.4) - 0.14], 0.03, CAST);
+  }
+  // Chéneau de rive et lambrequin à festons (face aux voies et retours aux deux bouts).
+  box(d, ma, mb, tE - 0.12, tE + 0.06, zE - 0.2, zE + 0.05, ZINC);
+  const valance = (a: ST, b: ST, n: number[]): void => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), k = Math.max(1, Math.round(len / 0.22));
+    const pt = (u: number, z: number): Vec3 => d.P(a[0] + ((b[0] - a[0]) * u) / len, a[1] + ((b[1] - a[1]) * u) / len, z);
+    const nn = d.N(n[0]!, n[1]!);
+    d.mb.quad(pt(0, zE - 0.42), pt(len, zE - 0.42), pt(len, zE - 0.2), pt(0, zE - 0.2), nn, CAST);
+    for (let j = 0; j < k; j++) {
+      const u0 = (len * j) / k, u1 = (len * (j + 1)) / k;
+      d.mb.tri(pt(u0, zE - 0.42), pt(u1, zE - 0.42), pt((u0 + u1) / 2, zE - 0.58), nn, CAST);
+    }
+  };
+  valance([ma, tE + 0.07], [mb, tE + 0.07], [0, 1]);
+  valance([ma - 0.01, D], [ma - 0.01, tE + 0.07], [-1, 0]);
+  valance([mb + 0.01, tE + 0.07], [mb + 0.01, D], [1, 0]);
+  // Panneaux « AUTUN » sous la marquise, de part et d'autre du pavillon.
+  for (const s of [p0 - 7, p1 + 7]) hangingSign(sinks, d, f, s, D + 2.4, g + 3.35, roofZ(D + 2.4) - 0.1);
+
+  // --- Abri parapluie du quai central : toit de tôle à faible pente sur deux files de colonnes, consoles cintrées -------------------
+  const [s0, s1, t0, t1, rim, crown] = q.sh;
+  const tc = (t0 + t1) / 2, k = (crown - rim) / ((t1 - t0) / 2);
+  const hip: Plane[] = [[0, k, rim - k * t0], [0, -k, rim + k * t1], [k, 0, rim - k * s0], [-k, 0, rim + k * s1]];
+  roofCell(d, rect(s0, s1, t0, t1), [hip], SHEET);
+  // Sous-face sombre et bandeau de rive rouillé, plus haut aux bouts (rive cintrée de la photo).
+  d.mb.quad(d.P(s0, t0, rim - 0.12), d.P(s1, t0, rim - 0.12), d.P(s1, t1, rim - 0.12), d.P(s0, t1, rim - 0.12), [0, -1, 0], shade(SHEET, 0.7));
+  const fascia: [ST, ST][] = [[[s0, t0], [s1, t0]], [[s1, t0], [s1, t1]], [[s1, t1], [s0, t1]], [[s0, t1], [s0, t0]]];
+  for (const [a, b] of fascia) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = d.N((b[1] - a[1]) / len, -(b[0] - a[0]) / len), pieces = Math.max(2, Math.round(len / 1.2));
+    for (let j = 0; j < pieces; j++) {
+      const u0 = j / pieces, u1 = (j + 1) / pieces;
+      // Bas du bandeau : remonte vers les angles (arc surbaissé).
+      const lo = (u: number): number => rim - 0.55 + 0.25 * (2 * u - 1) ** 4;
+      const P = (u: number, z: number): Vec3 => d.P(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, z);
+      d.mb.quad(P(u0, lo(u0)), P(u1, lo(u1)), P(u1, rim + 0.04), P(u0, rim + 0.04), n, RUST);
+    }
+  }
+  const cols = stationShelterColumns(m);
+  for (const [s, t] of cols) {
+    const z0 = d.ground(s, t), zc = rim - 0.6;
+    box(d, s - 0.16, s + 0.16, t - 0.16, t + 0.16, z0 - 0.1, z0 + 0.35, RUST_DARK);
+    d.bar([s, t, z0 + 0.35], [s, t, zc], 0.085, RUST);
+    box(d, s - 0.14, s + 0.14, t - 0.14, t + 0.14, zc, zc + 0.18, RUST_DARK);
+    // Console cintrée vers la rive de son côté, jambe vers l'autre file.
+    const out = t < tc ? t0 + 0.15 : t1 - 0.15;
+    arc(d, s, t, zc - 0.7, out, rim - 0.15, 0.05, RUST);
+    d.bar([s, t, zc + 0.18], [s, tc, rim - 0.15], 0.05, RUST);
+  }
+  // Poutres le long des files et entre elles, sous la tôle.
+  for (const kk of [-1, 1]) d.bar([s0 + 0.3, tc + kk * 1.1, rim - 0.42], [s1 - 0.3, tc + kk * 1.1, rim - 0.42], 0.07, RUST);
+  hangingSign(sinks, d, f, (s0 + s1) / 2, tc, rim - 1.0, rim - 0.12);
+
+  // --- Traversée à niveau : dalles grises entre les quais, bandes jaunes et noires au bord des quais --------------------------------
+  const [cs, ct0, ct1] = q.cross, cw = 2.4;
+  const bare = (s: number, t: number): number => (terrain.ground ?? terrain).heightAt(...at(f, s, t));
+  const steps = Math.max(2, Math.ceil((ct1 - ct0) / 0.6));
+  for (let j = 0; j < steps; j++) {
+    const ta = ct0 + ((ct1 - ct0) * j) / steps, tb = ct0 + ((ct1 - ct0) * (j + 1)) / steps;
+    const za = bare(cs, ta) + 0.2, zb = bare(cs, tb) + 0.2, col = j % 2 ? SLAB : shade(SLAB, 0.93);
+    d.mb.quad(d.P(cs - cw / 2, ta, za), d.P(cs + cw / 2, ta, za), d.P(cs + cw / 2, tb, zb), d.P(cs - cw / 2, tb, zb), [0, 1, 0], col);
+    for (const e of [-1, 1]) {
+      const se = cs + (e * cw) / 2;
+      d.mb.quad(d.P(se, ta, za - 0.25), d.P(se, tb, zb - 0.25), d.P(se, tb, zb), d.P(se, ta, za), d.N(e, 0), shade(SLAB, 0.8));
+    }
+  }
+  for (const [ta, tb] of [[ct0 - 1.2, ct0], [ct1, ct1 + 1.2]] as const) {
+    const n = 8;
+    for (let j = 0; j < n; j++) {
+      const sa = cs - cw / 2 + (cw * j) / n, sb = cs - cw / 2 + (cw * (j + 1)) / n, lean = (tb - ta) * 0.35;
+      const z = (s: number, t: number): number => d.ground(s, t) + 0.015;
+      d.mb.quad(d.P(sa, ta, z(sa, ta)), d.P(sb, ta, z(sb, ta)), d.P(sb + lean, tb, z(sb, tb)), d.P(sa + lean, tb, z(sa, tb)), [0, 1, 0], j % 2 ? HATCH_K : HATCH_Y);
+    }
+  }
+
+  // --- Petit abri vitré du quai central : cadre sombre, parois de verre, toit plat, banc ------------------------------------------
+  const [gs, gt] = q.glass, [gl, gd] = GLASS_SHELTER, gz = d.ground(gs, gt), gh = 2.4;
+  const ga = gs - gl / 2, gb = gs + gl / 2, gt0 = gt - gd / 2, gt1 = gt + gd / 2;
+  for (const [s, t] of [[ga, gt0], [gb, gt0], [ga, gt1], [gb, gt1]] as const) box(d, s - 0.04, s + 0.04, t - 0.04, t + 0.04, gz, gz + gh, C("#2f3436"));
+  box(d, ga - 0.15, gb + 0.15, gt0 - 0.15, gt1 + 0.15, gz + gh, gz + gh + 0.12, C("#3a4042"));
+  const glassWall = (a: ST, b: ST, n: [number, number]): void => {
+    glass.quad(d.P(...a, gz + 0.12), d.P(...b, gz + 0.12), d.P(...b, gz + gh - 0.05), d.P(...a, gz + gh - 0.05), d.N(...n), pane);
+  };
+  glassWall([ga, gt1], [gb, gt1], [0, 1]);
+  glassWall([ga, gt0], [ga, gt1], [-1, 0]);
+  glassWall([gb, gt1], [gb, gt0], [1, 0]);
+  box(d, ga + 0.2, gb - 0.2, gt1 - 0.45, gt1 - 0.05, gz + 0.42, gz + 0.48, C("#6b4a32"));
 }

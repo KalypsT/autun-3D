@@ -157,6 +157,9 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     if (vg) out.push(...gateCircles(vg));
     const vm = kinds.buildings[b.id]?.vallon;
     if (vm?.props) out.push(...vallonPropCircles(vm));
+    // Quais de la gare (D229) : colonnes de l'abri parapluie, abri vitré.
+    const sta = kinds.buildings[b.id]?.sta;
+    if (sta) out.push(...stationCircles(sta));
   }
   // Paniers de basket des terrains (D176) : le poteau, derrière le panneau.
   for (const s of kinds.sites) if (s.t === "pitch") for (const h of s.hoops ?? []) out.push([...hoopPole(h), HOOP.poleRadius]);
@@ -540,6 +543,29 @@ export function stationFrame(m: StationModel): Frame {
 export function stationOutline(m: StationModel): [number, number][] {
   const [p0, p1, q0, q1] = m.pav, [r0, rt] = m.ret;
   return [[0, 0], [p0, 0], [p0, q0], [p1, q0], [p1, 0], [r0, 0], [r0, rt], [m.l, rt], [m.l, m.d], [p1, m.d], [p1, q1], [p0, q1], [p0, m.d], [0, m.d]];
+}
+
+/** Colonnes de l'abri parapluie du quai central (D229), en (s, t) : deux files, environ tous les 4,5 m. */
+export function stationShelterColumns(m: StationModel): [number, number][] {
+  if (!m.quai) return [];
+  const [s0, s1, t0, t1] = m.quai.sh;
+  const tc = (t0 + t1) / 2, n = Math.max(2, Math.round((s1 - s0 - 3) / 4.5) + 1);
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (const k of [-1, 1]) out.push([s0 + 1.5 + ((s1 - s0 - 3) * i) / (n - 1), tc + k * 1.1]);
+  return out;
+}
+
+/** Petit abri vitré du quai central (D229) : longueur le long des voies, profondeur. */
+export const GLASS_SHELTER: readonly [number, number] = [3.2, 1.4];
+
+/** Obstacles des quais de la gare (D229) : colonnes de l'abri parapluie, petit abri vitré (trois cercles). */
+export function stationCircles(m: StationModel): [number, number, number][] {
+  if (!m.quai) return [];
+  const f = stationFrame(m);
+  const out: [number, number, number][] = stationShelterColumns(m).map(([s, t]) => [...at(f, s, t), 0.16]);
+  const [gs, gt] = m.quai.glass;
+  for (const k of [-1, 0, 1]) out.push([...at(f, gs + k * (GLASS_SHELTER[0] / 2 - 0.6), gt), 0.7]);
+  return out;
 }
 
 /** Obstacle de la gare (à la place du contour BD TOPO, décalé d'environ 1,2 m vers les voies) : ses murs mesurés. */

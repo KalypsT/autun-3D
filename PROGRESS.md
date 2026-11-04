@@ -1649,3 +1649,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Avant](docs/captures/d228-gare-avant.jpg)
 ![Après](docs/captures/d228-gare-apres.jpg)
 ![Vue haute](docs/captures/d228-gare-haut-apres.jpg)
+
+**La gare, étape 2 : les quais (4 novembre 2026)** (D229)
+- La marquise du quai 1 sur toute la longueur de la gare : consoles et fermes de fonte, tôle claire, lambrequin à festons, chéneau ; deux panneaux « AUTUN » suspendus.
+- Sur le quai central, l'abri parapluie (17,5 × 9,2 m, mesuré au LiDAR) sur ses colonnes de fonte rouillée, à la place du hangar à portes qui barrait une voie ; son panneau « AUTUN ».
+- La traversée à niveau (dalles grises, bandes jaunes et noires au bord des quais) et le petit abri vitré au bout du quai central.
+- Les quais au bon niveau (celui du parvis, plus de marche de 55 cm) et le quai 1 jusqu'au mur ; plus d'abri générique.
+- Prochaine étape : le parvis et le parking (marquage, gare routière, abri en bois).
+
+![Le quai 1](docs/captures/d229-gare-quai1-apres.jpg)
+![Le quai central](docs/captures/d229-gare-quai-central-apres.jpg)
