@@ -519,6 +519,8 @@ export interface McdoModel {
     lamps?: [number, number][];
     pot?: [number, number];
     sign?: [number, number];
+    /** Inscriptions peintes au sol (D237) : texte, centre (s, t), largeur le long de s, hauteur le long de t (lues vers +t). */
+    paint?: [string, number, number, number, number][];
   };
 }
 

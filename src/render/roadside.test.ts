@@ -95,7 +95,7 @@ describe("McDonald's de la route de Chalon (D234, D235)", () => {
     const texts: string[] = [];
     const s = sinks(texts);
     buildMcdo(s, m, world.terrain);
-    expect(texts).toEqual(["McDonald's", "2.75", "DRIVE →"]);
+    expect(texts).toEqual(["McDonald's", "2.75", "DRIVE →", "McDRIVE", "PARKING"]);
     const p = s.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;

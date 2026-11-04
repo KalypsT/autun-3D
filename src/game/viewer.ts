@@ -36,6 +36,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "mcdo-drive": [1388.2, 656.5, 1.7, 1374.8, 678.9, 3],
   // Façades (D235) : le long côté du parking (bandes blanches, M jaunes, entrée), comme la photo ; le pignon ouest du bowling vu du McDonald's.
   "mcdo-parking": [1354.2, 695.9, 1.7, 1376.1, 695.0, 3.5],
+  // Entrée depuis la route : « McDRIVE » et « PARKING » peints au sol (D237).
+  "mcdo-entree": [1371.6, 650.3, 2.2, 1377.5, 668.6, 0],
   "bowling-mcdo": [1373.0, 660.4, 1.7, 1394.4, 665.5, 3],
   // Bowling Strike Bowl (D234) : depuis la route de Chalon, depuis le parking nord, la terrasse du pignon sud ; les deux vus d'en haut.
   bowling: [1406.4, 624.0, 1.7, 1419.5, 655.4, 4],

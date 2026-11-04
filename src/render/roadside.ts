@@ -24,7 +24,7 @@ import { T } from "./style";
  *   vitré de la terrasse, portes vitrées au milieu ; côté parking, portes « bowling » et « bar restaurant » ; issues de secours.
  * Étape 3, les abords (D236 ; les marquages des parkings sont dans les sols des tuiles, build_parking.py) :
  * - McDonald's : terrasse devant la véranda, quatre parasols carrés vert sombre, garde-corps gris à barreaux, lanternes sur poteaux ;
- *   gros pot rouge planté et panneau « DRIVE → » sur l'îlot de l'entrée ;
+ *   gros pot rouge planté et panneau « DRIVE → » sur l'îlot de l'entrée ; « McDRIVE » et « PARKING » peints au sol à l'entrée (D237) ;
  * - bowling : haie taillée le long de la D680 et devant l'aile ouest, terrasse du pignon de la route (garde-corps noir, jardinières de
  *   béton, tables et chaises), panneau rouge et noir « BOWLING ← CAVE À BIÈRE » au coin ouest de la haie.
  */
@@ -392,6 +392,12 @@ export function buildMcdo(sinks: LandmarkSinks, m: McdoModel, terrain: HeightFie
       const w = wallOf([ss - 0.85, st - 0.06], [ss + 0.85, st - 0.06]);
       d.plate(w, 0, w.len, z0 + 1.0, z0 + 1.95, 0, 0.12, SIGN_GREEN);
       wallText(sinks, d, w, "DRIVE →", w.len / 2, z0 + 1.48, 0.42, "#ffffff", 0.13);
+    }
+    // Inscriptions peintes au sol (D237) : à plat, juste au-dessus des marques, lues par le conducteur qui entre depuis la route (vers +t) ;
+    // case de largeur w (le long de s) et de hauteur h (le long de t) : l'atlas étire les lettres dans le sens de la marche.
+    for (const [str, cs, ct, w, h] of site.paint ?? []) {
+      const P = (sv: number, tv: number): Vec3 => d.P(sv, tv, ground(sv, tv) + 0.1);
+      textQuad(sinks, str, "#f4f2ec", P(cs - w / 2, ct - h / 2), P(cs + w / 2, ct - h / 2), P(cs + w / 2, ct + h / 2), P(cs - w / 2, ct + h / 2), [0, 1, 0]);
     }
   }
 }

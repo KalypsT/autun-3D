@@ -1733,3 +1733,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Vue haute](docs/captures/d236-haut.jpg)
 ![La terrasse du McDonald's](docs/captures/d236-mcdo-terrasse.jpg)
 ![La terrasse du bowling](docs/captures/d236-bowling-terrasse.jpg)
+
+**Le McDonald's : « McDRIVE » et « PARKING » au sol (4 novembre 2026)** (D237)
+- À l'entrée depuis la D680, « PARKING » sur la voie de gauche et « McDRIVE » sur celle de droite, en lettres étirées dans le sens de la marche, entre les flèches lues sur l'orthophotographie (deux par voie, deux vers le parking devant la terrasse).
+- Les vieux traits qui traînaient en éventail dans l'entrée sont retirés.
+
+![Depuis l'entrée](docs/captures/d237-mcdo-entree.jpg)

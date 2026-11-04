@@ -4848,3 +4848,18 @@ Une deuxième passe ne change rien.
 ![La terrasse du bowling](captures/d236-bowling-terrasse.jpg)
 ![Le panneau du coin ouest](captures/d236-bowling-panneau.jpg)
 ![La dalle du parking du bowling](captures/d236-bowling-dalle.jpg)
+
+## 2026-11-04 — D237. Le McDonald's : « McDRIVE » et « PARKING » peints au sol
+
+**Demande de l'utilisateur** : écrire au sol « McDRIVE » et « PARKING », comme sur la photo du drive (D234 : à l'entrée depuis la route, une inscription par voie, avec des flèches).
+
+**Lecture** (orthophotographie redressée dans le repère du McDonald's) : l'entrée depuis la D680 se partage en **deux voies vers le nord**, celle du parking à s ≈ 13,4 m et celle du drive à s ≈ 16,9 m, chacune avec **deux flèches** (t ≈ −11,2 et −19,6 m) ; **deux flèches vers l'ouest** devant la terrasse (vers le parking). Les inscriptions ne se lisent pas à 20 cm : posées entre les deux flèches de chaque voie (t = −15,4 m), « PARKING » à gauche et « McDRIVE » à droite, comme sur la photo.
+
+**Données** : `paint` du `site` de l'entrée du McDonald's dans `monuments` (texte, centre, largeur le long de s, hauteur le long de t), recopié dans `mcd` ; entrée « voie du drive » de `parkings` : zone de nettoyage étendue à toute l'entrée (s 8 à 24,5 m, t −25 à 14 m ; l'éventail de traits de D94 qui traînait dans la gorge d'entrée est retiré) et six flèches de plus.
+
+**Rendu** (`buildMcdo`) : les inscriptions sont des textes de l'atlas posés **à plat**, 10 cm au-dessus du relief (juste au-dessus des marques), dans une case de 3 × 2,6 m lue par le conducteur qui entre (vers +t) : l'atlas étire les lettres dans le sens de la marche (lettres d'environ 2,1 m), comme les inscriptions routières. Pas de polygone dans la couche des marques : `findStalls` n'a rien à confondre. Vue `?view=mcdo-entree` (depuis la route, comme la photo).
+
+**Tests** (`roadside.test.ts`) : les deux inscriptions demandées à l'atlas, après celles des façades.
+
+![Depuis l'entrée](captures/d237-mcdo-entree.jpg)
+![Vue haute](captures/d237-mcdo-entree-haut.jpg)
