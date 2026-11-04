@@ -1713,3 +1713,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le McDonald's côté parking](docs/captures/d234-mcdo-parking-apres.jpg)
 ![Le bowling depuis la route](docs/captures/d234-bowling-route-apres.jpg)
 ![Vue haute](docs/captures/d234-haut-apres.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 2 : les façades (4 novembre 2026)** (D235)
+- McDonald's : sur le long côté du parking, les bandes blanches de la mansarde, les deux M jaunes et les persiennes entre eux ; l'entrée vitrée et les fenêtres, les deux guichets du drive, « McDonald's » en blanc sur le zinc de la véranda.
+- Le totem M de 8 m près de l'entrée, le portique de 2,75 m et les panneaux du menu sur la voie du drive.
+- Bowling : le logo rond « STRIKE BOWL » sur le panneau noir du pignon ouest et dans le pignon rouge de la route, la peinture « CAVE À BIÈRE », le bandeau « BOWLING · BAR · CAVE À BIÈRE », le store de la terrasse, les portes « bowling » et « bar restaurant » côté parking.
+- Prochaine étape : les parkings et les abords (marquages, places PMR, voie du drive, terrasse et parasols, panneaux au bord de la route, haie de la D680).
+
+![McDonald's côté parking](docs/captures/d235-mcdo-parking.jpg)
+![Le drive et le totem](docs/captures/d235-mcdo-drive.jpg)
+![Bowling depuis la route](docs/captures/d235-bowling-route.jpg)

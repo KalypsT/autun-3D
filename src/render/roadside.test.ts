@@ -10,7 +10,11 @@ import type { SignAtlas } from "./sign-atlas";
 
 const MCDO = "BATIMENT0000000348847408", BOWL = "BATIMENT0000000348847403", HIDDEN = "BATIMENT0000000348847402";
 
-const sinks = (): LandmarkSinks => ({ solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas: {} as SignAtlas });
+/** Puits de géométrie ; `texts` reçoit les inscriptions demandées à l'atlas. */
+const sinks = (texts: string[] = []): LandmarkSinks => {
+  const atlas = { get: (t: string) => { texts.push(t); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
+  return { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
+};
 
 /** Sommets (x, y du monde) de la géométrie : three est en (x, z, −y). */
 function bounds(p: Float32Array | number[]): { x0: number; x1: number; y0: number; y1: number; z1: number } {
@@ -23,7 +27,7 @@ function bounds(p: Float32Array | number[]): { x0: number; x1: number; y0: numbe
   return b;
 }
 
-describe("McDonald's de la route de Chalon (D234)", () => {
+describe("McDonald's de la route de Chalon (D234, D235)", () => {
   const world = loadRealWorld();
   const kind = world.tile.kinds!.buildings[MCDO]!;
   const m = kind.mcd!;
@@ -70,7 +74,8 @@ describe("McDonald's de la route de Chalon (D234)", () => {
 
   it("obstacles : le corps et la véranda, on n'y entre pas depuis le parking ni depuis la route", () => {
     const rings = mcdoRings(m);
-    expect(rings.length).toBe(2);
+    // Corps, véranda ; totem, deux poteaux du portique, deux panneaux du menu (D235).
+    expect(rings.length).toBe(2 + 1 + 2 + m.site!.menus.length);
     expect(mcdoVerandaOutline(m).length).toBeGreaterThan(5);
     const f = mcdoFrame(m);
     const c = buildColliders({ ...world.tile, buildings: [b] });
@@ -78,16 +83,23 @@ describe("McDonald's de la route de Chalon (D234)", () => {
     expect(c.raycast(out[0], out[1], inside[0], inside[1])).not.toBeNull();
     const road = at(f, 4, -12), ver = at(f, 4, -1.5);
     expect(c.raycast(road[0], road[1], ver[0], ver[1])).not.toBeNull();
+    // Le fût du totem arrête ; on passe sous la poutre du portique, entre ses poteaux.
+    const [ts, tt] = m.site!.totem, t0 = at(f, ts - 1, tt), t1 = at(f, ts + 1, tt);
+    expect(c.raycast(t0[0], t0[1], t1[0], t1[1])).not.toBeNull();
+    const [g0, g1, gt] = m.site!.gantry, gm = (g0 + g1) / 2, p0 = at(f, gm, gt - 2), p1 = at(f, gm, gt + 2);
+    expect(c.raycast(p0[0], p0[1], p1[0], p1[1])).toBeNull();
   });
 
-  it("géométrie : sommets finis, près des volumes, coût borné, sous le faîte", () => {
-    const s = sinks();
+  it("géométrie : sommets finis, près des volumes, coût borné, sous le haut du totem ; inscriptions (D235)", () => {
+    const texts: string[] = [];
+    const s = sinks(texts);
     buildMcdo(s, m, world.terrain);
+    expect(texts).toEqual(["McDonald's", "2.75"]);
     const p = s.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
-    expect(tris).toBeGreaterThan(200);
-    expect(tris).toBeLessThan(4000);
+    expect(tris).toBeGreaterThan(800);
+    expect(tris).toBeLessThan(6000);
     expect(s.glow.positions.length).toBeGreaterThan(0);
     const pts = mcdoRings(m).flat(), xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
     const bb = bounds(p);
@@ -95,11 +107,13 @@ describe("McDonald's de la route de Chalon (D234)", () => {
     expect(bb.x1).toBeLessThan(Math.max(...xs) + 1);
     expect(bb.y0).toBeGreaterThan(Math.min(...ys) - 1);
     expect(bb.y1).toBeLessThan(Math.max(...ys) + 1);
-    expect(bb.z1).toBeLessThan(Math.max(m.crest, ...m.units.map((u) => u[4])) + 0.1);
+    // Le plus haut : le caisson du totem, 8 m au-dessus de son pied.
+    expect(bb.z1).toBeLessThan(world.terrain.heightAt(...at(mcdoFrame(m), ...m.site!.totem)) + 8.1);
+    expect(bb.z1).toBeGreaterThan(m.crest);
   });
 });
 
-describe("bowling Strike Bowl de la route de Chalon (D234)", () => {
+describe("bowling Strike Bowl de la route de Chalon (D234, D235)", () => {
   const world = loadRealWorld();
   const kind = world.tile.kinds!.buildings[BOWL]!;
   const m = kind.bowl!;
@@ -158,14 +172,22 @@ describe("bowling Strike Bowl de la route de Chalon (D234)", () => {
     expect(rings.length).toBeGreaterThan(5);
   });
 
-  it("géométrie : sommets finis, près des volumes, coût borné, sous le faîtage", () => {
-    const s = sinks();
+  it("géométrie : sommets finis, près des volumes, coût borné, sous le faîtage ; enseignes (D235)", () => {
+    const texts: string[] = [];
+    const s = sinks(texts);
     buildBowling(s, m, world.terrain);
+    // Deux logos ronds (pignon ouest de l'aile, pignon de la route), la peinture, le bandeau, les deux plaques des portes du parking.
+    expect(texts.filter((t) => t === "STRIKE").length).toBe(2);
+    expect(texts).toContain("BOWLING · BAR · CAVE À BIÈRE");
+    expect(texts).toContain("BIÈRE");
+    expect(texts).toContain("bowling");
+    expect(texts).toContain("bar restaurant");
+    expect(texts.length).toBe(2 * 4 + 2 + 1 + 2);
     const p = s.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
-    expect(tris).toBeGreaterThan(300);
-    expect(tris).toBeLessThan(6000);
+    expect(tris).toBeGreaterThan(600);
+    expect(tris).toBeLessThan(8000);
     expect(s.glow.positions.length).toBeGreaterThan(0);
     const f = bowlingFrame(m);
     const pts = [...bowlingRings(m).flat(), ...m.pergola.flatMap(([a0, a1, b0, b1]) => [...at(f, a0, b0), ...at(f, a1, b1)]), ...at(f, 0, 0), ...at(f, m.w, m.l)];

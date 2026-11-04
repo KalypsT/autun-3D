@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import type { BowlingModel, HeightField, McdoModel, MeasuredPiece } from "../data/types";
-import { at, bowlingFrame, bowlingHallWalls, bowlingPosts, mcdoFrame } from "../core/landmarks";
+import { at, bowlingFrame, bowlingHallWalls, bowlingPosts, MCDO_MENU, MCDO_TOTEM, mcdoFrame } from "../core/landmarks";
 import type { LandmarkSinks } from "./landmarks";
 import { Draw, up, wallOf, type PWall, type ST, type STZ } from "./playhouse";
+import type { Vec3 } from "./geometry";
 import { T } from "./style";
 
 /**
@@ -13,16 +14,27 @@ import { T } from "./style";
  * - bowling : halle à deux pans de tôle rouge, pignons à bardage rouge sur la route (en auvent sur deux poteaux, mur vitré en retrait)
  *   et sur le parking ; aile ouest en L et aile est basses à toit plat derrière un acrotère gris clair ; bande basse le long du mur est ;
  *   pergola blanche au sud-est.
+ * Étape 2, les façades (D235) :
+ * - McDonald's : lames du bardage, sur le long côté du parking les bandes blanches de la mansarde, ses deux M jaunes et la partie à
+ *   persiennes entre eux ; entrée vitrée et fenêtres côté parking, deux guichets du drive côté est, portes de service au nord ;
+ *   « McDonald's » en lettres blanches sur le zinc de la véranda côté route ; totem M près de l'entrée, portique de 2,75 m et panneaux
+ *   du menu sur la voie du drive ;
+ * - bowling : logo rond « STRIKE BOWL » sur panneau noir (pignon ouest de l'aile, côté McDonald's) et dans le pignon rouge de la route ;
+ *   peinture « CAVE À BIÈRE » au bout ouest et bandeau « BOWLING · BAR · CAVE À BIÈRE » le long de la route ; store gris sur le mur
+ *   vitré de la terrasse, portes vitrées au milieu ; côté parking, portes « bowling » et « bar restaurant » ; issues de secours.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
 const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
 // McDonald's : bardage façon bois, soubassement gris, mansarde brune, toit plat gris, zinc, menuiseries gris anthracite.
-const CLAD = C("#a4623b"), PLINTH = C("#7b7f82"), MANSARD = C("#7c4330"), FLAT = C("#8c8e8c"), ZINC = C("#a6abae"), FRAME = C("#3e4448");
+const CLAD = C("#a4623b"), PLINTH = C("#7b7f82"), MANSARD = C("#7c4330"), FLAT = C("#8c8e8c"), ZINC = C("#8d9295"), FRAME = C("#3e4448");
 const UNIT = C("#b9bcbc"), WHITE = C("#f1f0ea");
 // Bowling : panneaux gris clair, enduit beige de la halle, bardage et tôle rouges, pergola blanche.
 const PANEL = C("#d9d6cc"), RENDER = C("#d7c2a6"), RED = C("#a2372d"), RED_ROOF = C("#a4474a"), MEMBRANE = C("#77736f"), POST = C("#55595c");
+// Façades (D235) : jaune des M, noir des panneaux, gris des portes et du store, lettres.
+const YELLOW = C("#f4bf1c"), BLACK = C("#202224"), DOOR_GREY = C("#8a8f93"), AWNING = C("#6c6f72"), MURAL = C("#3a3b3c"), TOTEM_BOX = C("#1f2b25");
+const LOGO_RED = "#c8302c", INK = "#222426", CREAM = "#efe3c8";
 /** Soubassement du McDonald's, épaisseur de l'acrotère des ailes du bowling, débord des pans de la halle, épaisseur de la rive. */
 const PLINTH_H = 0.5, PARAPET = 0.3, EAVE_OVER = 0.0, FASCIA = 0.25;
 
@@ -57,6 +69,66 @@ function panOf(d: Draw, pts: STZ[], col: THREE.Color): void {
   });
   if (q.length === 3) d.pan(q[0]!, q[1]!, q[2]!, null, col);
   else if (q.length === 4) d.pan(q[0]!, q[1]!, q[2]!, q[3]!, col);
+}
+
+/** Texte de l'atlas posé sur le quadrilatère a, b, c, d (bas gauche, bas droite, haut droite, haut gauche), lu de face. */
+function textQuad(sinks: LandmarkSinks, str: string, color: string, a: Vec3, b: Vec3, c: Vec3, dd: Vec3, n: Vec3): void {
+  const label = sinks.atlas.get(str, color);
+  sinks.names.quad(a, b, c, dd, n, [label.u0, label.v0], [label.u1, label.v0], [label.u1, label.v1], [label.u0, label.v1], new THREE.Color(1, 1, 1));
+}
+
+/** Texte de l'atlas sur le mur, centré en (u, zc), de hauteur de case th (largeur 6,4 th), à `off` devant le mur. */
+function wallText(sinks: LandmarkSinks, d: Draw, w: PWall, str: string, u: number, zc: number, th: number, color: string, off = 0.06): void {
+  const tw = th * 6.4, a = d.on(w, u - tw / 2, off), b = d.on(w, u + tw / 2, off);
+  textQuad(sinks, str, color, d.P(...a, zc - th / 2), d.P(...b, zc - th / 2), d.P(...b, zc + th / 2), d.P(...a, zc + th / 2), d.N(...w.out));
+}
+
+/** Porte vitrée (un ou deux battants) de largeur wd centrée en u, haute de h depuis le sol : cadre, vitre, montant, lueur la nuit. */
+function glassDoor(sinks: LandmarkSinks, d: Draw, w: PWall, u: number, wd: number, h: number, double: boolean): void {
+  const g0 = d.ground(...d.on(w, u, 0));
+  const lo = C(T.glass[0]), hi = C(T.glass[1]);
+  d.plate(w, u - wd / 2 - 0.08, u + wd / 2 + 0.08, g0, g0 + h + 0.08, 0, 0.05, FRAME, true);
+  d.shape(d.mb, w, u, wd / 2 - 0.02, g0 + 0.05, g0 + h, false, 0.06, lo, hi);
+  if (double) d.plate(w, u - 0.03, u + 0.03, g0, g0 + h, 0.06, 0.09, FRAME, true);
+  d.shape(sinks.glow, w, u, wd / 2 - 0.1, g0 + 0.1, g0 + h - 0.1, false, 0.07, GLOW_LO, GLOW_HI);
+}
+
+/** Porte de service pleine (gris clair) de largeur wd centrée en u. */
+function serviceDoor(d: Draw, w: PWall, u: number, wd = 1.0, h = 2.15): void {
+  const g0 = d.ground(...d.on(w, u, 0));
+  d.plate(w, u - wd / 2 - 0.06, u + wd / 2 + 0.06, g0, g0 + h + 0.06, 0, 0.03, shade(DOOR_GREY, 0.8), true);
+  d.plate(w, u - wd / 2, u + wd / 2, g0, g0 + h, 0.03, 0.05, DOOR_GREY, true);
+}
+
+/**
+ * Logo rond « STRIKE BOWL » (photos) centré en (u, zc) sur le mur, de rayon r : disque blanc cerclé de rouge, « BOWLING » en haut,
+ * « STRIKE » en grand et « BOWL » en rouge, « CAVE À BIÈRE » en bas.
+ */
+function strikeLogo(sinks: LandmarkSinks, d: Draw, w: PWall, u: number, zc: number, r: number, off = 0.05): void {
+  d.oval(w, u, zc, r, r, off, C("#f4f2ec"), 24);
+  d.oval(w, u, zc, r * 0.9, r * 0.9, off + 0.01, C(LOGO_RED), 24);
+  d.oval(w, u, zc, r * 0.8, r * 0.8, off + 0.02, C("#f4f2ec"), 24);
+  wallText(sinks, d, w, "BOWLING", u, zc + r * 0.52, r * 0.2, INK, off + 0.03);
+  wallText(sinks, d, w, "STRIKE", u, zc + r * 0.1, r * 0.4, LOGO_RED, off + 0.03);
+  wallText(sinks, d, w, "BOWL", u, zc - r * 0.28, r * 0.26, LOGO_RED, off + 0.03);
+  wallText(sinks, d, w, "CAVE À BIÈRE", u, zc - r * 0.58, r * 0.16, INK, off + 0.03);
+}
+
+/**
+ * Tracé du M (deux hautes arches) dans un repère de glyphe x ∈ [−1, 1], y ∈ [−1, 1] : segments (x0, y0, x1, y1). Les jambes montent
+ * droit jusqu'à la naissance des arches (y = −0,2), les arches en demi-ellipses étirées culminent en haut, le creux du milieu descend
+ * jusqu'à y = −0,45.
+ */
+function mGlyph(): [number, number, number, number][] {
+  const spring = -0.2, rise = 1.2;
+  const out: [number, number, number, number][] = [[-0.95, -1, -0.95, spring], [0.95, spring, 0.95, -1], [0, spring, 0, -0.45]];
+  for (const cx of [-0.475, 0.475]) {
+    for (let i = 0; i < 10; i++) {
+      const a0 = Math.PI * (1 - i / 10), a1 = Math.PI * (1 - (i + 1) / 10);
+      out.push([cx + 0.475 * Math.cos(a0), spring + rise * Math.sin(a0), cx + 0.475 * Math.cos(a1), spring + rise * Math.sin(a1)]);
+    }
+  }
+  return out;
 }
 
 export function buildMcdo(sinks: LandmarkSinks, m: McdoModel, terrain: HeightField): void {
@@ -125,6 +197,115 @@ export function buildMcdo(sinks: LandmarkSinks, m: McdoModel, terrain: HeightFie
     const w = wallOf(v.i[0]!, v.o[0]!);
     const n = d.N(...w.out);
     sinks.solid.tri(d.P(...w.a, zO), d.P(...w.b, zO), d.P(...w.a, zI(0)), n, shade(ZINC, 0.9));
+  }
+
+  // --- Façades (D235) --------------------------------------------------------------------------------------------------------------
+  const [wS, wE, wN, wW] = rectWalls(0, L, 0, D);
+  // Lames du bardage façon bois : joints sombres tous les 1,2 m au-dessus du soubassement.
+  for (const w of [wS!, wE!, wN!, wW!]) {
+    const g0 = Math.max(ground(...w.a), ground(...w.b)) + PLINTH_H;
+    const n = Math.round(w.len / 1.2);
+    for (let i = 1; i < n; i++) d.plate(w, (w.len * i) / n - 0.025, (w.len * i) / n + 0.025, g0, m.eave - 0.1, 0, 0.015, shade(CLAD, 0.78), true);
+  }
+  // Côté parking (ouest ; u depuis le nord) : entrée vitrée sous un auvent sombre, deux fenêtres (photos depuis le parking).
+  const uW = (t: number): number => D - t;
+  glassDoor(sinks, d, wW!, uW(13.2), 2.4, 2.45, true);
+  {
+    const g0 = ground(...d.on(wW!, uW(13.2), 0));
+    d.plate(wW!, uW(13.2) - 1.8, uW(13.2) + 1.8, g0 + 2.7, g0 + 2.95, 0, 1.1, FRAME);
+  }
+  for (const t of [18.5, 23.5]) {
+    const u = uW(t), g0 = ground(...d.on(wW!, u, 0));
+    d.plate(wW!, u - 1.25, u + 1.25, g0 + 0.85, g0 + 2.35, 0, 0.04, FRAME, true);
+    d.shape(d.mb, wW!, u, 1.15, g0 + 0.95, g0 + 2.25, false, 0.05, glassLo, glassHi);
+    d.shape(sinks.glow, wW!, u, 1.05, g0 + 1.0, g0 + 2.2, false, 0.06, GLOW_LO, GLOW_HI);
+  }
+  // Côté drive (est ; u depuis le sud) : deux guichets vitrés sous de petits auvents (payer, retirer).
+  for (const t of [8.0, 14.5]) {
+    const g0 = ground(...d.on(wE!, t, 0));
+    d.plate(wE!, t - 0.95, t + 0.95, g0 + 0.85, g0 + 2.25, 0, 0.05, FRAME, true);
+    d.shape(d.mb, wE!, t, 0.85, g0 + 0.95, g0 + 2.15, false, 0.06, glassLo, glassHi);
+    d.shape(sinks.glow, wE!, t, 0.8, g0 + 1.0, g0 + 2.1, false, 0.07, GLOW_LO, GLOW_HI);
+    d.plate(wE!, t - 0.95, t + 0.95, g0 + 0.75, g0 + 0.85, 0, 0.35, shade(UNIT, 0.9));
+    d.plate(wE!, t - 1.2, t + 1.2, g0 + 2.45, g0 + 2.6, 0, 0.9, FRAME);
+  }
+  // Nord : deux portes de service.
+  for (const sv of [4.0, 12.5]) serviceDoor(d, wN!, L - sv);
+  // Mansarde côté parking (photos) : bandes blanches de l'égout au faîte, deux M jaunes, persiennes entre eux. Repère du pan : u le long
+  // de t, v en mètres le long de la pente depuis l'égout.
+  {
+    const run = b + o, rise = m.crest - zE, len = Math.hypot(run, rise);
+    const P = (u: number, vm: number): Vec3 => d.P(-o + (run * vm) / len - 0.03 * (rise / len), u, zE + (rise * vm) / len + 0.03 * (run / len));
+    const n = up(P(0, 0), P(1, 0), P(0, 1));
+    const quad = (u0: number, v0: number, u1: number, v1: number, col: THREE.Color): void => sinks.solid.quad(P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1), n, col);
+    const seg = (u0: number, v0: number, u1: number, v1: number, th: number, col: THREE.Color): void => {
+      const l = Math.hypot(u1 - u0, v1 - v0) || 1, pu = (-(v1 - v0) / l) * (th / 2), pv = ((u1 - u0) / l) * (th / 2);
+      sinks.solid.quad(P(u0 + pu, v0 + pv), P(u1 + pu, v1 + pv), P(u1 - pu, v1 - pv), P(u0 - pu, v0 - pv), n, col);
+    };
+    const v0 = 0.15, v1 = len - 0.1;
+    const Ms = [8.5, 20.0];
+    for (const tc of Ms) {
+      for (const k of [-1, 1]) quad(tc + k * 1.75 - 0.3, v0, tc + k * 1.75 + 0.3, v1, WHITE);
+      // M jaune (u vers le nord à gauche pour qui regarde depuis l'ouest : le glyphe est symétrique).
+      const sc = 1.15, vc = len * 0.5;
+      for (const [x0, y0, x1, y1] of mGlyph()) seg(tc + x0 * sc, vc + y0 * sc * 1.1, tc + x1 * sc, vc + y1 * sc * 1.1, 0.34, YELLOW);
+    }
+    // Persiennes entre les deux M : lames plus sombres le long de la pente, tous les 35 cm.
+    const pa = Ms[0]! + 2.15, pb = Ms[1]! - 2.15;
+    for (let u = pa; u < pb - 0.1; u += 0.35) quad(u, v0 + 0.1, u + 0.14, v1 - 0.1, shade(MANSARD, 0.72));
+  }
+  // « McDonald's » en lettres blanches sur le pan du zinc côté route (photos de l'entrée et du drive).
+  {
+    const k = 1, O0 = v.o[k]!, O1 = v.o[k + 1]!, R0 = v.r[k]!;
+    if (Math.abs(O1[1] - O0[1]) < 0.05) {
+      const dt = R0[1] - O0[1], dz = v.ridge - v.eave, len = Math.hypot(dt, dz);
+      const Q = (sv: number, vm: number): Vec3 => d.P(sv, O0[1] + (dt * vm) / len, v.eave + (dz * vm) / len + 0.04);
+      const sc = (O0[0] + O1[0]) / 2, th = Math.min(0.95, len * 0.55), tw = th * 6.4, vc = len * 0.48;
+      const nq = up(Q(0, 0), Q(1, 0), Q(0, 1));
+      textQuad(sinks, "McDonald's", "#ffffff", Q(sc - tw / 2, vc - th / 2), Q(sc + tw / 2, vc - th / 2), Q(sc + tw / 2, vc + th / 2), Q(sc - tw / 2, vc + th / 2), nq);
+    }
+  }
+
+  // --- Abords des façades (D235) : totem M, portique du drive, panneaux du menu ------------------------------------------------------
+  const site = m.site;
+  if (site) {
+    // Totem : fût habillé de bardage brun-orangé, caisson sombre à M jaune sur ses deux faces (vers la route et vers le restaurant).
+    const [ts, tt] = site.totem, h = MCDO_TOTEM / 2, g0 = ground(ts, tt);
+    for (const w of rectWalls(ts - h, ts + h, tt - h, tt + h)) d.plate(w, 0, w.len, g0 - 0.3, g0 + 6.0, 0, 0, CLAD, true);
+    const bw = 1.1, top = g0 + 8.0, bot = g0 + 6.0;
+    for (const w of rectWalls(ts - bw, ts + bw, tt - 0.3, tt + 0.3)) d.plate(w, 0, w.len, bot, top, 0, 0, TOTEM_BOX, true);
+    slab(d, [[ts - bw, tt - 0.3], [ts + bw, tt - 0.3], [ts + bw, tt + 0.3], [ts - bw, tt + 0.3]], top - 0.05, top, shade(TOTEM_BOX, 1.1), TOTEM_BOX);
+    for (const w of [wallOf([ts - bw, tt - 0.3], [ts + bw, tt - 0.3]), wallOf([ts + bw, tt + 0.3], [ts - bw, tt + 0.3])]) {
+      for (const [x0, y0, x1, y1] of mGlyph()) {
+        const u0 = bw + x0 * 0.85, u1 = bw + x1 * 0.85, z0 = (top + bot) / 2 + y0 * 0.8, z1 = (top + bot) / 2 + y1 * 0.8;
+        const l = Math.hypot(u1 - u0, z1 - z0) || 1, pu = (-(z1 - z0) / l) * 0.14, pz = ((u1 - u0) / l) * 0.14;
+        const Pq = (u: number, z: number): Vec3 => d.P(...d.on(w, u, 0.02), z);
+        sinks.solid.quad(Pq(u0 + pu, z0 + pz), Pq(u1 + pu, z1 + pz), Pq(u1 - pu, z1 - pz), Pq(u0 - pu, z0 - pz), d.N(...w.out), YELLOW);
+      }
+    }
+    // Portique de 2,75 m : poteau gris à l'ouest, montant habillé de bois à l'est, poutre rayée noir et blanc, panneau « 2.75 ».
+    const [g0s, g1s, gt] = site.gantry, gz = Math.min(ground(g0s, gt), ground(g1s, gt));
+    d.bar([g0s, gt, gz - 0.2], [g0s, gt, gz + 3.15], 0.08, POST);
+    for (const w of rectWalls(g1s - 0.25, g1s + 0.25, gt - 0.15, gt + 0.15)) d.plate(w, 0, w.len, gz - 0.2, gz + 4.2, 0, 0, CLAD, true);
+    slab(d, [[g1s - 0.25, gt - 0.15], [g1s + 0.25, gt - 0.15], [g1s + 0.25, gt + 0.15], [g1s - 0.25, gt + 0.15]], gz + 4.15, gz + 4.2, CLAD, CLAD);
+    const beam = wallOf([g0s, gt], [g1s, gt]);
+    for (let u = 0, i = 0; u < beam.len - 0.25; u += 0.4, i++) {
+      d.plate(beam, u, Math.min(beam.len - 0.25, u + 0.4), gz + 2.75, gz + 3.05, -0.08, 0.08, i % 2 ? WHITE : BLACK);
+    }
+    const um = beam.len * 0.62;
+    d.plate(beam, um - 0.45, um + 0.45, gz + 3.05, gz + 3.45, -0.04, 0.06, TOTEM_BOX);
+    wallText(sinks, d, beam, "2.75", um, gz + 3.25, 0.3, "#ffffff", 0.07);
+    // Panneaux du menu, tournés vers la voie (ouest) : pied, cadre sombre, affiche lumineuse.
+    for (const [ms, mt] of site.menus) {
+      const w = wallOf([ms - MCDO_MENU[1] / 2, mt + MCDO_MENU[0]], [ms - MCDO_MENU[1] / 2, mt - MCDO_MENU[0]]);
+      const z0 = ground(ms, mt);
+      d.plate(w, 0, w.len, z0 - 0.2, z0 + 2.4, 0, -MCDO_MENU[1], TOTEM_BOX);
+      d.plate(w, 0.1, w.len - 0.1, z0 + 0.6, z0 + 2.3, 0, 0.02, C("#f3e7c6"), true);
+      for (const [za, zb, col] of [[1.75, 2.2, "#c8302c"], [1.2, 1.65, "#f4bf1c"], [0.7, 1.1, "#6a8f3c"]] as const) {
+        d.plate(w, 0.2, w.len - 0.2, z0 + za, z0 + zb, 0.02, 0.03, C(col), true);
+      }
+      d.shape(sinks.glow, w, w.len / 2, w.len / 2 - 0.15, z0 + 0.65, z0 + 2.25, false, 0.035, GLOW_LO, GLOW_HI);
+    }
   }
 }
 
@@ -219,5 +400,54 @@ export function buildBowling(sinks: LandmarkSinks, m: BowlingModel, terrain: Hei
     slab(d, [[s0, t0], [s1, t0], [s1, t1], [s0, t1]], top - 0.12, top, WHITE, shade(WHITE, 0.92), shade(WHITE, 0.85));
     for (const w of rectWalls(s0, s1, t0, t1)) d.plate(w, 0, w.len, top - 0.35, top - 0.12, -0.08, 0, POST);
     for (const [s, t] of posts) d.bar([s, t, ground(s, t) - 0.2], [s, t, top - 0.12], 0.06, POST);
+  }
+
+  // --- Façades (D235) --------------------------------------------------------------------------------------------------------------
+  const wingA = m.wing[0], wingB = m.wing[m.wing.length - 1];
+  if (wingA && wingB) {
+    const [a0, a1, at0, at1, , aTop] = wingA;
+    // Pignon ouest de l'aile (vers le McDonald's) : panneau noir carré au logo rond « STRIKE BOWL » ; issue de secours.
+    const west = wallOf([a0, at1], [a0, at0]);
+    const uc = west.len / 2, zc = aTop - 2.2;
+    d.plate(west, uc - 1.6, uc + 1.6, zc - 1.6, zc + 1.6, 0, 0.06, BLACK);
+    strikeLogo(sinks, d, west, uc, zc, 1.3, 0.07);
+    serviceDoor(d, west, west.len * 0.8, 1.6);
+    // Bout ouest du long côté de la route : peinture « CAVE À BIÈRE » (lettres crème sur fond gris sombre).
+    const southA = wallOf([a0, at0], [a1, at0]);
+    d.plate(southA, 0.6, 4.8, aTop - 3.7, aTop - 0.4, 0, 0.03, MURAL, true);
+    wallText(sinks, d, southA, "CAVE À", 2.7, aTop - 1.35, 0.95, CREAM, 0.04);
+    wallText(sinks, d, southA, "BIÈRE", 2.7, aTop - 2.45, 1.05, CREAM, 0.04);
+    d.plate(southA, 2.2, 3.2, aTop - 3.55, aTop - 3.05, 0.03, 0.04, C("#d9a23a"), true);
+    // Bandeau « BOWLING · BAR · CAVE À BIÈRE » le long de la route, sur l'aile en L jusqu'à la halle (photos de la route et de la terrasse).
+    const [b0, , bt0, bt1, , bTop] = wingB;
+    const southB = wallOf([b0, bt0], [0, bt0]);
+    const u0 = 1.0, u1 = southB.len - 0.8, zb0 = bTop - 1.55, zb1 = bTop - 0.35;
+    d.plate(southB, u0, u1, zb0, zb1, 0, 0.06, MURAL);
+    wallText(sinks, d, southB, "BOWLING · BAR · CAVE À BIÈRE", (u0 + u1) / 2, (zb0 + zb1) / 2, (u1 - u0) / 6.4, "#f4f2ec", 0.07);
+    // Côté parking de l'aile : issue de secours.
+    const northB = wallOf([0, bt1], [b0, bt1]);
+    serviceDoor(d, northB, northB.len * 0.3, 1.6);
+  }
+  // Pignon de la route : logo rond dans le triangle rouge ; store gris sur le mur vitré ; portes vitrées au milieu.
+  {
+    const gw = wallOf([0, 0], [W, 0]);
+    strikeLogo(sinks, d, gw, W / 2, zE + (zR - zE) * 0.42, Math.min(0.95, (zR - zE) * 0.42), 0.04);
+    const wall = wallOf([hs0, ht0], [hs1, ht0]);
+    const lo = Math.max(ground(...wall.a), ground(...wall.b));
+    glassDoor(sinks, d, wall, wall.len / 2, 2.0, 2.4, true);
+    const tOut = Math.max(0.6, ht0 - 1.6), zIn = lo + 3.35, zOut = lo + 2.8;
+    d.pan([2.4, ht0 - 0.05, zIn], [W - 2.4, ht0 - 0.05, zIn], [W - 2.4, tOut, zOut], [2.4, tOut, zOut], AWNING);
+    const valance = wallOf([2.4, tOut], [W - 2.4, tOut]);
+    d.plate(valance, 0, valance.len, zOut - 0.25, zOut, 0, 0.02, shade(AWNING, 0.85), true);
+  }
+  // Pignon du parking : portes « bowling » (à l'est) et « bar restaurant » (à l'ouest), plaques blanches au-dessus.
+  {
+    const nw = wallOf([hs1, ht1], [hs0, ht1]);
+    for (const [sv, label] of [[W * 0.7, "bowling"], [W * 0.32, "bar restaurant"]] as const) {
+      const u = W - sv, g0 = ground(...d.on(nw, u, 0));
+      glassDoor(sinks, d, nw, u, 1.9, 2.3, true);
+      d.plate(nw, u - 0.9, u + 0.9, g0 + 2.55, g0 + 2.95, 0, 0.04, C("#f4f2ec"), true);
+      wallText(sinks, d, nw, label, u, g0 + 2.75, 0.26, INK, 0.05);
+    }
   }
 }

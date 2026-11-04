@@ -23,7 +23,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           parc des expositions l'Eduen (modèle `eduen`, D231) : champ `edu` du bâtiment (salle, blocs, édicules, hall courbe et annexe), bâtiments
           BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ; abords (`site`, D233 : mâts, haie, clôture, barrière) recopiés ;
           McDonald's de la route de Chalon (modèle `mcdo`, D234) : champ `mcd` du bâtiment (corps à mansarde autour d'un toit plat, édicules,
-          véranda à toit de zinc à croupes) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
+          véranda à toit de zinc à croupes ; `site`, D235 : totem, portique et panneaux du drive, recopiés) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
           pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
@@ -1215,6 +1215,8 @@ def rect_st(s0, s1, t0, t1):
 def mcdo(tid, bid, b, spec, k):
     """McDonald's (D234) : champ `mcd` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
     m = measure_mcdo(bid, b, spec)
+    if "site" in spec:
+        m["site"] = spec["site"]  # totem, portique et panneaux du drive (D235), lus sur les photos et le relevé, recopiés tels quels
     # Type générique (« industrial ») remplacé : le modèle dessine tout ; ni enseigne ni bâtiment principal génériques.
     e = dict(k["buildings"].get(bid, {}))
     e["k"] = "culture"

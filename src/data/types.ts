@@ -505,6 +505,11 @@ export interface McdoModel {
   roof: number;
   units: [number, number, number, number, number][];
   ver: { o: [number, number][]; r: [number, number][]; i: [number, number][]; eave: number; ridge: number; gut: number };
+  /**
+   * Abords des façades (D235, photos et relevé, repère du corps) : pied du totem M, portique de 2,75 m au-dessus de la voie du drive (s0,
+   * s1 des poteaux, t), panneaux du menu (s, t, tournés vers la voie, à l'ouest).
+   */
+  site?: { totem: [number, number]; gantry: [number, number, number]; menus: [number, number][] };
 }
 
 /** Volume rectangulaire mesuré (D234) : s0, s1, t0, t1, haut du bord, haut (85ᵉ centile), bas (15ᵉ centile) du relevé sur le toit. */

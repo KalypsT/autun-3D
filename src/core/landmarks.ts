@@ -733,10 +733,24 @@ export function mcdoVerandaOutline(m: McdoModel): [number, number][] {
   });
 }
 
-/** Obstacles du McDonald's (x, y) : le corps et la véranda à leurs murs mesurés (le contour BD TOPO ne couvre ni l'un ni l'autre). */
+/** Section du fût du totem, demi-largeur d'un panneau du menu le long de t et son épaisseur (D235). */
+export const MCDO_TOTEM = 0.6, MCDO_MENU: readonly [number, number] = [0.8, 0.25];
+
+/**
+ * Obstacles du McDonald's (x, y) : le corps et la véranda à leurs murs mesurés (le contour BD TOPO ne couvre ni l'un ni l'autre) ; le fût
+ * du totem, les poteaux du portique et les panneaux du menu (D235).
+ */
 export function mcdoRings(m: McdoModel): number[][] {
   const f = mcdoFrame(m);
-  return [[...at(f, 0, 0), ...at(f, m.l, 0), ...at(f, m.l, m.d), ...at(f, 0, m.d)], mcdoVerandaOutline(m).flatMap(([s, t]) => at(f, s, t))];
+  const rect = (s0: number, s1: number, t0: number, t1: number): number[] => [...at(f, s0, t0), ...at(f, s1, t0), ...at(f, s1, t1), ...at(f, s0, t1)];
+  const out = [rect(0, m.l, 0, m.d), mcdoVerandaOutline(m).flatMap(([s, t]) => at(f, s, t))];
+  if (m.site) {
+    const { totem: [ts, tt], gantry: [g0, g1, gt], menus } = m.site, h = MCDO_TOTEM / 2;
+    out.push(rect(ts - h, ts + h, tt - h, tt + h));
+    for (const s of [g0, g1]) out.push(rect(s - 0.15, s + 0.15, gt - 0.15, gt + 0.15));
+    for (const [s, t] of menus) out.push(rect(s - MCDO_MENU[1] / 2, s + MCDO_MENU[1] / 2, t - MCDO_MENU[0], t + MCDO_MENU[0]));
+  }
+  return out;
 }
 
 /** Repère du bowling : origine au coin sud-ouest du toit de la halle, s le long de la route, t vers le parking. */

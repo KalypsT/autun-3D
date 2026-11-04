@@ -4785,3 +4785,33 @@ Une deuxième passe ne change rien.
 ![Bowling depuis le parking, après](captures/d234-bowling-parking-apres.jpg)
 ![Vue haute, avant](captures/d234-haut-avant.jpg)
 ![Vue haute, après](captures/d234-haut-apres.jpg)
+
+## 2026-11-04 — D235. Le McDonald's et le bowling de la route de Chalon, étape 2 : les façades
+
+**D'après les photos de l'utilisateur** (D234 : Google Street View de juillet 2026, photo de la terrasse du bowling). Tout est dans `buildMcdo` et `buildBowling` (`src/render/roadside.ts`) ; les mesures de D234 ne changent pas. Relecture des photos : la vue « depuis le parking » regarde le **long côté ouest** du McDonald's (parking ouest aux places PMR, la véranda à droite, côté route), pas le côté du drive.
+
+**McDonald's** :
+- bardage : joints sombres des lames tous les 1,2 m ;
+- mansarde du long côté ouest (photos du parking) : deux bandes blanches de l'égout au faîte autour de chaque **M jaune** (deux M, à t = 8,5 et 20 m), persiennes brunes entre les deux (lames plus sombres tous les 35 cm) ; le M est tracé en traits dans le plan du pan (jambes droites, deux hautes arches, creux au milieu) ;
+- côté parking : entrée vitrée à deux battants sous un auvent sombre, deux fenêtres ; côté drive (est) : deux guichets vitrés sous de petits auvents ; nord : deux portes de service ; vitres éclairées la nuit ;
+- **« McDonald's »** en lettres blanches sur le pan du zinc côté route (zinc un peu foncé pour le contraste) ;
+- abords des façades (`site` de l'entrée, recopié dans `mcd`) : **totem M** près de l'entrée sur la route (fût habillé de bardage, caisson sombre de 2,2 × 2 m à M jaune sur ses deux faces, 8 m ; pied sur un objet isolé de 5 m du modèle de surface, à l'endroit de la vue de l'entrée), **portique de 2,75 m** au-dessus de la voie du drive (poteau gris, montant habillé de bois, poutre rayée noir et blanc, panneau « 2.75 »), deux **panneaux du menu** tournés vers la voie. Le portique, trop mince, n'est pas dans le relevé : placé d'après la photo du drive, entre le pan coupé de la véranda et le bowling.
+
+**Bowling** :
+- pignon ouest de l'aile (vers le McDonald's) : panneau noir carré au **logo rond « STRIKE BOWL »** (disque blanc cerclé de rouge, « BOWLING », « STRIKE », « BOWL », « CAVE À BIÈRE ») ; issue de secours ;
+- long côté de la route : peinture **« CAVE À BIÈRE »** (lettres crème sur fond gris sombre, une chope ocre) au bout ouest, bandeau **« BOWLING · BAR · CAVE À BIÈRE »** jusqu'à la halle ;
+- pignon de la route : logo rond dans le triangle rouge, **store gris** sur le mur vitré de la terrasse, portes vitrées au milieu ;
+- pignon du parking : portes vitrées **« bowling »** (à l'est) et **« bar restaurant »** (à l'ouest), plaques blanches au-dessus ; issue de secours sur l'aile.
+
+**Obstacles** : en plus de D234, le fût du totem, les deux poteaux du portique (on passe dessous) et les panneaux du menu. Vues `?view=mcdo-parking` (le long côté ouest, comme la photo) et `bowling-mcdo` (le pignon ouest de l'aile vu du McDonald's).
+
+**Pas encore** : le nom d'OpenStreetMap (« Bowling du Lac ») reste celui de la carte et des fiches (le renommer demande de refaire `build_map.py` et `build_shop_fronts.py`) ; le panneau « DRIVE → » et le panneau « BOWLING ← CAVE À BIÈRE » plantés au bord de la route, la terrasse et ses parasols, les marquages au sol, la haie : étape 3. La mansarde des autres côtés reste unie (pas de photo de près), l'affiche de Noël du parking n'est pas reprise.
+
+**Tests** (`roadside.test.ts`, mêmes 6 tests, complétés) : inscriptions demandées à l'atlas (« McDonald's », « 2.75 » ; deux logos, la peinture, le bandeau, les deux plaques), obstacles du totem et passage sous le portique, coût borné, rien au-dessus du caisson du totem.
+
+![McDonald's, le long côté du parking](captures/d235-mcdo-parking.jpg)
+![McDonald's, le drive et le totem](captures/d235-mcdo-drive.jpg)
+![La nuit](captures/d235-mcdo-drive-nuit.jpg)
+![Bowling depuis la route](captures/d235-bowling-route.jpg)
+![Pignon ouest du bowling](captures/d235-bowling-pignon-ouest.jpg)
+![Bowling côté parking](captures/d235-bowling-parking.jpg)
