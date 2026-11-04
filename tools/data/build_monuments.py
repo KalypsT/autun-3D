@@ -24,7 +24,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ; abords (`site`, D233 : mâts, haie, clôture, barrière) recopiés ;
           McDonald's de la route de Chalon (modèle `mcdo`, D234) : champ `mcd` du bâtiment (corps à mansarde autour d'un toit plat, édicules,
           véranda à toit de zinc à croupes ; `site`, D235 : totem, portique et panneaux du drive, recopiés) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
-          pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), silhouette lointaine ;
+          pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), abords recopiés (`site`, D236), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -1239,6 +1239,8 @@ def mcdo(tid, bid, b, spec, k):
 def bowling(tid, bid, b, spec, k):
     """Bowling (D234) : champ `bowl` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
     m = measure_bowling(bid, b, spec)
+    if "site" in spec:
+        m["site"] = spec["site"]  # haie, terrasse, panneau du bord de la route (D236), lus sur l'orthophotographie et les photos, recopiés
     e = dict(k["buildings"].get(bid, {"k": "culture"}))
     e["k"] = "culture"
     e.pop("main", None)

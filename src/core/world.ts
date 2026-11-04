@@ -1,7 +1,7 @@
 import type { Building, HeightField, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
@@ -65,6 +65,11 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     // McDonald's et bowling de la route de Chalon (D234) : leurs volumes mesurés (le contour BD TOPO ne couvre pas la véranda ni les ailes).
     if (kind?.mcd || kind?.bowl) {
       for (const r of kind.mcd ? mcdoRings(kind.mcd) : bowlingRings(kind.bowl!)) c.addRing(r);
+      // Abords (D236) : garde-corps des terrasses (on voit à travers, on les enjambe), haie de la D680.
+      for (const l of roadsideLines(kind)) {
+        if (l.kind === "fence") c.addPolyline(l.pts, true, wallTop("fence", TERRACE_RAIL_H));
+        else c.addPolyline(l.pts, false, wallTop("hedge", ROADSIDE_HEDGE_H));
+      }
       continue;
     }
     if (house || !walkableRoof(kind)) {

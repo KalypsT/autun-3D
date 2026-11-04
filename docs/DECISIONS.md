@@ -4815,3 +4815,36 @@ Une deuxième passe ne change rien.
 ![Bowling depuis la route](captures/d235-bowling-route.jpg)
 ![Pignon ouest du bowling](captures/d235-bowling-pignon-ouest.jpg)
 ![Bowling côté parking](captures/d235-bowling-parking.jpg)
+
+## 2026-11-04 — D236. Le McDonald's et le bowling de la route de Chalon, étape 3 : les parkings et les abords
+
+**D'après l'orthophotographie IGN** (déjà en cache à 10 cm, **redressée dans le repère du McDonald's**, puis dans des repères tournés pour les rangées qui ne lui sont pas parallèles) **et les photos de l'utilisateur** (D234).
+
+**Constat** : les deux parkings portaient les traits retrouvés en tous sens par D94 ; la rangée nord du McDonald's était coupée de moitié (l'asphalte des données s'arrêtait à 2,5 m de sa bordure) ; ni places PMR, ni terrasse, ni haie le long de la D680 ; la dalle du bowling était couverte de places qui n'existent pas.
+
+**Lecture** :
+- **McDonald's, parking ouest** : rangée nord de cinq places, traits au pas de 2,5 m (pics de blanc le long de la rangée : −19,75, −17,25, −14,75, −12,25 m ; les deux bouts sous des voitures, extrapolés), places de 5 m depuis la bordure nord (t = 33,9 m) ; **places PMR** : fond bleu (masque de couleur) de t 11,7 à 18,9 m devant le long côté, deux places de 3,6 m perpendiculaires au mur ; **rangée sud-ouest** le long de la haie : sept traits au pas de 2,5 m dans un repère tourné de −38° (contraste stable d'une bande à l'autre), places de 5 m depuis la haie. Non repris, faute de lecture sûre : la colonne en épi le long de la voie tout à l'ouest et la zone basse à traits serrés (hachures ?) au sud-ouest ; leurs anciens traits restent.
+- **Voie du drive** : anciens traits retirés, deux flèches de sens vers le nord (photo du drive).
+- **Terrasse du McDonald's** : les parasols carrés vert sombre couvrent s −5,8 à 9,6 m, t −3 à −8,8 m sur l'orthophotographie ; quatre en rangée, de 3,6 m (les photos de l'entrée et du drive en montrent quatre) ; sol pavé, garde-corps gris à barreaux, lanternes aux coins ; le **gros pot rouge** et le **panneau « DRIVE → »** sur l'îlot de l'entrée, près du totem (photo de l'entrée).
+- **Bowling** : la dalle du parking nord est en **béton clair sans aucun marquage** (orthophotographie et photo du parking) : 53 anciens traits retirés, dalle posée en `plaza_concrete` (contour par seuil de clarté). Devant le pignon de la route, la **terrasse au gazon synthétique** (photo de la terrasse) ; devant l'aile ouest, derrière la haie, une **aire gravillonnée** (beige sur l'orthophotographie). **Haie taillée** le long de la D680 (bande vert sombre à t ≈ −9 m, de s −29 à 29 m) et retour devant l'aile ouest ; **panneau « BOWLING ← CAVE À BIÈRE »** au coin ouest de la haie (vue depuis le McDonald's).
+
+**Données** :
+- `parkings` de `manual.json`, cinq entrées « D236 » (`build_parking.py`, tuiles 31_37 et 31_38) : rangée nord (avec une bande d'asphalte sous la rangée), places PMR (repère tourné d'un quart de tour, nouveau champ `blue`), rangée sud-ouest (repère de la haie), voie du drive (flèches, sol pavé de la terrasse), bowling (sans rangée : nettoyage de la zone, dalle, gazon synthétique, gravier). **13 places tracées**, la rangée nord retrouvée par le jeu (`findStalls`). Une deuxième passe ne change rien.
+- **Nouvelle couche de sol `marks_blue`** (fond des places PMR) : posée par `build_parking.py` (`blue`, retirée puis reposée dans la zone), dessinée par `src/render/ground.ts` juste sous les traits blancs. Elle manquait à l'Eduen (D233) : elle peut maintenant servir partout.
+- `site` des deux entrées de `monuments` (terrasse, pot, panneau ; haie, terrasse, tables, panneau), recopié dans `mcd` et `bowl` par `build_monuments.py`.
+
+**Rendu** (`src/render/roadside.ts`, dans les maillages de la tuile) : parasols à toile en pyramide basse et bavolet, garde-corps (poteaux tous les 1,5 m, main courante, lisse basse, barreaux), lanternes allumées la nuit, pot rouge et arbre taillé, panneau « DRIVE → » ; haie de 1,6 m en blocs de 2,5 m qui suivent le relief (un seul bloc de 58 m suivait son point le plus haut et masquait le bowling depuis la route), jardinières de béton plantées, tables à pied central et chaises, panneau noir et rouge.
+
+**Obstacles** : garde-corps des terrasses en obstacles bas transparents aux rayons (on voit à travers, on les enjambe), haie pleine, pieds des parasols et des lanternes, pot, poteaux des panneaux, tables. Vue `?view=bowling-terrasse` déplacée sur l'aire gravillonnée (elle tombait dans la haie).
+
+**Pas encore** : le nom de la carte et des fiches (« Bowling du Lac », d'OpenStreetMap) ; « McDRIVE » et « PARKING » écrits au sol (la couche des marques n'a que des polygones) ; les pictogrammes PMR ; le « 14 juillet » et la sucette publicitaire du bord de la route ; la navigation n'est pas régénérée (les passants ignorent la haie, les terrasses et les nouveaux volumes). **Le plan du McDonald's et du bowling est terminé** (D234 à D236).
+
+**Tests** (+3 : `parking-roadside.test.ts` ; `roadside.test.ts` complété) : rangée nord retrouvée par le jeu (cinq places), fond bleu devant le long côté, aucun trait sur la dalle du bowling, béton et gazon synthétique là où il faut, haie et garde-corps qui arrêtent, vue à travers le garde-corps ; inscriptions et bornes de la géométrie avec les abords.
+
+![Vue haute](captures/d236-haut.jpg)
+![Le parking du McDonald's vu d'en haut](captures/d236-mcdo-parking-haut.jpg)
+![La terrasse du McDonald's](captures/d236-mcdo-terrasse.jpg)
+![Le bowling depuis la route](captures/d236-bowling-route.jpg)
+![La terrasse du bowling](captures/d236-bowling-terrasse.jpg)
+![Le panneau du coin ouest](captures/d236-bowling-panneau.jpg)
+![La dalle du parking du bowling](captures/d236-bowling-dalle.jpg)

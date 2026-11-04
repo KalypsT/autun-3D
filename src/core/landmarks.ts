@@ -749,6 +749,31 @@ export function mcdoRings(m: McdoModel): number[][] {
     out.push(rect(ts - h, ts + h, tt - h, tt + h));
     for (const s of [g0, g1]) out.push(rect(s - 0.15, s + 0.15, gt - 0.15, gt + 0.15));
     for (const [s, t] of menus) out.push(rect(s - MCDO_MENU[1] / 2, s + MCDO_MENU[1] / 2, t - MCDO_MENU[0], t + MCDO_MENU[0]));
+    // Abords (D236) : pied des parasols et des lanternes, gros pot, poteaux du panneau « DRIVE ».
+    for (const [s, t] of [...(m.site.parasols ?? []), ...(m.site.lamps ?? [])]) out.push(rect(s - 0.08, s + 0.08, t - 0.08, t + 0.08));
+    if (m.site.pot) out.push(rect(m.site.pot[0] - MCDO_POT, m.site.pot[0] + MCDO_POT, m.site.pot[1] - MCDO_POT, m.site.pot[1] + MCDO_POT));
+    if (m.site.sign) for (const k of [-1, 1]) out.push(rect(m.site.sign[0] + k * 0.6 - 0.06, m.site.sign[0] + k * 0.6 + 0.06, m.site.sign[1] - 0.06, m.site.sign[1] + 0.06));
+  }
+  return out;
+}
+
+/** Demi-côté du gros pot rouge de l'entrée (D236). */
+export const MCDO_POT = 0.75;
+/** Hauteur des garde-corps des terrasses, de la haie de la D680 (D236). */
+export const TERRACE_RAIL_H = 1.0, ROADSIDE_HEDGE_H = 1.6;
+
+/** Lignes d'obstacles des abords (x, y) : garde-corps des terrasses (on voit et on enjambe), haie de la D680 (D236). */
+export function roadsideLines(m: { mcd?: McdoModel; bowl?: BowlingModel }): { kind: "fence" | "hedge"; pts: number[] }[] {
+  const out: { kind: "fence" | "hedge"; pts: number[] }[] = [];
+  if (m.mcd?.site?.rails) {
+    const f = mcdoFrame(m.mcd);
+    for (const r of m.mcd.site.rails) out.push({ kind: "fence", pts: r.flatMap(([s, t]) => at(f, s, t)) });
+  }
+  const site = m.bowl?.site;
+  if (m.bowl && site) {
+    const f = bowlingFrame(m.bowl);
+    for (const r of site.rails) out.push({ kind: "fence", pts: r.flatMap(([s, t]) => at(f, s, t)) });
+    out.push({ kind: "hedge", pts: site.hedge.flatMap(([s, t]) => at(f, s, t)) });
   }
   return out;
 }
@@ -790,6 +815,12 @@ export function bowlingRings(m: BowlingModel): number[][] {
   const out = [rect(...bowlingHallWalls(m))];
   for (const [s0, s1, t0, t1] of bowlingBlocks(m)) out.push(rect(s0, s1, t0, t1));
   for (const [s, t] of bowlingPosts(m)) out.push(rect(s - 0.1, s + 0.1, t - 0.1, t + 0.1));
+  // Abords (D236) : tables de la terrasse, poteaux du panneau du bord de la route.
+  if (m.site) {
+    for (const [s, t] of m.site.tables) out.push(rect(s - 0.4, s + 0.4, t - 0.4, t + 0.4));
+    const [ss, st] = m.site.sign;
+    for (const k of [-1, 1]) out.push(rect(ss - 0.06, ss + 0.06, st + k * 0.8 - 0.06, st + k * 0.8 + 0.06));
+  }
   return out;
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
-import { at, bowlingBlocks, bowlingFrame, bowlingHallWalls, bowlingRings, drawsGenericRoof, isOpen, mcdoFrame, mcdoRings, mcdoVerandaOutline, walkableRoof } from "../core/landmarks";
+import { at, bowlingBlocks, bowlingFrame, bowlingHallWalls, bowlingRings, drawsGenericRoof, isOpen, mcdoFrame, mcdoRings, mcdoVerandaOutline, roadsideLines, walkableRoof } from "../core/landmarks";
 import { pointInRing } from "../core/collision";
 import { buildColliders } from "../core/world";
 import { buildBowling, buildMcdo } from "./roadside";
@@ -75,7 +75,8 @@ describe("McDonald's de la route de Chalon (D234, D235)", () => {
   it("obstacles : le corps et la véranda, on n'y entre pas depuis le parking ni depuis la route", () => {
     const rings = mcdoRings(m);
     // Corps, véranda ; totem, deux poteaux du portique, deux panneaux du menu (D235).
-    expect(rings.length).toBe(2 + 1 + 2 + m.site!.menus.length);
+    // + pieds des parasols et des lanternes, gros pot, deux poteaux du panneau « DRIVE » (D236).
+    expect(rings.length).toBe(2 + 1 + 2 + m.site!.menus.length + m.site!.parasols!.length + m.site!.lamps!.length + 1 + 2);
     expect(mcdoVerandaOutline(m).length).toBeGreaterThan(5);
     const f = mcdoFrame(m);
     const c = buildColliders({ ...world.tile, buildings: [b] });
@@ -94,14 +95,17 @@ describe("McDonald's de la route de Chalon (D234, D235)", () => {
     const texts: string[] = [];
     const s = sinks(texts);
     buildMcdo(s, m, world.terrain);
-    expect(texts).toEqual(["McDonald's", "2.75"]);
+    expect(texts).toEqual(["McDonald's", "2.75", "DRIVE →"]);
     const p = s.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
     expect(tris).toBeGreaterThan(800);
-    expect(tris).toBeLessThan(6000);
+    expect(tris).toBeLessThan(12000);
     expect(s.glow.positions.length).toBeGreaterThan(0);
-    const pts = mcdoRings(m).flat(), xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+    // Les obstacles, et les toiles des parasols (1,8 m autour de leur mât).
+    const fr = mcdoFrame(m);
+    const pts = [...mcdoRings(m).flat(), ...(m.site!.parasols ?? []).flatMap(([s, t]) => [...at(fr, s - 1.8, t - 1.8), ...at(fr, s + 1.8, t + 1.8), ...at(fr, s - 1.8, t + 1.8), ...at(fr, s + 1.8, t - 1.8)])];
+    const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
     const bb = bounds(p);
     expect(bb.x0).toBeGreaterThan(Math.min(...xs) - 1);
     expect(bb.x1).toBeLessThan(Math.max(...xs) + 1);
@@ -182,15 +186,17 @@ describe("bowling Strike Bowl de la route de Chalon (D234, D235)", () => {
     expect(texts).toContain("BIÈRE");
     expect(texts).toContain("bowling");
     expect(texts).toContain("bar restaurant");
-    expect(texts.length).toBe(2 * 4 + 2 + 1 + 2);
+    expect(texts).toContain("BOWLING ←");
+    expect(texts.length).toBe(2 * 4 + 2 + 1 + 2 + 2);
     const p = s.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
     expect(tris).toBeGreaterThan(600);
-    expect(tris).toBeLessThan(8000);
+    expect(tris).toBeLessThan(16000);
     expect(s.glow.positions.length).toBeGreaterThan(0);
     const f = bowlingFrame(m);
-    const pts = [...bowlingRings(m).flat(), ...m.pergola.flatMap(([a0, a1, b0, b1]) => [...at(f, a0, b0), ...at(f, a1, b1)]), ...at(f, 0, 0), ...at(f, m.w, m.l)];
+    const pts = [...bowlingRings(m).flat(), ...m.pergola.flatMap(([a0, a1, b0, b1]) => [...at(f, a0, b0), ...at(f, a1, b1)]), ...at(f, 0, 0), ...at(f, m.w, m.l),
+      ...roadsideLines({ bowl: m }).flatMap((l) => l.pts)];
     const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
     const bb = bounds(p);
     expect(bb.x0).toBeGreaterThan(Math.min(...xs) - 1);

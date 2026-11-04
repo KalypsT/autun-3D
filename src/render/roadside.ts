@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { BowlingModel, HeightField, McdoModel, MeasuredPiece } from "../data/types";
-import { at, bowlingFrame, bowlingHallWalls, bowlingPosts, MCDO_MENU, MCDO_TOTEM, mcdoFrame } from "../core/landmarks";
+import { at, bowlingFrame, bowlingHallWalls, bowlingPosts, MCDO_MENU, MCDO_POT, MCDO_TOTEM, mcdoFrame, ROADSIDE_HEDGE_H, TERRACE_RAIL_H } from "../core/landmarks";
 import type { LandmarkSinks } from "./landmarks";
 import { Draw, up, wallOf, type PWall, type ST, type STZ } from "./playhouse";
 import type { Vec3 } from "./geometry";
@@ -22,6 +22,11 @@ import { T } from "./style";
  * - bowling : logo rond « STRIKE BOWL » sur panneau noir (pignon ouest de l'aile, côté McDonald's) et dans le pignon rouge de la route ;
  *   peinture « CAVE À BIÈRE » au bout ouest et bandeau « BOWLING · BAR · CAVE À BIÈRE » le long de la route ; store gris sur le mur
  *   vitré de la terrasse, portes vitrées au milieu ; côté parking, portes « bowling » et « bar restaurant » ; issues de secours.
+ * Étape 3, les abords (D236 ; les marquages des parkings sont dans les sols des tuiles, build_parking.py) :
+ * - McDonald's : terrasse devant la véranda, quatre parasols carrés vert sombre, garde-corps gris à barreaux, lanternes sur poteaux ;
+ *   gros pot rouge planté et panneau « DRIVE → » sur l'îlot de l'entrée ;
+ * - bowling : haie taillée le long de la D680 et devant l'aile ouest, terrasse du pignon de la route (garde-corps noir, jardinières de
+ *   béton, tables et chaises), panneau rouge et noir « BOWLING ← CAVE À BIÈRE » au coin ouest de la haie.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -35,6 +40,45 @@ const PANEL = C("#d9d6cc"), RENDER = C("#d7c2a6"), RED = C("#a2372d"), RED_ROOF 
 // Façades (D235) : jaune des M, noir des panneaux, gris des portes et du store, lettres.
 const YELLOW = C("#f4bf1c"), BLACK = C("#202224"), DOOR_GREY = C("#8a8f93"), AWNING = C("#6c6f72"), MURAL = C("#3a3b3c"), TOTEM_BOX = C("#1f2b25");
 const LOGO_RED = "#c8302c", INK = "#222426", CREAM = "#efe3c8";
+// Abords (D236) : vert des parasols, gris du garde-corps, rouge du pot, vert de la haie, béton des jardinières, noir de la terrasse.
+const PARASOL = C("#2f4a36"), RAIL_GREY = C("#9aa0a3"), POT_RED = C("#b3352c"), LEAF = C("#4f7a3a"), HEDGE = C("#3d6a3a");
+const PLANTER = C("#d4d0c6"), IRON = C("#26292b"), TABLE = C("#3b3e40"), SIGN_GREEN = C("#21342b");
+
+/** Garde-corps le long de la polyligne `pts` (s, t), haut de h : poteaux tous les 1,5 m, main courante, lisse basse, barreaux tous les `pitch` m. */
+function railing(d: Draw, pts: ST[], h: number, col: THREE.Color, pitch: number): void {
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i]!, b = pts[i + 1]!, len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(1, Math.round(len / 1.5));
+    const P = (k: number): ST => [a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n];
+    for (let k = 0; k < n; k++) {
+      const p = P(k), q = P(k + 1), zp = d.ground(...p), zq = d.ground(...q);
+      if (k > 0 || i === 0) d.bar([p[0], p[1], zp - 0.1], [p[0], p[1], zp + h], 0.035, col);
+      d.bar([p[0], p[1], zp + h], [q[0], q[1], zq + h], 0.03, col);
+      d.bar([p[0], p[1], zp + 0.12], [q[0], q[1], zq + 0.12], 0.02, col);
+      const seg = Math.hypot(q[0] - p[0], q[1] - p[1]), m = Math.floor(seg / pitch);
+      for (let j = 1; j < m; j++) {
+        const u = j / m, x = p[0] + (q[0] - p[0]) * u, y = p[1] + (q[1] - p[1]) * u, z = zp + (zq - zp) * u;
+        d.bar([x, y, z + 0.12], [x, y, z + h], 0.012, col);
+      }
+    }
+    d.bar([b[0], b[1], d.ground(...b) - 0.1], [b[0], b[1], d.ground(...b) + h], 0.035, col);
+  }
+}
+
+/** Haie taillée le long de la polyligne `pts`, haute de h au-dessus du sol, large de w : blocs de 2,5 m au plus qui suivent le relief. */
+function hedgeAlong(d: Draw, pts: ST[], h: number, w: number): void {
+  let k = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const wl = wallOf(pts[i]!, pts[i + 1]!);
+    const n = Math.max(1, Math.ceil(wl.len / 2.5));
+    for (let j = 0; j < n; j++) {
+      const u0 = (wl.len * j) / n, u1 = (wl.len * (j + 1)) / n;
+      const za = d.ground(...d.on(wl, u0, 0)), zb = d.ground(...d.on(wl, u1, 0)), zm = d.ground(...d.on(wl, (u0 + u1) / 2, 0));
+      const top = (za + zb + 2 * zm) / 4 + h, g0 = Math.min(za, zb) - 0.3;
+      d.plate(wl, u0 - (j === 0 ? w / 2 : 0), u1 + (j === n - 1 ? w / 2 : 0.01), g0, top, -w / 2, w / 2, k++ % 2 ? HEDGE : shade(HEDGE, 0.95));
+    }
+  }
+}
 /** Soubassement du McDonald's, épaisseur de l'acrotère des ailes du bowling, débord des pans de la halle, épaisseur de la rive. */
 const PLINTH_H = 0.5, PARAPET = 0.3, EAVE_OVER = 0.0, FASCIA = 0.25;
 
@@ -306,6 +350,49 @@ export function buildMcdo(sinks: LandmarkSinks, m: McdoModel, terrain: HeightFie
       }
       d.shape(sinks.glow, w, w.len / 2, w.len / 2 - 0.15, z0 + 0.65, z0 + 2.25, false, 0.035, GLOW_LO, GLOW_HI);
     }
+
+    // --- Abords (D236) : terrasse, pot et panneau de l'entrée ----------------------------------------------------------------------
+    // Parasols carrés de 3,6 m : mât gris, toile vert sombre en pyramide basse, bavolet.
+    for (const [ps, pt] of site.parasols ?? []) {
+      const z0 = ground(ps, pt), h = 1.8, zb = z0 + 2.35, zt = z0 + 2.95;
+      d.bar([ps, pt, z0 - 0.1], [ps, pt, zt + 0.1], 0.04, RAIL_GREY);
+      const c: ST[] = [[ps - h, pt - h], [ps + h, pt - h], [ps + h, pt + h], [ps - h, pt + h]];
+      for (let k = 0; k < 4; k++) {
+        const a = c[k]!, b = c[(k + 1) % 4]!;
+        d.pan([...a, zb], [...b, zb], [ps, pt, zt], null, k % 2 ? PARASOL : shade(PARASOL, 0.92));
+        d.plate(wallOf(a, b), 0, 2 * h, zb - 0.22, zb, -0.01, 0.01, shade(PARASOL, 0.85));
+      }
+    }
+    for (const r of site.rails ?? []) railing(d, r, TERRACE_RAIL_H, RAIL_GREY, 0.3);
+    // Lanternes sur poteaux aux coins de la terrasse, allumées la nuit.
+    for (const [ls, lt] of site.lamps ?? []) {
+      const z0 = ground(ls, lt);
+      d.bar([ls, lt, z0 - 0.1], [ls, lt, z0 + 2.5], 0.05, FRAME);
+      for (const w of rectWalls(ls - 0.17, ls + 0.17, lt - 0.17, lt + 0.17)) {
+        d.plate(w, 0, w.len, z0 + 2.5, z0 + 2.95, 0, 0, FRAME, true);
+        d.shape(sinks.glow, w, w.len / 2, w.len / 2 - 0.05, z0 + 2.55, z0 + 2.9, false, 0.01, GLOW_LO, GLOW_HI);
+      }
+      slab(d, [[ls - 0.22, lt - 0.22], [ls + 0.22, lt - 0.22], [ls + 0.22, lt + 0.22], [ls - 0.22, lt + 0.22]], z0 + 2.95, z0 + 3.05, FRAME, FRAME);
+    }
+    // Gros pot rouge carré, arbre taillé en boule.
+    if (site.pot) {
+      const [ps, pt] = site.pot, z0 = ground(ps, pt), h = MCDO_POT;
+      for (const w of rectWalls(ps - h, ps + h, pt - h, pt + h)) d.plate(w, 0, w.len, z0 - 0.1, z0 + 1.0, 0, 0, POT_RED, true);
+      slab(d, [[ps - h, pt - h], [ps + h, pt - h], [ps + h, pt + h], [ps - h, pt + h]], z0 + 0.92, z0 + 1.0, shade(POT_RED, 0.8), POT_RED);
+      d.bar([ps, pt, z0 + 0.9], [ps, pt, z0 + 2.0], 0.07, C("#5a4030"));
+      for (const [r, z, k] of [[1.0, 2.0, 1], [1.2, 2.5, 0.94], [0.8, 3.1, 1.06]] as const) {
+        for (const w of rectWalls(ps - r, ps + r, pt - r, pt + r)) d.plate(w, 0, w.len, z0 + z, z0 + z + 0.6, 0, 0, shade(LEAF, k), true);
+        slab(d, [[ps - r, pt - r], [ps + r, pt - r], [ps + r, pt + r], [ps - r, pt + r]], z0 + z + 0.55, z0 + z + 0.6, shade(LEAF, k * 1.05), shade(LEAF, k));
+      }
+    }
+    // Panneau « DRIVE → » tourné vers l'entrée (la route, −t) : deux poteaux, caisson vert sombre.
+    if (site.sign) {
+      const [ss, st] = site.sign, z0 = ground(ss, st);
+      for (const k of [-1, 1]) d.bar([ss + k * 0.6, st, z0 - 0.1], [ss + k * 0.6, st, z0 + 1.9], 0.05, RAIL_GREY);
+      const w = wallOf([ss - 0.85, st - 0.06], [ss + 0.85, st - 0.06]);
+      d.plate(w, 0, w.len, z0 + 1.0, z0 + 1.95, 0, 0.12, SIGN_GREEN);
+      wallText(sinks, d, w, "DRIVE →", w.len / 2, z0 + 1.48, 0.42, "#ffffff", 0.13);
+    }
   }
 }
 
@@ -448,6 +535,49 @@ export function buildBowling(sinks: LandmarkSinks, m: BowlingModel, terrain: Hei
       glassDoor(sinks, d, nw, u, 1.9, 2.3, true);
       d.plate(nw, u - 0.9, u + 0.9, g0 + 2.55, g0 + 2.95, 0, 0.04, C("#f4f2ec"), true);
       wallText(sinks, d, nw, label, u, g0 + 2.75, 0.26, INK, 0.05);
+    }
+  }
+
+  // --- Abords (D236) : haie de la D680, terrasse du pignon de la route, panneau du coin ouest ---------------------------------------------
+  const site = m.site;
+  if (site) {
+    hedgeAlong(d, site.hedge, ROADSIDE_HEDGE_H, 1.4);
+    for (const r of site.rails) railing(d, r, TERRACE_RAIL_H, IRON, 0.5);
+    // Jardinières de béton au pied du garde-corps, devant la terrasse (photo de la terrasse).
+    for (const r of site.rails) {
+      for (let i = 0; i + 1 < r.length; i++) {
+        const w = wallOf(r[i]!, r[i + 1]!);
+        if (Math.abs(r[i]![1] - r[i + 1]![1]) > 0.05) continue;
+        for (let u = 0.35; u < w.len - 0.3; u += 0.65) {
+          const [ps, pt] = d.on(w, u, 0.45), z0 = ground(ps, pt);
+          for (const ww of rectWalls(ps - 0.25, ps + 0.25, pt - 0.25, pt + 0.25)) d.plate(ww, 0, ww.len, z0 - 0.1, z0 + 0.45, 0, 0, PLANTER, true);
+          slab(d, [[ps - 0.25, pt - 0.25], [ps + 0.25, pt - 0.25], [ps + 0.25, pt + 0.25], [ps - 0.25, pt + 0.25]], z0 + 0.4, z0 + 0.45, shade(LEAF, 0.9), PLANTER);
+        }
+      }
+    }
+    // Tables carrées à pied central, deux chaises de part et d'autre.
+    for (const [ts, tt] of site.tables) {
+      const z0 = ground(ts, tt);
+      d.bar([ts, tt, z0], [ts, tt, z0 + 0.72], 0.03, IRON);
+      slab(d, [[ts - 0.4, tt - 0.4], [ts + 0.4, tt - 0.4], [ts + 0.4, tt + 0.4], [ts - 0.4, tt + 0.4]], z0 + 0.72, z0 + 0.75, TABLE, TABLE);
+      for (const k of [-1, 1]) {
+        const cs = ts + k * 0.75;
+        slab(d, [[cs - 0.22, tt - 0.22], [cs + 0.22, tt - 0.22], [cs + 0.22, tt + 0.22], [cs - 0.22, tt + 0.22]], z0 + 0.42, z0 + 0.46, TABLE, TABLE);
+        const back = cs + k * 0.22;
+        d.bar([back, tt - 0.2, z0], [back, tt - 0.2, z0 + 0.9], 0.012, IRON);
+        d.bar([back, tt + 0.2, z0], [back, tt + 0.2, z0 + 0.9], 0.012, IRON);
+        d.bar([back, tt - 0.2, z0 + 0.88], [back, tt + 0.2, z0 + 0.88], 0.02, IRON);
+      }
+    }
+    // Panneau « BOWLING ← CAVE À BIÈRE » tourné vers le McDonald's (ouest, −s) : haut noir, bas rouge, deux poteaux.
+    {
+      const [ss, st] = site.sign, z0 = ground(ss, st);
+      for (const k of [-1, 1]) d.bar([ss, st + k * 0.8, z0 - 0.1], [ss, st + k * 0.8, z0 + 2.4], 0.05, RAIL_GREY);
+      const w = wallOf([ss - 0.06, st + 1.0], [ss - 0.06, st - 1.0]);
+      d.plate(w, 0, w.len, z0 + 1.75, z0 + 2.45, 0, 0.1, BLACK);
+      d.plate(w, 0, w.len, z0 + 1.0, z0 + 1.75, 0, 0.1, C(LOGO_RED));
+      wallText(sinks, d, w, "BOWLING ←", w.len / 2, z0 + 2.1, 0.32, "#ffffff", 0.11);
+      wallText(sinks, d, w, "CAVE À BIÈRE", w.len / 2, z0 + 1.38, 0.3, "#ffffff", 0.11);
     }
   }
 }

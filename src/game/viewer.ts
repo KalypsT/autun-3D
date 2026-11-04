@@ -40,7 +40,7 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   // Bowling Strike Bowl (D234) : depuis la route de Chalon, depuis le parking nord, la terrasse du pignon sud ; les deux vus d'en haut.
   bowling: [1406.4, 624.0, 1.7, 1419.5, 655.4, 4],
   "bowling-parking": [1429.9, 694.9, 1.7, 1420.3, 666.2, 4],
-  "bowling-terrasse": [1393.7, 643.6, 1.7, 1419.6, 646.5, 3],
+  "bowling-terrasse": [1402.6, 645.9, 1.7, 1421.0, 642.5, 2],
   "route-chalon-haut": [1375.6, 615.7, 40, 1402.0, 669.6, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],

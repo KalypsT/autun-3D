@@ -509,7 +509,17 @@ export interface McdoModel {
    * Abords des façades (D235, photos et relevé, repère du corps) : pied du totem M, portique de 2,75 m au-dessus de la voie du drive (s0,
    * s1 des poteaux, t), panneaux du menu (s, t, tournés vers la voie, à l'ouest).
    */
-  site?: { totem: [number, number]; gantry: [number, number, number]; menus: [number, number][] };
+  site?: {
+    totem: [number, number];
+    gantry: [number, number, number];
+    menus: [number, number][];
+    /** Terrasse (D236) : centres des parasols carrés, garde-corps (polylignes), lanternes sur poteaux ; gros pot rouge et panneau « DRIVE → » de l'îlot de l'entrée. */
+    parasols?: [number, number][];
+    rails?: [number, number][][];
+    lamps?: [number, number][];
+    pot?: [number, number];
+    sign?: [number, number];
+  };
 }
 
 /** Volume rectangulaire mesuré (D234) : s0, s1, t0, t1, haut du bord, haut (85ᵉ centile), bas (15ᵉ centile) du relevé sur le toit. */
@@ -535,6 +545,11 @@ export interface BowlingModel {
   east: MeasuredPiece[];
   low: MeasuredPiece[];
   pergola: MeasuredPiece[];
+  /**
+   * Abords (D236, orthophotographie et photos, repère de la halle) : haie taillée le long de la D680 (polyligne), garde-corps de la terrasse
+   * du pignon de la route (polylignes), tables de la terrasse, panneau « BOWLING ← CAVE À BIÈRE » au coin ouest de la haie.
+   */
+  site?: { hedge: [number, number][]; rails: [number, number][][]; tables: [number, number][]; sign: [number, number] };
 }
 
 /**

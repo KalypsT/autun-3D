@@ -29,6 +29,8 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
 };
 const MARK_LIFT = 0.08;
 const MARK_YELLOW = "#e8c12f";
+/** Bleu des places PMR (D236), posé sous les traits blancs. */
+const MARK_BLUE = "#2f6db5";
 const MAX_EDGE = 5;
 const CURB_FOOT = 0.0;
 
@@ -70,6 +72,12 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
         yield;
       }
     }
+  }
+  // Fond bleu des places PMR (D236), juste sous les traits blancs.
+  const blue = new THREE.Color(MARK_BLUE);
+  for (const poly of layers["marks_blue"] ?? []) {
+    fillOnTerrain(mb, poly, MARK_LIFT - 0.01, blue, terrain, false);
+    yield;
   }
   const marks = new THREE.Color(T.trim);
   for (const poly of layers["marks"] ?? []) {

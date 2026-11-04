@@ -1723,3 +1723,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![McDonald's côté parking](docs/captures/d235-mcdo-parking.jpg)
 ![Le drive et le totem](docs/captures/d235-mcdo-drive.jpg)
 ![Bowling depuis la route](docs/captures/d235-bowling-route.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 3 : les parkings et les abords (4 novembre 2026)** (D236)
+- Parking du McDonald's lu sur l'orthophotographie : la rangée nord (cinq places, retrouvées par les voitures du jeu), deux places PMR peintes en bleu devant le long côté (nouvelle couche de marquage bleu, utilisable partout), la rangée le long de la haie au sud-ouest, deux flèches sur la voie du drive.
+- La terrasse du McDonald's : quatre parasols vert sombre, garde-corps, lanternes ; le gros pot rouge et le panneau « DRIVE → » à l'entrée.
+- Le bowling : la dalle de béton du parking nord, sans les traits inventés ; la haie le long de la D680 ; la terrasse au gazon synthétique avec garde-corps, jardinières, tables et chaises ; le panneau « BOWLING ← CAVE À BIÈRE ».
+- **Le McDonald's et le bowling sont terminés** (étapes 1 à 3).
+
+![Vue haute](docs/captures/d236-haut.jpg)
+![La terrasse du McDonald's](docs/captures/d236-mcdo-terrasse.jpg)
+![La terrasse du bowling](docs/captures/d236-bowling-terrasse.jpg)
