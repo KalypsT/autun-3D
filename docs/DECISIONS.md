@@ -4553,3 +4553,36 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![De dos, depuis l'allée des tilleuls](captures/d227-monument-dos.jpg)
 ![De côté](captures/d227-monument-cote.jpg)
 ![Le génie ailé](captures/d227-monument-statue.jpg)
+
+## 2026-11-04 — D228. La gare d'Autun, étape 1 : volumes mesurés, toits et façades d'après photos
+
+**Demande de l'utilisateur** : intégrer correctement la gare (bâtiment, parking et quais), en trois étapes : le bâtiment, puis les quais, puis le parvis et le parking. Photos fournies (non versionnées, elles servent seulement à décrire) : la façade sur le parvis de face (une photo ancienne à l'enseigne SNCF, une d'octobre 2025 « GARE D'AUTUN », qui fait foi), le côté des voies avec la marquise, des vues Google Street View (parvis et avenue, juillet 2023 et juillet 2025 ; parking en gravier à l'est, octobre 2022), la marquise du quai 1, le quai central et son abri parapluie, une vue aérienne. Lecture : pavillon central à deux niveaux et cinq travées en pierre claire (chaînes d'angle en harpe, bandes de l'avant-corps de trois travées, cinq arcades vitrées à allèges blanches au rez-de-chaussée, bandeau à l'inscription, cinq fenêtres à balconnets à l'étage, corniche, fronton à horloge sur le parvis et à œil-de-bœuf côté voies, toit de tuiles à croupes, épis, souches de cheminée) ; ailes basses enduites de crème, à croupes, baies cintrées dans des tables entre pilastres plats, soubassement de pierre ; aile en retour vers le parvis au bout est ; cartouche « AUTUN » sur les pignons.
+
+**Constat** : la gare était un gabarit générique en L (type `station`) : mur continu à petites fenêtres à volets, porte vitrée au milieu, nom et horloge sur les deux grands murs, sans pavillon ni fronton. L'emprise BD TOPO est **décalée d'environ 1,2 m vers les voies** (et de 0,8 m vers l'ouest) par rapport au relevé ; le reste du plan (pavillon en saillie, retour à l'est) est juste.
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveau modèle `station` de `build_monuments.py`, entrée du bâtiment dans `monuments` de `manual.json`) : repère sur l'arête BD TOPO la plus longue tournée vers `faces` (sud-est, le parvis) ; bords des toits = passage du modèle de surface au-dessus de 2,5 m (ailes, retour) ou à mi-hauteur de la marche entre l'égout des ailes et la corniche du pavillon, médianes sur les tronçons dégagés ; murs 35 cm (débord des ailes) et 30 cm (corniche du pavillon) en dedans. Corps de **57,7 × 8,7 m** le long des voies ; pavillon de **15,4 × 9,9 m** à 17,7 m du pignon ouest, qui déborde de 0,6 m sur le parvis et sur les voies ; retour de 7,8 m de large, 14,5 m devant la façade. Hauteurs au-dessus du parvis : ailes, égout **5,1 m** et faîtage 7,7 m ; pavillon, haut de la corniche **9,0 m**, faîtage 11,9 m (de 3,5 m à 3,7 m des bouts : croupes plus raides que les long-pans) ; frontons, pointe **11,1 m**, demi-largeur 4,1 m à la base. Niveaux de la photo de face, mis à l'échelle de la corniche mesurée : baies du rez-de-chaussée de 0,15 à 3,75 m, bandeau de 4,8 à 5,1 m (à la hauteur de la corniche des ailes, comme sur la photo), fenêtres de l'étage de 5,55 à 7,6 m, bas de la corniche 8,55 m. Cinq travées par aile sur le parvis (photo 2 et Street View de juillet 2023). Champ `sta` du bâtiment dans `kinds/24_37.json` ; une deuxième passe ne change rien.
+
+**Rendu** (`buildStation`, `src/render/station.ts`, dans les maillages de la tuile : aucun appel de dessin de plus, **5 606 triangles** et 90 de vitres allumées ; la classe de dessin du théâtre municipal, `Draw`, est exportée et partagée) :
+- **toits** : union de toits à croupes (chaque toit est le plus bas de ses plans, plusieurs toits accolés le plus haut d'entre eux, découpé en morceaux convexes à plat) : les ailes et le retour se rejoignent en **noue**, le toit des frontons meurt dans les croupes du pavillon ; chéneau de zinc et sous-face du débord ; tuiles mécaniques brunies ;
+- **pavillon** : soubassement, bandeau, corniche, chaînes d'angle en harpe, bandes de l'avant-corps ; cinq arcades vitrées (allèges blanches, petits bois, clés), la porte au milieu, sur le parvis et sur les voies ; cinq fenêtres à appui, linteau et **balconnet** de fer ; panneau blanc « GARE D'AUTUN » en lettres bleu nuit sur le bandeau ; frontons à tympan de pierre et corniches rampantes, **horloge** (cadran blanc, cercle bleu, aiguilles) sur le parvis, **œil-de-bœuf** côté voies ; épis aux bouts du faîtage, trois souches de brique (deux à l'ouest, comme sur la photo) ;
+- **ailes** : enduit crème sur soubassement de pierre, corniche ; sur le parvis, **tables entre pilastres plats** et une baie cintrée par table (menuiseries blanches, allèges), la plus proche du pavillon à l'ouest est une porte ; côté voies, portes et grandes fenêtres alternées tous les 3,5 m ; pignon ouest à deux baies et **cartouche « AUTUN »** ;
+- **retour** : face est d'après la vue du parking en gravier (une porte, deux grandes baies, trois petites, le cartouche « AUTUN » du pignon est) ; face ouest et bout sur l'avenue sans photo : tables comme les ailes.
+
+**Obstacle** : les murs mesurés (`stationRing`, comme le théâtre) au lieu de l'emprise BD TOPO ; on longe la façade sur le parvis sans heurter le mur décalé. **Silhouette lointaine** : trois prismes (corps, retour, pavillon) dans `lod/24_37.json`. Vue `?view=gare` (de face depuis le parvis).
+
+**Pas encore** (étapes suivantes) :
+- **Quais (étape 2)** : la **marquise** sur consoles en fonte (sa couverture translucide n'apparaît pas au LiDAR : à dessiner d'après les photos), le panneau « AUTUN » suspendu, l'**abri parapluie** du quai central (c'est le « bâtiment industriel » BD TOPO de 4 m posé entre les voies, `BATIMENT0000000035041726`, aujourd'hui une boîte à portes), la traversée à niveau (dalles, bandes jaunes et noires), le petit abri vitré.
+- **Parvis et parking (étape 3)** : allée de pavés, marquage des places (à l'ouest, les traits retrouvés partent dans tous les sens), gare routière (places en zigzag jaune, abris de bus), abri de parking en bois, mur blanc du quai, lampadaires doubles, massif.
+- La navigation n'est pas régénérée : un chemin de passant s'arrête 70 cm dans la façade du pavillon (au droit d'une arcade).
+- Face ouest et bout sud du retour, pignon est : sans photo, approchés. L'aile est sur le parvis, à moitié cachée par un tilleul, prend le rythme de l'aile ouest.
+
+**Tests** (+3 : `station.test.ts`) : volumes plausibles, obstacle proche de l'emprise BD TOPO et façade tournée vers le sud-est, on ne traverse pas la façade du pavillon mais on la longe ; géométrie finie et bornée, inscriptions.
+
+![Avant](captures/d228-gare-avant.jpg)
+![Après](captures/d228-gare-apres.jpg)
+![Depuis le parvis, côté ouest, avant](captures/d228-gare-ouest-avant.jpg)
+![Depuis le parvis, côté ouest, après](captures/d228-gare-ouest-apres.jpg)
+![Vue haute, avant](captures/d228-gare-haut-avant.jpg)
+![Vue haute, après](captures/d228-gare-haut-apres.jpg)
+![Le retour depuis le parking à l'est](captures/d228-gare-retour-est.jpg)
+![Côté voies](captures/d228-gare-voies.jpg)

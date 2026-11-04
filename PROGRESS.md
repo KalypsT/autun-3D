@@ -1638,3 +1638,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![De face](docs/captures/d227-monument-face.jpg)
 ![De dos](docs/captures/d227-monument-dos.jpg)
+
+**La gare, étape 1 : le bâtiment (4 novembre 2026)** (D228)
+- La gare d'après tes photos : pavillon central à deux niveaux et cinq travées, fronton à horloge sur le parvis et à œil-de-bœuf côté voies, cinq arcades vitrées, inscription « GARE D'AUTUN » sur le bandeau, fenêtres à balconnets, chaînes d'angle, toit de tuiles à croupes avec épis et cheminées.
+- Les ailes basses à croupes, enduites de crème, avec leurs baies cintrées entre pilastres plats (cinq par aile sur le parvis), le retour vers le parking à l'est, le cartouche « AUTUN » des pignons.
+- Mesurée au LiDAR : 57,7 m le long des voies, pavillon de 15,4 m ; ailes à 5,1 m à l'égout, pavillon à 9 m à la corniche, 11,9 m au faîtage. L'ancienne emprise était décalée de 1,2 m vers les voies : les murs (et l'obstacle) sont à leur vraie place.
+- `?view=gare` : de face depuis le parvis.
+- Prochaines étapes : les quais (marquise, abri parapluie du quai central, traversée), puis le parvis et le parking (marquage, gare routière, abri en bois).
+
+![Avant](docs/captures/d228-gare-avant.jpg)
+![Après](docs/captures/d228-gare-apres.jpg)
+![Vue haute](docs/captures/d228-gare-haut-apres.jpg)

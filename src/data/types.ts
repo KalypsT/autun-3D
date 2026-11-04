@@ -407,6 +407,8 @@ export interface BuildingKind {
   hall?: TownHallSpec;
   /** Théâtre municipal d'après photos et relevé LiDAR (D223) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   play?: PlayhouseModel;
+  /** Gare d'après photos et relevé LiDAR (D228) : modèle dédié (remplace murs, toit, façade, inscription et obstacle génériques). */
+  sta?: StationModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -444,6 +446,31 @@ export interface PlayhouseModel {
   perron: [number, number, number, number, number];
   levels: [number, number, number, number, number];
   pav: number;
+}
+
+/**
+ * Gare (D228, tools/data/build_monuments.py, modèle `station`). Repère : origine au coin ouest de la façade des ailes sur le parvis (`o`,
+ * mur extérieur), s le long de la façade selon l'angle `a` (de gauche à droite vu du parvis), t vers l'intérieur (les voies). Corps le
+ * long des voies de 0 à `l` sur 0 à `d` ; pavillon central `pav` (s0, s1, t0, t1 : il déborde des deux côtés) ; aile en retour vers le
+ * parvis au bout est, de `ret[0]` à `l`, jusqu'à t = `ret[1]` (négatif). Altitudes locales : sol du parvis `g` ; ailes : égout au droit
+ * du mur, faîtage ; pavillon `pv` : haut de la corniche, faîtage, bouts du faîtage (s) ; frontons `ped` : demi-largeur à la base, pointe.
+ * `bays` : travées des ailes ouest et est sur le parvis ; `levels` (photo, au-dessus de `g`) : bas des baies, haut des arcs du
+ * rez-de-chaussée, bas et haut du bandeau, appui et haut des fenêtres de l'étage, bas de la corniche du pavillon.
+ */
+export interface StationModel {
+  o: [number, number];
+  a: number;
+  l: number;
+  d: number;
+  pav: [number, number, number, number];
+  ret: [number, number];
+  g: number;
+  eave: number;
+  ridge: number;
+  pv: [number, number, number, number];
+  ped: [number, number];
+  bays: [number, number];
+  levels: [number, number, number, number, number, number, number];
 }
 
 /**

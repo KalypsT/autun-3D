@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -529,6 +529,25 @@ export function playhouseRing(m: PlayhouseModel): number[] {
   return playhouseOutline(m).flatMap(([s, t]) => at(f, s, t));
 }
 
+// --- Gare (D228) -------------------------------------------------------------------------------------------------------------------
+
+/** Repère de la gare : origine au coin ouest de la façade des ailes sur le parvis, s le long de la façade, t vers les voies. */
+export function stationFrame(m: StationModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Contour des murs en (s, t), dans le sens trigonométrique : ailes, pavillon qui déborde des deux côtés, aile en retour vers le parvis. */
+export function stationOutline(m: StationModel): [number, number][] {
+  const [p0, p1, q0, q1] = m.pav, [r0, rt] = m.ret;
+  return [[0, 0], [p0, 0], [p0, q0], [p1, q0], [p1, 0], [r0, 0], [r0, rt], [m.l, rt], [m.l, m.d], [p1, m.d], [p1, q1], [p0, q1], [p0, m.d], [0, m.d]];
+}
+
+/** Obstacle de la gare (à la place du contour BD TOPO, décalé d'environ 1,2 m vers les voies) : ses murs mesurés. */
+export function stationRing(m: StationModel): number[] {
+  const f = stationFrame(m);
+  return stationOutline(m).flatMap(([s, t]) => at(f, s, t));
+}
+
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
   const k = kinds?.buildings[id]?.k;
@@ -537,10 +556,10 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
 
 /**
  * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
- * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223…).
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta);
 }
 
 /**

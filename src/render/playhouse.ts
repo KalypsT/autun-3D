@@ -24,18 +24,18 @@ const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0"), IRON = C("#25292a");
 /** Saillie de la corniche, épaisseur de l'attique, débord des pans de la cage de scène. */
 const CORNICE = 0.45, ATTIC = 0.3, OVERHANG = 0.2;
 
-type ST = [number, number];
-type STZ = [number, number, number];
+export type ST = [number, number];
+export type STZ = [number, number, number];
 
 /** Mur droit de a à b (s, t), normale sortante à droite de a → b (contour trigonométrique). */
-interface PWall {
+export interface PWall {
   a: ST;
   b: ST;
   out: ST;
   len: number;
 }
 
-const wallOf = (a: ST, b: ST): PWall => {
+export const wallOf = (a: ST, b: ST): PWall => {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   return { a, b, len, out: [(b[1] - a[1]) / len, -(b[0] - a[0]) / len] };
 };
@@ -46,7 +46,7 @@ function rnd(k: number): number {
   return x - Math.floor(x);
 }
 
-class Draw {
+export class Draw {
   constructor(readonly mb: MeshBuilder, readonly glow: MeshBuilder, readonly f: Frame, readonly ground: (s: number, t: number) => number) {}
 
   P(s: number, t: number, z: number): Vec3 {
@@ -358,7 +358,7 @@ class Draw {
 }
 
 /** Normale (three) du triangle a, b, c, tournée vers le haut. */
-function up(a: Vec3, b: Vec3, c: Vec3): Vec3 {
+export function up(a: Vec3, b: Vec3, c: Vec3): Vec3 {
   const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
   let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
   if (ny < 0) [nx, ny, nz] = [-nx, -ny, -nz];

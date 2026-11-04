@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -17,6 +17,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
           théâtre municipal (modèle `playhouse`, D223) : champ `play` du bâtiment (murs, toit brisé du corps avant, cage de scène, fronton D224, perron mesuré au relief D225) et silhouette lointaine ;
+          gare (modèle `station`, D228) : champ `sta` du bâtiment (ailes, pavillon et frontons, retour vers le parvis) et silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -319,6 +320,149 @@ def playhouse(tid, bid, b, spec, k):
     rect = lambda a0, a1, b0, b1: [(a0, b0), (a1, b0), (a1, b1), (a0, b1)]
     polys = [(rect(0, W, 0, ts), m["eave"], m["eave"]), (rect(iL, W - iR, ts, tt), m["eave"], m["roof"][3]),
              (rect(iL, W - iR, tt, tr), m["tower"][0], m["tower"][1])]
+    lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
+    return ch, tid if lod else None
+
+
+def measure_station(bid, b, spec):
+    """Gare (D228) : ailes basses à croupes, pavillon central à deux niveaux (toit à croupes, frontons sur les deux faces), aile en retour
+    vers le parvis au bout est, lus sur le modèle de surface. Le contour BD TOPO est décalé d'environ 1,2 m vers les voies : il ne sert qu'au
+    repère (arête la plus longue tournée vers `faces`, le parvis) et à la fenêtre de lecture.
+
+    Repère : s le long de la façade sur le parvis, de gauche à droite vu du parvis ; t vers l'intérieur (les voies). Bords des toits = passage
+    du modèle de surface au-dessus d'un seuil, médianes sur les tronçons dégagés ; murs `overhang` (ailes) et `cornice` (pavillon) en dedans.
+    """
+    ring = pairs(b["ring"])
+    if area(ring) < 0:
+        ring = ring[::-1]
+    n = len(ring)
+    th = math.radians(COMPASS[spec["faces"]])
+    best = None
+    for i in range(n):
+        (ax, ay), (bx, by) = ring[i], ring[(i + 1) % n]
+        ln = math.hypot(bx - ax, by - ay)
+        if ln < 1:
+            continue
+        nx, ny = (by - ay) / ln, -(bx - ax) / ln  # normale sortante (contour trigonométrique)
+        if nx * math.cos(th) + ny * math.sin(th) > math.cos(math.radians(30)) and (best is None or ln > best[0]):
+            best = (ln, ax, ay, (bx - ax) / ln, (by - ay) / ln)
+    if best is None:
+        raise SystemExit(f"{bid} : aucun mur tourné vers {spec['faces']}")
+    _, ox, oy, ux, uy = best
+    vx, vy = -uy, ux
+    st = lambda p: ((p[0] - ox) * ux + (p[1] - oy) * uy, (p[0] - ox) * vx + (p[1] - oy) * vy)
+    xy = lambda s, t: (ox + ux * s + vx * t, oy + uy * s + vy * t)
+    R = [st(p) for p in ring]
+    smin, smax = min(p[0] for p in R), max(p[0] for p in R)
+    tmin, tmax = min(p[1] for p in R), max(p[1] for p in R)
+    xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+    box = (math.floor(min(xs) - MARGIN), math.floor(min(ys) - MARGIN), math.ceil(max(xs) + MARGIN), math.ceil(max(ys) + MARGIN))
+    mns, mnt = Raster("MNS", bid, *box), Raster("MNT", bid, *box)
+    S = lambda s, t: mns(*xy(s, t))
+    r2 = lambda v: round(float(v), 2)
+    med = lambda v: float(np.median(v))
+    # Corps le long des voies : la bande de t où l'arête BD TOPO de la façade est droite (hors du retour, qui part vers le parvis).
+    tb0 = min(p[1] for p in R if p[0] < smin + 1)  # façade de l'aile ouest (BD TOPO)
+    tb1 = max(p[1] for p in R if p[0] < smin + 1)  # côté voies
+    tmid = (tb0 + tb1) / 2
+    # Sol du parvis devant l'aile ouest (hors des tilleuls : l'aile est longée par l'allée, les arbres sont plus loin).
+    g0 = med([mnt(*xy(s, t)) for s in np.arange(smin + 2, smin + 15, 0.5) for t in (tb0 - 2.5, tb0 - 3.5)])
+    edge = lambda f, a, b_, d, thr: next((float(x) for x in np.arange(a, b_, d) if f(x) < thr), None)
+    low = g0 + 2.5
+    # Ailes : bords avant et arrière du toit, de l'intérieur vers l'extérieur, sur des tronçons hors du pavillon et du retour.
+    wing_s = [s for s in np.arange(smin + 2, smax - 2, 0.5)]
+    fr, bk = [], []
+    for s in wing_s:
+        if S(s, tmid) > g0 + 8.6 or S(s, tmid) < g0 + 6:  # pavillon, ou hors du toit
+            continue
+        a_ = edge(lambda t: S(s, t), tmid, tmid - 8, -0.25, low)
+        b_ = edge(lambda t: S(s, t), tmid, tmid + 8, 0.25, low)
+        if a_ is not None and b_ is not None:
+            fr.append(a_)
+            bk.append(b_)
+    tF, tB = med(fr), med(bk)
+    tc = (tF + tB) / 2
+    # Bouts du corps : ouest et est sur l'axe.
+    sW = edge(lambda s: S(s, tc), smin + 6, smin - 8, -0.25, low)
+    sE = edge(lambda s: S(s, tc), smax - 6, smax + 8, 0.25, low)
+    # Pavillon : plus haut que le faîtage des ailes. Repérage grossier sur l'axe, puis bords à mi-hauteur de la marche entre l'égout des ailes
+    # et la corniche du pavillon, sur des lignes juste derrière les murs (là où les ailes sont au plus bas).
+    hiP = g0 + 8.6
+    p0 = edge(lambda s: -S(s, tc), sW + 1, sE, 0.25, -hiP)
+    p1 = edge(lambda s: -S(s, tc), sE - 1, sW, -0.25, -hiP)
+    pm = (p0 + p1) / 2
+    cols = lambda a_, b_: [s for s in np.arange(a_ + 1, b_ - 1, 0.5) if abs(s - pm) > 4.6]  # hors des frontons
+    rough = med([S(s, t) for s in cols(p0, p1) for t in (tF + 1, tB - 1)])
+    mid_t = lambda zz: (med([edge(lambda t: S(s, t), tc, tc - 9, -0.25, zz) for s in cols(p0, p1)]),
+                       med([edge(lambda t: S(s, t), tc, tc + 9, 0.25, zz) for s in cols(p0, p1)]))
+    pT0, pT1 = mid_t(g0 + (rough - g0) / 2)
+    rowsP = [t for t in np.arange(tF + 0.4, tF + 1.6, 0.25)] + [t for t in np.arange(tB - 1.6, tB - 0.4, 0.25)]
+    wing_lo = med([S(s, t) for s in np.arange(sW + 5, p0 - 5, 0.5) for t in rowsP])
+    thrP = (wing_lo + rough) / 2
+    pS0 = med([edge(lambda s: S(s, t), pm, sW, -0.25, thrP) for t in rowsP])
+    pS1 = med([edge(lambda s: S(s, t), pm, sE, 0.25, thrP) for t in rowsP])
+    pm = (pS0 + pS1) / 2
+    # Retour vers le parvis au bout est : bords en s sur des lignes devant la façade, bout en t sur son axe.
+    rowsR = np.arange(tF - 12, tF - 3, 0.5)
+    rl = [edge(lambda s: -S(s, t), sE - 10, sE, 0.25, -low) for t in rowsR]  # les tilleuls du parvis sont plus à l'ouest
+    rS0 = med([x for x in rl if x is not None])
+    rm = (rS0 + sE) / 2
+    rT = edge(lambda t: S(rm, t), tF - 3, tF - 30, -0.25, low)
+    # Hauteurs : ailes (profil en travers, médiane sur les tronçons dégagés), pavillon, frontons.
+    clear = [s for s in wing_s if sW + 4 < s < pS0 - 4 or pS1 + 4 < s < rS0 - 4]  # ailes hors des croupes, du pavillon et du retour
+    halves = np.arange(0.25, (tB - tF) / 2, 0.25)
+    prof = np.array([med([S(s, tc - h) for s in clear] + [S(s, tc + h) for s in clear]) for h in halves])
+    ridge = float(prof.max())
+    sl = (halves >= 1.0) & (halves <= (tB - tF) / 2 - 1.0)
+    k1, z1 = np.polyfit(halves[sl], prof[sl], 1)
+    oh, c = spec["overhang"], spec["cornice"]
+    D = tB - tF - 2 * oh
+    eave = z1 + k1 * (D / 2)  # égout au droit du mur
+    pc = med([S(s, t) for s in cols(pS0, pS1) for t in (pT0 + 1.0, pT1 - 1.0)])  # haut de la corniche du pavillon
+    along = np.arange(pS0, pS1, 0.25)
+    rz = [S(s, tc) for s in along]
+    pr_top = float(np.percentile(rz, 95))
+    flat = [s for s, z in zip(along, rz) if z > pr_top - 0.2]
+    ped = med([S(s, t) for s in np.arange(pm - 0.5, pm + 0.6, 0.25) for t in (pT0 + 1.0, pT1 - 1.0)])
+    # Demi-largeur du fronton : là où la ligne derrière la façade du pavillon dépasse la corniche de 30 cm.
+    hw = med([pm - edge(lambda s: S(s, t), pm, pS0, -0.25, pc + 0.3) for t in (pT0 + 1.0, pT1 - 1.0)]
+             + [edge(lambda s: S(s, t), pm, pS1, 0.25, pc + 0.3) - pm for t in (pT0 + 1.0, pT1 - 1.0)])
+    hw *= (ped - pc) / (ped - pc - 0.3)  # demi-largeur à la base du fronton (rampants droits)
+    s0 = sW + oh  # origine : coin ouest de la façade des ailes sur le parvis
+    t0 = tF + oh
+    loc = lambda s: r2(s - s0)
+    out = {
+        "o": [r2(xy(s0, t0)[0]), r2(xy(s0, t0)[1])], "a": round(math.atan2(uy, ux), 5),
+        "l": loc(sE - oh), "d": r2(D),
+        "pav": [loc(pS0 + c), loc(pS1 - c), r2(pT0 + c - t0), r2(pT1 - c - t0)],
+        "ret": [loc(rS0 + oh), r2(rT + oh - t0)],
+        "g": r2(g0), "eave": r2(eave), "ridge": r2(ridge),
+        "pv": [r2(pc), r2(pr_top), loc(min(flat)), loc(max(flat))], "ped": [r2(hw), r2(ped)],
+        "bays": spec["bays"], "levels": spec["levels"],
+    }
+    return out
+
+
+def station(tid, bid, b, spec, k):
+    """Gare (D228) : champ `sta` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = measure_station(bid, b, spec)
+    e = dict(k["buildings"].get(bid, {"k": "station"}))
+    e["sta"] = m
+    g = m["g"]
+    p = m["pav"]
+    print(f"  sol du parvis {g:.2f}")
+    print(f"  {bid} : corps de {m['l']} × {m['d']} m (égout {m['eave'] - g:.1f}, faîtage {m['ridge'] - g:.1f}) ; pavillon de {p[1] - p[0]:.1f} × "
+          f"{p[3] - p[2]:.1f} m à {p[0]} m (corniche {m['pv'][0] - g:.1f}, faîtage {m['pv'][1] - g:.1f}, fronton {m['ped'][1] - g:.1f} m, "
+          f"demi-largeur {m['ped'][0]} m) ; retour de {m['l'] - m['ret'][0]:.1f} m jusqu'à {m['ret'][1]} m")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    ca, sa = math.cos(m["a"]), math.sin(m["a"])
+    xy = lambda s, t: [round(m["o"][0] + ca * s - sa * t, 1), round(m["o"][1] + sa * s + ca * t, 1)]
+    rect = lambda a0, a1, b0, b1: [(a0, b0), (a1, b0), (a1, b1), (a0, b1)]
+    L, D = m["l"], m["d"]
+    polys = [(rect(0, L, 0, D), m["eave"], m["ridge"]), (rect(m["ret"][0], L, m["ret"][1], 0), m["eave"], m["ridge"]),
+             (rect(p[0], p[1], p[2], p[3]), m["pv"][0], m["pv"][1])]
     lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
     return ch, tid if lod else None
 
@@ -1847,6 +1991,13 @@ def main():
             continue
         if spec["model"] == "playhouse":
             ch, lod = playhouse(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "station":
+            ch, lod = station(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:
