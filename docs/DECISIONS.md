@@ -4501,3 +4501,22 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 ![Le balcon et les lanternes](captures/d225-theatre-balcon.jpg)
 ![Le perron et ses rampes](captures/d225-theatre-perron.jpg)
 ![La nuit](captures/d225-theatre-nuit.jpg)
+
+## 2026-11-04 — D226. Le théâtre municipal, étape 4 : ornements du toit, escalier de secours
+
+**D'après les photos de l'utilisateur** (façade de face, vues Street View de l'arrière), dans `buildPlayhouse` (`src/render/playhouse.ts`) :
+- **Lucarnes des pavillons** : petit édicule de pierre posé sur l'attique au-dessus de chaque pavillon (2,1 m de large, haut à 18,8 m au-dessus de la place, lu sur la photo), fronton triangulaire à corniche, toit en zinc à deux pans, **oculus** cerclé (l'un des deux allumé la nuit).
+- **Pots-à-feu** (socle, vase à panse et col, flamme) aux deux coins de la façade et sur les dés doublés entre pavillons et avant-corps, et sur les quatre piles d'angle des pignons de la cage de scène (photos de l'arrière).
+- **Épis** au-dessus des pavillons, sur le pan avant (tiges fines jusqu'à 20,5 m, bagues) ; **paratonnerre** à la pointe du pignon avant de la cage de scène.
+- **Ornement du pignon arrière** : aucune photo rapprochée ; sur les vues Street View, une forme ajourée sombre en éventail. Dessiné comme une **lyre rayonnante** de métal sombre (bras courbes, cordes, neuf rayons) sur un socle de pierre, environ 3 m au-dessus de la pointe : **forme approchée**, à corriger si une photo la montre.
+- **Escalier de secours** sur le pignon arrière, près du coin sud-ouest (photo de la rue Jondeau) : quatre paliers de caillebotis de 8,5 à 19 m, volées alternées (limons, marches, main courante), garde-corps et consoles, au-dessus des bâtiments accolés.
+- 10 311 triangles et 126 de vitres allumées pour tout le théâtre, toujours sans appel de dessin de plus.
+
+**Le plan du théâtre municipal est terminé** (D223 à D226). Restent possibles plus tard : la vraie forme de l'ornement du pignon arrière (avec une photo), l'intérieur (hors du jeu pour l'instant).
+
+**Tests** : la hauteur maximale admise passe au faîtage de la cage de scène + 3,5 m (lyre, paratonnerre) (`playhouse.test.ts`).
+
+![De face](captures/d226-theatre-face.jpg)
+![Les lucarnes et les pots-à-feu](captures/d226-theatre-detail.jpg)
+![L'arrière : lyre et escalier de secours](captures/d226-theatre-arriere.jpg)
+![Vue haute](captures/d226-theatre-haut.jpg)

@@ -1620,3 +1620,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Le balcon et les lanternes](docs/captures/d225-theatre-balcon.jpg)
 ![La nuit](docs/captures/d225-theatre-nuit.jpg)
+
+**Le théâtre municipal, étape 4 : ornements du toit (4 novembre 2026)** (D226)
+- Lucarnes à oculus au-dessus des pavillons, pots-à-feu aux coins de l'attique et sur les piles de la cage de scène, épis, paratonnerre.
+- À la pointe du pignon arrière, une lyre rayonnante en métal sombre (forme approchée : pas de photo rapprochée de l'ornement).
+- L'escalier de secours en fer sur le pignon arrière, comme sur la photo de la rue Jondeau.
+- **Le théâtre municipal est terminé** (étapes 1 à 4).
+
+![De face](docs/captures/d226-theatre-face.jpg)
+![L'arrière](docs/captures/d226-theatre-arriere.jpg)

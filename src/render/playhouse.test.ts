@@ -74,11 +74,11 @@ describe("théâtre municipal (D223)", () => {
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
     expect(tris).toBeGreaterThan(1000);
-    // D225 : 7 895 triangles avec balcons, perron et lanternes ; marge pour les ornements du toit.
+    // D226 : 10 311 triangles, ornements du toit compris.
     expect(tris).toBeLessThan(12000);
     expect(sinks.glow.positions.length).toBeGreaterThan(0);
     expect(texts).toEqual(["THEATRE"]);
-    // three : (x, z, −y) ; tout tient à 5 m de l'emprise mesurée, et sous le faîtage de la cage de scène (pignons et piles compris).
+    // three : (x, z, −y) ; tout tient à 5 m de l'emprise mesurée, et sous la pointe de la lyre du pignon arrière.
     const ring = playhouseRing(m);
     const xs = ring.filter((_, i) => i % 2 === 0), ys = ring.filter((_, i) => i % 2 === 1);
     for (let i = 0; i < p.length; i += 3) {
@@ -86,7 +86,8 @@ describe("théâtre municipal (D223)", () => {
       expect(p[i]!).toBeLessThan(Math.max(...xs) + 5);
       expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 5);
       expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 5);
-      expect(p[i + 1]!).toBeLessThan(m.tower[1] + 1);
+      // D226 : la lyre et le paratonnerre dépassent du faîtage de la cage de scène d'environ 3 m.
+      expect(p[i + 1]!).toBeLessThan(m.tower[1] + 3.5);
     }
   });
 

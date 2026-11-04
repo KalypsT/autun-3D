@@ -13,7 +13,8 @@ import { T } from "./style";
  * noble au centre ; quatre rangs de baies sur les côtés ; menuiseries rouges. Détail de la façade (D224) : pilastres à chapiteaux,
  * clés d'arcs, guirlandes, fenêtres des pavillons à fronton cintré et mascaron, modillons, attique à dés et panneaux sculptés, fronton
  * central à cartouche et volutes, chaînes d'angle de la cage de scène. D225 : balcon sur consoles, petits balcons des pavillons, perron
- * mesuré à rampes, lanternes. Les ornements du toit viendront ensuite.
+ * mesuré à rampes, lanternes. D226 : lucarnes à oculus des pavillons, pots-à-feu, épis, paratonnerre, lyre rayonnante du pignon arrière
+ * (forme approchée), escalier de secours de l'arrière.
  */
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -227,7 +228,7 @@ class Draw {
   }
 
   /** Barre de fer de section carrée (côté 2·r) de a à b, en (s, t, z). */
-  bar(a: STZ, b: STZ, r: number): void {
+  bar(a: STZ, b: STZ, r: number, col: THREE.Color = IRON): void {
     const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1;
     // Deux directions perpendiculaires à la barre.
     let px = -dy, py = dx, pz = 0;
@@ -242,7 +243,7 @@ class Draw {
       const [nx, ny] = at(this.f, px * nk + qx * nj, py * nk + qy * nj);
       const n0 = at(this.f, 0, 0);
       const nz = pz * nk + qz * nj, nl = Math.hypot(nx - n0[0], ny - n0[1], nz) || 1;
-      this.mb.quad(c(k0, j0, a), c(k1, j1, a), c(k1, j1, b), c(k0, j0, b), toThree((nx - n0[0]) / nl, (ny - n0[1]) / nl, nz / nl), IRON);
+      this.mb.quad(c(k0, j0, a), c(k1, j1, a), c(k1, j1, b), c(k0, j0, b), toThree((nx - n0[0]) / nl, (ny - n0[1]) / nl, nz / nl), col);
     }
   }
 
@@ -633,7 +634,121 @@ export function buildPlayhouse(sinks: LandmarkSinks, m: PlayhouseModel, terrain:
     for (const s of [sA, sB]) {
       const sc = s + (s === sA ? 0.4 : -0.4), tc = t + (dir < 0 ? 0.4 : -0.4);
       box(d, sc - 0.45, sc + 0.45, tc - 0.45, tc + 0.45, zTe - 1.2, zTe + 0.9, TRIM);
+      // Pot-à-feu sur chaque pile (photos de l'arrière).
+      potAFeu(d, sc, tc, zTe + 0.9, 1.0);
     }
+  }
+
+  // --- Ornements du toit (D226) -------------------------------------------------------------------------------------------------
+  // Lucarnes des pavillons (photo : petit édicule à fronton triangulaire et oculus, posé sur l'attique au-dessus de chaque pavillon).
+  const zLuc = g + 18.8, wl2 = 1.05;
+  for (const u of [pw / 2, W - pw / 2]) {
+    const t0 = -0.08, t1 = 1.3, zb = eave - 0.45, zs = zLuc - 0.6;
+    box(d, u - wl2, u + wl2, t0, t1, zb, zs, STONE);
+    // Fronton triangulaire (avant et arrière), corniche, toit à deux pans.
+    box(d, u - wl2 - 0.1, u + wl2 + 0.1, t0 - 0.06, t1, zs - 0.12, zs, TRIM);
+    for (const [t, dir] of [[t0 - 0.06, -1], [t1, 1]] as const) sinks.solid.tri(d.P(u - wl2 - 0.1, t, zs), d.P(u + wl2 + 0.1, t, zs), d.P(u, t, zLuc), d.N(0, dir), TRIM);
+    for (const dir of [-1, 1]) d.pan([u + dir * (wl2 + 0.15), t0 - 0.08, zs - 0.03], [u + dir * (wl2 + 0.15), t1, zs - 0.03], [u, t1, zLuc + 0.03], [u, t0 - 0.08, zLuc + 0.03], dir < 0 ? zinc : shade(zinc, 0.92));
+    // Oculus cerclé.
+    d.oval(front, u, (zb + zs) / 2 + 0.05, 0.42, 0.42, 0.1, shade(TRIM, 1.0), 14);
+    d.oval(front, u, (zb + zs) / 2 + 0.05, 0.3, 0.3, 0.13, C(T.glass[0]), 14);
+    if (rnd(u) < 0.5) {
+      const zc = (zb + zs) / 2 + 0.05, n = d.N(0, -1), c = d.P(...d.on(front, u, 0.135), zc);
+      for (let i = 0; i < 12; i++) {
+        const a0 = (Math.PI * 2 * i) / 12, a1 = (Math.PI * 2 * (i + 1)) / 12;
+        sinks.glow.tri(c, d.P(...d.on(front, u + Math.cos(a0) * 0.3, 0.135), zc + Math.sin(a0) * 0.3), d.P(...d.on(front, u + Math.cos(a1) * 0.3, 0.135), zc + Math.sin(a1) * 0.3), n, GLOW_LO);
+      }
+    }
+  }
+  // Pots-à-feu sur l'attique : aux deux coins de la façade et sur les dés doublés entre pavillons et avant-corps (photo).
+  for (const u of [0.35, pw, W - pw, W - 0.35]) potAFeu(d, u, 0.12, eave, 1.0);
+  // Épis de faîtage au-dessus des pavillons, sur le pan avant (photo : tiges fines jusqu'à 20,5 m environ).
+  for (const u of [pw / 2, W - pw / 2]) {
+    const t = 2.6, z = zWall + ((zBrk - zWall) / brk) * t;
+    box(d, u - 0.12, u + 0.12, t - 0.12, t + 0.12, z - 0.3, z + 0.4, zinc);
+    d.bar([u, t, z + 0.4], [u, t, g + 20.5], 0.025);
+    for (const zz of [z + 0.9, z + 1.5]) box(d, u - 0.07, u + 0.07, t - 0.07, t + 0.07, zz, zz + 0.14, IRON);
+  }
+  // Paratonnerre à la pointe du pignon avant de la cage de scène (photo de face).
+  d.bar([mid, tt, zTr + 0.35], [mid, tt, zTr + 3.0], 0.02);
+  // Ornement de la pointe du pignon arrière (photos Street View, pas de vue rapprochée : forme approchée) : lyre de métal sombre sur un
+  // socle, entourée de rayons.
+  lyre(d, mid, tr, zTr + 0.35);
+  // Escalier de secours de l'arrière, près du coin sud-ouest (photo de la rue Jondeau) : paliers de caillebotis et volées alternées,
+  // garde-corps, au-dessus des bâtiments accolés.
+  const fx0 = sA + 1.2, fx1 = fx0 + 2.6, ft = tr + 1.2;
+  const lv = [g + 8.5, g + 12.0, g + 15.5, g + 19.0];
+  for (const [i, z] of lv.entries()) {
+    const left = i % 2 === 0;
+    const ps = left ? fx0 : fx1 - 1.0;
+    box(d, ps, ps + 1.0, tr, ft, z - 0.06, z, IRON);
+    d.bar([ps, ft, z], [ps, ft, z + 1.0], 0.02);
+    d.bar([ps + 1.0, ft, z], [ps + 1.0, ft, z + 1.0], 0.02);
+    d.bar([ps, ft, z + 1.0], [ps + 1.0, ft, z + 1.0], 0.02);
+    for (const sx of [ps, ps + 1.0]) d.bar([sx, ft, z], [sx, tr, z - 0.6], 0.02);
+    const nz = lv[i + 1];
+    if (nz === undefined) continue;
+    // Volée vers le palier suivant, de l'autre côté : limons, marches, main courante.
+    const sa = left ? ps + 1.0 : ps, sb = left ? fx1 - 1.0 : fx0 + 1.0;
+    for (const tq of [tr + 0.15, ft - 0.05]) d.bar([sa, tq, z], [sb, tq, nz], 0.03);
+    const n = Math.round((nz - z) / 0.2);
+    for (let k = 1; k < n; k++) {
+      const f2 = k / n, sk = sa + (sb - sa) * f2, zk = z + (nz - z) * f2;
+      box(d, sk - 0.12, sk + 0.12, tr + 0.15, ft - 0.05, zk - 0.03, zk, IRON);
+    }
+    d.bar([sa, ft - 0.05, z + 0.95], [sb, ft - 0.05, nz + 0.95], 0.018);
+  }
+}
+
+/** Solide de révolution à huit pans autour de (s, t) : profil [rayon, z] de bas en haut, dessus fermé. */
+function lathe(d: Draw, s: number, t: number, prof: [number, number][], col: THREE.Color): void {
+  const sides = 8;
+  for (let i = 0; i + 1 < prof.length; i++) {
+    const [r0, z0] = prof[i]!, [r1, z1] = prof[i + 1]!;
+    for (let k = 0; k < sides; k++) {
+      const a0 = (Math.PI * 2 * k) / sides, a1 = (Math.PI * 2 * (k + 1)) / sides, am = (a0 + a1) / 2;
+      const nh = d.N(Math.cos(am), Math.sin(am)), dz = z1 - z0, dr = r0 - r1, l = Math.hypot(dz, dr) || 1;
+      d.mb.quad(d.P(s + Math.cos(a0) * r0, t + Math.sin(a0) * r0, z0), d.P(s + Math.cos(a1) * r0, t + Math.sin(a1) * r0, z0),
+        d.P(s + Math.cos(a1) * r1, t + Math.sin(a1) * r1, z1), d.P(s + Math.cos(a0) * r1, t + Math.sin(a0) * r1, z1),
+        [(nh[0] * dz) / l, dr / l, (nh[2] * dz) / l], shade(col, 0.92 + 0.08 * Math.max(0, -Math.sin(am))));
+    }
+  }
+  const [rt, zt] = prof[prof.length - 1]!;
+  for (let k = 0; k < sides; k++) {
+    const a0 = (Math.PI * 2 * k) / sides, a1 = (Math.PI * 2 * (k + 1)) / sides;
+    d.mb.tri(d.P(s, t, zt), d.P(s + Math.cos(a0) * rt, t + Math.sin(a0) * rt, zt), d.P(s + Math.cos(a1) * rt, t + Math.sin(a1) * rt, zt), [0, 1, 0], col);
+  }
+}
+
+/** Pot-à-feu de pierre posé à z : socle, vase à panse et col, flamme en pointe ; hauteur totale ≈ 1,2 × k. */
+function potAFeu(d: Draw, s: number, t: number, z: number, k: number): void {
+  box(d, s - 0.24 * k, s + 0.24 * k, t - 0.24 * k, t + 0.24 * k, z, z + 0.2 * k, TRIM);
+  lathe(d, s, t, [[0.1, 0.2], [0.24, 0.35], [0.28, 0.5], [0.2, 0.68], [0.12, 0.74], [0.2, 0.8], [0.06, 0.88]].map(([r, h]) => [r! * k, z + h! * k] as [number, number]), TRIM);
+  lathe(d, s, t, [[0.09 * k, z + 0.88 * k], [0.13 * k, z + 0.98 * k], [0.01, z + 1.25 * k]], shade(TRIM, 0.95));
+}
+
+/** Lyre rayonnante de métal sombre posée à z sur un socle, dans le plan du pignon (t fixe) : bras courbes, cordes, rayons. */
+function lyre(d: Draw, s: number, t: number, z: number): void {
+  const METAL = C("#3a3d3b");
+  box(d, s - 0.3, s + 0.3, t - 0.3, t + 0.3, z, z + 0.4, TRIM);
+  const zb = z + 0.4, h = 1.6;
+  for (const k of [-1, 1]) {
+    // Bras : arc qui s'écarte puis se referme vers le haut, terminé par une petite volute.
+    let prev: STZ = [s + k * 0.12, t, zb];
+    for (let i = 1; i <= 6; i++) {
+      const f2 = i / 6, r = 0.12 + 0.45 * Math.sin(Math.PI * Math.min(1, f2 * 0.85)) + 0.05 * f2;
+      const pt: STZ = [s + k * r, t, zb + h * f2];
+      d.bar(prev, pt, 0.04, METAL);
+      prev = pt;
+    }
+  }
+  d.bar([s - 0.45, t, zb + h * 0.92], [s + 0.45, t, zb + h * 0.92], 0.035, METAL);
+  for (const ds of [-0.15, 0, 0.15]) d.bar([s + ds, t, zb + 0.15], [s + ds, t, zb + h * 0.92], 0.012, METAL);
+  // Rayons autour de la lyre.
+  const zc = zb + h * 0.55;
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * (0.05 + (0.9 * i) / 8), r0 = 1.0, r1 = i % 2 ? 1.45 : 1.75;
+    d.bar([s + Math.cos(a) * r0, t, zc + Math.sin(a) * r0], [s + Math.cos(a) * r1, t, zc + Math.sin(a) * r1], 0.035, METAL);
   }
 }
 
