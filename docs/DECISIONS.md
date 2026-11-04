@@ -4712,3 +4712,37 @@ Une deuxième passe ne change rien.
 ![Le hall depuis l'avenue André Frenaud](captures/d232-eduen-hall.jpg)
 ![Le hall la nuit](captures/d232-eduen-hall-nuit.jpg)
 ![Vue haute](captures/d232-eduen-haut.jpg)
+
+## 2026-11-04 — D233. Le parc des expositions l'Eduen, étape 3 : le parking et les abords
+
+**D'après l'orthophotographie IGN** (20 cm, **redressée dans le repère de la salle** : s le long de la route de Chalon, t vers le parking ; à cette résolution les traits du parking sont nets) **et les photos de l'utilisateur** (vue de face depuis le parking, Street View de la route de Chalon et de l'avenue André Frenaud, vue de drone, vue satellite).
+
+**Constat** : le parking portait 658 traits retrouvés en tous sens par D94 ; la piste en lacets au nord était un aplat d'asphalte ; ni clôture, ni haie, ni barrière, ni mât d'éclairage ; les trois mâts à drapeaux de D232 étaient au-delà du bout du hall, sur l'herbe de l'avenue.
+
+**Lecture** (repère de la salle) :
+- **Places** : pics de blanc le long des rangées (contraste local de plus de 35 sur l'image redressée à 10 cm) : **pas de 2,5 m** partout, ce qui confirme le repère ; une rangée simple au nord (ligne de fond à t = 101,5 m), deux doubles rangées (lignes de fond à t = 85 et 68,2 m), une rangée à l'ouest de la salle (t 45 à 50) ; des allées de 6 m (s ≈ −33,7 à −27,7 et −1,7 à 4,3 m), des passages piétons d'un mètre bordés de places de 3,5 m (s 30,25 à 31,25) ; **places PMR** de 3,2 à 3,3 m au sud-est de la rangée sud (onze). Les traits mesurent 5,2 à 5,6 m sur l'image (la double ligne de fond compte) ; ils sont tracés à **5 m** depuis la ligne de fond, la longueur d'une place, que le jeu sait lire (`findStalls` refuse les traits de plus de 5,3 m).
+- **Piste en lacets** au nord : trois bandes engazonnées (vert de l'image) de 3 m, à t = 154 à 157, 141,8 à 144,8 et 124,9 à 127,6 m, sur 97 à 123 m de long.
+- **Mâts** : les bases de leurs **ombres** (longues lignes sombres de l'image) : trois mâts à drapeaux sur la bande verte entre l'allée de service et l'avenue (s 65,8 à 68,2, t 66,2 à 75,8 ; l'ordre parc, France, Europe vient des photos de face et de l'avenue), le mât d'éclairage au bout de l'îlot (s 54, t 84,2).
+- **Îlot** : haie taillée courbe de l'entrée du parking jusqu'au chemin qui longe la salle (bord blanc côté parking sur l'image).
+- **Barrière** : en travers de l'allée de service, au droit des hachures blanches de l'entrée (t = 80,5 m, bras de 7 m).
+- **Clôture verte** : à peine visible à 20 cm : **tracé approché** entre le trottoir et le gazon, le long de la route de Chalon (t = −17 m, depuis s = −28 m), autour du rond-point puis le long de l'avenue (s = 79,5 m), jusqu'au poteau de la barrière, d'après les vues Street View (elle tient le chemin qui fait le tour de la salle à l'intérieur).
+
+**Données** :
+- `parkings` de `manual.json`, entrée « Parking de l'Eduen (D233) » (`build_parking.py`, tuiles 32_37, 33_37 et 32_38) : repère de l'Eduen (u = s, v = −t), zone de nettoyage du parking et de la piste, 31 groupes de traits (un par série régulière), bandes `lawn` de la piste et de la bande verte des mâts. **148 places tracées, 133 retrouvées par le jeu** (les places PMR, plus larges, et les cases d'un mètre des passages ne le sont pas : les voitures du jeu ne s'y garent pas). Une deuxième passe ne change rien.
+- `site` de l'entrée de l'Eduen dans `monuments` (mâts, mât d'éclairage, haie, clôture, barrière), recopié tel quel dans le champ `edu` par `build_monuments.py`.
+
+**Rendu** (`buildEduen`, **8 736 triangles** pour tout l'Eduen, 4 530 à l'étape 2 ; aucun appel de dessin de plus) : mâts à drapeaux à leur place ; **mât d'éclairage** gris de 15 m à quatre projecteurs (allumés la nuit) ; **haie** de 1,3 m et 1,6 m de large ; **clôture** de panneaux soudés vert sombre (poteaux tous les 2,5 m, quatre lisses, fils verticaux tous les 40 cm, deux faces), 1,8 m ; **barrière** à poteau blanc et bras rayé rouge et blanc à 1 m.
+
+**Obstacles** : clôture et bras de la barrière en obstacles bas transparents aux rayons (on voit à travers ; la clôture de 1,8 m ne s'escalade pas, la barrière si), haie pleine, pieds des quatre mâts. Vues `?view=eduen-mats` (mâts, haie, barrière depuis l'avenue) et `eduen-parking` (le parking vu d'en haut).
+
+**Pas encore** : le pictogramme et le bleu des places PMR (la couche de marques n'a que le blanc et le jaune) ; les bandes des passages piétons (barres larges) ; les flèches de sens ; le panneau européen et le panneau STOP de l'allée de service (le STOP des données est conservé) ; les conteneurs près de l'annexe ; la navigation n'est pas régénérée (les passants ignorent la haie, la clôture et la barrière). **Le plan de l'Eduen est terminé** (D231 à D233).
+
+**Tests** (+2 : `src/data/parking-eduen.test.ts`) : environ 140 places, toutes dans les rangées ; mâts sur la bande verte ; on est repoussé par la clôture, la haie et la barrière ; `eduen.test.ts` : la géométrie tient abords compris, sous la tête du mât d'éclairage.
+
+![L'orthophotographie redressée dans le repère de la salle](captures/d233-eduen-ortho-redressee.jpg)
+![Le parking vu d'en haut](captures/d233-eduen-parking.jpg)
+![La piste en lacets](captures/d233-eduen-piste.jpg)
+![Mâts, haie et barrière depuis l'avenue](captures/d233-eduen-mats.jpg)
+![La nuit](captures/d233-eduen-mats-nuit.jpg)
+![Le hall et la clôture](captures/d233-eduen-hall.jpg)
+![Vue haute](captures/d233-eduen-haut.jpg)

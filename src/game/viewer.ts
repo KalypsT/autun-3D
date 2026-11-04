@@ -25,6 +25,9 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "eduen-hall": [1708.0, 520.2, 1.7, 1679.5, 552.0, 4],
   // Logo du pignon côté route (D232) ; entrée côté parking, sous l'auvent « ENTRÉE ».
   "eduen-logo": [1647.4, 507.9, 1.7, 1661.6, 527.5, 7.5],
+  // Mâts à drapeaux, mât d'éclairage, haie et barrière depuis l'avenue (D233) ; le parking vu d'en haut, depuis le toit de la salle.
+  "eduen-mats": [1735.9, 590.3, 1.7, 1704.5, 586.4, 5],
+  "eduen-parking": [1627.8, 573.4, 30, 1660.2, 635.5, 0],
   "eduen-entree": [1679.5, 581.8, 1.7, 1680.6, 564.3, 2.2],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],

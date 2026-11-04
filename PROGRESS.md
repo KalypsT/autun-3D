@@ -1692,3 +1692,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Route de Chalon](docs/captures/d232-eduen-route.jpg)
 ![Le hall](docs/captures/d232-eduen-hall.jpg)
 ![L'entrée](docs/captures/d232-eduen-entree.jpg)
+
+**L'Eduen, étape 3 : le parking et les abords (4 novembre 2026)** (D233)
+- Le parking redessiné d'après l'orthophotographie : 148 places en rangées régulières (pas de 2,5 m), dont 11 places PMR plus larges ; les voitures du jeu se garent sur les 133 autres. Fini les 658 traits en tous sens.
+- La piste en lacets au nord avec ses trois bandes engazonnées.
+- Les trois mâts à drapeaux remis à leur vraie place (sur la bande verte, retrouvés par leurs ombres), le mât d'éclairage de 15 m à quatre projecteurs, la haie de l'îlot, la barrière de l'allée de service.
+- La clôture verte en panneaux soudés le long de la route de Chalon et de l'avenue André Frenaud (tracé approché : elle se voit mal sur l'orthophotographie).
+- **L'Eduen est terminé** (étapes 1 à 3).
+
+![Le parking](docs/captures/d233-eduen-parking.jpg)
+![Mâts, haie et barrière](docs/captures/d233-eduen-mats.jpg)
+![Le hall et la clôture](docs/captures/d233-eduen-hall.jpg)

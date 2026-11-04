@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
-import { at, drawsGenericRoof, EDUEN_CANOPY_H, eduenCanopy, eduenFrame, eduenHallOutline, eduenMasts, eduenRings, isOpen, walkableRoof } from "../core/landmarks";
+import { at, drawsGenericRoof, EDUEN_CANOPY_H, eduenCanopy, eduenFrame, eduenHallOutline, eduenLines, eduenMasts, eduenRings, isOpen, walkableRoof } from "../core/landmarks";
 import { pointInRing } from "../core/collision";
 import { buildColliders } from "../core/world";
 import { buildEduen } from "./eduen";
@@ -70,7 +70,8 @@ describe("parc des expositions l'Eduen (D231)", () => {
     const rings = eduenRings(m);
     const hall = eduenHallOutline(m).length;
     expect(hall).toBeGreaterThan(8);
-    const total = rings.slice(0, -3).reduce((a, r) => a + Math.abs(area(r)), 0);
+    // Sans les petits carrés des mâts (trois à drapeaux, un d'éclairage).
+    const total = rings.slice(0, -4).reduce((a, r) => a + Math.abs(area(r)), 0);
     // L'emprise BD TOPO couvre la salle, les blocs et le hall jusqu'au mur ; les blocs BD TOPO masqués en plus.
     const bd = [ID, ...HIDDEN].map((id) => world.tile.buildings.find((q) => q.id === id)!).reduce((a, q) => a + Math.abs(area(q.ring)), 0);
     expect(Math.abs(total / bd - 1)).toBeLessThan(0.2);
@@ -107,25 +108,25 @@ describe("parc des expositions l'Eduen (D231)", () => {
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
     expect(tris).toBeGreaterThan(3000);
-    expect(tris).toBeLessThan(12000);
+    expect(tris).toBeLessThan(20000);
     expect(sinks.glow.positions.length).toBeGreaterThan(0);
     // Un seul logo (le grand côté de la route), l'auvent « ENTRÉE », trois affiches.
     expect(texts.filter((t) => t === "l'éduen").length).toBe(1);
     expect(texts).toContain("parc des");
     expect(texts).toContain("ENTRÉE");
     expect(texts.length).toBe(4 + 1 + 3);
-    // three : (x, z, −y) ; tout tient dans la salle, ses blocs, l'auvent du hall et les mâts (à 2 m près), et à moins de 1,5 m au-dessus de
-    // l'acrotère (haut des mâts, 10 m au-dessus d'un sol plus haut que celui de la salle).
+    // three : (x, z, −y) ; tout tient dans la salle, ses blocs, l'auvent du hall, les mâts et les abords (à 2 m près), et sous la tête du
+    // mât d'éclairage (15 m, D233), le sol de l'îlot compris.
     const f = eduenFrame(m);
     // Les mâts sont dans les obstacles (`eduenRings`).
-    const pts = [...eduenRings(m).flat(), ...eduenCanopy(m).flatMap(([s, t]) => at(f, s, t))];
+    const pts = [...eduenRings(m).flat(), ...eduenCanopy(m).flatMap(([s, t]) => at(f, s, t)), ...eduenLines(m).flatMap((l) => l.pts)];
     const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
     for (let i = 0; i < p.length; i += 3) {
       expect(p[i]!).toBeGreaterThan(Math.min(...xs) - 2);
       expect(p[i]!).toBeLessThan(Math.max(...xs) + 2);
       expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 2);
       expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 2);
-      expect(p[i + 1]!).toBeLessThan(m.top + 1.5);
+      expect(p[i + 1]!).toBeLessThan(m.g + 18);
     }
   });
 });

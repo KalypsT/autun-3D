@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { EduenModel, HeightField } from "../data/types";
-import { at, EDUEN_CANOPY_H, eduenArc, eduenCanopy, eduenEdge, eduenFrame, eduenMasts } from "../core/landmarks";
+import { at, EDUEN_BARRIER_H, EDUEN_CANOPY_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, eduenArc, eduenCanopy, eduenEdge, eduenFrame, eduenMasts } from "../core/landmarks";
 import type { LandmarkSinks } from "./landmarks";
 import { Draw, up, wallOf, type PWall, type ST } from "./playhouse";
 import { T } from "./style";
@@ -22,6 +22,9 @@ const CLAD = C("#c35a33"), CLAD_LOW = C("#c9c6bf"), COPING = C("#eeede8"), MEMBR
 const CONCRETE = C("#d5d1c8"), CONCRETE_ROOF = C("#a9a7a1"), METAL = C("#b0b4b6"), WHITE = C("#f2f1ec"), MULLION = C("#5c6266");
 const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
 const DOOR_GREY = C("#7f8489"), PANEL = C("#e6e5e1"), VIOLET = C("#6d5a78"), FASCIA = C("#3b4047"), BOARD = C("#4a4f55"), PROJ = C("#3a3e42");
+const MAST_GREY = C("#9ea4a6"), HEDGE = C("#3f6a3c"), FENCE_GREEN = C("#2f5e41");
+/** Hauteur du mât d'éclairage du parking (D233). */
+const LIGHT_MAST = 15;
 /** Gris ardoise du logo. */
 const INK_HEX = "#3d4553", INK = C(INK_HEX);
 /** Côté du logo, pas des lames de brise-soleil, hauteur des mâts. */
@@ -284,6 +287,69 @@ export function buildEduen(sinks: LandmarkSinks, m: EduenModel, terrain: HeightF
     d.bar([p[0], p[1], g0 - 0.3], [p[0], p[1], g0 + MAST], 0.06, WHITE);
     flag(p, g0 + MAST - 0.15, kind);
   });
+
+  // --- Abords (D233) -----------------------------------------------------------------------------------------------------------
+  const site = m.site;
+  if (site) {
+    // Mât d'éclairage du parking (vue de face) : fût gris de 15 m, couronne de quatre projecteurs, allumés la nuit.
+    {
+      const p = site.light, g0 = ground(...p), top = g0 + LIGHT_MAST;
+      d.bar([p[0], p[1], g0 - 0.3], [p[0], p[1], top], 0.12, MAST_GREY);
+      d.bar([p[0] - 0.9, p[1], top], [p[0] + 0.9, p[1], top], 0.06, MAST_GREY);
+      d.bar([p[0], p[1] - 0.9, top], [p[0], p[1] + 0.9, top], 0.06, MAST_GREY);
+      for (const [ds, dt] of [[0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]] as const) {
+        const q: ST = [p[0] + ds, p[1] + dt];
+        const w = wallOf([q[0] - 0.35 * dt / 0.9, q[1] + 0.35 * ds / 0.9], [q[0] + 0.35 * dt / 0.9, q[1] - 0.35 * ds / 0.9]);
+        d.plate(w, 0, w.len, top + 0.1, top + 0.7, -0.15, 0.15, PROJ);
+        d.plate(w, 0.05, w.len - 0.05, top + 0.15, top + 0.65, 0.15, 0.16, C("#dfe3e2"), true);
+        d.plate(w, 0.05, w.len - 0.05, top + 0.15, top + 0.65, 0.16, 0.17, GLOW_HI, true);
+        d.shape(sinks.glow, w, w.len / 2, w.len / 2 - 0.05, top + 0.15, top + 0.65, false, 0.18, GLOW_HI, GLOW_HI);
+      }
+    }
+    // Haie taillée de l'îlot, entre le parking et l'allée de service : volume vert sombre de 1,3 m, 1,6 m de large.
+    for (let i = 0; i + 1 < site.hedge.length; i++) {
+      const w = wallOf(site.hedge[i]!, site.hedge[i + 1]!);
+      const g0 = Math.min(ground(...w.a), ground(...w.b)) - 0.2, top = Math.max(ground(...w.a), ground(...w.b)) + EDUEN_HEDGE_H;
+      const col = i % 2 ? HEDGE : shade(HEDGE, 0.94);
+      d.plate(w, -0.4, w.len + 0.4, g0, top, -0.8, 0.8, col);
+      d.plate(wallOf(w.b, w.a), -0.4, w.len + 0.4, g0, top, -0.8, 0.8, col);
+    }
+    // Clôture de panneaux soudés vert sombre (photos de la route et de l'avenue) : poteaux tous les 2,5 m, lisses, plis en V et fils
+    // verticaux tous les 40 cm (deux faces).
+    for (let i = 0; i + 1 < site.fence.length; i++) {
+      const w = wallOf(site.fence[i]!, site.fence[i + 1]!), back = wallOf(site.fence[i + 1]!, site.fence[i]!);
+      const zAt = (u: number): number => ground(...d.on(w, u, 0));
+      const n = Math.max(1, Math.round(w.len / 2.5));
+      for (let k = 0; k <= n; k++) {
+        const u = (w.len * k) / n, q = d.on(w, u, 0), z = zAt(u);
+        if (k > 0 || i === 0) d.bar([q[0], q[1], z - 0.2], [q[0], q[1], z + EDUEN_FENCE_H + 0.05], 0.035, FENCE_GREEN);
+      }
+      // Fils verticaux et lisses, découpés par panneau pour suivre le sol.
+      for (let k = 0; k < n; k++) {
+        const u0 = (w.len * k) / n, u1 = (w.len * (k + 1)) / n, z0 = zAt(u0), z1 = zAt(u1);
+        for (const h of [0.05, 0.6, 1.2, EDUEN_FENCE_H - 0.03]) wire(w, back, u0, z0 + h, u1, z1 + h, 0.05);
+        for (let u = u0 + 0.2; u < u1 - 0.1; u += 0.4) {
+          const z = z0 + ((z1 - z0) * (u - u0)) / (u1 - u0);
+          wire(w, back, u, z, u, z + EDUEN_FENCE_H, 0.025);
+        }
+      }
+    }
+    // Barrière levante de l'allée de service : poteau blanc, bras rayé rouge et blanc à 1 m.
+    {
+      const [p, q] = site.barrier, g0 = ground(...p);
+      const w = wallOf(p, q);
+      d.plate(w, -0.2, 0.2, g0 - 0.1, g0 + EDUEN_BARRIER_H + 0.15, -0.2, 0.2, C("#efefea"));
+      for (let u = 0.2, i = 0; u < w.len; u += 0.5, i++) {
+        d.plate(w, u, Math.min(w.len, u + 0.5), g0 + EDUEN_BARRIER_H - 0.05, g0 + EDUEN_BARRIER_H + 0.05, -0.04, 0.04, i % 2 ? C("#f2f1ec") : C("#c8302c"));
+      }
+    }
+  }
+
+  /** Fil de clôture plat de (u0, z0) à (u1, z1) sur le mur w (et sa face arrière). */
+  function wire(w: PWall, back: PWall, u0: number, z0: number, u1: number, z1: number, th: number): void {
+    stroke(w, u0, z0, u1, z1, th, FENCE_GREEN, 0);
+    stroke(back, w.len - u0, z0, w.len - u1, z1, th, FENCE_GREEN, 0);
+  }
 
   /** Lame de brise-soleil de a à b (s, t), de z0 à z1 : deux faces, dessous. */
   function louvre(a: ST, b: ST, z0: number, z1: number): void {

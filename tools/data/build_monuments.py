@@ -21,7 +21,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           quais de la gare (`quai` de son entrée, D229) : champ `quai` de `sta`, quais 1 et central de structures/<tuile>.json redessinés au bord
           mesuré (à relancer après build_structures.py), bâtiment BD TOPO de l'abri parapluie masqué ;
           parc des expositions l'Eduen (modèle `eduen`, D231) : champ `edu` du bâtiment (salle, blocs, édicules, hall courbe et annexe), bâtiments
-          BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ;
+          BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ; abords (`site`, D233 : mâts, haie, clôture, barrière) recopiés ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -836,6 +836,8 @@ def measure_eduen(bid, b, spec):
 def eduen(tid, bid, b, spec, k):
     """Parc des expositions l'Eduen (D231) : champ `edu` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
     m = measure_eduen(bid, b, spec)
+    if "site" in spec:
+        m["site"] = spec["site"]  # abords lus sur l'orthophotographie (D233), recopiés tels quels
     e = dict(k["buildings"].get(bid, {"k": "culture"}))
     e["edu"] = m
     g, r = m["g"], m["rot"]

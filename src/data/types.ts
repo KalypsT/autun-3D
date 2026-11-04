@@ -472,6 +472,12 @@ export interface EduenModel {
   blocks: [number, number, number, number, number][];
   units: [number, number, number, number, number][];
   rot: { c: [number, number]; r: number; ov: number; ne: [number, number]; roof: number; fascia: number; ann: [number, number, number] };
+  /**
+   * Abords (D233, lus sur l'orthophotographie, repère de la salle) : pieds des trois mâts à drapeaux (parc, France, Europe) et du mât
+   * d'éclairage, haie de l'îlot entre le parking et l'allée de service (polyligne), clôture verte (polyligne), barrière levante (poteau,
+   * bout du bras).
+   */
+  site?: { masts: [number, number][]; light: [number, number]; hedge: [number, number][]; fence: [number, number][]; barrier: [[number, number], [number, number]] };
 }
 
 /**

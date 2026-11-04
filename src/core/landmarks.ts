@@ -682,10 +682,24 @@ export function eduenCanopy(m: EduenModel, inset = 0): [number, number][] {
   return [...eduenArc(m, e), [sA, k * sA + e.b], [sA, tA], [m.l, tA]];
 }
 
-/** Pieds des trois mâts à drapeaux (s, t) : sur le gazon au-delà du bout nord-est de l'auvent, en ligne (vues de drone et de l'avenue, D232). */
+/**
+ * Pieds des trois mâts à drapeaux (s, t) : relevés sur l'orthophotographie (bases de leurs ombres, D233) sur la bande verte entre l'allée de
+ * service et l'avenue ; sans relevé, en ligne au-delà du bout nord-est de l'auvent (D232).
+ */
 export function eduenMasts(m: EduenModel): [number, number][] {
+  if (m.site) return m.site.masts;
   const { c: [cs, ct], r } = m.rot, a = eduenEdge(m, 0).a1;
   return [0, 1, 2].map((i) => [cs + (r + 3 + 3 * i) * Math.cos(a) + 2, ct + (r + 3 + 3 * i) * Math.sin(a) + 1.5]);
+}
+
+/** Hauteur de la clôture verte de l'Eduen, de la haie de l'îlot, du bras de la barrière (D233). */
+export const EDUEN_FENCE_H = 1.8, EDUEN_HEDGE_H = 1.3, EDUEN_BARRIER_H = 1.0;
+
+/** Lignes d'obstacles des abords de l'Eduen (x, y), avec leur nature : clôture, haie, bras de barrière. */
+export function eduenLines(m: EduenModel): { kind: "fence" | "hedge" | "barrier"; pts: number[] }[] {
+  if (!m.site) return [];
+  const f = eduenFrame(m), xy = (p: readonly [number, number][]): number[] => p.flatMap(([s, t]) => at(f, s, t));
+  return [{ kind: "fence", pts: xy(m.site.fence) }, { kind: "hedge", pts: xy(m.site.hedge) }, { kind: "barrier", pts: xy(m.site.barrier) }];
 }
 
 /** Obstacles de l'Eduen (x, y) : la salle, ses blocs (pas l'auvent de l'entrée), le hall courbe et l'annexe à leurs murs, les mâts. */
@@ -696,6 +710,10 @@ export function eduenRings(m: EduenModel): number[][] {
   for (const [s0, s1, t0, t1, z] of m.blocks) if (z - m.g >= EDUEN_CANOPY_H) out.push(rect(s0, s1, t0, t1));
   out.push(eduenHallOutline(m).flatMap(([s, t]) => at(f, s, t)));
   for (const [s, t] of eduenMasts(m)) out.push(rect(s - 0.1, s + 0.1, t - 0.1, t + 0.1));
+  if (m.site) {
+    const [s, t] = m.site.light;
+    out.push(rect(s - 0.2, s + 0.2, t - 0.2, t + 0.2));
+  }
   return out;
 }
 
