@@ -4687,3 +4687,28 @@ Une deuxième passe ne change rien.
 ![Le hall depuis l'avenue André Frenaud, après](captures/d231-eduen-hall-apres.jpg)
 ![Route de Chalon, avant](captures/d231-eduen-route-avant.jpg)
 ![Route de Chalon, après](captures/d231-eduen-route-apres.jpg)
+
+## 2026-11-04 — D232. Le parc des expositions l'Eduen, étape 2 : les façades
+
+**D'après les photos de l'utilisateur** (D231 : vue de face depuis le parking, Street View de la route de Chalon de juillet 2025 et de l'avenue André Frenaud de juillet 2026, vue de drone, logo sur le bardage en septembre 2019). Tout est dans `buildEduen` (`src/render/eduen.ts`) ; les mesures de D231 ne changent pas.
+
+- **Logo** « parc des expos de l'Autunois – l'éduen » en gris ardoise, d'après la photo rapprochée : cadre en équerre ouvert en haut à droite, cadre intérieur décalé, arc, crochet, quatre rayons, trois lignes de texte et « l'éduen » en gros. **3,6 m** de côté (mis à l'échelle sur la photo : de la couvertine au haut du bloc voisin), **1 m** sous la couvertine, à **1,2 m** du coin sud, sur le grand côté de la route de Chalon (Street View 2019 et 2025). La vue de drone, plus ancienne, en montre un aussi sur le pignon sud-est : il n'y est plus sur la vue de l'avenue de juillet 2026, on ne le dessine pas. Lettres de l'atlas des enseignes (pas la police du logo).
+- **Côté parking** : une porte sectionnelle grise de 4,2 m dans chaque intervalle entre deux blocs (deux), une porte de service près du coin nord, une par bloc ; deux petites fenêtres hautes sur le bloc près de l'entrée ; **entrée** vitrée à deux battants sous l'auvent bas, rive sombre à l'inscription « ENTRÉE » ; cinq projecteurs en haut du mur (deux sur le pignon).
+- **Côté route** : trois **panneaux d'affichage** de 4 × 3 m sur deux poteaux devant les blocs (deux sur le bloc du milieu, un sur le bloc est, comme sur la vue Street View et les minces saillies du relevé). Les affiches sont simplifiées (un titre : « SALON DE LA MAISON », « AUTUN », « ITINÉRANCE CULTURELLE »).
+- **Hall courbe** : l'auvent n'est plus une dalle pleine : toit plein jusqu'à 50 cm devant le mur, puis **brise-soleil** à lames blanches tous les 45 cm jusqu'à la rive (radiales le long de l'arc, perpendiculaires au bord nord-est), comme sur la vue de drone ; **mur-rideau toute hauteur** sur la partie de l'arc de 50 % à 85 % depuis la salle (l'entrée, vue de l'avenue et vue de drone), traverse à 2,6 m, portes vitrées au milieu, éclairé la nuit ; ailleurs, grilles de ventilation basses dans le béton.
+- **Entre la salle et l'annexe** : bardage blanc à joints et **bande violine** (vue du parking) ; annexe : porte de service et bouche ronde à l'ouest, porte au nord.
+- **Trois mâts** blancs de 10 m sur le gazon au-delà du bout nord-est du hall (`eduenMasts`), drapeaux du parc (blanc à trois touches de couleur, forme approchée), de la France et de l'Europe ; les mâts sont des obstacles.
+
+**Coût** : **4 530 triangles** (2 296 à l'étape 1), 38 de vitres allumées, 8 inscriptions ; aucun appel de dessin de plus. Vues `?view=eduen-logo` (le logo depuis la route) et `eduen-entree` (l'entrée côté parking).
+
+**Pas encore** (étape 3) : marquage du parking, piste en lacets, talus, chemin de tour, clôture verte, barrière, mât d'éclairage à quatre projecteurs, arbres d'alignement ; panneau européen à l'entrée de l'avenue. Les affiches sont figées.
+
+**Tests** (`eduen.test.ts`, mis à jour) : un seul logo, l'inscription « ENTRÉE » et les trois affiches ; les mâts arrêtent les déplacements ; géométrie bornée (mâts compris).
+
+![Le logo depuis la route](captures/d232-eduen-logo.jpg)
+![Route de Chalon](captures/d232-eduen-route.jpg)
+![Depuis le parking](captures/d232-eduen-parking.jpg)
+![L'entrée](captures/d232-eduen-entree.jpg)
+![Le hall depuis l'avenue André Frenaud](captures/d232-eduen-hall.jpg)
+![Le hall la nuit](captures/d232-eduen-hall-nuit.jpg)
+![Vue haute](captures/d232-eduen-haut.jpg)

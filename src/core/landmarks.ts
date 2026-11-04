@@ -673,19 +673,29 @@ export function eduenHallOutline(m: EduenModel): [number, number][] {
   return [...eduenArc(m, e), [m.l, k * m.l + e.b]];
 }
 
-/** Toit-auvent du hall courbe (s, t) : arc et bord nord-est de l'auvent jusqu'au bout de l'annexe, puis l'annexe contournée. */
-export function eduenCanopy(m: EduenModel): [number, number][] {
-  const e = eduenEdge(m, 0), [sA, tA] = m.rot.ann, k = m.rot.ne[0];
+/**
+ * Toit-auvent du hall courbe (s, t) : arc et bord nord-est de l'auvent jusqu'au bout de l'annexe, puis l'annexe contournée ; `inset` :
+ * le même contour en retrait de ce nombre de mètres (le toit plein, en deçà des brise-soleil, D232).
+ */
+export function eduenCanopy(m: EduenModel, inset = 0): [number, number][] {
+  const e = eduenEdge(m, inset), [sA, tA] = m.rot.ann, k = m.rot.ne[0];
   return [...eduenArc(m, e), [sA, k * sA + e.b], [sA, tA], [m.l, tA]];
 }
 
-/** Obstacles de l'Eduen (x, y) : la salle, ses blocs (pas l'auvent de l'entrée), le hall courbe et l'annexe à leurs murs. */
+/** Pieds des trois mâts à drapeaux (s, t) : sur le gazon au-delà du bout nord-est de l'auvent, en ligne (vues de drone et de l'avenue, D232). */
+export function eduenMasts(m: EduenModel): [number, number][] {
+  const { c: [cs, ct], r } = m.rot, a = eduenEdge(m, 0).a1;
+  return [0, 1, 2].map((i) => [cs + (r + 3 + 3 * i) * Math.cos(a) + 2, ct + (r + 3 + 3 * i) * Math.sin(a) + 1.5]);
+}
+
+/** Obstacles de l'Eduen (x, y) : la salle, ses blocs (pas l'auvent de l'entrée), le hall courbe et l'annexe à leurs murs, les mâts. */
 export function eduenRings(m: EduenModel): number[][] {
   const f = eduenFrame(m);
   const rect = (s0: number, s1: number, t0: number, t1: number): number[] => [...at(f, s0, t0), ...at(f, s1, t0), ...at(f, s1, t1), ...at(f, s0, t1)];
   const out = [rect(0, m.l, 0, m.d)];
   for (const [s0, s1, t0, t1, z] of m.blocks) if (z - m.g >= EDUEN_CANOPY_H) out.push(rect(s0, s1, t0, t1));
   out.push(eduenHallOutline(m).flatMap(([s, t]) => at(f, s, t)));
+  for (const [s, t] of eduenMasts(m)) out.push(rect(s - 0.1, s + 0.1, t - 0.1, t + 0.1));
   return out;
 }
 

@@ -23,6 +23,9 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "eduen-haut": [1675.6, 458.2, 45, 1663.2, 554.9, 0],
   "eduen-route": [1625.4, 514.9, 1.7, 1642.8, 537.4, 4],
   "eduen-hall": [1708.0, 520.2, 1.7, 1679.5, 552.0, 4],
+  // Logo du pignon côté route (D232) ; entrée côté parking, sous l'auvent « ENTRÉE ».
+  "eduen-logo": [1647.4, 507.9, 1.7, 1661.6, 527.5, 7.5],
+  "eduen-entree": [1679.5, 581.8, 1.7, 1680.6, 564.3, 2.2],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
-import { at, drawsGenericRoof, EDUEN_CANOPY_H, eduenCanopy, eduenFrame, eduenHallOutline, eduenRings, isOpen, walkableRoof } from "../core/landmarks";
+import { at, drawsGenericRoof, EDUEN_CANOPY_H, eduenCanopy, eduenFrame, eduenHallOutline, eduenMasts, eduenRings, isOpen, walkableRoof } from "../core/landmarks";
 import { pointInRing } from "../core/collision";
 import { buildColliders } from "../core/world";
 import { buildEduen } from "./eduen";
@@ -70,7 +70,7 @@ describe("parc des expositions l'Eduen (D231)", () => {
     const rings = eduenRings(m);
     const hall = eduenHallOutline(m).length;
     expect(hall).toBeGreaterThan(8);
-    const total = rings.reduce((a, r) => a + Math.abs(area(r)), 0);
+    const total = rings.slice(0, -3).reduce((a, r) => a + Math.abs(area(r)), 0);
     // L'emprise BD TOPO couvre la salle, les blocs et le hall jusqu'au mur ; les blocs BD TOPO masqués en plus.
     const bd = [ID, ...HIDDEN].map((id) => world.tile.buildings.find((q) => q.id === id)!).reduce((a, q) => a + Math.abs(area(q.ring)), 0);
     expect(Math.abs(total / bd - 1)).toBeLessThan(0.2);
@@ -90,23 +90,34 @@ describe("parc des expositions l'Eduen (D231)", () => {
     const near = [cs + (m.rot.r - m.rot.ov - 4) * Math.cos(ang), ct + (m.rot.r - m.rot.ov - 4) * Math.sin(ang)] as const;
     const a = at(f, ...far), z = at(f, ...near);
     expect(c.raycast(a[0], a[1], z[0], z[1])).not.toBeNull();
+    // Les mâts arrêtent les déplacements.
+    const [ms, mt] = eduenMasts(m)[1]!, m0 = at(f, ms - 1, mt), m1 = at(f, ms + 1, mt);
+    expect(c.raycast(m0[0], m0[1], m1[0], m1[1])).not.toBeNull();
     const ent = m.blocks.find((q) => q[4] - m.g < EDUEN_CANOPY_H)!;
     const e0 = at(f, ent[0] + 0.8, (ent[2] + ent[3]) / 2), e1 = at(f, ent[1] - 0.8, (ent[2] + ent[3]) / 2);
     expect(c.raycast(e0[0], e0[1], e1[0], e1[1])).toBeNull();
   });
 
-  it("géométrie : sommets finis, près de l'emprise, coût borné, sous l'acrotère", () => {
-    const atlas = { get: () => ({ u0: 0, v0: 0, u1: 1, v1: 1 }) } as unknown as SignAtlas;
+  it("géométrie : sommets finis, près de l'emprise, coût borné, sous l'acrotère ; logo, entrée et affiches (D232)", () => {
+    const texts: string[] = [];
+    const atlas = { get: (t: string) => { texts.push(t); return { u0: 0, v0: 0, u1: 1, v1: 1 }; } } as unknown as SignAtlas;
     const sinks: LandmarkSinks = { solid: new MeshBuilder(), glow: new MeshBuilder(), names: new UvMeshBuilder(), atlas };
     buildEduen(sinks, m, world.terrain);
     const p = sinks.solid.positions;
     expect(p.every(Number.isFinite)).toBe(true);
     const tris = p.length / 9;
-    expect(tris).toBeGreaterThan(1000);
-    expect(tris).toBeLessThan(10000);
+    expect(tris).toBeGreaterThan(3000);
+    expect(tris).toBeLessThan(12000);
     expect(sinks.glow.positions.length).toBeGreaterThan(0);
-    // three : (x, z, −y) ; tout tient dans la salle, ses blocs et l'auvent du hall (à 2 m près), et sous l'acrotère.
+    // Un seul logo (le grand côté de la route), l'auvent « ENTRÉE », trois affiches.
+    expect(texts.filter((t) => t === "l'éduen").length).toBe(1);
+    expect(texts).toContain("parc des");
+    expect(texts).toContain("ENTRÉE");
+    expect(texts.length).toBe(4 + 1 + 3);
+    // three : (x, z, −y) ; tout tient dans la salle, ses blocs, l'auvent du hall et les mâts (à 2 m près), et à moins de 1,5 m au-dessus de
+    // l'acrotère (haut des mâts, 10 m au-dessus d'un sol plus haut que celui de la salle).
     const f = eduenFrame(m);
+    // Les mâts sont dans les obstacles (`eduenRings`).
     const pts = [...eduenRings(m).flat(), ...eduenCanopy(m).flatMap(([s, t]) => at(f, s, t))];
     const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
     for (let i = 0; i < p.length; i += 3) {
@@ -114,7 +125,7 @@ describe("parc des expositions l'Eduen (D231)", () => {
       expect(p[i]!).toBeLessThan(Math.max(...xs) + 2);
       expect(-p[i + 2]!).toBeGreaterThan(Math.min(...ys) - 2);
       expect(-p[i + 2]!).toBeLessThan(Math.max(...ys) + 2);
-      expect(p[i + 1]!).toBeLessThan(m.top + 0.7);
+      expect(p[i + 1]!).toBeLessThan(m.top + 1.5);
     }
   });
 });

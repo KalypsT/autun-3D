@@ -1680,3 +1680,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Depuis le parking](docs/captures/d231-eduen-parking-apres.jpg)
 ![Vue haute](docs/captures/d231-eduen-haut-apres.jpg)
 ![Le hall](docs/captures/d231-eduen-hall-apres.jpg)
+
+**L'Eduen, étape 2 : les façades (4 novembre 2026)** (D232)
+- Le logo « parc des expos de l'Autunois – l'éduen » d'après ta photo, sur le grand côté de la route de Chalon, près du coin sud (3,6 m de côté). Il n'est plus sur le pignon de l'avenue dans ta vue de 2026 : je ne l'y ai pas mis.
+- Côté route : les trois panneaux d'affichage devant les blocs (affiches simplifiées).
+- Côté parking : les deux grandes portes grises entre les blocs, les portes de service, l'entrée vitrée sous l'auvent « ENTRÉE », les projecteurs en haut du mur.
+- Le hall : brise-soleil à lames blanches tout autour de l'auvent, entrée en mur-rideau toute hauteur avec ses portes (éclairée la nuit), grilles de ventilation basses.
+- Le bardage blanc à bande violine entre la salle et l'annexe, la porte et la bouche ronde de l'annexe, les trois mâts avec les drapeaux du parc, de la France et de l'Europe.
+- Prochaine étape : le parking et les abords (marquage, places PMR, piste en lacets, talus, clôture, barrière, mât d'éclairage).
+
+![Route de Chalon](docs/captures/d232-eduen-route.jpg)
+![Le hall](docs/captures/d232-eduen-hall.jpg)
+![L'entrée](docs/captures/d232-eduen-entree.jpg)
