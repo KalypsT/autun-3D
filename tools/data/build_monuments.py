@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -16,6 +16,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
+          théâtre municipal (modèle `playhouse`, D223) : champ `play` du bâtiment (murs, toit brisé du corps avant, cage de scène) et silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -190,6 +191,121 @@ def measure_hall(bid, b, spec):
         "g": r2(g), "eave": r2(eave), "ridge": r2(ridge), "wingEave": r2(np.median(eaves)), "wingRidge": r2(np.median(ridges)),
         "bays": bays, "pav": pavs, "levels": spec["levels"], **extra,
     }
+
+
+def measure_playhouse(bid, b, spec):
+    """Théâtre municipal (D223) : murs, toit brisé à croupes du corps avant et cage de scène à deux pans, lus sur le modèle de surface.
+
+    Repère : façade tournée vers `faces` (arête BD TOPO la plus longue de ce côté) ; s le long de la façade, de gauche à droite vu de la place,
+    t vers l'intérieur. Bords = là où le modèle de surface passe au-dessus de mi-hauteur (corniche comprise), murs `cornice` mètres en dedans.
+    """
+    ring = pairs(b["ring"])
+    if area(ring) < 0:
+        ring = ring[::-1]
+    n = len(ring)
+    th = math.radians(COMPASS[spec["faces"]])
+    best = None
+    for i in range(n):
+        (ax, ay), (bx, by) = ring[i], ring[(i + 1) % n]
+        ln = math.hypot(bx - ax, by - ay)
+        if ln < 1:
+            continue
+        nx, ny = (by - ay) / ln, -(bx - ax) / ln  # normale sortante (contour trigonométrique)
+        if nx * math.cos(th) + ny * math.sin(th) > math.cos(math.radians(30)) and (best is None or ln > best[0]):
+            best = (ln, ax, ay, (bx - ax) / ln, (by - ay) / ln)
+    if best is None:
+        raise SystemExit(f"{bid} : aucun mur tourné vers {spec['faces']}")
+    _, ox, oy, ux, uy = best
+    vx, vy = -uy, ux
+    st = lambda p: ((p[0] - ox) * ux + (p[1] - oy) * uy, (p[0] - ox) * vx + (p[1] - oy) * vy)
+    xy = lambda s, t: (ox + ux * s + vx * t, oy + uy * s + vy * t)
+    R = [st(p) for p in ring]
+    smin, smax = min(p[0] for p in R), max(p[0] for p in R)
+    tmin, tmax = min(p[1] for p in R), max(p[1] for p in R)
+    xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+    box = (math.floor(min(xs) - MARGIN), math.floor(min(ys) - MARGIN), math.ceil(max(xs) + MARGIN), math.ceil(max(ys) + MARGIN))
+    mns, mnt = Raster("MNS", bid, *box), Raster("MNT", bid, *box)
+    S = lambda s, t: mns(*xy(s, t))
+    r2 = lambda v: round(float(v), 2)
+    mid = (smin + smax) / 2
+    # Sol devant la façade, hors du perron (tiers central).
+    g0 = float(np.median([mnt(*xy(s, t)) for s in np.arange(smin, smax, 0.5) for t in (tmin - 4, tmin - 5, tmin - 6)
+                          if abs(s - mid) > (smax - smin) / 3]))
+    hot = lambda s, t: S(s, t) > g0 + 8
+    first = lambda f, a, b_, d: next((float(x) for x in np.arange(a, b_, d) if f(x)), None)
+    # Façade : premier passage au-dessus du seuil en venant de la place (médiane sur les deux tiers du milieu).
+    tf = float(np.median([first(lambda t: hot(s, t), tmin - 6, tmax, 0.25) for s in np.arange(smin + 3, smax - 3, 0.5)]))
+    # Arrière : la cage de scène dépasse de loin les bâtiments accolés derrière elle (seuil à 16 m).
+    tr = float(np.median([first(lambda t: S(s, t) < g0 + 16, tf + 15, tmax + 6, 0.25) for s in np.arange(smin + 3, smax - 3, 0.5)]))
+    # Côtés, ligne par ligne : bord gauche et droit.
+    rows = np.arange(tf + 0.5, tr - 0.4, 0.5)
+    left = [first(lambda s: hot(s, t), smin - 6, smax, 0.25) for t in rows]
+    right = [first(lambda s: hot(s, t), smax + 6, smin, -0.25) for t in rows]
+    near = rows < tf + 4
+    farr = rows > tf + 10
+    lF, lR = float(np.median(np.array(left)[near])), float(np.median(np.array(left)[farr]))
+    rF, rR = float(np.median(np.array(right)[near])), float(np.median(np.array(right)[farr]))
+    # Ressaut des côtés : fin du retour des pavillons (premier rang où les deux bords sont passés à mi-chemin).
+    ts = float(next(t for t, a, b_ in zip(rows, left, right) if t > tf + 2 and a > (lF + lR) / 2 and b_ < (rF + rR) / 2))
+    c = spec["cornice"]
+    s0 = lF + c  # origine : coin gauche de la façade
+    W = rF - lF - 2 * c
+    iL, iR = lR - lF, rF - rR  # retrait des côtés derrière le ressaut
+    sm = (lR + rR) / 2
+    # Corps avant : haut de l'attique (juste derrière la façade, hors du milieu), profil en travers (toit brisé), faîtage.
+    eave = float(np.median([S(s, t) for s in np.arange(lF + 1, rF - 1, 0.5) if abs(s - mid) > 3.5 for t in (tf + 0.5, tf + 0.75, tf + 1.0)]))
+    # Cage de scène : sur l'axe, le toit monte d'un coup ; le corps avant s'arrête là.
+    prof_t = np.arange(tf + 4, tr, 0.25)
+    near_wall = [float(np.median([S(lR + 1.5, t), S(rR - 1.5, t)])) for t in prof_t]
+    tower_eave_guess = float(np.median(near_wall[-12:]))
+    tt = float(next(t for t, z in zip(prof_t, near_wall) if z > (tower_eave_guess + eave) / 2 + 0.5))
+    band = np.arange(ts + 1.5, tt - 1.5, 0.5)
+    half = np.arange(0.25, (rR - lR) / 2, 0.25)
+    profile = np.array([np.median([S(lR + d, t) for t in band] + [S(rR - d, t) for t in band]) for d in half])
+    ridge = float(profile.max())
+    lo = (half >= 1.0) & (half <= 4.5)
+    k1, z1 = np.polyfit(half[lo], profile[lo], 1)
+    dr = float(half[int(np.argmax(profile))])
+    up = (half >= dr - 3.0) & (half <= dr - 0.5)
+    k2, z2 = np.polyfit(half[up], profile[up], 1)
+    brk = (z2 - z1) / (k1 - k2)
+    # Cage de scène : deux pans le long de t, faîtage sur l'axe.
+    tband = np.arange(tt + 1.5, tr - 1.5, 0.5)
+    tp = np.array([np.median([S(lR + d, t) for t in tband] + [S(rR - d, t) for t in tband]) for d in half])
+    tridge = float(tp.max())
+    tl = (half >= 1.0) & (half <= float(half[int(np.argmax(tp))]) - 1.0)
+    k3, z3 = np.polyfit(half[tl], tp[tl], 1)
+    out = {
+        "o": [r2(xy(s0, tf + c)[0]), r2(xy(s0, tf + c)[1])], "a": round(math.atan2(uy, ux), 5),
+        "w": r2(W), "ts": r2(ts - tf - 2 * c), "iL": r2(iL), "iR": r2(iR), "tt": r2(tt - tf - c), "tr": r2(tr - tf - c),
+        "g": r2(g0), "eave": r2(eave),
+        "roof": [r2(z1 + k1 * c), r2(brk - c), r2(z1 + k1 * brk), r2(ridge)],
+        "tower": [r2(z3 + k3 * c), r2(tridge)],
+        "levels": spec["levels"], "pav": spec["pav"],
+    }
+    return out
+
+
+def playhouse(tid, bid, b, spec, k):
+    """Théâtre municipal (D223) : champ `play` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = measure_playhouse(bid, b, spec)
+    e = dict(k["buildings"].get(bid, {"k": "culture"}))
+    e["play"] = m
+    g = m["g"]
+    print(f"  {bid} : façade {m['w']} m, ressaut à {m['ts']} m, cage de scène de {m['tt']} à {m['tr']} m ; attique {m['eave'] - g:.1f} m,"
+          f" toit brisé {m['roof'][2] - g:.1f} m à {m['roof'][1]:.1f} m du mur, faîtage {m['roof'][3] - g:.1f} m ;"
+          f" cage {m['tower'][0] - g:.1f} / {m['tower'][1] - g:.1f} m au-dessus du sol devant")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    ca, sa = math.cos(m["a"]), math.sin(m["a"])
+    xy = lambda s, t: [round(m["o"][0] + ca * s - sa * t, 1), round(m["o"][1] + sa * s + ca * t, 1)]
+    W, ts, iL, iR, tt, tr = m["w"], m["ts"], m["iL"], m["iR"], m["tt"], m["tr"]
+    rect = lambda a0, a1, b0, b1: [(a0, b0), (a1, b0), (a1, b1), (a0, b1)]
+    polys = [(rect(0, W, 0, ts), m["eave"], m["eave"]), (rect(iL, W - iR, ts, tt), m["eave"], m["roof"][3]),
+             (rect(iL, W - iR, tt, tr), m["tower"][0], m["tower"][1])]
+    lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
+    return ch, tid if lod else None
 
 
 def run(f, x0, step, limit, test):
@@ -1709,6 +1825,13 @@ def main():
             continue
         if spec["model"] == "hexagone":
             ch, lod = hexagone(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "playhouse":
+            ch, lod = playhouse(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

@@ -1593,3 +1593,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La pyramide gallo-romaine existe enfin : à la place du cône d'herbe, un cône de moellons mesuré sur le LiDAR (23 m), avec son talus, son ressaut à mi-hauteur, sa pointe en cheminée et le trou de fouille au sud-sud-est.
 - Au pied : piquets en bois, panneaux « Interdit de pénétrer — Chute de pierres », panneau d'information. On ne l'escalade pas ; les fusils cachés à côté sont toujours là.
 - Éclairée la nuit comme le temple de Janus (l'éclairage des monuments sera revu) ; visible de loin depuis la ville.
+
+**Le théâtre municipal, étape 1 : volumes, toits et travées (4 novembre 2026)** (D223)
+- Le théâtre n'est plus un immeuble de cinq étages : d'après tes photos et le relevé LiDAR, un corps avant en pierre claire (façade de 23,7 m, attique à 17,6 m) sous un toit d'ardoise brisé à croupes, et derrière, la cage de scène plus haute (27,4 m au faîtage), enduite de gris, à deux pans et pignons relevés.
+- Façade : trois portes rouges en plein cintre, fenêtres jumelées à l'entresol, trois grandes baies cintrées, pavillons d'une travée ; côtés à quatre rangs de baies avec arcades au rez-de-chaussée ; inscription « THEATRE » dorée sur l'attique ; un perron de six marches.
+- Les murs mesurés servent d'obstacle (l'emprise des données était décalée d'un mètre et comptait le perron dans le bâtiment).
+- Prochaines étapes : détail de la façade, balcon, perron et lanternes, ornements du toit.
+
+![Avant](docs/captures/d223-theatre-avant.jpg)
+![Après](docs/captures/d223-theatre-apres.jpg)
+![La cage de scène depuis la rue Jondeau](docs/captures/d223-theatre-arriere.jpg)

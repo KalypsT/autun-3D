@@ -1,7 +1,7 @@
 import type { Building, HeightField, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
@@ -52,7 +52,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     const kind = tile.kinds?.buildings[b.id];
     const house = kind?.house;
     if (house || !walkableRoof(kind)) {
-      c.addRing(house ? houseRing(house) : b.ring);
+      // Théâtre municipal (D223) : ses murs mesurés, le perron hors du bâtiment.
+      c.addRing(house ? houseRing(house) : kind?.play ? playhouseRing(kind.play) : b.ring);
       for (const h of b.holes) c.addRing(h);
       continue;
     }

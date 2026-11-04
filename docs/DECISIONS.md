@@ -4434,3 +4434,32 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Limites** : la face nord-est (côté bois) n'est pas photographiée (même matière que les autres) ; la profondeur du trou n'est pas mesurée (le laser n'en voit pas le fond : un ovale sombre peint au fond du creux) ; la silhouette lointaine est en gradins ; clôture en piquets de bois choisie par défaut (la photo 1 montre un grillage sur poteaux métalliques : à confirmer).
 
 **Tests** (+1, +1 bloc) : sections, sommet, profil, cavité au sud-sud-est, relief aplani sous le pied, pied en obstacle, piquets, caches d'armes, panneau et sentier dehors, arbres retirés (`landmarks.test.ts`) ; géométrie finie, moins de 6 000 triangles, éclairage de nuit (`monuments.test.ts`).
+
+## 2026-11-04 — D223. Bâtiments d'après photos : le théâtre municipal, volumes, toits et travées
+
+**Demande de l'utilisateur** : intégrer correctement le théâtre municipal (place du Champ de Mars) d'après ses photos. Photos fournies (non versionnées, elles servent seulement à décrire) : la façade de face (Wikimedia Commons), deux vues anciennes de trois quarts, trois vues Google Street View de juillet 2026 (depuis la place côté hôtel de ville, l'arrière depuis la rue Jeannin et depuis la rue Jondeau). Pas de photo rapprochée de l'ornement au sommet du pignon arrière. Lecture : avant-corps central de trois travées (portes rouges en plein cintre au-dessus d'un perron de six marches, fenêtres jumelées à l'entresol, balcon, trois grandes baies cintrées) entre deux pavillons d'une travée, dont le retour fait une travée sur les côtés ; corniche à modillons, attique sculpté, inscription « THEATRE », toit d'ardoise ; côtés à quatre rangs de baies, arcades rouges au rez-de-chaussée ; derrière, une cage de scène plus haute, enduite de gris, à deux pans et pignons à rampants.
+
+**Constat** : le théâtre était un immeuble générique de cinq niveaux à petites fenêtres, coiffé d'un toit à croupes uniforme (type « culture », inscription générique). L'emprise BD TOPO est décalée : plus étroite d'environ 1,2 m côté hôtel de ville, et sa saillie de 2,5 m au milieu de la façade est en fait le perron (le relevé montre un mur de façade droit).
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveau modèle `playhouse` de `build_monuments.py`, entrée du bâtiment dans `monuments` de `manual.json`) : repère sur l'arête BD TOPO la plus longue tournée vers `faces` (sud-est) ; bords = passage du modèle de surface au-dessus de 8 m, médianes par ligne, murs 30 cm en dedans (saillie de la corniche). Façade de 23,7 m ; retour des pavillons sur 7,9 m, puis côtés en retrait de 1,0 m (gauche) et 0,5 m (droite) ; cage de scène de 19,2 m au mur arrière (30,5 m), ce dernier trouvé au seuil de 16 m pour ignorer les bâtiments accolés. Hauteurs au-dessus de la place (sol devant, hors du perron) : haut de l'attique 17,6 m ; **toit brisé à croupes** : pans raides (pente 0,8) jusqu'à 23,1 m à 7,6 m du mur, puis pans faibles (0,46) jusqu'au faîtage à 24,6 m ; **cage de scène** à deux pans le long de l'axe : égout 22,4 m, faîtage 27,4 m. Niveaux de la photo de face, mise à l'échelle du relevé : sol du perron 1,4 m, cordon 5,8 m, bandeau du balcon 9,2 m, corniche de 15,3 à 16,1 m ; pavillons : 28,75 % de la largeur chacun. Champ `play` du bâtiment dans `kinds/26_35.json` ; une deuxième passe ne change rien.
+
+**Rendu** (`buildPlayhouse`, `src/render/playhouse.ts`, dans les maillages de la tuile : aucun appel de dessin de plus, 2 057 triangles et 98 de vitres allumées) :
+- murs en pierre claire (rez-de-chaussée un peu plus soutenu, refends sur la façade et les retours), corniche (doucine et larmier) qui court aussi le long de la cage de scène, cordon, bandeau du balcon, attique à couronnement et face intérieure ; au-dessus de la corniche, la cage de scène est enduite de gris ;
+- façade : fenêtre cintrée, fenêtre et fenêtre haute dans chaque pavillon (et sur leurs retours), trois portes cintrées (imposte vitrée), six fenêtres jumelées à l'entresol, trois grandes baies cintrées à l'étage noble ; côtés : travées d'environ 3,3 m sur quatre rangs, arcades jusqu'au sol ; menuiseries rouges, encadrements clairs ; une baie sur trois environ allumée la nuit ;
+- inscription « THEATRE » en lettres dorées sur un panneau de l'attique, au milieu ;
+- toits d'ardoise : fond plat derrière l'attique, toit brisé à croupes à 45° (brisure et faîtage soulignés de zinc), cage de scène à deux pans avec débord, pignons avant et arrière à chaperons relevés et piles d'angle ;
+- perron simple de six marches devant l'avant-corps (il recouvre le talus du relief, auparavant caché dans l'emprise).
+
+**Obstacle** : les murs mesurés (`playhouseRing`, comme la maison de D140) au lieu de l'emprise BD TOPO ; le perron n'est plus dans le bâtiment. **Silhouette lointaine** : trois prismes (avant, corps à toit brisé, cage de scène) dans `lod/26_35.json`. Vue `?view=municipal` (de face depuis la place).
+
+**Pas encore** (étapes suivantes, comme pour l'hôtel de ville) : détail de la façade (bossages, pilastres et colonnes de l'avant-corps, frontons cintrés et mascarons des pavillons, modillons, panneaux sculptés de l'attique, fronton central) ; balcon, consoles, petits balcons des pavillons, perron à rampes et lanternes ; lucarnes à oculus des pavillons, pots-à-feu, épis, ornement du pignon arrière (sans photo rapprochée : forme approchée), escalier de secours de l'arrière ; chaînes d'angle de la cage de scène. On marche encore sur le talus sous les marches dessinées.
+
+**Tests** (+3 : `playhouse.test.ts`) : volumes plausibles, obstacle proche de l'emprise BD TOPO et façade tournée vers le sud-est, géométrie finie et bornée, inscription. `world.test.ts` : le test « on n'entre pas dans un bâtiment » prend les murs mesurés du théâtre comme le jeu.
+
+![Avant](captures/d223-theatre-avant.jpg)
+![Après](captures/d223-theatre-apres.jpg)
+![Depuis la place, côté hôtel de ville, avant](captures/d223-theatre-angle-avant.jpg)
+![Depuis la place, côté hôtel de ville, après](captures/d223-theatre-angle-apres.jpg)
+![Vue haute, avant](captures/d223-theatre-haut-avant.jpg)
+![Vue haute, après](captures/d223-theatre-haut-apres.jpg)
+![La cage de scène depuis la rue Jondeau](captures/d223-theatre-arriere.jpg)
