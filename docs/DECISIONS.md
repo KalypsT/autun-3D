@@ -4417,3 +4417,20 @@ Les fêtes sont celles du calendrier (D194), lues par l'ambiance (`Atmosphere.fe
 **Limites** : gain sur la chauffe et la batterie non encore mesuré sur le téléphone (refaire le test de 10 minutes en réglages hauts). Réglages par défaut (définition ×2,5, ombres fines) inchangés pour l'instant.
 
 **Tests** (+7) : cadence obtenue sur des écrans à 60, 90, 120 et 144 Hz, horodatages irréguliers, sans limite, reprise après une longue image (`frame-limit.test.ts`) ; lecture du réglage et `?fps=` (`settings.test.ts`).
+
+## 2026-11-04 — D222. La Pierre de Couhard
+
+**Constat** (plan : `docs/plans/couhard.md`, relevés : `tools/data/survey_couhard.py`) : la pyramide n'existait pas dans le jeu, mais sa forme si, en herbe. Le classement du LiDAR HD range la maçonnerie en « sol » : le MNT, donc le relief, portait un cône vert de 23 m à sa place. Le nuage de points suffit pour la forme (sommet à +22,8 m au-dessus du pré, pied de 9 à 12,5 m de rayon, mur raide jusqu'à +10 m, ressaut, cheminée) et montre la cavité (aucun retour de +6 à +8 m au sud-sud-est) ; les quatre photos de l'utilisateur donnent la matière et les abords.
+
+**Décisions** :
+- **Site `couhard`** (`build_monuments.py couhard`, entrée `pierre-de-couhard` de `manual.json`) : nuage LiDAR lu à distance (dalle COPC, requêtes partielles, fenêtre de 70 m, cache `.cache/shared/raw/monuments`) ; pré = plan ajusté sur le sol à 13-16 m de l'axe ; axe = centroïde de la section à +10 m ; **sections** : un rayon par secteur de 15° tous les mètres (90ᵉ centile), secteurs vides interpolés, surplomb limité à 20 cm (aucun au-dessus de +18 m), pied prolongé du talus (12,5 m au plus).
+- **Relief** : jusqu'à 1,5 m au-delà du pied, le relief fin de la tuile 30_32 devient le plan du pré ; de 1,5 à 4 m, il est écrêté sous une pente de 20 % depuis ce plan (un `min` : une deuxième passe ne change rien). Le relief grossier (8 m) et lointain (4 m) gardent leur bosse lissée, cachée sous le modèle.
+- **Modèle** (`src/render/couhard.ts`) : maillage tendu entre les sections (secteurs de 6°, niveaux de 1 m, demi-niveaux autour de la cavité), blocage de ± 12 à 18 cm (± 6 cm dans la cheminée) ; moellons gris-brun et mortier beige, bandes plus claires, base restaurée plus claire au sud-est (photo 2), touffes sur les replats ; **creux concave** autour d'un **trou ovale sombre** (1,9 × 2,4 m, milieu à +6,8 m, cap 152°) ; sommet à la pointe mesurée ; neuf touffes et petits bouleaux sur les ressauts (photo 4). 4 218 triangles.
+- **Abords** : piquets en bois tous les 4 m à 1,6 m du pied (photo 4, choix par défaut), deux panneaux « Interdit de pénétrer — Chute de pierres » (caps 215° et 165°), panneau d'information à l'ouest (photo 1).
+- **Obstacles** : le pied (on ne gravit pas le talus), les piquets et le pupitre. Les caches d'armes (D84, D207, à 14,6 et 16,4 m de l'axe) et le sentier qui fait le tour à 14-16 m restent libres ; aucun arbre de la carte sur la maçonnerie.
+- **Éclairage de nuit** (demande de l'utilisateur : comme les bâtiments déjà éclairés, l'éclairage sera revu) : le même mécanisme que le temple de Janus (`light`, dégradé chaud du pied vers le haut dans le maillage éclairé, 3 720 triangles). Le trou, les touffes et la clôture restent sombres. Quand l'éclairage des monuments sera revu, la pyramide suivra.
+- **Silhouette lointaine** : quatre anneaux étagés (+10, +13, +17 m et sommet) dans `lod/30_32.json`.
+
+**Limites** : la face nord-est (côté bois) n'est pas photographiée (même matière que les autres) ; la profondeur du trou n'est pas mesurée (le laser n'en voit pas le fond : un ovale sombre peint au fond du creux) ; la silhouette lointaine est en gradins ; clôture en piquets de bois choisie par défaut (la photo 1 montre un grillage sur poteaux métalliques : à confirmer).
+
+**Tests** (+1, +1 bloc) : sections, sommet, profil, cavité au sud-sud-est, relief aplani sous le pied, pied en obstacle, piquets, caches d'armes, panneau et sentier dehors, arbres retirés (`landmarks.test.ts`) ; géométrie finie, moins de 6 000 triangles, éclairage de nuit (`monuments.test.ts`).

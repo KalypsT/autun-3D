@@ -111,13 +111,26 @@ Coût estimé : environ 2 000 à 3 000 triangles pour la pyramide, quelques cent
 - **Face nord-est** : sans photo, elle aura la même matière que les autres.
 - **Terrain** : l'aplanissement touche une seule tuile ; à vérifier sur les coutures et sur la navigation piétonne autour du pied.
 
-## 6. Questions pour l'utilisateur
+## 6. Questions pour l'utilisateur (réponses du 4 novembre : plan accepté ; éclairage comme les monuments déjà éclairés, à revoir plus tard ; une photo de plus, la 4)
 
-1. **Clôture** : grillage sur poteaux métalliques (photo 1) ou piquets en bois (photo 4) ? Par défaut, les piquets en bois.
-2. **Éclairage de nuit** : la pyramide est-elle éclairée ? Par défaut, non.
+1. **Clôture** : grillage sur poteaux métalliques (photo 1) ou piquets en bois (photo 4) ? Par défaut, les piquets en bois (sans réponse : piquets posés).
+2. **Éclairage de nuit** : oui, comme les bâtiments déjà éclairés (même mécanisme que le temple de Janus) ; l'éclairage sera revu pour tous.
 3. **Ordre des lots** : par défaut 1 → 5.
 
 ## 7. Captures « avant »
 
 ![Depuis le pré du sud-ouest : un cône d'herbe](../captures/couhard-avant-sud-ouest.jpg)
 ![Vue aérienne depuis le sud-est : le cône vert, la ville au fond](../captures/couhard-avant-aerien.jpg)
+
+## 8. Réalisation (D222, 4 novembre 2026)
+
+Lots 1 à 5 faits en une passe (`python3 tools/data/build_monuments.py couhard`, `src/render/couhard.ts`) ; détail dans `docs/DECISIONS.md` (D222).
+Écarts au plan : la cavité est un **creux concave** (0,8 m) autour d'un **trou ovale peint** au fond, pas une alvéole maillée (un premier essai,
+enfoncé de 3 m sur la grille du maillage, ressemblait à une porte rectangulaire) ; le relief est aplani jusqu'à 1,5 m du pied puis écrêté sous une
+pente de 20 % jusqu'à 4 m (stable d'une passe à l'autre) ; pas de chemin d'herbe usée (le sentier OpenStreetMap fait déjà le tour).
+
+![Depuis le pré du sud-ouest](../captures/couhard-apres-sud-ouest.jpg)
+![Face sud-sud-est : le trou de fouille](../captures/couhard-apres-cavite.jpg)
+![Vue aérienne depuis le sud-est](../captures/couhard-apres-aerien.jpg)
+![La nuit, éclairée comme le temple de Janus](../captures/couhard-apres-nuit.jpg)
+![De loin, depuis le nord-ouest : la silhouette sur la colline](../captures/couhard-apres-lointain.jpg)
