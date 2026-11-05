@@ -1749,3 +1749,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le portail depuis l'avenue](docs/captures/d238-portail.jpg)
 ![Vue haute](docs/captures/d238-haut.jpg)
 ![La cour](docs/captures/d238-cour.jpg)
+
+**L'eau de la ville, lot 0 : relevés (5 novembre 2026)** (D239)
+- Rien n'a changé dans le jeu : plan `docs/plans/eau.md` (fond, niveau, nage, véhicules qui coulent) et relevés de tous les plans d'eau (`tools/data/survey_water.py`).
+- Le plan d'eau du Vallon (20,85 ha), l'Arroux, le Ternin, un étang en amont du Vallon et 31 petits plans d'eau ; seule une bande de 40 m près de la côte reste à la mer.
+- Trouvé en route : la carte et la minimap ne peignent pas l'eau de la ville, et l'eau lointaine n'est pas dessinée. Ce sera corrigé au lot 1.
+
+![Debout sur le lac, avant](docs/captures/eau-avant-vallon-surface.jpg)
+

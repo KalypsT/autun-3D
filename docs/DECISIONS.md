@@ -4910,3 +4910,26 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La cour](captures/d238-cour.jpg)
 ![Le collectif de logements](captures/d238-logements.jpg)
 ![Le portail la nuit](captures/d238-portail-nuit.jpg)
+
+## 2026-11-05 — D239. L'eau de la ville, lot 0 : relevés (plan `docs/plans/eau.md`)
+
+**Demande de l'utilisateur** : l'eau est une surface dure sur laquelle on marche et on roule, partout. Il veut **nager dans l'eau de la ville** (pas en mer, qui reste une limite), qu'une **voiture coule et tombe en panne**, qu'une voiture passe un gué peu profond (freinée, elle cale au-delà de 0,5 m), que **la police attende au bord sans tirer**, pas d'endurance à la nage, pas de plongée. La profondeur réelle est inconnue et sans importance, tant que ça ressemble à un vrai lac. Ordre retenu : l'eau d'abord, le décor du plan d'eau du Vallon ensuite, dans un plan à part.
+
+**Constat** : l'eau de la ville est un aplat posé sur le relief nu (`buildWater`). Sous l'eau, le relief LiDAR est la surface de l'eau (le laser ne la traverse pas) : le jeu n'y voit qu'un sol. La mer (D105) a déjà la bonne mécanique (fond creusé, niveau, règle de profondeur de `src/core/shore.ts`) : l'eau de la ville la reprendra, avec un niveau par plan d'eau.
+
+**Aucun changement du jeu** : le plan, un script de relevé (`tools/data/survey_water.py`, sur les données publiées, noms par l'API OpenStreetMap), ses chiffres (`tools/data/water_survey.json`) et trois captures « avant » (`docs/captures/eau-avant-*.jpg`).
+
+**Résultats** (détail au §9 du plan) :
+- 62 plans d'eau, 48,2 ha. **Plan d'eau du Vallon** : 20,85 ha, niveau −25,41 (écart 0,15 m), berges en pente douce à 71 %, aucun pont. **L'Arroux** (quatre polygones, 20,3 ha en ville) : niveau de −42,9 à −37,5, 35 % de bords hauts dans la traversée de la ville, dont un de 496 m sans sortie, quatre ponts dont une passerelle à 0,34 m de l'eau. **Le Ternin**, un étang en amont du Vallon, 31 petits plans d'eau, dont des étangs perchés dans les collines du sud.
+- La mer ne garde que la bande de 40 m près de la côte : l'Arroux et le Ternin sont de l'eau de la ville presque partout.
+- L'ajustement d'un plan incliné est trop bruité (le Vallon sort avec 0,6 m/km de pente, comme l'Arroux) : on prendra la médiane par morceau de tuile, et un seul niveau pour un plan d'eau fermé.
+- 67 arbres dans le polygone du Vallon (queue sud), 266 dans l'Arroux : ils resteront sur des hauts-fonds. Aucun mobilier, mur ni bâtiment dans l'eau.
+- Rivières en ruban de 6 m : l'Acaron (2,5 km, lit déjà visible 0,4 à 1,5 m sous les rives) et des bouts du Ternin ; pas creusées.
+- **Deux défauts trouvés** : la carte et la minimap ne peignent pas l'eau de la ville (`build_map.py` lit la couche `water` des sols, vide depuis que l'eau est dans `structures/`), et l'eau lointaine (au-delà des tuiles détaillées) n'est pas dessinée. Ajoutés au lot 1.
+
+**Limites** : profondeurs inventées ; classement des berges sur le relief à 1 m (un mur fin peut passer pour une pente) ; « eau hors contour » est un indice, pas une mesure. Aucun test (aucun code de jeu touché).
+
+![Vue haute du Vallon, avant](captures/eau-avant-vallon-haut.jpg)
+![Debout sur le lac](captures/eau-avant-vallon-surface.jpg)
+![Voiture sur le lac](captures/eau-avant-voiture-sur-le-lac.jpg)
+

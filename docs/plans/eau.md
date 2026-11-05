@@ -44,8 +44,8 @@ Noms : OpenStreetMap (API, 5 novembre 2026) pour le Vallon ; les autres sont à 
 | Arroux (cours principal, probable) | 11,5 ha | −1519–230 ; 188–2539 | −42,69 / −41,73 / −40,24 | **pente** le long du cours : niveau variable |
 | Arroux, aval nord (probable) | 4,4 ha | 129–904 ; 2938–4536 | −39,68 / −38,47 / −37,48 | pente |
 | Plan d'eau ouest (à nommer) | 3,9 ha | −2130–−1446 ; −447–188 | −44,45 / −42,86 / −42,48 | presque plat |
-| 21 autres (étangs, bras, bassins) | 0,1 à 1,3 ha | | | dont 4 dont le 5 % plonge de 5 à 7 m sous la médiane : **touchés par la côte**, à exclure (§3.1) |
-| Étang du Brisecou, en amont du Vallon (OSM w263507372) | 0,19 ha | 1320–1391 ; −53–22 | −23,62 / −23,43 / −22,25 | petit, peu profond |
+| 21 autres (étangs, bras, bassins) | 0,1 à 1,3 ha | | | dont 4 dont le 5 % plonge de 5 à 7 m sous la médiane : touchés par la côte (§9 : seule leur bande de 40 m près de la côte reste à la mer) |
+| Étang en amont du Vallon, sur le Brisecou (OSM w263507372, sans nom) | 0,19 ha | 1320–1391 ; −53–22 | −23,62 / −23,43 / −22,25 | petit, peu profond |
 | Hors du lot : un bassin perché | 0,14 ha | −426–−379 ; −1250–−1128 | +61,6 | dans les collines du sud ; à identifier (réservoir ?) |
 
 **Ruisseaux** (rubans) : 280 tronçons, 28,3 km. Largeurs données par le type OSM : 0,9 m (fossés), 1,6 m (ruisseaux), 6 m (rivières hors polygone, 31 tronçons, surtout
@@ -78,7 +78,8 @@ et « Réglementation de pêche ». **Aucune plage ni zone de baignade** dans OS
   (on écarte les berges et les îles comprises dans le polygone). Un plan d'eau plat comme le Vallon donne `a = b = 0` ; l'Arroux, découpé en morceaux de 250 m,
   suit sa pente par morceaux (≈ 0,25 m par morceau : les marches aux coutures, quelques centimètres, ne se voient pas). Les plans de deux morceaux voisins sont recalés à leur couture.
 - Stocké dans `structures/<tuile>.json` : nouveau champ `wz` (un `[a, b, c]` par polygone de `water`, dans le même ordre) ; version de fichier relevée.
-- **Exclus** : les polygones qui touchent le rivage de la mer (le 5 % plonge sous la médiane, §2). Le lot 0 dresse la liste ; ils restent tels quels, la mer les gère déjà.
+- **Mer** : seule la partie d'un polygone à moins de 40 m de la côte reste à la mer (la plage de `build_coast.py` y est déjà creusée). L'Arroux et le Ternin, qui finissent à la côte, sont donc de l'eau de la ville sur presque toute leur longueur (§9).
+- **Révisé au lot 0** : l'ajustement d'un plan est trop bruité (le Vallon sort avec 0,6 m/km de pente, autant que l'Arroux ; seuls 17 % des cellules du grand polygone de l'Arroux sont à moins de 0,3 m de la médiane : il contient bancs et berges). On prend donc **la médiane par morceau de tuile**, lissée avec les morceaux voisins du même cours d'eau, et **un seul niveau pour un plan d'eau fermé** (lac, étang). `wz` reste un plan `[a, b, c]`, avec `a = b = 0` dans ce cas.
 
 ### 3.2 Le fond
 
@@ -99,8 +100,11 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 
 - **Idempotence** : au premier passage, les plans `wz` sont ajustés sur le relief d'origine et écrits dans `structures/`. Aux passages suivants, l'étape repart de ces plans
   (le relief est déjà creusé) : une cellule est « d'eau » si elle est dans le polygone et sous le niveau + 0,3 m, et son fond se recalcule à l'identique. On ne creuse jamais deux fois.
+- **Arbres** : une cellule à moins de 2,5 m d'un arbre compte comme sèche. Les arbres du polygone (67 au Vallon, 266 dans l'Arroux, §9) se retrouvent sur un haut-fond ou une berge, jamais au milieu de l'eau profonde.
+- **Queue du Vallon** (sud, y < 140 : arbres, arrivée du Brisecou, relief à ± 0,4 m du niveau) : marais peu profond, **0,4 m au plus**.
+- **Bassins à bords hauts** (plus de la moitié du bord au-dessus de 0,8 m : #12 vers (−1427 ; 156), #19 et #29 dans les collines du sud) : **1,0 m au plus**, on y a toujours pied : personne n'y est piégé.
 - **Ruisseaux** (rubans de 0,9 et 1,6 m) : **pas creusés**. Ils font 1 à 2 cellules de large, le LiDAR y voit déjà à peu près le lit, et l'eau réelle y fait 10 à 30 cm :
-  on y marche, ce qui est juste. Ils gagnent seulement un clapotis et un léger freinage (§3.4). Les rivières en ruban de 6 m : creusées en rigole de 0,6 m, sans nage (lot 0 : les identifier).
+  on y marche, ce qui est juste. Ils gagnent seulement un clapotis et un léger freinage (§3.4). Les rivières en ruban de 6 m (§9 : l'Acaron, 2,5 km, et des bouts du Ternin) : **pas creusées non plus** ; le LiDAR voit déjà le lit de l'Acaron, 0,4 à 1,5 m sous ses rives. L'eau y est dessinée dans ce lit, on y marche.
 
 ### 3.3 Le dessin de l'eau
 
@@ -108,6 +112,8 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
   « à altitude donnée »). Le liseré clair et les rides passent au niveau de l'eau.
 - La couche `water` des sols (`ground.ts`) n'est plus dessinée là où une surface `wz` existe (sinon un aplat bleu au fond, visible au bord par transparence des pas grossiers).
 - **Surface opaque**, dans le style « affiche » actuel. Le fond ne se voit pas. Une variante plus tard : un dégradé plus sombre avec la profondeur (sans transparence).
+- **Carte et minimap** (trouvé au lot 0) : elles ne peignent **pas** l'eau de la ville. `build_map.py` la lit dans la couche `water` des sols des tuiles, qui est vide depuis que l'eau est passée dans `structures/`. Le lac du Vallon et l'Arroux sont couleur papier sur la carte. À corriger au lot 1 (`build_map.py` lit `structures/`).
+- **Eau lointaine** (trouvé au lot 0, `docs/captures/eau-avant-vallon-haut.jpg`) : au-delà des tuiles détaillées, l'eau n'est pas dessinée du tout ; on voit le sol vert. Il faut une surface d'eau dans les silhouettes lointaines (un maillage plat par super-tuile, quelques centaines de triangles).
 - **Relief lointain** : au-delà des tuiles détaillées, le relief grossier montrerait des creux. Deux possibilités, à trancher au lot 1 selon ce qui coûte le moins :
   (a) le relief grossier garde la surface d'origine (on ne creuse que les blocs fins) ; (b) les silhouettes lointaines dessinent aussi la surface de l'eau. **(a) est proposé** :
   on ne voit jamais le fond de loin, et c'est une ligne dans `build_water.py`.
@@ -150,8 +156,8 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 - **Berge en pente** (le cas courant, puisque le fond est creusé en pente) : on remonte en marchant dès qu'on a pied. Rien de spécial.
 - **Bord franc** (quai, mur de berge, ponton plus tard) : si le bord est **à moins de 0,8 m au-dessus de l'eau**, on se hisse (geste court, réutilise le mécanisme d'escalade
   `startClimb` avec une hauteur de départ à la surface). Au-dessus de 0,8 m, c'est un mur : on le longe à la nage.
-- **Secours** : un nageur qui ne trouve aucune sortie à moins de 60 m (mesuré au lot 0 : y a-t-il des tronçons de quai continus ?) n'a pas de cas spécial ; c'est le lot 0
-  qui dit s'il faut ajouter des échelles. Personne ne reste coincé dans un bassin à bords verticaux : le lot 0 les liste.
+- **Longs bords hauts** (§9) : deux seulement dépassent 150 m, dans l'Arroux : 496 m vers (−733 ; 1840) et 204 m vers (230 ; 2503). On y ajoute une **sortie aménagée** (marches taillées dans la berge) tous les 100 m environ. Les bassins à bords hauts ont un fond à 1 m (§3.2) : on y a pied.
+- **Passerelle basse** : celle de l'Arroux (`248051711`) n'est qu'à 0,34 m au-dessus de l'eau. Un nageur ne passe pas dessous : elle devient un obstacle dans l'eau. Seuil : moins de 0,6 m de hauteur libre.
 
 ### 4.3 Le dessin et le son
 
@@ -165,7 +171,7 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 ### 4.4 La police et les piétons
 
 - Les agents à pied s'arrêtent au bord (la règle de profondeur de §3.4, avec une limite de 1 m pour eux), regardent vers le nageur et attendent ; la recherche (`wanted`) continue
-  normalement. **Ils ne tirent pas sur un nageur** (ça ferait un tir aux canards) : à confirmer, voir §8.
+  normalement. **Ils ne tirent pas sur un nageur** (§8).
 - Les voitures de police restent sur la route.
 - Les piétons ne vont pas à l'eau.
 
@@ -213,7 +219,7 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 | Lot | Contenu | Résultat dans le jeu | Décision |
 |---|---|---|---|
 | **0. Relevés** | noms des plans d'eau (OSM) ; liste des polygones touchés par la mer (exclus) ; rivières en ruban de 6 m ; types de berges (pente, quai, mur : hauteur du bord au-dessus du niveau, au LiDAR) ; écarts entre contour et eau réelle ; arbres, mobilier ou murs dans les polygones ; captures « avant » | aucun | D239 |
-| **1. Fond et niveau** | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
+| **1. Fond et niveau** | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau, eau lointaine, eau de la ville sur la carte et la minimap ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
 | **2. Nage** | état nage du joueur ; pose ; sortie (pente, bord bas) ; armes rangées ; sons, rides, gerbes ; caméra ; police qui attend au bord | on nage dans l'eau de la ville ; la mer ne change pas | D241 |
 | **3. Véhicules qui coulent** | fin `drowned` ; flottaison, calage, enfoncement ; sortie du conducteur ; épave au fond ; deux-roues | une voiture qui entre dans le lac coule et ne repart plus | D242 |
 | Ensuite | plan du **décor du lac** (`docs/plans/vallon-lac.md`) : base de loisirs, cale, pontons (avec bord bas pour sortir de l'eau), chemin du tour du lac, zones en pente douce | | |
@@ -230,8 +236,53 @@ Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant l
 - **Lot 3** : seuils de 0,5 / 0,7 / 0,8 m ; gué à 0,3 m franchi ; fin `drowned` sans feu ; conducteur éjecté en nage ; épave au fond, puis retirée à distance ; moto et vélo ;
   voiture de police arrêtée au bord ; mer inchangée (D105, tests existants de `shore.test.ts`).
 
-## 8. Questions ouvertes (pour l'utilisateur)
+## 8. Réponses de l'utilisateur (5 novembre 2026)
 
-1. **Connais-tu la profondeur réelle du plan d'eau du Vallon**, ou un endroit où l'on a pied (plage, zone de baignade, mise à l'eau des bateaux) ? Sinon, les valeurs du §3.2 restent.
-2. **La police tire-t-elle sur un nageur ?** Proposé : non, elle attend au bord.
-3. **Endurance à la nage** : le jeu n'en a pas aujourd'hui. Proposé : pas d'endurance (on nage sans limite), quitte à l'ajouter plus tard.
+1. **Profondeur** : inconnue, et sans importance tant que ça ressemble à un vrai lac (on ne plonge pas). Les valeurs du §3.2 restent.
+2. **Police et nageur** : elle ne tire pas, elle attend au bord.
+3. **Endurance** : non, on nage sans limite.
+
+## 9. Lot 0 : relevés (5 novembre 2026, D239)
+
+Script : `tools/data/survey_water.py`, sur les données publiées (aucune donnée brute) ; noms par l'API OpenStreetMap ; tous les chiffres dans `tools/data/water_survey.json`.
+Captures « avant » : `docs/captures/eau-avant-vallon-haut.jpg` (vue haute), `eau-avant-vallon-surface.jpg` (caméra à 1,7 m, debout sur le lac), `eau-avant-voiture-sur-le-lac.jpg` (voiture arrêtée au milieu du lac).
+
+### 9.1 Les plans d'eau
+
+| # | Nom (OSM) | Surface (en ville) | Niveau | Berges : douce / bord bas / bord haut | Plus long bord haut | Arbres dedans | Ponts (hauteur libre) |
+|---|---|---|---|---|---|---|---|
+| 0 | Plan d'eau du Vallon | 20,85 ha | −25,41 (écart 0,15 m) | 71 % / 22 % / 7 % (2,2 km) | 68 m vers (1341 ; 534), au bord de la base de loisirs | 67, presque tous dans la queue sud (y < 140) | aucun |
+| 1 | L'Arroux, traversée de la ville | 11,44 ha | −42,3 à −40,2 | 44 % / 21 % / 35 % (10,1 km) | **496 m** vers (−733 ; 1840) | 266 | 4 ponts : routes 3,2 et 5,3 m ; passerelles **0,34**, 1,2, 1,6, 2,4 m |
+| 2 | L'Arroux, aval nord | 4,28 ha | −40,4 à −37,5 | 79 % / 16 % / 5 % | 56 m | 75 | une passerelle, 3,3 m |
+| 3 | L'Arroux, amont ouest | 3,27 ha | −42,9 | 92 % / 5 % / 3 % | 22 m | 50 | aucun |
+| 4 | L'Arroux, bras nord | 1,31 ha | −39,9 | 71 % / 11 % / 18 % | **204 m** vers (230 ; 2503) | 33 | aucun |
+| 5 | Le Ternin | 0,55 ha | −36,2 | 89 % / 10 % / 1 % | 6 m | 23 | aucun |
+| 14 | Étang en amont du Vallon (sur le Brisecou) | 0,19 ha | −23,45 | 40 % / 19 % / 40 % | 48 m | 6 | aucun |
+| | 31 autres, de 0,04 à 0,48 ha | | | pentes douces surtout | | | |
+
+- **Mer** : avec la bande de 40 m laissée à la côte, les polygones #11, #16, #18, #22, #35 et #37 restent à la mer (moins de 20 % de leur surface en ville). Tous les autres sont de l'eau de la ville.
+- **Plans d'eau perchés** dans les collines du sud (#19 à +61,6 m, #29 à +46,7 m, #26, #28, #36) : des étangs ou réservoirs, traités comme les autres. #19 et #29 ont près de la moitié de leur bord en bord haut, d'où la règle du fond à 1 m (§3.2).
+- **Aucun mobilier, mur ni bâtiment** dans un polygone. Seulement des arbres (§3.2).
+- **Eau hors contour** (relief plat au niveau de l'eau, hors du polygone, à moins de 15 m) : 212 m² au Vallon, négligeable. Le long de l'Arroux : 4 700, 15 300 et 7 300 m². C'est un indice, pas une preuve : le contour OSM ne suit pas partout l'eau réelle, ou ce sont des grèves et des prés au ras de l'eau. On ne corrige pas au lot 1 ; on regardera en capture.
+
+### 9.2 Les rivières en ruban (6 m) et les ruisseaux
+
+- **L'Acaron** : 2,5 km de ruban, de (−36 ; 1339) à (1594 ; 908) en passant par le collège. Le LiDAR voit déjà le lit, **0,4 à 1,5 m sous les rives**. On ne creuse rien : l'eau sera dessinée dans le lit et on y marchera.
+- **Le Ternin** (bouts en ruban, autour de (−1550 ; 2700–3050)) : lit au niveau des rives (le LiDAR ne voit pas de creux). Rien à creuser, on y marche.
+- Ruisseaux : 18,3 km à 1,6 m, 6,9 km de fossés à 0,9 m. Inchangés (§3.2).
+
+### 9.3 Ce que les captures montrent
+
+- On se tient debout au milieu du lac, et la voiture y est garée comme sur un parking.
+- **L'eau lointaine n'est pas dessinée** : au-delà des tuiles détaillées, la moitié sud du lac est un pré vert (vue haute). Ajouté au lot 1 (§3.3).
+- **La minimap ne montre pas le lac** (couleur papier sous la voiture) : la carte ne peint pas l'eau de la ville. Ajouté au lot 1 (§3.3).
+
+### 9.4 Ce qui change dans le plan
+
+- Niveau : médiane par morceau de tuile, un seul niveau pour un plan d'eau fermé (§3.1).
+- L'Arroux et le Ternin sont de l'eau de la ville, sauf leur bande de 40 m près de la côte (§3.1).
+- Arbres sur haut-fond, queue du Vallon en marais à 0,4 m, bassins à bords hauts à 1 m (§3.2).
+- Rivières en ruban : pas creusées (§3.2).
+- Carte, minimap et eau lointaine à corriger au lot 1 (§3.3).
+- Sorties aménagées sur les deux longs bords hauts de l'Arroux, passerelle basse en obstacle (§4.2).
+
