@@ -1784,3 +1784,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![La voiture coule](docs/captures/d242-voiture-coule.jpg)
 
+
+**Le plan d'eau du Vallon, lot 0 : relevés (5 novembre 2026)** (D243)
+- Rien n'a changé dans le jeu : plan `docs/plans/vallon-lac.md` (chemin du tour, base nautique, pontons et cale, équipements, vie du lac) et relevés (`tools/data/survey_vallon.py`).
+- Le tour du lac fait 1,9 km : 3,2 m de large en général, 2 m sur la digue du nord, en stabilisé clair ; OpenStreetMap le place à 30 cm près. Le jeu n'en dessine rien aujourd'hui.
+- Cinq pontons dans OpenStreetMap et un sixième vu d'en haut ; la base nautique a un petit port fermé par un quai, avec ses dériveurs.
+- Prochaine étape : le chemin.
+
+![Rive est, avant](docs/captures/vallon-avant-rive-est.jpg)

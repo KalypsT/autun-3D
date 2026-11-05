@@ -5007,3 +5007,24 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La voiture coule](captures/d242-voiture-coule.jpg)
 ![À la nage, l'épave sous la surface](captures/d242-epave.jpg)
 
+
+## 2026-11-05 — D243. Le plan d'eau du Vallon, lot 0 : relevés (plan `docs/plans/vallon-lac.md`)
+
+**Demande de l'utilisateur** : intégrer correctement le plan d'eau du Vallon avec le chemin qui en fait le tour. Photos fournies (non versionnées, elles servent seulement à décrire) : une vue satellite, cinq vues Google Street View de juillet 2026 (route de Chalon, base nautique, toilettes, skatepark) et sept photos 360° de juin 2025 sur le chemin (rive est et sa clôture, aire de jeux, pêcheurs, parking du robinet, pelouse au bord, allée ombragée, ponton de pêche). Réponses : pêcheurs toujours là ; bateaux posés et amarrés, et voiliers sur l'eau en été ; sud sauvage avec modération, tout le tour restant facilement praticable ; lots dans l'ordre du plan (chemin, base nautique, pontons et cale, équipements, vie du lac).
+
+**Constat** : la boucle existe dans OpenStreetMap (allée Marcel Lucotte) mais aucune étape ne la peint au sol : le jeu montre une pelouse jusqu'à l'eau, et les piétons qui la suivent (arêtes « chemin » de la navigation) marchent dans l'herbe. Les cinq pontons d'OSM (`man_made=pier`) ne sont lus par aucune étape. Le nord du lac est une digue : la route est 1,9 m sous le niveau de l'eau, la crête 1,5 m au-dessus.
+
+**Aucun changement du jeu** : le plan, un script de relevé (`tools/data/survey_vallon.py` : OSM par l'API, orthophotographie à 20 cm, modèle de surface LiDAR HD à 0,5 m, relief publié), ses chiffres (`tools/data/vallon_survey.json`), une vue annotée de l'orthophotographie (`docs/captures/vallon-lac-osm.jpg`) et quatre captures « avant ».
+
+**Résultats** (détail au §12 du plan) :
+- Boucle de 1 905 m, 191 stations ; chemin visible à 70 % des stations (le reste sous les arbres). Axe OSM à 0,3 m du milieu du chemin en médiane (1,1 m à 90 %, 4,3 m au pire, 14 stations à plus de 1 m) : on le garde, recalé là où il s'écarte.
+- Largeur : 3,2 m au sud et à l'ouest, 3,8 m à l'est (élargissements compris), **2 m sur la crête de la digue**. Chemin clair (stabilisé) partout où il se voit, même là où OSM dit `asphalt` ; l'enrobé ne se distingue pas de l'herbe grillée sur cette orthophotographie.
+- Jamais à moins de 2,8 m de l'eau ; au plus bas 0,28 m au-dessus du lac ; dévers de 6 à 11 % sur la digue (crête étroite) ; un seul arbre de la carte sur le chemin.
+- Pontons : le LiDAR ne mesure pas leur hauteur (il ne voit pas l'eau) ; hauteurs prises sur les photos (0,3 m flottant, 0,45 m fixe). Le ponton de pêche des photos est celui de la rive ouest (passerelle de 8 m, ponton de 40 m parallèle à la rive). Un sixième ponton, non cartographié, au sud-ouest de la base. La base a une **darse** fermée par un quai, avec une quinzaine de dériveurs rangés, et trois volumes à toits gris.
+- Captures : pelouse uniforme jusqu'à l'eau, base générique à toit en croupe, clôture de la rive est en barreaux noirs (un grillage vert sur les photos).
+
+**Limites** : matière lue sur la seule couleur de l'orthophotographie (un été sec) ; emplacements des photos déduits de leur contenu ; le ponton vers l'île n'est vu ni d'en haut ni sur les photos. Aucun test (aucun code de jeu touché).
+
+![Vue haute, avant](captures/vallon-avant-haut.jpg)
+![Rive est, avant](captures/vallon-avant-rive-est.jpg)
+![La base nautique, avant](captures/vallon-avant-base.jpg)

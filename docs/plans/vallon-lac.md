@@ -8,8 +8,8 @@ Suite du plan de l'eau (`docs/plans/eau.md`, §7) : l'eau, le fond et la nage so
 ## 0. Ce qu'il faut retenir
 
 1. **Le chemin du tour du lac n'existe pas dans le jeu.** OpenStreetMap a la boucle entière (allée Marcel Lucotte, plus l'allée Jacques de la Comble et l'allée
-   Émile Château au sud), mais aucune étape ne la peint au sol : sur 2,6 km de tronçons, le sol du jeu est de la pelouse (94 % de l'allée est, 24 % de l'allée ouest)
-   ou rien du tout. Les piétons la suivent déjà (arêtes « chemin » de la navigation, 1,5 à 1,8 m de large, très peu fréquentées) : ils marchent sur l'herbe.
+   Émile Château au sud), mais aucune étape ne la peint au sol : sur la boucle de 1,9 km (2,6 km avec les allées du sud), le sol du jeu est de la pelouse
+   (94 % de l'allée est, 24 % de l'allée ouest) ou rien du tout. Les piétons la suivent déjà (arêtes « chemin » de la navigation, 1,5 à 1,8 m de large, très peu fréquentées) : ils marchent sur l'herbe.
 2. **Le nord du lac est une digue.** La route de Chalon/Beaune passe à −27,3, la crête à −23,9, l'eau à −25,41 : la route est **1,9 m sous l'eau**, la crête
    1,5 m au-dessus. Le chemin du nord et ses bancs sont sur cette crête. Partout ailleurs, la berge descend en pente douce (de −20,5 à l'ouest et à l'est).
 3. **Les photos décrivent l'apparence, les données donnent la position.** Les 13 vues Street View et photos de l'utilisateur (non versionnées, elles servent seulement
@@ -69,6 +69,8 @@ une boîte à livres (1489 ; 290, déjà dessinée), le panneau « Les oiseaux d
 ## 3. Le chemin (lot 1)
 
 ### 3.1 Le tracé et la largeur
+
+(Mesures du lot 0 au §12 : elles remplacent les valeurs attendues ci-dessous.)
 
 - Axe : tronçons OSM de la boucle, **recalés sur l'orthophotographie** là où ils s'écartent du chemin visible de plus de 1 m (lot 0 : écart mesuré tous les 10 m).
 - Largeur : mesurée à l'orthophotographie par tronçon (attendu : 2,5 à 3 m à l'est d'après les photos, plus étroit au sud, 1 m pour l'allée Émile Château).
@@ -131,16 +133,18 @@ une boîte à livres (1489 ; 290, déjà dessinée), le panneau « Les oiseaux d
 3. **Le sud** : le garder plus sauvage (pas d'éclairage, herbes plus hautes), comme sur les photos ?
 4. **Ordre des lots** : chemin, base, pontons, équipements, vie du lac ; ou les pontons juste après le chemin, pour pouvoir sortir de l'eau partout ?
 
+Réponses au §11.
+
 ## 10. Lots
 
 | Lot | Contenu | Résultat dans le jeu | Décision |
 |---|---|---|---|
-| **0. Relevés** | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
+| **0. Relevés** (fait, §12) | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
 | **1. Le chemin** | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
 | **2. La base nautique** | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
 | **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
-| **5. La vie du lac** | pêcheurs, promeneurs | | D248 |
+| **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
 
@@ -152,3 +156,79 @@ Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant l
 - **Lot 3** : chaque ponton parcouru à pied de la rive au bout ; nageur hissé sur un ponton flottant ; nageur qui passe sous le ponton fixe ou en est empêché, sans se coincer ;
   sortie à pied par la cale ; voiture qui descend la cale et coule (D242 inchangé).
 - **Lots 4 et 5** : obstacles posés hors du chemin ; maillages finis et bornés.
+
+## 11. Réponses de l'utilisateur (5 novembre 2026)
+
+1. **Pêcheurs** : toujours là (décor permanent, de jour comme de nuit).
+2. **Bateaux** : oui, posés et amarrés à la base ; et **des voiliers sur l'eau en été** (lot 5).
+3. **Le sud** : sauvage avec modération. Tout le tour reste facilement praticable : un chemin net et continu, pas de passage étroit ni boueux ; herbes un peu plus hautes
+   et pas de lampadaires, mais rien qui gêne la marche ou le vélo.
+4. **Ordre des lots** : celui du §10 (chemin, base nautique, pontons et cale, équipements, vie du lac).
+
+## 12. Lot 0 : relevés (5 novembre 2026, D243)
+
+Script : `tools/data/survey_vallon.py` (OSM par l'API, orthophotographie IGN à 20 cm, modèle de surface LiDAR HD à 0,5 m, relief publié) ; tous les chiffres dans
+`tools/data/vallon_survey.json`. Captures « avant » : `docs/captures/vallon-avant-haut.jpg`, `vallon-avant-rive-est.jpg`, `vallon-avant-digue.jpg`, `vallon-avant-base.jpg`.
+
+### 12.1 Le chemin
+
+La boucle : **1 905 m**, quatre tronçons OSM et un raccord de 42 m par les allées de la base ; 191 stations tous les 10 m.
+
+| Mesure | Résultat |
+|---|---|
+| Stations où le chemin se voit à l'orthophotographie | 134 (70 %) ; 57 masquées par les arbres (27 au sud et à l'ouest, 11 sur la digue, 19 à l'est) |
+| Écart de l'axe OSM au milieu du chemin | médiane 0,3 m, 90 % 1,1 m, max 4,3 m ; plus de 1 m à 14 stations (surtout l'angle sud-ouest vers (1016 ; 237), le pied de la digue vers (997 ; 495), la base vers (1349 ; 582) et l'est vers (1490 ; 300) et (1500 ; 145)) |
+| Largeur (bande claire) | sud et ouest : médiane **3,2 m** (10 % : 1,4 ; 90 % : 4,4) ; digue : **1,8 m** (1,3 à 2,4) ; est : **3,8 m** (3,0 à 5,4) |
+| Hauteur au-dessus du lac | médiane 1,5 m ; au plus bas 0,28 m au pied de la digue nord-ouest (997 ; 495) ; 0,45 à 0,58 m au sud-ouest (1128–1153 ; 107–123) et à l'est (1490 ; 253–273) |
+| Distance à l'eau | jamais moins de 2,8 m |
+| Dévers (pente en travers sur 3 m) | médiane 2 % ; plus de 4 % à 29 stations : la **digue** (6 à 11 %, la crête est étroite et le relief à 1,5 m de l'axe est déjà dans les talus) et quelques points de l'ouest et de l'est |
+| Arbres de la carte | un seul à moins de 1,5 m du milieu du chemin |
+
+Lecture :
+- **Le tracé d'OSM est bon** : on le garde, recalé seulement aux 14 stations à plus de 1 m (sur le milieu mesuré).
+- **La largeur** n'est pas la même partout : 3 à 3,5 m au sud, à l'ouest et à l'est (les mesures à 4-5 m sont sans doute des élargissements au droit des bancs, des aires et des parkings, ou une bordure d'herbe sèche aussi claire que le chemin : à regarder station par station au lot 1),
+  **2 m sur la crête de la digue**. Les 1,4 m du dixième le plus étroit sont des bouts à l'ombre. On prendra 3,2 m, 2 m sur la digue, et la largeur mesurée là où la bande
+  s'élargit nettement.
+- **La matière** : l'enrobé ne se distingue pas de l'herbe rase grillée sur cette orthophotographie (même gris) ; le chemin est **clair partout où il se voit**, y compris sur
+  l'allée ouest notée `asphalt` dans OSM. Stabilisé beige sur toute la boucle ; enrobé sur la piste cyclable du nord et les allées de la base, comme sur les photos.
+- **La digue** : la crête est un dos d'âne de 2 m ; le chemin y sera posé à plat en travers (relief aplani sur sa largeur seulement), les talus restent.
+
+### 12.2 Les pontons et la base
+
+Le modèle de surface du LiDAR ne voit pas l'eau (sur l'eau libre, il donne de 0 à 4,5 m au-dessus du lac, des valeurs interpolées) : **il ne mesure pas la hauteur des pontons**.
+On prendra celle des photos : 0,3 m pour les flottants, 0,45 m pour les fixes sur pieux.
+
+| Ponton (OSM) | Ce qu'on voit à l'orthophotographie (10 cm) | Longueur |
+|---|---|---|
+| w422698578, devant la base | ponton droit de 20 m depuis le quai d'une **darse** (petit port fermé par un quai en enrobé, au nord-ouest de la base) ; une quinzaine de dériveurs blancs et colorés rangés sur le quai, deux embarcations à l'eau | 29 m |
+| w842375499 et w842375500, rive ouest | **le ponton de pêche des photos** : passerelle perpendiculaire de 8 m, puis un ponton de 40 m parallèle à la rive, au bout coudé ; 1,5 m de large | 8 + 62 m |
+| w842375502, rive sud-ouest | en L : 33 m vers le large, puis 20 m parallèles à la rive | 53 m |
+| w1227421196, au sud, vers l'île | sous les arbres, invisible ; à 98 % dans l'eau : un ponton fixe ou une passerelle vers l'île, à vérifier sur place (Street View ne va pas jusque-là) | 23 m |
+| non cartographié, au sud-ouest de la base (≈ 1265 ; 555) | un ponton d'une vingtaine de mètres le long de la rive, avec un abri au bout | à mesurer au lot 3 |
+
+- **Base nautique** : trois volumes à toits gris (bac acier, à un pan et plats), pas un seul bâtiment ; dalle claire et terrasse devant ; parking à places marquées à l'est.
+- **Cale** (1306 ; 606) : rampe en béton clair à l'entrée de la darse.
+- **Skatepark** : dalle grise rectangulaire à modules (≈ 25 × 20 m) ; **pump track** en boucle d'enrobé ; pas de terrain multisport distinct : le terrain vert grillagé des photos
+  est le pump track ou la dalle du skatepark, à revoir au lot 4.
+- **Aire de jeux** : structures rouges sur sable, contre le chemin est.
+- **Parking du sud-ouest** (robinet, places PMR) : dalle de béton clair en patte d'oie, à la jonction de deux allées.
+
+### 12.3 Ce que montrent les captures
+
+- On marche sur une pelouse uniforme jusqu'au liseré de l'eau : ni chemin, ni roseaux (rive est, digue).
+- La clôture de la rive est est dessinée en barreaux noirs ; sur les photos, c'est un **grillage vert** à poteaux plats.
+- La base est un bâtiment générique beige à toit en croupe ; ni darse, ni pontons, ni bateaux.
+- Vue haute : la boucle n'apparaît pas du tout ; l'île boisée du sud est bien là.
+
+### 12.4 Ce qui change dans le plan
+
+- Lot 1 : largeurs mesurées (3,2 m, 2 m sur la digue), stabilisé sur toute la boucle, recalage à 14 stations, crête de la digue aplanie en travers ; clôture de la rive est en
+  grillage vert ; sud « sauvage modéré » (§11).
+- Lot 2 : la base, c'est trois volumes et la darse avec son quai.
+- Lot 3 : un sixième ponton (non cartographié) ; hauteurs prises sur les photos ; ponton vers l'île à vérifier.
+- Lot 5 : pêcheurs permanents, voiliers sur l'eau l'été.
+
+![Vue haute, avant](../captures/vallon-avant-haut.jpg)
+![Rive est, avant](../captures/vallon-avant-rive-est.jpg)
+![La digue, avant](../captures/vallon-avant-digue.jpg)
+![La base nautique, avant](../captures/vallon-avant-base.jpg)
