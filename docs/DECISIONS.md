@@ -4961,3 +4961,30 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La voiture retenue au bord](captures/d240-voiture.jpg)
 ![L'Arroux](captures/d240-arroux.jpg)
 
+## 2026-11-05 — D241. L'eau de la ville, lot 2 : la nage (plan `docs/plans/eau.md`, §4 et §11)
+
+**Demande de l'utilisateur** : continuer (lot 2). Choix déjà faits (D239) : nage dans l'eau de la ville seulement, pas en mer ; la police attend au bord sans tirer ; pas d'endurance.
+
+**Le nageur** (`src/core/player.ts`, `PlayerState.swim`) :
+- On se met à nager quand l'eau de la ville dépasse **1,2 m** (on perd pied en marchant, ou on plonge d'un quai ou d'un pont : l'eau amortit la chute, aucune blessure) ; on se remet debout sous **1,0 m**. À pied, seule la mer arrête encore (`holdShore(…, seaDepth)`) : en mer, rien ne change (D105).
+- **Brasse à 1,2 m/s, crawl à 1,9 m/s** (bouton de course), accélération et freinage doux (on glisse), virages plus lents ; pieds à 0,45 m sous la surface ; pas de saut.
+- **Sortir** : là où l'on a pied, on se remet debout (berge en pente) ; un bord jusqu'à **0,8 m** au-dessus de l'eau (quai, passerelle au ras de l'eau), on s'y hisse avec le geste de l'escalade ; plus haut, c'est un mur qu'on longe. Sous un pont haut, on passe dessous.
+- Sauvegarde : un départ dans l'eau profonde se fait à la nage (`createPlayer`).
+
+**Dans le jeu** (`src/game/game.ts`) : à la nage, l'arme est rangée (reprise en sortant), pas de coup ni de tir, on ne monte dans aucun véhicule ; la caméra vise la tête au ras de l'eau et ne passe jamais sous la surface (`solveCamera`, partout) ; sons « plouf » (plus fort pour un plongeon) et brasse (`src/audio/synth.ts`, galerie de sons).
+
+**Dessin** (`swimPose`, `swimPitch` dans `src/core/character-rig.ts`, `setSwim` du modèle du joueur) : brasse (bras tendus devant puis ramenés, jambes en grenouille), crawl en nageant vite (bras alternés, battements), surplace à l'arrêt (bras écartés qui godillent, pédalage) ; le corps est basculé vers l'avant (de 0,45 rad en surplace à 1,3 rad en nageant), la tête toujours 0,22 m au-dessus de l'eau.
+
+**La police** (`src/core/officers.ts`) : un gendarme à pied s'arrête quand l'eau lui arrive à la taille (`OFFICER_WADE` = 1 m, mer et eau de la ville) ; il ne vise ni ne tire sur un nageur, et ne l'arrête pas dans l'eau. La recherche continue normalement.
+
+**Sorties aménagées** (`build_water.py`) : une suite de bords à plus de 0,8 m au-dessus de l'eau (à 1,5 m du bord), longue de plus de 150 m, reçoit une rampe tous les 100 m (3 m de large, pente 0,3). Trois rampes, sur le bras nord de l'Arroux. Le plus long bord haut du lot 0 (496 m) longe un bras étroit à moins de 0,6 m de fond : on n'y nage pas. Une seconde passe ne change rien.
+
+**Vérifié** : dans le navigateur, depuis la berge nord du Vallon, on nage (brasse, crawl, surplace) ; tête et épaules hors de l'eau à l'arrêt.
+
+**Tests** (+11, 1 267 au total, `src/core/swim.test.ts`) : on perd pied puis on nage à la surface, pas de saut, sortie par une berge en pente, se hisser sur un bord bas et longer un bord haut, nager sous un pont haut et plonger d'un pont sans se blesser, se hisser sur une passerelle au ras de l'eau, pas de nage en mer, pose finie, caméra au-dessus de l'eau, gendarmes qui attendent au bord sans tirer ni arrêter, aller-retour dans le Vallon sur les données publiées. Le test du lot 1 « on entre jusqu'à la taille » devient « on finit par nager ».
+
+**Pas encore** : rides derrière le nageur et gerbe visible (seulement le son) ; les véhicules qui coulent (lot 3).
+
+![Surplace](captures/d241-surplace.jpg)
+![Crawl](captures/d241-crawl.jpg)
+

@@ -220,7 +220,7 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 |---|---|---|---|
 | **0. Relevés** | noms des plans d'eau (OSM) ; liste des polygones touchés par la mer (exclus) ; rivières en ruban de 6 m ; types de berges (pente, quai, mur : hauteur du bord au-dessus du niveau, au LiDAR) ; écarts entre contour et eau réelle ; arbres, mobilier ou murs dans les polygones ; captures « avant » | aucun | D239 |
 | **1. Fond et niveau** (fait, §10) | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau, eau lointaine, eau de la ville sur la carte et la minimap ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
-| **2. Nage** | état nage du joueur ; pose ; sortie (pente, bord bas) ; armes rangées ; sons, rides, gerbes ; caméra ; police qui attend au bord | on nage dans l'eau de la ville ; la mer ne change pas | D241 |
+| **2. Nage** (fait, §11) | état nage du joueur ; pose ; sortie (pente, bord bas) ; armes rangées ; sons, rides, gerbes ; caméra ; police qui attend au bord | on nage dans l'eau de la ville ; la mer ne change pas | D241 |
 | **3. Véhicules qui coulent** | fin `drowned` ; flottaison, calage, enfoncement ; sortie du conducteur ; épave au fond ; deux-roues | une voiture qui entre dans le lac coule et ne repart plus | D242 |
 | Ensuite | plan du **décor du lac** (`docs/plans/vallon-lac.md`) : base de loisirs, cale, pontons (avec bord bas pour sortir de l'eau), chemin du tour du lac, zones en pente douce | | |
 
@@ -299,4 +299,14 @@ Fait. Ce qui diffère du plan :
 - **Carte et minimap** : `build_map.py --images` refait seulement les images, avec l'eau lue dans `structures/`.
 
 Reste pour le lot 2 : la nage (le personnage s'arrête aujourd'hui à 1 m), les sorties aménagées de l'Arroux, la passerelle basse en obstacle, la police qui attend au bord.
+
+## 11. Lot 2 : la nage (5 novembre 2026, D241)
+
+Fait. Ce qui diffère du plan :
+- **Passerelle basse** : pas d'obstacle à part. Depuis l'eau, une passerelle à 0,34 m est un bord bas comme un autre : on s'y hisse (la règle des tabliers, `STEP_UP` = 1,5 m, la rend « sol » pour un nageur). Un tablier à plus de 1,05 m au-dessus de l'eau laisse passer dessous.
+- **Sorties aménagées** : 3 rampes taillées dans la berge (1,5 m de demi-largeur, pente 0,3), toutes sur le bras nord de l'Arroux, vers (295 ; 2626), (238 ; 2513) et (131 ; 2450). Le bord de 496 m du lot 0 longe un bras étroit, peu profond une fois creusé (moins de 0,6 m) : on n'y nage pas, on en sort en marchant.
+- **Dessin** : la tête reste à 0,22 m au-dessus de l'eau quelle que soit l'inclinaison du corps (en surplace, seules la tête et les épaules dépassent ; en crawl, le dos affleure).
+- **Pas encore** : rides derrière le nageur et gerbe visible (seul le son existe, plouf et brasse).
+
+Reste pour le lot 3 : les véhicules qui coulent.
 

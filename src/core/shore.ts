@@ -26,11 +26,29 @@ export function waterDepth(terrain: HeightField, x: number, y: number, zHint?: n
   return Math.max(0, (sea ?? -Infinity) - floor, (city ?? -Infinity) - floor);
 }
 
-/** Point le plus avancé vers (x, y), depuis (px, py), où la profondeur reste sous `max` : glisse le long du rivage. */
-export function holdShore(terrain: HeightField, px: number, py: number, x: number, y: number, max: number, zHint?: number): { x: number; y: number; blocked: boolean } {
-  if (!hasWater(terrain) || waterDepth(terrain, x, y, zHint) <= max) return { x, y, blocked: false };
-  if (waterDepth(terrain, x, py, zHint) <= max) return { x, y: py, blocked: true };
-  if (waterDepth(terrain, px, y, zHint) <= max) return { x: px, y, blocked: true };
+/** Surface du sol sous qui demande (`zHint` : départage tablier et fond), sinon relief nu. */
+const floorAt = (terrain: HeightField, x: number, y: number, zHint?: number): number =>
+  zHint === undefined ? (terrain.ground ?? terrain).heightAt(x, y) : terrain.heightAt(x, y, zHint);
+
+/** Profondeur de la mer seule (D105) en (x, y). */
+export function seaDepth(terrain: HeightField, x: number, y: number, zHint?: number): number {
+  return terrain.seaLevel === undefined ? 0 : Math.max(0, terrain.seaLevel - floorAt(terrain, x, y, zHint));
+}
+
+/** Profondeur de l'eau de la ville seule (D240) en (x, y) : on y nage (D241). */
+export function cityDepth(terrain: HeightField, x: number, y: number, zHint?: number): number {
+  const w = terrain.waterAt?.(x, y);
+  return w === undefined ? 0 : Math.max(0, w - floorAt(terrain, x, y, zHint));
+}
+
+/**
+ * Point le plus avancé vers (x, y), depuis (px, py), où la profondeur reste sous `max` : glisse le long du rivage. `depth` : la profondeur
+ * qui compte (par défaut la mer et l'eau de la ville ; à pied, seulement la mer : dans l'eau de la ville, on nage).
+ */
+export function holdShore(terrain: HeightField, px: number, py: number, x: number, y: number, max: number, zHint?: number, depth = waterDepth): { x: number; y: number; blocked: boolean } {
+  if (!hasWater(terrain) || depth(terrain, x, y, zHint) <= max) return { x, y, blocked: false };
+  if (depth(terrain, x, py, zHint) <= max) return { x, y: py, blocked: true };
+  if (depth(terrain, px, y, zHint) <= max) return { x: px, y, blocked: true };
   return { x: px, y: py, blocked: true };
 }
 

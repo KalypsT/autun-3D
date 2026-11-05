@@ -45,6 +45,14 @@ CLOSED_AREA = 10000.0
 # Pente d'eau maximale d'une rivière (m/m) : au-delà, l'ajustement est du bruit.
 MAX_SLOPE = 0.004
 MARGIN = 12
+# Sorties (D241) : bord « haut » (plus de EXIT_HIGH m au-dessus de l'eau à 1,5 m du bord : un nageur ne s'y hisse pas) ; une suite de bords
+# hauts plus longue que EXIT_RUN m reçoit une rampe tous les EXIT_EVERY m : EXIT_HALF m de demi-largeur, pente EXIT_SLOPE, EXIT_LEN m au plus.
+EXIT_HIGH = 0.8
+EXIT_RUN = 150.0
+EXIT_EVERY = 100.0
+EXIT_HALF = 1.5
+EXIT_SLOPE = 0.3
+EXIT_LEN = 14.0
 
 
 def read_block(path):
@@ -130,6 +138,52 @@ class Blocks:
                 write_block(OUT / "terrain" / f"{tid}.bin", b[0], b[1], b[2], b[3])
                 n += 1
         return n
+
+
+def exits(body, z, lev, label, x0, y1, w, h):
+    """Rampes à tailler : (x, y du bord, normale vers la terre, niveau de l'eau) le long des suites de bords hauts de plus de EXIT_RUN m."""
+    def at(grid, x, y):
+        c, r = int(round(x - x0)), int(round(y1 - y))
+        return grid[r, c] if 0 <= r < h and 0 <= c < w else math.nan
+
+    out = []
+    for poly in parts(body):
+        ring = poly.exterior
+        L = ring.length
+        n = max(8, int(L / 2))
+        samples = []
+        for i in range(n):
+            p = ring.interpolate(L * i / n)
+            q = ring.interpolate(L * (i + 0.5) / n)
+            tx, ty = q.x - p.x, q.y - p.y
+            ln = math.hypot(tx, ty) or 1.0
+            nx, ny = ty / ln, -tx / ln
+            if poly.contains(shapely.Point(p.x + nx * 0.5, p.y + ny * 0.5)):
+                nx, ny = -nx, -ny
+            lv = at(lev, p.x - nx * 1.5, p.y - ny * 1.5)
+            if math.isnan(lv):
+                lv = at(lev, p.x - nx * 3, p.y - ny * 3)
+            zo = at(z, p.x + nx * 1.5, p.y + ny * 1.5)
+            high = not math.isnan(lv) and not math.isnan(zo) and zo - lv > EXIT_HIGH
+            samples.append((p.x, p.y, nx, ny, lv, high))
+        # Suites de bords hauts (l'anneau est fermé : on commence après un bord bas).
+        start = next((i for i, s in enumerate(samples) if not s[5]), None)
+        if start is None:
+            continue
+        step = L / n
+        run = []
+        for k in range(1, n + 1):
+            s = samples[(start + k) % n]
+            if s[5]:
+                run.append(s)
+                continue
+            if len(run) * step > EXIT_RUN:
+                count = int(len(run) * step // EXIT_EVERY)
+                for j in range(count):
+                    m = run[int(len(run) * (j + 0.5) / count)]
+                    out.append((m[0], m[1], m[2], m[3], m[4]))
+            run = []
+    return out
 
 
 def body_params(cfg, body):
@@ -295,7 +349,20 @@ def main():
         bed = np.where(wet, np.minimum(z, lev - depth), z)
         bed = np.round(bed / UNIT) * UNIT
         changed = wet & (bed < z - 0.005)
-        blocks.write(x0, y1, w, h, bed, wet)
+        # 3 bis. Sorties (D241) : sur un long bord haut, une rampe taillée dans la berge tous les EXIT_EVERY m, pour qu'un nageur sorte de l'eau.
+        cut = np.zeros((h, w), bool)
+        for ramp in exits(body, bed, lev, label, x0, y1, w, h):
+            cx, cy, nx, ny, lv = ramp
+            s_ = (xx - cx) * nx + (yy - cy) * ny
+            t_ = np.abs(-(xx - cx) * ny + (yy - cy) * nx)
+            inr = (s_ >= -1.0) & (s_ <= EXIT_LEN) & (t_ <= EXIT_HALF) & ~np.isnan(bed)
+            prof = lv + EXIT_SLOPE * np.maximum(s_, 0.0) - 0.05
+            low = inr & (prof < bed) & ~wet
+            bed = np.where(low, np.round(prof / UNIT) * UNIT, bed)
+            cut |= low
+            stats["exits"] = stats.get("exits", 0) + 1
+            stats.setdefault("exit_at", []).append((round(cx), round(cy)))
+        blocks.write(x0, y1, w, h, bed, wet | cut)
         stats["cells"] += int(changed.sum())
         stats["deepest"] = max(stats["deepest"], float(np.nanmax(lev[wet] - bed[wet])))
         report.append((round(body.area), name, P, s, int(wet.sum()), round(float(np.nanmax(lev[wet] - bed[wet])), 2),
@@ -314,6 +381,7 @@ def main():
             g = p[2]
         out["pieces"].append({"r": flat_rings(g, 1), "z": p[3]})
     (OUT / "water.json").write_text(json.dumps(out, separators=(",", ":")))
+    print(f"{stats.get('exits', 0)} sorties taillées {stats.get('exit_at', [])}")
     print(f"{stats['bodies']} plans d'eau, {stats['cells']} cellules creusées, {nb} blocs réécrits, fond le plus profond {stats['deepest']:.2f} m ;"
           f" water.json {(OUT / 'water.json').stat().st_size / 1024:.0f} ko")
     for r in report[:12]:

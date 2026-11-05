@@ -61,12 +61,11 @@ describe("eau de la ville : profondeur et berges (D240)", () => {
     expect(waterDepth(lake, 30, 0, -3)).toBeCloseTo(3, 6);
   });
 
-  it("à pied, on entre dans l'eau jusqu'à la taille ; sur le pont, on passe", () => {
+  it("à pied, on entre dans l'eau, puis on nage (D241) ; sur le pont, on passe", () => {
     const p = createPlayer(-10, 20, lake, Math.PI / 2);
     for (let i = 0; i < 60 * 20; i++) stepPlayer(p, { forward: 1, right: 0, run: true }, Math.PI / 2, DT, lake, new Colliders());
-    expect(waterDepth(lake, p.x, p.y, p.z)).toBeLessThanOrEqual(WADE_DEPTH + 1e-6);
-    expect(p.x).toBeGreaterThan(4);
-    expect(p.x).toBeLessThan(5.5);
+    expect(p.swim).toBe(true);
+    expect(p.x).toBeGreaterThan(20);
     expect(holdShore(lake, 29, 0, 30, 0, WADE_DEPTH, 1).blocked).toBe(false);
   });
 

@@ -136,7 +136,12 @@ export interface Suspect {
   vehicle: { state: VehicleState; spec: VehicleSpec } | null;
   /** Altitude de ses pieds (D216) : avec `ground` des gendarmes, la ligne de tir est en 3D (toits) ; absente : murs infinis. */
   z?: number;
+  /** À la nage (D241) : on ne tire pas sur lui, on l'attend au bord (on ne l'arrête pas dans l'eau). */
+  swimming?: boolean;
 }
+
+/** Profondeur d'eau (m) où un gendarme à pied s'arrête (D241) : à la taille, comme le joueur à la mer. */
+export const OFFICER_WADE = 1.0;
 
 export class Officers {
   readonly list: Officer[] = [];
@@ -156,7 +161,12 @@ export class Officers {
   private readonly res: Resolution = { x: 0, y: 0, nx: 0, ny: 0, hit: false };
 
   /** `ground` : altitude du sol sous un gendarme (lignes de tir en 3D, D216) ; absent : murs infinis. */
-  constructor(private readonly colliders: Colliders | null, private readonly ground: ((x: number, y: number) => number) | null = null) {}
+  constructor(
+    private readonly colliders: Colliders | null,
+    private readonly ground: ((x: number, y: number) => number) | null = null,
+    /** Profondeur d'eau en (x, y) (D241) ; absent : pas d'eau. */
+    private readonly water: ((x: number, y: number) => number) | null = null,
+  ) {}
 
   /** Postes autour du bâtiment du joueur perché, recalculés tous les `POST_EVERY` s (D217) ; listes réutilisées. */
   private readonly posts: Post[] = [];
@@ -426,7 +436,7 @@ export class Officers {
       let speedCap: number = OFFICER.speed;
       // Armés (J5-5) : on ne s'approche pas de plus de 10 m, on avance vers 14 m en visant (plus lentement), on tire à portée sans mur entre eux et le joueur.
       o.aiming = false;
-      if (armed && o.mode === "run") {
+      if (armed && o.mode === "run" && !p.swimming) {
         stopAt = OFFICER.holdDistance;
         const dd = Math.hypot(p.x - o.x, p.y - o.y);
         // Une voiture garée, un tronc ou un poteau entre le gendarme et le joueur l'abrite (D113).
@@ -467,14 +477,21 @@ export class Officers {
       const mx = d > 0.05 ? dx / d : 0, my = d > 0.05 ? dy / d : 0;
       if (arrived) o.heading = Math.atan2(p.x - o.x, p.y - o.y);
       else if (d > 0.05) o.heading = Math.atan2(dx, dy);
+      const ox = o.x, oy = o.y;
       o.x += mx * o.speed * dt;
       o.y += my * o.speed * dt;
+      // L'eau (D241) : il s'arrête quand elle lui arrive à la taille, et attend au bord.
+      if (this.water && this.water(o.x, o.y) > OFFICER_WADE && this.water(o.x, o.y) > this.water(ox, oy)) {
+        o.x = ox;
+        o.y = oy;
+        o.speed = 0;
+      }
       this.collide(o);
       if (o.mode === "run") {
         const reach = Math.hypot(p.x - o.x, p.y - o.y);
         // Pas d'arrestation à travers un toit : le joueur doit être à portée de main en hauteur aussi.
         const within = !perched || p.z! - (this.ground?.(o.x, o.y) ?? p.z!) < REACH_UP;
-        if (!armed && within && (veh ? reach < OFFICER.carReach && vspeed < 1 : reach < OFFICER.footReach)) touching = true;
+        if (!armed && within && !p.swimming && (veh ? reach < OFFICER.carReach && vspeed < 1 : reach < OFFICER.footReach)) touching = true;
       }
     }
     // Arrestation : le contact s'accumule, et retombe deux fois moins vite quand il est rompu.

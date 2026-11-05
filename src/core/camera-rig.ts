@@ -37,8 +37,8 @@ export function solveCamera(input: RigInput, colliders: Colliders, terrain: Heig
     if (t !== null) d = Math.max(MIN_DISTANCE, d * t - WALL_MARGIN / Math.max(Math.hypot(dx, dy), 0.2));
   }
   let x = input.x + dx * d, y = input.y + dy * d, z = tz + dz * d;
-  // Le sol ne doit pas masquer la caméra ; si on la remonte, on la rapproche pour garder l'axe de visée.
-  const floor = terrain.heightAt(x, y, tz) + 0.35;
+  // Le sol ne doit pas masquer la caméra, ni l'eau de la ville (D241 : on ne voit pas sous l'eau) ; si on la remonte, on la rapproche pour garder l'axe de visée.
+  const floor = Math.max(terrain.heightAt(x, y, tz), terrain.waterAt?.(x, y) ?? -Infinity) + 0.35;
   if (z < floor) {
     z = floor;
   }

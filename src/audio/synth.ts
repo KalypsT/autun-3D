@@ -237,6 +237,23 @@ export function footstep(kit: Kit, dest: AudioNode, t: number, run: boolean, spo
   tone(kit, out, t, "sine", 95, 60, 0.04, 0.35 * v, 0.003, 0.06);
 }
 
+/** Plouf (D241) : coup sourd qui descend, puis gerbe de bruit qui retombe ; `k` (0 à 1) : un pas dans l'eau profonde à un plongeon. */
+export function splash(kit: Kit, dest: AudioNode, t: number, k: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  const v = 0.4 + 0.6 * Math.min(1, Math.max(0, k));
+  tone(kit, out, t, "sine", 180, 55, 0.12, 0.45 * v, 0.004, 0.18);
+  burst(kit, out, t + 0.01, "lowpass", 1800 + 1500 * v, 0.7, 0.35 * v, 0.01, 0.35 + 0.4 * v);
+  burst(kit, out, t + 0.12, "bandpass", 3200 + rnd() * 1200, 1.2, 0.12 * v, 0.02, 0.5 + 0.3 * v);
+}
+
+/** Brasse (D241) : eau brassée par les bras, un souffle bref et mouillé. */
+export function stroke(kit: Kit, dest: AudioNode, t: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  const v = 0.85 + rnd() * 0.3;
+  burst(kit, out, t, "bandpass", 900 + rnd() * 500, 0.8, 0.16 * v, 0.06, 0.28);
+  burst(kit, out, t + 0.08, "highpass", 3500, 0.7, 0.05 * v, 0.03, 0.2);
+}
+
 export type CryKind = "startled" | "hurt" | "scream" | "oof";
 
 /** Voyelles (trois formants, Hz) : a, i, o. */

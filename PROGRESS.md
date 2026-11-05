@@ -1767,3 +1767,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![De l'eau à la taille](docs/captures/d240-a-pied.jpg)
 ![Le Vallon vu de haut](docs/captures/d240-vallon-haut.jpg)
 
+**L'eau de la ville, lot 2 : la nage (5 novembre 2026)** (D241)
+- On nage dans le lac du Vallon, l'Arroux, le Ternin et les étangs : brasse, crawl avec le bouton de course, surplace à l'arrêt. En mer, on reste limité comme avant.
+- On sort par une berge en pente, ou en se hissant sur un bord bas (quai, passerelle au ras de l'eau) ; trois rampes taillées dans les hauts bords de l'Arroux. On peut plonger d'un pont sans se blesser.
+- À la nage, l'arme est rangée et on ne monte dans aucun véhicule. Les gendarmes attendent au bord, sans tirer.
+- Sons : plouf et brasse. Pas encore de rides visibles.
+- Prochaine étape : les voitures qui coulent.
+
+![Surplace](docs/captures/d241-surplace.jpg)
+

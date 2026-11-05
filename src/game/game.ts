@@ -11,7 +11,7 @@ import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } f
 import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
-import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer } from "../core/player";
+import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer, SWIM_FAST, SWIM_SPEED } from "../core/player";
 import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, setSurfaceGrip, stepVehicle } from "../core/vehicle";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
@@ -66,6 +66,7 @@ import { Fleet, chaseOf, drivenSpec, familyOf, smokeOrigin, tyreOf, type Vehicle
 import { FAMILIES, LEGACY_MODELS, vehicleDef } from "../core/vehicle-catalog";
 import { AudioSystem } from "../audio/audio-system";
 import { stepCrossed } from "../core/sound-model";
+import { waterDepth } from "../core/shore";
 import { GameAudio, type TrafficVisit } from "./game-audio";
 import { CameraShake, Haptics, speedFov, speedLines } from "../core/feel";
 import { VehicleLights } from "../render/vehicle-lights";
@@ -87,6 +88,8 @@ const AIM_ZOOM = 0.18;
 const AIM_MIN_PITCH = -0.85;
 const AIM_MAX_PITCH = 0.95;
 const AIM_WALK = 0.75;
+/** À la nage (D241) : la caméra vise si bas sous les pieds (m) que le point visé (+ HEAD_HEIGHT) tombe sur la tête, au ras de l'eau. */
+const SWIM_FOCUS = 0.9;
 const SHADOW_HALF = 80;
 /** Vitesse (m/s) sous laquelle on peut prendre une voiture de la circulation avec son conducteur (J4-1). */
 const CARJACK_SPEED = 3;
@@ -387,7 +390,7 @@ export function startGame(ctx: GameContext): void {
   const wanted = new Wanted();
   const wantedHud = new WantedHud(document.getElementById("wanted")!);
   // Vue et tirs des gendarmes en 3D (D216) : ils sont au sol (relief et ponts, sans les toits), le joueur peut être sur un toit.
-  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic, (x, y) => terrain.heightAt(x, y));
+  const police = new PoliceController(wanted, colliders, () => (nav as NavManager | null)?.graph.road ?? null, () => signals as Signals | null, needTraffic, (x, y) => terrain.heightAt(x, y), (x, y) => waterDepth(terrain, x, y));
   police.minPursuers = chaseParam;
   // Santé (J5-0, D80) : reprise de la sauvegarde ; `?hurt=N` impose N points de vie (0 : mort au départ, essais et captures).
   const health = new Health(params.has("hurt") ? Number(params.get("hurt")) || 0 : (saved?.health ?? undefined));
@@ -825,6 +828,8 @@ export function startGame(ctx: GameContext): void {
   // elle devient un véhicule de la flotte, son conducteur sort côté gauche, trébuche et s'enfuit, et il appelle la police.
   let stolen = 0;
   const reachable = (): { fleet: Vehicle | null; traffic: string | null } => {
+    // À la nage (D241), on ne monte dans rien.
+    if (player.swim) return { fleet: null, traffic: null };
     const n = fleet.nearest(player.x, player.y);
     const near = n && n.distance < familyOf(n.vehicle).reach ? n : null;
     const t = (traffic as Traffic | null)?.nearest(player.x, player.y, FAMILIES.car.reach);
@@ -1339,7 +1344,8 @@ export function startGame(ctx: GameContext): void {
     const speed = Math.abs(speedOf());
     const chase = riding ? chaseOf(riding) : null;
     const targetDist = chase ? (params.has("dist") ? distance : chase.distance) + speed * chase.perSpeed : distance + (AIM_DIST - distance) * aimB;
-    const focusZ = chase ? player.z + chase.height : player.z;
+    // À la nage (D241), les pieds sont sous l'eau et le corps couché : la caméra vise la tête, au ras de l'eau.
+    const focusZ = chase ? player.z + chase.height : player.swim ? player.z - SWIM_FOCUS : player.z;
     // En visée (D205), la caméra tourne autour d'un point à droite de la tête (à l'épaule), rapproché s'il y a un mur de ce côté.
     let px = player.x, py = player.y;
     if (aimB > 0) {
@@ -1403,7 +1409,7 @@ export function startGame(ctx: GameContext): void {
       police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0, player.z);
     };
     let reticle: { x: number; y: number; z: number } | null = null;
-    if (riding || health.dead || downFor > 0) {
+    if (riding || health.dead || downFor > 0 || player.swim) {
       melee.cancel();
       gun.cancel();
       model.setStrike(null);
@@ -1483,7 +1489,11 @@ export function startGame(ctx: GameContext): void {
     }
     // Position de tir : fondu de la garde à la visée, secousse du tir. Arme blanche : garde ; mains nues : rien.
     aimW += ((gun.aim > 0 || input.attack ? 1 : 0) - aimW) * Math.min(1, dt * 10);
-    if (weapon.kind === "gun") {
+    if (player.swim) {
+      // À la nage (D241), l'arme est rangée ; on la reprend en sortant de l'eau.
+      heldId = null;
+      model.setHeld(null, null);
+    } else if (weapon.kind === "gun") {
       heldId = null;
       model.setGun(weapon.part, weapon.id as GunId, aimW, gun.recoil);
     } else if (heldId !== weapon.id) {
@@ -1523,12 +1533,20 @@ export function startGame(ctx: GameContext): void {
     } else {
       model.setDown(downFor > 0 ? { t: downTotal - downFor, side: downSide, variant: downVariant, impulse: downAmp } : null);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
+      model.setSwim(player.swim ? { crawl: Math.min(1, Math.max(0, (player.speed - SWIM_SPEED) / (SWIM_FAST - SWIM_SPEED))) } : null);
+      if (player.splash > 0) {
+        audio.splash(Math.min(1, player.splash / 8));
+        player.splash = 0;
+      }
       // Pas de côté et à reculons (T4, D208) : la direction de la marche par rapport au corps, quand il ne suit pas la marche (visée, tir).
       const moveRel = player.speed > 0.3 && weapon.kind === "gun" && (aiming || gun.aim > 0) ? angleDelta(player.heading, Math.atan2(player.vx, player.vy)) : 0;
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed, moveRel);
       // Dans la lunette, la caméra est dans la tête : le personnage est caché.
       model.group.visible = camDist > 0.9 && scopeB < 0.5;
-      if (stepCrossed(lastPhase, model.phase) && player.speed > 0.3) audio.footstep(player.speed > 3);
+      if (stepCrossed(lastPhase, model.phase) && (player.swim ? player.speed > 0.2 : player.speed > 0.3)) {
+        if (player.swim) audio.stroke();
+        else audio.footstep(player.speed > 3);
+      }
       lastPhase = model.phase;
     }
     if (riding) speedo.set(riding.state.speed, riding.spec.topSpeed);
@@ -1600,7 +1618,7 @@ export function startGame(ctx: GameContext): void {
       const imp = (peds as PedsController | null)?.impact;
       const s = riding?.state;
       police.update(dt, {
-        x: player.x, y: player.y, z: player.z, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
+        x: player.x, y: player.y, z: player.z, swimming: !riding && player.swim, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
         vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
         pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
         witnesses: (x, y, r) => {

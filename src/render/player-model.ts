@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { airPose, climbPose, copyPose, createPose, cycleLength, HIT_BLEND, HIT_POSE, hitPose, strafePose, walkPose, walksBackward, type Pose } from "../core/character-rig";
+import { airPose, climbPose, copyPose, createPose, cycleLength, HIT_BLEND, HIT_POSE, hitPose, strafePose, swimPitch, swimPose, walkPose, walksBackward, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
 import { solveRide, type V3 } from "../core/character-pose";
+import { SWIM_SINK } from "../core/player";
 import { CharacterBatch } from "./crowd/character-batch";
 import { CrowdRigs } from "./crowd/crowd-common";
 import type { VehicleModel } from "./vehicle-model";
@@ -42,8 +43,14 @@ export interface PlayerModel {
   setDown(down: { t: number; side: number; variant?: number; impulse?: number } | null): void;
   /** En l'air (`vz`, vitesse verticale) ou en escalade (`t`, altitude, pour le rythme des mains) ; null au sol. */
   setAir(air: { climb: boolean; vz: number; t: number } | null): void;
+  /** À la nage (D241) : `z` donné à `update` est l'altitude des pieds, sous la surface ; `crawl` (0 à 1) : nage rapide. null : hors de l'eau. */
+  setSwim(swim: { crawl: number } | null): void;
   dispose(): void;
 }
+
+/** Nageur (D241) : centre de la tête au-dessus de l'eau (m), et sa hauteur au-dessus des pieds (part de la taille). */
+const HEAD_ABOVE = 0.22;
+const HEAD_AT = 0.9;
 
 /** Le joueur compte la distance parcourue par 2,2 rad par mètre ; la phase de marche, 2π par foulée complète. */
 const STRIDE_PER_METRE = 2.2;
@@ -68,6 +75,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   /** Dernière pose dessinée avant la chute (D209). */
   const fromPose: Pose = createPose();
   let air: { climb: boolean; vz: number; t: number } | null = null;
+  let swim: { crawl: number } | null = null;
   const mask = new Float32Array(4);
   /** Sur un véhicule : l'arme reste dans la poche. */
   let mounted = false;
@@ -96,7 +104,26 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     update(x, y, z, heading, stride, speed, move = 0) {
       group.position.set(x, z, -y);
-      group.rotation.set(0, -heading, 0);
+      group.rotation.set(0, -heading, 0, "YXZ");
+      if (swim) {
+        // Nageur : le corps entier basculé vers l'avant autour des pieds ; les pieds reculent d'autant pour que le torse reste au point du joueur.
+        // La tête reste juste au-dessus de l'eau quelle que soit l'inclinaison : debout (surplace), seules la tête et les épaules dépassent ;
+        // couché (crawl), le dos affleure.
+        const d = rigs.dims[0]!;
+        const tilt = swimPitch(Math.abs(speed));
+        const back = Math.sin(tilt) * d.height * 0.5;
+        const feet = z + SWIM_SINK + HEAD_ABOVE - HEAD_AT * d.height * Math.cos(tilt);
+        group.position.set(x - Math.sin(heading) * back, feet, -(y - Math.cos(heading) * back));
+        group.rotation.set(-tilt, -heading, 0, "YXZ");
+        lastStride = null;
+        mounted = false;
+        phase = (stride * 0.75) % (Math.PI * 2);
+        walkPose(pose, 0, 0, d);
+        swimPose(pose, phase, swim.crawl, 1 - Math.min(1, Math.abs(speed) / 0.6));
+        rigs.solveWith(0, pose, root);
+        publish();
+        return;
+      }
       const d = rigs.dims[0]!;
       const v = Math.abs(speed);
       if (lastStride !== null && v > 0.02) {
@@ -174,6 +201,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     setAir(next) {
       air = next;
+    },
+    setSwim(next) {
+      swim = next;
     },
     dispose() {
       batch.dispose();
