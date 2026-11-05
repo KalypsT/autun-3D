@@ -378,7 +378,9 @@ export function furnitureOutsideMonuments(kinds: { sites: Site[] } | undefined, 
 export function wallsOutsideMonuments(kinds: { sites: Site[]; buildings?: Record<string, BuildingKind> } | undefined, walls: readonly Wall[]): Wall[] {
   const gone = new Set([...(kinds?.sites ?? []).flatMap((s) => (s.t === "janus" ? [s.wall] : [])),
     // Grille d'honneur du lycée (D149) : elle remplace la clôture et les murs de parcelle du même tracé.
-    ...Object.values(kinds?.buildings ?? {}).flatMap((b) => b.college?.grille?.walls ?? [])]);
+    ...Object.values(kinds?.buildings ?? {}).flatMap((b) => b.college?.grille?.walls ?? []),
+    // Clôture de la gendarmerie (D238) : elle remplace les clôtures de parcelle de même tracé.
+    ...Object.values(kinds?.buildings ?? {}).flatMap((b) => b.gend?.site?.walls ?? [])]);
   return gone.size ? walls.filter((w) => !gone.has(w.id)) : [...walls];
 }
 
@@ -835,7 +837,7 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
  * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228 ; Eduen, D231 ; McDonald's et bowling, D234…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu || kind?.mcd || kind?.bowl);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu || kind?.mcd || kind?.bowl || kind?.gend);
 }
 
 /**

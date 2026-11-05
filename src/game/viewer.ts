@@ -44,6 +44,14 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "bowling-parking": [1429.9, 694.9, 1.7, 1420.3, 666.2, 4],
   "bowling-terrasse": [1402.6, 645.9, 1.7, 1421.0, 642.5, 2],
   "route-chalon-haut": [1375.6, 615.7, 40, 1402.0, 669.6, 0],
+  // Gendarmerie de l'avenue André Frenaud (D238) : le portail depuis l'avenue (photo du portail) ; du sud-ouest, par-dessus la pelouse ;
+  // le long côté sud depuis la rue Lazare Carnot ; le collectif de logements ; la cour depuis l'est ; vue haute de l'ouest.
+  gendarmerie: [1751.8, 623.8, 1.7, 1773.4, 606.9, 4],
+  "gendarmerie-sud": [1730.8, 575.0, 1.7, 1776.3, 590.7, 4],
+  "gendarmerie-carnot": [1779.5, 547.3, 1.7, 1777.5, 586.7, 5],
+  "gendarmerie-logements": [1801.5, 576.4, 1.7, 1813.6, 552.0, 4],
+  "gendarmerie-cour": [1803.5, 610.3, 1.7, 1767.6, 606.5, 3],
+  "gendarmerie-haut": [1720.4, 591.8, 45, 1787.7, 601.7, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

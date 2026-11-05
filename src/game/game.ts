@@ -1092,7 +1092,7 @@ export function startGame(ctx: GameContext): void {
 
   ui.police = police.minimap;
 
-  // Arrestation (J4-5, D75) : le véhicule conduit est confisqué, on repart à pied au bord est de l'anneau, six heures plus tard, sans étoile.
+  // Arrestation (J4-5, D75, D238) : le véhicule conduit est confisqué, on repart à pied devant le portail de la gendarmerie, six heures plus tard, sans étoile.
   const busted = document.getElementById("busted")!;
   const banner = (title: string, sub: string, dead: boolean): void => {
     busted.querySelector(".b-title")!.textContent = title;

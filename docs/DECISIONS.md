@@ -4863,3 +4863,50 @@ Une deuxième passe ne change rien.
 
 ![Depuis l'entrée](captures/d237-mcdo-entree.jpg)
 ![Vue haute](captures/d237-mcdo-entree-haut.jpg)
+
+## 2026-11-05 — D238. La gendarmerie de l'avenue André Frenaud : bâtiment, annexe, logements, cour et reprise après arrestation
+
+**Demande de l'utilisateur** : intégrer correctement la gendarmerie (4 avenue André Frenaud) : le bâtiment principal, la cour et son parking, et les habitations, qui sont des logements de la gendarmerie ; revoir ou confirmer la reprise après une arrestation, qui doit se faire à cette gendarmerie. Photos fournies (non versionnées, elles servent seulement à décrire) : une vue du sud-ouest par-dessus la pelouse (clôture verte, panneau « ← ACCUEIL GENDARMERIE »), trois vues Google Street View de juillet 2026 (le portail de la cour depuis l'avenue, avec le mât au drapeau et la borne d'appel ; le long côté sud depuis la rue Lazare Carnot, avec le poste de transformation, l'inscription « …E NATIONALE » et le pylône d'antennes ; le collectif de logements à toit-terrasse suivi des maisons du lotissement), une vue satellite. **Les deux sources se contredisent sur la façade** (bardage bois orangé à panneaux de couleur sur la vue du sud-ouest, enduit beige et bandeaux brique sur le Street View) : **l'utilisateur retient l'enduit beige et brique du Street View** (question posée).
+
+**Constat** : le bâtiment principal était un bâtiment BD TOPO à toit à croupes rouge (le vrai est à toits plats) et un petit bâtiment collé ; l'annexe au nord de la cour, trois bâtiments à toits rouges ; le collectif de logements, une boîte générique ; la cour n'avait aucun sol (de la terre) ; des clôtures de parcelle noires (Parcellaire Express, D94) suivaient le tracé de la vraie clôture verte. **Le point `GENDARMERIE` (D105) tombait dans le bâtiment**, et la reprise après arrestation (`ARREST_SPAWN`) était sur le bord de l'avenue, sans rapport avec le portail.
+
+**Mesures** (`tools/data/survey_gendarmerie.py`, modèles de surface et de terrain LiDAR HD à 0,5 m) dans le repère du bâtiment principal (origine à son coin nord-ouest, s le long de son long côté nord vers l'est-sud-est, t vers la cour ; l'annexe et les logements lui sont parallèles) : bords des volumes au passage à 1,5 m sous le toit (0,3 m pour l'annexe, dont les toits ne diffèrent que de 0,3 à 0,8 m), médiane de six profils ; toit : médiane du modèle de surface ; bord commun à un voisin de même hauteur ou plus haut : recollé au voisin.
+- **bâtiment principal** : accueil à l'ouest, 5,8 × 13,4 m, **3,1 m** ; corps de 19,4 × 10,7 m (et un ressaut de 1,6 m côté cour), **6,2 m, deux niveaux** ; aile est de 13,5 × 11,3 m, **3,2 m** ;
+- **annexe** au nord de la cour, de plain-pied : trois toits à **3,7, 3,4 et 3,2 m** (usage non vérifié : portes de garage dessinées sur la cour) ;
+- **collectif de logements** au sud (photo de la rue Lazare Carnot) : deux volumes décalés de 11,8 × 12 m et 13,7 × 11,9 m, **5,7 m, deux niveaux**.
+Une deuxième passe de `build_monuments.py` ne change rien.
+
+**Rendu** (`buildGendarmerie`, `src/render/gendarmerie.ts`, dans les maillages de la tuile : aucun appel de dessin de plus ; **8 698 triangles** abords compris, dont une bonne part pour la clôture, et 50 de vitres allumées) : toits plats en membrane derrière un acrotère à couvertine ; enduit beige, soubassement gris, bandeau d'étage et acrotère en enduit brique ; fenêtres à menuiseries blanches (une sur trois allumée la nuit), sauf contre un volume voisin ; **hublot** au bout ouest de l'étage du corps, au-dessus de l'accueil (photo du portail) ; **« GENDARMERIE NATIONALE »** en bleu marine sur l'acrotère du long côté sud (photos du sud-ouest et de la rue Lazare Carnot) ; porte vitrée et plaque « ACCUEIL » de l'accueil sur la cour ; garde-corps métalliques sur les toits de l'accueil et de l'aile est (photo du portail) et du collectif ; portes sectionnelles grises de l'annexe ; logements : un hublot entre deux fenêtres sur trois, porte d'entrée côté nord.
+
+**Maisons du lotissement** (logements de la gendarmerie, rue Lazare Carnot) : huit bandes de maisons à deux pans de tuiles, réglées par `fiches` de `manual.json` (D163) : enduit beige clair, menuiseries blanches, sans volets, tuile mécanique. Elles restent dessinées par le gabarit générique (leurs volumes BD TOPO sont justes) ; la fiche est appliquée à la tuile comme le ferait `build_shop_fronts.py`.
+
+**Abords** (`site` de l'entrée de `monuments`, dans le même repère) :
+- **clôture de panneaux soudés verts** de 1,9 m (poteaux tous les 2,5 m, lisses, fils tous les 50 cm, deux faces) **sur le tracé des clôtures de parcelle**, qu'elle remplace (`walls` : quatorze clôtures retirées du dessin et des obstacles par `wallsOutsideMonuments`) : le long de l'avenue, du coin sud-ouest de la pelouse jusqu'au nord de l'annexe, et le long du bord sud de la pelouse, avec leurs ouvertures ;
+- **portail coulissant fermé** sur l'avenue (t 8,9 à 15,5 m, barreaux tous les 12 cm, panneau « stationnement interdit »), **petit portail** fermé du parking sud (s 29,6 à 34,6 m), passage libre de la rue Lazare Carnot ;
+- **borne d'appel** au « G » devant le pilier sud du portail, **mât au drapeau tricolore** de 8 m derrière (photo du portail) ;
+- **pylône d'antennes** en treillis de 18 m au nord-est de l'aile est : il n'est pas dans le relevé (trop mince) ni dans l'ombre de l'orthophotographie ; **position et hauteur approchées** d'après les trois photos où il paraît.
+Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les grilles) ; pied du pylône, mât, borne : obstacles.
+
+**Cour** (`parkings` de `manual.json`, deux entrées « D238 », `build_parking.py`, tuile 33_37 ; orthophotographie redressée dans le repère du bâtiment) : enrobé de la cour et de l'entrée du portail, bande pavée claire le long du long côté nord ; **rangée nord** : bouts blancs des traits lus à t = 21,5 m (s 2,0 à 16,85 m, **pas de 2,475 m**), places de 5 m ; **rangée le long du bâtiment** approchée au pas de 2,5 m (ses traits ne se lisent pas ; voitures garées sur l'orthophotographie) ; **deux places PMR** sur fond bleu devant l'accueil (s 7,0 à 13,7 m). **15 places tracées.**
+
+**Reprise après arrestation (revue)** : on reprend **sur le trottoir de l'avenue, devant le portail** (à 5 m de lui et de la borne), dos à la cour, tourné vers l'avenue : `ARREST_SPAWN` = (1 761,4 ; 616,6), cap −1,09 ; le bandeau dit toujours « Reprise à la sortie de la gendarmerie ». Le point n'est pas dans la cour, parce que la cour est fermée côté avenue (portail fermé) : la reprise se fait à la porte, comme à la sortie de la garde à vue. Le point des renforts `GENDARMERIE` passe **au milieu de la cour** (1 787,9 ; 612,9), hors des bâtiments. Les tests du jeu le vérifient : sur la carte de navigation (le trottoir de l'avenue), sans obstacle, hors de la clôture, à hauteur du portail, à moins de 30 m de la cour, tourné vers l'avenue.
+
+**Vues** : `?view=gendarmerie` (le portail depuis l'avenue, comme la photo), `gendarmerie-sud` (du sud-ouest, par-dessus la pelouse), `gendarmerie-carnot` (le long côté sud depuis la rue Lazare Carnot), `gendarmerie-logements`, `gendarmerie-cour`, `gendarmerie-haut`.
+
+**Pas encore** :
+- le panneau « ← ACCUEIL GENDARMERIE » accroché à la clôture, le poste de transformation (resté la boîte BD TOPO de 2 m), les cars et voitures de service garés dans la cour ;
+- l'emplacement réel du pylône ; l'usage de l'annexe ; les façades des côtés sans photo (l'est du bâtiment, le nord de l'annexe) sont approchées ;
+- la navigation n'est pas régénérée : les passants suivent encore les anciens contours ;
+- un éclairage de la cour la nuit.
+
+**Tests** (+4 : `src/render/gendarmerie.test.ts`) : volumes plausibles et bâtiments BD TOPO masqués, on bute contre chaque volume, la clôture remplace les clôtures de parcelle et coupe l'accès depuis l'avenue (portail compris), reprise et renforts, géométrie finie et bornée, inscriptions demandées à l'atlas.
+
+![Le portail depuis l'avenue, avant](captures/d238-portail-avant.jpg)
+![Le portail depuis l'avenue, après](captures/d238-portail.jpg)
+![Du sud-ouest, avant](captures/d238-sud-avant.jpg)
+![Du sud-ouest, après](captures/d238-sud.jpg)
+![Vue haute, avant](captures/d238-haut-avant.jpg)
+![Vue haute, après](captures/d238-haut.jpg)
+![La cour](captures/d238-cour.jpg)
+![Le collectif de logements](captures/d238-logements.jpg)
+![Le portail la nuit](captures/d238-portail-nuit.jpg)

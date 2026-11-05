@@ -8,10 +8,11 @@ import type { WantedView } from "./wanted";
  */
 
 /**
- * La gendarmerie d'Autun (D105), rue de la rive est du plan d'eau du Vallon (OpenStreetMap, way 124225434), dans la carte depuis l'agrandissement :
- * les renforts en sortent quand le joueur est à moins de BASE_REACH mètres, et on y reprend après une arrestation.
+ * La gendarmerie d'Autun (D105), 4 avenue André Frenaud, dans la carte depuis l'agrandissement : les renforts en sortent quand le joueur est à
+ * moins de BASE_REACH mètres, et on y reprend après une arrestation. Depuis D238 (bâtiment, cour et abords modélisés) : le milieu de la cour,
+ * entre le bâtiment principal et l'annexe (le point de D105, le centre du contour OpenStreetMap, tombait dans le bâtiment).
  */
-export const GENDARMERIE = { x: 1790, y: 595 } as const;
+export const GENDARMERIE = { x: 1787.9, y: 612.9 } as const;
 export const BASE_REACH = 800;
 
 /** Voitures en poursuite selon le niveau de recherche (0 à 5 étoiles). */

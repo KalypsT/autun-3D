@@ -415,6 +415,8 @@ export interface BuildingKind {
   mcd?: McdoModel;
   /** Bowling Strike Bowl de la route de Chalon d'après photos et relevé LiDAR (D234) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   bowl?: BowlingModel;
+  /** Gendarmerie de l'avenue André Frenaud d'après photos et relevé LiDAR (D238) : bâtiment principal, annexe et logements (remplace murs, toit, façade et obstacle génériques). */
+  gend?: GendarmerieModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -493,6 +495,42 @@ export interface EduenModel {
  * avec celui de `o` est à l'égout) et pied contre le corps `i` (noue `gut`) ; les murs vitrés suivent `o`. Altitudes locales ; `g` : sol
  * médian autour.
  */
+/**
+ * Gendarmerie de l'avenue André Frenaud (D238, tools/data/build_monuments.py, modèle `gendarmerie`, relevés de survey_gendarmerie.py).
+ * Repère : origine `o` au coin nord-ouest du bâtiment principal, s le long de son long côté nord selon l'angle `a` (vers l'est-sud-est),
+ * t vers la cour (nord-nord-est). Volumes à toit plat `blocks` : rectangle `r` (s0, s1, t0, t1), haut de l'acrotère `z` (altitude
+ * locale), nombre de niveaux, rôle (bâtiment principal `hq`, annexe `annex`, collectif de logements `flats`).
+ */
+export interface GendarmerieModel {
+  o: [number, number];
+  a: number;
+  blocks: GendarmerieBlock[];
+  site?: GendarmerieSite;
+}
+
+export interface GendarmerieBlock {
+  n: string;
+  role: "hq" | "annex" | "flats";
+  levels: number;
+  r: [number, number, number, number];
+  z: number;
+}
+
+/**
+ * Abords de la gendarmerie (D238, étape 3 ; orthophotographie et photos, repère du bâtiment principal) : clôture de panneaux soudés
+ * verts (polylignes, sur le tracé des clôtures de parcelle qu'elle remplace), portail coulissant de la cour sur l'avenue (bout fixe, bout ouvert ; fermé), portillon et borne d'appel, mât au
+ * drapeau, pylône d'antennes (pied, hauteur).
+ */
+export interface GendarmerieSite {
+  fences: [number, number][][];
+  gates: { a: [number, number]; b: [number, number] }[];
+  /** Clôtures de parcelle (identifiants des murs de la tuile) remplacées par la clôture de la gendarmerie, de même tracé. */
+  walls: number[];
+  borne: [number, number];
+  flag: [number, number];
+  mast: [number, number, number];
+}
+
 export interface McdoModel {
   o: [number, number];
   a: number;
