@@ -53,6 +53,8 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     }
     for (const k of ["water", "streams", "weirs", "rails", "platforms", "crossings"] as const) (structures[k] as unknown[]).push(...(st[k] as unknown[]));
     structures.wz!.push(...(st.wz ?? st.water.map(() => null)));
+    if (st.boats) (structures.boats ??= []).push(...st.boats);
+    if (st.shelters) (structures.shelters ??= []).push(...st.shelters);
   }
   tile.structures = structures;
   terrain.decks.add("tests", structures.decks, structures.platforms.map((p, i) => {

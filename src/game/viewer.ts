@@ -57,6 +57,15 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "nautique-darse": [1312, 606, 1.7, 1318, 588, 2],
   "nautique-lac": [1290, 530, 1.7, 1308, 568, 2],
   "nautique-haut": [1345, 640, 35, 1308, 578, 0],
+  // Pontons et cale du plan d'eau du Vallon (D246) : ponton de pêche (comme la photo), darse et ponton de la base, cale, ponton de l'abri,
+  // ponton en L du sud-ouest, ponton de l'île (depuis le lac), vue haute de la base.
+  "pontons-peche": [1013, 316, 1.7, 1036, 300, -0.5],
+  "pontons-base": [1301, 641, 1.7, 1276, 628, -0.3],
+  cale: [1322, 613, 1.7, 1298, 604, -0.5],
+  "pontons-abri": [1292, 547, 1.7, 1273, 557, 0],
+  "pontons-sud-ouest": [1143, 121, 1.7, 1130, 165, -0.3],
+  "pontons-ile": [1298, 127, 2.1, 1292, 108, 0],
+  "pontons-haut": [1318, 660, 28, 1286, 600, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

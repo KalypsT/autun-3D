@@ -3,6 +3,7 @@ import type { Deck, HeightField, TileStructures } from "../data/types";
 import { DeckAxis, deckGaps, deckPiers, deckThickness, pierHalf } from "../core/bridges";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { fillOnTerrain } from "./ground";
+import { buildPier } from "./piers";
 import { T } from "./style";
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -48,6 +49,7 @@ function stations(length: number, step: number, extra: number[] = []): number[] 
 
 /** Un tablier : dessus, rives, dessous, parapets ou garde-corps, piles, voûtes pour les ponts en pierre. */
 export function buildDeck(mb: MeshBuilder, d: Deck, ground: HeightField): void {
+  if (d.st === "pier") return buildPier(mb, d, ground);
   const axis = new DeckAxis(d);
   const L = axis.length;
   if (L < 1) return;

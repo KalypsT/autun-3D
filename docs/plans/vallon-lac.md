@@ -142,7 +142,7 @@ Réponses au §11.
 | **0. Relevés** (fait, §12) | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
 | **1. Le chemin** (fait, §13) | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
 | **2. La base nautique** (fait, §14) | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
-| **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
+| **3. Les pontons et la cale** (fait, §15) | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
 | **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
 
@@ -289,3 +289,53 @@ volumes sans chevauchement et contour BD TOPO couvert à 1,5 m ; obstacles (volu
 ![Côté darse](../captures/d245-darse.jpg)
 ![Depuis le lac](../captures/d245-lac.jpg)
 ![Vue haute](../captures/d245-haut.jpg)
+
+## 15. Lot 3 : les pontons et la cale (5 novembre 2026, D246)
+
+Fait. Étape `tools/data/build_vallon_piers.py` (réglages `vallonPiers` de `manual.json`, lus sur l'orthophotographie à 10 cm et les photos), rendu
+`src/render/piers.ts`, collisions `src/core/piers.ts`. Une deuxième passe ne change rien. Réponses de l'utilisateur : ponton de l'île raccourci au bord des arbres,
+abri sur poteaux, pente de la cale telle que mesurée, deux bateaux amarrés.
+
+| Ponton | Forme et longueur | Hauteur | Ce qui le porte |
+|---|---|---|---|
+| Base (OSM w422698578) | droit, 25 m depuis le quai de la darse, 2 m de large | 0,3 m | flotteurs |
+| Pêche, ouest (w842375499 et w842375500) | passerelle de 11 m depuis la berge, puis ponton en **T** de 62 m (il dépasse de 12 m au nord, coude de 21 m au sud), 1,5 m | 0,35 m | **pieux** (photo), 26 + 5 |
+| Sud-ouest (w842375502) | **L** : 51 m vers le large depuis la berge (y = 128, et non 146,5 comme OSM), puis 20 m vers l'ouest | 0,3 m | flotteurs |
+| Île (w1227421196) | 13,5 m depuis l'île, arrêté au bord des arbres (OSM : 23 m, invisible sur l'image) | 0,45 m | pieux, 6 |
+| Sixième, au sud-ouest de la base (absent d'OSM) | droit, 21 m sur 2,4 m, parallèle à la rive ; passerelle de 7,6 m sur 3 m depuis la berge | 0,3 m | flotteurs |
+
+- **Les tabliers** : `decks` des ouvrages, `k: "foot"`, nouveau style `pier` (planches grises en travers tous les 16 cm, jours sombres, rives, sans garde-corps),
+  `fl` (flottant) ou `pl` (abscisses des pieux). Un ponton accroché à la rive part de la berge (3 cm au-dessus du relief) et rejoint sa hauteur en 2 m.
+- **Monter dessus depuis l'eau** : à 0,3 m, on en sort en marchant (`STEP_OUT`) ; à 0,35 et 0,45 m, on se hisse (`HOIST` vaut 0,8 m, et non 1,05). Le tablier compte
+  comme un sol : on ne passe pas dessous, on ne peut donc pas y rester coincé.
+- **L'abri** du sixième ponton : toit plat blanc de 8,3 × 10 m sur quatre poteaux, à 3 m au-dessus du lac, au-dessus de la passerelle (approché : vu d'en haut seulement).
+- **Les bateaux** : 27 coques comptées sur l'image, posées sur le quai de la darse (4 dériveurs de couleur, 5 dériveurs blancs, 5 kayaks, 13 petits dériveurs blancs
+  sur la bande sud) ; 2 amarrés au ponton de la base (un dériveur au mât dressé, une barque), approchés. Obstacles bas qu'on enjambe.
+- **La cale** : dalle de béton clair de 102 m² (couche `slipway`), posée sur la rampe du relief (pente mesurée 0,15 à 0,18), jusqu'à 5 m sous l'eau.
+- **Le quai de la darse** (443 m², couche `quay`) : en enrobé, comme sur l'image ; il était dessiné en herbe.
+
+Ce qui diffère du plan :
+- **Le lac était en partie à sec.** Sur 17 % du plan d'eau (3,5 ha, surtout un triangle entre l'île et la rive ouest), le LiDAR, qui ne voit pas l'eau, a interpolé un
+  relief jusqu'à 0,9 m au-dessus de la surface, et build_water.py (D240) ne creusait que là où le relief était à moins de 0,3 m au-dessus : on voyait de l'herbe au milieu
+  du lac. Réglage `flood` du Vallon : à plus de 3 m du bord du polygone, tout est de l'eau ; il reste 0,4 % de cellules sèches (au bord). Les berges et l'île ne changent pas.
+- **La darse s'arrêtait 5 m avant la cale** (contour d'OSM) : un creux sans eau au pied de la rampe. Réglage `extend` de build_water.py : contour ajouté, lu sur l'image.
+- **Le ponton de pêche est sur pieux**, bien qu'OSM le dise flottant (photo).
+- **Le ponton de l'île est dans le marais peu profond du sud** (0,4 m, D240) : on l'atteint en marchant dans l'eau, pas à la nage.
+- **La cale garde sa pente mesurée** (0,15 à 0,18 au lieu de 0,08) ; les roseaux évitaient déjà tous les tracés définitifs (`noReeds` inchangé).
+
+Pas fait : le saule pleureur de la base ; la vue `pontons-ile` montre peu de chose (le ponton est sous les arbres, comme en vrai) ; les passants ne vont pas sur les pontons (pas d'arêtes de navigation) ; les bateaux ne bougent pas sur l'eau ; la partie de
+l'abri au-dessus de la berge est supposée (une passerelle dessous) ; le dessous des pontons n'est pas éclairé par les lampadaires.
+
+Tests (+14, `src/data/vallon-piers.test.ts`) : sept tabliers `pier` sans parapet, hauteurs et longueurs ; chaque ponton se parcourt à pied de la berge au bout
+(le T de pêche et le ponton de l'abri jusqu'à leurs deux bouts) ; un nageur monte sur trois pontons flottants et se hisse sur le ponton fixe de pêche ; le ponton de l'île
+se rejoint en marchant dans le marais ; un nageur placé sous le ponton fixe en sort, et longe ses pieux sans s'arrêter ; dessin fini et borné (planches, flotteurs,
+pieux jusqu'au fond) ; la cale : surface, pente, eau à son pied ; on sort de la darse à pied par la cale ; une voiture qui la descend coule ; 29 bateaux hors des pontons,
+obstacles enjambables ; passage libre sous l'abri ; dessin des bateaux et de l'abri borné.
+
+![Le ponton de pêche](../captures/d246-peche.jpg)
+![La darse : quai, dériveurs, ponton de la base](../captures/d246-darse.jpg)
+![La cale](../captures/d246-cale.jpg)
+![Le ponton de l'abri](../captures/d246-abri.jpg)
+![Vue haute de la base](../captures/d246-haut.jpg)
+![Le ponton en L du sud-ouest](../captures/d246-sud-ouest.jpg)
+![Le sud du lac, en eau (il était en partie en herbe)](../captures/d246-lac.jpg)

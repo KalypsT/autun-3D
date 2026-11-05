@@ -5064,3 +5064,26 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Depuis la route de Chalon](captures/d245-route.jpg)
 ![Côté darse](captures/d245-darse.jpg)
 ![Depuis le lac](captures/d245-lac.jpg)
+
+## 2026-11-05 — D246. Le plan d'eau du Vallon, lot 3 : les pontons et la cale (plan `docs/plans/vallon-lac.md`, §5 et §15)
+
+**Demande de l'utilisateur** : lot 3. Choix : ponton de l'île raccourci au bord des arbres (OSM le dessine sur 23 m vers le large, rien ne se voit sur l'orthophotographie) ; abri du sixième ponton sur poteaux ; pente de la cale telle que mesurée (0,15 à 0,18, et non 0,08) ; deux bateaux amarrés au ponton de la base. Photos de l'utilisateur (non versionnées) : le ponton de pêche est sur pieux, avec une passerelle légèrement inclinée depuis la berge.
+
+**Données** : `tools/data/build_vallon_piers.py`, réglages `vallonPiers` de `manual.json` (tracés recalés sur l'orthophotographie à 10 cm, positions approchées à 0,5 m près). Sept tabliers `k: "foot"`, `st: "pier"` (identifiants −(872 000 000 + n)) : base (25 m, flottant, 0,3 m), pêche (passerelle de 11 m puis T de 62 m, sur pieux, 0,35 m), sud-ouest (L de 71 m depuis la berge, flottant), île (13,5 m, pieux, 0,45 m), sixième ponton absent d'OSM (21 m, flottant) et sa passerelle de 7,6 m sous l'abri. Un ponton accroché à la rive part de la berge et rejoint sa hauteur en 2 m. Abri (`shelters`), 29 bateaux (`boats` : 27 posés sur le quai, comptés sur l'image ; 2 amarrés, approchés), couches de sol `slipway` (cale, 102 m², sur le relief mesuré) et `quay` (quai de la darse en enrobé, 443 m², jusqu'ici en herbe). Idempotente. Ordre : après build_water.py, avant build_vallon_path.py et build_map.py --images.
+
+**Le lac en partie à sec (corrigé)** : sur 17 % du Vallon (3,5 ha, surtout un triangle entre l'île et la rive ouest), le relief publié était jusqu'à 0,9 m au-dessus de l'eau : le LiDAR, qui ne voit pas l'eau, y interpole une nappe entre les rives, et build_water.py (D240) ne creuse que les cellules à moins de 0,3 m au-dessus du niveau. On voyait de l'herbe au milieu du lac. Nouveau réglage `flood` (par plan d'eau) : à plus de 3 m du bord du polygone, tout est de l'eau ; reste 0,4 % de cellules sèches, au bord. Nouveau réglage `extend` : contour ajouté à l'eau d'OSM, réuni au morceau qu'il touche (la darse s'arrêtait 5 m avant la cale). Les deux sont idempotents. Les roseaux, échantillonnés le long du contour du lac, se décalent un peu (686 → 684 m).
+
+**Rendu** : `src/render/piers.ts` : planches grises en travers tous les 16 cm, jours sombres, rives, sans garde-corps ; flotteurs sombres sous les pontons flottants (8 cm hors de l'eau), pieux carrés jusqu'au fond sous les fixes ; coques à bouchains (dériveur ponté à cockpit, kayak fermé, barque à bancs), mât et bôme du dériveur amarré ; abri à toit plat blanc sur quatre poteaux. Dans le maillage de détail de la tuile : aucun appel de dessin de plus.
+
+**Collisions** : les pontons sont des tabliers (`Decks`) : on y marche, on y monte depuis l'eau (à 0,3 m on en sort en marchant ; à 0,35 et 0,45 m on se hisse, `HOIST` = 0,8 m) ; ils comptent comme un sol, on ne passe donc pas dessous et on n'y reste pas coincé. Bateaux : obstacles bas de 0,7 m qu'on enjambe (`src/core/piers.ts`) ; poteaux de l'abri.
+
+**Pas fait** : le saule pleureur ; les passants ne vont pas sur les pontons ; la partie de l'abri au-dessus de la berge est supposée ; le ponton de l'île est dans le marais du sud (0,4 m de fond, D240) : on l'atteint en marchant, pas à la nage.
+
+**Tests** (+14, 1 301 au total ; `src/data/vallon-piers.test.ts`) : tabliers, hauteurs et longueurs ; chaque ponton parcouru à pied de la berge au bout (le T de pêche et le ponton de l'abri jusqu'à leurs deux bouts) ; nageur qui monte sur trois pontons flottants et se hisse sur le ponton fixe ; ponton de l'île rejoint en marchant ; nageur placé sous le ponton fixe qui en sort, et qui longe ses pieux sans s'arrêter ; dessin fini et borné ; cale (surface, pente, eau à son pied) ; sortie à pied par la cale ; voiture qui descend la cale et coule ; bateaux hors des pontons, obstacles enjambables ; passage libre sous l'abri. `terrain.test.ts` : la comparaison du relief grossier au relief fin écarte les points sous l'eau de la ville (le fond n'est creusé que dans le relief fin, D240).
+
+![Le ponton de pêche](captures/d246-peche.jpg)
+![La darse](captures/d246-darse.jpg)
+![La cale](captures/d246-cale.jpg)
+![Vue haute de la base](captures/d246-haut.jpg)
+![Le sud du lac, en eau](captures/d246-lac.jpg)
+

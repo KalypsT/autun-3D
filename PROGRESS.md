@@ -1812,3 +1812,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Depuis la route de Chalon](docs/captures/d245-route.jpg)
 ![Côté darse](docs/captures/d245-darse.jpg)
+
+**Le plan d'eau du Vallon, lot 3 : les pontons et la cale (5 novembre 2026)** (D246)
+- Six pontons en planches grises, sans garde-corps : celui de la base, le ponton de pêche en T sur pieux (comme sur ta photo), le L du sud-ouest, celui de l'île (court, sous les arbres), et le sixième avec son abri sur poteaux. On y marche, et on y monte depuis l'eau.
+- La cale en béton descend dans la darse : on en sort à pied, une voiture qui la descend coule.
+- 27 dériveurs et kayaks rangés sur le quai, désormais en enrobé ; un dériveur et une barque amarrés au ponton de la base.
+- Corrigé au passage : une partie du sud du lac (3,5 ha) apparaissait en herbe ; elle est maintenant en eau.
+- Vues : `?view=pontons-peche`, `pontons-base`, `cale`, `pontons-abri`, `pontons-sud-ouest`, `pontons-ile`, `pontons-haut`.
+- Prochaine étape : les équipements (aire de jeux, skatepark, pump track, agrès, gué).
+
+![Le ponton de pêche](docs/captures/d246-peche.jpg)
+![La darse](docs/captures/d246-darse.jpg)

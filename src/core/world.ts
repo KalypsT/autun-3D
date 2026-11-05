@@ -7,6 +7,7 @@ import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
 import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./gendarmerie";
 import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
+import { BOAT_TOP, boatOutline, SHELTER_POST, shelterPosts } from "./piers";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -125,6 +126,12 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
       if (s.t === "theatre") for (const w of theatreWalls(s, (x, y) => bare.heightAt(x, y))) c.addPolyline(w.pts, w.low, w.top);
     }
   }
+  // Plan d'eau du Vallon (D246) : bateaux posés ou amarrés, obstacles bas qu'on enjambe ; poteaux des abris.
+  for (const b of tile.structures?.boats ?? []) {
+    const r = boatOutline(b);
+    c.addPolyline([...r, r[0]!, r[1]!], true, { height: BOAT_TOP, climb: true });
+  }
+  for (const s of tile.structures?.shelters ?? []) for (const [x, y] of shelterPosts(s)) c.addCircle(x, y, SHELTER_POST * 1.4);
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
   for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line, false, PARAPET);
   // Piles (D220) : on ne les traverse plus par-dessous ; d'en haut (pieds sur le tablier) ou sans altitude (passants, circulation),

@@ -1231,12 +1231,44 @@ export interface Deck {
   w: number;
   /** Axe : x, y, z du dessus du tablier, par sommet. */
   p: number[];
-  /** Style : voûtes en pierre, tablier droit, passerelle légère. */
-  st: "stone" | "beam" | "light";
+  /** Style : voûtes en pierre, tablier droit, passerelle légère, ponton en planches sans garde-corps (D246). */
+  st: "stone" | "beam" | "light" | "pier";
   /** Abscisses des piles le long de l'axe. */
   sp: number[];
   /** Tronçons de parapet infranchissables [s0, s1] (coupés au-dessus d'une voie). */
   pc: [number, number][];
+  n?: string;
+  /** Ponton (D246) : 1 s'il flotte (flotteurs dessous) ; sinon, abscisses de ses pieux le long de l'axe (`pl`, dessin seulement). */
+  fl?: 1;
+  pl?: number[];
+}
+
+/** Bateau posé sur un quai ou amarré (D246, build_vallon_piers.py). */
+export interface Boat {
+  x: number;
+  y: number;
+  /** Cap de la proue (radians depuis l'est, sens trigonométrique), longueur et largeur (m). */
+  a: number;
+  l: number;
+  w: number;
+  /** Dériveur, kayak ou barque. */
+  k: "dinghy" | "kayak" | "barque";
+  /** Couleur de la coque. */
+  c: string;
+  /** Altitude de la quille. */
+  z: number;
+  /** 1 : mât dressé (dériveur amarré). */
+  m?: 1;
+}
+
+/** Abri sur poteaux (D246) : toit rectangulaire de centre (x, y), côté `hl` dans la direction `a` (radians), dessous du toit à `z`. */
+export interface Shelter {
+  x: number;
+  y: number;
+  a: number;
+  hl: number;
+  hw: number;
+  z: number;
   n?: string;
 }
 
@@ -1265,6 +1297,9 @@ export interface TileStructures {
   crossings: [number, number, number][];
   /** Roseaux et herbes hautes du bord du plan d'eau du Vallon (D244, build_vallon_path.py) : tracés le long du bord de l'eau, x, y. */
   reeds?: { p: number[] }[];
+  /** Bateaux posés et amarrés, abris sur poteaux du plan d'eau du Vallon (D246, build_vallon_piers.py). */
+  boats?: Boat[];
+  shelters?: Shelter[];
 }
 
 export interface TileData {

@@ -130,11 +130,11 @@
     "stairs": {"s0": 46.2, "s1": 51.6, "n": 15}, "ends": [[0.0, 8.0], [46.6, 64.2]], "slab": 1.5, "head": [4.0, 3.6],
     "photo": "Photos de l'utilisateur : porte cochère de la rue aux Cordiers (arc surbaissé en pierre, plaque bleue), vue en enfilade depuis le haut de l'escalier, façade de la rue Demetz (grand arc, fronton), galerie bleu et or, statue du chien."
   },
-  "_water": "Eau de la ville (D240, build_water.py) : profondeur maximale (m) et pente de berge (m/m) par plan d'eau, désigné par un point ; sinon `default` selon la surface (m²). Profondeurs inventées (aucune bathymétrie publique). `closed` : un seul niveau, même si ses morceaux ne s'accordent pas (bruit du LiDAR sur l'eau). `shallow` : zones plafonnées (boîte x0, y0, x1, y1) dans le plan d'eau qui contient `at`.",
+  "_water": "Eau de la ville (D240, build_water.py) : profondeur maximale (m) et pente de berge (m/m) par plan d'eau, désigné par un point ; sinon `default` selon la surface (m²). Profondeurs inventées (aucune bathymétrie publique). `closed` : un seul niveau, même si ses morceaux ne s'accordent pas (bruit du LiDAR sur l'eau). `shallow` : zones plafonnées (boîte x0, y0, x1, y1) dans le plan d'eau qui contient `at`. `flood` (D246) : à plus de `flood` m du bord du polygone, tout est de l'eau, même là où le LiDAR (qui ne voit pas l'eau) a interpolé un relief plus haut que la surface. `extend` (D246) : contours ajoutés à l'eau d'OSM (lus sur l'orthophotographie), réunis au morceau qu'ils touchent.",
   "water": {
     "default": {"depth": 1.5, "slope": 0.25, "smallArea": 2000, "smallDepth": 0.8, "smallSlope": 0.3},
     "bodies": [
-      {"name": "Plan d'eau du Vallon", "at": [1245, 360], "depth": 3.0, "slope": 0.25, "closed": true},
+      {"name": "Plan d'eau du Vallon", "at": [1245, 360], "depth": 3.0, "slope": 0.25, "closed": true, "flood": 3},
       {"name": "L'Arroux, traversée de la ville", "at": [-103, 1364], "depth": 1.6, "slope": 0.2},
       {"name": "L'Arroux, aval nord", "at": [587, 3740], "depth": 1.6, "slope": 0.2},
       {"name": "L'Arroux, amont ouest", "at": [-1948, -130], "depth": 1.6, "slope": 0.2},
@@ -143,7 +143,8 @@
       {"name": "Étang perché (sud)", "at": [-409, -1208], "depth": 1.0, "slope": 0.25},
       {"name": "Étang perché (sud)", "at": [268, -1280], "depth": 1.0, "slope": 0.25}
     ],
-    "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}]
+    "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}],
+    "extend": [{"name": "Darse de la base nautique, au pied de la cale (D246)", "ring": [1295.0, 600.5, 1300.0, 601.5, 1306.3, 603.0, 1306.3, 606.5, 1305.0, 608.6, 1297.0, 609.6]}]
   },
   "_vallonPath": "Chemin du tour du plan d'eau du Vallon (D244, build_vallon_path.py ; plan docs/plans/vallon-lac.md, §12) : `sections` : tronçons de la boucle en abscisse s (m) de l'axe du relevé (vallon_survey.json), largeur w (m) mesurée à l'orthophotographie, voies OSM qu'ils remplacent (largeur des arêtes piétonnes) ; le raccord par la base (s 1205 à 1247) reste aux allées en enrobé de la base. `osmWays` : allées du sud prises telles quelles dans OSM. `meshFences` : clôtures (identifiant dans la tuile, ici la voie OSM) en grillage vert, hauteur vue sur les photos (1,8 m ; 3,2 m avant, valeur par défaut). `lamps` : lampadaires (photos de la rive est), un tous les `step` m entre les abscisses s du tronçon, à `off` m du bord, côté terre. Roseaux : le long du bord du lac à moins de `reedsNearPath` m du chemin, plages de 12 m gardées à `share`, sauf `noReeds` (cercles x, y, r : pontons, cale ; boîtes x0, y0, x1, y1 : base nautique, pelouses de pêche).",
   "vallonPath": {
@@ -165,6 +166,57 @@
     "noReeds": {
       "circles": [[1295, 635, 12], [1025, 310, 12], [1033, 322, 12], [1134, 146, 12], [1292, 105, 12], [1306, 606, 16]],
       "boxes": [[1250, 540, 1390, 690], [1090, 105, 1250, 175], [995, 250, 1065, 335]]
+    }
+  },
+  "_vallonPiers": "Pontons, cale et bateaux du plan d'eau du Vallon (D246, build_vallon_piers.py ; plan docs/plans/vallon-lac.md, §5 et §15). Tout est relevé sur l'orthophotographie IGN à 10 cm (vignettes de survey_vallon.py) et les photos de l'utilisateur, positions approchées à 0,5 m près. `piers` : tracé x, y (OSM recalé sur l'image ; le premier point est sur la berge quand `shore`), largeur `w` (m), hauteur `h` au-dessus du lac (m, photos : le LiDAR ne voit pas l'eau), `float` : flotteurs (sinon pieux). Le ponton de pêche de l'ouest est noté flottant dans OSM mais repose sur des pieux sur la photo : pieux. Ponton de l'île (OSM w1227421196, 23 m vers le large, invisible sur l'image) : raccourci au bord des arbres (11 m, choix de l'utilisateur). Le sixième ponton (absent d'OSM) et son abri : mesurés sur l'image ; l'abri (toit blanc de 8 × 10 m contre le milieu du ponton, côté rive) est un toit sur poteaux, la passerelle dessous est supposée. `shelters` : centre `c`, angle `a` (degrés, du côté `l` depuis l'est), longueur `l` et largeur `w` (m), dessous du toit à `h` m au-dessus du lac. `boats` : x, y, cap `a` de la proue (degrés depuis l'est), longueur `l`, largeur `w`, sorte `k` (dinghy : dériveur, kayak, barque), couleur de coque `c` ; `moored` : à l'eau ; `mast` : mât. 27 coques comptées sur le quai de la darse (image de l'été) ; les deux bateaux amarrés au ponton de la base sont approchés (aucun n'est visible sur l'image). `ground` : sols posés par l'étape, contours lus sur l'image : `slipway`, la cale (béton clair), prolongée de 5 m sous l'eau, sur le relief mesuré (pente 0,15 à 0,18, non retaillé) ; `quay`, le quai de la darse et la bande où sont rangés les dériveurs (enrobé gris, dessinés en herbe jusqu'ici).",
+  "vallonPiers": {
+    "piers": [
+      {"name": "Ponton de la base", "osm": "w422698578", "shore": 1, "float": 1, "h": 0.3, "w": 2.0, "p": [1290.5, 634.2, 1266.1, 628.5]},
+      {"name": "Ponton de pêche, passerelle", "osm": "w842375499", "shore": 1, "h": 0.35, "w": 1.2, "p": [1022.0, 310.1, 1032.8, 310.1]},
+      {"name": "Ponton de pêche", "osm": "w842375500", "h": 0.35, "w": 1.5, "p": [1032.7, 322.5, 1032.8, 310.1, 1033.0, 281.7, 1043.8, 263.9]},
+      {"name": "Ponton du sud-ouest", "osm": "w842375502", "shore": 1, "float": 1, "h": 0.3, "w": 1.5, "p": [1135.4, 128.0, 1132.6, 179.0, 1112.4, 177.8]},
+      {"name": "Ponton de l'île", "osm": "w1227421196", "shore": 1, "h": 0.45, "w": 1.5, "p": [1292.0, 102.5, 1292.0, 116.0]},
+      {"name": "Ponton de l'abri", "osm": null, "float": 1, "h": 0.3, "w": 2.4, "p": [1269.0, 565.8, 1277.0, 546.5]},
+      {"name": "Passerelle sous l'abri", "osm": null, "shore": 1, "float": 1, "h": 0.3, "w": 3.0, "p": [1281.5, 557.0, 1274.0, 555.6]}
+    ],
+    "shelters": [
+      {"name": "Abri du ponton", "c": [1279.6, 556.1], "a": 17, "l": 8.3, "w": 10.0, "h": 3.0}
+    ],
+    "boats": [
+      {"x": 1285.8, "y": 647.5, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#e8c547"},
+      {"x": 1286.3, "y": 644.8, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#4cc3c9"},
+      {"x": 1287.0, "y": 642.2, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#e2b93f"},
+      {"x": 1288.8, "y": 639.8, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1292.5, "y": 628.2, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1293.0, "y": 625.5, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1294.3, "y": 623.0, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1295.2, "y": 620.5, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1296.0, "y": 618.0, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1296.2, "y": 615.5, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#9ccf3a"},
+      {"x": 1296.6, "y": 614.2, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#3fb7c9"},
+      {"x": 1296.8, "y": 613.0, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#4fae5c"},
+      {"x": 1297.2, "y": 611.5, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#3f78c9"},
+      {"x": 1297.7, "y": 610.2, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#e07a3a"},
+      {"x": 1295.0, "y": 598.8, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1296.2, "y": 599.2, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1297.5, "y": 599.6, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1298.8, "y": 600.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1300.0, "y": 600.4, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1301.5, "y": 600.8, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1302.8, "y": 601.2, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1282.0, "y": 594.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1283.2, "y": 594.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1284.5, "y": 595.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1285.8, "y": 595.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1287.0, "y": 596.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1288.3, "y": 596.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1280.3, "y": 633.8, "a": 193, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#f4f4f0", "moored": 1, "mast": 1},
+      {"x": 1274.5, "y": 632.4, "a": 193, "l": 3.8, "w": 1.4, "k": "barque", "c": "#5f7d6a", "moored": 1}
+    ],
+    "ground": {
+      "slipway": [[1301.0, 603.6, 1315.0, 604.4, 1315.0, 611.6, 1301.0, 611.0]],
+      "quay": [[1280.5, 660.0, 1282.5, 654.0, 1285.0, 646.0, 1288.5, 636.0, 1291.5, 626.0, 1295.0, 616.0, 1298.5, 610.0, 1306.0, 610.6, 1302.5, 616.0, 1299.0, 626.0, 1294.5, 636.0, 1292.0, 646.0, 1288.5, 654.0, 1286.5, 660.0],
+               [1279.5, 592.5, 1305.5, 599.0, 1305.5, 603.5, 1300.0, 601.5, 1295.0, 600.5, 1280.0, 596.5]]
     }
   }
 }
