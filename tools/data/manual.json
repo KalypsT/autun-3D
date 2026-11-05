@@ -128,5 +128,20 @@
     },
     "stairs": {"s0": 46.2, "s1": 51.6, "n": 15}, "ends": [[0.0, 8.0], [46.6, 64.2]], "slab": 1.5, "head": [4.0, 3.6],
     "photo": "Photos de l'utilisateur : porte cochère de la rue aux Cordiers (arc surbaissé en pierre, plaque bleue), vue en enfilade depuis le haut de l'escalier, façade de la rue Demetz (grand arc, fronton), galerie bleu et or, statue du chien."
+  },
+  "_water": "Eau de la ville (D240, build_water.py) : profondeur maximale (m) et pente de berge (m/m) par plan d'eau, désigné par un point ; sinon `default` selon la surface (m²). Profondeurs inventées (aucune bathymétrie publique). `closed` : un seul niveau, même si ses morceaux ne s'accordent pas (bruit du LiDAR sur l'eau). `shallow` : zones plafonnées (boîte x0, y0, x1, y1) dans le plan d'eau qui contient `at`.",
+  "water": {
+    "default": {"depth": 1.5, "slope": 0.25, "smallArea": 2000, "smallDepth": 0.8, "smallSlope": 0.3},
+    "bodies": [
+      {"name": "Plan d'eau du Vallon", "at": [1245, 360], "depth": 3.0, "slope": 0.25, "closed": true},
+      {"name": "L'Arroux, traversée de la ville", "at": [-103, 1364], "depth": 1.6, "slope": 0.2},
+      {"name": "L'Arroux, aval nord", "at": [587, 3740], "depth": 1.6, "slope": 0.2},
+      {"name": "L'Arroux, amont ouest", "at": [-1948, -130], "depth": 1.6, "slope": 0.2},
+      {"name": "L'Arroux, bras nord", "at": [314, 2725], "depth": 1.6, "slope": 0.2},
+      {"name": "Bassin à bords hauts", "at": [-1427, 156], "depth": 1.0, "slope": 0.25},
+      {"name": "Étang perché (sud)", "at": [-409, -1208], "depth": 1.0, "slope": 0.25},
+      {"name": "Étang perché (sud)", "at": [268, -1280], "depth": 1.0, "slope": 0.25}
+    ],
+    "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}]
   }
 }

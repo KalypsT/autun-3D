@@ -3,6 +3,7 @@ import type { HeightField } from "../data/types";
 /**
  * La mer qui entoure le monde (D105) : on avance dans l'eau jusqu'à une certaine profondeur, jamais plus loin. Comme le rivage descend en
  * pente douce dans la plaine et tombe en falaise sur les hauteurs, la profondeur suffit à dire où s'arrêter : pas de mur à dessiner.
+ * L'eau de la ville (D240) suit la même règle : son fond est creusé sous un niveau propre à chaque plan d'eau (`HeightField.waterAt`).
  */
 
 /** Profondeur (m) au-delà de laquelle on ne peut plus avancer : à pied (l'eau à la taille), en voiture, sur un deux-roues. */
@@ -10,26 +11,34 @@ export const WADE_DEPTH = 1.0;
 export const CAR_DEPTH = 0.5;
 export const BIKE_DEPTH = 0.35;
 
-/** Profondeur de la mer en (x, y), sur le relief nu ; 0 à terre ou sans mer. */
-export function waterDepth(terrain: HeightField, x: number, y: number): number {
+/** Il y a de l'eau dans ce monde : la mer, ou l'eau de la ville. */
+export const hasWater = (terrain: HeightField): boolean => terrain.seaLevel !== undefined || terrain.waterAt !== undefined;
+
+/**
+ * Profondeur d'eau en (x, y) : mer ou eau de la ville, mesurée sous la surface où l'on se tient. Sur un pont, cette surface est le tablier,
+ * et la profondeur est nulle ; `zHint` (l'altitude de qui demande) départage le tablier et le fond qui passe dessous. 0 à terre ou sans eau.
+ */
+export function waterDepth(terrain: HeightField, x: number, y: number, zHint?: number): number {
   const sea = terrain.seaLevel;
-  if (sea === undefined) return 0;
-  return Math.max(0, sea - (terrain.ground ?? terrain).heightAt(x, y));
+  const city = terrain.waterAt?.(x, y);
+  if (sea === undefined && city === undefined) return 0;
+  const floor = zHint === undefined ? (terrain.ground ?? terrain).heightAt(x, y) : terrain.heightAt(x, y, zHint);
+  return Math.max(0, (sea ?? -Infinity) - floor, (city ?? -Infinity) - floor);
 }
 
 /** Point le plus avancé vers (x, y), depuis (px, py), où la profondeur reste sous `max` : glisse le long du rivage. */
-export function holdShore(terrain: HeightField, px: number, py: number, x: number, y: number, max: number): { x: number; y: number; blocked: boolean } {
-  if (terrain.seaLevel === undefined || waterDepth(terrain, x, y) <= max) return { x, y, blocked: false };
-  if (waterDepth(terrain, x, py) <= max) return { x, y: py, blocked: true };
-  if (waterDepth(terrain, px, y) <= max) return { x: px, y, blocked: true };
+export function holdShore(terrain: HeightField, px: number, py: number, x: number, y: number, max: number, zHint?: number): { x: number; y: number; blocked: boolean } {
+  if (!hasWater(terrain) || waterDepth(terrain, x, y, zHint) <= max) return { x, y, blocked: false };
+  if (waterDepth(terrain, x, py, zHint) <= max) return { x, y: py, blocked: true };
+  if (waterDepth(terrain, px, y, zHint) <= max) return { x: px, y, blocked: true };
   return { x: px, y: py, blocked: true };
 }
 
 /** Normale du rivage (vers la terre, unitaire) en (x, y), d'après la pente de la profondeur ; nulle sur le plat. */
-export function shoreNormal(terrain: HeightField, x: number, y: number): [number, number] {
+export function shoreNormal(terrain: HeightField, x: number, y: number, zHint?: number): [number, number] {
   const e = 1.5;
-  const gx = waterDepth(terrain, x + e, y) - waterDepth(terrain, x - e, y);
-  const gy = waterDepth(terrain, x, y + e) - waterDepth(terrain, x, y - e);
+  const gx = waterDepth(terrain, x + e, y, zHint) - waterDepth(terrain, x - e, y, zHint);
+  const gy = waterDepth(terrain, x, y + e, zHint) - waterDepth(terrain, x, y - e, zHint);
   const n = Math.hypot(gx, gy);
   return n > 1e-6 ? [-gx / n, -gy / n] : [0, 0];
 }

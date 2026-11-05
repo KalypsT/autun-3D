@@ -1,5 +1,6 @@
 import { Terrain, TiledTerrain } from "./terrain";
 import { spanDeck } from "../core/bridges";
+import { Waters, type WaterFile } from "../core/waters";
 import type { LodBuilding, TileData, TileKinds, TileStructures, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
@@ -32,8 +33,12 @@ export function loadImage(name: string): Promise<HTMLImageElement> {
 /** Ce qui est chargé au démarrage : le plan du monde et le relief à gros pas. Tout le reste se charge par tuile. */
 export async function loadWorldBase(): Promise<WorldBase> {
   const manifest = await loadJson<WorldManifest>("world.json");
-  const coarse = Terrain.decode(manifest.coarse, await binary("terrain/coarse.bin"));
-  return { manifest, terrain: new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`)) };
+  const [coarseBin, water] = await Promise.all([binary("terrain/coarse.bin"), loadJson<WaterFile>("water.json").catch(() => null)]);
+  const coarse = Terrain.decode(manifest.coarse, coarseBin);
+  const terrain = new TiledTerrain(manifest, coarse, (id) => binary(`terrain/${id}.bin`));
+  // L'eau de la ville (D240) : sans le fichier, le jeu marche comme avant (pas d'eau, sauf la mer).
+  terrain.waters = new Waters(water);
+  return { manifest, terrain };
 }
 
 const indexes = new Map<string, Promise<Set<string>>>();

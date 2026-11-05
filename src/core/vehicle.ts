@@ -1,7 +1,7 @@
 import { BREAKABLE, BREAK_IMPACT_KEEP, breaks, speedKept } from "./breakables";
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
-import { BIKE_DEPTH, CAR_DEPTH, onDeck, shoreNormal, waterDepth } from "./shore";
+import { BIKE_DEPTH, CAR_DEPTH, hasWater, onDeck, shoreNormal, waterDepth } from "./shore";
 
 /**
  * Véhicules : logique pure. Modèle « bicyclette » dynamique (deux essieux, pneus à rigidité de dérive
@@ -963,18 +963,18 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
 
 /** Chocs : chaque cercle de l'emprise est repoussé hors des obstacles, avec une impulsion au point de contact. */
 /**
- * La mer (D105) : l'eau freine d'autant plus qu'elle est profonde ; au-delà de la profondeur que le véhicule supporte, il reste au bord et
+ * L'eau (la mer, D105, et l'eau de la ville, D240) : l'eau freine d'autant plus qu'elle est profonde ; au-delà de la profondeur que le véhicule supporte, il reste au bord et
  * perd la vitesse qui l'emmenait au large (sans choc : on ne tombe pas, on ne se blesse pas).
  */
 function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: number, py: number, dt: number): void {
-  if (terrain.seaLevel === undefined) return;
-  const depth = waterDepth(terrain, s.x, s.y);
+  if (!hasWater(terrain)) return;
+  const depth = waterDepth(terrain, s.x, s.y, s.z);
   if (depth <= 0.05) return;
   const k = Math.max(0, 1 - 3 * depth * dt);
   s.vx *= k;
   s.vy *= k;
   if (depth <= (spec.leans ? BIKE_DEPTH : CAR_DEPTH)) return;
-  const [nx, ny] = shoreNormal(terrain, s.x, s.y);
+  const [nx, ny] = shoreNormal(terrain, s.x, s.y, s.z);
   s.x = px;
   s.y = py;
   const vn = s.vx * nx + s.vy * ny;

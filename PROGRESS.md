@@ -1757,3 +1757,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Debout sur le lac, avant](docs/captures/eau-avant-vallon-surface.jpg)
 
+**L'eau de la ville, lot 1 : le fond et le niveau (5 novembre 2026)** (D240)
+- On ne marche plus sur l'eau : le fond est creusé sous le plan d'eau du Vallon (3 m au milieu, marais peu profond au sud), l'Arroux (1,6 m), le Ternin et 49 étangs. On y entre jusqu'à la taille, puis on longe la berge ; une voiture est freinée et s'arrête roues dans l'eau.
+- Sur un pont, rien ne change : on passe au-dessus de l'eau.
+- L'eau lointaine est dessinée (on ne voit plus le pré au milieu du lac) ; la carte et la minimap montrent le lac, l'Arroux et les étangs.
+- Canards à la surface, reflet du feu d'artifice au niveau du lac.
+- Prochaine étape : la nage.
+
+![De l'eau à la taille](docs/captures/d240-a-pied.jpg)
+![Le Vallon vu de haut](docs/captures/d240-vallon-haut.jpg)
+

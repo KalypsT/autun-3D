@@ -172,10 +172,10 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
       return;
     }
   }
-  // Limites du monde (3 m de marge), puis la mer : on y entre jusqu'à la taille, pas plus loin (D105).
+  // Limites du monde (3 m de marge), puis l'eau (mer, D105, et eau de la ville, D240) : on y entre jusqu'à la taille, pas plus loin.
   x = Math.min(Math.max(x, terrain.xMin + 3), terrain.xMax - 3);
   y = Math.min(Math.max(y, terrain.yMin + 3), terrain.yMax - 3);
-  const shore = holdShore(terrain, p.x, p.y, x, y, WADE_DEPTH);
+  const shore = holdShore(terrain, p.x, p.y, x, y, WADE_DEPTH, p.z);
   if (shore.blocked) {
     if (shore.x === p.x) p.vx = 0;
     if (shore.y === p.y) p.vy = 0;
@@ -283,7 +283,7 @@ export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, co
       p.vy -= into * r.ny;
     }
   }
-  const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH);
+  const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH, p.z);
   // Au bord d'un toit (D215), on s'arrête au lieu de passer d'un coup dans la rue.
   const z = terrain.heightAt(shore.x, shore.y, p.z);
   if (z < p.z - CLIFF && !onDeck(terrain, p.x, p.y, p.z)) {

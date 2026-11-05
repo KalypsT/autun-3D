@@ -219,7 +219,7 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 | Lot | Contenu | Résultat dans le jeu | Décision |
 |---|---|---|---|
 | **0. Relevés** | noms des plans d'eau (OSM) ; liste des polygones touchés par la mer (exclus) ; rivières en ruban de 6 m ; types de berges (pente, quai, mur : hauteur du bord au-dessus du niveau, au LiDAR) ; écarts entre contour et eau réelle ; arbres, mobilier ou murs dans les polygones ; captures « avant » | aucun | D239 |
-| **1. Fond et niveau** | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau, eau lointaine, eau de la ville sur la carte et la minimap ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
+| **1. Fond et niveau** (fait, §10) | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau, eau lointaine, eau de la ville sur la carte et la minimap ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
 | **2. Nage** | état nage du joueur ; pose ; sortie (pente, bord bas) ; armes rangées ; sons, rides, gerbes ; caméra ; police qui attend au bord | on nage dans l'eau de la ville ; la mer ne change pas | D241 |
 | **3. Véhicules qui coulent** | fin `drowned` ; flottaison, calage, enfoncement ; sortie du conducteur ; épave au fond ; deux-roues | une voiture qui entre dans le lac coule et ne repart plus | D242 |
 | Ensuite | plan du **décor du lac** (`docs/plans/vallon-lac.md`) : base de loisirs, cale, pontons (avec bord bas pour sortir de l'eau), chemin du tour du lac, zones en pente douce | | |
@@ -285,4 +285,18 @@ Captures « avant » : `docs/captures/eau-avant-vallon-haut.jpg` (vue haute), `e
 - Rivières en ruban : pas creusées (§3.2).
 - Carte, minimap et eau lointaine à corriger au lot 1 (§3.3).
 - Sorties aménagées sur les deux longs bords hauts de l'Arroux, passerelle basse en obstacle (§4.2).
+
+## 10. Lot 1 : fond et niveau (5 novembre 2026, D240)
+
+Fait. Ce qui diffère du plan :
+- **Registre global** : l'eau de la ville est dans un seul fichier, `water.json` (44 ko, chargé au démarrage), et non par tuile. La règle de profondeur marche donc partout, et l'eau lointaine
+  se dessine à partir du même fichier (un maillage, un appel de dessin).
+- **Profondeur sous la surface où l'on se tient** (`waterDepth(…, zHint)`) : sur un pont, elle est nulle ; dessous, c'est celle du fond. Sans cela, un pont sur l'Arroux serait devenu infranchissable.
+- **Niveaux** : un seul pour un plan d'eau fermé (désigné dans `manual.json`, ou de moins d'1 ha, ou dont les morceaux s'accordent à 0,4 m près) ; pour une rivière, le quart bas du relief de
+  chaque morceau (les bancs relèvent la médiane), puis un plan qui passe par les coutures avec ses voisins. Écart aux coutures : 4 mm en médiane, 9 cm pour 90 % des points, 25 cm au pire.
+- **Relief grossier non creusé** (§3.3, option a).
+- Le **creux de l'anse nord-ouest du Vallon** (1 à 5 m sous le niveau, vers (1090 ; 550)) était déjà dans le relief d'origine (trou du LiDAR) : c'est maintenant une zone profonde, invisible sous la surface.
+- **Carte et minimap** : `build_map.py --images` refait seulement les images, avec l'eau lue dans `structures/`.
+
+Reste pour le lot 2 : la nage (le personnage s'arrête aujourd'hui à 1 m), les sorties aménagées de l'Arroux, la passerelle basse en obstacle, la police qui attend au bord.
 

@@ -62,7 +62,8 @@ export class FeastsController {
 
     // Feu d'artifice : il vit tant qu'il reste des étincelles en l'air.
     if (feasts.includes("14-juillet") && !this.fireworks) {
-      const water = this.terrain.heightAt(1240, 420);
+      // Le reflet est au niveau du plan d'eau du Vallon (son fond est creusé, D240).
+      const water = this.terrain.waterAt?.(1240, 420) ?? this.terrain.heightAt(1240, 420);
       this.fireworks = new Fireworks(1407, 2400, water);
       this.fwView = new FireworksView(this.scene, 2400, water);
     }

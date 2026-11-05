@@ -1,5 +1,6 @@
 import type { HeightField, TerrainMeta, TileInfo, WorldManifest } from "./types";
 import { Decks } from "../core/decks";
+import { Waters } from "../core/waters";
 
 /** Grille d'altitudes : logique pure, sans rendu. */
 export class Terrain implements HeightField {
@@ -74,6 +75,8 @@ export class TiledTerrain implements HeightField {
   private readonly size: number;
   private readonly zone: [number, number, number, number];
   readonly seaLevel: number | undefined;
+  /** L'eau de la ville (D240) : vide tant que `water.json` n'est pas chargé. */
+  waters = new Waters(null);
 
   constructor(
     manifest: WorldManifest,
@@ -124,6 +127,11 @@ export class TiledTerrain implements HeightField {
     return this.decks.empty ? z : this.decks.surface(x, y, z, zHint);
   }
 
+  /** Surface de l'eau de la ville en (x, y), ou `undefined` (D240). */
+  waterAt(x: number, y: number): number | undefined {
+    return this.waters.levelAt(x, y);
+  }
+
   /** Relief nu (sans tabliers), corrigé sous les ponts qui enjambent une voie (`Decks.carve`). */
   groundAt(x: number, y: number): number {
     const z = this.rawGroundAt(x, y);
@@ -144,6 +152,7 @@ export class TiledTerrain implements HeightField {
     heightAt: (x, y) => t.groundAt(x, y),
     get xMin(): number { return t.xMin; }, get xMax(): number { return t.xMax; }, get yMin(): number { return t.yMin; }, get yMax(): number { return t.yMax; },
     get seaLevel(): number | undefined { return t.seaLevel; },
+    waterAt: (x, y) => t.waterAt(x, y),
   }))(this);
 
   /** Altitude du sol dessiné des rues : le relief ou le tablier, NaN sous un tablier qui enjambe une autre voie (`Decks.pave`). */

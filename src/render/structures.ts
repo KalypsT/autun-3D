@@ -248,11 +248,23 @@ function ribbon(mb: MeshBuilder, p: readonly number[], w: number, lift: number, 
   }
 }
 
-/** Eau : surfaces, liseré clair sur les rives, rides ; ruisseaux en rubans ; écume des seuils. Tout est posé sur le relief nu. */
-export function buildWater(mb: MeshBuilder, st: TileStructures, bounds: readonly number[], ground: HeightField): void {
+/** Surface plane z = a·x + b·y + c, vue comme un relief (pour poser l'eau à son niveau avec les outils du sol). */
+export function planeField(wz: readonly [number, number, number], like: HeightField): HeightField {
+  const [a, b, c] = wz;
+  return { heightAt: (x, y) => a * x + b * y + c, xMin: like.xMin, xMax: like.xMax, yMin: like.yMin, yMax: like.yMax };
+}
+
+/**
+ * Eau : surfaces, liseré clair sur les rives, rides ; ruisseaux en rubans ; écume des seuils. L'eau de la ville est posée à plat à son niveau
+ * (`wz`, D240 : le relief est creusé dessous) ; un polygone sans niveau (au bord de la mer) et les ruisseaux sont posés sur le relief nu.
+ */
+export function buildWater(mb: MeshBuilder, st: TileStructures, bounds: readonly number[], bare: HeightField): void {
   const water = C(T.water);
   const ripple = water.clone().lerp(C("#ffffff"), 0.35);
-  for (const poly of st.water) {
+  for (let i = 0; i < st.water.length; i++) {
+    const poly = st.water[i]!;
+    const wz = st.wz?.[i];
+    const ground = wz ? planeField(wz, bare) : bare;
     fillOnTerrain(mb, poly, 0.06, water, ground);
     for (const ring of poly) {
       // Liseré : sur chaque côté qui n'est pas une coupure de tuile.
@@ -282,10 +294,10 @@ export function buildWater(mb: MeshBuilder, st: TileStructures, bounds: readonly
     }
   }
   for (const s of st.streams) {
-    ribbon(mb, s.p, s.w + 0.6, 0.05, C("#7f9a6a"), ground);
-    ribbon(mb, s.p, s.w, 0.07, water, ground);
+    ribbon(mb, s.p, s.w + 0.6, 0.05, C("#7f9a6a"), bare);
+    ribbon(mb, s.p, s.w, 0.07, water, bare);
   }
-  for (const w of st.weirs) ribbon(mb, w.p, 1.8, 0.1, FOAM, ground);
+  for (const w of st.weirs) ribbon(mb, w.p, 1.8, 0.1, FOAM, bare);
 }
 
 // --- Voies ferrées --------------------------------------------------------------------------------------------------------------------

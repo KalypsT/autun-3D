@@ -4933,3 +4933,31 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Debout sur le lac](captures/eau-avant-vallon-surface.jpg)
 ![Voiture sur le lac](captures/eau-avant-voiture-sur-le-lac.jpg)
 
+## 2026-11-05 — D240. L'eau de la ville, lot 1 : le fond et le niveau (plan `docs/plans/eau.md`, §3 et §10)
+
+**Demande de l'utilisateur** : lancer le lot 1 (D239).
+
+**Données** (`tools/data/build_water.py`, nouvelle étape juste après `build_coast.py`, idempotente, sur les données publiées) :
+- Chaque polygone d'eau de `structures/` est découpé au premier passage en partie « ville » et partie « côte » (à moins de 40 m de la côte : la mer s'en charge). Nouveau champ `wz` : un plan `[a, b, c]` par polygone (z = a·x + b·y + c), `null` pour une partie « côte » (posée sur le relief, comme avant).
+- **Niveau** : un seul pour un plan d'eau fermé (`closed` dans `manual.json` pour le Vallon, ou moins d'1 ha, ou morceaux d'accord à 0,4 m près : médiane du relief) ; pour une rivière, le quart bas du relief de chaque morceau de tuile, puis un plan qui passe par ses coutures avec ses voisins (pente bornée à 4 m/km). Écart aux coutures : 4 mm en médiane, 9 cm à 90 %, 25 cm au pire. Vallon : **−25,41**. Arroux : de −42,8 à −37,5.
+- **Fond** : `niveau − min(P, s·d)`, d la distance à la cellule sèche la plus proche ; cellules d'eau : dans le polygone et à moins de 0,3 m au-dessus du niveau ; une cellule à moins de 2,5 m d'un arbre est sèche (les arbres restent sur des hauts-fonds) ; lissage de 1,5 m. P et s par plan d'eau (`water` de `manual.json`, profondeurs inventées) : Vallon 3 m, pente 0,25, queue sud en marais à 0,4 m ; Arroux 1,6 m, pente 0,2 ; bassins à bords hauts 1 m ; autres 1,5 m (0,8 m sous 0,2 ha). 52 plans d'eau, 379 000 cellules creusées, 93 blocs de relief fins réécrits ; relief grossier inchangé. Un creux d'origine (trou du LiDAR, 1 à 5 m sous le niveau) dans l'anse nord-ouest du Vallon est gardé.
+- **`water.json`** (44 ko) : toutes les parties « ville » (simplifiées à 0,3 m) et leur plan.
+- **Carte** : `build_map.py` lit l'eau dans `structures/` (la couche de sol `water` était vide) ; `--images` refait seulement les images de fond, sans OpenStreetMap ni `places.json`. Le lac, l'Arroux et les étangs sont sur la carte et la minimap.
+
+**Jeu** :
+- `Waters` (`src/core/waters.ts`) : registre des morceaux, index par carrés de 25 m, `levelAt(x, y)`. Chargé avec le relief (`loadWorldBase`) ; `HeightField.waterAt` (relief, relief nu, relief avec toits).
+- `shore.ts` : la profondeur compte la mer et l'eau de la ville, **mesurée sous la surface où l'on se tient** (`zHint`) : nulle sur un tablier de pont, celle du fond dessous. Le piéton (1 m), la voiture (0,5 m) et le deux-roues (0,35 m) gardent les règles de la mer : freinage puis arrêt au bord, en glissant le long de la berge.
+- Dessin : l'eau d'une tuile détaillée est posée à plat à son niveau (`planeField`), liseré et rides compris ; l'**eau lointaine** est un seul maillage pour toute la ville (`src/render/inland-water.ts`, un appel de dessin, 4 cm sous la surface des tuiles détaillées).
+- Canards à la surface ; hérons avec 30 cm d'eau aux pattes au plus ; reflet du feu d'artifice au niveau du Vallon.
+
+**Vérifié** : dans le navigateur, on entre dans le lac jusqu'à la taille et on s'arrête à 1 m de fond (y = 635,2 depuis la berge nord) ; la voiture lancée à 25 km/h est retenue roues dans l'eau ; le lac est entier vu de haut ; la minimap le montre. Une seconde passe de `build_water.py` redonne les mêmes fichiers. Aucun sol dessiné (rue, trottoir, place) n'est dans l'eau creusée.
+
+**Tests** (+9, 1 256 au total, `src/core/waters.test.ts`) : registre (trou, plan incliné), eau lointaine plate sous la surface, profondeur sous la surface tenue (pont), piéton et voiture arrêtés au bord d'un étang, données publiées (niveau et fond du Vallon, marais de la queue sud, berge nord, Arroux, profondeur nulle sur le tablier d'un pont de l'Arroux, mer inchangée).
+
+**Pas encore** (lot 2) : nager ; sorties aménagées sur les deux longs bords hauts de l'Arroux ; passerelle basse (0,34 m) en obstacle ; police qui attend au bord. Le contour OSM de l'Arroux ne suit pas partout l'eau réelle (D239).
+
+![Le Vallon vu de haut](captures/d240-vallon-haut.jpg)
+![De l'eau à la taille](captures/d240-a-pied.jpg)
+![La voiture retenue au bord](captures/d240-voiture.jpg)
+![L'Arroux](captures/d240-arroux.jpg)
+
