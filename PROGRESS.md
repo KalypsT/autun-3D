@@ -1703,3 +1703,39 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le parking](docs/captures/d233-eduen-parking.jpg)
 ![Mâts, haie et barrière](docs/captures/d233-eduen-mats.jpg)
 ![Le hall et la clôture](docs/captures/d233-eduen-hall.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 1 : les volumes (4 novembre 2026)** (D234)
+- Le McDonald's mesuré au LiDAR : corps de 17 × 27 m au bardage brun-orangé, mansarde brune (de 2,7 à 5,5 m) autour d'un toit plat avec ses édicules, véranda vitrée en L à toit de zinc à croupes côté route et côté ouest, pan coupé vers le drive.
+- Le bowling Strike Bowl : halle à deux pans de tôle rouge (faîtage à 7,6 m), pignons rouges sur la route et sur le parking, celui de la route en auvent sur deux poteaux devant un mur vitré ; aile ouest en L et aile est basses à acrotère, bande basse le long du mur est, pergola blanche au sud-est.
+- Fini les deux boîtes BD TOPO et la petite maison à toit rouge collée au bowling : les murs suivent le relevé, la véranda et les ailes arrêtent les déplacements.
+- Prochaine étape : les façades (mansarde à bandes blanches et M jaunes, inscriptions, drive, enseignes « STRIKE BOWL » et « BOWLING · BAR · CAVE À BIÈRE »).
+
+![Le McDonald's côté parking](docs/captures/d234-mcdo-parking-apres.jpg)
+![Le bowling depuis la route](docs/captures/d234-bowling-route-apres.jpg)
+![Vue haute](docs/captures/d234-haut-apres.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 2 : les façades (4 novembre 2026)** (D235)
+- McDonald's : sur le long côté du parking, les bandes blanches de la mansarde, les deux M jaunes et les persiennes entre eux ; l'entrée vitrée et les fenêtres, les deux guichets du drive, « McDonald's » en blanc sur le zinc de la véranda.
+- Le totem M de 8 m près de l'entrée, le portique de 2,75 m et les panneaux du menu sur la voie du drive.
+- Bowling : le logo rond « STRIKE BOWL » sur le panneau noir du pignon ouest et dans le pignon rouge de la route, la peinture « CAVE À BIÈRE », le bandeau « BOWLING · BAR · CAVE À BIÈRE », le store de la terrasse, les portes « bowling » et « bar restaurant » côté parking.
+- Prochaine étape : les parkings et les abords (marquages, places PMR, voie du drive, terrasse et parasols, panneaux au bord de la route, haie de la D680).
+
+![McDonald's côté parking](docs/captures/d235-mcdo-parking.jpg)
+![Le drive et le totem](docs/captures/d235-mcdo-drive.jpg)
+![Bowling depuis la route](docs/captures/d235-bowling-route.jpg)
+
+**Le McDonald's et le bowling de la route de Chalon, étape 3 : les parkings et les abords (4 novembre 2026)** (D236)
+- Parking du McDonald's lu sur l'orthophotographie : la rangée nord (cinq places, retrouvées par les voitures du jeu), deux places PMR peintes en bleu devant le long côté (nouvelle couche de marquage bleu, utilisable partout), la rangée le long de la haie au sud-ouest, deux flèches sur la voie du drive.
+- La terrasse du McDonald's : quatre parasols vert sombre, garde-corps, lanternes ; le gros pot rouge et le panneau « DRIVE → » à l'entrée.
+- Le bowling : la dalle de béton du parking nord, sans les traits inventés ; la haie le long de la D680 ; la terrasse au gazon synthétique avec garde-corps, jardinières, tables et chaises ; le panneau « BOWLING ← CAVE À BIÈRE ».
+- **Le McDonald's et le bowling sont terminés** (étapes 1 à 3).
+
+![Vue haute](docs/captures/d236-haut.jpg)
+![La terrasse du McDonald's](docs/captures/d236-mcdo-terrasse.jpg)
+![La terrasse du bowling](docs/captures/d236-bowling-terrasse.jpg)
+
+**Le McDonald's : « McDRIVE » et « PARKING » au sol (4 novembre 2026)** (D237)
+- À l'entrée depuis la D680, « PARKING » sur la voie de gauche et « McDRIVE » sur celle de droite, en lettres étirées dans le sens de la marche, entre les flèches lues sur l'orthophotographie (deux par voie, deux vers le parking devant la terrasse).
+- Les vieux traits qui traînaient en éventail dans l'entrée sont retirés.
+
+![Depuis l'entrée](docs/captures/d237-mcdo-entree.jpg)

@@ -411,6 +411,10 @@ export interface BuildingKind {
   sta?: StationModel;
   /** Parc des expositions l'Eduen d'après photos et relevé LiDAR (D231) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
   edu?: EduenModel;
+  /** McDonald's de la route de Chalon d'après photos et relevé LiDAR (D234) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
+  mcd?: McdoModel;
+  /** Bowling Strike Bowl de la route de Chalon d'après photos et relevé LiDAR (D234) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
+  bowl?: BowlingModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -478,6 +482,76 @@ export interface EduenModel {
    * bout du bras).
    */
   site?: { masts: [number, number][]; light: [number, number]; hedge: [number, number][]; fence: [number, number][]; barrier: [[number, number], [number, number]] };
+}
+
+/**
+ * McDonald's de la route de Chalon (D234, tools/data/build_monuments.py, modèle `mcdo`). Repère : origine `o` au coin sud-ouest du corps
+ * principal (murs), s le long de la route selon l'angle `a` (vers l'est-sud-est), t vers l'intérieur (le nord-nord-est). Corps de 0 à `l`
+ * sur 0 à `d`, ceint d'une mansarde : pans de `eave` (au droit des murs) à `crest` (faîte), `band` mètres à l'intérieur, autour d'un toit
+ * plat à `roof` ; édicules `units` (s0, s1, t0, t1, haut) sur le toit plat. Véranda en L côté route et côté ouest, toit de zinc à
+ * croupes : trois chaînes de points (s, t) de même longueur, bord extérieur `o` (égout `eave`), faîtage `r` (`ridge` ; un point confondu
+ * avec celui de `o` est à l'égout) et pied contre le corps `i` (noue `gut`) ; les murs vitrés suivent `o`. Altitudes locales ; `g` : sol
+ * médian autour.
+ */
+export interface McdoModel {
+  o: [number, number];
+  a: number;
+  l: number;
+  d: number;
+  g: number;
+  eave: number;
+  crest: number;
+  band: number;
+  roof: number;
+  units: [number, number, number, number, number][];
+  ver: { o: [number, number][]; r: [number, number][]; i: [number, number][]; eave: number; ridge: number; gut: number };
+  /**
+   * Abords des façades (D235, photos et relevé, repère du corps) : pied du totem M, portique de 2,75 m au-dessus de la voie du drive (s0,
+   * s1 des poteaux, t), panneaux du menu (s, t, tournés vers la voie, à l'ouest).
+   */
+  site?: {
+    totem: [number, number];
+    gantry: [number, number, number];
+    menus: [number, number][];
+    /** Terrasse (D236) : centres des parasols carrés, garde-corps (polylignes), lanternes sur poteaux ; gros pot rouge et panneau « DRIVE → » de l'îlot de l'entrée. */
+    parasols?: [number, number][];
+    rails?: [number, number][][];
+    lamps?: [number, number][];
+    pot?: [number, number];
+    sign?: [number, number];
+    /** Inscriptions peintes au sol (D237) : texte, centre (s, t), largeur le long de s, hauteur le long de t (lues vers +t). */
+    paint?: [string, number, number, number, number][];
+  };
+}
+
+/** Volume rectangulaire mesuré (D234) : s0, s1, t0, t1, haut du bord, haut (85ᵉ centile), bas (15ᵉ centile) du relevé sur le toit. */
+export type MeasuredPiece = [number, number, number, number, number, number, number];
+
+/**
+ * Bowling Strike Bowl de la route de Chalon (D234, tools/data/build_monuments.py, modèle `bowling`). Repère : origine `o` au coin
+ * sud-ouest du toit de la halle, s le long de la route selon l'angle `a`, t vers l'intérieur (le parking). Halle de 0 à `w` sur 0 à `l`,
+ * deux pans d'égout `eave` à faîtage `ridge` (au milieu, le long de t), pignons sur la route (t = 0) et sur le parking (t = `l`) ; `porch` :
+ * retrait des murs de pignon sous le toit (sud, nord), le pignon sud en auvent sur poteaux. Aile ouest basse en L (`wing`), aile est
+ * (`east`), bande plus basse le long de son mur est (`low`), pergola au sud-est (`pergola`) : volumes mesurés. Altitudes locales.
+ */
+export interface BowlingModel {
+  o: [number, number];
+  a: number;
+  w: number;
+  l: number;
+  g: number;
+  eave: number;
+  ridge: number;
+  porch: [number, number];
+  wing: MeasuredPiece[];
+  east: MeasuredPiece[];
+  low: MeasuredPiece[];
+  pergola: MeasuredPiece[];
+  /**
+   * Abords (D236, orthophotographie et photos, repère de la halle) : haie taillée le long de la D680 (polyligne), garde-corps de la terrasse
+   * du pignon de la route (polylignes), tables de la terrasse, panneau « BOWLING ← CAVE À BIÈRE » au coin ouest de la haie.
+   */
+  site?: { hedge: [number, number][]; rails: [number, number][][]; tables: [number, number][]; sign: [number, number] };
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -717,6 +717,113 @@ export function eduenRings(m: EduenModel): number[][] {
   return out;
 }
 
+// --- McDonald's et bowling de la route de Chalon (D234) --------------------------------------------------------------------------
+
+/** Repère du McDonald's : origine au coin sud-ouest du corps, s le long de la route (vers l'est-sud-est), t vers le nord-nord-est. */
+export function mcdoFrame(m: McdoModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Contour (s, t) de la véranda : son bord extérieur, puis son pied contre le corps, à rebours (les points confondus sont retirés). */
+export function mcdoVerandaOutline(m: McdoModel): [number, number][] {
+  const pts = [...m.ver.o, ...[...m.ver.i].reverse()];
+  return pts.filter((p, k) => {
+    const q = pts[(k + 1) % pts.length]!;
+    return Math.hypot(p[0] - q[0], p[1] - q[1]) > 0.05;
+  });
+}
+
+/** Section du fût du totem, demi-largeur d'un panneau du menu le long de t et son épaisseur (D235). */
+export const MCDO_TOTEM = 0.6, MCDO_MENU: readonly [number, number] = [0.8, 0.25];
+
+/**
+ * Obstacles du McDonald's (x, y) : le corps et la véranda à leurs murs mesurés (le contour BD TOPO ne couvre ni l'un ni l'autre) ; le fût
+ * du totem, les poteaux du portique et les panneaux du menu (D235).
+ */
+export function mcdoRings(m: McdoModel): number[][] {
+  const f = mcdoFrame(m);
+  const rect = (s0: number, s1: number, t0: number, t1: number): number[] => [...at(f, s0, t0), ...at(f, s1, t0), ...at(f, s1, t1), ...at(f, s0, t1)];
+  const out = [rect(0, m.l, 0, m.d), mcdoVerandaOutline(m).flatMap(([s, t]) => at(f, s, t))];
+  if (m.site) {
+    const { totem: [ts, tt], gantry: [g0, g1, gt], menus } = m.site, h = MCDO_TOTEM / 2;
+    out.push(rect(ts - h, ts + h, tt - h, tt + h));
+    for (const s of [g0, g1]) out.push(rect(s - 0.15, s + 0.15, gt - 0.15, gt + 0.15));
+    for (const [s, t] of menus) out.push(rect(s - MCDO_MENU[1] / 2, s + MCDO_MENU[1] / 2, t - MCDO_MENU[0], t + MCDO_MENU[0]));
+    // Abords (D236) : pied des parasols et des lanternes, gros pot, poteaux du panneau « DRIVE ».
+    for (const [s, t] of [...(m.site.parasols ?? []), ...(m.site.lamps ?? [])]) out.push(rect(s - 0.08, s + 0.08, t - 0.08, t + 0.08));
+    if (m.site.pot) out.push(rect(m.site.pot[0] - MCDO_POT, m.site.pot[0] + MCDO_POT, m.site.pot[1] - MCDO_POT, m.site.pot[1] + MCDO_POT));
+    if (m.site.sign) for (const k of [-1, 1]) out.push(rect(m.site.sign[0] + k * 0.6 - 0.06, m.site.sign[0] + k * 0.6 + 0.06, m.site.sign[1] - 0.06, m.site.sign[1] + 0.06));
+  }
+  return out;
+}
+
+/** Demi-côté du gros pot rouge de l'entrée (D236). */
+export const MCDO_POT = 0.75;
+/** Hauteur des garde-corps des terrasses, de la haie de la D680 (D236). */
+export const TERRACE_RAIL_H = 1.0, ROADSIDE_HEDGE_H = 1.6;
+
+/** Lignes d'obstacles des abords (x, y) : garde-corps des terrasses (on voit et on enjambe), haie de la D680 (D236). */
+export function roadsideLines(m: { mcd?: McdoModel; bowl?: BowlingModel }): { kind: "fence" | "hedge"; pts: number[] }[] {
+  const out: { kind: "fence" | "hedge"; pts: number[] }[] = [];
+  if (m.mcd?.site?.rails) {
+    const f = mcdoFrame(m.mcd);
+    for (const r of m.mcd.site.rails) out.push({ kind: "fence", pts: r.flatMap(([s, t]) => at(f, s, t)) });
+  }
+  const site = m.bowl?.site;
+  if (m.bowl && site) {
+    const f = bowlingFrame(m.bowl);
+    for (const r of site.rails) out.push({ kind: "fence", pts: r.flatMap(([s, t]) => at(f, s, t)) });
+    out.push({ kind: "hedge", pts: site.hedge.flatMap(([s, t]) => at(f, s, t)) });
+  }
+  return out;
+}
+
+/** Repère du bowling : origine au coin sud-ouest du toit de la halle, s le long de la route, t vers le parking. */
+export function bowlingFrame(m: BowlingModel): Frame {
+  return frameOf(m.o[0], m.o[1], m.a, 1, 1);
+}
+
+/** Pas des poteaux de la pergola le long de ses bords libres (m). */
+const PERGOLA_PITCH = 3.5;
+
+/** Poteaux (s, t) : ceux de l'auvent du pignon sud de la halle (aux deux coins), puis ceux de la pergola (sur ses bords hors de l'aile est). */
+export function bowlingPosts(m: BowlingModel): [number, number][] {
+  const out: [number, number][] = [];
+  if (m.porch[0] > 0.5) out.push([0.35, 0.35], [m.w - 0.35, 0.35]);
+  for (const [s0, s1, t0, t1] of m.pergola) {
+    const ns = Math.max(1, Math.round((s1 - s0) / PERGOLA_PITCH)), nt = Math.max(1, Math.round((t1 - t0) / PERGOLA_PITCH));
+    for (let i = 0; i <= ns; i++) out.push([s0 + 0.15 + ((s1 - s0 - 0.3) * i) / ns, t0 + 0.15]);
+    for (let j = 1; j < nt; j++) out.push([s1 - 0.15, t0 + 0.15 + ((t1 - t0 - 0.3) * j) / nt]);
+  }
+  return out;
+}
+
+/** Murs de la halle (s0, s1, t0, t1) : sous le toit, en retrait de `porch` aux pignons. */
+export function bowlingHallWalls(m: BowlingModel): [number, number, number, number] {
+  return [0, m.w, m.porch[0], m.l - m.porch[1]];
+}
+
+/** Volumes fermés du bowling (s0, s1, t0, t1) : aile ouest, aile est, bande basse (la pergola est ouverte). */
+export function bowlingBlocks(m: BowlingModel): MeasuredPiece[] {
+  return [...m.wing, ...m.east, ...m.low];
+}
+
+/** Obstacles du bowling (x, y) : la halle à ses murs, les ailes et la bande basse, les poteaux de l'auvent et de la pergola. */
+export function bowlingRings(m: BowlingModel): number[][] {
+  const f = bowlingFrame(m);
+  const rect = (s0: number, s1: number, t0: number, t1: number): number[] => [...at(f, s0, t0), ...at(f, s1, t0), ...at(f, s1, t1), ...at(f, s0, t1)];
+  const out = [rect(...bowlingHallWalls(m))];
+  for (const [s0, s1, t0, t1] of bowlingBlocks(m)) out.push(rect(s0, s1, t0, t1));
+  for (const [s, t] of bowlingPosts(m)) out.push(rect(s - 0.1, s + 0.1, t - 0.1, t + 0.1));
+  // Abords (D236) : tables de la terrasse, poteaux du panneau du bord de la route.
+  if (m.site) {
+    for (const [s, t] of m.site.tables) out.push(rect(s - 0.4, s + 0.4, t - 0.4, t + 0.4));
+    const [ss, st] = m.site.sign;
+    for (const k of [-1, 1]) out.push(rect(ss - 0.06, ss + 0.06, st + k * 0.8 - 0.06, st + k * 0.8 + 0.06));
+  }
+  return out;
+}
+
 /** Les auvents n'ont pas de murs (on passe dessous) ; un bâtiment masqué est remplacé par un monument (D95). */
 export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | undefined, id: string): boolean {
   const k = kinds?.buildings[id]?.k;
@@ -725,10 +832,10 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
 
 /**
  * Le rendu dessine-t-il les murs et le toit génériques du bâtiment ? Non pour un bâtiment caché, un abri à chariots (dessiné ouvert) ou un
- * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228 ; Eduen, D231…).
+ * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228 ; Eduen, D231 ; McDonald's et bowling, D234…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu || kind?.mcd || kind?.bowl);
 }
 
 /**

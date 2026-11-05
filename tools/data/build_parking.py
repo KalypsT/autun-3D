@@ -7,6 +7,8 @@ D177 (collège du Vallon) : plusieurs entrées peuvent se partager un parking do
          nettoyage, les suivantes une zone vide) ; `arrows` : flèches de sens peintes [x, y, cap] ; `furniture` : mobilier ajouté [{kind, x, y, rot, id}].
 D230 (gare) : `grounds` : bandes de sol posées dans leur classe (rectangle `u`, `v` du repère, ou polygone `poly`), retirées des autres sols, dans l'ordre ;
          `yellow` : polylignes (u, v) peintes en jaune (`marks_yellow` : zigzag des arrêts de bus).
+D236 (McDonald's et bowling de la route de Chalon) : `blue` : polygones (u, v) peints en bleu (`marks_blue` : places PMR) ; un parking sans
+         rangée (`rows` vide) ne fait que nettoyer sa zone et poser ses bandes de sol (dalle de béton du bowling, sans marquage).
 Sortie : dans les tuiles listées, les anciennes marques de la zone (traits de D94 posés le long d'allées, flèches, passages piétons tombés sur les
          allées) sont remplacées par les traits des rangées, découpés aux bâtiments et au sol des couches `clip` (asphalte du parking), de sorte que
          `findStalls` (src/core/parking.ts) retrouve les places. Idempotent : toute marque de la zone est retirée avant la pose ; `bytes` de world.json
@@ -45,6 +47,12 @@ def strip_polygons(lot):
         for b0, b1 in vs:
             out.append((st["class"], Polygon([BS.frame_point(fr, a0, b0), BS.frame_point(fr, a1, b0), BS.frame_point(fr, a1, b1), BS.frame_point(fr, a0, b1)])))
     return out
+
+
+def blue_marks(lot):
+    """Marques bleues (D236 : fond des places PMR) : polygones (u, v) du repère."""
+    fr = lot["frame"]
+    return [Polygon([BS.frame_point(fr, u, v) for u, v in poly]).buffer(0) for poly in lot.get("blue", [])]
 
 
 def yellow_marks(lot):
@@ -121,6 +129,15 @@ def main():
                 ygeom = unary_union(yellow_marks(lot)).intersection(window)
                 ykept = [p for p in ground.get("marks_yellow", []) if not zone.contains(BS.decode(p).centroid)]
                 ground["marks_yellow"] = ykept + [BS.encode(q) for q in BS.polys(ygeom) if q.area > 0.01]
+            # Marques bleues (D236) : toutes celles de la zone sont retirées puis reposées.
+            if lot.get("blue") or ground.get("marks_blue"):
+                bgeom = unary_union(blue_marks(lot)).intersection(window) if lot.get("blue") else Polygon()
+                bkept = [p for p in ground.get("marks_blue", []) if not zone.contains(BS.decode(p).centroid)]
+                bnew = bkept + [BS.encode(q) for q in BS.polys(bgeom) if q.area > 0.01]
+                if bnew:
+                    ground["marks_blue"] = bnew
+                else:
+                    ground.pop("marks_blue", None)
             if laid:
                 print(f"  {tid} : {laid} bande(s) de sol posée(s)")
             # Mobilier ajouté au parking (lampadaires) : retiré puis reposé, identifiants négatifs propres à ce lot.

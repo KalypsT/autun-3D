@@ -29,6 +29,21 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "eduen-mats": [1735.9, 590.3, 1.7, 1704.5, 586.4, 5],
   "eduen-parking": [1627.8, 573.4, 30, 1660.2, 635.5, 0],
   "eduen-entree": [1679.5, 581.8, 1.7, 1680.6, 564.3, 2.2],
+  // McDonald's de la route de Chalon (D234) : côté parking, entre le McDonald's et le bowling ; depuis l'entrée sur la route ; depuis le
+  // drive, vers la véranda (photos Street View de juillet 2026).
+  mcdo: [1387.3, 667.0, 1.7, 1381.1, 691.4, 3],
+  "mcdo-route": [1348.0, 674.4, 1.7, 1376.6, 682.5, 3],
+  "mcdo-drive": [1388.2, 656.5, 1.7, 1374.8, 678.9, 3],
+  // Façades (D235) : le long côté du parking (bandes blanches, M jaunes, entrée), comme la photo ; le pignon ouest du bowling vu du McDonald's.
+  "mcdo-parking": [1354.2, 695.9, 1.7, 1376.1, 695.0, 3.5],
+  // Entrée depuis la route : « McDRIVE » et « PARKING » peints au sol (D237).
+  "mcdo-entree": [1371.6, 650.3, 2.2, 1377.5, 668.6, 0],
+  "bowling-mcdo": [1373.0, 660.4, 1.7, 1394.4, 665.5, 3],
+  // Bowling Strike Bowl (D234) : depuis la route de Chalon, depuis le parking nord, la terrasse du pignon sud ; les deux vus d'en haut.
+  bowling: [1406.4, 624.0, 1.7, 1419.5, 655.4, 4],
+  "bowling-parking": [1429.9, 694.9, 1.7, 1420.3, 666.2, 4],
+  "bowling-terrasse": [1402.6, 645.9, 1.7, 1421.0, 642.5, 2],
+  "route-chalon-haut": [1375.6, 615.7, 40, 1402.0, 669.6, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

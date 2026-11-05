@@ -1,4 +1,4 @@
-"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, parc des expositions l'Eduen D231, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
+"""Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, parc des expositions l'Eduen D231, McDonald's et bowling D234, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
 Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
@@ -22,6 +22,9 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           mesuré (à relancer après build_structures.py), bâtiment BD TOPO de l'abri parapluie masqué ;
           parc des expositions l'Eduen (modèle `eduen`, D231) : champ `edu` du bâtiment (salle, blocs, édicules, hall courbe et annexe), bâtiments
           BD TOPO du hall et des blocs masqués (`hide`), silhouette lointaine ; abords (`site`, D233 : mâts, haie, clôture, barrière) recopiés ;
+          McDonald's de la route de Chalon (modèle `mcdo`, D234) : champ `mcd` du bâtiment (corps à mansarde autour d'un toit plat, édicules,
+          véranda à toit de zinc à croupes ; `site`, D235 : totem, portique et panneaux du drive, recopiés) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
+          pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), abords recopiés (`site`, D236), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -891,6 +894,369 @@ def eduen_canopy(m):
     pts = [(L, ct + R * math.sin(a0))] + [(cs + R * math.cos(a0 + (a1 - a0) * i / n), ct + R * math.sin(a0 + (a1 - a0) * i / n)) for i in range(1, n + 1)]
     pts += [(sA, k_ * sA + b_), (sA, tA), (L, tA)]
     return [(round(s, 2), round(t, 2)) for s, t in pts]
+
+
+# --- McDonald's et bowling de la route de Chalon (D234) --------------------------------------------------------------------------------
+
+
+def min_rect_axis(P):
+    """Direction (radians) du grand côté du rectangle d'aire minimale des points P (n × 2), au dixième de degré."""
+    best = None
+    for deg in np.arange(0, 180, 0.1):
+        th = math.radians(deg)
+        su = P @ np.array([math.cos(th), math.sin(th)])
+        tv = P @ np.array([-math.sin(th), math.cos(th)])
+        a_, b_ = su.max() - su.min(), tv.max() - tv.min()
+        if a_ >= b_ and (best is None or a_ * b_ < best[0]):
+            best = (a_ * b_, th)
+    return best[1]
+
+
+class Survey:
+    """Fenêtre LiDAR (MNS, MNT) autour d'une emprise BD TOPO, lue dans un repère (s, t) d'origine o et d'angle th."""
+
+    def __init__(self, bid, b, margin):
+        from scipy import ndimage
+        self.nd = ndimage
+        ring = pairs(b["ring"])
+        xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+        self.box = (math.floor(min(xs) - margin), math.floor(min(ys) - margin), math.ceil(max(xs) + margin), math.ceil(max(ys) + margin))
+        self.mns, self.mnt = Raster("MNS", bid, *self.box), Raster("MNT", bid, *self.box)
+        bx = self.box
+        self.g0 = float(np.median([self.mnt(x, y) for x in np.arange(bx[0] + 3, bx[2] - 3, 2.0) for y in np.arange(bx[1] + 3, bx[3] - 3, 2.0)]))
+        self.centre = (sum(xs) / len(xs), sum(ys) / len(ys))
+
+    def high_cells(self, above):
+        """Cellules à plus de `above` mètres au-dessus du terrain, composante la plus proche du centre de l'emprise BD TOPO."""
+        bx = self.box
+        gx, gy = np.arange(bx[0] + 1, bx[2] - 1, 0.5), np.arange(bx[1] + 1, bx[3] - 1, 0.5)
+        hi = np.array([[self.mns(x, y) - self.mnt(x, y) > above for x in gx] for y in gy])
+        lab, n = self.nd.label(hi)
+        best, bd = None, None
+        for k in range(1, n + 1):
+            jj, ii = np.where(lab == k)
+            if len(jj) < 40:
+                continue
+            d = math.dist((gx[ii].mean(), gy[jj].mean()), self.centre)
+            if bd is None or d < bd:
+                best, bd = (gx[ii], gy[jj]), d
+        return np.c_[best[0], best[1]]
+
+    def orient(self, P, faces, short=False):
+        """Repère : s le long du grand côté de P (du petit avec `short`), t vers l'intérieur depuis la façade `faces` (la normale −t
+        tourne vers `faces`)."""
+        th = min_rect_axis(P) + (math.pi / 2 if short else 0.0)
+        ux, uy = math.cos(th), math.sin(th)
+        fx, fy = math.cos(math.radians(COMPASS[faces])), math.sin(math.radians(COMPASS[faces]))
+        if -uy * fx + ux * fy > 0:
+            ux, uy = -ux, -uy
+        self.set_frame(P.mean(axis=0), math.atan2(uy, ux))
+
+    def set_frame(self, o, a):
+        self.o, self.a = (float(o[0]), float(o[1])), a
+        self.u = (math.cos(a), math.sin(a))
+        self.v = (-self.u[1], self.u[0])
+
+    def xy(self, s, t):
+        return (self.o[0] + self.u[0] * s + self.v[0] * t, self.o[1] + self.u[1] * s + self.v[1] * t)
+
+    def st(self, x, y):
+        dx, dy = x - self.o[0], y - self.o[1]
+        return (dx * self.u[0] + dy * self.u[1], dx * self.v[0] + dy * self.v[1])
+
+    def H(self, s, t):
+        return self.mns(*self.xy(s, t))
+
+    def G(self, s, t):
+        return self.mnt(*self.xy(s, t))
+
+    def shift(self, s0, t0):
+        """Déplace l'origine au point (s0, t0) du repère courant."""
+        self.set_frame(self.xy(s0, t0), self.a)
+
+    def crossing(self, line, a, b, step, thr):
+        """Première position de a vers b (pas `step`) où line(x) passe sous thr ; le milieu du pas. None si jamais."""
+        x = a
+        while (b - x) * step > 0:
+            if line(x) < thr:
+                return x - step / 2
+            x += step
+        return None
+
+    def edge(self, side, rect, thr, inside=1.0, reach=6.0):
+        """Médiane des passages sous thr à travers le bord `side` (s0, s1, t0, t1 : « w », « e », « s », « n ») du rectangle, partant de
+        `inside` mètres à l'intérieur, sur des lignes espacées de 0,5 m qui évitent les 25 cm des bouts du bord."""
+        s0, s1, t0, t1 = rect
+        out = []
+        if side in "we":
+            x0, d = (s0 + inside, -0.05) if side == "w" else (s1 - inside, 0.05)
+            for t in np.arange(t0 + 0.5, t1 - 0.4, 0.5):
+                v = self.crossing(lambda s: self.H(s, t), x0, x0 + d / abs(d) * (inside + reach), d, thr)
+                if v is not None:
+                    out.append(v)
+        else:
+            x0, d = (t0 + inside, -0.05) if side == "s" else (t1 - inside, 0.05)
+            for s in np.arange(s0 + 0.5, s1 - 0.4, 0.5):
+                v = self.crossing(lambda t: self.H(s, t), x0, x0 + d / abs(d) * (inside + reach), d, thr)
+                if v is not None:
+                    out.append(v)
+        if not out:
+            raise SystemExit(f"bord {side} de {rect} introuvable")
+        return float(np.median(out))
+
+    def piece(self, spec, thr):
+        """Volume rectangulaire `r` (s0, s1, t0, t1) dont les bords libres (`free` : lettres w, e, s, n) sont remis au passage sous thr ;
+        hauteurs : bord (médiane à 40 cm à l'intérieur des bords libres), haut (85ᵉ centile) et bas (15ᵉ centile) du modèle de surface à
+        plus de 60 cm des bords ; `thr` de l'entrée : seuil propre (mètres au-dessus du sol médian). Rend [s0, s1, t0, t1, bord, haut, bas]."""
+        r = list(spec["r"])
+        thr = self.g0 + spec["thr"] if "thr" in spec else thr
+        for k, side in enumerate("wesn"):
+            if side in spec.get("free", ""):
+                r[k] = self.edge(side, r, thr, inside=min(1.0, (r[1] - r[0]) / 3, (r[3] - r[2]) / 3))
+        s0, s1, t0, t1 = r
+        rim = []
+        for side in spec.get("free", ""):
+            if side in "we":
+                s = s0 + 0.4 if side == "w" else s1 - 0.4
+                rim += [self.H(s, t) for t in np.arange(t0 + 0.5, t1 - 0.4, 0.5)]
+            else:
+                t = t0 + 0.4 if side == "s" else t1 - 0.4
+                rim += [self.H(s, t) for s in np.arange(s0 + 0.5, s1 - 0.4, 0.5)]
+        cells = [self.H(s, t) for s in np.arange(s0 + 0.6, s1 - 0.5, 0.5) for t in np.arange(t0 + 0.6, t1 - 0.5, 0.5)]
+        r2 = lambda v: round(float(v), 2)
+        return [r2(s0), r2(s1), r2(t0), r2(t1), r2(np.median(rim) if rim else np.percentile(cells, 50)), r2(np.percentile(cells, 85)),
+                r2(np.percentile(cells, 15))]
+
+
+def measure_mcdo(bid, b, spec):
+    """McDonald's de la route de Chalon (D234) : corps principal à toit plat ceint d'une mansarde (bande de toit en pente sur les quatre
+    côtés, son haut au-dessus du toit plat), édicules techniques sur le toit plat, véranda basse à toit de zinc en L côté route et
+    côté ouest, local bas du guichet du drive à l'est de la véranda.
+
+    Repère : s le long de la route (vers l'est-sud-est), t vers l'intérieur depuis la route (`faces`) ; origine au coin sud-ouest du corps
+    (murs). Mansarde : faîte = maximum des profils en travers ; murs des côtés libres (`free`, sans véranda) = passage sous 1,5 m au-dessus
+    du terrain depuis le faîte ; largeur de la bande = médiane faîte–mur sur ces côtés, reportée sur les côtés de la véranda.
+    """
+    sv = Survey(bid, b, 15)
+    g0 = sv.g0
+    sv.orient(sv.high_cells(spec["crestAbove"]), spec["faces"], short=True)
+    P = np.array([sv.st(x, y) for x, y in sv.high_cells(spec["crestAbove"])])
+    s_lo, s_hi, t_lo, t_hi = P[:, 0].min(), P[:, 0].max(), P[:, 1].min(), P[:, 1].max()
+    med = lambda v: float(np.median(v))
+    r2 = lambda v: round(float(v), 2)
+    # Faîte de la mansarde, ligne par ligne, de chaque côté ; murs des côtés libres.
+    crest, walls, tops = {}, {}, []
+    for side in "wesn":
+        pos = []
+        if side in "we":
+            lines = np.arange(t_lo + 4, t_hi - 4, 0.5)
+            lo, hi = (s_lo - 1.5, s_lo + 2.5) if side == "w" else (s_hi - 2.5, s_hi + 1.5)
+            for t in lines:
+                xs = np.arange(lo, hi, 0.125)
+                zs = [sv.H(s, t) for s in xs]
+                pos.append(xs[int(np.argmax(zs))])
+                tops.append(max(zs))
+        else:
+            lines = np.arange(s_lo + 4, s_hi - 4, 0.5)
+            lo, hi = (t_lo - 1.5, t_lo + 2.5) if side == "s" else (t_hi - 2.5, t_hi + 1.5)
+            for s in lines:
+                xs = np.arange(lo, hi, 0.125)
+                zs = [sv.H(s, t) for t in xs]
+                pos.append(xs[int(np.argmax(zs))])
+                tops.append(max(zs))
+        crest[side] = med(pos)
+    thr = g0 + 1.5
+    for side in spec["free"]:
+        sign = -1 if side in "ws" else 1
+        out = []
+        if side in "we":
+            for t in np.arange(t_lo + 4, t_hi - 4, 0.5):
+                v = sv.crossing(lambda s: sv.H(s, t), crest[side], crest[side] + sign * 6, sign * 0.05, thr)
+                if v is not None:
+                    out.append(v)
+        else:
+            for s in np.arange(s_lo + 4, s_hi - 4, 0.5):
+                v = sv.crossing(lambda t: sv.H(s, t), crest[side], crest[side] + sign * 6, sign * 0.05, thr)
+                if v is not None:
+                    out.append(v)
+        walls[side] = med(out)
+    band = med([abs(walls[k] - crest[k]) for k in walls])
+    for side in "wesn":
+        if side not in walls:
+            walls[side] = crest[side] + (-band if side in "ws" else band)
+    sv.shift(walls["w"], walls["s"])
+    L, D = walls["e"] - walls["w"], walls["n"] - walls["s"]
+    # Égout de la mansarde (au droit du mur des côtés libres), faîte, toit plat (intérieur, hors édicules).
+    eave = []
+    for side in spec["free"]:
+        if side == "e":
+            eave += [sv.H(L - 0.3, t) for t in np.arange(4, D - 4, 0.5)]
+        elif side == "w":
+            eave += [sv.H(0.3, t) for t in np.arange(4, D - 4, 0.5)]
+        elif side == "n":
+            eave += [sv.H(s, D - 0.3) for s in np.arange(4, L - 4, 0.5)]
+        else:
+            eave += [sv.H(s, 0.3) for s in np.arange(4, L - 4, 0.5)]
+    gs, gt = np.arange(band + 1, L - band - 1, 0.25), np.arange(band + 1, D - band - 1, 0.25)
+    R = np.array([[sv.H(s, t) for s in gs] for t in gt])
+    roof = float(np.percentile(R, 40))
+    lab, n = sv.nd.label(R > roof + 0.8)
+    units = []
+    for k in range(1, n + 1):
+        ii, jj = np.where(lab == k)
+        ws, wt = (jj.max() - jj.min() + 1) * 0.25, (ii.max() - ii.min() + 1) * 0.25
+        if min(ws, wt) < 1.0:
+            continue
+        units.append([r2(gs[jj.min()] - 0.125), r2(gs[jj.max()] + 0.125), r2(gt[ii.min()] - 0.125), r2(gt[ii.max()] + 0.125),
+                      r2(np.percentile(R[ii, jj], 75))])
+    # Véranda : trois chaînes de même longueur lues une fois sur le modèle de surface (`ver` : bord extérieur `o`, faîtage `r`, pied
+    # contre le corps `i`) ; égout à 25 cm en deçà du bord extérieur, faîtage sur sa ligne, noue à 25 cm du corps (médianes).
+    vs = spec["ver"]
+    O, Rr, I = (np.array(vs[k], dtype=float) for k in ("o", "r", "i"))
+
+    def along(A, B, inset):
+        out = []
+        for i in range(len(A) - 1):
+            for u in np.linspace(0.1, 0.9, 9):
+                pnt = A[i] + u * (A[i + 1] - A[i])
+                q = B[i] + u * (B[i + 1] - B[i])
+                dd = float(np.hypot(*(q - pnt)))
+                if dd > 0.6 and float(np.hypot(*(A[i + 1] - A[i]))) > 0.6:
+                    out.append(sv.H(*(pnt + (q - pnt) * inset / dd)))
+        return out
+
+    ridge_z = [sv.H(*(Rr[i] + u * (Rr[i + 1] - Rr[i]))) for i in range(len(Rr) - 1) if np.hypot(*(Rr[i + 1] - Rr[i])) > 0.6
+               for u in np.linspace(0.1, 0.9, 9)]
+    ver = {"o": vs["o"], "r": vs["r"], "i": vs["i"], "eave": r2(med(along(O, Rr, 0.25))), "ridge": r2(med(ridge_z)), "gut": r2(med(along(I, Rr, 0.25)))}
+    return {
+        "o": [r2(sv.o[0]), r2(sv.o[1])], "a": round(sv.a, 5), "l": r2(L), "d": r2(D), "g": r2(g0),
+        "eave": r2(med(eave)), "crest": r2(med(tops)), "band": r2(band), "roof": r2(roof), "units": units, "ver": ver,
+    }
+
+
+def measure_bowling(bid, b, spec):
+    """Bowling Strike Bowl de la route de Chalon (D234) : halle centrale à deux pans (faîtage le long de t, pignons sur la route et sur le
+    parking, le pignon de la route en auvent sur poteaux), aile ouest basse à toit plat en L (acrotère, noue au milieu), aile est
+    basse à toit plat, bande plus basse le long de son mur est, pergola au sud-est.
+
+    Repère : s le long de la route (vers l'est-sud-est), t vers l'intérieur depuis la route (`faces`) ; origine au coin sud-ouest du toit
+    de la halle. Halle : bords des pans = passage sous `eaveThr` (entre le toit des ailes et l'égout), égout à 30 cm en deçà, faîtage =
+    médiane des maximums des profils en travers ; les ailes et la pergola sont des volumes `piece` (bords libres au passage sous 1,5 m).
+    """
+    sv = Survey(bid, b, 15)
+    g0 = sv.g0
+    sv.orient(sv.high_cells(spec["ridgeAbove"]), spec["faces"], short=True)
+    P = np.array([sv.st(x, y) for x, y in sv.high_cells(spec["ridgeAbove"])])
+    s_lo, s_hi, t_lo, t_hi = P[:, 0].min(), P[:, 0].max(), P[:, 1].min(), P[:, 1].max()
+    med = lambda v: float(np.median(v))
+    r2 = lambda v: round(float(v), 2)
+    thr = g0 + spec["eaveThr"]
+    sm, tm = (s_lo + s_hi) / 2, (t_lo + t_hi) / 2
+    # Le rectangle d'aire minimale tourne d'une fraction de degré selon la grille : on redresse l'axe sur le faîtage (lignes de t).
+    ts = np.arange(t_lo + 3, t_hi - 3, 1.0)
+    ridge_s = [np.arange(sm - 4, sm + 4, 0.125)[int(np.argmax([sv.H(s, t) for s in np.arange(sm - 4, sm + 4, 0.125)]))] for t in ts]
+    k_ = np.polyfit(ts, ridge_s, 1)[0]
+    sv.set_frame(sv.xy(0, 0), sv.a + math.atan(k_))
+    rows = np.arange(t_lo + 3, t_hi - 3, 0.5)
+    S0 = med([sv.crossing(lambda s: sv.H(s, t), sm, sm - 15, -0.05, thr) for t in rows])
+    S1 = med([sv.crossing(lambda s: sv.H(s, t), sm, sm + 15, 0.05, thr) for t in rows])
+    cols = np.arange(S0 + 2, S1 - 2, 0.5)
+    T0 = med([sv.crossing(lambda t: sv.H(s, t), tm, tm - 25, -0.05, thr) for s in cols])
+    T1 = med([sv.crossing(lambda t: sv.H(s, t), tm, tm + 25, 0.05, thr) for s in cols])
+    sv.shift(S0, T0)
+    W, Lh = S1 - S0, T1 - T0
+    eave = med([sv.H(s, t) for t in np.arange(2, Lh - 2, 0.5) for s in (0.3, W - 0.3)])
+    prof = [max(sv.H(s, t) for s in np.arange(W / 2 - 3, W / 2 + 3, 0.125)) for t in np.arange(2, Lh - 2, 0.5)]
+    ridge = med(prof)
+    parts = {k: [sv.piece(p, g0 + 1.5) for p in spec[k]] for k in ("wing", "east", "low", "pergola")}
+    # Bords non libres : recollés au bord opposé le plus proche (à moins de 2,5 m) d'un volume voisin ou de la halle, qui le touche.
+    hall = [0.0, W, 0.0, Lh]
+    every = [(k, i, q) for k in parts for i, q in enumerate(parts[k])]
+    for k, i, q in every:
+        free = spec[k][i].get("free", "")
+        for idx, side in enumerate("wesn"):
+            if side in free:
+                continue
+            opp = idx ^ 1
+            lo, hi = (2, 3) if idx < 2 else (0, 1)
+            cands = [o[opp] for kk, j, o in every if (kk, j) != (k, i)] + [hall[opp]]
+            others = [o for kk, j, o in every if (kk, j) != (k, i)] + [hall]
+            best = None
+            for o, v in zip(others, cands):
+                if min(q[hi], o[hi]) - max(q[lo], o[lo]) > 0.5 and abs(v - q[idx]) < 2.5 and (best is None or abs(v - q[idx]) < abs(best - q[idx])):
+                    best = v
+            if best is not None:
+                q[idx] = r2(best)
+    return {
+        "o": [r2(sv.o[0]), r2(sv.o[1])], "a": round(sv.a, 5), "w": r2(W), "l": r2(Lh), "g": r2(g0), "eave": r2(eave), "ridge": r2(ridge),
+        "porch": spec["porch"], **parts,
+    }
+
+
+def roadside_lod(tid, bid, m, polys, spec, k):
+    """Silhouette lointaine (prismes `polys` en (s, t)) et bâtiments BD TOPO masqués (`hide`). Rend (kinds changé, lod changé)."""
+    ch = False
+    lod_hid = False
+    for sid in spec.get("hide", []):
+        if k["buildings"].get(sid) != {"k": "hidden"}:
+            k["buildings"][sid] = {"k": "hidden"}
+            ch = True
+        lod_hid = replace_lod(tid, sid, []) or lod_hid
+    ca, sa = math.cos(m["a"]), math.sin(m["a"])
+    xy = lambda s, t: [round(m["o"][0] + ca * s - sa * t, 1), round(m["o"][1] + sa * s + ca * t, 1)]
+    lod = replace_lod(tid, bid, [([xy(*q) for q in pts], e_, top) for pts, e_, top in polys])
+    return ch, lod or lod_hid
+
+
+def rect_st(s0, s1, t0, t1):
+    return [(s0, t0), (s1, t0), (s1, t1), (s0, t1)]
+
+
+def mcdo(tid, bid, b, spec, k):
+    """McDonald's (D234) : champ `mcd` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = measure_mcdo(bid, b, spec)
+    if "site" in spec:
+        m["site"] = spec["site"]  # totem, portique et panneaux du drive (D235), lus sur les photos et le relevé, recopiés tels quels
+    # Type générique (« industrial ») remplacé : le modèle dessine tout ; ni enseigne ni bâtiment principal génériques.
+    e = dict(k["buildings"].get(bid, {}))
+    e["k"] = "culture"
+    e.pop("main", None)
+    e["mcd"] = m
+    g = m["g"]
+    print(f"  sol {g:.2f} ; corps de {m['l']} × {m['d']} m, égout {m['eave'] - g:.1f} m, faîte de la mansarde {m['crest'] - g:.1f} m "
+          f"(bande de {m['band']} m), toit plat {m['roof'] - g:.1f} m, {len(m['units'])} édicules")
+    v = m["ver"]
+    print(f"    véranda : égout {v['eave'] - g:.1f} m, faîtage {v['ridge'] - g:.1f} m, noue {v['gut'] - g:.1f} m")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    v = m["ver"]
+    polys = [(rect_st(0, m["l"], 0, m["d"]), m["eave"], m["crest"]), ([tuple(q) for q in v["o"] + v["i"][::-1]], v["eave"], v["ridge"])]
+    ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
+    return ch or ch2, tid if lod else None
+
+
+def bowling(tid, bid, b, spec, k):
+    """Bowling (D234) : champ `bowl` du bâtiment et silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = measure_bowling(bid, b, spec)
+    if "site" in spec:
+        m["site"] = spec["site"]  # haie, terrasse, panneau du bord de la route (D236), lus sur l'orthophotographie et les photos, recopiés
+    e = dict(k["buildings"].get(bid, {"k": "culture"}))
+    e["k"] = "culture"
+    e.pop("main", None)
+    e["bowl"] = m
+    g = m["g"]
+    print(f"  sol {g:.2f} ; halle de {m['w']} × {m['l']} m, égout {m['eave'] - g:.1f} m, faîtage {m['ridge'] - g:.1f} m")
+    for key in ("wing", "east", "low", "pergola"):
+        for q in m[key]:
+            print(f"    {key} s {q[0]}..{q[1]} t {q[2]}..{q[3]} : bord {q[4] - g:.1f}, haut {q[5] - g:.1f}, bas {q[6] - g:.1f} m")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    polys = [(rect_st(0, m["w"], 0, m["l"]), m["eave"], m["ridge"])]
+    polys += [(rect_st(*q[:4]), q[4], q[4]) for key in ("wing", "east", "low") for q in m[key]]
+    ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
+    return ch or ch2, tid if lod else None
 
 
 def run(f, x0, step, limit, test):
@@ -2424,6 +2790,13 @@ def main():
             continue
         if spec["model"] == "eduen":
             ch, lod = eduen(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] in ("mcdo", "bowling"):
+            ch, lod = (mcdo if spec["model"] == "mcdo" else bowling)(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

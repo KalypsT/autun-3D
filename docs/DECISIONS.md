@@ -4746,3 +4746,120 @@ Une deuxième passe ne change rien.
 ![La nuit](captures/d233-eduen-mats-nuit.jpg)
 ![Le hall et la clôture](captures/d233-eduen-hall.jpg)
 ![Vue haute](captures/d233-eduen-haut.jpg)
+
+## 2026-11-04 — D234. Le McDonald's et le bowling de la route de Chalon, étape 1 : volumes mesurés
+
+**Demande de l'utilisateur** : intégrer correctement le McDonald's et le bowling Strike Bowl (route de Chalon, D680, en face du plan d'eau du Vallon), leurs bâtiments et leurs parkings, en trois étapes comme l'Eduen : les volumes, puis les façades, puis les parkings et les abords. Photos fournies (non versionnées, elles servent seulement à décrire) : six vues Google Street View de juillet 2026 (McDonald's depuis l'entrée sur la route, depuis le parking et depuis le drive ; bowling depuis le McDonald's, depuis la route et depuis le parking nord), une photo de la terrasse du bowling (2022), une vue satellite. Lecture :
+- **McDonald's** : corps au bardage façon bois brun-orangé sur soubassement gris, sous une mansarde brune à bandes blanches et M jaunes ; véranda vitrée à toit de zinc à croupes côté route (inscription « McDonald's »), terrasse à parasols verts devant ; drive à l'est (portique 2,75 m, panneaux du menu), places PMR côté parking ;
+- **bowling** : aile basse gris clair à acrotère (panneaux « STRIKE BOWL » et « CAVE À BIÈRE », bandeau « BOWLING · BAR · CAVE À BIÈRE »), halle à pignons rouges : celui de la route en auvent sur deux poteaux devant un mur vitré, sur une terrasse au gazon synthétique ; celui du parking au-dessus des portes « bowling » et « bar restaurant » ; pergola blanche au sud-est.
+
+**Constat** : le McDonald's était une boîte BD TOPO de 3,4 m (type « industrial »), sans mansarde ni véranda ; le bowling, une boîte de 4,8 m (« Bowling du Lac » d'OpenStreetMap) et, collée à son aile ouest, une petite maison à toit rouge (un second bâtiment BD TOPO). Les emprises BD TOPO ne couvrent ni la véranda, ni les ailes du bowling.
+
+**Mesures** (modèle de surface et de terrain LiDAR HD, WMS à 0,5 m ; nouveaux modèles `mcdo` et `bowling` de `build_monuments.py`, entrées des deux bâtiments dans `monuments` de `manual.json`, champs `mcd` (kinds/31_38.json) et `bowl` (kinds/31_37.json)) :
+- **repères** : direction du petit côté du rectangle d'aire minimale des cellules hautes (faîte de la mansarde à plus de 4,7 m, faîtage de la halle à plus de 6,5 m), s le long de la route, t vers l'intérieur ; pour le bowling, axe redressé sur la ligne de faîtage ;
+- **McDonald's** : faîte de la mansarde = maximum des profils en travers, de chaque côté ; murs des côtés libres (est et nord) au passage sous 1,5 m au-dessus du terrain ; largeur de la bande (faîte–mur) reportée sur les côtés de la véranda. Corps de **17,2 × 27,5 m**, égout **2,7 m**, faîte **5,5 m** (bande de 3,06 m : pans à 42°), toit plat **3,6 m**, trois édicules de 5,2 à 6 m. Véranda : bord extérieur, faîtage et pied contre le corps lus une fois sur le modèle de surface (croupe en L de 3,2 m côté ouest et 3,6 m côté route, pan coupé vers le drive) ; égout **2,9 m**, faîtage **3,9 m**, noue **3,4 m** ;
+- **bowling** : halle aux bords des pans (passage sous 4,8 m), **17,3 × 28 m**, égout **5,3 m**, faîtage **7,6 m** ; ailes, bande basse et pergola : rectangles approchés dont les bords libres sont lus sur le modèle de surface (passage sous 1,5 m) et les autres recollés au bord du voisin (à moins de 2,5 m) : aile ouest en L de 25 × 26 m, acrotère **4,2 m** (noue vers 3,6 m) ; aile est de 5,8 × 25,4 m, **4,6 m** ; bande basse de 2,7 × 21,9 m, **3,1 m** ; pergola de 9,5 × 7 m, **3,35 m**. Auvent du pignon sud : mur vitré 2 m en retrait, dans l'alignement de l'aile ouest (photo de la terrasse).
+Une deuxième passe ne change rien.
+
+**Rendu** (`buildMcdo` et `buildBowling`, `src/render/roadside.ts`, dans les maillages de la tuile : aucun appel de dessin de plus) :
+- McDonald's : bardage brun-orangé sur soubassement gris, mansarde brune à arêtiers (débord de 30 cm), toit plat gris et édicules ; véranda : murs vitrés à montants anthracite tous les 1,5 m (éclairés la nuit), toit de zinc à croupes (pans du bord au faîtage, du faîtage à la noue, croupe du bout nord), rive de zinc ;
+- bowling : halle en enduit beige, deux pans de tôle rouge à rives blanches, pignons à bardage rouge (joints tous les 50 cm) ; au sud, auvent sur deux poteaux, sous-face blanche, mur vitré éclairé la nuit ; ailes en panneaux gris clair (ou enduit) à acrotère et toit en membrane, bande basse à toit rouge ; pergola blanche sur poteaux gris.
+
+**Obstacles** : le corps et la véranda du McDonald's ; la halle à ses murs (on passe sous l'auvent du pignon sud), les ailes et la bande basse, les poteaux de l'auvent et de la pergola (on passe sous la pergola). **Masqué** : la boîte BD TOPO collée à l'aile ouest du bowling (`hide`). **Silhouettes lointaines** : corps et véranda du McDonald's, halle et ailes du bowling (lod/31_37.json, lod/31_38.json). Vues `?view=mcdo` (côté parking), `mcdo-route` (depuis l'entrée), `mcdo-drive`, `bowling` (route de Chalon), `bowling-parking`, `bowling-terrasse`, `route-chalon-haut` (les deux vus d'en haut).
+
+**Pas encore** (étapes suivantes) :
+- **Façades (étape 2)** : bandes blanches, persiennes et M jaunes de la mansarde, inscription « McDonald's » sur le zinc, portes et entrée, totem M, portique 2,75 m et panneaux du drive ; enseigne et panneaux « STRIKE BOWL », « CAVE À BIÈRE », bandeau « BOWLING · BAR · CAVE À BIÈRE », logo du pignon, portes du parking, store de la terrasse. Le nom d'OpenStreetMap (« Bowling du Lac ») reste dans la fiche : l'enseigne dira « Strike Bowl ».
+- **Parkings et abords (étape 3)** : marquage des deux parkings, places PMR, flèches et « McDRIVE » au sol, voie du drive, terrasse et parasols, barrières, gros pot rouge, haie de la D680, terrasse au gazon du bowling.
+- La navigation n'est pas régénérée : les passants suivent encore les anciens contours.
+- L'arrière du McDonald's (cour de service) et le côté est du bowling sont sans photo, approchés.
+
+**Tests** (+6 : `roadside.test.ts`) : volumes plausibles, bâtiment BD TOPO masqué, obstacles (on n'entre ni dans le McDonald's ni dans les ailes ; on passe sous l'auvent et sous la pergola), géométrie finie et bornée.
+
+![McDonald's côté parking, avant](captures/d234-mcdo-parking-avant.jpg)
+![McDonald's côté parking, après](captures/d234-mcdo-parking-apres.jpg)
+![McDonald's depuis la route, avant](captures/d234-mcdo-route-avant.jpg)
+![McDonald's depuis la route, après](captures/d234-mcdo-route-apres.jpg)
+![Bowling depuis la route, avant](captures/d234-bowling-route-avant.jpg)
+![Bowling depuis la route, après](captures/d234-bowling-route-apres.jpg)
+![Bowling depuis le parking, avant](captures/d234-bowling-parking-avant.jpg)
+![Bowling depuis le parking, après](captures/d234-bowling-parking-apres.jpg)
+![Vue haute, avant](captures/d234-haut-avant.jpg)
+![Vue haute, après](captures/d234-haut-apres.jpg)
+
+## 2026-11-04 — D235. Le McDonald's et le bowling de la route de Chalon, étape 2 : les façades
+
+**D'après les photos de l'utilisateur** (D234 : Google Street View de juillet 2026, photo de la terrasse du bowling). Tout est dans `buildMcdo` et `buildBowling` (`src/render/roadside.ts`) ; les mesures de D234 ne changent pas. Relecture des photos : la vue « depuis le parking » regarde le **long côté ouest** du McDonald's (parking ouest aux places PMR, la véranda à droite, côté route), pas le côté du drive.
+
+**McDonald's** :
+- bardage : joints sombres des lames tous les 1,2 m ;
+- mansarde du long côté ouest (photos du parking) : deux bandes blanches de l'égout au faîte autour de chaque **M jaune** (deux M, à t = 8,5 et 20 m), persiennes brunes entre les deux (lames plus sombres tous les 35 cm) ; le M est tracé en traits dans le plan du pan (jambes droites, deux hautes arches, creux au milieu) ;
+- côté parking : entrée vitrée à deux battants sous un auvent sombre, deux fenêtres ; côté drive (est) : deux guichets vitrés sous de petits auvents ; nord : deux portes de service ; vitres éclairées la nuit ;
+- **« McDonald's »** en lettres blanches sur le pan du zinc côté route (zinc un peu foncé pour le contraste) ;
+- abords des façades (`site` de l'entrée, recopié dans `mcd`) : **totem M** près de l'entrée sur la route (fût habillé de bardage, caisson sombre de 2,2 × 2 m à M jaune sur ses deux faces, 8 m ; pied sur un objet isolé de 5 m du modèle de surface, à l'endroit de la vue de l'entrée), **portique de 2,75 m** au-dessus de la voie du drive (poteau gris, montant habillé de bois, poutre rayée noir et blanc, panneau « 2.75 »), deux **panneaux du menu** tournés vers la voie. Le portique, trop mince, n'est pas dans le relevé : placé d'après la photo du drive, entre le pan coupé de la véranda et le bowling.
+
+**Bowling** :
+- pignon ouest de l'aile (vers le McDonald's) : panneau noir carré au **logo rond « STRIKE BOWL »** (disque blanc cerclé de rouge, « BOWLING », « STRIKE », « BOWL », « CAVE À BIÈRE ») ; issue de secours ;
+- long côté de la route : peinture **« CAVE À BIÈRE »** (lettres crème sur fond gris sombre, une chope ocre) au bout ouest, bandeau **« BOWLING · BAR · CAVE À BIÈRE »** jusqu'à la halle ;
+- pignon de la route : logo rond dans le triangle rouge, **store gris** sur le mur vitré de la terrasse, portes vitrées au milieu ;
+- pignon du parking : portes vitrées **« bowling »** (à l'est) et **« bar restaurant »** (à l'ouest), plaques blanches au-dessus ; issue de secours sur l'aile.
+
+**Obstacles** : en plus de D234, le fût du totem, les deux poteaux du portique (on passe dessous) et les panneaux du menu. Vues `?view=mcdo-parking` (le long côté ouest, comme la photo) et `bowling-mcdo` (le pignon ouest de l'aile vu du McDonald's).
+
+**Pas encore** : le nom d'OpenStreetMap (« Bowling du Lac ») reste celui de la carte et des fiches (le renommer demande de refaire `build_map.py` et `build_shop_fronts.py`) ; le panneau « DRIVE → » et le panneau « BOWLING ← CAVE À BIÈRE » plantés au bord de la route, la terrasse et ses parasols, les marquages au sol, la haie : étape 3. La mansarde des autres côtés reste unie (pas de photo de près), l'affiche de Noël du parking n'est pas reprise.
+
+**Tests** (`roadside.test.ts`, mêmes 6 tests, complétés) : inscriptions demandées à l'atlas (« McDonald's », « 2.75 » ; deux logos, la peinture, le bandeau, les deux plaques), obstacles du totem et passage sous le portique, coût borné, rien au-dessus du caisson du totem.
+
+![McDonald's, le long côté du parking](captures/d235-mcdo-parking.jpg)
+![McDonald's, le drive et le totem](captures/d235-mcdo-drive.jpg)
+![La nuit](captures/d235-mcdo-drive-nuit.jpg)
+![Bowling depuis la route](captures/d235-bowling-route.jpg)
+![Pignon ouest du bowling](captures/d235-bowling-pignon-ouest.jpg)
+![Bowling côté parking](captures/d235-bowling-parking.jpg)
+
+## 2026-11-04 — D236. Le McDonald's et le bowling de la route de Chalon, étape 3 : les parkings et les abords
+
+**D'après l'orthophotographie IGN** (déjà en cache à 10 cm, **redressée dans le repère du McDonald's**, puis dans des repères tournés pour les rangées qui ne lui sont pas parallèles) **et les photos de l'utilisateur** (D234).
+
+**Constat** : les deux parkings portaient les traits retrouvés en tous sens par D94 ; la rangée nord du McDonald's était coupée de moitié (l'asphalte des données s'arrêtait à 2,5 m de sa bordure) ; ni places PMR, ni terrasse, ni haie le long de la D680 ; la dalle du bowling était couverte de places qui n'existent pas.
+
+**Lecture** :
+- **McDonald's, parking ouest** : rangée nord de cinq places, traits au pas de 2,5 m (pics de blanc le long de la rangée : −19,75, −17,25, −14,75, −12,25 m ; les deux bouts sous des voitures, extrapolés), places de 5 m depuis la bordure nord (t = 33,9 m) ; **places PMR** : fond bleu (masque de couleur) de t 11,7 à 18,9 m devant le long côté, deux places de 3,6 m perpendiculaires au mur ; **rangée sud-ouest** le long de la haie : sept traits au pas de 2,5 m dans un repère tourné de −38° (contraste stable d'une bande à l'autre), places de 5 m depuis la haie. Non repris, faute de lecture sûre : la colonne en épi le long de la voie tout à l'ouest et la zone basse à traits serrés (hachures ?) au sud-ouest ; leurs anciens traits restent.
+- **Voie du drive** : anciens traits retirés, deux flèches de sens vers le nord (photo du drive).
+- **Terrasse du McDonald's** : les parasols carrés vert sombre couvrent s −5,8 à 9,6 m, t −3 à −8,8 m sur l'orthophotographie ; quatre en rangée, de 3,6 m (les photos de l'entrée et du drive en montrent quatre) ; sol pavé, garde-corps gris à barreaux, lanternes aux coins ; le **gros pot rouge** et le **panneau « DRIVE → »** sur l'îlot de l'entrée, près du totem (photo de l'entrée).
+- **Bowling** : la dalle du parking nord est en **béton clair sans aucun marquage** (orthophotographie et photo du parking) : 53 anciens traits retirés, dalle posée en `plaza_concrete` (contour par seuil de clarté). Devant le pignon de la route, la **terrasse au gazon synthétique** (photo de la terrasse) ; devant l'aile ouest, derrière la haie, une **aire gravillonnée** (beige sur l'orthophotographie). **Haie taillée** le long de la D680 (bande vert sombre à t ≈ −9 m, de s −29 à 29 m) et retour devant l'aile ouest ; **panneau « BOWLING ← CAVE À BIÈRE »** au coin ouest de la haie (vue depuis le McDonald's).
+
+**Données** :
+- `parkings` de `manual.json`, cinq entrées « D236 » (`build_parking.py`, tuiles 31_37 et 31_38) : rangée nord (avec une bande d'asphalte sous la rangée), places PMR (repère tourné d'un quart de tour, nouveau champ `blue`), rangée sud-ouest (repère de la haie), voie du drive (flèches, sol pavé de la terrasse), bowling (sans rangée : nettoyage de la zone, dalle, gazon synthétique, gravier). **13 places tracées**, la rangée nord retrouvée par le jeu (`findStalls`). Une deuxième passe ne change rien.
+- **Nouvelle couche de sol `marks_blue`** (fond des places PMR) : posée par `build_parking.py` (`blue`, retirée puis reposée dans la zone), dessinée par `src/render/ground.ts` juste sous les traits blancs. Elle manquait à l'Eduen (D233) : elle peut maintenant servir partout.
+- `site` des deux entrées de `monuments` (terrasse, pot, panneau ; haie, terrasse, tables, panneau), recopié dans `mcd` et `bowl` par `build_monuments.py`.
+
+**Rendu** (`src/render/roadside.ts`, dans les maillages de la tuile) : parasols à toile en pyramide basse et bavolet, garde-corps (poteaux tous les 1,5 m, main courante, lisse basse, barreaux), lanternes allumées la nuit, pot rouge et arbre taillé, panneau « DRIVE → » ; haie de 1,6 m en blocs de 2,5 m qui suivent le relief (un seul bloc de 58 m suivait son point le plus haut et masquait le bowling depuis la route), jardinières de béton plantées, tables à pied central et chaises, panneau noir et rouge.
+
+**Obstacles** : garde-corps des terrasses en obstacles bas transparents aux rayons (on voit à travers, on les enjambe), haie pleine, pieds des parasols et des lanternes, pot, poteaux des panneaux, tables. Vue `?view=bowling-terrasse` déplacée sur l'aire gravillonnée (elle tombait dans la haie).
+
+**Pas encore** : le nom de la carte et des fiches (« Bowling du Lac », d'OpenStreetMap) ; « McDRIVE » et « PARKING » écrits au sol (la couche des marques n'a que des polygones) ; les pictogrammes PMR ; le « 14 juillet » et la sucette publicitaire du bord de la route ; la navigation n'est pas régénérée (les passants ignorent la haie, les terrasses et les nouveaux volumes). **Le plan du McDonald's et du bowling est terminé** (D234 à D236).
+
+**Tests** (+3 : `parking-roadside.test.ts` ; `roadside.test.ts` complété) : rangée nord retrouvée par le jeu (cinq places), fond bleu devant le long côté, aucun trait sur la dalle du bowling, béton et gazon synthétique là où il faut, haie et garde-corps qui arrêtent, vue à travers le garde-corps ; inscriptions et bornes de la géométrie avec les abords.
+
+![Vue haute](captures/d236-haut.jpg)
+![Le parking du McDonald's vu d'en haut](captures/d236-mcdo-parking-haut.jpg)
+![La terrasse du McDonald's](captures/d236-mcdo-terrasse.jpg)
+![Le bowling depuis la route](captures/d236-bowling-route.jpg)
+![La terrasse du bowling](captures/d236-bowling-terrasse.jpg)
+![Le panneau du coin ouest](captures/d236-bowling-panneau.jpg)
+![La dalle du parking du bowling](captures/d236-bowling-dalle.jpg)
+
+## 2026-11-04 — D237. Le McDonald's : « McDRIVE » et « PARKING » peints au sol
+
+**Demande de l'utilisateur** : écrire au sol « McDRIVE » et « PARKING », comme sur la photo du drive (D234 : à l'entrée depuis la route, une inscription par voie, avec des flèches).
+
+**Lecture** (orthophotographie redressée dans le repère du McDonald's) : l'entrée depuis la D680 se partage en **deux voies vers le nord**, celle du parking à s ≈ 13,4 m et celle du drive à s ≈ 16,9 m, chacune avec **deux flèches** (t ≈ −11,2 et −19,6 m) ; **deux flèches vers l'ouest** devant la terrasse (vers le parking). Les inscriptions ne se lisent pas à 20 cm : posées entre les deux flèches de chaque voie (t = −15,4 m), « PARKING » à gauche et « McDRIVE » à droite, comme sur la photo.
+
+**Données** : `paint` du `site` de l'entrée du McDonald's dans `monuments` (texte, centre, largeur le long de s, hauteur le long de t), recopié dans `mcd` ; entrée « voie du drive » de `parkings` : zone de nettoyage étendue à toute l'entrée (s 8 à 24,5 m, t −25 à 14 m ; l'éventail de traits de D94 qui traînait dans la gorge d'entrée est retiré) et six flèches de plus.
+
+**Rendu** (`buildMcdo`) : les inscriptions sont des textes de l'atlas posés **à plat**, 10 cm au-dessus du relief (juste au-dessus des marques), dans une case de 3 × 2,6 m lue par le conducteur qui entre (vers +t) : l'atlas étire les lettres dans le sens de la marche (lettres d'environ 2,1 m), comme les inscriptions routières. Pas de polygone dans la couche des marques : `findStalls` n'a rien à confondre. Vue `?view=mcdo-entree` (depuis la route, comme la photo).
+
+**Tests** (`roadside.test.ts`) : les deux inscriptions demandées à l'atlas, après celles des façades.
+
+![Depuis l'entrée](captures/d237-mcdo-entree.jpg)
+![Vue haute](captures/d237-mcdo-entree-haut.jpg)
