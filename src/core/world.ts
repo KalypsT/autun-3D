@@ -5,6 +5,7 @@ import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouse
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
+import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./gendarmerie";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -60,6 +61,12 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
         else if (l.kind === "hedge") c.addPolyline(l.pts, false, wallTop("hedge", EDUEN_HEDGE_H));
         else c.addPolyline(l.pts, true, wallTop("fence", EDUEN_BARRIER_H));
       }
+      continue;
+    }
+    // Gendarmerie de l'avenue André Frenaud (D238) : ses volumes mesurés (bâtiment principal, annexe, logements) ; clôture et portail de la cour.
+    if (kind?.gend) {
+      for (const r of gendarmerieRings(kind.gend)) c.addRing(r);
+      for (const l of gendarmerieLines(kind.gend)) c.addPolyline(l, true, wallTop("fence", GENDARMERIE_FENCE_H));
       continue;
     }
     // McDonald's et bowling de la route de Chalon (D234) : leurs volumes mesurés (le contour BD TOPO ne couvre pas la véranda ni les ailes).

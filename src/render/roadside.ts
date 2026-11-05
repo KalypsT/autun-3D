@@ -45,7 +45,7 @@ const PARASOL = C("#2f4a36"), RAIL_GREY = C("#9aa0a3"), POT_RED = C("#b3352c"), 
 const PLANTER = C("#d4d0c6"), IRON = C("#26292b"), TABLE = C("#3b3e40"), SIGN_GREEN = C("#21342b");
 
 /** Garde-corps le long de la polyligne `pts` (s, t), haut de h : poteaux tous les 1,5 m, main courante, lisse basse, barreaux tous les `pitch` m. */
-function railing(d: Draw, pts: ST[], h: number, col: THREE.Color, pitch: number): void {
+export function railing(d: Draw, pts: ST[], h: number, col: THREE.Color, pitch: number): void {
   for (let i = 0; i + 1 < pts.length; i++) {
     const a = pts[i]!, b = pts[i + 1]!, len = Math.hypot(b[0] - a[0], b[1] - a[1]);
     const n = Math.max(1, Math.round(len / 1.5));
@@ -66,7 +66,7 @@ function railing(d: Draw, pts: ST[], h: number, col: THREE.Color, pitch: number)
 }
 
 /** Haie taillée le long de la polyligne `pts`, haute de h au-dessus du sol, large de w : blocs de 2,5 m au plus qui suivent le relief. */
-function hedgeAlong(d: Draw, pts: ST[], h: number, w: number): void {
+export function hedgeAlong(d: Draw, pts: ST[], h: number, w: number): void {
   let k = 0;
   for (let i = 0; i + 1 < pts.length; i++) {
     const wl = wallOf(pts[i]!, pts[i + 1]!);
@@ -83,7 +83,7 @@ function hedgeAlong(d: Draw, pts: ST[], h: number, w: number): void {
 const PLINTH_H = 0.5, PARAPET = 0.3, EAVE_OVER = 0.0, FASCIA = 0.25;
 
 /** Dalle horizontale de contour `pts` (s, t), dessus à z1, dessous à z0, chants vers l'extérieur. */
-function slab(d: Draw, pts: ST[], z0: number, z1: number, top: THREE.Color, edge: THREE.Color, under: THREE.Color = shade(edge, 0.8)): void {
+export function slab(d: Draw, pts: ST[], z0: number, z1: number, top: THREE.Color, edge: THREE.Color, under: THREE.Color = shade(edge, 0.8)): void {
   const tris = THREE.ShapeUtils.triangulateShape(pts.map(([s, t]) => new THREE.Vector2(s, t)), []);
   for (const tri of tris) {
     const a = pts[tri[0]!]!, b = pts[tri[1]!]!, c = pts[tri[2]!]!;
@@ -101,7 +101,7 @@ function slab(d: Draw, pts: ST[], z0: number, z1: number, top: THREE.Color, edge
 }
 
 /** Les quatre murs d'un rectangle (s0, s1, t0, t1), sens trigonométrique (normales sortantes). */
-function rectWalls(s0: number, s1: number, t0: number, t1: number): PWall[] {
+export function rectWalls(s0: number, s1: number, t0: number, t1: number): PWall[] {
   return [wallOf([s0, t0], [s1, t0]), wallOf([s1, t0], [s1, t1]), wallOf([s1, t1], [s0, t1]), wallOf([s0, t1], [s0, t0])];
 }
 
@@ -116,19 +116,19 @@ function panOf(d: Draw, pts: STZ[], col: THREE.Color): void {
 }
 
 /** Texte de l'atlas posé sur le quadrilatère a, b, c, d (bas gauche, bas droite, haut droite, haut gauche), lu de face. */
-function textQuad(sinks: LandmarkSinks, str: string, color: string, a: Vec3, b: Vec3, c: Vec3, dd: Vec3, n: Vec3): void {
+export function textQuad(sinks: LandmarkSinks, str: string, color: string, a: Vec3, b: Vec3, c: Vec3, dd: Vec3, n: Vec3): void {
   const label = sinks.atlas.get(str, color);
   sinks.names.quad(a, b, c, dd, n, [label.u0, label.v0], [label.u1, label.v0], [label.u1, label.v1], [label.u0, label.v1], new THREE.Color(1, 1, 1));
 }
 
 /** Texte de l'atlas sur le mur, centré en (u, zc), de hauteur de case th (largeur 6,4 th), à `off` devant le mur. */
-function wallText(sinks: LandmarkSinks, d: Draw, w: PWall, str: string, u: number, zc: number, th: number, color: string, off = 0.06): void {
+export function wallText(sinks: LandmarkSinks, d: Draw, w: PWall, str: string, u: number, zc: number, th: number, color: string, off = 0.06): void {
   const tw = th * 6.4, a = d.on(w, u - tw / 2, off), b = d.on(w, u + tw / 2, off);
   textQuad(sinks, str, color, d.P(...a, zc - th / 2), d.P(...b, zc - th / 2), d.P(...b, zc + th / 2), d.P(...a, zc + th / 2), d.N(...w.out));
 }
 
 /** Porte vitrée (un ou deux battants) de largeur wd centrée en u, haute de h depuis le sol : cadre, vitre, montant, lueur la nuit. */
-function glassDoor(sinks: LandmarkSinks, d: Draw, w: PWall, u: number, wd: number, h: number, double: boolean): void {
+export function glassDoor(sinks: LandmarkSinks, d: Draw, w: PWall, u: number, wd: number, h: number, double: boolean): void {
   const g0 = d.ground(...d.on(w, u, 0));
   const lo = C(T.glass[0]), hi = C(T.glass[1]);
   d.plate(w, u - wd / 2 - 0.08, u + wd / 2 + 0.08, g0, g0 + h + 0.08, 0, 0.05, FRAME, true);
@@ -138,7 +138,7 @@ function glassDoor(sinks: LandmarkSinks, d: Draw, w: PWall, u: number, wd: numbe
 }
 
 /** Porte de service pleine (gris clair) de largeur wd centrée en u. */
-function serviceDoor(d: Draw, w: PWall, u: number, wd = 1.0, h = 2.15): void {
+export function serviceDoor(d: Draw, w: PWall, u: number, wd = 1.0, h = 2.15): void {
   const g0 = d.ground(...d.on(w, u, 0));
   d.plate(w, u - wd / 2 - 0.06, u + wd / 2 + 0.06, g0, g0 + h + 0.06, 0, 0.03, shade(DOOR_GREY, 0.8), true);
   d.plate(w, u - wd / 2, u + wd / 2, g0, g0 + h, 0.03, 0.05, DOOR_GREY, true);

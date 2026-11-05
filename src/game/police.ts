@@ -33,10 +33,11 @@ export interface PolicePlayer {
 }
 
 /**
- * Reprise après une arrestation (D75, D105) : à pied, sur le trottoir devant la gendarmerie (`GENDARMERIE`), tourné vers la rue. Vérifié par un
- * test : un trottoir, à terre, sans obstacle.
+ * Reprise après une arrestation (D75, D105, D238) : à pied, à la sortie de la gendarmerie, sur le trottoir de l'avenue André Frenaud devant son
+ * portail (à 5 m de lui et de la borne d'appel de la photo), dos à la cour et tourné vers l'avenue (cap −1,09 : le long de −s, repère du
+ * bâtiment). Vérifié par des tests : sur la carte de navigation, à terre, sans obstacle, hors de la clôture et à moins de 30 m de la cour.
  */
-export const ARREST_SPAWN = { x: 1758.0, y: 611.8, heading: -1.085 } as const;
+export const ARREST_SPAWN = { x: 1761.4, y: 616.6, heading: -1.089 } as const;
 /** Heures passées en cellule. */
 export const ARREST_HOURS = 6;
 

@@ -25,6 +25,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           McDonald's de la route de Chalon (modèle `mcdo`, D234) : champ `mcd` du bâtiment (corps à mansarde autour d'un toit plat, édicules,
           véranda à toit de zinc à croupes ; `site`, D235 : totem, portique et panneaux du drive, recopiés) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
           pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), abords recopiés (`site`, D236), silhouette lointaine ;
+          gendarmerie de l'avenue André Frenaud (modèle `gendarmerie`, D238, relevés de survey_gendarmerie.py) : champ `gend` du bâtiment principal
+          (volumes à toit plat du bâtiment principal, de l'annexe et des logements), bâtiments BD TOPO voisins masqués (`hide`), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
           Rien d'autre n'est réécrit, et une deuxième passe ne change rien.
 
@@ -1255,6 +1257,31 @@ def bowling(tid, bid, b, spec, k):
         k["buildings"][bid] = e
     polys = [(rect_st(0, m["w"], 0, m["l"]), m["eave"], m["ridge"])]
     polys += [(rect_st(*q[:4]), q[4], q[4]) for key in ("wing", "east", "low") for q in m[key]]
+    ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
+    return ch or ch2, tid if lod else None
+
+
+# --- Gendarmerie de l'avenue André Frenaud (D238) ------------------------------------------------------------------------------------
+
+def gendarmerie(tid, bid, b, spec, k):
+    """Gendarmerie (D238) : champ `gend` du bâtiment principal (repère et volumes à toit plat mesurés par survey_gendarmerie.py, recopiés de
+    `manual.json`), bâtiments BD TOPO de l'annexe et des logements masqués (`hide`), silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = {"o": spec["o"], "a": spec["a"], "blocks": spec["blocks"]}
+    if "site" in spec:
+        m["site"] = spec["site"]
+    e = dict(k["buildings"].get(bid, {}))
+    e["k"] = "culture"
+    e.pop("main", None)
+    e["gend"] = m
+    g = round(b["ground"], 1)
+    for q in m["blocks"]:
+        s0, s1, t0, t1 = q["r"]
+        print(f"    {q['n']:16s} {s1 - s0:5.1f} × {t1 - t0:5.1f} m, toit à {q['z']:.2f} ({q['levels']} niveau(x))")
+    print(f"  {bid} : {len(m['blocks'])} volumes, sol du bâtiment principal {g}")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    polys = [(rect_st(*q["r"]), q["z"], q["z"]) for q in m["blocks"]]
     ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
     return ch or ch2, tid if lod else None
 
@@ -2790,6 +2817,13 @@ def main():
             continue
         if spec["model"] == "eduen":
             ch, lod = eduen(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "gendarmerie":
+            ch, lod = gendarmerie(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

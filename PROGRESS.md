@@ -1739,3 +1739,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les vieux traits qui traînaient en éventail dans l'entrée sont retirés.
 
 ![Depuis l'entrée](docs/captures/d237-mcdo-entree.jpg)
+
+**La gendarmerie de l'avenue André Frenaud (5 novembre 2026)** (D238)
+- Le bâtiment principal mesuré au LiDAR : l'accueil et l'aile est à un niveau, le corps à deux niveaux, toits plats ; enduit beige et bandeaux brique (le Street View de juillet 2026, retenu par l'utilisateur), hublot, « GENDARMERIE NATIONALE » sur l'acrotère du long côté sud, porte « ACCUEIL » sur la cour, garde-corps sur les toits bas.
+- L'annexe basse au nord de la cour (portes de garage), le collectif de logements au sud (hublots, toit-terrasse), les maisons du lotissement en enduit beige à menuiseries blanches.
+- La cour en enrobé : rangée de places lue sur l'orthophotographie, rangée le long du bâtiment, deux places PMR ; clôture verte sur le tracé des clôtures de parcelle, portail coulissant fermé et borne d'appel sur l'avenue, mât au drapeau, pylône d'antennes (position approchée).
+- Après une arrestation, on reprend sur le trottoir devant le portail, tourné vers l'avenue ; les renforts partent du milieu de la cour.
+
+![Le portail depuis l'avenue](docs/captures/d238-portail.jpg)
+![Vue haute](docs/captures/d238-haut.jpg)
+![La cour](docs/captures/d238-cour.jpg)
