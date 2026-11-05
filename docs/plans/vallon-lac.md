@@ -1,0 +1,154 @@
+# Le plan d'eau du Vallon : chemin du tour du lac, base nautique, pontons, abords : plan
+
+Enquête du 5 novembre 2026, sur `main` (après D242). Rien n'est modifié dans le jeu : ce fichier et une vue annotée (`docs/captures/vallon-lac-osm.jpg`) sont les seuls ajouts.
+Repère local du jeu (x vers l'est, y vers le nord), mètres ; altitudes relatives à `originZ` (330 m). Les prochains numéros de décision seront D243 et suivants.
+
+Suite du plan de l'eau (`docs/plans/eau.md`, §7) : l'eau, le fond et la nage sont faits ; ici, tout ce qui est **autour**.
+
+## 0. Ce qu'il faut retenir
+
+1. **Le chemin du tour du lac n'existe pas dans le jeu.** OpenStreetMap a la boucle entière (allée Marcel Lucotte, plus l'allée Jacques de la Comble et l'allée
+   Émile Château au sud), mais aucune étape ne la peint au sol : sur 2,6 km de tronçons, le sol du jeu est de la pelouse (94 % de l'allée est, 24 % de l'allée ouest)
+   ou rien du tout. Les piétons la suivent déjà (arêtes « chemin » de la navigation, 1,5 à 1,8 m de large, très peu fréquentées) : ils marchent sur l'herbe.
+2. **Le nord du lac est une digue.** La route de Chalon/Beaune passe à −27,3, la crête à −23,9, l'eau à −25,41 : la route est **1,9 m sous l'eau**, la crête
+   1,5 m au-dessus. Le chemin du nord et ses bancs sont sur cette crête. Partout ailleurs, la berge descend en pente douce (de −20,5 à l'ouest et à l'est).
+3. **Les photos décrivent l'apparence, les données donnent la position.** Les 13 vues Street View et photos de l'utilisateur (non versionnées, elles servent seulement
+   à décrire) fixent les matières et les objets ; le tracé, les largeurs et les hauteurs viendront d'OSM recalé sur l'orthophotographie (20 cm) et du LiDAR (0,5 m), au lot 0.
+4. **Les pontons sont des tabliers.** La mécanique existe : un tablier piéton (`decks`, `k: "foot"`) se parcourt à pied et, à moins de 1,05 m au-dessus de l'eau,
+   un nageur s'y hisse (D241). Cinq pontons dans OSM, aucun dessiné aujourd'hui (`man_made=pier` n'est lu par aucune étape).
+5. Cinq lots de jeu, chacun utilisable seul : **le chemin**, **la base nautique**, **les pontons et la cale**, **les équipements** (aire de jeux, skatepark, agrès),
+   **la vie du lac** (pêcheurs, promeneurs).
+
+![Orthophotographie et OSM : chemins (rouge : footway, orange : path, bleu : cycleway), pontons (jaune), quadrillage de 100 m](../captures/vallon-lac-osm.jpg)
+
+## 1. Ce que montrent les photos
+
+Treize vues : Google Street View (juillet 2026) depuis la route et la base nautique, et Harry Trib (juin 2025) sur le chemin. Les emplacements sont **déduits** (rien n'est
+géolocalisé dans une capture d'écran) ; le lot 0 les confirme sur l'orthophotographie.
+
+| Vue | Emplacement probable | Ce qu'on y lit |
+|---|---|---|
+| Route de Chalon (2 vues) | depuis la route, vers (1350 ; 640), regard vers le sud-ouest | cale en béton qui descend dans l'eau ; pontons flottants à petits dériveurs ; bâtiment beige de la base au toit gris ; mât au drapeau ; grand saule pleureur ; panneau d'information sur pied ; pelouse rase et grillée l'été ; allées en enrobé gris |
+| Toilettes | base nautique (1304–1310 ; 566–575) | bloc de toilettes en béton gravillonné gris ; bâtiment à toit en bac acier gris à un pan, enduit beige, auvent sur poteaux carrés ; banderole « Commune sportive Bourgogne-Franche-Comté » ; barrière levante blanche ; potelets bois ; rochers posés ; kayaks rangés |
+| Skatepark | parking (1419 ; 586), regard vers le sud | bowl et modules en béton clair ; terrain vert grillagé (pump track ou city stade) ; ganivelle en châtaignier tout autour ; Moulin du Vallon à gauche ; lampadaires à tête en disque |
+| Chemin, deux sens | rive est, le long de la clôture OSM w247999124 (524 m, déjà dessinée) | **stabilisé beige clair, 2,5 à 3 m**, sans bordure ; herbe haute, roseaux et joncs côté eau ; grillage vert à poteaux plats côté terre ; quelques lampadaires |
+| Aire de jeux | (1505 ; 158), aire OSM w247999116 | deux structures (toboggans bleu et orange, toits orange et rouge), sol en gravillons, bancs et tables en bois, jeux à ressort |
+| Pêcheurs | rive sud-ouest, regard vers le nord-est | trois biwys kaki (abris de pêche à la carpe) sur la pelouse, cannes sur supports ; le chemin longe l'eau à 2 m |
+| Water Tap | (1003 ; 239), robinet OSM, parking PMR de 4 places | allée en enrobé, potelets bois en ligne, lampadaire, talus rocheux et boisé à droite (le pied du rempart, w247999104, à vérifier) |
+| Pelouse au bord | rive sud, regard vers le nord | la pelouse descend jusqu'à l'eau sans berge marquée ; un piquet ; au loin, le village et la base |
+| Allée ombragée | rive sud-ouest ou bord du Brisecou (à confirmer) | même stabilisé beige, sous des saules et des frênes ; un fossé d'eau à droite |
+| Ponton de pêche | rive ouest, (1035 ; 292) ou (1129 ; 169) | **ponton fixe en bois gris** sur pieux, long et parallèle à la rive, relié par une passerelle perpendiculaire ; à 30-40 cm de l'eau, sans garde-corps |
+
+## 2. Inventaire (OpenStreetMap, 5 novembre 2026, et données publiées)
+
+**Le chemin** (tronçons OSM de la boucle) :
+
+| Tronçon | OSM | Longueur | Matière (OSM) | Dans le jeu aujourd'hui |
+|---|---|---|---|---|
+| Allée Marcel Lucotte, ouest et sud-ouest | w223427553 | 982 m | `asphalt` (à vérifier : les photos du sud-ouest montrent du stabilisé) | pelouse 24 %, rien ailleurs |
+| Allée Marcel Lucotte, est | w1525431705 | 658 m | `fine_gravel` | pelouse 94 % |
+| Allée Marcel Lucotte, nord (digue) | w1548131445, w842375498 | 146 + 77 m | `fine_gravel` | rien |
+| Piste cyclable du nord, le long de la route | w247999132 | 287 m | `asphalt` | trottoir 28 % |
+| Allées du sud (Jacques de la Comble, Émile Château) | w234449480, w223582725, w234449490, w1290256589 | 170 + 122 + 77 + 22 m | `fine_gravel`, 1 m pour Émile Château | pelouse |
+| Gué en pas japonais sur le Brisecou | w1290256590 | 2 m | `ford=stepping_stones` | rien |
+
+Sept arbres de la carte sont à moins de 2 m de l'axe. Aucun mur ni aucune clôture ne coupe le chemin.
+
+**Pontons** : quatre flottants, (1280 ; 632) 29 m, devant la base ; (1029 ; 310) 8 m et (1035 ; 292) 62 m à l'ouest ; (1129 ; 169) 53 m au sud-ouest ; un fixe (1292 ; 117), 23 m,
+au sud, face à l'île. **Cale de mise à l'eau** : (1306 ; 606).
+
+**Base nautique et abords** : deux bâtiments BD TOPO de 5,1 m (1304 ; 566) et (1310 ; 575), au rendu générique aujourd'hui ; location de bateaux (1318 ; 581) et de vélos
+(1310 ; 582) ; toilettes ; panneau d'information (1337 ; 581) ; table de pique-nique en bois (1341 ; 554) ; deux blocs anti-voitures (1339 ; 600) et (1351 ; 589) ;
+skatepark (1374 ; 569, 105 m de tour) ; pump track (1399 ; 541, trois boucles) ; aire de camping-cars de 17 places (1370 ; 607) ; Centre de loisirs du Moulin du Vallon (1440 ; 517).
+
+**Le long du tour** : 14 bancs (12 par paires sur la digue, tous les 40 m environ, déjà dessinés), 3 agrès de fitness (1006 ; 261), (1210 ; 54), (1504 ; 136), 2 robinets,
+une boîte à livres (1489 ; 290, déjà dessinée), le panneau « Les oiseaux du lac » (1414 ; 49), l'aire de jeux (1505 ; 158), une piste VTT en terre au sud-est (668 m, hors du tour).
+
+**L'eau autour** : le Brisecou entre au sud (étang de 0,19 ha, seuil, buse sous (1353 ; 42)) et ressort sous la digue au nord-ouest (buse (1097 ; 621)).
+
+## 3. Le chemin (lot 1)
+
+### 3.1 Le tracé et la largeur
+
+- Axe : tronçons OSM de la boucle, **recalés sur l'orthophotographie** là où ils s'écartent du chemin visible de plus de 1 m (lot 0 : écart mesuré tous les 10 m).
+- Largeur : mesurée à l'orthophotographie par tronçon (attendu : 2,5 à 3 m à l'est d'après les photos, plus étroit au sud, 1 m pour l'allée Émile Château).
+- Matière : **stabilisé beige clair** (nouvelle couche de sol `path_gravel`, plus clair et plus chaud que `plaza_gravel`) partout où les photos le montrent ; **enrobé** pour la piste
+  cyclable du nord et les allées de la base. Pas de bordure : le bord se fond dans l'herbe (léger dégradé, comme les pelouses).
+- Relief : pas d'aplanissement général (le chemin suit la berge). Sur la digue, le dévers est corrigé si le LiDAR en montre un de plus de 4 % en travers.
+
+### 3.2 Ce qui va avec
+
+- **Bord côté eau** : bande d'herbes hautes et de roseaux, interrompue aux pontons, à la cale et aux pelouses où l'on descend à l'eau (pêcheurs, rive sud).
+- **Arbres** : les 7 arbres à moins de 2 m de l'axe sont décalés hors du chemin, pas supprimés.
+- **Lampadaires** : ceux qu'on voit sur les photos (rive est, base, parking) ; leur nombre et leur position sont relevés à l'orthophotographie (ombres) au lot 0, sinon un tous les 30 m
+  le long de la base seulement. Pas d'éclairage sur le sud, plus sauvage.
+- **Navigation** : la largeur des arêtes du chemin passe à la largeur mesurée ; la fréquentation monte (c'est une promenade très courue) : à fixer au lot 5.
+- **Carte et minimap** : le tour dessiné comme un sentier (rang 3), avec son nom.
+- **Le gué** : les pas japonais du Brisecou (quelques pierres plates, obstacles bas qu'on enjambe).
+
+## 4. La base nautique (lot 2)
+
+- Volumes mesurés au LiDAR (comme la gendarmerie, D238) : bâtiment principal à toit à un pan en bac acier gris, auvent sur poteaux, petit bâtiment voisin.
+- Façades d'après les photos : enduit beige, portes de hangar (kayaks rangés), banderole « Commune sportive Bourgogne-Franche-Comté ».
+- Abords : bloc de toilettes en béton gravillonné, mât et drapeau, grand saule pleureur, panneau d'information, barrière levante, potelets bois, rochers posés, table de pique-nique,
+  deux blocs anti-voitures sur l'allée.
+
+## 5. Les pontons et la cale (lot 3)
+
+- **Cinq pontons** en tabliers piétons (`decks`, `k: "foot"`, nouveau style `pier`) : planches grises, sans garde-corps. Les flottants sont au ras de l'eau (0,3 m, à mesurer
+  sur l'orthophotographie et le LiDAR) ; le fixe repose sur des pieux. Forme (passerelle perpendiculaire, puis ponton parallèle à la rive) relevée sur l'orthophotographie.
+- **Sortie de l'eau** : à moins de 1,05 m au-dessus de l'eau, on s'y hisse en nageant (D241) ; c'est le principal gain de jeu de ce lot.
+- **Cale** : rampe en béton qui entre dans l'eau, en pente douce (0,08) : on en sort à pied, une voiture peut y descendre (et couler, D242).
+- **Bateaux amarrés** (petits dériveurs, kayaks posés sur le ponton de la base) : décor fixe, sans collision fine, à confirmer avec l'utilisateur (§9).
+
+## 6. Les équipements (lot 4)
+
+- **Aire de jeux** (1505 ; 158) : deux structures à toboggan, jeux à ressort, sol en gravillons, bancs et tables.
+- **Skatepark et pump track** : bowl et modules en béton clair, pump track en enrobé, terrain multisport grillagé s'il est confirmé à l'orthophotographie, ganivelle autour.
+- **Agrès de fitness** (3), panneaux d'information, robinets. Bancs et boîte à livres : déjà là.
+
+## 7. La vie du lac (lot 5)
+
+- **Pêcheurs** : biwys kaki et cannes sur supports, posés sur les pelouses du sud et de l'ouest, quelques personnages assis ; nombre et horaires à décider (§9).
+- **Promeneurs et joggeurs** sur le tour, plus nombreux le week-end et en été (calendrier existant, `core/week.ts`).
+- **Canards** : déjà là (D240).
+
+## 8. Risques
+
+1. **OSM et l'orthophotographie ne coïncident pas** : un chemin décalé de 2 m tombe dans l'eau creusée ou dans les roseaux. Recalage au lot 0, et contrôle : aucun point de l'axe
+   à moins de 1 m de l'eau, sauf aux pontons et à la cale.
+2. **Les matières d'OSM sont incertaines** (allée ouest en `asphalt`, photos en stabilisé) : la matière se décide sur l'orthophotographie et les photos, OSM ne fait que proposer.
+3. **Les pontons au-dessus de l'eau** : la surface de l'eau et le tablier sont tous deux presque plats et proches (0,3 m) ; vérifier qu'un nageur passe sous un ponton flottant
+   ou s'y hisse, mais n'y reste pas coincé, et que l'eau ne perce pas le tablier.
+4. **La digue** : la route est sous le niveau du lac. Rien ne change pour l'eau (le fond est creusé à l'intérieur du polygone seulement), mais la pente entre la crête et la route
+   doit rester un talus, pas une marche.
+5. **Poids** : le chemin, ≈ 7 000 m² de polygone, et cinq pontons ; quelques kilo-octets dans une douzaine de tuiles (colonnes 29 à 32, rangées 35 à 37). Aucun fichier lourd.
+
+## 9. Questions à l'utilisateur
+
+1. **Pêcheurs** : présents en permanence (décor), ou seulement certains jours et heures ?
+2. **Bateaux** : des dériveurs et kayaks posés ou amarrés au ponton de la base ; faut-il aussi des voiliers **sur l'eau**, l'été, en journée ?
+3. **Le sud** : le garder plus sauvage (pas d'éclairage, herbes plus hautes), comme sur les photos ?
+4. **Ordre des lots** : chemin, base, pontons, équipements, vie du lac ; ou les pontons juste après le chemin, pour pouvoir sortir de l'eau partout ?
+
+## 10. Lots
+
+| Lot | Contenu | Résultat dans le jeu | Décision |
+|---|---|---|---|
+| **0. Relevés** | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
+| **1. Le chemin** | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
+| **2. La base nautique** | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
+| **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
+| **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
+| **5. La vie du lac** | pêcheurs, promeneurs | | D248 |
+
+Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
+
+### Tests prévus
+
+- **Lot 1** : axe à plus de 1 m de l'eau hors pontons et cale ; chemin continu (boucle fermée) ; largeur par tronçon ; aucun arbre ni obstacle sur le chemin ; couche dessinée
+  au-dessus de la pelouse ; arêtes de navigation à la largeur mesurée ; idempotence de l'étape.
+- **Lot 2** : volumes contre le LiDAR à 0,3 m ; emprise BD TOPO à 3 m ; triangles bornés.
+- **Lot 3** : chaque ponton parcouru à pied de la rive au bout ; nageur hissé sur un ponton flottant ; nageur qui passe sous le ponton fixe ou en est empêché, sans se coincer ;
+  sortie à pied par la cale ; voiture qui descend la cale et coule (D242 inchangé).
+- **Lots 4 et 5** : obstacles posés hors du chemin ; maillages finis et bornés.
