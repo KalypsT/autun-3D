@@ -1776,3 +1776,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Surplace](docs/captures/d241-surplace.jpg)
 
+**L'eau de la ville, lot 3 : les véhicules qui coulent (5 novembre 2026)** (D242)
+- En voiture, un gué peu profond se passe ; plus loin, le moteur se noie et la voiture coule : elle flotte un instant, le nez plonge, puis elle s'enfonce ; on en sort à la nage. Elle est en panne pour de bon.
+- En deux-roues, on tombe à l'eau dès qu'elle monte un peu.
+- L'épave reste au fond, signalée par une tache sombre à la surface, et disparaît quand on s'éloigne.
+- **L'eau de la ville est terminée.** Suite : le décor du plan d'eau du Vallon.
+
+![La voiture coule](docs/captures/d242-voiture-coule.jpg)
+

@@ -90,6 +90,8 @@ const AIM_MAX_PITCH = 0.95;
 const AIM_WALK = 0.75;
 /** À la nage (D241) : la caméra vise si bas sous les pieds (m) que le point visé (+ HEAD_HEIGHT) tombe sur la tête, au ras de l'eau. */
 const SWIM_FOCUS = 0.9;
+/** Voiture qui coule (D242) : on en sort après ce temps (s), quand l'eau atteint les vitres. */
+const SINK_EXIT = 2.2;
 const SHADOW_HALF = 80;
 /** Vitesse (m/s) sous laquelle on peut prendre une voiture de la circulation avec son conducteur (J4-1). */
 const CARJACK_SPEED = 3;
@@ -747,6 +749,33 @@ export function startGame(ctx: GameContext): void {
     if (hits > 0) police.crime(killed > 0 ? "murder" : "assault", x, y, seen);
     fleet.refresh();
   };
+  // Taches sombres au-dessus des épaves noyées (D242) : l'eau est opaque, on devine la voiture sous la surface.
+  const wreckMarks = new Map<Vehicle, THREE.Mesh>();
+  const wreckMarkGeo = new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
+  const wreckMarkMat = new THREE.MeshBasicMaterial({ color: 0x0b2a33, transparent: true, opacity: 0.45, depthWrite: false });
+  const showWreckMark = (v: Vehicle): void => {
+    const s = v.state, level = terrain.waterAt(s.x, s.y);
+    let m = wreckMarks.get(v);
+    if (level === undefined || level - s.z < 1) {
+      if (m) m.visible = false;
+      return;
+    }
+    if (!m) {
+      m = new THREE.Mesh(wreckMarkGeo, wreckMarkMat);
+      m.name = "épave noyée";
+      m.scale.set(1.1, 1, (v.spec.front + v.spec.rear) * 0.75);
+      scene.add(m);
+      wreckMarks.set(v, m);
+    }
+    m.visible = true;
+    m.position.set(s.x, level + 0.08, -s.y);
+    m.rotation.set(0, -s.heading, 0);
+  };
+  const dropWreckMark = (v: Vehicle): void => {
+    const m = wreckMarks.get(v);
+    if (m) scene.remove(m);
+    wreckMarks.delete(v);
+  };
   const updateDamage = (dt: number): void => {
     if (riding && riding.damage.version > 0) damaged.add(riding);
     showDamage();
@@ -765,6 +794,15 @@ export function startGame(ctx: GameContext): void {
           fleet.remove(v);
           damaged.delete(v);
         }
+        continue;
+      }
+      if (d.drowned) {
+        // Épave noyée (D242) : une tache sombre à la surface la signale ; loin du joueur, elle disparaît.
+        if (v !== riding && Math.hypot(v.state.x - player.x, v.state.y - player.y) > EXPLOSION.vanishDistance) {
+          fleet.remove(v);
+          damaged.delete(v);
+          dropWreckMark(v);
+        } else showWreckMark(v);
         continue;
       }
       if (d.end === "breakdown") {
@@ -876,6 +914,12 @@ export function startGame(ctx: GameContext): void {
     startFall(speed, back ? 1 : -1);
     health.damage(fallDamage(speed, health.hp));
   };
+  /** On quitte le véhicule dans l'eau de la ville (D242) : il reste noyé à sa place, on nage (ou l'on a pied) à côté, sans blessure. */
+  const intoWater = (lean: number): void => {
+    const s = riding!.state;
+    dismount(s.lean >= 0 ? lean : -lean);
+    player.splash = 1.5;
+  };
   /**
    * Saut hors d'une voiture qui roule (au-delà de 8 km/h) : le joueur est projeté par la portière, dans le sens de la marche, glisse et reste au sol ;
    * la voiture, sans conducteur, finit sa course sur son élan. Blessure selon la vitesse, jamais mortelle.
@@ -906,6 +950,11 @@ export function startGame(ctx: GameContext): void {
       const r = rolling[i]!, v = r.v, s = v.state;
       r.t += dt;
       stepVehicle(s, drivenSpec(v), { throttle: 0, brake: 0.2, steer: 0 }, dt, surface, colliders, fleet.carOnly, true, true);
+      // Partie seule dans l'eau de la ville (D242) : elle s'y noie aussi.
+      if (s.drowned && !v.damage.drowned) {
+        v.damage.drown();
+        damaged.add(v);
+      }
       if (s.impact > 0) {
         if (v.damage.hit(s.impact, s.impactAngle) > 0) {
           damaged.add(v);
@@ -1319,7 +1368,14 @@ export function startGame(ctx: GameContext): void {
         crashSparks(riding, s.impactAngle);
         hitParked(riding, s.impact, s.impactAngle);
       }
-      if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
+      // L'eau de la ville (D242) : moteur noyé, puis la voiture coule et l'on en sort à la nage ; d'un deux-roues, on tombe à l'eau.
+      if (s.drowned) {
+        riding.damage.drown();
+        damaged.add(riding);
+      }
+      if (riding.spec.leans && s.drowned) intoWater(FALLEN_LEAN);
+      else if ((s.sink ?? 0) > SINK_EXIT) intoWater(0);
+      else if (riding.spec.leans && (s.fallen || s.impact >= riding.spec.fallImpact)) fall(Math.max(rideSpeed, s.impact));
       else {
         player.x = s.x;
         player.y = s.y;

@@ -69,11 +69,12 @@ describe("eau de la ville : profondeur et berges (D240)", () => {
     expect(holdShore(lake, 29, 0, 30, 0, WADE_DEPTH, 1).blocked).toBe(false);
   });
 
-  it("en voiture, l'eau freine puis arrête au bord", () => {
+  it("en voiture, l'eau freine, puis on y entre et l'on coule (D242)", () => {
     const s = createVehicle(-40, 20, Math.PI / 2, lake);
     for (let i = 0; i < 60 * 12; i++) stepVehicle(s, CAR, { throttle: 1, brake: 0, steer: 0 }, DT, lake, new Colliders());
-    expect(waterDepth(lake, s.x, s.y)).toBeLessThanOrEqual(CAR_DEPTH + 0.05);
     expect(s.x).toBeGreaterThan(1);
+    expect(s.drowned).toBe(true);
+    expect(waterDepth(lake, s.x, s.y)).toBeGreaterThan(CAR_DEPTH);
   });
 });
 

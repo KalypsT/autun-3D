@@ -221,7 +221,7 @@ réécrit les blocs de relief fins publiés, puis le relief grossier.
 | **0. Relevés** | noms des plans d'eau (OSM) ; liste des polygones touchés par la mer (exclus) ; rivières en ruban de 6 m ; types de berges (pente, quai, mur : hauteur du bord au-dessus du niveau, au LiDAR) ; écarts entre contour et eau réelle ; arbres, mobilier ou murs dans les polygones ; captures « avant » | aucun | D239 |
 | **1. Fond et niveau** (fait, §10) | `build_water.py` (plans `wz`, creusement, relief grossier) ; dessin de la surface au niveau, eau lointaine, eau de la ville sur la carte et la minimap ; registre `waters.ts` et `waterAt` ; `shore.ts` généralisé ; canards, hérons, reflet du feu d'artifice | on ne marche plus sur l'eau : on y entre jusqu'à la taille ; véhicules freinés puis arrêtés comme à la mer | D240 |
 | **2. Nage** (fait, §11) | état nage du joueur ; pose ; sortie (pente, bord bas) ; armes rangées ; sons, rides, gerbes ; caméra ; police qui attend au bord | on nage dans l'eau de la ville ; la mer ne change pas | D241 |
-| **3. Véhicules qui coulent** | fin `drowned` ; flottaison, calage, enfoncement ; sortie du conducteur ; épave au fond ; deux-roues | une voiture qui entre dans le lac coule et ne repart plus | D242 |
+| **3. Véhicules qui coulent** (fait, §12) | fin `drowned` ; flottaison, calage, enfoncement ; sortie du conducteur ; épave au fond ; deux-roues | une voiture qui entre dans le lac coule et ne repart plus | D242 |
 | Ensuite | plan du **décor du lac** (`docs/plans/vallon-lac.md`) : base de loisirs, cale, pontons (avec bord bas pour sortir de l'eau), chemin du tour du lac, zones en pente douce | | |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
@@ -309,4 +309,15 @@ Fait. Ce qui diffère du plan :
 - **Pas encore** : rides derrière le nageur et gerbe visible (seul le son existe, plouf et brasse).
 
 Reste pour le lot 3 : les véhicules qui coulent.
+
+## 12. Lot 3 : les véhicules qui coulent (5 novembre 2026, D242)
+
+Fait, comme prévu au §5, avec ces précisions :
+- **Seuils** : gué jusqu'à 0,5 m (freiné) ; moteur noyé au-delà de 0,7 m ; au-delà de 0,8 m la voiture coule : elle flotte, bas de caisse 0,6 m sous la surface et nez qui plonge, en dérivant, puis s'enfonce de 0,35 m/s jusqu'au fond. On en sort tout seul au bout de 2,2 s, à la nage. Deux-roues : on tombe à l'eau dès 0,35 m, sans blessure, et l'engin reste noyé, couché.
+- **Panne** : `VehicleDamage.drown()`, une fin « breakdown » marquée `drowned`, sans feu ni fumée ; le véhicule ne se reprend plus.
+- **L'épave** : posée au fond ; ce n'est plus un obstacle (un nageur passe au-dessus) ; une tache sombre la signale à la surface (l'eau est opaque) ; retirée au-delà de la distance des épaves (D111) ; jamais enregistrée (une voiture de stationnement revient intacte à sa place).
+- **Une voiture qui part seule** (sautée en roulant) se noie de même.
+- **Non traité** : la circulation et la police ne quittent pas la route, elles n'entrent jamais dans l'eau ; aucun cas à gérer.
+
+L'eau de la ville est terminée (lots 0 à 3). Suite : le plan du décor du plan d'eau du Vallon.
 

@@ -293,6 +293,8 @@ export class Fleet {
     for (const v of this.vehicles) {
       // La locomotive du petit train n'est jamais enregistrée : une partie remet le train sur son circuit (D118).
       if (v.def.train) continue;
+      // Une épave noyée (D242) n'est pas enregistrée : la voiture d'une place de stationnement y reviendra intacte.
+      if (v.damage.drowned) continue;
       const s = v.state, h = v.home;
       const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
       // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
@@ -337,6 +339,18 @@ export class Fleet {
   park(v: Vehicle): void {
     v.ridden = false;
     const s = v.state;
+    // Noyé (D242) : il finit de couler et se pose au fond ; sous l'eau, ce n'est plus un obstacle.
+    if (v.damage.drowned) {
+      delete s.sink;
+      this.settle(v);
+      if (v.model) {
+        this.scene.remove(v.model.group);
+        v.model.dispose();
+        v.model = null;
+      }
+      this.dirty = true;
+      return;
+    }
     this.colliders.currentTag = `veh:${v.id}`;
     for (const [off, r] of v.spec.hull) this.colliders.addCircle(s.x + Math.sin(s.heading) * off, s.y + Math.cos(s.heading) * off, r);
     this.colliders.currentTag = null;

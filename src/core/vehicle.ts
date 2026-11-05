@@ -1,7 +1,7 @@
 import { BREAKABLE, BREAK_IMPACT_KEEP, breaks, speedKept } from "./breakables";
 import type { Colliders } from "./collision";
 import type { HeightField } from "../data/types";
-import { BIKE_DEPTH, CAR_DEPTH, hasWater, onDeck, shoreNormal, waterDepth } from "./shore";
+import { BIKE_DEPTH, CAR_DEPTH, cityDepth, hasWater, onDeck, seaDepth, shoreNormal } from "./shore";
 
 /**
  * Véhicules : logique pure. Modèle « bicyclette » dynamique (deux essieux, pneus à rigidité de dérive
@@ -339,7 +339,24 @@ export interface VehicleState {
    */
   vz: number;
   air: number;
+  /** Eau de la ville (D242) : moteur noyé (l'eau a passé `STALL_DEPTH`) ; l'appelant en fait une panne. */
+  drowned?: boolean;
+  /** Temps (s) passé à couler (l'eau a passé `SINK_DEPTH`) : le véhicule flotte un instant, puis s'enfonce jusqu'au fond. */
+  sink?: number;
 }
+
+/**
+ * Véhicule dans l'eau de la ville (D242) : jusqu'à `CAR_DEPTH` on passe un gué, freiné ; au-delà de `STALL_DEPTH` le moteur est noyé ; au-delà
+ * de `SINK_DEPTH`, il coule : il flotte d'abord, le bas de caisse `FLOAT_DRAFT` sous la surface, le nez qui plonge, puis s'enfonce de
+ * `SINK_RATE` m/s jusqu'au fond. Un deux-roues tombe dès `BIKE_DEPTH`. En mer, rien ne change (D105) : on s'arrête au bord.
+ */
+export const STALL_DEPTH = 0.7;
+export const SINK_DEPTH = 0.8;
+export const FLOAT_DRAFT = 0.6;
+export const SINK_RATE = 0.35;
+const SINK_PITCH = 0.15;
+/** Freinage de l'eau quand le véhicule flotte (1/s) : il dérive encore un peu. */
+const FLOAT_DRAG = 1.2;
 
 export interface DriveInput {
   /** Accélérateur 0-1. */
@@ -651,6 +668,18 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
     if (s.wheelie !== 0) {
       s.z += wheelieLift(s, spec);
       s.pitch += s.wheelie;
+    }
+  }
+  // En train de couler (D242) : le véhicule flotte au-dessus du fond, puis s'enfonce ; ni vol ni réception tant qu'il flotte.
+  if (s.sink) {
+    const level = terrain.waterAt?.(s.x, s.y);
+    const fz = level === undefined ? -Infinity : level - FLOAT_DRAFT - SINK_RATE * s.sink;
+    if (fz > s.z) {
+      s.z = fz;
+      s.air = 0;
+      s.vz = 0;
+      s.wheelie = 0;
+      s.pitch = -SINK_PITCH * Math.min(1, s.sink / 2);
     }
   }
   s.wheel += (s.speed * dt) / spec.wheelRadius;
@@ -968,7 +997,28 @@ function integrate(s: VehicleState, spec: VehicleSpec, input: DriveInput, dt: nu
  */
 function wade(s: VehicleState, spec: VehicleSpec, terrain: HeightField, px: number, py: number, dt: number): void {
   if (!hasWater(terrain)) return;
-  const depth = waterDepth(terrain, s.x, s.y, s.z);
+  const sea = seaDepth(terrain, s.x, s.y, s.z), city = cityDepth(terrain, s.x, s.y, s.z);
+  if (city > sea) {
+    // Eau de la ville (D242) : on y entre ; elle noie le moteur, puis le véhicule coule (un deux-roues : on tombe).
+    if (s.sink) {
+      s.sink += dt;
+      // Il flotte en coulant : l'eau le freine moins que sur le fond, il dérive encore un peu ; posé au fond, il s'arrête.
+      const floating = s.z - terrain.heightAt(s.x, s.y, s.z) > 0.05;
+      const f = Math.max(0, 1 - (floating ? FLOAT_DRAG : 3 * Math.min(city, 1.5)) * dt);
+      s.vx *= f;
+      s.vy *= f;
+      return;
+    }
+    if (city <= 0.05) return;
+    const k = Math.max(0, 1 - 3 * Math.min(city, 1.5) * dt);
+    s.vx *= k;
+    s.vy *= k;
+    if (city > (spec.leans ? BIKE_DEPTH : STALL_DEPTH)) s.drowned = true;
+    if (spec.leans && city > BIKE_DEPTH) s.fallen = true;
+    if (!spec.leans && city > SINK_DEPTH) s.sink = dt;
+    return;
+  }
+  const depth = sea;
   if (depth <= 0.05) return;
   const k = Math.max(0, 1 - 3 * depth * dt);
   s.vx *= k;

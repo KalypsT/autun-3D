@@ -4988,3 +4988,22 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Surplace](captures/d241-surplace.jpg)
 ![Crawl](captures/d241-crawl.jpg)
 
+## 2026-11-05 — D242. L'eau de la ville, lot 3 : les véhicules qui coulent (plan `docs/plans/eau.md`, §5 et §12)
+
+**Demande de l'utilisateur** : lancer le lot 3. Choix déjà faits (D239) : une voiture coule et tombe en panne ; un gué peu profond se passe ; l'épave reste au fond et disparaît quand on s'éloigne.
+
+**Physique** (`wade`, `src/core/vehicle.ts`) : dans l'eau de la ville, plus d'arrêt au bord (la mer garde le sien, D105). L'eau freine (comme avant) ; **gué** jusqu'à `CAR_DEPTH` (0,5 m) ; au-delà de `STALL_DEPTH` (0,7 m), **moteur noyé** (`state.drowned`) ; au-delà de `SINK_DEPTH` (0,8 m), la voiture **coule** (`state.sink`, temps passé à couler) : elle flotte, bas de caisse `FLOAT_DRAFT` (0,6 m) sous la surface, nez qui plonge (0,15 rad), freinée doucement (elle dérive), puis s'enfonce de `SINK_RATE` (0,35 m/s) jusqu'au fond, sans vol ni choc de réception ; posée au fond, l'eau l'arrête. **Deux-roues** : au-delà de `BIKE_DEPTH` (0,35 m), moteur noyé et chute.
+
+**Panne** (`VehicleDamage.drown`) : fin « breakdown » marquée `drowned`, sans feu ni fumée, idempotente ; `repair` l'efface.
+
+**Dans le jeu** : la voiture conduite se noie ; au bout de 2,2 s à couler (l'eau aux vitres), on en sort tout seul, à la nage (plouf, aucune blessure) ; d'un deux-roues, on tombe à l'eau de même, l'engin reste couché. Une voiture partie seule (sautée en roulant) se noie aussi. **L'épave** se pose au fond (`Fleet.park`) sans obstacle (on nage au-dessus) ; une **tache sombre** la signale à la surface (un disque translucide par épave) ; elle disparaît au-delà de la distance des épaves (`EXPLOSION.vanishDistance`) ; elle n'est **pas enregistrée** (une voiture de stationnement revient intacte à sa place).
+
+**Vérifié** dans le navigateur : depuis la berge nord du Vallon, accélérateur tenu, la voiture entre dans le lac, son moteur se noie (y = 633), elle flotte en dérivant puis s'enfonce ; on en sort à la nage (y = 627) ; la tache de l'épave est visible.
+
+**Tests** (+5, 1 272 au total, `src/core/sink.test.ts`) : gué de 30 cm passé sans noyer le moteur ; entre 0,7 et 0,8 m, moteur noyé sans couler ; dans l'eau profonde, la voiture flotte, nez qui plonge, coule jusqu'au fond sans choc et s'arrête ; deux-roues qui tombe ; panne définitive sans feu, idempotente. Le test du lot 1 « la voiture s'arrête au bord » devient « elle y entre et coule ».
+
+**Non traité** : la circulation et la police restent sur la route et n'entrent jamais dans l'eau ; un véhicule garé poussé à l'eau par un choc reste où il s'arrête (il n'est pas simulé en roulant).
+
+![La voiture coule](captures/d242-voiture-coule.jpg)
+![À la nage, l'épave sous la surface](captures/d242-epave.jpg)
+
