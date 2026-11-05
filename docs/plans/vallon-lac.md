@@ -140,7 +140,7 @@ Réponses au §11.
 | Lot | Contenu | Résultat dans le jeu | Décision |
 |---|---|---|---|
 | **0. Relevés** (fait, §12) | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
-| **1. Le chemin** | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
+| **1. Le chemin** (fait, §13) | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
 | **2. La base nautique** | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
 | **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
@@ -232,3 +232,33 @@ On prendra celle des photos : 0,3 m pour les flottants, 0,45 m pour les fixes su
 ![Rive est, avant](../captures/vallon-avant-rive-est.jpg)
 ![La digue, avant](../captures/vallon-avant-digue.jpg)
 ![La base nautique, avant](../captures/vallon-avant-base.jpg)
+
+## 13. Lot 1 : le chemin (5 novembre 2026, D244)
+
+Fait. Étape `tools/data/build_vallon_path.py` : `--trace` écrit le tracé recalé (`tools/data/vallon_path.json`, versionné), la pose l'applique d'après
+`vallonPath` de `manual.json`. Une deuxième passe ne change rien.
+
+- **Tracé** : l'axe OSM décalé du milieu mesuré (médiane glissante sur 5 stations, interpolée sous les arbres, bornée à 4,5 m), un point tous les 2 m.
+  Trois tronçons de boucle (sud et ouest 983 m, digue 223 m, est 657 m) et les allées du sud prises dans OSM (Jacques de la Comble 2,5 m, Émile Château 1,2 m).
+  Le raccord de 42 m par la base reste aux allées en enrobé déjà dessinées. Le gué en pas japonais n'est pas fait (lot 4).
+- **Sol** : nouvelle couche `path_gravel` (stabilisé clair `#eedcb6`, 4 cm au-dessus du relief, au-dessus de la pelouse), 6 535 m² dans 9 tuiles, moins l'eau (0,4 m),
+  les bâtiments et les passerelles.
+- **Largeurs** : 3,2 m, et 2 m sur la digue. La crête de la digue **n'est pas aplanie** : le dévers mesuré (6 à 11 %) prenait le relief à 1,5 m de l'axe, déjà dans les talus ;
+  à 2 m de large, le chemin posé sur le relief ne montre pas de dévers gênant en capture.
+- **Arbres** : 11 poussés hors du chemin (à largeur / 2 + 1,2 m).
+- **Roseaux** : 686 m de bord, en plages de 12 m (65 % gardées), à moins de 18 m du chemin, hors des pontons, de la cale, de la base et des deux pelouses de pêche ;
+  touffes de 6 à 8 lames tous les 30 cm, de 0,9 à 1,65 m, un épi brun sur quatre (`src/render/reeds.ts`). Environ 45 000 triangles de plus sur la vue de la rive est
+  (174 000 → 219 000) : à surveiller au banc.
+- **Lampadaires** : 16 sur la rive est, un tous les 32 m, côté terre, crosse vers le chemin ; pas de lampadaires au sud ni sur la digue.
+- **Grillage** : la clôture de la rive est (OSM w247999124) passe en grillage vert à poteaux plats (`look: "mesh"` des murs), 1,8 m au lieu de 3,2 m ; on peut l'escalader.
+- **Navigation** : 29 arêtes piétonnes élargies à la largeur du chemin. Fréquentation inchangée (lot 5).
+- **Carte et minimap** : le chemin est dessiné (`#e8cf9e`) ; sur la digue, où il longe du papier et non de la pelouse, il se distingue mal (palette de la carte réduite).
+- **Sud « sauvage modéré »** (§11) : pas de lampadaires, roseaux comme ailleurs ; l'herbe plus haute du sud n'est pas faite (elle viendra avec la vie du lac, lot 5).
+
+Tests (+10, `src/data/vallon-path.test.ts`) : boucle de 1,8 à 2 km refermée, largeurs, axe hors de l'eau et à plus de 2 m du bord, surface du sol, aucun arbre sur le chemin,
+lampadaires côté terre et tournés vers le chemin, roseaux au bord et hors des zones exclues, maillage des roseaux fini et borné, grillage, largeur des arêtes piétonnes.
+
+![La rive est](../captures/d244-rive-est.jpg)
+![La digue](../captures/d244-digue.jpg)
+![Vue haute](../captures/d244-haut.jpg)
+![La rive est, la nuit](../captures/d244-nuit.jpg)

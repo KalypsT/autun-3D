@@ -137,6 +137,29 @@ export function fenceMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ map: fenceMap(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.2 });
 }
 
+let meshTexture: THREE.CanvasTexture | null = null;
+/** Grillage soudé (D244) : mailles rectangulaires vert sombre, lisse haute, sur fond transparent ; un motif fait 1,28 m de large. */
+function meshMap(): THREE.CanvasTexture {
+  if (meshTexture) return meshTexture;
+  const cv = document.createElement("canvas");
+  cv.width = 128;
+  cv.height = 128;
+  const g = cv.getContext("2d")!;
+  g.fillStyle = "#2f5f3e";
+  for (let i = 0; i < 16; i++) g.fillRect(i * 8, 0, 2, 128);
+  for (let j = 0; j < 10; j++) g.fillRect(0, 2 + j * 13, 128, 2);
+  g.fillRect(0, 0, 128, 4);
+  meshTexture = canvasTexture(cv, { srgb: true, repeat: true });
+  meshTexture.wrapT = THREE.ClampToEdgeWrapping;
+  return meshTexture;
+}
+
+export function meshFenceMaterial(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ map: meshMap(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.7, metalness: 0.1 });
+}
+
+const MESH_POST = new THREE.Color("#2f5f3e");
+
 export interface WallSinks {
   /** Murs pleins (texturés comme les façades). */
   solid: MeshBuilder;
@@ -145,6 +168,8 @@ export interface WallSinks {
   solidColor: THREE.Color;
   cap: MeshBuilder;
   fence: UvMeshBuilder;
+  /** Grillages verts (`look: "mesh"`, D244) ; absent : avec les barreaudages. */
+  mesh?: UvMeshBuilder;
   posts: MeshBuilder;
 }
 
@@ -167,7 +192,8 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
       const zt1 = zb1 + 0.2 + w.height, zt2 = zb2 + 0.2 + w.height;
       if (open) {
         const h = w.height;
-        sinks.fence.quad(
+        const mesh = w.look === "mesh";
+        (mesh ? sinks.mesh ?? sinks.fence : sinks.fence).quad(
           toThree(x1, y1, zb1 + 0.2), toThree(x2, y2, zb2 + 0.2), toThree(x2, y2, zb2 + 0.2 + h), toThree(x1, y1, zb1 + 0.2 + h), toThree(nx, ny, 0),
           [s / 1.28, 0], [(s + len) / 1.28, 0], [(s + len) / 1.28, 1], [s / 1.28, 1], new THREE.Color(1, 1, 1),
         );
@@ -176,7 +202,8 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
         for (let k = 0; k <= posts; k++) {
           const t = k / posts;
           const px = x1 + (x2 - x1) * t, py = y1 + (y2 - y1) * t;
-          box(sinks.posts, px, py, 0.06, 0.06, Math.atan2(ty, tx), terrain.heightAt(px, py) - 0.1, terrain.heightAt(px, py) + 0.15 + h, COLORS.iron);
+          if (mesh) box(sinks.posts, px, py, 0.08, 0.03, Math.atan2(ty, tx), terrain.heightAt(px, py) - 0.1, terrain.heightAt(px, py) + 0.2 + h, MESH_POST);
+          else box(sinks.posts, px, py, 0.06, 0.06, Math.atan2(ty, tx), terrain.heightAt(px, py) - 0.1, terrain.heightAt(px, py) + 0.15 + h, COLORS.iron);
         }
       } else {
         const hw = thick / 2;

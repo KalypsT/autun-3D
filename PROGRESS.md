@@ -1792,3 +1792,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Prochaine étape : le chemin.
 
 ![Rive est, avant](docs/captures/vallon-avant-rive-est.jpg)
+
+**Le plan d'eau du Vallon, lot 1 : le chemin du tour du lac (5 novembre 2026)** (D244)
+- On fait le tour du lac sur un vrai chemin en stabilisé clair : 1,9 km, 3,2 m de large, 2 m sur la digue du nord, plus les deux allées du sud.
+- Roseaux et herbes hautes au bord de l'eau, par plages, sauf aux pontons, à la cale, à la base et sur les pelouses des pêcheurs.
+- Rive est : grillage vert le long du chemin (au lieu des barreaux noirs) et lampadaires allumés la nuit.
+- Le chemin est sur la carte et la minimap ; la navigation des piétons prend sa vraie largeur.
+- Prochaine étape : la base nautique.
+
+![La rive est](docs/captures/d244-rive-est.jpg)
+![La digue](docs/captures/d244-digue.jpg)

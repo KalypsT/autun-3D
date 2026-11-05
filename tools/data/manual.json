@@ -143,5 +143,27 @@
       {"name": "Étang perché (sud)", "at": [268, -1280], "depth": 1.0, "slope": 0.25}
     ],
     "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}]
+  },
+  "_vallonPath": "Chemin du tour du plan d'eau du Vallon (D244, build_vallon_path.py ; plan docs/plans/vallon-lac.md, §12) : `sections` : tronçons de la boucle en abscisse s (m) de l'axe du relevé (vallon_survey.json), largeur w (m) mesurée à l'orthophotographie, voies OSM qu'ils remplacent (largeur des arêtes piétonnes) ; le raccord par la base (s 1205 à 1247) reste aux allées en enrobé de la base. `osmWays` : allées du sud prises telles quelles dans OSM. `meshFences` : clôtures (identifiant dans la tuile, ici la voie OSM) en grillage vert, hauteur vue sur les photos (1,8 m ; 3,2 m avant, valeur par défaut). `lamps` : lampadaires (photos de la rive est), un tous les `step` m entre les abscisses s du tronçon, à `off` m du bord, côté terre. Roseaux : le long du bord du lac à moins de `reedsNearPath` m du chemin, plages de 12 m gardées à `share`, sauf `noReeds` (cercles x, y, r : pontons, cale ; boîtes x0, y0, x1, y1 : base nautique, pelouses de pêche).",
+  "vallonPath": {
+    "sections": [
+      {"name": "Allée Marcel Lucotte, sud et ouest", "s": [0, 982], "w": 3.2, "osm": [223427553]},
+      {"name": "Allée Marcel Lucotte, digue", "s": [982, 1205], "w": 2.0, "osm": [1548131445, 842375498]},
+      {"name": "Allée Marcel Lucotte, est", "s": [1247, 1905], "w": 3.2, "osm": [1525431705]}
+    ],
+    "osmWays": [
+      {"name": "Allée Jacques de la Comble", "osm": 234449480, "w": 2.5},
+      {"name": "Allée Jacques de la Comble, passerelle", "osm": 223582725, "w": 2.5},
+      {"name": "Allée Émile Château", "osm": 234449490, "w": 1.2},
+      {"name": "Allée Émile Château, gué", "osm": 1290256589, "w": 1.2}
+    ],
+    "lamps": [{"path": "Allée Marcel Lucotte, est", "s": [15, 520], "step": 32, "off": 0.8}],
+    "meshFences": [{"id": 247999124, "height": 1.8}],
+    "reedsNearPath": 18,
+    "share": 0.65,
+    "noReeds": {
+      "circles": [[1295, 635, 12], [1025, 310, 12], [1033, 322, 12], [1134, 146, 12], [1292, 105, 12], [1306, 606, 16]],
+      "boxes": [[1250, 540, 1390, 690], [1090, 105, 1250, 175], [995, 250, 1065, 335]]
+    }
   }
 }

@@ -22,6 +22,8 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   plaza_brick: { color: "paving4", lift: 0.072 },
   plaza_slate: { color: "paving5", lift: 0.072 },
   plaza_filet: { color: "paving6", lift: 0.065 },
+  // Chemin du tour du plan d'eau du Vallon (D244) : stabilisé clair, au-dessus de la pelouse.
+  path_gravel: { color: "paving7", lift: 0.04 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },

@@ -125,6 +125,8 @@ export interface Wall {
   height: number;
   measured: number;
   pts: number[];
+  /** Aspect d'une clôture (`fence`) : grillage vert à poteaux plats (D244, rive est du plan d'eau du Vallon) ; absent : barreaudage. */
+  look?: "mesh";
 }
 
 export interface Furniture {
@@ -1221,6 +1223,8 @@ export interface TileStructures {
   platforms: Platform[];
   /** Passages à niveau : x, y, angle de la voie ferrée. */
   crossings: [number, number, number][];
+  /** Roseaux et herbes hautes du bord du plan d'eau du Vallon (D244, build_vallon_path.py) : tracés le long du bord de l'eau, x, y. */
+  reeds?: { p: number[] }[];
 }
 
 export interface TileData {

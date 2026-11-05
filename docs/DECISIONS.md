@@ -5028,3 +5028,19 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Vue haute, avant](captures/vallon-avant-haut.jpg)
 ![Rive est, avant](captures/vallon-avant-rive-est.jpg)
 ![La base nautique, avant](captures/vallon-avant-base.jpg)
+
+## 2026-11-05 — D244. Le plan d'eau du Vallon, lot 1 : le chemin du tour du lac (plan `docs/plans/vallon-lac.md`, §3 et §13)
+
+**Données** : `tools/data/build_vallon_path.py`. `--trace` recale l'axe OSM de la boucle sur le milieu du chemin mesuré au lot 0 (médiane glissante, bornée à 4,5 m) et écrit `tools/data/vallon_path.json` (versionné, le tracé ne dépend plus d'OSM) ; la pose (d'après `vallonPath` de `manual.json`) écrit la couche de sol `path_gravel` (6 535 m², 9 tuiles), pousse 11 arbres hors du chemin, pose 16 lampadaires sur la rive est (identifiants −(871 000 000 + n)), passe la clôture de la rive est (w247999124) en grillage de 1,8 m (`look: "mesh"`), écrit les roseaux (`reeds`, 686 m) dans les ouvrages des tuiles et élargit 29 arêtes piétonnes. Idempotente. Puis `build_map.py --images` (couleur `path_gravel`). Largeurs : 3,2 m, 2 m sur la digue ; allées du sud 2,5 et 1,2 m.
+
+**Rendu** : couche `path_gravel` (`src/render/ground.ts`, couleur `paving[7]` des thèmes, 4 cm au-dessus du relief) ; roseaux en touffes de lames fines dessinées des deux côtés (`src/render/reeds.ts`, appelé par `stylized.ts`) ; grillage vert (`meshFenceMaterial`, maillage « grillages » à part des barreaudages, poteaux plats verts).
+
+**Pas fait** : aplanir la crête de la digue (inutile en capture) ; le gué en pas japonais (lot 4) ; l'herbe plus haute du sud (lot 5). Sur la carte, le chemin de la digue se lit mal sur le papier.
+
+**Coût** : environ 45 000 triangles de plus sur la vue de la rive est (174 000 → 219 000), cinq appels de dessin de plus.
+
+**Tests** (+10, 1 282 au total ; `src/data/vallon-path.test.ts`) : boucle refermée et longueur, largeurs, axe hors de l'eau à plus de 2 m du bord, surface du sol hors de l'eau, aucun arbre sur le chemin, lampadaires côté terre et crosse vers le chemin, roseaux au bord et hors des zones exclues, maillage des roseaux fini et borné, grillage, arêtes piétonnes.
+
+![La rive est](captures/d244-rive-est.jpg)
+![La digue](captures/d244-digue.jpg)
+![Vue haute](captures/d244-haut.jpg)
