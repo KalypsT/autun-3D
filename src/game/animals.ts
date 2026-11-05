@@ -193,7 +193,10 @@ export class AnimalsController {
         v.update(list.map((c) => ({
           x: c.x, y: c.y, heading: c.heading, phase: c.phase, coat: c.coat, size: c.species === "heron" ? 1.1 : c.size,
           flying: c.state === CRITTER.flee,
-          z: c.species === "duck" ? ground.heightAt(c.x, c.y) + 0.06 : c.species === "heron" ? this.terrain.heightAt(c.x, c.y) + c.z : this.terrain.heightAt(c.x, c.y) + c.z,
+          // Le canard flotte à la surface, le héron a de l'eau aux pattes au plus (fond creusé sous l'eau de la ville, D240).
+          z: c.species === "duck" ? (this.terrain.waterAt?.(c.x, c.y) ?? ground.heightAt(c.x, c.y)) + 0.06
+            : c.species === "heron" ? Math.max(this.terrain.heightAt(c.x, c.y), (this.terrain.waterAt?.(c.x, c.y) ?? -Infinity) - 0.3) + c.z
+            : this.terrain.heightAt(c.x, c.y) + c.z,
         })));
       }
     }

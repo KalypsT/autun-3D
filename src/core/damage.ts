@@ -93,6 +93,8 @@ export class VehicleDamage {
   end: EndMode | null = null;
   /** Temps depuis la fin (s) : l'épave brûle, puis fume, puis peut disparaître (D111). */
   sinceEnd = 0;
+  /** Noyé dans l'eau de la ville (D242) : une panne (`end` « breakdown ») sans feu ni fumée ; l'épave reste au fond, n'est pas enregistrée. */
+  drowned = false;
   /** Augmente à chaque changement (points retirés, réparation, reprise) : le dessin ne se refait que quand il bouge. */
   version = 0;
   private tierSeen: DamageTier = "ok";
@@ -161,6 +163,18 @@ export class VehicleDamage {
     if (this.burning >= DAMAGE.burn) this.finish();
   }
 
+  /** Moteur noyé (D242) : panne définitive, sans feu ni fumée, quel que soit l'état du véhicule. */
+  drown(): void {
+    if (this.drowned) return;
+    this.drowned = true;
+    this.version++;
+    if (this.end) return;
+    this.burning = -1;
+    this.sinceEnd = 0;
+    this.end = "breakdown";
+    this.pending.push({ kind: "breakdown" });
+  }
+
   /** Remet le véhicule à neuf (garage). */
   repair(): void {
     this.health = DAMAGE.max;
@@ -168,6 +182,7 @@ export class VehicleDamage {
     this.burning = -1;
     this.end = null;
     this.sinceEnd = 0;
+    this.drowned = false;
     this.tierSeen = "ok";
     this.pending.length = 0;
     this.version++;

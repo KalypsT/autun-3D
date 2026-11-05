@@ -16,6 +16,7 @@ import { Atmosphere } from "./render/atmosphere";
 import { dateFromParams, newGameDate } from "./core/calendar";
 import { weatherParam } from "./core/weather";
 import { createSea } from "./render/sea";
+import { createInlandWater } from "./render/inland-water";
 import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
@@ -119,6 +120,8 @@ async function main(): Promise<void> {
   scene.add(terrainView.group);
   const sea = createSea(world.manifest, style.toon);
   if (sea) scene.add(sea);
+  const farWater = createInlandWater(world.terrain.waters, style.toon);
+  if (farWater) scene.add(farWater);
 
   const t0 = performance.now();
   const colliders = new Colliders();

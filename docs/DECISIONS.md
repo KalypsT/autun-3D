@@ -4910,3 +4910,100 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La cour](captures/d238-cour.jpg)
 ![Le collectif de logements](captures/d238-logements.jpg)
 ![Le portail la nuit](captures/d238-portail-nuit.jpg)
+
+## 2026-11-05 — D239. L'eau de la ville, lot 0 : relevés (plan `docs/plans/eau.md`)
+
+**Demande de l'utilisateur** : l'eau est une surface dure sur laquelle on marche et on roule, partout. Il veut **nager dans l'eau de la ville** (pas en mer, qui reste une limite), qu'une **voiture coule et tombe en panne**, qu'une voiture passe un gué peu profond (freinée, elle cale au-delà de 0,5 m), que **la police attende au bord sans tirer**, pas d'endurance à la nage, pas de plongée. La profondeur réelle est inconnue et sans importance, tant que ça ressemble à un vrai lac. Ordre retenu : l'eau d'abord, le décor du plan d'eau du Vallon ensuite, dans un plan à part.
+
+**Constat** : l'eau de la ville est un aplat posé sur le relief nu (`buildWater`). Sous l'eau, le relief LiDAR est la surface de l'eau (le laser ne la traverse pas) : le jeu n'y voit qu'un sol. La mer (D105) a déjà la bonne mécanique (fond creusé, niveau, règle de profondeur de `src/core/shore.ts`) : l'eau de la ville la reprendra, avec un niveau par plan d'eau.
+
+**Aucun changement du jeu** : le plan, un script de relevé (`tools/data/survey_water.py`, sur les données publiées, noms par l'API OpenStreetMap), ses chiffres (`tools/data/water_survey.json`) et trois captures « avant » (`docs/captures/eau-avant-*.jpg`).
+
+**Résultats** (détail au §9 du plan) :
+- 62 plans d'eau, 48,2 ha. **Plan d'eau du Vallon** : 20,85 ha, niveau −25,41 (écart 0,15 m), berges en pente douce à 71 %, aucun pont. **L'Arroux** (quatre polygones, 20,3 ha en ville) : niveau de −42,9 à −37,5, 35 % de bords hauts dans la traversée de la ville, dont un de 496 m sans sortie, quatre ponts dont une passerelle à 0,34 m de l'eau. **Le Ternin**, un étang en amont du Vallon, 31 petits plans d'eau, dont des étangs perchés dans les collines du sud.
+- La mer ne garde que la bande de 40 m près de la côte : l'Arroux et le Ternin sont de l'eau de la ville presque partout.
+- L'ajustement d'un plan incliné est trop bruité (le Vallon sort avec 0,6 m/km de pente, comme l'Arroux) : on prendra la médiane par morceau de tuile, et un seul niveau pour un plan d'eau fermé.
+- 67 arbres dans le polygone du Vallon (queue sud), 266 dans l'Arroux : ils resteront sur des hauts-fonds. Aucun mobilier, mur ni bâtiment dans l'eau.
+- Rivières en ruban de 6 m : l'Acaron (2,5 km, lit déjà visible 0,4 à 1,5 m sous les rives) et des bouts du Ternin ; pas creusées.
+- **Deux défauts trouvés** : la carte et la minimap ne peignent pas l'eau de la ville (`build_map.py` lit la couche `water` des sols, vide depuis que l'eau est dans `structures/`), et l'eau lointaine (au-delà des tuiles détaillées) n'est pas dessinée. Ajoutés au lot 1.
+
+**Limites** : profondeurs inventées ; classement des berges sur le relief à 1 m (un mur fin peut passer pour une pente) ; « eau hors contour » est un indice, pas une mesure. Aucun test (aucun code de jeu touché).
+
+![Vue haute du Vallon, avant](captures/eau-avant-vallon-haut.jpg)
+![Debout sur le lac](captures/eau-avant-vallon-surface.jpg)
+![Voiture sur le lac](captures/eau-avant-voiture-sur-le-lac.jpg)
+
+## 2026-11-05 — D240. L'eau de la ville, lot 1 : le fond et le niveau (plan `docs/plans/eau.md`, §3 et §10)
+
+**Demande de l'utilisateur** : lancer le lot 1 (D239).
+
+**Données** (`tools/data/build_water.py`, nouvelle étape juste après `build_coast.py`, idempotente, sur les données publiées) :
+- Chaque polygone d'eau de `structures/` est découpé au premier passage en partie « ville » et partie « côte » (à moins de 40 m de la côte : la mer s'en charge). Nouveau champ `wz` : un plan `[a, b, c]` par polygone (z = a·x + b·y + c), `null` pour une partie « côte » (posée sur le relief, comme avant).
+- **Niveau** : un seul pour un plan d'eau fermé (`closed` dans `manual.json` pour le Vallon, ou moins d'1 ha, ou morceaux d'accord à 0,4 m près : médiane du relief) ; pour une rivière, le quart bas du relief de chaque morceau de tuile, puis un plan qui passe par ses coutures avec ses voisins (pente bornée à 4 m/km). Écart aux coutures : 4 mm en médiane, 9 cm à 90 %, 25 cm au pire. Vallon : **−25,41**. Arroux : de −42,8 à −37,5.
+- **Fond** : `niveau − min(P, s·d)`, d la distance à la cellule sèche la plus proche ; cellules d'eau : dans le polygone et à moins de 0,3 m au-dessus du niveau ; une cellule à moins de 2,5 m d'un arbre est sèche (les arbres restent sur des hauts-fonds) ; lissage de 1,5 m. P et s par plan d'eau (`water` de `manual.json`, profondeurs inventées) : Vallon 3 m, pente 0,25, queue sud en marais à 0,4 m ; Arroux 1,6 m, pente 0,2 ; bassins à bords hauts 1 m ; autres 1,5 m (0,8 m sous 0,2 ha). 52 plans d'eau, 379 000 cellules creusées, 93 blocs de relief fins réécrits ; relief grossier inchangé. Un creux d'origine (trou du LiDAR, 1 à 5 m sous le niveau) dans l'anse nord-ouest du Vallon est gardé.
+- **`water.json`** (44 ko) : toutes les parties « ville » (simplifiées à 0,3 m) et leur plan.
+- **Carte** : `build_map.py` lit l'eau dans `structures/` (la couche de sol `water` était vide) ; `--images` refait seulement les images de fond, sans OpenStreetMap ni `places.json`. Le lac, l'Arroux et les étangs sont sur la carte et la minimap.
+
+**Jeu** :
+- `Waters` (`src/core/waters.ts`) : registre des morceaux, index par carrés de 25 m, `levelAt(x, y)`. Chargé avec le relief (`loadWorldBase`) ; `HeightField.waterAt` (relief, relief nu, relief avec toits).
+- `shore.ts` : la profondeur compte la mer et l'eau de la ville, **mesurée sous la surface où l'on se tient** (`zHint`) : nulle sur un tablier de pont, celle du fond dessous. Le piéton (1 m), la voiture (0,5 m) et le deux-roues (0,35 m) gardent les règles de la mer : freinage puis arrêt au bord, en glissant le long de la berge.
+- Dessin : l'eau d'une tuile détaillée est posée à plat à son niveau (`planeField`), liseré et rides compris ; l'**eau lointaine** est un seul maillage pour toute la ville (`src/render/inland-water.ts`, un appel de dessin, 4 cm sous la surface des tuiles détaillées).
+- Canards à la surface ; hérons avec 30 cm d'eau aux pattes au plus ; reflet du feu d'artifice au niveau du Vallon.
+
+**Vérifié** : dans le navigateur, on entre dans le lac jusqu'à la taille et on s'arrête à 1 m de fond (y = 635,2 depuis la berge nord) ; la voiture lancée à 25 km/h est retenue roues dans l'eau ; le lac est entier vu de haut ; la minimap le montre. Une seconde passe de `build_water.py` redonne les mêmes fichiers. Aucun sol dessiné (rue, trottoir, place) n'est dans l'eau creusée.
+
+**Tests** (+9, 1 256 au total, `src/core/waters.test.ts`) : registre (trou, plan incliné), eau lointaine plate sous la surface, profondeur sous la surface tenue (pont), piéton et voiture arrêtés au bord d'un étang, données publiées (niveau et fond du Vallon, marais de la queue sud, berge nord, Arroux, profondeur nulle sur le tablier d'un pont de l'Arroux, mer inchangée).
+
+**Pas encore** (lot 2) : nager ; sorties aménagées sur les deux longs bords hauts de l'Arroux ; passerelle basse (0,34 m) en obstacle ; police qui attend au bord. Le contour OSM de l'Arroux ne suit pas partout l'eau réelle (D239).
+
+![Le Vallon vu de haut](captures/d240-vallon-haut.jpg)
+![De l'eau à la taille](captures/d240-a-pied.jpg)
+![La voiture retenue au bord](captures/d240-voiture.jpg)
+![L'Arroux](captures/d240-arroux.jpg)
+
+## 2026-11-05 — D241. L'eau de la ville, lot 2 : la nage (plan `docs/plans/eau.md`, §4 et §11)
+
+**Demande de l'utilisateur** : continuer (lot 2). Choix déjà faits (D239) : nage dans l'eau de la ville seulement, pas en mer ; la police attend au bord sans tirer ; pas d'endurance.
+
+**Le nageur** (`src/core/player.ts`, `PlayerState.swim`) :
+- On se met à nager quand l'eau de la ville dépasse **1,2 m** (on perd pied en marchant, ou on plonge d'un quai ou d'un pont : l'eau amortit la chute, aucune blessure) ; on se remet debout sous **1,0 m**. À pied, seule la mer arrête encore (`holdShore(…, seaDepth)`) : en mer, rien ne change (D105).
+- **Brasse à 1,2 m/s, crawl à 1,9 m/s** (bouton de course), accélération et freinage doux (on glisse), virages plus lents ; pieds à 0,45 m sous la surface ; pas de saut.
+- **Sortir** : là où l'on a pied, on se remet debout (berge en pente) ; un bord jusqu'à **0,8 m** au-dessus de l'eau (quai, passerelle au ras de l'eau), on s'y hisse avec le geste de l'escalade ; plus haut, c'est un mur qu'on longe. Sous un pont haut, on passe dessous.
+- Sauvegarde : un départ dans l'eau profonde se fait à la nage (`createPlayer`).
+
+**Dans le jeu** (`src/game/game.ts`) : à la nage, l'arme est rangée (reprise en sortant), pas de coup ni de tir, on ne monte dans aucun véhicule ; la caméra vise la tête au ras de l'eau et ne passe jamais sous la surface (`solveCamera`, partout) ; sons « plouf » (plus fort pour un plongeon) et brasse (`src/audio/synth.ts`, galerie de sons).
+
+**Dessin** (`swimPose`, `swimPitch` dans `src/core/character-rig.ts`, `setSwim` du modèle du joueur) : brasse (bras tendus devant puis ramenés, jambes en grenouille), crawl en nageant vite (bras alternés, battements), surplace à l'arrêt (bras écartés qui godillent, pédalage) ; le corps est basculé vers l'avant (de 0,45 rad en surplace à 1,3 rad en nageant), la tête toujours 0,22 m au-dessus de l'eau.
+
+**La police** (`src/core/officers.ts`) : un gendarme à pied s'arrête quand l'eau lui arrive à la taille (`OFFICER_WADE` = 1 m, mer et eau de la ville) ; il ne vise ni ne tire sur un nageur, et ne l'arrête pas dans l'eau. La recherche continue normalement.
+
+**Sorties aménagées** (`build_water.py`) : une suite de bords à plus de 0,8 m au-dessus de l'eau (à 1,5 m du bord), longue de plus de 150 m, reçoit une rampe tous les 100 m (3 m de large, pente 0,3). Trois rampes, sur le bras nord de l'Arroux. Le plus long bord haut du lot 0 (496 m) longe un bras étroit à moins de 0,6 m de fond : on n'y nage pas. Une seconde passe ne change rien.
+
+**Vérifié** : dans le navigateur, depuis la berge nord du Vallon, on nage (brasse, crawl, surplace) ; tête et épaules hors de l'eau à l'arrêt.
+
+**Tests** (+11, 1 267 au total, `src/core/swim.test.ts`) : on perd pied puis on nage à la surface, pas de saut, sortie par une berge en pente, se hisser sur un bord bas et longer un bord haut, nager sous un pont haut et plonger d'un pont sans se blesser, se hisser sur une passerelle au ras de l'eau, pas de nage en mer, pose finie, caméra au-dessus de l'eau, gendarmes qui attendent au bord sans tirer ni arrêter, aller-retour dans le Vallon sur les données publiées. Le test du lot 1 « on entre jusqu'à la taille » devient « on finit par nager ».
+
+**Pas encore** : rides derrière le nageur et gerbe visible (seulement le son) ; les véhicules qui coulent (lot 3).
+
+![Surplace](captures/d241-surplace.jpg)
+![Crawl](captures/d241-crawl.jpg)
+
+## 2026-11-05 — D242. L'eau de la ville, lot 3 : les véhicules qui coulent (plan `docs/plans/eau.md`, §5 et §12)
+
+**Demande de l'utilisateur** : lancer le lot 3. Choix déjà faits (D239) : une voiture coule et tombe en panne ; un gué peu profond se passe ; l'épave reste au fond et disparaît quand on s'éloigne.
+
+**Physique** (`wade`, `src/core/vehicle.ts`) : dans l'eau de la ville, plus d'arrêt au bord (la mer garde le sien, D105). L'eau freine (comme avant) ; **gué** jusqu'à `CAR_DEPTH` (0,5 m) ; au-delà de `STALL_DEPTH` (0,7 m), **moteur noyé** (`state.drowned`) ; au-delà de `SINK_DEPTH` (0,8 m), la voiture **coule** (`state.sink`, temps passé à couler) : elle flotte, bas de caisse `FLOAT_DRAFT` (0,6 m) sous la surface, nez qui plonge (0,15 rad), freinée doucement (elle dérive), puis s'enfonce de `SINK_RATE` (0,35 m/s) jusqu'au fond, sans vol ni choc de réception ; posée au fond, l'eau l'arrête. **Deux-roues** : au-delà de `BIKE_DEPTH` (0,35 m), moteur noyé et chute.
+
+**Panne** (`VehicleDamage.drown`) : fin « breakdown » marquée `drowned`, sans feu ni fumée, idempotente ; `repair` l'efface.
+
+**Dans le jeu** : la voiture conduite se noie ; au bout de 2,2 s à couler (l'eau aux vitres), on en sort tout seul, à la nage (plouf, aucune blessure) ; d'un deux-roues, on tombe à l'eau de même, l'engin reste couché. Une voiture partie seule (sautée en roulant) se noie aussi. **L'épave** se pose au fond (`Fleet.park`) sans obstacle (on nage au-dessus) ; une **tache sombre** la signale à la surface (un disque translucide par épave) ; elle disparaît au-delà de la distance des épaves (`EXPLOSION.vanishDistance`) ; elle n'est **pas enregistrée** (une voiture de stationnement revient intacte à sa place).
+
+**Vérifié** dans le navigateur : depuis la berge nord du Vallon, accélérateur tenu, la voiture entre dans le lac, son moteur se noie (y = 633), elle flotte en dérivant puis s'enfonce ; on en sort à la nage (y = 627) ; la tache de l'épave est visible.
+
+**Tests** (+5, 1 272 au total, `src/core/sink.test.ts`) : gué de 30 cm passé sans noyer le moteur ; entre 0,7 et 0,8 m, moteur noyé sans couler ; dans l'eau profonde, la voiture flotte, nez qui plonge, coule jusqu'au fond sans choc et s'arrête ; deux-roues qui tombe ; panne définitive sans feu, idempotente. Le test du lot 1 « la voiture s'arrête au bord » devient « elle y entre et coule ».
+
+**Non traité** : la circulation et la police restent sur la route et n'entrent jamais dans l'eau ; un véhicule garé poussé à l'eau par un choc reste où il s'arrête (il n'est pas simulé en roulant).
+
+![La voiture coule](captures/d242-voiture-coule.jpg)
+![À la nage, l'épave sous la surface](captures/d242-epave.jpg)
+

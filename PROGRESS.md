@@ -1749,3 +1749,38 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le portail depuis l'avenue](docs/captures/d238-portail.jpg)
 ![Vue haute](docs/captures/d238-haut.jpg)
 ![La cour](docs/captures/d238-cour.jpg)
+
+**L'eau de la ville, lot 0 : relevés (5 novembre 2026)** (D239)
+- Rien n'a changé dans le jeu : plan `docs/plans/eau.md` (fond, niveau, nage, véhicules qui coulent) et relevés de tous les plans d'eau (`tools/data/survey_water.py`).
+- Le plan d'eau du Vallon (20,85 ha), l'Arroux, le Ternin, un étang en amont du Vallon et 31 petits plans d'eau ; seule une bande de 40 m près de la côte reste à la mer.
+- Trouvé en route : la carte et la minimap ne peignent pas l'eau de la ville, et l'eau lointaine n'est pas dessinée. Ce sera corrigé au lot 1.
+
+![Debout sur le lac, avant](docs/captures/eau-avant-vallon-surface.jpg)
+
+**L'eau de la ville, lot 1 : le fond et le niveau (5 novembre 2026)** (D240)
+- On ne marche plus sur l'eau : le fond est creusé sous le plan d'eau du Vallon (3 m au milieu, marais peu profond au sud), l'Arroux (1,6 m), le Ternin et 49 étangs. On y entre jusqu'à la taille, puis on longe la berge ; une voiture est freinée et s'arrête roues dans l'eau.
+- Sur un pont, rien ne change : on passe au-dessus de l'eau.
+- L'eau lointaine est dessinée (on ne voit plus le pré au milieu du lac) ; la carte et la minimap montrent le lac, l'Arroux et les étangs.
+- Canards à la surface, reflet du feu d'artifice au niveau du lac.
+- Prochaine étape : la nage.
+
+![De l'eau à la taille](docs/captures/d240-a-pied.jpg)
+![Le Vallon vu de haut](docs/captures/d240-vallon-haut.jpg)
+
+**L'eau de la ville, lot 2 : la nage (5 novembre 2026)** (D241)
+- On nage dans le lac du Vallon, l'Arroux, le Ternin et les étangs : brasse, crawl avec le bouton de course, surplace à l'arrêt. En mer, on reste limité comme avant.
+- On sort par une berge en pente, ou en se hissant sur un bord bas (quai, passerelle au ras de l'eau) ; trois rampes taillées dans les hauts bords de l'Arroux. On peut plonger d'un pont sans se blesser.
+- À la nage, l'arme est rangée et on ne monte dans aucun véhicule. Les gendarmes attendent au bord, sans tirer.
+- Sons : plouf et brasse. Pas encore de rides visibles.
+- Prochaine étape : les voitures qui coulent.
+
+![Surplace](docs/captures/d241-surplace.jpg)
+
+**L'eau de la ville, lot 3 : les véhicules qui coulent (5 novembre 2026)** (D242)
+- En voiture, un gué peu profond se passe ; plus loin, le moteur se noie et la voiture coule : elle flotte un instant, le nez plonge, puis elle s'enfonce ; on en sort à la nage. Elle est en panne pour de bon.
+- En deux-roues, on tombe à l'eau dès qu'elle monte un peu.
+- L'épave reste au fond, signalée par une tache sombre à la surface, et disparaît quand on s'éloigne.
+- **L'eau de la ville est terminée.** Suite : le décor du plan d'eau du Vallon.
+
+![La voiture coule](docs/captures/d242-voiture-coule.jpg)
+

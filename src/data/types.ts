@@ -23,6 +23,8 @@ export interface HeightField {
   readonly yMax: number;
   /** Niveau de la mer qui entoure le monde (z local, D105) ; absent : pas de mer. */
   readonly seaLevel?: number | undefined;
+  /** Surface de l'eau de la ville en (x, y) (plans d'eau, rivières, D240), `undefined` hors de l'eau ; absent : pas d'eau de la ville. */
+  waterAt?(x: number, y: number): number | undefined;
   /** Surface avec les toits (D214) : la même sans les toits (relief et tabliers) ; absent : pas de toits. */
   readonly roofless?: HeightField;
   /** Surface avec les toits (D214) : le pan de toit sous le point (plan z = a·x + b·y + c), ou null ; absent : pas de toits. */
@@ -1210,6 +1212,8 @@ export interface TileStructures {
   decks: Deck[];
   /** Polygones d'eau découpés à la tuile : anneau extérieur puis trous. */
   water: number[][][];
+  /** Plan de la surface de chaque polygone de `water`, z = a·x + b·y + c (D240) ; null : polygone au bord de la mer, posé sur le relief. */
+  wz?: ([number, number, number] | null)[];
   streams: { p: number[]; w: number }[];
   weirs: { p: number[] }[];
   /** Voies ferrées ; `s` : 1 pour une voie de service. */

@@ -1,7 +1,9 @@
 """Fabrique les données de la carte : images de fond par kilomètre (palette du jeu) et fichier de lieux avec catégories (D33).
 
-Usage : python3 tools/data/build_map.py [--force]   (--force : retélécharge OpenStreetMap)
-Entrées : public/data/world.json et public/data/tiles/*.json (couches de sol, emprises de bâtiments, monuments des fiches),
+Usage : python3 tools/data/build_map.py [--force] [--images]   (--force : retélécharge OpenStreetMap ; --images : refait seulement les images
+        de fond et index.json, sans OpenStreetMap ni places.json)
+Entrées : public/data/world.json, public/data/tiles/*.json (couches de sol, emprises de bâtiments, monuments des fiches) et
+          public/data/structures/*.json (l'eau de la ville, D240),
           OpenStreetMap par blocs de 500 m (noms de rues, commissariat, hôpital, écoles, commerces, parkings… ; .cache/shared/map_osm),
           tools/data/places_perso.json (lieux définis à la main).
 Sorties : public/data/map/index.json, map/<id>.png (1 m par pixel) et map/<id>_2.png (2 m par pixel), un couple par kilomètre de la grille mondiale,
@@ -26,6 +28,7 @@ import coast_lib as coast
 import config as c
 
 FORCE = "--force" in sys.argv
+IMAGES_ONLY = "--images" in sys.argv
 OUT = c.OUT / "map"
 OSM_DIR = c.SHARED / "map_osm"
 PERSO = Path(__file__).resolve().parent / "places_perso.json"
@@ -269,6 +272,10 @@ def read_tiles(world):
             buildings.append(([ring, *b["holes"]], b["id"] in mon))
             if b["id"] in mon:
                 monuments.append((mon[b["id"]]["name"], mon[b["id"]].get("mhs"), Polygon(list(zip(ring[0::2], ring[1::2]))).representative_point()))
+        # L'eau est dans structures/ (D93) : la couche de sol « water » des tuiles est vide depuis, la carte n'avait plus l'eau de la ville (D240).
+        sp = c.OUT / "structures" / f"{t['id']}.json"
+        if sp.exists():
+            layers["water"] += json.loads(sp.read_text()).get("water", [])
     return layers, buildings, monuments
 
 
@@ -438,6 +445,12 @@ def main():
     print("== lecture des tuiles")
     layers, buildings, monuments = read_tiles(world)
     print(f"  {sum(len(v) for v in layers.values())} polygones de sol, {len(buildings)} bâtiments, {len(monuments)} fiches de monument")
+    if IMAGES_ONLY:
+        images, overview = build_images(world, layers, buildings)
+        (OUT / "index.json").write_text(json.dumps({
+            "version": 1, "size": KM, "levels": [RES, 2 * RES], "zone": zone, "images": images, "overview": overview,
+        }, ensure_ascii=False, indent=1))
+        return
     print("== OpenStreetMap")
     elements = fetch_osm(zone)
     osm_places, ways = osm_places_and_streets(elements, zone)

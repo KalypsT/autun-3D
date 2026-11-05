@@ -1,7 +1,7 @@
 import type { ChaseTarget } from "../core/chase";
 import type { Colliders } from "../core/collision";
 import { RoadWatch } from "../core/offenses";
-import { OFFICER, Officers, shotHitChance, type OfficerShot } from "../core/officers";
+import { OFFICER, Officers, shotHitChance, type OfficerShot, type Suspect } from "../core/officers";
 import type { VehicleSpec, VehicleState } from "../core/vehicle";
 import { BODY_MID, EvadeWatch, POLICE_EYE, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
 import type { RoadGraph } from "../core/road-graph";
@@ -30,6 +30,8 @@ export interface PolicePlayer {
   witnesses(x: number, y: number, r: number): number;
   /** Altitude des pieds du joueur (sur un toit, D216) : la vue et les tirs des gendarmes en tiennent compte ; absente : murs infinis. */
   z?: number;
+  /** À la nage (D241) : les gendarmes l'attendent au bord, sans tirer. */
+  swimming?: boolean;
 }
 
 /**
@@ -92,9 +94,11 @@ export class PoliceController {
     private readonly traffic: (create: boolean) => Traffic | null,
     /** Altitude du sol sous les gendarmes (vue et tirs en 3D, D216) ; absent : murs infinis. */
     private readonly ground: ((x: number, y: number) => number) | null = null,
+    /** Profondeur d'eau en (x, y) (D241) : les gendarmes à pied n'y entrent pas au-delà de la taille ; absent : pas d'eau. */
+    water: ((x: number, y: number) => number) | null = null,
   ) {
     this.watch = new RoadWatch(road, signals);
-    this.officers = new Officers(colliders, ground);
+    this.officers = new Officers(colliders, ground, water);
   }
 
   /** Ligne de vue d'un gendarme en (x, y) vers le joueur `p` : en 3D quand on connaît les altitudes (D216), sinon murs infinis. */
@@ -168,7 +172,9 @@ export class PoliceController {
     }
     // Armés à quatre étoiles et plus (D85) ; au volant, seulement à cinq (à quatre ils cherchent encore à arrêter la voiture).
     const armed = w.stars >= 4 && (!p.driving || w.stars >= 5);
-    off.step(dt, p.z === undefined ? { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle } : { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle, z: p.z }, (id) => traffic.policeCar(id), armed);
+    const suspect: Suspect = p.z === undefined ? { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle } : { x: p.x, y: p.y, vx: p.vx, vy: p.vy, vehicle: p.vehicle, z: p.z };
+    if (p.swimming) suspect.swimming = true;
+    off.step(dt, suspect, (id) => traffic.policeCar(id), armed);
     this.damage += off.takeDamage();
     for (const sh of off.shots) if (this.shots.length < 48) this.shots.push(sh);
     off.clearShots();

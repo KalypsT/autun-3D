@@ -192,6 +192,10 @@ export function withRoofs(terrain: HeightField, roofs: Roofs): HeightField {
     roofless: terrain,
     roofAt: (x, y, zHint) => roofs.planeAt(x, y, zHint, terrain.heightAt(x, y, zHint)),
   };
+  if (terrain.waterAt) {
+    const water = terrain.waterAt.bind(terrain);
+    field.waterAt = (x, y) => water(x, y);
+  }
   if (terrain.railAt) {
     const rail = terrain.railAt.bind(terrain);
     field.railAt = (x, y) => rail(x, y);

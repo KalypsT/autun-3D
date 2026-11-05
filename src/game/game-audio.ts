@@ -220,6 +220,18 @@ export class GameAudio {
     if (kit) S.footstep(kit, this.sys.buses!.sfx, kit.ctx.currentTime, run, { ...NEAR, gain: 0.55 });
   }
 
+  /** Entrée dans l'eau profonde (D241) : `k` 0 (on perd pied) à 1 (plongeon). */
+  splash(k: number): void {
+    const kit = this.kit;
+    if (kit) S.splash(kit, this.sys.buses!.sfx, kit.ctx.currentTime, k, { ...NEAR, gain: 0.8 });
+  }
+
+  /** Un mouvement de brasse (D241). */
+  stroke(): void {
+    const kit = this.kit;
+    if (kit) S.stroke(kit, this.sys.buses!.sfx, kit.ctx.currentTime, { ...NEAR, gain: 0.5 });
+  }
+
   /** Coup de feu : `own` pour l'arme du joueur, sinon un tireur à (x, y). */
   shot(gun: GunId, x: number, y: number, own: boolean): void {
     const kit = this.kit;

@@ -6,6 +6,7 @@ import { buildColliders } from "./world";
 import type { Colliders } from "./collision";
 import { Terrain, TiledTerrain } from "../data/terrain";
 import type { TileData, TileKinds, TileStructures, WorldManifest } from "../data/types";
+import { Waters, type WaterFile } from "./waters";
 
 /** Terrain plat de 200 × 200 m centré sur l'origine, pour les tests. */
 export function flatTerrain(z = 0): Terrain {
@@ -23,6 +24,8 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   const manifest = JSON.parse(read("world.json").toString("utf8")) as WorldManifest;
   const terrain = new TiledTerrain(manifest, Terrain.decode(manifest.coarse, buffer("terrain/coarse.bin")), () => Promise.reject(new Error("tests : tout est déjà chargé")));
   for (const t of manifest.tiles) terrain.setBlock(t.id, TiledTerrain.decodeBlock(buffer(`terrain/${t.id}.bin`)));
+  // L'eau de la ville (D240), comme au démarrage du jeu.
+  terrain.waters = new Waters(JSON.parse(read("water.json").toString("utf8")) as WaterFile);
   const tile: TileData = { bounds: [0, 0, 0, 0], ground: {}, buildings: [], fiches: [], trees: [], walls: [], furniture: [] };
   for (const name of readdirSync("public/data/tiles")) {
     const t = JSON.parse(read(`tiles/${name}`).toString("utf8")) as TileData;
@@ -38,7 +41,7 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   }
   tile.kinds = kinds;
   // Ponts, eau et voies ferrées (structures/) : les tabliers et quais comptent dans les altitudes, comme dans le jeu.
-  const structures: TileStructures = { v: 1, decks: [], water: [], streams: [], weirs: [], rails: [], platforms: [], crossings: [] };
+  const structures: TileStructures = { v: 1, decks: [], water: [], wz: [], streams: [], weirs: [], rails: [], platforms: [], crossings: [] };
   const seen = new Set<number>();
   for (const name of readdirSync("public/data/structures")) {
     if (name === "index.json") continue;
@@ -49,6 +52,7 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
       structures.decks.push(spanDeck(d));
     }
     for (const k of ["water", "streams", "weirs", "rails", "platforms", "crossings"] as const) (structures[k] as unknown[]).push(...(st[k] as unknown[]));
+    structures.wz!.push(...(st.wz ?? st.water.map(() => null)));
   }
   tile.structures = structures;
   terrain.decks.add("tests", structures.decks, structures.platforms.map((p, i) => {

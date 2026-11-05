@@ -1,6 +1,6 @@
 import { BUILDING_CLIMB, type Colliders, type Segment } from "./collision";
 import type { HeightField } from "../data/types";
-import { holdShore, onDeck, WADE_DEPTH } from "./shore";
+import { cityDepth, holdShore, onDeck, seaDepth, WADE_DEPTH } from "./shore";
 
 /** Piéton : logique pure. Repère : x est, y nord, z haut ; cap 0 = nord, sens horaire (comme le soleil). */
 
@@ -25,6 +25,10 @@ export interface PlayerState {
   landed: number;
   /** Escalade en cours, ou null. */
   climb: Climb | null;
+  /** À la nage dans l'eau de la ville (D241) : `z` est alors l'altitude des pieds du nageur, sous la surface. */
+  swim: boolean;
+  /** Entrée dans l'eau profonde à ce pas (force de la gerbe, m/s), remise à zéro par l'appelant ; 0 : rien. */
+  splash: number;
 }
 
 /** Escalade d'une grille, d'un muret ou d'une haie : le personnage monte au pied de l'obstacle, passe par-dessus, puis se laisse retomber. */
@@ -82,9 +86,36 @@ const CROSS = 2 * PLAYER_RADIUS + 0.12;
 /** Au sol, une descente plus raide que ce décrochement (m, plus 1,2 m par mètre parcouru) fait tomber : bord d'un quai, d'une falaise. */
 const SNAP = 0.25;
 
+/**
+ * Nage (D241), dans l'eau de la ville seulement (la mer reste une limite, D105). On se met à nager quand l'eau dépasse `SWIM_ENTER` (à la
+ * poitrine), on se remet debout quand elle redescend sous `SWIM_EXIT` : l'écart évite de passer de l'un à l'autre à chaque pas.
+ */
+export const SWIM_ENTER = 1.2;
+export const SWIM_EXIT = 1.0;
+/** Vitesses de nage (m/s) : brasse, et crawl (« course »). */
+export const SWIM_SPEED = 1.2;
+export const SWIM_FAST = 1.9;
+/** Pieds du nageur sous la surface (m) : le corps est presque à l'horizontale, la tête dehors. */
+export const SWIM_SINK = 0.45;
+/** Bord plus haut que l'eau de moins de cela (m) : on s'y hisse ; plus haut, c'est un mur qu'on longe. Jusqu'à 0,3 m, on en sort en marchant. */
+export const HOIST = 0.8;
+const STEP_OUT = 0.3;
+/** Dans l'eau, on accélère et on freine moins vite qu'à pied (on glisse). */
+const SWIM_ACCEL = 4;
+const SWIM_DRAG = 2.5;
+/** Le corps rejoint sa hauteur de nage sans à-coup (m/s). */
+const SWIM_RISE = 2.5;
+
 export function createPlayer(x: number, y: number, terrain: HeightField, heading = 0): PlayerState {
   const z = terrain.heightAt(x, y);
-  return { x, y, z, vx: 0, vy: 0, heading, speed: 0, stride: 0, vz: 0, air: false, peak: z, landed: 0, climb: null };
+  const p: PlayerState = { x, y, z, vx: 0, vy: 0, heading, speed: 0, stride: 0, vz: 0, air: false, peak: z, landed: 0, climb: null, swim: false, splash: 0 };
+  // Au départ dans l'eau profonde (partie sauvegardée en nageant), on nage.
+  const level = terrain.waterAt?.(x, y);
+  if (level !== undefined && cityDepth(terrain, x, y, z) > SWIM_ENTER) {
+    p.swim = true;
+    p.z = level - SWIM_SINK;
+  }
+  return p;
 }
 
 /** Repose le piéton au sol, sans vol ni escalade (après une téléportation, une descente de véhicule). */
@@ -94,6 +125,7 @@ export function groundPlayer(p: PlayerState): void {
   p.peak = p.z;
   p.landed = 0;
   p.climb = null;
+  p.swim = false;
 }
 
 function angleDelta(from: number, to: number): number {
@@ -112,7 +144,7 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   const dirX = input.forward * sin + input.right * cos;
   const dirY = input.forward * cos - input.right * sin;
   const len = Math.hypot(dirX, dirY);
-  const top = input.run ? RUN_SPEED : WALK_SPEED;
+  const top = p.swim ? (input.run ? SWIM_FAST : SWIM_SPEED) : input.run ? RUN_SPEED : WALK_SPEED;
   // En l'air, on infléchit sa course sans perdre l'élan d'un saut long (D218).
   const targetSpeed = p.air ? Math.max(mag * top, Math.hypot(p.vx, p.vy)) : mag * top;
   const tx = len > 1e-6 ? (dirX / len) * targetSpeed : 0;
@@ -120,7 +152,7 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
 
   // Accélération vers la vitesse visée, frottement quand on lâche ; en l'air, on garde son élan et l'on ne fait que l'infléchir.
   if (!p.air || mag > 0.01) {
-    const rate = p.air ? AIR_ACCEL : mag > 0.01 ? ACCEL : FRICTION;
+    const rate = p.swim ? (mag > 0.01 ? SWIM_ACCEL : SWIM_DRAG) : p.air ? AIR_ACCEL : mag > 0.01 ? ACCEL : FRICTION;
     const dvx = tx - p.vx, dvy = ty - p.vy;
     const dv = Math.hypot(dvx, dvy);
     const maxDv = rate * dt;
@@ -133,8 +165,8 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
     }
   }
 
-  // Saut, puis chute libre tant qu'on est en l'air.
-  if (input.jump && !p.air) {
+  // Saut, puis chute libre tant qu'on est en l'air (pas de saut à la nage).
+  if (input.jump && !p.air && !p.swim) {
     p.air = true;
     p.vz = JUMP_SPEED;
     p.peak = p.z;
@@ -152,6 +184,10 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   }
 
   let x = p.x + p.vx * dt, y = p.y + p.vy * dt;
+  if (p.swim) {
+    swimStep(p, x, y, mag, dt, terrain, colliders);
+    return;
+  }
   // En l'air, les murets, clôtures et haies plus bas que les pieds (repliés) ne gênent pas.
   const clear = p.air ? Math.max(0, z - terrain.heightAt(x, y, z)) + TUCK : 0;
   // Altitude des pieds (D215) : sur un toit, on passe le bord et les murs mitoyens pas plus hauts ; de la rue, les murs restent des murs.
@@ -172,10 +208,11 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
       return;
     }
   }
-  // Limites du monde (3 m de marge), puis la mer : on y entre jusqu'à la taille, pas plus loin (D105).
+  // Limites du monde (3 m de marge), puis l'eau (mer, D105, et eau de la ville, D240) : on y entre jusqu'à la taille, pas plus loin.
   x = Math.min(Math.max(x, terrain.xMin + 3), terrain.xMax - 3);
   y = Math.min(Math.max(y, terrain.yMin + 3), terrain.yMax - 3);
-  const shore = holdShore(terrain, p.x, p.y, x, y, WADE_DEPTH);
+  // À pied, seule la mer arrête (D105) ; dans l'eau de la ville, on finit par nager (D241).
+  const shore = holdShore(terrain, p.x, p.y, x, y, WADE_DEPTH, p.z, seaDepth);
   if (shore.blocked) {
     if (shore.x === p.x) p.vx = 0;
     if (shore.y === p.y) p.vy = 0;
@@ -184,6 +221,18 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   p.x = shore.x;
   p.y = shore.y;
   const ground = terrain.heightAt(p.x, p.y, p.air ? z : p.z);
+  const level = terrain.waterAt?.(p.x, p.y);
+  if (p.air && level !== undefined && z <= level - SWIM_SINK && level - ground > SWIM_ENTER) {
+    // Plongeon (d'un quai, d'un pont, d'une berge haute) : l'eau amortit la chute, on nage.
+    p.splash = Math.max(1, -p.vz);
+    p.air = false;
+    p.vz = 0;
+    p.landed = 0;
+    p.swim = true;
+    p.z = level - SWIM_SINK;
+    p.speed = Math.hypot(p.vx, p.vy);
+    return;
+  }
   if (p.air) {
     if (z <= ground) {
       // Atterrissage : la hauteur de chute part du plus haut point du vol.
@@ -199,13 +248,93 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
     p.peak = p.z;
   } else z = ground;
   p.z = z;
+  // En avançant dans l'eau de la ville, on perd pied : on nage.
+  if (!p.air && level !== undefined && level - z > SWIM_ENTER) {
+    p.swim = true;
+    p.splash = Math.max(0.5, Math.hypot(p.vx, p.vy) * 0.5);
+  }
   p.speed = Math.hypot(p.vx, p.vy);
+  turnAndStride(p, input, dt);
+}
+
+/** Le corps se tourne vers la marche (ou vers le cap de visée), et la phase de pas avance. */
+function turnAndStride(p: PlayerState, input: MoveInput, dt: number): void {
   if (input.face !== undefined) p.heading += angleDelta(p.heading, input.face) * Math.min(1, TURN_RATE * 1.5 * dt);
   else if (p.speed > 0.15) {
     const target = Math.atan2(p.vx, p.vy);
-    p.heading += angleDelta(p.heading, target) * Math.min(1, TURN_RATE * dt);
+    p.heading += angleDelta(p.heading, target) * Math.min(1, (p.swim ? TURN_RATE / 3 : TURN_RATE) * dt);
   }
-  if (!p.air) p.stride += p.speed * dt * 2.2;
+  // À la nage, les mouvements continuent sur place (on fait du surplace) : la phase avance même à l'arrêt.
+  if (p.swim) p.stride += (p.speed + 0.7) * dt * 2.2;
+  else if (!p.air) p.stride += p.speed * dt * 2.2;
+}
+
+/**
+ * Un pas de nage (D241) vers (x, y) : on reste à la surface, on glisse le long des murs et des bords hauts ; là où l'on a pied, on se remet
+ * debout (berge en pente) ou l'on se hisse (bord bas : quai, ponton, passerelle au ras de l'eau).
+ */
+function swimStep(p: PlayerState, x: number, y: number, mag: number, dt: number, terrain: HeightField, colliders: Colliders): void {
+  const r = colliders.resolve(x, y, PLAYER_RADIUS, 0, p.z);
+  x = Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3);
+  y = Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3);
+  if (r.hit) {
+    const into = p.vx * r.nx + p.vy * r.ny;
+    if (into < 0) {
+      p.vx -= into * r.nx;
+      p.vy -= into * r.ny;
+    }
+  }
+  const here = terrain.waterAt?.(p.x, p.y) ?? terrain.heightAt(p.x, p.y, p.z) + SWIM_SINK;
+  /** Ce qu'on trouve en (qx, qy) : nager, sortir à pied, se hisser, ou buter. */
+  const probe = (qx: number, qy: number): "swim" | "stand" | "hoist" | "wall" => {
+    const level = terrain.waterAt?.(qx, qy);
+    const floor = terrain.heightAt(qx, qy, p.z);
+    if (level !== undefined && level - floor >= SWIM_EXIT) return "swim";
+    const edge = floor - (level ?? here);
+    return edge <= STEP_OUT ? "stand" : edge <= HOIST ? "hoist" : "wall";
+  };
+  let kind = probe(x, y);
+  if (kind === "wall" || (kind === "hoist" && mag < 0.3)) {
+    // On longe le bord : on garde la part du mouvement qui reste dans l'eau.
+    if (probe(x, p.y) === "swim") {
+      y = p.y;
+      p.vy = 0;
+      kind = "swim";
+    } else if (probe(p.x, y) === "swim") {
+      x = p.x;
+      p.vx = 0;
+      kind = "swim";
+    } else {
+      x = p.x;
+      y = p.y;
+      p.vx = p.vy = 0;
+      kind = "swim";
+    }
+  }
+  const dx = x - p.x, dy = y - p.y;
+  if (kind === "hoist") {
+    // On se hisse sur le bord, dans le sens de la nage (mécanisme de l'escalade : monter, passer par-dessus, retomber debout).
+    const d = Math.hypot(dx, dy) || 1;
+    p.swim = false;
+    p.climb = { x: p.x, y: p.y, dx: dx / d, dy: dy / d, top: terrain.heightAt(x, y, p.z), over: false, t: 0 };
+    p.vx = p.vy = 0;
+    p.speed = 0;
+    p.heading = Math.atan2(dx, dy);
+    return;
+  }
+  p.x = x;
+  p.y = y;
+  if (kind === "stand") {
+    p.swim = false;
+    p.z = terrain.heightAt(x, y, p.z);
+  } else {
+    const level = terrain.waterAt?.(x, y) ?? here;
+    const target = level - SWIM_SINK;
+    p.z += Math.max(-SWIM_RISE * dt, Math.min(SWIM_RISE * dt, target - p.z));
+  }
+  p.peak = p.z;
+  p.speed = Math.hypot(p.vx, p.vy);
+  turnAndStride(p, { forward: 0, right: 0, run: false }, dt);
 }
 
 /** Altitude du haut d'un mur de bâtiment au point de `seg` le plus proche de (x, y) (D218). */
@@ -283,7 +412,7 @@ export function slidePlayer(p: PlayerState, dt: number, terrain: HeightField, co
       p.vy -= into * r.ny;
     }
   }
-  const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH);
+  const shore = holdShore(terrain, p.x, p.y, Math.min(Math.max(r.x, terrain.xMin + 3), terrain.xMax - 3), Math.min(Math.max(r.y, terrain.yMin + 3), terrain.yMax - 3), WADE_DEPTH, p.z);
   // Au bord d'un toit (D215), on s'arrête au lieu de passer d'un coup dans la rue.
   const z = terrain.heightAt(shore.x, shore.y, p.z);
   if (z < p.z - CLIFF && !onDeck(terrain, p.x, p.y, p.z)) {

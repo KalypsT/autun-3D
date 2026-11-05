@@ -224,6 +224,59 @@ export function climbPose(pose: Pose, climbed: number): void {
   pose.rootDx = 0;
 }
 
+/**
+ * Nage (D241) : brasse, en repère du corps (le personnage entier est ensuite basculé vers l'avant, `swimPitch`). `phase` (rad) donne le
+ * rythme : bras tendus devant (glisse), puis tirés vers la poitrine en s'écartant ; jambes qui se replient et s'ouvrent en grenouille à
+ * contretemps. `crawl` (0 à 1) : en nageant vite, bras alternés par-dessus la tête et battements de jambes. `still` (0 à 1) : surplace, bras
+ * écartés qui godillent sous la surface, jambes qui pédalent. La tête est relevée vers l'avant.
+ */
+export function swimPose(pose: Pose, phase: number, crawl = 0, still = 0): void {
+  const a = pose.angles;
+  a.fill(0);
+  const glide = 0.5 + 0.5 * Math.cos(phase), kick = 0.5 + 0.5 * Math.cos(phase + Math.PI);
+  const c = clamp(crawl, 0, 1), b = 1 - c;
+  for (const [arm, fore, side, off] of [[BONE.armL, BONE.forearmL, -1, 0], [BONE.armR, BONE.forearmR, 1, Math.PI]] as const) {
+    // Brasse : le bras va de 2,8 rad (tendu devant la tête) à 1,2 (ramené sous la poitrine), en s'écartant ; le coude plie au retour.
+    const crawlArm = 1.6 + 1.3 * Math.cos(phase + off);
+    a[arm * 3] = b * (1.2 + 1.6 * glide) + c * crawlArm;
+    a[arm * 3 + 2] = side * (b * (0.25 + 0.9 * (1 - glide)) + c * 0.2);
+    a[fore * 3] = b * (0.15 + 1.3 * (1 - glide)) + c * (0.3 + 0.4 * Math.max(0, Math.sin(phase + off)));
+  }
+  for (const [thigh, shin, foot, side, off] of [[BONE.thighL, BONE.shinL, BONE.footL, -1, 0], [BONE.thighR, BONE.shinR, BONE.footR, 1, Math.PI]] as const) {
+    const flutter = 0.25 * Math.sin(phase * 2 + off);
+    a[thigh * 3] = b * (0.15 + 0.8 * kick) + c * flutter;
+    a[thigh * 3 + 2] = side * b * 0.4 * kick;
+    a[shin * 3] = b * (-0.2 - 1.7 * kick) + c * (-0.3 + 0.2 * flutter);
+    // Pieds en pointe : la semelle suit la jambe.
+    a[foot * 3] = -0.9;
+  }
+  const st = clamp(still, 0, 1);
+  if (st > 0) {
+    // Surplace : on mélange vers des bras écartés à mi-hauteur, avant-bras qui balaient, et un pédalage lent.
+    const m = 1 - st, sc = Math.sin(phase * 1.5);
+    for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+      a[arm * 3] = m * a[arm * 3]! + st * (0.5 + 0.25 * sc);
+      a[arm * 3 + 2] = m * a[arm * 3 + 2]! + st * side * 0.9;
+      a[fore * 3] = m * a[fore * 3]! + st * (0.9 - 0.3 * sc);
+    }
+    for (const [thigh, shin, off] of [[BONE.thighL, BONE.shinL, 0], [BONE.thighR, BONE.shinR, Math.PI]] as const) {
+      const pedal = Math.sin(phase + off);
+      a[thigh * 3] = m * a[thigh * 3]! + st * (0.5 + 0.35 * pedal);
+      a[thigh * 3 + 2] = m * a[thigh * 3 + 2]!;
+      a[shin * 3] = m * a[shin * 3]! + st * (-0.9 - 0.5 * pedal);
+    }
+  }
+  a[BONE.torso * 3] = -0.08;
+  // Plus le corps est couché, plus la tête se relève pour regarder devant (debout, en surplace, elle reste droite).
+  a[BONE.head * 3] = -0.95 * (1 - 0.8 * st);
+  pose.rootDx = 0;
+}
+
+/** Inclinaison du corps du nageur vers l'avant (rad depuis la verticale) : presque à plat en nageant, plus droit en faisant du surplace. */
+export function swimPitch(speed: number): number {
+  return 0.45 + 0.85 * clamp(speed / 1.2, 0, 1);
+}
+
 /** Genre de pose d'un passant heurté : 1 il trébuche, 2 il tombe, reste au sol, puis se relève. */
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
 /** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
