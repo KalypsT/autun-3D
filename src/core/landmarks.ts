@@ -837,7 +837,7 @@ export function isOpen(kinds: { buildings: Record<string, BuildingKind> } | unde
  * monument modélisé (hôtel de ville, D123 ; cathédrale, D127 ; église Saint-André, D138 ; maison, D140 ; Hexagone, D165 ; théâtre municipal, D223 ; gare, D228 ; Eduen, D231 ; McDonald's et bowling, D234…).
  */
 export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
-  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu || kind?.mcd || kind?.bowl || kind?.gend);
+  return !(kind?.k === "hidden" || kind?.k === "cart" || kind?.hall || kind?.college || kind?.nd || kind?.ndPart || kind?.cath || kind?.chap || kind?.house || kind?.hex || kind?.vallon || kind?.play || kind?.sta || kind?.edu || kind?.mcd || kind?.bowl || kind?.gend || kind?.naut);
 }
 
 /**

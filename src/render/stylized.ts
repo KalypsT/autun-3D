@@ -1,3 +1,4 @@
+import { buildReeds } from "./reeds";
 import type { SeatDef } from "../core/seats";
 import { closeSeats, openSeats } from "./seat-sink";
 import { crownDepthMaterial, weatherize } from "./weather-fx";
@@ -12,7 +13,7 @@ import { buildGroundSteps } from "./ground";
 import { buildStairs } from "./stairs";
 import { SignAtlas } from "./sign-atlas";
 import { canvasTexture, rng } from "./canvas";
-import { buildBreakables, buildFurniture, buildWalls, fenceMaterial, splitBreakable } from "./props";
+import { buildBreakables, buildFurniture, buildWalls, fenceMaterial, meshFenceMaterial, splitBreakable } from "./props";
 import { doorDims } from "./facade-specs";
 import { idKey, pick, roofColor, T, wallColor } from "./style";
 import { drawsGenericRoof, furnitureOutsideMonuments, reshapeBuilding, treesOutsideMonuments, wallsOutsideMonuments } from "../core/landmarks";
@@ -190,6 +191,7 @@ export class StyleResources {
   }
   readonly groundMat = weatherize(this.lit({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), "ground");
   readonly fenceMat = fenceMaterial();
+  readonly meshFenceMat = meshFenceMaterial();
   readonly trunkMat = this.lit({ color: T.trunk });
   readonly crownMat = weatherize(this.lit({ flatShading: true }), "crown");
   /** Feuillage taillé (tilleuls de la place du Champ de Mars) : couleurs de sommets, même saison que les arbres (D197). */
@@ -543,9 +545,11 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     if (parts[0] === "sign" || parts[0] === "dev" || ++count % PLACEMENTS_PER_STEP === 0) yield;
   }
 
-  const fence = new UvMeshBuilder(), posts = new MeshBuilder();
+  const fence = new UvMeshBuilder(), meshFence = new UvMeshBuilder(), posts = new MeshBuilder();
   yield;
-  if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
+  // Roseaux du bord du plan d'eau du Vallon (D244).
+  if (st?.reeds && !skip.includes("reeds")) buildReeds(detail, st.reeds, terrain.ground ?? terrain);
+  if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, mesh: meshFence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
   yield;
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
   const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));
@@ -563,7 +567,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   const put = (name: string, geometry: THREE.BufferGeometry, tris: number, mat: THREE.Material): void => {
     const m = new THREE.Mesh(geometry, mat);
     m.name = name;
-    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "vitres" && name !== "verrieres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes" && name !== "rideaux";
+    m.castShadow = !name.startsWith("decal") && name !== "grilles" && name !== "grillages" && name !== "vitres" && name !== "verrieres" && name !== "lanternes" && name !== "halos" && name !== "sol" && name !== "enseignes" && name !== "rideaux";
     m.receiveShadow = true;
     group.add(m);
     draws++;
@@ -599,6 +603,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (st) buildWater(ground, st, tile.bounds, terrain.ground ?? terrain);
   if (ground.triangleCount > 0) put("sol", yield* ground.buildSteps(), ground.triangleCount, res.groundMat);
   add("grilles", fence, res.fenceMat);
+  add("grillages", meshFence, res.meshFenceMat);
   const trees = treesOutsideMonuments(kinds, tile.trees);
   if (trees.length) {
     yield;

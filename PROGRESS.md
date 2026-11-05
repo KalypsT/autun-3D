@@ -1784,3 +1784,31 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![La voiture coule](docs/captures/d242-voiture-coule.jpg)
 
+
+**Le plan d'eau du Vallon, lot 0 : relevés (5 novembre 2026)** (D243)
+- Rien n'a changé dans le jeu : plan `docs/plans/vallon-lac.md` (chemin du tour, base nautique, pontons et cale, équipements, vie du lac) et relevés (`tools/data/survey_vallon.py`).
+- Le tour du lac fait 1,9 km : 3,2 m de large en général, 2 m sur la digue du nord, en stabilisé clair ; OpenStreetMap le place à 30 cm près. Le jeu n'en dessine rien aujourd'hui.
+- Cinq pontons dans OpenStreetMap et un sixième vu d'en haut ; la base nautique a un petit port fermé par un quai, avec ses dériveurs.
+- Prochaine étape : le chemin.
+
+![Rive est, avant](docs/captures/vallon-avant-rive-est.jpg)
+
+**Le plan d'eau du Vallon, lot 1 : le chemin du tour du lac (5 novembre 2026)** (D244)
+- On fait le tour du lac sur un vrai chemin en stabilisé clair : 1,9 km, 3,2 m de large, 2 m sur la digue du nord, plus les deux allées du sud.
+- Roseaux et herbes hautes au bord de l'eau, par plages, sauf aux pontons, à la cale, à la base et sur les pelouses des pêcheurs.
+- Rive est : grillage vert le long du chemin (au lieu des barreaux noirs) et lampadaires allumés la nuit.
+- Le chemin est sur la carte et la minimap ; la navigation des piétons prend sa vraie largeur.
+- Prochaine étape : la base nautique.
+
+![La rive est](docs/captures/d244-rive-est.jpg)
+![La digue](docs/captures/d244-digue.jpg)
+
+**Le plan d'eau du Vallon, lot 2 : la base nautique (5 novembre 2026)** (D245)
+- La base nautique a ses vrais volumes, mesurés au LiDAR : un hangar à quatre pans au sud, un corps central à toits plats, un volume à deux pans et un bloc à un pan au nord-est, tous en enduit beige et bac acier gris.
+- Côté darse : baies ouvertes avec les kayaks rangés, banderole « Commune sportive Bourgogne-Franche-Comté » ; portes de hangar sur le lac.
+- Devant : bloc de toilettes, mât au drapeau tricolore, barrière levante, potelets en bois, rochers, panneau d'information.
+- Vues : `?view=nautique`, `nautique-darse`, `nautique-lac`, `nautique-haut`.
+- Prochaine étape : les pontons et la cale.
+
+![Depuis la route de Chalon](docs/captures/d245-route.jpg)
+![Côté darse](docs/captures/d245-darse.jpg)

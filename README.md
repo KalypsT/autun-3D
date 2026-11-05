@@ -23,7 +23,7 @@ Sans paramètre, on joue (la partie est reprise là où tu l'avais laissée) : j
 
 ## Viewer à caméra libre (captures, diagnostic)
 
-Avec `view=` ou `cam=`, c'est la caméra libre. Paramètres d'URL : `view=aerial|street|place|mairie|municipal|gare|eduen|eduen-logo|eduen-entree|eduen-mats|eduen-parking|mcdo|mcdo-route|mcdo-drive|mcdo-parking|mcdo-entree|bowling|bowling-mcdo|bowling-parking|bowling-terrasse|route-chalon-haut|church`, `cam=x,y,hauteur,cibleX,cibleY,hauteurCible`,
+Avec `view=` ou `cam=`, c'est la caméra libre. Paramètres d'URL : `view=aerial|street|place|mairie|municipal|gare|eduen|eduen-logo|eduen-entree|eduen-mats|eduen-parking|mcdo|mcdo-route|mcdo-drive|mcdo-parking|mcdo-entree|bowling|bowling-mcdo|bowling-parking|bowling-terrasse|route-chalon-haut|church|nautique|nautique-darse|nautique-lac|nautique-haut`, `cam=x,y,hauteur,cibleX,cibleY,hauteurCible`,
 `h=16` (heure solaire), `day=200` (jour de l'année, converti en date du jeu), `season=hiver`, `shadow=0`, `dpr=1`, `step=2` (maille du relief, en mètres),
 `hide=misc,sprites-0,toit-ardoise` (masque des maillages, diagnostic), `nonormal`, `dbg=normals`.
 Souris ou doigt : glisser pour regarder ; clavier : ZQSD/WASD, flèches, E/Q monter/descendre, Maj accélère, F affiche le panneau de debug.
@@ -49,6 +49,7 @@ python3 tools/data/build_public_space.py # rues, trottoirs, places et clôtures 
 python3 tools/data/build_structures.py   # ponts (tabliers mesurés au LiDAR), eau, ruisseaux, voies ferrées, quais dans public/data/structures (D93) ; ne touche à aucune tuile
 python3 tools/data/build_coast.py        # la mer autour du monde (D105) : creuse le rivage (plage, falaises), découpe à la côte tout ce qui est en mer ; après build_public_space.py, avant build_nav.py et build_map.py
 python3 tools/data/build_water.py        # l'eau de la ville (D240) : niveau de chaque plan d'eau, fond creusé, water.json ; juste après build_coast.py (si on relance build_coast.py, repartir du relief et des structures d'avant, puis relancer build_water.py)
+python3 tools/data/build_vallon_path.py  # le chemin du tour du plan d'eau du Vallon (D244) : stabilisé, roseaux, lampadaires, grillage de la rive est, largeur des arêtes piétonnes ; d'après tools/data/vallon_path.json (refait par --trace) ; après build_water.py et build_nav.py, puis build_map.py --images
 python3 tools/data/build_kinds.py        # types de bâtiments et sites (grandes surfaces, mairie, gare, églises, terrains, stations-service…), cathédrale et portes romaines (D95) dans public/data/kinds (D92) ; ne touche à aucune tuile
 python3 tools/data/build_extras.py       # bâtiments absents de BD TOPO ou à redécouper, mesurés au LiDAR (D145, D146) : l'aile nord-ouest de la galerie marchande de Bellevue (Centrakor) et les quatre volumes d'Espace Aubade, ajoutés à leur tuile d'après `extra` de manual.json ; à relancer après build_tiles.py (qui la retire), avant build_carts.py
 python3 tools/data/build_carts.py        # abris à chariots des grandes surfaces (D121) et types imposés à la main d'après photo (`kinds` de manual.json, D122) dans public/data/kinds ; à relancer après build_kinds.py (qui réécrit kinds), après build_shop_fronts.py (parkings OSM)

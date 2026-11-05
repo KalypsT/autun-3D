@@ -5007,3 +5007,60 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La voiture coule](captures/d242-voiture-coule.jpg)
 ![À la nage, l'épave sous la surface](captures/d242-epave.jpg)
 
+
+## 2026-11-05 — D243. Le plan d'eau du Vallon, lot 0 : relevés (plan `docs/plans/vallon-lac.md`)
+
+**Demande de l'utilisateur** : intégrer correctement le plan d'eau du Vallon avec le chemin qui en fait le tour. Photos fournies (non versionnées, elles servent seulement à décrire) : une vue satellite, cinq vues Google Street View de juillet 2026 (route de Chalon, base nautique, toilettes, skatepark) et sept photos 360° de juin 2025 sur le chemin (rive est et sa clôture, aire de jeux, pêcheurs, parking du robinet, pelouse au bord, allée ombragée, ponton de pêche). Réponses : pêcheurs toujours là ; bateaux posés et amarrés, et voiliers sur l'eau en été ; sud sauvage avec modération, tout le tour restant facilement praticable ; lots dans l'ordre du plan (chemin, base nautique, pontons et cale, équipements, vie du lac).
+
+**Constat** : la boucle existe dans OpenStreetMap (allée Marcel Lucotte) mais aucune étape ne la peint au sol : le jeu montre une pelouse jusqu'à l'eau, et les piétons qui la suivent (arêtes « chemin » de la navigation) marchent dans l'herbe. Les cinq pontons d'OSM (`man_made=pier`) ne sont lus par aucune étape. Le nord du lac est une digue : la route est 1,9 m sous le niveau de l'eau, la crête 1,5 m au-dessus.
+
+**Aucun changement du jeu** : le plan, un script de relevé (`tools/data/survey_vallon.py` : OSM par l'API, orthophotographie à 20 cm, modèle de surface LiDAR HD à 0,5 m, relief publié), ses chiffres (`tools/data/vallon_survey.json`), une vue annotée de l'orthophotographie (`docs/captures/vallon-lac-osm.jpg`) et quatre captures « avant ».
+
+**Résultats** (détail au §12 du plan) :
+- Boucle de 1 905 m, 191 stations ; chemin visible à 70 % des stations (le reste sous les arbres). Axe OSM à 0,3 m du milieu du chemin en médiane (1,1 m à 90 %, 4,3 m au pire, 14 stations à plus de 1 m) : on le garde, recalé là où il s'écarte.
+- Largeur : 3,2 m au sud et à l'ouest, 3,8 m à l'est (élargissements compris), **2 m sur la crête de la digue**. Chemin clair (stabilisé) partout où il se voit, même là où OSM dit `asphalt` ; l'enrobé ne se distingue pas de l'herbe grillée sur cette orthophotographie.
+- Jamais à moins de 2,8 m de l'eau ; au plus bas 0,28 m au-dessus du lac ; dévers de 6 à 11 % sur la digue (crête étroite) ; un seul arbre de la carte sur le chemin.
+- Pontons : le LiDAR ne mesure pas leur hauteur (il ne voit pas l'eau) ; hauteurs prises sur les photos (0,3 m flottant, 0,45 m fixe). Le ponton de pêche des photos est celui de la rive ouest (passerelle de 8 m, ponton de 40 m parallèle à la rive). Un sixième ponton, non cartographié, au sud-ouest de la base. La base a une **darse** fermée par un quai, avec une quinzaine de dériveurs rangés, et trois volumes à toits gris.
+- Captures : pelouse uniforme jusqu'à l'eau, base générique à toit en croupe, clôture de la rive est en barreaux noirs (un grillage vert sur les photos).
+
+**Limites** : matière lue sur la seule couleur de l'orthophotographie (un été sec) ; emplacements des photos déduits de leur contenu ; le ponton vers l'île n'est vu ni d'en haut ni sur les photos. Aucun test (aucun code de jeu touché).
+
+![Vue haute, avant](captures/vallon-avant-haut.jpg)
+![Rive est, avant](captures/vallon-avant-rive-est.jpg)
+![La base nautique, avant](captures/vallon-avant-base.jpg)
+
+## 2026-11-05 — D244. Le plan d'eau du Vallon, lot 1 : le chemin du tour du lac (plan `docs/plans/vallon-lac.md`, §3 et §13)
+
+**Données** : `tools/data/build_vallon_path.py`. `--trace` recale l'axe OSM de la boucle sur le milieu du chemin mesuré au lot 0 (médiane glissante, bornée à 4,5 m) et écrit `tools/data/vallon_path.json` (versionné, le tracé ne dépend plus d'OSM) ; la pose (d'après `vallonPath` de `manual.json`) écrit la couche de sol `path_gravel` (6 535 m², 9 tuiles), pousse 11 arbres hors du chemin, pose 16 lampadaires sur la rive est (identifiants −(871 000 000 + n)), passe la clôture de la rive est (w247999124) en grillage de 1,8 m (`look: "mesh"`), écrit les roseaux (`reeds`, 686 m) dans les ouvrages des tuiles et élargit 29 arêtes piétonnes. Idempotente. Puis `build_map.py --images` (couleur `path_gravel`). Largeurs : 3,2 m, 2 m sur la digue ; allées du sud 2,5 et 1,2 m.
+
+**Rendu** : couche `path_gravel` (`src/render/ground.ts`, couleur `paving[7]` des thèmes, 4 cm au-dessus du relief) ; roseaux en touffes de lames fines dessinées des deux côtés (`src/render/reeds.ts`, appelé par `stylized.ts`) ; grillage vert (`meshFenceMaterial`, maillage « grillages » à part des barreaudages, poteaux plats verts).
+
+**Pas fait** : aplanir la crête de la digue (inutile en capture) ; le gué en pas japonais (lot 4) ; l'herbe plus haute du sud (lot 5). Sur la carte, le chemin de la digue se lit mal sur le papier.
+
+**Coût** : environ 45 000 triangles de plus sur la vue de la rive est (174 000 → 219 000), cinq appels de dessin de plus.
+
+**Tests** (+10, 1 282 au total ; `src/data/vallon-path.test.ts`) : boucle refermée et longueur, largeurs, axe hors de l'eau à plus de 2 m du bord, surface du sol hors de l'eau, aucun arbre sur le chemin, lampadaires côté terre et crosse vers le chemin, roseaux au bord et hors des zones exclues, maillage des roseaux fini et borné, grillage, arêtes piétonnes.
+
+![La rive est](captures/d244-rive-est.jpg)
+![La digue](captures/d244-digue.jpg)
+![Vue haute](captures/d244-haut.jpg)
+
+## 2026-11-05 — D245. Le plan d'eau du Vallon, lot 2 : la base nautique (plan `docs/plans/vallon-lac.md`, §4 et §14)
+
+**Mesures** (`tools/data/survey_nautique.py`, LiDAR HD 0,5 m) dans le repère du hangar du sud (coin sud-ouest BD TOPO (1306,7 ; 553,4), s à 18,4° au nord de l'est, t vers le nord-nord-ouest ; tous les murs BD TOPO lui sont parallèles) : neuf volumes à un niveau, forme du toit lue sur les profils du modèle de surface (plat : médiane ; un pan : plan ajusté ; deux pans et pavillon : égout au 10e centile, faîtage au 97e). Hangar en pavillon (égout 3,2 m, sommet 5,7 m), porche 3,0 m, aile ouest 4,1 m, corps central en trois toits plats (3,1 / 4,7 / 3,6 m), volume du milieu à deux pans (3,5 / 5,7 m), liaison 3,6 m, bloc nord-est à un pan (5,1 m à l'ouest, 3,4 m à l'est).
+
+**Données** : modèle `nautique` de `manual.json` (`monuments`, …847357), champ `naut` (`NautiqueModel`) écrit par `build_monuments.py nautique` dans `kinds/31_37.json` ; petit bâtiment du porche (…847358) masqué ; silhouette lointaine. Idempotent.
+
+**Rendu** (`src/render/nautique.ts`) : murs en enduit beige sur soubassement gris jusqu'au toit (pignons et murs sous un pan compris), bac acier gris avec débords de 35 cm et rive, fenêtres hautes (une sur trois allumée la nuit), portes de hangar sur le lac, porte vitrée du porche, baies ouvertes à kayaks côté darse, banderole « COMMUNE SPORTIVE / BOURGOGNE-FRANCHE-COMTÉ » ; abords : toilettes en béton gravillonné (plaque « Toilettes »), mât au drapeau, barrière levante baissée, potelets bois, rochers, panneau d'information. Dans les maillages de la tuile, aucun appel de dessin de plus.
+
+**Collisions** (`src/core/nautique.ts`, `world.ts`) : chaque volume, les toilettes, le mât, les rochers, les potelets ; la barrière en ligne d'obstacle d'1 m (on l'enjambe, on voit à travers).
+
+**Constat** : le quai de la darse est au niveau de l'eau d'après le LiDAR ; on en sort à la nage partout, rien à construire.
+
+**Pas fait** : le saule pleureur, les dériveurs sur le quai (lot 3), la navigation des passants (ancien contour). Abords placés d'après les photos et l'orthophotographie : positions approchées.
+
+**Tests** (+5, 1 287 au total ; `src/render/nautique.test.ts`).
+
+![Depuis la route de Chalon](captures/d245-route.jpg)
+![Côté darse](captures/d245-darse.jpg)
+![Depuis le lac](captures/d245-lac.jpg)

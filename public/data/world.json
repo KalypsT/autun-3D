@@ -2103,7 +2103,7 @@
    "walls": 35,
    "furniture": 9,
    "lod": 0,
-   "bytes": 28274
+   "bytes": 28471
   },
   {
    "id": "32_34",
@@ -2426,7 +2426,7 @@
    "walls": 0,
    "furniture": 3,
    "lod": 0,
-   "bytes": 8163
+   "bytes": 8640
   },
   {
    "id": "31_35",
@@ -2443,7 +2443,7 @@
    "walls": 0,
    "furniture": 1,
    "lod": 0,
-   "bytes": 9346
+   "bytes": 10796
   },
   {
    "id": "32_35",
@@ -2458,9 +2458,9 @@
    "buildings": 17,
    "trees": 117,
    "walls": 51,
-   "furniture": 13,
+   "furniture": 15,
    "lod": 17,
-   "bytes": 64046
+   "bytes": 64595
   },
   {
    "id": "33_35",
@@ -2749,7 +2749,7 @@
    "walls": 0,
    "furniture": 7,
    "lod": 5,
-   "bytes": 25193
+   "bytes": 25590
   },
   {
    "id": "31_36",
@@ -2764,9 +2764,9 @@
    "buildings": 0,
    "trees": 1,
    "walls": 0,
-   "furniture": 0,
+   "furniture": 3,
    "lod": 0,
-   "bytes": 271
+   "bytes": 694
   },
   {
    "id": "32_36",
@@ -2781,9 +2781,9 @@
    "buildings": 15,
    "trees": 144,
    "walls": 14,
-   "furniture": 10,
+   "furniture": 15,
    "lod": 15,
-   "bytes": 61117
+   "bytes": 61907
   },
   {
    "id": "33_36",
@@ -3089,7 +3089,7 @@
    "walls": 17,
    "furniture": 22,
    "lod": 13,
-   "bytes": 52222
+   "bytes": 52847
   },
   {
    "id": "31_37",
@@ -3104,9 +3104,9 @@
    "buildings": 9,
    "trees": 80,
    "walls": 18,
-   "furniture": 14,
+   "furniture": 20,
    "lod": 9,
-   "bytes": 58825
+   "bytes": 60137
   },
   {
    "id": "32_37",
@@ -3123,7 +3123,7 @@
    "walls": 20,
    "furniture": 34,
    "lod": 11,
-   "bytes": 108141
+   "bytes": 108155
   },
   {
    "id": "33_37",

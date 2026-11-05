@@ -25,6 +25,7 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           McDonald's de la route de Chalon (modèle `mcdo`, D234) : champ `mcd` du bâtiment (corps à mansarde autour d'un toit plat, édicules,
           véranda à toit de zinc à croupes ; `site`, D235 : totem, portique et panneaux du drive, recopiés) et silhouette lointaine ; bowling Strike Bowl (modèle `bowling`, D234) : champ `bowl` (halle à deux
           pans, ailes basses, bande basse, pergola), boîte BD TOPO collée à l'aile ouest masquée (`hide`), abords recopiés (`site`, D236), silhouette lointaine ;
+          base nautique du plan d'eau du Vallon (modèle `nautique`, D245, relevés de survey_nautique.py) : champ `naut` du bâtiment ;
           gendarmerie de l'avenue André Frenaud (modèle `gendarmerie`, D238, relevés de survey_gendarmerie.py) : champ `gend` du bâtiment principal
           (volumes à toit plat du bâtiment principal, de l'annexe et des logements), bâtiments BD TOPO voisins masqués (`hide`), silhouette lointaine ;
           Hexagone (modèle `hexagone`, D165-D168) : champ `hex` du bâtiment (pyramide à 12 pans, couronne de six terrasses, façades, mobilier du parvis) et silhouette lointaine.
@@ -1282,6 +1283,31 @@ def gendarmerie(tid, bid, b, spec, k):
     if ch:
         k["buildings"][bid] = e
     polys = [(rect_st(*q["r"]), q["z"], q["z"]) for q in m["blocks"]]
+    ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
+    return ch or ch2, tid if lod else None
+
+
+# --- Base nautique du plan d'eau du Vallon (D245) -------------------------------------------------------------------------------------
+
+def nautique(tid, bid, b, spec, k):
+    """Base nautique (D245) : champ `naut` du bâtiment (repère et volumes mesurés par survey_nautique.py, recopiés de `manual.json` ; abords
+    approchés), petit bâtiment BD TOPO du porche masqué (`hide`), silhouette lointaine. Rend (kinds changé, lod changé)."""
+    m = {"o": spec["o"], "a": spec["a"], "g": spec["g"], "blocks": spec["blocks"]}
+    if "site" in spec:
+        m["site"] = spec["site"]
+    e = dict(k["buildings"].get(bid, {}))
+    e["k"] = "culture"
+    e.pop("main", None)
+    e["naut"] = m
+    for q in m["blocks"]:
+        s0, s1, t0, t1 = q["r"]
+        ridge = f", faîtage {q['ridge'] - m['g']:.1f} m" if "ridge" in q else ""
+        print(f"    {q['n']:18s} {q['roof']:5s} {s1 - s0:5.1f} × {t1 - t0:5.1f} m, égout {q['z'] - m['g']:.1f} m{ridge}")
+    print(f"  {bid} : {len(m['blocks'])} volumes, sol {m['g']}")
+    ch = k["buildings"].get(bid) != e
+    if ch:
+        k["buildings"][bid] = e
+    polys = [(rect_st(*q["r"]), q["z"], q.get("ridge", q["z"])) for q in m["blocks"]]
     ch2, lod = roadside_lod(tid, bid, m, polys, spec, k)
     return ch or ch2, tid if lod else None
 
@@ -2817,6 +2843,13 @@ def main():
             continue
         if spec["model"] == "eduen":
             ch, lod = eduen(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "nautique":
+            ch, lod = nautique(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:
