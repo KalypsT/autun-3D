@@ -11,6 +11,7 @@ import { buildStation } from "./station";
 import { buildEduen } from "./eduen";
 import { buildBowling, buildMcdo } from "./roadside";
 import { buildGendarmerie } from "./gendarmerie";
+import { buildNautique } from "./nautique";
 import { buildVallon } from "./vallon";
 import { buildVallonFacades } from "./vallon-facade";
 import { buildGatePosts } from "./vallon-gate";
@@ -90,7 +91,7 @@ export function drawsWalls(kind: BuildingKind | undefined): boolean {
 
 /** La façade d'habitation (fiche) est-elle remplacée par le gabarit ? */
 export function replacesFacade(kind: BuildingKind | undefined): boolean {
-  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house || !!kind.hex || !!kind.vallon || !!kind.play || !!kind.sta || !!kind.edu || !!kind.mcd || !!kind.bowl || !!kind.gend);
+  return !!kind && (BOX_KINDS.has(kind.k) || kind.k === "church" || kind.k === "chapel" || kind.k === "hidden" || kind.k === "cart" || !!kind.hall || !!kind.college || !!kind.house || !!kind.hex || !!kind.vallon || !!kind.play || !!kind.sta || !!kind.edu || !!kind.mcd || !!kind.bowl || !!kind.gend || !!kind.naut);
 }
 
 // --- Segments de mur ------------------------------------------------------------------------------------------------------------
@@ -990,6 +991,7 @@ export function buildLandmarks(
         else if (kind.bowl) buildBowling(sinks, kind.bowl, terrain);
         // Gendarmerie de l'avenue André Frenaud d'après photos (D238) : modèle dédié.
         else if (kind.gend) buildGendarmerie(sinks, kind.gend, terrain);
+        else if (kind.naut) buildNautique(sinks, kind.naut, terrain);
         else if (kind.vallon) { buildVallon(sinks, kind.vallon, terrain); buildVallonFacades(sinks, kind.vallon, terrain); if (kind.vallon.gate) buildGatePosts(sinks, kind.vallon.gate, terrain); if (kind.vallon.props) buildVallonProps(sinks, kind.vallon, terrain); }
         else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
         else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain);

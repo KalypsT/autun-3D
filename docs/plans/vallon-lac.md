@@ -141,7 +141,7 @@ Réponses au §11.
 |---|---|---|---|
 | **0. Relevés** (fait, §12) | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
 | **1. Le chemin** (fait, §13) | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
-| **2. La base nautique** | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
+| **2. La base nautique** (fait, §14) | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
 | **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
 | **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
@@ -262,3 +262,30 @@ lampadaires côté terre et tournés vers le chemin, roseaux au bord et hors des
 ![La digue](../captures/d244-digue.jpg)
 ![Vue haute](../captures/d244-haut.jpg)
 ![La rive est, la nuit](../captures/d244-nuit.jpg)
+
+## 14. Lot 2 : la base nautique (5 novembre 2026, D245)
+
+Fait. Relevé `tools/data/survey_nautique.py` (modèles de surface et de terrain LiDAR HD à 0,5 m), modèle `nautique` de `build_monuments.py` (champ `naut`
+du bâtiment BD TOPO …847357, le petit bâtiment …847358 du porche masqué), rendu `src/render/nautique.ts`, collisions `src/core/nautique.ts`.
+
+- **Repère** : coin sud-ouest du hangar du sud, s à 18,4° au nord de l'est ; tous les murs BD TOPO lui sont parallèles (sommets à 0,3 m près).
+- **Neuf volumes** (sol à −23,88) : hangar du sud en **pavillon** (8,4 × 11,3 m, égout 3,2 m, sommet 5,7 m) ; porche de l'entrée (3,0 m) ; aile ouest (4,1 m) ;
+  corps central en trois toits plats (3,1, 4,7 et 3,6 m) ; volume du milieu à **deux pans** (égout 3,5 m, faîtage 5,7 m à t = 23) ; liaison (3,6 m) ; bloc nord-est
+  à **un pan** (5,1 m à l'ouest, 3,4 m à l'est). Ce ne sont pas trois volumes, comme l'orthophotographie le laissait croire au lot 0.
+- **Façades** : enduit beige sur soubassement gris, bac acier gris, débords de 35 cm, fenêtres hautes en bandeau (allumées la nuit) ; deux portes de hangar sur le lac,
+  porte vitrée du porche ; côté darse, **baies ouvertes sur poteaux avec kayaks rangés** ; banderole « COMMUNE SPORTIVE / BOURGOGNE-FRANCHE-COMTÉ » sur le bloc nord-est.
+- **Abords** (positions approchées, photos et orthophotographie) : bloc de toilettes en béton gravillonné, mât au drapeau tricolore, barrière levante baissée,
+  quatre potelets en bois, quatre rochers posés, panneau d'information. Tous sont des obstacles ; la barrière s'enjambe.
+- **La darse** : le LiDAR place son quai **au niveau de l'eau** (0 à 5 cm au-dessus) : rien à construire, un nageur en sort partout ; le talus jusqu'à la base reste
+  celui du relief.
+- **Pas fait** : le grand saule pleureur (pas de modèle de saule ; un arbre de 17 m de la carte est à sa place supposée), les dériveurs rangés sur le quai (lot 3),
+  les côtés sans photo (sud et ouest) sont approchés ; les passants suivent encore l'ancien contour (navigation non régénérée).
+- **Vues** : `?view=nautique` (depuis la route de Chalon), `nautique-darse`, `nautique-lac`, `nautique-haut`.
+
+Tests (+5, `src/render/nautique.test.ts`) : neuf volumes de 2,5 à 5 m, faîtages plausibles, porche BD TOPO masqué ; formes de toit (sommet, faîtage, pan) ;
+volumes sans chevauchement et contour BD TOPO couvert à 1,5 m ; obstacles (volumes, toilettes, barrière) ; dessin fini et borné (1 500 à 9 000 triangles), textes.
+
+![Depuis la route de Chalon](../captures/d245-route.jpg)
+![Côté darse](../captures/d245-darse.jpg)
+![Depuis le lac](../captures/d245-lac.jpg)
+![Vue haute](../captures/d245-haut.jpg)

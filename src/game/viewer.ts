@@ -52,6 +52,11 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "gendarmerie-logements": [1801.5, 576.4, 1.7, 1813.6, 552.0, 4],
   "gendarmerie-cour": [1803.5, 610.3, 1.7, 1767.6, 606.5, 3],
   "gendarmerie-haut": [1720.4, 591.8, 45, 1787.7, 601.7, 0],
+  // Base nautique du plan d'eau du Vallon (D245) : depuis la route de Chalon (photo), devant la remise aux kayaks, du lac, de haut.
+  nautique: [1356, 648, 1.7, 1300, 600, 0],
+  "nautique-darse": [1312, 606, 1.7, 1318, 588, 2],
+  "nautique-lac": [1290, 530, 1.7, 1308, 568, 2],
+  "nautique-haut": [1345, 640, 35, 1308, 578, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

@@ -1802,3 +1802,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![La rive est](docs/captures/d244-rive-est.jpg)
 ![La digue](docs/captures/d244-digue.jpg)
+
+**Le plan d'eau du Vallon, lot 2 : la base nautique (5 novembre 2026)** (D245)
+- La base nautique a ses vrais volumes, mesurés au LiDAR : un hangar à quatre pans au sud, un corps central à toits plats, un volume à deux pans et un bloc à un pan au nord-est, tous en enduit beige et bac acier gris.
+- Côté darse : baies ouvertes avec les kayaks rangés, banderole « Commune sportive Bourgogne-Franche-Comté » ; portes de hangar sur le lac.
+- Devant : bloc de toilettes, mât au drapeau tricolore, barrière levante, potelets en bois, rochers, panneau d'information.
+- Vues : `?view=nautique`, `nautique-darse`, `nautique-lac`, `nautique-haut`.
+- Prochaine étape : les pontons et la cale.
+
+![Depuis la route de Chalon](docs/captures/d245-route.jpg)
+![Côté darse](docs/captures/d245-darse.jpg)

@@ -6,6 +6,7 @@ import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
 import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./gendarmerie";
+import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -67,6 +68,12 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     if (kind?.gend) {
       for (const r of gendarmerieRings(kind.gend)) c.addRing(r);
       for (const l of gendarmerieLines(kind.gend)) c.addPolyline(l, true, wallTop("fence", GENDARMERIE_FENCE_H));
+      continue;
+    }
+    // Base nautique du plan d'eau du Vallon (D245) : ses volumes mesurés, toilettes, mât, rochers, potelets ; barrière levante baissée.
+    if (kind?.naut) {
+      for (const r of nautiqueRings(kind.naut)) c.addRing(r);
+      for (const l of nautiqueLines(kind.naut)) c.addPolyline(l, true, wallTop("fence", NAUTIQUE_BARRIER_H));
       continue;
     }
     // McDonald's et bowling de la route de Chalon (D234) : leurs volumes mesurés (le contour BD TOPO ne couvre pas la véranda ni les ailes).

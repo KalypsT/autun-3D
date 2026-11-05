@@ -5044,3 +5044,23 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La rive est](captures/d244-rive-est.jpg)
 ![La digue](captures/d244-digue.jpg)
 ![Vue haute](captures/d244-haut.jpg)
+
+## 2026-11-05 — D245. Le plan d'eau du Vallon, lot 2 : la base nautique (plan `docs/plans/vallon-lac.md`, §4 et §14)
+
+**Mesures** (`tools/data/survey_nautique.py`, LiDAR HD 0,5 m) dans le repère du hangar du sud (coin sud-ouest BD TOPO (1306,7 ; 553,4), s à 18,4° au nord de l'est, t vers le nord-nord-ouest ; tous les murs BD TOPO lui sont parallèles) : neuf volumes à un niveau, forme du toit lue sur les profils du modèle de surface (plat : médiane ; un pan : plan ajusté ; deux pans et pavillon : égout au 10e centile, faîtage au 97e). Hangar en pavillon (égout 3,2 m, sommet 5,7 m), porche 3,0 m, aile ouest 4,1 m, corps central en trois toits plats (3,1 / 4,7 / 3,6 m), volume du milieu à deux pans (3,5 / 5,7 m), liaison 3,6 m, bloc nord-est à un pan (5,1 m à l'ouest, 3,4 m à l'est).
+
+**Données** : modèle `nautique` de `manual.json` (`monuments`, …847357), champ `naut` (`NautiqueModel`) écrit par `build_monuments.py nautique` dans `kinds/31_37.json` ; petit bâtiment du porche (…847358) masqué ; silhouette lointaine. Idempotent.
+
+**Rendu** (`src/render/nautique.ts`) : murs en enduit beige sur soubassement gris jusqu'au toit (pignons et murs sous un pan compris), bac acier gris avec débords de 35 cm et rive, fenêtres hautes (une sur trois allumée la nuit), portes de hangar sur le lac, porte vitrée du porche, baies ouvertes à kayaks côté darse, banderole « COMMUNE SPORTIVE / BOURGOGNE-FRANCHE-COMTÉ » ; abords : toilettes en béton gravillonné (plaque « Toilettes »), mât au drapeau, barrière levante baissée, potelets bois, rochers, panneau d'information. Dans les maillages de la tuile, aucun appel de dessin de plus.
+
+**Collisions** (`src/core/nautique.ts`, `world.ts`) : chaque volume, les toilettes, le mât, les rochers, les potelets ; la barrière en ligne d'obstacle d'1 m (on l'enjambe, on voit à travers).
+
+**Constat** : le quai de la darse est au niveau de l'eau d'après le LiDAR ; on en sort à la nage partout, rien à construire.
+
+**Pas fait** : le saule pleureur, les dériveurs sur le quai (lot 3), la navigation des passants (ancien contour). Abords placés d'après les photos et l'orthophotographie : positions approchées.
+
+**Tests** (+5, 1 287 au total ; `src/render/nautique.test.ts`).
+
+![Depuis la route de Chalon](captures/d245-route.jpg)
+![Côté darse](captures/d245-darse.jpg)
+![Depuis le lac](captures/d245-lac.jpg)

@@ -421,6 +421,8 @@ export interface BuildingKind {
   bowl?: BowlingModel;
   /** Gendarmerie de l'avenue André Frenaud d'après photos et relevé LiDAR (D238) : bâtiment principal, annexe et logements (remplace murs, toit, façade et obstacle génériques). */
   gend?: GendarmerieModel;
+  /** Base nautique du plan d'eau du Vallon d'après photos et relevé LiDAR (D245) : volumes et abords (remplace murs, toit, façade et obstacle génériques). */
+  naut?: NautiqueModel;
   /** Église Saint-André d'après photo (D138) : modèle dédié (remplace murs, toit et façade génériques). */
   chap?: ChapelModel;
   /** Maison d'après photo (D140) : modèle dédié (remplace murs, toit, façade et obstacle génériques). */
@@ -533,6 +535,44 @@ export interface GendarmerieSite {
   borne: [number, number];
   flag: [number, number];
   mast: [number, number, number];
+}
+
+/**
+ * Base nautique du plan d'eau du Vallon (D245, tools/data/build_monuments.py, modèle `nautique`, relevés de survey_nautique.py).
+ * Repère : origine `o` au coin sud-ouest du hangar du sud, s le long de son côté sud selon l'angle `a` (18,4° au nord de l'est), t vers le
+ * nord-nord-ouest. Volumes `blocks` : rectangle `r` (s0, s1, t0, t1), égout `z` (altitude locale ; toit plat : son dessus), faîtage `ridge`
+ * (deux pans : faîtage le long de `axis` à l'abscisse en travers `at` ; un pan : côté haut `high` ; pavillon : sommet au centre). `g` : sol autour.
+ */
+export interface NautiqueModel {
+  o: [number, number];
+  a: number;
+  g: number;
+  blocks: NautiqueBlock[];
+  site?: NautiqueSite;
+}
+
+export interface NautiqueBlock {
+  n: string;
+  roof: "flat" | "mono" | "gable" | "hip";
+  r: [number, number, number, number];
+  z: number;
+  ridge?: number;
+  axis?: "s" | "t";
+  at?: number;
+  high?: "s0" | "s1" | "t0" | "t1";
+}
+
+/**
+ * Abords de la base nautique (D245, photos et orthophotographie, repère de la base ; positions approchées) : bloc de toilettes (centre s, t, longueur,
+ * largeur, hauteur), mât au drapeau, rochers posés (s, t, rayon), potelets en bois, barrière levante (pied, bout, baissée), panneau d'information.
+ */
+export interface NautiqueSite {
+  wc: [number, number, number, number, number];
+  mast: [number, number];
+  rocks: [number, number, number][];
+  bollards: [number, number][];
+  barrier: { a: [number, number]; b: [number, number] };
+  board: [number, number];
 }
 
 export interface McdoModel {
