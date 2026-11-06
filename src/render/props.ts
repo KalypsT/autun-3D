@@ -6,6 +6,7 @@ import type { Furniture, HeightField, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { canvasTexture } from "./canvas";
 import { isBreakable } from "../core/breakables";
+import { isProfiled, rampartSides, type ProfiledWall } from "../core/ramparts";
 
 const THICK = 0.3;
 
@@ -173,6 +174,44 @@ export interface WallSinks {
   posts: MeshBuilder;
 }
 
+/** Enfoncement du pied des faces sous le sol (m) : pas de jour entre le mur et un relief à mailles de 1 m. */
+const RAMPART_SINK = 0.4;
+
+/**
+ * Rempart à profil mesuré (D250) : deux faces qui descendent chacune sous le sol de son côté, le dessus au sommet mesuré, les bouts fermés.
+ * Un mur de soutènement n'a donc que son parapet côté ville et toute sa hauteur côté extérieur.
+ */
+function buildRampart(sinks: WallSinks, w: ProfiledWall, terrain: HeightField, color: THREE.Color): void {
+  const { left, right } = rampartSides(w);
+  const n = w.top.length;
+  const foot = (side: number[], g: number[], i: number): number =>
+    Math.min(terrain.heightAt(side[2 * i]!, side[2 * i + 1]!), g[i]!) - RAMPART_SINK;
+  const L = (i: number, z: number): Vec3 => toThree(left[2 * i]!, left[2 * i + 1]!, z);
+  const R = (i: number, z: number): Vec3 => toThree(right[2 * i]!, right[2 * i + 1]!, z);
+  for (let i = 0; i + 1 < n; i++) {
+    const j = i + 1;
+    const dx = w.pts[2 * j]! - w.pts[2 * i]!, dy = w.pts[2 * j + 1]! - w.pts[2 * i + 1]!;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.05) continue;
+    const nx = dy / len, ny = -dx / len; // normale droite
+    const ti = w.top[i]!, tj = w.top[j]!;
+    sinks.solid.quad(R(i, foot(right, w.gr, i)), R(j, foot(right, w.gr, j)), R(j, tj), R(i, ti), toThree(nx, ny, 0), color);
+    sinks.solid.quad(L(j, foot(left, w.gl, j)), L(i, foot(left, w.gl, i)), L(i, ti), L(j, tj), toThree(-nx, -ny, 0), color);
+    sinks.cap.quad(R(i, ti), R(j, tj), L(j, tj), L(i, ti), [0, 1, 0], COLORS.stone);
+  }
+  // Bouts : de la face gauche à la face droite au départ, l'inverse à l'arrivée.
+  const end = (i: number, tx: number, ty: number, first: boolean): void => {
+    const zb = Math.min(foot(left, w.gl, i), foot(right, w.gr, i)), zt = w.top[i]!;
+    const nrm = toThree(tx, ty, 0);
+    if (first) sinks.solid.quad(L(i, zb), R(i, zb), R(i, zt), L(i, zt), nrm, color);
+    else sinks.solid.quad(R(i, zb), L(i, zb), L(i, zt), R(i, zt), nrm, color);
+  };
+  const p = w.pts, m = p.length;
+  const d0 = Math.hypot(p[2]! - p[0]!, p[3]! - p[1]!) || 1, d1 = Math.hypot(p[m - 2]! - p[m - 4]!, p[m - 1]! - p[m - 3]!) || 1;
+  end(0, -(p[2]! - p[0]!) / d0, -(p[3]! - p[1]!) / d0, true);
+  end(n - 1, (p[m - 2]! - p[m - 4]!) / d1, (p[m - 1]! - p[m - 3]!) / d1, false);
+}
+
 /** Murs, murets et grilles : les pleins en volume, les grilles en barreaux (texture à transparence) avec piliers. */
 export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: HeightField): void {
   for (const w of walls) {
@@ -180,6 +219,10 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
     const hedge = w.kind === "hedge", rampart = w.kind === "rampart";
     const base = hedge ? sinks.hedgeColor : sinks.solidColor;
     const color = base.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    if (isProfiled(w)) {
+      buildRampart(sinks, w, terrain, color);
+      continue;
+    }
     const thick = hedge ? 0.8 : rampart ? 1.3 : THICK;
     let s = 0;
     for (let i = 0; i + 3 < w.pts.length; i += 2) {

@@ -5141,3 +5141,32 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Les pêcheurs du sud-ouest](captures/d249-pecheurs.jpg)
 ![Des voiliers un samedi d'été](captures/d249-voiliers.jpg)
 
+
+## 2026-11-06 — D250. Les remparts, lot 1 : le tracé complété et la forme mesurée (plan `docs/plans/remparts.md`, §4)
+
+**Demande de l'utilisateur** : lancer le lot 1 après la première série de photos (§1 bis du plan). Décisions déjà prises (§1) : ne rien montrer des portions disparues ; promenade sur le dessus seulement là où on marche en vrai (lot 4) ; critère « ce qui est debout aujourd'hui », quelle que soit l'époque (§2).
+
+**Constat** : 14 murs OSM (3,1 km), tous en boîte de 6 m × 1,3 m posée sur le relief. Les deux tiers sont des murs de soutènement (ville au niveau du haut, 5 à 10 m côté extérieur) ; le MNT range le parement en « sol » : un talus d'herbe de 5 à 10 m, surmonté d'une boîte qui flotte.
+
+**Données** (`tools/data/build_ramparts.py`, `ramparts` de `manual.json`) : mêmes sources et caches que le relevé (`survey_remparts.py`).
+- Pointe sud absente d'OSM, retrouvée au LiDAR (plus forte marche du sol le long du segment de la tour des Ursulines à la rue Chaffaut) : 128 m en trois morceaux ; rien entre (105 ; −876) et (141 ; −828), où des maisons sont bâties contre le mur. Un raccord de 13 m (deux bouts sans rue entre eux) ; les autres trous sont des rues.
+- Profils tous les 4 m lissés (médiane sur 5) ; stations à moins de 0,8 m du sol des deux côtés retirées. Sommet : au moins 0,5 m au-dessus du sol le plus haut (parapet), au plus 12 m au-dessus du plus bas (au-delà : bâtiments adossés). Boulevard Laureau : 5,5 m au-dessus du sol extérieur d'après les photos 11 et 12 (restauré après le vol LiDAR).
+- Calage : là où un côté est plus haut de 2 m ou plus, la face basse est posée sur la marche mesurée du sol LiDAR (le trait OSM suit à peu près la face, à 0,25-0,75 m près, pas l'axe), l'axe une demi-épaisseur (1 m) derrière ; décalage lissé sur 20 m. Là où une face toucherait une chaussée dessinée, l'axe recule (1,5 m au plus) : 22 m² de mur sur les chaussées avant, 4 après.
+- Tuiles : les `rampart` deviennent des polylignes à profil (`top`, `gl`, `gr` : sommet et sol à gauche et à droite, par sommet), 21 murs, 3 141 m. Identifiants −(860 000 000 + n).
+- Relief fin écrêté de chaque côté, de l'axe jusqu'à 12 m au-delà de la face, sous le sol mesuré de ce côté plus une pente de 25 %, et en éventail autour des angles saillants. Idempotente (une deuxième passe ne change rien).
+
+**Jeu** (`src/core/ramparts.ts`) : rendu en deux faces qui descendent chacune sous le sol de son côté, dessus et bouts fermés (`buildRampart`, `src/render/props.ts`) ; collisions sur le contour des deux faces (mur de 2 m, infranchissable comme avant).
+
+**Creux d'affichage** (`rampartPits`) : le relief proche est affiché par carreaux de 2,5 m, plus larges que le mur ; un triangle reliait le haut au bas à travers la face et la perçait de pointes d'herbe. Comme pour le bowl (D248) : du côté haut, sous le mur et jusqu'à 3,6 m de la face, le relief affiché est abaissé au sol bas ; une bande de relief fin (`Pit.cover`, mailles de 1 × 0,8 m sur 7,2 m, au vrai relief) est ajoutée au maillage du relief proche (`TerrainView.addCovers`), avec sa matière : elle cache le creux. Marche, véhicules et sols suivent toujours le vrai relief.
+
+**Pas fait** : aspect (une seule teinte, lot 2) ; tours (lot 3 : celle du boulevard Laureau est encore le bâtiment BD TOPO à toit rouge) ; promenade (lot 4) ; relief lointain (`coarse.bin`) inchangé : le talus se voit encore au-delà de 300 m ; trois angles de plus de 30° ajoutés au tracé par le calage (49 contre 48 dans le dessin OSM).
+
+**Test en échec** : `src/core/chase.test.ts`, « quatre gendarmeries… ne s'empilent pas » : 6,5 % des pas avec deux voitures de police à moins de 3 m, pour un plafond de 4 % (3,1 % avant). Au tirage 3, le fugitif simulé sort de la chaussée au débouché de la rue du 19 Mars 1962 sur le boulevard des Résistants Fusillés et se coince contre le rempart (déjà avant, contre l'ancien trait) ; la face est maintenant 1 m plus près, à sa place mesurée, et il y reste plus longtemps : la police s'empile autour (20 % des pas de ce tirage contre 7 %). Le seuil n'est pas relevé : décision laissée à l'utilisateur.
+
+**Tests** (+9, 1 333 au total ; `src/core/ramparts.test.ts`) : profil partout, parapet et plafond, plus de 2 km de soutènement, pointe sud, relief écrêté au pied (plus de 200 points), faces, contour, creux et bande, collisions.
+
+![R11 avant : talus d'herbe et boîte qui flotte](captures/d250-r11-avant.jpg)
+![R11 après](captures/d250-r11.jpg)
+![Rue du Vieux Colombier](captures/d250-vieux-colombier.jpg)
+![Boulevard des Résistants Fusillés](captures/d250-resistants.jpg)
+![Boulevard Laureau](captures/d250-laureau.jpg)

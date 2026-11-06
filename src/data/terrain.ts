@@ -65,6 +65,18 @@ export interface Pit {
   x1: number;
   y1: number;
   cap(x: number, y: number): number;
+  /** Bandes de relief fin qui recouvrent le creux (D250, remparts) : le relief affiché les ajoute à ses morceaux proches. */
+  cover?: readonly Cover[];
+}
+
+/**
+ * Bande de relief fin (D250) : le long de `pts` (polyligne), sur `width` m dans la direction `nrm` (vecteur unitaire par sommet), le vrai relief
+ * à mailles fines, dans le même maillage et la même matière que le relief affiché.
+ */
+export interface Cover {
+  pts: readonly number[];
+  nrm: readonly number[];
+  width: number;
 }
 
 /** Creux d'affichage des tuiles chargées ; `version` change à chaque ajout ou retrait (l'affichage du relief se reconstruit). */
@@ -83,6 +95,15 @@ export class Pits {
   }
 
   /** Emprises des creux (pour savoir quels morceaux de relief reconstruire). */
+  /** Bandes de relief fin des creux qui touchent la boîte (x0, y0, x1, y1). */
+  covers(x0: number, y0: number, x1: number, y1: number): Cover[] {
+    const out: Cover[] = [];
+    for (const list of this.byTile.values()) {
+      for (const p of list) if (p.cover && p.x0 <= x1 && p.x1 >= x0 && p.y0 <= y1 && p.y1 >= y0) out.push(...p.cover);
+    }
+    return out;
+  }
+
   boxes(): [number, number, number, number][] {
     return [...this.byTile.values()].flat().map((p) => [p.x0, p.y0, p.x1, p.y1]);
   }

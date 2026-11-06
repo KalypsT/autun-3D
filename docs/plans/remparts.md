@@ -21,7 +21,7 @@ la carte `docs/captures/remparts-carte.png` et une capture « avant » sont les 
 6. **Une promenade sur le mur existe peut-être** : un sentier OSM (`426304451`) suit sur 94 m le haut du mur de soutènement de l'est (R10-R11), de
    (811 ; 62) à (715 ; −39). À confirmer sur photo. Aucun autre chemin n'est sur un dessus de mur.
 
-![Avant : R11, vu du pied, côté extérieur](../captures/remparts-avant-r11.jpg)
+![Avant : R11, vu du pied, côté extérieur](../captures/d250-r11-avant.jpg)
 
 *R11 aujourd'hui, vu du pied côté extérieur : le parement de 10 m est un talus d'herbe, la boîte de 6 m flotte sur la terrasse.*
 
@@ -234,3 +234,18 @@ sentier sur le dessus ni la rue Blanche). Il reste, par ordre d'importance :
 2. **R40-R42** (boulevard Laureau) : connais-tu ce mur ? Est-il romain ?
 3. **Promenade** : sais-tu s'il y a un chemin sur le haut des remparts ailleurs que rue de la Maladière (par exemple le long des boulevards de
    l'ouest) ?
+
+## 7. Lot 1 fait (D250, 6 novembre 2026)
+
+Tracé complété (pointe sud au LiDAR, un raccord), forme mesurée tous les 4 m, face basse calée sur la marche du LiDAR, relief écrêté au pied,
+creux d'affichage et bande de relief fin côté haut, collisions sur les deux faces. Détail, limites et test en échec : D250 de `docs/DECISIONS.md`.
+
+Ce que le lot 1 a appris :
+- **Le trait OSM suit la face extérieure**, pas l'axe (à 0,25-0,75 m près). Les chaussées dessinées débordent par endroits sur la bande d'herbe du pied.
+- **Rue de la Maladière, au nord** (R02-R05) : la rue est au niveau du haut du mur, et le terrain descend de 8 m de l'autre côté, vers le plan
+  d'eau. Ta photo 7 montre au contraire un mur qui domine la rue, avec des bâtiments au-dessus : elle a sans doute été prise plus au sud, le long
+  d'un mur qu'OpenStreetMap n'a pas (question 4).
+
+Question ajoutée :
+4. **Photo 7 (« 4 rue de la Maladière »)** : à quel endroit de la rue a-t-elle été prise ? Si c'est au sud, vers le lycée militaire, il y a là un
+   mur haut absent d'OSM, à ajouter au tracé.

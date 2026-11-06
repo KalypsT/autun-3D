@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { landmarkDecks, landmarkSectors } from "../core/landmarks";
 import { bowlPit } from "../core/leisure";
+import { rampartPits } from "../core/ramparts";
 import { addTileColliders } from "../core/world";
 import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
@@ -245,8 +246,11 @@ export class TileManager {
     // Gradins du théâtre romain (D133) : secteurs d'anneau, invisibles eux aussi.
     const sectors = landmarkSectors(data.kinds);
     if (sectors.length) this.terrain.decks.addSectors(id, sectors);
+    // Remparts de soutènement (D250) : creux d'affichage du relief côté haut, recouvert d'une bande de relief fin.
+    const ramparts = rampartPits(data.walls);
     if (!st) {
       if (extra.length) this.terrain.decks.add(id, extra);
+      if (ramparts.length) this.terrain.pits.add(id, ramparts);
       return;
     }
     const platforms = st.platforms.map((p, i) => {
@@ -256,7 +260,7 @@ export class TileManager {
     });
     this.terrain.decks.add(id, [...st.decks, ...extra], platforms);
     // Bowl de l'aire de glisse (D248) : creux d'affichage du relief.
-    this.terrain.pits.add(id, (st.equip ?? []).filter((e) => e.k === "bowl").map(bowlPit));
+    this.terrain.pits.add(id, [...ramparts, ...(st.equip ?? []).filter((e) => e.k === "bowl").map(bowlPit)]);
   }
 
   private unload(e: Entry): void {

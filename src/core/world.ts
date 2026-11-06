@@ -9,6 +9,7 @@ import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./genda
 import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
 import { BOAT_TOP, boatOutline, SHELTER_POST, shelterPosts } from "./piers";
 import { EQUIP_TOP, equipRing, skateSides } from "./leisure";
+import { isProfiled, rampartOutline } from "./ramparts";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -102,7 +103,11 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   }
   // Clôtures de parcelle (D94) : elles arrêtent les déplacements, pas la vue ni les tirs (on voit et on tire par-dessus).
   // Chacun garde sa hauteur : on saute par-dessus les plus bas, on escalade les grilles (voir `player.ts`).
-  for (const w of wallsOutsideMonuments(tile.kinds, tile.walls)) c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID, wallTop(w.kind, w.height));
+  // Remparts à profil (D250) : le contour des deux faces, bouts fermés (un mur de 2 m d'épaisseur ; le joueur s'arrête contre la pierre).
+  for (const w of wallsOutsideMonuments(tile.kinds, tile.walls)) {
+    if (isProfiled(w)) c.addPolyline(rampartOutline(w), false, wallTop(w.kind, w.height));
+    else c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID, wallTop(w.kind, w.height));
+  }
   for (const k of Object.values(tile.kinds?.buildings ?? {})) {
     const g = k.college?.grille;
     if (g) c.addPolyline([...g.a, ...g.b], true, GRILLE_HONNEUR);

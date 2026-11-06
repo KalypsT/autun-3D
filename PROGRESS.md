@@ -1852,3 +1852,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Les pêcheurs](docs/captures/d249-pecheurs.jpg)
 ![Des voiliers l'été](docs/captures/d249-voiliers.jpg)
+
+**Les remparts, lot 1 : le tracé et la forme (6 novembre 2026)** (D250)
+- Les remparts ont leur vraie forme, mesurée au LiDAR : là où la ville est au niveau du haut (les deux tiers de l'enceinte), le mur n'est plus qu'un parapet côté ville et descend de 5 à 10 m côté extérieur ; le talus d'herbe qui le remplaçait a disparu.
+- La pointe sud, absente des cartes, part maintenant de la tour des Ursulines ; le mur du boulevard Laureau a la hauteur de tes photos (restauré après le relevé).
+- La face du mur est posée là où le LiDAR voit la marche ; elle ne déborde plus sur les chaussées.
+- Pas encore : l'aspect (lot 2), les tours (lot 3), la promenade (lot 4).
+- À regarder : `?view=custom&cam=713,-104.5,1.7,690.7,-92.8,5&h=14` (R11), `cam=333.3,-524.4,1.7,354,-490,3` (rue du Vieux Colombier), `cam=-154.3,-405.8,1.7,-167.8,-368.1,3` (boulevard des Résistants Fusillés).
+- Un test de poursuite échoue (voir D250) : décision à prendre.
+
+![R11 avant](docs/captures/d250-r11-avant.jpg)
+![R11 après](docs/captures/d250-r11.jpg)

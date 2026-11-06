@@ -127,6 +127,12 @@ export interface Wall {
   pts: number[];
   /** Aspect d'une clôture (`fence`) : grillage vert à poteaux plats (D244, rive est du plan d'eau du Vallon) ; absent : barreaudage. */
   look?: "mesh";
+  /** Rempart à profil mesuré (D250, tools/data/build_ramparts.py) : sommet du mur à chaque sommet de `pts` (altitude absolue). */
+  top?: number[];
+  /** Sol à gauche du sens de la polyligne, à chaque sommet (altitude absolue). */
+  gl?: number[];
+  /** Sol à droite du sens de la polyligne, à chaque sommet (altitude absolue). */
+  gr?: number[];
 }
 
 export interface Furniture {
