@@ -144,3 +144,49 @@ describe("Remparts, lot 1 (D250) : géométrie, creux d'affichage, collisions", 
     expect(Math.hypot(r2.x - far[0], r2.y - far[1])).toBeLessThan(0.01);
   });
 });
+
+describe("Remparts, lot 4 (D255) : grillage, sols", () => {
+  it("grillage vert de 2,5 m sur le haut du mur, au-dessus du terrain de sport du boulevard des Résistants Fusillés (photos 1 et 2)", () => {
+    const t = JSON.parse(readFileSync("public/data/tiles/25_34.json", "utf8")) as TileData;
+    const f = t.walls.filter((w) => w.id <= -862_000_000 && w.id > -863_000_000);
+    expect(f.length).toBeGreaterThan(0);
+    for (const w of f) {
+      expect(w.kind).toBe("fence");
+      expect(w.look).toBe("mesh");
+      expect(w.height).toBe(2.5);
+      expect(length(w)).toBeGreaterThan(20);
+    }
+  });
+
+  it("aucun trottoir, place ni pelouse n'enjambe un rempart (les « panneaux » qui flottaient vers (990 ; 255))", () => {
+    // Échantillon : les points sur l'axe des murs ne tombent dans aucun sol autre que les chaussées.
+    let checked = 0;
+    for (const f of tiles) {
+      const t = JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData;
+      const polys: number[][][] = [];
+      for (const [layer, items] of Object.entries(t.ground ?? {})) {
+        if (layer.startsWith("road_") || layer.startsWith("marks")) continue;
+        for (const it of items) polys.push(it);
+      }
+      const inside = (r: number[], x: number, y: number): boolean => {
+        let c = false;
+        for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+          const xi = r[i]!, yi = r[i + 1]!, xj = r[j]!, yj = r[j + 1]!;
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+        }
+        return c;
+      };
+      for (const w of t.walls) {
+        if (w.kind !== "rampart") continue;
+        for (let i = 0; i + 3 < w.pts.length; i += 2) {
+          const x = (w.pts[i]! + w.pts[i + 2]!) / 2, y = (w.pts[i + 1]! + w.pts[i + 3]!) / 2;
+          // Dans l'anneau extérieur et hors de ses trous.
+          const covered = polys.some((p) => inside(p[0]!, x, y) && !p.slice(1).some((h) => inside(h, x, y)));
+          expect(covered, `${f} (${x.toFixed(1)} ; ${y.toFixed(1)})`).toBe(false);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(500);
+  });
+});

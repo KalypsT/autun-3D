@@ -1885,3 +1885,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![La tour des Ursulines](docs/captures/d254-ursulines.jpg)
 ![Une tour du boulevard des Résistants Fusillés](docs/captures/d254-resistants.jpg)
+
+**Les remparts, lot 4 : les détails (6 novembre 2026)** (D255)
+- Le grillage vert du terrain de sport se dresse au-dessus du mur du boulevard des Résistants Fusillés, comme sur tes photos.
+- Petits trous d'écoulement au pied des grands murs.
+- Les plaques qui sortaient du pied du mur rue de la Maladière ont disparu (c'était le trottoir de la rue d'en haut qui débordait).
+- Pas de promenade sur les remparts.
+
+![Le grillage du terrain de sport](docs/captures/d255-grillage.jpg)

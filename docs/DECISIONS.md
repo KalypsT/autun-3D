@@ -5241,3 +5241,33 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Le sommet et la statue](captures/d254-ursulines-sommet.jpg)
 ![Une tour du boulevard Mac Mahon](captures/d254-mac-mahon.jpg)
 ![Une tour du boulevard des Résistants Fusillés](captures/d254-resistants.jpg)
+
+## 2026-11-06 — D255. Les remparts, lot 4 : grillage, barbacanes, sols ; pas de promenade
+
+**Demande de l'utilisateur** : continuer ; il n'est pas sûr qu'on puisse marcher sur les remparts.
+
+**Promenade** : aucune (règle du 6 novembre : seulement là où l'on marche en vrai ; rien ne le montre). Le dessus des murs reste
+infranchissable ; le sentier OSM qui suit le haut de R10-R11 (lot 0) n'est pas confirmé.
+
+**Grillage** (`fences` de `ramparts`, `manual.json` ; `top_fences`, `build_ramparts.py`) : grillage vert à poteaux plats (`mesh`, D244) de
+2,5 m sur le bord intérieur du mur, là où la face haute borde le terrain de sport (sol `pitch` de 1 523 m², centré en (−181 ; −286)) au-dessus
+du boulevard des Résistants Fusillés (photos 1 et 2) : 39 m, la longueur du terrain dans les données (les photos en montrent plus : la cour
+voisine n'est pas un terrain dans les sols). Identifiants −(862 000 000 + n), remplacés à chaque passe.
+
+**Barbacanes** (`src/render/ramparts.ts`) : petites ouvertures sombres à 70 cm au-dessus du sol, tous les 2 m environ (une sur quatre
+omise), sur la face haute des murs de plus de 2,5 m (photo 10).
+
+**Sols** : rue de la Maladière (R03-R05), la rue est sur le haut du mur et son trottoir et une petite place débordaient par-dessus l'arête ;
+posés sur le relief écrêté au pied (D250), leurs triangles ressortaient de la face en plaques (les « panneaux » qui flottaient vers
+(990 ; 255), notés en D247 : ce n'étaient pas des panneaux). Les sols de chaque tuile (sauf les chaussées, dont le mur s'écarte déjà) sont
+découpés le long de l'emprise des remparts (`cut_ground`) ; découpe répétée jusqu'à stabilité, testée sur une bande rétrécie de 3 cm pour
+qu'un bord arrondi ne soit pas redécoupé : une deuxième passe de l'étape ne change rien.
+
+**Pas fait** : escalier extérieur et petite construction au sommet du mur de la rue du Vieux Colombier (photo 10) : leur emplacement
+exact n'est pas connu (question posée) ; éclairage de nuit des remparts.
+
+**Tests** (+2, 1 344 au total ; `src/core/ramparts.test.ts`) : grillage au-dessus du terrain ; aucun sol autre qu'une chaussée sur l'axe
+des murs (plus de 500 points).
+
+![Le grillage du terrain de sport, boulevard des Résistants Fusillés](captures/d255-grillage.jpg)
+![Le pied de R05, rue de la Maladière : plus de plaques](captures/d255-maladiere-pied.jpg)

@@ -290,3 +290,13 @@ Colombier et rue Blanche (§9).
 
 Prochaine étape : lot 4 (promenade sur le dessus là où elle existe, grillage du terrain de sport au-dessus du boulevard des Résistants
 Fusillés, escalier et construction de la rue du Vieux Colombier, barbacanes).
+
+## 11. Lot 4 fait (D255, 6 novembre 2026)
+
+Pas de promenade (l'utilisateur n'est pas sûr qu'on puisse marcher sur les remparts). Grillage du terrain de sport au-dessus du boulevard
+des Résistants Fusillés, barbacanes, sols qui débordaient sur le haut des murs découpés.
+
+Reste ouvert :
+- l'escalier et la petite construction de la rue du Vieux Colombier (photo 10) : où exactement (numéro, ou de quel côté de la rue) ?
+- les tours à confirmer (§9) ;
+- l'éclairage de nuit, s'il est voulu.

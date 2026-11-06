@@ -17,6 +17,7 @@ Entrées : les murs `barrier=city_wall` d'OpenStreetMap et les profils LiDAR de 
 4. Tuiles : les murs `rampart` sont remplacés par des polylignes à profil (`top`, `gl`, `gr` : sommet, sol à gauche et à droite du sens de la
    polyligne, par sommet), coupées par tuile (un segment va à la tuile de son milieu), identifiants −(RAMPART_ID + n). `bytes` et `walls` de
    world.json sont mis à jour.
+   Les sols vectoriels de la tuile sont découpés le long de l'emprise des murs (aucun trottoir n'enjambe un mur, D255).
    Chaque mur porte son aspect (`look`, lot 2, D253) : `rubble`, `restored`, `bright`, `schist` ou `garden`, d'après `looks` de manual.json.
 5. Relief fin (terrain/<tuile>.bin) : de chaque côté, de l'axe jusqu'à `carve` m au-delà de la face, le relief est écrêté sous le sol mesuré de ce côté plus une pente
    de `slope` (le talus d'herbe que le MNT avait mis à la place du parement disparaît). Un `min` : une deuxième passe ne change rien.
@@ -37,6 +38,7 @@ import survey_remparts as sv
 
 RAMPART_ID = 860_000_000
 TOWER_ID = 861_000_000
+FENCE_ID = 862_000_000  # grillages posés sur le haut des remparts (D255) : −(FENCE_ID + n)
 THICK = 2.0  # épaisseur dessinée (m), partagée avec src/core/ramparts.ts
 
 
@@ -463,6 +465,71 @@ def write_towers(towers):
     return n
 
 
+def top_fences(spec, runs):
+    """Grillages sur le haut des remparts (lot 4, D255) : le long des stations dont la face haute borde un terrain (`layer` des sols des tuiles,
+    le polygone le plus proche de `near`) à moins de `gap` m, une clôture `mesh` de `height` m sur le bord intérieur du mur (photos 1 et 2
+    du boulevard des Résistants Fusillés : grillage vert sur poteaux, au-dessus du chaperon). Rend {tuile : [polyligne]}."""
+    out = {}
+    for f in spec.get("fences", []):
+        polys = []
+        for path in sorted((c.OUT / "tiles").glob("*.json")):
+            for poly in (json.loads(path.read_text()).get("ground") or {}).get(f["layer"], []):
+                polys.append(Polygon(list(zip(poly[0][0::2], poly[0][1::2]))).buffer(0))
+        area = min(polys, key=lambda P: P.distance(Point(f["near"])))
+        for r in runs:
+            line = []
+            for k, (x, y, top, gl, gr) in enumerate(r):
+                a, b = r[max(0, k - 1)], r[min(len(r) - 1, k + 1)]
+                tx, ty = b[0] - a[0], b[1] - a[1]
+                L = math.hypot(tx, ty) or 1
+                lx, ly = -ty / L, tx / L
+                s_ = 1 if gl > gr else -1  # vers le côté haut
+                px, py = x + s_ * lx * (THICK / 2 - 0.15), y + s_ * ly * (THICK / 2 - 0.15)
+                if area.distance(Point(px, py)) <= f["gap"] and abs(gl - gr) >= 2:
+                    line.append((px, py))
+                elif line:
+                    if len(line) >= 2:
+                        out.setdefault(tile_of(*line[len(line) // 2]), []).append((line, f["height"]))
+                    line = []
+            if len(line) >= 2:
+                out.setdefault(tile_of(*line[len(line) // 2]), []).append((line, f["height"]))
+    return out
+
+
+def cut_ground(tile, polys):
+    """Retire des sols vectoriels de la tuile l'emprise des remparts (D255) : un trottoir ou une place au bord du haut d'un mur de soutènement
+    le débordait, et ses triangles, posés sur le relief écrêté au pied, ressortaient de la face (les « panneaux » qui flottaient vers
+    (990 ; 255)). Rend vrai si un sol a changé."""
+    if not polys:
+        return False
+    band = unary_union([LineString([(p[0], p[1]) for p in poly]).buffer(THICK / 2 + 0.05, cap_style=2, join_style=2) for poly in polys])
+    # Test sur une bande rétrécie de 3 cm : un bord déjà découpé (puis arrondi au centimètre) n'est pas redécoupé (passe suivante inchangée).
+    probe = band.buffer(-0.03)
+    changed = False
+    for layer, items in (tile.get("ground") or {}).items():
+        # Les chaussées ne sont pas découpées : le mur s'en écarte déjà (`clear_of_roads`), qui les lit à chaque passe.
+        if layer.startswith("road_"):
+            continue
+        out = []
+        for item in items:
+            rings = [list(zip(r[0::2], r[1::2])) for r in item]
+            if len(rings[0]) < 3:
+                out.append(item)
+                continue
+            P = Polygon(rings[0], [h for h in rings[1:] if len(h) >= 3]).buffer(0)
+            if not P.intersects(probe) or P.intersection(probe).area < 0.05:
+                out.append(item)
+                continue
+            changed = True
+            rest = P.difference(band)
+            for g in getattr(rest, "geoms", [rest]):
+                if g.geom_type != "Polygon" or g.area < 0.2:
+                    continue
+                out.append([[round(v, 2) for q in g.exterior.coords[:-1] for v in q]] + [[round(v, 2) for q in h.coords[:-1] for v in q] for h in g.interiors])
+        tile["ground"][layer] = out
+    return changed
+
+
 def main():
     spec = json.load(open(c.ROOT / "tools" / "data" / "manual.json"))["ramparts"]
     osm_walls, _, _ = sv.osm()
@@ -504,21 +571,33 @@ def main():
             cur_tile = tid
         if cur:
             per_tile.setdefault(cur_tile, []).append((cur, look))
+    fences = top_fences(spec, runs)
+    print(f"{sum(len(v) for v in fences.values())} grillage(s) sur le haut des murs")
+    fid = 0
     world = json.loads((c.OUT / "world.json").read_text())
     metas = {m["id"]: m for m in world["tiles"]}
     changed = 0
     for path in sorted((c.OUT / "tiles").glob("*.json")):
         tid = path.stem
         tile = json.loads(path.read_text())
-        keep = [w for w in tile.get("walls", []) if w["kind"] != "rampart"]
+        keep = [w for w in tile.get("walls", []) if w["kind"] != "rampart" and not -(FENCE_ID + 1_000_000) < w["id"] <= -FENCE_ID]
         new = []
+        for line, h in fences.get(tid, []):
+            fid += 1
+            new.append({"id": -(FENCE_ID + fid), "kind": "fence", "height": h, "measured": h, "pts": [round(v, 2) for p in line for v in p], "look": "mesh"})
         for poly, look in per_tile.get(tid, []):
             nid += 1
             h = max(p[2] - min(p[3], p[4]) for p in poly)
             new.append({"id": -(RAMPART_ID + nid), "kind": "rampart", "height": round(h, 1), "measured": round(h, 1), "look": look,
                         "pts": [round(v, 2) for p in poly for v in p[:2]],
                         "top": [round(p[2], 2) for p in poly], "gl": [round(p[3], 2) for p in poly], "gr": [round(p[4], 2) for p in poly]})
-        if not new and len(keep) == len(tile.get("walls", [])):
+        # Découpe répétée jusqu'à ce qu'elle ne change plus rien (un bord arrondi peut remordre une fois sur la bande).
+        cut = False
+        for _ in range(4):
+            if not cut_ground(tile, [poly for poly, _ in per_tile.get(tid, [])]):
+                break
+            cut = True
+        if not new and len(keep) == len(tile.get("walls", [])) and not cut:
             continue
         tile["walls"] = keep + new
         text = json.dumps(tile, separators=(",", ":"), ensure_ascii=False)

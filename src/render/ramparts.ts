@@ -48,6 +48,8 @@ const SINK = 0.4;
 const DAMP = 0.6, DAMP_K = 0.8;
 /** Décollement des plaques de lierre (m) et leurs teintes. */
 const IVY_OFF = 0.05;
+/** Ouvertures sombres (barbacanes). */
+const HOLE_DARK = C("#2f2a24");
 /** Chute maximale d'une plaque de lierre (m) ; pas de lierre sur un segment dont le sommet varie de plus de IVY_SLOPE m. */
 const IVY_DROP = 3, IVY_SLOPE = 1;
 const IVY = [C("#42583a"), C("#4d6640"), C("#3a4f33")];
@@ -97,6 +99,8 @@ export function buildRampart(sinks: RampartSinks, w: ProfiledWall, terrain: Heig
     // Lierre sur la face la plus haute (le côté extérieur d'un mur de soutènement).
     const high = ti - rightFace.fa + tj - rightFace.fb >= ti - leftFace.fb + tj - leftFace.fa ? rightFace : leftFace;
     if (hash(id, i, 7, 7) < look.ivy && Math.abs(ti - tj) < IVY_SLOPE) ivy(sinks.solid, high, id, i);
+    // Trous d'écoulement (barbacanes) au pied de la face haute d'un mur de soutènement (photo 10, D255).
+    weepHoles(sinks.solid, high, len, id, i);
     // Dessus.
     const L = (k: number, z: number): Vec3 => toThree(left[2 * k]!, left[2 * k + 1]!, z);
     const R = (k: number, z: number): Vec3 => toThree(right[2 * k]!, right[2 * k + 1]!, z);
@@ -162,6 +166,21 @@ function blocks(mb: MeshBuilder, look: LookSpec, f: Face, len: number, id: numbe
       const P = (u: number, z: number): Vec3 => toThree(f.ax + (f.bx - f.ax) * u, f.ay + (f.by - f.ay) * u, z);
       mb.quad(P(u0, a0), P(u1, a1), P(u1, b1), P(u0, b0), n, col);
     }
+  }
+}
+
+/** Barbacanes : petites ouvertures sombres à 70 cm au-dessus du sol, tous les 2 m environ, sur une face de plus de 2,5 m. */
+const WEEP_Z = 0.7, WEEP_W = 0.16, WEEP_H = 0.22, WEEP_EVERY = 2.0, WEEP_MIN = 2.5;
+function weepHoles(mb: MeshBuilder, f: Face, len: number, id: number, seg: number): void {
+  const n = Math.max(1, Math.round(len / WEEP_EVERY));
+  for (let k = 0; k < n; k++) {
+    if (hash(id, seg, k, 41) < 0.25) continue;
+    const u = (k + 0.5) / n;
+    const foot = f.fa + (f.fb - f.fa) * u + SINK, top = f.ta + (f.tb - f.ta) * u;
+    if (top - foot < WEEP_MIN) continue;
+    const L = len || 1, du = WEEP_W / 2 / L, z = foot + WEEP_Z;
+    const P = (uu: number, zz: number): Vec3 => toThree(f.ax + (f.bx - f.ax) * uu + f.nx * 0.02, f.ay + (f.by - f.ay) * uu + f.ny * 0.02, zz);
+    mb.quad(P(u - du, z), P(u + du, z), P(u + du, z + WEEP_H), P(u - du, z + WEEP_H), toThree(f.nx, f.ny, 0), HOLE_DARK);
   }
 }
 
