@@ -5271,3 +5271,17 @@ des murs (plus de 500 points).
 
 ![Le grillage du terrain de sport, boulevard des Résistants Fusillés](captures/d255-grillage.jpg)
 ![Le pied de R05, rue de la Maladière : plus de plaques](captures/d255-maladiere-pied.jpg)
+
+## 2026-11-06 — D256. La tour des Ursulines éclairée la nuit
+
+**Demande de l'utilisateur** : éclairage de nuit, seulement pour la tour des Ursulines (pas les autres tours ni les murs).
+
+**Rendu** (`src/render/ramparts.ts`) : comme les portes romaines (D137) et Couhard (D222), la tour est redessinée dans le maillage éclairé
+(`glow`, allumé la nuit) par un « pinceau de nuit » (`FloodBuilder`) : chaque face reprise en dégradé chaud du pied vers le haut (projecteurs
+au sol, mêmes teintes que les portes), modulé par la teinte de la surface (la statue blanche et la corniche claire ressortent, le zinc reste
+sombre). Les tours rondes et les murs restent sombres. Silhouette lointaine non éclairée (comme les autres monuments).
+
+**Tests** (+1, 1 345 au total ; `src/render/ramparts.test.ts`) : la tour des Ursulines a son double éclairé, plus chaud au pied qu'en haut ;
+les tours rondes n'en ont pas.
+
+![La tour des Ursulines la nuit](captures/d256-ursulines-nuit.jpg)

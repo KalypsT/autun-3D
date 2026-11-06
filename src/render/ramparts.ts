@@ -68,6 +68,8 @@ function hash(a: number, b: number, c: number, d: number): number {
 export interface RampartSinks {
   solid: MeshBuilder;
   cap: MeshBuilder;
+  /** Maillage éclairé la nuit (D256) : seule la tour des Ursulines y est doublée ; absent, pas d'éclairage. */
+  glow?: MeshBuilder;
   /** Teinte des haies du jeu (celle des haies OSM). */
   hedgeColor: THREE.Color;
 }
@@ -227,7 +229,12 @@ const BATTER_H = 3.5, BATTER_OUT = 0.45, STATUE_H = 4.5;
 /** Les tours de la tuile. */
 export function buildTowers(sinks: RampartSinks, towers: readonly RampartTower[], terrain: HeightField): void {
   for (const t of towers) {
-    if (t.k === "ursulines") buildUrsulines(sinks.solid, t, terrain);
+    if (t.k === "ursulines") {
+      buildUrsulines(sinks.solid, t, terrain);
+      // La nuit (D256) : la tour redessinée dans le maillage éclairé, en dégradé chaud du pied vers le haut (projecteurs au sol, comme les
+      // portes romaines et Couhard) ; la statue, plus claire, ressort.
+      if (sinks.glow) buildUrsulines(new FloodBuilder(sinks.glow, t.base, (t.statue ?? t.base + 39) - t.base), t, terrain);
+    }
     else buildRoundTower(sinks, t, terrain);
   }
 }
@@ -386,5 +393,33 @@ function buildUrsulines(mb: MeshBuilder, t: RampartTower, terrain: HeightField):
     const nx = Math.sin(face), ny = Math.cos(face);
     mb.quad(toThree(sx, sy, z0), toThree(hx, hy, z1), toThree(hx, hy, z1 + 0.3), toThree(sx, sy, z0 + 0.3), toThree(nx, ny, 0), STATUE);
     mb.quad(toThree(hx, hy, z1), toThree(sx, sy, z0), toThree(sx, sy, z0 + 0.3), toThree(hx, hy, z1 + 0.3), toThree(-nx, -ny, 0), STATUE);
+  }
+}
+
+// --- Éclairage de nuit de la tour des Ursulines (D256) ------------------------------------------------------------------------------------
+
+/** Projecteurs : chaud au pied, plus sombre en haut (mêmes teintes que les portes romaines, D137). */
+const FLOOD_LOW = C("#ffcf86"), FLOOD_HIGH = C("#b98a58");
+/** Pierre de référence : la lumière est modulée par la teinte de la surface (la statue blanche ressort, le zinc reste sombre). */
+const FLOOD_REF = URSULINES.palette[0]!;
+
+/** Pinceau de nuit : chaque face reçue est reportée dans `glow`, en dégradé selon l'altitude, modulé par la teinte de la face. */
+class FloodBuilder extends MeshBuilder {
+  constructor(private readonly glow: MeshBuilder, private readonly z0: number, private readonly span: number) {
+    super();
+  }
+
+  private flood(z: number, col: THREE.Color): THREE.Color {
+    const v = Math.min(1, Math.max(0, (z - this.z0) / this.span));
+    const k = 0.55 + 0.45 * Math.min(1.4, (col.r + col.g + col.b) / (FLOOD_REF.r + FLOOD_REF.g + FLOOD_REF.b));
+    return FLOOD_LOW.clone().lerp(FLOOD_HIGH, Math.sqrt(v)).multiplyScalar(k);
+  }
+
+  override tri(a: Vec3, b: Vec3, c: Vec3, n: Vec3, color: THREE.Color): void {
+    this.glow.tri(a, b, c, n, this.flood((a[1] + b[1] + c[1]) / 3, color));
+  }
+
+  override quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
+    this.glow.quadGradient(a, b, c, d, n, this.flood((a[1] + b[1]) / 2, color), this.flood((c[1] + d[1]) / 2, color));
   }
 }

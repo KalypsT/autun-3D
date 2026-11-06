@@ -1893,3 +1893,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pas de promenade sur les remparts.
 
 ![Le grillage du terrain de sport](docs/captures/d255-grillage.jpg)
+
+**La tour des Ursulines éclairée la nuit (6 novembre 2026)** (D256)
+- La nuit, la tour des Ursulines s'illumine d'une lumière chaude, du pied vers le haut, la Vierge blanche au sommet ; les autres tours et les murs restent dans l'ombre.
+- À regarder : `?view=custom&cam=45,-990,1.7,9,-951,22&h=22`.
+
+![La tour des Ursulines la nuit](docs/captures/d256-ursulines-nuit.jpg)

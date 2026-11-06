@@ -299,4 +299,4 @@ des Résistants Fusillés, barbacanes, sols qui débordaient sur le haut des mur
 Reste ouvert :
 - l'escalier et la petite construction de la rue du Vieux Colombier (photo 10) : où exactement (numéro, ou de quel côté de la rue) ?
 - les tours à confirmer (§9) ;
-- l'éclairage de nuit, s'il est voulu.
+- ~~l'éclairage de nuit~~ : la tour des Ursulines seule (choix de l'utilisateur), D256.
