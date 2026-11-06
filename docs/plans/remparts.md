@@ -34,6 +34,45 @@ la carte `docs/captures/remparts-carte.png` et une capture « avant » sont les 
 | Enceinte médiévale du Château et du Marchaux | Laissée à ma recommandation (§2). |
 | Photos | L'utilisateur fournira celles du §5. |
 
+## 1 bis. Première série de photos (6 novembre 2026)
+
+14 captures d'écran de Google Street View envoyées par l'utilisateur (juillet 2023, juillet 2025, juillet 2026). Elles ne sont pas versionnées :
+seule leur lecture est écrite ici. Elles servent de référence d'aspect ; rien n'en est copié dans le jeu.
+
+| n° | Lieu (adresse) | Tronçons | Ce que je lis | Certitude |
+|---|---|---|---|---|
+| 1 | Bd des Résistants Fusillés (2023) | R32-R39 | Mur de **moellons gris-brun irréguliers**, en assises grossières, joints peu visibles ; **tour semi-circulaire saillante, arasée au niveau du mur**, sans toit, herbe au sommet ; lierre par grandes plaques. Au sommet, un **chaperon clair** (ciment) et un **grillage vert de 2,5 m sur poteaux** : un terrain de sport au niveau du haut du mur, avec des bâtiments scolaires derrière. C'est bien un mur de soutènement (§3). Au pied, bande d'herbe puis chaussée. | 90 % |
+| 2 | 12 bd des Résistants Fusillés (2023) | R33-R36 | Même mur sur une centaine de mètres, 4 à 5 m au-dessus de l'herbe, chaperon clair et grillage continus ; touffes d'herbe dans les joints ; deux autres saillies au loin (tours). | 90 % |
+| 3 | 18 bd des Résistants Fusillés (2026) | R32-R35 | **Tour ronde plus haute que le mur** (≈ 8-9 m contre 5-6 m), sommet irrégulier ; reprises en pierres de taille claires sur la face, base reprise en moellons plus clairs, végétation dans les joints ; mur à gauche avec une rambarde au sommet, mur à droite sous les arbres. | 80 % |
+| 4 | 11 rue de Rivault, vers le nord (2026) | — | Rue du Château vers la flèche de la cathédrale ; maisons enduites, pas de rempart visible. Utile pour l'ambiance du Château, pas pour les murs. | — |
+| 5 | 11 rue de Rivault, vers le sud (2026) | près de R26-R27 | Haut mur de pierre le long de la rue jusqu'à un **portail cintré** au bout ; maison couverte de lierre à droite ; panneau « Les Ursulines ». Mur de clôture ou rempart vu de l'intérieur : à confirmer. | 50 % |
+| 6 | D120, carrefour de la rue Saint-Blaise (2026) | pointe sud (trou de 235 m) | **Tour des Ursulines** (OSM : (8,5 ; −950,6), au bout de R26) : tour **carrée**, haute, en moellons, **surmontée d'une statue** ; à gauche, un long mur de pierre qui monte avec la route ; au centre, un mur de moellons clairs bas surmonté d'une haie. | 85 % |
+| 7 | 4 rue de la Maladière (2025) | R02-R05 | Long mur droit **restauré**, moellons **beige clair en assises régulières** (petit appareil), joints beurrés ; 4 à 5 m au-dessus de la rue ; au-dessus, une terrasse avec des bâtiments (dont un bâtiment moderne vitré bleu) et un drapeau : un établissement public au niveau du haut du mur. | 85 % |
+| 8 | 4 rue de la Maladière (2025) | R05-R06 | Même mur qui suit la courbe de la route ; **sommet irrégulier**, avec un ressaut plus haut à gauche (reste de tour ou de parapet) ; arbres au-dessus. | 80 % |
+| 9 | 2 rue du Vieux Colombier (2026) | R18-R19 | Ruelle entre deux murs. À droite, le rempart : **pierres sombres brun-gris posées à plat, en plaquettes** (aspect de schiste), 4 à 5 m, herbe et arbustes au sommet. À gauche, un mur enduit plus bas. Une petite tour ou un pavillon au fond. | 85 % |
+| 10 | 1 rue du Vieux Colombier (2026) | R19-R21 | Même parement ; **escalier extérieur en pierre** avec rampe en fer, qui monte à une **porte dans une petite construction au sommet du mur** ; lanterne murale ; **trous d'écoulement** (barbacanes) au bas du mur ; tige de fer rouillée sur la face. | 85 % |
+| 11 | Bd Laureau (2026) | R40-R42 | Mur **entièrement restauré**, moellons **beige très clair**, assises régulières, **5 à 6 m** ; **tour semi-circulaire** au bout ; allée neuve en béton au pied (la piste cyclable OSM `1448590967`), pelouse, jeunes arbres. | 90 % |
+| 12 | Bd Laureau (2026) | R40-R42 | Même mur et même tour, vue de l'autre sens ; une meurtrière sur la tour, fente au bas du mur ; un panneau d'information en bois. | 90 % |
+| 13 | Rue Gaston Joliet (2026) | R13-R14 | Rue de lotissement : à droite, un **mur de moellons de 1,5 à 2 m sous des jardins**, avec piliers enduits et grilles ; à gauche, murs de clôture enduits. Le rempart n'apparaît pas comme tel. | 60 % |
+| 14 | Rue Gaston Joliet (2026) | R13-R14 | Mur bas de moellons à gauche, surmonté d'une haute haie ; murs enduits et garages à droite. Même lecture. | 60 % |
+
+**Conséquences pour le relevé :**
+- **Boulevard Laureau** : le LiDAR donne 2,2 m, les photos 5 à 6 m. Le mur a été dégagé et restauré après le vol LiDAR : l'allée et les plantations sont neuves, et le tracé OSM est récent (identifiant `1448590419`). Ici, la **photo l'emporte**. Le mur est debout et on le garde, qu'il soit romain ou du Marchaux.
+- **Boulevard des Résistants Fusillés** : les tours y sont nettes sur les photos 1 à 3, mais le détecteur du lot 0 n'en trouve aucune. Il écarte les stations dont le dessus mesure plus de 6 m de large, ce qui est le cas de tout mur de soutènement. Au lot 3, les tours seront cherchées sur le contour du pied vu de dessus (bosse de la face extérieure), plus sur le profil.
+- **Rue Gaston Joliet** (R13-R14) : le rempart est fondu dans les murs de jardin. Type « noyé » : un mur bas de moellons sous des jardins, avec grilles ou haies au-dessus.
+- **Rue du Vieux Colombier** : l'escalier et la petite construction au sommet sont à modéliser comme points particuliers (lot 4).
+
+### Les types d'aspect retenus
+
+| Type | Où (photos) | Aspect |
+|---|---|---|
+| **A. Moellons sombres d'origine** | Résistants Fusillés (1-3), ouest du Château par déduction | Moellons gris-brun irréguliers, plaques de lierre, herbe dans les joints ; chaperon clair et grillage là où un terrain est au-dessus. |
+| **B. Petit appareil restauré** | Maladière (7-8), Laureau (11-12) | Moellons beige clair en assises régulières, joints beurrés, peu de végétation ; très clair et uniforme à Laureau (récent). |
+| **C. Plaquettes de schiste** | Vieux Colombier (9-10) | Pierres plates brun-gris foncé, posées en lits fins ; herbe et arbustes au sommet ; barbacanes. |
+| **D. Noyé dans les jardins** | Gaston Joliet (13-14) | Mur de moellons de 1,5 à 2 m, surmonté de grilles, de piliers enduits ou de haies. |
+
+Tours : **ronde arasée** au niveau du mur (1, 11, 12), **ronde plus haute** reprise par endroits (3), **carrée médiévale** (tour des Ursulines, 6).
+
 ## 2. Château et Marchaux : recommandation
 
 De l'Antiquité tardive à la fin du Moyen Âge, Autun s'est repliée sur deux pôles fortifiés à l'intérieur de la grande enceinte romaine. Ce qui suit
@@ -174,6 +213,16 @@ Par ordre d'importance :
 | 9 | **Chaque tour que tu connais**, où qu'elle soit (et toute portion de mur au nord, entre la porte d'Arroux et la porte Saint-André) | Liste des tours ; portions absentes d'OSM. |
 
 La carte numérotée (`docs/captures/remparts-carte.png`) sert de repère pour les numéros R.
+
+**Après la première série (§1 bis)** : les points 1, 6 et 7 sont couverts ; les points 4 et 5 en partie (le mur vu de la rue, mais pas le
+sentier sur le dessus ni la rue Blanche). Il reste, par ordre d'importance :
+- **le dessus du mur rue de la Maladière** : le sentier qui suit le haut de R10-R11, vu d'en haut (est-ce une promenade publique ?) ;
+- **la pointe sud** : le mur entre la tour des Ursulines et la rue Chaffaut, la tour vue de près, et la **rue de Breuil** (R23-R24) ;
+- **le boulevard Mac Mahon** (R26-R31), sous la cathédrale ;
+- **la rue Blanche** (R22, R25) et **la rue des Enfants de Troupe** (R01, R04, R09) ;
+- **les tours** : une photo de chacune de celles que l'on voit depuis la rue ;
+- **le nord** : y a-t-il des murs debout entre la porte d'Arroux et la porte Saint-André ? Le boulevard Laureau est à environ 350 m au sud
+  de la ligne qui joint les deux portes ((−263 ; 1077) et (542 ; 853)).
 
 ![Carte des tronçons](../captures/remparts-carte.png)
 
