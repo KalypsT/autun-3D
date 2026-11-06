@@ -31,6 +31,15 @@ const MAX_MOVES = 14;
 /** Écart au tracé (m) au-delà duquel le conducteur est perdu, et temps (s) à l'arrêt sans raison d'attendre (voie fermée par un obstacle fixe, obstacle contre lequel il est coincé) au bout duquel il est bloqué. */
 const LOST_DISTANCE = 8;
 const STUCK_TIME = 8;
+/**
+ * Dégagement (D251, `Driver.unstick`) : coincé contre un obstacle fixe (un mur au bord d'un carrefour pris trop serré), à l'arrêt sans raison d'attendre depuis
+ * UNSTICK_AFTER s, le conducteur recule pendant UNSTICK_TIME s, roues braquées à l'opposé du cap voulu (le nez pivote vers le tracé), puis
+ * repart. UNSTICK_TRIES essais au plus, remis à zéro dès qu'il roule de nouveau (UNSTICK_FREE m/s) ; au-delà, il est bloqué (STUCK_TIME).
+ */
+const UNSTICK_AFTER = 1.5;
+const UNSTICK_TIME = 1.6;
+const UNSTICK_TRIES = 3;
+const UNSTICK_FREE = 3;
 /** Passes d'adoucissement du tracé, et part de la courbure maximale permise par la direction que le tracé a le droit d'utiliser. */
 const SMOOTH_PASSES = 10;
 const STEER_USE = 0.75;
@@ -370,6 +379,20 @@ export function cornerSpeed(spec: VehicleSpec, k: number): number {
 }
 
 /** Un autre usager de la route que le conducteur doit voir : voiture, véhicule du joueur, joueur à pied (J3-2). */
+/** Quelqu'un juste derrière la voiture (une autre voiture, un piéton ; pas le joueur) : on ne recule pas dedans (J4, D251). */
+export function blockedBehind(s: { x: number; y: number; heading: number }, spec: VehicleSpec, others: readonly Other[]): boolean {
+  const own = extentOf(spec);
+  const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
+  for (const o of others) {
+    if (o.state === s || o.player) continue;
+    const dx = o.state.x - s.x, dy = o.state.y - s.y;
+    const back = -(dx * fx + dy * fy);
+    if (back <= 0 || back > own.halfLen + o.halfLen + 1.2) continue;
+    if (Math.abs(dx * fy - dy * fx) < own.halfWid + o.halfWid + 0.2) return true;
+  }
+  return false;
+}
+
 export interface Other {
   state: { x: number; y: number; vx: number; vy: number; heading: number };
   /** Demi-longueur et demi-largeur de l'emprise (m). */
@@ -452,6 +475,14 @@ export class Driver {
   /** La route n'a plus de suite (impasse, bord du monde) : le conducteur s'arrête au bout. */
   ended = false;
   private stuckFor = 0;
+  /**
+   * Se dégage quand il est coincé (D251), comme le ferait un joueur : pour le fugitif simulé des essais de poursuite. Pas pour la circulation
+   * (une voiture coincée disparaît au bout de STUCK_TIME s, sans manœuvre) ni pour la police (le `Chaser` a sa propre marche arrière).
+   */
+  unstick = false;
+  /** Marche arrière de dégagement en cours (s restantes), essais faits depuis la dernière fois qu'il roulait (D251). */
+  private reversing = 0;
+  private unstickTries = 0;
   private idleFor = 0;
   private readonly random: () => number;
   private readonly gens: number[] = [];
@@ -617,6 +648,7 @@ export class Driver {
     this.ended = false;
     this.plan.length = 0;
     this.stuckFor = this.idleFor = this.waitFor = this.stillFor = this.touchFor = 0;
+    this.reversing = this.unstickTries = 0;
   }
 
   /** Une voiture de police toutes sirènes dehors arrive derrière : on se range à droite et on ralentit pendant `t` s. */
@@ -1006,6 +1038,14 @@ export class Driver {
         }
       }
     }
+    // Dégagement (D251) : marche arrière en cours (le frein à l'arrêt fait reculer), braqué à l'opposé du cap voulu.
+    if (this.reversing > 0) {
+      this.reversing -= dt;
+      this.stuckFor = 0;
+      if (blockedBehind(s, spec, others)) this.reversing = 0;
+      else return { throttle: 0, brake: 1, steer: alpha >= 0 ? -1 : 1, handbrake: 0 };
+    }
+    if (u > UNSTICK_FREE) this.unstickTries = 0;
     let throttle = 0, brake = 0, handbrake = 0;
     const resist = spec.drag * u * u + spec.rolling * spec.mass * GRAVITY + (u > 0.3 ? spec.engineBrake : 0);
     if (aDes >= 0) throttle = Math.min(Math.max((aDes * spec.mass + resist) / Math.max(driveForce(spec, u, 1), 1), 0), 1);
@@ -1017,6 +1057,10 @@ export class Driver {
     if (this.waitFor > WAIT_LIMIT) {
       this.lost = true;
       this.lostWhy = `interbloqué (${this.waitWhy})`;
+    }
+    if (this.unstick && this.stuckFor > UNSTICK_AFTER && this.unstickTries < UNSTICK_TRIES && !this.ended && !blockedBehind(s, spec, others)) {
+      this.unstickTries++;
+      this.reversing = UNSTICK_TIME;
     }
     if (this.stuckFor > STUCK_TIME) {
       this.lost = true;

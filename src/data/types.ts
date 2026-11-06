@@ -119,6 +119,45 @@ export interface Street {
   pts: number[];
 }
 
+/**
+ * Aspect d'un rempart (lot 2, D253) : moellons gris-brun d'origine (`rubble`), petit appareil beige restauré (`restored`), restauré récemment,
+ * très clair (`bright`), plaquettes de schiste brun foncé (`schist`), mur bas noyé dans les jardins, haie au-dessus (`garden`).
+ */
+export type RampartLook = "rubble" | "restored" | "bright" | "schist" | "garden";
+
+/**
+ * Tour des remparts (lot 3, D254, tools/data/build_ramparts.py). `round` : tour semi-circulaire contre le mur, cercle de centre (x, y) et de
+ * rayon `r`, coupé par la face du mur (point `fx`, `fy`, normale extérieure `nx`, `ny`), du sol bas `base` au sommet `top`. `ursulines` :
+ * tour octogonale (apothème `apo`, faces orientées à `rot` rad du nord, puis tous les 45°), pied de `base` (côté bas) à `high` (côté ville),
+ * terrasse `deck`, balustrade `rail`, toit `roof`, socle `plinth`, statue jusqu'à `statue`. `stair` (D257) : escalier extérieur contre la
+ * face (point `x`, `y` sur la face au droit de la dernière marche, normale extérieure `nx`, `ny`, sens de la montée `tx`, `ty`), du sol `base`
+ * au sommet du mur `top`, petite construction à porte au-dessus. Altitudes absolues du repère du jeu.
+ */
+export interface RampartTower {
+  id: number;
+  k: "round" | "ursulines" | "stair";
+  x: number;
+  y: number;
+  look: RampartLook;
+  base: number;
+  nx?: number;
+  ny?: number;
+  fx?: number;
+  fy?: number;
+  r?: number;
+  top?: number;
+  tx?: number;
+  ty?: number;
+  apo?: number;
+  rot?: number;
+  high?: number;
+  deck?: number;
+  rail?: number;
+  roof?: number;
+  plinth?: number;
+  statue?: number;
+}
+
 export interface Wall {
   id: number;
   kind: string;
@@ -126,7 +165,13 @@ export interface Wall {
   measured: number;
   pts: number[];
   /** Aspect d'une clôture (`fence`) : grillage vert à poteaux plats (D244, rive est du plan d'eau du Vallon) ; absent : barreaudage. */
-  look?: "mesh";
+  look?: "mesh" | RampartLook;
+  /** Rempart à profil mesuré (D250, tools/data/build_ramparts.py) : sommet du mur à chaque sommet de `pts` (altitude absolue). */
+  top?: number[];
+  /** Sol à gauche du sens de la polyligne, à chaque sommet (altitude absolue). */
+  gl?: number[];
+  /** Sol à droite du sens de la polyligne, à chaque sommet (altitude absolue). */
+  gr?: number[];
 }
 
 export interface Furniture {
@@ -1356,6 +1401,8 @@ export interface TileData {
   fiches: FacadeFiche[];
   trees: Tree[];
   walls: Wall[];
+  /** Tours des remparts (D254) ; absent : aucune. */
+  towers?: RampartTower[];
   furniture: Furniture[];
 }
 

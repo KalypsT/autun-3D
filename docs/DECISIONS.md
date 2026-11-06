@@ -5141,3 +5141,175 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Les pêcheurs du sud-ouest](captures/d249-pecheurs.jpg)
 ![Des voiliers un samedi d'été](captures/d249-voiliers.jpg)
 
+
+## 2026-11-06 — D250. Les remparts, lot 1 : le tracé complété et la forme mesurée (plan `docs/plans/remparts.md`, §4)
+
+**Demande de l'utilisateur** : lancer le lot 1 après la première série de photos (§1 bis du plan). Décisions déjà prises (§1) : ne rien montrer des portions disparues ; promenade sur le dessus seulement là où on marche en vrai (lot 4) ; critère « ce qui est debout aujourd'hui », quelle que soit l'époque (§2).
+
+**Constat** : 14 murs OSM (3,1 km), tous en boîte de 6 m × 1,3 m posée sur le relief. Les deux tiers sont des murs de soutènement (ville au niveau du haut, 5 à 10 m côté extérieur) ; le MNT range le parement en « sol » : un talus d'herbe de 5 à 10 m, surmonté d'une boîte qui flotte.
+
+**Données** (`tools/data/build_ramparts.py`, `ramparts` de `manual.json`) : mêmes sources et caches que le relevé (`survey_remparts.py`).
+- Pointe sud absente d'OSM, retrouvée au LiDAR (plus forte marche du sol le long du segment de la tour des Ursulines à la rue Chaffaut) : 128 m en trois morceaux ; rien entre (105 ; −876) et (141 ; −828), où des maisons sont bâties contre le mur. Un raccord de 13 m (deux bouts sans rue entre eux) ; les autres trous sont des rues.
+- Profils tous les 4 m lissés (médiane sur 5) ; stations à moins de 0,8 m du sol des deux côtés retirées. Sommet : au moins 0,5 m au-dessus du sol le plus haut (parapet), au plus 12 m au-dessus du plus bas (au-delà : bâtiments adossés). Boulevard Laureau : 5,5 m au-dessus du sol extérieur d'après les photos 11 et 12 (restauré après le vol LiDAR).
+- Calage : là où un côté est plus haut de 2 m ou plus, la face basse est posée sur la marche mesurée du sol LiDAR (le trait OSM suit à peu près la face, à 0,25-0,75 m près, pas l'axe), l'axe une demi-épaisseur (1 m) derrière ; décalage lissé sur 20 m. Là où une face toucherait une chaussée dessinée, l'axe recule (1,5 m au plus) : 22 m² de mur sur les chaussées avant, 4 après.
+- Tuiles : les `rampart` deviennent des polylignes à profil (`top`, `gl`, `gr` : sommet et sol à gauche et à droite, par sommet), 21 murs, 3 141 m. Identifiants −(860 000 000 + n).
+- Relief fin écrêté de chaque côté, de l'axe jusqu'à 12 m au-delà de la face, sous le sol mesuré de ce côté plus une pente de 25 %, et en éventail autour des angles saillants. Idempotente (une deuxième passe ne change rien).
+
+**Jeu** (`src/core/ramparts.ts`) : rendu en deux faces qui descendent chacune sous le sol de son côté, dessus et bouts fermés (`buildRampart`, `src/render/props.ts`) ; collisions sur le contour des deux faces (mur de 2 m, infranchissable comme avant).
+
+**Creux d'affichage** (`rampartPits`) : le relief proche est affiché par carreaux de 2,5 m, plus larges que le mur ; un triangle reliait le haut au bas à travers la face et la perçait de pointes d'herbe. Comme pour le bowl (D248) : du côté haut, sous le mur et jusqu'à 3,6 m de la face, le relief affiché est abaissé au sol bas ; une bande de relief fin (`Pit.cover`, mailles de 1 × 0,8 m sur 7,2 m, au vrai relief) est ajoutée au maillage du relief proche (`TerrainView.addCovers`), avec sa matière : elle cache le creux. Marche, véhicules et sols suivent toujours le vrai relief.
+
+**Pas fait** : aspect (une seule teinte, lot 2) ; tours (lot 3 : celle du boulevard Laureau est encore le bâtiment BD TOPO à toit rouge) ; promenade (lot 4) ; relief lointain (`coarse.bin`) inchangé : le talus se voit encore au-delà de 300 m ; trois angles de plus de 30° ajoutés au tracé par le calage (49 contre 48 dans le dessin OSM).
+
+**Test en échec** : `src/core/chase.test.ts`, « quatre gendarmeries… ne s'empilent pas » : 6,5 % des pas avec deux voitures de police à moins de 3 m, pour un plafond de 4 % (3,1 % avant). Au tirage 3, le fugitif simulé sort de la chaussée au débouché de la rue du 19 Mars 1962 sur le boulevard des Résistants Fusillés et se coince contre le rempart (déjà avant, contre l'ancien trait) ; la face est maintenant 1 m plus près, à sa place mesurée, et il y reste plus longtemps : la police s'empile autour (20 % des pas de ce tirage contre 7 %). Le seuil n'est pas relevé : décision laissée à l'utilisateur, qui choisit de rendre le fugitif capable de se dégager (D251).
+
+**Tests** (+9, 1 333 au total ; `src/core/ramparts.test.ts`) : profil partout, parapet et plafond, plus de 2 km de soutènement, pointe sud, relief écrêté au pied (plus de 200 points), faces, contour, creux et bande, collisions.
+
+![R11 avant : talus d'herbe et boîte qui flotte](captures/d250-r11-avant.jpg)
+![R11 après](captures/d250-r11.jpg)
+![Rue du Vieux Colombier](captures/d250-vieux-colombier.jpg)
+![Boulevard des Résistants Fusillés](captures/d250-resistants.jpg)
+![Boulevard Laureau](captures/d250-laureau.jpg)
+
+## 2026-11-06 — D251. Le fugitif simulé se dégage quand il est coincé
+
+**Demande de l'utilisateur** : après D250, rendre le fugitif simulé capable de se dégager plutôt que relever le seuil du test de poursuite.
+
+**Constat** : au tirage 3 de « quatre gendarmeries… ne s'empilent pas » (`src/core/chase.test.ts`), le fugitif sort de la chaussée au débouché de la rue du 19 Mars 1962 et reste contre le rempart, accélérateur enfoncé, jusqu'à être déclaré bloqué (8 s) ; la police converge et s'empile. Le fugitif simulé n'existe que dans les essais : dans le jeu, c'est le joueur, qui reculerait.
+
+**Jeu** (`src/core/driver.ts`) : `Driver.unstick` (désactivé par défaut). À l'arrêt sans raison d'attendre depuis 1,5 s, le conducteur recule 1,6 s (le frein à l'arrêt fait reculer), roues braquées à l'opposé du cap voulu pour que le nez pivote vers le tracé, puis repart ; trois essais au plus, remis à zéro dès qu'il roule à plus de 3 m/s ; jamais s'il y a quelqu'un juste derrière (`blockedBehind`, désormais partagé avec le `Chaser`). Au-delà, la règle d'avant (bloqué au bout de 8 s).
+
+**Pas pour la circulation ni la police** : essayé d'abord pour toutes les voitures, le dégagement changeait le cours chaotique des poursuites (le test d'endurance à cinq étoiles, `src/game/police-soak.test.ts`, passait à 3 176 pas de contact dans une minute, plafond 2 700) ; les voitures civiles coincées disparaissent toujours, et la police en poursuite garde la marche arrière du `Chaser` (qui ne joue qu'en accélérant ; trois voitures de police qui s'attendent l'une l'autre ne se défont pas : vu au tirage 3, laissé tel quel). Seuls les fugitifs de `chase.test.ts` l'activent ; le test d'endurance garde sa remise sur la voie au bout de 10 s.
+
+**Résultat** : 3,7 % des pas avec deux voitures de police à moins de 3 m (6,5 % en D250, 3,1 % avant D250 ; plafond 4 %). Tirage 3 : 9,2 % (20,4 % en D250).
+
+**Tests** (+2, 1 335 au total ; `src/core/driver.test.ts`) : contre un mur posé en travers de sa voie, il recule (plus de 0,8 s de marche arrière voulue) ; sans `unstick`, jamais (le rebond du choc n'est pas une marche arrière).
+
+## 2026-11-06 — D252. Remparts : le bout de mur de la rue de la Maladière (photo 7)
+
+**Demande de l'utilisateur** : précision sur la photo 7 (« 4 rue de la Maladière ») : rue de la Maladière, à l'est du cimetière, prise du nord-est vers le sud-ouest, au niveau du sud de l'aire de camping-cars.
+
+**Lecture** : l'aire de camping-cars de la rue de la Maladière (OSM) est en (947 à 987 ; 72 à 121), le cimetière juste à l'ouest. Balayage LiDAR le long de toute la rue (`maladiere_rue`) : aucun mur de plus de 3 m au bord de la chaussée le long du cimetière (une marche de 1 m, déjà dessinée par les murets de 1,1 m) ; de R02 à R05, la rue est en haut du mur (9 m de chute côté est, vers le plan d'eau) ; entre y = 150 et 190, un mur de 3 à 4,4 m borde le côté ouest de la rue. C'est le trou de 66 m du tracé OSM entre R05 et R06 : la bordure du plateau du lycée militaire, en marche nette, prolonge R06 vers le nord-est. Vue du nord-est vers le sud-ouest, c'est la photo 7 (le mur à droite de la rue, les bâtiments du lycée au-dessus). L'appareil était sans doute un peu au nord de l'aire.
+
+**Données** : tracé `maladiere` dans `traces` de `ramparts` (`manual.json`) : 41 m, de (924 ; 162) à (952 ; 191), 5 à 6 m côté rue. Raccords (`joins`) : plus de raccord pour un bout qui touche déjà l'autre mur (à moins de 1,5 m de son tracé) ; sans cela, un raccord doublait le départ de R06. 22 murs, 3 181 m.
+
+**Pas fait** : entre la fin du morceau et R05 (la rue y monte sur le plateau), rien : pas de marche au LiDAR. Le mur est à environ 4 m du bord de la chaussée dessinée, plus loin que sur la photo (la chaussée des données est peut-être décalée).
+
+**Tests** (+1, 1 336 au total ; `src/core/ramparts.test.ts`).
+
+![Rue de la Maladière, vers le sud-ouest](captures/d252-maladiere.jpg)
+
+## 2026-11-06 — D253. Les remparts, lot 2 : l'aspect (plan `docs/plans/remparts.md`, §1 bis et §4)
+
+**Demande de l'utilisateur** : continuer (lot 2 après D250 à D252).
+
+**Données** (`looks` de `ramparts`, `manual.json` ; champ `look` des murs `rampart`, `build_ramparts.py`) : cinq aspects, attribués par mur OSM ou tracé. D'après photo : `rubble` (moellons gris-brun d'origine, lierre, chaperon clair : boulevard des Résistants Fusillés, photos 1 à 3), `restored` (petit appareil beige restauré : rue de la Maladière, photos 7 et 8), `bright` (boulevard Laureau, restauré récemment, photos 11 et 12), `schist` (plaquettes de schiste brun foncé, herbe au sommet : rue du Vieux Colombier, photos 9 et 10), `garden` (mur bas noyé dans les jardins, couvertine enduite, haie au-dessus : rue Gaston Joliet, photos 13 et 14). **Par continuité, sans photo** : boulevard Mac Mahon et pointe sud en `rubble` (comme l'autre côté du Château) ; murs du lycée militaire (R01, R04, R09) en `rubble` ; R02 à R12 en `restored` (comme leur départ de la photo 7) ; rue Blanche, rue de Breuil et R20 en `schist` (suite de la rue du Vieux Colombier) ; R15 à R17 en `garden` (comme R13-R14). Longueurs : `rubble` 1 388 m, `restored` 768 m, `schist` 507 m, `garden` 310 m, `bright` 208 m.
+
+**Rendu** (`src/render/ramparts.ts`, le dessin des remparts sort de `props.ts`) : comme les portes romaines (D137) et Couhard (D222), en géométrie colorée. Chaque face est découpée en blocs : assises horizontales en altitude absolue (alignées d'un segment à l'autre), joints décalés d'une assise sur deux, teinte tirée de la palette du type (écarts de ±2 %, sinon les blocs font des planches) ; bande plus sombre au pied (60 cm, remontées d'humidité) ; plaques de lierre (cinq lanières, bord bas déchiqueté, 3 m de chute au plus) sur la face la plus haute d'une part des segments (30 % `rubble`, 8 % `restored`, 6 % `schist`, 10 % `garden`) ; chaperon de la couleur du type ; haie de 1,2 m sur les murs de jardin. Assises et blocs : 0,6 × 1,5 m (`rubble`), 0,5 × 1,4 m (`restored`, `garden`), 0,55 × 2 m (`bright`), 0,4 × 1,2 m (`schist`). Gris plus froids que les photos : l'éclairage du jeu les réchauffe.
+
+**Coût** : 126 000 triangles pour toute l'enceinte (pieds au sol mesuré), 25 000 au plus dans une tuile ; un premier essai à blocs plus fins en faisait 205 000 (41 000 par tuile), trop pour un téléphone.
+
+**Pas fait** : tours (lot 3) ; grillage du terrain de sport au-dessus du boulevard des Résistants Fusillés (photo 1), escalier et construction au sommet de la rue du Vieux Colombier (photo 10), barbacanes (lot 4) ; aspect de nuit (pas d'éclairage des remparts).
+
+**Tests** (+2, 1 338 au total ; `src/render/ramparts.test.ts`) : un aspect par mur, celui des photos là où il y en a une ; sommets finis et moins de 150 triangles par mètre dans le pire cas (relief plat au plus bas).
+
+![Boulevard des Résistants Fusillés](captures/d253-resistants.jpg)
+![Rue du Vieux Colombier](captures/d253-vieux-colombier.jpg)
+![R11, rue de la Maladière](captures/d253-r11.jpg)
+![Rue Gaston Joliet](captures/d253-gaston-joliet.jpg)
+![Boulevard Laureau](captures/d253-laureau.jpg)
+
+## 2026-11-06 — D254. Les remparts, lot 3 : les tours (plan `docs/plans/remparts.md`, §9 et §10)
+
+**Demande de l'utilisateur** : photos de la tour des Ursulines (une photo personnelle, deux captures du 10 et 11 boulevard Mac Mahon, la statue de près) et des deux premières priorités : tours du boulevard Mac Mahon (8 boulevard Mac Mahon, deux captures) et du boulevard des Résistants Fusillés (14, prise vers le sud-sud-est) ; « la plupart des tours se ressemblent assez ».
+
+**Lecture des photos** : la tour des Ursulines n'est pas carrée mais **octogonale** : moellons beige-brun, chaînes d'angle en pierre de taille claire, pied élargi, fenêtre double romane sous un arc vers le haut (côtés ouest et sud), fenêtre double à mi-hauteur, meurtrières ; balustrade claire, petit toit de zinc gris, Vierge blanche aux bras ouverts sur un socle de zinc. Annexe carrée à toit en croupe contre elle (bâtiment BD TOPO voisin, gardé). Tours rondes : semi-circulaires, en moellons, à peu près au ras du mur, socle plus large en bas, cordon vers le tiers de la hauteur, petits trous de boulin ; lierre sur certaines, reprise plus claire au pied (photo du boulevard des Résistants Fusillés). Le boulevard Mac Mahon est bien en moellons d'origine (`rubble`, déduit en D253 : confirmé).
+
+**Données** (`towers` de `ramparts`, `manual.json` ; champ `towers` des tuiles ; `build_ramparts.py`) :
+- **Tour des Ursulines**, mesurée au LiDAR (la BD TOPO la donnait à 13 m, toit à quatre pans) : centre (9,9 ; −950,8), apothème 5,44 m, faces à 5° du nord puis tous les 45° (orientation la plus régulière des points hauts), pied à 49,0 côté boulevard et 56,0 côté ville, terrasse à 78,6, balustrade à 79,5, toit à 81,0, statue jusqu'à 88,0 : **près de 30 m de maçonnerie côté boulevard**. Bâtiment BD TOPO `…348856003` masqué (`hidden` dans `kinds/26_31.json`), silhouette lointaine refaite en octogone.
+- **Douze tours rondes** (certitude d'au moins 85 % à l'inventaire) : cinq boulevard des Résistants Fusillés et cinq boulevard Mac Mahon (bosses du dessin OSM), deux boulevard Laureau (LiDAR). Contre la station de mur la plus proche : face, normale extérieure, sol bas, sommet du mur ; largeur et avancée mesurées au LiDAR devant la face (rayon de 3 à 4,5 m) ; sommet au ras du mur, ou plus haut si le LiDAR le montre.
+
+**Rendu** (`src/render/ramparts.ts`) : tours rondes en arc de cercle coupé par la face, en blocs (même aspect que leur mur), socle de 1,4 m débordant de 30 cm avec son rebord, cordon clair, trous de boulin sur trois rangs, lierre sur une tour sur trois, dessus ; tour des Ursulines : fût octogonal en blocs, pied élargi, chaînes d'angle claires, baies sombres (deux fenêtres doubles romanes sous arc, une fenêtre double, des meurtrières), corniche claire, balustrade, toit de zinc en pyramide, socle, Vierge (robe large, buste, tête, bras ouverts) de 4,5 m au plus (photo 1 ; le reste de la hauteur mesurée est le socle). Collisions : pied de chaque tour (`towerOutline`).
+
+**Coût** : 2 500 triangles au plus par tour ronde, environ 5 100 pour la tour des Ursulines (Couhard : 4 218).
+
+**Pas fait** : tours incertaines de l'inventaire (rue Saint-Pancrace, rue de la Maladière, rue du Vieux Colombier, rue Blanche : photos à venir) ; balustres et bras de la statue schématiques ; tours qui dépassent le mur (photo 3) : la hauteur suit le LiDAR, sans couronnement particulier ; éclairage de nuit.
+
+**Tests** (+4, 1 342 au total ; `src/render/ramparts.test.ts`).
+
+![La tour des Ursulines, du sud-est](captures/d254-ursulines.jpg)
+![Le sommet et la statue](captures/d254-ursulines-sommet.jpg)
+![Une tour du boulevard Mac Mahon](captures/d254-mac-mahon.jpg)
+![Une tour du boulevard des Résistants Fusillés](captures/d254-resistants.jpg)
+
+## 2026-11-06 — D255. Les remparts, lot 4 : grillage, barbacanes, sols ; pas de promenade
+
+**Demande de l'utilisateur** : continuer ; il n'est pas sûr qu'on puisse marcher sur les remparts.
+
+**Promenade** : aucune (règle du 6 novembre : seulement là où l'on marche en vrai ; rien ne le montre). Le dessus des murs reste
+infranchissable ; le sentier OSM qui suit le haut de R10-R11 (lot 0) n'est pas confirmé.
+
+**Grillage** (`fences` de `ramparts`, `manual.json` ; `top_fences`, `build_ramparts.py`) : grillage vert à poteaux plats (`mesh`, D244) de
+2,5 m sur le bord intérieur du mur, là où la face haute borde le terrain de sport (sol `pitch` de 1 523 m², centré en (−181 ; −286)) au-dessus
+du boulevard des Résistants Fusillés (photos 1 et 2) : 39 m, la longueur du terrain dans les données (les photos en montrent plus : la cour
+voisine n'est pas un terrain dans les sols). Identifiants −(862 000 000 + n), remplacés à chaque passe.
+
+**Barbacanes** (`src/render/ramparts.ts`) : petites ouvertures sombres à 70 cm au-dessus du sol, tous les 2 m environ (une sur quatre
+omise), sur la face haute des murs de plus de 2,5 m (photo 10).
+
+**Sols** : rue de la Maladière (R03-R05), la rue est sur le haut du mur et son trottoir et une petite place débordaient par-dessus l'arête ;
+posés sur le relief écrêté au pied (D250), leurs triangles ressortaient de la face en plaques (les « panneaux » qui flottaient vers
+(990 ; 255), notés en D247 : ce n'étaient pas des panneaux). Les sols de chaque tuile (sauf les chaussées, dont le mur s'écarte déjà) sont
+découpés le long de l'emprise des remparts (`cut_ground`) ; découpe répétée jusqu'à stabilité, testée sur une bande rétrécie de 3 cm pour
+qu'un bord arrondi ne soit pas redécoupé : une deuxième passe de l'étape ne change rien.
+
+**Pas fait** : escalier extérieur et petite construction au sommet du mur de la rue du Vieux Colombier (photo 10) : leur emplacement
+exact n'est pas connu (question posée) ; éclairage de nuit des remparts.
+
+**Tests** (+2, 1 344 au total ; `src/core/ramparts.test.ts`) : grillage au-dessus du terrain ; aucun sol autre qu'une chaussée sur l'axe
+des murs (plus de 500 points).
+
+![Le grillage du terrain de sport, boulevard des Résistants Fusillés](captures/d255-grillage.jpg)
+![Le pied de R05, rue de la Maladière : plus de plaques](captures/d255-maladiere-pied.jpg)
+
+## 2026-11-06 — D256. La tour des Ursulines éclairée la nuit
+
+**Demande de l'utilisateur** : éclairage de nuit, seulement pour la tour des Ursulines (pas les autres tours ni les murs).
+
+**Rendu** (`src/render/ramparts.ts`) : comme les portes romaines (D137) et Couhard (D222), la tour est redessinée dans le maillage éclairé
+(`glow`, allumé la nuit) par un « pinceau de nuit » (`FloodBuilder`) : chaque face reprise en dégradé chaud du pied vers le haut (projecteurs
+au sol, mêmes teintes que les portes), modulé par la teinte de la surface (la statue blanche et la corniche claire ressortent, le zinc reste
+sombre). Les tours rondes et les murs restent sombres. Silhouette lointaine non éclairée (comme les autres monuments).
+
+**Tests** (+1, 1 345 au total ; `src/render/ramparts.test.ts`) : la tour des Ursulines a son double éclairé, plus chaud au pied qu'en haut ;
+les tours rondes n'en ont pas.
+
+![La tour des Ursulines la nuit](captures/d256-ursulines-nuit.jpg)
+
+## 2026-11-06 — D257. Rue du Vieux Colombier : le mur de la rue et son escalier (photo 10)
+
+**Demande de l'utilisateur** : vue satellite avec le repère de l'escalier de la photo 10 (46.943671, 4.301656), soit (236,9 ; −721,4)
+dans le repère du jeu, au bord ouest de la rue du Vieux Colombier.
+
+**Constat** : le rempart du jeu le plus proche était à 42 m (le tracé OSM R21-R24, parallèle, plus à l'ouest). Le balayage LiDAR de la rue
+montre, côté ouest, un **mur de soutènement de 3,5 à 4,5 m** à 3 à 5 m de l'axe de la rue, de (230 ; −747) à (278 ; −613) : le mur des photos
+9 et 10, absent d'OSM ; le jeu n'y avait que des murets et des haies de parcelle de 1,1 à 1,5 m. Rempart romain ou mur de terrasse plus
+tardif : non tranché (le critère reste « ce qui est debout »).
+
+**Données** (`build_ramparts.py`, `ramparts` de `manual.json`) :
+- tracé `vieux-colombier` (même méthode que la pointe sud) : 101 m en trois morceaux (une maison adossée entre le premier et le dernier),
+  aspect `schist` (photos 9 et 10) ;
+- clôtures, murets et haies de parcelle (identifiants −900 000 000 et au-delà) dont le milieu tombe dans l'emprise d'un rempart : retirés ;
+- escalier (`towers`, `k: "stair"`) : contre la face basse, au droit du repère, montée vers le sud (photo 10 prise du nord, l'escalier
+  s'éloigne en montant), du sol (19,1) au sommet du mur (24,9).
+
+**Rendu** (`src/render/ramparts.ts`, `buildStair`) : marches pleines de 18 × 28 cm, 1,1 m de large, en maçonnerie de schiste ; rampe en fer
+(poteaux, main courante) ; au sommet, petite construction en moellons de 2,4 × 2 m et 2,6 m de haut, avancée au-dessus de l'escalier et portée
+par un massif, dessus plat, porte face à la dernière marche ; lanterne murale. Pas d'éclairage de nuit (D256 : la tour des Ursulines seule).
+Collisions : emprise de l'escalier et du massif (on ne monte pas l'escalier : la porte est fermée).
+
+**Pas fait** : montée de l'escalier à pied ; sens de montée déduit de la photo (à confirmer).
+
+**Tests** (+1, 1 346 au total ; `src/render/ramparts.test.ts`).
+
+![L'escalier de la rue du Vieux Colombier, vu du nord](captures/d257-escalier.jpg)

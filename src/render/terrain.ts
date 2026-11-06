@@ -230,6 +230,9 @@ export class TerrainView {
       const a = j0 * nx + i0, b = j1 * nx + i1, a2 = base + k, b2 = base + ((k + 1) % ring.length);
       idx.push(a, a2, b, b, a2, b2);
     }
+    // Bandes de relief fin des remparts (D250), après la jupe (qui suppose ses sommets juste après la grille) : elles recouvrent le creux
+    // d'affichage, côté haut du mur.
+    if (level < 2) this.addCovers(bx0, by0, bx1, by1, pos, nrm, idx);
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
@@ -247,6 +250,51 @@ export class TerrainView {
     }
     this.triangles += idx.length / 3;
     c.level = level;
+  }
+
+  /**
+   * Bandes de relief fin (D250) des segments dont le milieu est dans le morceau : le vrai relief (`ground`, sans creux) à mailles de 1 m sur
+   * 0,8 m, 1 cm au-dessus (les sols vectoriels sont à 3,5 cm et plus).
+   */
+  private addCovers(bx0: number, by0: number, bx1: number, by1: number, pos: number[], nrm: number[], idx: number[]): void {
+    const g = this.terrain.ground;
+    for (const cv of this.terrain.pits.covers(bx0, by0, bx1, by1)) {
+      const p = cv.pts, q = cv.nrm, n = p.length / 2;
+      const K = Math.max(2, Math.ceil(cv.width / 0.8));
+      for (let i = 0; i + 1 < n; i++) {
+        const ax = p[2 * i]!, ay = p[2 * i + 1]!, bx = p[2 * i + 2]!, by = p[2 * i + 3]!;
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        if (mx < bx0 || mx >= bx1 || my < by0 || my >= by1) continue;
+        const tx = bx - ax, ty = by - ay;
+        const S = Math.max(1, Math.ceil(Math.hypot(tx, ty)));
+        // Sens du repère (le long, en travers) : comme celui de la grille (x, y) si la bande part à gauche, inversé sinon.
+        const flip = tx * q[2 * i + 1]! - ty * q[2 * i]! < 0;
+        const base = pos.length / 3;
+        for (let si = 0; si <= S; si++) {
+          const u = si / S;
+          let nx = q[2 * i]! + u * (q[2 * i + 2]! - q[2 * i]!), ny = q[2 * i + 1]! + u * (q[2 * i + 3]! - q[2 * i + 1]!);
+          const l = Math.hypot(nx, ny) || 1;
+          nx /= l;
+          ny /= l;
+          for (let k = 0; k <= K; k++) {
+            const w = (cv.width * k) / K;
+            const x = ax + u * tx + nx * w, y = ay + u * ty + ny * w;
+            pos.push(x, g.heightAt(x, y) + 0.01, -y);
+            const e = 0.5;
+            const gx = (g.heightAt(x + e, y) - g.heightAt(x - e, y)) / (2 * e), gy = (g.heightAt(x, y + e) - g.heightAt(x, y - e)) / (2 * e);
+            const ln = Math.hypot(gx, gy, 1);
+            nrm.push(-gx / ln, 1 / ln, gy / ln);
+          }
+        }
+        for (let si = 0; si < S; si++) {
+          for (let k = 0; k < K; k++) {
+            const a = base + si * (K + 1) + k, b = a + K + 1, d = a + 1, e = b + 1;
+            if (flip) idx.push(a, d, b, d, e, b);
+            else idx.push(a, b, d, b, e, d);
+          }
+        }
+      }
+    }
   }
 
   private remove(c: Chunk): void {

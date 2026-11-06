@@ -1852,3 +1852,56 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Les pêcheurs](docs/captures/d249-pecheurs.jpg)
 ![Des voiliers l'été](docs/captures/d249-voiliers.jpg)
+
+**Les remparts, lot 1 : le tracé et la forme (6 novembre 2026)** (D250)
+- Les remparts ont leur vraie forme, mesurée au LiDAR : là où la ville est au niveau du haut (les deux tiers de l'enceinte), le mur n'est plus qu'un parapet côté ville et descend de 5 à 10 m côté extérieur ; le talus d'herbe qui le remplaçait a disparu.
+- La pointe sud, absente des cartes, part maintenant de la tour des Ursulines ; le mur du boulevard Laureau a la hauteur de tes photos (restauré après le relevé).
+- La face du mur est posée là où le LiDAR voit la marche ; elle ne déborde plus sur les chaussées.
+- Pas encore : l'aspect (lot 2), les tours (lot 3), la promenade (lot 4).
+- À regarder : `?view=custom&cam=713,-104.5,1.7,690.7,-92.8,5&h=14` (R11), `cam=333.3,-524.4,1.7,354,-490,3` (rue du Vieux Colombier), `cam=-154.3,-405.8,1.7,-167.8,-368.1,3` (boulevard des Résistants Fusillés).
+- Le test de poursuite qui échouait passe de nouveau : le fugitif simulé recule quand il est coincé, comme tu le ferais (D251).
+
+![R11 avant](docs/captures/d250-r11-avant.jpg)
+![R11 après](docs/captures/d250-r11.jpg)
+
+**Remparts : le mur de la rue de la Maladière (6 novembre 2026)** (D252)
+- Le mur de ta photo 7 est ajouté : 41 m au-dessus de la rue de la Maladière, au bord du plateau du lycée militaire, entre deux morceaux déjà connus (il manquait aux cartes).
+- À regarder : `?view=custom&cam=960,195,1.7,920,150,3&h=14`.
+
+![Rue de la Maladière](docs/captures/d252-maladiere.jpg)
+
+**Les remparts, lot 2 : l'aspect (6 novembre 2026)** (D253)
+- Les remparts ont l'aspect de tes photos : moellons gris-brun avec du lierre boulevard des Résistants Fusillés, petit appareil beige rue de la Maladière, mur neuf très clair boulevard Laureau, schiste sombre rue du Vieux Colombier, muret sous une haie rue Gaston Joliet.
+- Là où il n'y a pas de photo (boulevard Mac Mahon, rue de Breuil, rue Blanche, le long du cimetière), l'aspect est déduit du tronçon voisin.
+- Pas encore : les tours (lot 3), la promenade et les détails (lot 4).
+
+![Boulevard des Résistants Fusillés](docs/captures/d253-resistants.jpg)
+![Rue du Vieux Colombier](docs/captures/d253-vieux-colombier.jpg)
+
+**Les remparts, lot 3 : les tours (6 novembre 2026)** (D254)
+- La tour des Ursulines est là, d'après tes photos et le LiDAR : octogonale, près de 30 m côté boulevard Mac Mahon, fenêtres romanes, angles en pierre claire, balustrade, toit de zinc et la Vierge blanche au sommet (avant : une maison de 13 m).
+- Douze tours rondes : cinq boulevard Mac Mahon, cinq boulevard des Résistants Fusillés, deux boulevard Laureau, avec leur socle, leur moulure et leurs petits trous.
+- À regarder : `?view=custom&cam=45,-990,1.7,9,-951,22&h=14` (la tour des Ursulines), `cam=-221.2,-266.6,1.7,-200,-300,2` (boulevard des Résistants Fusillés).
+
+![La tour des Ursulines](docs/captures/d254-ursulines.jpg)
+![Une tour du boulevard des Résistants Fusillés](docs/captures/d254-resistants.jpg)
+
+**Les remparts, lot 4 : les détails (6 novembre 2026)** (D255)
+- Le grillage vert du terrain de sport se dresse au-dessus du mur du boulevard des Résistants Fusillés, comme sur tes photos.
+- Petits trous d'écoulement au pied des grands murs.
+- Les plaques qui sortaient du pied du mur rue de la Maladière ont disparu (c'était le trottoir de la rue d'en haut qui débordait).
+- Pas de promenade sur les remparts.
+
+![Le grillage du terrain de sport](docs/captures/d255-grillage.jpg)
+
+**La tour des Ursulines éclairée la nuit (6 novembre 2026)** (D256)
+- La nuit, la tour des Ursulines s'illumine d'une lumière chaude, du pied vers le haut, la Vierge blanche au sommet ; les autres tours et les murs restent dans l'ombre.
+- À regarder : `?view=custom&cam=45,-990,1.7,9,-951,22&h=22`.
+
+![La tour des Ursulines la nuit](docs/captures/d256-ursulines-nuit.jpg)
+
+**Rue du Vieux Colombier : le mur et l'escalier (6 novembre 2026)** (D257)
+- Le grand mur de schiste qui borde la rue du Vieux Colombier (absent des cartes, 4 m de haut) est en place, avec l'escalier de pierre de ta photo, sa rampe en fer et la petite construction à porte au sommet.
+- À regarder : `?view=custom&cam=240,-705,1.7,233,-722,3&h=14`.
+
+![L'escalier de la rue du Vieux Colombier](docs/captures/d257-escalier.jpg)

@@ -6,6 +6,8 @@ import type { Furniture, HeightField, Wall } from "../data/types";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
 import { canvasTexture } from "./canvas";
 import { isBreakable } from "../core/breakables";
+import { isProfiled } from "../core/ramparts";
+import { buildRampart } from "./ramparts";
 
 const THICK = 0.3;
 
@@ -180,6 +182,11 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
     const hedge = w.kind === "hedge", rampart = w.kind === "rampart";
     const base = hedge ? sinks.hedgeColor : sinks.solidColor;
     const color = base.clone().multiplyScalar(0.9 + hash01(String(w.id), 2) * 0.15);
+    // Remparts à profil mesuré (D250), avec leur aspect (D253).
+    if (isProfiled(w)) {
+      buildRampart(sinks, w, terrain);
+      continue;
+    }
     const thick = hedge ? 0.8 : rampart ? 1.3 : THICK;
     let s = 0;
     for (let i = 0; i + 3 < w.pts.length; i += 2) {
