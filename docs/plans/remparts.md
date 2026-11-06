@@ -247,5 +247,6 @@ Ce que le lot 1 a appris :
   d'un mur qu'OpenStreetMap n'a pas (question 4).
 
 Question ajoutée :
-4. **Photo 7 (« 4 rue de la Maladière »)** : à quel endroit de la rue a-t-elle été prise ? Si c'est au sud, vers le lycée militaire, il y a là un
-   mur haut absent d'OSM, à ajouter au tracé.
+4. ~~**Photo 7 (« 4 rue de la Maladière »)** : à quel endroit de la rue a-t-elle été prise ?~~ Réponse : à l'est du cimetière, vers le sud-ouest,
+   au niveau du sud de l'aire de camping-cars. Le mur est la bordure du plateau du lycée militaire, entre R05 et R06, absente d'OSM : ajoutée
+   au tracé (D252).

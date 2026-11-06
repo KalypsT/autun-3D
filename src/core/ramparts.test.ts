@@ -61,6 +61,17 @@ describe("Remparts, lot 1 (D250) : données", () => {
     expect(near).toBe(true);
   });
 
+  it("rue de la Maladière (D252, photo 7) : le bout de mur absent d'OSM prolonge R06 vers le nord-est, 4 m au moins au-dessus de la rue", () => {
+    const hit = ramparts.find(({ w }) => {
+      for (let i = 0; i < w.pts.length; i += 2) if (Math.hypot(w.pts[i]! - 940, w.pts[i + 1]! - 175) < 3) return true;
+      return false;
+    });
+    expect(hit).toBeDefined();
+    const p = hit!.w as ProfiledWall;
+    const i = p.top.findIndex((_, k) => Math.hypot(p.pts[2 * k]! - 940, p.pts[2 * k + 1]! - 175) < 3);
+    expect(p.top[i]! - Math.min(p.gl[i]!, p.gr[i]!)).toBeGreaterThan(4);
+  });
+
   it("relief écrêté au pied : côté bas, à 3 m de la face, le relief n'est pas au-dessus du sol mesuré (plus la pente de 0,25)", () => {
     let checked = 0;
     for (const { tile, w } of ramparts) {

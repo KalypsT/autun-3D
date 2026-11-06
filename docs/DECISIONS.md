@@ -5184,3 +5184,17 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 **Résultat** : 3,7 % des pas avec deux voitures de police à moins de 3 m (6,5 % en D250, 3,1 % avant D250 ; plafond 4 %). Tirage 3 : 9,2 % (20,4 % en D250).
 
 **Tests** (+2, 1 335 au total ; `src/core/driver.test.ts`) : contre un mur posé en travers de sa voie, il recule (plus de 0,8 s de marche arrière voulue) ; sans `unstick`, jamais (le rebond du choc n'est pas une marche arrière).
+
+## 2026-11-06 — D252. Remparts : le bout de mur de la rue de la Maladière (photo 7)
+
+**Demande de l'utilisateur** : précision sur la photo 7 (« 4 rue de la Maladière ») : rue de la Maladière, à l'est du cimetière, prise du nord-est vers le sud-ouest, au niveau du sud de l'aire de camping-cars.
+
+**Lecture** : l'aire de camping-cars de la rue de la Maladière (OSM) est en (947 à 987 ; 72 à 121), le cimetière juste à l'ouest. Balayage LiDAR le long de toute la rue (`maladiere_rue`) : aucun mur de plus de 3 m au bord de la chaussée le long du cimetière (une marche de 1 m, déjà dessinée par les murets de 1,1 m) ; de R02 à R05, la rue est en haut du mur (9 m de chute côté est, vers le plan d'eau) ; entre y = 150 et 190, un mur de 3 à 4,4 m borde le côté ouest de la rue. C'est le trou de 66 m du tracé OSM entre R05 et R06 : la bordure du plateau du lycée militaire, en marche nette, prolonge R06 vers le nord-est. Vue du nord-est vers le sud-ouest, c'est la photo 7 (le mur à droite de la rue, les bâtiments du lycée au-dessus). L'appareil était sans doute un peu au nord de l'aire.
+
+**Données** : tracé `maladiere` dans `traces` de `ramparts` (`manual.json`) : 41 m, de (924 ; 162) à (952 ; 191), 5 à 6 m côté rue. Raccords (`joins`) : plus de raccord pour un bout qui touche déjà l'autre mur (à moins de 1,5 m de son tracé) ; sans cela, un raccord doublait le départ de R06. 22 murs, 3 181 m.
+
+**Pas fait** : entre la fin du morceau et R05 (la rue y monte sur le plateau), rien : pas de marche au LiDAR. Le mur est à environ 4 m du bord de la chaussée dessinée, plus loin que sur la photo (la chaussée des données est peut-être décalée).
+
+**Tests** (+1, 1 336 au total ; `src/core/ramparts.test.ts`).
+
+![Rue de la Maladière, vers le sud-ouest](captures/d252-maladiere.jpg)

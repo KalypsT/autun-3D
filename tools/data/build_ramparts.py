@@ -27,7 +27,7 @@ import json
 import math
 
 import numpy as np
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Point, Polygon
 from shapely.prepared import prep
 from shapely.ops import unary_union
 
@@ -120,17 +120,22 @@ def streets():
 
 
 def joins(walls, limit, roads):
-    """Raccords des bouts de murs proches qu'aucune rue ne sépare."""
-    ends = [(w["pts"][0], w["id"]) for w in walls] + [(w["pts"][-1], w["id"]) for w in walls]
+    """Raccords des bouts de murs proches qu'aucune rue ne sépare ; pas de raccord pour un bout qui touche déjà l'autre mur (à moins de 1,5 m
+    de son tracé : il s'y branche, D252)."""
+    lines = [LineString(w["pts"]) for w in walls]
+    ends = [(w["pts"][0], k) for k, w in enumerate(walls)] + [(w["pts"][-1], k) for k, w in enumerate(walls)]
     out, seen = [], set()
-    for p, wi in ends:
-        for q, wj in ends:
-            if wi == wj or (wj, wi) in seen:
+    for p, i in ends:
+        for q, j in ends:
+            if walls[i]["id"] == walls[j]["id"] or (j, i) in seen:
                 continue
             d = math.dist(p, q)
-            if 0.5 < d <= limit and not LineString([p, q]).intersects(roads):
-                seen.add((wi, wj))
-                out.append({"id": f"join_{wi}_{wj}", "pts": [p, q], "join": (wi, wj)})
+            if not (0.5 < d <= limit) or LineString([p, q]).intersects(roads):
+                continue
+            if lines[j].distance(Point(p)) < 1.5 or lines[i].distance(Point(q)) < 1.5:
+                continue
+            seen.add((i, j))
+            out.append({"id": f"join_{walls[i]['id']}_{walls[j]['id']}", "pts": [p, q], "join": (walls[i]["id"], walls[j]["id"])})
     return out
 
 

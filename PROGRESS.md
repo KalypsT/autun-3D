@@ -1863,3 +1863,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![R11 avant](docs/captures/d250-r11-avant.jpg)
 ![R11 après](docs/captures/d250-r11.jpg)
+
+**Remparts : le mur de la rue de la Maladière (6 novembre 2026)** (D252)
+- Le mur de ta photo 7 est ajouté : 41 m au-dessus de la rue de la Maladière, au bord du plateau du lycée militaire, entre deux morceaux déjà connus (il manquait aux cartes).
+- À regarder : `?view=custom&cam=960,195,1.7,920,150,3&h=14`.
+
+![Rue de la Maladière](docs/captures/d252-maladiere.jpg)
