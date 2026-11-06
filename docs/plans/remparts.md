@@ -262,3 +262,22 @@ Ce qui manque pour confirmer les déductions, par ordre d'utilité :
 - **le long du cimetière, côté lycée** (R07-R12) : supposé restauré comme la photo 7.
 
 Prochaine étape : les tours (lot 3).
+
+## 9. Les tours : inventaire pour le lot 3 (6 novembre 2026)
+
+Deux lectures croisées. **Le dessin OSM** : le trait du mur fait une bosse vers l'extérieur (3 à 4,5 m sur 4 à 6 m, encadrée de deux creux)
+là où il contourne une tour. **Le LiDAR** : la marche du sol avance de 3 à 7 m devant la face, sur 4 à 12 m (utile là où OSM trace droit).
+Le détecteur du lot 0 ne voyait pas les premières (mesurées par rapport au trait OSM, elles ne dépassent pas).
+
+| Rue | Tours (centre approché) | Lecture | Certitude | Photo |
+|---|---|---|---|---|
+| Boulevard des Résistants Fusillés | 5 : (−357 ; −41) R39, (−262 ; −199) R36, (−209 ; −282) R35, (−170 ; −361) R34, (−130 ; −446) R32 | bosses OSM | 85 % | photos 1 à 3 (deux ou trois d'entre elles ; lesquelles ?) |
+| Boulevard Mac Mahon | 5 : (−41 ; −835) R27, (−53 ; −769) R28, (−63 ; −700) R29, (−71 ; −633) R30, (−86 ; −568) R31 | bosses OSM | 85 % | aucune |
+| Boulevard Laureau | 2 : (162 ; 555), (203 ; 476) | LiDAR | 95 % | photos 11 et 12 |
+| Rue Saint-Pancrace, ruelle Sainte-Anne | 1 ou 2 : (416 ; −461), (469 ; −419) | LiDAR (6 à 7 m d'avancée, 10 m de haut) | 60 % | la « petite tour » au fond de la photo 9 ? |
+| Rue de la Maladière, le long du cimetière | 1 ou 2 : (807 ; 24) R08 ; (719 ; −42) R10 | bosse OSM ; LiDAR | 60 % | aucune |
+| Rue du Vieux Colombier, rue Blanche | 2 ? : (230 ; −595) R21, (218 ; −651) R22 | bosses OSM, près de murs qui bifurquent | 40 % | aucune |
+| Lycée militaire (murs intérieurs R04, R09) | bosses dans les deux sens | angles de terrasses plutôt que tours | 30 % | — |
+| **Tour des Ursulines** | (8,5 ; −950,6), au bout de R26 | carrée, médiévale, statue au sommet ; dans le jeu : une maison BD TOPO de 71 m², 13 m, toit à quatre pans | — | photo 6 (de loin) |
+
+Écartée : la « saillie » de 24 m rue Chaffaut (174 ; −769) est un bâtiment.
