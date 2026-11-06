@@ -250,3 +250,15 @@ Question ajoutée :
 4. ~~**Photo 7 (« 4 rue de la Maladière »)** : à quel endroit de la rue a-t-elle été prise ?~~ Réponse : à l'est du cimetière, vers le sud-ouest,
    au niveau du sud de l'aire de camping-cars. Le mur est la bordure du plateau du lycée militaire, entre R05 et R06, absente d'OSM : ajoutée
    au tracé (D252).
+
+## 8. Lot 2 fait (D253, 6 novembre 2026)
+
+Cinq aspects (`rubble`, `restored`, `bright`, `schist`, `garden`), d'après les photos ou par continuité (liste dans D253 et dans `looks` de
+`manual.json`) ; blocs, bande sombre au pied, lierre, chaperon, haie des murs de jardin ; 126 000 triangles pour toute l'enceinte.
+
+Ce qui manque pour confirmer les déductions, par ordre d'utilité :
+- **boulevard Mac Mahon** (R26-R31) : supposé comme le boulevard des Résistants Fusillés ;
+- **rue de Breuil et rue Blanche** (R20-R25) : supposées en schiste, comme la rue du Vieux Colombier ;
+- **le long du cimetière, côté lycée** (R07-R12) : supposé restauré comme la photo 7.
+
+Prochaine étape : les tours (lot 3).

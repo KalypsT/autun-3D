@@ -5198,3 +5198,23 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 **Tests** (+1, 1 336 au total ; `src/core/ramparts.test.ts`).
 
 ![Rue de la Maladière, vers le sud-ouest](captures/d252-maladiere.jpg)
+
+## 2026-11-06 — D253. Les remparts, lot 2 : l'aspect (plan `docs/plans/remparts.md`, §1 bis et §4)
+
+**Demande de l'utilisateur** : continuer (lot 2 après D250 à D252).
+
+**Données** (`looks` de `ramparts`, `manual.json` ; champ `look` des murs `rampart`, `build_ramparts.py`) : cinq aspects, attribués par mur OSM ou tracé. D'après photo : `rubble` (moellons gris-brun d'origine, lierre, chaperon clair : boulevard des Résistants Fusillés, photos 1 à 3), `restored` (petit appareil beige restauré : rue de la Maladière, photos 7 et 8), `bright` (boulevard Laureau, restauré récemment, photos 11 et 12), `schist` (plaquettes de schiste brun foncé, herbe au sommet : rue du Vieux Colombier, photos 9 et 10), `garden` (mur bas noyé dans les jardins, couvertine enduite, haie au-dessus : rue Gaston Joliet, photos 13 et 14). **Par continuité, sans photo** : boulevard Mac Mahon et pointe sud en `rubble` (comme l'autre côté du Château) ; murs du lycée militaire (R01, R04, R09) en `rubble` ; R02 à R12 en `restored` (comme leur départ de la photo 7) ; rue Blanche, rue de Breuil et R20 en `schist` (suite de la rue du Vieux Colombier) ; R15 à R17 en `garden` (comme R13-R14). Longueurs : `rubble` 1 388 m, `restored` 768 m, `schist` 507 m, `garden` 310 m, `bright` 208 m.
+
+**Rendu** (`src/render/ramparts.ts`, le dessin des remparts sort de `props.ts`) : comme les portes romaines (D137) et Couhard (D222), en géométrie colorée. Chaque face est découpée en blocs : assises horizontales en altitude absolue (alignées d'un segment à l'autre), joints décalés d'une assise sur deux, teinte tirée de la palette du type (écarts de ±2 %, sinon les blocs font des planches) ; bande plus sombre au pied (60 cm, remontées d'humidité) ; plaques de lierre (cinq lanières, bord bas déchiqueté, 3 m de chute au plus) sur la face la plus haute d'une part des segments (30 % `rubble`, 8 % `restored`, 6 % `schist`, 10 % `garden`) ; chaperon de la couleur du type ; haie de 1,2 m sur les murs de jardin. Assises et blocs : 0,6 × 1,5 m (`rubble`), 0,5 × 1,4 m (`restored`, `garden`), 0,55 × 2 m (`bright`), 0,4 × 1,2 m (`schist`). Gris plus froids que les photos : l'éclairage du jeu les réchauffe.
+
+**Coût** : 126 000 triangles pour toute l'enceinte (pieds au sol mesuré), 25 000 au plus dans une tuile ; un premier essai à blocs plus fins en faisait 205 000 (41 000 par tuile), trop pour un téléphone.
+
+**Pas fait** : tours (lot 3) ; grillage du terrain de sport au-dessus du boulevard des Résistants Fusillés (photo 1), escalier et construction au sommet de la rue du Vieux Colombier (photo 10), barbacanes (lot 4) ; aspect de nuit (pas d'éclairage des remparts).
+
+**Tests** (+2, 1 338 au total ; `src/render/ramparts.test.ts`) : un aspect par mur, celui des photos là où il y en a une ; sommets finis et moins de 150 triangles par mètre dans le pire cas (relief plat au plus bas).
+
+![Boulevard des Résistants Fusillés](captures/d253-resistants.jpg)
+![Rue du Vieux Colombier](captures/d253-vieux-colombier.jpg)
+![R11, rue de la Maladière](captures/d253-r11.jpg)
+![Rue Gaston Joliet](captures/d253-gaston-joliet.jpg)
+![Boulevard Laureau](captures/d253-laureau.jpg)

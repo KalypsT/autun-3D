@@ -1869,3 +1869,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=960,195,1.7,920,150,3&h=14`.
 
 ![Rue de la Maladière](docs/captures/d252-maladiere.jpg)
+
+**Les remparts, lot 2 : l'aspect (6 novembre 2026)** (D253)
+- Les remparts ont l'aspect de tes photos : moellons gris-brun avec du lierre boulevard des Résistants Fusillés, petit appareil beige rue de la Maladière, mur neuf très clair boulevard Laureau, schiste sombre rue du Vieux Colombier, muret sous une haie rue Gaston Joliet.
+- Là où il n'y a pas de photo (boulevard Mac Mahon, rue de Breuil, rue Blanche, le long du cimetière), l'aspect est déduit du tronçon voisin.
+- Pas encore : les tours (lot 3), la promenade et les détails (lot 4).
+
+![Boulevard des Résistants Fusillés](docs/captures/d253-resistants.jpg)
+![Rue du Vieux Colombier](docs/captures/d253-vieux-colombier.jpg)

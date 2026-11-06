@@ -17,6 +17,7 @@ Entrées : les murs `barrier=city_wall` d'OpenStreetMap et les profils LiDAR de 
 4. Tuiles : les murs `rampart` sont remplacés par des polylignes à profil (`top`, `gl`, `gr` : sommet, sol à gauche et à droite du sens de la
    polyligne, par sommet), coupées par tuile (un segment va à la tuile de son milieu), identifiants −(RAMPART_ID + n). `bytes` et `walls` de
    world.json sont mis à jour.
+   Chaque mur porte son aspect (`look`, lot 2, D253) : `rubble`, `restored`, `bright`, `schist` ou `garden`, d'après `looks` de manual.json.
 5. Relief fin (terrain/<tuile>.bin) : de chaque côté, de l'axe jusqu'à `carve` m au-delà de la face, le relief est écrêté sous le sol mesuré de ce côté plus une pente
    de `slope` (le talus d'herbe que le MNT avait mis à la place du parement disparaît). Un `min` : une deuxième passe ne change rien.
 
@@ -348,28 +349,33 @@ def main():
         print(f"  raccord de {math.dist(*j['pts']):.0f} m entre {j['join'][0]} et {j['join'][1]}")
     walls += js
     overrides = {str(o["wall"]): o["height"] for o in spec["overrides"]}
-    runs = []
+    looks = spec["looks"]
+    runs, run_looks = [], []
     for w in walls:
+        # Aspect (lot 2, D253) : d'après la photo du tronçon, ou par continuité (voir `looks` de manual.json) ; un raccord prend celui du
+        # premier mur qu'il relie.
+        key = str(w["join"][0]) if "join" in w else str(w["id"])
         for r in stations(w, centre, spec, overrides.get(str(w["id"]))):
             runs.append(r)
+            run_looks.append(looks.get(key, looks["default"]))
     total = sum(LineString([(p[0], p[1]) for p in r]).length for r in runs)
     print(f"{len(runs)} murs, {total:.0f} m (OSM : {sum(LineString(w['pts']).length for w in osm_walls):.0f} m)")
 
     # Tuiles : un segment va à la tuile de son milieu ; les segments consécutifs d'une même tuile forment une polyligne.
     per_tile, nid = {}, 0
-    for r in runs:
+    for r, look in zip(runs, run_looks):
         cur, cur_tile = [], None
         for p, q in zip(r, r[1:]):
             tid = tile_of((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
             if tid != cur_tile and cur:
-                per_tile.setdefault(cur_tile, []).append(cur)
+                per_tile.setdefault(cur_tile, []).append((cur, look))
                 cur = []
             if not cur:
                 cur = [p]
             cur.append(q)
             cur_tile = tid
         if cur:
-            per_tile.setdefault(cur_tile, []).append(cur)
+            per_tile.setdefault(cur_tile, []).append((cur, look))
     world = json.loads((c.OUT / "world.json").read_text())
     metas = {m["id"]: m for m in world["tiles"]}
     changed = 0
@@ -378,10 +384,10 @@ def main():
         tile = json.loads(path.read_text())
         keep = [w for w in tile.get("walls", []) if w["kind"] != "rampart"]
         new = []
-        for poly in per_tile.get(tid, []):
+        for poly, look in per_tile.get(tid, []):
             nid += 1
             h = max(p[2] - min(p[3], p[4]) for p in poly)
-            new.append({"id": -(RAMPART_ID + nid), "kind": "rampart", "height": round(h, 1), "measured": round(h, 1),
+            new.append({"id": -(RAMPART_ID + nid), "kind": "rampart", "height": round(h, 1), "measured": round(h, 1), "look": look,
                         "pts": [round(v, 2) for p in poly for v in p[:2]],
                         "top": [round(p[2], 2) for p in poly], "gl": [round(p[3], 2) for p in poly], "gr": [round(p[4], 2) for p in poly]})
         if not new and len(keep) == len(tile.get("walls", [])):

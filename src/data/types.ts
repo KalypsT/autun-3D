@@ -119,6 +119,12 @@ export interface Street {
   pts: number[];
 }
 
+/**
+ * Aspect d'un rempart (lot 2, D253) : moellons gris-brun d'origine (`rubble`), petit appareil beige restauré (`restored`), restauré récemment,
+ * très clair (`bright`), plaquettes de schiste brun foncé (`schist`), mur bas noyé dans les jardins, haie au-dessus (`garden`).
+ */
+export type RampartLook = "rubble" | "restored" | "bright" | "schist" | "garden";
+
 export interface Wall {
   id: number;
   kind: string;
@@ -126,7 +132,7 @@ export interface Wall {
   measured: number;
   pts: number[];
   /** Aspect d'une clôture (`fence`) : grillage vert à poteaux plats (D244, rive est du plan d'eau du Vallon) ; absent : barreaudage. */
-  look?: "mesh";
+  look?: "mesh" | RampartLook;
   /** Rempart à profil mesuré (D250, tools/data/build_ramparts.py) : sommet du mur à chaque sommet de `pts` (altitude absolue). */
   top?: number[];
   /** Sol à gauche du sens de la polyligne, à chaque sommet (altitude absolue). */
