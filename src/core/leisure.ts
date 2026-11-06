@@ -1,4 +1,5 @@
 import type { Deck, Equip } from "../data/types";
+import type { Pit } from "../data/terrain";
 import { DeckAxis } from "./bridges";
 
 /**
@@ -16,6 +17,7 @@ export function equipSize(e: Equip): [number, number] {
     case "fitness": return [1.3, 0.35];
     case "board": return [0.6, 0.08];
     case "stone": return [(e.l ?? 0.6) / 2, (e.w ?? 0.45) / 2];
+    case "court": case "bowl": return [(e.l ?? 10) / 2, (e.w ?? 10) / 2];
     default: return [0, 0];
   }
 }
@@ -49,4 +51,46 @@ export function skateSides(d: Deck): { ring: number[]; tops: number[] } {
   }
   const pts = [...right, ...left.reverse()];
   return { ring: pts.flatMap(([x, y]) => [x, y]), tops: pts.map((p) => p[2]) };
+}
+
+/**
+ * Profondeur du bowl (D248) sous son rebord en (x, y) (m, 0 dehors) : rectangle arrondi `l` × `w` (coins de rayon `r`), parois en quart de
+ * cercle de rayon égal à la profondeur `h` (verticales au rebord, à plat au fond). Même formule que `bowl_depth` (build_vallon_leisure.py),
+ * qui creuse le relief.
+ */
+export function bowlDepth(b: Equip, x: number, y: number): number {
+  const D = b.h ?? 1.5;
+  const din = -bowlSdf(b, x, y);
+  if (din <= 0) return 0;
+  return din >= D ? D : D - (D - Math.sqrt(Math.max(0, D * D - (D - din) ** 2)));
+}
+
+/** Altitude du plan de l'aire de glisse (relief aplani, `pl`) en (x, y). */
+export function planeAt(e: Equip, x: number, y: number): number {
+  const [a, b, c] = e.pl ?? [0, 0, 0];
+  return a * x + b * y + c;
+}
+
+/** Distance signée au rebord du bowl (m) : négative dedans, positive dehors. */
+export function bowlSdf(b: Equip, x: number, y: number): number {
+  const a = b.a ?? 0, dx = x - b.x!, dy = y - b.y!;
+  const s = dx * Math.cos(a) + dy * Math.sin(a), t = -dx * Math.sin(a) + dy * Math.cos(a);
+  const r = b.r ?? 2;
+  const qx = Math.abs(s) - ((b.l ?? 8) / 2 - r), qy = Math.abs(t) - ((b.w ?? 8) / 2 - r);
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+}
+
+/** Creux d'affichage d'un bowl (D248) : relief affiché abaissé de `PIT_DROP` m jusqu'à `PIT_MARGIN` m hors du rebord. */
+export const PIT_DROP = 4;
+export const PIT_MARGIN = 0.6;
+/** Pourtour en béton du bowl (m au-delà du rebord), qui cache le relief affiché abaissé (même valeur que build_vallon_leisure.py). */
+export const BOWL_APRON = 4.2;
+
+export function bowlPit(b: Equip): Pit {
+  const ext = Math.hypot(b.l ?? 8, b.w ?? 8) / 2 + PIT_MARGIN + 0.1;
+  const floor = (x: number, y: number): number => planeAt(b, x, y) - (b.h ?? 1.5) - PIT_DROP;
+  return {
+    x0: b.x! - ext, y0: b.y! - ext, x1: b.x! + ext, y1: b.y! + ext,
+    cap: (x, y) => (bowlSdf(b, x, y) < PIT_MARGIN ? floor(x, y) : Infinity),
+  };
 }

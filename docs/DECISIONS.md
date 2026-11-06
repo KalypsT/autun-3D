@@ -5108,3 +5108,21 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![L'aire de jeux](captures/d247-aire-de-jeux.jpg)
 ![Le gué du Brisecou](captures/d247-gue.jpg)
 
+## 2026-11-06 — D248. Le plan d'eau du Vallon, lot 4 bis : l'aire de glisse rénovée (plan `docs/plans/vallon-lac.md`, §17)
+
+**Demande de l'utilisateur** : la surface turquoise de sa photo est l'aire de glisse urbaine rénovée ; deux photos aériennes et le plan de conception fournis (non versionnés). L'orthophotographie et le LiDAR montrent l'ancienne dalle : le skatepark de D247 est remplacé.
+
+**Données** (`build_vallon_leisure.py`, `vallonLeisure` de `manual.json`) : placement d'après les photos, dans le repère de l'ancienne dalle, positions approchées à 1 ou 2 m près. Piste d'éducation routière et terrain multisport (`equip` `court`, 32 × 17 m) ; bande de skate (couche `skate`, évidée au bowl) avec quarter, funbox, ledge, plan incliné (tabliers `skate`) et barre ; bowl (`equip` `bowl`, 9 × 13 m, 1,8 m, coins de 3 m). Relief fin aplani sur toute l'aire au plan `slabPlane` puis creusé pour le bowl (même profil que `bowlDepth`). Grillage de l'ancienne dalle retiré. Idempotente.
+
+**Rendu** (`src/render/leisure.ts`) : piste peinte (îlots, rond-point, tirets, passages piétons, flèches, places, tracés orange, bordure en bois) ; bowl en béton sur une grille de 40 cm, margelle brune, rebord en acier, pourtour en béton à plat ; ligne verte du pump track.
+
+**Creux d'affichage** (`Pits`, `src/data/terrain.ts` ; `bowlPit`, `src/core/leisure.ts`) : le relief proche est affiché par carreaux de 2,5 m, qui coupaient les parois du bowl jusqu'à 0,9 m au-dessus. Sous le bowl, le relief affiché (`TiledTerrain.displayAt`, utilisé par `TerrainView` pour les morceaux proches) est abaissé de 4 m ; marche, véhicules et sols suivent le vrai relief. Le pourtour en béton (4,2 m, plus que la diagonale d'un carreau) cache l'abaissement. Les creux sont enregistrés au chargement de la tuile (`TileManager`) ; `TerrainView` reconstruit les morceaux proches qu'ils touchent.
+
+**Pas fait** : forme exacte du bowl, garde-corps, panneaux ; marquages simplifiés.
+
+**Tests** (14 + 1 dans `src/data/vallon-leisure.test.ts`, adaptés à l'aire rénovée).
+
+![L'aire de glisse rénovée](captures/d248-haut.jpg)
+![La piste](captures/d248-piste.jpg)
+![Le bowl](captures/d248-bowl.jpg)
+

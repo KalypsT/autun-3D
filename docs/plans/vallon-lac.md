@@ -144,7 +144,8 @@ Réponses au §11.
 | **2. La base nautique** (fait, §14) | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
 | **3. Les pontons et la cale** (fait, §15) | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** (fait, §16) | aire de jeux, skatepark, pump track, agrès, panneaux | on roule sur le pump track, on monte les modules du skatepark, on passe le Brisecou à gué | D247 |
-| **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
+| **4 bis. L'aire de glisse rénovée** (fait, §17) | bande de skate et bowl, piste d'éducation routière, pump track peint | l'aire telle qu'elle est depuis sa rénovation | D248 |
+| **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D249 |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
 
@@ -365,7 +366,8 @@ Ce qui diffère du plan :
 - **Les surfaces génériques sont retirées** : le terrain de sport vert (build_kinds.py) et sa pelouse (build_public_space.py) recouvraient la dalle et la piste,
   et les boucles du pump track (`leisure=track`) étaient dessinées en piste d'athlétisme rouge.
 - Deux objets d'OSM, à 1 m du chemin, en sont écartés de 1 m (l'agrès de l'est et une table du sud).
-- **Pas de terrain multisport** : la surface turquoise grillagée de la photo du skatepark n'apparaît pas sur l'orthophotographie (question posée à l'utilisateur).
+- **Pas de terrain multisport** : la surface turquoise grillagée de la photo du skatepark n'apparaît pas sur l'orthophotographie (question posée à l'utilisateur ;
+  réponse : l'aire a été rénovée, voir §17).
 
 Pas fait : la surface turquoise de la photo ; les agrès et les jeux exacts (formes génériques) ; les passants ne vont pas sur les modules ni sur la piste.
 Vu en passant, sans rapport avec ce lot : de grands panneaux bruns flottent au-dessus du talus du rempart, vers (990 ; 255), à la frontière des tuiles 29 et 30
@@ -383,3 +385,32 @@ pierres du gué en travers de la rigole ; obstacles enjambables ou non ; dessins
 ![L'aire de jeux](../captures/d247-aire-de-jeux.jpg)
 ![Les agrès de l'ouest](../captures/d247-agres.jpg)
 ![Le gué du Brisecou](../captures/d247-gue.jpg)
+
+## 17. Lot 4 bis : l'aire de glisse rénovée (6 novembre 2026, D248)
+
+L'utilisateur a vérifié : la surface turquoise de sa photo est celle de l'**aire de glisse urbaine rénovée**, plus récente que l'orthophotographie et le LiDAR.
+Il a fourni deux photos aériennes et le plan de conception (non versionnés). Le skatepark du §16 (modules recalés sur l'ancienne dalle) est remplacé.
+
+- **Placement** : dans le repère de l'ancienne dalle (centre (1374,3 ; 568,7), u à 23,7° vers le parking, v vers le nord-nord-ouest), décalé de 1,5 m vers le
+  parking, entre le chemin du lac (à 1,9 m) et la ganivelle (à plus de 3,5 m) : **positions approchées à 1 ou 2 m près**, lues sur les photos.
+- **Piste d'éducation routière** (32 × 17 m, côté chemin), qui sert aussi de terrain multisport : enrobé sombre, îlots verts, rond-point central à îlot vert et logo,
+  voie de ceinture à sens unique (flèches), voies en croix, passages piétons, places de stationnement, ligne médiane et cercles orange, bordure en bois ouverte aux
+  deux bouts. Disposition des marquages simplifiée d'après les photos.
+- **Bande de skate** (14 × 38 m, côté parking) en béton clair : quarter au sud (1,2 m), funbox (0,6 m), long ledge (0,45 m) le long de la piste, barre de glisse,
+  plan incliné côté parking ; **bowl** au nord, creusé de 1,8 m (9 × 13 m, coins de 3 m, parois en quart de cercle), margelle brune, rebord en acier, pourtour
+  en béton. On y descend et on en remonte à pied ou à vélo.
+- **Pump track** : même tracé (OSM), avec la ligne verte peinte des photos.
+- **Relief** : aplani sur toute l'aire (plan mesuré sur l'ancienne dalle), puis creusé pour le bowl. Le grillage de l'ancienne dalle est retiré.
+- **Creux d'affichage** (nouveau, `Pits` de `src/data/terrain.ts`) : le relief proche est affiché par carreaux de 2,5 m ; sur les parois presque verticales du bowl,
+  ces carreaux passaient jusqu'à 0,9 m au-dessus de la paroi. Sous le bowl, le relief **affiché** est abaissé de 4 m (le relief du jeu ne change pas), et le pourtour
+  en béton (4,2 m) cache l'abaissement ; l'affichage du relief se reconstruit quand la tuile se charge.
+
+Pas fait : la forme exacte du bowl (hanche, escaliers, extension), les garde-corps métalliques des photos, les panneaux du pump track ; les marquages ne reprennent
+pas trait pour trait ceux des photos.
+
+Tests (+4, `src/data/vallon-leisure.test.ts`, adaptés) : quatre modules sur la bande ; relief aplani sur la piste et creusé de 1,8 m au fond du bowl ; on descend au
+fond du bowl et on en remonte ; on traverse la piste à pied ; creux d'affichage (relief affiché abaissé, relief du jeu inchangé, pourtour assez large) ; dessins bornés.
+
+![L'aire de glisse rénovée, vue haute](../captures/d248-haut.jpg)
+![La piste d'éducation routière](../captures/d248-piste.jpg)
+![Le bowl](../captures/d248-bowl.jpg)

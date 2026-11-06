@@ -219,17 +219,16 @@
                [1279.5, 592.5, 1305.5, 599.0, 1305.5, 603.5, 1300.0, 601.5, 1295.0, 600.5, 1280.0, 596.5]]
     }
   },
-  "_vallonLeisure": "Équipements du plan d'eau du Vallon (D247, build_vallon_leisure.py ; plan docs/plans/vallon-lac.md, §6 et §16). Positions et tailles lues sur l'orthophotographie IGN à 5 cm (vignettes vignette_skate_5cm et vignette_jeux_5cm de survey_vallon.wms) et sur les photos de l'utilisateur, à 0,5 m près ; formes des jeux et des agrès approchées (photos). `skate` : modules du skatepark, posés sur sa dalle (contour OSM w247999128), aux places et hauteurs des bosses que le LiDAR y mesure (la dalle est ensuite aplanie à `slabPlane`, z = a·x + b·y + c, plan moyen mesuré au LiDAR avant aplanissement par `build_vallon_leisure.py --plan`) : `quarter` (rampe courbe de `run` m montant à `h` m, plate-forme de `top` m ; `a` : sens de la montée, degrés depuis l'est), `funbox` (rampe `run`, plateau `top`, rampe `run`), `box` (bloc de `h` m) ; `l` : largeur en travers. `rail` : barre de glisse. `pump` : les trois boucles du pump track (OSM w1257122934 à 36), lissées, enrobé de `w` m à `base` m au-dessus du plus haut des quatre points de relief voisins, qui porte déjà ses bosses (LiDAR, ±0,3 m). `equip` : jeux (`play_small`, `play_big` : structures à toboggans, couleurs des photos ; `springer` : jeu à ressort), table, banc, agrès (OSM : leisure=fitness_station), panneaux (OSM), écartés d'au moins 1,2 m du bord du chemin. `fence` : grillage gris autour de la dalle du skatepark (vu sur l'image), `ganivelle` : clôture de châtaignier le long du parking (photo), tracé approché. `ford` : gué en pierres plates du Brisecou (OSM w1290256590, sous les arbres : approché) et la rigole qu'il enjambe. `ground` : sols (dalle du skatepark, gravillons et sol souple rouge de l'aire de jeux). `replaces` : contours OSM (skatepark, pump track) dont les terrains et pistes génériques (build_kinds.py) et la pelouse de sport (build_public_space.py) sont retirés.",
+  "_vallonLeisure": "Équipements du plan d'eau du Vallon (D247, D248, build_vallon_leisure.py ; plan docs/plans/vallon-lac.md, §6, §16 et §17). L'aire de glisse urbaine a été rénovée après l'orthophotographie et le LiDAR : elle est placée d'après deux photos aériennes et le plan de conception fournis par l'utilisateur (D248), dans le repère de l'ancienne dalle (centre (1374,3 ; 568,7), u à 23,7° vers le parking, v à 113,7° vers le nord-nord-ouest), décalée de 1,5 m vers le parking : positions et tailles approchées à 1 ou 2 m près. `ground.skate` : la bande de béton côté parking (u de 2,5 à 16,5, v de −17 à 21) ; `skate` : modules en tabliers (`quarter` : rampe courbe de `run` m montant à `h` m, plate-forme de `top` m ; `funbox` : rampe, plateau, rampe ; `box` : bloc ; `a` : sens de la montée, degrés depuis l'est ; `l` : largeur en travers) ; `bowl` : bassin creusé de `depth` m dans le relief (contour rectangle arrondi `l` × `w`, rayon `r`, parois en quart de cercle) ; `court` : piste d'éducation routière peinte, aussi terrain multisport (enrobé, îlots verts, rond-point, marquages, places, lignes et cercles orange, bordure en bois) ; `rail` : barre de glisse. Le relief est aplani sur toute l'aire au plan `slabPlane` (mesuré au LiDAR sur l'ancienne dalle, `--plan`), puis le bowl y est creusé. `pump` : les trois boucles du pump track (OSM w1257122934 à 36), lissées, enrobé de `w` m à `base` m au-dessus du plus haut des quatre points de relief voisins, qui porte déjà ses bosses (LiDAR, ±0,3 m). `equip` : jeux (`play_small`, `play_big` : structures à toboggans, couleurs des photos ; `springer` : jeu à ressort), table, banc, agrès (OSM : leisure=fitness_station), panneaux (OSM), écartés d'au moins 1,2 m du bord du chemin. `fence` : grillages (celui de l'ancienne dalle a disparu), `ganivelle` : clôture de châtaignier le long du parking (photo), tracé approché. `ford` : gué en pierres plates du Brisecou (OSM w1290256590, sous les arbres : approché) et la rigole qu'il enjambe. `ground` : sols (bande de béton du skatepark, gravillons et sol souple rouge de l'aire de jeux). `replaces` : contours OSM (ancien skatepark, pump track) dont les terrains et pistes génériques (build_kinds.py) et la pelouse de sport (build_public_space.py) sont retirés.",
   "vallonLeisure": {
     "skate": [
-      {"name": "Quarter nord-ouest", "k": "quarter", "c": [1369.56, 581.37], "a": 113.7, "l": 11.0, "run": 2.4, "top": 1.0, "h": 0.8},
-      {"name": "Funbox du milieu", "k": "funbox", "c": [1378.4, 569.4], "a": 23.7, "l": 4.0, "run": 1.8, "top": 3.0, "h": 1.0},
-      {"name": "Bloc ouest", "k": "box", "c": [1365.5, 571.4], "a": 23.7, "l": 2.2, "w": 2.0, "h": 0.35},
-      {"name": "Bloc sud", "k": "box", "c": [1371.0, 558.6], "a": 23.7, "l": 2.6, "w": 1.4, "h": 0.3},
-      {"name": "Quarter sud-est", "k": "quarter", "c": [1383.6, 558.6], "a": -66.3, "l": 3.0, "run": 2.2, "top": 0.8, "h": 1.0}
+      {"name": "Quarter sud", "k": "quarter", "c": [1388.99, 558.88], "a": -66.3, "l": 13.0, "run": 2.6, "top": 1.0, "h": 1.2},
+      {"name": "Funbox", "k": "funbox", "c": [1385.52, 569.26], "a": 113.7, "l": 3.5, "run": 1.6, "top": 2.4, "h": 0.6},
+      {"name": "Ledge", "k": "box", "c": [1378.77, 568.48], "a": 113.7, "l": 7.0, "w": 0.6, "h": 0.45},
+      {"name": "Plan incliné", "k": "quarter", "c": [1388.71, 573.93], "a": 23.7, "l": 5.0, "run": 1.5, "top": 0.5, "h": 0.6}
     ],
     "rails": [
-      {"name": "Barre de glisse", "p": [1374.0, 560.6, 1375.0, 557.9], "h": 0.35}
+      {"name": "Barre de glisse", "p": [1380.11, 572.89, 1378.1, 577.47], "h": 0.35}
     ],
     "equip": [
       {"name": "Petite structure (toboggan bleu)", "k": "play_small", "x": 1502.8, "y": 170.0, "a": -15, "l": 3.6, "w": 2.2},
@@ -247,10 +246,9 @@
       {"name": "Réglementation de la pêche (OSM n14000252650)", "k": "board", "x": 980.1, "y": 166.7, "a": 0},
       {"name": "Plan du site (OSM n13755176837)", "k": "board", "x": 985.7, "y": 166.5, "a": 0}
     ],
-    "fence": [
-      {"name": "Grillage du skatepark", "h": 1.2, "p": [1360.0, 582.6, 1376.2, 589.7, 1390.6, 559.8, 1388.8, 557.4], "gap": "entrée au sud"},
-      {"name": "Grillage du skatepark, côté ouest", "h": 1.2, "p": [1371.3, 550.6, 1357.0, 578.0]}
-    ],
+    "fence": [],
+    "court": {"name": "Piste d'éducation routière et terrain multisport", "c": [1369.01, 565.83], "a": 113.7, "l": 32.0, "w": 17.0},
+    "bowl": {"name": "Bowl", "c": [1376.37, 587.63], "a": 113.7, "l": 9.0, "w": 13.0, "depth": 1.8, "r": 3.0},
     "ganivelle": [
       {"name": "Ganivelle le long du parking, nord", "h": 1.1, "p": [1383.0, 597.5, 1391.5, 595.5, 1392.6, 589.0]},
       {"name": "Ganivelle le long du parking, est", "h": 1.1, "p": [1393.4, 584.0, 1394.3, 578.5, 1401.0, 572.5, 1413.0, 564.6, 1425.5, 556.5]}
@@ -259,6 +257,6 @@
     "slabPlane": [0.02688, 0.001528, -61.134],
     "replaces": [247999128, 842375495],
     "ford": {"name": "Gué du Brisecou", "stones": [1351.8, 17.8, 1347.9, 22.3], "n": 5, "brook": [1343.5, 14.0, 1350.0, 19.9, 1358.5, 25.0], "brookW": 1.4},
-    "ground": {"skate": "osm:247999128", "play_gravel": "osm:247999116", "play_mat": [[1500.4, 166.0, 1505.2, 166.0, 1505.2, 173.4, 1500.4, 173.4]]}
+    "ground": {"skate": [[1383.42, 554.14, 1396.24, 559.77, 1380.97, 594.56, 1368.15, 588.93]], "play_gravel": "osm:247999116", "play_mat": [[1500.4, 166.0, 1505.2, 166.0, 1505.2, 173.4, 1500.4, 173.4]]}
   }
 }

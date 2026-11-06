@@ -74,6 +74,9 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   agres: [998, 267, 1.7, 1012, 256, 0.5],
   gue: [1345, 27, 1.7, 1351, 18, -0.3],
   "skatepark-haut": [1415, 600, 26, 1385, 555, 0],
+  // Aire de glisse rénovée (D248) : piste d'éducation routière, bowl.
+  "piste-education": [1352, 548, 9, 1378, 580, 0],
+  bowl: [1365, 596, 3, 1376.3, 587.3, -1.5],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.

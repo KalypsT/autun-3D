@@ -2,6 +2,7 @@ import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { landmarkDecks, landmarkSectors } from "../core/landmarks";
+import { bowlPit } from "../core/leisure";
 import { addTileColliders } from "../core/world";
 import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
@@ -252,10 +253,13 @@ export class TileManager {
       return { ...p, z: z + p.h, id: `q:${id}:${i}` };
     });
     this.terrain.decks.add(id, [...st.decks, ...extra], platforms);
+    // Bowl de l'aire de glisse (D248) : creux d'affichage du relief.
+    this.terrain.pits.add(id, (st.equip ?? []).filter((e) => e.k === "bowl").map(bowlPit));
   }
 
   private unload(e: Entry): void {
     this.terrain.decks.remove(e.info.id);
+    this.terrain.pits.remove(e.info.id);
     if (this.job?.e === e) {
       this.job.steps.return(undefined as unknown as TileMeshes);
       this.job = null;

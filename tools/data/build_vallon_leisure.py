@@ -3,9 +3,10 @@
 Usage : python3 tools/data/build_vallon_leisure.py
 D'après `vallonLeisure` de `manual.json` (positions relevées sur l'orthophotographie à 5 cm et les photos), OpenStreetMap (relevé du lot 0,
 `survey_vallon.osm()`) et le relief publié :
-- skatepark : le relief fin est aplani sous la dalle (le LiDAR y a mesuré les vrais modules, que les tabliers dessinent : blocs terrain/*.bin
-  réécrits, comme build_water.py) ; modules (`quarter`, `funbox`, `box`) en tabliers piétons (`decks` des ouvrages, `k: "foot"`, style `skate`),
-  à la place et à la hauteur des bosses mesurées, qu'on monte à pied ou à vélo ; dalle (couche de sol `skate`) ;
+- aire de glisse (rénovée, D248 : d'après les photos de l'utilisateur, pas d'après l'orthophotographie ni le LiDAR, plus anciens) : relief fin
+  aplani sur toute l'aire puis creusé pour le bowl (blocs terrain/*.bin réécrits, comme build_water.py) ; modules (`quarter`, `funbox`, `box`)
+  en tabliers piétons (`decks` des ouvrages, `k: "foot"`, style `skate`), qu'on monte à pied ou à vélo ; bande de béton (couche de sol `skate`,
+  évidée au droit du bowl) ; bowl et piste d'éducation routière (`equip` : `bowl`, `court`, avec le plan du relief `pl`) ;
 - pump track : les trois boucles d'OSM, lissées, en tabliers `k: "foot"`, style `pump` : enrobé à `base` m au-dessus du relief, qui porte
   déjà les bosses de la piste (LiDAR) ;
 - équipements (`equip` des ouvrages) : jeux, tables, banc, agrès, panneaux, barre de glisse, grillage, ganivelle, pierres du gué et rigole ;
@@ -34,6 +35,9 @@ MANUAL = c.ROOT / "tools" / "data" / "manual.json"
 TRACE = c.ROOT / "tools" / "data" / "vallon_path.json"
 DECK_ID = 873_000_000
 GROUND = ("skate", "play_gravel", "play_mat")
+# Pourtour en béton du bowl (m au-delà du rebord) : il couvre le relief affiché abaissé autour du creux (`bowlPit`, src/core/leisure.ts :
+# les carreaux de 2,5 m du relief affiché descendent jusqu'à 4,1 m hors du rebord). Même valeur que BOWL_APRON (src/core/leisure.ts).
+BOWL_APRON = 4.2
 # Écart minimal entre un équipement et le bord du chemin (m).
 CLEAR = 1.2
 
@@ -48,6 +52,37 @@ def tile_of(world, x, y):
         if x0 <= x < x1 and y0 <= y < y1:
             return m["id"]
     return None
+
+
+def rect(spec):
+    """Rectangle tourné (centre `c`, axe long `a` en degrés, longueur `l`, largeur `w`)."""
+    a = math.radians(spec["a"])
+    ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+    cx, cy = spec["c"]
+    hl, hw = spec["l"] / 2, spec["w"] / 2
+    return Polygon([(cx + ux * s * hl + vx * t * hw, cy + uy * s * hl + vy * t * hw) for s, t in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
+
+
+def bowl_shape(b):
+    """Contour du bowl : rectangle aux coins arrondis de rayon `r`."""
+    inner = rect({**b, "l": b["l"] - 2 * b["r"], "w": b["w"] - 2 * b["r"]})
+    return inner.buffer(b["r"], quad_segs=8)
+
+
+def bowl_depth(b, x, y):
+    """Profondeur du bowl sous son rebord en (x, y) (m, 0 dehors) : rectangle arrondi, parois en quart de cercle de rayon `depth`.
+    Même formule que `bowlDepth` (src/core/leisure.ts)."""
+    a = math.radians(b["a"])
+    dx, dy = x - b["c"][0], y - b["c"][1]
+    s, t = dx * math.cos(a) + dy * math.sin(a), -dx * math.sin(a) + dy * math.cos(a)
+    r = b["r"]
+    qx, qy = abs(s) - (b["l"] / 2 - r), abs(t) - (b["w"] / 2 - r)
+    sdf = math.hypot(max(qx, 0.0), max(qy, 0.0)) + min(max(qx, qy), 0.0) - r
+    din = -sdf
+    if din <= 0:
+        return 0.0
+    D = b["depth"]
+    return D if din >= D else D - (D - math.sqrt(max(0.0, D * D - (D - din) ** 2)))
 
 
 def chaikin(pts, n=2):
@@ -131,9 +166,9 @@ def slab_plane(polygon):
     return [round(float(sol[0]), 6), round(float(sol[1]), 6), round(float(sol[2]), 3)]
 
 
-def flatten(polygon, plane):
-    """Aplanit le relief fin sous la dalle du skatepark au plan `plane` : le LiDAR y a mesuré les modules (bosses jusqu'à 1 m), que les
-    tabliers dessinent maintenant. Cellules à moins de 0,3 m de la dalle, écrites là où le relief s'écarte du plan de plus de 2 cm.
+def flatten(polygon, plane, bowl):
+    """Aplanit le relief fin sous l'aire de glisse au plan `plane` (le LiDAR y a mesuré l'ancienne dalle et ses modules, que la rénovation a
+    remplacés), puis y creuse le bowl. Cellules à moins de 0,3 m de l'aire, écrites là où le relief s'écarte de la cible de plus de 2 cm.
     Renvoie le nombre de cellules réécrites (0 à la deuxième passe)."""
     import numpy as np
     import shapely
@@ -144,7 +179,8 @@ def flatten(polygon, plane):
     xx, yy = np.meshgrid(x0 + np.arange(w), y1 - np.arange(h))
     z = blocks.read(x0, y1, w, h)
     inside = shapely.contains_xy(polygon.buffer(0.3), xx, yy) & ~np.isnan(z)
-    target = np.round((plane[0] * xx + plane[1] * yy + plane[2]) / UNIT) * UNIT
+    dig = np.vectorize(lambda x, y: bowl_depth(bowl, x, y))(xx, yy)
+    target = np.round((plane[0] * xx + plane[1] * yy + plane[2] - dig) / UNIT) * UNIT
     mask = inside & (np.abs(z - target) > 0.02)
     if mask.any():
         blocks.write(x0, y1, w, h, np.where(mask, target, z), mask)
@@ -158,11 +194,13 @@ def main():
     manual = json.loads(MANUAL.read_text())
     spec = manual["vallonLeisure"]
     nodes, ways = sv.osm()
-    slab = Polygon([nodes[n] for n in ways[int(spec["ground"]["skate"][4:])]["nodes"]]).buffer(0)
+    band = Polygon(list(zip(spec["ground"]["skate"][0][::2], spec["ground"]["skate"][0][1::2])))
+    slab = unary_union([band, rect(spec["court"]), bowl_shape(spec["bowl"]).buffer(BOWL_APRON, quad_segs=6)]).buffer(0)
     if "--plan" in sys.argv:
-        print("plan de la dalle :", slab_plane(slab))
+        old = Polygon([nodes[n] for n in ways[spec["replaces"][0]]["nodes"]]).buffer(0)
+        print("plan de l'ancienne dalle :", slab_plane(old))
         return
-    flat = flatten(slab, spec["slabPlane"])
+    flat = flatten(slab, spec["slabPlane"], spec["bowl"])
     world = json.loads((c.OUT / "world.json").read_text())
     relief = Relief()
     paths = json.loads(TRACE.read_text())["paths"]
@@ -192,6 +230,12 @@ def main():
         equip.append(rec)
     for r in spec["rails"]:
         equip.append({"k": "rail", "p": r["p"], "h": r["h"], "n": r["name"]})
+    for k in ("court", "bowl"):
+        b = spec[k]
+        rec = {"k": k, "x": b["c"][0], "y": b["c"][1], "a": r2(math.radians(b["a"])), "l": b["l"], "w": b["w"], "pl": spec["slabPlane"], "n": b["name"]}
+        if k == "bowl":
+            rec.update({"h": b["depth"], "r": b["r"]})
+        equip.append(rec)
     for f in spec["fence"]:
         equip.append({"k": "fence", "p": f["p"], "h": f["h"], "n": f["name"]})
     for f in spec["ganivelle"]:
@@ -253,6 +297,9 @@ def main():
         rings = src if isinstance(src, list) else [[v for n in ways[int(src[4:])]["nodes"][:-1] for v in nodes[n]]]
         for r in rings:
             g = Polygon(list(zip(r[::2], r[1::2]))).buffer(0)
+            if layer == "skate":
+                # Évidée au bowl et à son pourtour en béton, que le rendu dessine lui-même (`buildBowl`, src/render/leisure.ts).
+                g = g.difference(bowl_shape(spec["bowl"]).buffer(BOWL_APRON, quad_segs=6)).buffer(0)
             owned.setdefault(tile_of(world, *g.representative_point().coords[0]), {}).setdefault(layer, []).append(g)
     changed = []
     for m in world["tiles"]:
@@ -266,6 +313,24 @@ def main():
         t = json.loads(text)
         # La pelouse de sport générique (couche `pitch`, build_public_space.py) du skatepark et du pump track : retirée (elle recouvrait
         # la piste dans les creux des bosses ; le relief nu est de l'herbe).
+        # Sols des autres étapes (pelouses, places) au droit du bowl : découpés, sinon leurs grands triangles tendent une nappe au-dessus du creux.
+        hole = bowl_shape(spec["bowl"]).buffer(BOWL_APRON)
+        for layer in list(t["ground"]):
+            if layer in GROUND or layer == "path_gravel":
+                continue
+            out = []
+            for q in t["ground"][layer]:
+                g = Polygon(list(zip(q[0][::2], q[0][1::2])), [list(zip(h[::2], h[1::2])) for h in q[1:]]).buffer(0)
+                if g.intersection(hole).area < 0.05:
+                    out.append(q)
+                    continue
+                for part in getattr(g.difference(hole), "geoms", [g.difference(hole)]):
+                    if part.geom_type == "Polygon" and part.area > 0.5:
+                        out.append([[r2(v) for xy in list(ring.coords)[:-1] for v in xy] for ring in (part.exterior, *part.interiors)])
+            if out:
+                t["ground"][layer] = out
+            else:
+                del t["ground"][layer]
         if "pitch" in t["ground"]:
             t["ground"]["pitch"] = [q for q in t["ground"]["pitch"]
                                     if not area.contains(Polygon(list(zip(q[0][::2], q[0][1::2]))).buffer(0).representative_point())]
@@ -274,7 +339,7 @@ def main():
         for k in GROUND:
             gs = owned.get(tid, {}).get(k)
             if gs:
-                t["ground"][k] = [[[r2(v) for q in list(g.exterior.coords)[:-1] for v in q]] for g in gs]
+                t["ground"][k] = [[[r2(v) for q in list(ring.coords)[:-1] for v in q] for ring in (g.exterior, *g.interiors)] for g in gs]
             else:
                 t["ground"].pop(k, None)
         new = json.dumps(t, separators=(",", ":"), ensure_ascii=False)

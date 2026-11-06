@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DeckAxis } from "../core/bridges";
-import { EQUIP_TOP, equipRing, skateSides } from "../core/leisure";
+import { BOWL_APRON, bowlDepth, bowlPit, EQUIP_TOP, equipRing, planeAt, skateSides } from "../core/leisure";
 import { createPlayer, stepPlayer, type PlayerState } from "../core/player";
 import { loadRealWorld } from "../core/testing";
 import { buildColliders } from "../core/world";
@@ -39,8 +39,8 @@ function walkTo(p: PlayerState, x: number, y: number, maxT = 20, watch?: (p: Pla
 }
 
 describe("skatepark et pump track (D247)", () => {
-  it("cinq modules et trois boucles de pump track, en tabliers piétons sans parapet", () => {
-    expect(skate.map((d) => d.n).sort()).toEqual(["Bloc ouest", "Bloc sud", "Funbox du milieu", "Quarter nord-ouest", "Quarter sud-est"]);
+  it("quatre modules (aire rénovée, D248) et trois boucles de pump track, en tabliers piétons sans parapet", () => {
+    expect(skate.map((d) => d.n).sort()).toEqual(["Funbox", "Ledge", "Plan incliné", "Quarter sud"]);
     expect(pump.length).toBe(3);
     for (const d of [...skate, ...pump]) {
       expect(d.k).toBe("foot");
@@ -49,11 +49,11 @@ describe("skatepark et pump track (D247)", () => {
       expect(d.id).toBeGreaterThan(-874_000_000);
     }
     const rise = (d: Deck): number => Math.max(...zs(d)) - terrain.groundAt(new DeckAxis(d).at(new DeckAxis(d).length / 2).x, new DeckAxis(d).at(new DeckAxis(d).length / 2).y);
-    // Hauteurs des bosses mesurées au LiDAR sur la dalle.
-    expect(rise(byName("Quarter nord-ouest"))).toBeCloseTo(0.8, 1);
-    expect(rise(byName("Funbox du milieu"))).toBeCloseTo(1.0, 1);
-    expect(rise(byName("Bloc ouest"))).toBeCloseTo(0.4, 0);
-    // Tous les modules tiennent sur la dalle du skatepark (contour OSM).
+    // Hauteurs estimées sur les photos de l'aire rénovée.
+    expect(rise(byName("Quarter sud"))).toBeCloseTo(1.2, 1);
+    expect(rise(byName("Funbox"))).toBeCloseTo(0.6, 1);
+    expect(rise(byName("Ledge"))).toBeCloseTo(0.45, 1);
+    // Tous les modules tiennent sur la bande de béton du skatepark.
     const tile = JSON.parse(readFileSync("public/data/tiles/31_37.json", "utf8")) as TileData;
     const slab = tile.ground["skate"]![0]![0]!;
     const inSlab = (x: number, y: number): boolean => {
@@ -84,7 +84,7 @@ describe("skatepark et pump track (D247)", () => {
   });
 
   it("on monte la funbox à pied, on passe le plateau et on redescend ; on monte le quarter jusqu'à son rebord", () => {
-    const f = new DeckAxis(byName("Funbox du milieu"));
+    const f = new DeckAxis(byName("Funbox"));
     const g = terrain.groundAt(f.at(f.length / 2).x, f.at(f.length / 2).y);
     const a0 = f.at(0);
     const p = createPlayer(a0.x - a0.tx * 1.5, a0.y - a0.ty * 1.5, terrain);
@@ -99,22 +99,22 @@ describe("skatepark et pump track (D247)", () => {
     expect(Math.hypot(p.x - end.x - end.tx * 1.5, p.y - end.y - end.ty * 1.5)).toBeLessThan(0.5);
     expect(p.z - g).toBeLessThan(0.15);
 
-    const qa = new DeckAxis(byName("Quarter nord-ouest"));
+    const qa = new DeckAxis(byName("Quarter sud"));
     const q0 = qa.at(0), q1 = qa.at(qa.length - 0.3);
     const p2 = createPlayer(q0.x - q0.tx * 1.5, q0.y - q0.ty * 1.5, terrain);
     walkTo(p2, q1.x, q1.y, 10);
     expect(p2.z).toBeCloseTo(q1.z, 1);
   });
 
-  it("on bute sur le flanc d'un bloc et sur l'arrière d'un quarter ; en haut du bloc, on en passe le bord", () => {
-    const b = new DeckAxis(byName("Bloc ouest"));
+  it("on bute sur le flanc du ledge et sur l'arrière d'un quarter ; en haut du ledge, on en passe le bord", () => {
+    const b = new DeckAxis(byName("Ledge"));
     const m = b.at(b.length / 2);
     const g = terrain.groundAt(m.x, m.y);
-    const side = byName("Bloc ouest").w / 2 + 0.2;
+    const side = byName("Ledge").w / 2 + 0.2;
     const sx = m.x - m.ty * side, sy = m.y + m.tx * side;
     expect(colliders.resolve(sx, sy, 0.3, 0, g).hit).toBe(true);
     expect(colliders.resolve(sx, sy, 0.3, 0, m.z).hit).toBe(false);
-    const qa = new DeckAxis(byName("Quarter nord-ouest"));
+    const qa = new DeckAxis(byName("Quarter sud"));
     const back = qa.at(qa.length);
     expect(colliders.resolve(back.x + back.tx * 0.2, back.y + back.ty * 0.2, 0.3, 0, terrain.groundAt(back.x, back.y)).hit).toBe(true);
   });
@@ -138,7 +138,8 @@ describe("skatepark et pump track (D247)", () => {
       buildLeisureDeck(mb, d, terrain.ground);
       expect(mb.positions.every(Number.isFinite), d.n).toBe(true);
       expect(mb.positions.length / 9, d.n).toBeGreaterThan(4);
-      expect(mb.positions.length / 9, d.n).toBeLessThan(new DeckAxis(d).length * 12 + 40);
+      // Pump track : un point tous les 50 cm (dessus, ligne peinte, deux flancs : 16 triangles par mètre).
+      expect(mb.positions.length / 9, d.n).toBeLessThan(new DeckAxis(d).length * 18 + 40);
     }
   });
 });
@@ -147,11 +148,11 @@ describe("aire de jeux, agrès, panneaux, clôtures, gué (D247)", () => {
   const items = equip.filter((e) => e.x !== undefined);
   const lines = equip.filter((e) => e.p);
 
-  it("25 équipements : 2 structures de jeux, 2 jeux à ressort, banc, 3 tables, 3 agrès, 3 panneaux, 5 pierres, barre, 2 grillages, 2 ganivelles, rigole", () => {
+  it("25 équipements : 2 structures de jeux, 2 jeux à ressort, banc, 3 tables, 3 agrès, 3 panneaux, 5 pierres, barre, 2 ganivelles, rigole, piste et bowl", () => {
     const count = (k: string): number => equip.filter((e) => e.k === k).length;
     expect(equip.length).toBe(25);
     expect([count("play_small"), count("play_big"), count("springer"), count("bench"), count("picnic"), count("fitness"), count("board"), count("stone")]).toEqual([1, 1, 2, 1, 3, 3, 3, 5]);
-    expect([count("rail"), count("fence"), count("ganivelle"), count("brook")]).toEqual([1, 2, 2, 1]);
+    expect([count("rail"), count("fence"), count("ganivelle"), count("brook"), count("court"), count("bowl")]).toEqual([1, 0, 2, 1, 1, 1]);
   });
 
   it("tous les objets posés sont hors du chemin du tour (à plus de 0,5 m de son bord), hors des lampadaires et des pontons", () => {
@@ -191,7 +192,7 @@ describe("aire de jeux, agrès, panneaux, clôtures, gué (D247)", () => {
 
   it("obstacles : les structures de jeux arrêtent ; bancs, tables, agrès et ganivelle s'enjambent", () => {
     for (const e of items) {
-      if (e.k === "stone") continue;
+      if (e.k === "stone" || e.k === "court" || e.k === "bowl") continue;
       // Au milieu d'un grand côté, à 15 cm du bord.
       const a = e.a ?? 0, hw = equipRing(e).length ? Math.hypot(equipRing(e)[6]! - equipRing(e)[0]!, equipRing(e)[7]! - equipRing(e)[1]!) / 2 : 0;
       const px = e.x! - Math.sin(a) * (hw + 0.15), py = e.y! + Math.cos(a) * (hw + 0.15);
@@ -213,7 +214,7 @@ describe("aire de jeux, agrès, panneaux, clôtures, gué (D247)", () => {
     expect(mb.positions.length / 9).toBeGreaterThan(1000);
   });
 
-  it("sols : dalle du skatepark (environ 640 m²), gravillons (environ 500 m²) et sol souple de l'aire de jeux", () => {
+  it("sols : bande de béton du skatepark (évidée au bowl et à son pourtour, dessinés à part), gravillons (environ 500 m²) et sol souple de l'aire de jeux", () => {
     const area = (r: readonly number[]): number => {
       let a = 0;
       for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) a += r[j]! * r[i + 1]! - r[i]! * r[j + 1]!;
@@ -221,10 +222,71 @@ describe("aire de jeux, agrès, panneaux, clôtures, gué (D247)", () => {
     };
     const t1 = JSON.parse(readFileSync("public/data/tiles/31_37.json", "utf8")) as TileData;
     const t2 = JSON.parse(readFileSync("public/data/tiles/32_35.json", "utf8")) as TileData;
-    expect(area(t1.ground["skate"]![0]![0]!)).toBeGreaterThan(560);
-    expect(area(t1.ground["skate"]![0]![0]!)).toBeLessThan(720);
+    expect(area(t1.ground["skate"]![0]![0]!)).toBeGreaterThan(300);
+    expect(area(t1.ground["skate"]![0]![0]!)).toBeLessThan(450);
     expect(area(t2.ground["play_gravel"]![0]![0]!)).toBeGreaterThan(400);
     expect(area(t2.ground["play_gravel"]![0]![0]!)).toBeLessThan(620);
     expect(area(t2.ground["play_mat"]![0]![0]!)).toBeGreaterThan(25);
+  });
+});
+
+describe("l'aire de glisse rénovée : bowl et piste d'éducation routière (D248)", () => {
+  const bowl = equip.find((e) => e.k === "bowl")!;
+  const court = equip.find((e) => e.k === "court")!;
+
+  it("le relief est aplani sur la piste et creusé de 1,8 m au fond du bowl, comme le dessin", () => {
+    for (const [s, t] of [[0, 0], [10, 5], [-12, -6], [14, 7]] as const) {
+      const a = court.a!, x = court.x! + Math.cos(a) * s - Math.sin(a) * t, y = court.y! + Math.sin(a) * s + Math.cos(a) * t;
+      expect(terrain.groundAt(x, y) - planeAt(court, x, y)).toBeCloseTo(0, 1);
+    }
+    expect(planeAt(bowl, bowl.x!, bowl.y!) - terrain.groundAt(bowl.x!, bowl.y!)).toBeCloseTo(1.8, 1);
+    expect(bowlDepth(bowl, bowl.x!, bowl.y!)).toBeCloseTo(1.8, 5);
+    // Au rebord, la profondeur est nulle ; dehors aussi.
+    const a = bowl.a!, edge = (bowl.l! / 2) + 0.01;
+    expect(bowlDepth(bowl, bowl.x! + Math.cos(a) * edge, bowl.y! + Math.sin(a) * edge)).toBe(0);
+  });
+
+  it("on descend à pied au fond du bowl et on en remonte de l'autre côté", () => {
+    const a = bowl.a!, ux = Math.cos(a), uy = Math.sin(a);
+    const half = bowl.l! / 2 + 1.5;
+    const p = createPlayer(bowl.x! - ux * half, bowl.y! - uy * half, terrain);
+    let low = Infinity;
+    walkTo(p, bowl.x!, bowl.y!, 15, (pp) => { low = Math.min(low, pp.z); });
+    walkTo(p, bowl.x! + ux * half, bowl.y! + uy * half, 15);
+    expect(planeAt(bowl, bowl.x!, bowl.y!) - low).toBeGreaterThan(1.6);
+    expect(Math.hypot(p.x - bowl.x! - ux * half, p.y - bowl.y! - uy * half)).toBeLessThan(0.5);
+  });
+
+  it("la piste se traverse librement à pied (sa bordure en bois ne fait pas obstacle) ; dessins finis et bornés", () => {
+    const a = court.a!, vx = -Math.sin(a), vy = Math.cos(a);
+    const half = court.w! / 2 + 1.5;
+    const p = createPlayer(court.x! - vx * half, court.y! - vy * half, terrain);
+    walkTo(p, court.x! + vx * half, court.y! + vy * half, 20);
+    expect(Math.hypot(p.x - court.x! - vx * half, p.y - court.y! - vy * half)).toBeLessThan(0.5);
+    for (const e of [court, bowl]) {
+      const mb = new MeshBuilder();
+      buildEquip(mb, [e], terrain.ground);
+      expect(mb.positions.every(Number.isFinite), e.n).toBe(true);
+      expect(mb.positions.length / 9, e.n).toBeGreaterThan(200);
+      expect(mb.positions.length / 9, e.n).toBeLessThan(6000);
+    }
+  });
+
+  it("creux d'affichage : le relief affiché passe sous le bowl, le relief du jeu ne change pas ; le pourtour en béton couvre l'abaissement", () => {
+    const g = terrain.groundAt(bowl.x!, bowl.y!);
+    terrain.pits.add("essai", [bowlPit(bowl)]);
+    try {
+      expect(terrain.displayAt(bowl.x!, bowl.y!)).toBeLessThan(g - 3.5);
+      expect(terrain.groundAt(bowl.x!, bowl.y!)).toBe(g);
+      expect(terrain.heightAt(bowl.x!, bowl.y!)).toBeCloseTo(g, 5);
+      // Hors du creux (au-delà du pourtour), relief affiché et relief du jeu sont les mêmes.
+      const a = bowl.a!, far = bowl.l! / 2 + BOWL_APRON + 1;
+      const x = bowl.x! + Math.cos(a) * far, y = bowl.y! + Math.sin(a) * far;
+      expect(terrain.displayAt(x, y)).toBe(terrain.groundAt(x, y));
+      // Les carreaux de 2,5 m du relief affiché (diagonale 3,54 m) ne s'abaissent pas au-delà du pourtour.
+      expect(BOWL_APRON).toBeGreaterThan(0.6 + 2.5 * Math.SQRT2);
+    } finally {
+      terrain.pits.remove("essai");
+    }
   });
 });

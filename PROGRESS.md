@@ -1834,3 +1834,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Le skatepark](docs/captures/d247-skatepark.jpg)
 ![L'aire de jeux](docs/captures/d247-aire-de-jeux.jpg)
+
+**Le plan d'eau du Vallon, lot 4 bis : l'aire de glisse rénovée (6 novembre 2026)** (D248)
+- L'aire de glisse est celle de tes photos : piste d'éducation routière peinte (îlots verts, rond-point, passages piétons, places, tracés orange), bande de skate avec quarter, funbox, ledge et barre, et un bowl creusé de 1,8 m où l'on descend à pied ou à vélo.
+- Positions lues sur les photos : approchées à 1 ou 2 m près.
+- Prochaine étape : la vie du lac.
+
+![L'aire de glisse rénovée](docs/captures/d248-haut.jpg)

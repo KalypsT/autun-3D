@@ -1263,11 +1263,12 @@ export interface Boat {
 
 /**
  * Équipement du plan d'eau du Vallon (D247, build_vallon_leisure.py). Objets posés en (x, y), tournés de `a` (radians, axe long depuis l'est) :
- * jeux (`play_small`, `play_big`, `springer`), `bench`, `picnic`, `fitness` (agrès), `board` (panneau), `stone` (pierre du gué).
+ * jeux (`play_small`, `play_big`, `springer`), `bench`, `picnic`, `fitness` (agrès), `board` (panneau), `stone` (pierre du gué) ; aire de glisse
+ * rénovée (D248) : `court` (piste d'éducation routière peinte, `l` × `w`), `bowl` (bassin creusé de `h` m, coins de rayon `r`).
  * Tracés `p` (x, y, …) : `rail` (barre de glisse), `fence` (grillage), `ganivelle`, `brook` (rigole d'eau, largeur `w`).
  */
 export interface Equip {
-  k: "play_small" | "play_big" | "springer" | "bench" | "picnic" | "fitness" | "board" | "stone" | "rail" | "fence" | "ganivelle" | "brook";
+  k: "play_small" | "play_big" | "springer" | "bench" | "picnic" | "fitness" | "board" | "stone" | "rail" | "fence" | "ganivelle" | "brook" | "court" | "bowl";
   x?: number;
   y?: number;
   a?: number;
@@ -1278,6 +1279,9 @@ export interface Equip {
   c?: string;
   p?: number[];
   n?: string;
+  /** Bowl (D248) : rayon des coins (m) ; profondeur dans `h`. Piste et bowl : plan du relief aplani, z = a·x + b·y + c. */
+  r?: number;
+  pl?: [number, number, number];
 }
 
 /** Abri sur poteaux (D246) : toit rectangulaire de centre (x, y), côté `hl` dans la direction `a` (radians), dessous du toit à `z`. */

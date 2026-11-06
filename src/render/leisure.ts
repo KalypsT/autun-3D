@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Deck, Equip, HeightField } from "../data/types";
 import { DeckAxis } from "../core/bridges";
-import { equipSize } from "../core/leisure";
+import { BOWL_APRON, bowlDepth, bowlSdf, equipSize, planeAt } from "../core/leisure";
 import { hash01, MeshBuilder, toThree, type Vec3 } from "./geometry";
 import { block, face, quad } from "./piers";
 import { T } from "./style";
@@ -20,6 +20,15 @@ const WOOD = C("#8a6845");
 const WOOD_DARK = C("#6b4f33");
 const STEEL = C("#8f969a");
 const DARK = C("#3a3d3e");
+const COURT = C("#3b3e41");
+const PAINT_GREEN = C("#63c497");
+const PAINT_WHITE = C("#f2f1ec");
+const PAINT_ORANGE = C("#e8743a");
+const BOWL = C("#d8d2c6");
+const BOWL_DEEP = C("#c9c2b4");
+const COPING_BAND = C("#b6693f");
+/** Béton de la dalle (couche `skate` de ground.ts : paving2 × 0,92, thème affiche). */
+const SLAB = C("#cac5b8");
 
 type Pt = { x: number; y: number; z: number; tx: number; ty: number };
 const edge = (a: Pt, hw: number, k: number): [number, number] => [a.x - a.ty * hw * k, a.y + a.tx * hw * k];
@@ -63,6 +72,9 @@ export function buildPump(mb: MeshBuilder, d: Deck, ground: HeightField): void {
     const a = pts[i]!, b = pts[i + 1]!;
     const [al, bl, ar, br] = [edge(a, hw, 1), edge(b, hw, 1), edge(a, hw, -1), edge(b, hw, -1)];
     quad(mb, toThree(al[0], al[1], a.z), toThree(bl[0], bl[1], b.z), toThree(br[0], br[1], b.z), toThree(ar[0], ar[1], a.z), [0, 1, 0], ASPHALT);
+    // Ligne verte peinte le long d'un bord (photos de l'aire rénovée, D248).
+    const [g0, g1, g2, g3] = [edge(a, hw - 0.22, 1), edge(b, hw - 0.22, 1), edge(b, hw - 0.32, 1), edge(a, hw - 0.32, 1)];
+    quad(mb, toThree(g0[0], g0[1], a.z + 0.006), toThree(g1[0], g1[1], b.z + 0.006), toThree(g2[0], g2[1], b.z + 0.006), toThree(g3[0], g3[1], a.z + 0.006), [0, 1, 0], PAINT_GREEN);
     for (const k of [1, -1]) {
       const [p, q] = k === 1 ? [al, bl] : [ar, br];
       // Flanc légèrement évasé (30 cm au pied), de l'enrobé au relief.
@@ -170,12 +182,152 @@ function buildEquipItem(mb: MeshBuilder, e: Equip, ground: HeightField): void {
       quad(mb, f(-0.52, 1.07), f(0.52, 1.07), f(0.52, 1.78), f(-0.52, 1.78), toThree(vx, vy, 0), C("#e9e2c8"));
       break;
     }
+    case "court": buildCourt(mb, e); break;
+    case "bowl": buildBowl(mb, e); break;
     case "stone": {
       const g = C(["#9a968c", "#8e8a80", "#a7a297"][Math.floor(hash01(`${x},${y}`) * 3)]!);
       block(mb, x, y, ux, uy, hl, hw, z - 0.1, z + 0.12, g);
       break;
     }
     default: break;
+  }
+}
+
+/** Repère d'un équipement étendu : (s le long de `a`, t en travers, h au-dessus du plan aplani) -> point three. */
+function frame(e: Equip): (s: number, t: number, h: number) => Vec3 {
+  const a = e.a ?? 0, ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
+  return (s, t, h) => {
+    const x = e.x! + ux * s + vx * t, y = e.y! + uy * s + vy * t;
+    return toThree(x, y, planeAt(e, x, y) + h);
+  };
+}
+
+/** Polygone convexe (s, t) à plat, à `h` au-dessus du plan. */
+function flat(mb: MeshBuilder, f: (s: number, t: number, h: number) => Vec3, pts: [number, number][], h: number, col: THREE.Color): void {
+  for (let i = 1; i + 1 < pts.length; i++) face(mb, f(pts[0]![0], pts[0]![1], h), f(pts[i]![0], pts[i]![1], h), f(pts[i + 1]![0], pts[i + 1]![1], h), [0, 1, 0], col);
+}
+
+const box2 = (s0: number, s1: number, t0: number, t1: number): [number, number][] => [[s0, t0], [s1, t0], [s1, t1], [s0, t1]];
+
+function rounded(s0: number, s1: number, t0: number, t1: number, r: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [cs, ct, a0] of [[s1 - r, t0 + r, -Math.PI / 2], [s1 - r, t1 - r, 0], [s0 + r, t1 - r, Math.PI / 2], [s0 + r, t0 + r, Math.PI]] as const) {
+    for (let k = 0; k <= 3; k++) out.push([cs + r * Math.cos(a0 + (k * Math.PI) / 6), ct + r * Math.sin(a0 + (k * Math.PI) / 6)]);
+  }
+  return out;
+}
+
+function disc(cs: number, ct: number, r: number, n = 20): [number, number][] {
+  return Array.from({ length: n }, (_, i) => [cs + r * Math.cos((2 * Math.PI * i) / n), ct + r * Math.sin((2 * Math.PI * i) / n)] as [number, number]);
+}
+
+/** Anneau (trait circulaire) de rayon r, épaisseur w. */
+function ring(mb: MeshBuilder, f: (s: number, t: number, h: number) => Vec3, cs: number, ct: number, r: number, w: number, h: number, col: THREE.Color, n = 28): void {
+  for (let i = 0; i < n; i++) {
+    const a0 = (2 * Math.PI * i) / n, a1 = (2 * Math.PI * (i + 1)) / n;
+    const p = (a: number, rr: number): Vec3 => f(cs + rr * Math.cos(a), ct + rr * Math.sin(a), h);
+    quad(mb, p(a0, r - w / 2), p(a1, r - w / 2), p(a1, r + w / 2), p(a0, r + w / 2), [0, 1, 0], col);
+  }
+}
+
+/**
+ * Piste d'éducation routière de l'aire de glisse rénovée (D248, photos aériennes) : enrobé sombre, îlots verts, rond-point central, voie de
+ * ceinture et voies en croix, lignes blanches, passages piétons, flèches, places de stationnement ; tracés orange d'un terrain multisport
+ * (ligne médiane, cercles) ; bordure en bois, ouverte aux deux bouts. Disposition approchée d'après les photos.
+ */
+function buildCourt(mb: MeshBuilder, e: Equip): void {
+  const f = frame(e);
+  const hl = (e.l ?? 32) / 2, hw = (e.w ?? 17) / 2;
+  flat(mb, f, box2(-hl, hl, -hw, hw), 0.08, COURT);
+  // Îlots verts (quatre rangées de part et d'autre de la voie centrale), une place de stationnement à la place de l'un d'eux.
+  for (const [s0, s1] of [[-13.6, -9.4], [-7.4, -4.4], [4.4, 7.4], [9.4, 13.6]] as const) {
+    for (const [t0, t1] of [[2.0, 5.9], [-5.9, -2.0]] as const) {
+      if (s0 === 9.4 && t0 < 0) {
+        for (const ln of [box2(s0, s1, t0, t0 + 0.1), box2(s0, s1, t1 - 0.1, t1), ...[0, 1, 2, 3].map((k) => box2(s0 + k * 1.37, s0 + k * 1.37 + 0.1, t0, t1))]) flat(mb, f, ln, 0.095, PAINT_WHITE);
+        continue;
+      }
+      flat(mb, f, rounded(s0, s1, t0, t1, 0.9), 0.09, PAINT_GREEN);
+    }
+  }
+  // Rond-point : îlot central vert, bordure blanche, logo.
+  flat(mb, f, disc(0, 0, 1.6), 0.09, PAINT_GREEN);
+  ring(mb, f, 0, 0, 1.68, 0.14, 0.095, PAINT_WHITE);
+  ring(mb, f, 0, 0, 0.6, 0.1, 0.095, PAINT_WHITE, 16);
+  ring(mb, f, 0, 0, 4.0, 0.1, 0.095, PAINT_WHITE);
+  // Tirets : voie centrale, voie en travers, voie de ceinture.
+  const dash = (s0: number, s1: number, t: number, along = true): void => {
+    for (let s = s0; s < s1 - 0.5; s += 2) flat(mb, f, along ? box2(s, s + 1, t - 0.05, t + 0.05) : box2(t - 0.05, t + 0.05, s, s + 1), 0.095, PAINT_WHITE);
+  };
+  dash(-hl + 1, -4.4, 0); dash(4.4, hl - 1, 0);
+  dash(-hw + 0.8, -4.4, 0, false); dash(4.4, hw - 0.8, 0, false);
+  dash(-hl + 1, hl - 1, 7.2); dash(-hl + 1, hl - 1, -7.2);
+  // Passages piétons de part et d'autre du rond-point.
+  for (const sc of [-3.4, 3.4]) for (const tt of [-1.4, -0.6, 0.2, 1.0]) flat(mb, f, box2(sc - 0.9, sc + 0.9, tt, tt + 0.4), 0.095, PAINT_WHITE);
+  // Flèches de la voie de ceinture (sens unique).
+  for (const [sc, tc, k] of [[-10, 7.2, 1], [10, 7.2, 1], [-10, -7.2, -1], [10, -7.2, -1]] as const) {
+    flat(mb, f, box2(Math.min(sc - 1.0 * k, sc + 0.2 * k), Math.max(sc - 1.0 * k, sc + 0.2 * k), tc - 0.08, tc + 0.08), 0.098, PAINT_WHITE);
+    flat(mb, f, [[sc + 0.2 * k, tc - 0.35], [sc + 0.9 * k, tc], [sc + 0.2 * k, tc + 0.35]], 0.098, PAINT_WHITE);
+  }
+  // Terrain multisport : ligne médiane et cercles orange.
+  flat(mb, f, box2(-0.05, 0.05, -hw + 0.3, -4.2), 0.1, PAINT_ORANGE);
+  flat(mb, f, box2(-0.05, 0.05, 4.2, hw - 0.3), 0.1, PAINT_ORANGE);
+  for (const [sc, tc] of [[-11.5, 3.95], [11.5, 3.95], [-11.5, -3.95], [6, -3.95]] as const) ring(mb, f, sc, tc, 2.3, 0.09, 0.1, PAINT_ORANGE);
+  // Bordure en bois, ouverte au milieu des deux bouts.
+  const kerb = (s0: number, t0: number, s1: number, t1: number): void => {
+    const a = f(s0, t0, 0), b = f(s1, t1, 0);
+    const len = Math.hypot(s1 - s0, t1 - t0) / 2;
+    const cs = (s0 + s1) / 2, ct = (t0 + t1) / 2;
+    const ea = e.a ?? 0, ux = Math.cos(ea), uy = Math.sin(ea);
+    const along = Math.abs(t1 - t0) < 1e-6;
+    const x = e.x! + ux * cs - uy * ct, y = e.y! + uy * cs + ux * ct;
+    const z = (a[1] + b[1]) / 2;
+    block(mb, x, y, along ? ux : -uy, along ? uy : ux, len, 0.09, z - 0.05, z + 0.22, WOOD);
+  };
+  kerb(-hl, -hw, hl, -hw); kerb(-hl, hw, hl, hw);
+  for (const k of [-1, 1]) { kerb(k * hl, -hw, k * hl, -2.2); kerb(k * hl, 2.2, k * hl, hw); }
+}
+
+/** Bowl de l'aire rénovée (D248) : surface en béton suivant le relief creusé (`bowlDepth`), margelle brune autour. */
+function buildBowl(mb: MeshBuilder, e: Equip): void {
+  const f = frame(e);
+  const hl = (e.l ?? 9) / 2 + 0.6, hw = (e.w ?? 13) / 2 + 0.6, step = 0.4;
+  const ea = e.a ?? 0, ux = Math.cos(ea), uy = Math.sin(ea);
+  const world = (s: number, t: number): [number, number] => [e.x! + ux * s - uy * t, e.y! + uy * s + ux * t];
+  const D = e.h ?? 1.8;
+  // Le relief affiché est abaissé sous le bowl (creux d'affichage, `bowlPit`) : la surface suit le creux, 3 cm au-dessus.
+  const lift = 0.03;
+  for (let s = -hl; s < hl - 1e-6; s += step) {
+    for (let t = -hw; t < hw - 1e-6; t += step) {
+      const c: [number, number][] = [[s, t], [s + step, t], [s + step, t + step], [s, t + step]];
+      const w = c.map(([a, b]) => world(a, b));
+      const dep = w.map(([x, y]) => bowlDepth(e, x, y));
+      const sdf = w.map(([x, y]) => bowlSdf(e, x, y));
+      if (dep.some((d) => d > 0)) {
+        const col = dep.reduce((p, q) => p + q, 0) / 4 > D * 0.85 ? BOWL_DEEP : BOWL;
+        const p = c.map(([a, b], i) => f(a, b, lift - dep[i]!)) as [Vec3, Vec3, Vec3, Vec3];
+        face(mb, p[0], p[1], p[2], [0, 1, 0], col);
+        face(mb, p[0], p[2], p[3], [0, 1, 0], col);
+      } else if (Math.min(...sdf) < 0.6) {
+        // Margelle : dessinée en anneau lisse ci-dessous.
+      }
+    }
+  }
+  // Margelle brune : anneau le long du contour arrondi, de 25 cm dedans à 55 cm dehors, et rebord en acier.
+  const r = e.r ?? 3, L = (e.l ?? 9) / 2 - r, Wd = (e.w ?? 13) / 2 - r;
+  const outline: [number, number, number, number][] = [];
+  for (const [cs, ct, a0] of [[L, -Wd, -Math.PI / 2], [L, Wd, 0], [-L, Wd, Math.PI / 2], [-L, -Wd, Math.PI]] as const) {
+    for (let k = 0; k <= 8; k++) {
+      const a = a0 + (k * Math.PI) / 16;
+      outline.push([cs + r * Math.cos(a), ct + r * Math.sin(a), Math.cos(a), Math.sin(a)]);
+    }
+  }
+  for (let i = 0; i < outline.length; i++) {
+    const [s0, t0, n0, m0] = outline[i]!, [s1, t1, n1, m1] = outline[(i + 1) % outline.length]!;
+    const p = (s: number, t: number, n: number, m: number, d: number, h: number): Vec3 => f(s + n * d, t + m * d, h);
+    quad(mb, p(s0, t0, n0, m0, -0.25, 0.075), p(s1, t1, n1, m1, -0.25, 0.075), p(s1, t1, n1, m1, 0.55, 0.075), p(s0, t0, n0, m0, 0.55, 0.075), [0, 1, 0], COPING_BAND);
+    // Pourtour en béton, à plat (normale verticale : celle des sols, calculée sur ±1 m, verrait la pente du bowl).
+    quad(mb, p(s0, t0, n0, m0, 0.5, 0.065), p(s1, t1, n1, m1, 0.5, 0.065), p(s1, t1, n1, m1, BOWL_APRON, 0.065), p(s0, t0, n0, m0, BOWL_APRON, 0.065), [0, 1, 0], SLAB);
+    quad(mb, p(s0, t0, n0, m0, -0.27, 0.07), p(s1, t1, n1, m1, -0.27, 0.07), p(s1, t1, n1, m1, -0.2, 0.12), p(s0, t0, n0, m0, -0.2, 0.12), [0, 1, 0], COPING);
   }
 }
 

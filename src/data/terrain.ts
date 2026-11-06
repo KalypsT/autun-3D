@@ -55,6 +55,48 @@ export class Terrain implements HeightField {
 }
 
 /**
+ * Creux d'affichage (D248) : là où un équipement dessine lui-même une surface creusée plus finement que le relief affiché par carreaux de
+ * 2,5 m (le bowl de l'aire de glisse), le relief affiché est abaissé (`cap` : altitude maximale affichée, ou Infinity) pour passer sous ce
+ * dessin. N'agit que sur l'affichage du relief (`TiledTerrain.displayAt`) : marche, véhicules et sols suivent le vrai relief.
+ */
+export interface Pit {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  cap(x: number, y: number): number;
+}
+
+/** Creux d'affichage des tuiles chargées ; `version` change à chaque ajout ou retrait (l'affichage du relief se reconstruit). */
+export class Pits {
+  private readonly byTile = new Map<string, Pit[]>();
+  version = 0;
+
+  add(tile: string, pits: readonly Pit[]): void {
+    if (!pits.length) return;
+    this.byTile.set(tile, [...pits]);
+    this.version++;
+  }
+
+  remove(tile: string): void {
+    if (this.byTile.delete(tile)) this.version++;
+  }
+
+  /** Emprises des creux (pour savoir quels morceaux de relief reconstruire). */
+  boxes(): [number, number, number, number][] {
+    return [...this.byTile.values()].flat().map((p) => [p.x0, p.y0, p.x1, p.y1]);
+  }
+
+  cap(x: number, y: number): number {
+    let z = Infinity;
+    for (const list of this.byTile.values()) {
+      for (const p of list) if (x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1) z = Math.min(z, p.cap(x, y));
+    }
+    return z;
+  }
+}
+
+/**
  * Relief de toute la zone, en deux résolutions : un relief grossier global (8 m) et des blocs fins (1 m) par tuile, chargés
  * à la demande. Un point dont le bloc fin est chargé a son altitude fine, les autres retombent sur le relief grossier.
  * Chaque bloc déborde de sa tuile : l'interpolation ne sort jamais de son bloc, donc pas de couture entre tuiles.
@@ -62,6 +104,8 @@ export class Terrain implements HeightField {
 export class TiledTerrain implements HeightField {
   /** Tabliers de pont et quais des tuiles chargées (D93). */
   readonly decks = new Decks();
+  /** Creux d'affichage des tuiles chargées (D248). */
+  readonly pits = new Pits();
   private readonly blocks: (Terrain | undefined)[];
   private readonly index = new Map<string, TileInfo>();
   private readonly pending = new Map<string, Promise<void>>();
@@ -146,6 +190,17 @@ export class TiledTerrain implements HeightField {
     const b = i < 0 ? undefined : this.blocks[i];
     return b ? b.heightAt(x, y) : this.coarse.heightAt(x, y);
   }
+
+  /** Relief affiché (D248) : le relief nu, abaissé dans les creux d'affichage. */
+  displayAt(x: number, y: number): number {
+    return Math.min(this.groundAt(x, y), this.pits.cap(x, y));
+  }
+
+  /** Vue du relief affiché, pour construire les morceaux de relief proches. */
+  readonly display: HeightField = ((t: TiledTerrain): HeightField => ({
+    heightAt: (x, y) => t.displayAt(x, y),
+    get xMin(): number { return t.xMin; }, get xMax(): number { return t.xMax; }, get yMin(): number { return t.yMin; }, get yMax(): number { return t.yMax; },
+  }))(this);
 
   /** Vue du relief nu, pour dessiner le sol, l'eau et les piles sous les ponts. */
   readonly ground: HeightField = ((t: TiledTerrain): HeightField => ({
