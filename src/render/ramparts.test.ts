@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import type { HeightField, RampartTower, TileData, Wall } from "../data/types";
 import { Colliders } from "../core/collision";
-import { isProfiled, towerArc, towerOutline } from "../core/ramparts";
+import { isProfiled, stairSteps, towerArc, towerOutline } from "../core/ramparts";
 import { addTileColliders } from "../core/world";
 import { MeshBuilder } from "./geometry";
 import { buildRampart, buildTowers } from "./ramparts";
@@ -60,7 +60,7 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
   const urs = towers.find(({ t }) => t.k === "ursulines")!;
 
   it("treize tours : la tour des Ursulines et douze tours rondes (Résistants Fusillés, Mac Mahon, Laureau)", () => {
-    expect(towers).toHaveLength(13);
+    expect(towers.filter(({ t }) => t.k !== "stair")).toHaveLength(13);
     expect(towers.filter(({ t }) => t.k === "round")).toHaveLength(12);
     for (const { t } of towers.filter(({ t }) => t.k === "round")) {
       expect(t.r!).toBeGreaterThanOrEqual(3);
@@ -97,12 +97,12 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
     }
   });
 
-  it("de nuit (D256) : seule la tour des Ursulines est éclairée, en dégradé chaud du pied vers le haut", () => {
+  it("de nuit (D256) : seule la tour des Ursulines est éclairée (ni les tours rondes ni l'escalier), en dégradé chaud du pied vers le haut", () => {
     for (const { t } of towers) {
       const mb = new MeshBuilder(), glow = new MeshBuilder(true);
       const flat: HeightField = { heightAt: () => t.base, xMin: -1e9, xMax: 1e9, yMin: -1e9, yMax: 1e9 };
       buildTowers({ solid: mb, cap: mb, glow, hedgeColor: new THREE.Color("#5aa874") }, [t], flat);
-      if (t.k === "round") expect(glow.positions.length).toBe(0);
+      if (t.k !== "ursulines") expect(glow.positions.length).toBe(0);
       else {
         expect(glow.positions.length).toBeGreaterThan(mb.positions.length * 0.9);
         // Plus chaud (plus rouge que bleu) au pied qu'en haut : la lumière vient des projecteurs au sol.
@@ -114,6 +114,21 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
         expect(low / nl).toBeGreaterThan(high / nh);
       }
     }
+  });
+
+  it("rue du Vieux Colombier (D257) : le mur de soutènement de la rue, en schiste, et son escalier au repère de l'utilisateur (5 à 6,5 m à monter)", () => {
+    expect(lookAt(233, -717)).toBe("schist");
+    const st = towers.find(({ t }) => t.k === "stair")!.t;
+    expect(Math.hypot(st.x - 236.9, st.y + 721.4)).toBeLessThan(8);
+    expect(st.top! - st.base).toBeGreaterThan(5);
+    expect(st.top! - st.base).toBeLessThan(6.5);
+    expect(st.ty!).toBeLessThan(0); // monte vers le sud (photo 10, prise du nord)
+    expect(stairSteps(st)).toBeGreaterThanOrEqual(28);
+    const mb = new MeshBuilder();
+    const flat: HeightField = { heightAt: () => st.base, xMin: -1e9, xMax: 1e9, yMin: -1e9, yMax: 1e9 };
+    buildTowers({ solid: mb, cap: mb, hedgeColor: new THREE.Color("#5aa874") }, [st], flat);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    expect(mb.positions.length / 9).toBeLessThan(2500);
   });
 
   it("collisions : le pied d'une tour arrête le joueur", () => {

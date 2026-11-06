@@ -38,7 +38,8 @@ import survey_remparts as sv
 
 RAMPART_ID = 860_000_000
 TOWER_ID = 861_000_000
-FENCE_ID = 862_000_000  # grillages posés sur le haut des remparts (D255) : −(FENCE_ID + n)
+FENCE_ID = 862_000_000
+PARCEL_ID = 900_000_000  # clôtures de parcelle de build_public_space.py : −(PARCEL_ID + n)  # grillages posés sur le haut des remparts (D255) : −(FENCE_ID + n)
 THICK = 2.0  # épaisseur dessinée (m), partagée avec src/core/ramparts.ts
 
 
@@ -421,6 +422,23 @@ def ursulines(t, k):
             "plinth": round(plinth, 2), "statue": round(statue, 2), "look": "rubble", "hide": t.get("hide")}
 
 
+def stair(t, k, runs, run_looks):
+    """Escalier extérieur contre la face basse d'un mur (lot 4, D257 ; photo 10 de la rue du Vieux Colombier) : il longe la face, monte du sol
+    bas au sommet du mur dans le sens `up` (vecteur indicatif), sa dernière marche au droit de `at` ; au sommet, une petite construction
+    à porte (`hut`). Marches de 18 cm sur 28 cm, 1,1 m de large."""
+    d, q, (tx, ty), look = nearest_station(runs, run_looks, *t["at"])
+    x, y, top, gl, gr = q
+    lx, ly = -ty, tx
+    nx, ny = (lx, ly) if gl < gr else (-lx, -ly)
+    if tx * t["up"][0] + ty * t["up"][1] < 0:
+        tx, ty = -tx, -ty
+    low = min(gl, gr)
+    s0 = (t["at"][0] - x) * tx + (t["at"][1] - y) * ty
+    fx, fy = x + tx * s0 + nx * THICK / 2, y + ty * s0 + ny * THICK / 2
+    return {"id": -(TOWER_ID + k), "k": "stair", "x": round(fx, 2), "y": round(fy, 2), "nx": round(nx, 4), "ny": round(ny, 4),
+            "tx": round(tx, 4), "ty": round(ty, 4), "base": round(low, 2), "top": round(top, 2), "look": look}
+
+
 def write_towers(towers):
     """Tours dans les tuiles (champ `towers`, une tour va à la tuile de son centre) ; bâtiment BD TOPO remplacé masqué (`hide`) et sa
     silhouette lointaine refaite. Rend le nombre de tuiles réécrites."""
@@ -581,6 +599,15 @@ def main():
         tid = path.stem
         tile = json.loads(path.read_text())
         keep = [w for w in tile.get("walls", []) if w["kind"] != "rampart" and not -(FENCE_ID + 1_000_000) < w["id"] <= -FENCE_ID]
+        # Clôtures, murets et haies de parcelle (−900 000 000 et au-delà, build_public_space.py) pris dans l'emprise d'un rempart : retirés
+        # (rue du Vieux Colombier, D257 : des murets de 1,1 m traçaient le haut du mur de soutènement).
+        axes = [LineString([(p[0], p[1]) for p in poly]) for poly, _ in per_tile.get(tid, [])]
+        if axes:
+            def inside(w):
+                pts = list(zip(w["pts"][0::2], w["pts"][1::2]))
+                mid = LineString(pts).interpolate(0.5, normalized=True) if len(pts) >= 2 else Point(pts[0])
+                return any(a.distance(mid) < THICK / 2 + 0.4 for a in axes)
+            keep = [w for w in keep if not (w["id"] <= -PARCEL_ID and inside(w))]
         new = []
         for line, h in fences.get(tid, []):
             fid += 1
@@ -611,10 +638,10 @@ def main():
     print(f"{changed} tuile(s) réécrite(s)")
     towers = []
     for k, t in enumerate(spec["towers"], 1):
-        towers.append(ursulines(t, k) if t["k"] == "ursulines" else round_tower(t, k, runs, run_looks))
+        towers.append(ursulines(t, k) if t["k"] == "ursulines" else stair(t, k, runs, run_looks) if t["k"] == "stair" else round_tower(t, k, runs, run_looks))
     for t in towers:
         extra = f"apothème {t['apo']} m, de {t['base']} à {t['deck']} (terrasse), statue à {t['statue']}" if t["k"] == "ursulines" else \
-            f"rayon {t['r']} m, de {t['base']} à {t['top']}"
+            f"de {t['base']} à {t['top']}" if t["k"] == "stair" else f"rayon {t['r']} m, de {t['base']} à {t['top']}"
         print(f"  tour {t['k']} ({t['x']:.0f} ; {t['y']:.0f}) : {extra}")
     print(f"{len(towers)} tours ; {write_towers(towers)} fichier(s) réécrit(s)")
     blocks = carve(runs, spec)

@@ -169,8 +169,25 @@ export function octagon(t: RampartTower, grow = 0): number[] {
   return out;
 }
 
-/** Contour fermé d'une tour pour les collisions : l'arc et sa corde (tour ronde), l'octogone du pied (Ursulines). */
+/** Escalier extérieur (D257) : marches de 18 cm sur 28 cm, 1,1 m de large ; nombre de marches et longueur au sol. */
+export const STAIR_RISE = 0.18, STAIR_TREAD = 0.28, STAIR_WIDTH = 1.1;
+export function stairSteps(t: RampartTower): number {
+  return Math.max(1, Math.ceil(((t.top ?? t.base + 1) - t.base) / STAIR_RISE));
+}
+
+/** Petite construction au sommet de l'escalier : longueur le long du mur (m), au-delà de la dernière marche. */
+export const STAIR_HUT_L = 2.4;
+
+/** Emprise au sol de l'escalier et du massif qui porte la construction : rectangle le long de la face, de la première marche au bout du
+ * massif, de la face à 1,1 m devant. */
+export function stairFootprint(t: RampartTower): number[] {
+  const tx = t.tx ?? 1, ty = t.ty ?? 0, nx = t.nx ?? 0, ny = t.ny ?? 1, L = stairSteps(t) * STAIR_TREAD;
+  const P = (s: number, u: number): [number, number] => [t.x + tx * s + nx * u, t.y + ty * s + ny * u];
+  return [...P(-L, 0), ...P(STAIR_HUT_L, 0), ...P(STAIR_HUT_L, STAIR_WIDTH), ...P(-L, STAIR_WIDTH)];
+}
+
+/** Contour fermé d'une tour pour les collisions : l'arc et sa corde (tour ronde), l'octogone du pied (Ursulines), l'emprise d'un escalier. */
 export function towerOutline(t: RampartTower): number[] {
-  const p = t.k === "ursulines" ? octagon(t, 0.45) : towerArc(t).pts;
+  const p = t.k === "ursulines" ? octagon(t, 0.45) : t.k === "stair" ? stairFootprint(t) : towerArc(t).pts;
   return [...p, p[0]!, p[1]!];
 }

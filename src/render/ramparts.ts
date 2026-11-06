@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { HeightField, RampartLook, RampartTower } from "../data/types";
-import { octagon, rampartSides, RAMPART_THICK, towerArc, type ProfiledWall } from "../core/ramparts";
+import { octagon, rampartSides, RAMPART_THICK, STAIR_HUT_L, STAIR_TREAD, STAIR_WIDTH, stairSteps, towerArc, type ProfiledWall } from "../core/ramparts";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 
 /**
@@ -229,6 +229,10 @@ const BATTER_H = 3.5, BATTER_OUT = 0.45, STATUE_H = 4.5;
 /** Les tours de la tuile. */
 export function buildTowers(sinks: RampartSinks, towers: readonly RampartTower[], terrain: HeightField): void {
   for (const t of towers) {
+    if (t.k === "stair") {
+      buildStair(sinks.solid, t, terrain);
+      continue;
+    }
     if (t.k === "ursulines") {
       buildUrsulines(sinks.solid, t, terrain);
       // La nuit (D256) : la tour redessinée dans le maillage éclairé, en dégradé chaud du pied vers le haut (projecteurs au sol, comme les
@@ -422,4 +426,60 @@ class FloodBuilder extends MeshBuilder {
   override quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
     this.glow.quadGradient(a, b, c, d, n, this.flood((a[1] + b[1]) / 2, color), this.flood((c[1] + d[1]) / 2, color));
   }
+}
+
+// --- Escalier et petite construction de la rue du Vieux Colombier (D257, photo 10) ---------------------------------------------------------
+
+const STEP = C("#8a8172"), STEP_TOP = C("#a39a8a"), IRON = C("#3b2f26"), DOOR = C("#3a2c22"), LANTERN = C("#2e2b28"), LANTERN_GLASS = C("#e8d9a8");
+/** Petite construction au sommet : longueur le long du mur, profondeur sur le mur, hauteur (m). */
+const HUT_L = STAIR_HUT_L, HUT_D = 2.0, HUT_H = 2.6;
+
+/** Pavé orienté dans le repère (s le long de la montée, u devant la face), de z0 à z1, cinq faces. */
+function orientedBox(mb: MeshBuilder, t: RampartTower, s0: number, s1: number, u0: number, u1: number, z0: number, z1: number, side: THREE.Color, top: THREE.Color): void {
+  const tx = t.tx ?? 1, ty = t.ty ?? 0, nx = t.nx ?? 0, ny = t.ny ?? 1;
+  const P = (s: number, u: number, z: number): Vec3 => toThree(t.x + tx * s + nx * u, t.y + ty * s + ny * u, z);
+  mb.quad(P(s0, u1, z0), P(s1, u1, z0), P(s1, u1, z1), P(s0, u1, z1), toThree(nx, ny, 0), side);
+  mb.quad(P(s1, u0, z0), P(s0, u0, z0), P(s0, u0, z1), P(s1, u0, z1), toThree(-nx, -ny, 0), side);
+  mb.quad(P(s0, u0, z0), P(s0, u1, z0), P(s0, u1, z1), P(s0, u0, z1), toThree(-tx, -ty, 0), side);
+  mb.quad(P(s1, u1, z0), P(s1, u0, z0), P(s1, u0, z1), P(s1, u1, z1), toThree(tx, ty, 0), side);
+  mb.quad(P(s0, u0, z1), P(s1, u0, z1), P(s1, u1, z1), P(s0, u1, z1), [0, 1, 0], top);
+}
+
+function buildStair(mb: MeshBuilder, t: RampartTower, terrain: HeightField): void {
+  const n = stairSteps(t), top = t.top ?? t.base + 4, rise = (top - t.base) / n, L = n * STAIR_TREAD;
+  const tx = t.tx ?? 1, ty = t.ty ?? 0, nx = t.nx ?? 0, ny = t.ny ?? 1;
+  const foot = Math.min(t.base, terrain.heightAt(t.x + nx * 0.5 - tx * L, t.y + ny * 0.5 - ty * L)) - SINK;
+  // Marches pleines (maçonnerie de schiste comme le mur), de la première (s = −L) à la dernière (s = 0).
+  for (let k = 0; k < n; k++) {
+    const s0 = -L + k * STAIR_TREAD;
+    orientedBox(mb, t, s0, s0 + STAIR_TREAD, 0, STAIR_WIDTH, foot, t.base + (k + 1) * rise, STEP, STEP_TOP);
+  }
+  // Rampe en fer : poteaux tous les mètres environ au bord extérieur, main courante parallèle à la pente.
+  const P = (s: number, u: number, z: number): Vec3 => toThree(t.x + tx * s + nx * u, t.y + ty * s + ny * u, z);
+  const u = STAIR_WIDTH - 0.05, H = 0.95;
+  const zAt = (s: number): number => t.base + Math.min(n, Math.max(1, Math.ceil((s + L) / STAIR_TREAD))) * rise;
+  for (let s = -L + 0.15; s <= 0; s += 1.0) orientedBox(mb, t, s - 0.025, s + 0.025, u - 0.025, u + 0.025, zAt(s) - 0.05, zAt(s) + H, IRON, IRON);
+  mb.quad(P(-L, u, t.base + rise + H - 0.04), P(0, u, top + H - 0.04), P(0, u, top + H), P(-L, u, t.base + rise + H), toThree(nx, ny, 0), IRON);
+  mb.quad(P(0, u - 0.04, top + H - 0.04), P(-L, u - 0.04, t.base + rise + H - 0.04), P(-L, u - 0.04, t.base + rise + H), P(0, u - 0.04, top + H), toThree(-nx, -ny, 0), IRON);
+  // Petite construction au sommet, dans le prolongement de l'escalier : elle avance de la largeur de l'escalier devant la face, portée par un
+  // massif de maçonnerie, et recule de HUT_D − 1,1 m sur le mur ; sa porte donne sur la dernière marche (photo 10). Moellons, dessus plat.
+  const look = LOOKS.schist;
+  const uIn = -(HUT_D - STAIR_WIDTH), uOut = STAIR_WIDTH;
+  for (const [s0, u0, s1, u1] of [[0, uOut, HUT_L, uOut], [HUT_L, uOut, HUT_L, uIn], [HUT_L, uIn, 0, uIn], [0, uIn, 0, uOut]] as [number, number, number, number][]) {
+    const ax = t.x + tx * s0 + nx * u0, ay = t.y + ty * s0 + ny * u0, bx = t.x + tx * s1 + nx * u1, by = t.y + ty * s1 + ny * u1;
+    const len = Math.hypot(bx - ax, by - ay);
+    const cx = t.x + (tx * HUT_L) / 2 + (nx * (uIn + uOut)) / 2, cy = t.y + (ty * HUT_L) / 2 + (ny * (uIn + uOut)) / 2;
+    const ex = (ax + bx) / 2 - cx, ey = (ay + by) / 2 - cy, el = Math.hypot(ex, ey) || 1;
+    // La face qui avance sur la rue descend jusqu'au sol (massif sous la construction) ; les autres partent du haut du mur.
+    const z0 = u0 > 0 && u1 > 0 ? foot : top - 0.2;
+    blocks(mb, look, { ax, ay, bx, by, fa: z0, fb: z0, ta: top + HUT_H, tb: top + HUT_H, nx: ex / el, ny: ey / el }, len, Math.abs(t.id), 700 + s0 * 10 + u0);
+  }
+  orientedBox(mb, t, 0, HUT_L, 0, uOut, foot, top, STEP, STEP_TOP);
+  orientedBox(mb, t, -0.08, HUT_L + 0.08, uIn - 0.08, uOut + 0.08, top + HUT_H, top + HUT_H + 0.15, STEP_TOP, STEP_TOP);
+  // Porte (côté escalier, au-dessus de la dernière marche) et lanterne à côté.
+  const ds = -0.02;
+  mb.quad(P(ds, 0.1, top), P(ds, 1.0, top), P(ds, 1.0, top + 2.0), P(ds, 0.1, top + 2.0), toThree(-tx, -ty, 0), DOOR);
+  // Lanterne murale sur la face du mur, à gauche de la porte vue de l'escalier.
+  orientedBox(mb, t, -0.6, -0.4, -0.02, 0.18, top + 0.9, top + 1.25, LANTERN, LANTERN);
+  orientedBox(mb, t, -0.58, -0.42, 0.0, 0.16, top + 0.95, top + 1.18, LANTERN_GLASS, LANTERN);
 }

@@ -1899,3 +1899,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=45,-990,1.7,9,-951,22&h=22`.
 
 ![La tour des Ursulines la nuit](docs/captures/d256-ursulines-nuit.jpg)
+
+**Rue du Vieux Colombier : le mur et l'escalier (6 novembre 2026)** (D257)
+- Le grand mur de schiste qui borde la rue du Vieux Colombier (absent des cartes, 4 m de haut) est en place, avec l'escalier de pierre de ta photo, sa rampe en fer et la petite construction à porte au sommet.
+- À regarder : `?view=custom&cam=240,-705,1.7,233,-722,3&h=14`.
+
+![L'escalier de la rue du Vieux Colombier](docs/captures/d257-escalier.jpg)

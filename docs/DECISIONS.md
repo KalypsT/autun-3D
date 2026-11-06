@@ -5285,3 +5285,31 @@ sombre). Les tours rondes et les murs restent sombres. Silhouette lointaine non 
 les tours rondes n'en ont pas.
 
 ![La tour des Ursulines la nuit](captures/d256-ursulines-nuit.jpg)
+
+## 2026-11-06 — D257. Rue du Vieux Colombier : le mur de la rue et son escalier (photo 10)
+
+**Demande de l'utilisateur** : vue satellite avec le repère de l'escalier de la photo 10 (46.943671, 4.301656), soit (236,9 ; −721,4)
+dans le repère du jeu, au bord ouest de la rue du Vieux Colombier.
+
+**Constat** : le rempart du jeu le plus proche était à 42 m (le tracé OSM R21-R24, parallèle, plus à l'ouest). Le balayage LiDAR de la rue
+montre, côté ouest, un **mur de soutènement de 3,5 à 4,5 m** à 3 à 5 m de l'axe de la rue, de (230 ; −747) à (278 ; −613) : le mur des photos
+9 et 10, absent d'OSM ; le jeu n'y avait que des murets et des haies de parcelle de 1,1 à 1,5 m. Rempart romain ou mur de terrasse plus
+tardif : non tranché (le critère reste « ce qui est debout »).
+
+**Données** (`build_ramparts.py`, `ramparts` de `manual.json`) :
+- tracé `vieux-colombier` (même méthode que la pointe sud) : 101 m en trois morceaux (une maison adossée entre le premier et le dernier),
+  aspect `schist` (photos 9 et 10) ;
+- clôtures, murets et haies de parcelle (identifiants −900 000 000 et au-delà) dont le milieu tombe dans l'emprise d'un rempart : retirés ;
+- escalier (`towers`, `k: "stair"`) : contre la face basse, au droit du repère, montée vers le sud (photo 10 prise du nord, l'escalier
+  s'éloigne en montant), du sol (19,1) au sommet du mur (24,9).
+
+**Rendu** (`src/render/ramparts.ts`, `buildStair`) : marches pleines de 18 × 28 cm, 1,1 m de large, en maçonnerie de schiste ; rampe en fer
+(poteaux, main courante) ; au sommet, petite construction en moellons de 2,4 × 2 m et 2,6 m de haut, avancée au-dessus de l'escalier et portée
+par un massif, dessus plat, porte face à la dernière marche ; lanterne murale. Pas d'éclairage de nuit (D256 : la tour des Ursulines seule).
+Collisions : emprise de l'escalier et du massif (on ne monte pas l'escalier : la porte est fermée).
+
+**Pas fait** : montée de l'escalier à pied ; sens de montée déduit de la photo (à confirmer).
+
+**Tests** (+1, 1 346 au total ; `src/render/ramparts.test.ts`).
+
+![L'escalier de la rue du Vieux Colombier, vu du nord](captures/d257-escalier.jpg)

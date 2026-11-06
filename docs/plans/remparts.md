@@ -297,6 +297,6 @@ Pas de promenade (l'utilisateur n'est pas sûr qu'on puisse marcher sur les remp
 des Résistants Fusillés, barbacanes, sols qui débordaient sur le haut des murs découpés.
 
 Reste ouvert :
-- l'escalier et la petite construction de la rue du Vieux Colombier (photo 10) : où exactement (numéro, ou de quel côté de la rue) ?
+- ~~l'escalier et la petite construction de la rue du Vieux Colombier (photo 10)~~ : faits, avec le mur de la rue (D257).
 - les tours à confirmer (§9) ;
 - ~~l'éclairage de nuit~~ : la tour des Ursulines seule (choix de l'utilisateur), D256.
