@@ -281,3 +281,12 @@ Le détecteur du lot 0 ne voyait pas les premières (mesurées par rapport au tr
 | **Tour des Ursulines** | (8,5 ; −950,6), au bout de R26 | carrée, médiévale, statue au sommet ; dans le jeu : une maison BD TOPO de 71 m², 13 m, toit à quatre pans | — | photo 6 (de loin) |
 
 Écartée : la « saillie » de 24 m rue Chaffaut (174 ; −769) est un bâtiment.
+
+## 10. Lot 3 fait (D254, 6 novembre 2026)
+
+La tour des Ursulines (octogonale : la photo et le LiDAR corrigent le plan, qui la disait carrée) et douze tours rondes. Restent à
+photographier, pour les ajouter : rue Saint-Pancrace et ruelle Sainte-Anne, le long du cimetière (rue de la Maladière), rue du Vieux
+Colombier et rue Blanche (§9).
+
+Prochaine étape : lot 4 (promenade sur le dessus là où elle existe, grillage du terrain de sport au-dessus du boulevard des Résistants
+Fusillés, escalier et construction de la rue du Vieux Colombier, barbacanes).

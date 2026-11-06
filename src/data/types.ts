@@ -125,6 +125,35 @@ export interface Street {
  */
 export type RampartLook = "rubble" | "restored" | "bright" | "schist" | "garden";
 
+/**
+ * Tour des remparts (lot 3, D254, tools/data/build_ramparts.py). `round` : tour semi-circulaire contre le mur, cercle de centre (x, y) et de
+ * rayon `r`, coupé par la face du mur (point `fx`, `fy`, normale extérieure `nx`, `ny`), du sol bas `base` au sommet `top`. `ursulines` :
+ * tour octogonale (apothème `apo`, faces orientées à `rot` rad du nord, puis tous les 45°), pied de `base` (côté bas) à `high` (côté ville),
+ * terrasse `deck`, balustrade `rail`, toit `roof`, socle `plinth`, statue jusqu'à `statue`. Altitudes absolues du repère du jeu.
+ */
+export interface RampartTower {
+  id: number;
+  k: "round" | "ursulines";
+  x: number;
+  y: number;
+  look: RampartLook;
+  base: number;
+  nx?: number;
+  ny?: number;
+  fx?: number;
+  fy?: number;
+  r?: number;
+  top?: number;
+  apo?: number;
+  rot?: number;
+  high?: number;
+  deck?: number;
+  rail?: number;
+  roof?: number;
+  plinth?: number;
+  statue?: number;
+}
+
 export interface Wall {
   id: number;
   kind: string;
@@ -1368,6 +1397,8 @@ export interface TileData {
   fiches: FacadeFiche[];
   trees: Tree[];
   walls: Wall[];
+  /** Tours des remparts (D254) ; absent : aucune. */
+  towers?: RampartTower[];
   furniture: Furniture[];
 }
 

@@ -36,6 +36,7 @@ import config as c
 import survey_remparts as sv
 
 RAMPART_ID = 860_000_000
+TOWER_ID = 861_000_000
 THICK = 2.0  # épaisseur dessinée (m), partagée avec src/core/ramparts.ts
 
 
@@ -335,6 +336,133 @@ def carve(runs, spec):
     return out
 
 
+def nearest_station(runs, run_looks, x, y):
+    """Station de mur la plus proche de (x, y) : (station, tangente unitaire, aspect)."""
+    best = None
+    for r, look in zip(runs, run_looks):
+        for k, q in enumerate(r):
+            d = math.hypot(q[0] - x, q[1] - y)
+            if best is None or d < best[0]:
+                a, b = r[max(0, k - 1)], r[min(len(r) - 1, k + 1)]
+                tx, ty = b[0] - a[0], b[1] - a[1]
+                L = math.hypot(tx, ty) or 1
+                best = (d, q, (tx / L, ty / L), look)
+    return best
+
+
+def round_tower(t, k, runs, run_looks):
+    """Tour semi-circulaire (lot 3, D254) contre le mur le plus proche de `at` : saillie et largeur mesurées au LiDAR (maçonnerie à plus de 2 m
+    au-dessus du sol bas, devant la face), bornées ; sommet au ras du mur, ou plus haut si le LiDAR le montre (tour plus haute, photo 3)."""
+    d, q, (tx, ty), look = nearest_station(runs, run_looks, *t["at"])
+    x, y, top, gl, gr = q
+    lx, ly = -ty, tx
+    nx, ny = (lx, ly) if gl < gr else (-lx, -ly)  # vers le côté bas : l'extérieur
+    low = min(gl, gr)
+    fx, fy = x + nx * THICK / 2, y + ny * THICK / 2
+    old = sv.BAND
+    sv.BAND = 12
+    px, py, pz, pc = sv.lidar({"id": f"tower_{k}", "pts": [tuple(t["at"]), (t["at"][0] + 0.1, t["at"][1])]})
+    sv.BAND = old
+    m = ((pc <= 2) | (pc == 6)) & (pz > low + 2)
+    s_, u_ = (px - fx) * tx + (py - fy) * ty, (px - fx) * nx + (py - fy) * ny
+    s0 = (t["at"][0] - fx) * tx + (t["at"][1] - fy) * ty
+    sel = m & (u_ > 0.5) & (np.abs(s_ - s0) < 8)
+    r, proj, zmax = 3.5, 3.5, top
+    if sel.sum() > 20:
+        r = float(np.clip((np.percentile(s_[sel], 95) - np.percentile(s_[sel], 5)) / 2, 3.0, 4.5))
+        proj = float(np.clip(np.percentile(u_[sel], 95), 0.6 * r, 1.4 * r))
+        zmax = float(np.percentile(pz[sel], 98))
+    tall = zmax > top + 1.5
+    cx, cy = fx + tx * s0 + nx * (proj - r), fy + ty * s0 + ny * (proj - r)
+    return {"id": -(TOWER_ID + k), "k": "round", "x": round(cx, 2), "y": round(cy, 2), "nx": round(nx, 4), "ny": round(ny, 4),
+            "fx": round(fx + tx * s0, 2), "fy": round(fy + ty * s0, 2), "r": round(r, 2), "base": round(low, 2),
+            "top": round(min(zmax, top + 6) if tall else top, 2), "look": look}
+
+
+def ursulines(t, k):
+    """Tour des Ursulines (D254) : octogone mesuré au LiDAR (centre et apothème sur la maçonnerie haute, orientation des faces la plus
+    régulière), terrasse, balustrade, toit, socle et statue (points non classés au-dessus de la terrasse), pied des deux côtés."""
+    old = sv.BAND
+    sv.BAND = 20
+    x, y, z, c = sv.lidar({"id": "ursulines", "pts": [(t["at"][0] - 9, t["at"][1] - 4), (t["at"][0] + 11, t["at"][1] + 6)]})
+    sv.BAND = old
+    ax, ay = t["at"]
+    mason = (c == 6) | (c == 1)
+    near = mason & (np.hypot(x - ax, y - ay) < 8)
+    zt = np.percentile(z[near], 99.5)
+    body = near & (z > zt - 18) & (z < zt - 10)
+    cx, cy = float(x[body].mean()), float(y[body].mean())
+    r, a = np.hypot(x - cx, y - cy), np.arctan2(x - cx, y - cy)
+    hi = mason & (r < 8) & (z > zt - 12)
+    best = None
+    for rot in np.radians(np.arange(0, 45, 1.0)):
+        kk = np.round((a[hi] - rot) / (np.pi / 4))
+        dd = r[hi] * np.cos(a[hi] - rot - kk * np.pi / 4)
+        sel = r[hi] > np.percentile(r[hi], 60)
+        sd = float(np.std(dd[sel]))
+        if best is None or sd < best[0]:
+            best = (sd, float(rot), float(np.percentile(dd[sel], 70)))
+    ring = mason & (r > 3.5) & (r < 6) & (z > zt - 12)
+    deck = float(np.median(z[ring]))
+    rail = float(np.percentile(z[ring], 92))
+    roof = float(np.percentile(z[mason & (r > 1.2) & (r < 2.0) & (z > deck)], 50))
+    statue = float(z[(c == 1) & (r < 2)].max())
+    plinth = float(np.percentile(z[mason & (r < 1.0) & (z > deck)], 10))
+    g = c == 2
+    caps = []
+    for cap in range(0, 360, 30):
+        sel = g & (r > 7) & (r < 12) & (np.abs(((np.degrees(a) - cap + 180) % 360) - 180) < 15)
+        if sel.sum() > 3:
+            caps.append(float(np.median(z[sel])))
+    return {"id": -(TOWER_ID + k), "k": "ursulines", "x": round(cx, 2), "y": round(cy, 2), "apo": round(best[2], 2), "rot": round(best[1], 4),
+            "base": round(min(caps), 2), "high": round(max(caps), 2), "deck": round(deck, 2), "rail": round(rail, 2), "roof": round(roof, 2),
+            "plinth": round(plinth, 2), "statue": round(statue, 2), "look": "rubble", "hide": t.get("hide")}
+
+
+def write_towers(towers):
+    """Tours dans les tuiles (champ `towers`, une tour va à la tuile de son centre) ; bâtiment BD TOPO remplacé masqué (`hide`) et sa
+    silhouette lointaine refaite. Rend le nombre de tuiles réécrites."""
+    per = {}
+    for t in towers:
+        per.setdefault(tile_of(t["x"], t["y"]), []).append({k: v for k, v in t.items() if k != "hide"})
+    world = json.loads((c.OUT / "world.json").read_text())
+    metas = {m["id"]: m for m in world["tiles"]}
+    n = 0
+    for path in sorted((c.OUT / "tiles").glob("*.json")):
+        tile = json.loads(path.read_text())
+        mine = per.get(path.stem, [])
+        if not mine and "towers" not in tile:
+            continue
+        if mine:
+            tile["towers"] = mine
+        else:
+            del tile["towers"]
+        text = json.dumps(tile, separators=(",", ":"), ensure_ascii=False)
+        if text != path.read_text():
+            path.write_text(text)
+            if path.stem in metas:
+                metas[path.stem]["bytes"] = len(text.encode())
+            n += 1
+    (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
+    from build_monuments import replace_lod
+    for t in towers:
+        if not t.get("hide"):
+            continue
+        tid = tile_of(t["x"], t["y"])
+        kp = c.OUT / "kinds" / f"{tid}.json"
+        k = json.loads(kp.read_text())
+        if k["buildings"].get(t["hide"]) != {"k": "hidden"}:
+            k["buildings"][t["hide"]] = {"k": "hidden"}
+            kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+            n += 1
+        # Silhouette lointaine : l'octogone jusqu'à la balustrade, puis le toit.
+        R = t["apo"] / math.cos(math.pi / 8)
+        octo = [[t["x"] + R * math.sin(t["rot"] + math.pi / 8 + i * math.pi / 4), t["y"] + R * math.cos(t["rot"] + math.pi / 8 + i * math.pi / 4)] for i in range(8)]
+        if replace_lod(tid, t["hide"], [([[round(a, 1), round(b, 1)] for a, b in octo], t["rail"], t["roof"])]):
+            n += 1
+    return n
+
+
 def main():
     spec = json.load(open(c.ROOT / "tools" / "data" / "manual.json"))["ramparts"]
     osm_walls, _, _ = sv.osm()
@@ -402,6 +530,14 @@ def main():
             changed += 1
     (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
     print(f"{changed} tuile(s) réécrite(s)")
+    towers = []
+    for k, t in enumerate(spec["towers"], 1):
+        towers.append(ursulines(t, k) if t["k"] == "ursulines" else round_tower(t, k, runs, run_looks))
+    for t in towers:
+        extra = f"apothème {t['apo']} m, de {t['base']} à {t['deck']} (terrasse), statue à {t['statue']}" if t["k"] == "ursulines" else \
+            f"rayon {t['r']} m, de {t['base']} à {t['top']}"
+        print(f"  tour {t['k']} ({t['x']:.0f} ; {t['y']:.0f}) : {extra}")
+    print(f"{len(towers)} tours ; {write_towers(towers)} fichier(s) réécrit(s)")
     blocks = carve(runs, spec)
     print(f"relief écrêté au pied des murs : {', '.join(blocks) or 'déjà fait'}")
 

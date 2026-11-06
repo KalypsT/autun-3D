@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { HeightField, RampartLook } from "../data/types";
-import { rampartSides, RAMPART_THICK, type ProfiledWall } from "../core/ramparts";
+import type { HeightField, RampartLook, RampartTower } from "../data/types";
+import { octagon, rampartSides, RAMPART_THICK, towerArc, type ProfiledWall } from "../core/ramparts";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
 
 /**
@@ -191,4 +191,181 @@ function hedge(mb: MeshBuilder, color: THREE.Color, w: ProfiledWall, i: number, 
   mb.quad(P(ax, ay, HEDGE_HW, ti), P(bx, by, HEDGE_HW, tj), P(bx, by, HEDGE_HW, tj + HEDGE_H), P(ax, ay, HEDGE_HW, ti + HEDGE_H), toThree(nx, ny, 0), color);
   mb.quad(P(bx, by, -HEDGE_HW, tj), P(ax, ay, -HEDGE_HW, ti), P(ax, ay, -HEDGE_HW, ti + HEDGE_H), P(bx, by, -HEDGE_HW, tj + HEDGE_H), toThree(-nx, -ny, 0), color);
   mb.quad(P(ax, ay, HEDGE_HW, ti + HEDGE_H), P(bx, by, HEDGE_HW, tj + HEDGE_H), P(bx, by, -HEDGE_HW, tj + HEDGE_H), P(ax, ay, -HEDGE_HW, ti + HEDGE_H), [0, 1, 0], top);
+}
+
+// --- Tours (lot 3, D254) ----------------------------------------------------------------------------------------------------------------
+
+/** Tour ronde (photos du boulevard Mac Mahon et du boulevard des Résistants Fusillés) : socle plus large en bas, cordon vers le tiers de la
+ * hauteur, petits trous de boulin. */
+const PLINTH_H = 1.4, PLINTH_OUT = 0.3, CORDON_AT = 0.4, CORDON_H = 0.22, CORDON_OUT = 0.08;
+const HOLE = C("#3a332b"), CORDON = C("#b9ad97");
+/** Tour des Ursulines (photo de l'utilisateur, 11 et 10 boulevard Mac Mahon, LiDAR) : moellons beige-brun, chaînes d'angle claires, pied
+ * élargi, fenêtre double romane sous un arc, balustrade claire, toit de zinc, Vierge blanche aux bras ouverts. */
+const URSULINES: LookSpec = { palette: [C("#9c8d76"), C("#a5957d"), C("#92846f"), C("#ac9c83")], course: 0.5, block: 1.3, cap: C("#6b7074"), ivy: 0, hedge: false };
+const QUOIN = C("#cfc3a6"), ZINC = C("#62686c"), RAIL = C("#d8cfbb"), STATUE = C("#ebe7dc"), DARK = C("#2c2722");
+const BATTER_H = 3.5, BATTER_OUT = 0.45, STATUE_H = 4.5;
+
+/** Les tours de la tuile. */
+export function buildTowers(sinks: RampartSinks, towers: readonly RampartTower[], terrain: HeightField): void {
+  for (const t of towers) {
+    if (t.k === "ursulines") buildUrsulines(sinks.solid, t, terrain);
+    else buildRoundTower(sinks, t, terrain);
+  }
+}
+
+/** Faces verticales le long d'un contour (points, normales extérieures par segment), de `foot(x, y)` à `top`, en blocs ; rend les faces. */
+function ringFaces(mb: MeshBuilder, look: LookSpec, pts: number[], closed: boolean, foot: (x: number, y: number) => number, z0: number | null, top: number, id: number, salt: number, grow = 0, cx = 0, cy = 0): Face[] {
+  const n = pts.length / 2, out: Face[] = [];
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const j = (i + 1) % n;
+    let ax = pts[2 * i]!, ay = pts[2 * i + 1]!, bx = pts[2 * j]!, by = pts[2 * j + 1]!;
+    if (grow) {
+      const ga = grow / (Math.hypot(ax - cx, ay - cy) || 1), gb = grow / (Math.hypot(bx - cx, by - cy) || 1);
+      ax += (ax - cx) * ga; ay += (ay - cy) * ga; bx += (bx - cx) * gb; by += (by - cy) * gb;
+    }
+    const len = Math.hypot(bx - ax, by - ay);
+    if (len < 1e-3) continue;
+    const nx = (by - ay) / len, ny = -(bx - ax) / len;
+    // Normale vers l'extérieur du contour (côté opposé au centre).
+    const out1 = (ax + bx) / 2 - cx, out2 = (ay + by) / 2 - cy;
+    const s = nx * out1 + ny * out2 >= 0 ? 1 : -1;
+    const f: Face = { ax, ay, bx, by, fa: z0 ?? foot(ax, ay), fb: z0 ?? foot(bx, by), ta: top, tb: top, nx: nx * s, ny: ny * s };
+    blocks(mb, look, f, len, id, salt * 100 + i);
+    out.push(f);
+  }
+  return out;
+}
+
+/** Dessus plat d'un contour (éventail depuis le centre). */
+function fan(mb: MeshBuilder, pts: number[], cx: number, cy: number, z: number, col: THREE.Color, closed: boolean): void {
+  const n = pts.length / 2;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const j = (i + 1) % n;
+    mb.tri(toThree(cx, cy, z), toThree(pts[2 * i]!, pts[2 * i + 1]!, z), toThree(pts[2 * j]!, pts[2 * j + 1]!, z), [0, 1, 0], col);
+  }
+}
+
+function buildRoundTower(sinks: RampartSinks, t: RampartTower, terrain: HeightField): void {
+  const look = LOOKS[t.look];
+  const { pts } = towerArc(t);
+  const id = Math.abs(t.id), top = t.top ?? t.base + 6;
+  const foot = (x: number, y: number): number => Math.min(terrain.heightAt(x, y), t.base) - SINK;
+  // Fût, socle, cordon.
+  const faces = ringFaces(sinks.solid, look, pts, false, foot, null, top, id, 1, 0, t.x, t.y);
+  const plinth = ringFaces(sinks.solid, look, pts, false, foot, null, t.base + PLINTH_H, id, 2, PLINTH_OUT, t.x, t.y);
+  const zc = t.base + (top - t.base) * CORDON_AT;
+  for (const f of ringFaces(new MeshBuilder(), look, pts, false, foot, zc, zc + CORDON_H, id, 3, CORDON_OUT, t.x, t.y)) {
+    sinks.solid.quad(toThree(f.ax, f.ay, zc), toThree(f.bx, f.by, zc), toThree(f.bx, f.by, zc + CORDON_H), toThree(f.ax, f.ay, zc + CORDON_H), toThree(f.nx, f.ny, 0), CORDON);
+  }
+  // Rebord du socle (dessus du ressaut).
+  for (const f of plinth) {
+    const k = PLINTH_OUT / ((Math.hypot(f.ax - t.x, f.ay - t.y) || 1));
+    const ix = f.ax - (f.ax - t.x) * k, iy = f.ay - (f.ay - t.y) * k, jx = f.bx - (f.bx - t.x) * k, jy = f.by - (f.by - t.y) * k;
+    const z = t.base + PLINTH_H;
+    sinks.solid.quad(toThree(ix, iy, z), toThree(jx, jy, z), toThree(f.bx, f.by, z), toThree(f.ax, f.ay, z), [0, 1, 0], look.cap);
+  }
+  // Trous de boulin : trois rangs, un segment sur trois.
+  for (const [k, f] of faces.entries()) {
+    if (k % 3 !== 1) continue;
+    for (const h of [0.25, 0.55, 0.8]) {
+      const z = t.base + (top - t.base) * h, u0 = 0.4, u1 = 0.55;
+      const P = (u: number, zz: number): Vec3 => toThree(f.ax + (f.bx - f.ax) * u + f.nx * 0.02, f.ay + (f.by - f.ay) * u + f.ny * 0.02, zz);
+      sinks.solid.quad(P(u0, z), P(u1, z), P(u1, z + 0.2), P(u0, z + 0.2), toThree(f.nx, f.ny, 0), HOLE);
+    }
+  }
+  // Lierre sur une tour sur trois (photo 8), dessus.
+  if (hash(id, 0, 9, 9) < 0.35 && faces.length > 4) ivy(sinks.solid, faces[Math.floor(faces.length / 2)]!, id, 99);
+  fan(sinks.cap, pts, t.x, t.y, top, look.cap, false);
+  // Corde (côté mur), au cas où le mur serait plus bas que la tour.
+  const n = pts.length / 2;
+  const chord: Face = { ax: pts[2 * n - 2]!, ay: pts[2 * n - 1]!, bx: pts[0]!, by: pts[1]!, fa: t.base, fb: t.base, ta: top, tb: top, nx: -(t.nx ?? 0), ny: -(t.ny ?? 1) };
+  blocks(sinks.solid, look, chord, Math.hypot(chord.bx - chord.ax, chord.by - chord.ay), id, 999);
+}
+
+/** Prisme (ou tronc de pyramide) régulier vertical à `sides` côtés, de rayon r0 en z0 à r1 en z1, avec son dessus. */
+function prism(mb: MeshBuilder, cx: number, cy: number, sides: number, r0: number, r1: number, z0: number, z1: number, rot: number, col: THREE.Color, capCol: THREE.Color | null = col): void {
+  for (let i = 0; i < sides; i++) {
+    const a = rot + (2 * Math.PI * i) / sides, b = rot + (2 * Math.PI * (i + 1)) / sides, m = (a + b) / 2;
+    const p = (r: number, ang: number, z: number): Vec3 => toThree(cx + r * Math.sin(ang), cy + r * Math.cos(ang), z);
+    const nz = (r0 - r1) / Math.max(z1 - z0, 1e-3);
+    const l = Math.hypot(1, nz);
+    mb.quad(p(r0, a, z0), p(r0, b, z0), p(r1, b, z1), p(r1, a, z1), toThree(Math.sin(m) / l, Math.cos(m) / l, nz / l), col);
+    if (capCol && r1 > 1e-3) mb.tri(toThree(cx, cy, z1), p(r1, a, z1), p(r1, b, z1), [0, 1, 0], capCol);
+  }
+}
+
+function buildUrsulines(mb: MeshBuilder, t: RampartTower, terrain: HeightField): void {
+  const id = Math.abs(t.id), deck = t.deck ?? t.base + 28, rail = t.rail ?? deck + 0.9, roof = t.roof ?? rail + 1.5;
+  // Statue de 4,5 m au plus (photo 1) : le reste de la hauteur mesurée est le socle.
+  const statue = t.statue ?? roof + 5, plinth = Math.max(t.plinth ?? roof + 0.5, roof + 0.3, statue - STATUE_H);
+  const apo = t.apo ?? 5.4, rot = t.rot ?? 0;
+  const oct = octagon(t), foot = (x: number, y: number): number => Math.min(terrain.heightAt(x, y), t.base) - SINK;
+  // Fût, pied élargi (talus) et son rebord.
+  const faces = ringFaces(mb, URSULINES, oct, true, foot, null, deck - 0.6, id, 1, 0, t.x, t.y);
+  ringFaces(mb, URSULINES, octagon(t, BATTER_OUT), true, foot, null, (t.high ?? t.base) + BATTER_H * 0.4 + 0 * t.base, id, 2, 0, t.x, t.y);
+  const zb = (t.high ?? t.base) + BATTER_H * 0.4;
+  const big = octagon(t, BATTER_OUT);
+  for (let i = 0; i < 8; i++) {
+    const j = (i + 1) % 8;
+    mb.quad(toThree(oct[2 * i]!, oct[2 * i + 1]!, zb + 0.25), toThree(oct[2 * j]!, oct[2 * j + 1]!, zb + 0.25), toThree(big[2 * j]!, big[2 * j + 1]!, zb), toThree(big[2 * i]!, big[2 * i + 1]!, zb), [0, 1, 0], URSULINES.palette[0]!);
+  }
+  // Chaînes d'angle claires, aux huit arêtes.
+  for (let i = 0; i < 8; i++) {
+    const vx = oct[2 * i]!, vy = oct[2 * i + 1]!;
+    for (const [k, f] of [[-1, faces[(i + 7) % 8]!], [1, faces[i]!]] as [number, Face][]) {
+      const L = Math.hypot(f.bx - f.ax, f.by - f.ay) || 1, ux = (f.bx - f.ax) / L, uy = (f.by - f.ay) / L;
+      const w = 0.4, o = 0.03;
+      const ex = vx + ux * (k > 0 ? w : -w), ey = vy + uy * (k > 0 ? w : -w);
+      const z0 = Math.min(foot(vx, vy), t.base), z1 = deck - 0.6;
+      mb.quad(toThree(vx + f.nx * o, vy + f.ny * o, z0), toThree(ex + f.nx * o, ey + f.ny * o, z0), toThree(ex + f.nx * o, ey + f.ny * o, z1), toThree(vx + f.nx * o, vy + f.ny * o, z1), toThree(f.nx, f.ny, 0), QUOIN);
+    }
+  }
+  // Ouvertures sombres : fenêtres doubles romanes (vers 78 % de la hauteur, côtés ouest et sud), fenêtre double à mi-hauteur, meurtrières.
+  const H = deck - t.base;
+  const opening = (f: Face, u: number, z: number, w: number, h: number, arch: boolean): void => {
+    const L = Math.hypot(f.bx - f.ax, f.by - f.ay) || 1;
+    const P = (du: number, zz: number): Vec3 => toThree(f.ax + (f.bx - f.ax) * (u + du / L) + f.nx * 0.03, f.ay + (f.by - f.ay) * (u + du / L) + f.ny * 0.03, zz);
+    mb.quad(P(-w / 2, z), P(w / 2, z), P(w / 2, z + h), P(-w / 2, z + h), toThree(f.nx, f.ny, 0), DARK);
+    if (arch) for (let k = 0; k < 4; k++) {
+      const a0 = (Math.PI * k) / 4, a1 = (Math.PI * (k + 1)) / 4;
+      mb.tri(P(0, z + h), P((-Math.cos(a0) * w) / 2, z + h + (Math.sin(a0) * w) / 2), P((-Math.cos(a1) * w) / 2, z + h + (Math.sin(a1) * w) / 2), toThree(f.nx, f.ny, 0), DARK);
+    }
+  };
+  faces.forEach((f, i) => {
+    const facing = (Math.atan2(f.nx, f.ny) * 180) / Math.PI;
+    const west = Math.abs(((facing - 250 + 540) % 360) - 180) < 30, south = Math.abs(((facing - 200 + 540) % 360) - 180) < 30;
+    if (west || south) {
+      // Arc clair qui coiffe la baie double, puis les deux baies.
+      opening(f, 0.5, t.base + H * 0.76, 2.3, 1.5, true);
+      const z = t.base + H * 0.76;
+      const L = Math.hypot(f.bx - f.ax, f.by - f.ay) || 1;
+      const P = (du: number, zz: number): Vec3 => toThree(f.ax + (f.bx - f.ax) * (0.5 + du / L) + f.nx * 0.04, f.ay + (f.by - f.ay) * (0.5 + du / L) + f.ny * 0.04, zz);
+      mb.quad(P(-0.08, z), P(0.08, z), P(0.08, z + 1.5), P(-0.08, z + 1.5), toThree(f.nx, f.ny, 0), QUOIN);
+    }
+    if (west) opening(f, 0.5, t.base + H * 0.42, 1.2, 1.1, false);
+    if (!west && !south && i % 2 === 0) opening(f, 0.5, t.base + H * 0.6, 0.2, 1.0, false);
+  });
+  // Corniche, terrasse, balustrade, toit de zinc, socle et statue.
+  ringFaces(mb, { ...URSULINES, palette: [QUOIN] }, octagon(t, 0.2), true, () => deck - 0.6, deck - 0.6, deck, id, 3, 0, t.x, t.y);
+  prism(mb, t.x, t.y, 8, (apo + 0.2) / Math.cos(Math.PI / 8), (apo + 0.2) / Math.cos(Math.PI / 8), deck - 0.05, deck, rot + Math.PI / 8, QUOIN, ZINC);
+  for (const grow of [0.15, -0.05]) prism(mb, t.x, t.y, 8, (apo + grow) / Math.cos(Math.PI / 8), (apo + grow) / Math.cos(Math.PI / 8), deck, rail, rot + Math.PI / 8, RAIL, grow < 0 ? null : RAIL);
+  prism(mb, t.x, t.y, 8, (apo - 0.6) / Math.cos(Math.PI / 8), 1.1, deck, roof, rot + Math.PI / 8, ZINC, null);
+  prism(mb, t.x, t.y, 8, 1.1, 1.0, roof, plinth, rot + Math.PI / 8, ZINC, ZINC);
+  // Vierge : robe en tronc de cône, buste, tête, bras ouverts vers l'extérieur de la ville (côté bas).
+  const hS = statue - plinth;
+  // Proportions d'après le LiDAR (rayon de 1,2 m au niveau des drapés) et la photo 5 : robe large, buste, tête voilée.
+  prism(mb, t.x, t.y, 10, 1.0, 0.75, plinth, plinth + hS * 0.55, 0, STATUE, null);
+  prism(mb, t.x, t.y, 10, 0.75, 0.42, plinth + hS * 0.55, plinth + hS * 0.82, 0, STATUE, STATUE);
+  prism(mb, t.x, t.y, 8, 0.24, 0.24, plinth + hS * 0.82, plinth + hS * 0.86, 0, STATUE, null);
+  prism(mb, t.x, t.y, 8, 0.34, 0.16, plinth + hS * 0.86, statue, 0, STATUE, STATUE);
+  const face = Math.atan2(-(faces[4]?.nx ?? 0), -(faces[4]?.ny ?? 1));
+  for (const side of [-1, 1]) {
+    const a = face + side * Math.PI / 2;
+    const sx = t.x + Math.sin(a) * 0.5, sy = t.y + Math.cos(a) * 0.5;
+    const hx = t.x + Math.sin(a) * 1.5 + Math.sin(face) * 0.4, hy = t.y + Math.cos(a) * 1.5 + Math.cos(face) * 0.4;
+    const z0 = plinth + hS * 0.74, z1 = plinth + hS * 0.52;
+    const nx = Math.sin(face), ny = Math.cos(face);
+    mb.quad(toThree(sx, sy, z0), toThree(hx, hy, z1), toThree(hx, hy, z1 + 0.3), toThree(sx, sy, z0 + 0.3), toThree(nx, ny, 0), STATUE);
+    mb.quad(toThree(hx, hy, z1), toThree(sx, sy, z0), toThree(sx, sy, z0 + 0.3), toThree(hx, hy, z1 + 0.3), toThree(-nx, -ny, 0), STATUE);
+  }
 }

@@ -1,4 +1,4 @@
-import type { Wall } from "../data/types";
+import type { RampartTower, Wall } from "../data/types";
 import type { Pit } from "../data/terrain";
 
 /**
@@ -134,4 +134,43 @@ export function rampartPits(walls: readonly Wall[]): Pit[] {
     }
   }
   return out;
+}
+
+/** Pas d'arc d'une tour ronde (segments sur le demi-tour). */
+export const TOWER_SEGMENTS = 14;
+
+/**
+ * Arc extérieur d'une tour ronde (D254) : points du cercle (centre x, y, rayon r) qui sont devant la face du mur (à 20 cm près, pour
+ * entrer dans le mur), de la gauche à la droite vue de dehors ; avec la normale (radiale) de chacun.
+ */
+export function towerArc(t: RampartTower): { pts: number[]; nrm: number[] } {
+  const r = t.r ?? 3.5, nx = t.nx ?? 0, ny = t.ny ?? 1;
+  const tx = -ny, ty = nx;
+  // Avancée du centre devant la face : le cercle en sort de r + d.
+  const d = (t.x - (t.fx ?? t.x)) * nx + (t.y - (t.fy ?? t.y)) * ny;
+  const lim = Math.acos(Math.min(1, Math.max(-1, -(d + 0.2) / r)));
+  const pts: number[] = [], nrm: number[] = [];
+  for (let k = 0; k <= TOWER_SEGMENTS; k++) {
+    const a = -lim + (2 * lim * k) / TOWER_SEGMENTS;
+    const cx = Math.cos(a) * nx + Math.sin(a) * tx, cy = Math.cos(a) * ny + Math.sin(a) * ty;
+    pts.push(t.x + r * cx, t.y + r * cy);
+    nrm.push(cx, cy);
+  }
+  return { pts, nrm };
+}
+
+/** Sommets de l'octogone de la tour des Ursulines, agrandi de `grow` m d'apothème. */
+export function octagon(t: RampartTower, grow = 0): number[] {
+  const R = ((t.apo ?? 5) + grow) / Math.cos(Math.PI / 8), rot = t.rot ?? 0, out: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    const a = rot + Math.PI / 8 + (i * Math.PI) / 4;
+    out.push(t.x + R * Math.sin(a), t.y + R * Math.cos(a));
+  }
+  return out;
+}
+
+/** Contour fermé d'une tour pour les collisions : l'arc et sa corde (tour ronde), l'octogone du pied (Ursulines). */
+export function towerOutline(t: RampartTower): number[] {
+  const p = t.k === "ursulines" ? octagon(t, 0.45) : towerArc(t).pts;
+  return [...p, p[0]!, p[1]!];
 }

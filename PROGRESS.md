@@ -1877,3 +1877,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Boulevard des Résistants Fusillés](docs/captures/d253-resistants.jpg)
 ![Rue du Vieux Colombier](docs/captures/d253-vieux-colombier.jpg)
+
+**Les remparts, lot 3 : les tours (6 novembre 2026)** (D254)
+- La tour des Ursulines est là, d'après tes photos et le LiDAR : octogonale, près de 30 m côté boulevard Mac Mahon, fenêtres romanes, angles en pierre claire, balustrade, toit de zinc et la Vierge blanche au sommet (avant : une maison de 13 m).
+- Douze tours rondes : cinq boulevard Mac Mahon, cinq boulevard des Résistants Fusillés, deux boulevard Laureau, avec leur socle, leur moulure et leurs petits trous.
+- À regarder : `?view=custom&cam=45,-990,1.7,9,-951,22&h=14` (la tour des Ursulines), `cam=-221.2,-266.6,1.7,-200,-300,2` (boulevard des Résistants Fusillés).
+
+![La tour des Ursulines](docs/captures/d254-ursulines.jpg)
+![Une tour du boulevard des Résistants Fusillés](docs/captures/d254-resistants.jpg)

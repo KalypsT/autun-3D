@@ -5218,3 +5218,26 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![R11, rue de la Maladière](captures/d253-r11.jpg)
 ![Rue Gaston Joliet](captures/d253-gaston-joliet.jpg)
 ![Boulevard Laureau](captures/d253-laureau.jpg)
+
+## 2026-11-06 — D254. Les remparts, lot 3 : les tours (plan `docs/plans/remparts.md`, §9 et §10)
+
+**Demande de l'utilisateur** : photos de la tour des Ursulines (une photo personnelle, deux captures du 10 et 11 boulevard Mac Mahon, la statue de près) et des deux premières priorités : tours du boulevard Mac Mahon (8 boulevard Mac Mahon, deux captures) et du boulevard des Résistants Fusillés (14, prise vers le sud-sud-est) ; « la plupart des tours se ressemblent assez ».
+
+**Lecture des photos** : la tour des Ursulines n'est pas carrée mais **octogonale** : moellons beige-brun, chaînes d'angle en pierre de taille claire, pied élargi, fenêtre double romane sous un arc vers le haut (côtés ouest et sud), fenêtre double à mi-hauteur, meurtrières ; balustrade claire, petit toit de zinc gris, Vierge blanche aux bras ouverts sur un socle de zinc. Annexe carrée à toit en croupe contre elle (bâtiment BD TOPO voisin, gardé). Tours rondes : semi-circulaires, en moellons, à peu près au ras du mur, socle plus large en bas, cordon vers le tiers de la hauteur, petits trous de boulin ; lierre sur certaines, reprise plus claire au pied (photo du boulevard des Résistants Fusillés). Le boulevard Mac Mahon est bien en moellons d'origine (`rubble`, déduit en D253 : confirmé).
+
+**Données** (`towers` de `ramparts`, `manual.json` ; champ `towers` des tuiles ; `build_ramparts.py`) :
+- **Tour des Ursulines**, mesurée au LiDAR (la BD TOPO la donnait à 13 m, toit à quatre pans) : centre (9,9 ; −950,8), apothème 5,44 m, faces à 5° du nord puis tous les 45° (orientation la plus régulière des points hauts), pied à 49,0 côté boulevard et 56,0 côté ville, terrasse à 78,6, balustrade à 79,5, toit à 81,0, statue jusqu'à 88,0 : **près de 30 m de maçonnerie côté boulevard**. Bâtiment BD TOPO `…348856003` masqué (`hidden` dans `kinds/26_31.json`), silhouette lointaine refaite en octogone.
+- **Douze tours rondes** (certitude d'au moins 85 % à l'inventaire) : cinq boulevard des Résistants Fusillés et cinq boulevard Mac Mahon (bosses du dessin OSM), deux boulevard Laureau (LiDAR). Contre la station de mur la plus proche : face, normale extérieure, sol bas, sommet du mur ; largeur et avancée mesurées au LiDAR devant la face (rayon de 3 à 4,5 m) ; sommet au ras du mur, ou plus haut si le LiDAR le montre.
+
+**Rendu** (`src/render/ramparts.ts`) : tours rondes en arc de cercle coupé par la face, en blocs (même aspect que leur mur), socle de 1,4 m débordant de 30 cm avec son rebord, cordon clair, trous de boulin sur trois rangs, lierre sur une tour sur trois, dessus ; tour des Ursulines : fût octogonal en blocs, pied élargi, chaînes d'angle claires, baies sombres (deux fenêtres doubles romanes sous arc, une fenêtre double, des meurtrières), corniche claire, balustrade, toit de zinc en pyramide, socle, Vierge (robe large, buste, tête, bras ouverts) de 4,5 m au plus (photo 1 ; le reste de la hauteur mesurée est le socle). Collisions : pied de chaque tour (`towerOutline`).
+
+**Coût** : 2 500 triangles au plus par tour ronde, environ 5 100 pour la tour des Ursulines (Couhard : 4 218).
+
+**Pas fait** : tours incertaines de l'inventaire (rue Saint-Pancrace, rue de la Maladière, rue du Vieux Colombier, rue Blanche : photos à venir) ; balustres et bras de la statue schématiques ; tours qui dépassent le mur (photo 3) : la hauteur suit le LiDAR, sans couronnement particulier ; éclairage de nuit.
+
+**Tests** (+4, 1 342 au total ; `src/render/ramparts.test.ts`).
+
+![La tour des Ursulines, du sud-est](captures/d254-ursulines.jpg)
+![Le sommet et la statue](captures/d254-ursulines-sommet.jpg)
+![Une tour du boulevard Mac Mahon](captures/d254-mac-mahon.jpg)
+![Une tour du boulevard des Résistants Fusillés](captures/d254-resistants.jpg)

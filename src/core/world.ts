@@ -1,4 +1,4 @@
-import type { Building, HeightField, TileData } from "../data/types";
+import type { Building, HeightField, RampartTower, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
 import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
@@ -9,7 +9,7 @@ import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./genda
 import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
 import { BOAT_TOP, boatOutline, SHELTER_POST, shelterPosts } from "./piers";
 import { EQUIP_TOP, equipRing, skateSides } from "./leisure";
-import { isProfiled, rampartOutline } from "./ramparts";
+import { isProfiled, rampartOutline, towerOutline } from "./ramparts";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -25,6 +25,8 @@ const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge"]);
 const GRILLE: Top = { height: 1.2, climb: false };
 /** Grille d'honneur du lycée (D149) : trois mètres de fer, ni franchie ni escaladée ; on voit et on tire à travers. */
 const GRILLE_HONNEUR: Top = { height: 3.4, climb: false };
+/** Tour des remparts (D254) : on ne l'escalade pas. */
+const TOWER_TOP: Top = { height: 30, climb: false };
 /** Parapet d'un pont : on l'enjambe (et l'on tombe dans la rivière). */
 const PARAPET: Top = { height: 1.1, climb: true };
 
@@ -37,7 +39,7 @@ export function wallTop(kind: string, height: number): Top {
 /** Identifiants des clôtures de parcelle écrites par tools/data/build_public_space.py : −(PARCEL_FENCE_ID + n). */
 export const PARCEL_FENCE_ID = 900_000_000;
 
-export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures">;
+export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures"> & { towers?: readonly RampartTower[] | undefined };
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
 export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null, terrain: HeightField | null = null): void {
@@ -108,6 +110,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     if (isProfiled(w)) c.addPolyline(rampartOutline(w), false, wallTop(w.kind, w.height));
     else c.addPolyline(w.pts, w.id <= -PARCEL_FENCE_ID, wallTop(w.kind, w.height));
   }
+  // Tours des remparts (D254) : leur pied, infranchissable.
+  for (const t of tile.towers ?? []) c.addPolyline(towerOutline(t), false, TOWER_TOP);
   for (const k of Object.values(tile.kinds?.buildings ?? {})) {
     const g = k.college?.grille;
     if (g) c.addPolyline([...g.a, ...g.b], true, GRILLE_HONNEUR);
