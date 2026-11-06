@@ -6,6 +6,7 @@ import { Seats } from "../core/seats";
 import { MarketController } from "./market";
 import { FeastsController } from "./feasts";
 import { AnimalsController } from "./animals";
+import { Sailboats } from "../render/sailboats";
 import { marketCenter, marketLevel, servicesWanted, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
@@ -191,6 +192,10 @@ export function startGame(ctx: GameContext): void {
   tiles.forEachSeats((id, list) => seats.addTile(id, list));
   // Animaux (D203) : chiens seuls, chats, canards, hérons, martinets, chauves-souris ; `?animals=0` les coupe.
   const animals = new AnimalsController(scene, terrain, () => (nav as NavManager | null)?.graph ?? null, () => tiles.loadedExtras(), audio, params.get("animals") !== "0");
+  // Voiliers du plan d'eau du Vallon (D249) : l'été en journée, au printemps et en automne le week-end.
+  const sailboats = new Sailboats();
+  scene.add(sailboats.group);
+  let sailClock = 0;
   // Fêtes (D202) : illuminations, feu d'artifice du 14 juillet, fête de la musique.
   const feasts = new FeastsController(scene, terrain, colliders, seats, audio, () => tiles.loadedExtras());
   // Tonnerre (D196) : l'ambiance tire les éclairs, le son suit avec le retard de la distance.
@@ -1354,6 +1359,8 @@ export function startGame(ctx: GameContext): void {
     market.update(atmosphere.calendar.weekday, atmosphere.hour, atmosphere.feasts.includes("marche-noel"));
     feasts.update(dt, atmosphere.feasts, atmosphere.hour, atmosphere.night);
     animals.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, night: atmosphere.night, season: atmosphere.calendar.season });
+    sailClock += dt;
+    sailboats.update(sailClock, atmosphere.hour, atmosphere.calendar.season, atmosphere.calendar.weekday, tiles.loadedExtras().flatMap((e) => e.sail ?? []));
     // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
     const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
     setSurfaceGrip(surfaceGrip(wx));

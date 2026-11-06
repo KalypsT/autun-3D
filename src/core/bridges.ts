@@ -117,7 +117,7 @@ export function spanDeck(d: Deck): Deck {
 
 /** Épaisseur d'un tablier sous son dessus (m) : passerelle, pont-rail, autres. */
 export function deckThickness(d: Deck): number {
-  return d.st === "light" ? 0.35 : d.k === "rail" ? 1.2 : 0.9;
+  return d.st === "pier" || d.st === "skate" || d.st === "pump" ? 0.22 : d.st === "light" ? 0.35 : d.k === "rail" ? 1.2 : 0.9;
 }
 
 /** Demi-épaisseur d'une pile le long de l'axe (m) ; en travers, elle déborde de 15 cm de chaque côté du tablier. */

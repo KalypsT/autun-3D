@@ -186,6 +186,11 @@ def exits(body, z, lev, label, x0, y1, w, h):
     return out
 
 
+def body_rule(cfg, body):
+    """Règle de manual.json (`water.bodies`) qui désigne ce plan d'eau par un point, ou None."""
+    return next((r for r in cfg.get("bodies", []) if shapely.contains_xy(body, *r["at"])), None)
+
+
 def body_params(cfg, body):
     """Profondeur maximale et pente de berge d'un plan d'eau : règle de manual.json qui le désigne par un point, sinon d'après sa surface."""
     for r in cfg.get("bodies", []):
@@ -228,6 +233,20 @@ def main():
                     wz.append(None)
             st["water"], st["wz"] = water, wz
         assert len(st["wz"]) == len(st["water"]), f"{t['id']} : `wz` ne suit plus `water` (build_coast.py relancé ?) : repartir des structures d'avant build_water.py"
+        # Ajouts au contour d'OSM (`extend`, D246) : réunis au morceau « ville » qu'ils touchent, s'ils n'y sont pas déjà.
+        tb = shapely.box(*t["bounds"])
+        for ext in cfg.get("extend", []):
+            e = Polygon(list(zip(ext["ring"][::2], ext["ring"][1::2]))).intersection(tb)
+            if e.is_empty:
+                continue
+            for i, p in enumerate(st["water"]):
+                g = ring_poly(p)
+                if st["wz"][i] is None or g.distance(e) > 0.5 or e.difference(g).area < 0.5:
+                    continue
+                u = unary_union([g, e.buffer(0.01)])
+                if u.geom_type == "Polygon":
+                    st["water"][i] = flat_rings(u.simplify(0.05))
+                break
         for i, p in enumerate(st["water"]):
             if st["wz"][i] is not None:
                 pieces.append([t["id"], i, ring_poly(p), st["wz"][i]])
@@ -324,6 +343,13 @@ def main():
             m = label == k
             lev[m] = a * xx[m] + bb * yy[m] + cc
         wet = (label >= 0) & ~np.isnan(z) & (z <= lev + WET_ABOVE)
+        # Plan d'eau à `flood` (D246) : loin du bord du polygone (plus de `flood` m), tout est de l'eau, même un relief plus haut que
+        # WET_ABOVE : le LiDAR, qui ne voit pas l'eau, y a interpolé une nappe entre les rives (triangle au sud du Vallon, jusqu'à 0,9 m
+        # au-dessus du lac). Les berges et les îles (trous du polygone) gardent la règle ordinaire.
+        rule = body_rule(cfg, body)
+        if rule and rule.get("flood"):
+            inner = ndimage.distance_transform_edt(label >= 0) > rule["flood"]
+            wet |= inner & ~np.isnan(z) & ~np.isnan(lev)
         if len(trees):
             inb = (trees[:, 0] > x0 - 3) & (trees[:, 0] < x0 + w + 3) & (trees[:, 1] > y1 - h - 3) & (trees[:, 1] < y1 + 3)
             tmask = np.zeros((h, w), bool)

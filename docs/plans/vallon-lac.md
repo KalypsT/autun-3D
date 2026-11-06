@@ -142,9 +142,10 @@ Réponses au §11.
 | **0. Relevés** (fait, §12) | `tools/data/survey_vallon.py` : axe OSM contre orthophotographie (écart tous les 10 m), largeur et matière par tronçon, profil du LiDAR (digue, dévers), pontons (forme, longueur, hauteur au-dessus de l'eau), cale, lampadaires, arbres sur le chemin, terrain multisport ; emplacements des photos ; captures « avant » | aucun | D243 |
 | **1. Le chemin** (fait, §13) | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
 | **2. La base nautique** (fait, §14) | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
-| **3. Les pontons et la cale** | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
-| **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
-| **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
+| **3. Les pontons et la cale** (fait, §15) | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
+| **4. Les équipements** (fait, §16) | aire de jeux, skatepark, pump track, agrès, panneaux | on roule sur le pump track, on monte les modules du skatepark, on passe le Brisecou à gué | D247 |
+| **4 bis. L'aire de glisse rénovée** (fait, §17) | bande de skate et bowl, piste d'éducation routière, pump track peint | l'aire telle qu'elle est depuis sa rénovation | D248 |
+| **5. La vie du lac** (fait, §18) | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | des pêcheurs à la carpe, des voiliers l'été, plus de promeneurs | D249 |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
 
@@ -289,3 +290,156 @@ volumes sans chevauchement et contour BD TOPO couvert à 1,5 m ; obstacles (volu
 ![Côté darse](../captures/d245-darse.jpg)
 ![Depuis le lac](../captures/d245-lac.jpg)
 ![Vue haute](../captures/d245-haut.jpg)
+
+## 15. Lot 3 : les pontons et la cale (5 novembre 2026, D246)
+
+Fait. Étape `tools/data/build_vallon_piers.py` (réglages `vallonPiers` de `manual.json`, lus sur l'orthophotographie à 10 cm et les photos), rendu
+`src/render/piers.ts`, collisions `src/core/piers.ts`. Une deuxième passe ne change rien. Réponses de l'utilisateur : ponton de l'île raccourci au bord des arbres,
+abri sur poteaux, pente de la cale telle que mesurée, deux bateaux amarrés.
+
+| Ponton | Forme et longueur | Hauteur | Ce qui le porte |
+|---|---|---|---|
+| Base (OSM w422698578) | droit, 25 m depuis le quai de la darse, 2 m de large | 0,3 m | flotteurs |
+| Pêche, ouest (w842375499 et w842375500) | passerelle de 11 m depuis la berge, puis ponton en **T** de 62 m (il dépasse de 12 m au nord, coude de 21 m au sud), 1,5 m | 0,35 m | **pieux** (photo), 26 + 5 |
+| Sud-ouest (w842375502) | **L** : 51 m vers le large depuis la berge (y = 128, et non 146,5 comme OSM), puis 20 m vers l'ouest | 0,3 m | flotteurs |
+| Île (w1227421196) | 13,5 m depuis l'île, arrêté au bord des arbres (OSM : 23 m, invisible sur l'image) | 0,45 m | pieux, 6 |
+| Sixième, au sud-ouest de la base (absent d'OSM) | droit, 21 m sur 2,4 m, parallèle à la rive ; passerelle de 7,6 m sur 3 m depuis la berge | 0,3 m | flotteurs |
+
+- **Les tabliers** : `decks` des ouvrages, `k: "foot"`, nouveau style `pier` (planches grises en travers tous les 16 cm, jours sombres, rives, sans garde-corps),
+  `fl` (flottant) ou `pl` (abscisses des pieux). Un ponton accroché à la rive part de la berge (3 cm au-dessus du relief) et rejoint sa hauteur en 2 m.
+- **Monter dessus depuis l'eau** : à 0,3 m, on en sort en marchant (`STEP_OUT`) ; à 0,35 et 0,45 m, on se hisse (`HOIST` vaut 0,8 m, et non 1,05). Le tablier compte
+  comme un sol : on ne passe pas dessous, on ne peut donc pas y rester coincé.
+- **L'abri** du sixième ponton : toit plat blanc de 8,3 × 10 m sur quatre poteaux, à 3 m au-dessus du lac, au-dessus de la passerelle (approché : vu d'en haut seulement).
+- **Les bateaux** : 27 coques comptées sur l'image, posées sur le quai de la darse (4 dériveurs de couleur, 5 dériveurs blancs, 5 kayaks, 13 petits dériveurs blancs
+  sur la bande sud) ; 2 amarrés au ponton de la base (un dériveur au mât dressé, une barque), approchés. Obstacles bas qu'on enjambe.
+- **La cale** : dalle de béton clair de 102 m² (couche `slipway`), posée sur la rampe du relief (pente mesurée 0,15 à 0,18), jusqu'à 5 m sous l'eau.
+- **Le quai de la darse** (443 m², couche `quay`) : en enrobé, comme sur l'image ; il était dessiné en herbe.
+
+Ce qui diffère du plan :
+- **Le lac était en partie à sec.** Sur 17 % du plan d'eau (3,5 ha, surtout un triangle entre l'île et la rive ouest), le LiDAR, qui ne voit pas l'eau, a interpolé un
+  relief jusqu'à 0,9 m au-dessus de la surface, et build_water.py (D240) ne creusait que là où le relief était à moins de 0,3 m au-dessus : on voyait de l'herbe au milieu
+  du lac. Réglage `flood` du Vallon : à plus de 3 m du bord du polygone, tout est de l'eau ; il reste 0,4 % de cellules sèches (au bord). Les berges et l'île ne changent pas.
+- **La darse s'arrêtait 5 m avant la cale** (contour d'OSM) : un creux sans eau au pied de la rampe. Réglage `extend` de build_water.py : contour ajouté, lu sur l'image.
+- **Le ponton de pêche est sur pieux**, bien qu'OSM le dise flottant (photo).
+- **Le ponton de l'île est dans le marais peu profond du sud** (0,4 m, D240) : on l'atteint en marchant dans l'eau, pas à la nage.
+- **La cale garde sa pente mesurée** (0,15 à 0,18 au lieu de 0,08) ; les roseaux évitaient déjà tous les tracés définitifs (`noReeds` inchangé).
+
+Pas fait : le saule pleureur de la base ; la vue `pontons-ile` montre peu de chose (le ponton est sous les arbres, comme en vrai) ; les passants ne vont pas sur les pontons (pas d'arêtes de navigation) ; les bateaux ne bougent pas sur l'eau ; la partie de
+l'abri au-dessus de la berge est supposée (une passerelle dessous) ; le dessous des pontons n'est pas éclairé par les lampadaires.
+
+Tests (+14, `src/data/vallon-piers.test.ts`) : sept tabliers `pier` sans parapet, hauteurs et longueurs ; chaque ponton se parcourt à pied de la berge au bout
+(le T de pêche et le ponton de l'abri jusqu'à leurs deux bouts) ; un nageur monte sur trois pontons flottants et se hisse sur le ponton fixe de pêche ; le ponton de l'île
+se rejoint en marchant dans le marais ; un nageur placé sous le ponton fixe en sort, et longe ses pieux sans s'arrêter ; dessin fini et borné (planches, flotteurs,
+pieux jusqu'au fond) ; la cale : surface, pente, eau à son pied ; on sort de la darse à pied par la cale ; une voiture qui la descend coule ; 29 bateaux hors des pontons,
+obstacles enjambables ; passage libre sous l'abri ; dessin des bateaux et de l'abri borné.
+
+![Le ponton de pêche](../captures/d246-peche.jpg)
+![La darse : quai, dériveurs, ponton de la base](../captures/d246-darse.jpg)
+![La cale](../captures/d246-cale.jpg)
+![Le ponton de l'abri](../captures/d246-abri.jpg)
+![Vue haute de la base](../captures/d246-haut.jpg)
+![Le ponton en L du sud-ouest](../captures/d246-sud-ouest.jpg)
+![Le sud du lac, en eau (il était en partie en herbe)](../captures/d246-lac.jpg)
+
+## 16. Lot 4 : les équipements (6 novembre 2026, D247)
+
+Fait. Étape `tools/data/build_vallon_leisure.py` (réglages `vallonLeisure` de `manual.json`, lus sur l'orthophotographie à 5 cm, les photos et OSM), rendu
+`src/render/leisure.ts`, collisions `src/core/leisure.ts`. Une deuxième passe ne change rien.
+
+- **Skatepark** (dalle OSM w247999128, 20 × 32 m) : le LiDAR a mesuré les vrais modules (bosses jusqu'à 1 m dans le relief). Ils sont repris à leur place et à leur
+  hauteur, en tabliers de béton clair qu'on monte à pied ou à vélo : quarter du nord-ouest (11 m de large, 0,8 m), funbox du milieu (1 m), quarter du sud-est (1 m),
+  deux blocs (0,3 et 0,35 m), barre de glisse. Le relief est aplani sous la dalle (plan mesuré avant aplanissement, `slabPlane`), comme build_water.py retouche le fond
+  des plans d'eau. Grillage gris autour de la dalle (vu sur l'image), ganivelle de châtaignier le long du parking (photo ; tracé approché).
+- **Pump track** : les trois boucles d'OSM (164 m), lissées, en enrobé de 2 m posé 15 cm au-dessus du relief, qui porte déjà les bosses de la piste (LiDAR,
+  ±0,3 m) ; flancs enherbés. Pas de bosses inventées.
+- **Aire de jeux** (OSM w247999116) : sol en gravillons, sol souple rouge sous la petite structure (toboggan bleu, toit en arc orange, mur d'escalade), grande
+  structure à deux tours (toits rose et orange, passerelle, deux toboggans orange), deux jeux à ressort, un banc, une table (photo et image).
+- **Agrès** (3, OSM `leisure=fitness_station`) : agrès générique en bois (barres de traction, barres parallèles) ; le modèle réel n'est pas connu.
+- **Panneaux** (3, OSM) : « Les oiseaux du lac », règlement de la pêche, plan du site. **Tables** : deux au sud (OSM). Robinets : déjà dessinés (mobilier).
+- **Gué du Brisecou** : cinq pierres plates sur 6 m, en travers de la rigole qui sort de l'étang (sous les arbres, invisible sur l'image : approché).
+- **Obstacles** : structures de jeux pleines ; bancs, tables, agrès, panneaux, barre, grillage et ganivelle bas, qu'on escalade ; flancs des modules en murs
+  à hauteur (on bute sur l'arrière d'un quarter, on passe le bord bas d'une rampe).
+
+Ce qui diffère du plan :
+- **Le LiDAR contient les équipements** : les modules du skatepark et les bosses du pump track étaient déjà dans le relief (en herbe). Les modules sont recalés
+  sur les bosses mesurées (la funbox est 5 m plus à l'est que sur ma première lecture de l'image) ; la dalle est aplanie ; le pump track suit le relief.
+- **Les surfaces génériques sont retirées** : le terrain de sport vert (build_kinds.py) et sa pelouse (build_public_space.py) recouvraient la dalle et la piste,
+  et les boucles du pump track (`leisure=track`) étaient dessinées en piste d'athlétisme rouge.
+- Deux objets d'OSM, à 1 m du chemin, en sont écartés de 1 m (l'agrès de l'est et une table du sud).
+- **Pas de terrain multisport** : la surface turquoise grillagée de la photo du skatepark n'apparaît pas sur l'orthophotographie (question posée à l'utilisateur ;
+  réponse : l'aire a été rénovée, voir §17).
+
+Pas fait : la surface turquoise de la photo ; les agrès et les jeux exacts (formes génériques) ; les passants ne vont pas sur les modules ni sur la piste.
+Vu en passant, sans rapport avec ce lot : de grands panneaux bruns flottent au-dessus du talus du rempart, vers (990 ; 255), à la frontière des tuiles 29 et 30
+(probablement les jupes du relief lointain).
+
+Tests (+11, `src/data/vallon-leisure.test.ts`) : cinq modules et trois boucles en tabliers, hauteurs mesurées, modules sur la dalle ; pump track posé sur le relief
+et ses bosses ; on monte la funbox et on la redescend, on monte le quarter ; on bute sur le flanc d'un bloc et l'arrière d'un quarter, on passe le bord d'en haut ;
+on suit les bosses du pump track à pied ; 25 équipements ; aucun objet sur le chemin, sur un lampadaire ou près d'un ponton, aucune clôture sur le chemin ;
+pierres du gué en travers de la rigole ; obstacles enjambables ou non ; dessins finis et bornés ; surfaces des sols.
+
+![Le skatepark depuis le parking, comme la photo](../captures/d247-skatepark.jpg)
+![La dalle et ses modules](../captures/d247-dalle.jpg)
+![Vue haute : pump track et skatepark](../captures/d247-haut.jpg)
+![Le pump track](../captures/d247-pump-track.jpg)
+![L'aire de jeux](../captures/d247-aire-de-jeux.jpg)
+![Les agrès de l'ouest](../captures/d247-agres.jpg)
+![Le gué du Brisecou](../captures/d247-gue.jpg)
+
+## 17. Lot 4 bis : l'aire de glisse rénovée (6 novembre 2026, D248)
+
+L'utilisateur a vérifié : la surface turquoise de sa photo est celle de l'**aire de glisse urbaine rénovée**, plus récente que l'orthophotographie et le LiDAR.
+Il a fourni deux photos aériennes et le plan de conception (non versionnés). Le skatepark du §16 (modules recalés sur l'ancienne dalle) est remplacé.
+
+- **Placement** : dans le repère de l'ancienne dalle (centre (1374,3 ; 568,7), u à 23,7° vers le parking, v vers le nord-nord-ouest), décalé de 1,5 m vers le
+  parking, entre le chemin du lac (à 1,9 m) et la ganivelle (à plus de 3,5 m) : **positions approchées à 1 ou 2 m près**, lues sur les photos.
+- **Piste d'éducation routière** (32 × 17 m, côté chemin), qui sert aussi de terrain multisport : enrobé sombre, îlots verts, rond-point central à îlot vert et logo,
+  voie de ceinture à sens unique (flèches), voies en croix, passages piétons, places de stationnement, ligne médiane et cercles orange, bordure en bois ouverte aux
+  deux bouts. Disposition des marquages simplifiée d'après les photos.
+- **Bande de skate** (14 × 38 m, côté parking) en béton clair : quarter au sud (1,2 m), funbox (0,6 m), long ledge (0,45 m) le long de la piste, barre de glisse,
+  plan incliné côté parking ; **bowl** au nord, creusé de 1,8 m (9 × 13 m, coins de 3 m, parois en quart de cercle), margelle brune, rebord en acier, pourtour
+  en béton. On y descend et on en remonte à pied ou à vélo.
+- **Pump track** : même tracé (OSM), avec la ligne verte peinte des photos.
+- **Relief** : aplani sur toute l'aire (plan mesuré sur l'ancienne dalle), puis creusé pour le bowl. Le grillage de l'ancienne dalle est retiré.
+- **Creux d'affichage** (nouveau, `Pits` de `src/data/terrain.ts`) : le relief proche est affiché par carreaux de 2,5 m ; sur les parois presque verticales du bowl,
+  ces carreaux passaient jusqu'à 0,9 m au-dessus de la paroi. Sous le bowl, le relief **affiché** est abaissé de 4 m (le relief du jeu ne change pas), et le pourtour
+  en béton (4,2 m) cache l'abaissement ; l'affichage du relief se reconstruit quand la tuile se charge.
+
+Pas fait : la forme exacte du bowl (hanche, escaliers, extension), les garde-corps métalliques des photos, les panneaux du pump track ; les marquages ne reprennent
+pas trait pour trait ceux des photos.
+
+Tests (+4, `src/data/vallon-leisure.test.ts`, adaptés) : quatre modules sur la bande ; relief aplani sur la piste et creusé de 1,8 m au fond du bowl ; on descend au
+fond du bowl et on en remonte ; on traverse la piste à pied ; creux d'affichage (relief affiché abaissé, relief du jeu inchangé, pourtour assez large) ; dessins bornés.
+
+![L'aire de glisse rénovée, vue haute](../captures/d248-haut.jpg)
+![La piste d'éducation routière](../captures/d248-piste.jpg)
+![Le bowl](../captures/d248-bowl.jpg)
+
+## 18. Lot 5 : la vie du lac (6 novembre 2026, D249)
+
+Fait. Étape `tools/data/build_vallon_life.py` (réglages `vallonLife` de `manual.json`), voiliers `src/core/sailing.ts` et `src/render/sailboats.ts`,
+pêcheurs dans `src/render/leisure.ts`, herbes hautes dans `src/render/reeds.ts`, promeneurs dans `src/core/week.ts`. Une deuxième passe ne change rien.
+
+- **Pêcheurs à la carpe, toujours là** (réponse de l'utilisateur), d'après sa photo : trois biwys kaki sur la pelouse du sud-ouest, deux pêcheurs assis, cannes sur
+  supports (détecteurs de touche colorés) ; un biwy et un pêcheur sur la rive sud ; un pêcheur assis au bord du ponton de pêche, jambes au-dessus de l'eau (le passage reste libre : 0,9 m). Groupes recalés sur le bord de l'eau
+  (biwys à 5 m de l'eau), tournés vers elle, hors du chemin. Positions approchées. Obstacles bas qu'on enjambe.
+- **Voiliers** (réponse : l'été) : jusqu'à cinq dériveurs (coques des bateaux du lot 3, grand-voile et foc, gîte) sur trois boucles vérifiées dans l'eau navigable
+  (1,2 m de fond, 12 m d'eau autour, loin de l'île et des pontons). L'été de 10 h à 19 h, trois en semaine et cinq le week-end ; au printemps et en automne, deux
+  le week-end l'après-midi ; jamais l'hiver ni la nuit. Positions calculées à partir du temps de jeu, sans simulation ; pas de collision (on nage à travers).
+- **Promeneurs et joggeurs** : dans l'emprise du lac, une fois et demie plus de passants ; 60 % de plus le week-end après-midi ; 30 % de plus l'été en fin de
+  journée ; 30 % de moins l'hiver. Aux heures de footing, 45 % des passants qui naissent sur ses sentiers sont des joggeurs (30 % ailleurs).
+- **Herbes hautes au sud** (« sauvage avec modération ») : 5 400 m² entre l'eau et le chemin, touffes de 0,45 à 0,8 m tous les 1,7 m, jamais à moins de 1,5 m du
+  chemin, hors des pelouses de pêche et des pontons.
+- **Vues** : `?view=pecheurs`, `pecheur-ponton`, `voiliers` (avec `&season=ete&weekday=6&h=14`).
+
+Pas fait : les pêcheurs ne bougent pas (pas de lancer ni de prise) ; les voiliers ne réagissent ni au vent ni au joueur ; pas de nouvelles arêtes de navigation
+(les promeneurs suivent celles du tour, D244) ; pas de son propre aux voiliers.
+
+Tests (+8, `src/data/vallon-life.test.ts`) : pêcheurs hors du chemin, au bord de l'eau et tournés vers elle ; pêcheur du ponton sur le tablier ; obstacles
+enjambables ; boucles des voiliers dans l'eau navigable ; nombre selon la saison, l'heure et le jour ; allure et cap des voiliers, toujours sur l'eau ; herbes
+hautes hors du chemin et de l'eau, budget borné ; fréquentation du tour.
+
+![Les pêcheurs du sud-ouest, comme sur la photo](../captures/d249-pecheurs.jpg)
+![Le pêcheur du ponton de pêche](../captures/d249-pecheur-ponton.jpg)
+![Des voiliers un samedi d'été, depuis la digue](../captures/d249-voiliers.jpg)
+![Un voilier de près](../captures/d249-voilier.jpg)

@@ -1812,3 +1812,43 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Depuis la route de Chalon](docs/captures/d245-route.jpg)
 ![Côté darse](docs/captures/d245-darse.jpg)
+
+**Le plan d'eau du Vallon, lot 3 : les pontons et la cale (5 novembre 2026)** (D246)
+- Six pontons en planches grises, sans garde-corps : celui de la base, le ponton de pêche en T sur pieux (comme sur ta photo), le L du sud-ouest, celui de l'île (court, sous les arbres), et le sixième avec son abri sur poteaux. On y marche, et on y monte depuis l'eau.
+- La cale en béton descend dans la darse : on en sort à pied, une voiture qui la descend coule.
+- 27 dériveurs et kayaks rangés sur le quai, désormais en enrobé ; un dériveur et une barque amarrés au ponton de la base.
+- Corrigé au passage : une partie du sud du lac (3,5 ha) apparaissait en herbe ; elle est maintenant en eau.
+- Vues : `?view=pontons-peche`, `pontons-base`, `cale`, `pontons-abri`, `pontons-sud-ouest`, `pontons-ile`, `pontons-haut`.
+- Prochaine étape : les équipements (aire de jeux, skatepark, pump track, agrès, gué).
+
+![Le ponton de pêche](docs/captures/d246-peche.jpg)
+![La darse](docs/captures/d246-darse.jpg)
+
+**Le plan d'eau du Vallon, lot 4 : les équipements (6 novembre 2026)** (D247)
+- Le skatepark a ses modules en béton clair, à la place et à la hauteur mesurées au LiDAR, sur une dalle plane, avec son grillage et la ganivelle le long du parking : on les monte à pied ou à vélo.
+- Le pump track suit ses vraies bosses (trois boucles d'enrobé).
+- L'aire de jeux : deux structures à toboggans, deux jeux à ressort, un banc, une table, sur gravillons.
+- Trois agrès, trois panneaux, deux tables au sud, et le gué du Brisecou en pierres plates.
+- Vues : `?view=skatepark`, `skatepark-haut`, `pump-track`, `aire-de-jeux`, `agres`, `gue`.
+- Prochaine étape : la vie du lac (pêcheurs, promeneurs, voiliers l'été).
+
+![Le skatepark](docs/captures/d247-skatepark.jpg)
+![L'aire de jeux](docs/captures/d247-aire-de-jeux.jpg)
+
+**Le plan d'eau du Vallon, lot 4 bis : l'aire de glisse rénovée (6 novembre 2026)** (D248)
+- L'aire de glisse est celle de tes photos : piste d'éducation routière peinte (îlots verts, rond-point, passages piétons, places, tracés orange), bande de skate avec quarter, funbox, ledge et barre, et un bowl creusé de 1,8 m où l'on descend à pied ou à vélo.
+- Positions lues sur les photos : approchées à 1 ou 2 m près.
+- Prochaine étape : la vie du lac.
+
+![L'aire de glisse rénovée](docs/captures/d248-haut.jpg)
+
+**Le plan d'eau du Vallon, lot 5 : la vie du lac (6 novembre 2026)** (D249)
+- Les pêcheurs à la carpe sont toujours là, comme sur ta photo : trois biwys kaki au sud-ouest, un sur la rive sud, et un pêcheur assis sur le ponton de pêche, cannes tendues vers l'eau.
+- Des voiliers sur le lac : l'été en journée (trois en semaine, cinq le week-end), deux le week-end au printemps et en automne.
+- Plus de promeneurs et de joggeurs sur le tour, surtout le week-end et les soirs d'été.
+- Herbes plus hautes au sud, entre l'eau et le chemin, sans jamais gêner le passage.
+- Vues : `?view=pecheurs`, `pecheur-ponton`, `voiliers` (avec `&season=ete&weekday=6&h=14`).
+- **Le plan d'eau du Vallon est terminé.**
+
+![Les pêcheurs](docs/captures/d249-pecheurs.jpg)
+![Des voiliers l'été](docs/captures/d249-voiliers.jpg)

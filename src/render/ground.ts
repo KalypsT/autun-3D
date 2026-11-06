@@ -24,6 +24,15 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   plaza_filet: { color: "paving6", lift: 0.065 },
   // Chemin du tour du plan d'eau du Vallon (D244) : stabilisé clair, au-dessus de la pelouse.
   path_gravel: { color: "paving7", lift: 0.04 },
+  // Cale de mise à l'eau de la base nautique (D246) : béton clair posé sur la rampe du relief, jusque sous l'eau.
+  slipway: { color: "paving2", lift: 0.05 },
+  // Quai de la darse (D246) : enrobé, au niveau de l'eau.
+  quay: { color: 0, lift: 0.04, tint: 1.08 },
+  // Équipements du plan d'eau du Vallon (D247) : dalle du skatepark (béton gris, sur le relief nu : les modules la recouvrent), gravillons et
+  // sol souple rouge de l'aire de jeux.
+  skate: { color: "paving2", lift: 0.06, tint: 0.92 },
+  play_gravel: { color: 2, lift: 0.032, tint: 1.08 },
+  play_mat: { color: "paving4", lift: 0.05 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },
@@ -67,7 +76,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : typeof spec.color === "string" ? T.paving[Number(spec.color.slice(6))]! : T.ground[spec.color]!;
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     for (const poly of polys) {
-      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" ? bare : terrain, true);
+      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" ? bare : terrain, true);
       yield;
       if (name === "walk") {
         curbs(mb, [poly], terrain, color, onEdge);

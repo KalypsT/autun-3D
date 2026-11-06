@@ -2,12 +2,13 @@ import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { landmarkDecks, landmarkSectors } from "../core/landmarks";
+import { bowlPit } from "../core/leisure";
 import { addTileColliders } from "../core/world";
 import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
 import { buildFarTower } from "./monuments";
 import type { TiledTerrain } from "../data/terrain";
-import type { Furniture, LodBuilding, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
+import type { Furniture, LodBuilding, SailRoute, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
 import { weatherize } from "./weather-fx";
@@ -47,6 +48,8 @@ export interface TileExtras {
   marks: number[][][];
   /** Polygones d'eau de la tuile (rivières, plan d'eau ; anneau extérieur puis trous), pour les animaux de l'eau (D203). */
   water?: number[][][];
+  /** Boucles des voiliers du plan d'eau du Vallon (D249). */
+  sail?: SailRoute[];
 }
 
 interface Entry {
@@ -220,7 +223,7 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
-    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [], sail: data.structures?.sail ?? [] };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);
@@ -252,10 +255,13 @@ export class TileManager {
       return { ...p, z: z + p.h, id: `q:${id}:${i}` };
     });
     this.terrain.decks.add(id, [...st.decks, ...extra], platforms);
+    // Bowl de l'aire de glisse (D248) : creux d'affichage du relief.
+    this.terrain.pits.add(id, (st.equip ?? []).filter((e) => e.k === "bowl").map(bowlPit));
   }
 
   private unload(e: Entry): void {
     this.terrain.decks.remove(e.info.id);
+    this.terrain.pits.remove(e.info.id);
     if (this.job?.e === e) {
       this.job.steps.return(undefined as unknown as TileMeshes);
       this.job = null;

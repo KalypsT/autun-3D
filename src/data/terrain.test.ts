@@ -159,6 +159,8 @@ describe("relief réel par tuiles", () => {
     for (let i = 0; i < 4000; i++) {
       const [x0, y0, x1, y1] = manifest.zone;
       const x = x0 + 1 + ((i * 7919) % Math.floor(x1 - x0 - 2)), y = y0 + 1 + ((i * 104729) % Math.floor(y1 - y0 - 2));
+      // Sous l'eau de la ville, le fond est creusé dans le relief fin seulement (D240 : de loin, on ne voit que la surface ; D246 : tout le Vallon).
+      if (terrain.waterAt(x, y) !== undefined) continue;
       diffs.push(Math.abs(terrain.coarse.heightAt(x, y) - terrain.heightAt(x, y)));
     }
     diffs.sort((a, b) => a - b);

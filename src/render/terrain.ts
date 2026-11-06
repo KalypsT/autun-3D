@@ -102,6 +102,7 @@ export class TerrainView {
   /** Coin sud-ouest de la grille mondiale. */
   private readonly zone: [number, number];
   private readonly lattice: [number, number];
+  private pitsVersion = 0;
   private readonly blockSize: number;
   private readonly superCells: Map<string, { x0: number; y1: number }>;
   private readonly superTiles: number;
@@ -185,7 +186,8 @@ export class TerrainView {
   private build(c: Chunk, level: number): void {
     const [bx0, by0, bx1, by1] = c.info.bounds;
     // Relief nu : les tabliers de pont (D93) ne doivent pas combler la vallée sous eux.
-    const field: HeightField = level < 2 ? this.terrain.ground : this.terrain.coarse;
+    // Creux d'affichage (D248) : le relief proche passe sous le bowl, dessiné plus finement que ces carreaux.
+    const field: HeightField = level < 2 ? this.terrain.display : this.terrain.coarse;
     const step = level === 0 ? this.nearStep : LEVELS[level]![1];
     const cx = Math.max(1, Math.round((bx1 - bx0) / step)), cy = Math.max(1, Math.round((by1 - by0) / step));
     const nx = cx + 1, ny = cy + 1;
@@ -326,6 +328,15 @@ export class TerrainView {
   /** Met à jour les niveaux de détail ; `budget` limite le nombre de morceaux reconstruits par appel. */
   update(px: number, py: number, budget = 2): void {
     this.frame++;
+    // Creux d'affichage ajoutés ou retirés (tuile chargée ou déchargée, D248) : les morceaux proches qu'ils touchent se reconstruisent.
+    if (this.terrain.pits.version !== this.pitsVersion) {
+      this.pitsVersion = this.terrain.pits.version;
+      const boxes = this.terrain.pits.boxes();
+      for (const c of this.active) {
+        const [x0, y0, x1, y1] = c.info.bounds;
+        if (c.level >= 0 && c.level < 2 && (boxes.length === 0 || boxes.some(([a, b, cc, d]) => a <= x1 && cc >= x0 && b <= y1 && d >= y0))) c.level = -1;
+      }
+    }
     const todo: { c: Chunk; want: number; d: number }[] = [];
     for (const c of this.near(px, py, VIEW_RANGE + VIEW_MARGIN)) {
       const d = this.distance(c, px, py);

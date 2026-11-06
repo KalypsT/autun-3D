@@ -75,6 +75,24 @@ export function crowdWeek(weekday: number, hour: number, x: number, y: number, z
   return k;
 }
 
+/** Emprise du plan d'eau du Vallon et de son tour (D249) : x0, y0, x1, y1 (repère local, m). */
+export const VALLON_BOX = [950, -70, 1560, 700] as const;
+
+/**
+ * Promeneurs et joggeurs du tour du lac du Vallon (D249, plan vallon-lac §7) : une promenade très courue. Dans l'emprise du lac, une
+ * fois et demie plus de passants ; le week-end l'après-midi (13 h 30 à 19 h), encore 60 % de plus ; l'été en fin de journée (17 h 30 à
+ * 21 h), 30 % de plus ; l'hiver, 30 % de moins. Hors de l'emprise : 1. `season` : 0 printemps, 1 été, 2 automne, 3 hiver.
+ */
+export function crowdVallon(weekday: number, hour: number, season: number, x: number, y: number): number {
+  const [x0, y0, x1, y1] = VALLON_BOX;
+  if (x < x0 || x > x1 || y < y0 || y > y1) return 1;
+  let k = 1.5;
+  if (weekday >= 5) k *= 1 + 0.6 * smooth(13, 13.5, hour) * (1 - smooth(19, 19.5, hour));
+  if (season === 1) k *= 1 + 0.3 * smooth(17, 17.5, hour) * (1 - smooth(21, 21.5, hour));
+  if (season === 3) k *= 0.7;
+  return k;
+}
+
 /** Moins de voitures le samedi (×0,85) et le dimanche (×0,6). */
 export function trafficWeek(weekday: number): number {
   return weekday === 6 ? 0.6 : weekday === 5 ? 0.85 : 1;

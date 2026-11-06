@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Sailboats } from "../render/sailboats";
 import type { GameContext } from "./context";
 import { NavDebug } from "../render/nav-debug";
 import { NavManager } from "./nav-manager";
@@ -57,6 +58,30 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "nautique-darse": [1312, 606, 1.7, 1318, 588, 2],
   "nautique-lac": [1290, 530, 1.7, 1308, 568, 2],
   "nautique-haut": [1345, 640, 35, 1308, 578, 0],
+  // Pontons et cale du plan d'eau du Vallon (D246) : ponton de pêche (comme la photo), darse et ponton de la base, cale, ponton de l'abri,
+  // ponton en L du sud-ouest, ponton de l'île (depuis le lac), vue haute de la base.
+  "pontons-peche": [1013, 316, 1.7, 1036, 300, -0.5],
+  "pontons-base": [1301, 641, 1.7, 1276, 628, -0.3],
+  cale: [1322, 613, 1.7, 1298, 604, -0.5],
+  "pontons-abri": [1292, 547, 1.7, 1273, 557, 0],
+  "pontons-sud-ouest": [1143, 121, 1.7, 1130, 165, -0.3],
+  "pontons-ile": [1298, 127, 2.1, 1292, 108, 0],
+  "pontons-haut": [1318, 660, 28, 1286, 600, 0],
+  // Équipements du plan d'eau du Vallon (D247) : skatepark depuis le parking (comme la photo), pump track, aire de jeux depuis le chemin (photo),
+  // agrès de l'ouest, gué du Brisecou, vue haute du skatepark.
+  skatepark: [1405, 590, 1.7, 1376, 566, 0],
+  "pump-track": [1418, 532, 1.7, 1395, 542, 0],
+  "aire-de-jeux": [1497, 182, 1.7, 1503, 158, 0.5],
+  agres: [998, 267, 1.7, 1012, 256, 0.5],
+  gue: [1345, 27, 1.7, 1351, 18, -0.3],
+  "skatepark-haut": [1415, 600, 26, 1385, 555, 0],
+  // Aire de glisse rénovée (D248) : piste d'éducation routière, bowl.
+  "piste-education": [1352, 548, 9, 1378, 580, 0],
+  bowl: [1365, 596, 3, 1376.3, 587.3, -1.5],
+  // Vie du lac (D249) : pêcheurs du sud-ouest (photo), pêcheur du ponton, voiliers depuis la digue (?season=ete&weekday=6&h=14).
+  pecheurs: [1150, 95, 1.7, 1185, 128, 0],
+  "pecheur-ponton": [1015, 330, 2, 1033, 316, 0],
+  voiliers: [1150, 628, 3, 1180, 520, -1],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.
@@ -128,6 +153,9 @@ export function startViewer(ctx: GameContext): void {
   const observer = (): Observer => ({ x: pos.x, y: -pos.z, vx: 0, vy: 0, yaw, onFoot: true, vehicle: null });
   const navDebug = nav && navParam ? new NavDebug(nav.graph, terrain, navParam === "all") : null;
   if (navDebug) scene.add(navDebug.group);
+  // Voiliers du plan d'eau du Vallon (D249), comme dans le jeu (?day= règle la saison).
+  const sailboats = new Sailboats();
+  scene.add(sailboats.group);
   const meter = new FrameMeter(renderer, debugEl);
   let last = performance.now();
   const fwd = new THREE.Vector3();
@@ -151,6 +179,7 @@ export function startViewer(ctx: GameContext): void {
     sunLight.position.copy(sunDir).multiplyScalar(400);
     tiles.update(pos.x, -pos.z);
     terrainView.update(pos.x, -pos.z);
+    sailboats.update(now / 1000, atmosphere.hour, atmosphere.calendar.season, atmosphere.calendar.weekday, tiles.loadedExtras().flatMap((e) => e.sail ?? []));
     nav?.update(pos.x, -pos.z);
     navDebug?.update(pos.x, -pos.z);
     if (pedSim && crowd && nav!.graph.edgeCount > 0) {

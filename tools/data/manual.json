@@ -130,11 +130,11 @@
     "stairs": {"s0": 46.2, "s1": 51.6, "n": 15}, "ends": [[0.0, 8.0], [46.6, 64.2]], "slab": 1.5, "head": [4.0, 3.6],
     "photo": "Photos de l'utilisateur : porte cochère de la rue aux Cordiers (arc surbaissé en pierre, plaque bleue), vue en enfilade depuis le haut de l'escalier, façade de la rue Demetz (grand arc, fronton), galerie bleu et or, statue du chien."
   },
-  "_water": "Eau de la ville (D240, build_water.py) : profondeur maximale (m) et pente de berge (m/m) par plan d'eau, désigné par un point ; sinon `default` selon la surface (m²). Profondeurs inventées (aucune bathymétrie publique). `closed` : un seul niveau, même si ses morceaux ne s'accordent pas (bruit du LiDAR sur l'eau). `shallow` : zones plafonnées (boîte x0, y0, x1, y1) dans le plan d'eau qui contient `at`.",
+  "_water": "Eau de la ville (D240, build_water.py) : profondeur maximale (m) et pente de berge (m/m) par plan d'eau, désigné par un point ; sinon `default` selon la surface (m²). Profondeurs inventées (aucune bathymétrie publique). `closed` : un seul niveau, même si ses morceaux ne s'accordent pas (bruit du LiDAR sur l'eau). `shallow` : zones plafonnées (boîte x0, y0, x1, y1) dans le plan d'eau qui contient `at`. `flood` (D246) : à plus de `flood` m du bord du polygone, tout est de l'eau, même là où le LiDAR (qui ne voit pas l'eau) a interpolé un relief plus haut que la surface. `extend` (D246) : contours ajoutés à l'eau d'OSM (lus sur l'orthophotographie), réunis au morceau qu'ils touchent.",
   "water": {
     "default": {"depth": 1.5, "slope": 0.25, "smallArea": 2000, "smallDepth": 0.8, "smallSlope": 0.3},
     "bodies": [
-      {"name": "Plan d'eau du Vallon", "at": [1245, 360], "depth": 3.0, "slope": 0.25, "closed": true},
+      {"name": "Plan d'eau du Vallon", "at": [1245, 360], "depth": 3.0, "slope": 0.25, "closed": true, "flood": 3},
       {"name": "L'Arroux, traversée de la ville", "at": [-103, 1364], "depth": 1.6, "slope": 0.2},
       {"name": "L'Arroux, aval nord", "at": [587, 3740], "depth": 1.6, "slope": 0.2},
       {"name": "L'Arroux, amont ouest", "at": [-1948, -130], "depth": 1.6, "slope": 0.2},
@@ -143,7 +143,8 @@
       {"name": "Étang perché (sud)", "at": [-409, -1208], "depth": 1.0, "slope": 0.25},
       {"name": "Étang perché (sud)", "at": [268, -1280], "depth": 1.0, "slope": 0.25}
     ],
-    "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}]
+    "shallow": [{"name": "Queue du Vallon (marais)", "at": [1245, 360], "box": [990, 40, 1500, 140], "depth": 0.4}],
+    "extend": [{"name": "Darse de la base nautique, au pied de la cale (D246)", "ring": [1295.0, 600.5, 1300.0, 601.5, 1306.3, 603.0, 1306.3, 606.5, 1305.0, 608.6, 1297.0, 609.6]}]
   },
   "_vallonPath": "Chemin du tour du plan d'eau du Vallon (D244, build_vallon_path.py ; plan docs/plans/vallon-lac.md, §12) : `sections` : tronçons de la boucle en abscisse s (m) de l'axe du relevé (vallon_survey.json), largeur w (m) mesurée à l'orthophotographie, voies OSM qu'ils remplacent (largeur des arêtes piétonnes) ; le raccord par la base (s 1205 à 1247) reste aux allées en enrobé de la base. `osmWays` : allées du sud prises telles quelles dans OSM. `meshFences` : clôtures (identifiant dans la tuile, ici la voie OSM) en grillage vert, hauteur vue sur les photos (1,8 m ; 3,2 m avant, valeur par défaut). `lamps` : lampadaires (photos de la rive est), un tous les `step` m entre les abscisses s du tronçon, à `off` m du bord, côté terre. Roseaux : le long du bord du lac à moins de `reedsNearPath` m du chemin, plages de 12 m gardées à `share`, sauf `noReeds` (cercles x, y, r : pontons, cale ; boîtes x0, y0, x1, y1 : base nautique, pelouses de pêche).",
   "vallonPath": {
@@ -166,5 +167,98 @@
       "circles": [[1295, 635, 12], [1025, 310, 12], [1033, 322, 12], [1134, 146, 12], [1292, 105, 12], [1306, 606, 16]],
       "boxes": [[1250, 540, 1390, 690], [1090, 105, 1250, 175], [995, 250, 1065, 335]]
     }
-  }
+  },
+  "_vallonPiers": "Pontons, cale et bateaux du plan d'eau du Vallon (D246, build_vallon_piers.py ; plan docs/plans/vallon-lac.md, §5 et §15). Tout est relevé sur l'orthophotographie IGN à 10 cm (vignettes de survey_vallon.py) et les photos de l'utilisateur, positions approchées à 0,5 m près. `piers` : tracé x, y (OSM recalé sur l'image ; le premier point est sur la berge quand `shore`), largeur `w` (m), hauteur `h` au-dessus du lac (m, photos : le LiDAR ne voit pas l'eau), `float` : flotteurs (sinon pieux). Le ponton de pêche de l'ouest est noté flottant dans OSM mais repose sur des pieux sur la photo : pieux. Ponton de l'île (OSM w1227421196, 23 m vers le large, invisible sur l'image) : raccourci au bord des arbres (11 m, choix de l'utilisateur). Le sixième ponton (absent d'OSM) et son abri : mesurés sur l'image ; l'abri (toit blanc de 8 × 10 m contre le milieu du ponton, côté rive) est un toit sur poteaux, la passerelle dessous est supposée. `shelters` : centre `c`, angle `a` (degrés, du côté `l` depuis l'est), longueur `l` et largeur `w` (m), dessous du toit à `h` m au-dessus du lac. `boats` : x, y, cap `a` de la proue (degrés depuis l'est), longueur `l`, largeur `w`, sorte `k` (dinghy : dériveur, kayak, barque), couleur de coque `c` ; `moored` : à l'eau ; `mast` : mât. 27 coques comptées sur le quai de la darse (image de l'été) ; les deux bateaux amarrés au ponton de la base sont approchés (aucun n'est visible sur l'image). `ground` : sols posés par l'étape, contours lus sur l'image : `slipway`, la cale (béton clair), prolongée de 5 m sous l'eau, sur le relief mesuré (pente 0,15 à 0,18, non retaillé) ; `quay`, le quai de la darse et la bande où sont rangés les dériveurs (enrobé gris, dessinés en herbe jusqu'ici).",
+  "vallonPiers": {
+    "piers": [
+      {"name": "Ponton de la base", "osm": "w422698578", "shore": 1, "float": 1, "h": 0.3, "w": 2.0, "p": [1290.5, 634.2, 1266.1, 628.5]},
+      {"name": "Ponton de pêche, passerelle", "osm": "w842375499", "shore": 1, "h": 0.35, "w": 1.2, "p": [1022.0, 310.1, 1032.8, 310.1]},
+      {"name": "Ponton de pêche", "osm": "w842375500", "h": 0.35, "w": 1.5, "p": [1032.7, 322.5, 1032.8, 310.1, 1033.0, 281.7, 1043.8, 263.9]},
+      {"name": "Ponton du sud-ouest", "osm": "w842375502", "shore": 1, "float": 1, "h": 0.3, "w": 1.5, "p": [1135.4, 128.0, 1132.6, 179.0, 1112.4, 177.8]},
+      {"name": "Ponton de l'île", "osm": "w1227421196", "shore": 1, "h": 0.45, "w": 1.5, "p": [1292.0, 102.5, 1292.0, 116.0]},
+      {"name": "Ponton de l'abri", "osm": null, "float": 1, "h": 0.3, "w": 2.4, "p": [1269.0, 565.8, 1277.0, 546.5]},
+      {"name": "Passerelle sous l'abri", "osm": null, "shore": 1, "float": 1, "h": 0.3, "w": 3.0, "p": [1281.5, 557.0, 1274.0, 555.6]}
+    ],
+    "shelters": [
+      {"name": "Abri du ponton", "c": [1279.6, 556.1], "a": 17, "l": 8.3, "w": 10.0, "h": 3.0}
+    ],
+    "boats": [
+      {"x": 1285.8, "y": 647.5, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#e8c547"},
+      {"x": 1286.3, "y": 644.8, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#4cc3c9"},
+      {"x": 1287.0, "y": 642.2, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#e2b93f"},
+      {"x": 1288.8, "y": 639.8, "a": 198, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1292.5, "y": 628.2, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1293.0, "y": 625.5, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1294.3, "y": 623.0, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1295.2, "y": 620.5, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1296.0, "y": 618.0, "a": 195, "l": 4.3, "w": 1.7, "k": "dinghy", "c": "#f4f4f0"},
+      {"x": 1296.2, "y": 615.5, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#9ccf3a"},
+      {"x": 1296.6, "y": 614.2, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#3fb7c9"},
+      {"x": 1296.8, "y": 613.0, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#4fae5c"},
+      {"x": 1297.2, "y": 611.5, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#3f78c9"},
+      {"x": 1297.7, "y": 610.2, "a": 195, "l": 3.0, "w": 0.7, "k": "kayak", "c": "#e07a3a"},
+      {"x": 1295.0, "y": 598.8, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1296.2, "y": 599.2, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1297.5, "y": 599.6, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1298.8, "y": 600.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1300.0, "y": 600.4, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1301.5, "y": 600.8, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1302.8, "y": 601.2, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1282.0, "y": 594.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1283.2, "y": 594.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1284.5, "y": 595.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1285.8, "y": 595.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1287.0, "y": 596.0, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1288.3, "y": 596.5, "a": 107, "l": 2.4, "w": 1.15, "k": "dinghy", "c": "#f2f2ee"},
+      {"x": 1280.3, "y": 633.8, "a": 193, "l": 4.2, "w": 1.6, "k": "dinghy", "c": "#f4f4f0", "moored": 1, "mast": 1},
+      {"x": 1274.5, "y": 632.4, "a": 193, "l": 3.8, "w": 1.4, "k": "barque", "c": "#5f7d6a", "moored": 1}
+    ],
+    "ground": {
+      "slipway": [[1301.0, 603.6, 1315.0, 604.4, 1315.0, 611.6, 1301.0, 611.0]],
+      "quay": [[1280.5, 660.0, 1282.5, 654.0, 1285.0, 646.0, 1288.5, 636.0, 1291.5, 626.0, 1295.0, 616.0, 1298.5, 610.0, 1306.0, 610.6, 1302.5, 616.0, 1299.0, 626.0, 1294.5, 636.0, 1292.0, 646.0, 1288.5, 654.0, 1286.5, 660.0],
+               [1279.5, 592.5, 1305.5, 599.0, 1305.5, 603.5, 1300.0, 601.5, 1295.0, 600.5, 1280.0, 596.5]]
+    }
+  },
+  "_vallonLeisure": "Équipements du plan d'eau du Vallon (D247, D248, build_vallon_leisure.py ; plan docs/plans/vallon-lac.md, §6, §16 et §17). L'aire de glisse urbaine a été rénovée après l'orthophotographie et le LiDAR : elle est placée d'après deux photos aériennes et le plan de conception fournis par l'utilisateur (D248), dans le repère de l'ancienne dalle (centre (1374,3 ; 568,7), u à 23,7° vers le parking, v à 113,7° vers le nord-nord-ouest), décalée de 1,5 m vers le parking : positions et tailles approchées à 1 ou 2 m près. `ground.skate` : la bande de béton côté parking (u de 2,5 à 16,5, v de −17 à 21) ; `skate` : modules en tabliers (`quarter` : rampe courbe de `run` m montant à `h` m, plate-forme de `top` m ; `funbox` : rampe, plateau, rampe ; `box` : bloc ; `a` : sens de la montée, degrés depuis l'est ; `l` : largeur en travers) ; `bowl` : bassin creusé de `depth` m dans le relief (contour rectangle arrondi `l` × `w`, rayon `r`, parois en quart de cercle) ; `court` : piste d'éducation routière peinte, aussi terrain multisport (enrobé, îlots verts, rond-point, marquages, places, lignes et cercles orange, bordure en bois) ; `rail` : barre de glisse. Le relief est aplani sur toute l'aire au plan `slabPlane` (mesuré au LiDAR sur l'ancienne dalle, `--plan`), puis le bowl y est creusé. `pump` : les trois boucles du pump track (OSM w1257122934 à 36), lissées, enrobé de `w` m à `base` m au-dessus du plus haut des quatre points de relief voisins, qui porte déjà ses bosses (LiDAR, ±0,3 m). `equip` : jeux (`play_small`, `play_big` : structures à toboggans, couleurs des photos ; `springer` : jeu à ressort), table, banc, agrès (OSM : leisure=fitness_station), panneaux (OSM), écartés d'au moins 1,2 m du bord du chemin. `fence` : grillages (celui de l'ancienne dalle a disparu), `ganivelle` : clôture de châtaignier le long du parking (photo), tracé approché. `ford` : gué en pierres plates du Brisecou (OSM w1290256590, sous les arbres : approché) et la rigole qu'il enjambe. `ground` : sols (bande de béton du skatepark, gravillons et sol souple rouge de l'aire de jeux). `replaces` : contours OSM (ancien skatepark, pump track) dont les terrains et pistes génériques (build_kinds.py) et la pelouse de sport (build_public_space.py) sont retirés.",
+  "vallonLeisure": {
+    "skate": [
+      {"name": "Quarter sud", "k": "quarter", "c": [1388.99, 558.88], "a": -66.3, "l": 13.0, "run": 2.6, "top": 1.0, "h": 1.2},
+      {"name": "Funbox", "k": "funbox", "c": [1385.52, 569.26], "a": 113.7, "l": 3.5, "run": 1.6, "top": 2.4, "h": 0.6},
+      {"name": "Ledge", "k": "box", "c": [1378.77, 568.48], "a": 113.7, "l": 7.0, "w": 0.6, "h": 0.45},
+      {"name": "Plan incliné", "k": "quarter", "c": [1388.71, 573.93], "a": 23.7, "l": 5.0, "run": 1.5, "top": 0.5, "h": 0.6}
+    ],
+    "rails": [
+      {"name": "Barre de glisse", "p": [1380.11, 572.89, 1378.1, 577.47], "h": 0.35}
+    ],
+    "equip": [
+      {"name": "Petite structure (toboggan bleu)", "k": "play_small", "x": 1502.8, "y": 170.0, "a": -15, "l": 3.6, "w": 2.2},
+      {"name": "Grande structure (toboggans orange)", "k": "play_big", "x": 1504.0, "y": 160.5, "a": -15, "l": 8.0, "w": 3.6},
+      {"name": "Jeu à ressort orange", "k": "springer", "x": 1506.4, "y": 151.6, "a": 160, "c": "#e8873a"},
+      {"name": "Jeu à ressort bleu", "k": "springer", "x": 1509.0, "y": 150.0, "a": 160, "c": "#3f8fd1"},
+      {"name": "Banc de l'aire de jeux", "k": "bench", "x": 1508.6, "y": 168.6, "a": 195},
+      {"name": "Table de l'aire de jeux", "k": "picnic", "x": 1510.6, "y": 158.0, "a": 75},
+      {"name": "Table du sud (OSM n14017706285)", "k": "picnic", "x": 1345.6, "y": -58.0, "a": 0},
+      {"name": "Table du sud (OSM n14017743326)", "k": "picnic", "x": 1406.2, "y": -41.2, "a": 0},
+      {"name": "Agrès de l'ouest (OSM n12070319370)", "k": "fitness", "x": 1006.3, "y": 261.4, "a": 0},
+      {"name": "Agrès du sud (OSM n14017608136)", "k": "fitness", "x": 1210.1, "y": 53.7, "a": 0},
+      {"name": "Agrès de l'est (OSM n10089088120)", "k": "fitness", "x": 1504.4, "y": 136.1, "a": 0},
+      {"name": "Les oiseaux du lac (OSM n14017745319)", "k": "board", "x": 1413.5, "y": 48.5, "a": 0},
+      {"name": "Réglementation de la pêche (OSM n14000252650)", "k": "board", "x": 980.1, "y": 166.7, "a": 0},
+      {"name": "Plan du site (OSM n13755176837)", "k": "board", "x": 985.7, "y": 166.5, "a": 0}
+    ],
+    "fence": [],
+    "court": {"name": "Piste d'éducation routière et terrain multisport", "c": [1369.01, 565.83], "a": 113.7, "l": 32.0, "w": 17.0},
+    "bowl": {"name": "Bowl", "c": [1376.37, 587.63], "a": 113.7, "l": 9.0, "w": 13.0, "depth": 1.8, "r": 3.0},
+    "ganivelle": [
+      {"name": "Ganivelle le long du parking, nord", "h": 1.1, "p": [1383.0, 597.5, 1391.5, 595.5, 1392.6, 589.0]},
+      {"name": "Ganivelle le long du parking, est", "h": 1.1, "p": [1393.4, 584.0, 1394.3, 578.5, 1401.0, 572.5, 1413.0, 564.6, 1425.5, 556.5]}
+    ],
+    "pump": {"osm": [1257122934, 1257122935, 1257122936], "w": 2.0, "base": 0.15},
+    "slabPlane": [0.02688, 0.001528, -61.134],
+    "replaces": [247999128, 842375495],
+    "ford": {"name": "Gué du Brisecou", "stones": [1351.8, 17.8, 1347.9, 22.3], "n": 5, "brook": [1343.5, 14.0, 1350.0, 19.9, 1358.5, 25.0], "brookW": 1.4},
+    "ground": {"skate": [[1383.42, 554.14, 1396.24, 559.77, 1380.97, 594.56, 1368.15, 588.93]], "play_gravel": "osm:247999116", "play_mat": [[1500.4, 166.0, 1505.2, 166.0, 1505.2, 173.4, 1500.4, 173.4]]}
+  },
+  "_vallonLife": "Vie du plan d'eau du Vallon (D249, build_vallon_life.py ; plan docs/plans/vallon-lac.md, §7 et §18). `anglers` : groupes de pêcheurs à la carpe, toujours là (choix de l'utilisateur), d'après ses photos : `at` est un point près de la rive, recalé sur le bord de l'eau ; chaque groupe a `bivvies` biwys kaki (abris de pêche) à 5 m de l'eau, autant de supports à cannes au bord et `anglers` pêcheurs assis ; `deck` : posé sur le ponton nommé (pêcheur du ponton de pêche). Le groupe du sud-ouest est celui de la photo (trois biwys, le ponton en L au fond) ; positions approchées. `sail` : boucles des voiliers (ellipses : centre, demi-axes, angle en degrés), vérifiées dans le lac (fond d'au moins `minDepth` m, à plus de `margin` m du bord, des îles et des pontons) ; le nombre de voiliers dehors suit la saison, l'heure et le jour (src/core/sailing.ts). `tallGrass` : zone (anneau x, y) où l'herbe est plus haute au sud (choix de l'utilisateur : sud « sauvage avec modération »), entre l'eau et le chemin, à plus de `pathClear` m du bord du chemin, hors des pelouses de pêche et des pontons.",
+  "vallonLife": {"anglers": [{"name": "Pêcheurs de la pelouse du sud-ouest (photo)", "at": [1168, 121], "bivvies": 3, "anglers": 2, "spread": 7.0}, {"name": "Pêcheur de la rive sud", "at": [1290, 52], "bivvies": 1, "anglers": 1, "spread": 5.0}, {"name": "Pêcheur du ponton de pêche", "deck": "Ponton de pêche", "s": 2.0, "bivvies": 0, "anglers": 1}], "sail": {"minDepth": 1.2, "margin": 12, "routes": [{"name": "Grande boucle", "c": [1245, 390], "rx": 115, "ry": 70, "a": 75}, {"name": "Boucle du nord", "c": [1170, 520], "rx": 45, "ry": 28, "a": 20}, {"name": "Boucle de l'est", "c": [1360, 330], "rx": 40, "ry": 55, "a": 10}]}, "tallGrass": {"pathClear": 1.5, "area": [960, 0, 1460, -10, 1470, 60, 1300, 75, 1200, 110, 1100, 170, 1060, 260, 1040, 330, 990, 330, 970, 200]}}
 }
