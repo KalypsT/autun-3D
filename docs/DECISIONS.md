@@ -5313,3 +5313,46 @@ Collisions : emprise de l'escalier et du massif (on ne monte pas l'escalier : la
 **Tests** (+1, 1 346 au total ; `src/render/ramparts.test.ts`).
 
 ![L'escalier de la rue du Vieux Colombier, vu du nord](captures/d257-escalier.jpg)
+
+## 2026-11-06 — D258. Le Lycée militaire, lot 1 : volumes et toits mesurés, tuiles vernissées, cour d'honneur
+
+**Demande de l'utilisateur** : intégrer le Lycée militaire d'après ses photos ; enquête faite (`docs/plans/lycee-militaire.md`, lot 0). Réponses :
+tout inclure ; grand portail de l'avenue du 2e Dragons fermé, entrée de la rue Gaston Joliet ouverte ; « vas-y » sur le plan et les choix par
+défaut des questions (cour d'honneur ouverte par le passage voûté, horloge au milieu de l'aile sud-est côté cour, bassin plein, entrée à pied et en
+voiture, pas de passants, lots dans l'ordre).
+
+**Avant** : `…844252` (5 683 m², deux trous) était un seul volume générique, égout à 8,3 m et faîtage à 12,9 m au-dessus du sol, fiche « 1920,
+enduit, ardoise, commerce » : 7 m trop bas.
+
+**Relevés** (LiDAR HD à 25 cm, `tools/data/survey_militaire.py`) : faîtages ajustés sur la crête (écart de 0,2 m) ; bord du toit côté cour là où
+le MNS tombe sous 28 m (4,75 à 5,5 m du faîtage), galeries basses lues sur le palier à 22 m.
+
+**Modèle** (`college` de D148, quatorze ailes dans `manual.json`) :
+- trois grandes ailes à deux pans (nord-est, sud-ouest, sud-est ; faîtage 36,2 à 36,4, égouts 30,3 à 31,6, soit 20 m et 14 m au-dessus de la
+  cour), raccordées à leurs faîtages ; l'aile sud-est finit en croupe au sud-ouest ;
+- deux pavillons en pyramide aux bouts nord-ouest (faîtages 38,2 et 38,8) ;
+- galerie nord-ouest à terrasse (22,1 ; 14 m de profondeur) et cloître de 1,5 à 5 m sur les trois autres côtés de la cour (21,8) ;
+- annexe sud-ouest autour de la petite cour : cinq ailes (toit de tuiles brunes le long de la rue, ardoise ailleurs, terrasse au sud).
+
+**Nouveau dans le modèle `college`** (`CollegeWing`, `buildCollege`, `measure_college`) :
+- demi-largeurs imposées (`wl`, `wr`), toits plats mesurés (`flat`) ;
+- murs hors du contour (`il`, `ir`) : façades sur cour au-dessus du cloître ;
+- tuiles vernissées (`g`) : losanges jaunes à cœur vert ou rouge, en quinconce, sur fond brun ;
+- couverture par aile (`c`), pierre (`stone`) ;
+- murs des trous du contour : la cour d'honneur et la cour sud-ouest ont leurs façades.
+
+**Coût** : 8 074 triangles, dont 4 332 pour les losanges, et 290 de vitres allumées la nuit. La silhouette lointaine (`lod/28_35.json`) passe
+d'un prisme à quatorze, un par aile.
+
+**Jeu** : obstacles inchangés (contour BD TOPO et ses deux trous) ; la cour d'honneur reste fermée jusqu'au passage voûté (lot 6). Enseigne
+générique « LYCÉE MILITAIRE D'AUTUN » retirée par le modèle dédié : les lettres iront sur l'arc du grand portail (lot 3). Repère `?view=militaire`.
+
+**Pas fait** : façades (pierre, baies à petits carreaux, lucarnes, balustrade, passage voûté, horloge, cheminées : lot 2), entrées (lot 3), jardins
+(lot 4), autres bâtiments (lot 5).
+
+**Tests** (+5, 1 351 au total ; `src/render/militaire.test.ts`).
+
+![La façade nord-ouest depuis les pelouses, comme la photo 1](captures/d258-facade-nw.jpg)
+![La cour d'honneur](captures/d258-cour.jpg)
+![Vue depuis la piste](captures/d258-aerien.jpg)
+![L'entrée de la rue Gaston Joliet](captures/d258-entree-joliet.jpg)

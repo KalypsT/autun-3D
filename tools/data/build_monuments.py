@@ -2273,12 +2273,14 @@ def measure_college(bid, b, spec):
                     side[1 if v_ > 0 else -1].append(abs(v_))
         wl = round(float(np.median(side[1])), 2) if len(side[1]) >= 2 else hw
         wr = round(float(np.median(side[-1])), 2) if len(side[-1]) >= 2 else hw
+        # Demi-largeurs imposées (D258) : côté cour, le bord du toit n'est pas un mur du contour (relevé au LiDAR, survey_militaire.py).
+        wl, wr = w.get("wl", wl), w.get("wr", wr)
         lo, hi = w.get("win", [0.2, 0.8])
         ss = [lo * L + 0.5 * i for i in range(int((hi - lo) * L / 0.5))]
         at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
         ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
         eaves = []
-        for sign in (1, -1):
+        for sign in ((1, -1) if not w.get("flat") else ()):
             wside = wl if sign == 1 else wr
             os_ = [1.0 + 0.25 * i for i in range(int((wside - 0.7 - 1.0) / 0.25) + 1)]
             zs = [float(np.median([at(s_, sign * o) for s_ in ss])) for o in os_]
@@ -2286,18 +2288,25 @@ def measure_college(bid, b, spec):
             eaves.append(float(k * wside + c0))
         if "eave" in w:  # aile trop courte pour ajuster une pente : égout imposé (repris d'une aile voisine)
             eaves = [w["eave"], w["eave"]]
+        if w.get("flat"):  # terrasse ou galerie (D258) : toit plat à la médiane du MNS sur la bande de l'aile
+            zf = float(np.median([at(s_, o) for s_ in ss for o in np.linspace(-0.6 * wr, 0.6 * wl, 5)]))
+            ridge, eaves = zf, [zf, zf]
         wing = {"p": w["p"], "q": w["q"], "wl": wl, "wr": wr, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]}
         for key in ("dl", "dr"):
             if key in w:
                 kind, pitch = w[key].split(":")
                 wing[key] = [kind, float(pitch)]
+        for key in ("il", "ir", "g", "c"):  # murs sur cour, tuiles vernissées, couleur de la couverture (D258)
+            if key in w:
+                wing[key] = w[key]
         wings.append(wing)
         print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, demi-largeurs {wl} et {wr}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
     out = {"wings": wings}
     if "pavilions" in spec:
         out["pavilions"] = spec["pavilions"]
-    if "roof" in spec:
-        out["roof"] = spec["roof"]
+    for key in ("roof", "stone"):
+        if key in spec:
+            out[key] = spec[key]
     if "grille" in spec:
         out["grille"] = measure_grille(bid, spec["grille"])
     return out

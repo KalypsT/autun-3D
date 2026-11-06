@@ -202,3 +202,12 @@ Budget : modèle principal (ailes, toits, façades) sous 20 000 triangles ; gril
 5. **Passants** (élèves en uniforme, personnel) dans l'enceinte : oui ou non ? Par défaut : **non** (comme le collège du Vallon).
 6. **Photos en plus** (facultatif) : un gros plan de l'avant-corps à horloge et de la galerie à balustrade, la façade nord-est vue des parterres, la cour d'honneur.
 7. **Ordre des lots** : 1 → 2 → 3 → 4 → 5 → 6 par défaut.
+
+## 8. Lot 1 fait (D258, 6 novembre 2026)
+
+Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte, horloge sur l'aile sud-est, bassin plein, entrée Gaston Joliet à pied et en voiture, pas de passants, lots dans l'ordre).
+
+- Modèle `college` étendu, quatorze ailes : trois grandes ailes (faîtages 36,2 à 36,4), deux pavillons (38,2 et 38,8), galerie nord-ouest (22,1), cloître (21,8), annexe sud-ouest en cinq ailes.
+- Tuiles vernissées en losanges, façades de la cour d'honneur et de la cour sud-ouest, façades sur cour au-dessus du cloître.
+- 8 074 triangles (cible du lot : 8 000 ; plafond du modèle : 20 000), silhouette lointaine en quatorze prismes.
+- Écart connu : le cloître du LiDAR finit à 8 à 8,5 m du faîtage ; le trou BD TOPO (murs de la cour et obstacles) à 7 à 9,9 m. On garde le trou BD TOPO jusqu'au lot 6.

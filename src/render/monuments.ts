@@ -1379,9 +1379,35 @@ function nearestWing(wings: readonly CollegeWing[], x: number, y: number): { w: 
   return { w: best, side: bestSide };
 }
 
+/** Tuiles vernissées (D258) : fond brun, losanges jaunes à cœur vert ou rouge, en quinconce ; cellule de 1,7 m le long de l'égout et 1,5 m dans la pente. */
+const GLAZE_GROUND = C("#4b2d21"), GLAZE_YELLOW = C("#d4a136"), GLAZE_GREEN = C("#3f6a3b"), GLAZE_ROUGE = C("#a6472d");
+const GLAZE_W = 1.7, GLAZE_H = 1.5;
+
+/**
+ * Losanges de tuiles vernissées sur un pan plan : `at(u, t)` est le point du pan à `u` m le long de l'égout et `t` m dans la pente (de 0 à `T`),
+ * `lo(t)` et `hi(t)` ses bords à la hauteur `t` (croupes) ; un losange n'est posé que s'il tient entier dans le pan, à 5 cm au-dessus de lui.
+ */
+function glaze(mb: MeshBuilder, f: Frame, at3: (u: number, t: number, lift: number) => [number, number, number], lo: (t: number) => number, hi: (t: number) => number, uMin: number, uMax: number, T: number): void {
+  const rows = Math.floor(T / GLAZE_H);
+  for (let j = 0; j < rows; j++) {
+    const tc = (j + 0.5) * GLAZE_H, shift = j % 2 ? GLAZE_W / 2 : 0;
+    for (let i = Math.floor(uMin / GLAZE_W) - 1; i * GLAZE_W + shift < uMax + GLAZE_W; i++) {
+      const uc = i * GLAZE_W + shift;
+      for (const [k, col, lift] of [[0.42, GLAZE_YELLOW, 0.05], [0.18, (i + j) % 2 ? GLAZE_GREEN : GLAZE_ROUGE, 0.08]] as const) {
+        const hu = GLAZE_W * k, ht = GLAZE_H * k;
+        const tips: [number, number][] = [[uc, tc - ht], [uc + hu, tc], [uc, tc + ht], [uc - hu, tc]];
+        if (tips.some(([u, t]) => t < 0 || t > T || u < lo(t) + 0.05 || u > hi(t) - 0.05)) break;
+        const [a, b, c, d] = tips.map(([u, t]) => at3(u, t, lift));
+        pan(mb, f, a!, b!, c!, d!, col);
+      }
+    }
+  }
+}
+
 /** Toit d'une aile : deux pans (égouts propres à chaque côté), croupes, pignons pleins ou prolongés dans l'aile voisine. */
-function collegeRoof(mb: MeshBuilder, w: CollegeWing, wall: THREE.Color, tile: THREE.Color): void {
+function collegeRoof(mb: MeshBuilder, w: CollegeWing, wall: THREE.Color, collegeTile: THREE.Color): void {
   const f = frameOf(0, 0, 0, 1, 1);
+  const tile = w.g ? GLAZE_GROUND : w.c ? C(w.c) : collegeTile;
   const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], L = Math.hypot(dx, dy);
   const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
   const wl = w.wl + COLLEGE_OVERHANG, wr = w.wr + COLLEGE_OVERHANG;
@@ -1400,15 +1426,65 @@ function collegeRoof(mb: MeshBuilder, w: CollegeWing, wall: THREE.Color, tile: T
       mb.tri(A, B, Cc, N(f, ux * out, uy * out), wall);
     }
   }
+  if (!w.g) return;
+  // Pans longs : u le long de l'égout, t dans la pente (fraction t / T de la largeur vers le faîtage).
+  for (const [ww, ze] of [[wl, el], [-wr, er]] as const) {
+    const T = Math.hypot(ww, w.r - ze);
+    glaze(mb, f, (u, t, lift) => pt(u, ww * (1 - t / T), ze + ((w.r - ze) * t) / T + lift), (t) => (a0 * t) / T, (t) => L + ((a1 - L) * t) / T, 0, L, T);
+  }
+  // Croupes : u le long de l'égout du bout (de la droite vers la gauche de l'aile), t vers le sommet de la croupe.
+  for (const [end, u0, ridgeU] of [[w.a, 0, a0], [w.b, L, a1]] as const) {
+    if (end !== "hip") continue;
+    const zm = (el + er) / 2, T = Math.hypot(ridgeU - u0, w.r - zm), span = wl + wr;
+    glaze(mb, f, (u, t, lift) => {
+      const s = t / T, v = u - wr;
+      return pt(u0 + (ridgeU - u0) * s, v, er + ((el - er) * u) / span + (w.r - (er + ((el - er) * u) / span)) * s + lift);
+    }, (t) => (wr * t) / T, (t) => span - (wl * t) / T, 0, span, T);
+  }
+}
+
+/** Mur d'une aile hors du contour (`il`, `ir`, D258) : pierre, corniche et rangées de fenêtres du pied (altitude donnée) à l'égout. */
+function wingSideWall(mb: MeshBuilder, glow: MeshBuilder, w: CollegeWing, left: boolean, spec: [number, number, number], stone: THREE.Color): void {
+  const f = frameOf(0, 0, 0, 1, 1);
+  const [base, u0, u1] = spec;
+  const dx = w.q[0] - w.p[0], dy = w.q[1] - w.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+  const sgn = left ? 1 : -1, off = left ? w.wl : w.wr, top = left ? w.el : w.er;
+  const X = (u: number): ST => [w.p[0] + ux * u - uy * off * sgn, w.p[1] + uy * u + ux * off * sgn];
+  // Le mur tourne sa face vers l'extérieur de l'aile ; a → b dans le sens qui la met à droite.
+  const [a, b] = left ? [X(u1), X(u0)] : [X(u0), X(u1)];
+  const len = u1 - u0;
+  const wall: HallWall = { a, b, out: [-uy * sgn, ux * sgn], top, front: false };
+  wallBands(mb, f, wall, () => base + 0.4, [], [stone]);
+  course(mb, f, wall, top - 0.7, top - 0.15, 0.22, COLLEGE_TRIM);
+  const bays = Math.floor((len - 2.4) / COLLEGE_BAY);
+  for (let j = 0; j < bays; j++) {
+    const u = len / 2 + (j - (bays - 1) / 2) * COLLEGE_BAY;
+    for (let r = 0, z0 = base + 1.0; z0 + 1.8 < top - 0.9; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.7, false, false, (j + r) % 3 === 0);
+  }
 }
 
 /**
  * Collège d'après relevé LiDAR (D148) : murs sur le contour BD TOPO (pierre blonde, corniche, rangées de fenêtres tous les 3,2 m, chacune à son
  * niveau au-dessus du sol local), chaque mur montant à l'égout de l'aile dont il longe le toit, puis un toit à deux pans par aile.
  */
-export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, ring: readonly number[], terrain: HeightField): void {
+export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, outer: readonly number[], terrain: HeightField, holes: readonly (readonly number[])[] = []): void {
+  // Les cours fermées (trous du contour, D258) ont leurs murs comme le contour : tournés dans l'autre sens, l'extérieur y est aussi à droite.
+  for (const ring of [outer, ...holes]) collegeWalls(mb, glow, m, ring, terrain);
+  const stone = m.stone ? C(m.stone) : COLLEGE_STONE;
+  for (const w of m.wings) {
+    if (w.il) wingSideWall(mb, glow, w, true, w.il, stone);
+    if (w.ir) wingSideWall(mb, glow, w, false, w.ir, stone);
+  }
+  const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
+  for (const w of m.wings) collegeRoof(mb, w, stone, tile);
+  collegeDetails(mb, glow, m, terrain);
+  if (m.grille) buildGrille(mb, m.grille, terrain);
+}
+
+function collegeWalls(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, ring: readonly number[], terrain: HeightField): void {
   const f = frameOf(0, 0, 0, 1, 1);
   const ground = (s: number, t: number): number => terrain.heightAt(s, t);
+  const stone = m.stone ? C(m.stone) : COLLEGE_STONE;
   const n = ring.length / 2;
   for (let i = 0; i < n; i++) {
     const a: ST = [ring[2 * i]!, ring[2 * i + 1]!], b: ST = [ring[2 * ((i + 1) % n)]!, ring[2 * ((i + 1) % n) + 1]!];
@@ -1419,7 +1495,7 @@ export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec,
     const top = side > 0 ? wing.el : wing.er;
     // Contour dans le sens trigonométrique : l'extérieur est à droite.
     const wall: HallWall = { a, b, out: [(b[1] - a[1]) / len, -(b[0] - a[0]) / len], top, front: false };
-    wallBands(mb, f, wall, ground, [], [COLLEGE_STONE]);
+    wallBands(mb, f, wall, ground, [], [stone]);
     if (len < 1.5) continue;
     course(mb, f, wall, top - 0.7, top - 0.15, 0.22, COLLEGE_TRIM);
     // Soubassement de pierre grise et bandeau entre le rez-de-chaussée et l'étage (D151), par morceaux qui suivent le sol.
@@ -1438,10 +1514,6 @@ export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec,
       for (let r = 0, z0 = g + 1.0; z0 + 1.8 < top - 0.9; r++, z0 += COLLEGE_STOREY) bay(mb, glow, f, wall, u, 1.0, z0, 1.7, false, false, (i + j + r) % 3 === 0);
     }
   }
-  const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
-  for (const w of m.wings) collegeRoof(mb, w, COLLEGE_STONE, tile);
-  collegeDetails(mb, glow, m, terrain);
-  if (m.grille) buildGrille(mb, m.grille, terrain);
 }
 
 // --- Grille d'honneur (D149) ---------------------------------------------------------------------------------------------------------

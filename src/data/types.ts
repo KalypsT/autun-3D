@@ -368,6 +368,16 @@ export interface CollegeWing {
   /** Lucarnes (D151) sur le pan gauche (`dl`) et le pan droit (`dr`) : [« ped » (fronton triangulaire) ou « rect » (chien-assis), pas en m]. */
   dl?: ["ped" | "rect", number];
   dr?: ["ped" | "rect", number];
+  /**
+   * Mur sur le côté gauche (`il`) ou droit (`ir`) de l'aile, hors du contour BD TOPO (D258, Lycée militaire : façades sur cour au-dessus des galeries
+   * du cloître) : [altitude du pied, de u0 à u1 mètres depuis p] ; il monte jusqu'à l'égout de ce côté.
+   */
+  il?: [number, number, number];
+  ir?: [number, number, number];
+  /** Couverture en tuiles vernissées bourguignonnes (D258) : losanges jaunes, verts et rouges sur fond brun. */
+  g?: 1;
+  /** Couleur de la couverture de cette aile (terrasse, galerie) ; sinon celle du collège. */
+  c?: string;
 }
 
 /** Avant-corps central d'une façade (D151) : sur le pan `left` ou droit de l'aile `w`, à `u` mètres de son début, demi-largeur `hw`. */
@@ -419,6 +429,8 @@ export interface CollegeSpec {
   grille?: CollegeGrille;
   /** Avant-corps à fronton cintré, inscription et drapeaux (D151). */
   pavilions?: CollegePavilion[];
+  /** Pierre des murs (blonde par défaut). */
+  stone?: string;
 }
 
 export interface BuildingKind {

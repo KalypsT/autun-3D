@@ -1912,3 +1912,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Sept questions t'attendent à la fin du plan (§7).
 
 ![Le lycée militaire aujourd'hui dans le jeu](docs/captures/militaire-avant-aerien.jpg)
+
+**Lycée militaire, lot 1 : volumes et toits (6 novembre 2026)** (D258)
+- Le lycée a sa vraie forme et sa vraie hauteur, mesurées au LiDAR : trois grandes ailes de 20 m autour de la cour d'honneur, deux pavillons en pyramide au nord-ouest, la galerie basse à terrasse entre eux, le cloître le long de la cour, l'annexe autour de la petite cour sud-ouest.
+- Les toits ont leurs tuiles vernissées : losanges jaunes, verts et rouges sur fond brun.
+- La cour d'honneur a ses façades ; on n'y entre pas encore (le passage voûté viendra au lot 6).
+- À regarder : `?view=militaire&h=14` (comme ta photo 1).
+
+![Le lycée militaire depuis les pelouses](docs/captures/d258-facade-nw.jpg)
