@@ -6,6 +6,7 @@ import { inScenarioZone, loadRealNav, loadRealWorld } from "./testing";
 import { createVehicle, stepVehicle } from "./vehicle";
 import { CATALOG, vehicleDef } from "./vehicle-catalog";
 import { buildColliders } from "./world";
+import { Colliders } from "./collision";
 
 const world = loadRealWorld();
 const { cells } = loadRealNav();
@@ -162,5 +163,39 @@ describe("conducteur simulé (J3-1)", () => {
       expect(r.maxOff).toBeLessThan(3.5);
       expect(r.distance).toBeGreaterThan(300);
     }
+  });
+});
+
+describe("dégagement du fugitif simulé (D251)", () => {
+  /** Une voiture sur sa voie, un mur posé en travers à 12 m devant (le tracé ne le connaît pas) : secondes de marche arrière voulue (frein à fond
+   * en reculant ; le rebond du choc n'en est pas) et état final. */
+  const blocked = (unstick: boolean): { reverse: number; lost: boolean; why: string } => {
+    const st = starts(40)[0]!;
+    const spec = vehicleDef("compacte")!.spec;
+    const lp = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, st, 2, lp);
+    const ahead = { x: 0, y: 0, heading: 0 };
+    lanePoint(nav.road, st, 14, ahead);
+    const wall = new Colliders();
+    const nx = Math.cos(ahead.heading), ny = -Math.sin(ahead.heading);
+    wall.addSegment(ahead.x - nx * 6, ahead.y - ny * 6, ahead.x + nx * 6, ahead.y + ny * 6);
+    const s = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
+    const d = new Driver(nav, st, 2, 1, spec, null);
+    d.unstick = unstick;
+    let reverse = 0;
+    for (let i = 0; i < 60 * 7 && !d.lost; i++) {
+      const input = d.update(s, 1 / 60);
+      stepVehicle(s, spec, input, 1 / 60, world.terrain, wall);
+      if (input.brake > 0.99 && s.speed < -0.3) reverse += 1 / 60;
+    }
+    return { reverse, lost: d.lost, why: d.lostWhy };
+  };
+
+  it("coincé contre un mur, il recule (le frein à l'arrêt fait reculer) au lieu d'attendre d'être déclaré bloqué", () => {
+    expect(blocked(true).reverse).toBeGreaterThan(0.8);
+  });
+
+  it("sans dégagement (la circulation), il reste contre le mur sans reculer", () => {
+    expect(blocked(false).reverse).toBe(0);
   });
 });

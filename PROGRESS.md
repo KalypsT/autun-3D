@@ -1859,7 +1859,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La face du mur est posée là où le LiDAR voit la marche ; elle ne déborde plus sur les chaussées.
 - Pas encore : l'aspect (lot 2), les tours (lot 3), la promenade (lot 4).
 - À regarder : `?view=custom&cam=713,-104.5,1.7,690.7,-92.8,5&h=14` (R11), `cam=333.3,-524.4,1.7,354,-490,3` (rue du Vieux Colombier), `cam=-154.3,-405.8,1.7,-167.8,-368.1,3` (boulevard des Résistants Fusillés).
-- Un test de poursuite échoue (voir D250) : décision à prendre.
+- Le test de poursuite qui échouait passe de nouveau : le fugitif simulé recule quand il est coincé, comme tu le ferais (D251).
 
 ![R11 avant](docs/captures/d250-r11-avant.jpg)
 ![R11 après](docs/captures/d250-r11.jpg)

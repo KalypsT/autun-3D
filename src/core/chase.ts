@@ -1,5 +1,5 @@
 import type { Colliders } from "./collision";
-import { extentOf, type Driver, type Other } from "./driver";
+import { blockedBehind, type Driver, type Other } from "./driver";
 import type { NavGraph } from "./nav-graph";
 import type { RoadGraph } from "./road-graph";
 import { findRoute } from "./road-route";
@@ -196,17 +196,9 @@ export class Chaser {
 
   /** Un usager est-il derrière la voiture, à moins de 1,2 m de son pare-chocs arrière, sur sa largeur ? */
   private blockedBehind(s: VehicleState, others: readonly Other[]): boolean {
-    const own = extentOf(this.spec);
-    const fx = Math.sin(s.heading), fy = Math.cos(s.heading);
-    for (const o of others) {
-      if (o.state === s || o.player) continue;
-      const dx = o.state.x - s.x, dy = o.state.y - s.y;
-      const back = -(dx * fx + dy * fy);
-      if (back <= 0 || back > own.halfLen + o.halfLen + 1.2) continue;
-      if (Math.abs(dx * fy - dy * fx) < own.halfWid + o.halfWid + 0.2) return true;
-    }
-    return false;
+    return blockedBehind(s, this.spec, others);
   }
+
 
   /** Recalcule l'itinéraire vers l'arête du fugitif (toutes les 1,5 s, ou tout de suite s'il a changé d'arête). */
   private replan(driver: Driver, t: ChaseTarget, dt: number): void {

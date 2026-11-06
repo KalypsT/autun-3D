@@ -34,6 +34,8 @@ function chase(seed: number, seconds: number, stopAt: number, fast: boolean): Ru
   lanePoint(nav.road, from, 5, lp);
   const fug: VehicleState = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
   const fd = new Driver(nav, from, 5, seed * 7 + 1, FUGITIVE, colliders, null);
+  // Le fugitif se dégage quand il est coincé, comme un joueur (D251).
+  fd.unstick = true;
   if (fast) fd.setChase(true);
   // La police part d'une arête à 120-250 m (cherchée parmi toutes les arêtes de départ : dans l'ancien carré seul, une sur cinq n'en offre
   // pas toujours une, D105).
@@ -128,6 +130,9 @@ describe("poursuite (J4-3)", () => {
       lanePoint(nav.road, from, 5, lp);
       const car = createVehicle(lp.x, lp.y, lp.heading, world.terrain);
       const fd = new Driver(nav, from, 5, seed, FUGITIVE, colliders, null);
+      // Le fugitif se dégage quand il est coincé, comme un joueur (D251) : sinon il reste contre le rempart au bout de la rue du 19 Mars 1962
+      // et la police s'empile autour.
+      fd.unstick = true;
       const sim = new TrafficSim(nav, world.terrain, colliders);
       // Quatre voitures de police à 70 à 200 m, comme des renforts.
       let placed = 0;

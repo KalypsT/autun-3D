@@ -5161,7 +5161,7 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 
 **Pas fait** : aspect (une seule teinte, lot 2) ; tours (lot 3 : celle du boulevard Laureau est encore le bâtiment BD TOPO à toit rouge) ; promenade (lot 4) ; relief lointain (`coarse.bin`) inchangé : le talus se voit encore au-delà de 300 m ; trois angles de plus de 30° ajoutés au tracé par le calage (49 contre 48 dans le dessin OSM).
 
-**Test en échec** : `src/core/chase.test.ts`, « quatre gendarmeries… ne s'empilent pas » : 6,5 % des pas avec deux voitures de police à moins de 3 m, pour un plafond de 4 % (3,1 % avant). Au tirage 3, le fugitif simulé sort de la chaussée au débouché de la rue du 19 Mars 1962 sur le boulevard des Résistants Fusillés et se coince contre le rempart (déjà avant, contre l'ancien trait) ; la face est maintenant 1 m plus près, à sa place mesurée, et il y reste plus longtemps : la police s'empile autour (20 % des pas de ce tirage contre 7 %). Le seuil n'est pas relevé : décision laissée à l'utilisateur.
+**Test en échec** : `src/core/chase.test.ts`, « quatre gendarmeries… ne s'empilent pas » : 6,5 % des pas avec deux voitures de police à moins de 3 m, pour un plafond de 4 % (3,1 % avant). Au tirage 3, le fugitif simulé sort de la chaussée au débouché de la rue du 19 Mars 1962 sur le boulevard des Résistants Fusillés et se coince contre le rempart (déjà avant, contre l'ancien trait) ; la face est maintenant 1 m plus près, à sa place mesurée, et il y reste plus longtemps : la police s'empile autour (20 % des pas de ce tirage contre 7 %). Le seuil n'est pas relevé : décision laissée à l'utilisateur, qui choisit de rendre le fugitif capable de se dégager (D251).
 
 **Tests** (+9, 1 333 au total ; `src/core/ramparts.test.ts`) : profil partout, parapet et plafond, plus de 2 km de soutènement, pointe sud, relief écrêté au pied (plus de 200 points), faces, contour, creux et bande, collisions.
 
@@ -5170,3 +5170,17 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Rue du Vieux Colombier](captures/d250-vieux-colombier.jpg)
 ![Boulevard des Résistants Fusillés](captures/d250-resistants.jpg)
 ![Boulevard Laureau](captures/d250-laureau.jpg)
+
+## 2026-11-06 — D251. Le fugitif simulé se dégage quand il est coincé
+
+**Demande de l'utilisateur** : après D250, rendre le fugitif simulé capable de se dégager plutôt que relever le seuil du test de poursuite.
+
+**Constat** : au tirage 3 de « quatre gendarmeries… ne s'empilent pas » (`src/core/chase.test.ts`), le fugitif sort de la chaussée au débouché de la rue du 19 Mars 1962 et reste contre le rempart, accélérateur enfoncé, jusqu'à être déclaré bloqué (8 s) ; la police converge et s'empile. Le fugitif simulé n'existe que dans les essais : dans le jeu, c'est le joueur, qui reculerait.
+
+**Jeu** (`src/core/driver.ts`) : `Driver.unstick` (désactivé par défaut). À l'arrêt sans raison d'attendre depuis 1,5 s, le conducteur recule 1,6 s (le frein à l'arrêt fait reculer), roues braquées à l'opposé du cap voulu pour que le nez pivote vers le tracé, puis repart ; trois essais au plus, remis à zéro dès qu'il roule à plus de 3 m/s ; jamais s'il y a quelqu'un juste derrière (`blockedBehind`, désormais partagé avec le `Chaser`). Au-delà, la règle d'avant (bloqué au bout de 8 s).
+
+**Pas pour la circulation ni la police** : essayé d'abord pour toutes les voitures, le dégagement changeait le cours chaotique des poursuites (le test d'endurance à cinq étoiles, `src/game/police-soak.test.ts`, passait à 3 176 pas de contact dans une minute, plafond 2 700) ; les voitures civiles coincées disparaissent toujours, et la police en poursuite garde la marche arrière du `Chaser` (qui ne joue qu'en accélérant ; trois voitures de police qui s'attendent l'une l'autre ne se défont pas : vu au tirage 3, laissé tel quel). Seuls les fugitifs de `chase.test.ts` l'activent ; le test d'endurance garde sa remise sur la voie au bout de 10 s.
+
+**Résultat** : 3,7 % des pas avec deux voitures de police à moins de 3 m (6,5 % en D250, 3,1 % avant D250 ; plafond 4 %). Tirage 3 : 9,2 % (20,4 % en D250).
+
+**Tests** (+2, 1 335 au total ; `src/core/driver.test.ts`) : contre un mur posé en travers de sa voie, il recule (plus de 0,8 s de marche arrière voulue) ; sans `unstick`, jamais (le rebond du choc n'est pas une marche arrière).
