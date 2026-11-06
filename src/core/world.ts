@@ -8,6 +8,7 @@ import { theatreWalls } from "./theatre";
 import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./gendarmerie";
 import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
 import { BOAT_TOP, boatOutline, SHELTER_POST, shelterPosts } from "./piers";
+import { EQUIP_TOP, equipRing, skateSides } from "./leisure";
 
 /** Rayon de collision (m) du mobilier selon sa nature ; absent = traversable (les parkings à vélos : ce sont les vélos garés qui gênent). */
 const FURNITURE_RADIUS: Record<string, number> = {
@@ -132,6 +133,21 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     c.addPolyline([...r, r[0]!, r[1]!], true, { height: BOAT_TOP, climb: true });
   }
   for (const s of tile.structures?.shelters ?? []) for (const [x, y] of shelterPosts(s)) c.addCircle(x, y, SHELTER_POST * 1.4);
+  // Équipements du plan d'eau du Vallon (D247) : flancs des modules du skatepark (murs à hauteur) ; structures de jeux pleines ; bancs, tables,
+  // agrès, panneaux, barre de glisse, grillage et ganivelle bas, qu'on escalade et à travers lesquels on voit. Pierres du gué et rigole : rien.
+  for (const d of tile.structures?.decks ?? []) {
+    if (d.st !== "skate") continue;
+    const { ring, tops } = skateSides(d);
+    c.addRing(ring, tops);
+  }
+  for (const e of tile.structures?.equip ?? []) {
+    if (e.k === "play_small" || e.k === "play_big") c.addRing(equipRing(e));
+    else if (e.p && (e.k === "rail" || e.k === "fence" || e.k === "ganivelle")) c.addPolyline(e.p, true, { height: e.k === "rail" ? EQUIP_TOP.rail! : e.h ?? 1.1, climb: true });
+    else if (EQUIP_TOP[e.k] !== undefined && e.x !== undefined) {
+      const r = equipRing(e);
+      c.addPolyline([...r, r[0]!, r[1]!], true, { height: EQUIP_TOP[e.k]!, climb: true });
+    }
+  }
   // Parapets des ponts (D93) : interrompus là où le pont enjambe une voie, que le parapet barrerait en 2D.
   for (const d of tile.structures?.decks ?? []) for (const line of parapetLines(d)) c.addPolyline(line, false, PARAPET);
   // Piles (D220) : on ne les traverse plus par-dessous ; d'en haut (pieds sur le tablier) ou sans altitude (passants, circulation),

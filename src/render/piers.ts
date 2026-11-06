@@ -18,8 +18,8 @@ const PILE = C("#5d554b");
 const PLANK = 0.16;
 const JOINT = 0.018;
 
-/** Triangle orienté vers `out` (repère three) : l'ordre des sommets suit la normale, quel que soit le sens donné. */
-function face(mb: MeshBuilder, a: Vec3, b: Vec3, c: Vec3, out: Vec3, col: THREE.Color): void {
+/** Triangle orienté vers `out` (repère three, partagé avec `leisure.ts`) : l'ordre des sommets suit la normale, quel que soit le sens donné. */
+export function face(mb: MeshBuilder, a: Vec3, b: Vec3, c: Vec3, out: Vec3, col: THREE.Color): void {
   const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
   let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
   const l = Math.hypot(nx, ny, nz);
@@ -29,13 +29,13 @@ function face(mb: MeshBuilder, a: Vec3, b: Vec3, c: Vec3, out: Vec3, col: THREE.
   else mb.tri(a, b, c, [nx, ny, nz], col);
 }
 
-function quad(mb: MeshBuilder, a: Vec3, b: Vec3, c: Vec3, d: Vec3, out: Vec3, col: THREE.Color): void {
+export function quad(mb: MeshBuilder, a: Vec3, b: Vec3, c: Vec3, d: Vec3, out: Vec3, col: THREE.Color): void {
   face(mb, a, b, c, out, col);
   face(mb, a, c, d, out, col);
 }
 
 /** Pavé d'axe (ux, uy) (données), demi-côtés hl et hw, de z0 à z1 : quatre faces et le dessus. */
-function block(mb: MeshBuilder, cx: number, cy: number, ux: number, uy: number, hl: number, hw: number, z0: number, z1: number, col: THREE.Color, bottom = false): void {
+export function block(mb: MeshBuilder, cx: number, cy: number, ux: number, uy: number, hl: number, hw: number, z0: number, z1: number, col: THREE.Color, bottom = false): void {
   const vx = -uy, vy = ux;
   const p = (s: number, t: number): [number, number] => [cx + ux * s + vx * t, cy + uy * s + vy * t];
   const pts = [p(-hl, -hw), p(hl, -hw), p(hl, hw), p(-hl, hw)];

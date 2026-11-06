@@ -143,7 +143,7 @@ Réponses au §11.
 | **1. Le chemin** (fait, §13) | couche `path_gravel` ; tracé recalé ; arbres décalés ; herbes hautes et roseaux ; lampadaires ; arêtes de navigation à la bonne largeur ; carte et minimap ; pas japonais | on fait le tour du lac sur un vrai chemin | D244 |
 | **2. La base nautique** (fait, §14) | volumes LiDAR, façades, abords (toilettes, mât, saule, panneau, barrière, potelets, rochers) | la base ressemble aux photos | D245 |
 | **3. Les pontons et la cale** (fait, §15) | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
-| **4. Les équipements** | aire de jeux, skatepark, pump track, agrès, panneaux | | D247 |
+| **4. Les équipements** (fait, §16) | aire de jeux, skatepark, pump track, agrès, panneaux | on roule sur le pump track, on monte les modules du skatepark, on passe le Brisecou à gué | D247 |
 | **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D248 |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
@@ -339,3 +339,47 @@ obstacles enjambables ; passage libre sous l'abri ; dessin des bateaux et de l'a
 ![Vue haute de la base](../captures/d246-haut.jpg)
 ![Le ponton en L du sud-ouest](../captures/d246-sud-ouest.jpg)
 ![Le sud du lac, en eau (il était en partie en herbe)](../captures/d246-lac.jpg)
+
+## 16. Lot 4 : les équipements (6 novembre 2026, D247)
+
+Fait. Étape `tools/data/build_vallon_leisure.py` (réglages `vallonLeisure` de `manual.json`, lus sur l'orthophotographie à 5 cm, les photos et OSM), rendu
+`src/render/leisure.ts`, collisions `src/core/leisure.ts`. Une deuxième passe ne change rien.
+
+- **Skatepark** (dalle OSM w247999128, 20 × 32 m) : le LiDAR a mesuré les vrais modules (bosses jusqu'à 1 m dans le relief). Ils sont repris à leur place et à leur
+  hauteur, en tabliers de béton clair qu'on monte à pied ou à vélo : quarter du nord-ouest (11 m de large, 0,8 m), funbox du milieu (1 m), quarter du sud-est (1 m),
+  deux blocs (0,3 et 0,35 m), barre de glisse. Le relief est aplani sous la dalle (plan mesuré avant aplanissement, `slabPlane`), comme build_water.py retouche le fond
+  des plans d'eau. Grillage gris autour de la dalle (vu sur l'image), ganivelle de châtaignier le long du parking (photo ; tracé approché).
+- **Pump track** : les trois boucles d'OSM (164 m), lissées, en enrobé de 2 m posé 15 cm au-dessus du relief, qui porte déjà les bosses de la piste (LiDAR,
+  ±0,3 m) ; flancs enherbés. Pas de bosses inventées.
+- **Aire de jeux** (OSM w247999116) : sol en gravillons, sol souple rouge sous la petite structure (toboggan bleu, toit en arc orange, mur d'escalade), grande
+  structure à deux tours (toits rose et orange, passerelle, deux toboggans orange), deux jeux à ressort, un banc, une table (photo et image).
+- **Agrès** (3, OSM `leisure=fitness_station`) : agrès générique en bois (barres de traction, barres parallèles) ; le modèle réel n'est pas connu.
+- **Panneaux** (3, OSM) : « Les oiseaux du lac », règlement de la pêche, plan du site. **Tables** : deux au sud (OSM). Robinets : déjà dessinés (mobilier).
+- **Gué du Brisecou** : cinq pierres plates sur 6 m, en travers de la rigole qui sort de l'étang (sous les arbres, invisible sur l'image : approché).
+- **Obstacles** : structures de jeux pleines ; bancs, tables, agrès, panneaux, barre, grillage et ganivelle bas, qu'on escalade ; flancs des modules en murs
+  à hauteur (on bute sur l'arrière d'un quarter, on passe le bord bas d'une rampe).
+
+Ce qui diffère du plan :
+- **Le LiDAR contient les équipements** : les modules du skatepark et les bosses du pump track étaient déjà dans le relief (en herbe). Les modules sont recalés
+  sur les bosses mesurées (la funbox est 5 m plus à l'est que sur ma première lecture de l'image) ; la dalle est aplanie ; le pump track suit le relief.
+- **Les surfaces génériques sont retirées** : le terrain de sport vert (build_kinds.py) et sa pelouse (build_public_space.py) recouvraient la dalle et la piste,
+  et les boucles du pump track (`leisure=track`) étaient dessinées en piste d'athlétisme rouge.
+- Deux objets d'OSM, à 1 m du chemin, en sont écartés de 1 m (l'agrès de l'est et une table du sud).
+- **Pas de terrain multisport** : la surface turquoise grillagée de la photo du skatepark n'apparaît pas sur l'orthophotographie (question posée à l'utilisateur).
+
+Pas fait : la surface turquoise de la photo ; les agrès et les jeux exacts (formes génériques) ; les passants ne vont pas sur les modules ni sur la piste.
+Vu en passant, sans rapport avec ce lot : de grands panneaux bruns flottent au-dessus du talus du rempart, vers (990 ; 255), à la frontière des tuiles 29 et 30
+(probablement les jupes du relief lointain).
+
+Tests (+11, `src/data/vallon-leisure.test.ts`) : cinq modules et trois boucles en tabliers, hauteurs mesurées, modules sur la dalle ; pump track posé sur le relief
+et ses bosses ; on monte la funbox et on la redescend, on monte le quarter ; on bute sur le flanc d'un bloc et l'arrière d'un quarter, on passe le bord d'en haut ;
+on suit les bosses du pump track à pied ; 25 équipements ; aucun objet sur le chemin, sur un lampadaire ou près d'un ponton, aucune clôture sur le chemin ;
+pierres du gué en travers de la rigole ; obstacles enjambables ou non ; dessins finis et bornés ; surfaces des sols.
+
+![Le skatepark depuis le parking, comme la photo](../captures/d247-skatepark.jpg)
+![La dalle et ses modules](../captures/d247-dalle.jpg)
+![Vue haute : pump track et skatepark](../captures/d247-haut.jpg)
+![Le pump track](../captures/d247-pump-track.jpg)
+![L'aire de jeux](../captures/d247-aire-de-jeux.jpg)
+![Les agrès de l'ouest](../captures/d247-agres.jpg)
+![Le gué du Brisecou](../captures/d247-gue.jpg)

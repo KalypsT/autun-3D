@@ -55,6 +55,7 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     structures.wz!.push(...(st.wz ?? st.water.map(() => null)));
     if (st.boats) (structures.boats ??= []).push(...st.boats);
     if (st.shelters) (structures.shelters ??= []).push(...st.shelters);
+    if (st.equip) (structures.equip ??= []).push(...st.equip);
   }
   tile.structures = structures;
   terrain.decks.add("tests", structures.decks, structures.platforms.map((p, i) => {

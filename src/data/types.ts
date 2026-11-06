@@ -1231,8 +1231,8 @@ export interface Deck {
   w: number;
   /** Axe : x, y, z du dessus du tablier, par sommet. */
   p: number[];
-  /** Style : voûtes en pierre, tablier droit, passerelle légère, ponton en planches sans garde-corps (D246). */
-  st: "stone" | "beam" | "light" | "pier";
+  /** Style : voûtes en pierre, tablier droit, passerelle légère, ponton en planches sans garde-corps (D246), module de skatepark ou piste de pump track (D247). */
+  st: "stone" | "beam" | "light" | "pier" | "skate" | "pump";
   /** Abscisses des piles le long de l'axe. */
   sp: number[];
   /** Tronçons de parapet infranchissables [s0, s1] (coupés au-dessus d'une voie). */
@@ -1259,6 +1259,25 @@ export interface Boat {
   z: number;
   /** 1 : mât dressé (dériveur amarré). */
   m?: 1;
+}
+
+/**
+ * Équipement du plan d'eau du Vallon (D247, build_vallon_leisure.py). Objets posés en (x, y), tournés de `a` (radians, axe long depuis l'est) :
+ * jeux (`play_small`, `play_big`, `springer`), `bench`, `picnic`, `fitness` (agrès), `board` (panneau), `stone` (pierre du gué).
+ * Tracés `p` (x, y, …) : `rail` (barre de glisse), `fence` (grillage), `ganivelle`, `brook` (rigole d'eau, largeur `w`).
+ */
+export interface Equip {
+  k: "play_small" | "play_big" | "springer" | "bench" | "picnic" | "fitness" | "board" | "stone" | "rail" | "fence" | "ganivelle" | "brook";
+  x?: number;
+  y?: number;
+  a?: number;
+  /** Longueur et largeur (m), hauteur (m, tracés), couleur. */
+  l?: number;
+  w?: number;
+  h?: number;
+  c?: string;
+  p?: number[];
+  n?: string;
 }
 
 /** Abri sur poteaux (D246) : toit rectangulaire de centre (x, y), côté `hl` dans la direction `a` (radians), dessous du toit à `z`. */
@@ -1300,6 +1319,8 @@ export interface TileStructures {
   /** Bateaux posés et amarrés, abris sur poteaux du plan d'eau du Vallon (D246, build_vallon_piers.py). */
   boats?: Boat[];
   shelters?: Shelter[];
+  /** Équipements du plan d'eau du Vallon (D247, build_vallon_leisure.py). */
+  equip?: Equip[];
 }
 
 export interface TileData {

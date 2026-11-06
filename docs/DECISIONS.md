@@ -5087,3 +5087,24 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![Vue haute de la base](captures/d246-haut.jpg)
 ![Le sud du lac, en eau](captures/d246-lac.jpg)
 
+## 2026-11-06 — D247. Le plan d'eau du Vallon, lot 4 : les équipements (plan `docs/plans/vallon-lac.md`, §6 et §16)
+
+**Demande de l'utilisateur** : lot 4 (aire de jeux, skatepark, pump track, agrès, gué du Brisecou). Photos de l'utilisateur (non versionnées) : skatepark depuis le parking (modules en béton clair, grillage, ganivelle de châtaignier), aire de jeux (deux structures à toboggans, jeux à ressort, banc, gravillons).
+
+**Données** : `tools/data/build_vallon_leisure.py`, réglages `vallonLeisure` de `manual.json` (orthophotographie à 5 cm, photos, OSM). Tabliers `k: "foot"` (identifiants −(873 000 000 + n)) : cinq modules de skatepark (`st: "skate"`) et trois boucles de pump track (`st: "pump"`, 164 m). Équipements (`equip` des ouvrages, 25) : deux structures de jeux, deux jeux à ressort, banc, trois tables, trois agrès, trois panneaux (OSM), barre de glisse, deux grillages, deux ganivelles, cinq pierres du gué et la rigole ; un objet à moins de 1,2 m du bord du chemin en est écarté (deux, de 1 m). Sols : `skate` (dalle), `play_gravel`, `play_mat`. Idempotente.
+
+**Le LiDAR contient les équipements** : le relief porte les modules du skatepark (bosses jusqu'à 1 m) et les bosses du pump track (±0,3 m). Les modules sont posés à la place et à la hauteur des bosses mesurées ; le relief fin est aplani sous la dalle au plan mesuré avant aplanissement (`slabPlane`, `--plan` le recalcule), blocs `terrain/*.bin` réécrits comme le fait build_water.py ; le pump track est posé 15 cm au-dessus du plus haut des quatre points de relief voisins, sans bosses inventées. Le terrain de sport générique (sites `pitch` et `track` de build_kinds.py) et la pelouse de sport (couche `pitch` de build_public_space.py) du skatepark et du pump track sont retirés (`replaces`) : ils recouvraient la dalle et la piste (et la piste était rouge, comme une piste d'athlétisme). Ordre : après build_kinds.py, build_public_space.py, build_vallon_piers.py et build_vallon_path.py ; puis build_map.py --images.
+
+**Rendu** (`src/render/leisure.ts`) : modules en béton clair, flancs pleins, rebord en acier ; pump track en enrobé, flancs enherbés ; tours de jeux (poteaux, plate-forme, garde-corps pleins, toits à deux pans), toboggans, jeux à ressort, banc, tables, agrès en bois et acier, panneaux, grillage (fils verticaux et lisses), ganivelle (lattes de châtaignier et fils), pierres, rigole. Dans le maillage de détail de la tuile.
+
+**Collisions** (`src/core/leisure.ts`) : flancs des modules en murs à hauteur (`skateSides`) ; structures de jeux pleines ; bancs, tables, agrès, panneaux, barre, grillage et ganivelle en obstacles bas qu'on escalade et à travers lesquels on voit.
+
+**Pas fait** : la surface turquoise grillagée de la photo du skatepark (absente de l'orthophotographie : question posée) ; agrès et jeux exacts (formes génériques). Vu sans rapport avec ce lot : des panneaux bruns flottent au-dessus du talus du rempart vers (990 ; 255).
+
+**Tests** (+11, 1 312 au total ; `src/data/vallon-leisure.test.ts`).
+
+![Le skatepark depuis le parking](captures/d247-skatepark.jpg)
+![Vue haute : pump track et skatepark](captures/d247-haut.jpg)
+![L'aire de jeux](captures/d247-aire-de-jeux.jpg)
+![Le gué du Brisecou](captures/d247-gue.jpg)
+

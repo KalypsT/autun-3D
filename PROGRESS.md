@@ -1823,3 +1823,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Le ponton de pêche](docs/captures/d246-peche.jpg)
 ![La darse](docs/captures/d246-darse.jpg)
+
+**Le plan d'eau du Vallon, lot 4 : les équipements (6 novembre 2026)** (D247)
+- Le skatepark a ses modules en béton clair, à la place et à la hauteur mesurées au LiDAR, sur une dalle plane, avec son grillage et la ganivelle le long du parking : on les monte à pied ou à vélo.
+- Le pump track suit ses vraies bosses (trois boucles d'enrobé).
+- L'aire de jeux : deux structures à toboggans, deux jeux à ressort, un banc, une table, sur gravillons.
+- Trois agrès, trois panneaux, deux tables au sud, et le gué du Brisecou en pierres plates.
+- Vues : `?view=skatepark`, `skatepark-haut`, `pump-track`, `aire-de-jeux`, `agres`, `gue`.
+- Prochaine étape : la vie du lac (pêcheurs, promeneurs, voiliers l'été).
+
+![Le skatepark](docs/captures/d247-skatepark.jpg)
+![L'aire de jeux](docs/captures/d247-aire-de-jeux.jpg)

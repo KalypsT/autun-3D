@@ -66,6 +66,14 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "pontons-sud-ouest": [1143, 121, 1.7, 1130, 165, -0.3],
   "pontons-ile": [1298, 127, 2.1, 1292, 108, 0],
   "pontons-haut": [1318, 660, 28, 1286, 600, 0],
+  // Équipements du plan d'eau du Vallon (D247) : skatepark depuis le parking (comme la photo), pump track, aire de jeux depuis le chemin (photo),
+  // agrès de l'ouest, gué du Brisecou, vue haute du skatepark.
+  skatepark: [1405, 590, 1.7, 1376, 566, 0],
+  "pump-track": [1418, 532, 1.7, 1395, 542, 0],
+  "aire-de-jeux": [1497, 182, 1.7, 1503, 158, 0.5],
+  agres: [998, 267, 1.7, 1012, 256, 0.5],
+  gue: [1345, 27, 1.7, 1351, 18, -0.3],
+  "skatepark-haut": [1415, 600, 26, 1385, 555, 0],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.
