@@ -1905,3 +1905,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=240,-705,1.7,233,-722,3&h=14`.
 
 ![L'escalier de la rue du Vieux Colombier](docs/captures/d257-escalier.jpg)
+
+**Lycée militaire : l'enquête (6 novembre 2026)** (lot 0, rien de changé dans le jeu)
+- Plan et relevés dans `docs/plans/lycee-militaire.md` : le bâtiment du jeu est 7 m trop bas (faîtage réel à 20 m, pavillons à 22 m), la cour d'honneur est fermée, le grand portail est un mur plein, l'entrée rue Gaston Joliet est barrée, la place d'armes et le bassin sont en pelouse.
+- Ta photo 1 est la façade nord-ouest, sur l'axe du grand portail ; le site monte de 10 m du portail à la façade.
+- Sept questions t'attendent à la fin du plan (§7).
+
+![Le lycée militaire aujourd'hui dans le jeu](docs/captures/militaire-avant-aerien.jpg)
