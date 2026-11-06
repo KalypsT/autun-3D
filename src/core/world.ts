@@ -140,7 +140,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     const { ring, tops } = skateSides(d);
     c.addRing(ring, tops);
   }
-  for (const e of tile.structures?.equip ?? []) {
+  // Pêcheurs du lac (D249) : biwys, supports à cannes et pêcheurs assis, obstacles bas comme les bancs.
+  for (const e of [...(tile.structures?.equip ?? []), ...(tile.structures?.life ?? [])]) {
     if (e.k === "play_small" || e.k === "play_big") c.addRing(equipRing(e));
     else if (e.p && (e.k === "rail" || e.k === "fence" || e.k === "ganivelle")) c.addPolyline(e.p, true, { height: e.k === "rail" ? EQUIP_TOP.rail! : e.h ?? 1.1, climb: true });
     else if (EQUIP_TOP[e.k] !== undefined && e.x !== undefined) {

@@ -5126,3 +5126,18 @@ Clôture et portails : obstacles qu'on voit et qu'on escalade (1,9 m, comme les 
 ![La piste](captures/d248-piste.jpg)
 ![Le bowl](captures/d248-bowl.jpg)
 
+## 2026-11-06 — D249. Le plan d'eau du Vallon, lot 5 : la vie du lac (plan `docs/plans/vallon-lac.md`, §7 et §18)
+
+**Demande de l'utilisateur** : lot 5. Choix déjà faits (§11) : pêcheurs toujours là, voiliers sur l'eau l'été, sud sauvage avec modération.
+
+**Données** (`tools/data/build_vallon_life.py`, `vallonLife` de `manual.json`) : `life` des ouvrages (4 biwys, 5 supports à cannes, 4 pêcheurs, dont un posé sur le ponton de pêche, `z`) ; `sail` (trois boucles de 32 points, vérifiées : l'étape s'arrête si une boucle sort de l'eau navigable) ; `tall` (herbes hautes du sud, 5 400 m², polygones par tuile). Idempotente.
+
+**Jeu** : voiliers (`src/core/sailing.ts` : nombre selon la saison, l'heure et le jour ; position et cap d'après le temps de jeu, 1,6 m/s ; `src/render/sailboats.ts` : cinq maillages au plus, dans le jeu et la caméra libre). Promeneurs : `crowdVallon` (`src/core/week.ts`) multiplie la foule dans l'emprise du lac (×1,5, ×1,6 le week-end après-midi, ×1,3 l'été en fin de journée, ×0,7 l'hiver) ; plus de joggeurs sur ses sentiers. Pêcheurs : biwys, supports à cannes, pêcheurs assis (`src/render/leisure.ts`), obstacles bas. Herbes hautes : `buildTallGrass` (`src/render/reeds.ts`).
+
+**Pas fait** : pêcheurs immobiles ; voiliers sans vent ni collision ; pas de son.
+
+**Tests** (+8, 1 324 au total ; `src/data/vallon-life.test.ts`). Le pêcheur du ponton est assis au bord, son emprise réduite au siège : la traversée du ponton (test du lot 3) reste libre.
+
+![Les pêcheurs du sud-ouest](captures/d249-pecheurs.jpg)
+![Des voiliers un samedi d'été](captures/d249-voiliers.jpg)
+

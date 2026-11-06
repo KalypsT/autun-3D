@@ -18,6 +18,10 @@ export function equipSize(e: Equip): [number, number] {
     case "board": return [0.6, 0.08];
     case "stone": return [(e.l ?? 0.6) / 2, (e.w ?? 0.45) / 2];
     case "court": case "bowl": return [(e.l ?? 10) / 2, (e.w ?? 10) / 2];
+    case "bivvy": return [1.25, 1.05];
+    case "rodpod": return [0.45, 0.3];
+    // Le siège seul (0,6 m) : les jambes avancent au-dessus du sol ou de l'eau ; assis au bord d'un ponton, il laisse le passage libre.
+    case "angler": return [0.3, 0.3];
     default: return [0, 0];
   }
 }
@@ -34,7 +38,7 @@ export function equipRing(e: Equip, grow = 0): number[] {
 }
 
 /** Hauteur d'obstacle d'un équipement : on enjambe une table ou un banc, pas une structure de jeux. Absent : pas d'obstacle. */
-export const EQUIP_TOP: Partial<Record<Equip["k"], number>> = { springer: 0.9, bench: 0.9, picnic: 0.8, fitness: 2.2, board: 2.0, rail: 0.5 };
+export const EQUIP_TOP: Partial<Record<Equip["k"], number>> = { springer: 0.9, bench: 0.9, picnic: 0.8, fitness: 2.2, board: 2.0, rail: 0.5, bivvy: 1.3, rodpod: 0.6, angler: 1.1 };
 
 /**
  * Flancs d'un module de skatepark : contour du tablier, avec à chaque sommet l'altitude du dessus (pour `Colliders.addRing` : on passe

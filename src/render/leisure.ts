@@ -123,10 +123,90 @@ function tower(mb: MeshBuilder, x: number, y: number, ux: number, uy: number, h:
   roof(mb, x, y, ux, uy, s + 0.2, s + 0.25, z + h + 1.5, 0.55, roofCol);
 }
 
+/** Biwy de pêcheur à la carpe (D249, photos) : dôme kaki surbaissé, ouverture sombre côté eau (+u), tapis de sol. */
+function bivvy(mb: MeshBuilder, x: number, y: number, z: number, ux: number, uy: number): void {
+  const vx = -uy, vy = ux, hl = 1.25, hw = 1.05, H = 1.3, N = 14, M = 5;
+  const kaki = [C("#5f6d46"), C("#566440"), C("#67744c")];
+  const P = (i: number, j: number): Vec3 => {
+    const th = (2 * Math.PI * i) / N, ph = (Math.PI / 2) * (j / M);
+    // L'avant (côté eau) est plus haut et plus droit : l'auvent du biwy.
+    const front = Math.max(0, Math.cos(th));
+    const r = Math.cos(ph), h = H * Math.sin(ph) * (0.85 + 0.15 * front);
+    const s = Math.cos(th) * hl * r * (1 + 0.12 * front), t = Math.sin(th) * hw * r;
+    return toThree(x + ux * s + vx * t, y + uy * s + vy * t, z + h);
+  };
+  for (let j = 0; j < M; j++) {
+    for (let i = 0; i < N; i++) {
+      const th = (2 * Math.PI * (i + 0.5)) / N;
+      const door = Math.cos(th) > 0.82 && j < 3;
+      const col = door ? C("#2b2f24") : kaki[(i + j) % 3]!;
+      const out = toThree(Math.cos(th) * ux - Math.sin(th) * uy, Math.cos(th) * uy + Math.sin(th) * ux, 0.6);
+      face(mb, P(i, j), P(i + 1, j), P(i + 1, j + 1), out, col);
+      if (j + 1 < M) face(mb, P(i, j), P(i + 1, j + 1), P(i, j + 1), out, col);
+    }
+  }
+  // Tapis de sol vert sombre qui dépasse devant.
+  const f = (s: number, t: number): Vec3 => toThree(x + ux * s + vx * t, y + uy * s + vy * t, z + 0.02);
+  quad(mb, f(-hl, -hw), f(hl + 0.5, -hw), f(hl + 0.5, hw), f(-hl, hw), [0, 1, 0], C("#3d4630"));
+}
+
+/** Support à cannes : barre sur deux pieds, deux ou trois cannes tendues vers l'eau (+u), détecteurs de touche colorés. */
+function rodPod(mb: MeshBuilder, x: number, y: number, z: number, ux: number, uy: number, seed: string): void {
+  const vx = -uy, vy = ux;
+  const n = 2 + (hash01(seed) < 0.5 ? 1 : 0);
+  for (const s of [-0.35, 0.35]) block(mb, x + ux * s, y + uy * s, vx, vy, 0.4, 0.015, z + (s > 0 ? 0.45 : 0.3), z + (s > 0 ? 0.48 : 0.33), DARK);
+  for (const s of [-0.35, 0.35]) for (const k of [-0.38, 0.38]) block(mb, x + ux * s + vx * k, y + uy * s + vy * k, ux, uy, 0.012, 0.012, z, z + (s > 0 ? 0.47 : 0.32), DARK);
+  for (let r = 0; r < n; r++) {
+    const off = (r - (n - 1) / 2) * 0.3;
+    const bx = x - ux * 0.5 + vx * off, by = y - uy * 0.5 + vy * off;
+    const L = 3.4, tipZ = 1.55;
+    const tx = bx + ux * L, ty = by + uy * L;
+    const a: Vec3 = toThree(bx, by, z + 0.28), b: Vec3 = toThree(tx, ty, z + tipZ);
+    const w = 0.012;
+    quad(mb, a, b, toThree(tx + vx * w, ty + vy * w, z + tipZ), toThree(bx + vx * w * 2, by + vy * w * 2, z + 0.28), toThree(0, 0, 1), C("#1d1f1e"));
+    quad(mb, a, b, toThree(tx + vx * w, ty + vy * w, z + tipZ), toThree(bx + vx * w * 2, by + vy * w * 2, z + 0.28), toThree(0, 0, -1), C("#1d1f1e"));
+    block(mb, x + ux * 0.35 + vx * off, y + uy * 0.35 + vy * off, ux, uy, 0.05, 0.025, z + 0.48, z + 0.54, C(["#d8402c", "#2f8f4a", "#e0b42c"][r]!));
+  }
+}
+
+/** Pêcheur assis sur un fauteuil bas, tourné vers l'eau (+u) : veste kaki, bonnet. */
+function angler(mb: MeshBuilder, x: number, y: number, z: number, ux: number, uy: number): void {
+  const vx = -uy, vy = ux;
+  const at = (s: number, t: number): [number, number] => [x + ux * s + vx * t, y + uy * s + vy * t];
+  const chair = C("#2f3a2c"), jacket = C("#55663c"), trousers = C("#3a3e37"), skin = C("#d6ad88"), hat = C("#2a3326");
+  for (const [s, t] of [[-0.25, -0.25], [0.25, -0.25], [0.25, 0.25], [-0.25, 0.25]] as const) {
+    const [px, py] = at(s, t);
+    block(mb, px, py, ux, uy, 0.02, 0.02, z, z + 0.35, DARK);
+  }
+  let [px, py] = at(0, 0);
+  block(mb, px, py, ux, uy, 0.3, 0.27, z + 0.33, z + 0.4, chair);
+  [px, py] = at(-0.3, 0);
+  block(mb, px, py, ux, uy, 0.04, 0.27, z + 0.38, z + 0.95, chair);
+  // Cuisses, jambes, buste, bras, tête.
+  for (const t of [-0.1, 0.1]) {
+    [px, py] = at(0.08, t);
+    block(mb, px, py, ux, uy, 0.24, 0.075, z + 0.42, z + 0.56, trousers);
+    [px, py] = at(0.36, t);
+    block(mb, px, py, ux, uy, 0.07, 0.07, z + 0.05, z + 0.5, trousers);
+    [px, py] = at(0.4, t);
+    block(mb, px, py, ux, uy, 0.12, 0.05, z, z + 0.08, DARK);
+  }
+  [px, py] = at(-0.14, 0);
+  block(mb, px, py, ux, uy, 0.13, 0.2, z + 0.5, z + 1.08, jacket);
+  for (const t of [-0.25, 0.25]) {
+    [px, py] = at(0.0, t);
+    block(mb, px, py, ux, uy, 0.2, 0.055, z + 0.66, z + 0.78, jacket);
+  }
+  [px, py] = at(-0.12, 0);
+  block(mb, px, py, ux, uy, 0.1, 0.09, z + 1.08, z + 1.3, skin);
+  block(mb, px, py, ux, uy, 0.11, 0.1, z + 1.26, z + 1.36, hat);
+}
+
 function buildEquipItem(mb: MeshBuilder, e: Equip, ground: HeightField): void {
   const x = e.x!, y = e.y!, a = e.a ?? 0;
   const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
-  const z = ground.heightAt(x, y);
+  // Pêcheur posé sur un ponton (D249) : altitude imposée ; sinon le relief.
+  const z = e.z ?? ground.heightAt(x, y);
   const [hl, hw] = equipSize(e);
   switch (e.k) {
     case "play_small": {
@@ -183,6 +263,9 @@ function buildEquipItem(mb: MeshBuilder, e: Equip, ground: HeightField): void {
       break;
     }
     case "court": buildCourt(mb, e); break;
+    case "bivvy": bivvy(mb, x, y, z, ux, uy); break;
+    case "rodpod": rodPod(mb, x, y, z, ux, uy, `${x},${y}`); break;
+    case "angler": angler(mb, x, y, z, ux, uy); break;
     case "bowl": buildBowl(mb, e); break;
     case "stone": {
       const g = C(["#9a968c", "#8e8a80", "#a7a297"][Math.floor(hash01(`${x},${y}`) * 3)]!);

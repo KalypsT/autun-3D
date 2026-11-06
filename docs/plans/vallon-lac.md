@@ -145,7 +145,7 @@ Réponses au §11.
 | **3. Les pontons et la cale** (fait, §15) | cinq tabliers `pier`, cale en béton, bateaux posés | on marche sur les pontons ; on sort de l'eau par un ponton ou par la cale | D246 |
 | **4. Les équipements** (fait, §16) | aire de jeux, skatepark, pump track, agrès, panneaux | on roule sur le pump track, on monte les modules du skatepark, on passe le Brisecou à gué | D247 |
 | **4 bis. L'aire de glisse rénovée** (fait, §17) | bande de skate et bowl, piste d'éducation routière, pump track peint | l'aire telle qu'elle est depuis sa rénovation | D248 |
-| **5. La vie du lac** | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | | D249 |
+| **5. La vie du lac** (fait, §18) | pêcheurs (permanents), promeneurs, voiliers sur l'eau l'été | des pêcheurs à la carpe, des voiliers l'été, plus de promeneurs | D249 |
 
 Chaque lot est vérifié dans le navigateur (captures, comme d'habitude) avant le suivant ; on peut s'arrêter après n'importe lequel sans laisser le jeu incohérent.
 
@@ -414,3 +414,32 @@ fond du bowl et on en remonte ; on traverse la piste à pied ; creux d'affichage
 ![L'aire de glisse rénovée, vue haute](../captures/d248-haut.jpg)
 ![La piste d'éducation routière](../captures/d248-piste.jpg)
 ![Le bowl](../captures/d248-bowl.jpg)
+
+## 18. Lot 5 : la vie du lac (6 novembre 2026, D249)
+
+Fait. Étape `tools/data/build_vallon_life.py` (réglages `vallonLife` de `manual.json`), voiliers `src/core/sailing.ts` et `src/render/sailboats.ts`,
+pêcheurs dans `src/render/leisure.ts`, herbes hautes dans `src/render/reeds.ts`, promeneurs dans `src/core/week.ts`. Une deuxième passe ne change rien.
+
+- **Pêcheurs à la carpe, toujours là** (réponse de l'utilisateur), d'après sa photo : trois biwys kaki sur la pelouse du sud-ouest, deux pêcheurs assis, cannes sur
+  supports (détecteurs de touche colorés) ; un biwy et un pêcheur sur la rive sud ; un pêcheur assis au bord du ponton de pêche, jambes au-dessus de l'eau (le passage reste libre : 0,9 m). Groupes recalés sur le bord de l'eau
+  (biwys à 5 m de l'eau), tournés vers elle, hors du chemin. Positions approchées. Obstacles bas qu'on enjambe.
+- **Voiliers** (réponse : l'été) : jusqu'à cinq dériveurs (coques des bateaux du lot 3, grand-voile et foc, gîte) sur trois boucles vérifiées dans l'eau navigable
+  (1,2 m de fond, 12 m d'eau autour, loin de l'île et des pontons). L'été de 10 h à 19 h, trois en semaine et cinq le week-end ; au printemps et en automne, deux
+  le week-end l'après-midi ; jamais l'hiver ni la nuit. Positions calculées à partir du temps de jeu, sans simulation ; pas de collision (on nage à travers).
+- **Promeneurs et joggeurs** : dans l'emprise du lac, une fois et demie plus de passants ; 60 % de plus le week-end après-midi ; 30 % de plus l'été en fin de
+  journée ; 30 % de moins l'hiver. Aux heures de footing, 45 % des passants qui naissent sur ses sentiers sont des joggeurs (30 % ailleurs).
+- **Herbes hautes au sud** (« sauvage avec modération ») : 5 400 m² entre l'eau et le chemin, touffes de 0,45 à 0,8 m tous les 1,7 m, jamais à moins de 1,5 m du
+  chemin, hors des pelouses de pêche et des pontons.
+- **Vues** : `?view=pecheurs`, `pecheur-ponton`, `voiliers` (avec `&season=ete&weekday=6&h=14`).
+
+Pas fait : les pêcheurs ne bougent pas (pas de lancer ni de prise) ; les voiliers ne réagissent ni au vent ni au joueur ; pas de nouvelles arêtes de navigation
+(les promeneurs suivent celles du tour, D244) ; pas de son propre aux voiliers.
+
+Tests (+8, `src/data/vallon-life.test.ts`) : pêcheurs hors du chemin, au bord de l'eau et tournés vers elle ; pêcheur du ponton sur le tablier ; obstacles
+enjambables ; boucles des voiliers dans l'eau navigable ; nombre selon la saison, l'heure et le jour ; allure et cap des voiliers, toujours sur l'eau ; herbes
+hautes hors du chemin et de l'eau, budget borné ; fréquentation du tour.
+
+![Les pêcheurs du sud-ouest, comme sur la photo](../captures/d249-pecheurs.jpg)
+![Le pêcheur du ponton de pêche](../captures/d249-pecheur-ponton.jpg)
+![Des voiliers un samedi d'été, depuis la digue](../captures/d249-voiliers.jpg)
+![Un voilier de près](../captures/d249-voilier.jpg)

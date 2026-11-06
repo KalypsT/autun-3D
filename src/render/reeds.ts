@@ -66,3 +66,53 @@ export function buildReeds(mb: MeshBuilder, lines: readonly ReedLine[], terrain:
     }
   }
 }
+
+/** Herbes hautes : pas de la grille de touffes (m) et couleurs (herbe d'été, un peu sèche). */
+const GRASS_STEP = 1.7;
+const GRASS = ["#6f9a4e", "#86a35a", "#9aa65e", "#b3a868", "#7f9d52"].map((c) => new THREE.Color(c));
+
+function inRing(x: number, y: number, r: readonly number[]): boolean {
+  let inside = false;
+  for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+    if (r[i + 1]! > y !== r[j + 1]! > y && x < ((r[j]! - r[i]!) * (y - r[i + 1]!)) / (r[j + 1]! - r[i + 1]!) + r[i]!) inside = !inside;
+  }
+  return inside;
+}
+
+/** Nombre de touffes d'herbes hautes dans des polygones (anneau extérieur puis trous), pour les tests et le budget. */
+export function tallGrassPoints(polys: readonly number[][][]): [number, number, string][] {
+  const out: [number, number, string][] = [];
+  for (const poly of polys) {
+    const outer = poly[0]!;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < outer.length; i += 2) {
+      x0 = Math.min(x0, outer[i]!); x1 = Math.max(x1, outer[i]!); y0 = Math.min(y0, outer[i + 1]!); y1 = Math.max(y1, outer[i + 1]!);
+    }
+    for (let gx = Math.floor(x0 / GRASS_STEP); gx * GRASS_STEP < x1; gx++) {
+      for (let gy = Math.floor(y0 / GRASS_STEP); gy * GRASS_STEP < y1; gy++) {
+        const key = `g${gx},${gy}`;
+        const x = (gx + hash01(key, 1)) * GRASS_STEP, y = (gy + hash01(key, 2)) * GRASS_STEP;
+        if (!inRing(x, y, outer) || poly.slice(1).some((h) => inRing(x, y, h))) continue;
+        out.push([x, y, key]);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Herbes hautes du sud du plan d'eau (D249, « sauvage avec modération ») : touffes de quatre à cinq lames de 0,45 à 0,8 m, semées sur une
+ * grille jittée de 1,7 m dans les polygones `tall` des ouvrages (entre l'eau et le chemin, jamais sur le chemin).
+ */
+export function buildTallGrass(mb: MeshBuilder, polys: readonly number[][][], terrain: HeightField): void {
+  for (const [x, y, key] of tallGrassPoints(polys)) {
+    const z = terrain.heightAt(x, y) - 0.03;
+    const tall = 0.45 + hash01(key, 3) * 0.35;
+    const blades = 4 + Math.floor(hash01(key, 4) * 2);
+    for (let b = 0; b < blades; b++) {
+      const r = hash01(key, 10 + b);
+      const ang = r * Math.PI * 2;
+      blade(mb, x + Math.cos(ang) * 0.12, y + Math.sin(ang) * 0.12, z, tall * (0.7 + hash01(key, 30 + b) * 0.3), ang, 0.12 + r * 0.25, 0.06, GRASS[Math.floor(r * GRASS.length)]!);
+    }
+  }
+}

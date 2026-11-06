@@ -1,4 +1,4 @@
-import { buildReeds } from "./reeds";
+import { buildReeds, buildTallGrass } from "./reeds";
 import { buildBoats, buildShelters } from "./piers";
 import { buildEquip } from "./leisure";
 import type { SeatDef } from "../core/seats";
@@ -556,6 +556,9 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (st?.shelters) buildShelters(detail, st.shelters, terrain.ground ?? terrain);
   // Équipements du plan d'eau du Vallon (D247).
   if (st?.equip) buildEquip(detail, st.equip, terrain.ground ?? terrain);
+  // Vie du lac (D249) : pêcheurs, herbes hautes du sud.
+  if (st?.life) buildEquip(detail, st.life, terrain.ground ?? terrain);
+  if (st?.tall && !skip.includes("reeds")) buildTallGrass(detail, st.tall, terrain.ground ?? terrain);
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, mesh: meshFence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
   yield;
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.

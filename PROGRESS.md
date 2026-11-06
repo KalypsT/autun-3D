@@ -1841,3 +1841,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Prochaine étape : la vie du lac.
 
 ![L'aire de glisse rénovée](docs/captures/d248-haut.jpg)
+
+**Le plan d'eau du Vallon, lot 5 : la vie du lac (6 novembre 2026)** (D249)
+- Les pêcheurs à la carpe sont toujours là, comme sur ta photo : trois biwys kaki au sud-ouest, un sur la rive sud, et un pêcheur assis sur le ponton de pêche, cannes tendues vers l'eau.
+- Des voiliers sur le lac : l'été en journée (trois en semaine, cinq le week-end), deux le week-end au printemps et en automne.
+- Plus de promeneurs et de joggeurs sur le tour, surtout le week-end et les soirs d'été.
+- Herbes plus hautes au sud, entre l'eau et le chemin, sans jamais gêner le passage.
+- Vues : `?view=pecheurs`, `pecheur-ponton`, `voiliers` (avec `&season=ete&weekday=6&h=14`).
+- **Le plan d'eau du Vallon est terminé.**
+
+![Les pêcheurs](docs/captures/d249-pecheurs.jpg)
+![Des voiliers l'été](docs/captures/d249-voiliers.jpg)

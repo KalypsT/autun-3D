@@ -3,7 +3,7 @@ import { crowdTarget } from "./crowd-density";
 import type { HeightField } from "../data/types";
 import { recipeFromSeed, type Recipe } from "./character";
 import { coldAt, dressForCold, umbrellaShare } from "./dress";
-import { crowdFeast, crowdWeek } from "./week";
+import { crowdFeast, crowdVallon, crowdWeek, VALLON_BOX } from "./week";
 import { LAKE } from "./fireworks";
 import { downTime, fallShift, fallTurn, HIT_POSE, lyingTime, lyingVariant, phaseRate, STRONG_FALL, STUMBLE_TIME } from "./character-rig";
 import type { Colliders, Resolution } from "./collision";
@@ -1180,7 +1180,8 @@ export class PedSim {
   /** Part de la foule de l'heure : la météo (D195), le jour et l'endroit (D201). */
   private crowdFactor(obs: Observer): number {
     const w = obs.weather?.crowd ?? 1;
-    const week = obs.weekday === undefined ? 1 : crowdWeek(obs.weekday, this.hour, obs.x, obs.y, this.stats.zone);
+    const week = obs.weekday === undefined ? 1
+      : crowdWeek(obs.weekday, this.hour, obs.x, obs.y, this.stats.zone) * crowdVallon(obs.weekday, this.hour, obs.weather?.season ?? 1, obs.x, obs.y);
     return w * week * (obs.feasts?.length ? crowdFeast(obs.feasts, obs.x, obs.y, LAKE) : 1);
   }
 
@@ -1212,7 +1213,10 @@ export class PedSim {
     const r1 = this.lifeRand(i, 11), r2 = this.lifeRand(i, 12), r3 = this.lifeRand(i, 13);
     const jogHours = (h >= 7 && h < 9) || (h >= 18 && h < 20.5);
     const rain = this.weather?.rain ?? 0;
-    if (jogHours && rain < 0.3 && recipe.age === "adult" && r2 < (edgeType === PED.path ? 0.3 : 0.06)) {
+    // Sur le tour du lac du Vallon (D249), une promenade de footing : 45 % des naissances sur ses sentiers aux heures de footing.
+    const [vx0, vy0, vx1, vy1] = VALLON_BOX;
+    const lake = obs.x >= vx0 && obs.x <= vx1 && obs.y >= vy0 && obs.y <= vy1;
+    if (jogHours && rain < 0.3 && recipe.age === "adult" && r2 < (edgeType === PED.path ? (lake ? 0.45 : 0.3) : 0.06)) {
       this.trait[i] = TRAIT.jogger;
       this.want[i] = this.speed[i] = 2.7 + r3 * 0.6;
       const sport = applyAppearance({ ...recipe, umbrella: false }, { top: "sport", bottom: r3 < 0.5 ? "shorts" : "jogging", shoes: "sneakers", bag: "none", hat: "none", scarf: false });

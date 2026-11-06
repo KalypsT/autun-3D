@@ -1264,11 +1264,13 @@ export interface Boat {
 /**
  * Équipement du plan d'eau du Vallon (D247, build_vallon_leisure.py). Objets posés en (x, y), tournés de `a` (radians, axe long depuis l'est) :
  * jeux (`play_small`, `play_big`, `springer`), `bench`, `picnic`, `fitness` (agrès), `board` (panneau), `stone` (pierre du gué) ; aire de glisse
- * rénovée (D248) : `court` (piste d'éducation routière peinte, `l` × `w`), `bowl` (bassin creusé de `h` m, coins de rayon `r`).
+ * rénovée (D248) : `court` (piste d'éducation routière peinte, `l` × `w`), `bowl` (bassin creusé de `h` m, coins de rayon `r`) ; pêcheurs (D249) :
+ * `bivvy` (biwy kaki), `rodpod` (support à cannes), `angler` (pêcheur assis).
  * Tracés `p` (x, y, …) : `rail` (barre de glisse), `fence` (grillage), `ganivelle`, `brook` (rigole d'eau, largeur `w`).
  */
 export interface Equip {
-  k: "play_small" | "play_big" | "springer" | "bench" | "picnic" | "fitness" | "board" | "stone" | "rail" | "fence" | "ganivelle" | "brook" | "court" | "bowl";
+  k: "play_small" | "play_big" | "springer" | "bench" | "picnic" | "fitness" | "board" | "stone" | "rail" | "fence" | "ganivelle" | "brook" | "court" | "bowl"
+    | "bivvy" | "rodpod" | "angler";
   x?: number;
   y?: number;
   a?: number;
@@ -1282,6 +1284,15 @@ export interface Equip {
   /** Bowl (D248) : rayon des coins (m) ; profondeur dans `h`. Piste et bowl : plan du relief aplani, z = a·x + b·y + c. */
   r?: number;
   pl?: [number, number, number];
+  /** Altitude imposée (pêcheur posé sur un ponton, D249) ; absente : posé sur le relief. */
+  z?: number;
+}
+
+/** Boucle d'un voilier sur le plan d'eau du Vallon (D249) : points x, y (boucle fermée), niveau de l'eau. */
+export interface SailRoute {
+  p: number[];
+  z: number;
+  n?: string;
 }
 
 /** Abri sur poteaux (D246) : toit rectangulaire de centre (x, y), côté `hl` dans la direction `a` (radians), dessous du toit à `z`. */
@@ -1325,6 +1336,10 @@ export interface TileStructures {
   shelters?: Shelter[];
   /** Équipements du plan d'eau du Vallon (D247, build_vallon_leisure.py). */
   equip?: Equip[];
+  /** Vie du lac (D249, build_vallon_life.py) : pêcheurs, boucles des voiliers, herbes hautes du sud (polygones, anneaux aplatis). */
+  life?: Equip[];
+  sail?: SailRoute[];
+  tall?: number[][][];
 }
 
 export interface TileData {
