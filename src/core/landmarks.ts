@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -142,6 +142,21 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   }
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
   for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
+  // Lycée militaire (D260) : piles des deux portails, poteaux de la barrière levante et du panneau.
+  for (const k of Object.values(kinds.buildings)) {
+    const g = k.college?.mil?.gates;
+    if (!g) continue;
+    for (const p of [g.avenue.a, g.avenue.b]) out.push([p[0], p[1], 0.7]);
+    for (const p of [g.joliet.a, g.joliet.b]) out.push([p[0], p[1], 0.45]);
+    out.push([g.joliet.lift[0], g.joliet.lift[1], 0.2], [g.joliet.sign[0], g.joliet.sign[1], 0.08]);
+  }
+  // Jardins du Lycée militaire (D261) : ifs taillés (aux trois quarts de leur rayon : on frôle le feuillage), mât de drapeau.
+  for (const k of Object.values(kinds.buildings)) {
+    const gd = k.college?.mil?.garden;
+    if (!gd) continue;
+    for (const [x, y, r] of gd.yews) out.push([x, y, r * 0.75]);
+    out.push([gd.mast[0], gd.mast[1], 0.6]);
+  }
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
@@ -844,6 +859,54 @@ export function drawsGenericRoof(kind: BuildingKind | undefined): boolean {
  * Toit praticable (D214) : celui que dessine le rendu générique, sauf les églises et chapelles (clochers, gabarits de monument) et les
  * auvents (pas de murs). Les autres bâtiments gardent des murs infinis.
  */
+/**
+ * Passage voûté du Lycée militaire (D263) : il traverse la galerie d'entrée de la façade extérieure (au point `portal`) à la cour d'honneur,
+ * perpendiculairement à la galerie, sur sa largeur `pw`. Rend le contour du bâtiment et le trou de la cour coupés au passage (polylignes ouvertes),
+ * les autres trous tels quels, et les deux murs du passage ; `axis` : milieu du passage dehors et dans la cour.
+ */
+export function militairePassage(b: Building, m: CollegeSpec): { outer: number[]; holes: number[][]; cut: number[]; sides: number[][]; axis: [number, number, number, number] } | null {
+  const mil = m.mil;
+  if (!mil) return null;
+  const g = m.wings[mil.gallery.w]!;
+  const L = Math.hypot(g.q[0] - g.p[0], g.q[1] - g.p[1]), tx = (g.q[0] - g.p[0]) / L, ty = (g.q[1] - g.p[1]) / L;
+  // Vers la cour : opposé à la gauche de la galerie (la façade extérieure est à sa gauche).
+  const ix = ty, iy = -tx, D = g.wl + g.wr, hw = mil.gallery.pw / 2;
+  const [ox, oy] = mil.gallery.portal;
+  const inner: [number, number] = [ox + ix * D, oy + iy * D];
+  const cutRing = (ring: readonly number[], P: readonly [number, number]): { line: number[]; ends: [[number, number], [number, number]]; dist: number } => {
+    const n = ring.length / 2;
+    let best = 0, bestD = Infinity, bestU = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = ring[2 * i]!, ay = ring[2 * i + 1]!, bx = ring[2 * ((i + 1) % n)]!, by = ring[2 * ((i + 1) % n) + 1]!;
+      const l2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, u = Math.max(0, Math.min(1, ((P[0] - ax) * (bx - ax) + (P[1] - ay) * (by - ay)) / l2));
+      const d = Math.hypot(ax + (bx - ax) * u - P[0], ay + (by - ay) * u - P[1]);
+      if (d < bestD) [best, bestD, bestU] = [i, d, u];
+    }
+    const ax = ring[2 * best]!, ay = ring[2 * best + 1]!, bx = ring[2 * ((best + 1) % n)]!, by = ring[2 * ((best + 1) % n) + 1]!;
+    const el = Math.hypot(bx - ax, by - ay), ex = (bx - ax) / el, ey = (by - ay) / el, cx = ax + (bx - ax) * bestU, cy = ay + (by - ay) * bestU;
+    const start: [number, number] = [cx + ex * hw, cy + ey * hw], end: [number, number] = [cx - ex * hw, cy - ey * hw];
+    const line = [...start];
+    for (let k = 1; k <= n; k++) line.push(ring[2 * ((best + k) % n)]!, ring[2 * ((best + k) % n) + 1]!);
+    line.push(...end);
+    return { line, ends: [start, end], dist: bestD };
+  };
+  const o = cutRing(b.ring, [ox, oy]);
+  const near = b.holes.map((h) => cutRing(h, inner));
+  const hi = near.reduce((bi, h, i) => (h.dist < near[bi]!.dist ? i : bi), 0);
+  const hc = near[hi]!;
+  // Chaque bout du dehors avec le bout de la cour du même côté du passage.
+  const side = (p: [number, number]): number => (p[0] - ox) * tx + (p[1] - oy) * ty;
+  const [oA, oB] = side(o.ends[0]) > side(o.ends[1]) ? o.ends : [o.ends[1], o.ends[0]];
+  const [hA, hB] = side(hc.ends[0]) > side(hc.ends[1]) ? hc.ends : [hc.ends[1], hc.ends[0]];
+  return {
+    outer: o.line,
+    holes: b.holes.filter((_, i) => i !== hi),
+    cut: hc.line,
+    sides: [[...oA, ...hA], [...oB, ...hB]],
+    axis: [ox, oy, ...inner],
+  };
+}
+
 export function walkableRoof(kind: BuildingKind | undefined): boolean {
   return drawsGenericRoof(kind) && kind?.k !== "church" && kind?.k !== "chapel" && kind?.k !== "canopy" && !kind?.mon && !kind?.tower;
 }

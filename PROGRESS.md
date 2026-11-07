@@ -1905,3 +1905,58 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=240,-705,1.7,233,-722,3&h=14`.
 
 ![L'escalier de la rue du Vieux Colombier](docs/captures/d257-escalier.jpg)
+
+**Lycée militaire : l'enquête (6 novembre 2026)** (lot 0, rien de changé dans le jeu)
+- Plan et relevés dans `docs/plans/lycee-militaire.md` : le bâtiment du jeu est 7 m trop bas (faîtage réel à 20 m, pavillons à 22 m), la cour d'honneur est fermée, le grand portail est un mur plein, l'entrée rue Gaston Joliet est barrée, la place d'armes et le bassin sont en pelouse.
+- Ta photo 1 est la façade nord-ouest, sur l'axe du grand portail ; le site monte de 10 m du portail à la façade.
+- Sept questions t'attendent à la fin du plan (§7).
+
+![Le lycée militaire aujourd'hui dans le jeu](docs/captures/militaire-avant-aerien.jpg)
+
+**Lycée militaire, lot 1 : volumes et toits (6 novembre 2026)** (D258)
+- Le lycée a sa vraie forme et sa vraie hauteur, mesurées au LiDAR : trois grandes ailes de 20 m autour de la cour d'honneur, deux pavillons en pyramide au nord-ouest, la galerie basse à terrasse entre eux, le cloître le long de la cour, l'annexe autour de la petite cour sud-ouest.
+- Les toits ont leurs tuiles vernissées : losanges jaunes, verts et rouges sur fond brun.
+- La cour d'honneur a ses façades ; on n'y entre pas encore (le passage voûté viendra au lot 6).
+- À regarder : `?view=militaire&h=14` (comme ta photo 1).
+
+![Le lycée militaire depuis les pelouses](docs/captures/d258-facade-nw.jpg)
+
+**Lycée militaire, lot 2 : façades (7 novembre 2026)** (D259)
+- La façade d'entrée ressemble à ta photo : baies cintrées et passage voûté sur la galerie basse, balustrade à pots-à-feu sur la terrasse, pavillons à chaînes d'angle, hautes fenêtres à petits carreaux.
+- Les toits ont leurs lucarnes et leurs cheminées, aux places mesurées au LiDAR.
+- L'horloge : le LiDAR la montre au milieu du toit de l'aile du fond, côté cour, exactement dans l'axe du portail (c'est bien celle qu'on voit au-dessus de la balustrade sur ta photo). Cadran blanc, éclairé la nuit, drapeau au-dessus.
+- La cour d'honneur a ses arcades de cloître.
+- À regarder : `?view=militaire&h=14`, et la nuit `?view=militaire&h=22`.
+
+![La façade d'entrée du lycée militaire](docs/captures/d259-facade-nw.jpg)
+
+**Lycée militaire, lot 3 : les entrées (7 novembre 2026)** (D260)
+- Avenue du 2e Dragons : le mur beige plein est remplacé par la grille sur muret ; le grand portail a ses piles à pots-à-feu et son arc en fer forgé « LYCÉE MILITAIRE ». Il est fermé : on ne passe pas, on ne l'escalade pas, mais on voit à travers.
+- Rue Gaston Joliet : l'entrée est ouverte (vantaux rabattus, barrière levée, panneau « danger ») ; on entre à pied ou en voiture.
+- Le bâtiment blanc de l'entrée est blanc et n'a plus de vitrine ; l'annexe a ses encadrements de fenêtres rouges.
+- À regarder : `?view=custom&cam=497,114,1.7,507,104,5&h=14` (le grand portail) et `?view=custom&cam=530,-48,1.7,550,-22,3&h=14` (l'entrée).
+
+![Le grand portail](docs/captures/d260-grand-portail.jpg)
+
+**Lycée militaire, lot 4 : jardins, place d'armes, bassin (7 novembre 2026)** (D261)
+- La place d'armes est en stabilisé clair (elle était en pelouse) ; l'allée de gravier monte du grand portail au passage voûté.
+- Les parterres à la française sont devant la façade nord-est : quatre compartiments de gazon, ovales de gravier bordés de buis, ifs taillés aux coins, et le mât avec son drapeau.
+- Le bassin rond est en eau, dans sa margelle de pierre ; on ne peut pas y entrer.
+- Deux grands ifs en dôme encadrent le passage voûté, comme sur ta photo ; deux cônes derrière le grand portail.
+- À regarder : `?view=custom&cam=690,70,1.7,640,40,6&h=14` (les parterres et le mât).
+
+![Les parterres et le mât](docs/captures/d261-parterres-mat.jpg)
+
+**Lycée militaire, lot 5 : les bâtiments modernes (7 novembre 2026)** (D262)
+- Les bâtiments modernes de l'enceinte ont leurs vrais toits, mesurés au LiDAR : toits plats blancs pour les bâtiments d'enseignement (ils avaient de hautes croupes, 3 à 6 m trop hautes), toits végétalisés pour les deux bâtiments à patios, toit à deux pans bas pour le gymnase.
+- Plus de vitrines de magasin sur les bâtiments du lycée.
+- À regarder : `?view=custom&cam=560,240,45,630,150,10&h=14`.
+
+![Les bâtiments modernes et le gymnase](docs/captures/d262-batiments-nord.jpg)
+
+**Lycée militaire, lot 6 : le passage voûté (7 novembre 2026)** (D263)
+- On entre maintenant dans la cour d'honneur à pied, par le passage voûté de la galerie d'entrée : un vrai tunnel en berceau, ouvert des deux côtés.
+- L'enceinte est fermée partout sauf à l'entrée de la rue Gaston Joliet : deux trous de 3 m (au bout de la clôture de la rue Gaston Joliet, au portillon de la place Anatole de Charmasse) sont bouchés.
+- Le lycée militaire est terminé (lots 0 à 6) : `?view=militaire&h=14`.
+
+![Le passage voûté](docs/captures/d263-passage-dehors.jpg)

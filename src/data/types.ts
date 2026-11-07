@@ -368,6 +368,16 @@ export interface CollegeWing {
   /** Lucarnes (D151) sur le pan gauche (`dl`) et le pan droit (`dr`) : [« ped » (fronton triangulaire) ou « rect » (chien-assis), pas en m]. */
   dl?: ["ped" | "rect", number];
   dr?: ["ped" | "rect", number];
+  /**
+   * Mur sur le côté gauche (`il`) ou droit (`ir`) de l'aile, hors du contour BD TOPO (D258, Lycée militaire : façades sur cour au-dessus des galeries
+   * du cloître) : [altitude du pied, de u0 à u1 mètres depuis p] ; il monte jusqu'à l'égout de ce côté.
+   */
+  il?: [number, number, number];
+  ir?: [number, number, number];
+  /** Couverture en tuiles vernissées bourguignonnes (D258) : losanges jaunes, verts et rouges sur fond brun. */
+  g?: 1;
+  /** Couleur de la couverture de cette aile (terrasse, galerie) ; sinon celle du collège. */
+  c?: string;
 }
 
 /** Avant-corps central d'une façade (D151) : sur le pan `left` ou droit de l'aile `w`, à `u` mètres de son début, demi-largeur `hw`. */
@@ -419,6 +429,48 @@ export interface CollegeSpec {
   grille?: CollegeGrille;
   /** Avant-corps à fronton cintré, inscription et drapeaux (D151). */
   pavilions?: CollegePavilion[];
+  /** Pierre des murs (blonde par défaut). */
+  stone?: string;
+  /** Façades d'après photos (D259, Lycée militaire). */
+  mil?: MilitaireFacade;
+}
+
+/**
+ * Façades du Lycée militaire (D259, lot 2 de docs/plans/lycee-militaire.md), d'après la photo 1 et le LiDAR : fenêtres hautes à petits carreaux,
+ * chaînes d'angle, galerie d'entrée à baies cintrées, passage voûté et balustrade à pots-à-feu, arcades du cloître, lucarne à horloge, cheminées.
+ */
+export interface MilitaireFacade {
+  /** Travée (m) ; largeur et hauteur des fenêtres (m). */
+  bay: number;
+  win: [number, number];
+  /**
+   * Galerie d'entrée : aile `w` ; milieu du passage voûté sur la façade extérieure (x, y : axe du grand portail), largeur et hauteur ; pas des baies
+   * cintrées ; balustrade de la terrasse de u0 à u1 (m depuis le début de l'aile : entre les deux grandes ailes).
+   */
+  gallery: { w: number; portal: [number, number]; pw: number; ph: number; pitch: number; bal: [number, number] };
+  /** Ailes du cloître : leurs murs sur cour sont des arcades. */
+  arcades: number[];
+  /** Lucarne à horloge sur le pan gauche (`left`) ou droit de l'aile `w`, à `u` m de son début ; mât et drapeau au sommet. */
+  clock: { w: number; left: boolean; u: number };
+  /** Cheminées : x, y, sommet (LiDAR). */
+  chim: [number, number, number][];
+  /**
+   * Portails (D260) : grand portail de l'avenue du 2e Dragons, fermé (piliers à pots-à-feu en a et b, deux vantaux, arc en fer forgé portant `text`) ;
+   * entrée de la rue Gaston Joliet, ouverte (piliers en a et b, vantaux rabattus vers l'intérieur, barrière levante relevée en `lift`, panneau
+   * triangulaire en `sign`). L'intérieur est du côté du point `in`.
+   */
+  gates?: {
+    avenue: { a: [number, number]; b: [number, number]; text: string };
+    joliet: { a: [number, number]; b: [number, number]; lift: [number, number]; sign: [number, number] };
+    in: [number, number];
+  };
+  /** Ailes dont les fenêtres ont des encadrements de brique rouge (annexe de la rue Gaston Joliet, Street View 3). */
+  red?: number[];
+  /**
+   * Jardins (D261) : ifs taillés [x, y, rayon, hauteur, 0 cône | 1 dôme] ; mât de drapeau [x, y, hauteur] ; bassin rond (centre, rayon intérieur
+   * de la margelle) en eau.
+   */
+  garden?: { yews: [number, number, number, number, 0 | 1][]; mast: [number, number, number]; basin: { c: [number, number]; r: number } };
 }
 
 export interface BuildingKind {

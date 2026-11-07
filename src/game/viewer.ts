@@ -84,6 +84,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   voiliers: [1150, 628, 3, 1180, 520, -1],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
   lycee: [250, 120, 1.7, 290, 100, 4],
+  // Lycée militaire (D258) : depuis les pelouses, sur l'axe du grand portail, comme la photo 1 (façade nord-ouest).
+  militaire: [566, 52, 1.7, 592, 30, 12],
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.
   bonaparte: [-40, -92, 1.7, -92, -119, 5],
   parking: [-60, 150, 1.7, -20, 170, 3],

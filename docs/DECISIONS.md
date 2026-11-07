@@ -5313,3 +5313,214 @@ Collisions : emprise de l'escalier et du massif (on ne monte pas l'escalier : la
 **Tests** (+1, 1 346 au total ; `src/render/ramparts.test.ts`).
 
 ![L'escalier de la rue du Vieux Colombier, vu du nord](captures/d257-escalier.jpg)
+
+## 2026-11-06 — D258. Le Lycée militaire, lot 1 : volumes et toits mesurés, tuiles vernissées, cour d'honneur
+
+**Demande de l'utilisateur** : intégrer le Lycée militaire d'après ses photos ; enquête faite (`docs/plans/lycee-militaire.md`, lot 0). Réponses :
+tout inclure ; grand portail de l'avenue du 2e Dragons fermé, entrée de la rue Gaston Joliet ouverte ; « vas-y » sur le plan et les choix par
+défaut des questions (cour d'honneur ouverte par le passage voûté, horloge au milieu de l'aile sud-est côté cour, bassin plein, entrée à pied et en
+voiture, pas de passants, lots dans l'ordre).
+
+**Avant** : `…844252` (5 683 m², deux trous) était un seul volume générique, égout à 8,3 m et faîtage à 12,9 m au-dessus du sol, fiche « 1920,
+enduit, ardoise, commerce » : 7 m trop bas.
+
+**Relevés** (LiDAR HD à 25 cm, `tools/data/survey_militaire.py`) : faîtages ajustés sur la crête (écart de 0,2 m) ; bord du toit côté cour là où
+le MNS tombe sous 28 m (4,75 à 5,5 m du faîtage), galeries basses lues sur le palier à 22 m.
+
+**Modèle** (`college` de D148, quatorze ailes dans `manual.json`) :
+- trois grandes ailes à deux pans (nord-est, sud-ouest, sud-est ; faîtage 36,2 à 36,4, égouts 30,3 à 31,6, soit 20 m et 14 m au-dessus de la
+  cour), raccordées à leurs faîtages ; l'aile sud-est finit en croupe au sud-ouest ;
+- deux pavillons en pyramide aux bouts nord-ouest (faîtages 38,2 et 38,8) ;
+- galerie nord-ouest à terrasse (22,1 ; 14 m de profondeur) et cloître de 1,5 à 5 m sur les trois autres côtés de la cour (21,8) ;
+- annexe sud-ouest autour de la petite cour : cinq ailes (toit de tuiles brunes le long de la rue, ardoise ailleurs, terrasse au sud).
+
+**Nouveau dans le modèle `college`** (`CollegeWing`, `buildCollege`, `measure_college`) :
+- demi-largeurs imposées (`wl`, `wr`), toits plats mesurés (`flat`) ;
+- murs hors du contour (`il`, `ir`) : façades sur cour au-dessus du cloître ;
+- tuiles vernissées (`g`) : losanges jaunes à cœur vert ou rouge, en quinconce, sur fond brun ;
+- couverture par aile (`c`), pierre (`stone`) ;
+- murs des trous du contour : la cour d'honneur et la cour sud-ouest ont leurs façades.
+
+**Coût** : 8 074 triangles, dont 4 332 pour les losanges, et 290 de vitres allumées la nuit. La silhouette lointaine (`lod/28_35.json`) passe
+d'un prisme à quatorze, un par aile.
+
+**Jeu** : obstacles inchangés (contour BD TOPO et ses deux trous) ; la cour d'honneur reste fermée jusqu'au passage voûté (lot 6). Enseigne
+générique « LYCÉE MILITAIRE D'AUTUN » retirée par le modèle dédié : les lettres iront sur l'arc du grand portail (lot 3). Repère `?view=militaire`.
+
+**Pas fait** : façades (pierre, baies à petits carreaux, lucarnes, balustrade, passage voûté, horloge, cheminées : lot 2), entrées (lot 3), jardins
+(lot 4), autres bâtiments (lot 5).
+
+**Tests** (+5, 1 351 au total ; `src/render/militaire.test.ts`).
+
+![La façade nord-ouest depuis les pelouses, comme la photo 1](captures/d258-facade-nw.jpg)
+![La cour d'honneur](captures/d258-cour.jpg)
+![Vue depuis la piste](captures/d258-aerien.jpg)
+![L'entrée de la rue Gaston Joliet](captures/d258-entree-joliet.jpg)
+
+## 2026-11-07 — D259. Le Lycée militaire, lot 2 : façades
+
+**Demande de l'utilisateur** : « continue » après D258 (lot 2 de `docs/plans/lycee-militaire.md`).
+
+**Relevés** (LiDAR HD à 25 cm, bosses de plus de 0,9 m au-dessus des pans modélisés en D258) :
+- **lucarnes** au ras de l'égout (sommet vers 33,5 m), sur les deux pans des trois grandes ailes, au pas de 7 à 9,6 m (7,4 en moyenne) ;
+- **cinq cheminées** près des faîtages, sommets de 37,6 à 38,0 m ;
+- **galerie nord-ouest** parfaitement plate à 22 m, sans bosse au milieu : l'horloge n'y est pas.
+- **L'axe** grand portail → passage voûté coupe l'aile sud-est à 30,4 m de son coin est, exactement sur la lucarne du milieu de son pan côté cour
+  (30,9 au LiDAR, entre ses voisines à 23,5 et 38,2) : c'est la lucarne à horloge de la photo 1, vue par-dessus la galerie. La question 2 du plan
+  est tranchée par la mesure.
+
+**Façades** (champ `mil` de `CollegeSpec`, `manual.json`) :
+- travées de 3,7 m, fenêtres de 1,2 × 2,1 m à petits carreaux (un montant et des traverses blancs) ;
+- soubassement gris, bandeau au-dessus du rez-de-chaussée, corniche, **chaînes d'angle** sur les coins saillants de plus de 8 m ;
+- **lucarnes** à fronton triangulaire (`ped:7.4`) sur les deux pans des trois grandes ailes ;
+- **galerie d'entrée** : baies cintrées de 1,5 m au pas de 3,2 m, **passage voûté** de 3,6 × 4,4 m sur l'axe du grand portail (dessiné fermé,
+  arc sombre et clé saillante : on le passera au lot 6), même ordonnance côté cour ; **balustrade** sur les deux bords de la terrasse, d'une
+  grande aile à l'autre, avec dés et **pots-à-feu** ;
+- **cloître** : arcades sombres en plein cintre sur la cour ;
+- **lucarne à horloge** à fronton cintré, cadran blanc éclairé la nuit, mât et drapeau tricolore, à la place de la lucarne ordinaire de sa travée ;
+- façades sur cour au-dessus du cloître au même gabarit.
+
+**Coût** : 14 307 triangles pour le bâtiment, dont 6 213 pour les façades, et 328 de vitres allumées la nuit (plafond du plan : 20 000).
+
+**Pas fait** : le passage voûté reste un obstacle (lot 6) ; pas d'inscription « GS » sur le toit (non confirmée) ; façades de l'annexe sud-ouest au
+même gabarit, sans les encadrements rouges de la photo 3 (lot 3, avec l'entrée).
+
+**Tests** (+3, 1 354 au total ; `src/render/militaire.test.ts`).
+
+![La façade nord-ouest, comme la photo 1](captures/d259-facade-nw.jpg)
+![La galerie d'entrée et le passage voûté](captures/d259-galerie.jpg)
+![La cour d'honneur et la lucarne à horloge](captures/d259-cour-horloge.jpg)
+![La façade nord-ouest la nuit](captures/d259-facade-nw-nuit.jpg)
+
+## 2026-11-07 — D260. Le Lycée militaire, lot 3 : les entrées
+
+**Demande de l'utilisateur** : « continue » après D259 (lot 3 de `docs/plans/lycee-militaire.md`). Décidé à l'enquête : grand portail de l'avenue
+du 2e Dragons fermé, entrée de la rue Gaston Joliet ouverte (à pied et en voiture).
+
+**Données** (`tools/data/build_militaire_gates.py`, `militaireGates` de `manual.json` ; après `build_tiles.py`, avant `build_nav.py`, idempotent) :
+- **avenue** : le mur plein de 3,5 m (`249238889`, « mesuré 7 » : les arbres) devient une grille de 2,6 m (`fence`, non escaladable) sur un
+  muret de 0,8 m (deux murets, `−880000003` et `−880000004`) ; le tracé est coupé au grand portail (sommet du nœud OSM `4256085551` retiré),
+  entre ses deux piles (502,3 ; 102,7) et (508,5 ; 109,4) ; la seconde partie est `−880000002` ;
+- **rue Gaston Joliet** : la clôture `249238898` est coupée sur 5,7 m autour du portail OSM (544,3 ; −30,6) ; la seconde partie est `−880000001` ;
+- **bâtiment blanc** de l'entrée (`…844665`) : enduit blanc, rez-de-chaussée d'habitation (plus de vitrine), fiche « observed ».
+
+**Rendu** (`gates` et `red` de `MilitaireFacade`, `militaireGates`) :
+- **grand portail** : piles de pierre de 1 m à pots-à-feu, deux vantaux de barreaux à pointes (2,9 m), montant central ; **arc en fer forgé**
+  (flèche 1,4 m, deux fers cintrés) portant « LYCÉE MILITAIRE » en lettres de fer, lisibles depuis l'avenue ;
+- **entrée Gaston Joliet** : piles à boule, vantaux ouverts rabattus vers l'intérieur, barrière levante relevée (lisse rouge et blanche),
+  panneau triangulaire « danger » ;
+- annexe de la rue Gaston Joliet : **encadrements de brique rouge** aux fenêtres (Street View 3).
+
+**Jeu** : le grand portail est un obstacle non escaladable (comme la grille d'honneur du lycée Bonaparte, D149 : on voit et on tire à travers) ;
+piles, poteau de la barrière et du panneau en cercles ; l'entrée Gaston Joliet est libre (test : un piéton passe dans l'axe, 3 m de part et d'autre).
+La navigation des passants n'est pas relancée (convention D154 ; pas de passants dans l'enceinte, réponse à l'enquête).
+
+**Coût** : 1 426 triangles pour les deux portails (15 733 pour tout le modèle). Les barreaux de la grille de l'avenue sont ceux, texturés, des clôtures.
+
+**Pas fait** : barrières en X (chevrons rouges et blancs) de la photo 2, qui bloqueraient les voitures ; drapeaux de la grille ; massifs, ifs
+taillés et talus de lierre de l'avenue (lot 4).
+
+**Tests** (+4, 1 358 au total ; `src/core/militaire-gates.test.ts`).
+
+![Le grand portail depuis l'avenue](captures/d260-grand-portail.jpg)
+![La grille sur muret de l'avenue](captures/d260-grille-avenue.jpg)
+![L'entrée de la rue Gaston Joliet](captures/d260-entree-joliet.jpg)
+![L'entrée vue de l'intérieur : vantaux ouverts, barrière levée](captures/d260-entree-joliet-dedans.jpg)
+
+## 2026-11-07 — D261. Le Lycée militaire, lot 4 : jardins, place d'armes, bassin
+
+**Demande de l'utilisateur** : « continue » après D260 (lot 4 de `docs/plans/lycee-militaire.md`). Choix par défaut de l'enquête : bassin plein.
+
+**Relevés** (orthophotographie à 8 cm) : **parterres** symétriques par rapport au milieu de la façade nord-est, en quatre compartiments de gazon
+(deux petits aux bouts, deux grands) dans une bande de gravier de 13,5 m ; chacun porte un ovale de gravier bordé de buis (grands : 8,8 × 6,6 m ;
+petits : 5,8 × 4,4 m) ; allée au milieu. Place d'armes : stabilisé jusqu'aux parterres. Bassin : 28,5 m de diamètre intérieur, vide sur
+l'orthophotographie récente, plein sur la photo aérienne.
+
+**Sols** (`tools/data/build_militaire_grounds.py`, `militaireGrounds` de `manual.json` ; après `build_courts.py` et `build_militaire_gates.py`,
+avant `build_nav.py`) :
+- stabilisé clair (`path_gravel`) : place d'armes, découpée à la tuile (28_35, 29_35) et autour des bâtiments ; allée de 5 m du grand portail au
+  passage voûté ;
+- gravier (`plaza_gravel`) : cour d'honneur, cour sud-ouest, bande des parterres et intérieur des ovales ;
+- gazon (`lawn`) : les quatre compartiments ;
+- buis : quatre haies de 45 cm autour des ovales (`−880000010` à `−880000013`).
+Polygones posés notés dans `tools/data/militaire_grounds.json` (retirés et reposés à chaque passe : le script est idempotent).
+
+**Rendu** (`garden` de `MilitaireFacade`, `militaireGarden`) :
+- **ifs taillés** : deux cônes de 3,2 m derrière le grand portail (Street View), quatre cônes aux coins des parterres (arbustes OSM), deux dômes
+  de 4,2 m de part et d'autre du passage voûté (photo 1, placés à l'estime) ;
+- **mât de drapeau** de 11 m (nœud OSM `5853910529`) sur l'axe de la façade nord-est, drapeau tricolore ;
+- **bassin** : margelle de pierre de 50 cm posée 45 cm au-dessus du point haut de son pourtour, eau plate 15 cm dessous ; la fontaine OSM reste
+  au milieu.
+
+**Jeu** : ifs et mât en cercles ; la margelle arrête le piéton (on ne se baigne pas : l'eau n'est pas dans `water.json`), on voit et on tire
+par-dessus. Le buis se saute.
+
+**Coût** : 830 triangles (16 563 pour tout le modèle).
+
+**Pas fait** : massifs fleuris et talus de lierre devant la grille de l'avenue ; alignements d'arbres taillés en rideau (les arbres de la carte
+restent) ; le chemin OSM du glacis, légèrement décalé, croise l'allée axiale près de la façade.
+
+**Tests** (+4, 1 362 au total ; `src/core/militaire-garden.test.ts`).
+
+![La place d'armes et le bassin, depuis la piste](captures/d261-place-armes.jpg)
+![Les parterres et le mât, depuis la place d'armes](captures/d261-parterres-mat.jpg)
+![Le bassin](captures/d261-bassin.jpg)
+![Les ifs devant la façade d'entrée](captures/d261-facade-ifs.jpg)
+![Le glacis et l'allée du grand portail](captures/d261-glacis.jpg)
+
+## 2026-11-07 — D262. Le Lycée militaire, lot 5 : les bâtiments modernes de l'enceinte
+
+**Demande de l'utilisateur** : « continue » après D261 (lot 5 de `docs/plans/lycee-militaire.md`).
+
+**Constat** : les 21 autres bâtiments de l'enceinte avaient des croupes génériques à 35° (faîtage = égout + 4,6 m) alors que le LiDAR voit surtout
+des toits plats : 3 à 6 m de trop sur les bâtiments d'enseignement ; les deux bâtiments à patios (1920) ont des toits végétalisés plats ; et,
+classés « commerce et services » par BD TOPO, sept d'entre eux avaient des vitrines.
+
+**Mesure** (`fit_roof` de `build_stores.py` : part des cellules du toit à 25 cm d'un plan unique ; plus petit rectangle englobant) :
+- **13 toits plans** (`roofplane`, nouveau modèle de `build_monuments.py`) : plan ajusté quand il explique au moins la moitié du toit (58 à 100 %),
+  sinon toit plat à la médiane du MNS (`…844705`, 3 % ; `…844707`, 14 %) ; couverture lue à l'orthophotographie : membrane blanche pour les
+  bâtiments d'enseignement (`…844705`, `…844706`, `…844707`), toit végétalisé pour les deux bâtiments à patios (`…844655`, `…844704`), gris pour
+  le bâtiment triangulaire et les petits bâtiments ; silhouette lointaine en prisme plat ;
+- **6 toits à deux pans** (modèle `college` à une aile, sur l'axe du rectangle englobant) pour les emprises rectangulaires à toit en pente (écart
+  de 1,6 à 5,7 m) : `…844449`, `…844653`, `…844656`, `…844251` (plat au relevé), `…844665` (pignons, enduit blanc), gymnase `…844708`
+  (pignons, bac acier gris) ; égout imposé au bas du toit pour `…844449` (carré : l'axe n'est pas défini) et le gymnase (un pan descendait sur
+  un arbre).
+- **Fiches** (`build_militaire_gates.py`, `fiches`) : les cinq bâtiments à toit plan qui avaient une vitrine passent « d'après-guerre », sans
+  vitrine, porte vitrée.
+
+**Pas fait** : façades propres de chaque bâtiment (sans photo : génériques) ; tours d'escalier et édicules des toits plats ; le mur d'escalade du gymnase.
+
+**Tests** (+4, 1 366 au total ; `src/core/militaire-modern.test.ts`).
+
+![Les bâtiments du nord de la place d'armes et le gymnase](captures/d262-batiments-nord.jpg)
+![Depuis la piste : toits plats blancs, toit végétalisé à gauche](captures/d262-vue-piste.jpg)
+![L'annexe et les bâtiments du sud](captures/d262-batiments-sud.jpg)
+
+## 2026-11-07 — D263. Le Lycée militaire, lot 6 : le passage voûté ouvert, l'enceinte fermée
+
+**Demande de l'utilisateur** : « continue » après D262 (lot 6, le dernier, de `docs/plans/lycee-militaire.md`). Choix par défaut de l'enquête :
+on entre dans la cour d'honneur par le passage voûté.
+
+**Passage voûté** (`militairePassage` de `src/core/landmarks.ts`, `openWall` et `passageTunnel` de `src/render/monuments.ts`) :
+- obstacles : le contour BD TOPO et le trou de la cour d'honneur sont coupés sur 3,6 m au droit du passage (sur l'axe du grand portail) et
+  deviennent des polylignes ouvertes ; deux murs de 14,3 m bordent le passage, à travers la galerie ; la cour sud-ouest reste fermée ;
+- rendu : les deux façades de la galerie sont percées (pans pleins de part et d'autre, tympan au-dessus de l'arc), piédroits et archivolte de
+  pierre claire, claveau ; tunnel en berceau (piédroits, voûte en dix pans, dallage clair) dans une pierre plus sombre ;
+- la balustrade de la terrasse est visible des deux côtés (elle ne l'était que du dehors).
+
+**Enceinte** : balayage de sa limite OpenStreetMap (`enceinte` de `militaireGates`, way 80374605) tous les 50 cm, rayon de 8 m en travers :
+deux trous de 3 m, que le joueur passait, sont fermés par `build_militaire_gates.py` (`closures`) : entre la fin de la clôture de la rue
+Gaston Joliet et l'annexe (clôture de 1,8 m, comme elle), et au portillon privé de la place Anatole de Charmasse (grille de 2,6 m, comme
+l'avenue). Le trou soupçonné au nord-est, près de la piste, n'existe pas (le bâtiment `…848396` ferme l'angle). Seule l'entrée de la rue
+Gaston Joliet reste ouverte.
+
+**Laissé tel quel** : les murs de la cour suivent le trou BD TOPO, à 1 à 2 m du bord du cloître relevé au LiDAR. Le cloître, ses toits et ses
+murs sont bâtis sur ce même trou et restent cohérents entre eux ; les recaler voudrait dire refaire le cloître pour un écart qu'on ne voit pas.
+
+**Coût** : 17 175 triangles pour tout le modèle, 328 de vitres allumées.
+
+**Tests** (+4, 1 370 au total ; `src/core/militaire-passage.test.ts` : coupe, traversée à pied, murs du passage, fermeture de l'enceinte).
+
+![Le passage voûté depuis le glacis](captures/d263-passage-dehors.jpg)
+![Dans le passage](captures/d263-passage-dedans.jpg)
+![Le passage depuis la cour d'honneur](captures/d263-passage-cour.jpg)

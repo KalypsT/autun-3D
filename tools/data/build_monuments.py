@@ -2273,12 +2273,14 @@ def measure_college(bid, b, spec):
                     side[1 if v_ > 0 else -1].append(abs(v_))
         wl = round(float(np.median(side[1])), 2) if len(side[1]) >= 2 else hw
         wr = round(float(np.median(side[-1])), 2) if len(side[-1]) >= 2 else hw
+        # Demi-largeurs imposées (D258) : côté cour, le bord du toit n'est pas un mur du contour (relevé au LiDAR, survey_militaire.py).
+        wl, wr = w.get("wl", wl), w.get("wr", wr)
         lo, hi = w.get("win", [0.2, 0.8])
         ss = [lo * L + 0.5 * i for i in range(int((hi - lo) * L / 0.5))]
         at = lambda s_, o: mns(px + ux * s_ + nx * o, py + uy * s_ + ny * o)
         ridge = float(np.median([max(at(s_, o / 4) for o in range(-3, 4)) for s_ in ss]))
         eaves = []
-        for sign in (1, -1):
+        for sign in ((1, -1) if not w.get("flat") else ()):
             wside = wl if sign == 1 else wr
             os_ = [1.0 + 0.25 * i for i in range(int((wside - 0.7 - 1.0) / 0.25) + 1)]
             zs = [float(np.median([at(s_, sign * o) for s_ in ss])) for o in os_]
@@ -2286,18 +2288,25 @@ def measure_college(bid, b, spec):
             eaves.append(float(k * wside + c0))
         if "eave" in w:  # aile trop courte pour ajuster une pente : égout imposé (repris d'une aile voisine)
             eaves = [w["eave"], w["eave"]]
+        if w.get("flat"):  # terrasse ou galerie (D258) : toit plat à la médiane du MNS sur la bande de l'aile
+            zf = float(np.median([at(s_, o) for s_ in ss for o in np.linspace(-0.6 * wr, 0.6 * wl, 5)]))
+            ridge, eaves = zf, [zf, zf]
         wing = {"p": w["p"], "q": w["q"], "wl": wl, "wr": wr, "el": round(eaves[0], 2), "er": round(eaves[1], 2), "r": round(ridge, 2), "a": w["a"], "b": w["b"]}
         for key in ("dl", "dr"):
             if key in w:
                 kind, pitch = w[key].split(":")
                 wing[key] = [kind, float(pitch)]
+        for key in ("il", "ir", "g", "c"):  # murs sur cour, tuiles vernissées, couleur de la couverture (D258)
+            if key in w:
+                wing[key] = w[key]
         wings.append(wing)
         print(f"  {w['name']} : {L:.1f} m, faîtage {ridge:.2f}, demi-largeurs {wl} et {wr}, égouts {eaves[0]:.2f} (gauche) et {eaves[1]:.2f} (droite)")
     out = {"wings": wings}
     if "pavilions" in spec:
         out["pavilions"] = spec["pavilions"]
-    if "roof" in spec:
-        out["roof"] = spec["roof"]
+    for key in ("roof", "stone", "mil"):
+        if key in spec:
+            out[key] = spec[key]
     if "grille" in spec:
         out["grille"] = measure_grille(bid, spec["grille"])
     return out
@@ -2354,6 +2363,40 @@ def college(tid, bid, b, spec, k):
         if k["buildings"][aid] != ae:
             k["buildings"][aid] = ae
             changed = True
+    return changed, lod
+
+
+def roofplane(tid, bid, b, spec, k):
+    """Toit plan mesuré d'un bâtiment (D262, bâtiments modernes du Lycée militaire) : plan ajusté au LiDAR (`fit_roof` de build_stores.py) si au
+    moins `min` de ses cellules y tiennent à 25 cm, sinon toit plat à la médiane du MNS ; couleur de couverture `color` (champ `zinc`). Rend vrai si le
+    type change et la tuile des silhouettes si elle change."""
+    from shapely.geometry import Point, Polygon
+
+    from build_stores import fit_roof
+
+    ring = b["ring"]
+    xs, ys = ring[0::2], ring[1::2]
+    mns = Raster("MNS", bid[-8:], min(xs) - 3, min(ys) - 3, max(xs) + 3, max(ys) + 3)
+    plane, rms, n = fit_roof(ring, mns)
+    poly = Polygon(list(zip(xs, ys)))
+    inner = poly.buffer(-1.5)
+    cells = [(x, y) for x in np.arange(math.floor(min(xs)), max(xs), 0.5) for y in np.arange(math.floor(min(ys)), max(ys), 0.5) if inner.contains(Point(x, y))]
+    share = n / max(1, len(cells))
+    if share < spec.get("min", 0.5):
+        med = float(np.median([mns(x, y) for x, y in cells]))
+        plane = [0.0, 0.0, round(med, 3), plane[3]]
+        print(f"  {bid[-8:]} : toit plat à {med:.2f} (le plan n'explique que {share * 100:.0f} % du toit)")
+    else:
+        print(f"  {bid[-8:]} : plan de toit {plane} ({share * 100:.0f} % du toit à 25 cm, écart {rms * 100:.0f} cm)")
+    e = dict(k["buildings"].get(bid, {"k": "school"}))
+    e["roof"] = [float(v) for v in plane]
+    if "color" in spec:
+        e["zinc"] = spec["color"]
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    # Silhouette lointaine : un prisme à toit plat au plus haut du plan sur le contour (acrotère compris).
+    top = max(plane[0] * x + plane[1] * y + plane[2] for x, y in zip(xs, ys)) + plane[3]
+    lod = tid if replace_lod(tid, bid, [([[round(x, 1), round(y, 1)] for x, y in zip(xs, ys)], top, top)]) else None
     return changed, lod
 
 
@@ -2808,6 +2851,13 @@ def main():
             continue
         if spec["model"] == "college":
             ch, lod = college(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "roofplane":
+            ch, lod = roofplane(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:
