@@ -5356,3 +5356,38 @@ générique « LYCÉE MILITAIRE D'AUTUN » retirée par le modèle dédié : les
 ![La cour d'honneur](captures/d258-cour.jpg)
 ![Vue depuis la piste](captures/d258-aerien.jpg)
 ![L'entrée de la rue Gaston Joliet](captures/d258-entree-joliet.jpg)
+
+## 2026-11-07 — D259. Le Lycée militaire, lot 2 : façades
+
+**Demande de l'utilisateur** : « continue » après D258 (lot 2 de `docs/plans/lycee-militaire.md`).
+
+**Relevés** (LiDAR HD à 25 cm, bosses de plus de 0,9 m au-dessus des pans modélisés en D258) :
+- **lucarnes** au ras de l'égout (sommet vers 33,5 m), sur les deux pans des trois grandes ailes, au pas de 7 à 9,6 m (7,4 en moyenne) ;
+- **cinq cheminées** près des faîtages, sommets de 37,6 à 38,0 m ;
+- **galerie nord-ouest** parfaitement plate à 22 m, sans bosse au milieu : l'horloge n'y est pas.
+- **L'axe** grand portail → passage voûté coupe l'aile sud-est à 30,4 m de son coin est, exactement sur la lucarne du milieu de son pan côté cour
+  (30,9 au LiDAR, entre ses voisines à 23,5 et 38,2) : c'est la lucarne à horloge de la photo 1, vue par-dessus la galerie. La question 2 du plan
+  est tranchée par la mesure.
+
+**Façades** (champ `mil` de `CollegeSpec`, `manual.json`) :
+- travées de 3,7 m, fenêtres de 1,2 × 2,1 m à petits carreaux (un montant et des traverses blancs) ;
+- soubassement gris, bandeau au-dessus du rez-de-chaussée, corniche, **chaînes d'angle** sur les coins saillants de plus de 8 m ;
+- **lucarnes** à fronton triangulaire (`ped:7.4`) sur les deux pans des trois grandes ailes ;
+- **galerie d'entrée** : baies cintrées de 1,5 m au pas de 3,2 m, **passage voûté** de 3,6 × 4,4 m sur l'axe du grand portail (dessiné fermé,
+  arc sombre et clé saillante : on le passera au lot 6), même ordonnance côté cour ; **balustrade** sur les deux bords de la terrasse, d'une
+  grande aile à l'autre, avec dés et **pots-à-feu** ;
+- **cloître** : arcades sombres en plein cintre sur la cour ;
+- **lucarne à horloge** à fronton cintré, cadran blanc éclairé la nuit, mât et drapeau tricolore, à la place de la lucarne ordinaire de sa travée ;
+- façades sur cour au-dessus du cloître au même gabarit.
+
+**Coût** : 14 307 triangles pour le bâtiment, dont 6 213 pour les façades, et 328 de vitres allumées la nuit (plafond du plan : 20 000).
+
+**Pas fait** : le passage voûté reste un obstacle (lot 6) ; pas d'inscription « GS » sur le toit (non confirmée) ; façades de l'annexe sud-ouest au
+même gabarit, sans les encadrements rouges de la photo 3 (lot 3, avec l'entrée).
+
+**Tests** (+3, 1 354 au total ; `src/render/militaire.test.ts`).
+
+![La façade nord-ouest, comme la photo 1](captures/d259-facade-nw.jpg)
+![La galerie d'entrée et le passage voûté](captures/d259-galerie.jpg)
+![La cour d'honneur et la lucarne à horloge](captures/d259-cour-horloge.jpg)
+![La façade nord-ouest la nuit](captures/d259-facade-nw-nuit.jpg)

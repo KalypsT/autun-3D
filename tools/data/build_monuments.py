@@ -2304,7 +2304,7 @@ def measure_college(bid, b, spec):
     out = {"wings": wings}
     if "pavilions" in spec:
         out["pavilions"] = spec["pavilions"]
-    for key in ("roof", "stone"):
+    for key in ("roof", "stone", "mil"):
         if key in spec:
             out[key] = spec[key]
     if "grille" in spec:

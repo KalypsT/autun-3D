@@ -431,6 +431,29 @@ export interface CollegeSpec {
   pavilions?: CollegePavilion[];
   /** Pierre des murs (blonde par défaut). */
   stone?: string;
+  /** Façades d'après photos (D259, Lycée militaire). */
+  mil?: MilitaireFacade;
+}
+
+/**
+ * Façades du Lycée militaire (D259, lot 2 de docs/plans/lycee-militaire.md), d'après la photo 1 et le LiDAR : fenêtres hautes à petits carreaux,
+ * chaînes d'angle, galerie d'entrée à baies cintrées, passage voûté et balustrade à pots-à-feu, arcades du cloître, lucarne à horloge, cheminées.
+ */
+export interface MilitaireFacade {
+  /** Travée (m) ; largeur et hauteur des fenêtres (m). */
+  bay: number;
+  win: [number, number];
+  /**
+   * Galerie d'entrée : aile `w` ; milieu du passage voûté sur la façade extérieure (x, y : axe du grand portail), largeur et hauteur ; pas des baies
+   * cintrées ; balustrade de la terrasse de u0 à u1 (m depuis le début de l'aile : entre les deux grandes ailes).
+   */
+  gallery: { w: number; portal: [number, number]; pw: number; ph: number; pitch: number; bal: [number, number] };
+  /** Ailes du cloître : leurs murs sur cour sont des arcades. */
+  arcades: number[];
+  /** Lucarne à horloge sur le pan gauche (`left`) ou droit de l'aile `w`, à `u` m de son début ; mât et drapeau au sommet. */
+  clock: { w: number; left: boolean; u: number };
+  /** Cheminées : x, y, sommet (LiDAR). */
+  chim: [number, number, number][];
 }
 
 export interface BuildingKind {

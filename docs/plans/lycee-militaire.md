@@ -211,3 +211,10 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 - Tuiles vernissées en losanges, façades de la cour d'honneur et de la cour sud-ouest, façades sur cour au-dessus du cloître.
 - 8 074 triangles (cible du lot : 8 000 ; plafond du modèle : 20 000), silhouette lointaine en quatorze prismes.
 - Écart connu : le cloître du LiDAR finit à 8 à 8,5 m du faîtage ; le trou BD TOPO (murs de la cour et obstacles) à 7 à 9,9 m. On garde le trou BD TOPO jusqu'au lot 6.
+
+## 9. Lot 2 fait (D259, 7 novembre 2026)
+
+- Fenêtres de 1,2 × 2,1 m à petits carreaux (travée de 3,7 m), chaînes d'angle, lucarnes au pas de 7,4 m (mesurées : 7 à 9,6 m), cinq cheminées (LiDAR).
+- Galerie : baies cintrées, passage voûté sur l'axe (dessiné fermé), balustrade à pots-à-feu ; cloître en arcades.
+- **Question 2 tranchée par le LiDAR** : l'axe du portail tombe sur la lucarne du milieu du pan côté cour de l'aile sud-est (u = 30,4 ; bosse mesurée à 30,9) : c'est la lucarne à horloge. La galerie est plate (22 m), sans fronton.
+- 14 307 triangles pour tout le bâtiment.

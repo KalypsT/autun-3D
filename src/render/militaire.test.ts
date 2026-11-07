@@ -79,3 +79,62 @@ describe("Lycée militaire : volumes et toits (D258)", () => {
     expect(Math.max(...ridges)).toBeCloseTo(wing("pavillon ouest").r, 0);
   });
 });
+
+/** D259 : Lycée militaire, lot 2 de docs/plans/lycee-militaire.md : façades d'après la photo 1 et le LiDAR. */
+describe("Lycée militaire : façades (D259)", () => {
+  const world = loadRealWorld();
+  const ID = "BATIMENT0000000348844252";
+  const spec = world.tile.kinds!.buildings[ID]!.college!;
+  const mil = spec.mil!;
+  const b = world.tile.buildings.find((q) => q.id === ID)!;
+  const tris = (s: typeof spec): number => {
+    const mb = new MeshBuilder();
+    buildCollege(mb, new MeshBuilder(), s, b.ring, world.terrain, b.holes);
+    expect(mb.positions.every(Number.isFinite)).toBe(true);
+    return mb.positions.length / 9;
+  };
+
+  it("le passage voûté est sur la façade extérieure de la galerie, sur l'axe du grand portail", () => {
+    const [px, py] = mil.gallery.portal;
+    const ring = b.ring, n = ring.length / 2;
+    let best = Infinity;
+    for (let i = 0; i < n; i++) {
+      const ax = ring[2 * i]!, ay = ring[2 * i + 1]!, bx = ring[2 * ((i + 1) % n)]!, by = ring[2 * ((i + 1) % n) + 1]!;
+      const L = Math.hypot(bx - ax, by - ay), u = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L;
+      if (u > 0 && u < L) best = Math.min(best, Math.abs(((px - ax) * (by - ay) - (py - ay) * (bx - ax)) / L));
+    }
+    expect(best).toBeLessThan(0.3);
+    // L'axe va du grand portail (505,5 ; 106,2) au milieu de l'aile sud-est : le passage est à moins de 0,5 m de cette droite.
+    const [ox, oy, tx, ty] = [505.5, 106.2, 633.0, -13.5], L = Math.hypot(tx - ox, ty - oy);
+    expect(Math.abs(((px - ox) * (ty - oy) - (py - oy) * (tx - ox)) / L)).toBeLessThan(0.5);
+  });
+
+  it("l'horloge est sur l'aile sud-est, côté cour, à moins de 1 m de l'axe ; les cheminées dépassent le faîtage de 1 à 2 m", () => {
+    const w = spec.wings[mil.clock.w]!;
+    const L = Math.hypot(w.q[0] - w.p[0], w.q[1] - w.p[1]);
+    const cx = w.p[0] + ((w.q[0] - w.p[0]) * mil.clock.u) / L, cy = w.p[1] + ((w.q[1] - w.p[1]) * mil.clock.u) / L;
+    // Axe : du grand portail au passage voûté ; il tombe sur la lucarne que le LiDAR voit au milieu du pan côté cour (u ≈ 30,9).
+    const [ox, oy] = [505.5, 106.2], [tx, ty] = mil.gallery.portal, D = Math.hypot(tx - ox, ty - oy);
+    expect(Math.abs(((cx - ox) * (ty - oy) - (cy - oy) * (tx - ox)) / D)).toBeLessThan(1);
+    expect(mil.clock.left).toBe(false);
+    expect(w.ir).toBeDefined();
+    for (const [, , top] of mil.chim) {
+      expect(top).toBeGreaterThan(36.2 + 1);
+      expect(top).toBeLessThan(36.4 + 2);
+    }
+  });
+
+  it("façades, lucarnes, balustrade, horloge et cheminées : entre 3 000 et 9 000 triangles ; le bâtiment reste sous 20 000", () => {
+    const bare = { ...spec, wings: spec.wings.map((w) => {
+      const r = { ...w };
+      delete r.dl;
+      delete r.dr;
+      return r;
+    }) };
+    delete bare.mil;
+    const full = tris(spec), cost = full - tris(bare);
+    expect(cost).toBeGreaterThan(3000);
+    expect(cost).toBeLessThan(9000);
+    expect(full).toBeLessThan(20000);
+  });
+});

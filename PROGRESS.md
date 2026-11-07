@@ -1920,3 +1920,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=militaire&h=14` (comme ta photo 1).
 
 ![Le lycée militaire depuis les pelouses](docs/captures/d258-facade-nw.jpg)
+
+**Lycée militaire, lot 2 : façades (7 novembre 2026)** (D259)
+- La façade d'entrée ressemble à ta photo : baies cintrées et passage voûté sur la galerie basse, balustrade à pots-à-feu sur la terrasse, pavillons à chaînes d'angle, hautes fenêtres à petits carreaux.
+- Les toits ont leurs lucarnes et leurs cheminées, aux places mesurées au LiDAR.
+- L'horloge : le LiDAR la montre au milieu du toit de l'aile du fond, côté cour, exactement dans l'axe du portail (c'est bien celle qu'on voit au-dessus de la balustrade sur ta photo). Cadran blanc, éclairé la nuit, drapeau au-dessus.
+- La cour d'honneur a ses arcades de cloître.
+- À regarder : `?view=militaire&h=14`, et la nuit `?view=militaire&h=22`.
+
+![La façade d'entrée du lycée militaire](docs/captures/d259-facade-nw.jpg)
