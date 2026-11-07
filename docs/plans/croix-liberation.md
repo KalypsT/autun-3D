@@ -143,3 +143,27 @@ Mesures connues (D105, toute la ville, cache rempli) : ≈ 2 h 30 pour les 12 bl
 5. la petite route d'accès (revêtement, largeur, bas-côtés) et le parking ;
 6. si possible, le carrefour avec la RD 256 et un lacet de la RD 256 ;
 7. la croix vue d'en bas, de la ville (pour la silhouette lointaine).
+
+## 7. Les photos (première salve, 7 novembre)
+
+Photos de l'utilisateur (non versionnées) : une photo au sol, deux vues de drone, deux vues Street View d'un particulier (août 2022) sur le site,
+quatre vues Street View Google (juillet 2026) des routes, une vue satellite Google Maps.
+
+| n° | Ce que je lis | Lieu, caméra déduite | Certitude |
+|---|---|---|---|
+| 1 | **La croix de face**, côté parking. **Croix latine massive en granite gris** à moellons équarris, face bouchardée et joints marqués : fût ≈ 3 assises de blocs de large, **bras épais en forte saillie** (leur dessous sombre se voit), tête courte ; un **petit carré en relief** à la croisée. **Socle** : une marche basse sous le fût, posée sur une **grande plate-forme en tronc de pyramide** (talus de pierre appareillée, ≈ 1 m) dont la face sud porte **trois plaques** (une grande au milieu, une petite à chaque coin). Autour, une **allée en enrobé** bordée d'une **bordure de béton**, puis la terre et le gravier. **Deux mâts d'éclairage** (projecteurs) de part et d'autre, côté vue. Des gens debout sur la plate-forme, au pied du fût : échelle. | sur le parking, au sud de la croix, vers le nord | bonne |
+| 2 | **Drone, au nord, vers le sud** : la plate-forme est **carrée**, sa face nord est un **mur droit** (≈ 1,5 m) avec un **escalier à chaque angle** (celui de l'est bien visible) ; au sud, la **grande clairière de gravier clair** du parking, en demi-cercle, fermée par la forêt ; une **rangée de rochers bruts** sépare le parking de la plate-forme ; deux mâts d'éclairage aux angles nord ; **pelouse** de l'aire de décollage au premier plan ; **sentier** qui part à droite (est) dans la pente. | au-dessus de l'aire de décollage, vers le sud | bonne |
+| 3 | **La vue** (drone, un peu plus haut que les yeux) : pelouse de l'aire de décollage avec un **sentier en lacets**, lisière de forêt, prés, le **centre hospitalier** (toits rouges et blancs, au milieu à droite), toute la ville, la **cathédrale** et sa flèche à droite, le **plan d'eau du Vallon** à droite au fond, la plaine et les collines à l'horizon. | au-dessus de la croix, vers le nord–nord-est | bonne |
+| 4 | Street View sur le site : plate-forme vue de biais, **escalier de l'angle nord-ouest** montant vers la vue, plaques, rochers bornes, grand parking de terre, voitures garées le long des arbres. | parking, vers l'ouest–nord-ouest | bonne |
+| 5 | Street View : le **parking de terre battue** (≈ 60 m de profondeur), rochers alignés à gauche, **poubelle ronde en béton** à droite, voitures en lisière, conifères et feuillus, **pylône d'antenne** derrière les arbres. | parking, vers le sud | bonne |
+| 6 | **La route d'accès** : une seule voie revêtue (≈ 3 m), sans marquage, bas-côtés de feuilles, **toute droite en futaie**. Une voiture peut y monter. | route d'accès | bonne |
+| 7 | **RD 256** au pied de la colline : chaussée étroite (≈ 5 m) sans marquage, **long mur de pierre** à gauche avec un pilier d'angle, poteaux électriques, prés. | bas de la RD 256 (à situer sur BD TOPO) | moyenne |
+| 8 | RD 256 : allée d'arbres, panneau **« danger – piétons »**, talus herbeux. | bas de la RD 256 | moyenne |
+| 9 | RD 256 en forêt : chaussée usée, fougères, feuillus et pins. | haut de la RD 256 | moyenne |
+| 10 | Satellite : le tracé (deux grands lacets, la montée vers le sud-ouest, le **carrefour au sud** en lisière des champs, la **route d'accès droite** vers le nord jusqu'à la croix), le centre hospitalier et la tour des Ursulines au nord. **Concorde avec OpenStreetMap.** | — | bonne |
+
+**Ordres de grandeur à confirmer au LiDAR** (photo 1, par les gens debout au pied du fût) : croix ≈ 13 à 15 m au-dessus de la plate-forme, envergure des bras ≈ 7 m,
+fût ≈ 2,5 m de large ; plate-forme ≈ 20 m de côté (photo 2). Ce sont des lectures en perspective, à ± 20 %.
+
+**Manque encore** (facultatif) : le texte des plaques (photo rapprochée) ; la face nord et un côté de la plate-forme au sol (escaliers, hauteur du mur) ;
+le carrefour de la RD 256 et de la route d'accès ; la croix vue de la ville.
