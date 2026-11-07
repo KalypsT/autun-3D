@@ -6,7 +6,8 @@ Entrée : `militaireGates` de tools/data/manual.json, tiles/<tuile>.json.
 Sortie : - chaque tracé de `cuts` est coupé au sommet `at` (retiré) : la première partie finit au point `A` (s'il est donné), la seconde
            (identifiant `second`) commence au point `B` ; nature et hauteur imposées (`kind`, `height`) ; un muret (`muret` : identifiants des
            deux murets, hauteur) suit chaque partie ;
-         - la fiche de `fiche.id` reçoit ses réglages (enduit, rez-de-chaussée sans vitrine) et passe à « observed ».
+         - chaque fiche de `fiches` reçoit ses réglages (enduit, époque, rez-de-chaussée sans vitrine) et passe à « observed » (D262 : les
+           bâtiments modernes de l'enceinte, classés « commerce et services » par BD TOPO, n'ont pas de vitrine).
 Idempotent : un tracé déjà coupé (le second existe) est laissé tel quel ; `bytes` et `walls` de world.json sont mis à jour.
 """
 
@@ -51,8 +52,11 @@ def cut(walls, spec):
 def fiche(tile, spec):
     fi = next(f for f in tile["fiches"] if f["id"] == spec["id"])
     before = json.dumps(fi, sort_keys=True)
-    fi["materials"]["wall"]["color"] = spec["wall"]
-    fi["ground"] = spec["ground"]
+    if "wall" in spec:
+        fi["materials"]["wall"]["color"] = spec["wall"]
+    if "era" in spec:
+        fi["era"] = spec["era"]
+    fi["ground"] = {**spec["ground"], **({"front": fi["ground"]["front"]} if "front" in fi["ground"] and "front" not in spec["ground"] else {})}
     fi["status"] = "observed"
     fi["sources"] = [q for q in fi["sources"] if q["kind"] != "photo"] + [{"kind": "photo", "ref": spec["photo"][:80]}]
     return json.dumps(fi, sort_keys=True) != before
@@ -66,10 +70,10 @@ def main():
         tile = tiles.setdefault(s["tile"], json.loads((c.OUT / "tiles" / f"{s['tile']}.json").read_text()))
         if cut(tile["walls"], s):
             changed.add(s["tile"])
-    f = spec["fiche"]
-    tile = tiles.setdefault(f["tile"], json.loads((c.OUT / "tiles" / f"{f['tile']}.json").read_text()))
-    if fiche(tile, f):
-        changed.add(f["tile"])
+    for f in spec["fiches"]:
+        tile = tiles.setdefault(f["tile"], json.loads((c.OUT / "tiles" / f"{f['tile']}.json").read_text()))
+        if fiche(tile, f):
+            changed.add(f["tile"])
     if changed:
         world = json.loads((c.OUT / "world.json").read_text())
         for tid in sorted(changed):

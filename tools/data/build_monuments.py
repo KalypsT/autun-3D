@@ -2366,6 +2366,40 @@ def college(tid, bid, b, spec, k):
     return changed, lod
 
 
+def roofplane(tid, bid, b, spec, k):
+    """Toit plan mesuré d'un bâtiment (D262, bâtiments modernes du Lycée militaire) : plan ajusté au LiDAR (`fit_roof` de build_stores.py) si au
+    moins `min` de ses cellules y tiennent à 25 cm, sinon toit plat à la médiane du MNS ; couleur de couverture `color` (champ `zinc`). Rend vrai si le
+    type change et la tuile des silhouettes si elle change."""
+    from shapely.geometry import Point, Polygon
+
+    from build_stores import fit_roof
+
+    ring = b["ring"]
+    xs, ys = ring[0::2], ring[1::2]
+    mns = Raster("MNS", bid[-8:], min(xs) - 3, min(ys) - 3, max(xs) + 3, max(ys) + 3)
+    plane, rms, n = fit_roof(ring, mns)
+    poly = Polygon(list(zip(xs, ys)))
+    inner = poly.buffer(-1.5)
+    cells = [(x, y) for x in np.arange(math.floor(min(xs)), max(xs), 0.5) for y in np.arange(math.floor(min(ys)), max(ys), 0.5) if inner.contains(Point(x, y))]
+    share = n / max(1, len(cells))
+    if share < spec.get("min", 0.5):
+        med = float(np.median([mns(x, y) for x, y in cells]))
+        plane = [0.0, 0.0, round(med, 3), plane[3]]
+        print(f"  {bid[-8:]} : toit plat à {med:.2f} (le plan n'explique que {share * 100:.0f} % du toit)")
+    else:
+        print(f"  {bid[-8:]} : plan de toit {plane} ({share * 100:.0f} % du toit à 25 cm, écart {rms * 100:.0f} cm)")
+    e = dict(k["buildings"].get(bid, {"k": "school"}))
+    e["roof"] = [float(v) for v in plane]
+    if "color" in spec:
+        e["zinc"] = spec["color"]
+    changed = k["buildings"].get(bid) != e
+    k["buildings"][bid] = e
+    # Silhouette lointaine : un prisme à toit plat au plus haut du plan sur le contour (acrotère compris).
+    top = max(plane[0] * x + plane[1] * y + plane[2] for x, y in zip(xs, ys)) + plane[3]
+    lod = tid if replace_lod(tid, bid, [([[round(x, 1), round(y, 1)] for x, y in zip(xs, ys)], top, top)]) else None
+    return changed, lod
+
+
 def notredame(tid, bid, b, spec, k):
     """Écrit le modèle `nd` de Notre-Dame (D150) : nef et transept mesurés comme les ailes d'un collège (`measure_college`), bas-côtés (pente de
     leur toit, du haut contre la nef à l'égout, ajustée sur le relevé et extrapolée aux deux bouts), sommet du clocheton ; le chevet (`part`,
@@ -2817,6 +2851,13 @@ def main():
             continue
         if spec["model"] == "college":
             ch, lod = college(tid, bid, b, spec, k)
+            if ch:
+                changed.add(tid)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "roofplane":
+            ch, lod = roofplane(tid, bid, b, spec, k)
             if ch:
                 changed.add(tid)
             if lod:

@@ -1946,3 +1946,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=690,70,1.7,640,40,6&h=14` (les parterres et le mât).
 
 ![Les parterres et le mât](docs/captures/d261-parterres-mat.jpg)
+
+**Lycée militaire, lot 5 : les bâtiments modernes (7 novembre 2026)** (D262)
+- Les bâtiments modernes de l'enceinte ont leurs vrais toits, mesurés au LiDAR : toits plats blancs pour les bâtiments d'enseignement (ils avaient de hautes croupes, 3 à 6 m trop hautes), toits végétalisés pour les deux bâtiments à patios, toit à deux pans bas pour le gymnase.
+- Plus de vitrines de magasin sur les bâtiments du lycée.
+- À regarder : `?view=custom&cam=560,240,45,630,150,10&h=14`.
+
+![Les bâtiments modernes et le gymnase](docs/captures/d262-batiments-nord.jpg)

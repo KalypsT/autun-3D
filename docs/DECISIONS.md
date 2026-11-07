@@ -5467,3 +5467,31 @@ restent) ; le chemin OSM du glacis, légèrement décalé, croise l'allée axial
 ![Le bassin](captures/d261-bassin.jpg)
 ![Les ifs devant la façade d'entrée](captures/d261-facade-ifs.jpg)
 ![Le glacis et l'allée du grand portail](captures/d261-glacis.jpg)
+
+## 2026-11-07 — D262. Le Lycée militaire, lot 5 : les bâtiments modernes de l'enceinte
+
+**Demande de l'utilisateur** : « continue » après D261 (lot 5 de `docs/plans/lycee-militaire.md`).
+
+**Constat** : les 21 autres bâtiments de l'enceinte avaient des croupes génériques à 35° (faîtage = égout + 4,6 m) alors que le LiDAR voit surtout
+des toits plats : 3 à 6 m de trop sur les bâtiments d'enseignement ; les deux bâtiments à patios (1920) ont des toits végétalisés plats ; et,
+classés « commerce et services » par BD TOPO, sept d'entre eux avaient des vitrines.
+
+**Mesure** (`fit_roof` de `build_stores.py` : part des cellules du toit à 25 cm d'un plan unique ; plus petit rectangle englobant) :
+- **13 toits plans** (`roofplane`, nouveau modèle de `build_monuments.py`) : plan ajusté quand il explique au moins la moitié du toit (58 à 100 %),
+  sinon toit plat à la médiane du MNS (`…844705`, 3 % ; `…844707`, 14 %) ; couverture lue à l'orthophotographie : membrane blanche pour les
+  bâtiments d'enseignement (`…844705`, `…844706`, `…844707`), toit végétalisé pour les deux bâtiments à patios (`…844655`, `…844704`), gris pour
+  le bâtiment triangulaire et les petits bâtiments ; silhouette lointaine en prisme plat ;
+- **6 toits à deux pans** (modèle `college` à une aile, sur l'axe du rectangle englobant) pour les emprises rectangulaires à toit en pente (écart
+  de 1,6 à 5,7 m) : `…844449`, `…844653`, `…844656`, `…844251` (plat au relevé), `…844665` (pignons, enduit blanc), gymnase `…844708`
+  (pignons, bac acier gris) ; égout imposé au bas du toit pour `…844449` (carré : l'axe n'est pas défini) et le gymnase (un pan descendait sur
+  un arbre).
+- **Fiches** (`build_militaire_gates.py`, `fiches`) : les cinq bâtiments à toit plan qui avaient une vitrine passent « d'après-guerre », sans
+  vitrine, porte vitrée.
+
+**Pas fait** : façades propres de chaque bâtiment (sans photo : génériques) ; tours d'escalier et édicules des toits plats ; le mur d'escalade du gymnase.
+
+**Tests** (+4, 1 366 au total ; `src/core/militaire-modern.test.ts`).
+
+![Les bâtiments du nord de la place d'armes et le gymnase](captures/d262-batiments-nord.jpg)
+![Depuis la piste : toits plats blancs, toit végétalisé à gauche](captures/d262-vue-piste.jpg)
+![L'annexe et les bâtiments du sud](captures/d262-batiments-sud.jpg)

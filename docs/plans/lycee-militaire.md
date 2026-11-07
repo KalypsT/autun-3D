@@ -231,3 +231,8 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 - `build_militaire_grounds.py` : stabilisé (place d'armes, allée), gravier (cours, parterres, ovales), gazon des compartiments, buis des ovales.
 - Ifs taillés (8), mât de drapeau, bassin en eau dans sa margelle. 830 triangles.
 - Reste : massifs et talus de lierre de l'avenue, arbres taillés en rideau du glacis.
+
+## 12. Lot 5 fait (D262, 7 novembre 2026)
+
+- 13 toits plans mesurés (modèle `roofplane`), 6 toits à deux pans (modèle `college` à une aile), couleurs lues à l'orthophotographie.
+- Cinq fiches sans vitrine. Reste le lot 6 : passage voûté ouvert, fermeture de l'enceinte.
