@@ -20,8 +20,9 @@ La méthode : **fabriquer à côté, greffer seulement ce qui change**.
 
 Usage : python3 tools/data/extend.py plan|sandbox|build|graft|check <nom> [options]
   build : [--steps structures,kinds,public_space,coast] [--skip-blocks]
-  graft, check : [--target DOSSIER] (défaut public/data)
-La navigation (greffe des voies sur le graphe existant) et la carte sont traitées à part (lot 2).
+  nav : refait la navigation dans le bac à sable (build_nav.py, nouvelle terre) ;
+  graft-nav : greffe ses voies nouvelles sur la navigation publiée (nav_graft.py), avant d'installer la nouvelle région ;
+  graft, graft-nav, check : [--target DOSSIER] (défaut public/data)
 """
 
 import hashlib
@@ -223,6 +224,54 @@ def read_coarse(root, meta):
     return meta["base"] + raw.astype(np.float64) * meta["unit"]
 
 
+def item_key(it):
+    """Genre et position (au décimètre) d'un mur ou d'un objet de mobilier : ce qui le reconnaît d'une fabrication à l'autre."""
+    if "x" in it:
+        return it.get("kind"), round(it["x"], 1), round(it["y"], 1)
+    return it.get("kind"), tuple(round(v, 1) for v in it["pts"][:4])
+
+
+def renumber(target, box, ids):
+    """Identifiants des murs et du mobilier des tuiles refabriquées (dans le bac à sable, avant la copie).
+
+    Les objets fabriqués par la chaîne (clôtures de parcelle, lampadaires…) ont des identifiants négatifs numérotés dans l'ordre de la fabrication :
+    une fabrication restreinte les renumérote, et ses numéros sont déjà pris ailleurs dans la ville. Un objet identique à un objet publié de la
+    même tuile (genre et position) reprend son identifiant ; un objet nouveau reçoit un numéro libre de la même famille (millions)."""
+    used = set()
+    for p in (target / "tiles").glob("*.json"):
+        if p.stem in ids:
+            continue
+        d = json.loads(p.read_text())
+        used |= {it["id"] for k in ("walls", "furniture") for it in d.get(k, []) if isinstance(it.get("id"), int)}
+    stats = {"repris": 0, "renumérotés": 0}
+    for s in sorted(ids):
+        sp, tp = box / "tiles" / f"{s}.json", target / "tiles" / f"{s}.json"
+        if not sp.exists():
+            continue
+        d = json.loads(sp.read_text())
+        old = json.loads(tp.read_text()) if tp.exists() else {}
+        for k in ("walls", "furniture"):
+            known = {item_key(it): it["id"] for it in old.get(k, [])}
+            taken = set()
+            for it in d.get(k, []):
+                i = it.get("id")
+                if not isinstance(i, int) or i >= 0:
+                    continue
+                prev = known.pop(item_key(it), None)
+                if prev is not None and prev not in taken:
+                    it["id"] = prev
+                    stats["repris"] += 1
+                elif i in used or i in taken:
+                    fam = abs(i) // 1_000_000
+                    n = max([abs(v) for v in used | taken if v < 0 and abs(v) // 1_000_000 == fam], default=fam * 1_000_000) + 1
+                    it["id"] = -n
+                    stats["renumérotés"] += 1
+                taken.add(it["id"])
+            used |= taken
+        sp.write_text(json.dumps(d, ensure_ascii=False, separators=(",", ":")))
+    return stats
+
+
 def graft(name, target):
     from PIL import Image
 
@@ -231,6 +280,7 @@ def graft(name, target):
     box = w / "out"
     ids = set(info["rebuild"])
     target = Path(target)
+    print(f"  identifiants des murs et du mobilier : {renumber(target, box, ids)}")
     copied = removed = 0
     # Fichiers par tuile : copiés depuis le bac à sable ; absents du bac à sable (tuile sans silhouette, sans type…) : retirés.
     for folder, suffixes in PER_TILE:
@@ -247,7 +297,7 @@ def graft(name, target):
 
     # world.json : tuiles, côte, emprise, relief grossier, super-tuiles.
     wt, ws = json.loads((target / "world.json").read_text()), json.loads((box / "world.json").read_text())
-    fresh = {t["id"]: t for t in ws["tiles"] if t["id"] in ids}
+    fresh = {t["id"]: {**t, "bytes": len((box / "tiles" / f"{t['id']}.json").read_text())} for t in ws["tiles"] if t["id"] in ids}
     missing = ids - set(fresh)
     if missing:
         raise SystemExit(f"tuiles absentes du bac à sable : {sorted(missing)}")
@@ -326,8 +376,49 @@ def graft(name, target):
     print(f"greffe sur {target} : {len(ids)} tuiles, {copied} fichiers copiés, {removed} retirés ; world.json, coarse.bin, super-tuiles, index, eau")
 
 
+# --- map ---------------------------------------------------------------------------------------------------------------------
+def map_cmd(name, target):
+    """Images de la carte (build_map.py --images) sur la cible greffée, avec la nouvelle terre : seuls les kilomètres qui touchent une tuile
+    refabriquée, la vue d'ensemble et l'index changent ; les autres images gardent leurs octets (refaites, elles bougeraient de quelques pixels
+    là où des étapes plus récentes ont retouché les tuiles sans refaire la carte)."""
+    w = work(name)
+    ids = {parse(s) for s in json.loads((w / "plan.json").read_text())["rebuild"]}
+    kms = {(a // c.SUPER, b // c.SUPER) for a, b in ids}
+    backup = w / "map_backup"
+    if backup.exists():
+        shutil.rmtree(backup)
+    shutil.copytree(Path(target) / "map", backup)
+    env = {**os.environ, "AUTUN_OUT": str(target), "AUTUN_REGION": str(w / "region.json")}
+    subprocess.run([sys.executable, str(HERE / "build_map.py"), "--images"], check=True, cwd=HERE, env=env, stdout=subprocess.DEVNULL)
+    kept = 0
+    for p in backup.glob("s*.png"):
+        i, j = (int(v.lstrip("s")) for v in p.stem.split("_")[:2])
+        if (i, j) not in kms:
+            shutil.copyfile(p, Path(target) / "map" / p.name)
+            kept += 1
+    print(f"carte : kilomètres refaits {sorted(f's{i}_{j}' for i, j in kms)} ; {kept} images d'autres kilomètres remises telles quelles")
+
+
+# --- graft-nav -------------------------------------------------------------------------------------------------------------
+def graft_nav_cmd(name, target):
+    """Greffe la navigation du bac à sable (nav_graft.py). À lancer avant d'installer la nouvelle région dans tools/data."""
+    import nav_graft as ng
+
+    box = work(name) / "out"
+    if c.REGION_FILE != HERE / "region.json" or (HERE / "land.json").exists() and json.loads((HERE / "land.json").read_text()) == json.loads((work(name) / "land.json").read_text()):
+        raise SystemExit("graft-nav doit voir la terre d'avant l'extension : lancer avant d'installer region.json et land.json")
+    before = ng.seams(target)
+    cells = sorted(p.stem for p in (box / "nav").glob("s*.json"))
+    ids = json.loads((work(name) / "plan.json").read_text())["rebuild"]
+    inside = lambda x, y: bool(tile_mask(ids, np.array([x]), np.array([y]))[0])
+    stats = ng.graft_nav(box, Path(target), cells, inside)
+    after = ng.seams(target)
+    print(f"navigation : {stats}")
+    print(f"  portails sans jumeau : {before['portails sans jumeau']} → {after['portails sans jumeau']} ({after['portails']} portails)")
+
+
 # --- check -------------------------------------------------------------------------------------------------------------------
-SHARED_FILES = {"world.json", "terrain/coarse.bin", "kinds/index.json", "structures/index.json", "water.json"}
+SHARED_FILES = {"world.json", "terrain/coarse.bin", "kinds/index.json", "structures/index.json", "water.json", "nav/index.json"}
 
 
 def check(name, target):
@@ -346,6 +437,9 @@ def check(name, target):
         x0, y1 = s["x0"], s["y1"]
         if any(b[0] < x0 + span and b[2] > x0 and b[1] < y1 and b[3] > y1 - span for b in (c.tile_bounds_local(*parse(t)) for t in ids)):
             allowed |= {f"ground/{s['id']}_{p}.png" for p in "ab"}
+    allowed |= {f"nav/{p.stem}.json" for p in (w / "out" / "nav").glob("s*.json")} if (w / "out" / "nav").exists() else set()
+    kms = {(parse(t)[0] // c.SUPER, parse(t)[1] // c.SUPER) for t in ids}
+    allowed |= {"map/index.json", "map/overview.png"} | {f"map/s{i}_{j}{suf}.png" for i, j in kms for suf in ("", "_2")}
     changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
     bad = [k for k in changed if k not in allowed]
     print(f"{len(changed)} fichiers changés, ajoutés ou retirés, dont {len(bad)} hors de l'extension")
@@ -369,6 +463,13 @@ def main():
     elif cmd == "build":
         steps = [s for s in opt("--steps", "structures,kinds,public_space,coast").split(",") if s]
         build(name, steps, "--skip-blocks" in sys.argv)
+    elif cmd == "nav":
+        env = {k: v for k, v in env_for(name).items() if k != "AUTUN_TILES"}
+        subprocess.run([sys.executable, str(HERE / "build_nav.py")], check=False, cwd=HERE, env=env)
+    elif cmd == "map":
+        map_cmd(name, target)
+    elif cmd == "graft-nav":
+        graft_nav_cmd(name, target)
     elif cmd == "graft":
         graft(name, target)
     elif cmd == "check":

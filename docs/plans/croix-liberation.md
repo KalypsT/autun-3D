@@ -337,3 +337,9 @@ super-tuiles touchées).
 **Essai à blanc** (D265) : `22_27` et `22_28` refabriquées dans un bac à sable et greffées sur une copie de `public/data` redonnent les tuiles publiées
 (mêmes arbres aux mêmes places, même mobilier, mêmes sols, relief à 1 cm près sur 70 cellules de 129 032) ; aucun fichier changé hors des deux tuiles.
 La méthode est sûre ; le lot 2 peut fabriquer l'extension.
+
+## 11. Lot 2 : la carte agrandie (D266)
+
+Fait : 34 tuiles (17 neuves, 17 refabriquées le long de l'ancienne falaise), navigation greffée (12,1 km, 11 raccords, de la cathédrale au parking
+en voiture et à pied), carte des 5 kilomètres touchés, `region.json` et `land.json` (terre figée) installés. Aucun fichier changé hors de l'extension ;
+1 377 essais passent. Restent, pour le lot 3 : le parking (gravier, contour réel), la RD 256 (sans ligne médiane), et la croix.

@@ -5608,3 +5608,49 @@ colonnes 20 à 28), 34 tuiles fabriquées dans les blocs (2, 3) et (3, 3), empri
 
 **Pas encore** : la greffe de la navigation (les super-tuiles de 1 km mêlent ville et extension ; on ajoutera les voies nouvelles sans refaire celles
 de la ville) et les images de la carte ; puis la publication (lot 2).
+
+## 2026-11-07 — D266. La carte agrandie jusqu'à la Croix de la Libération (lot 2)
+
+**Fait** (`tools/data/extend.py`, D265) : `plan`, `sandbox`, `build` (blocs (2, 3) et (3, 3) restreints, puis ouvrages, types, espace public, côte, eau),
+`nav`, `graft-nav`, `graft`, puis `region.json` et **`land.json`** installés dans `tools/data`, `map`, `check`. Environ 50 min, surtout le LiDAR
+(5 dalles de plus, 1,5 Go) et la BDNB.
+
+**Résultat** :
+- **34 tuiles** : 17 neuves (9 jouables, dont la RD 256, la route d'accès et le parking, et la bordure où passe la nouvelle côte), 17 publiées
+  refabriquées le long de l'ancienne falaise (rangées 27 et 28, colonnes 20 à 28). 443 tuiles en tout ; `zone` descend à y = −2 812.
+- Dans les tuiles refabriquées : **mêmes bâtiments, fiches, types, ouvrages** ; murs et mobilier identiques (genre et place) et **mêmes identifiants**
+  (87 repris ; les objets nouveaux reçoivent des numéros libres, aucun n'en partage un avec le reste de la ville) ; la forêt revient là où la falaise
+  l'avait retirée (rangée 27 : de 43 à 912 arbres par tuile).
+- La croix est à **347 m de la côte** (143 m avant) ; le relief au sud suit le LiDAR (592 m à 120 m au sud, au lieu de 287 m).
+- **`check`** : 160 fichiers changés, **aucun hors de l'extension** ; aucune autre tuile, aucun autre fichier de navigation, aucune autre image de carte.
+
+**Navigation** (`tools/data/nav_graft.py`) : le graphe publié reste tel quel (mêmes nœuds, mêmes arêtes, même ordre) ; on ajoute à la fin des
+tableaux les morceaux d'arêtes du bac à sable **que le graphe publié n'a pas** (à 4 m près pour les routes, 2,5 m pour les files, de préférence la même voie)
+et **seulement dans les tuiles refabriquées** ; leurs bouts ouverts sont raccordés au nœud publié le plus proche (impasse de la même voie d'abord).
+Première version (« hors de l'ancienne terre ») abandonnée : la route d'accès traverse, près de la croix, un morceau de l'ancienne terre où la ville
+publiée n'avait aucune route, et se trouvait coupée en deux. Retenu : **156 arêtes, 12,1 km, 11 raccords** (10 sur la même voie), deux super-tuiles
+(`s5_6`, `s6_6`) modifiées, **0 portail sans jumeau** (1 266). Un point d'intérêt ajouté (le banc). Contrôlé : de la cathédrale au parking de la croix
+**en voiture et à pied**.
+
+**Défaut trouvé par les essais** : la greffe réécrivait `nav/index.json` avec les super-tuiles **triées par nom** (`s5_10` avant `s5_6`) au lieu de
+l'ordre de `build_nav.py` (par indices). Les essais de poursuite tirent leurs départs « un sur cinq » dans cet ordre : trois échouaient (`chase`,
+`police-soak`) avec un tirage décalé. Corrigé : même ordre que la chaîne ; les 453 arêtes de départ sont **identiques, dans le même ordre**,
+avant et après l'extension. Essayé et écarté : resserrer la règle des départs dans `testing.ts` (les deux bouts dans la zone, ou les super-tuiles de
+la zone) : elle donnait les mêmes départs avec et sans l'extension, mais **différents de ceux d'avant**, et `chase` échouait aussi sur les anciennes
+données (3 sur 6 au lieu de 5) : les scénarios étalonnés en dépendent ; on n'y touche pas.
+
+**Carte** (`extend.py map`) : `build_map.py --images` sur les données greffées ; seuls les 5 kilomètres touchés (`s5_6`, `s5_7`, `s6_6`, `s6_7`,
+`s7_6`), la vue d'ensemble et l'index changent ; les 70 autres images sont remises telles quelles (refaites, trois images de la ville bougeaient de
+150 à 2 600 pixels : des retouches de tuiles plus récentes que la dernière carte). `places.json` n'est pas refait : la croix y était déjà.
+
+**Largeurs de chaussée** : une voie nouvelle ajoutée à `measured_widths.json`, aucune autre changée.
+
+**Essais** : 1 377 (164 + 1 fichier) ; `src/data/croix-extension.test.ts` : relief sans falaise et côte à plus de 300 m de la croix, itinéraire en
+voiture de la cathédrale au parking, voie piétonne près de la croix.
+
+**Captures** : `croix-apres-haut.jpg` (l'aire de décollage, la croix et la forêt qui continue au sud), `croix-apres-parking.jpg` (le parking, là où
+la caméra était dans la falaise), `croix-apres-lacets.jpg` (un lacet de la RD 256), `croix-apres-acces.jpg` (la route d'accès).
+
+**Défauts connus, pour les lots suivants** : le parking est un enrobé gris (c'est de la terre et du gravier clair), son contour est celui d'OpenStreetMap
+(plus petit que la clairière réelle) ; la RD 256 a une ligne médiane et un accotement clair continu (photos : ni l'un ni l'autre) ; la croix n'est pas
+dessinée ; la vue reste dans le brouillard (lot 4).
