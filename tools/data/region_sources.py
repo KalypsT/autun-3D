@@ -26,7 +26,9 @@ import fetch
 
 FORCE = "--force" in sys.argv
 OSM_DIR = c.SHARED / "osm_full"
-IGN_DIR = c.SHARED / "ign"
+# Les couches IGN sont mises en cache sur l'emprise demandée : une emprise restreinte (AUTUN_SCOPE) a son propre dossier, pour qu'un
+# extrait partiel ne passe jamais pour celui de toute la région.
+IGN_DIR = c.SHARED / "ign" if c.SCOPE_TILES is None else c.SHARED / "ign_scope" / "_".join(str(round(v)) for v in c.region_bounds())
 to_l93 = Transformer.from_crs(4326, 2154, always_xy=True)
 
 

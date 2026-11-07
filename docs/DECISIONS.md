@@ -5560,3 +5560,46 @@ génériques qui coûtaient aussi).
 ![L'avenue : massifs, drapeaux, grille](captures/d264-avenue.jpg)
 ![Le glacis et ses arbres taillés en rideau](captures/d264-glacis.jpg)
 ![L'entrée de la rue Gaston Joliet et ses barrières en X](captures/d264-entree-joliet.jpg)
+
+## 2026-11-07 — D265. Agrandir la carte sans refabriquer la ville (Croix de la Libération, lot 1)
+
+**Demande** : la Croix de la Libération (plan `docs/plans/croix-liberation.md`) exige d'agrandir la carte au sud (la RD 256, la route d'accès, le parking).
+Une régénération complète est exclue : avec un extrait OpenStreetMap plus récent, elle change la circulation et les passants partout (D153).
+
+**Deux découvertes** :
+- `build_coast.py` est **destructif** : il plafonne le relief et retire arbres, bâtiments, mobilier en mer, sans garder l'état d'avant. Quand la côte
+  recule, chaque tuile publiée dont le rivage change doit être **refabriquée depuis les sources**, pas seulement les tuiles neuves.
+- **La côte bougerait partout** : `coast_lib.land()` rééchantillonne tout le contour, et la grille du champ de distance se cale sur l'emprise de la terre.
+  Avec les 9 tuiles de la croix, la côte se déplaçait **jusqu'à 3,6 m** loin de l'extension (20 % des sommets de plus de 25 cm).
+
+**La terre figée** (`coast_lib.py`) : `land.json`, à côté de `region.json` (ou de `AUTUN_REGION`), porte le contour de la terre et le coin d'origine du
+champ de distance (`anchor`) ; absent, tout se calcule comme avant (`compute_land`, inchangé). Le champ ancré est identique au champ publié (vérifié).
+Une extension = l'ancienne terre, plus la terre de la nouvelle région **dans l'anneau d'une tuile autour des tuiles ajoutées**, raccordée par une
+fermeture de 12 m limitée à ce voisinage. Pour la croix : 29 sommets sur 635 déplacés, tous près de l'extension ; ailleurs, plafond du rivage identique.
+
+**Fabrication locale** (`config.py`, quatre variables d'environnement, sans effet si absentes) : `AUTUN_OUT` (dossier de sortie), `AUTUN_REGION`
+(autre région et sa terre), `AUTUN_TILES` (ne fabriquer que ces tuiles : emprise du bloc, dalles LiDAR et cache `.cache/blocks/<bloc>-<empreinte>` réduits ;
+les tuiles de `keep` demandées sont refabriquées), `AUTUN_SCOPE` (emprise des sources régionales ; cache IGN à part, `.cache/shared/ign_scope/`).
+`pack.py`, en fabrication restreinte, ne remplace le relief grossier et les super-tuiles de sol que sous les tuiles fabriquées.
+
+**`tools/data/extend.py`** : `plan` (nouvelle région, terre figée, tuiles à refabriquer : celles où le plafond du rivage change, plus les neuves ;
+anneau de contexte), `sandbox` (copie de `public/data` dans `.cache/extend/<nom>/out`, `world.json` réduit à l'emprise, empreinte des fichiers publiés),
+`build` (blocs restreints, puis ouvrages, types, espace public, côte, eau dans le bac à sable), `graft` (fichiers des tuiles refabriquées ; dans
+`world.json`, `coarse.bin`, les super-tuiles de sol, les index des types et des ouvrages et `water.json`, leur part seulement, en gardant l'ordre et
+l'écriture de la chaîne), `check` (refuse tout fichier changé hors de l'extension). `compare_tiles.py` compare deux dossiers tuile par tuile.
+
+**Essai à blanc** (`extensions/essai.json` : aucune tuile ajoutée, `22_27` et `22_28` refabriquées, greffe sur une copie) : ≈ 25 min, surtout des
+téléchargements (4 dalles LiDAR, 1,15 Go ; la BDNB de la commune). Résultat : **mêmes arbres aux mêmes places** (54 et 838), même mobilier, mêmes sols
+(aires identiques ; seul l'ordre des sommets change), relief fin identique **sauf 6 et 64 cellules sur 64 516, à 1 cm** (arrondi), sols fins différents
+sur 0,1 à 0,2 % des pixels ; `check` : 8 fichiers changés, **aucun hors de l'extension** ; `world.json` et les index inchangés.
+
+**`build_coast.py` n'est pas idempotent à l'octet** (constat antérieur à D265, vérifié avec le code d'avant et d'après : mêmes octets) : relancé sur
+`public/data`, il ne retire ni arbre ni bâtiment et n'abaisse aucun point, mais il **redécoupe les sols déjà découpés** (polygones plus lourds, même forme :
+`plaza_asphalt` de `22_27` 458 → 646 octets) et réécrit ≈ 200 tuiles, des super-tuiles de sol et `world.json`. Il ne faut donc jamais le relancer sur
+`public/data` : `extend.py` ne le lance que dans le bac à sable, où les tuiles refabriquées sont fraîches (découpées une seule fois, comme dans la chaîne).
+
+**Plan de la croix** (`extend.py plan croix`) : 9 tuiles jouables et 11 de bordure neuves, **17 tuiles publiées à refabriquer** (rangées 27 et 28, des
+colonnes 20 à 28), 34 tuiles fabriquées dans les blocs (2, 3) et (3, 3), emprise de 49 tuiles.
+
+**Pas encore** : la greffe de la navigation (les super-tuiles de 1 km mêlent ville et extension ; on ajoutera les voies nouvelles sans refaire celles
+de la ville) et les images de la carte ; puis la publication (lot 2).

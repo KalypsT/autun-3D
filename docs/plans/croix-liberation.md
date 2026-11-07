@@ -300,3 +300,40 @@ des vrais arbres (§8.3) ; il faudra s'assurer que les arbres du jeu (hauteur et
 - le **texte de la plaque centrale** (talus sud) : lisible, on pourra l'écrire en petit sur une texture ;
 - les **bras sont plus épais que le fût** et débordent en avant et en arrière : à dessiner en boîte plus profonde que le fût, dessous en retrait ;
 - **les terrils des Télots** sont un repère majeur de la vue, à gauche. Ils sont dans l'emprise du jeu (D105) : à vérifier au lot 4 qu'ils se dessinent (relief LiDAR) et se voient d'ici (≈ 5 km : au-delà de la portée de 3,5 km retenue au §8.3, à reconsidérer).
+
+## 10. Lot 1 : la fabrication locale (7 novembre)
+
+Outil : `tools/data/extend.py` (`plan`, `sandbox`, `build`, `graft`, `check`), extensions décrites dans `tools/data/extensions/<nom>.json`
+(`croix.json` : les 9 tuiles jouables ; `essai.json` : l'essai à blanc). Décision D265.
+
+**Deux découvertes, qui changent la méthode** :
+1. **`build_coast.py` est destructif** : il abaisse le relief et retire arbres, bâtiments et mobilier en mer, sans rien garder de l'état d'avant.
+   Quand la côte recule, toute tuile existante dont le rivage change doit être **refabriquée depuis les sources** (relief, arbres, sols, contenu),
+   pas seulement les tuiles neuves.
+2. **La côte bougerait partout** : `coast_lib.land()` rééchantillonne tout le contour ; avec les 9 tuiles ajoutées, la côte se déplace
+   **jusqu'à 3,6 m ailleurs** (20 % des sommets de plus de 25 cm), et la grille du champ de distance se décale avec l'emprise.
+   D'où **la terre figée** : `land.json` (à côté de `region.json`) porte le contour et le coin d'origine du champ de distance ; absent,
+   la terre se calcule comme avant. Une extension = l'ancienne terre, plus la nouvelle **dans l'anneau d'une tuile autour des tuiles ajoutées**,
+   raccordée par une fermeture locale. Vérifié : 29 sommets sur 635 déplacés, tous près de l'extension ; ailleurs, plafond du rivage identique
+   (à 0,1 mm près) ; le champ ancré est identique au champ publié.
+
+**Le plan de l'extension** (`extend.py plan croix`) :
+- 9 tuiles jouables et 11 de bordure neuves (dont 17 tuiles à fabriquer qui n'existent pas encore) ;
+- **17 tuiles publiées à refabriquer** (là où le plafond du rivage change) : `20_27 20_28 21_27 21_28 22_27 22_28 23_27 23_28 24_27 24_28 25_27 25_28 26_27 26_28 27_27 27_28 28_27` ;
+- **34 tuiles fabriquées** en tout, dans les blocs `(2, 3)` et `(3, 3)` ; emprise de 49 tuiles avec l'anneau de contexte.
+
+**La fabrication** :
+- `config.py` : `AUTUN_OUT` (dossier de sortie), `AUTUN_REGION` (autre `region.json`, et son `land.json`), `AUTUN_TILES` (seulement ces tuiles :
+  emprise du bloc, dalles LiDAR et cache réduits), `AUTUN_SCOPE` (emprise des sources régionales ; cache IGN séparé) ;
+- `pack.py` : en fabrication restreinte, le relief grossier et les super-tuiles de sol ne changent que sous les tuiles fabriquées ;
+- `extend.py sandbox` copie `public/data` dans `.cache/extend/<nom>/out`, ne garde dans `world.json` que l'emprise ; `build` y lance les blocs
+  restreints puis les étapes globales (ouvrages, types, espace public, côte, eau) ; `graft` greffe les fichiers des tuiles refabriquées et leur
+  part des fichiers partagés ; `check` refuse tout fichier changé hors de l'extension.
+
+**Pas encore** (lot 2) : la greffe de la navigation (les super-tuiles de 1 km mêlent ville et extension, et sont recousues par des portails :
+on ajoutera les voies nouvelles sans refaire celles de la ville, règle D153) et les images de la carte (`build_map.py --images` sur les
+super-tuiles touchées).
+
+**Essai à blanc** (D265) : `22_27` et `22_28` refabriquées dans un bac à sable et greffées sur une copie de `public/data` redonnent les tuiles publiées
+(mêmes arbres aux mêmes places, même mobilier, mêmes sols, relief à 1 cm près sur 70 cellules de 129 032) ; aucun fichier changé hors des deux tuiles.
+La méthode est sûre ; le lot 2 peut fabriquer l'extension.

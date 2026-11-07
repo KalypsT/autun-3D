@@ -88,8 +88,20 @@ def coarse_patch(tiles, cm, meta):
     return u0, v0, base_g + z * UNIT
 
 
-def merge_coarse(out, world, patch):
-    """Place le patch dans le relief grossier déjà publié (s'il existe) ; renvoie les métadonnées et écrit coarse.bin."""
+def in_tiles(tiles, xx, yy):
+    """Masque des points (xx, yy) qui tombent dans l'une des tuiles (emprises `bounds`)."""
+    m = np.zeros(np.shape(xx), bool)
+    for t in tiles:
+        x0, y0, x1, y1 = t["bounds"]
+        m |= (xx >= x0) & (xx < x1) & (yy >= y0) & (yy < y1)
+    return m
+
+
+def merge_coarse(out, world, patch, only=None):
+    """Place le patch dans le relief grossier déjà publié (s'il existe) ; renvoie les métadonnées et écrit coarse.bin.
+
+    `only` (fabrication restreinte, AUTUN_TILES) : les tuiles fabriquées ; le patch ne remplace que les cellules dont le centre y tombe
+    (et celles qui n'avaient encore aucune valeur) : les tuiles voisines gardent leur relief publié, côte comprise."""
     u0, v0, z = patch
     rows, cols = z.shape
     boxes = [(u0, v0, u0 + cols, v0 + rows)]
@@ -110,6 +122,14 @@ def merge_coarse(out, world, patch):
     if old:
         raw = np.frombuffer((out / "terrain" / "coarse.bin").read_bytes(), dtype="<u2").reshape(old["rows"], old["cols"])
         paste(boxes[1][0], boxes[1][1], old["base"] + raw.astype(np.float32) * UNIT)
+    if only is not None:
+        h, w = z.shape
+        r0 = (V1 - V0) - (v0 - V0 + h)
+        cur = grid[r0:r0 + h, u0 - U0:u0 - U0 + w]
+        cx = c.GRID_X + (np.arange(u0, u0 + w) + 0.5) * COARSE_RES
+        cy = c.GRID_Y + (np.arange(v0 + h - 1, v0 - 1, -1) + 0.5) * COARSE_RES
+        xx, yy = np.meshgrid(cx, cy)
+        z = np.where(in_tiles(only, xx, yy) | np.isnan(cur), z, cur)
     paste(u0, v0, z)
     holes = np.isnan(grid)
     if holes.any():  # cellules d'un bloc non fabriqué : valeur du plus proche voisin connu (elles ne servent qu'aux bords)
@@ -128,7 +148,8 @@ def save_png(arr, path):
     Image.fromarray(arr).save(path, optimize=True)
 
 
-def write_ground(out, tiles, a, b, meta):
+def write_ground(out, tiles, a, b, meta, only=False):
+    """`only` (fabrication restreinte) : une super-tuile déjà publiée ne change que sous les tuiles fabriquées."""
     x0g, y1g = meta["x0"], meta["y1"]
     fx, fy = frac(x0g), frac(y1g)
     (out / "ground").mkdir(parents=True, exist_ok=True)
@@ -154,8 +175,13 @@ def write_ground(out, tiles, a, b, meta):
         rr, cc = np.meshgrid((y1g - cy) / 1.0 - 0.5, (cx - x0g) / 1.0 - 0.5, indexing="ij")
         for name, arr in (("a", smooth[0]), ("b", smooth[1])):
             img = np.stack([ndimage.map_coordinates(arr[..., k], [rr, cc], order=1, mode="nearest") for k in range(3)], axis=-1)
+            img = np.clip(np.round(img), 0, 255).astype(np.uint8)
             p = out / "ground" / f"s{si}_{sj}_{name}.png"
-            save_png(np.clip(np.round(img), 0, 255).astype(np.uint8), p)
+            if only and p.exists():
+                old = np.asarray(Image.open(p).convert("RGB"))
+                xx, yy = np.meshgrid(cx, cy)
+                img = np.where(in_tiles(tiles, xx, yy)[..., None], img, old)
+            save_png(img, p)
             total += p.stat().st_size
         cells.append({"id": f"s{si}_{sj}", "x0": ox, "y1": oy})
     return cells, total
@@ -186,7 +212,8 @@ def main():
     assert (gmeta["cols"], gmeta["rows"], gmeta["x0"], gmeta["y1"]) == (meta["cols"], meta["rows"], meta["x0"], meta["y1"]), "relief et sols sur des grilles différentes"
     a = np.asarray(Image.open(src / "ground_a.png").convert("RGB"))
     b = np.asarray(Image.open(src / "ground_b.png").convert("RGB"))
-    cells, gbytes = write_ground(out, tiles, a, b, gmeta)
+    only = c.ONLY_TILES is not None
+    cells, gbytes = write_ground(out, tiles, a, b, gmeta, only)
 
     wpath = out / "world.json"
     world = json.loads(wpath.read_text()) if wpath.exists() else new_world()
@@ -199,7 +226,7 @@ def main():
     world["cols"], world["rows"] = c.GRID_NX, c.GRID_NY
     world["zone"] = [min(t["bounds"][0] for t in world["tiles"]), min(t["bounds"][1] for t in world["tiles"]),
                      max(t["bounds"][2] for t in world["tiles"]), max(t["bounds"][3] for t in world["tiles"])]
-    world["coarse"], cbytes = merge_coarse(out, world, coarse_patch(tiles, cm, meta))
+    world["coarse"], cbytes = merge_coarse(out, world, coarse_patch(tiles, cm, meta), tiles if only else None)
     keep = [s for s in world["super"]["cells"] if s["id"] not in {s2["id"] for s2 in cells}]
     world["super"]["cells"] = sorted(keep + cells, key=lambda s: s["id"])
     wpath.write_text(json.dumps(world, indent=1))
