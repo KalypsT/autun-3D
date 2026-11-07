@@ -282,3 +282,21 @@ c'est le bout du monde de ce côté.
 
 **À vérifier au lot 4** : sur `croix-avant-vue.jpg`, la lisière du bas de l'aire de décollage arrive à la hauteur du regard. Le MNS dit que la ville passe au-dessus
 des vrais arbres (§8.3) ; il faudra s'assurer que les arbres du jeu (hauteur et forme des houppiers) ne la cachent pas davantage.
+
+## 9. Les photos (deuxième salve, 7 novembre)
+
+| n° | Ce que je lis | Lieu, caméra déduite | Certitude |
+|---|---|---|---|
+| 11 | Photo Wikimedia, la croix de trois quarts : un **large escalier d'environ six marches** monte sur la plate-forme, bordé d'un **mur d'échiffre incliné** à couvertine ; à droite, le talus de pierre ; au fond, le parking et une voiture. | angle nord-ouest, vers le sud-est | bonne |
+| 12 | **Face nord**, de près : **mur droit** en gros blocs de granite (≈ 1,2 m, deux assises et une couvertine), plaque **« CŒUR SACRÉ DE JÉSUS / NOUS AVONS CONFIANCE EN VOUS »** et une **croix de Lorraine**, en lettres rouges ; à droite, le mur monte en biais (échiffre de l'escalier). La croix de face : **bras plus épais que le fût et en saillie vers l'avant et l'arrière** (leur dessous sombre se voit, ≈ 0,4 m de débord), **carré en relief** à la croisée, tête courte (≈ 2 assises au-dessus des bras), fût en blocs bouchardés de hauteurs inégales. Gravier au pied, puis pelouse. | sur l'allée nord, vers le sud | bonne |
+| 13 | Face nord en hiver : deux enfants assis sur la couvertine (échelle : mur ≈ 1,2 m), la plaque à droite, **la rampe inclinée de l'échiffre** à gauche, gravier, pelouse. | aire de décollage, vers le sud | bonne |
+| 14 | **Plaque centrale** (photo Wikimedia), granite, lettres rouges : « CREDENTES LIBERATI SUNT / LEUR FOI LES A LIBÉRÉS / VŒU PUBLIC DE MGR LEBRUN ÉVÊQUE D'AUTUN 16 JUIN 1944 / LIBÉRATION DE LA VILLE 8 10 SEPTEMBRE 1944 / POSE DE LA PREMIÈRE PIERRE PAR MGR PIGUET ÉVÊQUE DE CLERMONT A SON RETOUR DE DACHAU 9 SEPTEMBRE 1945 / BÉNÉDICTION DE LA CROIX PAR LE CARDINAL GERLIER ARCHEVÊQUE DE LYON 7 SEPTEMBRE 1947 / INAUGURATION 5 SEPTEMBRE 1948 ». Posée **à plat sur le dallage incliné** (talus sud). Une autre plaque commence par « RECONNAISSANCE ». | talus sud | bonne |
+| 15 | **La vue** depuis le haut de l'aire de décollage : hautes herbes, une lisière basse au premier plan qui cache le bas de la ville ; la **cathédrale** et sa flèche à droite du centre, la **tour des Ursulines** en bas à droite, le **plan d'eau du Vallon** à droite, des **immeubles blancs** au centre (Saint-Pantaléon ?), et à gauche **les deux terrils pointus des Télots** ; plaine bocagère, collines du Morvan à l'horizon. | aire de décollage, vers le nord–nord-est | bonne |
+| 16 | Panorama (Alamy) : la même vue, plus large ; la lisière cache le pied de la colline, la ville est entière. | aire de décollage | bonne |
+| 17 | La vue en hiver, depuis le haut de la pelouse : lisière d'arbres nus, ville, plan d'eau. | haut de l'aire de décollage | bonne |
+
+**Ce que la salve apporte** :
+- la face nord est un **mur droit à couvertine** portant la plaque du Sacré-Cœur ; **un escalier à chaque bout**, entre des murs d'échiffre inclinés (le relevé LiDAR le voyait : « escalier à chaque angle ») ;
+- le **texte de la plaque centrale** (talus sud) : lisible, on pourra l'écrire en petit sur une texture ;
+- les **bras sont plus épais que le fût** et débordent en avant et en arrière : à dessiner en boîte plus profonde que le fût, dessous en retrait ;
+- **les terrils des Télots** sont un repère majeur de la vue, à gauche. Ils sont dans l'emprise du jeu (D105) : à vérifier au lot 4 qu'ils se dessinent (relief LiDAR) et se voient d'ici (≈ 5 km : au-delà de la portée de 3,5 km retenue au §8.3, à reconsidérer).
