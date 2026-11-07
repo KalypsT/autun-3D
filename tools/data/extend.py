@@ -182,6 +182,7 @@ def sandbox(name):
     world = json.loads((box / "world.json").read_text())
     world["tiles"] = [t for t in world["tiles"] if t["id"] in scope]
     (box / "world.json").write_text(json.dumps(world, indent=1))
+    shutil.copyfile(HERE / "measured_widths.json", w / "measured_widths.json")  # lu et réécrit dans le bac à sable (streets_lib)
     (w / "before.json").write_text(json.dumps(fingerprint(PUBLISHED)))
     print(f"bac à sable {box} : {len(world['tiles'])} tuiles publiées dans l'emprise ; empreinte de public/data relevée (before.json)")
 
@@ -313,6 +314,15 @@ def graft(name, target):
     if sorted(map(json.dumps, pieces)) != sorted(map(json.dumps, wa["pieces"])):
         wa["pieces"] = pieces
         (target / "water.json").write_text(json.dumps(wa, separators=(",", ":")))
+    # Largeurs de chaussée : celles des voies que la ville ne connaissait pas (les voies nouvelles) ; les autres ne changent pas.
+    if target == PUBLISHED.resolve() and (w / "measured_widths.json").exists():
+        mw = json.loads((HERE / "measured_widths.json").read_text())
+        sb = json.loads((w / "measured_widths.json").read_text())["widths"]
+        added = {k: v for k, v in sb.items() if k not in mw["widths"]}
+        if added:
+            mw["widths"] = dict(sorted({**mw["widths"], **added}.items(), key=lambda kv: int(kv[0])))
+            (HERE / "measured_widths.json").write_text(json.dumps(mw, indent=0))
+        print(f"  largeurs de chaussée : {len(added)} voies nouvelles ajoutées à measured_widths.json")
     print(f"greffe sur {target} : {len(ids)} tuiles, {copied} fichiers copiés, {removed} retirés ; world.json, coarse.bin, super-tuiles, index, eau")
 
 

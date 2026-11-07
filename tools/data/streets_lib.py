@@ -28,7 +28,9 @@ NAV_EXTRA = {"track": 3.0, "cycleway": 2.0}
 EXTRA_DRIVABLE = {"primary", "road"}
 NAME_FIX = {"Rue de l'Hotel de Ville": "Rue de l'Hôtel de Ville"}
 # Largeurs de chaussée mesurées sur l'orthophoto dans l'emprise publique du cadastre (build_public_space.py, D94) : elles priment.
-MEASURED = Path(__file__).with_name("measured_widths.json")
+# Dans un bac à sable d'extend.py (AUTUN_OUT), les largeurs sont lues et écrites à côté du bac à sable : build_public_space.py réécrit ce fichier
+# avec les seules voies de son emprise, et ne doit pas toucher à celui de la ville (D265).
+MEASURED = (c.OUT.parent if c.OUT != c.ROOT / "public" / "data" else Path(__file__).parent) / "measured_widths.json"
 
 # Étiquettes OpenStreetMap conservées telles quelles sur chaque voie (la navigation en tire accès, ponts, ronds-points…).
 KEPT_TAGS = ("highway", "access", "foot", "motor_vehicle", "bicycle", "bridge", "tunnel", "layer", "junction", "sidewalk", "service",

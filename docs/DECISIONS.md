@@ -5598,6 +5598,11 @@ sur 0,1 à 0,2 % des pixels ; `check` : 8 fichiers changés, **aucun hors de l'e
 `plaza_asphalt` de `22_27` 458 → 646 octets) et réécrit ≈ 200 tuiles, des super-tuiles de sol et `world.json`. Il ne faut donc jamais le relancer sur
 `public/data` : `extend.py` ne le lance que dans le bac à sable, où les tuiles refabriquées sont fraîches (découpées une seule fois, comme dans la chaîne).
 
+**Fichier versionné écrit par une étape globale** : `build_public_space.py` réécrit `tools/data/measured_widths.json` (largeurs de chaussée par voie,
+lues aussi par la navigation) avec les seules voies de son emprise ; l'essai l'avait vidé de 53 lignes (restauré, rien de publié). Dans un bac à sable,
+`streets_lib.MEASURED` est maintenant à côté du bac à sable (copie faite par `sandbox`) ; `graft` sur `public/data` n'ajoute au fichier de la ville que
+les largeurs des voies qu'il ne connaissait pas.
+
 **Plan de la croix** (`extend.py plan croix`) : 9 tuiles jouables et 11 de bordure neuves, **17 tuiles publiées à refabriquer** (rangées 27 et 28, des
 colonnes 20 à 28), 34 tuiles fabriquées dans les blocs (2, 3) et (3, 3), emprise de 49 tuiles.
 
