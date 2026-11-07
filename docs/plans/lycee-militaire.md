@@ -225,3 +225,9 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 - Grand portail fermé (piles à pots-à-feu, vantaux, arc « LYCÉE MILITAIRE ») ; entrée Gaston Joliet ouverte (vantaux rabattus, barrière levante relevée, panneau) ; encadrements rouges de l'annexe.
 - Obstacles : grand portail non escaladable ; entrée Gaston Joliet libre. 1 426 triangles.
 - Reste pour le lot 4 : massifs, ifs taillés et talus de lierre devant la grille de l'avenue.
+
+## 11. Lot 4 fait (D261, 7 novembre 2026)
+
+- `build_militaire_grounds.py` : stabilisé (place d'armes, allée), gravier (cours, parterres, ovales), gazon des compartiments, buis des ovales.
+- Ifs taillés (8), mât de drapeau, bassin en eau dans sa margelle. 830 triangles.
+- Reste : massifs et talus de lierre de l'avenue, arbres taillés en rideau du glacis.

@@ -5426,3 +5426,44 @@ taillés et talus de lierre de l'avenue (lot 4).
 ![La grille sur muret de l'avenue](captures/d260-grille-avenue.jpg)
 ![L'entrée de la rue Gaston Joliet](captures/d260-entree-joliet.jpg)
 ![L'entrée vue de l'intérieur : vantaux ouverts, barrière levée](captures/d260-entree-joliet-dedans.jpg)
+
+## 2026-11-07 — D261. Le Lycée militaire, lot 4 : jardins, place d'armes, bassin
+
+**Demande de l'utilisateur** : « continue » après D260 (lot 4 de `docs/plans/lycee-militaire.md`). Choix par défaut de l'enquête : bassin plein.
+
+**Relevés** (orthophotographie à 8 cm) : **parterres** symétriques par rapport au milieu de la façade nord-est, en quatre compartiments de gazon
+(deux petits aux bouts, deux grands) dans une bande de gravier de 13,5 m ; chacun porte un ovale de gravier bordé de buis (grands : 8,8 × 6,6 m ;
+petits : 5,8 × 4,4 m) ; allée au milieu. Place d'armes : stabilisé jusqu'aux parterres. Bassin : 28,5 m de diamètre intérieur, vide sur
+l'orthophotographie récente, plein sur la photo aérienne.
+
+**Sols** (`tools/data/build_militaire_grounds.py`, `militaireGrounds` de `manual.json` ; après `build_courts.py` et `build_militaire_gates.py`,
+avant `build_nav.py`) :
+- stabilisé clair (`path_gravel`) : place d'armes, découpée à la tuile (28_35, 29_35) et autour des bâtiments ; allée de 5 m du grand portail au
+  passage voûté ;
+- gravier (`plaza_gravel`) : cour d'honneur, cour sud-ouest, bande des parterres et intérieur des ovales ;
+- gazon (`lawn`) : les quatre compartiments ;
+- buis : quatre haies de 45 cm autour des ovales (`−880000010` à `−880000013`).
+Polygones posés notés dans `tools/data/militaire_grounds.json` (retirés et reposés à chaque passe : le script est idempotent).
+
+**Rendu** (`garden` de `MilitaireFacade`, `militaireGarden`) :
+- **ifs taillés** : deux cônes de 3,2 m derrière le grand portail (Street View), quatre cônes aux coins des parterres (arbustes OSM), deux dômes
+  de 4,2 m de part et d'autre du passage voûté (photo 1, placés à l'estime) ;
+- **mât de drapeau** de 11 m (nœud OSM `5853910529`) sur l'axe de la façade nord-est, drapeau tricolore ;
+- **bassin** : margelle de pierre de 50 cm posée 45 cm au-dessus du point haut de son pourtour, eau plate 15 cm dessous ; la fontaine OSM reste
+  au milieu.
+
+**Jeu** : ifs et mât en cercles ; la margelle arrête le piéton (on ne se baigne pas : l'eau n'est pas dans `water.json`), on voit et on tire
+par-dessus. Le buis se saute.
+
+**Coût** : 830 triangles (16 563 pour tout le modèle).
+
+**Pas fait** : massifs fleuris et talus de lierre devant la grille de l'avenue ; alignements d'arbres taillés en rideau (les arbres de la carte
+restent) ; le chemin OSM du glacis, légèrement décalé, croise l'allée axiale près de la façade.
+
+**Tests** (+4, 1 362 au total ; `src/core/militaire-garden.test.ts`).
+
+![La place d'armes et le bassin, depuis la piste](captures/d261-place-armes.jpg)
+![Les parterres et le mât, depuis la place d'armes](captures/d261-parterres-mat.jpg)
+![Le bassin](captures/d261-bassin.jpg)
+![Les ifs devant la façade d'entrée](captures/d261-facade-ifs.jpg)
+![Le glacis et l'allée du grand portail](captures/d261-glacis.jpg)

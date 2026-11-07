@@ -1937,3 +1937,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=497,114,1.7,507,104,5&h=14` (le grand portail) et `?view=custom&cam=530,-48,1.7,550,-22,3&h=14` (l'entrée).
 
 ![Le grand portail](docs/captures/d260-grand-portail.jpg)
+
+**Lycée militaire, lot 4 : jardins, place d'armes, bassin (7 novembre 2026)** (D261)
+- La place d'armes est en stabilisé clair (elle était en pelouse) ; l'allée de gravier monte du grand portail au passage voûté.
+- Les parterres à la française sont devant la façade nord-est : quatre compartiments de gazon, ovales de gravier bordés de buis, ifs taillés aux coins, et le mât avec son drapeau.
+- Le bassin rond est en eau, dans sa margelle de pierre ; on ne peut pas y entrer.
+- Deux grands ifs en dôme encadrent le passage voûté, comme sur ta photo ; deux cônes derrière le grand portail.
+- À regarder : `?view=custom&cam=690,70,1.7,640,40,6&h=14` (les parterres et le mât).
+
+![Les parterres et le mât](docs/captures/d261-parterres-mat.jpg)

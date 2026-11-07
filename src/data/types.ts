@@ -466,6 +466,11 @@ export interface MilitaireFacade {
   };
   /** Ailes dont les fenêtres ont des encadrements de brique rouge (annexe de la rue Gaston Joliet, Street View 3). */
   red?: number[];
+  /**
+   * Jardins (D261) : ifs taillés [x, y, rayon, hauteur, 0 cône | 1 dôme] ; mât de drapeau [x, y, hauteur] ; bassin rond (centre, rayon intérieur
+   * de la margelle) en eau.
+   */
+  garden?: { yews: [number, number, number, number, 0 | 1][]; mast: [number, number, number]; basin: { c: [number, number]; r: number } };
 }
 
 export interface BuildingKind {

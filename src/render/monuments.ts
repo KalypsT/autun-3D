@@ -1762,9 +1762,67 @@ function pairAt(f: Frame, x: number, y: number, hs: number, ht: number): [number
   return [s - hs, s + hs, t - ht, t + ht];
 }
 
+// --- Jardins du Lycée militaire (D261) --------------------------------------------------------------------------------------------------
+
+const YEW = C("#2f5a34"), YEW_TOP = C("#3f7240");
+
+/** If taillé : cône (`kind` 0) ou dôme (1) octogonal, de rayon r et de haut h, sur un court tronc. */
+function topiary(mb: MeshBuilder, x: number, y: number, z: number, r: number, h: number, kind: 0 | 1): void {
+  const f = frameOf(x, y, 0, 1, 1);
+  column(mb, f, 0, 0, 0.12, z - 0.2, z + 0.3, C("#4a3a2c"));
+  // Profil : rayon relatif à chaque hauteur relative (cône : droit ; dôme : renflé puis arrondi).
+  const prof: [number, number][] = kind === 0 ? [[0, 0.9], [0.12, 1], [1, 0.04]] : [[0, 0.75], [0.15, 1], [0.55, 0.92], [0.8, 0.62], [0.95, 0.25], [1, 0]];
+  for (let k = 0; k + 1 < prof.length; k++) {
+    const [h0, r0] = prof[k]!, [h1, r1] = prof[k + 1]!;
+    const z0 = z + 0.2 + h0 * (h - 0.2), z1 = z + 0.2 + h1 * (h - 0.2);
+    for (let i = 0; i < 8; i++) {
+      const a0 = (Math.PI * i) / 4, a1 = a0 + Math.PI / 4, am = (a0 + a1) / 2;
+      const slope = (r0 - r1) * r / Math.max(0.01, z1 - z0);
+      const n = toThree(Math.cos(am), Math.sin(am), slope);
+      const l = Math.hypot(...n);
+      const col = shade(k >= prof.length - 3 ? YEW_TOP : YEW, 0.92 + 0.08 * Math.cos(am - 0.8));
+      const A = P(f, Math.cos(a0) * r0 * r, Math.sin(a0) * r0 * r, z0), B = P(f, Math.cos(a1) * r0 * r, Math.sin(a1) * r0 * r, z0);
+      const Cc = P(f, Math.cos(a1) * r1 * r, Math.sin(a1) * r1 * r, z1), D = P(f, Math.cos(a0) * r1 * r, Math.sin(a0) * r1 * r, z1);
+      mb.quad(A, B, Cc, D, [n[0] / l, n[1] / l, n[2] / l], col);
+    }
+  }
+}
+
+/** Jardins (D261) : ifs taillés, mât de drapeau des parterres, bassin rond en eau dans sa margelle de pierre. */
+function militaireGarden(mb: MeshBuilder, g: NonNullable<MilitaireFacade["garden"]>, terrain: HeightField): void {
+  for (const [x, y, r, h, kind] of g.yews) topiary(mb, x, y, terrain.heightAt(x, y), r, h, kind);
+  // Mât : fût blanc effilé, boule dorée, drapeau tricolore de 1,8 × 1,2 m en haut.
+  const [mx, my, mh] = g.mast, mz = terrain.heightAt(mx, my), f = frameOf(mx, my, 0, 1, 1);
+  box(mb, f, -0.6, 0.6, -0.6, 0.6, mz - 0.3, mz + 0.25, COLLEGE_TRIM);
+  column(mb, f, 0, 0, 0.09, mz + 0.25, mz + mh * 0.5, C("#ecebe6"));
+  column(mb, f, 0, 0, 0.06, mz + mh * 0.5, mz + mh, C("#ecebe6"));
+  column(mb, f, 0, 0, 0.11, mz + mh, mz + mh + 0.2, GILT);
+  const stripes: [number, number, THREE.Color][] = [[0, 1 / 3, C("#2b4c9b")], [1 / 3, 2 / 3, C("#f2f0ea")], [2 / 3, 1, C("#d43a2f")]];
+  for (const [a0, a1, col] of stripes) {
+    for (const side of [1, -1]) q(mb, f, [0.08 + a0 * 1.8, 0, mz + mh - 1.3], [0.08 + a1 * 1.8, 0, mz + mh - 1.3], [0.08 + a1 * 1.8, 0, mz + mh - 0.1], [0.08 + a0 * 1.8, 0, mz + mh - 0.1], N(f, 0, side), col);
+  }
+  // Bassin : margelle de 50 cm de large posée 45 cm au-dessus du point le plus haut de son pourtour, eau 15 cm sous la margelle.
+  const { c, r } = g.basin, SEG = 40, W = 0.5;
+  let rim = -Infinity;
+  for (let i = 0; i < SEG; i++) rim = Math.max(rim, terrain.heightAt(c[0] + Math.cos((2 * Math.PI * i) / SEG) * (r + W / 2), c[1] + Math.sin((2 * Math.PI * i) / SEG) * (r + W / 2)));
+  const top = rim + 0.45, water = top - 0.15, bf = frameOf(c[0], c[1], 0, 1, 1);
+  const water3 = C(T.water);
+  for (let i = 0; i < SEG; i++) {
+    const a0 = (2 * Math.PI * i) / SEG, a1 = (2 * Math.PI * (i + 1)) / SEG, am = (a0 + a1) / 2;
+    const p = (a: number, rr: number, z: number): [number, number, number] => [Math.cos(a) * rr, Math.sin(a) * rr, z];
+    const zo0 = terrain.heightAt(...at(bf, Math.cos(a0) * (r + W), Math.sin(a0) * (r + W))) - 0.2;
+    const zo1 = terrain.heightAt(...at(bf, Math.cos(a1) * (r + W), Math.sin(a1) * (r + W))) - 0.2;
+    q(mb, bf, p(a0, r + W, zo0), p(a1, r + W, zo1), p(a1, r + W, top), p(a0, r + W, top), N(bf, Math.cos(am), Math.sin(am)), COLLEGE_PLINTH);
+    q(mb, bf, p(a0, r, top), p(a1, r, top), p(a1, r + W, top), p(a0, r + W, top), [0, 1, 0], COLLEGE_TRIM);
+    q(mb, bf, p(a1, r, water - 0.6), p(a0, r, water - 0.6), p(a0, r, top), p(a1, r, top), N(bf, -Math.cos(am), -Math.sin(am)), COLLEGE_PLINTH);
+    mb.tri(P(bf, 0, 0, water), P(bf, ...p(a0, r, water)), P(bf, ...p(a1, r, water)), [0, 1, 0], water3);
+  }
+}
+
 /** Détails du Lycée militaire (D259) : balustrade de la galerie, lucarne à horloge et son drapeau, cheminées. */
 function militaireDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, mil: MilitaireFacade, stone: THREE.Color, terrain: HeightField): void {
   if (mil.gates) militaireGates(mb, mil.gates, terrain);
+  if (mil.garden) militaireGarden(mb, mil.garden, terrain);
   const g = m.wings[mil.gallery.w]!;
   const dx = g.q[0] - g.p[0], dy = g.q[1] - g.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
   // Balustrade d'une grande aile à l'autre (abscisses depuis le début de la galerie, qui est sur le faîtage de l'aile voisine).

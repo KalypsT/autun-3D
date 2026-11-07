@@ -25,6 +25,8 @@ const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge"]);
 const GRILLE: Top = { height: 1.2, climb: false };
 /** Grille d'honneur du lycée (D149) : trois mètres de fer, ni franchie ni escaladée ; on voit et on tire à travers. */
 const GRILLE_HONNEUR: Top = { height: 3.4, climb: false };
+/** Margelle du bassin du Lycée militaire (D261) : basse, mais on n'entre pas dans l'eau. */
+const BASIN_RIM: Top = { height: 0.6, climb: false };
 /** Tour des remparts (D254) : on ne l'escalade pas. */
 const TOWER_TOP: Top = { height: 30, climb: false };
 /** Parapet d'un pont : on l'enjambe (et l'on tombe dans la rivière). */
@@ -118,6 +120,13 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     // Grand portail du Lycée militaire (D260) : fermé, ni franchi ni escaladé, comme la grille d'honneur du lycée Bonaparte.
     const mg = k.college?.mil?.gates;
     if (mg) c.addPolyline([...mg.avenue.a, ...mg.avenue.b], true, GRILLE_HONNEUR);
+    // Margelle du bassin des jardins (D261) : on ne l'enjambe pas (pas de baignade), on voit et on tire par-dessus.
+    const basin = k.college?.mil?.garden?.basin;
+    if (basin) {
+      const ring: number[] = [];
+      for (let i = 0; i <= 40; i++) ring.push(basin.c[0] + Math.cos((Math.PI * i) / 20) * (basin.r + 0.5), basin.c[1] + Math.sin((Math.PI * i) / 20) * (basin.r + 0.5));
+      c.addPolyline(ring, true, BASIN_RIM);
+    }
   }
   for (const f of furnitureOutsideMonuments(tile.kinds, tile.furniture)) {
     // Lampadaires, feux, poubelles, boîtes aux lettres, potelets et bornes à eau : un véhicule lourd et rapide les arrache (D160).
