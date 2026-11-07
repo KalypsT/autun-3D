@@ -58,9 +58,14 @@ describe("Lycée militaire : jardins (D261)", () => {
       expect(mb.positions.every(Number.isFinite)).toBe(true);
       return mb;
     };
+    // Ifs, mât et bassin seuls : les arbres en rideau et les massifs (D264) ont leur propre test.
+    const garden = { ...spec.mil!.garden! };
+    delete garden.pleached;
+    delete garden.beds;
+    const base = { ...spec, mil: { ...spec.mil!, garden } };
     const mil = { ...spec.mil! };
     delete mil.garden;
-    const cost = (count(spec).positions.length - count({ ...spec, mil }).positions.length) / 9;
+    const cost = (count(base).positions.length - count({ ...spec, mil }).positions.length) / 9;
     expect(cost).toBeGreaterThan(500);
     expect(cost).toBeLessThan(3000);
     const floor = world.terrain.heightAt(...garden.basin.c);

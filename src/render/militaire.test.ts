@@ -44,13 +44,14 @@ describe("Lycée militaire : volumes et toits (D258)", () => {
     expect(se.ir![2]).toBeLessThan(L - 20);
   });
 
-  it("géométrie finie, sommet au faîtage du pavillon ouest, moins de 20 000 triangles, fenêtres allumées la nuit", () => {
+  it("géométrie finie, sommet au faîtage du pavillon ouest, moins de 24 000 triangles, fenêtres allumées la nuit", () => {
     const mb = new MeshBuilder(), glow = new MeshBuilder();
     buildCollege(mb, glow, spec, b.ring, world.terrain, b.holes);
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(top(mb)).toBeGreaterThan(wing("pavillon ouest").r - 0.2);
     expect(top(mb)).toBeLessThan(wing("pavillon ouest").r + 0.2);
-    expect(tris(mb)).toBeLessThan(20000);
+    // Plafond relevé de 20 000 à 24 000 en D264 (arbres en rideau et massifs, qui remplacent des arbres génériques).
+    expect(tris(mb)).toBeLessThan(24000);
     expect(tris(glow)).toBeGreaterThan(0);
   });
 
@@ -124,7 +125,7 @@ describe("Lycée militaire : façades (D259)", () => {
     }
   });
 
-  it("façades, lucarnes, balustrade, horloge et cheminées : entre 3 000 et 9 000 triangles ; le bâtiment reste sous 20 000", () => {
+  it("façades, lucarnes, balustrade, horloge et cheminées : entre 3 000 et 9 000 triangles ; le bâtiment reste sous 24 000", () => {
     const bare = { ...spec, wings: spec.wings.map((w) => {
       const r = { ...w };
       delete r.dl;
@@ -139,6 +140,6 @@ describe("Lycée militaire : façades (D259)", () => {
     const full = tris(spec), cost = tris({ ...spec, mil: facades }) - tris(bare);
     expect(cost).toBeGreaterThan(3000);
     expect(cost).toBeLessThan(9000);
-    expect(full).toBeLessThan(20000);
+    expect(full).toBeLessThan(24000);
   });
 });

@@ -1819,7 +1819,37 @@ function militaireGates(mb: MeshBuilder, g: NonNullable<MilitaireFacade["gates"]
       const tt = ct - side * dt, n = N(f, 0, -side);
       mb.tri(P(f, cs - r, tt, pz + 1.6), P(f, cs + r, tt, pz + 1.6), P(f, cs, tt, pz + 1.6 + r * 1.6), n, col);
     }
+    for (const [x, y, a, len] of g.joliet.xb ?? []) crossBarrier(mb, x, y, a, len, terrain);
   }
+  if (g.flags) gridFlags(mb, g.flags, terrain);
+}
+
+/** Drapeaux de la grille (D264) : hampe sur un poteau de la grille, tricolore de 0,9 × 0,6 m pendu dans son plan. */
+function gridFlags(mb: MeshBuilder, flags: [number, number, number][], terrain: HeightField): void {
+  const stripes: [number, number, THREE.Color][] = [[0, 1 / 3, C("#2b4c9b")], [1 / 3, 2 / 3, C("#f2f0ea")], [2 / 3, 1, C("#d43a2f")]];
+  for (const [x, y, a] of flags) {
+    const f = frameOf(x, y, a, 1, 1), z = terrain.heightAt(x, y);
+    column(mb, f, 0, 0, 0.03, z + 2.5, z + 4.0, C("#d9d6cc"));
+    for (const [a0, a1, col] of stripes) {
+      for (const sd of [1, -1]) q(mb, f, [0.04 + a0 * 0.9, 0, z + 3.3], [0.04 + a1 * 0.9, 0, z + 3.3], [0.04 + a1 * 0.9, 0, z + 3.9], [0.04 + a0 * 0.9, 0, z + 3.9], N(f, 0, sd), col);
+    }
+  }
+}
+
+/** Barrière en X (D264) : deux diagonales de tube rayé rouge et blanc dans son plan, lisse haute, deux pieds ; longueur `len`, dans l'axe `a`. */
+function crossBarrier(mb: MeshBuilder, x: number, y: number, a: number, len: number, terrain: HeightField): void {
+  const f = frameOf(x, y, a, 1, 1), z = terrain.heightAt(x, y), h = 1.1;
+  const red = C("#c8302a"), white = C("#f2f0ea");
+  for (const s of [-len / 2, len / 2]) box(mb, f, s - 0.04, s + 0.04, -0.35, 0.35, z, z + 0.06, C("#55595c"));
+  const striped = (s0: number, z0: number, s1: number, z1: number): void => {
+    for (let k = 0; k < 6; k++) {
+      const u0 = k / 6, u1 = (k + 1) / 6;
+      ironBar(mb, f, s0 + (s1 - s0) * u0, z0 + (z1 - z0) * u0, s0 + (s1 - s0) * u1, z0 + (z1 - z0) * u1, 0.07, 0, k % 2 ? white : red);
+    }
+  };
+  striped(-len / 2, z + 0.06, len / 2, z + h);
+  striped(-len / 2, z + h, len / 2, z + 0.06);
+  striped(-len / 2, z + h, len / 2, z + h);
 }
 
 /** Bornes [s0, s1, t0, t1] d'un pavé de demi-côtés `hs` et `ht` centré sur le point (x, y) du plan, dans le repère f. */
@@ -1854,9 +1884,25 @@ function topiary(mb: MeshBuilder, x: number, y: number, z: number, r: number, h:
   }
 }
 
+const BLOOM = ["#c8343b", "#e889a8", "#e9c23c", "#8a5bb0", "#f2efe6"].map(C), LEAVES = C("#3f6b38");
+
 /** Jardins (D261) : ifs taillés, mât de drapeau des parterres, bassin rond en eau dans sa margelle de pierre. */
 function militaireGarden(mb: MeshBuilder, g: NonNullable<MilitaireFacade["garden"]>, terrain: HeightField): void {
   for (const [x, y, r, h, kind] of g.yews) topiary(mb, x, y, terrain.heightAt(x, y), r, h, kind);
+  // Arbres taillés en rideau (D264) : tronc nu jusqu'à 3 m, couronne en pavé allongée dans l'axe de l'alignement (les couronnes se touchent presque).
+  if (g.pleached) {
+    for (const [x, y, z, h] of g.pleached.trees) {
+      const f = frameOf(x, y, g.pleached.dir, 1, 1), top = z + Math.max(5.5, Math.min(h, 7.5)), cz = z + 3.0;
+      box(mb, f, -0.15, 0.15, -0.15, 0.15, z - 0.2, cz, TRUNK);
+      box(mb, f, -2.5, 2.5, -1.3, 1.3, cz, top, CROWN, CROWN_TOP);
+    }
+  }
+  // Massifs fleuris (D264) : touffes de feuillage piquées de fleurs, en deux rangs.
+  for (const [x, y, r, h, k] of g.beds ?? []) {
+    const f = frameOf(x, y, 0, 1, 1), z = terrain.heightAt(x, y);
+    column(mb, f, 0, 0, r, z - 0.1, z + h * 0.55, LEAVES);
+    column(mb, f, 0, 0, r * 0.8, z + h * 0.55, z + h, BLOOM[k % BLOOM.length]!);
+  }
   // Mât : fût blanc effilé, boule dorée, drapeau tricolore de 1,8 × 1,2 m en haut.
   const [mx, my, mh] = g.mast, mz = terrain.heightAt(mx, my), f = frameOf(mx, my, 0, 1, 1);
   box(mb, f, -0.6, 0.6, -0.6, 0.6, mz - 0.3, mz + 0.25, COLLEGE_TRIM);

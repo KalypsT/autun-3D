@@ -8,7 +8,8 @@ Sortie : - chaque tracé de `cuts` est coupé au sommet `at` (retiré) : la prem
            deux murets, hauteur) suit chaque partie ;
          - chaque fiche de `fiches` reçoit ses réglages (enduit, époque, rez-de-chaussée sans vitrine) et passe à « observed » (D262 : les
            bâtiments modernes de l'enceinte, classés « commerce et services » par BD TOPO, n'ont pas de vitrine).
-- `closures` : courts tracés ajoutés pour fermer l'enceinte (D263).
+- `closures` : courts tracés ajoutés pour fermer l'enceinte (D263) ;
+         - `ringMoves` : sommets du contour BD TOPO déplacés (D264 : la face nord-est du Lycée militaire passe 2 à 3 m sous le toit relevé au LiDAR).
 Idempotent : un tracé déjà coupé (le second existe) est laissé tel quel ; `bytes` et `walls` de world.json sont mis à jour.
 """
 
@@ -71,6 +72,16 @@ def main():
         tile = tiles.setdefault(s["tile"], json.loads((c.OUT / "tiles" / f"{s['tile']}.json").read_text()))
         if cut(tile["walls"], s):
             changed.add(s["tile"])
+    # Contour recalé au LiDAR (D264) : sommets déplacés (ancien -> nouveau), là où le mur BD TOPO passe sous le toit mesuré.
+    for rm in spec.get("ringMoves", []):
+        tile = tiles.setdefault(rm["tile"], json.loads((c.OUT / "tiles" / f"{rm['tile']}.json").read_text()))
+        b = next(x for x in tile["buildings"] if x["id"] == rm["id"])
+        r = b["ring"]
+        for (ox, oy), (nx, ny) in rm["moves"]:
+            for i in range(0, len(r), 2):
+                if abs(r[i] - ox) < 0.01 and abs(r[i + 1] - oy) < 0.01:
+                    r[i], r[i + 1] = nx, ny
+                    changed.add(rm["tile"])
     # Fermetures (D263) : bouts de clôture entre un tracé et le bâtiment voisin, là où l'enceinte laissait passer un piéton.
     for w in spec.get("closures", []):
         tile = tiles.setdefault(w["tile"], json.loads((c.OUT / "tiles" / f"{w['tile']}.json").read_text()))

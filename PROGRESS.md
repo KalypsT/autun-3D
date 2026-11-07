@@ -1960,3 +1960,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le lycée militaire est terminé (lots 0 à 6) : `?view=militaire&h=14`.
 
 ![Le passage voûté](docs/captures/d263-passage-dehors.jpg)
+
+**Lycée militaire, finitions (7 novembre 2026)** (D264)
+- Les angles des toits des pavillons ne débordent plus : la face nord-est du bâtiment était 2 à 3 m trop en retrait dans les données de l'IGN ; elle est recalée sur le toit mesuré au LiDAR.
+- Devant la grille de l'avenue : massifs fleuris, ifs taillés, six drapeaux, talus de lierre derrière la grille.
+- Sur les pelouses du glacis, les arbres des quatre alignements sont taillés en rideau.
+- À l'entrée de la rue Gaston Joliet : deux barrières en X rouge et blanc (les voitures passent toujours).
+
+![Les pavillons](docs/captures/d264-pavillons.jpg)

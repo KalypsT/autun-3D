@@ -155,6 +155,7 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     const gd = k.college?.mil?.garden;
     if (!gd) continue;
     for (const [x, y, r] of gd.yews) out.push([x, y, r * 0.75]);
+    for (const [x, y] of gd.pleached?.trees ?? []) out.push([x, y, 0.3]);
     out.push([gd.mast[0], gd.mast[1], 0.6]);
   }
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
@@ -319,7 +320,8 @@ export function canopyPosts([s0, s1]: [number, number, number]): number[] {
 /** Arbres de la tuile hors des bassins des fontaines d'après photo (D131) : un arbre de la carte poussait au milieu de la fontaine Saint-Lazare. */
 export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record<string, BuildingKind> } | undefined, trees: readonly Tree[]): Tree[] {
   // Arbres taillés en rideau derrière la grille du lycée (D149) : le modèle les dessine, leurs troncs restent des obstacles (`landmarkCircles`).
-  const pleached = new Set(Object.values(kinds?.buildings ?? {}).flatMap((b) => (b.college?.grille?.trees ?? []).map(([x, y]) => `${x},${y}`)));
+  // Arbres taillés en rideau : derrière la grille du lycée Bonaparte (D149), sur le glacis du Lycée militaire (D264).
+  const pleached = new Set(Object.values(kinds?.buildings ?? {}).flatMap((b) => [...(b.college?.grille?.trees ?? []), ...(b.college?.mil?.garden?.pleached?.trees ?? [])].map(([x, y]) => `${x},${y}`)));
   if (pleached.size) trees = trees.filter(([x, y]) => !pleached.has(`${x},${y}`));
   const basins = (kinds?.sites ?? []).flatMap((s) => (s.t === "fountain" ? [[s.x, s.y, s.rb + 0.6] as const] : []));
   // Théâtre romain (D133) : rien ne pousse dans la cavea, l'orchestre ni sur la scène (les arbres du sommet restent).

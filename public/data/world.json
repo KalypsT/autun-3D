@@ -2389,10 +2389,10 @@
    ],
    "buildings": 15,
    "trees": 207,
-   "walls": 24,
+   "walls": 25,
    "furniture": 10,
    "lod": 15,
-   "bytes": 98846
+   "bytes": 98956
   },
   {
    "id": "29_35",
