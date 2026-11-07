@@ -56,14 +56,14 @@ export function tyreOf(v: { def: VehicleDef }): FamilyInfo["tyre"] {
   return v.def.family === "car" && body ? { ...t, track: wheelTrack(body) } : t;
 }
 
-/** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (3,98 × 1,42 m). */
+/** Caméra de poursuite : celle de la famille, reculée et relevée pour les voitures plus longues et plus hautes que la citadine (4,06 × 1,45 m). */
 export function chaseOf(v: { def: VehicleDef }): FamilyInfo["camera"] {
   const c = FAMILIES[v.def.family].camera;
   // Petit train (D118) : la caméra recule et monte pour voir les wagons derrière la locomotive.
   if (v.def.train) return { distance: 12, perSpeed: 0.1, height: 2.2 };
   if (v.def.family !== "car") return c;
   const { length, height } = v.def.size;
-  return { distance: c.distance + (length - 3.98) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.42) * 0.5 };
+  return { distance: c.distance + (length - 4.06) * 1.2, perSpeed: c.perSpeed, height: c.height + (height - 1.45) * 0.5 };
 }
 
 /**

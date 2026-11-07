@@ -5849,3 +5849,26 @@ de vue par sommet. 1 388 essais.
 
 ![La carte](captures/d270-carte.jpg)
 ![Les terrils sur la carte](captures/d270-carte-terrils.jpg)
+
+## 2026-11-07 — D271. La citadine refaite d'après photos (premier essai de « véhicules plus réalistes »)
+
+**Demande** : rendre les véhicules plus réalistes en s'appuyant sur des photos fournies ; essai sur la citadine (Éduen Moineau), d'après cinq photos
+d'une citadine française cinq portes des années 2010, en plusieurs couleurs. « Réaliste » veut dire ici fidèle et reconnaissable, dans le style « affiche » (D17) :
+pas de texture, toujours le générateur de carrosserie (D52, D107). Marque et nom restent fictifs, aucun logo recopié (écusson rond neutre).
+
+**Générateur** (`src/render/car-body.ts`), options nouvelles, toutes facultatives (les autres voitures ne changent pas) :
+- `beltRise` (ceinture qui monte vers l'arrière) et `roofDrop` (toit fuyant) ;
+- phares `swept` (étirés, qui remontent sur l'aile), calandre `band` (bandeau noir brillant d'un phare à l'autre, filet chromé, écusson), feux `wrap` (enveloppants) ;
+- pare-chocs `blend` (couleur de caisse, fondus dans les coins au lieu d'une lame qui dépasse) ;
+- `lowerGrille` (grande grille basse, antibrouillards), `hiddenRearHandles` (poignées arrière cachées : allure de trois-portes), `doorBlade` (creux noir et jonc chromé
+  au bas des portes), `tailChrome`, `diffuser` ;
+- `spokes` : jantes à branches, en pièces plates sur le flanc du pneu, seulement sur la face extérieure d'une roue garée (la circulation garde sa roue commune).
+
+**Citadine** : 4,06 × 1,73 × 1,45 m (au lieu de 3,98 × 1,74 × 1,42), empattement inchangé (2,60 m, celui du modèle réel), cinq portes, pare-brise très couché,
+hayon fuyant avec becquet, jantes 5 branches. Palette d'après les photos : rouge, argent, gris titane, blanc, bleu, plus noir et orange (couleurs du même modèle).
+Caméra de poursuite : la référence suit les nouvelles mesures. **Budget** : 932 triangles de détails et roues pour une voiture garée (limite 1 000), 1 160 au repos (limite 1 300).
+
+**Reste** : la face et les feux sont des volumes simples ; les feux arrière débordent un peu des épaules vus de trois quarts. À juger sur le téléphone.
+
+![Avant / après](captures/d271-citadine-avant-apres.jpg)
+![Les couleurs](captures/d271-citadine-couleurs.jpg)

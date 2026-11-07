@@ -16,12 +16,18 @@ import type { Zone } from "../core/damage";
 
 /** Mesures de chaque voiture du catalogue (même identifiants que `src/core/vehicle-catalog.ts`). */
 export const CAR_BODIES: Record<string, CarBodyParams> = {
+  // Citadine (refaite d'après photos d'une citadine française des années 2010) : cinq portes à l'allure de trois-portes (poignées arrière cachées),
+  // ceinture qui monte vers l'arrière, pare-brise très couché, toit fuyant et becquet, phares étirés reliés par un bandeau noir, feux enveloppants.
   citadine: {
-    length: 3.98, width: 1.74, height: 1.42, overhangFront: 0.72,
-    clearance: 0.28, belt: 0.86, noseHeight: 0.8, tailHeight: 0.9,
-    hood: 0.98, windshield: 0.58, roof: 1.5, rearGlass: 0.5, roofTaper: 0.9,
-    wheelRadius: 0.3, tyreWidth: 0.2,
-    style: { headlights: "round", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#b9b4a8", doors: 1, roundness: 0.9, sideStrip: true },
+    length: 4.06, width: 1.73, height: 1.45, overhangFront: 0.8,
+    clearance: 0.22, belt: 0.88, noseHeight: 0.71, tailHeight: 0.98,
+    hood: 1.12, windshield: 0.86, roof: 1.12, rearGlass: 0.62, roofTaper: 0.84,
+    beltRise: 0.1, roofDrop: 0.07,
+    wheelRadius: 0.32, tyreWidth: 0.2, glass: "#222a35",
+    style: {
+      headlights: "swept", grille: "band", taillights: "wrap", bumpers: "blend", rim: "#c3c6cb", doors: 2, roundness: 0.8,
+      blackPillars: true, spoiler: "roof", lowerGrille: true, hiddenRearHandles: true, doorBlade: true, tailChrome: true, diffuser: true, spokes: 5,
+    },
   },
   compacte: {
     length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
@@ -161,7 +167,7 @@ export function createCarModel(id: string, color: string): VehicleModel {
   const layout = carLayout(p, front, rear);
   const bodyGeo = bodyPaintGeometry(p, front, rear, color);
   const detailGeo = bodyDetailGeometry(p, front, rear);
-  const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim);
+  const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim, p.style.spokes);
   // Dégâts (D110) : préparés à la première bosse seulement (copie des positions et des couleurs d'origine).
   const frame = crumpleFrame(p, front, rear);
   let crumplers: Crumpler[] | null = null;
@@ -259,7 +265,7 @@ export function carRestGeometry(id: string): THREE.BufferGeometry {
   const { paint, detail, p, front, rear } = bodyParts(id);
   const parts = [paint, detail];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
-    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim);
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);
     parts.push(w);
   }
