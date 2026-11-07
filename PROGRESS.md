@@ -1968,3 +1968,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À l'entrée de la rue Gaston Joliet : deux barrières en X rouge et blanc (les voitures passent toujours).
 
 ![Les pavillons](docs/captures/d264-pavillons.jpg)
+
+**Terrils des Télots (7 novembre 2026)** (D269)
+- Les deux terrils de l'ancienne mine ont leur peau : grande face nue de schiste rose saumon sur le terril est, semée de petits arbres, plaques roses sur le terril ouest, schiste noir au pied.
+- Un sentier en lacets monte au sommet de chacun (806 m et 719 m, 12 à 13 % de pente en moyenne, virages élargis et presque plats) : on y monte à vélo, en VTT, à pied, à moto et en voiture.
+- Au sommet, la vue s'ouvre sur la ville (panorama comme à la Croix).
+- À faire de ton côté : monter à vélo au sommet du terril est (`?at=201,3633&ride=velo`, le pied du sentier), regarder la vue vers la ville, et dire si la couleur rose te paraît juste.
+- À regarder : `?view=telots`, `?view=telots-haut`, `?view=telots-lacets`.
+
+![Des champs du sud](docs/captures/telots-apres-sud.jpg)
+![Les lacets](docs/captures/telots-apres-lacets.jpg)

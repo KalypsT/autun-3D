@@ -25,6 +25,14 @@ const BELVEDERE: [number, number] = [90, 200];
 const TAU = 1.2;
 const RING = 1000;
 const NEAR_FAR = 1200;
+/**
+ * Sommets des terrils des Télots (D269 : x, y, altitude du replat) : ils ne dominent le relief alentour que d'une centaine de mètres (le seuil
+ * du belvédère), mais la vue y porte jusqu'à la ville : près du sommet (moins de LOOKOUT_R m, et à moins de 20 m sous lui), la domination est
+ * augmentée de LOOKOUT_BONUS m, en douceur.
+ */
+const LOOKOUTS: readonly (readonly [number, number, number])[] = [[346.2, 3790.2, 63.2], [138.2, 3751.2, 51.6]];
+const LOOKOUT_R = 70;
+const LOOKOUT_BONUS = 110;
 /** Le panorama se reconstruit quand le joueur s'est éloigné de plus de MOVE m de son centre (comme TerrainView). */
 const MOVE = 150;
 /** Super-tuiles de silhouettes en chargement à la fois. */
@@ -90,7 +98,12 @@ export class Vista {
       hs.push(Math.max(this.seaZ, this.terrain.coarse.heightAt(x + RING * Math.sin(a), y + RING * Math.cos(a))));
     }
     hs.sort((p, q) => p - q);
-    return z - hs[4]!;
+    let bonus = 0;
+    for (const [lx, ly, lz] of LOOKOUTS) {
+      const d = Math.hypot(x - lx, y - ly);
+      bonus = Math.max(bonus, LOOKOUT_BONUS * (1 - smooth(LOOKOUT_R * 0.6, LOOKOUT_R, d)) * smooth(lz - 20, lz - 6, z));
+    }
+    return z - hs[4]! + bonus;
   }
 
   /**

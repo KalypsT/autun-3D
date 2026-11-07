@@ -33,6 +33,10 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   skate: { color: "paving2", lift: 0.06, tint: 0.92 },
   play_gravel: { color: 2, lift: 0.032, tint: 1.08 },
   play_mat: { color: "paving4", lift: 0.05 },
+  // Terrils des Télots (D269) : schiste brûlé rose saumon et schiste noir posés sur le relief nu, sentier en lacets de terre rose tassée.
+  schist_black: { color: "paving9", lift: 0.03 },
+  schist_red: { color: "paving8", lift: 0.033 },
+  path_schist: { color: "paving10", lift: 0.045 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },
@@ -43,6 +47,8 @@ const MARK_YELLOW = "#e8c12f";
 /** Bleu des places PMR (D236), posé sous les traits blancs. */
 const MARK_BLUE = "#2f6db5";
 const MAX_EDGE = 5;
+/** Côté maximal des triangles des sols de terril (D269). */
+const STEEP_EDGE = 1.5;
 const CURB_FOOT = 0.0;
 
 type P = [number, number];
@@ -76,7 +82,9 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     const hex = spec.color === "water" ? T.water : spec.color === "pitch" ? T.pitch : typeof spec.color === "string" ? T.paving[Number(spec.color.slice(6))]! : T.ground[spec.color]!;
     const color = new THREE.Color(hex).multiplyScalar(spec.tint ?? 1);
     for (const poly of polys) {
-      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" ? bare : terrain, true);
+      // Terrils (D269) : pentes à 35° et talus des lacets, le sol suit le relief à 1,5 m près (sinon il passe dessous par endroits).
+      const steep = name.startsWith("schist") || name === "path_schist";
+      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" || steep ? bare : terrain, true, steep ? STEEP_EDGE : MAX_EDGE);
       yield;
       if (name === "walk") {
         curbs(mb, [poly], terrain, color, onEdge);
@@ -135,7 +143,7 @@ export function paver(terrain: HeightField): { z: (x: number, y: number) => numb
  * les morceaux qui iraient du tablier au relief (la rampe ou le mur qu'on voyait sous les ponts) sont laissés vides, comme ceux qui
  * tombent sous un tablier enjambant une autre voie.
  */
-export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, color: THREE.Color, terrain: HeightField, jitter = false): void {
+export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, color: THREE.Color, terrain: HeightField, jitter = false, maxEdge = MAX_EDGE): void {
   const pv = paver(terrain);
   const bare = terrain.ground ?? terrain;
   const normalAt = (x: number, y: number, level: number): [number, number, number] => {
@@ -160,7 +168,7 @@ export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, c
         mixed = levels.includes(2) || Math.max(...lifts) - Math.min(...lifts) > 2 * ON_DECK;
       }
     }
-    if ((longest > MAX_EDGE && depth < 6) || (mixed && longest > FINE && depth < 16)) {
+    if ((longest > maxEdge && depth < (maxEdge < MAX_EDGE ? 14 : 6)) || (mixed && longest > FINE && depth < 16)) {
       // Coupe le plus long côté en deux : les sommets épousent le relief.
       const pts = [a, b, c];
       let k = 0, best = 0;

@@ -1,6 +1,7 @@
 # Les terrils des Télots : plan (avant enquête)
 
-Plan du 7 novembre 2026, sur `main` (après D268). Rien n'est modifié dans le jeu : ce fichier et trois captures sont les seuls ajouts.
+Plan du 7 novembre 2026, sur `main` (après D268). **Réalisé le même jour : D269** (`docs/DECISIONS.md`) ; le §8 dit ce qui a été fait et ce qui
+reste.
 Repère local du jeu (x vers l'est, y vers le nord), mètres ; altitudes en NGF (le jeu soustrait `ORIGIN_Z` = 330 m). Les prochains numéros
 de décision seront D269 et suivants.
 
@@ -121,3 +122,19 @@ d'un demi-kilomètre carré) ; pas de LiDAR à retélécharger sauf si l'on veut
 ![Les terrils vus du sud, en hauteur : deux cônes verts](../captures/telots-avant-sud.jpg)
 ![Le terril est vu de l'ouest](../captures/telots-avant-ouest.jpg)
 ![Orthophotographie IGN : faces roses, schiste noir au pied, forêt](../captures/telots-ortho.jpg)
+
+## 8. Réalisation (D269, 7 novembre)
+
+**Réponses de l'utilisateur** : sentier en lacets oui ; voiture arcade (on garde la montée des faces à 35°) ; vue au sommet si ce n'est pas trop
+complexe ; pas de photo de la vue d'en haut.
+
+Fait (lots 0 à 4 en une passe, `tools/data/build_terrils.py`) : schiste rose et noir d'après l'orthophotographie, 95 petits arbres sur la face
+rose, deux sentiers en lacets creusés dans le relief (virages élargis et presque plats), affichage du relief fin sous les sentiers, poids des
+sols pour la vue lointaine, point de vue au sommet (panorama), lieu sur la carte, cinq vues, trois tests.
+
+Reste : les passants ne prennent pas les sentiers ; les images de la carte ne montrent pas encore le schiste ; vérifier sur téléphone la couleur
+rose et les images par seconde au sommet (panorama).
+
+![Des champs du sud](../captures/telots-apres-sud.jpg)
+![Les lacets du terril est](../captures/telots-apres-lacets.jpg)
+![Du sommet, vers la ville](../captures/telots-apres-sommet.jpg)

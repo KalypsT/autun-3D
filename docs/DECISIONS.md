@@ -5746,7 +5746,7 @@ téléphone** : `?at=-838,-1803&debug`, puis la même chose avec `&vista=0` ; co
 
 **Limites** : la ville lointaine n'a pas de lumières la nuit (seules les tuiles détaillées en ont) ; pas d'arbres au-delà de 1 300 m (la forêt n'est
 qu'un assombrissement du sol) ; **les terrils des Télots ne sont pas dans la carte** (le relief du jeu ne dépasse pas 308 m dans toute la zone des
-Télots : ils sont au-delà du bord ouest du monde, dans la mer) ; à l'ouest et au nord, l'horizon est la mer qui entoure le monde (D105), là où la
+Télots : ils sont au-delà du bord ouest du monde, dans la mer) — *erreur, corrigée en D269 : ils sont dans la carte, en pleine zone jouable* ; à l'ouest et au nord, l'horizon est la mer qui entoure le monde (D105), là où la
 photo montre la plaine et le Morvan.
 
 **Tests** (+2, `src/render/vista.test.ts`) : brouillard inchangé au sol, éloigné en belvédère, fermé par la brume ; belvédère reconnu à la croix,
@@ -5756,3 +5756,64 @@ pas sur le parvis de la cathédrale, la place du Champ de Mars ni l'avenue de la
 ![Sans le panorama (?vista=0)](captures/d268-vue-sans-panorama.jpg)
 ![Par temps de brume](captures/d268-vue-brume.jpg)
 ![La nuit](captures/d268-vue-nuit.jpg)
+
+
+## 2026-11-07 — D269. Les terrils des Télots : schiste rose et noir, petits arbres, sentiers en lacets, vue au sommet
+
+**Demande** : intégrer correctement les deux terrils de l'ancienne mine des Télots (fermée en 1957), et pouvoir monter et rouler dessus. Décisions
+de l'utilisateur : sentiers en lacets (pour monter à vélo), montée « arcade » des voitures gardée, vue au sommet si ce n'est pas trop complexe.
+Plan et lecture des photos : `docs/plans/terrils-telots.md`.
+
+**Constat** : les terrils sont dans la carte (D268 se trompait) : le relief LiDAR à 1 m les contient, 393,5 m et 381,9 m NGF, en forme de goutte
+(arête de déversement vers le nord-ouest), flancs à 35-37°. Ils étaient deux cônes verts. Pas d'extension de la carte : tout se fait sur quatre
+tuiles (`26_49`, `27_49`, `26_50`, `27_50`, plus les arbres de `28_50`) et deux super-tuiles de sols.
+
+**Étape `tools/data/build_terrils.py`** (`--trace` puis sans option ; une deuxième passe ne change rien) :
+- **Lacets** (`--trace`, figés dans `tools/data/terrils.json`) : un marcheur part du sommet et descend en suivant la pente à 9 % (tangente au flanc
+  plus une part de descente) ; hors d'un secteur (terril est : 165° ± 62°, la face rose vers le pré et l'étang ; terril ouest : 250° ± 55°, vers la
+  rue des Télots), il repart dans l'autre sens, en virage de 3,5 m de rayon au plus ; sous 22 m du sommet, il tourne autour de la pointe. Le sens
+  du demi-tour se décide sur la tangente, pas sur le cap (sinon il rebasculait à chaque pas pendant le virage et le sentier descendait tout droit).
+  **Profil** : moyenne de deux profils gloutons qui respectent la pente (l'un depuis le sommet, en remblai ; l'autre depuis le pied, en déblai),
+  lissée : déblai et remblai de 2 m au plus (un seul profil depuis le sommet laissait le sentier 8 à 10 m au-dessus du sol après les virages) ;
+  16 % au plus, 5 % dans les virages (le vélo coupait la corde, plus raide, et calait). 806 m (est) et 719 m (ouest), 12 à 13 % en moyenne.
+- **Relief creusé** : à plat sur la demi-largeur (1,25 m, 3,25 m dans les virages : un replat où l'on tourne sans monter sur le talus), talus
+  à 45° jusqu'à rejoindre la pente ; replat de 3 m au sommet. 1,9 ha touchés, 6 m au plus.
+- **Sols d'après l'orthophotographie** (0,5 m) : face nue = densité sur 7 m de pixels clairs, rouge ≥ vert > bleu (moyenne mesurée (171, 165, 152) :
+  un beige à peine rosé sur l'orthophoto, rose saumon sur les photos), sans arbre au MNS − MNT, à moins de 20 m des terrils OSM ; schiste noir = gris
+  bleuté clair (145, 146, 152), peu saturé. Sols `schist_red` (1,74 ha), `schist_black` (0,25 ha), `path_schist` (sentiers, 0,54 ha), découpés dans
+  les autres sols. Couleurs (`T.paving[8..10]`) : rose saumon, gris anthracite, terre rose tassée plus sombre. Triangles de 1,5 m au plus pour ces
+  sols (5 m ailleurs) : sur les pentes et talus, ils passaient sous le relief.
+- **Arbres** : 122 retirés à moins de 3 m des sentiers ; **95 petits arbres** ajoutés sur la face rose (taches vertes de 1 à 14 m² sur l'orthophoto,
+  absentes du relevé LiDAR, trop basses) ; altitudes recalées aux abords creusés seulement.
+- **Poids des sols** (vu de loin, super-tuiles) : schiste rose en ocre, schiste noir en gris assombri (la palette des poids n'a pas de rose).
+- **Sites `sentier`** dans `kinds` (axe, altitude, demi-largeur ; un site par suite de segments d'une tuile) : le relief proche est affiché par
+  carreaux de 2,5 m, trop grands pour un replat de 2,5 m dans une pente à 35° (le carreau cachait le sentier côté déblai). `sentierPits`
+  (`src/core/landmarks.ts`) : creux d'affichage sous le sentier et son talus de remblai, recouvert d'une bande de relief fin, comme les remparts
+  (D250), par morceaux de 12 m.
+- **Lieu** « Terrils des Télots » (point de vue) dans `map/places.json`.
+
+**Vue au sommet** : le sommet ne domine le relief alentour que de 111 m (seuil du belvédère : 90 à 200 m, part ≈ 0,1). Points de vue explicites
+(`LOOKOUTS`, `src/render/vista.ts`) : à moins de 70 m d'un sommet et à moins de 20 m sous lui, la domination est augmentée de 110 m, en douceur ;
+le panorama s'ouvre, la ville se découpe à 4 km. À mi-pente et au pied, rien ne change.
+
+**Monter** (mesuré) : à vélo, en VTT et en voiture (25 km/h au plus), on monte les deux sentiers jusqu'au sommet (`src/core/terrils.test.ts`) ;
+le vélo y roule à 6 à 9 km/h. Hors sentier, motos et voitures montent toujours les faces à 35° avec de l'élan (arcade, décision de l'utilisateur) ;
+vélos et trottinettes calent dès 15 à 20°.
+
+**Vues** : `?view=telots` (des champs du sud, photo 2), `telots-etang` (photo 3), `telots-haut` (du sommet vers la ville), `telots-lacets`,
+`telots-sentier`.
+
+**Coût** : une vue rapprochée d'un virage passe de 684 000 à 743 000 triangles (sols de 1,5 m, bandes de relief fin) ; appels de dessin inchangés.
+
+**Tests** (+3) : sentier sans remontée ni pente au-delà de 16,5 % ; montée à vélo, en VTT et en voiture sur le vrai relief ; belvédère aux
+sommets, pas à mi-pente. 1 387 essais.
+
+**Limites** : pas de photo du sommet ni de la vue d'en haut (sommet et vue lus au LiDAR) ; les passants ne prennent pas les sentiers (pas de
+file piétonne ajoutée) ; les images de la carte (`build_map.py --images`) ne montrent pas encore le schiste ; `build_kinds.py` réécrit `kinds` :
+relancer `build_terrils.py` après lui ; quelques éclats sombres aux bords des sols sur les talus.
+
+![Des champs du sud](captures/telots-apres-sud.jpg)
+![Depuis l'étang](captures/telots-apres-etang.jpg)
+![Les lacets du terril est](captures/telots-apres-lacets.jpg)
+![Un virage, de près](captures/telots-apres-virage.jpg)
+![Du sommet, vers la ville](captures/telots-apres-sommet.jpg)

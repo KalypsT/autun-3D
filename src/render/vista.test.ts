@@ -54,4 +54,16 @@ describe("panorama (D268)", () => {
     // Parvis de la cathédrale, place du Champ de Mars, avenue de la gare : moins de 90 m (rien ne change).
     for (const [x, y] of [[36.6, -560], [20, -40], [-450, 450]] as const) expect(eye(x, y)).toBeLessThan(90);
   });
+
+  it("belvédère : au sommet des terrils des Télots, pas à leur pied (D269)", () => {
+    const world = loadRealWorld();
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.15, 1200);
+    const vista = new Vista(world.terrain, world.manifest, {} as TerrainView, {} as TileManager, atmosphere("beau").a, camera, new URLSearchParams());
+    const eye = (x: number, y: number, h = 1.7): number => vista.dominance(x, y, world.terrain.heightAt(x, y) + h);
+    expect(eye(346.2, 3790.2)).toBeGreaterThan(200);
+    expect(eye(138.2, 3751.2)).toBeGreaterThan(200);
+    // À mi-pente et au pied : rien ne change.
+    expect(eye(346, 3700)).toBeLessThan(90);
+    expect(eye(470, 3740)).toBeLessThan(90);
+  });
 });

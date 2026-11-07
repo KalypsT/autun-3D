@@ -1068,6 +1068,7 @@ export type Site =
   | JanusSite
   | CouhardSite
   | CroixSite
+  | SentierSite
   | RoundaboutSite
   | CurtainSite
   | BandstandSite
@@ -1176,6 +1177,17 @@ export interface MemorialSite {
   steps: [number, number, number][];
   socle: [number, number, number];
   shaft: [number, number, number];
+}
+
+/**
+ * Sentier en lacets des terrils des Télots (D269, tools/data/build_terrils.py) : axe `p` (x, y, altitude du sentier, à plat sur sa largeur), un
+ * point par mètre ; `w` : demi-largeur plate en chaque point (élargie dans les virages). Le relief fin est déjà creusé : le site ne sert qu'à
+ * l'affichage du relief (`sentierPits`).
+ */
+export interface SentierSite {
+  t: "sentier";
+  p: number[];
+  w: number[];
 }
 
 /**

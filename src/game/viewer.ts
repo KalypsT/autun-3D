@@ -95,6 +95,13 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "croix-haut": [-818, -1786, 22, -841, -1809, 0],
   // Lot 4 (D268) : la vue depuis la terrasse nord de la plate-forme, vers la cathédrale (photo 15).
   "croix-vue": [-838.5, -1805.5, 1.7, 36.6, -571.5, 20],
+  // Terrils des Télots (D269) : depuis les champs du sud (photo 2), depuis le bras mort de l'Arroux (photo 3), depuis le sommet du terril
+  // est vers la ville, et au-dessus des lacets.
+  telots: [250, 3450, 1.7, 250, 3780, 30],
+  "telots-etang": [470, 3590, 1.7, 260, 3780, 25],
+  "telots-haut": [346, 3787, 1.7, 36.6, -571.5, 20],
+  "telots-lacets": [380, 3640, 60, 330, 3760, 20],
+  "telots-sentier": [332, 3685.7, 1.7, 352, 3700, 4],
   // Galerie des personnages (startGallery) : le départ du jeu.
   characters: [-10, -40, 1.7, -10, -20, 1.2],
 };
