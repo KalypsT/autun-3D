@@ -43,6 +43,10 @@ PALETTE_COLORS = 96
 PAPER = "#f2e4c0"
 COLORS = {
     "lawn": "#8cc494",
+    # Terrils des Télots (D269) : schiste rose, schiste noir, sentiers.
+    "schist_red": "#e2a58e",
+    "schist_black": "#7d7f87",
+    "path_schist": "#bf8572",
     "pitch": "#e58a62",
     "water": "#4fb0c6",
     "plaza_paving": "#d6b98a",
@@ -67,7 +71,7 @@ COLORS = {
     "road_paving": "#d6b98a",
     "walk": "#fbf3dc",
 }
-ORDER = ["lawn", "pitch", "water", "path_gravel", "slipway", "quay", "skate", "play_gravel", "play_mat", "plaza_gravel", "plaza_paving", "plaza_filet", "plaza_brick", "plaza_slate", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
+ORDER = ["lawn", "schist_black", "schist_red", "path_schist", "pitch", "water", "path_gravel", "slipway", "quay", "skate", "play_gravel", "play_mat", "plaza_gravel", "plaza_paving", "plaza_filet", "plaza_brick", "plaza_slate", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
 BUILDING = "#e58d73"
 BUILDING_EDGE = "#b9573f"
 MONUMENT = "#d9472b"
@@ -405,20 +409,53 @@ def render_km(x0, y1, layers_idx, buildings_idx):
     return img
 
 
+def shared_palette(thumbs):
+    """Palette commune (D33 : 96 couleurs) : toutes les couleurs nommées, exactes, puis le découpage médian d'une mosaïque de tous les kilomètres
+    pour les mélanges des bords lissés. D270 : elle était tirée du seul premier kilomètre, presque tout en mer et en papier depuis D105 : 5 couleurs
+    en tout, bâtiments vert pâle et chaussées bleues sur toute la carte."""
+    named = []
+    for col in [PAPER, BUILDING, BUILDING_EDGE, MONUMENT, *COLORS.values()]:
+        if rgb(col) not in named:
+            named.append(rgb(col))
+    w = max(t.width for t in thumbs)
+    mosaic = Image.new("RGB", (w, sum(t.height for t in thumbs)), rgb(PAPER))
+    y = 0
+    for t in thumbs:
+        mosaic.paste(t, (0, y))
+        y += t.height
+    cut = mosaic.quantize(colors=PALETTE_COLORS - len(named), method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal = [v for c_ in named for v in c_] + cut.getpalette()[: 3 * (PALETTE_COLORS - len(named))]
+    out = Image.new("P", (1, 1))
+    out.putpalette(pal + [0, 0, 0] * (256 - len(pal) // 3))
+    return out
+
+
+def save_if_changed(img, path):
+    """N'écrit l'image que si ses couleurs changent (une palette agrandie ne réécrit pas les kilomètres inchangés)."""
+    if path.exists():
+        old = Image.open(path).convert("RGB")
+        if old.size == img.size and old.tobytes() == img.convert("RGB").tobytes():
+            return
+    img.save(path, optimize=True)
+
+
 def build_images(world, layers, buildings):
     layers_idx = {k: [(bbox_of(r), r) for r in v] for k, v in layers.items()}
     buildings_idx = [(bbox_of(r), r, m) for r, m in buildings]
     gx, gy = world["gridOrigin"]
     kms = sorted({(t["col"] // c.SUPER, t["row"] // c.SUPER) for t in world["tiles"]})
     OUT.mkdir(parents=True, exist_ok=True)
-    shared = None
-    images, smalls = [], {}
+    # Premier passage : vignettes de chaque kilomètre (à 4 m par pixel), pour la palette commune.
+    thumbs = []
     for i, j in kms:
+        x0, y1 = gx + i * KM, gy + (j + 1) * KM
+        thumbs.append(render_km(x0, y1, layers_idx, buildings_idx).resize((int(KM / OVERVIEW_RES),) * 2, Image.BOX))
+    shared = shared_palette(thumbs)
+    images, smalls = [], {}
+    for (i, j), small in zip(kms, thumbs):
         x0, y1 = gx + i * KM, gy + (j + 1) * KM
         full = render_km(x0, y1, layers_idx, buildings_idx)
         flat = full.resize((int(KM / RES), int(KM / RES)), Image.BOX)
-        if shared is None:
-            shared = flat.quantize(colors=PALETTE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
         name = f"s{i}_{j}"
         files = {}
         # Deux niveaux par kilomètre : 1 m par pixel (zoom) et 2 m par pixel (minimap, carte dézoomée) ; la minimap n'a ainsi
@@ -427,10 +464,10 @@ def build_images(world, layers, buildings):
             n = int(KM / res)
             level = flat if res == RES else full.resize((n, n), Image.BOX)
             file = f"{name}.png" if res == RES else f"{name}_2.png"
-            level.quantize(palette=shared, dither=Image.Dither.NONE).save(OUT / file, optimize=True)
+            save_if_changed(level.quantize(palette=shared, dither=Image.Dither.NONE), OUT / file)
             files[f"{res:g}"] = file
         images.append({"id": name, "x0": x0, "y1": y1, "files": files})
-        smalls[(i, j)] = full.resize((int(KM / OVERVIEW_RES),) * 2, Image.BOX)
+        smalls[(i, j)] = small
         print(f"  {name} : {', '.join(f'{(OUT / f).stat().st_size / 1024:.0f} ko' for f in files.values())}")
     i0, i1 = min(k[0] for k in kms), max(k[0] for k in kms)
     j0, j1 = min(k[1] for k in kms), max(k[1] for k in kms)
@@ -438,8 +475,7 @@ def build_images(world, layers, buildings):
     over = Image.new("RGB", ((i1 - i0 + 1) * s, (j1 - j0 + 1) * s), rgb(COLORS["water"]))
     for (i, j), im in smalls.items():
         over.paste(im, ((i - i0) * s, (j1 - j) * s))
-    assert shared is not None
-    over.quantize(palette=shared, dither=Image.Dither.NONE).save(OUT / "overview.png", optimize=True)
+    save_if_changed(over.quantize(palette=shared, dither=Image.Dither.NONE), OUT / "overview.png")
     overview = {"file": "overview.png", "x0": gx + i0 * KM, "y1": gy + (j1 + 1) * KM, "res": OVERVIEW_RES, "w": over.width, "h": over.height}
     print(f"  overview : {(OUT / 'overview.png').stat().st_size / 1024:.0f} ko")
     return images, overview

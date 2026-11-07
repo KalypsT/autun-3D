@@ -1,4 +1,4 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CroixSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CroixSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, SentierSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { Pit } from "../data/terrain";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
@@ -510,6 +510,71 @@ export function croixPits(kinds: { sites: Site[] } | undefined): Pit[] {
     });
   }
   return out;
+}
+
+// --- Terrils des Télots (D269) ---------------------------------------------------------------------------------------------------------
+
+/** Segments par morceau de sentier : chaque creux garde une emprise serrée (son `cap` parcourt ses segments). */
+const SENTIER_PIECE = 12;
+/** Bande de relief fin : de part et d'autre du replat, SENTIER_PAD m de talus en plus. */
+const SENTIER_PAD = 1.2;
+
+/**
+ * Creux d'affichage des sentiers en lacets (D269) : le relief proche est affiché par carreaux de 2,5 m, trop grands pour un replat de 2,5 m
+ * taillé dans une pente à 35° (le carreau passe au-dessus du sentier côté déblai et le cache). Sous le sentier et ses talus, le relief affiché
+ * est abaissé sous le sentier ; une bande de relief fin, au vrai relief, le recouvre (comme les remparts, D250).
+ */
+export function sentierPits(kinds: { sites: Site[] } | undefined): Pit[] {
+  const out: Pit[] = [];
+  for (const s of kinds?.sites ?? []) {
+    if (s.t !== "sentier") continue;
+    const n = s.p.length / 3;
+    for (let i0 = 0; i0 + 1 < n; i0 += SENTIER_PIECE) out.push(sentierPiece(s, i0, Math.min(n - 1, i0 + SENTIER_PIECE)));
+  }
+  return out;
+}
+
+function sentierPiece(s: SentierSite, i0: number, i1: number): Pit {
+  const p = s.p, w = s.w;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, wmax = 0;
+  for (let i = i0; i <= i1; i++) {
+    x0 = Math.min(x0, p[3 * i]!); x1 = Math.max(x1, p[3 * i]!);
+    y0 = Math.min(y0, p[3 * i + 1]!); y1 = Math.max(y1, p[3 * i + 1]!);
+    wmax = Math.max(wmax, w[i]!);
+  }
+  const half = wmax + SENTIER_PAD;
+  // Bande : de la gauche (normale à gauche du sens de parcours, à `half` m) vers la droite, sur 2 × half m.
+  const pts: number[] = [], nrm: number[] = [];
+  for (let i = i0; i <= i1; i++) {
+    const a = Math.max(i0, i - 1), b = Math.min(i1, i + 1);
+    let tx = p[3 * b]! - p[3 * a]!, ty = p[3 * b + 1]! - p[3 * a + 1]!;
+    const l = Math.hypot(tx, ty) || 1;
+    tx /= l;
+    ty /= l;
+    pts.push(p[3 * i]! - ty * half, p[3 * i + 1]! + tx * half);
+    nrm.push(ty, -tx);
+  }
+  return {
+    x0: x0 - half - 1, y0: y0 - half - 1, x1: x1 + half + 1, y1: y1 + half + 1,
+    cap: (x, y) => {
+      let z = Infinity;
+      for (let i = i0; i < i1; i++) {
+        const ax = p[3 * i]!, ay = p[3 * i + 1]!, dx = p[3 * i + 3]! - ax, dy = p[3 * i + 4]! - ay;
+        const l2 = dx * dx + dy * dy;
+        if (l2 < 1e-6) continue;
+        const t = ((x - ax) * dx + (y - ay) * dy) / l2;
+        if (t < -0.05 || t > 1.05) continue;
+        const tc = Math.min(1, Math.max(0, t));
+        const d = Math.hypot(x - ax - tc * dx, y - ay - tc * dy);
+        if (d > half - 0.4) continue;
+        // Sous le talus de remblai (1 m par mètre au-delà du replat), le vrai relief descend : le creux le suit.
+        const flat = w[i]! + tc * (w[i + 1]! - w[i]!);
+        z = Math.min(z, p[3 * i + 2]! + tc * (p[3 * i + 5]! - p[3 * i + 2]!) - Math.max(0, d - flat) - 0.4);
+      }
+      return z;
+    },
+    cover: [{ pts, nrm, width: 2 * half }],
+  };
 }
 
 /** Mâts d'éclairage et rochers de la croix : cercles (x, y, rayon). */
