@@ -4,6 +4,7 @@ import type { VehicleState } from "../core/vehicle";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 import { CITADINE } from "./car-citadine";
+import { COMPACTE } from "./car-compacte";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -29,12 +30,13 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
       blackPillars: true, spoiler: "roof", lowerGrille: true, hiddenRearHandles: true, doorBlade: true, tailChrome: true, diffuser: true, spokes: 5,
     },
   },
+  // Compacte (D273) : caisse sculptée d'après photos (`car-compacte.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   compacte: {
-    length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
-    clearance: 0.27, belt: 0.9, noseHeight: 0.82, tailHeight: 0.95,
-    hood: 1.2, windshield: 0.62, roof: 1.3, rearGlass: 0.78, roofTaper: 0.9,
-    wheelRadius: 0.31, tyreWidth: 0.2,
-    style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "paint", rim: "#c9ccd0", doors: 2, roundness: 0.6, spoiler: "roof", intake: true },
+    length: 4.37, width: 1.85, height: 1.44, overhangFront: 0.894,
+    clearance: 0.2, belt: 0.9, noseHeight: 0.7, tailHeight: 0.98,
+    hood: 1.32, windshield: 0.83, roof: 1.55, rearGlass: 0.36, roofTaper: 0.86,
+    wheelRadius: 0.325, tyreWidth: 0.22, glass: "#1f2731", sculpt: COMPACTE,
+    style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "paint", rim: "#5d6168", doors: 2, roundness: 0.6, spoiler: "roof", intake: true, spokes: 6 },
   },
   berline: {
     length: 4.75, width: 1.85, height: 1.45, overhangFront: 0.93,

@@ -5900,3 +5900,22 @@ D107 ; chacune peut passer à la caisse sculptée dès qu'on a ses photos.
 
 ![Origine, essai 1 (D271), essai 2 (D272)](captures/d272-citadine-comparaison.jpg)
 ![Trois couleurs](captures/d272-citadine-couleurs.jpg)
+
+## 2026-11-07 — D273. La compacte sculptée d'après photos (compacte française des années 2020)
+
+**Demande** : refaire la compacte (Éduen Arroux) comme la citadine (D272). L'utilisateur pensait envoyer une 307 ; les photos montraient la génération
+actuelle du modèle suivant (et, pour deux d'entre elles, la version restylée 2025 et le break). Choix de l'utilisateur : la génération actuelle, d'après les
+trois photos qui la montrent (trois-quarts avant, face, arrière). Marque et nom restent fictifs ; écusson en blason neutre, sans logo ni lettrage.
+
+**Caisse** (`src/render/car-compacte.ts`, moteur D272) : 4,37 × 1,85 × 1,44 m (au lieu de 4,25 × 1,80 × 1,46). La fiche de conduite (`COMPACT`) n'a pas bougé :
+même empattement (2,64 m, à 3 cm du vrai), même tenue de route, même coque de chocs ; poursuites et circulation inchangées. Capot long et bas, pare-brise
+très couché, toit fuyant et becquet. Avant : grande calandre noire en trapèze (maillage suggéré), écusson, phares fins qui filent sur l'aile, et les « crocs »,
+lames de feux de jour qui descendent de chaque phare, à côté d'une prise d'air noire ; grille basse et plaque. Flancs : deux poignées, jonc noir au bas des
+portes, rétroviseurs noirs. Arrière : bandeau noir brillant d'un feu à l'autre, trois griffes rouges dans chaque feu, diffuseur noir et deux sorties chromées.
+Jantes sombres à six branches. Palette d'après les photos : bleu vif, vert olive, bleu canard, rouge, blanc, gris, noir.
+
+**Coût** (exemplaire garé) : 874 triangles de peinture, 814 de détails et roues, **1 688 au total** (plafonds D272). **Reste** : la gendarmerie garde sa caisse D107
+(mesures de l'ancienne compacte) ; on pourra lui donner cette caisse avec sa livrée. Arrière encore un peu massif, griffes des feux petites de loin.
+
+![Avant / après](captures/d273-compacte-avant-apres.jpg)
+![Trois couleurs](captures/d273-compacte-couleurs.jpg)
