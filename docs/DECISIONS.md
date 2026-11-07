@@ -5391,3 +5391,38 @@ même gabarit, sans les encadrements rouges de la photo 3 (lot 3, avec l'entrée
 ![La galerie d'entrée et le passage voûté](captures/d259-galerie.jpg)
 ![La cour d'honneur et la lucarne à horloge](captures/d259-cour-horloge.jpg)
 ![La façade nord-ouest la nuit](captures/d259-facade-nw-nuit.jpg)
+
+## 2026-11-07 — D260. Le Lycée militaire, lot 3 : les entrées
+
+**Demande de l'utilisateur** : « continue » après D259 (lot 3 de `docs/plans/lycee-militaire.md`). Décidé à l'enquête : grand portail de l'avenue
+du 2e Dragons fermé, entrée de la rue Gaston Joliet ouverte (à pied et en voiture).
+
+**Données** (`tools/data/build_militaire_gates.py`, `militaireGates` de `manual.json` ; après `build_tiles.py`, avant `build_nav.py`, idempotent) :
+- **avenue** : le mur plein de 3,5 m (`249238889`, « mesuré 7 » : les arbres) devient une grille de 2,6 m (`fence`, non escaladable) sur un
+  muret de 0,8 m (deux murets, `−880000003` et `−880000004`) ; le tracé est coupé au grand portail (sommet du nœud OSM `4256085551` retiré),
+  entre ses deux piles (502,3 ; 102,7) et (508,5 ; 109,4) ; la seconde partie est `−880000002` ;
+- **rue Gaston Joliet** : la clôture `249238898` est coupée sur 5,7 m autour du portail OSM (544,3 ; −30,6) ; la seconde partie est `−880000001` ;
+- **bâtiment blanc** de l'entrée (`…844665`) : enduit blanc, rez-de-chaussée d'habitation (plus de vitrine), fiche « observed ».
+
+**Rendu** (`gates` et `red` de `MilitaireFacade`, `militaireGates`) :
+- **grand portail** : piles de pierre de 1 m à pots-à-feu, deux vantaux de barreaux à pointes (2,9 m), montant central ; **arc en fer forgé**
+  (flèche 1,4 m, deux fers cintrés) portant « LYCÉE MILITAIRE » en lettres de fer, lisibles depuis l'avenue ;
+- **entrée Gaston Joliet** : piles à boule, vantaux ouverts rabattus vers l'intérieur, barrière levante relevée (lisse rouge et blanche),
+  panneau triangulaire « danger » ;
+- annexe de la rue Gaston Joliet : **encadrements de brique rouge** aux fenêtres (Street View 3).
+
+**Jeu** : le grand portail est un obstacle non escaladable (comme la grille d'honneur du lycée Bonaparte, D149 : on voit et on tire à travers) ;
+piles, poteau de la barrière et du panneau en cercles ; l'entrée Gaston Joliet est libre (test : un piéton passe dans l'axe, 3 m de part et d'autre).
+La navigation des passants n'est pas relancée (convention D154 ; pas de passants dans l'enceinte, réponse à l'enquête).
+
+**Coût** : 1 426 triangles pour les deux portails (15 733 pour tout le modèle). Les barreaux de la grille de l'avenue sont ceux, texturés, des clôtures.
+
+**Pas fait** : barrières en X (chevrons rouges et blancs) de la photo 2, qui bloqueraient les voitures ; drapeaux de la grille ; massifs, ifs
+taillés et talus de lierre de l'avenue (lot 4).
+
+**Tests** (+4, 1 358 au total ; `src/core/militaire-gates.test.ts`).
+
+![Le grand portail depuis l'avenue](captures/d260-grand-portail.jpg)
+![La grille sur muret de l'avenue](captures/d260-grille-avenue.jpg)
+![L'entrée de la rue Gaston Joliet](captures/d260-entree-joliet.jpg)
+![L'entrée vue de l'intérieur : vantaux ouverts, barrière levée](captures/d260-entree-joliet-dedans.jpg)

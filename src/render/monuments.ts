@@ -936,7 +936,7 @@ function quoins(mb: MeshBuilder, f: Frame, w: HallWall, atEnd: boolean, z0: numb
  * Baie sur un mur, à `u` mètres de son début : encadrement clair, vitre (ou grille sombre), en plein cintre si `arched` (h compte l'arc) ;
  * une baie sur deux ou trois s'allume la nuit.
  */
-function bay(mb: MeshBuilder, glow: MeshBuilder, f: Frame, w: HallWall, u: number, wd: number, z0: number, h: number, arched: boolean, grille: boolean, lit: boolean): void {
+function bay(mb: MeshBuilder, glow: MeshBuilder, f: Frame, w: HallWall, u: number, wd: number, z0: number, h: number, arched: boolean, grille: boolean, lit: boolean, trim: THREE.Color = HALL_TRIM): void {
   const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
   const dx = (w.b[0] - w.a[0]) / len, dy = (w.b[1] - w.a[1]) / len;
   const pt = (uu: number, z: number, off: number): [number, number, number] => [w.a[0] + dx * uu + w.out[0] * off, w.a[1] + dy * uu + w.out[1] * off, z];
@@ -952,7 +952,7 @@ function bay(mb: MeshBuilder, glow: MeshBuilder, f: Frame, w: HallWall, u: numbe
       target.tri(centre, P(f, ...pt(u + Math.cos(a0) * half, spring + Math.sin(a0) * half, off)), P(f, ...pt(u + Math.cos(a1) * half, spring + Math.sin(a1) * half, off)), n, hi);
     }
   };
-  shape(mb, wd / 2 + 0.18, z0 - 0.18, z0 + h + (arched ? 0.18 : 0.14), 0.03, HALL_TRIM, HALL_TRIM);
+  shape(mb, wd / 2 + 0.18, z0 - 0.18, z0 + h + (arched ? 0.18 : 0.14), 0.03, trim, trim);
   if (grille) shape(mb, wd / 2, z0, z0 + h, 0.05, HALL_GRILLE, shade(HALL_GRILLE, 1.2));
   else shape(mb, wd / 2, z0, z0 + h, 0.05, C(T.glass[0]), C(T.glass[1]));
   if (lit && !grille) shape(glow, wd / 2, z0, z0 + h, 0.056, GLOW_LO, GLOW_HI);
@@ -1483,7 +1483,7 @@ export function buildCollege(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec,
   const tile = m.roof ? C(m.roof) : COLLEGE_TILE;
   for (const w of m.wings) collegeRoof(mb, w, stone, tile);
   collegeDetails(mb, glow, m, terrain);
-  if (m.mil) militaireDetails(mb, glow, m, m.mil, stone);
+  if (m.mil) militaireDetails(mb, glow, m, m.mil, stone, terrain);
   if (m.grille) buildGrille(mb, m.grille, terrain);
 }
 
@@ -1548,7 +1548,7 @@ function collegeWalls(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, ring: 
       const g = ground(sx, sy);
       for (let r = 0, z0 = g + 1.0; z0 + Math.min(h, 1.8) < top - 0.9; r++, z0 += COLLEGE_STOREY) {
         const hh = Math.min(h, top - 0.9 - z0);
-        bay(mb, glow, f, wall, u, wd, z0, hh, false, false, (i + j + r) % 3 === 0);
+        bay(mb, glow, f, wall, u, wd, z0, hh, false, false, (i + j + r) % 3 === 0, mil?.red?.includes(wi) ? RED_TRIM : HALL_TRIM);
         if (mil) panes(mb, f, wall, u, wd, z0, hh);
       }
     }
@@ -1566,6 +1566,8 @@ function panes(mb: MeshBuilder, f: Frame, w: HallWall, u: number, wd: number, z0
 }
 
 const PANE_BAR = C("#eee8da");
+/** Encadrements de brique rouge des fenêtres de l'annexe (D260, Street View 3). */
+const RED_TRIM = C("#a5503a");
 
 /**
  * Façade de la galerie d'entrée (D259, photo 1) : baies cintrées hautes au pas de la galerie, passage voûté sur l'axe du grand portail
@@ -1625,8 +1627,144 @@ function balustrade(mb: MeshBuilder, a: ST, b: ST, z: number, pitch: number): vo
   }
 }
 
+// --- Portails du Lycée militaire (D260) ------------------------------------------------------------------------------------------------
+
+const GATE_IRON = C("#1f2326"), GATE_STONE = C("#d6c6a2");
+
+/** Lettres de fer forgé en traits (fractions de la largeur et de la hauteur de la lettre) : capitales de « LYCÉE MILITAIRE ». */
+const IRON_GLYPHS: Record<string, [number, number, number, number][]> = {
+  L: [[0, 0.2, 0, 1], [0, 1, 0, 0.16]],
+  Y: [[0.4, 0.6, 0, 0.55], [0, 0.2, 0.5, 1], [0.8, 1, 0.5, 1], [0, 1, 0.45, 0.6]],
+  C: [[0, 0.2, 0, 1], [0, 1, 0, 0.16], [0, 1, 0.84, 1]],
+  E: [[0, 0.2, 0, 1], [0, 1, 0, 0.16], [0, 1, 0.84, 1], [0, 0.8, 0.44, 0.58]],
+  M: [[0, 0.18, 0, 1], [0.82, 1, 0, 1], [0, 1, 0.84, 1], [0.41, 0.59, 0.35, 1]],
+  I: [[0.4, 0.6, 0, 1]],
+  T: [[0, 1, 0.84, 1], [0.4, 0.6, 0, 1]],
+  A: [[0, 0.2, 0, 1], [0.8, 1, 0, 1], [0, 1, 0.84, 1], [0, 1, 0.42, 0.56]],
+  R: [[0, 0.2, 0, 1], [0, 1, 0.84, 1], [0.8, 1, 0.48, 1], [0, 1, 0.42, 0.56], [0.6, 0.8, 0, 0.45]],
+};
+
+/** Barre de fer plate dans le plan du portail (t = 0), visible des deux côtés : de (s0, z0) à (s1, z1), largeur `w`. */
+function ironBar(mb: MeshBuilder, f: Frame, s0: number, z0: number, s1: number, z1: number, w: number, t = 0, col = GATE_IRON): void {
+  const L = Math.hypot(s1 - s0, z1 - z0) || 1, ns = (-(z1 - z0) / L) * (w / 2), nz = ((s1 - s0) / L) * (w / 2);
+  for (const side of [1, -1]) {
+    q(mb, f, [s0 + ns, t, z0 + nz], [s1 + ns, t, z1 + nz], [s1 - ns, t, z1 - nz], [s0 - ns, t, z0 - nz], N(f, 0, side), col);
+  }
+}
+
+/** Pile de pierre carrée (côté `c`) de `z0` à `z1`, chapeau, et ornement : pot-à-feu (`urn`) ou boule. */
+function gatePier(mb: MeshBuilder, f: Frame, s: number, t: number, c: number, z0: number, z1: number, urn: boolean): void {
+  box(mb, f, s - c / 2, s + c / 2, t - c / 2, t + c / 2, z0, z1, GATE_STONE, COLLEGE_TRIM);
+  box(mb, f, s - c / 2 - 0.1, s + c / 2 + 0.1, t - c / 2 - 0.1, t + c / 2 + 0.1, z1, z1 + 0.2, COLLEGE_TRIM);
+  if (urn) {
+    box(mb, f, s - 0.25, s + 0.25, t - 0.25, t + 0.25, z1 + 0.2, z1 + 0.5, GATE_STONE);
+    column(mb, f, s, t, 0.14, z1 + 0.5, z1 + 0.7, COLLEGE_LIGHT);
+    column(mb, f, s, t, 0.3, z1 + 0.7, z1 + 1.25, GATE_STONE);
+    column(mb, f, s, t, 0.12, z1 + 1.25, z1 + 1.7, COLLEGE_LIGHT);
+  } else column(mb, f, s, t, 0.22, z1 + 0.2, z1 + 0.6, GATE_STONE);
+}
+
+/** Vantail de grille : barreaux tous les 14 cm à pointe, traverses haute, médiane et basse, de s0 à s1 (au sol z0(s)), haut `h`, dans le plan t. */
+function gateLeaf(mb: MeshBuilder, f: Frame, s0: number, s1: number, t: number, z0: (s: number) => number, h: number): void {
+  const n = Math.max(2, Math.round(Math.abs(s1 - s0) / 0.14));
+  for (let k = 0; k <= n; k++) {
+    const s = s0 + ((s1 - s0) * k) / n, z = z0(s);
+    ironBar(mb, f, s, z + 0.08, s, z + h, 0.03, t);
+    ironBar(mb, f, s - 0.04, z + h - 0.02, s, z + h + 0.12, 0.05, t);
+  }
+  for (const zz of [0.12, 1.1, h - 0.15]) ironBar(mb, f, s0, z0(s0) + zz, s1, z0(s1) + zz, 0.06, t);
+}
+
+/** Portails du Lycée militaire (D260) : grand portail fermé de l'avenue avec son arc à lettres, entrée ouverte de la rue Gaston Joliet. */
+function militaireGates(mb: MeshBuilder, g: NonNullable<MilitaireFacade["gates"]>, terrain: HeightField): void {
+  const frameAB = (a: ST, b: ST): { f: Frame; L: number; side: number } => {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const f = frameOf(a[0], a[1], Math.atan2(b[1] - a[1], b[0] - a[0]), 1, 1);
+    const [ix, iy] = [g.in[0] - a[0], g.in[1] - a[1]];
+    return { f, L, side: ix * f.vx + iy * f.vy > 0 ? 1 : -1 };
+  };
+  {
+    const { f, L, side: inSide } = frameAB(g.avenue.a, g.avenue.b);
+    const gr = (s: number): number => terrain.heightAt(...at(f, s, 0));
+    const z0 = Math.min(gr(0), gr(L)), top = z0 + 3.4;
+    gatePier(mb, f, 0, 0, 1.0, z0 - 0.3, top, true);
+    gatePier(mb, f, L, 0, 1.0, z0 - 0.3, top, true);
+    const s0 = 0.5, s1 = L - 0.5, mid = L / 2;
+    gateLeaf(mb, f, s0, mid - 0.03, 0, gr, 2.9);
+    gateLeaf(mb, f, mid + 0.03, s1, 0, gr, 2.9);
+    ironBar(mb, f, mid, gr(mid), mid, gr(mid) + 3.05, 0.1);
+    // Arc : deux fers cintrés de pile à pile (flèche 1,4 m), lettres entre les deux, barreaux de remplissage aux bouts.
+    const span = s1 - s0, rise = 1.4, R = (span * span / 4 + rise * rise) / (2 * rise), zc = top + rise - R, sc = mid;
+    const half = Math.asin(span / 2 / R), arcPt = (th: number, r: number): [number, number] => [sc + Math.sin(th) * r, zc + Math.cos(th) * r];
+    const N_ARC = 18;
+    for (const r of [R, R - 0.7]) {
+      for (let k = 0; k < N_ARC; k++) {
+        const [sa, za] = arcPt(-half + (2 * half * k) / N_ARC, r), [sb, zb] = arcPt(-half + (2 * half * (k + 1)) / N_ARC, r);
+        if (za < top - 0.05 && zb < top - 0.05) continue;
+        ironBar(mb, f, sa, Math.max(za, top), sb, Math.max(zb, top), 0.07);
+      }
+    }
+    // Lettres le long de l'arc, au milieu des deux fers : hauteur 0,42 m, chasse 0,38 m ; elles se lisent depuis l'avenue (de l'extérieur, l'axe s
+    // va vers la droite si l'intérieur est du côté des t positifs, sinon on écrit en miroir).
+    const text = g.avenue.text, H = 0.42, W = 0.3, pitch = 0.38, dir = inSide > 0 ? 1 : -1;
+    const rm = R - 0.35, total = (text.length - 1) * pitch;
+    [...text].forEach((ch, i) => {
+      const base = ch.normalize("NFD")[0]!;
+      const strokes = IRON_GLYPHS[base];
+      const th = (dir * (-total / 2 + i * pitch)) / rm;
+      const [cs, cz] = arcPt(th, rm);
+      if (!strokes) return;
+      const ts = Math.cos(th), tz = -Math.sin(th), us = Math.sin(th), uz = Math.cos(th);
+      const P2 = (x: number, y: number): [number, number] => [cs + ts * dir * (x - 0.5) * W + us * (y - 0.5) * H, cz + tz * dir * (x - 0.5) * W + uz * (y - 0.5) * H];
+      for (const [x0, x1, y0, y1] of strokes) {
+        const [a0, a1] = [P2(x0, y0), P2(x1, y0)], [b1, b0] = [P2(x1, y1), P2(x0, y1)];
+        for (const side of [1, -1]) q(mb, f, [a0[0], 0, a0[1]], [a1[0], 0, a1[1]], [b1[0], 0, b1[1]], [b0[0], 0, b0[1]], N(f, 0, side), GATE_IRON);
+      }
+      if (ch !== base) {
+        const [p0, p1] = [P2(0.35, 1.12), P2(0.8, 1.25)];
+        ironBar(mb, f, p0[0], p0[1], p1[0], p1[1], 0.05);
+      }
+    });
+  }
+  {
+    const { f, L, side } = frameAB(g.joliet.a, g.joliet.b);
+    const gr = (s: number, t = 0): number => terrain.heightAt(...at(f, s, t));
+    for (const s of [0, L]) gatePier(mb, f, s, 0, 0.7, gr(s) - 0.3, gr(s) + 2.6, false);
+    // Vantaux ouverts, rabattus vers l'intérieur contre la haie : chacun dans le plan perpendiculaire à la grille, depuis sa pile.
+    for (const s of [0.45, L - 0.45]) {
+      const lf = frameOf(...at(f, s, 0), Math.atan2(f.vy * side, f.vx * side), 1, 1);
+      gateLeaf(mb, lf, 0.4, 2.8, 0, (u) => terrain.heightAt(...at(lf, u, 0)), 2.0);
+    }
+    // Barrière levante relevée : poteau gris, lisse rouge et blanche à la verticale.
+    const [lx, ly] = g.joliet.lift;
+    const lz = terrain.heightAt(lx, ly);
+    box(mb, f, ...pairAt(f, lx, ly, 0.2, 0.2), lz, lz + 1.0, C("#8a8f93"));
+    for (let k = 0; k < 6; k++) {
+      const [s0, s1, t0, t1] = pairAt(f, lx, ly, 0.06, 0.06);
+      box(mb, f, s0, s1, t0, t1, lz + 1.0 + k * 0.6, lz + 1.6 + k * 0.6, k % 2 ? C("#f2f0ea") : C("#c8302a"));
+    }
+    // Panneau « danger » : triangle blanc bordé de rouge sur son poteau, face à la rue.
+    const [px, py] = g.joliet.sign;
+    const pz = terrain.heightAt(px, py);
+    const [ps0, ps1, pt0, pt1] = pairAt(f, px, py, 0.04, 0.04);
+    box(mb, f, ps0, ps1, pt0, pt1, pz, pz + 1.6, C("#8a8f93"));
+    const [cs] = pairAt(f, px, py, 0, 0), ct = (pt0 + pt1) / 2 - side * 0.06;
+    for (const [r, col, dt] of [[0.42, C("#c8302a"), 0], [0.3, C("#f4f1e8"), 0.01]] as const) {
+      const tt = ct - side * dt, n = N(f, 0, -side);
+      mb.tri(P(f, cs - r, tt, pz + 1.6), P(f, cs + r, tt, pz + 1.6), P(f, cs, tt, pz + 1.6 + r * 1.6), n, col);
+    }
+  }
+}
+
+/** Bornes [s0, s1, t0, t1] d'un pavé de demi-côtés `hs` et `ht` centré sur le point (x, y) du plan, dans le repère f. */
+function pairAt(f: Frame, x: number, y: number, hs: number, ht: number): [number, number, number, number] {
+  const dx = x - f.x, dy = y - f.y, s = dx * f.ux + dy * f.uy, t = dx * f.vx + dy * f.vy;
+  return [s - hs, s + hs, t - ht, t + ht];
+}
+
 /** Détails du Lycée militaire (D259) : balustrade de la galerie, lucarne à horloge et son drapeau, cheminées. */
-function militaireDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, mil: MilitaireFacade, stone: THREE.Color): void {
+function militaireDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, mil: MilitaireFacade, stone: THREE.Color, terrain: HeightField): void {
+  if (mil.gates) militaireGates(mb, mil.gates, terrain);
   const g = m.wings[mil.gallery.w]!;
   const dx = g.q[0] - g.p[0], dy = g.q[1] - g.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
   // Balustrade d'une grande aile à l'autre (abscisses depuis le début de la galerie, qui est sur le faîtage de l'aile voisine).

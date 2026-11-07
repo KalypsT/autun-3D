@@ -142,6 +142,14 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   }
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
   for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
+  // Lycée militaire (D260) : piles des deux portails, poteaux de la barrière levante et du panneau.
+  for (const k of Object.values(kinds.buildings)) {
+    const g = k.college?.mil?.gates;
+    if (!g) continue;
+    for (const p of [g.avenue.a, g.avenue.b]) out.push([p[0], p[1], 0.7]);
+    for (const p of [g.joliet.a, g.joliet.b]) out.push([p[0], p[1], 0.45]);
+    out.push([g.joliet.lift[0], g.joliet.lift[1], 0.2], [g.joliet.sign[0], g.joliet.sign[1], 0.08]);
+  }
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;

@@ -1929,3 +1929,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=militaire&h=14`, et la nuit `?view=militaire&h=22`.
 
 ![La façade d'entrée du lycée militaire](docs/captures/d259-facade-nw.jpg)
+
+**Lycée militaire, lot 3 : les entrées (7 novembre 2026)** (D260)
+- Avenue du 2e Dragons : le mur beige plein est remplacé par la grille sur muret ; le grand portail a ses piles à pots-à-feu et son arc en fer forgé « LYCÉE MILITAIRE ». Il est fermé : on ne passe pas, on ne l'escalade pas, mais on voit à travers.
+- Rue Gaston Joliet : l'entrée est ouverte (vantaux rabattus, barrière levée, panneau « danger ») ; on entre à pied ou en voiture.
+- Le bâtiment blanc de l'entrée est blanc et n'a plus de vitrine ; l'annexe a ses encadrements de fenêtres rouges.
+- À regarder : `?view=custom&cam=497,114,1.7,507,104,5&h=14` (le grand portail) et `?view=custom&cam=530,-48,1.7,550,-22,3&h=14` (l'entrée).
+
+![Le grand portail](docs/captures/d260-grand-portail.jpg)

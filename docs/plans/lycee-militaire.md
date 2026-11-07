@@ -218,3 +218,10 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 - Galerie : baies cintrées, passage voûté sur l'axe (dessiné fermé), balustrade à pots-à-feu ; cloître en arcades.
 - **Question 2 tranchée par le LiDAR** : l'axe du portail tombe sur la lucarne du milieu du pan côté cour de l'aile sud-est (u = 30,4 ; bosse mesurée à 30,9) : c'est la lucarne à horloge. La galerie est plate (22 m), sans fronton.
 - 14 307 triangles pour tout le bâtiment.
+
+## 10. Lot 3 fait (D260, 7 novembre 2026)
+
+- `build_militaire_gates.py` : grille de 2,6 m sur muret de 0,8 m le long de l'avenue, coupée au grand portail ; clôture de la rue Gaston Joliet ouverte sur 5,7 m ; fiche du bâtiment blanc.
+- Grand portail fermé (piles à pots-à-feu, vantaux, arc « LYCÉE MILITAIRE ») ; entrée Gaston Joliet ouverte (vantaux rabattus, barrière levante relevée, panneau) ; encadrements rouges de l'annexe.
+- Obstacles : grand portail non escaladable ; entrée Gaston Joliet libre. 1 426 triangles.
+- Reste pour le lot 4 : massifs, ifs taillés et talus de lierre devant la grille de l'avenue.

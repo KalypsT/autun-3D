@@ -454,6 +454,18 @@ export interface MilitaireFacade {
   clock: { w: number; left: boolean; u: number };
   /** Cheminées : x, y, sommet (LiDAR). */
   chim: [number, number, number][];
+  /**
+   * Portails (D260) : grand portail de l'avenue du 2e Dragons, fermé (piliers à pots-à-feu en a et b, deux vantaux, arc en fer forgé portant `text`) ;
+   * entrée de la rue Gaston Joliet, ouverte (piliers en a et b, vantaux rabattus vers l'intérieur, barrière levante relevée en `lift`, panneau
+   * triangulaire en `sign`). L'intérieur est du côté du point `in`.
+   */
+  gates?: {
+    avenue: { a: [number, number]; b: [number, number]; text: string };
+    joliet: { a: [number, number]; b: [number, number]; lift: [number, number]; sign: [number, number] };
+    in: [number, number];
+  };
+  /** Ailes dont les fenêtres ont des encadrements de brique rouge (annexe de la rue Gaston Joliet, Street View 3). */
+  red?: number[];
 }
 
 export interface BuildingKind {

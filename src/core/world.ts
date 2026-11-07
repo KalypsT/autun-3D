@@ -115,6 +115,9 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   for (const k of Object.values(tile.kinds?.buildings ?? {})) {
     const g = k.college?.grille;
     if (g) c.addPolyline([...g.a, ...g.b], true, GRILLE_HONNEUR);
+    // Grand portail du Lycée militaire (D260) : fermé, ni franchi ni escaladé, comme la grille d'honneur du lycée Bonaparte.
+    const mg = k.college?.mil?.gates;
+    if (mg) c.addPolyline([...mg.avenue.a, ...mg.avenue.b], true, GRILLE_HONNEUR);
   }
   for (const f of furnitureOutsideMonuments(tile.kinds, tile.furniture)) {
     // Lampadaires, feux, poubelles, boîtes aux lettres, potelets et bornes à eau : un véhicule lourd et rapide les arrache (D160).
