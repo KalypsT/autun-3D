@@ -255,3 +255,9 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 
 Restes possibles, sur demande : massifs et talus de lierre de l'avenue, arbres taillés en rideau du glacis, barrières en X, drapeaux de la grille,
 initiales « GS » du toit si elles existent, façades propres des bâtiments modernes (photos nécessaires), passants (élèves, personnel).
+
+## 14. Finitions (D264, 7 novembre 2026)
+
+- Angles des toits : face nord-est recalée au LiDAR (`ringMoves`), pavillon ouest partant de sa façade.
+- Massifs, lierre et drapeaux de l'avenue ; arbres du glacis taillés en rideau ; barrières en X de l'entrée Gaston Joliet.
+- Restes : initiales « GS » (non confirmées), façades propres des bâtiments modernes (photos), passants.

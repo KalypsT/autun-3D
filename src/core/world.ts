@@ -25,6 +25,8 @@ const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge"]);
 const GRILLE: Top = { height: 1.2, climb: false };
 /** Grille d'honneur du lycée (D149) : trois mètres de fer, ni franchie ni escaladée ; on voit et on tire à travers. */
 const GRILLE_HONNEUR: Top = { height: 3.4, climb: false };
+/** Barrière en X du Lycée militaire (D264) : 1,1 m, on l'enjambe. */
+const CROSS_BARRIER: Top = { height: 1.1, climb: true };
 /** Margelle du bassin du Lycée militaire (D261) : basse, mais on n'entre pas dans l'eau. */
 const BASIN_RIM: Top = { height: 0.6, climb: false };
 /** Tour des remparts (D254) : on ne l'escalade pas. */
@@ -129,6 +131,11 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     // Grand portail du Lycée militaire (D260) : fermé, ni franchi ni escaladé, comme la grille d'honneur du lycée Bonaparte.
     const mg = k.college?.mil?.gates;
     if (mg) c.addPolyline([...mg.avenue.a, ...mg.avenue.b], true, GRILLE_HONNEUR);
+    // Barrières en X de l'entrée Gaston Joliet (D264) : basses, on les enjambe ; une voiture s'y arrête.
+    for (const [x, y, a, len] of mg?.joliet.xb ?? []) {
+      const dx = (Math.cos(a) * len) / 2, dy = (Math.sin(a) * len) / 2;
+      c.addPolyline([x - dx, y - dy, x + dx, y + dy], true, CROSS_BARRIER);
+    }
     // Margelle du bassin des jardins (D261) : on ne l'enjambe pas (pas de baignade), on voit et on tire par-dessus.
     const basin = k.college?.mil?.garden?.basin;
     if (basin) {

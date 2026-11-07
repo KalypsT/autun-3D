@@ -457,12 +457,14 @@ export interface MilitaireFacade {
   /**
    * Portails (D260) : grand portail de l'avenue du 2e Dragons, fermé (piliers à pots-à-feu en a et b, deux vantaux, arc en fer forgé portant `text`) ;
    * entrée de la rue Gaston Joliet, ouverte (piliers en a et b, vantaux rabattus vers l'intérieur, barrière levante relevée en `lift`, panneau
-   * triangulaire en `sign`). L'intérieur est du côté du point `in`.
+   * triangulaire en `sign`, barrières en X `xb` [x, y du milieu, cap, longueur], D264). L'intérieur est du côté du point `in`.
    */
   gates?: {
     avenue: { a: [number, number]; b: [number, number]; text: string };
-    joliet: { a: [number, number]; b: [number, number]; lift: [number, number]; sign: [number, number] };
+    joliet: { a: [number, number]; b: [number, number]; lift: [number, number]; sign: [number, number]; xb?: [number, number, number, number][] };
     in: [number, number];
+    /** Drapeaux de la grille de l'avenue (D264) : x, y du poteau, cap de la grille (rad). */
+    flags?: [number, number, number][];
   };
   /** Ailes dont les fenêtres ont des encadrements de brique rouge (annexe de la rue Gaston Joliet, Street View 3). */
   red?: number[];
@@ -470,7 +472,15 @@ export interface MilitaireFacade {
    * Jardins (D261) : ifs taillés [x, y, rayon, hauteur, 0 cône | 1 dôme] ; mât de drapeau [x, y, hauteur] ; bassin rond (centre, rayon intérieur
    * de la margelle) en eau.
    */
-  garden?: { yews: [number, number, number, number, 0 | 1][]; mast: [number, number, number]; basin: { c: [number, number]; r: number } };
+  garden?: {
+    yews: [number, number, number, number, 0 | 1][];
+    mast: [number, number, number];
+    basin: { c: [number, number]; r: number };
+    /** Arbres de la carte taillés en rideau sur le glacis (D264) : leurs tuples (retirés des arbres génériques) et le cap des alignements (rad). */
+    pleached?: { trees: Tree[]; dir: number };
+    /** Massifs fleuris devant la grille de l'avenue (D264) : touffes [x, y, rayon, hauteur, couleur 0 à 4]. */
+    beds?: [number, number, number, number, number][];
+  };
 }
 
 export interface BuildingKind {

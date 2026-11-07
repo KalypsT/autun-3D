@@ -5524,3 +5524,39 @@ murs sont bâtis sur ce même trou et restent cohérents entre eux ; les recaler
 ![Le passage voûté depuis le glacis](captures/d263-passage-dehors.jpg)
 ![Dans le passage](captures/d263-passage-dedans.jpg)
 ![Le passage depuis la cour d'honneur](captures/d263-passage-cour.jpg)
+
+## 2026-11-07 — D264. Le Lycée militaire, finitions : angles des toits, massifs, lierre, arbres en rideau, drapeaux, barrières en X
+
+**Demande de l'utilisateur** (après la fusion de la PR #84) : traiter les trois premiers restes du plan (massifs et talus de lierre de l'avenue ;
+arbres taillés en rideau du glacis ; barrières en X et drapeaux de la grille) et corriger les angles extérieurs des toits, qui débordaient sur sa
+capture (`?view=militaire&h=14`, pavillons).
+
+**Angles des toits** : comparaison de chaque mur du contour avec le bord du toit de l'aile la plus proche. Sur toute la **face nord-est** (aile
+nord-est et pavillon nord), le mur BD TOPO passait à 1,1 à 2,9 m du faîtage, alors que le LiDAR met le bord du toit à 4,75 m des deux côtés :
+le toit débordait de 2 à 3 m, et ses angles pointaient au-delà des coins des murs. Les six sommets de cette face sont portés à 4,6 m du faîtage
+(`ringMoves` de `militaireGates`, `build_militaire_gates.py`) ; la mesure retrouve alors cette demi-largeur sur le contour, et les égouts de l'aile
+deviennent symétriques (30,85 et 30,25). Pavillon ouest : son toit commençait 2,3 m avant sa façade nord-ouest (ici BD TOPO et LiDAR concordent) :
+il part maintenant de la façade, égout égalisé à 31,3 m. Les coins extérieurs des deux pavillons sont à moins de 0,6 m des coins des murs.
+
+**Avenue du 2e Dragons** (Street View 5 à 8) :
+- **massifs fleuris** devant la grille, de part et d'autre du parvis du grand portail : 46 touffes de feuillage fleuries (rouge, rose, jaune,
+  violet, blanc) en deux rangs sur 12 et 14 m, un if taillé en cône au bout de chacun ;
+- **talus de lierre** : haie basse de 0,7 m le long de l'intérieur de la grille, côté nord-est (−880000007, `closures`) ;
+- **drapeaux** : six tricolores sur des poteaux de la grille, trois de chaque côté du parvis.
+
+**Glacis** : les 56 arbres de la carte à moins de 2 m des quatre alignements OpenStreetMap (`938815394` à `…397`) sont **taillés en rideau** :
+tronc nu jusqu'à 3 m, couronne en pavé de 5 × 2,6 m dans l'axe des alignements (les couronnes se touchent presque) ; retirés des arbres
+génériques, leurs troncs restent des obstacles.
+
+**Entrée de la rue Gaston Joliet** : deux **barrières en X** rayées rouge et blanc, l'une en travers du côté nord-ouest de l'entrée, l'autre rangée
+le long de la haie : 3,2 m restent libres pour les voitures (la barrière levante est relevée). On les enjambe ; une voiture s'y arrête.
+
+**Coût** : le modèle passe à 20 217 triangles ; le plafond des tests est relevé de 20 000 à 24 000 (les arbres en rideau remplacent des arbres
+génériques qui coûtaient aussi).
+
+**Tests** (+4, 1 374 au total ; `src/core/militaire-finish.test.ts`).
+
+![Les pavillons : toits à l'aplomb des murs](captures/d264-pavillons.jpg)
+![L'avenue : massifs, drapeaux, grille](captures/d264-avenue.jpg)
+![Le glacis et ses arbres taillés en rideau](captures/d264-glacis.jpg)
+![L'entrée de la rue Gaston Joliet et ses barrières en X](captures/d264-entree-joliet.jpg)

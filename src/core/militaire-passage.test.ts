@@ -58,10 +58,10 @@ describe("Lycée militaire : passage voûté et enceinte (D263)", () => {
     expect(Math.hypot(open[0]![0] - 544.3, open[0]![1] + 30.6)).toBeLessThan(3);
   });
 
-  it("le bâtiment, passage compris, reste fini et sous 20 000 triangles", () => {
+  it("le bâtiment, passage compris, reste fini et sous 24 000 triangles", () => {
     const mb = new MeshBuilder();
     buildCollege(mb, new MeshBuilder(), spec, b.ring, world.terrain, b.holes);
     expect(mb.positions.every(Number.isFinite)).toBe(true);
-    expect(mb.positions.length / 9).toBeLessThan(20000);
+    expect(mb.positions.length / 9).toBeLessThan(24000);
   });
 });
