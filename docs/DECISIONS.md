@@ -5712,3 +5712,47 @@ milieu) ; le « gravier » devant le mur nord paraît en pente vu d'en bas (l'ai
 ![Depuis l'aire de décollage](captures/d267-croix-nord.jpg)
 ![Au pied](captures/d267-croix-pied.jpg)
 ![La RD 256 sans ligne médiane](captures/d267-rd256.jpg)
+
+## 2026-11-07 — D268. Le panorama : depuis la Croix de la Libération, on voit la ville (lot 4)
+
+**Demande** : la vue depuis la croix (photos 3, 15 à 17 de l'utilisateur) : la ville entière, la cathédrale, le plan d'eau, la plaine.
+**Constat** : trois limites se cumulaient : le brouillard (opaque à 800 m de jour), le relief et les silhouettes (construits jusqu'à 1 300 m), et le
+plan lointain de la caméra (**1 200 m**). Depuis la croix, la ville (1,2 à 3,5 km) était dans le brouillard (`croix-avant-vue.jpg`).
+Pousser ces portées pour tout le monde aurait coûté des centaines d'appels de dessin (un morceau de relief et une silhouette par tuile de 250 m).
+
+**Panorama** (`src/render/vista.ts`, `TerrainView.updateVista`) :
+- **belvédère** : hauteur de la caméra au-dessus du relief alentour (premier quartile du relief grossier sur un cercle de 1 km, la mer comptant pour
+  son niveau) ; part `k` de 0 à 1 entre **90 et 200 m** (lissée sur 1,2 s en jeu, immédiate dans le viewer). Mesuré : croix 308 m, lacets de la
+  RD 256 236 m, carrefour 294 m (panorama entier) ; Pierre de Couhard 96 m (à peine) ; cathédrale 45 m, tour des Ursulines 47 m, lycée militaire 39 m (rien) ;
+- **brouillard** (`Atmosphere.setVista`) : de celui de l'heure vers une portée de **7 km** (voile à partir du quart) ; la pluie le rapproche,
+  **la brume le ferme toujours à moins de 200 m** (comme en vrai) ; plan lointain de la caméra de 1 200 m à 7,7 km ;
+- **relief lointain** : au-delà du relief proche, une super-tuile de 1 km par maillage (pas de 25 m, mêmes sols grossiers et même matière que le
+  relief grossier), évidée dans un disque de 1 200 m autour du joueur et enfoncée de 3 m là où elle chevauche le relief proche (pas plus loin : la
+  plaine de l'Arroux, à 285 m, passait sous la mer du monde) ; construite des plus proches aux plus lointaines, trois par image ;
+- **silhouettes lointaines** : celles des tuiles à plus de 1 300 m, regroupées par super-tuile (même dessin que par tuile) ; celles de `TileManager`
+  au-delà de 1 300 m sont masquées (`lodCutoff`), sans doublon ;
+- en roulant : le centre suit le joueur par pas de 150 m ; le relief lointain est remplacé morceau par morceau sans disparaître, et seules les
+  super-tuiles dont la liste de tuiles change refont leurs silhouettes ; redescendu en ville, tout est libéré après 20 s ;
+- `?vista=0` (jamais), `?vista=1` (toujours) ; vue `?view=croix-vue` (la terrasse nord, vers la cathédrale) ; `CAPTURE_WAIT` (ms) pour
+  `tools/capture.cjs`.
+
+**Défauts trouvés en route** : une super-tuile tout entière dans le trou donnait un maillage vide, jamais mis en mémoire : reconstruite à chaque image,
+elle prenait le budget de toutes les suivantes (12 sur 40 construites) ; tant qu'une super-tuile manquait, la mer du monde (282,5 m) se voyait par le
+trou (plaques bleues autour de la ville) : ordre du plus proche au plus lointain, trois par image.
+
+**Coût mesuré** (viewer, rendu logiciel, même vue depuis la croix) : **61 → 114 appels de dessin**, 1,26 → 1,39 million de triangles
+(relief lointain ≈ 60 000, silhouettes regroupées le reste). Au sol, rien ne change (`k` = 0 : mêmes portées, mêmes appels). **À mesurer sur le
+téléphone** : `?at=-838,-1803&debug`, puis la même chose avec `&vista=0` ; comparer images par seconde et appels de dessin, regarder vers la ville.
+
+**Limites** : la ville lointaine n'a pas de lumières la nuit (seules les tuiles détaillées en ont) ; pas d'arbres au-delà de 1 300 m (la forêt n'est
+qu'un assombrissement du sol) ; **les terrils des Télots ne sont pas dans la carte** (le relief du jeu ne dépasse pas 308 m dans toute la zone des
+Télots : ils sont au-delà du bord ouest du monde, dans la mer) ; à l'ouest et au nord, l'horizon est la mer qui entoure le monde (D105), là où la
+photo montre la plaine et le Morvan.
+
+**Tests** (+2, `src/render/vista.test.ts`) : brouillard inchangé au sol, éloigné en belvédère, fermé par la brume ; belvédère reconnu à la croix,
+pas sur le parvis de la cathédrale, la place du Champ de Mars ni l'avenue de la gare. 1 384 essais.
+
+![Depuis la croix, avec le panorama](captures/d268-vue-panorama.jpg)
+![Sans le panorama (?vista=0)](captures/d268-vue-sans-panorama.jpg)
+![Par temps de brume](captures/d268-vue-brume.jpg)
+![La nuit](captures/d268-vue-nuit.jpg)

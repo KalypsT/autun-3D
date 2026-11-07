@@ -181,6 +181,18 @@ export class TileManager {
     return out;
   }
 
+  /**
+   * Panorama (D268) : les silhouettes des tuiles à plus de `cutoff` m de (px, py) sont masquées (le panorama dessine les siennes, regroupées) ;
+   * Infinity : règle ordinaire (`show`). À appeler après `update`.
+   */
+  lodCutoff(px: number, py: number, cutoff: number): void {
+    for (const e of this.lodLive) {
+      if (!e.lod) continue;
+      const far = !e.detail || e.pending.length > 0;
+      e.lod.visible = far && (cutoff === Infinity || distanceTo(e.info, px, py) <= cutoff);
+    }
+  }
+
   /** La silhouette disparaît quand tous les maillages détaillés sont montrés ; les clochers lointains de la tuile aussi. */
   private show(e: Entry): void {
     const far = !e.detail || e.pending.length > 0;

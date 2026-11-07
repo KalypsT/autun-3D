@@ -16,6 +16,16 @@ const FINE_KEEP = 420;
 const MAX_GROUND_FETCHES = 3;
 const SKIRT_INNER = 4.5;
 const SKIRT_OUTER = 40;
+/**
+ * Relief lointain du panorama (D268) : un maillage par super-tuile de 1 km, à pas de VISTA_STEP m, évidé dans un disque de VISTA_HOLE m
+ * autour du point où il a été construit, et enfoncé de VISTA_SINK m sous le relief grossier là où il chevauche le relief proche (qui reste
+ * au-dessus).
+ */
+const VISTA_STEP = 25;
+const VISTA_SINK = 3;
+const VISTA_HOLE = VIEW_RANGE - 100;
+/** Le panorama se reconstruit quand le joueur s'est éloigné de plus de VISTA_MOVE m du centre de son trou. */
+const VISTA_MOVE = 150;
 
 /** Poids de mélange (données, pas des couleurs) : mipmaps pour ne pas scintiller au loin. */
 function weightTexture(img: HTMLImageElement | null, flat: [number, number, number]): THREE.Texture {
@@ -114,6 +124,12 @@ export class TerrainView {
   private groundFetches = 0;
   private frame = 0;
   triangles = 0;
+  /** Relief lointain du panorama (D268), par super-tuile, et centre de son trou. */
+  private readonly vista = new Map<string, THREE.Mesh | null>();
+  /** Super-tuiles construites autour d'un ancien centre : gardées à l'écran jusqu'à leur remplacement (pas de trou en roulant). */
+  private readonly vistaStale = new Set<string>();
+  private vistaCenter: [number, number] | null = null;
+  vistaTriangles = 0;
 
   private constructor(
     private readonly terrain: TiledTerrain,
@@ -364,7 +380,7 @@ export class TerrainView {
 
   /** Libère les sols grossiers dont plus aucun morceau n'a besoin. */
   private sweepSupers(): void {
-    const used = new Set<string>();
+    const used = new Set<string>(this.vista.keys());
     for (const c of this.active) used.add(c.superId);
     for (const [id, s] of this.supers) {
       if (used.has(id) || s === "loading") continue;
@@ -404,6 +420,106 @@ export class TerrainView {
     todo.sort((a, b) => a.want - b.want || a.d - b.d);
     for (const { c, want } of todo.slice(0, budget)) this.build(c, want);
     if (this.frame % 120 === 0) this.sweepSupers();
+  }
+
+  /**
+   * Relief lointain du panorama (D268) : au-delà de VIEW_RANGE et jusqu'à `reach` m, une super-tuile de 1 km par maillage (une quarantaine
+   * d'appels de dessin pour toute la ville, au lieu de quatre cents morceaux) ; `reach` ≤ VIEW_RANGE : rien n'est montré. Construit au plus
+   * `budget` super-tuiles par appel ; les sols grossiers sont ceux du relief grossier (même matière).
+   */
+  updateVista(px: number, py: number, reach: number, budget = 3): void {
+    const on = reach > VIEW_RANGE;
+    if (!on) {
+      for (const m of this.vista.values()) if (m) m.visible = false;
+      return;
+    }
+    if (this.vistaCenter && Math.hypot(px - this.vistaCenter[0], py - this.vistaCenter[1]) > VISTA_MOVE) {
+      this.vistaCenter = [px, py];
+      for (const id of this.vista.keys()) this.vistaStale.add(id);
+    }
+    if (!this.vistaCenter) this.vistaCenter = [px, py];
+    const side = this.superTiles * this.size;
+    let built = 0;
+    // Des plus proches aux plus lointaines : tant qu'une super-tuile manque, la mer du monde (282,5 m) se voit par le trou.
+    const order = [...this.superCells.keys()].map((id) => {
+      const [i, j] = id.slice(1).split("_").map(Number) as [number, number];
+      const x0 = this.zone[0] + i * side, y0 = this.zone[1] + j * side;
+      return { id, x0, y0, d: Math.hypot(Math.max(x0 - px, 0, px - x0 - side), Math.max(y0 - py, 0, py - y0 - side)) };
+    }).sort((a, b) => a.d - b.d);
+    for (const { id, x0, y0, d } of order) {
+      const far = Math.hypot(Math.max(Math.abs(x0 - px), Math.abs(x0 + side - px)), Math.max(Math.abs(y0 - py), Math.abs(y0 + side - py)));
+      const mesh = this.vista.get(id);
+      if (d > reach || far < VISTA_HOLE) {
+        if (mesh) mesh.visible = false;
+        continue;
+      }
+      // Déjà construite (null : tout entière dans le trou, rien à dessiner ; sans ce repère, elle se reconstruirait à chaque image et
+      // prendrait le budget de toutes les suivantes).
+      if (mesh !== undefined && (!this.vistaStale.has(id) || built >= budget)) {
+        if (mesh) mesh.visible = true;
+        continue;
+      }
+      const set = this.supers.get(id);
+      if (!set) this.wantSuper(id);
+      if (!set || set === "loading" || built >= budget) continue;
+      const m = this.buildVista(x0, y0, side, set.material);
+      if (mesh) this.disposeVista(mesh);
+      this.vistaStale.delete(id);
+      this.vista.set(id, m);
+      if (m) this.group.add(m);
+      built++;
+    }
+  }
+
+  private buildVista(x0: number, y0: number, side: number, material: THREE.Material): THREE.Mesh | null {
+    const [cx, cy] = this.vistaCenter!;
+    const n = Math.round(side / VISTA_STEP), field = this.terrain.coarse;
+    const pos: number[] = [], nrm: number[] = [], idx: number[] = [];
+    for (let j = 0; j <= n; j++) {
+      for (let i = 0; i <= n; i++) {
+        const x = x0 + i * VISTA_STEP, y = y0 + j * VISTA_STEP;
+        // Enfoncé seulement là où il chevauche le relief proche (jusqu'à 400 m au-delà du trou) : plus loin, la plaine de l'Arroux (285 m)
+        // passerait sous la mer du monde (282,5 m).
+        const sink = VISTA_SINK * Math.min(1, Math.max(0, (VISTA_HOLE + 400 - Math.hypot(x - cx, y - cy)) / 100));
+        pos.push(x, field.heightAt(x, y) - sink, -y);
+        const e = VISTA_STEP;
+        const gx = (field.heightAt(x + e, y) - field.heightAt(x - e, y)) / (2 * e), gy = (field.heightAt(x, y + e) - field.heightAt(x, y - e)) / (2 * e);
+        const l = Math.hypot(gx, gy, 1);
+        nrm.push(-gx / l, 1 / l, gy / l);
+      }
+    }
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const mx = x0 + (i + 0.5) * VISTA_STEP, my = y0 + (j + 0.5) * VISTA_STEP;
+        if (Math.hypot(mx - cx, my - cy) < VISTA_HOLE) continue;
+        const a = j * (n + 1) + i, b = a + 1, d = a + n + 1, e = d + 1;
+        idx.push(a, b, d, b, e, d);
+      }
+    }
+    if (!idx.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+    g.setIndex(idx);
+    g.computeBoundingSphere();
+    const mesh = new THREE.Mesh(g, material);
+    mesh.receiveShadow = true;
+    this.vistaTriangles += idx.length / 3;
+    return mesh;
+  }
+
+  /** Libère tout le relief lointain du panorama (on est redescendu en ville depuis un moment). */
+  clearVista(): void {
+    for (const m of this.vista.values()) if (m) this.disposeVista(m);
+    this.vista.clear();
+    this.vistaStale.clear();
+    this.vistaCenter = null;
+  }
+
+  private disposeVista(m: THREE.Mesh): void {
+    this.group.remove(m);
+    this.vistaTriangles -= m.geometry.index!.count / 3;
+    m.geometry.dispose();
   }
 
   /** Construit immédiatement tous les morceaux au niveau voulu autour de (px, py). */

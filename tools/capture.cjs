@@ -19,7 +19,8 @@ const fs = require("fs");
     page.on("pageerror", (e) => console.log("pageerror:", e.message));
     await page.goto(`${base}?view=${view}&debug${extra ? "&" + extra : ""}`);
     await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 120000 });
-    await page.waitForTimeout(2500);
+    // CAPTURE_WAIT (ms) : attente après le chargement (le panorama, D268, se construit sur plusieurs images).
+    await page.waitForTimeout(Number(process.env.CAPTURE_WAIT ?? 2500));
     const file = `${out}/${view}${extra ? "-" + extra.replace(/[=&,.]/g, "_").slice(0, 90) : ""}.png`;
     await page.screenshot({ path: file, timeout: 180000 });
     console.log("ok", file);

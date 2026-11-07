@@ -21,6 +21,7 @@ import { useTheme } from "./render/style";
 import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
+import { Vista } from "./render/vista";
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -149,17 +150,20 @@ async function main(): Promise<void> {
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);
   await tiles.preload(start.x, start.y);
+  // Panorama (D268) : en hauteur (la Croix de la Libération), relief et silhouettes lointains, brouillard éloigné.
+  const vista = new Vista(world.terrain, world.manifest, terrainView, tiles, atmosphere, camera, params);
+  scene.add(vista.group);
   const { loaded, triangles, draws } = tiles.stats;
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
   const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
   const ctx: GameContext = {
-    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, colliders, params, debugEl, settings, start: startState,
+    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
     ready: (extra) => {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
-        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, ...extra,
+        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, ...extra,
       };
     },
   };

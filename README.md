@@ -23,8 +23,8 @@ Sans paramètre, on joue (la partie est reprise là où tu l'avais laissée) : j
 
 ## Viewer à caméra libre (captures, diagnostic)
 
-Avec `view=` ou `cam=`, c'est la caméra libre. Paramètres d'URL : `view=aerial|street|croix|croix-nord|croix-haut|place|mairie|municipal|gare|eduen|eduen-logo|eduen-entree|eduen-mats|eduen-parking|mcdo|mcdo-route|mcdo-drive|mcdo-parking|mcdo-entree|bowling|bowling-mcdo|bowling-parking|bowling-terrasse|route-chalon-haut|church|nautique|nautique-darse|nautique-lac|nautique-haut`, `cam=x,y,hauteur,cibleX,cibleY,hauteurCible`,
-`h=16` (heure solaire), `day=200` (jour de l'année, converti en date du jeu), `season=hiver`, `shadow=0`, `dpr=1`, `step=2` (maille du relief, en mètres),
+Avec `view=` ou `cam=`, c'est la caméra libre. Paramètres d'URL : `view=aerial|street|croix|croix-nord|croix-haut|croix-vue|place|mairie|municipal|gare|eduen|eduen-logo|eduen-entree|eduen-mats|eduen-parking|mcdo|mcdo-route|mcdo-drive|mcdo-parking|mcdo-entree|bowling|bowling-mcdo|bowling-parking|bowling-terrasse|route-chalon-haut|church|nautique|nautique-darse|nautique-lac|nautique-haut`, `cam=x,y,hauteur,cibleX,cibleY,hauteurCible`,
+`h=16` (heure solaire), `vista=0|1` (panorama en hauteur jamais ou toujours, D268), `day=200` (jour de l'année, converti en date du jeu), `season=hiver`, `shadow=0`, `dpr=1`, `step=2` (maille du relief, en mètres),
 `hide=misc,sprites-0,toit-ardoise` (masque des maillages, diagnostic), `nonormal`, `dbg=normals`.
 Souris ou doigt : glisser pour regarder ; clavier : ZQSD/WASD, flèches, E/Q monter/descendre, Maj accélère, F affiche le panneau de debug.
 

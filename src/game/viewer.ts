@@ -93,6 +93,8 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   croix: [-848, -1838, 1.7, -841, -1809, 6],
   "croix-nord": [-824, -1784, 1.7, -841, -1809, 5],
   "croix-haut": [-818, -1786, 22, -841, -1809, 0],
+  // Lot 4 (D268) : la vue depuis la terrasse nord de la plate-forme, vers la cathédrale (photo 15).
+  "croix-vue": [-838.5, -1805.5, 1.7, 36.6, -571.5, 20],
   // Galerie des personnages (startGallery) : le départ du jeu.
   characters: [-10, -40, 1.7, -10, -20, 1.2],
 };
@@ -107,7 +109,7 @@ export function viewerView(params: URLSearchParams): [number, number, number, nu
 
 /** Caméra libre pour les captures et le diagnostic : ?view=nom ou ?cam=x,y,h,cibleX,cibleY,hCible. */
 export function startViewer(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, params, debugEl, world, tiles, terrainView, atmosphere, sunDir, sunLight } = ctx;
+  const { camera, renderer, scene, sky, params, debugEl, world, tiles, terrainView, vista, atmosphere, sunDir, sunLight } = ctx;
   const { terrain } = world;
   let yaw = 0, pitch = 0;
   const pos = new THREE.Vector3();
@@ -185,6 +187,7 @@ export function startViewer(ctx: GameContext): void {
     sunLight.position.copy(sunDir).multiplyScalar(400);
     tiles.update(pos.x, -pos.z);
     terrainView.update(pos.x, -pos.z);
+    vista.update(pos.x, -pos.z, pos.y, dt, true);
     sailboats.update(now / 1000, atmosphere.hour, atmosphere.calendar.season, atmosphere.calendar.weekday, tiles.loadedExtras().flatMap((e) => e.sail ?? []));
     nav?.update(pos.x, -pos.z);
     navDebug?.update(pos.x, -pos.z);

@@ -350,3 +350,10 @@ Fait : la croix mesurée et dessinée (plate-forme, talus, mur nord et escaliers
 relief remodelé et creux d'affichage, obstacles (on monte sur la plate-forme), parking à la forme de la clairière réelle en stabilisé clair,
 RD 256 et route d'accès sans marquage ni trottoir, point « monument » des passants, vues `croix`, `croix-nord`, `croix-haut`. Reste : le lot 4,
 la vue depuis la plate-forme (portée du brouillard et des silhouettes selon la hauteur, terrils des Télots à 5 km).
+
+## 13. Lot 4 : le panorama (D268)
+
+Fait : en hauteur (plus de 90 à 200 m au-dessus du relief alentour), le brouillard s'éloigne jusqu'à 7 km, le relief lointain et les silhouettes
+regroupées par super-tuile prennent le relais au-delà de 1 300 m (61 → 114 appels de dessin depuis la croix) ; au sol, rien ne change. La brume ferme
+toujours la vue. Reste à **mesurer sur le téléphone** (`?at=-838,-1803&debug`, puis `&vista=0`). Les terrils des Télots sont hors de la carte ;
+un décor lointain (terrils, collines du Morvan au-delà de la mer) serait un chantier à part.

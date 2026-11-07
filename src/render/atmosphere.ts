@@ -240,6 +240,32 @@ export class Atmosphere {
     return STOPS[STOPS.length - 1]![1];
   }
 
+  /** Brouillard de l'heure et du temps qu'il fait (apply), avant le panorama. */
+  private fogBase = { far: 800, near: 180, air: 1, mist: 0 };
+  /** Panorama (D268) : part (0 à 1) et portée (m) ; en hauteur, l'horizon s'éloigne jusqu'à la portée. */
+  private vistaK = 0;
+  private vistaReach = 0;
+
+  /** Panorama (D268) : `k` de 0 (au sol) à 1 (en belvédère), `reach` la portée voulue (m). Ne recalcule que le brouillard. */
+  setVista(k: number, reach: number): void {
+    if (Math.abs(k - this.vistaK) < 1e-3 && Math.abs(reach - this.vistaReach) < 1) return;
+    this.vistaK = k;
+    this.vistaReach = reach;
+    this.applyFog();
+  }
+
+  /**
+   * Brouillard : celui de l'heure (`fogBase`), éloigné vers la portée du panorama (le voile commence au quart de la portée), puis rapproché par
+   * la brume (moins de 200 m) : en belvédère par temps de brume, on ne voit toujours rien, comme en vrai.
+   */
+  private applyFog(): void {
+    const fog = this.scene.fog as THREE.Fog;
+    const b = this.fogBase, k = this.vistaK;
+    const far = b.far + (this.vistaReach * b.air - b.far) * k;
+    fog.far = far + (170 - far) * b.mist;
+    fog.near = (b.near + (this.vistaReach * 0.25 * b.air - b.near) * k) * (1 - 0.95 * b.mist);
+  }
+
   private apply(): void {
     this.lastApplied = this.hour;
     this.cal = calendarAt(this.date, this.hour, this.config);
@@ -271,10 +297,10 @@ export class Atmosphere {
     this.renderer.toneMappingExposure = p.exposure * (1 - 0.05 * wx.cloud);
     const fog = this.scene.fog as THREE.Fog;
     fog.color.copy(overcast(p.fog, Math.max(grey, 0.8 * wx.fog), lift));
-    // Pluie et neige rapprochent l'horizon ; la brume le ramène à moins de 200 m.
-    const far = p.fogFar * (1 - 0.35 * wx.rain - 0.3 * wx.snowfall);
-    fog.far = far + (170 - far) * wx.fog;
-    fog.near = p.fogNear * (1 - 0.4 * wx.rain) * (1 - 0.95 * wx.fog);
+    // Pluie et neige rapprochent l'horizon ; la brume le ramène à moins de 200 m. Le panorama (D268) éloigne l'horizon : voir applyFog.
+    const air = 1 - 0.35 * wx.rain - 0.3 * wx.snowfall;
+    this.fogBase = { far: p.fogFar * air, near: p.fogNear * (1 - 0.4 * wx.rain), air, mist: wx.fog };
+    this.applyFog();
 
     const u = this.skyMat.uniforms;
     const horizon = overcast(p.horizon, Math.max(grey, 0.8 * wx.fog), lift);

@@ -121,7 +121,7 @@ export function followSun(ctx: GameContext): (x: number, y: number, z: number) =
 }
 
 export function startGame(ctx: GameContext): void {
-  const { camera, renderer, scene, sky, atmosphere, world, params, debugEl, tiles, terrainView, colliders } = ctx;
+  const { camera, renderer, scene, sky, atmosphere, world, params, debugEl, tiles, terrainView, vista, colliders } = ctx;
   const { terrain } = world;
   // Toits praticables (D214, D215) : la surface du joueur et de son véhicule ; tout le reste (circulation, passants, gendarmes) suit le relief.
   const surface = withRoofs(terrain, colliders.roofs);
@@ -1239,6 +1239,7 @@ export function startGame(ctx: GameContext): void {
       pausedRender += dt;
       tiles.update(player.x, player.y, 0, 0);
       terrainView.update(player.x, player.y);
+      vista.update(player.x, player.y, camera.position.y, dt);
       if (!ui.coversScreen && (pausedRender > 0.25 || ui.needsRender)) {
         pausedRender = 0;
         ui.needsRender = false;
@@ -1629,6 +1630,7 @@ export function startGame(ctx: GameContext): void {
     if (riding) tiles.update(player.x, player.y, riding.state.vx, riding.state.vy);
     else tiles.update(player.x, player.y, player.vx, player.vy);
     terrainView.update(player.x, player.y);
+    vista.update(player.x, player.y, camera.position.y, dt);
     const navNow = nav as NavManager | null, pedsNow = peds as PedsController | null, dbgNow = navDebug as NavDebug | null;
     if (navNow) {
       const vx = riding ? riding.state.vx : player.vx, vy = riding ? riding.state.vy : player.vy;
