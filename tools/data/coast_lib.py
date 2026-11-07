@@ -8,6 +8,7 @@ Le niveau de la mer est celui de la plaine de l'Arroux, au nord et à l'ouest (�
 Montjeu (jusqu'à 590 m) tombent dans la mer en falaises.
 """
 
+import json
 import math
 from functools import lru_cache
 
@@ -48,11 +49,26 @@ def _noise(x, y):
     return 0.4 * math.sin(x / 181.0 + 0.7) + 0.35 * math.sin(y / 157.0 + 2.1) + 0.25 * math.sin((x - y) / 59.0 + 4.4)
 
 
+# La terre figée (extensions de la carte, extend.py) : à côté de region.json. Absente, la terre se calcule depuis la région.
+LAND_FILE = c.REGION_FILE.with_name("land.json")
+
+
 @lru_cache(maxsize=1)
 def land():
-    """La terre (Polygon, coordonnées locales) : la zone jouable, élargie, lissée, irrégulière, dans l'anneau de bordure."""
-    playable = unary_union([_tile_box(col, row) for col, row in c.PLAYABLE])
-    allowed = unary_union([_tile_box(col, row) for col, row in c.REGION_TILES]).buffer(-20.0, join_style="mitre")
+    """La terre (Polygon, coordonnées locales) : celle de land.json si le fichier existe (la côte est alors figée : une extension
+    de la carte ne la change qu'autour d'elle, extend.py), sinon celle que donne la région (compute_land)."""
+    if LAND_FILE.exists():
+        return Polygon(json.loads(LAND_FILE.read_text())["exterior"])
+    return compute_land(c.PLAYABLE, c.REGION_TILES)
+
+
+def compute_land(playable_tiles, region_tiles):
+    """La terre d'une région : la zone jouable, élargie, lissée, irrégulière, dans l'anneau de bordure.
+
+    Attention : le contour est rééchantillonné sur toute sa longueur ; ajouter des tuiles déplace donc la côte d'un ou deux mètres
+    partout (jusqu'à 3,6 m mesurés pour l'extension de la Croix de la Libération). D'où land.json et extend.py."""
+    playable = unary_union([_tile_box(col, row) for col, row in playable_tiles])
+    allowed = unary_union([_tile_box(col, row) for col, row in region_tiles]).buffer(-20.0, join_style="mitre")
     base = orient(playable.buffer(OFFSET).buffer(-90.0).buffer(90.0), 1.0)
     ring = max(getattr(base, "geoms", [base]), key=lambda g: g.area).exterior
     n = max(64, int(ring.length / 8.0))
@@ -207,14 +223,35 @@ DIST_PAD = 400.0
 
 @lru_cache(maxsize=1)
 def _distance_field():
+    anchor = json.loads(LAND_FILE.read_text()).get("anchor") if LAND_FILE.exists() else None
+    return distance_field(land(), anchor)
+
+
+def field_anchor(poly):
+    """Coin nord-ouest (x0, y1) du champ de distance calculé sur l'emprise de la terre (sans ancrage imposé)."""
+    x0, _, _, y1 = poly.bounds
+    return x0 - DIST_PAD, y1 + DIST_PAD
+
+
+def distance_field(poly, anchor=None):
+    """Champ de distance signée (x0, y1, tableau) d'une terre quelconque (voir _distance_field).
+
+    `anchor` (land.json) : coin d'origine du champ d'avant l'extension ; la grille garde ses nœuds aux mêmes endroits et s'étend
+    seulement, pour que les distances ne changent pas loin de l'extension (une grille décalée d'une fraction de pas les change d'un mètre)."""
     from scipy import ndimage
 
-    x0, y0, x1, y1 = land().bounds
+    poly = Polygon(poly.exterior)
+    shapely.prepare(poly)
+    x0, y0, x1, y1 = poly.bounds
     x0, y0, x1, y1 = x0 - DIST_PAD, y0 - DIST_PAD, x1 + DIST_PAD, y1 + DIST_PAD
+    if anchor is not None:
+        ax, ay = anchor
+        x0 = ax - math.ceil((ax - x0) / DIST_RES) * DIST_RES if x0 < ax else ax
+        y1 = ay + math.ceil((y1 - ay) / DIST_RES) * DIST_RES if y1 > ay else ay
     cols, rows = int(math.ceil((x1 - x0) / DIST_RES)), int(math.ceil((y1 - y0) / DIST_RES))
     xs = x0 + (np.arange(cols) + 0.5) * DIST_RES
     ys = y1 - (np.arange(rows) + 0.5) * DIST_RES
-    inside = shapely.contains_xy(_prepared(), *np.meshgrid(xs, ys))
+    inside = shapely.contains_xy(poly, *np.meshgrid(xs, ys))
     d_in = ndimage.distance_transform_edt(inside).astype(np.float32) * DIST_RES
     d_out = ndimage.distance_transform_edt(~inside).astype(np.float32) * DIST_RES
     field = np.where(inside, -(d_in - 0.5 * DIST_RES), d_out - 0.5 * DIST_RES).astype(np.float32)

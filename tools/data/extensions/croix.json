@@ -1,0 +1,4 @@
+{
+ "_doc": "Extension de la Croix de la Libération (docs/plans/croix-liberation.md) : la RD 256 depuis la ville, la route d'accès, le parking, et la terre derrière la croix. Tuiles jouables ajoutées ; la bordure et les tuiles à refabriquer sont calculées par extend.py plan.",
+ "playable": ["22_26", "22_27", "23_25", "23_26", "24_25", "24_26", "25_26", "25_27", "26_27"]
+}

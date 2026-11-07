@@ -13,6 +13,8 @@ Sortie : kinds/<tuile>.json, champ `hall` du bâtiment (repère, contour et cour
           temple de Janus (modèle `janus`, D139) : site `janus` (kinds/<tuile>.json créé au besoin) et silhouette lointaine ;
           Pierre de Couhard (modèle `couhard`, D222) : site `couhard` mesuré sur le nuage LiDAR (lu à distance), relief fin aplani sous le pied
           (terrain/<tuile>.bin) et silhouette lointaine ;
+          Croix de la Libération (modèle `croix`, D267) : site `croix` mesuré sur le nuage LiDAR (axe, bras, dessus de la plate-forme), relief
+          fin remodelé sous la plate-forme et silhouette lointaine (fichier de silhouettes créé au besoin) ;
           maison (modèle `house`, D140) : type « house » et champ `house` du bâtiment (plan en L et toit mesurés), silhouette lointaine ;
           collège du Vallon (modèle `vallon`, D172, relevés de survey_college.py) : champ `vallon` du bâtiment (ailes à toit plat, gymnase, préau) et silhouette lointaine ;
           terrains du collège du Vallon (`pitches`, D176) : revêtement, rectangle de jeu et paniers de basket des sites `pitch` de kinds ;
@@ -2753,6 +2755,229 @@ def couhard(spec, world):
     return tid, lod
 
 
+# --- Croix de la Libération (D267, docs/plans/croix-liberation.md) ---------------------------------------------------------------------
+
+def croix_points(spec):
+    """Nuage LiDAR HD (dalles COPC lues à distance) dans une fenêtre de 60 m autour de `spec["at"]`, en repère local ; mis en cache."""
+    f = CACHE / "croix_points.npz"
+    if not f.exists():
+        import laspy
+        X, Y = c.ORIGIN[0] + spec["at"][0], c.ORIGIN[1] + spec["at"][1]
+        meta = fetch.get("https://data.geopf.fr/wfs/ows", params={
+            "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature", "TYPENAMES": "IGNF_LIDAR-HD_METADONNEE:metadata",
+            "OUTPUTFORMAT": "application/json", "SRSNAME": "EPSG:2154", "COUNT": 10,
+            "BBOX": f"{X - 30},{Y - 30},{X + 30},{Y + 30},urn:ogc:def:crs:EPSG::2154"}).json()["features"]
+        parts = []
+        for m in meta:
+            with laspy.CopcReader.open(m["properties"]["url_npl"]) as r:
+                p = r.query(laspy.copc.Bounds(mins=np.array([X - 30, Y - 30]), maxs=np.array([X + 30, Y + 30])))
+            parts.append((np.array(p.x) - c.ORIGIN[0], np.array(p.y) - c.ORIGIN[1], np.array(p.z) - c.ORIGIN_Z, np.array(p.classification)))
+        CACHE.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(f, **{k: np.concatenate([q[i] for q in parts]) for i, k in enumerate("xyzc")})
+    d = np.load(f)
+    return d["x"], d["y"], d["z"], d["c"]
+
+
+def measure_croix(spec):
+    """Croix de la Libération (D267) : le LiDAR range la plate-forme en « sol » (classe 2) et la croix en « non classé » (classe 1).
+    - axe : médiane des points à plus de 5 m au-dessus de la plate-forme ; bras : direction principale des points au niveau des bras (ACP),
+      tournée vers un cap de moins de 180° ; repère (u le long des bras, t en travers, vers la ville) ;
+    - dessus de la plate-forme : médiane du sol à 1,8-3 m de l'axe en travers (hors de la marche du fût) ; étendue : cellules de 0,5 m à moins
+      de 15 cm du dessus, le long des deux axes ; sol alentour : médiane du sol à 1 m au-delà du pied des talus, de chaque côté ;
+    - sommet : point le plus haut à moins de 1,5 m de l'axe ; bras : tranches de 25 cm où les points s'étendent sur plus de 3,5 m le long de u ;
+    - le reste (épaisseur du fût, débord des bras, escaliers, plaques, mâts, rochers) : photos, `manual.json`."""
+    x, y, z, cl = croix_points(spec)
+    x0, y0 = spec["at"]
+    r0 = np.hypot(x - x0, y - y0)
+    near = (cl == 2) & (r0 < 6)
+    g0 = float(np.percentile(z[near], 90))
+    tall = (cl != 2) & (cl < 3) & (z > g0 + 5) & (r0 < 8)
+    cx, cy = float(np.median(x[tall])), float(np.median(y[tall]))
+    arm = tall & (z > g0 + 6) & (z < g0 + 8.5)
+    P = np.c_[x[arm] - cx, y[arm] - cy]
+    w, v = np.linalg.eigh(np.cov(P.T))
+    ax = v[:, -1]
+    if math.degrees(math.atan2(ax[0], ax[1])) % 360 >= 180:
+        ax = -ax
+    U = (x - cx) * ax[0] + (y - cy) * ax[1]
+    T = -(x - cx) * ax[1] + (y - cy) * ax[0]
+    ground = cl == 2
+    deck = ground & (np.abs(U) < 2.5) & (np.abs(T) > 1.8) & (np.abs(T) < 3.0)
+    g = float(np.median(z[deck]))
+
+    def cell(uu, tt):
+        m = ground & (np.abs(U - uu) < 0.25) & (np.abs(T - tt) < 0.25)
+        return float(np.median(z[m])) - g if m.any() else math.nan
+    steps = np.arange(-9, 9.01, 0.5)
+    on_u = [d for d in steps if cell(d, 1.0) > -0.15]
+    on_t = [d for d in steps if cell(0.25, d) > -0.15]
+    du = (min(on_u), max(on_u))
+    dt = (min(on_t), max(on_t))
+
+    def side(uu, tt):
+        m = ground & (np.abs(U - uu) < 1.0) & (np.abs(T - tt) < 1.0)
+        return float(np.median(z[m])) - g if m.any() else math.nan
+    talus = spec["talus"]
+    drops = {"w": side(du[0] - talus["w"] - 1, (dt[0] + dt[1]) / 2), "e": side(du[1] + talus["e"] + 1, (dt[0] + dt[1]) / 2),
+             "s": side((du[0] + du[1]) / 2, dt[0] - talus["s"] - 1), "n": side((du[0] + du[1]) / 2, dt[1] + 1.5)}
+    axis = (cl != 2) & (np.hypot(x - cx, y - cy) < 1.5)
+    top = float(z[axis].max()) - g
+    slices = []
+    for zz in np.arange(4.0, top, 0.25):
+        m = tall & (np.abs(z - g - zz) < 0.125)
+        if m.sum() >= 4:
+            slices.append((zz, float(np.percentile(U[m], 98) - np.percentile(U[m], 2))))
+    wide = [zz for zz, span in slices if span > 3.5]
+    arms_top = max(wide) + 0.125 if wide else spec["arms"]["z"][1]
+    span = float(np.median([s for zz, s in slices if s > 3.5])) if wide else spec["arms"]["span"]
+    a = math.atan2(ax[1], ax[0])  # angle de u depuis l'est (repère du client, frameOf)
+    r2 = lambda q: round(float(q), 2)
+    site = {"t": "croix", "n": spec["name"], "c": [r2(cx), r2(cy)], "a": round(a, 4), "g": r2(g), "top": r2(top),
+            "deck": [r2(du[0]), r2(du[1]), r2(dt[0]), r2(spec["wall"]["t"])], "drop": {k: r2(-v) for k, v in drops.items()},
+            "talus": talus, "wall": spec["wall"], "plinth": spec["plinth"], "shaft": spec["shaft"],
+            "arms": {**spec["arms"], "span": r2(span), "z": [r2(arms_top - spec["arms"]["h"]), r2(arms_top)]},
+            "stairs": {**spec["stairs"], "u": [[r2(du[0]), r2(du[0] + spec["stairs"]["w"])], [r2(du[1] - spec["stairs"]["w"]), r2(du[1])]]},
+            "plaques": spec["plaques"], "masts": spec["masts"], "rocks": spec["rocks"]}
+    if spec.get("light"):
+        site["light"] = 1
+    return site
+
+
+def croix_frame(site):
+    ca, sa = math.cos(site["a"]), math.sin(site["a"])
+    cx, cy = site["c"]
+    return (lambda u, t: (cx + ca * u - sa * t, cy + sa * u + ca * t)), (lambda x, y: ((x - cx) * ca + (y - cy) * sa, -(x - cx) * sa + (y - cy) * ca))
+
+
+def croix_surface(site, u, t, ground):
+    """Altitude dessinée de la plate-forme au point (u, t) du repère, ou None hors de son emprise : dessus plat, talus à l'est, à l'ouest et
+    au sud (jusqu'au sol `ground(u, t)` pris au-delà de leur pied), escaliers des angles nord (rampes, sous les marches dessinées)."""
+    u0, u1, t0, t1 = site["deck"]
+    tl = site["talus"]
+    g = site["g"]
+    if t > t1 + 0.01 or u < u0 - tl["w"] or u > u1 + tl["e"] or t < t0 - tl["s"]:
+        return None
+    k = 1.0
+    if u < u0:
+        k = min(k, 1 - (u0 - u) / tl["w"])
+    if u > u1:
+        k = min(k, 1 - (u - u1) / tl["e"])
+    if t < t0:
+        k = min(k, 1 - (t0 - t) / tl["s"])
+    st = site["stairs"]
+    for s0, s1 in st["u"]:
+        if s0 <= u <= s1 and t > t1 - st["run"]:
+            k = min(k, (t1 - t) / st["run"])
+    k = max(0.0, k)
+    gz = ground(u, t)
+    return gz + (g - gz) * k
+
+
+def croix_terrain(site):
+    """Relief fin sous la plate-forme : le MNT l'a adoucie (bosse de 0,6 m) ; il devient la surface dessinée (dessus au niveau mesuré, talus,
+    rampes des escaliers), le mur nord restant une marche franche ; sur 3 m devant le mur, la rampe du MNT est abaissée au sol pris au-delà. Le sol de référence de chaque point est pris au pied du talus le plus proche
+    (hors de l'emprise, donc inchangé d'une passe à l'autre) : une deuxième passe ne change rien."""
+    to_xy, to_ut = croix_frame(site)
+    u0, u1, t0, t1 = site["deck"]
+    tl = site["talus"]
+    blocks = {}
+
+    def raw(x, y):
+        for (bx0, by1, n), (base, cm, _) in blocks.items():
+            col, row = int(math.floor(x - bx0)), int(math.floor(by1 - y))
+            if 0 <= col < n and 0 <= row < n:
+                return base + cm[row, col] * 0.01
+        return None
+
+    def ground(u, t):
+        # Pied du talus le plus proche, à 1 m de l'emprise (au nord : 3,5 m devant le mur, au-delà de la bande abaissée).
+        cands = [(u0 - tl["w"] - 1.0, t), (u1 + tl["e"] + 1.0, t), (u, t0 - tl["s"] - 1.0), (u, t1 + 3.5)]
+        d = [abs(u - (u0 - tl["w"])), abs(u - (u1 + tl["e"])), abs(t - (t0 - tl["s"])), abs(t - t1)]
+        uu, tt = cands[int(np.argmin(d))]
+        z = raw(*to_xy(min(max(uu, u0 - tl["w"] - 1), u1 + tl["e"] + 1), min(max(tt, t0 - tl["s"] - 1), t1 + 3.5)))
+        return z if z is not None else site["g"] - 1.1
+
+    cx, cy = site["c"]
+    paths = []
+    for path in sorted((c.OUT / "terrain").glob("*_*.bin")):
+        buf = path.read_bytes()
+        base, bx0, by1, n = (float(v) for v in np.frombuffer(buf[:16], dtype="<f4"))
+        n = int(n)
+        if bx0 - 20 < cx < bx0 + n + 20 and by1 - n - 20 < cy < by1 + 20:
+            blocks[(bx0, by1, n)] = (base, np.frombuffer(buf[16:], dtype="<u2").reshape(n, n).astype(np.int64), path)
+            paths.append(path)
+    out = []
+    for (bx0, by1, n), (base, cm, path) in list(blocks.items()):
+        new = cm.copy()
+        for row in range(max(0, int(by1 - cy) - 16), min(n, int(by1 - cy) + 17)):
+            for col in range(max(0, int(cx - bx0) - 16), min(n, int(cx - bx0) + 17)):
+                x, y = bx0 + col + 0.5, by1 - row - 0.5
+                u, t = to_ut(x, y)
+                zs = croix_surface(site, u, t, ground)
+                if zs is not None:
+                    new[row, col] = round((zs - base) * 100)
+                elif t1 < t <= t1 + 3.0 and u0 - tl["w"] - 1 <= u <= u1 + tl["e"] + 1:
+                    # Devant le mur nord : le MNT y montait en rampe (le pied du mur classé en sol) ; on l'abaisse au sol pris 3,5 m devant.
+                    zf = raw(*to_xy(u, t1 + 3.5))
+                    if zf is not None:
+                        new[row, col] = min(new[row, col], round((zf - base) * 100))
+        if (new != cm).any():
+            path.write_bytes(path.read_bytes()[:16] + new.astype("<u2").tobytes())
+            out.append(path.stem)
+    return out
+
+
+def croix(spec, world):
+    """Écrit le site `croix` dans kinds/<tuile>.json, remodèle le relief sous la plate-forme et pose la silhouette lointaine (la plate-forme et
+    le fût : une croix vue de loin n'a que quelques pixels). Rend (tuile des types si elle change, tuile des silhouettes si elle change)."""
+    site = measure_croix(spec)
+    cx, cy = site["c"]
+    m = next(t for t in world["tiles"] if t["bounds"][0] <= cx < t["bounds"][2] and t["bounds"][1] <= cy < t["bounds"][3])
+    tid = m["id"]
+    print(f"  {site['n']} : axe ({cx} ; {cy}), bras au cap {(90 - math.degrees(site['a'])) % 360:.0f}°, dessus {site['g']}, sommet +{site['top']} m,"
+          f" bras {site['arms']['span']} m de {site['arms']['z'][0]} à {site['arms']['z'][1]} m ; dessus u {site['deck'][:2]}, t {site['deck'][2:]} ;"
+          f" chutes {site['drop']}")
+    # Les blocs fins de deux tuiles se recouvrent d'un mètre : un point de référence peut tomber dans la marge d'un bloc remodelé à la passe
+    # précédente. On repasse jusqu'à ce que plus rien ne change (deux passes suffisent) : un lancement suivant ne change rien.
+    blocks = set()
+    for _ in range(4):
+        step = croix_terrain(site)
+        if not step:
+            break
+        blocks |= set(step)
+    print(f"  relief remodelé sous la plate-forme : {', '.join(sorted(blocks)) or 'déjà fait'}")
+    to_xy, _ = croix_frame(site)
+    sh = site["shaft"]["w"] / 2
+    u0, u1, t0, t1 = site["deck"]
+    rect = lambda a0, a1, b0, b1: [[round(v, 1) for v in to_xy(a, b)] for a, b in ((a0, b0), (a1, b0), (a1, b1), (a0, b1))]
+    polys = [(rect(u0, u1, t0, t1), site["g"], site["g"]), (rect(-sh, sh, -sh, sh), site["g"] + site["top"], site["g"] + site["top"])]
+    style = {"w": "#9a968c", "t": "#9a968c", "m": "terrasse", "a": "modern", "k": zlib.crc32(b"croix-de-la-liberation")}
+    lp = LOD / f"{tid}.json"
+    lod = None
+    if not lp.exists():
+        lp.write_text("[]")
+    if replace_lod(tid, "croix-de-la-liberation", polys, style):
+        lod = tid
+        entry = next(t for t in world["tiles"] if t["id"] == tid)
+        n = len(json.loads(lp.read_text()))
+        if entry.get("lod") != n:
+            entry["lod"] = n
+            (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
+    kp = KINDS / f"{tid}.json"
+    k = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+    sites = [q for q in k["sites"] if q.get("t") != "croix"] + [site]
+    if sites == k["sites"]:
+        return None, lod
+    k["sites"] = sites
+    kp.write_text(json.dumps(k, ensure_ascii=False, separators=(",", ":")))
+    index = json.loads((KINDS / "index.json").read_text())
+    if tid not in index["tiles"]:
+        index["tiles"] = sorted(index["tiles"] + [tid])
+    index["stats"]["sites"]["croix"] = 1
+    (KINDS / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    return tid, lod
+
+
 def track_surfaces(fixes):
     """Revêtement des pistes d'après photo (`tracks` de manual.json) : la piste de kinds/<tuile>.json dont un sommet est à moins de 15 m
     du point donné prend `s` (« dirt » : terre battue, dessinée rouge-brun au lieu du rouge des pistes synthétiques). Rend les tuiles changées."""
@@ -2817,6 +3042,11 @@ def main():
             continue
         if spec["model"] == "janus":
             _, lod = janus(spec, world)
+            if lod:
+                changed_lod.add(lod)
+            continue
+        if spec["model"] == "croix":
+            _, lod = croix(spec, world)
             if lod:
                 changed_lod.add(lod)
             continue

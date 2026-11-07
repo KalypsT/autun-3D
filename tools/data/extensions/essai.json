@@ -1,0 +1,5 @@
+{
+ "_doc": "Essai à blanc de extend.py (lot 1 de la Croix de la Libération) : aucune tuile ajoutée, deux tuiles existantes refabriquées (la bordure 22_27 et la ville 22_28, au bord de la falaise), à comparer aux tuiles publiées. Ne jamais greffer sur public/data.",
+ "playable": [],
+ "rebuild": ["22_27", "22_28"]
+}

@@ -5560,3 +5560,199 @@ génériques qui coûtaient aussi).
 ![L'avenue : massifs, drapeaux, grille](captures/d264-avenue.jpg)
 ![Le glacis et ses arbres taillés en rideau](captures/d264-glacis.jpg)
 ![L'entrée de la rue Gaston Joliet et ses barrières en X](captures/d264-entree-joliet.jpg)
+
+## 2026-11-07 — D265. Agrandir la carte sans refabriquer la ville (Croix de la Libération, lot 1)
+
+**Demande** : la Croix de la Libération (plan `docs/plans/croix-liberation.md`) exige d'agrandir la carte au sud (la RD 256, la route d'accès, le parking).
+Une régénération complète est exclue : avec un extrait OpenStreetMap plus récent, elle change la circulation et les passants partout (D153).
+
+**Deux découvertes** :
+- `build_coast.py` est **destructif** : il plafonne le relief et retire arbres, bâtiments, mobilier en mer, sans garder l'état d'avant. Quand la côte
+  recule, chaque tuile publiée dont le rivage change doit être **refabriquée depuis les sources**, pas seulement les tuiles neuves.
+- **La côte bougerait partout** : `coast_lib.land()` rééchantillonne tout le contour, et la grille du champ de distance se cale sur l'emprise de la terre.
+  Avec les 9 tuiles de la croix, la côte se déplaçait **jusqu'à 3,6 m** loin de l'extension (20 % des sommets de plus de 25 cm).
+
+**La terre figée** (`coast_lib.py`) : `land.json`, à côté de `region.json` (ou de `AUTUN_REGION`), porte le contour de la terre et le coin d'origine du
+champ de distance (`anchor`) ; absent, tout se calcule comme avant (`compute_land`, inchangé). Le champ ancré est identique au champ publié (vérifié).
+Une extension = l'ancienne terre, plus la terre de la nouvelle région **dans l'anneau d'une tuile autour des tuiles ajoutées**, raccordée par une
+fermeture de 12 m limitée à ce voisinage. Pour la croix : 29 sommets sur 635 déplacés, tous près de l'extension ; ailleurs, plafond du rivage identique.
+
+**Fabrication locale** (`config.py`, quatre variables d'environnement, sans effet si absentes) : `AUTUN_OUT` (dossier de sortie), `AUTUN_REGION`
+(autre région et sa terre), `AUTUN_TILES` (ne fabriquer que ces tuiles : emprise du bloc, dalles LiDAR et cache `.cache/blocks/<bloc>-<empreinte>` réduits ;
+les tuiles de `keep` demandées sont refabriquées), `AUTUN_SCOPE` (emprise des sources régionales ; cache IGN à part, `.cache/shared/ign_scope/`).
+`pack.py`, en fabrication restreinte, ne remplace le relief grossier et les super-tuiles de sol que sous les tuiles fabriquées.
+
+**`tools/data/extend.py`** : `plan` (nouvelle région, terre figée, tuiles à refabriquer : celles où le plafond du rivage change, plus les neuves ;
+anneau de contexte), `sandbox` (copie de `public/data` dans `.cache/extend/<nom>/out`, `world.json` réduit à l'emprise, empreinte des fichiers publiés),
+`build` (blocs restreints, puis ouvrages, types, espace public, côte, eau dans le bac à sable), `graft` (fichiers des tuiles refabriquées ; dans
+`world.json`, `coarse.bin`, les super-tuiles de sol, les index des types et des ouvrages et `water.json`, leur part seulement, en gardant l'ordre et
+l'écriture de la chaîne), `check` (refuse tout fichier changé hors de l'extension). `compare_tiles.py` compare deux dossiers tuile par tuile.
+
+**Essai à blanc** (`extensions/essai.json` : aucune tuile ajoutée, `22_27` et `22_28` refabriquées, greffe sur une copie) : ≈ 25 min, surtout des
+téléchargements (4 dalles LiDAR, 1,15 Go ; la BDNB de la commune). Résultat : **mêmes arbres aux mêmes places** (54 et 838), même mobilier, mêmes sols
+(aires identiques ; seul l'ordre des sommets change), relief fin identique **sauf 6 et 64 cellules sur 64 516, à 1 cm** (arrondi), sols fins différents
+sur 0,1 à 0,2 % des pixels ; `check` : 8 fichiers changés, **aucun hors de l'extension** ; `world.json` et les index inchangés.
+
+**`build_coast.py` n'est pas idempotent à l'octet** (constat antérieur à D265, vérifié avec le code d'avant et d'après : mêmes octets) : relancé sur
+`public/data`, il ne retire ni arbre ni bâtiment et n'abaisse aucun point, mais il **redécoupe les sols déjà découpés** (polygones plus lourds, même forme :
+`plaza_asphalt` de `22_27` 458 → 646 octets) et réécrit ≈ 200 tuiles, des super-tuiles de sol et `world.json`. Il ne faut donc jamais le relancer sur
+`public/data` : `extend.py` ne le lance que dans le bac à sable, où les tuiles refabriquées sont fraîches (découpées une seule fois, comme dans la chaîne).
+
+**Fichier versionné écrit par une étape globale** : `build_public_space.py` réécrit `tools/data/measured_widths.json` (largeurs de chaussée par voie,
+lues aussi par la navigation) avec les seules voies de son emprise ; l'essai l'avait vidé de 53 lignes (restauré, rien de publié). Dans un bac à sable,
+`streets_lib.MEASURED` est maintenant à côté du bac à sable (copie faite par `sandbox`) ; `graft` sur `public/data` n'ajoute au fichier de la ville que
+les largeurs des voies qu'il ne connaissait pas.
+
+**Plan de la croix** (`extend.py plan croix`) : 9 tuiles jouables et 11 de bordure neuves, **17 tuiles publiées à refabriquer** (rangées 27 et 28, des
+colonnes 20 à 28), 34 tuiles fabriquées dans les blocs (2, 3) et (3, 3), emprise de 49 tuiles.
+
+**Pas encore** : la greffe de la navigation (les super-tuiles de 1 km mêlent ville et extension ; on ajoutera les voies nouvelles sans refaire celles
+de la ville) et les images de la carte ; puis la publication (lot 2).
+
+## 2026-11-07 — D266. La carte agrandie jusqu'à la Croix de la Libération (lot 2)
+
+**Fait** (`tools/data/extend.py`, D265) : `plan`, `sandbox`, `build` (blocs (2, 3) et (3, 3) restreints, puis ouvrages, types, espace public, côte, eau),
+`nav`, `graft-nav`, `graft`, puis `region.json` et **`land.json`** installés dans `tools/data`, `map`, `check`. Environ 50 min, surtout le LiDAR
+(5 dalles de plus, 1,5 Go) et la BDNB.
+
+**Résultat** :
+- **34 tuiles** : 17 neuves (9 jouables, dont la RD 256, la route d'accès et le parking, et la bordure où passe la nouvelle côte), 17 publiées
+  refabriquées le long de l'ancienne falaise (rangées 27 et 28, colonnes 20 à 28). 443 tuiles en tout ; `zone` descend à y = −2 812.
+- Dans les tuiles refabriquées : **mêmes bâtiments, fiches, types, ouvrages** ; murs et mobilier identiques (genre et place) et **mêmes identifiants**
+  (87 repris ; les objets nouveaux reçoivent des numéros libres, aucun n'en partage un avec le reste de la ville) ; la forêt revient là où la falaise
+  l'avait retirée (rangée 27 : de 43 à 912 arbres par tuile).
+- La croix est à **347 m de la côte** (143 m avant) ; le relief au sud suit le LiDAR (592 m à 120 m au sud, au lieu de 287 m).
+- **`check`** : 160 fichiers changés, **aucun hors de l'extension** ; aucune autre tuile, aucun autre fichier de navigation, aucune autre image de carte.
+
+**Navigation** (`tools/data/nav_graft.py`) : le graphe publié reste tel quel (mêmes nœuds, mêmes arêtes, même ordre) ; on ajoute à la fin des
+tableaux les morceaux d'arêtes du bac à sable **que le graphe publié n'a pas** (à 4 m près pour les routes, 2,5 m pour les files, de préférence la même voie)
+et **seulement dans les tuiles refabriquées** ; leurs bouts ouverts sont raccordés au nœud publié le plus proche (impasse de la même voie d'abord).
+Première version (« hors de l'ancienne terre ») abandonnée : la route d'accès traverse, près de la croix, un morceau de l'ancienne terre où la ville
+publiée n'avait aucune route, et se trouvait coupée en deux. Retenu : **156 arêtes, 12,1 km, 11 raccords** (10 sur la même voie), deux super-tuiles
+(`s5_6`, `s6_6`) modifiées, **0 portail sans jumeau** (1 266). Un point d'intérêt ajouté (le banc). Contrôlé : de la cathédrale au parking de la croix
+**en voiture et à pied**.
+
+**Défaut trouvé par les essais** : la greffe réécrivait `nav/index.json` avec les super-tuiles **triées par nom** (`s5_10` avant `s5_6`) au lieu de
+l'ordre de `build_nav.py` (par indices). Les essais de poursuite tirent leurs départs « un sur cinq » dans cet ordre : trois échouaient (`chase`,
+`police-soak`) avec un tirage décalé. Corrigé : même ordre que la chaîne ; les 453 arêtes de départ sont **identiques, dans le même ordre**,
+avant et après l'extension. Essayé et écarté : resserrer la règle des départs dans `testing.ts` (les deux bouts dans la zone, ou les super-tuiles de
+la zone) : elle donnait les mêmes départs avec et sans l'extension, mais **différents de ceux d'avant**, et `chase` échouait aussi sur les anciennes
+données (3 sur 6 au lieu de 5) : les scénarios étalonnés en dépendent ; on n'y touche pas.
+
+**Carte** (`extend.py map`) : `build_map.py --images` sur les données greffées ; seuls les 5 kilomètres touchés (`s5_6`, `s5_7`, `s6_6`, `s6_7`,
+`s7_6`), la vue d'ensemble et l'index changent ; les 70 autres images sont remises telles quelles (refaites, trois images de la ville bougeaient de
+150 à 2 600 pixels : des retouches de tuiles plus récentes que la dernière carte). `places.json` n'est pas refait : la croix y était déjà.
+
+**Largeurs de chaussée** : une voie nouvelle ajoutée à `measured_widths.json`, aucune autre changée.
+
+**Essais** : 1 377 (164 + 1 fichier) ; `src/data/croix-extension.test.ts` : relief sans falaise et côte à plus de 300 m de la croix, itinéraire en
+voiture de la cathédrale au parking, voie piétonne près de la croix.
+
+**Captures** : `croix-apres-haut.jpg` (l'aire de décollage, la croix et la forêt qui continue au sud), `croix-apres-parking.jpg` (le parking, là où
+la caméra était dans la falaise), `croix-apres-lacets.jpg` (un lacet de la RD 256), `croix-apres-acces.jpg` (la route d'accès).
+
+**Défauts connus, pour les lots suivants** : le parking est un enrobé gris (c'est de la terre et du gravier clair), son contour est celui d'OpenStreetMap
+(plus petit que la clairière réelle) ; la RD 256 a une ligne médiane et un accotement clair continu (photos : ni l'un ni l'autre) ; la croix n'est pas
+dessinée ; la vue reste dans le brouillard (lot 4).
+
+## 2026-11-07 — D267. La Croix de la Libération (lot 3) : la croix, sa plate-forme, le parking, la route de Montjeu
+
+**Demande** : dessiner la croix d'après les photos de l'utilisateur (plan `docs/plans/croix-liberation.md`, §7 à §9) et corriger les abords laissés
+par la fabrication de l'extension (D266) : parking en enrobé au contour OpenStreetMap, RD 256 avec ligne médiane et trottoirs.
+
+**Mesures** (modèle `croix` de `build_monuments.py`, entrée `croix-de-la-liberation` de `manual.json`, nuage LiDAR HD lu à distance) :
+- **axe** (−840,88 ; −1 809,25), à 0,6 m du point OpenStreetMap ; **bras au cap 125°** (la croix regarde le cap 35°, la cathédrale) ;
+- **dessus de la plate-forme** 589,2 m, au niveau du parking ; dessus de u −3,0 à +3,5 et de t −3,0 au mur nord (t = 4,75) ;
+  chutes au sol : 1,15 m (ouest), 1,12 m (est), 0,97 m (sud), 1,19 m (nord) ;
+- **sommet à 10,1 m** au-dessus du dessus ; **bras de 4,0 m** d'envergure, de 6,1 à 8,1 m.
+- Lu sur les photos (`manual.json`) : talus de 2 m, mur nord à couvertine, marche de 3 × 2,7 × 0,5 m, fût de 1,7 × 1,65 m, bras de 1,9 m d'épaisseur,
+  escaliers de six marches aux angles nord, trois plaques au sud et une au nord, deux mâts d'éclairage, neuf rochers.
+
+**Relief** : le MNT avait adouci la plate-forme (bosse de 0,6 m) et monté en rampe devant le mur nord. Le relief fin devient la surface dessinée
+(dessus plat, talus, rampes sous les marches) ; sur 3 m devant le mur, il est abaissé au sol pris au-delà. Les blocs de deux tuiles se recouvrant,
+une deuxième passe interne stabilise le résultat : un lancement suivant ne change rien.
+**Creux d'affichage** (`croixPits`, mécanisme de D248) : le relief est affiché par carreaux de 2,5 m ; au pied des talus et devant le mur, ces
+carreaux passaient au-dessus du vrai relief (des triangles d'herbe perçaient les talus). Sous l'emprise de la plate-forme, le relief affiché passe
+2 m sous le dessus ; la marche et les sols suivent toujours le vrai relief.
+
+**Modèle** (`src/render/croix.ts`, dans le maillage plein de la tuile, aucun appel de dessin de plus) : dalles du dessus, talus de pierre en assises
+(onglets aux angles sud), maillés tous les 50 cm et posés au-dessus du relief ; mur nord à couvertine dont le haut suit la pente des talus à ses
+bouts (photos 12 et 13), ouvert aux deux escaliers ; murs d'échiffre ; marche ; fût et tête en assises de hauteurs inégales ; bras plus épais que le
+fût, dessous dessiné ; carré en relief à la croisée sur les deux faces ; plaques (texte en lignes rouges, croix de Lorraine sur celle du nord) ;
+mâts à projecteur ; rochers à pans irréguliers. Granite gris éclairci (le gris moyen tirait au brun au soleil de l'après-midi). **Éclairée la nuit**
+(même dégradé que les portes romaines) : croix, marche, dalles. Moins de 4 000 triangles. Silhouette lointaine : plate-forme et fût
+(`lod/22_28.json`, créé).
+
+**Jeu** : obstacles (`croixRings`, `croixCircles`) : la marche du fût, le mur nord et les murs d'échiffre ; **on monte sur la plate-forme** par les
+escaliers et les talus, contrairement au monument aux morts (D227) ; mâts et rochers. Aucun arbre sur la plate-forme ; aucune file piétonne ne
+traverse un obstacle (vérifié, puis test). Point d'intérêt « monument » des passants sur l'allée sud, tourné vers la croix (`build_croix.py`).
+
+**Abords** (`tools/data/build_croix.py`, nouvelle étape, après `build_monuments.py croix`) :
+- **parking** : la clairière lue sur l'orthophotographie (pixels peu colorés, clairs au soleil ou gris-bleu à l'ombre de la lisière, sans arbre au
+  LiDAR, au sud de la plate-forme) : **1 254 m²**, à la forme de la vraie clairière (le contour OSM était un rectangle décalé). Première version
+  (pixels clairs seulement) : 691 m², toute la moitié à l'ombre manquait. Sol « stabilisé clair » (celui du chemin du plan d'eau, D244), pas le
+  gravier jaune des places ;
+- **allée** d'enrobé de 2 m autour des talus, gravier de 2,5 m devant le mur nord ; sous la plate-forme, plus aucun sol de la carte ;
+- **RD 256 et route d'accès** (photos 6 à 9) : 413 marquages retirés (ligne médiane et rives) à moins de 5 m de leur axe, 1,33 ha de trottoirs changés
+  en accotements herbeux à moins de 9 m (15 tuiles, dont le bas de la RD 256 dans la ville, sans trottoir non plus sur la photo 7).
+Une deuxième passe ne change rien. Carte refaite sur les kilomètres de l'extension (`extend.py map croix`).
+
+**Vues** : `?view=croix` (depuis le parking, comme la photo 1), `croix-nord` (depuis l'aire de décollage), `croix-haut`.
+
+**Tests** (+5, `src/render/croix.test.ts`) : mesures, relief (dessus plat, marche franche au mur nord, creux d'affichage), obstacles, abords (arbres,
+files piétonnes, point « monument »), modèle (fini, sommet au sommet mesuré, moins de 4 000 triangles, éclairage). 1 382 essais.
+
+**Limites** : texte des plaques en lignes (illisible, comme au monument aux morts) ; forme exacte des escaliers (recessés dans les angles, six marches)
+et position des mâts lues sur des photos prises de loin ; la plaque du mur nord est placée au milieu (deux photos la montrent de part et d'autre du
+milieu) ; le « gravier » devant le mur nord paraît en pente vu d'en bas (l'aire de décollage descend à 21 %). La vue reste dans le brouillard (lot 4).
+
+![Depuis le parking](captures/d267-croix-parking.jpg)
+![La nuit](captures/d267-croix-nuit.jpg)
+![Vue haute](captures/d267-croix-haut.jpg)
+![Depuis l'aire de décollage](captures/d267-croix-nord.jpg)
+![Au pied](captures/d267-croix-pied.jpg)
+![La RD 256 sans ligne médiane](captures/d267-rd256.jpg)
+
+## 2026-11-07 — D268. Le panorama : depuis la Croix de la Libération, on voit la ville (lot 4)
+
+**Demande** : la vue depuis la croix (photos 3, 15 à 17 de l'utilisateur) : la ville entière, la cathédrale, le plan d'eau, la plaine.
+**Constat** : trois limites se cumulaient : le brouillard (opaque à 800 m de jour), le relief et les silhouettes (construits jusqu'à 1 300 m), et le
+plan lointain de la caméra (**1 200 m**). Depuis la croix, la ville (1,2 à 3,5 km) était dans le brouillard (`croix-avant-vue.jpg`).
+Pousser ces portées pour tout le monde aurait coûté des centaines d'appels de dessin (un morceau de relief et une silhouette par tuile de 250 m).
+
+**Panorama** (`src/render/vista.ts`, `TerrainView.updateVista`) :
+- **belvédère** : hauteur de la caméra au-dessus du relief alentour (premier quartile du relief grossier sur un cercle de 1 km, la mer comptant pour
+  son niveau) ; part `k` de 0 à 1 entre **90 et 200 m** (lissée sur 1,2 s en jeu, immédiate dans le viewer). Mesuré : croix 308 m, lacets de la
+  RD 256 236 m, carrefour 294 m (panorama entier) ; Pierre de Couhard 96 m (à peine) ; cathédrale 45 m, tour des Ursulines 47 m, lycée militaire 39 m (rien) ;
+- **brouillard** (`Atmosphere.setVista`) : de celui de l'heure vers une portée de **7 km** (voile à partir du quart) ; la pluie le rapproche,
+  **la brume le ferme toujours à moins de 200 m** (comme en vrai) ; plan lointain de la caméra de 1 200 m à 7,7 km ;
+- **relief lointain** : au-delà du relief proche, une super-tuile de 1 km par maillage (pas de 25 m, mêmes sols grossiers et même matière que le
+  relief grossier), évidée dans un disque de 1 200 m autour du joueur et enfoncée de 3 m là où elle chevauche le relief proche (pas plus loin : la
+  plaine de l'Arroux, à 285 m, passait sous la mer du monde) ; construite des plus proches aux plus lointaines, trois par image ;
+- **silhouettes lointaines** : celles des tuiles à plus de 1 300 m, regroupées par super-tuile (même dessin que par tuile) ; celles de `TileManager`
+  au-delà de 1 300 m sont masquées (`lodCutoff`), sans doublon ;
+- en roulant : le centre suit le joueur par pas de 150 m ; le relief lointain est remplacé morceau par morceau sans disparaître, et seules les
+  super-tuiles dont la liste de tuiles change refont leurs silhouettes ; redescendu en ville, tout est libéré après 20 s ;
+- `?vista=0` (jamais), `?vista=1` (toujours) ; vue `?view=croix-vue` (la terrasse nord, vers la cathédrale) ; `CAPTURE_WAIT` (ms) pour
+  `tools/capture.cjs`.
+
+**Défauts trouvés en route** : une super-tuile tout entière dans le trou donnait un maillage vide, jamais mis en mémoire : reconstruite à chaque image,
+elle prenait le budget de toutes les suivantes (12 sur 40 construites) ; tant qu'une super-tuile manquait, la mer du monde (282,5 m) se voyait par le
+trou (plaques bleues autour de la ville) : ordre du plus proche au plus lointain, trois par image.
+
+**Coût mesuré** (viewer, rendu logiciel, même vue depuis la croix) : **61 → 114 appels de dessin**, 1,26 → 1,39 million de triangles
+(relief lointain ≈ 60 000, silhouettes regroupées le reste). Au sol, rien ne change (`k` = 0 : mêmes portées, mêmes appels). **À mesurer sur le
+téléphone** : `?at=-838,-1803&debug`, puis la même chose avec `&vista=0` ; comparer images par seconde et appels de dessin, regarder vers la ville.
+
+**Limites** : la ville lointaine n'a pas de lumières la nuit (seules les tuiles détaillées en ont) ; pas d'arbres au-delà de 1 300 m (la forêt n'est
+qu'un assombrissement du sol) ; **les terrils des Télots ne sont pas dans la carte** (le relief du jeu ne dépasse pas 308 m dans toute la zone des
+Télots : ils sont au-delà du bord ouest du monde, dans la mer) ; à l'ouest et au nord, l'horizon est la mer qui entoure le monde (D105), là où la
+photo montre la plaine et le Morvan.
+
+**Tests** (+2, `src/render/vista.test.ts`) : brouillard inchangé au sol, éloigné en belvédère, fermé par la brume ; belvédère reconnu à la croix,
+pas sur le parvis de la cathédrale, la place du Champ de Mars ni l'avenue de la gare. 1 384 essais.
+
+![Depuis la croix, avec le panorama](captures/d268-vue-panorama.jpg)
+![Sans le panorama (?vista=0)](captures/d268-vue-sans-panorama.jpg)
+![Par temps de brume](captures/d268-vue-brume.jpg)
+![La nuit](captures/d268-vue-nuit.jpg)

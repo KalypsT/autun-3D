@@ -9,13 +9,32 @@ La chaîne travaille par **blocs** de 8 × 8 tuiles (2 km), pour que la mémoire
 Chaque bloc ne fabrique que les tuiles de REGION qu'il contient ; ses rasters et ses données brutes débordent de MARGIN mètres.
 """
 
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "public" / "data"
+
+
+# --- Fabrication locale (extension de la carte, extend.py) ------------------------------------------------------------------------
+# Quatre variables d'environnement, toutes facultatives ; sans elles, rien ne change :
+#   AUTUN_OUT    dossier de sortie à la place de public/data (le bac à sable d'une extension) ;
+#   AUTUN_REGION autre region.json (celle de l'extension, qui déplace la côte) ;
+#   AUTUN_TILES  ne fabriquer que ces tuiles : « 22_26,22_27 » ou chemin d'un fichier JSON (liste d'identifiants) ;
+#   AUTUN_SCOPE  emprise des sources régionales (region_sources.py) et des étapes globales : mêmes formes qu'AUTUN_TILES.
+def _tile_list(value):
+    if not value:
+        return None
+    text = Path(value).read_text() if value.endswith(".json") else json.dumps(value.split(","))
+    return {tuple(int(v) for v in s.strip().split("_")) for s in json.loads(text) if s.strip()}
+
+
+OUT = Path(os.environ["AUTUN_OUT"]).resolve() if os.environ.get("AUTUN_OUT") else ROOT / "public" / "data"
+REGION_FILE = Path(os.environ["AUTUN_REGION"]).resolve() if os.environ.get("AUTUN_REGION") else Path(__file__).with_name("region.json")
+ONLY_TILES = _tile_list(os.environ.get("AUTUN_TILES"))
+SCOPE_TILES = _tile_list(os.environ.get("AUTUN_SCOPE"))
 
 # --- Grille mondiale ----------------------------------------------------------------------------
 TILE = 250.0
@@ -29,7 +48,7 @@ GRID_NX, GRID_NY = 56, 56  # 7 × 7 blocs : couvre la commune d'Autun (10,4 × 1
 # Tuiles à fabriquer (D105) : la ville (`playable`, contour qui suit l'agglomération) et un anneau d'une tuile autour (`border`),
 # où passe la côte de la mer qui entoure le monde (build_coast.py). Les tuiles `keep` (anciennes, loin des nouvelles) ne sont
 # jamais réécrites par un bloc : elles servent seulement de contexte.
-_REGION = json.loads((Path(__file__).with_name("region.json")).read_text())
+_REGION = json.loads(REGION_FILE.read_text())
 
 
 def _ids(key):
@@ -57,6 +76,12 @@ INSEE = ("71014", "71414", "71184")
 
 
 def _region_tiles():
+    """Tuiles que la chaîne fabrique : celles de la région, ou seulement celles d'AUTUN_TILES (qui doivent en faire partie)."""
+    if ONLY_TILES is not None:
+        missing = ONLY_TILES - REGION_TILES
+        if missing:
+            raise SystemExit(f"AUTUN_TILES : tuiles hors de la région : {sorted(missing)}")
+        return ONLY_TILES
     return REGION_TILES
 
 
@@ -70,14 +95,18 @@ def block_tiles(bi, bj):
 
 
 def write_tiles(bi, bj):
-    """Tuiles du bloc (bi, bj) qu'il écrit dans public/data : toutes celles de block_tiles, sauf KEEP."""
+    """Tuiles du bloc (bi, bj) qu'il écrit dans public/data : toutes celles de block_tiles, sauf KEEP ; avec AUTUN_TILES, exactement
+    celles de la liste (une tuile de KEEP qu'on demande est refabriquée : c'est voulu)."""
+    if ONLY_TILES is not None:
+        return block_tiles(bi, bj)
     return [t for t in block_tiles(bi, bj) if t not in KEEP]
 
 
 def region_bounds():
-    """Emprise Lambert-93 (x0, y0, x1, y1) des tuiles de REGION_TILES."""
-    cols = [t[0] for t in REGION_TILES]
-    rows = [t[1] for t in REGION_TILES]
+    """Emprise Lambert-93 (x0, y0, x1, y1) des tuiles de REGION_TILES (ou de AUTUN_SCOPE)."""
+    tiles = SCOPE_TILES if SCOPE_TILES is not None else REGION_TILES
+    cols = [t[0] for t in tiles]
+    rows = [t[1] for t in tiles]
     return ((GRID_I0 + min(cols)) * TILE, (GRID_J0 + min(rows)) * TILE, (GRID_I0 + max(cols) + 1) * TILE, (GRID_J0 + max(rows) + 1) * TILE)
 
 
@@ -92,8 +121,10 @@ BLOCK_NAME = f"{BLOCK_ID[0]}_{BLOCK_ID[1]}"
 
 # Données brutes volumineuses et communes à plusieurs blocs (dalles LiDAR, blocs OpenStreetMap, BDNB) : jamais versionnées.
 SHARED = ROOT / ".cache" / "shared"
-# Données propres au bloc (rasters, WFS, travail intermédiaire).
-CACHE = ROOT / ".cache" / "blocks" / BLOCK_NAME
+# Données propres au bloc (rasters, WFS, travail intermédiaire). Une fabrication restreinte (AUTUN_TILES) a son propre dossier :
+# son emprise n'est pas celle du bloc entier.
+CACHE = ROOT / ".cache" / "blocks" / (BLOCK_NAME if ONLY_TILES is None else
+                                          BLOCK_NAME + "-" + hashlib.sha1(",".join(f"{a}_{b}" for a, b in block_tiles(*BLOCK_ID)).encode()).hexdigest()[:10])
 # Grilles globales du bloc (relief, poids des sols) : pack.py les découpe par tuile dans OUT.
 GLOBAL = CACHE / "work" / "global"
 # Fragments de manifeste et de relief grossier écrits par pack.py, réunis par assemble.py.

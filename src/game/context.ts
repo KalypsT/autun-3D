@@ -4,6 +4,7 @@ import type { WorldBase } from "../data/types";
 import type { TileManager } from "../render/tile-manager";
 import type { Atmosphere } from "../render/atmosphere";
 import type { TerrainView } from "../render/terrain";
+import type { Vista } from "../render/vista";
 import type { SettingsController } from "./settings-controller";
 import type { StartState } from "./start";
 
@@ -20,6 +21,8 @@ export interface GameContext {
   world: WorldBase;
   tiles: TileManager;
   terrainView: TerrainView;
+  /** Panorama (D268) : en hauteur, l'horizon s'éloigne. */
+  vista: Vista;
   colliders: Colliders;
   params: URLSearchParams;
   debugEl: HTMLElement;

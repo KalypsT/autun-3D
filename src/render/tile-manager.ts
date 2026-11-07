@@ -1,7 +1,7 @@
 import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { landmarkDecks, landmarkSectors } from "../core/landmarks";
+import { croixPits, landmarkDecks, landmarkSectors } from "../core/landmarks";
 import { bowlPit } from "../core/leisure";
 import { rampartPits } from "../core/ramparts";
 import { addTileColliders } from "../core/world";
@@ -181,6 +181,18 @@ export class TileManager {
     return out;
   }
 
+  /**
+   * Panorama (D268) : les silhouettes des tuiles à plus de `cutoff` m de (px, py) sont masquées (le panorama dessine les siennes, regroupées) ;
+   * Infinity : règle ordinaire (`show`). À appeler après `update`.
+   */
+  lodCutoff(px: number, py: number, cutoff: number): void {
+    for (const e of this.lodLive) {
+      if (!e.lod) continue;
+      const far = !e.detail || e.pending.length > 0;
+      e.lod.visible = far && (cutoff === Infinity || distanceTo(e.info, px, py) <= cutoff);
+    }
+  }
+
   /** La silhouette disparaît quand tous les maillages détaillés sont montrés ; les clochers lointains de la tuile aussi. */
   private show(e: Entry): void {
     const far = !e.detail || e.pending.length > 0;
@@ -247,7 +259,8 @@ export class TileManager {
     const sectors = landmarkSectors(data.kinds);
     if (sectors.length) this.terrain.decks.addSectors(id, sectors);
     // Remparts de soutènement (D250) : creux d'affichage du relief côté haut, recouvert d'une bande de relief fin.
-    const ramparts = rampartPits(data.walls);
+    // Croix de la Libération (D267) : creux d'affichage sous la plate-forme, que le modèle dessine.
+    const ramparts = [...rampartPits(data.walls), ...croixPits(data.kinds)];
     if (!st) {
       if (extra.length) this.terrain.decks.add(id, extra);
       if (ramparts.length) this.terrain.pits.add(id, ramparts);
