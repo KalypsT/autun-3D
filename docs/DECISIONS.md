@@ -5654,3 +5654,61 @@ la caméra était dans la falaise), `croix-apres-lacets.jpg` (un lacet de la RD 
 **Défauts connus, pour les lots suivants** : le parking est un enrobé gris (c'est de la terre et du gravier clair), son contour est celui d'OpenStreetMap
 (plus petit que la clairière réelle) ; la RD 256 a une ligne médiane et un accotement clair continu (photos : ni l'un ni l'autre) ; la croix n'est pas
 dessinée ; la vue reste dans le brouillard (lot 4).
+
+## 2026-11-07 — D267. La Croix de la Libération (lot 3) : la croix, sa plate-forme, le parking, la route de Montjeu
+
+**Demande** : dessiner la croix d'après les photos de l'utilisateur (plan `docs/plans/croix-liberation.md`, §7 à §9) et corriger les abords laissés
+par la fabrication de l'extension (D266) : parking en enrobé au contour OpenStreetMap, RD 256 avec ligne médiane et trottoirs.
+
+**Mesures** (modèle `croix` de `build_monuments.py`, entrée `croix-de-la-liberation` de `manual.json`, nuage LiDAR HD lu à distance) :
+- **axe** (−840,88 ; −1 809,25), à 0,6 m du point OpenStreetMap ; **bras au cap 125°** (la croix regarde le cap 35°, la cathédrale) ;
+- **dessus de la plate-forme** 589,2 m, au niveau du parking ; dessus de u −3,0 à +3,5 et de t −3,0 au mur nord (t = 4,75) ;
+  chutes au sol : 1,15 m (ouest), 1,12 m (est), 0,97 m (sud), 1,19 m (nord) ;
+- **sommet à 10,1 m** au-dessus du dessus ; **bras de 4,0 m** d'envergure, de 6,1 à 8,1 m.
+- Lu sur les photos (`manual.json`) : talus de 2 m, mur nord à couvertine, marche de 3 × 2,7 × 0,5 m, fût de 1,7 × 1,65 m, bras de 1,9 m d'épaisseur,
+  escaliers de six marches aux angles nord, trois plaques au sud et une au nord, deux mâts d'éclairage, neuf rochers.
+
+**Relief** : le MNT avait adouci la plate-forme (bosse de 0,6 m) et monté en rampe devant le mur nord. Le relief fin devient la surface dessinée
+(dessus plat, talus, rampes sous les marches) ; sur 3 m devant le mur, il est abaissé au sol pris au-delà. Les blocs de deux tuiles se recouvrant,
+une deuxième passe interne stabilise le résultat : un lancement suivant ne change rien.
+**Creux d'affichage** (`croixPits`, mécanisme de D248) : le relief est affiché par carreaux de 2,5 m ; au pied des talus et devant le mur, ces
+carreaux passaient au-dessus du vrai relief (des triangles d'herbe perçaient les talus). Sous l'emprise de la plate-forme, le relief affiché passe
+2 m sous le dessus ; la marche et les sols suivent toujours le vrai relief.
+
+**Modèle** (`src/render/croix.ts`, dans le maillage plein de la tuile, aucun appel de dessin de plus) : dalles du dessus, talus de pierre en assises
+(onglets aux angles sud), maillés tous les 50 cm et posés au-dessus du relief ; mur nord à couvertine dont le haut suit la pente des talus à ses
+bouts (photos 12 et 13), ouvert aux deux escaliers ; murs d'échiffre ; marche ; fût et tête en assises de hauteurs inégales ; bras plus épais que le
+fût, dessous dessiné ; carré en relief à la croisée sur les deux faces ; plaques (texte en lignes rouges, croix de Lorraine sur celle du nord) ;
+mâts à projecteur ; rochers à pans irréguliers. Granite gris éclairci (le gris moyen tirait au brun au soleil de l'après-midi). **Éclairée la nuit**
+(même dégradé que les portes romaines) : croix, marche, dalles. Moins de 4 000 triangles. Silhouette lointaine : plate-forme et fût
+(`lod/22_28.json`, créé).
+
+**Jeu** : obstacles (`croixRings`, `croixCircles`) : la marche du fût, le mur nord et les murs d'échiffre ; **on monte sur la plate-forme** par les
+escaliers et les talus, contrairement au monument aux morts (D227) ; mâts et rochers. Aucun arbre sur la plate-forme ; aucune file piétonne ne
+traverse un obstacle (vérifié, puis test). Point d'intérêt « monument » des passants sur l'allée sud, tourné vers la croix (`build_croix.py`).
+
+**Abords** (`tools/data/build_croix.py`, nouvelle étape, après `build_monuments.py croix`) :
+- **parking** : la clairière lue sur l'orthophotographie (pixels peu colorés, clairs au soleil ou gris-bleu à l'ombre de la lisière, sans arbre au
+  LiDAR, au sud de la plate-forme) : **1 254 m²**, à la forme de la vraie clairière (le contour OSM était un rectangle décalé). Première version
+  (pixels clairs seulement) : 691 m², toute la moitié à l'ombre manquait. Sol « stabilisé clair » (celui du chemin du plan d'eau, D244), pas le
+  gravier jaune des places ;
+- **allée** d'enrobé de 2 m autour des talus, gravier de 2,5 m devant le mur nord ; sous la plate-forme, plus aucun sol de la carte ;
+- **RD 256 et route d'accès** (photos 6 à 9) : 413 marquages retirés (ligne médiane et rives) à moins de 5 m de leur axe, 1,33 ha de trottoirs changés
+  en accotements herbeux à moins de 9 m (15 tuiles, dont le bas de la RD 256 dans la ville, sans trottoir non plus sur la photo 7).
+Une deuxième passe ne change rien. Carte refaite sur les kilomètres de l'extension (`extend.py map croix`).
+
+**Vues** : `?view=croix` (depuis le parking, comme la photo 1), `croix-nord` (depuis l'aire de décollage), `croix-haut`.
+
+**Tests** (+5, `src/render/croix.test.ts`) : mesures, relief (dessus plat, marche franche au mur nord, creux d'affichage), obstacles, abords (arbres,
+files piétonnes, point « monument »), modèle (fini, sommet au sommet mesuré, moins de 4 000 triangles, éclairage). 1 382 essais.
+
+**Limites** : texte des plaques en lignes (illisible, comme au monument aux morts) ; forme exacte des escaliers (recessés dans les angles, six marches)
+et position des mâts lues sur des photos prises de loin ; la plaque du mur nord est placée au milieu (deux photos la montrent de part et d'autre du
+milieu) ; le « gravier » devant le mur nord paraît en pente vu d'en bas (l'aire de décollage descend à 21 %). La vue reste dans le brouillard (lot 4).
+
+![Depuis le parking](captures/d267-croix-parking.jpg)
+![La nuit](captures/d267-croix-nuit.jpg)
+![Vue haute](captures/d267-croix-haut.jpg)
+![Depuis l'aire de décollage](captures/d267-croix-nord.jpg)
+![Au pied](captures/d267-croix-pied.jpg)
+![La RD 256 sans ligne médiane](captures/d267-rd256.jpg)

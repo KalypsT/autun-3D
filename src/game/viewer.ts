@@ -89,6 +89,10 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   // Lycée Bonaparte (D148) : depuis le Champ de Mars, vers l'ouest-sud-ouest, comme la photo 1.
   bonaparte: [-40, -92, 1.7, -92, -119, 5],
   parking: [-60, 150, 1.7, -20, 170, 3],
+  // Croix de la Libération (D267) : depuis le parking (photo 1), depuis l'aire de décollage, vue haute.
+  croix: [-848, -1838, 1.7, -841, -1809, 6],
+  "croix-nord": [-824, -1784, 1.7, -841, -1809, 5],
+  "croix-haut": [-818, -1786, 22, -841, -1809, 0],
   // Galerie des personnages (startGallery) : le départ du jeu.
   characters: [-10, -40, 1.7, -10, -20, 1.2],
 };

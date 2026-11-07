@@ -1,7 +1,7 @@
 import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
-import { landmarkDecks, landmarkSectors } from "../core/landmarks";
+import { croixPits, landmarkDecks, landmarkSectors } from "../core/landmarks";
 import { bowlPit } from "../core/leisure";
 import { rampartPits } from "../core/ramparts";
 import { addTileColliders } from "../core/world";
@@ -247,7 +247,8 @@ export class TileManager {
     const sectors = landmarkSectors(data.kinds);
     if (sectors.length) this.terrain.decks.addSectors(id, sectors);
     // Remparts de soutènement (D250) : creux d'affichage du relief côté haut, recouvert d'une bande de relief fin.
-    const ramparts = rampartPits(data.walls);
+    // Croix de la Libération (D267) : creux d'affichage sous la plate-forme, que le modèle dessine.
+    const ramparts = [...rampartPits(data.walls), ...croixPits(data.kinds)];
     if (!st) {
       if (extra.length) this.terrain.decks.add(id, extra);
       if (ramparts.length) this.terrain.pits.add(id, ramparts);

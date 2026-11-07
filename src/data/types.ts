@@ -1067,6 +1067,7 @@ export type Site =
   | TheatreSite
   | JanusSite
   | CouhardSite
+  | CroixSite
   | RoundaboutSite
   | CurtainSite
   | BandstandSite
@@ -1175,6 +1176,34 @@ export interface MemorialSite {
   steps: [number, number, number][];
   socle: [number, number, number];
   shaft: [number, number, number];
+}
+
+/**
+ * Croix de la Libération d'après photo (D267, tools/data/build_monuments.py, docs/plans/croix-liberation.md) : axe `c`, repère orienté (`a` :
+ * angle depuis l'est de l'axe u, le long des bras ; t en travers, vers la ville) ; dessus de la plate-forme `g` (altitude locale), sommet `top`
+ * au-dessus ; dessus [u0, u1, t0, t1] (t1 : parement du mur nord) ; chute du dessus au sol de chaque côté ; largeur des talus (ouest, est, sud) ;
+ * mur nord (t, haut, couvertine) ; marche sous le fût ; fût ; bras (envergure, haut, épaisseur, bas et haut au-dessus de `g`) ; escaliers des
+ * angles nord (largeur, longueur, marches, étendues en u) ; plaques ; mâts [u, t, haut] ; rochers [u, t, rayon] ; `light` : éclairée la nuit.
+ */
+export interface CroixSite {
+  t: "croix";
+  n: string;
+  c: [number, number];
+  a: number;
+  g: number;
+  top: number;
+  deck: [number, number, number, number];
+  drop: { w: number; e: number; s: number; n: number };
+  talus: { w: number; e: number; s: number };
+  wall: { t: number; h: number; coping: number };
+  plinth: { u: [number, number]; t: [number, number]; h: number };
+  shaft: { w: number; d: number };
+  arms: { span: number; h: number; d: number; z: [number, number]; head: number };
+  stairs: { w: number; run: number; n: number; u: [number, number][] };
+  plaques: { face: "s" | "n"; u: number; w: number; l: number; big?: boolean; lorraine?: boolean }[];
+  masts: [number, number, number][];
+  rocks: [number, number, number][];
+  light?: 1;
 }
 
 /**

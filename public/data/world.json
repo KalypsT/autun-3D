@@ -131,7 +131,7 @@
    "walls": 16,
    "furniture": 14,
    "lod": 0,
-   "bytes": 35570
+   "bytes": 36218
   },
   {
    "id": "24_25",
@@ -148,7 +148,7 @@
    "walls": 12,
    "furniture": 5,
    "lod": 2,
-   "bytes": 38746
+   "bytes": 37455
   },
   {
    "id": "25_25",
@@ -216,7 +216,7 @@
    "walls": 3,
    "furniture": 5,
    "lod": 2,
-   "bytes": 40951
+   "bytes": 40952
   },
   {
    "id": "23_26",
@@ -233,7 +233,7 @@
    "walls": 1,
    "furniture": 4,
    "lod": 0,
-   "bytes": 39048
+   "bytes": 38114
   },
   {
    "id": "24_26",
@@ -250,7 +250,7 @@
    "walls": 0,
    "furniture": 13,
    "lod": 0,
-   "bytes": 45447
+   "bytes": 40771
   },
   {
    "id": "25_26",
@@ -267,7 +267,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 32942
+   "bytes": 32590
   },
   {
    "id": "26_26",
@@ -369,7 +369,7 @@
    "walls": 6,
    "furniture": 3,
    "lod": 0,
-   "bytes": 38743
+   "bytes": 40040
   },
   {
    "id": "23_27",
@@ -403,7 +403,7 @@
    "walls": 0,
    "furniture": 0,
    "lod": 0,
-   "bytes": 30792
+   "bytes": 30802
   },
   {
    "id": "25_27",
@@ -420,7 +420,7 @@
    "walls": 0,
    "furniture": 22,
    "lod": 0,
-   "bytes": 54224
+   "bytes": 44730
   },
   {
    "id": "26_27",
@@ -437,7 +437,7 @@
    "walls": 0,
    "furniture": 2,
    "lod": 0,
-   "bytes": 33638
+   "bytes": 33102
   },
   {
    "id": "27_27",
@@ -606,8 +606,8 @@
    "trees": 838,
    "walls": 0,
    "furniture": 1,
-   "lod": 0,
-   "bytes": 32767
+   "lod": 2,
+   "bytes": 33260
   },
   {
    "id": "23_28",
@@ -658,7 +658,7 @@
    "walls": 27,
    "furniture": 6,
    "lod": 1,
-   "bytes": 46073
+   "bytes": 43103
   },
   {
    "id": "26_28",
@@ -675,7 +675,7 @@
    "walls": 36,
    "furniture": 15,
    "lod": 7,
-   "bytes": 63508
+   "bytes": 58585
   },
   {
    "id": "27_28",
@@ -913,7 +913,7 @@
    "walls": 84,
    "furniture": 23,
    "lod": 59,
-   "bytes": 193262
+   "bytes": 191291
   },
   {
    "id": "27_29",
@@ -930,7 +930,7 @@
    "walls": 34,
    "furniture": 9,
    "lod": 5,
-   "bytes": 59897
+   "bytes": 58101
   },
   {
    "id": "28_29",

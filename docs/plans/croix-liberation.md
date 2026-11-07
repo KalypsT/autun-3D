@@ -343,3 +343,10 @@ La méthode est sûre ; le lot 2 peut fabriquer l'extension.
 Fait : 34 tuiles (17 neuves, 17 refabriquées le long de l'ancienne falaise), navigation greffée (12,1 km, 11 raccords, de la cathédrale au parking
 en voiture et à pied), carte des 5 kilomètres touchés, `region.json` et `land.json` (terre figée) installés. Aucun fichier changé hors de l'extension ;
 1 377 essais passent. Restent, pour le lot 3 : le parking (gravier, contour réel), la RD 256 (sans ligne médiane), et la croix.
+
+## 12. Lot 3 : la croix et ses abords (D267)
+
+Fait : la croix mesurée et dessinée (plate-forme, talus, mur nord et escaliers, marche, fût, bras, plaques, mâts, rochers, éclairage de nuit),
+relief remodelé et creux d'affichage, obstacles (on monte sur la plate-forme), parking à la forme de la clairière réelle en stabilisé clair,
+RD 256 et route d'accès sans marquage ni trottoir, point « monument » des passants, vues `croix`, `croix-nord`, `croix-haut`. Reste : le lot 4,
+la vue depuis la plate-forme (portée du brouillard et des silhouettes selon la hauteur, terrils des Télots à 5 km).

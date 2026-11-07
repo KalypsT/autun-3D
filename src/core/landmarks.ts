@@ -1,4 +1,5 @@
-import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CroixSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, Site, StoreModel, Tree, Wall } from "../data/types";
+import type { Pit } from "../data/terrain";
 import { gateCircles } from "./school-gate";
 import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
@@ -140,6 +141,8 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     const [px, py] = couhardPanel(s);
     out.push([px, py, 0.5]);
   }
+  // Croix de la Libération (D267) : mâts d'éclairage et rochers contre le parking.
+  for (const s of kinds.sites) if (s.t === "croix") out.push(...croixCircles(s));
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
   for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
   // Lycée militaire (D260) : piles des deux portails, poteaux de la barrière levante et du panneau.
@@ -336,10 +339,12 @@ export function treesOutsideMonuments(kinds: { sites: Site[]; buildings?: Record
   const curtains = (kinds?.sites ?? []).filter((s): s is CurtainSite => s.t === "curtain");
   // Monument aux morts (D227) : le relevé avait pris le génie ailé pour un arbre de 7,9 m.
   const memorials = (kinds?.sites ?? []).filter((s): s is MemorialSite => s.t === "memorial");
-  if (!basins.length && !theatres.length && !temples.length && !pyramids.length && !islands.length && !curtains.length && !memorials.length) return [...trees];
+  // Croix de la Libération (D267) : rien ne pousse sur la plate-forme.
+  const crosses = (kinds?.sites ?? []).filter((s): s is CroixSite => s.t === "croix");
+  if (!basins.length && !theatres.length && !temples.length && !pyramids.length && !islands.length && !curtains.length && !memorials.length && !crosses.length) return [...trees];
   return trees.filter(([x, y]) => basins.every(([bx, by, r]) => Math.hypot(x - bx, y - by) > r) && theatres.every((t) => !inTheatre(t, x, y))
     && temples.every((t) => !inJanus(t, x, y, 1)) && pyramids.every((p) => !inCouhard(p, x, y, 1)) && islands.every((s) => !inRoundabout(s, x, y, 0.5)) && curtains.every((s) => !inCurtain(s, x, y, 0.3))
-    && memorials.every((s) => !inMemorial(s, x, y, 1)));
+    && memorials.every((s) => !inMemorial(s, x, y, 1)) && crosses.every((s) => !inCroix(s, x, y, 1)));
 }
 
 /** Troncs d'un rideau de tilleuls (D155) : files de troncs tous les `pitch` m le long du grand côté. */
@@ -441,6 +446,75 @@ export function janusRings(s: JanusSite): number[][] {
     }
   }
   return out;
+}
+
+// --- Croix de la Libération (D267) ----------------------------------------------------------------------------------------------------
+
+/** Repère de la croix : u le long des bras, t en travers (vers la ville), origine sur l'axe du fût. */
+export function croixFrame(s: CroixSite): Frame {
+  return frameOf(s.c[0], s.c[1], s.a, 1, 1);
+}
+
+/** Point (x, y) du repère de la croix. */
+export function croixAt(s: CroixSite, u: number, t: number): [number, number] {
+  return at(croixFrame(s), u, t);
+}
+
+/** Coordonnées (u, t) du point (x, y) dans le repère de la croix. */
+export function croixUT(s: CroixSite, x: number, y: number): [number, number] {
+  const f = croixFrame(s), dx = x - f.x, dy = y - f.y;
+  return [dx * f.ux + dy * f.uy, dx * f.vx + dy * f.vy];
+}
+
+/** Vrai si (x, y) est sur la plate-forme ou ses talus, élargis de `margin`. */
+export function inCroix(s: CroixSite, x: number, y: number, margin = 0): boolean {
+  const [u, t] = croixUT(s, x, y), [u0, u1, t0, t1] = s.deck;
+  return u > u0 - s.talus.w - margin && u < u1 + s.talus.e + margin && t > t0 - s.talus.s - margin && t < t1 + margin;
+}
+
+/**
+ * Obstacles de la croix (contours fermés) : la marche et le fût (on n'y monte pas), le mur nord entre les deux escaliers et les murs
+ * d'échiffre de chaque escalier (on monte sur la plate-forme par les escaliers ou par les talus), dans le repère du monde.
+ */
+export function croixRings(s: CroixSite): [number, number][][] {
+  const rect = (u0: number, u1: number, t0: number, t1: number): [number, number][] => [croixAt(s, u0, t0), croixAt(s, u1, t0), croixAt(s, u1, t1), croixAt(s, u0, t1)];
+  const t1 = s.deck[3], [[w0, w1], [e0, e1]] = s.stairs.u as [[number, number], [number, number]], run = s.stairs.run;
+  return [
+    rect(s.plinth.u[0], s.plinth.u[1], s.plinth.t[0], s.plinth.t[1]),
+    rect(w1, e0, t1 - 0.45, t1 + 0.05),
+    rect(s.deck[0] - s.talus.w, w0, t1 - 0.45, t1 + 0.05),
+    rect(e1, s.deck[1] + s.talus.e, t1 - 0.45, t1 + 0.05),
+    rect(w1 - 0.05, w1 + 0.3, t1 - run, t1),
+    rect(e0 - 0.3, e0 + 0.05, t1 - run, t1),
+    rect(w0 - 0.3, w0 + 0.05, t1 - run, t1),
+    rect(e1 - 0.05, e1 + 0.3, t1 - run, t1),
+  ];
+}
+
+/**
+ * Creux d'affichage sous la plate-forme de la croix (D248) : le relief affiché par carreaux de 2,5 m formait, au pied des talus et devant le
+ * mur nord, des rampes au-dessus du vrai relief (des triangles d'herbe perçaient les talus et masquaient le pied du mur). Le modèle dessine
+ * lui-même toute la plate-forme : le relief affiché passe 2 m sous son dessus dans son emprise ; marche et sols suivent toujours le vrai relief.
+ */
+export function croixPits(kinds: { sites: Site[] } | undefined): Pit[] {
+  const out: Pit[] = [];
+  for (const s of kinds?.sites ?? []) {
+    if (s.t !== "croix") continue;
+    const [u0, u1, t0, t1] = s.deck, tl = s.talus;
+    const corners = [croixAt(s, u0 - tl.w, t0 - tl.s), croixAt(s, u1 + tl.e, t0 - tl.s), croixAt(s, u1 + tl.e, t1), croixAt(s, u0 - tl.w, t1)];
+    const floor = s.g - 2;
+    out.push({
+      x0: Math.min(...corners.map((p) => p[0])), y0: Math.min(...corners.map((p) => p[1])),
+      x1: Math.max(...corners.map((p) => p[0])), y1: Math.max(...corners.map((p) => p[1])),
+      cap: (x, y) => (inCroix(s, x, y) ? floor : Infinity),
+    });
+  }
+  return out;
+}
+
+/** Mâts d'éclairage et rochers de la croix : cercles (x, y, rayon). */
+export function croixCircles(s: CroixSite): [number, number, number][] {
+  return [...s.masts.map(([u, t]) => [...croixAt(s, u, t), 0.12] as [number, number, number]), ...s.rocks.map(([u, t, r]) => [...croixAt(s, u, t), r] as [number, number, number])];
 }
 
 // --- Pierre de Couhard (D222) ----------------------------------------------------------------------------------------------------------
@@ -1004,6 +1078,8 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     if (s.t === "janus") out.push(...janusRings(s));
     // Pierre de Couhard (D222) : le pied (on ne gravit pas le talus).
     if (s.t === "couhard") out.push(couhardFoot(s, 0, 32).flat());
+    // Croix de la Libération (D267) : marche du fût, mur nord et murs d'échiffre des escaliers ; on monte sur la plate-forme.
+    if (s.t === "croix") out.push(...croixRings(s).map((r) => r.flat()));
     // Kiosque à musique (D155) : le contour BD TOPO (le toit déborde du socle de 50 cm), comme avant ; on n'y monte pas.
     if (s.t === "bandstand") out.push(bandstandRing(s).flat());
     // Monument aux morts (D227) : le degré du bas de l'esplanade ; on n'y monte pas.
