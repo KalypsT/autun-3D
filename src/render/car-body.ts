@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { box, merge, paint, ringLoft, tiltedBox, tube, type Ring } from "./vehicle-model";
+import { sculptDetailGeometry, sculptLamps, sculptPaintGeometry, type Sculpt, type SculptFrame } from "./car-sculpt";
 
 /**
  * Générateur de carrosserie (D52, refait en D107) : une voiture est décrite par quelques mesures (longueur, hauteur, capot, pare-brise, toit, lunette, coffre)
@@ -147,6 +148,11 @@ export interface CarBodyParams {
   /** Toit qui descend vers l'arrière : `height` au-dessus du pare-brise, `height − roofDrop` au-dessus de la lunette (m). */
   roofDrop?: number;
   style: CarStyle;
+  /**
+   * Caisse sculptée d'après photos (D272) : elle remplace la caisse à sections octogonales et les pièces du style (phares, feux, grilles…),
+   * dessinées sur sa surface. Les mesures ci-dessus servent encore aux essieux, à la caméra, à la fumée et aux dégâts.
+   */
+  sculpt?: Sculpt;
   /** Livrée (police, J4) : une bande claire et un filet de couleur le long des flancs, une barre de gyrophares sur le toit. */
   livery?: { stripe: string; accent: string; lightBar: boolean };
 }
@@ -434,6 +440,7 @@ function mirrors(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometr
 
 /** Phares et feux arrière : positions de leurs centres (deux de chaque), selon leur forme. */
 export function lampSpots(p: CarBodyParams, front: number, rear: number): { head: [number, number, number][]; tail: [number, number, number][] } {
+  if (p.sculpt) return sculptLamps(p.sculpt, sculptFrame(p, front, rear));
   const f = frame(p, front, rear), { L, W, side } = f, st = p.style;
   const hx = st.headlights === "round" ? W * 0.64 : st.headlights === "strip" ? W * 0.7 : st.headlights === "swept" ? W * 0.62 : W * 0.66;
   const hy = p.noseHeight - (st.headlights === "strip" ? 0.09 : st.headlights === "swept" ? 0.06 : 0.13) - 0.03 * st.roundness;
@@ -637,7 +644,13 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 }
 
 /** Verre, pare-chocs noirs ou chromés, phares, feux, plaques, rétroviseurs noirs, passages de roue, accessoires : couleurs fixes. */
+/** Repère d'une caisse sculptée. */
+function sculptFrame(p: CarBodyParams, front: number, rear: number): SculptFrame {
+  return { length: p.length, noseZ: carLayout(p, front, rear).noseZ, front, rear, wheelRadius: p.wheelRadius };
+}
+
 export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
+  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c");
   const f = frame(p, front, rear), { L, W, st, shoulder, roofW, beltAt, topAt } = f;
   const glass = p.glass ?? "#2b3a4c";
   const top = p.cabHeight ?? p.height;
@@ -901,6 +914,7 @@ function liveryParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 
 /** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`). */
 export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color);
   return merge(paintParts(p, front, rear, color));
 }
 

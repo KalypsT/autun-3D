@@ -5872,3 +5872,31 @@ Caméra de poursuite : la référence suit les nouvelles mesures. **Budget** : 9
 
 ![Avant / après](captures/d271-citadine-avant-apres.jpg)
 ![Les couleurs](captures/d271-citadine-couleurs.jpg)
+
+## 2026-11-07 — D272. Citadine sculptée : une vraie carrosserie, les pièces posées sur sa surface
+
+**Retour sur D271** : formes encore sommaires, et mal réalisées par endroits (feux arrière qui débordaient des épaules, pare-chocs en lame). Le
+générateur à sections octogonales (D52, D107) ne peut pas faire mieux : huit facettes par section, des pièces en boîtes collées sur la caisse.
+
+**Choix** : un second moteur, réservé aux modèles faits d'après photos (`src/render/car-sculpt.ts`), et la citadine décrite avec lui (`src/render/car-citadine.ts`) :
+- **profil relevé point par point** (en s, mètres depuis le nez) : dessus du capot et ceinture, bas de caisse, demi-largeur en plan, hauteur et largeur du toit.
+  Il en sort une trentaine de sections arrondies (flanc plein, épaule, dessus presque plat), avec de **vrais passages de roue** : le bas de caisse remonte
+  en arc au-dessus de chaque roue, un dessous sombre ferme l'ouverture ;
+- **vitres = faces de l'habitacle** (pare-brise, lunette, vitres de flanc, custode noire), choisies par tronçon et par bande de la section : elles ne peuvent
+  ni dépasser ni être mangées par la peinture. Montant central et jonc chromé en tubes ;
+- **phares, feux, grilles, plaques, lignes de portes : des décalcomanies** dessinées en contour (côté droit, miroir à gauche) ; chaque point est projeté sur
+  la caisse par un rayon et soulevé de 1 à 3 cm selon sa normale. Les phares et les feux s'enroulent ainsi autour des coins sans jamais déborder (le rayon
+  tourne de la face vers le flanc le long du contour). Phares et feux ont un contour sombre qui les détache de la peinture.
+
+Rien ne change pour le reste du jeu : la caisse sculptée passe par les mêmes fonctions (`bodyPaintGeometry`, `bodyDetailGeometry`, `lampSpots`), donc garée,
+dans la circulation, conduite, abîmée (D110, D112), éclairée la nuit. Les mesures de `CAR_BODIES.citadine` servent encore aux essieux, à la caméra et à la fumée.
+
+**Coût** (exemplaire garé) : 878 triangles de peinture, 1 032 de détails et roues, **1 910 au total** (contre 1 160 en D271, 700 à l'origine) ; une moto routière
+en compte 2 044 (D108). Plafonds du test pour une caisse sculptée : peinture < 1 000, détails < 1 200, total < 2 100. **À mesurer sur l'Honor** : si les
+voitures garées coûtent, faire une forme allégée au-delà de 40 à 60 m (la caisse D271 peut servir).
+
+**Reste** : face arrière encore assez plate ; le capot et les flancs restent à facettes (style « affiche », D17). Les autres voitures gardent le générateur
+D107 ; chacune peut passer à la caisse sculptée dès qu'on a ses photos.
+
+![Origine, essai 1 (D271), essai 2 (D272)](captures/d272-citadine-comparaison.jpg)
+![Trois couleurs](captures/d272-citadine-couleurs.jpg)

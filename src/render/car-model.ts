@@ -3,6 +3,7 @@ import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
+import { CITADINE } from "./car-citadine";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -16,14 +17,13 @@ import type { Zone } from "../core/damage";
 
 /** Mesures de chaque voiture du catalogue (même identifiants que `src/core/vehicle-catalog.ts`). */
 export const CAR_BODIES: Record<string, CarBodyParams> = {
-  // Citadine (refaite d'après photos d'une citadine française des années 2010) : cinq portes à l'allure de trois-portes (poignées arrière cachées),
-  // ceinture qui monte vers l'arrière, pare-brise très couché, toit fuyant et becquet, phares étirés reliés par un bandeau noir, feux enveloppants.
+  // Citadine (D271, D272) : caisse sculptée d'après photos (`car-citadine.ts`) ; le style ci-dessous ne sert plus qu'à sa signature et à ses jantes.
   citadine: {
     length: 4.06, width: 1.73, height: 1.45, overhangFront: 0.8,
     clearance: 0.22, belt: 0.88, noseHeight: 0.71, tailHeight: 0.98,
     hood: 1.12, windshield: 0.86, roof: 1.12, rearGlass: 0.62, roofTaper: 0.84,
     beltRise: 0.1, roofDrop: 0.07,
-    wheelRadius: 0.32, tyreWidth: 0.2, glass: "#222a35",
+    wheelRadius: 0.32, tyreWidth: 0.2, glass: "#222a35", sculpt: CITADINE,
     style: {
       headlights: "swept", grille: "band", taillights: "wrap", bumpers: "blend", rim: "#c3c6cb", doors: 2, roundness: 0.8,
       blackPillars: true, spoiler: "roof", lowerGrille: true, hiddenRearHandles: true, doorBlade: true, tailChrome: true, diffuser: true, spokes: 5,
