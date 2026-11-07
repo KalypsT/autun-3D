@@ -8,6 +8,7 @@ Sortie : - chaque tracé de `cuts` est coupé au sommet `at` (retiré) : la prem
            deux murets, hauteur) suit chaque partie ;
          - chaque fiche de `fiches` reçoit ses réglages (enduit, époque, rez-de-chaussée sans vitrine) et passe à « observed » (D262 : les
            bâtiments modernes de l'enceinte, classés « commerce et services » par BD TOPO, n'ont pas de vitrine).
+- `closures` : courts tracés ajoutés pour fermer l'enceinte (D263).
 Idempotent : un tracé déjà coupé (le second existe) est laissé tel quel ; `bytes` et `walls` de world.json sont mis à jour.
 """
 
@@ -70,6 +71,16 @@ def main():
         tile = tiles.setdefault(s["tile"], json.loads((c.OUT / "tiles" / f"{s['tile']}.json").read_text()))
         if cut(tile["walls"], s):
             changed.add(s["tile"])
+    # Fermetures (D263) : bouts de clôture entre un tracé et le bâtiment voisin, là où l'enceinte laissait passer un piéton.
+    for w in spec.get("closures", []):
+        tile = tiles.setdefault(w["tile"], json.loads((c.OUT / "tiles" / f"{w['tile']}.json").read_text()))
+        wall = {"id": w["id"], "kind": w["kind"], "height": w["height"], "measured": w["height"], "pts": w["pts"]}
+        old = next((x for x in tile["walls"] if x["id"] == w["id"]), None)
+        if old != wall:
+            if old:
+                tile["walls"].remove(old)
+            tile["walls"].append(wall)
+            changed.add(w["tile"])
     for f in spec["fiches"]:
         tile = tiles.setdefault(f["tile"], json.loads((c.OUT / "tiles" / f"{f['tile']}.json").read_text()))
         if fiche(tile, f):

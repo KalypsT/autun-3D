@@ -5495,3 +5495,32 @@ classés « commerce et services » par BD TOPO, sept d'entre eux avaient des vi
 ![Les bâtiments du nord de la place d'armes et le gymnase](captures/d262-batiments-nord.jpg)
 ![Depuis la piste : toits plats blancs, toit végétalisé à gauche](captures/d262-vue-piste.jpg)
 ![L'annexe et les bâtiments du sud](captures/d262-batiments-sud.jpg)
+
+## 2026-11-07 — D263. Le Lycée militaire, lot 6 : le passage voûté ouvert, l'enceinte fermée
+
+**Demande de l'utilisateur** : « continue » après D262 (lot 6, le dernier, de `docs/plans/lycee-militaire.md`). Choix par défaut de l'enquête :
+on entre dans la cour d'honneur par le passage voûté.
+
+**Passage voûté** (`militairePassage` de `src/core/landmarks.ts`, `openWall` et `passageTunnel` de `src/render/monuments.ts`) :
+- obstacles : le contour BD TOPO et le trou de la cour d'honneur sont coupés sur 3,6 m au droit du passage (sur l'axe du grand portail) et
+  deviennent des polylignes ouvertes ; deux murs de 14,3 m bordent le passage, à travers la galerie ; la cour sud-ouest reste fermée ;
+- rendu : les deux façades de la galerie sont percées (pans pleins de part et d'autre, tympan au-dessus de l'arc), piédroits et archivolte de
+  pierre claire, claveau ; tunnel en berceau (piédroits, voûte en dix pans, dallage clair) dans une pierre plus sombre ;
+- la balustrade de la terrasse est visible des deux côtés (elle ne l'était que du dehors).
+
+**Enceinte** : balayage de sa limite OpenStreetMap (`enceinte` de `militaireGates`, way 80374605) tous les 50 cm, rayon de 8 m en travers :
+deux trous de 3 m, que le joueur passait, sont fermés par `build_militaire_gates.py` (`closures`) : entre la fin de la clôture de la rue
+Gaston Joliet et l'annexe (clôture de 1,8 m, comme elle), et au portillon privé de la place Anatole de Charmasse (grille de 2,6 m, comme
+l'avenue). Le trou soupçonné au nord-est, près de la piste, n'existe pas (le bâtiment `…848396` ferme l'angle). Seule l'entrée de la rue
+Gaston Joliet reste ouverte.
+
+**Laissé tel quel** : les murs de la cour suivent le trou BD TOPO, à 1 à 2 m du bord du cloître relevé au LiDAR. Le cloître, ses toits et ses
+murs sont bâtis sur ce même trou et restent cohérents entre eux ; les recaler voudrait dire refaire le cloître pour un écart qu'on ne voit pas.
+
+**Coût** : 17 175 triangles pour tout le modèle, 328 de vitres allumées.
+
+**Tests** (+4, 1 370 au total ; `src/core/militaire-passage.test.ts` : coupe, traversée à pied, murs du passage, fermeture de l'enceinte).
+
+![Le passage voûté depuis le glacis](captures/d263-passage-dehors.jpg)
+![Dans le passage](captures/d263-passage-dedans.jpg)
+![Le passage depuis la cour d'honneur](captures/d263-passage-cour.jpg)

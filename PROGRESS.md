@@ -1953,3 +1953,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À regarder : `?view=custom&cam=560,240,45,630,150,10&h=14`.
 
 ![Les bâtiments modernes et le gymnase](docs/captures/d262-batiments-nord.jpg)
+
+**Lycée militaire, lot 6 : le passage voûté (7 novembre 2026)** (D263)
+- On entre maintenant dans la cour d'honneur à pied, par le passage voûté de la galerie d'entrée : un vrai tunnel en berceau, ouvert des deux côtés.
+- L'enceinte est fermée partout sauf à l'entrée de la rue Gaston Joliet : deux trous de 3 m (au bout de la clôture de la rue Gaston Joliet, au portillon de la place Anatole de Charmasse) sont bouchés.
+- Le lycée militaire est terminé (lots 0 à 6) : `?view=militaire&h=14`.
+
+![Le passage voûté](docs/captures/d263-passage-dehors.jpg)

@@ -236,3 +236,22 @@ Réponses : « vas-y » sur les choix par défaut du §7 (cour d'honneur ouverte
 
 - 13 toits plans mesurés (modèle `roofplane`), 6 toits à deux pans (modèle `college` à une aile), couleurs lues à l'orthophotographie.
 - Cinq fiches sans vitrine. Reste le lot 6 : passage voûté ouvert, fermeture de l'enceinte.
+
+## 13. Lot 6 fait (D263, 7 novembre 2026) — le plan est terminé
+
+- Passage voûté ouvert (obstacles coupés, murs du passage, façades percées, tunnel en berceau) ; on entre à pied dans la cour d'honneur.
+- Enceinte fermée : deux trous de 3 m bouchés ; seule l'entrée de la rue Gaston Joliet est ouverte (test de fermeture sur la limite OSM).
+- Non fait, par choix : recaler les murs de la cour sur le cloître du LiDAR (1 à 2 m, invisibles ; le cloître est cohérent avec le trou BD TOPO).
+
+| Lot | Décision | Contenu |
+|---|---|---|
+| 0 | — | enquête, relevés |
+| 1 | D258 | volumes et toits mesurés, tuiles vernissées |
+| 2 | D259 | façades, lucarnes, horloge, galerie |
+| 3 | D260 | grille et grand portail, entrée Gaston Joliet |
+| 4 | D261 | place d'armes, parterres, ifs, mât, bassin |
+| 5 | D262 | bâtiments modernes, toits mesurés |
+| 6 | D263 | passage voûté, fermeture de l'enceinte |
+
+Restes possibles, sur demande : massifs et talus de lierre de l'avenue, arbres taillés en rideau du glacis, barrières en X, drapeaux de la grille,
+initiales « GS » du toit si elles existent, façades propres des bâtiments modernes (photos nécessaires), passants (élèves, personnel).

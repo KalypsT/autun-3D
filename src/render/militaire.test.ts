@@ -132,7 +132,11 @@ describe("Lycée militaire : façades (D259)", () => {
       return r;
     }) };
     delete bare.mil;
-    const full = tris(spec), cost = full - tris(bare);
+    // Façades seules : sans les portails (D260) ni les jardins (D261), comptés par leurs propres tests.
+    const facades = { ...spec.mil! };
+    delete facades.gates;
+    delete facades.garden;
+    const full = tris(spec), cost = tris({ ...spec, mil: facades }) - tris(bare);
     expect(cost).toBeGreaterThan(3000);
     expect(cost).toBeLessThan(9000);
     expect(full).toBeLessThan(20000);

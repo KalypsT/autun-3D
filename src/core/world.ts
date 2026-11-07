@@ -1,7 +1,7 @@
 import type { Building, HeightField, RampartTower, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, militairePassage, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
@@ -91,6 +91,15 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
         if (l.kind === "fence") c.addPolyline(l.pts, true, wallTop("fence", TERRACE_RAIL_H));
         else c.addPolyline(l.pts, false, wallTop("hedge", ROADSIDE_HEDGE_H));
       }
+      continue;
+    }
+    // Lycée militaire (D263) : on entre dans la cour d'honneur par le passage voûté de la galerie d'entrée.
+    const pass = kind?.college?.mil ? militairePassage(b, kind.college) : null;
+    if (pass) {
+      c.addPolyline(pass.outer);
+      c.addPolyline(pass.cut);
+      for (const l of pass.sides) c.addPolyline(l);
+      for (const h of pass.holes) c.addRing(h);
       continue;
     }
     if (house || !walkableRoof(kind)) {

@@ -1509,16 +1509,27 @@ function collegeWalls(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, ring: 
     const top = side > 0 ? wing.el : wing.er;
     // Contour dans le sens trigonométrique : l'extérieur est à droite.
     const wall: HallWall = { a, b, out: [(b[1] - a[1]) / len, -(b[0] - a[0]) / len], top, front: false };
-    wallBands(mb, f, wall, ground, [], [stone]);
+    const kind = !mil ? "plain" : mil.arcades.includes(wi) ? "arcade" : wi === mil.gallery.w ? "gallery" : "plain";
+    // Passage voûté (D263) : le mur de la galerie est percé au droit de l'axe, sur les deux façades.
+    const pu = kind === "gallery" ? portalU(wall, mil!) : null;
+    if (pu === null) wallBands(mb, f, wall, ground, [], [stone]);
+    else openWall(mb, f, wall, ground, pu, mil!.gallery.pw / 2, ground(...onWall(wall, pu, 0)) + mil!.gallery.ph - mil!.gallery.pw / 2, stone);
     if (len < 1.5) continue;
     course(mb, f, wall, top - 0.7, top - 0.15, 0.22, COLLEGE_TRIM);
-    const kind = !mil ? "plain" : mil.arcades.includes(wi) ? "arcade" : wi === mil.gallery.w ? "gallery" : "plain";
     // Soubassement de pierre grise et bandeau entre le rez-de-chaussée et l'étage (D151), par morceaux qui suivent le sol.
     const band = mil ? 1.0 + mil.win[1] + 0.3 : 3.1;
     const pieces = Math.max(1, Math.ceil(len / 3));
     for (let k = 0; k < pieces; k++) {
       const u0 = (len * k) / pieces, u1 = (len * (k + 1)) / pieces, [gx, gy] = onWall(wall, (u0 + u1) / 2, 0), gl = ground(gx, gy);
-      block(mb, f, wall, u0, u1, gl - 0.4, gl + (kind === "plain" ? 1.1 : 0.5), 0, 0.05, COLLEGE_PLINTH, true);
+      const plinth = (v0: number, v1: number): void => {
+        if (v1 - v0 > 0.01) block(mb, f, wall, v0, v1, gl - 0.4, gl + (kind === "plain" ? 1.1 : 0.5), 0, 0.05, COLLEGE_PLINTH, true);
+      };
+      if (pu === null) plinth(u0, u1);
+      else {
+        const hw = mil!.gallery.pw / 2;
+        plinth(u0, Math.min(u1, pu - hw));
+        plinth(Math.max(u0, pu + hw), u1);
+      }
       if (kind === "plain" && top - gl > 6) block(mb, f, wall, u0, u1, gl + band, gl + band + 0.35, 0, 0.07, COLLEGE_TRIM, true);
     }
     if (mil && kind === "plain") {
@@ -1575,15 +1586,20 @@ const RED_TRIM = C("#a5503a");
  */
 function militaireGallery(mb: MeshBuilder, glow: MeshBuilder, f: Frame, wall: HallWall, mil: MilitaireFacade, ground: (s: number, t: number) => number, seed: number): void {
   const len = Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]);
-  const tx = (wall.b[0] - wall.a[0]) / len, ty = (wall.b[1] - wall.a[1]) / len;
   // Abscisse du passage : projection du point de l'axe sur le mur, s'il tombe dedans (façade extérieure et façade sur cour sont parallèles).
-  const [px, py] = mil.gallery.portal;
-  const pu = (px - wall.a[0]) * tx + (py - wall.a[1]) * ty;
-  const hasPortal = pu > mil.gallery.pw && pu < len - mil.gallery.pw;
+  const p0 = portalU(wall, mil);
+  const hasPortal = p0 !== null, pu = p0 ?? 0;
   if (hasPortal) {
-    const g = ground(...onWall(wall, pu, 0));
-    bay(mb, glow, f, wall, pu, mil.gallery.pw, g, mil.gallery.ph, true, true, false);
-    // Claveau de clé au sommet de l'arc.
+    // Encadrement de l'arc ouvert (D263) : piédroits et archivolte de pierre claire, claveau de clé.
+    const g = ground(...onWall(wall, pu, 0)), hw = mil.gallery.pw / 2, spring = g + mil.gallery.ph - hw, W = 0.32;
+    block(mb, f, wall, pu - hw - W, pu - hw, g, spring, 0, 0.06, COLLEGE_TRIM, true);
+    block(mb, f, wall, pu + hw, pu + hw + W, g, spring, 0, 0.06, COLLEGE_TRIM, true);
+    const n = N(f, wall.out[0], wall.out[1]);
+    for (let k = 0; k < 10; k++) {
+      const a0 = (Math.PI * k) / 10, a1 = (Math.PI * (k + 1)) / 10;
+      const pt = (a: number, r: number): [number, number, number] => [...onWall(wall, pu + Math.cos(a) * r, 0.06), spring + Math.sin(a) * r];
+      q(mb, f, pt(a0, hw), pt(a1, hw), pt(a1, hw + W), pt(a0, hw + W), n, COLLEGE_TRIM);
+    }
     block(mb, f, wall, pu - 0.3, pu + 0.3, g + mil.gallery.ph - 0.1, g + mil.gallery.ph + 0.6, 0, 0.12, COLLEGE_TRIM);
   }
   const pitch = mil.gallery.pitch;
@@ -1599,6 +1615,56 @@ function militaireGallery(mb: MeshBuilder, glow: MeshBuilder, f: Frame, wall: Ha
   }
 }
 
+/** Abscisse du passage voûté sur un mur de la galerie (projection du point de l'axe), s'il tombe dans le mur ; sinon null. */
+function portalU(wall: HallWall, mil: MilitaireFacade): number | null {
+  const len = Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]);
+  const tx = (wall.b[0] - wall.a[0]) / len, ty = (wall.b[1] - wall.a[1]) / len;
+  const [px, py] = mil.gallery.portal;
+  const pu = (px - wall.a[0]) * tx + (py - wall.a[1]) * ty;
+  return pu > mil.gallery.pw && pu < len - mil.gallery.pw ? pu : null;
+}
+
+/** Mur percé d'une arcade en plein cintre (D263) : deux pans pleins de part et d'autre, et le tympan entre l'arc et le haut du mur. */
+function openWall(mb: MeshBuilder, f: Frame, w: HallWall, ground: (s: number, t: number) => number, pu: number, hw: number, spring: number, stone: THREE.Color): void {
+  const at3 = (u: number): ST => onWall(w, u, 0);
+  wallBands(mb, f, { ...w, b: at3(pu - hw) }, ground, [], [stone]);
+  wallBands(mb, f, { ...w, a: at3(pu + hw) }, ground, [], [stone]);
+  const n = N(f, w.out[0], w.out[1]);
+  for (let k = 0; k < 10; k++) {
+    const a0 = Math.PI - (Math.PI * k) / 10, a1 = Math.PI - (Math.PI * (k + 1)) / 10;
+    const u0 = pu + Math.cos(a0) * hw, u1 = pu + Math.cos(a1) * hw;
+    const [x0, y0] = at3(u0), [x1, y1] = at3(u1);
+    q(mb, f, [x0, y0, spring + Math.sin(a0) * hw], [x1, y1, spring + Math.sin(a1) * hw], [x1, y1, w.top], [x0, y0, w.top], n, stone);
+  }
+}
+
+/** Tunnel du passage voûté (D263) : piédroits, voûte en berceau et dallage, de la façade extérieure à la cour, dans la pierre de la galerie. */
+function passageTunnel(mb: MeshBuilder, m: CollegeSpec, mil: MilitaireFacade, stone: THREE.Color, terrain: HeightField): void {
+  const g = m.wings[mil.gallery.w]!;
+  const L = Math.hypot(g.q[0] - g.p[0], g.q[1] - g.p[1]), tx = (g.q[0] - g.p[0]) / L, ty = (g.q[1] - g.p[1]) / L;
+  const ix = ty, iy = -tx, D = g.wl + g.wr, hw = mil.gallery.pw / 2;
+  const [ox, oy] = mil.gallery.portal;
+  const f = frameOf(0, 0, 0, 1, 1);
+  const X = (d: number, s: number): ST => [ox + ix * d + tx * s, oy + iy * d + ty * s];
+  const spring = terrain.heightAt(ox, oy) + mil.gallery.ph - hw, dark = shade(stone, 0.78);
+  const steps = Math.ceil(D / 2);
+  for (let k = 0; k < steps; k++) {
+    const d0 = (D * k) / steps, d1 = (D * (k + 1)) / steps;
+    const z0 = terrain.heightAt(...X(d0, 0)), z1 = terrain.heightAt(...X(d1, 0));
+    for (const sgn of [1, -1]) {
+      const [a0, a1] = [X(d0, sgn * hw), X(d1, sgn * hw)];
+      q(mb, f, [a0[0], a0[1], z0 - 0.3], [a1[0], a1[1], z1 - 0.3], [a1[0], a1[1], spring], [a0[0], a0[1], spring], N(f, -tx * sgn, -ty * sgn), dark);
+    }
+    const [f0, f1, f2, f3] = [X(d0, -hw), X(d1, -hw), X(d1, hw), X(d0, hw)];
+    q(mb, f, [f0[0], f0[1], z0 + 0.04], [f1[0], f1[1], z1 + 0.04], [f2[0], f2[1], z1 + 0.04], [f3[0], f3[1], z0 + 0.04], [0, 1, 0], C("#cdb68e"));
+  }
+  for (let j = 0; j < 10; j++) {
+    const a0 = (Math.PI * j) / 10, a1 = (Math.PI * (j + 1)) / 10, am = (a0 + a1) / 2;
+    const p = (d: number, a: number): [number, number, number] => [...X(d, Math.cos(a) * hw), spring + Math.sin(a) * hw];
+    q(mb, f, p(0, a0), p(D, a0), p(D, a1), p(0, a1), toThree(-Math.cos(am) * tx, -Math.cos(am) * ty, -Math.sin(am)), dark);
+  }
+}
+
 /** Balustrade sur la terrasse de la galerie (D259) : socle, balustres plats tous les 30 cm, main courante ; dés à pots-à-feu au pas des baies. */
 function balustrade(mb: MeshBuilder, a: ST, b: ST, z: number, pitch: number): void {
   const f = frameOf(0, 0, 0, 1, 1);
@@ -1607,14 +1673,14 @@ function balustrade(mb: MeshBuilder, a: ST, b: ST, z: number, pitch: number): vo
   const BAL = 0.12;
   const run = (u0: number, u1: number, z0: number, z1: number, col: THREE.Color): void => {
     const [p0, p1, p2, p3] = [X(u0, -BAL), X(u1, -BAL), X(u1, BAL), X(u0, BAL)];
-    for (const [s0, s1] of [[p0, p1], [p2, p3]] as const) q(mb, f, [s0[0], s0[1], z0], [s1[0], s1[1], z0], [s1[0], s1[1], z1], [s0[0], s0[1], z1], N(f, nx, ny), col);
+    for (const [s0, s1, k] of [[p0, p1, -1], [p2, p3, 1]] as const) q(mb, f, [s0[0], s0[1], z0], [s1[0], s1[1], z0], [s1[0], s1[1], z1], [s0[0], s0[1], z1], N(f, nx * k, ny * k), col);
     q(mb, f, [p0[0], p0[1], z1], [p1[0], p1[1], z1], [p2[0], p2[1], z1], [p3[0], p3[1], z1], [0, 1, 0], shade(col, 1.05));
   };
   run(0, len, z, z + 0.18, COLLEGE_TRIM);
   run(0, len, z + 0.86, z + 1.0, COLLEGE_TRIM);
   for (let u = 0.2; u < len - 0.1; u += 0.3) {
     const [c0, c1] = [X(u - 0.05, 0), X(u + 0.05, 0)];
-    q(mb, f, [c0[0], c0[1], z + 0.18], [c1[0], c1[1], z + 0.18], [c1[0], c1[1], z + 0.86], [c0[0], c0[1], z + 0.86], N(f, nx, ny), COLLEGE_LIGHT);
+    for (const k of [1, -1]) q(mb, f, [c0[0], c0[1], z + 0.18], [c1[0], c1[1], z + 0.18], [c1[0], c1[1], z + 0.86], [c0[0], c0[1], z + 0.86], N(f, nx * k, ny * k), COLLEGE_LIGHT);
   }
   const nb = Math.floor(len / pitch);
   for (let k = 0; k <= nb; k++) {
@@ -1823,6 +1889,7 @@ function militaireGarden(mb: MeshBuilder, g: NonNullable<MilitaireFacade["garden
 function militaireDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, mil: MilitaireFacade, stone: THREE.Color, terrain: HeightField): void {
   if (mil.gates) militaireGates(mb, mil.gates, terrain);
   if (mil.garden) militaireGarden(mb, mil.garden, terrain);
+  passageTunnel(mb, m, mil, stone, terrain);
   const g = m.wings[mil.gallery.w]!;
   const dx = g.q[0] - g.p[0], dy = g.q[1] - g.p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
   // Balustrade d'une grande aile à l'autre (abscisses depuis le début de la galerie, qui est sur le faîtage de l'aile voisine).
