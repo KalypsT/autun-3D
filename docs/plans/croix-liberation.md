@@ -20,7 +20,7 @@ mètres ; altitudes au-dessus de `ORIGIN_Z` (330 m) sauf mention « NGF ». Les 
    **142 m au sud** ; le sol tombe de 585 à 285 m NGF entre 20 et 110 m au sud de la croix (falaise de `coast_lib.shore_cap`).
 2. **La croix n'est pas dessinée**, mais ses abords sont déjà dans la tuile `22_28` : le banc OSM (`14105148302`), un petit morceau d'enrobé, des pelouses.
    La carte la connaît (lieu « Croix de la Libération », type point de vue).
-3. **Ce qui est sous la mer aujourd'hui** (OpenStreetMap, extrait du 7 novembre) :
+3. **Ce qui est sous la mer aujourd'hui** (OpenStreetMap, extrait du 7 novembre ; précisé au §8.4 : le premier kilomètre de la RD 256 est déjà dans le jeu) :
    - **la RD 256**, « Route de la Chicolle et Montjeu » (`way/149380971`, 2 475 m, et `way/149380970`, 66 m) : elle quitte la ville au sud-est, vers (284 ; −1 363),
      monte en lacets vers le sud-ouest et atteint un carrefour vers **(−544 ; −2 469)**, 660 m au sud du bord actuel ;
    - **la petite route d'accès** : `way/1053943801` (184 m) puis `way/80229499` (638 m), classées `unclassified` (voie revêtue, voitures admises :
@@ -167,3 +167,118 @@ fût ≈ 2,5 m de large ; plate-forme ≈ 20 m de côté (photo 2). Ce sont des 
 
 **Manque encore** (facultatif) : le texte des plaques (photo rapprochée) ; la face nord et un côté de la plate-forme au sol (escaliers, hauteur du mur) ;
 le carrefour de la RD 256 et de la route d'accès ; la croix vue de la ville.
+
+## 8. Relevés du lot 0 (7 novembre)
+
+Script : `python3 tools/data/survey_croix.py [--images DOSSIER]` (OpenStreetMap par l'API officielle, nuage de points LiDAR HD lu à distance sur une fenêtre de 60 m,
+MNT et MNS à 1 m et 0,5 m, orthophotographie ; cache dans `.cache/croix/`). Il ne modifie aucun fichier du jeu : l'extension de la carte est simulée en mémoire
+(`coast_lib.land()` recalculée avec les tuiles ajoutées). Images : `docs/captures/croix-extension.jpg` (vue d'ensemble), `docs/captures/croix-site.jpg` (le site).
+
+![L'extension : côte actuelle en rouge, côte après extension en bleu, RD 256 en jaune, route d'accès en orange, tuiles ajoutées en blanc](../captures/croix-extension.jpg)
+
+### 8.1 La croix et sa plate-forme (nuage de points)
+
+L'IGN range la plate-forme en « sol » (classe 2) et la croix en « non classé » (classe 1, 212 points au-dessus de 4 m). Repère de la croix :
+**u le long des bras, vers le cap 125°**, **t en travers, vers le cap 35°** (la face « avant » regarde le cap 35°, vers la ville ; l'autre le parking).
+
+| Élément | Mesure | Remarque |
+|---|---|---|
+| axe du fût | **(−840,95 ; −1 809,25)** | à 0,8 m du point OSM |
+| orientation | bras au cap **125° / 305°** ; faces vers **35°** (ville) et **215°** (parking) | la cathédrale est au cap 35° : **la croix regarde la cathédrale** |
+| dessus de la plate-forme | z = **259,18** (589,2 m), au niveau du parking | plat à 15 cm près |
+| dessus, étendue | u −3,0 à +3,5 ; t **−3,0 à +4,5** (≈ 6,5 × 7,5 m) | la croix est vers le bord sud ; la terrasse de la vue est au nord |
+| côtés est et ouest (u) | **talus** de 2 m qui descend de 1,1 à 1,2 m | les faces de pierre inclinées des photos |
+| côté sud (t < −3) | **talus** de 2 m qui descend de 1,0 m | la face aux trois plaques (photo 1) |
+| côté nord (t = +4,75) | **mur droit** de 1,2 m | avec un escalier à chaque angle (photos 2 et 4) |
+| emprise au sol | ≈ **10,5 × 11 m** | |
+| marche sous le fût | u −1,3 à +1,7 ; t −1,2 à +1,5 (≈ 3 × 2,7 m), **0,5 m** | |
+| fût | ≈ **1,7 × 1,7 m** | sections à 0,5 m près (points clairsemés sur les faces) |
+| bras | envergure ≈ **4,9 m** ; de ≈ 6,5 à 8,2 m au-dessus de la plate-forme | épaisseur et saillie à reprendre sur la photo 1 |
+| sommet | **10,1 m** au-dessus de la plate-forme (599,3 m) | |
+
+**Correction** : j'avais lu 13 à 15 m de haut sur la photo 1 et une plate-forme de 20 m de côté. Le nuage de points donne **10,1 m** et **10,5 × 11 m** :
+la perspective et l'allée enrobée autour (comprise dans « la plate-forme ») m'avaient trompé.
+
+### 8.2 Les abords
+
+- **Clairière** d'un seul tenant autour de la croix : **8 700 m²** (MNS − MNT < 1,5 m), de x −875 à −751 et de y −1 857 à −1 719.
+  Lisière (premier arbre de plus de 4 m) : **aucune à moins de 90 m vers le nord et le nord-nord-est** (caps 0° et 30°), 88 m au cap 60°,
+  16 à 32 m à l'est, au sud et à l'ouest.
+- **Parking** (OSM, 1 217 m²) : 81 % dégagé, sol de 587,3 à 590,1 m, pente 7 %. Le contour OSM est plus petit et décalé par rapport à la clairière de
+  gravier de l'orthophotographie (`croix-site.jpg`) : **le parking réel est à redessiner d'après l'orthophotographie**.
+- **Aire de décollage** (OSM, 1 800 m²) : 98 % dégagée, de 586,1 à 576,8 m, **pente moyenne 21 %** vers le nord ; le sentier en lacets de la photo 3 s'y lit.
+- OSM autour : banc à 21 m (ouest), table de pique-nique à 28 m et poubelles à 24 et 36 m (parking), **caméra** à 8 m (« Ville d'Autun : Croix de la Libération », Météo-France),
+  **mât de télécommunication de 12 m** à 51 m (est, `node/8604152250`), second point de vue à 17 m.
+  Quatre sentiers passent à 16-17 m (dont deux `access=no`).
+- Mâts d'éclairage : **non trouvés** dans le MNS (trop minces) ; positions à prendre sur les photos (angles nord de la plate-forme).
+- **Le jeu n'a aucun arbre dans la clairière réelle** : rien à retirer.
+
+### 8.3 La vue
+
+Œil à 1,7 m au-dessus de la plate-forme, obstacles lus sur le MNS (10 m au-delà de 90 m) :
+
+| Repère | Distance | Cap | Angle sous l'horizon | Vu ? |
+|---|---|---|---|---|
+| Tour des Ursulines | 1 208 m | 45° | −9,9° | oui |
+| Cathédrale Saint-Lazare | 1 517 m | 35° | −7,6° | oui |
+| Centre hospitalier (Parpas) | 1 978 m | 13° | −7,8° | oui |
+| Pyramide de Couhard | 2 283 m | 62° | −4,8° | oui |
+| Lycée militaire | 2 358 m | 39° | −5,5° | oui |
+| Porte Saint-André | 2 992 m | 28° | −5,3° | oui |
+| Gare routière, collège du Vallon | 2,3 et 3,2 km | 9° et 26° | −7,1° et −5,2° | masqués par les toits voisins, la ville autour se voit |
+
+La ville se voit **entre 5 et 10° sous l'horizon**, sur un secteur d'environ 0 à 60°. **Pour le belvédère : une portée de 3,5 km** couvre tout ce qui compte
+(la Porte Saint-André est à 3 km).
+
+### 8.4 Les routes
+
+| | RD 256 (ways 149380971, 149380970) | Route d'accès (ways 1053943801, 80229499) |
+|---|---|---|
+| longueur | **2 541 m**, du carrefour (−544 ; −2 469) à la ville (262 ; −1 368) | **823 m**, du carrefour au parking (−861 ; −1 851) |
+| OSM | `tertiary`, « Route de la Chicolle et Montjeu », 80 km/h | `unclassified` |
+| altitude | de 391 m (ville) à 576 m (carrefour), **184 m de dénivelé** | de 574 à **601 m** (point haut en forêt, vers (−770 ; −2 260)), puis 590 m au parking |
+| pente | moyenne 7,2 %, au plus 14 % sur 20 m | moyenne 1,8 %, au plus 18 % sur 20 m |
+| lacets | **16 points de rayon < 20 m**, dont des épingles de 8 à 12 m | deux courbes de 19 m au carrefour |
+| largeur | ≈ 5 m sans marquage (photos 7 à 9) | une voie ≈ 3 m ; trouée sans arbres médiane 9 m |
+
+**Correction** : la RD 256 n'est pas toute en mer. Son premier kilomètre depuis la ville (tuiles `25_28`, `26_28`, `26_29`, `27_29`) **est déjà dans le jeu**,
+avec le bon relief (écart au MNT : 0,1 à 0,3 m) ; elle s'arrête aujourd'hui à la falaise vers (−55 ; −1 862), au milieu des lacets.
+
+### 8.5 Le jeu aujourd'hui
+
+- Relief du jeu à la croix : 589,0 m (MNT 589,6 m). Profil nord-sud : identique au MNT au nord ; **au sud, le sol tombe de 589 à 287 m entre 0 et 120 m**
+  (falaise de `coast_lib.shore_cap`) alors que le vrai sol reste à 589-598 m. La croix est à **143 m** du trait de côte ; le parking est déjà à moitié dans la falaise.
+- Arbres du jeu à moins de 40 m de la croix : 11 (11,5 à 20,2 m de haut), tous dans la forêt réelle.
+
+### 8.6 L'extension simulée
+
+| | |
+|---|---|
+| nouvelles tuiles jouables (9) | `22_26`, `22_27`, `23_25`, `23_26`, `24_25`, `24_26`, `25_26`, `25_27`, `26_27` |
+| nouvelles tuiles de bordure (11) | `21_25`, `21_26`, `22_24`, `22_25`, `23_24`, `24_24`, `25_24`, `25_25`, `26_25`, `26_26`, `27_26` |
+| blocs | `(2, 3)` et `(3, 3)` |
+| terre | 22,99 → **23,84 km²** (+0,85 km²) ; **aucune terre perdue ailleurs** à plus de 0,2 % près (1 612 m², le lissage de la côte) |
+| RD 256 | à **190 m** de la nouvelle côte au plus près, entièrement à terre |
+| route d'accès | à **155 m** de la côte au plus près |
+| croix | à **347 m** de la nouvelle côte (143 m aujourd'hui) ; au sud de la croix, la terre s'étend sur 320 à 350 m |
+| emprise | la terre descend jusqu'à y = −2 683 (−2 062 aujourd'hui) |
+
+Le tracé proposé (§1.1) suffit : **aucune tuile de plus** n'est nécessaire. Le carrefour, au sud, finit en presqu'île au bord des champs (en bleu sur l'image) :
+c'est le bout du monde de ce côté.
+
+### 8.7 Ce qui change dans le plan
+
+- Le **lot 3** (la croix) a toutes ses mesures, sauf l'épaisseur et la saillie des bras, la forme des escaliers nord et les mâts d'éclairage (photos).
+- Le **lot 4** (belvédère) vise une portée de **3,5 km** dans le secteur nord ; le nord de la ville (Saint-Pantaléon, à plus de 4 km) restera dans la brume, comme en vrai par temps ordinaire.
+- Le **parking** est redessiné d'après l'orthophotographie, pas d'après le contour OSM.
+
+### 8.8 Captures « avant » (viewer, 15 h)
+
+| Capture | Caméra | Ce qu'on voit |
+|---|---|---|
+| `croix-avant-vue.jpg` | sur la croix, à 2,8 m, vers la cathédrale (`cam=-841,-1805,2.8,36,-571,10`) | la pelouse de l'aire de décollage, la lisière, puis **le brouillard** : aucune trace de la ville |
+| `croix-avant-haut.jpg` | à 70 m au-dessus de l'aire de décollage, vers le sud-ouest (`cam=-760,-1690,70,-850,-1840,0`) | l'aire de décollage et **son sentier en lacets** (déjà dans les sols du jeu), le sommet sans croix, la forêt |
+| `croix-avant-parking.jpg` | au milieu du vrai parking, à 1,7 m (`cam=-852,-1845,1.7,-841,-1809,4`) | **la caméra est dans la falaise** : le parking réel n'existe pas dans le jeu |
+
+**À vérifier au lot 4** : sur `croix-avant-vue.jpg`, la lisière du bas de l'aire de décollage arrive à la hauteur du regard. Le MNS dit que la ville passe au-dessus
+des vrais arbres (§8.3) ; il faudra s'assurer que les arbres du jeu (hauteur et forme des houppiers) ne la cachent pas davantage.
