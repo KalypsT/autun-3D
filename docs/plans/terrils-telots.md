@@ -132,8 +132,8 @@ Fait (lots 0 à 4 en une passe, `tools/data/build_terrils.py`) : schiste rose et
 rose, deux sentiers en lacets creusés dans le relief (virages élargis et presque plats), affichage du relief fin sous les sentiers, poids des
 sols pour la vue lointaine, point de vue au sommet (panorama), lieu sur la carte, cinq vues, trois tests.
 
-Reste : les passants ne prennent pas les sentiers ; les images de la carte ne montrent pas encore le schiste ; vérifier sur téléphone la couleur
-rose et les images par seconde au sommet (panorama).
+Reste : vérifier sur téléphone la couleur rose et les images par seconde au sommet (panorama). Passants sur les sentiers et schiste sur la
+carte : faits en D270.
 
 ![Des champs du sud](../captures/telots-apres-sud.jpg)
 ![Les lacets du terril est](../captures/telots-apres-lacets.jpg)

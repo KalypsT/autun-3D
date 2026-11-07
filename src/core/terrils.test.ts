@@ -58,4 +58,36 @@ describe("terrils des Télots (D269)", () => {
       }
     }
   });
+
+  it("les passants : les deux sentiers sont reliés aux chemins voisins, un point de vue à chaque sommet (D270)", () => {
+    const cell = JSON.parse(readFileSync("public/data/nav/s6_12.json", "utf8")) as { ped: { n: number[]; e: number[] }; poi: number[] };
+    const { n, e } = cell.ped;
+    const nodes = n.length / 3;
+    const adj: number[][] = Array.from({ length: nodes }, () => []);
+    let added = 0;
+    for (let i = 0; i < e.length; i += 11) {
+      adj[e[i]!]!.push(e[i + 1]!);
+      adj[e[i + 1]!]!.push(e[i]!);
+      if (e[i + 8] === 907818795) added++;
+    }
+    expect(added).toBe(5);
+    // Composante du nœud le plus proche de chaque sommet : elle doit contenir des nœuds d'origine (hors drapeau 32), loin des terrils.
+    const nearest = (x: number, y: number): number => {
+      let best = 0, d = Infinity;
+      for (let k = 0; k < nodes; k++) {
+        const dk = Math.hypot(n[3 * k]! - x, n[3 * k + 1]! - y);
+        if (dk < d) [d, best] = [dk, k];
+      }
+      return best;
+    };
+    for (const v of Object.values(trace)) {
+      const seen = new Set([nearest(v.summit[0]!, v.summit[1]!)]);
+      const todo = [...seen];
+      while (todo.length) for (const m of adj[todo.pop()!]!) if (!seen.has(m)) { seen.add(m); todo.push(m); }
+      expect([...seen].some((k) => !(n[3 * k + 2]! & 32) && Math.hypot(n[3 * k]! - v.summit[0]!, n[3 * k + 1]! - v.summit[1]!) > 300)).toBe(true);
+      const poi = [];
+      for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 8 && Math.hypot(cell.poi[i + 1]! - v.summit[0]!, cell.poi[i + 2]! - v.summit[1]!) < 5) poi.push(i);
+      expect(poi.length).toBe(1);
+    }
+  });
 });

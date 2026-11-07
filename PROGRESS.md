@@ -1978,3 +1978,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Des champs du sud](docs/captures/telots-apres-sud.jpg)
 ![Les lacets](docs/captures/telots-apres-lacets.jpg)
+
+**Passants sur les terrils, et la carte retrouve ses couleurs (7 novembre 2026)** (D270)
+- Des passants montent et descendent les deux sentiers en lacets ; au sommet, ils s'arrêtent pour regarder la ville. Les sentiers sont reliés au chemin qui monte par la face nord-est, à la piste de la rue des Télots, et entre eux par le pied sud.
+- La carte et la minimap montrent les terrils : schiste rose, schiste noir, sentiers.
+- Correction au passage : la carte n'avait plus que 5 couleurs (bâtiments vert pâle, rues bleues) depuis l'arrivée de la mer ; elle a retrouvé les siennes (bâtiments orangés, monuments rouges, chaussées grises, terrains).
+- À faire de ton côté : ouvrir la carte et la minimap ; monter au sommet du terril est à pied et voir si des passants y sont.
+
+![La carte](docs/captures/d270-carte.jpg)

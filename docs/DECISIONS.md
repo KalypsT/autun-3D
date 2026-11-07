@@ -5817,3 +5817,35 @@ relancer `build_terrils.py` après lui ; quelques éclats sombres aux bords des 
 ![Les lacets du terril est](captures/telots-apres-lacets.jpg)
 ![Un virage, de près](captures/telots-apres-virage.jpg)
 ![Du sommet, vers la ville](captures/telots-apres-sommet.jpg)
+
+
+## 2026-11-07 — D270. Passants sur les sentiers des terrils ; la carte retrouve ses couleurs (et le schiste)
+
+**Demande** : des passants sur les sentiers des terrils (D269) ; les autres points restés en suspens, s'ils sont cohérents.
+
+**Passants** (`tools/data/build_terrils_nav.py`, après `build_terrils.py --trace` et après `build_nav.py`) : les deux lacets deviennent des files
+piétonnes (chemin de 2,5 m, un sommet tous les 2 m) dans la seule super-tuile `s6_12`, sur le modèle de `build_passage_nav.py` (graphe et
+raccords de `build_theatre_nav.py`). Raccords : le sommet est au chemin OpenStreetMap qui y monte déjà par la face nord-est (`way/1497939637`,
+qui finit à 8 m du sommet) ; le pied ouest à la piste de la rue des Télots (`way/250361755`, à 11 m) ; le pied est au pied ouest par un chemin
+le long du pied sud (130 m, une bosse de 6 m). Fréquentation 140 sur 255 (les chemins OSM voisins sont à 0 : les passants n'y apparaîtraient
+presque jamais), zone « périphérie ». Un point d'intérêt « monument » à chaque sommet, tourné vers la cathédrale : les passants s'y arrêtent
+pour regarder la vue. Nœuds au drapeau 32, arêtes à la référence du terril est (907818795) : une nouvelle passe retire puis refait ; une
+deuxième passe ne change rien.
+
+**La carte** (`build_map.py --images`) : les sols de terril y sont dessinés (schiste rose, noir, sentiers). En le faisant, un défaut ancien est
+apparu : la palette commune des images (D33 : 96 couleurs) était tirée du **seul premier kilomètre**, presque tout en mer et en papier depuis
+D105 : **5 couleurs** pour toute la carte (bâtiments vert pâle, chaussées et rues bleu-vert, pas de monuments rouges ni de terrains orange).
+Corrigé : la palette contient d'abord toutes les couleurs nommées, exactes (papier, bâtiments, bord, monuments, chaque sol), puis le découpage
+médian d'une mosaïque de tous les kilomètres pour les mélanges des bords (un premier passage fait les vignettes, qui servent aussi à la vue
+d'ensemble). Une image n'est réécrite que si ses couleurs changent. Toutes les images changent cette fois (81 fichiers) ; 1,5 → 2,2 Mo en tout
+(la minimap ne lit que les images à 2 m par pixel). Trois kilomètres (`s6_8`, `s7_8`, `s7_9`) n'avaient pas été refaits depuis des lots
+précédents : ils suivent maintenant leurs tuiles.
+
+**Non fait** : les petits éclats sombres aux bords des sols sur les talus (D269) : peu visibles, le coût d'une correction (sols plus fins
+encore, ou recoupe au relief) ne le vaut pas ; la mesure sur téléphone reste à faire de ton côté.
+
+**Tests** (+1, `src/core/terrils.test.ts`) : cinq arêtes ajoutées ; chaque sommet est relié à des files d'origine à plus de 300 m ; un point
+de vue par sommet. 1 388 essais.
+
+![La carte](captures/d270-carte.jpg)
+![Les terrils sur la carte](captures/d270-carte-terrils.jpg)
