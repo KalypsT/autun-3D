@@ -8,7 +8,7 @@ import { CATALOG, damageProfile, FAMILIES, paletteColor, vehicleDef, type Family
 import { DAMAGE, deratedSpec, looksDented, VehicleDamage, ZONES } from "../core/damage";
 import { createBikeModel, MOUNTAIN_BIKE } from "../render/bike-model";
 import { carLayout, wheelTrack } from "../render/car-body";
-import { baseModel, CAR_BODIES, carRestGeometry, createCarModel, DENTED } from "../render/car-model";
+import { baseModel, CAR_BODIES, carRestGeometry, createCarModel, DENTED, TWO_TONE } from "../render/car-model";
 import { bakeRest, ParkedModels } from "../render/parked-models";
 import { createMotoModel } from "../render/moto-model";
 import { createMotorScooterModel } from "../render/motorscooter-model";
@@ -40,13 +40,28 @@ export function restGeometryOf(id: string): THREE.BufferGeometry {
   return def.family === "car" ? carRestGeometry(id) : bakeRest(MODEL_BUILDERS[def.id]!("#ffffff"));
 }
 
-/** Modèle dessiné pour un véhicule garé ou de la circulation : sa forme abîmée s'il paraît cabossé (voitures seulement, D112). */
-export function drawnModel(def: VehicleDef, damage: VehicleDamage): string {
-  return def.family === "car" && !def.train && looksDented(damage) ? def.id + DENTED : def.id;
+/** La variante est-elle la version en deux tons du modèle (D280) ? */
+export function isTwoTone(def: VehicleDef, variant: number): boolean {
+  return !!def.twoTone?.variants.includes(Math.abs(Math.trunc(variant)) % def.palette.length);
 }
 
-/** Modèle articulé d'une entrée du catalogue, de la couleur de la variante. */
+/** Identifiant du modèle d'une variante : avec le suffixe de la version en deux tons s'il y a lieu (D280). */
+export function toneModel(def: VehicleDef, variant: number): string {
+  return isTwoTone(def, variant) ? def.id + TWO_TONE : def.id;
+}
+
+/**
+ * Modèle dessiné pour un véhicule garé ou de la circulation : sa forme abîmée s'il paraît cabossé (voitures seulement, D112), sa version en
+ * deux tons pour ces couleurs (D280).
+ */
+export function drawnModel(def: VehicleDef, damage: VehicleDamage, variant = 0): string {
+  const id = toneModel(def, variant);
+  return def.family === "car" && !def.train && looksDented(damage) ? id + DENTED : id;
+}
+
+/** Modèle articulé d'une entrée du catalogue, de la couleur de la variante (et en deux tons pour ces couleurs, D280). */
 export function buildModel(def: VehicleDef, variant: number): VehicleModel {
+  if (isTwoTone(def, variant)) return createCarModel(def.id, paletteColor(def, variant), true);
   return MODEL_BUILDERS[def.id]!(paletteColor(def, variant));
 }
 
@@ -160,7 +175,8 @@ export class Fleet {
   ) {
     scene.add(this.parked.group);
     // Aussi la forme abîmée de chaque voiture (D112) : elle ne coûte un appel de dessin que quand une voiture cabossée est là.
-    this.parked.prepare([...CATALOG.map((d) => d.id), ...CATALOG.filter((d) => d.family === "car").map((d) => d.id + DENTED)]);
+    const toned = CATALOG.filter((d) => d.twoTone).map((d) => d.id + TWO_TONE);
+    this.parked.prepare([...CATALOG.map((d) => d.id), ...toned, ...[...CATALOG.filter((d) => d.family === "car").map((d) => d.id), ...toned].map((id) => id + DENTED)]);
   }
 
   /** Aucun véhicule ne sera garé dans ce cercle (point de départ du joueur). */
@@ -412,7 +428,7 @@ export class Fleet {
       if (Math.hypot(v.state.x - x, v.state.y - y) > reach) continue;
       // Une épave brûlée est noircie : la peinture prend la teinte du charbon (D111).
       const color = v.damage.end === "explosion" ? WRECK_COLOR : paletteColor(v.def, v.variant);
-      items.push({ model: drawnModel(v.def, v.damage), x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
+      items.push({ model: drawnModel(v.def, v.damage, v.variant), x: v.state.x, y: v.state.y, z: v.state.z, heading: v.state.heading, pitch: v.state.pitch, lean: v.state.lean, color });
     }
     this.parked.set(items);
     this.stats.drawn = this.parked.instances;

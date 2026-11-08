@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -61,6 +61,11 @@ export interface VehicleDef {
   toughness?: number;
   /** Exemplaire unique (D114) : jamais dans la circulation ni sur les places ordinaires ; il a sa place fixe (`src/core/uniques.ts`). */
   unique?: boolean;
+  /**
+   * Version en deux tons (D280, la deux-chevaux) : pour ces couleurs de la palette (leurs indices), les ailes et le bas des portes sont de cette
+   * seconde teinte fixe ; le modèle dessiné porte alors le suffixe `#deux-tons`.
+   */
+  twoTone?: { variants: readonly number[]; color: string };
   /** Véhicule de service de la circulation (D204 : bus, camion poubelle) : ni garé, ni tiré au hasard ; le jeu le fait rouler à ses heures. */
   service?: boolean;
   /**
@@ -88,6 +93,9 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
   // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue ; une des six couleurs des photos, tirée à chaque apparition (D277).
   { id: "supercar", family: "car", name: "Supercar", unique: true, badge: { make: "Augusta", model: "Bibracte" }, toughness: 0.9, spec: SUPERCAR, size: { length: 4.94, width: 2.03, height: 1.14 }, palette: ["#6fae2e", "#2b8fc6", "#c8261d", "#f2b40a", "#1c1d21", "#e8501c"] },
+  // Deux-chevaux (D280) : la seule de la ville, garée place Cardinal-Perraud ; une des sept couleurs tirée à chaque apparition, dont deux en deux tons
+  // (ailes et bas de caisse noirs).
+  { id: "deuche", family: "car", name: "Deux-chevaux", unique: true, badge: { make: "Éduen", model: "Bourdon" }, toughness: 0.75, spec: DEUCHE, size: { length: 3.78, width: 1.48, height: 1.6 }, palette: ["#8e9190", "#8fb3c4", "#7f9488", "#d8ccaa", "#7a1f2a", "#7a1f2a", "#d6a21e"], twoTone: { variants: [5, 6], color: "#17181c" } },
   { id: "pizza-du-vallon", family: "car", name: "Camion pizza", unique: true, badge: { make: "Couhard", model: "Pizza du Vallon" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 3.62 }, palette: ["#7cc43a"] },
   { id: "rotisserie-champ-de-mars", family: "car", name: "Rôtisserie", unique: true, badge: { make: "Couhard", model: "Rôtisserie du Champ de Mars" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 2.9 }, palette: ["#ece6da"] },
   { id: "petit-train", family: "car", name: "Petit train", unique: true, train: true, badge: { make: "Couhard", model: "Petit Train d'Autun" }, toughness: 2, spec: TRAIN_LOCO, size: { length: 4.4, width: 1.9, height: 2.6 }, palette: ["#2f6b4f"] },

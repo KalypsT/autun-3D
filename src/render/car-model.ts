@@ -12,6 +12,7 @@ import { SUPERCAR } from "./car-supercar";
 import { SPORTIVE } from "./car-sportive";
 import { VIEILLE_VOITURE } from "./car-vieille-voiture";
 import { CAMIONNETTE } from "./car-camionnette";
+import { DEUCHE } from "./car-deuche";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -86,6 +87,14 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.3, windshield: 0.65, roof: 1.35, rearGlass: 0.78, roofTaper: 0.86,
     wheelRadius: 0.29, tyreWidth: 0.17, glass: "#26303b", sculpt: VIEILLE_VOITURE,
     style: { headlights: "rect", grille: "band", taillights: "vertical", bumpers: "trim", rim: "#c9ccc8", doors: 2, roundness: 0.2, spokes: 10 },
+  },
+  // Deux-chevaux (D280, véhicule unique) : caisse sculptée d'après photos (`car-deuche.ts`), ailes rapportées ; en deux tons pour deux couleurs.
+  deuche: {
+    length: 3.78, width: 1.48, height: 1.6, overhangFront: 0.68,
+    clearance: 0.27, belt: 1.0, noseHeight: 0.7, tailHeight: 0.9,
+    hood: 0.57, windshield: 0.17, roof: 1.4, rearGlass: 0.62, roofTaper: 0.9,
+    wheelRadius: 0.29, tyreWidth: 0.13, glass: "#2a3440", sculpt: DEUCHE,
+    style: { headlights: "round", grille: "chrome", taillights: "round", bumpers: "chrome", rim: "#cfd1cc", doors: 2, roundness: 1 },
   },
   // Gendarmerie (J4, D72) : la caisse de la compacte, bleu nuit, bandes claires sur les flancs, barre de gyrophares sur le toit.
   gendarmerie: {
@@ -186,12 +195,13 @@ function bodyOf(id: string): { p: CarBodyParams; front: number; rear: number } {
   return { p, ...specOf(id) };
 }
 
-/** Maillage d'une caisse prête à l'emploi : peinture (de la couleur donnée) et détails (verre, pare-chocs, feux…). */
-export function createCarModel(id: string, color: string): VehicleModel {
+/** Maillage d'une caisse prête à l'emploi : peinture (de la couleur donnée) et détails (verre, pare-chocs, feux…) ; `twoTone` : sa version en deux tons (D280). */
+export function createCarModel(id: string, color: string, twoTone = false): VehicleModel {
   const { p, front, rear } = bodyOf(id);
   const layout = carLayout(p, front, rear);
-  const bodyGeo = bodyPaintGeometry(p, front, rear, color);
-  const detailGeo = bodyDetailGeometry(p, front, rear);
+  const tone = twoTone ? toneOf(id) : undefined;
+  const bodyGeo = bodyPaintGeometry(p, front, rear, color, tone);
+  const detailGeo = bodyDetailGeometry(p, front, rear, true, tone);
   const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim, p.style.spokes);
   // Dégâts (D110) : préparés à la première bosse seulement (copie des positions et des couleurs d'origine).
   const frame = crumpleFrame(p, front, rear);
@@ -261,16 +271,27 @@ export const DENT: Readonly<Record<Zone, number>> = { front: 0.6, rear: 0.3, lef
 /** Suffixe des modèles dessinés sous leur forme abîmée (`citadine#dent`). */
 export const DENTED = "#dent";
 
-/** Identifiant du modèle sans le suffixe de la forme abîmée. */
+/** Suffixe des modèles dessinés dans leur version en deux tons (D280 : `deuche#deux-tons`, `deuche#deux-tons#dent`). */
+export const TWO_TONE = "#deux-tons";
+
+/** Seconde teinte d'un modèle (catalogue, `twoTone`) ; erreur s'il n'en a pas. */
+function toneOf(id: string): string {
+  const t = vehicleDef(id)?.twoTone;
+  if (!t) throw new Error(`pas de version en deux tons pour ${id}`);
+  return t.color;
+}
+
+/** Identifiant du modèle sans le suffixe de la forme abîmée ni celui de la version en deux tons. */
 export function baseModel(id: string): string {
   const i = id.indexOf("#");
   return i < 0 ? id : id.slice(0, i);
 }
 
-/** Caisse peinte (en blanc) et détails d'une voiture, abîmés si l'identifiant porte le suffixe `#dent`. */
+/** Caisse peinte (en blanc) et détails d'une voiture, abîmés si l'identifiant porte le suffixe `#dent`, en deux tons s'il porte `#deux-tons`. */
 function bodyParts(id: string): { paint: THREE.BufferGeometry; detail: THREE.BufferGeometry; p: CarBodyParams; front: number; rear: number } {
-  const { p, front, rear } = bodyOf(baseModel(id));
-  const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), detail = bodyDetailGeometry(p, front, rear);
+  const base = baseModel(id), { p, front, rear } = bodyOf(base);
+  const tone = id.includes(TWO_TONE) ? toneOf(base) : undefined;
+  const paint = bodyPaintGeometry(p, front, rear, "#ffffff", tone), detail = bodyDetailGeometry(p, front, rear, true, tone);
   if (id.endsWith(DENTED)) {
     const frame = crumpleFrame(p, front, rear);
     new Crumpler(paint, frame, true, false).apply(DENT);

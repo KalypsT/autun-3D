@@ -6094,3 +6094,58 @@ dans le noir du bouclier.
 
 ![Avant / après](captures/d279-camionnette-avant-apres.jpg)
 ![Couleurs](captures/d279-camionnette-couleurs.jpg)
+
+## 2026-11-08 — D280. Une deux-chevaux unique (Éduen Bourdon), place Cardinal-Perraud, avec une version en deux tons
+
+**Demande** : un nouveau véhicule unique d'après photos, comme la supercar (D276). Nom choisi par l'utilisateur : **Éduen Bourdon** (identifiant
+`deuche`). **Photos** : six.
+- **Retenues** (choix de l'utilisateur) : les quatre de la première version, années 1950-1960 : trois-quarts avant, profil, deux trois-quarts arrière.
+- **Écartées** : les deux de la dernière version (deux tons bordeaux et noir, série spéciale de 1976), qui ont une autre calandre, une troisième vitre
+  de côté et d'autres phares.
+
+**Fiche** (`DEUCHE`, `src/core/vehicle-specs.ts`, neuve) : celle de la dernière version (choix de l'utilisateur), sur la silhouette de la première.
+- 660 kg avec le conducteur, ≈ 18 kW aux roues : **0 à 100 km/h en ≈ 27 s**, 115 km/h. La première version, plus lente (≈ 90 km/h, de mémoire), aurait
+  été presque immobile dans la circulation.
+- Empattement réel (2,40 m), poids sur l'avant, pneus étroits (adhérence 0,85), direction lente.
+- Freins à tambour **sans ABS** (roues bloquées au freinage à fond, 40 m depuis 80 km/h).
+- **Suspension très souple** : roulis de 0,03 rad par m/s², borné à 0,14 rad au lieu de 0,08 (nouveau champ facultatif `maxBodyRoll` de la fiche ;
+  les autres véhicules ne changent pas).
+- Tests (`vehicle-specs.test.ts`) : fourchette du 0 à 100 km/h (22 à 40 s), vitesse maximale, freinage sans ABS, roulis nettement plus fort que la
+  citadine. Elle est écartée du test de freinage avec ABS, comme la vieille voiture.
+
+**Son** (`sound-model.ts`) : bicylindre à plat qui monte haut dans les tours (7 000 tr/min), quatre rapports, son sec et nasillard.
+
+**Place** (`src/core/uniques.ts`) : place Cardinal-Perraud, près de la cathédrale (choix de l'utilisateur parmi trois). Elle occupe la dernière place
+de la rangée sud-est (153,7 ; −464,7), dans l'axe des traits. Le sol y est un parking en enrobé, avec le marquage des places. Comme pour les autres
+uniques, le jeu ne gare aucune voiture ordinaire à moins de 3,4 m d'elle.
+
+**Version en deux tons** (demande de l'utilisateur) : deux des sept couleurs (bordeaux, jaune) ont les ailes et le bas des portes en virgule noirs.
+- Le catalogue indique ces variantes (`twoTone`), et le modèle dessiné porte alors le suffixe `#deux-tons`, comme `#dent` pour la forme abîmée.
+- La caisse sculptée a un lot de pièces de la seconde teinte (`Sculpt.tone`). Elles sont peintes comme la caisse, sauf dans la version en deux tons,
+  où elles passent dans les détails avec la teinte fixe.
+- Fichiers touchés : `drawnModel`, `buildModel` et la préparation des modèles garés (`vehicles.ts`), et la galerie des véhicules.
+
+**Moteur** (`car-sculpt.ts`) : l'option `frontArch: false` supprime le passage de roue avant découpé dans la caisse, puisque les roues avant sont sous
+des ailes rapportées. Elle économise une centaine de triangles.
+
+**Caisse** (`src/render/car-deuche.ts`) : la caisse sculptée n'est que la coque centrale ; les pièces sont rapportées, comme sur la vraie.
+- **Coque** : capot étroit à nervures, ouïes sur ses flancs, habitacle à pare-brise presque droit, dos rond en escargot, petite lunette,
+  toit de toile sombre.
+- **Avant** : quatre ailes bombées (sections elliptiques), les ailes arrière cachant le haut des roues ; phares ronds dans leur coquille couleur caisse,
+  sur une barre au-dessus des ailes ; petite calandre en trapèze à cadre chromé et emblème neutre (losange).
+- **Flancs** : portes avant ouvrant vers l'avant (poignées au bord avant), clignotant orange, jonc chromé du bas de caisse, garde-boue noirs.
+- **Arrière** : malle nervurée et son contour, petits feux ronds cerclés de chrome, plaque.
+- **Pare-chocs** : fins, en aluminium, avec deux butoirs à l'avant.
+- **Palette** : gris, bleu glacier, vert-gris, beige, bordeaux ; bordeaux et jaune en deux tons.
+
+**Gabarit** : 3,78 × 1,48 × 1,60 m, les vraies mesures. **Coût** (exemplaire garé) : 984 triangles de peinture, 1 082 de détails et roues, **2 066 au
+total**, 2 162 en deux tons (plafonds des véhicules uniques).
+
+**Reste** :
+- Les ailes sont des sections elliptiques assez grossières de près.
+- Les roues gardent l'enjoliveur à croix du générateur.
+- Le toit de toile est une simple surface sombre, sans le rouleau de la capote ouverte.
+- La dernière version de la voiture n'est pas dessinée.
+
+![Vues, et à sa place place Cardinal-Perraud](captures/d280-deuche.jpg)
+![Couleurs, dont les deux versions en deux tons](captures/d280-deuche-couleurs.jpg)

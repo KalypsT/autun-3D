@@ -47,6 +47,8 @@ export interface Sculpt {
   };
   /** Rayon des passages de roue. */
   arch: number;
+  /** Faux : pas de passage de roue avant découpé dans la caisse (D280 : les roues avant de la deux-chevaux sont sous des ailes rapportées). */
+  frontArch?: boolean;
   /**
    * Carénage de la roue arrière (D278, la BX) : hauteur (m) à laquelle le bas de caisse ferme le passage de roue arrière ; la roue n'y est vue
    * que par-dessous. Absent : passage rond comme à l'avant.
@@ -65,6 +67,11 @@ export interface Sculpt {
   lamps: { head: readonly [number, number, number]; tail: readonly [number, number, number] };
   /** Pièces peintes en plus (rétroviseurs, becquet). */
   paint?: (k: SculptKit) => THREE.BufferGeometry[];
+  /**
+   * Pièces de la seconde teinte (D280, la deux-chevaux : ailes, bas des portes) : peintes comme la caisse, ou de la teinte fixe de la version
+   * en deux tons (`twoTone` vrai : on peut y ajouter des pièces qui ne servent qu'à elle).
+   */
+  tone?: (k: SculptKit, twoTone: boolean) => THREE.BufferGeometry[];
   /** Décalcomanies et pièces de couleurs fixes. */
   details: (k: SculptKit, glass: string) => THREE.BufferGeometry[];
 }
@@ -264,14 +271,19 @@ function stations(sc: Sculpt, f: SculptFrame, axles: readonly number[]): number[
   const end = f.length - 2 * NOSE_GAP;
   // Les points des profils, sauf au-dessus des roues où les sections de l'arc suffisent ; au moins 4 cm entre deux sections (les bouts exceptés).
   const zone = sc.arch * 1.06 + 0.03;
-  const keys = [...new Set([...sc.top, ...sc.bottom, ...sc.width].map(([s]) => s))].filter((s) => axles.every((a) => Math.abs(s - a) > zone)).sort((a, b) => a - b);
+  const keys = [...new Set([...sc.top, ...sc.bottom, ...sc.width].map(([s]) => s))].filter((s) => cutAxles(sc, axles).every((a) => Math.abs(s - a) > zone)).sort((a, b) => a - b);
   const kept: number[] = [];
   for (const s of keys) if (!kept.length || s > kept[kept.length - 1]! + 0.04 || s >= end - 0.03) kept.push(s);
-  for (const a of axles) for (const t of [-1.06, -1, -0.7, 0, 0.7, 1, 1.06]) kept.push(a + t * sc.arch);
+  for (const a of cutAxles(sc, axles)) for (const t of [-1.06, -1, -0.7, 0, 0.7, 1, 1.06]) kept.push(a + t * sc.arch);
   // Carénage : une section de plus à chaque bout de son bord bas, pour que le bord reste net.
   const cut = spatReach(sc, f);
   if (cut !== null) for (const t of [-1, 1]) kept.push(axles[1]! + t * cut);
   return kept.filter((s) => s >= 0 && s <= end).sort((a, b) => a - b);
+}
+
+/** Essieux dont le passage de roue est découpé dans la caisse (tous, sauf l'avant si `frontArch` est faux). */
+function cutAxles(sc: Sculpt, axles: readonly number[]): number[] {
+  return sc.frontArch === false ? axles.slice(1) : [...axles];
 }
 
 /** Demi-longueur du bord bas du carénage arrière (là où l'arc du passage de roue atteint sa hauteur), ou null sans carénage. */
@@ -291,7 +303,7 @@ function shell(sc: Sculpt, f: SculptFrame, color: string): { lower: THREE.Buffer
     // Passage de roue : le bas de caisse remonte en arc au-dessus de chaque roue (centre à la hauteur du moyeu).
     axles.forEach((a, i) => {
       const d = Math.abs(s - a);
-      if (d > sc.arch + 1e-6) return;
+      if (d > sc.arch + 1e-6 || (i === 0 && sc.frontArch === false)) return;
       const arc = f.wheelRadius + Math.sqrt(Math.max(0, sc.arch * sc.arch - d * d));
       y0 = Math.max(y0, i === 1 && sc.rearSpat !== undefined ? Math.min(arc, sc.rearSpat) : arc);
     });
@@ -355,11 +367,12 @@ function kitFor(sc: Sculpt, f: SculptFrame): SculptKit {
   return new SculptKit(sc, f, target);
 }
 
-/** Peinture d'une caisse sculptée : bas de caisse, habitacle, pièces peintes. */
-export function sculptPaintGeometry(sc: Sculpt, f: SculptFrame, color: string): THREE.BufferGeometry {
+/** Peinture d'une caisse sculptée : bas de caisse, habitacle, pièces peintes (et celles de la seconde teinte, sauf pour la version en deux tons). */
+export function sculptPaintGeometry(sc: Sculpt, f: SculptFrame, color: string, tone?: string): THREE.BufferGeometry {
   const { lower, cabin } = shell(sc, f, color);
   cabin.dispose();
-  const extra = sc.paint ? sc.paint(kitFor(sc, f)).map((g) => paint(g, color)) : [];
+  const k = sc.paint || (sc.tone && !tone) ? kitFor(sc, f) : null;
+  const extra = [...(sc.paint ? sc.paint(k!) : []), ...(sc.tone && !tone ? sc.tone(k!, false) : [])].map((g) => paint(g, color));
   return merge([lower, faces(cabinFaces(sc, f).paint, color), ...extra]);
 }
 
@@ -388,12 +401,13 @@ function underside(sc: Sculpt, f: SculptFrame): THREE.BufferGeometry[] {
 
 /**
  * Détails d'une caisse sculptée (vitres, phares, feux, grilles, lignes…), plus un dessous sombre qui ferme les passages de roue.
- * `mirrors` : avec les rétroviseurs mis à part (`Sculpt.mirrors`) ; sans eux pour mesurer le gabarit de la caisse.
+ * `mirrors` : avec les rétroviseurs mis à part (`Sculpt.mirrors`) ; sans eux pour mesurer le gabarit de la caisse. `tone` : la seconde teinte de la
+ * version en deux tons (D280), dont les pièces passent alors de la peinture aux détails.
  */
-export function sculptDetailGeometry(sc: Sculpt, f: SculptFrame, glass: string, mirrors = true): THREE.BufferGeometry {
+export function sculptDetailGeometry(sc: Sculpt, f: SculptFrame, glass: string, mirrors = true, tone?: string): THREE.BufferGeometry {
   const k = kitFor(sc, f);
   const cab = cabinFaces(sc, f);
-  const extra = mirrors && sc.mirrors ? sc.mirrors(k) : [];
+  const extra = [...(mirrors && sc.mirrors ? sc.mirrors(k) : []), ...(tone && sc.tone ? sc.tone(k, true).map((g) => paint(g, tone)) : [])];
   return merge([...underside(sc, f), faces(cab.glass, glass), faces(cab.black, "#141519"), ...sc.details(k, glass), ...extra]);
 }
 

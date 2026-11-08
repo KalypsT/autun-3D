@@ -649,8 +649,8 @@ function sculptFrame(p: CarBodyParams, front: number, rear: number): SculptFrame
   return { length: p.length, noseZ: carLayout(p, front, rear).noseZ, front, rear, wheelRadius: p.wheelRadius };
 }
 
-export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true): THREE.BufferGeometry {
-  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c", withMirrors);
+export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true, tone?: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c", withMirrors, tone);
   const f = frame(p, front, rear), { L, W, st, shoulder, roofW, beltAt, topAt } = f;
   const glass = p.glass ?? "#2b3a4c";
   const top = p.cabHeight ?? p.height;
@@ -912,9 +912,9 @@ function liveryParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   return parts;
 }
 
-/** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`). */
-export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry {
-  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color);
+/** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`) ; `tone` : version en deux tons d'une caisse sculptée (D280). */
+export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string, tone?: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color, tone);
   return merge(paintParts(p, front, rear, color));
 }
 
@@ -953,8 +953,8 @@ export function carWheelGeometry(radius: number, width: number, segments: number
  * Détails et quatre roues dans une seule géométrie : voitures garées (instances). `withMirrors` à faux : sans les rétroviseurs mis à part d'une caisse
  * sculptée (D279), pour mesurer son gabarit.
  */
-export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true): THREE.BufferGeometry {
-  const parts = [bodyDetailGeometry(p, front, rear, withMirrors)];
+export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true, tone?: string): THREE.BufferGeometry {
+  const parts = [bodyDetailGeometry(p, front, rear, withMirrors, tone)];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
     const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);
