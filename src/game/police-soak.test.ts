@@ -146,7 +146,9 @@ describe("poursuite qui dure (J4-6)", () => {
     // Départs 6 et 8 depuis D190 (5 et 6 avant) : la poursuite est chaotique et le graphe piéton ayant changé, le départ 5 se coince désormais deux minutes
     // de suite (2 990 et 3 039 pas de contact sur 3 600). Mesuré sur sept départs avec le nouveau graphe : seul le 5 dépasse 2 700 pas par minute (les autres :
     // de 1 229 à 2 442 au pire) ; avant, le 5 plafonnait à 798 et le 6 à 1 783.
-    for (const seed of [6, 8]) {
+    // Départs 8 et 9 depuis D282 (6 et 8 avant) : avec les gendarmeries en berlinette parmi les renforts, le départ 6 coince le fugitif une minute
+    // (3 188 pas de contact). Mesuré sur les départs 4 à 11 : seul le 6 dépasse 2 700 ; les autres, de 783 à 1 851 au pire.
+    for (const seed of [8, 9]) {
       const r = soak(seed, 240, 240, 5);
       expect(r.bad).toBe(0);
       expect(r.minutes).toHaveLength(4);

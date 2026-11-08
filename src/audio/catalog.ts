@@ -132,7 +132,7 @@ function shot(id: string, section: string, label: string, seconds: number, fn: (
 const far = (d: number, pan = 0.5): Spot => ({ gain: distanceGain(d, 8, 500), pan, cutoff: distanceCutoff(d), echo: 0.5 });
 
 export const SCENES: readonly SoundScene[] = [
-  ...CATALOG.filter((d) => d.id !== "gendarmerie").map((d) => vehicleScene(d.id)),
+  ...CATALOG.filter((d) => !d.police).map((d) => vehicleScene(d.id)),
   shot("crash-light", "Véhicules", "Choc léger (voiture)", 1.5, (k, o, t) => S.crash(k, o, t, 0.15, true, NEAR)),
   shot("crash-hard", "Véhicules", "Choc violent (voiture)", 2, (k, o, t) => S.crash(k, o, t, 1, true, NEAR)),
   shot("crash-bike", "Véhicules", "Choc à vélo", 1.5, (k, o, t) => S.crash(k, o, t, 0.4, false, { ...NEAR, gain: 0.6 })),

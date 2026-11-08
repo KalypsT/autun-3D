@@ -72,7 +72,8 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
     models.setNight(1);
     expect(models.drawn).toBe(cars.length + 2);
     // Avec les ombres : deux fois plus d'appels de dessin, jamais plus de (modèles + roues) × 2 + feux.
-    expect((models.drawn - 1) * 2 + 1).toBeLessThanOrEqual(21);
+    // 23 depuis la gendarmerie en berlinette (D282), un modèle de plus dans la circulation.
+    expect((models.drawn - 1) * 2 + 1).toBeLessThanOrEqual(23);
     const visible: THREE.Object3D[] = [];
     models.group.traverse((o) => {
       if ((o as THREE.Mesh).isMesh && o.visible) visible.push(o);

@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE, ALPINE_PURSUIT } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -59,6 +59,12 @@ export interface VehicleDef {
   palette: readonly string[];
   /** Solidité face aux chocs et aux balles (D109) : 1 pour une voiture ordinaire (défaut), plus pour un utilitaire ou la gendarmerie. */
   toughness?: number;
+  /**
+   * Voiture de gendarmerie (J4, D72, D282) : jamais garée ni tirée au hasard dans la circulation ; la police la fait naître (patrouilles, renforts).
+   */
+  police?: boolean;
+  /** Fiche des gendarmes qui la conduisent en poursuite, si elle diffère de `spec` (D282 : la berlinette, bridée). */
+  pursuitSpec?: VehicleSpec;
   /** Exemplaire unique (D114) : jamais dans la circulation ni sur les places ordinaires ; il a sa place fixe (`src/core/uniques.ts`). */
   unique?: boolean;
   /**
@@ -88,7 +94,9 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "vieille-voiture", family: "car", name: "Vieille voiture", badge: { make: "Éduen", model: "Pétrolette" }, toughness: 0.9, spec: OLD_CAR, size: { length: 4.23, width: 1.66, height: 1.36 }, palette: ["#8fa49c", "#a9c4cf", "#c4c6c3", "#56677a", "#b8352b", "#e0d6bd"] },
   { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.18, width: 1.8, height: 1.25 }, palette: ["#1f5fb8", "#e8e6e1", "#1a1b1f", "#5a5e63", "#d9531e", "#1c2c4c"] },
   // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
-  { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.64, width: 1.84, height: 1.77 }, palette: ["#1f3466"] },
+  { id: "gendarmerie", family: "car", name: "Gendarmerie", police: true, badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.64, width: 1.84, height: 1.77 }, palette: ["#1f3466"] },
+  // Gendarmerie en berlinette (D282) : la sportive aux couleurs de la gendarmerie, seulement en renfort à partir de trois étoiles (`ALPINES`, police.ts).
+  { id: "gendarmerie-alpine", family: "car", name: "Gendarmerie (berlinette)", police: true, badge: { make: "Augusta", model: "Janus Gendarmerie" }, icon: "🚓", toughness: 1.1, spec: SPORT_CAR, pursuitSpec: ALPINE_PURSUIT, size: { length: 4.18, width: 1.8, height: 1.33 }, palette: ["#1f3c8f"] },
   // Véhicules uniques (D114) : un seul exemplaire, à sa place (`src/core/uniques.ts`).
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
   // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue ; une des six couleurs des photos, tirée à chaque apparition (D277).

@@ -18,6 +18,12 @@ export const BASE_REACH = 800;
 /** Voitures en poursuite selon le niveau de recherche (0 à 5 étoiles). */
 export const PURSUERS = [0, 1, 2, 4, 5, 6] as const;
 
+/**
+ * Gendarmeries en berlinette admises parmi les poursuivants selon le niveau de recherche (D282) : aucune avant trois étoiles, une à trois étoiles,
+ * deux à quatre et cinq. Elles ne naissent qu'en renfort (une naissance sur trois), jamais en patrouille ordinaire.
+ */
+export const ALPINES = [0, 0, 0, 1, 2, 2] as const;
+
 /** Une voiture de police (ou, en J4-5, un gendarme à pied) : position, cap, en poursuite ou non. */
 export interface PoliceUnit {
   x: number;

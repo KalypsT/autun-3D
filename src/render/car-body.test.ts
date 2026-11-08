@@ -81,8 +81,8 @@ describe("générateur de carrosserie", () => {
       return [st.headlights, st.grille, st.taillights, st.bumpers, st.rim].join(" ");
     });
     expect(new Set(signatures).size).toBe(cars.length);
-    // Les voitures civiles (la gendarmerie reprend la compacte) se distinguent même par leur face avant seule.
-    const faces = cars.filter((d) => d.id !== "gendarmerie").map((d) => `${CAR_BODIES[d.id]!.style.headlights} ${CAR_BODIES[d.id]!.style.grille}`);
+    // Les voitures civiles se distinguent même par leur face avant seule (la gendarmerie en berlinette reprend la sportive, D282).
+    const faces = cars.filter((d) => !d.police).map((d) => `${CAR_BODIES[d.id]!.style.headlights} ${CAR_BODIES[d.id]!.style.grille}`);
     expect(new Set(faces).size).toBeGreaterThanOrEqual(6);
   });
 

@@ -150,6 +150,25 @@ describe("circulation du jeu : naissance et disparition (J3-4)", () => {
     traffic.dispose();
   }, 60000);
 
+  it("gendarmerie en berlinette (D282) : seulement parmi les renforts, au plus celles que le niveau de recherche admet ; aucune sans", () => {
+    for (const alpines of [0, 1]) {
+      const { traffic } = make(10);
+      const here = { x: -10, y: -40 };
+      traffic.pursuers = 4;
+      traffic.alpines = alpines;
+      let most = 0;
+      for (let k = 0; k < 60 * 40; k++) {
+        traffic.step(DT, { kind: "foot", x: here.x, y: here.y, vx: 0, vy: 0 });
+        traffic.update(DT, env({ ...here, hour: 22 }));
+        const n = traffic.cars.filter((c) => c.def.id === "gendarmerie-alpine").length;
+        most = Math.max(most, n);
+        for (const c of traffic.cars) if (c.def.id === "gendarmerie-alpine") expect(c.police && c.sim.chase !== null).toBe(true);
+      }
+      expect(most).toBe(alpines);
+      traffic.dispose();
+    }
+  }, 60000);
+
   it("`extract` retire la voiture la plus proche de la circulation et de l'écran, et rend de quoi en faire un véhicule de la flotte (J4 : vol)", () => {
     const { traffic } = make(10);
     for (let k = 0; k < 60 * 30; k++) {

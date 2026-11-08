@@ -6193,3 +6193,47 @@ en poursuite a quatre feux qui clignotent au lieu de deux.
 
 ![Avant / après](captures/d281-gendarmerie-avant-apres.jpg)
 ![Gyrophare : éteint, puis allumé (une moitié de la rampe, puis l'autre)](captures/d281-gyrophare.jpg)
+
+## 2026-11-08 — D282. Des gendarmes en berlinette, en renfort à partir de trois étoiles
+
+**Photos** : cinq, toutes de la berlinette française d'après laquelle la sportive est déjà sculptée (D277) : trois-quarts avant (deux), profil
+(version plus sportive, même caisse et même livrée), trois-quarts arrière, arrière d'une miniature. Toutes retenues ; il n'y a pas de nouvelle
+caisse à faire.
+
+**Véhicule** : nouvelle entrée `gendarmerie-alpine` (Augusta Janus Gendarmerie), avec la caisse de la sportive dans la livrée de la gendarmerie
+(`src/render/car-gendarmerie-alpine.ts`) et la fiche de la sportive (`SPORT_CAR`, inchangée). Gabarit : 4,18 × 1,80 m, 1,33 m gyrophare compris.
+Un nouveau drapeau du catalogue, `police`, désigne les deux gendarmeries : jamais garées ni tirées dans la circulation, pictogramme de gendarmerie,
+écartées du banc d'essai et de la galerie des sons.
+
+**Livrée** (lettrage réel, même exception que D281) :
+- Bleu de France, double bande blanche sur le capot et le toit.
+- Triple bande blanche sur les portes, coupée par le mot GENDARMERIE, à l'endroit des deux côtés.
+- Chevrons rouges et jaunes sous les phares, qui tournent sur l'aile, et sur tout le bouclier arrière.
+- Un seul gyrophare rond sur le toit, qui clignote (`beacons`) chez les poursuivants comme chez le joueur qui la vole (bouton du klaxon, D281).
+- Le mot n'est **pas sur le capot**, faute de triangles : les détails de la sportive prennent déjà une bonne part du plafond de 1 200.
+- La police à bâtons est maintenant partagée (`car-lettering.ts`), avec un G et un R plus carrés, moins coûteux, ce qui allège aussi la gendarmerie
+  de D281 (1 122 triangles de détails au lieu de 1 142).
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 1 168 de détails et roues, **2 092 au total** (plafonds D272).
+
+**En jeu** :
+- **Nombre** (`ALPINES`, `src/core/police.ts`) : aucune avant trois étoiles, une à trois étoiles, deux à quatre et cinq.
+- **Apparition** : seulement en renfort (un renfort sur trois, tant qu'il en manque, `traffic.ts`), jamais en patrouille ordinaire.
+- **Bridée en poursuite** : 110 kW aux roues au lieu de 190 (`ALPINE_PURSUIT`, champ `pursuitSpec` du catalogue).
+  - À pleine puissance, dans l'essai de poursuite (`chase.test.ts`), elle rattrapait le fugitif sur les 6 départs, mais le touchait une fois arrêté
+    sur 2 d'entre eux. Bridée, elle s'arrête près de lui sur 5 départs sur 6, le seuil de la gendarmerie ordinaire.
+  - Elle reste plus vive que le SUV (95 kW, adhérence moindre).
+  - Volée par le joueur, elle a la fiche entière de la sportive.
+
+**Tests** :
+- Les berlinettes ne naissent que parmi les poursuivants et jamais au-delà du nombre admis (`traffic.test.ts`).
+- La berlinette en poursuite rattrape et s'arrête sans toucher (`chase.test.ts`).
+- Elle a son profil sonore (celui de la sportive) et sa fourchette du 0 à 100 km/h.
+- L'endurance à cinq étoiles (`police-soak.test.ts`) passe aux départs 8 et 9 : avec les berlinettes, le départ 6 coince le fugitif une minute
+  (3 188 pas de contact) ; sur les départs 4 à 11, c'est le seul au-delà de 2 700, les autres vont de 783 à 1 851 au pire.
+
+**Reste** : une berlinette rappelée (le niveau de recherche baisse) finit sa route comme une patrouille ordinaire jusqu'à sortir de la circulation ;
+pas de mot sur le capot ni sur le bouclier arrière.
+
+![Gendarmerie en berlinette](captures/d282-gendarmerie-alpine.jpg)
+![Gyrophare : éteint, allumé, éteint](captures/d282-gyrophare.jpg)

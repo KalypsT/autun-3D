@@ -14,6 +14,7 @@ import { VIEILLE_VOITURE } from "./car-vieille-voiture";
 import { CAMIONNETTE } from "./car-camionnette";
 import { DEUCHE } from "./car-deuche";
 import { GENDARMERIE } from "./car-gendarmerie";
+import { GENDARMERIE_ALPINE } from "./car-gendarmerie-alpine";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -152,6 +153,17 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.45, windshield: 0.75, roof: 0.65, rearGlass: 1.03, roofTaper: 0.62,
     wheelRadius: 0.33, tyreWidth: 0.23, glass: "#1b2733", sculpt: SPORTIVE,
     style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#b5b9c0", doors: 1, roundness: 0.7, exhaust: 1, blackPillars: true, spokes: 10 },
+  },
+  // Gendarmerie en berlinette (D282) : la caisse de la sportive, dans la livrée de la gendarmerie (`car-gendarmerie-alpine.ts`) ; un seul gyrophare
+  // rond sur le toit, qui clignote (`beacons`).
+  "gendarmerie-alpine": {
+    length: 4.18, width: 1.8, height: 1.25, overhangFront: 0.8,
+    clearance: 0.15, belt: 0.9, noseHeight: 0.56, tailHeight: 0.78,
+    hood: 1.45, windshield: 0.75, roof: 0.65, rearGlass: 1.03, roofTaper: 0.62,
+    wheelRadius: 0.33, tyreWidth: 0.23, glass: "#1b2733", sculpt: GENDARMERIE_ALPINE,
+    livery: { stripe: "#eef1f4", accent: "#4a8fd8", lightBar: true },
+    beacons: [{ x: 0, y: 1.285, nose: 2.342, size: [0.16, 0.075, 0.16] }],
+    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#4a4e55", doors: 1, roundness: 0.7, exhaust: 1, blackPillars: true, spokes: 5 },
   },
   // Supercar (D276, véhicule unique) : caisse sculptée d'après photos (`car-supercar.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   supercar: {

@@ -189,3 +189,11 @@ export const DEUCHE: VehicleSpec = {
   maxBrake: 5600, reverseForce: 1600, rolling: 0.015, drag: 0.52, hull: [[1.02, 0.71], [-0.16, 0.72], [-1.34, 0.71]], wheelRadius: 0.29,
   bodyRoll: 0.03, maxBodyRoll: 0.14, engineBrake: 150, abs: false, cgHeight: 0.6, steerGrip: 1.3, rearGrip: 1.1, driftAssist: 0, maxDrift: Infinity,
 };
+
+/**
+ * Gendarmerie en berlinette (D282), conduite par les gendarmes en poursuite : la fiche de la sportive bridée à 110 kW aux roues (au lieu de 190).
+ * À pleine puissance, elle arrivait trop vite sur un fugitif arrêté et le touchait (2 départs sur 6 de l'essai de poursuite, `chase.test.ts`) ;
+ * bridée, elle s'arrête près de lui comme la gendarmerie ordinaire (5 sur 6), tout en restant plus vive qu'elle (95 kW, adhérence moindre).
+ * Volée par le joueur, elle a la fiche entière de la sportive.
+ */
+export const ALPINE_PURSUIT: VehicleSpec = { ...SPORT_CAR, power: 110000, maxDrive: 6500 };

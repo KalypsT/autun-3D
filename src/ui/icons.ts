@@ -1,3 +1,4 @@
+import { vehicleDef } from "../core/vehicle-catalog";
 /**
  * Pictogrammes de l'interface en jeu (D103), dessinés en SVG au lieu des emoji : un emoji change de dessin d'un téléphone à l'autre
  * et ne suit pas le style « affiche ». Trait de la couleur du texte (`currentColor`), grille de 24 × 24.
@@ -45,6 +46,6 @@ export function weaponIcon(id: string): string {
 /** Pictogramme d'un véhicule : celui du modèle s'il en a un (scooter, gendarmerie), sinon celui de sa famille. */
 export function vehicleIcon(modelId: string, family: string): string {
   if (modelId === "scooter-125") return icon("scooter");
-  if (modelId === "gendarmerie") return icon("police");
+  if (vehicleDef(modelId)?.police) return icon("police");
   return icon(family in PATHS ? (family as IconName) : "car");
 }
