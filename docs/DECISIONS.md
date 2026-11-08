@@ -6404,3 +6404,17 @@ compte, c'est la pire, divisée par quatre.
 
 **Reste de ton côté** : après fusion, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone ; la partie « décor » des images lentes
 devrait presque disparaître.
+
+**Mesure du téléphone après D285** (Honor, version `94d4ee4`, même banc) :
+
+| Phase | Images > 33 ms (D283 → D284 → D285) | > 50 ms | 1 % le plus lent (i/s) | Pire image |
+|---|---|---|---|---|
+| 50 km/h | 10 → 5 → **2** | 4 → 4 → 2 | 33,8 → 36,7 → **42,9** | 182 ms (1re image de la phase, rendu) |
+| 90 km/h | 13 → 9 → **3** | 1 → 2 → 1 | 27,5 → 27,0 → **41,1** | 83 ms |
+| 300 km/h | 28 → 16 → **4** | 10 → 4 → **0** | 16,4 → 20,3 → **28,3** | 99 → 66 → **50 ms** |
+
+- La partie « décor » ne pèse plus que 4 ms au plus dans les images lentes (504 ms au total avant, à 300 km/h).
+- À 50 et 90 km/h, on revient près des chiffres de D57 (50,7 et 49,0 i/s, monde deux fois plus petit) ; à 300 km/h, plus aucune image de 50 ms.
+- **Reste** : (1) une tranche de construction de tuile de 35 ms (`29_36`, image de 44 ms de tuiles à 300 km/h ; `28_35` 29 à 36 ms, `26_32` et
+  `26_33` ≈ 23 ms) ; (2) des images de 50 ms où la boucle ne travaille que 8 à 11 ms (GPU ou ramasse-miettes) ; (3) la première image de
+  chaque trajet (180 ms de rendu : nuanceurs compilés à la première vue) ; (4) une pointe de 38 ms de la simulation des passants à 300 km/h.
