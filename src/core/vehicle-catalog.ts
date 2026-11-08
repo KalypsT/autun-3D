@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -86,6 +86,8 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
   // Véhicules uniques (D114) : un seul exemplaire, à sa place (`src/core/uniques.ts`).
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
+  // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue.
+  { id: "supercar", family: "car", name: "Supercar", unique: true, badge: { make: "Augusta", model: "Bibracte" }, toughness: 0.9, spec: SUPERCAR, size: { length: 4.94, width: 2.03, height: 1.14 }, palette: ["#6fae2e"] },
   { id: "pizza-du-vallon", family: "car", name: "Camion pizza", unique: true, badge: { make: "Couhard", model: "Pizza du Vallon" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 3.62 }, palette: ["#7cc43a"] },
   { id: "rotisserie-champ-de-mars", family: "car", name: "Rôtisserie", unique: true, badge: { make: "Couhard", model: "Rôtisserie du Champ de Mars" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 2.9 }, palette: ["#ece6da"] },
   { id: "petit-train", family: "car", name: "Petit train", unique: true, train: true, badge: { make: "Couhard", model: "Petit Train d'Autun" }, toughness: 2, spec: TRAIN_LOCO, size: { length: 4.4, width: 1.9, height: 2.6 }, palette: ["#2f6b4f"] },

@@ -5969,3 +5969,37 @@ et une bande posée plus près de l'ouverture se déchirait. La caisse fait un p
 
 ![Avant / après](captures/d275-petit-suv-avant-apres.jpg)
 ![Trois couleurs](captures/d275-petit-suv-couleurs.jpg)
+
+## 2026-11-08 — D276. Une supercar unique, garée au parking de la Croix de la Libération
+
+**Photos** : sept photos d'une même supercar italienne à V12 central des années 2010, en quatre versions. Choix de l'utilisateur : la version la plus
+radicale (trois-quarts avant et arrière, arrière de face, profil), le profil de la version cabriolet pour la silhouette, la face de la première version
+pour les phares et le capot (communs aux versions). Nom fictif : **Augusta Bibracte** (la marque de la Janus ; Bibracte, l'oppidum éduen du mont
+Beuvray). Emblème neutre en hexagone, aucun lettrage.
+
+**Pourquoi un nouveau véhicule** : la fiche de la sportive (Augusta Janus, 190 kW, 0 à 100 km/h en 4,9 s) est celle d'une sportive accessible ; y
+mettre cette supercar aurait donné « une supercar qui roule comme une GT », et une supercar garée au hasard dans les rues aurait été invraisemblable.
+Choix de l'utilisateur : un nouveau véhicule **unique** (D114), et la Janus gardée pour une sportive plus juste (une berlinette française, photos à venir).
+
+**Fiche** (`SUPERCAR`, `src/core/vehicle-specs.ts`, avec l'accord de l'utilisateur) : 1 550 kg, ≈ 420 kW aux roues, empattement réel 2,70 m, poids sur
+l'arrière, pneus très larges, centre de gravité à 0,40 m ; **0 à 100 km/h en 3,2 s** (la Janus : 4,9 s). Elle reste **plafonnée à 200 km/h** comme
+toutes les voitures (D50) : l'utilisateur voulait 300 km/h, mais au-delà de 200, ni le chargement des tuiles ni les chocs (traversée des murs) ne sont
+vérifiés ; on relèvera le plafond commun après une mesure sur le téléphone. Son V12 (12 cylindres, 8 700 tr/min, 7 rapports, pétarades).
+
+**Place** (`src/core/uniques.ts`) : sur le parking de la Croix de la Libération (D267), au nord de la clairière (−853 ; −1830), le nez tourné vers la
+ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur).
+
+**Caisse** (`src/render/car-supercar.ts`, moteur D272) : 4,94 × 2,03 × 1,14 m. Coin très bas et très large, capot plongeant, phares anguleux avec
+feu de jour en Y, grandes prises d'air noires aux coins, lame avant en carbone ; pare-brise immense, cabine étroite, vitre de flanc dont le bas monte
+vers l'arrière, énorme prise d'air noire derrière la porte, bas de caisse en carbone, rétroviseurs sur pied ; capot moteur à persiennes en V, grand
+aileron noir sur un mât ; à l'arrière, feux minces au-dessus d'une grille noire barrée d'une arche couleur caisse, deux grosses sorties rondes en haut,
+diffuseur à ailettes. Vert vif, comme sur deux des photos ; jantes gris anthracite à cinq branches.
+**Moteur D272** : le dessous sombre qui ferme les passages de roue montait à 0,71 m et perçait ce capot à 0,54 m ; il s'arrête maintenant sous le
+point le plus bas du dessus, avec une boîte de plus au droit de chaque roue. Les autres caisses sculptées ne changent pas (leur dessus est plus haut).
+
+**Coût** : 900 triangles de peinture, 988 de détails et roues, 1 888 au total (plafonds des véhicules uniques).
+**Tests** : la sportive reste la plus vive des voitures ordinaires, la supercar l'est nettement plus (une seconde au moins), toutes deux plafonnées.
+**Reste** : les sections arrondies du moteur adoucissent les arêtes vives du vrai modèle ; prises d'air avant un peu morcelées de près.
+
+![Quatre vues](captures/d276-supercar.jpg)
+![Au parking de la croix](captures/d276-supercar-croix.jpg)

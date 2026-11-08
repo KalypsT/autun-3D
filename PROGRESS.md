@@ -1986,3 +1986,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : ouvrir la carte et la minimap ; monter au sommet du terril est à pied et voir si des passants y sont.
 
 ![La carte](docs/captures/d270-carte.jpg)
+
+**Une supercar unique au parking de la croix (8 novembre 2026)** (D276)
+- Une supercar verte (Augusta Bibracte), seule de son espèce, garée sur le parking de la Croix de la Libération, face à la ville. Très vive (0 à 100 km/h en 3,2 s) mais plafonnée à 200 km/h comme les autres voitures.
+- Au passage, les voitures refaites d'après photos : citadine, compacte, berline, break, petit SUV (D271 à D275).
+- À faire de ton côté : monter à la croix, prendre la supercar et descendre en ville ; dire si elle se tient bien au doigt.
+
+![La supercar](docs/captures/d276-supercar.jpg)

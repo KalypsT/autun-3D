@@ -43,7 +43,7 @@ describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
-    "jeep-militaire": [12, 18], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
+    "jeep-militaire": [12, 18], supercar: [2.6, 3.8], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
   /** Poids lourds bridés à 90 km/h (D116, bus et benne D204 : même fiche que le grumier) : 0 à 80 km/h (s), d'après un porteur chargé. */
   const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40], "bus-urbain": [20, 40], "benne-ordures": [20, 40] };
@@ -62,13 +62,18 @@ describe("voitures du catalogue : performances", () => {
     expect(r.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
   });
 
-  it("la sportive est bridée à 200 km/h : elle s'en approche sans la dépasser, et reste la plus rapide à accélérer", () => {
+  it("la sportive est bridée à 200 km/h : elle s'en approche sans la dépasser, et reste la plus rapide à accélérer après la supercar", () => {
     const sport = vehicleDef("sportive")!.spec;
     expect(sport.topSpeed * 3.6).toBeCloseTo(200, 5);
     const r = fullThrottle(sport);
     expect(r.top).toBeGreaterThan(193);
     // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
-    for (const d of cars) if (d.id !== "sportive") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
+    for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
+    // La supercar (D276, unique) : bridée elle aussi à 200 km/h, mais nettement plus vive.
+    const sc = fullThrottle(vehicleDef("supercar")!.spec);
+    expect(sc.t100).toBeLessThan(r.t100 - 1);
+    expect(sc.top).toBeGreaterThan(193);
+    expect(sc.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
   });
 
   it("le plafond ne touche que ce qui le dépasse", () => {

@@ -8,6 +8,7 @@ import { COMPACTE } from "./car-compacte";
 import { BERLINE } from "./car-berline";
 import { BREAK } from "./car-break";
 import { PETIT_SUV } from "./car-petit-suv";
+import { SUPERCAR } from "./car-supercar";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -127,6 +128,14 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.55, windshield: 0.85, roof: 0.75, rearGlass: 0.7, roofTaper: 0.84,
     wheelRadius: 0.33, tyreWidth: 0.26, glass: "#1b2733",
     style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#2e3035", doors: 1, roundness: 0.7, roof: "#1b1d22", spoiler: "wing", hoodScoop: true, exhaust: 2, blackPillars: true },
+  },
+  // Supercar (D276, véhicule unique) : caisse sculptée d'après photos (`car-supercar.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
+  supercar: {
+    length: 4.94, width: 2.03, height: 1.14, overhangFront: 1.1,
+    clearance: 0.11, belt: 0.82, noseHeight: 0.42, tailHeight: 0.92,
+    hood: 1.2, windshield: 0.66, roof: 0.75, rearGlass: 0.6, roofTaper: 0.62,
+    wheelRadius: 0.34, tyreWidth: 0.3, glass: "#1b2330", sculpt: SUPERCAR,
+    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#6a6e76", doors: 1, roundness: 0.5, spoiler: "wing", exhaust: 2, blackPillars: true, spokes: 5 },
   },
   // Bus urbain (D204) : caisse longue et haute d'un seul tenant, pare-brise presque vertical, grandes vitres, deux tons (bleu, bas crème).
   "bus-urbain": {

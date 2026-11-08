@@ -337,13 +337,34 @@ export function sculptPaintGeometry(sc: Sculpt, f: SculptFrame, color: string): 
   return merge([lower, faces(cabinFaces(sc, f).paint, color), ...extra]);
 }
 
+/**
+ * Dessous sombre qui ferme les passages de roue : une boîte de 0,13 à 0,71 m sous toute la caisse. Pour une caisse plus basse que cela (supercar, D276 :
+ * capot à 0,54 m), la boîte s'arrête 4 cm sous le point le plus bas du dessus, et deux boîtes de plus, au droit des roues, montent jusque sous les ailes.
+ */
+function underside(sc: Sculpt, f: SculptFrame): THREE.BufferGeometry[] {
+  const DARK = "#1d1f24", Y0 = 0.13, Y1 = 0.71;
+  const w = keyAt(sc.width, f.length / 2) - 0.22, s0 = 0.35 - NOSE_GAP, s1 = f.length - 0.35 - NOSE_GAP;
+  const low = (a: number, b: number): number => {
+    let m = Infinity;
+    for (let s = a; s <= b + 1e-6; s += 0.02) m = Math.min(m, keyAt(sc.top, s));
+    return m;
+  };
+  const z = (s: number): number => f.noseZ + NOSE_GAP + s;
+  const y1 = Math.min(Y1, low(s0, s1) - 0.04);
+  if (y1 >= Y1) return [box(2 * w, Y1 - Y0, f.length - 0.7, 0, (Y0 + Y1) / 2, f.noseZ + f.length / 2, DARK)];
+  const out = [box(2 * w, y1 - Y0, s1 - s0, 0, (Y0 + y1) / 2, z((s0 + s1) / 2), DARK)];
+  for (const a of [-f.front, f.rear].map((zz) => zz - f.noseZ - NOSE_GAP)) {
+    const ya = Math.min(Y1, low(a - sc.arch, a + sc.arch) - 0.03);
+    if (ya > y1) out.push(box(2 * w, ya - Y0, 2 * sc.arch, 0, (Y0 + ya) / 2, z(a), DARK));
+  }
+  return out;
+}
+
 /** Détails d'une caisse sculptée (vitres, phares, feux, grilles, lignes…), plus un dessous sombre qui ferme les passages de roue. */
 export function sculptDetailGeometry(sc: Sculpt, f: SculptFrame, glass: string): THREE.BufferGeometry {
   const k = kitFor(sc, f);
-  const w = keyAt(sc.width, f.length / 2) - 0.22;
-  const under = box(2 * w, 0.58, f.length - 0.7, 0, 0.42, f.noseZ + f.length / 2, "#1d1f24");
   const cab = cabinFaces(sc, f);
-  return merge([under, faces(cab.glass, glass), faces(cab.black, "#141519"), ...sc.details(k, glass)]);
+  return merge([...underside(sc, f), faces(cab.glass, glass), faces(cab.black, "#141519"), ...sc.details(k, glass)]);
 }
 
 /** Phares et feux d'une caisse sculptée, dans le repère du véhicule (deux de chaque). */

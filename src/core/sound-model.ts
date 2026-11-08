@@ -42,6 +42,7 @@ export const ENGINE_PROFILES: Readonly<Record<string, EngineProfile>> = {
   camionnette: car({ diesel: true, idle: 750, redline: 4300, bright: 0.25, rough: 0.25 }),
   "vieille-voiture": car({ idle: 700, redline: 5200, gears: 4, bright: 0.3, rough: 0.55 }),
   sportive: car({ cylinders: 6, idle: 950, redline: 7800, gears: 6, bright: 0.8, rough: 0.08, pops: true }),
+  supercar: car({ cylinders: 12, idle: 1000, redline: 8700, gears: 7, bright: 0.95, rough: 0.05, pops: true }),
   gendarmerie: car({ redline: 6200, bright: 0.45 }),
   // Jeep militaire (D114) : vieux diesel rugueux, peu de rapports.
   "jeep-militaire": car({ diesel: true, idle: 720, redline: 4400, gears: 4, bright: 0.28, rough: 0.5 }),
