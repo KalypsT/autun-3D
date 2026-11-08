@@ -5987,7 +5987,8 @@ toutes les voitures (D50) : l'utilisateur voulait 300 km/h, mais au-delà de 200
 vérifiés ; on relèvera le plafond commun après une mesure sur le téléphone. Son V12 (12 cylindres, 8 700 tr/min, 7 rapports, pétarades).
 
 **Place** (`src/core/uniques.ts`) : sur le parking de la Croix de la Libération (D267), au nord de la clairière (−853 ; −1830), le nez tourné vers la
-ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur).
+ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur) — *erreur, corrigée en D286 : le golf
+d'Autun (26 ha) est dans la carte, le long du chemin des Ragots, dessiné jusqu'ici comme une pelouse ordinaire*.
 
 **Caisse** (`src/render/car-supercar.ts`, moteur D272) : 4,94 × 2,03 × 1,14 m. Coin très bas et très large, capot plongeant, phares anguleux avec
 feu de jour en Y, grandes prises d'air noires aux coins, lame avant en carbone ; pare-brise immense, cabine étroite, vitre de flanc dont le bas monte
@@ -6404,3 +6405,63 @@ compte, c'est la pire, divisée par quatre.
 
 **Reste de ton côté** : après fusion, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone ; la partie « décor » des images lentes
 devrait presque disparaître.
+
+## 2026-11-08 — D286. La route de Chalon jusqu'au chemin des Ragots, et le golf à terre (extension « chalon »)
+
+**Demande** : sur la route de Chalon, juste avant le croisement avec le chemin des Ragots (la route du golf), la route est coupée et descend
+le long de la falaise ; ajouter un peu de carte pour que la route soit correctement intégrée. Choix de l'utilisateur : l'agrandissement « B »
+(cinq tuiles, golf compris) plutôt que le minimum (deux tuiles).
+
+**Constat** (profil du relief publié tous les 20 m le long de la route) : la route traversait deux tuiles de bordure.
+- **L'anse** : à 400 m avant le carrefour (vers x 2 056 à 2 127, y 290 à 250, tuile `34_36`), la mer venait à 31 m de la route ; le plafond
+  du rivage (D105) faisait tomber le sol de 328 m à 288 m sur 90 m (falaise, plage, falaise). C'est la petite baie au nord de la route sur la carte.
+- **Le carrefour** (2 493 ; 86, tuile `36_35`) : 13 m au-delà de la zone jouable, à 129 m de la côte ; la route finissait 130 m plus loin
+  au bord d'une falaise de 65 m.
+- **Le golf d'Autun** (OpenStreetMap, relation 6332293, 26 ha) : presque tout dans la zone jouable, mais la chaîne ne lit pas
+  `leisure=golf_course` : il était dessiné en pelouse ordinaire. Environ 7 ha au sud-est étaient en mer ou dans la falaise.
+
+**Fait** (`tools/data/extend.py`, D265, `tools/data/extensions/chalon.json`) : cinq tuiles jouables ajoutées (`34_36`, `35_36` : l'anse ;
+`36_35` : le carrefour ; `35_34`, `36_34` : le sud-est du golf), sept de bordure (`35_37`, `36_33`, `36_37`, `37_33` à `37_36`).
+`plan`, `sandbox`, `build` (bloc (4, 4) restreint, puis ouvrages, types, espace public, côte, eau), `nav`, `graft-nav`, `graft`, `region.json` et
+`land.json` installés, `map`, `check`. Environ 1 h 30, surtout le LiDAR (4 dalles, 680 Mo) et la BDNB.
+
+**Tuiles greffées : 16 sur les 22 du plan.** Le plan comptait six tuiles publiées de plus (`33_36`, `33_37`, `34_34`, `34_35`, `35_35`,
+`35_38`), parce que la côte bouge à moins de 150 m d'elles (`CAP_REACH`). Leur relief refabriqué est **identique au centimètre** :
+le plafond du rivage n'y coupait rien, avant comme après. La fabrication restreinte y dérivait pourtant : teintes de toit lues à
+l'orthophotographie au centième près, fiches sans leur mur d'entrée de vitrine (`front`, `build_shop_fronts.py`), et surtout la
+gendarmerie (`33_37`, D238) sans son modèle, ses bâtiments masqués, ni la cour et les places PMR de `build_parking.py`. Ces six tuiles
+sont donc **retirées de la greffe** (`plan.json`, `keptPublished`) et gardent leurs octets publiés : rien n'y change. Règle pour les
+prochaines extensions : ne greffer une tuile publiée que si son relief ou sa terre changent vraiment (`compare_tiles.py` d'abord).
+
+**Après la greffe** : `roadside.py` sur les seules tuiles greffées (le sol de chaussée vient de `build_public_space.py`, après le passage
+de `roadside.py` dans `build_tiles.py`), puis un tronc retiré à la main dans `36_36` : posé pile sur le bord d'une chaussée coupée à la
+frontière de deux tuiles (y = 188,0), `roadside.py` le « déplaçait » de zéro mètre.
+
+**Résultat** :
+- Route de Chalon : le relief monte sans creux de 321 m (rond-point de l'Eduen) à 350 m (chemin des Ragots) ; la côte est à plus de 240 m
+  de la route sur tout ce trajet (31 m dans l'anse avant). Le carrefour est à 244 m de la côte (129 m avant).
+- Golf : 26 ha à terre, tous à plus de 37 m du rivage (hors plage et falaise). Il reste dessiné en pelouse : le golf lui-même est l'étape suivante.
+- 450 tuiles (443 avant), terre 23,84 → 24,20 km² ; `zone` s'étend à x = 2 980. Données publiées : 105 Mo.
+- `check` : 98 fichiers changés, **aucun hors de l'extension**. Murs et mobilier identiques par genre et place (17 identifiants repris,
+  24 nouveaux numéros libres) ; arbres des tuiles déjà publiées aux mêmes places, plus ceux des terres neuves.
+- Navigation (`nav_graft.py`) : 15 arêtes, 1,3 km, 6 raccords (5 sur la même voie), trois super-tuiles (`s8_8`, `s9_8`, `s9_9`), 0 portail
+  sans jumeau (1 270). Carte : les kilomètres `s8_8`, `s8_9`, `s9_8`, `s9_9` et la vue d'ensemble ; `places.json` n'est pas refait (comme en D266).
+- Largeurs de chaussée : une voie nouvelle ajoutée à `measured_widths.json`.
+
+**Essais** : `src/data/chalon-extension.test.ts` (relief sans creux de l'Eduen au chemin des Ragots, côte à plus de 200 m de l'anse et du
+carrefour, golf à terre, itinéraire en voiture de l'Eduen au chemin des Ragots). Le test du relief échoue sur les données d'avant (288 m dans l'anse).
+
+**Captures** : `d286-route-avant.jpg` et `d286-route-apres.jpg` (au volant dans l'anse, vers le sud-est : avant, la route plonge vers la
+plage), `d286-haut-avant.jpg` et `d286-haut-apres.jpg` (au-dessus de la route, vers le carrefour et le golf).
+
+![Au volant dans l'anse, avant](captures/d286-route-avant.jpg)
+![Au volant dans l'anse, après](captures/d286-route-apres.jpg)
+![Vue haute, avant](captures/d286-haut-avant.jpg)
+![Vue haute, après](captures/d286-haut-apres.jpg)
+
+**Défauts connus, pour la suite** :
+- La route de Chalon continue 320 m après le chemin des Ragots et finit au bord de la nouvelle falaise (vers x 2 816) : c'est l'étape des
+  routes qui finissent à la mer (`docs/plans/routes-impasses.md`).
+- Le golf n'est pas dessiné (pelouse ordinaire) : étape suivante, d'après les photos de l'utilisateur.
+- `places.json` (noms et tracés des rues de la carte) s'arrête à l'ancienne côte (route de Chalon jusqu'à x 2 620) : à refaire avec l'étape des impasses.
+

@@ -2012,3 +2012,14 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le nouveau rapport a désigné le coupable suivant : le relief, qui reconstruisait d'un bloc les morceaux de terrain proches en roulant. Il se construit maintenant par tranches de 3 ms ; sur PC, son pire bloc passe de 50 à 13 ms à 90 km/h, et de 39 à 15 ms à 300 km/h.
 - À faire de ton côté : après fusion, relancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone et m'envoyer le JSON.
 
+**La route de Chalon ne plonge plus dans la mer (8 novembre 2026)** (D286)
+- La carte est agrandie de cinq carrés à l'est : l'anse qui coupait la route de Chalon 400 m avant le chemin des Ragots est comblée (la route montait, redescendait de 40 m jusqu'à la plage, puis remontait) ; le carrefour avec le chemin des Ragots est maintenant à 244 m de la mer au lieu de 129 m.
+- Tout le golf d'Autun est à terre (26 ha). Il est encore dessiné comme une pelouse : ce sera l'étape suivante.
+- Le reste de la ville n'a pas bougé : six carrés voisins (dont la gendarmerie) gardent exactement leurs données.
+- Reste pour l'étape des impasses : après le chemin des Ragots, la route de Chalon continue 320 m puis finit au bord de la nouvelle falaise. Le plan et les questions sont dans `docs/plans/routes-impasses.md`.
+- À faire de ton côté : rouler sur la route de Chalon depuis le rond-point de l'Eduen jusqu'au chemin des Ragots (`?at=1790,427&ride=voiture`), et ouvrir la carte autour du golf.
+
+![Au volant dans l'anse, avant](docs/captures/d286-route-avant.jpg)
+![Au volant dans l'anse, après](docs/captures/d286-route-apres.jpg)
+![Vue haute, après](docs/captures/d286-haut-apres.jpg)
+
