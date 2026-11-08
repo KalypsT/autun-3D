@@ -45,6 +45,8 @@ export const ENGINE_PROFILES: Readonly<Record<string, EngineProfile>> = {
   // Gendarmerie en berlinette (D282) : le moteur de la sportive.
   "gendarmerie-alpine": car({ cylinders: 6, idle: 950, redline: 7800, gears: 6, bright: 0.8, rough: 0.08, pops: true }),
   supercar: car({ cylinders: 12, idle: 1000, redline: 8700, gears: 7, bright: 0.95, rough: 0.05, pops: true }),
+  // Sacrovir (D292) : V8 biturbo à vilebrequin plat, cinq rapports, son rauque et sec, pétarades au lever de pied.
+  sacrovir: car({ cylinders: 8, idle: 950, redline: 7750, gears: 5, bright: 0.75, rough: 0.2, pops: true }),
   // Deux-chevaux (D280) : bicylindre à plat refroidi par air, qui grimpe haut dans les tours ; quatre rapports, son sec et nasillard.
   deuche: car({ cylinders: 2, idle: 900, redline: 7000, gears: 4, bright: 0.6, rough: 0.55 }),
   gendarmerie: car({ redline: 6200, bright: 0.45 }),

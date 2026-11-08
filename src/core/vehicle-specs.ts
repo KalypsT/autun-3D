@@ -206,3 +206,17 @@ export const DEUCHE: VehicleSpec = {
  * Bridée aussi à 200 km/h (`PURSUIT_CAP`, D283) : la sportive roule maintenant à 240. Volée par le joueur, elle a la fiche entière de la sportive.
  */
 export const ALPINE_PURSUIT: VehicleSpec = limited({ ...SPORT_CAR, power: 110000, maxDrive: 6500 }, PURSUIT_CAP);
+
+/**
+ * Supercar des années 1980 (D292, véhicule unique, l'Augusta Sacrovir) : V8 biturbo à moteur central, 1 300 kg avec le conducteur, ≈ 300 kW aux
+ * roues (352 kW au vilebrequin), 0 à 100 km/h en ≈ 4 s, 324 km/h réels, limitée à 300 km/h comme la Bibracte (D283, limiteur court). Empattement
+ * réel (2,45 m), poids sur l'arrière (42 / 58), pneus arrière très larges. Plus brute que la Bibracte : moins d'antipatinage en virage (l'arrière
+ * part plus volontiers sous les gaz), moins d'aide au contre-braquage, une glisse permise plus large. L'ABS est gardé (la vraie n'en a pas) :
+ * sans lui, le frein du téléphone, tout ou rien, bloquerait les roues à 300 km/h.
+ */
+export const SACROVIR: VehicleSpec = limited({
+  ...SPORT_CAR, mass: 1300, yawInertia: 1700, front: 1.42, rear: 1.03, grip: 1.2,
+  corneringFront: 105000, corneringRear: 150000, power: 300000, maxDrive: 9000, driveFadeFrom: kmh(310), topSpeed: kmh(324),
+  maxBrake: 17500, drag: 0.34, hull: [[1.42, 0.97], [0.21, 0.98], [-1.0, 0.97]], wheelRadius: 0.33, bodyRoll: 0.006, cgHeight: 0.42, brakeFront: 0.6,
+  traction: 0.82, driftAssist: 0.3, maxDrift: 0.8,
+}, SPEED_CAP.car, 0.02);

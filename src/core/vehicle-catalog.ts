@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE, ALPINE_PURSUIT } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE, ALPINE_PURSUIT, SACROVIR } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -101,6 +101,8 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
   // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue ; une des six couleurs des photos, tirée à chaque apparition (D277).
   { id: "supercar", family: "car", name: "Supercar", unique: true, badge: { make: "Augusta", model: "Bibracte" }, toughness: 0.9, spec: SUPERCAR, size: { length: 4.94, width: 2.03, height: 1.14 }, palette: ["#6fae2e", "#2b8fc6", "#c8261d", "#f2b40a", "#1c1d21", "#e8501c"] },
+  // Supercar des années 1980 (D292) : la seule de la ville, garée au golf municipal, près du bâtiment d'accueil ; rouge, comme presque toutes les vraies.
+  { id: "sacrovir", family: "car", name: "Supercar (années 80)", unique: true, badge: { make: "Augusta", model: "Sacrovir" }, toughness: 0.85, spec: SACROVIR, size: { length: 4.36, width: 1.97, height: 1.12 }, palette: ["#c41d1a"] },
   // Deux-chevaux (D280) : la seule de la ville, garée place Cardinal-Perraud ; une des sept couleurs tirée à chaque apparition, dont deux en deux tons
   // (ailes et bas de caisse noirs).
   { id: "deuche", family: "car", name: "Deux-chevaux", unique: true, badge: { make: "Éduen", model: "Bourdon" }, toughness: 0.75, spec: DEUCHE, size: { length: 3.78, width: 1.48, height: 1.6 }, palette: ["#8e9190", "#8fb3c4", "#7f9488", "#d8ccaa", "#7a1f2a", "#7a1f2a", "#d6a21e"], twoTone: { variants: [5, 6], color: "#17181c" } },

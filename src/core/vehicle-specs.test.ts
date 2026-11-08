@@ -43,7 +43,7 @@ describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
-    "jeep-militaire": [12, 18], supercar: [2.6, 3.8], "gendarmerie-alpine": [4, 6], deuche: [22, 40], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
+    "jeep-militaire": [12, 18], supercar: [2.6, 3.8], sacrovir: [3.6, 4.6], "gendarmerie-alpine": [4, 6], deuche: [22, 40], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
   /** Poids lourds bridés à 90 km/h (D116, bus et benne D204 : même fiche que le grumier) : 0 à 80 km/h (s), d'après un porteur chargé. */
   const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40], "bus-urbain": [20, 40], "benne-ordures": [20, 40] };
@@ -69,7 +69,7 @@ describe("voitures du catalogue : performances", () => {
     expect(r.top).toBeGreaterThan(235);
     // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
     // La gendarmerie en berlinette (D282) a la fiche de la sportive.
-    for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar" && d.id !== "gendarmerie-alpine") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
+    for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar" && d.id !== "sacrovir" && d.id !== "gendarmerie-alpine") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
     // La supercar (D276, unique) : limitée à 300 km/h (350 réels), et nettement plus vive.
     const supercar = vehicleDef("supercar")!.spec;
     expect(supercar.topSpeed * 3.6).toBeCloseTo(300, 5);
@@ -77,6 +77,18 @@ describe("voitures du catalogue : performances", () => {
     expect(sc.t100).toBeLessThan(r.t100 - 1);
     expect(sc.top).toBeGreaterThan(293);
     expect(sc.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
+  });
+
+  it("la Sacrovir (D292) : entre la sportive et la Bibracte au 0 à 100 km/h, limitée à 300 km/h comme la Bibracte, plus brute qu'elle en virage", () => {
+    const sport = fullThrottle(vehicleDef("sportive")!.spec), bib = fullThrottle(vehicleDef("supercar")!.spec);
+    const spec = vehicleDef("sacrovir")!.spec, r = fullThrottle(spec);
+    expect(r.t100).toBeLessThan(sport.t100 - 0.5);
+    expect(r.t100).toBeGreaterThan(bib.t100 + 0.4);
+    expect(spec.topSpeed * 3.6).toBeCloseTo(300, 5);
+    expect(r.top).toBeGreaterThan(293);
+    const supercar = vehicleDef("supercar")!.spec;
+    expect(spec.traction).toBeGreaterThan(supercar.traction);
+    expect(spec.driftAssist).toBeLessThan(supercar.driftAssist);
   });
 
   it("les gendarmes restent bridés à 200 km/h (D283) : la gendarmerie, et la berlinette en poursuite ; volée, la berlinette a la fiche de la sportive", () => {
