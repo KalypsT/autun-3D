@@ -3,7 +3,7 @@ import type { Colliders } from "../core/collision";
 import { RoadWatch } from "../core/offenses";
 import { OFFICER, Officers, shotHitChance, type OfficerShot, type Suspect } from "../core/officers";
 import type { VehicleSpec, VehicleState } from "../core/vehicle";
-import { BODY_MID, EvadeWatch, POLICE_EYE, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
+import { ALPINES, BODY_MID, EvadeWatch, POLICE_EYE, policeSees, PURSUERS, Search, type PoliceUnit } from "../core/police";
 import type { RoadGraph } from "../core/road-graph";
 import type { Signals } from "../core/signals";
 import { RAM_IMPACT, type Crime, type Wanted } from "../core/wanted";
@@ -279,6 +279,7 @@ export class PoliceController {
     // Renforts selon les étoiles ; la fouille quand la piste est perdue.
     if (traffic) {
       traffic.pursuers = Math.max(PURSUERS[w.stars] ?? 0, this.minPursuers);
+      traffic.alpines = ALPINES[w.stars] ?? 0;
       this.search.update(dt, w, p.x, p.y, this.units, this.road());
       if (w.stars === 0 || w.seen) traffic.setChaseTarget(null);
       else {

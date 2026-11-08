@@ -80,6 +80,8 @@ const SEEN_RANGE = 400;
 const PATROL_SHARE = 0.06;
 const MAX_PATROLS = 1;
 const POLICE: VehicleDef = vehicleDef("gendarmerie")!;
+/** Gendarmerie en berlinette (D282) : seulement en renfort, une naissance sur trois, au plus `alpines` à la fois. */
+const ALPINE: VehicleDef = vehicleDef("gendarmerie-alpine")!;
 /** Voitures abandonnées gardées en attendant que le jeu les reprenne (D112). */
 const MAX_ABANDONED = 16;
 
@@ -105,6 +107,10 @@ export class Traffic {
    * Elles comptent dans le plafond : en surnombre, ce sont des civils qui sont retirés.
    */
   pursuers = 0;
+  /** Gendarmeries en berlinette admises parmi les poursuivants (D282, selon le niveau de recherche : `ALPINES`). */
+  alpines = 0;
+  /** Renforts nés depuis le début (un sur trois est une berlinette, quand il en manque). */
+  private reinforcements = 0;
   private policeCooldown = 0;
 
   constructor(
@@ -465,7 +471,9 @@ export class Traffic {
       // Sinon, près de la gendarmerie (D105), ils en sortent ; plus loin, ils arrivent de la couronne autour du joueur.
       const at = this.sim.chaseTarget;
       const nearBase = !at && Math.hypot(env.x - GENDARMERIE.x, env.y - GENDARMERIE.y) < BASE_REACH;
-      const c = (nearBase ? this.spawn(env, true, GENDARMERIE) : null) ?? this.spawn(env, true, at ? { x: at.x, y: at.y } : undefined);
+      // Un renfort sur trois est une berlinette, tant qu'il en manque (D282).
+      const alpine = this.reinforcements++ % 3 === 2 && this.cars.filter((c) => c.def === ALPINE).length < this.alpines ? ALPINE : undefined;
+      const c = (nearBase ? this.spawn(env, true, GENDARMERIE, alpine) : null) ?? this.spawn(env, true, at ? { x: at.x, y: at.y } : undefined, alpine);
       if (c) {
         this.sim.setChase(c.sim, true);
         c.siren = true;
@@ -516,8 +524,8 @@ export class Traffic {
     const variant = Math.floor(rnd() * 16);
     const driver = Math.floor(rnd() * 4294967296);
     // Elle part déjà lancée, à la vitesse du lieu (au plus 9 m/s) : pas de démarrage à l'arrêt au milieu de la rue.
-    const sim = this.sim.add(def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9), damageProfile(def), def === POLICE);
-    const car: TrafficCar = { sim, def, variant, driver, police: def === POLICE, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 };
+    const sim = this.sim.add(def.pursuitSpec ?? def.spec, sp.move, sp.s, Math.floor(rnd() * 1e9), Math.min((sp.limit * 0.9) / 3.6, 9), damageProfile(def), !!def.police);
+    const car: TrafficCar = { sim, def, variant, driver, police: !!def.police, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0 };
     this.cars.push(car);
     return car;
   }

@@ -6027,3 +6027,213 @@ diffuseur noir à ailettes et une seule sortie trapézoïdale au milieu. Jantes 
 
 ![Avant / après](captures/d277-sportive-avant-apres.jpg)
 ![Couleurs de la sportive et de la supercar](captures/d277-couleurs.jpg)
+
+## 2026-11-08 — D278. La vieille voiture sculptée d'après photos (berline française des années 1980, première version)
+
+**Demande** : refaire la vieille voiture (Éduen Pétrolette) d'après photos, comme les modèles D272 à D277. **Photos** : six. Trois montrent la
+première version civile (1982-1986 : trois-quarts avant, trois-quarts arrière, profil), retenues. Deux montrent des versions sportives de la
+deuxième version (bouclier à antibrouillards, bas de caisse, aileron), écartées. La sixième, un profil de deuxième version trop petit, n'a servi
+qu'aux proportions. Il manquait une vue de face et une vue de l'arrière bien droites : l'avant et l'arrière sont tirés des trois-quarts.
+
+**Gabarit** : 4,23 × 1,66 × 1,36 m (au lieu de 4,10 × 1,68 × 1,40), les vraies mesures, avec l'accord de l'utilisateur. Fiche `OLD_CAR` inchangée :
+empattement 2,55 m (le vrai fait 2,655 m), d'où des porte-à-faux un peu longs (0,93 m devant, 0,75 m derrière). Dessinée : 1,70 m de large
+rétroviseurs compris (le carénage arrière déborde un peu des pneus), nez à 4 mm du catalogue.
+
+**Moteur** (`car-sculpt.ts`), deux options : `section`, une section du bas de caisse propre au modèle (ici flancs droits et épaule vive, la caisse
+au cordeau) ; `rearSpat`, la hauteur à laquelle le bas de caisse ferme le passage de roue arrière (carénage, 0,46 m ici : la roue n'est vue que
+par-dessous), avec une section de plus à chaque bout de son bord. Les autres modèles n'en ont pas : rien ne change pour eux.
+
+**Caisse** (`src/render/car-vieille-voiture.ts`) : long capot plongeant qui finit en lame au-dessus de phares rectangulaires (barrette sombre),
+mince calandre noire à deux lames, emblème neutre (losange chromé) décalé à gauche ; gros bouclier gris foncé qui contourne les coins, clignotants
+orange aux angles, prise d'air et plaque. Jonc noir le long des portes jusque sur le carénage, bas de caisse sombre, lignes de portes, poignées,
+montant central noir, encadrements de vitres noirs, custode noire en triangle au-dessus de cinq ouïes. Grande lunette plate sur une lèvre noire,
+malle en coin, feux rectangulaires aux angles (orange et blanc en haut, rouge en bas), plaque, serrure, bouclier arrière rayé de noir.
+Rétroviseurs noirs triangulaires. Enjoliveurs clairs à dix ajours. Signature (D107) : phares rectangulaires, calandre en bandeau,
+feux verticaux, boucliers en plastique. Palette d'époque un peu passée : vert-de-gris, bleu glacier, gris clair, bleu ardoise, rouge, beige.
+
+**Coût** (exemplaire garé) : 854 triangles de peinture, 976 de détails et roues, **1 830 au total** (plafonds D272).
+**Reste** : le bouclier est une décalcomanie, il ne dépasse pas de la caisse ; la deuxième version n'est pas faite ; le tableau de bord ne se voit pas.
+
+![Avant / après](captures/d278-vieille-voiture-avant-apres.jpg)
+![Couleurs](captures/d278-vieille-voiture-couleurs.jpg)
+
+## 2026-11-08 — D279. La camionnette sculptée d'après photos (fourgon compact français, version de 2021)
+
+**Demande** : refaire la camionnette (Couhard Mulet) d'après photos, comme les autres modèles. **Photos** : six.
+- **Retenues** :
+  - trois montrent la version restylée de 2021 en empattement court : trois-quarts avant, face, profil ;
+  - pour l'arrière, deux trois-quarts arrière, l'une nette mais d'une version longue (L2), l'autre floue. Les détails de l'arrière en sont tirés, pas la longueur.
+- **Écartée** : un trois-quarts avant de la version d'avant 2021 (autre face).
+- **Manque** : une vue de l'arrière bien droite.
+
+**Gabarit** : 5,08 × 1,96 × 1,97 m (au lieu de 4,90 × 1,95 × 1,95), les vraies mesures de la version de 2021 en empattement court (de mémoire, non
+vérifiées en ligne), avec l'accord de l'utilisateur. Fiche `VAN` inchangée : empattement 3,00 m (le vrai fait 3,10 m), porte-à-faux de 1,00 et 1,06 m.
+
+**Rétroviseurs** (choix de l'utilisateur) : les vrais font 2,22 m d'un bord à l'autre, pour 1,96 m de caisse. Ils sont dessinés à leur taille et
+mis à part (`Sculpt.mirrors`) : le test du gabarit mesure la caisse sans eux (2,00 m dessinés, 4 cm de plus que le catalogue). Un autre test vérifie
+qu'ils débordent de moins de 20 cm par côté. Le catalogue garde 1,96 m : rien ne change pour les chocs, le stationnement ni la circulation.
+
+**Moteur** (`car-sculpt.ts`), deux options de plus :
+- `cabinFoot` : le pied de l'habitacle sur l'épaule (0,965 ici au lieu de 0,885), pour que les flancs du fourgon montent d'aplomb jusqu'au toit ;
+- `mirrors` : les rétroviseurs mis à part (voir plus haut). `bodyDetailGeometry` et `parkedDetailGeometry` prennent un paramètre `withMirrors`.
+
+**Caisse** (`src/render/car-camionnette.ts`) :
+- **Face** : nez court et incliné ; phares en C, boîtier sombre étiré sur l'aile, filet de diodes en haut ; jonc chromé de l'emblème (disque neutre)
+  aux phares ; calandre noire en trapèze à quatre lames ; gros bouclier noir jusque devant les roues, grille basse, plaque, poches d'angle.
+- **Flancs** : pare-brise très couché, vitre de porte qui plonge vers le rétroviseur, flancs d'aplomb, nervure sous la ceinture, bas de caisse noir
+  et son jonc alu, porte avant et porte coulissante (les deux pièces spéciales `cargo` et `rearDoors` sont gardées et dessinées sur la caisse),
+  rail de la porte coulissante, emboutis de la tôle, poignée.
+- **Arrière** : deux portes battantes avec leur joint et leur poignée, montants noirs aux angles avec les feux verticaux (rouge, recul),
+  troisième feu stop, plaque dans son logement noir, bouclier-marchepied noir qui revient sur les flancs, catadioptres.
+- **Autres** : grands rétroviseurs noirs sur bras, jantes tôle claires.
+- **Palette** : blanc (trois fois sur sept), gris argent, gris bleuté, bleu foncé, rouge. Pas de livrée d'artisan (choix de l'utilisateur).
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 1 052 de détails et roues, **1 976 au total** (plafonds D272).
+**Reste** : le bouclier avant est une décalcomanie, sans relief ; les emboutis de la tôle sont de simples traits ; la grille basse se perd
+dans le noir du bouclier.
+
+![Avant / après](captures/d279-camionnette-avant-apres.jpg)
+![Couleurs](captures/d279-camionnette-couleurs.jpg)
+
+## 2026-11-08 — D280. Une deux-chevaux unique (Éduen Bourdon), place Cardinal-Perraud, avec une version en deux tons
+
+**Demande** : un nouveau véhicule unique d'après photos, comme la supercar (D276). Nom choisi par l'utilisateur : **Éduen Bourdon** (identifiant
+`deuche`). **Photos** : six.
+- **Retenues** (choix de l'utilisateur) : les quatre de la première version, années 1950-1960 : trois-quarts avant, profil, deux trois-quarts arrière.
+- **Écartées** : les deux de la dernière version (deux tons bordeaux et noir, série spéciale de 1976), qui ont une autre calandre, une troisième vitre
+  de côté et d'autres phares.
+
+**Fiche** (`DEUCHE`, `src/core/vehicle-specs.ts`, neuve) : celle de la dernière version (choix de l'utilisateur), sur la silhouette de la première.
+- 660 kg avec le conducteur, ≈ 18 kW aux roues : **0 à 100 km/h en ≈ 27 s**, 115 km/h. La première version, plus lente (≈ 90 km/h, de mémoire), aurait
+  été presque immobile dans la circulation.
+- Empattement réel (2,40 m), poids sur l'avant, pneus étroits (adhérence 0,85), direction lente.
+- Freins à tambour **sans ABS** (roues bloquées au freinage à fond, 40 m depuis 80 km/h).
+- **Suspension très souple** : roulis de 0,03 rad par m/s², borné à 0,14 rad au lieu de 0,08 (nouveau champ facultatif `maxBodyRoll` de la fiche ;
+  les autres véhicules ne changent pas).
+- Tests (`vehicle-specs.test.ts`) : fourchette du 0 à 100 km/h (22 à 40 s), vitesse maximale, freinage sans ABS, roulis nettement plus fort que la
+  citadine. Elle est écartée du test de freinage avec ABS, comme la vieille voiture.
+
+**Son** (`sound-model.ts`) : bicylindre à plat qui monte haut dans les tours (7 000 tr/min), quatre rapports, son sec et nasillard.
+
+**Place** (`src/core/uniques.ts`) : place Cardinal-Perraud, près de la cathédrale (choix de l'utilisateur parmi trois). Elle occupe la dernière place
+de la rangée sud-est (153,7 ; −464,7), dans l'axe des traits. Le sol y est un parking en enrobé, avec le marquage des places. Comme pour les autres
+uniques, le jeu ne gare aucune voiture ordinaire à moins de 3,4 m d'elle.
+
+**Version en deux tons** (demande de l'utilisateur) : deux des sept couleurs (bordeaux, jaune) ont les ailes et le bas des portes en virgule noirs.
+- Le catalogue indique ces variantes (`twoTone`), et le modèle dessiné porte alors le suffixe `#deux-tons`, comme `#dent` pour la forme abîmée.
+- La caisse sculptée a un lot de pièces de la seconde teinte (`Sculpt.tone`). Elles sont peintes comme la caisse, sauf dans la version en deux tons,
+  où elles passent dans les détails avec la teinte fixe.
+- Fichiers touchés : `drawnModel`, `buildModel` et la préparation des modèles garés (`vehicles.ts`), et la galerie des véhicules.
+
+**Moteur** (`car-sculpt.ts`) : l'option `frontArch: false` supprime le passage de roue avant découpé dans la caisse, puisque les roues avant sont sous
+des ailes rapportées. Elle économise une centaine de triangles.
+
+**Caisse** (`src/render/car-deuche.ts`) : la caisse sculptée n'est que la coque centrale ; les pièces sont rapportées, comme sur la vraie.
+- **Coque** : capot étroit à nervures, ouïes sur ses flancs, habitacle à pare-brise presque droit, dos rond en escargot, petite lunette,
+  toit de toile sombre.
+- **Avant** : quatre ailes bombées (sections elliptiques), les ailes arrière cachant le haut des roues ; phares ronds dans leur coquille couleur caisse,
+  sur une barre au-dessus des ailes ; petite calandre en trapèze à cadre chromé et emblème neutre (losange).
+- **Flancs** : portes avant ouvrant vers l'avant (poignées au bord avant), clignotant orange, jonc chromé du bas de caisse, garde-boue noirs.
+- **Arrière** : malle nervurée et son contour, petits feux ronds cerclés de chrome, plaque.
+- **Pare-chocs** : fins, en aluminium, avec deux butoirs à l'avant.
+- **Palette** : gris, bleu glacier, vert-gris, beige, bordeaux ; bordeaux et jaune en deux tons.
+
+**Gabarit** : 3,78 × 1,48 × 1,60 m, les vraies mesures. **Coût** (exemplaire garé) : 984 triangles de peinture, 1 082 de détails et roues, **2 066 au
+total**, 2 162 en deux tons (plafonds des véhicules uniques).
+
+**Reste** :
+- Les ailes sont des sections elliptiques assez grossières de près.
+- Les roues gardent l'enjoliveur à croix du générateur.
+- Le toit de toile est une simple surface sombre, sans le rouleau de la capote ouverte.
+- La dernière version de la voiture n'est pas dessinée.
+
+![Vues, et à sa place place Cardinal-Perraud](captures/d280-deuche.jpg)
+![Couleurs, dont les deux versions en deux tons](captures/d280-deuche-couleurs.jpg)
+
+## 2026-11-08 — D281. La gendarmerie sculptée d'après photos (SUV à sept places) ; le gyrophare s'allume au bouton du klaxon
+
+**Photos** : quatre.
+- **Retenues** : la première version (2017-2020) d'un SUV français à sept places, en trois-quarts avant et trois-quarts arrière, avec le profil
+  d'une miniature de la version suivante (silhouette inchangée).
+- **Écartée** : la face de la version suivante, trop petite.
+- **Manque** : une face et un arrière bien droits.
+
+**Gabarit** : 4,64 × 1,84 m, 1,65 m de caisse, **1,77 m rampe comprise** (au lieu de 4,25 × 1,80 × 1,58 m, la caisse de la compacte), avec l'accord
+de l'utilisateur. La fiche `POLICE_CAR` ne change pas : empattement 2,64 m (le vrai fait 2,84 m), conduite de la compacte gonflée. Les gendarmes
+sont maintenant nettement plus gros. Les rétroviseurs sont mis à part du gabarit, comme ceux du fourgon (D279) : la caisse fait 1,87 m dessinée.
+
+**Livrée** : exception au refus du lettrage réel, à la demande de l'utilisateur.
+- Bleu nuit, triple bande blanche sur les flancs, coupée sur la porte avant par le mot **GENDARMERIE**, écrit à l'endroit de chaque côté.
+- Les lettres sont tracées en traits posés sur la caisse, avec une petite police à bâtons de huit lettres (`car-gendarmerie.ts`).
+- Chevrons rouges sur fond jaune à l'avant du capot et sur le bas du hayon, avec un bandeau bleu nuit sur le hayon.
+- Le mot n'est pas écrit sur le hayon, faute de triangles (plafond de 1 200 pour les détails) : il est sur les flancs.
+
+**Caisse** (`src/render/car-gendarmerie.ts`) :
+- **Avant** : face haute, phares effilés qui remontent sur l'aile, calandre noire à barrettes, emblème neutre (losange), gros bouclier à prise d'air,
+  antibrouillards dans des écrins chromés.
+- **Silhouette** : long toit plat à barres claires, jonc chromé au-dessus des trois vitres de côté, montants noirs, hayon presque droit.
+- **Arrière** : feux en griffes reliés par un bandeau noir.
+- **Autres** : passages de roue et bas de caisse noirs, jantes claires à cinq branches, rampe bleue sur l'avant du toit.
+
+**Coût** (exemplaire garé) : 868 triangles de peinture, 1 190 de détails et roues, **2 058 au total** (plafonds D272).
+
+**Gyrophares** :
+- **Explicites** : une caisse peut donner ses feux qui clignotent (`CarBodyParams.beacons`). La gendarmerie en a quatre : deux moitiés de rampe et
+  deux feux bleus dans la calandre. Les voitures en poursuite les font clignoter comme avant (`traffic-models.ts`), à la place de la rampe générique.
+- **Dans la voiture que l'on conduit** : le bouton du klaxon devient « Gyrophare » (pictogramme de gyrophare, bouton bleu quand il est allumé).
+  - Un appui allume les feux, qui clignotent en alternance (`VehicleModel.setBeacon`), et le deux-tons (`GameAudio.siren`). Un autre appui les éteint.
+  - Allumé, le gyrophare vaut un coup de klaxon toutes les 1,2 s : les voitures devant se rangent, les passants s'écartent.
+  - Il s'éteint quand on descend.
+- **Vérifié en jeu** : dans une gendarmerie, touche H, la rampe et le bouton s'allument (capture).
+
+**Tests** : le modèle articulé ne compte que ses maillages visibles (les gyrophares sont cachés tant qu'ils sont éteints), et une voiture de police
+en poursuite a quatre feux qui clignotent au lieu de deux.
+
+**Reste** : les gendarmes en berlinette de sport, à faire d'après les visuels que l'utilisateur fournira (D282).
+
+![Avant / après](captures/d281-gendarmerie-avant-apres.jpg)
+![Gyrophare : éteint, puis allumé (une moitié de la rampe, puis l'autre)](captures/d281-gyrophare.jpg)
+
+## 2026-11-08 — D282. Des gendarmes en berlinette, en renfort à partir de trois étoiles
+
+**Photos** : cinq, toutes de la berlinette française d'après laquelle la sportive est déjà sculptée (D277) : trois-quarts avant (deux), profil
+(version plus sportive, même caisse et même livrée), trois-quarts arrière, arrière d'une miniature. Toutes retenues ; il n'y a pas de nouvelle
+caisse à faire.
+
+**Véhicule** : nouvelle entrée `gendarmerie-alpine` (Augusta Janus Gendarmerie), avec la caisse de la sportive dans la livrée de la gendarmerie
+(`src/render/car-gendarmerie-alpine.ts`) et la fiche de la sportive (`SPORT_CAR`, inchangée). Gabarit : 4,18 × 1,80 m, 1,33 m gyrophare compris.
+Un nouveau drapeau du catalogue, `police`, désigne les deux gendarmeries : jamais garées ni tirées dans la circulation, pictogramme de gendarmerie,
+écartées du banc d'essai et de la galerie des sons.
+
+**Livrée** (lettrage réel, même exception que D281) :
+- Bleu de France, double bande blanche sur le capot et le toit.
+- Triple bande blanche sur les portes, coupée par le mot GENDARMERIE, à l'endroit des deux côtés.
+- Chevrons rouges et jaunes sous les phares, qui tournent sur l'aile, et sur tout le bouclier arrière.
+- Un seul gyrophare rond sur le toit, qui clignote (`beacons`) chez les poursuivants comme chez le joueur qui la vole (bouton du klaxon, D281).
+- Le mot n'est **pas sur le capot**, faute de triangles : les détails de la sportive prennent déjà une bonne part du plafond de 1 200.
+- La police à bâtons est maintenant partagée (`car-lettering.ts`), avec un G et un R plus carrés, moins coûteux, ce qui allège aussi la gendarmerie
+  de D281 (1 122 triangles de détails au lieu de 1 142).
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 1 168 de détails et roues, **2 092 au total** (plafonds D272).
+
+**En jeu** :
+- **Nombre** (`ALPINES`, `src/core/police.ts`) : aucune avant trois étoiles, une à trois étoiles, deux à quatre et cinq.
+- **Apparition** : seulement en renfort (un renfort sur trois, tant qu'il en manque, `traffic.ts`), jamais en patrouille ordinaire.
+- **Bridée en poursuite** : 110 kW aux roues au lieu de 190 (`ALPINE_PURSUIT`, champ `pursuitSpec` du catalogue).
+  - À pleine puissance, dans l'essai de poursuite (`chase.test.ts`), elle rattrapait le fugitif sur les 6 départs, mais le touchait une fois arrêté
+    sur 2 d'entre eux. Bridée, elle s'arrête près de lui sur 5 départs sur 6, le seuil de la gendarmerie ordinaire.
+  - Elle reste plus vive que le SUV (95 kW, adhérence moindre).
+  - Volée par le joueur, elle a la fiche entière de la sportive.
+
+**Tests** :
+- Les berlinettes ne naissent que parmi les poursuivants et jamais au-delà du nombre admis (`traffic.test.ts`).
+- La berlinette en poursuite rattrape et s'arrête sans toucher (`chase.test.ts`).
+- Elle a son profil sonore (celui de la sportive) et sa fourchette du 0 à 100 km/h.
+- L'endurance à cinq étoiles (`police-soak.test.ts`) passe aux départs 8 et 9 : avec les berlinettes, le départ 6 coince le fugitif une minute
+  (3 188 pas de contact) ; sur les départs 4 à 11, c'est le seul au-delà de 2 700, les autres vont de 783 à 1 851 au pire.
+
+**Reste** : une berlinette rappelée (le niveau de recherche baisse) finit sa route comme une patrouille ordinaire jusqu'à sortir de la circulation ;
+pas de mot sur le capot ni sur le bouclier arrière.
+
+![Gendarmerie en berlinette](captures/d282-gendarmerie-alpine.jpg)
+![Gyrophare : éteint, allumé, éteint](captures/d282-gyrophare.jpg)

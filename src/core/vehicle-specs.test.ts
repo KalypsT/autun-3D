@@ -43,7 +43,7 @@ describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
     citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
-    "jeep-militaire": [12, 18], supercar: [2.6, 3.8], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
+    "jeep-militaire": [12, 18], supercar: [2.6, 3.8], "gendarmerie-alpine": [4, 6], deuche: [22, 40], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
   /** Poids lourds bridés à 90 km/h (D116, bus et benne D204 : même fiche que le grumier) : 0 à 80 km/h (s), d'après un porteur chargé. */
   const T80: Record<string, [number, number]> = { "grumier-morvan": [20, 40], "bus-urbain": [20, 40], "benne-ordures": [20, 40] };
@@ -68,7 +68,8 @@ describe("voitures du catalogue : performances", () => {
     const r = fullThrottle(sport);
     expect(r.top).toBeGreaterThan(193);
     // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
-    for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
+    // La gendarmerie en berlinette (D282) a la fiche de la sportive.
+    for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar" && d.id !== "gendarmerie-alpine") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
     // La supercar (D276, unique) : bridée elle aussi à 200 km/h, mais nettement plus vive.
     const sc = fullThrottle(vehicleDef("supercar")!.spec);
     expect(sc.t100).toBeLessThan(r.t100 - 1);
@@ -89,7 +90,8 @@ describe("voitures du catalogue : performances", () => {
   it("freinage à 100 km/h : 35 à 60 m avec ABS, sans jamais bloquer ; la camionnette plus longue que la sportive", () => {
     for (const d of cars) {
       // Le petit train (25 km/h au plus) : freiné depuis sa vitesse maximale, à part.
-      if (d.id === "vieille-voiture" || d.train) continue;
+      // La vieille voiture et la deux-chevaux (D280) n'ont pas d'ABS : à part.
+      if (d.id === "vieille-voiture" || d.id === "deuche" || d.train) continue;
       const r = braking(d.spec, 100);
       expect([d.id, r.locked]).toEqual([d.id, false]);
       expect(r.distance).toBeGreaterThan(35);
@@ -117,6 +119,33 @@ describe("voitures du catalogue : performances", () => {
     const r = braking(old, 100);
     expect(r.locked).toBe(true);
     expect(r.distance).toBeGreaterThan(braking(vehicleDef("citadine")!.spec, 100).distance + 10);
+  });
+});
+
+describe("la deux-chevaux (D280)", () => {
+  it("lente et sans ABS : 105 à 116 km/h au plus, roues bloquées au freinage à fond depuis 80 km/h, arrêtée en moins de 55 m", () => {
+    const spec = vehicleDef("deuche")!.spec;
+    const top = fullThrottle(spec).top;
+    expect(top).toBeGreaterThan(105);
+    expect(top).toBeLessThan(116);
+    const r = braking(spec, 80);
+    expect(r.locked).toBe(true);
+    expect(r.distance).toBeLessThan(55);
+  });
+
+  it("souple : elle penche nettement plus qu'une voiture ordinaire dans un virage serré", () => {
+    const lean = (spec: VehicleSpec): number => {
+      const s = createVehicle(0, -90, 0, flat);
+      s.vy = s.speed = 50 / 3.6;
+      let max = 0;
+      for (let i = 0; i < 3 * 60; i++) {
+        stepVehicle(s, spec, { throttle: 0.4, brake: 0, steer: 1 }, DT, flat, none);
+        max = Math.max(max, Math.abs(s.lean));
+      }
+      return max;
+    };
+    expect(lean(vehicleDef("deuche")!.spec)).toBeGreaterThan(0.1);
+    expect(lean(vehicleDef("citadine")!.spec)).toBeLessThanOrEqual(0.08 + 1e-9);
   });
 });
 

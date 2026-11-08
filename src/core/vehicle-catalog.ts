@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON, DEUCHE, ALPINE_PURSUIT } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -59,8 +59,19 @@ export interface VehicleDef {
   palette: readonly string[];
   /** Solidité face aux chocs et aux balles (D109) : 1 pour une voiture ordinaire (défaut), plus pour un utilitaire ou la gendarmerie. */
   toughness?: number;
+  /**
+   * Voiture de gendarmerie (J4, D72, D282) : jamais garée ni tirée au hasard dans la circulation ; la police la fait naître (patrouilles, renforts).
+   */
+  police?: boolean;
+  /** Fiche des gendarmes qui la conduisent en poursuite, si elle diffère de `spec` (D282 : la berlinette, bridée). */
+  pursuitSpec?: VehicleSpec;
   /** Exemplaire unique (D114) : jamais dans la circulation ni sur les places ordinaires ; il a sa place fixe (`src/core/uniques.ts`). */
   unique?: boolean;
+  /**
+   * Version en deux tons (D280, la deux-chevaux) : pour ces couleurs de la palette (leurs indices), les ailes et le bas des portes sont de cette
+   * seconde teinte fixe ; le modèle dessiné porte alors le suffixe `#deux-tons`.
+   */
+  twoTone?: { variants: readonly number[]; color: string };
   /** Véhicule de service de la circulation (D204 : bus, camion poubelle) : ni garé, ni tiré au hasard ; le jeu le fait rouler à ses heures. */
   service?: boolean;
   /**
@@ -79,15 +90,20 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "berline", family: "car", name: "Berline", badge: { make: "Augusta", model: "Préfète" }, spec: SEDAN, size: { length: 4.72, width: 1.85, height: 1.44 }, palette: ["#a3141e", "#22489a", "#4a5058", "#e8e6e1", "#1e2127", "#a9adb3"] },
   { id: "break", family: "car", name: "Break", badge: { make: "Augusta", model: "Morvandelle" }, spec: WAGON, size: { length: 4.83, width: 1.86, height: 1.45 }, palette: ["#5e7a7c", "#e8e6e1", "#1f2b4a", "#1e2127", "#7c8086", "#b3b6ba", "#6e2a2e"] },
   { id: "petit-suv", family: "car", name: "Petit SUV", badge: { make: "Éduen", model: "Morvan" }, toughness: 1.15, spec: SUV, size: { length: 4.59, width: 1.89, height: 1.62 }, palette: ["#8f978c", "#1f2b47", "#7d1d22", "#c47a2c", "#9a9ea3", "#1b1c20", "#e6e3dc"] },
-  { id: "camionnette", family: "car", name: "Camionnette", badge: { make: "Couhard", model: "Mulet" }, toughness: 1.3, spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#e8e4da", "#e8e4da", "#e8e4da", "#8a8f96", "#c23a2a", "#2a6f7e", "#f1b24a"] },
-  { id: "vieille-voiture", family: "car", name: "Vieille voiture", badge: { make: "Éduen", model: "Pétrolette" }, toughness: 0.9, spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#9fb8a6", "#c9b98a", "#8fa8c4", "#a6553b", "#e3d6b8", "#7d6a8a"] },
+  { id: "camionnette", family: "car", name: "Camionnette", badge: { make: "Couhard", model: "Mulet" }, toughness: 1.3, spec: VAN, size: { length: 5.08, width: 1.96, height: 1.97 }, palette: ["#ecebe6", "#ecebe6", "#ecebe6", "#b9bcbf", "#66727c", "#22324d", "#b8302a"] },
+  { id: "vieille-voiture", family: "car", name: "Vieille voiture", badge: { make: "Éduen", model: "Pétrolette" }, toughness: 0.9, spec: OLD_CAR, size: { length: 4.23, width: 1.66, height: 1.36 }, palette: ["#8fa49c", "#a9c4cf", "#c4c6c3", "#56677a", "#b8352b", "#e0d6bd"] },
   { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.18, width: 1.8, height: 1.25 }, palette: ["#1f5fb8", "#e8e6e1", "#1a1b1f", "#5a5e63", "#d9531e", "#1c2c4c"] },
   // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
-  { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
+  { id: "gendarmerie", family: "car", name: "Gendarmerie", police: true, badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.64, width: 1.84, height: 1.77 }, palette: ["#1f3466"] },
+  // Gendarmerie en berlinette (D282) : la sportive aux couleurs de la gendarmerie, seulement en renfort à partir de trois étoiles (`ALPINES`, police.ts).
+  { id: "gendarmerie-alpine", family: "car", name: "Gendarmerie (berlinette)", police: true, badge: { make: "Augusta", model: "Janus Gendarmerie" }, icon: "🚓", toughness: 1.1, spec: SPORT_CAR, pursuitSpec: ALPINE_PURSUIT, size: { length: 4.18, width: 1.8, height: 1.33 }, palette: ["#1f3c8f"] },
   // Véhicules uniques (D114) : un seul exemplaire, à sa place (`src/core/uniques.ts`).
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
   // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue ; une des six couleurs des photos, tirée à chaque apparition (D277).
   { id: "supercar", family: "car", name: "Supercar", unique: true, badge: { make: "Augusta", model: "Bibracte" }, toughness: 0.9, spec: SUPERCAR, size: { length: 4.94, width: 2.03, height: 1.14 }, palette: ["#6fae2e", "#2b8fc6", "#c8261d", "#f2b40a", "#1c1d21", "#e8501c"] },
+  // Deux-chevaux (D280) : la seule de la ville, garée place Cardinal-Perraud ; une des sept couleurs tirée à chaque apparition, dont deux en deux tons
+  // (ailes et bas de caisse noirs).
+  { id: "deuche", family: "car", name: "Deux-chevaux", unique: true, badge: { make: "Éduen", model: "Bourdon" }, toughness: 0.75, spec: DEUCHE, size: { length: 3.78, width: 1.48, height: 1.6 }, palette: ["#8e9190", "#8fb3c4", "#7f9488", "#d8ccaa", "#7a1f2a", "#7a1f2a", "#d6a21e"], twoTone: { variants: [5, 6], color: "#17181c" } },
   { id: "pizza-du-vallon", family: "car", name: "Camion pizza", unique: true, badge: { make: "Couhard", model: "Pizza du Vallon" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 3.62 }, palette: ["#7cc43a"] },
   { id: "rotisserie-champ-de-mars", family: "car", name: "Rôtisserie", unique: true, badge: { make: "Couhard", model: "Rôtisserie du Champ de Mars" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 2.9 }, palette: ["#ece6da"] },
   { id: "petit-train", family: "car", name: "Petit train", unique: true, train: true, badge: { make: "Couhard", model: "Petit Train d'Autun" }, toughness: 2, spec: TRAIN_LOCO, size: { length: 4.4, width: 1.9, height: 2.6 }, palette: ["#2f6b4f"] },

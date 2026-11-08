@@ -33,7 +33,8 @@ describe("générateur de carrosserie", () => {
   it.each(cars.map((d) => d.id))("%s : le modèle respecte le gabarit du catalogue, avec les roues au sol", (id) => {
     const def = vehicleDef(id)!, p = CAR_BODIES[id]!, { front, rear } = def.spec;
     const box = new THREE.Box3();
-    for (const g of [bodyPaintGeometry(p, front, rear, "#ffffff"), parkedDetailGeometry(p, front, rear)]) {
+    // Sans les rétroviseurs mis à part (D279 : ceux du fourgon débordent de 13 cm de chaque côté) ; les autres modèles gardent les leurs.
+    for (const g of [bodyPaintGeometry(p, front, rear, "#ffffff"), parkedDetailGeometry(p, front, rear, false)]) {
       g.computeBoundingBox();
       box.union(g.boundingBox!);
     }
@@ -48,6 +49,15 @@ describe("générateur de carrosserie", () => {
     // Tandem (grumier, D116) : l'essieu arrière de la fiche est au milieu des deux essieux arrière.
     expect(wheels.length > 4 ? (wheels[2]![1] + wheels[4]![1]) / 2 : wheels[2]![1]).toBeCloseTo(rear);
     expect(box.min.z).toBeCloseTo(noseZ, 2);
+  });
+
+  it.each(cars.filter((d) => CAR_BODIES[d.id]!.sculpt?.mirrors).map((d) => d.id))("%s : les rétroviseurs mis à part débordent, mais de moins de 20 cm par côté (D279)", (id) => {
+    const def = vehicleDef(id)!, p = CAR_BODIES[id]!, { front, rear } = def.spec;
+    const g = parkedDetailGeometry(p, front, rear);
+    g.computeBoundingBox();
+    const w = g.boundingBox!.getSize(new THREE.Vector3()).x;
+    expect(w).toBeGreaterThan(def.size.width + 0.05);
+    expect(w).toBeLessThan(def.size.width + 0.4);
   });
 
   // Budget (D107) : ≈ 1 100 triangles par voiture garée (caisse, détails et quatre roues), contre ≈ 700 avant le style par modèle.
@@ -71,8 +81,8 @@ describe("générateur de carrosserie", () => {
       return [st.headlights, st.grille, st.taillights, st.bumpers, st.rim].join(" ");
     });
     expect(new Set(signatures).size).toBe(cars.length);
-    // Les voitures civiles (la gendarmerie reprend la compacte) se distinguent même par leur face avant seule.
-    const faces = cars.filter((d) => d.id !== "gendarmerie").map((d) => `${CAR_BODIES[d.id]!.style.headlights} ${CAR_BODIES[d.id]!.style.grille}`);
+    // Les voitures civiles se distinguent même par leur face avant seule (la gendarmerie en berlinette reprend la sportive, D282).
+    const faces = cars.filter((d) => !d.police).map((d) => `${CAR_BODIES[d.id]!.style.headlights} ${CAR_BODIES[d.id]!.style.grille}`);
     expect(new Set(faces).size).toBeGreaterThanOrEqual(6);
   });
 

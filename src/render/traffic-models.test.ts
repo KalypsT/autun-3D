@@ -36,8 +36,9 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
       articulated.update(s);
       articulated.group.updateMatrixWorld(true);
       const meshes: THREE.Mesh[] = [];
+      // Les gyrophares du modèle articulé (D281) sont cachés tant qu'on ne les allume pas : ils ne comptent pas.
       articulated.group.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh);
+        if ((o as THREE.Mesh).isMesh && o.visible) meshes.push(o as THREE.Mesh);
       });
       // Ordre de construction : caisse (peinture), détails, puis quatre roues.
       expect(meshes).toHaveLength(6);
@@ -71,7 +72,8 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
     models.setNight(1);
     expect(models.drawn).toBe(cars.length + 2);
     // Avec les ombres : deux fois plus d'appels de dessin, jamais plus de (modèles + roues) × 2 + feux.
-    expect((models.drawn - 1) * 2 + 1).toBeLessThanOrEqual(21);
+    // 23 depuis la gendarmerie en berlinette (D282), un modèle de plus dans la circulation.
+    expect((models.drawn - 1) * 2 + 1).toBeLessThanOrEqual(23);
     const visible: THREE.Object3D[] = [];
     models.group.traverse((o) => {
       if ((o as THREE.Mesh).isMesh && o.visible) visible.push(o);
@@ -97,7 +99,8 @@ describe("voitures qui roulent, par instances (J3-5)", () => {
     models.set([...patrols, itemOf("citadine", stateAt(30, 20, 0))]);
     expect(beacons.visible).toBe(true);
     expect(beacons.castShadow).toBe(false);
-    expect(beacons.count).toBe(6);
+    // Quatre feux par voiture (D281) : deux sur la rampe, deux dans la calandre.
+    expect(beacons.count).toBe(12);
     // Trois voitures de police allumées : un maillage de plus, pas trois.
     expect(models.drawn).toBe(quiet + 1);
     // Les feux sont au-dessus du toit de la voiture.

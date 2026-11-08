@@ -10,6 +10,8 @@ import { vehicleDef } from "./vehicle-catalog";
 const { world, nav, colliders, starts } = loadRealRoadWorld();
 const DT = 1 / 60;
 const POLICE = vehicleDef("gendarmerie")!.spec;
+/** Gendarmerie en berlinette (D282) : la fiche de la sportive, bridée en poursuite (`ALPINE_PURSUIT`). */
+const ALPINE = vehicleDef("gendarmerie-alpine")!.pursuitSpec!;
 const FUGITIVE = vehicleDef("compacte")!.spec;
 
 interface Run {
@@ -27,7 +29,7 @@ interface Run {
 }
 
 /** Un fugitif (conducteur de la circulation, `fast` : en conduite de poursuite) suivi par une voiture de gendarmerie partie à ≈ 150 m ; le fugitif s'arrête à `stopAt` s. */
-function chase(seed: number, seconds: number, stopAt: number, fast: boolean): Run {
+function chase(seed: number, seconds: number, stopAt: number, fast: boolean, cops = POLICE): Run {
   const list = starts(5);
   const from = list[seed % list.length]!;
   const lp = { x: 0, y: 0, heading: 0 };
@@ -52,7 +54,7 @@ function chase(seed: number, seconds: number, stopAt: number, fast: boolean): Ru
     }
   }
   const sim = new TrafficSim(nav, world.terrain, colliders);
-  const cop = sim.add(POLICE, start, 5, seed, 0);
+  const cop = sim.add(cops, start, 5, seed, 0);
   sim.setChase(cop, true);
   const run: Run = { closest: Infinity, near: 0, reverses: 0, plans: 0, failures: 0, held: Infinity, contacts: 0, contactsStopped: 0 };
   let nearSteps = 0, counted = 0;
@@ -90,6 +92,21 @@ describe("poursuite (J4-3)", () => {
     let caught = 0, held = 0, failures = 0;
     for (let seed = 1; seed <= 6; seed++) {
       const r = chase(seed, 200, 120, false);
+      expect(Number.isFinite(r.closest)).toBe(true);
+      if (r.closest < 8) caught++;
+      if (r.held < 12 && r.contactsStopped === 0) held++;
+      failures += r.failures;
+    }
+    expect(caught).toBeGreaterThanOrEqual(5);
+    expect(held).toBeGreaterThanOrEqual(5);
+    expect(failures).toBe(0);
+  }, 120000);
+
+  // D282 : la berlinette, bridée en poursuite, s'arrête près du fugitif comme la gendarmerie ordinaire (à pleine puissance : 4 départs sur 6).
+  it("la gendarmerie en berlinette (D282) rattrape aussi un fugitif qui roule comme la circulation, et s'arrête près de lui sans le toucher", () => {
+    let caught = 0, held = 0, failures = 0;
+    for (let seed = 1; seed <= 6; seed++) {
+      const r = chase(seed, 200, 120, false, ALPINE);
       expect(Number.isFinite(r.closest)).toBe(true);
       if (r.closest < 8) caught++;
       if (r.held < 12 && r.contactsStopped === 0) held++;

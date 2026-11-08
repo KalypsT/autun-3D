@@ -52,6 +52,8 @@ export interface VehicleSpec {
   leans: boolean;
   /** Roulis de caisse (rad par m/s² d'accélération latérale), vers l'extérieur du virage ; 0 pour un deux-roues. */
   bodyRoll: number;
+  /** Roulis de caisse le plus fort (rad) ; absent : 0,08. La 2CV (D280), très souple, va jusqu'à 0,14. */
+  maxBodyRoll?: number;
   /** Frein moteur quand on lâche l'accélérateur (N). */
   engineBrake: number;
   /** Essieu moteur : sa charge borne la motricité (patinage). */
@@ -689,7 +691,8 @@ export function stepVehicle(s: VehicleState, spec: VehicleSpec, input: DriveInpu
     if (s.impact >= spec.fallImpact) s.fallen = true;
   } else {
     const lateral = s.speed * s.yawRate;
-    s.lean += (clamp(-lateral * spec.bodyRoll, -0.08, 0.08) - s.lean) * Math.min(1, dt * 10);
+    const roll = spec.maxBodyRoll ?? 0.08;
+    s.lean += (clamp(-lateral * spec.bodyRoll, -roll, roll) - s.lean) * Math.min(1, dt * 10);
   }
 }
 

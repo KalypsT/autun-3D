@@ -1,3 +1,4 @@
+import { vehicleDef } from "../core/vehicle-catalog";
 /**
  * Pictogrammes de l'interface en jeu (D103), dessinés en SVG au lieu des emoji : un emoji change de dessin d'un téléphone à l'autre
  * et ne suit pas le style « affiche ». Trait de la couleur du texte (`currentColor`), grille de 24 × 24.
@@ -23,6 +24,7 @@ const PATHS = {
   brake: `<rect ${STROKE} stroke-width="2.4" x="3" y="7" width="18" height="10" rx="2.5"/><path ${STROKE} d="M8 10.5v3M12 10.5v3M16 10.5v3"/>`,
   handbrake: `<path ${STROKE} stroke-width="2.6" d="M12 21V9"/><circle fill="currentColor" cx="12" cy="6.5" r="3.5"/>`,
   horn: `<path ${STROKE} d="M3 10v4h3l8 4V6l-8 4z"/><path ${STROKE} d="M17.5 9a4 4 0 0 1 0 6M20 7a7 7 0 0 1 0 10"/>`,
+  beacon: `<path ${STROKE} d="M7 17v-4.5a5 5 0 0 1 10 0V17"/><path ${STROKE} d="M5 17h14v3H5z"/><path ${STROKE} d="M12 3v2.2M5 6l1.6 1.6M19 6l-1.6 1.6"/>`,
   bell: `<path ${STROKE} d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path ${STROKE} d="M10 20.5a2 2 0 0 0 4 0"/>`,
   exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
   jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
@@ -44,6 +46,6 @@ export function weaponIcon(id: string): string {
 /** Pictogramme d'un véhicule : celui du modèle s'il en a un (scooter, gendarmerie), sinon celui de sa famille. */
 export function vehicleIcon(modelId: string, family: string): string {
   if (modelId === "scooter-125") return icon("scooter");
-  if (modelId === "gendarmerie") return icon("police");
+  if (vehicleDef(modelId)?.police) return icon("police");
   return icon(family in PATHS ? (family as IconName) : "car");
 }

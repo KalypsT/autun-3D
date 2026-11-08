@@ -39,6 +39,8 @@
       body.car #handbrake { display: flex; }
       #horn { right: calc(max(14px, env(safe-area-inset-right)) + 222px); bottom: 26px; width: 58px; height: 58px; border-radius: 50%; border-width: 2px; }
       #horn .ico { font-size: 26px; }
+      /* Gyrophare allumé (D281) : le bouton du klaxon d'une voiture de gendarmerie passe au bleu. */
+      #horn.on { background: #2b49a8; color: #fff; }
       .pedal.on { transform: translateY(2px); box-shadow: 0 1px 0 rgba(27, 31, 39, .45); filter: brightness(1.35); }
       .ico { display: block; width: 1em; height: 1em; }
       /* Bouton d'action : en véhicule (« Descendre »), une pastille au-dessus des pédales. */

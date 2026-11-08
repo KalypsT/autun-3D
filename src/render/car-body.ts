@@ -155,6 +155,11 @@ export interface CarBodyParams {
   sculpt?: Sculpt;
   /** Livrée (police, J4) : une bande claire et un filet de couleur le long des flancs, une barre de gyrophares sur le toit. */
   livery?: { stripe: string; accent: string; lightBar: boolean };
+  /**
+   * Feux bleus qui clignotent (D281), dans le repère du véhicule, la profondeur comptée depuis le nez (`nose`) : rampe sur le toit et feux de calandre
+   * d'une caisse sculptée. Absent : la rampe générique au-dessus du toit (`livery.lightBar`).
+   */
+  beacons?: readonly { x: number; y: number; nose: number; size: readonly [number, number, number] }[];
 }
 
 /** Barre de gyrophares : hauteur du socle, et ses deux feux (centre x, y, z et taille), dans le repère du véhicule. */
@@ -162,6 +167,7 @@ const BAR_HEIGHT = 0.1;
 export function beaconBoxes(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number; size: [number, number, number] }[] {
   if (!p.livery?.lightBar) return [];
   const L = carLayout(p, front, rear);
+  if (p.beacons) return p.beacons.map((b) => ({ x: b.x, y: b.y, z: L.noseZ + b.nose, size: [...b.size] as [number, number, number] }));
   const z = L.roofFrontZ + p.roof * 0.35, y = p.height + BAR_HEIGHT / 2 + 0.01;
   return [-1, 1].map((side) => ({ x: side * 0.3, y, z, size: [0.42, BAR_HEIGHT * 0.9, 0.2] as [number, number, number] }));
 }
@@ -649,8 +655,8 @@ function sculptFrame(p: CarBodyParams, front: number, rear: number): SculptFrame
   return { length: p.length, noseZ: carLayout(p, front, rear).noseZ, front, rear, wheelRadius: p.wheelRadius };
 }
 
-export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
-  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c");
+export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true, tone?: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c", withMirrors, tone);
   const f = frame(p, front, rear), { L, W, st, shoulder, roofW, beltAt, topAt } = f;
   const glass = p.glass ?? "#2b3a4c";
   const top = p.cabHeight ?? p.height;
@@ -912,9 +918,9 @@ function liveryParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   return parts;
 }
 
-/** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`). */
-export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry {
-  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color);
+/** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`) ; `tone` : version en deux tons d'une caisse sculptée (D280). */
+export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string, tone?: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color, tone);
   return merge(paintParts(p, front, rear, color));
 }
 
@@ -949,9 +955,12 @@ export function carWheelGeometry(radius: number, width: number, segments: number
   ]);
 }
 
-/** Détails et quatre roues dans une seule géométrie : voitures garées (instances). */
-export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
-  const parts = [bodyDetailGeometry(p, front, rear)];
+/**
+ * Détails et quatre roues dans une seule géométrie : voitures garées (instances). `withMirrors` à faux : sans les rétroviseurs mis à part d'une caisse
+ * sculptée (D279), pour mesurer son gabarit.
+ */
+export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true, tone?: string): THREE.BufferGeometry {
+  const parts = [bodyDetailGeometry(p, front, rear, withMirrors, tone)];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
     const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);

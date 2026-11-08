@@ -176,3 +176,24 @@ export const SUPERCAR: VehicleSpec = limited({
   corneringFront: 120000, corneringRear: 150000, power: 420000, maxDrive: 15000, driveFadeFrom: kmh(330), topSpeed: kmh(350),
   maxBrake: 21000, drag: 0.36, hull: [[1.64, 1.0], [0.17, 1.01], [-1.3, 1.0]], wheelRadius: 0.36, bodyRoll: 0.006, cgHeight: 0.4, brakeFront: 0.6,
 }, SPEED_CAP.car);
+
+/**
+ * Deux-chevaux (D280, véhicule unique, l'Éduen Bourdon) : 660 kg avec le conducteur, bicylindre de 21 kW (≈ 18 kW aux roues), 0 à 100 km/h en une
+ * trentaine de secondes, 115 km/h ; empattement réel (2,40 m), poids sur l'avant (moteur devant l'essieu), pneus étroits (adhérence 0,85), direction
+ * lente, freins à tambour **sans ABS** (comme la vieille voiture) ; suspension très souple : elle penche beaucoup en virage (roulis jusqu'à 0,14 rad).
+ * Ses performances sont celles de la dernière version (choix de l'utilisateur), sa silhouette celle de la première.
+ */
+export const DEUCHE: VehicleSpec = {
+  ...CAR, mass: 660, yawInertia: 805, front: 1.05, rear: 1.35, maxSteer: 0.6, steerFade: 10, steerRate: 1.4, grip: 0.85,
+  corneringFront: 37000, corneringRear: 42000, power: 18000, maxDrive: 1900, driveFadeFrom: kmh(109), topSpeed: kmh(115),
+  maxBrake: 5600, reverseForce: 1600, rolling: 0.015, drag: 0.52, hull: [[1.02, 0.71], [-0.16, 0.72], [-1.34, 0.71]], wheelRadius: 0.29,
+  bodyRoll: 0.03, maxBodyRoll: 0.14, engineBrake: 150, abs: false, cgHeight: 0.6, steerGrip: 1.3, rearGrip: 1.1, driftAssist: 0, maxDrift: Infinity,
+};
+
+/**
+ * Gendarmerie en berlinette (D282), conduite par les gendarmes en poursuite : la fiche de la sportive bridée à 110 kW aux roues (au lieu de 190).
+ * À pleine puissance, elle arrivait trop vite sur un fugitif arrêté et le touchait (2 départs sur 6 de l'essai de poursuite, `chase.test.ts`) ;
+ * bridée, elle s'arrête près de lui comme la gendarmerie ordinaire (5 sur 6), tout en restant plus vive qu'elle (95 kW, adhérence moindre).
+ * Volée par le joueur, elle a la fiche entière de la sportive.
+ */
+export const ALPINE_PURSUIT: VehicleSpec = { ...SPORT_CAR, power: 110000, maxDrive: 6500 };

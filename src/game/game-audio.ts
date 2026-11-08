@@ -133,6 +133,7 @@ export class GameAudio {
     }
     this.ride = null;
     this.hornOn = false;
+    this.siren(false);
     this.inCar = v?.family === "car";
     this.pendingRide = v;
     if (v && kit) this.build(v, true);
@@ -191,6 +192,15 @@ export class GameAudio {
       this.popCool = 0.08;
       S.pop(kit, this.sys.buses!.sfx, kit.ctx.currentTime, { ...NEAR, gain: 0.5 });
     }
+  }
+
+  /** Deux-tons de la voiture de gendarmerie que conduit le joueur (D281), allumé ou éteint avec le gyrophare. */
+  private ownSiren: SirenVoice | null = null;
+  siren(on: boolean): void {
+    const kit = this.kit;
+    if (!kit) return;
+    if (on && !this.ownSiren) this.ownSiren = new SirenVoice(kit, this.sys.buses!.sfx, 0);
+    this.ownSiren?.update(1, 2600, on ? 0.32 : 0, 0);
   }
 
   /** Klaxon (voiture, moto) ou sonnette (vélo, trottinette), tenu ou non. */
