@@ -6318,3 +6318,38 @@ lent 34,0 et 27,7 i/s ; la mesure est reproductible).
 - **Décision** : le plafond reste à 300 km/h (rien n'est en retard, et l'on ne roule à 300 que sur quelques lignes droites de la périphérie).
   Le chantier de fluidité est à mener à part et profitera à toutes les vitesses : d'abord trouver la cause des saccades sans construction
   (régression depuis D57), puis la tuile `23_36` (tranche de 52 à 93 ms d'un bloc, à toutes les vitesses).
+
+## 2026-11-08 — D284. Fluidité, lot 1 : la tuile 23_36 ne bloque plus, et le banc dit d'où viennent les images lentes
+
+**Demande** : chantier « fluidité » ouvert après les mesures de D283 (une image lente par seconde à 300 km/h, 1 % le plus lent divisé par deux
+depuis D57, à vitesse égale).
+
+**Tuile 23_36** (le pire bloc de construction, 52 à 93 ms d'un coup sur le téléphone, à toutes les vitesses) :
+- **Cause**, trouvée au profileur (Chromium, jeu réel, `?at=-645,313`) : ce n'est pas la lecture du fichier (119 Ko seulement), c'est le sol.
+  Un polygone de chaussée de 5 150 m² (185 sommets, 6 trous) passe sous le pont-rail du boulevard Xavier Pauchard. Ses triangles sont recoupés
+  jusqu'à 0,3 m le long du tablier (D93), et chaque morceau examiné demande une vingtaine d'altitudes. Sous ce pont, chaque altitude coûte cher :
+  la correction du relief sous les tabliers (`Decks.carve`) relit le relief 10 fois par tronçon. Or `buildGroundSteps` ne rendait la main
+  qu'entre deux polygones : 56 ms d'un bloc sur PC.
+- **Corrections** (le sol produit est identique au sommet près : positions, normales et couleurs comparées sur 6 tuiles) :
+  - `fillOnTerrainSteps` (`src/render/ground.ts`) : le découpage récursif devient une pile explicite, et rend la main tous les 100 morceaux
+    examinés (posés, recoupés ou écartés), même au milieu d'un triangle. `fillOnTerrain` reste, pour les autres appelants.
+  - Chaque point (sommet ou milieu de côté) n'est évalué qu'une fois par polygone (altitude dessinée et relief nu, mémorisés par coordonnées).
+  - `Decks.carve` : les tronçons prolongés aux bouts du tablier et les cosinus des directions sont calculés une fois, plus à chaque appel.
+- **Mesure sur PC** (médiane de 7 constructions du sol, jeu réel) :
+
+  | Tuile | Pire bloc avant | après | Total avant | après |
+  |---|---|---|---|---|
+  | 23_36 | 56 ms | 2,3 ms | 129 ms | 71 ms |
+  | 24_36 | 16 ms | 3,1 ms | 69 ms | 51 ms |
+  | 26_33 | 13 ms | 1,4 ms | 59 ms | 40 ms |
+  | 23_35 | 12 ms | 2,1 ms | 39 ms | 30 ms |
+  | 26_32 | 21 ms | 4,0 ms | 66 ms | 54 ms |
+
+**Le banc dit d'où viennent les images lentes** (`src/game/bench-hitches.ts`) : la plupart des saccades de D283 (16 sur 17 à 200 km/h, 22 sur 28
+à 300) tombaient hors de toute construction de tuile, et seul le téléphone mesure juste (sur PC, le rendu logiciel fausse tout). Pour chaque
+image de plus de 33 ms, le banc garde maintenant :
+- le temps de chaque partie de sa boucle : tuiles, flotte, navigation, circulation, décor, minimap, passants, pigeons, foule, rendu ;
+- ce qui ne tombe dans aucune (« hors mesure » : ramasse-miettes hors de nos fonctions, attente du GPU, composition de la page) ;
+- les « Long Animation Frames » de Chrome : tout le code qui a tourné pendant l'image, y compris hors de la boucle (fichier reçu, promesse),
+  avec la fonction et sa position dans le fichier construit (à retrouver dans le code avec la même version construite et ses sourcemaps).
+Le rapport texte ajoute deux à sept lignes par phase ; le JSON garde les 40 images les plus lentes de chaque phase.

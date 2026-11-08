@@ -10,6 +10,7 @@ const CARVE = 3;
 const HEADROOM = 4;
 /** Directions des droites de `carve`, autour de la perpendiculaire au tablier (radians). */
 const SKEW = [-0.7, -0.35, 0, 0.35, 0.7];
+const SKEW_COS = SKEW.map(Math.cos), SKEW_SIN = SKEW.map(Math.sin);
 
 interface Seg {
   ax: number;
@@ -55,6 +56,8 @@ interface Entry {
   gaps: [number, number][];
   /** Longueur du tablier (m). */
   length: number;
+  /** Tronçons de `gaps` corrigés par `carve`, prolongés au-delà des bouts du tablier (calculés une fois, D284). */
+  spans: [number, number][];
   cells: number[];
   refs: Set<string>;
 }
@@ -106,7 +109,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [], sectors: [], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [], sectors: [], gaps: [], length: 0, spans: [], cells: [], refs: new Set([tile]) };
       const p = d.p;
       let s0 = 0;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -123,6 +126,9 @@ export class Decks {
       if (!e.segs.length) continue;
       e.gaps = deckGaps(d, s0);
       e.length = s0;
+      // Un tronçon qui va jusqu'au bout du tablier y garde toute sa correction, fondue sur le mètre suivant : l'axe OpenStreetMap du pont
+      // est souvent plus court que l'ouvrage (pont-rail du boulevard Pauchard : 6 m pour une trouée plus large).
+      e.spans = e.gaps.map(([a, b]): [number, number] => [a <= 0.5 ? -1 : a, b >= s0 - 0.5 ? s0 + 1 : b]);
       this.entries.set(id, e);
       this.index(e, x0 - d.w - CARVE, y0 - d.w - CARVE, x1 + d.w + CARVE, y1 + d.w + CARVE);
     }
@@ -132,7 +138,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], sectors: [], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [{ ring: pl.r, z: pl.z }], sectors: [], gaps: [], length: 0, spans: [], cells: [], refs: new Set([tile]) };
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < pl.r.length; i += 2) {
         x0 = Math.min(x0, pl.r[i]!); x1 = Math.max(x1, pl.r[i]!); y0 = Math.min(y0, pl.r[i + 1]!); y1 = Math.max(y1, pl.r[i + 1]!);
@@ -151,7 +157,7 @@ export class Decks {
         known.refs.add(tile);
         continue;
       }
-      const e: Entry = { segs: [], flats: [], sectors: [sc], gaps: [], length: 0, cells: [], refs: new Set([tile]) };
+      const e: Entry = { segs: [], flats: [], sectors: [sc], gaps: [], length: 0, spans: [], cells: [], refs: new Set([tile]) };
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let k = 0; k <= 8; k++) {
         const th = sc.a - sc.h + (2 * sc.h * k) / 8;
@@ -263,10 +269,8 @@ export class Decks {
     if (!list) return raw;
     let z = raw;
     for (const e of list) {
-      if (!e.gaps.length) continue;
-      // Un tronçon qui va jusqu'au bout du tablier y garde toute sa correction, fondue sur le mètre suivant : l'axe OpenStreetMap du pont
-      // est souvent plus court que l'ouvrage (pont-rail du boulevard Pauchard : 6 m pour une trouée plus large).
-      const spans = e.gaps.map(([a, b]): [number, number] => [a <= 0.5 ? -1 : a, b >= e.length - 0.5 ? e.length + 1 : b]);
+      const spans = e.spans;
+      if (!spans.length) continue;
       for (const s of e.segs) {
         const t = ((x - s.ax) * s.dx + (y - s.ay) * s.dy) / s.len2;
         const first = s.s0 === 0, last = s.s0 + s.len >= e.length - 1e-6;
@@ -281,8 +285,8 @@ export class Decks {
         if (Math.abs(u) >= reach) continue;
         // La voie du bas passe souvent en biais : droites tirées dans plusieurs directions autour de la perpendiculaire, la plus basse.
         let line = Infinity;
-        for (const a of SKEW) {
-          const c = Math.cos(a), sn = Math.sin(a);
+        for (let i = 0; i < SKEW.length; i++) {
+          const c = SKEW_COS[i]!, sn = SKEW_SIN[i]!;
           const ux = nx * c - ny * sn, uy = nx * sn + ny * c;
           const k0 = (-reach - u) / c, k1 = (reach - u) / c;
           const za = rawAt(x + ux * k0, y + uy * k0), zb = rawAt(x + ux * k1, y + uy * k1);
