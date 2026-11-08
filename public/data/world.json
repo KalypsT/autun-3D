@@ -2831,10 +2831,10 @@
    ],
    "buildings": 7,
    "trees": 99,
-   "walls": 3,
+   "walls": 5,
    "furniture": 3,
    "lod": 7,
-   "bytes": 149437
+   "bytes": 150826
   },
   {
    "id": "35_35",

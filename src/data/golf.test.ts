@@ -42,6 +42,11 @@ describe("golf municipal (D288)", () => {
     for (const id of ["BATIMENT0000000348844174", "BATIMENT0000000348844175"]) expect(fiches.find((f) => f.id === id)?.materials.roof).toBe("tuile_brune");
     expect(tiles.flatMap((t) => t.ground["golf_terrace"] ?? []).length).toBeGreaterThan(0);
     const walls = tiles.flatMap((t) => t.walls).filter((w) => w.id <= -950_000_000 && w.id > -950_000_100);
-    expect(walls.map((w) => w.kind).sort()).toEqual(["hedge", "hedge", "wall"]);
+    expect(walls.map((w) => w.kind).sort()).toEqual(["fence", "fence", "hedge", "hedge", "wall"]);
+    // Practice (D290) : une vingtaine de postes, un abri sur les derniers mètres, trois cibles ; filets de 5 m, trop hauts pour être escaladés.
+    const p = site!.practice!;
+    expect(Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]) / p.step).toBeGreaterThan(18);
+    expect(p.targets.length).toBe(3);
+    expect(walls.filter((w) => w.kind === "fence").every((w) => w.height === 5 && w.look === "mesh")).toBe(true);
   });
 });

@@ -151,7 +151,7 @@ def built_mask():
             r = b["ring"]
             geoms.append(Polygon([(r[i], r[i + 1]) for i in range(0, len(r), 2)]).buffer(3.0))
         for layer, ps in d["ground"].items():
-            if layer.startswith(("road_", "plaza_")) or layer in ("walk", "water", "golf_terrace"):
+            if layer.startswith(("road_", "plaza_")) or layer in ("walk", "water", "golf_terrace", "golf_path"):
                 geoms += [decode(p).buffer(2.0) for p in ps]
     return unary_union(geoms)
 
@@ -222,6 +222,11 @@ WALL0 = (2159.1, -76.0)  # muret de l'entrée, à l'est de l'allée, 4 m au nord
 WALL_LEN = 9.0
 FLAGS = [(2134.0, -47.0), (2126.0, -49.0)]  # mâts devant le bâtiment d'accueil (photo de l'entrée)
 WALL_ID0 = -950_000_000
+# Practice (lot 3, D290 ; orthophotographie et photos 6 et 7) : ligne des tapis, abri sur les 25 derniers mètres, cibles, filets.
+PRACTICE_A, PRACTICE_B = (2070.5, -56.0), (2120.0, -14.0)
+PRACTICE = {"step": 3.0, "depth": 2.4, "shelter": [40.0, 64.5], "targets": [[2036.0, -13.0], [2046.0, 24.0], [2028.0, 21.0]]}
+NETS = [[(2070.0, -57.0), (2010.8, -23.0)], [(2121.5, -5.0), (2094.0, 18.0)]]  # filets verts sur poteaux, côtés sud-ouest et nord-est
+AREA = (2000.0, -120.0, 2200.0, 45.0)
 
 
 def club(world):
@@ -233,7 +238,7 @@ def club(world):
 
     rings, home = {}, {}
     for tid, t in tiles.items():
-        if not box(*t["bounds"]).intersects(box(2050, -120, 2200, 0)):
+        if not box(*t["bounds"]).intersects(box(*AREA)):
             continue
         for b in json.loads((OUT / "tiles" / f"{tid}.json").read_text())["buildings"]:
             if b["id"] in CLUB + (WELCOME, TENT):
@@ -264,26 +269,36 @@ def club(world):
             "tent": {"r": [round(v, 2) for q in list(tent_r.exterior.coords)[:4] for v in q], "h": 2.3, "ridge": 3.7},
             "tables": tables, "parasols": parasols,
             "sign": {"a": [round(a[0], 2), round(a[1], 2)], "b": [round(b[0], 2), round(b[1], 2)], "z0": 0.25, "z1": 1.85},
-            "flags": [list(f) for f in FLAGS]}
+            "flags": [list(f) for f in FLAGS],
+            "practice": {"a": list(PRACTICE_A), "b": list(PRACTICE_B), **PRACTICE}}
+    # Allée de gravier derrière les dalles du practice.
+    pa, pb = np.array(PRACTICE_A), np.array(PRACTICE_B)
+    pt = (pb - pa) / np.linalg.norm(pb - pa)
+    left = np.array([-pt[1], pt[0]])
+    v0, v1 = -PRACTICE["depth"] - 0.4, -PRACTICE["depth"] - 2.4
+    path = Polygon([tuple(pa + left * v0), tuple(pb + left * v0), tuple(pb + left * v1), tuple(pa + left * v1)]).difference(house.buffer(0.5))
     walls = [{"kind": "hedge", "height": 1.1, "pts": [v for q in h for v in q]} for h in HEDGES]
     walls.append({"kind": "wall", "height": 1.2, "pts": [WALL0[0], WALL0[1], round(w1[0], 2), round(w1[1], 2)]})
+    walls += [{"kind": "fence", "look": "mesh", "height": 5.0, "pts": [v for q in n for v in q]} for n in NETS]
     touched = set()
     site_tile = home[CLUB[0]]
     for tid in tiles:
         p = OUT / "tiles" / f"{tid}.json"
-        if not box(*tiles[tid]["bounds"]).intersects(box(2050, -120, 2200, 0)):
+        if not box(*tiles[tid]["bounds"]).intersects(box(*AREA)):
             continue
         d = json.loads(p.read_text())
         before = json.dumps(d)
         tb = box(*d["bounds"])
-        d["ground"].pop("golf_terrace", None)
-        part = [encode(q) for q in polys(terrace.intersection(tb)) if q.area > 0.3]
-        if part:
-            d["ground"]["golf_terrace"] = part
+        for layer, geom in (("golf_terrace", terrace), ("golf_path", path)):
+            d["ground"].pop(layer, None)
+            part = [encode(q) for q in polys(geom.intersection(tb)) if q.area > 0.3]
+            if part:
+                d["ground"][layer] = part
         d["walls"] = [w for w in d["walls"] if not (WALL_ID0 - 100 < w["id"] <= WALL_ID0)]
         for i, w in enumerate(walls):
             if tile_at((w["pts"][0] + w["pts"][-2]) / 2, (w["pts"][1] + w["pts"][-1]) / 2) == tid:
-                d["walls"].append({"id": WALL_ID0 - i, "kind": w["kind"], "height": w["height"], "measured": 0.0, "pts": [round(v, 2) for v in w["pts"]]})
+                d["walls"].append({"id": WALL_ID0 - i, "kind": w["kind"], "height": w["height"], "measured": 0.0, "pts": [round(v, 2) for v in w["pts"]],
+                                   **({"look": w["look"]} if "look" in w else {})})
         for f in d["fiches"]:
             if f["id"] in CLUB:
                 f["materials"]["roof"] = "tuile_brune"

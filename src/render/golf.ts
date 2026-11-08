@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { GolfSite, HeightField } from "../data/types";
+import { practiceFrame } from "../core/golf";
 import { toThree, type MeshBuilder, type Vec3 } from "./geometry";
 
 /**
@@ -141,7 +142,63 @@ function flag(mb: MeshBuilder, x: number, y: number, k: number, terrain: HeightF
   box(mb, x + Math.cos(a) * 0.6, y + Math.sin(a) * 0.6, 0.08, 0.012, a, g + 3.4, g + 5.6, BANNER[1]!);
 }
 
+const CONCRETE = C("#cfcbc2"), MAT = C("#2f8a55"), TIMBER = C("#a8743f"), SHELTER_TOP = C("#8f969a"), SHELTER_UNDER = C("#efe3c8");
+const TARGET = C("#f5f5f0"), TARGET_FLAG = C("#d6413a");
+
+/** Practice (D290, photos 6 et 7) : dalles et tapis verts, abri à charpente bois et toit à un pan, cibles rondes. */
+function practice(mb: MeshBuilder, p: NonNullable<GolfSite["practice"]>, terrain: HeightField): void {
+  const { at, L, rot } = practiceFrame(p);
+  for (let u = p.step / 2; u < L; u += p.step) {
+    const [x, y] = at(u, -p.depth / 2);
+    const g = terrain.heightAt(x, y);
+    box(mb, x, y, p.step / 2 - 0.08, p.depth / 2, rot, g - 0.2, g + 0.12, CONCRETE);
+    const [mx, my] = at(u, -0.95);
+    box(mb, mx, my, 0.75, 0.75, rot, g + 0.12, g + 0.15, MAT);
+  }
+  // Abri : poteaux à l'avant (côté terrain) et à l'arrière, tous les 4 m ; toit à un pan, plus haut à l'avant.
+  const [s0, s1] = p.shelter;
+  const back = -p.depth - 2.2, front = 0.3;
+  const n = Math.max(1, Math.round((s1 - s0) / 4));
+  let gmin = Infinity;
+  for (let k = 0; k <= n; k++) {
+    const u = s0 + ((s1 - s0) * k) / n;
+    for (const [v, h] of [[front, 3.2], [back, 2.7]] as const) {
+      const [x, y] = at(u, v);
+      const g = terrain.heightAt(x, y);
+      gmin = Math.min(gmin, g);
+      box(mb, x, y, 0.1, 0.1, rot, g - 0.1, g + h, TIMBER);
+    }
+  }
+  const [fa, fb, ba, bb] = [at(s0 - 0.4, front + 0.8), at(s1 + 0.4, front + 0.8), at(s0 - 0.4, back - 0.5), at(s1 + 0.4, back - 0.5)];
+  const zf = gmin + 3.25, zb = gmin + 2.75;
+  const V = (q: [number, number], z: number): Vec3 => toThree(q[0], q[1], z);
+  mb.quad(V(fa, zf + 0.08), V(fb, zf + 0.08), V(bb, zb + 0.08), V(ba, zb + 0.08), [0, 1, 0], SHELTER_TOP);
+  mb.quad(V(fa, zf), V(fb, zf), V(bb, zb), V(ba, zb), [0, -1, 0], SHELTER_UNDER);
+  // Pannes de bois sous le toit, à l'avant et à l'arrière.
+  for (const [v, z] of [[front, zf - 0.12], [back, zb - 0.12]] as const) {
+    const [x, y] = at((s0 + s1) / 2, v);
+    box(mb, x, y, (s1 - s0) / 2 + 0.2, 0.09, rot, z - 0.16, z, TIMBER);
+  }
+  // Cibles : poteau, anneau blanc vertical de 1,2 m de rayon, fanion rouge.
+  for (const [x, y] of p.targets) {
+    const g = terrain.heightAt(x, y);
+    pole(mb, x, y, 0.04, g, g + 1.5, TARGET);
+    const seg = 10, R = 1.2;
+    for (let k = 0; k < seg; k++) {
+      const a0 = (2 * Math.PI * k) / seg, a1 = (2 * Math.PI * (k + 1)) / seg;
+      const c = Math.cos(rot), sn = Math.sin(rot);
+      const P = (a: number): [number, number, number] => [x + Math.cos(a) * R * c, y + Math.cos(a) * R * sn, g + 1.5 + Math.sin(a) * R];
+      const q0 = P(a0), q1 = P(a1);
+      const mxp = (q0[0] + q1[0]) / 2, myp = (q0[1] + q1[1]) / 2, mz = (q0[2] + q1[2]) / 2;
+      box(mb, mxp, myp, 0.05, 0.05, rot, mz - 0.38, mz + 0.38, TARGET);
+    }
+    pole(mb, x + 0.3, y, 0.02, g, g + 2.6, TARGET, 4);
+    box(mb, x + 0.5, y, 0.2, 0.01, 0, g + 2.25, g + 2.55, TARGET_FLAG);
+  }
+}
+
 export function buildGolf(mb: MeshBuilder, s: GolfSite, terrain: HeightField): void {
+  if (s.practice) practice(mb, s.practice, terrain);
   tent(mb, s.tent, terrain);
   for (const [x, y, r] of s.tables) table(mb, x, y, r, terrain);
   for (const [x, y] of s.parasols) parasol(mb, x, y, terrain);
@@ -149,7 +206,3 @@ export function buildGolf(mb: MeshBuilder, s: GolfSite, terrain: HeightField): v
   s.flags.forEach(([x, y], k) => flag(mb, x, y, k, terrain));
 }
 
-/** Contour de la tente (collisions). */
-export function golfTentRing(s: GolfSite): number[] {
-  return [...s.tent.r];
-}

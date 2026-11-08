@@ -45,6 +45,8 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   golf_green: { color: "paving13", lift: 0.042 },
   // Terrasse du club-house (D289) : pavés autobloquants rouge brique.
   golf_terrace: { color: "paving4", lift: 0.06 },
+  // Allée de gravier derrière les tapis du practice (D290).
+  golf_path: { color: "paving7", lift: 0.04 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },

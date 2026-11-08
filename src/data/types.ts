@@ -1089,6 +1089,11 @@ export interface GolfSite {
   parasols: [number, number][];
   sign: { a: [number, number]; b: [number, number]; z0: number; z1: number };
   flags: [number, number][];
+  /**
+   * Practice (D290) : ligne des tapis de a à b (le tir part à gauche de a → b), postes tous les `step` m sur une dalle de `depth` m, abri à
+   * charpente bois de l'abscisse s0 à s1 ; cibles rondes dans le terrain.
+   */
+  practice?: { a: [number, number]; b: [number, number]; step: number; depth: number; shelter: [number, number]; targets: [number, number][] };
 }
 
 /**

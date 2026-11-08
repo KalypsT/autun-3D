@@ -6593,3 +6593,22 @@ comme un bâtiment de 74 m²), le bâtiment d'accueil et le parking au nord-est,
 **Limites** : le texte du panneau est suggéré (traits), pas lisible ; les murs du club-house restent ceux d'une maison générique (fenêtres,
 enduit crème) ; pas de massif de fleurs roses distinct de la haie. Suite : lot 3 (practice).
 
+## 2026-11-08 — D290. Le golf, lot 3 : le practice
+
+**Photos** : la rangée de tapis verts sur dalles de béton, avec une allée de gravier derrière, dans la pente qui descend vers le plan d'eau ;
+le long abri à charpente bois et toit à un pan ; les filets verts sur poteaux ; les cibles dans le terrain. **Orthophotographie** : la ligne des
+tapis de (2 071 ; −56) à (2 120 ; −14), l'abri au-dessus des 25 derniers mètres, le terrain au nord-ouest, deux lignes de filets (côtés sud-ouest et
+nord-est), trois cibles rondes.
+
+**Fait** (`build_golf.py`, champ `practice` du site `golf`) : **22 postes** de 3 m (dalle de béton de 2,4 m, tapis vert de 1,5 m), l'**abri** sur
+24,5 m (poteaux de bois tous les 4 m, pannes, toit à un pan plus haut côté terrain, gris dessus, clair dessous), une **allée de gravier** de 2 m
+derrière les dalles (couche `golf_path`), **trois cibles** (anneau blanc vertical de 1,2 m de rayon, fanion rouge), **deux filets** de 5 m
+(murs `fence` d'aspect grillage vert, trop hauts pour être escaladés). Le terrain garde la tonte en bandes du lot 1. Géométrie partagée par le
+rendu et les collisions dans `src/core/golf.ts` (poteaux de l'abri et des cibles solides).
+
+![Le practice](captures/d290-practice.jpg)
+![Sous l'abri](captures/d290-abri.jpg)
+![Vue haute](captures/d290-practice-haut.jpg)
+
+**Limites** : pas de balles ni de seaux sur les tapis ; les filets sont en barreaudage de grillage, pas en maille souple. Suite : lot 4 (golfeurs).
+

@@ -2052,3 +2052,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le club-house](docs/captures/d289-club-apres.jpg)
 ![La terrasse](docs/captures/d289-terrasse.jpg)
 
+**Le golf, lot 3 : le practice (8 novembre 2026)** (D290)
+- Le practice a sa rangée de 22 tapis verts sur dalles, son abri en bois, son allée de gravier, ses filets verts et trois cibles dans le terrain.
+- À faire de ton côté : passer sous l'abri du practice (`?at=2105,-28`).
+
+![Le practice](docs/captures/d290-practice.jpg)
+

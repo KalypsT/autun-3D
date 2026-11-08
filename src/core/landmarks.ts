@@ -1,3 +1,4 @@
+import { practicePosts } from "./golf";
 import type { Arcade, Building, BuildingKind, BuildingKindId, Carport, CathedralModel, CollegeSpec, CouhardSite, CroixSite, CurtainSite, BandstandSite, Deck, MemorialSite, Furniture, GateModel, HexagoneModel, HouseModel, JanusSite, PlayhouseModel, StationModel, EduenModel, McdoModel, BowlingModel, MeasuredPiece, JanusWall, PassageSite, RoundaboutSite, SentierSite, Site, StoreModel, Tree, Wall } from "../data/types";
 import type { Pit } from "../data/terrain";
 import { gateCircles } from "./school-gate";
@@ -135,6 +136,7 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
     if (s.t !== "golf") continue;
     for (const [x, y] of s.tables) out.push([x, y, 0.5]);
     for (const [x, y] of [...s.parasols, ...s.flags]) out.push([x, y, 0.1]);
+    if (s.practice) for (const [x, y] of practicePosts(s.practice)) out.push([x, y, 0.15]);
   }
   // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
   for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
