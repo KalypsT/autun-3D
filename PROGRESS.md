@@ -2007,3 +2007,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le banc de test dit maintenant, pour chaque image lente, quelle partie du jeu a pris le temps (tuiles, passants, rendu…) et ce que Chrome a vu tourner.
 - À faire de ton côté : après fusion, relancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone et m'envoyer le JSON.
 
+**Fluidité, lot 2 (8 novembre 2026)** (D285)
+- Mesuré sur le téléphone après le lot 1 : à 300 km/h, 16 images lentes au lieu de 28, et la tuile 23_36 ne bloque plus (7 à 12 ms au lieu de 52 à 93).
+- Le nouveau rapport a désigné le coupable suivant : le relief, qui reconstruisait d'un bloc les morceaux de terrain proches en roulant. Il se construit maintenant par tranches de 3 ms ; sur PC, son pire bloc passe de 50 à 13 ms à 90 km/h, et de 39 à 15 ms à 300 km/h.
+- À faire de ton côté : après fusion, relancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone et m'envoyer le JSON.
+
