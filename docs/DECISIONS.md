@@ -6359,3 +6359,48 @@ logiciel (une image de rendu dure ≈ 2 s, tout passe en « hors mesure »).
 **Reste de ton côté** : une fois la branche fusionnée et le site reconstruit, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone, et
 m'envoyer le JSON. On y lira (1) si la tranche la plus longue de `23_36` est tombée sous ≈ 10 ms, (2) où partent les saccades hors construction
 de tuile : rendu (envoi au GPU, compilation d'un nuanceur, envoi d'une texture), passants, ou « hors mesure » (ramasse-miettes, GPU).
+
+## 2026-11-08 — D285. Fluidité, lot 2 : le relief se construit par tranches
+
+**Mesure du téléphone après D284** (Honor, version `93145cb`, `?bench=1&crowd=100&sim=1&fleet=1&fast=300`) :
+
+| Phase | Images > 33 ms (D283 → D284) | > 50 ms | 1 % le plus lent |
+|---|---|---|---|
+| 50 km/h | 10 → 5 | 4 → 4 | 33,8 → 36,7 i/s |
+| 90 km/h | 13 → 9 | 1 → 2 | 27,5 → 27,0 i/s |
+| 300 km/h | 28 → 16 | 10 → 4 | 16,4 → 20,3 i/s |
+
+- La tuile `23_36` ne bloque plus : sa plus longue tranche passe de 52 à 93 ms à **7 à 12 ms**.
+- Le nouveau détail des images lentes (D284) désigne le suivant : à 300 km/h, **504 ms sur 660** passés dans les images lentes tombent dans la
+  partie « décor » de la boucle, par blocs de 30 à 60 ms, sans construction de tuile. Chrome ne voit rien hors de la boucle d'image.
+
+**Cause** : la partie « décor » comprend la mise à jour du relief (`TerrainView.update`). Elle reconstruit jusqu'à deux morceaux par image
+(changement de niveau de détail en roulant), chacun d'un bloc. Un morceau proche (pas de 2,5 m sur 250 m) compte 10 201 sommets et demande
+≈ 51 000 altitudes : 8 à 11 ms sur PC. Rejoué dans Chromium sur le parcours du banc, mise à jour du relief seule : 69 mises à jour de plus de
+8 ms à 300 km/h (pire 39 ms), 64 à 90 km/h (pire 50 ms).
+
+**Correction** (`src/render/terrain.ts`) :
+- `buildSteps` calcule la géométrie d'un morceau en rendant la main toutes les 8 lignes de la grille ; `apply` remplace le maillage quand
+  elle est prête. L'ancien maillage, plus grossier, reste affiché jusque-là : jamais de trou.
+- `work` avance le morceau en cours puis les suivants, dans 3 ms par image (au plus deux commencés par image, comme avant). Si le morceau sous
+  le joueur attend son niveau, la tranche monte à 8 ms. Un morceau qui ne veut plus ce niveau, ou dont les creux d'affichage (D248) ont
+  changé, est abandonné.
+- `settle` (chargement) construit toujours tout d'une traite. Le maillage produit est le même qu'avant.
+
+**Mesure sur PC** (mise à jour du relief seule, parcours du banc de 2,6 km, image par image) :
+
+| Vitesse | Mises à jour > 8 ms, avant → après | Pire | Morceau sous la voiture pas encore fin |
+|---|---|---|---|
+| 300 km/h | 69 → 20 | 39 → 15 ms | 0 → 10 images sur 1 883, au plus 2 de suite |
+| 90 km/h | 64 → 61 | 50 → 13 ms | 0 → 27 images sur 6 275, au plus 2 de suite |
+
+À 90 km/h, le nombre de mises à jour de plus de 8 ms ne baisse pas (ce sont surtout les tranches de 8 ms du morceau sous le joueur) ; ce qui
+compte, c'est la pire, divisée par quatre.
+
+**Ce qui reste** (lu dans le même rapport du téléphone) :
+- Des images de 41 à 50 ms où la boucle n'a travaillé que 7 à 9 ms (tuiles 4 ms, rendu 2 à 4 ms) : le temps manquant est hors de nos
+  fonctions (GPU, ramasse-miettes, composition). Il faudrait mesurer le GPU (requêtes de temps WebGL) pour aller plus loin.
+- Quelques tranches de construction de tuile de 20 à 33 ms (`24_37`, `29_35`, `28_35`, `26_33`) : à découper comme le sol en D284.
+
+**Reste de ton côté** : après fusion, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone ; la partie « décor » des images lentes
+devrait presque disparaître.

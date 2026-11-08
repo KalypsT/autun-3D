@@ -1,6 +1,7 @@
 import { weatherize } from "./weather-fx";
 import * as THREE from "three";
 import { loadGround } from "../data/load";
+import { finish, type Steps } from "./geometry";
 import type { TiledTerrain } from "../data/terrain";
 import type { HeightField, TileInfo, WorldManifest } from "../data/types";
 
@@ -14,6 +15,15 @@ const VIEW_MARGIN = 250;
 /** Les sols fins d'un morceau sont gardés tant qu'il est à moins de cette distance (m). */
 const FINE_KEEP = 420;
 const MAX_GROUND_FETCHES = 3;
+/**
+ * Construction étalée des morceaux (D285) : temps de travail par image (ms) et lignes de la grille calculées entre deux points d'arrêt.
+ * Un morceau proche (pas de 2,5 m) demande ≈ 51 000 altitudes : 8 à 11 ms d'un bloc sur PC, et jusqu'à deux par image ; sur le téléphone,
+ * c'étaient les blocs de 30 à 60 ms de la partie « décor » du banc à 300 km/h. L'ancien maillage reste affiché jusqu'au remplacement.
+ */
+const BUILD_SLICE_MS = 3;
+/** Le morceau sous le joueur attend son niveau : jusqu'à URGENT_SLICE_MS par image (il garde sinon son maillage plus grossier quelques images). */
+const URGENT_SLICE_MS = 8;
+const ROWS_PER_STEP = 8;
 const SKIRT_INNER = 4.5;
 const SKIRT_OUTER = 40;
 /**
@@ -123,6 +133,8 @@ export class TerrainView {
   private readonly active = new Set<Chunk>();
   private groundFetches = 0;
   private frame = 0;
+  /** Morceau en cours de construction étalée (D285), au niveau voulu, avec la version des creux d'affichage à son début. */
+  private job: { c: Chunk; level: number; pits: number; steps: Steps<THREE.BufferGeometry> } | null = null;
   triangles = 0;
   /** Relief lointain du panorama (D268), par super-tuile, et centre de son trou. */
   private readonly vista = new Map<string, THREE.Mesh | null>();
@@ -199,7 +211,14 @@ export class TerrainView {
     return s && s !== "loading" ? s.material : this.fallback.material;
   }
 
+  /** Construit le morceau au niveau voulu d'une traite (chargement, `settle`). */
   private build(c: Chunk, level: number): void {
+    if (this.job?.c === c) this.job = null;
+    this.apply(c, level, finish(this.buildSteps(c, level)));
+  }
+
+  /** Géométrie du morceau au niveau voulu, en rendant la main toutes les ROWS_PER_STEP lignes de la grille. */
+  private *buildSteps(c: Chunk, level: number): Steps<THREE.BufferGeometry> {
     const [bx0, by0, bx1, by1] = c.info.bounds;
     // Relief nu : les tabliers de pont (D93) ne doivent pas combler la vallée sous eux.
     // Creux d'affichage (D248) : le relief proche passe sous le bowl, dessiné plus finement que ces carreaux.
@@ -218,6 +237,7 @@ export class TerrainView {
         const l = Math.hypot(gx, gy, 1);
         nrm.push(-gx / l, 1 / l, gy / l);
       }
+      if ((j + 1) % ROWS_PER_STEP === 0) yield;
     }
     const idx: number[] = [];
     for (let j = 0; j < cy; j++) {
@@ -254,6 +274,11 @@ export class TerrainView {
     g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
     g.setIndex(idx);
     g.computeBoundingSphere();
+    return g;
+  }
+
+  /** Remplace le maillage du morceau par la géométrie construite (ou le crée). */
+  private apply(c: Chunk, level: number, g: THREE.BufferGeometry): void {
     if (c.mesh) {
       this.triangles -= c.mesh.geometry.index!.count / 3;
       c.mesh.geometry.dispose();
@@ -264,7 +289,7 @@ export class TerrainView {
       this.group.add(c.mesh);
       this.active.add(c);
     }
-    this.triangles += idx.length / 3;
+    this.triangles += g.index!.count / 3;
     c.level = level;
   }
 
@@ -418,8 +443,40 @@ export class TerrainView {
       if (c.mesh || want >= 0) this.wantSuper(c.superId);
     }
     todo.sort((a, b) => a.want - b.want || a.d - b.d);
-    for (const { c, want } of todo.slice(0, budget)) this.build(c, want);
+    if (budget > 2) {
+      // `settle` : tout, tout de suite.
+      for (const { c, want } of todo.slice(0, budget)) this.build(c, want);
+    } else this.work(todo, budget);
     if (this.frame % 120 === 0) this.sweepSupers();
+  }
+
+  /**
+   * Construction étalée (D285) : avance le morceau en cours, puis les suivants de `todo` (au plus `budget` commencés par image, comme avant),
+   * dans BUILD_SLICE_MS ms. Un morceau qui ne veut plus ce niveau (le joueur a filé) ou dont les creux d'affichage ont changé est abandonné.
+   */
+  private work(todo: readonly { c: Chunk; want: number; d: number }[], budget: number): void {
+    const job = this.job;
+    if (job && (job.pits !== this.pitsVersion || !todo.some((t) => t.c === job.c && t.want === job.level))) this.job = null;
+    const t0 = performance.now();
+    // Le morceau sous le joueur (distance nulle) passe en premier parmi ceux du même niveau voulu : il a droit à plus de temps.
+    const slice = todo.some((t) => t.d === 0 && t.c.level !== t.want) ? URGENT_SLICE_MS : BUILD_SLICE_MS;
+    let started = 0, next = 0;
+    for (;;) {
+      if (!this.job) {
+        while (next < todo.length && (todo[next]!.c.level === todo[next]!.want)) next++;
+        if (next >= todo.length || started >= budget) return;
+        const { c, want } = todo[next++]!;
+        this.job = { c, level: want, pits: this.pitsVersion, steps: this.buildSteps(c, want) };
+        started++;
+      }
+      const j = this.job;
+      let r = j.steps.next();
+      while (!r.done && performance.now() - t0 < slice) r = j.steps.next();
+      if (!r.done) return;
+      this.job = null;
+      this.apply(j.c, j.level, r.value);
+      if (performance.now() - t0 >= slice) return;
+    }
   }
 
   /**
