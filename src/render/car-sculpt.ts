@@ -52,6 +52,13 @@ export interface Sculpt {
    * que par-dessous. Absent : passage rond comme à l'avant.
    */
   rearSpat?: number;
+  /** Pied de l'habitacle sur l'épaule, en fraction de la demi-largeur (défaut 0,885) : près de 1 pour les flancs d'aplomb d'un fourgon (D279). */
+  cabinFoot?: number;
+  /**
+   * Rétroviseurs qui débordent nettement du gabarit (D279, le fourgon : 2,22 m rétroviseurs compris pour 1,96 m de caisse) : pièces de couleurs
+   * fixes, mises à part pour que le test du gabarit mesure la caisse sans eux. Les autres modèles gardent les leurs dans `paint` ou `details`.
+   */
+  mirrors?: (k: SculptKit) => THREE.BufferGeometry[];
   /** Section du bas de caisse propre au modèle ([u, v] comme `LOWER`, convexe) : par exemple des flancs droits et une épaule vive (D278). */
   section?: readonly (readonly [number, number])[];
   /** Phares et feux (centre, côté droit) : [x, y, s] ; pour l'éclairage de nuit et la circulation. */
@@ -296,7 +303,7 @@ function shell(sc: Sculpt, f: SculptFrame, color: string): { lower: THREE.Buffer
 
 function cabinRings(sc: Sculpt, f: SculptFrame): Ring[] {
   return sc.cabin.map(([s, yt, wt]) => {
-    const yb = keyAt(sc.top, s) - 0.012, wb = keyAt(sc.width, s) * CABIN_FOOT;
+    const yb = keyAt(sc.top, s) - 0.012, wb = keyAt(sc.width, s) * (sc.cabinFoot ?? CABIN_FOOT);
     return cabinRing(f.noseZ + NOSE_GAP + s, yb, Math.max(yb, yt), wb, Math.min(wb, wt));
   });
 }
@@ -379,11 +386,15 @@ function underside(sc: Sculpt, f: SculptFrame): THREE.BufferGeometry[] {
   return out;
 }
 
-/** Détails d'une caisse sculptée (vitres, phares, feux, grilles, lignes…), plus un dessous sombre qui ferme les passages de roue. */
-export function sculptDetailGeometry(sc: Sculpt, f: SculptFrame, glass: string): THREE.BufferGeometry {
+/**
+ * Détails d'une caisse sculptée (vitres, phares, feux, grilles, lignes…), plus un dessous sombre qui ferme les passages de roue.
+ * `mirrors` : avec les rétroviseurs mis à part (`Sculpt.mirrors`) ; sans eux pour mesurer le gabarit de la caisse.
+ */
+export function sculptDetailGeometry(sc: Sculpt, f: SculptFrame, glass: string, mirrors = true): THREE.BufferGeometry {
   const k = kitFor(sc, f);
   const cab = cabinFaces(sc, f);
-  return merge([...underside(sc, f), faces(cab.glass, glass), faces(cab.black, "#141519"), ...sc.details(k, glass)]);
+  const extra = mirrors && sc.mirrors ? sc.mirrors(k) : [];
+  return merge([...underside(sc, f), faces(cab.glass, glass), faces(cab.black, "#141519"), ...sc.details(k, glass), ...extra]);
 }
 
 /** Phares et feux d'une caisse sculptée, dans le repère du véhicule (deux de chaque). */

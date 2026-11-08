@@ -6056,3 +6056,41 @@ feux verticaux, boucliers en plastique. Palette d'époque un peu passée : vert-
 
 ![Avant / après](captures/d278-vieille-voiture-avant-apres.jpg)
 ![Couleurs](captures/d278-vieille-voiture-couleurs.jpg)
+
+## 2026-11-08 — D279. La camionnette sculptée d'après photos (fourgon compact français, version de 2021)
+
+**Demande** : refaire la camionnette (Couhard Mulet) d'après photos, comme les autres modèles. **Photos** : six.
+- **Retenues** :
+  - trois montrent la version restylée de 2021 en empattement court : trois-quarts avant, face, profil ;
+  - pour l'arrière, deux trois-quarts arrière, l'une nette mais d'une version longue (L2), l'autre floue. Les détails de l'arrière en sont tirés, pas la longueur.
+- **Écartée** : un trois-quarts avant de la version d'avant 2021 (autre face).
+- **Manque** : une vue de l'arrière bien droite.
+
+**Gabarit** : 5,08 × 1,96 × 1,97 m (au lieu de 4,90 × 1,95 × 1,95), les vraies mesures de la version de 2021 en empattement court (de mémoire, non
+vérifiées en ligne), avec l'accord de l'utilisateur. Fiche `VAN` inchangée : empattement 3,00 m (le vrai fait 3,10 m), porte-à-faux de 1,00 et 1,06 m.
+
+**Rétroviseurs** (choix de l'utilisateur) : les vrais font 2,22 m d'un bord à l'autre, pour 1,96 m de caisse. Ils sont dessinés à leur taille et
+mis à part (`Sculpt.mirrors`) : le test du gabarit mesure la caisse sans eux (2,00 m dessinés, 4 cm de plus que le catalogue). Un autre test vérifie
+qu'ils débordent de moins de 20 cm par côté. Le catalogue garde 1,96 m : rien ne change pour les chocs, le stationnement ni la circulation.
+
+**Moteur** (`car-sculpt.ts`), deux options de plus :
+- `cabinFoot` : le pied de l'habitacle sur l'épaule (0,965 ici au lieu de 0,885), pour que les flancs du fourgon montent d'aplomb jusqu'au toit ;
+- `mirrors` : les rétroviseurs mis à part (voir plus haut). `bodyDetailGeometry` et `parkedDetailGeometry` prennent un paramètre `withMirrors`.
+
+**Caisse** (`src/render/car-camionnette.ts`) :
+- **Face** : nez court et incliné ; phares en C, boîtier sombre étiré sur l'aile, filet de diodes en haut ; jonc chromé de l'emblème (disque neutre)
+  aux phares ; calandre noire en trapèze à quatre lames ; gros bouclier noir jusque devant les roues, grille basse, plaque, poches d'angle.
+- **Flancs** : pare-brise très couché, vitre de porte qui plonge vers le rétroviseur, flancs d'aplomb, nervure sous la ceinture, bas de caisse noir
+  et son jonc alu, porte avant et porte coulissante (les deux pièces spéciales `cargo` et `rearDoors` sont gardées et dessinées sur la caisse),
+  rail de la porte coulissante, emboutis de la tôle, poignée.
+- **Arrière** : deux portes battantes avec leur joint et leur poignée, montants noirs aux angles avec les feux verticaux (rouge, recul),
+  troisième feu stop, plaque dans son logement noir, bouclier-marchepied noir qui revient sur les flancs, catadioptres.
+- **Autres** : grands rétroviseurs noirs sur bras, jantes tôle claires.
+- **Palette** : blanc (trois fois sur sept), gris argent, gris bleuté, bleu foncé, rouge. Pas de livrée d'artisan (choix de l'utilisateur).
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 1 052 de détails et roues, **1 976 au total** (plafonds D272).
+**Reste** : le bouclier avant est une décalcomanie, sans relief ; les emboutis de la tôle sont de simples traits ; la grille basse se perd
+dans le noir du bouclier.
+
+![Avant / après](captures/d279-camionnette-avant-apres.jpg)
+![Couleurs](captures/d279-camionnette-couleurs.jpg)

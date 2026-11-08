@@ -649,8 +649,8 @@ function sculptFrame(p: CarBodyParams, front: number, rear: number): SculptFrame
   return { length: p.length, noseZ: carLayout(p, front, rear).noseZ, front, rear, wheelRadius: p.wheelRadius };
 }
 
-export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
-  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c");
+export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true): THREE.BufferGeometry {
+  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c", withMirrors);
   const f = frame(p, front, rear), { L, W, st, shoulder, roofW, beltAt, topAt } = f;
   const glass = p.glass ?? "#2b3a4c";
   const top = p.cabHeight ?? p.height;
@@ -949,9 +949,12 @@ export function carWheelGeometry(radius: number, width: number, segments: number
   ]);
 }
 
-/** Détails et quatre roues dans une seule géométrie : voitures garées (instances). */
-export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
-  const parts = [bodyDetailGeometry(p, front, rear)];
+/**
+ * Détails et quatre roues dans une seule géométrie : voitures garées (instances). `withMirrors` à faux : sans les rétroviseurs mis à part d'une caisse
+ * sculptée (D279), pour mesurer son gabarit.
+ */
+export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number, withMirrors = true): THREE.BufferGeometry {
+  const parts = [bodyDetailGeometry(p, front, rear, withMirrors)];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
     const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);

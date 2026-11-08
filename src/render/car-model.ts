@@ -11,6 +11,7 @@ import { PETIT_SUV } from "./car-petit-suv";
 import { SUPERCAR } from "./car-supercar";
 import { SPORTIVE } from "./car-sportive";
 import { VIEILLE_VOITURE } from "./car-vieille-voiture";
+import { CAMIONNETTE } from "./car-camionnette";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -69,12 +70,14 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.36, tyreWidth: 0.24, glass: "#1c232c", sculpt: PETIT_SUV,
     style: { headlights: "strip", grille: "tall", taillights: "bar", bumpers: "trim", rim: "#6b6f76", doors: 2, roundness: 0.6, roof: "#24262b", cladding: true, roofRails: true, blackPillars: true, spokes: 8 },
   },
+  // Camionnette (D279) : caisse sculptée d'après photos (`car-camionnette.ts`), portes arrière battantes et porte coulissante dessinées dessus ;
+  // les mesures servent aux essieux, à la caméra et à la fumée.
   camionnette: {
-    length: 4.9, width: 1.95, height: 1.95, overhangFront: 0.9,
-    clearance: 0.26, belt: 1.05, noseHeight: 0.95, tailHeight: 1.9,
-    hood: 1.0, windshield: 0.75, roof: 1.1, rearGlass: 0, roofTaper: 0.94,
-    wheelRadius: 0.33, tyreWidth: 0.22, cargo: true,
-    style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#7d7f84", doors: 1, roundness: 0.45, rearDoors: true },
+    length: 5.08, width: 1.96, height: 1.97, overhangFront: 1.0,
+    clearance: 0.28, belt: 1.3, noseHeight: 1.12, tailHeight: 1.95,
+    hood: 1.07, windshield: 0.91, roof: 3.0, rearGlass: 0, roofTaper: 0.92,
+    wheelRadius: 0.33, tyreWidth: 0.22, cargo: true, glass: "#1c232c", sculpt: CAMIONNETTE,
+    style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#a9adb2", doors: 1, roundness: 0.45, rearDoors: true, spokes: 12 },
   },
   // Vieille voiture (D278) : caisse sculptée d'après photos (`car-vieille-voiture.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   "vieille-voiture": {
