@@ -35,7 +35,16 @@ export interface Sculpt {
    * de ses flancs ; `black` : la partie du flanc en noir brillant (custode où se cache la poignée arrière). Le reste est en peinture (toit, montants).
    * Les vitres sont les faces mêmes de l'habitacle, pas des pièces posées dessus : leurs bords suivent les sections.
    */
-  windows: { shield: readonly [number, number]; rear: readonly [number, number]; side: readonly [number, number]; black?: readonly [number, number] };
+  windows: {
+    shield: readonly [number, number];
+    rear: readonly [number, number];
+    side: readonly [number, number];
+    black?: readonly [number, number];
+    /** Toit vitré (noir) sur ce tronçon. */
+    roof?: readonly [number, number];
+    /** Encadrement des vitres (l'arrondi du toit, au-dessus des vitres de flanc) en noir brillant plutôt qu'en peinture. */
+    blackFrame?: boolean;
+  };
   /** Rayon des passages de roue. */
   arch: number;
   /** Phares et feux (centre, côté droit) : [x, y, s] ; pour l'éclairage de nuit et la circulation. */
@@ -127,14 +136,14 @@ export class SculptKit {
     return this.top(s) - 0.012;
   }
 
-  /** Bord de la vitre de flanc droite en s : son pied (sur la ceinture) et son haut (sous l'arrondi du toit). */
-  cabinEdge(s: number): { base: THREE.Vector3; top: THREE.Vector3 } {
+  /** Bord de la vitre de flanc droite en s : son pied (sur la ceinture), son haut (sous l'arrondi du toit) et le bord du toit. */
+  cabinEdge(s: number): { base: THREE.Vector3; top: THREE.Vector3; roof: THREE.Vector3 } {
     const rings = cabinRings(this.sculpt, this.frame), keys = this.sculpt.cabin;
     let i = 0;
     while (i + 2 < keys.length && s > keys[i + 1]![0]) i++;
     const t = THREE.MathUtils.clamp((s - keys[i]![0]) / (keys[i + 1]![0] - keys[i]![0]), 0, 1);
     const at = (k: number): THREE.Vector3 => rings[i]![k]!.clone().lerp(rings[i + 1]![k]!, t);
-    return { base: at(0), top: at(1) };
+    return { base: at(0), top: at(1), roof: at(2) };
   }
 
   /** Point posé sur la caisse (et soulevé de `lift` le long de la normale), avec cette normale. */
@@ -286,13 +295,13 @@ function cabinFaces(sc: Sculpt, f: SculptFrame): { paint: number[]; glass: numbe
     const inside = new THREE.Vector3();
     for (const p of [...a, ...b]) inside.add(p);
     inside.divideScalar(a.length + b.length);
-    const W = sc.windows, top = inRange(mid, W.shield) || inRange(mid, W.rear);
+    const W = sc.windows, top = inRange(mid, W.shield) || inRange(mid, W.rear) || inRange(mid, W.roof);
     // Le bas de l'anneau (de la base gauche à la base droite) est caché dans la caisse : pas de face.
     for (let k = 0; k + 1 < a.length; k++) {
       const band = Math.min(k, a.length - 2 - k);
       const lot = band === 0
         ? (inRange(mid, W.side) ? out.glass : inRange(mid, W.black) ? out.black : out.paint)
-        : band === 1 ? out.paint : top ? out.glass : out.paint;
+        : band === 1 ? (W.blackFrame ? out.black : out.paint) : top ? out.glass : out.paint;
       for (const [u, v, w] of [[a[k]!, a[k + 1]!, b[k + 1]!], [a[k]!, b[k + 1]!, b[k]!]] as const) {
         n.copy(ab.subVectors(v, u)).cross(ac.subVectors(w, u));
         if (n.lengthSq() < 1e-12) continue;

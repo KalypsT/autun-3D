@@ -5919,3 +5919,27 @@ Jantes sombres à six branches. Palette d'après les photos : bleu vif, vert oli
 
 ![Avant / après](captures/d273-compacte-avant-apres.jpg)
 ![Trois couleurs](captures/d273-compacte-couleurs.jpg)
+
+## 2026-11-08 — D274. Berline et break sculptés d'après photos
+
+**Photos** : berline, quatre photos d'une même berline électrique « fastback » des années 2020 (trois-quarts avant, arrière, face) : toutes retenues. Break : sur
+cinq photos, une seule montrait un break (profil, génération 2024) ; une autre, la berline de la même génération (même face, retenue pour l'avant) ; deux,
+la grande berline de la même marque (2025 : même dessin des feux et du diffuseur, retenu pour l'arrière, adapté à un hayon) ; une, la génération précédente
+(face différente : écartée). Marques et noms fictifs, emblèmes neutres.
+
+**Moteur D272** : deux options de vitrage, `windows.roof` (toit de verre, noir) et `windows.blackFrame` (encadrement des vitres en noir brillant) ;
+`cabinEdge` donne aussi le bord du toit (barres de toit).
+
+**Berline** (`src/render/car-berline.ts`) : 4,72 × 1,85 × 1,44 m. Pas de calandre : nez bas et lisse, phares très fins, fente noire en bas du bouclier ;
+pare-brise immense, toit de verre et encadrements noirs ; lunette très couchée sur un coffre court ; feux fins en crochet ; poignées affleurantes ;
+rétroviseurs couleur caisse ; jantes à sept branches. 1 668 triangles garée.
+**Break** (`src/render/car-break.ts`) : 4,83 × 1,86 × 1,45 m. Capot long, grande calandre noire en octogone, prises d'air verticales aux coins, phares fins ;
+long toit, barres de toit argent, becquet, encadrement chromé des vitres jusqu'au montant arrière ; trait rouge d'un feu à l'autre, feux en segments,
+diffuseur noir souligné d'argent, deux sorties trapézoïdales ; rétroviseurs et bas de caisse noirs ; jantes à dix branches. 2 058 triangles garé
+(plafond 2 100 : le plus cher des modèles sculptés).
+
+Fiches de conduite (`SEDAN`, `WAGON`) inchangées (empattement 2,82 m pour les deux). Palettes d'après les photos.
+
+![Berline avant / après](captures/d274-berline-avant-apres.jpg)
+![Break avant / après](captures/d274-break-avant-apres.jpg)
+![Couleurs](captures/d274-couleurs.jpg)

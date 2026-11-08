@@ -5,6 +5,8 @@ import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chi
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 import { CITADINE } from "./car-citadine";
 import { COMPACTE } from "./car-compacte";
+import { BERLINE } from "./car-berline";
+import { BREAK } from "./car-break";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -38,20 +40,23 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.325, tyreWidth: 0.22, glass: "#1f2731", sculpt: COMPACTE,
     style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "paint", rim: "#5d6168", doors: 2, roundness: 0.6, spoiler: "roof", intake: true, spokes: 6 },
   },
+  // Berline (D274) : caisse sculptée d'après photos (`car-berline.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   berline: {
-    length: 4.75, width: 1.85, height: 1.45, overhangFront: 0.93,
-    clearance: 0.25, belt: 0.92, noseHeight: 0.8, tailHeight: 0.98,
-    hood: 1.45, windshield: 0.75, roof: 1.1, rearGlass: 0.6, roofTaper: 0.88,
-    wheelRadius: 0.32, tyreWidth: 0.21,
-    style: { headlights: "rect", grille: "chrome", taillights: "horizontal", bumpers: "paint", rim: "#c9ccd0", doors: 2, roundness: 0.35, chromeTrim: true, exhaust: 1 },
+    length: 4.72, width: 1.85, height: 1.44, overhangFront: 0.86,
+    clearance: 0.2, belt: 0.86, noseHeight: 0.62, tailHeight: 0.98,
+    hood: 1.3, windshield: 1.05, roof: 1.05, rearGlass: 0.85, roofTaper: 0.86,
+    wheelRadius: 0.335, tyreWidth: 0.23, glass: "#1c232c", sculpt: BERLINE,
+    style: { headlights: "rect", grille: "chrome", taillights: "horizontal", bumpers: "paint", rim: "#8d9198", doors: 2, roundness: 0.35, chromeTrim: true, exhaust: 1, spokes: 7 },
   },
+  // Break (D274) : caisse sculptée d'après photos (`car-break.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   break: {
-    length: 4.8, width: 1.85, height: 1.5, overhangFront: 0.93,
-    clearance: 0.25, belt: 0.93, noseHeight: 0.8, tailHeight: 0.98,
-    hood: 1.4, windshield: 0.7, roof: 1.9, rearGlass: 0.35, roofTaper: 0.9,
-    wheelRadius: 0.32, tyreWidth: 0.21,
-    style: { headlights: "rect", grille: "tall", taillights: "vertical", bumpers: "paint", rim: "#9a9ba0", doors: 2, roundness: 0.5, roofRails: true },
+    length: 4.83, width: 1.86, height: 1.45, overhangFront: 0.93,
+    clearance: 0.2, belt: 0.9, noseHeight: 0.66, tailHeight: 0.98,
+    hood: 1.45, windshield: 0.85, roof: 2.2, rearGlass: 0.16, roofTaper: 0.86,
+    wheelRadius: 0.345, tyreWidth: 0.23, glass: "#1c232c", sculpt: BREAK,
+    style: { headlights: "rect", grille: "tall", taillights: "vertical", bumpers: "paint", rim: "#b3b6bb", doors: 2, roundness: 0.5, roofRails: true, spokes: 10 },
   },
+
   "petit-suv": {
     length: 4.25, width: 1.8, height: 1.6, overhangFront: 0.88,
     clearance: 0.2, belt: 1.0, noseHeight: 0.92, tailHeight: 1.06,
