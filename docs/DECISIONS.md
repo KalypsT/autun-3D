@@ -6528,3 +6528,39 @@ seule l'avenue de Neuchèze est gardée ; la route de Chalon s'arrête au bout d
   descendent à une plage.
 - `build_dead_ends.py apply` s'applique une fois, sur les données d'avant ; pour le relancer : `git checkout public/data`, puis `plan` et `apply`.
 
+## 2026-11-08 — D288. Le golf municipal, lot 1 : les sols du parcours
+
+**Demande** : refaire le golf d'Autun (chemin des Ragots) d'après les photos de l'utilisateur ; plan accepté : 1. sols du parcours, 2. club-house
+et entrée, 3. practice, 4. finitions et golfeurs. On reste sur le golf (pas les services techniques voisins). Photos : vue de drone, green avec la
+cathédrale, club-house vu du ciel, entrée et parking (captures Google Street View, non versionnées), practice, terrasses, greens ; vue satellite
+Google Maps : elle sert seulement à situer (D4), rien n'en est tracé.
+
+**Sources** : OpenStreetMap n'a que le contour du golf (relation 6332293, 26 ha) et le restaurant « Le Fairway ». Greens, départs et bunkers
+sont relevés sur l'orthophotographie de l'IGN (été : greens arrosés vert vif sur l'herbe sèche, bunkers de sable clair), à 25 cm.
+
+**Relevé** (`tools/data/build_golf.py --trace` → `tools/data/golf.json`) :
+- **14 greens** : un point posé à la main au centre de chacun (`GREEN_SEEDS`), puis la tache grandit autour de lui jusqu'à la moitié du contraste
+  de vert entre le point et son voisinage (26 m), lissée ; 380 à 790 m². Le tout-automatique (seuil de vert unique) échouait : les couronnes
+  d'arbres sont aussi vertes, et la teinte des greens varie d'un trou à l'autre.
+- **10 départs** : petites taches vert vif (40 à 300 m²) à plus de 8 m d'un green, réduites à leur rectangle.
+- **22 bunkers** : taches claires et compactes (12 à 600 m²), hors bâtiments, chaussées et places (un champ sec du sud passait pour du sable).
+
+**Pose** (`build_golf.py`) : fairways = le golf moins 8 m de bord, moins les bâtiments (+ 3 m), chaussées, trottoirs, places et eau (+ 2 m), moins
+3 m autour de chaque arbre ; découpés en **un trou par green** (cellules de Voronoï des greens), tondus en **bandes de 9 m** parallèles à l'axe
+du green au départ le plus loin de sa cellule (à défaut, au point le plus loin) ; deux couches alternées (`golf_fairway`, `golf_fairway2`). Le rough
+est le sol d'origine (bord, pied des arbres, liseré autour des greens et des bunkers). Couches `golf_green`, `golf_tee`, `golf_bunker`, sur le relief
+nu comme les pelouses (`src/render/ground.ts`) ; couleurs du thème (`paving` 11 à 15, `src/render/style.ts`) et de la carte (`build_map.py`).
+**Drapeau** sur chaque green (mobilier `golf_flag` : mât blanc à bandes rouges de 2,2 m, fanion jaune, comme sur la photo), un peu décentré ;
+pas de collision (un mât de golf plie). 9 tuiles, images de carte `s8_8`, `s8_9`, `s9_8`. Fairways 18 ha, greens 0,8 ha, bunkers 0,15 ha.
+
+**Essais** : `src/data/golf.test.ts` (14 drapeaux, chacun sur un green ; toutes les couches présentes). 1 421 essais.
+
+**Captures** : `d288-golf-haut.jpg` (vue de drone, comme la photo de l'utilisateur), `d288-golf-fairway.jpg`, `d288-golf-green.jpg`.
+
+![Vue haute](captures/d288-golf-haut.jpg)
+![Un fairway](captures/d288-golf-fairway.jpg)
+![Un green](captures/d288-golf-green.jpg)
+
+**Limites** : l'appariement départ-green est géométrique (cellules de Voronoï), pas le vrai plan des trous ; certains départs, à l'ombre ou
+jaunis, ne sont pas relevés ; les greens ne sont pas surélevés (relief LiDAR tel quel). Suite : lot 2 (club-house et entrée).
+

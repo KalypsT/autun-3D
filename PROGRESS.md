@@ -2035,3 +2035,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Route de Beaune, après](docs/captures/d287-beaune-apres.jpg)
 ![Panneau « voie sans issue »](docs/captures/d287-panneau.jpg)
 
+**Le golf, lot 1 : le parcours (8 novembre 2026)** (D288)
+- Le golf a son parcours : 14 greens avec leur drapeau jaune, 22 bunkers de sable, 10 départs, et des fairways tondus en bandes claires et foncées dans l'axe de chaque trou ; le rough reste en bordure et sous les arbres.
+- Tout est relevé sur la photo aérienne de l'IGN ; tes photos ont servi à choisir les couleurs et l'allure (drapeaux, tonte).
+- Prochain lot : le club-house, sa terrasse et l'entrée.
+- À faire de ton côté : se promener sur le parcours (`?at=2143,140`).
+
+![Vue haute](docs/captures/d288-golf-haut.jpg)
+![Un fairway](docs/captures/d288-golf-fairway.jpg)
+

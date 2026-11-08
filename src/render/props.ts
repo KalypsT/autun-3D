@@ -34,6 +34,8 @@ function cylinder(mb: MeshBuilder, cx: number, cy: number, r: number, z0: number
   extrude(mb, pts, z0, z1, color);
 }
 
+const GOLF_RED = new THREE.Color("#c8322a");
+const GOLF_FLAG = new THREE.Color("#f2e23a");
 const SIGN_BLUE = new THREE.Color("#1f5aa6");
 const SIGN_RED = new THREE.Color("#c8322a");
 const LAMP_LIT = new THREE.Color("#ffd27a");
@@ -90,6 +92,13 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
             box(mb, hx + Math.cos(rot + Math.PI / 2) * sgn * 0.145, hy + Math.sin(rot + Math.PI / 2) * sgn * 0.145, 0.07, 0.01, rot, z + 3.6 + k * 0.23, z + 3.77 + k * 0.23, new THREE.Color(col));
           }
         }
+        break;
+      }
+      case "golf_flag": {
+        // Drapeau d'un green (D288, photos) : mât blanc à bandes rouges de 2,2 m, fanion jaune.
+        for (let k = 0; k < 6; k++) cylinder(mb, f.x, f.y, 0.018, z + k * 0.36, z + (k + 1) * 0.36, k % 2 ? GOLF_RED : COLORS.bollardCap, 5);
+        const fx = f.x + Math.cos(rot) * 0.24, fy = f.y + Math.sin(rot) * 0.24;
+        box(mb, fx, fy, 0.22, 0.006, rot, z + 1.78, z + 2.14, GOLF_FLAG);
         break;
       }
       case "dead_end": {

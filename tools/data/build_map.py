@@ -48,6 +48,12 @@ COLORS = {
     "schist_black": "#7d7f87",
     "path_schist": "#bf8572",
     "pitch": "#e58a62",
+    # Golf (D288) : fairways un peu plus verts que les pelouses, greens vifs, bunkers de sable.
+    "golf_fairway": "#9fd09a",
+    "golf_fairway2": "#94c98f",
+    "golf_green": "#6fc07a",
+    "golf_tee": "#7dc684",
+    "golf_bunker": "#f2e2b4",
     "water": "#4fb0c6",
     "plaza_paving": "#d6b98a",
     "plaza_granite": "#b4b3ad",
@@ -71,7 +77,7 @@ COLORS = {
     "road_paving": "#d6b98a",
     "walk": "#fbf3dc",
 }
-ORDER = ["lawn", "schist_black", "schist_red", "path_schist", "pitch", "water", "path_gravel", "slipway", "quay", "skate", "play_gravel", "play_mat", "plaza_gravel", "plaza_paving", "plaza_filet", "plaza_brick", "plaza_slate", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
+ORDER = ["lawn", "golf_fairway", "golf_fairway2", "golf_bunker", "golf_tee", "golf_green", "schist_black", "schist_red", "path_schist", "pitch", "water", "path_gravel", "slipway", "quay", "skate", "play_gravel", "play_mat", "plaza_gravel", "plaza_paving", "plaza_filet", "plaza_brick", "plaza_slate", "plaza_granite", "plaza_pavers", "plaza_concrete", "plaza_sett", "plaza_asphalt", "road_gravel", "road_paving", "road_sett", "road_asphalt", "walk"]
 BUILDING = "#e58d73"
 BUILDING_EDGE = "#b9573f"
 MONUMENT = "#d9472b"
