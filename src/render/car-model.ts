@@ -10,6 +10,7 @@ import { BREAK } from "./car-break";
 import { PETIT_SUV } from "./car-petit-suv";
 import { SUPERCAR } from "./car-supercar";
 import { SPORTIVE } from "./car-sportive";
+import { VIEILLE_VOITURE } from "./car-vieille-voiture";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -75,12 +76,13 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.33, tyreWidth: 0.22, cargo: true,
     style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#7d7f84", doors: 1, roundness: 0.45, rearDoors: true },
   },
+  // Vieille voiture (D278) : caisse sculptée d'après photos (`car-vieille-voiture.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   "vieille-voiture": {
-    length: 4.1, width: 1.68, height: 1.4, overhangFront: 0.78,
-    clearance: 0.24, belt: 0.86, noseHeight: 0.78, tailHeight: 0.92,
-    hood: 1.2, windshield: 0.5, roof: 1.3, rearGlass: 0.35, roofTaper: 0.92,
-    wheelRadius: 0.29, tyreWidth: 0.17, glass: "#3a4a5a",
-    style: { headlights: "round", grille: "chrome", taillights: "round", bumpers: "chrome", rim: "#e6dcc4", doors: 1, roundness: 1, fenders: true },
+    length: 4.23, width: 1.66, height: 1.36, overhangFront: 0.93,
+    clearance: 0.2, belt: 0.9, noseHeight: 0.72, tailHeight: 0.96,
+    hood: 1.3, windshield: 0.65, roof: 1.35, rearGlass: 0.78, roofTaper: 0.86,
+    wheelRadius: 0.29, tyreWidth: 0.17, glass: "#26303b", sculpt: VIEILLE_VOITURE,
+    style: { headlights: "rect", grille: "band", taillights: "vertical", bumpers: "trim", rim: "#c9ccc8", doors: 2, roundness: 0.2, spokes: 10 },
   },
   // Gendarmerie (J4, D72) : la caisse de la compacte, bleu nuit, bandes claires sur les flancs, barre de gyrophares sur le toit.
   gendarmerie: {

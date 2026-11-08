@@ -6027,3 +6027,32 @@ diffuseur noir à ailettes et une seule sortie trapézoïdale au milieu. Jantes 
 
 ![Avant / après](captures/d277-sportive-avant-apres.jpg)
 ![Couleurs de la sportive et de la supercar](captures/d277-couleurs.jpg)
+
+## 2026-11-08 — D278. La vieille voiture sculptée d'après photos (berline française des années 1980, première version)
+
+**Demande** : refaire la vieille voiture (Éduen Pétrolette) d'après photos, comme les modèles D272 à D277. **Photos** : six. Trois montrent la
+première version civile (1982-1986 : trois-quarts avant, trois-quarts arrière, profil), retenues. Deux montrent des versions sportives de la
+deuxième version (bouclier à antibrouillards, bas de caisse, aileron), écartées. La sixième, un profil de deuxième version trop petit, n'a servi
+qu'aux proportions. Il manquait une vue de face et une vue de l'arrière bien droites : l'avant et l'arrière sont tirés des trois-quarts.
+
+**Gabarit** : 4,23 × 1,66 × 1,36 m (au lieu de 4,10 × 1,68 × 1,40), les vraies mesures, avec l'accord de l'utilisateur. Fiche `OLD_CAR` inchangée :
+empattement 2,55 m (le vrai fait 2,655 m), d'où des porte-à-faux un peu longs (0,93 m devant, 0,75 m derrière). Dessinée : 1,70 m de large
+rétroviseurs compris (le carénage arrière déborde un peu des pneus), nez à 4 mm du catalogue.
+
+**Moteur** (`car-sculpt.ts`), deux options : `section`, une section du bas de caisse propre au modèle (ici flancs droits et épaule vive, la caisse
+au cordeau) ; `rearSpat`, la hauteur à laquelle le bas de caisse ferme le passage de roue arrière (carénage, 0,46 m ici : la roue n'est vue que
+par-dessous), avec une section de plus à chaque bout de son bord. Les autres modèles n'en ont pas : rien ne change pour eux.
+
+**Caisse** (`src/render/car-vieille-voiture.ts`) : long capot plongeant qui finit en lame au-dessus de phares rectangulaires (barrette sombre),
+mince calandre noire à deux lames, emblème neutre (losange chromé) décalé à gauche ; gros bouclier gris foncé qui contourne les coins, clignotants
+orange aux angles, prise d'air et plaque. Jonc noir le long des portes jusque sur le carénage, bas de caisse sombre, lignes de portes, poignées,
+montant central noir, encadrements de vitres noirs, custode noire en triangle au-dessus de cinq ouïes. Grande lunette plate sur une lèvre noire,
+malle en coin, feux rectangulaires aux angles (orange et blanc en haut, rouge en bas), plaque, serrure, bouclier arrière rayé de noir.
+Rétroviseurs noirs triangulaires. Enjoliveurs clairs à dix ajours. Signature (D107) : phares rectangulaires, calandre en bandeau,
+feux verticaux, boucliers en plastique. Palette d'époque un peu passée : vert-de-gris, bleu glacier, gris clair, bleu ardoise, rouge, beige.
+
+**Coût** (exemplaire garé) : 854 triangles de peinture, 976 de détails et roues, **1 830 au total** (plafonds D272).
+**Reste** : le bouclier est une décalcomanie, il ne dépasse pas de la caisse ; la deuxième version n'est pas faite ; le tableau de bord ne se voit pas.
+
+![Avant / après](captures/d278-vieille-voiture-avant-apres.jpg)
+![Couleurs](captures/d278-vieille-voiture-couleurs.jpg)

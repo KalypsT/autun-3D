@@ -47,6 +47,13 @@ export interface Sculpt {
   };
   /** Rayon des passages de roue. */
   arch: number;
+  /**
+   * Carénage de la roue arrière (D278, la BX) : hauteur (m) à laquelle le bas de caisse ferme le passage de roue arrière ; la roue n'y est vue
+   * que par-dessous. Absent : passage rond comme à l'avant.
+   */
+  rearSpat?: number;
+  /** Section du bas de caisse propre au modèle ([u, v] comme `LOWER`, convexe) : par exemple des flancs droits et une épaule vive (D278). */
+  section?: readonly (readonly [number, number])[];
   /** Phares et feux (centre, côté droit) : [x, y, s] ; pour l'éclairage de nuit et la circulation. */
   lamps: { head: readonly [number, number, number]; tail: readonly [number, number, number] };
   /** Pièces peintes en plus (rétroviseurs, becquet). */
@@ -88,9 +95,9 @@ const CABIN_FOOT = 0.885;
 /** Écart (m) entre le bout du nez (s = 0) et la caisse : les plaques et grilles posées au bout ne dépassent pas le hors-tout. */
 const NOSE_GAP = 0.022;
 
-function lowerRing(z: number, y0: number, y1: number, w: number): Ring {
-  const h = y1 - y0, right = LOWER.map(([u, v]) => new THREE.Vector3(u * w, y0 + v * h, z));
-  const left = [...LOWER].reverse().map(([u, v]) => new THREE.Vector3(-u * w, y0 + v * h, z));
+function lowerRing(z: number, y0: number, y1: number, w: number, sec: readonly (readonly [number, number])[] = LOWER): Ring {
+  const h = y1 - y0, right = sec.map(([u, v]) => new THREE.Vector3(u * w, y0 + v * h, z));
+  const left = [...sec].reverse().map(([u, v]) => new THREE.Vector3(-u * w, y0 + v * h, z));
   return [...right, ...left];
 }
 
@@ -254,7 +261,17 @@ function stations(sc: Sculpt, f: SculptFrame, axles: readonly number[]): number[
   const kept: number[] = [];
   for (const s of keys) if (!kept.length || s > kept[kept.length - 1]! + 0.04 || s >= end - 0.03) kept.push(s);
   for (const a of axles) for (const t of [-1.06, -1, -0.7, 0, 0.7, 1, 1.06]) kept.push(a + t * sc.arch);
+  // Carénage : une section de plus à chaque bout de son bord bas, pour que le bord reste net.
+  const cut = spatReach(sc, f);
+  if (cut !== null) for (const t of [-1, 1]) kept.push(axles[1]! + t * cut);
   return kept.filter((s) => s >= 0 && s <= end).sort((a, b) => a - b);
+}
+
+/** Demi-longueur du bord bas du carénage arrière (là où l'arc du passage de roue atteint sa hauteur), ou null sans carénage. */
+function spatReach(sc: Sculpt, f: SculptFrame): number | null {
+  if (sc.rearSpat === undefined) return null;
+  const h = sc.rearSpat - f.wheelRadius;
+  return h >= sc.arch ? null : Math.sqrt(sc.arch * sc.arch - h * h);
 }
 
 /** Bas de caisse et habitacle (en peinture, sans les pièces) : la forme sur laquelle on dessine. */
@@ -265,11 +282,13 @@ function shell(sc: Sculpt, f: SculptFrame, color: string): { lower: THREE.Buffer
   const lower = ringLoft(stations(sc, f, axles).map((s) => {
     let y0 = keyAt(sc.bottom, s);
     // Passage de roue : le bas de caisse remonte en arc au-dessus de chaque roue (centre à la hauteur du moyeu).
-    for (const a of axles) {
+    axles.forEach((a, i) => {
       const d = Math.abs(s - a);
-      if (d <= sc.arch + 1e-6) y0 = Math.max(y0, f.wheelRadius + Math.sqrt(Math.max(0, sc.arch * sc.arch - d * d)));
-    }
-    return lowerRing(z(s), y0, keyAt(sc.top, s), keyAt(sc.width, s));
+      if (d > sc.arch + 1e-6) return;
+      const arc = f.wheelRadius + Math.sqrt(Math.max(0, sc.arch * sc.arch - d * d));
+      y0 = Math.max(y0, i === 1 && sc.rearSpat !== undefined ? Math.min(arc, sc.rearSpat) : arc);
+    });
+    return lowerRing(z(s), y0, keyAt(sc.top, s), keyAt(sc.width, s), sc.section);
   }), color);
   const cabin = ringLoft(cabinRings(sc, f), color);
   return { lower, cabin };
