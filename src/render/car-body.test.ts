@@ -55,10 +55,13 @@ describe("générateur de carrosserie", () => {
     const def = vehicleDef(id)!, p = CAR_BODIES[id]!, { front, rear } = def.spec;
     const paint = bodyPaintGeometry(p, front, rear, "#ffffff"), glass = bodyDetailGeometry(p, front, rear);
     expect(signedVolume(paint)).toBeGreaterThan(1);
-    expect(triangles(paint)).toBeLessThan(340);
+    // Caisse sculptée d'après photos (D272, la citadine) : une trentaine de sections arrondies et des pièces posées sur la surface, ≈ 1 900 triangles
+    // au repos (une moto routière en compte 2 044).
+    const sculpted = !!p.sculpt;
+    expect(triangles(paint)).toBeLessThan(sculpted ? 1000 : 340);
     // Un véhicule unique (D114, D115), seul de son modèle, a droit à plus de détails (capote, roue de secours ; comptoir, lettrage, rôtissoire).
-    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique || def.service ? 2300 : 1000);
-    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique || def.service ? 2700 : 1300);
+    expect(triangles(parkedDetailGeometry(p, front, rear))).toBeLessThan(def.unique || def.service ? 2300 : sculpted ? 1200 : 1000);
+    expect(triangles(carRestGeometry(id))).toBeLessThan(def.unique || def.service ? 2700 : sculpted ? 2100 : 1300);
     expect(triangles(glass)).toBeGreaterThan(0);
   });
 

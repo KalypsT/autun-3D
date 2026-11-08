@@ -5849,3 +5849,181 @@ de vue par sommet. 1 388 essais.
 
 ![La carte](captures/d270-carte.jpg)
 ![Les terrils sur la carte](captures/d270-carte-terrils.jpg)
+
+## 2026-11-07 — D271. La citadine refaite d'après photos (premier essai de « véhicules plus réalistes »)
+
+**Demande** : rendre les véhicules plus réalistes en s'appuyant sur des photos fournies ; essai sur la citadine (Éduen Moineau), d'après cinq photos
+d'une citadine française cinq portes des années 2010, en plusieurs couleurs. « Réaliste » veut dire ici fidèle et reconnaissable, dans le style « affiche » (D17) :
+pas de texture, toujours le générateur de carrosserie (D52, D107). Marque et nom restent fictifs, aucun logo recopié (écusson rond neutre).
+
+**Générateur** (`src/render/car-body.ts`), options nouvelles, toutes facultatives (les autres voitures ne changent pas) :
+- `beltRise` (ceinture qui monte vers l'arrière) et `roofDrop` (toit fuyant) ;
+- phares `swept` (étirés, qui remontent sur l'aile), calandre `band` (bandeau noir brillant d'un phare à l'autre, filet chromé, écusson), feux `wrap` (enveloppants) ;
+- pare-chocs `blend` (couleur de caisse, fondus dans les coins au lieu d'une lame qui dépasse) ;
+- `lowerGrille` (grande grille basse, antibrouillards), `hiddenRearHandles` (poignées arrière cachées : allure de trois-portes), `doorBlade` (creux noir et jonc chromé
+  au bas des portes), `tailChrome`, `diffuser` ;
+- `spokes` : jantes à branches, en pièces plates sur le flanc du pneu, seulement sur la face extérieure d'une roue garée (la circulation garde sa roue commune).
+
+**Citadine** : 4,06 × 1,73 × 1,45 m (au lieu de 3,98 × 1,74 × 1,42), empattement inchangé (2,60 m, celui du modèle réel), cinq portes, pare-brise très couché,
+hayon fuyant avec becquet, jantes 5 branches. Palette d'après les photos : rouge, argent, gris titane, blanc, bleu, plus noir et orange (couleurs du même modèle).
+Caméra de poursuite : la référence suit les nouvelles mesures. **Budget** : 932 triangles de détails et roues pour une voiture garée (limite 1 000), 1 160 au repos (limite 1 300).
+
+**Reste** : la face et les feux sont des volumes simples ; les feux arrière débordent un peu des épaules vus de trois quarts. À juger sur le téléphone.
+
+![Avant / après](captures/d271-citadine-avant-apres.jpg)
+![Les couleurs](captures/d271-citadine-couleurs.jpg)
+
+## 2026-11-07 — D272. Citadine sculptée : une vraie carrosserie, les pièces posées sur sa surface
+
+**Retour sur D271** : formes encore sommaires, et mal réalisées par endroits (feux arrière qui débordaient des épaules, pare-chocs en lame). Le
+générateur à sections octogonales (D52, D107) ne peut pas faire mieux : huit facettes par section, des pièces en boîtes collées sur la caisse.
+
+**Choix** : un second moteur, réservé aux modèles faits d'après photos (`src/render/car-sculpt.ts`), et la citadine décrite avec lui (`src/render/car-citadine.ts`) :
+- **profil relevé point par point** (en s, mètres depuis le nez) : dessus du capot et ceinture, bas de caisse, demi-largeur en plan, hauteur et largeur du toit.
+  Il en sort une trentaine de sections arrondies (flanc plein, épaule, dessus presque plat), avec de **vrais passages de roue** : le bas de caisse remonte
+  en arc au-dessus de chaque roue, un dessous sombre ferme l'ouverture ;
+- **vitres = faces de l'habitacle** (pare-brise, lunette, vitres de flanc, custode noire), choisies par tronçon et par bande de la section : elles ne peuvent
+  ni dépasser ni être mangées par la peinture. Montant central et jonc chromé en tubes ;
+- **phares, feux, grilles, plaques, lignes de portes : des décalcomanies** dessinées en contour (côté droit, miroir à gauche) ; chaque point est projeté sur
+  la caisse par un rayon et soulevé de 1 à 3 cm selon sa normale. Les phares et les feux s'enroulent ainsi autour des coins sans jamais déborder (le rayon
+  tourne de la face vers le flanc le long du contour). Phares et feux ont un contour sombre qui les détache de la peinture.
+
+Rien ne change pour le reste du jeu : la caisse sculptée passe par les mêmes fonctions (`bodyPaintGeometry`, `bodyDetailGeometry`, `lampSpots`), donc garée,
+dans la circulation, conduite, abîmée (D110, D112), éclairée la nuit. Les mesures de `CAR_BODIES.citadine` servent encore aux essieux, à la caméra et à la fumée.
+
+**Coût** (exemplaire garé) : 878 triangles de peinture, 1 032 de détails et roues, **1 910 au total** (contre 1 160 en D271, 700 à l'origine) ; une moto routière
+en compte 2 044 (D108). Plafonds du test pour une caisse sculptée : peinture < 1 000, détails < 1 200, total < 2 100. **À mesurer sur l'Honor** : si les
+voitures garées coûtent, faire une forme allégée au-delà de 40 à 60 m (la caisse D271 peut servir).
+
+**Reste** : face arrière encore assez plate ; le capot et les flancs restent à facettes (style « affiche », D17). Les autres voitures gardent le générateur
+D107 ; chacune peut passer à la caisse sculptée dès qu'on a ses photos.
+
+![Origine, essai 1 (D271), essai 2 (D272)](captures/d272-citadine-comparaison.jpg)
+![Trois couleurs](captures/d272-citadine-couleurs.jpg)
+
+## 2026-11-07 — D273. La compacte sculptée d'après photos (compacte française des années 2020)
+
+**Demande** : refaire la compacte (Éduen Arroux) comme la citadine (D272). L'utilisateur pensait envoyer une 307 ; les photos montraient la génération
+actuelle du modèle suivant (et, pour deux d'entre elles, la version restylée 2025 et le break). Choix de l'utilisateur : la génération actuelle, d'après les
+trois photos qui la montrent (trois-quarts avant, face, arrière). Marque et nom restent fictifs ; écusson en blason neutre, sans logo ni lettrage.
+
+**Caisse** (`src/render/car-compacte.ts`, moteur D272) : 4,37 × 1,85 × 1,44 m (au lieu de 4,25 × 1,80 × 1,46). La fiche de conduite (`COMPACT`) n'a pas bougé :
+même empattement (2,64 m, à 3 cm du vrai), même tenue de route, même coque de chocs ; poursuites et circulation inchangées. Capot long et bas, pare-brise
+très couché, toit fuyant et becquet. Avant : grande calandre noire en trapèze (maillage suggéré), écusson, phares fins qui filent sur l'aile, et les « crocs »,
+lames de feux de jour qui descendent de chaque phare, à côté d'une prise d'air noire ; grille basse et plaque. Flancs : deux poignées, jonc noir au bas des
+portes, rétroviseurs noirs. Arrière : bandeau noir brillant d'un feu à l'autre, trois griffes rouges dans chaque feu, diffuseur noir et deux sorties chromées.
+Jantes sombres à six branches. Palette d'après les photos : bleu vif, vert olive, bleu canard, rouge, blanc, gris, noir.
+
+**Coût** (exemplaire garé) : 874 triangles de peinture, 814 de détails et roues, **1 688 au total** (plafonds D272). **Reste** : la gendarmerie garde sa caisse D107
+(mesures de l'ancienne compacte) ; on pourra lui donner cette caisse avec sa livrée. Arrière encore un peu massif, griffes des feux petites de loin.
+
+![Avant / après](captures/d273-compacte-avant-apres.jpg)
+![Trois couleurs](captures/d273-compacte-couleurs.jpg)
+
+## 2026-11-08 — D274. Berline et break sculptés d'après photos
+
+**Photos** : berline, quatre photos d'une même berline électrique « fastback » des années 2020 (trois-quarts avant, arrière, face) : toutes retenues. Break : sur
+cinq photos, une seule montrait un break (profil, génération 2024) ; une autre, la berline de la même génération (même face, retenue pour l'avant) ; deux,
+la grande berline de la même marque (2025 : même dessin des feux et du diffuseur, retenu pour l'arrière, adapté à un hayon) ; une, la génération précédente
+(face différente : écartée). Marques et noms fictifs, emblèmes neutres.
+
+**Moteur D272** : deux options de vitrage, `windows.roof` (toit de verre, noir) et `windows.blackFrame` (encadrement des vitres en noir brillant) ;
+`cabinEdge` donne aussi le bord du toit (barres de toit).
+
+**Berline** (`src/render/car-berline.ts`) : 4,72 × 1,85 × 1,44 m. Pas de calandre : nez bas et lisse, phares très fins, fente noire en bas du bouclier ;
+pare-brise immense, toit de verre et encadrements noirs ; lunette très couchée sur un coffre court ; feux fins en crochet ; poignées affleurantes ;
+rétroviseurs couleur caisse ; jantes à sept branches. 1 668 triangles garée.
+**Break** (`src/render/car-break.ts`) : 4,83 × 1,86 × 1,45 m. Capot long, grande calandre noire en octogone, prises d'air verticales aux coins, phares fins ;
+long toit, barres de toit argent, becquet, encadrement chromé des vitres jusqu'au montant arrière ; trait rouge d'un feu à l'autre, feux en segments,
+diffuseur noir souligné d'argent, deux sorties trapézoïdales ; rétroviseurs et bas de caisse noirs ; jantes à dix branches. 2 058 triangles garé
+(plafond 2 100 : le plus cher des modèles sculptés).
+
+Fiches de conduite (`SEDAN`, `WAGON`) inchangées (empattement 2,82 m pour les deux). Palettes d'après les photos.
+
+![Berline avant / après](captures/d274-berline-avant-apres.jpg)
+![Break avant / après](captures/d274-break-avant-apres.jpg)
+![Couleurs](captures/d274-couleurs.jpg)
+
+## 2026-11-08 — D275. Le petit SUV sculpté d'après photos (SUV compact français restylé des années 2020)
+
+**Photos** : neuf photos d'un même SUV compact français haut de gamme, en deux générations. Choix de l'utilisateur : la **version restylée** (face :
+trois-quarts avant et face, deux photos) ; la silhouette vient du profil et du trois-quarts arrière de la première version, dont la caisse n'a pas changé
+au restylage. Marque et nom restent fictifs (Éduen Morvan) ; emblème neutre en losange, sans logo ni lettrage.
+
+**Gabarit** : le modèle réel est un SUV du segment C, pas un petit SUV. Sur décision de l'utilisateur, le catalogue passe de 4,25 × 1,80 × 1,60 m à
+**4,59 × 1,89 × 1,62 m** (le nom « Petit SUV » reste). La fiche de conduite (`SUV`) n'a pas bougé : empattement de 2,62 m (le vrai fait 2,74 m, d'où
+des porte-à-faux un peu longs), même tenue de route. Les roues dessinées passent à 0,36 m de rayon (au lieu de 0,34) pour remplir les passages de roue
+comme sur les photos : c'est du dessin seulement, la physique garde le rayon de la fiche.
+
+**Caisse** (`src/render/car-petit-suv.ts`, moteur D272) : face haute et droite, long capot plat. Avant : très grande calandre noire qui monte jusqu'aux
+phares, avec des pointes de diamant suggérées par des traits croisés plus clairs ; phares très minces juste sous le bord du capot, avec trois modules de
+diodes ; aux coins, la signature du restylage, quatre lames de feux de jour verticales sur une niche sombre ; prise d'air basse et lame chromée.
+Flancs : ceinture qui monte vers l'arrière ; jonc chromé autour des vitres qui finit en pointe sur le gros montant arrière (une pièce peinte recouvre le
+bout de la vitre) ; montants noirs, barres de toit sombres ; passages de roue et bas de caisse noirs ; rétroviseurs noirs. Arrière : lunette presque droite
+sous un becquet ; feux horizontaux sombres à écailles rouges qui tournent sur l'aile, reliés par un jonc chromé ; plaque sur le hayon ; bas noir avec
+deux sorties trapézoïdales. Jantes sombres à huit branches. Palette d'après les photos : vert-gris, bleu encre, rouge rubis, cuivre, argent, noir, blanc nacré.
+
+**Coût** (exemplaire garé) : 856 triangles de peinture, 1 152 de détails et roues, **2 008 au total** (plafonds D272).
+**Reste** : les bandes noires des passages de roue laissent un mince liseré couleur caisse au bord de l'ouverture : la caisse s'y enroule vers l'intérieur,
+et une bande posée plus près de l'ouverture se déchirait. La caisse fait un pli au-dessus des roues (le défaut est commun aux caisses sculptées).
+
+![Avant / après](captures/d275-petit-suv-avant-apres.jpg)
+![Trois couleurs](captures/d275-petit-suv-couleurs.jpg)
+
+## 2026-11-08 — D276. Une supercar unique, garée au parking de la Croix de la Libération
+
+**Photos** : sept photos d'une même supercar italienne à V12 central des années 2010, en quatre versions. Choix de l'utilisateur : la version la plus
+radicale (trois-quarts avant et arrière, arrière de face, profil), le profil de la version cabriolet pour la silhouette, la face de la première version
+pour les phares et le capot (communs aux versions). Nom fictif : **Augusta Bibracte** (la marque de la Janus ; Bibracte, l'oppidum éduen du mont
+Beuvray). Emblème neutre en hexagone, aucun lettrage.
+
+**Pourquoi un nouveau véhicule** : la fiche de la sportive (Augusta Janus, 190 kW, 0 à 100 km/h en 4,9 s) est celle d'une sportive accessible ; y
+mettre cette supercar aurait donné « une supercar qui roule comme une GT », et une supercar garée au hasard dans les rues aurait été invraisemblable.
+Choix de l'utilisateur : un nouveau véhicule **unique** (D114), et la Janus gardée pour une sportive plus juste (une berlinette française, photos à venir).
+
+**Fiche** (`SUPERCAR`, `src/core/vehicle-specs.ts`, avec l'accord de l'utilisateur) : 1 550 kg, ≈ 420 kW aux roues, empattement réel 2,70 m, poids sur
+l'arrière, pneus très larges, centre de gravité à 0,40 m ; **0 à 100 km/h en 3,2 s** (la Janus : 4,9 s). Elle reste **plafonnée à 200 km/h** comme
+toutes les voitures (D50) : l'utilisateur voulait 300 km/h, mais au-delà de 200, ni le chargement des tuiles ni les chocs (traversée des murs) ne sont
+vérifiés ; on relèvera le plafond commun après une mesure sur le téléphone. Son V12 (12 cylindres, 8 700 tr/min, 7 rapports, pétarades).
+
+**Place** (`src/core/uniques.ts`) : sur le parking de la Croix de la Libération (D267), au nord de la clairière (−853 ; −1830), le nez tourné vers la
+ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur).
+
+**Caisse** (`src/render/car-supercar.ts`, moteur D272) : 4,94 × 2,03 × 1,14 m. Coin très bas et très large, capot plongeant, phares anguleux avec
+feu de jour en Y, grandes prises d'air noires aux coins, lame avant en carbone ; pare-brise immense, cabine étroite, vitre de flanc dont le bas monte
+vers l'arrière, énorme prise d'air noire derrière la porte, bas de caisse en carbone, rétroviseurs sur pied ; capot moteur à persiennes en V, grand
+aileron noir sur un mât ; à l'arrière, feux minces au-dessus d'une grille noire barrée d'une arche couleur caisse, deux grosses sorties rondes en haut,
+diffuseur à ailettes. Vert vif, comme sur deux des photos ; jantes gris anthracite à cinq branches.
+**Moteur D272** : le dessous sombre qui ferme les passages de roue montait à 0,71 m et perçait ce capot à 0,54 m ; il s'arrête maintenant sous le
+point le plus bas du dessus, avec une boîte de plus au droit de chaque roue. Les autres caisses sculptées ne changent pas (leur dessus est plus haut).
+
+**Coût** : 900 triangles de peinture, 988 de détails et roues, 1 888 au total (plafonds des véhicules uniques).
+**Tests** : la sportive reste la plus vive des voitures ordinaires, la supercar l'est nettement plus (une seconde au moins), toutes deux plafonnées.
+**Reste** : les sections arrondies du moteur adoucissent les arêtes vives du vrai modèle ; prises d'air avant un peu morcelées de près.
+
+![Quatre vues](captures/d276-supercar.jpg)
+![Au parking de la croix](captures/d276-supercar-croix.jpg)
+
+## 2026-11-08 — D277. La sportive sculptée d'après photos (berlinette française) ; la supercar en six couleurs
+
+**Supercar (D276)** : demande de l'utilisateur, plusieurs couleurs tirées au hasard d'après ses photos. Palette : vert, bleu, rouge, jaune, noir mat,
+orange. À chaque apparition ou réapparition d'un véhicule unique, une couleur de sa palette est tirée au hasard (`game.ts`) ; elle est gardée dans la
+sauvegarde comme pour les autres véhicules. Les autres véhicules uniques n'ont qu'une couleur : rien ne change pour eux.
+
+**Sportive (Augusta Janus)** : la fiche `SPORT_CAR` (sportive accessible, D50, D97) garde la Janus, dessinée maintenant d'après une berlinette
+française à moteur central (choix de l'utilisateur parmi des modèles proposés). **Photos** : cinq ; quatre montrent la première version (2017 :
+trois-quarts avant, profil, arrière, trois-quarts arrière), retenues ; une montre une version radicale de 2024 (capot à prises d'air, aileron), écartée.
+**Gabarit** : 4,18 × 1,80 × 1,25 m (au lieu de 4,45 × 1,88 × 1,25), les vraies mesures. Fiche inchangée : empattement 2,60 m (le vrai fait 2,42 m),
+d'où des porte-à-faux un peu courts.
+
+**Caisse** (`src/render/car-sportive.ts`, moteur D272) : capot bas et plongeant ; de face, **quatre feux ronds** : deux phares en goutte sur les ailes,
+cerclés de diodes, et deux feux ronds plus bas avec une croix ; grande bouche noire basse à lames, plaque au-dessus, fentes verticales devant les roues,
+emblème neutre en losange. Toit en bulle, grande lunette encadrée de noir, vitre de custode en pointe (une pièce peinte recouvre le bout de la vitre),
+creux le long des portes, rétroviseurs couleur caisse sur pied. Arrière arrondi : feux minces et sombres à croix rouges, plaque sur le bouclier,
+diffuseur noir à ailettes et une seule sortie trapézoïdale au milieu. Jantes claires à dix branches. Palette : bleu, blanc, noir, gris, orange, bleu nuit.
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 892 de détails et roues, 1 816 au total (plafonds D272).
+**Reste** : les ailes avant ne se détachent pas du capot (une seule hauteur de dessus par section) ; la face arrière reste assez droite.
+
+![Avant / après](captures/d277-sportive-avant-apres.jpg)
+![Couleurs de la sportive et de la supercar](captures/d277-couleurs.jpg)

@@ -1,6 +1,6 @@
 import type { DamageProfile } from "./damage";
 import { BIKE, CAR, MOTO, SCOOTER, type VehicleSpec } from "./vehicle";
-import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUV, VAN, WAGON } from "./vehicle-specs";
+import { COMPACT, FOOD_TRUCK, JEEP, LOG_TRUCK, MTB, TRAIN_LOCO, OLD_CAR, POLICE_CAR, SCOOTER_125, SEDAN, SPORT_CAR, SPORT_MOTO, SUPERCAR, SUV, VAN, WAGON } from "./vehicle-specs";
 
 /**
  * Catalogue de véhicules (D50) : logique pure, sans rendu. Une entrée (`VehicleDef`) réunit ce qui fait un modèle de véhicule :
@@ -74,18 +74,20 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "velo-ville", family: "bike", name: "Vélo de ville", badge: { make: "Bibracte", model: "Promenade" }, toughness: 0.6, spec: BIKE, size: { length: 1.83, width: 0.58, height: 1.09 }, palette: ["#2a6f7e", "#d9472b", "#1f3a52", "#3f7d4e", "#efe3c8", "#9fb8a6", "#d98a8a"] },
   { id: "vtt", family: "bike", name: "VTT", badge: { make: "Bibracte", model: "Beuvray" }, toughness: 0.7, spec: MTB, size: { length: 1.78, width: 0.69, height: 1.07 }, palette: ["#d9472b", "#1b1d22", "#3f7d4e", "#f1b24a", "#2d6fb8", "#8a8f96"] },
   { id: "trottinette", family: "kickscooter", name: "Trottinette", badge: { make: "Trott'Autun", model: "Libre-service" }, toughness: 0.5, spec: SCOOTER, size: { length: 1.17, width: 0.51, height: 1.15 }, palette: ["#2a6f7e", "#3f7d4e", "#d9472b"] },
-  { id: "citadine", family: "car", name: "Citadine", badge: { make: "Éduen", model: "Moineau" }, spec: CAR, size: { length: 3.98, width: 1.74, height: 1.42 }, palette: ["#d9472b", "#f1b24a", "#5aa0b4", "#9cc25b", "#efe3c8", "#d98a8a", "#2a6f7e"] },
-  { id: "compacte", family: "car", name: "Compacte", badge: { make: "Éduen", model: "Arroux" }, spec: COMPACT, size: { length: 4.25, width: 1.8, height: 1.46 }, palette: ["#2a6f7e", "#c23a2a", "#8a8f96", "#1f3a52", "#e8e4da", "#3f7d4e"] },
-  { id: "berline", family: "car", name: "Berline", badge: { make: "Augusta", model: "Préfète" }, spec: SEDAN, size: { length: 4.75, width: 1.85, height: 1.45 }, palette: ["#1d2530", "#8a8f96", "#7a2e2e", "#1f3a52", "#c8c2b4", "#3a4a5a"] },
-  { id: "break", family: "car", name: "Break", badge: { make: "Augusta", model: "Morvandelle" }, spec: WAGON, size: { length: 4.8, width: 1.85, height: 1.5 }, palette: ["#5d6b4f", "#b8a48a", "#efe3c8", "#4b5d73", "#8a8f96", "#6e4a33"] },
-  { id: "petit-suv", family: "car", name: "Petit SUV", badge: { make: "Éduen", model: "Morvan" }, toughness: 1.15, spec: SUV, size: { length: 4.25, width: 1.8, height: 1.6 }, palette: ["#c4562f", "#2f6a5a", "#d6d2c8", "#3a7ca5", "#8a8f96", "#e0a43a"] },
+  { id: "citadine", family: "car", name: "Citadine", badge: { make: "Éduen", model: "Moineau" }, spec: CAR, size: { length: 4.06, width: 1.73, height: 1.45 }, palette: ["#c8262c", "#b9bcc1", "#4d5560", "#e9e7e2", "#2a5cab", "#1e2127", "#d8642a"] },
+  { id: "compacte", family: "car", name: "Compacte", badge: { make: "Éduen", model: "Arroux" }, spec: COMPACT, size: { length: 4.37, width: 1.85, height: 1.44 }, palette: ["#2b63c6", "#3d6634", "#1d6a78", "#a42129", "#e8e6e1", "#686e75", "#1e2127"] },
+  { id: "berline", family: "car", name: "Berline", badge: { make: "Augusta", model: "Préfète" }, spec: SEDAN, size: { length: 4.72, width: 1.85, height: 1.44 }, palette: ["#a3141e", "#22489a", "#4a5058", "#e8e6e1", "#1e2127", "#a9adb3"] },
+  { id: "break", family: "car", name: "Break", badge: { make: "Augusta", model: "Morvandelle" }, spec: WAGON, size: { length: 4.83, width: 1.86, height: 1.45 }, palette: ["#5e7a7c", "#e8e6e1", "#1f2b4a", "#1e2127", "#7c8086", "#b3b6ba", "#6e2a2e"] },
+  { id: "petit-suv", family: "car", name: "Petit SUV", badge: { make: "Éduen", model: "Morvan" }, toughness: 1.15, spec: SUV, size: { length: 4.59, width: 1.89, height: 1.62 }, palette: ["#8f978c", "#1f2b47", "#7d1d22", "#c47a2c", "#9a9ea3", "#1b1c20", "#e6e3dc"] },
   { id: "camionnette", family: "car", name: "Camionnette", badge: { make: "Couhard", model: "Mulet" }, toughness: 1.3, spec: VAN, size: { length: 4.9, width: 1.95, height: 1.95 }, palette: ["#e8e4da", "#e8e4da", "#e8e4da", "#8a8f96", "#c23a2a", "#2a6f7e", "#f1b24a"] },
   { id: "vieille-voiture", family: "car", name: "Vieille voiture", badge: { make: "Éduen", model: "Pétrolette" }, toughness: 0.9, spec: OLD_CAR, size: { length: 4.1, width: 1.68, height: 1.4 }, palette: ["#9fb8a6", "#c9b98a", "#8fa8c4", "#a6553b", "#e3d6b8", "#7d6a8a"] },
-  { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.45, width: 1.88, height: 1.25 }, palette: ["#d9472b", "#f1b24a", "#e8e4da", "#1b1d22", "#2d6fb8", "#3f7d4e"] },
+  { id: "sportive", family: "car", name: "Sportive", badge: { make: "Augusta", model: "Janus" }, toughness: 0.85, spec: SPORT_CAR, size: { length: 4.18, width: 1.8, height: 1.25 }, palette: ["#1f5fb8", "#e8e6e1", "#1a1b1f", "#5a5e63", "#d9531e", "#1c2c4c"] },
   // Gendarmerie (J4, D72) : jamais garée ni dans la circulation ordinaire tirée par quartier ; la police la fait naître (patrouilles, renforts).
   { id: "gendarmerie", family: "car", name: "Gendarmerie", badge: { make: "Éduen", model: "Arroux Gendarmerie" }, icon: "🚓", toughness: 1.4, spec: POLICE_CAR, size: { length: 4.25, width: 1.8, height: 1.58 }, palette: ["#1f3466"] },
   // Véhicules uniques (D114) : un seul exemplaire, à sa place (`src/core/uniques.ts`).
   { id: "jeep-militaire", family: "car", name: "Jeep militaire", unique: true, badge: { make: "Couhard", model: "Sentinelle" }, toughness: 1.6, spec: JEEP, size: { length: 4.08, width: 1.84, height: 1.88 }, palette: ["#5b6b3f"] },
+  // Supercar (D276) : la seule de la ville, garée sur le parking de la Croix de la Libération, face à la vue ; une des six couleurs des photos, tirée à chaque apparition (D277).
+  { id: "supercar", family: "car", name: "Supercar", unique: true, badge: { make: "Augusta", model: "Bibracte" }, toughness: 0.9, spec: SUPERCAR, size: { length: 4.94, width: 2.03, height: 1.14 }, palette: ["#6fae2e", "#2b8fc6", "#c8261d", "#f2b40a", "#1c1d21", "#e8501c"] },
   { id: "pizza-du-vallon", family: "car", name: "Camion pizza", unique: true, badge: { make: "Couhard", model: "Pizza du Vallon" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 3.62 }, palette: ["#7cc43a"] },
   { id: "rotisserie-champ-de-mars", family: "car", name: "Rôtisserie", unique: true, badge: { make: "Couhard", model: "Rôtisserie du Champ de Mars" }, toughness: 1.5, spec: FOOD_TRUCK, size: { length: 6, width: 3.1, height: 2.9 }, palette: ["#ece6da"] },
   { id: "petit-train", family: "car", name: "Petit train", unique: true, train: true, badge: { make: "Couhard", model: "Petit Train d'Autun" }, toughness: 2, spec: TRAIN_LOCO, size: { length: 4.4, width: 1.9, height: 2.6 }, palette: ["#2f6b4f"] },

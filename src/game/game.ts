@@ -512,7 +512,8 @@ export function startGame(ctx: GameContext): void {
         damaged.delete(v);
         fleet.remove(v);
       }
-      if (action === "spawn" || action === "respawn") fleet.add(spot.model, spot.id, spot.x, spot.y, spot.heading, 0);
+      // Une couleur de sa palette tirée au hasard à chaque apparition (D277 : la supercar en a six ; les autres n'en ont qu'une).
+      if (action === "spawn" || action === "respawn") fleet.add(spot.model, spot.id, spot.x, spot.y, spot.heading, Math.floor(Math.random() * (vehicleDef(spot.model)?.palette.length ?? 1)));
       // Camions-restaurants (D115) : un vendeur en tablier blanc derrière le comptoir quand le camion est ouvert, à sa place, et qu'on est assez près.
       const w = fleet.get(spot.id);
       const spotAt = vendorOf(spot.model);

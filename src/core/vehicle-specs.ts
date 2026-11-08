@@ -165,3 +165,14 @@ export const SPORT_CAR: VehicleSpec = limited({
   maxBrake: 17000, reverseForce: 3900, drag: 0.38, hull: [[1.29, 0.91], [-0.02, 0.93], [-1.34, 0.91]], wheelRadius: 0.33, bodyRoll: 0.008, engineBrake: 450, driveAxle: "rear", cgHeight: 0.45, brakeFront: 0.66,
   traction: 0.7, rearGrip: 1.06, driftAssist: 0.45, maxDrift: 0.7,
 }, SPEED_CAP.car);
+
+/**
+ * Supercar à moteur central (D276, véhicule unique) : 1 550 kg, ≈ 420 kW aux roues, 0 à 100 km/h en ≈ 3 s, plafonnée à 200 km/h comme les autres
+ * voitures (D50 : au-delà, ni le chargement des tuiles ni les chocs ne sont vérifiés). Empattement réel (2,70 m), poids sur l'arrière (moteur derrière
+ * le conducteur : centre de gravité à 1,54 m de l'essieu avant), pneus très larges, centre de gravité très bas ; même conduite que la sportive (D97).
+ */
+export const SUPERCAR: VehicleSpec = limited({
+  ...SPORT_CAR, mass: 1550, yawInertia: 2450, front: 1.54, rear: 1.16, grip: 1.25,
+  corneringFront: 120000, corneringRear: 150000, power: 420000, maxDrive: 15000, driveFadeFrom: kmh(330), topSpeed: kmh(350),
+  maxBrake: 21000, drag: 0.36, hull: [[1.64, 1.0], [0.17, 1.01], [-1.3, 1.0]], wheelRadius: 0.36, bodyRoll: 0.006, cgHeight: 0.4, brakeFront: 0.6,
+}, SPEED_CAP.car);

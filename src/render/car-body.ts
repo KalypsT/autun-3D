@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { box, merge, paint, ringLoft, tiltedBox, tube, type Ring } from "./vehicle-model";
+import { sculptDetailGeometry, sculptLamps, sculptPaintGeometry, type Sculpt, type SculptFrame } from "./car-sculpt";
 
 /**
  * Générateur de carrosserie (D52, refait en D107) : une voiture est décrite par quelques mesures (longueur, hauteur, capot, pare-brise, toit, lunette, coffre)
@@ -14,17 +15,20 @@ import { box, merge, paint, ringLoft, tiltedBox, tube, type Ring } from "./vehic
  * teintée par instance quand elle est blanche) et les détails, de couleurs fixes, jamais blanc pur (D56).
  */
 
-export type HeadlightShape = "round" | "rect" | "almond" | "strip";
-export type GrilleShape = "slim" | "tall" | "chrome" | "sport";
-export type TaillightShape = "horizontal" | "vertical" | "bar" | "round";
+/** `swept` : phare étiré qui remonte vers l'extérieur et s'enroule sur l'aile (citadine moderne, D-Clio). */
+export type HeadlightShape = "round" | "rect" | "almond" | "strip" | "swept";
+/** `band` : bandeau noir brillant d'un phare à l'autre, filet chromé dessous et écusson au milieu. */
+export type GrilleShape = "slim" | "tall" | "chrome" | "sport" | "band";
+/** `wrap` : feux allongés qui s'enroulent du hayon sur le flanc. */
+export type TaillightShape = "horizontal" | "vertical" | "bar" | "round" | "wrap";
 
 /** Ce qui distingue un modèle d'un autre au premier coup d'œil, au-delà de ses mesures. */
 export interface CarStyle {
   headlights: HeadlightShape;
   grille: GrilleShape;
   taillights: TaillightShape;
-  /** Pare-chocs : plastique noir, couleur de caisse ou chromés. */
-  bumpers: "trim" | "paint" | "chrome";
+  /** Pare-chocs : plastique noir, couleur de caisse ou chromés ; `blend` : couleur de caisse, fondus dans la carrosserie (coins arrondis, pas de lame). */
+  bumpers: "trim" | "paint" | "chrome" | "blend";
   /** Couleur des jantes (jamais blanc pur : elle ne doit pas prendre la teinte de la caisse). */
   rim: string;
   /** Portes de chaque côté : 1 (trois portes, longue portière) ou 2 (cinq portes). */
@@ -57,6 +61,18 @@ export interface CarStyle {
   softTop?: string;
   /** Roue de secours accrochée à la face arrière (D114). */
   spareWheel?: boolean;
+  /** Grande grille noire dans le bas du pare-chocs avant, avec deux antibrouillards dans les coins. */
+  lowerGrille?: boolean;
+  /** Poignées des portes arrière cachées dans le montant (on ne voit que celles de devant : allure de trois-portes). */
+  hiddenRearHandles?: boolean;
+  /** Creux noir au bas des portières, souligné d'un jonc chromé. */
+  doorBlade?: boolean;
+  /** Jonc chromé en travers du hayon, sous les feux. */
+  tailChrome?: boolean;
+  /** Bas du pare-chocs arrière en plastique noir (extracteur). */
+  diffuser?: boolean;
+  /** Jantes à branches (nombre de branches, de la couleur de la jante, sur fond sombre) au lieu de la croix. */
+  spokes?: number;
 }
 
 /**
@@ -127,7 +143,16 @@ export interface CarBodyParams {
   logTruck?: LogTruck;
   /** Couleur de verre (reflets plus ou moins sombres). */
   glass?: string;
+  /** Ligne de ceinture qui monte vers l'arrière : `belt` au pied du pare-brise, `belt + beltRise` au pied de la lunette (m). */
+  beltRise?: number;
+  /** Toit qui descend vers l'arrière : `height` au-dessus du pare-brise, `height − roofDrop` au-dessus de la lunette (m). */
+  roofDrop?: number;
   style: CarStyle;
+  /**
+   * Caisse sculptée d'après photos (D272) : elle remplace la caisse à sections octogonales et les pièces du style (phares, feux, grilles…),
+   * dessinées sur sa surface. Les mesures ci-dessus servent encore aux essieux, à la caméra, à la fumée et aux dégâts.
+   */
+  sculpt?: Sculpt;
   /** Livrée (police, J4) : une bande claire et un filet de couleur le long des flancs, une barre de gyrophares sur le toit. */
   livery?: { stripe: string; accent: string; lightBar: boolean };
 }
@@ -159,6 +184,8 @@ const BUMPER_SET = 0.015;
 /** Retrait des faces avant et arrière de la caisse derrière le nez et la queue. */
 const FACE = 0.04;
 const TRIM = "#2c2c33";
+/** Noir brillant (bandeau de calandre). */
+const GLOSS = "#141519";
 const DARK = "#1d1f24";
 const CLAD = "#3a3b40";
 const CHROME = "#c9ccd0";
@@ -292,7 +319,11 @@ function frame(p: CarBodyParams, front: number, rear: number) {
     const w = side * scale;
     return { z, y0, y1, w, wb: w - cb * 0.7, wt: w - ct, cb, ct };
   };
-  return { L, W, st, r, side, ct, cb, shoulder, roofW, nose, tail, archR, bZ, sec, front, rear };
+  /** Ligne de ceinture à l'abscisse z (montante si `beltRise`), et haut du toit (descendant si `roofDrop`). */
+  const rise = p.beltRise ?? 0, drop = p.roofDrop ?? 0, top0 = p.cabHeight ?? p.height;
+  const beltAt = (z: number): number => p.belt + rise * THREE.MathUtils.clamp((z - L.windshieldBaseZ) / Math.max(0.01, L.rearBaseZ - L.windshieldBaseZ), 0, 1);
+  const topAt = (z: number): number => top0 - drop * THREE.MathUtils.clamp((z - L.roofFrontZ) / Math.max(0.01, L.roofRearZ - L.roofFrontZ), 0, 1);
+  return { L, W, st, r, side, ct, cb, shoulder, roofW, nose, tail, archR, bZ, sec, beltAt, topAt, front, rear };
 }
 
 type Frame = ReturnType<typeof frame>;
@@ -326,7 +357,7 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
   }
   return [sectionLoft([
     ...front,
-    sec(L.rearBaseZ, p.belt),
+    sec(L.rearBaseZ, f.beltAt(L.rearBaseZ)),
     sec(tail - round, p.tailHeight),
     sec(tail, p.tailHeight - 0.03 - 0.04 * r, 0.93 - 0.07 * r, p.clearance + 0.04),
   ], color)];
@@ -334,12 +365,15 @@ function lowerBody(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeome
 
 /** Toit, montants, ailes séparées, pare-chocs et rétroviseurs couleur caisse, becquets : tout ce qui prend la peinture. */
 function paintParts(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry[] {
-  const f = frame(p, front, rear), { L, W, st, side, shoulder, roofW, bZ } = f;
+  const f = frame(p, front, rear), { L, W, st, side, shoulder, roofW, bZ, beltAt, topAt } = f;
   const top = p.cabHeight ?? p.height, roofColor = st.softTop ?? st.roof ?? color;
   const parts = lowerBody(p, f, color);
   // Toit : une dalle aux bords chanfreinés, un peu plus longue que le verre qu'elle couvre.
   const roofZ0 = L.roofFrontZ - 0.05, roofZ1 = L.roofRearZ + (p.cargo ? 0 : 0.06);
-  const slab = (z: number): Section => ({ z, y0: top - 0.065, y1: top, w: roofW + 0.02, wb: roofW, wt: roofW - 0.02, cb: 0.01, ct: 0.03 });
+  const slab = (z: number): Section => {
+    const y = topAt(z);
+    return { z, y0: y - 0.065, y1: y, w: roofW + 0.02, wb: roofW, wt: roofW - 0.02, cb: 0.01, ct: 0.03 };
+  };
   if (!p.cargo) parts.push(sectionLoft([slab(roofZ0), slab(roofZ1)], roofColor));
   else parts.push(sectionLoft([slab(roofZ0), slab(L.rearBaseZ + 0.02)], roofColor));
   // Montants : A (le long du pare-brise) et C (le long de la lunette) de la couleur du toit ; B (et D sur un long toit), de la caisse ou noirs.
@@ -348,9 +382,9 @@ function paintParts(p: CarBodyParams, front: number, rear: number, color: string
     const at = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(s * x, y, z);
     // Montant A : celui du toit ; sous une capote, c'est le cadre du pare-brise, de la couleur de la caisse.
     parts.push(tube(at(shoulder - 0.01, p.belt, L.windshieldBaseZ + 0.02), at(roofW, top - 0.04, L.roofFrontZ), 0.035, st.softTop ? color : roofColor, 4, false));
-    if (!p.cargo) parts.push(tube(at(shoulder - 0.01, p.belt, L.rearBaseZ - 0.02), at(roofW, top - 0.04, L.roofRearZ), 0.045, roofColor, 4, false));
+    if (!p.cargo) parts.push(tube(at(shoulder - 0.01, beltAt(L.rearBaseZ), L.rearBaseZ - 0.02), at(roofW, topAt(L.roofRearZ) - 0.04, L.roofRearZ), 0.045, roofColor, 4, false));
     if (!st.blackPillars) {
-      parts.push(tube(at(shoulder - 0.005, p.belt, bZ), at(roofW + 0.015, top - 0.04, bZ), 0.045, pillar, 4, false));
+      parts.push(tube(at(shoulder - 0.005, beltAt(bZ), bZ), at(roofW + 0.015, topAt(bZ) - 0.04, bZ), 0.045, pillar, 4, false));
       if (p.roof > 1.6) parts.push(tube(at(shoulder - 0.005, p.belt, L.roofRearZ - 0.5), at(roofW + 0.015, top - 0.04, L.roofRearZ - 0.5), 0.04, pillar, 4, false));
     }
   }
@@ -363,13 +397,14 @@ function paintParts(p: CarBodyParams, front: number, rear: number, color: string
   }
   // Pare-chocs couleur caisse.
   if (st.bumpers === "paint") parts.push(...bumpers(p, f, color));
+  if (st.bumpers === "blend") parts.push(...blendBumpers(p, f, color));
   // Rétroviseurs couleur caisse (sinon noirs, avec les détails).
   if (st.bumpers !== "trim") parts.push(...mirrors(p, f, color));
   if (st.hoodScoop) {
     const z = (L.noseZ + L.windshieldBaseZ) / 2 + 0.1, y = (p.noseHeight + p.belt) / 2 + 0.05;
     parts.push(box(0.42, 0.05, 0.4, 0, y, z, color));
   }
-  if (st.spoiler === "roof") parts.push(box(roofW * 2, 0.035, 0.2, 0, top - 0.02, L.roofRearZ + 0.1, roofColor));
+  if (st.spoiler === "roof") parts.push(box(roofW * 2, 0.035, 0.2, 0, topAt(L.roofRearZ) - 0.02, L.roofRearZ + 0.1, roofColor));
   return parts;
 }
 
@@ -383,6 +418,21 @@ function bumpers(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometr
   ];
 }
 
+/**
+ * Pare-chocs fondus (`blend`) : un bourrelet couleur de caisse au bas du nez et de la queue, qui épouse l'arrondi des coins
+ * (étroit au bout, de la largeur des flancs là où la caisse l'est), au lieu d'une lame droite qui dépasse aux angles.
+ */
+function blendBumpers(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometry[] {
+  const { L, side, r } = f, narrow = side * (0.93 - 0.07 * r), round = 0.1 + 0.14 * r;
+  const y0 = p.clearance, y1 = p.clearance + 0.22;
+  const ring = (z: number, w: number): Section => ({ z, y0, y1, w, wb: w - 0.05, wt: w - 0.02, cb: 0.06, ct: 0.03 });
+  const nose = L.noseZ + BUMPER_SET, tail = L.tailZ - BUMPER_SET;
+  return [
+    sectionLoft([ring(nose, narrow - 0.04), ring(nose + 0.05, narrow + 0.005), ring(nose + round + 0.12, side + 0.008)], color),
+    sectionLoft([ring(tail - round - 0.12, side + 0.008), ring(tail - 0.05, narrow + 0.005), ring(tail, narrow - 0.04)], color),
+  ];
+}
+
 function mirrors(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometry[] {
   const { L, W } = f;
   return [-1, 1].map((s) => box(0.1, 0.09, 0.13, s * (W - 0.07), p.belt + 0.1, L.windshieldBaseZ + 0.2, color));
@@ -390,12 +440,13 @@ function mirrors(p: CarBodyParams, f: Frame, color: string): THREE.BufferGeometr
 
 /** Phares et feux arrière : positions de leurs centres (deux de chaque), selon leur forme. */
 export function lampSpots(p: CarBodyParams, front: number, rear: number): { head: [number, number, number][]; tail: [number, number, number][] } {
+  if (p.sculpt) return sculptLamps(p.sculpt, sculptFrame(p, front, rear));
   const f = frame(p, front, rear), { L, W, side } = f, st = p.style;
-  const hx = st.headlights === "round" ? W * 0.64 : st.headlights === "strip" ? W * 0.7 : W * 0.66;
-  const hy = p.noseHeight - (st.headlights === "strip" ? 0.09 : 0.13) - 0.03 * st.roundness;
+  const hx = st.headlights === "round" ? W * 0.64 : st.headlights === "strip" ? W * 0.7 : st.headlights === "swept" ? W * 0.62 : W * 0.66;
+  const hy = p.noseHeight - (st.headlights === "strip" ? 0.09 : st.headlights === "swept" ? 0.06 : 0.13) - 0.03 * st.roundness;
   const hz = L.noseZ + FACE - 0.01;
-  const tx = st.taillights === "vertical" ? side * 0.84 : st.taillights === "bar" ? W * 0.72 : W * 0.66;
-  const ty = p.cargo ? p.clearance + 0.62 : p.tailHeight - (st.taillights === "vertical" ? 0.2 : 0.15) - 0.03 * st.roundness;
+  const tx = st.taillights === "vertical" ? side * 0.84 : st.taillights === "bar" ? W * 0.72 : st.taillights === "wrap" ? W * 0.55 : W * 0.66;
+  const ty = p.cargo ? p.clearance + 0.62 : p.tailHeight - (st.taillights === "vertical" ? 0.2 : st.taillights === "wrap" ? 0.1 : 0.15) - 0.03 * st.roundness;
   const tz = L.tailZ - FACE + 0.01;
   return {
     head: [[hx, hy, hz], [-hx, hy, hz]],
@@ -423,6 +474,15 @@ function faceParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
       case "strip":
         parts.push(box(0.3, 0.065, 0.05, x, y, z, LIGHT), box(0.06, 0.065, 0.05, x + s * 0.18, y, z, AMBER));
         break;
+      case "swept": {
+        // Le phare monte vers l'extérieur, contourne le coin et remonte le long de l'aile, vers le pare-brise ; cerclé de noir, clignotant au bout.
+        const ox = x + s * 0.19, oy = y + 0.035;
+        parts.push(rolledBox(0.4, 0.11, 0.045, x, y, z + 0.006, s * 0.18, DARK), rolledBox(0.36, 0.075, 0.05, x, y + 0.004, z, s * 0.18, LIGHT));
+        // Bout sur l'aile, affleurant : la caisse y est rentrée du chanfrein de l'épaule.
+        const ey = oy - 0.01, end = new THREE.Vector3(s * (f.side - Math.max(0, f.ct - (p.noseHeight - ey)) - 0.025), ey, z + 0.26);
+        parts.push(tube(new THREE.Vector3(ox, oy, z + 0.02), end, 0.04, LIGHT, 4));
+        break;
+      }
     }
   }
   const [hx, hy, hz] = head[0]!;
@@ -441,11 +501,28 @@ function faceParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
     case "sport":
       parts.push(box(between * 0.6, 0.04, 0.04, 0, hy - 0.02, hz, DARK));
       break;
+    case "band": {
+      // Bandeau noir d'un phare à l'autre, qui plonge un peu vers l'écusson du milieu ; filet chromé dessous.
+      const len = hx - 0.15, roll = 0.1;
+      for (const s of [-1, 1]) {
+        parts.push(rolledBox(len + 0.04, 0.1, 0.045, s * len / 2, hy - 0.03, hz + 0.004, s * roll, GLOSS));
+        parts.push(rolledBox(len * 0.8, 0.016, 0.05, s * len * 0.45, hy - 0.092, hz + 0.004, s * roll, CHROME));
+      }
+      parts.push(disc(0.075, 0.03, 0, hy - 0.04, hz - 0.012, CHROME, 6));
+      break;
+    }
   }
   // Prise d'air dans le pare-chocs (sportive : grande, sous toute la face).
   if (st.intake || st.grille === "sport") {
     const w = st.grille === "sport" ? W * 1.3 : W * 0.85;
     parts.push(box(w, 0.1, 0.016, 0, p.clearance + 0.09, L.noseZ + 0.012, DARK));
+  }
+  if (st.lowerGrille) {
+    // Grande grille basse en trapèze (plus large en bas), antibrouillards ronds dans des coquilles noires aux deux coins.
+    const y = p.clearance + 0.11, z = L.noseZ + 0.014;
+    parts.push(box(W * 1.05, 0.15, 0.014, 0, y + 0.01, z, DARK), box(W * 1.2, 0.05, 0.014, 0, y - 0.07, z, DARK));
+    parts.push(box(W * 1.0, 0.012, 0.018, 0, y + 0.04, z - 0.002, TRIM));
+    for (const s of [-1, 1]) parts.push(box(0.2, 0.12, 0.014, s * W * 0.78, y + 0.01, z, DARK), box(0.1, 0.05, 0.02, s * W * 0.78, y + 0.01, z - 0.006, LIGHT));
   }
   return parts;
 }
@@ -468,12 +545,25 @@ function tailParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
       case "round":
         parts.push(disc(0.075, 0.05, x, y, z, TAIL), disc(0.05, 0.05, x - Math.sign(x) * 0.17, y, z, AMBER, 8));
         break;
+      case "wrap": {
+        // Feu étiré, pointu vers le milieu du hayon, qui contourne le coin et court sur le flanc ; cœur plus sombre.
+        const s = Math.sign(x);
+        parts.push(rolledBox(0.34, 0.1, 0.05, x, y, z, s * 0.1, TAIL), rolledBox(0.16, 0.035, 0.054, x - s * 0.04, y - 0.005, z, s * 0.1, TAIL_DARK));
+        const ey = y + 0.03, end = new THREE.Vector3(s * (f.side - Math.max(0, f.ct - (p.tailHeight - ey)) - 0.03), ey, z - 0.24);
+        parts.push(tube(new THREE.Vector3(x + s * 0.15, y + 0.015, z - 0.01), end, 0.042, TAIL, 4));
+        break;
+      }
     }
   }
   if (st.taillights === "bar") {
     const [x, y, z] = tail[0]!;
     parts.push(box(2 * x - 0.2, 0.05, 0.045, 0, y, z, TAIL_DARK));
   }
+  if (st.tailChrome) {
+    const [x, y, z] = tail[0]!;
+    parts.push(box(2 * (Math.abs(x) - 0.2), 0.022, 0.05, 0, y - 0.2, z, CHROME));
+  }
+  if (st.diffuser) parts.push(box(p.width - 0.3, 0.06, 0.02, 0, p.clearance + 0.03, L.tailZ - 0.012, DARK));
   // Plaques : sur le pare-chocs, dépassant devant lui (nez et queue exacts).
   parts.push(box(0.44, 0.11, 0.02, 0, p.clearance + 0.1, L.noseZ + 0.01, PLATE));
   parts.push(box(0.44, 0.11, 0.02, 0, p.clearance + 0.1, L.tailZ - 0.01, PLATE));
@@ -501,7 +591,7 @@ function tailParts(p: CarBodyParams, f: Frame, front: number, rear: number): THR
 
 /** Passages de roue, lignes de portières, poignées, baguettes, protections, marchepieds. */
 function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
-  const { L, W, st, side, ct, archR, bZ } = f, parts: THREE.BufferGeometry[] = [];
+  const { L, W, st, side, ct, archR, bZ, beltAt } = f, parts: THREE.BufferGeometry[] = [];
   const front = L.wheels[0]![1], rear = L.wheels[2]![1];
   for (const [x, z] of L.wheels) {
     const s = Math.sign(x);
@@ -511,7 +601,7 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
     if (st.cladding) parts.push(arch(s * (side - 0.01), s * (W - 0.027), p.wheelRadius, z, archR + 0.07, archR + 0.09, CLAD));
     parts.push(arch(s * (side - 0.02), s * (W - 0.021), p.wheelRadius, z, archR, archR + 0.02, DARK));
   }
-  const lineTop = p.belt - ct - 0.015, lineBottom = p.clearance + 0.12;
+  const lineTop = (z: number): number => beltAt(z) - ct - 0.015, lineBottom = p.clearance + 0.12;
   // Cabine avancée d'un grumier : la porte est au-dessus de la roue avant, de la longueur d'une porte de camion.
   const doorFront = p.logTruck ? L.windshieldBaseZ + 0.1 : Math.max(L.windshieldBaseZ + 0.06, front + archR + 0.08);
   const doorRear = p.logTruck ? doorFront + 1.2 : p.cargo ? L.rearBaseZ - 0.04 : st.doors === 2 ? Math.min(L.rearBaseZ - 0.08, rear - archR - 0.06) : bZ;
@@ -519,15 +609,22 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
   // Porte coulissante d'une camionnette (pas sur un camion-restaurant : son flanc est l'ouverture de service).
   const sliding = p.cargo && !p.foodTruck && !p.logTruck;
   if (sliding) lines.push(L.rearBaseZ + 0.95);
-  const handles = st.doors === 2 && !p.cargo ? [bZ - 0.18, doorRear - 0.16] : [doorRear - 0.18];
+  const handles = st.doors === 2 && !p.cargo ? (st.hiddenRearHandles ? [bZ - 0.18] : [bZ - 0.18, doorRear - 0.16]) : [doorRear - 0.18];
   if (sliding) handles.push(L.rearBaseZ + 0.85);
   for (const s of [-1, 1]) {
     const x = s * (side + 0.003);
-    for (const z of lines) parts.push(box(0.008, lineTop - lineBottom, 0.012, x, (lineTop + lineBottom) / 2, z, DARK));
-    for (const z of handles) parts.push(box(0.016, 0.035, 0.13, s * (side + 0.006), lineTop - 0.06, z, st.chromeTrim ? CHROME : DARK));
-    // Rebord sous les vitres : sépare nettement la caisse du verre.
-    const sillZ0 = L.windshieldBaseZ + 0.12, sillZ1 = p.cargo ? L.rearBaseZ - 0.02 : L.rearBaseZ - 0.08;
-    parts.push(box(0.03, 0.025, sillZ1 - sillZ0, s * (f.shoulder + 0.005), p.belt + 0.01, (sillZ0 + sillZ1) / 2, st.chromeTrim ? CHROME : TRIM));
+    for (const z of lines) parts.push(box(0.008, lineTop(z) - lineBottom, 0.012, x, (lineTop(z) + lineBottom) / 2, z, DARK));
+    for (const z of handles) parts.push(box(0.016, 0.035, 0.13, s * (side + 0.006), lineTop(z) - 0.06, z, st.chromeTrim ? CHROME : DARK));
+    // Rebord sous les vitres : sépare nettement la caisse du verre (incliné si la ceinture monte).
+    const sillZ0 = L.windshieldBaseZ + 0.12, sillZ1 = p.cargo ? L.rearBaseZ - 0.02 : L.rearBaseZ - 0.08, sillX = s * (f.shoulder + 0.005);
+    if (p.beltRise) parts.push(tube(new THREE.Vector3(sillX, beltAt(sillZ0) + 0.01, sillZ0), new THREE.Vector3(sillX, beltAt(sillZ1) + 0.01, sillZ1), 0.016, st.chromeTrim ? CHROME : TRIM, 4));
+    else parts.push(box(0.03, 0.025, sillZ1 - sillZ0, sillX, p.belt + 0.01, (sillZ0 + sillZ1) / 2, st.chromeTrim ? CHROME : TRIM));
+    if (st.doorBlade) {
+      // Creux noir au bas des portières, jonc chromé au-dessus.
+      const z0 = front + archR + 0.12, z1 = rear - archR - 0.1;
+      parts.push(box(0.012, 0.1, z1 - z0, s * (side + 0.005), p.clearance + 0.13, (z0 + z1) / 2, CLAD));
+      parts.push(box(0.014, 0.016, z1 - z0 - 0.1, s * (side + 0.006), p.clearance + 0.185, (z0 + z1) / 2 + 0.05, CHROME));
+    }
     if (st.sideStrip) parts.push(box(0.012, 0.05, rear - front - 2 * archR - 0.2, s * (side + 0.006), (p.clearance + p.belt) / 2, (front + rear) / 2, TRIM));
     if (st.cladding) {
       const len = rear - front - 2 * archR - 0.2;
@@ -547,8 +644,14 @@ function sideParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 }
 
 /** Verre, pare-chocs noirs ou chromés, phares, feux, plaques, rétroviseurs noirs, passages de roue, accessoires : couleurs fixes. */
+/** Repère d'une caisse sculptée. */
+function sculptFrame(p: CarBodyParams, front: number, rear: number): SculptFrame {
+  return { length: p.length, noseZ: carLayout(p, front, rear).noseZ, front, rear, wheelRadius: p.wheelRadius };
+}
+
 export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
-  const f = frame(p, front, rear), { L, W, st, shoulder, roofW } = f;
+  if (p.sculpt) return sculptDetailGeometry(p.sculpt, sculptFrame(p, front, rear), p.glass ?? "#2b3a4c");
+  const f = frame(p, front, rear), { L, W, st, shoulder, roofW, beltAt, topAt } = f;
   const glass = p.glass ?? "#2b3a4c";
   const top = p.cabHeight ?? p.height;
   const cabinW = roofW - 0.005;
@@ -560,23 +663,23 @@ export function bodyDetailGeometry(p: CarBodyParams, front: number, rear: number
     // Habitacle en verre : du pied du pare-brise à celui de la lunette, posé sur l'épaule de la caisse, sous le toit.
     loft([
       { z: L.windshieldBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 },
-      { z: L.roofFrontZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
-      { z: p.cargo ? glassEnd : L.roofRearZ, y0: p.belt - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
-      ...(p.cargo ? [] : [{ z: L.rearBaseZ, y0: p.belt - 0.01, y1: p.belt, w0: shoulder - 0.01, w1: shoulder - 0.02 }]),
+      { z: L.roofFrontZ, y0: beltAt(L.roofFrontZ) - 0.01, y1: top - 0.04, w0: shoulder - 0.005, w1: cabinW },
+      { z: p.cargo ? glassEnd : L.roofRearZ, y0: beltAt(p.cargo ? glassEnd : L.roofRearZ) - 0.01, y1: topAt(L.roofRearZ) - 0.04, w0: shoulder - 0.005, w1: cabinW },
+      ...(p.cargo ? [] : [{ z: L.rearBaseZ, y0: beltAt(L.rearBaseZ) - 0.01, y1: beltAt(L.rearBaseZ), w0: shoulder - 0.01, w1: shoulder - 0.02 }]),
     ], st.softTop ?? glass),
     ...faceParts(p, f, front, rear),
     ...tailParts(p, f, front, rear),
     ...sideParts(p, f),
     ...liveryParts(p, f),
   ];
-  if (st.bumpers !== "paint") parts.push(...bumpers(p, f, st.bumpers === "chrome" ? CHROME : TRIM));
+  if (st.bumpers === "trim" || st.bumpers === "chrome") parts.push(...bumpers(p, f, st.bumpers === "chrome" ? CHROME : TRIM));
   if (st.bumpers === "trim") parts.push(...mirrors(p, f, TRIM));
   if (st.bumpers === "chrome") {
     // Sous le pare-chocs chromé, la jupe de caisse : sombre.
     parts.push(box(p.width - 0.3, 0.06, 0.04, 0, p.clearance + 0.03, L.noseZ + FACE + 0.02, TRIM));
   }
   if (st.blackPillars) {
-    for (const s of [-1, 1]) parts.push(tube(new THREE.Vector3(s * (shoulder - 0.005), p.belt, f.bZ), new THREE.Vector3(s * (roofW + 0.012), top - 0.04, f.bZ), 0.04, DARK, 4, false));
+    for (const s of [-1, 1]) parts.push(tube(new THREE.Vector3(s * (shoulder - 0.005), beltAt(f.bZ), f.bZ), new THREE.Vector3(s * (roofW + 0.012), topAt(f.bZ) - 0.04, f.bZ), 0.04, DARK, 4, false));
   }
   if (st.roofRails) {
     const z0 = L.roofFrontZ + 0.05, z1 = L.roofRearZ - 0.02;
@@ -811,6 +914,7 @@ function liveryParts(p: CarBodyParams, f: Frame): THREE.BufferGeometry[] {
 
 /** Caisse peinte (en blanc : la couleur vient de l'instance ou de `color`). */
 export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number, color: string): THREE.BufferGeometry {
+  if (p.sculpt) return sculptPaintGeometry(p.sculpt, sculptFrame(p, front, rear), color);
   return merge(paintParts(p, front, rear, color));
 }
 
@@ -818,9 +922,24 @@ export function bodyPaintGeometry(p: CarBodyParams, front: number, rear: number,
  * Roue : pneu, jante de la couleur donnée (en blanc : teintée par instance, pour la circulation) et quatre rayons sombres en croix (la rotation se voit).
  * `segments` : facettes du pneu.
  */
-export function carWheelGeometry(radius: number, width: number, segments: number, rim = "#ffffff"): THREE.BufferGeometry {
+export function carWheelGeometry(radius: number, width: number, segments: number, rim = "#ffffff", spokes = 0, outer = 0): THREE.BufferGeometry {
   const tyre = new THREE.CylinderGeometry(radius, radius, width, segments);
   tyre.rotateZ(Math.PI / 2);
+  if (spokes > 0) {
+    // Jante en alliage, en pièces plates posées sur le flanc du pneu (peu de triangles) : cercle de la couleur de la jante, fond sombre,
+    // branches qui partent du moyeu. `outer` (1 : côté +x, −1 : côté −x) : sur la seule face extérieure (roue garée) ; 0 : des deux côtés.
+    const parts = [paint(tyre, "#24242a")];
+    const n = Math.max(8, segments - 2);
+    for (const s of outer ? [outer] : [-1, 1]) {
+      const flat = (g: THREE.BufferGeometry, off: number, color: string): THREE.BufferGeometry => paint(g.rotateY((s * Math.PI) / 2).translate(s * (width / 2 + off), 0, 0), color);
+      parts.push(flat(new THREE.CircleGeometry(radius * 0.68, n), 0.003, rim), flat(new THREE.CircleGeometry(radius * 0.58, n), 0.006, "#2a2b30"));
+      for (let k = 0; k < spokes; k++) {
+        const g = new THREE.PlaneGeometry(radius * 0.14, radius * 0.6).translate(0, radius * 0.3, 0).rotateZ((2 * Math.PI * k) / spokes);
+        parts.push(flat(g, 0.009, rim));
+      }
+    }
+    return merge(parts);
+  }
   const cap = new THREE.CylinderGeometry(radius * 0.64, radius * 0.64, width + 0.01, Math.max(8, segments - 2));
   cap.rotateZ(Math.PI / 2);
   return merge([
@@ -834,7 +953,7 @@ export function carWheelGeometry(radius: number, width: number, segments: number
 export function parkedDetailGeometry(p: CarBodyParams, front: number, rear: number): THREE.BufferGeometry {
   const parts = [bodyDetailGeometry(p, front, rear)];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
-    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim);
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);
     parts.push(w);
   }

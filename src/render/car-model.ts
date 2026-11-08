@@ -3,6 +3,13 @@ import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
 import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
+import { CITADINE } from "./car-citadine";
+import { COMPACTE } from "./car-compacte";
+import { BERLINE } from "./car-berline";
+import { BREAK } from "./car-break";
+import { PETIT_SUV } from "./car-petit-suv";
+import { SUPERCAR } from "./car-supercar";
+import { SPORTIVE } from "./car-sportive";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -16,40 +23,50 @@ import type { Zone } from "../core/damage";
 
 /** Mesures de chaque voiture du catalogue (même identifiants que `src/core/vehicle-catalog.ts`). */
 export const CAR_BODIES: Record<string, CarBodyParams> = {
+  // Citadine (D271, D272) : caisse sculptée d'après photos (`car-citadine.ts`) ; le style ci-dessous ne sert plus qu'à sa signature et à ses jantes.
   citadine: {
-    length: 3.98, width: 1.74, height: 1.42, overhangFront: 0.72,
-    clearance: 0.28, belt: 0.86, noseHeight: 0.8, tailHeight: 0.9,
-    hood: 0.98, windshield: 0.58, roof: 1.5, rearGlass: 0.5, roofTaper: 0.9,
-    wheelRadius: 0.3, tyreWidth: 0.2,
-    style: { headlights: "round", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#b9b4a8", doors: 1, roundness: 0.9, sideStrip: true },
+    length: 4.06, width: 1.73, height: 1.45, overhangFront: 0.8,
+    clearance: 0.22, belt: 0.88, noseHeight: 0.71, tailHeight: 0.98,
+    hood: 1.12, windshield: 0.86, roof: 1.12, rearGlass: 0.62, roofTaper: 0.84,
+    beltRise: 0.1, roofDrop: 0.07,
+    wheelRadius: 0.32, tyreWidth: 0.2, glass: "#222a35", sculpt: CITADINE,
+    style: {
+      headlights: "swept", grille: "band", taillights: "wrap", bumpers: "blend", rim: "#c3c6cb", doors: 2, roundness: 0.8,
+      blackPillars: true, spoiler: "roof", lowerGrille: true, hiddenRearHandles: true, doorBlade: true, tailChrome: true, diffuser: true, spokes: 5,
+    },
   },
+  // Compacte (D273) : caisse sculptée d'après photos (`car-compacte.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   compacte: {
-    length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
-    clearance: 0.27, belt: 0.9, noseHeight: 0.82, tailHeight: 0.95,
-    hood: 1.2, windshield: 0.62, roof: 1.3, rearGlass: 0.78, roofTaper: 0.9,
-    wheelRadius: 0.31, tyreWidth: 0.2,
-    style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "paint", rim: "#c9ccd0", doors: 2, roundness: 0.6, spoiler: "roof", intake: true },
+    length: 4.37, width: 1.85, height: 1.44, overhangFront: 0.894,
+    clearance: 0.2, belt: 0.9, noseHeight: 0.7, tailHeight: 0.98,
+    hood: 1.32, windshield: 0.83, roof: 1.55, rearGlass: 0.36, roofTaper: 0.86,
+    wheelRadius: 0.325, tyreWidth: 0.22, glass: "#1f2731", sculpt: COMPACTE,
+    style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "paint", rim: "#5d6168", doors: 2, roundness: 0.6, spoiler: "roof", intake: true, spokes: 6 },
   },
+  // Berline (D274) : caisse sculptée d'après photos (`car-berline.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   berline: {
-    length: 4.75, width: 1.85, height: 1.45, overhangFront: 0.93,
-    clearance: 0.25, belt: 0.92, noseHeight: 0.8, tailHeight: 0.98,
-    hood: 1.45, windshield: 0.75, roof: 1.1, rearGlass: 0.6, roofTaper: 0.88,
-    wheelRadius: 0.32, tyreWidth: 0.21,
-    style: { headlights: "rect", grille: "chrome", taillights: "horizontal", bumpers: "paint", rim: "#c9ccd0", doors: 2, roundness: 0.35, chromeTrim: true, exhaust: 1 },
+    length: 4.72, width: 1.85, height: 1.44, overhangFront: 0.86,
+    clearance: 0.2, belt: 0.86, noseHeight: 0.62, tailHeight: 0.98,
+    hood: 1.3, windshield: 1.05, roof: 1.05, rearGlass: 0.85, roofTaper: 0.86,
+    wheelRadius: 0.335, tyreWidth: 0.23, glass: "#1c232c", sculpt: BERLINE,
+    style: { headlights: "rect", grille: "chrome", taillights: "horizontal", bumpers: "paint", rim: "#8d9198", doors: 2, roundness: 0.35, chromeTrim: true, exhaust: 1, spokes: 7 },
   },
+  // Break (D274) : caisse sculptée d'après photos (`car-break.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   break: {
-    length: 4.8, width: 1.85, height: 1.5, overhangFront: 0.93,
-    clearance: 0.25, belt: 0.93, noseHeight: 0.8, tailHeight: 0.98,
-    hood: 1.4, windshield: 0.7, roof: 1.9, rearGlass: 0.35, roofTaper: 0.9,
-    wheelRadius: 0.32, tyreWidth: 0.21,
-    style: { headlights: "rect", grille: "tall", taillights: "vertical", bumpers: "paint", rim: "#9a9ba0", doors: 2, roundness: 0.5, roofRails: true },
+    length: 4.83, width: 1.86, height: 1.45, overhangFront: 0.93,
+    clearance: 0.2, belt: 0.9, noseHeight: 0.66, tailHeight: 0.98,
+    hood: 1.45, windshield: 0.85, roof: 2.2, rearGlass: 0.16, roofTaper: 0.86,
+    wheelRadius: 0.345, tyreWidth: 0.23, glass: "#1c232c", sculpt: BREAK,
+    style: { headlights: "rect", grille: "tall", taillights: "vertical", bumpers: "paint", rim: "#b3b6bb", doors: 2, roundness: 0.5, roofRails: true, spokes: 10 },
   },
+
+  // Petit SUV (D275) : caisse sculptée d'après photos (`car-petit-suv.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   "petit-suv": {
-    length: 4.25, width: 1.8, height: 1.6, overhangFront: 0.88,
-    clearance: 0.2, belt: 1.0, noseHeight: 0.92, tailHeight: 1.06,
-    hood: 1.1, windshield: 0.6, roof: 1.35, rearGlass: 0.6, roofTaper: 0.92,
-    wheelRadius: 0.34, tyreWidth: 0.22,
-    style: { headlights: "strip", grille: "tall", taillights: "bar", bumpers: "trim", rim: "#55585e", doors: 2, roundness: 0.6, roof: "#24262b", cladding: true, roofRails: true, blackPillars: true },
+    length: 4.59, width: 1.89, height: 1.62, overhangFront: 0.93,
+    clearance: 0.24, belt: 1.12, noseHeight: 0.95, tailHeight: 1.1,
+    hood: 1.38, windshield: 0.66, roof: 1.95, rearGlass: 0.25, roofTaper: 0.9,
+    wheelRadius: 0.36, tyreWidth: 0.24, glass: "#1c232c", sculpt: PETIT_SUV,
+    style: { headlights: "strip", grille: "tall", taillights: "bar", bumpers: "trim", rim: "#6b6f76", doors: 2, roundness: 0.6, roof: "#24262b", cladding: true, roofRails: true, blackPillars: true, spokes: 8 },
   },
   camionnette: {
     length: 4.9, width: 1.95, height: 1.95, overhangFront: 0.9,
@@ -106,12 +123,21 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
       lettering: { text: "ROTISSERIE", color: "#d9472b", vertical: false }, spits: true,
     },
   },
+  // Sportive (D277) : caisse sculptée d'après photos (`car-sportive.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   sportive: {
-    length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
-    clearance: 0.12, belt: 0.78, noseHeight: 0.6, tailHeight: 0.84,
-    hood: 1.55, windshield: 0.85, roof: 0.75, rearGlass: 0.7, roofTaper: 0.84,
-    wheelRadius: 0.33, tyreWidth: 0.26, glass: "#1b2733",
-    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#2e3035", doors: 1, roundness: 0.7, roof: "#1b1d22", spoiler: "wing", hoodScoop: true, exhaust: 2, blackPillars: true },
+    length: 4.18, width: 1.8, height: 1.25, overhangFront: 0.8,
+    clearance: 0.15, belt: 0.9, noseHeight: 0.56, tailHeight: 0.78,
+    hood: 1.45, windshield: 0.75, roof: 0.65, rearGlass: 1.03, roofTaper: 0.62,
+    wheelRadius: 0.33, tyreWidth: 0.23, glass: "#1b2733", sculpt: SPORTIVE,
+    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#b5b9c0", doors: 1, roundness: 0.7, exhaust: 1, blackPillars: true, spokes: 10 },
+  },
+  // Supercar (D276, véhicule unique) : caisse sculptée d'après photos (`car-supercar.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
+  supercar: {
+    length: 4.94, width: 2.03, height: 1.14, overhangFront: 1.1,
+    clearance: 0.11, belt: 0.82, noseHeight: 0.42, tailHeight: 0.92,
+    hood: 1.2, windshield: 0.66, roof: 0.75, rearGlass: 0.6, roofTaper: 0.62,
+    wheelRadius: 0.34, tyreWidth: 0.3, glass: "#1b2330", sculpt: SUPERCAR,
+    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#6a6e76", doors: 1, roundness: 0.5, spoiler: "wing", exhaust: 2, blackPillars: true, spokes: 5 },
   },
   // Bus urbain (D204) : caisse longue et haute d'un seul tenant, pare-brise presque vertical, grandes vitres, deux tons (bleu, bas crème).
   "bus-urbain": {
@@ -161,7 +187,7 @@ export function createCarModel(id: string, color: string): VehicleModel {
   const layout = carLayout(p, front, rear);
   const bodyGeo = bodyPaintGeometry(p, front, rear, color);
   const detailGeo = bodyDetailGeometry(p, front, rear);
-  const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim);
+  const wheelGeo = carWheelGeometry(p.wheelRadius, p.tyreWidth, 14, p.style.rim, p.style.spokes);
   // Dégâts (D110) : préparés à la première bosse seulement (copie des positions et des couleurs d'origine).
   const frame = crumpleFrame(p, front, rear);
   let crumplers: Crumpler[] | null = null;
@@ -259,7 +285,7 @@ export function carRestGeometry(id: string): THREE.BufferGeometry {
   const { paint, detail, p, front, rear } = bodyParts(id);
   const parts = [paint, detail];
   for (const [x, z] of carLayout(p, front, rear).wheels) {
-    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim);
+    const w = carWheelGeometry(p.wheelRadius, p.tyreWidth, 10, p.style.rim, p.style.spokes, Math.sign(x));
     w.translate(x, p.wheelRadius, z);
     parts.push(w);
   }
