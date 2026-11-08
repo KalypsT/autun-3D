@@ -7,15 +7,21 @@ import { BIKE, CAR, MOTO, type VehicleSpec } from "./vehicle";
  * La coque recouvre le gabarit : trois cercles de (largeur / 2 − 3 cm) du nez à la queue.
  */
 
-/** Plafond de vitesse (m/s) : les vitesses réelles de la sportive (240 km/h) et de la moto sportive (250) ne servent à rien dans un anneau de 3 km (D50). À relever avec la commune entière (étape C). */
-export const SPEED_CAP = { car: 200 / 3.6, moto: 210 / 3.6 } as const;
+/**
+ * Plafond de vitesse (m/s). Voitures : 200 km/h de D50 à D282, relevé à 300 en D283 (le monde fait 18,9 km² depuis D105, avec des lignes droites
+ * de 1,2 à 2,1 km ; collisions sûres jusqu'à ≈ 350 km/h, D51) : la sportive roule à ≈ 240 km/h, la supercar à ≈ 300. Moto sportive : 210 (D50, inchangé).
+ */
+export const SPEED_CAP = { car: 300 / 3.6, moto: 210 / 3.6 } as const;
+
+/** Plafond des gendarmes en poursuite (D283) : 200 km/h, comme avant D283, pour ne pas lancer la berlinette à 240 km/h dans les rues derrière le joueur. */
+export const PURSUIT_CAP = 200 / 3.6;
 
 /**
- * Fiche plafonnée : si la vitesse réelle dépasse le plafond, la traction s'éteint progressivement sur les 6 % de vitesse sous le plafond
- * (un limiteur, pas un mur) ; l'accélération et le reste de la fiche ne changent pas.
+ * Fiche plafonnée : si la vitesse réelle dépasse le plafond, la traction s'éteint progressivement sur la fraction `fade` de vitesse sous le plafond
+ * (6 % par défaut : un limiteur, pas un mur) ; l'accélération et le reste de la fiche ne changent pas.
  */
-export function limited(spec: VehicleSpec, cap: number): VehicleSpec {
-  return spec.topSpeed <= cap ? spec : { ...spec, topSpeed: cap, driveFadeFrom: Math.min(spec.driveFadeFrom, cap * 0.94) };
+export function limited(spec: VehicleSpec, cap: number, fade = 0.06): VehicleSpec {
+  return spec.topSpeed <= cap ? spec : { ...spec, topSpeed: cap, driveFadeFrom: Math.min(spec.driveFadeFrom, cap * (1 - fade)) };
 }
 
 const kmh = (v: number): number => v / 3.6;
@@ -57,14 +63,14 @@ export const COMPACT: VehicleSpec = {
   maxBrake: 14000, reverseForce: 3800, drag: 0.41, hull: [[1.08, 0.87], [-0.17, 0.89], [-1.43, 0.87]], wheelRadius: 0.31, engineBrake: 380,
 };
 
-/** Berline tricorps : 1 650 kg, 110 kW dont 94 aux roues, 0 à 100 km/h en ≈ 9 s, 215 km/h (plafonnée). */
+/** Berline tricorps : 1 650 kg, 110 kW dont 94 aux roues, 0 à 100 km/h en ≈ 9 s, 215 km/h. */
 export const SEDAN: VehicleSpec = limited({
   ...CAR, mass: 1650, yawInertia: 2777, front: 1.15, rear: 1.67, steerFade: 15,
   corneringFront: 92000, corneringRear: 105000, power: 94000, maxDrive: 6470, driveFadeFrom: kmh(195), topSpeed: kmh(215),
   maxBrake: 17000, reverseForce: 4600, drag: 0.36, hull: [[1.18, 0.9], [-0.29, 0.92], [-1.77, 0.9]], wheelRadius: 0.32, bodyRoll: 0.014, engineBrake: 420, cgHeight: 0.54, brakeFront: 0.78,
 }, SPEED_CAP.car);
 
-/** Break : la berline allongée et alourdie, 1 750 kg, 205 km/h (plafonnée), plus de roulis. */
+/** Break : la berline allongée et alourdie, 1 750 kg, 205 km/h, plus de roulis. */
 export const WAGON: VehicleSpec = limited({
   ...CAR, mass: 1750, yawInertia: 2945, front: 1.12, rear: 1.7, steerFade: 15,
   corneringFront: 98000, corneringRear: 112000, power: 94000, maxDrive: 6900, driveFadeFrom: kmh(190), topSpeed: kmh(205),
@@ -73,12 +79,12 @@ export const WAGON: VehicleSpec = limited({
 
 /**
  * Voiture de gendarmerie (J4, D72) : la compacte avec un moteur plus fort (1 420 kg avec l'équipement, 95 kW aux roues, 0 à 100 km/h en ≈ 8,5 s,
- * 205 km/h plafonnée à 200), freins et pneus un peu meilleurs. Elle doit pouvoir rattraper la plupart des voitures volées, pas la sportive.
+ * 205 km/h, bridée à 200 : `PURSUIT_CAP`, comme avant D283), freins et pneus un peu meilleurs. Elle doit pouvoir rattraper la plupart des voitures volées, pas la sportive.
  */
 export const POLICE_CAR: VehicleSpec = limited({
   ...COMPACT, mass: 1420, yawInertia: 2094, corneringFront: 82000, corneringRear: 92000, power: 95000, maxDrive: 6300, driveFadeFrom: kmh(190), topSpeed: kmh(205),
   maxBrake: 15500, engineBrake: 400,
-}, SPEED_CAP.car);
+}, PURSUIT_CAP);
 
 /** Petit SUV : 1 450 kg, 72 kW aux roues, 180 km/h, haut sur roues (centre de gravité à 0,65 m, plus de roulis), moins de prise que la compacte. */
 export const SUV: VehicleSpec = {
@@ -155,27 +161,30 @@ export const OLD_CAR: VehicleSpec = {
 };
 
 /**
- * Sportive à propulsion : 1 450 kg, 190 kW aux roues, 0 à 100 km/h en ≈ 5 s, 240 km/h réels, plafonnée à 200 km/h ; pneus larges (adhérence 1,15),
+ * Sportive à propulsion : 1 450 kg, 190 kW aux roues, 0 à 100 km/h en ≈ 5 s, ≈ 240 km/h (D283 : la traction s'éteint entre 236 et 240, pour qu'elle
+ * les atteigne vraiment ; de 225 à 240, la traînée l'arrêtait à 231) ; pneus larges (adhérence 1,15),
  * centre de gravité bas (0,45 m), roue arrière motrice. Conduite (D97) : antipatinage en virage (70 % de l'adhérence arrière pour la motricité,
  toute en ligne droite), l'arrière ne décroche que plein braquage et plein gaz, en glisse tenue (≈ 20 à 25°, bornée à ≈ 40°) ; avant D97, plein gaz en virage = tête-à-queue.
  */
 export const SPORT_CAR: VehicleSpec = limited({
   ...CAR, mass: 1450, yawInertia: 2074, front: 1.28, rear: 1.32, maxSteer: 0.55, steerFade: 16, steerRate: 2, grip: 1.15,
-  corneringFront: 108000, corneringRear: 125000, power: 190000, maxDrive: 8800, driveFadeFrom: kmh(225), topSpeed: kmh(240),
+  corneringFront: 108000, corneringRear: 125000, power: 190000, maxDrive: 8800, driveFadeFrom: kmh(236), topSpeed: kmh(240),
   maxBrake: 17000, reverseForce: 3900, drag: 0.38, hull: [[1.29, 0.91], [-0.02, 0.93], [-1.34, 0.91]], wheelRadius: 0.33, bodyRoll: 0.008, engineBrake: 450, driveAxle: "rear", cgHeight: 0.45, brakeFront: 0.66,
   traction: 0.7, rearGrip: 1.06, driftAssist: 0.45, maxDrift: 0.7,
 }, SPEED_CAP.car);
 
 /**
- * Supercar à moteur central (D276, véhicule unique) : 1 550 kg, ≈ 420 kW aux roues, 0 à 100 km/h en ≈ 3 s, plafonnée à 200 km/h comme les autres
- * voitures (D50 : au-delà, ni le chargement des tuiles ni les chocs ne sont vérifiés). Empattement réel (2,70 m), poids sur l'arrière (moteur derrière
+ * Supercar à moteur central (D276, véhicule unique) : 1 550 kg, ≈ 420 kW aux roues, 0 à 100 km/h en ≈ 3 s, 350 km/h réels, limitée à 300 km/h
+ * (D283 ; limiteur court, sur les 2 % sous le plafond, pour qu'elle atteigne ≈ 297 : sur 6 %, elle restait à 291). Empattement réel (2,70 m), poids sur l'arrière (moteur derrière
  * le conducteur : centre de gravité à 1,54 m de l'essieu avant), pneus très larges, centre de gravité très bas ; même conduite que la sportive (D97).
+ * Pneus arrière plus rigides que l'avant (dérive 165 000 N/rad, 150 000 avant D283) : avec ce poids sur l'arrière et 150 000, elle était survireuse
+ * (vitesse critique ≈ 320 km/h) et, braquée puis relâchée à 300 km/h, gardait une dérive de 2 m/s au bout de 4 s ; elle est maintenant à peine sous-vireuse.
  */
 export const SUPERCAR: VehicleSpec = limited({
   ...SPORT_CAR, mass: 1550, yawInertia: 2450, front: 1.54, rear: 1.16, grip: 1.25,
-  corneringFront: 120000, corneringRear: 150000, power: 420000, maxDrive: 15000, driveFadeFrom: kmh(330), topSpeed: kmh(350),
+  corneringFront: 120000, corneringRear: 165000, power: 420000, maxDrive: 15000, driveFadeFrom: kmh(330), topSpeed: kmh(350),
   maxBrake: 21000, drag: 0.36, hull: [[1.64, 1.0], [0.17, 1.01], [-1.3, 1.0]], wheelRadius: 0.36, bodyRoll: 0.006, cgHeight: 0.4, brakeFront: 0.6,
-}, SPEED_CAP.car);
+}, SPEED_CAP.car, 0.02);
 
 /**
  * Deux-chevaux (D280, véhicule unique, l'Éduen Bourdon) : 660 kg avec le conducteur, bicylindre de 21 kW (≈ 18 kW aux roues), 0 à 100 km/h en une
@@ -194,6 +203,6 @@ export const DEUCHE: VehicleSpec = {
  * Gendarmerie en berlinette (D282), conduite par les gendarmes en poursuite : la fiche de la sportive bridée à 110 kW aux roues (au lieu de 190).
  * À pleine puissance, elle arrivait trop vite sur un fugitif arrêté et le touchait (2 départs sur 6 de l'essai de poursuite, `chase.test.ts`) ;
  * bridée, elle s'arrête près de lui comme la gendarmerie ordinaire (5 sur 6), tout en restant plus vive qu'elle (95 kW, adhérence moindre).
- * Volée par le joueur, elle a la fiche entière de la sportive.
+ * Bridée aussi à 200 km/h (`PURSUIT_CAP`, D283) : la sportive roule maintenant à 240. Volée par le joueur, elle a la fiche entière de la sportive.
  */
-export const ALPINE_PURSUIT: VehicleSpec = { ...SPORT_CAR, power: 110000, maxDrive: 6500 };
+export const ALPINE_PURSUIT: VehicleSpec = limited({ ...SPORT_CAR, power: 110000, maxDrive: 6500 }, PURSUIT_CAP);

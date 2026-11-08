@@ -1993,3 +1993,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : monter à la croix, prendre la supercar et descendre en ville ; dire si elle se tient bien au doigt.
 
 ![La supercar](docs/captures/d276-supercar.jpg)
+
+**Sportive à 240 km/h, supercar à 300 (8 novembre 2026)** (D283)
+- Le plafond des voitures passe de 200 à 300 km/h : la sportive (Augusta Janus) atteint ≈ 240 km/h, la supercar (Augusta Bibracte) ≈ 300.
+- La sportive a été réglée pour atteindre vraiment ses 240 km/h (sans cela, elle restait à 231) ; la supercar, plus stable à très haute vitesse (pneus arrière plus rigides).
+- Les gendarmes restent bridés à 200 km/h en poursuite ; la moto sportive reste à 210.
+- Les traits de vitesse sont pleins à 300 km/h au lieu de 200.
+- À faire de ton côté : lancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone (« chargement en retard » doit rester à 0), puis essayer la supercar sur la grande ligne droite au nord de la ville.

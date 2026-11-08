@@ -17,10 +17,10 @@ export function speedFov(speed: number, driving: boolean): number {
   return BASE_FOV + 18 * (1 - Math.exp(-v / 30));
 }
 
-/** Traits de vitesse (0-1) : rien sous 100 km/h, pleins à 200 km/h. */
+/** Traits de vitesse (0-1) : rien sous 100 km/h, pleins à 300 km/h (200 avant D283, quand les voitures étaient plafonnées à 200). */
 export function speedLines(speed: number): number {
   const kmh = Math.abs(speed) * 3.6;
-  return Math.min(Math.max((kmh - 100) / 100, 0), 1);
+  return Math.min(Math.max((kmh - 100) / 200, 0), 1);
 }
 
 /**
