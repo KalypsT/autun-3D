@@ -6353,3 +6353,9 @@ image de plus de 33 ms, le banc garde maintenant :
 - les « Long Animation Frames » de Chrome : tout le code qui a tourné pendant l'image, y compris hors de la boucle (fichier reçu, promesse),
   avec la fonction et sa position dans le fichier construit (à retrouver dans le code avec la même version construite et ses sourcemaps).
 Le rapport texte ajoute deux à sept lignes par phase ; le JSON garde les 40 images les plus lentes de chaque phase.
+Vérifié sur PC (banc court dans Chromium) : le rapport sort, Chrome y signale bien ses images longues ; les chiffres, eux, ne valent rien en rendu
+logiciel (une image de rendu dure ≈ 2 s, tout passe en « hors mesure »).
+
+**Reste de ton côté** : une fois la branche fusionnée et le site reconstruit, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone, et
+m'envoyer le JSON. On y lira (1) si la tranche la plus longue de `23_36` est tombée sous ≈ 10 ms, (2) où partent les saccades hors construction
+de tuile : rendu (envoi au GPU, compilation d'un nuanceur, envoi d'une texture), passants, ou « hors mesure » (ramasse-miettes, GPU).
