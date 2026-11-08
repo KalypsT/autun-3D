@@ -229,6 +229,37 @@ NETS = [[(2070.0, -57.0), (2010.8, -23.0)], [(2121.5, -5.0), (2094.0, 18.0)]]  #
 AREA = (2000.0, -120.0, 2200.0, 45.0)
 
 
+def holes(spec):
+    """Les trous, dans l'ordre où les golfeurs les jouent (D291) : pour chaque green, son départ (le départ relevé le plus loin dans sa
+    cellule de Voronoï, sinon le point du golf le plus loin du green dans la cellule, à 15 m du bord au moins), puis une tournée qui part
+    du trou le plus proche du club-house et va chaque fois au départ le plus proche du green qu'on vient de jouer."""
+    golf = unary_union([poly_of(r) for r in spec["outline"]])
+    greens = [poly_of(r) for r in spec["greens"]]
+    tees = [poly_of(r).centroid for r in spec["tees"]]
+    inner = golf.buffer(-15)
+    cells = voronoi_diagram(MultiPoint([g.centroid for g in greens]), envelope=golf.envelope.buffer(200))
+    out = []
+    for g in greens:
+        gc = g.centroid
+        cell = next(c0 for c0 in cells.geoms if c0.contains(gc))
+        own = [t for t in tees if cell.contains(t)]
+        if own:
+            start = max(own, key=gc.distance)
+        else:
+            area = inner.intersection(cell)
+            start = max((Point(q) for p in polys(area) for q in p.exterior.coords), key=gc.distance) if not area.is_empty else gc
+        f = flag_point(g)
+        out.append([round(start.x, 1), round(start.y, 1), round(gc.x, 1), round(gc.y, 1), round(f.x, 1), round(f.y, 1)])
+    order, left = [], list(range(len(out)))
+    cur = min(left, key=lambda i: math.dist(out[i][:2], (2100, -60)))
+    while left:
+        order.append(cur)
+        left.remove(cur)
+        if left:
+            cur = min(left, key=lambda i: math.dist(out[i][:2], out[order[-1]][2:4]))
+    return [out[i] for i in order]
+
+
 def club(world):
     """Pose le club-house et l'entrée dans les tuiles, les fiches, les types et les silhouettes. Rend les tuiles modifiées."""
     tiles = {t["id"]: t for t in world["tiles"]}
@@ -270,7 +301,8 @@ def club(world):
             "tables": tables, "parasols": parasols,
             "sign": {"a": [round(a[0], 2), round(a[1], 2)], "b": [round(b[0], 2), round(b[1], 2)], "z0": 0.25, "z1": 1.85},
             "flags": [list(f) for f in FLAGS],
-            "practice": {"a": list(PRACTICE_A), "b": list(PRACTICE_B), **PRACTICE}}
+            "practice": {"a": list(PRACTICE_A), "b": list(PRACTICE_B), **PRACTICE},
+            "holes": holes(json.loads(DATA.read_text()))}
     # Allée de gravier derrière les dalles du practice.
     pa, pb = np.array(PRACTICE_A), np.array(PRACTICE_B)
     pt = (pb - pa) / np.linalg.norm(pb - pa)

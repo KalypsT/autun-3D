@@ -6612,3 +6612,31 @@ rendu et les collisions dans `src/core/golf.ts` (poteaux de l'abri et des cibles
 
 **Limites** : pas de balles ni de seaux sur les tapis ; les filets sont en barreaudage de grillage, pas en maille souple. Suite : lot 4 (golfeurs).
 
+## 2026-11-08 — D291. Le golf, lot 4 : les golfeurs
+
+**Demande** : des golfeurs sur le parcours (photos : groupes de trois ou quatre sur les greens, chariots à roues, sacs).
+
+**Trous** (`build_golf.py`, champ `holes` du site) : pour chaque green, son départ (le départ relevé le plus loin dans sa cellule de Voronoï,
+sinon le point du golf le plus loin du green dans la cellule, à 15 m du bord au moins) et son drapeau ; une tournée part du trou le plus proche
+du club-house et va chaque fois au départ le plus proche du green joué. 14 trous de 57 à 152 m, ≈ 1,5 km joués.
+
+**Logique** (`src/core/golfers.ts`, `GolfRound`, pure) : **quatre groupes** de deux à quatre joueurs, répartis sur le parcours. Un groupe marche du
+départ au green à 1,05 m/s (au pas d'un chariot), s'arrête 14 s au départ et 9 s tous les 70 m (les coups), se rassemble en cercle à 3 à 5 m du
+drapeau (30 s, les chariots laissés au bord), puis va au départ suivant. Au **practice**, trois joueurs sur les tapis sous l'abri, face au terrain.
+
+**Dans le jeu** (`src/game/golfers.ts`, `GolfersController`) : une petite foule à part, dessinée par le moteur des passants (recettes tirées comme
+eux, ombres selon le réglage), et un **chariot** par joueur qui marche (roues, châssis, sac bleu marine, poignée), en une seule instance : deux
+appels de dessin. Actifs **de 8 h à 20 h, hors pluie**, quand le joueur est à moins de 1,2 km du premier départ ; sinon ni simulation ni dessin.
+Le site arrive par les données de tuile chargées (`TileExtras.golf`), comme les voiliers du Vallon.
+
+**Essais** : `src/core/golfers.test.ts` : nombre de joueurs ; au pas, sans saut ; en quatre heures, un groupe passe par les 14 drapeaux ; au practice,
+on regarde le terrain. Vérifié en jeu (`tools/play.sh`, 11 h, beau temps) : un groupe autour du drapeau du green près de la terrasse, un joueur
+poussant son chariot. 1 425 essais.
+
+![Un groupe au drapeau](captures/d291-golfeurs-green.jpg)
+![Avec son chariot](captures/d291-golfeurs-chariot.jpg)
+
+**Limites** : pas de geste de swing (ils se tiennent debout aux coups), pas de balle ; tenues de passants ordinaires (pas de casquette ni de polo
+dédiés) ; les golfeurs ne réagissent ni au joueur ni aux tirs (ils ne sont pas des passants du jeu) ; pas de piquets blancs ni de massifs de fleurs
+(finitions du lot 4 laissées de côté).
+

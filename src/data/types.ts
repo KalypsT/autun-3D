@@ -1094,6 +1094,8 @@ export interface GolfSite {
    * charpente bois de l'abscisse s0 à s1 ; cibles rondes dans le terrain.
    */
   practice?: { a: [number, number]; b: [number, number]; step: number; depth: number; shelter: [number, number]; targets: [number, number][] };
+  /** Trous dans l'ordre de jeu des golfeurs (D291) : départ (x, y), centre du green, drapeau. */
+  holes?: [number, number, number, number, number, number][];
 }
 
 /**

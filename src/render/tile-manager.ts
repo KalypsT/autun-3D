@@ -9,7 +9,7 @@ import { loadLandmarks, loadLod, loadTile } from "../data/load";
 import { MeshBuilder } from "./geometry";
 import { buildFarTower } from "./monuments";
 import type { TiledTerrain } from "../data/terrain";
-import type { Furniture, LodBuilding, SailRoute, StairsZone, TileData, TileInfo, WorldBase } from "../data/types";
+import type { Furniture, LodBuilding, SailRoute, StairsZone, TileData, TileInfo, WorldBase, GolfSite } from "../data/types";
 import { finish, type Steps } from "./geometry";
 import { buildLodTile } from "./lod";
 import { weatherize } from "./weather-fx";
@@ -51,6 +51,8 @@ export interface TileExtras {
   water?: number[][][];
   /** Boucles des voiliers du plan d'eau du Vallon (D249). */
   sail?: SailRoute[];
+  /** Golf municipal (D289 à D291) : le site, pour les golfeurs. */
+  golf?: GolfSite | undefined;
 }
 
 interface Entry {
@@ -236,7 +238,8 @@ export class TileManager {
     }
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
-    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [], sail: data.structures?.sail ?? [] };
+    e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [], sail: data.structures?.sail ?? [],
+      golf: data.kinds?.sites.find((q): q is GolfSite => q.t === "golf") };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);

@@ -2058,3 +2058,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Le practice](docs/captures/d290-practice.jpg)
 
+**Le golf, lot 4 : les golfeurs (8 novembre 2026)** (D291)
+- Quatre groupes de deux à quatre golfeurs font le tour des 14 trous, en poussant leur chariot ; ils s'arrêtent à chaque coup et se retrouvent autour du drapeau sur les greens. Trois joueurs s'entraînent au practice.
+- Ils jouent de 8 h à 20 h, et pas sous la pluie.
+- Limites : ils ne font pas de swing (ils restent debout aux coups) et ne réagissent pas au joueur.
+- À faire de ton côté : aller voir un groupe vers 11 h (`?at=2036,-80&h=11`).
+
+![Un groupe au drapeau](docs/captures/d291-golfeurs-green.jpg)
+![Avec son chariot](docs/captures/d291-golfeurs-chariot.jpg)
+
