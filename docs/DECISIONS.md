@@ -6280,3 +6280,24 @@ pour la sportive à 200 comme à 240, ≈ 40 pour la supercar à 300) ; c'était
 1. Mesure du téléphone : `?bench=1&crowd=100&sim=1&fleet=1&fast=300`. Objectif : « chargement en retard » = 0 au trajet à 300 km/h.
    S'il y a du retard, on redescend `SPEED_CAP.car` (250 par exemple) : une seule constante.
 2. Essai au volant : `?ride=supercar` puis l'axe nord ; dire si 300 km/h reste jouable.
+
+**Mesure du téléphone** (8 novembre 2026, Honor Magic 8 Pro, Adreno 840, Chrome 156, version `adb78de`, paysage 898 × 298 px, ombres 4096,
+détail 300 m, `?bench=1&crowd=100&sim=1&fleet=1&fast=300`) :
+
+| Phase | i/s | 1 % le plus lent | Images > 33 ms | > 50 ms | Pire image | Tuiles construites | En retard |
+|---|---|---|---|---|---|---|---|
+| Arrêt (trois phases) | 60,3 à 60,5 | 47 à 55 | 0 | 0 | 27 ms | 0 | – |
+| Rues à 50 km/h | 59,9 | 33,8 | 10 | 4 | 133 ms | 15 | **0** |
+| Rues à 90 km/h | 59,8 | 27,5 | 13 | 1 | 53 ms | 22 | **0** |
+| Rues à 300 km/h | 57,3 | 16,4 | 28 | 10 | 99 ms | 52 en 31 s | **0** |
+
+- **Le plafond tient** : aucune image où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'a pas ses obstacles, même à 300 km/h.
+  `SPEED_CAP.car` reste à 300.
+- **Mais la conduite à 300 km/h saccade** : environ une image de plus de 33 ms par seconde (28 en 31 s), dont 6 seulement pendant une construction
+  de tuile. Une tuile, `23_36`, prend à elle seule une tranche de 69 à 82 ms d'un bloc (budget : 4 ms), à 50 comme à 300 km/h : c'est le
+  `JSON.parse` d'une grosse tuile (D23), pas la vitesse.
+- **Dégradation générale depuis D57**, à toutes les vitesses : 1 % le plus lent à 50,7, 49,0 et 44,8 i/s en D57 (50, 90 et 200 km/h, monde de 9 km²),
+  contre 33,8 et 27,5 aujourd'hui à 50 et 90 km/h. Elle n'est donc pas due à D283. Le monde, les tuiles et les détails ont beaucoup grossi depuis.
+- **Pistes, à faire séparément** : (1) découper ou alléger la tuile `23_36` et les plus grosses tuiles, ou les lire hors du fil principal ;
+  (2) trouver les 22 saccades à 300 km/h qui ne coïncident avec aucune construction (ramasse-miettes, naissances de passants : 557 en 31 s,
+  jusqu'à 4,5 ms) ; (3) refaire `fast=200` sur la même version pour séparer l'effet de la vitesse de celui de la version.
