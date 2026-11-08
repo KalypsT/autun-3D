@@ -58,7 +58,7 @@
             "color": { "$ref": "#/$defs/color" }
           }
         },
-        "roof": { "enum": ["tuile_plate", "tuile_mecanique", "ardoise", "zinc", "terrasse"] }
+        "roof": { "enum": ["tuile_plate", "tuile_mecanique", "ardoise", "zinc", "terrasse", "tuile_brune"] }
       }
     },
     "facade": {

@@ -6564,3 +6564,32 @@ pas de collision (un mât de golf plie). 9 tuiles, images de carte `s8_8`, `s8_9
 **Limites** : l'appariement départ-green est géométrique (cellules de Voronoï), pas le vrai plan des trous ; certains départs, à l'ombre ou
 jaunis, ne sont pas relevés ; les greens ne sont pas surélevés (relief LiDAR tel quel). Suite : lot 2 (club-house et entrée).
 
+## 2026-11-08 — D289. Le golf, lot 2 : le club-house, sa terrasse et l'entrée
+
+**Photos** : le club-house vu de drone (toits à croupes de tuiles brun-gris, cheminées, terrasse pavée avec une tente blanche et des tables),
+les terrasses face au green (tables carrées en bois, chaises en résine tressée, parasol, haie fleurie), l'entrée sur le chemin des Ragots (muret
+de béton, panneau vert « Bienvenue – Golf municipal de la ville d'Autun », deux mâts à drapeaux, petit bâtiment d'accueil à toit de tôle vert).
+Orthophotographie de l'IGN pour les positions : le club-house (deux volumes BD TOPO), la tente collée à l'ouest, côté green (BD TOPO la compte
+comme un bâtiment de 74 m²), le bâtiment d'accueil et le parking au nord-est, l'allée d'entrée vers x 2 155.
+
+**Fait** (`build_golf.py`, fonction `club`, à chaque pose) :
+- Toits du club-house en **tuile brune** (nouveau matériau `tuile_brune`, `#7d675c` ; thèmes, schéma des fiches, silhouettes lointaines) ; toit de
+  tôle (`zinc`) pour le bâtiment d'accueil.
+- **Tente** : le bâtiment BD TOPO caché (`k: "hidden"`), remplacé par son rectangle (103 m²) : côtés blancs de 2,3 m, toit à deux pans, faîtage à
+  3,7 m ; solide (anneau de collision).
+- **Terrasse** de 390 m² côté ouest (couche de sol `golf_terrace`, pavés rouge brique), bordée d'une **haie** fleurie de 1,1 m (deux murs `hedge`,
+  passage vers le parcours) ; **8 tables** carrées avec 4 chaises chacune, réparties sur toute la terrasse hors de la tente, **4 parasols** blancs.
+- **Entrée** : muret de béton de 9 m et 1,2 m à l'est de l'allée (mur `wall`), **panneau** vert à cadre blanc (balle et clubs croisés, lignes de
+  texte suggérées, comme les enseignes du jeu) posé devant, **deux mâts** de 6 m à oriflamme blanche et rouge devant le bâtiment d'accueil.
+- Rendu : `src/render/golf.ts` (site `golf` des types, `GolfSite`) ; collisions : tente, tables, parasols et mâts (`src/core/landmarks.ts`).
+
+**Essais** : `golf.test.ts` (site, tables, tente cachée, toits, terrasse, haies et muret). 1 422 essais.
+
+![Avant](captures/d289-club-avant.jpg)
+![Après](captures/d289-club-apres.jpg)
+![La terrasse, face au green](captures/d289-terrasse.jpg)
+![L'entrée](captures/d289-entree.jpg)
+
+**Limites** : le texte du panneau est suggéré (traits), pas lisible ; les murs du club-house restent ceux d'une maison générique (fenêtres,
+enduit crème) ; pas de massif de fleurs roses distinct de la haie. Suite : lot 3 (practice).
+

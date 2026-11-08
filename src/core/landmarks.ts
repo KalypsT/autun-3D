@@ -130,6 +130,12 @@ export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>
   }
   // Fontaine d'après photo (D131) : son bassin.
   for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
+  // Golf (D289) : tables de la terrasse, parasols, mâts de l'entrée.
+  for (const s of kinds.sites) {
+    if (s.t !== "golf") continue;
+    for (const [x, y] of s.tables) out.push([x, y, 0.5]);
+    for (const [x, y] of [...s.parasols, ...s.flags]) out.push([x, y, 0.1]);
+  }
   // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
   for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
   // Rideaux de tilleuls de la place du Champ de Mars (D155) : leurs troncs.
@@ -1149,6 +1155,8 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     if (s.t === "bandstand") out.push(bandstandRing(s).flat());
     // Monument aux morts (D227) : le degré du bas de l'esplanade ; on n'y monte pas.
     if (s.t === "memorial") out.push(memorialRing(s).flat());
+    // Golf (D289) : la tente blanche de la terrasse du club-house.
+    if (s.t === "golf") out.push([...s.tent.r]);
     if (s.t !== "gate") continue;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { TileData } from "./types";
+import type { GolfSite, TileData } from "./types";
 
 // Golf municipal d'Autun (D288, tools/data/build_golf.py) : sols du parcours relevés sur l'orthophotographie de l'IGN.
 const tiles = readdirSync("public/data/tiles").map((n) => JSON.parse(readFileSync(`public/data/tiles/${n}`, "utf8")) as TileData);
@@ -28,5 +28,20 @@ describe("golf municipal (D288)", () => {
       return ok;
     };
     for (const f of tile.furniture.filter((q) => q.kind === "golf_flag")) expect(greens.some((p) => inside(f.x, f.y, p[0]!))).toBe(true);
+  });
+
+  it("le club-house a sa tente, sa terrasse, ses tables, ses toits de tuiles brunes ; l'entrée son muret, son panneau et ses drapeaux (D289)", () => {
+    const kinds = JSON.parse(readFileSync("public/data/kinds/34_34.json", "utf8")) as { buildings: Record<string, { k: string }>; sites: { t: string }[] };
+    const site = kinds.sites.find((q) => q.t === "golf") as GolfSite | undefined;
+    expect(site).toBeDefined();
+    expect(site!.tables.length).toBe(8);
+    expect(site!.flags.length).toBe(2);
+    expect(site!.tent.r.length).toBe(8);
+    expect(kinds.buildings["BATIMENT0000002479786299"]?.k).toBe("hidden");
+    const fiches = tiles.flatMap((t) => t.fiches);
+    for (const id of ["BATIMENT0000000348844174", "BATIMENT0000000348844175"]) expect(fiches.find((f) => f.id === id)?.materials.roof).toBe("tuile_brune");
+    expect(tiles.flatMap((t) => t.ground["golf_terrace"] ?? []).length).toBeGreaterThan(0);
+    const walls = tiles.flatMap((t) => t.walls).filter((w) => w.id <= -950_000_000 && w.id > -950_000_100);
+    expect(walls.map((w) => w.kind).sort()).toEqual(["hedge", "hedge", "wall"]);
   });
 });

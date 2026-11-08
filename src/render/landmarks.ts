@@ -1,3 +1,4 @@
+import { buildGolf } from "./golf";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel, TileKinds } from "../data/types";
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
@@ -1014,6 +1015,7 @@ export function buildLandmarks(
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);
     else if (s.t === "memorial") buildMemorial(sinks.solid, s, terrain);
     else if (s.t === "passage") buildPassage(sinks, s, terrain);
+    else if (s.t === "golf") buildGolf(sinks.solid, s, terrain);
     else if (s.t === "pitch" && s.hoops) buildHoops(sinks.solid, s.hoops, terrain);
   }
 }

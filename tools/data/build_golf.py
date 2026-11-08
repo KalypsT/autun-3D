@@ -151,7 +151,7 @@ def built_mask():
             r = b["ring"]
             geoms.append(Polygon([(r[i], r[i + 1]) for i in range(0, len(r), 2)]).buffer(3.0))
         for layer, ps in d["ground"].items():
-            if layer.startswith(("road_", "plaza_")) or layer in ("walk", "water"):
+            if layer.startswith(("road_", "plaza_")) or layer in ("walk", "water", "golf_terrace"):
                 geoms += [decode(p).buffer(2.0) for p in ps]
     return unary_union(geoms)
 
@@ -211,8 +211,124 @@ def flag_point(g):
     return p if g.buffer(-1.5).contains(p) else c0
 
 
+# --- Club-house et entrée (lot 2, D289) -----------------------------------------------------------------------------------------------
+CLUB = ("BATIMENT0000000348844174", "BATIMENT0000000348844175")  # le club-house (deux volumes BD TOPO), toits de tuiles brun-gris
+WELCOME = "BATIMENT0000000348844168"  # le petit bâtiment d'accueil de l'entrée, toit de tôle vert-gris
+TENT = "BATIMENT0000002479786299"  # la tente blanche de la terrasse (BD TOPO la compte comme un bâtiment)
+TERRACE = [(2083.0, -87.5), (2099.0, -87.5), (2099.0, -61.0), (2083.0, -61.0)]  # côté ouest, face au green (orthophoto, photos 8 et 9)
+HEDGES = [[(2082.6, -87.5), (2082.6, -61.0), (2089.5, -61.0)], [(2093.5, -61.0), (2097.0, -61.0)]]  # haie fleurie, passage vers le parcours
+ROAD_DIR = (0.977, 0.215)  # chemin des Ragots devant l'entrée
+WALL0 = (2159.1, -76.0)  # muret de l'entrée, à l'est de l'allée, 4 m au nord de l'axe de la route
+WALL_LEN = 9.0
+FLAGS = [(2134.0, -47.0), (2126.0, -49.0)]  # mâts devant le bâtiment d'accueil (photo de l'entrée)
+WALL_ID0 = -950_000_000
+
+
+def club(world):
+    """Pose le club-house et l'entrée dans les tuiles, les fiches, les types et les silhouettes. Rend les tuiles modifiées."""
+    tiles = {t["id"]: t for t in world["tiles"]}
+
+    def tile_at(x, y):
+        return f"{math.floor((x - c.GRID_X) / c.TILE)}_{math.floor((y - c.GRID_Y) / c.TILE)}"
+
+    rings, home = {}, {}
+    for tid, t in tiles.items():
+        if not box(*t["bounds"]).intersects(box(2050, -120, 2200, 0)):
+            continue
+        for b in json.loads((OUT / "tiles" / f"{tid}.json").read_text())["buildings"]:
+            if b["id"] in CLUB + (WELCOME, TENT):
+                r = b["ring"]
+                rings[b["id"]] = Polygon([(r[i], r[i + 1]) for i in range(0, len(r), 2)]).buffer(0)
+                home[b["id"]] = tid
+    missing = set(CLUB + (WELCOME, TENT)) - set(rings)
+    if missing:
+        raise SystemExit(f"bâtiments absents : {missing}")
+    house = unary_union([rings[i] for i in CLUB])
+    tent_r = rings[TENT].minimum_rotated_rectangle
+    terrace = Polygon(TERRACE).difference(house.buffer(0.1))
+    # Tables : grille de 2,6 m sur la terrasse, hors de la tente et loin des murs ; un parasol sur une table sur deux.
+    free = Polygon(TERRACE).buffer(-1.0).difference(tent_r.buffer(0.9)).difference(house.buffer(1.4))
+    cand = [(float(gx), float(gy)) for gx in np.arange(2084.2, 2099.0, 2.6) for gy in np.arange(-86.4, -61.0, 2.6) if free.contains(Point(gx, gy))]
+    # Huit tables réparties sur toute la terrasse : à chaque fois, le point de la grille le plus loin des tables déjà posées.
+    picked = [min(cand, key=lambda q: q[1])]
+    while len(picked) < min(8, len(cand)):
+        picked.append(max((q for q in cand if q not in picked), key=lambda q: min(math.dist(q, p) for p in picked)))
+    tables = [[round(x, 2), round(y, 2), 0.0] for x, y in sorted(picked, key=lambda q: (q[1], q[0]))]
+    parasols = [[t[0], t[1]] for t in tables[::2]]
+    dx, dy = ROAD_DIR
+    nx, ny = -dy, dx
+    w1 = (WALL0[0] + dx * WALL_LEN, WALL0[1] + dy * WALL_LEN)
+    a = (WALL0[0] + dx * 0.3 - nx * 0.45, WALL0[1] + dy * 0.3 - ny * 0.45)
+    b = (a[0] + dx * 3.2, a[1] + dy * 3.2)
+    site = {"t": "golf", "n": "Golf municipal de la ville d'Autun",
+            "tent": {"r": [round(v, 2) for q in list(tent_r.exterior.coords)[:4] for v in q], "h": 2.3, "ridge": 3.7},
+            "tables": tables, "parasols": parasols,
+            "sign": {"a": [round(a[0], 2), round(a[1], 2)], "b": [round(b[0], 2), round(b[1], 2)], "z0": 0.25, "z1": 1.85},
+            "flags": [list(f) for f in FLAGS]}
+    walls = [{"kind": "hedge", "height": 1.1, "pts": [v for q in h for v in q]} for h in HEDGES]
+    walls.append({"kind": "wall", "height": 1.2, "pts": [WALL0[0], WALL0[1], round(w1[0], 2), round(w1[1], 2)]})
+    touched = set()
+    site_tile = home[CLUB[0]]
+    for tid in tiles:
+        p = OUT / "tiles" / f"{tid}.json"
+        if not box(*tiles[tid]["bounds"]).intersects(box(2050, -120, 2200, 0)):
+            continue
+        d = json.loads(p.read_text())
+        before = json.dumps(d)
+        tb = box(*d["bounds"])
+        d["ground"].pop("golf_terrace", None)
+        part = [encode(q) for q in polys(terrace.intersection(tb)) if q.area > 0.3]
+        if part:
+            d["ground"]["golf_terrace"] = part
+        d["walls"] = [w for w in d["walls"] if not (WALL_ID0 - 100 < w["id"] <= WALL_ID0)]
+        for i, w in enumerate(walls):
+            if tile_at((w["pts"][0] + w["pts"][-2]) / 2, (w["pts"][1] + w["pts"][-1]) / 2) == tid:
+                d["walls"].append({"id": WALL_ID0 - i, "kind": w["kind"], "height": w["height"], "measured": 0.0, "pts": [round(v, 2) for v in w["pts"]]})
+        for f in d["fiches"]:
+            if f["id"] in CLUB:
+                f["materials"]["roof"] = "tuile_brune"
+            elif f["id"] == WELCOME:
+                f["materials"]["roof"] = "zinc"
+        if json.dumps(d) != before:
+            text = json.dumps(d, ensure_ascii=False, separators=(",", ":"))
+            p.write_text(text)
+            tiles[tid].update(walls=len(d["walls"]), bytes=len(text))
+            touched.add(tid)
+        # Silhouettes lointaines : même toit.
+        lp = OUT / "lod" / f"{tid}.json"
+        if lp.exists():
+            lod = json.loads(lp.read_text())
+            ch = False
+            for e in lod:
+                ctr = Polygon([(e["r"][i], e["r"][i + 1]) for i in range(0, len(e["r"]), 2)]).buffer(0).representative_point()
+                for bid, mat in [(i, "tuile_brune") for i in CLUB] + [(WELCOME, "zinc")]:
+                    if rings[bid].contains(ctr) and e.get("m") != mat:
+                        e["m"] = mat
+                        ch = True
+            if ch:
+                lp.write_text(json.dumps(lod, separators=(",", ":")))
+        # Types : la tente BD TOPO est cachée (dessinée par le site) ; le site du golf dans la tuile du club-house.
+        kp = OUT / "kinds" / f"{tid}.json"
+        if kp.exists() or tid == site_tile:
+            kd = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+            kb = json.dumps(kd)
+            if home[TENT] == tid:
+                kd["buildings"][TENT] = {"k": "hidden"}
+            kd["sites"] = [x for x in kd["sites"] if not (isinstance(x, dict) and x.get("t") == "golf")]
+            if tid == site_tile:
+                kd["sites"].append(site)
+            if json.dumps(kd) != kb:
+                kp.write_text(json.dumps(kd, ensure_ascii=False, separators=(",", ":")))
+                touched.add(tid)
+    print(f"club-house : {len(tables)} tables, {len(parasols)} parasols, terrasse {terrace.area:.0f} m², tente {tent_r.area:.0f} m², tuiles {sorted(touched)}")
+    return touched
+
+
 def apply():
     spec = json.loads(DATA.read_text())
+    world0 = json.loads((OUT / "world.json").read_text())
+    touched_club = club(world0)
+    (OUT / "world.json").write_text(json.dumps(world0, indent=1))
     layers, golf = layout(spec)
     world = json.loads((OUT / "world.json").read_text())
     manifest = {t["id"]: t for t in world["tiles"]}
@@ -243,7 +359,7 @@ def apply():
     (OUT / "world.json").write_text(json.dumps(world, indent=1))
     from build_dead_ends import apply_map
 
-    kms = apply_map(touched)
+    kms = apply_map(sorted(set(touched) | touched_club))
     n = {k: len(v) for k, v in layers.items()}
     area = {k: round(sum(g.area for g in v)) for k, v in layers.items()}
     print(f"golf : tuiles {touched} ; polygones {n} ; aires (m²) {area} ; drapeaux {len(flags)} ; carte {kms}")

@@ -2044,3 +2044,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Vue haute](docs/captures/d288-golf-haut.jpg)
 ![Un fairway](docs/captures/d288-golf-fairway.jpg)
 
+**Le golf, lot 2 : le club-house et l'entrée (8 novembre 2026)** (D289)
+- Le club-house a ses toits de tuiles brunes, sa tente blanche et sa terrasse pavée face au green, avec huit tables, des chaises, quatre parasols et une haie fleurie.
+- À l'entrée, sur le chemin des Ragots : le muret avec le panneau vert « Bienvenue – Golf municipal », et deux mâts à drapeaux devant le petit bâtiment d'accueil.
+- À faire de ton côté : boire un verre en terrasse (`?at=2090,-70`) et passer devant l'entrée.
+
+![Le club-house](docs/captures/d289-club-apres.jpg)
+![La terrasse](docs/captures/d289-terrasse.jpg)
+
