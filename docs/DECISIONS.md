@@ -6003,3 +6003,27 @@ point le plus bas du dessus, avec une boîte de plus au droit de chaque roue. Le
 
 ![Quatre vues](captures/d276-supercar.jpg)
 ![Au parking de la croix](captures/d276-supercar-croix.jpg)
+
+## 2026-11-08 — D277. La sportive sculptée d'après photos (berlinette française) ; la supercar en six couleurs
+
+**Supercar (D276)** : demande de l'utilisateur, plusieurs couleurs tirées au hasard d'après ses photos. Palette : vert, bleu, rouge, jaune, noir mat,
+orange. À chaque apparition ou réapparition d'un véhicule unique, une couleur de sa palette est tirée au hasard (`game.ts`) ; elle est gardée dans la
+sauvegarde comme pour les autres véhicules. Les autres véhicules uniques n'ont qu'une couleur : rien ne change pour eux.
+
+**Sportive (Augusta Janus)** : la fiche `SPORT_CAR` (sportive accessible, D50, D97) garde la Janus, dessinée maintenant d'après une berlinette
+française à moteur central (choix de l'utilisateur parmi des modèles proposés). **Photos** : cinq ; quatre montrent la première version (2017 :
+trois-quarts avant, profil, arrière, trois-quarts arrière), retenues ; une montre une version radicale de 2024 (capot à prises d'air, aileron), écartée.
+**Gabarit** : 4,18 × 1,80 × 1,25 m (au lieu de 4,45 × 1,88 × 1,25), les vraies mesures. Fiche inchangée : empattement 2,60 m (le vrai fait 2,42 m),
+d'où des porte-à-faux un peu courts.
+
+**Caisse** (`src/render/car-sportive.ts`, moteur D272) : capot bas et plongeant ; de face, **quatre feux ronds** : deux phares en goutte sur les ailes,
+cerclés de diodes, et deux feux ronds plus bas avec une croix ; grande bouche noire basse à lames, plaque au-dessus, fentes verticales devant les roues,
+emblème neutre en losange. Toit en bulle, grande lunette encadrée de noir, vitre de custode en pointe (une pièce peinte recouvre le bout de la vitre),
+creux le long des portes, rétroviseurs couleur caisse sur pied. Arrière arrondi : feux minces et sombres à croix rouges, plaque sur le bouclier,
+diffuseur noir à ailettes et une seule sortie trapézoïdale au milieu. Jantes claires à dix branches. Palette : bleu, blanc, noir, gris, orange, bleu nuit.
+
+**Coût** (exemplaire garé) : 924 triangles de peinture, 892 de détails et roues, 1 816 au total (plafonds D272).
+**Reste** : les ailes avant ne se détachent pas du capot (une seule hauteur de dessus par section) ; la face arrière reste assez droite.
+
+![Avant / après](captures/d277-sportive-avant-apres.jpg)
+![Couleurs de la sportive et de la supercar](captures/d277-couleurs.jpg)

@@ -9,6 +9,7 @@ import { BERLINE } from "./car-berline";
 import { BREAK } from "./car-break";
 import { PETIT_SUV } from "./car-petit-suv";
 import { SUPERCAR } from "./car-supercar";
+import { SPORTIVE } from "./car-sportive";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -122,12 +123,13 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
       lettering: { text: "ROTISSERIE", color: "#d9472b", vertical: false }, spits: true,
     },
   },
+  // Sportive (D277) : caisse sculptée d'après photos (`car-sportive.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   sportive: {
-    length: 4.45, width: 1.88, height: 1.25, overhangFront: 0.92,
-    clearance: 0.12, belt: 0.78, noseHeight: 0.6, tailHeight: 0.84,
-    hood: 1.55, windshield: 0.85, roof: 0.75, rearGlass: 0.7, roofTaper: 0.84,
-    wheelRadius: 0.33, tyreWidth: 0.26, glass: "#1b2733",
-    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#2e3035", doors: 1, roundness: 0.7, roof: "#1b1d22", spoiler: "wing", hoodScoop: true, exhaust: 2, blackPillars: true },
+    length: 4.18, width: 1.8, height: 1.25, overhangFront: 0.8,
+    clearance: 0.15, belt: 0.9, noseHeight: 0.56, tailHeight: 0.78,
+    hood: 1.45, windshield: 0.75, roof: 0.65, rearGlass: 1.03, roofTaper: 0.62,
+    wheelRadius: 0.33, tyreWidth: 0.23, glass: "#1b2733", sculpt: SPORTIVE,
+    style: { headlights: "almond", grille: "sport", taillights: "bar", bumpers: "paint", rim: "#b5b9c0", doors: 1, roundness: 0.7, exhaust: 1, blackPillars: true, spokes: 10 },
   },
   // Supercar (D276, véhicule unique) : caisse sculptée d'après photos (`car-supercar.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   supercar: {
