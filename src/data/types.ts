@@ -1073,7 +1073,30 @@ export type Site =
   | CurtainSite
   | BandstandSite
   | MemorialSite
-  | PassageSite;
+  | PassageSite
+  | GolfSite;
+
+/**
+ * Golf municipal, club-house et entrée (D289, tools/data/build_golf.py, d'après photos) : la tente blanche de la terrasse (rectangle, côtés
+ * et faîtage au-dessus du sol), les tables (x, y, cap), les parasols, le panneau « Bienvenue – Golf municipal » posé devant le muret de
+ * l'entrée (bas de a à b, hauteurs au-dessus du sol), les mâts à drapeaux.
+ */
+export interface GolfSite {
+  t: "golf";
+  n: string;
+  tent: { r: number[]; h: number; ridge: number };
+  tables: [number, number, number][];
+  parasols: [number, number][];
+  sign: { a: [number, number]; b: [number, number]; z0: number; z1: number };
+  flags: [number, number][];
+  /**
+   * Practice (D290) : ligne des tapis de a à b (le tir part à gauche de a → b), postes tous les `step` m sur une dalle de `depth` m, abri à
+   * charpente bois de l'abscisse s0 à s1 ; cibles rondes dans le terrain.
+   */
+  practice?: { a: [number, number]; b: [number, number]; step: number; depth: number; shelter: [number, number]; targets: [number, number][] };
+  /** Trous dans l'ordre de jeu des golfeurs (D291) : départ (x, y), centre du green, drapeau. */
+  holes?: [number, number, number, number, number, number][];
+}
 
 /**
  * Îlot de rond-point d'après photo (D142, tools/data/build_roundabouts.py) : centre et rayon du milieu de la bordure (orthophoto), largeur
@@ -1535,7 +1558,7 @@ export interface WorldBase {
 
 export type Era = "medieval" | "classical" | "xix" | "interwar" | "postwar" | "contemporary";
 export type WindowStyle = "panes_6" | "panes_4" | "panes_2" | "french_window" | "picture" | "small";
-export type RoofMaterial = "tuile_plate" | "tuile_mecanique" | "ardoise" | "zinc" | "terrasse";
+export type RoofMaterial = "tuile_plate" | "tuile_mecanique" | "ardoise" | "zinc" | "terrasse" | "tuile_brune";
 
 export interface FacadeWindow {
   style: WindowStyle;

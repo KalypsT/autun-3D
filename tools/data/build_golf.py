@@ -1,0 +1,416 @@
+"""Le golf municipal d'Autun (D288, chemin des Ragots) : les sols du parcours (lot 1 du plan du golf).
+
+OpenStreetMap n'a que le contour du golf (relation 6332293) ; greens, départs et bunkers sont relevés sur l'orthophotographie de l'IGN (été :
+greens arrosés vert vif sur l'herbe sèche, bunkers de sable clair) ; les photos de l'utilisateur servent seulement à décrire.
+
+    --trace   relève greens (à partir d'un point posé à la main au centre de chacun, la tache grandit selon le vert local), départs (petites
+              taches vert vif hors des greens) et bunkers (taches claires et compactes) ; écrit tools/data/golf.json. Contour du golf :
+              OpenStreetMap (téléchargé dans .cache/golf).
+    (rien)    pose dans les tuiles : fairways (`golf_fairway` et `golf_fairway2`, bandes de tonte de 9 m dans l'axe de chaque trou), greens
+              (`golf_green`), départs (`golf_tee`), bunkers (`golf_bunker`), drapeau sur chaque green (mobilier `golf_flag`) ; puis les images
+              de carte des kilomètres touchés. Relançable : les couches golf_* et les drapeaux sont d'abord retirés.
+
+Le rough reste le sol d'origine : le bord du golf (8 m), le pied des arbres, les abords des bâtiments, des routes et de l'eau.
+"""
+
+import io
+import json
+import math
+import sys
+import urllib.request
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import numpy as np
+import shapely
+from PIL import Image
+from scipy import ndimage
+from shapely.geometry import LineString, MultiPoint, Point, Polygon, box
+from shapely.ops import unary_union, voronoi_diagram
+
+import config as c
+from build_streetscape import decode, encode, polys
+
+HERE = Path(__file__).parent
+OUT = c.OUT
+DATA = HERE / "golf.json"
+CACHE = c.ROOT / ".cache" / "golf"
+RELATION = 6332293
+BOX = (1700.0, -350.0, 2700.0, 450.0)  # emprise locale de l'orthophotographie relevée
+RES = 0.25
+LAYERS = ("golf_fairway", "golf_fairway2", "golf_green", "golf_tee", "golf_bunker")
+STRIPE = 9.0          # largeur d'une bande de tonte (m)
+EDGE = 8.0            # rough au bord du golf (m)
+TREE_GAP = 3.0        # rough au pied des arbres (m, au-delà du tronc)
+FLAG_ID0 = -960_000_000
+# Centre de chaque green, posé à la main sur l'orthophotographie (repère local, m).
+GREEN_SEEDS = [(1830, 365), (1970, 185), (2143, 157), (2125, 120), (1900, 100), (2128, 35), (1830, -55), (2052, -77), (1815, -145),
+               (2230, -95), (2423, 52), (2555, -130), (2460, -205), (2305, -200)]
+
+
+# --- Relevé ---------------------------------------------------------------------------------------------------------------------
+def golf_outline():
+    p = CACHE / "relation.xml"
+    if not p.exists():
+        CACHE.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(f"https://api.openstreetmap.org/api/0.6/relation/{RELATION}/full", headers={"User-Agent": "autun-3d-tools"})
+        p.write_bytes(urllib.request.urlopen(req, timeout=120).read())
+    from pyproj import Transformer
+
+    t = Transformer.from_crs(4326, 2154, always_xy=True)
+    r = ET.fromstring(p.read_bytes())
+    nodes = {n.get("id"): t.transform(float(n.get("lon")), float(n.get("lat"))) for n in r.iter("node")}
+    rings = []
+    for w in r.iter("way"):
+        pts = [(nodes[n.get("ref")][0] - c.ORIGIN[0], nodes[n.get("ref")][1] - c.ORIGIN[1]) for n in w.iter("nd")]
+        if len(pts) > 3:
+            rings.append(Polygon(pts).buffer(0))
+    return unary_union(rings)
+
+
+def ortho():
+    import fetch
+
+    x0, y0, x1, y1 = BOX
+    w, h = int((x1 - x0) / RES), int((y1 - y0) / RES)
+    big = Image.new("RGB", (w, h))
+    for bx in range(2):
+        for by in range(2):
+            ax0, ay0 = x0 + bx * 500, y0 + by * 400
+            data = fetch.wms_block("HR.ORTHOIMAGERY.ORTHOPHOTOS", "image/jpeg", ax0 + c.ORIGIN[0], ay0 + c.ORIGIN[1], ax0 + 500 + c.ORIGIN[0],
+                                   ay0 + 400 + c.ORIGIN[1], int(500 / RES), int(400 / RES), CACHE / f"o_{bx}_{by}.jpg")
+            big.paste(Image.open(io.BytesIO(data)).convert("RGB"), (bx * int(500 / RES), (1 - by) * int(400 / RES)))
+    return np.asarray(big).astype(float)
+
+
+def mask_polygons(m, ox, oy, res):
+    import rasterio.features as rf
+
+    out = []
+    for g, _ in rf.shapes(m.astype(np.uint8), mask=m):
+        out.append(Polygon([(ox + px * res, oy - py * res) for px, py in g["coordinates"][0]]).buffer(0))
+    return out
+
+
+def trace():
+    A = ortho()
+    R, G, B = A[..., 0], A[..., 1], A[..., 2]
+    x0, _, _, y1 = BOX
+    golf = golf_outline()
+    # Greens : la tache autour de chaque point, au-dessus de la moitié du contraste entre le point et son voisinage.
+    idx = ndimage.gaussian_filter(G - R, 2) + 0.5 * ndimage.gaussian_filter(G - B, 2)
+    greens = []
+    for sx, sy in GREEN_SEEDS:
+        cx, cy, r = int((sx - x0) / RES), int((y1 - sy) / RES), int(26 / RES)
+        win = idx[cy - r:cy + r, cx - r:cx + r]
+        sv, bg = np.median(idx[cy - 8:cy + 8, cx - 8:cx + 8]), np.median(win)
+        yy, xx = np.mgrid[-r:r, -r:r]
+        m = (win > (sv + bg) / 2) & ((xx ** 2 + yy ** 2) < (22 / RES) ** 2)
+        lab, _ = ndimage.label(m)
+        m = ndimage.binary_fill_holes(ndimage.binary_opening(lab == lab[r, r], iterations=3))
+        lab, _ = ndimage.label(m)
+        m = lab == lab[r, r]
+        p = max(mask_polygons(m, x0 + (cx - r) * RES, y1 - (cy - r) * RES, RES), key=lambda q: q.area)
+        greens.append(p.buffer(1.5).buffer(-1.5).simplify(0.3))
+    # Départs et bunkers : à 0,5 m.
+    small = np.asarray(Image.fromarray(A.astype(np.uint8)).resize((A.shape[1] // 2, A.shape[0] // 2), Image.LANCZOS)).astype(float)
+    R, G, B = small[..., 0], small[..., 1], small[..., 2]
+    H, W = R.shape
+    yy, xx = np.mgrid[0:H, 0:W]
+    inside = shapely.contains_xy(golf.buffer(3), x0 + (xx + 0.5) * 0.5, y1 - (yy + 0.5) * 0.5)
+    lum = (R + G + B) / 3
+
+    def comps(m, amin, amax, cmin):
+        m = ndimage.binary_fill_holes(ndimage.binary_closing(ndimage.binary_opening(m, iterations=1), iterations=2))
+        return [p for p in mask_polygons(m, x0, y1, 0.5) if amin <= p.area <= amax and 4 * math.pi * p.area / p.length ** 2 >= cmin]
+
+    built = built_mask()
+    gu = unary_union(greens)
+    tees = [p.minimum_rotated_rectangle for p in comps((G - R > 15) & (lum > 85) & (G - B > 12) & inside, 40, 300, 0.3)
+            if p.distance(gu) > 8 and not p.intersects(built)]
+    bunkers = [p.buffer(0.8).buffer(-0.8).simplify(0.3) for p in comps((lum > 175) & (R - B > 20) & (R - B < 90) & inside, 12, 600, 0.3)
+               if not p.intersects(built)]
+    rnd = lambda p: [[round(x, 2), round(y, 2)] for x, y in p.exterior.coords][:-1]
+    DATA.write_text(json.dumps({
+        "_doc": "Golf municipal d'Autun (build_golf.py --trace, D288) : contour OpenStreetMap, greens, départs et bunkers relevés sur l'orthophotographie de l'IGN.",
+        "outline": [rnd(p) for p in polys(golf)], "greens": [rnd(p) for p in greens], "tees": [rnd(p) for p in tees], "bunkers": [rnd(p) for p in bunkers],
+    }, ensure_ascii=False, indent=1))
+    print(f"golf : {golf.area / 1e4:.1f} ha ; {len(greens)} greens, {len(tees)} départs, {len(bunkers)} bunkers ; écrit {DATA}")
+
+
+def built_mask():
+    """Bâtiments (+ 3 m), chaussées, trottoirs, places et eau publiés autour du golf : jamais de sol de golf dessus."""
+    world = json.loads((OUT / "world.json").read_text())
+    area = box(*BOX)
+    geoms = []
+    for t in world["tiles"]:
+        if not area.intersects(box(*t["bounds"])):
+            continue
+        d = json.loads((OUT / "tiles" / f"{t['id']}.json").read_text())
+        for b in d["buildings"]:
+            r = b["ring"]
+            geoms.append(Polygon([(r[i], r[i + 1]) for i in range(0, len(r), 2)]).buffer(3.0))
+        for layer, ps in d["ground"].items():
+            if layer.startswith(("road_", "plaza_")) or layer in ("walk", "water", "golf_terrace", "golf_path"):
+                geoms += [decode(p).buffer(2.0) for p in ps]
+    return unary_union(geoms)
+
+
+# --- Pose -----------------------------------------------------------------------------------------------------------------------
+def poly_of(r):
+    return Polygon(r).buffer(0)
+
+
+def layout(spec):
+    golf = unary_union([poly_of(r) for r in spec["outline"]])
+    greens = [poly_of(r) for r in spec["greens"]]
+    tees = [poly_of(r) for r in spec["tees"]]
+    bunkers = [poly_of(r) for r in spec["bunkers"]]
+    built = built_mask()
+    trees = []
+    world = json.loads((OUT / "world.json").read_text())
+    for t in world["tiles"]:
+        if golf.intersects(box(*t["bounds"])):
+            trees += [Point(tr[0], tr[1]).buffer(TREE_GAP) for tr in json.loads((OUT / "tiles" / f"{t['id']}.json").read_text())["trees"]]
+    special = unary_union(greens + tees + bunkers)
+    fair = golf.buffer(-EDGE).difference(built).difference(unary_union(trees)).difference(special.buffer(0.3))
+    fair = fair.buffer(-1.5).buffer(1.5)  # pas de lanières entre deux arbres
+    fair = unary_union([p for p in polys(fair) if p.area > 150])
+    # Un trou par green : cellules de Voronoï des greens ; la tonte suit l'axe du green au départ le plus loin de sa cellule (sinon au
+    # point le plus loin de la cellule).
+    centers = MultiPoint([g.centroid for g in greens])
+    cells = voronoi_diagram(centers, envelope=golf.envelope.buffer(200))
+    a, b = [], []
+    for cell in cells.geoms:
+        g = next(gr for gr in greens if cell.contains(gr.centroid))
+        gc = g.centroid
+        part = fair.intersection(cell)
+        if part.is_empty:
+            continue
+        own = [t.centroid for t in tees if cell.contains(t.centroid)]
+        far = max(own, key=gc.distance) if own else max((Point(q) for p in polys(part) for q in p.exterior.coords), key=gc.distance)
+        ax, ay = far.x - gc.x, far.y - gc.y
+        L = math.hypot(ax, ay) or 1.0
+        nx, ny = -ay / L, ax / L  # bandes parallèles à l'axe : on les compte à travers lui
+        s = [nx * x + ny * y for p in polys(part) for x, y in p.exterior.coords]
+        k0, k1 = math.floor(min(s) / STRIPE), math.ceil(max(s) / STRIPE)
+        big = 2000.0
+        for k in range(k0, k1):
+            o0, o1 = k * STRIPE, (k + 1) * STRIPE
+            band = Polygon([(nx * o0 - ny * big, ny * o0 + nx * big), (nx * o1 - ny * big, ny * o1 + nx * big),
+                            (nx * o1 + ny * big, ny * o1 - nx * big), (nx * o0 + ny * big, ny * o0 - nx * big)])
+            piece = part.intersection(band)
+            (a if k % 2 == 0 else b).extend(q for q in polys(piece) if q.area > 2)
+    return {"golf_fairway": a, "golf_fairway2": b, "golf_green": greens, "golf_tee": tees, "golf_bunker": bunkers}, golf
+
+
+def flag_point(g):
+    """Le trou : un peu décentré sur le green, côté est (comme le drapeau des photos)."""
+    c0 = g.centroid
+    p = Point(c0.x + 3.0, c0.y + 1.5)
+    return p if g.buffer(-1.5).contains(p) else c0
+
+
+# --- Club-house et entrée (lot 2, D289) -----------------------------------------------------------------------------------------------
+CLUB = ("BATIMENT0000000348844174", "BATIMENT0000000348844175")  # le club-house (deux volumes BD TOPO), toits de tuiles brun-gris
+WELCOME = "BATIMENT0000000348844168"  # le petit bâtiment d'accueil de l'entrée, toit de tôle vert-gris
+TENT = "BATIMENT0000002479786299"  # la tente blanche de la terrasse (BD TOPO la compte comme un bâtiment)
+TERRACE = [(2083.0, -87.5), (2099.0, -87.5), (2099.0, -61.0), (2083.0, -61.0)]  # côté ouest, face au green (orthophoto, photos 8 et 9)
+HEDGES = [[(2082.6, -87.5), (2082.6, -61.0), (2089.5, -61.0)], [(2093.5, -61.0), (2097.0, -61.0)]]  # haie fleurie, passage vers le parcours
+ROAD_DIR = (0.977, 0.215)  # chemin des Ragots devant l'entrée
+WALL0 = (2159.1, -76.0)  # muret de l'entrée, à l'est de l'allée, 4 m au nord de l'axe de la route
+WALL_LEN = 9.0
+FLAGS = [(2134.0, -47.0), (2126.0, -49.0)]  # mâts devant le bâtiment d'accueil (photo de l'entrée)
+WALL_ID0 = -950_000_000
+# Practice (lot 3, D290 ; orthophotographie et photos 6 et 7) : ligne des tapis, abri sur les 25 derniers mètres, cibles, filets.
+PRACTICE_A, PRACTICE_B = (2070.5, -56.0), (2120.0, -14.0)
+PRACTICE = {"step": 3.0, "depth": 2.4, "shelter": [40.0, 64.5], "targets": [[2036.0, -13.0], [2046.0, 24.0], [2028.0, 21.0]]}
+NETS = [[(2070.0, -57.0), (2010.8, -23.0)], [(2121.5, -5.0), (2094.0, 18.0)]]  # filets verts sur poteaux, côtés sud-ouest et nord-est
+AREA = (2000.0, -120.0, 2200.0, 45.0)
+
+
+def holes(spec):
+    """Les trous, dans l'ordre où les golfeurs les jouent (D291) : pour chaque green, son départ (le départ relevé le plus loin dans sa
+    cellule de Voronoï, sinon le point du golf le plus loin du green dans la cellule, à 15 m du bord au moins), puis une tournée qui part
+    du trou le plus proche du club-house et va chaque fois au départ le plus proche du green qu'on vient de jouer."""
+    golf = unary_union([poly_of(r) for r in spec["outline"]])
+    greens = [poly_of(r) for r in spec["greens"]]
+    tees = [poly_of(r).centroid for r in spec["tees"]]
+    inner = golf.buffer(-15)
+    cells = voronoi_diagram(MultiPoint([g.centroid for g in greens]), envelope=golf.envelope.buffer(200))
+    out = []
+    for g in greens:
+        gc = g.centroid
+        cell = next(c0 for c0 in cells.geoms if c0.contains(gc))
+        own = [t for t in tees if cell.contains(t)]
+        if own:
+            start = max(own, key=gc.distance)
+        else:
+            area = inner.intersection(cell)
+            start = max((Point(q) for p in polys(area) for q in p.exterior.coords), key=gc.distance) if not area.is_empty else gc
+        f = flag_point(g)
+        out.append([round(start.x, 1), round(start.y, 1), round(gc.x, 1), round(gc.y, 1), round(f.x, 1), round(f.y, 1)])
+    order, left = [], list(range(len(out)))
+    cur = min(left, key=lambda i: math.dist(out[i][:2], (2100, -60)))
+    while left:
+        order.append(cur)
+        left.remove(cur)
+        if left:
+            cur = min(left, key=lambda i: math.dist(out[i][:2], out[order[-1]][2:4]))
+    return [out[i] for i in order]
+
+
+def club(world):
+    """Pose le club-house et l'entrée dans les tuiles, les fiches, les types et les silhouettes. Rend les tuiles modifiées."""
+    tiles = {t["id"]: t for t in world["tiles"]}
+
+    def tile_at(x, y):
+        return f"{math.floor((x - c.GRID_X) / c.TILE)}_{math.floor((y - c.GRID_Y) / c.TILE)}"
+
+    rings, home = {}, {}
+    for tid, t in tiles.items():
+        if not box(*t["bounds"]).intersects(box(*AREA)):
+            continue
+        for b in json.loads((OUT / "tiles" / f"{tid}.json").read_text())["buildings"]:
+            if b["id"] in CLUB + (WELCOME, TENT):
+                r = b["ring"]
+                rings[b["id"]] = Polygon([(r[i], r[i + 1]) for i in range(0, len(r), 2)]).buffer(0)
+                home[b["id"]] = tid
+    missing = set(CLUB + (WELCOME, TENT)) - set(rings)
+    if missing:
+        raise SystemExit(f"bâtiments absents : {missing}")
+    house = unary_union([rings[i] for i in CLUB])
+    tent_r = rings[TENT].minimum_rotated_rectangle
+    terrace = Polygon(TERRACE).difference(house.buffer(0.1))
+    # Tables : grille de 2,6 m sur la terrasse, hors de la tente et loin des murs ; un parasol sur une table sur deux.
+    free = Polygon(TERRACE).buffer(-1.0).difference(tent_r.buffer(0.9)).difference(house.buffer(1.4))
+    cand = [(float(gx), float(gy)) for gx in np.arange(2084.2, 2099.0, 2.6) for gy in np.arange(-86.4, -61.0, 2.6) if free.contains(Point(gx, gy))]
+    # Huit tables réparties sur toute la terrasse : à chaque fois, le point de la grille le plus loin des tables déjà posées.
+    picked = [min(cand, key=lambda q: q[1])]
+    while len(picked) < min(8, len(cand)):
+        picked.append(max((q for q in cand if q not in picked), key=lambda q: min(math.dist(q, p) for p in picked)))
+    tables = [[round(x, 2), round(y, 2), 0.0] for x, y in sorted(picked, key=lambda q: (q[1], q[0]))]
+    parasols = [[t[0], t[1]] for t in tables[::2]]
+    dx, dy = ROAD_DIR
+    nx, ny = -dy, dx
+    w1 = (WALL0[0] + dx * WALL_LEN, WALL0[1] + dy * WALL_LEN)
+    a = (WALL0[0] + dx * 0.3 - nx * 0.45, WALL0[1] + dy * 0.3 - ny * 0.45)
+    b = (a[0] + dx * 3.2, a[1] + dy * 3.2)
+    site = {"t": "golf", "n": "Golf municipal de la ville d'Autun",
+            "tent": {"r": [round(v, 2) for q in list(tent_r.exterior.coords)[:4] for v in q], "h": 2.3, "ridge": 3.7},
+            "tables": tables, "parasols": parasols,
+            "sign": {"a": [round(a[0], 2), round(a[1], 2)], "b": [round(b[0], 2), round(b[1], 2)], "z0": 0.25, "z1": 1.85},
+            "flags": [list(f) for f in FLAGS],
+            "practice": {"a": list(PRACTICE_A), "b": list(PRACTICE_B), **PRACTICE},
+            "holes": holes(json.loads(DATA.read_text()))}
+    # Allée de gravier derrière les dalles du practice.
+    pa, pb = np.array(PRACTICE_A), np.array(PRACTICE_B)
+    pt = (pb - pa) / np.linalg.norm(pb - pa)
+    left = np.array([-pt[1], pt[0]])
+    v0, v1 = -PRACTICE["depth"] - 0.4, -PRACTICE["depth"] - 2.4
+    path = Polygon([tuple(pa + left * v0), tuple(pb + left * v0), tuple(pb + left * v1), tuple(pa + left * v1)]).difference(house.buffer(0.5))
+    walls = [{"kind": "hedge", "height": 1.1, "pts": [v for q in h for v in q]} for h in HEDGES]
+    walls.append({"kind": "wall", "height": 1.2, "pts": [WALL0[0], WALL0[1], round(w1[0], 2), round(w1[1], 2)]})
+    walls += [{"kind": "fence", "look": "mesh", "height": 5.0, "pts": [v for q in n for v in q]} for n in NETS]
+    touched = set()
+    site_tile = home[CLUB[0]]
+    for tid in tiles:
+        p = OUT / "tiles" / f"{tid}.json"
+        if not box(*tiles[tid]["bounds"]).intersects(box(*AREA)):
+            continue
+        d = json.loads(p.read_text())
+        before = json.dumps(d)
+        tb = box(*d["bounds"])
+        for layer, geom in (("golf_terrace", terrace), ("golf_path", path)):
+            d["ground"].pop(layer, None)
+            part = [encode(q) for q in polys(geom.intersection(tb)) if q.area > 0.3]
+            if part:
+                d["ground"][layer] = part
+        d["walls"] = [w for w in d["walls"] if not (WALL_ID0 - 100 < w["id"] <= WALL_ID0)]
+        for i, w in enumerate(walls):
+            if tile_at((w["pts"][0] + w["pts"][-2]) / 2, (w["pts"][1] + w["pts"][-1]) / 2) == tid:
+                d["walls"].append({"id": WALL_ID0 - i, "kind": w["kind"], "height": w["height"], "measured": 0.0, "pts": [round(v, 2) for v in w["pts"]],
+                                   **({"look": w["look"]} if "look" in w else {})})
+        for f in d["fiches"]:
+            if f["id"] in CLUB:
+                f["materials"]["roof"] = "tuile_brune"
+            elif f["id"] == WELCOME:
+                f["materials"]["roof"] = "zinc"
+        if json.dumps(d) != before:
+            text = json.dumps(d, ensure_ascii=False, separators=(",", ":"))
+            p.write_text(text)
+            tiles[tid].update(walls=len(d["walls"]), bytes=len(text))
+            touched.add(tid)
+        # Silhouettes lointaines : même toit.
+        lp = OUT / "lod" / f"{tid}.json"
+        if lp.exists():
+            lod = json.loads(lp.read_text())
+            ch = False
+            for e in lod:
+                ctr = Polygon([(e["r"][i], e["r"][i + 1]) for i in range(0, len(e["r"]), 2)]).buffer(0).representative_point()
+                for bid, mat in [(i, "tuile_brune") for i in CLUB] + [(WELCOME, "zinc")]:
+                    if rings[bid].contains(ctr) and e.get("m") != mat:
+                        e["m"] = mat
+                        ch = True
+            if ch:
+                lp.write_text(json.dumps(lod, separators=(",", ":")))
+        # Types : la tente BD TOPO est cachée (dessinée par le site) ; le site du golf dans la tuile du club-house.
+        kp = OUT / "kinds" / f"{tid}.json"
+        if kp.exists() or tid == site_tile:
+            kd = json.loads(kp.read_text()) if kp.exists() else {"v": 1, "buildings": {}, "sites": []}
+            kb = json.dumps(kd)
+            if home[TENT] == tid:
+                kd["buildings"][TENT] = {"k": "hidden"}
+            kd["sites"] = [x for x in kd["sites"] if not (isinstance(x, dict) and x.get("t") == "golf")]
+            if tid == site_tile:
+                kd["sites"].append(site)
+            if json.dumps(kd) != kb:
+                kp.write_text(json.dumps(kd, ensure_ascii=False, separators=(",", ":")))
+                touched.add(tid)
+    print(f"club-house : {len(tables)} tables, {len(parasols)} parasols, terrasse {terrace.area:.0f} m², tente {tent_r.area:.0f} m², tuiles {sorted(touched)}")
+    return touched
+
+
+def apply():
+    spec = json.loads(DATA.read_text())
+    world0 = json.loads((OUT / "world.json").read_text())
+    touched_club = club(world0)
+    (OUT / "world.json").write_text(json.dumps(world0, indent=1))
+    layers, golf = layout(spec)
+    world = json.loads((OUT / "world.json").read_text())
+    manifest = {t["id"]: t for t in world["tiles"]}
+    flags = [flag_point(poly_of(r)) for r in spec["greens"]]
+    touched = []
+    for t in world["tiles"]:
+        tb = box(*t["bounds"])
+        p = OUT / "tiles" / f"{t['id']}.json"
+        d = json.loads(p.read_text())
+        had = any(k in d["ground"] for k in LAYERS) or any(f["kind"] == "golf_flag" for f in d["furniture"])
+        if not tb.intersects(golf) and not had:
+            continue
+        for k in LAYERS:
+            d["ground"].pop(k, None)
+        for k, ps in layers.items():
+            clipped = [encode(q) for g in ps for q in polys(g.intersection(tb)) if q.area > 0.5]
+            if clipped:
+                d["ground"][k] = clipped
+        d["furniture"] = [f for f in d["furniture"] if f["kind"] != "golf_flag"]
+        for i, f in enumerate(flags):
+            if tb.contains(f):
+                d["furniture"].append({"kind": "golf_flag", "x": round(f.x, 2), "y": round(f.y, 2), "name": None, "id": FLAG_ID0 - i})
+        text = json.dumps(d, ensure_ascii=False, separators=(",", ":"))
+        if text != p.read_text():
+            p.write_text(text)
+            manifest[t["id"]].update(furniture=len(d["furniture"]), bytes=len(text))
+            touched.append(t["id"])
+    (OUT / "world.json").write_text(json.dumps(world, indent=1))
+    from build_dead_ends import apply_map
+
+    kms = apply_map(sorted(set(touched) | touched_club))
+    n = {k: len(v) for k, v in layers.items()}
+    area = {k: round(sum(g.area for g in v)) for k, v in layers.items()}
+    print(f"golf : tuiles {touched} ; polygones {n} ; aires (m²) {area} ; drapeaux {len(flags)} ; carte {kms}")
+
+
+if __name__ == "__main__":
+    trace() if "--trace" in sys.argv else apply()

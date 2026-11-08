@@ -2012,3 +2012,58 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le nouveau rapport a désigné le coupable suivant : le relief, qui reconstruisait d'un bloc les morceaux de terrain proches en roulant. Il se construit maintenant par tranches de 3 ms ; sur PC, son pire bloc passe de 50 à 13 ms à 90 km/h, et de 39 à 15 ms à 300 km/h.
 - À faire de ton côté : après fusion, relancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone et m'envoyer le JSON.
 
+**La route de Chalon ne plonge plus dans la mer (8 novembre 2026)** (D286)
+- La carte est agrandie de cinq carrés à l'est : l'anse qui coupait la route de Chalon 400 m avant le chemin des Ragots est comblée (la route montait, redescendait de 40 m jusqu'à la plage, puis remontait) ; le carrefour avec le chemin des Ragots est maintenant à 244 m de la mer au lieu de 129 m.
+- Tout le golf d'Autun est à terre (26 ha). Il est encore dessiné comme une pelouse : ce sera l'étape suivante.
+- Le reste de la ville n'a pas bougé : six carrés voisins (dont la gendarmerie) gardent exactement leurs données.
+- Reste pour l'étape des impasses : après le chemin des Ragots, la route de Chalon continue 320 m puis finit au bord de la nouvelle falaise. Le plan et les questions sont dans `docs/plans/routes-impasses.md`.
+- À faire de ton côté : rouler sur la route de Chalon depuis le rond-point de l'Eduen jusqu'au chemin des Ragots (`?at=1790,427&ride=voiture`), et ouvrir la carte autour du golf.
+
+![Au volant dans l'anse, avant](docs/captures/d286-route-avant.jpg)
+![Au volant dans l'anse, après](docs/captures/d286-route-apres.jpg)
+![Vue haute, après](docs/captures/d286-haut-apres.jpg)
+
+**Les routes qui finissaient à la mer sont fermées (8 novembre 2026)** (D287)
+- 33 bouts de route coupés par la côte sont traités : chacun est raccourci 25 m après la dernière maison, le dernier parking ou le dernier chemin qu'il dessert, puis fermé par une barrière rouge et blanche, avec une aire de retournement quand la route est assez large. Un panneau bleu « voie sans issue » est posé au carrefour.
+- Cinq bouts qui ne desservaient rien ont disparu (chemin du Vieux Moulin, chemin de la Maison Forestière Feuillée, trois petits tronçons) ; au-delà des coupes, l'herbe a remplacé l'enrobé, et la carte suit.
+- L'avenue du Commandant de Neuchèze est gardée telle quelle : elle descend doucement jusqu'à la plage.
+- Plus aucune route ne mène au bord d'une falaise sans barrière : un test le vérifie sur toute la carte.
+- Exception : quatre routes proches du centre (Corps Franc Pommiès, Broye, Pierrefitte, Bois de Sapin) gardent leur longueur, parce que les essais des poursuites de police en dépendent ; elles s'arrêtent quand même à une barrière, avant la falaise.
+- À faire de ton côté : aller au bout de la route de Chalon après le chemin des Ragots, et de la route de Beaune vers la mer (`?at=2206,1394&ride=voiture`).
+
+![Route de Chalon, après](docs/captures/d287-chalon-apres.jpg)
+![Route de Beaune, après](docs/captures/d287-beaune-apres.jpg)
+![Panneau « voie sans issue »](docs/captures/d287-panneau.jpg)
+
+**Le golf, lot 1 : le parcours (8 novembre 2026)** (D288)
+- Le golf a son parcours : 14 greens avec leur drapeau jaune, 22 bunkers de sable, 10 départs, et des fairways tondus en bandes claires et foncées dans l'axe de chaque trou ; le rough reste en bordure et sous les arbres.
+- Tout est relevé sur la photo aérienne de l'IGN ; tes photos ont servi à choisir les couleurs et l'allure (drapeaux, tonte).
+- Prochain lot : le club-house, sa terrasse et l'entrée.
+- À faire de ton côté : se promener sur le parcours (`?at=2143,140`).
+
+![Vue haute](docs/captures/d288-golf-haut.jpg)
+![Un fairway](docs/captures/d288-golf-fairway.jpg)
+
+**Le golf, lot 2 : le club-house et l'entrée (8 novembre 2026)** (D289)
+- Le club-house a ses toits de tuiles brunes, sa tente blanche et sa terrasse pavée face au green, avec huit tables, des chaises, quatre parasols et une haie fleurie.
+- À l'entrée, sur le chemin des Ragots : le muret avec le panneau vert « Bienvenue – Golf municipal », et deux mâts à drapeaux devant le petit bâtiment d'accueil.
+- À faire de ton côté : boire un verre en terrasse (`?at=2090,-70`) et passer devant l'entrée.
+
+![Le club-house](docs/captures/d289-club-apres.jpg)
+![La terrasse](docs/captures/d289-terrasse.jpg)
+
+**Le golf, lot 3 : le practice (8 novembre 2026)** (D290)
+- Le practice a sa rangée de 22 tapis verts sur dalles, son abri en bois, son allée de gravier, ses filets verts et trois cibles dans le terrain.
+- À faire de ton côté : passer sous l'abri du practice (`?at=2105,-28`).
+
+![Le practice](docs/captures/d290-practice.jpg)
+
+**Le golf, lot 4 : les golfeurs (8 novembre 2026)** (D291)
+- Quatre groupes de deux à quatre golfeurs font le tour des 14 trous, en poussant leur chariot ; ils s'arrêtent à chaque coup et se retrouvent autour du drapeau sur les greens. Trois joueurs s'entraînent au practice.
+- Ils jouent de 8 h à 20 h, et pas sous la pluie.
+- Limites : ils ne font pas de swing (ils restent debout aux coups) et ne réagissent pas au joueur.
+- À faire de ton côté : aller voir un groupe vers 11 h (`?at=2036,-80&h=11`).
+
+![Un groupe au drapeau](docs/captures/d291-golfeurs-green.jpg)
+![Avec son chariot](docs/captures/d291-golfeurs-chariot.jpg)
+

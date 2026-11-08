@@ -5987,7 +5987,8 @@ toutes les voitures (D50) : l'utilisateur voulait 300 km/h, mais au-delà de 200
 vérifiés ; on relèvera le plafond commun après une mesure sur le téléphone. Son V12 (12 cylindres, 8 700 tr/min, 7 rapports, pétarades).
 
 **Place** (`src/core/uniques.ts`) : sur le parking de la Croix de la Libération (D267), au nord de la clairière (−853 ; −1830), le nez tourné vers la
-ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur).
+ville en contrebas. Il n'y a pas de golf dans la zone du jeu (premier lieu proposé par l'utilisateur) — *erreur, corrigée en D286 : le golf
+d'Autun (26 ha) est dans la carte, le long du chemin des Ragots, dessiné jusqu'ici comme une pelouse ordinaire*.
 
 **Caisse** (`src/render/car-supercar.ts`, moteur D272) : 4,94 × 2,03 × 1,14 m. Coin très bas et très large, capot plongeant, phares anguleux avec
 feu de jour en Y, grandes prises d'air noires aux coins, lame avant en carbone ; pare-brise immense, cabine étroite, vitre de flanc dont le bas monte
@@ -6404,3 +6405,238 @@ compte, c'est la pire, divisée par quatre.
 
 **Reste de ton côté** : après fusion, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone ; la partie « décor » des images lentes
 devrait presque disparaître.
+
+## 2026-11-08 — D286. La route de Chalon jusqu'au chemin des Ragots, et le golf à terre (extension « chalon »)
+
+**Demande** : sur la route de Chalon, juste avant le croisement avec le chemin des Ragots (la route du golf), la route est coupée et descend
+le long de la falaise ; ajouter un peu de carte pour que la route soit correctement intégrée. Choix de l'utilisateur : l'agrandissement « B »
+(cinq tuiles, golf compris) plutôt que le minimum (deux tuiles).
+
+**Constat** (profil du relief publié tous les 20 m le long de la route) : la route traversait deux tuiles de bordure.
+- **L'anse** : à 400 m avant le carrefour (vers x 2 056 à 2 127, y 290 à 250, tuile `34_36`), la mer venait à 31 m de la route ; le plafond
+  du rivage (D105) faisait tomber le sol de 328 m à 288 m sur 90 m (falaise, plage, falaise). C'est la petite baie au nord de la route sur la carte.
+- **Le carrefour** (2 493 ; 86, tuile `36_35`) : 13 m au-delà de la zone jouable, à 129 m de la côte ; la route finissait 130 m plus loin
+  au bord d'une falaise de 65 m.
+- **Le golf d'Autun** (OpenStreetMap, relation 6332293, 26 ha) : presque tout dans la zone jouable, mais la chaîne ne lit pas
+  `leisure=golf_course` : il était dessiné en pelouse ordinaire. Environ 7 ha au sud-est étaient en mer ou dans la falaise.
+
+**Fait** (`tools/data/extend.py`, D265, `tools/data/extensions/chalon.json`) : cinq tuiles jouables ajoutées (`34_36`, `35_36` : l'anse ;
+`36_35` : le carrefour ; `35_34`, `36_34` : le sud-est du golf), sept de bordure (`35_37`, `36_33`, `36_37`, `37_33` à `37_36`).
+`plan`, `sandbox`, `build` (bloc (4, 4) restreint, puis ouvrages, types, espace public, côte, eau), `nav`, `graft-nav`, `graft`, `region.json` et
+`land.json` installés, `map`, `check`. Environ 1 h 30, surtout le LiDAR (4 dalles, 680 Mo) et la BDNB.
+
+**Tuiles greffées : 16 sur les 22 du plan.** Le plan comptait six tuiles publiées de plus (`33_36`, `33_37`, `34_34`, `34_35`, `35_35`,
+`35_38`), parce que la côte bouge à moins de 150 m d'elles (`CAP_REACH`). Leur relief refabriqué est **identique au centimètre** :
+le plafond du rivage n'y coupait rien, avant comme après. La fabrication restreinte y dérivait pourtant : teintes de toit lues à
+l'orthophotographie au centième près, fiches sans leur mur d'entrée de vitrine (`front`, `build_shop_fronts.py`), et surtout la
+gendarmerie (`33_37`, D238) sans son modèle, ses bâtiments masqués, ni la cour et les places PMR de `build_parking.py`. Ces six tuiles
+sont donc **retirées de la greffe** (`plan.json`, `keptPublished`) et gardent leurs octets publiés : rien n'y change. Règle pour les
+prochaines extensions : ne greffer une tuile publiée que si son relief ou sa terre changent vraiment (`compare_tiles.py` d'abord).
+
+**Après la greffe** : `roadside.py` sur les seules tuiles greffées (le sol de chaussée vient de `build_public_space.py`, après le passage
+de `roadside.py` dans `build_tiles.py`), puis un tronc retiré à la main dans `36_36` : posé pile sur le bord d'une chaussée coupée à la
+frontière de deux tuiles (y = 188,0), `roadside.py` le « déplaçait » de zéro mètre.
+
+**Résultat** :
+- Route de Chalon : le relief monte sans creux de 321 m (rond-point de l'Eduen) à 350 m (chemin des Ragots) ; la côte est à plus de 240 m
+  de la route sur tout ce trajet (31 m dans l'anse avant). Le carrefour est à 244 m de la côte (129 m avant).
+- Golf : 26 ha à terre, tous à plus de 37 m du rivage (hors plage et falaise). Il reste dessiné en pelouse : le golf lui-même est l'étape suivante.
+- 450 tuiles (443 avant), terre 23,84 → 24,20 km² ; `zone` s'étend à x = 2 980. Données publiées : 105 Mo.
+- `check` : 98 fichiers changés, **aucun hors de l'extension**. Murs et mobilier identiques par genre et place (17 identifiants repris,
+  24 nouveaux numéros libres) ; arbres des tuiles déjà publiées aux mêmes places, plus ceux des terres neuves.
+- Navigation (`nav_graft.py`) : 15 arêtes, 1,3 km, 6 raccords (5 sur la même voie), trois super-tuiles (`s8_8`, `s9_8`, `s9_9`), 0 portail
+  sans jumeau (1 270). Carte : les kilomètres `s8_8`, `s8_9`, `s9_8`, `s9_9` et la vue d'ensemble ; `places.json` n'est pas refait (comme en D266).
+- Largeurs de chaussée : une voie nouvelle ajoutée à `measured_widths.json`.
+
+**Essais** : `src/data/chalon-extension.test.ts` (relief sans creux de l'Eduen au chemin des Ragots, côte à plus de 200 m de l'anse et du
+carrefour, golf à terre, itinéraire en voiture de l'Eduen au chemin des Ragots). Le test du relief échoue sur les données d'avant (288 m dans l'anse).
+
+**Captures** : `d286-route-avant.jpg` et `d286-route-apres.jpg` (au volant dans l'anse, vers le sud-est : avant, la route plonge vers la
+plage), `d286-haut-avant.jpg` et `d286-haut-apres.jpg` (au-dessus de la route, vers le carrefour et le golf).
+
+![Au volant dans l'anse, avant](captures/d286-route-avant.jpg)
+![Au volant dans l'anse, après](captures/d286-route-apres.jpg)
+![Vue haute, avant](captures/d286-haut-avant.jpg)
+![Vue haute, après](captures/d286-haut-apres.jpg)
+
+**Défauts connus, pour la suite** :
+- La route de Chalon continue 320 m après le chemin des Ragots et finit au bord de la nouvelle falaise (vers x 2 816) : c'est l'étape des
+  routes qui finissent à la mer (`docs/plans/routes-impasses.md`).
+- Le golf n'est pas dessiné (pelouse ordinaire) : étape suivante, d'après les photos de l'utilisateur.
+- `places.json` (noms et tracés des rues de la carte) s'arrête à l'ancienne côte (route de Chalon jusqu'à x 2 620) : à refaire avec l'étape des impasses.
+
+## 2026-11-08 — D287. Les routes qui finissent à la mer : raccourcies, fermées par une barrière
+
+**Demande** : retirer les bouts de route qui ne mènent à rien, au bord de la carte, vers la falaise et la mer ; choix « a + b » (raccourcir à ce
+qu'elles desservent, puis une vraie fin de route). Les questions du plan (`docs/plans/routes-impasses.md`) ont été laissées à mon jugement, avec
+une seule exigence : **aucune route dont la seule issue est une descente vertigineuse de la falaise vers la mer**.
+
+**Outil** (`tools/data/build_dead_ends.py`) :
+- `plan` lit le graphe routier publié (super-tuiles recousues aux portails) et cherche les bouts coupés par la côte : impasse à moins de 300 m
+  du trait de côte, et soit la terre n'est plus utilisable 20 m plus loin dans l'axe, soit la rue continue dans OpenStreetMap jusqu'au rivage
+  (le graphe s'arrête au dernier nœud utilisable, `build_nav.trim_to_land`, parfois 100 m avant), soit, droit devant à moins de 150 m, le
+  rivage après une descente de plus de 10 m. Pour chacun, la branche va du dernier carrefour au bout ; elle est coupée 25 m après la dernière chose
+  desservie (bâtiment à moins de 35 m, place ou parking de plus de 150 m² à moins de 15 m, chemin ou escalier piéton qui s'y raccorde), et jamais
+  à moins de 15 m du bout quand il donne sur une falaise. Une branche qui ne dessert rien est retirée jusqu'à son carrefour ; un fragment relié
+  à rien entre deux bouts de côte est raccourci des deux côtés à ce qu'il dessert (route du Carreau). Une branche dont le bout est à moins de
+  8 m au-dessus de l'eau (plage) est gardée. Résultat écrit dans `tools/data/dead_ends.json` (avec `overrides` pour corriger à la main, vide).
+- `apply` : zone retirée = la branche au-delà de la coupe, prolongée par la **suite réelle de la route** jusqu'à la côte (tracé de la carte : la
+  chaussée publiée va parfois 200 m plus loin que le graphe), élargie de la demi-chaussée + 8 m, moins les autres routes (+ 3 m). Dans la zone :
+  chaussée, trottoirs, bordures et marquages coupés, lampadaires, feux et panneaux retirés, sols fins et super-tuiles de sol repeints en herbe ;
+  arêtes routières de la branche et files piétonnes (pas les chemins ni les sentiers) coupées, le nouveau bout marqué impasse, sans renuméroter
+  les autres arêtes ; rues de la carte coupées ; images de carte des kilomètres touchés refaites.
+- **Fin de route** : aire de retournement en enrobé (rayon 7 m, bordée de trottoir) là où la chaussée est dessinée et fait au moins 4,5 m,
+  barrière seule ailleurs ; **barrière rouge et blanche** (mur `barrier`, 1 m, poteaux blancs, lisse à bandes de 0,5 m) juste au-delà du bout
+  (les conducteurs simulés vont jusqu'au bout du graphe sans la toucher) ; on l'enjambe à pied, une voiture s'y arrête ; **panneau « voie sans
+  issue »** (C13a, mobilier `dead_end`) à droite en entrant dans la branche quand il en reste plus de 60 m. Rendu : `buildRoadBarrier` et
+  `dead_end` dans `src/render/props.ts` ; collisions : `barrier` escaladable, mât du panneau (`src/core/world.ts`).
+- La route de Chalon après le chemin des Ragots manquait aux rues de la carte (fabriquées avant D286) : ajoutée (`PLACES_ADD`, voie OpenStreetMap
+  155064508 coupée au trait de côte).
+
+**Résultat** : **33 branches** : 27 raccourcies (16 aires de retournement, 11 barrières seules), 5 retirées (chemin du Vieux Moulin, chemin de
+la Maison Forestière Feuillée, trois petits tronçons isolés), 1 gardée (avenue du Commandant de Neuchèze, qui descend doucement à la plage).
+28 barrières, 19 panneaux, 56 lampadaires et panneaux retirés, 5 arbres retirés des aires ; 1,6 km de graphe routier en moins, et la chaussée
+au-delà jusqu'à la côte ; 49 tuiles, 10 super-tuiles de navigation, 0 portail sans jumeau (1 252). Contrôle : sur toutes les routes gardées, aucun
+point qui était sur la chaussée ne l'a perdue, sauf un, au bord même de la coupe de la route d'Arnay. Un fragment isolé que la règle de la zone
+étalonnée (ci-dessous) garde entier n'est raccourci d'aucun côté (sinon la chaussée disparaissait sous une arête gardée).
+
+**Exception imposée par les essais** : les scénarios de poursuite et de conduite (`testing.ts`, `SCENARIO_ZONE`) partent d'arêtes tirées dans
+l'ordre des fichiers et roulent 200 s au hasard : retirer une arête dans la zone décale tous les départs, et **déplacer un bout de route juste
+hors de la zone change déjà l'issue des poursuites** (essai carré par carré : `s4_7` et `s4_8` faisaient échouer `chase`). Les branches dont le
+carrefour est dans la zone ou à moins de 300 m (route Corps Franc Pommiès, route de Broye, route de Pierrefitte, route du Bois de Sapin) gardent
+donc leur bout et toute leur navigation ; seule la chaussée au-delà est retirée, et une barrière ferme la route. Les 453 départs des scénarios
+sont identiques, dans le même ordre. Recaler ces scénarios sur un graphe raccourci serait une autre étape.
+
+**Essais** : `src/data/dead-ends.test.ts` : toute impasse routière à moins de 150 m d'une descente de plus de 10 m vers la côte (droit devant,
+jusqu'à la surface de l'eau) est fermée par une barrière (14 vérifiées ; sur les données d'avant, le test échoue) ; barrières et panneaux posés ;
+seule l'avenue de Neuchèze est gardée ; la route de Chalon s'arrête au bout de la piste forestière, barrière comprise. 1 419 essais.
+
+**Captures** : `d287-chalon-avant.jpg`, `d287-chalon-apres.jpg` (la route de Chalon après le chemin des Ragots), `d287-beaune-avant.jpg`,
+`d287-beaune-apres.jpg` (la route de Beaune, vers la mer), `d287-panneau.jpg` (le panneau au carrefour de la route de Beaune),
+`d287-broye-apres.jpg` (la route de Broye, au-dessus d'une falaise de 170 m).
+
+![Route de Chalon, avant](captures/d287-chalon-avant.jpg)
+![Route de Chalon, après](captures/d287-chalon-apres.jpg)
+![Route de Beaune, avant](captures/d287-beaune-avant.jpg)
+![Route de Beaune, après](captures/d287-beaune-apres.jpg)
+![Panneau « voie sans issue »](captures/d287-panneau.jpg)
+![Route de Broye, après](captures/d287-broye-apres.jpg)
+
+**Limites connues** :
+- Les voitures de la circulation ne font pas demi-tour dans les aires : arrivées au bout, elles sont retirées comme avant (D64).
+- Les routes non carrossables pour le jeu (rue des Mineurs aux Télots, tronçon ouest de la route de Pierrefitte) gardent leur chaussée : elles
+  descendent à une plage.
+- `build_dead_ends.py apply` s'applique une fois, sur les données d'avant ; pour le relancer : `git checkout public/data`, puis `plan` et `apply`.
+
+## 2026-11-08 — D288. Le golf municipal, lot 1 : les sols du parcours
+
+**Demande** : refaire le golf d'Autun (chemin des Ragots) d'après les photos de l'utilisateur ; plan accepté : 1. sols du parcours, 2. club-house
+et entrée, 3. practice, 4. finitions et golfeurs. On reste sur le golf (pas les services techniques voisins). Photos : vue de drone, green avec la
+cathédrale, club-house vu du ciel, entrée et parking (captures Google Street View, non versionnées), practice, terrasses, greens ; vue satellite
+Google Maps : elle sert seulement à situer (D4), rien n'en est tracé.
+
+**Sources** : OpenStreetMap n'a que le contour du golf (relation 6332293, 26 ha) et le restaurant « Le Fairway ». Greens, départs et bunkers
+sont relevés sur l'orthophotographie de l'IGN (été : greens arrosés vert vif sur l'herbe sèche, bunkers de sable clair), à 25 cm.
+
+**Relevé** (`tools/data/build_golf.py --trace` → `tools/data/golf.json`) :
+- **14 greens** : un point posé à la main au centre de chacun (`GREEN_SEEDS`), puis la tache grandit autour de lui jusqu'à la moitié du contraste
+  de vert entre le point et son voisinage (26 m), lissée ; 380 à 790 m². Le tout-automatique (seuil de vert unique) échouait : les couronnes
+  d'arbres sont aussi vertes, et la teinte des greens varie d'un trou à l'autre.
+- **10 départs** : petites taches vert vif (40 à 300 m²) à plus de 8 m d'un green, réduites à leur rectangle.
+- **22 bunkers** : taches claires et compactes (12 à 600 m²), hors bâtiments, chaussées et places (un champ sec du sud passait pour du sable).
+
+**Pose** (`build_golf.py`) : fairways = le golf moins 8 m de bord, moins les bâtiments (+ 3 m), chaussées, trottoirs, places et eau (+ 2 m), moins
+3 m autour de chaque arbre ; découpés en **un trou par green** (cellules de Voronoï des greens), tondus en **bandes de 9 m** parallèles à l'axe
+du green au départ le plus loin de sa cellule (à défaut, au point le plus loin) ; deux couches alternées (`golf_fairway`, `golf_fairway2`). Le rough
+est le sol d'origine (bord, pied des arbres, liseré autour des greens et des bunkers). Couches `golf_green`, `golf_tee`, `golf_bunker`, sur le relief
+nu comme les pelouses (`src/render/ground.ts`) ; couleurs du thème (`paving` 11 à 15, `src/render/style.ts`) et de la carte (`build_map.py`).
+**Drapeau** sur chaque green (mobilier `golf_flag` : mât blanc à bandes rouges de 2,2 m, fanion jaune, comme sur la photo), un peu décentré ;
+pas de collision (un mât de golf plie). 9 tuiles, images de carte `s8_8`, `s8_9`, `s9_8`. Fairways 18 ha, greens 0,8 ha, bunkers 0,15 ha.
+
+**Essais** : `src/data/golf.test.ts` (14 drapeaux, chacun sur un green ; toutes les couches présentes). 1 421 essais.
+
+**Captures** : `d288-golf-haut.jpg` (vue de drone, comme la photo de l'utilisateur), `d288-golf-fairway.jpg`, `d288-golf-green.jpg`.
+
+![Vue haute](captures/d288-golf-haut.jpg)
+![Un fairway](captures/d288-golf-fairway.jpg)
+![Un green](captures/d288-golf-green.jpg)
+
+**Limites** : l'appariement départ-green est géométrique (cellules de Voronoï), pas le vrai plan des trous ; certains départs, à l'ombre ou
+jaunis, ne sont pas relevés ; les greens ne sont pas surélevés (relief LiDAR tel quel). Suite : lot 2 (club-house et entrée).
+
+## 2026-11-08 — D289. Le golf, lot 2 : le club-house, sa terrasse et l'entrée
+
+**Photos** : le club-house vu de drone (toits à croupes de tuiles brun-gris, cheminées, terrasse pavée avec une tente blanche et des tables),
+les terrasses face au green (tables carrées en bois, chaises en résine tressée, parasol, haie fleurie), l'entrée sur le chemin des Ragots (muret
+de béton, panneau vert « Bienvenue – Golf municipal de la ville d'Autun », deux mâts à drapeaux, petit bâtiment d'accueil à toit de tôle vert).
+Orthophotographie de l'IGN pour les positions : le club-house (deux volumes BD TOPO), la tente collée à l'ouest, côté green (BD TOPO la compte
+comme un bâtiment de 74 m²), le bâtiment d'accueil et le parking au nord-est, l'allée d'entrée vers x 2 155.
+
+**Fait** (`build_golf.py`, fonction `club`, à chaque pose) :
+- Toits du club-house en **tuile brune** (nouveau matériau `tuile_brune`, `#7d675c` ; thèmes, schéma des fiches, silhouettes lointaines) ; toit de
+  tôle (`zinc`) pour le bâtiment d'accueil.
+- **Tente** : le bâtiment BD TOPO caché (`k: "hidden"`), remplacé par son rectangle (103 m²) : côtés blancs de 2,3 m, toit à deux pans, faîtage à
+  3,7 m ; solide (anneau de collision).
+- **Terrasse** de 390 m² côté ouest (couche de sol `golf_terrace`, pavés rouge brique), bordée d'une **haie** fleurie de 1,1 m (deux murs `hedge`,
+  passage vers le parcours) ; **8 tables** carrées avec 4 chaises chacune, réparties sur toute la terrasse hors de la tente, **4 parasols** blancs.
+- **Entrée** : muret de béton de 9 m et 1,2 m à l'est de l'allée (mur `wall`), **panneau** vert à cadre blanc (balle et clubs croisés, lignes de
+  texte suggérées, comme les enseignes du jeu) posé devant, **deux mâts** de 6 m à oriflamme blanche et rouge devant le bâtiment d'accueil.
+- Rendu : `src/render/golf.ts` (site `golf` des types, `GolfSite`) ; collisions : tente, tables, parasols et mâts (`src/core/landmarks.ts`).
+
+**Essais** : `golf.test.ts` (site, tables, tente cachée, toits, terrasse, haies et muret). 1 422 essais.
+
+![Avant](captures/d289-club-avant.jpg)
+![Après](captures/d289-club-apres.jpg)
+![La terrasse, face au green](captures/d289-terrasse.jpg)
+![L'entrée](captures/d289-entree.jpg)
+
+**Limites** : le texte du panneau est suggéré (traits), pas lisible ; les murs du club-house restent ceux d'une maison générique (fenêtres,
+enduit crème) ; pas de massif de fleurs roses distinct de la haie. Suite : lot 3 (practice).
+
+## 2026-11-08 — D290. Le golf, lot 3 : le practice
+
+**Photos** : la rangée de tapis verts sur dalles de béton, avec une allée de gravier derrière, dans la pente qui descend vers le plan d'eau ;
+le long abri à charpente bois et toit à un pan ; les filets verts sur poteaux ; les cibles dans le terrain. **Orthophotographie** : la ligne des
+tapis de (2 071 ; −56) à (2 120 ; −14), l'abri au-dessus des 25 derniers mètres, le terrain au nord-ouest, deux lignes de filets (côtés sud-ouest et
+nord-est), trois cibles rondes.
+
+**Fait** (`build_golf.py`, champ `practice` du site `golf`) : **22 postes** de 3 m (dalle de béton de 2,4 m, tapis vert de 1,5 m), l'**abri** sur
+24,5 m (poteaux de bois tous les 4 m, pannes, toit à un pan plus haut côté terrain, gris dessus, clair dessous), une **allée de gravier** de 2 m
+derrière les dalles (couche `golf_path`), **trois cibles** (anneau blanc vertical de 1,2 m de rayon, fanion rouge), **deux filets** de 5 m
+(murs `fence` d'aspect grillage vert, trop hauts pour être escaladés). Le terrain garde la tonte en bandes du lot 1. Géométrie partagée par le
+rendu et les collisions dans `src/core/golf.ts` (poteaux de l'abri et des cibles solides).
+
+![Le practice](captures/d290-practice.jpg)
+![Sous l'abri](captures/d290-abri.jpg)
+![Vue haute](captures/d290-practice-haut.jpg)
+
+**Limites** : pas de balles ni de seaux sur les tapis ; les filets sont en barreaudage de grillage, pas en maille souple. Suite : lot 4 (golfeurs).
+
+## 2026-11-08 — D291. Le golf, lot 4 : les golfeurs
+
+**Demande** : des golfeurs sur le parcours (photos : groupes de trois ou quatre sur les greens, chariots à roues, sacs).
+
+**Trous** (`build_golf.py`, champ `holes` du site) : pour chaque green, son départ (le départ relevé le plus loin dans sa cellule de Voronoï,
+sinon le point du golf le plus loin du green dans la cellule, à 15 m du bord au moins) et son drapeau ; une tournée part du trou le plus proche
+du club-house et va chaque fois au départ le plus proche du green joué. 14 trous de 57 à 152 m, ≈ 1,5 km joués.
+
+**Logique** (`src/core/golfers.ts`, `GolfRound`, pure) : **quatre groupes** de deux à quatre joueurs, répartis sur le parcours. Un groupe marche du
+départ au green à 1,05 m/s (au pas d'un chariot), s'arrête 14 s au départ et 9 s tous les 70 m (les coups), se rassemble en cercle à 3 à 5 m du
+drapeau (30 s, les chariots laissés au bord), puis va au départ suivant. Au **practice**, trois joueurs sur les tapis sous l'abri, face au terrain.
+
+**Dans le jeu** (`src/game/golfers.ts`, `GolfersController`) : une petite foule à part, dessinée par le moteur des passants (recettes tirées comme
+eux, ombres selon le réglage), et un **chariot** par joueur qui marche (roues, châssis, sac bleu marine, poignée), en une seule instance : deux
+appels de dessin. Actifs **de 8 h à 20 h, hors pluie**, quand le joueur est à moins de 1,2 km du premier départ ; sinon ni simulation ni dessin.
+Le site arrive par les données de tuile chargées (`TileExtras.golf`), comme les voiliers du Vallon.
+
+**Essais** : `src/core/golfers.test.ts` : nombre de joueurs ; au pas, sans saut ; en quatre heures, un groupe passe par les 14 drapeaux ; au practice,
+on regarde le terrain. Vérifié en jeu (`tools/play.sh`, 11 h, beau temps) : un groupe autour du drapeau du green près de la terrasse, un joueur
+poussant son chariot. 1 425 essais.
+
+![Un groupe au drapeau](captures/d291-golfeurs-green.jpg)
+![Avec son chariot](captures/d291-golfeurs-chariot.jpg)
+
+**Limites** : pas de geste de swing (ils se tiennent debout aux coups), pas de balle ; tenues de passants ordinaires (pas de casquette ni de polo
+dédiés) ; les golfeurs ne réagissent ni au joueur ni aux tirs (ils ne sont pas des passants du jeu) ; pas de piquets blancs ni de massifs de fleurs
+(finitions du lot 4 laissées de côté).
+

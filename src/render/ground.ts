@@ -37,6 +37,16 @@ const LAYERS: Record<string, { color: number | "water" | "pitch" | `paving${numb
   schist_black: { color: "paving9", lift: 0.03 },
   schist_red: { color: "paving8", lift: 0.033 },
   path_schist: { color: "paving10", lift: 0.045 },
+  // Golf municipal (D288) : fairways tondus en bandes, greens, départs, bunkers ; sur le relief nu, comme les pelouses.
+  golf_fairway: { color: "paving11", lift: 0.032 },
+  golf_fairway2: { color: "paving12", lift: 0.032 },
+  golf_bunker: { color: "paving15", lift: 0.036 },
+  golf_tee: { color: "paving14", lift: 0.04 },
+  golf_green: { color: "paving13", lift: 0.042 },
+  // Terrasse du club-house (D289) : pavés autobloquants rouge brique.
+  golf_terrace: { color: "paving4", lift: 0.06 },
+  // Allée de gravier derrière les tapis du practice (D290).
+  golf_path: { color: "paving7", lift: 0.04 },
   walk: { color: 4, lift: 0.15 },
   lawn: { color: 3, lift: 0.03, tint: 1.12 },
   pitch: { color: "pitch", lift: 0.035 },
@@ -84,7 +94,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     for (const poly of polys) {
       // Terrils (D269) : pentes à 35° et talus des lacets, le sol suit le relief à 1,5 m près (sinon il passe dessous par endroits).
       const steep = name.startsWith("schist") || name === "path_schist";
-      yield* fillOnTerrainSteps(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" || steep ? bare : terrain, true, steep ? STEEP_EDGE : MAX_EDGE);
+      yield* fillOnTerrainSteps(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" || name.startsWith("golf_") || steep ? bare : terrain, true, steep ? STEEP_EDGE : MAX_EDGE);
       yield;
       if (name === "walk") {
         curbs(mb, [poly], terrain, color, onEdge);

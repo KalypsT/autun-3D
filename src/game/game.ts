@@ -7,6 +7,7 @@ import { MarketController } from "./market";
 import { FeastsController } from "./feasts";
 import { AnimalsController } from "./animals";
 import { Sailboats } from "../render/sailboats";
+import { GolfersController } from "./golfers";
 import { marketCenter, marketLevel, servicesWanted, trafficWeek } from "../core/week";
 import { crowdWeather, surfaceGrip, weatherInfo, trafficWeather, walkWeather } from "../core/weather";
 import { setDriverCaution } from "../core/driver";
@@ -195,6 +196,9 @@ export function startGame(ctx: GameContext): void {
   // Voiliers du plan d'eau du Vallon (D249) : l'été en journée, au printemps et en automne le week-end.
   const sailboats = new Sailboats();
   scene.add(sailboats.group);
+  // Golfeurs du golf municipal (D291).
+  const golfers = new GolfersController(scene, terrain);
+  golfers.setShadows((ctx.settings?.values.shadows ?? 1) !== 0);
   let sailClock = 0;
   // Fêtes (D202) : illuminations, feu d'artifice du 14 juillet, fête de la musique.
   const feasts = new FeastsController(scene, terrain, colliders, seats, audio, () => tiles.loadedExtras());
@@ -232,7 +236,10 @@ export function startGame(ctx: GameContext): void {
       const old = atmosphere.calendarConfig;
       atmosphere.setCalendar({ length: v.seasonLength, frozen: v.season === -1 ? null : v.season }, rescaleDate(atmosphere.date, old.length, v.seasonLength));
     }
-    if (changed.includes("shadows")) (peds as PedsController | null)?.setShadows(v.shadows !== 0);
+    if (changed.includes("shadows")) {
+      (peds as PedsController | null)?.setShadows(v.shadows !== 0);
+      golfers.setShadows(v.shadows !== 0);
+    }
     // « Foule » change en direct ; si la navigation n'était pas chargée (réglage sur « Aucune » au départ), elle se charge maintenant.
     if (changed.includes("traffic")) startTraffic(v.traffic);
     if (changed.includes("crowd")) {
@@ -1390,6 +1397,8 @@ export function startGame(ctx: GameContext): void {
     animals.update(dt, { x: player.x, y: player.y, yaw, speed: Math.abs(speedOf()), hour: atmosphere.hour, night: atmosphere.night, season: atmosphere.calendar.season });
     sailClock += dt;
     sailboats.update(sailClock, atmosphere.hour, atmosphere.calendar.season, atmosphere.calendar.weekday, tiles.loadedExtras().flatMap((e) => e.sail ?? []));
+    golfers.setSite(tiles.loadedExtras().find((e) => e.golf)?.golf ?? null);
+    golfers.update(dt, player.x, player.y, atmosphere.hour, atmosphere.weather.rain, camera.position.x, camera.position.z);
     // Météo (D195) : adhérence du sol et prudence des conducteurs, pour tous les véhicules (prise en compte au pas suivant).
     const wx = atmosphere.weather, wxTraffic = trafficWeather(wx);
     setSurfaceGrip(surfaceGrip(wx));

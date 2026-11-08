@@ -1,0 +1,4 @@
+{
+ "_doc": "Extension de la route de Chalon et du golf (D286) : l'anse de mer qui coupait la route de Chalon 400 m avant le chemin des Ragots (34_36, 35_36), le carrefour avec le chemin des Ragots (36_35) et la pointe sud-est du golf d'Autun (35_34, 36_34). Tuiles jouables ajoutées ; la bordure et les tuiles à refabriquer sont calculées par extend.py plan.",
+ "playable": ["34_36", "35_36", "36_35", "35_34", "36_34"]
+}
