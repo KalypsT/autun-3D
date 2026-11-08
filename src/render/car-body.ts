@@ -155,6 +155,11 @@ export interface CarBodyParams {
   sculpt?: Sculpt;
   /** Livrée (police, J4) : une bande claire et un filet de couleur le long des flancs, une barre de gyrophares sur le toit. */
   livery?: { stripe: string; accent: string; lightBar: boolean };
+  /**
+   * Feux bleus qui clignotent (D281), dans le repère du véhicule, la profondeur comptée depuis le nez (`nose`) : rampe sur le toit et feux de calandre
+   * d'une caisse sculptée. Absent : la rampe générique au-dessus du toit (`livery.lightBar`).
+   */
+  beacons?: readonly { x: number; y: number; nose: number; size: readonly [number, number, number] }[];
 }
 
 /** Barre de gyrophares : hauteur du socle, et ses deux feux (centre x, y, z et taille), dans le repère du véhicule. */
@@ -162,6 +167,7 @@ const BAR_HEIGHT = 0.1;
 export function beaconBoxes(p: CarBodyParams, front: number, rear: number): { x: number; y: number; z: number; size: [number, number, number] }[] {
   if (!p.livery?.lightBar) return [];
   const L = carLayout(p, front, rear);
+  if (p.beacons) return p.beacons.map((b) => ({ x: b.x, y: b.y, z: L.noseZ + b.nose, size: [...b.size] as [number, number, number] }));
   const z = L.roofFrontZ + p.roof * 0.35, y = p.height + BAR_HEIGHT / 2 + 0.01;
   return [-1, 1].map((side) => ({ x: side * 0.3, y, z, size: [0.42, BAR_HEIGHT * 0.9, 0.2] as [number, number, number] }));
 }

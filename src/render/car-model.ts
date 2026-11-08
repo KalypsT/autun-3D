@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { vehicleDef } from "../core/vehicle-catalog";
 import type { VehicleState } from "../core/vehicle";
-import { bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
+import { beaconBoxes, bodyDetailGeometry, bodyPaintGeometry, carLayout, carWheelGeometry, chimneyTop, vendorSpot, type CarBodyParams } from "./car-body";
 import { merge, sharedMaterial, type VehicleModel } from "./vehicle-model";
 import { CITADINE } from "./car-citadine";
 import { COMPACTE } from "./car-compacte";
@@ -13,6 +13,7 @@ import { SPORTIVE } from "./car-sportive";
 import { VIEILLE_VOITURE } from "./car-vieille-voiture";
 import { CAMIONNETTE } from "./car-camionnette";
 import { DEUCHE } from "./car-deuche";
+import { GENDARMERIE } from "./car-gendarmerie";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -96,14 +97,21 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     wheelRadius: 0.29, tyreWidth: 0.13, glass: "#2a3440", sculpt: DEUCHE,
     style: { headlights: "round", grille: "chrome", taillights: "round", bumpers: "chrome", rim: "#cfd1cc", doors: 2, roundness: 1 },
   },
-  // Gendarmerie (J4, D72) : la caisse de la compacte, bleu nuit, bandes claires sur les flancs, barre de gyrophares sur le toit.
+  // Gendarmerie (J4, D72, D281) : caisse sculptée d'après photos (`car-gendarmerie.ts`), livrée et lettrage dessinés dessus ; les feux bleus qui
+  // clignotent (rampe et calandre) sont à part (`beacons`).
   gendarmerie: {
-    length: 4.25, width: 1.8, height: 1.46, overhangFront: 0.85,
-    clearance: 0.27, belt: 0.9, noseHeight: 0.82, tailHeight: 0.95,
-    hood: 1.2, windshield: 0.62, roof: 1.3, rearGlass: 0.78, roofTaper: 0.9,
-    wheelRadius: 0.31, tyreWidth: 0.2,
+    length: 4.64, width: 1.84, height: 1.65, overhangFront: 1.0,
+    clearance: 0.24, belt: 1.12, noseHeight: 0.98, tailHeight: 1.2,
+    hood: 1.47, windshield: 0.7, roof: 2.0, rearGlass: 0.3, roofTaper: 0.9,
+    wheelRadius: 0.35, tyreWidth: 0.225, glass: "#1c232c", sculpt: GENDARMERIE,
     livery: { stripe: "#eef1f4", accent: "#4a8fd8", lightBar: true },
-    style: { headlights: "almond", grille: "slim", taillights: "horizontal", bumpers: "trim", rim: "#7d7f84", doors: 2, roundness: 0.6, intake: true },
+    beacons: [
+      { x: -0.28, y: 1.712, nose: 2.402, size: [0.52, 0.09, 0.21] },
+      { x: 0.28, y: 1.712, nose: 2.402, size: [0.52, 0.09, 0.21] },
+      { x: -0.2, y: 0.81, nose: 0.03, size: [0.1, 0.035, 0.03] },
+      { x: 0.2, y: 0.81, nose: 0.03, size: [0.1, 0.035, 0.03] },
+    ],
+    style: { headlights: "almond", grille: "chrome", taillights: "vertical", bumpers: "trim", rim: "#c3c6ca", doors: 2, roundness: 0.5, spokes: 5 },
   },
   // Jeep militaire (D114) : courte, carrée, haute, capote en toile, roue de secours, phares ronds, pare-chocs noirs, grandes roues tout-terrain.
   "jeep-militaire": {
@@ -195,6 +203,10 @@ function bodyOf(id: string): { p: CarBodyParams; front: number; rear: number } {
   return { p, ...specOf(id) };
 }
 
+/** Couleurs des gyrophares allumé et éteint (les mêmes que ceux de la circulation, `traffic-models.ts`). */
+const BEACON_ON = "#5a8cff";
+const BEACON_OFF = "#1a2f66";
+
 /** Maillage d'une caisse prête à l'emploi : peinture (de la couleur donnée) et détails (verre, pare-chocs, feux…) ; `twoTone` : sa version en deux tons (D280). */
 export function createCarModel(id: string, color: string, twoTone = false): VehicleModel {
   const { p, front, rear } = bodyOf(id);
@@ -219,6 +231,16 @@ export function createCarModel(id: string, color: string, twoTone = false): Vehi
   const body = new THREE.Group();
   body.add(mesh(bodyGeo), mesh(detailGeo));
   group.add(body);
+  // Gyrophares (D281) : un cube par feu, un peu plus grand que la rampe peinte, caché tant qu'ils sont éteints ; ils s'allument un sur deux.
+  const beaconBox = new THREE.BoxGeometry(1, 1, 1);
+  const beacons = beaconBoxes(p, front, rear).map((b) => {
+    const m = new THREE.Mesh(beaconBox, new THREE.MeshBasicMaterial({ color: BEACON_OFF }));
+    m.position.set(b.x, b.y, b.z);
+    m.scale.set(b.size[0] + 0.01, b.size[1] + 0.01, b.size[2] + 0.01);
+    m.visible = false;
+    body.add(m);
+    return m;
+  });
   const wheels = layout.wheels.map(([x, z]) => {
     const pivot = new THREE.Group();
     pivot.position.set(x, p.wheelRadius, z);
@@ -241,6 +263,15 @@ export function createCarModel(id: string, color: string, twoTone = false): Vehi
         w.rotation.x = -s.wheel;
       });
     },
+    ...(beacons.length ? {
+      setBeacon(clock: number | null) {
+        const phase = clock === null ? 0 : Math.floor(clock * 4) & 1;
+        beacons.forEach((m, k) => {
+          m.visible = clock !== null;
+          (m.material as THREE.MeshBasicMaterial).color.set((k & 1) === phase ? BEACON_ON : BEACON_OFF);
+        });
+      },
+    } : {}),
     setDamage(zones) {
       crumplers ??= [new Crumpler(bodyGeo, frame, true), new Crumpler(detailGeo, frame, false)];
       const broken = crumplers[0]!.apply(zones);
@@ -251,6 +282,8 @@ export function createCarModel(id: string, color: string, twoTone = false): Vehi
       bodyGeo.dispose();
       detailGeo.dispose();
       wheelGeo.dispose();
+      beaconBox.dispose();
+      for (const m of beacons) (m.material as THREE.Material).dispose();
     },
   };
 }
@@ -316,6 +349,11 @@ export function carRestGeometry(id: string): THREE.BufferGeometry {
     parts.push(w);
   }
   return merge(parts);
+}
+
+/** La voiture a-t-elle un gyrophare (D281 : la gendarmerie ; celui qui la conduit l'allume avec le bouton du klaxon) ? */
+export function hasBeacon(def: { id: string }): boolean {
+  return !!CAR_BODIES[def.id]?.livery?.lightBar;
 }
 
 /** Camion-restaurant (D115) : où se tient le vendeur (repère du véhicule), ou null pour un autre modèle. */

@@ -24,6 +24,11 @@ export interface VehicleModel {
    * et feux cassés de chaque côté (pour éteindre leur lumière la nuit).
    */
   setDamage?(zones: Readonly<Record<"front" | "rear" | "left" | "right", number>>): { headRight: boolean; headLeft: boolean; tailRight: boolean; tailLeft: boolean };
+  /**
+   * Gyrophares d'une voiture de gendarmerie (D281) : `clock` (s) fait clignoter les feux bleus en alternance, null les éteint. Absent : pas de
+   * gyrophare.
+   */
+  setBeacon?(clock: number | null): void;
   dispose(): void;
 }
 

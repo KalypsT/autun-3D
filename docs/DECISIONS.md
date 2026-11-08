@@ -6149,3 +6149,47 @@ total**, 2 162 en deux tons (plafonds des véhicules uniques).
 
 ![Vues, et à sa place place Cardinal-Perraud](captures/d280-deuche.jpg)
 ![Couleurs, dont les deux versions en deux tons](captures/d280-deuche-couleurs.jpg)
+
+## 2026-11-08 — D281. La gendarmerie sculptée d'après photos (SUV à sept places) ; le gyrophare s'allume au bouton du klaxon
+
+**Photos** : quatre.
+- **Retenues** : la première version (2017-2020) d'un SUV français à sept places, en trois-quarts avant et trois-quarts arrière, avec le profil
+  d'une miniature de la version suivante (silhouette inchangée).
+- **Écartée** : la face de la version suivante, trop petite.
+- **Manque** : une face et un arrière bien droits.
+
+**Gabarit** : 4,64 × 1,84 m, 1,65 m de caisse, **1,77 m rampe comprise** (au lieu de 4,25 × 1,80 × 1,58 m, la caisse de la compacte), avec l'accord
+de l'utilisateur. La fiche `POLICE_CAR` ne change pas : empattement 2,64 m (le vrai fait 2,84 m), conduite de la compacte gonflée. Les gendarmes
+sont maintenant nettement plus gros. Les rétroviseurs sont mis à part du gabarit, comme ceux du fourgon (D279) : la caisse fait 1,87 m dessinée.
+
+**Livrée** : exception au refus du lettrage réel, à la demande de l'utilisateur.
+- Bleu nuit, triple bande blanche sur les flancs, coupée sur la porte avant par le mot **GENDARMERIE**, écrit à l'endroit de chaque côté.
+- Les lettres sont tracées en traits posés sur la caisse, avec une petite police à bâtons de huit lettres (`car-gendarmerie.ts`).
+- Chevrons rouges sur fond jaune à l'avant du capot et sur le bas du hayon, avec un bandeau bleu nuit sur le hayon.
+- Le mot n'est pas écrit sur le hayon, faute de triangles (plafond de 1 200 pour les détails) : il est sur les flancs.
+
+**Caisse** (`src/render/car-gendarmerie.ts`) :
+- **Avant** : face haute, phares effilés qui remontent sur l'aile, calandre noire à barrettes, emblème neutre (losange), gros bouclier à prise d'air,
+  antibrouillards dans des écrins chromés.
+- **Silhouette** : long toit plat à barres claires, jonc chromé au-dessus des trois vitres de côté, montants noirs, hayon presque droit.
+- **Arrière** : feux en griffes reliés par un bandeau noir.
+- **Autres** : passages de roue et bas de caisse noirs, jantes claires à cinq branches, rampe bleue sur l'avant du toit.
+
+**Coût** (exemplaire garé) : 868 triangles de peinture, 1 190 de détails et roues, **2 058 au total** (plafonds D272).
+
+**Gyrophares** :
+- **Explicites** : une caisse peut donner ses feux qui clignotent (`CarBodyParams.beacons`). La gendarmerie en a quatre : deux moitiés de rampe et
+  deux feux bleus dans la calandre. Les voitures en poursuite les font clignoter comme avant (`traffic-models.ts`), à la place de la rampe générique.
+- **Dans la voiture que l'on conduit** : le bouton du klaxon devient « Gyrophare » (pictogramme de gyrophare, bouton bleu quand il est allumé).
+  - Un appui allume les feux, qui clignotent en alternance (`VehicleModel.setBeacon`), et le deux-tons (`GameAudio.siren`). Un autre appui les éteint.
+  - Allumé, le gyrophare vaut un coup de klaxon toutes les 1,2 s : les voitures devant se rangent, les passants s'écartent.
+  - Il s'éteint quand on descend.
+- **Vérifié en jeu** : dans une gendarmerie, touche H, la rampe et le bouton s'allument (capture).
+
+**Tests** : le modèle articulé ne compte que ses maillages visibles (les gyrophares sont cachés tant qu'ils sont éteints), et une voiture de police
+en poursuite a quatre feux qui clignotent au lieu de deux.
+
+**Reste** : les gendarmes en berlinette de sport, à faire d'après les visuels que l'utilisateur fournira (D282).
+
+![Avant / après](captures/d281-gendarmerie-avant-apres.jpg)
+![Gyrophare : éteint, puis allumé (une moitié de la rampe, puis l'autre)](captures/d281-gyrophare.jpg)

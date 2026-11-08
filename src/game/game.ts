@@ -17,7 +17,7 @@ import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, setSurfaceGrip, s
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
-import { chimneyOf, vendorOf } from "../render/car-model";
+import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
 import { blastShare, EXPLOSION, wreckStage } from "../core/explosion";
 import { rayHull } from "../core/vehicle-contact";
@@ -250,6 +250,9 @@ export function startGame(ctx: GameContext): void {
   let camDist = distance;
   let riding: Vehicle | null = null;
   let rideModel: VehicleModel | null = null;
+  // Gyrophare de la voiture de gendarmerie conduite (D281) : allumé ou non, son horloge (clignotement), le prochain « coup » qui fait se ranger
+  // les voitures et s'écarter les passants devant.
+  let beaconOn = false, beaconClock = 0, beaconPulse = 0;
   /** Feux du véhicule conduit (D90). */
   let lights: VehicleLights | null = null;
   /** Véhicules abandonnés en roulant (saut hors d'une voiture en marche) : ils finissent leur course sur leur élan, sans conducteur. */
@@ -444,10 +447,14 @@ export function startGame(ctx: GameContext): void {
     controls.lift = v.family !== "car";
     gasLabel.textContent = familyOf(v).gas;
     gasEl.setAttribute("aria-label", familyOf(v).gas);
-    // Klaxon ou sonnette : un bouton rond avec son pictogramme, le mot dans son libellé.
-    hornEl.innerHTML = icon(familyOf(v).horn === "Sonnette" ? "bell" : "horn");
-    hornEl.setAttribute("aria-label", familyOf(v).horn);
-    hornEl.title = familyOf(v).horn;
+    // Klaxon ou sonnette : un bouton rond avec son pictogramme, le mot dans son libellé. Dans une voiture de gendarmerie, le même bouton allume
+    // et éteint le gyrophare et le deux-tons (D281).
+    beaconOn = false;
+    hornEl.classList.remove("on");
+    const label = hasBeacon(v.def) ? "Gyrophare" : familyOf(v).horn;
+    hornEl.innerHTML = icon(hasBeacon(v.def) ? "beacon" : familyOf(v).horn === "Sonnette" ? "bell" : "horn");
+    hornEl.setAttribute("aria-label", label);
+    hornEl.title = label;
     document.body.classList.add("driving");
     document.body.classList.toggle("car", v.spec.handbrake);
     audio.setRide({ id: v.def.id, family: v.family, spec: v.spec });
@@ -474,6 +481,9 @@ export function startGame(ctx: GameContext): void {
     s.lean = lean;
     s.fallen = false;
     stunt.end();
+    rideModel?.setBeacon?.(null);
+    beaconOn = false;
+    hornEl.classList.remove("on");
     rideModel?.update(s);
     lights?.dispose();
     lights = null;
@@ -1255,8 +1265,25 @@ export function startGame(ctx: GameContext): void {
     // Un appui, un saut : il ne compte qu'au premier pas de simulation de l'image.
     let jumpNow = input.jump && !jumpHeld && downFor <= 0 && !health.dead;
     jumpHeld = input.jump;
-    if (hornPressed && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
-    audio.horn(input.horn && !!riding);
+    const beaconCar = !!riding && hasBeacon(riding.def);
+    // Gyrophare allumé : comme un coup de klaxon toutes les 1,2 s (les voitures devant se rangent, les passants s'écartent).
+    let hornEvent = hornPressed && !!riding && !beaconCar;
+    if (hornPressed && beaconCar) {
+      beaconOn = !beaconOn;
+      beaconPulse = 0;
+      hornEl.classList.toggle("on", beaconOn);
+      audio.siren(beaconOn);
+    }
+    if (beaconOn && riding) {
+      beaconClock += dt;
+      beaconPulse -= dt;
+      if (beaconPulse <= 0) {
+        beaconPulse = 1.2;
+        hornEvent = true;
+      }
+    }
+    if (hornEvent && riding) (traffic as Traffic | null)?.playerHorn(riding.state.x, riding.state.y, riding.state.heading);
+    audio.horn(input.horn && !!riding && !beaconCar);
     bumpTimer = Math.max(0, bumpTimer - dt);
     // Visée (D205) : seulement à pied, debout, vivant, une arme à feu en main ; on en sort tout seul sinon.
     const canAim = !riding && !health.dead && downFor <= 0 && inventory.current.kind === "gun";
@@ -1592,6 +1619,7 @@ export function startGame(ctx: GameContext): void {
     for (const pk of pickups.list) if (pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
     if (riding && rideModel) {
       rideModel.update(riding.state);
+      rideModel.setBeacon?.(beaconOn ? beaconClock : null);
       leaveMarks(riding);
       model.ride(rideModel, crank);
       stunt.update(riding.state.wheelie, riding.state.speed, dt);
@@ -1644,7 +1672,7 @@ export function startGame(ctx: GameContext): void {
         weekday: atmosphere.calendar.weekday,
         feasts: atmosphere.feasts,
         vehicle: riding ? { x: player.x, y: player.y, vx, vy, heading: riding.state.heading, hull: riding.spec.hull, hornRange: familyOf(riding).hornRange } : null,
-        horn: hornPressed && !!riding,
+        horn: hornEvent,
         ...(traffic ? { vehicles: withTrain((traffic as Traffic).bodies()), honks: (traffic as Traffic).takeHonks() } : train.visible ? { vehicles: train.seenByPeds } : {}),
       };
       for (const h of obs.honks ?? []) audio.honk(h.x, h.y);
