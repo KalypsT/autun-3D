@@ -6237,3 +6237,46 @@ pas de mot sur le capot ni sur le bouclier arrière.
 
 ![Gendarmerie en berlinette](captures/d282-gendarmerie-alpine.jpg)
 ![Gyrophare : éteint, allumé, éteint](captures/d282-gyrophare.jpg)
+
+## 2026-11-08 — D283. Plafond des voitures relevé à 300 km/h : la sportive à 240, la supercar à 300
+
+**Demande** : à la revue des véhicules, la sportive (240 km/h sur sa fiche) et la supercar (300 voulus en D276) restaient bridées à 200 km/h
+(`SPEED_CAP`, D50, maintenu en D57 « jusqu'à la commune entière et après essai au volant »). Choix de l'utilisateur, sur recommandation :
+plafond des voitures à 300 km/h, supercar limitée à 300 (350 réels), gendarmes bridés à 200 en poursuite, moto sportive inchangée (210).
+On assouplit donc D57 sans attendre l'étape C.
+
+**Pourquoi c'est possible maintenant** :
+- Le monde fait 18,9 km² depuis D105 (l'anneau de 3 km de D50 n'existe plus). Lignes droites mesurées sur le graphe routier (écart latéral
+  sous 4 m) : **2,1 km**, 1,7 km et 1,4 km sur l'axe nord (x ≈ −300, y de 1 770 à 3 900), 1,2 km à l'ouest (y ≈ 700 à 900).
+- Collisions : sous-pas adaptés à la vitesse (D51), voiture sûre jusqu'à ≈ 350 km/h ; nouveaux tests contre un mur fin à 300 km/h (citadine,
+  supercar) et 240 km/h (sportive).
+- Chargement des tuiles : 0 image en retard à 200 km/h sur le téléphone (D57). **Pas encore mesuré à 300** : c'est la réserve de cette décision.
+
+**Mesures** (simulateur, à fond sur le plat) :
+
+| Voiture | Avant | Après | 200 km/h atteints en | Freinage depuis la vitesse max. |
+|---|---|---|---|---|
+| Sportive | 196 km/h | ≈ 238 km/h | 16 s, 580 m | ≈ 200 m |
+| Supercar | 198 km/h | ≈ 297 km/h | 8 s, 250 m (280 km/h : 16 s, 790 m) | ≈ 270 m |
+
+**Changements** (`src/core/vehicle-specs.ts`) :
+- `SPEED_CAP.car` : 200 → 300 km/h. Berline (215) et break (205) roulent à leur vraie vitesse.
+- `PURSUIT_CAP` (200 km/h) : la gendarmerie ordinaire et la berlinette en poursuite (`ALPINE_PURSUIT`) gardent 200 km/h, comme avant ;
+  volée, la berlinette a la fiche entière de la sportive (240).
+- **Sportive** : sa traction s'éteint entre 236 et 240 km/h (225 à 240 avant). Libérée sans ce réglage, la traînée l'arrêtait à 231 km/h.
+- **Supercar** : `limited(…, 300 km/h, 0.02)` : limiteur court (2 % sous le plafond, 6 % par défaut), sinon elle restait à 291 km/h.
+  Nouveau paramètre `fade` de `limited`, 6 % par défaut (la moto sportive ne change pas).
+- **Supercar, stabilité** : rigidité de dérive arrière 150 000 → 165 000 N/rad. Avec son poids sur l'arrière (1,54 m de l'essieu avant,
+  1,16 m de l'arrière), elle était survireuse : vitesse critique ≈ 320 km/h (Cf·Cr·L² / (m·(a·Cf − b·Cr)), analogie : une flèche lestée à
+  l'arrière, qui veut se retourner). Braquée 1 s puis relâchée à 300 km/h, elle gardait 2 m/s de dérive au bout de 4 s (test « tenue de route
+  à la vitesse maximale ») ; à 165 000 (b·Cr > a·Cf), elle est à peine sous-vireuse et se remet droite comme la sportive.
+- **Traits de vitesse** (`src/core/feel.ts`) : pleins à 300 km/h au lieu de 200 (rien sous 100).
+- Son : les rapports imaginaires suivent la vitesse maximale, donc ils s'allongent ; `tools/sounds.sh` ne signale ni saturation ni silence.
+
+**Constat non corrigé** : lever le pied plein braquage à haute vitesse fait partir l'arrière en grosse glisse (≈ 30 m/s de vitesse latérale
+pour la sportive à 200 comme à 240, ≈ 40 pour la supercar à 300) ; c'était déjà le cas avant, la voiture se rattrape seule en 2 à 3 s.
+
+**Reste de ton côté** :
+1. Mesure du téléphone : `?bench=1&crowd=100&sim=1&fleet=1&fast=300`. Objectif : « chargement en retard » = 0 au trajet à 300 km/h.
+   S'il y a du retard, on redescend `SPEED_CAP.car` (250 par exemple) : une seule constante.
+2. Essai au volant : `?ride=supercar` puis l'axe nord ; dire si 300 km/h reste jouable.

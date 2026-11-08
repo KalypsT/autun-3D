@@ -25,9 +25,9 @@ describe("champ de vision selon la vitesse", () => {
 
   it("traits de vitesse : rien sous 100 km/h, pleins à 200", () => {
     expect(speedLines(90 / 3.6)).toBe(0);
-    expect(speedLines(150 / 3.6)).toBeCloseTo(0.5);
-    expect(speedLines(250 / 3.6)).toBe(1);
-    expect(speedLines(-150 / 3.6)).toBeCloseTo(0.5);
+    expect(speedLines(200 / 3.6)).toBeCloseTo(0.5);
+    expect(speedLines(300 / 3.6)).toBe(1);
+    expect(speedLines(-200 / 3.6)).toBeCloseTo(0.5);
   });
 });
 

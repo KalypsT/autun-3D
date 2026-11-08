@@ -3,7 +3,7 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { MTB, OLD_CAR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, VAN } from "./vehicle-specs";
+import { MTB, OLD_CAR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, SUPERCAR, VAN } from "./vehicle-specs";
 import { airborne, BIKE, CAR, collisionSteps, createVehicle, landWheelie, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
@@ -392,8 +392,15 @@ describe("vitesse élevée et obstacles fins (D50)", () => {
     for (const kmh of [250, 500]) for (const angle of [0, 0.3, -0.6]) expect(crossings(MOTO, kmh, angle)).toBe(0);
   });
 
-  it("une voiture à 240 km/h non plus", () => {
-    for (const angle of [0, 0.4]) expect(crossings(CAR, 240, angle)).toBe(0);
+  it("une voiture à 240 km/h non plus, ni à 300 (plafond des voitures depuis D283)", () => {
+    for (const kmh of [240, 300]) for (const angle of [0, 0.4]) expect(crossings(CAR, kmh, angle)).toBe(0);
+  });
+
+  it("la sportive à 240 km/h et la supercar à 300 (D283) ne traversent pas un mur fin", () => {
+    for (const angle of [0, 0.4]) {
+      expect(crossings(SPORT_CAR, 240, angle)).toBe(0);
+      expect(crossings(SUPERCAR, 300, angle)).toBe(0);
+    }
   });
 
   it("assez de sous-pas pour avancer de moins que le plus petit rayon de la coque, sans excès à basse vitesse", () => {

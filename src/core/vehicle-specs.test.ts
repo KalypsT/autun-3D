@@ -3,7 +3,7 @@ import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
 import { createVehicle, GRAVITY, stepVehicle, type VehicleSpec, type VehicleState } from "./vehicle";
 import { CATALOG, vehicleDef } from "./vehicle-catalog";
-import { SPEED_CAP, limited } from "./vehicle-specs";
+import { PURSUIT_CAP, SPEED_CAP, limited } from "./vehicle-specs";
 
 const DT = 1 / 60;
 const flat = flatTerrain();
@@ -62,25 +62,39 @@ describe("voitures du catalogue : performances", () => {
     expect(r.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
   });
 
-  it("la sportive est bridée à 200 km/h : elle s'en approche sans la dépasser, et reste la plus rapide à accélérer après la supercar", () => {
+  it("la sportive atteint ≈ 240 km/h, la supercar ≈ 300 (D283) ; la sportive reste la plus rapide à accélérer après la supercar", () => {
     const sport = vehicleDef("sportive")!.spec;
-    expect(sport.topSpeed * 3.6).toBeCloseTo(200, 5);
+    expect(sport.topSpeed * 3.6).toBeCloseTo(240, 5);
     const r = fullThrottle(sport);
-    expect(r.top).toBeGreaterThan(193);
+    expect(r.top).toBeGreaterThan(235);
     // Un véhicule qui n'atteint pas 100 km/h (grumier bridé à 90) est, à plus forte raison, moins rapide.
     // La gendarmerie en berlinette (D282) a la fiche de la sportive.
     for (const d of cars) if (d.id !== "sportive" && d.id !== "supercar" && d.id !== "gendarmerie-alpine") expect(fullThrottle(d.spec).t100 || Infinity).toBeGreaterThan(r.t100 + 3);
-    // La supercar (D276, unique) : bridée elle aussi à 200 km/h, mais nettement plus vive.
-    const sc = fullThrottle(vehicleDef("supercar")!.spec);
+    // La supercar (D276, unique) : limitée à 300 km/h (350 réels), et nettement plus vive.
+    const supercar = vehicleDef("supercar")!.spec;
+    expect(supercar.topSpeed * 3.6).toBeCloseTo(300, 5);
+    const sc = fullThrottle(supercar);
     expect(sc.t100).toBeLessThan(r.t100 - 1);
-    expect(sc.top).toBeGreaterThan(193);
+    expect(sc.top).toBeGreaterThan(293);
     expect(sc.top).toBeLessThanOrEqual(SPEED_CAP.car * 3.6 + 0.5);
+  });
+
+  it("les gendarmes restent bridés à 200 km/h (D283) : la gendarmerie, et la berlinette en poursuite ; volée, la berlinette a la fiche de la sportive", () => {
+    expect(PURSUIT_CAP * 3.6).toBeCloseTo(200, 5);
+    const police = fullThrottle(vehicleDef("gendarmerie")!.spec);
+    expect(police.top).toBeLessThanOrEqual(200.5);
+    expect(police.top).toBeGreaterThan(190);
+    const alpine = vehicleDef("gendarmerie-alpine")!;
+    const pursuit = fullThrottle(alpine.pursuitSpec!);
+    expect(pursuit.top).toBeLessThanOrEqual(200.5);
+    expect(pursuit.top).toBeGreaterThan(190);
+    expect(alpine.spec).toBe(vehicleDef("sportive")!.spec);
   });
 
   it("le plafond ne touche que ce qui le dépasse", () => {
     const slow = vehicleDef("camionnette")!.spec;
     expect(limited(slow, SPEED_CAP.car)).toBe(slow);
-    const fast = { ...slow, topSpeed: 250 / 3.6, driveFadeFrom: 240 / 3.6 };
+    const fast = { ...slow, topSpeed: 350 / 3.6, driveFadeFrom: 340 / 3.6 };
     const cut = limited(fast, SPEED_CAP.car);
     expect(cut.topSpeed).toBe(SPEED_CAP.car);
     expect(cut.driveFadeFrom).toBeLessThan(cut.topSpeed);
