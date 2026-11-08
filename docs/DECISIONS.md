@@ -5943,3 +5943,29 @@ Fiches de conduite (`SEDAN`, `WAGON`) inchangées (empattement 2,82 m pour les d
 ![Berline avant / après](captures/d274-berline-avant-apres.jpg)
 ![Break avant / après](captures/d274-break-avant-apres.jpg)
 ![Couleurs](captures/d274-couleurs.jpg)
+
+## 2026-11-08 — D275. Le petit SUV sculpté d'après photos (SUV compact français restylé des années 2020)
+
+**Photos** : neuf photos d'un même SUV compact français haut de gamme, en deux générations. Choix de l'utilisateur : la **version restylée** (face :
+trois-quarts avant et face, deux photos) ; la silhouette vient du profil et du trois-quarts arrière de la première version, dont la caisse n'a pas changé
+au restylage. Marque et nom restent fictifs (Éduen Morvan) ; emblème neutre en losange, sans logo ni lettrage.
+
+**Gabarit** : le modèle réel est un SUV du segment C, pas un petit SUV. Sur décision de l'utilisateur, le catalogue passe de 4,25 × 1,80 × 1,60 m à
+**4,59 × 1,89 × 1,62 m** (le nom « Petit SUV » reste). La fiche de conduite (`SUV`) n'a pas bougé : empattement de 2,62 m (le vrai fait 2,74 m, d'où
+des porte-à-faux un peu longs), même tenue de route. Les roues dessinées passent à 0,36 m de rayon (au lieu de 0,34) pour remplir les passages de roue
+comme sur les photos : c'est du dessin seulement, la physique garde le rayon de la fiche.
+
+**Caisse** (`src/render/car-petit-suv.ts`, moteur D272) : face haute et droite, long capot plat. Avant : très grande calandre noire qui monte jusqu'aux
+phares, avec des pointes de diamant suggérées par des traits croisés plus clairs ; phares très minces juste sous le bord du capot, avec trois modules de
+diodes ; aux coins, la signature du restylage, quatre lames de feux de jour verticales sur une niche sombre ; prise d'air basse et lame chromée.
+Flancs : ceinture qui monte vers l'arrière ; jonc chromé autour des vitres qui finit en pointe sur le gros montant arrière (une pièce peinte recouvre le
+bout de la vitre) ; montants noirs, barres de toit sombres ; passages de roue et bas de caisse noirs ; rétroviseurs noirs. Arrière : lunette presque droite
+sous un becquet ; feux horizontaux sombres à écailles rouges qui tournent sur l'aile, reliés par un jonc chromé ; plaque sur le hayon ; bas noir avec
+deux sorties trapézoïdales. Jantes sombres à huit branches. Palette d'après les photos : vert-gris, bleu encre, rouge rubis, cuivre, argent, noir, blanc nacré.
+
+**Coût** (exemplaire garé) : 856 triangles de peinture, 1 152 de détails et roues, **2 008 au total** (plafonds D272).
+**Reste** : les bandes noires des passages de roue laissent un mince liseré couleur caisse au bord de l'ouverture : la caisse s'y enroule vers l'intérieur,
+et une bande posée plus près de l'ouverture se déchirait. La caisse fait un pli au-dessus des roues (le défaut est commun aux caisses sculptées).
+
+![Avant / après](captures/d275-petit-suv-avant-apres.jpg)
+![Trois couleurs](captures/d275-petit-suv-couleurs.jpg)

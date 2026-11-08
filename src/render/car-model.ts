@@ -7,6 +7,7 @@ import { CITADINE } from "./car-citadine";
 import { COMPACTE } from "./car-compacte";
 import { BERLINE } from "./car-berline";
 import { BREAK } from "./car-break";
+import { PETIT_SUV } from "./car-petit-suv";
 import { Crumpler, type CrumpleFrame } from "./car-damage";
 import type { Zone } from "../core/damage";
 
@@ -57,12 +58,13 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     style: { headlights: "rect", grille: "tall", taillights: "vertical", bumpers: "paint", rim: "#b3b6bb", doors: 2, roundness: 0.5, roofRails: true, spokes: 10 },
   },
 
+  // Petit SUV (D275) : caisse sculptée d'après photos (`car-petit-suv.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   "petit-suv": {
-    length: 4.25, width: 1.8, height: 1.6, overhangFront: 0.88,
-    clearance: 0.2, belt: 1.0, noseHeight: 0.92, tailHeight: 1.06,
-    hood: 1.1, windshield: 0.6, roof: 1.35, rearGlass: 0.6, roofTaper: 0.92,
-    wheelRadius: 0.34, tyreWidth: 0.22,
-    style: { headlights: "strip", grille: "tall", taillights: "bar", bumpers: "trim", rim: "#55585e", doors: 2, roundness: 0.6, roof: "#24262b", cladding: true, roofRails: true, blackPillars: true },
+    length: 4.59, width: 1.89, height: 1.62, overhangFront: 0.93,
+    clearance: 0.24, belt: 1.12, noseHeight: 0.95, tailHeight: 1.1,
+    hood: 1.38, windshield: 0.66, roof: 1.95, rearGlass: 0.25, roofTaper: 0.9,
+    wheelRadius: 0.36, tyreWidth: 0.24, glass: "#1c232c", sculpt: PETIT_SUV,
+    style: { headlights: "strip", grille: "tall", taillights: "bar", bumpers: "trim", rim: "#6b6f76", doors: 2, roundness: 0.6, roof: "#24262b", cladding: true, roofRails: true, blackPillars: true, spokes: 8 },
   },
   camionnette: {
     length: 4.9, width: 1.95, height: 1.95, overhangFront: 0.9,
