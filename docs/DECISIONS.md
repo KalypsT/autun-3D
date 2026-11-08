@@ -6301,3 +6301,20 @@ détail 300 m, `?bench=1&crowd=100&sim=1&fleet=1&fast=300`) :
 - **Pistes, à faire séparément** : (1) découper ou alléger la tuile `23_36` et les plus grosses tuiles, ou les lire hors du fil principal ;
   (2) trouver les 22 saccades à 300 km/h qui ne coïncident avec aucune construction (ramasse-miettes, naissances de passants : 557 en 31 s,
   jusqu'à 4,5 ms) ; (3) refaire `fast=200` sur la même version pour séparer l'effet de la vitesse de celui de la version.
+
+**Seconde mesure, même version, `fast=200`** (8 novembre 2026, 15 h 52) : les phases à 50 et 90 km/h redonnent les mêmes chiffres (1 % le plus
+lent 34,0 et 27,7 i/s ; la mesure est reproductible).
+
+| Trajet rapide (même parcours de 2,6 km) | Durée | 1 % le plus lent | Images > 33 ms | > 50 ms | Pire image | Tuiles | En retard |
+|---|---|---|---|---|---|---|---|
+| 200 km/h | 47 s | 22,7 i/s | 17 (0,36 par s) | 2 | 66 ms | 49 | **0** |
+| 300 km/h | 31 s | 16,4 i/s | 28 (0,9 par s) | 10 | 99 ms | 52 | **0** |
+
+- **La vitesse coûte** : sur le même parcours et presque autant de tuiles, 300 km/h donne 1,6 fois plus d'images lentes et 5 fois plus d'images
+  de plus de 50 ms qu'à 200. À 300 km/h, une tuile commence toutes les 0,6 s (0,95 s à 200) alors que chacune se construit en 100 à 260 ms
+  sur 20 à 45 images : les constructions se suivent sans répit.
+- **La version coûte plus encore** : à 200 km/h, 1 % le plus lent à 22,7 i/s contre 44,8 en D57 ; la fluidité a été divisée par deux depuis D57,
+  vitesse égale. La plupart des saccades (16 sur 17 à 200 km/h, 22 sur 28 à 300) ne coïncident avec aucune construction de tuile.
+- **Décision** : le plafond reste à 300 km/h (rien n'est en retard, et l'on ne roule à 300 que sur quelques lignes droites de la périphérie).
+  Le chantier de fluidité est à mener à part et profitera à toutes les vitesses : d'abord trouver la cause des saccades sans construction
+  (régression depuis D57), puis la tuile `23_36` (tranche de 52 à 93 ms d'un bloc, à toutes les vitesses).
