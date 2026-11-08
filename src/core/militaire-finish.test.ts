@@ -54,7 +54,7 @@ describe("Lycée militaire : finitions (D264)", () => {
     const ivy = world.tile.walls.find((w) => w.id === -880000007)!;
     expect(ivy.kind).toBe("hedge");
     expect(Math.hypot(ivy.pts[2]! - ivy.pts[0]!, ivy.pts[3]! - ivy.pts[1]!)).toBeGreaterThan(100);
-  });
+  }, 20000); // ≈ 4 s seul, plus de 5 s sous la charge de toute la suite (CI de la PR #91).
 
   it("massifs, drapeaux, barrières et arbres en rideau : finis, moins de 6 000 triangles", () => {
     const count = (s: typeof spec): number => {
