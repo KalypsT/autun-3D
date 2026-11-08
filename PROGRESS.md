@@ -2023,3 +2023,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Au volant dans l'anse, après](docs/captures/d286-route-apres.jpg)
 ![Vue haute, après](docs/captures/d286-haut-apres.jpg)
 
+**Les routes qui finissaient à la mer sont fermées (8 novembre 2026)** (D287)
+- 33 bouts de route coupés par la côte sont traités : chacun est raccourci 25 m après la dernière maison, le dernier parking ou le dernier chemin qu'il dessert, puis fermé par une barrière rouge et blanche, avec une aire de retournement quand la route est assez large. Un panneau bleu « voie sans issue » est posé au carrefour.
+- Cinq bouts qui ne desservaient rien ont disparu (chemin du Vieux Moulin, chemin de la Maison Forestière Feuillée, trois petits tronçons) ; au-delà des coupes, l'herbe a remplacé l'enrobé, et la carte suit.
+- L'avenue du Commandant de Neuchèze est gardée telle quelle : elle descend doucement jusqu'à la plage.
+- Plus aucune route ne mène au bord d'une falaise sans barrière : un test le vérifie sur toute la carte.
+- Exception : quatre routes proches du centre (Corps Franc Pommiès, Broye, Pierrefitte, Bois de Sapin) gardent leur longueur, parce que les essais des poursuites de police en dépendent ; elles s'arrêtent quand même à une barrière, avant la falaise.
+- À faire de ton côté : aller au bout de la route de Chalon après le chemin des Ragots, et de la route de Beaune vers la mer (`?at=2206,1394&ride=voiture`).
+
+![Route de Chalon, après](docs/captures/d287-chalon-apres.jpg)
+![Route de Beaune, après](docs/captures/d287-beaune-apres.jpg)
+![Panneau « voie sans issue »](docs/captures/d287-panneau.jpg)
+

@@ -2,7 +2,8 @@
 
 Rédigé le 8 novembre 2026 après l'extension de la route de Chalon (D286), à la demande de l'utilisateur : « retirer les bouts de routes
 qui ne mènent à rien, car au bord de la map et ont pour destination la falaise et la mer ». Choix de l'utilisateur : **a + b** (raccourcir
-chaque route à ce qu'elle dessert, puis une vraie fin de route). **Pas encore codé : questions ci-dessous à trancher d'abord.**
+chaque route à ce qu'elle dessert, puis une vraie fin de route). **Fait (D287)** : l'utilisateur a laissé les questions du § 4 à mon
+jugement, avec une seule exigence : aucune route dont la seule issue est une descente vertigineuse de la falaise vers la mer. Réponses au § 5.
 
 ## 1. Constat
 
@@ -90,3 +91,21 @@ de fin), relu avec toi sur captures avant la fabrication. Les cas douteux ci-des
 7. **Route de Chalon** : couper juste après la piste forestière des Granges de Brisecou (≈ 160 m après le chemin des Ragots), ou juste
    après le carrefour du chemin des Ragots pour que l'entrée du golf soit le vrai bout de la route ? Proposition : après la piste
    (elle mène à deux bâtiments au sud-est).
+
+## 5. Réponses retenues (D287)
+
+1. Routes principales : **même règle** que les autres (dernière chose desservie + 25 m), sans belvédère.
+2. Plages : l'**avenue du Commandant de Neuchèze** reste telle quelle (elle descend doucement à la plage, 8 m au-dessus de l'eau). La rue des
+   Mineurs et le tronçon ouest de la route de Pierrefitte, qui part du bout de l'avenue, ne sont pas dans le graphe routier du jeu : rien à couper.
+3. Chemins qui ne desservent rien : **retirés** (chemin du Vieux Moulin, chemin de la Maison Forestière Feuillée, trois petits tronçons isolés).
+4. Sentiers piétons : **gardés**.
+5. Demi-tour de la circulation dans les aires : **reporté** (une voiture qui arrive au bout est retirée, comme avant, D64).
+6. Fin de route : **aire de retournement** (rayon 7 m) + barrière là où la chaussée est dessinée et fait au moins 4,5 m ; **barrière seule**
+   ailleurs ; panneau « voie sans issue » au carrefour quand il reste plus de 60 m.
+7. Route de Chalon : coupée **après la piste forestière** des Granges de Brisecou (le bout du graphe, 2 627 ; 47).
+
+**Exception imposée par les essais** : autour de la zone étalonnée des scénarios de circulation et de police (`SCENARIO_ZONE`, plus 300 m), le
+graphe routier ne bouge pas (les poursuites changent d'issue dès qu'un bout de route se déplace) : les quatre branches concernées (route Corps
+Franc Pommiès, route de Broye, route de Pierrefitte, route du Bois de Sapin) gardent leur bout ; seule la chaussée au-delà disparaît, et une
+barrière ferme la route. L'exigence de l'utilisateur est tenue : aucune ne mène plus à la falaise.
+

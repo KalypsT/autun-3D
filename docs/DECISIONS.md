@@ -6465,3 +6465,66 @@ plage), `d286-haut-avant.jpg` et `d286-haut-apres.jpg` (au-dessus de la route, v
 - Le golf n'est pas dessiné (pelouse ordinaire) : étape suivante, d'après les photos de l'utilisateur.
 - `places.json` (noms et tracés des rues de la carte) s'arrête à l'ancienne côte (route de Chalon jusqu'à x 2 620) : à refaire avec l'étape des impasses.
 
+## 2026-11-08 — D287. Les routes qui finissent à la mer : raccourcies, fermées par une barrière
+
+**Demande** : retirer les bouts de route qui ne mènent à rien, au bord de la carte, vers la falaise et la mer ; choix « a + b » (raccourcir à ce
+qu'elles desservent, puis une vraie fin de route). Les questions du plan (`docs/plans/routes-impasses.md`) ont été laissées à mon jugement, avec
+une seule exigence : **aucune route dont la seule issue est une descente vertigineuse de la falaise vers la mer**.
+
+**Outil** (`tools/data/build_dead_ends.py`) :
+- `plan` lit le graphe routier publié (super-tuiles recousues aux portails) et cherche les bouts coupés par la côte : impasse à moins de 300 m
+  du trait de côte, et soit la terre n'est plus utilisable 20 m plus loin dans l'axe, soit la rue continue dans OpenStreetMap jusqu'au rivage
+  (le graphe s'arrête au dernier nœud utilisable, `build_nav.trim_to_land`, parfois 100 m avant), soit, droit devant à moins de 150 m, le
+  rivage après une descente de plus de 10 m. Pour chacun, la branche va du dernier carrefour au bout ; elle est coupée 25 m après la dernière chose
+  desservie (bâtiment à moins de 35 m, place ou parking de plus de 150 m² à moins de 15 m, chemin ou escalier piéton qui s'y raccorde), et jamais
+  à moins de 15 m du bout quand il donne sur une falaise. Une branche qui ne dessert rien est retirée jusqu'à son carrefour ; un fragment relié
+  à rien entre deux bouts de côte est raccourci des deux côtés à ce qu'il dessert (route du Carreau). Une branche dont le bout est à moins de
+  8 m au-dessus de l'eau (plage) est gardée. Résultat écrit dans `tools/data/dead_ends.json` (avec `overrides` pour corriger à la main, vide).
+- `apply` : zone retirée = la branche au-delà de la coupe, prolongée par la **suite réelle de la route** jusqu'à la côte (tracé de la carte : la
+  chaussée publiée va parfois 200 m plus loin que le graphe), élargie de la demi-chaussée + 8 m, moins les autres routes (+ 3 m). Dans la zone :
+  chaussée, trottoirs, bordures et marquages coupés, lampadaires, feux et panneaux retirés, sols fins et super-tuiles de sol repeints en herbe ;
+  arêtes routières de la branche et files piétonnes (pas les chemins ni les sentiers) coupées, le nouveau bout marqué impasse, sans renuméroter
+  les autres arêtes ; rues de la carte coupées ; images de carte des kilomètres touchés refaites.
+- **Fin de route** : aire de retournement en enrobé (rayon 7 m, bordée de trottoir) là où la chaussée est dessinée et fait au moins 4,5 m,
+  barrière seule ailleurs ; **barrière rouge et blanche** (mur `barrier`, 1 m, poteaux blancs, lisse à bandes de 0,5 m) juste au-delà du bout
+  (les conducteurs simulés vont jusqu'au bout du graphe sans la toucher) ; on l'enjambe à pied, une voiture s'y arrête ; **panneau « voie sans
+  issue »** (C13a, mobilier `dead_end`) à droite en entrant dans la branche quand il en reste plus de 60 m. Rendu : `buildRoadBarrier` et
+  `dead_end` dans `src/render/props.ts` ; collisions : `barrier` escaladable, mât du panneau (`src/core/world.ts`).
+- La route de Chalon après le chemin des Ragots manquait aux rues de la carte (fabriquées avant D286) : ajoutée (`PLACES_ADD`, voie OpenStreetMap
+  155064508 coupée au trait de côte).
+
+**Résultat** : **33 branches** : 27 raccourcies (16 aires de retournement, 11 barrières seules), 5 retirées (chemin du Vieux Moulin, chemin de
+la Maison Forestière Feuillée, trois petits tronçons isolés), 1 gardée (avenue du Commandant de Neuchèze, qui descend doucement à la plage).
+28 barrières, 19 panneaux, 56 lampadaires et panneaux retirés, 5 arbres retirés des aires ; 1,6 km de graphe routier en moins, et la chaussée
+au-delà jusqu'à la côte ; 49 tuiles, 10 super-tuiles de navigation, 0 portail sans jumeau (1 252). Contrôle : sur toutes les routes gardées, aucun
+point qui était sur la chaussée ne l'a perdue, sauf un, au bord même de la coupe de la route d'Arnay. Un fragment isolé que la règle de la zone
+étalonnée (ci-dessous) garde entier n'est raccourci d'aucun côté (sinon la chaussée disparaissait sous une arête gardée).
+
+**Exception imposée par les essais** : les scénarios de poursuite et de conduite (`testing.ts`, `SCENARIO_ZONE`) partent d'arêtes tirées dans
+l'ordre des fichiers et roulent 200 s au hasard : retirer une arête dans la zone décale tous les départs, et **déplacer un bout de route juste
+hors de la zone change déjà l'issue des poursuites** (essai carré par carré : `s4_7` et `s4_8` faisaient échouer `chase`). Les branches dont le
+carrefour est dans la zone ou à moins de 300 m (route Corps Franc Pommiès, route de Broye, route de Pierrefitte, route du Bois de Sapin) gardent
+donc leur bout et toute leur navigation ; seule la chaussée au-delà est retirée, et une barrière ferme la route. Les 453 départs des scénarios
+sont identiques, dans le même ordre. Recaler ces scénarios sur un graphe raccourci serait une autre étape.
+
+**Essais** : `src/data/dead-ends.test.ts` : toute impasse routière à moins de 150 m d'une descente de plus de 10 m vers la côte (droit devant,
+jusqu'à la surface de l'eau) est fermée par une barrière (14 vérifiées ; sur les données d'avant, le test échoue) ; barrières et panneaux posés ;
+seule l'avenue de Neuchèze est gardée ; la route de Chalon s'arrête au bout de la piste forestière, barrière comprise. 1 419 essais.
+
+**Captures** : `d287-chalon-avant.jpg`, `d287-chalon-apres.jpg` (la route de Chalon après le chemin des Ragots), `d287-beaune-avant.jpg`,
+`d287-beaune-apres.jpg` (la route de Beaune, vers la mer), `d287-panneau.jpg` (le panneau au carrefour de la route de Beaune),
+`d287-broye-apres.jpg` (la route de Broye, au-dessus d'une falaise de 170 m).
+
+![Route de Chalon, avant](captures/d287-chalon-avant.jpg)
+![Route de Chalon, après](captures/d287-chalon-apres.jpg)
+![Route de Beaune, avant](captures/d287-beaune-avant.jpg)
+![Route de Beaune, après](captures/d287-beaune-apres.jpg)
+![Panneau « voie sans issue »](captures/d287-panneau.jpg)
+![Route de Broye, après](captures/d287-broye-apres.jpg)
+
+**Limites connues** :
+- Les voitures de la circulation ne font pas demi-tour dans les aires : arrivées au bout, elles sont retirées comme avant (D64).
+- Les routes non carrossables pour le jeu (rue des Mineurs aux Télots, tronçon ouest de la route de Pierrefitte) gardent leur chaussée : elles
+  descendent à une plage.
+- `build_dead_ends.py apply` s'applique une fois, sur les données d'avant ; pour le relancer : `git checkout public/data`, puis `plan` et `apply`.
+

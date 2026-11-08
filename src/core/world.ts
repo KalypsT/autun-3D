@@ -15,12 +15,14 @@ import { isProfiled, rampartOutline, towerOutline } from "./ramparts";
 const FURNITURE_RADIUS: Record<string, number> = {
   bench: 0.55, atm: 0.4, public_bookcase: 0.4,
   memorial: 1.2, fountain: 1.0, toilets: 1.0,
+  // Panneau « voie sans issue » (D287) : son mât.
+  dead_end: 0.08,
 };
 
 /** Hauteur maximale (m) d'une grille, d'un mur ou d'une portail qu'on escalade ; une haie au-delà de HEDGE_CLIMB se traverse mal : on ne l'escalade pas. */
 export const CLIMB_MAX = 2.5;
 const HEDGE_CLIMB = 1.5;
-const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge"]);
+const CLIMBABLE = new Set(["fence", "gate", "wall", "retaining_wall", "hedge", "barrier"]);
 /** Grilles du porche de la cathédrale (D132) : hautes et à pointes, on ne les escalade pas. */
 const GRILLE: Top = { height: 1.2, climb: false };
 /** Grille d'honneur du lycée (D149) : trois mètres de fer, ni franchie ni escaladée ; on voit et on tire à travers. */

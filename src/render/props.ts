@@ -34,6 +34,8 @@ function cylinder(mb: MeshBuilder, cx: number, cy: number, r: number, z0: number
   extrude(mb, pts, z0, z1, color);
 }
 
+const SIGN_BLUE = new THREE.Color("#1f5aa6");
+const SIGN_RED = new THREE.Color("#c8322a");
 const LAMP_LIT = new THREE.Color("#ffd27a");
 const LAMP_HALO = new THREE.Color("#ffb24a");
 
@@ -88,6 +90,18 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
             box(mb, hx + Math.cos(rot + Math.PI / 2) * sgn * 0.145, hy + Math.sin(rot + Math.PI / 2) * sgn * 0.145, 0.07, 0.01, rot, z + 3.6 + k * 0.23, z + 3.77 + k * 0.23, new THREE.Color(col));
           }
         }
+        break;
+      }
+      case "dead_end": {
+        // Panneau « voie sans issue » (C13a, D287) : carré bleu, barre blanche verticale coiffée d'une barre rouge ; face aux conducteurs
+        // qui entrent dans la rue (rot : direction vers laquelle regarde le panneau).
+        const nx = Math.cos(rot), ny = Math.sin(rot);
+        cylinder(mb, f.x, f.y, 0.035, z, z + 2.35, COLORS.steel, 6);
+        const px = f.x + nx * 0.05, py = f.y + ny * 0.05, top = z + 2.4, bottom = top - 0.7;
+        box(mb, px, py, 0.35, 0.015, rot + Math.PI / 2, bottom, top, SIGN_BLUE);
+        const fx = px + nx * 0.02, fy = py + ny * 0.02;
+        box(mb, fx, fy, 0.07, 0.006, rot + Math.PI / 2, bottom + 0.08, top - 0.2, COLORS.bollardCap);
+        box(mb, fx, fy, 0.24, 0.006, rot + Math.PI / 2, top - 0.22, top - 0.1, SIGN_RED);
         break;
       }
       case "street_lamp": {
@@ -187,6 +201,11 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
       buildRampart(sinks, w, terrain);
       continue;
     }
+    // Barrière de fin de route (D287) : deux poteaux blancs, lisse à bandes rouges et blanches.
+    if (w.kind === "barrier") {
+      buildRoadBarrier(sinks.posts, w, terrain);
+      continue;
+    }
     const thick = hedge ? 0.8 : rampart ? 1.3 : THICK;
     let s = 0;
     for (let i = 0; i + 3 < w.pts.length; i += 2) {
@@ -224,6 +243,28 @@ export function buildWalls(sinks: WallSinks, walls: readonly Wall[], terrain: He
       }
       s += len;
     }
+  }
+}
+
+const BARRIER_RED = new THREE.Color("#c8322a");
+const BARRIER_WHITE = new THREE.Color("#f2efe6");
+
+/** Barrière en travers d'une route qui s'arrête avant la falaise (D287) : poteaux aux deux bouts, lisse à 0,8 m en bandes de 0,5 m. */
+function buildRoadBarrier(mb: MeshBuilder, w: Wall, terrain: HeightField): void {
+  const x1 = w.pts[0]!, y1 = w.pts[1]!, x2 = w.pts[2]!, y2 = w.pts[3]!;
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (len < 0.5) return;
+  const rot = Math.atan2(y2 - y1, x2 - x1);
+  for (const [px, py] of [[x1, y1], [x2, y2]] as const) {
+    const z = terrain.heightAt(px, py);
+    box(mb, px, py, 0.06, 0.06, rot, z - 0.1, z + 1.0, BARRIER_WHITE);
+  }
+  const n = Math.max(2, Math.round(len / 0.5));
+  for (let k = 0; k < n; k++) {
+    const t = (k + 0.5) / n;
+    const cx = x1 + (x2 - x1) * t, cy = y1 + (y2 - y1) * t;
+    const z = terrain.heightAt(cx, cy) + w.height * 0.8;
+    box(mb, cx, cy, len / n / 2, 0.04, rot, z - 0.09, z + 0.09, k % 2 ? BARRIER_WHITE : BARRIER_RED);
   }
 }
 
