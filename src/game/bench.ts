@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { DETAIL_DISTANCE } from "../render/tile-manager";
 import { BENCH_ROUTE } from "./bench-route";
 import { Polyline, soakTrend, summarizeFrames, type FrameSummary } from "./bench-stats";
+import { HitchProbe, hitchLines, type HitchReport } from "./bench-hitches";
 import { Minimap } from "../ui/minimap";
 import { MapData } from "../ui/map-data";
 import type { GameContext } from "./context";
@@ -96,6 +97,8 @@ interface PhaseReport {
   builds: { id: string; ms: number; frames: number; slice: number }[];
   /** À-coups (> 50 ms) qui tombent sur une image où une tuile se construisait. */
   hitchesWithBuild: number;
+  /** Images de plus de 33 ms : temps de chaque partie de la boucle et scripts vus par Chrome (D284). */
+  hitches: HitchReport;
   /** Trajets seulement : images où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'avait pas encore ses obstacles (D50) ; null à l'arrêt. */
   late: { frames: number; here: number; ahead: number } | null;
   memory: Memory;
@@ -336,6 +339,7 @@ export function startBench(ctx: GameContext): void {
   let t = 0;
   let pendingBuild = 0;
   let late = { here: 0, ahead: 0 };
+  const probe = new HitchProbe();
   let crowd: CrowdRenderer | null = null;
   let crowdSim: CrowdSim | null = null;
   let crowdCost = { ms: 0, frames: 0 };
@@ -399,6 +403,7 @@ export function startBench(ctx: GameContext): void {
     }
     samples = [];
     late = { here: 0, ahead: 0 };
+    probe.reset();
     t = 0;
     // Les arrêts attendent que les tuiles autour soient construites (au plus 12 s), puis 1,5 s de mise en route.
     warm = phase.still || phase.warmStart ? 12 : 0;
@@ -424,6 +429,7 @@ export function startBench(ctx: GameContext): void {
       triangles: { avg: Math.round(tSum / n), max: tMax },
       builds: tiles.builds.slice(firstBuild).map((b) => ({ id: b.id, ms: r1(b.ms), frames: b.frames, slice: r1(b.slice) })),
       hitchesWithBuild: hitches,
+      hitches: probe.report(),
       late: p.drive ? { frames: samples.length, ...late } : null,
       memory: measureMemory(ctx),
       crowd: crowd && (simMode || p.crowd)
@@ -493,6 +499,7 @@ export function startBench(ctx: GameContext): void {
     const dt = Math.min(ms / 1000, 0.1);
     const p = phase;
     if (!p) return;
+    probe.begin();
 
     let measuring = true;
     if (warm > 0) {
@@ -509,11 +516,15 @@ export function startBench(ctx: GameContext): void {
         t = 0;
         samples = [];
         late = { here: 0, ahead: 0 };
+        probe.reset();
         if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
       }
     } else {
       // La durée mesurée ici est celle de l'image précédente : on lui attribue sa construction de tuile.
-      if (t > 0) samples.push({ ms, draws: renderer.info.render.calls, triangles: renderer.info.render.triangles, build: pendingBuild });
+      if (t > 0) {
+        samples.push({ ms, draws: renderer.info.render.calls, triangles: renderer.info.render.triangles, build: pendingBuild });
+        probe.sample(ms, pendingBuild);
+      }
       t += dt;
     }
 
@@ -525,6 +536,7 @@ export function startBench(ctx: GameContext): void {
         crowd?.dispose();
         traffic?.dispose();
         fx?.dispose();
+        probe.dispose();
         banner.remove();
         showReport(ctx, { settings, loadMs, phases: reports });
         return;
@@ -536,7 +548,9 @@ export function startBench(ctx: GameContext): void {
     const pos = pose();
     camera.position.set(pos.cam[0], pos.cam[1], -pos.cam[2]);
     camera.lookAt(pos.look[0], pos.look[1], -pos.look[2]);
+    probe.mark("décor");
     tiles.update(pos.x, pos.y, pos.vx, pos.vy);
+    probe.mark("tuiles");
     if (fleet) {
       dentFleet();
       const t0 = performance.now();
@@ -546,7 +560,9 @@ export function startBench(ctx: GameContext): void {
       fleetCost.max = Math.max(fleetCost.max, ms);
       fleetCost.frames++;
     }
+    probe.mark("flotte");
     nav?.update(pos.x, pos.y, pos.vx, pos.vy);
+    probe.mark("navigation");
     if (traffic && signals) {
       // Les voitures jouent à pas fixe (1/60 s, deux au plus par image) comme dans le jeu ; le point suivi est un piéton ou, en roulant, un véhicule sans physique.
       signals.clock.t += dt;
@@ -611,6 +627,7 @@ export function startBench(ctx: GameContext): void {
         }
       }
     }
+    probe.mark("circulation");
     pendingBuild = tiles.sliceMs;
     if (measuring && p.drive) {
       if (!tiles.solidAt(pos.x, pos.y)) late.here++;
@@ -620,6 +637,7 @@ export function startBench(ctx: GameContext): void {
     atmosphere.advance(dt);
     placeSun(pos.x, pos.y, terrain.heightAt(pos.x, pos.y));
     sky.position.copy(camera.position);
+    probe.mark("décor");
     if (minimap) {
       miniTimer -= dt;
       if (miniTimer <= 0) {
@@ -628,6 +646,7 @@ export function startBench(ctx: GameContext): void {
         minimap.time(() => minimap.update({ x: pos.x, y: pos.y, cameraYaw: yaw, facing: yaw, north: false, vehicles: [], waypoint: null }));
       }
     }
+    probe.mark("minimap");
     if (pedSim && crowd && nav && nav.graph.edgeCount > 0) {
       const obs: Observer = {
         x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, yaw: Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]), onFoot: !phase?.drive,
@@ -645,12 +664,14 @@ export function startBench(ctx: GameContext): void {
       pedSim.step(dt, obs);
       traffic?.applyImpacts();
       const sim = performance.now() - s0;
+      probe.mark("passants");
       const p0 = performance.now();
       if (pigSim && pigView) {
         pigSim.step(dt, obs, pedSim);
         pigView.update(pigSim.state, obs.x, obs.y, 100);
       }
       const pig = performance.now() - p0;
+      probe.mark("pigeons");
       const c0 = performance.now();
       crowd.update(pedSim.state, pos.cam[0], -pos.cam[2]);
       if (bot && fx) {
@@ -705,7 +726,9 @@ export function startBench(ctx: GameContext): void {
         crowdCost.frames++;
       }
     }
+    probe.mark("foule");
     renderer.render(scene, camera);
+    probe.mark("rendu");
 
     const remaining = p.still ? p.still.seconds - t : (p.drive!.to - p.drive!.from) / p.drive!.speed - t;
     banner.textContent = `Banc de test · ${index + 1}/${phases.length} · ${p.name} · `
@@ -744,6 +767,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     lines.push(`  ${f.fps.toFixed(1)} i/s en moyenne · 1 % les plus lentes : ${f.low1.toFixed(1)} i/s · ${f.frames} images en ${f.seconds.toFixed(1)} s`);
     lines.push(`  Durée d'image : médiane ${f.p50.toFixed(1)} ms · 95 % ${f.p95.toFixed(1)} · 99 % ${f.p99.toFixed(1)} · max ${f.max.toFixed(0)} ms`);
     lines.push(`  À-coups : ${f.over33} images > 33 ms, ${f.over50} > 50 ms (dont ${p.hitchesWithBuild} pendant une construction de tuile)`);
+    if (p.hitches) lines.push(...hitchLines(p.hitches));
     if (p.late) lines.push(`  Chargement en retard : ${p.late.here} images sur ${p.late.frames} sans obstacles sous le véhicule, ${p.late.ahead} sans obstacles à 1 s devant (objectif : 0)`);
     if (p.fleet) lines.push(`  Véhicules garés : ${p.fleet.total} en tout · ${p.fleet.drawn} dessinés en ${p.fleet.meshes} maillages instanciés (un par modèle présent) · mise à jour ${p.fleet.avgMs.toFixed(2)} ms par image (pire ${p.fleet.maxMs.toFixed(2)} ms)`);
     if (p.traffic) {

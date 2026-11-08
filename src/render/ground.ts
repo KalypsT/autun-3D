@@ -84,7 +84,7 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
     for (const poly of polys) {
       // Terrils (D269) : pentes à 35° et talus des lacets, le sol suit le relief à 1,5 m près (sinon il passe dessous par endroits).
       const steep = name.startsWith("schist") || name === "path_schist";
-      fillOnTerrain(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" || steep ? bare : terrain, true, steep ? STEEP_EDGE : MAX_EDGE);
+      yield* fillOnTerrainSteps(mb, poly, spec.lift, color, name === "lawn" || name === "water" || name === "pitch" || name === "skate" || steep ? bare : terrain, true, steep ? STEEP_EDGE : MAX_EDGE);
       yield;
       if (name === "walk") {
         curbs(mb, [poly], terrain, color, onEdge);
@@ -95,18 +95,18 @@ export function* buildGroundSteps(layers: Record<string, number[][][]>, bounds: 
   // Fond bleu des places PMR (D236), juste sous les traits blancs.
   const blue = new THREE.Color(MARK_BLUE);
   for (const poly of layers["marks_blue"] ?? []) {
-    fillOnTerrain(mb, poly, MARK_LIFT - 0.01, blue, terrain, false);
+    yield* fillOnTerrainSteps(mb, poly, MARK_LIFT - 0.01, blue, terrain, false);
     yield;
   }
   const marks = new THREE.Color(T.trim);
   for (const poly of layers["marks"] ?? []) {
-    fillOnTerrain(mb, poly, MARK_LIFT, marks, terrain, false);
+    yield* fillOnTerrainSteps(mb, poly, MARK_LIFT, marks, terrain, false);
     yield;
   }
   // Marques jaunes (D230 : zigzag des arrêts de bus de la gare routière).
   const yellow = new THREE.Color(MARK_YELLOW);
   for (const poly of layers["marks_yellow"] ?? []) {
-    fillOnTerrain(mb, poly, MARK_LIFT, yellow, terrain, false);
+    yield* fillOnTerrainSteps(mb, poly, MARK_LIFT, yellow, terrain, false);
     yield;
   }
   return mb;
@@ -144,6 +144,17 @@ export function paver(terrain: HeightField): { z: (x: number, y: number) => numb
  * tombent sous un tablier enjambant une autre voie.
  */
 export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, color: THREE.Color, terrain: HeightField, jitter = false, maxEdge = MAX_EDGE): void {
+  finish(fillOnTerrainSteps(mb, poly, lift, color, terrain, jitter, maxEdge));
+}
+
+/**
+ * Triangles examinés (posés, recoupés ou écartés) entre deux points d'arrêt de `fillOnTerrainSteps` (D284) : un grand polygone recoupé
+ * finement sous un pont (chaussée de 5 150 m² sous la voie ferrée, tuile 23_36) prenait 68 ms d'un bloc sur PC, ≈ 90 ms sur le téléphone.
+ */
+const FILL_WORK_PER_STEP = 100;
+
+/** Comme `fillOnTerrain`, en rendant la main tous les `FILL_WORK_PER_STEP` triangles examinés. */
+export function* fillOnTerrainSteps(mb: MeshBuilder, poly: number[][], lift: number, color: THREE.Color, terrain: HeightField, jitter = false, maxEdge = MAX_EDGE): Steps<void> {
   const pv = paver(terrain);
   const bare = terrain.ground ?? terrain;
   const normalAt = (x: number, y: number, level: number): [number, number, number] => {
@@ -153,18 +164,33 @@ export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, c
     const l = Math.hypot(gx, gy, 1);
     return [-gx / l, 1 / l, gy / l];
   };
+  // Altitudes (sol dessiné, relief nu) de chaque point examiné, une seule fois : les sommets et milieux sont partagés entre morceaux voisins,
+  // et sous un pont qui enjambe une voie chaque altitude coûte cher (`Decks.carve`, D284).
+  const memo = new Map<number, Map<number, [number, number]>>();
+  const sample = (x: number, y: number): [number, number] => {
+    let row = memo.get(x);
+    if (!row) memo.set(x, (row = new Map()));
+    let v = row.get(y);
+    if (!v) row.set(y, (v = [pv.z(x, y), bare.heightAt(x, y)]));
+    return v;
+  };
+  const zOf = (x: number, y: number): number => (pv.split ? sample(x, y)[0] : pv.z(x, y));
+  const levelOf = (v: [number, number]): number => (Number.isNaN(v[0]) ? 2 : v[0] - v[1] > ON_DECK ? 1 : 0);
+  // Triangles à poser ou à recouper, en profondeur d'abord (pile explicite plutôt que récursion : on peut rendre la main au milieu d'un triangle).
+  const stack: [P, P, P, number][] = [];
   const emit = (a: P, b: P, c: P, col: THREE.Color, depth: number): void => {
     const longest = Math.max(Math.hypot(b[0] - a[0], b[1] - a[1]), Math.hypot(c[0] - b[0], c[1] - b[1]), Math.hypot(a[0] - c[0], a[1] - c[1]));
     // Niveaux aux sommets et aux milieux des côtés : un triangle qui touche un tablier est recoupé finement.
     let mixed = false, level = 0;
     if (pv.split) {
       const pts: P[] = [a, b, c, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2], [(c[0] + a[0]) / 2, (c[1] + a[1]) / 2]];
-      const levels = pts.map((p) => pv.level(p[0], p[1]));
+      const samples = pts.map((p) => sample(p[0], p[1]));
+      const levels = samples.map(levelOf);
       level = levels[0]!;
       if (levels.every((l) => l === 2)) return;
       // Niveaux différents : à recouper seulement si l'on passe sous un tablier ou si l'écart d'altitude est réel (pas au ras d'une culée).
       if (levels.some((l) => l !== level)) {
-        const lifts = pts.map((p) => pv.z(p[0], p[1]) - bare.heightAt(p[0], p[1]));
+        const lifts = samples.map((v) => v[0] - v[1]);
         mixed = levels.includes(2) || Math.max(...lifts) - Math.min(...lifts) > 2 * ON_DECK;
       }
     }
@@ -182,11 +208,11 @@ export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, c
       }
       const p = pts[k]!, q = pts[(k + 1) % 3]!, r = pts[(k + 2) % 3]!;
       const m: P = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-      emit(p, m, r, col, depth + 1);
-      emit(m, q, r, col, depth + 1);
+      // Le second morceau sous le premier : même ordre que la récursion.
+      stack.push([m, q, r, depth + 1], [p, m, r, depth + 1]);
       return;
     }
-    const za = pv.z(a[0], a[1]), zb = pv.z(b[0], b[1]), zc = pv.z(c[0], c[1]);
+    const za = zOf(a[0], a[1]), zb = zOf(b[0], b[1]), zc = zOf(c[0], c[1]);
     if (mixed && (Number.isNaN(za + zb + zc) || Math.max(za, zb, zc) - Math.min(za, zb, zc) > 2 * ON_DECK)) return;
     mb.tri([a[0], za + lift, -a[1]], [b[0], zb + lift, -b[1]], [c[0], zc + lift, -c[1]], normalAt(a[0], a[1], level), col);
   };
@@ -200,9 +226,18 @@ export function fillOnTerrain(mb: MeshBuilder, poly: number[][], lift: number, c
   const holes = poly.slice(1).map(ring);
   const verts = [...contour, ...holes.flat()];
   const col = jitter ? color.clone().multiplyScalar(0.97 + hash01(`${poly[0]![0]},${poly[0]![1]}`) * 0.06) : color;
+  let work = 0;
   for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
     const a = verts[i!]!, b = verts[j!]!, c = verts[k!]!;
-    emit([a.x, a.y], [b.x, b.y], [c.x, c.y], col, 0);
+    stack.push([[a.x, a.y], [b.x, b.y], [c.x, c.y], 0]);
+    while (stack.length > 0) {
+      const [p, q, r, depth] = stack.pop()!;
+      emit(p, q, r, col, depth);
+      if (++work >= FILL_WORK_PER_STEP) {
+        work = 0;
+        yield;
+      }
+    }
   }
 }
 

@@ -57,7 +57,7 @@ describe("terrils des Télots (D269)", () => {
         expect(r.top).toBeGreaterThan(trace[name]!.summit[2]! - 3);
       }
     }
-  });
+  }, 20000); // 4,3 à 4,9 s seul (six montées simulées), plus de 5 s sous la charge de toute la suite (CI de la PR #91).
 
   it("les passants : les deux sentiers sont reliés aux chemins voisins, un point de vue à chaque sommet (D270)", () => {
     const cell = JSON.parse(readFileSync("public/data/nav/s6_12.json", "utf8")) as { ped: { n: number[]; e: number[] }; poi: number[] };

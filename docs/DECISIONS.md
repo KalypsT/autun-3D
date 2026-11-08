@@ -6280,3 +6280,82 @@ pour la sportive à 200 comme à 240, ≈ 40 pour la supercar à 300) ; c'était
 1. Mesure du téléphone : `?bench=1&crowd=100&sim=1&fleet=1&fast=300`. Objectif : « chargement en retard » = 0 au trajet à 300 km/h.
    S'il y a du retard, on redescend `SPEED_CAP.car` (250 par exemple) : une seule constante.
 2. Essai au volant : `?ride=supercar` puis l'axe nord ; dire si 300 km/h reste jouable.
+
+**Mesure du téléphone** (8 novembre 2026, Honor Magic 8 Pro, Adreno 840, Chrome 156, version `adb78de`, paysage 898 × 298 px, ombres 4096,
+détail 300 m, `?bench=1&crowd=100&sim=1&fleet=1&fast=300`) :
+
+| Phase | i/s | 1 % le plus lent | Images > 33 ms | > 50 ms | Pire image | Tuiles construites | En retard |
+|---|---|---|---|---|---|---|---|
+| Arrêt (trois phases) | 60,3 à 60,5 | 47 à 55 | 0 | 0 | 27 ms | 0 | – |
+| Rues à 50 km/h | 59,9 | 33,8 | 10 | 4 | 133 ms | 15 | **0** |
+| Rues à 90 km/h | 59,8 | 27,5 | 13 | 1 | 53 ms | 22 | **0** |
+| Rues à 300 km/h | 57,3 | 16,4 | 28 | 10 | 99 ms | 52 en 31 s | **0** |
+
+- **Le plafond tient** : aucune image où la tuile sous le véhicule, ou celle qu'il atteint dans 1 s, n'a pas ses obstacles, même à 300 km/h.
+  `SPEED_CAP.car` reste à 300.
+- **Mais la conduite à 300 km/h saccade** : environ une image de plus de 33 ms par seconde (28 en 31 s), dont 6 seulement pendant une construction
+  de tuile. Une tuile, `23_36`, prend à elle seule une tranche de 69 à 82 ms d'un bloc (budget : 4 ms), à 50 comme à 300 km/h : c'est le
+  `JSON.parse` d'une grosse tuile (D23), pas la vitesse.
+- **Dégradation générale depuis D57**, à toutes les vitesses : 1 % le plus lent à 50,7, 49,0 et 44,8 i/s en D57 (50, 90 et 200 km/h, monde de 9 km²),
+  contre 33,8 et 27,5 aujourd'hui à 50 et 90 km/h. Elle n'est donc pas due à D283. Le monde, les tuiles et les détails ont beaucoup grossi depuis.
+- **Pistes, à faire séparément** : (1) découper ou alléger la tuile `23_36` et les plus grosses tuiles, ou les lire hors du fil principal ;
+  (2) trouver les 22 saccades à 300 km/h qui ne coïncident avec aucune construction (ramasse-miettes, naissances de passants : 557 en 31 s,
+  jusqu'à 4,5 ms) ; (3) refaire `fast=200` sur la même version pour séparer l'effet de la vitesse de celui de la version.
+
+**Seconde mesure, même version, `fast=200`** (8 novembre 2026, 15 h 52) : les phases à 50 et 90 km/h redonnent les mêmes chiffres (1 % le plus
+lent 34,0 et 27,7 i/s ; la mesure est reproductible).
+
+| Trajet rapide (même parcours de 2,6 km) | Durée | 1 % le plus lent | Images > 33 ms | > 50 ms | Pire image | Tuiles | En retard |
+|---|---|---|---|---|---|---|---|
+| 200 km/h | 47 s | 22,7 i/s | 17 (0,36 par s) | 2 | 66 ms | 49 | **0** |
+| 300 km/h | 31 s | 16,4 i/s | 28 (0,9 par s) | 10 | 99 ms | 52 | **0** |
+
+- **La vitesse coûte** : sur le même parcours et presque autant de tuiles, 300 km/h donne 1,6 fois plus d'images lentes et 5 fois plus d'images
+  de plus de 50 ms qu'à 200. À 300 km/h, une tuile commence toutes les 0,6 s (0,95 s à 200) alors que chacune se construit en 100 à 260 ms
+  sur 20 à 45 images : les constructions se suivent sans répit.
+- **La version coûte plus encore** : à 200 km/h, 1 % le plus lent à 22,7 i/s contre 44,8 en D57 ; la fluidité a été divisée par deux depuis D57,
+  vitesse égale. La plupart des saccades (16 sur 17 à 200 km/h, 22 sur 28 à 300) ne coïncident avec aucune construction de tuile.
+- **Décision** : le plafond reste à 300 km/h (rien n'est en retard, et l'on ne roule à 300 que sur quelques lignes droites de la périphérie).
+  Le chantier de fluidité est à mener à part et profitera à toutes les vitesses : d'abord trouver la cause des saccades sans construction
+  (régression depuis D57), puis la tuile `23_36` (tranche de 52 à 93 ms d'un bloc, à toutes les vitesses).
+
+## 2026-11-08 — D284. Fluidité, lot 1 : la tuile 23_36 ne bloque plus, et le banc dit d'où viennent les images lentes
+
+**Demande** : chantier « fluidité » ouvert après les mesures de D283 (une image lente par seconde à 300 km/h, 1 % le plus lent divisé par deux
+depuis D57, à vitesse égale).
+
+**Tuile 23_36** (le pire bloc de construction, 52 à 93 ms d'un coup sur le téléphone, à toutes les vitesses) :
+- **Cause**, trouvée au profileur (Chromium, jeu réel, `?at=-645,313`) : ce n'est pas la lecture du fichier (119 Ko seulement), c'est le sol.
+  Un polygone de chaussée de 5 150 m² (185 sommets, 6 trous) passe sous le pont-rail du boulevard Xavier Pauchard. Ses triangles sont recoupés
+  jusqu'à 0,3 m le long du tablier (D93), et chaque morceau examiné demande une vingtaine d'altitudes. Sous ce pont, chaque altitude coûte cher :
+  la correction du relief sous les tabliers (`Decks.carve`) relit le relief 10 fois par tronçon. Or `buildGroundSteps` ne rendait la main
+  qu'entre deux polygones : 56 ms d'un bloc sur PC.
+- **Corrections** (le sol produit est identique au sommet près : positions, normales et couleurs comparées sur 6 tuiles) :
+  - `fillOnTerrainSteps` (`src/render/ground.ts`) : le découpage récursif devient une pile explicite, et rend la main tous les 100 morceaux
+    examinés (posés, recoupés ou écartés), même au milieu d'un triangle. `fillOnTerrain` reste, pour les autres appelants.
+  - Chaque point (sommet ou milieu de côté) n'est évalué qu'une fois par polygone (altitude dessinée et relief nu, mémorisés par coordonnées).
+  - `Decks.carve` : les tronçons prolongés aux bouts du tablier et les cosinus des directions sont calculés une fois, plus à chaque appel.
+- **Mesure sur PC** (médiane de 7 constructions du sol, jeu réel) :
+
+  | Tuile | Pire bloc avant | après | Total avant | après |
+  |---|---|---|---|---|
+  | 23_36 | 56 ms | 2,3 ms | 129 ms | 71 ms |
+  | 24_36 | 16 ms | 3,1 ms | 69 ms | 51 ms |
+  | 26_33 | 13 ms | 1,4 ms | 59 ms | 40 ms |
+  | 23_35 | 12 ms | 2,1 ms | 39 ms | 30 ms |
+  | 26_32 | 21 ms | 4,0 ms | 66 ms | 54 ms |
+
+**Le banc dit d'où viennent les images lentes** (`src/game/bench-hitches.ts`) : la plupart des saccades de D283 (16 sur 17 à 200 km/h, 22 sur 28
+à 300) tombaient hors de toute construction de tuile, et seul le téléphone mesure juste (sur PC, le rendu logiciel fausse tout). Pour chaque
+image de plus de 33 ms, le banc garde maintenant :
+- le temps de chaque partie de sa boucle : tuiles, flotte, navigation, circulation, décor, minimap, passants, pigeons, foule, rendu ;
+- ce qui ne tombe dans aucune (« hors mesure » : ramasse-miettes hors de nos fonctions, attente du GPU, composition de la page) ;
+- les « Long Animation Frames » de Chrome : tout le code qui a tourné pendant l'image, y compris hors de la boucle (fichier reçu, promesse),
+  avec la fonction et sa position dans le fichier construit (à retrouver dans le code avec la même version construite et ses sourcemaps).
+Le rapport texte ajoute deux à sept lignes par phase ; le JSON garde les 40 images les plus lentes de chaque phase.
+Vérifié sur PC (banc court dans Chromium) : le rapport sort, Chrome y signale bien ses images longues ; les chiffres, eux, ne valent rien en rendu
+logiciel (une image de rendu dure ≈ 2 s, tout passe en « hors mesure »).
+
+**Reste de ton côté** : une fois la branche fusionnée et le site reconstruit, `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone, et
+m'envoyer le JSON. On y lira (1) si la tranche la plus longue de `23_36` est tombée sous ≈ 10 ms, (2) où partent les saccades hors construction
+de tuile : rendu (envoi au GPU, compilation d'un nuanceur, envoi d'une texture), passants, ou « hors mesure » (ramasse-miettes, GPU).

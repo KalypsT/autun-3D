@@ -1999,4 +1999,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - La sportive a été réglée pour atteindre vraiment ses 240 km/h (sans cela, elle restait à 231) ; la supercar, plus stable à très haute vitesse (pneus arrière plus rigides).
 - Les gendarmes restent bridés à 200 km/h en poursuite ; la moto sportive reste à 210.
 - Les traits de vitesse sont pleins à 300 km/h au lieu de 200.
-- À faire de ton côté : lancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone (« chargement en retard » doit rester à 0), puis essayer la supercar sur la grande ligne droite au nord de la ville.
+- Mesuré sur le téléphone : les tuiles arrivent à temps même à 300 km/h (0 image en retard), mais la conduite saccade (environ une image lente par seconde à 300 km/h, déjà sensible à 50 et 90 km/h depuis que le monde a grossi) : piste à traiter à part.
+- À faire de ton côté : essayer la supercar sur la grande ligne droite au nord de la ville.
+
+**Fluidité, lot 1 (8 novembre 2026)** (D284)
+- La tuile la plus lourde à construire (au sud-ouest de la gare, sous le pont du chemin de fer) ne bloque plus l'image : son pire bloc passe de 56 ms à 2 ms sur PC, et son sol se construit presque deux fois plus vite. Le sol dessiné est identique.
+- Le banc de test dit maintenant, pour chaque image lente, quelle partie du jeu a pris le temps (tuiles, passants, rendu…) et ce que Chrome a vu tourner.
+- À faire de ton côté : après fusion, relancer `?bench=1&crowd=100&sim=1&fleet=1&fast=300` sur le téléphone et m'envoyer le JSON.
+
