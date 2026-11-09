@@ -84,7 +84,8 @@ export class MarketController {
     this.colliders.removeTag(STALL_TAG);
     if (n > 0) {
       this.colliders.currentTag = STALL_TAG;
-      for (const s of live) this.colliders.addCircle(s.x, s.y, 1.15);
+      // Étals de 2,6 m (D303 : on les survole).
+      for (const s of live) this.colliders.addCircle(s.x, s.y, 1.15, undefined, this.terrain.heightAt(s.x, s.y) + 2.6);
       this.colliders.currentTag = null;
     }
     // Les marchands : une place debout derrière chaque étal.

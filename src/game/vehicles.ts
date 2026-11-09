@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import { BREAKABLE, CAR_ONLY } from "../core/breakables";
+import { FURNITURE_TOP } from "../core/world";
 import { Colliders } from "../core/collision";
 import { findStalls } from "../core/parking";
 import { createVehicle, type VehicleSpec, type VehicleState } from "../core/vehicle";
@@ -270,7 +271,7 @@ export class Fleet {
     // Les feux ne gênent que les voitures du joueur, et cèdent comme les lampadaires (D160).
     for (const f of t.furniture) {
       const soft = BREAKABLE[f.kind];
-      if (soft && CAR_ONLY.has(f.kind)) this.carOnly.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind });
+      if (soft && CAR_ONLY.has(f.kind)) this.carOnly.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind }, this.terrain.heightAt(f.x, f.y) + (FURNITURE_TOP[f.kind] ?? 4.5));
     }
     for (const st of t.stairs) {
       const [x0, y0, x1, y1] = st.bbox;
@@ -414,8 +415,14 @@ export class Fleet {
     this.settle(v);
     this.colliders.removeTag(`veh:${v.id}`);
     this.colliders.currentTag = `veh:${v.id}`;
-    for (const [off, r] of v.spec.hull) this.colliders.addCircle(x + Math.sin(heading) * off, y + Math.cos(heading) * off, r);
+    for (const [off, r] of v.spec.hull) this.colliders.addCircle(x + Math.sin(heading) * off, y + Math.cos(heading) * off, r, undefined, this.settledTop(v));
     this.colliders.currentTag = null;
+  }
+
+  /** Haut du véhicule garé (D303) : on le survole, on tire par-dessus depuis plus haut. Pente comprise (le plus haut des deux bouts). */
+  private settledTop(v: Vehicle): number {
+    const s = v.state;
+    return s.z + v.def.size.height + (Math.abs(Math.sin(s.pitch)) * v.def.size.length) / 2;
   }
 
   /** Pose le véhicule sur le relief (hauteur et tangage entre les essieux). */
@@ -445,7 +452,7 @@ export class Fleet {
       return;
     }
     this.colliders.currentTag = `veh:${v.id}`;
-    for (const [off, r] of v.spec.hull) this.colliders.addCircle(s.x + Math.sin(s.heading) * off, s.y + Math.cos(s.heading) * off, r);
+    for (const [off, r] of v.spec.hull) this.colliders.addCircle(s.x + Math.sin(s.heading) * off, s.y + Math.cos(s.heading) * off, r, undefined, this.settledTop(v));
     this.colliders.currentTag = null;
     if (v.model) {
       this.scene.remove(v.model.group);

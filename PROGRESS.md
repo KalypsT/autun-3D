@@ -2161,3 +2161,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pour un nouveau bâtiment spécial : `npm run hulls` refait le relevé (un test le réclame sinon).
 - Reste : les lampadaires, arbres et voitures garées n'ont pas de hauteur ; une voiture qui vole au-dessus les heurte encore.
 - À faire de ton côté : survoler et te poser sur quelques monuments, et mesurer sur le téléphone (`?bench=1`).
+
+**Lampadaires, arbres, voitures garées : on les survole (9 novembre 2026)** (D303)
+- Le mobilier, les arbres, les poteaux des monuments et les voitures garées ont maintenant une hauteur : une voiture qui vole au-dessus passe, au lieu de buter en plein ciel.
+- Dans la rue, rien ne change pour les passants et la circulation. À pied, on peut sauter par-dessus un banc, une poubelle ou un potelet ; pas par-dessus une voiture.
+- À faire de ton côté : sauter en voiture au-dessus de voitures garées et de lampadaires.

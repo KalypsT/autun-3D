@@ -54,6 +54,11 @@ export interface Circle {
   r: number;
   /** Mobilier cassable (D160) : identifiant et nature ; absent pour un obstacle plein. */
   brk?: { id: number; kind: string };
+  /**
+   * Altitude absolue du haut (D303 : lampadaire, poubelle, arbre, voiture garée) : qui donne l'altitude de ses pieds (`resolve`) ou du rayon
+   * (`raycast`) passe par-dessus quand il est à moins de `WALL_STEP` sous ce haut. Absente, ou sans altitude : cylindre infini, comme avant.
+   */
+  top?: number;
 }
 
 /** Un mobilier arraché par un véhicule : où, de quelle nature, et la direction (unitaire) et la vitesse (m/s) du véhicule qui l'a heurté. */
@@ -146,8 +151,9 @@ export class Colliders {
     }
   }
 
-  addCircle(x: number, y: number, r: number, brk?: { id: number; kind: string }): void {
+  addCircle(x: number, y: number, r: number, brk?: { id: number; kind: string }, top?: number): void {
     const rec: Circle = brk ? { x, y, r, brk } : { x, y, r };
+    if (top !== undefined && Number.isFinite(top)) rec.top = top;
     const reuse = this.freeCircle.pop();
     let id: number;
     if (reuse === undefined) {
@@ -314,6 +320,7 @@ export class Colliders {
             if (this.circleSeen[id] === stamp || this.deadCircle.has(id)) continue;
             this.circleSeen[id] = stamp;
             const c = this.circles[id]!;
+            if (c.top !== undefined && feet !== undefined && c.top - feet <= WALL_STEP) continue;
             let ex = x - c.x, ey = y - c.y;
             const d = Math.hypot(ex, ey);
             if (d >= r + c.r) continue;
@@ -400,6 +407,8 @@ export class Colliders {
           const disc = b * b - 4 * a * q;
           if (disc < 0) continue;
           const t = (-b - Math.sqrt(disc)) / (2 * a);
+          // Un rayon qui passe au-dessus (D303 : tir depuis un toit par-dessus une voiture garée) ne s'y arrête pas.
+          if (c.top !== undefined && az !== undefined && bz !== undefined && az + t * (bz - az) >= c.top) continue;
           if (t >= 0 && t <= 1 && (best === null || t < best)) best = t;
         }
       }

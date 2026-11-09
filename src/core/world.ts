@@ -1,7 +1,7 @@
 import type { Building, HeightField, RampartTower, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkShapes, militairePassage, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCirclesWithTop, landmarkShapes, militairePassage, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
 import { HULL_STEP_BELOW, hullSiteKey, hullSteps, hullWalls, makeHull, type HullData } from "./hulls";
 import { parapetLines, pierRings } from "./bridges";
@@ -19,6 +19,16 @@ const FURNITURE_RADIUS: Record<string, number> = {
   memorial: 1.2, fountain: 1.0, toilets: 1.0,
   // Panneau « voie sans issue » (D287) : son mât.
   dead_end: 0.08,
+};
+
+/**
+ * Hauteur (m) du mobilier au-dessus du sol, comme il est dessiné (`src/render/props.ts`) : une voiture qui vole plus haut passe au-dessus
+ * (D303). Absente : cylindre infini.
+ */
+export const FURNITURE_TOP: Record<string, number> = {
+  street_lamp: 4.5, traffic_signals: 4.4, waste_basket: 0.85, post_box: 1.2, bollard: 0.9, drinking_water: 1.0,
+  sign_stop: 2.4, sign_give_way: 2.4, sign_no_entry: 2.4, sign_speed: 2.4, dead_end: 2.4,
+  bench: 0.9, atm: 2.0, public_bookcase: 1.9, memorial: 1.9, fountain: 1.4, toilets: 2.5,
 };
 
 /** Hauteur maximale (m) d'une grille, d'un mur ou d'une portail qu'on escalade ; une haie au-delà de HEDGE_CLIMB se traverse mal : on ne l'escalade pas. */
@@ -199,14 +209,17 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     // Lampadaires, feux, poubelles, boîtes aux lettres, potelets et bornes à eau : un véhicule lourd et rapide les arrache (D160).
     const soft = BREAKABLE[f.kind];
     if (soft && CAR_ONLY.has(f.kind)) continue;
-    if (soft) c.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind });
+    // Leur haut (D303) : on les survole ; sans relief, cylindres infinis comme avant.
+    const top = terrain && FURNITURE_TOP[f.kind] !== undefined ? terrain.heightAt(f.x, f.y) + FURNITURE_TOP[f.kind]! : undefined;
+    if (soft) c.addCircle(f.x, f.y, soft.radius, { id: f.id, kind: f.kind }, top);
     else {
       const r = FURNITURE_RADIUS[f.kind];
-      if (r !== undefined) c.addCircle(f.x, f.y, r);
+      if (r !== undefined) c.addCircle(f.x, f.y, r, undefined, top);
     }
   }
-  for (const [x, y] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3);
-  for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
+  // Troncs : l'arbre a sa hauteur dans les données (sommet de la couronne, D303).
+  for (const [x, y, z, h] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3, undefined, z + h);
+  for (const [x, y, r, h] of landmarkCirclesWithTop(tile.kinds, tile.buildings)) c.addCircle(x, y, r, undefined, terrain ? terrain.heightAt(x, y) + h : undefined);
   // Théâtre romain (D133) : podium, bords des massifs plus hauts que ce qui les jouxte, barrières de la scène.
   if (terrain) {
     const bare = terrain.ground ?? terrain;
@@ -219,7 +232,7 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
     const r = boatOutline(b);
     c.addPolyline([...r, r[0]!, r[1]!], true, { height: BOAT_TOP, climb: true });
   }
-  for (const s of tile.structures?.shelters ?? []) for (const [x, y] of shelterPosts(s)) c.addCircle(x, y, SHELTER_POST * 1.4);
+  for (const s of tile.structures?.shelters ?? []) for (const [x, y] of shelterPosts(s)) c.addCircle(x, y, SHELTER_POST * 1.4, undefined, s.z);
   // Équipements du plan d'eau du Vallon (D247) : flancs des modules du skatepark (murs à hauteur) ; structures de jeux pleines ; bancs, tables,
   // agrès, panneaux, barre de glisse, grillage et ganivelle bas, qu'on escalade et à travers lesquels on voit. Pierres du gué et rigole : rien.
   for (const d of tile.structures?.decks ?? []) {

@@ -7078,5 +7078,33 @@ mène le fugitif au cul-de-sac sous Couhard, où il s'arrête avec ou sans relev
 gendarmes, et leurs voitures restent collées à lui les deux dernières minutes).
 
 **Reste** (hors de ce chantier) : le **mobilier, les arbres et les véhicules garés** sont des cercles sans hauteur ; une voiture qui vole
-au-dessus d'un lampadaire ou d'un arbre le heurte encore, à n'importe quelle altitude. Toits fidèles au dessin (niveau 2) : seulement si un
+au-dessus d'un lampadaire ou d'un arbre le heurte encore, à n'importe quelle altitude (corrigé en D303). Toits fidèles au dessin (niveau 2) : seulement si un
 bâtiment le demande en jouant.
+
+## 2026-11-09 — D303. Mobilier, arbres, poteaux et voitures garées : une hauteur, on les survole
+
+**Demande de l'utilisateur** : corriger le point relevé en D302 : les obstacles ronds (lampadaires, poubelles, arbres, voitures garées…)
+étaient des cylindres infinis ; une voiture qui volait au-dessus d'un lampadaire le heurtait à n'importe quelle altitude (vérifié dans le
+jeu : 20 contacts à 130 m au-dessus de la cathédrale, tous des lampadaires et des arbres).
+
+**Fait** (`Circle.top`, `src/core/collision.ts`) : chaque obstacle rond peut avoir l'altitude absolue de son haut. Comme les murs de
+bâtiment (D214), il n'arrête que qui donne son altitude (`resolve`, pieds) et est à plus de `WALL_STEP` sous ce haut ; un rayon (`raycast`
+avec altitudes : tirs, lignes de vue) qui passe au-dessus ne s'y arrête pas. Sans altitude (passants, circulation, gendarmes, recherche de
+place), ou sans haut : cylindre infini, comme avant.
+- **Mobilier** (`FURNITURE_TOP`, `src/core/world.ts`) : la hauteur de son dessin (`props.ts`) : lampadaire 4,5 m, feux 4,4, panneaux 2,4,
+  boîte aux lettres 1,2, potelet 0,9, poubelle 0,85, banc 0,9, borne à eau 1,0, toilettes 2,5, etc. Les feux et panneaux que seules les
+  voitures heurtent (`Fleet.carOnly`) aussi.
+- **Arbres** : leur hauteur dans les données (`Tree`, sommet de la couronne).
+- **Poteaux, colonnes, mâts des monuments** (`landmarkCirclesWithTop`) : hauteurs approchées par nature (poteaux d'auvent 6 m, pompes 2,
+  statue du passage 1,5, tables et parasols du golf 1 et 2,6, cèdre du rond-point à sa hauteur, tilleuls 6, piquets de Couhard 1,2,
+  piles des portails du lycée militaire 4 et 3, mât 10…) ; 8 m (`LANDMARK_TOP`) pour les autres (mâts d'éclairage, colonnes de la gare,
+  accessoires de l'Hexagone, du Vallon, des magasins).
+- **Voitures garées** (`Fleet`) : leur toit (altitude posée + hauteur du modèle, pente comprise). On les survole ; on ne saute toujours pas
+  par-dessus à pied (une citadine fait 1,45 m, le saut monte de 1,1 m). Étals du marché (2,6 m), sapin de Noël (9,5 m), wagons du petit
+  train (toit + 20 cm), poteaux des abris du plan d'eau (leur toit).
+- Effet de bord voulu : à pied, on saute maintenant par-dessus un banc, une poubelle ou un potelet (plus bas que le saut), et une balle tirée à
+  hauteur de poitrine passe au-dessus d'une poubelle ; une voiture garée abrite toujours (D113).
+
+**Tests** : `src/core/circles-top.test.ts` (règle, rayon par-dessus, tous les obstacles ronds de la ville ont un haut, une voiture lancée
+au-dessus d'un vrai lampadaire passe et plus bas le heurte), `vehicles.test.ts` (voiture garée survolée, pleine sans altitude). Vérifié
+dans le jeu : à 130 m au-dessus de la cathédrale, plus aucun contact.

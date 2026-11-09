@@ -122,6 +122,19 @@ describe("véhicules laissés (D301)", () => {
   });
 });
 
+describe("voiture garée à hauteur (D303)", () => {
+  it("on la survole, on bute dessus plus bas ; sans altitude (passants, circulation), elle reste pleine", () => {
+    const colliders = new Colliders();
+    const fleet = new Fleet(new THREE.Scene(), colliders, flatTerrain());
+    const v = fleet.add("citadine", "voiture-s9,9", 0, 0, 0, 1);
+    const h = v.def.size.height;
+    expect(colliders.resolve(0.5, 0, 0.5).hit).toBe(true);
+    expect(colliders.resolve(0.5, 0, 0.5, 0, 0).hit).toBe(true);
+    expect(colliders.resolve(0.5, 0, 0.5, 0, h - 0.5).hit).toBe(true);
+    expect(colliders.resolve(0.5, 0, 0.5, 0, h + 0.1).hit).toBe(false);
+  });
+});
+
 describe("catalogue et dessin", () => {
   it("chaque modèle du catalogue a son dessin, de chaque couleur de sa palette", () => {
     expect(Object.keys(MODEL_BUILDERS).sort()).toEqual(CATALOG.map((d) => d.id).sort());

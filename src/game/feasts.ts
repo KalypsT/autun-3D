@@ -9,7 +9,7 @@ import { FireworksView } from "../render/fireworks";
 import type { TileExtras } from "../render/tile-manager";
 
 /** Sapin de Noël : dans l'allée piétonne centrale du parking du Champ de Mars (D154). */
-export const FIR_TREE = { x: -36, y: -51 } as const;
+export const FIR_TREE = { x: -36, y: -51, h: 9.5 } as const;
 /** Les guirlandes ne sont tendues que dans le centre (à moins de 450 m de ce point, entre la mairie et la cathédrale). */
 const CENTRE = { x: 10, y: -250, r: 450 } as const;
 
@@ -55,7 +55,7 @@ export class FeastsController {
       this.colliders.removeTag("sapin");
       if (lit) {
         this.colliders.currentTag = "sapin";
-        this.colliders.addCircle(FIR_TREE.x, FIR_TREE.y, 2.6);
+        this.colliders.addCircle(FIR_TREE.x, FIR_TREE.y, 2.6, undefined, this.terrain.heightAt(FIR_TREE.x, FIR_TREE.y) + FIR_TREE.h);
         this.colliders.currentTag = null;
       }
     }
