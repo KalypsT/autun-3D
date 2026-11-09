@@ -6755,13 +6755,18 @@ Les pieds restent à moins d'une demi-marche du dessus de la marche dessinée. *
 d'échiffre et piédestaux, 3 m, non franchissables (du dehors, ils font jusqu'à 5 m) ; on entre sur le perron par le bas et par les
 marches évasées.
 
+**Creux d'affichage** (`hallPits`, comme sous la Croix de la Libération, D267) : le relevé LiDAR forme sous le perron un talus lisse qui
+débordait à côté des murs d'échiffre (bosse contre les arcades, vue de biais). Sur l'emprise du perron et des marches évasées, le relief
+affiché est plafonné à 0,3 m au-dessus du sol devant la façade ; le sol où l'on marche ne change pas.
+
 **Dessin** (`portico`, `candelabra`, `globe`, `flowers`) : marches évasées en prismes à coins arrondis, marches de la volée en contremarches
 et girons ; globes doublés dans le maillage des vitres allumées (ils s'allument la nuit) ; fleurs roses, magenta et blanches toute l'année
 (les jardinières ne suivent pas les saisons).
 
-**Tests** (`src/core/townhall.test.ts`, +3) : pied mesuré, hauteur de marche, cinq marches évasées de plus en plus larges vers le bas,
+**Tests** (`src/core/townhall.test.ts`, +4) : pied mesuré, hauteur de marche, cinq marches évasées de plus en plus larges vers le bas,
 piédestaux hors de la volée, relief sous chaque marche ; montée par les tabliers en pente régulière jusqu'au palier, marches évasées
-praticables ; murs d'échiffre et piédestaux qui arrêtent le joueur dans le monde réel, volée libre.
+praticables ; murs d'échiffre et piédestaux qui arrêtent le joueur dans le monde réel, volée libre ; creux d'affichage sur l'emprise du
+perron et ses abords, pas au-delà.
 
 ![Le perron de face](captures/d294-perron.jpg)
 ![Le perron de biais, les candélabres](captures/d294-perron-biais.jpg)

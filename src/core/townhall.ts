@@ -1,4 +1,5 @@
 import type { Deck, TownHallSpec } from "../data/types";
+import type { Pit } from "../data/terrain";
 import type { Top } from "./collision";
 
 /**
@@ -182,4 +183,25 @@ export function hallObstacles(m: TownHallSpec): HallObstacle[] {
   const span = REAR.half + r.steps * REAR.run;
   out.push({ ring: ring([rearPoint(r, r.u - span, 0.05), rearPoint(r, r.u + span, 0.05), rearPoint(r, r.u + span, REAR.depth), rearPoint(r, r.u - span, REAR.depth)]), top: REAR_STAIR });
   return out;
+}
+
+/**
+ * Creux d'affichage du perron (D294) : le relevé LiDAR forme sous le perron un talus lisse qui déborde à côté des murs d'échiffre et des
+ * marches évasées (bosse contre les arcades). Sur l'emprise du perron et ses abords, le relief affiché est plafonné au niveau de la place ;
+ * le sol où l'on marche ne change pas (tabliers sur la volée).
+ */
+export function hallPits(m: TownHallSpec): Pit[] {
+  const L = perronLayout(m);
+  if (!L) return [];
+  const s0 = L.s0 - PERRON.ext[0] - 0.8, s1 = L.s1 + PERRON.ext[0] + 0.8, t0 = L.tfoot - 0.6, t1 = L.wallT;
+  const corners = [hallXY(m, s0, t0), hallXY(m, s1, t0), hallXY(m, s1, t1), hallXY(m, s0, t1)];
+  const c = Math.cos(m.a), sn = Math.sin(m.a), floor = m.g + 0.3;
+  return [{
+    x0: Math.min(...corners.map((p) => p[0])), y0: Math.min(...corners.map((p) => p[1])),
+    x1: Math.max(...corners.map((p) => p[0])), y1: Math.max(...corners.map((p) => p[1])),
+    cap: (x, y) => {
+      const dx = x - m.o[0], dy = y - m.o[1], s = dx * c + dy * sn, t = -dx * sn + dy * c;
+      return s >= s0 && s <= s1 && t >= t0 && t <= t1 ? floor : Infinity;
+    },
+  }];
 }

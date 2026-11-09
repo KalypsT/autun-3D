@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "./testing";
 import { Decks } from "./decks";
 import { buildColliders } from "./world";
-import { HALL_PROJ, PERRON, REAR, hallDecks, hallObstacles, hallXY, perronLayout, rearLayout, rearPoint } from "./townhall";
+import { HALL_PROJ, PERRON, REAR, hallDecks, hallPits, hallObstacles, hallXY, perronLayout, rearLayout, rearPoint } from "./townhall";
 
 /** Le segment p-q coupe-t-il l'un des contours fermés ? */
 function crosses(rings: number[][], p: [number, number], q: [number, number]): boolean {
@@ -78,6 +78,17 @@ describe("hôtel de ville : perron et entrée arrière (D293, D294)", () => {
     const out = c.resolve(ix, iy, 0.3, 0);
     expect(out.hit).toBe(true);
     expect(Math.hypot(out.x - ix, out.y - iy)).toBeGreaterThan(0.05);
+  });
+
+  it("creux d'affichage : le talus du relevé sous le perron et à côté des murs d'échiffre est plafonné au niveau de la place", () => {
+    const [pit] = hallPits(m);
+    expect(pit).toBeDefined();
+    // À côté du mur d'échiffre, au pied et sous le palier : plafonné ; ailleurs sur la place, rien.
+    for (const [s, t] of [[L.s0 - 1, -3], [sm, L.tfoot + 1], [sm, L.tl + 0.5], [L.s1 + 2, L.tfoot]] as const) expect(pit!.cap(...hallXY(m, s, t))).toBeCloseTo(m.g + 0.3, 5);
+    expect(pit!.cap(...hallXY(m, sm, L.tfoot - 3))).toBe(Infinity);
+    expect(pit!.cap(...hallXY(m, 2, -3))).toBe(Infinity);
+    // Le dessous des marches et des murs (dessinés jusqu'à 30 cm sous le pied) reste sous le plafond.
+    expect(L.zFoot - 0.3).toBeLessThan(m.g + 0.3);
   });
 
   it("entrée arrière : porte au milieu de la façade, au niveau de la cour, volées jusqu'à la rue Jeannin", () => {
