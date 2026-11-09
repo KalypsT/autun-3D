@@ -48,6 +48,8 @@ export interface TileMeshes {
   broken: Set<number>;
   /** Places assises (bancs, chaises de terrasse, D198). */
   seats?: SeatDef[];
+  /** Taches au sol des projecteurs des monuments (D297) : refondues avec les halos des lampadaires quand ceux-ci sont refaits. */
+  siteHalo?: MeshBuilder;
 }
 
 /** Noms des maillages du mobilier cassable : matière des murs, lanternes allumées, taches de lumière. */
@@ -64,7 +66,7 @@ export function breakFurniture(t: TileMeshes, id: number, terrain: HeightField):
     const m = t.group.getObjectByName(name) as THREE.Mesh | undefined;
     if (!m) continue;
     m.geometry.dispose();
-    m.geometry = parts[name].build();
+    m.geometry = name === "halos" && t.siteHalo ? finish(parts[name].buildSteps([t.siteHalo])) : parts[name].build();
   }
   return f;
 }
@@ -446,6 +448,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Bâtiments remis à la forme de leur gabarit (toits plats des grandes surfaces, pentes faibles des hangars).
   const buildings = tile.buildings.map((b) => reshapeBuilding(b, kindOf(b.id)?.k, kindOf(b.id)?.roof));
   const plan = yield* planFacadesSteps(buildings.filter((b) => !replacesFacade(kindOf(b.id))), fiches, terrain, freeGround(tile.ground ?? {}));
+  const siteHalo = new MeshBuilder(true);
   const walls = new MeshBuilder(), roofs = new UvMeshBuilder(), detail = skip.includes("misc") ? new MeshBuilder() : plan.misc, glow = new MeshBuilder(true), glass = new MeshBuilder(), leaves = new MeshBuilder(), shutters = new MeshBuilder(true);
   const names = new UvMeshBuilder();
   const decalMeshes = new Map<string, UvMeshBuilder>();
@@ -506,7 +509,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   // Gabarits : grandes surfaces, hangars, services publics, églises, stations-service, cimetières.
   target();
   if (!skip.includes("kinds")) {
-    buildLandmarks({ solid: detail, glow, glass, names, atlas: res.signAtlas, leaves }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
+    buildLandmarks({ solid: detail, glow, glass, names, atlas: res.signAtlas, leaves, halo: siteHalo }, { buildings, ...(kinds ? { kinds } : {}) }, fiches, terrain,
       (b) => wallColors.get(b.id) ?? C(T.walls.xix[0]!));
   }
   yield;
@@ -562,7 +565,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (st?.tall && !skip.includes("reeds")) buildTallGrass(detail, st.tall, terrain.ground ?? terrain);
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, mesh: meshFence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
   // Tours des remparts (D254).
-  if (!skip.includes("walls") && tile.towers) buildTowers({ solid: detail, cap: detail, glow, hedgeColor: C(T.trees[2] ?? "#5aa874") }, tile.towers, terrain);
+  if (!skip.includes("walls") && tile.towers) buildTowers({ solid: detail, cap: detail, glow, halo: siteHalo, hedgeColor: C(T.trees[2] ?? "#5aa874") }, tile.towers, terrain);
   yield;
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
   const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));
@@ -607,7 +610,8 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   for (const [src, mb] of decalMeshes) add(`decal|${src}`, mb, res.decalMat(src));
   add("mobilier", breakables.solid, res.wallMat);
   add("lanternes", breakables.glow, res.glowMat);
-  add("halos", breakables.halo, res.haloMat);
+  // Halos des lampadaires et taches au sol des projecteurs des monuments (D297) : un seul maillage.
+  if (breakables.halo.triangleCount + siteHalo.triangleCount > 0) put("halos", yield* breakables.halo.buildSteps([siteHalo]), breakables.halo.triangleCount + siteHalo.triangleCount, res.haloMat);
   yield;
   // L'eau des ouvrages (surfaces complètes, multipolygones compris) remplace la couche d'eau de la tuile.
   const layers = st ? Object.fromEntries(Object.entries(tile.ground ?? {}).filter(([k]) => k !== "water")) : tile.ground ?? {};
@@ -624,7 +628,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
     draws += 2;
   }
   closeSeats();
-  return { group, stats: { triangles, ...plan.stats, draws }, soft, broken: new Set<number>(), seats };
+  return { group, stats: { triangles, ...plan.stats, draws }, soft, broken: new Set<number>(), seats, ...(siteHalo.triangleCount > 0 ? { siteHalo } : {}) };
 }
 
 function roofFaces(rb: UvMeshBuilder, b: Building, base: THREE.Color): void {

@@ -97,19 +97,21 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
     }
   });
 
-  it("de nuit (D256) : seule la tour des Ursulines est éclairée (ni les tours rondes ni l'escalier), en dégradé chaud du pied vers le haut", () => {
+  it("de nuit (D256, projecteurs en D298) : seule la tour des Ursulines est éclairée (ni les tours rondes ni l'escalier), plus fort au pied qu'en haut", () => {
     for (const { t } of towers) {
       const mb = new MeshBuilder(), glow = new MeshBuilder(true);
       const flat: HeightField = { heightAt: () => t.base, xMin: -1e9, xMax: 1e9, yMin: -1e9, yMax: 1e9 };
       buildTowers({ solid: mb, cap: mb, glow, hedgeColor: new THREE.Color("#5aa874") }, [t], flat);
       if (t.k !== "ursulines") expect(glow.positions.length).toBe(0);
       else {
-        expect(glow.positions.length).toBeGreaterThan(mb.positions.length * 0.9);
-        // Plus chaud (plus rouge que bleu) au pied qu'en haut : la lumière vient des projecteurs au sol.
+        expect(glow.triangleCount).toBeGreaterThan(1000);
+        expect(glow.triangleCount).toBeLessThan(mb.triangleCount * 1.5);
+        // Voile plus opaque au pied qu'en haut du fût : la lumière vient des projecteurs au sol.
         let low = 0, high = 0, nl = 0, nh = 0;
-        for (let i = 0; i < glow.positions.length; i += 3) {
-          const z = glow.positions[i + 1]!, warm = glow.colors[i]! - glow.colors[i + 2]!;
-          if (z < t.base + 8) { low += warm; nl++; } else if (z > t.deck! - 8 && z < t.deck!) { high += warm; nh++; }
+        const al = glow.alphas!;
+        for (let i = 0; i < al.length; i++) {
+          const z = glow.positions[3 * i + 1]!;
+          if (z < t.base + 8) { low += al[i]!; nl++; } else if (z > t.deck! - 8 && z < t.deck!) { high += al[i]!; nh++; }
         }
         expect(low / nl).toBeGreaterThan(high / nh);
       }

@@ -22,12 +22,23 @@ describe("monuments (D95) : géométrie", () => {
     for (const s of kinds.sites) {
       if (s.t !== "gate") continue;
       const mb = new MeshBuilder();
-      const glow = new MeshBuilder();
-      buildGate(mb, glow, s, world.terrain);
+      const glow = new MeshBuilder(), halo = new MeshBuilder(true);
+      buildGate(mb, glow, s, world.terrain, halo);
       expect(mb.positions.every(Number.isFinite)).toBe(true);
-      // D137 : moins de 4 000 triangles par porte (Arroux : 2 372), autant au plus pour l'éclairage de nuit, seulement si le modèle l'a.
+      // D137 : moins de 4 000 triangles par porte (Arroux : 2 372, plus les boîtiers des projecteurs).
       expect(tris(mb)).toBeLessThan(4000);
-      expect(tris(glow)).toBe(s.gm?.light ? tris(mb) : 0);
+      // D297 : éclairage par projecteurs, seulement si le modèle l'a ; voile de moins de 5 000 triangles (Arroux : 3 395), à opacité par
+      // sommet (des sommets presque transparents : coins non couverts), et taches au sol dans les halos.
+      if (!s.gm?.light) {
+        expect(tris(glow)).toBe(0);
+        continue;
+      }
+      expect(tris(glow)).toBeLessThan(5000);
+      expect(glow.positions.every(Number.isFinite)).toBe(true);
+      const al = glow.alphas!;
+      expect(al.length * 3).toBe(glow.positions.length);
+      expect(Math.min(...al.slice(0, 4000))).toBeLessThan(0.1);
+      expect(tris(halo)).toBeGreaterThan(0);
     }
     // Église Saint-André (D138) : moins de 2 000 triangles.
     const chap = Object.values(kinds.buildings).find((b) => b.chap)!.chap!;
@@ -42,8 +53,10 @@ describe("monuments (D95) : géométrie", () => {
     buildJanus(jb, jg, temple, world.terrain);
     expect(jb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(jb)).toBeLessThan(6000);
-    expect(tris(jg)).toBeGreaterThan(tris(jb) * 0.9);
-    expect(tris(jg)).toBeLessThanOrEqual(tris(jb));
+    // D297 : voile des projecteurs, moins de 4 500 triangles (3 054), des coins non couverts (opacité presque nulle).
+    expect(tris(jg)).toBeGreaterThan(500);
+    expect(tris(jg)).toBeLessThan(4500);
+    expect(Math.min(...jg.alphas!.slice(0, 5000))).toBeLessThan(0.1);
     // Pierre de Couhard (D222) : moins de 6 000 triangles ; éclairée la nuit (le trou, les touffes et la clôture restent sombres).
     const pyr = kinds.sites.find((q) => q.t === "couhard")!;
     if (pyr.t !== "couhard") throw new Error("Pierre de Couhard absente");
@@ -51,7 +64,8 @@ describe("monuments (D95) : géométrie", () => {
     buildCouhard(pb, pg, pyr, world.terrain);
     expect(pb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(pb)).toBeLessThan(6000);
-    expect(tris(pg)).toBeGreaterThan(tris(pb) * 0.6);
+    // D297 : voile de quatre projecteurs au pied, moins que la pierre elle-même (2 653).
+    expect(tris(pg)).toBeGreaterThan(500);
     expect(tris(pg)).toBeLessThan(tris(pb));
     // Maison du 7 allée de l'Acaron (D140) : moins de 4 000 triangles ; quelques vitres et les appliques allumées la nuit.
     const house = Object.values(kinds.buildings).find((b) => b.house)!.house!;
@@ -169,9 +183,9 @@ describe("monuments (D95) : géométrie", () => {
     expect(m.spire[0]).toBeGreaterThan(m.tower[2] + 3);
     const mb = new MeshBuilder(), lights = new MeshBuilder();
     buildSaintLazare(mb, lights, m, world.terrain);
-    // Éclairage de nuit (D132) : murs et flèches doublés dans le maillage des vitres allumées.
+    // Éclairage de nuit (D132, projecteurs en D297) : murs et flèches doublés dans le voile, moins de 7 000 triangles (6 151).
     expect(tris(lights)).toBeGreaterThan(200);
-    expect(tris(lights)).toBeLessThan(4000);
+    expect(tris(lights)).toBeLessThan(7000);
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
     expect(tris(mb)).toBeLessThan(8000);

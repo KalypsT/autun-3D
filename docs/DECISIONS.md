@@ -6842,3 +6842,162 @@ millésimes échoue (ombres et dévers des bâtiments trop différents). **Le pl
 **Options proposées** : (1) règles plutôt que relevé (rues de ville bordées de maisons, assez larges ou à trottoir), le relevé ne
 confirmant que le centre ; (2) relevé à la main rue par rue au centre (comme D169, D230) ; (3) les deux. **Point mis en pause par
 l'utilisateur.**
+
+## 2026-11-09 — D297. Éclairage des monuments revu, lot 1 : projecteurs, porte d'Arroux (et porte Saint-André)
+
+**Demande de l'utilisateur** : revoir l'éclairage de nuit des monuments. « Les monuments illuminés ressortent simplement entièrement
+lumineux, presque surnaturels. Or les éclairages sont des lumières du dessous éclairant vers le haut, et tous les coins du monument ne
+sont pas forcément couverts. » Sept photos de nuit (non versionnées) : hôtel de ville et théâtre municipal (1), porte Saint-André (2, 3),
+porte d'Arroux (4, 5), cathédrale (6), temple de Janus (7).
+
+**Réponses de l'utilisateur** : une teinte unique pour toute la ville ; Couhard, la Croix et les Ursulines sans photo, éclairés par
+projecteurs placés d'office (la Croix par ses deux mâts) ; le théâtre romain reste éteint ; **allumé toute la nuit** (pas d'heure
+d'extinction) ; projecteurs visibles au sol ; ponts à revoir plus tard ; d'abord la porte d'Arroux, à valider avant de passer aux autres.
+
+**Ce qui n'allait pas** : chaque face du monument était recopiée dans le maillage allumé (`glow`, matière sans éclairage, opaque la nuit)
+avec un dégradé figé du pied vers le haut, qui ne dépendait que de la hauteur (`flood` de `monuments.ts`, `GateDraw.flood`, `FloodBuilder`
+des remparts). Toutes les faces recevaient la même lumière, quelle que soit leur orientation ; aucun coin dans l'ombre ; le monument se
+découpait comme un aplat. L'intensité suivait déjà la tombée de la nuit (opacité de `glowMat`, soleil de 3° à −6°).
+
+**Mécanisme commun** (`src/render/floodlight.ts`) :
+- **Projecteurs** : position de la lentille, axe, ouverture (pleine lumière jusqu'à `inner`, rien au-delà de `outer`), puissance, portée.
+  Un sommet reçoit la somme de ce qui l'atteint : il faut que la face regarde le projecteur (incidence adoucie : 0,3 + 0,7 cos), qu'il
+  soit dans le faisceau, et la lumière baisse avec la distance (1 / (1 + (d / portée)²)). Un projecteur posé à 1 m du pied et pointé vers
+  le haut éclaire fort le bas, moins le haut ; les faces tournées ailleurs (flancs, dos, dessus des corniches) ne reçoivent rien.
+- **Voile** : la copie n'est plus opaque. `MeshBuilder` porte une opacité par sommet (`alphas`, `triColors`) ; si l'une des parties d'un
+  maillage en a, il est assemblé en couleurs à quatre composantes (three.js s'en sert seul). Couleur : celle de la pierre dans la teinte
+  des projecteurs (`FLOOD_TINT`, blanc chaud), un peu plus claire où la lumière est forte ; opacité : la lumière reçue (1 − e^(−1,4 e),
+  plafonnée à 0,95). Là où rien n'arrive, la copie est transparente et l'on voit le vrai mur de nuit, sans couture.
+- **Découpe** : les faces sont coupées en carreaux de 0,5 m près d'un projecteur à 3 m loin (30 % de la distance) ; un carreau dont les
+  trois sommets sont presque transparents n'est pas recopié.
+- **Projecteurs visibles** (`drawProjectors`) : boîtier gris sombre de 36 cm, lentille allumée (maillage allumé), tache chaude au sol de
+  1,8 m qui s'efface vers le bord (maillage des halos des lampadaires, avec opacité par sommet).
+- **Aucun appel de dessin de plus** : le voile va dans le maillage allumé de la tuile, les taches dans les halos (`LandmarkSinks.halo`,
+  gardé dans `TileMeshes.siteHalo` et refondu avec les halos quand un lampadaire est arraché). Une tuile qui aurait un monument éclairé
+  et aucun lampadaire gagnerait le maillage des halos (pas le cas des portes).
+- Les monuments pas encore passés aux projecteurs gardent l'ancien dégradé (`GateDraw` sans `fl`).
+
+**Portes romaines** (`buildGate`, `gates.ts`) : un projecteur au pied de chaque pile pleine (et des deux bouts), sur chaque face, à 1 m du
+mur, pointé vers la pile à 3,2 m de haut ; ouverture 0,5 à 0,95 rad, puissance 1,5, portée 6 m. La porte Saint-André suit (même fonction) ;
+son église garde l'ancien dégradé jusqu'au lot 2. Réglages lus sur les captures : un premier essai (puissance 2,4, portée 7 m) saturait
+toute la face jusqu'à l'attique.
+
+**Coût** : porte d'Arroux 3 395 triangles de voile (2 372 de dégradé avant), plus 96 pour les boîtiers ; test : moins de 5 000.
+
+**Pas encore** (lots suivants) : église Saint-André, cathédrale, temple de Janus, Couhard, Croix, Ursulines, puis hôtel de ville et théâtre
+municipal ; ombres portées des corniches ; ponts (à revoir).
+
+**Vues** : `?view=arroux&h=22` (de face, comme la photo 4), `?view=arroux-pres&h=22`, `?view=andre&h=22`.
+
+![Porte d'Arroux, avant](captures/d297-arroux-avant.jpg)
+![Porte d'Arroux, après](captures/d297-arroux-apres.jpg)
+![De près, avant](captures/d297-arroux-pres-avant.jpg)
+![De près, après](captures/d297-arroux-pres-apres.jpg)
+![Porte Saint-André, avant](captures/d297-andre-avant.jpg)
+![Porte Saint-André, après](captures/d297-andre-apres.jpg)
+
+## 2026-11-09 — D298. Éclairage des monuments revu, lot 2 : église Saint-André, cathédrale, Janus, Couhard, Croix, Ursulines
+
+**Suite de D297**, après validation de l'utilisateur (« cela me semble mieux, continue la suite »). Tous les monuments éclairés passent aux
+projecteurs ; l'ancien dégradé du pied vers le haut n'est plus employé que par le chemin `GateDraw` sans projecteurs (plus aucun monument).
+
+**Placement des projecteurs** :
+- **Porte Saint-André** : même placement qu'Arroux, plus puissant (2,1 au lieu de 1,5) : sur la photo 2, toute la face est claire jusqu'à
+  la galerie.
+- **Église Saint-André** (photo 3) : deux projecteurs au pied de la tour ronde, de part et d'autre de son axe (à ±43°), à 1 m ; un plus
+  faible devant le pignon d'entrée (il reste dans la pénombre sur la photo). Les toits ne reçoivent rien.
+- **Cathédrale** (photo 6) : projecteurs **posés d'office** au pied des murs qui partent du sol. Un premier passage de `buildSaintLazare`
+  relève les murs (`wallST`, mur entier, hors salle du porche) ; `projectorsAlong` en pose un tous les 10 m environ, à 1,5 m devant le mur,
+  pointé à 25 % de sa hauteur (6 m au plus), puissance 1,9, portée 9 m (premier essai à 2,6 et 11 m : flanc presque uniformément clair
+  jusqu'en haut, pied plus sombre que la mi-hauteur) ; une place qui tombe derrière un autre mur relevé (dans le bâtiment) ou contre un mur est
+  écartée. 37 projecteurs. Les baies et encadrements redessinés la nuit (D132) passent par le même voile (`VeilBuilder`) : baies sombres,
+  encadrements un peu plus sombres que la pierre. La flèche ne reçoit presque rien (trop haute), comme sur la photo.
+- **Temple de Janus** (photo 7 : lumière franche venue de devant, arêtes dans l'ombre) : deux projecteurs à 3 m devant chaque face
+  extérieure (sud et ouest), un plus faible devant chaque face intérieure de la cella.
+- **Pierre de Couhard** (sans photo) : quatre projecteurs au pied, entre la pierre et la clôture, pointés vers 6 m. Premier essai : un
+  damier, chaque pan du blocage ayant sa propre orientation. La lumière y est calculée avec une **normale lissée** (tirée de l'axe, un peu
+  levée, 15 % de celle du pan : option `smooth` de `Floodlight`), et les projecteurs sont plus puissants (3,4, portée 12 m).
+- **Croix de la Libération** : les projecteurs des deux mâts (déjà dessinés), à leur sommet, faisceau étroit vers la croisée ; la
+  plate-forme prend aussi leur lumière. Pas de boîtier au sol.
+- **Tour des Ursulines** (sans photo) : quatre projecteurs au pied du fût, à 2 m, faisceau serré (0,25 à 0,6 rad) pointé vers le milieu
+  de la hauteur, portée 24 m (premier essai : le haut du fût restait presque noir) ; deux sur la terrasse, de part et d'autre, pointés vers
+  la statue. Le `FloodBuilder` des remparts (D256) est remplacé par le `VeilBuilder`.
+- **Croix, vue du parking** : les mâts sont côté ville, derrière la croix pour qui arrive du parking ; la face tournée vers le parking reste
+  donc sombre (seuls les flancs des bras et la plate-forme prennent la lumière). C'est le choix de l'utilisateur (« la Croix par ses deux
+  mâts ») ; un projecteur côté parking est possible s'il le souhaite.
+
+**Vitres éteintes** : une couleur bleue (b > 1,1 r) ne prend que 15 % du voile : le verre ne renvoie pas la lumière des projecteurs, et
+bleu × chaud tournait au vert (vu sur l'hôtel de ville, D299).
+
+**Réglage par monument** : `Floodlight` prend un grain de découpe (taille des carreaux rapportée à la distance au projecteur ; 0,3 pour les
+portes, 0,4 pour les petits monuments, 0,5 pour la cathédrale) pour tenir le coût.
+
+**Coût** (triangles de voile, avant → après) : cathédrale 2 378 → 6 365 (test : moins de 7 000) ; Janus 2 266 → 3 054 (moins de 4 500) ;
+Couhard 3 720 → 3 429 ; Croix 288 → 208 ; église Saint-André 178 → 701 ; porte Saint-André 4 472 → 4 477 ; plus les boîtiers (10 triangles
+par projecteur) et les taches au sol (16 par projecteur, dans les halos). Aucun appel de dessin de plus (la tuile de Couhard et celle des
+Ursulines ont déjà des halos de lampadaires ; une tuile qui n'en aurait pas gagnerait un maillage).
+
+**Vues** : `?view=andre&h=22`, `cathedrale-loin`, `cathedrale-est`, `janus`, `couhard`, `ursulines`, `croix-nord` (avec `&h=22`). La vue
+`cathedrale` ne cadre plus la cathédrale (laissée telle quelle).
+
+![Porte et église Saint-André, avant](captures/d298-andre-avant.jpg)
+![Porte et église Saint-André, après](captures/d298-andre-apres.jpg)
+![Cathédrale, avant](captures/d298-cathedrale-avant.jpg)
+![Cathédrale, après](captures/d298-cathedrale-apres.jpg)
+![Temple de Janus, avant](captures/d298-janus-avant.jpg)
+![Temple de Janus, après](captures/d298-janus-apres.jpg)
+![Pierre de Couhard, avant](captures/d298-couhard-avant.jpg)
+![Pierre de Couhard, après](captures/d298-couhard-apres.jpg)
+![Croix de la Libération, du parking, avant](captures/d298-croix-avant.jpg)
+![Croix de la Libération, du parking, après](captures/d298-croix-apres.jpg)
+![Croix de la Libération, côté ville, après](captures/d298-croix-nord-apres.jpg)
+![Tour des Ursulines, avant](captures/d298-ursulines-avant.jpg)
+![Tour des Ursulines, après](captures/d298-ursulines-apres.jpg)
+
+## 2026-11-09 — D299. Éclairage des monuments revu, lot 3 : hôtel de ville et théâtre municipal
+
+**Demande de l'utilisateur** (D297) : éclairer l'hôtel de ville et le théâtre municipal s'ils le sont en vrai. La photo de nuit 1 (place
+du Champ de Mars) le montre : les deux façades sur la place sont éclairées par en dessous, en lumière chaude et douce (le rez-de-chaussée
+et les pilastres du théâtre plus clairs), toits noirs. Jusqu'ici, seuls leurs fenêtres, lanternes et candélabres s'allumaient (D125, D225,
+D294).
+
+**Mécanisme** (`src/render/floodlit.ts`, `floodlit`) : la fonction qui dessine le bâtiment est appelée trois fois.
+1. **Relevé** (`WallRecorder`, un `MeshBuilder` qui ne garde que les quads verticaux dont le bas touche le sol à 1 m près et qui montent
+   d'au moins 2 m) ; les morceaux d'un même mur (travées, trumeaux) sont fusionnés par orientation (5°), par plan (40 cm) et par proximité
+   (1,5 m). Seuls les murs tournés vers la place (normale à moins de 45° de la façade, côté −t du repère du bâtiment) et hauts de plus de
+   3 m reçoivent des projecteurs ; les autres servent d'obstacles (une place derrière eux est écartée : `projectorsAlong`, `avoid`).
+2. **Projecteurs** tous les 6 m environ, à 1 m du mur, puissance 1,6, portée 8 m ; boîtiers et taches au sol comme les monuments.
+3. **Voile** (`VeilBuilder`) dessiné dans le maillage allumé **avant** le bâtiment : ses fenêtres allumées, dessinées ensuite dans le même
+   maillage (sans écriture de profondeur), passent par-dessus. Aux passages 1 et 3, les vitres allumées, inscriptions et lettres du
+   bâtiment vont dans des maillages jetés.
+
+**Coût** : hôtel de ville 5 958 triangles de voile (11 projecteurs), théâtre municipal 5 408 (4 projecteurs), dans la même tuile (26_35),
+la nuit seulement ; ce sont les détails de façade (encadrements, balustres, refends) qui coûtent, pas la découpe (un grain plus gros, 0,9,
+ne gagne qu'un cinquième). Construction de la tuile : trois passages du dessin de ces deux bâtiments au lieu d'un.
+
+**Pas fait** : les côtés et l'arrière (pas de photo de nuit) ; la statue et la fontaine de la place.
+
+**Vues** : `?view=mairie&h=22`, `municipal`, `mairie-perron` (avec `&h=22`).
+
+![Hôtel de ville, avant](captures/d299-mairie-avant.jpg)
+![Hôtel de ville, après](captures/d299-mairie-apres.jpg)
+![Théâtre municipal, avant](captures/d299-municipal-avant.jpg)
+![Théâtre municipal, après](captures/d299-municipal-apres.jpg)
+![Le perron, après](captures/d299-perron-apres.jpg)
+
+## 2026-11-09 — D300. Croix de la Libération : un projecteur côté parking
+
+**Demande de l'utilisateur** (question laissée en D298) : « ajoute uniquement le projecteur côté parking pour la croix ». Les mâts sont côté
+ville ; pour qui arrive du parking, la face de la croix restait sombre.
+
+**Fait** (`buildCroix`, `croix.ts`) : un projecteur au sol, côté parking, à mi-chemin entre le pied du talus sud et le bord des rochers
+(t ≈ −5,8 m), décalé de 0,9 m de l'axe pour ne pas masquer la grande plaque ; pointé vers la croix à mi-hauteur, puissance 3, portée 10 m,
+ouverture 0,3 à 0,65 rad. Boîtier et tache au sol comme les autres monuments (les taches vont maintenant aussi dans les halos de la tuile de
+la Croix). Les deux mâts restent tels quels. Rien d'autre ne change.
+
+**Test** (`croix.test.ts`) : la face tournée vers le parking a plus de 20 sommets éclairés au-dessus de 3 m (aucun sans ce projecteur).
+
+**Vue** : `?view=croix&h=22` (depuis le parking).
+
+![Avant](captures/d300-croix-avant.jpg)
+![Après](captures/d300-croix-apres.jpg)

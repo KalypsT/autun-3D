@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { HeightField, RampartLook, RampartTower } from "../data/types";
 import { octagon, rampartSides, RAMPART_THICK, STAIR_HUT_L, STAIR_TREAD, STAIR_WIDTH, stairSteps, towerArc, type ProfiledWall } from "../core/ramparts";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { aimAt, drawProjectors, Floodlight, VeilBuilder } from "./floodlight";
 
 /**
  * Remparts (D250 : forme mesurée ; D253 : aspect). Chaque face descend sous le sol de son côté et monte au sommet mesuré ; un mur de
@@ -70,6 +71,8 @@ export interface RampartSinks {
   cap: MeshBuilder;
   /** Maillage éclairé la nuit (D256) : seule la tour des Ursulines y est doublée ; absent, pas d'éclairage. */
   glow?: MeshBuilder;
+  /** Taches au sol des projecteurs (D297), avec les halos des lampadaires. */
+  halo?: MeshBuilder;
   /** Teinte des haies du jeu (celle des haies OSM). */
   hedgeColor: THREE.Color;
 }
@@ -235,9 +238,8 @@ export function buildTowers(sinks: RampartSinks, towers: readonly RampartTower[]
     }
     if (t.k === "ursulines") {
       buildUrsulines(sinks.solid, t, terrain);
-      // La nuit (D256) : la tour redessinée dans le maillage éclairé, en dégradé chaud du pied vers le haut (projecteurs au sol, comme les
-      // portes romaines et Couhard) ; la statue, plus claire, ressort.
-      if (sinks.glow) buildUrsulines(new FloodBuilder(sinks.glow, t.base, (t.statue ?? t.base + 39) - t.base), t, terrain);
+      // La nuit (D256, revu en D297) : la tour redessinée dans le voile des projecteurs (`floodlight.ts`).
+      if (sinks.glow) ursulinesNight(sinks, t, terrain);
     }
     else buildRoundTower(sinks, t, terrain);
   }
@@ -400,32 +402,29 @@ function buildUrsulines(mb: MeshBuilder, t: RampartTower, terrain: HeightField):
   }
 }
 
-// --- Éclairage de nuit de la tour des Ursulines (D256) ------------------------------------------------------------------------------------
+// --- Éclairage de nuit de la tour des Ursulines (D256, revu en D297) -----------------------------------------------------------------
 
-/** Projecteurs : chaud au pied, plus sombre en haut (mêmes teintes que les portes romaines, D137). */
-const FLOOD_LOW = C("#ffcf86"), FLOOD_HIGH = C("#b98a58");
-/** Pierre de référence : la lumière est modulée par la teinte de la surface (la statue blanche ressort, le zinc reste sombre). */
-const FLOOD_REF = URSULINES.palette[0]!;
-
-/** Pinceau de nuit : chaque face reçue est reportée dans `glow`, en dégradé selon l'altitude, modulé par la teinte de la face. */
-class FloodBuilder extends MeshBuilder {
-  constructor(private readonly glow: MeshBuilder, private readonly z0: number, private readonly span: number) {
-    super();
-  }
-
-  private flood(z: number, col: THREE.Color): THREE.Color {
-    const v = Math.min(1, Math.max(0, (z - this.z0) / this.span));
-    const k = 0.55 + 0.45 * Math.min(1.4, (col.r + col.g + col.b) / (FLOOD_REF.r + FLOOD_REF.g + FLOOD_REF.b));
-    return FLOOD_LOW.clone().lerp(FLOOD_HIGH, Math.sqrt(v)).multiplyScalar(k);
-  }
-
-  override tri(a: Vec3, b: Vec3, c: Vec3, n: Vec3, color: THREE.Color): void {
-    this.glow.tri(a, b, c, n, this.flood((a[1] + b[1] + c[1]) / 3, color));
-  }
-
-  override quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
-    this.glow.quadGradient(a, b, c, d, n, this.flood((a[1] + b[1]) / 2, color), this.flood((c[1] + d[1]) / 2, color));
-  }
+/**
+ * Projecteurs (sans photo de nuit) : quatre au pied du fût, à 2 m de ses faces, faisceau serré pointé vers le milieu de la hauteur ; deux
+ * sur la terrasse, de part et d'autre, pointés vers la statue (elle ressort, D256). Les faces entre deux projecteurs restent dans la pénombre.
+ */
+function ursulinesNight(sinks: RampartSinks, t: RampartTower, terrain: HeightField): void {
+  const deck = t.deck ?? t.base + 28, statue = t.statue ?? deck + 11, apo = t.apo ?? 5.4, rot = t.rot ?? 0;
+  const gr = (x: number, z: number): number => terrain.heightAt(x, -z);
+  const at = (a: number, r: number): [number, number] => [t.x + Math.cos(a) * r, t.y + Math.sin(a) * r];
+  const projectors = [0.4, 2.0, 3.6, 5.2].map((a) => {
+    const [x, y] = at(a + rot, apo + 2), [wx, wy] = at(a + rot, apo);
+    const z = Math.min(terrain.heightAt(x, y), t.base);
+    return aimAt(toThree(x, y, z + 0.12), toThree(wx, wy, z + (deck - z) * 0.55), { power: 3.6, range: 24, inner: 0.25, outer: 0.6 });
+  });
+  // Statue : deux projecteurs sur la terrasse, de part et d'autre.
+  const top = [0.4, 3.6].map((a) => {
+    const [sx, sy] = at(rot + a, Math.max(1, apo - 1));
+    return aimAt(toThree(sx, sy, deck + 0.3), toThree(t.x, t.y, statue - 2), { power: 2.4, range: 8, inner: 0.3, outer: 0.7 });
+  });
+  const fl = new Floodlight(sinks.glow!, [...projectors, ...top], 0.4);
+  drawProjectors(sinks.solid, sinks.glow!, sinks.halo ?? null, projectors, gr);
+  buildUrsulines(new VeilBuilder(fl), t, terrain);
 }
 
 // --- Escalier et petite construction de la rue du Vieux Colombier (D257, photo 10) ---------------------------------------------------------

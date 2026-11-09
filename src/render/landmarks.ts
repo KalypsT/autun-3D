@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, HeightField, Site, StoreModel, TileKinds } from "../data/types";
 import { at, BOX_KINDS, frameOf, fuelLayout, PARAPET, type Frame } from "../core/landmarks";
 import { hash01, MeshBuilder, toThree, UvMeshBuilder, type Vec3 } from "./geometry";
+import { floodlit } from "./floodlit";
 import { fillOnTerrain } from "./ground";
 import { buildCathedral, buildCollege, buildNotreDame, buildFountain, buildSaintLazare, buildTownHall } from "./monuments";
 import { buildChapel, buildGate } from "./gates";
@@ -40,10 +41,21 @@ export interface LandmarkSinks {
   atlas: SignAtlas;
   /** Feuillage taillé (tilleuls de la place du Champ de Mars) : suit les saisons (D197) ; absent : avec le bâti. */
   leaves?: MeshBuilder;
+  /** Taches de lumière au sol des projecteurs des monuments (D297), avec les halos des lampadaires ; absent : pas de tache. */
+  halo?: MeshBuilder;
 }
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
 const shade = (c: THREE.Color, k: number): THREE.Color => c.clone().multiplyScalar(k);
+
+/**
+ * Façade principale (côté −t du repère `o`, `a`) éclairée par projecteurs la nuit (D298) : hôtel de ville et théâtre municipal, éclairés en
+ * vrai (photo de nuit de la place). `draw` dessine le bâtiment ; voir `floodlit`.
+ */
+function frontLit(sinks: LandmarkSinks, o: [number, number], a: number, terrain: HeightField, draw: (solid: MeshBuilder, glow: MeshBuilder) => void): void {
+  const f = frameOf(o[0], o[1], a, 1, 1);
+  floodlit(sinks.solid, sinks.glow, sinks.halo ?? null, draw, { front: toThree(-f.vx, -f.vy, 0), ground: (x, z) => terrain.heightAt(x, -z), step: 6, out: 1.0, power: 1.6, range: 8, grain: 0.9 });
+}
 
 const CLADDING = ["#c9d3d1", "#e6e0d0", "#a9bcc0", "#d8cfb5", "#b7c3b0", "#e0d6c6"];
 const STONE = C("#dccfb1");
@@ -664,7 +676,7 @@ function civic(sinks: LandmarkSinks, kind: BuildingKind, fiche: FacadeFiche | un
 function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg[], terrain: HeightField, wall: THREE.Color): void {
   // Cathédrale d'après photo (D127) : modèle dédié, ni baies ni portail génériques.
   if (kind.cath) {
-    buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain);
+    buildSaintLazare(sinks.solid, sinks.glow, kind.cath, terrain, sinks.halo ?? null);
     return;
   }
   // Notre-Dame d'après photo (D150) : modèle dédié ; son chevet (autre bâtiment BD TOPO) est dessiné avec elle.
@@ -675,7 +687,7 @@ function church(sinks: LandmarkSinks, b: Building, kind: BuildingKind, segs: Seg
   }
   // Église Saint-André d'après photo (D138) : modèle dédié.
   if (kind.chap) {
-    buildChapel(sinks.solid, sinks.glow, kind.chap, terrain);
+    buildChapel(sinks.solid, sinks.glow, kind.chap, terrain, sinks.halo ?? null);
     return;
   }
   const stained = pick(STAINED, idKey(b.id), 5);
@@ -983,7 +995,12 @@ export function buildLandmarks(
       default:
         // Hôtel de ville d'après photo (D123) : modèle dédié, ni inscription ni drapeaux génériques.
         if (kind.hex) buildHexagone(sinks, kind.hex, terrain);
-        else if (kind.play) buildPlayhouse(sinks, kind.play, terrain);
+        else if (kind.play) {
+          // Façade éclairée par projecteurs la nuit (D298, photo de nuit de la place), avant le bâtiment lui-même (fenêtres par-dessus).
+          const play = kind.play;
+          frontLit(sinks, play.o, play.a, terrain, (solid, glow) => buildPlayhouse({ ...sinks, solid, glow, names: new UvMeshBuilder(), leaves: new MeshBuilder() }, play, terrain));
+          buildPlayhouse(sinks, play, terrain);
+        }
         // Gare d'après photos (D228) : modèle dédié, ni inscription ni horloge génériques.
         else if (kind.sta) buildStation(sinks, kind.sta, terrain);
         // Parc des expositions l'Eduen d'après photos (D231) : modèle dédié.
@@ -995,7 +1012,11 @@ export function buildLandmarks(
         else if (kind.gend) buildGendarmerie(sinks, kind.gend, terrain);
         else if (kind.naut) buildNautique(sinks, kind.naut, terrain);
         else if (kind.vallon) { buildVallon(sinks, kind.vallon, terrain); buildVallonFacades(sinks, kind.vallon, terrain); if (kind.vallon.gate) buildGatePosts(sinks, kind.vallon.gate, terrain); if (kind.vallon.props) buildVallonProps(sinks, kind.vallon, terrain); }
-        else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise), { atlas: sinks.atlas, names: sinks.names });
+        else if (kind.hall) {
+          const hall = kind.hall, roof = C(T.roofs.ardoise);
+          frontLit(sinks, hall.o, hall.a, terrain, (solid, glow) => buildTownHall(solid, glow, hall, terrain, roof, null));
+          buildTownHall(sinks.solid, sinks.glow, hall, terrain, roof, { atlas: sinks.atlas, names: sinks.names });
+        }
         else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain, b.holes);
         else civic(sinks, kind, fiche, segs, terrain);
         break;
@@ -1004,12 +1025,12 @@ export function buildLandmarks(
   for (const s of kinds.sites) {
     if (s.t === "fuel") fuel(sinks, s, s.roof ? tile.buildings.find((b) => b.id === s.roof) : undefined, terrain);
     else if (s.t === "cemetery") cemetery(sinks, s, terrain);
-    else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain);
+    else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
-    else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain);
-    else if (s.t === "couhard") buildCouhard(sinks.solid, sinks.glow, s, terrain);
-    else if (s.t === "croix") buildCroix(sinks.solid, sinks.glow, s, terrain);
+    else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
+    else if (s.t === "couhard") buildCouhard(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
+    else if (s.t === "croix") buildCroix(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain, sinks.leaves);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);

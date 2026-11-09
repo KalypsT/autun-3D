@@ -2107,3 +2107,44 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Un stop et un sens interdit](docs/captures/d295-stop.jpg)
 ![Une limitation à 30](docs/captures/d295-30.jpg)
+
+**Éclairage des monuments, lot 1 : les projecteurs, porte d'Arroux (9 novembre 2026)** (D297)
+- Les monuments ne s'allument plus d'un bloc : de vrais projecteurs au sol, au pied de chaque pile, éclairent vers le haut. Le bas est vif, le haut s'assombrit, les flancs des piles et les coins que les faisceaux n'atteignent pas restent dans la nuit ; le dessous des arches prend la lumière.
+- Les projecteurs se voient : petits boîtiers au ras du sol, lentille allumée, tache de lumière autour.
+- Une seule teinte pour toute la ville (blanc chaud), allumé toute la nuit.
+- La porte Saint-André suit (même modèle) ; son église, la cathédrale, Janus, Couhard, la Croix, les Ursulines, l'hôtel de ville et le théâtre municipal viendront après ta validation.
+- À faire de ton côté : regarder la porte d'Arroux la nuit (`?at=-262,1060&h=22`) et dire si le contraste te va (plus fort au pied, plus sombre en haut, plus ou moins de couverture).
+
+![Avant](docs/captures/d297-arroux-avant.jpg)
+![Après](docs/captures/d297-arroux-apres.jpg)
+![De près](docs/captures/d297-arroux-pres-apres.jpg)
+![Porte Saint-André](docs/captures/d297-andre-apres.jpg)
+
+**Éclairage des monuments, lot 2 : tous les monuments aux projecteurs (9 novembre 2026)** (D298)
+- L'église Saint-André, la cathédrale, le temple de Janus, la Pierre de Couhard, la Croix de la Libération et la tour des Ursulines sont éclairés comme la porte d'Arroux : lumière qui part du pied, haut plus sombre, faces et coins hors des faisceaux dans la nuit, toits sombres.
+- La cathédrale a ses projecteurs posés tout seuls le long des murs (un tous les 10 m environ) ; la flèche reste dans la pénombre, comme sur ta photo.
+- Janus comme sur ta photo : deux faces éclairées de devant, l'arête du milieu plus sombre.
+- La porte Saint-André est plus claire qu'au lot 1 (ta photo 2) ; son église a deux projecteurs au pied de la tour ronde (photo 3).
+- La Croix n'est éclairée que par ses deux mâts, côté ville : vue du parking, sa face reste sombre. Dis-moi si tu veux un projecteur côté parking.
+- À faire de ton côté : faire le tour la nuit (`?view=cathedrale-loin&h=22`, `janus`, `couhard`, `ursulines`, `croix-nord`, `andre`, avec `&h=22`).
+
+![Cathédrale](docs/captures/d298-cathedrale-apres.jpg)
+![Janus](docs/captures/d298-janus-apres.jpg)
+![Saint-André](docs/captures/d298-andre-apres.jpg)
+![Couhard](docs/captures/d298-couhard-apres.jpg)
+![Ursulines](docs/captures/d298-ursulines-apres.jpg)
+
+**Éclairage des monuments, lot 3 : hôtel de ville et théâtre municipal (9 novembre 2026)** (D299)
+- Comme sur ta photo de la place : les façades de l'hôtel de ville et du théâtre municipal sont éclairées par en dessous, en lumière chaude ; les fenêtres allumées, les lanternes et les candélabres restent par-dessus ; toits noirs.
+- Seules les façades sur la place (pas de photo de nuit des côtés).
+- À faire de ton côté : regarder la place la nuit (`?view=municipal&h=22`, `?view=mairie&h=22`) et mesurer sur le téléphone (environ 11 000 triangles de plus dans la tuile de la place, la nuit).
+
+![L'hôtel de ville](docs/captures/d299-mairie-apres.jpg)
+![Le théâtre municipal](docs/captures/d299-municipal-apres.jpg)
+
+**La Croix de la Libération éclairée côté parking (9 novembre 2026)** (D300)
+- Un projecteur au sol entre le talus et les rochers éclaire la face tournée vers le parking ; les deux mâts côté ville restent.
+- À faire de ton côté : arriver au parking la nuit (`?view=croix&h=22`).
+
+![Avant](docs/captures/d300-croix-avant.jpg)
+![Après](docs/captures/d300-croix-apres.jpg)

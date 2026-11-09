@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Colliders } from "../core/collision";
-import { croixAt, croixCircles, croixPits, croixRings, croixUT, inCroix, landmarkRings, treesOutsideMonuments } from "../core/landmarks";
+import { croixAt, croixCircles, croixFrame, croixPits, croixRings, croixUT, inCroix, landmarkRings, treesOutsideMonuments } from "../core/landmarks";
 import { loadRealNav, loadRealWorld } from "../core/testing";
 import type { CroixSite } from "../data/types";
 import { MeshBuilder } from "./geometry";
@@ -118,5 +118,13 @@ describe("Croix de la Libération (D267)", () => {
     expect(Math.abs(top - (site.g + site.top))).toBeLessThan(0.05);
     expect(glow.positions.length / 9).toBeGreaterThan(50);
     expect(glow.positions.length / 9).toBeLessThan(tris);
+    // D300 : la face de la croix tournée vers le parking (côté −t, à l'opposé des mâts) prend la lumière du projecteur au sol.
+    const f = croixFrame(site), nx = -f.vx, nz = f.vy;
+    let lit = 0;
+    for (let i = 0; i < glow.alphas!.length; i++) {
+      const facing = glow.normals[3 * i]! * nx + glow.normals[3 * i + 2]! * nz > 0.9;
+      if (facing && glow.positions[3 * i + 1]! > site.g + 3 && glow.alphas![i]! > 0.3) lit++;
+    }
+    expect(lit).toBeGreaterThan(20);
   });
 });
