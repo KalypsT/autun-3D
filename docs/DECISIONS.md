@@ -7108,3 +7108,44 @@ place), ou sans haut : cylindre infini, comme avant.
 **Tests** : `src/core/circles-top.test.ts` (règle, rayon par-dessus, tous les obstacles ronds de la ville ont un haut, une voiture lancée
 au-dessus d'un vrai lampadaire passe et plus bas le heurte), `vehicles.test.ts` (voiture garée survolée, pleine sans altitude). Vérifié
 dans le jeu : à 130 m au-dessus de la cathédrale, plus aucun contact.
+
+## 2026-11-09 — D304. Clôtures de parcelle : on ne garde que celles que le relevé LiDAR voit
+
+**Constat** (retour de l'utilisateur : trop de murets, haies et grilles, surtout le long des routes et entre certains terrains). Mesure sur
+les tuiles publiées : ≈ 140 km de délimitations, dont **98,4 km de clôtures de parcelle** inventées par `build_public_space.py` (D94,
+D96 ; 11 250 tronçons) contre 18 km de murs et 17,5 km de haies OpenStreetMap. Matériau tiré au hasard par parcelle (mur, grille, haie) ;
+26 km à moins de 1,5 m de la chaussée, 31 km perpendiculaires à la rue (limites latérales), 2 670 tronçons collés à un voisin d'un autre
+matériau, 12 km face à une autre clôture inventée à 1 – 6 m (couloirs), 2,3 km en double d'un mur ou d'une haie d'OpenStreetMap.
+
+**Choix de l'utilisateur** (parmi : règles géométriques, jardins des maisons seulement, vérification au relevé, tout retirer) : vérifier
+chaque tronçon au relevé LiDAR, et un seul matériau par côté de rue.
+
+**Fait** (`tools/data/prune_fences.py`, appelé à la fin de `build_public_space.py` ; exécutable seul, `--dry` pour compter) :
+- **Présence** : tous les 0,5 m, on cherche à ±1 m du tronçon (cadastre et clôture réelle ne coïncident pas au mètre) un point du
+  MNS − MNT (LiDAR HD, WMS de la Géoplateforme, mis en cache par tuile dans `.cache/shared/fence_survey`, ≈ 500 Mo) qui dépasse le sol
+  de 0,6 à 3,2 m, hors chaussée (voitures garées). Un point dont la fenêtre touche plus haut (houppier, toit : leurs bords imitent une
+  haie) est illisible. Gardé si au moins 55 % des points lisibles voient quelque chose, et 40 % au moins des points sont lisibles.
+  Calibrage sur huit tuiles : les murs d'OpenStreetMap (témoins réels) sont vus à 52 % à ce seuil ; les clôtures inventées se partagent
+  nettement entre « rien » (226 sur 795) et « continu » (239).
+- **Matériau** : part des cases surélevées vertes sur l'orthophotographie (indice 2G − R − B ; thuyas sombres 0,7 à 1, murs gris 0 à
+  0,1) ≥ 0,4 → haie ; sinon grille au-dessus de 1,3 m si le relevé est discontinu (le laser passe entre les barreaux), mur sinon.
+  Hauteur : médiane mesurée (`measured`), bornée à 0,6 – 2,5 m.
+- **Un matériau par côté de rue** : tronçons bout à bout (2,5 m) et alignés (30°), sur toute la ville (une rue passe d'une tuile à
+  l'autre) : matériau majoritaire en longueur, hauteur médiane.
+- **Portillons** : les ouvertures d'1,2 m que D96 coupait tous les 10 m sont refermées quand le relevé voit la clôture continuer entre
+  les deux bords (1 208) ; une vraie entrée reste ouverte.
+- Les clôtures citées par un ouvrage qui les remplace (`dropWalls`, `walls` des sites : lycée, gendarmerie…) et celles du golf ne sont
+  pas touchées (identifiants −900 000 001 à −900 999 999 seulement).
+
+**Résultat** : **98,4 → 31,5 km** (7 864 tronçons retirés, 3 367 gardés) : haies 15,3 km, murs 13,1, grilles 3,1. Deuxième passage :
+aucun changement. Tests (+4, `src/data/parcel-fences.test.ts`) : longueur totale, hauteur mesurée, même matériau d'un tronçon au suivant,
+plus rien dans la rue de la première capture. Les 1 462 tests existants passent (poursuites comprises).
+
+**Pas fait** : la navigation (`build_nav.py`) n'est pas reconstruite : elle n'a fait que perdre des obstacles, ses chemins restent
+praticables mais n'empruntent pas encore les passages ouverts. Le matériau hésite quand l'indice de vert est proche du seuil (une haie
+claire au soleil peut devenir un mur) ; une grille fine que le laser traverse entièrement est retirée.
+
+![Rue, avant](captures/d304-clotures-rue-avant.jpg)
+![Rue, après](captures/d304-clotures-rue-apres.jpg)
+![Pavillons, avant](captures/d304-clotures-pavillons-avant.jpg)
+![Pavillons, après](captures/d304-clotures-pavillons-apres.jpg)

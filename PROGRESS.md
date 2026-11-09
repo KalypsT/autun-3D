@@ -2166,3 +2166,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le mobilier, les arbres, les poteaux des monuments et les voitures garées ont maintenant une hauteur : une voiture qui vole au-dessus passe, au lieu de buter en plein ciel.
 - Dans la rue, rien ne change pour les passants et la circulation. À pied, on peut sauter par-dessus un banc, une poubelle ou un potelet ; pas par-dessus une voiture.
 - À faire de ton côté : sauter en voiture au-dessus de voitures garées et de lampadaires.
+
+**Murets, haies et grilles : seulement ceux qui existent (9 novembre 2026)** (D304)
+- Les clôtures de parcelle que le programme posait sur chaque limite de terrain, avec un matériau tiré au hasard, sont confrontées au relevé laser de l'IGN : on ne garde que celles où quelque chose dépasse vraiment du sol. 98 km → 31 km.
+- Plus de murets au bord des chaussées ni de grilles en travers des rues ; dans les lotissements, les vraies haies et les vrais murs restent.
+- Le matériau vient de la photo aérienne (vert : haie) et il est le même tout le long d'un côté de rue ; les trous d'1,2 m tous les 10 m sont refermés là où la haie continue.
+- À faire de ton côté : te promener dans un quartier pavillonnaire et le long des routes de sortie, et dire s'il en reste de gênantes (ou s'il en manque).
+![Avant](docs/captures/d304-clotures-rue-avant.jpg)
+![Après](docs/captures/d304-clotures-rue-apres.jpg)
