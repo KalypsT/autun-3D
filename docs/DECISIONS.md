@@ -6759,7 +6759,8 @@ marches évasées.
 débordait à côté des murs d'échiffre (bosse contre les arcades, vue de biais). Sur l'emprise du perron et des marches évasées, le relief
 affiché **et le dallage de la place** sont plafonnés à 0,3 m au-dessus du sol devant la façade : nouvelle option `pave` des creux
 (`Pit.pave`, `TiledTerrain.paveAt`), que seul ce creux active (les autres creux n'abaissent que le relief, comme avant). Le sol où l'on marche
-ne change pas : à côté des murs d'échiffre, le joueur monte encore un peu sur la bosse du relevé, sous le dallage dessiné.
+ne change pas : à côté des murs d'échiffre, le joueur monte encore un peu sur la bosse du relevé, sous le dallage dessiné. Le creux va jusqu'à 1,5 m sous le bâtiment : le relief affiché est un maillage de 2 à 2,5 m, dont le point
+contre le mur gardait la hauteur du talus et tirait une pente devant l'arcade.
 
 **Dessin** (`portico`, `candelabra`, `globe`, `flowers`) : marches évasées en prismes à coins arrondis, marches de la volée en contremarches
 et girons ; globes doublés dans le maillage des vitres allumées (ils s'allument la nuit) ; fleurs roses, magenta et blanches toute l'année
