@@ -193,7 +193,8 @@ export function hallObstacles(m: TownHallSpec): HallObstacle[] {
 export function hallPits(m: TownHallSpec): Pit[] {
   const L = perronLayout(m);
   if (!L) return [];
-  const s0 = L.s0 - PERRON.ext[0] - 0.8, s1 = L.s1 + PERRON.ext[0] + 0.8, t0 = L.tfoot - 0.6, t1 = L.wallT;
+  // Jusqu'à 1,5 m sous le bâtiment : le relief affiché est un maillage de 2 à 2,5 m, dont un point contre le mur tirerait une pente.
+  const s0 = L.s0 - PERRON.ext[0] - 0.8, s1 = L.s1 + PERRON.ext[0] + 0.8, t0 = L.tfoot - 0.6, t1 = 1.5;
   const corners = [hallXY(m, s0, t0), hallXY(m, s1, t0), hallXY(m, s1, t1), hallXY(m, s0, t1)];
   const c = Math.cos(m.a), sn = Math.sin(m.a), floor = m.g + 0.3;
   return [{
