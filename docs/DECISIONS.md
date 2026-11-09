@@ -6842,3 +6842,56 @@ millésimes échoue (ombres et dévers des bâtiments trop différents). **Le pl
 **Options proposées** : (1) règles plutôt que relevé (rues de ville bordées de maisons, assez larges ou à trottoir), le relevé ne
 confirmant que le centre ; (2) relevé à la main rue par rue au centre (comme D169, D230) ; (3) les deux. **Point mis en pause par
 l'utilisateur.**
+
+## 2026-11-09 — D297. Éclairage des monuments revu, lot 1 : projecteurs, porte d'Arroux (et porte Saint-André)
+
+**Demande de l'utilisateur** : revoir l'éclairage de nuit des monuments. « Les monuments illuminés ressortent simplement entièrement
+lumineux, presque surnaturels. Or les éclairages sont des lumières du dessous éclairant vers le haut, et tous les coins du monument ne
+sont pas forcément couverts. » Sept photos de nuit (non versionnées) : hôtel de ville et théâtre municipal (1), porte Saint-André (2, 3),
+porte d'Arroux (4, 5), cathédrale (6), temple de Janus (7).
+
+**Réponses de l'utilisateur** : une teinte unique pour toute la ville ; Couhard, la Croix et les Ursulines sans photo, éclairés par
+projecteurs placés d'office (la Croix par ses deux mâts) ; le théâtre romain reste éteint ; **allumé toute la nuit** (pas d'heure
+d'extinction) ; projecteurs visibles au sol ; ponts à revoir plus tard ; d'abord la porte d'Arroux, à valider avant de passer aux autres.
+
+**Ce qui n'allait pas** : chaque face du monument était recopiée dans le maillage allumé (`glow`, matière sans éclairage, opaque la nuit)
+avec un dégradé figé du pied vers le haut, qui ne dépendait que de la hauteur (`flood` de `monuments.ts`, `GateDraw.flood`, `FloodBuilder`
+des remparts). Toutes les faces recevaient la même lumière, quelle que soit leur orientation ; aucun coin dans l'ombre ; le monument se
+découpait comme un aplat. L'intensité suivait déjà la tombée de la nuit (opacité de `glowMat`, soleil de 3° à −6°).
+
+**Mécanisme commun** (`src/render/floodlight.ts`) :
+- **Projecteurs** : position de la lentille, axe, ouverture (pleine lumière jusqu'à `inner`, rien au-delà de `outer`), puissance, portée.
+  Un sommet reçoit la somme de ce qui l'atteint : il faut que la face regarde le projecteur (incidence adoucie : 0,3 + 0,7 cos), qu'il
+  soit dans le faisceau, et la lumière baisse avec la distance (1 / (1 + (d / portée)²)). Un projecteur posé à 1 m du pied et pointé vers
+  le haut éclaire fort le bas, moins le haut ; les faces tournées ailleurs (flancs, dos, dessus des corniches) ne reçoivent rien.
+- **Voile** : la copie n'est plus opaque. `MeshBuilder` porte une opacité par sommet (`alphas`, `triColors`) ; si l'une des parties d'un
+  maillage en a, il est assemblé en couleurs à quatre composantes (three.js s'en sert seul). Couleur : celle de la pierre dans la teinte
+  des projecteurs (`FLOOD_TINT`, blanc chaud), un peu plus claire où la lumière est forte ; opacité : la lumière reçue (1 − e^(−1,4 e),
+  plafonnée à 0,95). Là où rien n'arrive, la copie est transparente et l'on voit le vrai mur de nuit, sans couture.
+- **Découpe** : les faces sont coupées en carreaux de 0,5 m près d'un projecteur à 3 m loin (30 % de la distance) ; un carreau dont les
+  trois sommets sont presque transparents n'est pas recopié.
+- **Projecteurs visibles** (`drawProjectors`) : boîtier gris sombre de 36 cm, lentille allumée (maillage allumé), tache chaude au sol de
+  1,8 m qui s'efface vers le bord (maillage des halos des lampadaires, avec opacité par sommet).
+- **Aucun appel de dessin de plus** : le voile va dans le maillage allumé de la tuile, les taches dans les halos (`LandmarkSinks.halo`,
+  gardé dans `TileMeshes.siteHalo` et refondu avec les halos quand un lampadaire est arraché). Une tuile qui aurait un monument éclairé
+  et aucun lampadaire gagnerait le maillage des halos (pas le cas des portes).
+- Les monuments pas encore passés aux projecteurs gardent l'ancien dégradé (`GateDraw` sans `fl`).
+
+**Portes romaines** (`buildGate`, `gates.ts`) : un projecteur au pied de chaque pile pleine (et des deux bouts), sur chaque face, à 1 m du
+mur, pointé vers la pile à 3,2 m de haut ; ouverture 0,5 à 0,95 rad, puissance 1,5, portée 6 m. La porte Saint-André suit (même fonction) ;
+son église garde l'ancien dégradé jusqu'au lot 2. Réglages lus sur les captures : un premier essai (puissance 2,4, portée 7 m) saturait
+toute la face jusqu'à l'attique.
+
+**Coût** : porte d'Arroux 3 395 triangles de voile (2 372 de dégradé avant), plus 96 pour les boîtiers ; test : moins de 5 000.
+
+**Pas encore** (lots suivants) : église Saint-André, cathédrale, temple de Janus, Couhard, Croix, Ursulines, puis hôtel de ville et théâtre
+municipal ; ombres portées des corniches ; ponts (à revoir).
+
+**Vues** : `?view=arroux&h=22` (de face, comme la photo 4), `?view=arroux-pres&h=22`, `?view=andre&h=22`.
+
+![Porte d'Arroux, avant](captures/d297-arroux-avant.jpg)
+![Porte d'Arroux, après](captures/d297-arroux-apres.jpg)
+![De près, avant](captures/d297-arroux-pres-avant.jpg)
+![De près, après](captures/d297-arroux-pres-apres.jpg)
+![Porte Saint-André, avant](captures/d297-andre-avant.jpg)
+![Porte Saint-André, après](captures/d297-andre-apres.jpg)

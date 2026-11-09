@@ -99,6 +99,11 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   "pecheur-ponton": [1015, 330, 2, 1033, 316, 0],
   voiliers: [1150, 628, 3, 1180, 520, -1],
   cathedrale: [-330, -250, 1.7, -300, -330, 14],
+  // Porte d'Arroux (D137, éclairage revu en D297) : de face depuis la rue côté ville, comme les photos de nuit, et de près.
+  arroux: [-263.5, 1046, 1.7, -269.1, 1071.2, 6.5],
+  "arroux-pres": [-266, 1058, 1.7, -270.5, 1071.2, 5],
+  // Porte Saint-André (D138) : de biais depuis la rue côté ville (ouest-sud-ouest), comme la photo de nuit.
+  andre: [521, 829, 1.7, 545.5, 842.2, 6],
   lycee: [250, 120, 1.7, 290, 100, 4],
   // Lycée militaire (D258) : depuis les pelouses, sur l'axe du grand portail, comme la photo 1 (façade nord-ouest).
   militaire: [566, 52, 1.7, 592, 30, 12],

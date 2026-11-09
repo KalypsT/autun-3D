@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { ChapelModel, HeightField, Site } from "../data/types";
 import { at, frameOf, gateLayout, gateTop, type Frame, type Opening } from "../core/landmarks";
 import { MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { aimAt, drawProjectors, Floodlight, type Projector } from "./floodlight";
 
 /**
  * Portes romaines d'Autun d'après photo (D137 ; modèle par défaut de D95), à pans nets : corps percé des arches (passages voûtés sur toute
@@ -24,7 +25,11 @@ const FLOOD_LOW = C("#ffcf86"), FLOOD_HIGH = C("#b98a58");
 type S3 = [number, number, number];
 
 export class GateDraw {
-  constructor(readonly mb: MeshBuilder, readonly glow: MeshBuilder | null, readonly f: Frame, readonly g: number, readonly span: number) {}
+  /**
+   * `fl` : éclairage par projecteurs (D297) ; il remplace alors le dégradé du pied vers le haut (`glow` reste celui des monuments qui ne
+   * sont pas encore passés aux projecteurs).
+   */
+  constructor(readonly mb: MeshBuilder, readonly glow: MeshBuilder | null, readonly f: Frame, readonly g: number, readonly span: number, readonly fl: Floodlight | null = null) {}
 
   P(s: number, t: number, z: number): Vec3 {
     const [x, y] = at(this.f, s, t);
@@ -45,9 +50,20 @@ export class GateDraw {
   /** Quad (a, b en bas, c, d en haut), et son double éclairé la nuit (la teinte de la pierre module la lumière). */
   quad(a: S3, b: S3, c: S3, d: S3, n: Vec3, col: THREE.Color): void {
     this.mb.quad(this.P(...a), this.P(...b), this.P(...c), this.P(...d), n, col);
+    if (this.fl) {
+      this.fl.quad(this.P(...a), this.P(...b), this.P(...c), this.P(...d), n, col);
+      return;
+    }
     if (!this.glow) return;
     const k = 0.55 + 0.45 * Math.min(1.15, (col.r + col.g + col.b) / (ARROUX_STONE.r + ARROUX_STONE.g + ARROUX_STONE.b));
     this.glow.quadGradient(this.P(...a), this.P(...b), this.P(...c), this.P(...d), n, this.flood((a[2] + b[2]) / 2, k), this.flood((c[2] + d[2]) / 2, k));
+  }
+
+  /** Triangle (repère three) et son éclairage de nuit : projecteurs (`fl`), sinon dégradé (`glow`, facteur `k`). */
+  tri(a: Vec3, b: Vec3, c: Vec3, n: Vec3, col: THREE.Color, k: number): void {
+    this.mb.tri(a, b, c, n, col);
+    if (this.fl) this.fl.tri(a, b, c, n, col);
+    else if (this.glow) this.glow.tri(a, b, c, n, this.flood(Math.min(a[1], b[1], c[1]), k));
   }
 
   /** Pavé : s0..s1, t0..t1, z0..z1 (quatre côtés et dessus). */
@@ -99,13 +115,32 @@ function bands(d: GateDraw, s0: number, s1: number, t: number, n: Vec3, lo: [num
 /**
  * Porte romaine : `glow` reçoit l'éclairage de nuit (modèle `light`), sinon null. Les obstacles (piles) sont dans `landmarkRings`.
  */
-export function buildGate(mb: MeshBuilder, glow: MeshBuilder | null, site: Extract<Site, { t: "gate" }>, terrain: HeightField): void {
+export function buildGate(mb: MeshBuilder, glow: MeshBuilder | null, site: Extract<Site, { t: "gate" }>, terrain: HeightField, halo: MeshBuilder | null = null): void {
   const lay = gateLayout(site, terrain.heightAt(site.x, site.y));
   const { frame: f, m, g } = lay;
   const hw = f.hw, hl = f.hl;
-  const d = new GateDraw(mb, m.light ? glow : null, f, g, lay.height * 1.1);
   const Z = (h: number): number => g + h;
   const foot = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y) - 0.4; };
+  // Projecteurs (D297, photos de nuit de la porte d'Arroux) : un au pied de chaque pile, sur chaque face, à 1 m du mur, pointé vers le haut.
+  let fl: Floodlight | null = null;
+  if (m.light && glow) {
+    const P = (s: number, t: number, z: number): Vec3 => { const [x, y] = at(f, s, t); return toThree(x, y, z); };
+    const holes = lay.openings.filter((o) => o.zb < 0).sort((a, b) => a.s0 - b.s0);
+    const edges = [-hl, ...holes.flatMap((o) => [o.s0, o.s1]), hl];
+    const projectors: Projector[] = [];
+    for (let i = 0; i + 1 < edges.length; i += 2) {
+      const s0 = edges[i]!, s1 = edges[i + 1]!;
+      if (s1 - s0 < 0.6) continue;
+      const sc = (s0 + s1) / 2;
+      for (const side of [1, -1]) {
+        const t = side * (hw + 1.0);
+        projectors.push(aimAt(P(sc, t, foot(sc, t) + 0.4 + 0.12), P(sc, side * hw, Z(3.2)), { power: 1.5, range: 6 }));
+      }
+    }
+    fl = new Floodlight(glow, projectors);
+    drawProjectors(mb, glow, halo, projectors, (x, z) => terrain.heightAt(x, -z));
+  }
+  const d = new GateDraw(mb, m.light ? glow : null, f, g, lay.height * 1.1, fl);
   const top = (s: number): number => Z(gateTop(m, s));
   const ASHLAR = m.stone ? C(m.stone) : ARROUX_STONE;
   const inner = shade(ASHLAR, 0.72);
@@ -280,8 +315,7 @@ export function buildGate(mb: MeshBuilder, glow: MeshBuilder | null, site: Extra
     }
     for (const [s, a, dir] of [[r0, a0, -1], [r1, a1, 1]] as const) {
       const n = d.N(dir / nl, 0, 1 / nl);
-      d.mb.tri(d.P(s, -T, ze), d.P(s, T, ze), d.P(a, 0, zr), n, shade(TILES, 0.95));
-      if (d.glow) d.glow.tri(d.P(s, -T, ze), d.P(s, T, ze), d.P(a, 0, zr), n, d.flood(ze, 0.5));
+      d.tri(d.P(s, -T, ze), d.P(s, T, ze), d.P(a, 0, zr), n, shade(TILES, 0.95), 0.5);
     }
     d.quad([r0, -T, ze - 0.12], [r1, -T, ze - 0.12], [r1, T, ze - 0.12], [r0, T, ze - 0.12], [0, -1, 0], shade(TILES, 0.55));
   }
@@ -306,8 +340,7 @@ export function buildGate(mb: MeshBuilder, glow: MeshBuilder | null, site: Extra
       const [pa, pb] = [corners[i]!, corners[(i + 1) % 4]!];
       const mx = (pa[0] + pb[0]) / 2 - cs, my = (pa[1] + pb[1]) / 2 - ct, ml = Math.hypot(mx, my);
       const n = d.N(mx / ml, my / ml, 1.5);
-      d.mb.tri(d.P(pa[0], pa[1], Z(zt)), d.P(pb[0], pb[1], Z(zt)), apex, n, shade(TILES, 0.9 + (i % 2) * 0.1));
-      if (d.glow) d.glow.tri(d.P(pa[0], pa[1], Z(zt)), d.P(pb[0], pb[1], Z(zt)), apex, n, d.flood(Z(zt), 0.5));
+      d.tri(d.P(pa[0], pa[1], Z(zt)), d.P(pb[0], pb[1], Z(zt)), apex, n, shade(TILES, 0.9 + (i % 2) * 0.1), 0.5);
     }
   }
 }

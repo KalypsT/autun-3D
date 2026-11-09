@@ -40,6 +40,8 @@ export interface LandmarkSinks {
   atlas: SignAtlas;
   /** Feuillage taillé (tilleuls de la place du Champ de Mars) : suit les saisons (D197) ; absent : avec le bâti. */
   leaves?: MeshBuilder;
+  /** Taches de lumière au sol des projecteurs des monuments (D297), avec les halos des lampadaires ; absent : pas de tache. */
+  halo?: MeshBuilder;
 }
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -1004,7 +1006,7 @@ export function buildLandmarks(
   for (const s of kinds.sites) {
     if (s.t === "fuel") fuel(sinks, s, s.roof ? tile.buildings.find((b) => b.id === s.roof) : undefined, terrain);
     else if (s.t === "cemetery") cemetery(sinks, s, terrain);
-    else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain);
+    else if (s.t === "gate") buildGate(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
     else if (s.t === "fountain") buildFountain(sinks.solid, s, terrain);
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
     else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain);

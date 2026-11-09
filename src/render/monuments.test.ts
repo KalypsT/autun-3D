@@ -22,12 +22,23 @@ describe("monuments (D95) : géométrie", () => {
     for (const s of kinds.sites) {
       if (s.t !== "gate") continue;
       const mb = new MeshBuilder();
-      const glow = new MeshBuilder();
-      buildGate(mb, glow, s, world.terrain);
+      const glow = new MeshBuilder(), halo = new MeshBuilder(true);
+      buildGate(mb, glow, s, world.terrain, halo);
       expect(mb.positions.every(Number.isFinite)).toBe(true);
-      // D137 : moins de 4 000 triangles par porte (Arroux : 2 372), autant au plus pour l'éclairage de nuit, seulement si le modèle l'a.
+      // D137 : moins de 4 000 triangles par porte (Arroux : 2 372, plus les boîtiers des projecteurs).
       expect(tris(mb)).toBeLessThan(4000);
-      expect(tris(glow)).toBe(s.gm?.light ? tris(mb) : 0);
+      // D297 : éclairage par projecteurs, seulement si le modèle l'a ; voile de moins de 5 000 triangles (Arroux : 3 395), à opacité par
+      // sommet (des sommets presque transparents : coins non couverts), et taches au sol dans les halos.
+      if (!s.gm?.light) {
+        expect(tris(glow)).toBe(0);
+        continue;
+      }
+      expect(tris(glow)).toBeLessThan(5000);
+      expect(glow.positions.every(Number.isFinite)).toBe(true);
+      const al = glow.alphas!;
+      expect(al.length * 3).toBe(glow.positions.length);
+      expect(Math.min(...al.slice(0, 4000))).toBeLessThan(0.1);
+      expect(tris(halo)).toBeGreaterThan(0);
     }
     // Église Saint-André (D138) : moins de 2 000 triangles.
     const chap = Object.values(kinds.buildings).find((b) => b.chap)!.chap!;

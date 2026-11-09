@@ -2107,3 +2107,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Un stop et un sens interdit](docs/captures/d295-stop.jpg)
 ![Une limitation à 30](docs/captures/d295-30.jpg)
+
+**Éclairage des monuments, lot 1 : les projecteurs, porte d'Arroux (9 novembre 2026)** (D297)
+- Les monuments ne s'allument plus d'un bloc : de vrais projecteurs au sol, au pied de chaque pile, éclairent vers le haut. Le bas est vif, le haut s'assombrit, les flancs des piles et les coins que les faisceaux n'atteignent pas restent dans la nuit ; le dessous des arches prend la lumière.
+- Les projecteurs se voient : petits boîtiers au ras du sol, lentille allumée, tache de lumière autour.
+- Une seule teinte pour toute la ville (blanc chaud), allumé toute la nuit.
+- La porte Saint-André suit (même modèle) ; son église, la cathédrale, Janus, Couhard, la Croix, les Ursulines, l'hôtel de ville et le théâtre municipal viendront après ta validation.
+- À faire de ton côté : regarder la porte d'Arroux la nuit (`?at=-262,1060&h=22`) et dire si le contraste te va (plus fort au pied, plus sombre en haut, plus ou moins de couverture).
+
+![Avant](docs/captures/d297-arroux-avant.jpg)
+![Après](docs/captures/d297-arroux-apres.jpg)
+![De près](docs/captures/d297-arroux-pres-apres.jpg)
+![Porte Saint-André](docs/captures/d297-andre-apres.jpg)

@@ -34,6 +34,11 @@ export class MeshBuilder {
    */
   readonly tags: number[] | null;
   tag = 0;
+  /**
+   * Opacité par sommet (D297), créée au premier sommet qui en a une (`triColors`) : les sommets d'avant valent 1. Le maillage assemblé porte
+   * alors des couleurs à quatre composantes (three.js s'en sert seul) ; sans elle, trois composantes comme avant.
+   */
+  alphas: number[] | null = null;
 
   constructor(tagged = false) {
     this.tags = tagged ? [] : null;
@@ -52,6 +57,23 @@ export class MeshBuilder {
       this.colors.push(color.r, color.g, color.b);
     }
     this.tags?.push(this.tag, this.tag, this.tag);
+    this.alphas?.push(1, 1, 1);
+  }
+
+  /** Triangle à couleur et opacité par sommet (voile de lumière des projecteurs, taches au sol, D297). */
+  triColors(a: Vec3, b: Vec3, c: Vec3, n: Vec3, ca: THREE.Color, cb: THREE.Color, cc: THREE.Color, aa = 1, ab = 1, ac = 1): void {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const flip = (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2] < 0;
+    if (!this.alphas) this.alphas = new Array<number>(this.positions.length / 3).fill(1);
+    const order: [Vec3, THREE.Color, number][] = flip ? [[a, ca, aa], [c, cc, ac], [b, cb, ab]] : [[a, ca, aa], [b, cb, ab], [c, cc, ac]];
+    for (const [p, col, al] of order) {
+      this.positions.push(p[0], p[1], p[2]);
+      this.normals.push(n[0], n[1], n[2]);
+      this.colors.push(col.r, col.g, col.b);
+      this.alphas.push(al);
+      this.tags?.push(this.tag);
+    }
   }
 
   quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
@@ -75,6 +97,7 @@ export class MeshBuilder {
         this.normals.push(n[0], n[1], n[2]);
         this.colors.push(col.r, col.g, col.b);
         this.tags?.push(this.tag);
+        this.alphas?.push(1);
       }
     }
   }
@@ -92,8 +115,10 @@ export class MeshBuilder {
     const parts: MeshBuilder[] = [this, ...more];
     let n = 0;
     for (const p of parts) n += p.positions.length;
-    const out = { positions: new Float32Array(n), normals: new Float32Array(n), colors: new Float32Array(n) };
-    for (const k of ["positions", "normals", "colors"] as const) {
+    // Opacité par sommet (D297) : couleurs à quatre composantes si l'une des parties en porte.
+    const rgba = parts.some((p) => p.alphas);
+    const out = { positions: new Float32Array(n), normals: new Float32Array(n), colors: new Float32Array(rgba ? (n / 3) * 4 : n) };
+    for (const k of rgba ? (["positions", "normals"] as const) : (["positions", "normals", "colors"] as const)) {
       const dst = out[k];
       let o = 0;
       for (const p of parts) {
@@ -106,10 +131,24 @@ export class MeshBuilder {
         o += src.length;
       }
     }
+    if (rgba) {
+      const dst = out.colors;
+      let v = 0;
+      for (const p of parts) {
+        const nv = p.positions.length / 3;
+        for (let i = 0; i < nv; i++, v++) {
+          dst[4 * v] = p.colors[3 * i]!;
+          dst[4 * v + 1] = p.colors[3 * i + 1]!;
+          dst[4 * v + 2] = p.colors[3 * i + 2]!;
+          dst[4 * v + 3] = p.alphas ? p.alphas[i]! : 1;
+          if ((i & 16383) === 16383) yield;
+        }
+      }
+    }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(out.positions, 3));
     g.setAttribute("normal", new THREE.BufferAttribute(out.normals, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(out.colors, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(out.colors, rgba ? 4 : 3));
     // Étiquettes (D200) : celles des maillages qui en portent, 0 pour les autres.
     if (parts.some((p) => p.tags)) {
       const tags = new Float32Array(n / 3);
