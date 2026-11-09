@@ -11,8 +11,10 @@ Ne touche à aucune donnée publiée.
 Méthode : pour chaque arête carrossable du graphe (ni voie de service, ni allée de parking, ni rond-point) et chacun de ses côtés, tous les
 mètres le long de l'axe, on cherche la bordure de la chaussée dessinée (la dernière case de chaussée en s'écartant de l'axe), puis on compare
 trois bandes de 2 m (le long de la bordure dans la chaussée, puis au-delà : la chaussée dessinée est parfois plus étroite que la vraie, ou
-décalée, D94) à l'enrobé du milieu de la voie : une case est « voiture » si sa couleur s'en écarte nettement et si la bande y est contrastée (une ombre portée est sombre mais
-unie). Les suites de cases « voiture » de 3,2 à 40 m font des voitures (une tous les 5 m). Un côté est retenu à partir de deux voitures et d'un
+décalée, D94) à l'enrobé du milieu de la voie ; une bande n'est regardée que si elle est tout entière sur la chaussée ou le trottoir
+dessinés (pas dans un jardin, une haie ou un mur, qui n'ont pas de sol dessiné) : une case est « voiture » si sa couleur s'en écarte nettement et si la bande y est contrastée (une ombre portée est sombre mais
+unie), qu'elle s'écarte aussi de la couleur dominante du bord de la rue (trottoir, bas-côté) et qu'elle n'est pas verte. Les suites
+de cases « voiture » de 3,2 à 40 m font des voitures (une tous les 5 m) ; les bandes plus longues sont des bas-côtés. Un côté est retenu à partir de deux voitures et d'un
 quart de sa longueur occupé.
 """
 
@@ -38,6 +40,7 @@ NAMES = c.SHARED / "curbs_ways.json"
 RES = 0.2  # m par pixel
 TILE = 250.0
 STEP = 1.0  # pas le long de l'axe (m)
+# Une suite de 3,2 à 40 m fait des voitures, une tous les 5 m ; au-delà, c'est une bande continue (bas-côté, haie), pas des voitures.
 MIN_RUN, MAX_RUN, CAR = 3.2, 40.0, 5.0
 MIN_EDGE = 12.0
 
@@ -61,7 +64,7 @@ def wms(x0, y0, x1, y1, w, h, cache):
 
 
 class Tile:
-    """Orthophoto et masques (chaussée dessinée 1, bâtiments 2, parkings 3) d'une tuile de 250 m, à 20 cm."""
+    """Orthophoto et masques (chaussée dessinée 1, bâtiments 2, parkings 3, trottoirs et places pavées 4) d'une tuile de 250 m, à 20 cm."""
 
     def __init__(self, tid, bounds, origin):
         self.x0, self.y0, self.x1, self.y1 = bounds
@@ -73,6 +76,14 @@ class Tile:
         data = json.loads((c.OUT / "tiles" / f"{tid}.json").read_text())
         road = Image.new("L", (n, n), 0)
         d = ImageDraw.Draw(road)
+        # Trottoirs et places pavées (4) : une voiture peut y être garée ; jardins, haies et murs privés n'ont pas de sol dessiné (0).
+        for k, polys in data["ground"].items():
+            if k != "walk" and k not in ("plaza_paving", "plaza_sett", "plaza_concrete"):
+                continue
+            for poly in polys:
+                d.polygon(self.px_ring(poly[0]), fill=4)
+                for h in poly[1:]:
+                    d.polygon(self.px_ring(h), fill=0)
         for k, polys in data["ground"].items():
             if not k.startswith("road_"):
                 continue
@@ -177,7 +188,8 @@ def survey_side(world, e, side):
     if len(ref) < 5:
         return None
     ref = np.median(np.array(ref), axis=0)
-    prof = []
+    # Première passe : bordure et pixels des trois bandes à chaque station (végétation écartée).
+    raw = []
     for x, y, ux, uy in st:
         nx, ny = -uy * side, ux * side  # gauche (+1) ou droite (−1) du sens a → b
         curb = None
@@ -187,31 +199,42 @@ def survey_side(world, e, side):
             if s is None or s[0] != 1:
                 curb = o - 0.2 if k > 1 else None
                 break
-        if curb is None or curb < 1.5:
-            prof.append((curb, 0.0))
-            continue
-        # Trois bandes de 2,2 m : le long de la bordure dans la chaussée, puis au-delà (la chaussée dessinée est parfois plus étroite que
-        # la vraie, ou décalée : D94, les voitures sont alors sur ce que le jeu dessine en trottoir) ; on garde la plus « garnie ».
-        best = (0.0, 0.0)
-        for lo in (-2.0, 0.2, 2.4):
-            cols = []
-            for o in np.arange(curb + lo, curb + lo + 2.0, 0.2):
-                for a in (-0.3, 0.0, 0.3):
-                    s = world.sample(x + nx * o + ux * a, y + ny * o + uy * a)
-                    if s is None or s[0] in (2, 3):
-                        cols = []
+        bands = []
+        if curb is not None and curb >= 1.5:
+            # Trois bandes de 2 m : le long de la bordure dans la chaussée, puis au-delà (la chaussée dessinée est parfois plus étroite
+            # que la vraie, ou décalée : D94, les voitures sont alors sur ce que le jeu dessine en trottoir).
+            for lo in (-2.0, 0.2, 2.4):
+                cols = []
+                for o in np.arange(curb + lo, curb + lo + 2.0, 0.2):
+                    for a in (-0.3, 0.0, 0.3):
+                        s = world.sample(x + nx * o + ux * a, y + ny * o + uy * a)
+                        if s is None or s[0] not in (1, 4):
+                            cols = None
+                            break
+                        cols.append(s[1])
+                    if cols is None:
                         break
-                    cols.append(s[1])
-                if not cols:
-                    break
-            if len(cols) < 10:
+                if cols:
+                    arr = np.array(cols)
+                    veg = (arr[:, 1] > arr[:, 0] + 6) & (arr[:, 1] > arr[:, 2] + 6)
+                    bands.append((curb + lo + 1.0, arr, veg))
+        raw.append((curb, bands))
+    # Couleur dominante du bord de la rue (trottoir, herbe sèche, mur) : la médiane des pixels des bandes, hors végétation.
+    pool = [arr[~veg] for _, bands in raw for _, arr, veg in bands if (~veg).any()]
+    if not pool:
+        return st, [(curb, 0.0) for curb, _ in raw]
+    edge = np.median(np.concatenate(pool), axis=0)
+    prof = []
+    for curb, bands in raw:
+        best = (0.0, curb)
+        for off, arr, veg in bands:
+            if len(arr) < 10 or veg.mean() > 0.3:
                 continue
-            cols = np.array(cols)
-            far = np.linalg.norm(cols - ref, axis=1) > 42
-            score = float(far.mean()) if float(cols.std(axis=0).mean()) > 16 else 0.0
+            car = (np.linalg.norm(arr - ref, axis=1) > 42) & (np.linalg.norm(arr - edge, axis=1) > 38) & ~veg
+            score = float(car.mean()) if float(arr.std(axis=0).mean()) > 16 else 0.0
             if score > best[0] + 0.1:
-                best = (score, curb + lo + 1.0)
-        prof.append((best[1] if best[0] > 0 else curb, best[0]))
+                best = (score, off)
+        prof.append((best[1], best[0]))
     return st, prof
 
 
