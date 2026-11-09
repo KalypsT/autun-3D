@@ -15,7 +15,8 @@ décalée, D94) à l'enrobé du milieu de la voie ; une bande n'est regardée qu
 dessinés (pas dans un jardin, une haie ou un mur, qui n'ont pas de sol dessiné) : une case est « voiture » si sa couleur s'en écarte nettement et si la bande y est contrastée (une ombre portée est sombre mais
 unie), qu'elle s'écarte aussi de la couleur dominante du bord de la rue (trottoir, bas-côté) et qu'elle n'est pas verte. Les suites
 de cases « voiture » de 3,2 à 40 m font des voitures (une tous les 5 m) ; les bandes plus longues sont des bas-côtés. Un côté est retenu à partir de deux voitures et d'un
-quart de sa longueur occupé.
+quart de sa longueur occupé, s'il est bordé de bâtiments sur 30 % au moins de sa longueur (on se gare devant des maisons ; le long
+des champs, lignes de rive et accotements ressemblent à des voitures).
 """
 
 import io
@@ -238,6 +239,23 @@ def survey_side(world, e, side):
     return st, prof
 
 
+def frontage(world, st, side, prof):
+    """Part de la longueur bordée de bâtiments (à moins de 25 m de la bordure, de ce côté) : on se gare devant des maisons, pas le long
+    des champs, où les lignes de rive et les accotements ressemblent à des voitures."""
+    seen, total = 0, 0
+    for k in range(0, len(st), 5):
+        x, y, ux, uy = st[k]
+        nx, ny = -uy * side, ux * side
+        start = (prof[k][0] or 3.0)
+        total += 1
+        for o in np.arange(start, start + 25.0, 1.0):
+            s = world.sample(x + nx * o, y + ny * o)
+            if s is not None and s[0] == 2:
+                seen += 1
+                break
+    return seen / total if total else 0.0
+
+
 def runs(prof):
     out, start = [], None
     for i, (_, sc) in enumerate(prof + [(None, 0.0)]):
@@ -274,7 +292,8 @@ def main():
             cars = sum(max(1, round((b - a) / CAR)) for a, b in rr)
             ln = len(st) * STEP
             occ = sum(b - a for a, b in rr) / ln if ln else 0
-            keep = cars >= 2 and occ >= 0.25
+            front = frontage(world, st, side, prof) if rr else 0.0
+            keep = cars >= 2 and occ >= 0.25 and front >= 0.3
             offs = []
             for a, b in rr:
                 k0, k1 = int(a / STEP), min(len(st) - 1, int(b / STEP) - 1)
@@ -292,7 +311,7 @@ def main():
                          "cars": cars, "occ": round(occ, 2), "runs": [[round(a, 1), round(b, 1)] for a, b in rr],
                          # Distance de l'axe au milieu des voitures (m), et de l'axe à la bordure dessinée : au-delà, elles sont sur le trottoir dessiné.
                          "off": round(float(np.median(offs)), 1) if offs else None,
-                         "curb": round(float(np.median([p[0] for p in prof if p[0]] or [0])), 1), "keep": keep})
+                         "curb": round(float(np.median([p[0] for p in prof if p[0]] or [0])), 1), "front": round(front, 2), "keep": keep})
     kept = [p for p in plan if p["keep"]]
     streets = defaultdict(lambda: [0, 0.0])
     for p in kept:
@@ -302,7 +321,7 @@ def main():
       PLAN.write_text(json.dumps({
         "_doc": "Stationnement le long des trottoirs (survey_curbs.py, D296) : côtés de tronçons où l'orthophotographie montre des voitures garées. "
                 "a, b : bouts de l'arête du graphe routier ; side : côté par rapport au sens a → b ; runs : suites de voitures (m depuis a) ; "
-                "keep : retenu par le relevé (au moins deux voitures et un quart occupé). Corrections à la main dans `overrides` : "
+                "keep : retenu par le relevé (au moins deux voitures, un quart occupé, bordé de bâtiments sur 30 % : front). Corrections à la main dans `overrides` : "
                 "{\"way\": id, \"side\": ..., \"keep\": true|false, \"type\": \"file\"|\"epi\"}.",
         "overrides": [],
         "sides": plan,
