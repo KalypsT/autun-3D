@@ -7039,7 +7039,7 @@ contre 29,6), et varie beaucoup sur l'emprise (nef basse, clochers, flèche). Un
 au-dessus de la nef ou fait traverser la flèche. D'où un **relevé de la hauteur dessinée** au lieu de la table de hauteurs du plan.
 
 **Fait** :
-- **Relevé** (`src/render/hull-build.ts`, fichiers `public/data/hulls/<tuile>.json`, 26 tuiles, 51 relevés, 350 Ko) : on dessine les gabarits
+- **Relevé** (`src/render/hull-build.ts`, fichiers `public/data/hulls/<tuile>.json`, 26 tuiles, 50 relevés, 350 Ko) : on dessine les gabarits
   et les sites d'une tuile comme le rendu (`buildLandmarks`, plus les toits génériques des églises et chapelles), et l'on garde, case par
   case (0,5 m pour les emprises de moins de 1 500 m², 1 m au-delà), le plus haut point du bâti plein et du verre (ni lumières, ni
   enseignes, ni feuillage) dans l'emprise. Hauteurs en décimètres (Int16, base64).
