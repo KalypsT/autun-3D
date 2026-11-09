@@ -2097,3 +2097,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le perron de face](docs/captures/d294-perron.jpg)
 ![De biais](docs/captures/d294-perron-biais.jpg)
 ![La nuit](docs/captures/d294-perron-nuit.jpg)
+
+**Panneaux de signalisation (9 novembre 2026)** (D295)
+- 412 panneaux tirés du graphe routier : stops et cédez-le-passage aux carrefours, sens interdits au bout des rues à sens unique, limitations de vitesse (30, 50, 70, 80) là où la vitesse change, d'après OpenStreetMap.
+- Sur le trottoir, à droite du conducteur, tournés vers lui ; jamais sur la chaussée ni dans un bâtiment.
+- Une voiture les arrache comme les lampadaires et les feux ; à pied, on passe à côté.
+- Pas encore : panneaux de zone 30, d'entrée de ville, de sens unique, panonceaux.
+- À faire de ton côté : rouler en ville et dire s'il y en a trop, pas assez, ou mal placés (`?at=169,-187` : un stop et un sens interdit).
+
+![Un stop et un sens interdit](docs/captures/d295-stop.jpg)
+![Une limitation à 30](docs/captures/d295-30.jpg)

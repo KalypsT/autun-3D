@@ -1532,6 +1532,15 @@ export interface TileData {
   furniture: Furniture[];
 }
 
+/**
+ * Panneaux de signalisation d'une tuile (signs/<tuile>.json, D295, tools/data/build_signs.py) : mobilier de nature `sign_stop`, `sign_give_way`,
+ * `sign_no_entry` ou `sign_speed` (`name` : la vitesse), `rot` : direction où regarde la face ; ajoutés au mobilier de la tuile au chargement.
+ */
+export interface TileSigns {
+  v: number;
+  items: Furniture[];
+}
+
 /** Silhouette d'un bâtiment pour les tuiles lointaines. */
 export interface LodBuilding {
   /** Contour simplifié : x0, y0, x1, y1… */

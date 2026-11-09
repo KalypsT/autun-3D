@@ -49,6 +49,50 @@ function disc(mb: MeshBuilder, cx: number, cy: number, z: number, r: number, col
   }
 }
 
+const SIGN_WHITE = new THREE.Color("#f2f0ea");
+const SIGN_BACK = new THREE.Color("#8d9296");
+const SIGN_INK = new THREE.Color("#1d1f22");
+
+/**
+ * Plaque verticale d'un panneau (D295) : contour (u, v) en mètres, u vers la droite de qui regarde la face, v vers le haut ; face tournée vers
+ * `rot` (repère données), à `off` devant le mât ; dos gris sauf `front`.
+ */
+function plate(mb: MeshBuilder, x: number, y: number, zc: number, rot: number, pts: [number, number][], col: THREE.Color, off: number, back = true): void {
+  const nx = Math.cos(rot), ny = Math.sin(rot), ux = -ny, uy = nx;
+  const P = (u: number, v: number, o: number): Vec3 => toThree(x + nx * o + ux * u, y + ny * o + uy * u, zc + v);
+  const n = toThree(nx, ny, 0), nb = toThree(-nx, -ny, 0);
+  for (let i = 1; i + 1 < pts.length; i++) {
+    mb.tri(P(...pts[0]!, off), P(...pts[i]!, off), P(...pts[i + 1]!, off), n, col);
+    if (back) mb.tri(P(...pts[0]!, off - 0.012), P(...pts[i + 1]!, off - 0.012), P(...pts[i]!, off - 0.012), nb, SIGN_BACK);
+  }
+}
+
+/** Polygone régulier de rayon r, `start` : angle du premier sommet. */
+function ngon(r: number, sides: number, start = 0): [number, number][] {
+  return Array.from({ length: sides }, (_, i) => [r * Math.cos(start + (Math.PI * 2 * i) / sides), r * Math.sin(start + (Math.PI * 2 * i) / sides)]);
+}
+
+/** Rectangle (u0, v0)-(u1, v1). */
+function rectUV(u0: number, v0: number, u1: number, v1: number): [number, number][] {
+  return [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
+}
+
+/** Segments allumés des chiffres (afficheur à sept segments : a haut, b haut droit, c bas droit, d bas, e bas gauche, f haut gauche, g milieu). */
+const DIGITS: Record<string, string> = { "0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc", "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcdfg" };
+
+/** Chiffres noirs de la limitation, centrés en u = 0, hauts de h. */
+function digits(mb: MeshBuilder, x: number, y: number, zc: number, rot: number, text: string, h: number, off: number): void {
+  const w = h * 0.5, t = h * 0.14, gap = w * 0.45, total = text.length * w + (text.length - 1) * gap;
+  [...text].forEach((ch, i) => {
+    const u0 = -total / 2 + i * (w + gap), u1 = u0 + w, v0 = -h / 2, v1 = h / 2;
+    const seg: Record<string, [number, number][]> = {
+      a: rectUV(u0, v1 - t, u1, v1), d: rectUV(u0, v0, u1, v0 + t), g: rectUV(u0, -t / 2, u1, t / 2),
+      b: rectUV(u1 - t, 0, u1, v1), c: rectUV(u1 - t, v0, u1, 0), e: rectUV(u0, v0, u0 + t, 0), f: rectUV(u0, 0, u0 + t, v1),
+    };
+    for (const k of DIGITS[ch] ?? "") plate(mb, x, y, zc, rot, seg[k]!, SIGN_INK, off, false);
+  });
+}
+
 const COLORS = {
   wood: new THREE.Color("#7a5a3a"), iron: new THREE.Color("#2f3433"), green: new THREE.Color("#3d5a43"), steel: new THREE.Color("#8d9296"), bollard: new THREE.Color("#5a3a2c"), bollardCap: new THREE.Color("#ece8de"),
   yellow: new THREE.Color("#e8b923"), stone: new THREE.Color("#b6ad9c"), sanisette: new THREE.Color("#9aa09c"), water: new THREE.Color("#6f8f9a"),
@@ -111,6 +155,31 @@ export function buildFurniture(mb: MeshBuilder, items: readonly Furniture[], ter
         const fx = px + nx * 0.02, fy = py + ny * 0.02;
         box(mb, fx, fy, 0.07, 0.006, rot + Math.PI / 2, bottom + 0.08, top - 0.2, COLORS.bollardCap);
         box(mb, fx, fy, 0.24, 0.006, rot + Math.PI / 2, top - 0.22, top - 0.1, SIGN_RED);
+        break;
+      }
+      // Panneaux tirés du graphe routier (D295) : mât, plaque à 2 m, face vers le conducteur à qui il s'adresse.
+      case "sign_stop":
+      case "sign_give_way":
+      case "sign_no_entry":
+      case "sign_speed": {
+        cylinder(mb, f.x, f.y, 0.035, z, z + 2.3, COLORS.steel, 6);
+        const zc = z + 2.05, o = 0.05;
+        if (f.kind === "sign_stop") {
+          plate(mb, f.x, f.y, zc, rot, ngon(0.36, 8, Math.PI / 8), SIGN_WHITE, o);
+          plate(mb, f.x, f.y, zc, rot, ngon(0.33, 8, Math.PI / 8), SIGN_RED, o + 0.003, false);
+          plate(mb, f.x, f.y, zc, rot, rectUV(-0.22, -0.055, 0.22, 0.055), SIGN_WHITE, o + 0.006, false);
+        } else if (f.kind === "sign_give_way") {
+          const tri = (r: number): [number, number][] => [[0, -r], [r * 0.866, r / 2], [-r * 0.866, r / 2]];
+          plate(mb, f.x, f.y, zc, rot, tri(0.48), SIGN_RED, o);
+          plate(mb, f.x, f.y, zc, rot, tri(0.33), SIGN_WHITE, o + 0.003, false);
+        } else if (f.kind === "sign_no_entry") {
+          plate(mb, f.x, f.y, zc, rot, ngon(0.33, 14), SIGN_RED, o);
+          plate(mb, f.x, f.y, zc, rot, rectUV(-0.24, -0.06, 0.24, 0.06), SIGN_WHITE, o + 0.003, false);
+        } else {
+          plate(mb, f.x, f.y, zc, rot, ngon(0.33, 14), SIGN_RED, o);
+          plate(mb, f.x, f.y, zc, rot, ngon(0.25, 14), SIGN_WHITE, o + 0.003, false);
+          digits(mb, f.x, f.y, zc, rot, f.name ?? "", 0.2, o + 0.006);
+        }
         break;
       }
       case "street_lamp": {

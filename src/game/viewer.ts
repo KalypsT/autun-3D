@@ -26,6 +26,10 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   // Drapeaux et devise du balcon ; plaques « ASCENSEUR » et « HALLES » entre les arcades (D293).
   "mairie-drapeaux": [35.0, 60.8, 1.7, 27.6, 72.6, 15],
   "mairie-arcades": [20.6, 61.2, 1.7, 17.4, 66.3, 3],
+  // Panneaux tirés du graphe routier (D295) : un stop et un sens interdit, une limitation à 30, un cédez-le-passage, vus par le conducteur.
+  "panneaux-stop": [169.0, -187.1, 1.7, 163.4, -179.98, 1.6],
+  "panneaux-30": [356.9, -94.1, 1.7, 362.66, -86.98, 1.6],
+  "panneaux-cedez": [52.3, 77.6, 1.7, 60.34, 73.23, 1.6],
   church: [-40, -95, 1.7, -86, -136, 12],
   // Théâtre municipal (D223) : de face depuis la place, comme la photo de la façade.
   municipal: [17, 7, 1.7, -4.1, 38.7, 9],

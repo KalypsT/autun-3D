@@ -6774,3 +6774,45 @@ perron et ses abords, pas au-delà.
 ![Le perron de face](captures/d294-perron.jpg)
 ![Le perron de biais, les candélabres](captures/d294-perron-biais.jpg)
 ![La nuit](captures/d294-perron-nuit.jpg)
+
+## 2026-11-09 — D295. Panneaux de signalisation tirés du graphe routier
+
+**Demande de l'utilisateur** (suite de la revue, point 2, idées de rue) : poser les panneaux que le graphe routier connaît déjà.
+
+**Données** : `tools/data/build_signs.py`, étape autonome (à relancer après `build_nav.py`) qui lit le graphe routier publié
+(`public/data/nav/*.json`, nœuds fusionnés par coordonnées entre super-tuiles) et écrit `public/data/signs/<tuile>.json` et `signs/index.json`,
+sans toucher aux tuiles. Les vitesses du graphe mélangent les limitations d'OpenStreetMap et les vitesses moyennes de BD TOPO (5, 15, 35,
+45 km/h…, D40) : seules les premières sont des panneaux. L'étape garde donc l'étiquette `maxspeed` des 1 208 voies du graphe dans
+`tools/data/maxspeed.json` (versionné, rempli par l'API d'OpenStreetMap avec `--fetch` : 262 voies étiquetées, dont 214 à 50 km/h).
+
+**Règles** :
+- **Stop et cédez-le-passage** : sur chaque approche dont OpenStreetMap donne le sens (D61) ; sans sens, sur les approches des voies moins
+  importantes que la plus importante du carrefour (aucune si toutes se valent). Les feux restent ceux d'OpenStreetMap.
+- **Sens interdit** : au bout de sortie d'une voie à sens unique, quand une autre voie arrive à ce carrefour ; ni dans les ronds-points
+  (sens giratoire), ni dans les allées de parking et voies de service.
+- **Limitation** : au début (4 m) d'une voie dont OpenStreetMap donne une vitesse réglementaire (20 à 110), quand on y entre depuis une
+  voie dont la vitesse diffère (50 km/h sans étiquette : la règle en ville) ; pas sur les voies de moins de 8 m ni dans les zones de
+  rencontre.
+- **Pose** : sur le trottoir, à droite du conducteur visé, à 60 cm du bord de la voie (largeur du graphe), tourné vers lui ; recul depuis
+  le carrefour : la moitié de la plus large voie qui s'y croise plus 1,5 m. Si le point tombe sur la chaussée dessinée (bouche de
+  carrefour plus large que la voie) ou dans un bâtiment, le panneau s'écarte vers le trottoir (jusqu'à 2,5 m) puis recule (jusqu'à 3 m) ;
+  sans place, il est écarté (34 sur 446). Doublons fusionnés (même nature à moins de 2 m).
+- Résultat : **412 panneaux dans 116 tuiles** : 113 stops, 92 cédez-le-passage, 112 sens interdits, 95 limitations (30, 50, 70, 80).
+
+**Jeu** : `loadTile` ajoute les panneaux de la tuile à son mobilier (nature `sign_stop`, `sign_give_way`, `sign_no_entry`, `sign_speed`,
+vitesse dans `name`, `rot` : direction de la face, comme le panneau « voie sans issue » de D287). Dessin (`buildFurniture`) : mât de
+2,3 m, plaque à 2 m, face et dos gris ; stop octogonal rouge à bande blanche, cédez-le-passage en triangle pointe en bas, sens interdit
+rouge à barre blanche, limitation à couronne rouge et chiffres noirs (afficheur à sept segments). 30 à 70 triangles par panneau, dans le
+maillage du mobilier. **Cassables** comme les feux (D160) et seulement pour les voitures du joueur (`CAR_ONLY`) : ils sont au bord des
+trottoirs, où passent les files des passants et où la circulation se coincerait.
+
+**Tests** (`src/data/signs.test.ts`, +4) : fichiers et index, natures, identifiants, vitesses réglementaires ; chaque panneau dans sa
+tuile, hors des bâtiments et de la chaussée dessinée ; cassables, traversables à pied ; dessin fini et borné.
+
+**Limites** : pas de panonceaux (« sauf riverains »), ni de panneaux de fin de limitation, d'entrée d'agglomération, de zone 30 ou de sens
+unique ; les stops sans sens connu entre voies de même importance n'ont pas de panneau ; les conducteurs du jeu suivent toujours le
+graphe (D61), pas les panneaux.
+
+![Un stop et un sens interdit](captures/d295-stop.jpg)
+![Une limitation à 30](captures/d295-30.jpg)
+![Un cédez-le-passage](captures/d295-cedez.jpg)

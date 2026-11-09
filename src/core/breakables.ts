@@ -21,13 +21,19 @@ export const BREAKABLE: Readonly<Record<string, BreakSpec>> = {
   post_box: { radius: 0.3, threshold: 5, mass: 180 },
   bollard: { radius: 0.15, threshold: 4, mass: 60 },
   drinking_water: { radius: 0.25, threshold: 4, mass: 80 },
+  // Panneaux tirés du graphe routier (D295) : un mât léger, plié par une voiture même lente.
+  sign_stop: { radius: 0.12, threshold: 3, mass: 25 },
+  sign_give_way: { radius: 0.12, threshold: 3, mass: 25 },
+  sign_no_entry: { radius: 0.12, threshold: 3, mass: 25 },
+  sign_speed: { radius: 0.12, threshold: 3, mass: 25 },
 };
 
 /**
  * Mobilier que seules les voitures du joueur heurtent (D160) : les feux, qui n'étaient pas des obstacles. Pour la circulation et les passants, ils restent
- * traversables (la circulation s'y coinçait : mesuré par le test d'interblocage de la place).
+ * traversables (la circulation s'y coinçait : mesuré par le test d'interblocage de la place). Les panneaux du graphe routier (D295) aussi : ils sont
+ * au bord de la chaussée, où passent les files des passants.
  */
-export const CAR_ONLY: ReadonlySet<string> = new Set(["traffic_signals"]);
+export const CAR_ONLY: ReadonlySet<string> = new Set(["traffic_signals", "sign_stop", "sign_give_way", "sign_no_entry", "sign_speed"]);
 
 /** Masse minimale (kg) d'un véhicule qui arrache du mobilier : un vélo, une trottinette ou une moto s'y heurtent et tombent. */
 export const BREAK_MIN_MASS = 500;
