@@ -1,8 +1,14 @@
 # Bâtiments spéciaux : plus de mur invisible au-dessus (plan)
 
-**Avancement** : plan rédigé le 9 novembre 2026 après D300, à la demande de l'utilisateur. Rien n'est fait. Validé : **niveau 1 sur tous les
-bâtiments concernés** ; le niveau 2 (toits fidèles au modèle) seulement au cas par cas, si le jeu le demande. À faire **après**
-`docs/plans/vehicules-laisses.md`.
+**Avancement** : **niveau 1 fait** (D302), lots 1 à 4 en une fois. Plan rédigé le 9 novembre 2026 après D300, à la demande de l'utilisateur.
+Validé : **niveau 1 sur tous les bâtiments concernés** ; le niveau 2 (toits fidèles au modèle) seulement au cas par cas, si le jeu le demande.
+
+> **Changement d'approche à la réalisation (D302)** : la mesure a montré que le dessin dépasse souvent de loin le faîtage BD TOPO et varie
+> beaucoup sur l'emprise (cathédrale : 122,5 m de flèche pour 52,8 m de faîtage). Au lieu d'un haut par bâtiment et d'une table
+> `MODEL_CEILING` (§1 ci-dessous), on **relève la hauteur dessinée case par case** (`src/render/hull-build.ts`, `public/data/hulls/`) : le
+> haut des murs et le toit en sont tirés, pour tous les bâtiments spéciaux et les sites. Nouveau bâtiment ou modèle modifié : `npm run hulls`
+> (le test `src/render/hulls.test.ts` le réclame, et sa garde échoue pour un bâtiment sans relevé). Le reste du plan ci-dessous est l'idée
+> d'origine, gardée pour mémoire.
 
 Coordonnées et conventions habituelles : repère local du jeu (x vers l'est, y vers le nord, z altitude), en mètres.
 

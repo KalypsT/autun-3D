@@ -1147,8 +1147,22 @@ export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): 
 
 /** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour, murs du temple de Janus. */
 export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
-  const out: number[][] = [];
+  return landmarkShapes(kinds, ground).flatMap((g) => g.rings);
+}
+
+/** Comme `landmarkRings`, rangés par site (D302 : chaque site a son relevé de hauteurs, `src/core/hulls.ts`). */
+export function landmarkShapes(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): { site: Site; rings: number[][] }[] {
+  const groups: { site: Site; rings: number[][] }[] = [];
   for (const s of kinds?.sites ?? []) {
+    const out: number[][] = [];
+    siteRings(s, ground, out);
+    if (out.length) groups.push({ site: s, rings: out });
+  }
+  return groups;
+}
+
+function siteRings(s: Site, ground: (x: number, y: number) => number, out: number[][]): void {
+  {
     if (s.t === "janus") out.push(...janusRings(s));
     // Pierre de Couhard (D222) : le pied (on ne gravit pas le talus).
     if (s.t === "couhard") out.push(couhardFoot(s, 0, 32).flat());
@@ -1160,7 +1174,7 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     if (s.t === "memorial") out.push(memorialRing(s).flat());
     // Golf (D289) : la tente blanche de la terrasse du club-house.
     if (s.t === "golf") out.push([...s.tent.r]);
-    if (s.t !== "gate") continue;
+    if (s.t !== "gate") return;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;
     for (const [s0, s1] of lay.piers) {
@@ -1173,7 +1187,6 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
       out.push([at(f, s0, t0), at(f, s1, t0), at(f, s1, t1), at(f, s0, t1)].flat());
     }
   }
-  return out;
 }
 
 // --- Porche praticable de la cathédrale (D132) -----------------------------------------------------------------------------------------

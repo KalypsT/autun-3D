@@ -1,3 +1,4 @@
+import type { HullData } from "../core/hulls";
 /** Formats des fichiers produits par tools/data (public/data). Coordonnées locales en mètres :
  *  x vers l'est, y vers le nord, z vers le haut, relatif à l'altitude de référence du terrain. */
 
@@ -1530,6 +1531,8 @@ export interface TileData {
   /** Tours des remparts (D254) ; absent : aucune. */
   towers?: RampartTower[];
   furniture: Furniture[];
+  /** Relevés de hauteur des bâtiments spéciaux et des sites (hulls/<tuile>.json, D302) ; absent : aucun. */
+  hulls?: HullData[];
 }
 
 /**

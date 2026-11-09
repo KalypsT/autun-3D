@@ -1,8 +1,9 @@
 import type { Building, HeightField, RampartTower, TileData } from "../data/types";
 import { BREAKABLE, CAR_ONLY } from "./breakables";
 import { Colliders, WALL_STEP, type Top } from "./collision";
-import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkRings, militairePassage, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
+import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouseRing, stationRing, stationWall, eduenLines, eduenRings, mcdoRings, bowlingRings, roadsideLines, ROADSIDE_HEDGE_H, TERRACE_RAIL_H, EDUEN_BARRIER_H, EDUEN_FENCE_H, EDUEN_HEDGE_H, landmarkCircles, landmarkShapes, militairePassage, reshapeBuilding, treesOutsideMonuments, walkableRoof, wallsOutsideMonuments } from "./landmarks";
 import { roofPlanes } from "./roofs";
+import { HULL_STEP_BELOW, hullSiteKey, hullSteps, hullWalls, makeHull, type HullData } from "./hulls";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
 import { hallObstacles } from "./townhall";
@@ -46,29 +47,89 @@ export function wallTop(kind: string, height: number): Top {
 /** Identifiants des clôtures de parcelle écrites par tools/data/build_public_space.py : −(PARCEL_FENCE_ID + n). */
 export const PARCEL_FENCE_ID = 900_000_000;
 
-export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures"> & { towers?: readonly RampartTower[] | undefined };
+export type ColliderSources = Pick<TileData, "buildings" | "walls" | "furniture" | "trees" | "kinds" | "structures"> & { towers?: readonly RampartTower[] | undefined; hulls?: readonly HullData[] | undefined };
+
+/**
+ * Bâtiment spécial ou site (D302) : ses murs (contours fermés, lignes ouvertes d'un porche ou d'un passage) et l'emprise où son relevé de
+ * hauteurs (`src/core/hulls.ts`) fait toit. Sans relevé, ses murs restent infinis.
+ */
+export interface SolidShape {
+  key: string;
+  rings: number[][];
+  lines: number[][];
+  outer: number[][];
+  holes: number[][];
+  /** Murs qu'on n'escalade pas, même bas (sites : kiosque, monument aux morts, croix…). */
+  noClimb: boolean;
+}
+
+/**
+ * Bâtiments spéciaux et sites d'une tuile (D302) : tous ceux dont le toit n'est pas praticable par ses pans BD TOPO (`walkableRoof`), hors
+ * bâtiments ouverts ou cachés. Les obstacles qui les accompagnent (clôtures, haies, barrières, grilles) sont posés par `addTileColliders`.
+ */
+export function solidShapes(tile: Pick<TileData, "buildings" | "kinds">, ground: (x: number, y: number) => number): SolidShape[] {
+  const out: SolidShape[] = [];
+  const bld = (b: Building, rings: number[][], lines: number[][], outer: number[][], holes: number[][] = b.holes): void => {
+    out.push({ key: b.id, rings: [...rings, ...holes], lines, outer, holes, noClimb: false });
+  };
+  for (const b of tile.buildings) {
+    if (isOpen(tile.kinds, b.id)) continue;
+    const kind = tile.kinds?.buildings[b.id];
+    // Cathédrale (D132) : on entre dans le porche, on monte jusqu'aux portes entre les grilles.
+    if (kind?.cath?.entry) bld(b, [], cathedralWalls(b, kind.cath).lines, [b.ring]);
+    // Parc des expositions l'Eduen (D231), gendarmerie (D238), base nautique (D245), McDonald's et bowling (D234) : leurs volumes mesurés.
+    else if (kind?.edu || kind?.gend || kind?.naut || kind?.mcd || kind?.bowl) {
+      const rings = kind.edu ? eduenRings(kind.edu) : kind.gend ? gendarmerieRings(kind.gend) : kind.naut ? nautiqueRings(kind.naut) : kind.mcd ? mcdoRings(kind.mcd) : bowlingRings(kind.bowl!);
+      bld(b, rings, [], rings, []);
+    } else {
+      // Lycée militaire (D263) : on entre dans la cour d'honneur par le passage voûté de la galerie d'entrée.
+      const pass = kind?.college?.mil ? militairePassage(b, kind.college) : null;
+      if (pass) bld(b, [], [pass.outer, pass.cut, ...pass.sides], [b.ring], pass.holes);
+      else if (kind?.house || !walkableRoof(kind)) {
+        // Maison d'après photo (D140), théâtre municipal (D223), gare (D228) : leurs murs mesurés.
+        const ring = kind?.house ? houseRing(kind.house) : kind?.play ? playhouseRing(kind.play) : kind?.sta ? stationRing(kind.sta) : b.ring;
+        bld(b, [ring], [], [ring]);
+      }
+    }
+  }
+  // Sites (portes romaines, temple de Janus, Couhard, croix, kiosque, monument aux morts, tente du golf) : on n'y grimpe pas.
+  for (const g of landmarkShapes(tile.kinds, ground)) out.push({ key: hullSiteKey(g.site.t, g.rings), rings: g.rings, lines: [], outer: g.rings, holes: [], noClimb: true });
+  return out;
+}
+
+/** Murs d'un bâtiment spécial ou d'un site : à la hauteur de son relevé, qui devient aussi un toit (D302) ; sans relevé, infinis. */
+function addSolid(c: Colliders, shape: SolidShape, data: HullData | undefined, tag: string | null): void {
+  if (!data) {
+    for (const r of shape.rings) c.addRing(r);
+    for (const l of shape.lines) c.addPolyline(l);
+    return;
+  }
+  const h = makeHull(data, shape.outer, shape.holes);
+  const wall = (pts: readonly number[], closed: boolean): void => {
+    for (const [ax, ay, bx, by, za, zb] of hullWalls(h, pts, closed)) c.addSegment(ax, ay, bx, by, false, null, [za, zb], false, { noClimb: shape.noClimb });
+  };
+  for (const r of shape.rings) wall(r, true);
+  for (const l of shape.lines) wall(l, false);
+  for (const [ax, ay, bx, by, z, low] of hullSteps(h)) c.addSegment(ax, ay, bx, by, false, null, [z, z], false, { noClimb: shape.noClimb, bottom: low - HULL_STEP_BELOW });
+  c.roofs.add([h], tag);
+}
 
 /** Ajoute les obstacles d'une tuile ; `tag` permet de les retirer quand la tuile est déchargée. */
 export function addTileColliders(c: Colliders, tile: ColliderSources, tag: string | null = null, terrain: HeightField | null = null): void {
   c.currentTag = tag;
+  // Bâtiments spéciaux et sites (D302) : murs à la hauteur de leur relevé, qui leur sert de toit.
+  const hulls = new Map((tile.hulls ?? []).map((d) => [d.k, d]));
+  for (const shape of solidShapes(tile, (x, y) => terrain?.heightAt(x, y) ?? 0)) addSolid(c, shape, hulls.get(shape.key), tag);
   for (const b of tile.buildings) {
     if (isOpen(tile.kinds, b.id)) continue;
-    // Cathédrale (D132) : on entre dans le porche, on monte jusqu'aux portes entre les grilles.
-    const cath = tile.kinds?.buildings[b.id]?.cath;
-    if (cath?.entry) {
-      const { lines, grilles } = cathedralWalls(b, cath);
-      for (const l of lines) c.addPolyline(l);
-      for (const l of grilles) c.addPolyline(l, true, GRILLE);
-      for (const h of b.holes) c.addRing(h);
+    const kind = tile.kinds?.buildings[b.id];
+    // Cathédrale (D132) : les grilles du porche.
+    if (kind?.cath?.entry) {
+      for (const l of cathedralWalls(b, kind.cath).grilles) c.addPolyline(l, true, GRILLE);
       continue;
     }
-    // Maison d'après photo (D140) : ses murs mesurés (le contour BD TOPO est décalé), renfoncement de l'entrée compris.
-    const kind = tile.kinds?.buildings[b.id];
-    const house = kind?.house;
-    // Parc des expositions l'Eduen (D231) : ses volumes mesurés (salle, blocs, hall courbe) au lieu du contour BD TOPO, décalé d'environ 1 m.
+    // Parc des expositions l'Eduen (D233) : clôture verte (on voit à travers), haie de l'îlot, bras de la barrière (on passe dessous, pas les voitures).
     if (kind?.edu) {
-      for (const r of eduenRings(kind.edu)) c.addRing(r);
-      // Abords (D233) : clôture verte (on voit à travers), haie de l'îlot, bras de la barrière (on passe dessous, pas les voitures).
       for (const l of eduenLines(kind.edu)) {
         if (l.kind === "fence") c.addPolyline(l.pts, true, wallTop("fence", EDUEN_FENCE_H));
         else if (l.kind === "hedge") c.addPolyline(l.pts, false, wallTop("hedge", EDUEN_HEDGE_H));
@@ -76,46 +137,31 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
       }
       continue;
     }
-    // Gendarmerie de l'avenue André Frenaud (D238) : ses volumes mesurés (bâtiment principal, annexe, logements) ; clôture et portail de la cour.
+    // Gendarmerie (D238) : clôture et portail de la cour.
     if (kind?.gend) {
-      for (const r of gendarmerieRings(kind.gend)) c.addRing(r);
       for (const l of gendarmerieLines(kind.gend)) c.addPolyline(l, true, wallTop("fence", GENDARMERIE_FENCE_H));
       continue;
     }
-    // Base nautique du plan d'eau du Vallon (D245) : ses volumes mesurés, toilettes, mât, rochers, potelets ; barrière levante baissée.
+    // Base nautique (D245) : barrière levante baissée.
     if (kind?.naut) {
-      for (const r of nautiqueRings(kind.naut)) c.addRing(r);
       for (const l of nautiqueLines(kind.naut)) c.addPolyline(l, true, wallTop("fence", NAUTIQUE_BARRIER_H));
       continue;
     }
-    // McDonald's et bowling de la route de Chalon (D234) : leurs volumes mesurés (le contour BD TOPO ne couvre pas la véranda ni les ailes).
+    // McDonald's et bowling (D236) : garde-corps des terrasses (on voit à travers, on les enjambe), haie de la D680.
     if (kind?.mcd || kind?.bowl) {
-      for (const r of kind.mcd ? mcdoRings(kind.mcd) : bowlingRings(kind.bowl!)) c.addRing(r);
-      // Abords (D236) : garde-corps des terrasses (on voit à travers, on les enjambe), haie de la D680.
       for (const l of roadsideLines(kind)) {
         if (l.kind === "fence") c.addPolyline(l.pts, true, wallTop("fence", TERRACE_RAIL_H));
         else c.addPolyline(l.pts, false, wallTop("hedge", ROADSIDE_HEDGE_H));
       }
       continue;
     }
-    // Lycée militaire (D263) : on entre dans la cour d'honneur par le passage voûté de la galerie d'entrée.
-    const pass = kind?.college?.mil ? militairePassage(b, kind.college) : null;
-    if (pass) {
-      c.addPolyline(pass.outer);
-      c.addPolyline(pass.cut);
-      for (const l of pass.sides) c.addPolyline(l);
-      for (const h of pass.holes) c.addRing(h);
-      continue;
-    }
-    if (house || !walkableRoof(kind)) {
-      // Théâtre municipal (D223) : ses murs mesurés, le perron hors du bâtiment ; gare (D228) : ses murs mesurés.
-      c.addRing(house ? houseRing(house) : kind?.play ? playhouseRing(kind.play) : kind?.sta ? stationRing(kind.sta) : b.ring);
+    if (kind?.college?.mil && militairePassage(b, kind.college)) continue;
+    if (kind?.house || !walkableRoof(kind)) {
       // Mur blanc du parvis de la gare (D230).
       const sw = kind?.sta ? stationWall(kind.sta) : null;
       if (sw) c.addPolyline(sw);
       // Hôtel de ville (D293, D294) : murs d'échiffre et piédestaux du perron, escalier de l'entrée arrière.
       if (kind?.hall) for (const o of hallObstacles(kind.hall)) c.addPolyline([...o.ring, o.ring[0]!, o.ring[1]!], false, o.top);
-      for (const h of b.holes) c.addRing(h);
       continue;
     }
     // Toit praticable (D214) : les pans dessinés (bâtiment remis à la forme de son gabarit, comme au rendu) et des murs à leur hauteur.
@@ -161,7 +207,6 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
   }
   for (const [x, y] of treesOutsideMonuments(tile.kinds, tile.trees)) c.addCircle(x, y, 0.3);
   for (const [x, y, r] of landmarkCircles(tile.kinds, tile.buildings)) c.addCircle(x, y, r);
-  for (const ring of landmarkRings(tile.kinds, (x, y) => terrain?.heightAt(x, y) ?? 0)) c.addRing(ring);
   // Théâtre romain (D133) : podium, bords des massifs plus hauts que ce qui les jouxte, barrières de la scène.
   if (terrain) {
     const bare = terrain.ground ?? terrain;

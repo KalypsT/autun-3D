@@ -2154,3 +2154,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Le dernier véhicule utilisé est toujours gardé, même après une sauvegarde et un chargement ; il redevient oubliable quand tu en prends un autre.
 - Les épaves, les véhicules uniques et le petit train gardent leurs règles.
 - À faire de ton côté : jouer et dire si 200 m et 45 s conviennent.
+
+**Bâtiments spéciaux et monuments : plus de mur invisible au-dessus (9 novembre 2026)** (D302)
+- Cathédrale, églises, mairie, théâtre, gare, lycées, Hexagone, Eduen, gendarmerie, base nautique, McDo, bowling, portes romaines, Janus, Couhard, croix, kiosque, monument aux morts… : leurs murs ont maintenant la hauteur de ce qui est dessiné, relevée case par case (flèche de la cathédrale comprise). En vol, on passe au-dessus ; on se pose sur leurs toits, on y roule, on glisse sur les pentes raides.
+- Dans la rue, rien ne change : les murs arrêtent comme avant, et on n'escalade toujours pas le kiosque ni le monument aux morts.
+- Pour un nouveau bâtiment spécial : `npm run hulls` refait le relevé (un test le réclame sinon).
+- Reste : les lampadaires, arbres et voitures garées n'ont pas de hauteur ; une voiture qui vole au-dessus les heurte encore.
+- À faire de ton côté : survoler et te poser sur quelques monuments, et mesurer sur le téléphone (`?bench=1`).

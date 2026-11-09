@@ -6,6 +6,7 @@
  * passants, gendarmes). Les pans sont ceux que dessine le rendu : ceux du bâtiment remis à la forme de son gabarit (`reshapeBuilding`).
  */
 import type { Building, HeightField } from "../data/types";
+import { hullPlane, type Hull } from "./hulls";
 import { pointInRing } from "./ring";
 
 /**
@@ -52,6 +53,13 @@ export function roofPlanes(b: Building): RoofPlane[] {
   return out;
 }
 
+/** Surface rendue par `planeAt` : le plan z = a·x + b·y + c du pan (ou de la case d'un relevé, D302) sous le point. */
+export interface RoofSurface {
+  readonly a: number;
+  readonly b: number;
+  readonly c: number;
+}
+
 const CELL = 8;
 /** Pas (m) et marge aux deux bouts (m) du contrôle des toits le long d'une ligne de vue (`Roofs.blocks`). */
 const ROOF_SIGHT_STEP = 1;
@@ -63,13 +71,14 @@ function key(ix: number, iy: number): number {
 
 /** Pans de toit de la ville, rangés dans une grille ; chargés et déchargés par tuile (étiquette), comme les obstacles. */
 export class Roofs {
-  private readonly planes: (RoofPlane | null)[] = [];
+  /** Pans, et relevés des bâtiments spéciaux (D302), qui se rangent dans la grille de la même façon. */
+  private readonly planes: (RoofPlane | Hull | null)[] = [];
   private readonly free: number[] = [];
   private readonly grid = new Map<number, number[]>();
   private readonly tagged = new Map<string, number[]>();
 
   /** Ajoute des pans ; `tag` permet de les retirer avec leur tuile. */
-  add(planes: readonly RoofPlane[], tag: string | null = null): void {
+  add(planes: readonly (RoofPlane | Hull)[], tag: string | null = null): void {
     for (const p of planes) {
       const reuse = this.free.pop();
       const id = reuse ?? this.planes.length;
@@ -122,14 +131,24 @@ export class Roofs {
    * Pan sous le point : le plus haut qui ne dépasse pas `zHint + ROOF_STEP` (sans `zHint` : le plus haut), et plus haut que `above`.
    * Null : pas de toit (rue, cour intérieure) ou toit trop haut (on est dessous).
    */
-  planeAt(x: number, y: number, zHint?: number, above = -Infinity): RoofPlane | null {
+  planeAt(x: number, y: number, zHint?: number, above = -Infinity): RoofSurface | null {
     const cell = this.grid.get(key(Math.floor(x / CELL), Math.floor(y / CELL)));
     if (!cell) return null;
     const limit = zHint === undefined ? Infinity : zHint + ROOF_STEP;
-    let best: RoofPlane | null = null, bz = above;
+    let best: RoofSurface | null = null, bz = above;
     for (const id of cell) {
       const p = this.planes[id]!;
       if (x < p.x0 || x > p.x1 || y < p.y0 || y > p.y1) continue;
+      if ("hull" in p) {
+        // Relevé d'un bâtiment spécial (D302) : sa case sous le point, dans son emprise.
+        const q = hullPlane(p, x, y);
+        if (!q) continue;
+        const zq = q.a * x + q.b * y + q.c;
+        if (zq <= bz || zq > limit) continue;
+        best = q;
+        bz = zq;
+        continue;
+      }
       const z = p.a * x + p.b * y + p.c;
       if (z <= bz || z > limit) continue;
       if (!pointInRing(x, y, p.ring) || p.holes.some((h) => pointInRing(x, y, h))) continue;

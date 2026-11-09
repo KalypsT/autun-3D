@@ -7026,3 +7026,57 @@ utilisé, unique et épave gardés, changement de dernier véhicule, sauvegarde 
 `market.test.ts`.
 
 **À régler en jouant** : 200 m et 45 s (`FORGET`).
+
+## 2026-11-09 — D302. Bâtiments spéciaux et sites : plus de mur invisible au-dessus
+
+**Demande de l'utilisateur** : vérifier si le choc contre un mur invisible (« au-dessus du bâtiment ») se produisait encore sur les
+bâtiments spéciaux laissés de côté par les toits praticables (D214) ; oui, tous : leurs contours étaient des murs infinis. Niveau 1 validé
+pour tous les bâtiments concernés. Plan : `docs/plans/toits-monuments.md`.
+
+**Mesure qui a changé l'approche du plan** : la hauteur dessinée dépasse souvent de loin le faîtage BD TOPO (cathédrale : 122,5 m contre
+52,8 m, flèche ; Notre-Dame : 34,2 contre 23,7 ; hôtel de ville : 25,7 contre 17,7 ; théâtre : 27,0 contre 22,4 ; lycée militaire : 38,8
+contre 29,6), et varie beaucoup sur l'emprise (nef basse, clochers, flèche). Un haut unique par bâtiment aurait laissé un mur invisible
+au-dessus de la nef ou fait traverser la flèche. D'où un **relevé de la hauteur dessinée** au lieu de la table de hauteurs du plan.
+
+**Fait** :
+- **Relevé** (`src/render/hull-build.ts`, fichiers `public/data/hulls/<tuile>.json`, 26 tuiles, 51 relevés, 350 Ko) : on dessine les gabarits
+  et les sites d'une tuile comme le rendu (`buildLandmarks`, plus les toits génériques des églises et chapelles), et l'on garde, case par
+  case (0,5 m pour les emprises de moins de 1 500 m², 1 m au-delà), le plus haut point du bâti plein et du verre (ni lumières, ni
+  enseignes, ni feuillage) dans l'emprise. Hauteurs en décimètres (Int16, base64).
+- **Qui** (`solidShapes`, `src/core/world.ts`) : tous les bâtiments dont le toit n'est pas praticable par ses pans BD TOPO (`walkableRoof`
+  faux : églises, chapelles, monuments, clochers, collèges et lycées, Notre-Dame, Hexagone, Vallon, abris à chariots, hôtel de ville,
+  théâtre, gare, maison d'après photo), les volumes mesurés (Eduen, gendarmerie, base nautique, McDonald's, bowling), le porche de la
+  cathédrale, le passage du lycée militaire, et les sites (portes romaines, temple de Janus, Couhard, croix de la Libération, kiosque,
+  monument aux morts, tente du golf ; `landmarkShapes`). Les bâtiments ouverts ou cachés (auvents, `hidden`) n'ont toujours pas d'obstacle.
+- **Murs** (`hullWalls`) : les mêmes contours qu'avant, découpés au pas du relevé ; le haut de chaque point est la plus haute case à moins
+  d'une case et demie. Comme pour les maisons (D214), ils n'arrêtent que qui donne son altitude et est plus bas ; passants, circulation et
+  gendarmes trouvent toujours des murs pleins. Les murs des **sites ne s'escaladent pas** (`Segment.noClimb`), même bas, comme avant.
+- **Ressauts** (`hullSteps`) : un mur le long des côtés de cases où la hauteur saute de plus de 1,2 m (pied d'un clocher, de la flèche),
+  dans l'emprise. Il a un **bas** (`Segment.bottom`, 1 m sous la case la plus basse) : il n'arrête que qui est à la hauteur de ce toit ;
+  dans la rue, sous la voûte du passage ou du porche, ou sans altitude, il est ignoré (sans cela, le passage voûté du lycée militaire était
+  barré).
+- **Toit** (`Roofs`, `hullPlane`) : le relevé se range dans la grille des toits ; sous un point de l'emprise, le plan de sa case (hauteur
+  au centre, pente tirée des cases voisines du même côté d'un ressaut). Voiture et piéton s'y posent, y roulent, glissent au-delà de 30°
+  (D215), et la caméra, les tirs et les lignes de vue en tiennent compte (D216).
+- **Chargement** : avec la tuile (`loadTile`, `hulls/index.json`), comme les types de bâtiments.
+
+**Les futurs bâtiments spéciaux** : le relevé se refait d'une commande (`npm run hulls`). Le test `src/render/hulls.test.ts` échoue tant
+que les fichiers ne correspondent pas au rendu (modèle modifié, nouveau bâtiment ou site), et un test de garde échoue si un bâtiment spécial
+ou un site n'a pas de relevé : sans lui, ses murs resteraient infinis.
+
+**Coût** (mesuré près de la cathédrale, de la mairie et du lycée militaire, le pire cas) : 8 000 murs de plus (100 000 au lieu de 92 000) ;
+`resolve` 1,5 µs au lieu de 0,8 µs, `planeAt` 0,3 µs au lieu de 0,15 µs. Négligeable par image ; à confirmer au banc sur téléphone.
+
+**Tests** : `src/core/hulls-play.test.ts` (au-dessus du kiosque on passe, à hauteur de ses murs on bute, le piéton ne l'escalade pas ; la
+voiture lâchée au-dessus d'un toit spécial peu pentu s'y pose ; au-dessus de la flèche de la cathédrale, aucun mur ; entre les clochers et la
+pointe, seule la flèche arrête ; dans la rue, les murs restent pleins), `src/render/hulls.test.ts` (fichiers à jour, garde) ; `roofs.test.ts`
+(les monuments n'ont plus de mur infini et ont un toit). Vérifié aussi dans le jeu (navigateur) : le toit de la nef est chargé, et à 130 m
+plus aucun mur au-dessus de la cathédrale.
+
+**Tests adaptés** : `traffic-spawn.test.ts` (murs d'au moins 4 m, hors ressauts) ; `police-soak.test.ts` : départ 15 au lieu de 12 (le 12
+mène le fugitif au cul-de-sac sous Couhard, où il s'arrête avec ou sans relevés ; le relevé de la pyramide change les lignes de vue des
+gendarmes, et leurs voitures restent collées à lui les deux dernières minutes).
+
+**Reste** (hors de ce chantier) : le **mobilier, les arbres et les véhicules garés** sont des cercles sans hauteur ; une voiture qui vole
+au-dessus d'un lampadaire ou d'un arbre le heurte encore, à n'importe quelle altitude. Toits fidèles au dessin (niveau 2) : seulement si un
+bâtiment le demande en jouant.

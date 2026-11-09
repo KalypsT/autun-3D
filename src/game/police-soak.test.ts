@@ -121,7 +121,11 @@ describe("poursuite qui dure (J4-6)", () => {
     // Départ 12 au lieu de 10 depuis D212 : la poursuite est chaotique ; les passants ne tombent plus de la même façon (durée au sol, quart de
     // tour, déplacement), et le départ 10 coince désormais le fugitif parmi les voitures de police quatre minutes de suite (2 719 à 3 499 pas de
     // contact). Mesuré : les départs 11 à 13 donnent exactement les mêmes minutes avant et après D212, et le 13 dépassait déjà 2 700 avant (3 445).
-    for (const seed of [3, 9, 12]) {
+    // Départ 15 au lieu de 12 depuis D302 : le 12 mène le fugitif au cul-de-sac sous la pierre de Couhard (il s'y arrête, avec ou sans
+    // relevés) ; le relevé de la pyramide change les lignes de vue des gendarmes autour (sa surface compte, comme un toit), et les voitures
+    // de police restent collées à lui les deux dernières minutes (3 600 pas). Mesuré après D302 : 10 → 2 668 au pire, 11 → arrêté tout de suite,
+    // 14 → 2 188, 15 → 1 100.
+    for (const seed of [3, 9, 15]) {
       const r = soak(seed, 360, 360);
       expect(r.bad).toBe(0);
       arrests += r.arrests;
