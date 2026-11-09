@@ -13,7 +13,8 @@ Principe : l'espace public est ce qui n'est dans aucune parcelle ni aucun bâtim
 cette emprise, la chaussée garde sa largeur (l'enrobé de l'orthophoto quand il se distingue des trottoirs, sinon BD TOPO ou la valeur type)
 sans dépasser l'emprise ; les trottoirs remplissent le reste jusqu'aux façades et clôtures (5 m au plus, aucun s'il reste moins de 0,8 m) ;
 au-delà, places, pelouses et parkings d'après l'orthophoto et OpenStreetMap. Les cours privées ne sont plus des places. Chaque limite de
-parcelle sur la rue sans bâtiment reçoit une clôture : mur, grille ou haie.
+parcelle sur la rue sans bâtiment reçoit une clôture candidate ; prune_fences.py (D304) ne garde que celles que le relevé LiDAR voit, avec
+le matériau qu'il montre (mur, grille ou haie), un seul par côté de rue.
 """
 
 import json
@@ -30,6 +31,7 @@ from shapely.prepared import prep
 
 import config as c
 import region_sources as rs
+import prune_fences
 import roadside
 import streets_lib as sl
 from build_tiles import clip_layers
@@ -399,6 +401,8 @@ def main():
         m["walls"], m["furniture"], m["trees"], m["bytes"] = len(rec["walls"]), len(rec["furniture"]), len(rec["trees"]), len(text)
     (c.OUT / "world.json").write_text(json.dumps(world, indent=1))
     print(f"tuiles réécrites : {total / 1e6:.1f} Mo ; bords de chaussée : {dict(counts)}")
+    # D304 : seules restent les clôtures que le relevé LiDAR voit, d'un seul matériau par côté de rue.
+    prune_fences.main()
 
 
 def clean(geom, min_area=0.6):
