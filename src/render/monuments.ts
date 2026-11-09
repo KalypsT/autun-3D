@@ -3,6 +3,7 @@ import type { CathedralModel, CathedralSpec, CollegeGrille, CollegePavilion, Not
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
 import { HALL_PROJ, PERRON, REAR, perronLayout, rearLayout, rearPoint } from "../core/townhall";
 import { MeshBuilder, toThree, type UvMeshBuilder, type Vec3 } from "./geometry";
+import { drawProjectors, Floodlight, projectorsAlong, VeilBuilder, type FootWall } from "./floodlight";
 import type { SignAtlas } from "./sign-atlas";
 import { T } from "./style";
 
@@ -67,7 +68,7 @@ function spire(mb: MeshBuilder, f: Frame, s: number, t: number, r: number, zb: n
     const p0 = P(f, s + Math.cos(a0) * r, t + Math.sin(a0) * r, zb), p1 = P(f, s + Math.cos(a1) * r, t + Math.sin(a1) * r, zb);
     const n = N(f, Math.cos(am) / nl, Math.sin(am) / nl);
     mb.tri(p0, p1, apex, [n[0], slope / nl, n[2]], shade(color, 0.92 + (i % 2) * 0.1));
-    if (flood) flood.glow.quadGradient(p0, p1, apex, apex, [n[0], slope / nl, n[2]], floodAt(zb), floodAt(zt));
+    if (flood?.fl) flood.fl.tri(p0, p1, apex, [n[0], slope / nl, n[2]], color);
   }
 }
 
@@ -161,34 +162,30 @@ const GLAZE_FILL = C("#d9a83a"), GLAZE_NET = C("#2f6a48"), GLAZE_RED = C("#a8432
 type Pt = [number, number];
 
 /**
- * Éclairage de nuit de la cathédrale (D132, photo de nuit) : pendant `buildSaintLazare`, les murs et les flèches sont doublés dans le maillage
- * des vitres allumées (visible la nuit seulement), en dégradé chaud du pied (projecteurs) vers le haut ; les toits restent sombres.
+ * Éclairage de nuit de la cathédrale (D132, revu en D297 d'après la photo de nuit 6) : pendant `buildSaintLazare`, les murs, contreforts
+ * et flèches sont doublés dans le voile des projecteurs (`floodlight.ts`), posés d'office au pied des murs qui partent du sol (un premier
+ * passage les relève). Les toits restent sombres (ils ne regardent pas les projecteurs).
  */
-let flood: { glow: MeshBuilder; g: number } | null = null;
-const FLOOD_LOW = C("#ffd08a"), FLOOD_HIGH = C("#9e7a52");
-function floodAt(z: number): THREE.Color {
-  const k = Math.min(1, Math.max(0, (z - flood!.g) / 60));
-  return FLOOD_LOW.clone().lerp(FLOOD_HIGH, Math.sqrt(k));
-}
+let flood: { fl: Floodlight | null; walls: FootWall[] | null } | null = null;
 /**
- * Baies et encadrements la nuit : redessinés dans le maillage éclairé, après le mur (sans quoi l'éclairage, tiré vers la caméra, les couvre
- * de loin) ; les baies restent sombres, les encadrements prennent la lumière, un peu plus sombre.
+ * Baies et encadrements la nuit : redessinés dans le voile, après le mur (sans quoi l'éclairage, tiré vers la caméra, les couvre de loin) ;
+ * les baies restent sombres, les encadrements prennent la lumière, un peu plus sombres.
  */
 const NIGHT_BAY = C("#1c2436");
-function nightCopy(col: THREE.Color, z: number, draw: (glow: MeshBuilder, col: THREE.Color) => void): void {
-  if (!flood) return;
-  const fl = flood, c = col === BAY ? NIGHT_BAY : shade(floodAt(z), 0.8);
+function nightCopy(col: THREE.Color, _z: number, draw: (glow: MeshBuilder, col: THREE.Color) => void): void {
+  if (!flood?.fl) return;
+  const fl = flood, c = col === BAY ? NIGHT_BAY : shade(col, 0.8);
   flood = null;
   try {
-    draw(fl.glow, c);
+    draw(new VeilBuilder(fl.fl!), c);
   } finally {
     flood = fl;
   }
 }
 
-/** Double éclairé d'un quad du repère (a, b en bas, c, d en haut). */
-function lit(f: Frame, a: [number, number, number], b: [number, number, number], c: [number, number, number], d: [number, number, number], n: Vec3, k = 1): void {
-  if (flood) flood.glow.quadGradient(P(f, ...a), P(f, ...b), P(f, ...c), P(f, ...d), n, shade(floodAt((a[2] + b[2]) / 2), k), shade(floodAt((c[2] + d[2]) / 2), k));
+/** Double éclairé d'un quad du repère (a, b en bas, c, d en haut), pierre `col` assombrie de `k` (flancs des contreforts). */
+function lit(f: Frame, a: [number, number, number], b: [number, number, number], c: [number, number, number], d: [number, number, number], n: Vec3, k = 1, col: THREE.Color = STONE): void {
+  if (flood?.fl) flood.fl.quad(P(f, ...a), P(f, ...b), P(f, ...c), P(f, ...d), n, shade(col, k));
 }
 
 /** Mur droit de a à b (s, t), normale `out`, du sol jusqu'aux hauts za (en a) et zb (en b), en pans de 6 m au plus pour suivre le relief. */
@@ -202,8 +199,10 @@ function wallST(mb: MeshBuilder, f: Frame, a: Pt, b: Pt, za: number, zb: number,
     const p0: Pt = [a[0] + (b[0] - a[0]) * u0, a[1] + (b[1] - a[1]) * u0], p1: Pt = [a[0] + (b[0] - a[0]) * u1, a[1] + (b[1] - a[1]) * u1];
     const z0 = za + (zb - za) * u0, z1 = za + (zb - za) * u1;
     q(mb, f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n, col);
-    lit(f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n);
+    lit(f, [...p0, ground(...p0)], [...p1, ground(...p1)], [...p1, z1], [...p0, z0], n, 1, col);
   }
+  // Premier passage (D297) : les murs qui partent du sol (mur entier) reçoivent des projecteurs.
+  if (flood?.walls && col !== PORCH_IN) flood.walls.push({ a: P(f, ...a, ground(...a)), b: P(f, ...b, ground(...b)), n, h: Math.min(za, zb) - Math.max(ground(...a), ground(...b)) });
 }
 
 /** Murs d'un contour (s, t) dans le sens trigonométrique, haut `top` en chaque sommet. */
@@ -367,9 +366,18 @@ function hipRoof(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number, 
  * pans, bas-côtés en appentis, chapelles par travée, transept à pignons et bloc carré à toit en croupe au bout du bras ouest, tour de croisée
  * et flèche octogonale à clochetons, chœur, abside polygonale, bas-côtés du chœur. Remplace murs, toit et baies génériques du bâtiment.
  */
-export function buildSaintLazare(mb: MeshBuilder, glow: MeshBuilder | null, m: CathedralModel, terrain: HeightField): void {
-  flood = glow ? { glow, g: m.g } : null;
+export function buildSaintLazare(mb: MeshBuilder, glow: MeshBuilder | null, m: CathedralModel, terrain: HeightField, halo: MeshBuilder | null = null): void {
   try {
+    if (glow) {
+      // Premier passage : relevé des murs au sol, puis projecteurs à leur pied (D297).
+      const walls: FootWall[] = [];
+      flood = { fl: null, walls };
+      lazare(new MeshBuilder(), m, terrain);
+      const gr = (x: number, z: number): number => terrain.heightAt(x, -z);
+      const projectors = projectorsAlong(walls.filter((w) => w.h > 3), gr, { step: 10, out: 1.5, aim: 0.25, power: 1.9, range: 9 });
+      drawProjectors(mb, glow, halo, projectors, gr);
+      flood = { fl: new Floodlight(glow, projectors, 0.5), walls: null };
+    }
     lazare(mb, m, terrain);
   } finally {
     flood = null;

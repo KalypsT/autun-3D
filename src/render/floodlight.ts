@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MeshBuilder, Vec3 } from "./geometry";
+import { MeshBuilder, type Vec3 } from "./geometry";
 
 /**
  * Éclairage des monuments la nuit par projecteurs (D297). Avant, chaque face était recopiée dans le maillage allumé (`glow`, matière sans
@@ -69,20 +69,26 @@ export class Floodlight {
   triangles = 0;
   private readonly tmp = [new THREE.Color(), new THREE.Color(), new THREE.Color()] as const;
 
-  constructor(readonly glow: MeshBuilder, readonly projectors: readonly Projector[]) {}
+  /** `grain` : taille des carreaux rapportée à la distance au projecteur le plus proche (plus grand : moins de triangles, taches moins nettes). */
+  /**
+   * `smooth` : normale servant au calcul de la lumière à la place de celle de la face (surfaces irrégulières comme le blocage de Couhard,
+   * dont chaque pan a sa propre orientation : sans elle, le voile fait un damier).
+   */
+  constructor(readonly glow: MeshBuilder, readonly projectors: readonly Projector[], readonly grain = 0.3, readonly smooth: ((p: Vec3, n: Vec3) => Vec3) | null = null) {}
 
-  /** Taille des carreaux près de `p` : 0,5 m au pied d'un projecteur, jusqu'à 3 m loin. */
+  /** Taille des carreaux près de `p` : 0,5 m au pied d'un projecteur, jusqu'à 10 × `grain` m loin. */
   private cell(p: Vec3): number {
     let best = Infinity;
     for (const pr of this.projectors) best = Math.min(best, Math.hypot(p[0] - pr.p[0], p[1] - pr.p[1], p[2] - pr.p[2]));
-    return Math.min(3, Math.max(0.5, 0.3 * best));
+    return Math.min(10 * this.grain, Math.max(0.5, this.grain * best));
   }
 
   private shade(p: Vec3, n: Vec3, albedo: THREE.Color, out: THREE.Color): number {
-    const e = irradiance(this.projectors, p, n);
+    const e = irradiance(this.projectors, p, this.smooth ? this.smooth(p, n) : n);
     // Pierre éclairée : sa couleur dans la teinte des projecteurs, un peu plus claire là où la lumière est forte.
     out.copy(albedo).multiply(FLOOD_TINT).multiplyScalar(0.8 + 0.35 * Math.min(e, 1.5));
-    return veil(e);
+    // Vitres éteintes (teintes bleues) : le verre ne renvoie pas la lumière des projecteurs ; sans ce frein, bleu × chaud tourne au vert.
+    return albedo.b > albedo.r * 1.1 ? 0.15 * veil(e) : veil(e);
   }
 
   /** Triangle à voile, sans découpe. */
@@ -162,4 +168,69 @@ export function drawProjectors(mb: MeshBuilder, glow: MeshBuilder, halo: MeshBui
       halo.triColors(c, [e0x, ground(e0x, e0z) + 0.06, e0z], [e1x, ground(e1x, e1z) + 0.06, e1z], [0, 1, 0], POOL_TINT, clear, clear, 1, 0, 0);
     }
   }
+}
+
+/**
+ * Pinceau qui passe tout ce qu'on lui dessine au voile de `fl` (la couleur donnée est celle de la pierre) : pour les fonctions de dessin
+ * qui écrivent dans un `MeshBuilder` (baies, encadrements, modénature).
+ */
+export class VeilBuilder extends MeshBuilder {
+  constructor(private readonly fl: Floodlight) {
+    super();
+  }
+
+  override tri(a: Vec3, b: Vec3, c: Vec3, n: Vec3, color: THREE.Color): void {
+    this.fl.tri(a, b, c, n, color);
+  }
+
+  override quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, color: THREE.Color): void {
+    this.fl.quad(a, b, c, d, n, color);
+  }
+
+  override quadGradient(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, low: THREE.Color): void {
+    this.fl.quad(a, b, c, d, n, low);
+  }
+}
+
+/** Mur qui part du sol, relevé pour placer les projecteurs : pied de a à b (repère three), normale horizontale vers l'extérieur, haut. */
+export interface FootWall {
+  a: Vec3;
+  b: Vec3;
+  n: Vec3;
+  h: number;
+}
+
+/**
+ * Projecteurs posés d'office au pied des murs relevés (D297) : un tous les `step` mètres environ, à `out` mètres devant le mur, pointé vers
+ * lui à `aim` × sa hauteur (6 m au plus). Une place qui tombe derrière un autre mur relevé (dans le bâtiment, entre deux contreforts trop
+ * serrés) ou à moins de 0,8 m d'un mur est écartée. `ground(x, z)` : altitude du sol (repère three).
+ */
+export function projectorsAlong(walls: readonly FootWall[], ground: (x: number, z: number) => number, o: { step?: number; out?: number; aim?: number; power?: number; range?: number; avoid?: readonly FootWall[] } = {}): Projector[] {
+  const step = o.step ?? 8, out = o.out ?? 1.5, aim = o.aim ?? 0.4;
+  const all = o.avoid ? [...walls, ...o.avoid] : walls;
+  const near = (x: number, z: number, self: FootWall): boolean => all.some((w) => {
+    if (w === self) return false;
+    const ux = w.b[0] - w.a[0], uz = w.b[2] - w.a[2], l2 = ux * ux + uz * uz;
+    if (l2 < 1e-6) return false;
+    const k = ((x - w.a[0]) * ux + (z - w.a[2]) * uz) / l2;
+    if (k < 0 || k > 1) return false;
+    const px = w.a[0] + k * ux - x, pz = w.a[2] + k * uz - z, dist = Math.hypot(px, pz);
+    // Derrière ce mur (du côté opposé à sa normale), tout près : dans le bâtiment.
+    const behind = (x - w.a[0] - k * ux) * w.n[0] + (z - w.a[2] - k * uz) * w.n[2] < 0;
+    return dist < 0.8 || (behind && dist < 4);
+  });
+  const out_: Projector[] = [];
+  for (const w of walls) {
+    const len = Math.hypot(w.b[0] - w.a[0], w.b[2] - w.a[2]);
+    if (len < 1.5) continue;
+    const k = Math.max(1, Math.round(len / step));
+    for (let i = 0; i < k; i++) {
+      const u = (i + 0.5) / k;
+      const wx = w.a[0] + (w.b[0] - w.a[0]) * u, wz = w.a[2] + (w.b[2] - w.a[2]) * u, wy = w.a[1] + (w.b[1] - w.a[1]) * u;
+      const x = wx + w.n[0] * out, z = wz + w.n[2] * out;
+      if (near(x, z, w)) continue;
+      out_.push(aimAt([x, ground(x, z) + 0.12, z], [wx, wy + Math.min(6, aim * w.h), wz], { power: o.power ?? 2.2, range: o.range ?? 9 }));
+    }
+  }
+  return out_;
 }

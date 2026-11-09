@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { CouhardSite, HeightField } from "../data/types";
 import { couhardAt, couhardPanel, couhardPosts, couhardRadius, frameOf } from "../core/landmarks";
-import { MeshBuilder } from "./geometry";
+import { MeshBuilder, toThree } from "./geometry";
+import { aimAt, drawProjectors, Floodlight } from "./floodlight";
 import { GateDraw } from "./gates";
 
 /**
@@ -59,9 +60,27 @@ function surfaceAt(s: CouhardSite, z: number, cap: number): number {
   return radiusAt(s, z, cap) - couhardHole(s, z, cap) * s.cav.d;
 }
 
-export function buildCouhard(mb: MeshBuilder, glow: MeshBuilder | null, s: CouhardSite, terrain: HeightField): void {
+export function buildCouhard(mb: MeshBuilder, glow: MeshBuilder | null, s: CouhardSite, terrain: HeightField, halo: MeshBuilder | null = null): void {
   const [cx, cy] = s.c;
-  const d = new GateDraw(mb, s.light ? glow : null, frameOf(cx, cy, 0, 1, 1), s.g, s.top * 1.1);
+  // Projecteurs (D297, sans photo de nuit) : quatre au pied, entre la pierre et la clôture, pointés vers le milieu de la hauteur ; le dos
+  // des ressauts et la cheminée restent dans la pénombre.
+  let fl: Floodlight | null = null;
+  if (s.light && glow) {
+    const gr = (x: number, z: number): number => terrain.heightAt(x, -z);
+    const projectors = [30, 120, 210, 300].map((cap) => {
+      const [x, y] = couhardAt(s, cap, radiusAt(s, 0, cap) + 1.1), [wx, wy] = couhardAt(s, cap, radiusAt(s, 6, cap));
+      return aimAt(toThree(x, y, terrain.heightAt(x, y) + 0.12), toThree(wx, wy, s.g + 6), { power: 3.4, range: 12, inner: 0.45, outer: 0.95 });
+    });
+    // La lumière suit la forme d'ensemble (normale tirée de l'axe, un peu levée), pas les pans du blocage : sans quoi le voile fait un damier.
+    const [ox, , oz] = toThree(cx, cy, 0);
+    fl = new Floodlight(glow, projectors, 0.4, (p, n) => {
+      const rx = p[0] - ox, rz = p[2] - oz, rl = Math.hypot(rx, rz) || 1;
+      const mx = (0.85 * rx) / rl + 0.15 * n[0], my = 0.3 + 0.15 * n[1], mz = (0.85 * rz) / rl + 0.15 * n[2], ml = Math.hypot(mx, my, mz);
+      return [mx / ml, my / ml, mz / ml];
+    });
+    drawProjectors(mb, glow, halo, projectors, gr);
+  }
+  const d = new GateDraw(mb, s.light ? glow : null, frameOf(cx, cy, 0, 1, 1), s.g, s.top * 1.1, fl);
   const zs = couhardLevels(s);
   const caps = Array.from({ length: CAPS }, (_, k) => (360 * k) / CAPS);
   // Sommets [s, t, z] (repère centré sur l'axe : s vers l'est, t vers le nord) et enfoncement de la cavité.

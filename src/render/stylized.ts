@@ -565,7 +565,7 @@ export function* buildTileSteps(res: StyleResources, tile: TileData, terrain: He
   if (st?.tall && !skip.includes("reeds")) buildTallGrass(detail, st.tall, terrain.ground ?? terrain);
   if (!skip.includes("walls")) buildWalls({ solid: detail, solidColor: C("#d9c9a6"), hedgeColor: C(T.trees[2] ?? "#5aa874"), cap: detail, fence, mesh: meshFence, posts }, wallsOutsideMonuments(kinds, tile.walls), terrain);
   // Tours des remparts (D254).
-  if (!skip.includes("walls") && tile.towers) buildTowers({ solid: detail, cap: detail, glow, hedgeColor: C(T.trees[2] ?? "#5aa874") }, tile.towers, terrain);
+  if (!skip.includes("walls") && tile.towers) buildTowers({ solid: detail, cap: detail, glow, halo: siteHalo, hedgeColor: C(T.trees[2] ?? "#5aa874") }, tile.towers, terrain);
   yield;
   // Les escaliers remplacés par le perron d'un monument modélisé (hôtel de ville, D125) ne sont plus dessinés sur le relief.
   const perrons = new Set(Object.values(kinds?.buildings ?? {}).map((k) => k.hall?.stairs));

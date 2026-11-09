@@ -53,8 +53,10 @@ describe("monuments (D95) : géométrie", () => {
     buildJanus(jb, jg, temple, world.terrain);
     expect(jb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(jb)).toBeLessThan(6000);
-    expect(tris(jg)).toBeGreaterThan(tris(jb) * 0.9);
-    expect(tris(jg)).toBeLessThanOrEqual(tris(jb));
+    // D297 : voile des projecteurs, moins de 4 500 triangles (3 054), des coins non couverts (opacité presque nulle).
+    expect(tris(jg)).toBeGreaterThan(500);
+    expect(tris(jg)).toBeLessThan(4500);
+    expect(Math.min(...jg.alphas!.slice(0, 5000))).toBeLessThan(0.1);
     // Pierre de Couhard (D222) : moins de 6 000 triangles ; éclairée la nuit (le trou, les touffes et la clôture restent sombres).
     const pyr = kinds.sites.find((q) => q.t === "couhard")!;
     if (pyr.t !== "couhard") throw new Error("Pierre de Couhard absente");
@@ -62,7 +64,8 @@ describe("monuments (D95) : géométrie", () => {
     buildCouhard(pb, pg, pyr, world.terrain);
     expect(pb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(pb)).toBeLessThan(6000);
-    expect(tris(pg)).toBeGreaterThan(tris(pb) * 0.6);
+    // D297 : voile de quatre projecteurs au pied, moins que la pierre elle-même (2 653).
+    expect(tris(pg)).toBeGreaterThan(500);
     expect(tris(pg)).toBeLessThan(tris(pb));
     // Maison du 7 allée de l'Acaron (D140) : moins de 4 000 triangles ; quelques vitres et les appliques allumées la nuit.
     const house = Object.values(kinds.buildings).find((b) => b.house)!.house!;
@@ -180,9 +183,9 @@ describe("monuments (D95) : géométrie", () => {
     expect(m.spire[0]).toBeGreaterThan(m.tower[2] + 3);
     const mb = new MeshBuilder(), lights = new MeshBuilder();
     buildSaintLazare(mb, lights, m, world.terrain);
-    // Éclairage de nuit (D132) : murs et flèches doublés dans le maillage des vitres allumées.
+    // Éclairage de nuit (D132, projecteurs en D297) : murs et flèches doublés dans le voile, moins de 7 000 triangles (6 151).
     expect(tris(lights)).toBeGreaterThan(200);
-    expect(tris(lights)).toBeLessThan(4000);
+    expect(tris(lights)).toBeLessThan(7000);
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
     expect(tris(mb)).toBeLessThan(8000);

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { HeightField, JanusSite, JanusWall } from "../data/types";
 import { at, frameOf, janusSlabs, type JanusSlab, type Opening } from "../core/landmarks";
-import { MeshBuilder } from "./geometry";
+import { MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { aimAt, drawProjectors, Floodlight, type Projector } from "./floodlight";
 import { columns, GateDraw, openingTop } from "./gates";
 
 /**
@@ -135,12 +136,32 @@ function slab(d: GateDraw, sl: JanusSlab, s: JanusSite, terrain: HeightField, wi
 }
 
 /** Temple de Janus : `glow` reçoit l'éclairage de nuit (si le site l'a). Obstacles : `janusRings` (les arches restent ouvertes). */
-export function buildJanus(mb: MeshBuilder, glow: MeshBuilder | null, s: JanusSite, terrain: HeightField): void {
+export function buildJanus(mb: MeshBuilder, glow: MeshBuilder | null, s: JanusSite, terrain: HeightField, halo: MeshBuilder | null = null): void {
   const top = Math.max(...s.S.top.map((p) => p[1]), ...s.W.top.map((p) => p[1]));
-  janusSlabs(s).forEach((sl, i) => slab(new GateDraw(mb, s.light ? glow : null, sl.f, s.g, top * 1.1), sl, s, terrain, i));
-  // Souches des murs arasés (nord et est), au ras du terre-plein.
-  const d = new GateDraw(mb, s.light ? glow : null, frameOf(s.o[0], s.o[1], s.a, 1, 1), s.g, top * 1.1);
+  const fr = frameOf(s.o[0], s.o[1], s.a, 1, 1);
   const [Ls, Lt] = s.L, [twS, twW] = s.tw, zt = s.g + s.low + 0.12, zb = s.g - 0.8;
+  // Projecteurs (D297, photo de nuit 7 : lumière franche venue de devant, arêtes dans l'ombre) : deux à 3 m devant chaque face extérieure
+  // (sud et ouest), un plus faible devant chaque face intérieure (dans la cella).
+  let fl: Floodlight | null = null;
+  if (s.light && glow) {
+    const P = (u: number, t: number, z: number): Vec3 => { const [x, y] = at(fr, u, t); return toThree(x, y, z); };
+    const gr = (x: number, z: number): number => terrain.heightAt(x, -z);
+    const prj = (u: number, t: number, wu: number, wt: number, power: number): Projector => {
+      const p = P(u, t, 0);
+      return aimAt([p[0], gr(p[0], p[2]) + 0.12, p[2]], P(wu, wt, s.g + top * 0.45), { power, range: 12, inner: 0.35, outer: 0.8 });
+    };
+    const projectors = [
+      ...[0.3, 0.7].map((k) => prj(Ls * k, -3, Ls * k, 0, 3)),
+      ...[0.3, 0.7].map((k) => prj(-3, Lt * k, 0, Lt * k, 3)),
+      prj(Ls * 0.55, twS + 3, Ls * 0.55, twS, 1.6),
+      prj(twW + 3, Lt * 0.55, twW, Lt * 0.55, 1.6),
+    ];
+    fl = new Floodlight(glow, projectors, 0.4);
+    drawProjectors(mb, glow, halo, projectors, gr);
+  }
+  janusSlabs(s).forEach((sl, i) => slab(new GateDraw(mb, s.light ? glow : null, sl.f, s.g, top * 1.1, fl), sl, s, terrain, i));
+  // Souches des murs arasés (nord et est), au ras du terre-plein.
+  const d = new GateDraw(mb, s.light ? glow : null, fr, s.g, top * 1.1, fl);
   d.box(twW, Ls, Lt - twS, Lt, zb, zt, STUB, shade(STUB, 1.08));
   d.box(Ls - twW, Ls, twS, Lt - twS, zb, zt, STUB, shade(STUB, 1.08));
 }

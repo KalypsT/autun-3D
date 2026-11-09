@@ -128,13 +128,15 @@ export function buildGate(mb: MeshBuilder, glow: MeshBuilder | null, site: Extra
     const holes = lay.openings.filter((o) => o.zb < 0).sort((a, b) => a.s0 - b.s0);
     const edges = [-hl, ...holes.flatMap((o) => [o.s0, o.s1]), hl];
     const projectors: Projector[] = [];
+    // Porte Saint-André plus vivement éclairée que celle d'Arroux (photos de nuit 2 et 3 : toute la face claire jusqu'à la galerie).
+    const power = site.st === "andre" ? 2.1 : 1.5;
     for (let i = 0; i + 1 < edges.length; i += 2) {
       const s0 = edges[i]!, s1 = edges[i + 1]!;
       if (s1 - s0 < 0.6) continue;
       const sc = (s0 + s1) / 2;
       for (const side of [1, -1]) {
         const t = side * (hw + 1.0);
-        projectors.push(aimAt(P(sc, t, foot(sc, t) + 0.4 + 0.12), P(sc, side * hw, Z(3.2)), { power: 1.5, range: 6 }));
+        projectors.push(aimAt(P(sc, t, foot(sc, t) + 0.4 + 0.12), P(sc, side * hw, Z(3.2)), { power, range: 6 }));
       }
     }
     fl = new Floodlight(glow, projectors);
@@ -353,12 +355,29 @@ const CH_WALL = C("#cbab86"), CH_BRICK = C("#b07a5c"), CH_ROUND = C("#a28d74"), 
  * Église accolée à la porte Saint-André, d'après photo et mesures : nef à pignons en moellons à lits de brique, toit de tuiles à deux
  * pans, tour ronde de moellons à toit conique, porte claire au pignon d'entrée, baies hautes en plein cintre. Éclairée la nuit comme la porte.
  */
-export function buildChapel(mb: MeshBuilder, glow: MeshBuilder | null, m: ChapelModel, terrain: HeightField): void {
+export function buildChapel(mb: MeshBuilder, glow: MeshBuilder | null, m: ChapelModel, terrain: HeightField, halo: MeshBuilder | null = null): void {
   const f = frameOf(m.o[0], m.o[1], m.a, 1, 1);
-  const d = new GateDraw(mb, m.light ? glow : null, f, m.g, m.ridge * 1.1);
   const Z = (h: number): number => m.g + h;
   const foot = (s: number, t: number): number => { const [x, y] = at(f, s, t); return terrain.heightAt(x, y) - 0.4; };
   const [s0, s1, t0, t1] = m.nave, sm = (s0 + s1) / 2;
+  // Projecteurs (D297, photo de nuit 3) : deux au pied de la tour ronde, de part et d'autre de son axe, à 1 m ; un devant le pignon
+  // d'entrée, plus faible (le pignon reste dans la pénombre sur la photo).
+  let fl: Floodlight | null = null;
+  if (m.light && glow) {
+    const P = (s: number, t: number, z: number): Vec3 => { const [x, y] = at(f, s, t); return toThree(x, y, z); };
+    const [sc, tc, r] = m.round;
+    const axis = Math.atan2(tc - (t0 + t1) / 2, sc - sm);
+    const projectors: Projector[] = [];
+    for (const da of [-0.75, 0.75]) {
+      const a = axis + da, ps = sc + Math.cos(a) * (r + 1), pt = tc + Math.sin(a) * (r + 1);
+      projectors.push(aimAt(P(ps, pt, foot(ps, pt) + 0.52), P(sc + Math.cos(a) * r, tc + Math.sin(a) * r, Z(3)), { power: 2.2, range: 5 }));
+    }
+    const gs = sm + m.door[0] + (m.door[0] > 0 ? -2 : 2);
+    projectors.push(aimAt(P(gs, t1 + 1.5, foot(gs, t1 + 1.5) + 0.52), P(gs, t1, Z(3)), { power: 1, range: 5 }));
+    fl = new Floodlight(glow, projectors);
+    drawProjectors(mb, glow, halo, projectors, (x, z) => terrain.heightAt(x, -z));
+  }
+  const d = new GateDraw(mb, m.light ? glow : null, f, m.g, m.ridge * 1.1, fl);
   const [ze, zr] = [Z(m.eave), Z(m.ridge)];
   // Murs de la nef, en pans de 4 m au plus pour suivre le sol ; lits de brique tous les 1,1 m.
   const wall = (a: [number, number], b: [number, number], n: [number, number]): void => {
@@ -382,8 +401,7 @@ export function buildChapel(mb: MeshBuilder, glow: MeshBuilder | null, m: Chapel
   // Pignons et toit à deux pans (débord de 30 cm).
   for (const [t, dir] of [[t0, -1], [t1, 1]] as const) {
     const n = d.N(0, dir);
-    d.mb.tri(d.P(s0, t, ze), d.P(s1, t, ze), d.P(sm, t, zr), n, CH_WALL);
-    if (d.glow) d.glow.tri(d.P(s0, t, ze), d.P(s1, t, ze), d.P(sm, t, zr), n, d.flood(zr, 1));
+    d.tri(d.P(s0, t, ze), d.P(s1, t, ze), d.P(sm, t, zr), n, CH_WALL, 1);
   }
   const ov = 0.3, slope = (zr - ze) / ((s1 - s0) / 2), zo = ze - ov * slope, nl = Math.hypot(1, slope);
   for (const [se, dir] of [[s0 - ov, -1], [s1 + ov, 1]] as const) {
@@ -401,8 +419,7 @@ export function buildChapel(mb: MeshBuilder, glow: MeshBuilder | null, m: Chapel
     const [qa, qb] = [p(a0, ro), p(a1, ro)], k = (rap - rez) / ro, cl = Math.hypot(1, k);
     const n = d.N(Math.cos(am) * k / cl, Math.sin(am) * k / cl, 1 / cl);
     const zo2 = Z(rez) - 0.25 * k;
-    d.mb.tri(d.P(qa[0], qa[1], zo2), d.P(qb[0], qb[1], zo2), d.P(sc, tc, Z(rap)), n, shade(TILES, 0.9 + (i % 2) * 0.08));
-    if (d.glow) d.glow.tri(d.P(qa[0], qa[1], zo2), d.P(qb[0], qb[1], zo2), d.P(sc, tc, Z(rap)), n, d.flood(Z(rap), 0.5));
+    d.tri(d.P(qa[0], qa[1], zo2), d.P(qb[0], qb[1], zo2), d.P(sc, tc, Z(rap)), n, shade(TILES, 0.9 + (i % 2) * 0.08), 0.5);
   }
   // Porte claire au pignon d'entrée et baies en plein cintre (encadrement de pierre claire).
   const [doff, dw, dh] = m.door, ds = sm + doff, df = foot(ds, t1) + 0.4;

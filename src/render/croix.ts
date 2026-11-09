@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { CroixSite, HeightField } from "../data/types";
 import { croixAt, croixFrame } from "../core/landmarks";
-import { MeshBuilder } from "./geometry";
+import { MeshBuilder, toThree } from "./geometry";
+import { aimAt, Floodlight } from "./floodlight";
 import { GateDraw } from "./gates";
 
 /**
@@ -32,12 +33,15 @@ type P3 = [number, number, number];
 export function buildCroix(mb: MeshBuilder, glow: MeshBuilder | null, s: CroixSite, terrain: HeightField): void {
   const f = croixFrame(s);
   const lit = s.light ? glow : null;
-  const d = new GateDraw(mb, null, f, s.g, s.top);
-  const dl = new GateDraw(mb, lit, f, s.g, s.top);
   const ground = (u: number, t: number): number => {
     const [x, y] = croixAt(s, u, t);
     return terrain.heightAt(x, y);
   };
+  // Projecteurs (D297) : ceux des deux mâts côté ville (photo 1), au sommet, pointés vers la croisée ; faisceau étroit.
+  const P = (u: number, t: number, z: number): ReturnType<typeof toThree> => { const [x, y] = croixAt(s, u, t); return toThree(x, y, z); };
+  const fl = lit ? new Floodlight(lit, s.masts.map(([u, t, h]) => aimAt(P(u, t, ground(u, t) + h + 0.1), P(0, 0, s.g + s.top * 0.55), { power: 3.2, range: 11, inner: 0.3, outer: 0.6 })), 0.4) : null;
+  const d = new GateDraw(mb, null, f, s.g, s.top);
+  const dl = new GateDraw(mb, lit, f, s.g, s.top, fl);
   buildPlatform(d, dl, s, ground);
   buildCross(dl, s);
   buildPlaques(d, s, ground);
