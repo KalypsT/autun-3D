@@ -6816,3 +6816,29 @@ graphe (D61), pas les panneaux.
 ![Un stop et un sens interdit](captures/d295-stop.jpg)
 ![Une limitation à 30](captures/d295-30.jpg)
 ![Un cédez-le-passage](captures/d295-cedez.jpg)
+
+## 2026-11-09 — D296. Stationnement le long des trottoirs : relevé automatique essayé, point en pause
+
+**Demande de l'utilisateur** : voitures garées en file le long des trottoirs ; même taux d'occupation que les parkings (30 %), plus pleines la
+nuit dans les quartiers et le jour au centre si ce n'est pas trop complexe ; marquage au sol possible.
+
+**Constats** :
+- OpenStreetMap ne décrit pas le stationnement à Autun : une seule voie sur 1 208 (avenue Jules Basdevant, `parking:right=lane`).
+- Les voitures garées se voient bien sur l'orthophotographie IGN à 20 cm (millésimes 2018, 2020, 2023 disponibles).
+- **Chaussée dessinée** : dans certaines rues elle est plus étroite que la vraie ou décalée (D94) : rue de Lattre de Tassigny, les voitures
+  garées sont sur ce que le jeu dessine en trottoir.
+- **Circulation** : sur une voie à double sens, les conducteurs roulent au quart de la largeur (`laneOffset`) ; une file garée de 2 m ne
+  laisse passer qu'à partir d'environ 12,8 m de chaussée : il faudra décaler la voie des conducteurs là où l'on stationne.
+- Largeurs du graphe (hors service et parkings, 105 km) : double sens < 5 m 35,7 km, 5 à 6,5 m 29,7 km, 6,5 à 8 m 16,3 km, ≥ 8 m 10,6 km ;
+  sens unique < 5 m 9,6 km, ≥ 5 m 3,5 km.
+
+**Relevé automatique** (`tools/data/survey_curbs.py`, versionné ; orthophoto en cache dans `.cache/shared/ortho20`) : bandes de 2 m le long
+de la bordure dessinée et au-delà, comparées à l'enrobé et à la couleur du bord de rue, végétation écartée, bandes limitées à la chaussée
+et au trottoir dessinés, côtés bordés de bâtiments seulement. Trois passages : 12 000 voitures sur 118 km (bas-côtés), 2 300 sur 30 km
+(lignes de rive), 1 400 sur 18 km (murs et entrées de cour dans les rues de village). Correct au centre (rue Jeannin, rue Eumène, rue de
+l'Arbalète, rue des Cités, avenue Charles de Gaulle) mais des files manquées ; ailleurs, environ la moitié de faux. La comparaison de deux
+millésimes échoue (ombres et dévers des bâtiments trop différents). **Le plan produit n'est pas versionné** : pas assez fiable.
+
+**Options proposées** : (1) règles plutôt que relevé (rues de ville bordées de maisons, assez larges ou à trottoir), le relevé ne
+confirmant que le centre ; (2) relevé à la main rue par rue au centre (comme D169, D230) ; (3) les deux. **Point mis en pause par
+l'utilisateur.**

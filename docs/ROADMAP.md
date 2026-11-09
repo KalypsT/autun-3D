@@ -50,7 +50,7 @@ Chaque étape doit être jouable et testable sur téléphone. Les noms J1 à J7 
 
 Idées notées pendant l'agrandissement (D105, pas faites) : vagues et écume animée, nager, bateau ou jet-ski, véhicule qui coule, phare ou port sur la côte ; demi-tour des conducteurs au bout des routes qui finissent à la mer ; mesurer les scénarios de circulation et de police sur les nouveaux quartiers (les tests restent dans l'ancien carré) ; banc `?bench=1` avec un tronçon dans les nouveaux quartiers et au bord de l'eau ; relief fin plus léger sous la mer (2 m ou rien : ≈ 20 Mo de moins).
 
-Idées notées pendant M3 (pas faites, sauf les panneaux : D295) : stationnement le long des trottoirs (voitures garées en file), bateaux et bordures abaissées aux passages, recentrer l'axe des voies dans l'emprise, plaques de rue aux carrefours, ~~panneaux tirés du graphe routier (stop, sens interdit, limitations)~~, portails réels des clôtures.
+Idées notées pendant M3 (pas faites, sauf les panneaux : D295) : stationnement le long des trottoirs (voitures garées en file ; relevé automatique essayé et mis en pause, D296), bateaux et bordures abaissées aux passages, recentrer l'axe des voies dans l'emprise, plaques de rue aux carrefours, ~~panneaux tirés du graphe routier (stop, sens interdit, limitations)~~, portails réels des clôtures.
 
 Idées notées pendant M2 (pas faites) : un TER qui circule sur la ligne ; nager ou un bateau sur l'Arroux et le plan d'eau du Vallon ; éclairage des ponts la nuit.
 
