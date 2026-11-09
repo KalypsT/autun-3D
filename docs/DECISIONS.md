@@ -6984,3 +6984,20 @@ ne gagne qu'un cinquième). Construction de la tuile : trois passages du dessin 
 ![Théâtre municipal, avant](captures/d299-municipal-avant.jpg)
 ![Théâtre municipal, après](captures/d299-municipal-apres.jpg)
 ![Le perron, après](captures/d299-perron-apres.jpg)
+
+## 2026-11-09 — D300. Croix de la Libération : un projecteur côté parking
+
+**Demande de l'utilisateur** (question laissée en D298) : « ajoute uniquement le projecteur côté parking pour la croix ». Les mâts sont côté
+ville ; pour qui arrive du parking, la face de la croix restait sombre.
+
+**Fait** (`buildCroix`, `croix.ts`) : un projecteur au sol, côté parking, à mi-chemin entre le pied du talus sud et le bord des rochers
+(t ≈ −5,8 m), décalé de 0,9 m de l'axe pour ne pas masquer la grande plaque ; pointé vers la croix à mi-hauteur, puissance 3, portée 10 m,
+ouverture 0,3 à 0,65 rad. Boîtier et tache au sol comme les autres monuments (les taches vont maintenant aussi dans les halos de la tuile de
+la Croix). Les deux mâts restent tels quels. Rien d'autre ne change.
+
+**Test** (`croix.test.ts`) : la face tournée vers le parking a plus de 20 sommets éclairés au-dessus de 3 m (aucun sans ce projecteur).
+
+**Vue** : `?view=croix&h=22` (depuis le parking).
+
+![Avant](captures/d300-croix-avant.jpg)
+![Après](captures/d300-croix-apres.jpg)

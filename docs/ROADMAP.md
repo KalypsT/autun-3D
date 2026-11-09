@@ -54,7 +54,7 @@ Idées notées pendant M3 (pas faites, sauf les panneaux : D295) : stationnement
 
 Idées notées pendant M2 (pas faites) : un TER qui circule sur la ligne ; nager ou un bateau sur l'Arroux et le plan d'eau du Vallon ; éclairage des ponts la nuit (à revoir avec l'utilisateur, D297).
 
-Éclairage des monuments revu par projecteurs (D297, `src/render/floodlight.ts`) : lots 1 à 3 faits (D297 portes, D298 église Saint-André, cathédrale, Janus, Couhard, Croix, Ursulines, D299 hôtel de ville et théâtre municipal) ; reste à juger sur téléphone (coût la nuit) ; pistes : ombres portées des corniches, projecteur côté parking pour la Croix, côtés de l'hôtel de ville. Teinte unique, allumé toute la nuit, théâtre romain éteint.
+Éclairage des monuments revu par projecteurs (D297, `src/render/floodlight.ts`) : lots 1 à 3 faits (D297 portes, D298 église Saint-André, cathédrale, Janus, Couhard, Croix, Ursulines, D299 hôtel de ville et théâtre municipal) ; reste à juger sur téléphone (coût la nuit) ; pistes : ombres portées des corniches, côtés de l'hôtel de ville ; projecteur côté parking de la Croix fait (D300). Teinte unique, allumé toute la nuit, théâtre romain éteint.
 
 Idées retenues pour plus tard : mode photo, météo (pluie, brume, adhérence), dégâts des véhicules, engins volants, **enfants** parmi les PNJ (proportions différentes, à décider avec l'utilisateur).
 

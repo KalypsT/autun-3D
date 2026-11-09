@@ -1030,7 +1030,7 @@ export function buildLandmarks(
     else if (s.t === "theatre") buildTheatre(sinks.solid, s, terrain);
     else if (s.t === "janus") buildJanus(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
     else if (s.t === "couhard") buildCouhard(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
-    else if (s.t === "croix") buildCroix(sinks.solid, sinks.glow, s, terrain);
+    else if (s.t === "croix") buildCroix(sinks.solid, sinks.glow, s, terrain, sinks.halo ?? null);
     else if (s.t === "roundabout") buildRoundabout(sinks.solid, s, terrain);
     else if (s.t === "curtain") buildCurtain(sinks.solid, s, terrain, sinks.leaves);
     else if (s.t === "bandstand") buildBandstand(sinks.solid, s, terrain);

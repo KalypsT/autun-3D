@@ -2141,3 +2141,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![L'hôtel de ville](docs/captures/d299-mairie-apres.jpg)
 ![Le théâtre municipal](docs/captures/d299-municipal-apres.jpg)
+
+**La Croix de la Libération éclairée côté parking (9 novembre 2026)** (D300)
+- Un projecteur au sol entre le talus et les rochers éclaire la face tournée vers le parking ; les deux mâts côté ville restent.
+- À faire de ton côté : arriver au parking la nuit (`?view=croix&h=22`).
+
+![Avant](docs/captures/d300-croix-avant.jpg)
+![Après](docs/captures/d300-croix-apres.jpg)
