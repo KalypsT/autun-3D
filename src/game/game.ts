@@ -256,6 +256,8 @@ export function startGame(ctx: GameContext): void {
   const distance = Number(params.get("dist") ?? 3.6);
   let camDist = distance;
   let riding: Vehicle | null = null;
+  /** Dernier véhicule utilisé (D301) : on ne l'oublie pas quand on s'en éloigne, tant qu'on n'en prend pas un autre. */
+  let lastRidden: Vehicle | null = saved?.last ? fleet.get(saved.last) : null;
   let rideModel: VehicleModel | null = null;
   // Gyrophare de la voiture de gendarmerie conduite (D281) : allumé ou non, son horloge (clignotement), le prochain « coup » qui fait se ranger
   // les voitures et s'écarter les passants devant.
@@ -442,6 +444,7 @@ export function startGame(ctx: GameContext): void {
   const vehicleName = new VehicleNameHud(document.getElementById("vname")!);
   const mount = (v: Vehicle): void => {
     riding = v;
+    lastRidden = v;
     // Un deux-roues tombé se relève quand on remonte dessus.
     Object.assign(v.state, { lean: 0, wheelie: 0, wheelieRate: 0, fallen: false, impact: 0, vz: 0, air: 0 });
     rideModel = fleet.take(v);
@@ -518,6 +521,8 @@ export function startGame(ctx: GameContext): void {
     if (uniqueTimer > 0) return;
     const step = 0.5 - uniqueTimer;
     uniqueTimer = 0.5;
+    // Véhicules laissés (D301) : loin du joueur depuis un moment, ils reviennent à leur place ou disparaissent ; le dernier utilisé reste.
+    for (const v of fleet.forget(player.x, player.y, step, lastRidden, (c) => market.holdHome(c))) damaged.delete(v);
     for (const spot of UNIQUES) {
       const v = fleet.get(spot.id) ?? null;
       const view = {
@@ -1157,7 +1162,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, health: health.hp, arms: inventory.toSave(),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {

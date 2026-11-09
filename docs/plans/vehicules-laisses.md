@@ -1,6 +1,6 @@
 # Véhicules laissés : ils s'effacent une fois qu'on a quitté le quartier (plan)
 
-**Avancement** : plan rédigé le 9 novembre 2026 après D300, à la demande de l'utilisateur. Rien n'est fait. Proposition validée, avec
+**Avancement** : **fait** (D301). Plan rédigé le 9 novembre 2026 après D300, à la demande de l'utilisateur. Proposition validée, avec
 l'option de **garder le dernier véhicule utilisé**. À faire **avant** `docs/plans/toits-monuments.md`.
 
 ## 0. Ce qu'il faut retenir
@@ -29,10 +29,10 @@ l'option de **garder le dernier véhicule utilisé**. À faire **avant** `docs/p
 
 ## 1. Le principe technique
 
-- **`Vehicle.origin`** (nouveau champ) : `"stall"` (place de stationnement ou parking à vélos, créé par `addFromTile`), `"loose"` (volé,
-  abandonné, départ, banc) ; posé à la création au lieu de deviner d'après l'identifiant. `home` reste la place d'origine des `"stall"`.
-  Un véhicule restauré d'une sauvegarde reprend son origine d'après son identifiant (les anciennes sauvegardes n'ont pas le champ).
-- **`Vehicle.away`** (nouveau champ, secondes) : temps passé hors de portée du joueur ; remis à 0 dès qu'il revient à moins de 200 m, ou
+- **Origine** (choix fait à la réalisation, D301) : lue sur l'identifiant (`isStallVehicle` : `voiture-`, `moto-`, `velo-`, `trottinette-`),
+  sans nouveau champ ni changement de sauvegarde. Un véhicule d'une place retrouvé dans une sauvegarde apprend sa place quand sa tuile le
+  recrée ; si la tuile n'est pas construite, il est retiré et la tuile le recréera.
+- **Temps d'absence** (dans `Fleet`, par véhicule, secondes) : temps passé hors de portée du joueur ; remis à 0 dès qu'il revient à moins de 200 m, ou
   qu'on le conduit.
 - **`Fleet.forget(px, py, dt, keep)`** : appelée toutes les 0,5 s dans `game.ts`, à côté du gardien des véhicules uniques ; `keep` est le
   dernier véhicule utilisé.

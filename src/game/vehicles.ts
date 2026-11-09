@@ -97,7 +97,7 @@ export function familyOf(v: { def: VehicleDef }): FamilyInfo {
   return FAMILIES[v.def.family];
 }
 
-/** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse. */
+/** Un véhicule du monde : garé, ou conduit par le joueur. Il reste là où on le laisse, jusqu'à ce qu'on s'en éloigne (`Fleet.forget`, D301). */
 export interface Vehicle {
   id: string;
   def: VehicleDef;
@@ -153,6 +153,29 @@ const cellKey = (ix: number, iy: number): number => (ix + 32768) * 65536 + (iy +
 const MOVED_DISTANCE = 0.5;
 const MOVED_HEADING = 0.1;
 
+/**
+ * Véhicules laissés (D301) : un véhicule hors de sa place est oublié quand le joueur est resté à plus de `distance` (m) pendant `delay` (s)
+ * d'affilée. `distance` dépasse la distance d'affichage des voitures (170 m) : on ne le voit pas disparaître.
+ */
+export const FORGET = { distance: 200, delay: 45 };
+
+/** Véhicule d'une place de stationnement ou d'un parking à vélos (créé par `addFromTile`) : oublié, il revient à sa place. */
+export function isStallVehicle(id: string): boolean {
+  return /^(voiture|moto|velo|trottinette)-/.test(id);
+}
+
+/** Le véhicule n'est plus à sa place d'origine (ou on le conduit, ou sa place est inconnue). */
+function movedOf(v: Vehicle): boolean {
+  const s = v.state, h = v.home;
+  return !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
+}
+
+/** Le véhicule a des dégâts (santé entamée, zone écrasée, fin). */
+function hurtOf(v: Vehicle): boolean {
+  const d = v.damage;
+  return d.version > 0 && (d.health < DAMAGE.max || d.end !== null || ZONES.some((z) => d.zones[z] > 0));
+}
+
 export class Fleet {
   readonly vehicles: Vehicle[] = [];
   private readonly byId = new Map<string, Vehicle>();
@@ -163,6 +186,8 @@ export class Fleet {
   private readonly clear: { x: number; y: number; r: number }[] = [];
   /** Cases de 2 m où rien ne se gare : le circuit du petit train (D117), trop long pour une liste de cercles. */
   private readonly clearCells = new Set<number>();
+  /** Temps (s) passé par chaque véhicule laissé avec le joueur loin de lui (D301). */
+  private readonly away = new Map<Vehicle, number>();
   private dirty = true;
   private lastCull = { x: Infinity, y: Infinity };
   /** Pour la mesure (banc) : véhicules en tout, véhicules garés dessinés et maillages instanciés qu'ils coûtent (un par modèle présent). */
@@ -265,7 +290,11 @@ export class Fleet {
    */
   add(model: string, id: string, x: number, y: number, heading: number, variant: number, home: Vehicle["home"] = { x, y, heading }): Vehicle {
     const existing = this.byId.get(id);
-    if (existing) return existing;
+    if (existing) {
+      // Véhicule retrouvé dans une sauvegarde : sa tuile, qui le recrée, apprend sa place d'origine (pour l'y ramener, D301).
+      if (!existing.home && home) existing.home = home;
+      return existing;
+    }
     const def = vehicleDef(model);
     if (!def) throw new Error(`modèle de véhicule inconnu : ${model}`);
     const v: Vehicle = { id, def, family: def.family, spec: def.spec, state: createVehicle(x, y, heading, this.terrain), variant, model: null, ridden: false, home, damage: new VehicleDamage(damageProfile(def)) };
@@ -282,6 +311,7 @@ export class Fleet {
     if (i < 0) return;
     this.vehicles.splice(i, 1);
     this.byId.delete(v.id);
+    this.away.delete(v);
     this.colliders.removeTag(`veh:${v.id}`);
     if (v.model) {
       this.scene.remove(v.model.group);
@@ -311,14 +341,61 @@ export class Fleet {
       if (v.def.train) continue;
       // Une épave noyée (D242) n'est pas enregistrée : la voiture d'une place de stationnement y reviendra intacte.
       if (v.damage.drowned) continue;
-      const s = v.state, h = v.home;
-      const moved = !h || v.ridden || Math.hypot(s.x - h.x, s.y - h.y) > MOVED_DISTANCE || Math.abs(Math.atan2(Math.sin(s.heading - h.heading), Math.cos(s.heading - h.heading))) > MOVED_HEADING;
+      const s = v.state, d = v.damage, hurt = hurtOf(v);
       // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
-      const d = v.damage, hurt = d.version > 0 && (d.health < DAMAGE.max || d.end !== null || ZONES.some((z) => d.zones[z] > 0));
-      if (!moved && !hurt) continue;
+      if (!movedOf(v) && !hurt) continue;
       out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading, ...(hurt ? { damage: { health: d.health, zones: { ...d.zones }, end: d.end } } : {}) });
     }
     return out;
+  }
+
+  /**
+   * Oubli des véhicules laissés (D301), à appeler régulièrement avec le temps écoulé `dt` (s) et la position du joueur. Un véhicule ni conduit,
+   * ni gardé (`keep` : le dernier utilisé), ni unique, ni locomotive, ni épave, qui n'est plus à sa place (déplacé ou abîmé) est oublié après
+   * `FORGET.delay` s passées avec le joueur à plus de `FORGET.distance` m : celui d'une place de stationnement y revient intact (si sa place est
+   * elle aussi loin du joueur ; `holdHome` peut refuser, il est alors retiré), les autres (volés, abandonnés) sont retirés.
+   * Rend les véhicules oubliés (retirés ou ramenés), pour que l'appelant oublie leurs dégâts.
+   */
+  forget(px: number, py: number, dt: number, keep: Vehicle | null = null, holdHome: ((v: Vehicle) => boolean) | null = null): Vehicle[] {
+    const out: Vehicle[] = [];
+    const far = FORGET.distance;
+    for (const v of [...this.vehicles]) {
+      if (v.ridden || v === keep || v.def.train || v.def.unique || v.damage.end !== null || v.damage.drowned || (!movedOf(v) && !hurtOf(v))) {
+        this.away.delete(v);
+        continue;
+      }
+      if (Math.hypot(v.state.x - px, v.state.y - py) <= far) {
+        this.away.delete(v);
+        continue;
+      }
+      const t = (this.away.get(v) ?? 0) + dt;
+      this.away.set(v, t);
+      if (t < FORGET.delay) continue;
+      const h = v.home;
+      if (isStallVehicle(v.id) && h) {
+        // Sa place est près du joueur : il attend, pour ne pas apparaître sous ses yeux.
+        if (Math.hypot(h.x - px, h.y - py) <= far) continue;
+        if (holdHome?.(v)) {
+          this.remove(v);
+        } else this.sendHome(v, h);
+      } else {
+        // Sans place connue : volé, abandonné, de départ ; ou véhicule d'une place retrouvé dans une sauvegarde dont la tuile n'a pas encore
+        // été construite (elle le recréera à sa place).
+        this.remove(v);
+      }
+      this.away.delete(v);
+      out.push(v);
+    }
+    return out;
+  }
+
+  /** Ramène un véhicule garé à sa place d'origine, intact (D301). */
+  private sendHome(v: Vehicle, h: { x: number; y: number; heading: number }): void {
+    this.colliders.removeTag(`veh:${v.id}`);
+    v.state = createVehicle(h.x, h.y, h.heading, this.terrain);
+    v.damage = new VehicleDamage(damageProfile(v.def));
+    this.settle(v);
+    this.park(v);
   }
 
   /**

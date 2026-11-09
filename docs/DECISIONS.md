@@ -7001,3 +7001,28 @@ la Croix). Les deux mâts restent tels quels. Rien d'autre ne change.
 
 ![Avant](captures/d300-croix-avant.jpg)
 ![Après](captures/d300-croix-apres.jpg)
+
+## 2026-11-09 — D301. Véhicules laissés : oubliés une fois qu'on a quitté le quartier
+
+**Demande de l'utilisateur** : les véhicules pris puis laissés restaient sur la carte (et dans la sauvegarde) indéfiniment ; les faire
+disparaître après un temps assez court, une fois la zone quittée, en gardant le dernier véhicule utilisé. Plan : `docs/plans/vehicules-laisses.md`.
+
+**Fait** (`Fleet.forget`, `src/game/vehicles.ts`, appelée toutes les 0,5 s avec les véhicules uniques dans `game.ts`) :
+- Un véhicule ni conduit, ni dernier utilisé, ni unique, ni locomotive, ni épave (brûlée, en panne, noyée : leurs règles restent), qui n'est
+  plus à sa place (déplacé ou abîmé, même test que la sauvegarde), est oublié après **45 s d'affilée avec le joueur à plus de 200 m**
+  (`FORGET`). 200 m dépasse la distance d'affichage des voitures (170 m) : on ne le voit pas disparaître. Le compteur repart de zéro dès que
+  le joueur revient à moins de 200 m.
+- **Véhicule d'une place** (`voiture-`, `moto-`, `velo-`, `trottinette-`, `isStallVehicle`) : il revient à sa place, **intact** (état et
+  dégâts neufs), seulement si sa place est elle aussi à plus de 200 m du joueur ; sinon il attend. Il n'est plus enregistré.
+- **Les autres** (volés à la circulation, abandonnés par leur conducteur, police comprise, véhicule de départ) : retirés.
+- **Sauvegarde** : un véhicule d'une place retrouvé dans une sauvegarde n'avait pas de place connue ; il l'apprend quand sa tuile le recrée
+  (`Fleet.add`). Si sa tuile n'a pas encore été construite, il est retiré : la tuile le recréera à sa place. Le dernier véhicule utilisé est
+  enregistré (`SaveGame.last`, facultatif : les anciennes sauvegardes se lisent sans), et gardé après un chargement.
+- **Marché** (`MarketController.holdHome`) : une voiture dont la place est sur le marché installé n'y revient pas ; le marché la garde et la
+  ramène au remballage, comme les voitures garées là au début du marché.
+
+**Tests** : `vehicles.test.ts` (retour à la place, compteur remis à zéro, place proche du joueur, volée et abandonnée retirées, dernier
+utilisé, unique et épave gardés, changement de dernier véhicule, sauvegarde avec et sans tuile construite, marché), `save.test.ts`,
+`market.test.ts`.
+
+**À régler en jouant** : 200 m et 45 s (`FORGET`).

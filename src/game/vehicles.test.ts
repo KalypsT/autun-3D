@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Colliders } from "../core/collision";
 import { flatTerrain } from "../core/testing";
 import { CATALOG } from "../core/vehicle-catalog";
-import { buildModel, chaseOf, Fleet, MODEL_BUILDERS } from "./vehicles";
+import { buildModel, chaseOf, Fleet, FORGET, MODEL_BUILDERS } from "./vehicles";
 import { vehicleDef } from "../core/vehicle-catalog";
 
 const make = (): Fleet => new Fleet(new THREE.Scene(), new Colliders(), flatTerrain());
@@ -41,6 +41,84 @@ describe("véhicules et sauvegarde", () => {
     expect(second.savedVehicles()).toHaveLength(1);
     expect(second.get("trottinette-9-3")).toBe(again);
     expect(second.get("inconnu")).toBeNull();
+  });
+});
+
+describe("véhicules laissés (D301)", () => {
+  const far = FORGET.distance + 50;
+  /** Le joueur reste en (px, py) pendant `t` secondes, par pas de 0,5 s ; rend les véhicules oubliés. */
+  const wait = (fleet: Fleet, px: number, py: number, t: number, keep: Parameters<Fleet["forget"]>[3] = null, hold: Parameters<Fleet["forget"]>[4] = null) => {
+    const out = [];
+    for (let s = 0; s < t; s += 0.5) out.push(...fleet.forget(px, py, 0.5, keep, hold));
+    return out;
+  };
+
+  it("une voiture de stationnement déplacée revient intacte à sa place quand le joueur est loin depuis assez longtemps", () => {
+    const fleet = make();
+    const v = fleet.add("citadine", "voiture-s1,1", 0, 0, 0, 2);
+    v.state.x = 30;
+    v.damage.damage(40);
+    // Joueur loin de la voiture et de sa place, un peu moins longtemps que le délai : rien.
+    expect(wait(fleet, 0, far + 30, FORGET.delay - 1)).toEqual([]);
+    // Il revient près d'elle : le compteur repart de zéro.
+    wait(fleet, 30, 10, 1);
+    expect(wait(fleet, 0, far + 30, FORGET.delay - 1)).toEqual([]);
+    expect(wait(fleet, 0, far + 30, 2)).toEqual([v]);
+    expect(fleet.get("voiture-s1,1")).toBe(v);
+    expect([v.state.x, v.state.y]).toEqual([0, 0]);
+    expect(v.damage.health).toBe(100);
+    expect(fleet.savedVehicles()).toEqual([]);
+  });
+
+  it("elle attend tant que sa place est près du joueur", () => {
+    const fleet = make();
+    const v = fleet.add("citadine", "voiture-s2,2", 0, 0, 0, 2);
+    v.state.x = far + 100;
+    expect(wait(fleet, 0, 10, FORGET.delay * 2)).toEqual([]);
+    expect(v.state.x).toBe(far + 100);
+  });
+
+  it("une voiture volée ou abandonnée disparaît ; le dernier véhicule utilisé, les véhicules à leur place, uniques et épaves restent", () => {
+    const fleet = make();
+    const stolen = fleet.add("citadine", "volee-a-1", 0, 0, 0, 0, null);
+    const left = fleet.add("citadine", "abandon-a-2", 5, 0, 0, 0);
+    left.state.y = 4;
+    const last = fleet.add("citadine", "volee-a-3", 10, 0, 0, 0, null);
+    const parked = fleet.add("citadine", "voiture-s3,3", 15, 0, 0, 0);
+    const unique = fleet.add("supercar", "unique-x", 20, 0, 0, 0, null);
+    const wreck = fleet.add("citadine", "volee-a-4", 25, 0, 0, 0, null);
+    wreck.damage.restore(0, { front: 1, rear: 1, left: 0, right: 0 }, "explosion");
+    const gone = wait(fleet, 0, far, FORGET.delay + 1, last);
+    expect(gone.map((v) => v.id).sort()).toEqual(["abandon-a-2", "volee-a-1"]);
+    expect(fleet.get(stolen.id)).toBeNull();
+    expect(fleet.vehicles).toEqual([last, parked, unique, wreck]);
+    // Le joueur en prend un autre : l'ancien dernier véhicule redevient oubliable.
+    expect(wait(fleet, 0, far, FORGET.delay + 1, parked)).toEqual([last]);
+  });
+
+  it("une voiture de stationnement retrouvée dans une sauvegarde apprend sa place quand sa tuile la recrée, sinon elle est retirée", () => {
+    const first = make();
+    const a = first.add("citadine", "voiture-s4,4", 0, 0, 0, 1);
+    const b = first.add("citadine", "voiture-s5,5", 50, 0, 0, 1);
+    a.state.x = 30;
+    b.state.x = 80;
+    const second = make();
+    second.restore(first.savedVehicles());
+    // Seule la tuile de la première est construite.
+    second.add("citadine", "voiture-s4,4", 0, 0, 0, 1);
+    wait(second, 0, far + 60, FORGET.delay + 1);
+    expect(second.get("voiture-s4,4")?.state.x).toBe(0);
+    expect(second.get("voiture-s5,5")).toBeNull();
+  });
+
+  it("une voiture dont la place est sur le marché installé est confiée au marché au lieu d'y revenir", () => {
+    const fleet = make();
+    const v = fleet.add("citadine", "voiture-s6,6", 0, 0, 0, 1);
+    v.state.x = 30;
+    const held: string[] = [];
+    expect(wait(fleet, 0, far + 30, FORGET.delay + 1, null, (c) => (held.push(c.id), true))).toEqual([v]);
+    expect(held).toEqual(["voiture-s6,6"]);
+    expect(fleet.get(v.id)).toBeNull();
   });
 });
 

@@ -2148,3 +2148,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Avant](docs/captures/d300-croix-avant.jpg)
 ![Après](docs/captures/d300-croix-apres.jpg)
+
+**Véhicules laissés : ils s'effacent quand on a quitté le quartier (9 novembre 2026)** (D301)
+- Un véhicule laissé hors de sa place est oublié quand tu es resté à plus de 200 m pendant 45 s : une voiture, une moto ou un vélo d'une place y revient intact, une voiture volée ou abandonnée disparaît. On ne le voit jamais disparaître (200 m dépasse la distance d'affichage).
+- Le dernier véhicule utilisé est toujours gardé, même après une sauvegarde et un chargement ; il redevient oubliable quand tu en prends un autre.
+- Les épaves, les véhicules uniques et le petit train gardent leurs règles.
+- À faire de ton côté : jouer et dire si 200 m et 45 s conviennent.

@@ -54,6 +54,8 @@ export interface SaveGame {
   camera: { yaw: number; pitch: number };
   /** Identifiant du véhicule conduit, s'il y en a un. */
   riding: string | null;
+  /** Dernier véhicule utilisé (D301) : il n'est pas oublié quand on s'en éloigne. Absent des sauvegardes d'avant. */
+  last?: string | null;
   vehicles: SavedVehicle[];
   /** Heure (0 à 24) et date du jeu (jours écoulés depuis le début de la partie). */
   clock: { hour: number; date: number };
@@ -141,6 +143,7 @@ export function parseSave(text: string | null): SaveGame | null {
     }
   }
   const riding = typeof r["riding"] === "string" && vehicles.some((v) => v.id === r["riding"]) ? (r["riding"] as string) : null;
+  const last = typeof r["last"] === "string" && vehicles.some((v) => v.id === r["last"]) ? (r["last"] as string) : null;
   const w = r["waypoint"] as Record<string, unknown> | null | undefined;
   return {
     version: SAVE_VERSION,
@@ -148,6 +151,7 @@ export function parseSave(text: string | null): SaveGame | null {
     player: { x: p["x"], y: p["y"] },
     camera: { yaw: cam["yaw"], pitch: Math.min(Math.max(cam["pitch"], -1.5), 1.5) },
     riding,
+    ...(last ? { last } : {}),
     vehicles,
     clock: {
       hour: ((clock["hour"] % 24) + 24) % 24,
