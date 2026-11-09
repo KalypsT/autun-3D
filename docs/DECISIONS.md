@@ -6683,3 +6683,86 @@ y est un mélange de gravier et de terre. Tracer le parking (enrobé ou gravier,
 
 ![Quatre vues](captures/d292-sacrovir.jpg)
 ![Au golf, devant le bâtiment d'accueil](captures/d292-sacrovir-golf.jpg)
+
+## 2026-11-09 — D293. L'hôtel de ville : côtés, arrière, cour, drapeaux et inscriptions
+
+**Demande de l'utilisateur** (suite de la revue, point 2) : finir l'hôtel de ville. Photos fournies (non versionnées, elles servent seulement
+à décrire) : la façade de face (Wikimedia Commons) et une photo récente en contre-plongée ; cinq vues Google Street View de juillet 2026 :
+le côté est depuis le parking de la place, l'arrière depuis les deux coins de la rue Jeannin (9 et 12 rue Jeannin), le côté ouest depuis le
+5 et le 1 rue de l'Hôtel de ville (la rue entre la mairie et le théâtre). Pas de photo de la cour.
+
+**Lecture des photos** (repère D123 : `s` le long de la façade, de l'ouest vers l'est ; `t` vers l'intérieur) :
+- **Flancs du corps principal** (13,75 m, trois travées, est et ouest) : baies cintrées au soubassement, fenêtres à fronton cintré à l'étage
+  noble, petites fenêtres d'entresol sous le bandeau côté est, cartouches sculptés côté ouest, fenêtres à linteau au dernier étage.
+- **Ailes est et ouest** (huit travées de 4 m) et **aile arrière** (onze travées) : trois niveaux plus bas que le corps principal
+  (corniche à 14,4 m, D123). Baies en plein cintre à clé au rez ; premier étage aux fenêtres sur appui à deux consoles, sous une corniche ;
+  bandeau ; second étage aux fenêtres à petit garde-corps en fer ; corniche à modillons ; chaînes d'angle harpées aux coins arrière ;
+  descentes d'eau en zinc. Étages clairs sur les côtés, tout en pierre blonde à l'arrière. Toits : cinq œils-de-bœuf sur chaque aile
+  latérale, une lucarne de pierre à fronton cintré au milieu de l'aile arrière.
+- **Relief** (relevé du jeu) : la rue Jeannin est 2 m plus bas que la place et que la cour. D'où le haut soubassement de l'arrière, ses
+  deux portes grises de service au niveau de la rue (deuxièmes travées depuis chaque coin), et l'**entrée arrière** : porte vitrée cintrée
+  dans la travée du milieu, au niveau de la cour, devant laquelle un palier et deux volées droites le long du mur descendent vers l'est et
+  vers l'ouest (13 marches de 18 cm), garde-corps en fer.
+- **Cour** (sans photo) : les travées des ailes, sans garde-corps ni descentes.
+- **Drapeaux** (photo récente) : européen à gauche, **tricolore au milieu sur un mât droit posé sur le balcon**, et **le troisième drapeau
+  est celui de la Bourgogne** (écartelé : semé de lis d'or sur azur à bordure componée blanc et rouge ; bandé d'or et d'azur à bordure
+  rouge). Les deux drapeaux latéraux sortent des trumeaux sur des hampes inclinées.
+- **Inscriptions** : « LIBERTE », « EGALITE », « FRATERNITE » dans les lunettes claires des trois baies du balcon (sans accents, comme
+  sur la photo) ; « ASCENSEUR » et « HALLES » sur des plaques gravées, à l'imposte des trumeaux entre les arcades à gauche du perron.
+
+**Code** :
+- `src/core/townhall.ts` (nouveau, logique pure) : disposition de l'entrée arrière (`rearLayout`, constantes `REAR` : seuil à 0,3 m et
+  rue à −2 m du sol devant la façade, relevés une fois sur le relief et vérifiés par un test), obstacle de l'escalier arrière
+  (`hallObstacles`, 2,4 m, non franchissable : la porte est fermée).
+- `src/render/monuments.ts` : murs du bâtiment étiquetés par côté (`HallWall.side`) ; `hallFlank` (flancs), `hallWing` (ailes et cour),
+  `hallRear` (entrée arrière), `wingDormers` (lucarnes des ailes, dans un repère propre à chaque mur), `flagCloth` (étoffe des trois
+  drapeaux, des deux côtés), lunettes et inscriptions (`wallLabel`, atlas des noms : `buildTownHall` reçoit l'atlas, absent dans les
+  tests). Le dessin générique des autres murs (une fenêtre tous les 4 m) disparaît.
+- Coût : **13 468 triangles** pour tout l'hôtel de ville avec le perron de D294 (5 431 avant), dans le maillage de la tuile, sans appel de
+  dessin de plus ; plafond du test relevé à 16 000.
+
+**Tests** (`src/core/townhall.test.ts`) : façade arrière à l'opposé de la façade, porte au niveau de la cour, rue 2 m plus bas, hauteur des
+marches de l'entrée arrière, escalier arrière infranchissable ; plafond de triangles (`monuments.test.ts`).
+
+**Limites** : la cour est dessinée sans photo ; les plaques et panneaux de stationnement des murs ne sont pas dessinés ; on ne monte pas
+l'escalier arrière (la porte est fermée).
+
+![Le côté est depuis la place](captures/d293-mairie-est.jpg)
+![L'arrière, rue Jeannin](captures/d293-mairie-arriere.jpg)
+![Le côté ouest, rue de l'Hôtel de ville](captures/d293-mairie-ouest.jpg)
+![Drapeaux et inscriptions](captures/d293-mairie-drapeaux.jpg)
+
+## 2026-11-09 — D294. L'hôtel de ville : le perron d'après photos, on marche sur les marches
+
+**Demande de l'utilisateur** : l'escalier de l'hôtel de ville, noté « encore anguleux » à l'étape 4.1 puis refait en D125 sans photo
+rapprochée. Deux photos de l'utilisateur (de face, et en contre-plongée récente).
+
+**Écarts relevés entre les photos et D125** : les cinq marches du bas s'élargissent au-delà des murs d'échiffre et contournent deux gros
+piédestaux, à coins arrondis ; les murs d'échiffre s'arrêtent à ces piédestaux, qui portent des **candélabres en fonte vert sombre à cinq
+globes blancs** (quatre bras courbes et un globe au sommet), et non des lanternes carrées ; les rampes sont en **fer forgé** (barreaux,
+volutes) et s'enroulent en crosse au pied ; des **jardinières fleuries** sur le parapet contre le portique et une suspension sur chaque
+candélabre. Surtout, on marchait sur le relief lisse sous les marches (le talus du LiDAR).
+
+**Disposition** (`perronLayout`, `src/core/townhall.ts`, partagée par le dessin, les tabliers et les obstacles) : palier et pied mesurés en
+D125 (`perron`) ; pied à 0,45 m au-dessus du sol devant la façade (`PERRON.foot`, relief au pied : 0,47 m) ; 26 marches de 16 cm et
+35 cm de giron ; les cinq du bas débordent de 3,0 m (marche du bas) à 1,2 m (cinquième) de chaque côté de la volée, coins avant arrondis
+(rayon 0,9 m), fond derrière les piédestaux ; piédestaux de 1 × 1 m, 1,9 m au-dessus de la cinquième marche, face intérieure dans
+l'alignement de la volée ; murs d'échiffre de 45 cm, parapet à 85 cm au-dessus des marches.
+
+**On marche sur les marches** : deux tabliers invisibles (`hallDecks`, comme au théâtre romain et au porche de la cathédrale) : une rampe
+sur les nez de marche entre les murs d'échiffre, prolongée par le palier jusqu'aux portes ; une rampe plus large sur les marches évasées.
+Les pieds restent à moins d'une demi-marche du dessus de la marche dessinée. **Obstacles** (`hallObstacles`, `world.ts`) : murs
+d'échiffre et piédestaux, 3 m, non franchissables (du dehors, ils font jusqu'à 5 m) ; on entre sur le perron par le bas et par les
+marches évasées.
+
+**Dessin** (`portico`, `candelabra`, `globe`, `flowers`) : marches évasées en prismes à coins arrondis, marches de la volée en contremarches
+et girons ; globes doublés dans le maillage des vitres allumées (ils s'allument la nuit) ; fleurs roses, magenta et blanches toute l'année
+(les jardinières ne suivent pas les saisons).
+
+**Tests** (`src/core/townhall.test.ts`, +3) : pied mesuré, hauteur de marche, cinq marches évasées de plus en plus larges vers le bas,
+piédestaux hors de la volée, relief sous chaque marche ; montée par les tabliers en pente régulière jusqu'au palier, marches évasées
+praticables ; murs d'échiffre et piédestaux qui arrêtent le joueur dans le monde réel, volée libre.
+
+![Le perron de face](captures/d294-perron.jpg)
+![Le perron de biais, les candélabres](captures/d294-perron-biais.jpg)
+![La nuit](captures/d294-perron-nuit.jpg)

@@ -6,6 +6,7 @@ import { HOOP, hoopPole } from "./hoops";
 import { vallonPropCircles } from "./vallon-props";
 import type { DeckSector } from "./decks";
 import { inTheatre, theatreDecks, theatreSectors } from "./theatre";
+import { hallDecks } from "./townhall";
 
 /** Gabarits « boîte » : leur façade d'habitation est remplacée (bardage, quais, vitrage d'entrée). */
 export const BOX_KINDS: ReadonlySet<BuildingKindId> = new Set(["retail", "industrial", "annex", "sports", "greenhouse", "canopy"]);
@@ -1239,10 +1240,12 @@ export function passageDecks(s: PassageSite): Deck[] {
   return [{ id: -187001, k: "foot", w: 2 * s.hw - 0.1, p: pts.flatMap(([d, z]) => [...at(f, d, 0), z]), st: "light", sp: [], pc: [] }];
 }
 
-/** Tabliers des monuments d'une tuile (porche de la cathédrale ; escaliers et scène du théâtre romain, D133 ; volée du passage Balthus, D187). */
+/** Tabliers des monuments d'une tuile (porche de la cathédrale ; perron de l'hôtel de ville, D294 ; escaliers et scène du théâtre romain, D133 ; volée du passage Balthus, D187). */
 export function landmarkDecks(kinds: { buildings: Record<string, BuildingKind>; sites?: Site[] } | undefined): Deck[] {
   return [
     ...Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.cath?.entry ? porchDecks(k.cath) : [])),
+    // Perron de l'hôtel de ville (D294).
+    ...Object.values(kinds?.buildings ?? {}).flatMap((k) => (k.hall ? hallDecks(k.hall) : [])),
     ...(kinds?.sites ?? []).flatMap((s) => (s.t === "passage" ? passageDecks(s) : [])),
     ...(kinds?.sites ?? []).flatMap((s) => (s.t === "theatre" ? theatreDecks(s) : [])),
   ];

@@ -136,7 +136,8 @@ describe("monuments (D95) : géométrie", () => {
     buildTownHall(mb, glow, m, world.terrain, new THREE.Color("#2f4a63"));
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
-    expect(tris(mb)).toBeLessThan(8000);
+    // D293 et D294 : côtés, arrière, cour, lucarnes des ailes, entrée arrière, perron à candélabres (13 468 triangles ; 5 431 avant).
+    expect(tris(mb)).toBeLessThan(16000);
     expect(tris(glow)).toBeGreaterThan(0);
   });
 

@@ -2074,3 +2074,26 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : la prendre au golf (`?at=2110,-62`) et dire si l'arrière décroche trop ou pas assez.
 
 ![La Sacrovir](docs/captures/d292-sacrovir.jpg)
+
+**L'hôtel de ville, suite : côtés, arrière, drapeaux et inscriptions (9 novembre 2026)** (D293)
+- Les côtés et l'arrière suivent tes photos Street View : baies cintrées au rez, fenêtres sur consoles au premier étage, petits garde-corps en fer au second, corniche à modillons, chaînes d'angle, descentes d'eau, œils-de-bœuf sur les toits des ailes et lucarne de pierre au milieu de l'arrière. Les flancs du corps principal ont leurs trois travées, avec petites fenêtres d'entresol côté place et cartouches côté rue de l'Hôtel de ville.
+- Rue Jeannin, 2 m plus bas que la place : le haut soubassement, les deux portes grises de service et l'entrée du milieu, avec son palier et ses deux volées le long du mur.
+- Trois drapeaux comme sur ta photo : européen à gauche, tricolore au milieu sur un mât droit, Bourgogne à droite (c'était le drapeau rouge et bleu).
+- « LIBERTE », « EGALITE », « FRATERNITE » dans les lunettes des baies du balcon ; « ASCENSEUR » et « HALLES » entre les arcades à gauche du perron.
+- La cour, sans photo, reprend les travées des ailes.
+- À faire de ton côté : faire le tour du bâtiment (`?at=66,102` côté place, `?at=21,131` rue Jeannin).
+
+![Le côté est](docs/captures/d293-mairie-est.jpg)
+![L'arrière, rue Jeannin](docs/captures/d293-mairie-arriere.jpg)
+![Le côté ouest](docs/captures/d293-mairie-ouest.jpg)
+![Drapeaux et devise](docs/captures/d293-mairie-drapeaux.jpg)
+
+**L'hôtel de ville, suite : le perron (9 novembre 2026)** (D294)
+- Le perron suit tes deux photos : les cinq marches du bas s'élargissent et contournent deux gros piédestaux, coins arrondis ; sur les piédestaux, des candélabres vert sombre à cinq globes, allumés la nuit ; rampes en fer forgé terminées en crosse ; jardinières fleuries.
+- On marche enfin sur les marches (et non plus sur la pente cachée dessous) ; les murs d'échiffre et les piédestaux arrêtent le joueur.
+- Les fleurs restent toute l'année.
+- À faire de ton côté : monter le perron (`?at=35,61`) et regarder les candélabres la nuit (`?at=35,61&h=22`).
+
+![Le perron de face](docs/captures/d294-perron.jpg)
+![De biais](docs/captures/d294-perron-biais.jpg)
+![La nuit](docs/captures/d294-perron-nuit.jpg)

@@ -5,6 +5,7 @@ import { cathedralWalls, furnitureOutsideMonuments, houseRing, isOpen, playhouse
 import { roofPlanes } from "./roofs";
 import { parapetLines, pierRings } from "./bridges";
 import { theatreWalls } from "./theatre";
+import { hallObstacles } from "./townhall";
 import { GENDARMERIE_FENCE_H, gendarmerieLines, gendarmerieRings } from "./gendarmerie";
 import { NAUTIQUE_BARRIER_H, nautiqueLines, nautiqueRings } from "./nautique";
 import { BOAT_TOP, boatOutline, SHELTER_POST, shelterPosts } from "./piers";
@@ -112,6 +113,8 @@ export function addTileColliders(c: Colliders, tile: ColliderSources, tag: strin
       // Mur blanc du parvis de la gare (D230).
       const sw = kind?.sta ? stationWall(kind.sta) : null;
       if (sw) c.addPolyline(sw);
+      // Hôtel de ville (D293, D294) : murs d'échiffre et piédestaux du perron, escalier de l'entrée arrière.
+      if (kind?.hall) for (const o of hallObstacles(kind.hall)) c.addPolyline([...o.ring, o.ring[0]!, o.ring[1]!], false, o.top);
       for (const h of b.holes) c.addRing(h);
       continue;
     }
