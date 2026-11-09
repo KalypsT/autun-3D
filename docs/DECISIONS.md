@@ -6757,7 +6757,9 @@ marches évasées.
 
 **Creux d'affichage** (`hallPits`, comme sous la Croix de la Libération, D267) : le relevé LiDAR forme sous le perron un talus lisse qui
 débordait à côté des murs d'échiffre (bosse contre les arcades, vue de biais). Sur l'emprise du perron et des marches évasées, le relief
-affiché est plafonné à 0,3 m au-dessus du sol devant la façade ; le sol où l'on marche ne change pas.
+affiché **et le dallage de la place** sont plafonnés à 0,3 m au-dessus du sol devant la façade : nouvelle option `pave` des creux
+(`Pit.pave`, `TiledTerrain.paveAt`), que seul ce creux active (les autres creux n'abaissent que le relief, comme avant). Le sol où l'on marche
+ne change pas : à côté des murs d'échiffre, le joueur monte encore un peu sur la bosse du relevé, sous le dallage dessiné.
 
 **Dessin** (`portico`, `candelabra`, `globe`, `flowers`) : marches évasées en prismes à coins arrondis, marches de la volée en contremarches
 et girons ; globes doublés dans le maillage des vitres allumées (ils s'allument la nuit) ; fleurs roses, magenta et blanches toute l'année
