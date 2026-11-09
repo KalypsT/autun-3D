@@ -67,6 +67,8 @@ export interface Pit {
   cap(x: number, y: number): number;
   /** Bandes de relief fin qui recouvrent le creux (D250, remparts) : le relief affiché les ajoute à ses morceaux proches. */
   cover?: readonly Cover[];
+  /** Le sol dessiné des rues et des places s'y abaisse aussi (perron de l'hôtel de ville, D294) ; on marche toujours sur le vrai relief. */
+  pave?: true;
 }
 
 /**
@@ -108,10 +110,10 @@ export class Pits {
     return [...this.byTile.values()].flat().map((p) => [p.x0, p.y0, p.x1, p.y1]);
   }
 
-  cap(x: number, y: number): number {
+  cap(x: number, y: number, paveOnly = false): number {
     let z = Infinity;
     for (const list of this.byTile.values()) {
-      for (const p of list) if (x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1) z = Math.min(z, p.cap(x, y));
+      for (const p of list) if ((!paveOnly || p.pave) && x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1) z = Math.min(z, p.cap(x, y));
     }
     return z;
   }
@@ -233,7 +235,7 @@ export class TiledTerrain implements HeightField {
 
   /** Altitude du sol dessiné des rues : le relief ou le tablier, NaN sous un tablier qui enjambe une autre voie (`Decks.pave`). */
   paveAt(x: number, y: number): number {
-    const z = this.groundAt(x, y);
+    const z = Math.min(this.groundAt(x, y), this.pits.cap(x, y, true));
     return this.decks.empty ? z : this.decks.pave(x, y, z);
   }
 

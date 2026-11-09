@@ -14,6 +14,22 @@ const VIEWS: Record<string, [number, number, number, number, number, number]> = 
   street: [28, -25, 1.7, -5, 70, 8],
   place: [-95, -75, 2.0, 30, -20, 4],
   mairie: [10, 35, 1.7, 15, 95, 10],
+  // Hôtel de ville (D293, D294), comme les photos Street View de l'utilisateur : côté est depuis le parking de la place ; arrière (rue Jeannin)
+  // depuis ses deux coins ; côté ouest (rue de l'Hôtel de ville) depuis le coin arrière et depuis la place ; le perron de face et de biais.
+  "mairie-est": [66.6, 101.8, 1.7, 34.0, 105.0, 9],
+  "mairie-arriere-est": [21.2, 131.1, 1.7, 3.2, 111.7, 5],
+  "mairie-arriere-ouest": [-22.9, 102.5, 1.7, 1.5, 110.6, 5],
+  "mairie-ouest": [-18.3, 92.3, 1.7, 3.8, 67.3, 7],
+  "mairie-ouest-place": [5.9, 54.4, 1.7, -7.8, 85.9, 8],
+  "mairie-perron": [38.7, 54.8, 1.7, 29.7, 69.3, 4],
+  "mairie-perron-biais": [25.3, 53.6, 1.7, 30.7, 67.6, 3.5],
+  // Drapeaux et devise du balcon ; plaques « ASCENSEUR » et « HALLES » entre les arcades (D293).
+  "mairie-drapeaux": [35.0, 60.8, 1.7, 27.6, 72.6, 15],
+  "mairie-arcades": [20.6, 61.2, 1.7, 17.4, 66.3, 3],
+  // Panneaux tirés du graphe routier (D295) : un stop et un sens interdit, une limitation à 30, un cédez-le-passage, vus par le conducteur.
+  "panneaux-stop": [169.0, -187.1, 1.7, 163.4, -179.98, 1.6],
+  "panneaux-30": [356.9, -94.1, 1.7, 362.66, -86.98, 1.6],
+  "panneaux-cedez": [52.3, 77.6, 1.7, 60.34, 73.23, 1.6],
   church: [-40, -95, 1.7, -86, -136, 12],
   // Théâtre municipal (D223) : de face depuis la place, comme la photo de la façade.
   municipal: [17, 7, 1.7, -4.1, 38.7, 9],

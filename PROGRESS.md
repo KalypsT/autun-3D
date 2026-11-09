@@ -9,9 +9,9 @@
 | 3. Fiches façade (estimées) + générateur + matières | ✅ faite, en attente de ton avis |
 | **Étape 1 bis : toute la zone Autun centre, 2,25 km², par tuiles** | ✅ faite, à tester sur téléphone |
 | 4.1 Se balader à pied : commandes tactiles, caméra, collisions | ✅ faite, à tester sur téléphone |
-| 4.2 Vélo, puis voiture (conduite réaliste) | à faire |
-| 4.3 Circulation, passants, pigeons | à faire |
-| 4.4 Jour/nuit, plaque de rue, vue du ciel, KTX2, optimisation | à faire |
+| 4.2 Vélo, puis voiture (conduite réaliste) | ✅ faite (vélo, voiture D24, moto D25, puis étape V) |
+| 4.3 Circulation, passants, pigeons | ✅ faite (étapes J2 et J3) |
+| 4.4 Jour/nuit, plaque de rue, vue du ciel, KTX2, optimisation | en partie : jour/nuit et carte faits ; plaques de rue et KTX2 à faire |
 
 ### Étape 3 (26 octobre 2026)
 
@@ -23,7 +23,7 @@ Fait :
 - Tests : 15 (relief, soleil, triangulation des toits, fiches, planificateur de façades).
 
 Défauts connus :
-- Hôtel de ville et théâtre : toits irréguliers (à modéliser à la main d'après photos, étape suivante).
+- Hôtel de ville et théâtre : toits irréguliers (à modéliser à la main d'après photos, étape suivante). → Fait : hôtel de ville en D123 à D126 (façade sur le Champ de Mars), théâtre municipal en D223 à D226.
 - Le kiosque à musique forme une bosse sur le terrain (classé « sol » par le LiDAR).
 - Arbres : couronnes en blobs plats, sans essence.
 - Très près d'un mur, les sprites (≈ 55 px/m) sont un peu flous ; pas de LOD.
@@ -65,7 +65,7 @@ Mesures (navigateur logiciel, PC) :
 Limites / à faire :
 - Pas de LOD des arbres (absents des tuiles lointaines) ; silhouettes sans pente de toit.
 - Une tuile se construit d'un bloc (≈ 100-300 ms sur PC) : à lisser si ça saccade sur téléphone.
-- Les façades restent estimées ; monuments à modéliser (hôtel de ville, théâtre, cathédrale, monuments romains).
+- Les façades restent estimées ; monuments à modéliser (hôtel de ville, théâtre, cathédrale, monuments romains). → Faits depuis : hôtel de ville (D123 à D126), théâtre municipal (D223 à D226), cathédrale (D127 à D132), portes romaines et temple de Janus (D95 et suivantes), théâtre romain (D133 à D136).
 - Ajouter de la vie : passants, circulation, pigeons (étape 4.3).
 - Fidélité des sols (parking du centre-ville, cours de lycée) : à revoir sur photos / orthophoto.
 
@@ -107,7 +107,7 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 
 - **Feux tricolores** : ils sont posés de part et d'autre de la chaussée (au bord, sur le trottoir), avec potence vers la route, au lieu de l'axe de la voie (`roadside_signals` dans `build_tiles.py`).
 - **Grilles** : les clôtures et portails mesurés à 0 m par le LiDAR (barreaux trop fins) prennent une hauteur type (1,8 m et 2,4 m) ; `tools/data/manual.json`.
-- **Escalier de l'hôtel de ville** : le relief LiDAR y forme un talus lisse de 4,4 m ; la zone est déclarée dans `manual.json` (`stairs`) et dessinée en marches de 17 cm (colonnes de 50 cm, relief lissé). Rendu encore anguleux : à affiner (marches orientées, paliers, rampes).
+- **Escalier de l'hôtel de ville** : le relief LiDAR y forme un talus lisse de 4,4 m ; la zone est déclarée dans `manual.json` (`stairs`) et dessinée en marches de 17 cm (colonnes de 50 cm, relief lissé). Rendu encore anguleux : à affiner (marches orientées, paliers, rampes). → Remplacé en D125 par un vrai perron (marches, palier, murs d'échiffre, rampes, lampadaires) ; on y marche encore sur la pente du relief, sous les marches.
 - **Champ de Mars** : les allées de parking OSM (`service=parking_aisle`) et les voies « Place du Champ de Mars » ne sont plus des rues avec trottoirs mais un grand parking en enrobé avec places marquées.
 - Diagnostic : `?skip=furn,walls,misc,wall,place,stairs` masque des familles de géométrie d'une tuile ; `?hide=` masque des maillages.
 - Non élucidé : un long ruban de corniche croise parfois la vue depuis un point de la rue Jondeau (≈ −62, 70) ; il vient des corniches/bandeaux des façades (`planFacades`), pas des feux. À reprendre si on le revoit en jeu.
@@ -2074,3 +2074,36 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : la prendre au golf (`?at=2110,-62`) et dire si l'arrière décroche trop ou pas assez.
 
 ![La Sacrovir](docs/captures/d292-sacrovir.jpg)
+
+**L'hôtel de ville, suite : côtés, arrière, drapeaux et inscriptions (9 novembre 2026)** (D293)
+- Les côtés et l'arrière suivent tes photos Street View : baies cintrées au rez, fenêtres sur consoles au premier étage, petits garde-corps en fer au second, corniche à modillons, chaînes d'angle, descentes d'eau, œils-de-bœuf sur les toits des ailes et lucarne de pierre au milieu de l'arrière. Les flancs du corps principal ont leurs trois travées, avec petites fenêtres d'entresol côté place et cartouches côté rue de l'Hôtel de ville.
+- Rue Jeannin, 2 m plus bas que la place : le haut soubassement, les deux portes grises de service et l'entrée du milieu, avec son palier et ses deux volées le long du mur.
+- Trois drapeaux comme sur ta photo : européen à gauche, tricolore au milieu sur un mât droit, Bourgogne à droite (c'était le drapeau rouge et bleu).
+- « LIBERTE », « EGALITE », « FRATERNITE » dans les lunettes des baies du balcon ; « ASCENSEUR » et « HALLES » entre les arcades à gauche du perron.
+- La cour, sans photo, reprend les travées des ailes.
+- À faire de ton côté : faire le tour du bâtiment (`?at=66,102` côté place, `?at=21,131` rue Jeannin).
+
+![Le côté est](docs/captures/d293-mairie-est.jpg)
+![L'arrière, rue Jeannin](docs/captures/d293-mairie-arriere.jpg)
+![Le côté ouest](docs/captures/d293-mairie-ouest.jpg)
+![Drapeaux et devise](docs/captures/d293-mairie-drapeaux.jpg)
+
+**L'hôtel de ville, suite : le perron (9 novembre 2026)** (D294)
+- Le perron suit tes deux photos : les cinq marches du bas s'élargissent et contournent deux gros piédestaux, coins arrondis ; sur les piédestaux, des candélabres vert sombre à cinq globes, allumés la nuit ; rampes en fer forgé terminées en crosse ; jardinières fleuries.
+- On marche enfin sur les marches (et non plus sur la pente cachée dessous) ; les murs d'échiffre et les piédestaux arrêtent le joueur.
+- Les fleurs restent toute l'année.
+- À faire de ton côté : monter le perron (`?at=35,61`) et regarder les candélabres la nuit (`?at=35,61&h=22`).
+
+![Le perron de face](docs/captures/d294-perron.jpg)
+![De biais](docs/captures/d294-perron-biais.jpg)
+![La nuit](docs/captures/d294-perron-nuit.jpg)
+
+**Panneaux de signalisation (9 novembre 2026)** (D295)
+- 412 panneaux tirés du graphe routier : stops et cédez-le-passage aux carrefours, sens interdits au bout des rues à sens unique, limitations de vitesse (30, 50, 70, 80) là où la vitesse change, d'après OpenStreetMap.
+- Sur le trottoir, à droite du conducteur, tournés vers lui ; jamais sur la chaussée ni dans un bâtiment.
+- Une voiture les arrache comme les lampadaires et les feux ; à pied, on passe à côté.
+- Pas encore : panneaux de zone 30, d'entrée de ville, de sens unique, panonceaux.
+- À faire de ton côté : rouler en ville et dire s'il y en a trop, pas assez, ou mal placés (`?at=169,-187` : un stop et un sens interdit).
+
+![Un stop et un sens interdit](docs/captures/d295-stop.jpg)
+![Une limitation à 30](docs/captures/d295-30.jpg)

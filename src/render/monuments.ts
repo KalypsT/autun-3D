@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import type { CathedralModel, CathedralSpec, CollegeGrille, CollegePavilion, NotreDameSpec, CollegeSpec, CollegeWing, HeightField, MilitaireFacade, Site, TownHallSpec } from "../data/types";
 import { at, frameOf, porchLayout, type Frame } from "../core/landmarks";
-import { MeshBuilder, toThree, type Vec3 } from "./geometry";
+import { HALL_PROJ, PERRON, REAR, perronLayout, rearLayout, rearPoint } from "../core/townhall";
+import { MeshBuilder, toThree, type UvMeshBuilder, type Vec3 } from "./geometry";
+import type { SignAtlas } from "./sign-atlas";
 import { T } from "./style";
 
 const C = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -822,9 +824,9 @@ const HALL_TRIM = C(T.trim);
 const HALL_GRILLE = C("#2f3532");
 const GLOW_LO = C("#ffb04a"), GLOW_HI = C("#fff0b0");
 const TREAD = C("#e6d9b8"), RISER = C("#bba98a"), IRON = C("#2b302e"), BRICK = C("#b0533a");
-const FLAG_BLUE = C("#1f3f8f"), FLAG_WHITE = C("#f4f1ea"), FLAG_RED = C("#d3313a"), FLAG_EU = C("#1f3f9f"), FLAG_STAR = C("#f2c81e");
+const FLAG_BLUE = C("#1f3f8f"), FLAG_WHITE = C("#f4f1ea"), FLAG_RED = C("#d3313a"), FLAG_EU = C("#1f3f9f"), FLAG_STAR = C("#f2c81e"), FLAG_GOLD = C("#efc23a");
 /** Saillie des pavillons sur la façade, débord du toit du corps principal. */
-const PROJ = 0.35, OVERHANG = 0.3;
+const PROJ = HALL_PROJ, OVERHANG = 0.3;
 
 type ST = [number, number];
 
@@ -857,6 +859,13 @@ interface HallWall {
   /** Chaîne d'angle au début (a) ou à la fin (b) du mur : coin saillant d'un pavillon. */
   qa?: boolean;
   qb?: boolean;
+  /**
+   * Côté du bâtiment (D293) : flancs du corps principal (`east`, `west`), ailes basses sur la rue (`wing-east`, `wing-west`, `rear`), cour.
+   * Absent : façade et retours des pavillons.
+   */
+  side?: "east" | "west" | "wing-east" | "wing-west" | "rear" | "court";
+  /** Chaîne d'angle de l'aile, du sol à la corniche, au début et à la fin du mur (coins arrière, D293). */
+  corner?: [boolean, boolean];
 }
 
 function wallBands(mb: MeshBuilder, f: Frame, w: HallWall, ground: (s: number, t: number) => number, cuts: number[], colors: THREE.Color[]): void {
@@ -973,39 +982,13 @@ function boxUnder(mb: MeshBuilder, f: Frame, s0: number, s1: number, t0: number,
   q(mb, f, [s0, t0, z0], [s1, t0, z0], [s1, t1, z0], [s0, t1, z0], [0, -1, 0], shade(HALL_LIGHT, 0.9));
 }
 
-/**
- * Drapeau sur une hampe qui sort du mur (normale −t) en montant à 45°, penchée de côté (`side`) pour qu'on le voie de face : bandes verticales
- * le long de la hampe (tricolore) ou fond bleu à couronne d'étoiles (Europe).
- */
-function hallFlag(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, side: number, eu: boolean): void {
-  const dS = side * 0.6, dT = -0.8; // direction horizontale de la hampe dans le repère
-  const L = 2.6, thick = 0.035;
-  const pt = (d: number, zz: number, w = 0): [number, number, number] => [s + dS * d - dT * w, t + dT * d + dS * w, zz];
-  for (const k of [1, -1]) q(mb, f, pt(0, z, -thick), pt(0, z, thick), pt(L * 0.7, z + L * 0.7, thick), pt(L * 0.7, z + L * 0.7, -thick), N(f, -dS * k, -dT * k), FLAG_WHITE);
-  const fw = 1.35, fh = 0.9, n = N(f, dT, -dS), back = N(f, -dT, dS);
-  const stripes: [number, number, THREE.Color][] = eu ? [[0, 1, FLAG_EU]] : [[0, 1 / 3, FLAG_BLUE], [1 / 3, 2 / 3, FLAG_WHITE], [2 / 3, 1, FLAG_RED]];
-  for (const [a0, a1, col] of stripes) {
-    const d0 = 0.35 + a0 * fw, d1 = 0.35 + a1 * fw;
-    for (const nn of [n, back]) mb.quad(P(f, ...pt(d0, z + d0 * 0.7 - fh)), P(f, ...pt(d1, z + d1 * 0.7 - fh)), P(f, ...pt(d1, z + d1 * 0.7)), P(f, ...pt(d0, z + d0 * 0.7)), nn, col);
-  }
-  if (!eu) return;
-  // Douze étoiles en couronne (petits losanges), des deux côtés.
-  const dc = 0.35 + fw / 2;
-  for (let i = 0; i < 12; i++) {
-    const a = (Math.PI * 2 * i) / 12, r = 0.27, e = 0.045;
-    const d = dc + Math.cos(a) * r, zc = z + dc * 0.7 - fh / 2 + Math.sin(a) * r + (d - dc) * 0.7;
-    for (const [nn, w] of [[n, -0.004], [back, 0.004]] as const) {
-      mb.quad(P(f, ...pt(d - e, zc, w)), P(f, ...pt(d, zc - e, w)), P(f, ...pt(d + e, zc, w)), P(f, ...pt(d, zc + e, w)), nn, FLAG_STAR);
-    }
-  }
-}
 
 /**
  * Hôtel de ville (D123) d'après photo et relevé LiDAR : corps principal sur la façade (corniche et toit à deux pans), pavillons en légère
  * saillie à toits raides tronqués (deux d'angle, un central), ailes basses autour de la cour (toit à deux pans sur la ligne médiane, croupes
  * aux angles) ; trois niveaux (soubassement et étage en pierre blonde, étage noble clair) et les travées de la façade.
  */
-export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpec, terrain: HeightField, roofColor: THREE.Color): void {
+export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpec, terrain: HeightField, roofColor: THREE.Color, text: HallText | null = null): void {
   const f = frameOf(m.o[0], m.o[1], m.a, 1, 1);
   const ground = (s: number, t: number): number => terrain.heightAt(...at(f, s, t));
   const R: ST[] = [], H: ST[] = [];
@@ -1036,7 +1019,7 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
   }
   if (L - s > 0.05) body.push(W([s, 0], [L, 0], m.eave, true));
   const t0L = pavs.some((pv) => pv.left) ? -PROJ : 0, t0R = pavs.some((pv) => pv.right) ? -PROJ : 0;
-  body.push({ ...W([sR(t0R), t0R], [sR(d), d], m.eave), qa: t0R < 0 }, { ...W([sL(d), d], [sL(t0L), t0L], m.eave), qb: t0L < 0 });
+  body.push({ ...W([sR(t0R), t0R], [sR(d), d], m.eave), qa: t0R < 0, side: "east" }, { ...W([sL(d), d], [sL(t0L), t0L], m.eave), qb: t0L < 0, side: "west" });
   // Ailes basses : murs extérieurs au-delà du corps principal, murs de la cour.
   const wings: HallWall[] = [];
   for (let i = 1; i < n; i++) {
@@ -1044,13 +1027,17 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     if (a[1] < d && b[1] < d) continue;
     if (a[1] < d) a = [a[0] + ((b[0] - a[0]) * (d - a[1])) / (b[1] - a[1]), d];
     if (b[1] < d) b = [a[0] + ((b[0] - a[0]) * (d - a[1])) / (b[1] - a[1]), d];
-    wings.push(W(a, b, m.wingEave));
+    // D293 : ailes est et ouest sur la place et la rue de l'Hôtel de ville, aile arrière sur la rue Jeannin ; chaînes d'angle aux coins arrière.
+    const side = i === 1 ? "wing-east" : i === n - 1 ? "wing-west" : "rear";
+    wings.push({ ...W(a, b, m.wingEave), side, corner: [side !== "wing-east", side !== "wing-west"] });
   }
-  for (let i = 0; i < n; i++) wings.push(W(H[i]!, H[(i + 1) % n]!, m.wingEave, false, true));
+  for (let i = 0; i < n; i++) wings.push({ ...W(H[i]!, H[(i + 1) % n]!, m.wingEave, false, true), side: "court" });
 
   const colors = [HALL_STONE, HALL_LIGHT, HALL_STONE];
   for (const w of [...body, ...wings]) {
-    wallBands(mb, f, w, ground, [L1, L2], colors);
+    // Ailes (D293, photos) : soubassement en pierre blonde, étages clairs sur les côtés et sur la cour ; tout en pierre blonde à l'arrière.
+    if (w.top === m.wingEave) wallBands(mb, f, w, ground, w.side === "rear" ? [] : [L1], w.side === "rear" ? [HALL_STONE] : [HALL_STONE, HALL_LIGHT]);
+    else wallBands(mb, f, w, ground, [L1, L2], colors);
     const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
     if (w.top === m.eave) {
       // Corniche moulurée du corps principal : doucine, larmier saillant, bandeau ; modillons sous le larmier côté façade.
@@ -1058,7 +1045,21 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
       course(mb, f, w, w.top - 0.5, w.top - 0.12, 0.42, HALL_TRIM);
       course(mb, f, w, w.top - 0.12, w.top, 0.3, shade(HALL_TRIM, 0.95));
       if (w.front) for (let u = 0.45; u < len - 0.2; u += 0.9) block(mb, f, w, u - 0.09, u + 0.09, w.top - 0.8, w.top - 0.5, 0.16, 0.38, shade(HALL_TRIM, 0.93));
-    } else course(mb, f, w, w.top - 0.45, w.top, 0.3, HALL_TRIM);
+    } else if (w.side === "court") course(mb, f, w, w.top - 0.45, w.top, 0.3, HALL_TRIM);
+    else {
+      // Corniche des ailes sur rue (D293) : doucine, larmier, bandeau, modillons ; cordon au-dessus du soubassement, bandeau sous le dernier étage.
+      course(mb, f, w, w.top - 0.75, w.top - 0.55, 0.12, HALL_TRIM);
+      course(mb, f, w, w.top - 0.55, w.top - 0.15, 0.36, HALL_TRIM);
+      course(mb, f, w, w.top - 0.15, w.top, 0.24, shade(HALL_TRIM, 0.95));
+      for (let u = 0.6; u < len - 0.3; u += 1.2) block(mb, f, w, u - 0.08, u + 0.08, w.top - 0.75, w.top - 0.55, 0.12, 0.32, shade(HALL_TRIM, 0.93));
+    }
+    if (w.top === m.wingEave) {
+      course(mb, f, w, L1 - 0.15, L1 + 0.1, 0.14, HALL_TRIM);
+      course(mb, f, w, m.g + WING.band - 0.15, m.g + WING.band + 0.05, 0.1, HALL_TRIM);
+      const zc = (u: number): number => ground(...onWall(w, u, 0)) - 0.3;
+      if (w.corner?.[0]) quoins(mb, f, w, false, zc(0), w.top - 0.75, 1, shade(HALL_STONE, 1.04));
+      if (w.corner?.[1]) quoins(mb, f, w, true, zc(len), w.top - 0.75, 0, shade(HALL_STONE, 1.04));
+    }
     if (w.front || w.qa || w.qb) {
       // Cordon au-dessus du soubassement, bandeau sous l'étage.
       course(mb, f, w, L1 - 0.2, L1 + 0.15, 0.16, HALL_TRIM);
@@ -1076,6 +1077,7 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
 
   // Façade : les travées, à pas régulier ; l'avant-corps central a portes et baies en plein cintre, pas d'arcade (perron).
   const centre = pavs.filter((pv) => !pv.left && !pv.right);
+  let motto = 0;
   for (let i = 0; i < m.bays; i++) {
     const sc = (i + 0.5) * p;
     const w = body.find((x) => x.front && Math.min(x.a[0], x.b[0]) <= sc && sc <= Math.max(x.a[0], x.b[0]));
@@ -1099,7 +1101,19 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
       block(mb, f, w, u - 1.0, u + 1.0, top + 0.22, top + 0.4, 0, 0.18, trim);
       segmentPediment(mb, f, w, u - 1.0, u + 1.0, top + 0.4, 0.42, 0.16, trim);
     }
-    if (mid) bay(mb, glow, f, w, u, 1.45, L2 + 0.8, 3.3, true, false, !lit);
+    if (mid) {
+      bay(mb, glow, f, w, u, 1.45, L2 + 0.8, 3.3, true, false, !lit);
+      // D293 : « LIBERTE », « EGALITE », « FRATERNITE » dans les lunettes claires des trois baies du balcon (photo de l'utilisateur).
+      const word = MOTTO[motto++];
+      if (word) {
+        const zs = L2 + 0.8 + 3.3 - 0.725, r = 0.62;
+        for (let k = 0; k < 8; k++) {
+          const a0 = (Math.PI * k) / 8, a1 = (Math.PI * (k + 1)) / 8;
+          mb.tri(P(f, ...onWall(w, u, 0.065), zs), P(f, ...onWall(w, u + Math.cos(a0) * r, 0.065), zs + Math.sin(a0) * r), P(f, ...onWall(w, u + Math.cos(a1) * r, 0.065), zs + Math.sin(a1) * r), N(f, w.out[0], w.out[1]), LUNETTE);
+        }
+        if (text) wallLabel(text, f, w, word, u, zs + 0.24, 1.0, "#24324f", 0.075);
+      }
+    }
     else {
       // Étage : appui et linteau saillant.
       const z0 = L2 + 0.9, top = z0 + 2.6;
@@ -1108,25 +1122,25 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
       block(mb, f, w, u - 0.9, u + 0.9, top + 0.18, top + 0.34, 0, 0.14, trim);
     }
   }
-  // Autres murs : fenêtres simples tous les 4 m environ, aux mêmes niveaux, là où elles tiennent entre le sol et la corniche.
-  for (const w of [...body.filter((x) => !x.front), ...wings]) {
-    const len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
-    const count = Math.floor((len - 1.5) / 4);
-    for (let k = 0; k < count; k++) {
-      const u = ((k + 0.5) * len) / count;
-      const fr = u / len;
-      const gz = ground(w.a[0] + (w.b[0] - w.a[0]) * fr, w.a[1] + (w.b[1] - w.a[1]) * fr);
-      for (const [lv, [z0, h]] of ([[m.g + 0.9, 2.4], [L1 + 1.1, 3.2], [L2 + 0.9, 2.6]] as const).entries()) {
-        const hh = Math.min(h, w.top - 0.7 - z0);
-        if (z0 < gz + 0.4 || hh < 1.2) continue;
-        bay(mb, glow, f, w, u, 1.25, z0, hh, false, false, (k * 5 + lv * 3 + Math.round(len)) % 7 < 3);
-      }
-    }
-  }
+  // Flancs du corps principal, ailes, façade arrière et cour, d'après les photos Street View (D293).
+  for (const w of body) if (w.side === "east" || w.side === "west") hallFlank(mb, glow, f, m, w, ground);
+  for (const w of wings) hallWing(mb, glow, f, m, w, ground);
+  hallRear(mb, glow, f, m, ground);
 
   // Portique, balcon, perron et drapeaux de l'avant-corps central (D125).
   const cpv = centre[0];
-  if (m.portico && m.perron && cpv) portico(mb, glow, f, m, cpv, ground);
+  if (m.portico && m.perron && cpv) portico(mb, glow, f, m, cpv);
+  // Inscriptions gravées au-dessus des arcades à gauche du perron (photo de l'utilisateur, D293) : « ASCENSEUR », « HALLES ».
+  if (text && cpv) {
+    const front = body.find((x) => x.front && Math.min(x.a[0], x.b[0]) <= 3 * p && 3 * p <= Math.max(x.a[0], x.b[0]));
+    if (front) {
+      for (const [str, sc] of [["ASCENSEUR", 2 * p + 0.55], ["HALLES", 3 * p]] as const) {
+        const u = sc - front.a[0], zc = m.g + 0.45 + m.levels[0] - 1.05 - 0.85;
+        block(mb, f, front, u - 0.45, u + 0.45, zc - 0.12, zc + 0.12, 0, 0.02, shade(HALL_STONE, 1.06), true);
+        wallLabel(text, f, front, str, u, zc, 0.85, "#4a3a28", 0.03);
+      }
+    }
+  }
 
   // Toits. Corps principal : deux pans entre les pavillons d'angle (le bout est caché dans leur toit), faîtage au milieu.
   const slope = (m.ridge - m.eave) / (d / 2);
@@ -1199,6 +1213,7 @@ export function buildTownHall(mb: MeshBuilder, glow: MeshBuilder, m: TownHallSpe
     spire(mb, f, ms, mt, 0.16, pv.top + 0.5, tip !== null ? Math.min(tip, pv.top + 1.8) : pv.top + 1.9, 4, IRON);
     if (tip !== null && tip > pv.top + 1.8) box(mb, f, ms - 0.03, ms + 0.03, mt - 0.03, mt + 0.03, pv.top + 1.6, tip, IRON);
   }
+  wingDormers(mb, f, m, wings, zinc);
   for (const [cs, ct, side, top] of m.chim ?? []) {
     // Cheminée de brique (photo), du dessous du toit à son haut mesuré, couronnée d'une dalle.
     const h = side / 2;
@@ -1252,14 +1267,361 @@ function disc(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, rs: nu
   }
 }
 
+/** Textes de l'atlas pour les inscriptions de l'hôtel de ville (D293) ; absent dans les tests (pas de canvas). */
+export interface HallText {
+  atlas: SignAtlas;
+  names: UvMeshBuilder;
+}
+
+/** Niveaux des ailes au-dessus du sol devant la façade (D293, photos Street View) : baies cintrées du rez, premier étage, bandeau, second étage. */
+const WING = { rez: 1.0, rezH: 2.9, f1: 5.6, f1H: 3.2, band: 10.0, f2: 10.5, f2H: 2.3 } as const;
+const PIPE = C("#8b8f8c"), DOOR_GREY = C("#9aa0a2"), LAMP_GREEN = C("#2d3d33"), GLOBE = C("#f4f1e6"), PLANTER = C("#7c5a3c"), LEAF = C("#4f7a3a");
+const FLOWERS = [C("#d6338a"), C("#e86fb0"), C("#c42c6a"), C("#f2f0ec")];
+const LUNETTE = C("#dfe8ee");
+const MOTTO = ["LIBERTE", "EGALITE", "FRATERNITE"];
+
+function wallLen(w: HallWall): number {
+  return Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+}
+
+/** Texte de l'atlas sur le mur, centré en (u, zc), de largeur wd (case de 6,4 pour 1), à `off` devant lui. */
+function wallLabel(text: HallText, f: Frame, w: HallWall, str: string, u: number, zc: number, wd: number, color: string, off: number): void {
+  const r = text.atlas.get(str, color), h = wd / 6.4;
+  const a = onWall(w, u - wd / 2, off), b = onWall(w, u + wd / 2, off);
+  text.names.quad(P(f, ...a, zc - h / 2), P(f, ...b, zc - h / 2), P(f, ...b, zc + h / 2), P(f, ...a, zc + h / 2), N(f, w.out[0], w.out[1]), [r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1], new THREE.Color(1, 1, 1));
+}
+
+/** Appui sur deux consoles sous une baie de demi-largeur `half`, dessus à l'altitude z (photos, D293). */
+function sillConsoles(mb: MeshBuilder, f: Frame, w: HallWall, u: number, half: number, z: number): void {
+  block(mb, f, w, u - half - 0.12, u + half + 0.12, z - 0.14, z, 0, 0.17, HALL_TRIM);
+  for (const k of [-1, 1]) {
+    const c = u + k * (half - 0.02);
+    block(mb, f, w, c - 0.08, c + 0.08, z - 0.45, z - 0.14, 0, 0.13, shade(HALL_TRIM, 0.95));
+  }
+}
+
+/** Petit garde-corps en fer au bas d'une baie (second étage, photos) : barreaux et main courante. */
+function balconnet(mb: MeshBuilder, f: Frame, w: HallWall, u: number, half: number, z: number): void {
+  block(mb, f, w, u - half, u + half, z + 0.6, z + 0.65, 0.1, 0.16, IRON);
+  const n = Math.max(2, Math.round((2 * half) / 0.15));
+  for (let i = 0; i <= n; i++) {
+    const uu = u - half + (2 * half * i) / n;
+    block(mb, f, w, uu - 0.014, uu + 0.014, z, z + 0.6, 0.11, 0.14, IRON, true);
+  }
+}
+
+/** Clé d'arc au sommet d'une baie cintrée. */
+function keystone(mb: MeshBuilder, f: Frame, w: HallWall, u: number, top: number): void {
+  block(mb, f, w, u - 0.17, u + 0.17, top - 0.12, top + 0.3, 0, 0.08, HALL_TRIM);
+}
+
 /**
- * Portique, balcon et perron de l'hôtel de ville (D125), d'après la photo et les mesures : six colonnes (par paires aux bouts, une entre
- * chaque porte) sous un entablement, balcon à balustrade, drapeaux tricolore et européen aux baies du balcon ; perron droit du palier au
- * pied mesurés, entre deux murs d'échiffre pleins, deux rampes, piédestaux et lampadaires à deux lanternes au pied.
+ * Flanc du corps principal (D293) : trois travées comme sur les photos de la place (côté est) et de la rue de l'Hôtel de ville (côté
+ * ouest) ; baies cintrées au soubassement, fenêtres à fronton cintré à l'étage noble, petites fenêtres d'entresol (est) ou cartouches
+ * sculptés (ouest) sous le bandeau, fenêtres à linteau au dernier étage.
  */
-function portico(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, cpv: { s0: number; s1: number }, ground: (s: number, t: number) => number): void {
+function hallFlank(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, w: HallWall, ground: (s: number, t: number) => number): void {
+  const len = wallLen(w), n = 3, L1 = m.g + m.levels[0], L2 = m.g + m.levels[1];
+  for (let k = 0; k < n; k++) {
+    const u = ((k + 0.5) * len) / n, gz = ground(...onWall(w, u, 0));
+    const lit = (k * 3 + (w.side === "east" ? 1 : 0)) % 3 === 0;
+    if (m.g + WING.rez > gz + 0.3) {
+      bay(mb, glow, f, w, u, 1.45, m.g + WING.rez, WING.rezH, true, false, false);
+      keystone(mb, f, w, u, m.g + WING.rez + WING.rezH);
+    }
+    const z0 = L1 + 1.1, top = z0 + 3.4;
+    block(mb, f, w, u - 0.9, u + 0.9, z0 - 0.32, z0 - 0.18, 0, 0.14, HALL_TRIM);
+    bay(mb, glow, f, w, u, 1.35, z0, 3.4, false, false, lit);
+    block(mb, f, w, u - 1.0, u + 1.0, top + 0.22, top + 0.4, 0, 0.18, HALL_TRIM);
+    segmentPediment(mb, f, w, u - 1.0, u + 1.0, top + 0.4, 0.42, 0.16, HALL_TRIM);
+    if (w.side === "east") bay(mb, glow, f, w, u, 0.95, L2 - 1.15, 0.72, false, false, false);
+    else {
+      block(mb, f, w, u - 0.62, u + 0.62, L2 - 1.2, L2 - 0.36, 0, 0.05, shade(HALL_STONE, 1.06));
+      block(mb, f, w, u - 0.22, u + 0.22, L2 - 1.02, L2 - 0.54, 0.05, 0.12, HALL_TRIM);
+    }
+    const z1 = L2 + 0.9;
+    block(mb, f, w, u - 0.85, u + 0.85, z1 - 0.3, z1 - 0.18, 0, 0.12, HALL_TRIM);
+    bay(mb, glow, f, w, u, 1.3, z1, 2.6, false, false, !lit);
+    block(mb, f, w, u - 0.9, u + 0.9, z1 + 2.78, z1 + 2.94, 0, 0.14, HALL_TRIM);
+  }
+}
+
+/**
+ * Ailes basses (D293), d'après les photos Street View de juillet 2026 (place et rue de l'Hôtel de ville, rue Jeannin) : travées de 4 m ;
+ * baies en plein cintre à clé au rez, fenêtres sur appui à consoles et corniche au premier étage, fenêtres à petit garde-corps en fer au
+ * second ; descentes d'eau ; à l'arrière, les portes grises de service dans le soubassement, sous les baies des deuxièmes travées.
+ * La cour (sans photo) reçoit les mêmes travées, sans garde-corps ni descentes.
+ */
+function hallWing(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, w: HallWall, ground: (s: number, t: number) => number): void {
+  const len = wallLen(w), n = Math.max(1, Math.round(len / 4.05)), outer = w.side !== "court", rear = w.side === "rear";
+  const door = rear ? Math.floor(n / 2) : -1;
+  const service = rear ? [1, n - 2] : [];
+  for (let k = 0; k < n; k++) {
+    const u = ((k + 0.5) * len) / n, gz = ground(...onWall(w, u, 0));
+    const lit = (k * 5 + Math.round(len) * 3) % 7 < 3;
+    if (k !== door && m.g + WING.rez > gz + 0.3) {
+      bay(mb, glow, f, w, u, 1.4, m.g + WING.rez, WING.rezH, true, false, (k + n) % 4 === 0);
+      keystone(mb, f, w, u, m.g + WING.rez + WING.rezH);
+    }
+    if (service.includes(k)) {
+      // Porte de service grise à deux battants, au niveau de la rue (photos de la rue Jeannin).
+      block(mb, f, w, u - 0.95, u + 0.95, gz - 0.2, gz + 2.5, 0, 0.03, HALL_TRIM, true);
+      block(mb, f, w, u - 0.8, u + 0.8, gz - 0.2, gz + 2.35, 0.03, 0.06, DOOR_GREY, true);
+      block(mb, f, w, u - 0.015, u + 0.015, gz, gz + 2.35, 0.06, 0.07, shade(DOOR_GREY, 0.7), true);
+    }
+    const z1 = m.g + WING.f1;
+    sillConsoles(mb, f, w, u, 0.65, z1 - 0.18);
+    bay(mb, glow, f, w, u, 1.3, z1, WING.f1H, false, false, lit);
+    block(mb, f, w, u - 0.85, u + 0.85, z1 + WING.f1H + 0.16, z1 + WING.f1H + 0.34, 0, 0.18, HALL_TRIM);
+    const z2 = m.g + WING.f2;
+    block(mb, f, w, u - 0.8, u + 0.8, z2 - 0.3, z2 - 0.18, 0, 0.13, HALL_TRIM);
+    bay(mb, glow, f, w, u, 1.25, z2, WING.f2H, false, false, !lit && k % 2 === 0);
+    if (outer) balconnet(mb, f, w, u, 0.62, z2);
+    if (outer && k % 3 === 2 && k < n - 1) {
+      const up = ((k + 1) * len) / n, gp = ground(...onWall(w, up, 0));
+      block(mb, f, w, up - 0.05, up + 0.05, gp - 0.2, w.top - 0.75, 0.04, 0.14, PIPE);
+    }
+  }
+}
+
+/**
+ * Entrée de la façade arrière (D293) : porte vitrée cintrée dans la travée du milieu, au niveau de la cour, palier et deux volées droites
+ * le long du mur jusqu'à la rue Jeannin, sur un massif de pierre ; garde-corps en fer (photos depuis les deux coins de la rue).
+ */
+function hallRear(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, ground: (s: number, t: number) => number): void {
+  const r = rearLayout(m);
+  const w: HallWall = { a: r.a, b: r.b, out: r.out, top: m.wingEave, front: false };
+  const zs = Math.min(r.zStreet, ground(...rearPoint(r, r.u, REAR.depth))) - 0.3;
+  bay(mb, glow, f, w, r.u, 1.6, r.zDoor, 3.6, true, false, true);
+  block(mb, f, w, r.u - 0.03, r.u + 0.03, r.zDoor, r.zDoor + 2.75, 0.05, 0.08, HALL_TRIM);
+  keystone(mb, f, w, r.u, r.zDoor + 3.6);
+  const stone = shade(HALL_STONE, 0.94);
+  block(mb, f, w, r.u - REAR.half, r.u + REAR.half, zs, r.zDoor, 0, REAR.depth, stone);
+  const off0 = 0.1, off1 = 0.1 + REAR.width;
+  for (const dir of [-1, 1]) {
+    for (let k = 0; k < r.steps; k++) {
+      const ua = r.u + dir * (REAR.half + k * REAR.run), ub = ua + dir * REAR.run, top = r.zDoor - (k + 1) * r.rise;
+      block(mb, f, w, Math.min(ua, ub), Math.max(ua, ub), zs, top, off0, off1, stone);
+      // Barreau du garde-corps, sur le bord de chaque marche.
+      const uc = (ua + ub) / 2;
+      block(mb, f, w, uc - 0.012, uc + 0.012, top, top + 0.9, off1 - 0.06, off1 - 0.04, IRON, true);
+    }
+    // Main courante : du palier au pied de la volée.
+    const u0 = r.u + dir * REAR.half, u1 = r.u + dir * (REAR.half + r.steps * REAR.run);
+    const z0 = r.zDoor + 0.9, z1 = r.zDoor - r.steps * r.rise + 0.9;
+    const [a0, a1] = [onWall(w, u0, off1 - 0.05), onWall(w, u1, off1 - 0.05)];
+    q(mb, f, [a0[0], a0[1], z0], [a1[0], a1[1], z1], [a1[0], a1[1], z1 + 0.06], [a0[0], a0[1], z0 + 0.06], N(f, w.out[0], w.out[1]), IRON);
+  }
+  // Garde-corps du palier.
+  for (let uu = r.u - REAR.half + 0.1; uu <= r.u + REAR.half - 0.05; uu += 0.15) block(mb, f, w, uu - 0.012, uu + 0.012, r.zDoor, r.zDoor + 0.9, REAR.depth - 0.07, REAR.depth - 0.05, IRON, true);
+  block(mb, f, w, r.u - REAR.half, r.u + REAR.half, r.zDoor + 0.9, r.zDoor + 0.96, REAR.depth - 0.09, REAR.depth - 0.03, IRON);
+}
+
+/** Repère local d'un mur : s le long du mur depuis son début, t vers l'intérieur du bâtiment (les toits des ailes montent vers +t). */
+function wallFrame(f: Frame, m: TownHallSpec, w: HallWall): Frame {
+  const [x, y] = at(f, w.a[0], w.a[1]);
+  return frameOf(x, y, m.a + Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]), 1, 1);
+}
+
+/**
+ * Lucarnes des ailes (D293) : cinq œils-de-bœuf à face de pierre sur les pans des ailes est et ouest (photos de la place et de la rue de
+ * l'Hôtel de ville), lucarne de pierre à fronton cintré au milieu de l'aile arrière (photo de la rue Jeannin).
+ */
+function wingDormers(mb: MeshBuilder, f: Frame, m: TownHallSpec, wings: HallWall[], zinc: THREE.Color): void {
+  const R = m.ring, H = m.court, n = R.length / 2;
+  // Profondeur de la ligne de faîtage des ailes : la moitié de la distance entre le contour et la cour, au milieu de chaque côté.
+  const depthOf = (w: HallWall): number => {
+    let best = Infinity;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, hs = (H[2 * i]! + H[2 * j]!) / 2, ht = (H[2 * i + 1]! + H[2 * j + 1]!) / 2;
+      const d = (hs - w.a[0]) * -w.out[0] + (ht - w.a[1]) * -w.out[1];
+      const along = ((hs - w.a[0]) * (w.b[0] - w.a[0]) + (ht - w.a[1]) * (w.b[1] - w.a[1])) / wallLen(w) ** 2;
+      if (d > 0 && along > -0.2 && along < 1.2) best = Math.min(best, d);
+    }
+    return Number.isFinite(best) ? best / 2 : 6;
+  };
+  const stone = HALL_TRIM, glass = C(T.glass[0]);
+  for (const w of wings) {
+    if (w.side !== "wing-east" && w.side !== "wing-west" && w.side !== "rear") continue;
+    const fl = wallFrame(f, m, w), len = wallLen(w), slope = (m.wingRidge - m.wingEave) / depthOf(w), tF = 0.1;
+    const tRoof = (z: number): number => (z - m.wingEave) / slope, zAtF = m.wingEave + slope * tF;
+    if (w.side === "rear") {
+      const sc = len / 2, wd = 2.2, zs = m.wingEave + 1.4;
+      dormer(mb, fl, tF, dormerOutline(sc, wd, m.wingEave - 0.2, zs, 0.45), zAtF, tRoof, shade(HALL_STONE, 1.02), zinc);
+      q(mb, fl, [sc - 0.45, tF - 0.04, m.wingEave + 0.15], [sc + 0.45, tF - 0.04, m.wingEave + 0.15], [sc + 0.45, tF - 0.04, zs - 0.05], [sc - 0.45, tF - 0.04, zs - 0.05], N(fl, 0, -1), glass);
+      const top = dormerOutline(sc, wd, zs - 0.18, zs, 0.45).slice(1, -1);
+      for (let i = 0; i + 1 < top.length; i++) {
+        const [s0, z0] = top[i]!, [s1, z1] = top[i + 1]!;
+        q(mb, fl, [s0, tF - 0.06, z0 - 0.18], [s1, tF - 0.06, z1 - 0.18], [s1, tF - 0.06, z1], [s0, tF - 0.06, z0], N(fl, 0, -1), stone);
+      }
+      continue;
+    }
+    for (let k = 0; k < 5; k++) {
+      const sc = 3 + ((k + 0.5) * (len - 6)) / 5, wd = 1.3, zs = m.wingEave + 0.8;
+      dormer(mb, fl, tF, dormerOutline(sc, wd, m.wingEave - 0.2, zs, wd / 2), zAtF, tRoof, stone, zinc);
+      disc(mb, fl, sc, tF - 0.03, zs - 0.05, 0.46, 0.46, shade(stone, 0.92));
+      disc(mb, fl, sc, tF - 0.05, zs - 0.05, 0.33, 0.33, glass);
+    }
+  }
+}
+
+type FlagKind = "fr" | "eu" | "bourgogne";
+type V3 = [number, number, number];
+
+/** Polygone convexe (u, v) coupé au demi-plan a·u + b·v + c ≥ 0. */
+function clipHalf(poly: [number, number][], a: number, b: number, c: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i]!, q2 = poly[(i + 1) % poly.length]!;
+    const dp = a * p[0] + b * p[1] + c, dq = a * q2[0] + b * q2[1] + c;
+    if (dp >= 0) out.push(p);
+    if (dp >= 0 !== dq >= 0) {
+      const k = dp / (dp - dq);
+      out.push([p[0] + (q2[0] - p[0]) * k, p[1] + (q2[1] - p[1]) * k]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Étoffe d'un drapeau (D293) : coin haut de la hampe `o`, vers le battant `x`, vers le bas `y` (vecteurs en (s, t, z)), dessinée des deux
+ * côtés. Tricolore, Europe (douze étoiles), ou Bourgogne (écartelé : semé de lis à bordure componée blanc et rouge, et bandé or et azur à
+ * bordure rouge), comme sur la photo de l'utilisateur.
+ */
+function flagCloth(mb: MeshBuilder, f: Frame, kind: FlagKind, o: V3, x: V3, y: V3): void {
+  const pt = (u: number, v: number, lift = 0): Vec3 => {
+    const [s, t, z] = [o[0] + x[0] * u + y[0] * v, o[1] + x[1] * u + y[1] * v, o[2] + x[2] * u + y[2] * v];
+    return P(f, s + nrm[0] * lift, t + nrm[1] * lift, z + nrm[2] * lift);
+  };
+  // Normale de l'étoffe dans le repère (s, t, z), puis en coordonnées three.
+  const cx = x[1] * y[2] - x[2] * y[1], cy = x[2] * y[0] - x[0] * y[2], cz = x[0] * y[1] - x[1] * y[0], cl = Math.hypot(cx, cy, cz) || 1;
+  const nrm: V3 = [cx / cl, cy / cl, cz / cl];
+  const nF = toThree(f.ux * nrm[0] + f.vx * nrm[1], f.uy * nrm[0] + f.vy * nrm[1], nrm[2]);
+  const nB: Vec3 = [-nF[0], -nF[1], -nF[2]];
+  const poly = (pts: [number, number][], col: THREE.Color, layer = 0): void => {
+    for (const [nn, side] of [[nF, 1], [nB, -1]] as const) {
+      for (let i = 1; i + 1 < pts.length; i++) mb.tri(pt(...pts[0]!, side * layer * 0.004), pt(...pts[i]!, side * layer * 0.004), pt(...pts[i + 1]!, side * layer * 0.004), nn, col);
+    }
+  };
+  const rect = (u0: number, u1: number, v0: number, v1: number, col: THREE.Color, layer = 0): void => poly([[u0, v0], [u1, v0], [u1, v1], [u0, v1]], col, layer);
+  const diamond = (u: number, v: number, e: number, col: THREE.Color, layer: number): void => poly([[u - e, v], [u, v - e * 1.5], [u + e, v], [u, v + e * 1.5]], col, layer);
+  if (kind === "fr") {
+    rect(0, 1 / 3, 0, 1, FLAG_BLUE);
+    rect(1 / 3, 2 / 3, 0, 1, FLAG_WHITE);
+    rect(2 / 3, 1, 0, 1, FLAG_RED);
+    return;
+  }
+  if (kind === "eu") {
+    rect(0, 1, 0, 1, FLAG_EU);
+    for (let i = 0; i < 12; i++) {
+      const a = (Math.PI * 2 * i) / 12;
+      diamond(0.5 + Math.cos(a) * 0.2, 0.5 + Math.sin(a) * 0.3, 0.03, FLAG_STAR, 1);
+    }
+    return;
+  }
+  const BG = FLAG_GOLD;
+  for (const [u0, v0, lis] of [[0, 0, true], [0.5, 0, false], [0, 0.5, false], [0.5, 0.5, true]] as const) {
+    const e = 0.06;
+    if (lis) {
+      // Semé de lis : fond bleu, trois lis d'or ; bordure componée blanc et rouge.
+      rect(u0, u0 + 0.5, v0, v0 + 0.5, FLAG_RED);
+      for (let k = 0; k < 4; k++) {
+        const a = u0 + (k * 0.5) / 4, b = u0 + ((k + 1) * 0.5) / 4;
+        if (k % 2 === 0) { rect(a, b, v0, v0 + e, FLAG_WHITE, 1); rect(a, b, v0 + 0.5 - e, v0 + 0.5, FLAG_WHITE, 1); }
+        const c = v0 + (k * 0.5) / 4, d = v0 + ((k + 1) * 0.5) / 4;
+        if (k % 2 === 1) { rect(u0, u0 + e, c, d, FLAG_WHITE, 1); rect(u0 + 0.5 - e, u0 + 0.5, c, d, FLAG_WHITE, 1); }
+      }
+      rect(u0 + e, u0 + 0.5 - e, v0 + e, v0 + 0.5 - e, FLAG_BLUE, 1);
+      for (const [du, dv] of [[0.16, 0.17], [0.34, 0.17], [0.25, 0.34]] as const) diamond(u0 + du, v0 + dv, 0.035, BG, 2);
+    } else {
+      // Bandé d'or et d'azur (bandes de biais, du haut côté hampe vers le bas côté battant) à bordure rouge.
+      rect(u0, u0 + 0.5, v0, v0 + 0.5, FLAG_RED);
+      const sq: [number, number][] = [[u0 + e, v0 + e], [u0 + 0.5 - e, v0 + e], [u0 + 0.5 - e, v0 + 0.5 - e], [u0 + e, v0 + 0.5 - e]];
+      for (let k = 0; k < 6; k++) {
+        const c0 = -0.5 + (k * 1.0) / 6, c1 = -0.5 + ((k + 1) * 1.0) / 6;
+        // Bande entre les droites (u − u0) − (v − v0) = c0 et = c1.
+        const band = clipHalf(clipHalf(sq, 1, -1, -(u0 - v0) - c0), -1, 1, (u0 - v0) + c1);
+        if (band.length >= 3) poly(band, k % 2 ? FLAG_BLUE : BG, 1);
+      }
+    }
+  }
+}
+
+/** Drapeau sur une hampe qui sort du mur en montant à 45°, penchée de côté (`side`) pour qu'on le voie de biais depuis la place. */
+function hallFlag(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, side: number, kind: FlagKind): void {
+  const dS = side * 0.6, dT = -0.8;
+  const L = 2.6, thick = 0.035;
+  const pt = (d: number, zz: number, w = 0): V3 => [s + dS * d - dT * w, t + dT * d + dS * w, zz];
+  for (const k of [1, -1]) q(mb, f, pt(0, z, -thick), pt(0, z, thick), pt(L * 0.7, z + L * 0.7, thick), pt(L * 0.7, z + L * 0.7, -thick), N(f, -dS * k, -dT * k), FLAG_WHITE);
+  const fw = 1.35, fh = 0.9;
+  flagCloth(mb, f, kind, pt(0.35, z + 0.35 * 0.7), [dS * fw, dT * fw, fw * 0.7], [0, 0, -fh]);
+}
+
+/** Globe de lanterne (hexagonal, trois bandes) centré en (s, t, z). */
+function globe(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, r: number, col: THREE.Color): void {
+  const ring = (k: number): V3[] => {
+    const zz = z + (k === 0 ? -r / 2 : r / 2), rr = r * 0.87;
+    return Array.from({ length: 6 }, (_, i) => [s + Math.cos((Math.PI * i) / 3) * rr, t + Math.sin((Math.PI * i) / 3) * rr, zz] as V3);
+  };
+  const lo = ring(0), hi = ring(1);
+  for (let i = 0; i < 6; i++) {
+    const j = (i + 1) % 6, am = (Math.PI * (i + 0.5)) / 3, ns = Math.cos(am), nt = Math.sin(am);
+    mb.tri(P(f, s, t, z - r), P(f, ...lo[j]!), P(f, ...lo[i]!), toThree(f.ux * ns * 0.6 + f.vx * nt * 0.6, f.uy * ns * 0.6 + f.vy * nt * 0.6, -0.8), col);
+    q(mb, f, lo[i]!, lo[j]!, hi[j]!, hi[i]!, N(f, ns, nt), col);
+    mb.tri(P(f, ...hi[i]!), P(f, ...hi[j]!), P(f, s, t, z + r), toThree(f.ux * ns * 0.6 + f.vx * nt * 0.6, f.uy * ns * 0.6 + f.vy * nt * 0.6, 0.8), col);
+  }
+}
+
+/** Touffe de fleurs ou de feuilles (octaèdre) centrée en (s, t, z). */
+function tuft(mb: MeshBuilder, f: Frame, s: number, t: number, z: number, r: number, col: THREE.Color): void {
+  const pts: V3[] = [[s + r, t, z], [s, t + r, z], [s - r, t, z], [s, t - r, z]];
+  for (let i = 0; i < 4; i++) {
+    const a = pts[i]!, b = pts[(i + 1) % 4]!, am = (Math.PI * (i + 0.5)) / 2, ns = Math.cos(am), nt = Math.sin(am);
+    mb.tri(P(f, ...a), P(f, ...b), P(f, s, t, z + r * 0.8), toThree((f.ux * ns + f.vx * nt) * 0.7, (f.uy * ns + f.vy * nt) * 0.7, 0.7), col);
+    mb.tri(P(f, ...b), P(f, ...a), P(f, s, t, z - r * 0.6), toThree((f.ux * ns + f.vx * nt) * 0.7, (f.uy * ns + f.vy * nt) * 0.7, -0.7), shade(col, 0.8));
+  }
+}
+
+/** Fleurs d'une jardinière ou d'une suspension : touffes de feuilles et de fleurs roses, magenta et blanches, posées sur une ligne. */
+function flowers(mb: MeshBuilder, f: Frame, pts: V3[], seed: number): void {
+  pts.forEach(([s, t, z], i) => {
+    tuft(mb, f, s, t, z, 0.2, LEAF);
+    tuft(mb, f, s + 0.06, t - 0.05, z + 0.1, 0.15, FLOWERS[(i + seed) % FLOWERS.length]!);
+  });
+}
+
+/**
+ * Candélabre en fonte vert sombre sur un piédestal (photos de l'utilisateur, D294) : socle, fût, collier, quatre bras courbes à globe et un
+ * globe au sommet ; les globes s'allument la nuit ; une suspension fleurie à mi-hauteur.
+ */
+function candelabra(mb: MeshBuilder, glow: MeshBuilder, f: Frame, s: number, t: number, z: number, seed: number): void {
+  column(mb, f, s, t, 0.13, z, z + 0.55, LAMP_GREEN);
+  column(mb, f, s, t, 0.075, z + 0.55, z + 3.0, LAMP_GREEN);
+  column(mb, f, s, t, 0.12, z + 2.55, z + 2.65, LAMP_GREEN);
+  for (const [ds, dt] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const ex = 0.42;
+    box(mb, f, s + Math.min(0, ds * ex) - 0.025, s + Math.max(0, ds * ex) + 0.025, t + Math.min(0, dt * ex) - 0.025, t + Math.max(0, dt * ex) + 0.025, z + 2.6, z + 2.66, LAMP_GREEN);
+    const gs = s + ds * ex, gt = t + dt * ex;
+    box(mb, f, gs - 0.03, gs + 0.03, gt - 0.03, gt + 0.03, z + 2.6, z + 2.9, LAMP_GREEN);
+    globe(mb, f, gs, gt, z + 3.08, 0.18, GLOBE);
+    globe(glow, f, gs, gt, z + 3.08, 0.185, GLOW_HI);
+  }
+  globe(mb, f, s, t, z + 3.25, 0.2, GLOBE);
+  globe(glow, f, s, t, z + 3.25, 0.205, GLOW_HI);
+  const ring: V3[] = Array.from({ length: 5 }, (_, i) => [s + Math.cos((Math.PI * 2 * i) / 5) * 0.24, t + Math.sin((Math.PI * 2 * i) / 5) * 0.24, z + 1.25] as V3);
+  flowers(mb, f, ring, seed);
+}
+
+/**
+ * Portique, balcon, drapeaux et perron de l'hôtel de ville (D125, D294), d'après les photos de l'utilisateur : six colonnes (par paires aux
+ * bouts, une entre chaque porte) sous un entablement, balcon à balustrade ; drapeaux européen, tricolore et de la Bourgogne ; perron droit
+ * entre deux murs d'échiffre, à marches du bas évasées et arrondies qui contournent deux piédestaux à candélabres ; rampes en fer forgé à
+ * volute ; jardinières fleuries.
+ */
+function portico(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, cpv: { s0: number; s1: number }): void {
   const [tf0, zTop] = m.portico!;
-  const [ps0, ps1, tl, tfoot, zl] = m.perron!;
+  const L = perronLayout(m)!;
+  const { s0: ps0, s1: ps1, tl, tfoot, zl, zFoot, rise, run } = L;
   const wallT = -PROJ, tf = tf0 + 0.15, p = m.l / m.bays;
   const zFloor = zTop - 1.0, zE = zFloor - 0.95, zBase = zl + 0.05;
   const a0 = cpv.s0 + 0.35, a1 = cpv.s1 - 0.35;
@@ -1293,58 +1655,92 @@ function portico(mb: MeshBuilder, glow: MeshBuilder, f: Frame, m: TownHallSpec, 
   rail(a0, a0 + 0.28, tf + 0.28, wallT);
   rail(a1 - 0.28, a1, tf + 0.28, wallT);
   for (const cs of [a0 + 0.82, a1 - 0.82]) box(mb, f, cs - 0.55, cs + 0.55, tf, tf + 0.35, zFloor, zTop + 0.08, HALL_TRIM);
-  // Drapeaux aux baies du balcon : tricolore au centre, européen à droite.
+  // Drapeaux (photo de l'utilisateur, D293) : européen à gauche et Bourgogne à droite sur des hampes inclinées qui sortent des trumeaux, tricolore
+  // au milieu sur un mât droit posé sur le balcon, l'étoffe dans le plan de la façade.
   const zFlag = m.g + m.levels[1] + 3.2;
   if (bays.length >= 3) {
-    hallFlag(mb, f, bays[1]!, wallT - 0.05, zFlag, -1, false);
-    hallFlag(mb, f, bays[2]!, wallT - 0.05, zFlag, 1, true);
+    hallFlag(mb, f, bays[0]! - 1.15, wallT - 0.05, zFlag, -1, "eu");
+    hallFlag(mb, f, bays[2]! + 1.15, wallT - 0.05, zFlag, 1, "bourgogne");
+    const ms = bays[1]! + 0.25, mt = tf + 0.2, mTop = zFlag + 3.2;
+    box(mb, f, ms - 0.035, ms + 0.035, mt - 0.035, mt + 0.035, zTop, mTop, FLAG_WHITE);
+    flagCloth(mb, f, "fr", [ms - 0.04, mt, mTop - 0.1], [-1.5, 0, 0], [0, 0, -1.0]);
   }
 
-  // Perron : marches régulières du palier au pied, posées 5 cm au-dessus du relief (qui reste la surface où l'on marche).
-  const sm = (ps0 + ps1) / 2;
-  const zFoot = ground(sm, tfoot);
-  const lift = 0.05;
-  const n = Math.max(1, Math.round((zl - zFoot) / 0.16)), rise = (zl - zFoot) / n, run = (tl - tfoot) / n;
-  q(mb, f, [ps0, tl, zl + lift], [ps1, tl, zl + lift], [ps1, wallT, zl + lift], [ps0, wallT, zl + lift], [0, 1, 0], TREAD);
-  for (let k = 0; k < n; k++) {
-    const t = tl - k * run, zt = zl - k * rise + lift, zb = k === n - 1 ? zFoot - 0.3 : zt - rise;
-    q(mb, f, [ps0, t, zb], [ps1, t, zb], [ps1, t, zt], [ps0, t, zt], N(f, 0, -1), RISER);
-    if (k < n - 1) q(mb, f, [ps0, t - run, zt - rise], [ps1, t - run, zt - rise], [ps1, t, zt - rise], [ps0, t, zt - rise], [0, 1, 0], TREAD);
+  // Perron (D294) : marches posées 5 cm au-dessus du relief ; les cinq du bas s'évasent et contournent les piédestaux.
+  const lift = 0.05, zb = zFoot - 0.3;
+  for (const [j, st] of L.steps.entries()) {
+    const z = st.z + lift;
+    if (st.e > 0) {
+      const e = st.e, r = Math.min(PERRON.round, e * 0.75), sl = ps0 - e, sr = ps1 + e, t0 = st.t, tb = L.tBack;
+      const out: ST[] = [[sl, tb], [sl, t0 + r]];
+      for (let k = 1; k < 4; k++) out.push([sl + r - Math.cos((Math.PI / 2) * (k / 4)) * r, t0 + r - Math.sin((Math.PI / 2) * (k / 4)) * r]);
+      out.push([sl + r, t0], [sr - r, t0]);
+      for (let k = 1; k < 4; k++) out.push([sr - r + Math.sin((Math.PI / 2) * (k / 4)) * r, t0 + r - Math.cos((Math.PI / 2) * (k / 4)) * r]);
+      out.push([sr, t0 + r], [sr, tb]);
+      for (let i = 1; i + 1 < out.length; i++) mb.tri(P(f, ...out[0]!, z), P(f, ...out[i]!, z), P(f, ...out[i + 1]!, z), [0, 1, 0], TREAD);
+      for (let i = 0; i < out.length; i++) {
+        const a = out[i]!, b = out[(i + 1) % out.length]!, l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        q(mb, f, [a[0], a[1], zb], [b[0], b[1], zb], [b[0], b[1], z], [a[0], a[1], z], N(f, (b[1] - a[1]) / l, -(b[0] - a[0]) / l), RISER);
+      }
+      continue;
+    }
+    const zPrev = (j > 0 ? L.steps[j - 1]!.z : zFoot) + lift;
+    q(mb, f, [ps0, st.t, zPrev], [ps1, st.t, zPrev], [ps1, st.t, z], [ps0, st.t, z], N(f, 0, -1), RISER);
+    q(mb, f, [ps0, st.t, z], [ps1, st.t, z], [ps1, st.t + run, z], [ps0, st.t + run, z], [0, 1, 0], TREAD);
   }
-  // Murs d'échiffre pleins, du sol de la place au garde-corps (85 cm au-dessus des marches et du palier).
-  const zb = zFoot - 0.3, h = 0.85;
+  q(mb, f, [ps0, tl, zl + lift], [ps1, tl, zl + lift], [ps1, wallT, zl + lift], [ps0, wallT, zl + lift], [0, 1, 0], TREAD);
+  // Murs d'échiffre pleins, des piédestaux à la façade, parapet à 85 cm au-dessus des marches et du palier.
+  const h = PERRON.parapet;
   const line = (t: number): number => zFoot + ((t - tfoot) / (tl - tfoot)) * (zl - zFoot) + lift + h;
-  for (const [s0, s1] of [[ps0 - 0.45, ps0], [ps1, ps1 + 0.45]] as const) {
-    const prof: [number, number][] = [[tfoot, zb], [wallT, zb], [wallT, zl + lift + h], [tl, zl + lift + h], [tfoot, line(tfoot)]];
+  const tW = L.tWe + PERRON.ped[1] - 0.05;
+  for (const [s0, s1] of [[ps0 - PERRON.wall, ps0], [ps1, ps1 + PERRON.wall]] as const) {
+    const prof: [number, number][] = [[tW, zb], [wallT, zb], [wallT, zl + lift + h], [tl, zl + lift + h], [tW, line(tW)]];
     for (const [ss, dir] of [[s0, -1], [s1, 1]] as const) {
       for (let i = 1; i + 1 < prof.length; i++) mb.tri(P(f, ss, ...prof[0]!), P(f, ss, ...prof[i]!), P(f, ss, ...prof[i + 1]!), N(f, dir, 0), shade(HALL_STONE, 0.95));
     }
-    q(mb, f, [s0, tfoot, line(tfoot)], [s1, tfoot, line(tfoot)], [s1, tl, zl + lift + h], [s0, tl, zl + lift + h], upNormal(P(f, s0, tfoot, line(tfoot)), P(f, s1, tfoot, line(tfoot)), P(f, s1, tl, zl + lift + h)), HALL_TRIM);
+    q(mb, f, [s0, tW, line(tW)], [s1, tW, line(tW)], [s1, tl, zl + lift + h], [s0, tl, zl + lift + h], upNormal(P(f, s0, tW, line(tW)), P(f, s1, tW, line(tW)), P(f, s1, tl, zl + lift + h)), HALL_TRIM);
     q(mb, f, [s0, tl, zl + lift + h], [s1, tl, zl + lift + h], [s1, wallT, zl + lift + h], [s0, wallT, zl + lift + h], [0, 1, 0], HALL_TRIM);
-    q(mb, f, [s0, tfoot, zb], [s1, tfoot, zb], [s1, tfoot, line(tfoot)], [s0, tfoot, line(tfoot)], N(f, 0, -1), HALL_STONE);
-    // Piédestal et lampadaire à deux lanternes au pied de l'échiffre.
-    const cs = (s0 + s1) / 2, pt = tfoot + 0.25, zp = line(tfoot) + 0.45;
-    box(mb, f, cs - 0.4, cs + 0.4, pt - 0.4, pt + 0.4, zb, zp, HALL_STONE, HALL_TRIM);
-    box(mb, f, cs - 0.07, cs + 0.07, pt - 0.07, pt + 0.07, zp, zp + 3.0, IRON);
-    box(mb, f, cs - 0.55, cs + 0.55, pt - 0.04, pt + 0.04, zp + 2.75, zp + 2.83, IRON);
-    for (const ls of [cs - 0.5, cs + 0.5]) {
-      box(mb, f, ls - 0.16, ls + 0.16, pt - 0.16, pt + 0.16, zp + 2.83, zp + 3.33, C("#f3e6c0"), IRON);
-      for (const [dir, axisT] of [[-1, true], [1, true], [-1, false], [1, false]] as const) {
-        const o = 0.165;
-        if (axisT) q(glow, f, [ls - 0.13, pt + dir * o, zp + 2.86], [ls + 0.13, pt + dir * o, zp + 2.86], [ls + 0.13, pt + dir * o, zp + 3.3], [ls - 0.13, pt + dir * o, zp + 3.3], N(f, 0, dir), GLOW_HI);
-        else q(glow, f, [ls + dir * o, pt - 0.13, zp + 2.86], [ls + dir * o, pt + 0.13, zp + 2.86], [ls + dir * o, pt + 0.13, zp + 3.3], [ls + dir * o, pt - 0.13, zp + 3.3], N(f, dir, 0), GLOW_HI);
+    // Jardinière sur le parapet, contre le portique, fleurs qui débordent vers l'extérieur.
+    const cs = (s0 + s1) / 2, out = s0 < ps0 ? -1 : 1, zj = zl + lift + h;
+    box(mb, f, cs - 0.2, cs + 0.2, wallT - 1.5, wallT - 0.4, zj, zj + 0.3, PLANTER);
+    flowers(mb, f, [[cs, wallT - 1.3, zj + 0.35], [cs + out * 0.15, wallT - 0.95, zj + 0.38], [cs, wallT - 0.6, zj + 0.33], [cs + out * 0.3, wallT - 1.1, zj + 0.1]], out > 0 ? 1 : 0);
+  }
+  // Piédestaux au bout des murs d'échiffre : plinthe, dé, corniche ; candélabres.
+  for (const [i, [s0, s1, t0, t1, , top]] of L.pedestals.entries()) {
+    box(mb, f, s0 - 0.06, s1 + 0.06, t0 - 0.06, t1 + 0.06, zb, L.zWe + lift + 0.3, shade(HALL_STONE, 0.92));
+    box(mb, f, s0, s1, t0, t1, L.zWe + lift + 0.3, top - 0.25, HALL_STONE);
+    box(mb, f, s0 - 0.08, s1 + 0.08, t0 - 0.08, t1 + 0.08, top - 0.25, top, HALL_TRIM);
+    candelabra(mb, glow, f, (s0 + s1) / 2, (t0 + t1) / 2, top, i);
+  }
+  // Deux rampes en fer forgé qui partagent la volée en trois, du palier au pied : main courante, lisse basse, un barreau par marche, un
+  // losange de volute toutes les deux marches, crosse enroulée au pied.
+  const nose = (t: number): number => zFoot + ((t - tfoot) / (tl - tfoot)) * (zl - zFoot) + lift;
+  for (const rs of [ps0 + (ps1 - ps0) / 3, ps0 + (2 * (ps1 - ps0)) / 3]) {
+    const tTop = tl - 0.5 * run, tBot = tfoot + 0.5 * run;
+    const bar = (tA: number, zA: number, tB: number, zB: number, th: number): void => {
+      for (const dir of [-1, 1]) q(mb, f, [rs + dir * 0.025, tA, zA], [rs + dir * 0.025, tB, zB], [rs + dir * 0.025, tB, zB + th], [rs + dir * 0.025, tA, zA + th], N(f, dir, 0), IRON);
+      q(mb, f, [rs - 0.025, tA, zA + th], [rs + 0.025, tA, zA + th], [rs + 0.025, tB, zB + th], [rs - 0.025, tB, zB + th], [0, 1, 0], IRON);
+    };
+    bar(tBot, nose(tBot) + rise + 0.88, tTop, nose(tTop) + rise + 0.88, 0.06);
+    bar(tBot, nose(tBot) + rise + 0.12, tTop, nose(tTop) + rise + 0.12, 0.03);
+    for (const [k, st] of L.steps.entries()) {
+      const tc = st.t + run / 2, zt = st.z + lift;
+      if (tc < tBot - 0.01 || tc > tTop + 0.01) continue;
+      for (const dir of [-1, 1]) q(mb, f, [rs + dir * 0.012, tc - 0.012, zt], [rs + dir * 0.012, tc + 0.012, zt], [rs + dir * 0.012, tc + 0.012, zt + 0.9], [rs + dir * 0.012, tc - 0.012, zt + 0.9], N(f, dir, 0), IRON);
+      if (k % 2 === 0) {
+        const td = tc + run / 2, zd = nose(td) + rise + 0.5;
+        for (const dir of [-1, 1]) q(mb, f, [rs + dir * 0.02, td - 0.14, zd], [rs + dir * 0.02, td, zd - 0.2], [rs + dir * 0.02, td + 0.14, zd], [rs + dir * 0.02, td, zd + 0.2], N(f, dir, 0), IRON);
       }
     }
-  }
-  // Deux rampes en fer : poteaux tous les quatre marches, main courante qui suit la pente.
-  for (const rs of [ps0 + (ps1 - ps0) / 3, ps0 + (2 * (ps1 - ps0)) / 3]) {
-    for (let k = 0; k < n; k += 4) {
-      const t = tl - (k + 0.5) * run, zt = zl - (k + 1) * rise + lift;
-      box(mb, f, rs - 0.03, rs + 0.03, t - 0.03, t + 0.03, zt, zt + 0.9, IRON);
+    // Crosse : la main courante s'enroule vers le bas devant la première marche.
+    let prevT = tBot, prevZ = nose(tBot) + rise + 0.88;
+    for (let k = 1; k <= 10; k++) {
+      const a = (k / 10) * Math.PI * 1.6, r = 0.32 * (1 - k / 14);
+      const tt = tBot - 0.3 - Math.sin(a) * r, zz = nose(tBot) + rise + 0.56 + Math.cos(a) * r;
+      bar(prevT, prevZ, tt, zz, 0.04);
+      prevT = tt;
+      prevZ = zz;
     }
-    const r0: [number, number] = [tl - 0.5 * run, zl - rise + lift + 0.9], r1: [number, number] = [tfoot + 0.5 * run, zFoot + lift + 0.9];
-    for (const dir of [-1, 1]) q(mb, f, [rs + dir * 0.03, r1[0], r1[1]], [rs + dir * 0.03, r0[0], r0[1]], [rs + dir * 0.03, r0[0], r0[1] + 0.06], [rs + dir * 0.03, r1[0], r1[1] + 0.06], N(f, dir, 0), IRON);
-    q(mb, f, [rs - 0.03, r1[0], r1[1] + 0.06], [rs + 0.03, r1[0], r1[1] + 0.06], [rs + 0.03, r0[0], r0[1] + 0.06], [rs - 0.03, r0[0], r0[1] + 0.06], [0, 1, 0], IRON);
   }
 }
 
@@ -2317,8 +2713,8 @@ function collegeDetails(mb: MeshBuilder, glow: MeshBuilder, m: CollegeSpec, terr
     // Inscription « LYCÉE » incisée sur la frise sous le fronton.
     lyceeLetters(mb, f, wall, hw, top - 2.0);
     // Drapeaux : tricolore à gauche, européen à droite, aux baies de l'étage.
-    hallFlag(mb, f, sc - hw * 0.5, -0.3, gl + 5.0, -1, false);
-    hallFlag(mb, f, sc + hw * 0.5, -0.3, gl + 5.0, 1, true);
+    hallFlag(mb, f, sc - hw * 0.5, -0.3, gl + 5.0, -1, "fr");
+    hallFlag(mb, f, sc + hw * 0.5, -0.3, gl + 5.0, 1, "eu");
   }
 }
 

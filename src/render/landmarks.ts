@@ -995,7 +995,7 @@ export function buildLandmarks(
         else if (kind.gend) buildGendarmerie(sinks, kind.gend, terrain);
         else if (kind.naut) buildNautique(sinks, kind.naut, terrain);
         else if (kind.vallon) { buildVallon(sinks, kind.vallon, terrain); buildVallonFacades(sinks, kind.vallon, terrain); if (kind.vallon.gate) buildGatePosts(sinks, kind.vallon.gate, terrain); if (kind.vallon.props) buildVallonProps(sinks, kind.vallon, terrain); }
-        else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise));
+        else if (kind.hall) buildTownHall(sinks.solid, sinks.glow, kind.hall, terrain, C(T.roofs.ardoise), { atlas: sinks.atlas, names: sinks.names });
         else if (kind.college) buildCollege(sinks.solid, sinks.glow, kind.college, b.ring, terrain, b.holes);
         else civic(sinks, kind, fiche, segs, terrain);
         break;

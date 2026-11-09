@@ -6683,3 +6683,162 @@ y est un mélange de gravier et de terre. Tracer le parking (enrobé ou gravier,
 
 ![Quatre vues](captures/d292-sacrovir.jpg)
 ![Au golf, devant le bâtiment d'accueil](captures/d292-sacrovir-golf.jpg)
+
+## 2026-11-09 — D293. L'hôtel de ville : côtés, arrière, cour, drapeaux et inscriptions
+
+**Demande de l'utilisateur** (suite de la revue, point 2) : finir l'hôtel de ville. Photos fournies (non versionnées, elles servent seulement
+à décrire) : la façade de face (Wikimedia Commons) et une photo récente en contre-plongée ; cinq vues Google Street View de juillet 2026 :
+le côté est depuis le parking de la place, l'arrière depuis les deux coins de la rue Jeannin (9 et 12 rue Jeannin), le côté ouest depuis le
+5 et le 1 rue de l'Hôtel de ville (la rue entre la mairie et le théâtre). Pas de photo de la cour.
+
+**Lecture des photos** (repère D123 : `s` le long de la façade, de l'ouest vers l'est ; `t` vers l'intérieur) :
+- **Flancs du corps principal** (13,75 m, trois travées, est et ouest) : baies cintrées au soubassement, fenêtres à fronton cintré à l'étage
+  noble, petites fenêtres d'entresol sous le bandeau côté est, cartouches sculptés côté ouest, fenêtres à linteau au dernier étage.
+- **Ailes est et ouest** (huit travées de 4 m) et **aile arrière** (onze travées) : trois niveaux plus bas que le corps principal
+  (corniche à 14,4 m, D123). Baies en plein cintre à clé au rez ; premier étage aux fenêtres sur appui à deux consoles, sous une corniche ;
+  bandeau ; second étage aux fenêtres à petit garde-corps en fer ; corniche à modillons ; chaînes d'angle harpées aux coins arrière ;
+  descentes d'eau en zinc. Étages clairs sur les côtés, tout en pierre blonde à l'arrière. Toits : cinq œils-de-bœuf sur chaque aile
+  latérale, une lucarne de pierre à fronton cintré au milieu de l'aile arrière.
+- **Relief** (relevé du jeu) : la rue Jeannin est 2 m plus bas que la place et que la cour. D'où le haut soubassement de l'arrière, ses
+  deux portes grises de service au niveau de la rue (deuxièmes travées depuis chaque coin), et l'**entrée arrière** : porte vitrée cintrée
+  dans la travée du milieu, au niveau de la cour, devant laquelle un palier et deux volées droites le long du mur descendent vers l'est et
+  vers l'ouest (13 marches de 18 cm), garde-corps en fer.
+- **Cour** (sans photo) : les travées des ailes, sans garde-corps ni descentes.
+- **Drapeaux** (photo récente) : européen à gauche, **tricolore au milieu sur un mât droit posé sur le balcon**, et **le troisième drapeau
+  est celui de la Bourgogne** (écartelé : semé de lis d'or sur azur à bordure componée blanc et rouge ; bandé d'or et d'azur à bordure
+  rouge). Les deux drapeaux latéraux sortent des trumeaux sur des hampes inclinées.
+- **Inscriptions** : « LIBERTE », « EGALITE », « FRATERNITE » dans les lunettes claires des trois baies du balcon (sans accents, comme
+  sur la photo) ; « ASCENSEUR » et « HALLES » sur des plaques gravées, à l'imposte des trumeaux entre les arcades à gauche du perron.
+
+**Code** :
+- `src/core/townhall.ts` (nouveau, logique pure) : disposition de l'entrée arrière (`rearLayout`, constantes `REAR` : seuil à 0,3 m et
+  rue à −2 m du sol devant la façade, relevés une fois sur le relief et vérifiés par un test), obstacle de l'escalier arrière
+  (`hallObstacles`, 2,4 m, non franchissable : la porte est fermée).
+- `src/render/monuments.ts` : murs du bâtiment étiquetés par côté (`HallWall.side`) ; `hallFlank` (flancs), `hallWing` (ailes et cour),
+  `hallRear` (entrée arrière), `wingDormers` (lucarnes des ailes, dans un repère propre à chaque mur), `flagCloth` (étoffe des trois
+  drapeaux, des deux côtés), lunettes et inscriptions (`wallLabel`, atlas des noms : `buildTownHall` reçoit l'atlas, absent dans les
+  tests). Le dessin générique des autres murs (une fenêtre tous les 4 m) disparaît.
+- Coût : **13 468 triangles** pour tout l'hôtel de ville avec le perron de D294 (5 431 avant), dans le maillage de la tuile, sans appel de
+  dessin de plus ; plafond du test relevé à 16 000.
+
+**Tests** (`src/core/townhall.test.ts`) : façade arrière à l'opposé de la façade, porte au niveau de la cour, rue 2 m plus bas, hauteur des
+marches de l'entrée arrière, escalier arrière infranchissable ; plafond de triangles (`monuments.test.ts`).
+
+**Limites** : la cour est dessinée sans photo ; les plaques et panneaux de stationnement des murs ne sont pas dessinés ; on ne monte pas
+l'escalier arrière (la porte est fermée).
+
+![Le côté est depuis la place](captures/d293-mairie-est.jpg)
+![L'arrière, rue Jeannin](captures/d293-mairie-arriere.jpg)
+![Le côté ouest, rue de l'Hôtel de ville](captures/d293-mairie-ouest.jpg)
+![Drapeaux et inscriptions](captures/d293-mairie-drapeaux.jpg)
+
+## 2026-11-09 — D294. L'hôtel de ville : le perron d'après photos, on marche sur les marches
+
+**Demande de l'utilisateur** : l'escalier de l'hôtel de ville, noté « encore anguleux » à l'étape 4.1 puis refait en D125 sans photo
+rapprochée. Deux photos de l'utilisateur (de face, et en contre-plongée récente).
+
+**Écarts relevés entre les photos et D125** : les cinq marches du bas s'élargissent au-delà des murs d'échiffre et contournent deux gros
+piédestaux, à coins arrondis ; les murs d'échiffre s'arrêtent à ces piédestaux, qui portent des **candélabres en fonte vert sombre à cinq
+globes blancs** (quatre bras courbes et un globe au sommet), et non des lanternes carrées ; les rampes sont en **fer forgé** (barreaux,
+volutes) et s'enroulent en crosse au pied ; des **jardinières fleuries** sur le parapet contre le portique et une suspension sur chaque
+candélabre. Surtout, on marchait sur le relief lisse sous les marches (le talus du LiDAR).
+
+**Disposition** (`perronLayout`, `src/core/townhall.ts`, partagée par le dessin, les tabliers et les obstacles) : palier et pied mesurés en
+D125 (`perron`) ; pied à 0,45 m au-dessus du sol devant la façade (`PERRON.foot`, relief au pied : 0,47 m) ; 26 marches de 16 cm et
+35 cm de giron ; les cinq du bas débordent de 3,0 m (marche du bas) à 1,2 m (cinquième) de chaque côté de la volée, coins avant arrondis
+(rayon 0,9 m), fond derrière les piédestaux ; piédestaux de 1 × 1 m, 1,9 m au-dessus de la cinquième marche, face intérieure dans
+l'alignement de la volée ; murs d'échiffre de 45 cm, parapet à 85 cm au-dessus des marches.
+
+**On marche sur les marches** : deux tabliers invisibles (`hallDecks`, comme au théâtre romain et au porche de la cathédrale) : une rampe
+sur les nez de marche entre les murs d'échiffre, prolongée par le palier jusqu'aux portes ; une rampe plus large sur les marches évasées.
+Les pieds restent à moins d'une demi-marche du dessus de la marche dessinée. **Obstacles** (`hallObstacles`, `world.ts`) : murs
+d'échiffre et piédestaux, 3 m, non franchissables (du dehors, ils font jusqu'à 5 m) ; on entre sur le perron par le bas et par les
+marches évasées.
+
+**Creux d'affichage** (`hallPits`, comme sous la Croix de la Libération, D267) : le relevé LiDAR forme sous le perron un talus lisse qui
+débordait à côté des murs d'échiffre (bosse contre les arcades, vue de biais). Sur l'emprise du perron et des marches évasées, le relief
+affiché **et le dallage de la place** sont plafonnés à 0,3 m au-dessus du sol devant la façade : nouvelle option `pave` des creux
+(`Pit.pave`, `TiledTerrain.paveAt`), que seul ce creux active (les autres creux n'abaissent que le relief, comme avant). Le sol où l'on marche
+ne change pas : à côté des murs d'échiffre, le joueur monte encore un peu sur la bosse du relevé, sous le dallage dessiné. Le creux va jusqu'à 1,5 m sous le bâtiment : le relief affiché est un maillage de 2 à 2,5 m, dont le point
+contre le mur gardait la hauteur du talus et tirait une pente devant l'arcade.
+
+**Dessin** (`portico`, `candelabra`, `globe`, `flowers`) : marches évasées en prismes à coins arrondis, marches de la volée en contremarches
+et girons ; globes doublés dans le maillage des vitres allumées (ils s'allument la nuit) ; fleurs roses, magenta et blanches toute l'année
+(les jardinières ne suivent pas les saisons).
+
+**Tests** (`src/core/townhall.test.ts`, +4) : pied mesuré, hauteur de marche, cinq marches évasées de plus en plus larges vers le bas,
+piédestaux hors de la volée, relief sous chaque marche ; montée par les tabliers en pente régulière jusqu'au palier, marches évasées
+praticables ; murs d'échiffre et piédestaux qui arrêtent le joueur dans le monde réel, volée libre ; creux d'affichage sur l'emprise du
+perron et ses abords, pas au-delà.
+
+![Le perron de face](captures/d294-perron.jpg)
+![Le perron de biais, les candélabres](captures/d294-perron-biais.jpg)
+![La nuit](captures/d294-perron-nuit.jpg)
+
+## 2026-11-09 — D295. Panneaux de signalisation tirés du graphe routier
+
+**Demande de l'utilisateur** (suite de la revue, point 2, idées de rue) : poser les panneaux que le graphe routier connaît déjà.
+
+**Données** : `tools/data/build_signs.py`, étape autonome (à relancer après `build_nav.py`) qui lit le graphe routier publié
+(`public/data/nav/*.json`, nœuds fusionnés par coordonnées entre super-tuiles) et écrit `public/data/signs/<tuile>.json` et `signs/index.json`,
+sans toucher aux tuiles. Les vitesses du graphe mélangent les limitations d'OpenStreetMap et les vitesses moyennes de BD TOPO (5, 15, 35,
+45 km/h…, D40) : seules les premières sont des panneaux. L'étape garde donc l'étiquette `maxspeed` des 1 208 voies du graphe dans
+`tools/data/maxspeed.json` (versionné, rempli par l'API d'OpenStreetMap avec `--fetch` : 262 voies étiquetées, dont 214 à 50 km/h).
+
+**Règles** :
+- **Stop et cédez-le-passage** : sur chaque approche dont OpenStreetMap donne le sens (D61) ; sans sens, sur les approches des voies moins
+  importantes que la plus importante du carrefour (aucune si toutes se valent). Les feux restent ceux d'OpenStreetMap.
+- **Sens interdit** : au bout de sortie d'une voie à sens unique, quand une autre voie arrive à ce carrefour ; ni dans les ronds-points
+  (sens giratoire), ni dans les allées de parking et voies de service.
+- **Limitation** : au début (4 m) d'une voie dont OpenStreetMap donne une vitesse réglementaire (20 à 110), quand on y entre depuis une
+  voie dont la vitesse diffère (50 km/h sans étiquette : la règle en ville) ; pas sur les voies de moins de 8 m ni dans les zones de
+  rencontre.
+- **Pose** : sur le trottoir, à droite du conducteur visé, à 60 cm du bord de la voie (largeur du graphe), tourné vers lui ; recul depuis
+  le carrefour : la moitié de la plus large voie qui s'y croise plus 1,5 m. Si le point tombe sur la chaussée dessinée (bouche de
+  carrefour plus large que la voie) ou dans un bâtiment, le panneau s'écarte vers le trottoir (jusqu'à 2,5 m) puis recule (jusqu'à 3 m) ;
+  sans place, il est écarté (34 sur 446). Doublons fusionnés (même nature à moins de 2 m).
+- Résultat : **412 panneaux dans 116 tuiles** : 113 stops, 92 cédez-le-passage, 112 sens interdits, 95 limitations (30, 50, 70, 80).
+
+**Jeu** : `loadTile` ajoute les panneaux de la tuile à son mobilier (nature `sign_stop`, `sign_give_way`, `sign_no_entry`, `sign_speed`,
+vitesse dans `name`, `rot` : direction de la face, comme le panneau « voie sans issue » de D287). Dessin (`buildFurniture`) : mât de
+2,3 m, plaque à 2 m, face et dos gris ; stop octogonal rouge à bande blanche, cédez-le-passage en triangle pointe en bas, sens interdit
+rouge à barre blanche, limitation à couronne rouge et chiffres noirs (afficheur à sept segments). 30 à 70 triangles par panneau, dans le
+maillage du mobilier. **Cassables** comme les feux (D160) et seulement pour les voitures du joueur (`CAR_ONLY`) : ils sont au bord des
+trottoirs, où passent les files des passants et où la circulation se coincerait.
+
+**Tests** (`src/data/signs.test.ts`, +4) : fichiers et index, natures, identifiants, vitesses réglementaires ; chaque panneau dans sa
+tuile, hors des bâtiments et de la chaussée dessinée ; cassables, traversables à pied ; dessin fini et borné.
+
+**Limites** : pas de panonceaux (« sauf riverains »), ni de panneaux de fin de limitation, d'entrée d'agglomération, de zone 30 ou de sens
+unique ; les stops sans sens connu entre voies de même importance n'ont pas de panneau ; les conducteurs du jeu suivent toujours le
+graphe (D61), pas les panneaux.
+
+![Un stop et un sens interdit](captures/d295-stop.jpg)
+![Une limitation à 30](captures/d295-30.jpg)
+![Un cédez-le-passage](captures/d295-cedez.jpg)
+
+## 2026-11-09 — D296. Stationnement le long des trottoirs : relevé automatique essayé, point en pause
+
+**Demande de l'utilisateur** : voitures garées en file le long des trottoirs ; même taux d'occupation que les parkings (30 %), plus pleines la
+nuit dans les quartiers et le jour au centre si ce n'est pas trop complexe ; marquage au sol possible.
+
+**Constats** :
+- OpenStreetMap ne décrit pas le stationnement à Autun : une seule voie sur 1 208 (avenue Jules Basdevant, `parking:right=lane`).
+- Les voitures garées se voient bien sur l'orthophotographie IGN à 20 cm (millésimes 2018, 2020, 2023 disponibles).
+- **Chaussée dessinée** : dans certaines rues elle est plus étroite que la vraie ou décalée (D94) : rue de Lattre de Tassigny, les voitures
+  garées sont sur ce que le jeu dessine en trottoir.
+- **Circulation** : sur une voie à double sens, les conducteurs roulent au quart de la largeur (`laneOffset`) ; une file garée de 2 m ne
+  laisse passer qu'à partir d'environ 12,8 m de chaussée : il faudra décaler la voie des conducteurs là où l'on stationne.
+- Largeurs du graphe (hors service et parkings, 105 km) : double sens < 5 m 35,7 km, 5 à 6,5 m 29,7 km, 6,5 à 8 m 16,3 km, ≥ 8 m 10,6 km ;
+  sens unique < 5 m 9,6 km, ≥ 5 m 3,5 km.
+
+**Relevé automatique** (`tools/data/survey_curbs.py`, versionné ; orthophoto en cache dans `.cache/shared/ortho20`) : bandes de 2 m le long
+de la bordure dessinée et au-delà, comparées à l'enrobé et à la couleur du bord de rue, végétation écartée, bandes limitées à la chaussée
+et au trottoir dessinés, côtés bordés de bâtiments seulement. Trois passages : 12 000 voitures sur 118 km (bas-côtés), 2 300 sur 30 km
+(lignes de rive), 1 400 sur 18 km (murs et entrées de cour dans les rues de village). Correct au centre (rue Jeannin, rue Eumène, rue de
+l'Arbalète, rue des Cités, avenue Charles de Gaulle) mais des files manquées ; ailleurs, environ la moitié de faux. La comparaison de deux
+millésimes échoue (ombres et dévers des bâtiments trop différents). **Le plan produit n'est pas versionné** : pas assez fiable.
+
+**Options proposées** : (1) règles plutôt que relevé (rues de ville bordées de maisons, assez larges ou à trottoir), le relevé ne
+confirmant que le centre ; (2) relevé à la main rue par rue au centre (comme D169, D230) ; (3) les deux. **Point mis en pause par
+l'utilisateur.**

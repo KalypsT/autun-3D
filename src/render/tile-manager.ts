@@ -2,6 +2,7 @@ import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { croixPits, sentierPits, landmarkDecks, landmarkSectors } from "../core/landmarks";
+import { hallPits } from "../core/townhall";
 import { bowlPit } from "../core/leisure";
 import { rampartPits } from "../core/ramparts";
 import { addTileColliders } from "../core/world";
@@ -263,8 +264,9 @@ export class TileManager {
     if (sectors.length) this.terrain.decks.addSectors(id, sectors);
     // Remparts de soutènement (D250) : creux d'affichage du relief côté haut, recouvert d'une bande de relief fin.
     // Croix de la Libération (D267) : creux d'affichage sous la plate-forme, que le modèle dessine.
+    // Perron de l'hôtel de ville (D294) : le talus du relevé sous le perron, plafonné au niveau de la place.
     // Terrils des Télots (D269) : creux d'affichage sous les sentiers en lacets, recouverts de relief fin.
-    const ramparts = [...rampartPits(data.walls), ...croixPits(data.kinds), ...sentierPits(data.kinds)];
+    const ramparts = [...rampartPits(data.walls), ...croixPits(data.kinds), ...sentierPits(data.kinds), ...Object.values(data.kinds?.buildings ?? {}).flatMap((k) => (k.hall ? hallPits(k.hall) : []))];
     if (!st) {
       if (extra.length) this.terrain.decks.add(id, extra);
       if (ramparts.length) this.terrain.pits.add(id, ramparts);
