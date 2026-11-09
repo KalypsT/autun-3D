@@ -2067,3 +2067,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Un groupe au drapeau](docs/captures/d291-golfeurs-green.jpg)
 ![Avec son chariot](docs/captures/d291-golfeurs-chariot.jpg)
 
+
+**Une supercar des années 80 au golf (8 novembre 2026)** (D292)
+- L'Augusta Sacrovir, rouge et seule de son espèce, garée devant le bâtiment d'accueil du golf. Poupe en persiennes, grand aileron, quatre feux ronds. 0 à 100 km/h en 4,1 s, 300 km/h, plus joueuse de l'arrière que la Bibracte.
+- Le golf n'a pas encore de parking dessiné : elle est sur le gravier, à côté des mâts.
+- À faire de ton côté : la prendre au golf (`?at=2110,-62`) et dire si l'arrière décroche trop ou pas assez.
+
+![La Sacrovir](docs/captures/d292-sacrovir.jpg)

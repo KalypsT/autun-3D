@@ -29,6 +29,9 @@ export const UNIQUES: readonly UniqueSpot[] = [
   { id: "unique-rotisserie", model: "rotisserie-champ-de-mars", x: 30, y: 41.5, heading: 4.11, hours: [7, 13] },
   // Supercar (D276), sur le parking de la Croix de la Libération (D267), au nord de la clairière, le nez tourné vers la ville en contrebas.
   { id: "unique-supercar", model: "supercar", x: -853, y: -1830, heading: 0.62 },
+  // Supercar des années 1980 (D292), au golf municipal (D289) : sur le gravier à l'ouest du bâtiment d'accueil et de ses mâts, le nez vers le chemin
+  // des Ragots.
+  { id: "unique-sacrovir", model: "sacrovir", x: 2118, y: -47, heading: 2.925 },
   // Deux-chevaux (D280), place Cardinal-Perraud, près de la cathédrale : sur la dernière place de la rangée sud-est du parking (marquage au sol,
   // enrobé), dans l'axe des traits.
   { id: "unique-deuche", model: "deuche", x: 153.7, y: -464.7, heading: 0.714 },

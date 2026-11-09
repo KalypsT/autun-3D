@@ -6640,3 +6640,46 @@ poussant son chariot. 1 425 essais.
 dédiés) ; les golfeurs ne réagissent ni au joueur ni aux tirs (ils ne sont pas des passants du jeu) ; pas de piquets blancs ni de massifs de fleurs
 (finitions du lot 4 laissées de côté).
 
+
+## 2026-11-08 — D292. Une supercar des années 1980 unique (Augusta Sacrovir), au golf municipal
+
+**Demande** : un nouveau véhicule unique d'après photos, comme la Bibracte (D276), garé sur le parking du golf. **Photos** : six d'une supercar
+italienne à V8 biturbo central de la fin des années 1980.
+- **Retenues** (choix de l'utilisateur : la version de route) : trois-quarts arrière, profil en mouvement, arrière de face.
+- **Seulement pour les volumes** : les deux photos de la version course (aileron plus haut, jantes de course, slicks).
+- **Écartée** : une vue arrière d'une autre voiture, moderne, qui s'en inspire (trois sorties dans un diffuseur, logo « V »), sans doute un rendu.
+- **Nom** (choix de l'utilisateur) : **Augusta Sacrovir**. Julius Sacrovir, noble éduen, souleva Augustodunum contre Rome en 21 apr. J.-C. :
+  un rebelle pour la voiture la plus brute de la ville. Identifiant `sacrovir`. Emblème neutre en losange, aucun lettrage.
+
+**Fiche** (`SACROVIR`, `src/core/vehicle-specs.ts`) : 1 300 kg avec le conducteur, ≈ 300 kW aux roues, empattement réel 2,45 m, poids sur
+l'arrière (42 / 58), centre de gravité à 0,42 m. **0 à 100 km/h en 4,1 s** (la vraie : ≈ 4,1 s), entre la sportive (4,9 s) et la Bibracte (3,2 s).
+324 km/h réels, **limitée à 300 km/h** comme la Bibracte (D283, limiteur court) : elle atteint ≈ 296 km/h.
+- Plus brute que la Bibracte : antipatinage plus faible en virage (0,82 contre 0,7 : l'arrière part plus volontiers sous les gaz), moins d'aide
+  au contre-braquage (0,3 contre 0,45), glisse permise plus large (0,8 rad).
+- **ABS gardé**, bien que la vraie n'en ait pas : le frein du téléphone est tout ou rien, il bloquerait les roues à 300 km/h. À revoir si
+  l'utilisateur veut la version sans.
+- Tests : fourchette du 0 à 100 km/h (3,6 à 4,6 s), place entre la sportive et la Bibracte, 293 km/h au moins, plus brute que la Bibracte ;
+  freinage avec ABS ; ne traverse pas un mur fin à 300 km/h.
+
+**Son** (`sound-model.ts`) : V8 à vilebrequin plat, 7 750 tr/min, cinq rapports, son rauque et sec, pétarades.
+
+**Caisse** (`src/render/car-sacrovir.ts`, moteur D272) : 4,36 × 1,97 × 1,12 m, les vraies mesures.
+- **Avant** : nez bas et pointu, phares fixes sous une glace aux coins (un feu blanc, un orange), contour des phares escamotables sur le capot,
+  deux prises NACA et une ouïe grillagée devant le pare-brise, grande bouche noire basse grillagée, deux prises de frein, lame noire.
+- **Profil** : pare-brise très incliné, petite cabine, longue poupe en pente douce ; fine ligne noire tout autour de la caisse ; prise d'air
+  sur le haut de l'aile arrière, prise basse devant la roue, quatre ouïes verticales derrière ; rétroviseurs couleur caisse sur pied.
+- **Poupe** : capot moteur en plexiglas gris clair, tout en persiennes ; grand aileron couleur caisse porté par les ailes arrière.
+- **Arrière** : quatre feux ronds (rouges dedans, clairs cerclés d'orange dehors) et la plaque dans un bandeau noir, trois sorties au centre
+  dans une coque noire, deux catadioptres.
+- Jantes claires à cinq branches. **Rouge** seulement, comme presque toutes les vraies.
+- Coût : dans les plafonds des véhicules uniques (`car-body.test.ts`) ; les profils partagent leurs abscisses pour rester sous 1 000
+  triangles de peinture.
+
+**Place** (`src/core/uniques.ts`) : au golf (2118 ; −47), sur le gravier à l'ouest du bâtiment d'accueil et de ses mâts, le nez vers le
+chemin des Ragots. **Il n'y a pas de parking dessiné au golf** : D289 n'a relevé le parking qu'à l'orthophotographie, sans le poser. Le sol
+y est un mélange de gravier et de terre. Tracer le parking (enrobé ou gravier, places) serait un lot du golf à part.
+
+**Reste** : sections arrondies du moteur, plus douces que les arêtes vives de la vraie ; contour des phares escamotables un peu marqué.
+
+![Quatre vues](captures/d292-sacrovir.jpg)
+![Au golf, devant le bâtiment d'accueil](captures/d292-sacrovir-golf.jpg)

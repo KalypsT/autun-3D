@@ -3,7 +3,7 @@ import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { Colliders } from "./collision";
 import { flatTerrain } from "./testing";
-import { MTB, OLD_CAR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, SUPERCAR, VAN } from "./vehicle-specs";
+import { MTB, OLD_CAR, SACROVIR, SCOOTER_125, SPORT_CAR, SPORT_MOTO, SUPERCAR, VAN } from "./vehicle-specs";
 import { airborne, BIKE, CAR, collisionSteps, createVehicle, landWheelie, MOTO, rampThrottle, SCOOTER, stepVehicle, steerLimit, type DriveInput, type VehicleSpec, type VehicleState } from "./vehicle";
 
 const DT = 1 / 60;
@@ -396,10 +396,11 @@ describe("vitesse élevée et obstacles fins (D50)", () => {
     for (const kmh of [240, 300]) for (const angle of [0, 0.4]) expect(crossings(CAR, kmh, angle)).toBe(0);
   });
 
-  it("la sportive à 240 km/h et la supercar à 300 (D283) ne traversent pas un mur fin", () => {
+  it("la sportive à 240 km/h, la supercar et la Sacrovir (D292) à 300 (D283) ne traversent pas un mur fin", () => {
     for (const angle of [0, 0.4]) {
       expect(crossings(SPORT_CAR, 240, angle)).toBe(0);
       expect(crossings(SUPERCAR, 300, angle)).toBe(0);
+      expect(crossings(SACROVIR, 300, angle)).toBe(0);
     }
   });
 
