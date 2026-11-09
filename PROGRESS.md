@@ -9,9 +9,9 @@
 | 3. Fiches façade (estimées) + générateur + matières | ✅ faite, en attente de ton avis |
 | **Étape 1 bis : toute la zone Autun centre, 2,25 km², par tuiles** | ✅ faite, à tester sur téléphone |
 | 4.1 Se balader à pied : commandes tactiles, caméra, collisions | ✅ faite, à tester sur téléphone |
-| 4.2 Vélo, puis voiture (conduite réaliste) | à faire |
-| 4.3 Circulation, passants, pigeons | à faire |
-| 4.4 Jour/nuit, plaque de rue, vue du ciel, KTX2, optimisation | à faire |
+| 4.2 Vélo, puis voiture (conduite réaliste) | ✅ faite (vélo, voiture D24, moto D25, puis étape V) |
+| 4.3 Circulation, passants, pigeons | ✅ faite (étapes J2 et J3) |
+| 4.4 Jour/nuit, plaque de rue, vue du ciel, KTX2, optimisation | en partie : jour/nuit et carte faits ; plaques de rue et KTX2 à faire |
 
 ### Étape 3 (26 octobre 2026)
 
@@ -23,7 +23,7 @@ Fait :
 - Tests : 15 (relief, soleil, triangulation des toits, fiches, planificateur de façades).
 
 Défauts connus :
-- Hôtel de ville et théâtre : toits irréguliers (à modéliser à la main d'après photos, étape suivante).
+- Hôtel de ville et théâtre : toits irréguliers (à modéliser à la main d'après photos, étape suivante). → Fait : hôtel de ville en D123 à D126 (façade sur le Champ de Mars), théâtre municipal en D223 à D226.
 - Le kiosque à musique forme une bosse sur le terrain (classé « sol » par le LiDAR).
 - Arbres : couronnes en blobs plats, sans essence.
 - Très près d'un mur, les sprites (≈ 55 px/m) sont un peu flous ; pas de LOD.
@@ -65,7 +65,7 @@ Mesures (navigateur logiciel, PC) :
 Limites / à faire :
 - Pas de LOD des arbres (absents des tuiles lointaines) ; silhouettes sans pente de toit.
 - Une tuile se construit d'un bloc (≈ 100-300 ms sur PC) : à lisser si ça saccade sur téléphone.
-- Les façades restent estimées ; monuments à modéliser (hôtel de ville, théâtre, cathédrale, monuments romains).
+- Les façades restent estimées ; monuments à modéliser (hôtel de ville, théâtre, cathédrale, monuments romains). → Faits depuis : hôtel de ville (D123 à D126), théâtre municipal (D223 à D226), cathédrale (D127 à D132), portes romaines et temple de Janus (D95 et suivantes), théâtre romain (D133 à D136).
 - Ajouter de la vie : passants, circulation, pigeons (étape 4.3).
 - Fidélité des sols (parking du centre-ville, cours de lycée) : à revoir sur photos / orthophoto.
 
@@ -107,7 +107,7 @@ Après test sur téléphone (carte correcte, mais lenteurs, scintillement des fe
 
 - **Feux tricolores** : ils sont posés de part et d'autre de la chaussée (au bord, sur le trottoir), avec potence vers la route, au lieu de l'axe de la voie (`roadside_signals` dans `build_tiles.py`).
 - **Grilles** : les clôtures et portails mesurés à 0 m par le LiDAR (barreaux trop fins) prennent une hauteur type (1,8 m et 2,4 m) ; `tools/data/manual.json`.
-- **Escalier de l'hôtel de ville** : le relief LiDAR y forme un talus lisse de 4,4 m ; la zone est déclarée dans `manual.json` (`stairs`) et dessinée en marches de 17 cm (colonnes de 50 cm, relief lissé). Rendu encore anguleux : à affiner (marches orientées, paliers, rampes).
+- **Escalier de l'hôtel de ville** : le relief LiDAR y forme un talus lisse de 4,4 m ; la zone est déclarée dans `manual.json` (`stairs`) et dessinée en marches de 17 cm (colonnes de 50 cm, relief lissé). Rendu encore anguleux : à affiner (marches orientées, paliers, rampes). → Remplacé en D125 par un vrai perron (marches, palier, murs d'échiffre, rampes, lampadaires) ; on y marche encore sur la pente du relief, sous les marches.
 - **Champ de Mars** : les allées de parking OSM (`service=parking_aisle`) et les voies « Place du Champ de Mars » ne sont plus des rues avec trottoirs mais un grand parking en enrobé avec places marquées.
 - Diagnostic : `?skip=furn,walls,misc,wall,place,stairs` masque des familles de géométrie d'une tuile ; `?hide=` masque des maillages.
 - Non élucidé : un long ruban de corniche croise parfois la vue depuis un point de la rue Jondeau (≈ −62, 70) ; il vient des corniches/bandeaux des façades (`planFacades`), pas des feux. À reprendre si on le revoit en jeu.
