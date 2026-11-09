@@ -109,92 +109,108 @@ export function fuelLayout(site: Extract<Site, { t: "fuel" }>): FuelLayout {
   return { frame, posts, islands, totem: at(frame, frame.hl + 3, frame.hw + 1.5) };
 }
 
+/** Hauteur (m) des obstacles ronds des monuments sans hauteur propre ici (poteaux d'éclairage, colonnes, mâts) : au-dessus, on passe (D303). */
+export const LANDMARK_TOP = 8;
+
 /** Obstacles des gabarits : cercles (x, y, rayon) des poteaux d'auvent, des pompes et des totems. */
 export function landmarkCircles(kinds: { buildings: Record<string, BuildingKind>; sites: Site[] } | undefined, buildings: readonly Building[]): [number, number, number][] {
+  return landmarkCirclesWithTop(kinds, buildings).map(([x, y, r]) => [x, y, r]);
+}
+
+/**
+ * Comme `landmarkCircles`, avec la hauteur de chaque obstacle au-dessus du sol (m, D303) : une voiture qui vole plus haut passe au-dessus.
+ * Hauteurs approchées de ce que dessine le rendu ; `LANDMARK_TOP` pour les poteaux, colonnes et accessoires sans hauteur propre ici.
+ */
+export function landmarkCirclesWithTop(kinds: { buildings: Record<string, BuildingKind>; sites: Site[] } | undefined, buildings: readonly Building[]): [number, number, number, number][] {
   if (!kinds) return [];
-  const out: [number, number, number][] = [];
+  const out: [number, number, number, number][] = [];
+  const add = (list: readonly (readonly [number, number, number])[], h = LANDMARK_TOP): void => {
+    for (const [x, y, r] of list) out.push([x, y, r, h]);
+  };
   const roofs = new Set<string>();
   for (const s of kinds.sites) {
     if (s.t !== "fuel") continue;
     if (s.roof) roofs.add(s.roof);
     const lay = fuelLayout(s);
-    for (const [x, y] of lay.posts) out.push([x, y, 0.3]);
-    for (const [x, y] of lay.islands) out.push([x, y, 0.7]);
-    out.push([lay.totem[0], lay.totem[1], 0.5]);
+    for (const [x, y] of lay.posts) add([[x, y, 0.3]], 6);
+    for (const [x, y] of lay.islands) add([[x, y, 0.7]], 2);
+    add([[lay.totem[0], lay.totem[1], 0.5]], 6);
   }
   // Statue du chien du passage Balthus (D189).
-  for (const s of kinds.sites) if (s.t === "passage") out.push([...passagePoint(s, PASSAGE_DOG.s, PASSAGE_DOG.t), PASSAGE_DOG.r]);
+  for (const s of kinds.sites) if (s.t === "passage") add([[...passagePoint(s, PASSAGE_DOG.s, PASSAGE_DOG.t), PASSAGE_DOG.r]], 1.5);
   // Théâtre romain (D136) : poteaux d'éclairage et arbustes taillés.
   for (const s of kinds.sites) {
     if (s.t !== "theatre") continue;
-    for (const [x, y] of s.poles ?? []) out.push([x, y, 0.2]);
-    for (const [x, y] of s.shrubs ?? []) out.push([x, y, 0.7]);
+    for (const [x, y] of s.poles ?? []) add([[x, y, 0.2]]);
+    for (const [x, y] of s.shrubs ?? []) add([[x, y, 0.7]], 1.5);
   }
   // Fontaine d'après photo (D131) : son bassin.
-  for (const s of kinds.sites) if (s.t === "fountain") out.push([s.x, s.y, s.rb + 0.2]);
+  for (const s of kinds.sites) if (s.t === "fountain") add([[s.x, s.y, s.rb + 0.2]], 3);
   // Golf (D289) : tables de la terrasse, parasols, mâts de l'entrée.
   for (const s of kinds.sites) {
     if (s.t !== "golf") continue;
-    for (const [x, y] of s.tables) out.push([x, y, 0.5]);
-    for (const [x, y] of [...s.parasols, ...s.flags]) out.push([x, y, 0.1]);
-    if (s.practice) for (const [x, y] of practicePosts(s.practice)) out.push([x, y, 0.15]);
+    for (const [x, y] of s.tables) add([[x, y, 0.5]], 1);
+    for (const [x, y] of s.parasols) add([[x, y, 0.1]], 2.6);
+    for (const [x, y] of s.flags) add([[x, y, 0.1]]);
+    if (s.practice) for (const [x, y] of practicePosts(s.practice)) add([[x, y, 0.15]]);
   }
   // Rond-point d'après photo (D142) : le tronc de l'arbre du centre (l'îlot, à bordure basse, se traverse).
-  for (const s of kinds.sites) if (s.t === "roundabout") out.push([s.tree.x, s.tree.y, TRUNK_R]);
+  for (const s of kinds.sites) if (s.t === "roundabout") add([[s.tree.x, s.tree.y, TRUNK_R]], s.tree.top);
   // Rideaux de tilleuls de la place du Champ de Mars (D155) : leurs troncs.
-  for (const s of kinds.sites) if (s.t === "curtain") for (const [x, y] of curtainTrunks(s)) out.push([x, y, 0.25]);
+  for (const s of kinds.sites) if (s.t === "curtain") for (const [x, y] of curtainTrunks(s)) add([[x, y, 0.25]], 6);
   // Pierre de Couhard (D222) : piquets de la clôture et panneau d'information.
   for (const s of kinds.sites) {
     if (s.t !== "couhard") continue;
-    for (const [x, y] of couhardPosts(s)) out.push([x, y, 0.08]);
+    for (const [x, y] of couhardPosts(s)) add([[x, y, 0.08]], 1.2);
     const [px, py] = couhardPanel(s);
-    out.push([px, py, 0.5]);
+    add([[px, py, 0.5]], 2);
   }
   // Croix de la Libération (D267) : mâts d'éclairage et rochers contre le parking.
-  for (const s of kinds.sites) if (s.t === "croix") out.push(...croixCircles(s));
+  for (const s of kinds.sites) if (s.t === "croix") add(croixCircles(s));
   // Lycée (D149) : troncs des arbres taillés en rideau derrière la grille.
-  for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) out.push([x, y, 0.3]);
+  for (const k of Object.values(kinds.buildings)) for (const [x, y] of k.college?.grille?.trees ?? []) add([[x, y, 0.3]], 6);
   // Lycée militaire (D260) : piles des deux portails, poteaux de la barrière levante et du panneau.
   for (const k of Object.values(kinds.buildings)) {
     const g = k.college?.mil?.gates;
     if (!g) continue;
-    for (const p of [g.avenue.a, g.avenue.b]) out.push([p[0], p[1], 0.7]);
-    for (const p of [g.joliet.a, g.joliet.b]) out.push([p[0], p[1], 0.45]);
-    out.push([g.joliet.lift[0], g.joliet.lift[1], 0.2], [g.joliet.sign[0], g.joliet.sign[1], 0.08]);
+    for (const p of [g.avenue.a, g.avenue.b]) add([[p[0], p[1], 0.7]], 4);
+    for (const p of [g.joliet.a, g.joliet.b]) add([[p[0], p[1], 0.45]], 3);
+    add([[g.joliet.lift[0], g.joliet.lift[1], 0.2]], 1.3);
+    add([[g.joliet.sign[0], g.joliet.sign[1], 0.08]], 2.5);
   }
   // Jardins du Lycée militaire (D261) : ifs taillés (aux trois quarts de leur rayon : on frôle le feuillage), mât de drapeau.
   for (const k of Object.values(kinds.buildings)) {
     const gd = k.college?.mil?.garden;
     if (!gd) continue;
-    for (const [x, y, r] of gd.yews) out.push([x, y, r * 0.75]);
-    for (const [x, y] of gd.pleached?.trees ?? []) out.push([x, y, 0.3]);
-    out.push([gd.mast[0], gd.mast[1], 0.6]);
+    for (const [x, y, r] of gd.yews) add([[x, y, r * 0.75]], 3);
+    for (const [x, y] of gd.pleached?.trees ?? []) add([[x, y, 0.3]], 6);
+    add([[gd.mast[0], gd.mast[1], 0.6]], 10);
   }
   // Maison d'après photo (D140) : le poteau de l'entrée couverte.
   for (const b of buildings) {
     const h = kinds.buildings[b.id]?.house;
-    if (h) out.push([...housePost(h), 0.12]);
+    if (h) add([[...housePost(h), 0.12]], 3);
     for (const q of kinds.buildings[b.id]?.hex?.props ?? []) {
       const r = HEX_PROP_RADIUS[q.k];
-      if (r) out.push([q.x, q.y, r]);
+      if (r) add([[q.x, q.y, r]]);
     }
     const st = kinds.buildings[b.id]?.store;
-    if (st) out.push(...storeCircles(b, st));
+    if (st) add(storeCircles(b, st));
     // Entrée du collège du Vallon (D174) : poteaux, pilier, lampadaires.
     const vg = kinds.buildings[b.id]?.vallon?.gate;
-    if (vg) out.push(...gateCircles(vg));
+    if (vg) add(gateCircles(vg));
     const vm = kinds.buildings[b.id]?.vallon;
-    if (vm?.props) out.push(...vallonPropCircles(vm));
+    if (vm?.props) add(vallonPropCircles(vm));
     // Quais de la gare (D229) : colonnes de l'abri parapluie, abri vitré.
     const sta = kinds.buildings[b.id]?.sta;
-    if (sta) out.push(...stationCircles(sta));
+    if (sta) add(stationCircles(sta));
   }
   // Paniers de basket des terrains (D176) : le poteau, derrière le panneau.
-  for (const s of kinds.sites) if (s.t === "pitch") for (const h of s.hoops ?? []) out.push([...hoopPole(h), HOOP.poleRadius]);
+  for (const s of kinds.sites) if (s.t === "pitch") for (const h of s.hoops ?? []) add([[...hoopPole(h), HOOP.poleRadius]], 3.5);
   // Auvents sans site (rare) : un poteau à chaque coin.
   for (const b of buildings) {
     if (kinds.buildings[b.id]?.k !== "canopy" || roofs.has(b.id)) continue;
-    for (let i = 0; i < b.ring.length; i += 2) out.push([b.ring[i]!, b.ring[i + 1]!, 0.3]);
+    for (let i = 0; i < b.ring.length; i += 2) add([[b.ring[i]!, b.ring[i + 1]!, 0.3]], 5);
   }
   return out;
 }
@@ -1147,8 +1163,22 @@ export function gateLayout(site: Extract<Site, { t: "gate" }>, ground: number): 
 
 /** Contours des obstacles des monuments : piles des portes romaines (on passe sous les arches) et leur tour, murs du temple de Janus. */
 export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): number[][] {
-  const out: number[][] = [];
+  return landmarkShapes(kinds, ground).flatMap((g) => g.rings);
+}
+
+/** Comme `landmarkRings`, rangés par site (D302 : chaque site a son relevé de hauteurs, `src/core/hulls.ts`). */
+export function landmarkShapes(kinds: { sites: Site[] } | undefined, ground: (x: number, y: number) => number): { site: Site; rings: number[][] }[] {
+  const groups: { site: Site; rings: number[][] }[] = [];
   for (const s of kinds?.sites ?? []) {
+    const out: number[][] = [];
+    siteRings(s, ground, out);
+    if (out.length) groups.push({ site: s, rings: out });
+  }
+  return groups;
+}
+
+function siteRings(s: Site, ground: (x: number, y: number) => number, out: number[][]): void {
+  {
     if (s.t === "janus") out.push(...janusRings(s));
     // Pierre de Couhard (D222) : le pied (on ne gravit pas le talus).
     if (s.t === "couhard") out.push(couhardFoot(s, 0, 32).flat());
@@ -1160,7 +1190,7 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
     if (s.t === "memorial") out.push(memorialRing(s).flat());
     // Golf (D289) : la tente blanche de la terrasse du club-house.
     if (s.t === "golf") out.push([...s.tent.r]);
-    if (s.t !== "gate") continue;
+    if (s.t !== "gate") return;
     const lay = gateLayout(s, ground(s.x, s.y));
     const f = lay.frame;
     for (const [s0, s1] of lay.piers) {
@@ -1173,7 +1203,6 @@ export function landmarkRings(kinds: { sites: Site[] } | undefined, ground: (x: 
       out.push([at(f, s0, t0), at(f, s1, t0), at(f, s1, t1), at(f, s0, t1)].flat());
     }
   }
-  return out;
 }
 
 // --- Porche praticable de la cathédrale (D132) -----------------------------------------------------------------------------------------

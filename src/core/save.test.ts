@@ -84,6 +84,7 @@ describe("sauvegarde", () => {
       ["voiture-12,34", "citadine", 3], ["velo-7-0", "velo-ville", 1], ["trottinette-7-3", "trottinette", 2], ["moto-1,2-1", "moto-routiere", 0],
     ]);
     expect(p.riding).toBe("voiture-12,34");
+    expect(p.last).toBeUndefined();
     expect(p.player).toEqual(sample().player);
     expect(p.waypoint).toEqual(sample().waypoint);
   });
@@ -193,5 +194,13 @@ describe("dégâts des véhicules dans la sauvegarde (D113)", () => {
     expect(parseDamage(undefined)).toBeNull();
     expect(parseDamage({ health: "x", zones: {} })).toBeNull();
     expect(parseDamage({ health: 500, zones: {}, end: "bof" })).toEqual({ health: 100, zones: { front: 0, rear: 0, left: 0, right: 0 }, end: null });
+  });
+});
+
+describe("dernier véhicule utilisé (D301)", () => {
+  it("relu s'il fait partie des véhicules enregistrés, écarté sinon", () => {
+    const base = { version: SAVE_VERSION, savedAt: 1, player: { x: 0, y: 0 }, camera: { yaw: 0, pitch: 0 }, riding: null, clock: { hour: 9, date: 1 }, vehicles: [{ id: "volee-a-1", model: "citadine", variant: 0, x: 3, y: 4, heading: 0 }] };
+    expect(parseSave(JSON.stringify({ ...base, last: "volee-a-1" }))!.last).toBe("volee-a-1");
+    expect(parseSave(JSON.stringify({ ...base, last: "autre" }))!.last).toBeUndefined();
   });
 });

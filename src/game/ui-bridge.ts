@@ -27,6 +27,8 @@ export interface GameState {
   yaw: number;
   pitch: number;
   ridingId: string | null;
+  /** Dernier véhicule utilisé (D301). */
+  lastId: string | null;
   /** Points de vie du joueur. */
   health: number;
   /** Armes du joueur. */
@@ -248,6 +250,7 @@ export class UiBridge {
       player: { x: s.x, y: s.y },
       camera: { yaw: s.yaw, pitch: s.pitch },
       riding: s.ridingId,
+      last: s.lastId,
       vehicles: this.fleet.savedVehicles(),
       clock: { hour: atmosphere.hour, date: atmosphere.date },
       waypoint: this.waypoint,

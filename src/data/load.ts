@@ -1,6 +1,7 @@
 import { Terrain, TiledTerrain } from "./terrain";
 import { spanDeck } from "../core/bridges";
 import { Waters, type WaterFile } from "../core/waters";
+import type { HullData } from "../core/hulls";
 import type { LodBuilding, TileData, TileKinds, TileSigns, TileStructures, WorldBase, WorldManifest } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data/`;
@@ -70,14 +71,16 @@ export function loadLandmarks(): Promise<FarLandmark[]> {
  * signalisation (signs/, D295, ajoutés au mobilier) quand elle en a.
  */
 export async function loadTile(id: string): Promise<TileData> {
-  const [hasKinds, hasStructures, hasSigns] = await Promise.all([tilesWith("kinds"), tilesWith("structures"), tilesWith("signs")]).then(([k, s, g]) => [k.has(id), s.has(id), g.has(id)]);
-  const [tile, kinds, structures, signs] = await Promise.all([
+  const [hasKinds, hasStructures, hasSigns, hasHulls] = await Promise.all([tilesWith("kinds"), tilesWith("structures"), tilesWith("signs"), tilesWith("hulls")]).then(([k, s, g, h]) => [k.has(id), s.has(id), g.has(id), h.has(id)]);
+  const [tile, kinds, structures, signs, hulls] = await Promise.all([
     loadJson<TileData>(`tiles/${id}.json`),
     hasKinds ? loadJson<TileKinds>(`kinds/${id}.json`) : null,
     hasStructures ? loadJson<TileStructures>(`structures/${id}.json`) : null,
     hasSigns ? loadJson<TileSigns>(`signs/${id}.json`) : null,
+    hasHulls ? loadJson<{ hulls: HullData[] }>(`hulls/${id}.json`) : null,
   ]);
   if (signs) tile.furniture.push(...signs.items);
+  if (hulls) tile.hulls = hulls.hulls;
   if (kinds) tile.kinds = kinds;
   if (structures) tile.structures = { ...structures, decks: structures.decks.map(spanDeck) };
   return tile;

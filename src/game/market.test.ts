@@ -45,3 +45,19 @@ describe("marché du Champ de Mars (D201)", () => {
     expect(scene.children.filter((c) => c.visible).length).toBe(0);
   });
 });
+
+describe("voiture laissée dont la place est sur le marché (D301)", () => {
+  it("pendant le marché, le marché la garde et la ramène au remballage ; hors marché, elle revient à sa place", () => {
+    const car = { id: "voiture-marche", def: { id: "citadine" }, variant: 1, ridden: false, home: { x: -10, y: -40, heading: 0 }, state: { x: 300, y: 300 }, damage: { health: 60 } } as unknown as Vehicle;
+    const added: string[] = [];
+    const fleet = { vehicles: [], remove: () => {}, add: (_m: string, id: string) => (added.push(id), car) } as unknown as Fleet;
+    const m = new MarketController(new THREE.Scene(), fleet, new Colliders(), null, flatTerrain());
+    m.addTile({ id: "toutes", buildings: 0, furniture: [], stairs: [], marks: marks() });
+    m.update(THU, 10);
+    expect(m.holdHome(car)).toBe(false);
+    m.update(WED, 10);
+    expect(m.holdHome(car)).toBe(true);
+    m.update(THU, 10);
+    expect(added).toEqual(["voiture-marche"]);
+  });
+});

@@ -6,7 +6,7 @@ import { inMarket, marketLevel } from "../core/week";
 import type { HeightField } from "../data/types";
 import { MarketStalls, type StallPlace } from "../render/market-stalls";
 import type { TileExtras } from "../render/tile-manager";
-import type { Fleet } from "./vehicles";
+import type { Fleet, Vehicle } from "./vehicles";
 
 /** Étiquette des obstacles des étals (retirés au remballage). */
 const STALL_TAG = "market";
@@ -84,7 +84,8 @@ export class MarketController {
     this.colliders.removeTag(STALL_TAG);
     if (n > 0) {
       this.colliders.currentTag = STALL_TAG;
-      for (const s of live) this.colliders.addCircle(s.x, s.y, 1.15);
+      // Étals de 2,6 m (D303 : on les survole).
+      for (const s of live) this.colliders.addCircle(s.x, s.y, 1.15, undefined, this.terrain.heightAt(s.x, s.y) + 2.6);
       this.colliders.currentTag = null;
     }
     // Les marchands : une place debout derrière chaque étal.
@@ -100,6 +101,17 @@ export class MarketController {
     // Les voitures garées sur le marché s'en vont dès l'installation et reviennent au remballage.
     if (n > 0 && was <= 0) this.clearCars();
     else if (n === 0 && was > 0) this.returnCars();
+  }
+
+  /**
+   * Une voiture laissée ailleurs revient à sa place (D301) : si sa place est sur le marché installé, elle va dans la réserve du marché, qui
+   * la ramènera au remballage. Rend vrai quand le marché la prend (l'appelant la retire alors de la flotte).
+   */
+  holdHome(v: Vehicle): boolean {
+    const home = v.home;
+    if (this.shown <= 0 || !home || !inMarket(home.x, home.y)) return false;
+    this.stash.push({ model: v.def.id, id: v.id, home, variant: v.variant });
+    return true;
   }
 
   private clearCars(): void {

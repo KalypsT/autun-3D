@@ -120,37 +120,41 @@ describe("toits de la vraie ville", () => {
   const colliders = buildColliders(tile);
   const kinds = tile.kinds?.buildings ?? {};
   const walkable = tile.buildings.filter((b) => walkableRoof(kinds[b.id]) && !kinds[b.id]?.house);
-  /** Un toit praticable couvre-t-il le centre de gravité des sommets de ce contour ? */
-  const roofPlanesOver = (ring: number[]): boolean => {
-    const n = ring.length / 2;
-    let x = 0, y = 0;
-    for (let i = 0; i < n; i++) {
-      x += ring[2 * i]! / n;
-      y += ring[2 * i + 1]! / n;
-    }
-    return colliders.roofs.planeAt(x, y) !== null;
-  };
-
-  it("presque tous les bâtiments ont un toit praticable ; les monuments gardent des murs infinis", () => {
+  it("presque tous les bâtiments ont un toit praticable ; les monuments ont des murs à la hauteur de leur relevé et un toit (D302)", () => {
     expect(walkable.length / tile.buildings.length).toBeGreaterThan(0.99);
+    const dist = (x: number, y: number, ring: number[]): number => {
+      let best = Infinity;
+      const n = ring.length / 2;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const ax = ring[2 * i]!, ay = ring[2 * i + 1]!, bx = ring[2 * j]!, by = ring[2 * j + 1]!;
+        const l2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+        const t = Math.min(Math.max(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2, 0), 1);
+        best = Math.min(best, Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay)));
+      }
+      return best;
+    };
+    let checked = 0;
     for (const [id, k] of Object.entries(kinds)) {
       if (!(k.cath || k.hall || k.k === "church" || k.house)) continue;
       const b = tile.buildings.find((x) => x.id === id);
       if (!b) continue;
-      // Pas de toit au-dessus de leur emprise, et un mur infini sur chaque côté de leur contour (un voisin mitoyen y ajoute le sien, à
-      // sa hauteur : le plus haut l'emporte). Cathédrale et maison d'après photo : contour de leur modèle, pas celui-ci.
-      if (!k.cath && !k.house) {
-        const n = b.ring.length / 2;
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const ax = b.ring[2 * i]!, ay = b.ring[2 * i + 1]!, bx = b.ring[2 * j]!, by = b.ring[2 * j + 1]!;
-          const on = (s: (typeof colliders.segments)[number]): boolean =>
-            (Math.hypot(s.ax - ax, s.ay - ay) < 1e-6 && Math.hypot(s.bx - bx, s.by - by) < 1e-6) || (Math.hypot(s.ax - bx, s.ay - by) < 1e-6 && Math.hypot(s.bx - ax, s.by - ay) < 1e-6);
-          if (Math.hypot(bx - ax, by - ay) > 1e-3) expect(colliders.segments.some((s) => on(s) && s.topA === undefined), id).toBe(true);
-        }
+      checked++;
+      // Plus de mur infini le long de leur contour (BD TOPO ; cathédrale et maison d'après photo : à peu près le même) : on les survole.
+      const infinite = colliders.segments.filter((sg) => sg.topA === undefined && sg.height === undefined && !sg.low && !sg.under && dist((sg.ax + sg.bx) / 2, (sg.ay + sg.by) / 2, b.ring) < 0.3);
+      expect(infinite, id).toEqual([]);
+      // Un toit (leur relevé) au-dessus de leur emprise, hors cours.
+      const n = b.ring.length / 2;
+      let gx = 0, gy = 0;
+      for (let i = 0; i < n; i++) {
+        gx += b.ring[2 * i]! / n;
+        gy += b.ring[2 * i + 1]! / n;
       }
-      expect(roofPlanesOver(b.ring), id).toBe(false);
+      let roofed = 0;
+      for (let i = 0; i < n; i++) if (colliders.roofs.planeAt((b.ring[2 * i]! + gx) / 2, (b.ring[2 * i + 1]! + gy) / 2) !== null) roofed++;
+      expect(roofed, id).toBeGreaterThan(0);
     }
+    expect(checked).toBeGreaterThan(8);
   });
 
   it("le toit couvre l'emprise (hors cours intérieures), et c'est celui que dessine le rendu", () => {
@@ -173,7 +177,7 @@ describe("toits de la vraie ville", () => {
         const p = colliders.roofs.planeAt(x, y);
         if (!p) continue;
         covered++;
-        if (planes.includes(p) || planes.some((q) => q.a === p.a && q.b === p.b && q.c === p.c)) same++;
+        if (planes.some((q) => q.a === p.a && q.b === p.b && q.c === p.c)) same++;
       }
     }
     expect(samples).toBeGreaterThan(3000);

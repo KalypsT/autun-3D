@@ -2148,3 +2148,21 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 
 ![Avant](docs/captures/d300-croix-avant.jpg)
 ![Après](docs/captures/d300-croix-apres.jpg)
+
+**Véhicules laissés : ils s'effacent quand on a quitté le quartier (9 novembre 2026)** (D301)
+- Un véhicule laissé hors de sa place est oublié quand tu es resté à plus de 200 m pendant 45 s : une voiture, une moto ou un vélo d'une place y revient intact, une voiture volée ou abandonnée disparaît. On ne le voit jamais disparaître (200 m dépasse la distance d'affichage).
+- Le dernier véhicule utilisé est toujours gardé, même après une sauvegarde et un chargement ; il redevient oubliable quand tu en prends un autre.
+- Les épaves, les véhicules uniques et le petit train gardent leurs règles.
+- À faire de ton côté : jouer et dire si 200 m et 45 s conviennent.
+
+**Bâtiments spéciaux et monuments : plus de mur invisible au-dessus (9 novembre 2026)** (D302)
+- Cathédrale, églises, mairie, théâtre, gare, lycées, Hexagone, Eduen, gendarmerie, base nautique, McDo, bowling, portes romaines, Janus, Couhard, croix, kiosque, monument aux morts… : leurs murs ont maintenant la hauteur de ce qui est dessiné, relevée case par case (flèche de la cathédrale comprise). En vol, on passe au-dessus ; on se pose sur leurs toits, on y roule, on glisse sur les pentes raides.
+- Dans la rue, rien ne change : les murs arrêtent comme avant, et on n'escalade toujours pas le kiosque ni le monument aux morts.
+- Pour un nouveau bâtiment spécial : `npm run hulls` refait le relevé (un test le réclame sinon).
+- Reste : les lampadaires, arbres et voitures garées n'ont pas de hauteur ; une voiture qui vole au-dessus les heurte encore.
+- À faire de ton côté : survoler et te poser sur quelques monuments, et mesurer sur le téléphone (`?bench=1`).
+
+**Lampadaires, arbres, voitures garées : on les survole (9 novembre 2026)** (D303)
+- Le mobilier, les arbres, les poteaux des monuments et les voitures garées ont maintenant une hauteur : une voiture qui vole au-dessus passe, au lieu de buter en plein ciel.
+- Dans la rue, rien ne change pour les passants et la circulation. À pied, on peut sauter par-dessus un banc, une poubelle ou un potelet ; pas par-dessus une voiture.
+- À faire de ton côté : sauter en voiture au-dessus de voitures garées et de lampadaires.

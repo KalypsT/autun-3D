@@ -269,7 +269,9 @@ export class TouristTrain {
     this.poses.forEach((p, i) => {
       const c = TRAIN.cars[i]!, fx = Math.sin(p.heading), fy = Math.cos(p.heading), half = c.wheelbase / 2 + c.overhang;
       // Deux cercles par wagon, de la largeur du train.
-      if (i > 0) for (const k of [-1, 1]) this.colliders.addCircle(p.x + fx * k * (half - c.halfWidth), p.y + fy * k * (half - c.halfWidth), c.halfWidth);
+      // Haut des wagons (D303) : on les survole.
+      const top = this.terrain.heightAt(p.x, p.y) + TRAIN_BODY.wagon.roof + 0.2;
+      if (i > 0) for (const k of [-1, 1]) this.colliders.addCircle(p.x + fx * k * (half - c.halfWidth), p.y + fy * k * (half - c.halfWidth), c.halfWidth, undefined, top);
       const o = this.others[i]!.state;
       o.x = p.x;
       o.y = p.y;

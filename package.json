@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "hulls": "UPDATE_HULLS=1 vitest run src/render/hulls.test.ts"
   },
   "dependencies": {
     "three": "^0.186.1"

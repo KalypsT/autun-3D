@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import type { HullData } from "./hulls";
 import { decodeNavCell, type NavCell, type NavIndex } from "../data/nav";
 import { spanDeck } from "./bridges";
 import { NavGraph } from "./nav-graph";
@@ -40,6 +41,14 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
     kinds.sites.push(...k.sites);
   }
   tile.kinds = kinds;
+  // Relevés de hauteur des bâtiments spéciaux (hulls/, D302).
+  if (existsSync("public/data/hulls")) {
+    tile.hulls = [];
+    for (const name of readdirSync("public/data/hulls")) {
+      if (name === "index.json") continue;
+      tile.hulls.push(...(JSON.parse(read(`hulls/${name}`).toString("utf8")) as { hulls: HullData[] }).hulls);
+    }
+  }
   // Ponts, eau et voies ferrées (structures/) : les tabliers et quais comptent dans les altitudes, comme dans le jeu.
   const structures: TileStructures = { v: 1, decks: [], water: [], wz: [], streams: [], weirs: [], rails: [], platforms: [], crossings: [] };
   const seen = new Set<number>();

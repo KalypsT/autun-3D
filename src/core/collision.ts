@@ -28,6 +28,13 @@ export interface Segment {
    * altitude, il est ignoré (passants et voitures de la circulation sur le pont ne s'y heurtent pas).
    */
   under?: boolean;
+  /** Mur de monument qu'on n'escalade pas, même bas (kiosque, monument aux morts, D302). */
+  noClimb?: boolean;
+  /**
+   * Altitude absolue du bas (D302) : un ressaut sur un toit (pied d'un clocher, d'une flèche) n'arrête que qui est à la hauteur de ce toit ;
+   * plus bas (dans la rue, sous une voûte) ou sans altitude, il est ignoré.
+   */
+  bottom?: number;
 }
 
 /** Hauteur (m) dont les pieds peuvent être sous le haut d'un mur de bâtiment et passer quand même : le bord d'un toit, une petite marche. */
@@ -47,6 +54,11 @@ export interface Circle {
   r: number;
   /** Mobilier cassable (D160) : identifiant et nature ; absent pour un obstacle plein. */
   brk?: { id: number; kind: string };
+  /**
+   * Altitude absolue du haut (D303 : lampadaire, poubelle, arbre, voiture garée) : qui donne l'altitude de ses pieds (`resolve`) ou du rayon
+   * (`raycast`) passe par-dessus quand il est à moins de `WALL_STEP` sous ce haut. Absente, ou sans altitude : cylindre infini, comme avant.
+   */
+  top?: number;
 }
 
 /** Un mobilier arraché par un véhicule : où, de quelle nature, et la direction (unitaire) et la vitesse (m/s) du véhicule qui l'a heurté. */
@@ -102,10 +114,12 @@ export class Colliders {
   private segSeen: number[] = [];
   private circleSeen: number[] = [];
 
-  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null, tops: readonly [number, number] | null = null, under = false): void {
+  addSegment(ax: number, ay: number, bx: number, by: number, low = false, top: Top | null = null, tops: readonly [number, number] | null = null, under = false, opts: { noClimb?: boolean; bottom?: number } = {}): void {
     if (Math.hypot(bx - ax, by - ay) < 1e-4) return;
     const rec: Segment = low ? { ax, ay, bx, by, low } : { ax, ay, bx, by };
     if (under) rec.under = true;
+    if (opts.noClimb) rec.noClimb = true;
+    if (opts.bottom !== undefined) rec.bottom = opts.bottom;
     if (top) {
       rec.height = top.height;
       if (top.climb) rec.climb = true;
@@ -137,8 +151,9 @@ export class Colliders {
     }
   }
 
-  addCircle(x: number, y: number, r: number, brk?: { id: number; kind: string }): void {
+  addCircle(x: number, y: number, r: number, brk?: { id: number; kind: string }, top?: number): void {
     const rec: Circle = brk ? { x, y, r, brk } : { x, y, r };
+    if (top !== undefined && Number.isFinite(top)) rec.top = top;
     const reuse = this.freeCircle.pop();
     let id: number;
     if (reuse === undefined) {
@@ -272,6 +287,7 @@ export class Colliders {
             const s = this.segments[id]!;
             if (clear > 0 && s.height !== undefined && s.height <= clear) continue;
             if (s.under && feet === undefined) continue;
+            if (s.bottom !== undefined && (feet === undefined || feet < s.bottom)) continue;
             const dx = s.bx - s.ax, dy = s.by - s.ay;
             const len2 = dx * dx + dy * dy;
             const t = Math.min(Math.max(((x - s.ax) * dx + (y - s.ay) * dy) / len2, 0), 1);
@@ -296,7 +312,7 @@ export class Colliders {
             sy += ey;
             hits++;
             hard++;
-            if (!s.under && (s.climb || above <= BUILDING_CLIMB)) wall = id;
+            if (!s.under && !s.noClimb && (s.climb || above <= BUILDING_CLIMB)) wall = id;
             moved = true;
           }
           const circs = this.circleGrid.get(k);
@@ -304,6 +320,7 @@ export class Colliders {
             if (this.circleSeen[id] === stamp || this.deadCircle.has(id)) continue;
             this.circleSeen[id] = stamp;
             const c = this.circles[id]!;
+            if (c.top !== undefined && feet !== undefined && c.top - feet <= WALL_STEP) continue;
             let ex = x - c.x, ey = y - c.y;
             const d = Math.hypot(ex, ey);
             if (d >= r + c.r) continue;
@@ -374,6 +391,7 @@ export class Colliders {
           const t = ((s.ax - ax) * sy - (s.ay - ay) * sx) / den;
           const u = ((s.ax - ax) * ry - (s.ay - ay) * rx) / den;
           if (t < 0 || t > 1 || u < 0 || u > 1 || (best !== null && t >= best)) continue;
+          if (s.bottom !== undefined && (az === undefined || bz === undefined || az + t * (bz - az) < s.bottom)) continue;
           if (az !== undefined && bz !== undefined && s.topA !== undefined && az + t * (bz - az) >= s.topA + u * (s.topB! - s.topA)) continue;
           best = t;
         }
@@ -389,6 +407,8 @@ export class Colliders {
           const disc = b * b - 4 * a * q;
           if (disc < 0) continue;
           const t = (-b - Math.sqrt(disc)) / (2 * a);
+          // Un rayon qui passe au-dessus (D303 : tir depuis un toit par-dessus une voiture garée) ne s'y arrête pas.
+          if (c.top !== undefined && az !== undefined && bz !== undefined && az + t * (bz - az) >= c.top) continue;
           if (t >= 0 && t <= 1 && (best === null || t < best)) best = t;
         }
       }

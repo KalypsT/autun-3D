@@ -66,9 +66,10 @@ describe("naissance des voitures (D64)", () => {
     expect(visibleFrom(1e5, 1e5, 0, 0.95, 1e5 + 80, 1e5 + 10, colliders)).toBe(false);
     // Un mur entre les deux : le joueur le regarde de face, le point est de l'autre côté.
     let tested = 0;
-    for (const sg of colliders.segments.slice(0, 400)) {
+    // Les 400 premiers murs d'au moins 4 m (les murs des monuments, D302, sont découpés au pas de leur relevé ; leurs ressauts, sur les
+    // toits, ne cachent rien dans la rue).
+    for (const sg of colliders.segments.filter((q) => q.bottom === undefined && Math.hypot(q.bx - q.ax, q.by - q.ay) >= 4).slice(0, 400)) {
       const len = Math.hypot(sg.bx - sg.ax, sg.by - sg.ay);
-      if (len < 4) continue;
       const mx = (sg.ax + sg.bx) / 2, my = (sg.ay + sg.by) / 2;
       const nx = -(sg.by - sg.ay) / len, ny = (sg.bx - sg.ax) / len;
       const px = mx + nx * 15, py = my + ny * 15, tx = mx - nx * 15, ty = my - ny * 15;
