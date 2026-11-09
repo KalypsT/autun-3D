@@ -51,7 +51,7 @@ def wms(x0, y0, x1, y1, w, h, cache):
         try:
             data = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "autun-3d-data"}), timeout=120).read()
             break
-        except OSError:
+        except Exception:  # coupure réseau (OSError, IncompleteRead…) : on réessaie
             time.sleep(4 * 2 ** attempt)
     else:
         raise SystemExit(f"orthophoto indisponible : {url}")
@@ -69,7 +69,7 @@ class Tile:
         self.n = n
         ox, oy = origin
         img = wms(self.x0 + ox, self.y0 + oy, self.x1 + ox, self.y1 + oy, n, n, ORTHO / f"{tid}.jpg")
-        self.rgb = np.asarray(Image.open(io.BytesIO(img)).convert("RGB")).astype(np.float32)
+        self.rgb = np.asarray(Image.open(io.BytesIO(img)).convert("RGB"))
         data = json.loads((c.OUT / "tiles" / f"{tid}.json").read_text())
         road = Image.new("L", (n, n), 0)
         d = ImageDraw.Draw(road)
@@ -111,8 +111,13 @@ class World:
         return self.grid.get((math.floor((x - self.bx) / TILE), math.floor((y - self.by) / TILE)))
 
     def tile(self, tid):
-        if tid not in self.tiles:
+        """Tuile chargée ; au plus 40 en mémoire (≈ 5 Mo chacune), les plus anciennes oubliées (relues depuis le cache disque)."""
+        if tid in self.tiles:
+            self.tiles[tid] = self.tiles.pop(tid)
+        else:
             self.tiles[tid] = Tile(tid, self.bounds[tid], self.origin)
+            if len(self.tiles) > 40:
+                self.tiles.pop(next(iter(self.tiles)))
         return self.tiles[tid]
 
     def sample(self, x, y):
@@ -122,7 +127,7 @@ class World:
             return None
         t = self.tile(tid)
         p = t.px(x, y)
-        return None if p is None else (int(t.road[p]), t.rgb[p])
+        return None if p is None else (int(t.road[p]), t.rgb[p].astype(np.float32))
 
 
 def stations(pts):
@@ -236,7 +241,7 @@ def main():
     marks = defaultdict(list)
     for i, e in enumerate(candidates):
         if i % 200 == 0:
-            print(f"  {i}/{len(candidates)} arêtes, {len(world.tiles)} tuiles d'orthophoto")
+            print(f"  {i}/{len(candidates)} arêtes", flush=True)
         for side in (1, -1):
             res = survey_side(world, e, side)
             if res is None:
@@ -290,7 +295,7 @@ def main():
             if tid is None or not any(k for *_, k in lines):
                 continue
             t = world.tile(tid)
-            img = Image.fromarray(t.rgb.astype(np.uint8))
+            img = Image.fromarray(t.rgb)
             d = ImageDraw.Draw(img)
             for (a, b, k) in lines:
                 pa, pb = t.px(*a), t.px(*b)
