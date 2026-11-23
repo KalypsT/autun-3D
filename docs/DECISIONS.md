@@ -7200,3 +7200,27 @@ joueur sur le serveur sans réécrire la sauvegarde synchrone (`StorageLike`).
 **Pas fait** : vérification sur la tablette et dans le vrai DomoThib (voir PROGRESS.md) ; un changement de données renvoie les ≈ 105 Mo
 à l'hôte (rsync ne reconnaît pas un dossier renommé) et les fait retélécharger aux joueurs, ce qui est le prix du cache sans
 revalidation.
+
+## 2026-11-23 — D306. Images des données lues par `fetch`, avec un nouvel essai et le code HTTP dans l'erreur
+
+**Constat** (premier lancement dans DomoThib, après D305) : le jeu s'affiche et se lance, mais le chargement s'arrête sur
+« Erreur : Error: ground/25_33_a.png : image illisible ». Les fichiers lus par `fetch` (`world.json`, relief `.bin`) passent ; la
+première image de sol, demandée par une balise `<img>`, échoue. Hors du vrai hôte, rien ne le reproduit : servi avec les en-têtes
+de l'hôte des jeux (CSP, `Cross-Origin-Resource-Policy`, `nosniff`, cache) dans un cadre isolé comme celui de DomoThib, le jeu se
+charge. Le fichier publié est un PNG valide. Côté hôte, la vérification de chaque fichier par l'API ne distingue les requêtes que par
+`Sec-Fetch-Dest` (refus de `document`), et la réponse positive est gardée 30 s par type de requête : les images sont le premier lot
+de requêtes `image`, toutes vérifiées en même temps. Une balise `<img>` qui échoue ne dit pas pourquoi (401, 403, 500 ou décodage).
+
+**Choix** : toutes les données passent par une seule fonction, `fetchFile` (`src/data/load.ts`) : JSON, relief, et maintenant les
+images (sols, images de la carte, décalques), décodées depuis une adresse `blob:` (`fetchImage` ; la politique de l'hôte permet
+`img-src blob:`). Une erreur passagère (réseau, 5xx, 429) est réessayée deux fois (0,4 puis 0,8 s) ; un refus (401, 403, 404) ne
+l'est pas. Le message d'erreur donne le code HTTP, ou le type et la taille du fichier reçu quand c'est le décodage qui échoue.
+
+**Raison** : les images suivent le chemin déjà vérifié dans DomoThib (celui des JSON), et si le chargement échoue encore, le message
+dira enfin pourquoi.
+
+**Tests** : `src/data/load-fetch.test.ts` (réussite, nouveaux essais, refus sans nouvel essai, abandon après trois échecs). Vérifié
+avec les en-têtes de l'hôte, dans un cadre isolé : les 80 images du démarrage partent en `fetch`, sols, minimap et carte affichés.
+
+**Pas fait** : la cause exacte côté hôte n'est pas établie (le journal d'erreurs de nginx sur le VPS la dirait pour une requête
+d'image, par exemple « auth request unexpected status »).

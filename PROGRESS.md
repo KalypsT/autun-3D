@@ -2183,3 +2183,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les données (≈ 105 Mo) sont rangées sous `public/immuable/<version>/` : DomoThib les garde en cache, et une partie se relance sans les retélécharger. Après une régénération des données : `python3 tools/data/data_version.py`.
 - Jaquette provisoire (la mairie vue du Champ de Mars), à remplacer par la tienne (`public/jaquette.webp`, 640 × 360, 300 Ko au plus).
 - À faire de ton côté : lancer le jeu depuis DomoThib sur le téléphone (poignée, pause par le menu de la poignée, reprise), reprendre la partie sur un autre écran, et l'essayer sur la tablette pour décider si elle peut être ajoutée aux écrans prévus.
+
+**Chargement dans DomoThib : images de sols lues autrement (23 novembre 2026)** (D306)
+- Dans DomoThib, le chargement s'arrêtait sur « ground/25_33_a.png : image illisible ». Les images (sols, carte, décalques) sont maintenant lues comme les autres données, avec un nouvel essai si le réseau ou le serveur flanche, et le code d'erreur dans le message si ça échoue encore.
+- À faire de ton côté : relancer le jeu depuis DomoThib ; si un message d'erreur reste, me le donner tel quel (il dit maintenant la cause).

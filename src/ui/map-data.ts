@@ -1,4 +1,4 @@
-import { dataUrl, loadJson } from "../data/load";
+import { dataUrl, fetchImage, loadJson } from "../data/load";
 import type { MapImageInfo, MapIndex } from "../core/mapview";
 
 /** Formats décrits dans docs/DECISIONS.md (D33) : public/immuable/<version>/data/map/index.json, places.json et les images par kilomètre. */
@@ -86,11 +86,9 @@ export class MapData {
       c = { img: null, bytes: px * px * 4, used: this.stamp };
       this.cache.set(name, c);
       const entry = c;
-      const img = new Image();
-      img.src = dataUrl(name);
-      // Décodée avant d'être montrée : le premier dessin ne bloque pas l'image.
-      void img.decode().then(
-        () => {
+      // Lue par fetch (D306) et décodée avant d'être montrée : le premier dessin ne bloque pas l'image.
+      void fetchImage(dataUrl(name), name).then(
+        (img) => {
           entry.img = img;
           this.onImage?.();
         },

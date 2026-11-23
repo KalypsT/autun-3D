@@ -10,6 +10,7 @@ import { scheduleOf } from "../core/opening";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
 import { immutableUrl } from "../data/data-version";
+import { fetchImage } from "../data/load";
 import { planFacadesSteps, type Placement } from "./facades";
 import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
 import { buildGroundSteps } from "./ground";
@@ -187,7 +188,15 @@ export class StyleResources {
   decalMat(src: string): THREE.Material {
     let m = this.decalMats.get(src);
     if (!m) {
-      const tex = new THREE.TextureLoader().load(immutableUrl(import.meta.env.BASE_URL, `decals/${src}`));
+      // Lue par fetch comme les autres données (D306) ; la matière est prête tout de suite, l'image arrive ensuite.
+      const tex = new THREE.Texture();
+      fetchImage(immutableUrl(import.meta.env.BASE_URL, `decals/${src}`), `decals/${src}`).then(
+        (img) => {
+          tex.image = img;
+          tex.needsUpdate = true;
+        },
+        (e: unknown) => console.error(e),
+      );
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
       m = this.lit({ map: tex, transparent: true, alphaTest: 0.5 });

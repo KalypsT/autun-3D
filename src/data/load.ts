@@ -8,29 +8,65 @@ import { immutableUrl } from "./data-version";
 /** Données publiées sous public/immuable/<version>/data (D305). */
 const base = immutableUrl(import.meta.env.BASE_URL, "data/");
 
+/** Nouveaux essais après une erreur passagère (réseau coupé, serveur 5xx), avec ce délai croissant (ms). */
+const RETRIES = 2;
+const RETRY_MS = 400;
+
+/**
+ * Lecture d'un fichier du site par `fetch`, avec deux nouveaux essais après une erreur passagère. Toutes les données passent par ici,
+ * images comprises (D306) : une seule façon de les demander, la même que celle des fichiers JSON, et le code HTTP dans le message
+ * d'erreur (une balise `<img>` qui échoue ne dit pas pourquoi).
+ */
+export async function fetchFile(url: string, name: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    let problem: string;
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      problem = String(res.status);
+      if (res.status < 500 && res.status !== 429) throw new Error(`${name} : ${problem}`);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith(`${name} : `)) throw e;
+      problem = `réseau (${e instanceof Error ? e.message : String(e)})`;
+    }
+    if (attempt >= RETRIES) throw new Error(`${name} : ${problem}`);
+    await new Promise((resolve) => setTimeout(resolve, RETRY_MS * (attempt + 1)));
+  }
+}
+
 export async function loadJson<T>(name: string): Promise<T> {
-  const res = await fetch(base + name);
-  if (!res.ok) throw new Error(`${name} : ${res.status}`);
-  return (await res.json()) as T;
+  return (await (await fetchFile(base + name, name)).json()) as T;
 }
 
 async function binary(name: string): Promise<ArrayBuffer> {
-  const res = await fetch(base + name);
-  if (!res.ok) throw new Error(`${name} : ${res.status}`);
-  return res.arrayBuffer();
+  return (await fetchFile(base + name, name)).arrayBuffer();
 }
 
 /** Adresse d'un fichier de public/immuable/<version>/data. */
 export const dataUrl = (name: string): string => base + name;
 
+/**
+ * Image lue par `fetch` (voir `fetchFile`), puis décodée depuis une adresse `blob:` (permise par la politique de l'hôte des jeux,
+ * `img-src 'self' data: blob:`). `name` sert aux messages d'erreur.
+ */
+export async function fetchImage(url: string, name: string): Promise<HTMLImageElement> {
+  const blob = await (await fetchFile(url, name)).blob();
+  const src = URL.createObjectURL(blob);
+  const img = new Image();
+  img.src = src;
+  try {
+    await img.decode();
+  } catch {
+    throw new Error(`${name} : image illisible (${blob.type || "type inconnu"}, ${blob.size} octets)`);
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+  return img;
+}
+
 /** Images de sols : une image par fichier, décodée à part. */
 export function loadImage(name: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`${name} : image illisible`));
-    img.src = base + name;
-  });
+  return fetchImage(base + name, name);
 }
 
 /** Ce qui est chargé au démarrage : le plan du monde et le relief à gros pas. Tout le reste se charge par tuile. */
