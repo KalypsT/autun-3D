@@ -2187,3 +2187,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Chargement dans DomoThib : images de sols lues autrement (23 novembre 2026)** (D306)
 - Dans DomoThib, le chargement s'arrêtait sur « ground/25_33_a.png : image illisible ». Les images (sols, carte, décalques) sont maintenant lues comme les autres données, avec un nouvel essai si le réseau ou le serveur flanche, et le code d'erreur dans le message si ça échoue encore.
 - À faire de ton côté : relancer le jeu depuis DomoThib ; si un message d'erreur reste, me le donner tel quel (il dit maintenant la cause).
+
+**Chargement dans DomoThib : moins de requêtes à la fois (23 novembre 2026)** (D307)
+- Le chargement s'arrêtait sur « ground/25_33_a.png : 500 » : l'hôte des jeux refusait la rafale de fichiers du démarrage. Le jeu ne demande plus que six fichiers à la fois, et réessaie plus patiemment (jusqu'à 3,5 s).
+- À faire de ton côté : relancer le jeu depuis DomoThib ; si l'erreur reste, il faudra les journaux du VPS (nginx et API) pour corriger l'hôte.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchFile } from "./load";
+import { fetchFile, MAX_PARALLEL } from "./load";
 
 const answer = (status: number): Response => new Response(status === 200 ? "ok" : null, { status });
 
@@ -40,8 +40,36 @@ describe("lecture des données par fetch, images comprises (D306)", () => {
     expect(await run([404])).toEqual({ result: "ground/25_33_a.png : 404", calls: 1 });
   });
 
-  it("trois échecs passagers : abandon, avec la dernière cause", async () => {
-    expect(await run([500, 503, 500, 200])).toEqual({ result: "ground/25_33_a.png : 500", calls: 3 });
-    expect((await run(["network", "network", "network"])).result).toBe("ground/25_33_a.png : réseau (Failed to fetch)");
+  it("quatre échecs passagers : abandon, avec la dernière cause", async () => {
+    expect(await run([500, 503, 500, 500, 200])).toEqual({ result: "ground/25_33_a.png : 500", calls: 4 });
+    expect((await run(["network", "network", "network", "network"])).result).toBe("ground/25_33_a.png : réseau (Failed to fetch)");
+  });
+
+  it("D307 : jamais plus de MAX_PARALLEL requêtes à la fois, même pour une rafale de 80 images ; toutes aboutissent", async () => {
+    let inFlight = 0, peak = 0;
+    const open: (() => void)[] = [];
+    vi.stubGlobal("fetch", vi.fn(() => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      return new Promise<Response>((resolve) => open.push(() => {
+        inFlight--;
+        resolve(answer(200));
+      }));
+    }));
+    let done = false;
+    const all = Promise.all(Array.from({ length: 80 }, (_, i) => fetchFile(`/x/${i}.png`, `${i}.png`))).finally(() => (done = true));
+    while (!done) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      open.splice(0).forEach((finish) => finish());
+    }
+    expect((await all).every((r) => r.ok)).toBe(true);
+    expect(MAX_PARALLEL).toBe(6);
+    expect(peak).toBe(MAX_PARALLEL);
+  });
+
+  it("D307 : une requête qui échoue rend sa place (pas de blocage après des erreurs)", async () => {
+    for (let i = 0; i < MAX_PARALLEL * 2; i++) expect((await run([404])).calls).toBe(1);
+    expect(await run([500, 500, 500, 500])).toEqual({ result: "ground/25_33_a.png : 500", calls: 4 });
+    expect(await run([200])).toEqual({ result: "ok", calls: 1 });
   });
 });
