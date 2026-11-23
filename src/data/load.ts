@@ -8,18 +8,46 @@ import { immutableUrl } from "./data-version";
 /** Données publiées sous public/immuable/<version>/data (D305). */
 const base = immutableUrl(import.meta.env.BASE_URL, "data/");
 
-/** Nouveaux essais après une erreur passagère (réseau coupé, serveur 5xx), avec ce délai croissant (ms). */
-const RETRIES = 2;
-const RETRY_MS = 400;
+/** Nouveaux essais après une erreur passagère (réseau coupé, serveur 5xx, 429), après 0,5 puis 1 puis 2 s. */
+const RETRIES = 3;
+const RETRY_MS = 500;
 
 /**
- * Lecture d'un fichier du site par `fetch`, avec deux nouveaux essais après une erreur passagère. Toutes les données passent par ici,
- * images comprises (D306) : une seule façon de les demander, la même que celle des fichiers JSON, et le code HTTP dans le message
- * d'erreur (une balise `<img>` qui échoue ne dit pas pourquoi).
+ * Requêtes en cours au plus (D307). Dans DomoThib, l'hôte des jeux fait vérifier chaque fichier par l'API avant de le servir : le
+ * démarrage, qui demandait d'un coup tout le relief fin puis 80 images de sols, déclenchait une rafale de vérifications simultanées,
+ * et l'hôte répondait 500. Six à la fois, comme un navigateur par serveur en HTTP/1.1 : les premières réponses arrivent vite et les
+ * suivantes profitent de la vérification gardée en cache par l'hôte.
+ */
+export const MAX_PARALLEL = 6;
+let active = 0;
+const waiting: (() => void)[] = [];
+
+/** Prend une place parmi les `MAX_PARALLEL` (attend qu'une se libère). */
+function acquire(): Promise<void> {
+  if (active < MAX_PARALLEL) {
+    active++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => waiting.push(resolve));
+}
+
+/** Rend sa place : elle passe directement à la requête suivante en attente. */
+function release(): void {
+  const next = waiting.shift();
+  if (next) next();
+  else active--;
+}
+
+/**
+ * Lecture d'un fichier du site par `fetch`, avec de nouveaux essais après une erreur passagère. Toutes les données passent par ici,
+ * images comprises (D306) : une seule façon de les demander, au plus `MAX_PARALLEL` à la fois (D307), et le code HTTP dans le
+ * message d'erreur. La place est tenue jusqu'à la réponse (en-têtes) ; le contenu se lit ensuite, et l'attente avant un nouvel essai
+ * ne bloque personne.
  */
 export async function fetchFile(url: string, name: string): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     let problem: string;
+    await acquire();
     try {
       const res = await fetch(url);
       if (res.ok) return res;
@@ -28,9 +56,11 @@ export async function fetchFile(url: string, name: string): Promise<Response> {
     } catch (e) {
       if (e instanceof Error && e.message.startsWith(`${name} : `)) throw e;
       problem = `réseau (${e instanceof Error ? e.message : String(e)})`;
+    } finally {
+      release();
     }
     if (attempt >= RETRIES) throw new Error(`${name} : ${problem}`);
-    await new Promise((resolve) => setTimeout(resolve, RETRY_MS * (attempt + 1)));
+    await new Promise((resolve) => setTimeout(resolve, RETRY_MS * 2 ** attempt));
   }
 }
 

@@ -7224,3 +7224,22 @@ avec les en-têtes de l'hôte, dans un cadre isolé : les 80 images du démarrag
 
 **Pas fait** : la cause exacte côté hôte n'est pas établie (le journal d'erreurs de nginx sur le VPS la dirait pour une requête
 d'image, par exemple « auth request unexpected status »).
+
+## 2026-11-23 — D307. Six requêtes de données à la fois au plus
+
+**Constat** (après D306) : dans DomoThib, le chargement s'arrête maintenant sur « ground/25_33_a.png : 500 », après trois essais.
+Le 500 vient de l'hôte des jeux (nginx ou l'API qui vérifie chaque fichier), pas du jeu ni du fichier (PNG valide, publié ; un fichier
+absent donnerait 404). Les erreurs du relief fin étant seulement écrites dans la console, les seules requêtes qu'on sait réussies
+sont les premières, une ou deux à la fois (`world.json`, `terrain/coarse.bin`) ; le démarrage demande ensuite d'un coup tout le relief
+fin proche puis 80 images de sols : une rafale de vérifications simultanées par l'API de DomoThib, qui fait chacune une requête à sa base.
+
+**Choix** : `fetchFile` (`src/data/load.ts`) n'envoie pas plus de **6 requêtes à la fois** (`MAX_PARALLEL`, comme un navigateur
+par serveur en HTTP/1.1) ; les autres attendent une place, rendue dès la réponse (le contenu se lit ensuite), et passée directement à
+la suivante. Les erreurs passagères (réseau, 5xx, 429) sont réessayées trois fois, après 0,5, 1 et 2 s.
+
+**Raison** : moins brutal pour l'hôte quelle que soit la cause exacte, et les premières réponses font entrer la vérification dans
+le cache de l'hôte (30 s) avant que les suivantes arrivent. Coût mesuré dans un faux DomoThib (en-têtes de l'hôte, cadre isolé) :
+le démarrage va au bout, aucune différence visible.
+
+**Pas fait** : la cause exacte côté hôte n'est toujours pas établie : le journal d'erreurs de nginx et celui de l'API sur le VPS la
+diront. Si c'est la base ou la vérification, la correction de fond est dans DomoThib (`deploy/nginx/games.conf`, `/api/jeux/hote/verifier`).
