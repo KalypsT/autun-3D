@@ -2191,3 +2191,8 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 **Chargement dans DomoThib : moins de requêtes à la fois (23 novembre 2026)** (D307)
 - Le chargement s'arrêtait sur « ground/25_33_a.png : 500 » : l'hôte des jeux refusait la rafale de fichiers du démarrage. Le jeu ne demande plus que six fichiers à la fois, et réessaie plus patiemment (jusqu'à 3,5 s).
 - À faire de ton côté : relancer le jeu depuis DomoThib ; si l'erreur reste, il faudra les journaux du VPS (nginx et API) pour corriger l'hôte.
+
+**Chargement dans DomoThib : l'erreur 500 venait du cache du navigateur (23 novembre 2026)** (D308)
+- Les journaux du VPS l'ont montré : le serveur ne recevait même plus la demande de l'image. Une erreur du premier lancement avait été gardée par le navigateur pour un an (l'hôte des jeux marque tout ce qui est sous `immuable/` comme gardable un an, erreurs comprises).
+- Le jeu, quand un fichier échoue, le redemande maintenant au serveur au lieu de relire le cache : l'erreur gardée disparaît d'elle-même au prochain lancement.
+- À faire de ton côté : déployer, relancer depuis DomoThib. Côté DomoThib, l'hôte ne devrait garder un an que les réponses réussies (correction à faire dans `games.conf`).

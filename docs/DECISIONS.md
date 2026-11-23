@@ -7243,3 +7243,20 @@ le démarrage va au bout, aucune différence visible.
 
 **Pas fait** : la cause exacte côté hôte n'est toujours pas établie : le journal d'erreurs de nginx et celui de l'API sur le VPS la
 diront. Si c'est la base ou la vérification, la correction de fond est dans DomoThib (`deploy/nginx/games.conf`, `/api/jeux/hote/verifier`).
+
+## 2026-11-23 — D308. Nouveaux essais sans le cache du navigateur : une erreur gardée un an n'est plus relue
+
+**Constat** (après D307, journaux du VPS) : le jeu affiche toujours « ground/25_33_a.png : 500 », mais depuis 20 h 57 aucune
+requête pour ce fichier n'arrive à nginx, malgré plusieurs lancements ; toutes les vérifications de l'API répondent 204 et l'API ne
+signale aucune erreur. Le 500 vient du **cache du navigateur** : l'hôte des jeux (`deploy/nginx/games.conf` de DomoThib) pose
+`Cache-Control: private, max-age=31536000, immutable` d'après la seule adresse (`map $uri`), avec `always`, donc aussi sur les
+réponses d'erreur sous `immuable/`. Une première erreur (cause non établie, antérieure aux journaux consultés : probablement la
+rafale de requêtes corrigée par D307) a été gardée un an, et chaque lancement comme chaque nouvel essai la relisait sans rien demander.
+Vérifié dans Chromium : un 500 avec cet en-tête est relu depuis le cache ; `fetch(…, { cache: "reload" })` va au serveur et remplace
+l'entrée gardée.
+
+**Choix** : dans `fetchFile`, le premier essai profite du cache (c'est tout l'intérêt de `immuable/`), les nouveaux essais passent
+`cache: "reload"`. Une erreur gardée coûte ainsi un essai (0,5 s) puis disparaît du cache du navigateur.
+
+**À faire côté DomoThib** : ne donner la durée d'un an qu'aux réponses réussies (200, 304) dans `games.conf`, et `no-store` aux
+erreurs ; sans cela, tout jeu qui lit ses fichiers sans nouvel essai garde ses erreurs un an.
