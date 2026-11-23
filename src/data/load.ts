@@ -41,7 +41,7 @@ function release(): void {
 /**
  * Lecture d'un fichier du site par `fetch`, avec de nouveaux essais après une erreur passagère. Toutes les données passent par ici,
  * images comprises (D306) : une seule façon de les demander, au plus `MAX_PARALLEL` à la fois (D307), et le code HTTP dans le
- * message d'erreur. La place est tenue jusqu'à la réponse (en-têtes) ; le contenu se lit ensuite, et l'attente avant un nouvel essai
+ * message d'erreur. Les nouveaux essais vont jusqu'au serveur (`cache: "reload"`, D308). La place est tenue jusqu'à la réponse (en-têtes) ; le contenu se lit ensuite, et l'attente avant un nouvel essai
  * ne bloque personne.
  */
 export async function fetchFile(url: string, name: string): Promise<Response> {
@@ -49,7 +49,9 @@ export async function fetchFile(url: string, name: string): Promise<Response> {
     let problem: string;
     await acquire();
     try {
-      const res = await fetch(url);
+      // Nouvel essai : jamais depuis le cache du navigateur (D308). Sous immuable/, l'hôte des jeux de DomoThib envoie aussi ses
+      // réponses d'erreur avec « max-age=31536000, immutable » : une erreur passagère y restait gardée un an, et chaque essai la relisait.
+      const res = await fetch(url, attempt > 0 ? { cache: "reload" } : undefined);
       if (res.ok) return res;
       problem = String(res.status);
       if (res.status < 500 && res.status !== 429) throw new Error(`${name} : ${problem}`);
