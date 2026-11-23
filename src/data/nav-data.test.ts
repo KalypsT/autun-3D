@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { pointInRing } from "../core/collision";
 import { loadRealWorld } from "../core/testing";
+import { PUBLIC_DATA } from "./data-version";
 
-/** Données de navigation (public/data/nav, étape J2) : format, indices, coutures entre super-tuiles, files hors des bâtiments, connexité. */
+/** Données de navigation (public/immuable/<version>/data/nav, étape J2) : format, indices, coutures entre super-tuiles, files hors des bâtiments, connexité. */
 interface Graph { n: number[]; e: number[]; g: number[]; s?: number[]; r?: number[] }
 interface Cell { v: number; id: string; bounds: [number, number, number, number]; ped: Graph; road: Graph; poi: number[] }
 interface Index { version: number; cell: number; stride: { ped: { n: number; e: number }; road: { n: number; e: number; s: number; r: number }; poi: number }; poiKinds: string[]; pedTypes: string[]; cells: { id: string; bytes: number }[] }
 
-const read = (name: string): string => readFileSync(`public/data/${name}`, "utf8");
+const read = (name: string): string => readFileSync(`${PUBLIC_DATA}/${name}`, "utf8");
 const index = JSON.parse(read("nav/index.json")) as Index;
 const cells = new Map<string, Cell>(index.cells.map((c) => [c.id, JSON.parse(read(`nav/${c.id}.json`)) as Cell]));
 const { manifest, tile } = loadRealWorld();
@@ -25,7 +26,7 @@ const pedEdges = (c: Cell): { a: number; b: number; typ: number; zone: number; f
   return out;
 };
 
-describe("données de navigation (public/data/nav)", () => {
+describe("données de navigation (public/immuable/<version>/data/nav)", () => {
   it("a un fichier par super-tuile du monde, à la taille annoncée, et reste léger", () => {
     const wanted = manifest.super.cells.map((s) => s.id).sort();
     expect([...cells.keys()].sort()).toEqual(wanted);

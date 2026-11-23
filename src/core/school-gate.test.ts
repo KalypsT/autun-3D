@@ -5,12 +5,13 @@ import { PLAYER_RADIUS } from "./player";
 import { GATE_LAYOUT, GATE_TAG, SCHOOL_GATE, gateCircles, gateFrame, gateLine, gateOpen, syncGate } from "./school-gate";
 import { addTileColliders } from "./world";
 import type { TileData, TileKinds, TileStructures } from "../data/types";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D174 : grille du collège du Vallon (lot 3 de docs/plans/college-vallon.md) : fermée en dehors des heures de classe. */
 const MAIN = "BATIMENT0000000348848973";
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
-const tile = JSON.parse(readFileSync("public/data/tiles/28_39.json", "utf8")) as TileData;
-const structures = JSON.parse(readFileSync("public/data/structures/28_39.json", "utf8")) as TileStructures;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_39.json`, "utf8")) as TileData;
+const structures = JSON.parse(readFileSync(`${PUBLIC_DATA}/structures/28_39.json`, "utf8")) as TileStructures;
 const deck = structures.decks.find((d) => d.w >= 5.5 && Math.hypot(d.p[0]! - 546.4, d.p[1]! - 1083.6) < 3)!;
 
 const world = (): Colliders => {

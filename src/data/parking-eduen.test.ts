@@ -5,10 +5,11 @@ import { findStalls } from "../core/parking";
 import { loadRealWorld } from "../core/testing";
 import { buildColliders } from "../core/world";
 import type { EduenModel, TileData, TileKinds } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D233 : le parking de l'Eduen (rangées lues sur l'orthophotographie) et les abords (mâts, haie, clôture, barrière). */
 const ID = "BATIMENT0000000348847362";
-const m = (JSON.parse(readFileSync("public/data/kinds/32_37.json", "utf8")) as TileKinds).buildings[ID]!.edu as EduenModel;
+const m = (JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/32_37.json`, "utf8")) as TileKinds).buildings[ID]!.edu as EduenModel;
 const st = (x: number, y: number): [number, number] => {
   const dx = x - m.o[0], dy = y - m.o[1], c = Math.cos(m.a), s = Math.sin(m.a);
   return [dx * c + dy * s, -dx * s + dy * c];
@@ -18,7 +19,7 @@ const inLot = ([s, t]: [number, number]): boolean => s > -55 && s < 52 && t > 40
 describe("parking de l'Eduen (D233)", () => {
   it("les places : environ 140 (hors places PMR, plus larges), dans les rangées, aucune dans les allées", () => {
     const stalls = ["32_37", "33_37", "32_38"]
-      .flatMap((id) => findStalls((JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData).ground["marks"] ?? []))
+      .flatMap((id) => findStalls((JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData).ground["marks"] ?? []))
       .map((q) => st(q.x, q.y)).filter(inLot);
     expect(stalls.length).toBeGreaterThan(110);
     expect(stalls.length).toBeLessThan(170);

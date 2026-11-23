@@ -1,7 +1,7 @@
 """Rues du centre-ville redessinées sur les sols des tuiles (D153) : la chaussée de la place du Champ de Mars.
 
 Usage : python3 tools/data/build_streetscape.py     (après build_public_space.py, qui réécrit les sols ; avant build_nav.py)
-Entrées : `streetscape` de tools/data/manual.json, public/data/streets.json (axes et largeurs des voies, les mêmes que pour la navigation),
+Entrées : `streetscape` de tools/data/manual.json, public/immuable/<version>/data/streets.json (axes et largeurs des voies, les mêmes que pour la navigation),
           tiles/<tuile>.json (bâtiments, mobilier, sols).
 Sortie : dans les tuiles listées, pour chaque voie de `streetscape.roads` :
   - sa chaussée (`road_asphalt`) à la largeur de la voie, coupée aux bâtiments, et retirée des places (`plaza_*`) qu'elle traversait ;

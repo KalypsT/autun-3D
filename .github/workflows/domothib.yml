@@ -1,0 +1,55 @@
+name: Déploiement DomoThib
+
+# Contrat DomoThib Games (docs/domothib.md §7.2, D305) : une pull request construit et teste le jeu ; une fusion dans main le
+# déploie sur l'hôte des jeux (https://games.loragif.fr/autun-3d/, visible aussitôt dans DomoThib).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Une nouvelle poussée sur une PR annule l'ancienne vérification ; un déploiement depuis main n'est jamais annulé.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deploy:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # Les tests lisent les données (public/immuable/<version>/) et vérifient leur empreinte avec python3 (présent sur ubuntu-latest).
+      - run: npm test
+      # `npm run build` vérifie aussi les types (tsc --noEmit).
+      - run: npm run build -- --mode domothib
+      - name: Vérifier le manifeste
+        run: |
+          node -e '
+            const m = JSON.parse(require("fs").readFileSync("dist/domothib.json", "utf8"));
+            if (m.protocole !== 1 || m.id !== process.env.GAME_ID) { console.error("domothib.json invalide"); process.exit(1); }
+          '
+        env:
+          GAME_ID: autun-3d
+      - name: Envoi sur l'hôte des jeux
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          SSH_KEY: ${{ secrets.JEUX_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/jeux && chmod 600 ~/.ssh/jeux
+          rsync -rlz --delete-after --delay-updates --chmod=D755,F644 \
+            -e "ssh -i ~/.ssh/jeux" dist/ "jeux-deploy@$VPS_HOST:./"

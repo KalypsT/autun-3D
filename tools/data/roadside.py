@@ -19,6 +19,8 @@ from pathlib import Path
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points, unary_union
 
+from data_version import DATA
+
 ROAD_LAYERS = ("road_asphalt", "road_sett", "road_gravel", "road_paving")
 #: Écart entre un objet poussé hors de la chaussée et le bord (m).
 CLEARANCE = 0.8
@@ -99,7 +101,7 @@ def settle(rec):
 
 
 def main():
-    tiles = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / "public" / "data" / "tiles"
+    tiles = Path(sys.argv[1]) if len(sys.argv) > 1 else DATA / "tiles"
     total = {}
     world_path = tiles.parent / "world.json"
     world = json.loads(world_path.read_text())

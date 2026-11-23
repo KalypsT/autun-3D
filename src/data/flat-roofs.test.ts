@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { MeshBuilder } from "../render/geometry";
 import { rooftopBox } from "../render/stylized";
 import type { LodBuilding, TileData } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D170 : les deux barres voisines de l'Hexagone ont un toit-terrasse (lot 6 de docs/plans/hexagone.md), mesuré au MNS LiDAR. */
-const tile = JSON.parse(readFileSync("public/data/tiles/27_36.json", "utf8")) as TileData;
-const lod = JSON.parse(readFileSync("public/data/lod/27_36.json", "utf8")) as LodBuilding[];
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/27_36.json`, "utf8")) as TileData;
+const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/27_36.json`, "utf8")) as LodBuilding[];
 const crc = (s: string): number => {
   let c = ~0;
   for (let i = 0; i < s.length; i++) { c ^= s.charCodeAt(i); for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); }

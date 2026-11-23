@@ -5,11 +5,12 @@ import { MeshBuilder, UvMeshBuilder } from "./geometry";
 import { replacesFacade, type LandmarkSinks } from "./landmarks";
 import type { SignAtlas } from "./sign-atlas";
 import { buildVallon, clipStrip, gymRoofZ, rectCorners, vallonFrame, VALLON_PARAPET } from "./vallon";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D172 : collège du Vallon, lot 1 de docs/plans/college-vallon.md : volumes et toits mesurés au LiDAR (§9). */
 const MAIN = "BATIMENT0000000348848973", PREAU = "BATIMENT0000000348848974", GYM = "BATIMENT0000000348848924", WEST = "BATIMENT0000000348849004";
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
-const tile = JSON.parse(readFileSync("public/data/tiles/28_39.json", "utf8")) as TileData;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_39.json`, "utf8")) as TileData;
 const main = kinds.buildings[MAIN]!.vallon as VallonModel;
 const preau = kinds.buildings[PREAU]!.vallon as VallonModel;
 const gym = kinds.buildings[GYM]!.vallon as VallonModel;

@@ -12,6 +12,7 @@ import { buildHouse } from "./house";
 import { buildJanus } from "./janus";
 import { buildCouhard } from "./couhard";
 import { buildRoundabout, buildRoundaboutGround } from "./roundabout";
+import { PUBLIC_DATA } from "../data/data-version";
 
 describe("monuments (D95) : géométrie", () => {
   const world = loadRealWorld();
@@ -189,13 +190,13 @@ describe("monuments (D95) : géométrie", () => {
     expect(mb.positions.every(Number.isFinite)).toBe(true);
     expect(tris(mb)).toBeGreaterThan(500);
     expect(tris(mb)).toBeLessThan(8000);
-    const lod = JSON.parse(readFileSync("public/data/lod/26_32.json", "utf8")) as LodBuilding[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/26_32.json`, "utf8")) as LodBuilding[];
     const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
     expect(parts).toHaveLength(12);
   });
 
   it("fontaine Saint-Lazare (D131) : mesures plausibles, mobilier remplacé, bassin dégagé et infranchissable, coût borné", () => {
-    const k = JSON.parse(readFileSync("public/data/kinds/26_33.json", "utf8")) as { buildings: Record<string, never>; sites: Site[] };
+    const k = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/26_33.json`, "utf8")) as { buildings: Record<string, never>; sites: Site[] };
     const f = k.sites.find((s): s is Extract<Site, { t: "fountain" }> => s.t === "fountain")!;
     expect(f.n).toBe("Fontaine Saint-Lazare");
     expect(f.id).toBe(2380355768);
@@ -213,7 +214,7 @@ describe("monuments (D95) : géométrie", () => {
   });
 
   it("hôtel de ville (D126) : silhouette lointaine en corps principal, pavillons et ailes", () => {
-    const lod = JSON.parse(readFileSync("public/data/lod/26_35.json", "utf8")) as LodBuilding[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/26_35.json`, "utf8")) as LodBuilding[];
     const id = Object.entries(kinds.buildings).find(([, b]) => b.hall)![0];
     const parts = lod.filter((e) => e.k === Math.round(idKey(id) * 4294967296));
     expect(parts).toHaveLength(5);

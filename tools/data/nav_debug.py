@@ -1,7 +1,7 @@
-"""Image de contrôle de la navigation : sols et bâtiments des tuiles, puis (si public/data/nav existe) les files, passages et points d'intérêt.
+"""Image de contrôle de la navigation : sols et bâtiments des tuiles, puis (si nav/ existe dans public/immuable/<version>/data) les files, passages et points d'intérêt.
 
 Usage : python3 tools/data/nav_debug.py <sortie.png> x0 y0 x1 y1 [pixels_par_metre=4] [--no-nav]   (coordonnées locales, repère du jeu)
-Lit public/data/tiles/*.json et public/data/nav/*.json ; n'écrit que l'image.
+Lit tiles/*.json et nav/*.json des données publiées (public/immuable/<version>/data) ; n'écrit que l'image.
 """
 
 import json
@@ -10,8 +10,10 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from data_version import DATA as PUBLISHED_DATA
+
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "public" / "data"
+DATA = PUBLISHED_DATA
 
 LAYER_COLORS = {
     "lawn": "#a9c98f", "pitch": "#9cc08a", "water": "#8fb7d6", "road_asphalt": "#6e6e72", "road_sett": "#8a8078", "road_paving": "#8a8078",

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { reshapeBuilding } from "./landmarks";
 import { loadRealWorld } from "./testing";
 import type { LodBuilding } from "../data/types";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D262 : Lycée militaire, lot 5 de docs/plans/lycee-militaire.md : bâtiments modernes de l'enceinte, toits mesurés au LiDAR. */
 describe("Lycée militaire : bâtiments modernes (D262)", () => {
@@ -51,7 +52,7 @@ describe("Lycée militaire : bâtiments modernes (D262)", () => {
       const fi = world.tile.fiches.find((f) => f.id === id);
       if (fi) expect(fi.ground.kind).not.toBe("shop");
     }
-    const lod = JSON.parse(readFileSync("public/data/lod/28_35.json", "utf8")) as (LodBuilding & { k: number })[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/28_35.json`, "utf8")) as (LodBuilding & { k: number })[];
     const flat = lod.filter((e) => e.e === e.g);
     expect(flat.length).toBeGreaterThan(5);
   });

@@ -4,6 +4,7 @@ import { loadRealWorld } from "../core/testing";
 import { buildDevanture } from "./devanture";
 import { planFacades } from "./facades";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const { terrain, tile } = loadRealWorld();
 const buildings = tile.buildings;
@@ -123,7 +124,7 @@ describe("devanture d'après photo (D141) : L'Armoire de Julie, 21 rue Guérin",
   });
 
   it("passants : le point « commerce » est devant la devanture (build_monuments_nav.py)", () => {
-    const poi = (JSON.parse(readFileSync("public/data/nav/s6_9.json", "utf8")) as { poi: number[] }).poi;
+    const poi = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_9.json`, "utf8")) as { poi: number[] }).poi;
     let found = false;
     for (let i = 0; i < poi.length; i += 5) if (poi[i] === 2 && Math.hypot(poi[i + 1]! - 127, poi[i + 2]! - 267.2) < 0.5) found = true;
     expect(found).toBe(true);

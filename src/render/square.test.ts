@@ -7,6 +7,7 @@ import { loadRealWorld } from "../core/testing";
 import type { BandstandSite, CurtainSite, MemorialSite } from "../data/types";
 import { MeshBuilder } from "./geometry";
 import { buildBandstand, buildCurtain, buildMemorial } from "./square";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D155 : tilleuls en rideau et kiosque à musique de la place du Champ de Mars (tools/data/build_square.py). */
 describe("place du Champ de Mars : tilleuls en rideau et kiosque (D155)", () => {
@@ -61,7 +62,7 @@ describe("place du Champ de Mars : tilleuls en rideau et kiosque (D155)", () => 
   it("passants : aucune file ne passe à moins de 30 cm d'un tronc", () => {
     const trunks = curtains.flatMap(curtainTrunks);
     for (const cell of ["s6_8", "s6_9"]) {
-      const { n, e, g } = (JSON.parse(readFileSync(`public/data/nav/${cell}.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+      const { n, e, g } = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/${cell}.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
       for (let i = 0; i < e.length; i += 11) {
         const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
         const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
@@ -171,7 +172,7 @@ describe("place du Champ de Mars : monument aux morts (D227)", () => {
       return Math.abs(dx * f.ux + dy * f.uy) < m.steps[0]![0] / 2 + margin && Math.abs(dx * f.vx + dy * f.vy) < m.steps[0]![1] / 2 + margin;
     };
     for (const q of CACHES) expect(inside(q.x, q.y, 3)).toBe(false);
-    const { n, e, g } = (JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+    const { n, e, g } = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_8.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
     for (let i = 0; i < e.length; i += 11) {
       const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
       const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
@@ -186,7 +187,7 @@ describe("place du Champ de Mars : monument aux morts (D227)", () => {
   });
 
   it("point d'intérêt « monument » des passants devant les marches, tourné vers le monument", () => {
-    const P = (JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] }).poi;
+    const P = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_8.json`, "utf8")) as { poi: number[] }).poi;
     const pois: number[][] = [];
     for (let i = 0; i < P.length; i += 5) if (P[i] === 8) pois.push(P.slice(i, i + 5));
     const near = pois.filter(([, x, y]) => Math.hypot(x! - m.c[0], y! - m.c[1]) < 8);

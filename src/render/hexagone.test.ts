@@ -7,10 +7,11 @@ import { UvMeshBuilder } from "./geometry";
 import type { LandmarkSinks } from "./landmarks";
 import type { SignAtlas } from "./sign-atlas";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D165 : l'Hexagone (lot 1 de docs/plans/hexagone.md) : pyramide à 12 pans mesurée au LiDAR sur une couronne de six terrasses. */
 const BID = "BATIMENT0000000348844694";
-const kinds = JSON.parse(readFileSync("public/data/kinds/27_35.json", "utf8")) as TileKinds;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/27_35.json`, "utf8")) as TileKinds;
 const m = kinds.buildings[BID]!.hex as HexagoneModel;
 /** Le bâtiment seul, sans le mobilier du parvis (qui s'étend jusqu'à 45 m du sommet). */
 const bare: HexagoneModel = { ...m };
@@ -163,7 +164,7 @@ describe("L'Hexagone (D168) : mobilier du parvis", () => {
   });
 
   it("tout est sur le parvis ou près de lui, hors du bâtiment, à plus de 3 m de la façade ; deux objets ne se chevauchent pas", () => {
-    const tile = JSON.parse(readFileSync("public/data/tiles/27_35.json", "utf8")) as TileData;
+    const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/27_35.json`, "utf8")) as TileData;
     const inRing = (r: readonly number[], x: number, y: number): boolean => {
       let inside = false;
       for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
@@ -190,7 +191,7 @@ describe("L'Hexagone (D168) : mobilier du parvis", () => {
   });
 
   it("la sphère, la colonne, les bacs, le lampadaire et les mâts sont des obstacles ; les arceaux se franchissent", () => {
-    const tile = JSON.parse(readFileSync("public/data/tiles/27_35.json", "utf8")) as TileData;
+    const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/27_35.json`, "utf8")) as TileData;
     const circles = landmarkCircles(kinds, tile.buildings);
     const at = (x: number, y: number): number | undefined => circles.find(([cx, cy]) => Math.hypot(cx - x, cy - y) < 0.01)?.[2];
     for (const q of props) {
@@ -252,7 +253,7 @@ describe("L'Hexagone (D165) : maillage et silhouette", () => {
   });
 
   it("silhouette lointaine : le prisme de la pyramide a le sommet du modèle et la couronne l'emprise du bâtiment", () => {
-    const lod = JSON.parse(readFileSync("public/data/lod/27_35.json", "utf8")) as LodBuilding[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/27_35.json`, "utf8")) as LodBuilding[];
     const crc = (s: string): number => {
       let c = ~0;
       for (let i = 0; i < s.length; i++) { c ^= s.charCodeAt(i); for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); }

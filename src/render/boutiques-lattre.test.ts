@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { Devanture, FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D181 et D182 : Saigon, tabac, Crédit Agricole, cordonnerie, Le Faro, pâtisserie d'Aurélien et Optic 2000 (façade courbe) d'après photos. */
 const tiles = new Map<string, TileData>();
 const fiche = (tile: string, id: string): FacadeFiche => {
-  if (!tiles.has(tile)) tiles.set(tile, JSON.parse(readFileSync(`public/data/tiles/${tile}.json`, "utf8")) as TileData);
+  if (!tiles.has(tile)) tiles.set(tile, JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${tile}.json`, "utf8")) as TileData);
   return tiles.get(tile)!.fiches.find((f) => f.id === `BATIMENT0000000${id}`)!;
 };
 const SHOPS: [string, string, string, string][] = [

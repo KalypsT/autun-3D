@@ -6,9 +6,10 @@ import { landmarkCircles } from "../core/landmarks";
 import { MeshBuilder } from "./geometry";
 import { buildHoops } from "./hoops";
 import { pitchPolys } from "./landmarks";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D176 : terrains du collège du Vallon, lot 5 de docs/plans/college-vallon.md (revêtement lu à l'orthophotographie, paniers de basket). */
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
 type Pitch = Extract<Site, { t: "pitch" }>;
 const pitches = kinds.sites.filter((s): s is Pitch => s.t === "pitch");
 const hoops = pitches.flatMap((p) => p.hoops ?? []);

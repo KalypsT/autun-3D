@@ -9,7 +9,7 @@ Réécrite le 27 octobre 2026, après l'étape B (anneau de 9 km²) et le cadrag
 - **Public** : l'auteur et quelques adultes de son entourage.
 - **Étendue** : depuis le 29 octobre 2026 (D105), toute la ville (contour qui suit l'agglomération, avec Bellevue et les Télots), entourée par la mer : on avance dans l'eau mais elle empêche d'aller plus loin. **La commune entière (étape C) reste reportée** : il se fera une fois les formats de données des fonctions de jeu fixés, pour ne fabriquer la commune qu'une fois. Un peu de campagne autour ensuite ; engins volants plus tard.
 - **Véhicules** : vélo, trottinette, moto, voiture (puis engins volants). Obtention : **vol** (à l'arrêt, puis avec conducteur) ; l'achat viendra plus tard.
-- **Hébergement des données** : GitHub Pages tant que ça tient (limite 1 Go de site publié) ; plan B : second dépôt de données publié par Pages, au-delà d'environ 400 Mo (D31).
+- **Hébergement** : le jeu entre dans **DomoThib Games** (D305) : build `domothib`, déployé sur l'hôte des jeux de DomoThib à chaque fusion dans `main`, sauvegardes sur le serveur par joueur ; données lourdes sous `public/immuable/<version>/`, gardées en cache. GitHub Pages (D31) reste en parallèle jusqu'à la bascule (dépôt privé, Pages coupé).
 - **Sons** : plus tard (étape J7). **Objectifs et argent** : à réfléchir le moment venu (étape J6).
 - **Repère sur la carte** : simple repère posé par l'utilisateur, sans guidage par les routes pour l'instant.
 - **Minimap** : tourne avec la caméra, nord fixe en option.

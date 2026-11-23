@@ -1,7 +1,7 @@
 import { loadJson } from "./load";
 
 /**
- * Données de navigation (public/data/nav, étape J2, D40) : un fichier JSON par super-tuile de 1 km, décodé en tableaux typés.
+ * Données de navigation (public/immuable/<version>/data/nav, étape J2, D40) : un fichier JSON par super-tuile de 1 km, décodé en tableaux typés.
  * Coordonnées locales du jeu (x vers l'est, y vers le nord). Le graphe piéton et le graphe routier d'une super-tuile sont autonomes ;
  * les arêtes coupées à la frontière se terminent par des nœuds « portails » dont les voisins ont les mêmes coordonnées.
  */

@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { HexagoneModel, TileData, TileKinds } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D167 : le parvis de l'Hexagone (lot 3 de docs/plans/hexagone.md) : dallage en trois classes, sans clôture de parcelle. */
-const tiles = ["27_35", "27_36"].map((id) => JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData);
-const hex = (JSON.parse(readFileSync("public/data/kinds/27_35.json", "utf8")) as TileKinds).buildings["BATIMENT0000000348844694"]!.hex as HexagoneModel;
+const tiles = ["27_35", "27_36"].map((id) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData);
+const hex = (JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/27_35.json`, "utf8")) as TileKinds).buildings["BATIMENT0000000348844694"]!.hex as HexagoneModel;
 
 type Poly = number[][];
 const ring = (r: readonly number[], x: number, y: number): boolean => {

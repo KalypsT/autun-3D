@@ -1,7 +1,7 @@
 """Abris à chariots des grandes surfaces (D121) : de petits bâtiments BD TOPO posés sur les parkings, dessinés en abris ouverts.
 
-Usage : python3 tools/data/build_carts.py       (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
-Entrées : public/data/world.json, tiles/*.json (emprises), kinds/*.json (grandes surfaces), parkings OpenStreetMap (.cache/shared/raw/osm,
+Usage : python3 tools/data/build_carts.py       (après build_kinds.py, qui réécrit public/immuable/<version>/data/kinds ; puis relancer celle-ci)
+Entrées : public/immuable/<version>/data/world.json, tiles/*.json (emprises), kinds/*.json (grandes surfaces), parkings OpenStreetMap (.cache/shared/raw/osm,
           les blocs téléchargés par fetch.py ou build_shop_fronts.py).
 Sortie : kinds/<tuile>.json, type `cart` pour chaque abri, avec `open` : milieu du petit côté ouvert (vers la grande surface la plus proche) ;
           et les types imposés à la main d'après photo (`kinds` de tools/data/manual.json : la marquise de l'entrée d'E.Leclerc, D122 ; la pharmacie et l'abri à chariots du Lidl, D143).

@@ -1,7 +1,7 @@
 """Stationnement le long des trottoirs, lot 1 (D296) : relevé des voitures garées sur l'orthophotographie IGN (20 cm), rue par rue et côté par côté.
 
 Usage : python3 tools/data/survey_curbs.py [--images DOSSIER]
-Entrées : public/data/nav/*.json (graphe routier), public/data/tiles/*.json (chaussée dessinée, bâtiments), public/data/world.json (origine
+Entrées : public/immuable/<version>/data/nav/*.json (graphe routier), public/immuable/<version>/data/tiles/*.json (chaussée dessinée, bâtiments), public/immuable/<version>/data/world.json (origine
           Lambert-93), orthophotographie IGN à 20 cm par tuile de 250 m (WMS, .cache/shared/ortho20, non versionné), noms des voies
           (API d'OpenStreetMap, .cache/shared/curbs_ways.json).
 Sortie : tools/data/curb_parking.json (le plan, relu par l'utilisateur avant le lot 2 : une entrée par côté de tronçon où l'on voit des voitures

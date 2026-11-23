@@ -4,9 +4,10 @@ import type { Devanture, FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { bareSpans } from "./facades";
 import { MeshBuilder, UvMeshBuilder } from "./geometry";
+import { PUBLIC_DATA, PUBLIC_DECALS } from "../data/data-version";
 
 /** D186 : images collées sur les murs (la fresque d'Autun, les colombages du Lutrin). */
-const tile = (t: string): TileData => JSON.parse(readFileSync(`public/data/tiles/${t}.json`, "utf8")) as TileData;
+const tile = (t: string): TileData => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${t}.json`, "utf8")) as TileData;
 const fiche = (t: TileData, id: string): FacadeFiche => t.fiches.find((f) => f.id === `BATIMENT0000000${id}`)!;
 const frame = { x: 0, y: 0, z: 0, tx: 1, ty: 0, nx: 0, ny: -1 };
 const withDecals = (): Devanture[] => {
@@ -19,12 +20,12 @@ const withDecals = (): Devanture[] => {
 };
 
 describe("images collées sur les murs (D186)", () => {
-  it("chaque image référencée existe dans public/decals (PNG) et reste dans son mur", () => {
+  it("chaque image référencée existe dans public/immuable/<version>/decals (PNG) et reste dans son mur", () => {
     const devs = withDecals();
     expect(devs).toHaveLength(3); // long pan et pignon du Lutrin, mur est de Chez Daddy
     for (const d of devs) {
       for (const dc of d.modern!.decals!) {
-        const path = `public/decals/${dc.src}`;
+        const path = `${PUBLIC_DECALS}/${dc.src}`;
         expect(existsSync(path), dc.src).toBe(true);
         expect(readFileSync(path).subarray(1, 4).toString(), dc.src).toBe("PNG");
         expect(dc.s[1]).toBeGreaterThan(dc.s[0]);

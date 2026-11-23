@@ -1,6 +1,6 @@
 """Monuments modélisés d'après photo (hôtel de ville D123, théâtre municipal D223, gare D228, parc des expositions l'Eduen D231, McDonald's et bowling D234, cathédrale D127, fontaine Saint-Lazare D131, théâtre romain D133, portes romaines D137, temple de Janus D139, maison du 7 allée de l'Acaron D140) : volumes mesurés au LiDAR, dessinés à pans nets par le client.
 
-Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
+Usage : python3 tools/data/build_monuments.py [modèle]      (après build_kinds.py, qui réécrit public/immuable/<version>/data/kinds ; puis relancer celle-ci)
 Entrées : `monuments` de tools/data/manual.json (lecture des photos de l'utilisateur : façade principale, travées, pavillons, niveaux),
           tiles/*.json (emprise BD TOPO), modèles de surface et de terrain LiDAR HD de l'IGN (WMS, fenêtre autour du bâtiment, 0,5 m,
           gardée dans .cache/shared/raw/monuments).
@@ -1875,7 +1875,7 @@ def gate(spec, kinds_all, ring_of):
         if site:
             break
     else:
-        print(f"  porte {spec['st']} absente de public/data/kinds (lancer build_kinds.py)")
+        print(f"  porte {spec['st']} absente de public/immuable/<version>/data/kinds (lancer build_kinds.py)")
         return None, False
     gm = measure_gate(spec, site, ring_of)
     print(f"  {site['n']} : corps de {gm['w']} m d'épaisseur décalé au centre ({gm['c'][0]}, {gm['c'][1]}), rue à {gm['g']} m"

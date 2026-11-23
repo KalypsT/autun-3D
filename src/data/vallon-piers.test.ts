@@ -10,6 +10,7 @@ import { buildColliders } from "../core/world";
 import { MeshBuilder } from "../render/geometry";
 import { buildBoats, buildPier, buildShelters } from "../render/piers";
 import type { Deck, TileData, TileStructures } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D246 : pontons, cale et bateaux du plan d'eau du Vallon (lot 3 de docs/plans/vallon-lac.md), posés par tools/data/build_vallon_piers.py. */
 const LAKE = -25.41;
@@ -166,7 +167,7 @@ describe("pontons du plan d'eau du Vallon (D246)", () => {
 });
 
 describe("la cale de la base nautique (D246)", () => {
-  const tile = JSON.parse(readFileSync("public/data/tiles/31_37.json", "utf8")) as TileData;
+  const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/31_37.json`, "utf8")) as TileData;
   const ring = tile.ground["slipway"]![0]![0]!;
 
   it("une dalle de béton d'environ 100 m² sur la rampe du relief, qui entre dans l'eau", () => {
@@ -258,7 +259,7 @@ describe("bateaux et abri (D246)", () => {
   });
 
   it("les données des ouvrages ne portent les bateaux et l'abri que dans la tuile de la base", () => {
-    const of = (id: string): TileStructures => JSON.parse(readFileSync(`public/data/structures/${id}.json`, "utf8")) as TileStructures;
+    const of = (id: string): TileStructures => JSON.parse(readFileSync(`${PUBLIC_DATA}/structures/${id}.json`, "utf8")) as TileStructures;
     expect(of("31_37").boats?.length).toBe(29);
     expect(of("31_37").shelters?.length).toBe(1);
     for (const id of ["30_35", "30_36", "31_35"]) expect(of(id).boats).toBeUndefined();

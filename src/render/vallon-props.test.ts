@@ -7,11 +7,12 @@ import type { LandmarkSinks } from "./landmarks";
 import type { SignAtlas } from "./sign-atlas";
 import { buildVallonProps } from "./vallon-props";
 import { vallonFrame } from "./vallon";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D175 : cour et abords du collège du Vallon (lot 4 de docs/plans/college-vallon.md). */
 const MAIN = "BATIMENT0000000348848973";
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
-const tile = JSON.parse(readFileSync("public/data/tiles/28_39.json", "utf8")) as TileData;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_39.json`, "utf8")) as TileData;
 const m = kinds.buildings[MAIN]!.vallon as VallonModel;
 const g0 = -34.2;
 const flat: HeightField = { heightAt: () => g0, xMin: -1e9, xMax: 1e9, yMin: -1e9, yMax: 1e9 };

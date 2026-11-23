@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { loadRealWorld } from "../core/testing";
+import { PUBLIC_DATA } from "./data-version";
 
 const { manifest } = loadRealWorld();
-const file = (name: string): string => `public/data/${name}`;
+const file = (name: string): string => `${PUBLIC_DATA}/${name}`;
 
-describe("plan du monde (public/data/world.json)", () => {
+describe("plan du monde (public/immuable/<version>/data/world.json)", () => {
   it("place chaque tuile sur la grille mondiale, avec un identifiant colonne_ligne", () => {
     const [gx, gy] = manifest.gridOrigin;
     const ids = new Set<string>();

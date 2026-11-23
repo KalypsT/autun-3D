@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D179 : boutiques d'angle génériques (vitrine du même commerce sur le mur voisin) et Le Commerce d'après photo. */
 const TILES = ["24_37", "25_35", "25_38", "26_32", "26_33", "26_34", "26_37", "33_36", "34_34"];
-const fiches: FacadeFiche[] = TILES.flatMap((id) => (JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData).fiches);
+const fiches: FacadeFiche[] = TILES.flatMap((id) => (JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData).fiches);
 
 describe("boutiques d'angle génériques (D179)", () => {
   const wrapped = fiches.flatMap((f) => (f.ground.shops ?? []).filter((s) => s.corner).map((s) => ({ f, s })));

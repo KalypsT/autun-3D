@@ -7,13 +7,14 @@ import { flatTerrain } from "../core/testing";
 import type { TileData } from "../data/types";
 import { MarketController } from "./market";
 import type { Fleet, Vehicle } from "./vehicles";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const WED = 2, THU = 3;
 
 function marks(): number[][][] {
   const out: number[][][] = [];
-  for (const name of readdirSync("public/data/tiles")) {
-    const t = JSON.parse(readFileSync(`public/data/tiles/${name}`, "utf8")) as TileData & { ground?: { marks?: number[][][] } };
+  for (const name of readdirSync(`${PUBLIC_DATA}/tiles`)) {
+    const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${name}`, "utf8")) as TileData & { ground?: { marks?: number[][][] } };
     out.push(...(t.ground?.marks ?? []));
   }
   return out;

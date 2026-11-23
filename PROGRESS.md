@@ -2174,3 +2174,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : te promener dans un quartier pavillonnaire et le long des routes de sortie, et dire s'il en reste de gênantes (ou s'il en manque).
 ![Avant](docs/captures/d304-clotures-rue-avant.jpg)
 ![Après](docs/captures/d304-clotures-rue-apres.jpg)
+
+**Autun 3D dans DomoThib Games (23 novembre 2026)** (D305)
+- Le jeu se construit aussi pour DomoThib (`npm run build -- --mode domothib`) et s'y déploie à chaque fusion dans `main` ; GitHub Pages continue en attendant la bascule.
+- Dans DomoThib, ta partie et l'apparence de ton personnage sont enregistrées sur le serveur, à ton nom : tu les retrouves sur un autre écran. Réglages et lieux notés restent propres à chaque écran.
+- Quand DomoThib met en pause (menu de sa poignée, application en arrière-plan, veille), le jeu s'arrête vraiment (image, son, horloge) et enregistre ; il repart à la reprise, sur l'écran que tu avais laissé.
+- La poignée de DomoThib est en haut à droite ; sur la carte, « Lieux » et « Menu » se poussent pour lui laisser la place.
+- Les données (≈ 105 Mo) sont rangées sous `public/immuable/<version>/` : DomoThib les garde en cache, et une partie se relance sans les retélécharger. Après une régénération des données : `python3 tools/data/data_version.py`.
+- Jaquette provisoire (la mairie vue du Champ de Mars), à remplacer par la tienne (`public/jaquette.webp`, 640 × 360, 300 Ko au plus).
+- À faire de ton côté : lancer le jeu depuis DomoThib sur le téléphone (poignée, pause par le menu de la poignée, reprise), reprendre la partie sur un autre écran, et l'essayer sur la tablette pour décider si elle peut être ajoutée aux écrans prévus.

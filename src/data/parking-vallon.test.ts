@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { findStalls } from "../core/parking";
 import { UNIQUES } from "../core/uniques";
 import type { TileData, TileKinds, VallonModel } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D177 : le parking du collège du Vallon (lot 6 de docs/plans/college-vallon.md) : quatre blocs de rangées lus à l'orthophotographie, et le camion pizza sur la rangée nord. */
-const tile = JSON.parse(readFileSync("public/data/tiles/28_39.json", "utf8")) as TileData;
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_39.json`, "utf8")) as TileData;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
 const vallon = kinds.buildings["BATIMENT0000000348848973"]!.vallon as VallonModel;
 const inLot = (x: number, y: number): boolean => x > 478 && x < 518 && y > 1060 && y < 1110;
 const stalls = findStalls(tile.ground["marks"]!).filter((s) => inLot(s.x, s.y));

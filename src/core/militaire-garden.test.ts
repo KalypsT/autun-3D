@@ -6,6 +6,7 @@ import { inFlatRing } from "./waters";
 import { addTileColliders } from "./world";
 import { MeshBuilder } from "../render/geometry";
 import { buildCollege } from "../render/monuments";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D261 : Lycée militaire, lot 4 de docs/plans/lycee-militaire.md : sols, parterres, ifs, mât, bassin. */
 describe("Lycée militaire : jardins (D261)", () => {
@@ -15,7 +16,7 @@ describe("Lycée militaire : jardins (D261)", () => {
   const garden = spec.mil!.garden!;
   const b = world.tile.buildings.find((q) => q.id === ID)!;
   // Les sols ne sont pas réunis par loadRealWorld : ceux de la tuile du lycée.
-  const ground = (JSON.parse(readFileSync("public/data/tiles/28_35.json", "utf8")) as { ground: Record<string, number[][][] | undefined> }).ground;
+  const ground = (JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_35.json`, "utf8")) as { ground: Record<string, number[][][] | undefined> }).ground;
   const inClass = (cls: string, x: number, y: number): boolean =>
     (ground[cls] ?? []).some((poly) => inFlatRing(poly[0]!, x, y) && !poly.slice(1).some((h) => inFlatRing(h, x, y)));
 

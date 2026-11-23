@@ -8,12 +8,13 @@ import { inTheatre, laneStepZ, laneZ, theatreDecks, theatreLayout, theatreSector
 import { MeshBuilder } from "./geometry";
 import { idKey } from "./style";
 import { buildTheatre } from "./theatre";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const ID = "BATIMENT0000000035039419";
 
 describe("théâtre romain (D133)", () => {
   const world = loadRealWorld();
-  const k = JSON.parse(readFileSync("public/data/kinds/29_36.json", "utf8")) as TileKinds;
+  const k = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/29_36.json`, "utf8")) as TileKinds;
   const s = k.sites.find((q): q is TheatreSite => q.t === "theatre")!;
   const L = theatreLayout(s);
   const bare = (x: number, y: number): number => (world.terrain.ground ?? world.terrain).heightAt(x, y);
@@ -43,7 +44,7 @@ describe("théâtre romain (D133)", () => {
     expect(L.stage.zt - s.zo).toBeLessThan(2);
     expect((L.stage.zt - s.zo) / L.stage.steps).toBeLessThan(0.2);
     // Silhouette lointaine : l'immeuble n'y est plus (la cavea est un creux du relief).
-    const lod = JSON.parse(readFileSync("public/data/lod/29_36.json", "utf8")) as LodBuilding[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/29_36.json`, "utf8")) as LodBuilding[];
     expect(lod.filter((e) => e.k === Math.round(idKey(ID) * 4294967296))).toHaveLength(0);
     // Piste du stade en terre battue (photo).
     expect(k.sites.some((q: Site) => q.t === "track" && q.s === "dirt")).toBe(true);
@@ -109,7 +110,7 @@ describe("théâtre romain (D133)", () => {
   });
 
   it("passants (D135) : chemins et escaliers du théâtre reliés au réseau, sans marche trop haute ni obstacle en travers", () => {
-    const nav = JSON.parse(readFileSync("public/data/nav/s7_9.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } };
+    const nav = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s7_9.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } };
     const { n, e, g } = nav.ped;
     const REF = 153779957;
     const lines: [number, number][][] = [];
@@ -175,7 +176,7 @@ describe("théâtre romain (D133)", () => {
     expect(s.shrubs).toHaveLength(4);
     const circles = landmarkCircles(k, []);
     for (const [x, y] of [...s.poles!, ...s.shrubs!]) expect(circles.some(([cx, cy]) => cx === x && cy === y)).toBe(true);
-    const tile = JSON.parse(readFileSync("public/data/tiles/29_36.json", "utf8")) as { trees: [number, number, number, number, number, number][] };
+    const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/29_36.json`, "utf8")) as { trees: [number, number, number, number, number, number][] };
     const [px, py] = s.poles![0]!;
     expect(tile.trees.some(([x, y]) => Math.hypot(x - px, y - py) < 1.5)).toBe(true);
     expect(treesOutsideMonuments(k, tile.trees).some(([x, y]) => Math.hypot(x - px, y - py) < 1.5)).toBe(false);

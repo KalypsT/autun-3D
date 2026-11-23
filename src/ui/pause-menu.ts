@@ -29,6 +29,8 @@ export interface PauseHooks {
   /** Apparence du joueur : lecture, changement (appliqué tout de suite en jeu et enregistré), aperçu dessiné par le moteur du jeu. */
   appearance: { get(): Recipe; set(recipe: Recipe): void; preview: { canvas: HTMLCanvasElement; show(recipe: Recipe): void; rotate(radians: number): void } };
   build: string;
+  /** Dans DomoThib (D305) : le plein écran est le sien, le réglage « Plein écran » n'est pas proposé. */
+  embedded?: boolean;
 }
 
 type PanelId = "home" | "settings" | "appearance" | "notes" | "save" | "credits";
@@ -217,7 +219,7 @@ export class PauseMenu {
     volBox.append(vol, volOut);
     row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
     row("Vibrations", "Le téléphone vibre aux chocs, aux tirs et aux coups reçus.", "vibration", choices("vibration", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.vibration));
-    row("Plein écran", "Le jeu passe en plein écran, en paysage, au premier appui.", "fullscreen", choices("fullscreen", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.fullscreen));
+    if (!this.hooks.embedded) row("Plein écran", "Le jeu passe en plein écran, en paysage, au premier appui.", "fullscreen", choices("fullscreen", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.fullscreen));
     row("Durée d'une saison", "Le jeu a son propre calendrier : une saison dure une ou deux semaines de jeu (20 minutes par jour).", "seasonLength",
       choices("seasonLength", SEASON_LENGTHS.map((v) => ({ value: v, label: v === 7 ? "7 jours" : "14 jours" })), values.seasonLength));
     row("Saison", "Laisser les saisons passer, ou en garder une (la semaine continue de tourner).", "season",

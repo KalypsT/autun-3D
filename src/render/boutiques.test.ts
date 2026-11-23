@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D158 : boutiques de la rue aux Cordiers d'après photos (`fronts` de manual.json, devanture du gabarit D141). */
 describe("boutiques de la rue aux Cordiers (D158)", () => {
-  const tile = JSON.parse(readFileSync("public/data/tiles/26_34.json", "utf8")) as TileData;
+  const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/26_34.json`, "utf8")) as TileData;
   const fiche = (id: string): FacadeFiche => tile.fiches.find((f) => f.id === `BATIMENT0000000${id}`)!;
   const shops: [string, string, string][] = [["348853544", "La Promesse de l'Aube", "#b3242b"], ["348853291", "Territoire d'Homme", "#f1f0ec"], ["348853330", "Carrefour City", "#d8cba9"]];
 

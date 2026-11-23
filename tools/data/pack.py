@@ -1,11 +1,11 @@
-"""Découpe le relief et les cartes de sol du bloc en fichiers par tuile, et fusionne le bloc dans public/data/world.json.
+"""Découpe le relief et les cartes de sol du bloc en fichiers par tuile, et fusionne le bloc dans public/immuable/<version>/data/world.json.
 
 Usage : AUTUN_BLOCK=3,4 python3 tools/data/pack.py [--src DOSSIER]
   --src : dossier des grilles globales du bloc (défaut .cache/blocks/<bloc>/work/global, écrit par build_terrain.py et build_streets.py).
 
 Entrées : grilles du bloc, terrain.bin + terrain.json (uint16 en cm, ligne 0 = nord, 1 m), ground_a.png + ground_b.png + ground.json
 (poids de mélange à 1 m, même grille) ; liste des tuiles du bloc .cache/blocks/<bloc>/work/tiles.json (écrite par build_tiles.py).
-Sorties (public/data) :
+Sorties (public/immuable/<version>/data) :
   terrain/<id>.bin      relief fin d'une tuile : float32[4] = base, x0, y1, côté N, puis N × N uint16 (cm au-dessus de base, ligne 0 = nord)
   terrain/coarse.bin    relief de toute la zone fabriquée à 8 m, fusionné bloc après bloc (métadonnées dans world.json)
   ground/<id>_{a,b}.png sols fins d'une tuile : poids de mélange à 1 m, N × N pixels

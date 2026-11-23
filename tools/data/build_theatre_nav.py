@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_theatre_nav.py     (après build_monuments.py, qui écrit le site `theatre`, et après build_nav.py, qui réécrit
         toute la navigation à partir d'OpenStreetMap : relancer celle-ci ensuite)
-Entrées : site `theatre` de public/data/kinds (mesures, D133), public/data/nav/<super-tuile>.json.
+Entrées : site `theatre` de public/immuable/<version>/data/kinds (mesures, D133), public/immuable/<version>/data/nav/<super-tuile>.json.
 Sortie : la super-tuile de navigation qui contient le théâtre et son entrée dans nav/index.json ; rien d'autre.
 
 build_nav.py retire les voies OpenStreetMap qui traversent un bâtiment : l'emprise BD TOPO du théâtre (masquée depuis D133) couvrait toute la
@@ -38,7 +38,7 @@ def find_theatre():
         for s in json.loads(p.read_text())["sites"]:
             if s.get("t") == "theatre":
                 return s
-    raise SystemExit("pas de site theatre dans public/data/kinds (lancer build_monuments.py)")
+    raise SystemExit("pas de site theatre dans public/immuable/<version>/data/kinds (lancer build_monuments.py)")
 
 
 def cell_of(x, y, index):

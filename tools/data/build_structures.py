@@ -1,9 +1,9 @@
 """Ponts, eau et voies ferrées (étape M2, D93) : étape autonome, ne touche à aucune tuile.
 
 Usage : python3 tools/data/build_structures.py [--force]
-Entrées : public/data/world.json, terrain/*.bin (relief fin publié), extrait OpenStreetMap complet et couches BD TOPO de la région
+Entrées : public/immuable/<version>/data/world.json, terrain/*.bin (relief fin publié), extrait OpenStreetMap complet et couches BD TOPO de la région
 (`region_sources.py`), modèle de surface LiDAR le long des ponts (profil réel des tabliers : le relief de l'IGN ne les porte pas).
-Sorties : public/data/structures/<tuile>.json et structures/index.json.
+Sorties : public/immuable/<version>/data/structures/<tuile>.json et structures/index.json.
 
 Fichier d'une tuile : {v, decks, water, streams, weirs, rails, platforms, crossings}
   decks     tabliers praticables : {id, k (road | foot | rail), w (largeur), p [x, y, z, …] (axe et altitude du dessus), st (stone : voûtes en

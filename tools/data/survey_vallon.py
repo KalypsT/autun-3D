@@ -1,7 +1,7 @@
 """Le plan d'eau du Vallon, lot 0 (D243, plan `docs/plans/vallon-lac.md`) : relevés du chemin du tour du lac et des pontons, avant de rien dessiner.
 
 Ne modifie rien. Lit OpenStreetMap (API, gardé dans `.cache/shared/raw/vallon/`), l'orthophotographie IGN (20 cm), le modèle de surface LiDAR HD (0,5 m)
-et les données publiées (`public/data/` : relief fin, eau, arbres, mobilier, murs).
+et les données publiées (`public/immuable/<version>/data/` : relief fin, eau, arbres, mobilier, murs).
 
 Le chemin : la boucle OSM (allée Marcel Lucotte, quatre tronçons, et le raccord par la base nautique), échantillonnée tous les `STEP` m. À chaque station,
 profil en travers de ± `HALF` m sur l'orthophotographie : le chemin est la bande la plus proche de l'axe qui est claire et peu saturée (stabilisé : clair et

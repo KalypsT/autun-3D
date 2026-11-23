@@ -6,12 +6,13 @@ import { MeshBuilder } from "../render/geometry";
 import { buildFurniture } from "../render/props";
 import { flatTerrain } from "../core/testing";
 import type { Furniture, TileData, TileSigns } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D295 : panneaux tirés du graphe routier (tools/data/build_signs.py). */
 const KINDS = ["sign_stop", "sign_give_way", "sign_no_entry", "sign_speed"];
-const index = JSON.parse(readFileSync("public/data/signs/index.json", "utf8")) as { tiles: string[] };
-const files = readdirSync("public/data/signs").filter((f) => f !== "index.json");
-const byTile = new Map(index.tiles.map((t) => [t, (JSON.parse(readFileSync(`public/data/signs/${t}.json`, "utf8")) as TileSigns).items]));
+const index = JSON.parse(readFileSync(`${PUBLIC_DATA}/signs/index.json`, "utf8")) as { tiles: string[] };
+const files = readdirSync(`${PUBLIC_DATA}/signs`).filter((f) => f !== "index.json");
+const byTile = new Map(index.tiles.map((t) => [t, (JSON.parse(readFileSync(`${PUBLIC_DATA}/signs/${t}.json`, "utf8")) as TileSigns).items]));
 const all = [...byTile.values()].flat();
 
 function inside(x: number, y: number, r: readonly number[]): boolean {
@@ -40,7 +41,7 @@ describe("panneaux de signalisation (D295)", () => {
 
   it("chaque panneau est dans sa tuile, hors des bâtiments et de la chaussée dessinée", () => {
     for (const [id, items] of byTile) {
-      const t = JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData;
+      const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData;
       const [x0, y0, x1, y1] = t.bounds;
       const roads = Object.entries(t.ground).filter(([k]) => k.startsWith("road_")).flatMap(([, p]) => p);
       for (const f of items) {

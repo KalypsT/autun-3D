@@ -4,10 +4,11 @@ import { flatTerrain } from "../core/testing";
 import type { FacadeFiche, TileData } from "../data/types";
 import { MeshBuilder } from "./geometry";
 import { styledTerrace, type Front } from "./shopfront";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D157 : les cafés de la rue du Champ de Mars ont leur vitrine et leur terrasse sur la place (build_shop_fronts.py, `shopWalls`). */
 describe("cafés de la rue du Champ de Mars (D157)", () => {
-  const tile = JSON.parse(readFileSync("public/data/tiles/25_35.json", "utf8")) as TileData;
+  const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/25_35.json`, "utf8")) as TileData;
   const fiche = (id: string): FacadeFiche => tile.fiches.find((f) => f.id === `BATIMENT0000000${id}`)!;
   /** Cap (degrés depuis le nord) de la normale sortante du mur `k` de la fiche. */
   const facing = (id: string, k: number): number => {

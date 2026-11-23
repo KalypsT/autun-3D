@@ -5,12 +5,13 @@ import { TiledTerrain } from "../data/terrain";
 import { Colliders } from "./collision";
 import { isProfiled, RAMPART_THICK, rampartOutline, rampartPits, rampartSeams, rampartSides, type ProfiledWall } from "./ramparts";
 import { addTileColliders } from "./world";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const PLAYER_RADIUS = 0.3;
-const tiles = readdirSync("public/data/tiles").filter((f) => f.endsWith(".json"));
+const tiles = readdirSync(`${PUBLIC_DATA}/tiles`).filter((f) => f.endsWith(".json"));
 const ramparts: { tile: string; w: Wall }[] = [];
 for (const f of tiles) {
-  const t = JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData;
+  const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${f}`, "utf8")) as TileData;
   for (const w of t.walls) if (w.kind === "rampart") ramparts.push({ tile: f.replace(".json", ""), w });
 }
 const length = (w: Wall): number => {
@@ -19,7 +20,7 @@ const length = (w: Wall): number => {
   return s;
 };
 const block = (id: string): TiledTerrain["ground"] => {
-  const buf = readFileSync(`public/data/terrain/${id}.bin`);
+  const buf = readFileSync(`${PUBLIC_DATA}/terrain/${id}.bin`);
   return TiledTerrain.decodeBlock(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 };
 
@@ -128,7 +129,7 @@ describe("Remparts, lot 1 (D250) : géométrie, creux d'affichage, collisions", 
   });
 
   it("collisions de la tuile : on est arrêté contre la face, libre à 2 m ; on ne l'escalade pas", () => {
-    const tile = JSON.parse(readFileSync("public/data/tiles/28_34.json", "utf8")) as TileData;
+    const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_34.json`, "utf8")) as TileData;
     const c = new Colliders();
     addTileColliders(c, { buildings: [], walls: tile.walls.filter((w) => w.kind === "rampart"), furniture: [], trees: [] });
     const w = tile.walls.find((q) => isProfiled(q) && q.pts.length >= 10)!;
@@ -147,7 +148,7 @@ describe("Remparts, lot 1 (D250) : géométrie, creux d'affichage, collisions", 
 
 describe("Remparts, lot 4 (D255) : grillage, sols", () => {
   it("grillage vert de 2,5 m sur le haut du mur, au-dessus du terrain de sport du boulevard des Résistants Fusillés (photos 1 et 2)", () => {
-    const t = JSON.parse(readFileSync("public/data/tiles/25_34.json", "utf8")) as TileData;
+    const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/25_34.json`, "utf8")) as TileData;
     const f = t.walls.filter((w) => w.id <= -862_000_000 && w.id > -863_000_000);
     expect(f.length).toBeGreaterThan(0);
     for (const w of f) {
@@ -162,7 +163,7 @@ describe("Remparts, lot 4 (D255) : grillage, sols", () => {
     // Échantillon : les points sur l'axe des murs ne tombent dans aucun sol autre que les chaussées.
     let checked = 0;
     for (const f of tiles) {
-      const t = JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData;
+      const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${f}`, "utf8")) as TileData;
       const polys: number[][][] = [];
       for (const [layer, items] of Object.entries(t.ground ?? {})) {
         if (layer.startsWith("road_") || layer.startsWith("marks")) continue;

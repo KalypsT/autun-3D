@@ -1,4 +1,4 @@
-"""Images collées sur les murs (D186) -> public/decals/*.png.
+"""Images collées sur les murs (D186) -> public/immuable/<version>/decals/*.png (puis python3 tools/data/data_version.py).
 
   python3 build_decals.py [photo-de-la-fresque.jpg]
 
@@ -11,7 +11,9 @@ import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
-OUT = Path(__file__).resolve().parents[2] / "public" / "decals"
+from data_version import DECALS
+
+OUT = DECALS  # public/immuable/<version>/decals (D305)
 PX = 64  # pixels par mètre des façades tracées
 PLASTER, BEAM, GLASS, FRAME = (238, 222, 190), (125, 31, 31), (46, 58, 71), (236, 226, 204)
 

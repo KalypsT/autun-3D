@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findStalls } from "../core/parking";
 import type { HexagoneModel, TileData, TileKinds } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D169 : le parking de l'Hexagone (lot 5 de docs/plans/hexagone.md) : six rangées lues à l'orthophotographie, 110 places tracées. */
-const tile = JSON.parse(readFileSync("public/data/tiles/27_36.json", "utf8")) as TileData;
-const hex = (JSON.parse(readFileSync("public/data/kinds/27_35.json", "utf8")) as TileKinds).buildings["BATIMENT0000000348844694"]!.hex as HexagoneModel;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/27_36.json`, "utf8")) as TileData;
+const hex = (JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/27_35.json`, "utf8")) as TileKinds).buildings["BATIMENT0000000348844694"]!.hex as HexagoneModel;
 const A = (37 * Math.PI) / 180;
 /** Repère redressé de `parkings` (manual.json) : u le long des rangées, v le long des traits. */
 const uv = (x: number, y: number): [number, number] => [(x - 325) * Math.cos(A) + (y - 245) * Math.sin(A), (x - 325) * Math.sin(A) - (y - 245) * Math.cos(A)];

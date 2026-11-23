@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_terrils_nav.py     (après build_terrils.py --trace, et après build_nav.py, qui réécrit toute la navigation à partir
         d'OpenStreetMap : relancer celle-ci ensuite)
-Entrées : tools/data/terrils.json (axes des sentiers), public/data/nav/<super-tuile>.json.
+Entrées : tools/data/terrils.json (axes des sentiers), public/immuable/<version>/data/nav/<super-tuile>.json.
 Sortie : la super-tuile de navigation des terrils et son entrée dans nav/index.json ; rien d'autre.
 
 Comme build_passage_nav.py (dont on reprend le graphe et les raccords de build_theatre_nav.py) :

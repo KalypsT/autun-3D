@@ -1,6 +1,6 @@
 """L'eau de la ville, lot 0 (D239, plan `docs/plans/eau.md`) : relevés sur les données publiées, avant de creuser les fonds.
 
-Ne modifie rien. Lit `public/data/structures/*.json` (polygones d'eau, ruisseaux, tabliers), les blocs de relief fins `public/data/terrain/*.bin`,
+Ne modifie rien. Lit `public/immuable/<version>/data/structures/*.json` (polygones d'eau, ruisseaux, tabliers), les blocs de relief fins `public/immuable/<version>/data/terrain/*.bin`,
 les tuiles (`tiles/*.json` : arbres, murs, mobilier, bâtiments) et `world.json` (la mer). Les noms viennent de l'API OpenStreetMap (petites
 emprises autour d'un point du bord, gardées dans `.cache/shared/raw/water/`).
 

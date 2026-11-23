@@ -1,7 +1,7 @@
 """Remparts, lot 1 (docs/plans/remparts.md) : le tracé complété et la forme mesurée au LiDAR remplacent les boîtes de 6 m.
 
 Entrées : les murs `barrier=city_wall` d'OpenStreetMap et les profils LiDAR de tools/data/survey_remparts.py (mêmes caches, .cache/remparts/),
-`ramparts` de tools/data/manual.json (tracés retrouvés au LiDAR, hauteurs imposées d'après photo), public/data/streets.json (brèches des rues).
+`ramparts` de tools/data/manual.json (tracés retrouvés au LiDAR, hauteurs imposées d'après photo), public/immuable/<version>/data/streets.json (brèches des rues).
 
 Étapes :
 1. Tracés absents d'OSM (`traces`) : le long du segment a → b, à chaque station de 4 m, la plus forte marche du sol LiDAR (classe 2, la maçonnerie y

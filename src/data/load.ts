@@ -3,8 +3,10 @@ import { spanDeck } from "../core/bridges";
 import { Waters, type WaterFile } from "../core/waters";
 import type { HullData } from "../core/hulls";
 import type { LodBuilding, TileData, TileKinds, TileSigns, TileStructures, WorldBase, WorldManifest } from "./types";
+import { immutableUrl } from "./data-version";
 
-const base = `${import.meta.env.BASE_URL}data/`;
+/** Données publiées sous public/immuable/<version>/data (D305). */
+const base = immutableUrl(import.meta.env.BASE_URL, "data/");
 
 export async function loadJson<T>(name: string): Promise<T> {
   const res = await fetch(base + name);
@@ -18,7 +20,7 @@ async function binary(name: string): Promise<ArrayBuffer> {
   return res.arrayBuffer();
 }
 
-/** Adresse d'un fichier de public/data. */
+/** Adresse d'un fichier de public/immuable/<version>/data. */
 export const dataUrl = (name: string): string => base + name;
 
 /** Images de sols : une image par fichier, décodée à part. */

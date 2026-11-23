@@ -6,10 +6,11 @@ import type { LandmarkSinks } from "./landmarks";
 import type { SignAtlas } from "./sign-atlas";
 import { buildVallon, vallonFrame } from "./vallon";
 import { buildVallonFacades, buriedParts, faceGeom, SIDES } from "./vallon-facade";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D173 : façades du collège du Vallon (lot 2 de docs/plans/college-vallon.md). */
-const kinds = JSON.parse(readFileSync("public/data/kinds/28_39.json", "utf8")) as TileKinds;
-const tile = JSON.parse(readFileSync("public/data/tiles/28_39.json", "utf8")) as TileData;
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/28_39.json`, "utf8")) as TileKinds;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/28_39.json`, "utf8")) as TileData;
 const main = kinds.buildings["BATIMENT0000000348848973"]!.vallon as VallonModel;
 const preau = kinds.buildings["BATIMENT0000000348848974"]!.vallon as VallonModel;
 const g0 = tile.buildings.find((b) => b.id === "BATIMENT0000000348848973")!.ground;

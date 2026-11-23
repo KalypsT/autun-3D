@@ -8,11 +8,11 @@ OpenStreetMap plus récent, changerait la circulation et les passants partout (D
 La méthode : **fabriquer à côté, greffer seulement ce qui change**.
   plan      calcule la nouvelle région, la côte avant et après, et les tuiles à refabriquer (là où le plafond du rivage change),
             plus un anneau de tuiles de contexte ; écrit .cache/extend/<nom>/ (plan.json, region.json, tiles.json, scope.json).
-  sandbox   copie public/data dans .cache/extend/<nom>/out, en ne gardant dans world.json que les tuiles de l'emprise (refabriquées
+  sandbox   copie public/immuable/<version>/data dans .cache/extend/<nom>/out, en ne gardant dans world.json que les tuiles de l'emprise (refabriquées
             et contexte) ; relève l'empreinte de chaque fichier publié (before.json).
   build     dans le bac à sable : blocs restreints aux tuiles à refabriquer (AUTUN_TILES), puis les étapes globales demandées,
             sur l'emprise seulement (AUTUN_SCOPE), avec la nouvelle région (AUTUN_REGION).
-  graft     greffe sur la cible (public/data, ou --target DOSSIER) les fichiers des tuiles refabriquées et, dans les fichiers partagés,
+  graft     greffe sur la cible (public/immuable/<version>/data, ou --target DOSSIER) les fichiers des tuiles refabriquées et, dans les fichiers partagés,
             leur part seulement : world.json (tuiles, côte, emprise, relief grossier), terrain/coarse.bin (cellules sous ces tuiles),
             super-tuiles de sol (pixels sous ces tuiles), index des types et des ouvrages, eau.
   check     compare la cible à l'empreinte d'avant : tout fichier changé hors des tuiles refabriquées et des fichiers partagés attendus
@@ -22,7 +22,7 @@ Usage : python3 tools/data/extend.py plan|sandbox|build|graft|check <nom> [optio
   build : [--steps structures,kinds,public_space,coast] [--skip-blocks]
   nav : refait la navigation dans le bac à sable (build_nav.py, nouvelle terre) ;
   graft-nav : greffe ses voies nouvelles sur la navigation publiée (nav_graft.py), avant d'installer la nouvelle région ;
-  graft, graft-nav, check : [--target DOSSIER] (défaut public/data)
+  graft, graft-nav, check : [--target DOSSIER] (défaut public/immuable/<version>/data)
 """
 
 import hashlib
@@ -41,7 +41,7 @@ import config as c
 
 HERE = Path(__file__).parent
 EXT_DIR = HERE / "extensions"
-PUBLISHED = c.ROOT / "public" / "data"
+PUBLISHED = c.PUBLISHED_DATA  # public/immuable/<version>/data (D305)
 # Distance à la côte (m) en deçà de laquelle le plafond du rivage peut couper le sol : la falaise monte de 3 m par mètre après 35 m
 # de plage ; à 150 m, le plafond est à plus de 340 m au-dessus de la mer, au-dessus de tout sommet de la région (≈ 320 m).
 CAP_REACH = 150.0
@@ -185,7 +185,7 @@ def sandbox(name):
     (box / "world.json").write_text(json.dumps(world, indent=1))
     shutil.copyfile(HERE / "measured_widths.json", w / "measured_widths.json")  # lu et réécrit dans le bac à sable (streets_lib)
     (w / "before.json").write_text(json.dumps(fingerprint(PUBLISHED)))
-    print(f"bac à sable {box} : {len(world['tiles'])} tuiles publiées dans l'emprise ; empreinte de public/data relevée (before.json)")
+    print(f"bac à sable {box} : {len(world['tiles'])} tuiles publiées dans l'emprise ; empreinte de public/immuable/<version>/data relevée (before.json)")
 
 
 def env_for(name):

@@ -1,4 +1,4 @@
-"""Circuit du petit train touristique (D117) : calculé sur le graphe routier du jeu (public/data/nav), écrit dans src/core/train-route-data.ts.
+"""Circuit du petit train touristique (D117) : calculé sur le graphe routier du jeu (nav/ des données publiées), écrit dans src/core/train-route-data.ts.
 
 Le train part de la rue du Général Demetz (côté Champ de Mars) et passe par les monuments du centre, sans demi-tour (circuit validé par
 l'utilisateur sur une carte). Chaque étape est le plus court chemin entre deux points de passage, en préférant les rues calmes et en
@@ -12,8 +12,10 @@ import json
 import math
 from pathlib import Path
 
+from data_version import DATA
+
 ROOT = Path(__file__).resolve().parents[2]
-NAV = ROOT / "public" / "data" / "nav"
+NAV = DATA / "nav"
 OUT = ROOT / "src" / "core" / "train-route-data.ts"
 
 # Points de passage (m, repère du jeu) : chacun est un carrefour du graphe routier, choisi pour qu'aucune étape ne finisse par un demi-tour.

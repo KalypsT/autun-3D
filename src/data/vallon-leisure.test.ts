@@ -8,6 +8,7 @@ import { buildColliders } from "../core/world";
 import { MeshBuilder } from "../render/geometry";
 import { buildEquip, buildLeisureDeck } from "../render/leisure";
 import type { Deck, TileData } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D247 : équipements du plan d'eau du Vallon (lot 4 de docs/plans/vallon-lac.md), posés par tools/data/build_vallon_leisure.py. */
 const DT = 1 / 60;
@@ -54,7 +55,7 @@ describe("skatepark et pump track (D247)", () => {
     expect(rise(byName("Funbox"))).toBeCloseTo(0.6, 1);
     expect(rise(byName("Ledge"))).toBeCloseTo(0.45, 1);
     // Tous les modules tiennent sur la bande de béton du skatepark.
-    const tile = JSON.parse(readFileSync("public/data/tiles/31_37.json", "utf8")) as TileData;
+    const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/31_37.json`, "utf8")) as TileData;
     const slab = tile.ground["skate"]![0]![0]!;
     const inSlab = (x: number, y: number): boolean => {
       let inside = false;
@@ -220,8 +221,8 @@ describe("aire de jeux, agrès, panneaux, clôtures, gué (D247)", () => {
       for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) a += r[j]! * r[i + 1]! - r[i]! * r[j + 1]!;
       return Math.abs(a / 2);
     };
-    const t1 = JSON.parse(readFileSync("public/data/tiles/31_37.json", "utf8")) as TileData;
-    const t2 = JSON.parse(readFileSync("public/data/tiles/32_35.json", "utf8")) as TileData;
+    const t1 = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/31_37.json`, "utf8")) as TileData;
+    const t2 = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/32_35.json`, "utf8")) as TileData;
     expect(area(t1.ground["skate"]![0]![0]!)).toBeGreaterThan(300);
     expect(area(t1.ground["skate"]![0]![0]!)).toBeLessThan(450);
     expect(area(t2.ground["play_gravel"]![0]![0]!)).toBeGreaterThan(400);

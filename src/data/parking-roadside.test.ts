@@ -5,13 +5,14 @@ import { findStalls } from "../core/parking";
 import { loadRealWorld } from "../core/testing";
 import { buildColliders } from "../core/world";
 import type { BowlingModel, McdoModel, TileData, TileKinds } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D236 : parkings du McDonald's et du bowling de la route de Chalon (rangées lues sur l'orthophotographie, dalle sans marquage) et abords. */
 const MCDO = "BATIMENT0000000348847408", BOWL = "BATIMENT0000000348847403";
-const kinds = (id: string): TileKinds => JSON.parse(readFileSync(`public/data/kinds/${id}.json`, "utf8")) as TileKinds;
+const kinds = (id: string): TileKinds => JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/${id}.json`, "utf8")) as TileKinds;
 const mc = kinds("31_38").buildings[MCDO]!.mcd as McdoModel;
 const bw = kinds("31_37").buildings[BOWL]!.bowl as BowlingModel;
-const tiles = ["31_37", "31_38"].map((id) => JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData);
+const tiles = ["31_37", "31_38"].map((id) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData);
 /** (s, t) d'un point du monde dans un repère d'origine o et d'angle a. */
 const st = (o: readonly number[], a: number, x: number, y: number): [number, number] => {
   const dx = x - o[0]!, dy = y - o[1]!, c = Math.cos(a), s = Math.sin(a);

@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_passage_nav.py     (après build_passage.py, et après build_nav.py, qui réécrit toute la navigation à partir
         d'OpenStreetMap et écarte les passages couverts : relancer celle-ci ensuite)
-Entrées : site `passage` de public/data/kinds (D187), public/data/nav/<super-tuile>.json.
+Entrées : site `passage` de public/immuable/<version>/data/kinds (D187), public/immuable/<version>/data/nav/<super-tuile>.json.
 Sortie : la super-tuile de navigation qui contient le passage et son entrée dans nav/index.json ; rien d'autre.
 
 On ajoute, comme build_theatre_nav.py (dont on reprend le graphe et les raccords), une file droite sur l'axe : galerie (chemin de 4,6 m), volée de 15
@@ -30,7 +30,7 @@ def find_site():
         for s in json.loads(p.read_text())["sites"]:
             if s.get("t") == "passage":
                 return s
-    raise SystemExit("pas de site passage dans public/data/kinds (lancer build_passage.py)")
+    raise SystemExit("pas de site passage dans public/immuable/<version>/data/kinds (lancer build_passage.py)")
 
 
 def main():
