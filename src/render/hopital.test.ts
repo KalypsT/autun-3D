@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D161 : le Centre hospitalier d'Autun, site Parpas, d'après deux photos de face (`fronts` de manual.json) : le bloc vitré (093) et l'aile crème voisine (094). */
 describe("Centre hospitalier, site Parpas (D161)", () => {
-  const tile = JSON.parse(readFileSync("public/data/tiles/24_35.json", "utf8")) as TileData;
+  const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/24_35.json`, "utf8")) as TileData;
   const fiche = (n: string): FacadeFiche => tile.fiches.find((q) => q.id === `BATIMENT00000003488540${n}`)!;
   const glass = fiche("93"), wing = fiche("94");
 
@@ -87,7 +88,7 @@ describe("Centre hospitalier, site Parpas (D161)", () => {
 
 /** D163 : Centre hospitalier d'Autun, site Latouche, d'après les photos prises sur le parking d'accueil (46,951935 ; 4,301921). */
 describe("Centre hospitalier, site Latouche (D163)", () => {
-  const tiles = ["26_35", "26_36", "27_35", "27_36"].map((id) => JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData);
+  const tiles = ["26_35", "26_36", "27_35", "27_36"].map((id) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData);
   const fiches = tiles.flatMap((t) => t.fiches), buildings = tiles.flatMap((t) => t.buildings);
   const id = (n: string): string => `BATIMENT00000003${n}`;
   const reception = fiches.find((f) => f.id === id("48848381"))!;

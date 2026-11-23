@@ -17,10 +17,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Données publiées : public/immuable/<version>/data (D305) ; la version est l'empreinte du contenu, refaite par data_version.py.
+from data_version import DATA as PUBLISHED_DATA  # noqa: E402
+
 
 # --- Fabrication locale (extension de la carte, extend.py) ------------------------------------------------------------------------
 # Quatre variables d'environnement, toutes facultatives ; sans elles, rien ne change :
-#   AUTUN_OUT    dossier de sortie à la place de public/data (le bac à sable d'une extension) ;
+#   AUTUN_OUT    dossier de sortie à la place de public/immuable/<version>/data (le bac à sable d'une extension) ;
 #   AUTUN_REGION autre region.json (celle de l'extension, qui déplace la côte) ;
 #   AUTUN_TILES  ne fabriquer que ces tuiles : « 22_26,22_27 » ou chemin d'un fichier JSON (liste d'identifiants) ;
 #   AUTUN_SCOPE  emprise des sources régionales (region_sources.py) et des étapes globales : mêmes formes qu'AUTUN_TILES.
@@ -31,7 +34,7 @@ def _tile_list(value):
     return {tuple(int(v) for v in s.strip().split("_")) for s in json.loads(text) if s.strip()}
 
 
-OUT = Path(os.environ["AUTUN_OUT"]).resolve() if os.environ.get("AUTUN_OUT") else ROOT / "public" / "data"
+OUT = Path(os.environ["AUTUN_OUT"]).resolve() if os.environ.get("AUTUN_OUT") else PUBLISHED_DATA
 REGION_FILE = Path(os.environ["AUTUN_REGION"]).resolve() if os.environ.get("AUTUN_REGION") else Path(__file__).with_name("region.json")
 ONLY_TILES = _tile_list(os.environ.get("AUTUN_TILES"))
 SCOPE_TILES = _tile_list(os.environ.get("AUTUN_SCOPE"))
@@ -95,7 +98,7 @@ def block_tiles(bi, bj):
 
 
 def write_tiles(bi, bj):
-    """Tuiles du bloc (bi, bj) qu'il écrit dans public/data : toutes celles de block_tiles, sauf KEEP ; avec AUTUN_TILES, exactement
+    """Tuiles du bloc (bi, bj) qu'il écrit dans public/immuable/<version>/data : toutes celles de block_tiles, sauf KEEP ; avec AUTUN_TILES, exactement
     celles de la liste (une tuile de KEEP qu'on demande est refabriquée : c'est voulu)."""
     if ONLY_TILES is not None:
         return block_tiles(bi, bj)

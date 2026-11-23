@@ -2,7 +2,7 @@
 
 Usage : python3 tools/data/build_monuments_nav.py     (après build_monuments.py, qui écrit le modèle des portes, et après build_nav.py, qui
         réécrit toute la navigation à partir d'OpenStreetMap : relancer celle-ci ensuite)
-Entrées : sites `gate` de public/data/kinds (modèle `gm`, D137), public/data/nav/<super-tuile>.json.
+Entrées : sites `gate` de public/immuable/<version>/data/kinds (modèle `gm`, D137), public/immuable/<version>/data/nav/<super-tuile>.json.
 Sortie : les super-tuiles de navigation qui contiennent une porte, le temple de Janus ou un commerce vu sur une photo, et leurs entrées dans nav/index.json ; rien d'autre.
 
 Commerces vus sur une photo (D141) : leur point d'intérêt « commerce », que build_nav.py ne connaît pas (voir `shop_pois`). Monument aux morts

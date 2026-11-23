@@ -1,10 +1,10 @@
 """Données de navigation (étape J2) : graphe piéton, graphe routier et points d'intérêt, par super-tuile de 1 km.
 
 Usage : python3 tools/data/build_nav.py          (après `fetch.py --only osm` et `--only routes` pour chaque bloc de REGION)
-Entrées : public/data/world.json et public/data/tiles/*.json (bâtiments, murs, arbres, mobilier, fiches, sols : obstacles et places),
+Entrées : public/immuable/<version>/data/world.json et public/immuable/<version>/data/tiles/*.json (bâtiments, murs, arbres, mobilier, fiches, sols : obstacles et places),
           OpenStreetMap par blocs de 500 m (.cache/shared/raw/osm : voies, passages, feux, restrictions de virage),
           BD TOPO tronçons de route de chaque bloc (.cache/blocks/*/raw/bdtopo_route.json : largeurs, vitesses, voies).
-Sorties : public/data/nav/index.json et nav/s<i>_<j>.json, un fichier par super-tuile de la grille mondiale (les mêmes 1 km que les sols grossiers).
+Sorties : public/immuable/<version>/data/nav/index.json et nav/s<i>_<j>.json, un fichier par super-tuile de la grille mondiale (les mêmes 1 km que les sols grossiers).
 Étape autonome (comme build_map.py) : ne touche à aucune tuile ; se relance librement (≈ 0,1 Mo). Format : D40.
 `--only s6_8[,s6_9…]` (D153) : ne reconstruit que ces super-tuiles, à partir des seuls blocs OpenStreetMap, tronçons BD TOPO et tuiles qui les touchent
 (téléchargés au besoin dans .cache/shared) ; le graphe routier de ces super-tuiles reste celui du fichier existant (l'extrait OpenStreetMap a changé depuis la dernière régénération complète) ; les autres fichiers de nav/ et leurs entrées de l'index ne sont pas touchés, la couture n'est pas contrôlée.

@@ -7149,3 +7149,54 @@ claire au soleil peut devenir un mur) ; une grille fine que le laser traverse en
 ![Rue, après](captures/d304-clotures-rue-apres.jpg)
 ![Pavillons, avant](captures/d304-clotures-pavillons-avant.jpg)
 ![Pavillons, après](captures/d304-clotures-pavillons-apres.jpg)
+
+## 2026-11-23 — D305. Autun 3D dans DomoThib Games : build `domothib`, sauvegardes du joueur, données sous `immuable/<version>/`
+
+**Contexte** : étape G3 du plan Jeux de DomoThib. Le jeu doit s'ouvrir dans DomoThib Games (cadre isolé, hôte
+`https://games.loragif.fr/autun-3d/`), selon le contrat copié dans `docs/domothib.md` avec la bibliothèque du pont
+(`src/domothib/domothib-games.ts`, 1.1.0, protocole 1, copiée sans changement). Identifiant : `autun-3d`.
+
+**Choix** :
+- **Deux builds** : `vite build` (GitHub Pages, base `./`, inchangé) et `vite build --mode domothib` (base `/autun-3d/`). Le code lit
+  le mode (`import.meta.env.MODE`) : seul le build `domothib` se connecte au pont (`src/domothib/host.ts`). Ni service worker, ni
+  manifeste d'application, ni ressource extérieure (déjà le cas : polices système, sons fabriqués, three.js dans le paquet).
+- **Connexion** au démarrage, en parallèle du chargement du monde (`loadWorldBase`), et **avant la lecture de la partie** : avec
+  DomoThib, `saves.openSync()` (contrat §4.3) est attendu et donné comme `StorageLike` à `SaveStore` ; sinon `localStorage`.
+  Si DomoThib ne peut pas lire le serveur (3 essais, 1 s d'écart) : aucun stockage, la partie se joue sans être enregistrée, plutôt
+  qu'un repli sur le navigateur qui ferait diverger la partie de celle du serveur.
+- **Ce qui suit le joueur** (sur le serveur) : la partie (`autun3d.save`) et l'**apparence** du personnage (`autun3d.appearance`) :
+  sur la tablette, chacun garde son personnage. **Ce qui reste à l'écran** : les réglages (`autun3d.settings` : définition, ombres,
+  foule, volume… ; aussi la durée des saisons, rangée avec eux dans le même objet) dans `localStorage`, comme le prévoit le contrat.
+- **Lieux notés** : restent dans IndexedDB, propres à l'écran. Chaque note porte une capture JPEG de 800 px (≈ 32 Ko mesurés sur une
+  vue simple, plus sur une vue chargée ; +33 % en base64), sans limite de nombre. En clés `notes-…`, elles prendraient chacune une des
+  200 entrées du joueur et grossiraient sans fin les 20 Mio ; et `openSync()` lit **toutes** les entrées à chaque lancement : cent
+  notes, ce serait plusieurs Mo téléchargés avant chaque partie. Un joueur qui note beaucoup pourrait même bloquer l'enregistrement de
+  sa partie (quota). Les notes sont un outil de relevé d'erreurs de carte (export texte ou JSON), pas de la progression : rien à
+  perdre à les garder sur l'écran où on les a prises.
+- **Pause de DomoThib** (`onPause`) : la boucle `requestAnimationFrame` est arrêtée (plus d'image, de simulation ni d'horloge), le son
+  suspendu, les doigts posés oubliés, la partie enregistrée, l'enregistrement automatique suspendu. `onResume` relance la boucle (le temps
+  passé en pause ne compte pas). La pause du jeu lui-même (carte, menu) est indépendante : à la reprise, on retrouve l'écran laissé.
+- **Plein écran** : celui de DomoThib (son conteneur, avec la poignée) : le jeu ne le demande plus dans DomoThib et le réglage
+  « Plein écran » n'y est pas proposé. Pas de bouton « Quitter » dans le jeu : la poignée de DomoThib le propose déjà.
+- **Poignée** en **haut à droite** : en haut à gauche, la minimap ; en bas à droite, les pédales et les boutons d'action ; en bas à
+  gauche, le joystick (et « Me centrer » sur la carte). En haut à droite, rien en jeu (le nom du véhicule apparaît à 64 px du haut) ;
+  sur la carte, « Menu » et « Lieux » sont décalés de 58 px vers la gauche, et le menu pause garde 66 px à droite (`body.domothib`, `index.html`).
+- **Écrans** : `["telephone"]`. Les réglages par défaut (définition ×2,5, ombres 4096, 100 passants, 20 voitures) sont mesurés sur un
+  téléphone récent ; rien n'a été mesuré sur la Galaxy Tab S3 (2017, Adreno 530, 4 Go partagés avec DomoThib, écran 2048 × 1536).
+- **Données lourdes sous `public/immuable/<version>/`** (`data/` et `decals/`, contrat §6) : l'hôte les garde en cache un an sans
+  revalidation. `<version>` est l'**empreinte du contenu** (SHA-256 des empreintes des fichiers et de leurs chemins, 12 caractères),
+  dans `src/data/data-version.json`, lu par le jeu (`src/data/data-version.ts` : seule construction des adresses, pour `load.ts`, la
+  carte et les décalques de `stylized.ts`) et par la chaîne de données (`tools/data/data_version.py`, `config.py` : `OUT` par défaut).
+  `python3 tools/data/data_version.py` la refait et renomme le dossier ; `build_all.py` et `npm run hulls` l'appellent à la fin. Une
+  empreinte plutôt qu'une date : deux régénérations identiques gardent le cache, et le test `data-version.test.ts` vérifie qu'elle
+  correspond au contenu (une régénération oubliée échoue en CI).
+- **CI** : `.github/workflows/domothib.yml` (contrat §7.2) : sur PR, lint, tests et build `domothib` (avec vérification du
+  manifeste) ; sur `main`, en plus, envoi par rsync vers `jeux-deploy@VPS_HOST:./`. `deploy.yml` (GitHub Pages) ne fait plus que
+  construire et publier depuis `main` : les vérifications ne sont plus faites deux fois.
+
+**Raison** : suivre le contrat sans toucher au fonctionnement autonome du jeu (GitHub Pages, `npm run dev`), et garder la partie du
+joueur sur le serveur sans réécrire la sauvegarde synchrone (`StorageLike`).
+
+**Pas fait** : vérification sur la tablette et dans le vrai DomoThib (voir PROGRESS.md) ; un changement de données renvoie les ≈ 105 Mo
+à l'hôte (rsync ne reconnaît pas un dossier renommé) et les fait retélécharger aux joueurs, ce qui est le prix du cache sans
+revalidation.

@@ -104,7 +104,7 @@ describe("piles et tabliers trop courts (D220)", () => {
   });
 });
 
-describe("ponts réels (public/data/structures)", () => {
+describe("ponts réels (public/immuable/<version>/data/structures)", () => {
   const { terrain, tile } = loadRealWorld();
   const decks = tile.structures!.decks;
   const andoche = decks.find((d) => d.n === "Pont Saint-Andoche")!;

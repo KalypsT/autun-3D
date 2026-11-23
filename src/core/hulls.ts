@@ -1,7 +1,7 @@
 /**
  * Relevés de hauteur des bâtiments spéciaux (D302, plan `docs/plans/toits-monuments.md`) : monuments, bâtiments à modèle dédié et sites
  * (portes romaines, temple de Janus, Couhard, kiosque…). Leur toit dessiné ne suit pas les pans BD TOPO : on relève, case par case
- * (0,5 ou 1 m), la hauteur de ce que dessine le rendu (`src/render/hull-build.ts`, fichiers `public/data/hulls/<tuile>.json`). Ce relevé
+ * (0,5 ou 1 m), la hauteur de ce que dessine le rendu (`src/render/hull-build.ts`, fichiers `public/immuable/<version>/data/hulls/<tuile>.json`). Ce relevé
  * donne le haut de leurs murs (on les survole au lieu de buter contre un mur invisible) et une surface où se poser (`Roofs`).
  * Logique pure : aucune dépendance au rendu.
  */

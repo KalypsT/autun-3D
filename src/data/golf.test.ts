@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { GolfSite, TileData } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 // Golf municipal d'Autun (D288, tools/data/build_golf.py) : sols du parcours relevés sur l'orthophotographie de l'IGN.
-const tiles = readdirSync("public/data/tiles").map((n) => JSON.parse(readFileSync(`public/data/tiles/${n}`, "utf8")) as TileData);
+const tiles = readdirSync(`${PUBLIC_DATA}/tiles`).map((n) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${n}`, "utf8")) as TileData);
 const tile = {
   furniture: tiles.flatMap((t) => t.furniture),
   ground: Object.fromEntries(["golf_green", "golf_tee", "golf_bunker", "golf_fairway", "golf_fairway2"].map((k) => [k, tiles.flatMap((t) => t.ground[k] ?? [])])),
@@ -31,7 +32,7 @@ describe("golf municipal (D288)", () => {
   });
 
   it("le club-house a sa tente, sa terrasse, ses tables, ses toits de tuiles brunes ; l'entrée son muret, son panneau et ses drapeaux (D289)", () => {
-    const kinds = JSON.parse(readFileSync("public/data/kinds/34_34.json", "utf8")) as { buildings: Record<string, { k: string }>; sites: { t: string }[] };
+    const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/34_34.json`, "utf8")) as { buildings: Record<string, { k: string }>; sites: { t: string }[] };
     const site = kinds.sites.find((q) => q.t === "golf") as GolfSite | undefined;
     expect(site).toBeDefined();
     expect(site!.tables.length).toBe(8);

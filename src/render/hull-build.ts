@@ -1,7 +1,7 @@
 /**
  * Relevé des hauteurs dessinées des bâtiments spéciaux et des sites (D302) : on dessine les gabarits et les sites d'une tuile comme le rendu
  * (`buildLandmarks`, toits génériques des églises et chapelles), puis on garde, case par case dans l'emprise de chacun, le plus haut point
- * dessiné. Le résultat est enregistré dans `public/data/hulls/<tuile>.json` (test `hulls.test.ts` ; `npm run hulls` pour le refaire) et lu par
+ * dessiné. Le résultat est enregistré dans `public/immuable/<version>/data/hulls/<tuile>.json` (test `hulls.test.ts` ; `npm run hulls` pour le refaire) et lu par
  * les collisions (`src/core/hulls.ts`). Seuls le bâti plein et le verre comptent (ni lumières, ni enseignes, ni feuillage).
  */
 import * as THREE from "three";

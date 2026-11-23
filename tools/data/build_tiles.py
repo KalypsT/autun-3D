@@ -4,9 +4,9 @@ Usage : python3 tools/data/build_tiles.py
 
 Entrées (.cache/blocks/<bloc>/work) : buildings_clean.json, facades.json, trees.json, props.json, ground_vec.json.
 Sorties : tuiles du bloc seulement (col, ligne = indices de la grille mondiale, cf. config.py), pour les tuiles de REGION qu'il contient ;
-  .cache/blocks/<bloc>/work/tiles.json  liste des tuiles écrites et de leurs effectifs, que pack.py fusionne dans public/data/world.json
-  public/data/tiles/<c>_<r>.json bâtiments complets, fiches façade, arbres, murs, mobilier d'une tuile (c vers l'est, r vers le nord)
-  public/data/lod/<c>_<r>.json   silhouettes simplifiées des bâtiments d'une tuile, pour quand elle est loin (absent si la tuile n'a pas de bâtiment)
+  .cache/blocks/<bloc>/work/tiles.json  liste des tuiles écrites et de leurs effectifs, que pack.py fusionne dans public/immuable/<version>/data/world.json
+  public/immuable/<version>/data/tiles/<c>_<r>.json bâtiments complets, fiches façade, arbres, murs, mobilier d'une tuile (c vers l'est, r vers le nord)
+  public/immuable/<version>/data/lod/<c>_<r>.json   silhouettes simplifiées des bâtiments d'une tuile, pour quand elle est loin (absent si la tuile n'a pas de bâtiment)
 Le relief et les sols par tuile sont écrits ensuite par pack.py, qui crée ou complète world.json.
 Un bâtiment, un arbre ou un mur appartient à la tuile de son centre (ou de son premier point).
 """

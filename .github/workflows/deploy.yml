@@ -1,22 +1,22 @@
-name: Vérifier et publier
+name: Publier sur GitHub Pages
 
+# Gardé jusqu'à la bascule vers DomoThib Games (D305), puis supprimé avec GitHub Pages. Les vérifications (lint, types, tests) sont
+# faites par domothib.yml, sur chaque PR et sur main : ce workflow ne fait plus que construire (chemins relatifs) et publier.
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Les vérifications de PR ont leur propre groupe (une nouvelle poussée annule l'ancienne) ;
-# la publication depuis main n'est jamais annulée, sinon le site reste sur l'ancienne version.
+# La publication n'est jamais annulée, sinon le site reste sur l'ancienne version.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('verif-{0}', github.ref) || 'pages' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  check:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,17 +25,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: check
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       pages: write

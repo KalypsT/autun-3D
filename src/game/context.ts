@@ -7,6 +7,8 @@ import type { TerrainView } from "../render/terrain";
 import type { Vista } from "../render/vista";
 import type { SettingsController } from "./settings-controller";
 import type { StartState } from "./start";
+import type { StorageLike } from "../core/save";
+import type { GameHost } from "../domothib/host";
 
 /** Ce que le jeu et le viewer partagent : rendu, scène, soleil et données du monde. */
 export interface GameContext {
@@ -30,6 +32,10 @@ export interface GameContext {
   settings: SettingsController | null;
   /** Départ de la partie (position, sauvegarde reprise) ; null hors du jeu. */
   start: StartState | null;
+  /** Stockage de la partie et de l'apparence : sauvegardes du joueur dans DomoThib, sinon `localStorage` ; null : rien n'est enregistré (D305). */
+  storage: StorageLike | null;
+  /** DomoThib (pause, reprise, quitter) ; null quand le jeu tourne seul (D305). */
+  host: GameHost | null;
   /** Appelé quand le monde est prêt à être affiché (retire l'écran de chargement, signale aux captures). */
   ready: (extra?: object) => void;
 }

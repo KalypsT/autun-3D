@@ -8,6 +8,7 @@ import type { Colliders } from "./collision";
 import { Terrain, TiledTerrain } from "../data/terrain";
 import type { TileData, TileKinds, TileStructures, WorldManifest } from "../data/types";
 import { Waters, type WaterFile } from "./waters";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** Terrain plat de 200 × 200 m centré sur l'origine, pour les tests. */
 export function flatTerrain(z = 0): Terrain {
@@ -15,9 +16,9 @@ export function flatTerrain(z = 0): Terrain {
   return Terrain.decode(meta, new Uint16Array(200 * 200).buffer);
 }
 
-/** Données réelles de public/data pour les tests : relief fin de toutes les tuiles et toutes les tuiles réunies (Node uniquement). */
+/** Données réelles de public/immuable/<version>/data pour les tests : relief fin de toutes les tuiles et toutes les tuiles réunies (Node uniquement). */
 export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manifest: WorldManifest } {
-  const read = (name: string): Buffer => readFileSync(`public/data/${name}`);
+  const read = (name: string): Buffer => readFileSync(`${PUBLIC_DATA}/${name}`);
   const buffer = (name: string): ArrayBuffer => {
     const b = read(name);
     return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
@@ -28,13 +29,13 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   // L'eau de la ville (D240), comme au démarrage du jeu.
   terrain.waters = new Waters(JSON.parse(read("water.json").toString("utf8")) as WaterFile);
   const tile: TileData = { bounds: [0, 0, 0, 0], ground: {}, buildings: [], fiches: [], trees: [], walls: [], furniture: [] };
-  for (const name of readdirSync("public/data/tiles")) {
+  for (const name of readdirSync(`${PUBLIC_DATA}/tiles`)) {
     const t = JSON.parse(read(`tiles/${name}`).toString("utf8")) as TileData;
     for (const k of ["buildings", "fiches", "trees", "walls", "furniture"] as const) (tile[k] as unknown[]).push(...(t[k] as unknown[]));
   }
   // Types de bâtiments et sites (kinds/), réunis comme les tuiles.
   const kinds: TileKinds = { v: 1, buildings: {}, sites: [] };
-  for (const name of readdirSync("public/data/kinds")) {
+  for (const name of readdirSync(`${PUBLIC_DATA}/kinds`)) {
     if (name === "index.json") continue;
     const k = JSON.parse(read(`kinds/${name}`).toString("utf8")) as TileKinds;
     Object.assign(kinds.buildings, k.buildings);
@@ -42,9 +43,9 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   }
   tile.kinds = kinds;
   // Relevés de hauteur des bâtiments spéciaux (hulls/, D302).
-  if (existsSync("public/data/hulls")) {
+  if (existsSync(`${PUBLIC_DATA}/hulls`)) {
     tile.hulls = [];
-    for (const name of readdirSync("public/data/hulls")) {
+    for (const name of readdirSync(`${PUBLIC_DATA}/hulls`)) {
       if (name === "index.json") continue;
       tile.hulls.push(...(JSON.parse(read(`hulls/${name}`).toString("utf8")) as { hulls: HullData[] }).hulls);
     }
@@ -52,7 +53,7 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   // Ponts, eau et voies ferrées (structures/) : les tabliers et quais comptent dans les altitudes, comme dans le jeu.
   const structures: TileStructures = { v: 1, decks: [], water: [], wz: [], streams: [], weirs: [], rails: [], platforms: [], crossings: [] };
   const seen = new Set<number>();
-  for (const name of readdirSync("public/data/structures")) {
+  for (const name of readdirSync(`${PUBLIC_DATA}/structures`)) {
     if (name === "index.json") continue;
     const st = JSON.parse(read(`structures/${name}`).toString("utf8")) as TileStructures;
     for (const d of st.decks) {
@@ -78,10 +79,10 @@ export function loadRealWorld(): { terrain: TiledTerrain; tile: TileData; manife
   return { terrain, tile, manifest };
 }
 
-/** Données de navigation réelles (public/data/nav) : l'index et toutes les super-tuiles décodées (Node uniquement). */
+/** Données de navigation réelles (public/immuable/<version>/data/nav) : l'index et toutes les super-tuiles décodées (Node uniquement). */
 export function loadRealNav(): { index: NavIndex; cells: NavCell[] } {
-  const index = JSON.parse(readFileSync("public/data/nav/index.json", "utf8")) as NavIndex;
-  const cells = index.cells.map((c) => decodeNavCell(JSON.parse(readFileSync(`public/data/nav/${c.id}.json`, "utf8"))));
+  const index = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/index.json`, "utf8")) as NavIndex;
+  const cells = index.cells.map((c) => decodeNavCell(JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/${c.id}.json`, "utf8"))));
   return { index, cells };
 }
 

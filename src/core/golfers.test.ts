@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { GolfSite } from "../data/types";
 import { GOLF_WALK, GolfRound, type Golfer } from "./golfers";
 import { practiceFrame } from "./golf";
+import { PUBLIC_DATA } from "../data/data-version";
 
 // Golfeurs du golf municipal (D291) : les groupes enchaînent les trous, au pas, et se rassemblent autour du drapeau.
-const kinds = JSON.parse(readFileSync("public/data/kinds/34_34.json", "utf8")) as { sites: { t: string }[] };
+const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/34_34.json`, "utf8")) as { sites: { t: string }[] };
 const site = kinds.sites.find((q) => q.t === "golf") as GolfSite;
 
 describe("golfeurs (D291)", () => {

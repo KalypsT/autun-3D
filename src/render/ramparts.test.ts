@@ -7,10 +7,11 @@ import { isProfiled, stairSteps, towerArc, towerOutline } from "../core/ramparts
 import { addTileColliders } from "../core/world";
 import { MeshBuilder } from "./geometry";
 import { buildRampart, buildTowers } from "./ramparts";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const walls: { tile: string; w: Wall }[] = [];
-for (const f of readdirSync("public/data/tiles").filter((n) => n.endsWith(".json"))) {
-  const t = JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData;
+for (const f of readdirSync(`${PUBLIC_DATA}/tiles`).filter((n) => n.endsWith(".json"))) {
+  const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${f}`, "utf8")) as TileData;
   for (const w of t.walls) if (w.kind === "rampart") walls.push({ tile: f.replace(".json", ""), w });
 }
 const lookAt = (x: number, y: number): string | undefined =>
@@ -53,8 +54,8 @@ describe("Remparts, lot 2 (D253) : l'aspect", () => {
 
 describe("Remparts, lot 3 (D254) : les tours", () => {
   const towers: { tile: string; t: RampartTower }[] = [];
-  for (const f of readdirSync("public/data/tiles").filter((n) => n.endsWith(".json"))) {
-    const t = JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData;
+  for (const f of readdirSync(`${PUBLIC_DATA}/tiles`).filter((n) => n.endsWith(".json"))) {
+    const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${f}`, "utf8")) as TileData;
     for (const q of t.towers ?? []) towers.push({ tile: f.replace(".json", ""), t: q });
   }
   const urs = towers.find(({ t }) => t.k === "ursulines")!;
@@ -77,7 +78,7 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
     expect(t.deck! - t.base).toBeGreaterThan(27);
     expect(t.deck! - t.base).toBeLessThan(32);
     expect(t.statue!).toBeGreaterThan(t.roof!);
-    const kinds = JSON.parse(readFileSync(`public/data/kinds/${urs.tile}.json`, "utf8")) as { buildings: Record<string, { k: string }> };
+    const kinds = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/${urs.tile}.json`, "utf8")) as { buildings: Record<string, { k: string }> };
     expect(kinds.buildings["BATIMENT0000000348856003"]?.k).toBe("hidden");
   });
 
@@ -135,7 +136,7 @@ describe("Remparts, lot 3 (D254) : les tours", () => {
 
   it("collisions : le pied d'une tour arrête le joueur", () => {
     const { tile, t } = towers.find(({ t }) => t.k === "round")!;
-    const data = JSON.parse(readFileSync(`public/data/tiles/${tile}.json`, "utf8")) as TileData;
+    const data = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${tile}.json`, "utf8")) as TileData;
     const c = new Colliders();
     addTileColliders(c, { buildings: [], walls: [], furniture: [], trees: [], towers: data.towers });
     // Juste devant le sommet de l'arc, en dehors : repoussé.

@@ -4,6 +4,7 @@ import type { FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
 import { crossFlag, pharmacyCross } from "./shopfront";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const bounds = (mb: MeshBuilder): { min: number[]; max: number[] } => {
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
@@ -17,7 +18,7 @@ const bounds = (mb: MeshBuilder): { min: number[]; max: number[] } => {
 
 /** D159 : la façade de la Grande Pharmacie Bonaparte d'après photos (`fronts` de manual.json) et la croix en drapeau. */
 describe("Grande Pharmacie Bonaparte (D159)", () => {
-  const tile = JSON.parse(readFileSync("public/data/tiles/26_35.json", "utf8")) as TileData;
+  const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/26_35.json`, "utf8")) as TileData;
   const f: FacadeFiche = tile.fiches.find((q) => q.id === "BATIMENT0000000348854039")!;
   const d = f.ground.devanture!;
 

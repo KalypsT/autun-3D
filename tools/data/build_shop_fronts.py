@@ -1,7 +1,7 @@
 """Côté des devantures et des enseignes (D120) : sur quel mur de chaque bâtiment commerçant posent-elles leurs vitrines ?
 
 Usage : python3 tools/data/build_shop_fronts.py [--force]       (après build_map.py : il lit les rues nommées de map/places.json)
-Entrées : public/data/world.json, tiles/*.json (bâtiments et fiches), kinds/*.json (grandes surfaces), map/places.json (rues nommées),
+Entrées : public/immuable/<version>/data/world.json, tiles/*.json (bâtiments et fiches), kinds/*.json (grandes surfaces), map/places.json (rues nommées),
           OpenStreetMap par blocs de 500 m (.cache/shared/raw/osm, téléchargés au besoin ; --force les retélécharge) : commerces avec leur
           `addr:street`, portes (`entrance`), parkings.
 Sorties : dans les fiches des tuiles seulement, `ground.front` (indice du mur d'entrée), `wall` et `s` de chaque commerce de `ground.shops`,

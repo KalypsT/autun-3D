@@ -1,0 +1,14 @@
+{
+  "protocole": 1,
+  "id": "autun-3d",
+  "nom": "Autun 3D",
+  "description": "Monde ouvert dans la vraie ville d'Autun : à pied, à vélo, en voiture ou à moto, de jour comme de nuit, au fil des saisons.",
+  "version": "0.1.0",
+  "jaquette": "jaquette.webp",
+  "orientation": "paysage",
+  "ecrans": ["telephone"],
+  "commandes": ["tactile", "clavier"],
+  "sauvegarde": "domothib",
+  "poignee": "haut-droite",
+  "pleinEcran": true
+}

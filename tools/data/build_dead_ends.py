@@ -6,10 +6,10 @@ elle est coupée 25 m après la dernière chose qu'elle dessert (bâtiment à mo
 au-delà du haut de la falaise. Une branche qui ne dessert rien disparaît jusqu'à son carrefour.
 
     plan      calcule les branches et écrit tools/data/dead_ends.json (relu et corrigé à la main : `overrides`) ; ne touche à aucune donnée publiée
-    apply     applique dead_ends.json à public/data : sols (chaussée, trottoirs, marquages coupés ; aire de retournement), sols fins et super-tuiles
+    apply     applique dead_ends.json à public/immuable/<version>/data : sols (chaussée, trottoirs, marquages coupés ; aire de retournement), sols fins et super-tuiles
               (repeints en herbe), mobilier (lampadaires et panneaux retirés ; panneau « voie sans issue » ajouté), barrière rouge et blanche (mur
               `barrier`), navigation (arêtes routières et files piétonnes coupées, sans toucher aux autres), points d'intérêt, rues de la carte.
-              À lancer une fois, sur les données publiées d'avant (`git checkout public/data` pour recommencer) ; puis `extend.py`-like : images
+              À lancer une fois, sur les données publiées d'avant (`git checkout public/immuable/<version>/data` pour recommencer) ; puis `extend.py`-like : images
               de la carte (build_map.py --images, kilomètres touchés seulement).
 
 Usage : python3 tools/data/build_dead_ends.py plan|apply
@@ -779,7 +779,7 @@ def apply():
             continue
         end = key(*b["end"])
         if end not in adj:
-            raise SystemExit(f"bout {b['end']} ({b['name']}) absent du graphe publié : déjà appliqué ? (git checkout public/data)")
+            raise SystemExit(f"bout {b['end']} ({b['name']}) absent du graphe publié : déjà appliqué ? (git checkout public/immuable/<version>/data)")
         _, used, _ = walk_branch(end, adj, edges)
         branch_edge_ids |= set(used)
     keep_edges = [e for i, e in enumerate(edges) if i not in branch_edge_ids]

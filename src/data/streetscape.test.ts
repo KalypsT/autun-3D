@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findStalls } from "../core/parking";
 import type { TileData } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D153 : la chaussée de la place du Champ de Mars (tools/data/build_streetscape.py). */
 const TILES = ["25_34", "26_34", "25_35", "26_35"];
@@ -19,8 +20,8 @@ function inPolygon(x: number, y: number, poly: readonly (readonly number[])[]): 
   return inside;
 }
 
-const tiles = TILES.map((id) => JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData);
-const streets = JSON.parse(readFileSync("public/data/streets.json", "utf8")) as { id: number; width: number; pts: number[]; oneway: number }[];
+const tiles = TILES.map((id) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData);
+const streets = JSON.parse(readFileSync(`${PUBLIC_DATA}/streets.json`, "utf8")) as { id: number; width: number; pts: number[]; oneway: number }[];
 const place = streets.filter((s) => PLACE.includes(s.id));
 const onRoad = (x: number, y: number): boolean => tiles.some((t) => (t.ground["road_asphalt"] ?? []).some((p) => inPolygon(x, y, p)));
 const onPlaza = (x: number, y: number): boolean => tiles.some((t) => Object.keys(t.ground).some((k) => k.startsWith("plaza_") && t.ground[k]!.some((p) => inPolygon(x, y, p))));
@@ -135,7 +136,7 @@ describe("les places du grand parking du Champ de Mars (D154)", () => {
 describe("rues piétonnes du centre (D156)", () => {
   const all = (() => {
     const out: TileData[] = [];
-    for (const name of readdirSync("public/data/tiles")) out.push(JSON.parse(readFileSync(`public/data/tiles/${name}`, "utf8")) as TileData);
+    for (const name of readdirSync(`${PUBLIC_DATA}/tiles`)) out.push(JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${name}`, "utf8")) as TileData);
     return out;
   })();
   const buildings = all.flatMap((t) => t.buildings.map((b) => [b.ring] as number[][]));
@@ -146,9 +147,9 @@ describe("rues piétonnes du centre (D156)", () => {
 
   it("aucune clôture de parcelle à moins de 300 m de la mairie (sauf celles que la grille d'honneur du lycée remplace)", () => {
     const replaced = new Set<number>();
-    for (const name of readdirSync("public/data/kinds")) {
+    for (const name of readdirSync(`${PUBLIC_DATA}/kinds`)) {
       if (name === "index.json") continue;
-      const k = JSON.parse(readFileSync(`public/data/kinds/${name}`, "utf8")) as { buildings: Record<string, { college?: { grille?: { walls: number[] } } }> };
+      const k = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/${name}`, "utf8")) as { buildings: Record<string, { college?: { grille?: { walls: number[] } } }> };
       for (const b of Object.values(k.buildings)) for (const w of b.college?.grille?.walls ?? []) replaced.add(w);
     }
     let remaining = 0;

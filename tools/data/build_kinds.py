@@ -1,9 +1,9 @@
 """Types de bâtiments et sites remarquables (étape M1, D92) : étape autonome, ne touche à aucune tuile.
 
 Usage : python3 tools/data/build_kinds.py [--force]     (--force retélécharge OpenStreetMap et les couches IGN)
-Entrées : public/data/world.json et tiles/*.json (emprises, identifiants), extrait OpenStreetMap complet et couches BD TOPO de la région
+Entrées : public/immuable/<version>/data/world.json et tiles/*.json (emprises, identifiants), extrait OpenStreetMap complet et couches BD TOPO de la région
 (`region_sources.py`), modèle de surface LiDAR autour des églises (hauteur des clochers).
-Sorties : public/data/kinds/<tuile>.json pour chaque tuile qui a quelque chose, et kinds/index.json (liste des tuiles, statistiques).
+Sorties : public/immuable/<version>/data/kinds/<tuile>.json pour chaque tuile qui a quelque chose, et kinds/index.json (liste des tuiles, statistiques).
 
 Fichier d'une tuile : {v, buildings: {id: {k, n?, c?, tc?, main?, tower?}}, sites: [...]}
   k     type du bâtiment (KINDS) ; n : texte de l'enseigne ou de l'inscription ; c, tc : couleur du panneau et des lettres ;

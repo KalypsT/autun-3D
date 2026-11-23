@@ -2,13 +2,13 @@
 
 Usage : python3 tools/data/build_map.py [--force] [--images]   (--force : retélécharge OpenStreetMap ; --images : refait seulement les images
         de fond et index.json, sans OpenStreetMap ni places.json)
-Entrées : public/data/world.json, public/data/tiles/*.json (couches de sol, emprises de bâtiments, monuments des fiches) et
-          public/data/structures/*.json (l'eau de la ville, D240),
+Entrées : public/immuable/<version>/data/world.json, public/immuable/<version>/data/tiles/*.json (couches de sol, emprises de bâtiments, monuments des fiches) et
+          public/immuable/<version>/data/structures/*.json (l'eau de la ville, D240),
           OpenStreetMap par blocs de 500 m (noms de rues, commissariat, hôpital, écoles, commerces, parkings… ; .cache/shared/map_osm),
           tools/data/places_perso.json (lieux définis à la main).
-Sorties : public/data/map/index.json, map/<id>.png (1 m par pixel) et map/<id>_2.png (2 m par pixel), un couple par kilomètre de la grille mondiale,
+Sorties : public/immuable/<version>/data/map/index.json, map/<id>.png (1 m par pixel) et map/<id>_2.png (2 m par pixel), un couple par kilomètre de la grille mondiale,
           map/overview.png (toute la zone à 4 m par pixel), map/places.json.
-Étape autonome : elle ne relit pas les tuiles à chaque kilomètre (une seule lecture), n'écrit que dans public/data/map et ne touche
+Étape autonome : elle ne relit pas les tuiles à chaque kilomètre (une seule lecture), n'écrit que dans public/immuable/<version>/data/map et ne touche
 à aucune tuile. Pour la commune entière, elle s'applique telle quelle une fois les tuiles fabriquées.
 """
 

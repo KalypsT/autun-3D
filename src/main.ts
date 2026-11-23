@@ -10,6 +10,7 @@ import { gameSpawn, resolveStart, type StartState } from "./game/start";
 import { SettingsController } from "./game/settings-controller";
 import { DEFAULT_SETTINGS, effectiveSettings, SettingsStore } from "./core/settings";
 import { SaveStore } from "./core/save";
+import { connectGame } from "./domothib/host";
 import { startViewer, viewerView } from "./game/viewer";
 import { createSky, HORIZON } from "./render/sky";
 import { Atmosphere } from "./render/atmosphere";
@@ -111,9 +112,12 @@ async function main(): Promise<void> {
     startSoundGallery();
     return;
   }
-  const world = await loadWorldBase();
+  // DomoThib (build `domothib`, D305) : connexion et sauvegardes du joueur, attendues avant de lire la partie ; en même temps que le monde.
+  const [world, session] = await Promise.all([loadWorldBase(), connectGame()]);
+  // Place laissée à la poignée de DomoThib, en haut à droite (index.html, `body.domothib`).
+  if (session.host) document.body.classList.add("domothib");
   const focus = viewerMode ? viewerView(params) : null;
-  const saveStore = new SaveStore();
+  const saveStore = new SaveStore(session.storage);
   const startState: StartState | null = viewerMode || testMode ? null : resolveStart(params, saveStore, world.manifest.zone);
   const start = focus ? { x: focus[0], y: focus[1] } : startState ?? gameSpawn(params);
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
@@ -159,6 +163,7 @@ async function main(): Promise<void> {
   const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
   const ctx: GameContext = {
     renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
+    storage: session.storage, host: session.host,
     ready: (extra) => {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");

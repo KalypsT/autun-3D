@@ -239,7 +239,7 @@ export function assignVoices(slots: (number | null)[], wanted: readonly number[]
 
 // --- Temps : cloches, pas, ambiance ----------------------------------------------------------------------------------------
 
-/** Cloches de la cathédrale Saint-Lazare (`public/data/map/places.json`) : elles sonnent les heures. */
+/** Cloches de la cathédrale Saint-Lazare (`public/immuable/<version>/data/map/places.json`) : elles sonnent les heures. */
 export const CATHEDRAL = { x: 36.6, y: -571.5 } as const;
 /** Les cloches se taisent la nuit : première et dernière heure sonnées. */
 export const BELLS_FROM = 7;

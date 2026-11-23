@@ -12,7 +12,7 @@ Pour chaque emprise :
   5. cheminées : amas de points nettement au-dessus du plan de toit.
 Sans assez de points, toit plat à la hauteur BD TOPO.
 
-Sortie : public/data/buildings.json (coordonnées locales en mètres, z relatif à ORIGIN_Z).
+Sortie : public/immuable/<version>/data/buildings.json (coordonnées locales en mètres, z relatif à ORIGIN_Z).
 """
 
 import json

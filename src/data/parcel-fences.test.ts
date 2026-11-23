@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { TileData, Wall } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D304 : clôtures de parcelle confrontées au relevé LiDAR, un matériau par côté de rue (tools/data/prune_fences.py). */
 const FENCE_ID = 900_000_000;
@@ -15,14 +16,14 @@ function protectedIds(): Set<number> {
       else for (const v of o) walk(v);
     } else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) walk(v, k);
   };
-  for (const f of readdirSync("public/data/kinds")) if (f.endsWith(".json")) walk(JSON.parse(readFileSync(`public/data/kinds/${f}`, "utf8")));
+  for (const f of readdirSync(`${PUBLIC_DATA}/kinds`)) if (f.endsWith(".json")) walk(JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/${f}`, "utf8")));
   return ids;
 }
 
 const keep = protectedIds();
-const fences = readdirSync("public/data/tiles")
+const fences = readdirSync(`${PUBLIC_DATA}/tiles`)
   .filter((f) => f.endsWith(".json"))
-  .flatMap((f) => (JSON.parse(readFileSync(`public/data/tiles/${f}`, "utf8")) as TileData).walls)
+  .flatMap((f) => (JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${f}`, "utf8")) as TileData).walls)
   .filter((w) => isParcelFence(w) && !keep.has(w.id));
 
 const length = (w: Wall): number => {

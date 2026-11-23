@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findStalls } from "../core/parking";
 import type { StationModel, TileData, TileKinds } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D230 : le parvis de la gare : places de l'est et de l'abri de parking, allée pavée, gravier, quai et zigzag de la gare routière. */
-const tile = JSON.parse(readFileSync("public/data/tiles/24_37.json", "utf8")) as TileData;
-const sta = (JSON.parse(readFileSync("public/data/kinds/24_37.json", "utf8")) as TileKinds).buildings["BATIMENT0000000348856379"]!.sta as StationModel;
+const tile = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/24_37.json`, "utf8")) as TileData;
+const sta = (JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/24_37.json`, "utf8")) as TileKinds).buildings["BATIMENT0000000348856379"]!.sta as StationModel;
 const st = (x: number, y: number): [number, number] => {
   const dx = x - sta.o[0], dy = y - sta.o[1], c = Math.cos(sta.a), s = Math.sin(sta.a);
   return [dx * c + dy * s, -dx * s + dy * c];

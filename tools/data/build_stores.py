@@ -1,4 +1,4 @@
-"""Magasins d'après photo (D143, D144, D145) : plan du toit mesuré au LiDAR et modèle du magasin (Lidl, pharmacie, But, Bricomarché, Intermarché, Jardinerie, galeries marchandes de Bellevue, GiFi, Action) dans public/data/kinds.
+"""Magasins d'après photo (D143, D144, D145) : plan du toit mesuré au LiDAR et modèle du magasin (Lidl, pharmacie, But, Bricomarché, Intermarché, Jardinerie, galeries marchandes de Bellevue, GiFi, Action) dans public/immuable/<version>/data/kinds.
 
 Usage : python3 tools/data/build_stores.py     (après build_kinds.py puis build_carts.py, qui réécrivent kinds ; puis relancer celle-ci)
 Entrées : `stores` de tools/data/manual.json (lecture des photos), tiles/*.json (contours), kinds/*.json (le type du bâtiment : grande

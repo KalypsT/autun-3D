@@ -1,4 +1,4 @@
-"""Compare des tuiles de deux dossiers de données (public/data et un bac à sable d'extend.py) : contenu, relief fin, sols.
+"""Compare des tuiles de deux dossiers de données (public/immuable/<version>/data et un bac à sable d'extend.py) : contenu, relief fin, sols.
 
 Usage : python3 tools/data/compare_tiles.py DOSSIER_A DOSSIER_B tuile [tuile ...]
 Sert à l'essai à blanc d'extend.py (lot 1 de la Croix de la Libération) : refabriquer une tuile depuis les sources doit redonner la tuile

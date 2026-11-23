@@ -6,6 +6,7 @@ import { arcadePosts, at, carportShape, couhardFoot, couhardPanel, couhardPosts,
 import { CACHES } from "./pickups";
 import { loadRealWorld } from "./testing";
 import { addTileColliders } from "./world";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** Bâtiment rectangulaire 20 × 10 m, toit à deux pans de faîtage 4 m au-dessus de l'égout (10 m). */
 function gable(): Building {
@@ -85,11 +86,11 @@ describe("gabarits : station-service", () => {
   });
 });
 
-describe("gabarits : données réelles (public/data/kinds)", () => {
+describe("gabarits : données réelles (public/immuable/<version>/data/kinds)", () => {
   const world = loadRealWorld();
   const kinds = world.tile.kinds!;
   const ids = new Set(world.tile.buildings.map((b) => b.id));
-  const index = JSON.parse(readFileSync("public/data/kinds/index.json", "utf8")) as { tiles: string[] };
+  const index = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/index.json`, "utf8")) as { tiles: string[] };
 
   it("chaque type désigne un bâtiment qui existe, et l'index liste les fichiers", () => {
     const missing = Object.keys(kinds.buildings).filter((id) => !ids.has(id));
@@ -163,7 +164,7 @@ describe("monuments (D95)", () => {
   describe("données réelles", () => {
     const world = loadRealWorld();
     const kinds = world.tile.kinds!;
-    const index = JSON.parse(readFileSync("public/data/kinds/index.json", "utf8")) as { landmarks: { id: string; t: number[] }[] };
+    const index = JSON.parse(readFileSync(`${PUBLIC_DATA}/kinds/index.json`, "utf8")) as { landmarks: { id: string; t: number[] }[] };
 
     it("cathédrale Saint-Lazare : volumes mesurés plausibles, repère lointain dans l'index", () => {
       const mon = Object.entries(kinds.buildings).filter(([, k]) => k.mon);
@@ -263,7 +264,7 @@ describe("monuments (D95)", () => {
         expect(c.resolve(x, y, 0.35).hit).toBe(false);
       }
       expect(inCouhard(p, ...couhardPanel(p))).toBe(false);
-      const { n, e, g } = (JSON.parse(readFileSync("public/data/nav/s7_8.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+      const { n, e, g } = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s7_8.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
       for (let i = 0; i < e.length; i += 11) {
         const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
         const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
@@ -278,7 +279,7 @@ describe("monuments (D95)", () => {
       const t = kinds.sites.find((q): q is JanusSite => q.t === "janus")!;
       const c = new Colliders();
       for (const r of landmarkRings({ sites: [t] }, () => 0)) c.addRing(r);
-      const { n, e, g } = (JSON.parse(readFileSync("public/data/nav/s5_10.json", "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+      const { n, e, g } = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s5_10.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
       let inside = 0;
       for (let i = 0; i < e.length; i += 11) {
         const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
@@ -422,7 +423,7 @@ describe("monuments (D95)", () => {
       expect(c.resolve(s.tree.x + 0.5, s.tree.y, 0.35).hit).toBe(true);
       expect(c.resolve(s.c[0] + s.r, s.c[1], 0.35).hit).toBe(false);
       // Voitures : les files du graphe routier passent à plus de 2 m de la bordure ; passants : aucune file ne traverse l'îlot.
-      const nav = JSON.parse(readFileSync("public/data/nav/s7_9.json", "utf8")) as { road: { n: number[]; e: number[]; g: number[] }; ped: { n: number[]; e: number[]; g: number[] } };
+      const nav = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s7_9.json`, "utf8")) as { road: { n: number[]; e: number[]; g: number[] }; ped: { n: number[]; e: number[]; g: number[] } };
       const dist = (gr: { n: number[]; e: number[]; g: number[] }): number => {
         let best = Infinity;
         for (let i = 0; i < gr.e.length; i += 11) {
@@ -465,7 +466,7 @@ describe("monuments (D95)", () => {
       const gates = kinds.sites.filter((q): q is Extract<Site, { t: "gate" }> => q.t === "gate");
       for (const r of landmarkRings({ sites: gates }, () => 0)) c.addRing(r);
       for (const cell of ["s6_9", "s7_9"]) {
-        const { n, e, g } = (JSON.parse(readFileSync(`public/data/nav/${cell}.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
+        const { n, e, g } = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/${cell}.json`, "utf8")) as { ped: { n: number[]; e: number[]; g: number[] } }).ped;
         for (let i = 0; i < e.length; i += 11) {
           const [a, b, , , , , , , , p0, np] = e.slice(i, i + 11) as number[];
           const pts: [number, number][] = [[n[3 * a!]!, n[3 * a! + 1]!]];
@@ -526,7 +527,7 @@ describe("magasins d'après photo : Lidl, pharmacie et abri à chariots (D143)",
   const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
   const roofAt = (r: [number, number, number, number], x: number, y: number): number => r[0] * x + r[1] * y + r[2];
   const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
-  const cell = JSON.parse(readFileSync("public/data/nav/s7_10.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s7_10.json`, "utf8")) as { poi: number[] };
   const commerce = (): [number, number][] => {
     const out: [number, number][] = [];
     for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
@@ -676,7 +677,7 @@ describe("zone commerciale de Bellevue : But, Bricomarché, Intermarché, Jardin
   const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
   const roofAt = (r: [number, number, number, number], x: number, y: number): number => r[0] * x + r[1] * y + r[2];
   const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
-  const cell = JSON.parse(readFileSync("public/data/nav/s4_10.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s4_10.json`, "utf8")) as { poi: number[] };
   const commerce = (): [number, number][] => {
     const out: [number, number][] = [];
     for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
@@ -815,7 +816,7 @@ describe("galeries marchandes de Bellevue, GiFi, Action (D145)", () => {
   const GALLERIES = [S1, S2A, S2B, WING];
   const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
   const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
-  const cell = JSON.parse(readFileSync("public/data/nav/s4_11.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s4_11.json`, "utf8")) as { poi: number[] };
   const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { fronts: Record<string, { pois?: [number, number][] }> };
   const commerce = (): [number, number][] => {
     const out: [number, number][] = [];
@@ -992,7 +993,7 @@ describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)"
   const PIECES = [H, M, X, F];
   const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
   const compass = (f: { nx: number; ny: number }): number => ((Math.atan2(f.nx, f.ny) * 180) / Math.PI + 360) % 360;
-  const cell = JSON.parse(readFileSync("public/data/nav/s4_10.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s4_10.json`, "utf8")) as { poi: number[] };
   const commerce = (): [number, number][] => {
     const out: [number, number][] = [];
     for (let i = 0; i < cell.poi.length; i += 5) if (cell.poi[i] === 2) out.push([cell.poi[i + 1]!, cell.poi[i + 2]!]);
@@ -1086,7 +1087,7 @@ describe("Espace Aubade, Comptoir des Fers, rotonde d'entrée et Norauto (D146)"
   });
 
   it("silhouettes lointaines (D145, D146) : l'aile et les quatre volumes d'Aubade y sont, l'ancien volume de 8,4 m n'y est plus", () => {
-    const lod = (t: string): { r: number[]; x?: string }[] => JSON.parse(readFileSync(`public/data/lod/${t}.json`, "utf8"));
+    const lod = (t: string): { r: number[]; x?: string }[] => JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/${t}.json`, "utf8"));
     expect(lod("16_45").some((r) => r.x === "BATIMENT0000EXTRA0145")).toBe(true);
     const l = lod("18_43"), old = bOf(AUB).ring;
     for (const id of PIECES) expect(l.filter((r) => r.x === id).length).toBe(1);
@@ -1189,7 +1190,7 @@ describe("Lycée Bonaparte : grille d'honneur et arbres taillés (D149)", () => 
   const kinds = world.tile.kinds!;
   const MAIN = "BATIMENT0000000348853321";
   const g = kinds.buildings[MAIN]!.college!.grille!;
-  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_8.json`, "utf8")) as { poi: number[] };
   const len = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
   const ux = (g.b[0] - g.a[0]) / len, uy = (g.b[1] - g.a[1]) / len;
   const onLine = (s: number, off: number): [number, number] => [g.a[0] + ux * s - uy * off, g.a[1] + uy * s + ux * off];
@@ -1247,7 +1248,7 @@ describe("Notre-Dame : église d'après photo (D150)", () => {
   const NAVE = "BATIMENT0000000348854392", CHEVET = "BATIMENT0000000348854391";
   const nd = kinds.buildings[NAVE]!.nd!;
   const bOf = (id: string) => world.tile.buildings.find((b) => b.id === id)!;
-  const cell = JSON.parse(readFileSync("public/data/nav/s6_8.json", "utf8")) as { poi: number[] };
+  const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_8.json`, "utf8")) as { poi: number[] };
   const dist = (id: string, x: number, y: number): number => {
     const ring = bOf(id).ring;
     let d = Infinity;
@@ -1331,7 +1332,7 @@ describe("Lycée Bonaparte : lucarnes, avant-corps, inscription (D151)", () => {
 describe("Lycée Bonaparte : sols des cours et zinc des annexes (D152)", () => {
   const world = loadRealWorld();
   const kinds = world.tile.kinds!;
-  const t = JSON.parse(readFileSync("public/data/tiles/25_34.json", "utf8")) as { ground: Record<string, number[][][]> };
+  const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/25_34.json`, "utf8")) as { ground: Record<string, number[][][]> };
   const manual = JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { courts: { site: [number, number][]; courts: { at: [number, number]; class: string }[] } };
   const inRing = (r: readonly number[], x: number, y: number): boolean => {
     let inside = false;

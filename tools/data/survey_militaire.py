@@ -136,7 +136,7 @@ def report_osm():
 
 
 def tile_buildings():
-    root = c.ROOT / "public" / "data"
+    root = c.PUBLISHED_DATA
     out = []
     for t in TILES:
         f = root / "tiles" / f"{t}.json"

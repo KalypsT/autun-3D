@@ -2,9 +2,9 @@
 
 Usage : python3 tools/data/build_signs.py [--fetch]
         --fetch : complète tools/data/maxspeed.json par l'API d'OpenStreetMap (étiquette `maxspeed` des voies du graphe qui n'y sont pas encore).
-Entrées : public/data/nav/*.json (graphe routier, D40 : nœuds, arêtes, approches de panneaux), public/data/world.json (tuiles),
-          public/data/tiles/*.json (emprises des bâtiments : un panneau n'est jamais posé dedans), tools/data/maxspeed.json.
-Sorties : public/data/signs/<tuile>.json ({v, items : mobilier}) et signs/index.json ; le jeu ajoute ces panneaux au mobilier de la tuile.
+Entrées : public/immuable/<version>/data/nav/*.json (graphe routier, D40 : nœuds, arêtes, approches de panneaux), public/immuable/<version>/data/world.json (tuiles),
+          public/immuable/<version>/data/tiles/*.json (emprises des bâtiments : un panneau n'est jamais posé dedans), tools/data/maxspeed.json.
+Sorties : public/immuable/<version>/data/signs/<tuile>.json ({v, items : mobilier}) et signs/index.json ; le jeu ajoute ces panneaux au mobilier de la tuile.
 Étape autonome : elle ne touche à aucune tuile ni au graphe ; à relancer après build_nav.py.
 
 Règles (voir docs/DECISIONS.md, D295) :

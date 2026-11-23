@@ -173,7 +173,7 @@ def shore_masks(z, signed):
 
 
 class TerrainSampler:
-    """Relief fin publié (public/data/terrain/<id>.bin), lu à la demande : pour les étapes qui suivent build_coast."""
+    """Relief fin publié (public/immuable/<version>/data/terrain/<id>.bin), lu à la demande : pour les étapes qui suivent build_coast."""
 
     def __init__(self):
         self.blocks = {}

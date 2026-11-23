@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { Devanture, FacadeFiche, TileData } from "../data/types";
 import { buildDevanture } from "./devanture";
 import { MeshBuilder } from "./geometry";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D184 : Kebab Autun, Au Royaume des Fleurs (angle), Emmaüs, Tabac Presse de la Gare, hôtel du Commerce (angle), boucherie HN, Morvan Pêche. */
 const tiles = new Map<string, TileData>();
 const tile = (t: string): TileData => {
-  if (!tiles.has(t)) tiles.set(t, JSON.parse(readFileSync(`public/data/tiles/${t}.json`, "utf8")) as TileData);
+  if (!tiles.has(t)) tiles.set(t, JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${t}.json`, "utf8")) as TileData);
   return tiles.get(t)!;
 };
 const fiche = (t: string, id: string): FacadeFiche => tile(t).fiches.find((f) => f.id === `BATIMENT0000000${id}`)!;

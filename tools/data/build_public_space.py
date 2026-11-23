@@ -1,11 +1,11 @@
 """Rues, trottoirs, places et clôtures d'après le cadastre (étape M3, D94) : réécrit les sols et les clôtures des tuiles publiées.
 
 Usage : python3 tools/data/build_public_space.py [--force]
-Entrées : public/data/world.json et tiles/*.json (bâtiments, mobilier, murs), structures/ (eau), extrait OpenStreetMap complet, tronçons de
+Entrées : public/immuable/<version>/data/world.json et tiles/*.json (bâtiments, mobilier, murs), structures/ (eau), extrait OpenStreetMap complet, tronçons de
 route BD TOPO, parcelles du cadastre (Parcellaire Express), orthophoto à 0,5 m (`region_sources.py`).
 Sorties :
   tools/data/measured_widths.json   largeurs de chaussée retenues par voie (lues par streets_lib : sol et navigation voient les mêmes)
-  public/data/tiles/*.json          clés `ground` (sols vectoriels), `walls` (clôtures de parcelles ajoutées), `furniture` (lampadaires
+  public/immuable/<version>/data/tiles/*.json          clés `ground` (sols vectoriels), `walls` (clôtures de parcelles ajoutées), `furniture` (lampadaires
                                     replacés), arbres et feux recalés hors de la chaussée (roadside.py) ; le reste des tuiles est inchangé.
 Ensuite : build_map.py (images de la carte) et build_nav.py (files des passants, D40) se relancent sur ces sols.
 

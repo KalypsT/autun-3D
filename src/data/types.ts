@@ -1,5 +1,5 @@
 import type { HullData } from "../core/hulls";
-/** Formats des fichiers produits par tools/data (public/data). Coordonnées locales en mètres :
+/** Formats des fichiers produits par tools/data (public/immuable/<version>/data). Coordonnées locales en mètres :
  *  x vers l'est, y vers le nord, z vers le haut, relatif à l'altitude de référence du terrain. */
 
 /** Ce que le jeu demande au relief : l'altitude en un point et les limites du monde jouable. */
@@ -1666,7 +1666,7 @@ export interface Devanture {
  * « shopdoor » porte vitrée, « door » porte pleine grise. Abscisses `s` en mètres depuis le début du mur, altitudes `z` au-dessus du sol.
  */
 /**
- * Image collée sur le mur (D186) : `src` est un fichier de `public/decals/` (PNG à transparence : tout ce qui est transparent laisse voir le mur), étirée de
+ * Image collée sur le mur (D186) : `src` est un fichier de `public/immuable/<version>/decals/` (PNG à transparence : tout ce qui est transparent laisse voir le mur), étirée de
  * l'abscisse `s[0]` à `s[1]` du mur et de l'altitude `z[0]` à `z[1]`. `bare` : le mur n'a plus de fenêtres de la fiche sur ce tronçon (l'image les porte).
  */
 export interface Decal {

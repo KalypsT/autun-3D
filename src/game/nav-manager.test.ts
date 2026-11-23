@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { NavManager } from "./nav-manager";
+import { PUBLIC_DATA } from "../data/data-version";
 
 vi.mock("../data/load", () => ({
-  loadJson: async (name: string): Promise<unknown> => JSON.parse(readFileSync(`public/data/${name}`, "utf8")),
+  loadJson: async (name: string): Promise<unknown> => JSON.parse(readFileSync(`${PUBLIC_DATA}/${name}`, "utf8")),
 }));
 
 describe("chargement de la navigation", () => {

@@ -4,6 +4,7 @@ import { decodeNavCell, PED } from "../data/nav";
 import { navCellDistance, navCellsWanted } from "../game/nav-manager";
 import { NavGraph } from "./nav-graph";
 import { loadRealNav } from "./testing";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const { index, cells } = loadRealNav();
 const full = (): NavGraph => {
@@ -26,7 +27,7 @@ describe("décodage des données de navigation", () => {
   it("recalcule des longueurs d'arêtes égales à celles du fichier, au décimètre près", () => {
     const off: string[] = [];
     for (const c of cells) {
-      const raw = JSON.parse(readFileSync(`public/data/nav/${c.id}.json`, "utf8")) as { ped: { e: number[] } };
+      const raw = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/${c.id}.json`, "utf8")) as { ped: { e: number[] } };
       for (let i = 0; i < c.ped.edges; i++) if (Math.abs(c.ped.length[i]! - raw.ped.e[i * 11 + 7]! / 10) > 0.1) off.push(`${c.id} ${i}`);
     }
     expect(off).toEqual([]);

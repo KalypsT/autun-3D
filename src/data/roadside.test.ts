@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { TileData } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** Point dans un polygone (anneau extérieur puis trous, coordonnées aplaties), règle pair-impair. */
 function inPolygon(x: number, y: number, poly: readonly (readonly number[])[]): boolean {
@@ -18,7 +19,7 @@ function inPolygon(x: number, y: number, poly: readonly (readonly number[])[]): 
 const ROADS = ["road_asphalt", "road_sett", "road_gravel", "road_paving"];
 
 describe("bords de chaussée (tools/data/roadside.py)", () => {
-  const tiles = readdirSync("public/data/tiles").map((n) => JSON.parse(readFileSync(`public/data/tiles/${n}`, "utf8")) as TileData);
+  const tiles = readdirSync(`${PUBLIC_DATA}/tiles`).map((n) => JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${n}`, "utf8")) as TileData);
   const onRoad = (t: TileData, x: number, y: number): boolean => ROADS.some((k) => (t.ground[k] ?? []).some((p) => inPolygon(x, y, p)));
 
   it("aucun feu tricolore dans la chaussée", () => {

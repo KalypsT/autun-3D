@@ -45,6 +45,8 @@ const SHOT_WIDTH = 800;
  */
 export class UiBridge {
   paused = false;
+  /** DomoThib a mis le jeu en pause (D305) : la boucle est arrêtée, l'enregistrement automatique aussi. */
+  suspended = false;
   waypoint: Waypoint | null;
   readonly minimap: Minimap;
   readonly marker: WaypointMarker;
@@ -119,6 +121,7 @@ export class UiBridge {
         },
       },
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
+      embedded: ctx.host !== null,
     });
 
     // Les données de la carte arrivent après le démarrage : la minimap et la carte agrandie s'activent à ce moment-là.
@@ -153,7 +156,7 @@ export class UiBridge {
     });
     if (this.saveStore) {
       setInterval(() => {
-        if (!this.paused) this.save();
+        if (!this.paused && !this.suspended) this.save();
       }, AUTOSAVE_MS);
       const leave = (): void => {
         if (!this.suppress && !this.paused) this.save();
@@ -169,6 +172,14 @@ export class UiBridge {
   }
 
   // --- Pause ---------------------------------------------------------------------------------------------------------------
+
+  /** Pause et reprise demandées par DomoThib : les doigts posés sont oubliés ; à la pause, la partie est enregistrée. */
+  suspend(on: boolean): void {
+    if (on === this.suspended) return;
+    this.suspended = on;
+    this.controls.reset();
+    if (on && !this.paused) this.save();
+  }
 
   /** Échap ou P : reprend la partie depuis la carte ou le menu ; sinon met en pause (sur la carte). */
   back(): void {

@@ -1,7 +1,7 @@
 import { dataUrl, loadJson } from "../data/load";
 import type { MapImageInfo, MapIndex } from "../core/mapview";
 
-/** Formats décrits dans docs/DECISIONS.md (D33) : public/data/map/index.json, places.json et les images par kilomètre. */
+/** Formats décrits dans docs/DECISIONS.md (D33) : public/immuable/<version>/data/map/index.json, places.json et les images par kilomètre. */
 export interface PlaceCategory {
   id: string;
   label: string;

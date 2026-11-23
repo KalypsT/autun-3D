@@ -4,6 +4,7 @@ import { Colliders } from "./collision";
 import { loadRealWorld } from "./testing";
 import { MTB } from "./vehicle-specs";
 import { BIKE, CAR, createVehicle, stepVehicle, type VehicleSpec } from "./vehicle";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** Sentiers en lacets des terrils des Télots (D269) : axe (x, y, altitude du sentier), du sommet au pied. */
 const doc = JSON.parse(readFileSync("tools/data/terrils.json", "utf8")) as Record<string, unknown>;
@@ -60,7 +61,7 @@ describe("terrils des Télots (D269)", () => {
   }, 20000); // 4,3 à 4,9 s seul (six montées simulées), plus de 5 s sous la charge de toute la suite (CI de la PR #91).
 
   it("les passants : les deux sentiers sont reliés aux chemins voisins, un point de vue à chaque sommet (D270)", () => {
-    const cell = JSON.parse(readFileSync("public/data/nav/s6_12.json", "utf8")) as { ped: { n: number[]; e: number[] }; poi: number[] };
+    const cell = JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/s6_12.json`, "utf8")) as { ped: { n: number[]; e: number[] }; poi: number[] };
     const { n, e } = cell.ped;
     const nodes = n.length / 3;
     const adj: number[][] = Array.from({ length: nodes }, () => []);

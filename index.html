@@ -288,6 +288,10 @@
       .bm-credit { position: absolute; z-index: 1; left: calc(max(10px, env(safe-area-inset-left)) + 54px); bottom: 4px; font-size: 10px; color: rgba(43, 33, 24, .75); pointer-events: none; }
       .bm-hint { position: absolute; z-index: 1; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 12px; border-radius: 10px; background: rgba(43, 33, 24, .72); color: #fff8e6; font-size: 13px; white-space: nowrap; pointer-events: none; opacity: 0; }
       .bm-hint.fade { animation: hint 7s ease-out 0.3s both; }
+      /* Dans DomoThib (D305) : sa poignée occupe le coin en haut à droite (≈ 56 × 56 px) ; on y laisse la place. */
+      body.domothib .bm-menu { right: calc(max(10px, env(safe-area-inset-right)) + 58px); }
+      body.domothib .bm-filter { right: calc(max(10px, env(safe-area-inset-right)) + 162px); }
+      body.domothib #pause { padding-right: max(66px, env(safe-area-inset-right)); }
     </style>
   </head>
   <body>

@@ -4,6 +4,7 @@ import { loadRealWorld } from "../core/testing";
 import type { CollegeWing, LodBuilding } from "../data/types";
 import { MeshBuilder } from "./geometry";
 import { buildCollege } from "./monuments";
+import { PUBLIC_DATA } from "../data/data-version";
 
 /** D258 : Lycée militaire, lot 1 de docs/plans/lycee-militaire.md : volumes et toits relevés au LiDAR (§3.1), tuiles vernissées, cour d'honneur. */
 describe("Lycée militaire : volumes et toits (D258)", () => {
@@ -74,7 +75,7 @@ describe("Lycée militaire : volumes et toits (D258)", () => {
   });
 
   it("la silhouette lointaine a un prisme par aile, au faîtage mesuré", () => {
-    const lod = JSON.parse(readFileSync("public/data/lod/28_35.json", "utf8")) as LodBuilding[];
+    const lod = JSON.parse(readFileSync(`${PUBLIC_DATA}/lod/28_35.json`, "utf8")) as LodBuilding[];
     const ridges = lod.filter((q) => q.g > 35).map((q) => q.g);
     expect(ridges).toHaveLength(5);
     expect(Math.max(...ridges)).toBeCloseTo(wing("pavillon ouest").r, 0);

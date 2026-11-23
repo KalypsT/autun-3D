@@ -28,7 +28,7 @@ import config as c
 OX, OY = c.ORIGIN
 Z0 = c.ORIGIN_Z
 CACHE = c.ROOT / ".cache" / "croix"
-DATA = c.ROOT / "public" / "data"
+DATA = c.PUBLISHED_DATA
 WMS = "https://data.geopf.fr/wms-r"
 WFS = "https://data.geopf.fr/wfs/ows"
 TO_L93 = Transformer.from_crs("EPSG:4326", "EPSG:2154", always_xy=True)
@@ -41,7 +41,7 @@ PARKING = 80229518
 TAKEOFF = 1232988033  # aire de décollage FFVL
 # Emprise des relevés raster (local) : la croix, la RD 256, la route d'accès et le bord sud de la ville.
 BOX = (-1150.0, -2650.0, 450.0, -1250.0)
-# Repères de la vue (local) : lieux de la carte (public/data/map/places.json), cherchés par nom.
+# Repères de la vue (local) : lieux de la carte (public/immuable/<version>/data/map/places.json), cherchés par nom.
 VIEW_TARGETS = ("Tour des Ursulines", "Cathédrale Saint-Lazare", "Pyramide de Couhard", "Lycée militaire d'Autun", "Centre hospitalier d'Autun - Site Parpas",
                 "Porte Saint-André", "Gare routière", "Collège du Vallon")
 

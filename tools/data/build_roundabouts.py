@@ -1,6 +1,6 @@
 """Îlots des ronds-points d'après photo (D142) : bordure, pelouse bombée, massif et arbre au centre, mesurés à l'orthophoto et au LiDAR.
 
-Usage : python3 tools/data/build_roundabouts.py      (après build_kinds.py, qui réécrit public/data/kinds ; puis relancer celle-ci)
+Usage : python3 tools/data/build_roundabouts.py      (après build_kinds.py, qui réécrit public/immuable/<version>/data/kinds ; puis relancer celle-ci)
 Entrées : `roundabouts` de tools/data/manual.json (lecture des photos de l'utilisateur), orthophotographie HR (WMS, 0,25 m), modèles de
           surface et de terrain LiDAR HD de l'IGN (WMS, 0,5 m), tiles/*.json (arbres et mobilier posés dans l'îlot).
 Sortie : site `roundabout` dans kinds/<tuile>.json (créé au besoin et ajouté à l'index) ; rien d'autre. build_public_space.py (D94), qui

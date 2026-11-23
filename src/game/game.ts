@@ -140,7 +140,7 @@ export function startGame(ctx: GameContext): void {
   // La sauvegarde ne garde que x et y : un point dans l'emprise d'un bâtiment est sur son toit (D215), d'où la surface la plus haute.
   const player = createPlayer(spawn.x, spawn.y, surface, startYaw);
   // Apparence du joueur : enregistrée à part de la partie (survit à « nouvelle partie »), appliquée tout de suite.
-  const appearanceStore = new AppearanceStore();
+  const appearanceStore = new AppearanceStore(ctx.storage);
   let appearance: Recipe = appearanceStore.load();
   const model = createPlayerModel(appearance);
   scene.add(model.group);
@@ -209,8 +209,9 @@ export function startGame(ctx: GameContext): void {
   haptics.enabled = settings.values.vibration;
   const shake = new CameraShake();
   // Plein écran (et paysage) au premier appui sur le jeu, et de nouveau après en être sorti ; il faut un geste, d'où l'écoute des appuis.
+  // Dans DomoThib, c'est lui qui met le cadre du jeu en plein écran, avec sa poignée (contrat §6) : le jeu ne le demande pas.
   const enterFullscreen = (): void => {
-    if (!settings.values.fullscreen || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    if (ctx.host || !settings.values.fullscreen || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
     document.documentElement.requestFullscreen().then(async () => {
       try {
         await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
@@ -1161,7 +1162,7 @@ export function startGame(ctx: GameContext): void {
   };
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
-  const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(), () => ({
+  const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
     x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(),
   }), saved, {
     get: () => appearance,
@@ -1245,10 +1246,15 @@ export function startGame(ctx: GameContext): void {
   let acc = 0;
   let pausedRender = 0;
   const limiter = new FrameLimiter();
+  /** Image demandée au navigateur ; une seule à la fois (la reprise après une pause de DomoThib en redemande une). */
+  let rafId = 0;
+  const schedule = (): void => {
+    rafId = requestAnimationFrame(frame);
+  };
   const frame = (now: number): void => {
     // Limite d'images par seconde (D221) : un appel arrivé trop tôt est sauté, sans rien simuler ni dessiner.
     if (!limiter.ready(now, settings.values.fps)) {
-      requestAnimationFrame(frame);
+      schedule();
       return;
     }
     // Jamais négatif : l'horodatage de la première image peut précéder `last` (initialisation longue) ; un pas négatif faisait grimper la progression de l'arrestation sans gendarme (trouvé en J5-0).
@@ -1269,7 +1275,7 @@ export function startGame(ctx: GameContext): void {
         placeSun(player.x, player.y, player.z);
         renderer.render(scene, camera);
       }
-      requestAnimationFrame(frame);
+      schedule();
       return;
     }
     const hornPressed = input.horn && !hornHeld;
@@ -1808,9 +1814,26 @@ export function startGame(ctx: GameContext): void {
 
     renderer.render(scene, camera);
     meter.tick(dt);
-    requestAnimationFrame(frame);
+    schedule();
   };
-  requestAnimationFrame(frame);
+  schedule();
+  // Pause de DomoThib (D305 ; menu de sa poignée, arrière-plan, mauvais sens de l'écran, veille, conflit de sauvegarde, départ) :
+  // plus aucune image, ni son, ni temps de jeu ; la partie est enregistrée. La pause du jeu lui-même (carte, menu) n'est pas touchée :
+  // à la reprise, on retrouve l'écran qu'on avait laissé.
+  ctx.host?.onPause(() => {
+    if (ui.suspended) return;
+    cancelAnimationFrame(rafId);
+    ui.suspend(true);
+    audioSys.setPaused(true);
+  });
+  ctx.host?.onResume(() => {
+    if (!ui.suspended) return;
+    ui.suspend(false);
+    // Le temps passé en pause ne compte pas : la première image repart d'ici (le son reprend avec elle, sauf si le jeu est en pause).
+    last = performance.now();
+    cancelAnimationFrame(rafId);
+    schedule();
+  });
   ctx.ready({
     player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
     /** Captures et mesures : redessine la scène telle quelle. */

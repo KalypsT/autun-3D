@@ -9,6 +9,7 @@ import { setShutterTarget, shutterTarget } from "./shutter-sink";
 import { scheduleOf } from "../core/opening";
 import * as THREE from "three";
 import type { Building, BuildingKind, FacadeFiche, Furniture, HeightField, RoofMaterial, TileData } from "../data/types";
+import { immutableUrl } from "../data/data-version";
 import { planFacadesSteps, type Placement } from "./facades";
 import { finish, MeshBuilder, toThree, UvMeshBuilder, type Steps, type Vec3 } from "./geometry";
 import { buildGroundSteps } from "./ground";
@@ -182,11 +183,11 @@ export class StyleResources {
   readonly signAtlas = new SignAtlas();
   readonly signMat = this.lit({ map: this.signAtlas.texture, transparent: true, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   private readonly decalMats = new Map<string, THREE.Material>();
-  /** Matière d'une image collée sur un mur (D186) : fichier de `public/decals/`, transparence découpée ; posée à 9 cm du mur, derrière les plaques de la devanture (pas de décalage de profondeur). */
+  /** Matière d'une image collée sur un mur (D186) : fichier de `public/immuable/<version>/decals/` (D305), transparence découpée ; posée à 9 cm du mur, derrière les plaques de la devanture (pas de décalage de profondeur). */
   decalMat(src: string): THREE.Material {
     let m = this.decalMats.get(src);
     if (!m) {
-      const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}decals/${src}`);
+      const tex = new THREE.TextureLoader().load(immutableUrl(import.meta.env.BASE_URL, `decals/${src}`));
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
       m = this.lit({ map: tex, transparent: true, alphaTest: 0.5 });

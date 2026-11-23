@@ -10,7 +10,7 @@ Sans photo (Panoramax est vide sur la zone), toutes les fiches sont « estimées
   - tirages (couleurs, rythme, volets) déterministes : graine = identifiant du bâtiment.
 Quand des photos existeront, on remplace la fiche (status « observed » + références).
 
-Sortie : public/data/facades.json
+Sortie : public/immuable/<version>/data/facades.json
 """
 
 import json

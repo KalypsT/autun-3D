@@ -1,6 +1,6 @@
 """Place du Champ de Mars (D155) : tilleuls taillés en rideau et kiosque à musique, mesurés au LiDAR ; monument aux morts (D227).
 
-Usage : python3 tools/data/build_square.py      (après build_kinds.py, qui réécrit public/data/kinds, et build_monuments.py ; puis relancer celle-ci)
+Usage : python3 tools/data/build_square.py      (après build_kinds.py, qui réécrit public/immuable/<version>/data/kinds, et build_monuments.py ; puis relancer celle-ci)
 Entrées : `square` de tools/data/manual.json (points des rideaux et photos), tiles/*.json (bâtiments, arbres), modèles de surface et de terrain LiDAR
           HD de l'IGN (WMS, 0,5 m, gardés dans .cache/shared/raw/monuments).
 Sorties : sites `curtain` (un par rideau) et `bandstand` (kiosque) dans kinds/<tuile>.json ; bâtiment BD TOPO du kiosque masqué (`hidden`) et sa silhouette

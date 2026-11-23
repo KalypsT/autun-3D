@@ -7,6 +7,7 @@ import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, DROP_LIFE, HEAL_RESPAWN, HEAL_SITE
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
+import { PUBLIC_DATA } from "../data/data-version";
 
 describe("armes au sol (J5-3)", () => {
   it("les caches sont dans la zone, sur un trottoir ou une file piétonne, dégagées sur 80 cm, et couvrent toutes les armes de mêlée et à feu", () => {
@@ -137,7 +138,7 @@ describe("croix de pharmacie (D159)", () => {
     expect(HEAL_SITES).toHaveLength(7);
     expect(new Set(HEAL_SITES.map((c) => `${c.x},${c.y}`)).size).toBe(HEAL_SITES.length);
     // Chaque croix est près du lieu « pharmacie » de la carte (la porte est à moins de 8 m du point d'OpenStreetMap, sauf Saint-Pan).
-    const places = JSON.parse(readFileSync("public/data/map/places.json", "utf8")) as { places: { cat: string; name: string; x: number; y: number }[] };
+    const places = JSON.parse(readFileSync(`${PUBLIC_DATA}/map/places.json`, "utf8")) as { places: { cat: string; name: string; x: number; y: number }[] };
     for (const c of HEAL_SITES.filter((h) => !h.label.startsWith("Centre hospitalier"))) {
       const near = places.places.filter((q) => q.cat === "pharmacie").some((q) => Math.hypot(q.x - c.x, q.y - c.y) < 12);
       expect(near, c.label).toBe(true);

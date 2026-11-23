@@ -5,6 +5,7 @@ import { findStalls } from "./parking";
 import { gateOpen } from "./school-gate";
 import { crowdWeek, inMarket, marketCenter, marketLevel, massPeal, schoolOpen, trafficWeek } from "./week";
 import { CATHEDRAL } from "./sound-model";
+import { PUBLIC_DATA } from "../data/data-version";
 
 const MON = 0, WED = 2, THU = 3, FRI = 4, SAT = 5, SUN = 6;
 
@@ -23,8 +24,8 @@ describe("rythme de la semaine (D201)", () => {
     expect(inMarket(cx, cy)).toBe(true);
     expect(inMarket(0, 0)).toBe(false);
     let n = 0;
-    for (const name of readdirSync("public/data/tiles")) {
-      const t = JSON.parse(readFileSync(`public/data/tiles/${name}`, "utf8")) as TileData & { ground?: { marks?: number[][][] } };
+    for (const name of readdirSync(`${PUBLIC_DATA}/tiles`)) {
+      const t = JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${name}`, "utf8")) as TileData & { ground?: { marks?: number[][][] } };
       for (const s of findStalls(t.ground?.marks ?? [])) if (inMarket(s.x, s.y)) n++;
     }
     expect(n).toBeGreaterThan(60);

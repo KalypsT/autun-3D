@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MeshBuilder } from "../render/geometry";
 import { buildReeds, reedTufts } from "../render/reeds";
 import type { HeightField, TileData, TileStructures } from "./types";
+import { PUBLIC_DATA } from "./data-version";
 
 /** D244 : le chemin du tour du plan d'eau du Vallon (lot 1 de docs/plans/vallon-lac.md), posé par tools/data/build_vallon_path.py. */
 type Path = { name: string; w: number; p: number[] };
@@ -11,9 +12,9 @@ const spec = (JSON.parse(readFileSync("tools/data/manual.json", "utf8")) as { va
   noReeds: { circles: [number, number, number][]; boxes: [number, number, number, number][] };
 } }).vallonPath;
 const IDS = ["30_35", "31_35", "32_35", "30_36", "31_36", "32_36", "30_37", "31_37", "32_37", "31_34"];
-const tiles = IDS.map((id) => [id, JSON.parse(readFileSync(`public/data/tiles/${id}.json`, "utf8")) as TileData] as const);
-const structures = IDS.filter((id) => existsSync(`public/data/structures/${id}.json`))
-  .map((id) => JSON.parse(readFileSync(`public/data/structures/${id}.json`, "utf8")) as TileStructures);
+const tiles = IDS.map((id) => [id, JSON.parse(readFileSync(`${PUBLIC_DATA}/tiles/${id}.json`, "utf8")) as TileData] as const);
+const structures = IDS.filter((id) => existsSync(`${PUBLIC_DATA}/structures/${id}.json`))
+  .map((id) => JSON.parse(readFileSync(`${PUBLIC_DATA}/structures/${id}.json`, "utf8")) as TileStructures);
 
 type P = [number, number];
 const pts = (flat: readonly number[]): P[] => flat.flatMap((v, i) => (i % 2 === 0 ? [[v, flat[i + 1]!] as P] : []));
@@ -145,7 +146,7 @@ describe("Chemin du tour du plan d'eau du Vallon (D244)", () => {
     const widths = new Map<number, number>([[223427553, 32], [1525431705, 32], [1548131445, 20], [842375498, 20]]);
     let n = 0;
     for (const id of ["s7_8", "s7_9", "s8_8", "s8_9"]) {
-      const e = (JSON.parse(readFileSync(`public/data/nav/${id}.json`, "utf8")) as { ped: { e: number[] } }).ped.e;
+      const e = (JSON.parse(readFileSync(`${PUBLIC_DATA}/nav/${id}.json`, "utf8")) as { ped: { e: number[] } }).ped.e;
       for (let i = 0; i < e.length; i += 11) {
         const w = widths.get(e[i + 8]!);
         if (e[i + 2] === 5 && w !== undefined) {
