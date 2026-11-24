@@ -7260,3 +7260,23 @@ l'entrée gardée.
 
 **À faire côté DomoThib** : ne donner la durée d'un an qu'aux réponses réussies (200, 304) dans `games.conf`, et `no-store` aux
 erreurs ; sans cela, tout jeu qui lit ses fichiers sans nouvel essai garde ses erreurs un an.
+
+## 2026-11-24 — D309. Plaisir de jeu, lot 1-1 : le sprint
+
+**Contexte** : chantier « plaisir de jeu » (`docs/ROADMAP.md`, PJ). L'utilisateur demande de « pouvoir courir à pied ». La course
+existait (joystick poussé à plus de 85 % : 5 m/s, 18 km/h ; Maj au clavier) mais passait inaperçue : seuil franchi sans le savoir,
+rien à l'écran, et 5 m/s n'est qu'un footing.
+
+**Choix** (validés par l'utilisateur) : un **sprint** en plus de la course, sans jauge d'endurance pour l'instant.
+- `SPRINT_SPEED` = 7 m/s (25 km/h). Bouton rond « ≫ » au-dessus du bouton Sauter, touche F au clavier. Le bouton est **à bascule**
+  (un appui l'allume en ocre) et non à tenir : le pouce droit reste libre pour regarder. Le sprint dure tant qu'on avance ; lâcher
+  le joystick (ou toutes les touches de direction) après avoir sprinté, ou toucher à nouveau le bouton, l'arrête. Un appui sur le
+  bouton avant de poser le pouce gauche est gardé.
+- En sprint, la poussée du joystick ne compte plus : seule la direction (pleine vitesse même à mi-course, plus de seuil à chercher).
+- Pas de sprint en visée (le bouton disparaît, la visée l'arrête), en frappant ou juste après un tir ; à la nage, il vaut le crawl.
+- Saut long depuis un sprint : élan × 1,12 (≈ 7,8 m/s au lieu de 7,4), un peu plus loin qu'en courant.
+- Champ de vision : jusqu'à +8° à 7 m/s (+4° en course, inchangé). Pose : au-delà de 5,4 m/s, foulée (+22 %) et genoux (+18 %)
+  plus amples, bras plus vigoureux, buste plus penché ; la cadence reste celle de `cycleLength` (≈ 4,4 pas/s à 7 m/s).
+
+**Vérifié** : `tools/ui.sh <dossier> sprint` (bouton, pouce gauche à mi-course, 7 m/s mesurés, bouton éteint après le lâcher) ;
+test de `player.test.ts`. **À juger sur le téléphone** : place du bouton, vitesse, pose.

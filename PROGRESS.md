@@ -2196,3 +2196,11 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les journaux du VPS l'ont montré : le serveur ne recevait même plus la demande de l'image. Une erreur du premier lancement avait été gardée par le navigateur pour un an (l'hôte des jeux marque tout ce qui est sous `immuable/` comme gardable un an, erreurs comprises).
 - Le jeu, quand un fichier échoue, le redemande maintenant au serveur au lieu de relire le cache : l'erreur gardée disparaît d'elle-même au prochain lancement.
 - À faire de ton côté : déployer, relancer depuis DomoThib. Côté DomoThib, l'hôte ne devrait garder un an que les réponses réussies (correction à faire dans `games.conf`).
+
+**Plaisir de jeu, lot 1-1 : le sprint (24 novembre 2026)** (D309)
+- La course existait déjà (joystick poussé presque à fond, Maj au clavier), mais elle se remarquait peu. Il y a maintenant un vrai **sprint** à 25 km/h : bouton rond « ≫ » au-dessus du bouton Sauter, ou F au clavier.
+- Un appui l'allume (il devient ocre) : on sprinte dans la direction du joystick, même poussé à moitié, et le pouce droit reste libre pour regarder. Lâcher le joystick, ou toucher à nouveau le bouton, l'arrête.
+- En sprint, la caméra s'élargit un peu, le personnage allonge la foulée et se penche ; un saut depuis un sprint porte un peu plus loin.
+- Pas de jauge d'endurance pour l'instant (à voir plus tard).
+- À faire de ton côté : sprinter dans le centre et dire si le bouton est bien placé, si la vitesse te plaît.
+![Sprint](docs/captures/d309-sprint.jpg)

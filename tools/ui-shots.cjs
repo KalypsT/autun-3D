@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -58,6 +58,25 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1500);
     await shot("j1-hud-voiture");
     await c2.close();
+  }
+
+  if (want("sprint")) {
+    // Sprint (PJ 1-1) : un appui sur le bouton, puis le pouce gauche poussé à moitié : pleine vitesse quand même.
+    const ctx = await open("h=11");
+    await sleep(1500);
+    const b = await page.locator("#sprint").boundingBox();
+    await touch("touchStart", [[b.x + b.width / 2, b.y + b.height / 2]]);
+    await touch("touchEnd", []);
+    await touch("touchStart", [[200, 300]]);
+    await touch("touchMove", [[200, 270]]);
+    await sleep(4000);
+    const speed = await page.evaluate(() => window.__autun.player?.speed ?? null);
+    console.log("vitesse en sprint (m/s) :", speed);
+    await shot("pj1-sprint");
+    await touch("touchEnd", []);
+    await sleep(1500);
+    console.log("bouton après lâcher :", await page.evaluate(() => document.getElementById("sprint").className));
+    await ctx.close();
   }
 
   if (want("wanted")) {

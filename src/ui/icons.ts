@@ -27,6 +27,7 @@ const PATHS = {
   beacon: `<path ${STROKE} d="M7 17v-4.5a5 5 0 0 1 10 0V17"/><path ${STROKE} d="M5 17h14v3H5z"/><path ${STROKE} d="M12 3v2.2M5 6l1.6 1.6M19 6l-1.6 1.6"/>`,
   bell: `<path ${STROKE} d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path ${STROKE} d="M10 20.5a2 2 0 0 0 4 0"/>`,
   exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
+  sprint: `<path ${STROKE} stroke-width="2.4" d="M8 6l6 6-6 6M14 6l6 6-6 6"/><path ${STROKE} d="M2 9h3M1 12h3M2 15h3"/>`,
   jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
   reload: `<path ${STROKE} stroke-width="2.4" d="M20 12a8 8 0 1 1-2.3-5.7"/><path ${STROKE} stroke-width="2.4" d="M20 4v4h-4"/>`,
 } as const;

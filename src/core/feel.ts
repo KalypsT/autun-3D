@@ -8,12 +8,12 @@
 export const BASE_FOV = 62;
 
 /**
- * Champ de vision (degrés) selon la vitesse (m/s) : à pied, un peu plus large en courant ; au volant, il s'ouvre de plus en plus
+ * Champ de vision (degrés) selon la vitesse (m/s) : à pied, un peu plus large en courant, nettement en sprint (+8° à 7 m/s, PJ 1-1) ; au volant, il s'ouvre de plus en plus
  * lentement (+6° à 50 km/h, +10° à 90 km/h, +15° à 200 km/h), sans jamais dépasser +18°.
  */
 export function speedFov(speed: number, driving: boolean): number {
   const v = Math.abs(speed);
-  if (!driving) return BASE_FOV + Math.min(v * 0.8, 4);
+  if (!driving) return BASE_FOV + Math.min(v * 0.8, 4) + Math.min(Math.max(v - 5.2, 0) * 2.4, 4);
   return BASE_FOV + 18 * (1 - Math.exp(-v / 30));
 }
 

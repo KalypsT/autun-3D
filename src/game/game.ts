@@ -172,6 +172,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("attack"),
     document.getElementById("jump"),
     document.getElementById("aim"),
+    document.getElementById("sprint"),
   );
   if (params.has("debug")) debugEl.style.display = "block";
 
@@ -405,6 +406,7 @@ export function startGame(ctx: GameContext): void {
   document.getElementById("brake")!.innerHTML = `${icon("brake")}<span>Frein</span>`;
   document.getElementById("handbrake")!.innerHTML = `${icon("handbrake")}<span>Frein<br>à main</span>`;
   document.getElementById("jump")!.innerHTML = icon("jump");
+  document.getElementById("sprint")!.innerHTML = icon("sprint");
   const speedo = new Speedo(document.getElementById("speedo")!);
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
@@ -1309,6 +1311,7 @@ export function startGame(ctx: GameContext): void {
     if (!canAim) aiming = false;
     if (controls.aiming !== aiming) {
       controls.aiming = aiming;
+      if (aiming) controls.stopSprint();
       document.body.classList.toggle("aiming", aiming);
     }
     // Lunette (D207) : la rotation au doigt est divisée par le grossissement (le réticule bouge à l'écran comme sans lunette).
@@ -1378,7 +1381,7 @@ export function startGame(ctx: GameContext): void {
             player.y = r.y;
           }
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
           jumpNow = false;
         }
       }

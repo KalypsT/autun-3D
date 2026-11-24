@@ -3,7 +3,7 @@ import { Colliders } from "./collision";
 import { Terrain } from "../data/terrain";
 import type { TerrainMeta } from "../data/types";
 import { dropDamage } from "./health";
-import { createPlayer, JUMP_HEIGHT, RUN_SPEED, SLIDE_DECEL, slidePlayer, stepPlayer, WALK_SPEED } from "./player";
+import { createPlayer, JUMP_HEIGHT, LONG_JUMP_SPEED, RUN_SPEED, SLIDE_DECEL, slidePlayer, SPRINT_SPEED, stepPlayer, WALK_SPEED } from "./player";
 import { flatTerrain } from "./testing";
 
 const DT = 1 / 60;
@@ -36,6 +36,15 @@ describe("stepPlayer", () => {
     const p = createPlayer(0, 0, terrain);
     run(120, () => stepPlayer(p, { forward: 1, right: 0, run: true }, 0, DT, terrain, new Colliders()));
     expect(p.speed).toBeCloseTo(RUN_SPEED, 1);
+  });
+
+  it("sprinte plus vite que la course (PJ 1-1), et saute plus loin qu'en courant", () => {
+    const p = createPlayer(0, 0, terrain);
+    run(120, () => stepPlayer(p, { forward: 1, right: 0, run: false, sprint: true }, 0, DT, terrain, new Colliders()));
+    expect(p.speed).toBeCloseTo(SPRINT_SPEED, 1);
+    expect(SPRINT_SPEED).toBeGreaterThan(RUN_SPEED + 1.5);
+    stepPlayer(p, { forward: 1, right: 0, run: false, sprint: true, jump: true }, 0, DT, terrain, new Colliders());
+    expect(Math.hypot(p.vx, p.vy)).toBeGreaterThan(LONG_JUMP_SPEED);
   });
 
   it("une demi-poussée donne une demi-vitesse", () => {
