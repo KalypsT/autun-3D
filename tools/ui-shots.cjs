@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -107,6 +107,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(2500);
     await shot("pj1-guide-carte");
     await c2.close();
+  }
+
+  if (want("feats")) {
+    // Sensations (D311) : la voiture lancée en l'air à 90 km/h depuis 3 m ; ralenti pendant le vol, bandeau à la réception. Puis le carnet (D312).
+    const ctx = await open("ride=voiture&h=11");
+    await sleep(1500);
+    await page.evaluate(() => {
+      const s = window.__autun.riding().state;
+      s.speed = 25; s.vx = Math.sin(s.heading) * 25; s.vy = Math.cos(s.heading) * 25; s.z += 3; s.air = 3; s.vz = 4;
+    });
+    // Vitesse du temps pendant le vol (rendu logiciel lent : on la relève à chaque image).
+    const minScale = await page.evaluate(() => new Promise((res) => {
+      let min = 1, n = 0;
+      const f = () => { min = Math.min(min, window.__autun.timeScale.current); if (++n < 400 && !document.getElementById("feat").classList.contains("show")) requestAnimationFrame(f); else res(min); };
+      requestAnimationFrame(f);
+    }));
+    console.log("saut :", await page.evaluate(() => ({ text: document.getElementById("feat").textContent, record: window.__autun.records.values.jump })), "temps le plus lent :", minScale);
+    // Le bandeau ne dure que 2,6 s : on le rejoue, animation figée, pour la capture.
+    await page.addStyleTag({ content: "#feat.show { animation: none !important; }" });
+    await page.evaluate(() => window.__autun.showFeat("Saut 46 m · record !"));
+    await sleep(300);
+    await shot("pj1-saut-bandeau");
+    await pauseMenu();
+    await clickText("Records");
+    await sleep(500);
+    await shot("pj1-records");
+    await ctx.close();
   }
 
   if (want("wanted")) {

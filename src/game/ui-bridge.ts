@@ -17,6 +17,7 @@ import type { Controls } from "../input/controls";
 import type { GameContext } from "./context";
 import type { Fleet } from "./vehicles";
 import { RouteGuide } from "./route-guide";
+import { parseRecords, type RecordValues } from "../core/records";
 
 /** Ce que l'interface doit savoir du jeu à un instant donné. */
 export interface GameState {
@@ -90,6 +91,7 @@ export class UiBridge {
     private readonly state: () => GameState,
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
+    private readonly records: () => RecordValues = () => parseRecords(null),
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -124,6 +126,7 @@ export class UiBridge {
           return self.previewHandle();
         },
       },
+      records: () => this.records(),
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });

@@ -2213,3 +2213,21 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![À pied](docs/captures/d310-guide-pied.jpg)
 ![En voiture](docs/captures/d310-guide-voiture.jpg)
 ![Carte agrandie](docs/captures/d310-guide-carte.jpg)
+
+**Plaisir de jeu, lot 1-3 : sensations (24 novembre 2026)** (D311)
+- **Grands sauts en véhicule** : quand un saut s'annonce long (15 m et plus), le temps ralentit pendant le vol, puis un bandeau s'affiche à la réception : « Saut 46 m ». Le ralenti se coupe dans les réglages (« Ralenti »).
+- **Coups qui portent** : le temps se fige une fraction de seconde quand un coup de poing, de couteau ou de batte touche. Ça donne du poids aux coups.
+- **Dérapages** en voiture (frein à main) : mesurés en mètres, avec un bandeau « Dérapage 42 m » à partir de 12 m.
+- À faire de ton côté : sauter depuis les lacets des terrils ou une rampe de parking, faire déraper une voiture, et dire si le ralenti est trop long ou trop fort.
+![Saut](docs/captures/d311-saut.jpg)
+
+**Plaisir de jeu, lot 1-4 : carnet de records (24 novembre 2026)** (D312)
+- Nouvel écran **🏆 Records** dans le menu pause : saut le plus long, vitesse maximale, roue arrière, roue avant, dérapage, temps tenu à 3 et à 5 étoiles, distances à pied et en véhicule.
+- Les records sont gardés quand tu recommences une partie ; dans DomoThib, ils suivent ton compte comme ta partie.
+- Quand tu bats un record, le bandeau l'annonce : « · record ! ».
+![Records](docs/captures/d312-records.jpg)
+
+**Plaisir de jeu, lot 1-5 : sons des pas et des passants (24 novembre 2026)** (D313)
+- Les pas changent avec le sol : crissement sur le gravier et le schiste des terrils, froissement dans l'herbe, claquement sur les pavés, bruit habituel sur l'enrobé et les trottoirs.
+- Dans une rue animée, on entend maintenant le murmure des passants (comme au marché), plus discret en voiture.
+- À faire de ton côté : te promener avec le son (place du Champ de Mars, chemin du Vallon, pelouses, terrils) et dire ce que tu en penses. La page `?sounds` permet d'écouter chaque pas.

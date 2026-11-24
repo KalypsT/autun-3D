@@ -139,6 +139,12 @@
       #stunt { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 8px); top: 178px; z-index: 4; pointer-events: none; padding: 4px 10px; border-radius: 12px;
                background: rgba(27, 31, 39, .78); border: 1.5px solid var(--ochre); color: var(--ochre); font: 800 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
       #stunt:empty { display: none; }
+      /* Exploit (D311) : « Saut 34 m », « Dérapage 42 m » au centre, sous le bandeau d'état, en gros caractères d'affiche (pas de capitales forcées : « 46 M » se lirait mal). */
+      #feat { position: fixed; left: 0; right: 0; top: 84px; z-index: 5; display: none; pointer-events: none; text-align: center; color: var(--cream);
+              font: italic 900 32px/1 system-ui, sans-serif; letter-spacing: .02em;
+              text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+      body.game #feat.show { display: block; animation: feat 2.6s ease-out both; }
+      @keyframes feat { 0% { opacity: 0; transform: scale(1.6); } 8% { opacity: 1; transform: scale(.94); } 14%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
       [hidden] { display: none !important; }
       /* Interface en jeu (D102) : minimap et horloge en haut à gauche (un appui sur la minimap ouvre la carte, qui est l'écran de pause),
          bandeau santé / arme / recherche en haut au centre. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */
@@ -209,7 +215,7 @@
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
       body.paused #minimap, body.paused #clock, body.paused #calendar, body.paused #status, body.paused #hurt, body.paused #speedlines,
-      body.paused #action, body.paused #attack, body.paused #jump, body.paused #sprint, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #scope, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
+      body.paused #action, body.paused #attack, body.paused #jump, body.paused #sprint, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #scope, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #feat, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
                 background: rgba(217, 71, 43, .92); color: #fff8e6; pointer-events: none; text-align: center; box-shadow: 0 6px 0 rgba(27, 31, 39, .55); }
@@ -221,9 +227,9 @@
       /* Menu pause */
       #pause { position: fixed; inset: 0; z-index: 20; display: flex; background: rgba(20, 17, 14, .9); color: #fff8e6; font: 15px system-ui, sans-serif;
                padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); gap: 14px; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
-      .pm-side { width: 210px; flex: none; display: flex; flex-direction: column; gap: 6px; }
-      .pm-title { font: 700 22px system-ui, sans-serif; padding: 4px 6px 6px; letter-spacing: .02em; }
-      .pm-item { text-align: left; padding: 0 14px; height: 44px; flex: none; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .25); background: rgba(255, 248, 230, .08); color: inherit; font: 600 16px system-ui, sans-serif; }
+      .pm-side { width: 210px; flex: none; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
+      .pm-title { font: 700 22px system-ui, sans-serif; padding: 2px 6px 4px; letter-spacing: .02em; }
+      .pm-item { text-align: left; padding: 0 14px; height: 40px; flex: none; border-radius: 12px; border: 1px solid rgba(255, 248, 230, .25); background: rgba(255, 248, 230, .08); color: inherit; font: 600 16px system-ui, sans-serif; }
       .pm-item.on { background: rgba(217, 71, 43, .85); border-color: #fff8e6; }
       .pm-content { flex: 1; overflow-y: auto; padding: 2px 6px 12px 2px; -webkit-overflow-scrolling: touch; }
       .pm-content h2 { margin: 2px 0 10px; font: 700 20px system-ui, sans-serif; }
@@ -233,6 +239,7 @@
       .pm-build { margin-top: 16px; }
       .pm-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 248, 230, .14); }
       .pm-row.locked { opacity: .55; }
+      .pm-record { font-variant-numeric: tabular-nums; color: var(--ochre); white-space: nowrap; }
       .pm-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .pm-label small, .pm-note small, .pm-form-side small { opacity: .65; font-size: 12px; line-height: 1.3; }
       .pm-seg { display: flex; flex: none; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 248, 230, .35); }
@@ -311,6 +318,7 @@
     <div id="hint">Pouce gauche : marcher (à fond : courir, bouton ≫ : sprinter) · glisser à droite : regarder · toucher la minimap : carte et pause</div>
     <div id="pedals"><div id="horn" class="pedal" role="button" aria-label="Klaxon"></div><div id="handbrake" class="pedal" role="button" aria-label="Frein à main"></div><div id="brake" class="pedal" role="button" aria-label="Frein"></div><div id="gas" class="pedal" role="button" aria-label="Accélérer"></div></div>
     <div id="stunt" aria-live="polite"></div>
+    <div id="feat" aria-live="polite"></div>
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="threats"><div class="threat"></div><div class="threat"></div><div class="threat"></div><div class="threat"></div></div>

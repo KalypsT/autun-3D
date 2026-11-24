@@ -7309,3 +7309,54 @@ flèches dans le monde.
 
 **Vérifié** : `src/core/guide.test.ts` (vraies données : quatre trajets en voiture, deux à pied, demi-tour, progression) ;
 `tools/ui.sh <dossier> guide`. **À juger sur le téléphone** : lisibilité du trait, choix des itinéraires.
+
+## 2026-11-24 — D311. Plaisir de jeu, lot 1-3 : ralenti des grands sauts, arrêt sur image des coups, sauts et dérapages mesurés
+
+**Contexte** : chantier PJ, phase 1. Donner du poids aux actions sans toucher à la physique.
+
+**Choix** (`src/core/feats.ts`, logique pure)
+- **Temps du jeu** (`TimeScale`) : la boucle mesure le temps réel (`realDt`), puis tout ce qui suit (simulation à pas fixe, passants,
+  circulation, horloge, caméra) avance de `dt = realDt × vitesse du temps`. Les sons gardent leur hauteur (pas de son ralenti).
+- **Arrêt sur image** : un coup de mêlée qui porte fige le temps 60 ms (vitesse 0,05). Pas pour les armes à feu (le tir automatique
+  enchaînerait les arrêts).
+- **Ralenti des grands sauts en véhicule** (`JumpTracker`) : pendant le vol, on prévoit la réception (chute libre depuis la hauteur
+  au-dessus du sol, gravité des véhicules 7,4 m/s²). Si le saut prévu fait au moins 15 m et qu'on est à plus de 1,2 m du sol, le temps
+  passe à 0,35 (entrée en un quart de seconde, sortie un peu plus douce), au plus 1,1 s de temps réel par saut. Réglage « Ralenti »
+  (Oui par défaut) dans le menu.
+- **Bandeau d'exploit** au centre, sous le bandeau d'état : « Saut 46 m », « Dérapage 42 m », avec « · record ! » quand un ancien
+  record est battu (D312). Un saut compte à partir de 15 m (décollage à réception, à l'horizontale), un dérapage à partir de 12 m.
+- **Dérapage** (`DriftTracker`, voitures seulement) : angle entre le cap et la vitesse au-delà de 0,3 rad (17°), au-dessus de 8 m/s,
+  roues au sol ; il dure tant que l'angle reste au-delà de 0,16 rad, avec 0,45 s de tolérance (une correction brève ne le coupe pas) ;
+  un tête-à-queue (plus de 110°) ou un décollage le termine. Mesuré en mètres parcourus.
+
+**Vérifié** : `src/core/feats.test.ts` ; `tools/ui.sh <dossier> feats` (voiture lancée à 90 km/h depuis 3 m : temps à 0,35 pendant
+le vol, « Saut 46 m » à la réception, record enregistré). **À juger sur le téléphone** : durée et force du ralenti, arrêt sur image.
+
+## 2026-11-24 — D312. Plaisir de jeu, lot 1-4 : le carnet de records
+
+**Choix** (`src/core/records.ts`)
+- Neuf records : saut le plus long (véhicule), vitesse maximale, roue arrière et roue avant les plus longues, dérapage le plus long,
+  temps tenu sans interruption à 3 étoiles ou plus et à 5 étoiles, distances totales à pied et en véhicule.
+- **Enregistrés à part de la partie** (clé `autun3d.records`, même stockage que la partie : `localStorage`, ou le serveur dans
+  DomoThib) : « Nouvelle partie » ne les efface pas. Écriture au plus toutes les 5 s, et à la pause.
+- « · record ! » ne s'annonce que si un ancien record est battu (le premier exploit n'a rien à battre). La roue arrière et la roue
+  avant (D98) partent des records du carnet.
+- Écran « 🏆 Records » dans le menu pause (entre « Lieux notés » et « Sauvegarde ») ; les boutons du menu passent de 44 à 40 px de haut
+  pour que les huit entrées tiennent sur un téléphone en paysage.
+- Les paramètres d'essai qui coupent la sauvegarde (`?at=`, `?ride=`…) coupent aussi l'écriture du carnet.
+
+## 2026-11-24 — D313. Plaisir de jeu, lot 1-5 : pas selon le sol, murmure des passants
+
+**Choix**
+- **Sol sous les pieds** (`src/core/footing.ts`) : d'après les couches de sol des tuiles (les polygones du rendu) : herbe (pelouses,
+  terrains, fairways, greens et départs du golf), gravier (allées gravillonnées, schiste des terrils, chemin du Vallon, bunkers),
+  pavés (pavés, granit, pavés de béton, brique, ardoise) ; partout ailleurs (enrobé, trottoir, dallage, chaussée), sol dur. Un chemin
+  posé sur une pelouse l'emporte. Relu tous les 1,5 m ; sur un toit ou un pont (plus de 0,6 m au-dessus du relief), sol dur.
+- **Quatre bruits de pas** (`synth.ts`) : sol dur inchangé ; pavés, talon plus net et claquement aigu ; gravier, crissement de quatre
+  grains ; herbe, froissement doux. Page d'écoute `?sounds` : « Pas sur les pavés », « … sur le gravier », « … dans l'herbe ».
+  Niveaux hors ligne (`tools/sounds.sh`) : crête −11 à −15 dB, moyenne −38 à −48 dB (l'herbe la plus discrète).
+- **Murmure des passants** : le brouhaha du marché (D201) sert aussi aux passants proches : nombre de passants à moins de 20 m
+  (relu toutes les 0,5 s), rien jusqu'à 2, plein (0,65) vers 16 ; étouffé en voiture (× 0,35). Le plus fort du marché et des passants
+  l'emporte.
+
+**À juger sur le téléphone** : les quatre pas, le murmure dans le centre un samedi après-midi.

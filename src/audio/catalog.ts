@@ -167,6 +167,9 @@ export const SCENES: readonly SoundScene[] = [
     S.strike(k, o, t + 0.12, "knife", { ...NEAR, gain: 0.8 });
   }),
   shot("steps", "Personnes", "Pas (marche puis course)", 3, (k, o, t, i) => S.footstep(k, o, t, i >= 4, { ...NEAR, gain: 0.55 }), 10, 0.28),
+  shot("steps-sett", "Personnes", "Pas sur les pavés (marche puis course)", 3, (k, o, t, i) => S.footstep(k, o, t, i >= 4, { ...NEAR, gain: 0.55 }, "sett"), 10, 0.28),
+  shot("steps-gravel", "Personnes", "Pas sur le gravier (marche puis course)", 3, (k, o, t, i) => S.footstep(k, o, t, i >= 4, { ...NEAR, gain: 0.55 }, "gravel"), 10, 0.28),
+  shot("steps-grass", "Personnes", "Pas dans l'herbe (marche puis course)", 3, (k, o, t, i) => S.footstep(k, o, t, i >= 4, { ...NEAR, gain: 0.55 }, "grass"), 10, 0.28),
   shot("splash", "Personnes", "Plouf (entrée dans l'eau, puis plongeon)", 2.5, (k, o, t, i) => S.splash(k, o, t, i ? 1 : 0.2, { ...NEAR, gain: 0.8 }), 2, 1.1),
   shot("swim", "Personnes", "Brasse", 3, (k, o, t) => S.stroke(k, o, t, { ...NEAR, gain: 0.6 }), 4, 0.7),
   shot("cry-startled", "Personnes", "Sursaut (« ah ! »)", 1, (k, o, t, i) => S.cry(k, o, t, "startled", i ? 230 : 140, { ...NEAR, gain: 0.8, echo: 0.25 }), 2, 0.5),
