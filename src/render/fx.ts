@@ -32,6 +32,9 @@ const HEAL_BEAM: [number, number, number] = [0.55, 1, 0.65];
 const CASH: [number, number, number] = [0.12, 0.5, 0.1];
 const CASH_BAND: [number, number, number] = [1, 0.9, 0.6];
 const CASH_BEAM: [number, number, number] = [0.45, 0.95, 0.4];
+/** Pièce d'or des toits (D321) : la pièce et son listel, plus clair. */
+const COIN: [number, number, number] = [0.9, 0.48, 0.02];
+const COIN_RIM: [number, number, number] = [1, 0.9, 0.45];
 const TRACER: [number, number, number] = [1, 0.93, 0.62];
 const SPARK_WALL: [number, number, number] = [1, 0.6, 0.2];
 const SPARK_BODY: [number, number, number] = [1, 0.97, 0.85];
@@ -44,6 +47,8 @@ export interface PickupView {
   weapon: WeaponId | null;
   heal?: boolean;
   cash?: boolean;
+  /** Pièce d'or posée sur un toit (D321) : `z` est l'altitude du toit. */
+  coin?: boolean;
 }
 
 interface Item {
@@ -170,6 +175,19 @@ export class Fx {
       }
     }
     for (const pk of pickups) {
+      if (pk.coin) {
+        // Pièce d'or (D321) : debout, elle tourne sur elle-même en flottant à hauteur de genou, sans faisceau (elle est cachée).
+        this.e.set(0, time * 2.6 + pk.x, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + 0.7 + Math.sin(time * 2 + pk.y) * 0.07, -pk.y);
+        this.s.set(0.46, 0.46, 0.07);
+        m.compose(this.p, this.q, this.s);
+        put(COIN[0], COIN[1], COIN[2]);
+        this.s.set(0.3, 0.3, 0.09);
+        m.compose(this.p, this.q, this.s);
+        put(COIN_RIM[0], COIN_RIM[1], COIN_RIM[2]);
+        continue;
+      }
       if (pk.cash) {
         // Billets (D317) : une liasse posée de travers qui tourne en flottant à hauteur de genou, et un faisceau court (on la repère de loin
         // sans la confondre avec une arme, dont le faisceau monte à 3 m).

@@ -24,7 +24,7 @@ import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } fr
 import { MoneyHud } from "../ui/money-hud";
 import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
 import { Notebook } from "../core/collections";
-import { COLLECTIONS } from "./collections-list";
+import { COLLECTIONS, TREASURE_SITES } from "./collections-list";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
@@ -505,6 +505,9 @@ export function startGame(ctx: GameContext): void {
     }
   };
   let discoverTimer = 0;
+  /** Tintement des pièces d'or proches (D321) : distance d'écoute (m) et attente avant le prochain. */
+  const COIN_HEAR = 25;
+  let glintTimer = 0;
   /** Bouton « Lire la fiche » de la dernière découverte (D320) et le temps qu'il reste affiché (s de jeu). */
   const discoverEl = document.getElementById("discover")!;
   let discoverFor: { tab: string; id: string } | null = null, discoverLeft = 0;
@@ -1748,6 +1751,19 @@ export function startGame(ctx: GameContext): void {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
       pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
     }
+    // Pièces d'or des toits (D321) : dessinées à moins de 70 m tant qu'elles ne sont pas trouvées ; la plus proche tinte à moins de 25 m.
+    let coinNear = Infinity;
+    for (const t of TREASURE_SITES) {
+      const d = Math.hypot(t.x - player.x, t.y - player.y);
+      if (d > 70 || notebook.has("tresors", t.id)) continue;
+      pickViews.push({ x: t.x, y: t.y, z: t.z, weapon: null, coin: true });
+      coinNear = Math.min(coinNear, Math.hypot(d, t.z - (riding ? riding.state.z : player.z)));
+    }
+    glintTimer -= dt;
+    if (coinNear < COIN_HEAR && glintTimer <= 0) {
+      glintTimer = 1.6 + coinNear / 12;
+      audio.glint(1 - coinNear / COIN_HEAR);
+    }
     fx.update(dt, pickViews, pickups.time);
     ui.caches.length = 0;
     for (const pk of pickups.list) if (pk.kind !== "cash" && pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
@@ -1814,7 +1830,10 @@ export function startGame(ctx: GameContext): void {
       const found = notebook.check(at.x, at.y, at.z, atmosphere.date);
       if (found) {
         wallet.earn(found.reward, found.entry.name);
-        showFeat(`Découverte : ${found.entry.name}`);
+        const coin = found.collection.id === "tresors";
+        showFeat(coin ? `Pièce d'or · ${notebook.count("tresors")} sur ${found.collection.entries.length}` : `Découverte : ${found.entry.name}`);
+        if (coin) audio.coin();
+        else audio.discovery();
         // « Lire la fiche » (D320) : quelques secondes sous le bandeau ; un appui met en pause sur la fiche, dans le carnet.
         if (found.entry.fiche) {
           discoverFor = { tab: found.collection.id, id: found.entry.id };
@@ -1825,7 +1844,6 @@ export function startGame(ctx: GameContext): void {
           wallet.earn(found.bonus, found.collection.label);
           showFeat(`${found.collection.label} : tout est trouvé !`);
         }
-        audio.pickup();
         ui.save();
       }
     }

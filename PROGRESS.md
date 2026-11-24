@@ -2303,3 +2303,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Arrivée à la porte d'Arroux](docs/captures/pj3-decouverte.jpg)
 ![La fiche](docs/captures/pj3-fiche.jpg)
 ![Les « ? » sur la carte](docs/captures/pj3-carte-monuments.jpg)
+
+**Plaisir de jeu, lot 3-5 : les pièces d'or sur les toits (24 novembre 2026)** (D321)
+- **Trente statères d'or** sont cachés sur des toits : douze dans le centre, dix-huit ailleurs. Un tiers s'atteignent en grimpant un mur bas, un tiers en passant de toit en toit, un tiers demandent un saut ou un long chemin de toits.
+- Elles ne sont pas sur la carte : on les **entend tinter** à moins de 25 m, plus fort en approchant. On les prend en passant dessus : 150 € chacune, 5 000 € de plus pour les trente.
+- Dans le carnet, onglet **Pièces d'or** : le compte par quartier (le centre et quatre secteurs autour de la mairie).
+- Le placement est calculé sur les vrais bâtiments, avec les règles d'escalade du jeu, et vérifié par un test.
+- À faire de ton côté : chercher quelques pièces et dire si les difficiles sont vraiment atteignables, si le tintement aide assez.
+![Une pièce sur un toit](docs/captures/pj3-piece.jpg)
+![Le carnet, onglet Pièces d'or](docs/captures/pj3-carnet-pieces.jpg)

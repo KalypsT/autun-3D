@@ -554,6 +554,18 @@ export class PauseMenu {
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g)!.push(e);
     }
+    // Sans fiches (pièces d'or, D321) : une ligne par groupe, le compte seulement ; on cherche, on ne lit pas.
+    if (!col.entries.some((e) => e.fiche)) {
+      const order = [...groups].sort((a, b) => (a[0] === "Centre" ? -1 : b[0] === "Centre" ? 1 : a[0].localeCompare(b[0], "fr")));
+      for (const [g, list] of order) {
+        const n = list.filter((e) => book.has(col.id, e.id)).length;
+        const r = h("div", n === list.length ? "pm-row" : "pm-row locked");
+        r.append(h("span", "", g || col.label), h("strong", "pm-record", `${n} sur ${list.length}`));
+        c.append(r);
+      }
+      c.append(h("p", "pm-muted", `Chacune rapporte ${formatMoney(col.entries[0]?.reward ?? 0)}. Elles sont sur les toits : on les entend tinter à l'approche.`));
+      return;
+    }
     for (const [g, list] of groups) {
       if (g) c.append(h("h3", "pm-sub", `${g} · ${list.filter((e) => book.has(col.id, e.id)).length} sur ${list.length}`));
       for (const e of list) {

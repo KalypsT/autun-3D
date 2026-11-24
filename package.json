@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "hulls": "UPDATE_HULLS=1 vitest run src/render/hulls.test.ts && python3 tools/data/data_version.py"
+    "hulls": "UPDATE_HULLS=1 vitest run src/render/hulls.test.ts && python3 tools/data/data_version.py",
+    "treasures": "UPDATE_TREASURES=1 vitest run src/core/treasures.test.ts"
   },
   "dependencies": {
     "three": "^0.186.1"

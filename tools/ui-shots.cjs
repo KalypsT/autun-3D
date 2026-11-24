@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -239,6 +239,39 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await pauseMap();
     await sleep(800);
     await shot("pj3-carte-monuments");
+    await ctx.close();
+  }
+
+  if (want("tresors")) {
+    // Pièces d'or des toits (PJ 3, D321) : sur le toit d'une pièce facile du centre, la pièce devant soi ; ramassée ; le carnet par quartier.
+    const sites = JSON.parse(fs.readFileSync("src/data/treasures.json", "utf8"));
+    const t = sites.find((q) => q.group === "Centre" && q.level === 1);
+    const ctx = await open(`money=200&h=15&at=${t.x},${t.y - 6}&yaw=0`);
+    await sleep(1500);
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    // Sur le toit, à 1,8 m de la pièce (hors de portée de ramassage), face à elle : on essaie les quatre côtés, on garde celui où l'on tient.
+    let placed = null;
+    for (const [dx, dy, yaw] of [[0, -1.8, 0], [0, 1.8, Math.PI], [-1.8, 0, Math.PI / 2], [1.8, 0, -Math.PI / 2]]) {
+      await page.evaluate(([q, ddx, ddy, yy]) => {
+        const a = window.__autun, p = a.player;
+        p.x = q.x + ddx; p.y = q.y + ddy; p.z = q.z + 0.05; p.vz = 0; p.vx = 0; p.vy = 0;
+        // Un peu de biais : droit derrière le personnage, la pièce serait cachée par son corps.
+        a.look(yy + 0.55); a.tilt(0.4);
+      }, [t, dx, dy, yaw]);
+      await frames(4);
+      const z = await page.evaluate(() => window.__autun.player.z);
+      if (Math.abs(z - t.z) < 0.6) { placed = { dx, dy, z }; break; }
+    }
+    console.log("pièce", t.id, "joueur", JSON.stringify(placed));
+    await shot("pj3-piece");
+    await page.evaluate((q) => { const p = window.__autun.player; p.x = q.x; p.y = q.y; }, t);
+    await page.waitForFunction((id) => window.__autun.notebook.has("tresors", id), t.id, { timeout: 60000, polling: 200 });
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(300);
+    await shot("pj3-piece-trouvee");
+    await page.evaluate(() => window.__autun.ui.showCarnet("tresors"));
+    await sleep(500);
+    await shot("pj3-carnet-pieces");
     await ctx.close();
   }
 

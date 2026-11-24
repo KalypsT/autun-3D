@@ -7708,3 +7708,37 @@ carte).
 ![La fiche dans le carnet](captures/pj3-fiche.jpg)
 ![L'onglet Monuments](captures/pj3-carnet-monuments.jpg)
 ![Les « ? » sur la carte](captures/pj3-carte-monuments.jpg)
+
+## 2026-11-24 — D321. Plaisir de jeu, phase 3, lot 5 : les pièces d'or cachées sur les toits
+
+**Contexte** : plan, § 3 et § 7 (Q10, réponse par défaut validée) : trente statères d'or éduens, « le trésor d'un faussaire », sur les
+toits, qui récompensent l'escalade (D218) ; un tiers faciles, un tiers de toit à toit, un tiers difficiles ; douze dans le centre ; pas
+sur la carte, un tintement à l'approche, le compte par quartier dans le carnet.
+
+**Choix**
+- **Placement calculé sur les vrais bâtiments** (`src/core/treasure-placer.ts`), hors du jeu : un **graphe d'accès** entre le sol et les
+  8 111 toits praticables, avec les règles du joueur et un peu de marge : du sol, on grimpe un mur d'au plus 2,3 m (règle : 2,5) ; d'un toit,
+  on passe sur le toit mitoyen si son mur dépasse d'au plus 2,3 m ; on saute une ruelle d'au plus 3 m (saut long : 4,7 m) vers un toit pas
+  plus haut. Résultat : 980 toits accessibles, 628 par un mur bas, 196 de toit en toit, environ 90 avec un saut.
+- **Niveaux** : 1 (mur bas), 2 (deux à quatre toits), 3 (un saut, ou cinq toits et plus). **Tirage** stable (hachage de l'identifiant du
+  bâtiment) : 4 + 4 + 4 dans le centre (700 m autour de la mairie), 6 + 6 + 6 ailleurs, 120 m au moins entre deux pièces. La pièce est
+  au milieu de l'emprise si le toit y est, sinon au milieu du plus grand pan.
+- **`npm run treasures`** refait le placement et écrit `src/data/treasures.json` ; sans lui, le test vérifie que chaque pièce est encore sur
+  son toit, au bon niveau, assez loin des autres (une régénération de la ville qui en casserait une échoue).
+- **Quartiers** : le centre, puis quatre secteurs (Nord, Est, Sud, Ouest) autour de la mairie ; grossier, à renommer si l'utilisateur
+  préfère de vrais noms de quartiers.
+- **En jeu** : la pièce, debout, tourne en flottant au-dessus du toit (deux boîtes du maillage des effets : aucun appel de dessin de plus),
+  dessinée à moins de 70 m ; la plus proche **tinte** à moins de 25 m, plus souvent et plus fort en approchant. On la prend en passant
+  dessus (1,3 m, à 2,5 m de hauteur près : pas depuis la rue) : 150 €, bandeau « Pièce d'or · 8 sur 30 », trois notes aiguës ; 5 000 € de
+  plus pour les trente. La découverte d'un monument a maintenant son propre son (arpège).
+- **Carnet**, onglet **Pièces d'or** : une ligne par quartier avec le compte (on cherche, on ne lit pas).
+
+**Vérifié** : `treasures.test.ts` ; `tools/ui.sh <dossier> tresors` (sur le toit de la pièce 14, centre, niveau 1 : la pièce devant soi,
+ramassée, 350 €, carnet).
+
+**À juger en jouant** : la difficulté réelle des pièces de niveau 3 (le graphe ne simule pas les sauts), la visibilité de la pièce, le
+tintement.
+
+![Une pièce sur un toit](captures/pj3-piece.jpg)
+![Ramassée](captures/pj3-piece-trouvee.jpg)
+![L'onglet Pièces d'or](captures/pj3-carnet-pieces.jpg)
