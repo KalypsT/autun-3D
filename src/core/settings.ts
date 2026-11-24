@@ -33,6 +33,12 @@ export interface Settings {
   vibration: boolean;
   /** Ralenti pendant les grands sauts en véhicule (D311). */
   slowmo: boolean;
+  /** Effets d'image (D314) : 0 aucun, 1 couleurs selon l'heure, 2 couleurs et halo lumineux la nuit. */
+  effects: 0 | 1 | 2;
+  /** Ciel animé (D315) : nuages qui avancent avec le vent, horizon flamboyant côté soleil ; sinon le ciel d'avant. */
+  sky: boolean;
+  /** Mer animée (D316) : vagues, écume qui va et vient, reflets ; sinon la mer plate d'avant. */
+  sea: boolean;
   /** Plein écran (et paysage verrouillé) au premier appui sur le jeu. */
   fullscreen: boolean;
   /** Durée d'une saison, en jours de jeu (D194). */
@@ -41,7 +47,7 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, slowmo: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, slowmo: true, effects: 2, sky: true, sea: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -49,6 +55,7 @@ export const FPS_CHOICES = [30, 60, 0] as const;
 export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
+export const EFFECTS_CHOICES = [0, 1, 2] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
 export const AIM_SENSITIVITY_RANGE = { min: 0.3, max: 1.5, step: 0.1 } as const;
 export const VOLUME_STEP = 0.05;
@@ -75,6 +82,9 @@ export function parseSettings(raw: unknown): Settings {
     volume: volume === null ? d.volume : roundVolume(volume),
     vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
     slowmo: typeof o["slowmo"] === "boolean" ? o["slowmo"] : d.slowmo,
+    effects: (EFFECTS_CHOICES as readonly unknown[]).includes(o["effects"]) ? (o["effects"] as Settings["effects"]) : d.effects,
+    sky: typeof o["sky"] === "boolean" ? o["sky"] : d.sky,
+    sea: typeof o["sea"] === "boolean" ? o["sea"] : d.sea,
     fullscreen: typeof o["fullscreen"] === "boolean" ? o["fullscreen"] : d.fullscreen,
     seasonLength: (SEASON_LENGTHS as readonly unknown[]).includes(o["seasonLength"]) ? (o["seasonLength"] as SeasonLength) : d.seasonLength,
     season: [-1, 0, 1, 2, 3].includes(o["season"] as number) ? (o["season"] as Season | -1) : d.season,
@@ -143,6 +153,19 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (params.get("vibrate") === "0") {
     values.vibration = false;
     locked.add("vibration");
+  }
+  // ?post=0|1|2 impose les effets d'image (D314) ; ?sky=0 et ?sea=0 le ciel et la mer d'avant (D315, D316) : comparaisons au banc, captures.
+  const post = params.get("post");
+  if (post === "0" || post === "1" || post === "2") {
+    values.effects = Number(post) as Settings["effects"];
+    locked.add("effects");
+  }
+  for (const key of ["sky", "sea"] as const) {
+    const v = params.get(key);
+    if (v === "0" || v === "1") {
+      values[key] = v === "1";
+      locked.add(key);
+    }
   }
   return { values, locked };
 }

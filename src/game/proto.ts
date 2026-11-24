@@ -177,7 +177,7 @@ export function startProto(ctx: GameContext): void {
     atmosphere.advance(dt);
     placeSun(spawn.x, spawn.y, ground);
     sky.position.copy(camera.position);
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     const u2 = performance.now();
     if (stage === "work") gl.finish();
     const t1 = performance.now();
@@ -370,7 +370,7 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
     atmosphere.advance(0);
     placeSun(x, y, ground);
     sky.position.copy(camera.position);
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
@@ -388,7 +388,7 @@ export function startGallery(ctx: GameContext): void {
  * `heading` (rad, 0 = vers le nord, loin de la caméra ; 1,57 = de profil), `steer` (−1 à 1), `seed`, `eye`, `dist`, `crank` (rad, vélo).
  */
 function startRiders(ctx: GameContext, groundAt: (x: number, z: number) => number, spawn: { x: number; y: number }, ground: number): void {
-  const { camera, renderer, scene, sky, atmosphere, tiles, terrainView, world, params } = ctx;
+  const { camera, scene, sky, atmosphere, tiles, terrainView, world, params } = ctx;
   const heading = Number(params.get("heading") ?? Math.PI / 2), steer = Number(params.get("steer") ?? 0), seed = Number(params.get("seed") ?? 1);
   const dist = Number(params.get("dist") ?? 4.2), eye = Number(params.get("eye") ?? 1.1), crank = Number(params.get("crank") ?? 0.6);
   const models = ["velo-ville", "moto-routiere", "trottinette"].map((id) => buildModel(vehicleDef(id)!, 0));
@@ -415,7 +415,7 @@ function startRiders(ctx: GameContext, groundAt: (x: number, z: number) => numbe
     atmosphere.advance(0);
     placeSun(spawn.x, spawn.y, ground);
     sky.position.copy(camera.position);
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

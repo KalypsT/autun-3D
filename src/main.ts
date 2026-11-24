@@ -23,6 +23,7 @@ import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 import { Vista } from "./render/vista";
+import { PostFx } from "./render/post";
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -76,6 +77,15 @@ const style = useTheme("affiche")!;
 scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
 renderer.toneMapping = THREE.NeutralToneMapping;
 addOverlay(style.overlay);
+// Effets d'image (D314) : couleurs selon l'heure et halo la nuit ; seul point d'entrée du rendu de la scène. MSAA de la cible de la scène :
+// ×4 si la carte graphique le fait dans la texture même (WEBGL_multisampled_render_to_texture : sans mémoire ni copie de plus), sinon
+// aucun (une cible MSAA ×4 pèserait ≈ 140 Mo en définition ×2,5 sur le téléphone) ; ?msaa=0 ou ?msaa=4 l'impose (comparaisons).
+const msaaDefault = renderer.extensions.has("WEBGL_multisampled_render_to_texture") ? 4 : 0;
+const post = new PostFx(renderer, effective.effects, Math.max(0, Math.min(8, Math.floor(Number(params.get("msaa") ?? msaaDefault)) || 0)));
+// Réglage du halo pour les essais : ?bloomsteps=0 (halo continu, au lieu des paliers nets), ?bloom=1.5 (force), ?bloomth=0.7 (seuil).
+post.steps = Math.max(0, Math.floor(Number(params.get("bloomsteps") ?? post.steps)) || 0);
+post.strength = Math.max(0, Number(params.get("bloom") ?? post.strength) || 0);
+post.threshold = Math.max(0.05, Number(params.get("bloomth") ?? post.threshold) || post.threshold);
 
 /** Grain de papier et vignette par-dessus l'image (deux couches CSS, très peu coûteuses). */
 function addOverlay([grain, vignette]: [number, number]): void {
@@ -140,6 +150,7 @@ async function main(): Promise<void> {
   const seasonLength = storedSettings.seasonLength;
   const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
   const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  atmosphere.post = post;
   atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
   // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
   atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
@@ -160,9 +171,9 @@ async function main(): Promise<void> {
   const { loaded, triangles, draws } = tiles.stats;
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
-  const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
+  const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, post, settingsStore, storedSettings, params);
   const ctx: GameContext = {
-    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
+    renderer, post, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
     storage: session.storage, host: session.host,
     ready: (extra) => {
       loadingEl.remove();

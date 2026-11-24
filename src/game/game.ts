@@ -1327,7 +1327,7 @@ export function startGame(ctx: GameContext): void {
         pausedRender = 0;
         ui.needsRender = false;
         placeSun(player.x, player.y, player.z);
-        renderer.render(scene, camera);
+        ctx.post.render(scene, camera);
       }
       schedule();
       return;
@@ -1892,7 +1892,7 @@ export function startGame(ctx: GameContext): void {
     sky.position.copy(camera.position);
     ui.tick(dt, now / 1000);
 
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     meter.tick(dt);
     schedule();
   };
@@ -1917,7 +1917,7 @@ export function startGame(ctx: GameContext): void {
   ctx.ready({
     player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
     /** Captures et mesures : redessine la scène telle quelle. */
-    renderOnce: () => renderer.render(scene, camera),
+    renderOnce: () => ctx.post.render(scene, camera),
     /** Captures : bandeau d'exploit, carnet de records, temps du jeu (D311, D312). */
     showFeat,
     records,

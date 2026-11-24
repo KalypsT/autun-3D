@@ -115,3 +115,14 @@ describe("images par seconde (D221)", () => {
     expect(none.locked.has("fps")).toBe(false);
   });
 });
+
+describe("effets d'image, ciel et mer (D314 à D316)", () => {
+  it("allumés par défaut ; ?post=, ?sky= et ?sea= les imposent ; une valeur invalide retombe sur le défaut", () => {
+    expect([DEFAULT_SETTINGS.effects, DEFAULT_SETTINGS.sky, DEFAULT_SETTINGS.sea]).toEqual([2, true, true]);
+    const eff = effectiveSettings(DEFAULT_SETTINGS, new URLSearchParams("post=1&sky=0&sea=0"));
+    expect([eff.values.effects, eff.values.sky, eff.values.sea]).toEqual([1, false, false]);
+    expect([...eff.locked].sort()).toEqual(["effects", "sea", "sky"]);
+    expect(parseSettings({ effects: 5, sky: "oui" })).toMatchObject({ effects: 2, sky: true });
+    expect(parseSettings({ effects: 0, sea: false })).toMatchObject({ effects: 0, sea: false });
+  });
+});

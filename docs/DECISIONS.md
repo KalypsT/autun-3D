@@ -7360,3 +7360,94 @@ le vol, « Saut 46 m » à la réception, record enregistré). **À juger sur le
   l'emporte.
 
 **À juger sur le téléphone** : les quatre pas, le murmure dans le centre un samedi après-midi.
+
+## 2026-11-24 — D314. Plaisir de jeu, lot 2-1 : halo lumineux la nuit et couleurs selon l'heure
+
+**Demande** (PJ, phase 2) : un halo la nuit autour des projecteurs des monuments, des phares, des fenêtres, des lampadaires et des feux
+d'artifice, et un étalonnage des couleurs selon l'heure (matin doux, midi franc, coucher chaud, nuit bleutée), sans trahir le style
+« affiche » (aplats nets, pas de flou partout), en demi-résolution si possible, coupable dans les réglages, coût mesuré au banc.
+
+**Constat avant** : l'ambiance ne dépendait que de la hauteur du soleil (D19) : 7 h et 19 h avaient les mêmes couleurs.
+
+**Matin et soir distincts** (`atmosphere.ts`, sans coût, même effets coupés) : jalons du matin à part (`MORNING_STOPS`) : aube plus rose et
+plus froide, brume plus proche, soleil levant moins orangé. Nuit et plein jour inchangés : pas de saut à midi ni à minuit.
+
+**Effets d'image** (`src/render/post.ts`, `PostFx`), seul point d'entrée du rendu de la scène (jeu, pause, photos des lieux notés,
+viewer, banc, galeries : `ctx.post.render`) :
+- **Niveau 0** : rendu direct à l'écran, comme avant (rien ne change, aucun coût).
+- **Niveaux 1 et 2** : la scène est dessinée dans une cible en demi-flottants, **exactement comme à l'écran** (rendu des couleurs
+  « Neutral » et sRGB dans chaque matière). Three.js ne fait cela que pour l'écran et les cibles de réalité virtuelle : la cible porte le
+  drapeau `isXRRenderTarget` (un test vérifie que three.js le traite toujours ainsi). Premier essai avec une cible ordinaire (linéaire) :
+  les voiles translucides se mélangeaient en lumière linéaire et la façade éclairée de l'hôtel de ville sortait blanche.
+- **Passe finale** (pleine définition, vers l'écran) : image ramenée en linéaire, halo ajouté, étalonnage, retour en sRGB.
+- **Halo** (niveau 2) : seuil sur la couleur linéaire (0,68, adouci sur 0,2) : la nuit, murs sous la lune ≈ 0,15 à 0,25, façades des
+  projecteurs ≈ 0,5 à 0,7, fenêtres, lampadaires, phares et feux d'artifice ≈ 0,9 à 1. Calcul en **demi-définition**, puis 1/4, 1/8,
+  1/16, 1/32 (réductions et agrandissements « dual Kawase », moyenne pondérée par la luminance contre le scintillement des petits
+  points) : 9 passes, aucune en pleine définition. **Paliers** : le halo est découpé en trois niveaux nets (anneaux plats autour des
+  lumières, comme sur une affiche), `?bloomsteps=0` pour le halo continu. Sa force suit la nuit (`Atmosphere.night`), un peu plus large
+  dans la brume (+60 %) et sous la pluie (+30 %) ; **de jour, ses passes ne tournent pas** (il ne reste que la passe finale).
+- **Étalonnage** (`src/core/grading.ts`, logique pure, même calcul en GLSL) : gain par composante, saturation, contraste en courbe en S
+  qui garde le noir et le blanc, teinte des ombres et des lumières. Jalons selon la hauteur du soleil, matin et soir à part : matin doux
+  (contraste 0,93 à 0,94, ombres claires et fraîches), midi franc (dès 30° : contraste 1,1, saturation 1,07), coucher chaud (gain orangé,
+  saturation 1,14, ombres violettes), nuit (léger bleu dans les noirs, lumières plus chaudes). Par temps couvert, retour vers le neutre.
+  Premier essai de nuit : gain bleu sur toute l'image, les fenêtres et la façade éclairée s'éteignaient ; le bleu ne va plus qu'aux ombres.
+- **MSAA de la cible** : ×4 seulement si la carte graphique le fait dans la texture même (`WEBGL_multisampled_render_to_texture` : ni
+  mémoire ni copie de plus), sinon aucun : une cible MSAA ×4 pèse ≈ 56 octets par pixel, ≈ 140 Mo en définition ×2,5 sur le téléphone ;
+  sans MSAA ≈ 12 octets par pixel (≈ 30 Mo). Sans MSAA, les mâts et les arêtes des toits sont un peu crénelés quand on regarde de près (capture en ×2) ; à la densité du téléphone (×2,5), c’est discret. À juger sur le téléphone. `?msaa=0|4` l'impose.
+- **Sans cible en demi-flottants** (carte graphique trop ancienne), les effets restent coupés.
+
+**Réglage** « Effets d'image » (Réglages, après « Ombres ») : Aucun / Couleurs / Couleurs et halo (défaut, à confirmer au banc sur le
+téléphone). `?post=0|1|2` l'impose ; réglages du halo pour les essais : `?bloom=` (force, 1), `?bloomth=` (seuil, 0,68),
+`?bloomsteps=` (paliers, 3 ; 0 = continu). L'interface (HTML et minimap en 2D) n'est pas touchée par les effets.
+
+**Banc** (`?bench=1`) : après « Arrêt sur la place », sept arrêts de 6 s dans le même passage (même chaleur) : effets coupés, couleurs
+seules (à 16 h), puis à 22 h effets coupés, couleurs seules, couleurs et halo, et la même chose avec l'autre réglage de MSAA, puis retour.
+Chaque phase écrit le niveau, le MSAA, la force et le nombre de passes du halo, la mémoire des cibles et, si Chrome le permet
+(`EXT_disjoint_timer_query_webgl2`, souvent coupé sur Android), le temps de la carte graphique par image (médiane, 95 %). L'en-tête dit
+si le minutage et le MSAA dans la texture sont disponibles.
+
+**Mesure ici** (`?bench=court`, rendu logiciel : durées sans portée) : 9 appels de dessin de plus la nuit avec le halo, 1 de jour
+(passe finale) ; cibles ≈ 22 Mo en 915 × 412 avec MSAA ×4 (rendu logiciel, sans MSAA dans la texture).
+
+**Protocole sur le téléphone** (Honor Magic 8 Pro) :
+1. Téléphone froid (pas joué depuis 10 min), **débranché**, batterie au-dessus de 50 %, autres applications fermées, luminosité fixe,
+   Chrome à jour, en paysage.
+2. `?bench=1&fps=0` : sans limite d'images par seconde, sinon le navigateur plafonne à 60 et cache la marge (D26). Copier le rapport.
+   Les arrêts « effets coupés / couleurs seules / couleurs et halo » de jour et de nuit se comparent entre eux (médiane et 95 % des
+   durées d'image, temps de la carte graphique s'il est donné).
+3. Attendre 2 minutes, recommencer avec `?bench=1&fps=0&post=0` (tout le banc sans effets), puis `?bench=1&fps=0&h=22` (tout le banc de
+   nuit, halo compris) : les rues à 50 et 90 km/h de ces deux passages disent ce que coûtent les effets en roulant.
+4. Endurance : 10 minutes de jeu de nuit (`?h=22&speed=0&debug`, réglage « Couleurs et halo »), en roulant ; noter les images par seconde
+   au début et à la fin, et si le téléphone chauffe. Puis pareil avec « Aucun ».
+5. M'envoyer les trois rapports et tes notes. Seuil proposé : si « couleurs et halo » coûte plus de 2 ms par image la nuit (ou fait
+   tomber le 1 % le plus lent sous 40 i/s), défaut « Couleurs » ; s'il coûte plus de 2 ms de jour aussi, défaut « Aucun ».
+
+**Tests** : `grading.test.ts` (neutre sans effet, noir et blanc gardés, midi plus contrasté que le matin, coucher chaud, nuit bleutée aux
+lumières chaudes, continuité, temps couvert) ; `post.test.ts` (niveau 0 direct, une passe de jour, halo jamais en pleine définition, pas
+de halo au niveau 1, repli sans demi-flottants, drapeau de three.js) ; réglages (`?post=`, valeurs invalides).
+
+**Limites** : le halo ne voit que l'image : une lumière cachée derrière un mur n'en a pas, une façade très claire éclairée par les
+projecteurs peut en recevoir un peu ; les petites lumières lointaines (feux arrière à 50 m) n'ont presque pas de halo (moyenne en
+demi-définition) ; le seuil est fixe (une neige au clair de lune pourrait s'allumer légèrement, non vu en capture) ; pas de halo autour
+du soleil ; les phares restent des cônes plats au sol.
+
+**Vues** : `?view=mairie&h=22.5`, `arroux`, `place` (`&h=4.6` aube, `&h=19.5` coucher, `&h=13`), feu d'artifice
+`?cam=870,60,6,1240,420,120&h=23.3&fireworks=1` (le viewer joue le feu d'artifice avec `&fireworks=1`), `tools/ui.sh <dossier> night`
+(phares de la voiture du joueur, feu d'artifice dans le jeu).
+
+![Aube (4 h 36, soleil à 3°), avant : les couleurs du soir](captures/d314-aube-avant.jpg)
+![Aube, après : rose et doux, brume proche](captures/d314-aube-apres.jpg)
+![Coucher (19 h 30), avant](captures/d314-coucher-avant.jpg)
+![Coucher, après : chaud, ombres violettes](captures/d314-coucher-apres.jpg)
+![13 h, avant](captures/d314-midi-avant.jpg)
+![13 h, après : midi franc](captures/d314-midi-apres.jpg)
+![Hôtel de ville à 22 h 30, avant](captures/d314-mairie-nuit-avant.jpg)
+![Après : halo en paliers autour des fenêtres et des lanternes](captures/d314-mairie-nuit-apres.jpg)
+![Le même halo, continu (`?bloomsteps=0`)](captures/d314-halo-continu.jpg)
+![Porte d'Arroux, avant](captures/d314-arroux-nuit-avant.jpg)
+![Porte d'Arroux, après](captures/d314-arroux-nuit-apres.jpg)
+![Cathédrale, avant](captures/d314-cathedrale-nuit-avant.jpg)
+![Cathédrale, après](captures/d314-cathedrale-nuit-apres.jpg)
+![Phares, effets coupés](captures/d314-phares-avant.jpg)
+![Phares, couleurs et halo](captures/d314-phares-apres.jpg)
+![Feu d'artifice du 14 juillet sur le plan d'eau du Vallon](captures/d314-feu-artifice.jpg)

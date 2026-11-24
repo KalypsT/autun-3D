@@ -1,6 +1,7 @@
 import { effectiveSettings, SettingsStore, type SettingKey, type Settings } from "../core/settings";
 import type * as THREE from "three";
 import type { TileManager } from "../render/tile-manager";
+import type { PostFx } from "../render/post";
 
 /**
  * Réglages en vigueur. `stored` est ce que le joueur a choisi (enregistré), `values` ce qui s'applique : pareil, sauf les réglages
@@ -17,6 +18,7 @@ export class SettingsController {
     private readonly renderer: THREE.WebGLRenderer,
     private readonly sunLight: THREE.DirectionalLight,
     private readonly tiles: TileManager,
+    private readonly post: PostFx,
     private readonly store: SettingsStore,
     stored: Settings,
     params: URLSearchParams,
@@ -55,6 +57,7 @@ export class SettingsController {
       }
     }
     if (changed.includes("detail")) tiles.load = values.detail;
+    if (changed.includes("effects")) this.post.level = values.effects;
     for (const l of this.listeners) l(values, changed);
   }
 }

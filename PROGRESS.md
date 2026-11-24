@@ -2231,3 +2231,16 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les pas changent avec le sol : crissement sur le gravier et le schiste des terrils, froissement dans l'herbe, claquement sur les pavés, bruit habituel sur l'enrobé et les trottoirs.
 - Dans une rue animée, on entend maintenant le murmure des passants (comme au marché), plus discret en voiture.
 - À faire de ton côté : te promener avec le son (place du Champ de Mars, chemin du Vallon, pelouses, terrils) et dire ce que tu en penses. La page `?sounds` permet d'écouter chaque pas.
+
+**Plaisir de jeu, lot 2-1 : halo lumineux la nuit et couleurs selon l'heure (24 novembre 2026)** (D314)
+- **Le matin n'est plus le soir à l'envers** : l'aube est rose et douce, avec une brume plus proche ; le coucher est chaud et orangé.
+- **Couleurs selon l'heure** : matin doux, midi franc (un peu plus de contraste), coucher chaud aux ombres violettes, nuit bleutée où les lumières restent chaudes.
+- **Halo la nuit** autour des fenêtres allumées, des lampadaires, des façades éclairées par les projecteurs, des phares et du feu d'artifice : des anneaux nets autour des lumières, comme sur une affiche, plutôt qu'un flou. Rien de jour.
+- Nouveau réglage **« Effets d'image »** : Aucun, Couleurs, Couleurs et halo (par défaut, à confirmer selon ton banc).
+- **À faire de ton côté (important)** : passer le banc sur le téléphone selon le protocole de D314 (`?bench=1&fps=0`, puis `&post=0`, puis `&h=22`, puis 10 minutes de jeu de nuit) et m'envoyer les rapports. Me dire aussi si tu préfères les anneaux nets ou le halo continu (`?bloomsteps=0`), et si la nuit te paraît trop sombre ou trop bleue.
+![Coucher, avant](docs/captures/d314-coucher-avant.jpg)
+![Coucher, après](docs/captures/d314-coucher-apres.jpg)
+![Hôtel de ville la nuit, avant](docs/captures/d314-mairie-nuit-avant.jpg)
+![Hôtel de ville la nuit, après](docs/captures/d314-mairie-nuit-apres.jpg)
+![Feu d'artifice](docs/captures/d314-feu-artifice.jpg)
+

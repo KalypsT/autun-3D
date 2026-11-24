@@ -10,6 +10,8 @@ import { lampLevel, litWindowShare } from "../core/city-lights";
 import { openingTable } from "../core/opening";
 import { hourlyT, seasonLook } from "../core/seasons";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
+import { gradeAt } from "../core/grading";
+import type { PostFx } from "./post";
 
 /** Une ambiance à une hauteur de soleil donnée. */
 interface Palette {
@@ -34,11 +36,22 @@ const fromTheme = (t: typeof DAY): Palette => ({
   hemiSky: t.hemi.sky, hemiGround: t.hemi.ground, hemiI: t.hemi.intensity, exposure: t.exposure, fogNear: t.fog[1], fogFar: t.fog[2],
 });
 
-/** Jalons : hauteur du soleil (degrés) -> ambiance. Entre deux jalons, tout est interpolé. */
+/** Jalons du soir : hauteur du soleil (degrés) -> ambiance. Entre deux jalons, tout est interpolé. */
 const STOPS: [number, Palette][] = [
   [-10, { ...fromTheme(NIGHT), sunI: 0.6, hemiI: 1.9, exposure: 1.3 }],
   [-3, { horizon: "#c86a6a", mid: "#5a4a86", zenith: "#1a2050", fog: "#6a4a7a", sun: "#ff8a5a", sunI: 0.9, hemiSky: "#6a6aa8", hemiGround: "#3a2a44", hemiI: 1.6, exposure: 1.2, fogNear: 110, fogFar: 640 }],
   [3, { horizon: "#ffa860", mid: "#f0907a", zenith: "#4a62a8", fog: "#f4a878", sun: "#ff9348", sunI: 2.2, hemiSky: "#b8a0b8", hemiGround: "#9a5a3a", hemiI: 1.3, exposure: 1.05, fogNear: 150, fogFar: 760 }],
+  [15, fromTheme(DAY)],
+];
+
+/**
+ * Jalons du matin (D314) : jusque-là, le matin était le soir à l'envers. L'aube est plus rose et plus froide, la brume plus proche
+ * (l'air humide du matin), le soleil levant moins orangé que le couchant. Nuit et plein jour sont les mêmes : pas de saut à midi ni à minuit.
+ */
+const MORNING_STOPS: [number, Palette][] = [
+  STOPS[0]!,
+  [-3, { horizon: "#d98e9c", mid: "#6c6aa0", zenith: "#1c2a5e", fog: "#8e7c9e", sun: "#ff9e86", sunI: 0.85, hemiSky: "#7a82bc", hemiGround: "#3e3850", hemiI: 1.65, exposure: 1.2, fogNear: 90, fogFar: 560 }],
+  [3, { horizon: "#ffc8a0", mid: "#eab4b0", zenith: "#5878b8", fog: "#f2c4ae", sun: "#ffb47e", sunI: 2.0, hemiSky: "#b4b4d2", hemiGround: "#8c6c62", hemiI: 1.38, exposure: 1.05, fogNear: 115, fogFar: 660 }],
   [15, fromTheme(DAY)],
 ];
 
@@ -88,6 +101,8 @@ export class Atmosphere {
   onShops: ((open: readonly number[]) => void) | null = null;
   /** Coup de tonnerre : délai (s) depuis l'éclair, selon la distance de la foudre, et force (0 à 1). Branché par le jeu (son). */
   onThunder: ((delay: number, strength: number) => void) | null = null;
+  /** Effets d'image (D314) : étalonnage et force du halo, réglés avec l'ambiance. */
+  post: PostFx | null = null;
   /** Pluie et neige qui tombent autour de la caméra (créées à la première averse). */
   private rain: Precipitation | null = null;
   private snowfall: Precipitation | null = null;
@@ -163,6 +178,12 @@ export class Atmosphere {
     this.apply();
   }
 
+  /** Impose l'heure (banc : phases de nuit) ; l'ambiance suit tout de suite. */
+  setHour(hour: number): void {
+    this.hour = ((hour % 24) + 24) % 24;
+    this.apply();
+  }
+
   /** Impose la date (jours de jeu) ; l'ambiance suit tout de suite. */
   setDate(date: number): void {
     this.date = Math.max(0, Math.floor(date));
@@ -221,12 +242,18 @@ export class Atmosphere {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
 
+  /** Le matin (avant midi solaire) : l'ambiance suit les jalons du matin (D314). */
+  get morning(): boolean {
+    return this.hour < 12;
+  }
+
   private palette(elevDeg: number): Palette {
-    if (elevDeg <= STOPS[0]![0]) return STOPS[0]![1];
-    for (let i = 1; i < STOPS.length; i++) {
-      const [e1, p1] = STOPS[i]!;
+    const stops = this.morning ? MORNING_STOPS : STOPS;
+    if (elevDeg <= stops[0]![0]) return stops[0]![1];
+    for (let i = 1; i < stops.length; i++) {
+      const [e1, p1] = stops[i]!;
       if (elevDeg <= e1) {
-        const [e0, p0] = STOPS[i - 1]!;
+        const [e0, p0] = stops[i - 1]!;
         const t = (elevDeg - e0) / (e1 - e0);
         const mix = (a: string, b: string): string => "#" + col(a).lerp(col(b), t).getHexString();
         const num = (a: number, b: number): number => a + (b - a) * t;
@@ -237,7 +264,7 @@ export class Atmosphere {
         };
       }
     }
-    return STOPS[STOPS.length - 1]![1];
+    return stops[stops.length - 1]![1];
   }
 
   /** Brouillard de l'heure et du temps qu'il fait (apply), avant le panorama. */
@@ -329,5 +356,10 @@ export class Atmosphere {
     this.onShops?.(this.shops);
     this.res.haloMat.opacity = 0.32 * glow;
     this.res.haloMat.visible = glow > 0.01;
+    // Effets d'image (D314) : couleurs de l'heure ; halo autour des lumières avec la nuit, plus large dans la brume et sous la pluie.
+    if (this.post) {
+      this.post.setGrade(gradeAt(elev, this.morning, wx.cloud));
+      this.post.bloom = glow * (1 + 0.6 * wx.fog + 0.3 * wx.rain);
+    }
   }
 }
