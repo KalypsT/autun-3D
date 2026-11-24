@@ -2278,3 +2278,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Des billets lâchés](docs/captures/pj3-billets.jpg)
 ![La facture de l'hôpital](docs/captures/pj3-mort-facture.jpg)
 ![Au volant](docs/captures/pj3-argent-voiture.jpg)
+
+**Plaisir de jeu, lot 3-2 : les fiches des monuments, à relire (24 novembre 2026)** (D318)
+- Les 20 fiches de la chasse aux monuments sont écrites dans `docs/fiches-monuments.md` : un texte court (600 caractères au plus), un « Le savais-tu ? » et les sources sous chacune.
+- Je n'ai rien écrit sans source (Wikipédia et les ouvrages qu'il cite, base Mérimée, office de tourisme, la plaque de la Croix relevée pour le jeu). Quand les sources se contredisent, c'est noté sous la fiche.
+- Il manque la date de l'hôtel de ville et deux « Le savais-tu ? » ; la gare est la fiche la plus maigre.
+- À faire de ton côté : relire les fiches, corriger ce qui cloche, compléter les trous si tu sais, et dire si la gare reste dans la chasse.

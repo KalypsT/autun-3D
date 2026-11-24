@@ -7624,3 +7624,24 @@ facture, amende, réparation, tirage des portefeuilles), `pedestrians-combat.tes
 ![Des billets lâchés](captures/pj3-billets.jpg)
 ![La facture de l'hôpital](captures/pj3-mort-facture.jpg)
 ![Au volant](captures/pj3-argent-voiture.jpg)
+
+## 2026-11-24 — D318. Plaisir de jeu, phase 3, lot 2 : les fiches des monuments, texte seul, pour relecture
+
+**Contexte** : la chasse aux monuments (lot 3-4) montre une fiche historique courte et sourcée par monument ; l'utilisateur relit les
+textes (« c'est ma ville ») avant qu'ils entrent dans le jeu. Les textes sont écrits tôt pour qu'il les relise pendant la suite.
+
+**Choix**
+- `docs/fiches-monuments.md` : les **20 monuments** retenus au cadrage (12 grands à 600 €, 8 petits à 300 €), chacun avec un identifiant
+  stable (`arroux`, `cathedrale`…), un texte de **600 caractères au plus** (295 à 525), une phrase « Le savais-tu ? », ses sources et ce
+  qu'il reste à vérifier.
+- **Sources** : Wikipédia (articles nommés, avec les ouvrages qu'ils citent), notices Mérimée (POP) pour les dates de protection,
+  office de tourisme, relevés faits pour le jeu (plaque de la Croix, D267). Rien qui ne vienne d'une source ; les contradictions entre
+  sources sont signalées sous la fiche (théâtre romain : 14 000 ou 20 000 spectateurs ; Lycée militaire : 1675 ou 1669, 1885 ou 1886 ;
+  porte d'Arroux : 16 ou 17 m).
+- **Trous** : la date et l'architecte de l'hôtel de ville (aucune source trouvée), deux « Le savais-tu ? » (hôtel de ville, tour de
+  l'Horloge) ; la gare est maigre (à garder ou retirer, au choix de l'utilisateur).
+- **Réseau** : Wikipédia, l'office de tourisme, l'Inrap et le site de la ville étaient refusés par l'environnement ; quatre hôtes ajoutés à
+  l'environnement « Map » (accord de l'utilisateur à l'invite). L'API de Wikipédia limite les requêtes (adresse partagée) : les articles
+  sont lus en wikitexte brut (`?action=raw`), qui garde les références. L'Inrap reste refusé (403 du site lui-même).
+
+**Suite** : après relecture, les textes entrent dans le jeu au lot 3-4 (un fichier de données, pas dans le code).
