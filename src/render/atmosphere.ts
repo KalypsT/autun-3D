@@ -13,6 +13,8 @@ import { Precipitation, RAIN, SNOW } from "./precipitation";
 import { gradeAt } from "../core/grading";
 import type { PostFx } from "./post";
 import { setSunHaze } from "./sun-haze";
+import type { Sea } from "./sea";
+import { waveAmplitude } from "../core/waves";
 
 /** Une ambiance à une hauteur de soleil donnée. */
 interface Palette {
@@ -108,6 +110,9 @@ export class Atmosphere {
    * coucher. Coupé : le ciel d'avant (nuages immobiles, brume d'une seule couleur).
    */
   skyAnimated = true;
+  /** La mer vivante (D316) : vagues selon le vent, paillettes du soleil ou de la lune. */
+  sea: Sea | null = null;
+  private readonly glint = new THREE.Color();
   /** Décalage des nuages (plan des nuages du ciel), cumulé avec le vent. */
   private readonly cloudOffset = new THREE.Vector2();
   /** Effets d'image (D314) : étalonnage et force du halo, réglés avec l'ambiance. */
@@ -215,6 +220,13 @@ export class Atmosphere {
     const gust = 0.6 + 3.4 * this.wx.wind;
     this.rain?.wind(wx * gust, wz * gust, dt);
     this.snowfall?.wind(wx * gust * 0.5, wz * gust * 0.5, dt);
+    if (this.sea?.animated) {
+      // Paillettes : le soleil (couleur de sa lumière) le jour, la lune (pâle) la nuit ; aucune par ciel couvert ni dans la brume.
+      const clear = (1 - smooth(0.4, 0.9, this.wx.cloud)) * (1 - this.wx.fog);
+      const n = this.night;
+      this.glint.copy(this.sunLight.color).multiplyScalar(1.3 * (1 - n)).add(GREY.setRGB(0.5, 0.55, 0.7).multiplyScalar(0.45 * n)).multiplyScalar(clear);
+      this.sea.update(this.time, waveAmplitude(this.wx.wind), smooth(0.35, 0.8, this.wx.wind), this.lightDir, this.glint);
+    }
     if (this.skyAnimated && this.skyMat.uniforms["cloudOffset"]) {
       // Nuages : ≈ 0,4°/s au zénith par vent moyen, deux fois plus vite sous l'orage ; repliés pour garder la précision.
       const rate = 0.002 + 0.01 * this.wx.wind;

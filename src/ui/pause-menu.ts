@@ -171,6 +171,8 @@ export class PauseMenu {
       choices("effects", EFFECTS_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucun" : v === 1 ? "Couleurs" : "Couleurs et halo" })), values.effects));
     row("Ciel animé", "Nuages poussés par le vent, ciel et brume qui flamboient au lever et au coucher. Non : le ciel d'avant, un peu plus léger.", "sky",
       choices("sky", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.sky));
+    row("Mer animée", "Vagues, écume qui va et vient sur la plage, reflets du ciel et du soleil. Non : la mer plate d'avant.", "sea",
+      choices("sea", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.sea));
     row("Images par seconde", "60 : fluide, et le téléphone chauffe moins. Sans limite : suit l'écran (souvent 120), deux fois plus de travail.", "fps",
       choices("fps", FPS_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Sans limite" : String(v) })), values.fps));
     row("Rayon de détail", "Distance jusqu'à laquelle les bâtiments sont détaillés. 400 m double la mémoire.", "detail", choices("detail", DETAIL_CHOICES.map((v) => ({ value: v, label: `${v} m` })), values.detail));

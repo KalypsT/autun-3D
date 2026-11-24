@@ -2253,3 +2253,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Dos au soleil couchant, après](docs/captures/d315-oppose-apres.jpg)
 ![Face au soleil couchant](docs/captures/d315-soleil-apres.jpg)
 
+**Plaisir de jeu, lot 2-3 : la mer vivante (24 novembre 2026)** (D316)
+- **Des vagues** sur la mer autour de la ville, plus hautes par vent fort, dessinées en bandes nettes comme le reste.
+- **Écume au rivage** : une nappe blanche qui monte et redescend sur la plage, et une ligne de vague qui arrive du large toutes les 7 à 8 secondes.
+- **Reflets** : le ciel dans l'eau, un **chemin de paillettes** vers le soleil couchant (ou la lune la nuit), des crêtes blanches sous l'orage.
+- Au passage, j'ai trouvé que l'écume d'avant ne s'était jamais vue : elle était posée du mauvais côté de la côte, sous la plage. C'est corrigé.
+- Nouveau réglage **« Mer animée »** (Oui par défaut) : Non garde la mer plate d'avant.
+- Les vagues sont calculées de la même façon pour l'affichage et pour le jeu : le jet-ski de la phase 5 pourra les suivre.
+- À faire de ton côté : aller sur une plage (poser un repère au bord de l'eau sur la carte, par exemple à l'ouest de la ville, à 1,6 km de la place), regarder la mer le jour, au coucher et la nuit, et me dire si les vagues sont trop régulières.
+![Sur la plage, avant](docs/captures/d316-plage-avant.jpg)
+![Sur la plage, après](docs/captures/d316-plage-apres.jpg)
+![Coucher face au large](docs/captures/d316-coucher-apres.jpg)
+![Les trois nouveaux réglages de la phase 2](docs/captures/d316-reglages.jpg)

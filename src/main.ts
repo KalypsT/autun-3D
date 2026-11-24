@@ -136,8 +136,13 @@ async function main(): Promise<void> {
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
   await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
-  const sea = createSea(world.manifest, style.toon);
-  if (sea) scene.add(sea);
+  // La mer (D105), vivante (D316) : elle reflète les couleurs du ciel (mêmes objets que le dôme).
+  const skyU = (sky.material as THREE.ShaderMaterial).uniforms;
+  const sea = createSea(world.manifest, style.toon, { horizon: skyU["horizon"]!.value as THREE.Color, zenith: skyU["zenith"]!.value as THREE.Color });
+  if (sea) {
+    sea.animated = effective.sea;
+    scene.add(sea.group);
+  }
   const farWater = createInlandWater(world.terrain.waters, style.toon);
   if (farWater) scene.add(farWater);
 
@@ -155,6 +160,7 @@ async function main(): Promise<void> {
   const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   atmosphere.post = post;
   atmosphere.skyAnimated = effective.sky;
+  atmosphere.sea = sea;
   atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
   // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
   atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
@@ -176,8 +182,9 @@ async function main(): Promise<void> {
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
   const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, post, settingsStore, storedSettings, params);
-  // Ciel animé (D315) : le réglage s'applique tout de suite.
+  // Ciel animé (D315) et mer animée (D316) : les réglages s'appliquent tout de suite.
   settings?.listeners.push((values, changed) => {
+    if (changed.includes("sea") && sea) sea.animated = values.sea;
     if (changed.includes("sky")) {
       atmosphere.skyAnimated = values.sky;
       atmosphere.setHour(atmosphere.hour);
@@ -190,7 +197,7 @@ async function main(): Promise<void> {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
-        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, ...extra,
+        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, scene, ...extra,
       };
     },
   };

@@ -7511,3 +7511,72 @@ ras de la mer, côté soleil, est nette (style affiche) ; le mouvement des nuage
 ![Aube vue de la Croix de la Libération, ciel animé coupé](captures/d315-aube-avant.jpg)
 ![Aube vue de la Croix de la Libération](captures/d315-aube-apres.jpg)
 ![Dans la rue, dos au soleil couchant](captures/d315-rue-oppose.jpg)
+
+## 2026-11-24 — D316. Plaisir de jeu, lot 2-3 : la mer vivante
+
+**Demande** (PJ, phase 2) : une mer vivante (`src/render/sea.ts`) : vagues, écume au rivage, reflets, sans coût visible sur le reste, et
+un réglage pour la couper.
+
+**Constat avant** : un plan d'eau plat de 30 km et un ruban d'écume fixe (D105). **Ce ruban ne s'est jamais vu** : il supposait l'anneau
+de côte dans le sens trigonométrique (la mer à droite), or l'anneau publié tourne dans le sens des aiguilles d'une montre ; l'écume était
+posée côté terre, au niveau de la mer, sous la plage. Corrigé pour les deux mers (le côté se déduit maintenant du sens de l'anneau, test
+sur la vraie côte) : avec « Mer animée » coupée, la bande claire d'écume d'avant apparaît donc pour la première fois.
+
+**Vagues** (`src/core/waves.ts`, logique pure, même calcul en GLSL) : trois houles qui se croisent (22, 13 et 7 m de long, 3,8, 2,9 et
+2,1 s), directions fixes autour du vent dominant d'ouest (les faire tourner avec le vent ferait glisser les crêtes au loin). Hauteur
+selon le vent (D315) : amplitude 0,1 m par temps calme, 0,4 m sous l'orage. Les périodes sont des fractions entières d'une minute : la
+mer se répète exactement toutes les 60 s et le temps se replie sans saut (précision des flottants). La fonction servira au jet-ski
+(phase 5) : ce qui flottera suivra les vagues qu'on voit.
+
+**La mer** : une grille polaire **qui suit la caméra** (anneaux de 1,2 m près du centre, puis 6 % plus larges à chaque anneau, jusqu'à
+15 km ; ≈ 12 700 sommets, 25 000 triangles, un appel de dessin comme le plan d'avant). Elle avance par pas de 4 m pour que ses sommets ne
+glissent pas sur les vagues. Les sommets sont soulevés jusqu'à 80 m, de moins en moins jusqu'à 260 m ; au-delà, l'eau est plate (les
+sommets y sont trop espacés pour des vagues de quelques mètres). Ombrage « affiche » : la normale vient de la pente des vagues, pixel
+par pixel, exagérée (× 1,8) pour que les paliers de l'ombrage dessinent des bandes nettes ; elle s'efface de 150 à 700 m.
+
+**Reflets** (sans redessiner la scène : un vrai reflet des bâtiments coûterait une seconde image) :
+- le ciel (couleurs de l'horizon et du zénith, les mêmes objets que le dôme), plus fort à jour frisant ;
+- les **paillettes** du soleil (couleur de sa lumière) ou de la lune (pâle) la nuit : des taches nettes qui bougent avec les vagues, un
+  chemin de lumière vers le soleil couchant ; aucune par ciel couvert ni dans la brume ;
+- des **crêtes blanches** sur le haut des vagues par vent fort (dès 0,35 de vent, pleines à 0,8).
+
+**Écume au rivage** : un ruban de 5 à 18 m au large du trait de côte, rééchantillonné tous les 2 m (pour suivre les vagues), qui monte et
+descend avec l'eau. Chaque sommet connaît la profondeur du fond (profil du rivage de D105 : le sol est à 1,6 m au-dessus de l'eau sur le
+trait de côte et descend de 22 cm par mètre). Motif en aplats nets : une **nappe** qui monte et redescend sur le sable (bord dentelé,
+en retard d'un endroit à l'autre, plus haut par gros temps) et une **ligne de vague** qui arrive du large et s'y fond, toutes les 7,5 s.
+Premier essai : le ruban, retourné, n'était pas dessiné vu d'en haut (faces arrière), puis, en double face, éclairé par en dessous (brun) :
+les triangles sont maintenant tournés vers le ciel quel que soit le sens de l'anneau (test).
+
+**Réglage** « Mer animée » (Oui par défaut) : Non garde la mer plate d'avant (avec son écume enfin visible). `?sea=0|1` l'impose.
+
+**Banc** (`?bench=1`) : deux arrêts de plus à la fin, sur la plage de l'ouest face au large (le parcours ne voit jamais la mer) : mer
+vivante puis mer plate, réglages d'origine rétablis.
+
+**Coût** : deux appels de dessin comme avant ; ≈ 25 000 triangles pour la mer et ≈ 4 800 pour l'écume (au lieu de 2 et ≈ 800) : le
+ruban fait le tour de la côte (≈ 88 000 triangles), mais seul le morceau proche de la caméra est dessiné (± 800 m le long de la côte,
+`FoamWindow`, plage d'indices recalculée quand la caméra a bougé de 20 m). Par pixel d'eau : trois sinus pour la pente, trois pour la
+hauteur, un reflet, une paillette. Banc court ici (rendu logiciel, durées sans portée) : à l'arrêt au bord de la mer, médiane 133 ms avec
+la mer vivante contre 117 ms avec la mer plate (avant la fenêtre de l'écume) : le coût par pixel n'est pas nul, à mesurer sur le téléphone
+avec les deux arrêts du banc.
+
+**Tests** : `waves.test.ts` (répétition exacte en 60 s, hauteurs bornées, longueurs et périodes, pente = dérivée, mêmes constantes dans le
+nuanceur) ; `sea.test.ts` (sens de l'anneau, écume sur l'eau et non sous la plage, triangles vers le ciel, rééchantillonnage et
+profondeur, grille, deux appels de dessin, mer plate).
+
+**Limites** : pas de reflet des bâtiments, des projecteurs ni des lampadaires dans l'eau ; l'écume ne monte pas sur le sable sec (elle
+reste au-dessus de l'eau) ; la ligne de rivage est celle du profil théorique de D105 (là où la plaine était plus basse, la nappe peut
+tomber un peu à côté) ; les vagues ne touchent pas la nage (le joueur flotte au niveau calme) ; l'eau de la ville (Vallon, Arroux) est
+inchangée.
+
+**Vues** : `?cam=-1611,176,1.7,-1660,190,9&h=13` (sur la plage de l'ouest), `?cam=-1560,170,40,-1700,200,9&h=13` (au-dessus),
+`?cam=-1592.6,172.8,2,-1833.7,216,9&h=19.5` (coucher face au large), `&h=22.5` (nuit), `&weather=orage`, avec `&sea=0` pour comparer.
+
+![Sur la plage, avant : mer plate, écume invisible](captures/d316-plage-avant.jpg)
+![Sur la plage, après : vagues, nappe d'écume au bord, ligne qui arrive](captures/d316-plage-apres.jpg)
+![Vue d'en haut, avant](captures/d316-haut-avant.jpg)
+![Vue d'en haut, après](captures/d316-haut-apres.jpg)
+![Coucher face au large, avant](captures/d316-coucher-avant.jpg)
+![Coucher face au large, après : chemin de paillettes](captures/d316-coucher-apres.jpg)
+![La nuit](captures/d316-nuit.jpg)
+![Orage : crêtes blanches](captures/d316-orage.jpg)
+![Réglages : « Effets d'image », « Ciel animé », « Mer animée »](captures/d316-reglages.jpg)

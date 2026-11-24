@@ -50,6 +50,8 @@ interface Phase {
   setup?: () => void;
   /** Foule de personnages animés devant la caméra pendant la phase (arrêts seulement). */
   crowd?: { n: number; shadows: boolean };
+  /** Arrêt ailleurs que sur la place (D316) : caméra en (x, y, hauteur au-dessus du sol), regard vers (x, y, hauteur). */
+  view?: [number, number, number, number, number, number];
 }
 
 interface FrameSample {
@@ -311,10 +313,21 @@ export function startBench(ctx: GameContext): void {
     { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
     { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
-  // L'endurance passe en dernier, avec les ombres et la définition d'origine rétablies.
-  if (soakPhases.length) {
+  // Au bord de la mer (D316), réglages d'origine rétablis : mer vivante puis mer plate, face au large sur la plage de l'ouest (le parcours
+  // ne voit jamais la mer). Puis l'endurance, en dernier.
+  const seaView: [number, number, number, number, number, number] = [-1592.6, 172.8, 2, -1833.7, 216, 9];
+  const seaPhases: Phase[] = atmosphere.sea
+    ? [
+        { name: "Arrêt au bord de la mer, mer vivante", still: { seconds: 6 / still }, view: seaView, setup: () => { atmosphere.sea!.animated = true; } },
+        { name: "Arrêt au bord de la mer, mer plate", still: { seconds: 6 / still }, view: seaView, setup: () => { atmosphere.sea!.animated = false; } },
+      ]
+    : [];
+  const benchSea = atmosphere.sea?.animated ?? true;
+  if (seaPhases.length || soakPhases.length) {
     phases.push(
       { name: "Retour aux réglages d'origine", still: { seconds: 1 }, setup: () => { setShadows(settingsShadows); renderer.setPixelRatio(settingsPixelRatio); } },
+      ...seaPhases,
+      ...(seaPhases.length ? [{ name: "Retour à la mer du banc", still: { seconds: 1 }, setup: () => { if (atmosphere.sea) atmosphere.sea.animated = benchSea; } }] : []),
       ...soakPhases,
     );
   }
@@ -518,6 +531,10 @@ export function startBench(ctx: GameContext): void {
         cam: [back.x, terrain.heightAt(back.x, back.y) + CHASE_HEIGHT, back.y],
         look: [ahead.x, terrain.heightAt(ahead.x, ahead.y) + 1.2, ahead.y],
       };
+    }
+    if (p.view) {
+      const [cx, cy, ch, lx, ly, lh] = p.view;
+      return { x: cx, y: cy, vx: 0, vy: 0, cam: [cx, terrain.heightAt(cx, cy) + ch, cy], look: [lx, terrain.heightAt(lx, ly) + lh, ly] };
     }
     // Vue du jeu au départ : derrière le piéton, regard vers le nord (mairie, théâtre).
     const x = spawn.x, y = spawn.y;
