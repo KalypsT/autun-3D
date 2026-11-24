@@ -1,6 +1,7 @@
 import { imageMatrix, imagesInView, pickLevel, worldToScreen, formatDistance, type MapView } from "../core/mapview";
 import { clampToDisc, waypointFrom, type Waypoint } from "../core/waypoint";
 import type { MapData } from "./map-data";
+import { drawRoute, drawVehicleBadge } from "./map-glyphs";
 
 /** Rayon visible autour du joueur (m) et taille de la pastille (px CSS). */
 export const MINIMAP_RADIUS_M = 180;
@@ -30,6 +31,11 @@ export interface MinimapState {
   north: boolean;
   vehicles: readonly MinimapVehicle[];
   waypoint: Waypoint | null;
+  /** Itinéraire vers le repère (D310) : ligne brisée à plat, et distance restante par ce trajet (m). */
+  route?: readonly number[] | null;
+  routeRemaining?: number | null;
+  /** Dernier véhicule utilisé, quand on n'est pas dessus (D310) : ramené sur le bord du disque quand il est plus loin. */
+  lastVehicle?: { x: number; y: number; kind: string } | null;
   /** Voitures de police (J4) : points qui alternent bleu et rouge (`flash`), ramenés sur le bord quand elles sont hors du disque. */
   police?: readonly { x: number; y: number }[];
   flash?: boolean;
@@ -119,6 +125,9 @@ export class Minimap {
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+
+    // Itinéraire vers le repère (D310), sous tous les pictogrammes.
+    if (s.route && s.waypoint) drawRoute(ctx, view, s.route, 3, 10);
 
     // Véhicules garés proches : les voitures (partout) en petits points, les deux-roues (à chercher) en losanges plus gros.
     ctx.strokeStyle = "#fff8e6";
@@ -225,7 +234,16 @@ export class Minimap {
       }
     }
 
-    // Repère : épingle dans le champ, flèche sur le bord et distance au-delà.
+    // Dernier véhicule (D310) : pastille, sur le bord quand il est hors du disque (on voit dans quelle direction il est) ; pas tout à côté du joueur.
+    if (s.lastVehicle && Math.hypot(s.lastVehicle.x - s.x, s.lastVehicle.y - s.y) > 12) {
+      const [px, py] = worldToScreen(view, s.lastVehicle.x, s.lastVehicle.y);
+      const q = clampToDisc(px - size / 2, py - size / 2, r - 8);
+      ctx.globalAlpha = q.outside ? 0.85 : 1;
+      drawVehicleBadge(ctx, size / 2 + q.x, size / 2 + q.y, s.lastVehicle.kind, q.outside ? 6 : 7);
+      ctx.globalAlpha = 1;
+    }
+
+    // Repère : épingle dans le champ, flèche sur le bord et distance au-delà (par l'itinéraire quand il existe, D310).
     let label: { text: string; x: number; y: number } | null = null;
     if (s.waypoint) {
       const [px, py] = worldToScreen(view, s.waypoint.x, s.waypoint.y);
@@ -247,7 +265,7 @@ export class Minimap {
         ctx.fill();
         ctx.stroke();
         ctx.restore();
-        const d = waypointFrom(s.x, s.y, s.waypoint, 0).distance;
+        const d = s.routeRemaining ?? waypointFrom(s.x, s.y, s.waypoint, 0).distance;
         label = { text: formatDistance(d), x: size / 2 + p.x * 0.62, y: size / 2 + p.y * 0.62 };
       } else {
         ctx.beginPath();

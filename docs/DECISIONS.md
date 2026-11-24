@@ -7280,3 +7280,32 @@ rien à l'écran, et 5 m/s n'est qu'un footing.
 
 **Vérifié** : `tools/ui.sh <dossier> sprint` (bouton, pouce gauche à mi-course, 7 m/s mesurés, bouton éteint après le lâcher) ;
 test de `player.test.ts`. **À juger sur le téléphone** : place du bouton, vitesse, pose.
+
+## 2026-11-24 — D310. Plaisir de jeu, lot 1-2 : guidage vers le repère et dernier véhicule
+
+**Contexte** : le repère posé sur la carte (J1) n'était qu'un point, avec une flèche au bord de la minimap et la distance à vol
+d'oiseau. Le guidage par les routes était noté depuis J1 ; l'utilisateur le valide (PJ, phase 1), sur les cartes seulement, sans
+flèches dans le monde.
+
+**Choix**
+- **Itinéraire** (`src/core/guide.ts`, logique pure) : A* d'un point d'arête à un point d'arête, sur le graphe routier en véhicule
+  (arêtes carrossables, sens uniques respectés, comme la circulation) et sur le graphe piéton à pied (trottoirs, passages, chemins,
+  escaliers). En véhicule, partir à l'opposé du cap coûte 80 m (un demi-tour). Le trait va du joueur au graphe, suit le graphe, puis
+  rejoint le repère. Tous les véhicules suivent les routes (vélo et trottinette compris : plus simple, et c'est là qu'on roule vite).
+- **Un graphe complet à part** (`src/game/route-guide.ts`) : le graphe des passants ne couvre que 400 m autour du joueur (D40). Le
+  guidage charge toutes les super-tuiles de navigation (≈ 1,4 Mo, gardées en cache sous `immuable/`) dans un second `NavGraph`, à la
+  première pose d'un repère seulement. Calcul mesuré : 2 à 6 ms en navigateur logiciel, moins de 15 ms en test sur des trajets d'un
+  bout à l'autre de la ville.
+- **Recalcul** : au changement de repère, à la montée ou descente d'un véhicule, ou quand on s'écarte de plus de 25 m du trait (au
+  plus une fois par 1,2 s). Entre deux calculs, on projette seulement le joueur sur la ligne : le trait déjà parcouru disparaît et la
+  distance restante est celle de l'itinéraire. Sous 18 m du repère, plus de trait.
+- **Dessin** (`src/ui/map-glyphs.ts`) : trait brique bordé de crème, comme le repère, sous les autres pictogrammes ; sur la minimap
+  (3 px) et la carte agrandie (4,5 px). La distance affichée au bord de la minimap et la pastille de la carte (« Repère à 1,6 km par
+  l'itinéraire ») sont celles du trajet. Pas d'itinéraire (repère en mer, loin de toute rue) : la flèche et la distance à vol d'oiseau
+  restent.
+- **Dernier véhicule** (D301) : pastille bleu nuit cerclée de crème, une voiture ou un deux-roues dedans, sur la minimap (ramenée au
+  bord quand il est plus loin, cachée à moins de 12 m) et la carte agrandie, tant qu'on n'est pas dessus. C'est la seule exception à
+  « aucun véhicule sur la carte » (D114).
+
+**Vérifié** : `src/core/guide.test.ts` (vraies données : quatre trajets en voiture, deux à pied, demi-tour, progression) ;
+`tools/ui.sh <dossier> guide`. **À juger sur le téléphone** : lisibilité du trait, choix des itinéraires.

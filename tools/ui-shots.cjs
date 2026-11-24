@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -77,6 +77,36 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1500);
     console.log("bouton après lâcher :", await page.evaluate(() => document.getElementById("sprint").className));
     await ctx.close();
+  }
+
+  if (want("guide")) {
+    // Guidage (D310) : repère vers la gare ; à pied (trottoirs), puis en voiture (routes, sens uniques), puis la carte agrandie.
+    const routeReady = () => page.waitForFunction(() => window.__autun.ui.guide.points !== null, null, { timeout: 120000 });
+    const ctx = await open("h=11");
+    await page.evaluate(() => window.__autun.ui.setWaypoint({ x: 600, y: -900 }));
+    await routeReady();
+    await sleep(800);
+    console.log("à pied :", await page.evaluate(() => ({ m: Math.round(window.__autun.ui.guide.remaining), ms: window.__autun.ui.guide.lastMs.toFixed(1) })));
+    await shot("pj1-guide-pied");
+    await ctx.close();
+    const c2 = await open("ride=voiture&h=11");
+    await page.evaluate(() => window.__autun.ui.setWaypoint({ x: 600, y: -900 }));
+    await routeReady();
+    await sleep(800);
+    console.log("en voiture :", await page.evaluate(() => ({ m: Math.round(window.__autun.ui.guide.remaining), ms: window.__autun.ui.guide.lastMs.toFixed(1) })));
+    await shot("pj1-guide-voiture");
+    // Descendre (E), s'éloigner un peu : la pastille du dernier véhicule apparaît.
+    await page.keyboard.press("KeyE");
+    await sleep(1500);
+    await page.keyboard.down("KeyS");
+    await sleep(3000);
+    await page.keyboard.up("KeyS");
+    await sleep(800);
+    await shot("pj1-guide-dernier-vehicule");
+    await pauseMap();
+    await sleep(2500);
+    await shot("pj1-guide-carte");
+    await c2.close();
   }
 
   if (want("wanted")) {

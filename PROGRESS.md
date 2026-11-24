@@ -2204,3 +2204,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Pas de jauge d'endurance pour l'instant (à voir plus tard).
 - À faire de ton côté : sprinter dans le centre et dire si le bouton est bien placé, si la vitesse te plaît.
 ![Sprint](docs/captures/d309-sprint.jpg)
+
+**Plaisir de jeu, lot 1-2 : guidage vers le repère et dernier véhicule (24 novembre 2026)** (D310)
+- Quand tu poses un repère sur la carte, un **trait brique** te montre le chemin sur la minimap et sur la carte agrandie : par les rues en véhicule (sens uniques respectés), par les trottoirs et les chemins à pied.
+- La distance affichée est celle du trajet, plus celle à vol d'oiseau. Si tu t'écartes du trait, il se recalcule ; il se recalcule aussi quand tu montes dans un véhicule ou que tu en descends.
+- Ton **dernier véhicule** apparaît sur la minimap (une pastille bleu nuit, sur le bord s'il est loin) et sur la carte agrandie : plus besoin de chercher où tu l'as laissé.
+- À faire de ton côté : poser un repère loin, y aller à pied puis en voiture, et dire si les chemins proposés sont bons.
+![À pied](docs/captures/d310-guide-pied.jpg)
+![En voiture](docs/captures/d310-guide-voiture.jpg)
+![Carte agrandie](docs/captures/d310-guide-carte.jpg)
