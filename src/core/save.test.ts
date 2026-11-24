@@ -3,7 +3,7 @@ import { addDays, parseSave, SAVE_KEY, SAVE_VERSION, SaveStore, serializeSave, t
 import { DEFAULT_SETTINGS, effectiveSettings, parseSettings, SettingsStore } from "./settings";
 
 const sample = (): SaveGame => ({
-  version: 5,
+  version: 6,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
@@ -16,6 +16,7 @@ const sample = (): SaveGame => ({
   waypoint: { x: 400, y: -300 },
   health: 72,
   arms: { owned: ["knife", "pistol"], mag: { pistol: 7 }, ammo: { pistol: 30 }, current: "pistol" },
+  money: 1234,
 });
 
 /** Horloge des versions 1 à 4 : jour de l'année. */
@@ -36,7 +37,7 @@ describe("sauvegarde", () => {
     expect(parseSave("")).toBeNull();
     expect(parseSave("{pas du json")).toBeNull();
     expect(parseSave("[1,2]")).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample(), version: 6 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 7 }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), version: undefined }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: "1", y: 2 } }))).toBeNull();
     expect(parseSave(JSON.stringify({ ...sample(), player: { x: 1e9, y: 2 } }))).toBeNull();
@@ -112,6 +113,18 @@ describe("sauvegarde", () => {
     expect(p.camera.pitch).toBe(1.5);
     expect(addDays(365, 1)).toBe(1);
     expect(addDays(1, -1)).toBe(365);
+  });
+
+  it("argent (version 6, D317) : entier, borné, 0 si absurde ; versions 1 à 5 : 0 €", () => {
+    expect(parseSave(JSON.stringify({ ...sample(), money: 99.9 }))!.money).toBe(99);
+    expect(parseSave(JSON.stringify({ ...sample(), money: -5 }))!.money).toBe(0);
+    expect(parseSave(JSON.stringify({ ...sample(), money: "12" }))!.money).toBe(0);
+    expect(parseSave(JSON.stringify({ ...sample(), money: 1e15 }))!.money).toBe(9_999_999);
+    const v5 = parseSave(JSON.stringify({ ...sample(), version: 5 }))!;
+    expect(v5.version).toBe(SAVE_VERSION);
+    expect(v5.money).toBe(0);
+    expect(v5.clock).toEqual(sample().clock);
+    expect(v5.arms).toEqual(sample().arms);
   });
 
   it("version 4 (jour de l'année) : migrée vers le lundi de la saison qui contient ce jour", () => {

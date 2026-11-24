@@ -7580,3 +7580,47 @@ inchangée.
 ![La nuit](captures/d316-nuit.jpg)
 ![Orage : crêtes blanches](captures/d316-orage.jpg)
 ![Réglages : « Effets d'image », « Ciel animé », « Mer animée »](captures/d316-reglages.jpg)
+
+## 2026-11-24 — D317. Plaisir de jeu, phase 3, lot 1 : l'argent (porte-monnaie, sauvegarde, mort et arrestation, portefeuilles, garages)
+
+**Contexte** : phase 3 du chantier PJ, l'argent et les collections (`docs/plans/argent-collections.md`). Cadrage validé par
+l'utilisateur le 24 novembre 2026 : « ok » pour toutes les réponses par défaut du plan (§ 7), sauf les armes, qui se vendront dans deux
+magasins (« James », armes de poing et d'épaule ; Surplus Éduen, armes de guerre, grenades « ou autres », à préciser avant le lot 7).
+Ce lot pose le socle : il n'y a encore rien à acheter, mais l'argent se gagne et se perd déjà.
+
+**Choix**
+- **Porte-monnaie** (`src/core/wallet.ts`, logique pure) : solde en euros entiers, 9 999 999 € au plus ; `earn` (gain), `spend` (achat :
+  refusé s'il manque de l'argent), `take` (facture, amende : on prend ce qui reste, **pas de dette**). Chaque mouvement est nommé et
+  gardé jusqu'à ce que l'interface le lise (`drain`).
+- **À l'écran** (`src/ui/money-hud.ts`) : le solde sous la date, à gauche, toujours visible en jeu (« 1 250 € », espace insécable : l'espace
+  fine ne se voyait pas dans la police du système) ; au volant, la date disparaît et le solde remonte à sa place. Chaque gain fait monter un
+  « +250 € » ocre, chaque dépense un « −30 € » rouge brique (1,8 s, trois au plus). La figure en cours (roue arrière) et le panneau de
+  debug descendent de 22 px.
+- **Mort** : l'hôpital envoie sa facture, **10 % du solde, 1 000 € au plus**, écrite dans le bandeau (« Facture : 152 € »). **On garde ses
+  armes** : changement de D80, maintenant qu'elles vont s'acheter.
+- **Arrestation** : **amende de 15 %, 2 500 € au plus**, dans le bandeau ; armes confisquées et véhicule conduit confisqué comme avant
+  (la fourrière viendra avec les véhicules achetés, lot 8).
+- **Portefeuilles** : un passant **mis à terre par le joueur** (renversé par son véhicule au-delà de 3,5 m/s, ou frappé, touché, soufflé au
+  point de tomber ou de mourir) lâche **une fois sur trois de 5 à 40 €**, là où il est tombé. Une fois dans sa vie seulement (`PedSim.felled`,
+  `looted`) ; ni un trébuchement, ni un passant renversé par la circulation. Les billets (une liasse vert tilleul et sa bande crème, qui
+  tourne au ras du sol, sans faisceau) se ramassent en marchant dessus comme les armes (D159), disparaissent après 2 minutes, 24 tas au
+  plus ; ils ne vont pas sur la minimap. Les gendarmes tués lâchent leur pistolet, pas d'argent.
+- **Garages** (D113) : la réparation devient **payante, 50 à 800 €** (50 € de main-d'œuvre, jusqu'à 600 € selon la santé perdue, 150 €
+  selon la tôle froissée, à la dizaine). S'il manque de l'argent, le garage refuse et le dit à la place du nom du véhicule
+  (« Norauto · 370 € — Il manque 120 € »).
+- **Sauvegarde en version 6** : `money` ; les versions 1 à 5 sont lues avec 0 €. Les ajouts suivants de la phase (véhicules possédés,
+  carnet) seront des champs facultatifs de la version 6. L'argent appartient à la partie : « Nouvelle partie » repart de 0 € (les
+  records restent à part, D312).
+- **`?money=N`** impose un solde (essais, captures) et, comme `?hurt=`, empêche de lire et d'écrire la sauvegarde.
+
+**Vérifié** : `wallet.test.ts` (gains, achats refusés, prélèvements sans dette, mouvements, lecture méfiante, écriture à la française,
+facture, amende, réparation, tirage des portefeuilles), `pedestrians-combat.test.ts` (mis à terre une fois ; coup léger, circulation : non),
+`pickups.test.ts` (billets ramassés, durée de vie, plafond), `save.test.ts` (version 6, migration des versions 5 et antérieures) ;
+`tools/ui.sh <dossier> money` : 1 250 € + 250 € + 23 € de billets ramassés = 1 523 €, puis la mort : facture de 152 €, 1 371 €.
+
+**À juger en jouant** : la place du solde, la fréquence des portefeuilles, le prix des réparations.
+
+![Le solde et un gain](captures/pj3-argent.jpg)
+![Des billets lâchés](captures/pj3-billets.jpg)
+![La facture de l'hôpital](captures/pj3-mort-facture.jpg)
+![Au volant](captures/pj3-argent-voiture.jpg)

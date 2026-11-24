@@ -2265,3 +2265,16 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Sur la plage, après](docs/captures/d316-plage-apres.jpg)
 ![Coucher face au large](docs/captures/d316-coucher-apres.jpg)
 ![Les trois nouveaux réglages de la phase 2](docs/captures/d316-reglages.jpg)
+
+**Plaisir de jeu, lot 3-1 : l'argent (24 novembre 2026)** (D317)
+- Ton **solde** s'affiche sous la date, à gauche ; chaque gain fait monter un « +250 € » ocre, chaque dépense un « −30 € » rouge.
+- Un passant que tu **mets à terre** (renversé, frappé, touché) lâche **une fois sur trois de 5 à 40 €** : une liasse verte avec un petit faisceau, à ramasser en marchant dessus (elle disparaît au bout de 2 minutes). Une fois par passant ; pas pour ceux que la circulation renverse.
+- **Mort** : l'hôpital envoie sa facture (10 % du solde, 1 000 € au plus), et **tu gardes tes armes** maintenant qu'elles vont s'acheter. **Arrestation** : amende de 15 % (2 500 € au plus), armes et véhicule confisqués comme avant. Pas de dette si tu n'as plus rien.
+- Les **garages font payer** la réparation : 50 à 800 € selon les dégâts ; s'il te manque de l'argent, le garage le dit.
+- La partie enregistrée garde ton argent (sauvegarde en version 6 ; une ancienne partie repart de 0 €). Une nouvelle partie repart de zéro ; les records restent.
+- Rien à acheter encore : les magasins viennent aux lots 6 à 8 de la phase.
+- À faire de ton côté : jouer un peu et dire si la place du solde te va, si les portefeuilles tombent trop souvent ou pas assez, et si les réparations sont trop chères.
+![Le solde et un gain](docs/captures/pj3-argent.jpg)
+![Des billets lâchés](docs/captures/pj3-billets.jpg)
+![La facture de l'hôpital](docs/captures/pj3-mort-facture.jpg)
+![Au volant](docs/captures/pj3-argent-voiture.jpg)

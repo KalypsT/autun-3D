@@ -20,6 +20,8 @@ import { RecordBook } from "../core/records";
 import { crowdMurmur, footingAt, type Footing } from "../core/footing";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
+import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
+import { MoneyHud } from "../ui/money-hud";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
@@ -470,6 +472,11 @@ export function startGame(ctx: GameContext): void {
   // Armes (J5, D80) : les poings sont toujours là ; reprise de la sauvegarde ; `?arms=knife,bat,pistol` (ou `all`) en donne pour les essais ; on en trouve dans les caches de la ville (D84).
   const inventory = new Inventory();
   if (saved) inventory.restore(saved.arms);
+  // Argent (D317) : reprise de la sauvegarde ; `?money=N` impose un solde (essais, captures).
+  const wallet = new Wallet(params.has("money") ? Number(params.get("money")) : (saved?.money ?? 0));
+  const moneyHud = new MoneyHud(document.getElementById("money")!);
+  /** Passants mis à terre par le joueur à cette image (D317) : chacun lâche peut-être son portefeuille. */
+  const felled: { x: number; y: number }[] = [];
   const melee = new Melee();
   const gun = new Gun(0x51f7);
   const pickups = new Pickups();
@@ -928,9 +935,13 @@ export function startGame(ctx: GameContext): void {
       const d = riding.damage, needs = d.usable && d.version > 0 && (d.health < DAMAGE.max || ZONES.some((z) => d.zones[z] > 0));
       const g = garageStop.update(dt, ui.garages, riding.state.x, riding.state.y, riding.state.speed, needs);
       if (g) {
-        d.repair();
-        damaged.delete(riding);
-        vehicleName.show({ make: g.name, model: "Réparée" });
+        // Réparation payante (D317) : 50 à 800 € selon les dégâts ; sans assez d'argent, le garage refuse et dit combien il manque.
+        const cost = repairCost(d.health, d.zones, DAMAGE.max);
+        if (wallet.spend(cost, "Réparation")) {
+          d.repair();
+          damaged.delete(riding);
+          vehicleName.show({ make: g.name, model: `Réparée · ${formatMoney(cost)}` });
+        } else vehicleName.show({ make: `${g.name} · ${formatMoney(cost)}`, model: `Il manque ${formatMoney(cost - wallet.balance)}` });
       }
     }
     const tier = riding?.damage.tier;
@@ -1216,7 +1227,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance,
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1251,17 +1262,20 @@ export function startGame(ctx: GameContext): void {
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
+    // Amende (D317) : 15 % du solde, 2 500 € au plus ; sans argent, rien (pas de dette).
+    const fine = wallet.take(arrestFine(wallet.balance), "Amende");
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     groundPlayer(player);
     yaw = ARREST_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
-    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`, false);
+    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}${fine > 0 ? `, amende de ${formatMoney(fine)}` : ""}. Reprise à la sortie de la gendarmerie.`, false);
     controls.reset();
     ui.save();
   };
 
   // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital le plus proche (D161) trois heures plus tard, santé pleine, sans étoile.
+  // Depuis D317, on garde ses armes (elles s'achètent) et l'hôpital envoie sa facture : 10 % du solde, 1 000 € au plus.
   const die = (): void => {
     if (riding) dismount();
     const hospital = nearestHospital(player.x, player.y);
@@ -1269,7 +1283,7 @@ export function startGame(ctx: GameContext): void {
     lastStars = 0;
     audio.death();
     haptics.death();
-    inventory.loseAll();
+    const bill = wallet.take(deathBill(wallet.balance), "Hôpital");
     melee.cancel();
     gun.cancel();
     const r = colliders.resolve(hospital.x, hospital.y, PLAYER_RADIUS);
@@ -1278,7 +1292,7 @@ export function startGame(ctx: GameContext): void {
     yaw = hospital.heading;
     if (atmosphere.speed > 0) atmosphere.advance(DEATH_HOURS / atmosphere.speed);
     health.restore();
-    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital de ${hospital.name}, ${DEATH_HOURS} heures plus tard.`, true);
+    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital de ${hospital.name}, ${DEATH_HOURS} heures plus tard${bill > 0 ? `. Facture : ${formatMoney(bill)}` : ""}.`, true);
     controls.reset();
     ui.save();
   };
@@ -1686,18 +1700,26 @@ export function startGame(ctx: GameContext): void {
     pickups.update(dt);
     // Ramassage automatique (D159) : à pied, vivant et debout, on prend ce qu'on foule (arme, balles, croix de pharmacie), sans bouton.
     if (!riding && !health.dead && downFor <= 0) {
-      const pk = pickups.collect(player.x, player.y, inventory, health);
+      const pk = pickups.collect(player.x, player.y, inventory, health, wallet);
       if (pk?.kind === "heal") audio.heal();
       else if (pk) audio.pickup();
     }
     pickViews.length = 0;
     for (const pk of pickups.list) {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
-      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal" });
+      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
     }
     fx.update(dt, pickViews, pickups.time);
     ui.caches.length = 0;
-    for (const pk of pickups.list) if (pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
+    for (const pk of pickups.list) if (pk.kind !== "cash" && pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
+    // Portefeuilles (D317) : un passant mis à terre par le joueur lâche peut-être des billets là où il est tombé.
+    felled.length = 0;
+    (peds as PedsController | null)?.takeFelled(felled);
+    for (const f of felled) {
+      const cash = walletDrop(Math.random);
+      if (cash > 0) pickups.dropCash(f.x, f.y, cash);
+    }
+    moneyHud.set(wallet.balance, wallet.drain());
     if (riding && rideModel) {
       rideModel.update(riding.state);
       rideModel.setBeacon?.(beaconOn ? beaconClock : null);
@@ -1915,7 +1937,7 @@ export function startGame(ctx: GameContext): void {
     schedule();
   });
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
+    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer, wallet,
     /** Captures et mesures : redessine la scène telle quelle. */
     renderOnce: () => ctx.post.render(scene, camera),
     /** Captures : bandeau d'exploit, carnet de records, temps du jeu (D311, D312). */

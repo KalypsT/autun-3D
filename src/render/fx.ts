@@ -28,17 +28,22 @@ const BEAM: [number, number, number] = [1, 0.8, 0.35];
 /** Croix verte de pharmacie (soin) : la croix et son faisceau. */
 const HEAL: [number, number, number] = [0.25, 0.85, 0.42];
 const HEAL_BEAM: [number, number, number] = [0.55, 1, 0.65];
+/** Billets lâchés par un passant (D317) : une liasse verte, sa bande de papier crème et un petit faisceau vert pâle. */
+const CASH: [number, number, number] = [0.12, 0.5, 0.1];
+const CASH_BAND: [number, number, number] = [1, 0.9, 0.6];
+const CASH_BEAM: [number, number, number] = [0.45, 0.95, 0.4];
 const TRACER: [number, number, number] = [1, 0.93, 0.62];
 const SPARK_WALL: [number, number, number] = [1, 0.6, 0.2];
 const SPARK_BODY: [number, number, number] = [1, 0.97, 0.85];
 
-/** Un objet au sol à dessiner : une arme, ou (`heal`) la croix verte d'une pharmacie. */
+/** Un objet au sol à dessiner : une arme, (`heal`) la croix verte d'une pharmacie, ou (`cash`) des billets (D317). */
 export interface PickupView {
   x: number;
   y: number;
   z: number;
   weapon: WeaponId | null;
   heal?: boolean;
+  cash?: boolean;
 }
 
 interface Item {
@@ -165,6 +170,26 @@ export class Fx {
       }
     }
     for (const pk of pickups) {
+      if (pk.cash) {
+        // Billets (D317) : une liasse posée de travers qui tourne en flottant à hauteur de genou, et un faisceau court (on la repère de loin
+        // sans la confondre avec une arme, dont le faisceau monte à 3 m).
+        const lift = 0.45 + Math.sin(time * 3 + pk.x) * 0.06;
+        this.e.set(0.35, time * 2.2 + pk.y, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + lift, -pk.y);
+        this.s.set(0.6, 0.14, 0.32);
+        m.compose(this.p, this.q, this.s);
+        put(CASH[0], CASH[1], CASH[2]);
+        this.s.set(0.14, 0.16, 0.34);
+        m.compose(this.p, this.q, this.s);
+        put(CASH_BAND[0], CASH_BAND[1], CASH_BAND[2]);
+        this.p.set(pk.x, pk.z + 0.9, -pk.y);
+        this.s.set(0.08, 1.8, 0.08);
+        this.q.identity();
+        m.compose(this.p, this.q, this.s);
+        put(CASH_BEAM[0], CASH_BEAM[1], CASH_BEAM[2]);
+        continue;
+      }
       if (pk.heal || !pk.weapon) {
         // Croix verte (D159) : deux barres qui tournent sur elles-mêmes en flottant à hauteur de ceinture, et un faisceau vert.
         const bobH = Math.sin(time * 2 + pk.x) * 0.1;

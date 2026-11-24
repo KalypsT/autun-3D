@@ -228,6 +228,40 @@ describe("passants : coups, blessure, fuite (J5-1)", () => {
     expect(PED_STATE.dead).toBeGreaterThan(PED_STATE.down);
   });
 
+  it("passants mis à terre par le joueur (D317) : son véhicule et ses coups qui font tomber comptent, une fois par passant ; la circulation et un trébuchement non", () => {
+    const felled = (sim: PedSim): number => {
+      const out: { x: number; y: number }[] = [];
+      sim.takeFelled(out);
+      return out.length;
+    };
+    // Coup léger (trébuche) : rien ; coup qui fait tomber : une fois ; une nouvelle chute du même passant : plus rien.
+    {
+      const { sim, slot, obs } = setup();
+      expect(sim.damage(slot, 5, 0, 1, 1.2)).toBe(1);
+      expect(felled(sim)).toBe(0);
+      for (let i = 0; i < 60 * 3; i++) sim.step(STEP, obs);
+      const at = { x: 0, y: 0 };
+      sim.position(slot, at);
+      expect(sim.damage(slot, 5, 0, 1, 6)).toBe(1);
+      const out: { x: number; y: number }[] = [];
+      sim.takeFelled(out);
+      expect(out.length).toBe(1);
+      expect(Math.hypot(out[0]!.x - at.x, out[0]!.y - at.y)).toBeLessThan(0.01);
+      for (let i = 0; i < 60 * 12; i++) sim.step(STEP, obs);
+      sim.damage(slot, 90, 0, 1, 6);
+      expect(felled(sim)).toBe(0);
+    }
+    // Renversé par le véhicule du joueur à 30 km/h : compte ; par une voiture de la circulation : ne compte pas.
+    for (const mine of [true, false]) {
+      const { sim, pos, obs } = setup();
+      const body = { x: pos.x, y: pos.y - 1.2, vx: 0, vy: 8.3, heading: 0, hull: [[0, 1.0]] as [number, number][] };
+      if (mine) sim.step(STEP, { ...obs, onFoot: false, vehicle: body });
+      else sim.step(STEP, { ...obs, vehicles: [{ ...body, slow: 0, speed: 0, hits: 0 }] });
+      expect(sim.stats.hits).toBeGreaterThan(0);
+      expect(felled(sim)).toBe(mine ? 1 : 0);
+    }
+  });
+
   it("ne frappe pas les emplacements réservés, les absents ni les montants négatifs", () => {
     const sim = new PedSim(graph(), terrain, colliders, { capacity: 20, seed: 7, reserved: 4 });
     expect(sim.damage(19, 10, 1, 0, 1)).toBe(0);

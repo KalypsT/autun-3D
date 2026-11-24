@@ -35,6 +35,8 @@ export interface GameState {
   health: number;
   /** Armes du joueur. */
   arms: SavedArms;
+  /** Argent du joueur (D317). */
+  money: number;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -296,6 +298,7 @@ export class UiBridge {
       waypoint: this.waypoint,
       health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
       arms: s.arms,
+      money: s.money,
     };
   }
 

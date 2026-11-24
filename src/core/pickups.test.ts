@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { NavGraph } from "./nav-graph";
 import { MASK_ZONE } from "./pedestrians";
 import { Health, HOSPITALS, MAX_HEALTH } from "./health";
-import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, DROP_LIFE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
+import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, CASH_LIFE, DROP_LIFE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
+import { Wallet } from "./wallet";
 import { PUBLIC_DATA } from "../data/data-version";
 
 describe("armes au sol (J5-3)", () => {
@@ -163,5 +164,30 @@ describe("croix de soin du Centre hospitalier (D161)", () => {
       expect(pk.collect(cross!.x, cross!.y, inv, hp)).not.toBeNull();
       expect(hp.hp).toBe(MAX_HEALTH);
     }
+  });
+});
+
+describe("billets lâchés par les passants (D317)", () => {
+  it("on les ramasse en marchant dessus : ils vont au porte-monnaie et disparaissent ; seuls, ils s'en vont après deux minutes", () => {
+    const p = new Pickups([], []), inv = new Inventory(), wallet = new Wallet(10);
+    const heap = p.dropCash(5, 5, 23);
+    expect(p.collect(5, 5 + PICKUP_REACH + 0.1, inv, undefined, wallet)).toBeNull();
+    // Sans porte-monnaie (anciens appels), ils restent par terre.
+    expect(p.collect(5, 5, inv)).toBeNull();
+    expect(p.collect(5, 5.3, inv, undefined, wallet)).toBe(heap);
+    expect(wallet.balance).toBe(33);
+    p.update(0.01);
+    expect(p.list.length).toBe(0);
+    p.dropCash(0, 0, 8);
+    p.update(CASH_LIFE + 0.1);
+    expect(p.list.length).toBe(0);
+  });
+
+  it("au plus 24 tas : le plus ancien s'en va", () => {
+    const p = new Pickups([], []);
+    for (let i = 0; i < 30; i++) p.dropCash(i, 0, 5 + i);
+    const heaps = p.list.filter((q) => q.kind === "cash");
+    expect(heaps.length).toBe(24);
+    expect(heaps[0]!.cash).toBe(11);
   });
 });

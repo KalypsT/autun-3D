@@ -66,8 +66,16 @@ export const PICKUP_REACH = 1.3;
 export const CACHE_RESPAWN = 300;
 export const DROP_LIFE = 180;
 
-/** Ce que contient un objet au sol. */
-export type PickupKind = "weapon" | "heal";
+/** Billets lâchés par un passant mis à terre (D317) : ils disparaissent après … s. */
+export const CASH_LIFE = 120;
+
+/** Ce que contient un objet au sol : une arme, une croix de soin, ou des billets (D317). */
+export type PickupKind = "weapon" | "heal" | "cash";
+
+/** Ce que les billets ont besoin de connaître du joueur : son porte-monnaie (`Wallet`). */
+export interface Purse {
+  earn(amount: number, label: string): number;
+}
 
 /** Ce que la croix de soin a besoin de connaître du joueur. */
 export interface Healer {
@@ -84,6 +92,8 @@ export interface Pickup {
   /** L'arme (ou null pour une croix de soin). */
   weapon: WeaponId | null;
   rounds: number;
+  /** Billets : leur montant (€) ; 0 pour le reste. */
+  cash: number;
   label: string;
   /** Instant (horloge de `Pickups`) où elle est de nouveau disponible ; 0 : disponible. */
   readyAt: number;
@@ -99,8 +109,8 @@ export class Pickups {
   private nextId = 0;
 
   constructor(sites: readonly CacheSite[] = CACHES, heals: readonly HealSite[] = HEAL_SITES) {
-    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, label: c.label, readyAt: 0, dropped: false, expires: Infinity });
-    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, cash: 0, label: c.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, cash: 0, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
   }
 
   available(p: Pickup): boolean {
@@ -114,7 +124,16 @@ export class Pickups {
 
   /** Arme lâchée en (x, y) (J5-5 : le gendarme tué). */
   drop(x: number, y: number, weapon: WeaponId, rounds: number): Pickup {
-    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
+    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, cash: 0, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
+    this.list.push(p);
+    return p;
+  }
+
+  /** Billets lâchés en (x, y) par un passant mis à terre (D317) ; au plus 24 tas à la fois (le plus ancien s'en va). */
+  dropCash(x: number, y: number, amount: number): Pickup {
+    const heaps = this.list.filter((q) => q.kind === "cash");
+    if (heaps.length >= 24) this.list.splice(this.list.indexOf(heaps[0]!), 1);
+    const p: Pickup = { id: this.nextId++, x, y, kind: "cash", weapon: null, rounds: 0, cash: Math.max(1, Math.round(amount)), label: "portefeuille", readyAt: 0, dropped: true, expires: this.time + CASH_LIFE };
     this.list.push(p);
     return p;
   }
@@ -137,8 +156,9 @@ export class Pickups {
    * Peut-on la ramasser ? Une arme : pas une arme blanche qu'on a déjà, pas des balles dont la réserve est pleine. Une croix de soin : seulement
    * si le joueur est vivant et blessé (à santé pleine elle reste là, pour plus tard).
    */
-  canTake(p: Pickup, inv: Inventory, health?: Healer): boolean {
+  canTake(p: Pickup, inv: Inventory, health?: Healer, purse?: Purse): boolean {
     if (!this.available(p)) return false;
+    if (p.kind === "cash") return !!purse;
     if (p.kind === "heal") return !!health && !health.dead && health.hp < MAX_HEALTH;
     const def = WEAPONS[p.weapon!];
     if (!inv.has(p.weapon!)) return true;
@@ -146,8 +166,13 @@ export class Pickups {
   }
 
   /** Ramasse : l'arme (et les balles) va dans l'inventaire, la croix rend toute la santé ; une cache ou une croix réapparaîtra, une arme lâchée disparaît. */
-  take(p: Pickup, inv: Inventory, health?: Healer): boolean {
-    if (!this.canTake(p, inv, health)) return false;
+  take(p: Pickup, inv: Inventory, health?: Healer, purse?: Purse): boolean {
+    if (!this.canTake(p, inv, health, purse)) return false;
+    if (p.kind === "cash") {
+      purse!.earn(p.cash, "Portefeuille");
+      p.expires = this.time;
+      return true;
+    }
     if (p.kind === "heal") {
       health!.heal(MAX_HEALTH);
       p.readyAt = this.time + HEAL_RESPAWN;
@@ -163,15 +188,15 @@ export class Pickups {
   }
 
   /** Ramasse l'objet ramassable le plus proche sous les pieds (ramassage automatique, D159) : l'objet pris, ou null. */
-  collect(x: number, y: number, inv: Inventory, health?: Healer): Pickup | null {
+  collect(x: number, y: number, inv: Inventory, health?: Healer, purse?: Purse): Pickup | null {
     let best: Pickup | null = null, bd = PICKUP_REACH;
     for (const p of this.list) {
       const d = Math.hypot(p.x - x, p.y - y);
-      if (d < bd && this.canTake(p, inv, health)) {
+      if (d < bd && this.canTake(p, inv, health, purse)) {
         bd = d;
         best = p;
       }
     }
-    return best && this.take(best, inv, health) ? best : null;
+    return best && this.take(best, inv, health, purse) ? best : null;
   }
 }

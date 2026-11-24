@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -150,6 +150,42 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(500);
     await shot("pj1-records");
     await ctx.close();
+  }
+
+  if (want("money")) {
+    // Argent (PJ 3, D317) : le solde sous la date et un gain qui monte ; des billets lâchés devant soi, ramassés ; la facture de l'hôpital ;
+    // le solde au volant (la date disparaît, il remonte).
+    const ctx = await open("money=1250&h=15");
+    await sleep(1500);
+    await page.addStyleTag({ content: "#money .m-pop { animation: none !important; transform: translateY(17px); } #busted.show { animation: none !important; }" });
+    await page.evaluate(() => window.__autun.wallet.earn(250, "Découverte"));
+    await frames(3);
+    await shot("pj3-argent");
+    await page.evaluate(() => { for (const el of document.querySelectorAll("#money .m-pop")) el.remove(); });
+    const heap = await page.evaluate(() => {
+      const a = window.__autun, p = a.player, h = p.heading;
+      // Devant et un peu à droite : juste devant, la liasse serait cachée par les jambes du personnage.
+      const q = { x: p.x + Math.sin(h) * 2.6 + Math.cos(h) * 1.3, y: p.y + Math.cos(h) * 2.6 - Math.sin(h) * 1.3 };
+      a.pickups.dropCash(q.x, q.y, 23);
+      a.look(h);
+      a.tilt(0.45);
+      return q;
+    });
+    await frames(4);
+    await shot("pj3-billets");
+    await page.evaluate((q) => { const p = window.__autun.player; p.x = q.x; p.y = q.y; }, heap);
+    await frames(4);
+    console.log("solde après les billets :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-billets-ramasses");
+    await page.evaluate(() => window.__autun.health.damage(1000));
+    await frames(3);
+    await shot("pj3-mort-facture");
+    console.log("solde après la mort :", await page.evaluate(() => window.__autun.wallet.balance), "armes :", await page.evaluate(() => window.__autun.inventory.toSave().owned));
+    await ctx.close();
+    const c2 = await open("money=1250&ride=voiture&h=15");
+    await sleep(1500);
+    await shot("pj3-argent-voiture");
+    await c2.close();
   }
 
   if (want("wanted")) {
