@@ -10,10 +10,10 @@ import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
-import { foodShops, type Shop } from "../core/shops";
+import { foodShops, vehicleShops, type Shop } from "../core/shops";
 import { Minimap } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
-import { PauseMenu } from "../ui/pause-menu";
+import { PauseMenu, type GarageRow } from "../ui/pause-menu";
 import type { Controls } from "../input/controls";
 import type { GameContext } from "./context";
 import type { Fleet } from "./vehicles";
@@ -21,6 +21,7 @@ import { RouteGuide } from "./route-guide";
 import { parseRecords, type RecordValues } from "../core/records";
 import { Challenges, type SavedChallenges } from "../core/challenges";
 import { Notebook, type SavedNotebook } from "../core/collections";
+import type { OwnedVehicle } from "../core/owned";
 
 /** Ce que l'interface doit savoir du jeu à un instant donné. */
 export interface GameState {
@@ -43,6 +44,8 @@ export interface GameState {
   /** Carnet et défis (D319). */
   book: SavedNotebook;
   challenges: SavedChallenges;
+  /** Véhicules achetés (D323). */
+  garage: OwnedVehicle[];
 }
 
 const AUTOSAVE_MS = 30000;
@@ -102,7 +105,7 @@ export class UiBridge {
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
     private readonly records: () => RecordValues = () => parseRecords(null),
-    private readonly carnet: { notebook(): Notebook; challenges(): Challenges } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
+    private readonly carnet: { notebook(): Notebook; challenges(): Challenges; garage?(): GarageRow[] } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -140,6 +143,7 @@ export class UiBridge {
       records: () => this.records(),
       notebook: () => this.carnet.notebook(),
       challenges: () => this.carnet.challenges(),
+      garage: () => this.carnet.garage?.() ?? [],
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });
@@ -149,7 +153,7 @@ export class UiBridge {
       (data) => {
         this.minimap.attach(data);
         this.garages = garagesFrom(data.places.places);
-        this.shops = foodShops(data.places.places);
+        this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places)];
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();
@@ -339,6 +343,7 @@ export class UiBridge {
       money: s.money,
       book: s.book,
       challenges: s.challenges,
+      ...(s.garage.length ? { garage: s.garage } : {}),
     };
   }
 

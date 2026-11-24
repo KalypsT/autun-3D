@@ -306,6 +306,9 @@ export class Fleet {
     return v;
   }
 
+  /** Véhicules achetés (D323) : jamais oubliés, toujours enregistrés. Branché par le jeu. */
+  isOwned: (id: string) => boolean = () => false;
+
   /** Retire un véhicule de la flotte (J4 : confisqué à l'arrestation) : ni obstacle, ni dessin, ni sauvegarde. */
   remove(v: Vehicle): void {
     const i = this.vehicles.indexOf(v);
@@ -344,7 +347,7 @@ export class Fleet {
       if (v.damage.drowned) continue;
       const s = v.state, d = v.damage, hurt = hurtOf(v);
       // Un véhicule abîmé est enregistré même s'il n'a pas bougé (une voiture garée percutée, D113), avec ses dégâts.
-      if (!movedOf(v) && !hurt) continue;
+      if (!movedOf(v) && !hurt && !this.isOwned(v.id)) continue;
       out.push({ id: v.id, model: v.def.id, variant: v.variant, x: s.x, y: s.y, heading: s.heading, ...(hurt ? { damage: { health: d.health, zones: { ...d.zones }, end: d.end } } : {}) });
     }
     return out;
@@ -361,7 +364,7 @@ export class Fleet {
     const out: Vehicle[] = [];
     const far = FORGET.distance;
     for (const v of [...this.vehicles]) {
-      if (v.ridden || v === keep || v.def.train || v.def.unique || v.damage.end !== null || v.damage.drowned || (!movedOf(v) && !hurtOf(v))) {
+      if (v.ridden || v === keep || v.def.train || v.def.unique || this.isOwned(v.id) || v.damage.end !== null || v.damage.drowned || (!movedOf(v) && !hurtOf(v))) {
         this.away.delete(v);
         continue;
       }

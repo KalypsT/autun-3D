@@ -8,8 +8,10 @@ export interface ShopHooks {
   balance(): number;
   /** Raison d'un refus (« Il manque 4 € », « Santé pleine »), ou null si l'on peut acheter. */
   refusal(item: ShopItem): string | null;
-  /** Achète ; renvoie le message à afficher. */
-  buy(item: ShopItem): string;
+  /** Achète (un véhicule dans la couleur `variant`) ; renvoie le message à afficher. */
+  buy(item: ShopItem, variant: number): string;
+  /** Couleurs proposées pour un véhicule (D323). */
+  palette?(item: ShopItem): readonly string[];
   /** Sortir : le jeu reprend. */
   leave(): void;
 }
@@ -30,6 +32,8 @@ export class ShopScreen {
   private shop: Shop | null = null;
   private hooks: ShopHooks | null = null;
   private note = "";
+  /** Couleur choisie pour chaque véhicule de l'écran. */
+  private readonly colors = new Map<string, number>();
 
   constructor() {
     this.el = h("div");
@@ -46,6 +50,7 @@ export class ShopScreen {
     this.shop = shop;
     this.hooks = hooks;
     this.note = "";
+    this.colors.clear();
     this.el.hidden = false;
     this.render();
   }
@@ -71,9 +76,25 @@ export class ShopScreen {
       const buy = h("button", "sh-buy", refusal ?? "Acheter");
       buy.disabled = refusal !== null;
       buy.addEventListener("click", () => {
-        this.note = hk.buy(item);
+        this.note = hk.buy(item, this.colors.get(item.id) ?? 0);
         this.render();
       });
+      const pal = item.vehicle ? hk.palette?.(item) ?? [] : [];
+      if (pal.length > 1) {
+        // Couleur du véhicule (D323) : une pastille par teinte du modèle, la choisie cerclée.
+        const sw = h("span", "sh-swatches");
+        pal.forEach((c, i) => {
+          const b = h("button", (this.colors.get(item.id) ?? 0) === i ? "sh-swatch on" : "sh-swatch");
+          b.style.background = c;
+          b.setAttribute("aria-label", `Couleur ${i + 1}`);
+          b.addEventListener("click", () => {
+            this.colors.set(item.id, i);
+            this.render();
+          });
+          sw.append(b);
+        });
+        what.append(sw);
+      }
       row.append(what, h("strong", "sh-price", formatMoney(item.price)), buy);
       card.append(row);
     }

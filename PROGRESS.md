@@ -2321,3 +2321,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : dire si les prix et les soins te vont, et si l'on entre facilement dans les grandes surfaces (Leclerc, Intermarché).
 ![« Entrer »](docs/captures/pj3-boulangerie-entrer.jpg)
 ![L'écran d'achat](docs/captures/pj3-boulangerie-achat.jpg)
+
+**Plaisir de jeu, lot 3-8 : les véhicules à acheter (24 novembre 2026)** (D323)
+- **Dacia Autun** (Bellevue) et **Peugeot** (nord) vendent voitures et motos ; **Cycles Tacnet** et **Morvan Bike** vendent vélo, VTT et trottinette. De 200 € (vélo) à 30 000 € (sportive) ; tu choisis la couleur.
+- Ton véhicule est **livré tout de suite devant le magasin**, et il est **à toi** : le prendre n'est pas un vol, il n'est jamais oublié où tu l'as laissé, et tu en as six au plus.
+- **Détruit**, l'assurance le livre neuf devant le magasin une heure de jeu plus tard. Si tu es **arrêté** à son volant, il part à la **fourrière** : tu le récupères dans le carnet pour 300 €, devant la gendarmerie.
+- Dans le carnet, onglet **Véhicules** : où ils sont, et un bouton pour poser le repère dessus.
+- À faire de ton côté : en acheter un, le laisser, s'éloigner, revenir ; et dire si les prix te vont.
+![Le concessionnaire](docs/captures/pj3-concession.jpg)
+![Livrée](docs/captures/pj3-livraison.jpg)
+![L'onglet Véhicules](docs/captures/pj3-carnet-vehicules.jpg)

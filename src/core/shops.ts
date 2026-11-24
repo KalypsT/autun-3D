@@ -1,4 +1,6 @@
 import { closingHour, hourText, isOpen, openingText, scheduleOf, type ScheduleId } from "./opening";
+import { VEHICLE_PRICES } from "./owned";
+import { vehicleDef } from "./vehicle-catalog";
 
 /**
  * Magasins (plaisir de jeu, phase 3, lot 6, D322) : les vrais commerces d'Autun (lieux de `map/places.json`), chacun avec son horaire type
@@ -14,6 +16,8 @@ export interface ShopItem {
   price: number;
   /** Points de vie rendus (100 : santé pleine). */
   heal?: number;
+  /** Véhicule vendu (modèle du catalogue, D323) : on choisit sa couleur, il est livré devant le magasin. */
+  vehicle?: string;
 }
 
 export interface Shop {
@@ -96,5 +100,33 @@ export function shopHours(s: Shop, weekday: number, hour: number): string {
 export function canBuy(item: ShopItem, balance: number, hp: number, maxHp: number): string | null {
   if (balance < item.price) return `Il manque ${item.price - balance} €`;
   if (item.heal && hp >= maxHp) return "Santé pleine";
+  return null;
+}
+
+/** Véhicules vendus par genre de commerce (D323) : voitures et motos chez les concessionnaires, vélos et trottinette chez les marchands de cycles. */
+const DEALER_STOCK: Readonly<Record<string, readonly string[]>> = {
+  car: ["vieille-voiture", "citadine", "compacte", "camionnette", "berline", "break", "petit-suv", "sportive", "scooter-125", "moto-routiere", "moto-sportive"],
+  bicycle: ["velo-ville", "trottinette", "vtt"],
+};
+
+/** Concessionnaires et marchands de cycles de la carte (Dacia Autun, Peugeot, Cycles Tacnet, Morvan Bike), aux heures des boutiques. */
+export function vehicleShops(places: readonly { id: string; cat: string; name?: string; kind?: string | null; x: number; y: number }[]): Shop[] {
+  const out: Shop[] = [];
+  for (const p of places) {
+    const stock = p.cat === "commerce" && p.kind ? DEALER_STOCK[p.kind] : undefined;
+    if (!stock || !p.name) continue;
+    const items: ShopItem[] = stock.map((m) => {
+      const d = vehicleDef(m)!;
+      return { id: m, name: d.badge ? `${d.name} · ${d.badge.make} ${d.badge.model}` : d.name, price: VEHICLE_PRICES[m]!, vehicle: m };
+    });
+    out.push({ id: p.id, name: p.name, kind: p.kind!, x: p.x, y: p.y, reach: p.kind === "car" ? 35 : 11, schedule: scheduleOf(p.kind), items });
+  }
+  return out;
+}
+
+/** Refus d'un achat de véhicule : pas assez d'argent, ou déjà six véhicules. */
+export function canBuyVehicle(item: ShopItem, balance: number, full: boolean): string | null {
+  if (full) return "Garage plein (6)";
+  if (balance < item.price) return `Il manque ${item.price - balance} €`;
   return null;
 }

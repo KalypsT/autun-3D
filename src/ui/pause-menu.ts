@@ -37,9 +37,21 @@ export interface PauseHooks {
   /** Carnet de collections et défis de la partie (D319). */
   notebook(): Notebook;
   challenges(): Challenges;
+  /** Véhicules achetés (D323) : une ligne par véhicule, avec son état et une action (repère, fourrière). */
+  garage?(): GarageRow[];
   build: string;
   /** Dans DomoThib (D305) : le plein écran est le sien, le réglage « Plein écran » n'est pas proposé. */
   embedded?: boolean;
+}
+
+/** Un véhicule acheté dans le carnet (D323). */
+export interface GarageRow {
+  name: string;
+  /** Couleur de la carrosserie (pastille). */
+  color: string;
+  /** « garée à 350 m », « à la fourrière », « détruite · livrée à 15 h chez Peugeot »… */
+  status: string;
+  action?: { label: string; run(): void };
 }
 
 type PanelId = "home" | "settings" | "appearance" | "notes" | "carnet" | "save" | "credits";
@@ -507,7 +519,12 @@ export class PauseMenu {
     const c = this.content;
     const book = this.hooks.notebook();
     const cols = book.defs.filter((d) => d.entries.length > 0);
-    const tabs: { id: CarnetTab; label: string }[] = [...cols.map((d) => ({ id: d.id, label: d.label })), { id: "defis", label: "Défis" }, { id: "records", label: "Records" }];
+    const garage = this.hooks.garage?.() ?? [];
+    const tabs: { id: CarnetTab; label: string }[] = [
+      ...cols.map((d) => ({ id: d.id, label: d.label })),
+      ...(garage.length ? [{ id: "vehicules", label: "Véhicules" }] : []),
+      { id: "defis", label: "Défis" }, { id: "records", label: "Records" },
+    ];
     if (!tabs.some((t) => t.id === this.tab)) this.tab = "defis";
     c.append(h("h2", "", "Carnet"));
     const bar = h("div", "pm-seg pm-tabs");
@@ -524,6 +541,7 @@ export class PauseMenu {
     const col = cols.find((d) => d.id === this.tab);
     if (col) this.collectionTab(col, book);
     else if (this.tab === "records") this.recordsTab();
+    else if (this.tab === "vehicules") this.garageTab(garage);
     else this.challengesTab();
   }
 
@@ -579,6 +597,30 @@ export class PauseMenu {
         });
         c.append(r);
       }
+    }
+  }
+
+  /** Véhicules achetés (D323) : nom, couleur, état, et l'action du moment (poser le repère, payer la fourrière). */
+  private garageTab(rows: readonly GarageRow[]): void {
+    const c = this.content;
+    c.append(h("p", "pm-muted", `${rows.length} sur 6 · à toi : pas de vol en les prenant, jamais oubliés, remplacés par l'assurance s'ils sont détruits.`));
+    for (const g of rows) {
+      const r = h("div", "pm-row");
+      const left = h("span", "pm-veh");
+      const dot = h("span", "pm-dot");
+      dot.style.background = g.color;
+      left.append(dot, h("span", "", g.name), h("span", "pm-muted", ` · ${g.status}`));
+      r.append(left);
+      if (g.action) {
+        const act = g.action;
+        const b = h("button", "pm-back", act.label);
+        b.addEventListener("click", () => {
+          act.run();
+          this.show("carnet");
+        });
+        r.append(b);
+      }
+      c.append(r);
     }
   }
 

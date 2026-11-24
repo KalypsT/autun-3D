@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -301,6 +301,43 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     console.log("fermé :", await page.evaluate(() => document.getElementById("feat").textContent));
     await shot("pj3-boulangerie-fermee");
     await c2.close();
+  }
+
+  if (want("vehicules")) {
+    // Véhicules achetés (PJ 3, D323) : chez Dacia Autun un mercredi à 11 h, 20 000 € ; l'écran du concessionnaire ; une citadine dans sa
+    // troisième couleur ; livrée devant ; l'onglet Véhicules du carnet.
+    const ctx = await open("money=20000&h=11&weekday=3&at=-1500,735&yaw=0");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.kind === "car"), null, { timeout: 120000 });
+    await sleep(1500);
+    const shop = await page.evaluate(() => { const s = window.__autun.ui.shops.find((q) => q.name.startsWith("Dacia")); return { x: s.x, y: s.y, name: s.name }; });
+    // Autour du magasin, au sol (le point du lieu est dans le bâtiment : on y partirait sur le toit), jusqu'à ce que « Entrer » apparaisse.
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, r = 26;
+      await page.evaluate(([q, aa, rr]) => { const p = window.__autun.player; p.x = q.x + Math.sin(aa) * rr; p.y = q.y + Math.cos(aa) * rr; p.z = -1000; p.vz = 0; }, [shop, a, r]);
+      await frames(4);
+      const label = await page.evaluate(() => document.getElementById("action").getAttribute("aria-label") || "");
+      if (label.startsWith("Entrer")) break;
+    }
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await click("#action");
+    await sleep(400);
+    await page.locator("#shop .sh-row").nth(1).locator(".sh-swatch").nth(2).click();
+    await sleep(200);
+    await shot("pj3-concession");
+    await page.locator("#shop .sh-row").nth(1).locator(".sh-buy").click();
+    await sleep(300);
+    console.log("note :", await page.evaluate(() => document.querySelector("#shop .sh-note")?.textContent), "solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-concession-achat");
+    await click("#shop .sh-leave");
+    const car = await page.evaluate(() => { const v = window.__autun.fleet.get("achat-1"); return v ? { x: v.state.x, y: v.state.y } : null; });
+    console.log("livrée :", JSON.stringify(car));
+    if (car) await page.evaluate((c) => { const a = window.__autun, p = a.player; a.look(Math.atan2(c.x - p.x, c.y - p.y)); a.tilt(0.25); }, car);
+    await frames(4);
+    await shot("pj3-livraison");
+    await page.evaluate(() => window.__autun.ui.showCarnet("vehicules"));
+    await sleep(500);
+    await shot("pj3-carnet-vehicules");
+    await ctx.close();
   }
 
   if (want("wanted")) {

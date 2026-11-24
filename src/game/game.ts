@@ -22,9 +22,11 @@ import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
-import { canBuy, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
+import { canBuy, canBuyVehicle, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
+import { GENDARMERIE, IMPOUND_FEE, OwnedVehicles, type OwnedVehicle } from "../core/owned";
 import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
 import { ShopScreen } from "../ui/shop-screen";
+import type { GarageRow } from "../ui/pause-menu";
 import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
 import { Notebook } from "../core/collections";
 import { COLLECTIONS, TREASURE_SITES } from "./collections-list";
@@ -497,6 +499,9 @@ export function startGame(ctx: GameContext): void {
   // Argent (D317) : reprise de la sauvegarde ; `?money=N` impose un solde (essais, captures).
   const wallet = new Wallet(params.has("money") ? Number(params.get("money")) : (saved?.money ?? 0));
   const moneyHud = new MoneyHud(document.getElementById("money")!);
+  // Véhicules achetés (D323) : à toi, jamais oubliés (la flotte le sait), remplacés par l'assurance, retenus à la fourrière.
+  const owned = new OwnedVehicles(saved?.garage);
+  fleet.isOwned = (id) => owned.isOwned(id);
   // Défis et carnet de collections (D319) : de la partie, enregistrés avec elle.
   const challenges = new Challenges(saved?.challenges);
   const notebook = new Notebook(COLLECTIONS, saved?.book);
@@ -1118,6 +1123,105 @@ export function startGame(ctx: GameContext): void {
   };
   // Magasins (D322) : à pied, au sol, près d'un commerce ; ouvert, l'écran d'achat met le jeu en pause ; fermé, un bandeau dit quand il ouvre.
   const shopScreen = new ShopScreen();
+  /** Lieu de livraison d'un véhicule acheté : son vendeur, ou la gendarmerie (fourrière). */
+  const deliveryPlace = (o: OwnedVehicle): { x: number; y: number; name: string } | null => {
+    if (o.deliver === GENDARMERIE) return { x: ARREST_SPAWN.x, y: ARREST_SPAWN.y, name: "la gendarmerie" };
+    const s = ui.shops.find((q) => q.id === o.deliver);
+    return s ? { x: s.x, y: s.y, name: s.name } : null;
+  };
+  const spotNear: Vehicle[] = [];
+  /** Le point est-il enfermé (murs dans les huit directions à moins de 60 m) ? Alors il est dans un bâtiment dont le toit n'est pas praticable. */
+  const enclosed = (px: number, py: number): boolean => {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      if (colliders.raycast(px, py, px + Math.sin(a) * 60, py + Math.cos(a) * 60) === null) return false;
+    }
+    return true;
+  };
+  /**
+   * Une place libre pour un véhicule près de (x, y) : hors des bâtiments et des toits, hors de l'eau, sans véhicule ni joueur à côté ; de
+   * préférence en vue du joueur (une place derrière le magasin serait juste, mais on ne la verrait pas).
+   */
+  const freeSpot = (x: number, y: number): { x: number; y: number; heading: number } | null => {
+    let hidden: { x: number; y: number; heading: number } | null = null;
+    for (let r = 6; r <= 45; r += 3) {
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2 + r * 0.37, px = x + Math.sin(a) * r, py = y + Math.cos(a) * r;
+        const q = colliders.resolve(px, py, 2.8);
+        if (Math.hypot(q.x - px, q.y - py) > 0.05) continue;
+        if (surface.heightAt(px, py) - terrain.heightAt(px, py) > 0.5 || waterDepth(terrain, px, py) > 0.1) continue;
+        if (fleet.around(px, py, 4.5, spotNear).length || Math.hypot(player.x - px, player.y - py) < 3) continue;
+        if (colliders.raycast(player.x, player.y, px, py) === null) return { x: px, y: py, heading: a };
+        if (!hidden && !enclosed(px, py)) hidden = { x: px, y: py, heading: a };
+      }
+    }
+    return hidden;
+  };
+  /** Livre un véhicule prêt (acheté, remplacé par l'assurance, sorti de la fourrière) à son lieu de livraison ; null s'il n'y a pas de place. */
+  const deliver = (o: OwnedVehicle): Vehicle | null => {
+    const at = deliveryPlace(o);
+    if (!at) return null;
+    const spot = freeSpot(at.x, at.y);
+    if (!spot) return null;
+    const old = fleet.get(o.id);
+    if (old) {
+      if (old.ridden) return null;
+      fleet.remove(old);
+      damaged.delete(old);
+    }
+    const v = fleet.add(o.model, o.id, spot.x, spot.y, spot.heading, o.variant, null);
+    owned.delivered(o.id);
+    lastRidden = v;
+    return v;
+  };
+  let ownedTimer = 0;
+  /** Une fois par seconde (D323) : assurance des véhicules détruits, livraisons quand le joueur passe à moins de 250 m du lieu. */
+  const tickOwned = (dt: number): void => {
+    ownedTimer -= dt;
+    if (ownedTimer > 0) return;
+    ownedTimer = 1;
+    const now = atmosphere.date * 24 + atmosphere.hour;
+    for (const o of owned.list) {
+      if (o.status !== "ok") continue;
+      const v = fleet.get(o.id);
+      if (v && !v.ridden && (v.damage.end !== null || v.damage.drowned)) {
+        owned.wreck(o.id, now);
+        const at = deliveryPlace(o);
+        showFeat(`${v.def.name} hors d'usage · l'assurance livre ${at ? `devant ${at.name} ` : ""}dans une heure`);
+      }
+    }
+    owned.update(now);
+    for (const o of owned.list) {
+      if (o.status !== "ready") continue;
+      const at = deliveryPlace(o);
+      if (!at || Math.hypot(at.x - player.x, at.y - player.y) > 250) continue;
+      const v = deliver(o);
+      if (v) showFeat(`${v.def.name} : livraison devant ${at.name}`);
+    }
+  };
+  /** Lignes du carnet (D323) : chaque véhicule acheté, son état, l'action du moment. */
+  const garageRows = (): GarageRow[] => owned.list.map((o) => {
+    const def = vehicleDef(o.model);
+    const color = def?.palette[o.variant] ?? "#888";
+    const name = def?.name ?? o.model;
+    const at = deliveryPlace(o);
+    if (o.status === "impound") {
+      return { name, color, status: "à la fourrière", action: { label: `Récupérer · ${IMPOUND_FEE} €`, run: () => {
+        if (wallet.spend(IMPOUND_FEE, "Fourrière")) owned.release(o.id);
+      } } };
+    }
+    if (o.status === "wreck") return { name, color, status: `hors d'usage · l'assurance livre${at ? ` devant ${at.name}` : ""} vers ${Math.floor((o.back ?? 0) % 24)} h` };
+    if (o.status === "ready") {
+      const row: GarageRow = { name, color, status: `t'attend${at ? ` devant ${at.name}` : ""}` };
+      if (at) row.action = { label: "Repère", run: () => ui.setWaypoint({ x: at.x, y: at.y }) };
+      return row;
+    }
+    const v = fleet.get(o.id);
+    if (!v) return { name, color, status: "introuvable" };
+    if (v.ridden) return { name, color, status: "tu es dessus" };
+    const d = Math.hypot(v.state.x - player.x, v.state.y - player.y);
+    return { name, color, status: `à ${d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`}`, action: { label: "Repère", run: () => ui.setWaypoint({ x: v.state.x, y: v.state.y }) } };
+  });
   const shopHere = (): Shop | null => {
     if (riding || health.dead || downFor > 0 || player.z - terrain.heightAt(player.x, player.y) > 1.5) return null;
     return shopAt(ui.shops, player.x, player.y);
@@ -1132,8 +1236,18 @@ export function startGame(ctx: GameContext): void {
     shopScreen.open(shop, {
       hours: () => shopHours(shop, day, hour),
       balance: () => wallet.balance,
-      refusal: (item) => canBuy(item, wallet.balance, health.hp, MAX_HEALTH),
-      buy: (item) => {
+      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
+      palette: (item) => (item.vehicle ? vehicleDef(item.vehicle)?.palette ?? [] : []),
+      buy: (item, variant) => {
+        if (item.vehicle) {
+          // Véhicule (D323) : payé, enregistré, livré tout de suite devant le magasin (la place est libre : on y est).
+          if (canBuyVehicle(item, wallet.balance, owned.full) !== null || !wallet.spend(item.price, item.name)) return "";
+          const o = owned.buy(item.vehicle, variant, shop.id)!;
+          const v = deliver(o);
+          moneyHud.set(wallet.balance, wallet.drain());
+          ui.save();
+          return v ? `${vehicleDef(o.model)?.name ?? "Véhicule"} : livraison devant ${shop.name}. À toi !` : "Livraison dès qu'une place se libère devant le magasin.";
+        }
         if (canBuy(item, wallet.balance, health.hp, MAX_HEALTH) !== null || !wallet.spend(item.price, item.name)) return "";
         if (item.heal) {
           health.heal(item.heal);
@@ -1158,7 +1272,8 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false, player.z);
+      // Un véhicule acheté (D323) est à toi : le prendre n'est pas un vol.
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home && !owned.isOwned(r.fleet.id)) police.crime("theft", player.x, player.y, false, player.z);
       mount(r.fleet);
     } else {
       const shop = shopHere();
@@ -1311,7 +1426,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1319,7 +1434,7 @@ export function startGame(ctx: GameContext): void {
       model.setRecipe(r);
       appearanceStore.write(r);
     },
-  }, () => records.values, { notebook: () => notebook, challenges: () => challenges });
+  }, () => records.values, { notebook: () => notebook, challenges: () => challenges, garage: () => garageRows() });
 
   ui.police = police.minimap;
 
@@ -1335,9 +1450,12 @@ export function startGame(ctx: GameContext): void {
   };
   const arrest = (): void => {
     const taken = riding;
+    // Un véhicule acheté (D323) part à la fourrière (on le récupère dans le carnet, 300 €) ; un autre est confisqué.
+    const impounded = !!taken && owned.isOwned(taken.id);
     if (taken) {
       dismount();
       fleet.remove(taken);
+      if (impounded) owned.impound(taken.id);
     }
     police.reset();
     lastStars = 0;
@@ -1353,7 +1471,7 @@ export function startGame(ctx: GameContext): void {
     groundPlayer(player);
     yaw = ARREST_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
-    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}${fine > 0 ? `, amende de ${formatMoney(fine)}` : ""}. Reprise à la sortie de la gendarmerie.`, false);
+    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${impounded ? ", véhicule à la fourrière" : taken ? ", véhicule confisqué" : ""}${fine > 0 ? `, amende de ${formatMoney(fine)}` : ""}. Reprise à la sortie de la gendarmerie.`, false);
     controls.reset();
     ui.save();
   };
@@ -1864,6 +1982,7 @@ export function startGame(ctx: GameContext): void {
       discoverEl.classList.remove("show");
       discoverFor = null;
     }
+    tickOwned(dt);
     // Carnet (D319) : découvertes, quatre fois par seconde, à pied ou en véhicule (vivant).
     discoverTimer -= dt;
     if (discoverTimer <= 0 && !health.dead) {

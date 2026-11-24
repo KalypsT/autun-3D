@@ -8,6 +8,7 @@ import { dateFromDoy } from "./calendar";
 import { clampMoney } from "./wallet";
 import { parseChallenges, type SavedChallenges } from "./challenges";
 import { parseNotebook, type SavedNotebook } from "./collections";
+import { parseOwned, type OwnedVehicle } from "./owned";
 
 /**
  * Version 2 (D50) : un véhicule est enregistré par son modèle du catalogue (`model`) et non plus par son type (`kind`).
@@ -75,6 +76,8 @@ export interface SaveGame {
   book?: SavedNotebook;
   /** Défis (D319) : paliers atteints, distances de la partie ; absents avant. */
   challenges?: SavedChallenges;
+  /** Véhicules achetés (D323) et leur état ; absents avant. Leur position est dans `vehicles`. */
+  garage?: OwnedVehicle[];
 }
 
 /** Ce que l'on utilise du stockage du navigateur (`localStorage`) ; un double sert aux tests. */
@@ -160,6 +163,7 @@ export function parseSave(text: string | null): SaveGame | null {
   const w = r["waypoint"] as Record<string, unknown> | null | undefined;
   const book = version === SAVE_VERSION ? parseNotebook(r["book"]) : null;
   const challenges = version === SAVE_VERSION ? parseChallenges(r["challenges"]) : null;
+  const garage = version === SAVE_VERSION ? parseOwned(r["garage"]) : null;
   return {
     version: SAVE_VERSION,
     savedAt: finite(r["savedAt"]) ? r["savedAt"] : 0,
@@ -178,6 +182,7 @@ export function parseSave(text: string | null): SaveGame | null {
     money: version === SAVE_VERSION ? clampMoney(r["money"]) : 0,
     ...(book ? { book } : {}),
     ...(challenges ? { challenges } : {}),
+    ...(garage?.length ? { garage } : {}),
   };
 }
 

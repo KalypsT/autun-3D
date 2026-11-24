@@ -7775,3 +7775,41 @@ dans les bâtiments (l'écran suffit) ; les horaires réels d'OpenStreetMap ne s
 ![« Entrer » devant la boulangerie](captures/pj3-boulangerie-entrer.jpg)
 ![L'écran d'achat, après un sandwich](captures/pj3-boulangerie-achat.jpg)
 ![Fermée le soir](captures/pj3-boulangerie-fermee.jpg)
+
+## 2026-11-24 — D323. Plaisir de jeu, phase 3, lot 8 : les véhicules à acheter
+
+**Contexte** : plan, § 4 et § 7 (Q2, Q3, Q8, réponses par défaut validées). Tout véhicule se vole déjà : l'achat doit donner ce que le vol
+ne donne pas. Fait avant le lot 7 (armes), qui attend des réponses de l'utilisateur.
+
+**Choix**
+- **Où** : les concessionnaires de la carte, **Dacia Autun (groupe Thivolle)** et **Peugeot**, vendent voitures et motos (vieille voiture,
+  citadine, compacte, camionnette, berline, break, petit SUV, sportive, scooter 125, moto routière, moto sportive) ; les marchands de
+  cycles, **Cycles Tacnet** et **Morvan Bike**, vendent vélo, VTT et trottinette. Aux heures des boutiques (D200), par le même comptoir
+  que la nourriture (D322) ; on entre à 35 m du point d'un concessionnaire. Véhicules uniques, de police et de service : pas à vendre.
+- **Prix** (`VEHICLE_PRICES`) : vélo 200 €, trottinette 300 €, VTT 450 €, scooter 2 000 €, moto routière 6 000 €, moto sportive 11 000 €,
+  vieille voiture 3 500 €, citadine 6 000 €, compacte 9 000 €, camionnette 12 000 €, berline et break 13 000 €, petit SUV 16 000 €,
+  sportive 30 000 €.
+- **Écran d'achat** : une pastille par couleur du modèle, la choisie cerclée ; « Garage plein (6) » quand on en a six.
+- **Ce que l'achat donne** (`src/core/owned.ts`) : le véhicule est **à toi** : le prendre n'est pas un vol (pas d'infraction), la flotte
+  **ne l'oublie jamais** (exception à D301) et l'enregistre toujours, avec sa couleur. Six au plus, identifiants `achat-1` à `achat-6`.
+- **Livraison** : tout de suite, devant le magasin, sur une place libre (hors des murs, des toits et de l'eau, sans véhicule à côté), de
+  préférence **en vue du joueur** ; une place enfermée de murs dans les huit directions (l'intérieur d'un bâtiment dont le toit n'est
+  pas praticable) est refusée ; le véhicule livré devient le « dernier véhicule » (pastille sur la minimap, D310).
+- **Assurance** : détruit (explosion, panne définitive, noyé), il est livré neuf **une heure de jeu plus tard** devant son vendeur, dès que
+  le joueur passe à moins de 250 m (le quartier doit être chargé pour trouver une place).
+- **Fourrière** : arrêté au volant d'un véhicule à toi, il part à la **fourrière** au lieu d'être confisqué (« véhicule à la fourrière »
+  dans le bandeau) ; on le récupère dans le carnet pour **300 €**, il est livré devant la gendarmerie.
+- **Carnet**, onglet **Véhicules** (dès qu'on en a un) : nom, couleur, état (« à 350 m », « tu es dessus », « t'attend devant Peugeot »,
+  « hors d'usage · l'assurance livre vers 15 h », « à la fourrière ») et l'action du moment (« Repère » pose le repère dessus ;
+  « Récupérer · 300 € »). Messages sans accord de genre (« Citadine : livraison devant… »), pour aller avec tous les véhicules.
+- **Sauvegarde** : champ facultatif `garage` de la version 6 (modèle, couleur, lieu de livraison, état), lu avec méfiance.
+
+**Vérifié** : `owned.test.ts`, `vehicles.test.ts` (jamais oublié, toujours enregistré) ; `tools/ui.sh <dossier> vehicules` (Dacia, citadine
+gris anthracite, 20 000 € → 14 000 €, livrée en vue, carnet).
+
+**À juger** : les prix, l'éloignement des concessionnaires (Bellevue et le nord), la place choisie pour la livraison.
+
+![Le concessionnaire, choix de la couleur](captures/pj3-concession.jpg)
+![Achetée](captures/pj3-concession-achat.jpg)
+![Livrée devant le magasin](captures/pj3-livraison.jpg)
+![L'onglet Véhicules](captures/pj3-carnet-vehicules.jpg)

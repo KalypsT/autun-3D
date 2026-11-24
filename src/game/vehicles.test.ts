@@ -70,6 +70,17 @@ describe("véhicules laissés (D301)", () => {
     expect(fleet.savedVehicles()).toEqual([]);
   });
 
+  it("un véhicule acheté (D323) n'est jamais oublié, et il est enregistré même s'il n'a pas bougé", () => {
+    const fleet = make();
+    fleet.isOwned = (id) => id === "achat-1";
+    const v = fleet.add("citadine", "achat-1", 0, 0, 0, 3, null);
+    expect(fleet.savedVehicles().map((s) => s.id)).toEqual(["achat-1"]);
+    v.state.x = 40;
+    expect(wait(fleet, 0, far + 60, FORGET.delay * 3)).toEqual([]);
+    expect(fleet.get("achat-1")).toBe(v);
+    expect(fleet.savedVehicles()[0]).toMatchObject({ id: "achat-1", model: "citadine", variant: 3, x: 40 });
+  });
+
   it("elle attend tant que sa place est près du joueur", () => {
     const fleet = make();
     const v = fleet.add("citadine", "voiture-s2,2", 0, 0, 0, 2);
