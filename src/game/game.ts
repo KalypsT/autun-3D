@@ -23,7 +23,8 @@ import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
 import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
-import { COLLECTIONS, Notebook } from "../core/collections";
+import { Notebook } from "../core/collections";
+import { COLLECTIONS } from "./collections-list";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
@@ -504,6 +505,15 @@ export function startGame(ctx: GameContext): void {
     }
   };
   let discoverTimer = 0;
+  /** Bouton « Lire la fiche » de la dernière découverte (D320) et le temps qu'il reste affiché (s de jeu). */
+  const discoverEl = document.getElementById("discover")!;
+  let discoverFor: { tab: string; id: string } | null = null, discoverLeft = 0;
+  discoverEl.addEventListener("click", () => {
+    if (!discoverFor) return;
+    discoverEl.classList.remove("show");
+    ui.showCarnet(discoverFor.tab, discoverFor.id);
+    discoverFor = null;
+  });
   /** Passants mis à terre par le joueur à cette image (D317) : chacun lâche peut-être son portefeuille. */
   const felled: { x: number; y: number }[] = [];
   const melee = new Melee();
@@ -1792,6 +1802,10 @@ export function startGame(ctx: GameContext): void {
     records.offer("stars5", stars5);
     reward(challenges.offer("stars3", stars3));
     reward(challenges.offer("stars5", stars5));
+    if (discoverLeft > 0 && (discoverLeft -= dt) <= 0) {
+      discoverEl.classList.remove("show");
+      discoverFor = null;
+    }
     // Carnet (D319) : découvertes, quatre fois par seconde, à pied ou en véhicule (vivant).
     discoverTimer -= dt;
     if (discoverTimer <= 0 && !health.dead) {
@@ -1801,6 +1815,12 @@ export function startGame(ctx: GameContext): void {
       if (found) {
         wallet.earn(found.reward, found.entry.name);
         showFeat(`Découverte : ${found.entry.name}`);
+        // « Lire la fiche » (D320) : quelques secondes sous le bandeau ; un appui met en pause sur la fiche, dans le carnet.
+        if (found.entry.fiche) {
+          discoverFor = { tab: found.collection.id, id: found.entry.id };
+          discoverEl.classList.add("show");
+          discoverLeft = 7;
+        }
         if (found.bonus > 0) {
           wallet.earn(found.bonus, found.collection.label);
           showFeat(`${found.collection.label} : tout est trouvé !`);

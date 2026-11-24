@@ -154,6 +154,7 @@ export class UiBridge {
           waypoint: () => this.waypoint,
           route: () => ({ points: this.guide.points, remaining: this.guide.remaining }),
           lastVehicle: () => this.lastVehicle(),
+          hunt: () => this.hunt(),
           setWaypoint: (w) => this.setWaypoint(w),
           resume: () => this.setPaused(false),
           menu: () => {
@@ -229,10 +230,10 @@ export class UiBridge {
   }
 
   /** Met en pause sur le carnet, à l'onglet voulu (bouton « Lire la fiche » d'une découverte, captures). */
-  showCarnet(tab: string): void {
+  showCarnet(tab: string, fiche: string | null = null): void {
     if (!this.paused) this.setPaused(true);
     this.bigmap?.close();
-    this.menu.openCarnet(tab);
+    this.menu.openCarnet(tab, fiche);
   }
 
   private situation(): { x: number; y: number; z: number; heading: number; hour: number; day: number } {
@@ -286,6 +287,13 @@ export class UiBridge {
       this.bigmap.syncChip();
       this.bigmap.invalidate();
     }
+  }
+
+  /** Monuments de la chasse (D320) pour la carte agrandie : leur zone, trouvés ou non. */
+  private hunt(): { x: number; y: number; found: boolean }[] {
+    const book = this.carnet.notebook();
+    const col = book.defs.find((d) => d.id === "monuments");
+    return col ? col.entries.map((e) => ({ x: e.x, y: e.y, found: book.has("monuments", e.id) })) : [];
   }
 
   /** Dernier véhicule utilisé (D301), quand on n'est pas dessus : sa place sur la minimap et la carte (D310). */

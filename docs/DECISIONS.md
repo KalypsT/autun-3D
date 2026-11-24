@@ -7676,3 +7676,35 @@ carnet (Q17), défis non rétroactifs (Q14).
 ![Un défi gagné : bandeau et prime](captures/pj3-defi-bandeau.jpg)
 ![Le carnet, onglet Défis](captures/pj3-carnet-defis.jpg)
 ![Le carnet, onglet Records](captures/pj3-carnet-records.jpg)
+
+## 2026-11-24 — D320. Plaisir de jeu, phase 3, lot 4 : la chasse aux monuments
+
+**Contexte** : plan, § 3 et § 7 (Q9 à Q12, réponses par défaut validées) ; fiches écrites au lot 3-2 (D318). L'utilisateur a demandé de
+continuer sans attendre sa relecture : les fiches entrent dans le jeu **telles qu'elles sont dans `docs/fiches-monuments.md`**, qui reste
+la seule source (le jeu lit le document lui-même) : corriger une fiche, c'est corriger ce fichier.
+
+**Choix**
+- **Vingt monuments** (`src/core/monuments.ts`) : 12 grands à 600 €, 8 petits à 300 €, 5 000 € de plus quand tout est trouvé (14 600 € en
+  tout). Chacun a une **zone de découverte** ronde (14 à 110 m de rayon) qui prend le monument et la rue, la place ou le chemin d'où on le
+  voit, d'après les vues du jeu (`?view=`) et la carte ; on la découvre en y entrant, à pied ou en véhicule. Deux zones posées au milieu
+  d'un îlot (tour de l'Horloge, prison) ont été recentrées vers le trottoir le plus proche. Test : chaque zone touche le réseau des
+  piétons ou des voitures (vraies données).
+- **Fiches lues dans le document** : `docs/fiches-monuments.md` est importé tel quel (`?raw` de Vite) et découpé au démarrage
+  (`parseFiches`) : nom, texte, « Le savais-tu ? » (vide s'il est « à compléter »), sources sans les notes au relecteur (« À vérifier »,
+  « À compléter »). Test : 20 fiches, 600 caractères au plus, rien qui s'adresse au relecteur ne passe dans le jeu.
+- **Découverte** : bandeau « Découverte : Porte d'Arroux », prime au solde, son de ramassage, enregistrement immédiat de la partie, et un
+  bouton **« 📖 Lire la fiche »** sous le bandeau pendant 7 s : un appui met en pause sur la fiche, dans le carnet.
+- **Carnet**, onglet **Monuments** : grands et petits, « À découvrir » avec la prime, ou le nom et le jour de la découverte ; un appui sur
+  un monument trouvé ouvre sa fiche (texte, « Le savais-tu ? », sources, « Retour à la liste »).
+- **Carte agrandie** : chaque monument de la chasse a une pastille, grise avec « ? » tant qu'il n'est pas découvert, ocre avec une coche
+  une fois trouvé (la minimap n'en montre pas : on les cherche sur la carte).
+
+**Vérifié** : `monuments.test.ts` ; `tools/ui.sh <dossier> monuments` (arrivée à la porte d'Arroux : 200 € + 600 € = 800 €, fiche, liste,
+carte).
+
+**À juger** : la taille des zones (trop grandes, on découvre sans avoir vu ; trop petites, on passe à côté), et les textes (relecture).
+
+![Arrivée à la porte d'Arroux](captures/pj3-decouverte.jpg)
+![La fiche dans le carnet](captures/pj3-fiche.jpg)
+![L'onglet Monuments](captures/pj3-carnet-monuments.jpg)
+![Les « ? » sur la carte](captures/pj3-carte-monuments.jpg)

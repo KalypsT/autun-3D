@@ -259,6 +259,15 @@
       .pm-medal.on.t1 { background: #b8743a; border-color: #b8743a; color: var(--cream); }
       .pm-medal.on.t2 { background: #b9bec6; border-color: #b9bec6; color: var(--ink); }
       .pm-medal.on.t3 { background: var(--ochre); border-color: var(--ochre); color: var(--ink); }
+      button.pm-row.pm-link { width: 100%; background: none; border: 0; border-bottom: 1px solid rgba(255, 248, 230, .14); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .pm-fiche-title { margin: 6px 0 4px; font: 800 19px system-ui, sans-serif; color: var(--ochre); }
+      .pm-fiche { margin: 0 0 10px; font-size: 15px; line-height: 1.5; max-width: 62ch; }
+      .pm-back { margin-top: 4px; height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255, 248, 230, .4); background: rgba(255, 248, 230, .1); color: inherit; font: 600 14px system-ui, sans-serif; }
+      /* Découverte (D320) : « Lire la fiche » sous le bandeau d'exploit, quelques secondes. */
+      #discover { position: fixed; left: 50%; top: 128px; transform: translateX(-50%); z-index: 6; display: none; padding: 8px 16px; border-radius: 20px;
+                  border: 2px solid var(--cream); background: var(--brick); color: var(--cream); font: 800 15px system-ui, sans-serif; box-shadow: var(--lift); }
+      body.game #discover.show { display: block; }
+      body.paused #discover { display: none !important; }
       .pm-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .pm-label small, .pm-note small, .pm-form-side small { opacity: .65; font-size: 12px; line-height: 1.3; }
       .pm-seg { display: flex; flex: none; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 248, 230, .35); }
@@ -339,6 +348,7 @@
     <div id="pedals"><div id="horn" class="pedal" role="button" aria-label="Klaxon"></div><div id="handbrake" class="pedal" role="button" aria-label="Frein à main"></div><div id="brake" class="pedal" role="button" aria-label="Frein"></div><div id="gas" class="pedal" role="button" aria-label="Accélérer"></div></div>
     <div id="stunt" aria-live="polite"></div>
     <div id="feat" aria-live="polite"></div>
+    <button id="discover" type="button">📖 Lire la fiche</button>
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="threats"><div class="threat"></div><div class="threat"></div><div class="threat"></div><div class="threat"></div></div>

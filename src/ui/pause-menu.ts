@@ -70,6 +70,8 @@ export class PauseMenu {
   private readonly nav = new Map<PanelId, HTMLButtonElement>();
   private panel: PanelId = "home";
   private tab: CarnetTab = "defis";
+  /** Fiche ouverte dans l'onglet d'une collection (identifiant d'entrée), ou null. */
+  private fiche: string | null = null;
   private readonly urls: string[] = [];
 
   constructor(private readonly hooks: PauseHooks) {
@@ -491,8 +493,9 @@ export class PauseMenu {
   // --- Carnet ---------------------------------------------------------------------------------------------------------------
 
   /** Ouvre le carnet sur un onglet (captures, bouton « Lire la fiche » des monuments). */
-  openCarnet(tab: CarnetTab): void {
+  openCarnet(tab: CarnetTab, fiche: string | null = null): void {
     this.tab = tab;
+    this.fiche = fiche;
     this.open("carnet");
   }
 
@@ -512,6 +515,7 @@ export class PauseMenu {
       const b = h("button", t.id === this.tab ? "on" : "", t.label);
       b.addEventListener("click", () => {
         this.tab = t.id;
+        this.fiche = null;
         this.show("carnet");
       });
       bar.append(b);
@@ -523,9 +527,25 @@ export class PauseMenu {
     else this.challengesTab();
   }
 
-  /** Une collection : trouvées par groupe, avec leur prime ; celles qui restent, sans nom. */
+  /** Une collection : trouvées par groupe, avec leur prime ; celles qui restent, sans nom. Une entrée trouvée qui a une fiche s'ouvre d'un appui. */
   private collectionTab(col: CollectionDef, book: Notebook): void {
     const c = this.content;
+    const open = this.fiche !== null ? col.entries.find((e) => e.id === this.fiche && book.has(col.id, e.id) && e.fiche) : undefined;
+    if (open?.fiche) {
+      const back = h("button", "pm-back", "← Retour à la liste");
+      back.addEventListener("click", () => {
+        this.fiche = null;
+        this.show("carnet");
+      });
+      c.append(h("h3", "pm-fiche-title", open.name), h("p", "pm-fiche", open.fiche.text));
+      if (open.fiche.didYouKnow) {
+        const p = h("p", "pm-fiche");
+        p.append(h("strong", "", "Le savais-tu ? "), open.fiche.didYouKnow);
+        c.append(p);
+      }
+      c.append(h("p", "pm-muted", `Sources : ${open.fiche.sources}.`), back);
+      return;
+    }
     const n = book.count(col.id), total = col.entries.length;
     c.append(h("p", "pm-muted", `${n} sur ${total} trouvés${n < total ? ` · ${formatMoney(col.bonus)} de plus quand tout est trouvé` : " · collection complète !"}`));
     const groups = new Map<string, typeof col.entries[number][]>();
@@ -538,8 +558,13 @@ export class PauseMenu {
       if (g) c.append(h("h3", "pm-sub", `${g} · ${list.filter((e) => book.has(col.id, e.id)).length} sur ${list.length}`));
       for (const e of list) {
         const found = book.when(col.id, e.id);
-        const r = h("div", found === null ? "pm-row locked" : "pm-row");
-        r.append(h("span", "", found === null ? "À découvrir" : e.name), h("strong", "pm-record", found === null ? formatMoney(e.reward) : `Jour ${found + 1}`));
+        const readable = found !== null && !!e.fiche;
+        const r = h(readable ? "button" : "div", found === null ? "pm-row locked" : readable ? "pm-row pm-link" : "pm-row");
+        r.append(h("span", "", found === null ? "À découvrir" : readable ? `📖 ${e.name}` : e.name), h("strong", "pm-record", found === null ? formatMoney(e.reward) : `Jour ${found + 1}`));
+        if (readable) r.addEventListener("click", () => {
+          this.fiche = e.id;
+          this.show("carnet");
+        });
         c.append(r);
       }
     }

@@ -2293,3 +2293,13 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : dire si les paliers te semblent bien placés (trop faciles, trop durs).
 ![Un défi gagné](docs/captures/pj3-defi-bandeau.jpg)
 ![Le carnet, onglet Défis](docs/captures/pj3-carnet-defis.jpg)
+
+**Plaisir de jeu, lot 3-4 : la chasse aux monuments (24 novembre 2026)** (D320)
+- **Vingt monuments** à découvrir. Sur la carte agrandie, un « ? » gris marque chacun ; il devient une coche ocre une fois trouvé.
+- Il suffit d'arriver devant, à pied ou en véhicule. Un bandeau « Découverte : Porte d'Arroux » s'affiche, la prime arrive au solde (600 € pour un grand monument, 300 € pour un petit, 5 000 € de plus pour les vingt), et un bouton **« 📖 Lire la fiche »** reste quelques secondes à l'écran.
+- Dans le carnet, onglet **Monuments** : ceux que tu as trouvés, avec leur fiche (texte, « Le savais-tu ? », sources).
+- Les fiches viennent directement de `docs/fiches-monuments.md` : corrige ce fichier, et le jeu suit.
+- À faire de ton côté : relire les fiches et faire le tour de quelques monuments, en disant si la zone se déclenche trop tôt ou trop tard.
+![Arrivée à la porte d'Arroux](docs/captures/pj3-decouverte.jpg)
+![La fiche](docs/captures/pj3-fiche.jpg)
+![Les « ? » sur la carte](docs/captures/pj3-carte-monuments.jpg)

@@ -9,6 +9,13 @@
 
 export type CollectionId = "monuments" | "tresors";
 
+/** Fiche d'une entrée (monuments, D320) : texte, phrase « Le savais-tu ? » (vide s'il n'y en a pas) et sources. */
+export interface Fiche {
+  text: string;
+  didYouKnow: string;
+  sources: string;
+}
+
 export interface CollectionEntry {
   /** Identifiant stable (enregistré dans la sauvegarde) : ne jamais le changer une fois publié. */
   id: string;
@@ -23,6 +30,8 @@ export interface CollectionEntry {
   reward: number;
   /** Regroupement affiché dans le carnet (grand ou petit monument, quartier d'un objet caché). */
   group?: string;
+  /** Fiche lisible dans le carnet une fois l'entrée trouvée. */
+  fiche?: Fiche;
 }
 
 export interface CollectionDef {
@@ -104,9 +113,3 @@ export function parseNotebook(o: unknown): SavedNotebook | null {
   for (const [k, v] of Object.entries(o as Record<string, unknown>)) if (typeof v === "number" && Number.isFinite(v) && k.length < 80) out[k] = v;
   return out;
 }
-
-/**
- * Les collections du jeu. Vide jusqu'aux lots 3-4 (monuments, après relecture des fiches) et 3-5 (objets cachés) : le carnet n'en montre
- * l'onglet que quand elles ont des entrées.
- */
-export const COLLECTIONS: readonly CollectionDef[] = [];
