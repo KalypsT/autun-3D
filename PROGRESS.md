@@ -2244,3 +2244,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Hôtel de ville la nuit, après](docs/captures/d314-mairie-nuit-apres.jpg)
 ![Feu d'artifice](docs/captures/d314-feu-artifice.jpg)
 
+**Plaisir de jeu, lot 2-2 : vent, nuages qui avancent, levers et couchers (24 novembre 2026)** (D315)
+- **Du vent** dans la météo : calme dans la brume, léger par beau temps, fort sous l'orage, le plus souvent d'ouest. Les **nuages avancent** avec lui et changent lentement de forme ; la pluie et la neige penchent dans son sens.
+- **Couchers et levers plus marqués** : du côté du soleil, l'horizon et la brume flamboient ; de l'autre côté, une bande bleu violet au ras de l'horizon et une bande rose au-dessus, les nuages roses. Le soleil couchant est plus orangé sur les façades, les ombres plus violettes. Le matin reste plus doux et plus rose que le soir.
+- Nouveau réglage **« Ciel animé »** (Oui par défaut) : Non garde le ciel d'avant.
+- À faire de ton côté : regarder un coucher de soleil en jeu (vers 19 h 30 en été), dos au soleil puis face à lui, et un jour de vent (orage) pour voir les nuages filer ; me dire si c'est trop rouge.
+![Dos au soleil couchant, avant](docs/captures/d315-oppose-avant.jpg)
+![Dos au soleil couchant, après](docs/captures/d315-oppose-apres.jpg)
+![Face au soleil couchant](docs/captures/d315-soleil-apres.jpg)
+

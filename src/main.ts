@@ -24,7 +24,10 @@ import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 import { Vista } from "./render/vista";
 import { PostFx } from "./render/post";
+import { installSunHaze } from "./render/sun-haze";
 
+// Brume teintée par le soleil (D315) : à installer avant la compilation du premier nuanceur.
+installSunHaze();
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const debugEl = document.getElementById("debug") as HTMLDivElement;
@@ -151,6 +154,7 @@ async function main(): Promise<void> {
   const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
   const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
   atmosphere.post = post;
+  atmosphere.skyAnimated = effective.sky;
   atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
   // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
   atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
@@ -172,6 +176,13 @@ async function main(): Promise<void> {
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
   const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, post, settingsStore, storedSettings, params);
+  // Ciel animé (D315) : le réglage s'applique tout de suite.
+  settings?.listeners.push((values, changed) => {
+    if (changed.includes("sky")) {
+      atmosphere.skyAnimated = values.sky;
+      atmosphere.setHour(atmosphere.hour);
+    }
+  });
   const ctx: GameContext = {
     renderer, post, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
     storage: session.storage, host: session.host,

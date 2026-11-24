@@ -7451,3 +7451,63 @@ du soleil ; les phares restent des cônes plats au sol.
 ![Phares, effets coupés](captures/d314-phares-avant.jpg)
 ![Phares, couleurs et halo](captures/d314-phares-apres.jpg)
 ![Feu d'artifice du 14 juillet sur le plan d'eau du Vallon](captures/d314-feu-artifice.jpg)
+
+## 2026-11-24 — D315. Plaisir de jeu, lot 2-2 : vent, nuages qui avancent, levers et couchers plus marqués
+
+**Demande** (PJ, phase 2) : des nuages qui avancent avec le vent et la météo ; des couchers et levers de soleil plus marqués (ciel,
+brume, façades) ; un réglage pour couper si le téléphone peine.
+
+**Constat avant** : les nuages du ciel étaient un motif figé ; la météo n'avait pas de vent (la pluie penchait toujours du même côté) ;
+au coucher, ciel et brume étaient orange de tous les côtés, sans différence entre le côté du soleil et le côté opposé.
+
+**Le vent** (`core/weather.ts`, logique pure) : `wind` (force, 0 à 1) et `windDir` (vers où il souffle, 0 vers l'est) dans l'état de la
+météo. Force par genre : brume 0,05, beau temps 0,25, neige 0,35, nuageux 0,45, pluie 0,6, orage 1, avec les mêmes transitions que la
+brume. Direction : un cap par jour tiré autour du vent dominant (vers l'est-nord-est : vent d'ouest et de sud-ouest), ± 80°, qui tourne
+doucement d'un jour à l'autre par le plus court chemin, avec une petite oscillation dans la journée ; continue à minuit. `?weather=`
+garde le vent dominant.
+
+**Nuages** (`sky.ts`) : le champ de nuages (trois octaves de bruit) glisse avec le vent, chaque octave un peu plus vite que la
+précédente : les nuages avancent et changent lentement de forme. Vitesse ≈ 0,4° par seconde au zénith par vent moyen, deux fois plus sous
+l'orage (temps réel, pas l'horloge du jeu : pas d'accéléré). Aucun coût de plus (un décalage dans le nuanceur existant).
+
+**Pluie et neige** (`precipitation.ts`) : penchées et poussées par le vent (0,6 à 4 m/s, moitié pour la neige). La dérive est cumulée
+par le processeur : changer le vent ne fait pas sauter les gouttes (avec l'ancien calcul, vent × temps, elles auraient sauté).
+
+**Levers et couchers** (de −9° à 18° de hauteur du soleil, au plus fort de −2° à 6°, effacés par un ciel couvert) :
+- **Ciel** : du côté du soleil, le bas du ciel flamboie (orange, en bandes comme le reste du ciel) ; à l'opposé, l'ombre de la Terre
+  (bleu violet) au ras de l'horizon et une bande rose au-dessus ; nuages dorés côté soleil, ombres roses et violettes.
+- **Brume** (`render/sun-haze.ts`) : le brouillard de three.js n'a qu'une couleur ; ses morceaux de nuanceur (`fog_*`) sont remplacés au
+  démarrage pour qu'il se teinte vers le soleil (orange) et à l'opposé (violet), par des uniformes **partagés** par toutes les matières :
+  three.js recopie les uniformes de sa bibliothèque pour chaque matière, sauf les valeurs qui ne sont pas des objets three.js ; un simple
+  `{ x, y, z, w }` est donc le même objet partout (test). Changer la brume ne recompile rien. Le ciel lit les mêmes objets : l'horizon et
+  le brouillard se raccordent. Hors lever et coucher, la force est nulle : le brouillard est exactement celui d'avant.
+- **Matin et soir** : soleil levant plus rose et plus doux (`#ffa37a`, opposé `#7c86bc`), couchant plus orangé (`#ff7838`, opposé
+  `#56508e`).
+- **Façades** : soleil couchant plus orangé et plus fort (jalon à 3° : `#ff8a3e`, 2,5 au lieu de 2,2), lumière du ciel plus violette
+  (ombres). La lumière ne descend toujours pas sous 5° (D19).
+- Étalonnage du soir (D314) un peu adouci (saturation 1,08 au lieu de 1,14) : vue d'en haut, les toits sortaient trop rouges.
+
+**Réglage** « Ciel animé » (Oui par défaut) : Non garde le ciel d'avant (nuages immobiles, brume et horizon d'une seule couleur) ; la
+palette des heures et le vent de la pluie restent. `?sky=0|1` l'impose.
+
+**Coût** : quelques opérations de plus par pixel du ciel et par pixel dans le brouillard (une direction, un produit scalaire, deux
+mélanges), une variable de plus entre sommet et pixel pour toutes les matières ; aucun appel de dessin ni texture. À mesurer avec le
+banc sur le téléphone (`?bench=1&h=19.5` puis `&sky=0`).
+
+**Tests** : vent (force par genre, direction continue d'heure en heure et à minuit, plutôt vers l'est, force sans saut) ; brume
+(morceaux remplacés, présents dans les nuanceurs toon, Lambert, basic, points, sprites ; mêmes objets partagés par les matières et le
+ciel).
+
+**Limites** : les nuages ne portent pas d'ombre au sol (noté pour plus tard) ; les arbres ne bougent pas avec le vent ; la bande rouge au
+ras de la mer, côté soleil, est nette (style affiche) ; le mouvement des nuages ne se voit pas sur une capture : à juger en jeu.
+
+**Vues** : `?cam=-150,-230,140,150,-470,60&h=19.6` (dos au soleil couchant), `?cam=-150,-230,140,-450,10,60&h=19.6` (face au soleil),
+`?view=croix-vue&h=4.5` (aube), avec `&sky=0` pour comparer.
+
+![Dos au soleil couchant, ciel animé coupé (le ciel d'avant)](captures/d315-oppose-avant.jpg)
+![Dos au soleil couchant : ombre de la Terre, bande rose, nuages roses](captures/d315-oppose-apres.jpg)
+![Face au soleil couchant, ciel animé coupé](captures/d315-soleil-avant.jpg)
+![Face au soleil couchant](captures/d315-soleil-apres.jpg)
+![Aube vue de la Croix de la Libération, ciel animé coupé](captures/d315-aube-avant.jpg)
+![Aube vue de la Croix de la Libération](captures/d315-aube-apres.jpg)
+![Dans la rue, dos au soleil couchant](captures/d315-rue-oppose.jpg)

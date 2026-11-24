@@ -5,7 +5,7 @@ import { crowdTarget } from "./crowd-density";
 import { flatTerrain } from "./testing";
 import { trafficTarget } from "./traffic-density";
 import { CAR, createVehicle, setSurfaceGrip, stepVehicle } from "./vehicle";
-import { crowdWeather, dayEpisodes, fixedWeather, surfaceGrip, trafficWeather, walkWeather, WEATHER_TABLE, weatherAt, weatherParam, type WeatherKind } from "./weather";
+import { crowdWeather, dayEpisodes, fixedWeather, PREVAILING_WIND, surfaceGrip, trafficWeather, walkWeather, WEATHER_TABLE, weatherAt, weatherParam, windDirection, type WeatherKind } from "./weather";
 
 const seasonOf7 = (d: number): Season => (Math.floor(d / 7) % 4) as Season;
 
@@ -187,6 +187,38 @@ describe("météo : branchements", () => {
       expect(snow).toBeGreaterThan(wet * 1.1);
     } finally {
       setSurfaceGrip(1);
+    }
+  });
+});
+
+describe("météo : le vent (D315)", () => {
+  it("calme dans la brume, plus fort sous la pluie, tempête sous l'orage", () => {
+    const w = (k: WeatherKind): number => fixedWeather(k).wind;
+    expect(w("brume")).toBeLessThan(w("beau"));
+    expect(w("beau")).toBeLessThan(w("pluie"));
+    expect(w("orage")).toBe(1);
+    expect(fixedWeather("beau").windDir).toBe(PREVAILING_WIND);
+  });
+
+  it("la direction tourne sans saut, d'une heure à l'autre et d'un jour à l'autre (minuit compris)", () => {
+    const wrap = (a: number): number => Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+    for (let d = 0; d < 60; d++) {
+      for (let h = 0; h < 24; h += 0.25) expect(wrap(windDirection(d, h + 0.25) - windDirection(d, h))).toBeLessThan(0.08);
+      expect(wrap(windDirection(d + 1, 0) - windDirection(d, 23.999))).toBeLessThan(0.01);
+    }
+  });
+
+  it("le plus souvent vers l'est (vent d'ouest dominant) ; la force suit les transitions de la météo", () => {
+    let east = 0;
+    for (let d = 0; d < 200; d++) if (Math.cos(windDirection(d, 12)) > 0) east++;
+    expect(east).toBeGreaterThan(120);
+    for (let d = 0; d < 30; d++) {
+      let prev = weatherAt(d, 0, seasonOf7).wind;
+      for (let h = 0.1; h < 24; h += 0.1) {
+        const cur = weatherAt(d, h, seasonOf7).wind;
+        expect(Math.abs(cur - prev)).toBeLessThan(0.25);
+        prev = cur;
+      }
     }
   });
 });

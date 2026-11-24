@@ -12,6 +12,7 @@ import { hourlyT, seasonLook } from "../core/seasons";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
 import { gradeAt } from "../core/grading";
 import type { PostFx } from "./post";
+import { setSunHaze } from "./sun-haze";
 
 /** Une ambiance à une hauteur de soleil donnée. */
 interface Palette {
@@ -40,7 +41,8 @@ const fromTheme = (t: typeof DAY): Palette => ({
 const STOPS: [number, Palette][] = [
   [-10, { ...fromTheme(NIGHT), sunI: 0.6, hemiI: 1.9, exposure: 1.3 }],
   [-3, { horizon: "#c86a6a", mid: "#5a4a86", zenith: "#1a2050", fog: "#6a4a7a", sun: "#ff8a5a", sunI: 0.9, hemiSky: "#6a6aa8", hemiGround: "#3a2a44", hemiI: 1.6, exposure: 1.2, fogNear: 110, fogFar: 640 }],
-  [3, { horizon: "#ffa860", mid: "#f0907a", zenith: "#4a62a8", fog: "#f4a878", sun: "#ff9348", sunI: 2.2, hemiSky: "#b8a0b8", hemiGround: "#9a5a3a", hemiI: 1.3, exposure: 1.05, fogNear: 150, fogFar: 760 }],
+  // Coucher plus marqué (D315) : soleil plus orangé et plus fort sur les façades, ombres plus violettes (lumière du ciel).
+  [3, { horizon: "#ffa860", mid: "#f0907a", zenith: "#4a62a8", fog: "#f4a878", sun: "#ff8a3e", sunI: 2.5, hemiSky: "#a894c4", hemiGround: "#9a5a3a", hemiI: 1.3, exposure: 1.05, fogNear: 150, fogFar: 760 }],
   [15, fromTheme(DAY)],
 ];
 
@@ -101,6 +103,13 @@ export class Atmosphere {
   onShops: ((open: readonly number[]) => void) | null = null;
   /** Coup de tonnerre : délai (s) depuis l'éclair, selon la distance de la foudre, et force (0 à 1). Branché par le jeu (son). */
   onThunder: ((delay: number, strength: number) => void) | null = null;
+  /**
+   * Ciel animé (D315, réglage « Ciel animé ») : nuages poussés par le vent, horizon et brume teintés vers le soleil au lever et au
+   * coucher. Coupé : le ciel d'avant (nuages immobiles, brume d'une seule couleur).
+   */
+  skyAnimated = true;
+  /** Décalage des nuages (plan des nuages du ciel), cumulé avec le vent. */
+  private readonly cloudOffset = new THREE.Vector2();
   /** Effets d'image (D314) : étalonnage et force du halo, réglés avec l'ambiance. */
   post: PostFx | null = null;
   /** Pluie et neige qui tombent autour de la caméra (créées à la première averse). */
@@ -201,6 +210,18 @@ export class Atmosphere {
     if (this.wx.snowfall > 0.005 && !this.snowfall) this.scene.add((this.snowfall = new Precipitation(SNOW)).mesh);
     this.rain?.update(this.wx.rain, this.time, light);
     this.snowfall?.update(this.wx.snowfall, this.time, light);
+    // Vent (D315) : direction du jeu (0 vers l'est) vers le repère three (x, z = −y).
+    const wx = Math.cos(this.wx.windDir), wz = -Math.sin(this.wx.windDir);
+    const gust = 0.6 + 3.4 * this.wx.wind;
+    this.rain?.wind(wx * gust, wz * gust, dt);
+    this.snowfall?.wind(wx * gust * 0.5, wz * gust * 0.5, dt);
+    if (this.skyAnimated && this.skyMat.uniforms["cloudOffset"]) {
+      // Nuages : ≈ 0,4°/s au zénith par vent moyen, deux fois plus vite sous l'orage ; repliés pour garder la précision.
+      const rate = 0.002 + 0.01 * this.wx.wind;
+      this.cloudOffset.x = (this.cloudOffset.x + wx * rate * dt) % 1000;
+      this.cloudOffset.y = (this.cloudOffset.y + wz * rate * dt) % 1000;
+      (this.skyMat.uniforms["cloudOffset"].value as THREE.Vector2).copy(this.cloudOffset);
+    }
     const storm = this.wx.storm;
     const u = this.skyMat.uniforms;
     if (storm > 0.3) {
@@ -336,6 +357,10 @@ export class Atmosphere {
     (u["zenith"]!.value as THREE.Color).copy(overcast(p.zenith, grey));
     (u["sun"]!.value as THREE.Vector3).set(sx, sz, -sy);
     u["stars"]!.value = smooth(-4, -10, elev) * (1 - wx.cloud);
+    // Lever et coucher (D315) : horizon, nuages et brume plus chauds du côté du soleil, plus froids à l'opposé ; de −9° à 18°, au plus fort
+    // de −2° à 6°, effacé par un ciel couvert. Matin plus rose et plus doux que le soir.
+    const glowK = this.skyAnimated ? smooth(-9, -2, elev) * (1 - smooth(6, 18, elev)) * (1 - 0.85 * smooth(0.35, 0.95, wx.cloud)) : 0;
+    setSunHaze(sx, -sy, glowK, this.morning ? "#ffa37a" : "#ff7838", this.morning ? "#7c86bc" : "#56508e");
     u["cloudLight"]!.value = this.baseCloudLight = 0.18 + 0.82 * smooth(-8, 8, elev);
     u["disc"]!.value = wx.cloud < 0.55 ? 1 : 0;
     if (u["cover"]) u["cover"].value = wx.cloud;

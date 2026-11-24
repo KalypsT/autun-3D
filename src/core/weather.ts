@@ -34,6 +34,10 @@ export interface WeatherState {
   wet: number;
   /** Orage (éclairs, tonnerre). */
   storm: number;
+  /** Force du vent (0 calme à 1 tempête) (D315). */
+  wind: number;
+  /** Direction vers laquelle souffle le vent (radians, repère du jeu : 0 vers l'est, π/2 vers le nord) (D315). */
+  windDir: number;
 }
 
 /** Parts de chaque genre par saison (printemps, été, automne, hiver), en pourcentage (tableau du plan). */
@@ -50,14 +54,16 @@ const WINDOWS: Partial<Record<WeatherKind, { from: number; to: number; end: numb
   brume: { from: 4.5, to: 8, end: 10.5 },
 };
 
-/** Ce que chaque genre vise. La pluie de printemps est plus légère (averses). */
-const LOOK: Record<WeatherKind, Omit<WeatherState, "kind" | "snow" | "wet">> = {
-  beau: { cloud: 0.12, rain: 0, fog: 0, snowfall: 0, storm: 0 },
-  nuageux: { cloud: 0.7, rain: 0, fog: 0, snowfall: 0, storm: 0 },
-  pluie: { cloud: 0.95, rain: 0.75, fog: 0.15, snowfall: 0, storm: 0 },
-  orage: { cloud: 1, rain: 1, fog: 0.1, snowfall: 0, storm: 1 },
-  brume: { cloud: 0.45, rain: 0, fog: 1, snowfall: 0, storm: 0 },
-  neige: { cloud: 0.9, rain: 0, fog: 0.3, snowfall: 0.8, storm: 0 },
+type Look = Omit<WeatherState, "kind" | "snow" | "wet" | "windDir">;
+
+/** Ce que chaque genre vise. La pluie de printemps est plus légère (averses). Vent (D315) : calme dans la brume, fort sous l'orage. */
+const LOOK: Record<WeatherKind, Look> = {
+  beau: { cloud: 0.12, rain: 0, fog: 0, snowfall: 0, storm: 0, wind: 0.25 },
+  nuageux: { cloud: 0.7, rain: 0, fog: 0, snowfall: 0, storm: 0, wind: 0.45 },
+  pluie: { cloud: 0.95, rain: 0.75, fog: 0.15, snowfall: 0, storm: 0, wind: 0.6 },
+  orage: { cloud: 1, rain: 1, fog: 0.1, snowfall: 0, storm: 1, wind: 1 },
+  brume: { cloud: 0.45, rain: 0, fog: 1, snowfall: 0, storm: 0, wind: 0.05 },
+  neige: { cloud: 0.9, rain: 0, fog: 0.3, snowfall: 0.8, storm: 0, wind: 0.35 },
 };
 
 /** Un épisode : du début à la fin (heures depuis minuit de son jour, la fin au plus 24), son genre et sa transition d'entrée (heures). */
@@ -145,7 +151,6 @@ function drawDay(date: number, season: Season, salt: number): Episode[] {
 const smooth = (x: number): number => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-type Look = Omit<WeatherState, "kind" | "snow" | "wet">;
 
 /** Ce que le ciel montre à `hour` du jour `date` (sans le sol), avec les transitions entre épisodes. */
 function skyAt(date: number, hour: number, seasonOf: (date: number) => Season, salt: number): { look: Look; kind: WeatherKind } {
@@ -173,6 +178,7 @@ function skyAt(date: number, hour: number, seasonOf: (date: number) => Season, s
     snowfall: mix(a.snowfall, b.snowfall, tFall),
     storm: mix(a.storm, b.storm, tFall),
     fog: mix(a.fog, b.fog, tOther),
+    wind: mix(a.wind, b.wind, tOther),
   };
   return { look, kind: tOther < 0.5 ? before.kind : cur.kind };
 }
@@ -215,13 +221,30 @@ export function weatherAt(date: number, hour: number, seasonOf: (date: number) =
     const morning = hour < 7 ? (hour - 5) / 2 : 1 - (hour - 7) / 3;
     snow = Math.max(snow, 0.25 * morning * (1 - now.look.cloud));
   }
-  return { kind: now.kind, ...now.look, wet: Math.min(1, wet), snow: Math.min(1, snow) };
+  return { kind: now.kind, ...now.look, wet: Math.min(1, wet), snow: Math.min(1, snow), windDir: windDirection(date, hour, salt) };
+}
+
+/** Direction dominante du vent (vers laquelle il souffle) : vers l'est-nord-est, le vent d'ouest et de sud-ouest le plus courant en Bourgogne. */
+export const PREVAILING_WIND = 0.35;
+
+/**
+ * Direction du vent (D315), en radians (vers où il souffle, 0 vers l'est) : un cap par jour tiré autour du vent dominant (± 80°), qui
+ * tourne doucement d'un jour à l'autre (par le plus court chemin), avec une petite oscillation dans la journée. Continue d'une heure à
+ * l'autre, minuit compris.
+ */
+export function windDirection(date: number, hour: number, salt = 0): number {
+  const day = (d: number): number => PREVAILING_WIND + (rng(daySeed(d, salt + 31))() - 0.5) * 2.8;
+  const a = day(date), b = day(date + 1);
+  let d = b - a;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  const t = smooth(hour / 24);
+  return a + d * t + 0.12 * Math.sin((hour / 24) * Math.PI * 2) * Math.sin(date * 1.7 + 0.5);
 }
 
 /** Météo imposée (`?weather=`) : l'état établi du genre, sol compris (mouillé sous la pluie, blanc sous la neige). */
 export function fixedWeather(kind: WeatherKind): WeatherState {
   const l = LOOK[kind];
-  return { kind, ...l, wet: l.rain > 0 ? 1 : 0, snow: l.snowfall > 0 ? 1 : 0 };
+  return { kind, ...l, wet: l.rain > 0 ? 1 : 0, snow: l.snowfall > 0 ? 1 : 0, windDir: PREVAILING_WIND };
 }
 
 /** `?weather=beau|nuageux|pluie|orage|brume|neige`, ou null. */
