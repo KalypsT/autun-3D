@@ -10,6 +10,7 @@ import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
+import { foodShops, type Shop } from "../core/shops";
 import { Minimap } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
 import { PauseMenu } from "../ui/pause-menu";
@@ -85,6 +86,8 @@ export class UiBridge {
   caches: { x: number; y: number; kind?: string }[] = [];
   /** Garages de réparation (D113), connus quand les lieux de la carte sont chargés. */
   garages: Garage[] = [];
+  /** Commerces où l'on achète (D322), connus avec les lieux de la carte. */
+  shops: Shop[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -146,6 +149,7 @@ export class UiBridge {
       (data) => {
         this.minimap.attach(data);
         this.garages = garagesFrom(data.places.places);
+        this.shops = foodShops(data.places.places);
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();
@@ -206,7 +210,16 @@ export class UiBridge {
     this.setPaused(!this.paused);
   }
 
-  setPaused(on: boolean): void {
+  /** Écran posé par-dessus la pause (magasin, D322) : refermé à la reprise. */
+  private overlayClose: (() => void) | null = null;
+
+  /** Met en pause sans carte ni menu, pour un écran du jeu (magasin) ; `close` le referme à la reprise (Échap, P, « Sortir »). */
+  openOverlay(close: () => void): void {
+    if (!this.paused) this.setPaused(true, false);
+    this.overlayClose = close;
+  }
+
+  setPaused(on: boolean, screen = true): void {
     if (on === this.paused) return;
     this.paused = on;
     document.body.classList.toggle("paused", on);
@@ -220,8 +233,10 @@ export class UiBridge {
       this.frozen = { x: s.x, y: s.y, z: s.z, heading: s.yaw, hour: this.ctx.atmosphere.hour, day: this.ctx.atmosphere.day };
       this.save();
       // L'écran de pause est la carte ; le menu seulement si elle n'a pas pu être chargée.
-      if (!this.openMap()) this.menu.open("home");
+      if (screen && !this.openMap()) this.menu.open("home");
     } else {
+      this.overlayClose?.();
+      this.overlayClose = null;
       this.bigmap?.close();
       this.menu.close();
       this.frozen = null;

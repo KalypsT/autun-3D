@@ -22,6 +22,9 @@ import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
+import { canBuy, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
+import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
+import { ShopScreen } from "../ui/shop-screen";
 import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
 import { Notebook } from "../core/collections";
 import { COLLECTIONS, TREASURE_SITES } from "./collections-list";
@@ -47,7 +50,7 @@ import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { VehicleNameHud } from "../ui/vehicle-name";
-import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, nearestHospital } from "../core/health";
+import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, MAX_HEALTH, nearestHospital } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { FAR_VICTIM, farImpacts, Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
@@ -522,6 +525,9 @@ export function startGame(ctx: GameContext): void {
   const melee = new Melee();
   const gun = new Gun(0x51f7);
   const pickups = new Pickups();
+  // Pharmacies (D322) : leur croix n'est là qu'aux heures d'ouverture ; celles de l'hôpital toujours.
+  const pharmacy = scheduleOf("pharmacy");
+  pickups.closed = (p) => p.price > 0 && !scheduleOpen(pharmacy, atmosphere.calendar.weekday, atmosphere.hour);
   const armsParam = params.get("arms");
   if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? 0) * 2);
   const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
@@ -1110,6 +1116,35 @@ export function startGame(ctx: GameContext): void {
       }
     }
   };
+  // Magasins (D322) : à pied, au sol, près d'un commerce ; ouvert, l'écran d'achat met le jeu en pause ; fermé, un bandeau dit quand il ouvre.
+  const shopScreen = new ShopScreen();
+  const shopHere = (): Shop | null => {
+    if (riding || health.dead || downFor > 0 || player.z - terrain.heightAt(player.x, player.y) > 1.5) return null;
+    return shopAt(ui.shops, player.x, player.y);
+  };
+  const enterShop = (shop: Shop): void => {
+    const day = atmosphere.calendar.weekday, hour = atmosphere.hour;
+    if (!shopOpen(shop, day, hour)) {
+      showFeat(`${shop.name} : ${openingText(shop.schedule, day, hour)}`);
+      return;
+    }
+    ui.openOverlay(() => shopScreen.close());
+    shopScreen.open(shop, {
+      hours: () => shopHours(shop, day, hour),
+      balance: () => wallet.balance,
+      refusal: (item) => canBuy(item, wallet.balance, health.hp, MAX_HEALTH),
+      buy: (item) => {
+        if (canBuy(item, wallet.balance, health.hp, MAX_HEALTH) !== null || !wallet.spend(item.price, item.name)) return "";
+        if (item.heal) {
+          health.heal(item.heal);
+          audio.heal();
+        }
+        moneyHud.set(wallet.balance, wallet.drain());
+        return item.heal ? `${item.name} : santé ${Math.round(health.hp)} sur ${MAX_HEALTH}.` : `${item.name} acheté.`;
+      },
+      leave: () => ui.setPaused(false),
+    });
+  };
   const act = (): void => {
     if (downFor > 0) return;
     if (riding) {
@@ -1125,6 +1160,9 @@ export function startGame(ctx: GameContext): void {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
       if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false, player.z);
       mount(r.fleet);
+    } else {
+      const shop = shopHere();
+      if (shop) enterShop(shop);
     }
   };
   actionEl.addEventListener("click", act);
@@ -1257,6 +1295,10 @@ export function startGame(ctx: GameContext): void {
     if (riding) [verb, ico] = ["Descendre", icon("exit")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
+    else {
+      const shop = shopHere();
+      if (shop) [verb, what, ico] = shopOpen(shop, atmosphere.calendar.weekday, atmosphere.hour) ? ["Entrer", shop.name, icon("shop")] : ["Fermé", shop.name, icon("closed")];
+    }
     const label = what ? `${verb} : ${what}` : verb;
     if (label !== actionLabel) {
       actionLabel = label;

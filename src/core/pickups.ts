@@ -37,16 +37,19 @@ export const CACHES: readonly CacheSite[] = [
 
 /** Balles d'une cache (armes à feu) : un chargeur plein et autant en réserve ; le fusil d'assaut deux chargeurs en réserve. */
 export const CACHE_ROUNDS: Partial<Record<WeaponId, number>> = { pistol: 24, shotgun: 18, rifle: 90, sniper: 15 };
+/** Soin complet dans une pharmacie (D322). */
+export const PHARMACY_PRICE = 30;
+
 /**
  * Croix vertes de soin (D159), une devant chaque pharmacie : points de la navigation piétonne sur le trottoir ou la place, en face de la devanture,
  * dégagés sur 50 cm (test). Ramasser une croix rend toute la santé ; elle revient après `HEAL_RESPAWN` s.
  */
 export const HEAL_SITES: readonly HealSite[] = [
-  { x: 60.5, y: -32.7, label: "Grande Pharmacie Bonaparte" },
-  { x: 91.8, y: -66.7, label: "Pharmacie de l'Arbalète" },
-  { x: -317.0, y: 464.7, label: "Pharmacie de la Gare" },
-  { x: 267.0, y: 707.1, label: "Pharmacie de la Croix Blanche" },
-  { x: 999.4, y: 1353.3, label: "Pharmacie de Saint-Pan" },
+  { x: 60.5, y: -32.7, label: "Grande Pharmacie Bonaparte", price: PHARMACY_PRICE },
+  { x: 91.8, y: -66.7, label: "Pharmacie de l'Arbalète", price: PHARMACY_PRICE },
+  { x: -317.0, y: 464.7, label: "Pharmacie de la Gare", price: PHARMACY_PRICE },
+  { x: 267.0, y: 707.1, label: "Pharmacie de la Croix Blanche", price: PHARMACY_PRICE },
+  { x: 999.4, y: 1353.3, label: "Pharmacie de Saint-Pan", price: PHARMACY_PRICE },
   // Centre hospitalier (D161) : à 6-7 m du point de réveil de chaque site, qu'on voit en se réveillant.
   { x: 231.5, y: 201.5, label: "Centre hospitalier, site Latouche" },
   { x: -355.0, y: 136.0, label: "Centre hospitalier, site Parpas" },
@@ -56,6 +59,8 @@ export interface HealSite {
   x: number;
   y: number;
   label: string;
+  /** Prix du soin (€, D322) : 30 € dans une pharmacie, gratuit à l'hôpital. */
+  price?: number;
 }
 
 /** Une croix de soin ramassée réapparaît après … s (plus vite qu'une cache d'arme). */
@@ -72,9 +77,11 @@ export const CASH_LIFE = 120;
 /** Ce que contient un objet au sol : une arme, une croix de soin, ou des billets (D317). */
 export type PickupKind = "weapon" | "heal" | "cash";
 
-/** Ce que les billets ont besoin de connaître du joueur : son porte-monnaie (`Wallet`). */
+/** Ce que les billets et les pharmacies ont besoin de connaître du joueur : son porte-monnaie (`Wallet`). */
 export interface Purse {
   earn(amount: number, label: string): number;
+  canPay(amount: number): boolean;
+  spend(amount: number, label: string): boolean;
 }
 
 /** Ce que la croix de soin a besoin de connaître du joueur. */
@@ -94,6 +101,8 @@ export interface Pickup {
   rounds: number;
   /** Billets : leur montant (€) ; 0 pour le reste. */
   cash: number;
+  /** Prix à payer pour le prendre (croix d'une pharmacie, D322) ; 0 : gratuit. */
+  price: number;
   label: string;
   /** Instant (horloge de `Pickups`) où elle est de nouveau disponible ; 0 : disponible. */
   readyAt: number;
@@ -109,12 +118,15 @@ export class Pickups {
   private nextId = 0;
 
   constructor(sites: readonly CacheSite[] = CACHES, heals: readonly HealSite[] = HEAL_SITES) {
-    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, cash: 0, label: c.label, readyAt: 0, dropped: false, expires: Infinity });
-    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, cash: 0, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, cash: 0, price: 0, label: c.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, cash: 0, price: h.price ?? 0, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
   }
 
+  /** Fermé en ce moment (croix d'une pharmacie hors de ses heures, D322) : branché par le jeu ; ni dessiné, ni pris. */
+  closed: ((p: Pickup) => boolean) | null = null;
+
   available(p: Pickup): boolean {
-    return this.time >= p.readyAt;
+    return this.time >= p.readyAt && !this.closed?.(p);
   }
 
   update(dt: number): void {
@@ -124,7 +136,7 @@ export class Pickups {
 
   /** Arme lâchée en (x, y) (J5-5 : le gendarme tué). */
   drop(x: number, y: number, weapon: WeaponId, rounds: number): Pickup {
-    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, cash: 0, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
+    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, cash: 0, price: 0, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
     this.list.push(p);
     return p;
   }
@@ -133,7 +145,7 @@ export class Pickups {
   dropCash(x: number, y: number, amount: number): Pickup {
     const heaps = this.list.filter((q) => q.kind === "cash");
     if (heaps.length >= 24) this.list.splice(this.list.indexOf(heaps[0]!), 1);
-    const p: Pickup = { id: this.nextId++, x, y, kind: "cash", weapon: null, rounds: 0, cash: Math.max(1, Math.round(amount)), label: "portefeuille", readyAt: 0, dropped: true, expires: this.time + CASH_LIFE };
+    const p: Pickup = { id: this.nextId++, x, y, kind: "cash", weapon: null, rounds: 0, cash: Math.max(1, Math.round(amount)), price: 0, label: "portefeuille", readyAt: 0, dropped: true, expires: this.time + CASH_LIFE };
     this.list.push(p);
     return p;
   }
@@ -159,7 +171,7 @@ export class Pickups {
   canTake(p: Pickup, inv: Inventory, health?: Healer, purse?: Purse): boolean {
     if (!this.available(p)) return false;
     if (p.kind === "cash") return !!purse;
-    if (p.kind === "heal") return !!health && !health.dead && health.hp < MAX_HEALTH;
+    if (p.kind === "heal") return !!health && !health.dead && health.hp < MAX_HEALTH && (p.price <= 0 || !!purse?.canPay(p.price));
     const def = WEAPONS[p.weapon!];
     if (!inv.has(p.weapon!)) return true;
     return def.kind === "gun" && inv.reserveOf(p.weapon!) < reserveCap(def);
@@ -174,6 +186,7 @@ export class Pickups {
       return true;
     }
     if (p.kind === "heal") {
+      if (p.price > 0 && !purse!.spend(p.price, p.label)) return false;
       health!.heal(MAX_HEALTH);
       p.readyAt = this.time + HEAL_RESPAWN;
       return true;

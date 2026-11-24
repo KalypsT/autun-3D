@@ -7742,3 +7742,36 @@ tintement.
 ![Une pièce sur un toit](captures/pj3-piece.jpg)
 ![Ramassée](captures/pj3-piece-trouvee.jpg)
 ![L'onglet Pièces d'or](captures/pj3-carnet-pieces.jpg)
+
+## 2026-11-24 — D322. Plaisir de jeu, phase 3, lot 6 : les magasins, la nourriture, les pharmacies payantes
+
+**Contexte** : plan, § 4 et § 7 (Q5, réponse par défaut validée) : on achète dans les vrais commerces, à leurs horaires (D200), sur un écran
+qui met le jeu en pause ; la nourriture soigne ; les pharmacies deviennent payantes, l'hôpital reste gratuit.
+
+**Choix**
+- **Commerces** (`src/core/shops.ts`) : ceux de `map/places.json` qui vendent à manger ou à boire (boulangeries, pâtisseries, cafés, bars,
+  restauration rapide, restaurants, supermarchés, supérettes, stations-service, traiteurs) : 80, chacun avec son **horaire type**
+  (D200 ; une station-service suit celui d'une supérette). On entre **à pied et au sol** à 11 m du point du commerce (18 m pour une
+  station, 35 m pour une grande surface : leur point est loin de la porte).
+- **Bouton d'action** : « Entrer » (pictogramme de devanture) près d'un commerce ouvert, « Fermé » sinon ; un appui sur « Fermé » affiche
+  « Boulangerie Benzaabar : ouvre demain à 7 h » (`openingText` : prochaine ouverture lisible, dans la semaine qui vient). Les véhicules
+  passent avant (« Monter », « Prendre »).
+- **Écran d'achat** (`src/ui/shop-screen.ts`) : nom et horaires du commerce, solde, ce qu'il vend avec son prix et son effet, un bouton
+  « Acheter » par article, grisé avec la raison (« Il manque 4 € », « Santé pleine ») ; « Sortir », Échap ou P reprennent la partie. La
+  pause est celle du jeu, sans la carte (`UiBridge.openOverlay`).
+- **Nourriture** (soin immédiat, pas de sac) : café ou boisson 2 € (+5 PV), viennoiserie 2 € (+8), pâtisserie 4 € (+15), sandwich, kebab ou
+  croque-monsieur 7 € (+35), menu ou planche 11 € (+60), plat du jour 14 € (+60), menu complet au restaurant 25 € (santé pleine). Chaque genre
+  de commerce vend deux articles.
+- **Pharmacies** : la croix verte (D159) coûte **30 €** (prélevés en passant dessus ; sans l'argent, rien) et n'est là qu'**aux heures
+  d'ouverture** des pharmacies ; celles de l'hôpital restent gratuites et toujours là.
+
+**Vérifié** : `shops.test.ts` (commerces de la carte, portée, horaires et prochaine ouverture, refus), `pickups.test.ts` (pharmacie payante,
+hôpital gratuit, croix fermée) ; `tools/ui.sh <dossier> magasins` (boulangerie Benzaabar, mercredi 10 h, 46 PV : sandwich, 82 PV, 33 € ;
+à 21 h : « ouvre demain à 7 h »).
+
+**Pas fait** : les commerces n'apparaissent pas sur la minimap (la carte agrandie les montre déjà, filtre « Commerces ») ; on n'entre pas
+dans les bâtiments (l'écran suffit) ; les horaires réels d'OpenStreetMap ne sont toujours pas repris (D200).
+
+![« Entrer » devant la boulangerie](captures/pj3-boulangerie-entrer.jpg)
+![L'écran d'achat, après un sandwich](captures/pj3-boulangerie-achat.jpg)
+![Fermée le soir](captures/pj3-boulangerie-fermee.jpg)

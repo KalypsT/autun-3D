@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { NavGraph } from "./nav-graph";
 import { MASK_ZONE } from "./pedestrians";
 import { Health, HOSPITALS, MAX_HEALTH } from "./health";
-import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, CASH_LIFE, DROP_LIFE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
+import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, CASH_LIFE, DROP_LIFE, PHARMACY_PRICE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
@@ -189,5 +189,29 @@ describe("billets lâchés par les passants (D317)", () => {
     const heaps = p.list.filter((q) => q.kind === "cash");
     expect(heaps.length).toBe(24);
     expect(heaps[0]!.cash).toBe(11);
+  });
+});
+
+describe("pharmacies payantes (D322)", () => {
+  it("la croix d'une pharmacie coûte 30 € (pas de soin sans argent), celle de l'hôpital reste gratuite", () => {
+    const p = new Pickups([], [{ x: 0, y: 0, label: "Pharmacie", price: PHARMACY_PRICE }, { x: 50, y: 0, label: "Hôpital" }]);
+    const inv = new Inventory();
+    const h = new Health(30), poor = new Wallet(20), rich = new Wallet(100);
+    expect(p.collect(0, 0, inv, h, poor)).toBeNull();
+    expect(p.collect(0, 0, inv, h)).toBeNull();
+    expect(p.collect(0, 0, inv, h, rich)).toBe(p.list[0]);
+    expect(rich.balance).toBe(70);
+    expect(h.hp).toBe(MAX_HEALTH);
+    h.damage(50);
+    expect(p.collect(50, 0, inv, h, poor)).toBe(p.list[1]);
+    expect(poor.balance).toBe(20);
+    expect(HEAL_SITES.filter((s) => s.price === PHARMACY_PRICE).length).toBe(5);
+  });
+
+  it("fermée, la croix n'est ni prise ni proposée", () => {
+    const p = new Pickups([], [{ x: 0, y: 0, label: "Pharmacie", price: PHARMACY_PRICE }]);
+    p.closed = () => true;
+    expect(p.available(p.list[0]!)).toBe(false);
+    expect(p.collect(0, 0, new Inventory(), new Health(30), new Wallet(100))).toBeNull();
   });
 });

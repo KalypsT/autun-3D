@@ -2312,3 +2312,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : chercher quelques pièces et dire si les difficiles sont vraiment atteignables, si le tintement aide assez.
 ![Une pièce sur un toit](docs/captures/pj3-piece.jpg)
 ![Le carnet, onglet Pièces d'or](docs/captures/pj3-carnet-pieces.jpg)
+
+**Plaisir de jeu, lot 3-6 : les magasins et la nourriture (24 novembre 2026)** (D322)
+- Devant un **commerce de bouche** (boulangerie, café, bar, kebab, McDonald's, restaurant, supérette, supermarché, station-service), à pied, le bouton **« Entrer »** ouvre un écran d'achat ; le jeu est en pause tant qu'il est ouvert.
+- **Manger soigne tout de suite** : un café 2 € (+5 PV), un sandwich 7 € (+35), un menu 11 € (+60), un menu complet au restaurant 25 € (santé pleine)… Chaque commerce vend deux choses, selon son genre.
+- Les **horaires** sont ceux de la ville vivante (D200). Fermé, le bouton dit « Fermé », et un appui affiche quand ça ouvre (« ouvre demain à 7 h »).
+- Les **croix des pharmacies** coûtent maintenant 30 € et ne sont là qu'aux heures d'ouverture ; celles de l'hôpital restent gratuites.
+- À faire de ton côté : dire si les prix et les soins te vont, et si l'on entre facilement dans les grandes surfaces (Leclerc, Intermarché).
+![« Entrer »](docs/captures/pj3-boulangerie-entrer.jpg)
+![L'écran d'achat](docs/captures/pj3-boulangerie-achat.jpg)
