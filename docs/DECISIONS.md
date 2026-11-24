@@ -7645,3 +7645,34 @@ textes (« c'est ma ville ») avant qu'ils entrent dans le jeu. Les textes sont 
   sont lus en wikitexte brut (`?action=raw`), qui garde les références. L'Inrap reste refusé (403 du site lui-même).
 
 **Suite** : après relecture, les textes entrent dans le jeu au lot 3-4 (un fichier de données, pas dans le code).
+
+## 2026-11-24 — D319. Plaisir de jeu, phase 3, lot 3 : le carnet commun et les défis
+
+**Contexte** : plan `docs/plans/argent-collections.md`, § 3 : un système commun pour tout ce qui se trouve (monuments, objets cachés),
+et des défis sur les records, avec des primes. Réponses par défaut validées : paliers du § 7 (Q15), « Records » devient un onglet du
+carnet (Q17), défis non rétroactifs (Q14).
+
+**Choix**
+- **Défis** (`src/core/challenges.ts`) : trois paliers par record du carnet de D312 (bronze 100 €, argent 300 €, or 800 €), 27 en tout :
+  saut 25 / 50 / 100 m ; vitesse 120 / 180 / 250 km/h ; roue arrière 50 / 150 / 400 m ; roue avant 10 / 30 / 80 m ; dérapage 30 / 80 / 200 m ;
+  3 étoiles 1 / 3 / 6 min ; 5 étoiles 30 s / 1 min 30 / 3 min ; à pied 5 / 25 / 100 km ; en véhicule 20 / 100 / 500 km. Ils se gagnent
+  **pendant la partie** : on leur donne la valeur du moment (le saut qui vient de finir, la figure en cours, le temps tenu, la vitesse),
+  jamais le record de tous les temps ; les distances sont celles de la partie. Un grand exploit franchit plusieurs paliers d'un coup.
+- **Carnet de collections** (`src/core/collections.ts`) : une collection est une liste d'entrées (identifiant stable, nom, zone ronde,
+  altitude facultative pour les objets sur les toits, prime, groupe) et un bonus quand elle est complète. `Notebook.check` est appelé
+  quatre fois par seconde avec la position du joueur ou de son véhicule : la première entrée dont on est dans la zone est trouvée, datée
+  (date du jeu), et rapporte sa prime (bandeau « Découverte : … »). Les collections sont vides jusqu'aux lots 3-4 et 3-5.
+- **Bandeaux à la suite** : le bandeau d'exploit (D311) a maintenant une file (trois au plus) : le défi gagné par un saut s'affiche après
+  « Saut 62 m », au lieu de l'effacer.
+- **Écran « 📖 Carnet »** dans le menu pause, à la place de « 🏆 Records » (le menu garde huit entrées) : un onglet par collection qui a
+  des entrées (trouvées par groupe avec leur jour, les autres « À découvrir » avec leur prime), **Défis** (trois pastilles par record,
+  bronze, argent, or, éteintes tant qu'elles ne sont pas gagnées ; distances de la partie) et **Records** (l'ancien écran).
+  `UiBridge.showCarnet(onglet)` ouvre la pause sur un onglet (pour le bouton « Lire la fiche » du lot 3-4).
+- **Sauvegarde** : champs facultatifs de la version 6, `book` (entrée → date) et `challenges` (paliers, distances), lus avec méfiance ;
+  une entrée inconnue est oubliée.
+
+**Vérifié** : `challenges.test.ts`, `collections.test.ts`, `save.test.ts` ; `tools/ui.sh <dossier> carnet`.
+
+![Un défi gagné : bandeau et prime](captures/pj3-defi-bandeau.jpg)
+![Le carnet, onglet Défis](captures/pj3-carnet-defis.jpg)
+![Le carnet, onglet Records](captures/pj3-carnet-records.jpg)

@@ -6,6 +6,8 @@ import { LEGACY_MODELS, vehicleDef } from "./vehicle-catalog";
 import type { Waypoint } from "./waypoint";
 import { dateFromDoy } from "./calendar";
 import { clampMoney } from "./wallet";
+import { parseChallenges, type SavedChallenges } from "./challenges";
+import { parseNotebook, type SavedNotebook } from "./collections";
 
 /**
  * Version 2 (D50) : un véhicule est enregistré par son modèle du catalogue (`model`) et non plus par son type (`kind`).
@@ -69,6 +71,10 @@ export interface SaveGame {
   arms: SavedArms;
   /** Argent du joueur, en euros (versions 1 à 5 : 0). */
   money: number;
+  /** Carnet de collections (D319) : entrées trouvées et leur date ; absent avant. */
+  book?: SavedNotebook;
+  /** Défis (D319) : paliers atteints, distances de la partie ; absents avant. */
+  challenges?: SavedChallenges;
 }
 
 /** Ce que l'on utilise du stockage du navigateur (`localStorage`) ; un double sert aux tests. */
@@ -152,6 +158,8 @@ export function parseSave(text: string | null): SaveGame | null {
   const riding = typeof r["riding"] === "string" && vehicles.some((v) => v.id === r["riding"]) ? (r["riding"] as string) : null;
   const last = typeof r["last"] === "string" && vehicles.some((v) => v.id === r["last"]) ? (r["last"] as string) : null;
   const w = r["waypoint"] as Record<string, unknown> | null | undefined;
+  const book = version === SAVE_VERSION ? parseNotebook(r["book"]) : null;
+  const challenges = version === SAVE_VERSION ? parseChallenges(r["challenges"]) : null;
   return {
     version: SAVE_VERSION,
     savedAt: finite(r["savedAt"]) ? r["savedAt"] : 0,
@@ -168,6 +176,8 @@ export function parseSave(text: string | null): SaveGame | null {
     arms: parseArms(r["arms"]),
     health: finite(r["health"]) ? Math.min(Math.max(r["health"], 1), MAX_HEALTH) : MAX_HEALTH,
     money: version === SAVE_VERSION ? clampMoney(r["money"]) : 0,
+    ...(book ? { book } : {}),
+    ...(challenges ? { challenges } : {}),
   };
 }
 

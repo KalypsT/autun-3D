@@ -18,6 +18,8 @@ import type { GameContext } from "./context";
 import type { Fleet } from "./vehicles";
 import { RouteGuide } from "./route-guide";
 import { parseRecords, type RecordValues } from "../core/records";
+import { Challenges, type SavedChallenges } from "../core/challenges";
+import { Notebook, type SavedNotebook } from "../core/collections";
 
 /** Ce que l'interface doit savoir du jeu à un instant donné. */
 export interface GameState {
@@ -37,6 +39,9 @@ export interface GameState {
   arms: SavedArms;
   /** Argent du joueur (D317). */
   money: number;
+  /** Carnet et défis (D319). */
+  book: SavedNotebook;
+  challenges: SavedChallenges;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -94,6 +99,7 @@ export class UiBridge {
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
     private readonly records: () => RecordValues = () => parseRecords(null),
+    private readonly carnet: { notebook(): Notebook; challenges(): Challenges } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -129,6 +135,8 @@ export class UiBridge {
         },
       },
       records: () => this.records(),
+      notebook: () => this.carnet.notebook(),
+      challenges: () => this.carnet.challenges(),
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });
@@ -220,6 +228,13 @@ export class UiBridge {
     }
   }
 
+  /** Met en pause sur le carnet, à l'onglet voulu (bouton « Lire la fiche » d'une découverte, captures). */
+  showCarnet(tab: string): void {
+    if (!this.paused) this.setPaused(true);
+    this.bigmap?.close();
+    this.menu.openCarnet(tab);
+  }
+
   private situation(): { x: number; y: number; z: number; heading: number; hour: number; day: number } {
     const s = this.state();
     return { x: s.x, y: s.y, z: s.z, heading: s.yaw, hour: this.ctx.atmosphere.hour, day: this.ctx.atmosphere.day };
@@ -299,6 +314,8 @@ export class UiBridge {
       health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
       arms: s.arms,
       money: s.money,
+      book: s.book,
+      challenges: s.challenges,
     };
   }
 

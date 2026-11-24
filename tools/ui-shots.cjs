@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -146,6 +146,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(300);
     await shot("pj1-saut-bandeau");
     await pauseMenu();
+    await clickText("Carnet");
     await clickText("Records");
     await sleep(500);
     await shot("pj1-records");
@@ -186,6 +187,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1500);
     await shot("pj3-argent-voiture");
     await c2.close();
+  }
+
+  if (want("carnet")) {
+    // Carnet et défis (PJ 3, D319) : un saut de 60 m franchit deux paliers d'un coup (bandeaux à la suite, primes au solde) ; puis le carnet,
+    // onglet Défis et onglet Records.
+    const ctx = await open("money=200&h=15");
+    await sleep(1500);
+    await page.addStyleTag({ content: "#feat.show { animation: none !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.evaluate(() => {
+      const a = window.__autun;
+      a.challenges.add("foot", 5200);
+      a.challenges.offer("topSpeed", 34);
+      for (const h of a.challenges.offer("jump", 60)) { a.wallet.earn(h.reward, "Défi"); }
+    });
+    console.log("solde :", await page.evaluate(() => window.__autun.wallet.balance), "paliers :", await page.evaluate(() => window.__autun.challenges.count));
+    // Le bandeau ne dure que 2,6 s (temps réel) : rendu logiciel lent, on capture juste après l'avoir demandé.
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; }" });
+    await page.evaluate(() => { window.__autun.showFeat("Défi argent : saut de 50 m"); document.getElementById("feat").classList.add("keep"); });
+    await sleep(300);
+    await shot("pj3-defi-bandeau");
+    await page.evaluate(() => window.__autun.ui.showCarnet("defis"));
+    await sleep(600);
+    await shot("pj3-carnet-defis");
+    await clickText("Records");
+    await sleep(400);
+    await shot("pj3-carnet-records");
+    await ctx.close();
   }
 
   if (want("wanted")) {

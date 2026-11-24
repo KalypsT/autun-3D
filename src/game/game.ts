@@ -22,6 +22,8 @@ import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
+import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
+import { COLLECTIONS, Notebook } from "../core/collections";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
@@ -320,15 +322,27 @@ export function startGame(ctx: GameContext): void {
   timeScale.slowmoEnabled = ctx.settings!.values.slowmo;
   const featEl = document.getElementById("feat");
   let featTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Bandeau d'exploit au centre de l'écran (« Saut 34 m »), quelques secondes. */
-  const showFeat = (text: string): void => {
-    if (!featEl) return;
+  /** Bandeaux en attente (D319) : un défi gagné par un saut s'affiche après le bandeau du saut, au lieu de l'effacer. */
+  const featQueue: string[] = [];
+  const nextFeat = (): void => {
+    const text = featQueue.shift();
+    if (!featEl || text === undefined) {
+      featTimer = null;
+      featEl?.classList.remove("show");
+      return;
+    }
     featEl.textContent = text;
     featEl.classList.remove("show");
     void featEl.offsetWidth;
     featEl.classList.add("show");
-    if (featTimer) clearTimeout(featTimer);
-    featTimer = setTimeout(() => featEl.classList.remove("show"), 2600);
+    featTimer = setTimeout(nextFeat, 2600);
+  };
+  /** Bandeau d'exploit au centre de l'écran (« Saut 34 m »), quelques secondes ; les suivants attendent leur tour (trois au plus). */
+  const showFeat = (text: string): void => {
+    if (!featEl) return;
+    if (featQueue.length >= 3) featQueue.shift();
+    featQueue.push(text);
+    if (!featTimer) nextFeat();
   };
   /** Temps tenu (s) sans interruption à 3 étoiles ou plus, et à 5 étoiles. */
   let stars3 = 0, stars5 = 0;
@@ -338,12 +352,16 @@ export function startGame(ctx: GameContext): void {
     const fly = airborne(s as Parameters<typeof airborne>[0]);
     const jump = jumps.update(fly, s.x, s.y, s.z, s.z - s.air, s.vx, s.vy, s.vz, lastDt, lastRealDt);
     if (jump && jump.distance >= JUMP_SHOW) showFeat(featLabel("jump", jump.distance, records.offer("jump", jump.distance)));
+    if (jump) reward(challenges.offer("jump", jump.distance));
     if (family === "car") {
       const drift = drifts.update(slipAngle(s.heading, s.vx, s.vy), Math.abs(s.speed), !fly, lastDt);
       if (drift && drift.distance >= DRIFT_SHOW) showFeat(featLabel("drift", drift.distance, records.offer("drift", drift.distance)));
+      if (drift) reward(challenges.offer("drift", drift.distance));
     }
     records.offer("topSpeed", Math.abs(s.speed));
     records.add("vehicle", Math.abs(s.speed) * lastDt);
+    reward(challenges.offer("topSpeed", Math.abs(s.speed)));
+    reward(challenges.add("vehicle", Math.abs(s.speed) * lastDt));
   };
   let lastDt = 0, lastRealDt = 0;
   /** Sol sous les pieds (D313) : relu au plus tous les 1,5 m (les polygones des tuiles chargées). */
@@ -475,6 +493,17 @@ export function startGame(ctx: GameContext): void {
   // Argent (D317) : reprise de la sauvegarde ; `?money=N` impose un solde (essais, captures).
   const wallet = new Wallet(params.has("money") ? Number(params.get("money")) : (saved?.money ?? 0));
   const moneyHud = new MoneyHud(document.getElementById("money")!);
+  // Défis et carnet de collections (D319) : de la partie, enregistrés avec elle.
+  const challenges = new Challenges(saved?.challenges);
+  const notebook = new Notebook(COLLECTIONS, saved?.book);
+  /** Paliers de défis franchis : la prime au porte-monnaie, un bandeau chacun. */
+  const reward = (hits: readonly ChallengeHit[]): void => {
+    for (const h of hits) {
+      wallet.earn(h.reward, `Défi ${TIER_NAMES[h.tier - 1]}`);
+      showFeat(`Défi ${TIER_NAMES[h.tier - 1]} : ${challengeGoal(h.kind, h.tier)}`);
+    }
+  };
+  let discoverTimer = 0;
   /** Passants mis à terre par le joueur à cette image (D317) : chacun lâche peut-être son portefeuille. */
   const felled: { x: number; y: number }[] = [];
   const melee = new Melee();
@@ -1227,7 +1256,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance,
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1235,7 +1264,7 @@ export function startGame(ctx: GameContext): void {
       model.setRecipe(r);
       appearanceStore.write(r);
     },
-  }, () => records.values);
+  }, () => records.values, { notebook: () => notebook, challenges: () => challenges });
 
   ui.police = police.minimap;
 
@@ -1750,14 +1779,36 @@ export function startGame(ctx: GameContext): void {
     if (!riding) {
       stunt.update(0, 0, dt);
       records.add("foot", player.speed * dt);
+      reward(challenges.add("foot", player.speed * dt));
     }
     records.offer("wheelie", stunt.best.wheelie);
     records.offer("stoppie", stunt.best.stoppie);
+    // Défis (D319) : la figure en cours, pas le meilleur de tous les temps (qui part des records d'avant).
+    if (stunt.active && stunt.kind) reward(challenges.offer(stunt.kind, stunt.distance));
     // Temps tenu à 3 et 5 étoiles (D312) : sans interruption.
     stars3 = wanted.stars >= 3 && !health.dead ? stars3 + dt : 0;
     stars5 = wanted.stars >= 5 && !health.dead ? stars5 + dt : 0;
     records.offer("stars3", stars3);
     records.offer("stars5", stars5);
+    reward(challenges.offer("stars3", stars3));
+    reward(challenges.offer("stars5", stars5));
+    // Carnet (D319) : découvertes, quatre fois par seconde, à pied ou en véhicule (vivant).
+    discoverTimer -= dt;
+    if (discoverTimer <= 0 && !health.dead) {
+      discoverTimer = 0.25;
+      const at = riding ? riding.state : player;
+      const found = notebook.check(at.x, at.y, at.z, atmosphere.date);
+      if (found) {
+        wallet.earn(found.reward, found.entry.name);
+        showFeat(`Découverte : ${found.entry.name}`);
+        if (found.bonus > 0) {
+          wallet.earn(found.bonus, found.collection.label);
+          showFeat(`${found.collection.label} : tout est trouvé !`);
+        }
+        audio.pickup();
+        ui.save();
+      }
+    }
     if (stuntEl) {
       const text = stunt.label();
       if (stuntEl.textContent !== text) stuntEl.textContent = text;
@@ -1937,7 +1988,7 @@ export function startGame(ctx: GameContext): void {
     schedule();
   });
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer, wallet,
+    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer, wallet, challenges, notebook,
     /** Captures et mesures : redessine la scène telle quelle. */
     renderOnce: () => ctx.post.render(scene, camera),
     /** Captures : bandeau d'exploit, carnet de records, temps du jeu (D311, D312). */

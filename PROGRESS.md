@@ -2284,3 +2284,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Je n'ai rien écrit sans source (Wikipédia et les ouvrages qu'il cite, base Mérimée, office de tourisme, la plaque de la Croix relevée pour le jeu). Quand les sources se contredisent, c'est noté sous la fiche.
 - Il manque la date de l'hôtel de ville et deux « Le savais-tu ? » ; la gare est la fiche la plus maigre.
 - À faire de ton côté : relire les fiches, corriger ce qui cloche, compléter les trous si tu sais, et dire si la gare reste dans la chasse.
+
+**Plaisir de jeu, lot 3-3 : le carnet et les défis (24 novembre 2026)** (D319)
+- Le menu pause a un **« 📖 Carnet »** à la place de « Records », avec deux onglets : **Défis** et **Records**. Les monuments et les objets cachés y auront leur onglet quand ils arriveront.
+- **27 défis** : trois paliers (bronze 100 €, argent 300 €, or 800 €) pour chaque record. Par exemple un saut de 25, 50 ou 100 m, 120, 180 ou 250 km/h, 5, 25 ou 100 km à pied. Ils se gagnent pendant la partie : tes records d'avant ne comptent pas.
+- Un défi gagné s'affiche en bandeau après celui de l'exploit (« Saut 62 m », puis « Défi argent : saut de 50 m »), et la prime arrive au solde.
+- La découverte d'un lieu (monument, objet caché) passe par le même carnet : ce sera branché aux lots suivants.
+- À faire de ton côté : dire si les paliers te semblent bien placés (trop faciles, trop durs).
+![Un défi gagné](docs/captures/pj3-defi-bandeau.jpg)
+![Le carnet, onglet Défis](docs/captures/pj3-carnet-defis.jpg)

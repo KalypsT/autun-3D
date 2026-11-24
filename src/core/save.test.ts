@@ -127,6 +127,15 @@ describe("sauvegarde", () => {
     expect(v5.arms).toEqual(sample().arms);
   });
 
+  it("carnet et défis (D319) : relus s'ils sont là, absents sinon", () => {
+    const p = parseSave(JSON.stringify({ ...sample(), book: { "monuments:arroux": 4, bad: "x" }, challenges: { tiers: { jump: 2 }, foot: 1200, vehicle: 0 } }))!;
+    expect(p.book).toEqual({ "monuments:arroux": 4 });
+    expect(p.challenges).toEqual({ tiers: { jump: 2 }, foot: 1200, vehicle: 0 });
+    const none = parseSave(serializeSave(sample()))!;
+    expect(none.book).toBeUndefined();
+    expect(none.challenges).toBeUndefined();
+  });
+
   it("version 4 (jour de l'année) : migrée vers le lundi de la saison qui contient ce jour", () => {
     const v4 = (day: number): string => JSON.stringify({ ...sample(), version: 4, clock: { hour: 8, day } });
     // 200 (19 juillet) : été, 1er jour (date 7) ; 30 (30 janvier) : hiver (date 21) ; 400 : ramené à 35 (4 février), hiver aussi.

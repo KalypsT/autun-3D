@@ -7,7 +7,10 @@ import {
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
 import { SEASON_LENGTHS, SEASON_NAMES } from "../core/calendar";
-import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordValues } from "../core/records";
+import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordKind, type RecordValues } from "../core/records";
+import { challengeGoal, TIER_NAMES, TIER_REWARDS, type Challenges } from "../core/challenges";
+import type { CollectionDef, Notebook } from "../core/collections";
+import { formatMoney } from "../core/wallet";
 import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, EFFECTS_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
@@ -31,12 +34,17 @@ export interface PauseHooks {
   appearance: { get(): Recipe; set(recipe: Recipe): void; preview: { canvas: HTMLCanvasElement; show(recipe: Recipe): void; rotate(radians: number): void } };
   /** Carnet de records (D312). */
   records(): RecordValues;
+  /** Carnet de collections et défis de la partie (D319). */
+  notebook(): Notebook;
+  challenges(): Challenges;
   build: string;
   /** Dans DomoThib (D305) : le plein écran est le sien, le réglage « Plein écran » n'est pas proposé. */
   embedded?: boolean;
 }
 
-type PanelId = "home" | "settings" | "appearance" | "notes" | "records" | "save" | "credits";
+type PanelId = "home" | "settings" | "appearance" | "notes" | "carnet" | "save" | "credits";
+/** Onglet du carnet : une collection, les défis ou les records. */
+type CarnetTab = string;
 
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -61,6 +69,7 @@ export class PauseMenu {
   private readonly content: HTMLDivElement;
   private readonly nav = new Map<PanelId, HTMLButtonElement>();
   private panel: PanelId = "home";
+  private tab: CarnetTab = "defis";
   private readonly urls: string[] = [];
 
   constructor(private readonly hooks: PauseHooks) {
@@ -83,7 +92,7 @@ export class PauseMenu {
     item("👤  Apparence", () => this.show("appearance"), "appearance");
     item("⚙  Réglages", () => this.show("settings"), "settings");
     item("📍  Lieux notés", () => this.show("notes"), "notes");
-    item("🏆  Records", () => this.show("records"), "records");
+    item("📖  Carnet", () => this.show("carnet"), "carnet");
     item("💾  Sauvegarde", () => this.show("save"), "save");
     item("©  Crédits", () => this.show("credits"), "credits");
     this.content = h("div", "pm-content");
@@ -124,7 +133,7 @@ export class PauseMenu {
     else if (panel === "appearance") this.appearancePanel();
     else if (panel === "notes") void this.notesPanel();
     else if (panel === "credits") this.creditsPanel();
-    else if (panel === "records") this.recordsPanel();
+    else if (panel === "carnet") this.carnetPanel();
     else this.savePanel();
   }
 
@@ -479,13 +488,88 @@ export class PauseMenu {
 
   // --- Sauvegarde ---------------------------------------------------------------------------------------------------------
 
-  // --- Records -------------------------------------------------------------------------------------------------------------
+  // --- Carnet ---------------------------------------------------------------------------------------------------------------
+
+  /** Ouvre le carnet sur un onglet (captures, bouton « Lire la fiche » des monuments). */
+  openCarnet(tab: CarnetTab): void {
+    this.tab = tab;
+    this.open("carnet");
+  }
+
+  /**
+   * Carnet (D319) : un onglet par collection qui a des entrées (monuments, objets cachés), les défis de la partie et les records (D312),
+   * qui ne sont plus une entrée du menu.
+   */
+  private carnetPanel(): void {
+    const c = this.content;
+    const book = this.hooks.notebook();
+    const cols = book.defs.filter((d) => d.entries.length > 0);
+    const tabs: { id: CarnetTab; label: string }[] = [...cols.map((d) => ({ id: d.id, label: d.label })), { id: "defis", label: "Défis" }, { id: "records", label: "Records" }];
+    if (!tabs.some((t) => t.id === this.tab)) this.tab = "defis";
+    c.append(h("h2", "", "Carnet"));
+    const bar = h("div", "pm-seg pm-tabs");
+    for (const t of tabs) {
+      const b = h("button", t.id === this.tab ? "on" : "", t.label);
+      b.addEventListener("click", () => {
+        this.tab = t.id;
+        this.show("carnet");
+      });
+      bar.append(b);
+    }
+    c.append(bar);
+    const col = cols.find((d) => d.id === this.tab);
+    if (col) this.collectionTab(col, book);
+    else if (this.tab === "records") this.recordsTab();
+    else this.challengesTab();
+  }
+
+  /** Une collection : trouvées par groupe, avec leur prime ; celles qui restent, sans nom. */
+  private collectionTab(col: CollectionDef, book: Notebook): void {
+    const c = this.content;
+    const n = book.count(col.id), total = col.entries.length;
+    c.append(h("p", "pm-muted", `${n} sur ${total} trouvés${n < total ? ` · ${formatMoney(col.bonus)} de plus quand tout est trouvé` : " · collection complète !"}`));
+    const groups = new Map<string, typeof col.entries[number][]>();
+    for (const e of col.entries) {
+      const g = e.group ?? "";
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(e);
+    }
+    for (const [g, list] of groups) {
+      if (g) c.append(h("h3", "pm-sub", `${g} · ${list.filter((e) => book.has(col.id, e.id)).length} sur ${list.length}`));
+      for (const e of list) {
+        const found = book.when(col.id, e.id);
+        const r = h("div", found === null ? "pm-row locked" : "pm-row");
+        r.append(h("span", "", found === null ? "À découvrir" : e.name), h("strong", "pm-record", found === null ? formatMoney(e.reward) : `Jour ${found + 1}`));
+        c.append(r);
+      }
+    }
+  }
+
+  /** Défis de la partie : trois paliers par record, colorés quand ils sont atteints, et la prime de chacun. */
+  private challengesTab(): void {
+    const c = this.content, ch = this.hooks.challenges();
+    c.append(h("p", "pm-muted", `${ch.count} paliers sur 27 · bronze ${formatMoney(TIER_REWARDS[0])}, argent ${formatMoney(TIER_REWARDS[1])}, or ${formatMoney(TIER_REWARDS[2])}`));
+    for (const k of RECORD_KINDS) {
+      const r = h("div", "pm-row");
+      const left = h("span", "", RECORD_LABELS[k]);
+      const done = ch.progress(k);
+      if (done !== null) left.append(h("span", "pm-muted", ` · ${recordText(k, done)} cette partie`));
+      const medals = h("span", "pm-medals");
+      for (const tier of [1, 2, 3] as const) {
+        const m = h("span", `pm-medal t${tier}${ch.tiers[k] >= tier ? " on" : ""}`, goalShort(k, tier));
+        m.title = `${TIER_NAMES[tier - 1]} : ${challengeGoal(k, tier)}`;
+        medals.append(m);
+      }
+      r.append(left, medals);
+      c.append(r);
+    }
+    c.append(h("p", "pm-muted", "Les défis se gagnent pendant la partie : les records d'une partie précédente ne comptent pas."));
+  }
 
   /** Carnet de records (D312) : un record par ligne, « — » tant qu'il n'y en a pas. */
-  private recordsPanel(): void {
+  private recordsTab(): void {
     const values = this.hooks.records();
     const c = this.content;
-    c.append(h("h2", "", "Records"));
     for (const k of RECORD_KINDS) {
       const r = h("div", "pm-row");
       r.append(h("span", "", RECORD_LABELS[k]), h("strong", "pm-record", recordText(k, values[k])));
@@ -540,4 +624,10 @@ export class PauseMenu {
     c.append(bar);
     c.append(h("p", "pm-muted pm-build", `Version ${this.hooks.build} · © contributeurs OpenStreetMap · IGN`));
   }
+}
+
+/** Le seuil d'un palier, court, pour la pastille : « 25 m », « 120 km/h », « 3 min », « 5 km ». */
+function goalShort(k: RecordKind, tier: 1 | 2 | 3): string {
+  const g = challengeGoal(k, tier);
+  return g.replace(/^(saut|roue arrière|roue avant|dérapage) de /, "").replace(/ à [35] étoiles$/, "").replace(/ (à pied|en véhicule)$/, "");
 }
