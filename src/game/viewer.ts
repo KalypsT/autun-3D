@@ -8,6 +8,8 @@ import { createCrowd } from "../render/crowd/crowd";
 import { FrameMeter } from "./hud";
 import { PigeonSim, type PigeonState } from "../core/pigeons";
 import { PigeonRenderer } from "../render/pigeons";
+import { Fireworks, LAKE, SHOW } from "../core/fireworks";
+import { FireworksView } from "../render/fireworks";
 
 const VIEWS: Record<string, [number, number, number, number, number, number]> = {
   aerial: [-150, -230, 140, 0, 10, 5],
@@ -199,6 +201,12 @@ export function startViewer(ctx: GameContext): void {
   // Voiliers du plan d'eau du Vallon (D249), comme dans le jeu (?day= règle la saison).
   const sailboats = new Sailboats();
   scene.add(sailboats.group);
+  // ?fireworks=1 : le feu d'artifice du 14 juillet sur le plan d'eau du Vallon (D202), en cours depuis 8 s, à l'heure de ?h= ramenée dans
+  // le spectacle (captures du halo, D314).
+  const fwGround = terrain.waterAt?.(LAKE.x, LAKE.y) ?? terrain.heightAt(LAKE.x, LAKE.y);
+  const fireworks = params.has("fireworks") ? { sim: new Fireworks(1407, 2400, fwGround), view: new FireworksView(scene, 2400, fwGround) } : null;
+  const fwHour = Math.min(Math.max(atmosphere.hour, SHOW.from + 0.05), SHOW.to - 0.05);
+  if (fireworks) for (let i = 0; i < 8 * 60; i++) fireworks.sim.step(1 / 60, fwHour);
   const meter = new FrameMeter(renderer, debugEl);
   let last = performance.now();
   const fwd = new THREE.Vector3();
@@ -223,6 +231,10 @@ export function startViewer(ctx: GameContext): void {
     tiles.update(pos.x, -pos.z);
     terrainView.update(pos.x, -pos.z);
     vista.update(pos.x, -pos.z, pos.y, dt, true);
+    if (fireworks) {
+      fireworks.sim.step(dt, fwHour);
+      fireworks.view.update(fireworks.sim);
+    }
     sailboats.update(now / 1000, atmosphere.hour, atmosphere.calendar.season, atmosphere.calendar.weekday, tiles.loadedExtras().flatMap((e) => e.sail ?? []));
     nav?.update(pos.x, -pos.z);
     navDebug?.update(pos.x, -pos.z);
@@ -234,7 +246,7 @@ export function startViewer(ctx: GameContext): void {
       if (!sheet) pigSim.step(dt, pigObserver());
       pigView.update(sheet ?? pigSim.state, pos.x, -pos.z, 100);
     }
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     meter.tick(dt);
     requestAnimationFrame(tick);
   };

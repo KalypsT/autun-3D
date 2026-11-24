@@ -23,7 +23,11 @@ import { buildTileSteps, StyleResources } from "./render/stylized";
 import { TerrainView } from "./render/terrain";
 import { TileManager } from "./render/tile-manager";
 import { Vista } from "./render/vista";
+import { PostFx } from "./render/post";
+import { installSunHaze } from "./render/sun-haze";
 
+// Brume teintée par le soleil (D315) : à installer avant la compilation du premier nuanceur.
+installSunHaze();
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const debugEl = document.getElementById("debug") as HTMLDivElement;
@@ -76,6 +80,15 @@ const style = useTheme("affiche")!;
 scene.fog = new THREE.Fog(style.fog[0], style.fog[1], style.fog[2]);
 renderer.toneMapping = THREE.NeutralToneMapping;
 addOverlay(style.overlay);
+// Effets d'image (D314) : couleurs selon l'heure et halo la nuit ; seul point d'entrée du rendu de la scène. MSAA de la cible de la scène :
+// ×4 si la carte graphique le fait dans la texture même (WEBGL_multisampled_render_to_texture : sans mémoire ni copie de plus), sinon
+// aucun (une cible MSAA ×4 pèserait ≈ 140 Mo en définition ×2,5 sur le téléphone) ; ?msaa=0 ou ?msaa=4 l'impose (comparaisons).
+const msaaDefault = renderer.extensions.has("WEBGL_multisampled_render_to_texture") ? 4 : 0;
+const post = new PostFx(renderer, effective.effects, Math.max(0, Math.min(8, Math.floor(Number(params.get("msaa") ?? msaaDefault)) || 0)));
+// Réglage du halo pour les essais : ?bloomsteps=0 (halo continu, au lieu des paliers nets), ?bloom=1.5 (force), ?bloomth=0.7 (seuil).
+post.steps = Math.max(0, Math.floor(Number(params.get("bloomsteps") ?? post.steps)) || 0);
+post.strength = Math.max(0, Number(params.get("bloom") ?? post.strength) || 0);
+post.threshold = Math.max(0.05, Number(params.get("bloomth") ?? post.threshold) || post.threshold);
 
 /** Grain de papier et vignette par-dessus l'image (deux couches CSS, très peu coûteuses). */
 function addOverlay([grain, vignette]: [number, number]): void {
@@ -123,8 +136,13 @@ async function main(): Promise<void> {
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
   await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
-  const sea = createSea(world.manifest, style.toon);
-  if (sea) scene.add(sea);
+  // La mer (D105), vivante (D316) : elle reflète les couleurs du ciel (mêmes objets que le dôme).
+  const skyU = (sky.material as THREE.ShaderMaterial).uniforms;
+  const sea = createSea(world.manifest, style.toon, { horizon: skyU["horizon"]!.value as THREE.Color, zenith: skyU["zenith"]!.value as THREE.Color });
+  if (sea) {
+    sea.animated = effective.sea;
+    scene.add(sea.group);
+  }
   const farWater = createInlandWater(world.terrain.waters, style.toon);
   if (farWater) scene.add(farWater);
 
@@ -140,6 +158,9 @@ async function main(): Promise<void> {
   const seasonLength = storedSettings.seasonLength;
   const date = dateFromParams(params, clock?.date ?? newGameDate(seasonLength), seasonLength);
   const atmosphere = new Atmosphere(hour, speed, date, scene, renderer, sunLight, hemi, sky.material as THREE.ShaderMaterial, styleRes);
+  atmosphere.post = post;
+  atmosphere.skyAnimated = effective.sky;
+  atmosphere.sea = sea;
   atmosphere.setCalendar({ length: seasonLength, frozen: storedSettings.season === -1 ? null : storedSettings.season });
   // Météo (D195) : celle du calendrier ; ?weather=pluie l'impose et la fige (captures, banc). Le banc et le viewer sont par beau temps sauf demande.
   atmosphere.setWeather(weatherParam(params) ?? (viewerMode || testMode ? "beau" : null));
@@ -160,15 +181,23 @@ async function main(): Promise<void> {
   const { loaded, triangles, draws } = tiles.stats;
   console.log(`tuiles construites en ${Math.round(performance.now() - t0)} ms ${JSON.stringify({ loaded, triangles, draws, terrain: terrainView.triangles })}`);
 
-  const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, settingsStore, storedSettings, params);
+  const settings = viewerMode || testMode ? null : new SettingsController(renderer, sunLight, tiles, post, settingsStore, storedSettings, params);
+  // Ciel animé (D315) et mer animée (D316) : les réglages s'appliquent tout de suite.
+  settings?.listeners.push((values, changed) => {
+    if (changed.includes("sea") && sea) sea.animated = values.sea;
+    if (changed.includes("sky")) {
+      atmosphere.skyAnimated = values.sky;
+      atmosphere.setHour(atmosphere.hour);
+    }
+  });
   const ctx: GameContext = {
-    renderer, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
+    renderer, post, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
     storage: session.storage, host: session.host,
     ready: (extra) => {
       loadingEl.remove();
       document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
-        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, ...extra,
+        ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, scene, ...extra,
       };
     },
   };

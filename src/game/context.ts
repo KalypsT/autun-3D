@@ -9,10 +9,13 @@ import type { SettingsController } from "./settings-controller";
 import type { StartState } from "./start";
 import type { StorageLike } from "../core/save";
 import type { GameHost } from "../domothib/host";
+import type { PostFx } from "../render/post";
 
 /** Ce que le jeu et le viewer partagent : rendu, scène, soleil et données du monde. */
 export interface GameContext {
   renderer: THREE.WebGLRenderer;
+  /** Effets d'image (D314) : toujours dessiner la scène par `post.render`, jamais `renderer.render` (sinon ni couleurs ni halo). */
+  post: PostFx;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   sky: THREE.Mesh;

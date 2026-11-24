@@ -30,6 +30,8 @@ import { PoliceController } from "./police";
 import { showReportPanel } from "./report-panel";
 import { CombatBot } from "./combat-bot";
 import { Fx } from "../render/fx";
+import { GpuTimer } from "../render/gpu-timer";
+import type { EffectsLevel } from "../render/post";
 
 /**
  * Banc de test (?bench=1) : la caméra suit un parcours fixe dans les rues, à vitesse de voiture,
@@ -48,6 +50,8 @@ interface Phase {
   setup?: () => void;
   /** Foule de personnages animés devant la caméra pendant la phase (arrêts seulement). */
   crowd?: { n: number; shadows: boolean };
+  /** Arrêt ailleurs que sur la place (D316) : caméra en (x, y, hauteur au-dessus du sol), regard vers (x, y, hauteur). */
+  view?: [number, number, number, number, number, number];
 }
 
 interface FrameSample {
@@ -112,6 +116,8 @@ interface PhaseReport {
   police: { cars: number; chasing: number; officers: number; avgMs: number; maxMs: number } | null;
   /** `?combat=1` (J5-6, D86) : à la fin de la phase, tirs, touchés, tués, cadavres, effets simultanés au plus, tirs de la police ; coût du tireur et des effets par image ; null sans. */
   combat: { shots: number; hits: number; kills: number; corpses: number; fxPeak: number; fxFrames: number; frames: number; policeShots: number; policeDamage: number; avgMs: number; maxMs: number } | null;
+  /** Effets d'image (D314) : niveau, MSAA de la cible, force du halo et passes du halo à la fin de la phase ; temps de la carte graphique par image (null si Chrome ne le donne pas). */
+  effects: { level: number; samples: number; bloom: number; passes: number; memoryMB: number; gpu: { medianMs: number; p95Ms: number; n: number } | null };
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
   minimap: { updates: number; avgMs: number; maxMs: number } | null;
 }
@@ -275,23 +281,58 @@ export function startBench(ctx: GameContext): void {
   const soakPhases: Phase[] = Array.from({ length: soak }, (_, i) => ({
     name: `Endurance, ${crowdN} personnages, minute ${i + 1}/${soak}`, still: { seconds: short ? 3 : 60 }, crowd: { n: crowdN, shadows: true },
   }));
+  // Effets d'image (D314) : les mêmes arrêts sur la place, effets coupés puis allumés, de jour puis de nuit (22 h), dans le même passage (même chaleur).
+  const { post } = ctx;
+  const benchHour = atmosphere.hour, benchLevel = post.level, benchSamples = post.samples;
+  const fxSeconds = short ? 2 : 6;
+  const fxPhase = (name: string, level: EffectsLevel, hour: number, samples = benchSamples): Phase => ({
+    name, still: { seconds: fxSeconds }, setup: () => {
+      post.level = level;
+      post.samples = samples;
+      if (atmosphere.hour !== hour) atmosphere.setHour(hour);
+    },
+  });
+  const fxPhases: Phase[] = post.available
+    ? [
+        fxPhase("Arrêt sur la place, effets coupés", 0, benchHour),
+        fxPhase("Arrêt sur la place, couleurs seules", 1, benchHour),
+        fxPhase("De nuit (22 h), effets coupés", 0, 22),
+        fxPhase("De nuit (22 h), couleurs seules", 1, 22),
+        fxPhase("De nuit (22 h), couleurs et halo", 2, 22),
+        fxPhase(`De nuit (22 h), couleurs et halo, ${benchSamples > 0 ? "sans MSAA" : "MSAA ×4 (copie)"}`, 2, 22, benchSamples > 0 ? 0 : 4),
+        { ...fxPhase("Retour à l'heure et aux effets du banc", benchLevel, benchHour), still: { seconds: 1 } },
+      ]
+    : [];
   const phases: Phase[] = [
     { name: "Arrêt sur la place", still: { seconds: short ? 2 : 8 } },
     ...crowdPhases,
+    ...fxPhases,
     { name: "Rues à 50 km/h", drive: { from: 0, to: split, speed: 50 / 3.6 } },
     { name: "Rues à 90 km/h", drive: { from: split, to: end, speed: 90 / 3.6 } },
     ...(fastKmh > 0 ? [{ name: `Rues à ${fastKmh} km/h`, drive: { from: 0, to: end, speed: fastKmh / 3.6 }, warmStart: true }] : []),
     { name: "Arrêt, sans ombres", still: { seconds: 6 / still }, setup: () => setShadows(false) },
     { name: "Arrêt, sans ombres, définition 1×", still: { seconds: 6 / still }, setup: () => renderer.setPixelRatio(1) },
   ];
-  // L'endurance passe en dernier, avec les ombres et la définition d'origine rétablies.
-  if (soakPhases.length) {
+  // Au bord de la mer (D316), réglages d'origine rétablis : mer vivante puis mer plate, face au large sur la plage de l'ouest (le parcours
+  // ne voit jamais la mer). Puis l'endurance, en dernier.
+  const seaView: [number, number, number, number, number, number] = [-1592.6, 172.8, 2, -1833.7, 216, 9];
+  const seaPhases: Phase[] = atmosphere.sea
+    ? [
+        { name: "Arrêt au bord de la mer, mer vivante", still: { seconds: 6 / still }, view: seaView, setup: () => { atmosphere.sea!.animated = true; } },
+        { name: "Arrêt au bord de la mer, mer plate", still: { seconds: 6 / still }, view: seaView, setup: () => { atmosphere.sea!.animated = false; } },
+      ]
+    : [];
+  const benchSea = atmosphere.sea?.animated ?? true;
+  if (seaPhases.length || soakPhases.length) {
     phases.push(
       { name: "Retour aux réglages d'origine", still: { seconds: 1 }, setup: () => { setShadows(settingsShadows); renderer.setPixelRatio(settingsPixelRatio); } },
+      ...seaPhases,
+      ...(seaPhases.length ? [{ name: "Retour à la mer du banc", still: { seconds: 1 }, setup: () => { if (atmosphere.sea) atmosphere.sea.animated = benchSea; } }] : []),
       ...soakPhases,
     );
   }
   const settingsShadows = renderer.shadowMap.enabled, settingsPixelRatio = renderer.getPixelRatio();
+  const gpu = new GpuTimer(renderer);
   const settings = {
     crowd: crowdN,
     // Météo et saison (D195) : beau temps et 1er jour de l'été sauf &weather= et &season=.
@@ -311,6 +352,10 @@ export function startBench(ctx: GameContext): void {
     detail: Number(params.get("detail") ?? DETAIL_DISTANCE),
     budget: Number(params.get("budget") ?? 4),
     hour: atmosphere.clock,
+    effects: post.available ? post.level : "indisponibles (pas de cible en demi-flottants)",
+    msaa: post.samples,
+    gpuTimer: gpu.available,
+    msrtt: renderer.extensions.has("WEBGL_multisampled_render_to_texture"),
     route: `${r1(end / 1000)} km${short ? " (version courte, sans valeur de mesure)" : ""}`,
   };
 
@@ -411,6 +456,7 @@ export function startBench(ctx: GameContext): void {
     firstBuild = tiles.builds.length;
     lastBuildCount = tiles.buildCount;
     if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
+    gpu.reset();
   };
 
   const endPhase = (): void => {
@@ -465,6 +511,7 @@ export function startBench(ctx: GameContext): void {
           }
         : null,
       fleet: fleet ? { ...fleet.stats, avgMs: fleetCost.frames ? fleetCost.ms / fleetCost.frames : 0, maxMs: fleetCost.max } : null,
+      effects: { level: post.level, samples: post.samples, bloom: r1(post.bloom), passes: post.bloomPasses, memoryMB: r1(post.memory / 2 ** 20), gpu: gpu.summary() },
       minimap: minimap && minimap.cost.calls > 0 ? { updates: minimap.cost.calls, avgMs: minimap.cost.totalMs / minimap.cost.calls, maxMs: minimap.cost.maxMs } : null,
     });
   };
@@ -484,6 +531,10 @@ export function startBench(ctx: GameContext): void {
         cam: [back.x, terrain.heightAt(back.x, back.y) + CHASE_HEIGHT, back.y],
         look: [ahead.x, terrain.heightAt(ahead.x, ahead.y) + 1.2, ahead.y],
       };
+    }
+    if (p.view) {
+      const [cx, cy, ch, lx, ly, lh] = p.view;
+      return { x: cx, y: cy, vx: 0, vy: 0, cam: [cx, terrain.heightAt(cx, cy) + ch, cy], look: [lx, terrain.heightAt(lx, ly) + lh, ly] };
     }
     // Vue du jeu au départ : derrière le piéton, regard vers le nord (mairie, théâtre).
     const x = spawn.x, y = spawn.y;
@@ -518,6 +569,7 @@ export function startBench(ctx: GameContext): void {
         late = { here: 0, ahead: 0 };
         probe.reset();
         if (minimap) Object.assign(minimap.cost, { calls: 0, totalMs: 0, maxMs: 0 });
+        gpu.reset();
       }
     } else {
       // La durée mesurée ici est celle de l'image précédente : on lui attribue sa construction de tuile.
@@ -727,7 +779,9 @@ export function startBench(ctx: GameContext): void {
       }
     }
     probe.mark("foule");
-    renderer.render(scene, camera);
+    if (measuring) gpu.begin();
+    post.render(scene, camera);
+    gpu.end();
     probe.mark("rendu");
 
     const remaining = p.still ? p.still.seconds - t : (p.drive!.to - p.drive!.from) / p.drive!.speed - t;
@@ -757,6 +811,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
   lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Effets d'image : ${typeof r.settings["effects"] === "number" ? ["coupés", "couleurs", "couleurs et halo"][r.settings["effects"]] : String(r.settings["effects"])} · MSAA ×${String(r.settings["msaa"])} · minutage de la carte graphique ${r.settings["gpuTimer"] ? "disponible" : "indisponible"} · rendu MSAA dans une texture ${r.settings["msrtt"] ? "natif (WEBGL_multisampled_render_to_texture)" : "par copie"}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
   if (still && still.p50 > 0) lines.push(`Fréquence de l'écran estimée : ${Math.round(1000 / still.p50)} Hz`);
@@ -789,6 +844,10 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
       lines.push(`  Simulation : ${q.avgMs.toFixed(3)} ms par image en moyenne · 95 % ${q.p95Ms.toFixed(3)} · pire ${q.maxMs.toFixed(2)} ms (objectif : moins de 2 ms)`);
       lines.push(`  Passants : ${q.alive} vivants (paliers ${q.tiers.join(" / ")}) · ${q.spawns} naissances, ${q.despawns} disparitions dans la phase · ${q.waiting} attendent, ${q.crossing} traversent, ${q.idle} à l'arrêt · ${q.spawnFailures} naissances refusées (en vue) · navigation ${q.navCells} super-tuiles, ${q.navEdges} arêtes`);
       lines.push(`  Pigeons : ${q.pigeons} vivants · ${q.pigeonMs.toFixed(3)} ms par image (simulation et sommets)`);
+    }
+    if (p.effects) {
+      const e = p.effects;
+      lines.push(`  Effets d'image : ${e.level === 0 ? "coupés" : e.level === 1 ? "couleurs" : "couleurs et halo"}${e.level > 0 ? ` · MSAA ×${e.samples} · halo ${e.bloom} (${e.passes} passes) · cibles ≈ ${e.memoryMB} Mo` : ""} · carte graphique ${e.gpu ? `${e.gpu.medianMs} ms par image (95 % ${e.gpu.p95Ms})` : "non mesurée (minutage indisponible)"}`);
     }
     lines.push(`  Dessin : ${p.draws.avg} appels (max ${p.draws.max}) · ${Math.round(p.triangles.avg / 1000)}k triangles (max ${Math.round(p.triangles.max / 1000)}k)`);
     if (p.builds.length) {

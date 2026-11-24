@@ -8,7 +8,7 @@ import {
 } from "../core/character";
 import { SEASON_LENGTHS, SEASON_NAMES } from "../core/calendar";
 import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordValues } from "../core/records";
-import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
+import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, EFFECTS_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -167,6 +167,12 @@ export class PauseMenu {
     };
     row("Définition", "Plus haut : plus net, mais plus lent et plus chaud.", "dpr", choices("dpr", DPR_CHOICES.map((v) => ({ value: v, label: `×${String(v).replace(".", ",")}` })), values.dpr));
     row("Ombres", "Fines : la meilleure qualité, la plus lourde.", "shadows", choices("shadows", SHADOW_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 2048 ? "Moyennes" : "Fines" })), values.shadows));
+    row("Effets d'image", "Couleurs selon l'heure (matin doux, coucher chaud, nuit bleutée) et halo autour des lumières la nuit. Aucun : le plus léger.", "effects",
+      choices("effects", EFFECTS_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucun" : v === 1 ? "Couleurs" : "Couleurs et halo" })), values.effects));
+    row("Ciel animé", "Nuages poussés par le vent, ciel et brume qui flamboient au lever et au coucher. Non : le ciel d'avant, un peu plus léger.", "sky",
+      choices("sky", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.sky));
+    row("Mer animée", "Vagues, écume qui va et vient sur la plage, reflets du ciel et du soleil. Non : la mer plate d'avant.", "sea",
+      choices("sea", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.sea));
     row("Images par seconde", "60 : fluide, et le téléphone chauffe moins. Sans limite : suit l'écran (souvent 120), deux fois plus de travail.", "fps",
       choices("fps", FPS_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Sans limite" : String(v) })), values.fps));
     row("Rayon de détail", "Distance jusqu'à laquelle les bâtiments sont détaillés. 400 m double la mémoire.", "detail", choices("detail", DETAIL_CHOICES.map((v) => ({ value: v, label: `${v} m` })), values.detail));

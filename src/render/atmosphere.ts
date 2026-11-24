@@ -10,6 +10,11 @@ import { lampLevel, litWindowShare } from "../core/city-lights";
 import { openingTable } from "../core/opening";
 import { hourlyT, seasonLook } from "../core/seasons";
 import { Precipitation, RAIN, SNOW } from "./precipitation";
+import { gradeAt } from "../core/grading";
+import type { PostFx } from "./post";
+import { setSunHaze } from "./sun-haze";
+import type { Sea } from "./sea";
+import { waveAmplitude } from "../core/waves";
 
 /** Une ambiance à une hauteur de soleil donnée. */
 interface Palette {
@@ -34,11 +39,23 @@ const fromTheme = (t: typeof DAY): Palette => ({
   hemiSky: t.hemi.sky, hemiGround: t.hemi.ground, hemiI: t.hemi.intensity, exposure: t.exposure, fogNear: t.fog[1], fogFar: t.fog[2],
 });
 
-/** Jalons : hauteur du soleil (degrés) -> ambiance. Entre deux jalons, tout est interpolé. */
+/** Jalons du soir : hauteur du soleil (degrés) -> ambiance. Entre deux jalons, tout est interpolé. */
 const STOPS: [number, Palette][] = [
   [-10, { ...fromTheme(NIGHT), sunI: 0.6, hemiI: 1.9, exposure: 1.3 }],
   [-3, { horizon: "#c86a6a", mid: "#5a4a86", zenith: "#1a2050", fog: "#6a4a7a", sun: "#ff8a5a", sunI: 0.9, hemiSky: "#6a6aa8", hemiGround: "#3a2a44", hemiI: 1.6, exposure: 1.2, fogNear: 110, fogFar: 640 }],
-  [3, { horizon: "#ffa860", mid: "#f0907a", zenith: "#4a62a8", fog: "#f4a878", sun: "#ff9348", sunI: 2.2, hemiSky: "#b8a0b8", hemiGround: "#9a5a3a", hemiI: 1.3, exposure: 1.05, fogNear: 150, fogFar: 760 }],
+  // Coucher plus marqué (D315) : soleil plus orangé et plus fort sur les façades, ombres plus violettes (lumière du ciel).
+  [3, { horizon: "#ffa860", mid: "#f0907a", zenith: "#4a62a8", fog: "#f4a878", sun: "#ff8a3e", sunI: 2.5, hemiSky: "#a894c4", hemiGround: "#9a5a3a", hemiI: 1.3, exposure: 1.05, fogNear: 150, fogFar: 760 }],
+  [15, fromTheme(DAY)],
+];
+
+/**
+ * Jalons du matin (D314) : jusque-là, le matin était le soir à l'envers. L'aube est plus rose et plus froide, la brume plus proche
+ * (l'air humide du matin), le soleil levant moins orangé que le couchant. Nuit et plein jour sont les mêmes : pas de saut à midi ni à minuit.
+ */
+const MORNING_STOPS: [number, Palette][] = [
+  STOPS[0]!,
+  [-3, { horizon: "#d98e9c", mid: "#6c6aa0", zenith: "#1c2a5e", fog: "#8e7c9e", sun: "#ff9e86", sunI: 0.85, hemiSky: "#7a82bc", hemiGround: "#3e3850", hemiI: 1.65, exposure: 1.2, fogNear: 90, fogFar: 560 }],
+  [3, { horizon: "#ffc8a0", mid: "#eab4b0", zenith: "#5878b8", fog: "#f2c4ae", sun: "#ffb47e", sunI: 2.0, hemiSky: "#b4b4d2", hemiGround: "#8c6c62", hemiI: 1.38, exposure: 1.05, fogNear: 115, fogFar: 660 }],
   [15, fromTheme(DAY)],
 ];
 
@@ -88,6 +105,18 @@ export class Atmosphere {
   onShops: ((open: readonly number[]) => void) | null = null;
   /** Coup de tonnerre : délai (s) depuis l'éclair, selon la distance de la foudre, et force (0 à 1). Branché par le jeu (son). */
   onThunder: ((delay: number, strength: number) => void) | null = null;
+  /**
+   * Ciel animé (D315, réglage « Ciel animé ») : nuages poussés par le vent, horizon et brume teintés vers le soleil au lever et au
+   * coucher. Coupé : le ciel d'avant (nuages immobiles, brume d'une seule couleur).
+   */
+  skyAnimated = true;
+  /** La mer vivante (D316) : vagues selon le vent, paillettes du soleil ou de la lune. */
+  sea: Sea | null = null;
+  private readonly glint = new THREE.Color();
+  /** Décalage des nuages (plan des nuages du ciel), cumulé avec le vent. */
+  private readonly cloudOffset = new THREE.Vector2();
+  /** Effets d'image (D314) : étalonnage et force du halo, réglés avec l'ambiance. */
+  post: PostFx | null = null;
   /** Pluie et neige qui tombent autour de la caméra (créées à la première averse). */
   private rain: Precipitation | null = null;
   private snowfall: Precipitation | null = null;
@@ -163,6 +192,12 @@ export class Atmosphere {
     this.apply();
   }
 
+  /** Impose l'heure (banc : phases de nuit) ; l'ambiance suit tout de suite. */
+  setHour(hour: number): void {
+    this.hour = ((hour % 24) + 24) % 24;
+    this.apply();
+  }
+
   /** Impose la date (jours de jeu) ; l'ambiance suit tout de suite. */
   setDate(date: number): void {
     this.date = Math.max(0, Math.floor(date));
@@ -180,6 +215,25 @@ export class Atmosphere {
     if (this.wx.snowfall > 0.005 && !this.snowfall) this.scene.add((this.snowfall = new Precipitation(SNOW)).mesh);
     this.rain?.update(this.wx.rain, this.time, light);
     this.snowfall?.update(this.wx.snowfall, this.time, light);
+    // Vent (D315) : direction du jeu (0 vers l'est) vers le repère three (x, z = −y).
+    const wx = Math.cos(this.wx.windDir), wz = -Math.sin(this.wx.windDir);
+    const gust = 0.6 + 3.4 * this.wx.wind;
+    this.rain?.wind(wx * gust, wz * gust, dt);
+    this.snowfall?.wind(wx * gust * 0.5, wz * gust * 0.5, dt);
+    if (this.sea?.animated) {
+      // Paillettes : le soleil (couleur de sa lumière) le jour, la lune (pâle) la nuit ; aucune par ciel couvert ni dans la brume.
+      const clear = (1 - smooth(0.4, 0.9, this.wx.cloud)) * (1 - this.wx.fog);
+      const n = this.night;
+      this.glint.copy(this.sunLight.color).multiplyScalar(1.3 * (1 - n)).add(GREY.setRGB(0.5, 0.55, 0.7).multiplyScalar(0.45 * n)).multiplyScalar(clear);
+      this.sea.update(this.time, waveAmplitude(this.wx.wind), smooth(0.35, 0.8, this.wx.wind), this.lightDir, this.glint);
+    }
+    if (this.skyAnimated && this.skyMat.uniforms["cloudOffset"]) {
+      // Nuages : ≈ 0,4°/s au zénith par vent moyen, deux fois plus vite sous l'orage ; repliés pour garder la précision.
+      const rate = 0.002 + 0.01 * this.wx.wind;
+      this.cloudOffset.x = (this.cloudOffset.x + wx * rate * dt) % 1000;
+      this.cloudOffset.y = (this.cloudOffset.y + wz * rate * dt) % 1000;
+      (this.skyMat.uniforms["cloudOffset"].value as THREE.Vector2).copy(this.cloudOffset);
+    }
     const storm = this.wx.storm;
     const u = this.skyMat.uniforms;
     if (storm > 0.3) {
@@ -221,12 +275,18 @@ export class Atmosphere {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
 
+  /** Le matin (avant midi solaire) : l'ambiance suit les jalons du matin (D314). */
+  get morning(): boolean {
+    return this.hour < 12;
+  }
+
   private palette(elevDeg: number): Palette {
-    if (elevDeg <= STOPS[0]![0]) return STOPS[0]![1];
-    for (let i = 1; i < STOPS.length; i++) {
-      const [e1, p1] = STOPS[i]!;
+    const stops = this.morning ? MORNING_STOPS : STOPS;
+    if (elevDeg <= stops[0]![0]) return stops[0]![1];
+    for (let i = 1; i < stops.length; i++) {
+      const [e1, p1] = stops[i]!;
       if (elevDeg <= e1) {
-        const [e0, p0] = STOPS[i - 1]!;
+        const [e0, p0] = stops[i - 1]!;
         const t = (elevDeg - e0) / (e1 - e0);
         const mix = (a: string, b: string): string => "#" + col(a).lerp(col(b), t).getHexString();
         const num = (a: number, b: number): number => a + (b - a) * t;
@@ -237,7 +297,7 @@ export class Atmosphere {
         };
       }
     }
-    return STOPS[STOPS.length - 1]![1];
+    return stops[stops.length - 1]![1];
   }
 
   /** Brouillard de l'heure et du temps qu'il fait (apply), avant le panorama. */
@@ -309,6 +369,10 @@ export class Atmosphere {
     (u["zenith"]!.value as THREE.Color).copy(overcast(p.zenith, grey));
     (u["sun"]!.value as THREE.Vector3).set(sx, sz, -sy);
     u["stars"]!.value = smooth(-4, -10, elev) * (1 - wx.cloud);
+    // Lever et coucher (D315) : horizon, nuages et brume plus chauds du côté du soleil, plus froids à l'opposé ; de −9° à 18°, au plus fort
+    // de −2° à 6°, effacé par un ciel couvert. Matin plus rose et plus doux que le soir.
+    const glowK = this.skyAnimated ? smooth(-9, -2, elev) * (1 - smooth(6, 18, elev)) * (1 - 0.85 * smooth(0.35, 0.95, wx.cloud)) : 0;
+    setSunHaze(sx, -sy, glowK, this.morning ? "#ffa37a" : "#ff7838", this.morning ? "#7c86bc" : "#56508e");
     u["cloudLight"]!.value = this.baseCloudLight = 0.18 + 0.82 * smooth(-8, 8, elev);
     u["disc"]!.value = wx.cloud < 0.55 ? 1 : 0;
     if (u["cover"]) u["cover"].value = wx.cloud;
@@ -329,5 +393,10 @@ export class Atmosphere {
     this.onShops?.(this.shops);
     this.res.haloMat.opacity = 0.32 * glow;
     this.res.haloMat.visible = glow > 0.01;
+    // Effets d'image (D314) : couleurs de l'heure ; halo autour des lumières avec la nuit, plus large dans la brume et sous la pluie.
+    if (this.post) {
+      this.post.setGrade(gradeAt(elev, this.morning, wx.cloud));
+      this.post.bloom = glow * (1 + 0.6 * wx.fog + 0.3 * wx.rain);
+    }
   }
 }

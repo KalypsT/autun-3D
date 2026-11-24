@@ -7360,3 +7360,223 @@ le vol, « Saut 46 m » à la réception, record enregistré). **À juger sur le
   l'emporte.
 
 **À juger sur le téléphone** : les quatre pas, le murmure dans le centre un samedi après-midi.
+
+## 2026-11-24 — D314. Plaisir de jeu, lot 2-1 : halo lumineux la nuit et couleurs selon l'heure
+
+**Demande** (PJ, phase 2) : un halo la nuit autour des projecteurs des monuments, des phares, des fenêtres, des lampadaires et des feux
+d'artifice, et un étalonnage des couleurs selon l'heure (matin doux, midi franc, coucher chaud, nuit bleutée), sans trahir le style
+« affiche » (aplats nets, pas de flou partout), en demi-résolution si possible, coupable dans les réglages, coût mesuré au banc.
+
+**Constat avant** : l'ambiance ne dépendait que de la hauteur du soleil (D19) : 7 h et 19 h avaient les mêmes couleurs.
+
+**Matin et soir distincts** (`atmosphere.ts`, sans coût, même effets coupés) : jalons du matin à part (`MORNING_STOPS`) : aube plus rose et
+plus froide, brume plus proche, soleil levant moins orangé. Nuit et plein jour inchangés : pas de saut à midi ni à minuit.
+
+**Effets d'image** (`src/render/post.ts`, `PostFx`), seul point d'entrée du rendu de la scène (jeu, pause, photos des lieux notés,
+viewer, banc, galeries : `ctx.post.render`) :
+- **Niveau 0** : rendu direct à l'écran, comme avant (rien ne change, aucun coût).
+- **Niveaux 1 et 2** : la scène est dessinée dans une cible en demi-flottants, **exactement comme à l'écran** (rendu des couleurs
+  « Neutral » et sRGB dans chaque matière). Three.js ne fait cela que pour l'écran et les cibles de réalité virtuelle : la cible porte le
+  drapeau `isXRRenderTarget` (un test vérifie que three.js le traite toujours ainsi). Premier essai avec une cible ordinaire (linéaire) :
+  les voiles translucides se mélangeaient en lumière linéaire et la façade éclairée de l'hôtel de ville sortait blanche.
+- **Passe finale** (pleine définition, vers l'écran) : image ramenée en linéaire, halo ajouté, étalonnage, retour en sRGB.
+- **Halo** (niveau 2) : seuil sur la couleur linéaire (0,68, adouci sur 0,2) : la nuit, murs sous la lune ≈ 0,15 à 0,25, façades des
+  projecteurs ≈ 0,5 à 0,7, fenêtres, lampadaires, phares et feux d'artifice ≈ 0,9 à 1. Calcul en **demi-définition**, puis 1/4, 1/8,
+  1/16, 1/32 (réductions et agrandissements « dual Kawase », moyenne pondérée par la luminance contre le scintillement des petits
+  points) : 9 passes, aucune en pleine définition. **Paliers** : le halo est découpé en trois niveaux nets (anneaux plats autour des
+  lumières, comme sur une affiche), `?bloomsteps=0` pour le halo continu. Sa force suit la nuit (`Atmosphere.night`), un peu plus large
+  dans la brume (+60 %) et sous la pluie (+30 %) ; **de jour, ses passes ne tournent pas** (il ne reste que la passe finale).
+- **Étalonnage** (`src/core/grading.ts`, logique pure, même calcul en GLSL) : gain par composante, saturation, contraste en courbe en S
+  qui garde le noir et le blanc, teinte des ombres et des lumières. Jalons selon la hauteur du soleil, matin et soir à part : matin doux
+  (contraste 0,93 à 0,94, ombres claires et fraîches), midi franc (dès 30° : contraste 1,1, saturation 1,07), coucher chaud (gain orangé,
+  saturation 1,14, ombres violettes), nuit (léger bleu dans les noirs, lumières plus chaudes). Par temps couvert, retour vers le neutre.
+  Premier essai de nuit : gain bleu sur toute l'image, les fenêtres et la façade éclairée s'éteignaient ; le bleu ne va plus qu'aux ombres.
+- **MSAA de la cible** : ×4 seulement si la carte graphique le fait dans la texture même (`WEBGL_multisampled_render_to_texture` : ni
+  mémoire ni copie de plus), sinon aucun : une cible MSAA ×4 pèse ≈ 56 octets par pixel, ≈ 140 Mo en définition ×2,5 sur le téléphone ;
+  sans MSAA ≈ 12 octets par pixel (≈ 30 Mo). Sans MSAA, les mâts et les arêtes des toits sont un peu crénelés quand on regarde de près (capture en ×2) ; à la densité du téléphone (×2,5), c’est discret. À juger sur le téléphone. `?msaa=0|4` l'impose.
+- **Sans cible en demi-flottants** (carte graphique trop ancienne), les effets restent coupés.
+
+**Réglage** « Effets d'image » (Réglages, après « Ombres ») : Aucun / Couleurs / Couleurs et halo (défaut, à confirmer au banc sur le
+téléphone). `?post=0|1|2` l'impose ; réglages du halo pour les essais : `?bloom=` (force, 1), `?bloomth=` (seuil, 0,68),
+`?bloomsteps=` (paliers, 3 ; 0 = continu). L'interface (HTML et minimap en 2D) n'est pas touchée par les effets.
+
+**Banc** (`?bench=1`) : après « Arrêt sur la place », sept arrêts de 6 s dans le même passage (même chaleur) : effets coupés, couleurs
+seules (à 16 h), puis à 22 h effets coupés, couleurs seules, couleurs et halo, et la même chose avec l'autre réglage de MSAA, puis retour.
+Chaque phase écrit le niveau, le MSAA, la force et le nombre de passes du halo, la mémoire des cibles et, si Chrome le permet
+(`EXT_disjoint_timer_query_webgl2`, souvent coupé sur Android), le temps de la carte graphique par image (médiane, 95 %). L'en-tête dit
+si le minutage et le MSAA dans la texture sont disponibles.
+
+**Mesure ici** (`?bench=court`, rendu logiciel : durées sans portée) : 9 appels de dessin de plus la nuit avec le halo, 1 de jour
+(passe finale) ; cibles ≈ 22 Mo en 915 × 412 avec MSAA ×4 (rendu logiciel, sans MSAA dans la texture).
+
+**Protocole sur le téléphone** (Honor Magic 8 Pro) :
+1. Téléphone froid (pas joué depuis 10 min), **débranché**, batterie au-dessus de 50 %, autres applications fermées, luminosité fixe,
+   Chrome à jour, en paysage.
+2. `?bench=1&fps=0` : sans limite d'images par seconde, sinon le navigateur plafonne à 60 et cache la marge (D26). Copier le rapport.
+   Les arrêts « effets coupés / couleurs seules / couleurs et halo » de jour et de nuit se comparent entre eux (médiane et 95 % des
+   durées d'image, temps de la carte graphique s'il est donné).
+3. Attendre 2 minutes, recommencer avec `?bench=1&fps=0&post=0` (tout le banc sans effets), puis `?bench=1&fps=0&h=22` (tout le banc de
+   nuit, halo compris) : les rues à 50 et 90 km/h de ces deux passages disent ce que coûtent les effets en roulant.
+4. Endurance : 10 minutes de jeu de nuit (`?h=22&speed=0&debug`, réglage « Couleurs et halo »), en roulant ; noter les images par seconde
+   au début et à la fin, et si le téléphone chauffe. Puis pareil avec « Aucun ».
+5. M'envoyer les trois rapports et tes notes. Seuil proposé : si « couleurs et halo » coûte plus de 2 ms par image la nuit (ou fait
+   tomber le 1 % le plus lent sous 40 i/s), défaut « Couleurs » ; s'il coûte plus de 2 ms de jour aussi, défaut « Aucun ».
+
+**Tests** : `grading.test.ts` (neutre sans effet, noir et blanc gardés, midi plus contrasté que le matin, coucher chaud, nuit bleutée aux
+lumières chaudes, continuité, temps couvert) ; `post.test.ts` (niveau 0 direct, une passe de jour, halo jamais en pleine définition, pas
+de halo au niveau 1, repli sans demi-flottants, drapeau de three.js) ; réglages (`?post=`, valeurs invalides).
+
+**Limites** : le halo ne voit que l'image : une lumière cachée derrière un mur n'en a pas, une façade très claire éclairée par les
+projecteurs peut en recevoir un peu ; les petites lumières lointaines (feux arrière à 50 m) n'ont presque pas de halo (moyenne en
+demi-définition) ; le seuil est fixe (une neige au clair de lune pourrait s'allumer légèrement, non vu en capture) ; pas de halo autour
+du soleil ; les phares restent des cônes plats au sol.
+
+**Vues** : `?view=mairie&h=22.5`, `arroux`, `place` (`&h=4.6` aube, `&h=19.5` coucher, `&h=13`), feu d'artifice
+`?cam=870,60,6,1240,420,120&h=23.3&fireworks=1` (le viewer joue le feu d'artifice avec `&fireworks=1`), `tools/ui.sh <dossier> night`
+(phares de la voiture du joueur, feu d'artifice dans le jeu).
+
+![Aube (4 h 36, soleil à 3°), avant : les couleurs du soir](captures/d314-aube-avant.jpg)
+![Aube, après : rose et doux, brume proche](captures/d314-aube-apres.jpg)
+![Coucher (19 h 30), avant](captures/d314-coucher-avant.jpg)
+![Coucher, après : chaud, ombres violettes](captures/d314-coucher-apres.jpg)
+![13 h, avant](captures/d314-midi-avant.jpg)
+![13 h, après : midi franc](captures/d314-midi-apres.jpg)
+![Hôtel de ville à 22 h 30, avant](captures/d314-mairie-nuit-avant.jpg)
+![Après : halo en paliers autour des fenêtres et des lanternes](captures/d314-mairie-nuit-apres.jpg)
+![Le même halo, continu (`?bloomsteps=0`)](captures/d314-halo-continu.jpg)
+![Porte d'Arroux, avant](captures/d314-arroux-nuit-avant.jpg)
+![Porte d'Arroux, après](captures/d314-arroux-nuit-apres.jpg)
+![Cathédrale, avant](captures/d314-cathedrale-nuit-avant.jpg)
+![Cathédrale, après](captures/d314-cathedrale-nuit-apres.jpg)
+![Phares, effets coupés](captures/d314-phares-avant.jpg)
+![Phares, couleurs et halo](captures/d314-phares-apres.jpg)
+![Feu d'artifice du 14 juillet sur le plan d'eau du Vallon](captures/d314-feu-artifice.jpg)
+
+## 2026-11-24 — D315. Plaisir de jeu, lot 2-2 : vent, nuages qui avancent, levers et couchers plus marqués
+
+**Demande** (PJ, phase 2) : des nuages qui avancent avec le vent et la météo ; des couchers et levers de soleil plus marqués (ciel,
+brume, façades) ; un réglage pour couper si le téléphone peine.
+
+**Constat avant** : les nuages du ciel étaient un motif figé ; la météo n'avait pas de vent (la pluie penchait toujours du même côté) ;
+au coucher, ciel et brume étaient orange de tous les côtés, sans différence entre le côté du soleil et le côté opposé.
+
+**Le vent** (`core/weather.ts`, logique pure) : `wind` (force, 0 à 1) et `windDir` (vers où il souffle, 0 vers l'est) dans l'état de la
+météo. Force par genre : brume 0,05, beau temps 0,25, neige 0,35, nuageux 0,45, pluie 0,6, orage 1, avec les mêmes transitions que la
+brume. Direction : un cap par jour tiré autour du vent dominant (vers l'est-nord-est : vent d'ouest et de sud-ouest), ± 80°, qui tourne
+doucement d'un jour à l'autre par le plus court chemin, avec une petite oscillation dans la journée ; continue à minuit. `?weather=`
+garde le vent dominant.
+
+**Nuages** (`sky.ts`) : le champ de nuages (trois octaves de bruit) glisse avec le vent, chaque octave un peu plus vite que la
+précédente : les nuages avancent et changent lentement de forme. Vitesse ≈ 0,4° par seconde au zénith par vent moyen, deux fois plus sous
+l'orage (temps réel, pas l'horloge du jeu : pas d'accéléré). Aucun coût de plus (un décalage dans le nuanceur existant).
+
+**Pluie et neige** (`precipitation.ts`) : penchées et poussées par le vent (0,6 à 4 m/s, moitié pour la neige). La dérive est cumulée
+par le processeur : changer le vent ne fait pas sauter les gouttes (avec l'ancien calcul, vent × temps, elles auraient sauté).
+
+**Levers et couchers** (de −9° à 18° de hauteur du soleil, au plus fort de −2° à 6°, effacés par un ciel couvert) :
+- **Ciel** : du côté du soleil, le bas du ciel flamboie (orange, en bandes comme le reste du ciel) ; à l'opposé, l'ombre de la Terre
+  (bleu violet) au ras de l'horizon et une bande rose au-dessus ; nuages dorés côté soleil, ombres roses et violettes.
+- **Brume** (`render/sun-haze.ts`) : le brouillard de three.js n'a qu'une couleur ; ses morceaux de nuanceur (`fog_*`) sont remplacés au
+  démarrage pour qu'il se teinte vers le soleil (orange) et à l'opposé (violet), par des uniformes **partagés** par toutes les matières :
+  three.js recopie les uniformes de sa bibliothèque pour chaque matière, sauf les valeurs qui ne sont pas des objets three.js ; un simple
+  `{ x, y, z, w }` est donc le même objet partout (test). Changer la brume ne recompile rien. Le ciel lit les mêmes objets : l'horizon et
+  le brouillard se raccordent. Hors lever et coucher, la force est nulle : le brouillard est exactement celui d'avant.
+- **Matin et soir** : soleil levant plus rose et plus doux (`#ffa37a`, opposé `#7c86bc`), couchant plus orangé (`#ff7838`, opposé
+  `#56508e`).
+- **Façades** : soleil couchant plus orangé et plus fort (jalon à 3° : `#ff8a3e`, 2,5 au lieu de 2,2), lumière du ciel plus violette
+  (ombres). La lumière ne descend toujours pas sous 5° (D19).
+- Étalonnage du soir (D314) un peu adouci (saturation 1,08 au lieu de 1,14) : vue d'en haut, les toits sortaient trop rouges.
+
+**Réglage** « Ciel animé » (Oui par défaut) : Non garde le ciel d'avant (nuages immobiles, brume et horizon d'une seule couleur) ; la
+palette des heures et le vent de la pluie restent. `?sky=0|1` l'impose.
+
+**Coût** : quelques opérations de plus par pixel du ciel et par pixel dans le brouillard (une direction, un produit scalaire, deux
+mélanges), une variable de plus entre sommet et pixel pour toutes les matières ; aucun appel de dessin ni texture. À mesurer avec le
+banc sur le téléphone (`?bench=1&h=19.5` puis `&sky=0`).
+
+**Tests** : vent (force par genre, direction continue d'heure en heure et à minuit, plutôt vers l'est, force sans saut) ; brume
+(morceaux remplacés, présents dans les nuanceurs toon, Lambert, basic, points, sprites ; mêmes objets partagés par les matières et le
+ciel).
+
+**Limites** : les nuages ne portent pas d'ombre au sol (noté pour plus tard) ; les arbres ne bougent pas avec le vent ; la bande rouge au
+ras de la mer, côté soleil, est nette (style affiche) ; le mouvement des nuages ne se voit pas sur une capture : à juger en jeu.
+
+**Vues** : `?cam=-150,-230,140,150,-470,60&h=19.6` (dos au soleil couchant), `?cam=-150,-230,140,-450,10,60&h=19.6` (face au soleil),
+`?view=croix-vue&h=4.5` (aube), avec `&sky=0` pour comparer.
+
+![Dos au soleil couchant, ciel animé coupé (le ciel d'avant)](captures/d315-oppose-avant.jpg)
+![Dos au soleil couchant : ombre de la Terre, bande rose, nuages roses](captures/d315-oppose-apres.jpg)
+![Face au soleil couchant, ciel animé coupé](captures/d315-soleil-avant.jpg)
+![Face au soleil couchant](captures/d315-soleil-apres.jpg)
+![Aube vue de la Croix de la Libération, ciel animé coupé](captures/d315-aube-avant.jpg)
+![Aube vue de la Croix de la Libération](captures/d315-aube-apres.jpg)
+![Dans la rue, dos au soleil couchant](captures/d315-rue-oppose.jpg)
+
+## 2026-11-24 — D316. Plaisir de jeu, lot 2-3 : la mer vivante
+
+**Demande** (PJ, phase 2) : une mer vivante (`src/render/sea.ts`) : vagues, écume au rivage, reflets, sans coût visible sur le reste, et
+un réglage pour la couper.
+
+**Constat avant** : un plan d'eau plat de 30 km et un ruban d'écume fixe (D105). **Ce ruban ne s'est jamais vu** : il supposait l'anneau
+de côte dans le sens trigonométrique (la mer à droite), or l'anneau publié tourne dans le sens des aiguilles d'une montre ; l'écume était
+posée côté terre, au niveau de la mer, sous la plage. Corrigé pour les deux mers (le côté se déduit maintenant du sens de l'anneau, test
+sur la vraie côte) : avec « Mer animée » coupée, la bande claire d'écume d'avant apparaît donc pour la première fois.
+
+**Vagues** (`src/core/waves.ts`, logique pure, même calcul en GLSL) : trois houles qui se croisent (22, 13 et 7 m de long, 3,8, 2,9 et
+2,1 s), directions fixes autour du vent dominant d'ouest (les faire tourner avec le vent ferait glisser les crêtes au loin). Hauteur
+selon le vent (D315) : amplitude 0,1 m par temps calme, 0,4 m sous l'orage. Les périodes sont des fractions entières d'une minute : la
+mer se répète exactement toutes les 60 s et le temps se replie sans saut (précision des flottants). La fonction servira au jet-ski
+(phase 5) : ce qui flottera suivra les vagues qu'on voit.
+
+**La mer** : une grille polaire **qui suit la caméra** (anneaux de 1,2 m près du centre, puis 6 % plus larges à chaque anneau, jusqu'à
+15 km ; ≈ 12 700 sommets, 25 000 triangles, un appel de dessin comme le plan d'avant). Elle avance par pas de 4 m pour que ses sommets ne
+glissent pas sur les vagues. Les sommets sont soulevés jusqu'à 80 m, de moins en moins jusqu'à 260 m ; au-delà, l'eau est plate (les
+sommets y sont trop espacés pour des vagues de quelques mètres). Ombrage « affiche » : la normale vient de la pente des vagues, pixel
+par pixel, exagérée (× 1,8) pour que les paliers de l'ombrage dessinent des bandes nettes ; elle s'efface de 150 à 700 m.
+
+**Reflets** (sans redessiner la scène : un vrai reflet des bâtiments coûterait une seconde image) :
+- le ciel (couleurs de l'horizon et du zénith, les mêmes objets que le dôme), plus fort à jour frisant ;
+- les **paillettes** du soleil (couleur de sa lumière) ou de la lune (pâle) la nuit : des taches nettes qui bougent avec les vagues, un
+  chemin de lumière vers le soleil couchant ; aucune par ciel couvert ni dans la brume ;
+- des **crêtes blanches** sur le haut des vagues par vent fort (dès 0,35 de vent, pleines à 0,8).
+
+**Écume au rivage** : un ruban de 5 à 18 m au large du trait de côte, rééchantillonné tous les 2 m (pour suivre les vagues), qui monte et
+descend avec l'eau. Chaque sommet connaît la profondeur du fond (profil du rivage de D105 : le sol est à 1,6 m au-dessus de l'eau sur le
+trait de côte et descend de 22 cm par mètre). Motif en aplats nets : une **nappe** qui monte et redescend sur le sable (bord dentelé,
+en retard d'un endroit à l'autre, plus haut par gros temps) et une **ligne de vague** qui arrive du large et s'y fond, toutes les 7,5 s.
+Premier essai : le ruban, retourné, n'était pas dessiné vu d'en haut (faces arrière), puis, en double face, éclairé par en dessous (brun) :
+les triangles sont maintenant tournés vers le ciel quel que soit le sens de l'anneau (test).
+
+**Réglage** « Mer animée » (Oui par défaut) : Non garde la mer plate d'avant (avec son écume enfin visible). `?sea=0|1` l'impose.
+
+**Banc** (`?bench=1`) : deux arrêts de plus à la fin, sur la plage de l'ouest face au large (le parcours ne voit jamais la mer) : mer
+vivante puis mer plate, réglages d'origine rétablis.
+
+**Coût** : deux appels de dessin comme avant ; ≈ 25 000 triangles pour la mer et ≈ 4 800 pour l'écume (au lieu de 2 et ≈ 800) : le
+ruban fait le tour de la côte (≈ 88 000 triangles), mais seul le morceau proche de la caméra est dessiné (± 800 m le long de la côte,
+`FoamWindow`, plage d'indices recalculée quand la caméra a bougé de 20 m). Par pixel d'eau : trois sinus pour la pente, trois pour la
+hauteur, un reflet, une paillette. Banc court ici (rendu logiciel, durées sans portée) : à l'arrêt au bord de la mer, médiane 133 ms avec
+la mer vivante contre 117 ms avec la mer plate (avant la fenêtre de l'écume) : le coût par pixel n'est pas nul, à mesurer sur le téléphone
+avec les deux arrêts du banc.
+
+**Tests** : `waves.test.ts` (répétition exacte en 60 s, hauteurs bornées, longueurs et périodes, pente = dérivée, mêmes constantes dans le
+nuanceur) ; `sea.test.ts` (sens de l'anneau, écume sur l'eau et non sous la plage, triangles vers le ciel, rééchantillonnage et
+profondeur, grille, deux appels de dessin, mer plate).
+
+**Limites** : pas de reflet des bâtiments, des projecteurs ni des lampadaires dans l'eau ; l'écume ne monte pas sur le sable sec (elle
+reste au-dessus de l'eau) ; la ligne de rivage est celle du profil théorique de D105 (là où la plaine était plus basse, la nappe peut
+tomber un peu à côté) ; les vagues ne touchent pas la nage (le joueur flotte au niveau calme) ; l'eau de la ville (Vallon, Arroux) est
+inchangée.
+
+**Vues** : `?cam=-1611,176,1.7,-1660,190,9&h=13` (sur la plage de l'ouest), `?cam=-1560,170,40,-1700,200,9&h=13` (au-dessus),
+`?cam=-1592.6,172.8,2,-1833.7,216,9&h=19.5` (coucher face au large), `&h=22.5` (nuit), `&weather=orage`, avec `&sea=0` pour comparer.
+
+![Sur la plage, avant : mer plate, écume invisible](captures/d316-plage-avant.jpg)
+![Sur la plage, après : vagues, nappe d'écume au bord, ligne qui arrive](captures/d316-plage-apres.jpg)
+![Vue d'en haut, avant](captures/d316-haut-avant.jpg)
+![Vue d'en haut, après](captures/d316-haut-apres.jpg)
+![Coucher face au large, avant](captures/d316-coucher-avant.jpg)
+![Coucher face au large, après : chemin de paillettes](captures/d316-coucher-apres.jpg)
+![La nuit](captures/d316-nuit.jpg)
+![Orage : crêtes blanches](captures/d316-orage.jpg)
+![Réglages : « Effets d'image », « Ciel animé », « Mer animée »](captures/d316-reglages.jpg)

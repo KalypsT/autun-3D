@@ -2231,3 +2231,37 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les pas changent avec le sol : crissement sur le gravier et le schiste des terrils, froissement dans l'herbe, claquement sur les pavés, bruit habituel sur l'enrobé et les trottoirs.
 - Dans une rue animée, on entend maintenant le murmure des passants (comme au marché), plus discret en voiture.
 - À faire de ton côté : te promener avec le son (place du Champ de Mars, chemin du Vallon, pelouses, terrils) et dire ce que tu en penses. La page `?sounds` permet d'écouter chaque pas.
+
+**Plaisir de jeu, lot 2-1 : halo lumineux la nuit et couleurs selon l'heure (24 novembre 2026)** (D314)
+- **Le matin n'est plus le soir à l'envers** : l'aube est rose et douce, avec une brume plus proche ; le coucher est chaud et orangé.
+- **Couleurs selon l'heure** : matin doux, midi franc (un peu plus de contraste), coucher chaud aux ombres violettes, nuit bleutée où les lumières restent chaudes.
+- **Halo la nuit** autour des fenêtres allumées, des lampadaires, des façades éclairées par les projecteurs, des phares et du feu d'artifice : des anneaux nets autour des lumières, comme sur une affiche, plutôt qu'un flou. Rien de jour.
+- Nouveau réglage **« Effets d'image »** : Aucun, Couleurs, Couleurs et halo (par défaut, à confirmer selon ton banc).
+- **À faire de ton côté (important)** : passer le banc sur le téléphone selon le protocole de D314 (`?bench=1&fps=0`, puis `&post=0`, puis `&h=22`, puis 10 minutes de jeu de nuit) et m'envoyer les rapports. Me dire aussi si tu préfères les anneaux nets ou le halo continu (`?bloomsteps=0`), et si la nuit te paraît trop sombre ou trop bleue.
+![Coucher, avant](docs/captures/d314-coucher-avant.jpg)
+![Coucher, après](docs/captures/d314-coucher-apres.jpg)
+![Hôtel de ville la nuit, avant](docs/captures/d314-mairie-nuit-avant.jpg)
+![Hôtel de ville la nuit, après](docs/captures/d314-mairie-nuit-apres.jpg)
+![Feu d'artifice](docs/captures/d314-feu-artifice.jpg)
+
+**Plaisir de jeu, lot 2-2 : vent, nuages qui avancent, levers et couchers (24 novembre 2026)** (D315)
+- **Du vent** dans la météo : calme dans la brume, léger par beau temps, fort sous l'orage, le plus souvent d'ouest. Les **nuages avancent** avec lui et changent lentement de forme ; la pluie et la neige penchent dans son sens.
+- **Couchers et levers plus marqués** : du côté du soleil, l'horizon et la brume flamboient ; de l'autre côté, une bande bleu violet au ras de l'horizon et une bande rose au-dessus, les nuages roses. Le soleil couchant est plus orangé sur les façades, les ombres plus violettes. Le matin reste plus doux et plus rose que le soir.
+- Nouveau réglage **« Ciel animé »** (Oui par défaut) : Non garde le ciel d'avant.
+- À faire de ton côté : regarder un coucher de soleil en jeu (vers 19 h 30 en été), dos au soleil puis face à lui, et un jour de vent (orage) pour voir les nuages filer ; me dire si c'est trop rouge.
+![Dos au soleil couchant, avant](docs/captures/d315-oppose-avant.jpg)
+![Dos au soleil couchant, après](docs/captures/d315-oppose-apres.jpg)
+![Face au soleil couchant](docs/captures/d315-soleil-apres.jpg)
+
+**Plaisir de jeu, lot 2-3 : la mer vivante (24 novembre 2026)** (D316)
+- **Des vagues** sur la mer autour de la ville, plus hautes par vent fort, dessinées en bandes nettes comme le reste.
+- **Écume au rivage** : une nappe blanche qui monte et redescend sur la plage, et une ligne de vague qui arrive du large toutes les 7 à 8 secondes.
+- **Reflets** : le ciel dans l'eau, un **chemin de paillettes** vers le soleil couchant (ou la lune la nuit), des crêtes blanches sous l'orage.
+- Au passage, j'ai trouvé que l'écume d'avant ne s'était jamais vue : elle était posée du mauvais côté de la côte, sous la plage. C'est corrigé.
+- Nouveau réglage **« Mer animée »** (Oui par défaut) : Non garde la mer plate d'avant.
+- Les vagues sont calculées de la même façon pour l'affichage et pour le jeu : le jet-ski de la phase 5 pourra les suivre.
+- À faire de ton côté : aller sur une plage (poser un repère au bord de l'eau sur la carte, par exemple à l'ouest de la ville, à 1,6 km de la place), regarder la mer le jour, au coucher et la nuit, et me dire si les vagues sont trop régulières.
+![Sur la plage, avant](docs/captures/d316-plage-avant.jpg)
+![Sur la plage, après](docs/captures/d316-plage-apres.jpg)
+![Coucher face au large](docs/captures/d316-coucher-apres.jpg)
+![Les trois nouveaux réglages de la phase 2](docs/captures/d316-reglages.jpg)

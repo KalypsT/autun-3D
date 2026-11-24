@@ -39,6 +39,7 @@ uniform float uLength;
 uniform float uWidth;
 uniform float uSnow;
 uniform vec2 uWind;
+uniform vec2 uDrift;
 varying float vFade;
 varying float vAlong;
 varying vec2 vCorner;
@@ -47,9 +48,11 @@ void main() {
   // Goutte au-delà de la densité voulue : hors de l'écran (le processeur graphique la jette avant de la dessiner).
   if (seed.w > uAmount) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vFade = 0.0; vAlong = 0.0; return; }
   vec3 p = seed.xyz * uBox;
-  float t = uTime * uSpeed * (0.85 + 0.3 * fract(seed.w * 37.0));
+  float f = 0.85 + 0.3 * fract(seed.w * 37.0);
+  float t = uTime * uSpeed * f;
   p.y -= t;
-  p.xz += uWind * t / uSpeed;
+  // Dérive du vent (D315) : cumulée par le processeur (le vent change sans faire sauter les gouttes).
+  p.xz += uDrift * f;
   // Flocons : ils flottent de côté.
   p.x += uSnow * sin(uTime * 0.9 + seed.w * 61.0) * 0.6;
   p.z += uSnow * cos(uTime * 0.7 + seed.w * 43.0) * 0.6;
@@ -117,7 +120,7 @@ export class Precipitation {
       side: THREE.DoubleSide,
       uniforms: {
         uTime: { value: 0 }, uAmount: { value: 0 }, uBox: { value: new THREE.Vector3(...opts.box) }, uSpeed: { value: opts.speed },
-        uLength: { value: opts.length }, uWidth: { value: opts.width }, uSnow: { value: opts.snow ? 1 : 0 }, uWind: { value: new THREE.Vector2(0.8, 0.3) },
+        uLength: { value: opts.length }, uWidth: { value: opts.width }, uSnow: { value: opts.snow ? 1 : 0 }, uWind: { value: new THREE.Vector2(0.8, 0.3) }, uDrift: { value: new THREE.Vector2() },
         uColor: { value: new THREE.Color(opts.color) }, uOpacity: { value: opts.opacity },
       },
     });
@@ -136,6 +139,19 @@ export class Precipitation {
     // Temps replié pour garder la précision des flottants sur les longues parties (la chute boucle de toute façon).
     u["uTime"]!.value = time % 3600;
     u["uOpacity"]!.value = this.opts.opacity * (0.35 + 0.65 * light);
+  }
+
+  /**
+   * Vent (D315) : vitesse horizontale (m/s, repère three : x, z) ; la dérive s'accumule (repliée tous les 2 km : les gouttes se
+   * redistribuent alors une fois, sans qu'on le voie sous l'averse).
+   */
+  wind(x: number, z: number, dt: number): void {
+    const u = this.material.uniforms;
+    (u["uWind"]!.value as THREE.Vector2).set(x, z);
+    const d = u["uDrift"]!.value as THREE.Vector2;
+    d.x += x * dt;
+    d.y += z * dt;
+    if (Math.abs(d.x) > 2000 || Math.abs(d.y) > 2000) d.set(0, 0);
   }
 
   dispose(): void {

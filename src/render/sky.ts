@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SUN_HAZE_GLSL, sunHazeUniforms } from "./sun-haze";
 
 export const HORIZON = new THREE.Color("#bfd2e4");
 
@@ -20,24 +21,48 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
       cloudLight: { value: 1 },
       /** Couverture nuageuse (D196) : de quelques nuages à un ciel gris uni. */
       cover: { value: 0 },
+      /** Décalage des nuages poussés par le vent (D315), dans le plan des nuages. */
+      cloudOffset: { value: new THREE.Vector2() },
+      /** Lever et coucher (D315) : mêmes uniformes que la brume, pour que l'horizon et le brouillard se raccordent. */
+      ...sunHazeUniforms,
     },
     vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
       varying vec3 vDir; uniform vec3 sun; uniform vec3 horizon; uniform vec3 zenith; uniform vec3 mid; uniform float bands; uniform float disc; uniform float stars; uniform float clouds; uniform float cloudLight; uniform float cover;
+      uniform vec2 cloudOffset; uniform vec4 sunHazeDir; uniform vec3 sunHazeColor; uniform vec3 sunHazeAnti;
+      ${SUN_HAZE_GLSL}
       float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float vnoise(vec2 p) {
         vec2 i = floor(p), f = fract(p);
         f = f * f * (3.0 - 2.0 * f);
         return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y);
       }
-      float cloudField(vec2 p) { return vnoise(p) * 0.55 + vnoise(p * 2.1 + 7.0) * 0.3 + vnoise(p * 4.3 + 3.0) * 0.15; }
+      // Les trois octaves glissent à des vitesses un peu différentes : les nuages avancent et changent lentement de forme (D315).
+      float cloudField(vec2 p) {
+        return vnoise(p - cloudOffset) * 0.55 + vnoise(p * 2.1 + 7.0 - cloudOffset * 2.5) * 0.3 + vnoise(p * 4.3 + 3.0 - cloudOffset * 5.6) * 0.15;
+      }
       float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
       void main() {
         float h = clamp(vDir.y, 0.0, 1.0);
         if (bands > 0.5) h = floor(h * bands + 0.5) / bands;
         vec3 col = h < 0.4 ? mix(horizon, mid, h / 0.4) : mix(mid, zenith, (h - 0.4) / 0.6);
-        float s = max(dot(normalize(vDir), sun), 0.0);
+        vec3 d = normalize(vDir);
+        float s = max(dot(d, sun), 0.0);
+        // Lever et coucher (D315) : le bas du ciel flamboie du côté du soleil (en bandes, comme le reste), une bande rose monte à
+        // l'opposé (la « ceinture de Vénus »). Force dans sunHazeDir.w (0 : le ciel d'avant).
+        float kz = sunHazeDir.w;
+        float lh = length(d.xz);
+        float sa = lh > 1e-4 ? dot(d.xz / lh, sunHazeDir.xz) : 0.0;
+        if (kz > 0.0) {
+          col = mix(col, sunHazeColor, kz * 0.9 * pow(max(sa, 0.0), 1.5) * (1.0 - smoothstep(0.0, 0.5, h)));
+          // À l'opposé : l'ombre de la Terre (bleu violet) au ras de l'horizon, la bande rose au-dessus.
+          float away = kz * max(-sa, 0.0);
+          col = mix(col, sunHazeAnti, away * 0.85 * (1.0 - smoothstep(0.0, 0.1, h)));
+          float belt = smoothstep(0.06, 0.12, h) * (1.0 - smoothstep(0.2, 0.34, h));
+          col = mix(col, mix(sunHazeAnti, sunHazeColor, 0.55) * 1.2, away * 0.7 * belt);
+        }
         col += vec3(1.0, 0.85, 0.6) * (pow(s, 6.0) * 0.18 + pow(s, 180.0) * 0.9) * (1.0 - cover);
+        col += sunHazeColor * kz * pow(s, 3.0) * 0.3 * (1.0 - cover);
         if (disc > 0.5) col = mix(col, vec3(1.0, 0.96, 0.8), smoothstep(0.9965, 0.9975, s) );
         if (stars > 0.01 && vDir.y > 0.05) { vec3 g = floor(normalize(vDir) * 520.0); float st = step(0.9972, hash(g)); col += vec3(st) * stars * smoothstep(0.05, 0.4, vDir.y); }
         if (clouds > 0.5 && vDir.y > 0.02) {
@@ -47,6 +72,9 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
           float c0 = step(th, cloudField(p));
           float c1 = step(th, cloudField(p + vec2(0.05, -0.09)));
           vec3 lit = mix(vec3(1.0, 0.95, 0.84), vec3(0.8, 0.82, 0.85), cover), shade = mix(vec3(0.93, 0.74, 0.6), vec3(0.55, 0.58, 0.63), cover);
+          // Au lever et au coucher, nuages dorés du côté du soleil, ombres roses et violettes (D315).
+          lit = mix(lit, sunHazeColor * 1.1 + vec3(0.08), kz * (0.35 + 0.55 * max(sa, 0.0)) * (1.0 - 0.6 * cover));
+          shade = mix(shade, mix(sunHazeAnti, sunHazeColor, 0.35), kz * 0.65 * (1.0 - 0.6 * cover));
           float fade = smoothstep(0.02, 0.12, vDir.y);
           // La nuit (D200), un nuage est un peu plus clair que le ciel (la lune), et une nuit claire n'en montre presque pas.
           vec3 dayCloud = mix(shade, lit, c1) * cloudLight;
@@ -54,7 +82,7 @@ export function createSky(sunDir: THREE.Vector3): THREE.Mesh {
           float vis = c0 * fade * mix(clamp(cover * 1.6, 0.0, 1.0), 1.0, cloudLight * cloudLight);
           col = mix(col, mix(nightCloud, dayCloud, cloudLight * cloudLight), vis);
         }
-        col = mix(col, horizon, smoothstep(0.0, -0.25, vDir.y));
+        col = mix(col, sunHazeTint(horizon, d.xz), smoothstep(0.0, -0.25, vDir.y));
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>

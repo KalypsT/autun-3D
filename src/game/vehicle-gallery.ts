@@ -101,7 +101,7 @@ export function startVehicleGallery(ctx: GameContext): void {
     atmosphere.advance(0);
     placeSun(spawn.x, spawn.y, ground);
     sky.position.copy(camera.position);
-    renderer.render(scene, camera);
+    ctx.post.render(scene, camera);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

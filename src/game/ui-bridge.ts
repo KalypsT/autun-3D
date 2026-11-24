@@ -202,8 +202,8 @@ export class UiBridge {
     if (on) {
       this.controls.reset();
       // Dernière image et capture dans la même tâche : le tampon de dessin est encore valide.
-      const { renderer, scene, camera } = this.ctx;
-      renderer.render(scene, camera);
+      const { post, scene, camera } = this.ctx;
+      post.render(scene, camera);
       this.capture();
       const s = this.state();
       this.frozen = { x: s.x, y: s.y, z: s.z, heading: s.yaw, hour: this.ctx.atmosphere.hour, day: this.ctx.atmosphere.day };
