@@ -1,12 +1,17 @@
 import { clampToZone, fitScale, formatDistance, imageMatrix, imagesInView, panBy, pickLevel, screenToWorld, worldToScreen, zoomAt, type MapView } from "../core/mapview";
 import { toggleWaypoint, waypointFrom, type Waypoint } from "../core/waypoint";
 import type { MapData, Place, StreetInfo } from "./map-data";
+import { drawRoute, drawVehicleBadge } from "./map-glyphs";
 
 /** Carte agrandie (écran de pause, ouvert par un appui sur la minimap) : fond par kilomètre, rues, lieux, joueur et repère. Nord en haut. */
 
 export interface BigMapHooks {
   player(): { x: number; y: number; facing: number };
   waypoint(): Waypoint | null;
+  /** Itinéraire vers le repère (D310) et distance restante par ce trajet (m). */
+  route(): { points: readonly number[] | null; remaining: number | null };
+  /** Dernier véhicule utilisé, quand on n'est pas dessus (D310). */
+  lastVehicle(): { x: number; y: number; kind: string } | null;
   setWaypoint(w: Waypoint | null): void;
   /** Reprendre la partie. */
   resume(): void;
@@ -192,7 +197,8 @@ export class BigMap {
     const pl = this.hooks.player();
     const info = waypointFrom(pl.x, pl.y, wp, 0);
     const text = document.createElement("span");
-    text.textContent = `📍 Repère à ${formatDistance(info.distance)}`;
+    const route = this.hooks.route().remaining;
+    text.textContent = route !== null ? `📍 Repère à ${formatDistance(route)} par l'itinéraire` : `📍 Repère à ${formatDistance(info.distance)}`;
     const remove = document.createElement("button");
     remove.textContent = "Retirer";
     remove.addEventListener("click", () => {
@@ -223,7 +229,7 @@ export class BigMap {
     this.invalidate();
   }
 
-  private invalidate(): void {
+  invalidate(): void {
     this.dirty = true;
     if (!this.raf && this.opened) this.raf = requestAnimationFrame(() => this.frame());
   }
@@ -384,6 +390,15 @@ export class BigMap {
     const rects: Rect[] = [];
     this.drawStreets(rects);
     this.drawPlaces(rects);
+    if (this.hooks.waypoint()) {
+      const pts = this.hooks.route().points;
+      if (pts) drawRoute(ctx, view, pts, 4.5);
+    }
+    const lv = this.hooks.lastVehicle();
+    if (lv) {
+      const [x, y] = worldToScreen(view, lv.x, lv.y);
+      drawVehicleBadge(ctx, x, y, lv.kind, 11);
+    }
     this.drawWaypoint();
     this.drawPlayer();
     this.drawPress();

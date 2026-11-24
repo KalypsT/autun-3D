@@ -14,7 +14,10 @@ import { setDriverCaution } from "../core/driver";
 import * as THREE from "three";
 import { HEAD_HEIGHT, solveCamera } from "../core/camera-rig";
 import { createPlayer, groundPlayer, PLAYER_RADIUS, slidePlayer, stepPlayer, SWIM_FAST, SWIM_SPEED } from "../core/player";
-import { contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, setSurfaceGrip, stepVehicle } from "../core/vehicle";
+import { airborne, contactAngle, FALLEN_LEAN, landWheelie, rampThrottle, setSurfaceGrip, stepVehicle } from "../core/vehicle";
+import { DriftTracker, DRIFT_SHOW, featLabel, JumpTracker, JUMP_SHOW, slipAngle, TimeScale } from "../core/feats";
+import { RecordBook } from "../core/records";
+import { crowdMurmur, footingAt, type Footing } from "../core/footing";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
@@ -172,6 +175,7 @@ export function startGame(ctx: GameContext): void {
     document.getElementById("attack"),
     document.getElementById("jump"),
     document.getElementById("aim"),
+    document.getElementById("sprint"),
   );
   if (params.has("debug")) debugEl.style.display = "block";
 
@@ -232,6 +236,7 @@ export function startGame(ctx: GameContext): void {
     }
     if (changed.includes("volume")) audioSys.setVolume(v.volume);
     if (changed.includes("vibration")) haptics.enabled = v.vibration;
+    if (changed.includes("slowmo")) timeScale.slowmoEnabled = v.slowmo;
     // Calendrier (D194) : une autre durée de saison garde la saison et le jour de la semaine ; figer une saison ne touche pas à la date.
     if (changed.includes("seasonLength") || changed.includes("season")) {
       const old = atmosphere.calendarConfig;
@@ -305,7 +310,52 @@ export function startGame(ctx: GameContext): void {
   /** Roue arrière et roue avant : distance sur une roue, affichée au-dessus du compteur de vitesse. */
   const stunt = new StuntMeter();
   const stuntEl = document.getElementById("stunt");
+  // Sensations (D311) : sauts et dérapages mesurés, ralenti des grands sauts, arrêt sur image des coups ; records (D312), à part de la partie.
+  const records = new RecordBook(spawn.noSave ? null : ctx.storage);
+  stunt.best.wheelie = records.values.wheelie;
+  stunt.best.stoppie = records.values.stoppie;
+  const jumps = new JumpTracker(), drifts = new DriftTracker(), timeScale = new TimeScale();
+  timeScale.slowmoEnabled = ctx.settings!.values.slowmo;
+  const featEl = document.getElementById("feat");
+  let featTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Bandeau d'exploit au centre de l'écran (« Saut 34 m »), quelques secondes. */
+  const showFeat = (text: string): void => {
+    if (!featEl) return;
+    featEl.textContent = text;
+    featEl.classList.remove("show");
+    void featEl.offsetWidth;
+    featEl.classList.add("show");
+    if (featTimer) clearTimeout(featTimer);
+    featTimer = setTimeout(() => featEl.classList.remove("show"), 2600);
+  };
+  /** Temps tenu (s) sans interruption à 3 étoiles ou plus, et à 5 étoiles. */
+  let stars3 = 0, stars5 = 0;
   const speedOf = (): number => (riding ? riding.state.speed : player.speed);
+  /** Exploits du véhicule conduit (D311, D312) : sauts, dérapages (voitures), vitesse maximale, distance. */
+  const trackFeats = (family: string, s: { x: number; y: number; z: number; vx: number; vy: number; vz: number; air: number; heading: number; speed: number }): void => {
+    const fly = airborne(s as Parameters<typeof airborne>[0]);
+    const jump = jumps.update(fly, s.x, s.y, s.z, s.z - s.air, s.vx, s.vy, s.vz, lastDt, lastRealDt);
+    if (jump && jump.distance >= JUMP_SHOW) showFeat(featLabel("jump", jump.distance, records.offer("jump", jump.distance)));
+    if (family === "car") {
+      const drift = drifts.update(slipAngle(s.heading, s.vx, s.vy), Math.abs(s.speed), !fly, lastDt);
+      if (drift && drift.distance >= DRIFT_SHOW) showFeat(featLabel("drift", drift.distance, records.offer("drift", drift.distance)));
+    }
+    records.offer("topSpeed", Math.abs(s.speed));
+    records.add("vehicle", Math.abs(s.speed) * lastDt);
+  };
+  let lastDt = 0, lastRealDt = 0;
+  /** Sol sous les pieds (D313) : relu au plus tous les 1,5 m (les polygones des tuiles chargées). */
+  let footing: Footing = "hard", footingX = Infinity, footingY = Infinity;
+  const footingNow = (): Footing => {
+    if (Math.hypot(player.x - footingX, player.y - footingY) > 1.5) {
+      footingX = player.x;
+      footingY = player.y;
+      footing = player.z - terrain.heightAt(player.x, player.y, player.z) > 0.6 ? "hard" : footingAt(tiles.loadedExtras().map((e) => e.footing ?? []), player.x, player.y);
+    }
+    return footing;
+  };
+  let murmurTimer = 0, murmur = 0;
+  const murmurNear: number[] = [];
   // Navigation et passants (J2) : chargés autour du joueur dès que « Foule » n'est pas sur « Aucune » (ou avec ?nav=1 / ?nav=all pour le recouvrement de contrôle).
   const navParam = params.get("nav");
   const crowdSetting = ctx.settings!.values.crowd;
@@ -405,6 +455,7 @@ export function startGame(ctx: GameContext): void {
   document.getElementById("brake")!.innerHTML = `${icon("brake")}<span>Frein</span>`;
   document.getElementById("handbrake")!.innerHTML = `${icon("handbrake")}<span>Frein<br>à main</span>`;
   document.getElementById("jump")!.innerHTML = icon("jump");
+  document.getElementById("sprint")!.innerHTML = icon("sprint");
   const speedo = new Speedo(document.getElementById("speedo")!);
   // Niveau de recherche (J4, D70) : la police ne voit encore personne (J4-4) ; `?wanted=N` impose un niveau de départ (essais, captures).
   const wanted = new Wanted();
@@ -492,6 +543,8 @@ export function startGame(ctx: GameContext): void {
     s.lean = lean;
     s.fallen = false;
     stunt.end();
+    jumps.reset();
+    drifts.reset();
     rideModel?.setBeacon?.(null);
     beaconOn = false;
     hornEl.classList.remove("on");
@@ -1171,7 +1224,7 @@ export function startGame(ctx: GameContext): void {
       model.setRecipe(r);
       appearanceStore.write(r);
     },
-  });
+  }, () => records.values);
 
   ui.police = police.minimap;
 
@@ -1258,17 +1311,18 @@ export function startGame(ctx: GameContext): void {
       return;
     }
     // Jamais négatif : l'horodatage de la première image peut précéder `last` (initialisation longue) ; un pas négatif faisait grimper la progression de l'arrestation sans gendarme (trouvé en J5-0).
-    const dt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
+    const realDt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     const input = controls.poll();
     audioSys.setPaused(ui.paused);
     if (ui.paused) {
       // Pause : ni simulation ni horloge. Le chargement des tuiles continue, et l'image se rafraîchit à 4 Hz
       // (ou tout de suite quand un réglage change) : rien ne bouge, mais l'aperçu des réglages reste vrai.
-      pausedRender += dt;
+      pausedRender += realDt;
+      records.flush();
       tiles.update(player.x, player.y, 0, 0);
       terrainView.update(player.x, player.y);
-      vista.update(player.x, player.y, camera.position.y, dt);
+      vista.update(player.x, player.y, camera.position.y, realDt);
       if (!ui.coversScreen && (pausedRender > 0.25 || ui.needsRender)) {
         pausedRender = 0;
         ui.needsRender = false;
@@ -1278,6 +1332,11 @@ export function startGame(ctx: GameContext): void {
       schedule();
       return;
     }
+    // Temps du jeu (D311) : ralenti pendant un grand saut, figé un instant quand un coup porte. Tout ce qui suit avance de `dt`.
+    const dt = realDt * timeScale.update(realDt, jumps.slowmo);
+    lastDt = dt;
+    lastRealDt = realDt;
+    records.update(realDt);
     const hornPressed = input.horn && !hornHeld;
     hornHeld = input.horn;
     // Un appui, un saut : il ne compte qu'au premier pas de simulation de l'image.
@@ -1309,6 +1368,7 @@ export function startGame(ctx: GameContext): void {
     if (!canAim) aiming = false;
     if (controls.aiming !== aiming) {
       controls.aiming = aiming;
+      if (aiming) controls.stopSprint();
       document.body.classList.toggle("aiming", aiming);
     }
     // Lunette (D207) : la rotation au doigt est divisée par le grossissement (le réticule bouge à l'écran comme sans lunette).
@@ -1378,7 +1438,7 @@ export function startGame(ctx: GameContext): void {
             player.y = r.y;
           }
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
           jumpNow = false;
         }
       }
@@ -1534,6 +1594,7 @@ export function startGame(ctx: GameContext): void {
       if (res.hits > 0) {
         audio.meleeHit(weapon.id);
         haptics.hit();
+        timeScale.hitStop();
       }
       violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
@@ -1643,6 +1704,7 @@ export function startGame(ctx: GameContext): void {
       leaveMarks(riding);
       model.ride(rideModel, crank);
       stunt.update(riding.state.wheelie, riding.state.speed, dt);
+      trackFeats(riding.family, riding.state);
     } else {
       model.setDown(downFor > 0 ? { t: downTotal - downFor, side: downSide, variant: downVariant, impulse: downAmp } : null);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
@@ -1658,12 +1720,22 @@ export function startGame(ctx: GameContext): void {
       model.group.visible = camDist > 0.9 && scopeB < 0.5;
       if (stepCrossed(lastPhase, model.phase) && (player.swim ? player.speed > 0.2 : player.speed > 0.3)) {
         if (player.swim) audio.stroke();
-        else audio.footstep(player.speed > 3);
+        else audio.footstep(player.speed > 3, footingNow());
       }
       lastPhase = model.phase;
     }
     if (riding) speedo.set(riding.state.speed, riding.spec.topSpeed);
-    if (!riding) stunt.update(0, 0, dt);
+    if (!riding) {
+      stunt.update(0, 0, dt);
+      records.add("foot", player.speed * dt);
+    }
+    records.offer("wheelie", stunt.best.wheelie);
+    records.offer("stoppie", stunt.best.stoppie);
+    // Temps tenu à 3 et 5 étoiles (D312) : sans interruption.
+    stars3 = wanted.stars >= 3 && !health.dead ? stars3 + dt : 0;
+    stars5 = wanted.stars >= 5 && !health.dead ? stars5 + dt : 0;
+    records.offer("stars3", stars3);
+    records.offer("stars5", stars5);
     if (stuntEl) {
       const text = stunt.label();
       if (stuntEl.textContent !== text) stuntEl.textContent = text;
@@ -1803,7 +1875,15 @@ export function startGame(ctx: GameContext): void {
     {
       // Brouhaha du marché : à son plus fort au milieu des étals, éteint à 120 m.
       const [mx, my] = marketCenter(), d = Math.hypot(player.x - mx, player.y - my);
-      audio.crowd = marketLevel(atmosphere.calendar.weekday, atmosphere.hour) * Math.max(0, Math.min(1, (120 - d) / 80));
+      // Passants proches (D313) : un murmure de conversations dans les rues animées, étouffé en voiture ; le plus fort des deux l'emporte.
+      murmurTimer -= dt;
+      if (murmurTimer <= 0) {
+        murmurTimer = 0.5;
+        murmurNear.length = 0;
+        const n = (peds as PedsController | null)?.queryCircle(player.x, player.y, 20, murmurNear) ?? 0;
+        murmur = crowdMurmur(n) * (riding?.family === "car" ? 0.35 : 1);
+      }
+      audio.crowd = Math.max(murmur, marketLevel(atmosphere.calendar.weekday, atmosphere.hour) * Math.max(0, Math.min(1, (120 - d) / 80)));
     }
     audio.update(dt, atmosphere.hour, atmosphere.day, atmosphere.weather);
     if (signals) (signals as Signals).clock.t += dt;
@@ -1838,6 +1918,10 @@ export function startGame(ctx: GameContext): void {
     player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
     /** Captures et mesures : redessine la scène telle quelle. */
     renderOnce: () => renderer.render(scene, camera),
+    /** Captures : bandeau d'exploit, carnet de records, temps du jeu (D311, D312). */
+    showFeat,
+    records,
+    timeScale,
     traffic: () => traffic as Traffic | null,
     police,
     /** Essais et captures : les passants (voir `PedsController`). */

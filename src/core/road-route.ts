@@ -14,7 +14,7 @@ export interface RouteOptions {
 }
 
 /** Tas binaire minimal de (priorité, valeur). */
-class Heap {
+export class Heap {
   private readonly keys: number[] = [];
   private readonly vals: number[] = [];
   get size(): number {

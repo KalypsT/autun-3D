@@ -31,6 +31,8 @@ export interface Settings {
   volume: number;
   /** Vibrations du téléphone aux chocs, tirs et coups reçus (D90). */
   vibration: boolean;
+  /** Ralenti pendant les grands sauts en véhicule (D311). */
+  slowmo: boolean;
   /** Plein écran (et paysage verrouillé) au premier appui sur le jeu. */
   fullscreen: boolean;
   /** Durée d'une saison, en jours de jeu (D194). */
@@ -39,7 +41,7 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, slowmo: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -72,6 +74,7 @@ export function parseSettings(raw: unknown): Settings {
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
     volume: volume === null ? d.volume : roundVolume(volume),
     vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
+    slowmo: typeof o["slowmo"] === "boolean" ? o["slowmo"] : d.slowmo,
     fullscreen: typeof o["fullscreen"] === "boolean" ? o["fullscreen"] : d.fullscreen,
     seasonLength: (SEASON_LENGTHS as readonly unknown[]).includes(o["seasonLength"]) ? (o["seasonLength"] as SeasonLength) : d.seasonLength,
     season: [-1, 0, 1, 2, 3].includes(o["season"] as number) ? (o["season"] as Season | -1) : d.season,

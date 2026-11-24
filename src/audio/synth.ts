@@ -229,10 +229,33 @@ export function bikeBell(kit: Kit, dest: AudioNode, t: number, pitch: number, sp
 
 // --- Personnes ---------------------------------------------------------------------------------------------------------------
 
-/** Pas : petit frottement et coup sourd ; plus fort en courant. */
-export function footstep(kit: Kit, dest: AudioNode, t: number, run: boolean, spot: Spot): void {
+/** Sol sous le pas (D313) : voir `core/footing.ts`. */
+export type FootingSound = "hard" | "sett" | "gravel" | "grass";
+
+/**
+ * Pas : plus fort en courant ; le sol change le bruit (D313). Sol dur : petit frottement et coup sourd. Pavés : talon plus net, un claquement
+ * aigu. Gravier : crissement de grains (quatre petites salves aiguës qui s'étalent). Herbe : froissement doux, presque pas de coup.
+ */
+export function footstep(kit: Kit, dest: AudioNode, t: number, run: boolean, spot: Spot, ground: FootingSound = "hard"): void {
   const out = spotOut(kit, dest, spot);
   const v = (run ? 1 : 0.6) * (0.85 + rnd() * 0.3);
+  if (ground === "gravel") {
+    for (let i = 0; i < 4; i++) burst(kit, out, t + i * (0.018 + rnd() * 0.012), "bandpass", 2600 + rnd() * 2200, 1.4, (0.3 - i * 0.045) * v, 0.003, 0.05 + rnd() * 0.03);
+    tone(kit, out, t, "sine", 85, 55, 0.04, 0.18 * v, 0.003, 0.05);
+    return;
+  }
+  if (ground === "grass") {
+    burst(kit, out, t, "bandpass", 900 + rnd() * 400, 0.7, 0.12 * v, 0.02, 0.09);
+    burst(kit, out, t + 0.02, "highpass", 3000, 0.6, 0.035 * v, 0.01, 0.06);
+    tone(kit, out, t, "sine", 70, 50, 0.04, 0.07 * v, 0.006, 0.05);
+    return;
+  }
+  if (ground === "sett") {
+    burst(kit, out, t, "bandpass", 2800 + rnd() * 900, 2.2, 0.26 * v, 0.002, 0.03);
+    tone(kit, out, t, "triangle", 420 + rnd() * 120, 300, 0.03, 0.08 * v, 0.002, 0.035);
+    tone(kit, out, t, "sine", 105, 65, 0.04, 0.32 * v, 0.002, 0.05);
+    return;
+  }
   burst(kit, out, t, "bandpass", 1500 + rnd() * 900, 0.9, 0.28 * v, 0.004, 0.05);
   tone(kit, out, t, "sine", 95, 60, 0.04, 0.35 * v, 0.003, 0.06);
 }

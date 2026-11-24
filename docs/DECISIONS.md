@@ -7260,3 +7260,103 @@ l'entrée gardée.
 
 **À faire côté DomoThib** : ne donner la durée d'un an qu'aux réponses réussies (200, 304) dans `games.conf`, et `no-store` aux
 erreurs ; sans cela, tout jeu qui lit ses fichiers sans nouvel essai garde ses erreurs un an.
+
+## 2026-11-24 — D309. Plaisir de jeu, lot 1-1 : le sprint
+
+**Contexte** : chantier « plaisir de jeu » (`docs/ROADMAP.md`, PJ). L'utilisateur demande de « pouvoir courir à pied ». La course
+existait (joystick poussé à plus de 85 % : 5 m/s, 18 km/h ; Maj au clavier) mais passait inaperçue : seuil franchi sans le savoir,
+rien à l'écran, et 5 m/s n'est qu'un footing.
+
+**Choix** (validés par l'utilisateur) : un **sprint** en plus de la course, sans jauge d'endurance pour l'instant.
+- `SPRINT_SPEED` = 7 m/s (25 km/h). Bouton rond « ≫ » au-dessus du bouton Sauter, touche F au clavier. Le bouton est **à bascule**
+  (un appui l'allume en ocre) et non à tenir : le pouce droit reste libre pour regarder. Le sprint dure tant qu'on avance ; lâcher
+  le joystick (ou toutes les touches de direction) après avoir sprinté, ou toucher à nouveau le bouton, l'arrête. Un appui sur le
+  bouton avant de poser le pouce gauche est gardé.
+- En sprint, la poussée du joystick ne compte plus : seule la direction (pleine vitesse même à mi-course, plus de seuil à chercher).
+- Pas de sprint en visée (le bouton disparaît, la visée l'arrête), en frappant ou juste après un tir ; à la nage, il vaut le crawl.
+- Saut long depuis un sprint : élan × 1,12 (≈ 7,8 m/s au lieu de 7,4), un peu plus loin qu'en courant.
+- Champ de vision : jusqu'à +8° à 7 m/s (+4° en course, inchangé). Pose : au-delà de 5,4 m/s, foulée (+22 %) et genoux (+18 %)
+  plus amples, bras plus vigoureux, buste plus penché ; la cadence reste celle de `cycleLength` (≈ 4,4 pas/s à 7 m/s).
+
+**Vérifié** : `tools/ui.sh <dossier> sprint` (bouton, pouce gauche à mi-course, 7 m/s mesurés, bouton éteint après le lâcher) ;
+test de `player.test.ts`. **À juger sur le téléphone** : place du bouton, vitesse, pose.
+
+## 2026-11-24 — D310. Plaisir de jeu, lot 1-2 : guidage vers le repère et dernier véhicule
+
+**Contexte** : le repère posé sur la carte (J1) n'était qu'un point, avec une flèche au bord de la minimap et la distance à vol
+d'oiseau. Le guidage par les routes était noté depuis J1 ; l'utilisateur le valide (PJ, phase 1), sur les cartes seulement, sans
+flèches dans le monde.
+
+**Choix**
+- **Itinéraire** (`src/core/guide.ts`, logique pure) : A* d'un point d'arête à un point d'arête, sur le graphe routier en véhicule
+  (arêtes carrossables, sens uniques respectés, comme la circulation) et sur le graphe piéton à pied (trottoirs, passages, chemins,
+  escaliers). En véhicule, partir à l'opposé du cap coûte 80 m (un demi-tour). Le trait va du joueur au graphe, suit le graphe, puis
+  rejoint le repère. Tous les véhicules suivent les routes (vélo et trottinette compris : plus simple, et c'est là qu'on roule vite).
+- **Un graphe complet à part** (`src/game/route-guide.ts`) : le graphe des passants ne couvre que 400 m autour du joueur (D40). Le
+  guidage charge toutes les super-tuiles de navigation (≈ 1,4 Mo, gardées en cache sous `immuable/`) dans un second `NavGraph`, à la
+  première pose d'un repère seulement. Calcul mesuré : 2 à 6 ms en navigateur logiciel, moins de 15 ms en test sur des trajets d'un
+  bout à l'autre de la ville.
+- **Recalcul** : au changement de repère, à la montée ou descente d'un véhicule, ou quand on s'écarte de plus de 25 m du trait (au
+  plus une fois par 1,2 s). Entre deux calculs, on projette seulement le joueur sur la ligne : le trait déjà parcouru disparaît et la
+  distance restante est celle de l'itinéraire. Sous 18 m du repère, plus de trait.
+- **Dessin** (`src/ui/map-glyphs.ts`) : trait brique bordé de crème, comme le repère, sous les autres pictogrammes ; sur la minimap
+  (3 px) et la carte agrandie (4,5 px). La distance affichée au bord de la minimap et la pastille de la carte (« Repère à 1,6 km par
+  l'itinéraire ») sont celles du trajet. Pas d'itinéraire (repère en mer, loin de toute rue) : la flèche et la distance à vol d'oiseau
+  restent.
+- **Dernier véhicule** (D301) : pastille bleu nuit cerclée de crème, une voiture ou un deux-roues dedans, sur la minimap (ramenée au
+  bord quand il est plus loin, cachée à moins de 12 m) et la carte agrandie, tant qu'on n'est pas dessus. C'est la seule exception à
+  « aucun véhicule sur la carte » (D114).
+
+**Vérifié** : `src/core/guide.test.ts` (vraies données : quatre trajets en voiture, deux à pied, demi-tour, progression) ;
+`tools/ui.sh <dossier> guide`. **À juger sur le téléphone** : lisibilité du trait, choix des itinéraires.
+
+## 2026-11-24 — D311. Plaisir de jeu, lot 1-3 : ralenti des grands sauts, arrêt sur image des coups, sauts et dérapages mesurés
+
+**Contexte** : chantier PJ, phase 1. Donner du poids aux actions sans toucher à la physique.
+
+**Choix** (`src/core/feats.ts`, logique pure)
+- **Temps du jeu** (`TimeScale`) : la boucle mesure le temps réel (`realDt`), puis tout ce qui suit (simulation à pas fixe, passants,
+  circulation, horloge, caméra) avance de `dt = realDt × vitesse du temps`. Les sons gardent leur hauteur (pas de son ralenti).
+- **Arrêt sur image** : un coup de mêlée qui porte fige le temps 60 ms (vitesse 0,05). Pas pour les armes à feu (le tir automatique
+  enchaînerait les arrêts).
+- **Ralenti des grands sauts en véhicule** (`JumpTracker`) : pendant le vol, on prévoit la réception (chute libre depuis la hauteur
+  au-dessus du sol, gravité des véhicules 7,4 m/s²). Si le saut prévu fait au moins 15 m et qu'on est à plus de 1,2 m du sol, le temps
+  passe à 0,35 (entrée en un quart de seconde, sortie un peu plus douce), au plus 1,1 s de temps réel par saut. Réglage « Ralenti »
+  (Oui par défaut) dans le menu.
+- **Bandeau d'exploit** au centre, sous le bandeau d'état : « Saut 46 m », « Dérapage 42 m », avec « · record ! » quand un ancien
+  record est battu (D312). Un saut compte à partir de 15 m (décollage à réception, à l'horizontale), un dérapage à partir de 12 m.
+- **Dérapage** (`DriftTracker`, voitures seulement) : angle entre le cap et la vitesse au-delà de 0,3 rad (17°), au-dessus de 8 m/s,
+  roues au sol ; il dure tant que l'angle reste au-delà de 0,16 rad, avec 0,45 s de tolérance (une correction brève ne le coupe pas) ;
+  un tête-à-queue (plus de 110°) ou un décollage le termine. Mesuré en mètres parcourus.
+
+**Vérifié** : `src/core/feats.test.ts` ; `tools/ui.sh <dossier> feats` (voiture lancée à 90 km/h depuis 3 m : temps à 0,35 pendant
+le vol, « Saut 46 m » à la réception, record enregistré). **À juger sur le téléphone** : durée et force du ralenti, arrêt sur image.
+
+## 2026-11-24 — D312. Plaisir de jeu, lot 1-4 : le carnet de records
+
+**Choix** (`src/core/records.ts`)
+- Neuf records : saut le plus long (véhicule), vitesse maximale, roue arrière et roue avant les plus longues, dérapage le plus long,
+  temps tenu sans interruption à 3 étoiles ou plus et à 5 étoiles, distances totales à pied et en véhicule.
+- **Enregistrés à part de la partie** (clé `autun3d.records`, même stockage que la partie : `localStorage`, ou le serveur dans
+  DomoThib) : « Nouvelle partie » ne les efface pas. Écriture au plus toutes les 5 s, et à la pause.
+- « · record ! » ne s'annonce que si un ancien record est battu (le premier exploit n'a rien à battre). La roue arrière et la roue
+  avant (D98) partent des records du carnet.
+- Écran « 🏆 Records » dans le menu pause (entre « Lieux notés » et « Sauvegarde ») ; les boutons du menu passent de 44 à 40 px de haut
+  pour que les huit entrées tiennent sur un téléphone en paysage.
+- Les paramètres d'essai qui coupent la sauvegarde (`?at=`, `?ride=`…) coupent aussi l'écriture du carnet.
+
+## 2026-11-24 — D313. Plaisir de jeu, lot 1-5 : pas selon le sol, murmure des passants
+
+**Choix**
+- **Sol sous les pieds** (`src/core/footing.ts`) : d'après les couches de sol des tuiles (les polygones du rendu) : herbe (pelouses,
+  terrains, fairways, greens et départs du golf), gravier (allées gravillonnées, schiste des terrils, chemin du Vallon, bunkers),
+  pavés (pavés, granit, pavés de béton, brique, ardoise) ; partout ailleurs (enrobé, trottoir, dallage, chaussée), sol dur. Un chemin
+  posé sur une pelouse l'emporte. Relu tous les 1,5 m ; sur un toit ou un pont (plus de 0,6 m au-dessus du relief), sol dur.
+- **Quatre bruits de pas** (`synth.ts`) : sol dur inchangé ; pavés, talon plus net et claquement aigu ; gravier, crissement de quatre
+  grains ; herbe, froissement doux. Page d'écoute `?sounds` : « Pas sur les pavés », « … sur le gravier », « … dans l'herbe ».
+  Niveaux hors ligne (`tools/sounds.sh`) : crête −11 à −15 dB, moyenne −38 à −48 dB (l'herbe la plus discrète).
+- **Murmure des passants** : le brouhaha du marché (D201) sert aussi aux passants proches : nombre de passants à moins de 20 m
+  (relu toutes les 0,5 s), rien jusqu'à 2, plein (0,65) vers 16 ; étouffé en voiture (× 0,35). Le plus fort du marché et des passants
+  l'emporte.
+
+**À juger sur le téléphone** : les quatre pas, le murmure dans le centre un samedi après-midi.

@@ -225,9 +225,10 @@ export class GameAudio {
 
   // --- À pied, armes -----------------------------------------------------------------------------------------------------------
 
-  footstep(run: boolean): void {
+  /** Un pas du joueur ; `ground` : le sol sous le pied (D313). */
+  footstep(run: boolean, ground: S.FootingSound = "hard"): void {
     const kit = this.kit;
-    if (kit) S.footstep(kit, this.sys.buses!.sfx, kit.ctx.currentTime, run, { ...NEAR, gain: 0.55 });
+    if (kit) S.footstep(kit, this.sys.buses!.sfx, kit.ctx.currentTime, run, { ...NEAR, gain: 0.55 }, ground);
   }
 
   /** Entrée dans l'eau profonde (D241) : `k` 0 (on perd pied) à 1 (plongeon). */

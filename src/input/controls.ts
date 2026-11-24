@@ -2,7 +2,8 @@
  * Commandes : à pied, joystick flottant à gauche et regard en glissant à droite ;
  * en véhicule, direction en glissant horizontalement à gauche, pédales Accélérer et Freiner à droite ; sur un deux-roues, le même doigt
  * tiré vers le bas lève la roue avant (roue arrière), poussé vers le haut en freinant lève la roue arrière (roue avant).
- * À pied, bouton Sauter (ou espace). Clavier et souris dans les deux cas.
+ * À pied, bouton Sauter (ou espace) ; bouton Sprint (ou F, PJ 1-1) : un appui lance le sprint, qui dure tant qu'on avance (lâcher le joystick
+ * ou toucher à nouveau le bouton l'arrête) ; le pouce droit reste libre pour regarder. Clavier et souris dans les deux cas.
  * Arme à feu en main (D205) : le bouton Viser (ou V, ou le clic droit) passe en visée et en sort ; en visée, glisser le doigt posé sur le bouton de tir
  * tourne aussi le regard (on tire et on ajuste sans lever le pouce), et toute rotation est réduite par la sensibilité en visée.
  */
@@ -11,6 +12,8 @@ export interface ControlSample {
   forward: number;
   right: number;
   run: boolean;
+  /** Sprint en cours (PJ 1-1) : direction du joystick seule, à pleine vitesse quelle que soit la poussée. */
+  sprint: boolean;
   /** Rotation demandée depuis le dernier appel, en radians (droite = lacet +, bas = tangage +). */
   lookYaw: number;
   lookPitch: number;
@@ -66,6 +69,10 @@ export class Controls {
   private jumpTap = false;
   /** Visée demandée (ou quittée) depuis le dernier appel. */
   private aimTap = false;
+  /** Sprint enclenché (PJ 1-1), et s'il a déjà servi : il s'arrête quand on cesse d'avancer après avoir sprinté. */
+  private sprintOn = false;
+  private sprintMoved = false;
+  private sprintEl: HTMLElement | null = null;
   /** Doigt posé sur le bouton de tir, dont le glissement tourne le regard en visée. */
   private fireDrag: Pointer | null = null;
   /** En visée (le jeu le tient à jour) : le glissement du bouton de tir tourne le regard. */
@@ -92,6 +99,7 @@ export class Controls {
     attack: HTMLElement | null = null,
     jump: HTMLElement | null = null,
     aim: HTMLElement | null = null,
+    sprint: HTMLElement | null = null,
   ) {
     const on = (el: EventTarget, type: string, fn: (e: Event) => void): void => {
       el.addEventListener(type, fn);
@@ -101,6 +109,7 @@ export class Controls {
       const code = (e as KeyboardEvent).code;
       if (code === "Space" && !this.keys.has(code)) this.jumpTap = true;
       if (code === "KeyV" && !this.keys.has(code)) this.aimTap = true;
+      if (code === "KeyF" && !this.keys.has(code)) this.toggleSprint();
       this.keys.add(code);
     });
     on(window, "keyup", (e) => this.keys.delete((e as KeyboardEvent).code));
@@ -110,6 +119,14 @@ export class Controls {
     on(surface, "pointermove", (e) => this.move(e as PointerEvent));
     on(surface, "pointerup", (e) => this.up(e as PointerEvent));
     on(surface, "pointercancel", (e) => this.up(e as PointerEvent));
+    if (sprint) {
+      this.sprintEl = sprint;
+      on(sprint, "pointerdown", (e) => {
+        e.preventDefault();
+        this.toggleSprint();
+      });
+      on(sprint, "contextmenu", (e) => e.preventDefault());
+    }
     for (const [el, kind] of [[gas, "gas"], [brake, "brake"], [handbrake, "handbrake"], [horn, "horn"], [attack, "attack"], [jump, "jump"], [aim, "aim"]] as const) {
       if (!el) continue;
       this.pedalEls.push(el);
@@ -134,6 +151,21 @@ export class Controls {
       on(el, "pointercancel", release);
       on(el, "contextmenu", (e) => e.preventDefault());
     }
+  }
+
+  private toggleSprint(): void {
+    if (this.sprintOn || this.mode !== "foot") this.stopSprint();
+    else {
+      this.sprintOn = true;
+      this.sprintMoved = false;
+      this.sprintEl?.classList.add("on");
+    }
+  }
+
+  /** Arrête le sprint (bouton, joystick lâché, montée en véhicule, visée…). */
+  stopSprint(): void {
+    this.sprintOn = this.sprintMoved = false;
+    this.sprintEl?.classList.remove("on");
   }
 
   /** Glissement du doigt posé sur le bouton de tir : en visée, il tourne le regard comme la moitié droite de l'écran. */
@@ -211,6 +243,8 @@ export class Controls {
       this.stick = null;
       this.stickX = this.stickY = 0;
       this.base.style.display = this.knob.style.display = "none";
+      // Joystick lâché après avoir sprinté : le sprint s'arrête (un appui sur Sprint avant de poser le pouce le garde).
+      if (this.sprintMoved) this.stopSprint();
     }
     this.looks.delete(e.pointerId);
   }
@@ -230,6 +264,7 @@ export class Controls {
     this.jumpTap = false;
     this.aimTap = false;
     this.fireDrag = null;
+    this.stopSprint();
     this.base.style.display = this.knob.style.display = "none";
     for (const el of this.pedalEls) el.classList.remove("on");
   }
@@ -252,6 +287,18 @@ export class Controls {
       forward = kf / l;
       right = kr / l;
       run = k.has("ShiftLeft") || k.has("ShiftRight");
+    }
+    // Sprint (PJ 1-1) : à pleine vitesse dans la direction voulue ; il s'arrête quand on cesse d'avancer après avoir sprinté.
+    let sprint = false;
+    if (this.sprintOn) {
+      const moving = forward !== 0 || right !== 0;
+      if (this.mode !== "foot" || (this.sprintMoved && !moving)) this.stopSprint();
+      else if (moving) {
+        this.sprintMoved = sprint = true;
+        const l = Math.hypot(forward, right);
+        forward /= l;
+        right /= l;
+      }
     }
     // Véhicule : direction au doigt (ou Q/A et D), pédales (ou Z/W/flèche haut, S/flèche bas), frein à main (ou espace).
     let steer = this.stickX, throttle = 0, brake = 0, handbrake = 0, horn = k.has("KeyH"), attack = k.has("KeyJ");
@@ -277,7 +324,7 @@ export class Controls {
     let lift = Math.abs(ly) > LIFT_DEAD ? (Math.sign(ly) * (Math.abs(ly) - LIFT_DEAD)) / (1 - LIFT_DEAD) : 0;
     if (k.has("ShiftLeft") || k.has("ShiftRight")) lift = 1;
     if (k.has("KeyC")) lift = -1;
-    const sample = { forward, right, run, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, lift, horn, attack, jump, aim, looking: this.looked || this.looks.size > 0 };
+    const sample = { forward, right, run, sprint, lookYaw: this.lookYaw, lookPitch: this.lookPitch, steer, throttle, brake, handbrake, lift, horn, attack, jump, aim, looking: this.looked || this.looks.size > 0 };
     this.lookYaw = this.lookPitch = 0;
     this.looked = false;
     return sample;

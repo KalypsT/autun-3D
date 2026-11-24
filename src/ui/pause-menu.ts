@@ -7,6 +7,7 @@ import {
   HEIGHT_RANGE, SEXES, SHOE_COLORS, SHOES, shoeColorChoices, SKIN_TONES, TOPS, topColorChoices, type Recipe,
 } from "../core/character";
 import { SEASON_LENGTHS, SEASON_NAMES } from "../core/calendar";
+import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordValues } from "../core/records";
 import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
@@ -28,12 +29,14 @@ export interface PauseHooks {
   notes(): Promise<{ store: NotesStore; persistent: boolean }>;
   /** Apparence du joueur : lecture, changement (appliqué tout de suite en jeu et enregistré), aperçu dessiné par le moteur du jeu. */
   appearance: { get(): Recipe; set(recipe: Recipe): void; preview: { canvas: HTMLCanvasElement; show(recipe: Recipe): void; rotate(radians: number): void } };
+  /** Carnet de records (D312). */
+  records(): RecordValues;
   build: string;
   /** Dans DomoThib (D305) : le plein écran est le sien, le réglage « Plein écran » n'est pas proposé. */
   embedded?: boolean;
 }
 
-type PanelId = "home" | "settings" | "appearance" | "notes" | "save" | "credits";
+type PanelId = "home" | "settings" | "appearance" | "notes" | "records" | "save" | "credits";
 
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -80,6 +83,7 @@ export class PauseMenu {
     item("👤  Apparence", () => this.show("appearance"), "appearance");
     item("⚙  Réglages", () => this.show("settings"), "settings");
     item("📍  Lieux notés", () => this.show("notes"), "notes");
+    item("🏆  Records", () => this.show("records"), "records");
     item("💾  Sauvegarde", () => this.show("save"), "save");
     item("©  Crédits", () => this.show("credits"), "credits");
     this.content = h("div", "pm-content");
@@ -120,6 +124,7 @@ export class PauseMenu {
     else if (panel === "appearance") this.appearancePanel();
     else if (panel === "notes") void this.notesPanel();
     else if (panel === "credits") this.creditsPanel();
+    else if (panel === "records") this.recordsPanel();
     else this.savePanel();
   }
 
@@ -219,6 +224,7 @@ export class PauseMenu {
     volBox.append(vol, volOut);
     row("Volume", "Sons du jeu : moteurs, ville, armes. Le jeu se tait pendant la pause.", "volume", volBox);
     row("Vibrations", "Le téléphone vibre aux chocs, aux tirs et aux coups reçus.", "vibration", choices("vibration", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.vibration));
+    row("Ralenti", "Le temps ralentit un instant pendant les grands sauts en véhicule.", "slowmo", choices("slowmo", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.slowmo));
     if (!this.hooks.embedded) row("Plein écran", "Le jeu passe en plein écran, en paysage, au premier appui.", "fullscreen", choices("fullscreen", [{ value: true, label: "Oui" }, { value: false, label: "Non" }], values.fullscreen));
     row("Durée d'une saison", "Le jeu a son propre calendrier : une saison dure une ou deux semaines de jeu (20 minutes par jour).", "seasonLength",
       choices("seasonLength", SEASON_LENGTHS.map((v) => ({ value: v, label: v === 7 ? "7 jours" : "14 jours" })), values.seasonLength));
@@ -466,6 +472,21 @@ export class PauseMenu {
   }
 
   // --- Sauvegarde ---------------------------------------------------------------------------------------------------------
+
+  // --- Records -------------------------------------------------------------------------------------------------------------
+
+  /** Carnet de records (D312) : un record par ligne, « — » tant qu'il n'y en a pas. */
+  private recordsPanel(): void {
+    const values = this.hooks.records();
+    const c = this.content;
+    c.append(h("h2", "", "Records"));
+    for (const k of RECORD_KINDS) {
+      const r = h("div", "pm-row");
+      r.append(h("span", "", RECORD_LABELS[k]), h("strong", "pm-record", recordText(k, values[k])));
+      c.append(r);
+    }
+    c.append(h("p", "pm-muted", "Un saut compte à partir de 15 m, un dérapage à partir de 12 m. Les records sont gardés quand tu recommences une partie."));
+  }
 
   // --- Crédits -------------------------------------------------------------------------------------------------------------
 

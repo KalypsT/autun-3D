@@ -16,6 +16,8 @@ import { PauseMenu } from "../ui/pause-menu";
 import type { Controls } from "../input/controls";
 import type { GameContext } from "./context";
 import type { Fleet } from "./vehicles";
+import { RouteGuide } from "./route-guide";
+import { parseRecords, type RecordValues } from "../core/records";
 
 /** Ce que l'interface doit savoir du jeu à un instant donné. */
 export interface GameState {
@@ -50,6 +52,8 @@ export class UiBridge {
   waypoint: Waypoint | null;
   readonly minimap: Minimap;
   readonly marker: WaypointMarker;
+  /** Itinéraire vers le repère (D310). */
+  readonly guide = new RouteGuide();
   private bigmap: BigMap | null = null;
   private readonly menu: PauseMenu;
   private readonly clockEl = document.getElementById("clock")!;
@@ -87,6 +91,7 @@ export class UiBridge {
     private readonly state: () => GameState,
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
+    private readonly records: () => RecordValues = () => parseRecords(null),
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -97,6 +102,7 @@ export class UiBridge {
     this.marker = new WaypointMarker(ctx.world.terrain);
     ctx.scene.add(this.marker.group);
     this.marker.set(this.waypoint);
+    this.guide.onReady = () => this.refreshGuide();
 
     this.menu = new PauseMenu({
       resume: () => this.setPaused(false),
@@ -120,6 +126,7 @@ export class UiBridge {
           return self.previewHandle();
         },
       },
+      records: () => this.records(),
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });
@@ -135,6 +142,8 @@ export class UiBridge {
             return { x: s.x, y: s.y, facing: s.facing };
           },
           waypoint: () => this.waypoint,
+          route: () => ({ points: this.guide.points, remaining: this.guide.remaining }),
+          lastVehicle: () => this.lastVehicle(),
           setWaypoint: (w) => this.setWaypoint(w),
           resume: () => this.setPaused(false),
           menu: () => {
@@ -247,7 +256,27 @@ export class UiBridge {
   setWaypoint(w: Waypoint | null): void {
     this.waypoint = w;
     this.marker.set(w);
+    this.refreshGuide();
     this.save();
+  }
+
+  /** Itinéraire calculé tout de suite (la carte agrandie le montre pendant la pause, où le jeu ne tourne pas). */
+  private refreshGuide(): void {
+    const s = this.state();
+    this.guide.poke();
+    this.guide.update(0, this.waypoint, { x: s.x, y: s.y, vehicleHeading: s.ridingId ? s.facing : null });
+    if (this.bigmap?.isOpen) {
+      this.bigmap.syncChip();
+      this.bigmap.invalidate();
+    }
+  }
+
+  /** Dernier véhicule utilisé (D301), quand on n'est pas dessus : sa place sur la minimap et la carte (D310). */
+  private lastVehicle(): { x: number; y: number; kind: string } | null {
+    const s = this.state();
+    if (s.ridingId || !s.lastId) return null;
+    const v = this.fleet.get(s.lastId);
+    return v ? { x: v.state.x, y: v.state.y, kind: v.family } : null;
   }
 
   // --- Sauvegarde ----------------------------------------------------------------------------------------------------------
@@ -304,6 +333,7 @@ export class UiBridge {
         this.dateEl.textContent = d;
       }
     }
+    this.guide.update(dt, this.waypoint, { x: s.x, y: s.y, vehicleHeading: s.ridingId ? s.facing : null });
     this.miniTimer -= dt;
     if (this.miniTimer <= 0) {
       this.miniTimer = 1 / MINIMAP_HZ;
@@ -311,6 +341,7 @@ export class UiBridge {
         // Aucun véhicule sur la carte (D114) : on cherche une voiture ou un vélo dans la rue ; seule la police en poursuite y figure.
         this.minimap.update({
           x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: [], waypoint: this.waypoint,
+          route: this.guide.points, routeRemaining: this.guide.remaining, lastVehicle: this.lastVehicle(),
           caches: this.caches, garages: this.garages, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
         });
       });

@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -58,6 +58,82 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(1500);
     await shot("j1-hud-voiture");
     await c2.close();
+  }
+
+  if (want("sprint")) {
+    // Sprint (PJ 1-1) : un appui sur le bouton, puis le pouce gauche poussé à moitié : pleine vitesse quand même.
+    const ctx = await open("h=11");
+    await sleep(1500);
+    const b = await page.locator("#sprint").boundingBox();
+    await touch("touchStart", [[b.x + b.width / 2, b.y + b.height / 2]]);
+    await touch("touchEnd", []);
+    await touch("touchStart", [[200, 300]]);
+    await touch("touchMove", [[200, 270]]);
+    await sleep(4000);
+    const speed = await page.evaluate(() => window.__autun.player?.speed ?? null);
+    console.log("vitesse en sprint (m/s) :", speed);
+    await shot("pj1-sprint");
+    await touch("touchEnd", []);
+    await sleep(1500);
+    console.log("bouton après lâcher :", await page.evaluate(() => document.getElementById("sprint").className));
+    await ctx.close();
+  }
+
+  if (want("guide")) {
+    // Guidage (D310) : repère vers la gare ; à pied (trottoirs), puis en voiture (routes, sens uniques), puis la carte agrandie.
+    const routeReady = () => page.waitForFunction(() => window.__autun.ui.guide.points !== null, null, { timeout: 120000 });
+    const ctx = await open("h=11");
+    await page.evaluate(() => window.__autun.ui.setWaypoint({ x: 600, y: -900 }));
+    await routeReady();
+    await sleep(800);
+    console.log("à pied :", await page.evaluate(() => ({ m: Math.round(window.__autun.ui.guide.remaining), ms: window.__autun.ui.guide.lastMs.toFixed(1) })));
+    await shot("pj1-guide-pied");
+    await ctx.close();
+    const c2 = await open("ride=voiture&h=11");
+    await page.evaluate(() => window.__autun.ui.setWaypoint({ x: 600, y: -900 }));
+    await routeReady();
+    await sleep(800);
+    console.log("en voiture :", await page.evaluate(() => ({ m: Math.round(window.__autun.ui.guide.remaining), ms: window.__autun.ui.guide.lastMs.toFixed(1) })));
+    await shot("pj1-guide-voiture");
+    // Descendre (E), s'éloigner un peu : la pastille du dernier véhicule apparaît.
+    await page.keyboard.press("KeyE");
+    await sleep(1500);
+    await page.keyboard.down("KeyS");
+    await sleep(3000);
+    await page.keyboard.up("KeyS");
+    await sleep(800);
+    await shot("pj1-guide-dernier-vehicule");
+    await pauseMap();
+    await sleep(2500);
+    await shot("pj1-guide-carte");
+    await c2.close();
+  }
+
+  if (want("feats")) {
+    // Sensations (D311) : la voiture lancée en l'air à 90 km/h depuis 3 m ; ralenti pendant le vol, bandeau à la réception. Puis le carnet (D312).
+    const ctx = await open("ride=voiture&h=11");
+    await sleep(1500);
+    await page.evaluate(() => {
+      const s = window.__autun.riding().state;
+      s.speed = 25; s.vx = Math.sin(s.heading) * 25; s.vy = Math.cos(s.heading) * 25; s.z += 3; s.air = 3; s.vz = 4;
+    });
+    // Vitesse du temps pendant le vol (rendu logiciel lent : on la relève à chaque image).
+    const minScale = await page.evaluate(() => new Promise((res) => {
+      let min = 1, n = 0;
+      const f = () => { min = Math.min(min, window.__autun.timeScale.current); if (++n < 400 && !document.getElementById("feat").classList.contains("show")) requestAnimationFrame(f); else res(min); };
+      requestAnimationFrame(f);
+    }));
+    console.log("saut :", await page.evaluate(() => ({ text: document.getElementById("feat").textContent, record: window.__autun.records.values.jump })), "temps le plus lent :", minScale);
+    // Le bandeau ne dure que 2,6 s : on le rejoue, animation figée, pour la capture.
+    await page.addStyleTag({ content: "#feat.show { animation: none !important; }" });
+    await page.evaluate(() => window.__autun.showFeat("Saut 46 m · record !"));
+    await sleep(300);
+    await shot("pj1-saut-bandeau");
+    await pauseMenu();
+    await clickText("Records");
+    await sleep(500);
+    await shot("pj1-records");
+    await ctx.close();
   }
 
   if (want("wanted")) {

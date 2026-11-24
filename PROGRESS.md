@@ -2196,3 +2196,38 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les journaux du VPS l'ont montré : le serveur ne recevait même plus la demande de l'image. Une erreur du premier lancement avait été gardée par le navigateur pour un an (l'hôte des jeux marque tout ce qui est sous `immuable/` comme gardable un an, erreurs comprises).
 - Le jeu, quand un fichier échoue, le redemande maintenant au serveur au lieu de relire le cache : l'erreur gardée disparaît d'elle-même au prochain lancement.
 - À faire de ton côté : déployer, relancer depuis DomoThib. Côté DomoThib, l'hôte ne devrait garder un an que les réponses réussies (correction à faire dans `games.conf`).
+
+**Plaisir de jeu, lot 1-1 : le sprint (24 novembre 2026)** (D309)
+- La course existait déjà (joystick poussé presque à fond, Maj au clavier), mais elle se remarquait peu. Il y a maintenant un vrai **sprint** à 25 km/h : bouton rond « ≫ » au-dessus du bouton Sauter, ou F au clavier.
+- Un appui l'allume (il devient ocre) : on sprinte dans la direction du joystick, même poussé à moitié, et le pouce droit reste libre pour regarder. Lâcher le joystick, ou toucher à nouveau le bouton, l'arrête.
+- En sprint, la caméra s'élargit un peu, le personnage allonge la foulée et se penche ; un saut depuis un sprint porte un peu plus loin.
+- Pas de jauge d'endurance pour l'instant (à voir plus tard).
+- À faire de ton côté : sprinter dans le centre et dire si le bouton est bien placé, si la vitesse te plaît.
+![Sprint](docs/captures/d309-sprint.jpg)
+
+**Plaisir de jeu, lot 1-2 : guidage vers le repère et dernier véhicule (24 novembre 2026)** (D310)
+- Quand tu poses un repère sur la carte, un **trait brique** te montre le chemin sur la minimap et sur la carte agrandie : par les rues en véhicule (sens uniques respectés), par les trottoirs et les chemins à pied.
+- La distance affichée est celle du trajet, plus celle à vol d'oiseau. Si tu t'écartes du trait, il se recalcule ; il se recalcule aussi quand tu montes dans un véhicule ou que tu en descends.
+- Ton **dernier véhicule** apparaît sur la minimap (une pastille bleu nuit, sur le bord s'il est loin) et sur la carte agrandie : plus besoin de chercher où tu l'as laissé.
+- À faire de ton côté : poser un repère loin, y aller à pied puis en voiture, et dire si les chemins proposés sont bons.
+![À pied](docs/captures/d310-guide-pied.jpg)
+![En voiture](docs/captures/d310-guide-voiture.jpg)
+![Carte agrandie](docs/captures/d310-guide-carte.jpg)
+
+**Plaisir de jeu, lot 1-3 : sensations (24 novembre 2026)** (D311)
+- **Grands sauts en véhicule** : quand un saut s'annonce long (15 m et plus), le temps ralentit pendant le vol, puis un bandeau s'affiche à la réception : « Saut 46 m ». Le ralenti se coupe dans les réglages (« Ralenti »).
+- **Coups qui portent** : le temps se fige une fraction de seconde quand un coup de poing, de couteau ou de batte touche. Ça donne du poids aux coups.
+- **Dérapages** en voiture (frein à main) : mesurés en mètres, avec un bandeau « Dérapage 42 m » à partir de 12 m.
+- À faire de ton côté : sauter depuis les lacets des terrils ou une rampe de parking, faire déraper une voiture, et dire si le ralenti est trop long ou trop fort.
+![Saut](docs/captures/d311-saut.jpg)
+
+**Plaisir de jeu, lot 1-4 : carnet de records (24 novembre 2026)** (D312)
+- Nouvel écran **🏆 Records** dans le menu pause : saut le plus long, vitesse maximale, roue arrière, roue avant, dérapage, temps tenu à 3 et à 5 étoiles, distances à pied et en véhicule.
+- Les records sont gardés quand tu recommences une partie ; dans DomoThib, ils suivent ton compte comme ta partie.
+- Quand tu bats un record, le bandeau l'annonce : « · record ! ».
+![Records](docs/captures/d312-records.jpg)
+
+**Plaisir de jeu, lot 1-5 : sons des pas et des passants (24 novembre 2026)** (D313)
+- Les pas changent avec le sol : crissement sur le gravier et le schiste des terrils, froissement dans l'herbe, claquement sur les pavés, bruit habituel sur l'enrobé et les trottoirs.
+- Dans une rue animée, on entend maintenant le murmure des passants (comme au marché), plus discret en voiture.
+- À faire de ton côté : te promener avec le son (place du Champ de Mars, chemin du Vallon, pelouses, terrils) et dire ce que tu en penses. La page `?sounds` permet d'écouter chaque pas.

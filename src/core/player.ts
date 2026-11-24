@@ -51,6 +51,8 @@ export interface MoveInput {
   right: number;
   /** Course : vitesse maximale au lieu de la marche. */
   run: boolean;
+  /** Sprint (PJ 1-1) : plus vite encore que la course. */
+  sprint?: boolean;
   /** Bouton de saut pressé à ce pas (pas tenu : un appui, un saut). */
   jump?: boolean;
   /** En visée (D205) : le corps reste tourné vers ce cap (rad) au lieu de suivre la marche ; on se déplace en pas de côté et à reculons. */
@@ -60,6 +62,8 @@ export interface MoveInput {
 export const PLAYER_RADIUS = 0.35;
 export const WALK_SPEED = 2.0;
 export const RUN_SPEED = 5.0;
+/** Sprint (PJ 1-1, bouton dédié) : un vrai sprint, 25 km/h, contre 18 km/h pour la course au joystick. */
+export const SPRINT_SPEED = 7.0;
 const ACCEL = 14;
 const FRICTION = 16;
 const TURN_RATE = 12;
@@ -144,7 +148,8 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
   const dirX = input.forward * sin + input.right * cos;
   const dirY = input.forward * cos - input.right * sin;
   const len = Math.hypot(dirX, dirY);
-  const top = p.swim ? (input.run ? SWIM_FAST : SWIM_SPEED) : input.run ? RUN_SPEED : WALK_SPEED;
+  const fast = input.run || !!input.sprint;
+  const top = p.swim ? (fast ? SWIM_FAST : SWIM_SPEED) : input.sprint ? SPRINT_SPEED : input.run ? RUN_SPEED : WALK_SPEED;
   // En l'air, on infléchit sa course sans perdre l'élan d'un saut long (D218).
   const targetSpeed = p.air ? Math.max(mag * top, Math.hypot(p.vx, p.vy)) : mag * top;
   const tx = len > 1e-6 ? (dirX / len) * targetSpeed : 0;
@@ -170,11 +175,12 @@ export function stepPlayer(p: PlayerState, input: MoveInput, camYaw: number, dt:
     p.air = true;
     p.vz = JUMP_SPEED;
     p.peak = p.z;
-    // Saut long (D218) : en pleine course, l'élan porte plus loin (même hauteur : on ne franchit rien de plus haut qu'avant).
+    // Saut long (D218) : en pleine course, l'élan porte plus loin (même hauteur : on ne franchit rien de plus haut qu'avant) ; en sprint, un peu plus encore.
     const v = Math.hypot(p.vx, p.vy);
-    if (input.run && v >= LONG_JUMP_FROM * RUN_SPEED) {
-      p.vx *= LONG_JUMP_SPEED / v;
-      p.vy *= LONG_JUMP_SPEED / v;
+    if (fast && v >= LONG_JUMP_FROM * RUN_SPEED) {
+      const boost = Math.max(LONG_JUMP_SPEED, v * 1.12);
+      p.vx *= boost / v;
+      p.vy *= boost / v;
     }
   }
   let z = p.z;

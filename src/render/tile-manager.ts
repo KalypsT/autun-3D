@@ -1,3 +1,4 @@
+import { footingPolys, type FootingPoly } from "../core/footing";
 import type { SeatDef } from "../core/seats";
 import * as THREE from "three";
 import type { Colliders } from "../core/collision";
@@ -54,6 +55,8 @@ export interface TileExtras {
   sail?: SailRoute[];
   /** Golf municipal (D289 à D291) : le site, pour les golfeurs. */
   golf?: GolfSite | undefined;
+  /** Sols qui changent le bruit des pas (D313) : herbe, gravier, pavés. */
+  footing?: FootingPoly[];
 }
 
 interface Entry {
@@ -240,7 +243,7 @@ export class TileManager {
     this.group.add(meshes.group);
     if (this.colliders) addTileColliders(this.colliders, data, e.info.id, this.terrain);
     e.extras = { id: e.info.id, buildings: data.buildings.length, furniture: data.furniture, stairs: data.stairs ?? [], marks: data.ground?.["marks"] ?? [], water: data.structures?.water ?? [], sail: data.structures?.sail ?? [],
-      golf: data.kinds?.sites.find((q): q is GolfSite => q.t === "golf") };
+      golf: data.kinds?.sites.find((q): q is GolfSite => q.t === "golf"), footing: footingPolys(data.ground) };
     this.onBuild?.(e.extras);
     this.buildCount++;
     this.show(e);

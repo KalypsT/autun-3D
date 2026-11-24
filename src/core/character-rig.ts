@@ -118,6 +118,8 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   const a = pose.angles;
   const w = clamp(speed / 1.4, 0, 1);
   const r = clamp((speed - 2.4) / 3, 0, 1);
+  // Sprint (PJ 1-1) : au-delà de la course, foulée plus ample, genoux plus hauts, bras plus vigoureux, buste plus penché.
+  const sp = clamp((speed - 5.4) / 1.6, 0, 1);
   a.fill(0);
   const uL = phase / (2 * Math.PI) - 0.25;
   const mix = (walk: Keys, run: Keys, u: number): number => w * ((1 - r) * cyclic(walk, u) + r * cyclic(run, u));
@@ -132,8 +134,8 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
 
   const legLen = d.thigh + d.shin;
   for (const [thigh, shin, foot, u] of [[BONE.thighL, BONE.shinL, BONE.footL, uL], [BONE.thighR, BONE.shinR, BONE.footR, uL + 0.5]] as const) {
-    const hip = mix(HIP_WALK, HIP_RUN, u);
-    const knee = clamp(mix(KNEE_WALK, KNEE_RUN, u), 0, 2.2);
+    const hip = mix(HIP_WALK, HIP_RUN, u) * (1 + 0.22 * sp);
+    const knee = clamp(mix(KNEE_WALK, KNEE_RUN, u) * (1 + 0.18 * sp), 0, 2.3);
     a[thigh * 3] = hip;
     // La jambe reste d'aplomb malgré la bascule et le déport du bassin : le pied d'appui ne glisse pas de côté.
     a[thigh * 3 + 2] = -roll - shift / legLen;
@@ -144,7 +146,7 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   pose.rootDy = -ankle - legLen;
 
   // Bras : en opposition aux jambes, avec un léger retard ; coude plié, davantage quand le bras passe devant ; en courant, coudes à angle droit.
-  const armSwing = 0.4 * w + 0.45 * r;
+  const armSwing = 0.4 * w + 0.45 * r + 0.25 * sp;
   for (const [arm, fore, side, s] of [[BONE.armL, BONE.forearmL, -1, Math.sin(phase - 0.2)], [BONE.armR, BONE.forearmR, 1, -Math.sin(phase - 0.2)]] as const) {
     const swing = -armSwing * s + 0.04 + 0.12 * r;
     a[arm * 3] = swing;
@@ -153,7 +155,7 @@ export function walkPose(pose: Pose, phase: number, speed: number, d: BodyDims):
   }
 
   // Buste penché (plus en courant, voûté chez les seniors), torsion inverse du bassin, bascule compensée ; la tête regarde droit devant.
-  const stoop = d.stoop + 0.04 * w + 0.14 * r;
+  const stoop = d.stoop + 0.04 * w + 0.14 * r + 0.08 * sp;
   a[BONE.torso * 3] = -stoop;
   a[BONE.torso * 3 + 1] = (0.11 + 0.05 * r) * w * Math.sin(phase);
   a[BONE.torso * 3 + 2] = -0.8 * roll;
