@@ -8152,5 +8152,8 @@ courant), la prime, et la fréquence quand les autres événements seront là.
 - La police n'emmène pas la voiture du fugitif : elle repart vide avec la circulation, et disparaît hors de vue.
 - Pas encore de barrage, ni d'hélicoptère, ni de poursuite qui croise une autre (une seule poursuite à la fois, comme les autres grands
   événements).
+- **Pas de capture parlante** : le rendu logiciel des captures est trop lent pour une course à 15 m/s (deux essais : la voiture du fugitif
+  est déjà loin quand l'image part, la gendarmerie hors du cadre). Le scénario `poursuite` reste dans `tools/ui-shots.cjs` ; c'est à voir
+  sur le téléphone (`?event=poursuite&h=21`).
 
 **À juger en jouant** : la durée des poursuites, la prime (500 €), le nombre de gendarmeries.

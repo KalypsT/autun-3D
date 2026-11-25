@@ -2397,3 +2397,4 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : dire si les accidents sont trop rares ou trop fréquents, si la police n'arrête pas le fugitif trop vite (mesuré : 5 arrestations sur 7, en 45 à 70 s), si 500 € te va.
 ![Accident : la dispute](docs/captures/pj4-accident.jpg)
 ![Accident : le constat](docs/captures/pj4-accident-constat.jpg)
+- Pas de capture de la poursuite : le rendu des captures est trop lent pour une voiture à 50 km/h (elle est déjà sortie du cadre). À voir sur le téléphone avec `?event=poursuite&h=21`.
