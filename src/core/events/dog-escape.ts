@@ -27,6 +27,8 @@ export const DOG_ESCAPE = {
   /** On l'attrape à pied, au pas (moins de … m/s), à moins de … m. */
   catchReach: 1.7,
   catchSpeed: 2.2,
+  /** Quelqu'un qui approche au pas à moins de … m : il s'arrête, curieux, et renifle. */
+  curious: 4,
   /** Le maître court (m/s) puis marche après … s ; il appelle son chien toutes les … s ; il abandonne au bout de … s. */
   ownerRun: 3.1,
   ownerWalk: 1.5,
@@ -192,6 +194,9 @@ export class DogEscapeEvent implements GameEvent {
       this.sniffT = 0;
       if (this.rng.next() < 0.5) this.fx.bark(d.x, d.y);
     }
+    // Quelqu'un qui approche lentement l'intrigue : il s'arrête et renifle tant qu'on vient vers lui au pas (on peut alors l'attraper).
+    const calm = p.onFoot && p.speed < DOG_ESCAPE.catchSpeed && Math.hypot(d.x - p.x, d.y - p.y) < DOG_ESCAPE.curious;
+    if (calm && !spook && this.runT <= 0.2) this.sniffT = Math.max(this.sniffT, 0.8);
     if (this.sniffT > 0) {
       this.sniffT -= dt;
       runDog(d, d.x, d.y, 0, dt, true);
