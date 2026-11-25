@@ -2406,6 +2406,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Garée sur une scène, une voiture de police ou de pompiers garde ses gyrophares mais **coupe sa sirène**.
 - Pour essayer tout de suite : `?event=malaise` et `?event=rixe&h=21` (avec la circulation allumée).
 - À faire de ton côté : écouter la sirène des pompiers (page `?sounds`), dire si les pompiers arrivent assez vite (environ 1 min 10), si la rixe se remarque assez, si les coups reçus (8 points de vie) sont trop forts.
+- Honnêtement : dans la capture, le fourgon des pompiers n'est pas arrivé à temps (coincé dans la circulation, il ne double pas), et le malade s'est relevé seul au bout de 2 minutes ; dans les essais, c'est une fois sur trois. Dis-moi si tu le vois souvent : je le ferai naître plus près.
 ![Malaise : un passant s'est effondré, une passante se penche sur lui](docs/captures/pj4-malaise.jpg)
 ![Le bouton « Aider »](docs/captures/pj4-malaise-aider.jpg)
 ![Rixe devant une terrasse, le soir](docs/captures/pj4-rixe.jpg)

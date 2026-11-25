@@ -8206,7 +8206,10 @@ par l'utilisateur sur ses captures, retrouvée sur la carte du jeu (bâtiment au
   des gyrophares : +0 ou +1) ; les pompiers sont des passants (0).
 
 **Limites, honnêtement**
-- Le fourgon ne double pas : coincé dans un bouchon, il arrive tard, ou pas (le malade se relève seul).
+- Le fourgon ne double pas : coincé dans un bouchon, il arrive tard, ou pas (le malade se relève seul). C'est arrivé aussi dans la capture
+  (`tools/ui.sh <dossier> malaise`, au Champ de Mars) : pas de fourgon au bout de 2 min, le malade s'est relevé seul ; pas de capture des
+  pompiers, donc. Une graine sur trois dans les essais, une fois sur une dans le jeu : **à surveiller en jouant** ; piste si ça se confirme, le
+  faire naître plus près (dans la couronne autour de la scène plutôt que du côté de la caserne) et le laisser doubler.
 - Le malade couché reste pour la simulation un passant « debout » : les autres le contournent mal, une voiture ne le voit pas comme un corps.
 - Le joueur à genoux garde ses commandes : il peut tourner la caméra ; bouger arrête l'aide.
 
