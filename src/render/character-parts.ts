@@ -321,6 +321,35 @@ const SHAPES: Record<string, Shape> = {
       box(0.03, 0.1, 0.03, 0, y - 0.64, -0.025, [0.12, 0.12, 0.14]),
     ]);
   },
+  // Pistolet-mitrailleur (D325) : court, chargeur droit sous la poignée.
+  weaponSmg: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.045, 0.16, 0.06, 0, y + 0.12, 0.02, [0.16, 0.16, 0.18]),
+      box(0.055, 0.26, 0.08, 0, y - 0.07, -0.01, [0.2, 0.21, 0.23]),
+      box(0.03, 0.14, 0.032, 0, y - 0.27, -0.025, [0.12, 0.12, 0.14]),
+      box(0.035, 0.05, 0.16, 0, y - 0.05, 0.1, [0.1, 0.1, 0.12]),
+    ]);
+  },
+  // Mitrailleuse (D325) : gros corps, canon épais avec bipied replié, boîte de bande sur le côté.
+  weaponLmg: () => {
+    const y = -R.forearm - 0.045;
+    return merge([
+      box(0.06, 0.3, 0.085, 0, y + 0.25, 0.02, [0.22, 0.24, 0.18]),
+      box(0.08, 0.36, 0.11, 0, y - 0.08, -0.01, [0.17, 0.18, 0.16]),
+      box(0.045, 0.5, 0.045, 0, y - 0.5, -0.025, [0.24, 0.25, 0.27]),
+      box(0.03, 0.22, 0.03, 0, y - 0.62, 0.03, [0.12, 0.12, 0.14]),
+      box(0.1, 0.12, 0.1, 0.06, y - 0.02, 0.08, [0.3, 0.32, 0.22]),
+    ]);
+  },
+  // Grenade (D326) : tenue dans la main, corps vert olive et cuillère sombre.
+  weaponGrenade: () => {
+    const y = -R.forearm - 0.06;
+    return merge([
+      box(0.075, 0.1, 0.075, 0, y, 0.01, [0.3, 0.38, 0.18]),
+      box(0.025, 0.08, 0.035, 0.03, y + 0.03, 0.01, [0.15, 0.15, 0.17]),
+    ]);
+  },
   // Fusil de précision (D207) : crosse en bois, long canon fin, lunette sur le dessus.
   weaponSniper: () => {
     const y = -R.forearm - 0.045;

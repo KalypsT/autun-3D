@@ -66,3 +66,40 @@ export function openingTable(weekday: number, hour: number, out: number[] = new 
   for (let i = 0; i < SCHEDULES.length; i++) out[i] = isOpen(i, weekday, hour) ? 1 : 0;
   return out;
 }
+
+const DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"] as const;
+
+/** Heure lisible : « 9 h 30 », « 19 h », « minuit ». */
+export function hourText(h: number): string {
+  const t = ((h % 24) + 24) % 24, m = Math.round((t % 1) * 60), hh = Math.floor(t) + (m === 60 ? 1 : 0);
+  if (hh % 24 === 0 && (m === 0 || m === 60)) return "minuit";
+  return m === 0 || m === 60 ? `${hh} h` : `${hh} h ${String(m).padStart(2, "0")}`;
+}
+
+/** Prochaine ouverture après (jour, heure) dans la semaine qui vient : jours à attendre (0 aujourd'hui) et heure ; null si jamais ouvert. */
+export function nextOpening(schedule: ScheduleId, weekday: number, hour: number): { days: number; hour: number } | null {
+  const week = WEEKS[schedule] ?? WEEKS[S["boutique"]]!;
+  const w = ((weekday % 7) + 7) % 7;
+  for (let d = 0; d < 8; d++) {
+    const starts = week[(w + d) % 7]!.map(([a]) => a).filter((a) => d > 0 || a > hour).sort((a, b) => a - b);
+    if (starts.length) return { days: d, hour: starts[0]! };
+  }
+  return null;
+}
+
+/** « ouvre à 9 h 30 », « ouvre demain à 7 h », « ouvre mardi à 9 h » ; « ne rouvre pas » si l'horaire est toujours fermé. */
+export function openingText(schedule: ScheduleId, weekday: number, hour: number): string {
+  const n = nextOpening(schedule, weekday, hour);
+  if (!n) return "ne rouvre pas";
+  const when = n.days === 0 ? "" : n.days === 1 ? "demain " : `${DAY_NAMES[(((weekday + n.days) % 7) + 7) % 7]} `;
+  return `ouvre ${when}à ${hourText(n.hour)}`;
+}
+
+/** Heure de fermeture de la plage en cours (pour « ouvert jusqu'à 19 h 30 ») ; null si fermé. */
+export function closingHour(schedule: ScheduleId, weekday: number, hour: number): number | null {
+  const week = WEEKS[schedule] ?? WEEKS[S["boutique"]]!;
+  const w = ((weekday % 7) + 7) % 7, h = ((hour % 24) + 24) % 24;
+  for (const [a, b] of week[w]!) if (h >= a && h < b) return b;
+  for (const [, b] of week[(w + 6) % 7]!) if (b > 24 && h < b - 24) return b - 24;
+  return null;
+}

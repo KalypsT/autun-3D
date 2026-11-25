@@ -146,6 +146,8 @@ export const SCENES: readonly SoundScene[] = [
     S.pump(k, o, t + 0.35, { ...NEAR, gain: 0.5 });
   }),
   shot("rifle", "Armes", "Fusil d'assaut (rafale)", 2, (k, o, t) => S.gunshot(k, o, t, "rifle", { ...NEAR, gain: 0.85, echo: 0.45 }), 10, 0.1),
+  shot("smg", "Armes", "Pistolet-mitrailleur (rafale)", 2, (k, o, t) => S.gunshot(k, o, t, "smg", { ...NEAR, gain: 0.85, echo: 0.45 }), 12, 0.07),
+  shot("lmg", "Armes", "Mitrailleuse (rafale)", 2.5, (k, o, t) => S.gunshot(k, o, t, "lmg", { ...NEAR, gain: 0.85, echo: 0.5 }), 14, 0.09),
   shot("sniper", "Armes", "Fusil de précision (culasse)", 2.5, (k, o, t) => {
     S.gunshot(k, o, t, "sniper", { ...NEAR, gain: 0.85, echo: 0.8 });
     S.reload(k, o, t + 0.55, true, { ...NEAR, gain: 0.5 });

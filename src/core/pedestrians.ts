@@ -248,6 +248,11 @@ export class PedSim {
   /** Événements depuis le dernier `clearEvents` et effet sur le joueur au dernier pas. */
   readonly events: PedEvent[] = [];
   readonly impact: PedImpact = { slow: 0, speed: 0, hits: 0, bump: 0, kills: 0 };
+  /**
+   * Passants mis à terre par le joueur (D317) : renversés par son véhicule, ou frappés, touchés, soufflés au point de tomber ou de mourir.
+   * Un passant n'y figure qu'une fois dans sa vie (il ne lâche qu'un portefeuille) ; le jeu les lit et vide la liste (`takeFelled`).
+   */
+  readonly felled: { x: number; y: number }[] = [];
   /** Feux de circulation (J3-3) : aux passages à feux, les passants attendent le rouge des voitures. Null : ils ne regardent que les véhicules. */
   signals: Signals | null = null;
   /** Appelé quand un emplacement reçoit un nouveau passant (le rendu l'habille). */
@@ -282,6 +287,8 @@ export class PedSim {
   private readonly acc: Float32Array;
   /** Points de vie (J5). */
   private readonly hp: Float32Array;
+  /** Déjà mis à terre par le joueur une fois (D317). */
+  private readonly looted: Uint8Array;
   /** Cadavre : secondes depuis la mort, et temps d'enfoncement (0 : pas encore). */
   private readonly age: Float32Array;
   private readonly sink: Float32Array;
@@ -367,7 +374,7 @@ export class PedSim {
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
     this.dir = new Int8Array(n); this.s = new Float32Array(n); this.lat = new Float32Array(n); this.latTarget = new Float32Array(n);
     this.ox = new Float32Array(n); this.oy = new Float32Array(n); this.mode = new Uint8Array(n); this.timer = new Float32Array(n);
-    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.hp = new Float32Array(n).fill(PED_HP); this.age = new Float32Array(n); this.sink = new Float32Array(n); this.fleeDir = new Float32Array(n).fill(NaN); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
+    this.fear = new Float32Array(n); this.panic = new Float32Array(n); this.acc = new Float32Array(n); this.hp = new Float32Array(n).fill(PED_HP); this.looted = new Uint8Array(n); this.age = new Float32Array(n); this.sink = new Float32Array(n); this.fleeDir = new Float32Array(n).fill(NaN); this.rng = new Uint32Array(n); this.id = new Uint32Array(n);
     this.tier = new Uint8Array(n); this.link = new Int32Array(n).fill(-1);
   }
 
@@ -656,6 +663,7 @@ export class PedSim {
     this.panic[i] = 0;
     this.acc[i] = 0;
     this.hp[i] = PED_HP;
+    this.looted[i] = 0;
     this.age[i] = this.sink[i] = 0;
     this.fleeDir[i] = NaN;
     this.trait[i] = 0;
@@ -892,6 +900,19 @@ export class PedSim {
     if (this.events.length < 256) this.events.push({ kind, slot: i, x: this.x[i]!, y: this.y[i]!, speed });
   }
 
+  /** Le passant `i` vient d'être mis à terre par le joueur : noté une fois dans sa vie (64 non lus au plus). */
+  private fell(i: number): void {
+    if (this.looted[i] || this.felled.length >= 64) return;
+    this.looted[i] = 1;
+    this.felled.push({ x: this.x[i]!, y: this.y[i]! });
+  }
+
+  /** Les passants mis à terre depuis le dernier appel (D317), ajoutés à `out` ; la liste est vidée. */
+  takeFelled(out: { x: number; y: number }[]): void {
+    for (const f of this.felled) out.push(f);
+    this.felled.length = 0;
+  }
+
   /** Vide la liste d'événements (celui qui les lit s'en charge ; au-delà de 256 non lus, les nouveaux sont perdus). */
   clearEvents(): void {
     this.events.length = 0;
@@ -965,6 +986,8 @@ export class PedSim {
       this.knock(i, hard ? HIT_POSE.down : HIT_POSE.stumble, ux * 0.8 + ax * 0.6, uy * 0.8 + ay * 0.6, hard ? Math.min(9, 0.7 * speed + 1.5) : 1.2 + 0.4 * speed);
       // Un véhicule qui renverse blesse (J5-2, D80) : (vitesse − 3,5) × 9,6 points de vie, la mort vers 50 km/h ; en dessous, un simple trébuchement.
       if (hard) {
+        // Seul le véhicule du joueur compte pour les portefeuilles (D317) : la circulation passe par ici avec son propre `imp`.
+        if (imp === this.impact) this.fell(i);
         this.hp[i]! -= (speed - KNOCK_SPEED) * VEHICLE_DAMAGE;
         if (this.hp[i]! <= 0) {
           this.kill(i);
@@ -1688,7 +1711,10 @@ export class PedSim {
     if (this.mode[i] === PED_STATE.down) {
       // Coup de grâce sur un passant à terre : des points de vie en moins, pas de nouvelle chute ; il fuira en se relevant.
       this.event("hurt", i, 0);
-      if (dead) this.kill(i);
+      if (dead) {
+        this.kill(i);
+        this.fell(i);
+      }
       else this.wound(i, ux, uy);
       return dead ? 2 : 1;
     }
@@ -1696,6 +1722,7 @@ export class PedSim {
     const len = Math.hypot(ux, uy) || 1;
     this.knock(i, v >= KNOCK_SPEED ? HIT_POSE.down : HIT_POSE.stumble, ux / len, uy / len, v);
     this.event("hurt", i, v);
+    if (dead || v >= KNOCK_SPEED) this.fell(i);
     if (dead) this.kill(i);
     else this.wound(i, ux, uy);
     return dead ? 2 : 1;

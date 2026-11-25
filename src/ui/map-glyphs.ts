@@ -7,6 +7,7 @@ const ROUTE = "#d9472b";
 const INK = "#1b1f27";
 /** Pastille du dernier véhicule : bleu nuit, comme la flèche du joueur. */
 const VEHICLE = "#1f4a63";
+const OCHRE = "#f1b24a";
 
 /**
  * Trait de l'itinéraire : brique bordé de crème, comme le repère. `width` : épaisseur du trait (px CSS). Les segments loin de la vue
@@ -88,6 +89,39 @@ export function drawVehicleBadge(ctx: CanvasRenderingContext2D, x: number, y: nu
     ctx.moveTo(x + 1 * k, y - 2.8 * k);
     ctx.lineTo(x + 2.6 * k, y + 1.2 * k);
     ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Monument de la chasse (D320) en (x, y), rayon `r` (px) : disque gris et « ? » crème tant qu'il n'est pas découvert, disque ocre et
+ * coche encre une fois trouvé.
+ */
+export function drawHuntPin(ctx: CanvasRenderingContext2D, x: number, y: number, found: boolean, r: number): void {
+  ctx.save();
+  ctx.fillStyle = found ? OCHRE : "#7d838b";
+  ctx.strokeStyle = found ? INK : CREAM;
+  ctx.lineWidth = Math.max(1.3, r * 0.2);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  if (found) {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(1.6, r * 0.28);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.45, y + r * 0.02);
+    ctx.lineTo(x - r * 0.1, y + r * 0.38);
+    ctx.lineTo(x + r * 0.48, y - r * 0.36);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = CREAM;
+    ctx.font = `900 ${Math.round(r * 1.4)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("?", x, y + r * 0.08);
   }
   ctx.restore();
 }

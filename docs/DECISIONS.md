@@ -7580,3 +7580,342 @@ inchangée.
 ![La nuit](captures/d316-nuit.jpg)
 ![Orage : crêtes blanches](captures/d316-orage.jpg)
 ![Réglages : « Effets d'image », « Ciel animé », « Mer animée »](captures/d316-reglages.jpg)
+
+## 2026-11-24 — D317. Plaisir de jeu, phase 3, lot 1 : l'argent (porte-monnaie, sauvegarde, mort et arrestation, portefeuilles, garages)
+
+**Contexte** : phase 3 du chantier PJ, l'argent et les collections (`docs/plans/argent-collections.md`). Cadrage validé par
+l'utilisateur le 24 novembre 2026 : « ok » pour toutes les réponses par défaut du plan (§ 7), sauf les armes, qui se vendront dans deux
+magasins (« James », armes de poing et d'épaule ; Surplus Éduen, armes de guerre, grenades « ou autres », à préciser avant le lot 7).
+Ce lot pose le socle : il n'y a encore rien à acheter, mais l'argent se gagne et se perd déjà.
+
+**Choix**
+- **Porte-monnaie** (`src/core/wallet.ts`, logique pure) : solde en euros entiers, 9 999 999 € au plus ; `earn` (gain), `spend` (achat :
+  refusé s'il manque de l'argent), `take` (facture, amende : on prend ce qui reste, **pas de dette**). Chaque mouvement est nommé et
+  gardé jusqu'à ce que l'interface le lise (`drain`).
+- **À l'écran** (`src/ui/money-hud.ts`) : le solde sous la date, à gauche, toujours visible en jeu (« 1 250 € », espace insécable : l'espace
+  fine ne se voyait pas dans la police du système) ; au volant, la date disparaît et le solde remonte à sa place. Chaque gain fait monter un
+  « +250 € » ocre, chaque dépense un « −30 € » rouge brique (1,8 s, trois au plus). La figure en cours (roue arrière) et le panneau de
+  debug descendent de 22 px.
+- **Mort** : l'hôpital envoie sa facture, **10 % du solde, 1 000 € au plus**, écrite dans le bandeau (« Facture : 152 € »). **On garde ses
+  armes** : changement de D80, maintenant qu'elles vont s'acheter.
+- **Arrestation** : **amende de 15 %, 2 500 € au plus**, dans le bandeau ; armes confisquées et véhicule conduit confisqué comme avant
+  (la fourrière viendra avec les véhicules achetés, lot 8).
+- **Portefeuilles** : un passant **mis à terre par le joueur** (renversé par son véhicule au-delà de 3,5 m/s, ou frappé, touché, soufflé au
+  point de tomber ou de mourir) lâche **une fois sur trois de 5 à 40 €**, là où il est tombé. Une fois dans sa vie seulement (`PedSim.felled`,
+  `looted`) ; ni un trébuchement, ni un passant renversé par la circulation. Les billets (une liasse vert tilleul et sa bande crème, qui
+  tourne au ras du sol, sans faisceau) se ramassent en marchant dessus comme les armes (D159), disparaissent après 2 minutes, 24 tas au
+  plus ; ils ne vont pas sur la minimap. Les gendarmes tués lâchent leur pistolet, pas d'argent.
+- **Garages** (D113) : la réparation devient **payante, 50 à 800 €** (50 € de main-d'œuvre, jusqu'à 600 € selon la santé perdue, 150 €
+  selon la tôle froissée, à la dizaine). S'il manque de l'argent, le garage refuse et le dit à la place du nom du véhicule
+  (« Norauto · 370 € — Il manque 120 € »).
+- **Sauvegarde en version 6** : `money` ; les versions 1 à 5 sont lues avec 0 €. Les ajouts suivants de la phase (véhicules possédés,
+  carnet) seront des champs facultatifs de la version 6. L'argent appartient à la partie : « Nouvelle partie » repart de 0 € (les
+  records restent à part, D312).
+- **`?money=N`** impose un solde (essais, captures) et, comme `?hurt=`, empêche de lire et d'écrire la sauvegarde.
+
+**Vérifié** : `wallet.test.ts` (gains, achats refusés, prélèvements sans dette, mouvements, lecture méfiante, écriture à la française,
+facture, amende, réparation, tirage des portefeuilles), `pedestrians-combat.test.ts` (mis à terre une fois ; coup léger, circulation : non),
+`pickups.test.ts` (billets ramassés, durée de vie, plafond), `save.test.ts` (version 6, migration des versions 5 et antérieures) ;
+`tools/ui.sh <dossier> money` : 1 250 € + 250 € + 23 € de billets ramassés = 1 523 €, puis la mort : facture de 152 €, 1 371 €.
+
+**À juger en jouant** : la place du solde, la fréquence des portefeuilles, le prix des réparations.
+
+![Le solde et un gain](captures/pj3-argent.jpg)
+![Des billets lâchés](captures/pj3-billets.jpg)
+![La facture de l'hôpital](captures/pj3-mort-facture.jpg)
+![Au volant](captures/pj3-argent-voiture.jpg)
+
+## 2026-11-24 — D318. Plaisir de jeu, phase 3, lot 2 : les fiches des monuments, texte seul, pour relecture
+
+**Contexte** : la chasse aux monuments (lot 3-4) montre une fiche historique courte et sourcée par monument ; l'utilisateur relit les
+textes (« c'est ma ville ») avant qu'ils entrent dans le jeu. Les textes sont écrits tôt pour qu'il les relise pendant la suite.
+
+**Choix**
+- `docs/fiches-monuments.md` : les **20 monuments** retenus au cadrage (12 grands à 600 €, 8 petits à 300 €), chacun avec un identifiant
+  stable (`arroux`, `cathedrale`…), un texte de **600 caractères au plus** (295 à 525), une phrase « Le savais-tu ? », ses sources et ce
+  qu'il reste à vérifier.
+- **Sources** : Wikipédia (articles nommés, avec les ouvrages qu'ils citent), notices Mérimée (POP) pour les dates de protection,
+  office de tourisme, relevés faits pour le jeu (plaque de la Croix, D267). Rien qui ne vienne d'une source ; les contradictions entre
+  sources sont signalées sous la fiche (théâtre romain : 14 000 ou 20 000 spectateurs ; Lycée militaire : 1675 ou 1669, 1885 ou 1886 ;
+  porte d'Arroux : 16 ou 17 m).
+- **Trous** : la date et l'architecte de l'hôtel de ville (aucune source trouvée), deux « Le savais-tu ? » (hôtel de ville, tour de
+  l'Horloge) ; la gare est maigre (à garder ou retirer, au choix de l'utilisateur).
+- **Réseau** : Wikipédia, l'office de tourisme, l'Inrap et le site de la ville étaient refusés par l'environnement ; quatre hôtes ajoutés à
+  l'environnement « Map » (accord de l'utilisateur à l'invite). L'API de Wikipédia limite les requêtes (adresse partagée) : les articles
+  sont lus en wikitexte brut (`?action=raw`), qui garde les références. L'Inrap reste refusé (403 du site lui-même).
+
+**Suite** : après relecture, les textes entrent dans le jeu au lot 3-4 (un fichier de données, pas dans le code).
+
+## 2026-11-24 — D319. Plaisir de jeu, phase 3, lot 3 : le carnet commun et les défis
+
+**Contexte** : plan `docs/plans/argent-collections.md`, § 3 : un système commun pour tout ce qui se trouve (monuments, objets cachés),
+et des défis sur les records, avec des primes. Réponses par défaut validées : paliers du § 7 (Q15), « Records » devient un onglet du
+carnet (Q17), défis non rétroactifs (Q14).
+
+**Choix**
+- **Défis** (`src/core/challenges.ts`) : trois paliers par record du carnet de D312 (bronze 100 €, argent 300 €, or 800 €), 27 en tout :
+  saut 25 / 50 / 100 m ; vitesse 120 / 180 / 250 km/h ; roue arrière 50 / 150 / 400 m ; roue avant 10 / 30 / 80 m ; dérapage 30 / 80 / 200 m ;
+  3 étoiles 1 / 3 / 6 min ; 5 étoiles 30 s / 1 min 30 / 3 min ; à pied 5 / 25 / 100 km ; en véhicule 20 / 100 / 500 km. Ils se gagnent
+  **pendant la partie** : on leur donne la valeur du moment (le saut qui vient de finir, la figure en cours, le temps tenu, la vitesse),
+  jamais le record de tous les temps ; les distances sont celles de la partie. Un grand exploit franchit plusieurs paliers d'un coup.
+- **Carnet de collections** (`src/core/collections.ts`) : une collection est une liste d'entrées (identifiant stable, nom, zone ronde,
+  altitude facultative pour les objets sur les toits, prime, groupe) et un bonus quand elle est complète. `Notebook.check` est appelé
+  quatre fois par seconde avec la position du joueur ou de son véhicule : la première entrée dont on est dans la zone est trouvée, datée
+  (date du jeu), et rapporte sa prime (bandeau « Découverte : … »). Les collections sont vides jusqu'aux lots 3-4 et 3-5.
+- **Bandeaux à la suite** : le bandeau d'exploit (D311) a maintenant une file (trois au plus) : le défi gagné par un saut s'affiche après
+  « Saut 62 m », au lieu de l'effacer.
+- **Écran « 📖 Carnet »** dans le menu pause, à la place de « 🏆 Records » (le menu garde huit entrées) : un onglet par collection qui a
+  des entrées (trouvées par groupe avec leur jour, les autres « À découvrir » avec leur prime), **Défis** (trois pastilles par record,
+  bronze, argent, or, éteintes tant qu'elles ne sont pas gagnées ; distances de la partie) et **Records** (l'ancien écran).
+  `UiBridge.showCarnet(onglet)` ouvre la pause sur un onglet (pour le bouton « Lire la fiche » du lot 3-4).
+- **Sauvegarde** : champs facultatifs de la version 6, `book` (entrée → date) et `challenges` (paliers, distances), lus avec méfiance ;
+  une entrée inconnue est oubliée.
+
+**Vérifié** : `challenges.test.ts`, `collections.test.ts`, `save.test.ts` ; `tools/ui.sh <dossier> carnet`.
+
+![Un défi gagné : bandeau et prime](captures/pj3-defi-bandeau.jpg)
+![Le carnet, onglet Défis](captures/pj3-carnet-defis.jpg)
+![Le carnet, onglet Records](captures/pj3-carnet-records.jpg)
+
+## 2026-11-24 — D320. Plaisir de jeu, phase 3, lot 4 : la chasse aux monuments
+
+**Contexte** : plan, § 3 et § 7 (Q9 à Q12, réponses par défaut validées) ; fiches écrites au lot 3-2 (D318). L'utilisateur a demandé de
+continuer sans attendre sa relecture : les fiches entrent dans le jeu **telles qu'elles sont dans `docs/fiches-monuments.md`**, qui reste
+la seule source (le jeu lit le document lui-même) : corriger une fiche, c'est corriger ce fichier.
+
+**Choix**
+- **Vingt monuments** (`src/core/monuments.ts`) : 12 grands à 600 €, 8 petits à 300 €, 5 000 € de plus quand tout est trouvé (14 600 € en
+  tout). Chacun a une **zone de découverte** ronde (14 à 110 m de rayon) qui prend le monument et la rue, la place ou le chemin d'où on le
+  voit, d'après les vues du jeu (`?view=`) et la carte ; on la découvre en y entrant, à pied ou en véhicule. Deux zones posées au milieu
+  d'un îlot (tour de l'Horloge, prison) ont été recentrées vers le trottoir le plus proche. Test : chaque zone touche le réseau des
+  piétons ou des voitures (vraies données).
+- **Fiches lues dans le document** : `docs/fiches-monuments.md` est importé tel quel (`?raw` de Vite) et découpé au démarrage
+  (`parseFiches`) : nom, texte, « Le savais-tu ? » (vide s'il est « à compléter »), sources sans les notes au relecteur (« À vérifier »,
+  « À compléter »). Test : 20 fiches, 600 caractères au plus, rien qui s'adresse au relecteur ne passe dans le jeu.
+- **Découverte** : bandeau « Découverte : Porte d'Arroux », prime au solde, son de ramassage, enregistrement immédiat de la partie, et un
+  bouton **« 📖 Lire la fiche »** sous le bandeau pendant 7 s : un appui met en pause sur la fiche, dans le carnet.
+- **Carnet**, onglet **Monuments** : grands et petits, « À découvrir » avec la prime, ou le nom et le jour de la découverte ; un appui sur
+  un monument trouvé ouvre sa fiche (texte, « Le savais-tu ? », sources, « Retour à la liste »).
+- **Carte agrandie** : chaque monument de la chasse a une pastille, grise avec « ? » tant qu'il n'est pas découvert, ocre avec une coche
+  une fois trouvé (la minimap n'en montre pas : on les cherche sur la carte).
+
+**Vérifié** : `monuments.test.ts` ; `tools/ui.sh <dossier> monuments` (arrivée à la porte d'Arroux : 200 € + 600 € = 800 €, fiche, liste,
+carte).
+
+**À juger** : la taille des zones (trop grandes, on découvre sans avoir vu ; trop petites, on passe à côté), et les textes (relecture).
+
+![Arrivée à la porte d'Arroux](captures/pj3-decouverte.jpg)
+![La fiche dans le carnet](captures/pj3-fiche.jpg)
+![L'onglet Monuments](captures/pj3-carnet-monuments.jpg)
+![Les « ? » sur la carte](captures/pj3-carte-monuments.jpg)
+
+## 2026-11-24 — D321. Plaisir de jeu, phase 3, lot 5 : les pièces d'or cachées sur les toits
+
+**Contexte** : plan, § 3 et § 7 (Q10, réponse par défaut validée) : trente statères d'or éduens, « le trésor d'un faussaire », sur les
+toits, qui récompensent l'escalade (D218) ; un tiers faciles, un tiers de toit à toit, un tiers difficiles ; douze dans le centre ; pas
+sur la carte, un tintement à l'approche, le compte par quartier dans le carnet.
+
+**Choix**
+- **Placement calculé sur les vrais bâtiments** (`src/core/treasure-placer.ts`), hors du jeu : un **graphe d'accès** entre le sol et les
+  8 111 toits praticables, avec les règles du joueur et un peu de marge : du sol, on grimpe un mur d'au plus 2,3 m (règle : 2,5) ; d'un toit,
+  on passe sur le toit mitoyen si son mur dépasse d'au plus 2,3 m ; on saute une ruelle d'au plus 3 m (saut long : 4,7 m) vers un toit pas
+  plus haut. Résultat : 980 toits accessibles, 628 par un mur bas, 196 de toit en toit, environ 90 avec un saut.
+- **Niveaux** : 1 (mur bas), 2 (deux à quatre toits), 3 (un saut, ou cinq toits et plus). **Tirage** stable (hachage de l'identifiant du
+  bâtiment) : 4 + 4 + 4 dans le centre (700 m autour de la mairie), 6 + 6 + 6 ailleurs, 120 m au moins entre deux pièces. La pièce est
+  au milieu de l'emprise si le toit y est, sinon au milieu du plus grand pan.
+- **`npm run treasures`** refait le placement et écrit `src/data/treasures.json` ; sans lui, le test vérifie que chaque pièce est encore sur
+  son toit, au bon niveau, assez loin des autres (une régénération de la ville qui en casserait une échoue).
+- **Quartiers** : le centre, puis quatre secteurs (Nord, Est, Sud, Ouest) autour de la mairie ; grossier, à renommer si l'utilisateur
+  préfère de vrais noms de quartiers.
+- **En jeu** : la pièce, debout, tourne en flottant au-dessus du toit (deux boîtes du maillage des effets : aucun appel de dessin de plus),
+  dessinée à moins de 70 m ; la plus proche **tinte** à moins de 25 m, plus souvent et plus fort en approchant. On la prend en passant
+  dessus (1,3 m, à 2,5 m de hauteur près : pas depuis la rue) : 150 €, bandeau « Pièce d'or · 8 sur 30 », trois notes aiguës ; 5 000 € de
+  plus pour les trente. La découverte d'un monument a maintenant son propre son (arpège).
+- **Carnet**, onglet **Pièces d'or** : une ligne par quartier avec le compte (on cherche, on ne lit pas).
+
+**Vérifié** : `treasures.test.ts` ; `tools/ui.sh <dossier> tresors` (sur le toit de la pièce 14, centre, niveau 1 : la pièce devant soi,
+ramassée, 350 €, carnet).
+
+**À juger en jouant** : la difficulté réelle des pièces de niveau 3 (le graphe ne simule pas les sauts), la visibilité de la pièce, le
+tintement.
+
+![Une pièce sur un toit](captures/pj3-piece.jpg)
+![Ramassée](captures/pj3-piece-trouvee.jpg)
+![L'onglet Pièces d'or](captures/pj3-carnet-pieces.jpg)
+
+## 2026-11-24 — D322. Plaisir de jeu, phase 3, lot 6 : les magasins, la nourriture, les pharmacies payantes
+
+**Contexte** : plan, § 4 et § 7 (Q5, réponse par défaut validée) : on achète dans les vrais commerces, à leurs horaires (D200), sur un écran
+qui met le jeu en pause ; la nourriture soigne ; les pharmacies deviennent payantes, l'hôpital reste gratuit.
+
+**Choix**
+- **Commerces** (`src/core/shops.ts`) : ceux de `map/places.json` qui vendent à manger ou à boire (boulangeries, pâtisseries, cafés, bars,
+  restauration rapide, restaurants, supermarchés, supérettes, stations-service, traiteurs) : 80, chacun avec son **horaire type**
+  (D200 ; une station-service suit celui d'une supérette). On entre **à pied et au sol** à 11 m du point du commerce (18 m pour une
+  station, 35 m pour une grande surface : leur point est loin de la porte).
+- **Bouton d'action** : « Entrer » (pictogramme de devanture) près d'un commerce ouvert, « Fermé » sinon ; un appui sur « Fermé » affiche
+  « Boulangerie Benzaabar : ouvre demain à 7 h » (`openingText` : prochaine ouverture lisible, dans la semaine qui vient). Les véhicules
+  passent avant (« Monter », « Prendre »).
+- **Écran d'achat** (`src/ui/shop-screen.ts`) : nom et horaires du commerce, solde, ce qu'il vend avec son prix et son effet, un bouton
+  « Acheter » par article, grisé avec la raison (« Il manque 4 € », « Santé pleine ») ; « Sortir », Échap ou P reprennent la partie. La
+  pause est celle du jeu, sans la carte (`UiBridge.openOverlay`).
+- **Nourriture** (soin immédiat, pas de sac) : café ou boisson 2 € (+5 PV), viennoiserie 2 € (+8), pâtisserie 4 € (+15), sandwich, kebab ou
+  croque-monsieur 7 € (+35), menu ou planche 11 € (+60), plat du jour 14 € (+60), menu complet au restaurant 25 € (santé pleine). Chaque genre
+  de commerce vend deux articles.
+- **Pharmacies** : la croix verte (D159) coûte **30 €** (prélevés en passant dessus ; sans l'argent, rien) et n'est là qu'**aux heures
+  d'ouverture** des pharmacies ; celles de l'hôpital restent gratuites et toujours là.
+
+**Vérifié** : `shops.test.ts` (commerces de la carte, portée, horaires et prochaine ouverture, refus), `pickups.test.ts` (pharmacie payante,
+hôpital gratuit, croix fermée) ; `tools/ui.sh <dossier> magasins` (boulangerie Benzaabar, mercredi 10 h, 46 PV : sandwich, 82 PV, 33 € ;
+à 21 h : « ouvre demain à 7 h »).
+
+**Pas fait** : les commerces n'apparaissent pas sur la minimap (la carte agrandie les montre déjà, filtre « Commerces ») ; on n'entre pas
+dans les bâtiments (l'écran suffit) ; les horaires réels d'OpenStreetMap ne sont toujours pas repris (D200).
+
+![« Entrer » devant la boulangerie](captures/pj3-boulangerie-entrer.jpg)
+![L'écran d'achat, après un sandwich](captures/pj3-boulangerie-achat.jpg)
+![Fermée le soir](captures/pj3-boulangerie-fermee.jpg)
+
+## 2026-11-24 — D323. Plaisir de jeu, phase 3, lot 8 : les véhicules à acheter
+
+**Contexte** : plan, § 4 et § 7 (Q2, Q3, Q8, réponses par défaut validées). Tout véhicule se vole déjà : l'achat doit donner ce que le vol
+ne donne pas. Fait avant le lot 7 (armes), qui attend des réponses de l'utilisateur.
+
+**Choix**
+- **Où** : les concessionnaires de la carte, **Dacia Autun (groupe Thivolle)** et **Peugeot**, vendent voitures et motos (vieille voiture,
+  citadine, compacte, camionnette, berline, break, petit SUV, sportive, scooter 125, moto routière, moto sportive) ; les marchands de
+  cycles, **Cycles Tacnet** et **Morvan Bike**, vendent vélo, VTT et trottinette. Aux heures des boutiques (D200), par le même comptoir
+  que la nourriture (D322) ; on entre à 35 m du point d'un concessionnaire. Véhicules uniques, de police et de service : pas à vendre.
+- **Prix** (`VEHICLE_PRICES`) : vélo 200 €, trottinette 300 €, VTT 450 €, scooter 2 000 €, moto routière 6 000 €, moto sportive 11 000 €,
+  vieille voiture 3 500 €, citadine 6 000 €, compacte 9 000 €, camionnette 12 000 €, berline et break 13 000 €, petit SUV 16 000 €,
+  sportive 30 000 €.
+- **Écran d'achat** : une pastille par couleur du modèle, la choisie cerclée ; « Garage plein (6) » quand on en a six.
+- **Ce que l'achat donne** (`src/core/owned.ts`) : le véhicule est **à toi** : le prendre n'est pas un vol (pas d'infraction), la flotte
+  **ne l'oublie jamais** (exception à D301) et l'enregistre toujours, avec sa couleur. Six au plus, identifiants `achat-1` à `achat-6`.
+- **Livraison** : tout de suite, devant le magasin, sur une place libre (hors des murs, des toits et de l'eau, sans véhicule à côté), de
+  préférence **en vue du joueur** ; une place enfermée de murs dans les huit directions (l'intérieur d'un bâtiment dont le toit n'est
+  pas praticable) est refusée ; le véhicule livré devient le « dernier véhicule » (pastille sur la minimap, D310).
+- **Assurance** : détruit (explosion, panne définitive, noyé), il est livré neuf **une heure de jeu plus tard** devant son vendeur, dès que
+  le joueur passe à moins de 250 m (le quartier doit être chargé pour trouver une place).
+- **Fourrière** : arrêté au volant d'un véhicule à toi, il part à la **fourrière** au lieu d'être confisqué (« véhicule à la fourrière »
+  dans le bandeau) ; on le récupère dans le carnet pour **300 €**, il est livré devant la gendarmerie.
+- **Carnet**, onglet **Véhicules** (dès qu'on en a un) : nom, couleur, état (« à 350 m », « tu es dessus », « t'attend devant Peugeot »,
+  « hors d'usage · l'assurance livre vers 15 h », « à la fourrière ») et l'action du moment (« Repère » pose le repère dessus ;
+  « Récupérer · 300 € »). Messages sans accord de genre (« Citadine : livraison devant… »), pour aller avec tous les véhicules.
+- **Sauvegarde** : champ facultatif `garage` de la version 6 (modèle, couleur, lieu de livraison, état), lu avec méfiance.
+
+**Vérifié** : `owned.test.ts`, `vehicles.test.ts` (jamais oublié, toujours enregistré) ; `tools/ui.sh <dossier> vehicules` (Dacia, citadine
+gris anthracite, 20 000 € → 14 000 €, livrée en vue, carnet).
+
+**À juger** : les prix, l'éloignement des concessionnaires (Bellevue et le nord), la place choisie pour la livraison.
+
+![Le concessionnaire, choix de la couleur](captures/pj3-concession.jpg)
+![Achetée](captures/pj3-concession-achat.jpg)
+![Livrée devant le magasin](captures/pj3-livraison.jpg)
+![L'onglet Véhicules](captures/pj3-carnet-vehicules.jpg)
+
+## 2026-11-25 — D324. Plaisir de jeu, phase 3, lot 7-1 : les armureries (James, Surplus Éduen), les caches qui ne reviennent plus
+
+**Contexte** : réponses de l'utilisateur (24 et 25 novembre 2026) : deux magasins d'armes, **James** (armes de poing et d'épaule) et le
+**Surplus Éduen** (armes de guerre, grenades et équipement) ; « ok » pour toutes les réponses par défaut du lot 7 (répartition, nouvelles
+armes, gilet et fumigènes, lancer au bouton d'attaque, prix, caches). Ce premier lot vend les armes qui existent ; le pistolet-mitrailleur,
+la mitrailleuse, les grenades, le gilet et les fumigènes suivent (lots 7-2 à 7-4).
+
+**Choix**
+- **James** : le commerce de chasse d'OpenStreetMap, à 200 m au sud de la mairie : pistolet 400 €, fusil à pompe 900 €, fusil de précision
+  3 500 €, et leurs munitions (12 balles de pistolet 30 €, 6 cartouches 40 €, 5 balles de précision 60 €).
+- **Surplus Éduen** : pas dans OpenStreetMap ; sa devanture est dessinée d'après photo (D183), 3 avenue Charles-de-Gaulle : le point du
+  magasin est devant la vitrine (mur 7 du bâtiment `BATIMENT0000000348852378`). Couteau 40 €, batte 30 €, fusil d'assaut 2 500 €, 30 balles
+  80 €. Les deux magasins suivent l'horaire des boutiques (D200).
+- **Achat** (même comptoir que D322) : une arme neuve arrive avec un chargeur plein et passe dans la main ; des munitions vont au chargeur
+  vide ou en réserve (six chargeurs au plus, D84). Refus lisibles : « Déjà à toi », « Il te faut l'arme », « Réserve pleine », « Il manque
+  2 930 € » (les montants des refus suivent maintenant le format de l'argent).
+- **Caches** : une cache prise **ne revient plus** (elle revenait après 5 minutes, D84) ; elle est notée dans un onglet **Caches** du carnet
+  (par armes blanches, pistolets, fusils), sans prime, et une partie reprise ne la remontre pas. Identifiant stable : l'arme et le lieu
+  (`pistol-cafe-de-la-bourse`). Le carnet sait maintenant noter une entrée sans zone (`Notebook.mark`) et donner une phrase d'aide par
+  collection.
+- On garde ses armes à la mort (D317) ; elles restent confisquées à l'arrestation.
+
+**Vérifié** : `shops.test.ts` (les deux magasins, refus), `pickups.test.ts` (caches uniques, partie reprise) ; `tools/ui.sh <dossier> armes`
+(James : pistolet puis balles, 1 000 € → 570 €, 24 balles ; onglet Caches).
+
+![Chez James](captures/pj3-james.jpg)
+![L'onglet Caches](captures/pj3-carnet-caches.jpg)
+
+## 2026-11-25 — D325. Plaisir de jeu, phase 3, lot 7-2 : le pistolet-mitrailleur et la mitrailleuse
+
+**Contexte** : réponses par défaut validées (25 novembre) : un pistolet-mitrailleur chez James, une mitrailleuse légère au Surplus Éduen.
+
+**Choix**
+- **Pistolet-mitrailleur** (`smg`) : 14 tirs par seconde, 16 points par balle, 25 m de portée, dispersion ±2,9° (plus que le fusil
+  d'assaut), chargeur de 32, rechargement 1,5 s. **1 200 €** chez James, 32 balles 50 €.
+- **Mitrailleuse** (`lmg`) : 11 tirs par seconde, 26 points, 70 m, ±2,6°, **bande de 100**, rechargement 4,5 s ; **lourde** : en la portant,
+  on marche au pas (ni course ni sprint, nouveau champ `heavy`). Tenue plus bas, buste penché. **6 000 €** au Surplus Éduen, bande de 100
+  balles 150 €.
+- Partout où une arme à feu existe : ordre de la molette (poings, couteau, batte, pistolet, pistolet-mitrailleur, fusil à pompe, fusil
+  d'assaut, mitrailleuse, fusil de précision ; touches 1 à 9), pièces tenues (`weaponSmg`, `weaponLmg` : quelques boîtes, 64 pièces de
+  personnage sur 66), poses de garde et de visée, pictogrammes, sons de tir (page `?sounds`), vibrations, couleur des caisses. La
+  sauvegarde les connaît (armes connues de `WEAPON_ORDER`), sans changer de version.
+- `?arms=` donne aussi les nouvelles armes, avec deux chargeurs (elles n'ont pas de cache).
+
+**Vérifié** : `weapons.test.ts`, `shops.test.ts` ; `tools/ui.sh <dossier> armes2` (chaque arme en main, l'écran du Surplus).
+
+**À juger en jouant** : les cadences (le pistolet-mitrailleur sonne en continu), le pas lourd de la mitrailleuse.
+
+![Le pistolet-mitrailleur](captures/pj3-smg.jpg)
+![La mitrailleuse](captures/pj3-lmg.jpg)
+![Le Surplus Éduen](captures/pj3-surplus.jpg)
+
+## 2026-11-25 — D326. Plaisir de jeu, phase 3, lot 7-3 : les grenades
+
+**Contexte** : réponses par défaut validées (25 novembre) : la grenade est une arme de la liste ; tenir le bouton d'attaque montre l'arc,
+le relâcher lance ; elle explose au bout de 3 s, comme une voiture qui explose ; 150 € pièce au Surplus Éduen, dix au plus.
+
+**Choix**
+- **Nouveau genre d'arme, « jet »** (`grenade`, dernière de la molette) : le nombre de grenades est leur réserve (dix au plus) ; chaque lancer
+  en retire une ; la dernière partie, les poings reviennent en main. La sauvegarde garde le nombre (borné à 10), sans changer de version.
+- **Lancer** (`src/core/grenade.ts`, logique pure) : 14 m/s dans la direction du regard, l'angle suivant l'inclinaison de la caméra
+  (de 3° à 66° au-dessus de l'horizontale ; environ 20 m sur le plat) ; elle part de la main (1,6 m), rebondit sur le sol, les toits et les
+  ponts (35 % de la vitesse verticale gardée, 60 % de l'horizontale), repart en arrière contre un mur ou une voiture, roule et s'arrête.
+- **Arc** : tant que le bouton est tenu, la trajectoire jusqu'au premier contact s'affiche en petits cubes crème, le point d'impact en
+  carré rouge brique ; le joueur se tourne vers le regard ; au lâcher, un geste du bras.
+- **Explosion** au bout de **3 s** : celle des véhicules (D111) sortie en une fonction commune (`blastAt`) : boule de feu, fumée, souffle
+  qui blesse et projette, véhicules voisins abîmés (une voiture très touchée peut exploser à son tour), et l'infraction « explosion » (deux
+  étoiles si on est vu), avec meurtres ou agressions selon les victimes.
+- **Rendu** : la grenade en vol est deux boîtes du maillage des effets (corps olive, cuillère sombre) qui tournent ; en main, la pièce
+  `weaponGrenade`. Bandeau d'arme : « Grenade 4/10 ».
+- **Vente** : au Surplus Éduen, **150 €** pièce, sans avoir à en posséder déjà ; « Tu en as 10 » quand on est plein.
+- `?arms=grenade` en donne cinq.
+
+**Vérifié** : `grenade.test.ts` (portée, angle, rebonds, mur, arc), `weapons.test.ts` (dix au plus, dernière lancée), `save.test.ts`,
+`shops.test.ts` ; `tools/ui.sh <dossier> grenade` (arc, lancer, explosion 3 s plus tard).
+
+**Limites** : pas de touche du clavier pour la grenade (dixième arme : la molette ou X) ; la grenade ne s'arrête pas aux passants ;
+l'arc ne montre que le vol jusqu'au premier rebond.
+
+![L'arc de lancer](captures/pj3-grenade-arc.jpg)
+![L'explosion](captures/pj3-grenade-explosion.jpg)
+
+## 2026-11-25 — D327. Plaisir de jeu, phase 3, lot 7-4 : le gilet pare-balles et les fumigènes
+
+**Contexte** : réponses par défaut validées (25 novembre) pour le « ou autres » du Surplus Éduen : un gilet pare-balles et des fumigènes ;
+pas de cocktail Molotov.
+
+**Choix**
+- **Gilet pare-balles** (**500 €** au Surplus) : 100 points de protection ; il prend **la moitié de chaque balle** des gendarmes (à pied ou
+  en voiture) tant qu'il lui reste des points (`vestAbsorb`) ; au volant, la balle est d'abord réduite de moitié comme avant (D85), puis le
+  gilet en prend la moitié. Une barre bleu acier sous la jauge de santé (la jauge se montre aussi à santé pleine quand on porte un gilet).
+  Il se rachète dès qu'il est entamé (« Gilet intact » sinon). **Détruit à la mort, confisqué à l'arrestation.** Sauvegarde : champ
+  facultatif `armor` de la version 6.
+- **Fumigène** (**80 €** au Surplus, dix au plus) : deuxième arme de jet, lancée comme la grenade (arc, lâcher) ; au bout de 1,5 s il
+  s'ouvre en **nuage pendant 12 s** (bouffées claires qui gonflent et montent, puis se dissipent en 3 s). Tant que le joueur est à **moins
+  de 7 m** du nuage, la police **ne le voit pas** (les étoiles retombent comme hors de vue, ses infractions ne sont pas vues) et **ne le vise
+  pas** (gendarmes à pied et passagers des voitures de poursuite) : `PoliceController.concealed`, transmis aux gendarmes.
+- Le son du nuage est provisoire (le geste de la batte) : un vrai chuintement est noté pour la phase 5 (sons).
+
+**Vérifié** : `shops.test.ts` (absorption, refus, vente), `save.test.ts` (gilet relu, borné), `officers.test.ts` (pas de tir dans la fumée),
+`weapons.test.ts` ; `tools/ui.sh <dossier> fumigene` (gilet et fumigène achetés, 1 000 € → 420 €, barre du gilet, nuage).
+
+**À juger en jouant** : 7 m et 12 s suffisent-ils pour semer une poursuite ? Le gilet est-il trop fort ?
+
+![Gilet (barre bleue) et nuage de fumigène](captures/pj3-fumigene.jpg)

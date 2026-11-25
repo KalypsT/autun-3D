@@ -12,19 +12,26 @@ const LOW = 0.3;
 export class HealthHud {
   private readonly bar: HTMLElement;
   private shown = -1;
+  private vest = -1;
+  private readonly armorBar: HTMLElement;
   private low = false;
 
   constructor(private readonly el: HTMLElement) {
-    el.innerHTML = `<span class="hicon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11.2"/><path d="${HEART}"/></svg></span><span class="hbar"><span class="hfill"></span></span>`;
+    el.innerHTML = `<span class="hicon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11.2"/><path d="${HEART}"/></svg></span><span class="hbar"><span class="hfill"></span></span><span class="harmor"><span class="hafill"></span></span>`;
     this.bar = el.querySelector(".hfill")!;
+    this.armorBar = el.querySelector(".hafill")!;
     el.setAttribute("aria-label", "Santé");
   }
 
-  set(hp: number): void {
-    const shown = Math.round(hp);
-    if (shown === this.shown) return;
+  /** `armor` : points du gilet pare-balles (D327, 0 à 100) ; la jauge se montre aussi à santé pleine quand on porte un gilet. */
+  set(hp: number, armor = 0): void {
+    const shown = Math.round(hp), vest = Math.round(armor);
+    if (shown === this.shown && vest === this.vest) return;
     this.shown = shown;
-    this.el.classList.toggle("on", shown < MAX_HEALTH);
+    this.vest = vest;
+    this.el.classList.toggle("on", shown < MAX_HEALTH || vest > 0);
+    this.el.classList.toggle("vest", vest > 0);
+    this.armorBar.style.width = `${Math.min(vest, 100)}%`;
     this.el.title = `Santé ${shown}`;
     this.bar.style.width = `${(Math.min(shown, MAX_HEALTH) / MAX_HEALTH) * 100}%`;
     const low = shown / MAX_HEALTH < LOW;

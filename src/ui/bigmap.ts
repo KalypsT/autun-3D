@@ -1,7 +1,7 @@
 import { clampToZone, fitScale, formatDistance, imageMatrix, imagesInView, panBy, pickLevel, screenToWorld, worldToScreen, zoomAt, type MapView } from "../core/mapview";
 import { toggleWaypoint, waypointFrom, type Waypoint } from "../core/waypoint";
 import type { MapData, Place, StreetInfo } from "./map-data";
-import { drawRoute, drawVehicleBadge } from "./map-glyphs";
+import { drawHuntPin, drawRoute, drawVehicleBadge } from "./map-glyphs";
 
 /** Carte agrandie (écran de pause, ouvert par un appui sur la minimap) : fond par kilomètre, rues, lieux, joueur et repère. Nord en haut. */
 
@@ -12,6 +12,8 @@ export interface BigMapHooks {
   route(): { points: readonly number[] | null; remaining: number | null };
   /** Dernier véhicule utilisé, quand on n'est pas dessus (D310). */
   lastVehicle(): { x: number; y: number; kind: string } | null;
+  /** Monuments de la chasse (D320) : « ? » à découvrir, coche une fois trouvés. */
+  hunt?(): readonly { x: number; y: number; found: boolean }[];
   setWaypoint(w: Waypoint | null): void;
   /** Reprendre la partie. */
   resume(): void;
@@ -393,6 +395,10 @@ export class BigMap {
     if (this.hooks.waypoint()) {
       const pts = this.hooks.route().points;
       if (pts) drawRoute(ctx, view, pts, 4.5);
+    }
+    for (const m of this.hooks.hunt?.() ?? []) {
+      const [x, y] = worldToScreen(view, m.x, m.y);
+      if (x > -20 && y > -20 && x < view.w + 20 && y < view.h + 20) drawHuntPin(ctx, x, y, m.found, 9);
     }
     const lv = this.hooks.lastVehicle();
     if (lv) {

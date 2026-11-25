@@ -10,14 +10,18 @@ import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
+import { foodShops, vehicleShops, weaponShops, type Shop } from "../core/shops";
 import { Minimap } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
-import { PauseMenu } from "../ui/pause-menu";
+import { PauseMenu, type GarageRow } from "../ui/pause-menu";
 import type { Controls } from "../input/controls";
 import type { GameContext } from "./context";
 import type { Fleet } from "./vehicles";
 import { RouteGuide } from "./route-guide";
 import { parseRecords, type RecordValues } from "../core/records";
+import { Challenges, type SavedChallenges } from "../core/challenges";
+import { Notebook, type SavedNotebook } from "../core/collections";
+import type { OwnedVehicle } from "../core/owned";
 
 /** Ce que l'interface doit savoir du jeu à un instant donné. */
 export interface GameState {
@@ -35,6 +39,15 @@ export interface GameState {
   health: number;
   /** Armes du joueur. */
   arms: SavedArms;
+  /** Argent du joueur (D317). */
+  money: number;
+  /** Carnet et défis (D319). */
+  book: SavedNotebook;
+  challenges: SavedChallenges;
+  /** Véhicules achetés (D323). */
+  garage: OwnedVehicle[];
+  /** Points du gilet pare-balles (D327). */
+  armor: number;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -78,6 +91,8 @@ export class UiBridge {
   caches: { x: number; y: number; kind?: string }[] = [];
   /** Garages de réparation (D113), connus quand les lieux de la carte sont chargés. */
   garages: Garage[] = [];
+  /** Commerces où l'on achète (D322), connus avec les lieux de la carte. */
+  shops: Shop[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -92,6 +107,7 @@ export class UiBridge {
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
     private readonly records: () => RecordValues = () => parseRecords(null),
+    private readonly carnet: { notebook(): Notebook; challenges(): Challenges; garage?(): GarageRow[] } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -127,6 +143,9 @@ export class UiBridge {
         },
       },
       records: () => this.records(),
+      notebook: () => this.carnet.notebook(),
+      challenges: () => this.carnet.challenges(),
+      garage: () => this.carnet.garage?.() ?? [],
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });
@@ -136,6 +155,7 @@ export class UiBridge {
       (data) => {
         this.minimap.attach(data);
         this.garages = garagesFrom(data.places.places);
+        this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places), ...weaponShops(data.places.places)];
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();
@@ -144,6 +164,7 @@ export class UiBridge {
           waypoint: () => this.waypoint,
           route: () => ({ points: this.guide.points, remaining: this.guide.remaining }),
           lastVehicle: () => this.lastVehicle(),
+          hunt: () => this.hunt(),
           setWaypoint: (w) => this.setWaypoint(w),
           resume: () => this.setPaused(false),
           menu: () => {
@@ -195,7 +216,16 @@ export class UiBridge {
     this.setPaused(!this.paused);
   }
 
-  setPaused(on: boolean): void {
+  /** Écran posé par-dessus la pause (magasin, D322) : refermé à la reprise. */
+  private overlayClose: (() => void) | null = null;
+
+  /** Met en pause sans carte ni menu, pour un écran du jeu (magasin) ; `close` le referme à la reprise (Échap, P, « Sortir »). */
+  openOverlay(close: () => void): void {
+    if (!this.paused) this.setPaused(true, false);
+    this.overlayClose = close;
+  }
+
+  setPaused(on: boolean, screen = true): void {
     if (on === this.paused) return;
     this.paused = on;
     document.body.classList.toggle("paused", on);
@@ -209,13 +239,22 @@ export class UiBridge {
       this.frozen = { x: s.x, y: s.y, z: s.z, heading: s.yaw, hour: this.ctx.atmosphere.hour, day: this.ctx.atmosphere.day };
       this.save();
       // L'écran de pause est la carte ; le menu seulement si elle n'a pas pu être chargée.
-      if (!this.openMap()) this.menu.open("home");
+      if (screen && !this.openMap()) this.menu.open("home");
     } else {
+      this.overlayClose?.();
+      this.overlayClose = null;
       this.bigmap?.close();
       this.menu.close();
       this.frozen = null;
       this.controls.reset();
     }
+  }
+
+  /** Met en pause sur le carnet, à l'onglet voulu (bouton « Lire la fiche » d'une découverte, captures). */
+  showCarnet(tab: string, fiche: string | null = null): void {
+    if (!this.paused) this.setPaused(true);
+    this.bigmap?.close();
+    this.menu.openCarnet(tab, fiche);
   }
 
   private situation(): { x: number; y: number; z: number; heading: number; hour: number; day: number } {
@@ -271,6 +310,13 @@ export class UiBridge {
     }
   }
 
+  /** Monuments de la chasse (D320) pour la carte agrandie : leur zone, trouvés ou non. */
+  private hunt(): { x: number; y: number; found: boolean }[] {
+    const book = this.carnet.notebook();
+    const col = book.defs.find((d) => d.id === "monuments");
+    return col ? col.entries.map((e) => ({ x: e.x, y: e.y, found: book.has("monuments", e.id) })) : [];
+  }
+
   /** Dernier véhicule utilisé (D301), quand on n'est pas dessus : sa place sur la minimap et la carte (D310). */
   private lastVehicle(): { x: number; y: number; kind: string } | null {
     const s = this.state();
@@ -296,6 +342,11 @@ export class UiBridge {
       waypoint: this.waypoint,
       health: Math.min(Math.max(Math.round(s.health), 1), MAX_HEALTH),
       arms: s.arms,
+      money: s.money,
+      book: s.book,
+      challenges: s.challenges,
+      ...(s.garage.length ? { garage: s.garage } : {}),
+      ...(s.armor > 0 ? { armor: s.armor } : {}),
     };
   }
 

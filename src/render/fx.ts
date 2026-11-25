@@ -22,23 +22,41 @@ const COLORS: Record<WeaponId, [number, number, number]> = {
   pistol: [0.95, 0.5, 0.2],
   shotgun: [0.9, 0.3, 0.2],
   rifle: [0.35, 0.65, 0.95],
+  smg: [0.4, 0.85, 0.75],
+  lmg: [0.55, 0.6, 0.3],
+  grenade: [0.35, 0.45, 0.25],
+  smoke: [0.75, 0.75, 0.72],
   sniper: [0.6, 0.45, 0.95],
 };
 const BEAM: [number, number, number] = [1, 0.8, 0.35];
 /** Croix verte de pharmacie (soin) : la croix et son faisceau. */
 const HEAL: [number, number, number] = [0.25, 0.85, 0.42];
 const HEAL_BEAM: [number, number, number] = [0.55, 1, 0.65];
+/** Billets lâchés par un passant (D317) : une liasse verte, sa bande de papier crème et un petit faisceau vert pâle. */
+const CASH: [number, number, number] = [0.12, 0.5, 0.1];
+const CASH_BAND: [number, number, number] = [1, 0.9, 0.6];
+const CASH_BEAM: [number, number, number] = [0.45, 0.95, 0.4];
+/** Pièce d'or des toits (D321) : la pièce et son listel, plus clair. */
+const COIN: [number, number, number] = [0.9, 0.48, 0.02];
+const COIN_RIM: [number, number, number] = [1, 0.9, 0.45];
 const TRACER: [number, number, number] = [1, 0.93, 0.62];
 const SPARK_WALL: [number, number, number] = [1, 0.6, 0.2];
 const SPARK_BODY: [number, number, number] = [1, 0.97, 0.85];
 
-/** Un objet au sol à dessiner : une arme, ou (`heal`) la croix verte d'une pharmacie. */
+/** Un objet au sol à dessiner : une arme, (`heal`) la croix verte d'une pharmacie, ou (`cash`) des billets (D317). */
 export interface PickupView {
   x: number;
   y: number;
   z: number;
   weapon: WeaponId | null;
   heal?: boolean;
+  cash?: boolean;
+  /** Pièce d'or posée sur un toit (D321) : `z` est l'altitude du toit. */
+  coin?: boolean;
+  /** Grenade en vol ou au sol (D326) : `z` est son altitude. */
+  grenade?: boolean;
+  /** Point de l'arc de lancer (D326) : `z` est son altitude. */
+  dot?: boolean;
 }
 
 interface Item {
@@ -165,6 +183,62 @@ export class Fx {
       }
     }
     for (const pk of pickups) {
+      if (pk.dot) {
+        // Arc de lancer d'une grenade (D326) : de petits cubes crème, le dernier (le point d'impact) plus gros et rouge brique.
+        this.p.set(pk.x, pk.z, -pk.y);
+        this.q.identity();
+        const big = pk.weapon === "grenade";
+        this.s.set(big ? 0.34 : 0.14, big ? 0.06 : 0.14, big ? 0.34 : 0.14);
+        m.compose(this.p, this.q, this.s);
+        put(big ? 0.85 : 1, big ? 0.28 : 0.95, big ? 0.17 : 0.8);
+        continue;
+      }
+      if (pk.grenade) {
+        // Grenade (D326) : un petit corps vert olive et sa cuillère sombre, qui tournent en vol.
+        this.e.set(time * 9 + pk.x, time * 7, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + 0.06, -pk.y);
+        this.s.set(0.09, 0.12, 0.09);
+        m.compose(this.p, this.q, this.s);
+        put(0.3, 0.38, 0.18);
+        this.s.set(0.03, 0.1, 0.05);
+        m.compose(this.p, this.q, this.s);
+        put(0.15, 0.15, 0.17);
+        continue;
+      }
+      if (pk.coin) {
+        // Pièce d'or (D321) : debout, elle tourne sur elle-même en flottant à hauteur de genou, sans faisceau (elle est cachée).
+        this.e.set(0, time * 2.6 + pk.x, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + 0.7 + Math.sin(time * 2 + pk.y) * 0.07, -pk.y);
+        this.s.set(0.46, 0.46, 0.07);
+        m.compose(this.p, this.q, this.s);
+        put(COIN[0], COIN[1], COIN[2]);
+        this.s.set(0.3, 0.3, 0.09);
+        m.compose(this.p, this.q, this.s);
+        put(COIN_RIM[0], COIN_RIM[1], COIN_RIM[2]);
+        continue;
+      }
+      if (pk.cash) {
+        // Billets (D317) : une liasse posée de travers qui tourne en flottant à hauteur de genou, et un faisceau court (on la repère de loin
+        // sans la confondre avec une arme, dont le faisceau monte à 3 m).
+        const lift = 0.45 + Math.sin(time * 3 + pk.x) * 0.06;
+        this.e.set(0.35, time * 2.2 + pk.y, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + lift, -pk.y);
+        this.s.set(0.6, 0.14, 0.32);
+        m.compose(this.p, this.q, this.s);
+        put(CASH[0], CASH[1], CASH[2]);
+        this.s.set(0.14, 0.16, 0.34);
+        m.compose(this.p, this.q, this.s);
+        put(CASH_BAND[0], CASH_BAND[1], CASH_BAND[2]);
+        this.p.set(pk.x, pk.z + 0.9, -pk.y);
+        this.s.set(0.08, 1.8, 0.08);
+        this.q.identity();
+        m.compose(this.p, this.q, this.s);
+        put(CASH_BEAM[0], CASH_BEAM[1], CASH_BEAM[2]);
+        continue;
+      }
       if (pk.heal || !pk.weapon) {
         // Croix verte (D159) : deux barres qui tournent sur elles-mêmes en flottant à hauteur de ceinture, et un faisceau vert.
         const bobH = Math.sin(time * 2 + pk.x) * 0.1;

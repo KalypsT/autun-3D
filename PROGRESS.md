@@ -2265,3 +2265,96 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Sur la plage, après](docs/captures/d316-plage-apres.jpg)
 ![Coucher face au large](docs/captures/d316-coucher-apres.jpg)
 ![Les trois nouveaux réglages de la phase 2](docs/captures/d316-reglages.jpg)
+
+**Plaisir de jeu, lot 3-1 : l'argent (24 novembre 2026)** (D317)
+- Ton **solde** s'affiche sous la date, à gauche ; chaque gain fait monter un « +250 € » ocre, chaque dépense un « −30 € » rouge.
+- Un passant que tu **mets à terre** (renversé, frappé, touché) lâche **une fois sur trois de 5 à 40 €** : une liasse verte avec un petit faisceau, à ramasser en marchant dessus (elle disparaît au bout de 2 minutes). Une fois par passant ; pas pour ceux que la circulation renverse.
+- **Mort** : l'hôpital envoie sa facture (10 % du solde, 1 000 € au plus), et **tu gardes tes armes** maintenant qu'elles vont s'acheter. **Arrestation** : amende de 15 % (2 500 € au plus), armes et véhicule confisqués comme avant. Pas de dette si tu n'as plus rien.
+- Les **garages font payer** la réparation : 50 à 800 € selon les dégâts ; s'il te manque de l'argent, le garage le dit.
+- La partie enregistrée garde ton argent (sauvegarde en version 6 ; une ancienne partie repart de 0 €). Une nouvelle partie repart de zéro ; les records restent.
+- Rien à acheter encore : les magasins viennent aux lots 6 à 8 de la phase.
+- À faire de ton côté : jouer un peu et dire si la place du solde te va, si les portefeuilles tombent trop souvent ou pas assez, et si les réparations sont trop chères.
+![Le solde et un gain](docs/captures/pj3-argent.jpg)
+![Des billets lâchés](docs/captures/pj3-billets.jpg)
+![La facture de l'hôpital](docs/captures/pj3-mort-facture.jpg)
+![Au volant](docs/captures/pj3-argent-voiture.jpg)
+
+**Plaisir de jeu, lot 3-2 : les fiches des monuments, à relire (24 novembre 2026)** (D318)
+- Les 20 fiches de la chasse aux monuments sont écrites dans `docs/fiches-monuments.md` : un texte court (600 caractères au plus), un « Le savais-tu ? » et les sources sous chacune.
+- Je n'ai rien écrit sans source (Wikipédia et les ouvrages qu'il cite, base Mérimée, office de tourisme, la plaque de la Croix relevée pour le jeu). Quand les sources se contredisent, c'est noté sous la fiche.
+- Il manque la date de l'hôtel de ville et deux « Le savais-tu ? » ; la gare est la fiche la plus maigre.
+- À faire de ton côté : relire les fiches, corriger ce qui cloche, compléter les trous si tu sais, et dire si la gare reste dans la chasse.
+
+**Plaisir de jeu, lot 3-3 : le carnet et les défis (24 novembre 2026)** (D319)
+- Le menu pause a un **« 📖 Carnet »** à la place de « Records », avec deux onglets : **Défis** et **Records**. Les monuments et les objets cachés y auront leur onglet quand ils arriveront.
+- **27 défis** : trois paliers (bronze 100 €, argent 300 €, or 800 €) pour chaque record. Par exemple un saut de 25, 50 ou 100 m, 120, 180 ou 250 km/h, 5, 25 ou 100 km à pied. Ils se gagnent pendant la partie : tes records d'avant ne comptent pas.
+- Un défi gagné s'affiche en bandeau après celui de l'exploit (« Saut 62 m », puis « Défi argent : saut de 50 m »), et la prime arrive au solde.
+- La découverte d'un lieu (monument, objet caché) passe par le même carnet : ce sera branché aux lots suivants.
+- À faire de ton côté : dire si les paliers te semblent bien placés (trop faciles, trop durs).
+![Un défi gagné](docs/captures/pj3-defi-bandeau.jpg)
+![Le carnet, onglet Défis](docs/captures/pj3-carnet-defis.jpg)
+
+**Plaisir de jeu, lot 3-4 : la chasse aux monuments (24 novembre 2026)** (D320)
+- **Vingt monuments** à découvrir. Sur la carte agrandie, un « ? » gris marque chacun ; il devient une coche ocre une fois trouvé.
+- Il suffit d'arriver devant, à pied ou en véhicule. Un bandeau « Découverte : Porte d'Arroux » s'affiche, la prime arrive au solde (600 € pour un grand monument, 300 € pour un petit, 5 000 € de plus pour les vingt), et un bouton **« 📖 Lire la fiche »** reste quelques secondes à l'écran.
+- Dans le carnet, onglet **Monuments** : ceux que tu as trouvés, avec leur fiche (texte, « Le savais-tu ? », sources).
+- Les fiches viennent directement de `docs/fiches-monuments.md` : corrige ce fichier, et le jeu suit.
+- À faire de ton côté : relire les fiches et faire le tour de quelques monuments, en disant si la zone se déclenche trop tôt ou trop tard.
+![Arrivée à la porte d'Arroux](docs/captures/pj3-decouverte.jpg)
+![La fiche](docs/captures/pj3-fiche.jpg)
+![Les « ? » sur la carte](docs/captures/pj3-carte-monuments.jpg)
+
+**Plaisir de jeu, lot 3-5 : les pièces d'or sur les toits (24 novembre 2026)** (D321)
+- **Trente statères d'or** sont cachés sur des toits : douze dans le centre, dix-huit ailleurs. Un tiers s'atteignent en grimpant un mur bas, un tiers en passant de toit en toit, un tiers demandent un saut ou un long chemin de toits.
+- Elles ne sont pas sur la carte : on les **entend tinter** à moins de 25 m, plus fort en approchant. On les prend en passant dessus : 150 € chacune, 5 000 € de plus pour les trente.
+- Dans le carnet, onglet **Pièces d'or** : le compte par quartier (le centre et quatre secteurs autour de la mairie).
+- Le placement est calculé sur les vrais bâtiments, avec les règles d'escalade du jeu, et vérifié par un test.
+- À faire de ton côté : chercher quelques pièces et dire si les difficiles sont vraiment atteignables, si le tintement aide assez.
+![Une pièce sur un toit](docs/captures/pj3-piece.jpg)
+![Le carnet, onglet Pièces d'or](docs/captures/pj3-carnet-pieces.jpg)
+
+**Plaisir de jeu, lot 3-6 : les magasins et la nourriture (24 novembre 2026)** (D322)
+- Devant un **commerce de bouche** (boulangerie, café, bar, kebab, McDonald's, restaurant, supérette, supermarché, station-service), à pied, le bouton **« Entrer »** ouvre un écran d'achat ; le jeu est en pause tant qu'il est ouvert.
+- **Manger soigne tout de suite** : un café 2 € (+5 PV), un sandwich 7 € (+35), un menu 11 € (+60), un menu complet au restaurant 25 € (santé pleine)… Chaque commerce vend deux choses, selon son genre.
+- Les **horaires** sont ceux de la ville vivante (D200). Fermé, le bouton dit « Fermé », et un appui affiche quand ça ouvre (« ouvre demain à 7 h »).
+- Les **croix des pharmacies** coûtent maintenant 30 € et ne sont là qu'aux heures d'ouverture ; celles de l'hôpital restent gratuites.
+- À faire de ton côté : dire si les prix et les soins te vont, et si l'on entre facilement dans les grandes surfaces (Leclerc, Intermarché).
+![« Entrer »](docs/captures/pj3-boulangerie-entrer.jpg)
+![L'écran d'achat](docs/captures/pj3-boulangerie-achat.jpg)
+
+**Plaisir de jeu, lot 3-8 : les véhicules à acheter (24 novembre 2026)** (D323)
+- **Dacia Autun** (Bellevue) et **Peugeot** (nord) vendent voitures et motos ; **Cycles Tacnet** et **Morvan Bike** vendent vélo, VTT et trottinette. De 200 € (vélo) à 30 000 € (sportive) ; tu choisis la couleur.
+- Ton véhicule est **livré tout de suite devant le magasin**, et il est **à toi** : le prendre n'est pas un vol, il n'est jamais oublié où tu l'as laissé, et tu en as six au plus.
+- **Détruit**, l'assurance le livre neuf devant le magasin une heure de jeu plus tard. Si tu es **arrêté** à son volant, il part à la **fourrière** : tu le récupères dans le carnet pour 300 €, devant la gendarmerie.
+- Dans le carnet, onglet **Véhicules** : où ils sont, et un bouton pour poser le repère dessus.
+- À faire de ton côté : en acheter un, le laisser, s'éloigner, revenir ; et dire si les prix te vont.
+![Le concessionnaire](docs/captures/pj3-concession.jpg)
+![Livrée](docs/captures/pj3-livraison.jpg)
+![L'onglet Véhicules](docs/captures/pj3-carnet-vehicules.jpg)
+
+**Plaisir de jeu, lot 3-7-1 : les armureries (25 novembre 2026)** (D324)
+- **James** (au sud de la mairie) vend pistolet, fusil à pompe et fusil de précision, et leurs munitions ; le **Surplus Éduen** (avenue Charles-de-Gaulle) vend couteau, batte et fusil d'assaut, et ses balles. Aux heures des boutiques.
+- Une arme achetée arrive chargée, en main. Les munitions se rachètent au chargeur.
+- Les **caches ne reviennent plus** une fois prises : elles sont notées dans le carnet, onglet **Caches**.
+- Suite : pistolet-mitrailleur, mitrailleuse, grenades, gilet pare-balles et fumigènes.
+![Chez James](docs/captures/pj3-james.jpg)
+
+**Plaisir de jeu, lot 3-7-2 : pistolet-mitrailleur et mitrailleuse (25 novembre 2026)** (D325)
+- **Pistolet-mitrailleur** chez James (1 200 €) : il tire très vite, de près, sans grande précision.
+- **Mitrailleuse** au Surplus Éduen (6 000 €) : bande de 100 balles, longue à recharger, et si lourde qu'on marche au pas en la portant.
+- Les deux ont leur modèle en main, leur pose, leur son (page `?sounds`) et leurs munitions en vente. Les touches 1 à 9 choisissent l'arme.
+![La mitrailleuse](docs/captures/pj3-lmg.jpg)
+![Le Surplus Éduen](docs/captures/pj3-surplus.jpg)
+
+**Plaisir de jeu, lot 3-7-3 : les grenades (25 novembre 2026)** (D326)
+- Au **Surplus Éduen**, 150 € pièce, dix au plus.
+- Grenade en main, **tiens le bouton rond** : la trajectoire s'affiche (petits cubes, point d'impact en rouge). **Relâche** : elle part là où tu regardes (regarde plus haut pour lancer plus loin, environ 20 m sur le plat), rebondit, roule, et **explose au bout de 3 secondes**, comme une voiture qui explose : blessures, véhicules abîmés, police prévenue.
+- À faire de ton côté : en lancer quelques-unes et dire si la portée et la mèche te vont.
+![L'arc de lancer](docs/captures/pj3-grenade-arc.jpg)
+![L'explosion](docs/captures/pj3-grenade-explosion.jpg)
+
+**Plaisir de jeu, lot 3-7-4 : gilet pare-balles et fumigènes (25 novembre 2026)** (D327)
+- **Gilet pare-balles** au Surplus Éduen (500 €) : il prend la moitié de chaque balle tant qu'il lui reste des points ; une barre bleue sous la santé. Détruit à la mort, confisqué à l'arrestation.
+- **Fumigènes** (80 €) : on les lance comme une grenade ; le nuage dure 12 s, et à moins de 7 m la police ne te voit plus et ne te tire plus dessus.
+- **Phase 3 terminée côté code** (D317 à D327). À faire de ton côté : relire les fiches des monuments, et jouer : argent, carnet, magasins, véhicules, armes.
+![Gilet et fumigène](docs/captures/pj3-fumigene.jpg)

@@ -8,7 +8,7 @@ import { SETTINGS_KEY } from "../core/settings";
 const ORIGIN = "https://domothib.example";
 
 const sample = (): SaveGame => ({
-  version: 5,
+  version: 6,
   savedAt: 1_700_000_000_000,
   player: { x: -10.5, y: -40 },
   camera: { yaw: 0.3, pitch: 0.28 },
@@ -18,6 +18,7 @@ const sample = (): SaveGame => ({
   waypoint: { x: 400, y: -300 },
   health: 72,
   arms: { owned: ["knife"], mag: {}, ammo: {}, current: "knife" },
+  money: 250,
 });
 
 /** Faux stockage synchrone de DomoThib (contrat §4.3), sur une table en mémoire. */

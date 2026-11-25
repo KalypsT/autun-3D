@@ -1,0 +1,272 @@
+[
+ {
+  "id": "piece-01",
+  "building": "BATIMENT0000002219588485",
+  "x": -161.4,
+  "y": 3877.1,
+  "z": -32.24,
+  "level": 1,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-02",
+  "building": "BATIMENT0000002219588490",
+  "x": -280.1,
+  "y": 3591.2,
+  "z": -32.79,
+  "level": 1,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-03",
+  "building": "BATIMENT0000000348854726",
+  "x": 787.5,
+  "y": 3159.7,
+  "z": -28.31,
+  "level": 1,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-04",
+  "building": "BATIMENT0000000348858329",
+  "x": 1244,
+  "y": 2377,
+  "z": -13.36,
+  "level": 2,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-05",
+  "building": "BATIMENT0000000348858811",
+  "x": 1001.4,
+  "y": 1542.6,
+  "z": -16.55,
+  "level": 1,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-06",
+  "building": "BATIMENT0000000348859318",
+  "x": 1582.4,
+  "y": 1401.8,
+  "z": -9.74,
+  "level": 3,
+  "group": "Est"
+ },
+ {
+  "id": "piece-07",
+  "building": "BATIMENT0000000348858972",
+  "x": 1814.8,
+  "y": 1235.7,
+  "z": -11.53,
+  "level": 2,
+  "group": "Est"
+ },
+ {
+  "id": "piece-08",
+  "building": "BATIMENT0000000348857591",
+  "x": 156,
+  "y": 1068.4,
+  "z": -20.64,
+  "level": 3,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-09",
+  "building": "BATIMENT0000000348848956",
+  "x": 368.7,
+  "y": 976,
+  "z": -20.18,
+  "level": 3,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-10",
+  "building": "BATIMENT0000000348849011",
+  "x": 485.5,
+  "y": 946.9,
+  "z": -27.26,
+  "level": 3,
+  "group": "Nord"
+ },
+ {
+  "id": "piece-11",
+  "building": "BATIMENT0000000348852252",
+  "x": -1482.8,
+  "y": 937.9,
+  "z": -38.26,
+  "level": 1,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-12",
+  "building": "BATIMENT0000000348857459",
+  "x": -28.2,
+  "y": 643.6,
+  "z": -6.61,
+  "level": 2,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-13",
+  "building": "BATIMENT0000000348857072",
+  "x": -635.8,
+  "y": 628.6,
+  "z": -26.78,
+  "level": 3,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-14",
+  "building": "BATIMENT0000000348856519",
+  "x": -274,
+  "y": 560.6,
+  "z": -17.41,
+  "level": 1,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-15",
+  "building": "BATIMENT0000000348856341",
+  "x": -528.8,
+  "y": 392.5,
+  "z": -20.11,
+  "level": 3,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-16",
+  "building": "BATIMENT0000000348856894",
+  "x": 190.8,
+  "y": 319.6,
+  "z": -4.7,
+  "level": 3,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-17",
+  "building": "BATIMENT0000000348856291",
+  "x": -424.2,
+  "y": 300.5,
+  "z": -20.06,
+  "level": 1,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-18",
+  "building": "BATIMENT0000000035041223",
+  "x": 685.8,
+  "y": 234.3,
+  "z": 11.68,
+  "level": 3,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-19",
+  "building": "BATIMENT0000000348846376",
+  "x": -920.5,
+  "y": -39.6,
+  "z": -9.46,
+  "level": 2,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-20",
+  "building": "BATIMENT0000000348853861",
+  "x": -287.4,
+  "y": -44.2,
+  "z": -6.98,
+  "level": 2,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-21",
+  "building": "BATIMENT0000000348853800",
+  "x": -676.7,
+  "y": -76.1,
+  "z": -6.47,
+  "level": 2,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-22",
+  "building": "BATIMENT0000000348854011",
+  "x": 74.9,
+  "y": -81.6,
+  "z": 14.07,
+  "level": 2,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-23",
+  "building": "BATIMENT0000000348844564",
+  "x": 544.4,
+  "y": -191.7,
+  "z": 12.98,
+  "level": 1,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-24",
+  "building": "BATIMENT0000000348844514",
+  "x": 409.2,
+  "y": -234,
+  "z": 21.72,
+  "level": 2,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-25",
+  "building": "BATIMENT0000000348846330",
+  "x": -911.5,
+  "y": -236.4,
+  "z": -2.07,
+  "level": 1,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-26",
+  "building": "BATIMENT0000000348846224",
+  "x": -1273,
+  "y": -266.3,
+  "z": -7.44,
+  "level": 2,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-27",
+  "building": "BATIMENT0000000348853034",
+  "x": 43.5,
+  "y": -439.5,
+  "z": 37.07,
+  "level": 3,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-28",
+  "building": "BATIMENT0000000348846204",
+  "x": -804.9,
+  "y": -463.2,
+  "z": 25.67,
+  "level": 2,
+  "group": "Ouest"
+ },
+ {
+  "id": "piece-29",
+  "building": "BATIMENT0000000348853002",
+  "x": -142.6,
+  "y": -528.3,
+  "z": 13.18,
+  "level": 1,
+  "group": "Centre"
+ },
+ {
+  "id": "piece-30",
+  "building": "BATIMENT0000000348852718",
+  "x": 74.1,
+  "y": -668.9,
+  "z": 53.13,
+  "level": 3,
+  "group": "Sud"
+ }
+]

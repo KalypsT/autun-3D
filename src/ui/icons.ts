@@ -13,6 +13,10 @@ const PATHS = {
   pistol: `<path fill="currentColor" d="M3 7h16l2 2v3h-9l-1 2.5H8L7 20H3.5l1.2-7H3z"/>`,
   shotgun: `<path fill="currentColor" d="M1.5 9H20l2.5 1v2.2H11L10 14H7.4l-2 4.5H2.2L4 13H1.5z"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M13 14.5h4"/>`,
   rifle: `<path fill="currentColor" d="M1.5 9h13V6.5h2V9h6v2.4h-8.3l-1 4.1h-2.3l.6-4.1H9l-3.2 5.4H2.4l2.4-5.4H1.5z"/>`,
+  smg: `<path fill="currentColor" d="M2 8h15l2.5 1.5V12H12l-.8 2h-1.6v5.5H7.2V14H5.5l-1.2 4H1.8l1.4-6H2z"/><path fill="currentColor" d="M19.5 10h3v1.4h-3z"/>`,
+  lmg: `<path fill="currentColor" d="M1 9.5h11V8h4v1.5h7.5v1.8H15l-.8 2.4h-2.6l.3-2.4H8.5l-3 5H2.2l2.6-5H1z"/><rect fill="currentColor" x="9" y="12.5" width="3.6" height="3.2" rx=".5"/><path fill="none" stroke="currentColor" stroke-width="1.4" d="M19 11.5l-1.6 5M20.6 11.5l1.6 5"/>`,
+  grenade: `<circle fill="currentColor" cx="11" cy="14.5" r="6.5"/><path fill="currentColor" d="M9 6.5h4.5v2.6H9z"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M13.5 7.5c2.5-1 4.5 0 5.5 2.5M8.6 6.2a2.4 2.4 0 0 1 3.6-2.4"/>`,
+  smoke: `<rect fill="currentColor" x="7.5" y="10" width="7" height="11" rx="1.5"/><path fill="currentColor" d="M9 7.5h4v2.5H9z"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M13 6c1-2.5 4-2.5 5-.5 2.3-.4 3.5 2 2.5 3.6M11 5.5C10 3 12 1.5 14 2.5"/>`,
   sniper: `<path fill="currentColor" d="M1 11.2h22.5v1.6H11.5l-1.2 1.4H7.8l-3 4.3H1.6l2.6-5.7H1z"/><rect fill="currentColor" x="7.5" y="7.2" width="7.5" height="2.6" rx="1.2"/><path fill="currentColor" d="M9 9.6h1.2v1.8H9zM12.3 9.6h1.2v1.8h-1.2z"/>`,
   bike: `<circle ${STROKE} cx="5.5" cy="16" r="3.5"/><circle ${STROKE} cx="18.5" cy="16" r="3.5"/><path ${STROKE} d="M5.5 16L9.5 9h6.5l2.5 7M9.5 9l3.5 7H5.5M14.5 5.5h2.5L16 9M8 6.5h3"/>`,
   kickscooter: `<circle ${STROKE} cx="5.5" cy="18" r="2.5"/><circle ${STROKE} cx="18.5" cy="18" r="2.5"/><path ${STROKE} d="M8 18h8M17.5 15.6L14.5 4H11"/>`,
@@ -29,6 +33,8 @@ const PATHS = {
   exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
   sprint: `<path ${STROKE} stroke-width="2.4" d="M8 6l6 6-6 6M14 6l6 6-6 6"/><path ${STROKE} d="M2 9h3M1 12h3M2 15h3"/>`,
   jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
+  shop: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5M10 20v-4.5h4V20"/>`,
+  closed: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M5.5 12.5V20h13v-7.5"/><path ${STROKE} d="M9.5 13.5l5 5M14.5 13.5l-5 5"/>`,
   reload: `<path ${STROKE} stroke-width="2.4" d="M20 12a8 8 0 1 1-2.3-5.7"/><path ${STROKE} stroke-width="2.4" d="M20 4v4h-4"/>`,
 } as const;
 

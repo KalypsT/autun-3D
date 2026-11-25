@@ -117,6 +117,11 @@ export class PedsController implements Arena {
   /** Ce que reçoit un gendarme frappé ou touché : emplacement dans la liste réservée, dégâts, direction, impulsion ; renvoie 0, 1 (touché) ou 2 (tué). Branché par le jeu sur `Officers.hurt`. */
   officerHurt: ((index: number, damage: number, ux: number, uy: number, impulse: number) => number) | null = null;
 
+  /** Passants mis à terre par le joueur depuis le dernier appel (D317) : voir `PedSim.takeFelled`. */
+  takeFelled(out: { x: number; y: number }[]): void {
+    this.sim?.takeFelled(out);
+  }
+
   /** Premier passant sur un rayon (J5-3) : voir `PedSim.rayPed`. */
   rayPed(x: number, y: number, dx: number, dy: number, maxDist: number, out: { slot: number; dist: number }): boolean {
     if (!this.sim) {

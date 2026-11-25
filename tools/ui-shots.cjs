@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -146,9 +146,293 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(300);
     await shot("pj1-saut-bandeau");
     await pauseMenu();
+    await clickText("Carnet");
     await clickText("Records");
     await sleep(500);
     await shot("pj1-records");
+    await ctx.close();
+  }
+
+  if (want("money")) {
+    // Argent (PJ 3, D317) : le solde sous la date et un gain qui monte ; des billets lâchés devant soi, ramassés ; la facture de l'hôpital ;
+    // le solde au volant (la date disparaît, il remonte).
+    const ctx = await open("money=1250&h=15");
+    await sleep(1500);
+    await page.addStyleTag({ content: "#money .m-pop { animation: none !important; transform: translateY(17px); } #busted.show { animation: none !important; }" });
+    await page.evaluate(() => window.__autun.wallet.earn(250, "Découverte"));
+    await frames(3);
+    await shot("pj3-argent");
+    await page.evaluate(() => { for (const el of document.querySelectorAll("#money .m-pop")) el.remove(); });
+    const heap = await page.evaluate(() => {
+      const a = window.__autun, p = a.player, h = p.heading;
+      // Devant et un peu à droite : juste devant, la liasse serait cachée par les jambes du personnage.
+      const q = { x: p.x + Math.sin(h) * 2.6 + Math.cos(h) * 1.3, y: p.y + Math.cos(h) * 2.6 - Math.sin(h) * 1.3 };
+      a.pickups.dropCash(q.x, q.y, 23);
+      a.look(h);
+      a.tilt(0.45);
+      return q;
+    });
+    await frames(4);
+    await shot("pj3-billets");
+    await page.evaluate((q) => { const p = window.__autun.player; p.x = q.x; p.y = q.y; }, heap);
+    await frames(4);
+    console.log("solde après les billets :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-billets-ramasses");
+    await page.evaluate(() => window.__autun.health.damage(1000));
+    await frames(3);
+    await shot("pj3-mort-facture");
+    console.log("solde après la mort :", await page.evaluate(() => window.__autun.wallet.balance), "armes :", await page.evaluate(() => window.__autun.inventory.toSave().owned));
+    await ctx.close();
+    const c2 = await open("money=1250&ride=voiture&h=15");
+    await sleep(1500);
+    await shot("pj3-argent-voiture");
+    await c2.close();
+  }
+
+  if (want("carnet")) {
+    // Carnet et défis (PJ 3, D319) : un saut de 60 m franchit deux paliers d'un coup (bandeaux à la suite, primes au solde) ; puis le carnet,
+    // onglet Défis et onglet Records.
+    const ctx = await open("money=200&h=15");
+    await sleep(1500);
+    await page.addStyleTag({ content: "#feat.show { animation: none !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.evaluate(() => {
+      const a = window.__autun;
+      a.challenges.add("foot", 5200);
+      a.challenges.offer("topSpeed", 34);
+      for (const h of a.challenges.offer("jump", 60)) { a.wallet.earn(h.reward, "Défi"); }
+    });
+    console.log("solde :", await page.evaluate(() => window.__autun.wallet.balance), "paliers :", await page.evaluate(() => window.__autun.challenges.count));
+    // Le bandeau ne dure que 2,6 s (temps réel) : rendu logiciel lent, on capture juste après l'avoir demandé.
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; }" });
+    await page.evaluate(() => { window.__autun.showFeat("Défi argent : saut de 50 m"); document.getElementById("feat").classList.add("keep"); });
+    await sleep(300);
+    await shot("pj3-defi-bandeau");
+    await page.evaluate(() => window.__autun.ui.showCarnet("defis"));
+    await sleep(600);
+    await shot("pj3-carnet-defis");
+    await clickText("Records");
+    await sleep(400);
+    await shot("pj3-carnet-records");
+    await ctx.close();
+  }
+
+  if (want("monuments")) {
+    // Chasse aux monuments (PJ 3, D320) : on arrive à la porte d'Arroux (bandeau, prime, « Lire la fiche ») ; la fiche dans le carnet ;
+    // la liste des monuments ; la carte agrandie avec les « ? ».
+    const ctx = await open("money=200&h=16&at=-264,1020&yaw=0");
+    await sleep(1500);
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.evaluate(() => { const p = window.__autun.player; p.x = -266; p.y = 1048; });
+    await page.waitForFunction(() => window.__autun.notebook.has("monuments", "arroux"), null, { timeout: 120000, polling: 200 });
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(300);
+    console.log("solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-decouverte");
+    await click("#discover");
+    await sleep(500);
+    await shot("pj3-fiche");
+    await clickText("Retour à la liste");
+    await sleep(300);
+    await shot("pj3-carnet-monuments");
+    await page.evaluate(() => window.__autun.ui.setPaused(false));
+    await frames(2);
+    await pauseMap();
+    await sleep(800);
+    await shot("pj3-carte-monuments");
+    await ctx.close();
+  }
+
+  if (want("tresors")) {
+    // Pièces d'or des toits (PJ 3, D321) : sur le toit d'une pièce facile du centre, la pièce devant soi ; ramassée ; le carnet par quartier.
+    const sites = JSON.parse(fs.readFileSync("src/data/treasures.json", "utf8"));
+    const t = sites.find((q) => q.group === "Centre" && q.level === 1);
+    const ctx = await open(`money=200&h=15&at=${t.x},${t.y - 6}&yaw=0`);
+    await sleep(1500);
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    // Sur le toit, à 1,8 m de la pièce (hors de portée de ramassage), face à elle : on essaie les quatre côtés, on garde celui où l'on tient.
+    let placed = null;
+    for (const [dx, dy, yaw] of [[0, -1.8, 0], [0, 1.8, Math.PI], [-1.8, 0, Math.PI / 2], [1.8, 0, -Math.PI / 2]]) {
+      await page.evaluate(([q, ddx, ddy, yy]) => {
+        const a = window.__autun, p = a.player;
+        p.x = q.x + ddx; p.y = q.y + ddy; p.z = q.z + 0.05; p.vz = 0; p.vx = 0; p.vy = 0;
+        // Un peu de biais : droit derrière le personnage, la pièce serait cachée par son corps.
+        a.look(yy + 0.55); a.tilt(0.4);
+      }, [t, dx, dy, yaw]);
+      await frames(4);
+      const z = await page.evaluate(() => window.__autun.player.z);
+      if (Math.abs(z - t.z) < 0.6) { placed = { dx, dy, z }; break; }
+    }
+    console.log("pièce", t.id, "joueur", JSON.stringify(placed));
+    await shot("pj3-piece");
+    await page.evaluate((q) => { const p = window.__autun.player; p.x = q.x; p.y = q.y; }, t);
+    await page.waitForFunction((id) => window.__autun.notebook.has("tresors", id), t.id, { timeout: 60000, polling: 200 });
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(300);
+    await shot("pj3-piece-trouvee");
+    await page.evaluate(() => window.__autun.ui.showCarnet("tresors"));
+    await sleep(500);
+    await shot("pj3-carnet-pieces");
+    await ctx.close();
+  }
+
+  if (want("magasins")) {
+    // Magasins (PJ 3, D322) : la boulangerie Benzaabar, rue de la mairie, un mercredi à 10 h, blessé : « Entrer », l'écran d'achat, un sandwich ;
+    // puis la même à 21 h : « Fermé » et le bandeau qui dit quand elle ouvre.
+    const ctx = await open("money=40&hurt=40&h=10&weekday=3&at=-30,104&yaw=-1.6");
+    await page.waitForFunction(() => window.__autun.ui.shops.length > 0, null, { timeout: 120000 });
+    await sleep(1500);
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await shot("pj3-boulangerie-entrer");
+    await click("#action");
+    await sleep(400);
+    await shot("pj3-boulangerie-ecran");
+    await page.locator("#shop .sh-buy").nth(1).click();
+    await sleep(300);
+    console.log("après :", await page.evaluate(() => ({ hp: window.__autun.health.hp, solde: window.__autun.wallet.balance })));
+    await shot("pj3-boulangerie-achat");
+    await ctx.close();
+    const c2 = await open("money=40&h=21&weekday=3&at=-30,104&yaw=-1.6");
+    await page.waitForFunction(() => window.__autun.ui.shops.length > 0, null, { timeout: 120000 });
+    await sleep(1500);
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; }" });
+    await click("#action");
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(300);
+    console.log("fermé :", await page.evaluate(() => document.getElementById("feat").textContent));
+    await shot("pj3-boulangerie-fermee");
+    await c2.close();
+  }
+
+  if (want("vehicules")) {
+    // Véhicules achetés (PJ 3, D323) : chez Dacia Autun un mercredi à 11 h, 20 000 € ; l'écran du concessionnaire ; une citadine dans sa
+    // troisième couleur ; livrée devant ; l'onglet Véhicules du carnet.
+    const ctx = await open("money=20000&h=11&weekday=3&at=-1500,735&yaw=0");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.kind === "car"), null, { timeout: 120000 });
+    await sleep(1500);
+    const shop = await page.evaluate(() => { const s = window.__autun.ui.shops.find((q) => q.name.startsWith("Dacia")); return { x: s.x, y: s.y, name: s.name }; });
+    // Autour du magasin, au sol (le point du lieu est dans le bâtiment : on y partirait sur le toit), jusqu'à ce que « Entrer » apparaisse.
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, r = 26;
+      await page.evaluate(([q, aa, rr]) => { const p = window.__autun.player; p.x = q.x + Math.sin(aa) * rr; p.y = q.y + Math.cos(aa) * rr; p.z = -1000; p.vz = 0; }, [shop, a, r]);
+      await frames(4);
+      const label = await page.evaluate(() => document.getElementById("action").getAttribute("aria-label") || "");
+      if (label.startsWith("Entrer")) break;
+    }
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await click("#action");
+    await sleep(400);
+    await page.locator("#shop .sh-row").nth(1).locator(".sh-swatch").nth(2).click();
+    await sleep(200);
+    await shot("pj3-concession");
+    await page.locator("#shop .sh-row").nth(1).locator(".sh-buy").click();
+    await sleep(300);
+    console.log("note :", await page.evaluate(() => document.querySelector("#shop .sh-note")?.textContent), "solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-concession-achat");
+    await click("#shop .sh-leave");
+    const car = await page.evaluate(() => { const v = window.__autun.fleet.get("achat-1"); return v ? { x: v.state.x, y: v.state.y } : null; });
+    console.log("livrée :", JSON.stringify(car));
+    if (car) await page.evaluate((c) => { const a = window.__autun, p = a.player; a.look(Math.atan2(c.x - p.x, c.y - p.y)); a.tilt(0.25); }, car);
+    await frames(4);
+    await shot("pj3-livraison");
+    await page.evaluate(() => window.__autun.ui.showCarnet("vehicules"));
+    await sleep(500);
+    await shot("pj3-carnet-vehicules");
+    await ctx.close();
+  }
+
+  if (want("armes")) {
+    // Armureries (PJ 3, D324) : James, un mercredi à 10 h, 1 000 € : un pistolet, puis des balles ; l'onglet Caches du carnet.
+    const ctx = await open("money=1000&h=10&weekday=3&at=2,-190&yaw=3.14");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.name === "James"), null, { timeout: 120000 });
+    await sleep(1500);
+    const shop = await page.evaluate(() => { const s = window.__autun.ui.shops.find((q) => q.name === "James"); return { x: s.x, y: s.y }; });
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2;
+      await page.evaluate(([q, aa]) => { const p = window.__autun.player; p.x = q.x + Math.sin(aa) * 8; p.y = q.y + Math.cos(aa) * 8; p.z = -1000; p.vz = 0; }, [shop, a]);
+      await frames(4);
+      if ((await page.evaluate(() => document.getElementById("action").getAttribute("aria-label") || "")).startsWith("Entrer")) break;
+    }
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await click("#action");
+    await sleep(400);
+    await page.locator("#shop .sh-row").nth(0).locator(".sh-buy").click();
+    await sleep(200);
+    await page.locator("#shop .sh-row").nth(3).locator(".sh-buy").click();
+    await sleep(300);
+    console.log("note :", await page.evaluate(() => document.querySelector("#shop .sh-note")?.textContent), "solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-james");
+    await click("#shop .sh-leave");
+    await page.evaluate(() => window.__autun.ui.showCarnet("caches"));
+    await sleep(500);
+    await shot("pj3-carnet-caches");
+    await ctx.close();
+  }
+
+  if (want("armes2")) {
+    // Pistolet-mitrailleur et mitrailleuse (PJ 3, D325) : chacune en main, vue de trois quarts ; puis l'écran du Surplus Éduen.
+    for (const id of ["smg", "lmg"]) {
+      const c = await open(`arms=${id}&h=15`);
+      await sleep(1500);
+      await page.evaluate((w) => { const a = window.__autun; a.inventory.select(w); a.look(a.player.heading + 2.4); a.tilt(0.15); }, id);
+      await frames(6);
+      await shot(`pj3-${id}`);
+      await c.close();
+    }
+    const ctx = await open("money=8000&h=10&weekday=3&at=-28,36&yaw=-1.5");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.name === "Surplus Éduen"), null, { timeout: 120000 });
+    await sleep(1500);
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await click("#action");
+    await sleep(400);
+    await shot("pj3-surplus");
+    await ctx.close();
+  }
+
+  if (want("grenade")) {
+    // Grenades (PJ 3, D326) : bouton tenu, l'arc ; relâché, la grenade vole ; trois secondes plus tard, l'explosion.
+    const ctx = await open("arms=grenade&h=15");
+    await sleep(1500);
+    await page.evaluate(() => { const a = window.__autun; a.inventory.select("grenade"); a.tilt(0.1); });
+    await frames(3);
+    const b = await page.locator("#attack").boundingBox();
+    const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+    await touch("touchStart", [[cx, cy]]);
+    await frames(6);
+    await shot("pj3-grenade-arc");
+    await touch("touchEnd", []);
+    await frames(8);
+    await shot("pj3-grenade-vol");
+    console.log("grenades :", await page.evaluate(() => window.__autun.inventory.reserveOf("grenade")));
+    // Rendu logiciel lent : on attend la mèche (3 s de jeu), puis on capture l'explosion.
+    await page.evaluate(() => new Promise((res) => setTimeout(res, 3200)));
+    await frames(2);
+    await shot("pj3-grenade-explosion");
+    await ctx.close();
+  }
+
+  if (want("fumigene")) {
+    // Gilet et fumigène (PJ 3, D327) : au Surplus Éduen, un gilet et un fumigène ; la barre du gilet sous la santé ; le fumigène lancé, son nuage.
+    const ctx = await open("money=1000&hurt=70&h=10&weekday=3&at=-28,36&yaw=-1.5");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.name === "Surplus Éduen"), null, { timeout: 120000 });
+    await sleep(1500);
+    await click("#action");
+    await sleep(400);
+    for (const id of ["gilet", "smoke"]) {
+      const i = await page.evaluate((w) => window.__autun.ui.shops.find((s) => s.name === "Surplus Éduen").items.findIndex((q) => q.id === w), id);
+      await page.locator("#shop .sh-row").nth(i).locator(".sh-buy").click();
+      await sleep(200);
+    }
+    console.log("note :", await page.evaluate(() => document.querySelector("#shop .sh-note")?.textContent), "solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await click("#shop .sh-leave");
+    await page.evaluate(() => { const a = window.__autun; a.inventory.select("smoke"); a.look(a.player.heading + Math.PI); a.tilt(0.05); });
+    await frames(3);
+    const b = await page.locator("#attack").boundingBox();
+    await touch("touchStart", [[b.x + b.width / 2, b.y + b.height / 2]]);
+    await frames(4);
+    await touch("touchEnd", []);
+    await page.evaluate(() => new Promise((res) => setTimeout(res, 3500)));
+    await frames(3);
+    await shot("pj3-fumigene");
     await ctx.close();
   }
 

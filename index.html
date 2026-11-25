@@ -10,7 +10,7 @@
       :root { --ink: #1b1f27; --cream: #fff8e6; --brick: #d9472b; --ochre: #f1b24a; --panel: rgba(27, 31, 39, .72); --lift: 0 3px 0 rgba(27, 31, 39, .45); }
       html, body { margin: 0; height: 100%; background: #1b1f27; overflow: hidden; touch-action: none; overscroll-behavior: none; }
       canvas { display: block; width: 100%; height: 100%; }
-      #debug { position: fixed; top: 204px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
+      #debug { position: fixed; top: 226px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
                background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
       #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
       #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
@@ -136,7 +136,7 @@
                          text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); border-bottom: 4px solid var(--brick); padding-bottom: 3px; }
       @keyframes vname { 0% { opacity: 0; transform: translateX(40px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
       /* Figure en cours (roue arrière, roue avant) : sous la minimap. */
-      #stunt { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 8px); top: 178px; z-index: 4; pointer-events: none; padding: 4px 10px; border-radius: 12px;
+      #stunt { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 8px); top: 200px; z-index: 4; pointer-events: none; padding: 4px 10px; border-radius: 12px;
                background: rgba(27, 31, 39, .78); border: 1.5px solid var(--ochre); color: var(--ochre); font: 800 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
       #stunt:empty { display: none; }
       /* Exploit (D311) : « Saut 34 m », « Dérapage 42 m » au centre, sous le bandeau d'état, en gros caractères d'affiche (pas de capitales forcées : « 46 M » se lirait mal). */
@@ -160,6 +160,16 @@
                   text-shadow: 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
       body.game #calendar { display: block; }
       body.game.driving #calendar { display: none; }
+      /* Argent (D317) : le solde sous la date, toujours visible ; les gains montent en ocre, les dépenses en rouge brique, puis s'effacent. */
+      #money { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 174px; width: 140px; z-index: 4; display: none; text-align: center; pointer-events: none;
+               color: var(--cream); font: 800 15px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+               text-shadow: 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink), 2px 2px 0 var(--ink); }
+      body.game #money { display: block; }
+      body.game.driving #money { top: 160px; }
+      #money .m-pop { position: absolute; left: 0; right: 0; top: 0; font: italic 900 16px/1 system-ui, sans-serif; animation: mpop 1.8s ease-out both; }
+      #money .m-pop.gain { color: var(--ochre); }
+      #money .m-pop.loss { color: var(--brick); }
+      @keyframes mpop { 0% { opacity: 0; transform: translateY(22px); } 15% { opacity: 1; transform: translateY(18px); } 70% { opacity: 1; transform: translateY(16px); } 100% { opacity: 0; transform: translateY(4px); } }
       /* Bandeau d'état « plaque émaillée » : double filet crème et ocre ; chaque partie n'apparaît que quand elle sert, le bandeau disparaît s'il est vide. */
       #status { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; display: none; align-items: stretch; height: 44px; padding: 0 4px; box-sizing: border-box;
                 border-radius: 22px; border: 2px solid var(--cream); background: rgba(27, 31, 39, .86); white-space: nowrap; pointer-events: none;
@@ -193,6 +203,11 @@
       #health .hbar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 7px, var(--ink) 7px 8px); }
       #health .hfill { display: block; height: 100%; width: 100%; background: var(--cream); }
       #health.low .hfill { background: var(--brick); }
+      /* Gilet pare-balles (D327) : une barre bleu acier sous la santé, tant qu'il reste des points. */
+      #health { position: relative; }
+      #health .harmor { display: none; position: absolute; left: 38px; bottom: 6px; width: 80px; height: 4px; border-radius: 2px; background: rgba(255, 248, 230, .16); overflow: hidden; }
+      #health.vest .harmor { display: block; }
+      #health .hafill { display: block; height: 100%; width: 0; background: #8fb3d9; }
       #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
       /* Traits de vitesse (D90) : rayons crème autour du centre, au-delà de 100 km/h ; l'opacité suit la vitesse. */
@@ -214,7 +229,7 @@
       body.layout .slot { display: flex; min-width: 80px; outline: 1px dashed rgba(255, 255, 255, .55); border-radius: 8px; }
       body.layout .slot::before { content: attr(data-name); opacity: .7; font-weight: 400; font-size: 12px; }
       /* Pendant la pause, l'interface du jeu s'efface : le menu ou la carte prend tout l'écran. */
-      body.paused #minimap, body.paused #clock, body.paused #calendar, body.paused #status, body.paused #hurt, body.paused #speedlines,
+      body.paused #minimap, body.paused #clock, body.paused #calendar, body.paused #money, body.paused #status, body.paused #hurt, body.paused #speedlines,
       body.paused #action, body.paused #attack, body.paused #jump, body.paused #sprint, body.paused #reload, body.paused #aim, body.paused #crosshair, body.paused #scope, body.paused #reticle, body.paused #pedals, body.paused #speedo, body.paused #stunt, body.paused #feat, body.paused #hint, body.paused #credits, body.paused #debug { visibility: hidden; }
       /* Arrestation (J4) et mort (J5) : un bandeau d'affiche rouge brique au milieu de l'écran, qui s'efface tout seul. */
       #busted { position: fixed; left: 0; right: 0; top: 34%; z-index: 8; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 16px;
@@ -240,6 +255,46 @@
       .pm-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 248, 230, .14); }
       .pm-row.locked { opacity: .55; }
       .pm-record { font-variant-numeric: tabular-nums; color: var(--ochre); white-space: nowrap; }
+      /* Carnet (D319) : onglets, sous-titres de groupe, pastilles des paliers (bronze, argent, or) éteintes tant qu'elles ne sont pas gagnées. */
+      .pm-tabs { margin: 0 0 8px; width: max-content; max-width: 100%; overflow-x: auto; }
+      .pm-sub { margin: 12px 0 2px; font: 700 13px system-ui, sans-serif; color: var(--ochre); }
+      .pm-medals { display: flex; gap: 6px; flex: none; }
+      .pm-medal { min-width: 58px; padding: 3px 6px; border-radius: 9px; text-align: center; font: 700 12px/1.3 system-ui, sans-serif; font-variant-numeric: tabular-nums;
+                  border: 1.5px solid rgba(255, 248, 230, .25); color: rgba(255, 248, 230, .5); white-space: nowrap; }
+      .pm-medal.on.t1 { background: #b8743a; border-color: #b8743a; color: var(--cream); }
+      .pm-medal.on.t2 { background: #b9bec6; border-color: #b9bec6; color: var(--ink); }
+      .pm-medal.on.t3 { background: var(--ochre); border-color: var(--ochre); color: var(--ink); }
+      button.pm-row.pm-link { width: 100%; background: none; border: 0; border-bottom: 1px solid rgba(255, 248, 230, .14); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .pm-fiche-title { margin: 6px 0 4px; font: 800 19px system-ui, sans-serif; color: var(--ochre); }
+      .pm-fiche { margin: 0 0 10px; font-size: 15px; line-height: 1.5; max-width: 62ch; }
+      .pm-veh { display: flex; align-items: center; gap: 8px; }
+      .pm-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--cream); flex: none; }
+      .pm-back { margin-top: 4px; height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255, 248, 230, .4); background: rgba(255, 248, 230, .1); color: inherit; font: 600 14px system-ui, sans-serif; }
+      /* Découverte (D320) : « Lire la fiche » sous le bandeau d'exploit, quelques secondes. */
+      #discover { position: fixed; left: 50%; top: 128px; transform: translateX(-50%); z-index: 6; display: none; padding: 8px 16px; border-radius: 20px;
+                  border: 2px solid var(--cream); background: var(--brick); color: var(--cream); font: 800 15px system-ui, sans-serif; box-shadow: var(--lift); }
+      body.game #discover.show { display: block; }
+      body.paused #discover { display: none !important; }
+      /* Écran d'achat (D322) : une carte au milieu, le jeu figé derrière. */
+      #shop { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(27, 31, 39, .55); }
+      #shop[hidden] { display: none; }
+      #shop .sh-card { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 24px); overflow-y: auto; box-sizing: border-box; padding: 14px 18px 16px; border-radius: 16px;
+                       border: 2px solid var(--cream); background: rgba(27, 31, 39, .96); color: var(--cream); font: 15px/1.35 system-ui, sans-serif; }
+      #shop .sh-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+      #shop h2 { margin: 0; font: 800 21px system-ui, sans-serif; color: var(--ochre); }
+      #shop .sh-hours, #shop .sh-balance { margin: 2px 0 6px; opacity: .75; font-size: 13px; }
+      #shop .sh-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255, 248, 230, .14); }
+      #shop .sh-name { flex: 1; }
+      #shop .sh-effect { opacity: .65; font-size: 13px; }
+      #shop .sh-price { color: var(--ochre); font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+      #shop button { height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255, 248, 230, .4); background: rgba(255, 248, 230, .1); color: inherit; font: 600 14px system-ui, sans-serif; }
+      #shop .sh-buy { min-width: 112px; background: var(--brick); border-color: var(--cream); }
+      #shop .sh-buy:disabled { background: rgba(255, 248, 230, .08); border-color: rgba(255, 248, 230, .25); opacity: .7; }
+      #shop .sh-note { margin: 8px 0 0; color: var(--ochre); font-weight: 700; }
+      #shop .sh-leave { margin-top: 10px; }
+      #shop .sh-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+      #shop .sh-swatch { width: 22px; height: 22px; min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 248, 230, .35); }
+      #shop .sh-swatch.on { border: 3px solid var(--cream); box-shadow: 0 0 0 2px var(--brick); }
       .pm-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .pm-label small, .pm-note small, .pm-form-side small { opacity: .65; font-size: 12px; line-height: 1.3; }
       .pm-seg { display: flex; flex: none; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 248, 230, .35); }
@@ -314,11 +369,13 @@
     <canvas id="minimap" role="button" aria-label="Carte et pause"></canvas>
     <div id="clock" aria-label="Heure du jeu">--:--</div>
     <div id="calendar" aria-label="Date du jeu"></div>
+    <div id="money" aria-label="Argent"><span class="m-value">0&nbsp;€</span></div>
     <div id="status"><div id="health" class="slot" data-name="santé"></div><div id="weapon" class="slot" data-name="arme"></div><div id="wanted" class="slot" data-name="recherche"></div></div>
     <div id="hint">Pouce gauche : marcher (à fond : courir, bouton ≫ : sprinter) · glisser à droite : regarder · toucher la minimap : carte et pause</div>
     <div id="pedals"><div id="horn" class="pedal" role="button" aria-label="Klaxon"></div><div id="handbrake" class="pedal" role="button" aria-label="Frein à main"></div><div id="brake" class="pedal" role="button" aria-label="Frein"></div><div id="gas" class="pedal" role="button" aria-label="Accélérer"></div></div>
     <div id="stunt" aria-live="polite"></div>
     <div id="feat" aria-live="polite"></div>
+    <button id="discover" type="button">📖 Lire la fiche</button>
     <div id="vname" aria-live="polite"></div>
     <div id="speedo" aria-label="Vitesse"><svg viewBox="0 0 72 72"><circle class="disc" cx="36" cy="36" r="34"/><path class="track" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/><path id="speedo-arc" pathLength="100" d="M 16.2 55.8 A 28 28 0 1 1 55.8 55.8"/></svg><div id="speedo-value">0</div><div id="speedo-unit">km/h</div></div>
     <div id="threats"><div class="threat"></div><div class="threat"></div><div class="threat"></div><div class="threat"></div></div>

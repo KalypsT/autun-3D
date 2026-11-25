@@ -20,6 +20,17 @@ import { RecordBook } from "../core/records";
 import { crowdMurmur, footingAt, type Footing } from "../core/footing";
 import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
+import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
+import { MoneyHud } from "../ui/money-hud";
+import { canBuy, canBuyVehicle, canBuyVest, canBuyWeapon, shopAt, shopHours, shopOpen, VEST_MAX, vestAbsorb, type Shop } from "../core/shops";
+import { GENDARMERIE, IMPOUND_FEE, OwnedVehicles, type OwnedVehicle } from "../core/owned";
+import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
+import { ShopScreen } from "../ui/shop-screen";
+import { arcPoints, GRENADE, stepGrenade, throwVelocity, type GrenadeBody, type GrenadeWorld } from "../core/grenade";
+import type { GarageRow } from "../ui/pause-menu";
+import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
+import { Notebook } from "../core/collections";
+import { COLLECTIONS, TREASURE_SITES } from "./collections-list";
 import { onDuty, UNIQUE, UniqueKeeper, UNIQUES } from "../core/uniques";
 import { chimneyOf, hasBeacon, vendorOf } from "../render/car-model";
 import { applyAppearance, recipeFromSeed, WHITE } from "../core/character";
@@ -42,7 +53,7 @@ import { Speedo } from "../ui/speedo";
 import { Wanted } from "../core/wanted";
 import { WantedHud } from "../ui/wanted-hud";
 import { VehicleNameHud } from "../ui/vehicle-name";
-import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, nearestHospital } from "../core/health";
+import { bailOutDamage, canStepOut, DEATH_HOURS, dropDamage, fallDamage, Health, MAX_HEALTH, nearestHospital } from "../core/health";
 import { HealthHud } from "../ui/health-hud";
 import { Inventory, WEAPON_ORDER, WEAPONS, type AttackStyle, type GunId, type WeaponId } from "../core/weapons";
 import { FAR_VICTIM, farImpacts, Gun, MUZZLE, type GunView, type ShootWorld } from "../core/gun";
@@ -50,7 +61,7 @@ import { AimAssist, type AimAssistInput } from "../core/aim-assist";
 import { KICK, scopePan, scopeSway } from "../core/scope";
 import { Threats } from "../core/threat";
 import type { CrowdScope } from "../render/crowd/crowd-types";
-import { CACHE_ROUNDS, Pickups } from "../core/pickups";
+import { CACHE_ROUNDS, CACHES, cacheId, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
 import { Fx, type PickupView } from "../render/fx";
@@ -318,15 +329,27 @@ export function startGame(ctx: GameContext): void {
   timeScale.slowmoEnabled = ctx.settings!.values.slowmo;
   const featEl = document.getElementById("feat");
   let featTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Bandeau d'exploit au centre de l'écran (« Saut 34 m »), quelques secondes. */
-  const showFeat = (text: string): void => {
-    if (!featEl) return;
+  /** Bandeaux en attente (D319) : un défi gagné par un saut s'affiche après le bandeau du saut, au lieu de l'effacer. */
+  const featQueue: string[] = [];
+  const nextFeat = (): void => {
+    const text = featQueue.shift();
+    if (!featEl || text === undefined) {
+      featTimer = null;
+      featEl?.classList.remove("show");
+      return;
+    }
     featEl.textContent = text;
     featEl.classList.remove("show");
     void featEl.offsetWidth;
     featEl.classList.add("show");
-    if (featTimer) clearTimeout(featTimer);
-    featTimer = setTimeout(() => featEl.classList.remove("show"), 2600);
+    featTimer = setTimeout(nextFeat, 2600);
+  };
+  /** Bandeau d'exploit au centre de l'écran (« Saut 34 m »), quelques secondes ; les suivants attendent leur tour (trois au plus). */
+  const showFeat = (text: string): void => {
+    if (!featEl) return;
+    if (featQueue.length >= 3) featQueue.shift();
+    featQueue.push(text);
+    if (!featTimer) nextFeat();
   };
   /** Temps tenu (s) sans interruption à 3 étoiles ou plus, et à 5 étoiles. */
   let stars3 = 0, stars5 = 0;
@@ -336,12 +359,16 @@ export function startGame(ctx: GameContext): void {
     const fly = airborne(s as Parameters<typeof airborne>[0]);
     const jump = jumps.update(fly, s.x, s.y, s.z, s.z - s.air, s.vx, s.vy, s.vz, lastDt, lastRealDt);
     if (jump && jump.distance >= JUMP_SHOW) showFeat(featLabel("jump", jump.distance, records.offer("jump", jump.distance)));
+    if (jump) reward(challenges.offer("jump", jump.distance));
     if (family === "car") {
       const drift = drifts.update(slipAngle(s.heading, s.vx, s.vy), Math.abs(s.speed), !fly, lastDt);
       if (drift && drift.distance >= DRIFT_SHOW) showFeat(featLabel("drift", drift.distance, records.offer("drift", drift.distance)));
+      if (drift) reward(challenges.offer("drift", drift.distance));
     }
     records.offer("topSpeed", Math.abs(s.speed));
     records.add("vehicle", Math.abs(s.speed) * lastDt);
+    reward(challenges.offer("topSpeed", Math.abs(s.speed)));
+    reward(challenges.add("vehicle", Math.abs(s.speed) * lastDt));
   };
   let lastDt = 0, lastRealDt = 0;
   /** Sol sous les pieds (D313) : relu au plus tous les 1,5 m (les polygones des tuiles chargées). */
@@ -470,11 +497,49 @@ export function startGame(ctx: GameContext): void {
   // Armes (J5, D80) : les poings sont toujours là ; reprise de la sauvegarde ; `?arms=knife,bat,pistol` (ou `all`) en donne pour les essais ; on en trouve dans les caches de la ville (D84).
   const inventory = new Inventory();
   if (saved) inventory.restore(saved.arms);
+  // Argent (D317) : reprise de la sauvegarde ; `?money=N` impose un solde (essais, captures).
+  const wallet = new Wallet(params.has("money") ? Number(params.get("money")) : (saved?.money ?? 0));
+  const moneyHud = new MoneyHud(document.getElementById("money")!);
+  /** Points du gilet pare-balles (D327), 0 sans gilet ; détruit à la mort, confisqué à l'arrestation. */
+  let armor = Math.min(Math.max(saved?.armor ?? 0, 0), VEST_MAX);
+  // Véhicules achetés (D323) : à toi, jamais oubliés (la flotte le sait), remplacés par l'assurance, retenus à la fourrière.
+  const owned = new OwnedVehicles(saved?.garage);
+  fleet.isOwned = (id) => owned.isOwned(id);
+  // Défis et carnet de collections (D319) : de la partie, enregistrés avec elle.
+  const challenges = new Challenges(saved?.challenges);
+  const notebook = new Notebook(COLLECTIONS, saved?.book);
+  /** Paliers de défis franchis : la prime au porte-monnaie, un bandeau chacun. */
+  const reward = (hits: readonly ChallengeHit[]): void => {
+    for (const h of hits) {
+      wallet.earn(h.reward, `Défi ${TIER_NAMES[h.tier - 1]}`);
+      showFeat(`Défi ${TIER_NAMES[h.tier - 1]} : ${challengeGoal(h.kind, h.tier)}`);
+    }
+  };
+  let discoverTimer = 0;
+  /** Tintement des pièces d'or proches (D321) : distance d'écoute (m) et attente avant le prochain. */
+  const COIN_HEAR = 25;
+  let glintTimer = 0;
+  /** Bouton « Lire la fiche » de la dernière découverte (D320) et le temps qu'il reste affiché (s de jeu). */
+  const discoverEl = document.getElementById("discover")!;
+  let discoverFor: { tab: string; id: string } | null = null, discoverLeft = 0;
+  discoverEl.addEventListener("click", () => {
+    if (!discoverFor) return;
+    discoverEl.classList.remove("show");
+    ui.showCarnet(discoverFor.tab, discoverFor.id);
+    discoverFor = null;
+  });
+  /** Passants mis à terre par le joueur à cette image (D317) : chacun lâche peut-être son portefeuille. */
+  const felled: { x: number; y: number }[] = [];
   const melee = new Melee();
   const gun = new Gun(0x51f7);
   const pickups = new Pickups();
+  // Caches déjà prises dans cette partie (D324) : elles ne reviennent plus.
+  pickups.retire(new Set(CACHES.map(cacheId).filter((id) => saved?.book?.[`caches:${id}`] !== undefined)));
+  // Pharmacies (D322) : leur croix n'est là qu'aux heures d'ouverture ; celles de l'hôpital toujours.
+  const pharmacy = scheduleOf("pharmacy");
+  pickups.closed = (p) => p.price > 0 && !scheduleOpen(pharmacy, atmosphere.calendar.weekday, atmosphere.hour);
   const armsParam = params.get("arms");
-  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? 0) * 2);
+  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, WEAPONS[id as WeaponId].kind === "throw" ? 5 : (CACHE_ROUNDS[id as WeaponId] ?? WEAPONS[id as WeaponId].mag) * 2);
   const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
     inventory.cycle();
     melee.cancel();
@@ -487,6 +552,19 @@ export function startGame(ctx: GameContext): void {
     reloadAsked = true;
   });
   let heldId: WeaponId | null = null;
+  // Grenades (D326) : celles qui volent ou roulent, l'arc de lancer de cette image, le bouton tenu à l'image d'avant, le geste en cours.
+  const grenades: (GrenadeBody & { smoke: boolean })[] = [];
+  /** Nuages de fumigène (D327) : centre et secondes écoulées ; la police ne voit ni ne vise personne à moins de `FUMIGENE.radius`. */
+  const clouds: { x: number; y: number; z: number; t: number }[] = [];
+  const FUMIGENE = { pop: 1.5, life: 12, radius: 7 } as const;
+  const SMOKE_COLOR = new THREE.Color("#d9d7cf");
+  police.concealed = (x, y) => clouds.some((c) => c.t < FUMIGENE.life && Math.hypot(c.x - x, c.y - y) < FUMIGENE.radius);
+  const grenadeArc: number[] = [];
+  let throwHeld = false, throwAnim = 0;
+  const grenadeWorld: GrenadeWorld = {
+    ground: (x, y, z) => surface.heightAt(x, y, z + 0.5),
+    wall: (x0, y0, x1, y1) => colliders.raycast(x0, y0, x1, y1, true),
+  };
   let aimW = 0;
   const pedWitnesses: number[] = [];
   /** Victimes touchées loin du tireur à ce tir (T4, D208). */
@@ -776,8 +854,10 @@ export function startGame(ctx: GameContext): void {
     }
   };
   /** Le véhicule explose : boule de feu, débris, bruit ; le souffle tue le conducteur, blesse et projette autour, abîme les véhicules voisins. */
-  const explode = (v: Vehicle): void => {
-    const s = v.state, x = s.x, y = s.y, z = s.z;
+  /**
+   * Explosion en (x, y, z) : celle d'un véhicule (`v`, qui ne se blesse pas lui-même et tue son conducteur), ou d'une grenade (D326, `v` nul).
+   */
+  const blastAt = (x: number, y: number, z: number, v: Vehicle | null): void => {
     // Boule de feu (jaune au cœur, orange et rouge autour), puis, un peu après, le nuage de fumée qui monte au-dessus.
     for (let i = 0; i < 36; i++) {
       const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 4.5, core = i < 12;
@@ -797,7 +877,7 @@ export function startGame(ctx: GameContext): void {
     if (dPlayer < 25) haptics.crash(8);
     // Le joueur : tué s'il est dedans ; à pied, blessé selon la distance ; dans un autre véhicule, protégé de moitié.
     if (!health.dead) {
-      if (riding === v) health.damage(10000);
+      if (v && riding === v) health.damage(10000);
       else {
         const hurt = EXPLOSION.player * blastShare(dPlayer) * (riding ? EXPLOSION.sheltered : 1);
         if (hurt > 0) health.damage(hurt);
@@ -831,6 +911,7 @@ export function startGame(ctx: GameContext): void {
     if (hits > 0) police.crime(killed > 0 ? "murder" : "assault", x, y, seen);
     fleet.refresh();
   };
+  const explode = (v: Vehicle): void => blastAt(v.state.x, v.state.y, v.state.z, v);
   // Taches sombres au-dessus des épaves noyées (D242) : l'eau est opaque, on devine la voiture sous la surface.
   const wreckMarks = new Map<Vehicle, THREE.Mesh>();
   const wreckMarkGeo = new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
@@ -928,9 +1009,13 @@ export function startGame(ctx: GameContext): void {
       const d = riding.damage, needs = d.usable && d.version > 0 && (d.health < DAMAGE.max || ZONES.some((z) => d.zones[z] > 0));
       const g = garageStop.update(dt, ui.garages, riding.state.x, riding.state.y, riding.state.speed, needs);
       if (g) {
-        d.repair();
-        damaged.delete(riding);
-        vehicleName.show({ make: g.name, model: "Réparée" });
+        // Réparation payante (D317) : 50 à 800 € selon les dégâts ; sans assez d'argent, le garage refuse et dit combien il manque.
+        const cost = repairCost(d.health, d.zones, DAMAGE.max);
+        if (wallet.spend(cost, "Réparation")) {
+          d.repair();
+          damaged.delete(riding);
+          vehicleName.show({ make: g.name, model: `Réparée · ${formatMoney(cost)}` });
+        } else vehicleName.show({ make: `${g.name} · ${formatMoney(cost)}`, model: `Il manque ${formatMoney(cost - wallet.balance)}` });
       }
     }
     const tier = riding?.damage.tier;
@@ -1057,6 +1142,166 @@ export function startGame(ctx: GameContext): void {
       }
     }
   };
+  // Magasins (D322) : à pied, au sol, près d'un commerce ; ouvert, l'écran d'achat met le jeu en pause ; fermé, un bandeau dit quand il ouvre.
+  const shopScreen = new ShopScreen();
+  /** Lieu de livraison d'un véhicule acheté : son vendeur, ou la gendarmerie (fourrière). */
+  const deliveryPlace = (o: OwnedVehicle): { x: number; y: number; name: string } | null => {
+    if (o.deliver === GENDARMERIE) return { x: ARREST_SPAWN.x, y: ARREST_SPAWN.y, name: "la gendarmerie" };
+    const s = ui.shops.find((q) => q.id === o.deliver);
+    return s ? { x: s.x, y: s.y, name: s.name } : null;
+  };
+  const spotNear: Vehicle[] = [];
+  /** Le point est-il enfermé (murs dans les huit directions à moins de 60 m) ? Alors il est dans un bâtiment dont le toit n'est pas praticable. */
+  const enclosed = (px: number, py: number): boolean => {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      if (colliders.raycast(px, py, px + Math.sin(a) * 60, py + Math.cos(a) * 60) === null) return false;
+    }
+    return true;
+  };
+  /**
+   * Une place libre pour un véhicule près de (x, y) : hors des bâtiments et des toits, hors de l'eau, sans véhicule ni joueur à côté ; de
+   * préférence en vue du joueur (une place derrière le magasin serait juste, mais on ne la verrait pas).
+   */
+  const freeSpot = (x: number, y: number): { x: number; y: number; heading: number } | null => {
+    let hidden: { x: number; y: number; heading: number } | null = null;
+    for (let r = 6; r <= 45; r += 3) {
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2 + r * 0.37, px = x + Math.sin(a) * r, py = y + Math.cos(a) * r;
+        const q = colliders.resolve(px, py, 2.8);
+        if (Math.hypot(q.x - px, q.y - py) > 0.05) continue;
+        if (surface.heightAt(px, py) - terrain.heightAt(px, py) > 0.5 || waterDepth(terrain, px, py) > 0.1) continue;
+        if (fleet.around(px, py, 4.5, spotNear).length || Math.hypot(player.x - px, player.y - py) < 3) continue;
+        if (colliders.raycast(player.x, player.y, px, py) === null) return { x: px, y: py, heading: a };
+        if (!hidden && !enclosed(px, py)) hidden = { x: px, y: py, heading: a };
+      }
+    }
+    return hidden;
+  };
+  /** Livre un véhicule prêt (acheté, remplacé par l'assurance, sorti de la fourrière) à son lieu de livraison ; null s'il n'y a pas de place. */
+  const deliver = (o: OwnedVehicle): Vehicle | null => {
+    const at = deliveryPlace(o);
+    if (!at) return null;
+    const spot = freeSpot(at.x, at.y);
+    if (!spot) return null;
+    const old = fleet.get(o.id);
+    if (old) {
+      if (old.ridden) return null;
+      fleet.remove(old);
+      damaged.delete(old);
+    }
+    const v = fleet.add(o.model, o.id, spot.x, spot.y, spot.heading, o.variant, null);
+    owned.delivered(o.id);
+    lastRidden = v;
+    return v;
+  };
+  let ownedTimer = 0;
+  /** Une fois par seconde (D323) : assurance des véhicules détruits, livraisons quand le joueur passe à moins de 250 m du lieu. */
+  const tickOwned = (dt: number): void => {
+    ownedTimer -= dt;
+    if (ownedTimer > 0) return;
+    ownedTimer = 1;
+    const now = atmosphere.date * 24 + atmosphere.hour;
+    for (const o of owned.list) {
+      if (o.status !== "ok") continue;
+      const v = fleet.get(o.id);
+      if (v && !v.ridden && (v.damage.end !== null || v.damage.drowned)) {
+        owned.wreck(o.id, now);
+        const at = deliveryPlace(o);
+        showFeat(`${v.def.name} hors d'usage · l'assurance livre ${at ? `devant ${at.name} ` : ""}dans une heure`);
+      }
+    }
+    owned.update(now);
+    for (const o of owned.list) {
+      if (o.status !== "ready") continue;
+      const at = deliveryPlace(o);
+      if (!at || Math.hypot(at.x - player.x, at.y - player.y) > 250) continue;
+      const v = deliver(o);
+      if (v) showFeat(`${v.def.name} : livraison devant ${at.name}`);
+    }
+  };
+  /** Lignes du carnet (D323) : chaque véhicule acheté, son état, l'action du moment. */
+  const garageRows = (): GarageRow[] => owned.list.map((o) => {
+    const def = vehicleDef(o.model);
+    const color = def?.palette[o.variant] ?? "#888";
+    const name = def?.name ?? o.model;
+    const at = deliveryPlace(o);
+    if (o.status === "impound") {
+      return { name, color, status: "à la fourrière", action: { label: `Récupérer · ${IMPOUND_FEE} €`, run: () => {
+        if (wallet.spend(IMPOUND_FEE, "Fourrière")) owned.release(o.id);
+      } } };
+    }
+    if (o.status === "wreck") return { name, color, status: `hors d'usage · l'assurance livre${at ? ` devant ${at.name}` : ""} vers ${Math.floor((o.back ?? 0) % 24)} h` };
+    if (o.status === "ready") {
+      const row: GarageRow = { name, color, status: `t'attend${at ? ` devant ${at.name}` : ""}` };
+      if (at) row.action = { label: "Repère", run: () => ui.setWaypoint({ x: at.x, y: at.y }) };
+      return row;
+    }
+    const v = fleet.get(o.id);
+    if (!v) return { name, color, status: "introuvable" };
+    if (v.ridden) return { name, color, status: "tu es dessus" };
+    const d = Math.hypot(v.state.x - player.x, v.state.y - player.y);
+    return { name, color, status: `à ${d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`}`, action: { label: "Repère", run: () => ui.setWaypoint({ x: v.state.x, y: v.state.y }) } };
+  });
+  const shopHere = (): Shop | null => {
+    if (riding || health.dead || downFor > 0 || player.z - terrain.heightAt(player.x, player.y) > 1.5) return null;
+    return shopAt(ui.shops, player.x, player.y);
+  };
+  const enterShop = (shop: Shop): void => {
+    const day = atmosphere.calendar.weekday, hour = atmosphere.hour;
+    if (!shopOpen(shop, day, hour)) {
+      showFeat(`${shop.name} : ${openingText(shop.schedule, day, hour)}`);
+      return;
+    }
+    ui.openOverlay(() => shopScreen.close());
+    shopScreen.open(shop, {
+      hours: () => shopHours(shop, day, hour),
+      balance: () => wallet.balance,
+      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : item.weapon ? canBuyWeapon(item, wallet.balance, inventory)
+        : item.armor ? canBuyVest(item, wallet.balance, armor) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
+      palette: (item) => (item.vehicle ? vehicleDef(item.vehicle)?.palette ?? [] : []),
+      buy: (item, variant) => {
+        if (item.vehicle) {
+          // Véhicule (D323) : payé, enregistré, livré tout de suite devant le magasin (la place est libre : on y est).
+          if (canBuyVehicle(item, wallet.balance, owned.full) !== null || !wallet.spend(item.price, item.name)) return "";
+          const o = owned.buy(item.vehicle, variant, shop.id)!;
+          const v = deliver(o);
+          moneyHud.set(wallet.balance, wallet.drain());
+          ui.save();
+          return v ? `${vehicleDef(o.model)?.name ?? "Véhicule"} : livraison devant ${shop.name}. À toi !` : "Livraison dès qu'une place se libère devant le magasin.";
+        }
+        if (item.armor) {
+          // Gilet pare-balles (D327) : neuf, quel que soit l'état de l'ancien.
+          if (canBuyVest(item, wallet.balance, armor) !== null || !wallet.spend(item.price, item.name)) return "";
+          armor = item.armor;
+          moneyHud.set(wallet.balance, wallet.drain());
+          return `${item.name} : ${VEST_MAX} points de protection.`;
+        }
+        if (item.weapon) {
+          // Armes et munitions (D324) : une arme neuve arrive chargée et passe dans la main ; des munitions vont au chargeur vide ou en réserve.
+          if (canBuyWeapon(item, wallet.balance, inventory) !== null || !wallet.spend(item.price, item.name)) return "";
+          const def = WEAPONS[item.weapon];
+          if (item.ammo) inventory.grant(item.weapon, item.ammo);
+          else {
+            inventory.grant(item.weapon, def.kind === "gun" ? def.mag : 0);
+            inventory.select(item.weapon);
+          }
+          audio.pickup();
+          moneyHud.set(wallet.balance, wallet.drain());
+          if (def.kind === "throw") return `${def.name} : ${inventory.reserveOf(item.weapon)} sur ${GRENADE.max}.`;
+          return item.ammo ? `${item.name} : ${inventory.magOf(item.weapon) + inventory.reserveOf(item.weapon)} balles en tout.` : `${def.name} : à toi, en main.`;
+        }
+        if (canBuy(item, wallet.balance, health.hp, MAX_HEALTH) !== null || !wallet.spend(item.price, item.name)) return "";
+        if (item.heal) {
+          health.heal(item.heal);
+          audio.heal();
+        }
+        moneyHud.set(wallet.balance, wallet.drain());
+        return item.heal ? `${item.name} : santé ${Math.round(health.hp)} sur ${MAX_HEALTH}.` : `${item.name} acheté.`;
+      },
+      leave: () => ui.setPaused(false),
+    });
+  };
   const act = (): void => {
     if (downFor > 0) return;
     if (riding) {
@@ -1070,8 +1315,12 @@ export function startGame(ctx: GameContext): void {
     if (r.traffic) carjack();
     else if (r.fleet) {
       // Prendre un véhicule garé n'est une infraction que sous les yeux de la police (D70).
-      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home) police.crime("theft", player.x, player.y, false, player.z);
+      // Un véhicule acheté (D323) est à toi : le prendre n'est pas un vol.
+      if (!robVendor(r.fleet) && !robTrain(r.fleet) && r.fleet.home && !owned.isOwned(r.fleet.id)) police.crime("theft", player.x, player.y, false, player.z);
       mount(r.fleet);
+    } else {
+      const shop = shopHere();
+      if (shop) enterShop(shop);
     }
   };
   actionEl.addEventListener("click", act);
@@ -1204,6 +1453,10 @@ export function startGame(ctx: GameContext): void {
     if (riding) [verb, ico] = ["Descendre", icon("exit")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
+    else {
+      const shop = shopHere();
+      if (shop) [verb, what, ico] = shopOpen(shop, atmosphere.calendar.weekday, atmosphere.hour) ? ["Entrer", shop.name, icon("shop")] : ["Fermé", shop.name, icon("closed")];
+    }
     const label = what ? `${verb} : ${what}` : verb;
     if (label !== actionLabel) {
       actionLabel = label;
@@ -1216,7 +1469,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(), armor: Math.round(armor),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1224,7 +1477,7 @@ export function startGame(ctx: GameContext): void {
       model.setRecipe(r);
       appearanceStore.write(r);
     },
-  }, () => records.values);
+  }, () => records.values, { notebook: () => notebook, challenges: () => challenges, garage: () => garageRows() });
 
   ui.police = police.minimap;
 
@@ -1240,9 +1493,12 @@ export function startGame(ctx: GameContext): void {
   };
   const arrest = (): void => {
     const taken = riding;
+    // Un véhicule acheté (D323) part à la fourrière (on le récupère dans le carnet, 300 €) ; un autre est confisqué.
+    const impounded = !!taken && owned.isOwned(taken.id);
     if (taken) {
       dismount();
       fleet.remove(taken);
+      if (impounded) owned.impound(taken.id);
     }
     police.reset();
     lastStars = 0;
@@ -1251,17 +1507,21 @@ export function startGame(ctx: GameContext): void {
     inventory.loseAll();
     melee.cancel();
     gun.cancel();
+    // Amende (D317) : 15 % du solde, 2 500 € au plus ; sans argent, rien (pas de dette).
+    const fine = wallet.take(arrestFine(wallet.balance), "Amende");
+    armor = 0;
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     groundPlayer(player);
     yaw = ARREST_SPAWN.heading;
     if (atmosphere.speed > 0) atmosphere.advance(ARREST_HOURS / atmosphere.speed);
-    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${taken ? ", véhicule confisqué" : ""}. Reprise à la sortie de la gendarmerie.`, false);
+    banner(appearance.sex === "f" ? "Arrêtée" : "Arrêté", `${ARREST_HOURS} heures en cellule${impounded ? ", véhicule à la fourrière" : taken ? ", véhicule confisqué" : ""}${fine > 0 ? `, amende de ${formatMoney(fine)}` : ""}. Reprise à la sortie de la gendarmerie.`, false);
     controls.reset();
     ui.save();
   };
 
   // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital le plus proche (D161) trois heures plus tard, santé pleine, sans étoile.
+  // Depuis D317, on garde ses armes (elles s'achètent) et l'hôpital envoie sa facture : 10 % du solde, 1 000 € au plus.
   const die = (): void => {
     if (riding) dismount();
     const hospital = nearestHospital(player.x, player.y);
@@ -1269,7 +1529,8 @@ export function startGame(ctx: GameContext): void {
     lastStars = 0;
     audio.death();
     haptics.death();
-    inventory.loseAll();
+    const bill = wallet.take(deathBill(wallet.balance), "Hôpital");
+    armor = 0;
     melee.cancel();
     gun.cancel();
     const r = colliders.resolve(hospital.x, hospital.y, PLAYER_RADIUS);
@@ -1278,7 +1539,7 @@ export function startGame(ctx: GameContext): void {
     yaw = hospital.heading;
     if (atmosphere.speed > 0) atmosphere.advance(DEATH_HOURS / atmosphere.speed);
     health.restore();
-    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital de ${hospital.name}, ${DEATH_HOURS} heures plus tard.`, true);
+    banner(appearance.sex === "f" ? "Morte" : "Mort", `Réveil à l'hôpital de ${hospital.name}, ${DEATH_HOURS} heures plus tard${bill > 0 ? `. Facture : ${formatMoney(bill)}` : ""}.`, true);
     controls.reset();
     ui.save();
   };
@@ -1438,7 +1699,7 @@ export function startGame(ctx: GameContext): void {
             player.y = r.y;
           }
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35 && !inventory.current.heavy, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35 && !inventory.current.heavy, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
           jumpNow = false;
         }
       }
@@ -1599,6 +1860,22 @@ export function startGame(ctx: GameContext): void {
       violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
       model.setStrike(melee.active && weapon.style !== "aim" ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
+    } else if (weapon.kind === "throw") {
+      // Grenade (D326) : bouton tenu, l'arc s'affiche ; relâché, elle part dans la direction du regard (geste du bras), une de moins.
+      melee.cancel();
+      gun.cancel();
+      grenadeArc.length = 0;
+      if (input.attack) {
+        player.heading = yaw;
+        arcPoints(player.x, player.y, player.z + GRENADE.hand, throwVelocity(yaw, pitch), grenadeWorld, grenadeArc);
+      } else if (throwHeld && inventory.throwOne(weapon.id)) {
+        grenades.push({ x: player.x, y: player.y, z: player.z + GRENADE.hand, ...throwVelocity(yaw, pitch), t: 0, smoke: weapon.id === "smoke" });
+        throwAnim = 0.45;
+        audio.swing("punch");
+      }
+      throwHeld = input.attack;
+      throwAnim = Math.max(0, throwAnim - dt);
+      model.setStrike(throwAnim > 0 ? { style: "punch", u: 1 - throwAnim / 0.45, hitAt: 0.5, side: 1 } : null);
     } else {
       melee.cancel();
       model.setStrike(null);
@@ -1675,7 +1952,8 @@ export function startGame(ctx: GameContext): void {
     }
     // Bouton de rechargement : seulement avec une arme à feu en main (le CSS le cache aussi en véhicule).
     if ((weapon.kind === "gun") !== gunInHand) document.body.classList.toggle("gun", (gunInHand = weapon.kind === "gun"));
-    weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 } : null);
+    weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 }
+      : weapon.kind === "throw" ? { mag: inventory.reserveOf(weapon.id), reserve: GRENADE.max, reloading: false } : null);
     // Réticule sur la cible assistée (un point de l'écran) ; armes au sol et effets : mis à jour à chaque image.
     if (reticle) {
       reticleV.set(reticle.x, reticle.z, -reticle.y).project(camera);
@@ -1686,18 +1964,74 @@ export function startGame(ctx: GameContext): void {
     pickups.update(dt);
     // Ramassage automatique (D159) : à pied, vivant et debout, on prend ce qu'on foule (arme, balles, croix de pharmacie), sans bouton.
     if (!riding && !health.dead && downFor <= 0) {
-      const pk = pickups.collect(player.x, player.y, inventory, health);
+      const pk = pickups.collect(player.x, player.y, inventory, health, wallet);
+      // Cache d'armes (D324) : notée dans le carnet, elle ne reviendra plus.
+      if (pk?.site && notebook.mark("caches", pk.site, atmosphere.date)) showFeat(`Cache d'armes · ${notebook.count("caches")} sur ${CACHES.length}`);
       if (pk?.kind === "heal") audio.heal();
       else if (pk) audio.pickup();
     }
     pickViews.length = 0;
     for (const pk of pickups.list) {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
-      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal" });
+      pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
+    }
+    // Grenades (D326) : elles volent, rebondissent et explosent au bout de la mèche ; l'arc de lancer en petits cubes, l'impact plus gros.
+    for (let i = grenades.length - 1; i >= 0; i--) {
+      const g = grenades[i]!;
+      stepGrenade(g, dt, grenadeWorld);
+      if (g.smoke && g.t >= FUMIGENE.pop) {
+        // Fumigène (D327) : il s'ouvre en nuage, avec un chuintement (le son du ramassage, grave, fera l'affaire en attendant mieux).
+        grenades.splice(i, 1);
+        clouds.push({ x: g.x, y: g.y, z: g.z, t: 0 });
+        audio.swing("swing");
+      } else if (!g.smoke && g.t >= GRENADE.fuse) {
+        grenades.splice(i, 1);
+        blastAt(g.x, g.y, g.z, null);
+      } else pickViews.push({ x: g.x, y: g.y, z: g.z, weapon: null, grenade: true });
+    }
+    for (let i = clouds.length - 1; i >= 0; i--) {
+      const c = clouds[i]!;
+      c.t += dt;
+      if (c.t >= FUMIGENE.life + 3) {
+        clouds.splice(i, 1);
+        continue;
+      }
+      // Des bouffées claires qui gonflent et montent lentement, tant que le fumigène brûle.
+      if (c.t < FUMIGENE.life && Math.random() < dt * 22) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * FUMIGENE.radius * 0.6, sp = 0.3 + Math.random() * 0.6;
+        smoke.emit(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r, c.z + 0.3 + Math.random(), Math.cos(a) * sp, Math.sin(a) * sp, 0.25 + Math.random() * 0.3, SMOKE_COLOR,
+          1.5, 4.5 + Math.random() * 2, 3 + Math.random() * 2, Math.random);
+      }
+    }
+    for (let i = 0; i < grenadeArc.length; i += 6) pickViews.push({ x: grenadeArc[i]!, y: grenadeArc[i + 1]!, z: grenadeArc[i + 2]!, weapon: null, dot: true });
+    if (grenadeArc.length >= 3) {
+      const n = grenadeArc.length;
+      pickViews.push({ x: grenadeArc[n - 3]!, y: grenadeArc[n - 2]!, z: grenadeArc[n - 1]! + 0.05, weapon: "grenade", dot: true });
+    }
+    // Pièces d'or des toits (D321) : dessinées à moins de 70 m tant qu'elles ne sont pas trouvées ; la plus proche tinte à moins de 25 m.
+    let coinNear = Infinity;
+    for (const t of TREASURE_SITES) {
+      const d = Math.hypot(t.x - player.x, t.y - player.y);
+      if (d > 70 || notebook.has("tresors", t.id)) continue;
+      pickViews.push({ x: t.x, y: t.y, z: t.z, weapon: null, coin: true });
+      coinNear = Math.min(coinNear, Math.hypot(d, t.z - (riding ? riding.state.z : player.z)));
+    }
+    glintTimer -= dt;
+    if (coinNear < COIN_HEAR && glintTimer <= 0) {
+      glintTimer = 1.6 + coinNear / 12;
+      audio.glint(1 - coinNear / COIN_HEAR);
     }
     fx.update(dt, pickViews, pickups.time);
     ui.caches.length = 0;
-    for (const pk of pickups.list) if (pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
+    for (const pk of pickups.list) if (pk.kind !== "cash" && pickups.available(pk) && Math.hypot(pk.x - player.x, pk.y - player.y) < 250) ui.caches.push(pk);
+    // Portefeuilles (D317) : un passant mis à terre par le joueur lâche peut-être des billets là où il est tombé.
+    felled.length = 0;
+    (peds as PedsController | null)?.takeFelled(felled);
+    for (const f of felled) {
+      const cash = walletDrop(Math.random);
+      if (cash > 0) pickups.dropCash(f.x, f.y, cash);
+    }
+    moneyHud.set(wallet.balance, wallet.drain());
     if (riding && rideModel) {
       rideModel.update(riding.state);
       rideModel.setBeacon?.(beaconOn ? beaconClock : null);
@@ -1728,14 +2062,49 @@ export function startGame(ctx: GameContext): void {
     if (!riding) {
       stunt.update(0, 0, dt);
       records.add("foot", player.speed * dt);
+      reward(challenges.add("foot", player.speed * dt));
     }
     records.offer("wheelie", stunt.best.wheelie);
     records.offer("stoppie", stunt.best.stoppie);
+    // Défis (D319) : la figure en cours, pas le meilleur de tous les temps (qui part des records d'avant).
+    if (stunt.active && stunt.kind) reward(challenges.offer(stunt.kind, stunt.distance));
     // Temps tenu à 3 et 5 étoiles (D312) : sans interruption.
     stars3 = wanted.stars >= 3 && !health.dead ? stars3 + dt : 0;
     stars5 = wanted.stars >= 5 && !health.dead ? stars5 + dt : 0;
     records.offer("stars3", stars3);
     records.offer("stars5", stars5);
+    reward(challenges.offer("stars3", stars3));
+    reward(challenges.offer("stars5", stars5));
+    if (discoverLeft > 0 && (discoverLeft -= dt) <= 0) {
+      discoverEl.classList.remove("show");
+      discoverFor = null;
+    }
+    tickOwned(dt);
+    // Carnet (D319) : découvertes, quatre fois par seconde, à pied ou en véhicule (vivant).
+    discoverTimer -= dt;
+    if (discoverTimer <= 0 && !health.dead) {
+      discoverTimer = 0.25;
+      const at = riding ? riding.state : player;
+      const found = notebook.check(at.x, at.y, at.z, atmosphere.date);
+      if (found) {
+        wallet.earn(found.reward, found.entry.name);
+        const coin = found.collection.id === "tresors";
+        showFeat(coin ? `Pièce d'or · ${notebook.count("tresors")} sur ${found.collection.entries.length}` : `Découverte : ${found.entry.name}`);
+        if (coin) audio.coin();
+        else audio.discovery();
+        // « Lire la fiche » (D320) : quelques secondes sous le bandeau ; un appui met en pause sur la fiche, dans le carnet.
+        if (found.entry.fiche) {
+          discoverFor = { tab: found.collection.id, id: found.entry.id };
+          discoverEl.classList.add("show");
+          discoverLeft = 7;
+        }
+        if (found.bonus > 0) {
+          wallet.earn(found.bonus, found.collection.label);
+          showFeat(`${found.collection.label} : tout est trouvé !`);
+        }
+        ui.save();
+      }
+    }
     if (stuntEl) {
       const text = stunt.label();
       if (stuntEl.textContent !== text) stuntEl.textContent = text;
@@ -1819,7 +2188,12 @@ export function startGame(ctx: GameContext): void {
       const dmg = police.takeDamage();
       // Au volant, les balles des gendarmes abîment aussi le véhicule (D113).
       if (dmg > 0 && riding) riding.damage.shot(dmg);
-      if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
+      if (dmg > 0 && !health.dead) {
+        // Gilet pare-balles (D327) : il prend la moitié de chaque balle tant qu'il lui reste des points.
+        const v = vestAbsorb(dmg * (riding ? 0.5 : 1), armor);
+        armor = v.armor;
+        health.damage(v.hurt);
+      }
       if (police.shots.length > 0) {
         for (const sh of police.shots) threats.add(sh.x0, sh.y0, player.x, player.y, sh.hit);
         for (let i = 0; i < police.shots.length && i < 4; i++) {
@@ -1864,7 +2238,7 @@ export function startGame(ctx: GameContext): void {
       void hurtEl.offsetWidth;
       hurtEl.classList.remove("flash");
     }
-    healthHud.set(health.hp);
+    healthHud.set(health.hp, armor);
     wantedHud.set(wanted);
     if (wanted.stars !== lastStars) {
       audio.stars(wanted.stars, lastStars);
@@ -1915,7 +2289,7 @@ export function startGame(ctx: GameContext): void {
     schedule();
   });
   ctx.ready({
-    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer,
+    player, colliders, fleet, marks, ui, wanted, health, inventory, melee, gun, pickups, fx, renderer, wallet, challenges, notebook,
     /** Captures et mesures : redessine la scène telle quelle. */
     renderOnce: () => ctx.post.render(scene, camera),
     /** Captures : bandeau d'exploit, carnet de records, temps du jeu (D311, D312). */

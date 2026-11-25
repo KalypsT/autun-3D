@@ -314,6 +314,27 @@ export class GameAudio {
     S.jingle(kit, this.sys.buses!.sfx, t + 0.15, [660, 990], 0.08, "sine", 0.5);
   }
 
+  /** Découverte d'un monument (D320) : quatre notes en arpège, plus amples que le ramassage. */
+  discovery(): void {
+    const kit = this.kit;
+    if (!kit) return;
+    S.jingle(kit, this.sys.buses!.sfx, kit.ctx.currentTime, [392, 523, 659, 784], 0.12, "triangle", 0.5);
+  }
+
+  /** Pièce d'or ramassée sur un toit (D321) : trois notes aiguës et brèves. */
+  coin(): void {
+    const kit = this.kit;
+    if (!kit) return;
+    S.jingle(kit, this.sys.buses!.sfx, kit.ctx.currentTime, [1319, 1760, 2093], 0.06, "triangle", 0.5);
+  }
+
+  /** Tintement d'une pièce d'or proche (D321), d'autant plus fort qu'elle est près (`level` de 0 à 1). */
+  glint(level: number): void {
+    const kit = this.kit;
+    if (!kit || level <= 0) return;
+    S.jingle(kit, this.sys.buses!.sfx, kit.ctx.currentTime, [2637, 3136], 0.05, "sine", 0.3 * Math.min(1, level));
+  }
+
   /** Croix de pharmacie ramassée (D159) : petit carillon montant. */
   heal(): void {
     const kit = this.kit;
