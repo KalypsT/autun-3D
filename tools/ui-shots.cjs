@@ -332,12 +332,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const dog = async () => page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { x: e.dog.x, y: e.dog.y }; });
     let d = await dog();
     // Pour la capture : le joueur à 12 m du chien.
-    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 9; a.player.y = q.y - 8; a.look(Math.atan2(9, 8)); a.tilt(0.2); }, d);
+    // Le chien un peu à droite du personnage (droit devant, il serait caché par lui).
+    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 7; a.player.y = q.y - 6; a.look(Math.atan2(7, 6) - 0.35); a.tilt(0.25); }, d);
     await sleep(1500);
     await shot("pj4-chien");
-    d = await dog();
-    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 1; a.player.y = q.y - 0.6; a.look(Math.atan2(1, 0.6) - 0.4); a.tilt(0.3); }, d);
-    await page.waitForFunction(() => document.getElementById("action").textContent.includes("Attraper"), null, { timeout: 60000, polling: 100 });
+    // On s'approche au pas (posé à côté de lui, jusqu'à ce que le bouton « Attraper » vienne : il bouge).
+    for (let k = 0; k < 80; k++) {
+      d = await dog();
+      await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 1; a.player.y = q.y - 0.6; a.look(Math.atan2(1, 0.6) - 0.4); a.tilt(0.3); }, d);
+      await sleep(400);
+      if (await page.evaluate(() => document.getElementById("action").textContent.includes("Attraper"))) break;
+    }
     await shot("pj4-chien-attraper");
     await click("#action");
     const owner = await page.evaluate(() => { const e = window.__autun.events.director.active[0], q = { x: 0, y: 0 }; window.__autun.pedsController().eventPeds().position(e.owner, q); return q; });
