@@ -294,7 +294,7 @@ export class AccidentEvent implements GameEvent {
     // Garée près de la scène, gyrophares allumés : un gendarme descend vers les conducteurs.
     this.traffic.pursue(c.id, null);
     this.traffic.hold(c.id, 1e6);
-    this.traffic.setSiren(c.id, true);
+    this.traffic.setSiren(c.id, true, false);
     const h = c.state.heading;
     this.gendarme = this.peds.appear(c.state.x - Math.cos(h) * 1.4, c.state.y + Math.sin(h) * 1.4, c.driver, h, gendarmeRecipe(c.driver));
     if (this.gendarme >= 0) this.fx.say(this.gendarme, "Bonjour, vos papiers.", 3);

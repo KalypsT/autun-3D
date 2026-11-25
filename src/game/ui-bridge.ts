@@ -100,6 +100,8 @@ export class UiBridge {
   garages: Garage[] = [];
   /** Commerces où l'on achète (D322), connus avec les lieux de la carte. */
   shops: Shop[] = [];
+  /** Bars, cafés et restaurants de la carte (phase 4 : les rixes éclatent devant). */
+  bars: { x: number; y: number }[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -166,6 +168,7 @@ export class UiBridge {
         this.streets = data.places.streets;
         this.garages = garagesFrom(data.places.places);
         this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places), ...weaponShops(data.places.places)];
+        this.bars = data.places.places.filter((q) => q.cat === "commerce" && ["bar", "pub", "cafe", "restaurant", "nightclub", "biergarten"].includes(q.kind ?? "")).map((q) => ({ x: q.x, y: q.y }));
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();

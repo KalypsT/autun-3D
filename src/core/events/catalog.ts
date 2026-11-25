@@ -3,6 +3,9 @@ import { DogEscapeEvent, findDogOwner, type DogEffects, type EventDogs } from ".
 import { findPickpocket, PickpocketEvent, type PickpocketEffects } from "./pickpocket";
 import { AccidentEvent, findAccidentSite } from "./accident";
 import { PursuitEvent } from "./pursuit";
+import { findMalaise, MalaiseEvent } from "./malaise";
+import { findRixe, RixeEvent } from "./rixe";
+import type { NavGraph } from "../nav-graph";
 import type { RoadGraph } from "../road-graph";
 import { findSnatchSite, SnatchEvent } from "./snatch";
 import type { EventPeds, EventTraffic } from "./types";
@@ -15,7 +18,11 @@ export interface EventWorld {
   /** La circulation (créée seulement si le réglage « Circulation » n'est pas à « Aucune ») et le graphe routier. */
   traffic?(): EventTraffic | null;
   road?(): RoadGraph | null;
-  fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void };
+  /** Le graphe piéton (les secours y contournent les murs). */
+  pedNav?(): NavGraph | null;
+  fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void };
+  /** Bars, cafés et restaurants (où éclatent les rixes). */
+  bars?(): readonly { x: number; y: number }[];
 }
 
 /** Heures où l'on vole à l'arraché : 8 h – 22 h ; où l'on fait les poches : 9 h – 20 h ; où l'on promène son chien : 7 h – 20 h. */
@@ -96,6 +103,40 @@ export function eventCatalog(world: EventWorld): EventDef[] {
         if (!peds || !traffic) return null;
         const ev = new PursuitEvent(peds, traffic, world.fx, ctx, rng);
         return ev.ok ? ev : null;
+      },
+    },
+    {
+      kind: "rixe",
+      big: true,
+      label: "Rixe",
+      weight: (ctx: DirectorContext) => {
+        // Le soir et la nuit, devant un bar ou un restaurant pas trop loin ; deux fois plus le vendredi et le samedi soir.
+        if (!ctx.crowd || !(ctx.hour >= 20 || ctx.hour < 3) || !world.bars) return 0;
+        const p = ctx.player;
+        if (!world.bars().some((b) => Math.hypot(b.x - p.x, b.y - p.y) < 75)) return 0;
+        return (ctx.weekday === 4 || ctx.weekday === 5) && ctx.hour >= 20 ? 2 : 1;
+      },
+      start: (ctx, rng) => {
+        const peds = world.peds(), bars = world.bars?.();
+        if (!peds || !bars) return null;
+        const site = findRixe(peds, ctx, bars, rng);
+        return site ? new RixeEvent(peds, world.traffic?.() ?? null, world.road?.() ?? null, world.pedNav?.() ?? null, world.fx, site, rng) : null;
+      },
+    },
+    {
+      kind: "malaise",
+      big: true,
+      label: "Malaise",
+      weight: (ctx: DirectorContext) => {
+        if (!ctx.crowd || ctx.hour < 7 || ctx.hour >= 22) return 0;
+        // Plus souvent l'après-midi (la chaleur) et les matins de marché (la foule).
+        return 1.5 * (ctx.hour >= 13 && ctx.hour < 17 ? 1.5 : 1) * (marketMorning(ctx) ? 1.5 : 1);
+      },
+      start: (ctx, rng) => {
+        const peds = world.peds();
+        if (!peds) return null;
+        const victim = findMalaise(peds, ctx, rng);
+        return victim >= 0 ? new MalaiseEvent(peds, world.traffic?.() ?? null, world.road?.() ?? null, world.pedNav?.() ?? null, world.fx, victim, rng) : null;
       },
     },
     {

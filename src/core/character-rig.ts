@@ -285,7 +285,7 @@ export const HIT_POSE = { stumble: 1, down: 2 } as const;
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
 /** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains) ;
  * bras tendu qui montre (phase 4 : la victime d'un vol montre le voleur). */
-export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9 } as const;
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9, chest: 10, collapse: 11, getup: 12, kneel: 13, fists: 14 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,85 s pour tomber et s'immobiliser, environ 1,2 s au sol, 1,5 s pour se relever (D210). */
 export const DOWN_TIME = 3.6;
@@ -1228,6 +1228,40 @@ export function handsPose(pose: Pose): void {
     a[arm * 3 + 2] = side * 0.35;
     a[fore * 3] = 0.5;
   }
+}
+
+/** Malaise (phase 4) : la main droite serrée sur la poitrine, le buste penché, la tête basse ; par-dessus la pose de marche (il marche au ralenti). */
+export function chestPose(pose: Pose): void {
+  const a = pose.angles;
+  a[BONE.armR * 3] = 0.55;
+  a[BONE.armR * 3 + 1] = 0.9;
+  a[BONE.armR * 3 + 2] = 0.12;
+  a[BONE.forearmR * 3] = 2.2;
+  a[BONE.armL * 3] = 0.25;
+  a[BONE.forearmL * 3] = 0.5;
+  a[BONE.torso * 3]! -= 0.3;
+  a[BONE.head * 3]! -= 0.35;
+}
+
+/** Instant de la chute légère où le corps est un genou à terre (clé `F_KNEEL`). */
+const KNEEL_AT = LIGHT_TIME - 0.45;
+
+/**
+ * Malaise (phase 4) : il s'effondre en avant (à genoux, sur les mains, puis à plat ventre : la chute forte de D210, jouée plus lentement), `t` s
+ * après le début, puis reste couché (il respire).
+ */
+export function collapsePose(pose: Pose, t: number, d: BodyDims, variant: number): void {
+  hitPose(pose, HIT_POSE.down, Math.min(t * 0.6, LYING_T), -1, d, null, variant, 0, STRONG_FALL + 0.5);
+}
+
+/** Il se relève (1,5 s), `t` s après qu'on l'a aidé : le relevé de la chute forte, depuis le ventre. */
+export function getupPose(pose: Pose, t: number, d: BodyDims, variant: number): void {
+  hitPose(pose, HIT_POSE.down, Math.min(GETUP_AT + t, DOWN_TIME), -1, d, null, variant, 0, STRONG_FALL + 0.5);
+}
+
+/** Un genou à terre (phase 4 : on se penche sur quelqu'un à terre, un pompier qui le soigne) : la clé du relevé d'une chute légère. */
+export function kneelPose(pose: Pose, d: BodyDims): void {
+  hitPose(pose, HIT_POSE.down, KNEEL_AT, -1, d, null, 0, 0, 2);
 }
 
 /** Bras tendu (phase 4, événements), par-dessus la pose d'arrêt ou de marche : le bras droit montre droit devant, à hauteur d'épaule, et s'agite. */

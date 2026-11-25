@@ -274,6 +274,15 @@ export function gendarmeRecipe(seed: number): Recipe {
   };
 }
 
+/** Pompier (phase 4, malaise) : veste et pantalon bleu marine, bottes, casque clair. */
+export function pompierRecipe(seed: number): Recipe {
+  const r = recipeFromSeed(seed);
+  return {
+    ...r, age: "adult", top: "jacket", topColor: 1, bottom: "trousers", bottomColor: 1, shoes: "boots", shoeColor: 1, hat: "helmet", hatColor: 9,
+    glasses: r.glasses === "sun" ? "none" : r.glasses, bag: "none", scarf: false, outfit: "work",
+  };
+}
+
 export function serializeRecipe(r: Recipe): string {
   return JSON.stringify({ version: RECIPE_VERSION, ...r });
 }

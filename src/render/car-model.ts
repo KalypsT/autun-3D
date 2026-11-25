@@ -13,6 +13,7 @@ import { SPORTIVE } from "./car-sportive";
 import { SACROVIR } from "./car-sacrovir";
 import { VIEILLE_VOITURE } from "./car-vieille-voiture";
 import { CAMIONNETTE } from "./car-camionnette";
+import { POMPIERS } from "./car-pompiers";
 import { DEUCHE } from "./car-deuche";
 import { GENDARMERIE } from "./car-gendarmerie";
 import { GENDARMERIE_ALPINE } from "./car-gendarmerie-alpine";
@@ -82,6 +83,23 @@ export const CAR_BODIES: Record<string, CarBodyParams> = {
     hood: 1.07, windshield: 0.91, roof: 3.0, rearGlass: 0, roofTaper: 0.92,
     wheelRadius: 0.33, tyreWidth: 0.22, cargo: true, glass: "#1c232c", sculpt: CAMIONNETTE,
     style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#a9adb2", doors: 1, roundness: 0.45, rearDoors: true, spokes: 12 },
+  },
+  // Fourgon des pompiers (phase 4) : la caisse de la camionnette, sa livrée (`car-pompiers.ts`) ; feux bleus qui clignotent à l'avant du toit et
+  // à l'arrière.
+  pompiers: {
+    length: 5.08, width: 1.96, height: 1.97, overhangFront: 1.0,
+    clearance: 0.28, belt: 1.3, noseHeight: 1.12, tailHeight: 1.95,
+    hood: 1.07, windshield: 0.91, roof: 3.0, rearGlass: 0, roofTaper: 0.92,
+    wheelRadius: 0.33, tyreWidth: 0.22, cargo: true, glass: "#1c232c", sculpt: POMPIERS,
+    livery: { stripe: "#f1f2ee", accent: "#f2c81b", lightBar: true },
+    beacons: [
+      { x: -0.3, y: 2.012, nose: 2.442, size: [0.52, 0.09, 0.23] },
+      { x: 0.3, y: 2.012, nose: 2.442, size: [0.52, 0.09, 0.23] },
+      { x: -0.72, y: 2.0, nose: 4.922, size: [0.21, 0.09, 0.15] },
+      { x: 0.72, y: 2.0, nose: 4.922, size: [0.21, 0.09, 0.15] },
+    ],
+    // Jantes claires (la signature du modèle, D107 : sans elles, la même que la camionnette).
+    style: { headlights: "rect", grille: "slim", taillights: "vertical", bumpers: "trim", rim: "#d4d7db", doors: 1, roundness: 0.45, rearDoors: true, spokes: 12 },
   },
   // Vieille voiture (D278) : caisse sculptée d'après photos (`car-vieille-voiture.ts`) ; les mesures servent aux essieux, à la caméra et à la fumée.
   "vieille-voiture": {

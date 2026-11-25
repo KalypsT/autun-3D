@@ -51,6 +51,8 @@ interface TrafficCar {
   hazard?: boolean;
   /** Personne au volant (conducteurs descendus) : la prendre n'est pas un vol avec conducteur. */
   noDriver?: boolean;
+  /** Gyrophares allumés sans la sirène (garée sur une scène). */
+  quiet?: boolean;
 }
 
 /** Une voiture d'événement telle que l'événement la voit. */
@@ -332,7 +334,7 @@ export class Traffic {
   forEachSound(visit: (id: number, x: number, y: number, vx: number, vy: number, speed: number, model: string, siren: boolean) => void): void {
     for (const c of this.cars) {
       const s = c.sim.state;
-      visit(c.sim.id, s.x, s.y, s.vx, s.vy, s.speed, c.def.id, c.siren);
+      visit(c.sim.id, s.x, s.y, s.vx, s.vy, s.speed, c.def.id, c.siren && !c.quiet);
     }
   }
 
@@ -571,7 +573,8 @@ export class Traffic {
     if (!c) return;
     this.sim.setChase(c.sim, target !== null);
     c.sim.target = target;
-    c.siren = target !== null && c.police;
+    c.siren = target !== null && (c.police || !!c.def.rescue);
+    c.quiet = false;
   }
 
   /**
@@ -594,10 +597,15 @@ export class Traffic {
     return true;
   }
 
-  /** Gyrophares d'une voiture de police d'événement (garée sur une scène, ils restent allumés). */
-  setSiren(id: number, on: boolean): void {
+  /**
+   * Gyrophares d'une voiture de police ou de secours d'événement (garée sur une scène, ils restent allumés) ; `sound` faux : la sirène se tait
+   * (garée, on n'entend plus que les feux qui tournent).
+   */
+  setSiren(id: number, on: boolean, sound = true): void {
     const c = this.byId(id);
-    if (c) c.siren = on && c.police;
+    if (!c) return;
+    c.siren = on && (c.police || !!c.def.rescue);
+    c.quiet = !sound;
   }
 
   /** Feux de détresse, personne au volant, arrêt imposé (s ; 0 : elle repart). */

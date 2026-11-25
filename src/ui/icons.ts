@@ -34,6 +34,10 @@ const PATHS = {
   sprint: `<path ${STROKE} stroke-width="2.4" d="M8 6l6 6-6 6M14 6l6 6-6 6"/><path ${STROKE} d="M2 9h3M1 12h3M2 15h3"/>`,
   jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
   dog: `<path ${STROKE} d="M4 13l2-5h3l2 3h6l3-3 1 3-2 3v5h-2.5l-.5-3H9l-1 3H5.5l.5-5z"/><circle fill="currentColor" cx="7.5" cy="10.2" r=".9"/>`,
+  // Porter secours (phase 4, malaise) : une croix dans un cercle.
+  help: `<circle ${STROKE} cx="12" cy="12" r="9"/><path ${STROKE} stroke-width="2.6" d="M12 7.5v9M7.5 12h9"/>`,
+  // Séparer des bagarreurs (phase 4, rixe) : deux flèches qui s'écartent.
+  separate: `<path ${STROKE} stroke-width="2.4" d="M10 12H3M6 9l-3 3 3 3M14 12h7M18 9l3 3-3 3"/><path ${STROKE} d="M12 5v14"/>`,
   bag: `<path ${STROKE} d="M5 9h14l-1.5 11h-11z"/><path ${STROKE} d="M9 9V7a3 3 0 0 1 6 0v2"/>`,
   shop: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5M10 20v-4.5h4V20"/>`,
   closed: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M5.5 12.5V20h13v-7.5"/><path ${STROKE} d="M9.5 13.5l5 5M14.5 13.5l-5 5"/>`,

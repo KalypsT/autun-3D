@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { EventDirector, type DirectorContext } from "../core/events/director";
@@ -8,6 +8,7 @@ import type { PickpocketEvent } from "../core/events/pickpocket";
 import type { DogEscapeEvent } from "../core/events/dog-escape";
 import { SimDogs } from "../core/events/sim-dogs";
 import type { PursuitEvent } from "../core/events/pursuit";
+import type { MalaiseEvent } from "../core/events/malaise";
 import type { PickpocketEffects } from "../core/events/pickpocket";
 import type { DogEffects } from "../core/events/dog-escape";
 import { OFFICER } from "../core/officers";
@@ -20,6 +21,18 @@ import { Traffic } from "./traffic";
 const { world, colliders } = loadRealRoadWorld();
 const { cells } = loadRealNav();
 const DT = 1 / 60;
+
+/** Bars, cafés et restaurants de la vraie carte (comme `ui-bridge.ts`) : où éclatent les rixes. */
+function loadBars(): { x: number; y: number }[] {
+  for (const dir of existsSync("public/immuable") ? readdirSync("public/immuable") : []) {
+    const f = `public/immuable/${dir}/data/map/places.json`;
+    if (!existsSync(f)) continue;
+    const d = JSON.parse(readFileSync(f, "utf8")) as { places: { cat: string; kind?: string | null; x: number; y: number }[] };
+    return d.places.filter((q) => q.cat === "commerce" && ["bar", "pub", "cafe", "restaurant", "nightclub", "biergarten"].includes(q.kind ?? "")).map((q) => ({ x: q.x, y: q.y }));
+  }
+  return [];
+}
+const BARS = loadBars();
 
 interface SoakResult {
   starts: number;
@@ -35,6 +48,8 @@ interface SoakResult {
   journal: number;
   /** Départs et issues par événement (« vol:rendu »…), d'après le journal. */
   kinds: Record<string, number>;
+  /** Départs par événement. */
+  started: Record<string, number>;
   /** Coût du directeur et des événements par image (ms) : moyenne et pire. */
   meanMs: number;
   worstMs: number;
@@ -52,10 +67,10 @@ function soak(seed: number, minutes: number): SoakResult {
   const peds = new PedSim(nav.graph, world.terrain, colliders, { capacity: 100 + OFFICER.max, reserved: OFFICER.max, seed, life: true });
   peds.signals = signals;
   traffic.setPeds(peds);
-  const r: SoakResult = { starts: 0, snatched: 0, caught: 0, returned: 0, escaped: 0, maxBorrowed: 0, leaked: 0, bad: 0, earned: 0, journal: 0, kinds: {}, meanMs: 0, worstMs: 0 };
+  const r: SoakResult = { starts: 0, snatched: 0, caught: 0, returned: 0, escaped: 0, maxBorrowed: 0, leaked: 0, bad: 0, earned: 0, journal: 0, kinds: {}, started: {}, meanMs: 0, worstMs: 0 };
   let money = 1000;
-  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void } = {
-    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, feat: () => {}, crime: () => {},
+  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void } = {
+    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, feat: () => {}, crime: () => {},
     earn: (n) => {
       r.earned += n;
       money += n;
@@ -69,7 +84,7 @@ function soak(seed: number, minutes: number): SoakResult {
   const dogs = new SimDogs(peds);
   const director = new EventDirector(seed);
   director.level = 3;
-  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, fx })) director.register(d);
+  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, pedNav: () => nav.graph, bars: () => BARS, fx })) director.register(d);
   const player = { x: 0, y: -20, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 };
   let rng = seed * 7919;
   const rand = (): number => ((rng = (rng * 16807) % 2147483647) / 2147483647);
@@ -98,9 +113,18 @@ function soak(seed: number, minutes: number): SoakResult {
     const pp = director.active.find((e) => e.kind === "pickpocket") as PickpocketEvent | undefined;
     const dg = director.active.find((e) => e.kind === "chien") as DogEscapeEvent | undefined;
     const pu = director.active.find((e) => e.kind === "poursuite") as PursuitEvent | undefined;
+    const ml = director.active.find((e) => e.kind === "malaise") as MalaiseEvent | undefined;
     let target: { x: number; y: number } | null = null, v = 1.4;
+    // Quelqu'un fait un malaise à moins de 50 m : on court l'aider (un genou à terre, sans bouger).
+    if (ml && (ml.phase === "down" || ml.phase === "care") && !ml.helped && Math.hypot(ml.x - player.x, ml.y - player.y) < 50) {
+      if (ml.helpT >= 0) [target, v] = [{ x: player.x, y: player.y }, 0];
+      else {
+        [target, v] = [{ x: ml.x + 1, y: ml.y }, 5];
+        ml.action(player)?.run();
+      }
+    }
     // Un fugitif à pied à moins de 60 m : on le plaque.
-    if (pu && pu.phase === "foot" && pu.runner >= 0) {
+    if (!target && pu && pu.phase === "foot" && pu.runner >= 0) {
       peds.position(pu.runner, q);
       if (Math.hypot(q.x - player.x, q.y - player.y) < 60) [target, v] = [{ ...q }, 7];
     }
@@ -164,10 +188,19 @@ function soak(seed: number, minutes: number): SoakResult {
     dogs.step(DT);
     traffic.applyImpacts();
     signals.clock.t += DT;
+    // Après les huit premières minutes, un samedi soir (rixes devant les bars ; plus de poursuites).
+    const evening = i >= 8 * 3600;
+    ctx.hour = evening ? 21 : 15;
+    ctx.weekday = evening ? 5 : 2;
     const t0 = performance.now();
     const before = director.journal.length;
+    const nb = director.starts;
     director.update(ctx);
     const ms = performance.now() - t0;
+    if (director.starts !== nb) {
+      const k = director.active[director.active.length - 1]?.kind;
+      if (k) r.started[k] = (r.started[k] ?? 0) + 1;
+    }
     total += ms;
     frames++;
     r.worstMs = Math.max(r.worstMs, ms);
@@ -197,7 +230,7 @@ function soak(seed: number, minutes: number): SoakResult {
 }
 
 describe("endurance des événements (phase 4)", () => {
-  it("vingt minutes à « Fréquents » au centre : vols, pickpockets, chiens, accidents, poursuites ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
+  it("vingt minutes à « Fréquents » au centre, l'après-midi puis le soir : vols, pickpockets, chiens, accidents, poursuites, malaises, rixes ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
     const sum = { starts: 0, snatched: 0, caught: 0, returned: 0, earned: 0, journal: 0, kinds: new Set<string>() };
     for (const seed of [4, 11]) {
       const r = soak(seed, 20);
@@ -215,11 +248,11 @@ describe("endurance des événements (phase 4)", () => {
       sum.returned += r.returned;
       sum.earned += r.earned;
       sum.journal += r.journal;
-      for (const k of Object.keys(r.kinds)) sum.kinds.add(k.split(":")[0]!);
+      for (const k of Object.keys(r.started)) sum.kinds.add(k);
     }
-    // Au moins quatre des cinq événements du catalogue ont eu lieu (le tirage en laisse parfois un de côté en 40 minutes), dont un grand.
-    expect(sum.kinds.size).toBeGreaterThanOrEqual(4);
-    expect(sum.kinds.has("accident") || sum.kinds.has("poursuite")).toBe(true);
+    // Au moins cinq des sept événements du catalogue ont commencé (le tirage en laisse parfois de côté en 40 minutes), dont un grand.
+    expect(sum.kinds.size).toBeGreaterThanOrEqual(5);
+    expect(["accident", "poursuite", "malaise", "rixe"].some((k) => sum.kinds.has(k))).toBe(true);
     expect(sum.starts).toBeGreaterThanOrEqual(8);
     expect(sum.snatched).toBeGreaterThanOrEqual(1);
     expect(sum.caught).toBeGreaterThanOrEqual(Math.ceil(sum.snatched * 0.5));

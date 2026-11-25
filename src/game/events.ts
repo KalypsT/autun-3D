@@ -4,6 +4,7 @@ import { EventBook, eventGoal, type EventTierHit } from "../core/events/book";
 import { eventCatalog } from "../core/events/catalog";
 import { EventDirector, outcomeText, type DirectorContext, type EventEnd } from "../core/events/director";
 import type { EventAction, EventKind, EventMarker, EventPlayer, EventTraffic, GroundItem } from "../core/events/types";
+import type { NavGraph } from "../core/nav-graph";
 import type { RoadGraph } from "../core/road-graph";
 import type { Crime } from "../core/wanted";
 import { TIER_NAMES } from "../core/challenges";
@@ -28,9 +29,17 @@ export interface EventsHost {
   /** Aboiement en (x, y) ; klaxon d'une voiture en (x, y). */
   bark(x: number, y: number): void;
   honk(x: number, y: number): void;
+  /** Le joueur un genou à terre (il porte secours), ou debout. */
+  kneel(on: boolean): void;
+  /** Un coup de poing reçu par le joueur (rixe) : points de vie, depuis (x, y). */
+  hurtPlayer(damage: number, x: number, y: number): void;
+  /** Bars, cafés et restaurants (repère du jeu ; vide tant que la carte n'est pas chargée). */
+  bars(): readonly { x: number; y: number }[];
   /** La circulation (null sans), le graphe routier (null tant que la navigation n'est pas chargée). */
   traffic(): EventTraffic | null;
   road(): RoadGraph | null;
+  /** Le graphe piéton (null tant que la navigation n'est pas chargée). */
+  pedNav(): NavGraph | null;
   feat(text: string): void;
   crime(kind: Crime, x: number, y: number): void;
   /** Nom de la rue la plus proche (« rue aux Cordiers »), ou null. */
@@ -84,10 +93,12 @@ export class EventsController {
       sayPlayer: (text: string, seconds: number) => this.bubbles.say(-1, text, seconds, () => host.playerHead()),
       bark: (x: number, y: number) => host.bark(x, y),
       honk: (x: number, y: number) => host.honk(x, y),
+      kneel: (on: boolean) => host.kneel(on),
+      hurtPlayer: (n: number, x: number, y: number) => host.hurtPlayer(n, x, y),
       feat: (t: string) => host.feat(t),
       crime: (k: Crime, x: number, y: number) => host.crime(k, x, y),
     };
-    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), fx };
+    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), pedNav: () => host.pedNav(), bars: () => host.bars(), fx };
     for (const def of eventCatalog(world)) this.director.register(def);
     if (forced && this.director.defOf(forced as EventKind)) this.forced = forced as EventKind;
     const cam = host.camera;

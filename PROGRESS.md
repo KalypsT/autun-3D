@@ -2398,3 +2398,15 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Accident : la dispute](docs/captures/pj4-accident.jpg)
 ![Accident : le constat](docs/captures/pj4-accident-constat.jpg)
 - Pas de capture de la poursuite : le rendu des captures est trop lent pour une voiture à 50 km/h (elle est déjà sortie du cadre). À voir sur le téléphone avec `?event=poursuite&h=21`.
+
+**Plaisir de jeu, phase 4, lots 5 et 6 : le malaise et la rixe (25 novembre 2026)** (D332, D333)
+- **Malaise** : devant toi, un passant s'arrête, la main sur la poitrine, et s'effondre. Quelqu'un se penche sur lui (« Monsieur, ça va ? »), un autre appelle les secours. Une minute plus tard, le **fourgon des pompiers** arrive, sirène deux tons (il vient du côté de la caserne de l'avenue André Frenaud) ; deux pompiers s'agenouillent près de lui, puis il se relève, ou ils l'emmènent dans le fourgon. Tu peux **l'aider** avant eux : **« Aider »**, tu mets un genou à terre quelques secondes, il reprend ses esprits : « Merci… ça va mieux. », **80 €**.
+- **Rixe** : le soir, surtout le vendredi et le samedi, devant un bar ou un restaurant, deux ou trois personnes se disputent (« Qu'est-ce que tu regardes ? »), puis se battent **aux poings**, des curieux regardent. Une patrouille finit par arriver : l'un s'enfuit, l'autre lève les mains et part dans la voiture. Tu peux les **séparer** (**« Séparer »**, 50 €), ou t'en mêler : frapper l'un d'eux est une agression, et il s'en prend alors à toi.
+- Nouveau véhicule : le **fourgon des pompiers** (rouge, bande blanche, POMPIERS sur les flancs, gyrophares bleus) ; nouvelles poses : main sur la poitrine, effondré, à genoux, poings levés.
+- Garée sur une scène, une voiture de police ou de pompiers garde ses gyrophares mais **coupe sa sirène**.
+- Pour essayer tout de suite : `?event=malaise` et `?event=rixe&h=21` (avec la circulation allumée).
+- À faire de ton côté : écouter la sirène des pompiers (page `?sounds`), dire si les pompiers arrivent assez vite (environ 1 min 10), si la rixe se remarque assez, si les coups reçus (8 points de vie) sont trop forts.
+![Malaise : un passant s'est effondré, une passante se penche sur lui](docs/captures/pj4-malaise.jpg)
+![Le bouton « Aider »](docs/captures/pj4-malaise-aider.jpg)
+![Rixe devant une terrasse, le soir](docs/captures/pj4-rixe.jpg)
+![« Gendarmerie ! On se calme ! » : l'un lève les mains, l'autre s'enfuit](docs/captures/pj4-rixe-gendarme.jpg)

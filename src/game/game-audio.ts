@@ -493,7 +493,7 @@ export class GameAudio {
       }
       const dx = car.x - L.x, dy = car.y - L.y, d = Math.hypot(dx, dy);
       stereo(L.x, L.y, L.yaw, car.x, car.y, this.st);
-      v.update(doppler(dx, dy, car.vx, car.vy, L.vx, L.vy), distanceCutoff(d * 0.5), distanceGain(d, 15, SIREN_RANGE) * 0.6 * (1 - 0.2 * this.st.behind), this.st.pan);
+      v.update(doppler(dx, dy, car.vx, car.vy, L.vx, L.vy), distanceCutoff(d * 0.5), distanceGain(d, 15, SIREN_RANGE) * 0.6 * (1 - 0.2 * this.st.behind), this.st.pan, car.model === "pompiers");
     }
   }
 

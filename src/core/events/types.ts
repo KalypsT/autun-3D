@@ -55,7 +55,8 @@ export interface EventTraffic {
   spawnEvent(police: boolean, around?: { x: number; y: number }, model?: string): EventCarView | null;
   eventCar(id: number): EventCarView | null;
   pursue(id: number, target: { x: number; y: number; vx: number; vy: number } | null): void;
-  setSiren(id: number, on: boolean): void;
+  /** Gyrophares (et sirène, sauf `sound` faux : garée sur une scène). */
+  setSiren(id: number, on: boolean, sound?: boolean): void;
   setHazard(id: number, on: boolean): void;
   setNoDriver(id: number, on: boolean): void;
   hold(id: number, seconds: number): void;
@@ -131,12 +132,12 @@ export interface EventAction {
   label: string;
   verb: string;
   /** Pictogramme du bouton (sac par défaut). */
-  icon?: "bag" | "dog";
+  icon?: "bag" | "dog" | "help" | "separate";
   run(): void;
 }
 
 /** Comment un événement s'est terminé, pour le journal et les comptes du carnet. */
-export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne" | "constat" | "vole" | "termine" | "arrete";
+export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne" | "constat" | "vole" | "termine" | "arrete" | "secouru" | "soigne" | "evacue" | "separe" | "disperse";
 
 /** Un événement en cours : une machine à états avancée par le directeur. */
 export interface GameEvent {

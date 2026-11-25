@@ -230,7 +230,7 @@ export class PursuitEvent implements GameEvent {
         if (!pc || Math.hypot(pc.state.x - tmp.x, pc.state.y - tmp.y) > PURSUIT.deployReach) continue;
         this.traffic.pursue(id, null);
         this.traffic.hold(id, 1e6);
-        this.traffic.setSiren(id, true);
+        this.traffic.setSiren(id, true, false);
         const h = pc.state.heading;
         this.officer = peds.appear(pc.state.x - Math.cos(h) * 1.4, pc.state.y + Math.sin(h) * 1.4, pc.driver, h, gendarmeRecipe(pc.driver));
         this.officerCar = id;

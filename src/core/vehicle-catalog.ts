@@ -74,6 +74,8 @@ export interface VehicleDef {
   twoTone?: { variants: readonly number[]; color: string };
   /** Véhicule de service de la circulation (D204 : bus, camion poubelle) : ni garé, ni tiré au hasard ; le jeu le fait rouler à ses heures. */
   service?: boolean;
+  /** Véhicule de secours (phase 4 : le fourgon des pompiers) : gyrophares et sirène comme la gendarmerie, mais ce n'est pas la police. */
+  rescue?: boolean;
   /**
    * Locomotive du petit train (D118) : dessinée avec ses wagons par le train (`src/game/tourist-train.ts`), pas par le générateur de carrosserie ;
    * pas de place fixe (le train tourne sur son circuit), jamais enregistrée (une partie le remet sur son circuit).
@@ -112,6 +114,9 @@ export const CATALOG: readonly VehicleDef[] = [
   { id: "grumier-morvan", family: "car", name: "Grumier", unique: true, badge: { make: "Couhard", model: "Grumier du Morvan" }, toughness: 2.4, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.33 }, palette: ["#a8322a"] },
   // Véhicules de service de la circulation (D204) : ni garés ni tirés au hasard ; le jeu les fait rouler à leurs heures.
   { id: "bus-urbain", family: "car", name: "Bus urbain", service: true, badge: { make: "Couhard", model: "Navette Éduenne" }, icon: "🚌", toughness: 2.2, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.1 }, palette: ["#2f6fa8", "#e8e4da"] },
+  // Fourgon des pompiers (phase 4, malaise) : la caisse de la camionnette, rouge, bandes et lettrage, gyrophares bleus ; il part de la caserne
+  // (avenue André Frenaud) quand on l'appelle.
+  { id: "pompiers", family: "car", name: "Pompiers", service: true, rescue: true, badge: { make: "Couhard", model: "Mulet Secours" }, icon: "🚒", toughness: 1.4, spec: VAN, size: { length: 5.08, width: 1.96, height: 2.07 }, palette: ["#c8211c"] },
   { id: "benne-ordures", family: "car", name: "Camion poubelle", service: true, badge: { make: "Couhard", model: "Benne Bibracte" }, toughness: 2.4, spec: LOG_TRUCK, size: { length: 9.2, width: 2.5, height: 3.3 }, palette: ["#e8e4da"] },
   { id: "scooter-125", family: "moto", name: "Scooter 125", badge: { make: "Éduen", model: "Zéphyr 125" }, icon: "🛵", toughness: 0.6, spec: SCOOTER_125, size: { length: 1.92, width: 0.72, height: 1.26 }, palette: ["#efe3c8", "#9fb8a6", "#d9472b", "#8a8f96", "#1f3a52", "#f1b24a", "#8fa8c4"] },
   { id: "moto-routiere", family: "moto", name: "Moto routière", badge: { make: "Bibracte", model: "Druide" }, toughness: 0.7, spec: MOTO, size: { length: 2.09, width: 0.74, height: 1.28 }, palette: ["#7a2e2e", "#1f3a52", "#1b1d22", "#3f7d4e", "#c9b98a", "#d9472b"] },

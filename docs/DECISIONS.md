@@ -8157,3 +8157,106 @@ courant), la prime, et la fréquence quand les autres événements seront là.
   sur le téléphone (`?event=poursuite&h=21`).
 
 **À juger en jouant** : la durée des poursuites, la prime (500 €), le nombre de gendarmeries.
+
+## 2026-11-25 — D332. Plaisir de jeu, phase 4, lot 5 : le malaise et les pompiers
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 5 (E6) ; la caserne des pompiers d'Autun (centre de secours, avenue André Frenaud) donnée
+par l'utilisateur sur ses captures, retrouvée sur la carte du jeu (bâtiment autour de (1602, 720)).
+
+**Choix**
+- **Le malaise** (`src/core/events/malaise.ts`) : un passant **à l'écran**, à 20 – 60 m, qui marche seul (plutôt âgé), s'arrête, porte la
+  **main à sa poitrine** (2,5 s), puis **s'effondre** (à genoux, sur les mains, à plat ventre : la chute forte de D210, jouée plus lentement)
+  et reste couché (il respire). Jusqu'à **deux passants** proches s'arrêtent : l'un **un genou à terre** près de lui (« Monsieur, ça va ? »,
+  « Vous m'entendez ? »), l'autre **téléphone** à 3 m (« Appelez les secours ! », « Allô, les pompiers ? », « Ils arrivent ! »).
+- **Les pompiers** : un **fourgon** (nouveau modèle `pompiers` : la caisse sculptée de la camionnette de D279, rouge, large bande blanche et le
+  mot POMPIERS en rouge sur les flancs, filet jaune, damier jaune et rouge sur les portes arrière, rampe bleue à l'avant du toit et deux feux
+  bleus à l'arrière) part 20 à 35 s après la chute, **hors de vue, du côté de la caserne** (né dans la couronne de la circulation, à 90 m de la
+  scène en direction de la caserne ; la caserne elle-même est en général trop loin pour en partir vraiment : à revoir si l'on veut le voir
+  sortir), **sirène deux tons**, en conduite d'urgence (itinéraire, feux grillés, contresens permis : la conduite du fugitif de D331). Il se
+  **gare** au bord de la chaussée la plus proche du malade (en vue de lui), **gyrophares allumés et sirène coupée** ; deux **pompiers**
+  (tenue bleu marine, casque clair) descendent (« Pompiers ! Écartez-vous. »), vont jusqu'à lui **par le graphe piéton** (ils contournent les
+  murs), s'agenouillent (« On s'occupe de vous. »), puis, au bout de 10 s, il **se relève** (« Merci, ça va aller. ») ou, quatre fois sur dix,
+  il est **emmené** : tous trois montent à l'arrière du fourgon (ils y disparaissent), qui repart.
+- **Aider** (bouton « Aider », pictogramme d'une croix dans un cercle) : à moins de 1,8 m, à pied, avant les pompiers. Le joueur met **un genou
+  à terre** (nouvelle pose du personnage) ; s'il reste là 4 s sans bouger, il reprend ses esprits, se relève, « Merci… ça va mieux. » :
+  **80 €** et une **bonne action** ; les pompiers en route font demi-tour. S'il s'éloigne, l'aide s'arrête, sans prime.
+- **Garde-fous** (trouvés par les essais) : la chaussée visée est cherchée **carrossable et en vue** du malade (la plus proche pouvait être une rue
+  piétonne, ou de l'autre côté d'un mur) ; un fourgon **arrêté** plus de 10 s (bouchon) à moins de **100 m à pied** du malade se gare là, les
+  pompiers finissent à pied ; pas arrivé 2 min après l'appel, le malade se relève seul et le fourgon repart ; sans circulation (« Aucune »),
+  pas de pompiers : il se relève seul au bout de 70 s ; un pompier coincé derrière un muret plus de 6 s sur le chemin du retour disparaît.
+- **Outils communs, nouveaux** : `Walker` et `walkLength` (`src/core/events/walker.ts` : un figurant qui va quelque part par le **graphe
+  piéton**, avec l'itinéraire du guidage de D310 ; la longueur du trajet à pied) ; `roadside` (où une voiture d'événement se gare pour une scène) ;
+  **poses** de la foule `chest` (main sur la poitrine), `collapse`, `getup`, `kneel` (`LIFE_POSE`, `character-rig.ts`) ; pose à genoux du
+  joueur (`PlayerModel.setKneel`) ; gyrophares **sans sirène** pour une voiture garée (`Traffic.setSiren(id, on, sound)` : la patrouille de
+  l'accident et celle de la poursuite aussi, désormais) ; un véhicule `rescue` (catalogue) a des gyrophares sans être la police.
+- **Sirène des pompiers** : les mêmes deux notes que la gendarmerie (la et si), en **plus lent** (0,77 s par note au lieu de 0,5 : « pin… pon… ») ;
+  à juger à l'oreille (page `?sounds`, « Pompiers qui passent à 70 km/h »).
+- **Fréquence** : poids 1,5 de 7 h à 22 h, × 1,5 l'après-midi (13 h – 17 h, la chaleur : le plan disait « l'été », mais le directeur ne connaît pas
+  la saison) et les matins de marché. C'est un grand événement (un seul à la fois avec l'accident, la poursuite, la rixe : il fait venir un
+  véhicule). Captures : `tools/ui.sh <dossier> malaise` ; `?event=malaise`.
+- Écart au plan : **pas de « détrousser à terre »** (Q5) : le malade n'est pas un passant « mis à terre » au sens de D317 ; à faire si tu le veux.
+
+**Mesures**
+- **Tests sans écran** (`src/game/malaise.test.ts`, vraies données) : trouvé quatre fois sur six au moins ; main à la poitrine, chute, aides qui
+  s'agenouillent ou téléphonent ; pompiers arrivés **67 et 76 s** après le début (deux graines sur trois), une fois relevé, une fois emmené ; la
+  troisième, le fourgon reste coincé dans la circulation à 44 m, de l'autre côté d'un mur (233 m à pied) : le malade se relève seul à 2 min 30.
+  Endurance : voir D333.
+  Le joueur qui aide : genou à terre, 4 s, 80 €, « Merci… ça va mieux. » ; qui s'éloigne : pas de prime. Sans circulation : relevé seul.
+- **Appels de dessin** : le fourgon est une voiture de la circulation (+1 pour son modèle s'il n'y en avait pas, ses feux bleus dans le maillage
+  des gyrophares : +0 ou +1) ; les pompiers sont des passants (0).
+
+**Limites, honnêtement**
+- Le fourgon ne double pas : coincé dans un bouchon, il arrive tard, ou pas (le malade se relève seul).
+- Le malade couché reste pour la simulation un passant « debout » : les autres le contournent mal, une voiture ne le voit pas comme un corps.
+- Le joueur à genoux garde ses commandes : il peut tourner la caméra ; bouger arrête l'aide.
+
+**À juger en jouant** : la fréquence, le temps d'arrivée des pompiers (environ 1 min 10), la prime (80 €), la sirène plus lente.
+
+## 2026-11-25 — D333. Plaisir de jeu, phase 4, lot 6 : la rixe
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 6 (E7) ; violence aux poings seulement, sans sang, personne n'en meurt (Q3).
+
+**Choix**
+- **Où, quand** (`src/core/events/rixe.ts`) : devant un **bar, un café ou un restaurant** de la carte (47 lieux ; OpenStreetMap n'a que 4 bars
+  à Autun, les restaurants comptent donc) à 25 – 70 m du joueur, de 20 h à 3 h, **deux fois plus le vendredi et le samedi soir** ; deux
+  adultes (pas en tenue de travail) à moins de 35 m du lieu, passants ou **clients assis en terrasse** (ils se lèvent : le soir, beaucoup sont
+  assis ; sans eux, l'endurance n'en trouvait presque jamais), un **troisième** une fois sur trois. Poids 1, grand événement.
+- **Ce qu'on voit** : ils se rejoignent devant le lieu, se **disputent** 7 à 11 s (bras tendu, gestes, bulles « Qu'est-ce que tu regardes ? »,
+  « Tu me cherches ? », « Répète un peu ! »…), puis se **battent aux poings** : nouvelle pose de la foule `fists` (garde levée, un coup de
+  poing toutes les 1,1 s d'un bras puis de l'autre, les poses de coup du joueur de D80 posées sur le squelette des passants). Toutes les 1,6 à
+  3,2 s, un coup **porte** : l'autre trébuche (poussée de 2,4 m/s), ou une fois sur quatre **tombe** (4,2 m/s, la chute légère de D212) ; ils
+  gardent leur distance de garde (1,05 m). **Deux curieux** viennent regarder en cercle à 6,5 m (l'un filme) ; les passants tout près s'écartent.
+- **La patrouille** part 40 à 65 s après les premiers coups (comme l'accident : sa propre cible, D331 ; itinéraire jusqu'à la chaussée la plus
+  proche, sirène), se gare (gyrophares sans sirène) ; un **gendarme** descend (« Gendarmerie ! On se calme ! ») : le premier bagarreur encore
+  debout **lève les mains** (« C'est pas moi, c'est lui ! »), les autres **s'enfuient** ; le gendarme le rejoint par le graphe piéton (« Vous
+  êtes en état d'arrestation. »), mains en l'air 3 s, puis tous deux **montent dans la voiture**, qui repart. Sans patrouille (pas de
+  circulation), ils se séparent d'eux-mêmes au bout de 1 min 50 de coups.
+- **Séparer** (bouton « Séparer », deux flèches qui s'écartent) : à moins de 1,8 m d'un bagarreur, à pied, avant le gendarme : « C'est bon,
+  c'est bon… », « Il m'a cherché ! », chacun repart de son côté ; **50 €** et une **bonne action** ; la patrouille en route repart.
+- **S'en mêler** : frapper un bagarreur est une **agression** comme une autre (D70) ; celui-là **s'en prend au joueur** une fois relevé : il le
+  suit (3,6 m/s), garde levée, et le frappe à portée (**8 points de vie**, toutes les 1,3 s ; le coup et la douleur du joueur s'entendent) ;
+  les autres en profitent pour filer. Il le lâche au-delà de 20 m (« Ouais, c'est ça, cours ! ») ou quand le joueur monte dans un véhicule.
+  (Une chute que la scène n'a pas donnée, à moins de 3 m du joueur à pied, est attribuée au joueur.)
+- **Garde-fou** (trouvé par les essais) : un lieu en rue piétonne n'a pas de chaussée en vue ; la patrouille vise alors la chaussée carrossable la
+  plus proche, et se gare si elle reste arrêtée plus de 10 s à moins de 110 m à pied (au pire au bout de 90 s) : le gendarme finit à pied.
+- Captures : `tools/ui.sh <dossier> rixe` ; `?event=rixe&h=21`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/rixe.test.ts`, vraies données ; un « bar » pris au hasard à 30 – 60 m) : une rixe trouvée trois fois sur
+  huit au moins (il faut deux passants adultes ordinaires près du lieu) ; dispute, poings levés, des coups qui portent, personne ne meurt ;
+  patrouille et arrestation sur les trois graines essayées (gendarme à **100, 104 et 163 s** du début, arrestation à 104, 143 et 202 s : la
+  troisième fois, la patrouille est restée bloquée et s'est garée au bout de 90 s, le gendarme a fini à pied) ; séparés par le joueur : 50 € ; frappé par le joueur, un bagarreur le poursuit et le frappe, puis le lâche ;
+  sans circulation, ils se séparent seuls.
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant l'après-midi puis, après huit minutes,
+  un samedi soir, avec les sept événements, les vrais bars et restaurants de la carte, et un robot qui court aider un malade à moins de 50 m) :
+  6 et 10 départs, **les sept événements ont commencé** ; une rixe par graine, finie par une arrestation ; deux malaises secourus par le
+  robot ; aucun figurant oublié, 5 passants réquisitionnés au plus ; **0,002 à 0,006 ms par image** en moyenne, 1,9 à 3,8 ms au pire.
+- **Appels de dessin** : 0 (des passants ; la patrouille comme D72).
+
+**Limites, honnêtement**
+- Les coups des bagarreurs ne retirent pas de points de vie aux passants (une poussée seulement) : personne ne meurt de la rixe, comme voulu,
+  mais personne ne finit KO non plus.
+- Un coup du joueur au mauvais moment (pendant qu'un bagarreur tombe sous un coup de l'autre) peut ne pas être compté comme le sien.
+- Le bagarreur en colère ne voit pas les murs : il suit le joueur en ligne droite.
+
+**À juger en jouant** : la fréquence, la durée de la dispute et de la bagarre, la force des coups reçus (8), la prime (50 €).

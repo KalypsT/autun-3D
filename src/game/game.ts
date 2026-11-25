@@ -519,6 +519,8 @@ export function startGame(ctx: GameContext): void {
     }
   };
   // Événements aléatoires (phase 4) : vols, plus tard accidents, poursuites… ; `?event=vol` en lance un tout de suite (essais, captures).
+  /** Le joueur porte secours (malaise, phase 4) : un genou à terre. */
+  let eventKneel = false;
   const events: EventsController = new EventsController({
     peds: () => peds as PedsController | null,
     camera,
@@ -534,8 +536,20 @@ export function startGame(ctx: GameContext): void {
     playerHead: () => ({ x: player.x, y: player.y, z: (riding ? riding.state.z : player.z) + 1.75 }),
     bark: (x, y) => audio.animal("bark", x, y),
     honk: (x, y) => audio.honk(x, y),
+    kneel: (on) => {
+      eventKneel = on;
+    },
+    // Un bagarreur frappe le joueur (rixe) : le coup, la douleur.
+    hurtPlayer: (n) => {
+      if (riding || health.dead) return;
+      health.damage(n);
+      audio.swing("punch");
+      audio.hurt();
+    },
+    bars: () => ui.bars,
     traffic: () => traffic as Traffic | null,
     road: () => (nav as NavManager | null)?.graph.road ?? null,
+    pedNav: () => (nav as NavManager | null)?.graph ?? null,
     feat: (t) => showFeat(t),
     crime: (k, x, y) => police.crime(k, x, y, true),
     street: (x: number, y: number): string | null => streetNear(ui.streets, x, y),
@@ -2101,6 +2115,7 @@ export function startGame(ctx: GameContext): void {
       trackFeats(riding.family, riding.state);
     } else {
       model.setDown(downFor > 0 ? { t: downTotal - downFor, side: downSide, variant: downVariant, impulse: downAmp } : null);
+      model.setKneel(eventKneel && downFor <= 0);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
       model.setSwim(player.swim ? { crawl: Math.min(1, Math.max(0, (player.speed - SWIM_SPEED) / (SWIM_FAST - SWIM_SPEED))) } : null);
       if (player.splash > 0) {

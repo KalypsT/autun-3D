@@ -445,6 +445,61 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await ctx.close();
   }
 
+  if (want("malaise")) {
+    // Malaise (phase 4, E6) : il s'effondre, un passant se penche sur lui ; le bouton « Aider » ; les pompiers agenouillés près de lui.
+    const ctx = await open("event=malaise&h=15&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const view = async (dist, side) => page.evaluate(([d, sd]) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      a.player.x = e.x + sd; a.player.y = e.y - d;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.2);
+      a.tilt(0.3);
+    }, [dist, side]);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "down", null, { timeout: 60000, polling: 300 });
+    await sleep(9000);
+    await view(7, 2.5);
+    await sleep(2500);
+    await shot("pj4-malaise");
+    await view(1.2, 0.6);
+    await sleep(1500);
+    await shot("pj4-malaise-aider");
+    await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || (e.phase === "care" && e.firemen.length > 0);
+    }, null, { timeout: 1500000, polling: 1000 });
+    await sleep(7000);
+    await view(8, 3);
+    await sleep(2500);
+    await shot("pj4-malaise-pompiers");
+    await ctx.close();
+  }
+
+  if (want("rixe")) {
+    // Rixe (phase 4, E7) : la bagarre aux poings devant un bar, puis le gendarme.
+    const ctx = await open("event=rixe&h=21&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const view = async (dist) => page.evaluate((d) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      a.player.x = e.x + 2; a.player.y = e.y - d;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.15);
+      a.tilt(0.25);
+    }, dist);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "fight", null, { timeout: 120000, polling: 300 });
+    await view(7);
+    await sleep(4000);
+    await shot("pj4-rixe");
+    await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || e.phase === "arrest";
+    }, null, { timeout: 1500000, polling: 1000 });
+    await view(9);
+    await sleep(3000);
+    await shot("pj4-rixe-gendarme");
+    await ctx.close();
+  }
+
   if (want("monuments")) {
     // Chasse aux monuments (PJ 3, D320) : on arrive à la porte d'Arroux (bandeau, prime, « Lire la fiche ») ; la fiche dans le carnet ;
     // la liste des monuments ; la carte agrandie avec les « ? ».

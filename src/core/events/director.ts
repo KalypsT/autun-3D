@@ -252,6 +252,8 @@ const OUTCOME_TEXT: Partial<Record<EventKind, Partial<Record<EventOutcome, strin
   chien: { rendu: "chien rendu à son maître", rattrape: "chien rattrapé", enfui: "le chien s'est sauvé", perdu: "le chien s'est sauvé" },
   accident: { constat: "constat de la gendarmerie", vole: "une des voitures a été volée", termine: "les conducteurs se disputaient encore", enfui: "un des conducteurs est parti" },
   poursuite: { arrete: "le fugitif a été arrêté", rattrape: "fugitif arrêté grâce à toi", enfui: "le fugitif s'est échappé", perdu: "le fugitif est mort" },
+  rixe: { separe: "bagarre séparée par toi", arrete: "un bagarreur arrêté", disperse: "les bagarreurs se sont dispersés", perdu: "un bagarreur est mort" },
+  malaise: { secouru: "secouru par toi", soigne: "soigné par les pompiers", evacue: "emmené par les pompiers", termine: "il s'est relevé", perdu: "il est mort" },
 };
 
 /** Texte d'une issue, pour le journal (« voleur rattrapé »). */
