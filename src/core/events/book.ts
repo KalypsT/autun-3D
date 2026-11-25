@@ -66,7 +66,8 @@ export class EventBook {
   /** Un événement fini : ses comptes, et les paliers qu'il fait franchir. */
   record(end: EventEnd): EventTierHit[] {
     const hits: EventTierHit[] = [];
-    if (end.caught && end.kind === "vol") hits.push(...this.bump("voleurs"));
+    // Un pickpocket rattrapé est aussi un voleur rattrapé.
+    if (end.caught && (end.kind === "vol" || end.kind === "pickpocket")) hits.push(...this.bump("voleurs"));
     if (end.goodDeed) hits.push(...this.bump("bonnes"));
     return hits;
   }

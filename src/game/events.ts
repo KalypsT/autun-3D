@@ -18,6 +18,14 @@ export interface EventsHost {
   policeAt(visit: (x: number, y: number) => void): void;
   cry(kind: "scream" | "startled" | "hurt" | "oof", x: number, y: number, slot: number): void;
   earn(amount: number, label: string): void;
+  /** Prend au porte-monnaie (sans dette) ; renvoie ce qui a été pris. */
+  take(amount: number, label: string): number;
+  /** Solde du joueur (€). */
+  money(): number;
+  /** Haut de la tête du joueur (repère du jeu), pour une bulle au-dessus de lui. */
+  playerHead(): { x: number; y: number; z: number };
+  /** Aboiement en (x, y). */
+  bark(x: number, y: number): void;
   feat(text: string): void;
   crime(kind: Crime, x: number, y: number): void;
   /** Nom de la rue la plus proche (« rue aux Cordiers »), ou null. */
@@ -67,10 +75,13 @@ export class EventsController {
       say: (slot: number, text: string, seconds: number) => this.say(slot, text, seconds),
       cry: (kind: "scream" | "startled" | "hurt" | "oof", x: number, y: number) => host.cry(kind, x, y, Math.floor(Math.abs(x * 7 + y * 13))),
       earn: (n: number, label: string) => host.earn(n, label),
+      take: (n: number, label: string) => host.take(n, label),
+      sayPlayer: (text: string, seconds: number) => this.bubbles.say(-1, text, seconds, () => host.playerHead()),
+      bark: (x: number, y: number) => host.bark(x, y),
       feat: (t: string) => host.feat(t),
       crime: (k: Crime, x: number, y: number) => host.crime(k, x, y),
     };
-    for (const def of eventCatalog({ peds: () => this.sim, fx })) this.director.register(def);
+    for (const def of eventCatalog({ peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), fx })) this.director.register(def);
     if (forced && this.director.defOf(forced as EventKind)) this.forced = forced as EventKind;
     const cam = host.camera;
     this.ctx = {

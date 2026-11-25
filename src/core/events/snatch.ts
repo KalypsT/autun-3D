@@ -1,6 +1,7 @@
 import { CLOTH_COLORS } from "../character";
 import { LIFE_POSE } from "../character-rig";
 import { ORDER, PED_STATE } from "../pedestrians";
+import { Fugitive, FUGITIVE } from "./fugitive";
 import { EventRng, type EventAction, type EventContext, type EventEffects, type EventMarker, type EventOutcome, type EventPeds, type EventPlayer, type GameEvent, type GroundItem } from "./types";
 
 /**
@@ -29,19 +30,7 @@ export const SNATCH = {
   /** Il arrache le sac à moins de … m ; au-delà de … s sans y arriver, on renonce (rien ne s'est vu). */
   reach: 1.0,
   approachTimeout: 25,
-  /** Fuite : vitesse de départ (m/s, plus que la course du joueur à 5, moins que son sprint à 7), puis plus lente après `tire` s. */
-  run: 5.8,
-  tired: 4.5,
-  tire: 15,
-  /** Plaquage : le joueur à pied à moins de … m du voleur, à plus de … m/s ; poussée donnée (m/s, chute). */
-  tackleReach: 1.1,
-  tackleSpeed: 4,
-  tackleImpulse: 4.4,
-  /** Le voleur s'est échappé : à plus de … m du joueur pendant … s, ou hors de vue et à plus de … m pendant … s. */
-  lostFar: 90,
-  lostFarFor: 6,
-  lostHidden: 55,
-  lostHiddenFor: 12,
+  /** Fuite, plaquage, échappée : ceux du fuyard commun (`FUGITIVE`, 5,8 m/s puis 4,5 après 15 s). */
   /** La victime attend le sac … s ; le sac reste … s au sol. */
   victimWaits: 120,
   bagLife: 120,
@@ -133,14 +122,13 @@ export class SnatchEvent implements GameEvent {
   /** Temps depuis l'arrachage, depuis la mise à terre du voleur, du sac au sol. */
   private since = 0;
   private bagT = 0;
-  private lostFarT = 0;
-  private lostHiddenT = 0;
   private awayT = 0;
   private thiefFree = -1;
   private readonly victimId: number;
   private readonly thiefId: number;
   private readonly bag: { kind: string; color: number };
   readonly bagAt = { x: 0, y: 0 };
+  private readonly fugitive: Fugitive;
   readonly reward: number;
   readonly content: number;
   private victimHome = { x: 0, y: 0 };
@@ -162,6 +150,7 @@ export class SnatchEvent implements GameEvent {
     peds.borrow(thief);
     this.victimId = peds.idOf(victim);
     this.thiefId = peds.idOf(thief);
+    this.fugitive = new Fugitive(peds, thief, this.thiefId);
     const r = peds.recipe(victim);
     this.bag = { kind: r.bag, color: r.bagColor };
     this.reward = rng.between(SNATCH.reward[0], SNATCH.reward[1], 10);
@@ -263,7 +252,7 @@ export class SnatchEvent implements GameEvent {
     this.fx.say(this.victim, "Au voleur !", 3.5);
     // Les passants tout proches s'écartent (sursaut, quelques secondes).
     peds.alarm(tmp.x, tmp.y, 6, 3, this.victim);
-    peds.command(this.thief, ORDER.flee, ctx.player.x, ctx.player.y, SNATCH.run);
+    peds.command(this.thief, ORDER.flee, ctx.player.x, ctx.player.y, FUGITIVE.run);
     this.phase = "flee";
     this.since = 0;
   }
@@ -299,29 +288,14 @@ export class SnatchEvent implements GameEvent {
   }
 
   private flee(ctx: EventContext): void {
-    const peds = this.peds, p = ctx.player;
-    if (!this.thiefHere) {
-      // Parti trop loin (la simulation l'a retiré) : il s'est échappé.
-      return this.escaped();
-    }
-    const mode = peds.modeOf(this.thief);
-    if (mode === PED_STATE.down || mode === PED_STATE.dead) return this.dropBag(mode === PED_STATE.dead);
-    peds.position(this.thief, tmp2);
-    const d = Math.hypot(tmp2.x - p.x, tmp2.y - p.y);
-    // Plaquage : le joueur à pied qui le touche en courant vite le fait tomber.
-    if (p.onFoot && d < SNATCH.tackleReach && p.speed > SNATCH.tackleSpeed && mode < PED_STATE.stumble) {
-      const ux = (tmp2.x - p.x) / (d || 1), uy = (tmp2.y - p.y) / (d || 1);
-      peds.applyImpulse(this.thief, (ux * 0.5 + (p.vx / p.speed) * 0.5) * SNATCH.tackleImpulse, (uy * 0.5 + (p.vy / p.speed) * 0.5) * SNATCH.tackleImpulse);
+    const state = this.fugitive.update(ctx, this.victimHome.x, this.victimHome.y);
+    if (state === "running") return;
+    if (state === "escaped") return this.escaped();
+    if (state === "tackled") {
+      this.fugitive.position(tmp2);
       this.fx.cry("oof", tmp2.x, tmp2.y);
-      return this.dropBag(false);
     }
-    // Il fuit le joueur s'il est à moins de 100 m, sinon la scène ; il s'essouffle après 15 s.
-    const near = d < 100;
-    const tired = Math.min(1, Math.max(0, (this.since - SNATCH.tire) / 5));
-    peds.command(this.thief, ORDER.flee, near ? p.x : this.victimHome.x, near ? p.y : this.victimHome.y, SNATCH.run + (SNATCH.tired - SNATCH.run) * tired);
-    this.lostFarT = d > SNATCH.lostFar ? this.lostFarT + ctx.dt : 0;
-    this.lostHiddenT = d > SNATCH.lostHidden && !ctx.visible(tmp2.x, tmp2.y) ? this.lostHiddenT + ctx.dt : 0;
-    if (this.lostFarT > SNATCH.lostFarFor || this.lostHiddenT > SNATCH.lostHiddenFor) this.escaped();
+    this.dropBag(state === "dead");
   }
 
   /** Le voleur s'est échappé : il garde le sac, redevient un passant ; la victime attend encore un peu puis repart. */

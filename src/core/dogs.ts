@@ -122,3 +122,22 @@ export function stepDog(d: Dog, o: DogOwner, dt: number): void {
   // Trot : quatre pattes, une foulée d'environ 0,55 m × taille.
   d.phase = (d.phase + (d.speed / (0.55 * d.size)) * Math.PI * dt) % TAU;
 }
+
+/**
+ * Chien sans maître qui le tienne (phase 4 : chien échappé) : il va vers (tx, ty) à l'allure `want` (m/s ; 0 : il s'arrête), au trot ou au
+ * galop, sans laisse ; `sniff` : arrêté, tête baissée. Le dessin et le trot sont ceux de `stepDog`.
+ */
+export function runDog(d: Dog, tx: number, ty: number, want: number, dt: number, sniff = false): void {
+  const dx = tx - d.x, dy = ty - d.y, dist = Math.hypot(dx, dy);
+  const v = dist < 0.1 ? 0 : Math.min(want, dist * 2.5);
+  d.speed += (v - d.speed) * Math.min(1, dt * 5);
+  if (dist > 1e-3) {
+    const step = Math.min(dist, d.speed * dt);
+    d.x += (dx / dist) * step;
+    d.y += (dy / dist) * step;
+    if (d.speed > 0.15) d.heading += angleDiff(Math.atan2(dx, dy), d.heading) * Math.min(1, dt * 8);
+  }
+  d.sniffT = 0;
+  d.pose = sniff && d.speed < 0.3 ? DOG_POSE.sniff : DOG_POSE.walk;
+  d.phase = (d.phase + (d.speed / (0.55 * d.size)) * Math.PI * dt) % TAU;
+}

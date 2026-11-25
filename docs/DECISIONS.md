@@ -8012,3 +8012,52 @@ caserne des pompiers retrouvée avenue André Frenaud (pour le lot 5) ; lots fai
 
 **À juger en jouant** : la lisibilité de la scène à 15 – 45 m sur le téléphone, la vitesse du voleur (rattrapable en sprint, pas en
 courant), la prime, et la fréquence quand les autres événements seront là.
+
+## 2026-11-25 — D329. Plaisir de jeu, phase 4, lot 2 : le pickpocket et le chien échappé
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 2 (E2 et E3) : deux petits événements sur le socle de D328, pour la variété.
+
+**Choix**
+- **Fuyard commun** (`src/core/events/fugitive.ts`) : la fuite, l'essoufflement, le plaquage et l'échappée du voleur de D328, partagés par le
+  vol et le pickpocket. **Plaquage** corrigé en chemin : un joueur qui sprinte dans un fuyard le faisait d'abord **trébucher** par simple
+  contact (D44), et un passant qui trébuche ignore toute nouvelle poussée (D211) : le plaquage ne passait jamais quand le joueur était déjà
+  collé à lui (le cas du pickpocket). Nouveau `PedSim.tackle` : il fait tomber même un passant qui trébuche.
+- **Pickpocket** (`src/core/events/pickpocket.ts`) : le joueur marche (au pas) dans une **rue animée** (au moins trois passants à moins de
+  12 m) avec au moins 100 € ; un passant seul, adulte, ni en tenue de travail ni de sport, à 5 – 25 m, vient vers lui (1,6 m/s au moins), le
+  **frôle** et lui prend **10 % de son solde** (20 à 200 €, à 5 € près) : « −80 € » au solde, bulle **« Hé ! Mon portefeuille ! »** au-dessus
+  du joueur. Il s'éloigne d'abord **au pas** (1,7 m/s), puis **court** (5,6 m/s, 4,4 après 15 s) quand le joueur court, se tourne vers lui à
+  moins de 12 m, ou au bout de 7 s. Rattrapé (plaqué, frappé, renversé), il lâche des **billets** : l'argent pris **plus 50 €** (ce qu'il avait
+  volé à d'autres), à ramasser en marchant dessus. Il compte comme **voleur rattrapé** au carnet. Écart au plan : « foule dense, six passants
+  à 8 m » ne se rencontre presque jamais avec la densité du jeu (une centaine de passants dans 125 m : un cercle de 8 m en contient rarement
+  plus de deux), sauf au marché ; la condition est donc trois passants à 12 m. Poids 1, au centre (× 0,3 en quartier d'habitation), de 9 h à
+  20 h, doublé les matins de marché (D201).
+- **Chien échappé** (`src/core/events/dog-escape.ts`) : un promeneur (D199) à 25 – 80 m lâche la laisse. Le chien (le même, pris à sa laisse :
+  `PedsController.detach`, `attach`) part **au galop** (5 m/s, 3 s), aboie, puis **trotte** (2,6 m/s) d'un but à l'autre (10 – 22 m, plutôt
+  loin de qui le suit, sans mur sur le chemin), **renifle** 1 à 3 s, et **détale** (5,5 m/s) devant quelqu'un qui lui court dessus à moins de
+  5 m, joueur ou maître. Le maître court après lui en criant son nom (bulle « Rex ! », un nom tiré de sa graine parmi douze), s'essouffle au
+  bout de 8 s, renonce au bout de 2 min 30 (« Tant pis… »). Le joueur l'approche **au pas** et l'**attrape** (bouton « Attraper », pictogramme
+  de chien) ; le chien le suit **en laisse** ; le maître vient à sa rencontre ; **« Rendre »** : « Merci ! », **60 à 120 €**, une **bonne action**.
+  Un véhicule qui le frôle (à plus de 3 m/s, à moins de 1,8 m) l'effraie : il s'enfuit pour de bon (jamais blessé, Q3 du plan). Les voitures
+  de la circulation le voient comme un passant sur la chaussée (elles freinent). Poids 2, quartiers d'habitation, périphérie, parcs (× 0,4 au
+  centre), de 7 h à 20 h, pas sous la pluie.
+- **Pour les essais sans écran** : `SimDogs`, les chiens des promeneurs sans dessin, sur la vraie foule.
+- **Captures** : `tools/ui.sh <dossier> pickpocket` et `chien` ; `?event=pickpocket`, `?event=chien`.
+
+**Mesures**
+- **Tests sans écran** : pickpocket trouvé seulement dans une rue animée, à pied, au pas, avec assez d'argent ; il prend 80 € sur 800 ; un
+  joueur qui sprinte le rattrape et récupère 130 € (au moins 60 % des vols) ; sans le joueur, il s'éloigne au pas puis s'échappe, et rien ne
+  reste réquisitionné. Chien : il part, aboie, son maître crie son nom ; sans le joueur, le maître renonce et le chien se sauve ; approché au
+  pas, il s'attrape, suit le joueur sans jamais dépasser la laisse, et revient à son maître (prime) ; une voiture l'effraie pour de bon.
+- **Endurance** (vingt minutes à « Fréquents », deux graines, les trois événements) : 4 et 7 départs, **les trois événements ont eu lieu**,
+  2 sacs rendus, 2 pickpockets rattrapés, 1 chien rendu et 4 enfuis, aucun figurant oublié, 2 passants réquisitionnés au plus ; **0,0009 à
+  0,0014 ms par image** en moyenne, 0,4 à 0,7 ms au pire.
+- **Appels de dessin** : 0 pour le pickpocket (billets dans le maillage des effets) ; le chien échappé rejoint le maillage instancié des chiens
+  (+1, et +1 pour les laisses, seulement s'il n'y avait aucun chien en vue).
+
+**Limites, honnêtement**
+- Le robot de l'endurance ne ramène qu'**un chien sur cinq** : il marche droit vers lui (à travers le mobilier) et le maître qui court fait
+  détaler le chien. Un vrai joueur doit le contourner ; à juger en jouant (trop farouche ?).
+- Le chien traverse toujours les murs bas et les voitures garées (D199) ; il ne suit pas le graphe piéton.
+- Le pickpocket ne vise que le joueur à pied ; pas de pickpocket au volant ni dans un magasin.
+
+**À juger en jouant** : la part du solde volée (10 %), la vitesse du pickpocket, la timidité du chien, les primes.

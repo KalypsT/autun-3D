@@ -1669,6 +1669,16 @@ export class PedSim {
     return this.buddy[i]! >= 0 || !!(this.trait[i]! & TRAIT.dog) || this.leads(i);
   }
 
+  /** Le promeneur `i` lâche son chien (phase 4 : chien échappé) : il n'en a plus (aucun nouveau chien ne lui est donné). */
+  dropDog(i: number): void {
+    if (i >= 0 && i < this.free) this.trait[i] = this.trait[i]! & ~TRAIT.dog;
+  }
+
+  /** Le promeneur `i` retrouve son chien. */
+  giveDog(i: number): void {
+    if (i >= 0 && i < this.free && this.state.alive![i]) this.trait[i] = this.trait[i]! | TRAIT.dog;
+  }
+
   /** Assis sur un banc ou en terrasse ? */
   sitting(i: number): boolean {
     return !!this.state.alive![i] && this.mode[i] === PED_STATE.sit;
@@ -1981,6 +1991,18 @@ export class PedSim {
     if (v < 0.05) return;
     this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);
     this.event(v >= 3.5 ? "hit" : "stumble", i, v);
+  }
+
+  /**
+   * Plaquage (phase 4) : le passant tombe, poussé de (ix, iy) m/s, même s'il était en train de trébucher (`applyImpulse` ignore un choc pendant
+   * un trébuchement, D211 : un joueur qui sprinte dans un fuyard le fait d'abord trébucher par simple contact). Rien sur un passant à terre ou mort.
+   */
+  tackle(i: number, ix: number, iy: number): void {
+    if (i >= this.free || !this.state.alive![i] || this.mode[i]! > PED_STATE.stumble) return;
+    const v = Math.max(Math.hypot(ix, iy), 3.6);
+    const n = Math.hypot(ix, iy) || 1;
+    this.knock(i, HIT_POSE.down, ix / n, iy / n, v);
+    this.event("hit", i, v);
   }
 
   /**

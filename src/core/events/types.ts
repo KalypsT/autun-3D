@@ -27,6 +27,8 @@ export interface EventPeds {
   recipe(i: number): Recipe;
   setRecipe(i: number, recipe: Recipe): void;
   applyImpulse(i: number, ix: number, iy: number): void;
+  /** Fait tomber le passant, même s'il trébuchait (plaquage). */
+  tackle(i: number, ix: number, iy: number): void;
   queryCircle(x: number, y: number, r: number, out: number[]): number;
   alarm(x: number, y: number, radius: number, flee: number, except?: number): number;
 }
@@ -79,9 +81,9 @@ export interface EventMarker {
   y: number;
 }
 
-/** Objet au sol que l'événement fait dessiner (le sac volé). */
+/** Objet au sol que l'événement fait dessiner : le sac volé, des billets (pickpocket). */
 export interface GroundItem {
-  kind: "bag";
+  kind: "bag" | "cash";
   x: number;
   y: number;
   /** Couleur de l'objet (entier 0xRRGGBB). */
@@ -93,6 +95,8 @@ export interface EventAction {
   /** Libellé complet (« Rendre le sac ») et verbe court du bouton rond (« Rendre »). */
   label: string;
   verb: string;
+  /** Pictogramme du bouton (sac par défaut). */
+  icon?: "bag" | "dog";
   run(): void;
 }
 

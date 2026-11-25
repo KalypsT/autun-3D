@@ -445,7 +445,8 @@ export function startBench(ctx: GameContext): void {
         if (director) {
           director.level = 3;
           const sim = pedSim;
-          for (const d of eventCatalog({ peds: () => sim, fx: { say: () => {}, cry: () => {}, earn: () => {}, feat: () => {}, crime: () => {} } })) director.register(d);
+          const fx = { say: () => {}, sayPlayer: () => {}, cry: () => {}, earn: () => {}, take: () => 0, bark: () => {}, feat: () => {}, crime: () => {} };
+          for (const d of eventCatalog({ peds: () => sim, fx })) director.register(d);
         }
         // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
         pigSim = new PigeonSim(nav!.graph, terrain, ctx.colliders, { capacity: pigeonCapacity(crowdN), seed: 7 });

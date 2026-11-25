@@ -529,6 +529,10 @@ export function startGame(ctx: GameContext): void {
     },
     cry: (kind, x, y, slot) => audio.cry(kind, x, y, slot),
     earn: (n, label) => wallet.earn(n, label),
+    take: (n, label) => wallet.take(n, label),
+    money: () => wallet.balance,
+    playerHead: () => ({ x: player.x, y: player.y, z: (riding ? riding.state.z : player.z) + 1.75 }),
+    bark: (x, y) => audio.animal("bark", x, y),
     feat: (t) => showFeat(t),
     crime: (k, x, y) => police.crime(k, x, y, true),
     street: (x: number, y: number): string | null => streetNear(ui.streets, x, y),
@@ -1490,7 +1494,7 @@ export function startGame(ctx: GameContext): void {
     // Un événement propose son geste (« Rendre le sac ») avant tout le reste : c'est lui qu'on vient faire.
     const ea = riding || downFor > 0 ? null : events.action(evFill());
     if (riding) [verb, ico] = ["Descendre", icon("exit")];
-    else if (ea) [verb, what, ico] = [ea.verb, ea.label.slice(ea.verb.length + 1), icon("bag")];
+    else if (ea) [verb, what, ico] = [ea.verb, ea.label.slice(ea.verb.length + 1), icon(ea.icon ?? "bag")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
     else {
@@ -2021,7 +2025,10 @@ export function startGame(ctx: GameContext): void {
       pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
     }
     // Objets d'un événement (phase 4) : le sac volé, au sol.
-    for (const it of events.items) pickViews.push({ x: it.x, y: it.y, z: terrain.heightAt(it.x, it.y), weapon: null, bag: it.color });
+    for (const it of events.items) {
+      const z = terrain.heightAt(it.x, it.y);
+      pickViews.push(it.kind === "cash" ? { x: it.x, y: it.y, z, weapon: null, cash: true } : { x: it.x, y: it.y, z, weapon: null, bag: it.color });
+    }
     // Grenades (D326) : elles volent, rebondissent et explosent au bout de la mèche ; l'arc de lancer en petits cubes, l'impact plus gros.
     for (let i = grenades.length - 1; i >= 0; i--) {
       const g = grenades[i]!;

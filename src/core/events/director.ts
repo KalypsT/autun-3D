@@ -250,5 +250,11 @@ export function outcomeText(kind: EventKind, outcome: EventOutcome): string {
   if (kind === "vol") {
     return { rendu: "sac rendu", garde: "sac gardé", rattrape: "voleur rattrapé", enfui: "le voleur s'est enfui", perdu: "sac perdu", abandonne: "" }[outcome];
   }
+  if (kind === "pickpocket") {
+    return { rendu: "argent récupéré", garde: "", rattrape: "argent récupéré", enfui: "le pickpocket s'est enfui avec ton argent", perdu: "billets perdus", abandonne: "" }[outcome];
+  }
+  if (kind === "chien") {
+    return { rendu: "chien rendu à son maître", garde: "", rattrape: "chien rattrapé", enfui: "le chien s'est sauvé", perdu: "le chien s'est sauvé", abandonne: "" }[outcome];
+  }
   return { rendu: "rendu", garde: "gardé", rattrape: "rattrapé", enfui: "enfui", perdu: "perdu", abandonne: "" }[outcome];
 }
