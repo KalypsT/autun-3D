@@ -344,7 +344,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       if (await page.evaluate(() => document.getElementById("action").textContent.includes("Attraper"))) break;
     }
     await shot("pj4-chien-attraper");
-    await click("#action");
+    // Le chien peut repartir avant le clic (rendu logiciel lent) : on déclenche le geste tout de suite.
+    await page.evaluate(() => { const a = window.__autun, p = a.player; a.events.action({ x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 })?.run(); });
     const owner = await page.evaluate(() => { const e = window.__autun.events.director.active[0], q = { x: 0, y: 0 }; window.__autun.pedsController().eventPeds().position(e.owner, q); return q; });
     await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x + 1.8; a.player.y = q.y - 1.2; a.look(Math.atan2(-1.8, 1.2) + 0.3); a.tilt(0.25); }, owner);
     await page.waitForFunction(() => document.getElementById("action").textContent.includes("Rendre"), null, { timeout: 60000, polling: 200 });

@@ -8034,7 +8034,8 @@ courant), la prime, et la fréquence quand les autres événements seront là.
 - **Chien échappé** (`src/core/events/dog-escape.ts`) : un promeneur (D199) à 25 – 80 m lâche la laisse. Le chien (le même, pris à sa laisse :
   `PedsController.detach`, `attach`) part **au galop** (5 m/s, 3 s), aboie, puis **trotte** (2,6 m/s) d'un but à l'autre (10 – 22 m, plutôt
   loin de qui le suit, sans mur sur le chemin), **renifle** 1 à 3 s, et **détale** (5,5 m/s) devant quelqu'un qui lui court dessus à moins de
-  5 m, joueur ou maître. Le maître court après lui en criant son nom (bulle « Rex ! », un nom tiré de sa graine parmi douze), s'essouffle au
+  5 m, joueur ou maître. Quelqu'un qui l'approche **au pas** à moins de 4 m l'intrigue : il s'arrête et renifle (sans cela, le chien trottait
+  sans cesse et ne s'arrêtait qu'1 à 3 s : la capture n'arrivait pas à l'attraper, un joueur non plus). Le maître court après lui en criant son nom (bulle « Rex ! », un nom tiré de sa graine parmi douze), s'essouffle au
   bout de 8 s, renonce au bout de 2 min 30 (« Tant pis… »). Le joueur l'approche **au pas** et l'**attrape** (bouton « Attraper », pictogramme
   de chien) ; le chien le suit **en laisse** ; le maître vient à sa rencontre ; **« Rendre »** : « Merci ! », **60 à 120 €**, une **bonne action**.
   Un véhicule qui le frôle (à plus de 3 m/s, à moins de 1,8 m) l'effraie : il s'enfuit pour de bon (jamais blessé, Q3 du plan). Les voitures
@@ -8048,9 +8049,9 @@ courant), la prime, et la fréquence quand les autres événements seront là.
   joueur qui sprinte le rattrape et récupère 130 € (au moins 60 % des vols) ; sans le joueur, il s'éloigne au pas puis s'échappe, et rien ne
   reste réquisitionné. Chien : il part, aboie, son maître crie son nom ; sans le joueur, le maître renonce et le chien se sauve ; approché au
   pas, il s'attrape, suit le joueur sans jamais dépasser la laisse, et revient à son maître (prime) ; une voiture l'effraie pour de bon.
-- **Endurance** (vingt minutes à « Fréquents », deux graines, les trois événements) : 4 et 7 départs, **les trois événements ont eu lieu**,
-  2 sacs rendus, 2 pickpockets rattrapés, 1 chien rendu et 4 enfuis, aucun figurant oublié, 2 passants réquisitionnés au plus ; **0,0009 à
-  0,0014 ms par image** en moyenne, 0,4 à 0,7 ms au pire.
+- **Endurance** (vingt minutes à « Fréquents », deux graines, les trois événements) : 5 et 7 départs, **les trois événements ont eu lieu**,
+  2 sacs rendus, 1 pickpocket rattrapé, 1 chien rendu et 4 enfuis, aucun figurant oublié, 2 passants réquisitionnés au plus ; **0,001 à
+  0,002 ms par image** en moyenne, 0,4 à 4 ms au pire (une recherche de lieu, une image).
 - **Appels de dessin** : 0 pour le pickpocket (billets dans le maillage des effets) ; le chien échappé rejoint le maillage instancié des chiens
   (+1, et +1 pour les laisses, seulement s'il n'y avait aucun chien en vue).
 
