@@ -336,22 +336,39 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 7; a.player.y = q.y - 6; a.look(Math.atan2(7, 6) - 0.35); a.tilt(0.25); }, d);
     await sleep(1500);
     await shot("pj4-chien");
-    // On s'approche au pas (posé à côté de lui, jusqu'à ce que le bouton « Attraper » vienne : il bouge).
+    // On s'approche au pas (posé à côté de lui, jusqu'à ce que le bouton « Attraper » vienne : il bouge) ; le geste part aussitôt après l'image.
+    const near = (who) => page.evaluate((w) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return false;
+      const q = { x: e.dog.x, y: e.dog.y };
+      if (w === "owner") a.pedsController().eventPeds().position(e.owner, q);
+      a.player.x = q.x - 1; a.player.y = q.y - 0.6; a.look(Math.atan2(1, 0.6) - 0.4); a.tilt(0.3);
+      return true;
+    }, who);
+    const act = (verb) => page.evaluate((v) => {
+      const a = window.__autun, p = a.player, x = a.events.action({ x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 });
+      if (!x || x.verb !== v) return false;
+      x.run();
+      return true;
+    }, verb);
+    let shotDone = false;
     for (let k = 0; k < 80; k++) {
-      d = await dog();
-      await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 1; a.player.y = q.y - 0.6; a.look(Math.atan2(1, 0.6) - 0.4); a.tilt(0.3); }, d);
-      await sleep(400);
-      if (await page.evaluate(() => document.getElementById("action").textContent.includes("Attraper"))) break;
+      await near("dog");
+      await sleep(300);
+      if (!shotDone && await page.evaluate(() => document.getElementById("action").textContent.includes("Attraper"))) {
+        await shot("pj4-chien-attraper");
+        shotDone = true;
+      }
+      if (await act("Attraper")) break;
     }
-    await shot("pj4-chien-attraper");
-    // Le chien peut repartir avant le clic (rendu logiciel lent) : on déclenche le geste tout de suite.
-    await page.evaluate(() => { const a = window.__autun, p = a.player; a.events.action({ x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 })?.run(); });
-    const owner = await page.evaluate(() => { const e = window.__autun.events.director.active[0], q = { x: 0, y: 0 }; window.__autun.pedsController().eventPeds().position(e.owner, q); return q; });
-    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x + 1.8; a.player.y = q.y - 1.2; a.look(Math.atan2(-1.8, 1.2) + 0.3); a.tilt(0.25); }, owner);
-    await page.waitForFunction(() => document.getElementById("action").textContent.includes("Rendre"), null, { timeout: 60000, polling: 200 });
-    await sleep(600);
-    await shot("pj4-chien-rendre");
-    await click("#action");
+    for (let k = 0; k < 80; k++) {
+      await near("owner");
+      await sleep(400);
+      if (await page.evaluate(() => document.getElementById("action").textContent.includes("Rendre"))) {
+        await shot("pj4-chien-rendre");
+        if (await act("Rendre")) break;
+      }
+    }
     await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
     await sleep(600);
     await shot("pj4-chien-merci");
