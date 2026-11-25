@@ -22,7 +22,7 @@ import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
-import { canBuy, canBuyVehicle, canBuyWeapon, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
+import { canBuy, canBuyVehicle, canBuyVest, canBuyWeapon, shopAt, shopHours, shopOpen, VEST_MAX, vestAbsorb, type Shop } from "../core/shops";
 import { GENDARMERIE, IMPOUND_FEE, OwnedVehicles, type OwnedVehicle } from "../core/owned";
 import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
 import { ShopScreen } from "../ui/shop-screen";
@@ -500,6 +500,8 @@ export function startGame(ctx: GameContext): void {
   // Argent (D317) : reprise de la sauvegarde ; `?money=N` impose un solde (essais, captures).
   const wallet = new Wallet(params.has("money") ? Number(params.get("money")) : (saved?.money ?? 0));
   const moneyHud = new MoneyHud(document.getElementById("money")!);
+  /** Points du gilet pare-balles (D327), 0 sans gilet ; détruit à la mort, confisqué à l'arrestation. */
+  let armor = Math.min(Math.max(saved?.armor ?? 0, 0), VEST_MAX);
   // Véhicules achetés (D323) : à toi, jamais oubliés (la flotte le sait), remplacés par l'assurance, retenus à la fourrière.
   const owned = new OwnedVehicles(saved?.garage);
   fleet.isOwned = (id) => owned.isOwned(id);
@@ -551,7 +553,12 @@ export function startGame(ctx: GameContext): void {
   });
   let heldId: WeaponId | null = null;
   // Grenades (D326) : celles qui volent ou roulent, l'arc de lancer de cette image, le bouton tenu à l'image d'avant, le geste en cours.
-  const grenades: GrenadeBody[] = [];
+  const grenades: (GrenadeBody & { smoke: boolean })[] = [];
+  /** Nuages de fumigène (D327) : centre et secondes écoulées ; la police ne voit ni ne vise personne à moins de `FUMIGENE.radius`. */
+  const clouds: { x: number; y: number; z: number; t: number }[] = [];
+  const FUMIGENE = { pop: 1.5, life: 12, radius: 7 } as const;
+  const SMOKE_COLOR = new THREE.Color("#d9d7cf");
+  police.concealed = (x, y) => clouds.some((c) => c.t < FUMIGENE.life && Math.hypot(c.x - x, c.y - y) < FUMIGENE.radius);
   const grenadeArc: number[] = [];
   let throwHeld = false, throwAnim = 0;
   const grenadeWorld: GrenadeWorld = {
@@ -1250,7 +1257,8 @@ export function startGame(ctx: GameContext): void {
     shopScreen.open(shop, {
       hours: () => shopHours(shop, day, hour),
       balance: () => wallet.balance,
-      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : item.weapon ? canBuyWeapon(item, wallet.balance, inventory) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
+      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : item.weapon ? canBuyWeapon(item, wallet.balance, inventory)
+        : item.armor ? canBuyVest(item, wallet.balance, armor) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
       palette: (item) => (item.vehicle ? vehicleDef(item.vehicle)?.palette ?? [] : []),
       buy: (item, variant) => {
         if (item.vehicle) {
@@ -1261,6 +1269,13 @@ export function startGame(ctx: GameContext): void {
           moneyHud.set(wallet.balance, wallet.drain());
           ui.save();
           return v ? `${vehicleDef(o.model)?.name ?? "Véhicule"} : livraison devant ${shop.name}. À toi !` : "Livraison dès qu'une place se libère devant le magasin.";
+        }
+        if (item.armor) {
+          // Gilet pare-balles (D327) : neuf, quel que soit l'état de l'ancien.
+          if (canBuyVest(item, wallet.balance, armor) !== null || !wallet.spend(item.price, item.name)) return "";
+          armor = item.armor;
+          moneyHud.set(wallet.balance, wallet.drain());
+          return `${item.name} : ${VEST_MAX} points de protection.`;
         }
         if (item.weapon) {
           // Armes et munitions (D324) : une arme neuve arrive chargée et passe dans la main ; des munitions vont au chargeur vide ou en réserve.
@@ -1454,7 +1469,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(), armor: Math.round(armor),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1494,6 +1509,7 @@ export function startGame(ctx: GameContext): void {
     gun.cancel();
     // Amende (D317) : 15 % du solde, 2 500 € au plus ; sans argent, rien (pas de dette).
     const fine = wallet.take(arrestFine(wallet.balance), "Amende");
+    armor = 0;
     const r = colliders.resolve(ARREST_SPAWN.x, ARREST_SPAWN.y, PLAYER_RADIUS);
     Object.assign(player, { x: r.x, y: r.y, z: terrain.heightAt(r.x, r.y), vx: 0, vy: 0, speed: 0, heading: ARREST_SPAWN.heading });
     groundPlayer(player);
@@ -1514,6 +1530,7 @@ export function startGame(ctx: GameContext): void {
     audio.death();
     haptics.death();
     const bill = wallet.take(deathBill(wallet.balance), "Hôpital");
+    armor = 0;
     melee.cancel();
     gun.cancel();
     const r = colliders.resolve(hospital.x, hospital.y, PLAYER_RADIUS);
@@ -1851,8 +1868,8 @@ export function startGame(ctx: GameContext): void {
       if (input.attack) {
         player.heading = yaw;
         arcPoints(player.x, player.y, player.z + GRENADE.hand, throwVelocity(yaw, pitch), grenadeWorld, grenadeArc);
-      } else if (throwHeld && inventory.throwOne("grenade")) {
-        grenades.push({ x: player.x, y: player.y, z: player.z + GRENADE.hand, ...throwVelocity(yaw, pitch), t: 0 });
+      } else if (throwHeld && inventory.throwOne(weapon.id)) {
+        grenades.push({ x: player.x, y: player.y, z: player.z + GRENADE.hand, ...throwVelocity(yaw, pitch), t: 0, smoke: weapon.id === "smoke" });
         throwAnim = 0.45;
         audio.swing("punch");
       }
@@ -1962,10 +1979,29 @@ export function startGame(ctx: GameContext): void {
     for (let i = grenades.length - 1; i >= 0; i--) {
       const g = grenades[i]!;
       stepGrenade(g, dt, grenadeWorld);
-      if (g.t >= GRENADE.fuse) {
+      if (g.smoke && g.t >= FUMIGENE.pop) {
+        // Fumigène (D327) : il s'ouvre en nuage, avec un chuintement (le son du ramassage, grave, fera l'affaire en attendant mieux).
+        grenades.splice(i, 1);
+        clouds.push({ x: g.x, y: g.y, z: g.z, t: 0 });
+        audio.swing("swing");
+      } else if (!g.smoke && g.t >= GRENADE.fuse) {
         grenades.splice(i, 1);
         blastAt(g.x, g.y, g.z, null);
       } else pickViews.push({ x: g.x, y: g.y, z: g.z, weapon: null, grenade: true });
+    }
+    for (let i = clouds.length - 1; i >= 0; i--) {
+      const c = clouds[i]!;
+      c.t += dt;
+      if (c.t >= FUMIGENE.life + 3) {
+        clouds.splice(i, 1);
+        continue;
+      }
+      // Des bouffées claires qui gonflent et montent lentement, tant que le fumigène brûle.
+      if (c.t < FUMIGENE.life && Math.random() < dt * 22) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * FUMIGENE.radius * 0.6, sp = 0.3 + Math.random() * 0.6;
+        smoke.emit(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r, c.z + 0.3 + Math.random(), Math.cos(a) * sp, Math.sin(a) * sp, 0.25 + Math.random() * 0.3, SMOKE_COLOR,
+          1.5, 4.5 + Math.random() * 2, 3 + Math.random() * 2, Math.random);
+      }
     }
     for (let i = 0; i < grenadeArc.length; i += 6) pickViews.push({ x: grenadeArc[i]!, y: grenadeArc[i + 1]!, z: grenadeArc[i + 2]!, weapon: null, dot: true });
     if (grenadeArc.length >= 3) {
@@ -2152,7 +2188,12 @@ export function startGame(ctx: GameContext): void {
       const dmg = police.takeDamage();
       // Au volant, les balles des gendarmes abîment aussi le véhicule (D113).
       if (dmg > 0 && riding) riding.damage.shot(dmg);
-      if (dmg > 0 && !health.dead) health.damage(dmg * (riding ? 0.5 : 1));
+      if (dmg > 0 && !health.dead) {
+        // Gilet pare-balles (D327) : il prend la moitié de chaque balle tant qu'il lui reste des points.
+        const v = vestAbsorb(dmg * (riding ? 0.5 : 1), armor);
+        armor = v.armor;
+        health.damage(v.hurt);
+      }
       if (police.shots.length > 0) {
         for (const sh of police.shots) threats.add(sh.x0, sh.y0, player.x, player.y, sh.hit);
         for (let i = 0; i < police.shots.length && i < 4; i++) {
@@ -2197,7 +2238,7 @@ export function startGame(ctx: GameContext): void {
       void hurtEl.offsetWidth;
       hurtEl.classList.remove("flash");
     }
-    healthHud.set(health.hp);
+    healthHud.set(health.hp, armor);
     wantedHud.set(wanted);
     if (wanted.stars !== lastStars) {
       audio.stars(wanted.stars, lastStars);

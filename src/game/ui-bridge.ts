@@ -46,6 +46,8 @@ export interface GameState {
   challenges: SavedChallenges;
   /** Véhicules achetés (D323). */
   garage: OwnedVehicle[];
+  /** Points du gilet pare-balles (D327). */
+  armor: number;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -344,6 +346,7 @@ export class UiBridge {
       book: s.book,
       challenges: s.challenges,
       ...(s.garage.length ? { garage: s.garage } : {}),
+      ...(s.armor > 0 ? { armor: s.armor } : {}),
     };
   }
 

@@ -7895,3 +7895,27 @@ l'arc ne montre que le vol jusqu'au premier rebond.
 
 ![L'arc de lancer](captures/pj3-grenade-arc.jpg)
 ![L'explosion](captures/pj3-grenade-explosion.jpg)
+
+## 2026-11-25 — D327. Plaisir de jeu, phase 3, lot 7-4 : le gilet pare-balles et les fumigènes
+
+**Contexte** : réponses par défaut validées (25 novembre) pour le « ou autres » du Surplus Éduen : un gilet pare-balles et des fumigènes ;
+pas de cocktail Molotov.
+
+**Choix**
+- **Gilet pare-balles** (**500 €** au Surplus) : 100 points de protection ; il prend **la moitié de chaque balle** des gendarmes (à pied ou
+  en voiture) tant qu'il lui reste des points (`vestAbsorb`) ; au volant, la balle est d'abord réduite de moitié comme avant (D85), puis le
+  gilet en prend la moitié. Une barre bleu acier sous la jauge de santé (la jauge se montre aussi à santé pleine quand on porte un gilet).
+  Il se rachète dès qu'il est entamé (« Gilet intact » sinon). **Détruit à la mort, confisqué à l'arrestation.** Sauvegarde : champ
+  facultatif `armor` de la version 6.
+- **Fumigène** (**80 €** au Surplus, dix au plus) : deuxième arme de jet, lancée comme la grenade (arc, lâcher) ; au bout de 1,5 s il
+  s'ouvre en **nuage pendant 12 s** (bouffées claires qui gonflent et montent, puis se dissipent en 3 s). Tant que le joueur est à **moins
+  de 7 m** du nuage, la police **ne le voit pas** (les étoiles retombent comme hors de vue, ses infractions ne sont pas vues) et **ne le vise
+  pas** (gendarmes à pied et passagers des voitures de poursuite) : `PoliceController.concealed`, transmis aux gendarmes.
+- Le son du nuage est provisoire (le geste de la batte) : un vrai chuintement est noté pour la phase 5 (sons).
+
+**Vérifié** : `shops.test.ts` (absorption, refus, vente), `save.test.ts` (gilet relu, borné), `officers.test.ts` (pas de tir dans la fumée),
+`weapons.test.ts` ; `tools/ui.sh <dossier> fumigene` (gilet et fumigène achetés, 1 000 € → 420 €, barre du gilet, nuage).
+
+**À juger en jouant** : 7 m et 12 s suffisent-ils pour semer une poursuite ? Le gilet est-il trop fort ?
+
+![Gilet (barre bleue) et nuage de fumigène](captures/pj3-fumigene.jpg)

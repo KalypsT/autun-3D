@@ -120,7 +120,7 @@ describe("pistolet-mitrailleur et mitrailleuse (D325)", () => {
     expect(lmg.reload).toBeGreaterThan(WEAPONS.sniper.reload);
     expect(lmg.heavy).toBe(true);
     expect(WEAPONS.rifle.heavy).toBeFalsy();
-    expect(WEAPON_ORDER).toEqual(["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade"]);
+    expect(WEAPON_ORDER).toEqual(["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade", "smoke"]);
     const inv = new Inventory();
     inv.grant("lmg", 100);
     expect(inv.magOf("lmg")).toBe(100);

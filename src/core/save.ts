@@ -78,6 +78,8 @@ export interface SaveGame {
   challenges?: SavedChallenges;
   /** Véhicules achetés (D323) et leur état ; absents avant. Leur position est dans `vehicles`. */
   garage?: OwnedVehicle[];
+  /** Points du gilet pare-balles (D327), 1 à 100 ; absent sans gilet. */
+  armor?: number;
 }
 
 /** Ce que l'on utilise du stockage du navigateur (`localStorage`) ; un double sert aux tests. */
@@ -113,6 +115,7 @@ export function parseArms(o: unknown): SavedArms {
     if (def.kind === "throw") {
       const n = (r["ammo"] as Record<string, unknown> | undefined)?.[id];
       out.ammo[id] = finite(n) ? Math.min(Math.max(Math.round(n), 0), 10) : 0;
+      // Grenade ou fumigène sans réserve : l'arme n'est plus là.
       continue;
     }
     if (def.kind !== "gun") continue;
@@ -189,6 +192,7 @@ export function parseSave(text: string | null): SaveGame | null {
     ...(book ? { book } : {}),
     ...(challenges ? { challenges } : {}),
     ...(garage?.length ? { garage } : {}),
+    ...(version === SAVE_VERSION && finite(r["armor"]) && r["armor"] >= 1 ? { armor: Math.min(Math.round(r["armor"]), 100) } : {}),
   };
 }
 

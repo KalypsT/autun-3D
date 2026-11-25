@@ -2352,3 +2352,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - À faire de ton côté : en lancer quelques-unes et dire si la portée et la mèche te vont.
 ![L'arc de lancer](docs/captures/pj3-grenade-arc.jpg)
 ![L'explosion](docs/captures/pj3-grenade-explosion.jpg)
+
+**Plaisir de jeu, lot 3-7-4 : gilet pare-balles et fumigènes (25 novembre 2026)** (D327)
+- **Gilet pare-balles** au Surplus Éduen (500 €) : il prend la moitié de chaque balle tant qu'il lui reste des points ; une barre bleue sous la santé. Détruit à la mort, confisqué à l'arrestation.
+- **Fumigènes** (80 €) : on les lance comme une grenade ; le nuage dure 12 s, et à moins de 7 m la police ne te voit plus et ne te tire plus dessus.
+- **Phase 3 terminée côté code** (D317 à D327). À faire de ton côté : relire les fiches des monuments, et jouer : argent, carnet, magasins, véhicules, armes.
+![Gilet et fumigène](docs/captures/pj3-fumigene.jpg)

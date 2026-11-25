@@ -174,8 +174,12 @@ export class Officers {
   private postT = 0;
   private readonly postFrom = { x: NaN, y: NaN };
 
-  /** Le gendarme `o` a-t-il le joueur en ligne de tir (ni mur, ni toit ; une voiture garée, un tronc ou un poteau l'abrite, D113) ? */
+  /** Le joueur est-il caché par un nuage de fumigène (D327) ? Branché par la police du jeu. */
+  concealed: ((x: number, y: number) => boolean) | null = null;
+
+  /** Le gendarme `o` a-t-il le joueur en ligne de tir (ni mur, ni toit ; une voiture garée, un tronc ou un poteau l'abrite, D113) ? Pas dans la fumée (D327). */
   private lineOfFire(o: Officer, p: Suspect): boolean {
+    if (this.concealed?.(p.x, p.y)) return false;
     if (!this.colliders) return true;
     if (p.z !== undefined && this.ground) return this.colliders.sight(o.x, o.y, this.ground(o.x, o.y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID, true);
     return this.colliders.raycast(o.x, o.y, p.x, p.y, true) === null;

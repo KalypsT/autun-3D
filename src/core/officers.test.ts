@@ -130,6 +130,20 @@ describe("gendarmes à pied (J4-5)", () => {
     expect(Officers.pose(o.list[0]!)).toBe(3);
   });
 
+  it("dans la fumée d'un fumigène (D327), un gendarme armé ne tire pas", () => {
+    const o = new Officers(null);
+    o.concealed = (x, y) => Math.hypot(x, y) < 7;
+    o.spawn(0, 25, 0, 1, 42);
+    let shots = 0;
+    for (let t = 0; t < 10; t += DT) {
+      o.step(DT, onFoot(0, 0), noCar, true);
+      shots += o.shots.length;
+      o.clearShots();
+    }
+    expect(shots).toBe(0);
+    expect(o.takeDamage()).toBe(0);
+  });
+
   it("deux gendarmes armés tuent un joueur immobile en 5 à 30 s (moyenne autour de 10 s) ; un joueur qui court survit bien plus longtemps", () => {
     const timeToKill = (seed: number, speed: number): number => {
       const o = new Officers(null);

@@ -103,6 +103,8 @@ export class PoliceController {
 
   /** Ligne de vue d'un gendarme en (x, y) vers le joueur `p` : en 3D quand on connaît les altitudes (D216), sinon murs infinis. */
   private sight(x: number, y: number, p: PolicePlayer, circles = false): boolean {
+    // Dans la fumée d'un fumigène (D327), personne ne vise le joueur.
+    if (this.concealed?.(p.x, p.y)) return false;
     if (p.z !== undefined && this.ground) return this.colliders.sight(x, y, this.ground(x, y) + POLICE_EYE, p.x, p.y, p.z + BODY_MID, circles);
     return this.colliders.raycast(x, y, p.x, p.y, circles) === null;
   }
@@ -227,8 +229,12 @@ export class PoliceController {
     for (const id of this.carCool.keys()) if (!live.has(id)) this.carCool.delete(id);
   }
 
+  /** Point caché par un nuage de fumigène (D327) : ni vu, ni visé. Branché par le jeu. */
+  concealed: ((x: number, y: number) => boolean) | null = null;
+
   /** La police voit-elle ce point en ce moment ? */
   sees(x: number, y: number, z?: number): boolean {
+    if (this.concealed?.(x, y)) return false;
     const t = this.traffic(false);
     if (!t) return false;
     return policeSees(t.policeUnits(this.units), x, y, this.colliders, z ?? this.ground?.(x, y), this.ground ?? undefined);
@@ -253,7 +259,8 @@ export class PoliceController {
       else this.units.length = 0;
       // Les gendarmes à pied voient aussi (tout autour d'eux, comme en poursuite).
       for (const o of this.officers.list) if (o.mode === "run" || o.mode === "back") this.units.push({ x: o.x, y: o.y, heading: o.heading, chasing: true });
-      this.seen = policeSees(this.units, p.x, p.y, this.colliders, p.z, this.ground ?? undefined);
+      this.seen = !this.concealed?.(p.x, p.y) && policeSees(this.units, p.x, p.y, this.colliders, p.z, this.ground ?? undefined);
+      this.officers.concealed = this.concealed;
     }
     // Infractions de conduite : seulement sous les yeux de la police.
     if (p.driving) {

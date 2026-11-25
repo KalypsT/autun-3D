@@ -25,6 +25,7 @@ const COLORS: Record<WeaponId, [number, number, number]> = {
   smg: [0.4, 0.85, 0.75],
   lmg: [0.55, 0.6, 0.3],
   grenade: [0.35, 0.45, 0.25],
+  smoke: [0.75, 0.75, 0.72],
   sniper: [0.6, 0.45, 0.95],
 };
 const BEAM: [number, number, number] = [1, 0.8, 0.35];

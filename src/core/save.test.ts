@@ -235,3 +235,13 @@ describe("grenades dans la sauvegarde (D326)", () => {
     expect(p.arms.current).toBe("grenade");
   });
 });
+
+describe("gilet pare-balles dans la sauvegarde (D327)", () => {
+  it("ses points sont relus, bornés à 100 ; absent sans gilet", () => {
+    const base = { version: SAVE_VERSION, savedAt: 1, player: { x: 0, y: 0 }, camera: { yaw: 0, pitch: 0 }, riding: null, clock: { hour: 9, date: 1 }, vehicles: [], waypoint: null, health: 100, money: 0, arms: { owned: [], mag: {}, ammo: {}, current: "fists" } };
+    expect(parseSave(JSON.stringify({ ...base, armor: 140 }))!.armor).toBe(100);
+    expect(parseSave(JSON.stringify({ ...base, armor: 37.4 }))!.armor).toBe(37);
+    expect(parseSave(JSON.stringify({ ...base, armor: 0 }))!.armor).toBeUndefined();
+    expect(parseSave(JSON.stringify({ ...base, armor: "x" }))!.armor).toBeUndefined();
+  });
+});

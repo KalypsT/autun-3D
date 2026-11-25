@@ -203,6 +203,11 @@
       #health .hbar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 7px, var(--ink) 7px 8px); }
       #health .hfill { display: block; height: 100%; width: 100%; background: var(--cream); }
       #health.low .hfill { background: var(--brick); }
+      /* Gilet pare-balles (D327) : une barre bleu acier sous la santé, tant qu'il reste des points. */
+      #health { position: relative; }
+      #health .harmor { display: none; position: absolute; left: 38px; bottom: 6px; width: 80px; height: 4px; border-radius: 2px; background: rgba(255, 248, 230, .16); overflow: hidden; }
+      #health.vest .harmor { display: block; }
+      #health .hafill { display: block; height: 100%; width: 0; background: #8fb3d9; }
       #health.low .hicon { animation: wlost .8s ease-in-out infinite; }
       /* Flash rouge brique sur les bords de l'écran quand le joueur est touché. */
       /* Traits de vitesse (D90) : rayons crème autour du centre, au-delà de 100 km/h ; l'opacité suit la vitesse. */

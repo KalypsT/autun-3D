@@ -7,7 +7,7 @@
  * Les valeurs viennent du cadrage de D80 (à régler en jouant) : un passant a 100 points de vie.
  */
 
-export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper" | "grenade";
+export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper" | "grenade" | "smoke";
 export type WeaponKind = "melee" | "gun" | "throw";
 /** Geste du coup : coup de poing (alterné gauche et droite), coup de couteau (estoc), coup de batte (balayage). */
 export type AttackStyle = "punch" | "stab" | "swing";
@@ -71,12 +71,15 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   // Grenade (D326) : on la lance ; le souffle est celui des véhicules qui explosent (`EXPLOSION`). Comptée en réserve, dix au plus.
   grenade: { id: "grenade", name: "Grenade", icon: "💣", kind: "throw", style: "punch", range: 0, damage: 0, rate: 1.2, hitAt: 0.55, maxTargets: 0, impulse: 0, knockdown: false,
     mag: 0, pellets: 0, reload: 0, spread: 0, falloff: false, hipSpread: 0, scope: 0, part: "weaponGrenade" },
+  // Fumigène (D327) : se lance comme une grenade ; un nuage qui cache le joueur à la police.
+  smoke: { id: "smoke", name: "Fumigène", icon: "💨", kind: "throw", style: "punch", range: 0, damage: 0, rate: 1.2, hitAt: 0.55, maxTargets: 0, impulse: 0, knockdown: false,
+    mag: 0, pellets: 0, reload: 0, spread: 0, falloff: false, hipSpread: 0, scope: 0, part: "weaponGrenade" },
   // Fusil de précision (T3, D207) : un tir tue (120 points), à 150 m (au-delà, le brouillard cache tout) ; lunette ×5 ; presque rien à la hanche.
   sniper: gun({ id: "sniper", name: "Fusil de précision", icon: "🔭", range: 150, damage: 120, rate: 0.8, impulse: 3, mag: 5, pellets: 1, reload: 2.6, spread: 0.003, hipSpread: 0.1, falloff: false, part: "weaponSniper", scope: 5 }),
 };
 
 /** Ordre de la molette : les poings d'abord, puis du plus court au plus long. */
-export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade"];
+export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade", "smoke"];
 
 /** Grenades portées au plus (D326). */
 export const GRENADE_MAX = 10;

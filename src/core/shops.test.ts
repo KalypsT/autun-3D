@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PUBLIC_DATA } from "../data/data-version";
 import { closingHour, hourText, nextOpening, openingText, scheduleOf } from "./opening";
-import { canBuy, canBuyWeapon, foodShops, MENUS, shopAt, shopHours, shopOpen, weaponShops } from "./shops";
+import { canBuy, canBuyVest, canBuyWeapon, foodShops, MENUS, shopAt, shopHours, shopOpen, VEST_MAX, VEST_PRICE, vestAbsorb, weaponShops } from "./shops";
 import { Inventory } from "./weapons";
 
 describe("magasins (D322)", () => {
@@ -57,8 +57,8 @@ describe("armureries (D324)", () => {
   it("James et le Surplus Éduen, chacun avec ses armes et ses munitions", () => {
     expect(shops.map((s) => s.name)).toEqual(["James", "Surplus Éduen"]);
     expect(shops[0]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["pistol", "smg", "shotgun", "sniper"]);
-    expect(shops[1]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle", "lmg"]);
-    for (const s of shops) for (const i of s.items) if (i.ammo && i.weapon !== "grenade") expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
+    expect(shops[1]!.items.filter((i) => !i.ammo && i.weapon).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle", "lmg"]);
+    for (const s of shops) for (const i of s.items) if (i.ammo && i.weapon !== "grenade" && i.weapon !== "smoke") expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
   });
 
   it("refus : déjà à toi, munitions sans l'arme, réserve pleine, pas assez d'argent", () => {
@@ -78,5 +78,23 @@ describe("armureries (D324)", () => {
     expect(canBuyWeapon(grenade, 1000, inv)).toBeNull();
     inv.grant("grenade", 10);
     expect(canBuyWeapon(grenade, 1000, inv)).toBe("Tu en as 10");
+  });
+});
+
+describe("gilet pare-balles et fumigène (D327)", () => {
+  it("le gilet prend la moitié de chaque balle tant qu'il lui reste des points ; il se rachète quand il est entamé", () => {
+    expect(vestAbsorb(20, 100)).toEqual({ hurt: 10, armor: 90 });
+    expect(vestAbsorb(20, 4)).toEqual({ hurt: 16, armor: 0 });
+    expect(vestAbsorb(20, 0)).toEqual({ hurt: 20, armor: 0 });
+    const vest = { id: "gilet", name: "Gilet", price: VEST_PRICE, armor: VEST_MAX };
+    expect(canBuyVest(vest, 1000, 100)).toBe("Gilet intact");
+    expect(canBuyVest(vest, 100, 40)).toBe("Il manque 400\u00a0€");
+    expect(canBuyVest(vest, 1000, 40)).toBeNull();
+  });
+
+  it("le Surplus vend fumigènes et gilet", () => {
+    const surplus = weaponShops([]).find((s) => s.name === "Surplus Éduen")!;
+    expect(surplus.items.some((i) => i.weapon === "smoke" && i.price === 80)).toBe(true);
+    expect(surplus.items.some((i) => i.armor === 100 && i.price === 500)).toBe(true);
   });
 });

@@ -24,6 +24,8 @@ export interface ShopItem {
   weapon?: WeaponId;
   /** Munitions seules : nombre de balles (il faut posséder l'arme). */
   ammo?: number;
+  /** Gilet pare-balles (D327) : points de protection donnés. */
+  armor?: number;
 }
 
 export interface Shop {
@@ -139,6 +141,25 @@ export function canBuyVehicle(item: ShopItem, balance: number, full: boolean): s
 
 /** Une grenade (D326). */
 export const GRENADE_PRICE = 150;
+/** Un fumigène et le gilet pare-balles (D327) ; le gilet donne `VEST_MAX` points de protection. */
+export const SMOKE_PRICE = 80;
+export const VEST_PRICE = 500;
+export const VEST_MAX = 100;
+/** Part de chaque balle que le gilet prend pour lui, tant qu'il lui reste des points. */
+export const VEST_SHARE = 0.5;
+
+/** Une balle de `damage` points sur un joueur qui porte un gilet de `armor` points : ce que prend le joueur, ce qui reste au gilet. */
+export function vestAbsorb(damage: number, armor: number): { hurt: number; armor: number } {
+  const taken = Math.min(Math.max(armor, 0), damage * VEST_SHARE);
+  return { hurt: damage - taken, armor: armor - taken };
+}
+
+/** Refus d'un gilet : intact, ou pas assez d'argent. */
+export function canBuyVest(item: ShopItem, balance: number, armor: number): string | null {
+  if (armor >= VEST_MAX) return "Gilet intact";
+  if (balance < item.price) return `Il manque ${formatMoney(item.price - balance)}`;
+  return null;
+}
 
 /** Prix des armes (D324). */
 export const WEAPON_PRICES: Readonly<Partial<Record<WeaponId, number>>> = { bat: 30, knife: 40, pistol: 400, smg: 1200, shotgun: 900, rifle: 2500, lmg: 6000, sniper: 3500 };
@@ -175,7 +196,9 @@ export function weaponShops(places: readonly { id: string; cat: string; name?: s
   if (james) out.push({ id: james.id, name: "James", kind: "hunting", x: james.x, y: james.y, reach: 11, schedule: scheduleOf("hunting"),
     items: [armItem("pistol"), armItem("smg"), armItem("shotgun"), armItem("sniper"), ammoItem("pistol"), ammoItem("smg"), ammoItem("shotgun"), ammoItem("sniper")] });
   out.push({ ...SURPLUS, kind: "army", reach: 8, schedule: scheduleOf("army"),
-    items: [armItem("knife"), armItem("bat"), armItem("rifle"), armItem("lmg"), { id: "grenade", name: "Grenade", price: GRENADE_PRICE, weapon: "grenade", ammo: 1 }, ammoItem("rifle"), ammoItem("lmg")] });
+    items: [armItem("knife"), armItem("bat"), armItem("rifle"), armItem("lmg"), { id: "grenade", name: "Grenade", price: GRENADE_PRICE, weapon: "grenade", ammo: 1 },
+      { id: "smoke", name: "Fumigène", price: SMOKE_PRICE, weapon: "smoke", ammo: 1 }, { id: "gilet", name: "Gilet pare-balles", price: VEST_PRICE, armor: VEST_MAX },
+      ammoItem("rifle"), ammoItem("lmg")] });
   return out;
 }
 
