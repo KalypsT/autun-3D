@@ -7,8 +7,8 @@
  * Les valeurs viennent du cadrage de D80 (à régler en jouant) : un passant a 100 points de vie.
  */
 
-export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper";
-export type WeaponKind = "melee" | "gun";
+export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper" | "grenade";
+export type WeaponKind = "melee" | "gun" | "throw";
 /** Geste du coup : coup de poing (alterné gauche et droite), coup de couteau (estoc), coup de batte (balayage). */
 export type AttackStyle = "punch" | "stab" | "swing";
 export type GunId = "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper";
@@ -68,15 +68,21 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   smg: gun({ id: "smg", name: "Pistolet-mitrailleur", icon: "🔫", range: 25, damage: 16, rate: 14, impulse: 1.2, mag: 32, pellets: 1, reload: 1.5, spread: 0.05, falloff: false, part: "weaponSmg" }),
   // Mitrailleuse légère (D325) : bande de 100, longue à recharger, lourde (on marche au pas) ; vendue au Surplus Éduen.
   lmg: gun({ id: "lmg", name: "Mitrailleuse", icon: "🎯", range: 70, damage: 26, rate: 11, impulse: 1.8, mag: 100, pellets: 1, reload: 4.5, spread: 0.045, falloff: false, part: "weaponLmg", heavy: true }),
+  // Grenade (D326) : on la lance ; le souffle est celui des véhicules qui explosent (`EXPLOSION`). Comptée en réserve, dix au plus.
+  grenade: { id: "grenade", name: "Grenade", icon: "💣", kind: "throw", style: "punch", range: 0, damage: 0, rate: 1.2, hitAt: 0.55, maxTargets: 0, impulse: 0, knockdown: false,
+    mag: 0, pellets: 0, reload: 0, spread: 0, falloff: false, hipSpread: 0, scope: 0, part: "weaponGrenade" },
   // Fusil de précision (T3, D207) : un tir tue (120 points), à 150 m (au-delà, le brouillard cache tout) ; lunette ×5 ; presque rien à la hanche.
   sniper: gun({ id: "sniper", name: "Fusil de précision", icon: "🔭", range: 150, damage: 120, rate: 0.8, impulse: 3, mag: 5, pellets: 1, reload: 2.6, spread: 0.003, hipSpread: 0.1, falloff: false, part: "weaponSniper", scope: 5 }),
 };
 
 /** Ordre de la molette : les poings d'abord, puis du plus court au plus long. */
-export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper"];
+export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade"];
 
-/** Balles en réserve au plus pour une arme à feu : six chargeurs. */
-export const reserveCap = (w: WeaponDef): number => w.mag * 6;
+/** Grenades portées au plus (D326). */
+export const GRENADE_MAX = 10;
+
+/** Réserve au plus : six chargeurs pour une arme à feu, dix grenades. */
+export const reserveCap = (w: WeaponDef): number => (w.kind === "throw" ? GRENADE_MAX : w.mag * 6);
 
 /** Durée d'un coup de mêlée (s) : de son départ à la possibilité d'enchaîner. */
 export const strikeTime = (w: WeaponDef): number => 1 / w.rate;
@@ -119,6 +125,8 @@ export class Inventory {
       if (left > 0) this.ammo[id] = Math.min(reserveCap(def), (this.ammo[id] ?? 0) + left);
     } else if (def.kind === "gun" && fresh) {
       this.mag[id] = 0;
+    } else if (def.kind === "throw") {
+      this.ammo[id] = Math.min(reserveCap(def), (this.ammo[id] ?? 0) + Math.max(0, rounds));
     }
     return fresh;
   }
@@ -137,6 +145,19 @@ export class Inventory {
     const m = this.mag[id] ?? 0;
     if (m <= 0) return false;
     this.mag[id] = m - 1;
+    return true;
+  }
+
+  /** Lance une grenade (D326) : une de moins ; la dernière partie, l'arme quitte la ceinture et les poings reviennent en main. */
+  throwOne(id: WeaponId): boolean {
+    const n = this.ammo[id] ?? 0;
+    if (WEAPONS[id].kind !== "throw" || n <= 0) return false;
+    this.ammo[id] = n - 1;
+    if (n - 1 <= 0) {
+      delete this.ammo[id];
+      this.owned.delete(id);
+      this.index = 0;
+    }
     return true;
   }
 
@@ -201,7 +222,7 @@ export class Inventory {
       if (WEAPONS[id].kind === "gun") {
         this.mag[id] = Math.min(a.mag[id] ?? 0, WEAPONS[id].mag);
         this.ammo[id] = a.ammo[id] ?? 0;
-      }
+      } else if (WEAPONS[id].kind === "throw") this.ammo[id] = Math.min(a.ammo[id] ?? 0, reserveCap(WEAPONS[id]));
     }
     this.select(a.current);
   }

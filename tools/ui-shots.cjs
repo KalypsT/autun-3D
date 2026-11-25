@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -385,6 +385,28 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await click("#action");
     await sleep(400);
     await shot("pj3-surplus");
+    await ctx.close();
+  }
+
+  if (want("grenade")) {
+    // Grenades (PJ 3, D326) : bouton tenu, l'arc ; relâché, la grenade vole ; trois secondes plus tard, l'explosion.
+    const ctx = await open("arms=grenade&h=15");
+    await sleep(1500);
+    await page.evaluate(() => { const a = window.__autun; a.inventory.select("grenade"); a.tilt(0.1); });
+    await frames(3);
+    const b = await page.locator("#attack").boundingBox();
+    const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+    await touch("touchStart", [[cx, cy]]);
+    await frames(6);
+    await shot("pj3-grenade-arc");
+    await touch("touchEnd", []);
+    await frames(8);
+    await shot("pj3-grenade-vol");
+    console.log("grenades :", await page.evaluate(() => window.__autun.inventory.reserveOf("grenade")));
+    // Rendu logiciel lent : on attend la mèche (3 s de jeu), puis on capture l'explosion.
+    await page.evaluate(() => new Promise((res) => setTimeout(res, 3200)));
+    await frames(2);
+    await shot("pj3-grenade-explosion");
     await ctx.close();
   }
 

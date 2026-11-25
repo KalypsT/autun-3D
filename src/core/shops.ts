@@ -137,6 +137,9 @@ export function canBuyVehicle(item: ShopItem, balance: number, full: boolean): s
   return null;
 }
 
+/** Une grenade (D326). */
+export const GRENADE_PRICE = 150;
+
 /** Prix des armes (D324). */
 export const WEAPON_PRICES: Readonly<Partial<Record<WeaponId, number>>> = { bat: 30, knife: 40, pistol: 400, smg: 1200, shotgun: 900, rifle: 2500, lmg: 6000, sniper: 3500 };
 /** Munitions vendues : un chargeur, et son prix (D324). */
@@ -172,14 +175,17 @@ export function weaponShops(places: readonly { id: string; cat: string; name?: s
   if (james) out.push({ id: james.id, name: "James", kind: "hunting", x: james.x, y: james.y, reach: 11, schedule: scheduleOf("hunting"),
     items: [armItem("pistol"), armItem("smg"), armItem("shotgun"), armItem("sniper"), ammoItem("pistol"), ammoItem("smg"), ammoItem("shotgun"), ammoItem("sniper")] });
   out.push({ ...SURPLUS, kind: "army", reach: 8, schedule: scheduleOf("army"),
-    items: [armItem("knife"), armItem("bat"), armItem("rifle"), armItem("lmg"), ammoItem("rifle"), ammoItem("lmg")] });
+    items: [armItem("knife"), armItem("bat"), armItem("rifle"), armItem("lmg"), { id: "grenade", name: "Grenade", price: GRENADE_PRICE, weapon: "grenade", ammo: 1 }, ammoItem("rifle"), ammoItem("lmg")] });
   return out;
 }
 
 /** Refus d'un achat d'arme : pas assez d'argent, arme déjà possédée, munitions sans l'arme, réserve pleine. */
 export function canBuyWeapon(item: ShopItem, balance: number, inv: Pick<Inventory, "has" | "reserveOf">): string | null {
   const id = item.weapon!;
-  if (item.ammo) {
+  if (WEAPONS[id].kind === "throw") {
+    // Grenades (D326) : une à la fois, dix au plus ; pas besoin d'en avoir déjà.
+    if (inv.reserveOf(id) >= reserveCap(WEAPONS[id])) return `Tu en as ${reserveCap(WEAPONS[id])}`;
+  } else if (item.ammo) {
     if (!inv.has(id)) return "Il te faut l'arme";
     if (inv.reserveOf(id) >= reserveCap(WEAPONS[id])) return "Réserve pleine";
   } else if (inv.has(id)) return "Déjà à toi";

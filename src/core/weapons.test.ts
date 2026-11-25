@@ -9,6 +9,9 @@ describe("catalogue d'armes", () => {
     for (const id of WEAPON_ORDER) {
       const w = WEAPONS[id];
       expect(w.id).toBe(id);
+      if (w.part) expect(PART_SPECS.some((s) => s.id === w.part)).toBe(true);
+      // La grenade (D326) n'a ni portée ni dégâts propres : c'est le souffle de l'explosion.
+      if (w.kind === "throw") continue;
       expect(w.range).toBeGreaterThan(0);
       expect(w.damage).toBeGreaterThan(0);
       expect(w.rate).toBeGreaterThan(0);
@@ -117,11 +120,33 @@ describe("pistolet-mitrailleur et mitrailleuse (D325)", () => {
     expect(lmg.reload).toBeGreaterThan(WEAPONS.sniper.reload);
     expect(lmg.heavy).toBe(true);
     expect(WEAPONS.rifle.heavy).toBeFalsy();
-    expect(WEAPON_ORDER).toEqual(["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper"]);
+    expect(WEAPON_ORDER).toEqual(["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper", "grenade"]);
     const inv = new Inventory();
     inv.grant("lmg", 100);
     expect(inv.magOf("lmg")).toBe(100);
     expect(inv.fire("lmg")).toBe(true);
     expect(inv.magOf("lmg")).toBe(99);
+  });
+});
+
+describe("grenades dans l'inventaire (D326)", () => {
+  it("dix au plus ; chaque lancer en retire une ; la dernière partie, les poings reviennent", () => {
+    const inv = new Inventory();
+    inv.grant("grenade", 3);
+    inv.select("grenade");
+    expect(inv.reserveOf("grenade")).toBe(3);
+    inv.grant("grenade", 20);
+    expect(inv.reserveOf("grenade")).toBe(10);
+    for (let i = 0; i < 9; i++) expect(inv.throwOne("grenade")).toBe(true);
+    expect(inv.current.id).toBe("grenade");
+    expect(inv.throwOne("grenade")).toBe(true);
+    expect(inv.has("grenade")).toBe(false);
+    expect(inv.current.id).toBe("fists");
+    expect(inv.throwOne("grenade")).toBe(false);
+    expect(inv.throwOne("pistol")).toBe(false);
+    inv.grant("grenade", 2);
+    const back = new Inventory();
+    back.restore(inv.toSave());
+    expect(back.reserveOf("grenade")).toBe(2);
   });
 });

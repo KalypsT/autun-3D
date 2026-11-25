@@ -7865,3 +7865,33 @@ la mitrailleuse, les grenades, le gilet et les fumigènes suivent (lots 7-2 à 7
 ![Le pistolet-mitrailleur](captures/pj3-smg.jpg)
 ![La mitrailleuse](captures/pj3-lmg.jpg)
 ![Le Surplus Éduen](captures/pj3-surplus.jpg)
+
+## 2026-11-25 — D326. Plaisir de jeu, phase 3, lot 7-3 : les grenades
+
+**Contexte** : réponses par défaut validées (25 novembre) : la grenade est une arme de la liste ; tenir le bouton d'attaque montre l'arc,
+le relâcher lance ; elle explose au bout de 3 s, comme une voiture qui explose ; 150 € pièce au Surplus Éduen, dix au plus.
+
+**Choix**
+- **Nouveau genre d'arme, « jet »** (`grenade`, dernière de la molette) : le nombre de grenades est leur réserve (dix au plus) ; chaque lancer
+  en retire une ; la dernière partie, les poings reviennent en main. La sauvegarde garde le nombre (borné à 10), sans changer de version.
+- **Lancer** (`src/core/grenade.ts`, logique pure) : 14 m/s dans la direction du regard, l'angle suivant l'inclinaison de la caméra
+  (de 3° à 66° au-dessus de l'horizontale ; environ 20 m sur le plat) ; elle part de la main (1,6 m), rebondit sur le sol, les toits et les
+  ponts (35 % de la vitesse verticale gardée, 60 % de l'horizontale), repart en arrière contre un mur ou une voiture, roule et s'arrête.
+- **Arc** : tant que le bouton est tenu, la trajectoire jusqu'au premier contact s'affiche en petits cubes crème, le point d'impact en
+  carré rouge brique ; le joueur se tourne vers le regard ; au lâcher, un geste du bras.
+- **Explosion** au bout de **3 s** : celle des véhicules (D111) sortie en une fonction commune (`blastAt`) : boule de feu, fumée, souffle
+  qui blesse et projette, véhicules voisins abîmés (une voiture très touchée peut exploser à son tour), et l'infraction « explosion » (deux
+  étoiles si on est vu), avec meurtres ou agressions selon les victimes.
+- **Rendu** : la grenade en vol est deux boîtes du maillage des effets (corps olive, cuillère sombre) qui tournent ; en main, la pièce
+  `weaponGrenade`. Bandeau d'arme : « Grenade 4/10 ».
+- **Vente** : au Surplus Éduen, **150 €** pièce, sans avoir à en posséder déjà ; « Tu en as 10 » quand on est plein.
+- `?arms=grenade` en donne cinq.
+
+**Vérifié** : `grenade.test.ts` (portée, angle, rebonds, mur, arc), `weapons.test.ts` (dix au plus, dernière lancée), `save.test.ts`,
+`shops.test.ts` ; `tools/ui.sh <dossier> grenade` (arc, lancer, explosion 3 s plus tard).
+
+**Limites** : pas de touche du clavier pour la grenade (dixième arme : la molette ou X) ; la grenade ne s'arrête pas aux passants ;
+l'arc ne montre que le vol jusqu'au premier rebond.
+
+![L'arc de lancer](captures/pj3-grenade-arc.jpg)
+![L'explosion](captures/pj3-grenade-explosion.jpg)

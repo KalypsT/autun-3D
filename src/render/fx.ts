@@ -24,6 +24,7 @@ const COLORS: Record<WeaponId, [number, number, number]> = {
   rifle: [0.35, 0.65, 0.95],
   smg: [0.4, 0.85, 0.75],
   lmg: [0.55, 0.6, 0.3],
+  grenade: [0.35, 0.45, 0.25],
   sniper: [0.6, 0.45, 0.95],
 };
 const BEAM: [number, number, number] = [1, 0.8, 0.35];
@@ -51,6 +52,10 @@ export interface PickupView {
   cash?: boolean;
   /** Pièce d'or posée sur un toit (D321) : `z` est l'altitude du toit. */
   coin?: boolean;
+  /** Grenade en vol ou au sol (D326) : `z` est son altitude. */
+  grenade?: boolean;
+  /** Point de l'arc de lancer (D326) : `z` est son altitude. */
+  dot?: boolean;
 }
 
 interface Item {
@@ -177,6 +182,29 @@ export class Fx {
       }
     }
     for (const pk of pickups) {
+      if (pk.dot) {
+        // Arc de lancer d'une grenade (D326) : de petits cubes crème, le dernier (le point d'impact) plus gros et rouge brique.
+        this.p.set(pk.x, pk.z, -pk.y);
+        this.q.identity();
+        const big = pk.weapon === "grenade";
+        this.s.set(big ? 0.34 : 0.14, big ? 0.06 : 0.14, big ? 0.34 : 0.14);
+        m.compose(this.p, this.q, this.s);
+        put(big ? 0.85 : 1, big ? 0.28 : 0.95, big ? 0.17 : 0.8);
+        continue;
+      }
+      if (pk.grenade) {
+        // Grenade (D326) : un petit corps vert olive et sa cuillère sombre, qui tournent en vol.
+        this.e.set(time * 9 + pk.x, time * 7, 0);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + 0.06, -pk.y);
+        this.s.set(0.09, 0.12, 0.09);
+        m.compose(this.p, this.q, this.s);
+        put(0.3, 0.38, 0.18);
+        this.s.set(0.03, 0.1, 0.05);
+        m.compose(this.p, this.q, this.s);
+        put(0.15, 0.15, 0.17);
+        continue;
+      }
       if (pk.coin) {
         // Pièce d'or (D321) : debout, elle tourne sur elle-même en flottant à hauteur de genou, sans faisceau (elle est cachée).
         this.e.set(0, time * 2.6 + pk.x, 0);

@@ -226,3 +226,12 @@ describe("dernier véhicule utilisé (D301)", () => {
     expect(parseSave(JSON.stringify({ ...base, last: "autre" }))!.last).toBeUndefined();
   });
 });
+
+describe("grenades dans la sauvegarde (D326)", () => {
+  it("leur nombre est relu, borné à 10", () => {
+    const base = { version: SAVE_VERSION, savedAt: 1, player: { x: 0, y: 0 }, camera: { yaw: 0, pitch: 0 }, riding: null, clock: { hour: 9, date: 1 }, vehicles: [], waypoint: null, health: 100, money: 0 };
+    const p = parseSave(JSON.stringify({ ...base, arms: { owned: ["grenade"], mag: {}, ammo: { grenade: 40 }, current: "grenade" } }))!;
+    expect(p.arms.ammo.grenade).toBe(10);
+    expect(p.arms.current).toBe("grenade");
+  });
+});

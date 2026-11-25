@@ -2345,3 +2345,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les deux ont leur modèle en main, leur pose, leur son (page `?sounds`) et leurs munitions en vente. Les touches 1 à 9 choisissent l'arme.
 ![La mitrailleuse](docs/captures/pj3-lmg.jpg)
 ![Le Surplus Éduen](docs/captures/pj3-surplus.jpg)
+
+**Plaisir de jeu, lot 3-7-3 : les grenades (25 novembre 2026)** (D326)
+- Au **Surplus Éduen**, 150 € pièce, dix au plus.
+- Grenade en main, **tiens le bouton rond** : la trajectoire s'affiche (petits cubes, point d'impact en rouge). **Relâche** : elle part là où tu regardes (regarde plus haut pour lancer plus loin, environ 20 m sur le plat), rebondit, roule, et **explose au bout de 3 secondes**, comme une voiture qui explose : blessures, véhicules abîmés, police prévenue.
+- À faire de ton côté : en lancer quelques-unes et dire si la portée et la mèche te vont.
+![L'arc de lancer](docs/captures/pj3-grenade-arc.jpg)
+![L'explosion](docs/captures/pj3-grenade-explosion.jpg)

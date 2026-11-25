@@ -342,6 +342,14 @@ const SHAPES: Record<string, Shape> = {
       box(0.1, 0.12, 0.1, 0.06, y - 0.02, 0.08, [0.3, 0.32, 0.22]),
     ]);
   },
+  // Grenade (D326) : tenue dans la main, corps vert olive et cuillère sombre.
+  weaponGrenade: () => {
+    const y = -R.forearm - 0.06;
+    return merge([
+      box(0.075, 0.1, 0.075, 0, y, 0.01, [0.3, 0.38, 0.18]),
+      box(0.025, 0.08, 0.035, 0.03, y + 0.03, 0.01, [0.15, 0.15, 0.17]),
+    ]);
+  },
   // Fusil de précision (D207) : crosse en bois, long canon fin, lunette sur le dessus.
   weaponSniper: () => {
     const y = -R.forearm - 0.045;

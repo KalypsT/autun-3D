@@ -109,6 +109,12 @@ export function parseArms(o: unknown): SavedArms {
   if (Array.isArray(r["owned"])) for (const id of r["owned"]) if (known(id) && id !== "fists" && !out.owned.includes(id)) out.owned.push(id);
   for (const id of out.owned) {
     const def = WEAPONS[id];
+    // Grenades (D326) : leur nombre, en réserve.
+    if (def.kind === "throw") {
+      const n = (r["ammo"] as Record<string, unknown> | undefined)?.[id];
+      out.ammo[id] = finite(n) ? Math.min(Math.max(Math.round(n), 0), 10) : 0;
+      continue;
+    }
     if (def.kind !== "gun") continue;
     const mag = (r["mag"] as Record<string, unknown> | undefined)?.[id], ammo = (r["ammo"] as Record<string, unknown> | undefined)?.[id];
     if (finite(mag)) out.mag[id] = Math.min(Math.max(Math.round(mag), 0), def.mag);

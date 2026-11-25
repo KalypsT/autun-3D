@@ -26,6 +26,7 @@ import { canBuy, canBuyVehicle, canBuyWeapon, shopAt, shopHours, shopOpen, type 
 import { GENDARMERIE, IMPOUND_FEE, OwnedVehicles, type OwnedVehicle } from "../core/owned";
 import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
 import { ShopScreen } from "../ui/shop-screen";
+import { arcPoints, GRENADE, stepGrenade, throwVelocity, type GrenadeBody, type GrenadeWorld } from "../core/grenade";
 import type { GarageRow } from "../ui/pause-menu";
 import { challengeGoal, Challenges, TIER_NAMES, type ChallengeHit } from "../core/challenges";
 import { Notebook } from "../core/collections";
@@ -536,7 +537,7 @@ export function startGame(ctx: GameContext): void {
   const pharmacy = scheduleOf("pharmacy");
   pickups.closed = (p) => p.price > 0 && !scheduleOpen(pharmacy, atmosphere.calendar.weekday, atmosphere.hour);
   const armsParam = params.get("arms");
-  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? WEAPONS[id as WeaponId].mag) * 2);
+  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, WEAPONS[id as WeaponId].kind === "throw" ? 5 : (CACHE_ROUNDS[id as WeaponId] ?? WEAPONS[id as WeaponId].mag) * 2);
   const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
     inventory.cycle();
     melee.cancel();
@@ -549,6 +550,14 @@ export function startGame(ctx: GameContext): void {
     reloadAsked = true;
   });
   let heldId: WeaponId | null = null;
+  // Grenades (D326) : celles qui volent ou roulent, l'arc de lancer de cette image, le bouton tenu à l'image d'avant, le geste en cours.
+  const grenades: GrenadeBody[] = [];
+  const grenadeArc: number[] = [];
+  let throwHeld = false, throwAnim = 0;
+  const grenadeWorld: GrenadeWorld = {
+    ground: (x, y, z) => surface.heightAt(x, y, z + 0.5),
+    wall: (x0, y0, x1, y1) => colliders.raycast(x0, y0, x1, y1, true),
+  };
   let aimW = 0;
   const pedWitnesses: number[] = [];
   /** Victimes touchées loin du tireur à ce tir (T4, D208). */
@@ -838,8 +847,10 @@ export function startGame(ctx: GameContext): void {
     }
   };
   /** Le véhicule explose : boule de feu, débris, bruit ; le souffle tue le conducteur, blesse et projette autour, abîme les véhicules voisins. */
-  const explode = (v: Vehicle): void => {
-    const s = v.state, x = s.x, y = s.y, z = s.z;
+  /**
+   * Explosion en (x, y, z) : celle d'un véhicule (`v`, qui ne se blesse pas lui-même et tue son conducteur), ou d'une grenade (D326, `v` nul).
+   */
+  const blastAt = (x: number, y: number, z: number, v: Vehicle | null): void => {
     // Boule de feu (jaune au cœur, orange et rouge autour), puis, un peu après, le nuage de fumée qui monte au-dessus.
     for (let i = 0; i < 36; i++) {
       const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 4.5, core = i < 12;
@@ -859,7 +870,7 @@ export function startGame(ctx: GameContext): void {
     if (dPlayer < 25) haptics.crash(8);
     // Le joueur : tué s'il est dedans ; à pied, blessé selon la distance ; dans un autre véhicule, protégé de moitié.
     if (!health.dead) {
-      if (riding === v) health.damage(10000);
+      if (v && riding === v) health.damage(10000);
       else {
         const hurt = EXPLOSION.player * blastShare(dPlayer) * (riding ? EXPLOSION.sheltered : 1);
         if (hurt > 0) health.damage(hurt);
@@ -893,6 +904,7 @@ export function startGame(ctx: GameContext): void {
     if (hits > 0) police.crime(killed > 0 ? "murder" : "assault", x, y, seen);
     fleet.refresh();
   };
+  const explode = (v: Vehicle): void => blastAt(v.state.x, v.state.y, v.state.z, v);
   // Taches sombres au-dessus des épaves noyées (D242) : l'eau est opaque, on devine la voiture sous la surface.
   const wreckMarks = new Map<Vehicle, THREE.Mesh>();
   const wreckMarkGeo = new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
@@ -1261,6 +1273,7 @@ export function startGame(ctx: GameContext): void {
           }
           audio.pickup();
           moneyHud.set(wallet.balance, wallet.drain());
+          if (def.kind === "throw") return `${def.name} : ${inventory.reserveOf(item.weapon)} sur ${GRENADE.max}.`;
           return item.ammo ? `${item.name} : ${inventory.magOf(item.weapon) + inventory.reserveOf(item.weapon)} balles en tout.` : `${def.name} : à toi, en main.`;
         }
         if (canBuy(item, wallet.balance, health.hp, MAX_HEALTH) !== null || !wallet.spend(item.price, item.name)) return "";
@@ -1830,6 +1843,22 @@ export function startGame(ctx: GameContext): void {
       violence(res.hits, res.killed);
       if (melee.active && melee.facing !== null) player.heading += angleDelta(player.heading, melee.facing) * Math.min(1, 18 * dt);
       model.setStrike(melee.active && weapon.style !== "aim" ? { style: weapon.style, u: melee.progress, hitAt: weapon.hitAt, side: melee.side } : null);
+    } else if (weapon.kind === "throw") {
+      // Grenade (D326) : bouton tenu, l'arc s'affiche ; relâché, elle part dans la direction du regard (geste du bras), une de moins.
+      melee.cancel();
+      gun.cancel();
+      grenadeArc.length = 0;
+      if (input.attack) {
+        player.heading = yaw;
+        arcPoints(player.x, player.y, player.z + GRENADE.hand, throwVelocity(yaw, pitch), grenadeWorld, grenadeArc);
+      } else if (throwHeld && inventory.throwOne("grenade")) {
+        grenades.push({ x: player.x, y: player.y, z: player.z + GRENADE.hand, ...throwVelocity(yaw, pitch), t: 0 });
+        throwAnim = 0.45;
+        audio.swing("punch");
+      }
+      throwHeld = input.attack;
+      throwAnim = Math.max(0, throwAnim - dt);
+      model.setStrike(throwAnim > 0 ? { style: "punch", u: 1 - throwAnim / 0.45, hitAt: 0.5, side: 1 } : null);
     } else {
       melee.cancel();
       model.setStrike(null);
@@ -1906,7 +1935,8 @@ export function startGame(ctx: GameContext): void {
     }
     // Bouton de rechargement : seulement avec une arme à feu en main (le CSS le cache aussi en véhicule).
     if ((weapon.kind === "gun") !== gunInHand) document.body.classList.toggle("gun", (gunInHand = weapon.kind === "gun"));
-    weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 } : null);
+    weaponHud.set(weapon, weapon.kind === "gun" ? { mag: inventory.magOf(weapon.id), reserve: inventory.reserveOf(weapon.id), reloading: gun.reloading > 0 }
+      : weapon.kind === "throw" ? { mag: inventory.reserveOf(weapon.id), reserve: GRENADE.max, reloading: false } : null);
     // Réticule sur la cible assistée (un point de l'écran) ; armes au sol et effets : mis à jour à chaque image.
     if (reticle) {
       reticleV.set(reticle.x, reticle.z, -reticle.y).project(camera);
@@ -1927,6 +1957,20 @@ export function startGame(ctx: GameContext): void {
     for (const pk of pickups.list) {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
       pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
+    }
+    // Grenades (D326) : elles volent, rebondissent et explosent au bout de la mèche ; l'arc de lancer en petits cubes, l'impact plus gros.
+    for (let i = grenades.length - 1; i >= 0; i--) {
+      const g = grenades[i]!;
+      stepGrenade(g, dt, grenadeWorld);
+      if (g.t >= GRENADE.fuse) {
+        grenades.splice(i, 1);
+        blastAt(g.x, g.y, g.z, null);
+      } else pickViews.push({ x: g.x, y: g.y, z: g.z, weapon: null, grenade: true });
+    }
+    for (let i = 0; i < grenadeArc.length; i += 6) pickViews.push({ x: grenadeArc[i]!, y: grenadeArc[i + 1]!, z: grenadeArc[i + 2]!, weapon: null, dot: true });
+    if (grenadeArc.length >= 3) {
+      const n = grenadeArc.length;
+      pickViews.push({ x: grenadeArc[n - 3]!, y: grenadeArc[n - 2]!, z: grenadeArc[n - 1]! + 0.05, weapon: "grenade", dot: true });
     }
     // Pièces d'or des toits (D321) : dessinées à moins de 70 m tant qu'elles ne sont pas trouvées ; la plus proche tinte à moins de 25 m.
     let coinNear = Infinity;

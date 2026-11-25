@@ -58,7 +58,7 @@ describe("armureries (D324)", () => {
     expect(shops.map((s) => s.name)).toEqual(["James", "Surplus Éduen"]);
     expect(shops[0]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["pistol", "smg", "shotgun", "sniper"]);
     expect(shops[1]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle", "lmg"]);
-    for (const s of shops) for (const i of s.items) if (i.ammo) expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
+    for (const s of shops) for (const i of s.items) if (i.ammo && i.weapon !== "grenade") expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
   });
 
   it("refus : déjà à toi, munitions sans l'arme, réserve pleine, pas assez d'argent", () => {
@@ -72,5 +72,11 @@ describe("armureries (D324)", () => {
     expect(canBuyWeapon(bullets, 1000, inv)).toBeNull();
     inv.grant("pistol", 1000);
     expect(canBuyWeapon(bullets, 1000, inv)).toBe("Réserve pleine");
+    // Grenades (D326) : sans arme préalable, dix au plus.
+    const grenade = shops[1]!.items.find((i) => i.weapon === "grenade")!;
+    expect(grenade.price).toBe(150);
+    expect(canBuyWeapon(grenade, 1000, inv)).toBeNull();
+    inv.grant("grenade", 10);
+    expect(canBuyWeapon(grenade, 1000, inv)).toBe("Tu en as 10");
   });
 });
