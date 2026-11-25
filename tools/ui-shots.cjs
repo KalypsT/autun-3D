@@ -280,6 +280,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // Pickpocket (phase 4, E2) : on se fait voler (bulle « Hé ! », « −80 € ») ; le pickpocket plaqué lâche les billets ; ramassés.
     const ctx = await open("event=pickpocket&h=15&money=800&peds=150");
     await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    // Le joueur dans le coin le plus animé (une rue fréquentée) : il faut trois passants à moins de 12 m.
+    for (let k = 0; k < 60; k++) {
+      const started = await page.evaluate(() => {
+        const a = window.__autun, sim = a.pedsController()?.eventPeds();
+        if (a.events.director.active.length > 0) return true;
+        if (!sim) return false;
+        const q = { x: 0, y: 0 }, out = [];
+        let best = -1, bn = 0;
+        for (let i = 0; i < sim.capacity; i++) {
+          if (sim.modeOf(i) !== 0) continue;
+          sim.position(i, q);
+          out.length = 0;
+          const n = sim.queryCircle(q.x, q.y, 10, out);
+          if (n > bn) { bn = n; best = i; }
+        }
+        if (best >= 0) { sim.position(best, q); a.player.x = q.x + 1; a.player.y = q.y + 1; }
+        return false;
+      });
+      if (started) break;
+      await sleep(2000);
+    }
     await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
     const slot = await page.evaluate(() => window.__autun.events.director.active[0].thief);
     await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase !== "approach", null, { timeout: 120000, polling: 200 });
