@@ -7,11 +7,11 @@
  * Les valeurs viennent du cadrage de D80 (à régler en jouant) : un passant a 100 points de vie.
  */
 
-export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "shotgun" | "rifle" | "sniper";
+export type WeaponId = "fists" | "knife" | "bat" | "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper";
 export type WeaponKind = "melee" | "gun";
 /** Geste du coup : coup de poing (alterné gauche et droite), coup de couteau (estoc), coup de batte (balayage). */
 export type AttackStyle = "punch" | "stab" | "swing";
-export type GunId = "pistol" | "shotgun" | "rifle" | "sniper";
+export type GunId = "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper";
 
 export interface WeaponDef {
   id: WeaponId;
@@ -47,6 +47,8 @@ export interface WeaponDef {
   scope: number;
   /** Pièce du kit de personnage (`character-kit.ts`) tenue dans la main droite ; null : les poings. */
   part: string | null;
+  /** Arme lourde (mitrailleuse, D325) : on marche au pas en la portant, sans courir ni sprinter. */
+  heavy?: boolean;
 }
 
 /** Impulsion (m/s) d'un coup qui fait tomber (au-dessus du seuil de chute de `PedSim`, 3,5 m/s). */
@@ -62,12 +64,16 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   pistol: gun({ id: "pistol", name: "Pistolet", icon: "🔫", range: 35, damage: 34, rate: 4, impulse: 1.6, mag: 12, pellets: 1, reload: 1.2, spread: 0.02, falloff: false, part: "weaponPistol" }),
   shotgun: gun({ id: "shotgun", name: "Fusil à pompe", icon: "💥", range: 15, damage: 12, rate: 1, impulse: 2.4, mag: 6, pellets: 8, reload: 2.2, spread: 0.09, falloff: true, part: "weaponShotgun" }),
   rifle: gun({ id: "rifle", name: "Fusil d'assaut", icon: "🎯", range: 60, damage: 22, rate: 10, impulse: 1.4, mag: 30, pellets: 1, reload: 1.8, spread: 0.035, falloff: false, part: "weaponRifle" }),
+  // Pistolet-mitrailleur (D325) : tire vite, peu précis, courte portée ; vendu chez James.
+  smg: gun({ id: "smg", name: "Pistolet-mitrailleur", icon: "🔫", range: 25, damage: 16, rate: 14, impulse: 1.2, mag: 32, pellets: 1, reload: 1.5, spread: 0.05, falloff: false, part: "weaponSmg" }),
+  // Mitrailleuse légère (D325) : bande de 100, longue à recharger, lourde (on marche au pas) ; vendue au Surplus Éduen.
+  lmg: gun({ id: "lmg", name: "Mitrailleuse", icon: "🎯", range: 70, damage: 26, rate: 11, impulse: 1.8, mag: 100, pellets: 1, reload: 4.5, spread: 0.045, falloff: false, part: "weaponLmg", heavy: true }),
   // Fusil de précision (T3, D207) : un tir tue (120 points), à 150 m (au-delà, le brouillard cache tout) ; lunette ×5 ; presque rien à la hanche.
   sniper: gun({ id: "sniper", name: "Fusil de précision", icon: "🔭", range: 150, damage: 120, rate: 0.8, impulse: 3, mag: 5, pellets: 1, reload: 2.6, spread: 0.003, hipSpread: 0.1, falloff: false, part: "weaponSniper", scope: 5 }),
 };
 
 /** Ordre de la molette : les poings d'abord, puis du plus court au plus long. */
-export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "shotgun", "rifle", "sniper"];
+export const WEAPON_ORDER: readonly WeaponId[] = ["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper"];
 
 /** Balles en réserve au plus pour une arme à feu : six chargeurs. */
 export const reserveCap = (w: WeaponDef): number => w.mag * 6;

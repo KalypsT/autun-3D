@@ -145,6 +145,8 @@ export const PART_SPECS: readonly PartSpec[] = [
   spec("weaponShotgun", [BONE.forearmR], SLOT.none, false, () => false),
   spec("weaponRifle", [BONE.forearmR], SLOT.none, false, () => false),
   spec("weaponSniper", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponSmg", [BONE.forearmR], SLOT.none, false, () => false),
+  spec("weaponLmg", [BONE.forearmR], SLOT.none, false, () => false),
 ];
 
 /** Les mises à jour de masque tiennent sur trois nombres de 22 bits : au plus 66 pièces. */

@@ -56,8 +56,8 @@ describe("armureries (D324)", () => {
 
   it("James et le Surplus Éduen, chacun avec ses armes et ses munitions", () => {
     expect(shops.map((s) => s.name)).toEqual(["James", "Surplus Éduen"]);
-    expect(shops[0]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["pistol", "shotgun", "sniper"]);
-    expect(shops[1]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle"]);
+    expect(shops[0]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["pistol", "smg", "shotgun", "sniper"]);
+    expect(shops[1]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle", "lmg"]);
     for (const s of shops) for (const i of s.items) if (i.ammo) expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
   });
 

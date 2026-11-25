@@ -35,12 +35,15 @@ function burst(kit: Kit, to: AudioNode, t: number, type: BiquadFilterType, freq:
 
 // --- Armes ------------------------------------------------------------------------------------------------------------------
 
-export type ShotKind = "pistol" | "shotgun" | "rifle" | "sniper";
+export type ShotKind = "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper";
 
 const SHOTS: Record<ShotKind, { crackHz: number; crack: number; body: number; bodyHz: number; thump: [number, number, number]; gain: number }> = {
   pistol: { crackHz: 1500, crack: 0.06, body: 0.22, bodyHz: 1300, thump: [150, 45, 0.12], gain: 0.9 },
   shotgun: { crackHz: 900, crack: 0.08, body: 0.42, bodyHz: 900, thump: [115, 35, 0.22], gain: 1 },
   rifle: { crackHz: 2100, crack: 0.045, body: 0.15, bodyHz: 1700, thump: [170, 60, 0.08], gain: 0.85 },
+  // Pistolet-mitrailleur (D325) : claquement court et sec, peu de corps ; mitrailleuse : plus grave et plus lourde.
+  smg: { crackHz: 1800, crack: 0.035, body: 0.1, bodyHz: 1500, thump: [190, 70, 0.05], gain: 0.75 },
+  lmg: { crackHz: 1600, crack: 0.05, body: 0.22, bodyHz: 1200, thump: [130, 45, 0.12], gain: 0.95 },
   // Fusil de précision (D207) : claquement sec et fort, souffle long, coup sourd profond.
   sniper: { crackHz: 2400, crack: 0.09, body: 0.5, bodyHz: 1500, thump: [120, 32, 0.3], gain: 1.15 },
 };

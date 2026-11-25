@@ -2338,3 +2338,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - Les **caches ne reviennent plus** une fois prises : elles sont notées dans le carnet, onglet **Caches**.
 - Suite : pistolet-mitrailleur, mitrailleuse, grenades, gilet pare-balles et fumigènes.
 ![Chez James](docs/captures/pj3-james.jpg)
+
+**Plaisir de jeu, lot 3-7-2 : pistolet-mitrailleur et mitrailleuse (25 novembre 2026)** (D325)
+- **Pistolet-mitrailleur** chez James (1 200 €) : il tire très vite, de près, sans grande précision.
+- **Mitrailleuse** au Surplus Éduen (6 000 €) : bande de 100 balles, longue à recharger, et si lourde qu'on marche au pas en la portant.
+- Les deux ont leur modèle en main, leur pose, leur son (page `?sounds`) et leurs munitions en vente. Les touches 1 à 9 choisissent l'arme.
+![La mitrailleuse](docs/captures/pj3-lmg.jpg)
+![Le Surplus Éduen](docs/captures/pj3-surplus.jpg)

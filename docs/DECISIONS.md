@@ -7841,3 +7841,27 @@ la mitrailleuse, les grenades, le gilet et les fumigènes suivent (lots 7-2 à 7
 
 ![Chez James](captures/pj3-james.jpg)
 ![L'onglet Caches](captures/pj3-carnet-caches.jpg)
+
+## 2026-11-25 — D325. Plaisir de jeu, phase 3, lot 7-2 : le pistolet-mitrailleur et la mitrailleuse
+
+**Contexte** : réponses par défaut validées (25 novembre) : un pistolet-mitrailleur chez James, une mitrailleuse légère au Surplus Éduen.
+
+**Choix**
+- **Pistolet-mitrailleur** (`smg`) : 14 tirs par seconde, 16 points par balle, 25 m de portée, dispersion ±2,9° (plus que le fusil
+  d'assaut), chargeur de 32, rechargement 1,5 s. **1 200 €** chez James, 32 balles 50 €.
+- **Mitrailleuse** (`lmg`) : 11 tirs par seconde, 26 points, 70 m, ±2,6°, **bande de 100**, rechargement 4,5 s ; **lourde** : en la portant,
+  on marche au pas (ni course ni sprint, nouveau champ `heavy`). Tenue plus bas, buste penché. **6 000 €** au Surplus Éduen, bande de 100
+  balles 150 €.
+- Partout où une arme à feu existe : ordre de la molette (poings, couteau, batte, pistolet, pistolet-mitrailleur, fusil à pompe, fusil
+  d'assaut, mitrailleuse, fusil de précision ; touches 1 à 9), pièces tenues (`weaponSmg`, `weaponLmg` : quelques boîtes, 64 pièces de
+  personnage sur 66), poses de garde et de visée, pictogrammes, sons de tir (page `?sounds`), vibrations, couleur des caisses. La
+  sauvegarde les connaît (armes connues de `WEAPON_ORDER`), sans changer de version.
+- `?arms=` donne aussi les nouvelles armes, avec deux chargeurs (elles n'ont pas de cache).
+
+**Vérifié** : `weapons.test.ts`, `shops.test.ts` ; `tools/ui.sh <dossier> armes2` (chaque arme en main, l'écran du Surplus).
+
+**À juger en jouant** : les cadences (le pistolet-mitrailleur sonne en continu), le pas lourd de la mitrailleuse.
+
+![Le pistolet-mitrailleur](captures/pj3-smg.jpg)
+![La mitrailleuse](captures/pj3-lmg.jpg)
+![Le Surplus Éduen](captures/pj3-surplus.jpg)

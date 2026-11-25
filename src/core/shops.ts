@@ -138,12 +138,14 @@ export function canBuyVehicle(item: ShopItem, balance: number, full: boolean): s
 }
 
 /** Prix des armes (D324). */
-export const WEAPON_PRICES: Readonly<Partial<Record<WeaponId, number>>> = { bat: 30, knife: 40, pistol: 400, shotgun: 900, rifle: 2500, sniper: 3500 };
+export const WEAPON_PRICES: Readonly<Partial<Record<WeaponId, number>>> = { bat: 30, knife: 40, pistol: 400, smg: 1200, shotgun: 900, rifle: 2500, lmg: 6000, sniper: 3500 };
 /** Munitions vendues : un chargeur, et son prix (D324). */
 export const AMMO_PACKS: Readonly<Partial<Record<WeaponId, { rounds: number; price: number; name: string }>>> = {
   pistol: { rounds: 12, price: 30, name: "Balles de pistolet" },
   shotgun: { rounds: 6, price: 40, name: "Cartouches" },
+  smg: { rounds: 32, price: 50, name: "Balles de pistolet-mitrailleur" },
   rifle: { rounds: 30, price: 80, name: "Balles de fusil d'assaut" },
+  lmg: { rounds: 100, price: 150, name: "Bande de mitrailleuse" },
   sniper: { rounds: 5, price: 60, name: "Balles de précision" },
 };
 
@@ -168,9 +170,9 @@ export function weaponShops(places: readonly { id: string; cat: string; name?: s
   const out: Shop[] = [];
   const james = places.find((p) => p.cat === "commerce" && p.kind === "hunting" && p.name === "James");
   if (james) out.push({ id: james.id, name: "James", kind: "hunting", x: james.x, y: james.y, reach: 11, schedule: scheduleOf("hunting"),
-    items: [armItem("pistol"), armItem("shotgun"), armItem("sniper"), ammoItem("pistol"), ammoItem("shotgun"), ammoItem("sniper")] });
+    items: [armItem("pistol"), armItem("smg"), armItem("shotgun"), armItem("sniper"), ammoItem("pistol"), ammoItem("smg"), ammoItem("shotgun"), ammoItem("sniper")] });
   out.push({ ...SURPLUS, kind: "army", reach: 8, schedule: scheduleOf("army"),
-    items: [armItem("knife"), armItem("bat"), armItem("rifle"), ammoItem("rifle")] });
+    items: [armItem("knife"), armItem("bat"), armItem("rifle"), armItem("lmg"), ammoItem("rifle"), ammoItem("lmg")] });
   return out;
 }
 

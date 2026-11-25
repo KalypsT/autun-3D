@@ -91,8 +91,8 @@ export class Haptics {
   }
 
   /** Coup de feu du joueur : bref pour le fusil d'assaut (dix par seconde), plus long pour le fusil à pompe et le fusil de précision. */
-  shot(gun: "pistol" | "shotgun" | "rifle" | "sniper"): void {
-    this.pulse(gun === "shotgun" ? 45 : gun === "sniper" ? 55 : gun === "pistol" ? 18 : 9);
+  shot(gun: "pistol" | "smg" | "shotgun" | "rifle" | "lmg" | "sniper"): void {
+    this.pulse(gun === "shotgun" ? 45 : gun === "sniper" ? 55 : gun === "pistol" ? 18 : gun === "lmg" ? 14 : 9);
   }
 
   /** Coup qui porte (corps à corps), passant heurté au volant. */

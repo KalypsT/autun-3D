@@ -536,7 +536,7 @@ export function startGame(ctx: GameContext): void {
   const pharmacy = scheduleOf("pharmacy");
   pickups.closed = (p) => p.price > 0 && !scheduleOpen(pharmacy, atmosphere.calendar.weekday, atmosphere.hour);
   const armsParam = params.get("arms");
-  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? 0) * 2);
+  if (armsParam) for (const id of armsParam === "all" ? WEAPON_ORDER : armsParam.split(",")) if (id in WEAPONS) inventory.grant(id as WeaponId, (CACHE_ROUNDS[id as WeaponId] ?? WEAPONS[id as WeaponId].mag) * 2);
   const weaponHud = new WeaponHud(document.getElementById("weapon")!, document.getElementById("attack"), () => {
     inventory.cycle();
     melee.cancel();
@@ -1669,7 +1669,7 @@ export function startGame(ctx: GameContext): void {
             player.y = r.y;
           }
         } else {
-          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
+          stepPlayer(player, { forward: input.forward * k, right: input.right * k, run: input.run && !melee.active && !aiming && gun.idle > 0.35 && !inventory.current.heavy, sprint: input.sprint && !melee.active && !aiming && gun.idle > 0.35 && !inventory.current.heavy, jump: jumpNow, face: aiming ? gun.facing : undefined }, yaw, STEP, surface, colliders);
           jumpNow = false;
         }
       }

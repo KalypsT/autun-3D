@@ -106,3 +106,22 @@ describe("armes tenues dans le masque de pièces", () => {
     expect(Array.from(m)).toEqual(Array.from(base));
   });
 });
+
+describe("pistolet-mitrailleur et mitrailleuse (D325)", () => {
+  it("le pistolet-mitrailleur tire plus vite que le fusil d'assaut, moins loin et moins juste ; la mitrailleuse a une bande de 100 et alourdit", () => {
+    const smg = WEAPONS.smg, lmg = WEAPONS.lmg;
+    expect(smg.rate).toBeGreaterThan(WEAPONS.rifle.rate);
+    expect(smg.range).toBeLessThan(WEAPONS.pistol.range);
+    expect(smg.spread).toBeGreaterThan(WEAPONS.rifle.spread);
+    expect(lmg.mag).toBe(100);
+    expect(lmg.reload).toBeGreaterThan(WEAPONS.sniper.reload);
+    expect(lmg.heavy).toBe(true);
+    expect(WEAPONS.rifle.heavy).toBeFalsy();
+    expect(WEAPON_ORDER).toEqual(["fists", "knife", "bat", "pistol", "smg", "shotgun", "rifle", "lmg", "sniper"]);
+    const inv = new Inventory();
+    inv.grant("lmg", 100);
+    expect(inv.magOf("lmg")).toBe(100);
+    expect(inv.fire("lmg")).toBe(true);
+    expect(inv.magOf("lmg")).toBe(99);
+  });
+});
