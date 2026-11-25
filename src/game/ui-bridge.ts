@@ -10,7 +10,7 @@ import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
-import { foodShops, vehicleShops, type Shop } from "../core/shops";
+import { foodShops, vehicleShops, weaponShops, type Shop } from "../core/shops";
 import { Minimap } from "../ui/minimap";
 import { openNotesBackend } from "../ui/notes-idb";
 import { PauseMenu, type GarageRow } from "../ui/pause-menu";
@@ -153,7 +153,7 @@ export class UiBridge {
       (data) => {
         this.minimap.attach(data);
         this.garages = garagesFrom(data.places.places);
-        this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places)];
+        this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places), ...weaponShops(data.places.places)];
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();

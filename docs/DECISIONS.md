@@ -7813,3 +7813,31 @@ gris anthracite, 20 000 € → 14 000 €, livrée en vue, carnet).
 ![Achetée](captures/pj3-concession-achat.jpg)
 ![Livrée devant le magasin](captures/pj3-livraison.jpg)
 ![L'onglet Véhicules](captures/pj3-carnet-vehicules.jpg)
+
+## 2026-11-25 — D324. Plaisir de jeu, phase 3, lot 7-1 : les armureries (James, Surplus Éduen), les caches qui ne reviennent plus
+
+**Contexte** : réponses de l'utilisateur (24 et 25 novembre 2026) : deux magasins d'armes, **James** (armes de poing et d'épaule) et le
+**Surplus Éduen** (armes de guerre, grenades et équipement) ; « ok » pour toutes les réponses par défaut du lot 7 (répartition, nouvelles
+armes, gilet et fumigènes, lancer au bouton d'attaque, prix, caches). Ce premier lot vend les armes qui existent ; le pistolet-mitrailleur,
+la mitrailleuse, les grenades, le gilet et les fumigènes suivent (lots 7-2 à 7-4).
+
+**Choix**
+- **James** : le commerce de chasse d'OpenStreetMap, à 200 m au sud de la mairie : pistolet 400 €, fusil à pompe 900 €, fusil de précision
+  3 500 €, et leurs munitions (12 balles de pistolet 30 €, 6 cartouches 40 €, 5 balles de précision 60 €).
+- **Surplus Éduen** : pas dans OpenStreetMap ; sa devanture est dessinée d'après photo (D183), 3 avenue Charles-de-Gaulle : le point du
+  magasin est devant la vitrine (mur 7 du bâtiment `BATIMENT0000000348852378`). Couteau 40 €, batte 30 €, fusil d'assaut 2 500 €, 30 balles
+  80 €. Les deux magasins suivent l'horaire des boutiques (D200).
+- **Achat** (même comptoir que D322) : une arme neuve arrive avec un chargeur plein et passe dans la main ; des munitions vont au chargeur
+  vide ou en réserve (six chargeurs au plus, D84). Refus lisibles : « Déjà à toi », « Il te faut l'arme », « Réserve pleine », « Il manque
+  2 930 € » (les montants des refus suivent maintenant le format de l'argent).
+- **Caches** : une cache prise **ne revient plus** (elle revenait après 5 minutes, D84) ; elle est notée dans un onglet **Caches** du carnet
+  (par armes blanches, pistolets, fusils), sans prime, et une partie reprise ne la remontre pas. Identifiant stable : l'arme et le lieu
+  (`pistol-cafe-de-la-bourse`). Le carnet sait maintenant noter une entrée sans zone (`Notebook.mark`) et donner une phrase d'aide par
+  collection.
+- On garde ses armes à la mort (D317) ; elles restent confisquées à l'arrestation.
+
+**Vérifié** : `shops.test.ts` (les deux magasins, refus), `pickups.test.ts` (caches uniques, partie reprise) ; `tools/ui.sh <dossier> armes`
+(James : pistolet puis balles, 1 000 € → 570 €, 24 balles ; onglet Caches).
+
+![Chez James](captures/pj3-james.jpg)
+![L'onglet Caches](captures/pj3-carnet-caches.jpg)

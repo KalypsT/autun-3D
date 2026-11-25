@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PUBLIC_DATA } from "../data/data-version";
 import { closingHour, hourText, nextOpening, openingText, scheduleOf } from "./opening";
-import { canBuy, foodShops, MENUS, shopAt, shopHours, shopOpen } from "./shops";
+import { canBuy, canBuyWeapon, foodShops, MENUS, shopAt, shopHours, shopOpen, weaponShops } from "./shops";
+import { Inventory } from "./weapons";
 
 describe("magasins (D322)", () => {
   const places = (JSON.parse(readFileSync(`${PUBLIC_DATA}/map/places.json`, "utf8")) as { places: { id: string; cat: string; name?: string; kind?: string; x: number; y: number }[] }).places;
@@ -43,8 +44,33 @@ describe("magasins (D322)", () => {
 
   it("achat : refusé sans argent, et quand la santé est déjà pleine", () => {
     const sandwich = MENUS["bakery"]![1]!;
-    expect(canBuy(sandwich, 3, 40, 100)).toBe("Il manque 4 €");
+    expect(canBuy(sandwich, 3, 40, 100)).toBe("Il manque 4\u00a0€");
     expect(canBuy(sandwich, 20, 100, 100)).toBe("Santé pleine");
     expect(canBuy(sandwich, 20, 40, 100)).toBeNull();
+  });
+});
+
+describe("armureries (D324)", () => {
+  const places = (JSON.parse(readFileSync(`${PUBLIC_DATA}/map/places.json`, "utf8")) as { places: { id: string; cat: string; name?: string; kind?: string; x: number; y: number }[] }).places;
+  const shops = weaponShops(places);
+
+  it("James et le Surplus Éduen, chacun avec ses armes et ses munitions", () => {
+    expect(shops.map((s) => s.name)).toEqual(["James", "Surplus Éduen"]);
+    expect(shops[0]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["pistol", "shotgun", "sniper"]);
+    expect(shops[1]!.items.filter((i) => !i.ammo).map((i) => i.weapon)).toEqual(["knife", "bat", "rifle"]);
+    for (const s of shops) for (const i of s.items) if (i.ammo) expect(s.items.some((q) => q.weapon === i.weapon && !q.ammo)).toBe(true);
+  });
+
+  it("refus : déjà à toi, munitions sans l'arme, réserve pleine, pas assez d'argent", () => {
+    const inv = new Inventory();
+    const pistol = shops[0]!.items.find((i) => i.weapon === "pistol" && !i.ammo)!, bullets = shops[0]!.items.find((i) => i.weapon === "pistol" && i.ammo)!;
+    expect(canBuyWeapon(pistol, 100, inv)).toBe("Il manque 300\u00a0€");
+    expect(canBuyWeapon(bullets, 100, inv)).toBe("Il te faut l'arme");
+    expect(canBuyWeapon(pistol, 1000, inv)).toBeNull();
+    inv.grant("pistol", 12);
+    expect(canBuyWeapon(pistol, 1000, inv)).toBe("Déjà à toi");
+    expect(canBuyWeapon(bullets, 1000, inv)).toBeNull();
+    inv.grant("pistol", 1000);
+    expect(canBuyWeapon(bullets, 1000, inv)).toBe("Réserve pleine");
   });
 });

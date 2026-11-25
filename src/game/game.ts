@@ -22,7 +22,7 @@ import { DAMAGE, ZONES, type DamageTier } from "../core/damage";
 import { GarageStop } from "../core/garages";
 import { arrestFine, deathBill, formatMoney, repairCost, Wallet, walletDrop } from "../core/wallet";
 import { MoneyHud } from "../ui/money-hud";
-import { canBuy, canBuyVehicle, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
+import { canBuy, canBuyVehicle, canBuyWeapon, shopAt, shopHours, shopOpen, type Shop } from "../core/shops";
 import { GENDARMERIE, IMPOUND_FEE, OwnedVehicles, type OwnedVehicle } from "../core/owned";
 import { isOpen as scheduleOpen, openingText, scheduleOf } from "../core/opening";
 import { ShopScreen } from "../ui/shop-screen";
@@ -60,7 +60,7 @@ import { AimAssist, type AimAssistInput } from "../core/aim-assist";
 import { KICK, scopePan, scopeSway } from "../core/scope";
 import { Threats } from "../core/threat";
 import type { CrowdScope } from "../render/crowd/crowd-types";
-import { CACHE_ROUNDS, Pickups } from "../core/pickups";
+import { CACHE_ROUNDS, CACHES, cacheId, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
 import { Fx, type PickupView } from "../render/fx";
@@ -530,6 +530,8 @@ export function startGame(ctx: GameContext): void {
   const melee = new Melee();
   const gun = new Gun(0x51f7);
   const pickups = new Pickups();
+  // Caches déjà prises dans cette partie (D324) : elles ne reviennent plus.
+  pickups.retire(new Set(CACHES.map(cacheId).filter((id) => saved?.book?.[`caches:${id}`] !== undefined)));
   // Pharmacies (D322) : leur croix n'est là qu'aux heures d'ouverture ; celles de l'hôpital toujours.
   const pharmacy = scheduleOf("pharmacy");
   pickups.closed = (p) => p.price > 0 && !scheduleOpen(pharmacy, atmosphere.calendar.weekday, atmosphere.hour);
@@ -1236,7 +1238,7 @@ export function startGame(ctx: GameContext): void {
     shopScreen.open(shop, {
       hours: () => shopHours(shop, day, hour),
       balance: () => wallet.balance,
-      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
+      refusal: (item) => (item.vehicle ? canBuyVehicle(item, wallet.balance, owned.full) : item.weapon ? canBuyWeapon(item, wallet.balance, inventory) : canBuy(item, wallet.balance, health.hp, MAX_HEALTH)),
       palette: (item) => (item.vehicle ? vehicleDef(item.vehicle)?.palette ?? [] : []),
       buy: (item, variant) => {
         if (item.vehicle) {
@@ -1247,6 +1249,19 @@ export function startGame(ctx: GameContext): void {
           moneyHud.set(wallet.balance, wallet.drain());
           ui.save();
           return v ? `${vehicleDef(o.model)?.name ?? "Véhicule"} : livraison devant ${shop.name}. À toi !` : "Livraison dès qu'une place se libère devant le magasin.";
+        }
+        if (item.weapon) {
+          // Armes et munitions (D324) : une arme neuve arrive chargée et passe dans la main ; des munitions vont au chargeur vide ou en réserve.
+          if (canBuyWeapon(item, wallet.balance, inventory) !== null || !wallet.spend(item.price, item.name)) return "";
+          const def = WEAPONS[item.weapon];
+          if (item.ammo) inventory.grant(item.weapon, item.ammo);
+          else {
+            inventory.grant(item.weapon, def.kind === "gun" ? def.mag : 0);
+            inventory.select(item.weapon);
+          }
+          audio.pickup();
+          moneyHud.set(wallet.balance, wallet.drain());
+          return item.ammo ? `${item.name} : ${inventory.magOf(item.weapon) + inventory.reserveOf(item.weapon)} balles en tout.` : `${def.name} : à toi, en main.`;
         }
         if (canBuy(item, wallet.balance, health.hp, MAX_HEALTH) !== null || !wallet.spend(item.price, item.name)) return "";
         if (item.heal) {
@@ -1903,6 +1918,8 @@ export function startGame(ctx: GameContext): void {
     // Ramassage automatique (D159) : à pied, vivant et debout, on prend ce qu'on foule (arme, balles, croix de pharmacie), sans bouton.
     if (!riding && !health.dead && downFor <= 0) {
       const pk = pickups.collect(player.x, player.y, inventory, health, wallet);
+      // Cache d'armes (D324) : notée dans le carnet, elle ne reviendra plus.
+      if (pk?.site && notebook.mark("caches", pk.site, atmosphere.date)) showFeat(`Cache d'armes · ${notebook.count("caches")} sur ${CACHES.length}`);
       if (pk?.kind === "heal") audio.heal();
       else if (pk) audio.pickup();
     }

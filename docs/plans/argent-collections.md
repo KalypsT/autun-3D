@@ -90,7 +90,7 @@ Ordre de grandeur : monuments ≈ 14 600 € (bonus compris), objets ≈ 9 500 �
 **Réponses de l'utilisateur (24 novembre 2026)** : « ok » pour toutes les réponses par défaut, sauf la 4 : **deux magasins
 d'armes**, « James » (chasse, à 200 m au sud de la mairie) pour les armes du genre pistolet, mitraillette, etc., et le **Surplus
 Éduen** (3 avenue Charles-de-Gaulle, devanture déjà dessinée d'après photo, D183) pour quelques armes de guerre et des grenades « ou
-autres ». La répartition exacte et les nouvelles armes sont à préciser avant le lot 7. Décisions : D317 et suivantes.
+autres ». Le 25 novembre : « ok » pour les réponses par défaut du lot 7 (James : pistolet, fusil à pompe, fusil de précision, pistolet-mitrailleur ; Surplus : couteau, batte, fusil d'assaut, mitrailleuse, grenades, gilet pare-balles, fumigènes ; la grenade se lance au bouton d'attaque ; caches uniques comptées au carnet). Décisions : D317 et suivantes.
 
 1. **Échelle** : [euros, tableau du § 6].
 2. **Ce que donne un véhicule acheté** : [à toi : pas d'étoile en le prenant, jamais oublié, couleur choisie, revient chez le

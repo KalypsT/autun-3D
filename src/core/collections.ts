@@ -7,7 +7,7 @@
  * Analogie : l'album de vignettes. Chaque vignette a sa case ; la coller rapporte un peu, finir la page rapporte davantage.
  */
 
-export type CollectionId = "monuments" | "tresors";
+export type CollectionId = "monuments" | "tresors" | "caches";
 
 /** Fiche d'une entrée (monuments, D320) : texte, phrase « Le savais-tu ? » (vide s'il n'y en a pas) et sources. */
 export interface Fiche {
@@ -41,6 +41,8 @@ export interface CollectionDef {
   entries: readonly CollectionEntry[];
   /** Bonus quand toute la collection est trouvée (€). */
   bonus: number;
+  /** Phrase d'aide sous la liste du carnet. */
+  hint?: string;
 }
 
 /** Écart de hauteur (m) toléré pour une entrée qui a une altitude. */
@@ -89,7 +91,8 @@ export class Notebook {
   check(x: number, y: number, z: number, date: number): Discovery | null {
     for (const d of this.defs) {
       for (const e of d.entries) {
-        if (this.has(d.id, e.id)) continue;
+        // Rayon nul : l'entrée ne se découvre pas en passant, le jeu la note lui-même (caches d'armes, D324 : quand on prend l'arme).
+        if (e.radius <= 0 || this.has(d.id, e.id)) continue;
         const dx = x - e.x, dy = y - e.y;
         if (dx * dx + dy * dy > e.radius * e.radius) continue;
         if (e.z !== undefined && Math.abs(z - e.z) > HEIGHT_REACH) continue;
@@ -99,6 +102,14 @@ export class Notebook {
       }
     }
     return null;
+  }
+
+  /** Note une entrée trouvée (sans zone : le jeu sait quand) ; renvoie la découverte, ou null si elle l'était déjà ou n'existe pas. */
+  mark(c: CollectionId, id: string, date: number): Discovery | null {
+    const d = this.defs.find((x) => x.id === c), e = d?.entries.find((q) => q.id === id);
+    if (!d || !e || this.has(c, id)) return null;
+    this.found.set(key(c, id), Math.max(0, Math.floor(date)));
+    return { collection: d, entry: e, reward: e.reward, bonus: d.entries.every((q) => this.has(c, q.id)) ? d.bonus : 0 };
   }
 
   toSave(): SavedNotebook {

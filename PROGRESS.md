@@ -2331,3 +2331,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le concessionnaire](docs/captures/pj3-concession.jpg)
 ![Livrée](docs/captures/pj3-livraison.jpg)
 ![L'onglet Véhicules](docs/captures/pj3-carnet-vehicules.jpg)
+
+**Plaisir de jeu, lot 3-7-1 : les armureries (25 novembre 2026)** (D324)
+- **James** (au sud de la mairie) vend pistolet, fusil à pompe et fusil de précision, et leurs munitions ; le **Surplus Éduen** (avenue Charles-de-Gaulle) vend couteau, batte et fusil d'assaut, et ses balles. Aux heures des boutiques.
+- Une arme achetée arrive chargée, en main. Les munitions se rachètent au chargeur.
+- Les **caches ne reviennent plus** une fois prises : elles sont notées dans le carnet, onglet **Caches**.
+- Suite : pistolet-mitrailleur, mitrailleuse, grenades, gilet pare-balles et fumigènes.
+![Chez James](docs/captures/pj3-james.jpg)

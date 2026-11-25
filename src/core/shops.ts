@@ -1,6 +1,8 @@
 import { closingHour, hourText, isOpen, openingText, scheduleOf, type ScheduleId } from "./opening";
 import { VEHICLE_PRICES } from "./owned";
 import { vehicleDef } from "./vehicle-catalog";
+import { formatMoney } from "./wallet";
+import { reserveCap, WEAPONS, type Inventory, type WeaponId } from "./weapons";
 
 /**
  * Magasins (plaisir de jeu, phase 3, lot 6, D322) : les vrais commerces d'Autun (lieux de `map/places.json`), chacun avec son horaire type
@@ -18,6 +20,10 @@ export interface ShopItem {
   heal?: number;
   /** Véhicule vendu (modèle du catalogue, D323) : on choisit sa couleur, il est livré devant le magasin. */
   vehicle?: string;
+  /** Arme vendue (D324) : l'arme (avec un chargeur plein) ou, avec `ammo`, des munitions pour elle. */
+  weapon?: WeaponId;
+  /** Munitions seules : nombre de balles (il faut posséder l'arme). */
+  ammo?: number;
 }
 
 export interface Shop {
@@ -98,7 +104,7 @@ export function shopHours(s: Shop, weekday: number, hour: number): string {
 
 /** Peut-on acheter cet article ? Raison du refus sinon (pas assez d'argent, santé déjà pleine). */
 export function canBuy(item: ShopItem, balance: number, hp: number, maxHp: number): string | null {
-  if (balance < item.price) return `Il manque ${item.price - balance} €`;
+  if (balance < item.price) return `Il manque ${formatMoney(item.price - balance)}`;
   if (item.heal && hp >= maxHp) return "Santé pleine";
   return null;
 }
@@ -127,6 +133,54 @@ export function vehicleShops(places: readonly { id: string; cat: string; name?: 
 /** Refus d'un achat de véhicule : pas assez d'argent, ou déjà six véhicules. */
 export function canBuyVehicle(item: ShopItem, balance: number, full: boolean): string | null {
   if (full) return "Garage plein (6)";
-  if (balance < item.price) return `Il manque ${item.price - balance} €`;
+  if (balance < item.price) return `Il manque ${formatMoney(item.price - balance)}`;
+  return null;
+}
+
+/** Prix des armes (D324). */
+export const WEAPON_PRICES: Readonly<Partial<Record<WeaponId, number>>> = { bat: 30, knife: 40, pistol: 400, shotgun: 900, rifle: 2500, sniper: 3500 };
+/** Munitions vendues : un chargeur, et son prix (D324). */
+export const AMMO_PACKS: Readonly<Partial<Record<WeaponId, { rounds: number; price: number; name: string }>>> = {
+  pistol: { rounds: 12, price: 30, name: "Balles de pistolet" },
+  shotgun: { rounds: 6, price: 40, name: "Cartouches" },
+  rifle: { rounds: 30, price: 80, name: "Balles de fusil d'assaut" },
+  sniper: { rounds: 5, price: 60, name: "Balles de précision" },
+};
+
+const armItem = (id: WeaponId): ShopItem => ({ id, name: WEAPONS[id].name, price: WEAPON_PRICES[id]!, weapon: id });
+const ammoItem = (id: WeaponId): ShopItem => {
+  const a = AMMO_PACKS[id]!;
+  return { id: `ammo-${id}`, name: `${a.name} (${a.rounds})`, price: a.price, weapon: id, ammo: a.rounds };
+};
+
+/**
+ * Le Surplus Éduen (D324) : il n'est pas dans OpenStreetMap ; sa devanture est dessinée d'après photo (D183), 3 avenue Charles-de-Gaulle
+ * (mur 7 du bâtiment `BATIMENT0000000348852378`). Le point est devant la vitrine.
+ */
+export const SURPLUS = { id: "perso:surplus-eduen", name: "Surplus Éduen", x: -30.5, y: 31.5 } as const;
+
+/**
+ * Les deux magasins d'armes (D324, choix de l'utilisateur) : **James** (commerce de chasse d'OpenStreetMap) pour les armes de poing et
+ * d'épaule, le **Surplus Éduen** pour les armes de guerre et l'équipement ; aux heures des boutiques. Les nouvelles armes (pistolet-
+ * mitrailleur, mitrailleuse, grenades, gilet, fumigènes) s'y ajoutent aux lots suivants.
+ */
+export function weaponShops(places: readonly { id: string; cat: string; name?: string; kind?: string | null; x: number; y: number }[]): Shop[] {
+  const out: Shop[] = [];
+  const james = places.find((p) => p.cat === "commerce" && p.kind === "hunting" && p.name === "James");
+  if (james) out.push({ id: james.id, name: "James", kind: "hunting", x: james.x, y: james.y, reach: 11, schedule: scheduleOf("hunting"),
+    items: [armItem("pistol"), armItem("shotgun"), armItem("sniper"), ammoItem("pistol"), ammoItem("shotgun"), ammoItem("sniper")] });
+  out.push({ ...SURPLUS, kind: "army", reach: 8, schedule: scheduleOf("army"),
+    items: [armItem("knife"), armItem("bat"), armItem("rifle"), ammoItem("rifle")] });
+  return out;
+}
+
+/** Refus d'un achat d'arme : pas assez d'argent, arme déjà possédée, munitions sans l'arme, réserve pleine. */
+export function canBuyWeapon(item: ShopItem, balance: number, inv: Pick<Inventory, "has" | "reserveOf">): string | null {
+  const id = item.weapon!;
+  if (item.ammo) {
+    if (!inv.has(id)) return "Il te faut l'arme";
+    if (inv.reserveOf(id) >= reserveCap(WEAPONS[id])) return "Réserve pleine";
+  } else if (inv.has(id)) return "Déjà à toi";
+  if (balance < item.price) return `Il manque ${formatMoney(item.price - balance)}`;
   return null;
 }

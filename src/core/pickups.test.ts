@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { NavGraph } from "./nav-graph";
 import { MASK_ZONE } from "./pedestrians";
 import { Health, HOSPITALS, MAX_HEALTH } from "./health";
-import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, CASH_LIFE, DROP_LIFE, PHARMACY_PRICE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
+import { CACHE_RESPAWN, CACHE_ROUNDS, CACHES, cacheId, CASH_LIFE, DROP_LIFE, PHARMACY_PRICE, HEAL_RESPAWN, HEAL_SITES, PICKUP_REACH, Pickups } from "./pickups";
 import { loadRealNav, loadRealWorld } from "./testing";
 import { Inventory, reserveCap, WEAPONS } from "./weapons";
 import { buildColliders } from "./world";
@@ -35,32 +35,33 @@ describe("armes au sol (J5-3)", () => {
     expect(new Set(CACHES.map((c) => `${c.x},${c.y}`)).size).toBe(CACHES.length);
   });
 
-  it("ramasser : l'arme et ses balles vont dans l'inventaire, la cache réapparaît après 5 minutes, pas deux fois la même arme blanche", () => {
-    const p = new Pickups([{ weapon: "pistol", x: 0, y: 0, label: "a" }, { weapon: "knife", x: 10, y: 0, label: "b" }], []);
+  it("ramasser : l'arme et ses balles vont dans l'inventaire ; une cache ne revient plus (D324), pas deux fois la même arme blanche", () => {
+    const p = new Pickups([{ weapon: "pistol", x: 0, y: 0, label: "Café de la Bourse" }, { weapon: "knife", x: 10, y: 0, label: "b" }], []);
     const inv = new Inventory();
+    expect(p.list[0]!.site).toBe("pistol-cafe-de-la-bourse");
     expect(p.nearest(1, 0, PICKUP_REACH)).toBe(p.list[0]);
     expect(p.nearest(5, 0, PICKUP_REACH)).toBeNull();
     expect(p.take(p.list[0]!, inv)).toBe(true);
     expect(inv.has("pistol")).toBe(true);
     expect(inv.magOf("pistol")).toBe(12);
     expect(inv.reserveOf("pistol")).toBe(CACHE_ROUNDS.pistol! - 12);
-    // Prise : plus disponible.
+    // Prise : plus jamais disponible.
     expect(p.nearest(0, 0, 5)).toBeNull();
-    expect(p.take(p.list[0]!, inv)).toBe(false);
-    p.update(CACHE_RESPAWN - 1);
+    p.update(CACHE_RESPAWN * 10);
     expect(p.available(p.list[0]!)).toBe(false);
-    p.update(2);
-    expect(p.available(p.list[0]!)).toBe(true);
-    // Les balles se ramassent encore tant que la réserve n'est pas pleine, jamais une arme blanche qu'on a déjà.
-    expect(p.take(p.list[0]!, inv)).toBe(true);
-    expect(inv.reserveOf("pistol")).toBe(Math.min(reserveCap(WEAPONS.pistol), CACHE_ROUNDS.pistol! - 12 + CACHE_ROUNDS.pistol!));
-    expect(p.take(p.list[1]!, inv)).toBe(true);
-    p.update(CACHE_RESPAWN + 1);
+    // Une arme blanche qu'on a déjà ne se ramasse pas : la cache reste là.
+    inv.grant("knife");
     expect(p.canTake(p.list[1]!, inv)).toBe(false);
-    // Réserve pleine : rien à ramasser.
-    inv.grant("pistol", 1000);
-    p.update(CACHE_RESPAWN + 1);
-    expect(p.canTake(p.list[0]!, inv)).toBe(false);
+    expect(p.available(p.list[1]!)).toBe(true);
+  });
+
+  it("une partie reprise oublie les caches déjà prises (D324)", () => {
+    const p = new Pickups([{ weapon: "pistol", x: 0, y: 0, label: "a" }, { weapon: "bat", x: 10, y: 0, label: "b" }], []);
+    p.retire(new Set(["bat-b"]));
+    expect(p.available(p.list[0]!)).toBe(true);
+    expect(p.available(p.list[1]!)).toBe(false);
+    expect(new Set(CACHES.map(cacheId)).size).toBe(CACHES.length);
+    expect(reserveCap(WEAPONS.pistol)).toBe(72);
   });
 
   it("une arme lâchée disparaît quand on la ramasse, ou d'elle-même après trois minutes", () => {

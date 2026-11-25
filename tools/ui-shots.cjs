@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -337,6 +337,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => window.__autun.ui.showCarnet("vehicules"));
     await sleep(500);
     await shot("pj3-carnet-vehicules");
+    await ctx.close();
+  }
+
+  if (want("armes")) {
+    // Armureries (PJ 3, D324) : James, un mercredi à 10 h, 1 000 € : un pistolet, puis des balles ; l'onglet Caches du carnet.
+    const ctx = await open("money=1000&h=10&weekday=3&at=2,-190&yaw=3.14");
+    await page.waitForFunction(() => window.__autun.ui.shops.some((s) => s.name === "James"), null, { timeout: 120000 });
+    await sleep(1500);
+    const shop = await page.evaluate(() => { const s = window.__autun.ui.shops.find((q) => q.name === "James"); return { x: s.x, y: s.y }; });
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2;
+      await page.evaluate(([q, aa]) => { const p = window.__autun.player; p.x = q.x + Math.sin(aa) * 8; p.y = q.y + Math.cos(aa) * 8; p.z = -1000; p.vz = 0; }, [shop, a]);
+      await frames(4);
+      if ((await page.evaluate(() => document.getElementById("action").getAttribute("aria-label") || "")).startsWith("Entrer")) break;
+    }
+    console.log("bouton :", await page.evaluate(() => document.getElementById("action").getAttribute("aria-label")));
+    await click("#action");
+    await sleep(400);
+    await page.locator("#shop .sh-row").nth(0).locator(".sh-buy").click();
+    await sleep(200);
+    await page.locator("#shop .sh-row").nth(3).locator(".sh-buy").click();
+    await sleep(300);
+    console.log("note :", await page.evaluate(() => document.querySelector("#shop .sh-note")?.textContent), "solde :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj3-james");
+    await click("#shop .sh-leave");
+    await page.evaluate(() => window.__autun.ui.showCarnet("caches"));
+    await sleep(500);
+    await shot("pj3-carnet-caches");
     await ctx.close();
   }
 

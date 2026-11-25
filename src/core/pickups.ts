@@ -35,6 +35,11 @@ export const CACHES: readonly CacheSite[] = [
   { weapon: "sniper", x: 1193.3, y: -741.0, label: "Pierre de Couhard" },
 ];
 
+/** Identifiant stable d'une cache (carnet, D324) : l'arme et le lieu, sans accents ni espaces. */
+export function cacheId(c: CacheSite): string {
+  return `${c.weapon}-${c.label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
 /** Balles d'une cache (armes à feu) : un chargeur plein et autant en réserve ; le fusil d'assaut deux chargeurs en réserve. */
 export const CACHE_ROUNDS: Partial<Record<WeaponId, number>> = { pistol: 24, shotgun: 18, rifle: 90, sniper: 15 };
 /** Soin complet dans une pharmacie (D322). */
@@ -103,6 +108,8 @@ export interface Pickup {
   cash: number;
   /** Prix à payer pour le prendre (croix d'une pharmacie, D322) ; 0 : gratuit. */
   price: number;
+  /** Cache d'armes : son identifiant (`cacheId`) ; elle ne revient pas une fois prise (D324). Null pour le reste. */
+  site: string | null;
   label: string;
   /** Instant (horloge de `Pickups`) où elle est de nouveau disponible ; 0 : disponible. */
   readyAt: number;
@@ -118,8 +125,8 @@ export class Pickups {
   private nextId = 0;
 
   constructor(sites: readonly CacheSite[] = CACHES, heals: readonly HealSite[] = HEAL_SITES) {
-    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, cash: 0, price: 0, label: c.label, readyAt: 0, dropped: false, expires: Infinity });
-    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, cash: 0, price: h.price ?? 0, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const c of sites) this.list.push({ id: this.nextId++, x: c.x, y: c.y, kind: "weapon", weapon: c.weapon, rounds: CACHE_ROUNDS[c.weapon] ?? 0, cash: 0, price: 0, site: cacheId(c), label: c.label, readyAt: 0, dropped: false, expires: Infinity });
+    for (const h of heals) this.list.push({ id: this.nextId++, x: h.x, y: h.y, kind: "heal", weapon: null, rounds: 0, cash: 0, price: h.price ?? 0, site: null, label: h.label, readyAt: 0, dropped: false, expires: Infinity });
   }
 
   /** Fermé en ce moment (croix d'une pharmacie hors de ses heures, D322) : branché par le jeu ; ni dessiné, ni pris. */
@@ -134,9 +141,14 @@ export class Pickups {
     for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i]!.dropped && this.time >= this.list[i]!.expires) this.list.splice(i, 1);
   }
 
+  /** Caches déjà prises dans une partie enregistrée (D324) : elles ne sont plus là. */
+  retire(sites: ReadonlySet<string>): void {
+    for (const p of this.list) if (p.site && sites.has(p.site)) p.readyAt = Infinity;
+  }
+
   /** Arme lâchée en (x, y) (J5-5 : le gendarme tué). */
   drop(x: number, y: number, weapon: WeaponId, rounds: number): Pickup {
-    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, cash: 0, price: 0, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
+    const p: Pickup = { id: this.nextId++, x, y, kind: "weapon", weapon, rounds, cash: 0, price: 0, site: null, label: "arme lâchée", readyAt: 0, dropped: true, expires: this.time + DROP_LIFE };
     this.list.push(p);
     return p;
   }
@@ -145,7 +157,7 @@ export class Pickups {
   dropCash(x: number, y: number, amount: number): Pickup {
     const heaps = this.list.filter((q) => q.kind === "cash");
     if (heaps.length >= 24) this.list.splice(this.list.indexOf(heaps[0]!), 1);
-    const p: Pickup = { id: this.nextId++, x, y, kind: "cash", weapon: null, rounds: 0, cash: Math.max(1, Math.round(amount)), price: 0, label: "portefeuille", readyAt: 0, dropped: true, expires: this.time + CASH_LIFE };
+    const p: Pickup = { id: this.nextId++, x, y, kind: "cash", weapon: null, rounds: 0, cash: Math.max(1, Math.round(amount)), price: 0, site: null, label: "portefeuille", readyAt: 0, dropped: true, expires: this.time + CASH_LIFE };
     this.list.push(p);
     return p;
   }
@@ -196,7 +208,8 @@ export class Pickups {
     // Une arme qu'on n'avait pas passe dans la main.
     if (fresh) inv.select(p.weapon!);
     if (p.dropped) p.expires = this.time;
-    else p.readyAt = this.time + CACHE_RESPAWN;
+    // Une cache ne revient plus (D324) : les armes s'achètent ; elle est notée dans le carnet.
+    else p.readyAt = p.site ? Infinity : this.time + CACHE_RESPAWN;
     return true;
   }
 

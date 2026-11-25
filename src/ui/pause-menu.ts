@@ -565,7 +565,7 @@ export class PauseMenu {
       return;
     }
     const n = book.count(col.id), total = col.entries.length;
-    c.append(h("p", "pm-muted", `${n} sur ${total} trouvés${n < total ? ` · ${formatMoney(col.bonus)} de plus quand tout est trouvé` : " · collection complète !"}`));
+    c.append(h("p", "pm-muted", `${n} sur ${total} trouvés${n >= total ? " · collection complète !" : col.bonus > 0 ? ` · ${formatMoney(col.bonus)} de plus quand tout est trouvé` : ""}`));
     const groups = new Map<string, typeof col.entries[number][]>();
     for (const e of col.entries) {
       const g = e.group ?? "";
@@ -581,7 +581,7 @@ export class PauseMenu {
         r.append(h("span", "", g || col.label), h("strong", "pm-record", `${n} sur ${list.length}`));
         c.append(r);
       }
-      c.append(h("p", "pm-muted", `Chacune rapporte ${formatMoney(col.entries[0]?.reward ?? 0)}. Elles sont sur les toits : on les entend tinter à l'approche.`));
+      if (col.hint) c.append(h("p", "pm-muted", col.hint));
       return;
     }
     for (const [g, list] of groups) {
