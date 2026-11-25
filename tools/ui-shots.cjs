@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), vol (vol à l'arraché, phase 4), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -213,6 +213,66 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await clickText("Records");
     await sleep(400);
     await shot("pj3-carnet-records");
+    await ctx.close();
+  }
+
+  if (want("vol")) {
+    // Vol à l'arraché (phase 4, E1) : le voleur rejoint sa victime, lui arrache son sac (bulle « Au voleur ! », repères sur la minimap) ;
+    // il est mis à terre, le sac tombe ; ramassé, rendu à la victime (bouton « Rendre le sac », prime) ; l'onglet « Faits divers » du carnet.
+    const ctx = await open("event=vol&h=15&money=200&peds=150");
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const roles = await page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { victim: e.victim, thief: e.thief }; });
+    console.log("vol lancé :", roles);
+    // Pour la capture : le joueur à 10 m de la victime, de côté (dans le jeu, elle est à 15 – 45 m).
+    await page.evaluate((s) => {
+      const a = window.__autun, sim = a.pedsController().eventPeds(), q = { x: 0, y: 0 }, h = sim.headingOf(s);
+      sim.position(s, q);
+      a.player.x = q.x + Math.cos(h) * 9 + Math.sin(h) * 3;
+      a.player.y = q.y - Math.sin(h) * 9 + Math.cos(h) * 3;
+    }, roles.victim);
+    // On regarde la victime.
+    const lookAt = async (slot) => page.evaluate((s) => {
+      const a = window.__autun, sim = a.pedsController().eventPeds(), q = { x: 0, y: 0 };
+      sim.position(s, q);
+      a.look(Math.atan2(q.x - a.player.x, q.y - a.player.y));
+      a.tilt(0.12);
+    }, slot);
+    for (let k = 0; k < 400; k++) {
+      await lookAt(roles.victim);
+      const phase = await page.evaluate(() => window.__autun.events.director.active[0]?.phase ?? "fini");
+      if (phase !== "approach") break;
+      await sleep(400);
+    }
+    await sleep(700);
+    await shot("pj4-vol-arrache");
+    await lookAt(roles.thief);
+    await sleep(1500);
+    await shot("pj4-vol-fuite");
+    // Le voleur plaqué (comme un joueur en sprint) : le sac tombe.
+    await page.evaluate((s) => window.__autun.pedsController().eventPeds().applyImpulse(s, 0, 4.4), roles.thief);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "bag", null, { timeout: 60000, polling: 200 });
+    const bag = await page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { ...e.bagAt }; });
+    // Le sac un peu à droite du personnage (droit devant, il serait caché par lui).
+    await page.evaluate((b) => { const a = window.__autun; a.player.x = b.x - 3.2; a.player.y = b.y - 2.2; a.look(Math.atan2(3.2, 2.2) - 0.3); a.tilt(0.35); }, bag);
+    await sleep(1200);
+    await shot("pj4-vol-sac");
+    await page.evaluate((b) => { const p = window.__autun.player; p.x = b.x; p.y = b.y; }, bag);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "carried", null, { timeout: 60000, polling: 200 });
+    const v = await page.evaluate((s) => { const q = { x: 0, y: 0 }; window.__autun.pedsController().eventPeds().position(s, q); return q; }, roles.victim);
+    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x + 1.6; a.player.y = q.y - 1.2; a.look(Math.atan2(-1.6, 1.2)); a.tilt(0.25); }, v);
+    await page.waitForFunction(() => document.getElementById("action").textContent.includes("Rendre"), null, { timeout: 60000, polling: 200 });
+    await sleep(500);
+    await shot("pj4-vol-rendre");
+    await click("#action");
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(600);
+    console.log("solde après le sac rendu :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj4-vol-merci");
+    await sleep(1500);
+    await page.evaluate(() => window.__autun.ui.showCarnet("faits"));
+    await sleep(600);
+    await shot("pj4-carnet-faits");
     await ctx.close();
   }
 

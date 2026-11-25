@@ -283,8 +283,9 @@ export function swimPitch(speed: number): number {
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
 /** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
-/** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains). */
-export const LIFE_POSE = { sit: 5, phone: 6, talk: 7 } as const;
+/** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains) ;
+ * bras tendu qui montre (phase 4 : la victime d'un vol montre le voleur). */
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,85 s pour tomber et s'immobiliser, environ 1,2 s au sol, 1,5 s pour se relever (D210). */
 export const DOWN_TIME = 3.6;
@@ -1217,6 +1218,17 @@ export function phonePose(pose: Pose): void {
   a[BONE.armR * 3 + 2] = 0.08;
   a[BONE.forearmR * 3] = 2.45;
   a[BONE.head * 3]! -= 0.35;
+}
+
+/** Bras tendu (phase 4, événements), par-dessus la pose d'arrêt ou de marche : le bras droit montre droit devant, à hauteur d'épaule, et s'agite. */
+export function pointPose(pose: Pose, t: number): void {
+  const a = pose.angles;
+  a[BONE.armR * 3] = 1.45 + 0.12 * Math.sin(t * 9);
+  a[BONE.armR * 3 + 1] = 0;
+  a[BONE.armR * 3 + 2] = 0.06;
+  a[BONE.forearmR * 3] = 0.15 + 0.1 * Math.sin(t * 9 + 0.6);
+  a[BONE.armL * 3] = 0.3;
+  a[BONE.forearmL * 3] = 0.8;
 }
 
 /** Discussion (D198), par-dessus la pose d'arrêt : les avant-bras bougent doucement, l'un après l'autre (`t` en s). */

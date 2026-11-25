@@ -106,9 +106,30 @@ export class PedsController implements Arena {
     }
   }
 
+  /** Les passants qu'on peut arrêter sans infraction (un voleur en fuite, phase 4) : branché par le jeu sur le directeur d'événements. */
+  lawful: ((slot: number) => boolean) | null = null;
+  /** Coups qui ont touché sans tuer un fuyard (`lawful`) depuis le dernier `takeLawfulHits` : ce ne sont pas des agressions. */
+  private lawfulHits = 0;
+
+  takeLawfulHits(): number {
+    const n = this.lawfulHits;
+    this.lawfulHits = 0;
+    return n;
+  }
+
+  /** La simulation, pour les événements (phase 4) : ils réquisitionnent des passants ; null sans foule. Elle change quand la foule est refabriquée. */
+  eventPeds(): PedSim | null {
+    return this.sim;
+  }
+
   hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
     const sim = this.sim;
     if (!sim) return 0;
+    if (slot < sim.reservedStart && this.lawful?.(slot)) {
+      const r = sim.damage(slot, damage, ux, uy, impulse);
+      if (r === 1) this.lawfulHits++;
+      return r;
+    }
     // Un emplacement réservé est un gendarme (J5-5) : le coup va à `Officers` (via `officerHurt`), pas à la simulation des passants.
     if (slot >= sim.reservedStart) return this.officerHurt ? this.officerHurt(slot - sim.reservedStart, damage, ux, uy, impulse) : 0;
     return sim.damage(slot, damage, ux, uy, impulse);

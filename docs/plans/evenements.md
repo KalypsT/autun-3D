@@ -2,6 +2,7 @@
 
 **Avancement** : plan rédigé le 25 novembre 2026 ; **réponses de l'utilisateur : « ok » pour toutes les réponses par défaut** (§ 9). Les lots
 se font **deux par deux**, avec une pause après chaque paire ; la PR à la fin de la phase.
+Lot 1 (socle et vol à l'arraché) fait : D328.
 
 Chantier « PJ » de `docs/ROADMAP.md`, phase 4. Demande : « c'est ce qui doit rendre la ville vraiment vivante : il faut bien le travailler ».
 Conventions habituelles : repère local du jeu (x vers l'est, y vers le nord), mètres, heures de jeu (une journée dure 20 minutes réelles).

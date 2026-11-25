@@ -2358,3 +2358,19 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **Fumigènes** (80 €) : on les lance comme une grenade ; le nuage dure 12 s, et à moins de 7 m la police ne te voit plus et ne te tire plus dessus.
 - **Phase 3 terminée côté code** (D317 à D327). À faire de ton côté : relire les fiches des monuments, et jouer : argent, carnet, magasins, véhicules, armes.
 ![Gilet et fumigène](docs/captures/pj3-fumigene.jpg)
+
+**Plaisir de jeu, phase 4, lot 1 : les événements et le vol à l'arraché (25 novembre 2026)** (D328)
+- La ville a maintenant un **directeur d'événements** : de temps en temps, quelque chose se passe près de toi, puis se termine tout seul si tu ne fais rien. Premier événement : **le vol à l'arraché**.
+- Un passant rejoint quelqu'un qui porte un sac, le lui **arrache** et s'enfuit en courant ; la victime tombe, crie, une **bulle « Au voleur ! »** apparaît au-dessus d'elle (au bord de l'écran, avec une flèche, si c'est hors champ), et elle montre le voleur du bras. Sur la minimap : un « ! » ocre pour la scène, un point rouge pour le voleur.
+- Le voleur court plus vite que toi, moins vite que ton **sprint** : touche-le en sprintant (il est **plaqué**), frappe-le ou renverse-le, et le **sac tombe**. Ramasse-le, puis **« Rendre »** près de la victime : « Merci ! » et **100 à 250 €**. Ou **« Fouiller »** : tu gardes ce qu'il contient (30 à 120 €), mais si quelqu'un te voit, c'est un vol (une étoile).
+- Arrêter le voleur n'est pas une agression ; le tuer reste un meurtre.
+- Les passants **fuient vraiment** maintenant : après un coup, un tir, un meurtre, ils choisissent les rues qui les éloignent de la scène, au lieu de seulement faire demi-tour.
+- Carnet : nouvel onglet **« Faits divers »**, avec trois défis (voleurs rattrapés, fugitifs arrêtés, bonnes actions) et le **journal du jour** (« Vol à l'arraché, rue du Général André Demetz · sac rendu »).
+- Nouveau réglage **« Événements »** : Aucun, Rares, Normaux (par défaut), Fréquents. Pour essayer tout de suite : `?event=vol`.
+- Honnêtement : avec un seul événement pour l'instant, on voit un vol toutes les 8 à 10 minutes au centre. Le rythme viendra avec les suivants (pickpocket et chien échappé au lot 2).
+- À faire de ton côté : jouer au centre avec `?event=vol`, et dire si la scène se lit bien sur le téléphone (distance, bulle), si le voleur est trop rapide ou trop lent, si la prime te va.
+![Le vol](docs/captures/pj4-vol-arrache.jpg)
+![Le sac au sol](docs/captures/pj4-vol-sac.jpg)
+![« Rendre »](docs/captures/pj4-vol-rendre.jpg)
+![Merci, et le premier défi](docs/captures/pj4-vol-merci.jpg)
+![Le carnet, onglet Faits divers](docs/captures/pj4-carnet-faits.jpg)

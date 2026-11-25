@@ -27,6 +27,8 @@ export interface Settings {
   crowd: number;
   /** Circulation : nombre maximal de voitures à la fois (0 = aucune). Le nombre réel suit l'heure et le lieu (D64). */
   traffic: number;
+  /** Événements aléatoires (phase 4) : 0 aucun, 1 rares, 2 normaux, 3 fréquents. */
+  events: 0 | 1 | 2 | 3;
   /** Volume général des sons (0 = muet, 1 = plein) (J7, D89). */
   volume: number;
   /** Vibrations du téléphone aux chocs, tirs et coups reçus (D90). */
@@ -47,7 +49,7 @@ export interface Settings {
   season: Season | -1;
 }
 
-export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, slowmo: true, effects: 2, sky: true, sea: true, fullscreen: true, seasonLength: 7, season: -1 };
+export const DEFAULT_SETTINGS: Settings = { dpr: 2.5, shadows: 4096, fps: 60, detail: 300, sensitivity: 1, aimSensitivity: 0.6, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, events: 2, volume: 0.8, vibration: true, slowmo: true, effects: 2, sky: true, sea: true, fullscreen: true, seasonLength: 7, season: -1 };
 
 export const DPR_CHOICES = [1.5, 2, 2.5, 3] as const;
 export const SHADOW_CHOICES = [0, 2048, 4096] as const;
@@ -56,6 +58,7 @@ export const DETAIL_CHOICES = [200, 300, 400] as const;
 export const CROWD_CHOICES = [0, 40, 100, 150] as const;
 export const TRAFFIC_CHOICES = [0, 10, 20, 30] as const;
 export const EFFECTS_CHOICES = [0, 1, 2] as const;
+export const EVENTS_CHOICES = [0, 1, 2, 3] as const;
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.1 } as const;
 export const AIM_SENSITIVITY_RANGE = { min: 0.3, max: 1.5, step: 0.1 } as const;
 export const VOLUME_STEP = 0.05;
@@ -79,6 +82,7 @@ export function parseSettings(raw: unknown): Settings {
     minimapNorth: typeof o["minimapNorth"] === "boolean" ? o["minimapNorth"] : d.minimapNorth,
     crowd: crowd === null ? d.crowd : nearest(CROWD_CHOICES, crowd),
     traffic: traffic === null ? d.traffic : nearest(TRAFFIC_CHOICES, traffic),
+    events: (EVENTS_CHOICES as readonly unknown[]).includes(o["events"]) ? (o["events"] as Settings["events"]) : d.events,
     volume: volume === null ? d.volume : roundVolume(volume),
     vibration: typeof o["vibration"] === "boolean" ? o["vibration"] : d.vibration,
     slowmo: typeof o["slowmo"] === "boolean" ? o["slowmo"] : d.slowmo,
@@ -142,6 +146,12 @@ export function effectiveSettings(stored: Settings, params: URLSearchParams): { 
   if (traffic !== null && traffic >= 0) {
     values.traffic = Math.min(Math.floor(traffic), 60);
     locked.add("traffic");
+  }
+  // ?events=0|1|2|3 impose le réglage « Événements » (phase 4 : 0 aucun … 3 fréquents).
+  const events = params.get("events");
+  if (events === "0" || events === "1" || events === "2" || events === "3") {
+    values.events = Number(events) as Settings["events"];
+    locked.add("events");
   }
   // ?sound=0 coupe le son (captures, banc), ?volume=0.5 l'impose.
   const volume = params.get("sound") === "0" ? 0 : num(params.get("volume") === null ? null : Number(params.get("volume")));

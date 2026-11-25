@@ -276,7 +276,7 @@ function startLook(ctx: GameContext, groundAt: (x: number, z: number) => number,
     const state = createCrowdState(Array.from({ length: n }, (_, i) => dressed(seed * 1000 + i)));
     // `&pose=sit|phone|talk` : tous dans une pose de la vie de quartier (D198). `&pose=down|stumble` : heurtés (D209), `t` s après le choc
     // (au sol par défaut), `side` +1 sur le dos, −1 à plat ventre ; chacun dans une variante de pose au sol (le n-ième dans la n-ième).
-    const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk, stumble: HIT_POSE.stumble, down: HIT_POSE.down }[params.get("pose") ?? ""] ?? 0;
+    const lifePose = { sit: LIFE_POSE.sit, phone: LIFE_POSE.phone, talk: LIFE_POSE.talk, point: LIFE_POSE.point, stumble: HIT_POSE.stumble, down: HIT_POSE.down }[params.get("pose") ?? ""] ?? 0;
     if (lifePose) {
       state.pose = new Uint8Array(n).fill(lifePose);
       // `t=0.1,0.3,…` : un instant par personnage (pellicule d'une chute, D210) ; `var=` : la même variante pour tous.

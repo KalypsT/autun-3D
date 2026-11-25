@@ -7919,3 +7919,96 @@ pas de cocktail Molotov.
 **À juger en jouant** : 7 m et 12 s suffisent-ils pour semer une poursuite ? Le gilet est-il trop fort ?
 
 ![Gilet (barre bleue) et nuage de fumigène](captures/pj3-fumigene.jpg)
+
+## 2026-11-25 — D328. Plaisir de jeu, phase 4, lot 1 : le socle des événements et le vol à l'arraché
+
+**Contexte** : plan `docs/plans/evenements.md` ; réponses de l'utilisateur (25 novembre) : « ok » pour toutes les réponses par défaut,
+caserne des pompiers retrouvée avenue André Frenaud (pour le lot 5) ; lots faits deux par deux, avec une pause.
+
+**Choix**
+- **Passants réquisitionnés** (`PedSim.borrow`, `release`, `command`, `src/core/pedestrians.ts`) : un événement prend un passant **déjà là**
+  (aucune naissance visible, **aucun appel de dessin de plus**) ; il ne disparaît plus avec la couronne ni le surnombre (seulement au-delà de
+  450 m ou si son arête est déchargée), ne s'assoit plus, ne flâne plus, quitte son groupe ; il garde l'évitement, les chocs, la santé et la
+  police. Ordres : **`flee`** (fuir une menace qui bouge, sur le graphe piéton), **`seek`** (aller droit vers un point, hors du graphe, en
+  évitant les murs), **`hold`** (rester sur place tourné vers un point, dans une pose). Rendu, il rejoint sa file en marchant (D213).
+- **Fuite volontaire** (demandée par l'utilisateur) : aux carrefours, le fuyard choisit la suite qui l'**éloigne le plus de la menace**, en
+  regardant deux arêtes plus loin (trois si l'arête est courte, comme un coin), une impasse notée bas, une rue qui part vers la menace
+  pénalisée ; demi-tour si la menace est devant lui à moins de 15 m. Un fuyard réquisitionné (le voleur) court sans attendre aux passages et
+  **bouscule** ceux qu'il frôle (ils trébuchent). **La panique ordinaire l'utilise aussi** : l'alarme (coup, meurtre, tir, D83), un passant
+  blessé, le conducteur dont on prend la voiture (D71) fuient désormais vraiment la scène au lieu de seulement retourner leur file une fois.
+- **Deux sauts corrigés en chemin** (visibles surtout chez un fuyard) : au demi-tour, le décalage latéral change de côté avec le sens (il
+  sautait de 2 × l'écart) ; dans un virage serré, l'écart latéral qui tourne avec la file est reporté dans le décalage d'esquive, qui
+  s'efface en marchant (saut mesuré de 23 cm à une image, désormais < 10 cm). L'alarme avait le premier défaut.
+- **Pose « bras tendu »** (`LIFE_POSE.point`, `pointPose`) : la victime montre le voleur, bras droit à hauteur d'épaule qui s'agite.
+- **Directeur d'événements** (`src/core/events/director.ts`, logique pure) : un tirage toutes les 2 s ; à « Normaux », un départ toutes les
+  3 minutes en moyenne au centre en journée (× 0,6 résidentiel, × 0,35 périphérie, × 0,25 nature ; × 0,4 de minuit à 6 h, × 0,7 tard le soir) ;
+  au moins 60 s entre deux départs (30 à « Fréquents »), 45 s après une fin ; calme d'une minute après un chargement, une mort, une
+  arrestation ; **rien quand le joueur a une étoile**, est à terre, nage ou est sur un toit ; un grand et un petit événement au plus ; le même
+  pas avant 8 minutes (5 à « Fréquents ») ; jamais deux fois de suite **quand un autre est possible** (avec un seul événement au catalogue,
+  la première version bloquait tout après le premier vol). Le directeur tient le **journal** (date, heure, issue, lieu).
+- **Vol à l'arraché** (`src/core/events/snatch.ts`) :
+  - **Rôles** : une victime qui marche avec un sac à main ou en bandoulière, à **15 – 45 m** du joueur, à l'écran et proche de préférence
+    (premier essai à 20 – 60 m : sur la capture, la victime ne faisait que quelques pixels) ; un voleur seul, adulte, pas en tenue de travail,
+    à 12 – 40 m d'elle, à plus de 15 m du joueur, **sans mur entre eux** ; jamais à moins de 60 m de la police.
+  - **Approche** : le voleur marche à l'allure de la victime plus 1,3 m/s (2,8 au plus ; première version à 1,7 m/s : il ne rattrapait
+    presque jamais une victime qui s'éloigne), puis court les 7 derniers mètres ; plus de 25 s sans l'atteindre, ou un des deux qui tombe,
+    ou la police qui arrive : la scène n'a pas lieu (rien ne s'est vu).
+  - **Arrachage** : le sac change de main (les recettes se rhabillent), la victime tombe (chute légère, D212) ou trébuche, crie, bulle
+    « Au voleur ! » ; les passants à 6 m s'écartent ; relevée, elle montre le voleur du bras, puis attend son sac téléphone en main
+    (2 minutes au plus).
+  - **Fuite** : 5,8 m/s (plus que la course du joueur, 5 m/s ; moins que son sprint, 7 m/s), 4,5 m/s après 15 s ; il fuit le joueur s'il est
+    à moins de 100 m. **Échappé** s'il est à plus de 90 m du joueur pendant 6 s, ou hors de vue et à plus de 55 m pendant 12 s ; la victime
+    reste alors 20 s au téléphone puis repart.
+  - **Rattrapé** : touché par le joueur à pied à plus de 4 m/s (**plaquage** : il tombe), frappé, renversé ou tué : le **sac tombe** à côté de
+    lui (une boîte à la couleur du sac et un faisceau orangé, dans le maillage des effets, D84) ; relevé, il fuit encore 15 s sans le sac.
+  - **Le sac** se ramasse en marchant dessus (« Sac récupéré »), reste 2 minutes au sol. Près de la victime, le bouton **« Rendre »**
+    (pictogramme de sac) : « Merci ! », **prime de 100 à 250 €** ; ailleurs, **« Fouiller »** : le contenu (30 à 120 €), et si un passant est
+    à moins de 25 m, un **vol** (nouvelle infraction `robbery`, une étoile, signalée par les passants) ; la victime qui le voit crie
+    « Au voleur ! ».
+  - **Ce qui est permis** (Q5 du plan) : frapper, plaquer ou renverser le voleur pendant sa fuite (et dans les 2 s qui suivent sa chute)
+    n'est ni une agression ni un passant renversé (`PedsController.lawful`, coups comptés à part) ; le tuer reste un meurtre, tirer reste un
+    coup de feu en public.
+- **Interface** : **bulles de parole** (`src/ui/speech.ts`, deux au plus, style affiche, fond crème, liseré et ombre encre ; hors champ, au
+  bord de l'écran en ocre, avec une flèche vers la scène) ; **repères sur la minimap** : « ! » ocre pour la scène, point rouge clignotant pour
+  le fuyard, anneau ocre pour la victime à rejoindre (sur le bord du disque quand ils sont loin) ; **bouton contextuel** avant tout le reste
+  (verbe court, libellé complet pour l'accessibilité) ; **cris** (`GameAudio.cry`).
+- **Carnet, onglet « Faits divers »** (`src/core/events/book.ts`) : trois défis à paliers, primes de D319 (bronze 100 €, argent 300 €, or
+  800 €) : **voleurs rattrapés 1 / 5 / 15**, **fugitifs arrêtés 1 / 3 / 8** (lot 4), **bonnes actions 5 / 20 / 50** ; puis le **journal du
+  jour** avec le nom de la rue (« Vol à l'arraché, rue du Général André Demetz · sac rendu »), tiré des tracés de la carte (`streetNear`).
+  Sauvegarde : champ facultatif `events` de la version 6.
+- **Réglage « Événements »** (menu pause, sous « Circulation ») : Aucun, Rares (× 0,4), **Normaux** (défaut), Fréquents (× 2,5) ;
+  `?events=0…3` l'impose ; **`?event=vol`** lance un vol dès qu'un lieu se trouve (et coupe la sauvegarde, comme les autres paramètres
+  d'essai) ; la ligne `?debug` donne les événements en cours, lancés, sans lieu, et le coût.
+
+**Mesures**
+- **Tests sans écran** (vraies données, vraie foule) : la fuite volontaire creuse l'écart avec un poursuivant à 4,5 m/s qui va droit sur le
+  fuyard dans au moins 6 cas sur 8, sans jamais attendre à un passage ; après une alarme, au plus un passant sur douze s'est rapproché de la
+  scène 8 s plus tard (D83 tolérait un quart), et ils en sont en moyenne à plus de 14 m ; un voleur plaqué se relève sans saut et reprend sa
+  fuite. Vol : rôles trouvés dans au moins 4 graines sur 6 ; arrachage dans au moins 60 % des essais ; sans joueur, le voleur s'échappe
+  toujours et tout est rendu à la foule ; un joueur qui sprinte droit sur lui le rattrape dans au moins 75 % des vols, et le sac est rendu
+  (prime) dans au moins 75 % de ceux-là.
+- **Endurance** (`src/game/events-soak.test.ts`, piège 8) : vingt minutes à « Fréquents » au centre, 100 passants, la vraie circulation
+  (20), un joueur qui flâne puis rattrape les voleurs ; deux graines : 2 et 3 départs, 2 + 2 vols, 4 voleurs rattrapés, 3 sacs rendus,
+  **aucun figurant oublié** (aucun passant réquisitionné quand rien n'est en cours), 2 passants réquisitionnés au plus, rien d'aberrant ;
+  **directeur et événements : 0,0004 à 0,0008 ms par image en moyenne, 0,5 à 1,1 ms au pire** (une recherche de lieu).
+- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1` : un vol forcé à chaque arrêt, essayé toutes les demi-secondes ; ligne
+  « Événements » du rapport). Essai en rendu logiciel, version brève (durées sans portée, phases de 2 à 3 s) : un vol lancé, deux passants
+  réquisitionnés, **0,01 à 0,09 ms par image**, pire 1,1 ms (la recherche d'un lieu) ; **aucun appel de dessin de plus** par construction
+  (les figurants sont des passants de la foule ; le sac au sol rejoint le maillage des effets, +1 appel s'il est le seul objet au sol).
+  À mesurer sur le téléphone avec le protocole de D86 en ajoutant `&events=1`.
+- Les endurances existantes (police, combat, combat de l'ensemble) passent sans changement de graine malgré la nouvelle panique.
+
+**Limites, honnêtement**
+- **Un seul événement au catalogue** : avec le délai de 8 minutes entre deux vols (5 à « Fréquents »), on voit **un vol toutes les 8 à
+  10 minutes** au centre, pas les trois minutes visées ; le rythme du plan viendra avec les lots suivants (pickpocket et chien au lot 2).
+- Écart au plan : la victime n'est jamais **assise en terrasse** (seulement des passants qui marchent : se lever, se faire voler, se rasseoir
+  demandait de toucher aux places assises).
+- Pas de voix (Q7 : bulles et cris seulement) ; la carte agrandie ne montre pas encore les repères (la minimap oui).
+- Le voleur s'enfuit par les files piétonnes : il ne traverse pas les pelouses ni les parkings en diagonale.
+
+**Vérifié** : `pedestrians-events.test.ts` (7), `events/director.test.ts` (5), `events/snatch.test.ts` (6), `events-soak.test.ts` ;
+`tools/ui.sh <dossier> vol` (le vol, la fuite, le sac au sol, « Rendre », la prime et le défi, l'onglet « Faits divers ») ;
+`?bench=1&crowd=100&sim=1&events=1` (un vol à chaque arrêt, ligne « Événements »).
+
+**À juger en jouant** : la lisibilité de la scène à 15 – 45 m sur le téléphone, la vitesse du voleur (rattrapable en sprint, pas en
+courant), la prime, et la fréquence quand les autres événements seront là.

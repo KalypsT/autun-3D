@@ -29,6 +29,8 @@ import { gendarmeRecipe } from "../core/character";
 import { PoliceController } from "./police";
 import { showReportPanel } from "./report-panel";
 import { CombatBot } from "./combat-bot";
+import { EventDirector, type DirectorContext } from "../core/events/director";
+import { eventCatalog } from "../core/events/catalog";
 import { Fx } from "../render/fx";
 import { GpuTimer } from "../render/gpu-timer";
 import type { EffectsLevel } from "../render/post";
@@ -116,6 +118,8 @@ interface PhaseReport {
   police: { cars: number; chasing: number; officers: number; avgMs: number; maxMs: number } | null;
   /** `?combat=1` (J5-6, D86) : à la fin de la phase, tirs, touchés, tués, cadavres, effets simultanés au plus, tirs de la police ; coût du tireur et des effets par image ; null sans. */
   combat: { shots: number; hits: number; kills: number; corpses: number; fxPeak: number; fxFrames: number; frames: number; policeShots: number; policeDamage: number; avgMs: number; maxMs: number } | null;
+  /** `?events=1` (phase 4) : événements lancés dans la phase, passants réquisitionnés au plus, coût du directeur et des événements par image ; null sans. */
+  events: { started: number; active: string; borrowedPeak: number; avgMs: number; maxMs: number } | null;
   /** Effets d'image (D314) : niveau, MSAA de la cible, force du halo et passes du halo à la fin de la phase ; temps de la carte graphique par image (null si Chrome ne le donne pas). */
   effects: { level: number; samples: number; bloom: number; passes: number; memoryMB: number; gpu: { medianMs: number; p95Ms: number; n: number } | null };
   /** Minimap : mises à jour de la phase, durée moyenne et pire durée (ms) ; null si elle est coupée (?minimap=0). */
@@ -241,6 +245,12 @@ export function startBench(ctx: GameContext): void {
   const fx = combatMode ? new Fx(scene) : null;
   let bot: CombatBot | null = null;
   let combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: 0, hits0: 0, kills0: 0 };
+  // ?events=1 (phase 4), avec ?sim=1 : les événements du jeu à « Fréquents » ; à chaque arrêt un vol à l'arraché est lancé autour du point suivi
+  // (les figurants sont des passants de la foule : 0 appel de dessin de plus).
+  const eventsMode = params.get("events") === "1" && simMode;
+  const director = eventsMode ? new EventDirector(7) : null;
+  let eventsCost = { ms: 0, max: 0, frames: 0, peak: 0, starts0: 0 };
+  let forceVol = false, forceIn = 0;
   const fleetMode = params.get("fleet") === "1";
   const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
   if (fleet) {
@@ -345,6 +355,7 @@ export function startBench(ctx: GameContext): void {
     traffic: trafficN,
     police: policeMode,
     combat: combatMode,
+    events: eventsMode,
     shadows: renderer.shadowMap.enabled,
     shadowMap: sunLight.shadow.mapSize.x,
     minimap: params.get("minimap") !== "0",
@@ -417,6 +428,8 @@ export function startBench(ctx: GameContext): void {
     trafficCost = { simMs: 0, simMax: 0, steps: 0, updMs: 0, updMax: 0, frames: 0, contacts: 0, honks: 0 };
     policeCost = { ms: 0, max: 0, frames: 0 };
     combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: bot?.shots ?? 0, hits0: bot?.hits ?? 0, kills0: bot?.kills ?? 0 };
+    eventsCost = { ms: 0, max: 0, frames: 0, peak: 0, starts0: director?.starts ?? 0 };
+    forceVol = !!director && !phase.drive;
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
@@ -429,6 +442,11 @@ export function startBench(ctx: GameContext): void {
         crowd = createCrowd(scene, pedSim.state);
         pedSim.onSpawn = (slot, recipe) => crowd?.assign?.(slot, recipe);
         if (combatMode) bot = new CombatBot(pedSim, ctx.colliders);
+        if (director) {
+          director.level = 3;
+          const sim = pedSim;
+          for (const d of eventCatalog({ peds: () => sim, fx: { say: () => {}, cry: () => {}, earn: () => {}, feat: () => {}, crime: () => {} } })) director.register(d);
+        }
         // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
         pigSim = new PigeonSim(nav!.graph, terrain, ctx.colliders, { capacity: pigeonCapacity(crowdN), seed: 7 });
         pigView = new PigeonRenderer(scene, Math.max(1, pigSim.capacity));
@@ -500,6 +518,12 @@ export function startBench(ctx: GameContext): void {
             shots: bot.shots - combatCost.shots0, hits: bot.hits - combatCost.hits0, kills: bot.kills - combatCost.kills0, corpses: pedSim?.stats.corpses ?? 0, fxPeak: combatCost.fxPeak,
             fxFrames: combatCost.fxFrames, frames: combatCost.frames, policeShots: combatCost.policeShots, policeDamage: Math.round(combatCost.policeDamage),
             avgMs: combatCost.frames ? combatCost.ms / combatCost.frames : 0, maxMs: combatCost.max,
+          }
+        : null,
+      events: director
+        ? {
+            started: director.starts - eventsCost.starts0, active: director.active.map((e) => e.kind).join("+") || "aucun", borrowedPeak: eventsCost.peak,
+            avgMs: eventsCost.frames ? eventsCost.ms / eventsCost.frames : 0, maxMs: eventsCost.max,
           }
         : null,
       traffic: traffic
@@ -762,6 +786,36 @@ export function startBench(ctx: GameContext): void {
           if (fx.count > 0) combatCost.fxFrames++;
         }
       }
+      if (director) {
+        const e0 = performance.now();
+        const yaw0 = Math.atan2(pos.look[0] - pos.cam[0], pos.look[1] - pos.cam[2]);
+        const ectx: DirectorContext = {
+          dt, player: { x: pos.x, y: pos.y, vx: pos.vx, vy: pos.vy, speed: Math.hypot(pos.vx, pos.vy), onFoot: !phase?.drive, yaw: yaw0 },
+          visible: () => true,
+          policeNear: (x, y, r) => {
+            let near = false;
+            traffic?.forEachPolice((_id, px, py) => (near ||= Math.hypot(px - x, py - y) < r));
+            return near;
+          },
+          lineClear: (x0, y0, x1, y1) => ctx.colliders.raycast(x0, y0, x1, y1) === null,
+          hour: atmosphere.hour, weekday: 2, rain: 0, zone: pedSim.stats.zone, stars: 0, blocked: false, crowd: true, traffic: !!traffic,
+        };
+        // Un essai toutes les demi-secondes (comme `?event=` dans le jeu) : chercher un lieu coûte une recherche dans la foule.
+        if (forceVol && (forceIn -= dt) <= 0) {
+          forceIn = 0.5;
+          if (director.force("vol", ectx)) forceVol = false;
+        }
+        director.update(ectx);
+        const ed = performance.now() - e0;
+        if (measuring) {
+          eventsCost.ms += ed;
+          eventsCost.max = Math.max(eventsCost.max, ed);
+          eventsCost.frames++;
+          let b = 0;
+          for (let k = 0; k < pedSim.capacity; k++) if (pedSim.state.alive![k] && pedSim.isBorrowed(k)) b++;
+          eventsCost.peak = Math.max(eventsCost.peak, b);
+        }
+      }
       if (measuring) {
         simMs.push(sim);
         pigCost.ms += pig;
@@ -810,7 +864,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["events"] ? " · événements (un vol à chaque arrêt)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Effets d'image : ${typeof r.settings["effects"] === "number" ? ["coupés", "couleurs", "couleurs et halo"][r.settings["effects"]] : String(r.settings["effects"])} · MSAA ×${String(r.settings["msaa"])} · minutage de la carte graphique ${r.settings["gpuTimer"] ? "disponible" : "indisponible"} · rendu MSAA dans une texture ${r.settings["msrtt"] ? "natif (WEBGL_multisampled_render_to_texture)" : "par copie"}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;
@@ -836,6 +890,10 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
     if (p.combat) {
       const q = p.combat;
       lines.push(`  Combat : ${q.shots} tirs, ${q.hits} touchés, ${q.kills} tués dans la phase · ${q.corpses} cadavres à la fin (au plus 8 qui ne s'enfoncent pas) · effets : jusqu'à ${q.fxPeak} instances, présents sur ${q.fxFrames} images de ${q.frames} (chacune coûte +1 appel de dessin) · tireur et effets ${q.avgMs.toFixed(3)} ms par image (pire ${q.maxMs.toFixed(2)} ms)${q.policeShots || q.policeDamage ? ` · police : ${q.policeShots} tirs, ${q.policeDamage} points de dégâts sur le point suivi` : ""}`);
+    }
+    if (p.events) {
+      const q = p.events;
+      lines.push(`  Événements : ${q.started} lancés dans la phase, en cours à la fin : ${q.active} · ${q.borrowedPeak} passants réquisitionnés au plus · directeur et événements ${q.avgMs.toFixed(3)} ms par image (pire ${q.maxMs.toFixed(2)} ms)`);
     }
     if (p.minimap) lines.push(`  Minimap : ${p.minimap.updates} mises à jour · ${p.minimap.avgMs.toFixed(2)} ms en moyenne · pire ${p.minimap.maxMs.toFixed(2)} ms (objectif : moins d'1 ms)`);
     if (p.crowd) lines.push(`  Foule : ${p.crowd.n} personnages (${p.crowd.near} près, ${p.crowd.far} loin) · ombres des personnages ${p.crowd.shadows ? "oui" : "non"} · mise à jour ${p.crowd.updateMs.toFixed(2)} ms par image`);

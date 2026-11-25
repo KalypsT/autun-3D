@@ -8,6 +8,7 @@ import { dateFromDoy } from "./calendar";
 import { clampMoney } from "./wallet";
 import { parseChallenges, type SavedChallenges } from "./challenges";
 import { parseNotebook, type SavedNotebook } from "./collections";
+import { parseEventBook, type SavedEventBook } from "./events/book";
 import { parseOwned, type OwnedVehicle } from "./owned";
 
 /**
@@ -78,6 +79,8 @@ export interface SaveGame {
   challenges?: SavedChallenges;
   /** Véhicules achetés (D323) et leur état ; absents avant. Leur position est dans `vehicles`. */
   garage?: OwnedVehicle[];
+  /** Carnet des événements (phase 4) : comptes, paliers, journal ; absent avant. */
+  events?: SavedEventBook;
   /** Points du gilet pare-balles (D327), 1 à 100 ; absent sans gilet. */
   armor?: number;
 }
@@ -173,6 +176,7 @@ export function parseSave(text: string | null): SaveGame | null {
   const book = version === SAVE_VERSION ? parseNotebook(r["book"]) : null;
   const challenges = version === SAVE_VERSION ? parseChallenges(r["challenges"]) : null;
   const garage = version === SAVE_VERSION ? parseOwned(r["garage"]) : null;
+  const events = version === SAVE_VERSION ? parseEventBook(r["events"]) : null;
   return {
     version: SAVE_VERSION,
     savedAt: finite(r["savedAt"]) ? r["savedAt"] : 0,
@@ -192,6 +196,7 @@ export function parseSave(text: string | null): SaveGame | null {
     ...(book ? { book } : {}),
     ...(challenges ? { challenges } : {}),
     ...(garage?.length ? { garage } : {}),
+    ...(events ? { events } : {}),
     ...(version === SAVE_VERSION && finite(r["armor"]) && r["armor"] >= 1 ? { armor: Math.min(Math.round(r["armor"]), 100) } : {}),
   };
 }

@@ -33,6 +33,7 @@ const PATHS = {
   exit: `<path ${STROKE} stroke-width="2.2" d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>`,
   sprint: `<path ${STROKE} stroke-width="2.4" d="M8 6l6 6-6 6M14 6l6 6-6 6"/><path ${STROKE} d="M2 9h3M1 12h3M2 15h3"/>`,
   jump: `<path ${STROKE} stroke-width="2.6" d="M6 13l6-6 6 6"/><path ${STROKE} d="M4 20h16"/>`,
+  bag: `<path ${STROKE} d="M5 9h14l-1.5 11h-11z"/><path ${STROKE} d="M9 9V7a3 3 0 0 1 6 0v2"/>`,
   shop: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5M10 20v-4.5h4V20"/>`,
   closed: `<path ${STROKE} d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M5.5 12.5V20h13v-7.5"/><path ${STROKE} d="M9.5 13.5l5 5M14.5 13.5l-5 5"/>`,
   reload: `<path ${STROKE} stroke-width="2.4" d="M20 12a8 8 0 1 1-2.3-5.7"/><path ${STROKE} stroke-width="2.4" d="M20 4v4h-4"/>`,

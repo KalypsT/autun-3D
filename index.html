@@ -145,6 +145,16 @@
               text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
       body.game #feat.show { display: block; animation: feat 2.6s ease-out both; }
       @keyframes feat { 0% { opacity: 0; transform: scale(1.6); } 8% { opacity: 1; transform: scale(.94); } 14%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+      /* Bulles de parole (phase 4, événements) : au-dessus de la tête, style affiche ; hors champ, au bord de l'écran avec une flèche. */
+      .speech { position: fixed; z-index: 4; pointer-events: none; transform: translate(-50%, -100%); padding: 5px 11px 6px; border-radius: 14px;
+                background: var(--cream); color: var(--ink); border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
+                font: italic 900 18px/1.1 system-ui, sans-serif; white-space: nowrap; opacity: 0; }
+      .speech::after { content: ""; position: absolute; left: 50%; bottom: -9px; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
+      .speech.edge { transform: translate(-50%, -50%); background: var(--ochre); }
+      .speech.edge::after { display: none; }
+      body.game .speech.show { opacity: 1; animation: speech .25s ease-out; }
+      @keyframes speech { 0% { transform: translate(-50%, -100%) scale(.4); } 70% { transform: translate(-50%, -100%) scale(1.08); } 100% { transform: translate(-50%, -100%); } }
+      body.paused .speech { visibility: hidden; }
       [hidden] { display: none !important; }
       /* Interface en jeu (D102) : minimap et horloge en haut à gauche (un appui sur la minimap ouvre la carte, qui est l'écran de pause),
          bandeau santé / arme / recherche en haut au centre. Rien ne touche le joystick (gauche, bas) ni les pédales (droite, bas). */

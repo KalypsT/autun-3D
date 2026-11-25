@@ -397,6 +397,14 @@ export class GameAudio {
     }
   }
 
+  /** Un cri voulu par un événement (phase 4 : « Au voleur ! ») en (x, y), de la voix du passant `slot`. */
+  cry(kind: S.CryKind, x: number, y: number, slot: number): void {
+    const kit = this.kit;
+    const sp = kit && this.spot(x, y, 5, 120, 0.25, 0.8);
+    if (!kit || !sp) return;
+    S.cry(kit, this.sys.buses!.sfx, kit.ctx.currentTime, kind, voiceOf(slot), sp);
+  }
+
   /** Envol d'une volée de pigeons. */
   scatter(x: number, y: number): void {
     const kit = this.kit;
