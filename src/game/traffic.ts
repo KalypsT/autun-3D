@@ -6,6 +6,7 @@ import { trafficTarget } from "../core/traffic-density";
 import { pickSpawn, spawnRing, visibleFrom } from "../core/traffic-spawn";
 import { TrafficSim, type PedLookup, type PlayerBody, type SimCar } from "../core/traffic-sim";
 import type { ChaseTarget } from "../core/chase";
+import { findRoute } from "../core/road-route";
 import { BASE_REACH, GENDARMERIE, type PoliceUnit } from "../core/police";
 import { CATALOG, damageProfile, paletteColor, vehicleDef, type VehicleDef } from "../core/vehicle-catalog";
 import { abandons, type VehicleDamage } from "../core/damage";
@@ -39,6 +40,32 @@ interface TrafficCar {
   lostFor: number;
   /** Service (D204) : bus (arrêts), camion poubelle (tous les 30 m), livraison (une fois en double file) ; distance parcourue, attente avant le prochain arrêt. */
   service?: { kind: ServiceKind; dist: number; cool: number; done: boolean; px: number; py: number };
+  /**
+   * Voiture d'un événement (phase 4 : accident, poursuite d'un autre conducteur) : l'événement la tient ; elle ne disparaît pas avec la couronne,
+   * n'est pas prise pour poursuivre le joueur, n'est pas retirée quand son conducteur l'abandonne. `leave` : l'événement l'a lâchée, elle
+   * disparaît dès que le joueur ne la voit plus.
+   */
+  event?: boolean;
+  leave?: boolean;
+  /** Feux de détresse allumés. */
+  hazard?: boolean;
+  /** Personne au volant (conducteurs descendus) : la prendre n'est pas un vol avec conducteur. */
+  noDriver?: boolean;
+}
+
+/** Une voiture d'événement telle que l'événement la voit. */
+export interface EventCar {
+  id: number;
+  state: SimCar["state"];
+  sim: SimCar;
+  police: boolean;
+  /** Graine du conducteur (pour le faire sortir). */
+  driver: number;
+  model: string;
+  /** Trop abîmée : son conducteur l'abandonne (D112). */
+  abandoned: boolean;
+  /** Choc avec le véhicule du joueur au dernier pas (m/s, 0 sans). */
+  hit: number;
 }
 
 export type ServiceKind = "bus" | "benne" | "livraison";
@@ -220,7 +247,7 @@ export class Traffic {
     }
     if (best < 0) return null;
     const c = this.cars[best]!, s = c.sim.state;
-    const out = { model: c.def.id, variant: c.variant, driver: c.driver, x: s.x, y: s.y, heading: s.heading, vx: s.vx, vy: s.vy, yawRate: s.yawRate };
+    const out = { model: c.def.id, variant: c.variant, driver: c.noDriver ? -1 : c.driver, x: s.x, y: s.y, heading: s.heading, vx: s.vx, vy: s.vy, yawRate: s.yawRate };
     this.remove(best);
     this.render();
     return out;
@@ -244,6 +271,7 @@ export class Traffic {
   private dropAbandoned(): void {
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!, s = c.sim.state, d = c.sim.damage;
+      if (c.event) continue;
       if (!abandons(d) || (Math.hypot(s.vx, s.vy) > 0.8 && d.burning < 0 && !d.end)) continue;
       this.abandoned.push({ model: c.def.id, variant: c.variant, driver: c.driver, police: c.police, x: s.x, y: s.y, heading: s.heading, damage: d });
       if (this.abandoned.length > MAX_ABANDONED) this.abandoned.shift();
@@ -347,6 +375,7 @@ export class Traffic {
       this.zone = hit ? graph.edgeZone(hit.edge) : ZONE.outskirts;
     }
     this.target = trafficTarget(this.max, env.hour, this.zone, env.speed, env.weather);
+    this.env = env;
     this.beaconClock += dt;
     const { rOut } = spawnRing(env.speed);
     // Au-delà de 400 m on ne voit plus une voiture (les murs lointains ne sont pas chargés : sans cette borne, une voiture droit devant à 1 km passait pour vue
@@ -355,6 +384,11 @@ export class Traffic {
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i]!;
       const d = Math.hypot(c.sim.state.x - env.x, c.sim.state.y - env.y);
+      // Voiture d'un événement : elle reste ; lâchée, elle disparaît dès que le joueur ne la voit plus (à plus de 60 m), ou très loin.
+      if (c.event) {
+        if (c.leave && ((d > 60 && !seen(c.sim.state.x, c.sim.state.y)) || d > rOut + DESPAWN_MARGIN + 200)) this.remove(i);
+        continue;
+      }
       // Perdue (impasse, blocage) ou sortie de la couronne : elle disparaît quand le joueur ne la voit pas. Une voiture perdue qu'il regarde
       // reste (elle ne disparaît pas sous ses yeux), mais pas plus de 20 s.
       // En poursuite, un conducteur « perdu » est remis sur la route par la poursuite ; une voiture de police ne disparaît que très loin, hors de vue.
@@ -374,7 +408,7 @@ export class Traffic {
       this.trimTimer = TRIM_EVERY;
       let far = -1, fd = 0;
       for (let i = 0; i < this.cars.length; i++) {
-        if (this.cars[i]!.sim.chase) continue;
+        if (this.cars[i]!.sim.chase || this.cars[i]!.event) continue;
         const s = this.cars[i]!.sim.state, d = Math.hypot(s.x - env.x, s.y - env.y);
         if (d > fd && !seen(s.x, s.y)) {
           fd = d;
@@ -443,7 +477,7 @@ export class Traffic {
   /** Voitures en poursuite. */
   get chasing(): number {
     let n = 0;
-    for (const c of this.cars) if (c.sim.chase) n++;
+    for (const c of this.cars) if (c.sim.chase && !c.event) n++;
     return n;
   }
 
@@ -452,14 +486,14 @@ export class Traffic {
     let n = this.chasing;
     for (const c of this.cars) {
       if (n <= this.pursuers) break;
-      if (!c.sim.chase) continue;
+      if (!c.sim.chase || c.event) continue;
       this.sim.setChase(c.sim, false);
       c.siren = false;
       n--;
     }
     for (const c of this.cars) {
       if (n >= this.pursuers) break;
-      if (!c.police || c.sim.chase) continue;
+      if (!c.police || c.sim.chase || c.event) continue;
       this.sim.setChase(c.sim, true);
       c.siren = true;
       n++;
@@ -481,6 +515,135 @@ export class Traffic {
     }
   }
 
+  // --- Voitures des événements (phase 4) ----------------------------------------------------------------------------------
+
+  /** Dernier état du joueur reçu (`update`) : les événements font naître leurs voitures dans sa couronne. */
+  private env: TrafficEnv | null = null;
+
+  private eventView(c: TrafficCar): EventCar {
+    return { id: c.sim.id, state: c.sim.state, sim: c.sim, police: c.police, driver: c.driver, model: c.def.id, abandoned: abandons(c.sim.damage), hit: c.sim.hitPlayer };
+  }
+
+  private byId(id: number): TrafficCar | null {
+    for (const c of this.cars) if (c.sim.id === id) return c;
+    return null;
+  }
+
+  /** La voiture d'événement `id`, ou null si elle n'existe plus. */
+  eventCar(id: number): EventCar | null {
+    const c = this.byId(id);
+    return c ? this.eventView(c) : null;
+  }
+
+  /**
+   * Pose une voiture d'événement en (x, y), cap `heading`, à l'arrêt (une scène d'accident, posée hors de vue) : modèle tiré comme la circulation du
+   * quartier ; null s'il n'y a pas de route à 30 m (rien n'est créé). Elle reste arrêtée (`hold`) tant que l'événement le veut.
+   */
+  stage(x: number, y: number, heading: number, seed: number): EventCar | null {
+    const road = this.nav.graph.road, hit = road.nearest(x, y, 30);
+    if (!hit) return null;
+    const cars = CATALOG.filter((d) => d.family === "car" && !d.unique && !d.service && !d.police);
+    const def = cars.find((d) => d.id === pickModel("car", this.zone, ((seed >>> 8) % 1000) / 1000)) ?? cars[seed % cars.length]!;
+    const sim = this.sim.add(def.spec, hit.edge * 2, hit.s, seed, 0, damageProfile(def), false);
+    this.sim.place(sim, x, y, heading);
+    sim.holdT = 1e6;
+    const car: TrafficCar = { sim, def, variant: seed % 16, driver: seed ^ 0x51a7, police: false, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0, event: true };
+    this.cars.push(car);
+    return this.eventView(car);
+  }
+
+  /**
+   * Fait naître une voiture d'événement dans la couronne du joueur, hors de sa vue (comme la circulation), autour de `around` s'il est donné :
+   * une gendarmerie (`police`, gyrophares éteints) ou une voiture du modèle `model` (sinon tirée comme la circulation). Null s'il n'y a pas de place.
+   */
+  spawnEvent(police: boolean, around?: { x: number; y: number }, model?: string): EventCar | null {
+    if (!this.env) return null;
+    const forced = model ? vehicleDef(model) ?? undefined : undefined;
+    const c = this.spawn(this.env, police, around, forced);
+    if (!c) return null;
+    c.event = true;
+    return this.eventView(c);
+  }
+
+  /** Met la voiture `id` en poursuite de `target` (un objet qui bouge : l'état d'une autre voiture convient), gyrophares allumés ; null : rappel. */
+  pursue(id: number, target: ChaseTarget | null): void {
+    const c = this.byId(id);
+    if (!c) return;
+    this.sim.setChase(c.sim, target !== null);
+    c.sim.target = target;
+    c.siren = target !== null && c.police;
+  }
+
+  /**
+   * Conducteur en fuite (phase 4) : style de conduite de poursuite (vite, feux et sens uniques ignorés, D73) et itinéraire vers le point (x, y)
+   * (l'arête la plus proche à moins de 80 m) ; faux si aucun itinéraire n'est trouvé.
+   */
+  planTo(id: number, x: number, y: number): boolean {
+    const c = this.byId(id), d = c?.sim.driver;
+    if (!c || !d) return false;
+    if (!d.chase) d.setChase(true);
+    const road = this.nav.graph.road, goal = road.nearest(x, y, 80);
+    if (!goal || !d.path) return false;
+    if (d.lost) {
+      const h = road.nearest(c.sim.state.x, c.sim.state.y, 30);
+      if (h) d.restart(h.edge * 2, h.s);
+    }
+    const route = findRoute(road, d.currentMove, goal.edge, goal.x, goal.y, { wrongWay: true, maxExpand: 4000 });
+    if (!route) return false;
+    d.setPlan(route);
+    return true;
+  }
+
+  /** Gyrophares d'une voiture de police d'événement (garée sur une scène, ils restent allumés). */
+  setSiren(id: number, on: boolean): void {
+    const c = this.byId(id);
+    if (c) c.siren = on && c.police;
+  }
+
+  /** Feux de détresse, personne au volant, arrêt imposé (s ; 0 : elle repart). */
+  setHazard(id: number, on: boolean): void {
+    const c = this.byId(id);
+    if (c) c.hazard = on;
+  }
+
+  setNoDriver(id: number, on: boolean): void {
+    const c = this.byId(id);
+    if (c) c.noDriver = on;
+  }
+
+  hold(id: number, seconds: number): void {
+    const c = this.byId(id);
+    if (c) c.sim.holdT = seconds;
+  }
+
+  /** L'événement lâche la voiture `id` : elle disparaît dès que le joueur ne la voit plus (une voiture de police rappelée éteint ses gyrophares). */
+  letGo(id: number): void {
+    const c = this.byId(id);
+    if (!c) return;
+    c.leave = true;
+    c.hazard = false;
+    if (c.sim.chase) this.pursue(id, null);
+  }
+
+  /** Cabosse la voiture `id` de `points` points de dégâts, du côté du point (fromX, fromY) (D112 : la forme abîmée se montre). */
+  dent(id: number, points: number, fromX: number, fromY: number): void {
+    const c = this.byId(id);
+    if (c) c.sim.damage.damage(points, contactAngle(c.sim.state, fromX - c.sim.state.x, fromY - c.sim.state.y));
+  }
+
+  /** Retire tout de suite la voiture `id` (fin d'un essai, la scène n'a pas eu lieu). */
+  drop(id: number): void {
+    const k = this.cars.findIndex((c) => c.sim.id === id);
+    if (k >= 0) this.remove(k);
+  }
+
+  /** Voitures (hors événements) à moins de `r` m de (x, y) : la scène ne se pose pas sur une autre voiture. */
+  carsNear(x: number, y: number, r: number): number {
+    let n = 0;
+    for (const c of this.cars) if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < r) n++;
+    return n;
+  }
+
   /** Écrit les instances à dessiner : une par voiture, à jour de sa position, de son cap, de ses roues. */
   private render(): void {
     const items = this.items;
@@ -489,6 +652,7 @@ export class Traffic {
       const s = c.sim.state;
       const item: TrafficItem = { model: drawnModel(c.def, c.sim.damage), x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) };
       if (c.siren) item.beacon = this.beaconClock;
+      if (c.hazard) item.hazard = this.beaconClock;
       items.push(item);
     }
     this.models.set(items);

@@ -34,6 +34,11 @@ export interface SimCar {
   police: boolean;
   /** Arrêt de service en cours (D204 : bus à l'arrêt, camion poubelle, livraison en double file) : secondes restantes, 0 sinon. */
   holdT?: number;
+  /**
+   * Cible propre de cette voiture en poursuite (phase 4 : la police poursuit un autre conducteur) : un objet qui bouge (l'état d'une autre voiture
+   * convient) ; absente, la cible commune (le joueur, ou le point de fouille).
+   */
+  target?: ChaseTarget | null;
 }
 
 /** Ce que la circulation voit du joueur : le véhicule qu'il conduit (qui encaisse les chocs), ou lui-même à pied (obstacle, sans choc). */
@@ -95,6 +100,12 @@ export class TrafficSim {
   ) {
     this.signals = signals ?? new Signals(nav.road, { t: 0 });
     this.ownClock = !signals;
+  }
+
+  /** Pose la voiture `c` en (x, y), cap `heading`, à l'arrêt (phase 4 : une scène d'accident posée hors de vue). */
+  place(c: SimCar, x: number, y: number, heading: number): void {
+    const st = createVehicle(x, y, heading, this.terrain);
+    Object.assign(c.state, st);
   }
 
   /** Ajoute une voiture sur la voie de droite de `move`, à `s` m de son début, lancée à `speed` m/s ; sans graine, elle reste arrêtée. */
@@ -207,9 +218,19 @@ export class TrafficSim {
       hasTarget = true;
     }
     this.sirens();
-    // Une place autour de la cible par voiture en poursuite (dans l'ordre des voitures) : elles ne visent pas toutes le même point.
+    // Une place autour de la cible par voiture en poursuite (dans l'ordre des voitures) : elles ne visent pas toutes le même point. Les places se
+    // comptent par cible (phase 4 : la police peut poursuivre un autre conducteur en même temps que le joueur).
     let rank = 0;
-    for (const c of this.cars) if (c.chase) c.chase.slot = rank++;
+    for (const c of this.cars) if (c.chase && !c.target) c.chase.slot = rank++;
+    for (const c of this.cars) {
+      if (!c.chase || !c.target) continue;
+      let k = 0;
+      for (const o of this.cars) {
+        if (o === c) break;
+        if (o.chase && o.target === c.target) k++;
+      }
+      c.chase.slot = k;
+    }
     for (const c of this.cars) {
       c.state.impact = 0;
       c.hitPlayer = 0;
@@ -226,7 +247,8 @@ export class TrafficSim {
         }
       }
       if (c.holdT && c.holdT > 0) c.holdT = Math.max(0, c.holdT - dt);
-      const input = !c.driver ? PARKED : abandons(c.damage) || (c.holdT ?? 0) > 0 ? STOPPING : c.chase && hasTarget ? c.chase.update(c.state, c.driver, dt, seen, t) : c.driver.update(c.state, dt, seen);
+      const target = c.target ?? (hasTarget ? t : null);
+      const input = !c.driver ? PARKED : abandons(c.damage) || (c.holdT ?? 0) > 0 ? STOPPING : c.chase && target ? c.chase.update(c.state, c.driver, dt, seen, target) : c.driver.update(c.state, dt, seen);
       stepVehicle(c.state, deratedSpec(c.spec, c.damage.power), input, dt, this.terrain, this.colliders);
       c.age += dt;
     }

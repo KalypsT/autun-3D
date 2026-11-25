@@ -68,6 +68,8 @@ export class EventBook {
     const hits: EventTierHit[] = [];
     // Un pickpocket rattrapé est aussi un voleur rattrapé.
     if (end.caught && (end.kind === "vol" || end.kind === "pickpocket")) hits.push(...this.bump("voleurs"));
+    // Un fugitif arrêté grâce au joueur (phase 4, poursuite).
+    if (end.caught && end.kind === "poursuite") hits.push(...this.bump("fugitifs"));
     if (end.goodDeed) hits.push(...this.bump("bonnes"));
     return hits;
   }

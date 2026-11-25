@@ -27,10 +27,45 @@ export interface EventPeds {
   recipe(i: number): Recipe;
   setRecipe(i: number, recipe: Recipe): void;
   applyImpulse(i: number, ix: number, iy: number): void;
+  /** Fait apparaître quelqu'un debout, réquisitionné (voir `PedSim.appear`) ; −1 sans file piétonne proche. */
+  appear(x: number, y: number, seed: number, heading: number, recipe?: Recipe | null): number;
+  /** Le passant disparaît (il monte en voiture). */
+  vanish(i: number): void;
   /** Fait tomber le passant, même s'il trébuchait (plaquage). */
   tackle(i: number, ix: number, iy: number): void;
   queryCircle(x: number, y: number, r: number, out: number[]): number;
   alarm(x: number, y: number, radius: number, flee: number, except?: number): number;
+}
+
+/** Une voiture d'événement (phase 4 : accident, poursuite), vue par l'événement. */
+export interface EventCarView {
+  id: number;
+  state: { x: number; y: number; vx: number; vy: number; heading: number; speed: number };
+  police: boolean;
+  /** Graine du conducteur (celui qui descend). */
+  driver: number;
+  /** Trop abîmée : son conducteur l'abandonne ; choc avec le véhicule du joueur au dernier pas (m/s). */
+  abandoned?: boolean;
+  hit?: number;
+}
+
+/** La circulation, vue par un événement : un sous-ensemble de `Traffic` (le jeu passe la vraie). */
+export interface EventTraffic {
+  stage(x: number, y: number, heading: number, seed: number): EventCarView | null;
+  spawnEvent(police: boolean, around?: { x: number; y: number }, model?: string): EventCarView | null;
+  eventCar(id: number): EventCarView | null;
+  pursue(id: number, target: { x: number; y: number; vx: number; vy: number } | null): void;
+  setSiren(id: number, on: boolean): void;
+  setHazard(id: number, on: boolean): void;
+  setNoDriver(id: number, on: boolean): void;
+  hold(id: number, seconds: number): void;
+  letGo(id: number): void;
+  drop(id: number): void;
+  carsNear(x: number, y: number, r: number): number;
+  /** Conducteur en fuite : conduite de poursuite et itinéraire vers (x, y) ; faux sans itinéraire. */
+  planTo(id: number, x: number, y: number): boolean;
+  /** Cabosse la voiture `id` (points de dégâts) du côté du point (fromX, fromY). */
+  dent(id: number, points: number, fromX: number, fromY: number): void;
 }
 
 /** Le joueur à cette image. */
@@ -101,7 +136,7 @@ export interface EventAction {
 }
 
 /** Comment un événement s'est terminé, pour le journal et les comptes du carnet. */
-export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne";
+export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne" | "constat" | "vole" | "termine" | "arrete";
 
 /** Un événement en cours : une machine à états avancée par le directeur. */
 export interface GameEvent {

@@ -285,7 +285,7 @@ export const HIT_POSE = { stumble: 1, down: 2 } as const;
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
 /** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains) ;
  * bras tendu qui montre (phase 4 : la victime d'un vol montre le voleur). */
-export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8 } as const;
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,85 s pour tomber et s'immobiliser, environ 1,2 s au sol, 1,5 s pour se relever (D210). */
 export const DOWN_TIME = 3.6;
@@ -1218,6 +1218,16 @@ export function phonePose(pose: Pose): void {
   a[BONE.armR * 3 + 2] = 0.08;
   a[BONE.forearmR * 3] = 2.45;
   a[BONE.head * 3]! -= 0.35;
+}
+
+/** Mains en l'air (phase 4 : un fuyard arrêté se rend), par-dessus la pose d'arrêt. */
+export function handsPose(pose: Pose): void {
+  const a = pose.angles;
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 2.6;
+    a[arm * 3 + 2] = side * 0.35;
+    a[fore * 3] = 0.5;
+  }
 }
 
 /** Bras tendu (phase 4, événements), par-dessus la pose d'arrêt ou de marche : le bras droit montre droit devant, à hauteur d'épaule, et s'agite. */

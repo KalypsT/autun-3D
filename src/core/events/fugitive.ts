@@ -58,7 +58,7 @@ export class Fugitive {
    * Un pas : il fuit le joueur (ou `home` si le joueur est loin), à `speed` m/s s'il est donné (sinon la course, qui s'essouffle) ; renvoie ce
    * qui lui arrive : plaqué par le joueur à ce pas, à terre (frappé, renversé), mort, échappé, ou encore en course.
    */
-  update(ctx: EventContext, homeX: number, homeY: number, speed?: number): FugitiveState {
+  update(ctx: EventContext, homeX: number, homeY: number, speed?: number, threat?: { x: number; y: number } | null): FugitiveState {
     const peds = this.peds, p = ctx.player;
     if (!this.here) return "escaped";
     const mode = peds.modeOf(this.slot);
@@ -73,9 +73,12 @@ export class Fugitive {
       peds.tackle(this.slot, (ux * 0.5 + (p.vx / p.speed) * 0.5) * FUGITIVE.tackleImpulse, (uy * 0.5 + (p.vy / p.speed) * 0.5) * FUGITIVE.tackleImpulse);
       return "tackled";
     }
+    // La menace : le joueur s'il est proche, sinon la scène ; ou celle qu'on donne (les gendarmes, quand ils sont plus près que le joueur).
     const near = d < FUGITIVE.chaseRange;
     const tiredK = Math.min(1, Math.max(0, (this.t - FUGITIVE.tire) / 5));
-    peds.command(this.slot, ORDER.flee, near ? p.x : homeX, near ? p.y : homeY, speed ?? this.run + (this.tired - this.run) * tiredK);
+    let tx = near ? p.x : homeX, ty = near ? p.y : homeY;
+    if (threat && (!near || Math.hypot(threat.x - at.x, threat.y - at.y) < d)) [tx, ty] = [threat.x, threat.y];
+    peds.command(this.slot, ORDER.flee, tx, ty, speed ?? this.run + (this.tired - this.run) * tiredK);
     this.lostFarT = d > FUGITIVE.lostFar ? this.lostFarT + ctx.dt : 0;
     this.lostHiddenT = d > FUGITIVE.lostHidden && !ctx.visible(at.x, at.y) ? this.lostHiddenT + ctx.dt : 0;
     return this.lostFarT > FUGITIVE.lostFarFor || this.lostHiddenT > FUGITIVE.lostHiddenFor ? "escaped" : "running";

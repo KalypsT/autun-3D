@@ -1916,6 +1916,56 @@ export class PedSim {
     return slot;
   }
 
+  /**
+   * Fait apparaître quelqu'un debout en (x, y), tourné vers `heading` (phase 4 : un conducteur qui descend de sa voiture, un gendarme), de la
+   * recette `recipe` (ou de la graine `seed`), dans un emplacement libre (sinon celui du passant le plus éloigné, jamais un réquisitionné) ; il est
+   * aussitôt réquisitionné, immobile. Renvoie l'emplacement, ou −1 s'il n'y a pas de file piétonne à 25 m.
+   */
+  appear(x: number, y: number, seed: number, heading: number, recipe: Recipe | null = null): number {
+    const alive = this.state.alive!;
+    let slot = -1, far = -1;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i]) {
+        slot = i;
+        break;
+      }
+      if (this.borrowed[i]) continue;
+      const d = Math.hypot(this.x[i]! - x, this.y[i]! - y);
+      if (d > far) {
+        far = d;
+        slot = i;
+      }
+    }
+    const hit = slot < 0 ? null : this.graph.nearest(x, y, 25, MASK_WALK);
+    if (!hit) return -1;
+    if (alive[slot]) this.stats.despawns++;
+    this.place0(slot, hit.edge, hit.s, x, y, seed);
+    if (recipe) this.setRecipe(slot, recipe);
+    this.graph.pointAt(hit.edge, hit.s, this.pt);
+    this.jx[slot] = x - this.pt.x;
+    this.jy[slot] = y - this.pt.y;
+    this.x[slot] = x;
+    this.y[slot] = y;
+    this.heading[slot] = heading;
+    this.state.yaw[slot] = -heading;
+    this.speed[slot] = 0;
+    this.borrowed[slot] = 1;
+    this.order[slot] = ORDER.hold;
+    this.ordX[slot] = x + Math.sin(heading);
+    this.ordY[slot] = y + Math.cos(heading);
+    this.ordPose[slot] = 0;
+    return slot;
+  }
+
+  /** Le passant `i` disparaît (il monte dans une voiture, il entre quelque part). */
+  vanish(i: number): void {
+    if (i < 0 || i >= this.free || !this.state.alive![i]) return;
+    this.state.alive![i] = 0;
+    this.borrowed[i] = 0;
+    this.order[i] = ORDER.none;
+    this.stats.despawns++;
+  }
+
   /** Premier emplacement réservé (voir `PedSimOptions.reserved`) et leur nombre. */
   get reservedStart(): number {
     return this.free;

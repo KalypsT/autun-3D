@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), vol (vol à l'arraché, phase 4), pickpocket (phase 4), chien (chien échappé, phase 4), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), vol (vol à l'arraché, phase 4), pickpocket (phase 4), chien (chien échappé, phase 4), accident (phase 4), poursuite (phase 4), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -372,6 +372,76 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
     await sleep(600);
     await shot("pj4-chien-merci");
+    await ctx.close();
+  }
+
+  if (want("accident")) {
+    // Accident (phase 4, E4) : deux voitures de travers, feux de détresse, conducteurs qui se disputent ; puis la patrouille et le constat.
+    const ctx = await open("event=accident&h=15&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    // Pour la capture : le joueur sur le trottoir, à 14 m de la scène, de biais.
+    const view = async (back) => page.evaluate((b) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      const h = e.heading, rx = Math.cos(h), ry = -Math.sin(h);
+      a.player.x = e.x + rx * 6 - Math.sin(h) * b;
+      a.player.y = e.y + ry * 6 - Math.cos(h) * b;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.25);
+      a.tilt(0.2);
+    }, back);
+    await view(13);
+    await sleep(3000);
+    await shot("pj4-accident");
+    await page.waitForFunction(() => ["constat", "depart"].includes(window.__autun.events.director.active[0]?.phase), null, { timeout: 600000, polling: 1000 });
+    await view(20);
+    await sleep(2500);
+    await shot("pj4-accident-constat");
+    await ctx.close();
+  }
+
+  if (want("poursuite")) {
+    // Poursuite (phase 4, E5) : un conducteur en fuite passe devant le joueur, la gendarmerie derrière lui toutes sirènes.
+    const ctx = await open("event=poursuite&h=21&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    // Le joueur reste sur le trottoir ; on regarde vers la voiture du fugitif dès qu'elle est à moins de 45 m, et on attend qu'une gendarmerie
+    // soit dans le champ aussi.
+    const watch = () => page.evaluate(() => {
+      const a = window.__autun, e = a.events.director.active[0], t = a.traffic();
+      if (!e || !t) return "gone";
+      const f = t.eventCar(e.fugitiveCar);
+      if (!f) return e.phase;
+      const d = Math.hypot(f.state.x - a.player.x, f.state.y - a.player.y);
+      if (d > 45) return "far";
+      a.look(Math.atan2(f.state.x - a.player.x, f.state.y - a.player.y));
+      a.tilt(0.15);
+      const cop = e.police.map((id) => t.eventCar(id)).find((c) => c && Math.hypot(c.state.x - a.player.x, c.state.y - a.player.y) < 60);
+      return cop ? "both" : "near";
+    });
+    let n = 0;
+    for (let k = 0; k < 2400 && n < 2; k++) {
+      const w = await watch();
+      if (w === "gone" || w === "arrest") break;
+      if (w === "both") {
+        await sleep(200);
+        await shot(n === 0 ? "pj4-poursuite" : "pj4-poursuite-2");
+        n++;
+        await sleep(1500);
+      } else await sleep(150);
+    }
+    // Puis la fin, à pied si elle y vient : le joueur tout près du fugitif ou de la scène.
+    const end = await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || e.phase !== "drive";
+    }, null, { timeout: 300000, polling: 500 }).then(() => true, () => false);
+    if (end && await page.evaluate(() => window.__autun.events.director.active[0]?.phase === "foot" || window.__autun.events.director.active[0]?.phase === "arrest")) {
+      await page.evaluate(() => {
+        const a = window.__autun, e = a.events.director.active[0], q = { x: 0, y: 0 };
+        if (e.runner >= 0) a.pedsController().eventPeds().position(e.runner, q);
+        a.player.x = q.x - 8; a.player.y = q.y - 6; a.look(Math.atan2(8, 6)); a.tilt(0.25);
+      });
+      await sleep(2500);
+      await shot("pj4-poursuite-pied");
+    }
     await ctx.close();
   }
 

@@ -533,6 +533,9 @@ export function startGame(ctx: GameContext): void {
     money: () => wallet.balance,
     playerHead: () => ({ x: player.x, y: player.y, z: (riding ? riding.state.z : player.z) + 1.75 }),
     bark: (x, y) => audio.animal("bark", x, y),
+    honk: (x, y) => audio.honk(x, y),
+    traffic: () => traffic as Traffic | null,
+    road: () => (nav as NavManager | null)?.graph.road ?? null,
     feat: (t) => showFeat(t),
     crime: (k, x, y) => police.crime(k, x, y, true),
     street: (x: number, y: number): string | null => streetNear(ui.streets, x, y),
@@ -1086,9 +1089,12 @@ export function startGame(ctx: GameContext): void {
     s.yawRate = got.yawRate;
     s.speed = got.vx * Math.sin(got.heading) + got.vy * Math.cos(got.heading);
     // Portière du conducteur : à gauche (même côté que la descente du joueur) ; il est tiré vers l'extérieur et s'enfuit loin du joueur.
+    // Personne au volant (une voiture accidentée dont les conducteurs sont descendus, phase 4) : c'est un vol de véhicule, vu par la police seulement.
     const lx = -Math.cos(got.heading), ly = Math.sin(got.heading), side = FAMILIES.car.dismount;
-    (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
-    police.crime("carjack", got.x, got.y, true);
+    if (got.driver >= 0) {
+      (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
+      police.crime("carjack", got.x, got.y, true);
+    } else police.crime("theft", got.x, got.y, false);
     mount(v);
   };
   /**

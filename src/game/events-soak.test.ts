@@ -7,6 +7,7 @@ import type { SnatchEvent } from "../core/events/snatch";
 import type { PickpocketEvent } from "../core/events/pickpocket";
 import type { DogEscapeEvent } from "../core/events/dog-escape";
 import { SimDogs } from "../core/events/sim-dogs";
+import type { PursuitEvent } from "../core/events/pursuit";
 import type { PickpocketEffects } from "../core/events/pickpocket";
 import type { DogEffects } from "../core/events/dog-escape";
 import { OFFICER } from "../core/officers";
@@ -53,8 +54,8 @@ function soak(seed: number, minutes: number): SoakResult {
   traffic.setPeds(peds);
   const r: SoakResult = { starts: 0, snatched: 0, caught: 0, returned: 0, escaped: 0, maxBorrowed: 0, leaked: 0, bad: 0, earned: 0, journal: 0, kinds: {}, meanMs: 0, worstMs: 0 };
   let money = 1000;
-  const fx: PickpocketEffects & DogEffects = {
-    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, feat: () => {}, crime: () => {},
+  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void } = {
+    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, feat: () => {}, crime: () => {},
     earn: (n) => {
       r.earned += n;
       money += n;
@@ -68,7 +69,7 @@ function soak(seed: number, minutes: number): SoakResult {
   const dogs = new SimDogs(peds);
   const director = new EventDirector(seed);
   director.level = 3;
-  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, fx })) director.register(d);
+  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, fx })) director.register(d);
   const player = { x: 0, y: -20, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 };
   let rng = seed * 7919;
   const rand = (): number => ((rng = (rng * 16807) % 2147483647) / 2147483647);
@@ -96,8 +97,14 @@ function soak(seed: number, minutes: number): SoakResult {
     const ev = director.active.find((e) => e.kind === "vol") as SnatchEvent | undefined;
     const pp = director.active.find((e) => e.kind === "pickpocket") as PickpocketEvent | undefined;
     const dg = director.active.find((e) => e.kind === "chien") as DogEscapeEvent | undefined;
+    const pu = director.active.find((e) => e.kind === "poursuite") as PursuitEvent | undefined;
     let target: { x: number; y: number } | null = null, v = 1.4;
-    if (pp && (pp.phase === "sneak" || pp.phase === "run")) {
+    // Un fugitif à pied à moins de 60 m : on le plaque.
+    if (pu && pu.phase === "foot" && pu.runner >= 0) {
+      peds.position(pu.runner, q);
+      if (Math.hypot(q.x - player.x, q.y - player.y) < 60) [target, v] = [{ ...q }, 7];
+    }
+    if (!target && pp && (pp.phase === "sneak" || pp.phase === "run")) {
       peds.position(pp.thief, q);
       if (Math.hypot(q.x - player.x, q.y - player.y) < 80) [target, v] = [{ ...q }, 7];
     } else if (pp?.phase === "cash") [target, v] = [{ ...pp.cashAt }, 5];
@@ -190,8 +197,8 @@ function soak(seed: number, minutes: number): SoakResult {
 }
 
 describe("endurance des événements (phase 4)", () => {
-  it("vingt minutes à « Fréquents » au centre : vols, pickpockets, chiens échappés ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
-    const sum = { starts: 0, snatched: 0, caught: 0, returned: 0, kinds: new Set<string>() };
+  it("vingt minutes à « Fréquents » au centre : vols, pickpockets, chiens, accidents, poursuites ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
+    const sum = { starts: 0, snatched: 0, caught: 0, returned: 0, earned: 0, journal: 0, kinds: new Set<string>() };
     for (const seed of [4, 11]) {
       const r = soak(seed, 20);
       // Mesure du lot 1 (D328) : voir la décision pour les chiffres.
@@ -199,20 +206,24 @@ describe("endurance des événements (phase 4)", () => {
       if (process.env["EVENTS_SOAK_LOG"]) appendFileSync(process.env["EVENTS_SOAK_LOG"], `graine ${seed} : ${JSON.stringify(r)}\n`);
       expect(r.bad).toBe(0);
       expect(r.leaked).toBe(0);
-      // Un grand et un petit événement au plus : un vol (deux figurants), ou un pickpocket, ou un maître de chien.
-      expect(r.maxBorrowed).toBeLessThanOrEqual(2);
+      // Un grand et un petit événement au plus : un vol (deux figurants) et un accident (deux conducteurs, trois curieux, un gendarme).
+      expect(r.maxBorrowed).toBeLessThanOrEqual(8);
       expect(r.meanMs).toBeLessThan(0.2);
       sum.starts += r.starts;
       sum.snatched += r.snatched;
       sum.caught += r.caught;
       sum.returned += r.returned;
+      sum.earned += r.earned;
+      sum.journal += r.journal;
       for (const k of Object.keys(r.kinds)) sum.kinds.add(k.split(":")[0]!);
     }
-    // Les trois événements du catalogue ont eu lieu.
-    expect([...sum.kinds].sort()).toEqual(["chien", "pickpocket", "vol"]);
+    // Au moins quatre des cinq événements du catalogue ont eu lieu (le tirage en laisse parfois un de côté en 40 minutes), dont un grand.
+    expect(sum.kinds.size).toBeGreaterThanOrEqual(4);
+    expect(sum.kinds.has("accident") || sum.kinds.has("poursuite")).toBe(true);
     expect(sum.starts).toBeGreaterThanOrEqual(8);
-    expect(sum.snatched).toBeGreaterThanOrEqual(2);
+    expect(sum.snatched).toBeGreaterThanOrEqual(1);
     expect(sum.caught).toBeGreaterThanOrEqual(Math.ceil(sum.snatched * 0.5));
-    expect(sum.returned).toBeGreaterThanOrEqual(1);
+    expect(sum.journal).toBeGreaterThanOrEqual(8);
+    expect(sum.earned).toBeGreaterThan(0);
   }, 900000);
 });

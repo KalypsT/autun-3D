@@ -2388,3 +2388,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le chien, sa maîtresse accourt](docs/captures/pj4-chien-attraper.jpg)
 ![En laisse jusqu'à sa maîtresse](docs/captures/pj4-chien-rendre.jpg)
 ![« Merci ! »](docs/captures/pj4-chien-merci.jpg)
+
+**Plaisir de jeu, phase 4, lots 3 et 4 : l'accident et la course-poursuite (25 novembre 2026)** (D330, D331)
+- **Accident** : un peu plus loin devant toi, deux voitures de la circulation de travers, cabossées, **feux de détresse** ; leurs conducteurs sont descendus et **se disputent** (« Vous m'avez coupé la route ! », « C'est vous qui avez freiné ! »), en se montrant du doigt ; des curieux regardent, téléphone à la main ; ça **klaxonne** derrière. Une minute plus tard, une **patrouille** arrive sirène, se gare ; un gendarme fait le **constat** (« Bonjour, vos papiers. »), puis « Circulez ! » et chacun repart. Tu peux **prendre une des voitures** (personne au volant : son conducteur crie « Ma voiture ! »). Plus fréquent sous la pluie.
+- **Course-poursuite** : surtout le soir, une voiture rapide **passe près de toi** toutes sirènes derrière elle (une ou deux gendarmeries) ; elle grille les feux, prend les sens interdits. Soit elle s'échappe, soit elle se fait coincer : le conducteur se rend **les mains en l'air**, ou s'enfuit **à pied** et un gendarme lui court après, l'arrête et l'emmène dans la voiture. **Aide la police** (percute sa voiture, plaque-le à pied) : **prime de la gendarmerie, 500 €**, et un « fugitif arrêté » au carnet.
+- Sous le capot : chaque voiture de police peut maintenant poursuivre **sa propre cible** (pas seulement toi), ce qui sert aussi à la patrouille de l'accident.
+- Pour essayer tout de suite : `?event=accident` et `?event=poursuite` (avec la circulation allumée).
+- À faire de ton côté : dire si les accidents sont trop rares ou trop fréquents, si la police n'arrête pas le fugitif trop vite (mesuré : 5 arrestations sur 7, en 45 à 70 s), si 500 € te va.
+![Accident : la dispute](docs/captures/pj4-accident.jpg)
+![Accident : le constat](docs/captures/pj4-accident-constat.jpg)

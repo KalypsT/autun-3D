@@ -8062,3 +8062,95 @@ courant), la prime, et la fréquence quand les autres événements seront là.
 - Le pickpocket ne vise que le joueur à pied ; pas de pickpocket au volant ni dans un magasin.
 
 **À juger en jouant** : la part du solde volée (10 %), la vitesse du pickpocket, la timidité du chien, les primes.
+
+## 2026-11-25 — D330. Plaisir de jeu, phase 4, lot 3 : l'accident entre deux voitures
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 3 (E4) : le premier « grand » événement, qui met la circulation en scène.
+
+**Choix**
+- **Scène posée, pas jouée** (§ 7 du plan : un choc en direct dépend de la physique, on ne le maîtrise pas). Le lieu
+  (`findAccidentSite`, `src/core/events/accident.ts`) est **devant le joueur** (sens de sa marche, ou de son regard s'il est arrêté), à
+  40 – 120 m à pied, 80 – 200 m au volant, **hors de vue**, sur une route de classe 0 à 4 d'au moins 5 m de large, à plus de 9 m d'un bout
+  d'arête (pas dans un carrefour), sans autre voiture à moins de 14 m. Deux voitures de la circulation y sont **posées** (`Traffic.stage`) :
+  l'une derrière l'autre (accrochage par l'arrière) ou côte à côte de travers (accrochage latéral), **cabossées** par les vrais dégâts de
+  D61 (`Traffic.dent` : 42 et 46 points, au bon endroit de la carrosserie, fumée comprise), **feux de détresse** (petits carrés orange qui
+  clignotent aux feux, dans le maillage des gyrophares : 0 appel de dessin), **personne au volant** (`setNoDriver`).
+- **Conducteurs** : deux passants apparaissent à leur portière (`PedSim.appear` : un emplacement libre, ou le passant le plus loin du joueur)
+  et **se disputent** : une réplique toutes les 2,6 s chacun son tour (« Vous m'avez coupé la route ! », « C'est vous qui avez freiné ! »…),
+  poses nouvelles **montrer du doigt** et **parler** (`LIFE_POSE.point`, `talk`). Jusqu'à trois **curieux** (passants à moins de 35 m)
+  viennent regarder, téléphone à la main.
+- **Bouchon** : la circulation s'arrête derrière les voitures posées (ce sont des voitures comme les autres pour le suivi de file) ; un
+  **klaxon** toutes les 4 à 9 s s'il y a une voiture derrière.
+- **Patrouille** : au bout de 45 à 75 s, une gendarmerie part hors de vue (`spawnEvent`), sirène, vient se garer 12 m derrière la scène
+  (sa **propre cible**, `SimCar.target` : une cible par poursuivant, ce que demandait le plan pour généraliser la poursuite) ; un **gendarme**
+  descend (« Bonjour, vos papiers. »), **constat** de 22 s, « Circulez ! », chacun remonte (les passants disparaissent à leur portière),
+  les voitures repartent avec la circulation (`letGo` ; elles ne disparaissent qu'hors de vue, à plus de 60 m).
+- **Le joueur** peut regarder, contourner, **prendre une des voitures** : personne au volant, donc un **vol de véhicule** simple (pas de
+  conducteur éjecté, pas de « vol avec conducteur » de D71) ; son propriétaire crie « Ma voiture ! » (issue « voiture volée » au journal). Un
+  conducteur frappé : la dispute tourne court, chacun s'en va. Pas de prime : c'est du décor.
+- **Fréquence** : poids 2 en centre-ville (0,8 en périphérie, 0,3 dans les parcs), **doublé sous la pluie**, de 6 h à minuit, seulement si le
+  réglage « Circulation » n'est pas à « Aucune ».
+- Captures : `tools/ui.sh <dossier> accident` ; `?event=accident`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/accident.test.ts`, vraies données) : sur six départs, la scène se pose au moins quatre fois, hors de vue, à
+  la bonne distance, deux voitures cabossées immobiles avec détresse et sans conducteur ; dispute, patrouille, constat, départ, rien ne reste
+  réquisitionné et les voitures sont lâchées ; voiture prise : « Ma voiture ! » et pas de conducteur éjecté ; conducteur frappé : fin de dispute.
+- **Endurance** (voir D331) : 2 accidents menés jusqu'au constat sur une des deux graines.
+- **Appels de dessin** : 0 pour les voitures et les feux de détresse ; la patrouille et le gendarme comme d'habitude (+1 à +3 s'il n'y avait
+  pas de gendarmerie en vue).
+
+**Limites, honnêtement**
+- Les voitures sont **posées** : on ne voit jamais le choc. Le joueur qui regardait au mauvais moment ne le saura pas, et c'est voulu.
+- Les voitures de travers bloquent la voie ; la circulation attend derrière (elle ne double pas une voiture arrêtée, D47) : le bouchon peut
+  durer jusqu'au départ.
+- La capture du constat montre la bulle du gendarme hors champ, coupée au bord de l'écran (bulles d'une personne hors de vue).
+
+**À juger en jouant** : la fréquence (assez rare ?), la durée de la dispute, le nombre de curieux.
+
+## 2026-11-25 — D331. Plaisir de jeu, phase 4, lot 4 : la poursuite entre la police et un autre conducteur
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 4 (E5) ; demande de l'utilisateur : généraliser la poursuite (jusqu'ici seul le joueur
+était poursuivi, D73).
+
+**Choix**
+- **Une cible par poursuivant** (`SimCar.target`, `Traffic.pursue(id, cible)`) : chaque voiture de police de la circulation peut suivre sa
+  propre cible (le joueur, le fugitif, un point de la scène d'accident) avec la conduite de poursuite de D73 ; les places autour de la cible
+  se répartissent par cible. Sans cible propre, rien ne change.
+- **Le fugitif** (`src/core/events/pursuit.ts`) : une voiture rapide (sportive, berline ou compacte) naît **hors de vue**, une ou deux
+  gendarmeries derrière elle **toutes sirènes**. Il vise d'abord un point **25 m devant le joueur** (pour qu'on le voie passer), puis fuit :
+  un but à 300 – 500 m, **loin de la police**, toutes les 7 s ou près du but, avec la conduite de poursuite (il grille les feux, prend les sens
+  uniques à contresens : `planTo`).
+- **Fins** : il **s'échappe** (à plus de 450 m du joueur et hors de vue 10 s, ou à 650 m), ou il est **coincé** (presque à l'arrêt 4 s, la police
+  à moins de 25 m) ou sa voiture est **hors d'usage** : il sort. La police à moins de 12 m : il **se rend**, mains en l'air (« C'est bon,
+  c'est bon ! ») ; sinon il **s'enfuit à pied** (fuyard commun de D329, 5,2 m/s, plutôt loin du gendarme le plus proche). La première voiture de
+  police à moins de 30 m se gare, un **gendarme** descend (« Halte ! Gendarmerie ! »), lui court après (4,7 m/s), l'arrête (« Vous êtes en
+  état d'arrestation. »), mains en l'air 4 s, puis tous deux vont à la portière et **disparaissent dans la voiture**, qui repart.
+- **Le joueur peut aider** : percuter sa voiture (choc de plus de 1,5 m/s), le plaquer ou le frapper à pied. Arrêté grâce à lui : **prime de la
+  gendarmerie, 500 €**, un **fugitif arrêté** au carnet (le défi « Fugitifs arrêtés », 1 / 3 / 8, prévu dès D328, compte enfin) et une bonne action. Percuter la police
+  reste l'infraction habituelle (D70) ; frapper le fugitif à pied n'en est pas une (cible permise, comme le voleur de D328).
+- **Fréquence** : poids 1, **2 le soir et la nuit** (20 h – 4 h), si la circulation existe. Captures : `tools/ui.sh <dossier> poursuite` ;
+  `?event=poursuite`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/pursuit.test.ts`, vraies données, cinq graines) : le fugitif naît hors de vue, passe à moins de 70 m du
+  joueur au moins une fois sur deux, la police reste à moins de 60 m de lui ; ça finit toujours, sans figurant réquisitionné ni voiture
+  d'événement oubliée. Coincé par la police : il se rend ou s'enfuit, le gendarme l'emmène. Voiture hors d'usage, joueur qui le plaque à pied :
+  prime de 500 € au moins une fois sur trois.
+- **Mesuré en chemin** (sept poursuites sans le joueur) : **cinq arrestations en 45 à 70 s**, deux échappées ; il passe entre 5 et 99 m du
+  joueur. La police est **assez efficace** : à juger en jouant (une poursuite trop courte ne laisse pas le temps de s'en mêler).
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant avec la circulation et les cinq
+  événements) : 7 et 9 départs, **4 événements différents** dont au moins un grand ; graine 4 : chiens, 2 poursuites enfuies, un vol ;
+  graine 11 : 2 accidents jusqu'au constat, 1 poursuite arrêtée et 2 enfuies, 2 chiens ; aucun figurant oublié, 8 passants réquisitionnés au
+  plus ; **0,002 à 0,003 ms par image** en moyenne, 3,4 à 5,3 ms au pire (une recherche de lieu ou un départ de voitures, une image).
+- **Appels de dessin** : le fugitif est une voiture de la circulation (0) ; la police comme D72 (+2 à +3 si aucune gendarmerie n'était en
+  vue : carrosserie, gyrophares).
+
+**Limites, honnêtement**
+- Le fugitif ne vise que des buts sur la route ; il ne coupe pas par les parcs. Il peut **rester coincé** dans un bouchon : c'est alors la fin
+  à pied, plus tôt que prévu.
+- La police n'emmène pas la voiture du fugitif : elle repart vide avec la circulation, et disparaît hors de vue.
+- Pas encore de barrage, ni d'hélicoptère, ni de poursuite qui croise une autre (une seule poursuite à la fois, comme les autres grands
+  événements).
+
+**À juger en jouant** : la durée des poursuites, la prime (500 €), le nombre de gendarmeries.

@@ -3,7 +3,8 @@ import type { Colliders } from "../core/collision";
 import { EventBook, eventGoal, type EventTierHit } from "../core/events/book";
 import { eventCatalog } from "../core/events/catalog";
 import { EventDirector, outcomeText, type DirectorContext, type EventEnd } from "../core/events/director";
-import type { EventAction, EventKind, EventMarker, EventPlayer, GroundItem } from "../core/events/types";
+import type { EventAction, EventKind, EventMarker, EventPlayer, EventTraffic, GroundItem } from "../core/events/types";
+import type { RoadGraph } from "../core/road-graph";
 import type { Crime } from "../core/wanted";
 import { TIER_NAMES } from "../core/challenges";
 import { SpeechBubbles } from "../ui/speech";
@@ -24,8 +25,12 @@ export interface EventsHost {
   money(): number;
   /** Haut de la tête du joueur (repère du jeu), pour une bulle au-dessus de lui. */
   playerHead(): { x: number; y: number; z: number };
-  /** Aboiement en (x, y). */
+  /** Aboiement en (x, y) ; klaxon d'une voiture en (x, y). */
   bark(x: number, y: number): void;
+  honk(x: number, y: number): void;
+  /** La circulation (null sans), le graphe routier (null tant que la navigation n'est pas chargée). */
+  traffic(): EventTraffic | null;
+  road(): RoadGraph | null;
   feat(text: string): void;
   crime(kind: Crime, x: number, y: number): void;
   /** Nom de la rue la plus proche (« rue aux Cordiers »), ou null. */
@@ -78,10 +83,12 @@ export class EventsController {
       take: (n: number, label: string) => host.take(n, label),
       sayPlayer: (text: string, seconds: number) => this.bubbles.say(-1, text, seconds, () => host.playerHead()),
       bark: (x: number, y: number) => host.bark(x, y),
+      honk: (x: number, y: number) => host.honk(x, y),
       feat: (t: string) => host.feat(t),
       crime: (k: Crime, x: number, y: number) => host.crime(k, x, y),
     };
-    for (const def of eventCatalog({ peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), fx })) this.director.register(def);
+    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), fx };
+    for (const def of eventCatalog(world)) this.director.register(def);
     if (forced && this.director.defOf(forced as EventKind)) this.forced = forced as EventKind;
     const cam = host.camera;
     this.ctx = {
