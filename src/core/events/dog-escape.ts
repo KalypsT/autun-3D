@@ -301,11 +301,11 @@ export class DogEscapeEvent implements GameEvent {
     if (!p.onFoot) return null;
     const d = this.dog;
     if (this.phase === "loose" && p.speed < DOG_ESCAPE.catchSpeed && Math.hypot(d.x - p.x, d.y - p.y) < DOG_ESCAPE.catchReach) {
-      return { label: `Attraper ${this.name}`, verb: "Attraper", run: () => this.grab() };
+      return { label: `Attraper ${this.name}`, verb: "Attraper", icon: "dog", run: () => this.grab() };
     }
     if (this.phase === "led" && this.ownerHere) {
       this.peds.position(this.owner, tmp);
-      if (Math.hypot(tmp.x - p.x, tmp.y - p.y) < DOG_ESCAPE.returnReach) return { label: `Rendre ${this.name}`, verb: "Rendre", run: () => this.giveBack() };
+      if (Math.hypot(tmp.x - p.x, tmp.y - p.y) < DOG_ESCAPE.returnReach) return { label: `Rendre ${this.name}`, verb: "Rendre", icon: "dog", run: () => this.giveBack() };
     }
     return null;
   }

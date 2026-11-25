@@ -2374,3 +2374,17 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![« Rendre »](docs/captures/pj4-vol-rendre.jpg)
 ![Merci, et le premier défi](docs/captures/pj4-vol-merci.jpg)
 ![Le carnet, onglet Faits divers](docs/captures/pj4-carnet-faits.jpg)
+
+**Plaisir de jeu, phase 4, lot 2 : le pickpocket et le chien échappé (25 novembre 2026)** (D329)
+- **Pickpocket** : quand tu marches dans une rue animée avec de l'argent sur toi, quelqu'un te frôle et te prend 10 % de ton solde (20 à 200 €) : « −80 € », bulle « Hé ! Mon portefeuille ! » au-dessus de toi. Il s'éloigne l'air de rien, puis se met à courir dès que tu te retournes vers lui ou que tu cours. Rattrape-le (plaque-le en sprint, frappe-le) : il lâche les billets, ton argent **plus 50 €**.
+- **Chien échappé** : un promeneur lâche la laisse ; le chien file au galop, aboie, s'arrête renifler, son maître lui court après en criant son nom. Si tu lui cours dessus, il détale ; **approche-le au pas** (il s'arrête, curieux), puis **« Attraper »**, et ramène-le en laisse à son maître : **« Rendre »**, « Merci ! », 60 à 120 €. Une voiture qui le frôle l'effraie pour de bon (il n'est jamais blessé).
+- Plaquer un fuyard marche maintenant même quand tu étais déjà collé à lui (avant, il trébuchait au contact et le plaquage ne passait pas).
+- Un pickpocket rattrapé compte comme un voleur rattrapé ; un chien rendu, comme une bonne action (carnet, « Faits divers »).
+- Pour essayer tout de suite : `?event=pickpocket` (dans une rue animée, avec de l'argent : `&money=500`) et `?event=chien`.
+- À faire de ton côté : dire si la part volée (10 %) te va, si le pickpocket se remarque assez, si le chien est trop farouche ou trop facile.
+![Pickpocket](docs/captures/pj4-pickpocket.jpg)
+![Les billets lâchés](docs/captures/pj4-pickpocket-billets.jpg)
+![Argent récupéré, premier défi](docs/captures/pj4-pickpocket-recupere.jpg)
+![Le chien, sa maîtresse accourt](docs/captures/pj4-chien-attraper.jpg)
+![En laisse jusqu'à sa maîtresse](docs/captures/pj4-chien-rendre.jpg)
+![« Merci ! »](docs/captures/pj4-chien-merci.jpg)
