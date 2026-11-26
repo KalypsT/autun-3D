@@ -8521,3 +8521,13 @@ terminé.
 
 **Pas encore** : la police Pricedown (logo et jaquette provisoires) ; le TER qui circule (il pourra reprendre ce modèle) ; musique du chargement ;
 Jojo n'a pas d'animation de repos ni de geste en parlant ; les missions qui suivent le prologue.
+
+## 2026-11-26 — D339. Police du titre : Anton (remplace la police de repli de D338)
+
+**Contexte** : D338 prévoyait la police des titres de GTA (Pricedown) ; elle est payante. L'utilisateur a choisi parmi huit polices libres
+rendues avec le logo (Bangers, Luckiest Guy, Titan One, Bowlby One, Lilita One, Rubik Mono One, Anton, Ultra).
+
+**Choix** : **Anton** (Google Fonts, SIL Open Font License 1.1). Le fichier et sa licence sont dans le dépôt (`tools/logo/fonts/anton.woff`,
+`OFL-anton.txt`, ce que la licence permet) : `python3 tools/logo/make_art.py` refait logo et jaquette sans rien télécharger. Comme avant, la
+police ne sert qu'à fabriquer les images ; elle n'est pas embarquée dans le jeu. Plus étroite que la police de repli, elle laisse voir la
+flèche de la cathédrale sur la jaquette.

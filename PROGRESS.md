@@ -2449,3 +2449,7 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![La descente](docs/captures/d338-intro-descente.jpg)
 ![SMS de Jojo](docs/captures/d338-sms-jojo.jpg)
 ![Prologue terminé](docs/captures/d338-prologue-fin.jpg)
+
+**Police du titre : Anton (26 novembre 2026)** (D339)
+- Pricedown étant payante, le logo et la jaquette sont faits avec **Anton**, police libre que tu as choisie parmi huit. Le fichier est dans le dépôt : `python3 tools/logo/make_art.py` refait tout.
+![Jaquette et logo](docs/captures/d339-intro-logo.jpg)

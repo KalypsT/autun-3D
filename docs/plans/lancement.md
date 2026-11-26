@@ -1,7 +1,6 @@
 # Grand Theft Autun : nom, jaquette, écran de chargement, arrivée à la gare (plan)
 
-**Avancement** : **fait** (D338), sauf la police des titres : logo et jaquette faits avec une police de repli, à refaire avec Pricedown
-(`python3 tools/logo/make_art.py`). Plan rédigé le 26 novembre 2026, à la demande de l'utilisateur, avec ses réponses. Trois lots, une PR à la fin.
+**Avancement** : **fait** (D338). Police du titre : Anton (D339), Pricedown étant payante. Plan rédigé le 26 novembre 2026, à la demande de l'utilisateur, avec ses réponses. Trois lots, une PR à la fin.
 
 ## 0. Ce qu'il faut retenir
 

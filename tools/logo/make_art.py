@@ -2,9 +2,9 @@
 
 Usage : python3 tools/logo/make_art.py [fichier-de-police]
 
-La police des titres (Pricedown, Typodermic) ne sert qu'à fabriquer des images : elle n'est jamais embarquée dans le jeu. Elle reste hors
-du dépôt : premier argument, variable LOGO_FONT, ou premier fichier `.cache/fonts/pricedown*.{ttf,otf}`. Sans elle, le script prend une
-police de repli (Inter Display Black) et le dit : le logo est alors provisoire.
+Police du titre : **Anton** (Google Fonts, licence SIL OFL 1.1, `tools/logo/fonts/OFL-anton.txt`), choisie par l'utilisateur parmi des polices
+libres proches de celle de GTA (Pricedown, payante). Elle ne sert qu'à fabriquer des images : elle n'est pas embarquée dans le jeu. Une autre
+police : premier argument ou variable LOGO_FONT.
 
 Produit :
 - `src/assets/logo.webp` : le logo seul, fond transparent (écran de chargement, intro) ;
@@ -21,18 +21,16 @@ import sys
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FALLBACK = "/usr/share/fonts/opentype/inter/InterDisplay-Black.otf"
+TITLE_FONT = os.path.join(ROOT, "tools/logo/fonts/anton.woff")
 LINES = ("GRAND", "THEFT", "AUTUN")
 
 
-def find_font(argv: list[str]) -> tuple[str, bool]:
-    """Chemin de la police et vrai si c'est la police des titres (pas le repli)."""
-    candidates = argv[1:2] + ([os.environ["LOGO_FONT"]] if os.environ.get("LOGO_FONT") else [])
-    candidates += sorted(glob.glob(os.path.join(ROOT, ".cache/fonts/[Pp]ricedown*.[ot]tf")))
-    for path in candidates:
+def find_font(argv: list[str]) -> str:
+    """Chemin de la police : argument, variable LOGO_FONT, sinon Anton."""
+    for path in argv[1:2] + ([os.environ["LOGO_FONT"]] if os.environ.get("LOGO_FONT") else []):
         if os.path.isfile(path):
-            return path, True
-    return FALLBACK, False
+            return path
+    return TITLE_FONT
 
 
 def logo(font_path: str, cap: int) -> Image.Image:
@@ -83,9 +81,7 @@ def save_webp(img: Image.Image, path: str, limit: int, quality: int = 88) -> int
 
 
 def main() -> None:
-    font_path, real = find_font(sys.argv)
-    if not real:
-        print(f"Police des titres absente : repli sur {FALLBACK} (logo provisoire). Déposer pricedown.otf dans .cache/fonts/.")
+    font_path = find_font(sys.argv)
 
     # Logo seul : 3 lignes de 200 px de capitale (affiché vers 26 vh de haut sur l'écran de chargement).
     os.makedirs(os.path.join(ROOT, "src/assets"), exist_ok=True)
