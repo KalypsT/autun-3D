@@ -2420,3 +2420,9 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **Feu de poubelle** : le soir, une corbeille de rue prend feu, des curieux regardent, les pompiers viennent l'éteindre. Ne t'approche pas trop : ça brûle.
 - Pour essayer : `?event=enerve`, `?event=livreur&h=9`, `?event=chauffard`, `?event=mariage&h=15&at=26,22`, `?event=feu&h=21` (avec la circulation).
 - À faire de ton côté : dire si le conducteur énervé ne revient pas trop souvent, si les klaxons du cortège ne sont pas pénibles, si le feu se voit assez ; écouter les applaudissements (page `?sounds`).
+- Captures imparfaites : la bulle du conducteur énervé est à moitié cachée par le bandeau d'un monument découvert en chemin ; le cortège qui part ne se lit pas sur une image fixe (pas gardée) ; l'accident en direct n'a pas eu de choc pendant la capture (pas d'image).
+![Conducteur énervé : « Vous avez vu ma voiture ? »](docs/captures/pj4-enerve.jpg)
+![Livreur pressé : la camionnette en double file, « Un colis ! Signez là »](docs/captures/pj4-livreur.jpg)
+![Mariage : les invités sur le parvis de l'hôtel de ville](docs/captures/pj4-mariage.jpg)
+![Feu de poubelle, le soir](docs/captures/pj4-feu.jpg)
+![Les pompiers arrivent : « On s'en occupe, reculez ! »](docs/captures/pj4-feu-pompiers.jpg)
