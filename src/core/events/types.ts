@@ -7,7 +7,7 @@ import type { Crime } from "../wanted";
  */
 
 /** Les identifiants des événements du catalogue (§ 3 du plan). */
-export type EventKind = "vol" | "pickpocket" | "chien" | "accident" | "poursuite" | "malaise" | "rixe";
+export type EventKind = "vol" | "pickpocket" | "chien" | "accident" | "poursuite" | "malaise" | "rixe" | "enerve" | "livreur" | "chauffard" | "mariage" | "feu";
 
 /** Les passants, vus par un événement : un sous-ensemble de `PedSim` (le jeu passe la vraie simulation). */
 export interface EventPeds {
@@ -47,11 +47,19 @@ export interface EventCarView {
   /** Trop abîmée : son conducteur l'abandonne ; choc avec le véhicule du joueur au dernier pas (m/s). */
   abandoned?: boolean;
   hit?: number;
+  /** Autre voiture touchée au dernier pas (−1 sans), impact (m/s) ; santé de la carrosserie (100 neuve) ; modèle. */
+  hitCar?: number;
+  hitCarImpact?: number;
+  health?: number;
+  model?: string;
 }
 
 /** La circulation, vue par un événement : un sous-ensemble de `Traffic` (le jeu passe la vraie). */
 export interface EventTraffic {
-  stage(x: number, y: number, heading: number, seed: number): EventCarView | null;
+  /** Pose une voiture arrêtée ; `opts` : modèle, peinture imposés (la voiture blanche des mariés). */
+  stage(x: number, y: number, heading: number, seed: number, opts?: { model?: string; paint?: string }): EventCarView | null;
+  /** Le joueur vient d'accrocher une voiture civile à faible vitesse : laquelle (null sinon). */
+  takeBump(min: number, max: number): { id: number; speed: number } | null;
   spawnEvent(police: boolean, around?: { x: number; y: number }, model?: string): EventCarView | null;
   eventCar(id: number): EventCarView | null;
   pursue(id: number, target: { x: number; y: number; vx: number; vy: number } | null): void;
@@ -64,7 +72,11 @@ export interface EventTraffic {
   drop(id: number): void;
   carsNear(x: number, y: number, r: number): number;
   /** Conducteur en fuite : conduite de poursuite et itinéraire vers (x, y) ; faux sans itinéraire. */
-  planTo(id: number, x: number, y: number): boolean;
+  /** `maxExpand` : borne de la recherche d'itinéraire (un but proche n'a pas besoin des 4 000 sens par défaut ; un but injoignable les épuise). */
+  planTo(id: number, x: number, y: number, chase?: boolean, wrongWay?: boolean, maxExpand?: number): boolean;
+  /** Prend une voiture qui roule déjà (null : police, service, déjà prise) ; les voitures civiles libres autour d'un point. */
+  claim(id: number): EventCarView | null;
+  freeCars(x: number, y: number, r: number): EventCarView[];
   /** Cabosse la voiture `id` (points de dégâts) du côté du point (fromX, fromY). */
   dent(id: number, points: number, fromX: number, fromY: number): void;
 }
@@ -119,7 +131,8 @@ export interface EventMarker {
 
 /** Objet au sol que l'événement fait dessiner : le sac volé, des billets (pickpocket). */
 export interface GroundItem {
-  kind: "bag" | "cash";
+  /** `fire` : un feu (poubelle) ; `color` sert alors de force (0 à 1 : 0, seulement de la fumée). */
+  kind: "bag" | "cash" | "fire";
   x: number;
   y: number;
   /** Couleur de l'objet (entier 0xRRGGBB). */
@@ -137,7 +150,7 @@ export interface EventAction {
 }
 
 /** Comment un événement s'est terminé, pour le journal et les comptes du carnet. */
-export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne" | "constat" | "vole" | "termine" | "arrete" | "secouru" | "soigne" | "evacue" | "separe" | "disperse";
+export type EventOutcome = "rendu" | "garde" | "rattrape" | "enfui" | "perdu" | "abandonne" | "constat" | "vole" | "termine" | "arrete" | "secouru" | "soigne" | "evacue" | "separe" | "disperse" | "excuse" | "parti" | "frappe" | "livre" | "choc" | "grille" | "cortege" | "eteint";
 
 /** Un événement en cours : une machine à états avancée par le directeur. */
 export interface GameEvent {

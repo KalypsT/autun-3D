@@ -53,6 +53,8 @@ interface TrafficCar {
   noDriver?: boolean;
   /** Gyrophares allumés sans la sirène (garée sur une scène). */
   quiet?: boolean;
+  /** Peinture imposée (la voiture blanche des mariés), à la place de celle de la palette. */
+  paint?: string;
 }
 
 /** Une voiture d'événement telle que l'événement la voit. */
@@ -68,6 +70,10 @@ export interface EventCar {
   abandoned: boolean;
   /** Choc avec le véhicule du joueur au dernier pas (m/s, 0 sans). */
   hit: number;
+  /** Autre voiture touchée au dernier pas (identifiant, −1 sans) et l'impact (m/s) ; santé de la carrosserie (100 neuve). */
+  hitCar: number;
+  hitCarImpact: number;
+  health: number;
 }
 
 export type ServiceKind = "bus" | "benne" | "livraison";
@@ -523,7 +529,10 @@ export class Traffic {
   private env: TrafficEnv | null = null;
 
   private eventView(c: TrafficCar): EventCar {
-    return { id: c.sim.id, state: c.sim.state, sim: c.sim, police: c.police, driver: c.driver, model: c.def.id, abandoned: abandons(c.sim.damage), hit: c.sim.hitPlayer };
+    return {
+      id: c.sim.id, state: c.sim.state, sim: c.sim, police: c.police, driver: c.driver, model: c.def.id, abandoned: abandons(c.sim.damage), hit: c.sim.hitPlayer,
+      hitCar: c.sim.hitCar ?? -1, hitCarImpact: c.sim.hitCarImpact ?? 0, health: c.sim.damage.health,
+    };
   }
 
   private byId(id: number): TrafficCar | null {
@@ -541,15 +550,16 @@ export class Traffic {
    * Pose une voiture d'événement en (x, y), cap `heading`, à l'arrêt (une scène d'accident, posée hors de vue) : modèle tiré comme la circulation du
    * quartier ; null s'il n'y a pas de route à 30 m (rien n'est créé). Elle reste arrêtée (`hold`) tant que l'événement le veut.
    */
-  stage(x: number, y: number, heading: number, seed: number): EventCar | null {
+  stage(x: number, y: number, heading: number, seed: number, opts: { model?: string; paint?: string } = {}): EventCar | null {
     const road = this.nav.graph.road, hit = road.nearest(x, y, 30);
     if (!hit) return null;
     const cars = CATALOG.filter((d) => d.family === "car" && !d.unique && !d.service && !d.police);
-    const def = cars.find((d) => d.id === pickModel("car", this.zone, ((seed >>> 8) % 1000) / 1000)) ?? cars[seed % cars.length]!;
+    const def = (opts.model ? vehicleDef(opts.model) : null) ?? cars.find((d) => d.id === pickModel("car", this.zone, ((seed >>> 8) % 1000) / 1000)) ?? cars[seed % cars.length]!;
     const sim = this.sim.add(def.spec, hit.edge * 2, hit.s, seed, 0, damageProfile(def), false);
     this.sim.place(sim, x, y, heading);
     sim.holdT = 1e6;
     const car: TrafficCar = { sim, def, variant: seed % 16, driver: seed ^ 0x51a7, police: false, siren: false, body: { x: 0, y: 0, vx: 0, vy: 0, heading: 0, hull: def.spec.hull, slow: 0, speed: 0, hits: 0 }, lostFor: 0, event: true };
+    if (opts.paint) car.paint = opts.paint;
     this.cars.push(car);
     return this.eventView(car);
   }
@@ -579,19 +589,20 @@ export class Traffic {
 
   /**
    * Conducteur en fuite (phase 4) : style de conduite de poursuite (vite, feux et sens uniques ignorés, D73) et itinéraire vers le point (x, y)
-   * (l'arête la plus proche à moins de 80 m) ; faux si aucun itinéraire n'est trouvé.
+   * (l'arête la plus proche à moins de 80 m) ; faux si aucun itinéraire n'est trouvé. `chase` faux : conduite ordinaire (feux, sens uniques
+   * respectés : un cortège, un livreur qui sait où il va).
    */
-  planTo(id: number, x: number, y: number): boolean {
+  planTo(id: number, x: number, y: number, chase = true, wrongWay = chase, maxExpand = 4000): boolean {
     const c = this.byId(id), d = c?.sim.driver;
     if (!c || !d) return false;
-    if (!d.chase) d.setChase(true);
+    if (chase && !d.chase) d.setChase(true);
     const road = this.nav.graph.road, goal = road.nearest(x, y, 80);
     if (!goal || !d.path) return false;
     if (d.lost) {
       const h = road.nearest(c.sim.state.x, c.sim.state.y, 30);
       if (h) d.restart(h.edge * 2, h.s);
     }
-    const route = findRoute(road, d.currentMove, goal.edge, goal.x, goal.y, { wrongWay: true, maxExpand: 4000 });
+    const route = findRoute(road, d.currentMove, goal.edge, goal.x, goal.y, { wrongWay, maxExpand });
     if (!route) return false;
     d.setPlan(route);
     return true;
@@ -645,6 +656,36 @@ export class Traffic {
     if (k >= 0) this.remove(k);
   }
 
+  /**
+   * Un événement prend une voiture qui roule déjà (phase 4 : le conducteur énervé, le livreur pressé, le chauffard) : elle devient une voiture
+   * d'événement (elle ne disparaît plus avec la couronne) ; null si c'est une voiture de police, de service ou déjà prise.
+   */
+  claim(id: number): EventCar | null {
+    const c = this.byId(id);
+    if (!c || c.police || c.event || c.def.service) return null;
+    c.event = true;
+    return this.eventView(c);
+  }
+
+  /** Voitures civiles libres (ni police, ni service, ni événement) à moins de `r` m de (x, y), pour qu'un événement en prenne une. */
+  freeCars(x: number, y: number, r: number): EventCar[] {
+    const out: EventCar[] = [];
+    for (const c of this.cars) {
+      if (c.police || c.event || c.def.service || c.noDriver) continue;
+      if (Math.hypot(c.sim.state.x - x, c.sim.state.y - y) < r) out.push(this.eventView(c));
+    }
+    return out;
+  }
+
+  /** Le joueur vient d'accrocher une voiture civile libre à faible vitesse (choc de … à … m/s) : laquelle, et le choc ; null sinon. */
+  takeBump(min: number, max: number): { id: number; speed: number } | null {
+    for (const c of this.cars) {
+      if (c.police || c.event || c.def.service) continue;
+      if (c.sim.hitPlayer >= min && c.sim.hitPlayer <= max) return { id: c.sim.id, speed: c.sim.hitPlayer };
+    }
+    return null;
+  }
+
   /** Voitures (hors événements) à moins de `r` m de (x, y) : la scène ne se pose pas sur une autre voiture. */
   carsNear(x: number, y: number, r: number): number {
     let n = 0;
@@ -658,7 +699,7 @@ export class Traffic {
     items.length = 0;
     for (const c of this.cars) {
       const s = c.sim.state;
-      const item: TrafficItem = { model: drawnModel(c.def, c.sim.damage), x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: paletteColor(c.def, c.variant) };
+      const item: TrafficItem = { model: drawnModel(c.def, c.sim.damage), x: s.x, y: s.y, z: s.z, heading: s.heading, pitch: s.pitch, lean: s.lean, steer: s.steer, wheel: s.wheel, color: c.paint ?? paletteColor(c.def, c.variant) };
       if (c.siren) item.beacon = this.beaconClock;
       if (c.hazard) item.hazard = this.beaconClock;
       items.push(item);

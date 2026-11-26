@@ -2411,3 +2411,12 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Le bouton « Aider »](docs/captures/pj4-malaise-aider.jpg)
 ![Rixe devant une terrasse, le soir](docs/captures/pj4-rixe.jpg)
 ![« Gendarmerie ! On se calme ! » : l'un lève les mains, l'autre s'enfuit](docs/captures/pj4-rixe-gendarme.jpg)
+
+**Plaisir de jeu, phase 4, lots 7 et 8 : conducteurs, mariage, feu de poubelle (26 novembre 2026)** (D334, D335)
+- **Conducteur énervé** : tu accroches une voiture en roulant doucement ; une fois sur quatre, elle s'arrête, klaxonne, et le conducteur descend te dire sa façon de penser (« Non mais ça va pas ?! »). Reste sans bouger : il se calme (« Bon… faites attention ! ») ; reste collé à lui à pied : il te bouscule ; repars : il te suit en klaxonnant.
+- **Livreur pressé** : le matin, une camionnette arrive à fond en klaxonnant, pile en double file devant toi, le livreur court livrer et revient. Tu peux lui prendre sa camionnette pendant ce temps.
+- **Accident en direct** : une voiture fonce vers toi en grillant les feux ; une fois sur deux environ, elle percute une autre voiture pour de vrai, et c'est la scène d'accident (dispute, patrouille, constat).
+- **Mariage** : le samedi après-midi à l'hôtel de ville, des invités endimanchés, les mariés qui sortent sous les applaudissements et les cloches, puis le cortège qui part en klaxonnant sans arrêt (la voiture des mariés est blanche).
+- **Feu de poubelle** : le soir, une corbeille de rue prend feu, des curieux regardent, les pompiers viennent l'éteindre. Ne t'approche pas trop : ça brûle.
+- Pour essayer : `?event=enerve`, `?event=livreur&h=9`, `?event=chauffard`, `?event=mariage&h=15&at=26,22`, `?event=feu&h=21` (avec la circulation).
+- À faire de ton côté : dire si le conducteur énervé ne revient pas trop souvent, si les klaxons du cortège ne sont pas pénibles, si le feu se voit assez ; écouter les applaudissements (page `?sounds`).

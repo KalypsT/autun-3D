@@ -8263,3 +8263,102 @@ par l'utilisateur sur ses captures, retrouvée sur la carte du jeu (bâtiment au
 - Le bagarreur en colère ne voit pas les murs : il suit le joueur en ligne droite.
 
 **À juger en jouant** : la fréquence, la durée de la dispute et de la bagarre, la force des coups reçus (8), la prime (50 €).
+
+## 2026-11-26 — D334. Plaisir de jeu, phase 4, lot 7 : conducteur énervé, livreur pressé, accident en direct
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 7 (E8, E9, E10) : des comportements de conducteurs, sur la circulation de J3.
+
+**Choix**
+- **Outils de la circulation** : un événement peut **prendre une voiture qui roule déjà** (`Traffic.claim` ; `freeCars` : les voitures civiles
+  libres autour d'un point) ; la simulation retient, à chaque pas, **l'autre voiture touchée** et l'impact (`SimCar.hitCar`, `hitCarImpact`) ;
+  `planTo` sait conduire **dans les règles** (`chase` faux : feux et sens uniques respectés), ou pressé sans contresens (`wrongWay` faux), avec
+  une borne de recherche (`maxExpand`) ; `takeBump` : la voiture civile que le joueur vient d'accrocher. La scène d'accident de D330 peut
+  partir de **deux voitures qui viennent vraiment de se percuter** (au lieu d'en poser deux).
+- **Conducteur énervé** (E8, `src/core/events/enerve.ts`) : le joueur **au volant** accroche une voiture civile entre 1,5 et 5 m/s ; **une fois
+  sur quatre** (pas deux fois en une minute, jamais avec une étoile), elle s'arrête, **klaxonne** 2 s ; si le joueur est à moins de 25 m et ne
+  file pas, le conducteur **descend** (« Non mais ça va pas ?! ») et vient gesticuler devant lui (« Vous savez conduire ? »…). À pied tout près
+  plus de 3 s : il le **bouscule** (3 points de vie), une fois. Le joueur **reste sans bouger** 7 s (il s'excuse) : « Bon… faites attention ! »,
+  il remonte et repart. Le joueur **repart en voiture** : il remonte et le **suit** 15 s en klaxonnant. **Frappé** : il remonte vite et s'en va
+  (l'agression habituelle). Sa voiture prise pendant qu'il est dehors : « Ma voiture ! » (pas de conducteur à éjecter). Lancé par le jeu, pas
+  tiré au hasard (`EventsController`) ; `?event=enerve` prend la voiture libre la plus proche (essais, captures).
+- **Livreur pressé** (E9, `livreur.ts`) : le matin (6 h – 11 h), du lundi au samedi, surtout au centre : une **camionnette** naît hors de vue et
+  fonce (conduite pressée : feux grillés, sans contresens) vers un point de la voie **30 à 75 m devant le joueur**, en **klaxonnant** ; elle
+  **s'arrête net en double file**, détresse allumée (là, ou dès qu'elle s'en éloigne après en être passée à moins de 35 m, ou bloquée tout
+  près), le livreur saute dehors (« Pardon, pardon ! »), **court** à la porte d'en face par le graphe piéton, livre (« Un colis ! Signez là… »),
+  revient en courant et repart, calmement. Camionnette **prenable** pendant ce temps (« Hé ! Ma camionnette ! »). Écart au plan : ce n'est pas
+  une camionnette de livraison de D204 qui « passe en pressé » (elles sont des véhicules de service qu'un événement ne prend pas), mais une
+  camionnette de la circulation qui naît pour l'occasion.
+- **Accident en direct** (E10, `chauffard.ts`) : une voiture civile qui **roule vers le joueur** à 50 – 160 m devient **imprudente** (conduite
+  de poursuite : elle accélère, **grille les feux**, sans contresens), vers un point 80 m au-delà du joueur. Si elle **percute une autre voiture**
+  à plus de 3 m/s (la vraie physique décide, D60), la **scène d'accident** prend le relais avec ces deux voitures (détresse, dispute,
+  curieux, bouchon, patrouille, constat : D330). Sinon, c'est un feu grillé ; au bout de 35 s, elle redevient une voiture ordinaire. Elle
+  heurte la police, un bus ou le joueur : pas de scène, la police s'en occupe comme d'habitude.
+- **Coût** (trouvé par l'endurance) : quand un événement ne trouve pas de lieu, le directeur en essayait un autre, et un autre, **dans la même
+  image** ; un chauffard dont le but était injoignable épuisait la recherche d'itinéraire (15,8 ms). Désormais **deux essais par tirage** au plus
+  (`DIRECTOR.triesPerRoll`), et une recherche bornée pour ces petits trajets (1 200 à 1 500 sens).
+- Fréquences : livreur, poids 1 au centre ; chauffard, poids 1 au centre (0,8 en quartier d'habitation), 7 h – 23 h. Les deux veulent la
+  circulation. Captures : `tools/ui.sh <dossier> enerve`, `livreur`, `chauffard`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/conduite.test.ts`, vraies données) : conducteur énervé : klaxon, il descend, gesticule, bouscule le joueur resté
+  collé à lui (3 points), se calme, remonte ; voiture prise : « Ma voiture ! ». Livreur : **3 livraisons sur 4** (la quatrième, la camionnette
+  n'arrive pas à 124 m de l'arrêt : abandon). Accident en direct : **5 chocs sur 9** essais, tous suivis d'un constat de la gendarmerie ; 4 feux
+  grillés sans casse ; rien ne reste réquisitionné ni posé.
+- **Endurance** : voir D335.
+
+**Limites, honnêtement**
+- Le choc est **une chance sur deux** environ : la voiture imprudente ne vise pas une autre voiture, elle traverse les carrefours au rouge.
+- Le conducteur énervé ne réagit qu'aux chocs du joueur **au volant** (pas à vélo ni à pied).
+- Le livreur ne porte pas de colis visible (il n'y a pas d'objet pour ça).
+
+**À juger en jouant** : la fréquence du conducteur énervé (une fois sur quatre), la bousculade, la proportion de chocs, le livreur.
+
+## 2026-11-26 — D335. Plaisir de jeu, phase 4, lot 8 : cortège de mariage, feu de poubelle
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 8 (E11, E12) : des événements sans crime.
+
+**Choix**
+- **Cortège de mariage** (E11, `src/core/events/mariage.ts`) : le **samedi de 14 h à 18 h**, le joueur à moins de 300 m de l'**hôtel de ville**
+  (poids 4 quand c'est possible : c'est rare). Quatre à six voitures sont **garées en file** sans conducteur sur la rue la plus proche du
+  parvis assez longue pour elles (25 m au moins : celle juste devant la mairie n'en fait que 18), la première **blanche** (une berline, peinture
+  imposée : `Traffic.stage(…, { model, paint })`). **Cinq invités** (des passants proches, **endimanchés** : veste ou chemise, pantalon ou
+  jupe sombres, chaussures de ville ; ils le restent ensuite) se rassemblent en arc devant le perron. Les **mariés** sortent (elle : manteau et
+  jupe blancs ; lui : costume sombre) sous les **applaudissements** (nouveau son synthétisé, page `?sounds`) et la **volée des cloches**
+  (celle de midi) ; « Vive les mariés ! », « Bravo ! » ; nouvelle pose **applaudir** de la foule. Ils descendent sur le parvis, se font
+  face, puis montent dans la voiture blanche (ils y disparaissent), quelques invités dans les suivantes, les autres redeviennent des passants.
+  Le **cortège** part **dans les règles** (feux, sens uniques) vers un but à 400 – 600 m, toutes vers le même (elles prennent le même chemin,
+  l'une derrière l'autre), en **klaxonnant sans arrêt** (un coup toutes les 0,35 à 0,9 s, d'une voiture ou d'une autre), pendant 1 min 40 au
+  plus. La voiture des mariés **prise avant le départ** : « Notre voiture ! ». Écarts au plan : pas de confettis, et les voitures ne répondent
+  pas au klaxon du joueur (le jeu ne dit pas aux événements quand il klaxonne).
+- **Feu de poubelle** (E12, `feu.ts`) : le soir et la nuit (19 h – 5 h, poids 0,7), une **corbeille de rue** (les `waste_basket` du mobilier des
+  tuiles chargées) à 30 – 100 m, de préférence à l'écran : de la **fumée**, puis des **flammes** (les flammes et la fumée des voitures en feu de
+  D111, en petit, avec le crépitement ; un nouvel objet au sol `fire`), qui ronflent. **Deux curieux** (« Au feu ! », « Appelez les pompiers ! »,
+  l'un filme). Les **pompiers** sont appelés 12 à 22 s après le début ; ils se postent de part et d'autre (« On s'en occupe, reculez ! »),
+  **éteignent** en 8 s (les flammes baissent), « C'est éteint. », la fumée reste 10 s, ils repartent. Trop près (moins de 1,5 m) : **ça brûle**
+  (3 points de vie toutes les 0,5 s). Sans pompiers (pas de circulation, ou pas arrivés 2 min 30 après l'appel) : il **s'éteint seul** en 20 s.
+- **L'équipe des pompiers** devient un objet commun (`FireCrew`, `firecrew.ts`) ; le malaise garde la sienne (à fusionner plus tard). Elle se
+  gare aussi, désormais (et celle du malaise de même), quand elle reste **bloquée 20 s à moins de 220 m à pied** (ils courent le reste), en plus
+  de la règle des 10 s à moins de 100 m.
+- Figurants qui partent ensemble (les invités) : leur itinéraire piéton est calculé **en différé**, étalé sur 0,35 s (`Walker.plan(…, lazy)`).
+
+**Mesures**
+- **Tests sans écran** (`src/game/fete.test.ts`) : mariage : file de voitures (la première blanche), invités, mariés, applaudissements et cloches,
+  invités qui applaudissent, cortège qui part et klaxonne plus de dix fois en 20 s, fin propre ; voiture des mariés prise : « Notre voiture ! ».
+  Feu : flammes, brûlure du joueur trop près ; **éteint par les pompiers une fois sur trois** (les deux autres fois, la même rue : le fourgon reste
+  bloqué à 120 m, 270 m à pied, il s'éteint seul) ; sans circulation, il s'éteint seul.
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant un mercredi matin, puis un samedi après-
+  midi, puis le samedi soir, avec des corbeilles posées sur le graphe piéton) : 8 et 10 départs, **neuf événements différents** (chien, mariage,
+  poursuite, vol, feu, rixe, livreur, malaise, chauffard), un cortège parti, un feu éteint par les pompiers, un livreur, un choc suivi d'un
+  constat ; aucun figurant oublié, 8 passants réquisitionnés au plus ; **0,003 à 0,004 ms par image** en moyenne, **2,6 à 5,9 ms au pire**.
+  (Avant les deux essais par tirage : 10 à 17 ms au pire.) L'assertion « au moins un voleur rattrapé » a dû être assouplie : avec douze
+  événements, le vol tombe moins souvent, et le robot, occupé à aider un malade, en rattrape moins.
+- **Appels de dessin** : 0 pour le mariage (voitures de la circulation, passants) ; le feu, dans les maillages de fumée et de flammes existants ;
+  le fourgon comme D332.
+
+**Limites, honnêtement**
+- Le feu est sur la corbeille, mais la corbeille ne noircit pas et ne fond pas.
+- Les invités gardent leur tenue de fête une fois redevenus passants.
+- Le cortège ne roule pas « au pas » : il roule comme la circulation.
+- Un mariage met jusqu'à sept passants réquisitionnés : avec un vol à côté, neuf (le plan disait huit au plus).
+
+**À juger en jouant** : la fréquence du mariage (le samedi après-midi seulement), les klaxons du cortège, la taille du feu.

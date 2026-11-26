@@ -265,6 +265,21 @@ export class GameAudio {
   }
 
   /** Crépitement d'un véhicule en feu ou d'une épave qui brûle (D111) : à appeler au hasard, quelques fois par seconde. */
+  /** Applaudissements et volée de cloches (phase 4 : un mariage à la mairie). */
+  applause(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 6, 180, 0.2);
+    if (!kit || !spot) return;
+    S.applause(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
+  bells(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 20, 600, 0.4);
+    if (!kit || !spot) return;
+    S.peal(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
   crackle(x: number, y: number): void {
     const kit = this.kit;
     if (!kit) return;

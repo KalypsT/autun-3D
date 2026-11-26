@@ -454,6 +454,16 @@ export function peal(kit: Kit, dest: AudioNode, t: number, seconds: number, spot
   }
 }
 
+/** Applaudissements (phase 4 : la sortie des mariés) : une petite foule qui claque des mains pendant `seconds`, plus fort au début. */
+export function applause(kit: Kit, dest: AudioNode, t: number, seconds: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  const n = Math.floor(seconds * 45);
+  for (let i = 0; i < n; i++) {
+    const at = t + rnd() * seconds, fade = 1 - 0.6 * ((at - t) / seconds);
+    burst(kit, out, at, "bandpass", 1300 + rnd() * 1800, 1.4, (0.05 + rnd() * 0.07) * fade, 0.001, 0.025 + rnd() * 0.02);
+  }
+}
+
 // --- Interface et joueur -----------------------------------------------------------------------------------------------------
 
 /** Petite mélodie : une suite de notes (Hz) jouées l'une après l'autre. */

@@ -120,6 +120,8 @@ export class AccidentEvent implements GameEvent {
     private readonly fx: EventEffects & { honk(x: number, y: number): void },
     site: AccidentSite,
     private readonly rng: EventRng,
+    /** Deux voitures qui viennent vraiment de se percuter (l'accident en direct, E10) : la scène part d'elles au lieu d'en poser deux. */
+    existing?: readonly [EventCarView, EventCarView],
   ) {
     this.x = site.x;
     this.y = site.y;
@@ -130,8 +132,8 @@ export class AccidentEvent implements GameEvent {
     const h = site.heading, ux = Math.sin(h), uy = Math.cos(h), rx = uy, ry = -ux;
     const seed = Math.floor(rng.next() * 1e9);
     // Variante 0 : choc par l'arrière (la seconde a percuté la première qui freinait) ; 1 : accrochage de côté.
-    const a = traffic.stage(site.x, site.y, h + (rng.next() - 0.5) * 0.3, seed);
-    const b = site.variant === 0
+    const a = existing ? existing[0] : traffic.stage(site.x, site.y, h + (rng.next() - 0.5) * 0.3, seed);
+    const b = existing ? existing[1] : site.variant === 0
       ? traffic.stage(site.x - ux * 5 - rx * 0.6, site.y - uy * 5 - ry * 0.6, h - 0.35, seed ^ 0x5bd1)
       : traffic.stage(site.x - ux * 1.2 - rx * 1.9, site.y - uy * 1.2 - ry * 1.9, h + 0.55, seed ^ 0x5bd1);
     if (!a || !b) {
@@ -147,9 +149,13 @@ export class AccidentEvent implements GameEvent {
     this.cars = [a.id, b.id];
     // Les dégâts, là où les voitures se sont touchées.
     // Assez pour cabosser la carrosserie et faire fumer un peu (palier « fumée », D112), pas assez pour un feu.
-    traffic.dent(a.id, 42, b.state.x, b.state.y);
-    traffic.dent(b.id, 46, a.state.x, a.state.y);
+    if (!existing) {
+      traffic.dent(a.id, 42, b.state.x, b.state.y);
+      traffic.dent(b.id, 46, a.state.x, a.state.y);
+    }
     for (const c of [a, b]) {
+      traffic.hold(c.id, 1e6);
+      traffic.pursue(c.id, null);
       traffic.setHazard(c.id, true);
       traffic.setNoDriver(c.id, true);
     }

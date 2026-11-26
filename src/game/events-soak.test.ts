@@ -69,8 +69,8 @@ function soak(seed: number, minutes: number): SoakResult {
   traffic.setPeds(peds);
   const r: SoakResult = { starts: 0, snatched: 0, caught: 0, returned: 0, escaped: 0, maxBorrowed: 0, leaked: 0, bad: 0, earned: 0, journal: 0, kinds: {}, started: {}, meanMs: 0, worstMs: 0 };
   let money = 1000;
-  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void } = {
-    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, feat: () => {}, crime: () => {},
+  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void; applause(): void; bells(): void } = {
+    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, applause: () => {}, bells: () => {}, feat: () => {}, crime: () => {},
     earn: (n) => {
       r.earned += n;
       money += n;
@@ -81,10 +81,16 @@ function soak(seed: number, minutes: number): SoakResult {
       return k;
     },
   };
+  // Des corbeilles de rue « de test » (le jeu prend celles du mobilier des tuiles) : un point du graphe piéton tous les 35 m autour du centre.
+  const bins: { x: number; y: number }[] = [];
+  for (let x = -140; x <= 140; x += 35) for (let y = -160; y <= 120; y += 35) {
+    const hit = nav.graph.nearest(x, y, 10);
+    if (hit) bins.push({ x: hit.x, y: hit.y });
+  }
   const dogs = new SimDogs(peds);
   const director = new EventDirector(seed);
   director.level = 3;
-  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, pedNav: () => nav.graph, bars: () => BARS, fx })) director.register(d);
+  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, pedNav: () => nav.graph, bars: () => BARS, bins: () => bins, fx })) director.register(d);
   const player = { x: 0, y: -20, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 };
   let rng = seed * 7919;
   const rand = (): number => ((rng = (rng * 16807) % 2147483647) / 2147483647);
@@ -188,10 +194,10 @@ function soak(seed: number, minutes: number): SoakResult {
     dogs.step(DT);
     traffic.applyImpacts();
     signals.clock.t += DT;
-    // Après les huit premières minutes, un samedi soir (rixes devant les bars ; plus de poursuites).
-    const evening = i >= 8 * 3600;
-    ctx.hour = evening ? 21 : 15;
-    ctx.weekday = evening ? 5 : 2;
+    // Un mercredi matin (livreurs, marché), puis un samedi après-midi (mariage à la mairie), puis le samedi soir (rixes, feux de poubelle).
+    const minute = i / 3600;
+    ctx.hour = minute < 6 ? 9 : minute < 12 ? 15 : 21;
+    ctx.weekday = minute < 6 ? 2 : 5;
     const t0 = performance.now();
     const before = director.journal.length;
     const nb = director.starts;
@@ -230,7 +236,7 @@ function soak(seed: number, minutes: number): SoakResult {
 }
 
 describe("endurance des événements (phase 4)", () => {
-  it("vingt minutes à « Fréquents » au centre, l'après-midi puis le soir : vols, pickpockets, chiens, accidents, poursuites, malaises, rixes ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
+  it("vingt minutes à « Fréquents » au centre, du matin au soir : vols, pickpockets, chiens, accidents, poursuites, malaises, rixes, livreurs, chauffards, mariages, feux ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
     const sum = { starts: 0, snatched: 0, caught: 0, returned: 0, earned: 0, journal: 0, kinds: new Set<string>() };
     for (const seed of [4, 11]) {
       const r = soak(seed, 20);
@@ -240,7 +246,8 @@ describe("endurance des événements (phase 4)", () => {
       expect(r.bad).toBe(0);
       expect(r.leaked).toBe(0);
       // Un grand et un petit événement au plus : un vol (deux figurants) et un accident (deux conducteurs, trois curieux, un gendarme).
-      expect(r.maxBorrowed).toBeLessThanOrEqual(8);
+      // (Un mariage : cinq invités et les mariés, plus un vol à côté : 9.)
+      expect(r.maxBorrowed).toBeLessThanOrEqual(9);
       expect(r.meanMs).toBeLessThan(0.2);
       sum.starts += r.starts;
       sum.snatched += r.snatched;
@@ -250,12 +257,13 @@ describe("endurance des événements (phase 4)", () => {
       sum.journal += r.journal;
       for (const k of Object.keys(r.started)) sum.kinds.add(k);
     }
-    // Au moins cinq des sept événements du catalogue ont commencé (le tirage en laisse parfois de côté en 40 minutes), dont un grand.
-    expect(sum.kinds.size).toBeGreaterThanOrEqual(5);
+    // Au moins sept des douze événements du catalogue ont commencé (le conducteur énervé ne vient que d'un choc du joueur en voiture ; le
+    // tirage en laisse d'autres de côté en 40 minutes), dont un grand.
+    expect(sum.kinds.size).toBeGreaterThanOrEqual(7);
     expect(["accident", "poursuite", "malaise", "rixe"].some((k) => sum.kinds.has(k))).toBe(true);
     expect(sum.starts).toBeGreaterThanOrEqual(8);
-    expect(sum.snatched).toBeGreaterThanOrEqual(1);
-    expect(sum.caught).toBeGreaterThanOrEqual(Math.ceil(sum.snatched * 0.5));
+    // Avec douze événements, le vol à l'arraché ne tombe plus à chaque fois, et le robot, occupé ailleurs (un malade à aider), en rattrape moins.
+    if (sum.snatched >= 2) expect(sum.caught).toBeGreaterThanOrEqual(1);
     expect(sum.journal).toBeGreaterThanOrEqual(8);
     expect(sum.earned).toBeGreaterThan(0);
   }, 900000);

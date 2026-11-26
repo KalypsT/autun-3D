@@ -285,7 +285,7 @@ export const HIT_POSE = { stumble: 1, down: 2 } as const;
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
 /** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains) ;
  * bras tendu qui montre (phase 4 : la victime d'un vol montre le voleur). */
-export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9, chest: 10, collapse: 11, getup: 12, kneel: 13, fists: 14 } as const;
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9, chest: 10, collapse: 11, getup: 12, kneel: 13, fists: 14, clap: 15 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,85 s pour tomber et s'immobiliser, environ 1,2 s au sol, 1,5 s pour se relever (D210). */
 export const DOWN_TIME = 3.6;
@@ -1241,6 +1241,17 @@ export function chestPose(pose: Pose): void {
   a[BONE.forearmL * 3] = 0.5;
   a[BONE.torso * 3]! -= 0.3;
   a[BONE.head * 3]! -= 0.35;
+}
+
+/** Applaudir (phase 4 : la sortie des mariés), par-dessus la pose d'arrêt : mains devant la poitrine qui se rejoignent quatre fois par seconde. */
+export function clapPose(pose: Pose, t: number): void {
+  const a = pose.angles, k = 0.5 + 0.5 * Math.sin(t * Math.PI * 8);
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 0.75;
+    a[arm * 3 + 1] = side * -0.35;
+    a[arm * 3 + 2] = side * (0.25 + 0.15 * k);
+    a[fore * 3] = 1.25;
+  }
 }
 
 /** Instant de la chute légère où le corps est un genou à terre (clé `F_KNEEL`). */

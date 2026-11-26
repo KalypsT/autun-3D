@@ -500,6 +500,57 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await ctx.close();
   }
 
+  // Phase 4, lots 7 et 8 : une scène vue de biais à `dist` m ; on attend que `cond` (code évalué sur l'événement `e`) soit vrai.
+  const eventShots = async (query, steps, onStart) => {
+    const ctx = await open(query);
+    try {
+      await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    } catch (e) {
+      console.log(`pas d'événement : ${query}`);
+      await ctx.close();
+      return;
+    }
+    if (onStart) await page.evaluate(onStart);
+    for (const [cond, dist, name, wait] of steps) {
+      const ok = await page.waitForFunction((c) => {
+        const e = window.__autun.events.director.active[0];
+        return !!e && new Function("e", `return ${c}`)(e);
+      }, cond, { timeout: wait ?? 600000, polling: 500 }).then(() => true, () => false);
+      if (!ok) break;
+      await page.evaluate((d) => {
+        const a = window.__autun, e = a.events.director.active[0];
+        if (!e) return;
+        a.player.x = e.x + d * 0.45; a.player.y = e.y - d;
+        a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.1);
+        a.tilt(0.22);
+      }, dist);
+      await sleep(2500);
+      await shot(name);
+    }
+    await ctx.close();
+  };
+  // Le conducteur énervé ne descend que si le joueur est à moins de 25 m : on le pose à côté de la voiture dès le départ.
+  if (want("enerve")) {
+    await eventShots("event=enerve&h=17&traffic=20", [["e.phase === 'walk' && e.t > 4", 7, "pj4-enerve"]], () => {
+      const a = window.__autun, e = a.events.director.active[0], c = a.traffic().eventCar(e.car);
+      if (c) { a.player.x = c.state.x + Math.cos(c.state.heading) * 5; a.player.y = c.state.y - Math.sin(c.state.heading) * 5; }
+    });
+  }
+  if (want("livreur")) await eventShots("event=livreur&h=9&traffic=20", [["e.phase === 'door'", 12, "pj4-livreur"]]);
+  if (want("chauffard")) await eventShots("event=chauffard&h=17&traffic=20", [["!!e.accident && e.accident.phase === 'dispute'", 14, "pj4-chauffard", 400000]]);
+  if (want("mariage")) {
+    await eventShots("event=mariage&h=15&traffic=20&at=26,22&yaw=0", [
+      ["e.phase === 'exit' && e.phaseT > 3", 14, "pj4-mariage"],
+      ["e.phase === 'convoy' && e.phaseT > 6", 16, "pj4-mariage-cortege"],
+    ]);
+  }
+  if (want("feu")) {
+    await eventShots("event=feu&h=21&traffic=20", [
+      ["e.phase === 'burn' && e.phaseT > 4", 8, "pj4-feu"],
+      ["e.phase === 'douse'", 10, "pj4-feu-pompiers"],
+    ]);
+  }
+
   if (want("monuments")) {
     // Chasse aux monuments (PJ 3, D320) : on arrive à la porte d'Arroux (bandeau, prime, « Lire la fiche ») ; la fiche dans le carnet ;
     // la liste des monuments ; la carte agrandie avec les « ? ».

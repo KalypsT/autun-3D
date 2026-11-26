@@ -185,6 +185,7 @@ export const SCENES: readonly SoundScene[] = [
   shot("owl", "Ville", "Chouette hulotte", 3, (k, o, t) => S.owl(k, o, t, { gain: 0.6, pan: 0.4, cutoff: 4000, echo: 0.3 })),
   shot("pigeons", "Ville", "Envol de pigeons", 1.6, (k, o, t) => S.flutter(k, o, t, 6, { ...NEAR, gain: 0.8, pan: 0.3 })),
   shot("honk", "Ville", "Klaxons de la circulation", 2, (k, o, t, i) => S.honk(k, o, t, [0.9, 1.15, 1][i]!, [0.2, 0.35, 0.15][i]!, { gain: 0.6, pan: [0.5, -0.4, 0.5][i]!, cutoff: 6000, echo: 0.2 }), 3, 0.45),
+  shot("applause", "Ville", "Applaudissements (mariage, phase 4)", 4, (k, o, t) => S.applause(k, o, t, 3.5, { ...NEAR, gain: 0.8, pan: 0.2 })),
   passScene("pass-car", "Voiture qui passe à 50 km/h", 50 / 3.6, false),
   passScene("pass-siren", "Gendarmerie qui passe à 90 km/h, sirène", 90 / 3.6, true),
   passScene("pass-pompiers", "Pompiers qui passent à 70 km/h, sirène (phase 4)", 70 / 3.6, true, true),

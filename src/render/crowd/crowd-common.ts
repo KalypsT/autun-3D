@@ -2,7 +2,7 @@ import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
 import { gunPose } from "../../core/character-attack";
-import { BONE, BONE_COUNT, chestPose, collapsePose, createPose, geometryScales, getupPose, GUN_POSE, HIT_BLEND, hitPose, kneelPose, LIFE_POSE, lyingVariant, phonePose, pointPose, handsPose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { BONE, BONE_COUNT, chestPose, clapPose, collapsePose, createPose, geometryScales, getupPose, GUN_POSE, HIT_BLEND, hitPose, kneelPose, LIFE_POSE, lyingVariant, phonePose, pointPose, handsPose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
 import { attackPose, guardPose } from "../../core/character-attack";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
@@ -76,6 +76,9 @@ export class CrowdRigs {
       else if (hit === LIFE_POSE.point) pointPose(this.pose, state.poseT![i]!);
       else if (hit === LIFE_POSE.hands) handsPose(this.pose);
       else talkPose(this.pose, state.poseT![i]!);
+    } else if (hit === LIFE_POSE.clap) {
+      walkPose(this.pose, state.phase[i]!, 0, this.dims[i]!);
+      clapPose(this.pose, state.poseT![i]! + (i % 5) * 0.07);
     } else if (hit === LIFE_POSE.chest) {
       walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
       chestPose(this.pose);

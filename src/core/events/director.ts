@@ -17,8 +17,9 @@ const LEVEL_RATE = [0, 0.4, 1, 2.5] as const;
 export const DIRECTOR = {
   /** Un événement toutes les … s en moyenne au centre en journée, à « Normaux ». */
   meanGap: 180,
-  /** Tirage toutes les … s. */
+  /** Tirage toutes les … s ; au plus … événements essayés par tirage. */
   rollEvery: 2,
+  triesPerRoll: 2,
   /** Au moins … s entre deux départs (… à « Fréquents »), … s après la fin du précédent. */
   minGap: 60,
   minGapFrequent: 30,
@@ -198,8 +199,10 @@ export class EventDirector {
         pool.splice(k, 1);
       }
     }
-    // Tirage pondéré, puis on essaie les suivants si le premier ne trouve pas de lieu.
-    while (pool.length) {
+    // Tirage pondéré, puis on essaie un second si le premier ne trouve pas de lieu (pas plus : chercher un lieu coûte, les autres attendront le
+    // prochain tirage ; sinon une image pouvait passer 10 à 15 ms à tous les essayer).
+    let tries = 0;
+    while (pool.length && tries++ < DIRECTOR.triesPerRoll) {
       let r = this.rng.next() * total, k = 0;
       for (; k < pool.length - 1; k++) {
         r -= pool[k]!.w;
@@ -253,6 +256,11 @@ const OUTCOME_TEXT: Partial<Record<EventKind, Partial<Record<EventOutcome, strin
   accident: { constat: "constat de la gendarmerie", vole: "une des voitures a été volée", termine: "les conducteurs se disputaient encore", enfui: "un des conducteurs est parti" },
   poursuite: { arrete: "le fugitif a été arrêté", rattrape: "fugitif arrêté grâce à toi", enfui: "le fugitif s'est échappé", perdu: "le fugitif est mort" },
   rixe: { separe: "bagarre séparée par toi", arrete: "un bagarreur arrêté", disperse: "les bagarreurs se sont dispersés", perdu: "un bagarreur est mort" },
+  enerve: { excuse: "excuses acceptées", parti: "le conducteur est reparti", frappe: "le conducteur a été frappé", vole: "sa voiture a été volée" },
+  livreur: { livre: "colis livré", vole: "la camionnette a été volée", termine: "il n'est pas venu" },
+  chauffard: { grille: "un feu grillé, sans casse", choc: "un choc", constat: "un choc, constat de la gendarmerie", vole: "une des voitures a été volée", termine: "un choc, les conducteurs se disputaient encore", enfui: "un choc, un des conducteurs est parti" },
+  mariage: { cortege: "le cortège est parti en klaxonnant", vole: "la voiture des mariés a été volée" },
+  feu: { eteint: "éteint par les pompiers", termine: "il s'est éteint tout seul" },
   malaise: { secouru: "secouru par toi", soigne: "soigné par les pompiers", evacue: "emmené par les pompiers", termine: "il s'est relevé", perdu: "il est mort" },
 };
 

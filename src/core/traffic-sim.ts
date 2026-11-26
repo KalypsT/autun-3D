@@ -28,6 +28,9 @@ export interface SimCar {
   chase: Chaser | null;
   /** Impact (m/s) du dernier choc avec le véhicule du joueur à ce pas, 0 sans choc (J4 : percuter la police). */
   hitPlayer: number;
+  /** Autre voiture touchée à ce pas (identifiant, −1 sans choc) et l'impact (m/s) (phase 4 : un accident en direct). */
+  hitCar?: number;
+  hitCarImpact?: number;
   /** Dégâts (D112) : les chocs (murs, autres voitures, joueur) l'abîment, son moteur faiblit ; trop abîmée, son conducteur s'arrête pour l'abandonner. */
   damage: VehicleDamage;
   /** Voiture de police. */
@@ -234,6 +237,8 @@ export class TrafficSim {
     for (const c of this.cars) {
       c.state.impact = 0;
       c.hitPlayer = 0;
+      c.hitCar = -1;
+      c.hitCarImpact = 0;
       let seen: readonly Other[] = others;
       if (c.driver && this.peds) {
         this.walkerCount = 0;
@@ -267,6 +272,9 @@ export class TrafficSim {
           this.stats.worstImpact = Math.max(this.stats.worstImpact, a.state.impact, b.state.impact);
           a.driver?.touch(b.id);
           b.driver?.touch(a.id);
+          const imp = Math.max(this.hit.impact, a.state.impact, b.state.impact);
+          if (imp > (a.hitCarImpact ?? 0)) [a.hitCar, a.hitCarImpact] = [b.id, imp];
+          if (imp > (b.hitCarImpact ?? 0)) [b.hitCar, b.hitCarImpact] = [a.id, imp];
         }
       }
       this.hit.impact = 0;

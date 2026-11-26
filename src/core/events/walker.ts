@@ -62,8 +62,23 @@ export class Walker {
     readonly slot: number,
   ) {}
 
-  /** Trace l'itinéraire de sa position jusqu'à (x, y) sur le graphe piéton (ligne droite sans graphe ou sans chemin). */
-  plan(nav: NavGraph | null, x: number, y: number): void {
+  /** Itinéraire à tracer (but, graphe) et le délai avant de le faire (s) : plusieurs figurants lancés ensemble ne le calculent pas à la même image. */
+  private pending: { nav: NavGraph; x: number; y: number; delay: number } | null = null;
+  private static seq = 0;
+
+  /**
+   * Trace l'itinéraire de sa position jusqu'à (x, y) sur le graphe piéton (ligne droite sans graphe ou sans chemin). `lazy` : le calcul est
+   * remis de 0 à 0,35 s (il marche droit vers le but en attendant), pour étaler le coût quand toute une troupe part en même temps.
+   */
+  plan(nav: NavGraph | null, x: number, y: number, lazy = false): void {
+    if (lazy && nav) {
+      this.pending = { nav, x, y, delay: (Walker.seq++ % 8) * 0.05 };
+      this.peds.position(this.slot, at);
+      this.pts = [x, y];
+      this.k = 0;
+      return;
+    }
+    this.pending = null;
     this.peds.position(this.slot, at);
     this.pts = [at.x, at.y];
     this.k = 0;
@@ -78,6 +93,10 @@ export class Walker {
 
   /** Un pas : vers le point suivant de l'itinéraire, à `speed` m/s ; vrai une fois à moins de `reach` m du but. */
   step(speed: number, reach: number, dt = 1 / 60): boolean {
+    if (this.pending && (this.pending.delay -= dt) <= 0) {
+      const p = this.pending;
+      this.plan(p.nav, p.x, p.y);
+    }
     const n = this.pts.length / 2;
     if (n === 0) return true;
     this.peds.position(this.slot, at);

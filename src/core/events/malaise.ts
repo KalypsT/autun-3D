@@ -32,6 +32,8 @@ export const MALAISE = {
   /** Arrêté plus de … s à moins de … m (à pied) du malade (bouchon, rue qu'il ne sait pas prendre) : il se gare là, les pompiers finissent à pied. */
   stuckFor: 10,
   walkFar: 100,
+  stuckLong: 20,
+  walkFarLong: 220,
   care: 10,
   /** Les pompiers n'arrivent pas jusqu'à lui en … s (un mur entre eux) : il se relève seul. */
   careWait: 40,
@@ -283,8 +285,10 @@ export class MalaiseEvent implements GameEvent {
       const close = Math.hypot(c.state.x - tg.x, c.state.y - tg.y) < MALAISE.parkReach;
       // (Le trajet à pied compte, pas la distance : de l'autre côté d'un mur, le détour peut faire 200 m ; on ne le mesure qu'une fois par seconde.)
       let stuck = false;
-      if (this.vanStuckT > MALAISE.stuckFor && Math.hypot(c.state.x - this.x, c.state.y - this.y) < MALAISE.walkFar && Math.floor(this.vanStuckT) !== Math.floor(this.vanStuckT - this.dt)) {
-        stuck = walkLength(this.nav, c.state.x, c.state.y, this.x, this.y) < MALAISE.walkFar;
+      // Bloqué : à moins de 100 m à pied au bout de 10 s, ou de 220 m au bout de 20 s (les pompiers courent le reste).
+      if (this.vanStuckT > MALAISE.stuckFor && Math.hypot(c.state.x - this.x, c.state.y - this.y) < MALAISE.walkFarLong && Math.floor(this.vanStuckT) !== Math.floor(this.vanStuckT - this.dt)) {
+        const w = walkLength(this.nav, c.state.x, c.state.y, this.x, this.y);
+        stuck = w < MALAISE.walkFar || (this.vanStuckT > MALAISE.stuckLong && w < MALAISE.walkFarLong);
       }
       if (!close && !stuck) return;
       this.parking = true;

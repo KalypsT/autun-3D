@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Colliders } from "../core/collision";
 import { EventBook, eventGoal, type EventTierHit } from "../core/events/book";
 import { eventCatalog } from "../core/events/catalog";
+import { ENERVE } from "../core/events/enerve";
 import { EventDirector, outcomeText, type DirectorContext, type EventEnd } from "../core/events/director";
 import type { EventAction, EventKind, EventMarker, EventPlayer, EventTraffic, GroundItem } from "../core/events/types";
 import type { NavGraph } from "../core/nav-graph";
@@ -33,6 +34,11 @@ export interface EventsHost {
   kneel(on: boolean): void;
   /** Un coup de poing reçu par le joueur (rixe) : points de vie, depuis (x, y). */
   hurtPlayer(damage: number, x: number, y: number): void;
+  /** Applaudissements, volée de cloches (le mariage). */
+  applause(x: number, y: number, seconds: number): void;
+  bells(x: number, y: number, seconds: number): void;
+  /** Corbeilles de rue des tuiles chargées (le feu de poubelle). */
+  bins(): readonly { x: number; y: number }[];
   /** Bars, cafés et restaurants (repère du jeu ; vide tant que la carte n'est pas chargée). */
   bars(): readonly { x: number; y: number }[];
   /** La circulation (null sans), le graphe routier (null tant que la navigation n'est pas chargée). */
@@ -78,6 +84,9 @@ export class EventsController {
   /** Événement imposé par `?event=` : on réessaie jusqu'à trouver un lieu (la foule met quelques secondes à se remplir). */
   private forced: EventKind | null = null;
   private forceTry = 0;
+  /** Le conducteur énervé : pas avant … s ; la voiture accrochée pendant qu'on le lance. */
+  private bumpCool = 0;
+  private pendingBump = -1;
   /** Coût moyen (ms, lissé) d'une image, pour la ligne de diagnostic. */
   ms = 0;
 
@@ -95,10 +104,12 @@ export class EventsController {
       honk: (x: number, y: number) => host.honk(x, y),
       kneel: (on: boolean) => host.kneel(on),
       hurtPlayer: (n: number, x: number, y: number) => host.hurtPlayer(n, x, y),
+      applause: (x: number, y: number, t: number) => host.applause(x, y, t),
+      bells: (x: number, y: number, t: number) => host.bells(x, y, t),
       feat: (t: string) => host.feat(t),
       crime: (k: Crime, x: number, y: number) => host.crime(k, x, y),
     };
-    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), pedNav: () => host.pedNav(), bars: () => host.bars(), fx };
+    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), pedNav: () => host.pedNav(), bars: () => host.bars(), bins: () => host.bins(), pendingBump: () => this.pendingBump, fx };
     for (const def of eventCatalog(world)) this.director.register(def);
     if (forced && this.director.defOf(forced as EventKind)) this.forced = forced as EventKind;
     const cam = host.camera;
@@ -178,6 +189,16 @@ export class EventsController {
     if (this.forced && sim && (this.forceTry -= dt) <= 0) {
       this.forceTry = 0.5;
       if (this.director.force(this.forced, c)) this.forced = null;
+    }
+    // Le joueur accroche une voiture de la circulation (choc léger) : une fois sur quatre, son conducteur s'énerve (E8, D334).
+    this.bumpCool -= dt;
+    const bump = this.bumpCool <= 0 ? this.host.traffic()?.takeBump(ENERVE.bumpMin, ENERVE.bumpMax) : null;
+    if (bump && this.director.level > 0 && !c.blocked && c.stars === 0 && sim && !f.player.onFoot && !this.director.active.some((e) => !e.big)) {
+      if (Math.random() < ENERVE.chance) {
+        this.pendingBump = bump.id;
+        if (this.director.force("enerve", c)) this.bumpCool = ENERVE.cooldown;
+        this.pendingBump = -1;
+      } else this.bumpCool = 3;
     }
     this.director.update(c);
     const hits: EventTierHit[] = [];

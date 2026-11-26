@@ -547,6 +547,14 @@ export function startGame(ctx: GameContext): void {
       audio.hurt();
     },
     bars: () => ui.bars,
+    applause: (x, y, t) => audio.applause(x, y, t),
+    bells: (x, y, t) => audio.bells(x, y, t),
+    // Les corbeilles de rue des tuiles chargées (cherchées seulement au lancement d'un feu de poubelle).
+    bins: () => {
+      const out: { x: number; y: number }[] = [];
+      for (const t of tiles.loadedExtras()) for (const f of t.furniture) if (f.kind === "waste_basket") out.push({ x: f.x, y: f.y });
+      return out;
+    },
     traffic: () => traffic as Traffic | null,
     road: () => (nav as NavManager | null)?.graph.road ?? null,
     pedNav: () => (nav as NavManager | null)?.graph ?? null,
@@ -2047,6 +2055,21 @@ export function startGame(ctx: GameContext): void {
     // Objets d'un événement (phase 4) : le sac volé, au sol.
     for (const it of events.items) {
       const z = terrain.heightAt(it.x, it.y);
+      if (it.kind === "fire") {
+        // Feu de poubelle (phase 4) : flammes (leur force dans `color`, de 0 à 1) et fumée grise qui monte, crépitement.
+        if (Math.hypot(it.x - player.x, it.y - player.y) > 150) continue;
+        const k = it.color, nf = Math.floor(dt * 22 * k + Math.random()), ns = Math.floor(dt * (2 + 4 * k) + Math.random());
+        for (let i = 0; i < nf; i++) {
+          flames.emit(it.x + (Math.random() - 0.5) * 0.35, it.y + (Math.random() - 0.5) * 0.35, z + 0.75, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 1.6 + Math.random() * 1.2,
+            FLAME_COLORS[Math.floor(Math.random() * FLAME_COLORS.length)]!, 0.18, 0.35 + 0.25 * k, 0.35 + Math.random() * 0.3, Math.random);
+        }
+        for (let i = 0; i < ns; i++) {
+          smoke.emit(it.x + (Math.random() - 0.5) * 0.4, it.y + (Math.random() - 0.5) * 0.4, z + 1.1, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 1 + Math.random() * 0.6,
+            WRECK_SMOKE, 0.22, 0.7 + Math.random() * 0.4, 2.4 + Math.random(), Math.random);
+        }
+        if (k > 0.2 && Math.random() < dt * 3) audio.crackle(it.x, it.y);
+        continue;
+      }
       pickViews.push(it.kind === "cash" ? { x: it.x, y: it.y, z, weapon: null, cash: true } : { x: it.x, y: it.y, z, weapon: null, bag: it.color });
     }
     // Grenades (D326) : elles volent, rebondissent et explosent au bout de la mèche ; l'arc de lancer en petits cubes, l'impact plus gros.
