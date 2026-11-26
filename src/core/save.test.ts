@@ -127,6 +127,13 @@ describe("sauvegarde", () => {
     expect(v5.arms).toEqual(sample().arms);
   });
 
+  it("histoire (D338) : étape du prologue relue si elle est valable, absente sinon", () => {
+    expect(parseSave(serializeSave({ ...sample(), story: { step: "rejoindre" } }))!.story).toEqual({ step: "rejoindre" });
+    expect(parseSave(JSON.stringify({ ...sample(), story: { step: "mission-9" } }))!.story).toBeUndefined();
+    expect(parseSave(serializeSave(sample()))!.story).toBeUndefined();
+    expect(parseSave(JSON.stringify({ ...sample(), version: 5, story: { step: "fin" } }))!.story).toBeUndefined();
+  });
+
   it("carnet et défis (D319) : relus s'ils sont là, absents sinon", () => {
     const p = parseSave(JSON.stringify({ ...sample(), book: { "monuments:arroux": 4, bad: "x" }, challenges: { tiers: { jump: 2 }, foot: 1200, vehicle: 0 } }))!;
     expect(p.book).toEqual({ "monuments:arroux": 4 });

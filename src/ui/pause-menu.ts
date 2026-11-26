@@ -712,7 +712,7 @@ export class PauseMenu {
     };
     this.content.append(
       h("h2", "", "Crédits"),
-      h("p", "", "Autun 3D est fait à partir de données ouvertes."),
+      h("p", "", "Grand Theft Autun est fait à partir de données ouvertes."),
       line("Rues, commerces, mobilier", "© les contributeurs d'OpenStreetMap, licence ODbL 1.0 (openstreetmap.org/copyright)"),
       line("Bâtiments, relief, toits, arbres, sols", "IGN – BD TOPO®, LiDAR HD, BD ORTHO®, Parcellaire Express, Licence Ouverte Etalab 2.0"),
       line("Bâtiments (usages, adresses)", "BDNB – CSTB, Licence Ouverte 2.0"),

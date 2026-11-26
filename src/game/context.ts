@@ -39,6 +39,8 @@ export interface GameContext {
   storage: StorageLike | null;
   /** DomoThib (pause, reprise, quitter) ; null quand le jeu tourne seul (D305). */
   host: GameHost | null;
-  /** Appelé quand le monde est prêt à être affiché (retire l'écran de chargement, signale aux captures). */
+  /** Appelé quand le monde est prêt à être affiché (« Touche l'écran pour jouer », ou retire l'écran de chargement ; signale aux captures). */
   ready: (extra?: object) => void;
+  /** Résolue quand l'écran de chargement est fermé (D338) : le toucher du joueur, ou tout de suite hors du jeu et avec un paramètre de test. */
+  started: Promise<void>;
 }

@@ -6,7 +6,7 @@ import { startBench } from "./game/bench";
 import { startGallery, startProto } from "./game/proto";
 import { startVehicleGallery } from "./game/vehicle-gallery";
 import { startGame } from "./game/game";
-import { gameSpawn, resolveStart, type StartState } from "./game/start";
+import { gameSpawn, NEW_GAME_HOUR, resolveStart, type StartState } from "./game/start";
 import { SettingsController } from "./game/settings-controller";
 import { DEFAULT_SETTINGS, effectiveSettings, SettingsStore } from "./core/settings";
 import { SaveStore } from "./core/save";
@@ -25,13 +25,15 @@ import { TileManager } from "./render/tile-manager";
 import { Vista } from "./render/vista";
 import { PostFx } from "./render/post";
 import { installSunHaze } from "./render/sun-haze";
+import { LoadingScreen } from "./ui/loading-screen";
 
 // Brume teintée par le soleil (D315) : à installer avant la compilation du premier nuanceur.
 installSunHaze();
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const debugEl = document.getElementById("debug") as HTMLDivElement;
-const loadingEl = document.getElementById("loading") as HTMLDivElement;
+// Écran de chargement (D338) : diaporama de `index.html`, avancement, puis « Touche l'écran pour jouer ».
+const loading = new LoadingScreen(document.getElementById("loading") as HTMLDivElement);
 // Sans ?view ni ?cam, c'est le jeu ; avec, la caméra libre des captures.
 const viewerMode = params.has("view") || params.has("cam");
 // ?bench=1 : banc de test de performances (parcours fixe, rapport à la fin).
@@ -126,6 +128,7 @@ async function main(): Promise<void> {
     return;
   }
   // DomoThib (build `domothib`, D305) : connexion et sauvegardes du joueur, attendues avant de lire la partie ; en même temps que le monde.
+  loading.step("Le monde");
   const [world, session] = await Promise.all([loadWorldBase(), connectGame()]);
   // Place laissée à la poignée de DomoThib, en haut à droite (index.html, `body.domothib`).
   if (session.host) document.body.classList.add("domothib");
@@ -134,6 +137,7 @@ async function main(): Promise<void> {
   const startState: StartState | null = viewerMode || testMode ? null : resolveStart(params, saveStore, world.manifest.zone);
   const start = focus ? { x: focus[0], y: focus[1] } : startState ?? gameSpawn(params);
   const terrainView = TerrainView.create(world.terrain, world.manifest, Number(params.get("step") ?? 2.5), style.ground);
+  loading.step("Le relief");
   await terrainView.preload(start.x, start.y);
   scene.add(terrainView.group);
   // La mer (D105), vivante (D316) : elle reflète les couleurs du ciel (mêmes objets que le dôme).
@@ -152,7 +156,8 @@ async function main(): Promise<void> {
   // Heure de jeu : ?h=17 (départ), ?speed=0.02 (heures de jeu par seconde ; 0 = figée), ?style=nuit = 23 h 30 figée.
   const night = params.get("style") === "nuit";
   const clock = startState?.save?.clock;
-  const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : 16));
+  // Nouvelle partie (D338) : 8 h 12, à l'arrivée du train ; les outils et paramètres de test gardent 16 h.
+  const hour = Number(params.get("h") ?? (clock ? clock.hour : night ? 23.5 : startState?.intro ? NEW_GAME_HOUR : 16));
   const speed = Number(params.get("speed") ?? (night || viewerMode || testMode ? 0 : 1 / 50));
   // Date du jeu (D194) : celle de la sauvegarde, sinon le 1er jour de l'été ; ?date=, ?day=, ?season=, ?weekday= l'imposent.
   const seasonLength = storedSettings.seasonLength;
@@ -174,6 +179,7 @@ async function main(): Promise<void> {
   // ?hide=bati,toits,... masque des maillages (diagnostic).
   tiles.hidden = new Set((params.get("hide") ?? "").split(",").filter(Boolean));
   scene.add(tiles.group);
+  loading.step("La ville");
   await tiles.preload(start.x, start.y);
   // Panorama (D268) : en hauteur (la Croix de la Libération), relief et silhouettes lointains, brouillard éloigné.
   const vista = new Vista(world.terrain, world.manifest, terrainView, tiles, atmosphere, camera, params);
@@ -192,9 +198,11 @@ async function main(): Promise<void> {
   });
   const ctx: GameContext = {
     renderer, post, scene, camera, sky, sunLight, sunDir, atmosphere, world, tiles, terrainView, vista, colliders, params, debugEl, settings, start: startState,
-    storage: session.storage, host: session.host,
+    storage: session.storage, host: session.host, started: loading.started,
     ready: (extra) => {
-      loadingEl.remove();
+      // Le viewer, le banc, les captures (`?skipintro`) et les paramètres de test (`?at=`…) n'attendent pas de toucher.
+      if (!startState || startState.noSave || params.has("skipintro")) loading.skip();
+      else loading.ready();
       document.body.classList.add(viewerMode ? "viewer" : testMode ? "bench" : "game");
       (window as unknown as { __autun: object }).__autun = {
         ready: true, stats: { ...tiles.stats, terrainTriangles: terrainView.triangles }, tiles, terrain: world.terrain, terrainView, vista, fog: scene.fog, scene, ...extra,
@@ -212,6 +220,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  loadingEl.textContent = `Erreur : ${String(e)}`;
+  loading.error(`Erreur : ${String(e)}`);
   console.error(e);
 });

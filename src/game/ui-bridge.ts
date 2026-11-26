@@ -6,6 +6,7 @@ import type { Recipe } from "../core/character";
 import { AppearancePreview } from "../render/appearance-preview";
 import { NotesStore } from "../core/notes-store";
 import type { Waypoint } from "../core/waypoint";
+import type { SavedStory } from "../core/story";
 import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
 import { MapData, type StreetInfo } from "../ui/map-data";
@@ -51,6 +52,8 @@ export interface GameState {
   events: SavedEventBook;
   /** Points du gilet pare-balles (D327). */
   armor: number;
+  /** Histoire (D338). */
+  story: SavedStory;
 }
 
 const AUTOSAVE_MS = 30000;
@@ -361,6 +364,7 @@ export class UiBridge {
       ...(s.garage.length ? { garage: s.garage } : {}),
       events: s.events,
       ...(s.armor > 0 ? { armor: s.armor } : {}),
+      story: s.story,
     };
   }
 

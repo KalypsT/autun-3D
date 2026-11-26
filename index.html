@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#1b1f27" />
-    <title>Autun 3D</title>
+    <title>Grand Theft Autun</title>
     <style>
       /* Style « affiche » (D17) : encre, crème, rouge brique, ocre ; toute l'interface en jeu les reprend (D102). */
       :root { --ink: #1b1f27; --cream: #fff8e6; --brick: #d9472b; --ochre: #f1b24a; --panel: rgba(27, 31, 39, .72); --lift: 0 3px 0 rgba(27, 31, 39, .45); }
@@ -12,7 +12,55 @@
       canvas { display: block; width: 100%; height: 100%; }
       #debug { position: fixed; top: 226px; left: 6px; padding: 4px 8px; font: 12px/1.35 ui-monospace, monospace; color: #e8e8e8;
                background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none; display: none; }
-      #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e8e8e8; font: 16px system-ui, sans-serif; }
+      /* Écran de chargement (D338) : captures du jeu qui se succèdent, zoom lent et fondu, en CSS seulement (fluide pendant que le jeu construit
+         la ville) ; 8 images × 6 s, chacune paraît en 0,8 s, grossit de 8 % vers son point d'intérêt (--fx, --fy), puis s'efface sous la suivante. */
+      #loading { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #0d0f13; color: #fff8e6; font: 600 15px system-ui, sans-serif;
+                 user-select: none; -webkit-user-select: none; transition: opacity .7s ease-in; }
+      #loading.gone { opacity: 0; pointer-events: none; }
+      .ld-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform-origin: var(--fx, 50%) var(--fy, 50%);
+                  animation: ld-show 48s linear infinite both; will-change: opacity, transform; }
+      .ld-slide:nth-child(2) { animation-delay: 6s; } .ld-slide:nth-child(3) { animation-delay: 12s; } .ld-slide:nth-child(4) { animation-delay: 18s; }
+      .ld-slide:nth-child(5) { animation-delay: 24s; } .ld-slide:nth-child(6) { animation-delay: 30s; } .ld-slide:nth-child(7) { animation-delay: 36s; }
+      .ld-slide:nth-child(8) { animation-delay: 42s; }
+      @keyframes ld-show { 0% { opacity: 0; transform: scale(1); } 1.7% { opacity: 1; } 12.5% { opacity: 1; } 14.2% { opacity: 0; transform: scale(1.08); } 100% { opacity: 0; transform: scale(1.08); } }
+      @media (prefers-reduced-motion: reduce) { @keyframes ld-show { 0% { opacity: 0; } 1.7% { opacity: 1; } 12.5% { opacity: 1; } 14.2%, 100% { opacity: 0; } } }
+      .ld-logo { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: 16px; height: min(30vh, 150px); filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .5)); }
+      .ld-status { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: 20px; display: flex; align-items: center; gap: 10px;
+                   text-shadow: 0 1px 3px rgba(0, 0, 0, .9); letter-spacing: .02em; }
+      .ld-status::after { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 3px solid rgba(255, 248, 230, .35); border-top-color: var(--cream);
+                          animation: ld-spin 1s linear infinite; }
+      @keyframes ld-spin { to { transform: rotate(360deg); } }
+      #loading.ready .ld-status { font-size: 18px; animation: ld-blink 1.6s ease-in-out infinite; }
+      #loading.ready .ld-status::after, #loading.error .ld-status::after { display: none; }
+      #loading.error .ld-status { left: 18px; white-space: normal; background: rgba(13, 15, 19, .8); padding: 8px 12px; border-radius: 10px; }
+      @keyframes ld-blink { 50% { opacity: .35; } }
+      @media (prefers-reduced-motion: reduce) { .ld-status::after { animation: none; } #loading.ready .ld-status { animation: none; } }
+      /* Cinématique de l'arrivée (D338) : bandes noires, logo, carton du lieu et de l'heure ; l'interface du jeu est masquée. Un toucher la passe. */
+      body.cinematic > [id]:not(#game):not(#cine):not(#debug) { display: none !important; }
+      #cine { position: fixed; inset: 0; z-index: 60; display: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+      #cine.on { display: block; }
+      .cine-bar { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transform: scaleY(0); transition: transform .9s ease-out; }
+      .cine-bar.top { top: 0; transform-origin: top; } .cine-bar.bottom { bottom: 0; transform-origin: bottom; }
+      #cine.on .cine-bar { transform: scaleY(1); }
+      .cine-logo { position: absolute; left: 50%; top: 50%; height: min(42vh, 230px); transform: translate(-50%, -50%) scale(.96); opacity: 0;
+                   transition: opacity 1.2s ease, transform 5s ease-out; filter: drop-shadow(0 3px 10px rgba(0, 0, 0, .6)); }
+      #cine.logo .cine-logo { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+      .cine-card { position: absolute; right: max(28px, env(safe-area-inset-right)); bottom: calc(11vh + 18px); text-align: right; color: #fff8e6; opacity: 0;
+                   transition: opacity 1s ease; text-shadow: 0 2px 6px rgba(0, 0, 0, .85); }
+      #cine.card .cine-card { opacity: 1; }
+      .cine-place { font: italic 800 26px system-ui, sans-serif; letter-spacing: .02em; }
+      .cine-when { font: 600 17px system-ui, sans-serif; color: var(--ochre); margin-top: 2px; }
+      .cine-skip { position: absolute; right: 14px; bottom: calc(11vh - 30px); font: 600 12px system-ui, sans-serif; color: rgba(255, 248, 230, .6); }
+      @media (prefers-reduced-motion: reduce) { .cine-bar, .cine-logo, .cine-card { transition: none; } }
+      /* Prologue (D338) : SMS reçu (en haut au centre, sous les étoiles) et objectif (en bas, façon sous-titre). */
+      #sms { position: fixed; z-index: 9; left: 50%; top: 58px; width: min(420px, 60vw); transform: translate(-50%, -12px); opacity: 0; pointer-events: none;
+             padding: 10px 14px; border-radius: 14px; background: rgba(27, 31, 39, .92); color: #fff8e6; border: 2px solid rgba(255, 248, 230, .85);
+             box-shadow: var(--lift); font: 500 14px/1.35 system-ui, sans-serif; transition: opacity .4s ease, transform .4s ease; }
+      #sms.show { opacity: 1; transform: translate(-50%, 0); }
+      .sms-from { font-weight: 800; color: var(--ochre); margin-bottom: 2px; }
+      #objective { position: fixed; z-index: 9; left: 50%; bottom: 22px; max-width: 70vw; transform: translateX(-50%); opacity: 0; pointer-events: none; text-align: center;
+                   color: #fff8e6; font: 700 18px system-ui, sans-serif; text-shadow: 0 2px 4px #000, 0 0 2px #000; transition: opacity .5s ease; }
+      #objective.show { opacity: 1; }
       #touch { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: none; }
       body.game #touch { display: block; }
       #stick-base, #stick-knob { position: fixed; display: none; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
@@ -402,7 +450,18 @@
     <div id="hurt"></div>
     <div id="busted" aria-live="polite"><div class="b-title">Arrêté</div><div class="b-sub"></div></div>
     <div id="debug"></div>
-    <div id="loading">Chargement d'Autun…</div>
+    <div id="loading">
+      <img class="ld-slide" src="/src/assets/loading/01-cathedrale.webp" alt="" decoding="async" fetchpriority="high" style="--fx: 50%; --fy: 55%" />
+      <img class="ld-slide" src="/src/assets/loading/02-visee.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 30%; --fy: 45%" />
+      <img class="ld-slide" src="/src/assets/loading/03-toits.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 50%; --fy: 35%" />
+      <img class="ld-slide" src="/src/assets/loading/04-gare.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 55%; --fy: 45%" />
+      <img class="ld-slide" src="/src/assets/loading/05-nuit.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 60%; --fy: 35%" />
+      <img class="ld-slide" src="/src/assets/loading/06-janus.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 55%; --fy: 40%" />
+      <img class="ld-slide" src="/src/assets/loading/07-croix.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 62%; --fy: 35%" />
+      <img class="ld-slide" src="/src/assets/loading/08-couhard.webp" alt="" decoding="async" fetchpriority="low" style="--fx: 35%; --fy: 35%" />
+      <img class="ld-logo" src="/src/assets/logo.webp" alt="Grand Theft Autun" />
+      <div class="ld-status" aria-live="polite">Chargement</div>
+    </div>
     <div id="credits">© contributeurs OpenStreetMap · IGN (BD TOPO®, LiDAR HD, BD ORTHO®, Parcellaire Express) · three.js</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
