@@ -2433,3 +2433,4 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **Phase 4 terminée côté code** : treize événements (le tableau est dans D337). Les fréquences restent celles du plan : c'est à toi de dire, en jouant, ce qui revient trop ou pas assez.
 - **À faire de ton côté** (protocole dans D337) : le banc `?bench=1&crowd=100&sim=1&traffic=20&events=1` sur le téléphone (et sans `&events=1` pour comparer), puis vingt minutes de jeu avec « Événements : Fréquents ».
 - Pour essayer le braquage : `?event=braquage&h=20`.
+![Braquage : le commerçant crie « Au voleur ! Il a une arme ! » (le braqueur, lui, est caché derrière le personnage sur cette capture)](docs/captures/pj4-braquage.jpg)

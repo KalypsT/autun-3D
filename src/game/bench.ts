@@ -432,6 +432,8 @@ export function startBench(ctx: GameContext): void {
     policeCost = { ms: 0, max: 0, frames: 0 };
     combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: bot?.shots ?? 0, hits0: bot?.hits ?? 0, kills0: bot?.kills ?? 0 };
     eventsCost = { ms: 0, max: 0, frames: 0, peak: 0, starts0: director?.starts ?? 0 };
+    // Chaque phase repart de zéro : ce qui était en cours s'arrête (passants rendus, voitures lâchées), le suivant de la liste est lancé.
+    director?.clear();
     forceKind = !director ? null : phase.drive ? (traffic ? DRIVE_EVENTS[driveK++ % DRIVE_EVENTS.length]! : null) : FOOT_EVENTS[footK++ % FOOT_EVENTS.length]!;
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
@@ -812,7 +814,7 @@ export function startBench(ctx: GameContext): void {
         };
         // Un essai toutes les demi-secondes (comme `?event=` dans le jeu) : chercher un lieu coûte une recherche dans la foule.
         // (Seulement quand rien n'est en cours : forcer passe outre « un grand et un petit au plus », et les phases du banc sont plus courtes que
-        // les événements : ils s'empilaient.)
+        // les événements : sans l'arrêt au début de chaque phase, ils s'empilaient.)
         if (forceKind && director.active.length === 0 && (forceIn -= dt) <= 0) {
           forceIn = 0.5;
           if (director.force(forceKind, ectx)) forceKind = null;

@@ -8439,16 +8439,20 @@ genou à terre, poings, mains en l'air, applaudir), sons (sirène des pompiers, 
   arrêté compte comme un voleur rattrapé.
 - **Fréquences** : **inchangées** (« Normaux » par défaut, le plan). Le plan prévoyait de les régler d'après les parties de l'utilisateur : il
   n'y en a pas encore eu avec ces événements. C'est la première chose à juger en jouant.
-- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1`) : à chaque phase, un événement est lancé à tour de rôle (à pied : vol, malaise, feu
-  de poubelle ; en voiture, avec la circulation : accident, poursuite, accident en direct), **seulement quand rien n'est en cours** (forcer passe
-  outre « un grand et un petit », et les phases du banc sont plus courtes que les événements : au premier essai, ils s'empilaient, jusqu'à dix
-  en cours et dix-huit passants réquisitionnés). Ligne « Événements » du rapport : lancés, en cours, passants réquisitionnés, coût.
+- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1`) : au début de chaque phase, ce qui était en cours s'arrête et l'événement suivant
+  est lancé, à tour de rôle (à pied : vol, malaise, feu de poubelle ; en voiture, avec la circulation : accident, poursuite, accident en
+  direct). Au premier essai, sans cet arrêt, ils s'empilaient (forcer passe outre « un grand et un petit », et les phases du banc sont plus
+  courtes que les événements) : jusqu'à dix en cours et dix-huit passants réquisitionnés ; au deuxième, en attendant que rien ne soit en cours,
+  le premier malaise durait tout le banc. Ligne « Événements » du rapport : lancés, en cours, passants réquisitionnés, coût.
 
 **Mesures (rendu logiciel, sans valeur absolue)**
 - **Endurance** (`src/game/events-soak.test.ts`, deux fois vingt minutes à « Fréquents », un mercredi matin, un samedi après-midi, un samedi
   soir, avec la circulation, 100 passants, les vrais bars et restaurants) : **dix événements différents** ont commencé sur les deux graines (chien,
   mariage, poursuite, vol, feu, rixe, livreur, malaise, accident en direct, braquage), 8 et 10 départs ; aucun passant oublié, 7 réquisitionnés
   au plus ; directeur et événements **0,003 ms par image** en moyenne, **3 à 8 ms au pire** (le départ d'un grand événement, une image).
+- **Banc court** (`?bench=court&crowd=100&sim=1&traffic=20&events=1`, rendu logiciel) : dix événements lancés à tour de rôle (malaise, feu,
+  vol, une poursuite à 90 km/h), 3 passants réquisitionnés au plus ; **directeur et événements : 0,005 à 0,08 ms par image, 2,7 ms au pire**
+  (le départ de la poursuite) ; ni accident ni accident en direct pendant les deux phases en voiture, trop courtes en version brève.
 - **Tests** : 1 639 tests, dont 49 pour la phase.
 - **Appels de dessin** : aucun événement à pied n'en ajoute (des passants) ; les voitures sont celles de la circulation ; la police et les pompiers
   ajoutent leur modèle s'il n'était pas déjà en vue (+1 à +3). Au banc en rendu logiciel, 150 à 210 appels selon les phases en ville.
