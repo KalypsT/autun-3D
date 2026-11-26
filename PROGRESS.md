@@ -2358,3 +2358,79 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **Fumigènes** (80 €) : on les lance comme une grenade ; le nuage dure 12 s, et à moins de 7 m la police ne te voit plus et ne te tire plus dessus.
 - **Phase 3 terminée côté code** (D317 à D327). À faire de ton côté : relire les fiches des monuments, et jouer : argent, carnet, magasins, véhicules, armes.
 ![Gilet et fumigène](docs/captures/pj3-fumigene.jpg)
+
+**Plaisir de jeu, phase 4, lot 1 : les événements et le vol à l'arraché (25 novembre 2026)** (D328)
+- La ville a maintenant un **directeur d'événements** : de temps en temps, quelque chose se passe près de toi, puis se termine tout seul si tu ne fais rien. Premier événement : **le vol à l'arraché**.
+- Un passant rejoint quelqu'un qui porte un sac, le lui **arrache** et s'enfuit en courant ; la victime tombe, crie, une **bulle « Au voleur ! »** apparaît au-dessus d'elle (au bord de l'écran, avec une flèche, si c'est hors champ), et elle montre le voleur du bras. Sur la minimap : un « ! » ocre pour la scène, un point rouge pour le voleur.
+- Le voleur court plus vite que toi, moins vite que ton **sprint** : touche-le en sprintant (il est **plaqué**), frappe-le ou renverse-le, et le **sac tombe**. Ramasse-le, puis **« Rendre »** près de la victime : « Merci ! » et **100 à 250 €**. Ou **« Fouiller »** : tu gardes ce qu'il contient (30 à 120 €), mais si quelqu'un te voit, c'est un vol (une étoile).
+- Arrêter le voleur n'est pas une agression ; le tuer reste un meurtre.
+- Les passants **fuient vraiment** maintenant : après un coup, un tir, un meurtre, ils choisissent les rues qui les éloignent de la scène, au lieu de seulement faire demi-tour.
+- Carnet : nouvel onglet **« Faits divers »**, avec trois défis (voleurs rattrapés, fugitifs arrêtés, bonnes actions) et le **journal du jour** (« Vol à l'arraché, rue du Général André Demetz · sac rendu »).
+- Nouveau réglage **« Événements »** : Aucun, Rares, Normaux (par défaut), Fréquents. Pour essayer tout de suite : `?event=vol`.
+- Honnêtement : avec un seul événement pour l'instant, on voit un vol toutes les 8 à 10 minutes au centre. Le rythme viendra avec les suivants (pickpocket et chien échappé au lot 2).
+- À faire de ton côté : jouer au centre avec `?event=vol`, et dire si la scène se lit bien sur le téléphone (distance, bulle), si le voleur est trop rapide ou trop lent, si la prime te va.
+![Le vol](docs/captures/pj4-vol-arrache.jpg)
+![Le sac au sol](docs/captures/pj4-vol-sac.jpg)
+![« Rendre »](docs/captures/pj4-vol-rendre.jpg)
+![Merci, et le premier défi](docs/captures/pj4-vol-merci.jpg)
+![Le carnet, onglet Faits divers](docs/captures/pj4-carnet-faits.jpg)
+
+**Plaisir de jeu, phase 4, lot 2 : le pickpocket et le chien échappé (25 novembre 2026)** (D329)
+- **Pickpocket** : quand tu marches dans une rue animée avec de l'argent sur toi, quelqu'un te frôle et te prend 10 % de ton solde (20 à 200 €) : « −80 € », bulle « Hé ! Mon portefeuille ! » au-dessus de toi. Il s'éloigne l'air de rien, puis se met à courir dès que tu te retournes vers lui ou que tu cours. Rattrape-le (plaque-le en sprint, frappe-le) : il lâche les billets, ton argent **plus 50 €**.
+- **Chien échappé** : un promeneur lâche la laisse ; le chien file au galop, aboie, s'arrête renifler, son maître lui court après en criant son nom. Si tu lui cours dessus, il détale ; **approche-le au pas** (il s'arrête, curieux), puis **« Attraper »**, et ramène-le en laisse à son maître : **« Rendre »**, « Merci ! », 60 à 120 €. Une voiture qui le frôle l'effraie pour de bon (il n'est jamais blessé).
+- Plaquer un fuyard marche maintenant même quand tu étais déjà collé à lui (avant, il trébuchait au contact et le plaquage ne passait pas).
+- Un pickpocket rattrapé compte comme un voleur rattrapé ; un chien rendu, comme une bonne action (carnet, « Faits divers »).
+- Pour essayer tout de suite : `?event=pickpocket` (dans une rue animée, avec de l'argent : `&money=500`) et `?event=chien`.
+- À faire de ton côté : dire si la part volée (10 %) te va, si le pickpocket se remarque assez, si le chien est trop farouche ou trop facile.
+![Pickpocket](docs/captures/pj4-pickpocket.jpg)
+![Les billets lâchés](docs/captures/pj4-pickpocket-billets.jpg)
+![Argent récupéré, premier défi](docs/captures/pj4-pickpocket-recupere.jpg)
+![Le chien, sa maîtresse accourt](docs/captures/pj4-chien-attraper.jpg)
+![En laisse jusqu'à sa maîtresse](docs/captures/pj4-chien-rendre.jpg)
+![« Merci ! »](docs/captures/pj4-chien-merci.jpg)
+
+**Plaisir de jeu, phase 4, lots 3 et 4 : l'accident et la course-poursuite (25 novembre 2026)** (D330, D331)
+- **Accident** : un peu plus loin devant toi, deux voitures de la circulation de travers, cabossées, **feux de détresse** ; leurs conducteurs sont descendus et **se disputent** (« Vous m'avez coupé la route ! », « C'est vous qui avez freiné ! »), en se montrant du doigt ; des curieux regardent, téléphone à la main ; ça **klaxonne** derrière. Une minute plus tard, une **patrouille** arrive sirène, se gare ; un gendarme fait le **constat** (« Bonjour, vos papiers. »), puis « Circulez ! » et chacun repart. Tu peux **prendre une des voitures** (personne au volant : son conducteur crie « Ma voiture ! »). Plus fréquent sous la pluie.
+- **Course-poursuite** : surtout le soir, une voiture rapide **passe près de toi** toutes sirènes derrière elle (une ou deux gendarmeries) ; elle grille les feux, prend les sens interdits. Soit elle s'échappe, soit elle se fait coincer : le conducteur se rend **les mains en l'air**, ou s'enfuit **à pied** et un gendarme lui court après, l'arrête et l'emmène dans la voiture. **Aide la police** (percute sa voiture, plaque-le à pied) : **prime de la gendarmerie, 500 €**, et un « fugitif arrêté » au carnet.
+- Sous le capot : chaque voiture de police peut maintenant poursuivre **sa propre cible** (pas seulement toi), ce qui sert aussi à la patrouille de l'accident.
+- Pour essayer tout de suite : `?event=accident` et `?event=poursuite` (avec la circulation allumée).
+- À faire de ton côté : dire si les accidents sont trop rares ou trop fréquents, si la police n'arrête pas le fugitif trop vite (mesuré : 5 arrestations sur 7, en 45 à 70 s), si 500 € te va.
+![Accident : la dispute](docs/captures/pj4-accident.jpg)
+![Accident : le constat](docs/captures/pj4-accident-constat.jpg)
+- Pas de capture de la poursuite : le rendu des captures est trop lent pour une voiture à 50 km/h (elle est déjà sortie du cadre). À voir sur le téléphone avec `?event=poursuite&h=21`.
+
+**Plaisir de jeu, phase 4, lots 5 et 6 : le malaise et la rixe (25 novembre 2026)** (D332, D333)
+- **Malaise** : devant toi, un passant s'arrête, la main sur la poitrine, et s'effondre. Quelqu'un se penche sur lui (« Monsieur, ça va ? »), un autre appelle les secours. Une minute plus tard, le **fourgon des pompiers** arrive, sirène deux tons (il vient du côté de la caserne de l'avenue André Frenaud) ; deux pompiers s'agenouillent près de lui, puis il se relève, ou ils l'emmènent dans le fourgon. Tu peux **l'aider** avant eux : **« Aider »**, tu mets un genou à terre quelques secondes, il reprend ses esprits : « Merci… ça va mieux. », **80 €**.
+- **Rixe** : le soir, surtout le vendredi et le samedi, devant un bar ou un restaurant, deux ou trois personnes se disputent (« Qu'est-ce que tu regardes ? »), puis se battent **aux poings**, des curieux regardent. Une patrouille finit par arriver : l'un s'enfuit, l'autre lève les mains et part dans la voiture. Tu peux les **séparer** (**« Séparer »**, 50 €), ou t'en mêler : frapper l'un d'eux est une agression, et il s'en prend alors à toi.
+- Nouveau véhicule : le **fourgon des pompiers** (rouge, bande blanche, POMPIERS sur les flancs, gyrophares bleus) ; nouvelles poses : main sur la poitrine, effondré, à genoux, poings levés.
+- Garée sur une scène, une voiture de police ou de pompiers garde ses gyrophares mais **coupe sa sirène**.
+- Pour essayer tout de suite : `?event=malaise` et `?event=rixe&h=21` (avec la circulation allumée).
+- À faire de ton côté : écouter la sirène des pompiers (page `?sounds`), dire si les pompiers arrivent assez vite (environ 1 min 10), si la rixe se remarque assez, si les coups reçus (8 points de vie) sont trop forts.
+- Honnêtement : dans la capture, le fourgon des pompiers n'est pas arrivé à temps (coincé dans la circulation, il ne double pas), et le malade s'est relevé seul au bout de 2 minutes ; dans les essais, c'est une fois sur trois. Dis-moi si tu le vois souvent : je le ferai naître plus près.
+![Malaise : un passant s'est effondré, une passante se penche sur lui](docs/captures/pj4-malaise.jpg)
+![Le bouton « Aider »](docs/captures/pj4-malaise-aider.jpg)
+![Rixe devant une terrasse, le soir](docs/captures/pj4-rixe.jpg)
+![« Gendarmerie ! On se calme ! » : l'un lève les mains, l'autre s'enfuit](docs/captures/pj4-rixe-gendarme.jpg)
+
+**Plaisir de jeu, phase 4, lots 7 et 8 : conducteurs, mariage, feu de poubelle (26 novembre 2026)** (D334, D335)
+- **Conducteur énervé** : tu accroches une voiture en roulant doucement ; une fois sur quatre, elle s'arrête, klaxonne, et le conducteur descend te dire sa façon de penser (« Non mais ça va pas ?! »). Reste sans bouger : il se calme (« Bon… faites attention ! ») ; reste collé à lui à pied : il te bouscule ; repars : il te suit en klaxonnant.
+- **Livreur pressé** : le matin, une camionnette arrive à fond en klaxonnant, pile en double file devant toi, le livreur court livrer et revient. Tu peux lui prendre sa camionnette pendant ce temps.
+- **Accident en direct** : une voiture fonce vers toi en grillant les feux ; une fois sur deux environ, elle percute une autre voiture pour de vrai, et c'est la scène d'accident (dispute, patrouille, constat).
+- **Mariage** : le samedi après-midi à l'hôtel de ville, des invités endimanchés, les mariés qui sortent sous les applaudissements et les cloches, puis le cortège qui part en klaxonnant sans arrêt (la voiture des mariés est blanche).
+- **Feu de poubelle** : le soir, une corbeille de rue prend feu, des curieux regardent, les pompiers viennent l'éteindre. Ne t'approche pas trop : ça brûle.
+- Pour essayer : `?event=enerve`, `?event=livreur&h=9`, `?event=chauffard`, `?event=mariage&h=15&at=26,22`, `?event=feu&h=21` (avec la circulation).
+- À faire de ton côté : dire si le conducteur énervé ne revient pas trop souvent, si les klaxons du cortège ne sont pas pénibles, si le feu se voit assez ; écouter les applaudissements (page `?sounds`).
+- Captures imparfaites : la bulle du conducteur énervé est à moitié cachée par le bandeau d'un monument découvert en chemin ; le cortège qui part ne se lit pas sur une image fixe (pas gardée) ; l'accident en direct n'a pas eu de choc pendant la capture (pas d'image).
+![Conducteur énervé : « Vous avez vu ma voiture ? »](docs/captures/pj4-enerve.jpg)
+![Livreur pressé : la camionnette en double file, « Un colis ! Signez là »](docs/captures/pj4-livreur.jpg)
+![Mariage : les invités sur le parvis de l'hôtel de ville](docs/captures/pj4-mariage.jpg)
+![Feu de poubelle, le soir](docs/captures/pj4-feu.jpg)
+![Les pompiers arrivent : « On s'en occupe, reculez ! »](docs/captures/pj4-feu-pompiers.jpg)
+
+**Plaisir de jeu, phase 4, lots 9 et 10 : le braquage, et le bilan de la phase (26 novembre 2026)** (D336, D337)
+- **Braquage** (avec ton accord) : le soir, un homme cagoulé sort en courant d'un commerce ouvert, pistolet à la main ; l'alarme sonne, le commerçant crie « Au voleur ! Il a une arme ! ». Si tu le menaces d'une arme ou que tu lui coupes la route, il s'arrête et **te tire dessus** (trois coups au plus, 12 points chacun). Plaque-le : il lâche son pistolet (tu peux le ramasser), lève les mains, une patrouille l'emmène : **800 €**.
+- **Carnet « Faits divers »** : nouvelle section « Déjà vu en ville » : les treize sortes de faits divers, combien de fois tu as vu chacune, « ? » pour celles que tu n'as pas encore vues.
+- **Phase 4 terminée côté code** : treize événements (le tableau est dans D337). Les fréquences restent celles du plan : c'est à toi de dire, en jouant, ce qui revient trop ou pas assez.
+- **À faire de ton côté** (protocole dans D337) : le banc `?bench=1&crowd=100&sim=1&traffic=20&events=1` sur le téléphone (et sans `&events=1` pour comparer), puis vingt minutes de jeu avec « Événements : Fréquents ».
+- Pour essayer le braquage : `?event=braquage&h=20`.
+![Braquage : le commerçant crie « Au voleur ! Il a une arme ! » (le braqueur, lui, est caché derrière le personnage sur cette capture)](docs/captures/pj4-braquage.jpg)

@@ -8,7 +8,7 @@ import { NotesStore } from "../core/notes-store";
 import type { Waypoint } from "../core/waypoint";
 import { WaypointMarker } from "../render/waypoint-marker";
 import { BigMap } from "../ui/bigmap";
-import { MapData } from "../ui/map-data";
+import { MapData, type StreetInfo } from "../ui/map-data";
 import { garagesFrom, type Garage } from "../core/garages";
 import { foodShops, vehicleShops, weaponShops, type Shop } from "../core/shops";
 import { Minimap } from "../ui/minimap";
@@ -20,6 +20,7 @@ import type { Fleet } from "./vehicles";
 import { RouteGuide } from "./route-guide";
 import { parseRecords, type RecordValues } from "../core/records";
 import { Challenges, type SavedChallenges } from "../core/challenges";
+import { EventBook, type SavedEventBook } from "../core/events/book";
 import { Notebook, type SavedNotebook } from "../core/collections";
 import type { OwnedVehicle } from "../core/owned";
 
@@ -46,6 +47,8 @@ export interface GameState {
   challenges: SavedChallenges;
   /** Véhicules achetés (D323). */
   garage: OwnedVehicle[];
+  /** Carnet des événements (phase 4). */
+  events: SavedEventBook;
   /** Points du gilet pare-balles (D327). */
   armor: number;
 }
@@ -89,10 +92,16 @@ export class UiBridge {
   /** Police et zone de recherche à montrer sur la minimap (J4) : le jeu les tient à jour. */
   /** Armes au sol disponibles à montrer sur la minimap (J5-3) : le jeu les tient à jour. */
   caches: { x: number; y: number; kind?: string }[] = [];
+  /** Rues de la carte (noms, tracés), une fois les données de la carte arrivées : le journal des événements nomme la rue (phase 4). */
+  streets: StreetInfo[] = [];
+  /** Repères des événements en cours (phase 4) : réécrits par le jeu à chaque image. */
+  events: { kind: "scene" | "fugitive" | "meet"; x: number; y: number }[] = [];
   /** Garages de réparation (D113), connus quand les lieux de la carte sont chargés. */
   garages: Garage[] = [];
   /** Commerces où l'on achète (D322), connus avec les lieux de la carte. */
   shops: Shop[] = [];
+  /** Bars, cafés et restaurants de la carte (phase 4 : les rixes éclatent devant). */
+  bars: { x: number; y: number }[] = [];
   police: { units: readonly { x: number; y: number }[]; search: { x: number; y: number; r: number } | null } = { units: [], search: null };
 
   /** Pour redessiner l'écran figé quand un réglage change pendant la pause. */
@@ -107,7 +116,7 @@ export class UiBridge {
     initial: SaveGame | null,
     private readonly appearance: { get(): Recipe; set(recipe: Recipe): void },
     private readonly records: () => RecordValues = () => parseRecords(null),
-    private readonly carnet: { notebook(): Notebook; challenges(): Challenges; garage?(): GarageRow[] } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
+    private readonly carnet: { notebook(): Notebook; challenges(): Challenges; garage?(): GarageRow[]; events?(): EventBook; date?(): number } = { notebook: () => new Notebook([]), challenges: () => new Challenges() },
   ) {
     const settings = ctx.settings!;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -146,6 +155,8 @@ export class UiBridge {
       notebook: () => this.carnet.notebook(),
       challenges: () => this.carnet.challenges(),
       garage: () => this.carnet.garage?.() ?? [],
+      events: () => this.carnet.events?.() ?? new EventBook(),
+      today: () => this.carnet.date?.() ?? 0,
       build: typeof __BUILD__ === "string" ? __BUILD__ : "dev",
       embedded: ctx.host !== null,
     });
@@ -154,8 +165,10 @@ export class UiBridge {
     MapData.load().then(
       (data) => {
         this.minimap.attach(data);
+        this.streets = data.places.streets;
         this.garages = garagesFrom(data.places.places);
         this.shops = [...foodShops(data.places.places), ...vehicleShops(data.places.places), ...weaponShops(data.places.places)];
+        this.bars = data.places.places.filter((q) => q.cat === "commerce" && ["bar", "pub", "cafe", "restaurant", "nightclub", "biergarten"].includes(q.kind ?? "")).map((q) => ({ x: q.x, y: q.y }));
         this.bigmap = new BigMap(data, {
           player: () => {
             const s = this.state();
@@ -346,6 +359,7 @@ export class UiBridge {
       book: s.book,
       challenges: s.challenges,
       ...(s.garage.length ? { garage: s.garage } : {}),
+      events: s.events,
       ...(s.armor > 0 ? { armor: s.armor } : {}),
     };
   }
@@ -393,7 +407,7 @@ export class UiBridge {
         this.minimap.update({
           x: s.x, y: s.y, cameraYaw: s.yaw, facing: s.facing, north: this.ctx.settings!.values.minimapNorth, vehicles: [], waypoint: this.waypoint,
           route: this.guide.points, routeRemaining: this.guide.remaining, lastVehicle: this.lastVehicle(),
-          caches: this.caches, garages: this.garages, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0,
+          caches: this.caches, garages: this.garages, police: this.police.units, search: this.police.search, flash: Math.floor(time * 3) % 2 === 0, events: this.events,
         });
       });
     }

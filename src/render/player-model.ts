@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { DEFAULT_RECIPE, type Recipe } from "../core/character";
-import { airPose, climbPose, copyPose, createPose, cycleLength, HIT_BLEND, HIT_POSE, hitPose, strafePose, swimPitch, swimPose, walkPose, walksBackward, type Pose } from "../core/character-rig";
+import { airPose, climbPose, copyPose, createPose, cycleLength, HIT_BLEND, HIT_POSE, hitPose, kneelPose, strafePose, swimPitch, swimPose, walkPose, walksBackward, type Pose } from "../core/character-rig";
 import { attackPose, guardPose, gunPose } from "../core/character-attack";
 import { setPart } from "../core/character-kit";
 import type { AttackStyle, GunId } from "../core/weapons";
@@ -45,6 +45,8 @@ export interface PlayerModel {
   setAir(air: { climb: boolean; vz: number; t: number } | null): void;
   /** À la nage (D241) : `z` donné à `update` est l'altitude des pieds, sous la surface ; `crawl` (0 à 1) : nage rapide. null : hors de l'eau. */
   setSwim(swim: { crawl: number } | null): void;
+  /** Un genou à terre (phase 4 : il porte secours à quelqu'un à terre). */
+  setKneel(on: boolean): void;
   dispose(): void;
 }
 
@@ -72,6 +74,7 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
   let gun: { id: GunId; aim: number; recoil: number } | null = null;
   let strike: { style: AttackStyle; u: number; hitAt: number; side: 1 | -1 } | null = null;
   let down: { t: number; side: number; variant?: number; impulse?: number } | null = null;
+  let kneel = false;
   /** Dernière pose dessinée avant la chute (D209). */
   const fromPose: Pose = createPose();
   let air: { climb: boolean; vz: number; t: number } | null = null;
@@ -141,6 +144,12 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
         publish();
         return;
       }
+      if (kneel && !air) {
+        kneelPose(pose, d);
+        rigs.solveWith(0, pose, root);
+        publish();
+        return;
+      }
       if (air?.climb) {
         // Le bassin garde sa hauteur debout (pose de référence à l'arrêt), le reste du corps s'agrippe.
         walkPose(pose, phase, 0, d);
@@ -201,6 +210,9 @@ export function createPlayerModel(recipe: Recipe = DEFAULT_RECIPE): PlayerModel 
     },
     setAir(next) {
       air = next;
+    },
+    setKneel(on) {
+      kneel = on;
     },
     setSwim(next) {
       swim = next;

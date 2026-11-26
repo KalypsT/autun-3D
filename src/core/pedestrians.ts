@@ -80,6 +80,18 @@ export const ALARM_SHOT = 40;
 export const ALARM_SHOT_FLEE = 8;
 const DEFAULT_HULL: readonly (readonly [number, number])[] = [[0, 0.8]];
 
+/**
+ * Ordres donnés à un passant réquisitionné (phase 4, événements) : `none` il vit sa vie (sans disparaître), `flee` il fuit une menace en courant
+ * sur le graphe piéton (il choisit aux carrefours les rues qui l'éloignent d'elle), `seek` il va droit vers un point (hors du graphe, en évitant
+ * les murs), `hold` il reste sur place tourné vers un point, dans une pose (`LIFE_POSE`).
+ */
+export const ORDER = { none: 0, flee: 1, seek: 2, hold: 3 } as const;
+/** Au-delà de cette distance (m) du joueur, un passant réquisitionné disparaît quand même (le directeur le voit à `alive`). */
+const BORROW_RANGE = 450;
+/** Profondeur de regard (arêtes) de la fuite volontaire, et longueur sous laquelle une arête ne compte pas pour un niveau. */
+const FLEE_DEPTH = 2;
+const FLEE_SHORT = 10;
+
 export interface PedSimOptions {
   /** Nombre d'emplacements (passants possibles à la fois). */
   capacity: number;
@@ -312,6 +324,15 @@ export class PedSim {
   private readonly buddyLat: Float32Array;
   private readonly trait: Uint8Array;
   private readonly lookT: Float32Array;
+  /** Phase 4 : réquisitionné par un événement, ordre en cours (`ORDER`), point visé ou menace, allure (m/s), pose tenue ; menace d'une fuite (NaN : aucune). */
+  private readonly borrowed: Uint8Array;
+  private readonly order: Uint8Array;
+  private readonly ordX: Float32Array;
+  private readonly ordY: Float32Array;
+  private readonly ordSpeed: Float32Array;
+  private readonly ordPose: Uint8Array;
+  private readonly threatX: Float32Array;
+  private readonly threatY: Float32Array;
   /** Places assises (bancs, terrasses) des tuiles chargées ; null : personne ne s'assoit. */
   seats: Seats | null = null;
   // Grille de voisinage : tête de liste par case (table de hachage) et chaînage.
@@ -369,6 +390,14 @@ export class PedSim {
     this.buddyLat = new Float32Array(n);
     this.trait = new Uint8Array(n);
     this.lookT = new Float32Array(n);
+    this.borrowed = new Uint8Array(n);
+    this.order = new Uint8Array(n);
+    this.ordX = new Float32Array(n);
+    this.ordY = new Float32Array(n);
+    this.ordSpeed = new Float32Array(n);
+    this.ordPose = new Uint8Array(n);
+    this.threatX = new Float32Array(n).fill(NaN);
+    this.threatY = new Float32Array(n).fill(NaN);
     this.jx = new Float32Array(n); this.jy = new Float32Array(n); this.kx = new Float32Array(n); this.ky = new Float32Array(n);
     this.x = new Float32Array(n); this.y = new Float32Array(n); this.heading = new Float32Array(n);
     this.speed = new Float32Array(n); this.want = new Float32Array(n); this.edge = new Int32Array(n).fill(-1); this.gen = new Int32Array(n);
@@ -476,8 +505,9 @@ export class PedSim {
       if (!alive[i]) continue;
       const g = this.graph, e = this.edge[i]!;
       const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d2 = dx * dx + dy * dy;
-      // Hors de la couronne, ou sur une arête déchargée : le passant disparaît.
-      if (d2 > (rout + 30) * (rout + 30) || g.generation(e) !== this.gen[i]) {
+      // Hors de la couronne, ou sur une arête déchargée : le passant disparaît (réquisitionné par un événement, seulement très loin).
+      const ring = this.borrowed[i] ? BORROW_RANGE : rout + 30;
+      if (d2 > ring * ring || g.generation(e) !== this.gen[i]) {
         alive[i] = 0;
         stats.despawns++;
         continue;
@@ -489,6 +519,7 @@ export class PedSim {
       if (this.panic[i]! > 0) {
         this.panic[i] = Math.max(0, this.panic[i]! - dt);
         this.fear[i] = 1;
+        if (this.panic[i] === 0 && this.order[i] !== ORDER.flee) this.threatX[i] = this.threatY[i] = NaN;
       } else if (this.fear[i]! > 0) this.fear[i] = Math.max(0, this.fear[i]! - dt * 0.35);
       if (this.mode[i]! >= PED_STATE.stumble) {
         this.knockedStep(i, dt, obs);
@@ -507,7 +538,15 @@ export class PedSim {
         knocked++;
         continue;
       }
-      if (this.life) {
+      // Réquisitionné hors du graphe (aller vers un point, tenir une pose) : la simulation le place elle-même, sans file.
+      const ord = this.order[i]!;
+      if (ord === ORDER.seek || ord === ORDER.hold) {
+        if (this.life) this.lookStep(i, dt);
+        this.freeStep(i, dt);
+        continue;
+      }
+      if (ord === ORDER.flee && tier === 0) this.shove(i);
+      if (this.life && !this.borrowed[i]) {
         this.lookStep(i, dt);
         if (this.mode[i] === PED_STATE.sit) {
           if (this.panic[i]! > 0 || this.fear[i]! > 0.6) this.standUp(i);
@@ -561,7 +600,7 @@ export class PedSim {
       let leaving = Math.min(2, nAlive - goal);
       for (let k = 0; k < this.free && leaving > 0; k++) {
         const i = (this.excessCursor + k) % this.free;
-        if (!alive[i] || this.mode[i] === PED_STATE.dead) continue;
+        if (!alive[i] || this.mode[i] === PED_STATE.dead || this.borrowed[i]) continue;
         const dx = this.x[i]! - obs.x, dy = this.y[i]! - obs.y, d = Math.hypot(dx, dy);
         const hidden = d > 30 && Math.abs(angleDiff(Math.atan2(dx, dy), obs.yaw)) > 1.0;
         if (hidden || d > 60) {
@@ -670,6 +709,9 @@ export class PedSim {
     this.buddy[i] = -1;
     this.lookT[i] = 0;
     this.state.look![i] = 0;
+    this.borrowed[i] = 0;
+    this.order[i] = ORDER.none;
+    this.threatX[i] = this.threatY[i] = NaN;
     this.x[i] = x;
     this.y[i] = y;
     this.heading[i] = this.dir[i]! > 0 ? this.graph.pointAt(edge, s, this.pt) : this.graph.pointAt(edge, s, this.pt) + Math.PI;
@@ -698,14 +740,22 @@ export class PedSim {
     // Un passant effrayé (klaxon, véhicule trop près) presse le pas.
     let target = this.want[i]! * this.walk * (1 + 0.6 * this.fear[i]!);
     if (this.panic[i]! > 0) target = Math.max(target, FLEE_SPEED);
+    const fleeing = this.order[i] === ORDER.flee;
+    if (fleeing) target = this.ordSpeed[i]!;
     if (this.hp[i]! < WOUNDED_HP) target *= 0.7;
+    // Fuite volontaire : la menace est devant lui, sur son chemin : il fait demi-tour.
+    if ((fleeing || this.panic[i]! > 0) && !Number.isNaN(this.threatX[i]!) && mode !== PED_STATE.cross) this.turnFromThreat(i);
     if (this.tiers && tier > 0) {
       // Pas d'évitement au loin, mais une allure qui monte (3 m/s²) : après un relevé ou une attente, il ne passe pas de l'arrêt à la marche
       // d'une image à l'autre (D213). Il ralentit d'un coup, comme avant.
       this.speed[i] = Math.min(target, this.speed[i]! + 3 * dt);
       return;
     }
-    if (this.avoid && tier === 0 && mode !== PED_STATE.idle) target = this.avoidNeighbors(i, target, obs);
+    if (this.avoid && tier === 0 && mode !== PED_STATE.idle) {
+      // Celui qui fuit (un voleur) ne ralentit pas derrière les autres : il s'écarte et bouscule (`shove`).
+      const t2 = this.avoidNeighbors(i, target, obs);
+      if (!fleeing) target = t2;
+    }
     const k = Math.min(1, dt * 3);
     this.speed[i]! += (target - this.speed[i]!) * k;
     this.lat[i]! += (this.latTarget[i]! - this.lat[i]!) * Math.min(1, dt * 2);
@@ -788,12 +838,17 @@ export class PedSim {
       this.s[i] = Math.min(Math.max(this.s[i]!, 0), len);
       return;
     }
-    let r = nextRandom(this.rng, i) * total, pick = 0;
-    for (let k = 0; k < n; k++) {
-      r -= w[k]!;
-      if (r < 0) {
-        pick = k;
-        break;
+    const fleeing = this.order[i] === ORDER.flee;
+    let pick = 0;
+    if ((fleeing || this.panic[i]! > 0) && !Number.isNaN(this.threatX[i]!)) pick = this.escapeMove(i, e, forward, n);
+    else {
+      let r = nextRandom(this.rng, i) * total;
+      for (let k = 0; k < n; k++) {
+        r -= w[k]!;
+        if (r < 0) {
+          pick = k;
+          break;
+        }
       }
     }
     const m = moves[pick]!, ne = Math.floor(m / 2), rev = m & 1;
@@ -803,12 +858,19 @@ export class PedSim {
     this.dir[i] = rev ? -1 : 1;
     this.s[i] = rev ? g.edgeLength(ne) - over : over;
     this.s[i] = Math.min(Math.max(this.s[i]!, 0), g.edgeLength(ne));
+    // Le décalage latéral (à droite du sens de marche) tourne avec la file : dans un virage serré (un fuyard en prend), le corps sauterait
+    // d'une image à l'autre. L'écart est reporté dans le décalage d'esquive, qui s'efface en marchant (D213).
+    const hOld = this.heading[i]!, hNew = g.pointAt(ne, this.s[i]!, this.pt) + (rev ? Math.PI : 0), lt = this.lat[i]!;
+    this.jx[i]! += lt * (Math.cos(hOld) - Math.cos(hNew));
+    this.jy[i]! += lt * (Math.sin(hNew) - Math.sin(hOld));
     const typ = g.edgeType(ne);
     if (typ === PED.crossing || typ === PED.crossingSignal || typ === PED.crossingImplicit) {
-      this.mode[i] = this.threat(this.x[i]!, this.y[i]!, obs) || this.redForWalkers(i) ? PED_STATE.wait : PED_STATE.cross;
+      // Un fuyard (voleur) traverse sans attendre ; les autres attendent que la voie soit libre.
+      this.mode[i] = !fleeing && (this.threat(this.x[i]!, this.y[i]!, obs) || this.redForWalkers(i)) ? PED_STATE.wait : PED_STATE.cross;
     } else if (this.mode[i] === PED_STATE.cross) {
       this.mode[i] = PED_STATE.walk;
     }
+    if (this.borrowed[i] || this.panic[i]! > 0) return;
     if (this.life && this.mode[i] === PED_STATE.walk && this.lifeArrive(i)) return;
     // Un arrêt de temps en temps (vitrine, banc, conversation) : un peu plus sur les places et dans les rues fréquentées.
     if (this.mode[i] === PED_STATE.walk && nextRandom(this.rng, i) < (typ === PED.plaza ? 0.1 : 0.03)) {
@@ -1172,6 +1234,10 @@ export class PedSim {
   private wound(i: number, ux: number, uy: number): void {
     this.panic[i] = Math.max(this.panic[i]!, this.hp[i]! < WOUNDED_HP ? WOUNDED_FLEE : HURT_FLEE);
     this.fleeDir[i] = Math.atan2(ux, uy);
+    if (this.order[i] !== ORDER.flee) {
+      this.threatX[i] = this.x[i]! - ux * 4;
+      this.threatY[i] = this.y[i]! - uy * 4;
+    }
     this.alarm(this.x[i]!, this.y[i]!, ALARM_HURT, ALARM_FLEE, i);
   }
 
@@ -1183,19 +1249,19 @@ export class PedSim {
     const alive = this.state.alive!, r2 = radius * radius;
     let n = 0;
     for (let j = 0; j < this.free; j++) {
-      if (j === except || !alive[j] || this.mode[j]! >= PED_STATE.stumble) continue;
+      if (j === except || !alive[j] || this.mode[j]! >= PED_STATE.stumble || this.order[j] !== ORDER.none) continue;
       const dx = this.x[j]! - x, dy = this.y[j]! - y;
       if (dx * dx + dy * dy > r2) continue;
       n++;
+      // Fuite volontaire (phase 4) : il fuit ce point aux carrefours suivants.
+      this.threatX[j] = x;
+      this.threatY[j] = y;
       if (this.panic[j]! <= 0 && this.fear[j]! < 0.5) this.event("startled", j, 0);
       this.panic[j] = Math.max(this.panic[j]!, flee);
       this.fear[j] = 1;
       if (this.mode[j] === PED_STATE.wait || this.mode[j] === PED_STATE.idle) this.mode[j] = PED_STATE.walk;
       // Il part dans le sens de sa file qui l'éloigne de la scène.
-      if ((dx * Math.sin(this.heading[j]!) + dy * Math.cos(this.heading[j]!)) < 0) {
-        this.dir[j] = -this.dir[j]!;
-        this.heading[j] = this.heading[j]! + Math.PI;
-      }
+      if ((dx * Math.sin(this.heading[j]!) + dy * Math.cos(this.heading[j]!)) < 0) this.reverse(j);
     }
     return n;
   }
@@ -1478,6 +1544,297 @@ export class PedSim {
     }
   }
 
+  // --- Réquisition et fuite volontaire (phase 4, événements) -----------------------------------------------------
+
+  /**
+   * Réquisitionne le passant `i` pour un événement : il ne disparaît plus avec la couronne ni le surnombre (seulement au-delà de 450 m ou si son
+   * arête est déchargée), ne s'assoit plus, ne flâne plus, quitte son groupe. Il garde l'évitement, les chocs, la santé et la police. Faux si
+   * l'emplacement n'est pas un passant vivant debout de la simulation.
+   */
+  borrow(i: number): boolean {
+    const alive = this.state.alive!;
+    if (i < 0 || i >= this.free || !alive[i] || this.mode[i]! >= PED_STATE.stumble || this.borrowed[i]) return false;
+    if (this.mode[i] === PED_STATE.sit) this.standUp(i);
+    if (this.mode[i] === PED_STATE.idle || this.mode[i] === PED_STATE.wait) this.mode[i] = PED_STATE.walk;
+    this.buddy[i] = -1;
+    for (let j = 0; j < this.free; j++) if (this.buddy[j] === i) this.buddy[j] = -1;
+    this.borrowed[i] = 1;
+    this.order[i] = ORDER.none;
+    return true;
+  }
+
+  /** Rend le passant à la foule : il rejoint sa file en marchant, depuis là où il est (D213), et reprend sa vie. */
+  release(i: number): void {
+    if (i < 0 || i >= this.free) return;
+    const alive = this.state.alive!;
+    if (alive[i] && this.mode[i]! < PED_STATE.stumble && (this.order[i] === ORDER.seek || this.order[i] === ORDER.hold)) this.attach(i, this.heading[i]!);
+    this.borrowed[i] = 0;
+    this.order[i] = ORDER.none;
+    this.threatX[i] = this.threatY[i] = NaN;
+    this.state.held![i] = 0;
+    if (alive[i] && this.mode[i]! < PED_STATE.stumble) this.state.pose![i] = 0;
+  }
+
+  /** Un passant réquisitionné tient un pistolet (phase 4 : le braqueur), ou plus (il l'a lâché). Rendu à la foule, il ne tient plus rien. */
+  setHeld(i: number, on: boolean): void {
+    if (i < 0 || i >= this.free || !this.borrowed[i]) return;
+    this.state.held![i] = on ? 1 : 0;
+  }
+
+  /** Le passant `i` est-il réquisitionné ? */
+  isBorrowed(i: number): boolean {
+    return !!this.borrowed[i];
+  }
+
+  /**
+   * Donne un ordre à un passant réquisitionné (sans effet sinon) ; à appeler à chaque image pour suivre une cible qui bouge (même ordre :
+   * seuls le point et l'allure changent). `flee` : (x, y) est la menace ; `seek` : le point visé ; `hold` : le point regardé, `pose` la pose
+   * tenue (`LIFE_POSE`, 0 debout). `speed` en m/s (`flee`, `seek`).
+   */
+  command(i: number, kind: number, x: number, y: number, speed = 1.4, pose = 0): void {
+    if (i < 0 || i >= this.free || !this.borrowed[i] || !this.state.alive![i]) return;
+    const prev = this.order[i]!;
+    this.ordX[i] = x;
+    this.ordY[i] = y;
+    this.ordSpeed[i] = speed;
+    this.ordPose[i] = pose;
+    if (kind === ORDER.flee) {
+      this.threatX[i] = x;
+      this.threatY[i] = y;
+    }
+    if (prev === kind) return;
+    this.order[i] = kind;
+    if (this.mode[i]! >= PED_STATE.stumble) return;
+    const free = (k: number): boolean => k === ORDER.seek || k === ORDER.hold;
+    if (free(kind)) {
+      if (this.mode[i] === PED_STATE.sit) this.standUp(i);
+      this.mode[i] = PED_STATE.walk;
+      this.kx[i] = this.ky[i] = 0;
+    } else if (free(prev)) {
+      // Il revient sur le graphe : dans le sens qui l'éloigne de la menace (fuite), sinon dans celui où il regarde.
+      const away = kind === ORDER.flee ? Math.atan2(this.x[i]! - x, this.y[i]! - y) : this.heading[i]!;
+      this.attach(i, away);
+      this.state.pose![i] = 0;
+    }
+    if (kind === ORDER.flee) {
+      this.fear[i] = 1;
+      if (this.mode[i] === PED_STATE.wait || this.mode[i] === PED_STATE.idle) this.mode[i] = PED_STATE.walk;
+    }
+  }
+
+  /** Raccroche le passant à la file la plus proche, du côté du cap `heading`, depuis sa place (l'écart s'efface en marchant, D213). */
+  private attach(i: number, heading: number): void {
+    const hit = this.graph.nearest(this.x[i]!, this.y[i]!, 25, MASK_WALK);
+    if (!hit) return;
+    this.edge[i] = hit.edge;
+    this.gen[i] = this.graph.generation(hit.edge);
+    this.s[i] = hit.s;
+    const along = this.graph.pointAt(hit.edge, hit.s, this.pt);
+    this.yawFrom[i] = this.heading[i]!;
+    this.dir[i] = Math.cos(heading - along) >= 0 ? 1 : -1;
+    this.jx[i] = this.x[i]! - this.pt.x;
+    this.jy[i] = this.y[i]! - this.pt.y;
+    this.kx[i] = this.ky[i] = this.ox[i] = this.oy[i] = 0;
+    this.lat[i] = this.latTarget[i] = 0;
+    this.mode[i] = PED_STATE.walk;
+  }
+
+  /** Change la recette dessinée d'un passant vivant (le sac arraché change de main) ; le rendu le rhabille (`onSpawn`). */
+  setRecipe(i: number, recipe: Recipe): void {
+    if (i < 0 || i >= this.n || !this.state.alive![i]) return;
+    this.state.recipes[i] = recipe;
+    this.onSpawn?.(i, recipe);
+  }
+
+  /** Recette du passant `i` (lecture seule). */
+  recipe(i: number): Recipe {
+    return this.state.recipes[i]!;
+  }
+
+  /** État du passant `i` (`PED_STATE`), −1 si l'emplacement est vide. */
+  modeOf(i: number): number {
+    return this.state.alive![i] ? this.mode[i]! : -1;
+  }
+
+  /** Cap (rad) et allure (m/s) du passant `i`. */
+  headingOf(i: number): number {
+    return this.heading[i]!;
+  }
+
+  speedOf(i: number): number {
+    const m = this.mode[i]!;
+    return m === PED_STATE.walk || m === PED_STATE.cross ? this.speed[i]! : 0;
+  }
+
+  /** Identifiant (graine) du passant de l'emplacement `i` : un emplacement réutilisé change d'identifiant. */
+  idOf(i: number): number {
+    return this.id[i]!;
+  }
+
+  /** Le passant `i` mène-t-il un groupe, en suit-il un, promène-t-il un chien ? (on ne prend pas n'importe qui pour un rôle) */
+  attached(i: number): boolean {
+    return this.buddy[i]! >= 0 || !!(this.trait[i]! & TRAIT.dog) || this.leads(i);
+  }
+
+  /** Le promeneur `i` lâche son chien (phase 4 : chien échappé) : il n'en a plus (aucun nouveau chien ne lui est donné). */
+  dropDog(i: number): void {
+    if (i >= 0 && i < this.free) this.trait[i] = this.trait[i]! & ~TRAIT.dog;
+  }
+
+  /** Le promeneur `i` retrouve son chien. */
+  giveDog(i: number): void {
+    if (i >= 0 && i < this.free && this.state.alive![i]) this.trait[i] = this.trait[i]! | TRAIT.dog;
+  }
+
+  /** Assis sur un banc ou en terrasse ? */
+  sitting(i: number): boolean {
+    return !!this.state.alive![i] && this.mode[i] === PED_STATE.sit;
+  }
+
+  /** Fuite volontaire : la menace est devant lui sur son chemin, à moins de 15 m et pas trop de côté : il fait demi-tour. */
+  private turnFromThreat(i: number): void {
+    const tx = this.threatX[i]! - this.x[i]!, ty = this.threatY[i]! - this.y[i]!;
+    const h = this.heading[i]!, ahead = tx * Math.sin(h) + ty * Math.cos(h), side = Math.abs(tx * Math.cos(h) - ty * Math.sin(h));
+    if (ahead > 1.5 && ahead < 15 && side < ahead * 0.8) this.reverse(i);
+  }
+
+  /** Demi-tour sur sa file, sans saut : le décalage latéral (compté à droite du sens de marche) change de signe avec le sens. */
+  private reverse(i: number): void {
+    this.dir[i] = -this.dir[i]!;
+    this.heading[i] = this.heading[i]! + Math.PI;
+    this.lat[i] = -this.lat[i]!;
+    this.latTarget[i] = -this.latTarget[i]!;
+  }
+
+  private readonly fleeMoves: number[][] = Array.from({ length: FLEE_DEPTH + 3 }, () => []);
+
+  /**
+   * Fuite volontaire : parmi les `n` suites de `this.moves`, celle qui éloigne le plus de la menace. Chaque suite est notée par la distance à la
+   * menace au bout de son arête, et par la meilleure distance qu'on atteint en regardant plus loin (deux arêtes, davantage quand elles sont courtes,
+   * comme les coins) ; une impasse est notée bas ; une suite qui part vers la menace est pénalisée.
+   */
+  private escapeMove(i: number, e: number, forward: boolean, n: number): number {
+    const tx = this.threatX[i]!, ty = this.threatY[i]!;
+    let best = 0, bestScore = -Infinity;
+    for (let k = 0; k < n; k++) {
+      const m = this.moves[k]!, ne = Math.floor(m / 2), rev = m & 1;
+      const back = ne === e && rev === (forward ? 1 : 0);
+      let score = this.escapeScore(ne, rev, tx, ty, 0);
+      // La première direction compte aussi : ne pas passer à côté de la menace pour aller plus loin derrière elle.
+      const cap = this.graph.pointAt(ne, rev ? this.graph.edgeLength(ne) : 0, this.pt) + (rev ? Math.PI : 0);
+      const toward = Math.sin(cap) * (tx - this.x[i]!) + Math.cos(cap) * (ty - this.y[i]!);
+      const dThreat = Math.hypot(tx - this.x[i]!, ty - this.y[i]!) || 1;
+      if (toward > 0) score -= 25 * (toward / dThreat);
+      if (back) score -= 6;
+      // Un peu de hasard propre au passant : deux fuyards ne prennent pas toujours la même rue.
+      score += (hash32(this.id[i]!, ne) / 4294967296) * 3;
+      if (score > bestScore) {
+        bestScore = score;
+        best = k;
+      }
+    }
+    return best;
+  }
+
+  /** Note d'une arête parcourue dans le sens `rev` pour fuir (tx, ty) : distance au bout, puis meilleure suite (récursif, borné). */
+  private escapeScore(edge: number, rev: number, tx: number, ty: number, depth: number): number {
+    const g = this.graph, len = g.edgeLength(edge);
+    g.pointAt(edge, rev ? 0 : len, this.pt);
+    const d = Math.hypot(this.pt.x - tx, this.pt.y - ty);
+    const limit = FLEE_DEPTH + (len < FLEE_SHORT ? 1 : 0);
+    if (depth >= limit || depth >= this.fleeMoves.length - 1) return d;
+    const list = this.fleeMoves[depth]!;
+    list.length = 0;
+    const n = g.next(edge, rev ? 0 : 1, list);
+    let best = -Infinity;
+    for (let k = 0; k < n; k++) {
+      const m = list[k]!, ne = Math.floor(m / 2), r2 = m & 1;
+      if (ne === edge) continue;
+      best = Math.max(best, this.escapeScore(ne, r2, tx, ty, depth + 1));
+    }
+    // Impasse : on y serait coincé.
+    if (best === -Infinity) return d - 30;
+    return 0.35 * d + 0.65 * best;
+  }
+
+  /** Celui qui fuit en courant bouscule ceux qu'il frôle (ils trébuchent), sans ralentir. */
+  private shove(i: number): void {
+    if (this.speed[i]! < 2.5) return;
+    const px = this.x[i]!, py = this.y[i]!, h = this.heading[i]!, fx = Math.sin(h), fy = Math.cos(h);
+    const cx = Math.floor(px / 4), cy = Math.floor(py / 4);
+    for (let ix = cx - 1; ix <= cx + 1; ix++) {
+      for (let iy = cy - 1; iy <= cy + 1; iy++) {
+        for (let j = this.head[this.hash(ix, iy)]!; j >= 0; j = this.link[j]!) {
+          if (j === i || j >= this.free || this.borrowed[j] || this.mode[j]! >= PED_STATE.sit) continue;
+          const dx = this.x[j]! - px, dy = this.y[j]! - py, d2 = dx * dx + dy * dy;
+          if (d2 > 0.36 || dx * fx + dy * fy < -0.1) continue;
+          const side = dx * fy - dy * fx >= 0 ? 1 : -1;
+          this.knock(j, HIT_POSE.stumble, fx * 0.6 + fy * side * 0.8, fy * 0.6 - fx * side * 0.8, 2.2);
+          this.event("stumble", j, 2.2);
+        }
+      }
+    }
+  }
+
+  /**
+   * Passant réquisitionné hors du graphe (`seek`, `hold`) : il va droit vers son point (ou reste sur place tourné vers lui), repoussé par les murs ;
+   * il garde une file proche comme ancre (relevé après un choc, retour à la foule).
+   */
+  private freeStep(i: number, dt: number): void {
+    const st = this.state, ord = this.order[i]!;
+    let px = this.x[i]!, py = this.y[i]!, v = 0;
+    const dx = this.ordX[i]! - px, dy = this.ordY[i]! - py, d = Math.hypot(dx, dy);
+    if (d > 0.05) {
+      const want = Math.atan2(dx, dy), turn = angleDiff(want, this.heading[i]!);
+      this.heading[i] = this.heading[i]! + Math.sign(turn) * Math.min(Math.abs(turn), dt * 8);
+    }
+    if (ord === ORDER.seek && d > 0.35) {
+      v = Math.min(this.ordSpeed[i]!, d * 2.5);
+      // Il accélère comme les autres (3 m/s²), pas de l'arrêt à la course d'une image à l'autre.
+      v = Math.min(v, this.speed[i]! + 3 * dt);
+      const step = Math.min(v * dt, d);
+      px += (dx / d) * step;
+      py += (dy / d) * step;
+    }
+    this.speed[i] = v;
+    if (this.colliders) {
+      const r = this.colliders.resolveInto(this.res, px, py, BODY);
+      if (r.hit) {
+        px = r.x;
+        py = r.y;
+      }
+    }
+    // Ancre : la file la plus proche, revue deux fois par seconde (l'écart jx, jy y ramène au relevé ou au retour à la foule).
+    if ((this.frame + i) % 30 === 0) {
+      const hit = this.graph.nearest(px, py, 25, MASK_WALK);
+      if (hit) {
+        this.edge[i] = hit.edge;
+        this.gen[i] = this.graph.generation(hit.edge);
+        this.s[i] = hit.s;
+      }
+    }
+    this.graph.pointAt(this.edge[i]!, this.s[i]!, this.pt);
+    this.jx[i] = px - this.pt.x;
+    this.jy[i] = py - this.pt.y;
+    this.kx[i] = this.ky[i] = this.ox[i] = this.oy[i] = 0;
+    this.lat[i] = 0;
+    this.yawOff[i] = 0;
+    this.yawFrom[i] = NaN;
+    this.x[i] = px;
+    this.y[i] = py;
+    st.x[i] = px;
+    st.z[i] = -py;
+    st.y[i] = this.terrain.heightAt(px, py, st.y[i]);
+    st.yaw[i] = -this.heading[i]!;
+    st.speed[i] = v;
+    st.phase[i] = (st.phase[i]! + phaseRate(v, st.recipes[i]!.height) * dt) % TAU;
+    const pose = ord === ORDER.hold ? this.ordPose[i]! : 0;
+    if (st.pose![i] !== pose) {
+      st.pose![i] = pose;
+      st.poseT![i] = 0;
+    } else st.poseT![i]! += dt;
+  }
+
   // --- Voisinage -------------------------------------------------------------------------------------------------
 
   private hash(ix: number, iy: number): number {
@@ -1539,6 +1896,7 @@ export class PedSim {
         slot = i;
         break;
       }
+      if (this.borrowed[i]) continue;
       const d = Math.hypot(this.x[i]! - x, this.y[i]! - y);
       if (d > far) {
         far = d;
@@ -1559,8 +1917,61 @@ export class PedSim {
     this.knock(slot, HIT_POSE.stumble, ux, uy, push);
     this.stats.hits--;
     this.panic[slot] = FLEE_TIME;
+    this.threatX[slot] = fromX;
+    this.threatY[slot] = fromY;
     this.event("startled", slot, push);
     return slot;
+  }
+
+  /**
+   * Fait apparaître quelqu'un debout en (x, y), tourné vers `heading` (phase 4 : un conducteur qui descend de sa voiture, un gendarme), de la
+   * recette `recipe` (ou de la graine `seed`), dans un emplacement libre (sinon celui du passant le plus éloigné, jamais un réquisitionné) ; il est
+   * aussitôt réquisitionné, immobile. Renvoie l'emplacement, ou −1 s'il n'y a pas de file piétonne à 25 m.
+   */
+  appear(x: number, y: number, seed: number, heading: number, recipe: Recipe | null = null): number {
+    const alive = this.state.alive!;
+    let slot = -1, far = -1;
+    for (let i = 0; i < this.free; i++) {
+      if (!alive[i]) {
+        slot = i;
+        break;
+      }
+      if (this.borrowed[i]) continue;
+      const d = Math.hypot(this.x[i]! - x, this.y[i]! - y);
+      if (d > far) {
+        far = d;
+        slot = i;
+      }
+    }
+    const hit = slot < 0 ? null : this.graph.nearest(x, y, 25, MASK_WALK);
+    if (!hit) return -1;
+    if (alive[slot]) this.stats.despawns++;
+    this.place0(slot, hit.edge, hit.s, x, y, seed);
+    if (recipe) this.setRecipe(slot, recipe);
+    this.graph.pointAt(hit.edge, hit.s, this.pt);
+    this.jx[slot] = x - this.pt.x;
+    this.jy[slot] = y - this.pt.y;
+    this.x[slot] = x;
+    this.y[slot] = y;
+    this.heading[slot] = heading;
+    this.state.yaw[slot] = -heading;
+    this.speed[slot] = 0;
+    this.borrowed[slot] = 1;
+    this.order[slot] = ORDER.hold;
+    this.ordX[slot] = x + Math.sin(heading);
+    this.ordY[slot] = y + Math.cos(heading);
+    this.ordPose[slot] = 0;
+    return slot;
+  }
+
+  /** Le passant `i` disparaît (il monte dans une voiture, il entre quelque part). */
+  vanish(i: number): void {
+    if (i < 0 || i >= this.free || !this.state.alive![i]) return;
+    this.state.alive![i] = 0;
+    this.borrowed[i] = 0;
+    this.order[i] = ORDER.none;
+    this.state.held![i] = 0;
+    this.stats.despawns++;
   }
 
   /** Premier emplacement réservé (voir `PedSimOptions.reserved`) et leur nombre. */
@@ -1638,6 +2049,18 @@ export class PedSim {
     if (v < 0.05) return;
     this.knock(i, v >= 3.5 ? HIT_POSE.down : HIT_POSE.stumble, ix / v, iy / v, v);
     this.event(v >= 3.5 ? "hit" : "stumble", i, v);
+  }
+
+  /**
+   * Plaquage (phase 4) : le passant tombe, poussé de (ix, iy) m/s, même s'il était en train de trébucher (`applyImpulse` ignore un choc pendant
+   * un trébuchement, D211 : un joueur qui sprinte dans un fuyard le fait d'abord trébucher par simple contact). Rien sur un passant à terre ou mort.
+   */
+  tackle(i: number, ix: number, iy: number): void {
+    if (i >= this.free || !this.state.alive![i] || this.mode[i]! > PED_STATE.stumble) return;
+    const v = Math.max(Math.hypot(ix, iy), 3.6);
+    const n = Math.hypot(ix, iy) || 1;
+    this.knock(i, HIT_POSE.down, ix / n, iy / n, v);
+    this.event("hit", i, v);
   }
 
   /**

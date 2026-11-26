@@ -34,6 +34,8 @@ export interface TrafficItem {
   color: string;
   /** Gyrophares allumés (voiture de police en poursuite, J4) : temps (s) qui règle le clignotement ; absent, éteints. */
   beacon?: number;
+  /** Feux de détresse (phase 4 : accident) : temps (s) qui règle le clignotement ; absent, éteints. */
+  hazard?: number;
 }
 
 interface Slot {
@@ -88,6 +90,7 @@ export class TrafficModels {
   private readonly lampMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   private readonly beacons: THREE.InstancedMesh;
   private readonly beaconColor = { on: new THREE.Color("#5a8cff"), off: new THREE.Color("#1a2f66") };
+  private readonly hazardColor = new THREE.Color("#ff9a1f");
   private readonly beaconSize = new THREE.Vector3();
   private nWheels = 0;
   private nLamps = 0;
@@ -215,6 +218,16 @@ export class TrafficModels {
         }
       }
       // Gyrophares : les deux feux de la barre s'allument l'un après l'autre, quatre fois par seconde, légèrement grossis par-dessus la barre éteinte.
+      // Feux de détresse (phase 4) : quatre boîtes orange aux coins (sur les phares et les feux arrière), allumées une demi-seconde sur deux.
+      if (c.hazard !== undefined && Math.floor(c.hazard * 1.6) % 2 === 0 && this.nBeacons + 4 <= MAX_BEACONS) {
+        for (const [x, y, z] of [...l.lamps.head, ...l.lamps.tail]) {
+          this.local.compose(this.pos.set(x * 1.08, y, z), this.noRotation, this.beaconSize.set(0.16, 0.12, 0.08));
+          this.tmp.multiplyMatrices(this.body, this.local);
+          this.beacons.setMatrixAt(this.nBeacons, this.tmp);
+          this.beacons.setColorAt(this.nBeacons, this.hazardColor);
+          this.nBeacons++;
+        }
+      }
       if (c.beacon !== undefined && this.nBeacons + l.beacons.length <= MAX_BEACONS) {
         const phase = Math.floor(c.beacon * 4) & 1;
         l.beacons.forEach((b, k) => {

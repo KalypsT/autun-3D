@@ -88,7 +88,7 @@ function vehicleScene(id: string): SoundScene {
 }
 
 /** Une voix placée qui passe devant l'oreille : de −`span` à +`span` m sur l'axe est-ouest, à `side` m au nord, à `speed` m/s. */
-function passScene(id: string, label: string, speed: number, siren: boolean): SoundScene {
+function passScene(id: string, label: string, speed: number, siren: boolean, slow = false): SoundScene {
   const span = siren ? 220 : 70, seconds = (2 * span) / speed;
   return {
     id, section: "Ville", label, seconds,
@@ -106,7 +106,7 @@ function passScene(id: string, label: string, speed: number, siren: boolean): So
         const f = firingHz(model.profile, model.rpm) * dop;
         const engineGain = distanceGain(d, 5, 90) * 0.45 * (0.55 + 0.45 * model.load);
         if (voice instanceof SirenVoice) {
-          voice.update(dop, distanceCutoff(d * 0.5), distanceGain(d, 15, 700) * 0.6, st.pan);
+          voice.update(dop, distanceCutoff(d * 0.5), distanceGain(d, 15, 700) * 0.6, st.pan, slow);
           car?.update(f, Math.min(distanceCutoff(d), 250 + f * 8), engineGain, st.pan, first);
         } else voice.update(f, Math.min(distanceCutoff(d), 250 + f * 8 * (0.5 + model.load)), engineGain, st.pan, first);
         first = false;
@@ -185,8 +185,11 @@ export const SCENES: readonly SoundScene[] = [
   shot("owl", "Ville", "Chouette hulotte", 3, (k, o, t) => S.owl(k, o, t, { gain: 0.6, pan: 0.4, cutoff: 4000, echo: 0.3 })),
   shot("pigeons", "Ville", "Envol de pigeons", 1.6, (k, o, t) => S.flutter(k, o, t, 6, { ...NEAR, gain: 0.8, pan: 0.3 })),
   shot("honk", "Ville", "Klaxons de la circulation", 2, (k, o, t, i) => S.honk(k, o, t, [0.9, 1.15, 1][i]!, [0.2, 0.35, 0.15][i]!, { gain: 0.6, pan: [0.5, -0.4, 0.5][i]!, cutoff: 6000, echo: 0.2 }), 3, 0.45),
+  shot("shop-alarm", "Ville", "Alarme d'un commerce (braquage, phase 4)", 3, (k, o, t) => S.shopAlarm(k, o, t, 2.5, { ...NEAR, gain: 0.6, pan: -0.2 })),
+  shot("applause", "Ville", "Applaudissements (mariage, phase 4)", 4, (k, o, t) => S.applause(k, o, t, 3.5, { ...NEAR, gain: 0.8, pan: 0.2 })),
   passScene("pass-car", "Voiture qui passe à 50 km/h", 50 / 3.6, false),
   passScene("pass-siren", "Gendarmerie qui passe à 90 km/h, sirène", 90 / 3.6, true),
+  passScene("pass-pompiers", "Pompiers qui passent à 70 km/h, sirène (phase 4)", 70 / 3.6, true, true),
   {
     id: "ambience-day", section: "Ville", label: "Fond de ville, vent (jour)", seconds: 6,
     play(kit, dest, t0, at) {

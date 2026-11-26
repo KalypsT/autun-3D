@@ -256,11 +256,13 @@ export class TrafficVoice extends Voice {
 }
 
 /**
- * Sirène « deux-tons » de la gendarmerie : la (435 Hz) et si (488 Hz) en alternance, une note par demi-seconde. Une oscillation
+ * Sirène « deux-tons » de la gendarmerie : la (435 Hz) et si (488 Hz) en alternance, une note par demi-seconde (celle des pompiers, phase 4 :
+ * mêmes notes, plus lente). Une oscillation
  * carrée lente fait basculer la note ; l'effet Doppler les décale ensemble.
  */
 export class SirenVoice extends Voice {
   private readonly tone: OscillatorNode;
+  private readonly lfo: OscillatorNode;
   private readonly swing: GainNode;
   private readonly lp: BiquadFilterNode;
   static readonly LOW = 435;
@@ -271,6 +273,7 @@ export class SirenVoice extends Voice {
     const { ctx } = kit;
     this.tone = this.osc("square", (SirenVoice.LOW + SirenVoice.HIGH) / 2);
     const lfo = ctx.createOscillator();
+    this.lfo = lfo;
     lfo.type = "square";
     lfo.frequency.value = 1;
     lfo.start(ctx.currentTime + phase);
@@ -282,7 +285,9 @@ export class SirenVoice extends Voice {
     chain(this.tone, this.lp, gainNode(ctx, 0.5), this.out);
   }
 
-  update(doppler: number, cutoff: number, gain: number, pan: number): void {
+  /** `slow` : la cadence des pompiers (phase 4), plus lente (« pin… pon… », 0,77 s par note au lieu de 0,5). */
+  update(doppler: number, cutoff: number, gain: number, pan: number, slow = false): void {
+    this.set(this.lfo.frequency, slow ? 0.65 : 1, 0.05);
     this.set(this.tone.frequency, ((SirenVoice.LOW + SirenVoice.HIGH) / 2) * doppler, 0.05);
     this.set(this.swing.gain, ((SirenVoice.HIGH - SirenVoice.LOW) / 2) * doppler, 0.05);
     this.set(this.lp.frequency, Math.min(cutoff, 2600), 0.05);

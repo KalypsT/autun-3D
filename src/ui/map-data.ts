@@ -40,6 +40,31 @@ export interface PlacesFile {
   streets: StreetInfo[];
 }
 
+/**
+ * Nom de la rue la plus proche de (x, y) à moins de `maxDist` m (phase 4 : le journal des événements), écrit pour le milieu d'une phrase
+ * (« rue aux Cordiers », « place du Champ de Mars ») ; null si aucune.
+ */
+export function streetNear(streets: readonly StreetInfo[], x: number, y: number, maxDist = 40): string | null {
+  let best: StreetInfo | null = null, bd = maxDist;
+  for (const st of streets) {
+    for (const l of st.lines) {
+      for (let i = 0; i + 3 < l.length; i += 2) {
+        const ax = l[i]!, ay = l[i + 1]!, bx = l[i + 2]!, by = l[i + 3]!;
+        if (Math.min(ax, bx) - bd > x || Math.max(ax, bx) + bd < x || Math.min(ay, by) - bd > y || Math.max(ay, by) + bd < y) continue;
+        const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy || 1;
+        const t = Math.min(1, Math.max(0, ((x - ax) * dx + (y - ay) * dy) / len2));
+        const d = Math.hypot(ax + dx * t - x, ay + dy * t - y);
+        if (d < bd) {
+          bd = d;
+          best = st;
+        }
+      }
+    }
+  }
+  if (!best) return null;
+  return best.name.replace(/^(Rue|Place|Avenue|Boulevard|Chemin|Impasse|Allée|Route|Quai|Cours|Square|Promenade|Passage|Ruelle|Montée|Rond-point|Parvis|Esplanade|Faubourg|Sentier|Voie)\b/, (m) => m.toLowerCase());
+}
+
 /** Mémoire des images décodées au-delà de laquelle les moins récemment utilisées sont libérées. */
 const IMAGE_BUDGET = 40 * 2 ** 20;
 

@@ -265,6 +265,29 @@ export class GameAudio {
   }
 
   /** Crépitement d'un véhicule en feu ou d'une épave qui brûle (D111) : à appeler au hasard, quelques fois par seconde. */
+  /** Applaudissements et volée de cloches (phase 4 : un mariage à la mairie). */
+  applause(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 6, 180, 0.2);
+    if (!kit || !spot) return;
+    S.applause(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
+  /** Alarme d'un commerce braqué (phase 4). */
+  shopAlarm(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 6, 220, 0.2);
+    if (!kit || !spot) return;
+    S.shopAlarm(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
+  bells(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 20, 600, 0.4);
+    if (!kit || !spot) return;
+    S.peal(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
   crackle(x: number, y: number): void {
     const kit = this.kit;
     if (!kit) return;
@@ -397,6 +420,14 @@ export class GameAudio {
     }
   }
 
+  /** Un cri voulu par un événement (phase 4 : « Au voleur ! ») en (x, y), de la voix du passant `slot`. */
+  cry(kind: S.CryKind, x: number, y: number, slot: number): void {
+    const kit = this.kit;
+    const sp = kit && this.spot(x, y, 5, 120, 0.25, 0.8);
+    if (!kit || !sp) return;
+    S.cry(kit, this.sys.buses!.sfx, kit.ctx.currentTime, kind, voiceOf(slot), sp);
+  }
+
   /** Envol d'une volée de pigeons. */
   scatter(x: number, y: number): void {
     const kit = this.kit;
@@ -485,7 +516,7 @@ export class GameAudio {
       }
       const dx = car.x - L.x, dy = car.y - L.y, d = Math.hypot(dx, dy);
       stereo(L.x, L.y, L.yaw, car.x, car.y, this.st);
-      v.update(doppler(dx, dy, car.vx, car.vy, L.vx, L.vy), distanceCutoff(d * 0.5), distanceGain(d, 15, SIREN_RANGE) * 0.6 * (1 - 0.2 * this.st.behind), this.st.pan);
+      v.update(doppler(dx, dy, car.vx, car.vy, L.vx, L.vy), distanceCutoff(d * 0.5), distanceGain(d, 15, SIREN_RANGE) * 0.6 * (1 - 0.2 * this.st.behind), this.st.pan, car.model === "pompiers");
     }
   }
 

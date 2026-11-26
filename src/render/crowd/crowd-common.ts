@@ -2,7 +2,8 @@ import type { Recipe } from "../../core/character";
 import { bodyDims, type BodyDims } from "../../core/character";
 import { PART_SPECS, partMask } from "../../core/character-kit";
 import { gunPose } from "../../core/character-attack";
-import { BONE, BONE_COUNT, createPose, geometryScales, GUN_POSE, HIT_BLEND, hitPose, LIFE_POSE, lyingVariant, phonePose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { BONE, BONE_COUNT, chestPose, clapPose, collapsePose, createPose, geometryScales, getupPose, GUN_POSE, HIT_BLEND, hitPose, kneelPose, LIFE_POSE, lyingVariant, phonePose, pointPose, handsPose, sitPose, talkPose, restOffsets, solveBones, walkPose, type Pose, type Root } from "../../core/character-rig";
+import { attackPose, guardPose } from "../../core/character-attack";
 import { slotColors } from "../character-parts";
 import type { CrowdState } from "./crowd-types";
 
@@ -69,10 +70,34 @@ export class CrowdRigs {
       walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
       gunPose(this.pose, "pistol", hit === GUN_POSE.aim ? 1 : 0, hit === GUN_POSE.aim ? Math.max(0, 1 - state.poseT![i]! / 0.18) : 0);
     } else if (hit === LIFE_POSE.sit) sitPose(this.pose, state.poseT![i]!, this.dims[i]!);
-    else if (hit === LIFE_POSE.phone || hit === LIFE_POSE.talk) {
+    else if (hit === LIFE_POSE.phone || hit === LIFE_POSE.talk || hit === LIFE_POSE.point || hit === LIFE_POSE.hands) {
       walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
       if (hit === LIFE_POSE.phone) phonePose(this.pose);
+      else if (hit === LIFE_POSE.point) pointPose(this.pose, state.poseT![i]!);
+      else if (hit === LIFE_POSE.hands) handsPose(this.pose);
       else talkPose(this.pose, state.poseT![i]!);
+    } else if (hit === LIFE_POSE.clap) {
+      walkPose(this.pose, state.phase[i]!, 0, this.dims[i]!);
+      clapPose(this.pose, state.poseT![i]! + (i % 5) * 0.07);
+    } else if (hit === LIFE_POSE.chest) {
+      walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
+      chestPose(this.pose);
+    } else if (hit === LIFE_POSE.collapse) collapsePose(this.pose, state.poseT![i]!, this.dims[i]!, lyingVariant(i));
+    else if (hit === LIFE_POSE.getup) getupPose(this.pose, state.poseT![i]!, this.dims[i]!, lyingVariant(i));
+    else if (hit === LIFE_POSE.kneel) kneelPose(this.pose, this.dims[i]!);
+    else if (hit === LIFE_POSE.fists) {
+      // Bagarre (phase 4) : garde levée, un coup de poing toutes les 1,1 s environ, d'un bras puis de l'autre (décalé d'un passant à l'autre).
+      walkPose(this.pose, state.phase[i]!, state.speed[i]!, this.dims[i]!);
+      const t = state.poseT![i]! + (i % 7) * 0.13, k = Math.floor(t / 1.1), u = (t - k * 1.1) / 0.55;
+      guardPose(this.pose, "punch");
+      if (u < 1) attackPose(this.pose, "punch", u, 0.5, k % 2 ? -1 : 1);
+      else {
+        // Entre deux coups, les deux poings en garde devant le visage.
+        const a = this.pose.angles;
+        a[BONE.armL * 3] = 0.6;
+        a[BONE.armL * 3 + 2] = -0.1;
+        a[BONE.forearmL * 3] = 1.5;
+      }
     } else if (hit > 0) {
       // D209 : fondu depuis la marche d'avant le choc (sa phase est figée pendant le choc), puis la pose au sol de ce passant.
       const t = state.poseT![i]!;

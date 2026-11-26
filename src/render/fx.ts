@@ -57,6 +57,8 @@ export interface PickupView {
   grenade?: boolean;
   /** Point de l'arc de lancer (D326) : `z` est son altitude. */
   dot?: boolean;
+  /** Sac volé au sol (phase 4) : sa couleur (0xRRGGBB). */
+  bag?: number;
 }
 
 interface Item {
@@ -217,6 +219,26 @@ export class Fx {
         this.s.set(0.3, 0.3, 0.09);
         m.compose(this.p, this.q, this.s);
         put(COIN_RIM[0], COIN_RIM[1], COIN_RIM[2]);
+        continue;
+      }
+      if (pk.bag !== undefined) {
+        // Sac volé (phase 4) : le sac de la victime, posé de travers au sol, qui tourne lentement, et un faisceau court ocre (on le repère).
+        const c = pk.bag;
+        this.e.set(0, time * 1.4 + pk.x, 0.25);
+        this.q.setFromEuler(this.e);
+        this.p.set(pk.x, pk.z + 0.3, -pk.y);
+        this.s.set(0.46, 0.34, 0.18);
+        m.compose(this.p, this.q, this.s);
+        put(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255);
+        this.p.set(pk.x, pk.z + 0.55, -pk.y);
+        this.s.set(0.26, 0.1, 0.05);
+        m.compose(this.p, this.q, this.s);
+        put(0.1, 0.1, 0.12);
+        this.p.set(pk.x, pk.z + 1.3, -pk.y);
+        this.s.set(0.1, 2, 0.1);
+        this.q.identity();
+        m.compose(this.p, this.q, this.s);
+        put(1, 0.5, 0.08);
         continue;
       }
       if (pk.cash) {

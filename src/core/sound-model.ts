@@ -40,6 +40,7 @@ export const ENGINE_PROFILES: Readonly<Record<string, EngineProfile>> = {
   break: car({ diesel: true, idle: 780, redline: 4600, bright: 0.3, gears: 6 }),
   "petit-suv": car({ cylinders: 3, redline: 6000, rough: 0.28 }),
   camionnette: car({ diesel: true, idle: 750, redline: 4300, bright: 0.25, rough: 0.25 }),
+  pompiers: car({ diesel: true, idle: 750, redline: 4300, bright: 0.25, rough: 0.25 }),
   "vieille-voiture": car({ idle: 700, redline: 5200, gears: 4, bright: 0.3, rough: 0.55 }),
   sportive: car({ cylinders: 6, idle: 950, redline: 7800, gears: 6, bright: 0.8, rough: 0.08, pops: true }),
   // Gendarmerie en berlinette (D282) : le moteur de la sportive.

@@ -45,6 +45,8 @@ export interface MinimapState {
   garages?: readonly { x: number; y: number }[];
   /** Zone de recherche quand la police a perdu la piste : cercle autour de la dernière position connue. */
   search?: { x: number; y: number; r: number } | null;
+  /** Événements (phase 4) : la scène (« ! » ocre), un fuyard (point rouge), quelqu'un à rejoindre (anneau ocre) ; sur le bord quand ils sont loin. */
+  events?: readonly { kind: "scene" | "fugitive" | "meet"; x: number; y: number }[];
 }
 
 /**
@@ -232,6 +234,45 @@ export class Minimap {
         ctx.fill();
         ctx.stroke();
       }
+    }
+
+    // Événements (phase 4) : sur le bord du disque quand ils sont plus loin (on voit de quel côté ça se passe).
+    if (s.events) {
+      ctx.save();
+      for (const e of s.events) {
+        const [px, py] = worldToScreen(view, e.x, e.y);
+        const q = clampToDisc(px - size / 2, py - size / 2, r - 7);
+        const cx = size / 2 + q.x, cy = size / 2 + q.y;
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#fff8e6";
+        if (e.kind === "fugitive") {
+          ctx.fillStyle = s.flash ? "#c8321e" : "#e8553e";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else if (e.kind === "meet") {
+          ctx.strokeStyle = "#f1b24a";
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "#fff8e6";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#f1b24a";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "#1b1f27";
+          ctx.fillRect(cx - 1, cy - 4, 2, 5);
+          ctx.fillRect(cx - 1, cy + 2.2, 2, 1.8);
+        }
+      }
+      ctx.restore();
     }
 
     // Dernier véhicule (D310) : pastille, sur le bord quand il est hors du disque (on voit dans quelle direction il est) ; pas tout à côté du joueur.

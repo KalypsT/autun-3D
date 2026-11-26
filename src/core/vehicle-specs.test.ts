@@ -42,7 +42,7 @@ function braking(spec: VehicleSpec, from: number): { distance: number; locked: b
 describe("voitures du catalogue : performances", () => {
   /** [0 à 100 km/h (s) mini, maxi] : d'après ce que fait une voiture de cette classe. */
   const T100: Record<string, [number, number]> = {
-    citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
+    citadine: [10, 13], compacte: [8.5, 11.5], berline: [8, 11], break: [8.5, 11], "petit-suv": [9.5, 12.5], camionnette: [14, 19], pompiers: [14, 19], "vieille-voiture": [11, 15], sportive: [4, 6], gendarmerie: [7.9, 10],
     "jeep-militaire": [12, 18], supercar: [2.6, 3.8], sacrovir: [3.6, 4.6], "gendarmerie-alpine": [4, 6], deuche: [22, 40], "pizza-du-vallon": [16, 26], "rotisserie-champ-de-mars": [16, 26],
   };
   /** Poids lourds bridés à 90 km/h (D116, bus et benne D204 : même fiche que le grumier) : 0 à 80 km/h (s), d'après un porteur chargé. */

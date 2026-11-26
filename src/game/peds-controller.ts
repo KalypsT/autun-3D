@@ -1,6 +1,7 @@
 import type { Seats } from "../core/seats";
 import * as THREE from "three";
 import { createDog, stepDog, type Dog, type DogOwner } from "../core/dogs";
+import type { EventDogs } from "../core/events/dog-escape";
 import { DogView } from "../render/dogs";
 import type { Colliders } from "../core/collision";
 import { PedSim, type Observer } from "../core/pedestrians";
@@ -17,7 +18,7 @@ import type { NavManager } from "./nav-manager";
  * Les passants du jeu : la simulation (`PedSim`), son rendu (la foule de l'étape P, un seul appel de dessin) et le réglage « Foule ».
  * Les passants n'existent qu'une fois la navigation chargée autour du joueur ; changer le nombre maximal les refabrique (nouvelle foule).
  */
-export class PedsController implements Arena {
+export class PedsController implements Arena, EventDogs {
   private sim: PedSim | null = null;
   private crowd: CrowdRenderer | null = null;
   private filled = false;
@@ -74,9 +75,52 @@ export class PedsController implements Arena {
     return this.sim?.queryCircle(x, y, r, out) ?? 0;
   }
 
-  /** Passants à moins de `r` de (x, y) pour la circulation : voir `PedSim.forEachNear`. */
+  /** Passants à moins de `r` de (x, y) pour la circulation : voir `PedSim.forEachNear` ; un chien échappé (phase 4) y est aussi, sur la chaussée. */
   forEachNear(x: number, y: number, r: number, visit: (x: number, y: number, vx: number, vy: number, engaged: boolean) => void): void {
     this.sim?.forEachNear(x, y, r, visit);
+    for (const e of this.loose) {
+      const d = e.dog;
+      if (Math.hypot(d.x - x, d.y - y) <= r) visit(d.x, d.y, Math.sin(d.heading) * d.speed, Math.cos(d.heading) * d.speed, true);
+    }
+  }
+
+  // --- Chiens des événements (phase 4) -------------------------------------------------------------------------------------
+
+  /** Chiens qu'un événement fait dessiner à cette image (lâchés, ou tenus par le joueur), et le point d'où part leur laisse. */
+  private shown: { dog: Dog; leash: { x: number; y: number } | null }[] = [];
+  /** Ceux de l'image précédente : dessinés à la mise à jour suivante, vus par les voitures. */
+  private loose: { dog: Dog; leash: { x: number; y: number } | null }[] = [];
+
+  owners(visit: (slot: number, x: number, y: number) => void): void {
+    const sim = this.sim;
+    if (!sim) return;
+    sim.forEachDogOwner((slot, _id, x, y, _h, _s, sitting) => {
+      if (!sitting) visit(slot, x, y);
+    });
+  }
+
+  detach(slot: number): Dog | null {
+    const sim = this.sim;
+    if (!sim) return null;
+    const id = sim.idOf(slot);
+    const k = this.dogs.findIndex((d) => d.slot === slot && d.owner === id);
+    if (k < 0) return null;
+    const [dog] = this.dogs.splice(k, 1);
+    sim.dropDog(slot);
+    return dog!;
+  }
+
+  attach(slot: number, dog: Dog): void {
+    const sim = this.sim;
+    if (!sim || sim.modeOf(slot) < 0) return;
+    sim.giveDog(slot);
+    dog.slot = slot;
+    dog.owner = sim.idOf(slot);
+    if (!this.dogs.includes(dog)) this.dogs.push(dog);
+  }
+
+  show(dog: Dog, leash: { x: number; y: number } | null): void {
+    this.shown.push({ dog, leash });
   }
 
   /** Fait sortir quelqu'un d'une voiture (J4) : voir `PedSim.eject` ; −1 sans passants ou sans file piétonne proche. */
@@ -106,9 +150,30 @@ export class PedsController implements Arena {
     }
   }
 
+  /** Les passants qu'on peut arrêter sans infraction (un voleur en fuite, phase 4) : branché par le jeu sur le directeur d'événements. */
+  lawful: ((slot: number) => boolean) | null = null;
+  /** Coups qui ont touché sans tuer un fuyard (`lawful`) depuis le dernier `takeLawfulHits` : ce ne sont pas des agressions. */
+  private lawfulHits = 0;
+
+  takeLawfulHits(): number {
+    const n = this.lawfulHits;
+    this.lawfulHits = 0;
+    return n;
+  }
+
+  /** La simulation, pour les événements (phase 4) : ils réquisitionnent des passants ; null sans foule. Elle change quand la foule est refabriquée. */
+  eventPeds(): PedSim | null {
+    return this.sim;
+  }
+
   hurt(slot: number, damage: number, ux: number, uy: number, impulse: number): number {
     const sim = this.sim;
     if (!sim) return 0;
+    if (slot < sim.reservedStart && this.lawful?.(slot)) {
+      const r = sim.damage(slot, damage, ux, uy, impulse);
+      if (r === 1) this.lawfulHits++;
+      return r;
+    }
     // Un emplacement réservé est un gendarme (J5-5) : le coup va à `Officers` (via `officerHurt`), pas à la simulation des passants.
     if (slot >= sim.reservedStart) return this.officerHurt ? this.officerHurt(slot - sim.reservedStart, damage, ux, uy, impulse) : 0;
     return sim.damage(slot, damage, ux, uy, impulse);
@@ -230,12 +295,23 @@ export class PedsController implements Arena {
       stepDog(d, o, dt);
     });
     for (let k = this.dogs.length - 1; k >= 0; k--) if (!seen.has(this.dogs[k]!.slot)) this.dogs.splice(k, 1);
-    if (!this.dogView && this.dogs.length) {
+    // Chiens des événements (phase 4) : ceux montrés depuis la dernière mise à jour.
+    this.loose = this.shown;
+    this.shown = [];
+    const all = this.loose.length ? [...this.dogs, ...this.loose.map((e) => e.dog)] : this.dogs;
+    if (!this.dogView && all.length) {
       this.dogView = new DogView(this.scene);
       this.dogView.setShadows(this.shadows);
     }
     const st = sim.state;
-    this.dogView?.update(this.dogs, (x, y) => this.terrain.heightAt(x, y), (d, out) => {
+    this.dogView?.update(all, (x, y) => this.terrain.heightAt(x, y), (d, out) => {
+      const extra = this.loose.find((e) => e.dog === d);
+      if (extra) {
+        // Lâché : pas de laisse ; tenu par le joueur : de sa main (à hauteur de hanche).
+        if (!extra.leash) return false;
+        out.set(extra.leash.x, this.terrain.heightAt(extra.leash.x, extra.leash.y) + 0.85, -extra.leash.y);
+        return true;
+      }
       const i = d.slot;
       // La main gauche du maître (côté du chien), à hauteur de hanche (un peu plus bas assis).
       const h = -st.yaw[i]!, rx = Math.cos(h) * d.side, ry = -Math.sin(h) * d.side;

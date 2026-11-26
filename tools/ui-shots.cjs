@@ -1,6 +1,6 @@
 // Rejoue les écrans de l'interface (J1) dans le jeu, en tactile, format téléphone paysage (915 × 412), et les capture.
 // Usage : node tools/ui-shots.cjs <url-de-base> <dossier-de-sortie> [scénario]
-//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), all
+//   scénarios (séparés par des virgules) : hud (en jeu, à pied puis en voiture), pause (menu, réglages, notes, sauvegarde), map (carte agrandie, repère), save (sauvegarde et reprise), speedo (compteur de vitesse : voiture, vélo, pause), appearance (écran Apparence, aléatoire, retour en jeu, rechargement), wanted (étoiles de recherche), police (poursuite de nuit), arrest (poursuite, gendarmes à pied, arrestation), health (jauge de santé, flash, mort et reprise à l'hôpital), combat (armes en main, coups de poing, de couteau, de batte), guns (armes à feu, traits, armes au sol, appels de dessin), cache (une arme au sol), thumb (pouce droit à pied : monter, ramasser, recharger), armed (gendarmes armés à quatre étoiles : tir, mort, pistolet lâché), aim (mode visée : caméra à l'épaule, viseur, tir), scope (fusil de précision : lunette, tir à 50 m), strafe (pas de côté en visée, arcs des tirs reçus), sprint (bouton Sprint allumé, pouce gauche poussé : vitesse et pose), guide (itinéraire vers le repère à pied, en voiture, sur la carte agrandie ; dernier véhicule), feats (saut lancé en voiture : ralenti, bandeau ; carnet de records), night (halo la nuit, D314 : phares de la voiture, feu d'artifice du 14 juillet sur le plan d'eau du Vallon, effets coupés puis allumés), money (argent, D317 : solde, gain, billets lâchés et ramassés, facture de l'hôpital, au volant), carnet (défis et carnet, D319), monuments (chasse aux monuments, D320 : découverte, fiche, liste, carte), tresors (pièces d'or des toits, D321), magasins (boulangerie ouverte et fermée, écran d'achat, D322), vehicules (achat d'une citadine chez Dacia, livraison, carnet, D323), armes (James, pistolet et balles, onglet Caches, D324), armes2 (pistolet-mitrailleur, mitrailleuse, Surplus Éduen, D325), grenade (arc, vol, explosion, D326), fumigene (gilet et fumigène au Surplus, nuage, D327), vol (vol à l'arraché, phase 4), pickpocket (phase 4), chien (chien échappé, phase 4), accident (phase 4), poursuite (phase 4), all
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -214,6 +214,347 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(400);
     await shot("pj3-carnet-records");
     await ctx.close();
+  }
+
+  if (want("vol")) {
+    // Vol à l'arraché (phase 4, E1) : le voleur rejoint sa victime, lui arrache son sac (bulle « Au voleur ! », repères sur la minimap) ;
+    // il est mis à terre, le sac tombe ; ramassé, rendu à la victime (bouton « Rendre le sac », prime) ; l'onglet « Faits divers » du carnet.
+    const ctx = await open("event=vol&h=15&money=200&peds=150");
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const roles = await page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { victim: e.victim, thief: e.thief }; });
+    console.log("vol lancé :", roles);
+    // Pour la capture : le joueur à 10 m de la victime, de côté (dans le jeu, elle est à 15 – 45 m).
+    await page.evaluate((s) => {
+      const a = window.__autun, sim = a.pedsController().eventPeds(), q = { x: 0, y: 0 }, h = sim.headingOf(s);
+      sim.position(s, q);
+      a.player.x = q.x + Math.cos(h) * 9 + Math.sin(h) * 3;
+      a.player.y = q.y - Math.sin(h) * 9 + Math.cos(h) * 3;
+    }, roles.victim);
+    // On regarde la victime.
+    const lookAt = async (slot) => page.evaluate((s) => {
+      const a = window.__autun, sim = a.pedsController().eventPeds(), q = { x: 0, y: 0 };
+      sim.position(s, q);
+      a.look(Math.atan2(q.x - a.player.x, q.y - a.player.y));
+      a.tilt(0.12);
+    }, slot);
+    for (let k = 0; k < 400; k++) {
+      await lookAt(roles.victim);
+      const phase = await page.evaluate(() => window.__autun.events.director.active[0]?.phase ?? "fini");
+      if (phase !== "approach") break;
+      await sleep(400);
+    }
+    await sleep(700);
+    await shot("pj4-vol-arrache");
+    await lookAt(roles.thief);
+    await sleep(1500);
+    await shot("pj4-vol-fuite");
+    // Le voleur plaqué (comme un joueur en sprint) : le sac tombe.
+    await page.evaluate((s) => window.__autun.pedsController().eventPeds().applyImpulse(s, 0, 4.4), roles.thief);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "bag", null, { timeout: 60000, polling: 200 });
+    const bag = await page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { ...e.bagAt }; });
+    // Le sac un peu à droite du personnage (droit devant, il serait caché par lui).
+    await page.evaluate((b) => { const a = window.__autun; a.player.x = b.x - 3.2; a.player.y = b.y - 2.2; a.look(Math.atan2(3.2, 2.2) - 0.3); a.tilt(0.35); }, bag);
+    await sleep(1200);
+    await shot("pj4-vol-sac");
+    await page.evaluate((b) => { const p = window.__autun.player; p.x = b.x; p.y = b.y; }, bag);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "carried", null, { timeout: 60000, polling: 200 });
+    const v = await page.evaluate((s) => { const q = { x: 0, y: 0 }; window.__autun.pedsController().eventPeds().position(s, q); return q; }, roles.victim);
+    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x + 1.6; a.player.y = q.y - 1.2; a.look(Math.atan2(-1.6, 1.2)); a.tilt(0.25); }, v);
+    await page.waitForFunction(() => document.getElementById("action").textContent.includes("Rendre"), null, { timeout: 60000, polling: 200 });
+    await sleep(500);
+    await shot("pj4-vol-rendre");
+    await click("#action");
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(600);
+    console.log("solde après le sac rendu :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj4-vol-merci");
+    await sleep(1500);
+    await page.evaluate(() => window.__autun.ui.showCarnet("faits"));
+    await sleep(600);
+    await shot("pj4-carnet-faits");
+    await ctx.close();
+  }
+
+  if (want("pickpocket")) {
+    // Pickpocket (phase 4, E2) : on se fait voler (bulle « Hé ! », « −80 € ») ; le pickpocket plaqué lâche les billets ; ramassés.
+    const ctx = await open("event=pickpocket&h=15&money=800&peds=150");
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    // Le joueur dans le coin le plus animé (une rue fréquentée) : il faut trois passants à moins de 12 m.
+    for (let k = 0; k < 60; k++) {
+      const started = await page.evaluate(() => {
+        const a = window.__autun, sim = a.pedsController()?.eventPeds();
+        if (a.events.director.active.length > 0) return true;
+        if (!sim) return false;
+        const q = { x: 0, y: 0 }, out = [];
+        let best = -1, bn = 0;
+        for (let i = 0; i < sim.capacity; i++) {
+          if (sim.modeOf(i) !== 0) continue;
+          sim.position(i, q);
+          out.length = 0;
+          const n = sim.queryCircle(q.x, q.y, 10, out);
+          if (n > bn) { bn = n; best = i; }
+        }
+        if (best >= 0) { sim.position(best, q); a.player.x = q.x + 1; a.player.y = q.y + 1; }
+        return false;
+      });
+      if (started) break;
+      await sleep(2000);
+    }
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const slot = await page.evaluate(() => window.__autun.events.director.active[0].thief);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase !== "approach", null, { timeout: 120000, polling: 200 });
+    // On se retourne vers lui.
+    await page.evaluate((s) => { const a = window.__autun, q = { x: 0, y: 0 }; a.pedsController().eventPeds().position(s, q); a.look(Math.atan2(q.x - a.player.x, q.y - a.player.y) + 0.3); a.tilt(0.15); }, slot);
+    await sleep(900);
+    await shot("pj4-pickpocket");
+    await page.evaluate((s) => { const a = window.__autun, sim = a.pedsController().eventPeds(), q = { x: 0, y: 0 }; sim.position(s, q); sim.tackle(s, (q.x - a.player.x) * 0.5, (q.y - a.player.y) * 0.5); }, slot);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "cash", null, { timeout: 60000, polling: 200 });
+    const c = await page.evaluate(() => ({ ...window.__autun.events.director.active[0].cashAt }));
+    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 3; a.player.y = q.y - 2; a.look(Math.atan2(3, 2) - 0.3); a.tilt(0.35); }, c);
+    await sleep(1200);
+    await shot("pj4-pickpocket-billets");
+    await page.evaluate((q) => { const p = window.__autun.player; p.x = q.x; p.y = q.y; }, c);
+    await page.waitForFunction(() => window.__autun.events.director.active.length === 0, null, { timeout: 60000, polling: 200 });
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(500);
+    console.log("solde après le pickpocket :", await page.evaluate(() => window.__autun.wallet.balance));
+    await shot("pj4-pickpocket-recupere");
+    await ctx.close();
+  }
+
+  if (want("chien")) {
+    // Chien échappé (phase 4, E3) : le chien file, son maître court après en l'appelant ; on l'attrape ; on le rend.
+    const ctx = await open("event=chien&h=10&peds=150");
+    await page.addStyleTag({ content: "body.game #feat.keep { display: block !important; } #money .m-pop { animation: none !important; transform: translateY(17px); }" });
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    await sleep(2500);
+    const dog = async () => page.evaluate(() => { const e = window.__autun.events.director.active[0]; return { x: e.dog.x, y: e.dog.y }; });
+    let d = await dog();
+    // Pour la capture : le joueur à 12 m du chien.
+    // Le chien un peu à droite du personnage (droit devant, il serait caché par lui).
+    await page.evaluate((q) => { const a = window.__autun; a.player.x = q.x - 7; a.player.y = q.y - 6; a.look(Math.atan2(7, 6) - 0.35); a.tilt(0.25); }, d);
+    await sleep(1500);
+    await shot("pj4-chien");
+    // On s'approche au pas (posé à côté de lui, jusqu'à ce que le bouton « Attraper » vienne : il bouge) ; le geste part aussitôt après l'image.
+    const near = (who) => page.evaluate((w) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return false;
+      const q = { x: e.dog.x, y: e.dog.y };
+      if (w === "owner") a.pedsController().eventPeds().position(e.owner, q);
+      a.player.x = q.x - 1; a.player.y = q.y - 0.6; a.look(Math.atan2(1, 0.6) - 0.4); a.tilt(0.3);
+      return true;
+    }, who);
+    const act = (verb) => page.evaluate((v) => {
+      const a = window.__autun, p = a.player, x = a.events.action({ x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 });
+      if (!x || x.verb !== v) return false;
+      x.run();
+      return true;
+    }, verb);
+    let shotDone = false;
+    for (let k = 0; k < 80; k++) {
+      await near("dog");
+      await sleep(300);
+      if (!shotDone && await page.evaluate(() => document.getElementById("action").textContent.includes("Attraper"))) {
+        await shot("pj4-chien-attraper");
+        shotDone = true;
+      }
+      if (await act("Attraper")) break;
+    }
+    for (let k = 0; k < 80; k++) {
+      await near("owner");
+      await sleep(400);
+      if (await page.evaluate(() => document.getElementById("action").textContent.includes("Rendre"))) {
+        await shot("pj4-chien-rendre");
+        if (await act("Rendre")) break;
+      }
+    }
+    await page.evaluate(() => document.getElementById("feat").classList.add("keep"));
+    await sleep(600);
+    await shot("pj4-chien-merci");
+    await ctx.close();
+  }
+
+  if (want("accident")) {
+    // Accident (phase 4, E4) : deux voitures de travers, feux de détresse, conducteurs qui se disputent ; puis la patrouille et le constat.
+    const ctx = await open("event=accident&h=15&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    // Pour la capture : le joueur sur le trottoir, à 14 m de la scène, de biais.
+    const view = async (back) => page.evaluate((b) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      const h = e.heading, rx = Math.cos(h), ry = -Math.sin(h);
+      a.player.x = e.x + rx * 6 - Math.sin(h) * b;
+      a.player.y = e.y + ry * 6 - Math.cos(h) * b;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.25);
+      a.tilt(0.2);
+    }, back);
+    await view(13);
+    await sleep(3000);
+    await shot("pj4-accident");
+    await page.waitForFunction(() => ["constat", "depart"].includes(window.__autun.events.director.active[0]?.phase), null, { timeout: 600000, polling: 1000 });
+    await view(20);
+    await sleep(2500);
+    await shot("pj4-accident-constat");
+    await ctx.close();
+  }
+
+  if (want("poursuite")) {
+    // Poursuite (phase 4, E5) : un conducteur en fuite passe devant le joueur, la gendarmerie derrière lui toutes sirènes.
+    const ctx = await open("event=poursuite&h=21&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    // Le joueur reste sur le trottoir ; on regarde vers la voiture du fugitif dès qu'elle est à moins de 45 m, et on attend qu'une gendarmerie
+    // soit dans le champ aussi.
+    const watch = () => page.evaluate(() => {
+      const a = window.__autun, e = a.events.director.active[0], t = a.traffic();
+      if (!e || !t) return "gone";
+      const f = t.eventCar(e.fugitiveCar);
+      if (!f) return e.phase;
+      const d = Math.hypot(f.state.x - a.player.x, f.state.y - a.player.y);
+      if (d > 45) return "far";
+      a.look(Math.atan2(f.state.x - a.player.x, f.state.y - a.player.y));
+      a.tilt(0.15);
+      const cop = e.police.map((id) => t.eventCar(id)).find((c) => c && Math.hypot(c.state.x - a.player.x, c.state.y - a.player.y) < 60);
+      return cop ? "both" : "near";
+    });
+    let n = 0;
+    for (let k = 0; k < 2400 && n < 2; k++) {
+      const w = await watch();
+      if (w === "gone" || w === "arrest") break;
+      if (w === "both") {
+        await sleep(200);
+        await shot(n === 0 ? "pj4-poursuite" : "pj4-poursuite-2");
+        n++;
+        await sleep(1500);
+      } else await sleep(150);
+    }
+    // Puis la fin, à pied si elle y vient : le joueur tout près du fugitif ou de la scène.
+    const end = await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || e.phase !== "drive";
+    }, null, { timeout: 300000, polling: 500 }).then(() => true, () => false);
+    if (end && await page.evaluate(() => window.__autun.events.director.active[0]?.phase === "foot" || window.__autun.events.director.active[0]?.phase === "arrest")) {
+      await page.evaluate(() => {
+        const a = window.__autun, e = a.events.director.active[0], q = { x: 0, y: 0 };
+        if (e.runner >= 0) a.pedsController().eventPeds().position(e.runner, q);
+        a.player.x = q.x - 8; a.player.y = q.y - 6; a.look(Math.atan2(8, 6)); a.tilt(0.25);
+      });
+      await sleep(2500);
+      await shot("pj4-poursuite-pied");
+    }
+    await ctx.close();
+  }
+
+  if (want("malaise")) {
+    // Malaise (phase 4, E6) : il s'effondre, un passant se penche sur lui ; le bouton « Aider » ; les pompiers agenouillés près de lui.
+    const ctx = await open("event=malaise&h=15&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const view = async (dist, side) => page.evaluate(([d, sd]) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      a.player.x = e.x + sd; a.player.y = e.y - d;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.2);
+      a.tilt(0.3);
+    }, [dist, side]);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "down", null, { timeout: 60000, polling: 300 });
+    await sleep(9000);
+    await view(7, 2.5);
+    await sleep(2500);
+    await shot("pj4-malaise");
+    await view(1.2, 0.6);
+    await sleep(1500);
+    await shot("pj4-malaise-aider");
+    await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || (e.phase === "care" && e.firemen.length > 0);
+    }, null, { timeout: 1500000, polling: 1000 });
+    await sleep(7000);
+    await view(8, 3);
+    await sleep(2500);
+    await shot("pj4-malaise-pompiers");
+    await ctx.close();
+  }
+
+  if (want("rixe")) {
+    // Rixe (phase 4, E7) : la bagarre aux poings devant un bar, puis le gendarme.
+    const ctx = await open("event=rixe&h=21&traffic=20");
+    await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    const view = async (dist) => page.evaluate((d) => {
+      const a = window.__autun, e = a.events.director.active[0];
+      if (!e) return;
+      a.player.x = e.x + 2; a.player.y = e.y - d;
+      a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.15);
+      a.tilt(0.25);
+    }, dist);
+    await page.waitForFunction(() => window.__autun.events.director.active[0]?.phase === "fight", null, { timeout: 120000, polling: 300 });
+    await view(7);
+    await sleep(4000);
+    await shot("pj4-rixe");
+    await page.waitForFunction(() => {
+      const e = window.__autun.events.director.active[0];
+      return !e || e.phase === "arrest";
+    }, null, { timeout: 1500000, polling: 1000 });
+    await view(9);
+    await sleep(3000);
+    await shot("pj4-rixe-gendarme");
+    await ctx.close();
+  }
+
+  // Phase 4, lots 7 et 8 : une scène vue de biais à `dist` m ; on attend que `cond` (code évalué sur l'événement `e`) soit vrai.
+  const eventShots = async (query, steps, onStart) => {
+    const ctx = await open(query);
+    try {
+      await page.waitForFunction(() => window.__autun.events.director.active.length > 0, null, { timeout: 240000, polling: 500 });
+    } catch (e) {
+      console.log(`pas d'événement : ${query}`);
+      await ctx.close();
+      return;
+    }
+    if (onStart) await page.evaluate(onStart);
+    for (const [cond, dist, name, wait] of steps) {
+      const ok = await page.waitForFunction((c) => {
+        const e = window.__autun.events.director.active[0];
+        return !!e && new Function("e", `return ${c}`)(e);
+      }, cond, { timeout: wait ?? 600000, polling: 500 }).then(() => true, () => false);
+      if (!ok) break;
+      await page.evaluate((d) => {
+        const a = window.__autun, e = a.events.director.active[0];
+        if (!e) return;
+        a.player.x = e.x + d * 0.45; a.player.y = e.y - d;
+        a.look(Math.atan2(e.x - a.player.x, e.y - a.player.y) + 0.1);
+        a.tilt(0.22);
+      }, dist);
+      await sleep(2500);
+      await shot(name);
+    }
+    await ctx.close();
+  };
+  // Le conducteur énervé ne descend que si le joueur est à moins de 25 m : on le pose à côté de la voiture dès le départ.
+  if (want("enerve")) {
+    await eventShots("event=enerve&h=17&traffic=20", [["e.phase === 'walk' && e.t > 4", 7, "pj4-enerve"]], () => {
+      const a = window.__autun, e = a.events.director.active[0], c = a.traffic().eventCar(e.car);
+      if (c) { a.player.x = c.state.x + Math.cos(c.state.heading) * 5; a.player.y = c.state.y - Math.sin(c.state.heading) * 5; }
+    });
+  }
+  if (want("livreur")) await eventShots("event=livreur&h=9&traffic=20", [["e.phase === 'door'", 12, "pj4-livreur"]]);
+  if (want("chauffard")) await eventShots("event=chauffard&h=17&traffic=20", [["!!e.accident && e.accident.phase === 'dispute'", 14, "pj4-chauffard", 400000]]);
+  if (want("mariage")) {
+    await eventShots("event=mariage&h=15&traffic=20&at=26,22&yaw=0", [
+      ["e.phase === 'exit' && e.phaseT > 3", 14, "pj4-mariage"],
+      ["e.phase === 'convoy' && e.phaseT > 6", 16, "pj4-mariage-cortege"],
+    ]);
+  }
+  // Le braqueur, pistolet à la main, qui fuit ; puis le joueur qui le menace : il se retourne et vise.
+  if (want("braquage")) {
+    await eventShots("event=braquage&h=20&traffic=20", [
+      ["e.phase === 'flee' && e.t > 1.5", 8, "pj4-braquage"],
+    ]);
+  }
+  if (want("feu")) {
+    await eventShots("event=feu&h=21&traffic=20", [
+      ["e.phase === 'burn' && e.phaseT > 4", 8, "pj4-feu"],
+      ["e.phase === 'douse'", 10, "pj4-feu-pompiers"],
+    ]);
   }
 
   if (want("monuments")) {

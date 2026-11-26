@@ -283,8 +283,9 @@ export function swimPitch(speed: number): number {
 export const HIT_POSE = { stumble: 1, down: 2 } as const;
 /** Poses d'un personnage armé d'un pistolet (J5-5) : visée (la secousse du dernier tir suit `poseT`) et pistolet bas pendant la course. */
 export const GUN_POSE = { aim: 3, ready: 4 } as const;
-/** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains). */
-export const LIFE_POSE = { sit: 5, phone: 6, talk: 7 } as const;
+/** Poses de la vie de quartier (D198) : assis (banc, terrasse), téléphone à l'oreille (en marchant ou à l'arrêt), discussion (gestes des mains) ;
+ * bras tendu qui montre (phase 4 : la victime d'un vol montre le voleur). */
+export const LIFE_POSE = { sit: 5, phone: 6, talk: 7, point: 8, hands: 9, chest: 10, collapse: 11, getup: 12, kneel: 13, fists: 14, clap: 15 } as const;
 export const STUMBLE_TIME = 0.9;
 /** Durée totale d'une chute : 0,85 s pour tomber et s'immobiliser, environ 1,2 s au sol, 1,5 s pour se relever (D210). */
 export const DOWN_TIME = 3.6;
@@ -1217,6 +1218,72 @@ export function phonePose(pose: Pose): void {
   a[BONE.armR * 3 + 2] = 0.08;
   a[BONE.forearmR * 3] = 2.45;
   a[BONE.head * 3]! -= 0.35;
+}
+
+/** Mains en l'air (phase 4 : un fuyard arrêté se rend), par-dessus la pose d'arrêt. */
+export function handsPose(pose: Pose): void {
+  const a = pose.angles;
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 2.6;
+    a[arm * 3 + 2] = side * 0.35;
+    a[fore * 3] = 0.5;
+  }
+}
+
+/** Malaise (phase 4) : la main droite serrée sur la poitrine, le buste penché, la tête basse ; par-dessus la pose de marche (il marche au ralenti). */
+export function chestPose(pose: Pose): void {
+  const a = pose.angles;
+  a[BONE.armR * 3] = 0.55;
+  a[BONE.armR * 3 + 1] = 0.9;
+  a[BONE.armR * 3 + 2] = 0.12;
+  a[BONE.forearmR * 3] = 2.2;
+  a[BONE.armL * 3] = 0.25;
+  a[BONE.forearmL * 3] = 0.5;
+  a[BONE.torso * 3]! -= 0.3;
+  a[BONE.head * 3]! -= 0.35;
+}
+
+/** Applaudir (phase 4 : la sortie des mariés), par-dessus la pose d'arrêt : mains devant la poitrine qui se rejoignent quatre fois par seconde. */
+export function clapPose(pose: Pose, t: number): void {
+  const a = pose.angles, k = 0.5 + 0.5 * Math.sin(t * Math.PI * 8);
+  for (const [arm, fore, side] of [[BONE.armL, BONE.forearmL, -1], [BONE.armR, BONE.forearmR, 1]] as const) {
+    a[arm * 3] = 0.75;
+    a[arm * 3 + 1] = side * -0.35;
+    a[arm * 3 + 2] = side * (0.25 + 0.15 * k);
+    a[fore * 3] = 1.25;
+  }
+}
+
+/** Instant de la chute légère où le corps est un genou à terre (clé `F_KNEEL`). */
+const KNEEL_AT = LIGHT_TIME - 0.45;
+
+/**
+ * Malaise (phase 4) : il s'effondre en avant (à genoux, sur les mains, puis à plat ventre : la chute forte de D210, jouée plus lentement), `t` s
+ * après le début, puis reste couché (il respire).
+ */
+export function collapsePose(pose: Pose, t: number, d: BodyDims, variant: number): void {
+  hitPose(pose, HIT_POSE.down, Math.min(t * 0.6, LYING_T), -1, d, null, variant, 0, STRONG_FALL + 0.5);
+}
+
+/** Il se relève (1,5 s), `t` s après qu'on l'a aidé : le relevé de la chute forte, depuis le ventre. */
+export function getupPose(pose: Pose, t: number, d: BodyDims, variant: number): void {
+  hitPose(pose, HIT_POSE.down, Math.min(GETUP_AT + t, DOWN_TIME), -1, d, null, variant, 0, STRONG_FALL + 0.5);
+}
+
+/** Un genou à terre (phase 4 : on se penche sur quelqu'un à terre, un pompier qui le soigne) : la clé du relevé d'une chute légère. */
+export function kneelPose(pose: Pose, d: BodyDims): void {
+  hitPose(pose, HIT_POSE.down, KNEEL_AT, -1, d, null, 0, 0, 2);
+}
+
+/** Bras tendu (phase 4, événements), par-dessus la pose d'arrêt ou de marche : le bras droit montre droit devant, à hauteur d'épaule, et s'agite. */
+export function pointPose(pose: Pose, t: number): void {
+  const a = pose.angles;
+  a[BONE.armR * 3] = 1.45 + 0.12 * Math.sin(t * 9);
+  a[BONE.armR * 3 + 1] = 0;
+  a[BONE.armR * 3 + 2] = 0.06;
+  a[BONE.forearmR * 3] = 0.15 + 0.1 * Math.sin(t * 9 + 0.6);
+  a[BONE.armL * 3] = 0.3;
+  a[BONE.forearmL * 3] = 0.8;
 }
 
 /** Discussion (D198), par-dessus la pose d'arrêt : les avant-bras bougent doucement, l'un après l'autre (`t` en s). */

@@ -11,7 +11,8 @@ import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordKind, type RecordVa
 import { challengeGoal, TIER_NAMES, TIER_REWARDS, type Challenges } from "../core/challenges";
 import type { CollectionDef, Notebook } from "../core/collections";
 import { formatMoney } from "../core/wallet";
-import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, EFFECTS_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
+import { EVENT_CHALLENGES, EVENT_KINDS, type EventBook } from "../core/events/book";
+import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, EFFECTS_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, EVENTS_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
 export interface PauseHooks {
@@ -39,6 +40,9 @@ export interface PauseHooks {
   challenges(): Challenges;
   /** Véhicules achetés (D323) : une ligne par véhicule, avec son état et une action (repère, fourrière). */
   garage?(): GarageRow[];
+  /** Carnet des événements (phase 4) et date du jeu (journal du jour). */
+  events?(): EventBook;
+  today?(): number;
   build: string;
   /** Dans DomoThib (D305) : le plein écran est le sien, le réglage « Plein écran » n'est pas proposé. */
   embedded?: boolean;
@@ -203,6 +207,8 @@ export class PauseMenu {
       choices("crowd", CROWD_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 40 ? "Peu" : v === 100 ? "Normale" : "Dense" })), values.crowd));
     row("Circulation", "Nombre maximal de voitures à la fois : il varie avec l'heure et le quartier. Moins, c'est plus fluide.", "traffic",
       choices("traffic", TRAFFIC_CHOICES.map((v) => ({ value: v, label: v === 0 ? "Aucune" : v === 10 ? "Faible" : v === 20 ? "Normale" : "Dense" })), values.traffic));
+    row("Événements", "Ce qui arrive autour de toi : vols, accidents, poursuites… Fréquents : plus souvent ; Aucun : la ville reste calme.", "events",
+      choices("events", EVENTS_CHOICES.map((v) => ({ value: v, label: ["Aucun", "Rares", "Normaux", "Fréquents"][v]! })), values.events));
     const range = h("input");
     range.type = "range";
     range.min = String(SENSITIVITY_RANGE.min);
@@ -523,7 +529,7 @@ export class PauseMenu {
     const tabs: { id: CarnetTab; label: string }[] = [
       ...cols.map((d) => ({ id: d.id, label: d.label })),
       ...(garage.length ? [{ id: "vehicules", label: "Véhicules" }] : []),
-      { id: "defis", label: "Défis" }, { id: "records", label: "Records" },
+      { id: "faits", label: "Faits divers" }, { id: "defis", label: "Défis" }, { id: "records", label: "Records" },
     ];
     if (!tabs.some((t) => t.id === this.tab)) this.tab = "defis";
     c.append(h("h2", "", "Carnet"));
@@ -542,6 +548,7 @@ export class PauseMenu {
     if (col) this.collectionTab(col, book);
     else if (this.tab === "records") this.recordsTab();
     else if (this.tab === "vehicules") this.garageTab(garage);
+    else if (this.tab === "faits") this.eventsTab();
     else this.challengesTab();
   }
 
@@ -643,6 +650,43 @@ export class PauseMenu {
       c.append(r);
     }
     c.append(h("p", "pm-muted", "Les défis se gagnent pendant la partie : les records d'une partie précédente ne comptent pas."));
+  }
+
+  /** Faits divers (phase 4) : les défis des événements (trois paliers chacun), les sortes de faits divers déjà vues, puis le journal du jour. */
+  private eventsTab(): void {
+    const c = this.content, book = this.hooks.events?.();
+    if (!book) return;
+    for (const d of EVENT_CHALLENGES) {
+      const r = h("div", "pm-row");
+      const left = h("span", "", d.label);
+      left.append(h("span", "pm-muted", ` · ${book.counts[d.id]}`));
+      const medals = h("span", "pm-medals");
+      for (const tier of [1, 2, 3] as const) {
+        const m = h("span", `pm-medal t${tier}${book.tiers[d.id] >= tier ? " on" : ""}`, String(d.tiers[tier - 1]));
+        m.title = `${TIER_NAMES[tier - 1]} : ${d.tiers[tier - 1]} · ${formatMoney(TIER_REWARDS[tier - 1]!)}`;
+        medals.append(m);
+      }
+      r.append(left, medals);
+      c.append(r);
+    }
+    // Déjà vu en ville : les treize sortes de faits divers, combien de fois chacune ; « ? » tant qu'on ne l'a pas vue.
+    const seenKinds = EVENT_KINDS.filter((k) => (book.seen[k.kind] ?? 0) > 0).length;
+    c.append(h("h3", "pm-sub", `Déjà vu en ville · ${seenKinds} / ${EVENT_KINDS.length}`));
+    for (const k of EVENT_KINDS) {
+      const n = book.seen[k.kind] ?? 0, r = h("div", "pm-row");
+      r.append(h("span", n ? "" : "pm-muted", n ? k.label : "?"), h("strong", "pm-record", n ? `× ${n}` : "—"));
+      c.append(r);
+    }
+    const today = this.hooks.today?.() ?? 0;
+    const lines = book.day(today);
+    c.append(h("h3", "pm-sub", "Aujourd'hui en ville"));
+    if (!lines.length) c.append(h("p", "pm-muted", "Rien de notable pour l'instant. Ouvre l'œil : un cri, quelqu'un qui court…"));
+    for (const l of lines) {
+      const r = h("div", "pm-row");
+      const hh = Math.floor(l.hour), mm = Math.floor((l.hour - hh) * 60);
+      r.append(h("strong", "pm-record", `${hh} h ${String(mm).padStart(2, "0")}`), h("span", "", l.text));
+      c.append(r);
+    }
   }
 
   /** Carnet de records (D312) : un record par ligne, « — » tant qu'il n'y en a pas. */

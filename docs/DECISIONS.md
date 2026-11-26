@@ -7919,3 +7919,552 @@ pas de cocktail Molotov.
 **À juger en jouant** : 7 m et 12 s suffisent-ils pour semer une poursuite ? Le gilet est-il trop fort ?
 
 ![Gilet (barre bleue) et nuage de fumigène](captures/pj3-fumigene.jpg)
+
+## 2026-11-25 — D328. Plaisir de jeu, phase 4, lot 1 : le socle des événements et le vol à l'arraché
+
+**Contexte** : plan `docs/plans/evenements.md` ; réponses de l'utilisateur (25 novembre) : « ok » pour toutes les réponses par défaut,
+caserne des pompiers retrouvée avenue André Frenaud (pour le lot 5) ; lots faits deux par deux, avec une pause.
+
+**Choix**
+- **Passants réquisitionnés** (`PedSim.borrow`, `release`, `command`, `src/core/pedestrians.ts`) : un événement prend un passant **déjà là**
+  (aucune naissance visible, **aucun appel de dessin de plus**) ; il ne disparaît plus avec la couronne ni le surnombre (seulement au-delà de
+  450 m ou si son arête est déchargée), ne s'assoit plus, ne flâne plus, quitte son groupe ; il garde l'évitement, les chocs, la santé et la
+  police. Ordres : **`flee`** (fuir une menace qui bouge, sur le graphe piéton), **`seek`** (aller droit vers un point, hors du graphe, en
+  évitant les murs), **`hold`** (rester sur place tourné vers un point, dans une pose). Rendu, il rejoint sa file en marchant (D213).
+- **Fuite volontaire** (demandée par l'utilisateur) : aux carrefours, le fuyard choisit la suite qui l'**éloigne le plus de la menace**, en
+  regardant deux arêtes plus loin (trois si l'arête est courte, comme un coin), une impasse notée bas, une rue qui part vers la menace
+  pénalisée ; demi-tour si la menace est devant lui à moins de 15 m. Un fuyard réquisitionné (le voleur) court sans attendre aux passages et
+  **bouscule** ceux qu'il frôle (ils trébuchent). **La panique ordinaire l'utilise aussi** : l'alarme (coup, meurtre, tir, D83), un passant
+  blessé, le conducteur dont on prend la voiture (D71) fuient désormais vraiment la scène au lieu de seulement retourner leur file une fois.
+- **Deux sauts corrigés en chemin** (visibles surtout chez un fuyard) : au demi-tour, le décalage latéral change de côté avec le sens (il
+  sautait de 2 × l'écart) ; dans un virage serré, l'écart latéral qui tourne avec la file est reporté dans le décalage d'esquive, qui
+  s'efface en marchant (saut mesuré de 23 cm à une image, désormais < 10 cm). L'alarme avait le premier défaut.
+- **Pose « bras tendu »** (`LIFE_POSE.point`, `pointPose`) : la victime montre le voleur, bras droit à hauteur d'épaule qui s'agite.
+- **Directeur d'événements** (`src/core/events/director.ts`, logique pure) : un tirage toutes les 2 s ; à « Normaux », un départ toutes les
+  3 minutes en moyenne au centre en journée (× 0,6 résidentiel, × 0,35 périphérie, × 0,25 nature ; × 0,4 de minuit à 6 h, × 0,7 tard le soir) ;
+  au moins 60 s entre deux départs (30 à « Fréquents »), 45 s après une fin ; calme d'une minute après un chargement, une mort, une
+  arrestation ; **rien quand le joueur a une étoile**, est à terre, nage ou est sur un toit ; un grand et un petit événement au plus ; le même
+  pas avant 8 minutes (5 à « Fréquents ») ; jamais deux fois de suite **quand un autre est possible** (avec un seul événement au catalogue,
+  la première version bloquait tout après le premier vol). Le directeur tient le **journal** (date, heure, issue, lieu).
+- **Vol à l'arraché** (`src/core/events/snatch.ts`) :
+  - **Rôles** : une victime qui marche avec un sac à main ou en bandoulière, à **15 – 45 m** du joueur, à l'écran et proche de préférence
+    (premier essai à 20 – 60 m : sur la capture, la victime ne faisait que quelques pixels) ; un voleur seul, adulte, pas en tenue de travail,
+    à 12 – 40 m d'elle, à plus de 15 m du joueur, **sans mur entre eux** ; jamais à moins de 60 m de la police.
+  - **Approche** : le voleur marche à l'allure de la victime plus 1,3 m/s (2,8 au plus ; première version à 1,7 m/s : il ne rattrapait
+    presque jamais une victime qui s'éloigne), puis court les 7 derniers mètres ; plus de 25 s sans l'atteindre, ou un des deux qui tombe,
+    ou la police qui arrive : la scène n'a pas lieu (rien ne s'est vu).
+  - **Arrachage** : le sac change de main (les recettes se rhabillent), la victime tombe (chute légère, D212) ou trébuche, crie, bulle
+    « Au voleur ! » ; les passants à 6 m s'écartent ; relevée, elle montre le voleur du bras, puis attend son sac téléphone en main
+    (2 minutes au plus).
+  - **Fuite** : 5,8 m/s (plus que la course du joueur, 5 m/s ; moins que son sprint, 7 m/s), 4,5 m/s après 15 s ; il fuit le joueur s'il est
+    à moins de 100 m. **Échappé** s'il est à plus de 90 m du joueur pendant 6 s, ou hors de vue et à plus de 55 m pendant 12 s ; la victime
+    reste alors 20 s au téléphone puis repart.
+  - **Rattrapé** : touché par le joueur à pied à plus de 4 m/s (**plaquage** : il tombe), frappé, renversé ou tué : le **sac tombe** à côté de
+    lui (une boîte à la couleur du sac et un faisceau orangé, dans le maillage des effets, D84) ; relevé, il fuit encore 15 s sans le sac.
+  - **Le sac** se ramasse en marchant dessus (« Sac récupéré »), reste 2 minutes au sol. Près de la victime, le bouton **« Rendre »**
+    (pictogramme de sac) : « Merci ! », **prime de 100 à 250 €** ; ailleurs, **« Fouiller »** : le contenu (30 à 120 €), et si un passant est
+    à moins de 25 m, un **vol** (nouvelle infraction `robbery`, une étoile, signalée par les passants) ; la victime qui le voit crie
+    « Au voleur ! ».
+  - **Ce qui est permis** (Q5 du plan) : frapper, plaquer ou renverser le voleur pendant sa fuite (et dans les 2 s qui suivent sa chute)
+    n'est ni une agression ni un passant renversé (`PedsController.lawful`, coups comptés à part) ; le tuer reste un meurtre, tirer reste un
+    coup de feu en public.
+- **Interface** : **bulles de parole** (`src/ui/speech.ts`, deux au plus, style affiche, fond crème, liseré et ombre encre ; hors champ, au
+  bord de l'écran en ocre, avec une flèche vers la scène) ; **repères sur la minimap** : « ! » ocre pour la scène, point rouge clignotant pour
+  le fuyard, anneau ocre pour la victime à rejoindre (sur le bord du disque quand ils sont loin) ; **bouton contextuel** avant tout le reste
+  (verbe court, libellé complet pour l'accessibilité) ; **cris** (`GameAudio.cry`).
+- **Carnet, onglet « Faits divers »** (`src/core/events/book.ts`) : trois défis à paliers, primes de D319 (bronze 100 €, argent 300 €, or
+  800 €) : **voleurs rattrapés 1 / 5 / 15**, **fugitifs arrêtés 1 / 3 / 8** (lot 4), **bonnes actions 5 / 20 / 50** ; puis le **journal du
+  jour** avec le nom de la rue (« Vol à l'arraché, rue du Général André Demetz · sac rendu »), tiré des tracés de la carte (`streetNear`).
+  Sauvegarde : champ facultatif `events` de la version 6.
+- **Réglage « Événements »** (menu pause, sous « Circulation ») : Aucun, Rares (× 0,4), **Normaux** (défaut), Fréquents (× 2,5) ;
+  `?events=0…3` l'impose ; **`?event=vol`** lance un vol dès qu'un lieu se trouve (et coupe la sauvegarde, comme les autres paramètres
+  d'essai) ; la ligne `?debug` donne les événements en cours, lancés, sans lieu, et le coût.
+
+**Mesures**
+- **Tests sans écran** (vraies données, vraie foule) : la fuite volontaire creuse l'écart avec un poursuivant à 4,5 m/s qui va droit sur le
+  fuyard dans au moins 6 cas sur 8, sans jamais attendre à un passage ; après une alarme, au plus un passant sur douze s'est rapproché de la
+  scène 8 s plus tard (D83 tolérait un quart), et ils en sont en moyenne à plus de 14 m ; un voleur plaqué se relève sans saut et reprend sa
+  fuite. Vol : rôles trouvés dans au moins 4 graines sur 6 ; arrachage dans au moins 60 % des essais ; sans joueur, le voleur s'échappe
+  toujours et tout est rendu à la foule ; un joueur qui sprinte droit sur lui le rattrape dans au moins 75 % des vols, et le sac est rendu
+  (prime) dans au moins 75 % de ceux-là.
+- **Endurance** (`src/game/events-soak.test.ts`, piège 8) : vingt minutes à « Fréquents » au centre, 100 passants, la vraie circulation
+  (20), un joueur qui flâne puis rattrape les voleurs ; deux graines : 2 et 3 départs, 2 + 2 vols, 4 voleurs rattrapés, 3 sacs rendus,
+  **aucun figurant oublié** (aucun passant réquisitionné quand rien n'est en cours), 2 passants réquisitionnés au plus, rien d'aberrant ;
+  **directeur et événements : 0,0004 à 0,0008 ms par image en moyenne, 0,5 à 1,1 ms au pire** (une recherche de lieu).
+- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1` : un vol forcé à chaque arrêt, essayé toutes les demi-secondes ; ligne
+  « Événements » du rapport). Essai en rendu logiciel, version brève (durées sans portée, phases de 2 à 3 s) : un vol lancé, deux passants
+  réquisitionnés, **0,01 à 0,09 ms par image**, pire 1,1 ms (la recherche d'un lieu) ; **aucun appel de dessin de plus** par construction
+  (les figurants sont des passants de la foule ; le sac au sol rejoint le maillage des effets, +1 appel s'il est le seul objet au sol).
+  À mesurer sur le téléphone avec le protocole de D86 en ajoutant `&events=1`.
+- Les endurances existantes (police, combat, combat de l'ensemble) passent sans changement de graine malgré la nouvelle panique.
+
+**Limites, honnêtement**
+- **Un seul événement au catalogue** : avec le délai de 8 minutes entre deux vols (5 à « Fréquents »), on voit **un vol toutes les 8 à
+  10 minutes** au centre, pas les trois minutes visées ; le rythme du plan viendra avec les lots suivants (pickpocket et chien au lot 2).
+- Écart au plan : la victime n'est jamais **assise en terrasse** (seulement des passants qui marchent : se lever, se faire voler, se rasseoir
+  demandait de toucher aux places assises).
+- Pas de voix (Q7 : bulles et cris seulement) ; la carte agrandie ne montre pas encore les repères (la minimap oui).
+- Le voleur s'enfuit par les files piétonnes : il ne traverse pas les pelouses ni les parkings en diagonale.
+
+**Vérifié** : `pedestrians-events.test.ts` (7), `events/director.test.ts` (5), `events/snatch.test.ts` (6), `events-soak.test.ts` ;
+`tools/ui.sh <dossier> vol` (le vol, la fuite, le sac au sol, « Rendre », la prime et le défi, l'onglet « Faits divers ») ;
+`?bench=1&crowd=100&sim=1&events=1` (un vol à chaque arrêt, ligne « Événements »).
+
+**À juger en jouant** : la lisibilité de la scène à 15 – 45 m sur le téléphone, la vitesse du voleur (rattrapable en sprint, pas en
+courant), la prime, et la fréquence quand les autres événements seront là.
+
+## 2026-11-25 — D329. Plaisir de jeu, phase 4, lot 2 : le pickpocket et le chien échappé
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 2 (E2 et E3) : deux petits événements sur le socle de D328, pour la variété.
+
+**Choix**
+- **Fuyard commun** (`src/core/events/fugitive.ts`) : la fuite, l'essoufflement, le plaquage et l'échappée du voleur de D328, partagés par le
+  vol et le pickpocket. **Plaquage** corrigé en chemin : un joueur qui sprinte dans un fuyard le faisait d'abord **trébucher** par simple
+  contact (D44), et un passant qui trébuche ignore toute nouvelle poussée (D211) : le plaquage ne passait jamais quand le joueur était déjà
+  collé à lui (le cas du pickpocket). Nouveau `PedSim.tackle` : il fait tomber même un passant qui trébuche.
+- **Pickpocket** (`src/core/events/pickpocket.ts`) : le joueur marche (au pas) dans une **rue animée** (au moins trois passants à moins de
+  12 m) avec au moins 100 € ; un passant seul, adulte, ni en tenue de travail ni de sport, à 5 – 25 m, vient vers lui (1,6 m/s au moins), le
+  **frôle** et lui prend **10 % de son solde** (20 à 200 €, à 5 € près) : « −80 € » au solde, bulle **« Hé ! Mon portefeuille ! »** au-dessus
+  du joueur. Il s'éloigne d'abord **au pas** (1,7 m/s), puis **court** (5,6 m/s, 4,4 après 15 s) quand le joueur court, se tourne vers lui à
+  moins de 12 m, ou au bout de 7 s. Rattrapé (plaqué, frappé, renversé), il lâche des **billets** : l'argent pris **plus 50 €** (ce qu'il avait
+  volé à d'autres), à ramasser en marchant dessus. Il compte comme **voleur rattrapé** au carnet. Écart au plan : « foule dense, six passants
+  à 8 m » ne se rencontre presque jamais avec la densité du jeu (une centaine de passants dans 125 m : un cercle de 8 m en contient rarement
+  plus de deux), sauf au marché ; la condition est donc trois passants à 12 m. Poids 1, au centre (× 0,3 en quartier d'habitation), de 9 h à
+  20 h, doublé les matins de marché (D201).
+- **Chien échappé** (`src/core/events/dog-escape.ts`) : un promeneur (D199) à 25 – 80 m lâche la laisse. Le chien (le même, pris à sa laisse :
+  `PedsController.detach`, `attach`) part **au galop** (5 m/s, 3 s), aboie, puis **trotte** (2,6 m/s) d'un but à l'autre (10 – 22 m, plutôt
+  loin de qui le suit, sans mur sur le chemin), **renifle** 1 à 3 s, et **détale** (5,5 m/s) devant quelqu'un qui lui court dessus à moins de
+  5 m, joueur ou maître. Quelqu'un qui l'approche **au pas** à moins de 4 m l'intrigue : il s'arrête et renifle (sans cela, le chien trottait
+  sans cesse et ne s'arrêtait qu'1 à 3 s : la capture n'arrivait pas à l'attraper, un joueur non plus). Le maître court après lui en criant son nom (bulle « Rex ! », un nom tiré de sa graine parmi douze), s'essouffle au
+  bout de 8 s, renonce au bout de 2 min 30 (« Tant pis… »). Le joueur l'approche **au pas** et l'**attrape** (bouton « Attraper », pictogramme
+  de chien) ; le chien le suit **en laisse** ; le maître vient à sa rencontre ; **« Rendre »** : « Merci ! », **60 à 120 €**, une **bonne action**.
+  Un véhicule qui le frôle (à plus de 3 m/s, à moins de 1,8 m) l'effraie : il s'enfuit pour de bon (jamais blessé, Q3 du plan). Les voitures
+  de la circulation le voient comme un passant sur la chaussée (elles freinent). Poids 2, quartiers d'habitation, périphérie, parcs (× 0,4 au
+  centre), de 7 h à 20 h, pas sous la pluie.
+- **Pour les essais sans écran** : `SimDogs`, les chiens des promeneurs sans dessin, sur la vraie foule.
+- **Captures** : `tools/ui.sh <dossier> pickpocket` et `chien` ; `?event=pickpocket`, `?event=chien`.
+
+**Mesures**
+- **Tests sans écran** : pickpocket trouvé seulement dans une rue animée, à pied, au pas, avec assez d'argent ; il prend 80 € sur 800 ; un
+  joueur qui sprinte le rattrape et récupère 130 € (au moins 60 % des vols) ; sans le joueur, il s'éloigne au pas puis s'échappe, et rien ne
+  reste réquisitionné. Chien : il part, aboie, son maître crie son nom ; sans le joueur, le maître renonce et le chien se sauve ; approché au
+  pas, il s'attrape, suit le joueur sans jamais dépasser la laisse, et revient à son maître (prime) ; une voiture l'effraie pour de bon.
+- **Endurance** (vingt minutes à « Fréquents », deux graines, les trois événements) : 5 et 7 départs, **les trois événements ont eu lieu**,
+  2 sacs rendus, 1 pickpocket rattrapé, 1 chien rendu et 4 enfuis, aucun figurant oublié, 2 passants réquisitionnés au plus ; **0,001 à
+  0,002 ms par image** en moyenne, 0,4 à 4 ms au pire (une recherche de lieu, une image).
+- **Appels de dessin** : 0 pour le pickpocket (billets dans le maillage des effets) ; le chien échappé rejoint le maillage instancié des chiens
+  (+1, et +1 pour les laisses, seulement s'il n'y avait aucun chien en vue).
+
+**Limites, honnêtement**
+- Le robot de l'endurance ne ramène qu'**un chien sur cinq** : il marche droit vers lui (à travers le mobilier) et le maître qui court fait
+  détaler le chien. Un vrai joueur doit le contourner ; à juger en jouant (trop farouche ?).
+- Le chien traverse toujours les murs bas et les voitures garées (D199) ; il ne suit pas le graphe piéton.
+- Le pickpocket ne vise que le joueur à pied ; pas de pickpocket au volant ni dans un magasin.
+
+**À juger en jouant** : la part du solde volée (10 %), la vitesse du pickpocket, la timidité du chien, les primes.
+
+## 2026-11-25 — D330. Plaisir de jeu, phase 4, lot 3 : l'accident entre deux voitures
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 3 (E4) : le premier « grand » événement, qui met la circulation en scène.
+
+**Choix**
+- **Scène posée, pas jouée** (§ 7 du plan : un choc en direct dépend de la physique, on ne le maîtrise pas). Le lieu
+  (`findAccidentSite`, `src/core/events/accident.ts`) est **devant le joueur** (sens de sa marche, ou de son regard s'il est arrêté), à
+  40 – 120 m à pied, 80 – 200 m au volant, **hors de vue**, sur une route de classe 0 à 4 d'au moins 5 m de large, à plus de 9 m d'un bout
+  d'arête (pas dans un carrefour), sans autre voiture à moins de 14 m. Deux voitures de la circulation y sont **posées** (`Traffic.stage`) :
+  l'une derrière l'autre (accrochage par l'arrière) ou côte à côte de travers (accrochage latéral), **cabossées** par les vrais dégâts de
+  D61 (`Traffic.dent` : 42 et 46 points, au bon endroit de la carrosserie, fumée comprise), **feux de détresse** (petits carrés orange qui
+  clignotent aux feux, dans le maillage des gyrophares : 0 appel de dessin), **personne au volant** (`setNoDriver`).
+- **Conducteurs** : deux passants apparaissent à leur portière (`PedSim.appear` : un emplacement libre, ou le passant le plus loin du joueur)
+  et **se disputent** : une réplique toutes les 2,6 s chacun son tour (« Vous m'avez coupé la route ! », « C'est vous qui avez freiné ! »…),
+  poses nouvelles **montrer du doigt** et **parler** (`LIFE_POSE.point`, `talk`). Jusqu'à trois **curieux** (passants à moins de 35 m)
+  viennent regarder, téléphone à la main.
+- **Bouchon** : la circulation s'arrête derrière les voitures posées (ce sont des voitures comme les autres pour le suivi de file) ; un
+  **klaxon** toutes les 4 à 9 s s'il y a une voiture derrière.
+- **Patrouille** : au bout de 45 à 75 s, une gendarmerie part hors de vue (`spawnEvent`), sirène, vient se garer 12 m derrière la scène
+  (sa **propre cible**, `SimCar.target` : une cible par poursuivant, ce que demandait le plan pour généraliser la poursuite) ; un **gendarme**
+  descend (« Bonjour, vos papiers. »), **constat** de 22 s, « Circulez ! », chacun remonte (les passants disparaissent à leur portière),
+  les voitures repartent avec la circulation (`letGo` ; elles ne disparaissent qu'hors de vue, à plus de 60 m).
+- **Le joueur** peut regarder, contourner, **prendre une des voitures** : personne au volant, donc un **vol de véhicule** simple (pas de
+  conducteur éjecté, pas de « vol avec conducteur » de D71) ; son propriétaire crie « Ma voiture ! » (issue « voiture volée » au journal). Un
+  conducteur frappé : la dispute tourne court, chacun s'en va. Pas de prime : c'est du décor.
+- **Fréquence** : poids 2 en centre-ville (0,8 en périphérie, 0,3 dans les parcs), **doublé sous la pluie**, de 6 h à minuit, seulement si le
+  réglage « Circulation » n'est pas à « Aucune ».
+- Captures : `tools/ui.sh <dossier> accident` ; `?event=accident`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/accident.test.ts`, vraies données) : sur six départs, la scène se pose au moins quatre fois, hors de vue, à
+  la bonne distance, deux voitures cabossées immobiles avec détresse et sans conducteur ; dispute, patrouille, constat, départ, rien ne reste
+  réquisitionné et les voitures sont lâchées ; voiture prise : « Ma voiture ! » et pas de conducteur éjecté ; conducteur frappé : fin de dispute.
+- **Endurance** (voir D331) : 2 accidents menés jusqu'au constat sur une des deux graines.
+- **Appels de dessin** : 0 pour les voitures et les feux de détresse ; la patrouille et le gendarme comme d'habitude (+1 à +3 s'il n'y avait
+  pas de gendarmerie en vue).
+
+**Limites, honnêtement**
+- Les voitures sont **posées** : on ne voit jamais le choc. Le joueur qui regardait au mauvais moment ne le saura pas, et c'est voulu.
+- Les voitures de travers bloquent la voie ; la circulation attend derrière (elle ne double pas une voiture arrêtée, D47) : le bouchon peut
+  durer jusqu'au départ.
+- La capture du constat montre la bulle du gendarme hors champ, coupée au bord de l'écran (bulles d'une personne hors de vue).
+
+**À juger en jouant** : la fréquence (assez rare ?), la durée de la dispute, le nombre de curieux.
+
+## 2026-11-25 — D331. Plaisir de jeu, phase 4, lot 4 : la poursuite entre la police et un autre conducteur
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 4 (E5) ; demande de l'utilisateur : généraliser la poursuite (jusqu'ici seul le joueur
+était poursuivi, D73).
+
+**Choix**
+- **Une cible par poursuivant** (`SimCar.target`, `Traffic.pursue(id, cible)`) : chaque voiture de police de la circulation peut suivre sa
+  propre cible (le joueur, le fugitif, un point de la scène d'accident) avec la conduite de poursuite de D73 ; les places autour de la cible
+  se répartissent par cible. Sans cible propre, rien ne change.
+- **Le fugitif** (`src/core/events/pursuit.ts`) : une voiture rapide (sportive, berline ou compacte) naît **hors de vue**, une ou deux
+  gendarmeries derrière elle **toutes sirènes**. Il vise d'abord un point **25 m devant le joueur** (pour qu'on le voie passer), puis fuit :
+  un but à 300 – 500 m, **loin de la police**, toutes les 7 s ou près du but, avec la conduite de poursuite (il grille les feux, prend les sens
+  uniques à contresens : `planTo`).
+- **Fins** : il **s'échappe** (à plus de 450 m du joueur et hors de vue 10 s, ou à 650 m), ou il est **coincé** (presque à l'arrêt 4 s, la police
+  à moins de 25 m) ou sa voiture est **hors d'usage** : il sort. La police à moins de 12 m : il **se rend**, mains en l'air (« C'est bon,
+  c'est bon ! ») ; sinon il **s'enfuit à pied** (fuyard commun de D329, 5,2 m/s, plutôt loin du gendarme le plus proche). La première voiture de
+  police à moins de 30 m se gare, un **gendarme** descend (« Halte ! Gendarmerie ! »), lui court après (4,7 m/s), l'arrête (« Vous êtes en
+  état d'arrestation. »), mains en l'air 4 s, puis tous deux vont à la portière et **disparaissent dans la voiture**, qui repart.
+- **Le joueur peut aider** : percuter sa voiture (choc de plus de 1,5 m/s), le plaquer ou le frapper à pied. Arrêté grâce à lui : **prime de la
+  gendarmerie, 500 €**, un **fugitif arrêté** au carnet (le défi « Fugitifs arrêtés », 1 / 3 / 8, prévu dès D328, compte enfin) et une bonne action. Percuter la police
+  reste l'infraction habituelle (D70) ; frapper le fugitif à pied n'en est pas une (cible permise, comme le voleur de D328).
+- **Fréquence** : poids 1, **2 le soir et la nuit** (20 h – 4 h), si la circulation existe. Captures : `tools/ui.sh <dossier> poursuite` ;
+  `?event=poursuite`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/pursuit.test.ts`, vraies données, cinq graines) : le fugitif naît hors de vue, passe à moins de 70 m du
+  joueur au moins une fois sur deux, la police reste à moins de 60 m de lui ; ça finit toujours, sans figurant réquisitionné ni voiture
+  d'événement oubliée. Coincé par la police : il se rend ou s'enfuit, le gendarme l'emmène. Voiture hors d'usage, joueur qui le plaque à pied :
+  prime de 500 € au moins une fois sur trois.
+- **Mesuré en chemin** (sept poursuites sans le joueur) : **cinq arrestations en 45 à 70 s**, deux échappées ; il passe entre 5 et 99 m du
+  joueur. La police est **assez efficace** : à juger en jouant (une poursuite trop courte ne laisse pas le temps de s'en mêler).
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant avec la circulation et les cinq
+  événements) : 7 et 9 départs, **4 événements différents** dont au moins un grand ; graine 4 : chiens, 2 poursuites enfuies, un vol ;
+  graine 11 : 2 accidents jusqu'au constat, 1 poursuite arrêtée et 2 enfuies, 2 chiens ; aucun figurant oublié, 8 passants réquisitionnés au
+  plus ; **0,002 à 0,003 ms par image** en moyenne, 3,4 à 5,3 ms au pire (une recherche de lieu ou un départ de voitures, une image).
+- **Appels de dessin** : le fugitif est une voiture de la circulation (0) ; la police comme D72 (+2 à +3 si aucune gendarmerie n'était en
+  vue : carrosserie, gyrophares).
+
+**Limites, honnêtement**
+- Le fugitif ne vise que des buts sur la route ; il ne coupe pas par les parcs. Il peut **rester coincé** dans un bouchon : c'est alors la fin
+  à pied, plus tôt que prévu.
+- La police n'emmène pas la voiture du fugitif : elle repart vide avec la circulation, et disparaît hors de vue.
+- Pas encore de barrage, ni d'hélicoptère, ni de poursuite qui croise une autre (une seule poursuite à la fois, comme les autres grands
+  événements).
+- **Pas de capture parlante** : le rendu logiciel des captures est trop lent pour une course à 15 m/s (deux essais : la voiture du fugitif
+  est déjà loin quand l'image part, la gendarmerie hors du cadre). Le scénario `poursuite` reste dans `tools/ui-shots.cjs` ; c'est à voir
+  sur le téléphone (`?event=poursuite&h=21`).
+
+**À juger en jouant** : la durée des poursuites, la prime (500 €), le nombre de gendarmeries.
+
+## 2026-11-25 — D332. Plaisir de jeu, phase 4, lot 5 : le malaise et les pompiers
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 5 (E6) ; la caserne des pompiers d'Autun (centre de secours, avenue André Frenaud) donnée
+par l'utilisateur sur ses captures, retrouvée sur la carte du jeu (bâtiment autour de (1602, 720)).
+
+**Choix**
+- **Le malaise** (`src/core/events/malaise.ts`) : un passant **à l'écran**, à 20 – 60 m, qui marche seul (plutôt âgé), s'arrête, porte la
+  **main à sa poitrine** (2,5 s), puis **s'effondre** (à genoux, sur les mains, à plat ventre : la chute forte de D210, jouée plus lentement)
+  et reste couché (il respire). Jusqu'à **deux passants** proches s'arrêtent : l'un **un genou à terre** près de lui (« Monsieur, ça va ? »,
+  « Vous m'entendez ? »), l'autre **téléphone** à 3 m (« Appelez les secours ! », « Allô, les pompiers ? », « Ils arrivent ! »).
+- **Les pompiers** : un **fourgon** (nouveau modèle `pompiers` : la caisse sculptée de la camionnette de D279, rouge, large bande blanche et le
+  mot POMPIERS en rouge sur les flancs, filet jaune, damier jaune et rouge sur les portes arrière, rampe bleue à l'avant du toit et deux feux
+  bleus à l'arrière) part 20 à 35 s après la chute, **hors de vue, du côté de la caserne** (né dans la couronne de la circulation, à 90 m de la
+  scène en direction de la caserne ; la caserne elle-même est en général trop loin pour en partir vraiment : à revoir si l'on veut le voir
+  sortir), **sirène deux tons**, en conduite d'urgence (itinéraire, feux grillés, contresens permis : la conduite du fugitif de D331). Il se
+  **gare** au bord de la chaussée la plus proche du malade (en vue de lui), **gyrophares allumés et sirène coupée** ; deux **pompiers**
+  (tenue bleu marine, casque clair) descendent (« Pompiers ! Écartez-vous. »), vont jusqu'à lui **par le graphe piéton** (ils contournent les
+  murs), s'agenouillent (« On s'occupe de vous. »), puis, au bout de 10 s, il **se relève** (« Merci, ça va aller. ») ou, quatre fois sur dix,
+  il est **emmené** : tous trois montent à l'arrière du fourgon (ils y disparaissent), qui repart.
+- **Aider** (bouton « Aider », pictogramme d'une croix dans un cercle) : à moins de 1,8 m, à pied, avant les pompiers. Le joueur met **un genou
+  à terre** (nouvelle pose du personnage) ; s'il reste là 4 s sans bouger, il reprend ses esprits, se relève, « Merci… ça va mieux. » :
+  **80 €** et une **bonne action** ; les pompiers en route font demi-tour. S'il s'éloigne, l'aide s'arrête, sans prime.
+- **Garde-fous** (trouvés par les essais) : la chaussée visée est cherchée **carrossable et en vue** du malade (la plus proche pouvait être une rue
+  piétonne, ou de l'autre côté d'un mur) ; un fourgon **arrêté** plus de 10 s (bouchon) à moins de **100 m à pied** du malade se gare là, les
+  pompiers finissent à pied ; pas arrivé 2 min après l'appel, le malade se relève seul et le fourgon repart ; sans circulation (« Aucune »),
+  pas de pompiers : il se relève seul au bout de 70 s ; un pompier coincé derrière un muret plus de 6 s sur le chemin du retour disparaît.
+- **Outils communs, nouveaux** : `Walker` et `walkLength` (`src/core/events/walker.ts` : un figurant qui va quelque part par le **graphe
+  piéton**, avec l'itinéraire du guidage de D310 ; la longueur du trajet à pied) ; `roadside` (où une voiture d'événement se gare pour une scène) ;
+  **poses** de la foule `chest` (main sur la poitrine), `collapse`, `getup`, `kneel` (`LIFE_POSE`, `character-rig.ts`) ; pose à genoux du
+  joueur (`PlayerModel.setKneel`) ; gyrophares **sans sirène** pour une voiture garée (`Traffic.setSiren(id, on, sound)` : la patrouille de
+  l'accident et celle de la poursuite aussi, désormais) ; un véhicule `rescue` (catalogue) a des gyrophares sans être la police.
+- **Sirène des pompiers** : les mêmes deux notes que la gendarmerie (la et si), en **plus lent** (0,77 s par note au lieu de 0,5 : « pin… pon… ») ;
+  à juger à l'oreille (page `?sounds`, « Pompiers qui passent à 70 km/h »).
+- **Fréquence** : poids 1,5 de 7 h à 22 h, × 1,5 l'après-midi (13 h – 17 h, la chaleur : le plan disait « l'été », mais le directeur ne connaît pas
+  la saison) et les matins de marché. C'est un grand événement (un seul à la fois avec l'accident, la poursuite, la rixe : il fait venir un
+  véhicule). Captures : `tools/ui.sh <dossier> malaise` ; `?event=malaise`.
+- Écart au plan : **pas de « détrousser à terre »** (Q5) : le malade n'est pas un passant « mis à terre » au sens de D317 ; à faire si tu le veux.
+
+**Mesures**
+- **Tests sans écran** (`src/game/malaise.test.ts`, vraies données) : trouvé quatre fois sur six au moins ; main à la poitrine, chute, aides qui
+  s'agenouillent ou téléphonent ; pompiers arrivés **67 et 76 s** après le début (deux graines sur trois), une fois relevé, une fois emmené ; la
+  troisième, le fourgon reste coincé dans la circulation à 44 m, de l'autre côté d'un mur (233 m à pied) : le malade se relève seul à 2 min 30.
+  Endurance : voir D333.
+  Le joueur qui aide : genou à terre, 4 s, 80 €, « Merci… ça va mieux. » ; qui s'éloigne : pas de prime. Sans circulation : relevé seul.
+- **Appels de dessin** : le fourgon est une voiture de la circulation (+1 pour son modèle s'il n'y en avait pas, ses feux bleus dans le maillage
+  des gyrophares : +0 ou +1) ; les pompiers sont des passants (0).
+
+**Limites, honnêtement**
+- Le fourgon ne double pas : coincé dans un bouchon, il arrive tard, ou pas (le malade se relève seul). C'est arrivé aussi dans la capture
+  (`tools/ui.sh <dossier> malaise`, au Champ de Mars) : pas de fourgon au bout de 2 min, le malade s'est relevé seul ; pas de capture des
+  pompiers, donc. Une graine sur trois dans les essais, une fois sur une dans le jeu : **à surveiller en jouant** ; piste si ça se confirme, le
+  faire naître plus près (dans la couronne autour de la scène plutôt que du côté de la caserne) et le laisser doubler.
+- Le malade couché reste pour la simulation un passant « debout » : les autres le contournent mal, une voiture ne le voit pas comme un corps.
+- Le joueur à genoux garde ses commandes : il peut tourner la caméra ; bouger arrête l'aide.
+
+**À juger en jouant** : la fréquence, le temps d'arrivée des pompiers (environ 1 min 10), la prime (80 €), la sirène plus lente.
+
+## 2026-11-25 — D333. Plaisir de jeu, phase 4, lot 6 : la rixe
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 6 (E7) ; violence aux poings seulement, sans sang, personne n'en meurt (Q3).
+
+**Choix**
+- **Où, quand** (`src/core/events/rixe.ts`) : devant un **bar, un café ou un restaurant** de la carte (47 lieux ; OpenStreetMap n'a que 4 bars
+  à Autun, les restaurants comptent donc) à 25 – 70 m du joueur, de 20 h à 3 h, **deux fois plus le vendredi et le samedi soir** ; deux
+  adultes (pas en tenue de travail) à moins de 35 m du lieu, passants ou **clients assis en terrasse** (ils se lèvent : le soir, beaucoup sont
+  assis ; sans eux, l'endurance n'en trouvait presque jamais), un **troisième** une fois sur trois. Poids 1, grand événement.
+- **Ce qu'on voit** : ils se rejoignent devant le lieu, se **disputent** 7 à 11 s (bras tendu, gestes, bulles « Qu'est-ce que tu regardes ? »,
+  « Tu me cherches ? », « Répète un peu ! »…), puis se **battent aux poings** : nouvelle pose de la foule `fists` (garde levée, un coup de
+  poing toutes les 1,1 s d'un bras puis de l'autre, les poses de coup du joueur de D80 posées sur le squelette des passants). Toutes les 1,6 à
+  3,2 s, un coup **porte** : l'autre trébuche (poussée de 2,4 m/s), ou une fois sur quatre **tombe** (4,2 m/s, la chute légère de D212) ; ils
+  gardent leur distance de garde (1,05 m). **Deux curieux** viennent regarder en cercle à 6,5 m (l'un filme) ; les passants tout près s'écartent.
+- **La patrouille** part 40 à 65 s après les premiers coups (comme l'accident : sa propre cible, D331 ; itinéraire jusqu'à la chaussée la plus
+  proche, sirène), se gare (gyrophares sans sirène) ; un **gendarme** descend (« Gendarmerie ! On se calme ! ») : le premier bagarreur encore
+  debout **lève les mains** (« C'est pas moi, c'est lui ! »), les autres **s'enfuient** ; le gendarme le rejoint par le graphe piéton (« Vous
+  êtes en état d'arrestation. »), mains en l'air 3 s, puis tous deux **montent dans la voiture**, qui repart. Sans patrouille (pas de
+  circulation), ils se séparent d'eux-mêmes au bout de 1 min 50 de coups.
+- **Séparer** (bouton « Séparer », deux flèches qui s'écartent) : à moins de 1,8 m d'un bagarreur, à pied, avant le gendarme : « C'est bon,
+  c'est bon… », « Il m'a cherché ! », chacun repart de son côté ; **50 €** et une **bonne action** ; la patrouille en route repart.
+- **S'en mêler** : frapper un bagarreur est une **agression** comme une autre (D70) ; celui-là **s'en prend au joueur** une fois relevé : il le
+  suit (3,6 m/s), garde levée, et le frappe à portée (**8 points de vie**, toutes les 1,3 s ; le coup et la douleur du joueur s'entendent) ;
+  les autres en profitent pour filer. Il le lâche au-delà de 20 m (« Ouais, c'est ça, cours ! ») ou quand le joueur monte dans un véhicule.
+  (Une chute que la scène n'a pas donnée, à moins de 3 m du joueur à pied, est attribuée au joueur.)
+- **Garde-fou** (trouvé par les essais) : un lieu en rue piétonne n'a pas de chaussée en vue ; la patrouille vise alors la chaussée carrossable la
+  plus proche, et se gare si elle reste arrêtée plus de 10 s à moins de 110 m à pied (au pire au bout de 90 s) : le gendarme finit à pied.
+- Captures : `tools/ui.sh <dossier> rixe` ; `?event=rixe&h=21`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/rixe.test.ts`, vraies données ; un « bar » pris au hasard à 30 – 60 m) : une rixe trouvée trois fois sur
+  huit au moins (il faut deux passants adultes ordinaires près du lieu) ; dispute, poings levés, des coups qui portent, personne ne meurt ;
+  patrouille et arrestation sur les trois graines essayées (gendarme à **100, 104 et 163 s** du début, arrestation à 104, 143 et 202 s : la
+  troisième fois, la patrouille est restée bloquée et s'est garée au bout de 90 s, le gendarme a fini à pied) ; séparés par le joueur : 50 € ; frappé par le joueur, un bagarreur le poursuit et le frappe, puis le lâche ;
+  sans circulation, ils se séparent seuls.
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant l'après-midi puis, après huit minutes,
+  un samedi soir, avec les sept événements, les vrais bars et restaurants de la carte, et un robot qui court aider un malade à moins de 50 m) :
+  6 et 10 départs, **les sept événements ont commencé** ; une rixe par graine, finie par une arrestation ; deux malaises secourus par le
+  robot ; aucun figurant oublié, 5 passants réquisitionnés au plus ; **0,002 à 0,006 ms par image** en moyenne, 1,9 à 3,8 ms au pire.
+- **Appels de dessin** : 0 (des passants ; la patrouille comme D72).
+
+**Limites, honnêtement**
+- Les coups des bagarreurs ne retirent pas de points de vie aux passants (une poussée seulement) : personne ne meurt de la rixe, comme voulu,
+  mais personne ne finit KO non plus.
+- Un coup du joueur au mauvais moment (pendant qu'un bagarreur tombe sous un coup de l'autre) peut ne pas être compté comme le sien.
+- Le bagarreur en colère ne voit pas les murs : il suit le joueur en ligne droite.
+
+**À juger en jouant** : la fréquence, la durée de la dispute et de la bagarre, la force des coups reçus (8), la prime (50 €).
+
+## 2026-11-26 — D334. Plaisir de jeu, phase 4, lot 7 : conducteur énervé, livreur pressé, accident en direct
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 7 (E8, E9, E10) : des comportements de conducteurs, sur la circulation de J3.
+
+**Choix**
+- **Outils de la circulation** : un événement peut **prendre une voiture qui roule déjà** (`Traffic.claim` ; `freeCars` : les voitures civiles
+  libres autour d'un point) ; la simulation retient, à chaque pas, **l'autre voiture touchée** et l'impact (`SimCar.hitCar`, `hitCarImpact`) ;
+  `planTo` sait conduire **dans les règles** (`chase` faux : feux et sens uniques respectés), ou pressé sans contresens (`wrongWay` faux), avec
+  une borne de recherche (`maxExpand`) ; `takeBump` : la voiture civile que le joueur vient d'accrocher. La scène d'accident de D330 peut
+  partir de **deux voitures qui viennent vraiment de se percuter** (au lieu d'en poser deux).
+- **Conducteur énervé** (E8, `src/core/events/enerve.ts`) : le joueur **au volant** accroche une voiture civile entre 1,5 et 5 m/s ; **une fois
+  sur quatre** (pas deux fois en une minute, jamais avec une étoile), elle s'arrête, **klaxonne** 2 s ; si le joueur est à moins de 25 m et ne
+  file pas, le conducteur **descend** (« Non mais ça va pas ?! ») et vient gesticuler devant lui (« Vous savez conduire ? »…). À pied tout près
+  plus de 3 s : il le **bouscule** (3 points de vie), une fois. Le joueur **reste sans bouger** 7 s (il s'excuse) : « Bon… faites attention ! »,
+  il remonte et repart. Le joueur **repart en voiture** : il remonte et le **suit** 15 s en klaxonnant. **Frappé** : il remonte vite et s'en va
+  (l'agression habituelle). Sa voiture prise pendant qu'il est dehors : « Ma voiture ! » (pas de conducteur à éjecter). Lancé par le jeu, pas
+  tiré au hasard (`EventsController`) ; `?event=enerve` prend la voiture libre la plus proche (essais, captures).
+- **Livreur pressé** (E9, `livreur.ts`) : le matin (6 h – 11 h), du lundi au samedi, surtout au centre : une **camionnette** naît hors de vue et
+  fonce (conduite pressée : feux grillés, sans contresens) vers un point de la voie **30 à 75 m devant le joueur**, en **klaxonnant** ; elle
+  **s'arrête net en double file**, détresse allumée (là, ou dès qu'elle s'en éloigne après en être passée à moins de 35 m, ou bloquée tout
+  près), le livreur saute dehors (« Pardon, pardon ! »), **court** à la porte d'en face par le graphe piéton, livre (« Un colis ! Signez là… »),
+  revient en courant et repart, calmement. Camionnette **prenable** pendant ce temps (« Hé ! Ma camionnette ! »). Écart au plan : ce n'est pas
+  une camionnette de livraison de D204 qui « passe en pressé » (elles sont des véhicules de service qu'un événement ne prend pas), mais une
+  camionnette de la circulation qui naît pour l'occasion.
+- **Accident en direct** (E10, `chauffard.ts`) : une voiture civile qui **roule vers le joueur** à 50 – 160 m devient **imprudente** (conduite
+  de poursuite : elle accélère, **grille les feux**, sans contresens), vers un point 80 m au-delà du joueur. Si elle **percute une autre voiture**
+  à plus de 3 m/s (la vraie physique décide, D60), la **scène d'accident** prend le relais avec ces deux voitures (détresse, dispute,
+  curieux, bouchon, patrouille, constat : D330). Sinon, c'est un feu grillé ; au bout de 35 s, elle redevient une voiture ordinaire. Elle
+  heurte la police, un bus ou le joueur : pas de scène, la police s'en occupe comme d'habitude.
+- **Coût** (trouvé par l'endurance) : quand un événement ne trouve pas de lieu, le directeur en essayait un autre, et un autre, **dans la même
+  image** ; un chauffard dont le but était injoignable épuisait la recherche d'itinéraire (15,8 ms). Désormais **deux essais par tirage** au plus
+  (`DIRECTOR.triesPerRoll`), et une recherche bornée pour ces petits trajets (1 200 à 1 500 sens).
+- Fréquences : livreur, poids 1 au centre ; chauffard, poids 1 au centre (0,8 en quartier d'habitation), 7 h – 23 h. Les deux veulent la
+  circulation. Captures : `tools/ui.sh <dossier> enerve`, `livreur`, `chauffard`.
+
+**Mesures**
+- **Tests sans écran** (`src/game/conduite.test.ts`, vraies données) : conducteur énervé : klaxon, il descend, gesticule, bouscule le joueur resté
+  collé à lui (3 points), se calme, remonte ; voiture prise : « Ma voiture ! ». Livreur : **3 livraisons sur 4** (la quatrième, la camionnette
+  n'arrive pas à 124 m de l'arrêt : abandon). Accident en direct : **5 chocs sur 9** essais, tous suivis d'un constat de la gendarmerie ; 4 feux
+  grillés sans casse ; rien ne reste réquisitionné ni posé.
+- **Endurance** : voir D335.
+
+**Limites, honnêtement**
+- Le choc est **une chance sur deux** environ : la voiture imprudente ne vise pas une autre voiture, elle traverse les carrefours au rouge.
+- Le conducteur énervé ne réagit qu'aux chocs du joueur **au volant** (pas à vélo ni à pied).
+- Le livreur ne porte pas de colis visible (il n'y a pas d'objet pour ça).
+
+**À juger en jouant** : la fréquence du conducteur énervé (une fois sur quatre), la bousculade, la proportion de chocs, le livreur.
+
+## 2026-11-26 — D335. Plaisir de jeu, phase 4, lot 8 : cortège de mariage, feu de poubelle
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 8 (E11, E12) : des événements sans crime.
+
+**Choix**
+- **Cortège de mariage** (E11, `src/core/events/mariage.ts`) : le **samedi de 14 h à 18 h**, le joueur à moins de 300 m de l'**hôtel de ville**
+  (poids 4 quand c'est possible : c'est rare). Quatre à six voitures sont **garées en file** sans conducteur sur la rue la plus proche du
+  parvis assez longue pour elles (25 m au moins : celle juste devant la mairie n'en fait que 18), la première **blanche** (une berline, peinture
+  imposée : `Traffic.stage(…, { model, paint })`). **Cinq invités** (des passants proches, **endimanchés** : veste ou chemise, pantalon ou
+  jupe sombres, chaussures de ville ; ils le restent ensuite) se rassemblent en arc devant le perron. Les **mariés** sortent (elle : manteau et
+  jupe blancs ; lui : costume sombre) sous les **applaudissements** (nouveau son synthétisé, page `?sounds`) et la **volée des cloches**
+  (celle de midi) ; « Vive les mariés ! », « Bravo ! » ; nouvelle pose **applaudir** de la foule. Ils descendent sur le parvis, se font
+  face, puis montent dans la voiture blanche (ils y disparaissent), quelques invités dans les suivantes, les autres redeviennent des passants.
+  Le **cortège** part **dans les règles** (feux, sens uniques) vers un but à 400 – 600 m, toutes vers le même (elles prennent le même chemin,
+  l'une derrière l'autre), en **klaxonnant sans arrêt** (un coup toutes les 0,35 à 0,9 s, d'une voiture ou d'une autre), pendant 1 min 40 au
+  plus. La voiture des mariés **prise avant le départ** : « Notre voiture ! ». Écarts au plan : pas de confettis, et les voitures ne répondent
+  pas au klaxon du joueur (le jeu ne dit pas aux événements quand il klaxonne).
+- **Feu de poubelle** (E12, `feu.ts`) : le soir et la nuit (19 h – 5 h, poids 0,7), une **corbeille de rue** (les `waste_basket` du mobilier des
+  tuiles chargées) à 30 – 100 m, de préférence à l'écran : de la **fumée**, puis des **flammes** (les flammes et la fumée des voitures en feu de
+  D111, en petit, avec le crépitement ; un nouvel objet au sol `fire`), qui ronflent. **Deux curieux** (« Au feu ! », « Appelez les pompiers ! »,
+  l'un filme). Les **pompiers** sont appelés 12 à 22 s après le début ; ils se postent de part et d'autre (« On s'en occupe, reculez ! »),
+  **éteignent** en 8 s (les flammes baissent), « C'est éteint. », la fumée reste 10 s, ils repartent. Trop près (moins de 1,5 m) : **ça brûle**
+  (3 points de vie toutes les 0,5 s). Sans pompiers (pas de circulation, ou pas arrivés 2 min 30 après l'appel) : il **s'éteint seul** en 20 s.
+- **L'équipe des pompiers** devient un objet commun (`FireCrew`, `firecrew.ts`) ; le malaise garde la sienne (à fusionner plus tard). Elle se
+  gare aussi, désormais (et celle du malaise de même), quand elle reste **bloquée 20 s à moins de 220 m à pied** (ils courent le reste), en plus
+  de la règle des 10 s à moins de 100 m.
+- Figurants qui partent ensemble (les invités) : leur itinéraire piéton est calculé **en différé**, étalé sur 0,35 s (`Walker.plan(…, lazy)`).
+
+**Mesures**
+- **Tests sans écran** (`src/game/fete.test.ts`) : mariage : file de voitures (la première blanche), invités, mariés, applaudissements et cloches,
+  invités qui applaudissent, cortège qui part et klaxonne plus de dix fois en 20 s, fin propre ; voiture des mariés prise : « Notre voiture ! ».
+  Feu : flammes, brûlure du joueur trop près ; **éteint par les pompiers une fois sur trois** (les deux autres fois, la même rue : le fourgon reste
+  bloqué à 120 m, 270 m à pied, il s'éteint seul) ; sans circulation, il s'éteint seul.
+- **Endurance** (`src/game/events-soak.test.ts`, vingt minutes à « Fréquents », deux graines, maintenant un mercredi matin, puis un samedi après-
+  midi, puis le samedi soir, avec des corbeilles posées sur le graphe piéton) : 8 et 10 départs, **neuf événements différents** (chien, mariage,
+  poursuite, vol, feu, rixe, livreur, malaise, chauffard), un cortège parti, un feu éteint par les pompiers, un livreur, un choc suivi d'un
+  constat ; aucun figurant oublié, 8 passants réquisitionnés au plus ; **0,003 à 0,004 ms par image** en moyenne, **2,6 à 5,9 ms au pire**.
+  (Avant les deux essais par tirage : 10 à 17 ms au pire.) L'assertion « au moins un voleur rattrapé » a dû être assouplie : avec douze
+  événements, le vol tombe moins souvent, et le robot, occupé à aider un malade, en rattrape moins.
+- **Appels de dessin** : 0 pour le mariage (voitures de la circulation, passants) ; le feu, dans les maillages de fumée et de flammes existants ;
+  le fourgon comme D332.
+
+**Limites, honnêtement**
+- Le feu est sur la corbeille, mais la corbeille ne noircit pas et ne fond pas.
+- Les invités gardent leur tenue de fête une fois redevenus passants.
+- Le cortège ne roule pas « au pas » : il roule comme la circulation.
+- Un mariage met jusqu'à sept passants réquisitionnés : avec un vol à côté, neuf (le plan disait huit au plus).
+
+**À juger en jouant** : la fréquence du mariage (le samedi après-midi seulement), les klaxons du cortège, la taille du feu.
+
+## 2026-11-26 — D336. Plaisir de jeu, phase 4, lot 9 : le braquage
+
+**Contexte** : plan `docs/plans/evenements.md`, E13, lot 9, fait **avec l'accord de l'utilisateur** (Q3 : « Oui, fais le braquage ») : c'est le seul
+événement où un PNJ tire sur le joueur.
+
+**Choix**
+- **Où, quand** (`src/core/events/braquage.ts`) : le soir (19 h – 23 h), un **commerce ouvert** de la carte (les commerces de D322 à leurs
+  horaires) à 30 – 100 m, de préférence à l'écran. Poids 0,5, grand événement.
+- **Ce qu'on voit et entend** : un homme **cagoulé** (sweat à capuche et bonnet noirs : `robberRecipe`) sort en courant de la porte du commerce,
+  **pistolet à la main** (la pièce `weaponPistol` des gendarmes armés de D85, sur un passant réquisitionné : `PedSim.setHeld`) ; l'**alarme**
+  du commerce sonne 25 s (nouveau son, deux notes aiguës, page `?sounds`), un cri ; les passants tout près s'écartent ; le **commerçant** sort
+  derrière lui, le montre du doigt (« Au voleur ! Il a une arme ! ») et rentre au bout de 10 s. Le braqueur fuit le joueur sur le graphe piéton
+  (le fuyard de D329, un peu plus rapide : 6 m/s, 4,8 essoufflé ; le sprint du joueur fait 7). Repère « fuyard » sur la minimap.
+- **Il tire** : si le joueur, à pied, le **menace d'une arme à feu** (en mode visée, D205) à moins de 25 m, ou le **rattrape de face** (devant lui,
+  à moins de 60° de son cap) à moins de 7 m. Il s'arrête, se tourne, **vise** (« Lâche ça ! », « Recule ! ») et tire toutes les 1,2 s, **trois coups
+  au plus**, puis repart (pas de nouveau face-à-face avant 6 s, sauf menace) ; le joueur à plus de 15 m : il repart aussi. Un tir est celui d'un
+  gendarme armé (D85) : éclair, trait, détonation, arc du tir reçu, **12 points de vie** (le gilet en prend la moitié, D327), chance de toucher
+  selon la distance et la vitesse du joueur ; les passants proches fuient.
+- **L'arrêter** : le **plaquer** (sprint), le frapper, le renverser : il **lâche son pistolet** (il se ramasse, avec la moitié d'un chargeur),
+  lève les mains (« C'est bon, c'est bon ! ») ; une **patrouille** vient (itinéraire, sirène), un gendarme descend (« Gendarmerie ! Pas un
+  geste ! »), le rejoint par le graphe piéton, l'arrête et tous deux montent dans la voiture. **Prime de la gendarmerie : 800 €**, un **voleur
+  rattrapé** et une bonne action au carnet. Sans circulation, il est emmené au bout de 12 s. En fuite (ou en train de viser), le mettre à terre
+  n'est pas une infraction ; **le tuer reste un meurtre** (Q5 du plan) ; tirer reste un coup de feu en public. Il s'échappe s'il distance le
+  joueur (règles du fuyard).
+
+**Mesures**
+- **Tests sans écran** (`src/game/braquage.test.ts`, vraies données, commerces « de test » posés sur le graphe piéton) : pistolet en main, bonnet,
+  alarme, « Au voleur ! » ; sans le joueur, il s'échappe sans tirer, rien ne reste réquisitionné ni armé ; menacé d'une arme à 12 m, il vise
+  (pose de visée) et tire de un à trois coups (12 points par coup qui porte), puis repart ; poursuivi en sprint par derrière : **arrêté 4 fois sur
+  4**, l'arme lâchée, la prime ; sans circulation aussi. (Poursuivi par derrière, il ne s'est jamais retourné pour tirer : le face-à-face vient
+  d'un joueur qui lui coupe la route.)
+- **Endurance** : un braquage lancé (graine 11), arrêté grâce au robot. Voir D337.
+
+**Limites, honnêtement**
+- Le braqueur court avec le pistolet dans la main qui balance (pas de pose « arme basse » pendant la course : les passants n'ont de pose qu'à
+  l'arrêt) ; à l'arrêt il vise correctement.
+- Il ne monte jamais dans une voiture qui l'attend (l'enchaînement sur E5 du plan) : il fuit toujours à pied.
+- Le commerce ne change pas (pas de vitrine brisée, le commerçant ne vous remercie pas).
+
+**À juger en jouant** : la difficulté (trois tirs à 12 points), la prime (800 €), la fréquence (poids 0,5, le soir).
+
+## 2026-11-26 — D337. Plaisir de jeu, phase 4, lot 10 : bilan de la phase « événements aléatoires »
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 10 : bilan, carnet, défis, fréquences, banc, protocole de mesure, PR.
+
+**Ce que la phase a fait** (D328 à D336) : un **directeur d'événements** (rythme selon le quartier, l'heure, le réglage « Événements » ; un grand et
+un petit au plus ; jamais avec une étoile ; deux essais par tirage) et **treize faits divers** :
+
+| Événement | Quand, où | Ce que le joueur peut faire | Prime | Décision |
+|---|---|---|---|---|
+| Vol à l'arraché | 8 h – 22 h, centre | plaquer le voleur, rendre le sac (ou le garder) | 100 – 250 € | D328 |
+| Pickpocket | 9 h – 20 h, rue animée, matins de marché ×2 | le rattraper | son argent + 50 € | D329 |
+| Chien échappé | 7 h – 20 h, quartiers, parcs | l'attraper au pas, le rendre | 60 – 120 € | D329 |
+| Accident | 6 h – minuit, ×2 sous la pluie | regarder, prendre une des voitures | — | D330 |
+| Course-poursuite | surtout le soir | percuter, plaquer le fugitif | 500 € | D331 |
+| Malaise | 7 h – 22 h, l'après-midi ×1,5 | « Aider » avant les pompiers | 80 € | D332 |
+| Rixe | 20 h – 3 h, devant un bar, ven. et sam. ×2 | « Séparer », ou s'en mêler | 50 € | D333 |
+| Conducteur énervé | après un accrochage, 1 fois sur 4 | rester calme, repartir, le frapper | — | D334 |
+| Livreur pressé | 6 h – 11 h, lun. – sam., centre | lui prendre sa camionnette | — | D334 |
+| Accident en direct | 7 h – 23 h | regarder (un choc une fois sur deux) | — | D334 |
+| Cortège de mariage | samedi 14 h – 18 h, mairie | suivre, voler la voiture des mariés | — | D335 |
+| Feu de poubelle | 19 h – 5 h, une corbeille de rue | regarder ; trop près, ça brûle | — | D335 |
+| Braquage | 19 h – 23 h, un commerce ouvert | le plaquer (il tire si on le menace) | 800 € | D336 |
+
+Et les outils communs qu'ils ont demandés : passants **réquisitionnés** et rendus à la foule, **fuite volontaire** (qui remplace aussi la
+panique), **une cible par poursuivant** dans la circulation, voitures **posées** ou **prises** à la circulation, chocs entre voitures retenus,
+figurants qui contournent les murs par le **graphe piéton**, équipe des **pompiers** et leur fourgon, bulles de parole, poses (poitrine, chute,
+genou à terre, poings, mains en l'air, applaudir), sons (sirène des pompiers, applaudissements, alarme de commerce).
+
+**Choix du lot 10**
+- **Carnet « Faits divers »** complété : sous les trois défis (voleurs rattrapés, fugitifs arrêtés, bonnes actions), une section **« Déjà vu en
+  ville · n / 13 »** : chaque sorte de fait divers, combien de fois on l'a vue, « ? » tant qu'on ne l'a pas vue (une petite collection,
+  enregistrée dans le carnet : champ facultatif `seen`, les anciennes sauvegardes se relisent). Le journal du jour reste dessous. Un braqueur
+  arrêté compte comme un voleur rattrapé.
+- **Fréquences** : **inchangées** (« Normaux » par défaut, le plan). Le plan prévoyait de les régler d'après les parties de l'utilisateur : il
+  n'y en a pas encore eu avec ces événements. C'est la première chose à juger en jouant.
+- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1`) : au début de chaque phase, ce qui était en cours s'arrête et l'événement suivant
+  est lancé, à tour de rôle (à pied : vol, malaise, feu de poubelle ; en voiture, avec la circulation : accident, poursuite, accident en
+  direct). Au premier essai, sans cet arrêt, ils s'empilaient (forcer passe outre « un grand et un petit », et les phases du banc sont plus
+  courtes que les événements) : jusqu'à dix en cours et dix-huit passants réquisitionnés ; au deuxième, en attendant que rien ne soit en cours,
+  le premier malaise durait tout le banc. Ligne « Événements » du rapport : lancés, en cours, passants réquisitionnés, coût.
+
+**Mesures (rendu logiciel, sans valeur absolue)**
+- **Endurance** (`src/game/events-soak.test.ts`, deux fois vingt minutes à « Fréquents », un mercredi matin, un samedi après-midi, un samedi
+  soir, avec la circulation, 100 passants, les vrais bars et restaurants) : **dix événements différents** ont commencé sur les deux graines (chien,
+  mariage, poursuite, vol, feu, rixe, livreur, malaise, accident en direct, braquage), 8 et 10 départs ; aucun passant oublié, 7 réquisitionnés
+  au plus ; directeur et événements **0,003 ms par image** en moyenne, **3 à 8 ms au pire** (le départ d'un grand événement, une image).
+- **Banc court** (`?bench=court&crowd=100&sim=1&traffic=20&events=1`, rendu logiciel) : dix événements lancés à tour de rôle (malaise, feu,
+  vol, une poursuite à 90 km/h), 3 passants réquisitionnés au plus ; **directeur et événements : 0,005 à 0,08 ms par image, 2,7 ms au pire**
+  (le départ de la poursuite) ; ni accident ni accident en direct pendant les deux phases en voiture, trop courtes en version brève.
+- **Tests** : 1 639 tests, dont 49 pour la phase.
+- **Appels de dessin** : aucun événement à pied n'en ajoute (des passants) ; les voitures sont celles de la circulation ; la police et les pompiers
+  ajoutent leur modèle s'il n'était pas déjà en vue (+1 à +3). Au banc en rendu logiciel, 150 à 210 appels selon les phases en ville.
+
+**Protocole de mesure sur le téléphone** (Honor Magic 8 Pro, à faire par l'utilisateur ; reprend celui de D86) :
+1. Ouvrir `…/?bench=1&crowd=100&sim=1&traffic=20&events=1`, téléphone en paysage, rien d'autre d'ouvert, attendre la fin (environ 6 minutes) et
+   copier le rapport (bouton du rapport) : les lignes « Événements » donnent le coût par image ; le comparer à un banc **sans** `&events=1`.
+2. Jouer vingt minutes au centre avec « Événements : Fréquents », à pied puis en voiture, le jour puis le soir : noter les à-coups ressentis au
+   départ d'un événement (le pire mesuré en rendu logiciel est de 3 à 8 ms) et si un événement « disparaît » sans fin visible.
+3. Dire, pour chaque événement vu : trop fréquent, trop rare, trop long, pas lisible (le carnet « Faits divers » donne la liste de ce qu'on a vu).
+
+**Repoussé (noté dans `docs/ROADMAP.md`)** : confettis du mariage, cortège qui répond au klaxon du joueur, colis du livreur, braqueur qui monte dans
+une voiture complice, « détrousser » un malade, fourgon des pompiers qui double (il reste parfois bloqué), malaise et feu qui partagent la même
+équipe de pompiers (le malaise garde encore la sienne), pose « arme basse » en courant pour le braqueur, vraies captures de la poursuite et de
+l'accident en direct (trop rapides pour le rendu logiciel).

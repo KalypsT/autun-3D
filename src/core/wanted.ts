@@ -39,7 +39,9 @@ export type Crime =
   /** Tuer un gendarme (J5-5). */
   | "kill_cop"
   /** Faire exploser un véhicule en public (D111). */
-  | "explosion";
+  | "explosion"
+  /** Voler quelqu'un (phase 4 : garder le sac volé qu'on a repris au voleur, sous les yeux d'un passant). */
+  | "robbery";
 
 export type Witness = "police" | "civilian";
 
@@ -71,6 +73,8 @@ export const CRIMES: Record<Crime, CrimeRule> = {
   kill_cop: { min: 4, add: 1, civilians: true },
   // Une explosion en public vaut un coup de feu ; les morts qu'elle fait sont des meurtres (D111).
   explosion: { min: 2, add: 0, civilians: true },
+  // Phase 4 : un vol (garder le sac repris au voleur) vaut une étoile, signalée par un passant qui l'a vu.
+  robbery: { min: 1, add: 0, civilians: true },
 };
 
 /** Délai d'un signalement par téléphone (s). */

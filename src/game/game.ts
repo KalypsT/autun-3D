@@ -65,6 +65,9 @@ import { CACHE_ROUNDS, CACHES, cacheId, Pickups } from "../core/pickups";
 import type { BrokenEvent } from "../core/collision";
 import { FallingProps } from "../render/falling-props";
 import { Fx, type PickupView } from "../render/fx";
+import { EventsController } from "./events";
+import { EventBook } from "../core/events/book";
+import { streetNear } from "../ui/map-data";
 import { Melee } from "../core/melee";
 import { WeaponHud } from "../ui/weapon-hud";
 import { icon, vehicleIcon } from "../ui/icons";
@@ -462,7 +465,7 @@ export function startGame(ctx: GameContext): void {
     const trafficText = tr ? ` · circulation ${tr.cars.length}/${tr.target} voitures (max ${tr.capacity}, ${tr.models.drawn} maillages, sim ${tr.simMs.toFixed(2)} ms)${tr.policeCount ? ` · police ${tr.policeCount} (${tr.chasing} en poursuite)` : ""}` : "";
     return ` · nav ${nav.graph.cells.size} cellules${trafficText}${d ? ` ${nav.graph.edgeCount} arêtes (${d.stats.edges} dessinées, ${d.stats.ms.toFixed(1)} ms)` : ""}${pedText}${pigText}`;
   };
-  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · ${weatherInfo(atmosphere.weather)} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()} · ${audio.info}`);
+  const meter = new FrameMeter(renderer, debugEl, () => ` · x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} · ${(Math.abs(speedOf()) * 3.6).toFixed(1)} km/h · ${tiles.stats.loaded.length} tuiles · ${atmosphere.clock} · ${weatherInfo(atmosphere.weather)} · minimap ${miniCost()}${wantedInfo()}${navInfo()}${damageInfo()}${events.debug()} · ${audio.info}`);
 
   const wantedInfo = (): string => (wanted.stars > 0 || wanted.pendingCalls > 0 ? ` · recherche ${wanted.stars}★${wanted.seen ? " vu" : ` fuite ${Math.round(wanted.escape * 100)} %`}${wanted.pendingCalls ? ` (${wanted.pendingCalls} appel)` : ""}` : "");
   /** Coût de la minimap (préparation et dessin) depuis le dernier affichage : moyenne et pire cas, en ms. */
@@ -514,6 +517,83 @@ export function startGame(ctx: GameContext): void {
       wallet.earn(h.reward, `Défi ${TIER_NAMES[h.tier - 1]}`);
       showFeat(`Défi ${TIER_NAMES[h.tier - 1]} : ${challengeGoal(h.kind, h.tier)}`);
     }
+  };
+  // Événements aléatoires (phase 4) : vols, plus tard accidents, poursuites… ; `?event=vol` en lance un tout de suite (essais, captures).
+  /** Le joueur porte secours (malaise, phase 4) : un genou à terre. */
+  let eventKneel = false;
+  const events: EventsController = new EventsController({
+    peds: () => peds as PedsController | null,
+    camera,
+    colliders,
+    policeAt: (visit) => {
+      (traffic as Traffic | null)?.forEachPolice((_id, x, y) => visit(x, y));
+      for (const o of police.officers.list) visit(o.x, o.y);
+    },
+    cry: (kind, x, y, slot) => audio.cry(kind, x, y, slot),
+    earn: (n, label) => wallet.earn(n, label),
+    take: (n, label) => wallet.take(n, label),
+    money: () => wallet.balance,
+    playerHead: () => ({ x: player.x, y: player.y, z: (riding ? riding.state.z : player.z) + 1.75 }),
+    bark: (x, y) => audio.animal("bark", x, y),
+    honk: (x, y) => audio.honk(x, y),
+    kneel: (on) => {
+      eventKneel = on;
+    },
+    // Un bagarreur frappe le joueur (rixe) : le coup, la douleur.
+    hurtPlayer: (n) => {
+      if (riding || health.dead) return;
+      health.damage(n);
+      audio.swing("punch");
+      audio.hurt();
+    },
+    bars: () => ui.bars,
+    applause: (x, y, t) => audio.applause(x, y, t),
+    bells: (x, y, t) => audio.bells(x, y, t),
+    // Le braqueur tire sur le joueur (phase 4) : comme un tir de gendarme (D85) : éclair, trait, son, gilet, points de vie, arc du tir reçu.
+    shoot: (x0, y0, x1, y1, hit, damage) => {
+      const z0 = terrain.heightAt(x0, y0) + 1.3;
+      fx.flash(x0, y0, z0);
+      fx.tracer(x0, y0, z0, x1, y1, hit ? player.z + 1.1 : z0);
+      audio.shot("pistol", x0, y0, false);
+      threats.add(x0, y0, player.x, player.y, hit);
+      if (hit) {
+        fx.sparks(x1, y1, player.z + 1.1, true, Math.random);
+        if (!health.dead) {
+          const v = vestAbsorb(damage * (riding ? 0.5 : 1), armor);
+          armor = v.armor;
+          health.damage(v.hurt);
+        }
+      } else audio.nearMiss(x0, y0, x1, y1, player.x, player.y);
+    },
+    dropGun: (x, y) => pickups.drop(x, y, "pistol", CACHE_ROUNDS.pistol! / 2),
+    shopAlarm: (x, y, t) => audio.shopAlarm(x, y, t),
+    openShops: () => ui.shops.filter((q) => shopOpen(q, atmosphere.calendar.weekday, atmosphere.hour)),
+    // Les corbeilles de rue des tuiles chargées (cherchées seulement au lancement d'un feu de poubelle).
+    bins: () => {
+      const out: { x: number; y: number }[] = [];
+      for (const t of tiles.loadedExtras()) for (const f of t.furniture) if (f.kind === "waste_basket") out.push({ x: f.x, y: f.y });
+      return out;
+    },
+    traffic: () => traffic as Traffic | null,
+    road: () => (nav as NavManager | null)?.graph.road ?? null,
+    pedNav: () => (nav as NavManager | null)?.graph ?? null,
+    feat: (t) => showFeat(t),
+    crime: (k, x, y) => police.crime(k, x, y, true),
+    street: (x: number, y: number): string | null => streetNear(ui.streets, x, y),
+  }, 13, saved?.events ? new EventBook(saved.events) : null, params.get("event"));
+  /** Le joueur tel que les événements le voient (réécrit à chaque appel). */
+  const evPlayer = { x: 0, y: 0, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0, aiming: false };
+  const evFill = (): typeof evPlayer => {
+    const st = riding?.state;
+    evPlayer.x = player.x;
+    evPlayer.y = player.y;
+    evPlayer.vx = st ? st.vx : player.vx;
+    evPlayer.vy = st ? st.vy : player.vy;
+    evPlayer.speed = Math.abs(speedOf());
+    evPlayer.onFoot = !riding && !player.swim;
+    evPlayer.yaw = yaw;
+    evPlayer.aiming = aiming;
+    return evPlayer;
   };
   let discoverTimer = 0;
   /** Tintement des pièces d'or proches (D321) : distance d'écoute (m) et attente avant le prochain. */
@@ -1051,9 +1131,12 @@ export function startGame(ctx: GameContext): void {
     s.yawRate = got.yawRate;
     s.speed = got.vx * Math.sin(got.heading) + got.vy * Math.cos(got.heading);
     // Portière du conducteur : à gauche (même côté que la descente du joueur) ; il est tiré vers l'extérieur et s'enfuit loin du joueur.
+    // Personne au volant (une voiture accidentée dont les conducteurs sont descendus, phase 4) : c'est un vol de véhicule, vu par la police seulement.
     const lx = -Math.cos(got.heading), ly = Math.sin(got.heading), side = FAMILIES.car.dismount;
-    (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
-    police.crime("carjack", got.x, got.y, true);
+    if (got.driver >= 0) {
+      (peds as PedsController | null)?.eject(got.x + lx * side, got.y + ly * side, got.driver, lx, ly, 1.6, player.x, player.y);
+      police.crime("carjack", got.x, got.y, true);
+    } else police.crime("theft", got.x, got.y, false);
     mount(v);
   };
   /**
@@ -1311,6 +1394,12 @@ export function startGame(ctx: GameContext): void {
       else bailOut();
       return;
     }
+    const ea = events.action(evFill());
+    if (ea) {
+      ea.run();
+      updateHud();
+      return;
+    }
     const r = reachable();
     if (r.traffic) carjack();
     else if (r.fleet) {
@@ -1450,7 +1539,10 @@ export function startGame(ctx: GameContext): void {
   const updateHud = (): void => {
     let verb = "", what = "", ico = "";
     const r = riding ? null : reachable();
+    // Un événement propose son geste (« Rendre le sac ») avant tout le reste : c'est lui qu'on vient faire.
+    const ea = riding || downFor > 0 ? null : events.action(evFill());
     if (riding) [verb, ico] = ["Descendre", icon("exit")];
+    else if (ea) [verb, what, ico] = [ea.verb, ea.label.slice(ea.verb.length + 1), icon(ea.icon ?? "bag")];
     else if (r?.traffic) [verb, what, ico] = ["Prendre", r.traffic, icon("car")];
     else if (r?.fleet) [verb, what, ico] = ["Monter", r.fleet.def.name, vehicleIcon(r.fleet.def.id, r.fleet.def.family)];
     else {
@@ -1469,7 +1561,7 @@ export function startGame(ctx: GameContext): void {
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
-    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(), armor: Math.round(armor),
+    x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(), armor: Math.round(armor), events: events.book.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1477,9 +1569,10 @@ export function startGame(ctx: GameContext): void {
       model.setRecipe(r);
       appearanceStore.write(r);
     },
-  }, () => records.values, { notebook: () => notebook, challenges: () => challenges, garage: () => garageRows() });
+  }, () => records.values, { notebook: () => notebook, challenges: () => challenges, garage: () => garageRows(), events: () => events.book, date: () => atmosphere.date });
 
   ui.police = police.minimap;
+  ui.events = events.markers;
 
   // Arrestation (J4-5, D75, D238) : le véhicule conduit est confisqué, on repart à pied devant le portail de la gendarmerie, six heures plus tard, sans étoile.
   const busted = document.getElementById("busted")!;
@@ -1492,6 +1585,7 @@ export function startGame(ctx: GameContext): void {
     busted.classList.add("show");
   };
   const arrest = (): void => {
+    events.reset();
     const taken = riding;
     // Un véhicule acheté (D323) part à la fourrière (on le récupère dans le carnet, 300 €) ; un autre est confisqué.
     const impounded = !!taken && owned.isOwned(taken.id);
@@ -1523,6 +1617,7 @@ export function startGame(ctx: GameContext): void {
   // Mort (J5-0, D80) : le véhicule conduit reste où il était, on se réveille à l'hôpital le plus proche (D161) trois heures plus tard, santé pleine, sans étoile.
   // Depuis D317, on garde ses armes (elles s'achètent) et l'hôpital envoie sa facture : 10 % du solde, 1 000 € au plus.
   const die = (): void => {
+    events.reset();
     if (riding) dismount();
     const hospital = nearestHospital(player.x, player.y);
     police.reset();
@@ -1837,7 +1932,9 @@ export function startGame(ctx: GameContext): void {
     if (pedsNow0 && !pedsNow0.officerHurt) pedsNow0.officerHurt = (i, d, ux, uy, imp) => police.officers.hurt(i, d, ux, uy, imp);
     // Violence (J5-4) : frapper est une agression, tuer un meurtre ; la police l'ajoute si elle voit, sinon un passant vivant à moins de 25 m téléphone.
     const violence = (hits: number, killed: number): void => {
-      if (hits <= 0) return;
+      // Arrêter un voleur en fuite n'est pas une agression (phase 4) ; le tuer reste un meurtre.
+      hits -= pedsNow0?.takeLawfulHits() ?? 0;
+      if (hits <= 0 && killed <= 0) return;
       pedWitnesses.length = 0;
       police.crime(killed > 0 ? "murder" : "assault", player.x, player.y, (pedsNow0?.queryCircle(player.x, player.y, 25, pedWitnesses) ?? 0) > 0, player.z);
     };
@@ -1975,6 +2072,26 @@ export function startGame(ctx: GameContext): void {
       if (!pickups.available(pk) || Math.hypot(pk.x - player.x, pk.y - player.y) > 90) continue;
       pickViews.push({ x: pk.x, y: pk.y, z: terrain.heightAt(pk.x, pk.y), weapon: pk.weapon, heal: pk.kind === "heal", cash: pk.kind === "cash" });
     }
+    // Objets d'un événement (phase 4) : le sac volé, au sol.
+    for (const it of events.items) {
+      const z = terrain.heightAt(it.x, it.y);
+      if (it.kind === "fire") {
+        // Feu de poubelle (phase 4) : flammes (leur force dans `color`, de 0 à 1) et fumée grise qui monte, crépitement.
+        if (Math.hypot(it.x - player.x, it.y - player.y) > 150) continue;
+        const k = it.color, nf = Math.floor(dt * 22 * k + Math.random()), ns = Math.floor(dt * (2 + 4 * k) + Math.random());
+        for (let i = 0; i < nf; i++) {
+          flames.emit(it.x + (Math.random() - 0.5) * 0.35, it.y + (Math.random() - 0.5) * 0.35, z + 0.75, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 1.6 + Math.random() * 1.2,
+            FLAME_COLORS[Math.floor(Math.random() * FLAME_COLORS.length)]!, 0.18, 0.35 + 0.25 * k, 0.35 + Math.random() * 0.3, Math.random);
+        }
+        for (let i = 0; i < ns; i++) {
+          smoke.emit(it.x + (Math.random() - 0.5) * 0.4, it.y + (Math.random() - 0.5) * 0.4, z + 1.1, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 1 + Math.random() * 0.6,
+            WRECK_SMOKE, 0.22, 0.7 + Math.random() * 0.4, 2.4 + Math.random(), Math.random);
+        }
+        if (k > 0.2 && Math.random() < dt * 3) audio.crackle(it.x, it.y);
+        continue;
+      }
+      pickViews.push(it.kind === "cash" ? { x: it.x, y: it.y, z, weapon: null, cash: true } : { x: it.x, y: it.y, z, weapon: null, bag: it.color });
+    }
     // Grenades (D326) : elles volent, rebondissent et explosent au bout de la mèche ; l'arc de lancer en petits cubes, l'impact plus gros.
     for (let i = grenades.length - 1; i >= 0; i--) {
       const g = grenades[i]!;
@@ -2041,6 +2158,7 @@ export function startGame(ctx: GameContext): void {
       trackFeats(riding.family, riding.state);
     } else {
       model.setDown(downFor > 0 ? { t: downTotal - downFor, side: downSide, variant: downVariant, impulse: downAmp } : null);
+      model.setKneel(eventKneel && downFor <= 0);
       model.setAir(player.climb ? { climb: true, vz: 0, t: player.z } : player.air ? { climb: false, vz: player.vz, t: 0 } : null);
       model.setSwim(player.swim ? { crawl: Math.min(1, Math.max(0, (player.speed - SWIM_SPEED) / (SWIM_FAST - SWIM_SPEED))) } : null);
       if (player.splash > 0) {
@@ -2151,6 +2269,7 @@ export function startGame(ctx: GameContext): void {
           pedsNow.scope = crowdScope;
         } else pedsNow.scope = null;
       }
+      if (pedsNow && !pedsNow.lawful) pedsNow.lawful = (slot) => events.lawful(slot);
       pedsNow?.update(dt, obs, camera.position.x, camera.position.z);
       if (pedsNow) audio.pedEvents(pedsNow.events);
       (traffic as Traffic | null)?.applyImpacts();
@@ -2172,15 +2291,31 @@ export function startGame(ctx: GameContext): void {
     {
       const imp = (peds as PedsController | null)?.impact;
       const s = riding?.state;
+      // Voleur en fuite renversé par le joueur (phase 4) : pas d'infraction s'il n'en meurt pas.
+      const lawfulRuns = (): number => {
+        let n = 0;
+        for (const e of (peds as PedsController | null)?.events ?? []) if (e.kind === "hit" && riding && events.lawful(e.slot) && Math.hypot(e.x - riding.state.x, e.y - riding.state.y) < 8) n++;
+        return n;
+      };
       police.update(dt, {
         x: player.x, y: player.y, z: player.z, swimming: !riding && player.swim, vx: s ? s.vx : player.vx, vy: s ? s.vy : player.vy, heading: s ? s.heading : player.heading, speed: Math.abs(speedOf()), driving: !!riding,
         vehicle: riding ? { state: riding.state, spec: riding.spec } : null,
-        pedHits: riding && imp ? imp.hits : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
+        pedHits: riding && imp ? Math.max(0, imp.hits - lawfulRuns()) : 0, pedHitSpeed: imp ? imp.speed : 0, pedKills: riding && imp ? imp.kills : 0,
         witnesses: (x, y, r) => {
           pedWitnesses.length = 0;
           return (peds as PedsController | null)?.queryCircle(x, y, r, pedWitnesses) ?? 0;
         },
       });
+    }
+    // Événements aléatoires (phase 4) : le directeur, les scènes en cours, les bulles ; un palier des défis « Faits divers » paie sa prime.
+    events.setLevel(settings.values.events);
+    for (const h of events.update(dt, {
+      player: evFill(), hour: atmosphere.hour, date: atmosphere.date, weekday: atmosphere.calendar.weekday, rain: atmosphere.weather.rain, stars: wanted.stars,
+      blocked: health.dead || downFor > 0 || player.swim || (!riding && player.z - terrain.heightAt(player.x, player.y, player.z) > PERCH),
+      traffic: settings.values.traffic > 0,
+    })) {
+      wallet.earn(h.reward, `Défi ${TIER_NAMES[h.tier - 1]}`);
+      showFeat(EventsController.tierText(h));
     }
     // Police armée (J5-5, D85) : les balles qui portent retirent des points de vie (la moitié au volant) ; traits et éclairs de la police, passants effrayés ;
     // le pistolet d'un gendarme tué tombe à terre (on peut le ramasser).
@@ -2316,6 +2451,8 @@ export function startGame(ctx: GameContext): void {
     feasts: () => ({ list: atmosphere.feasts, ...feasts.state }),
     /** Essais : animaux présents par espèce (D203). */
     animals: () => animals.counts(),
+    /** Essais et captures : les événements (phase 4). */
+    events,
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

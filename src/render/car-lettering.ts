@@ -2,7 +2,8 @@ import type * as THREE from "three";
 import type { Guide, SculptKit } from "./car-sculpt";
 
 /**
- * Lettrage des voitures de gendarmerie (D281, D282) : le mot GENDARMERIE tracé en traits posés sur la caisse (pas de texture, style « affiche »).
+ * Lettrage des voitures de gendarmerie (D281, D282) et du fourgon des pompiers (phase 4) : GENDARMERIE, POMPIERS, tracés en traits posés sur la
+ * caisse (pas de texture, style « affiche »).
  */
 
 /**
@@ -18,6 +19,10 @@ const GLYPHS: Readonly<Record<string, { w: number; strokes: readonly (readonly (
   R: { w: 0.6, strokes: [[[0, 0], [0, 1], [0.5, 1], [0.6, 0.9], [0.6, 0.5], [0, 0.5]], [[0.3, 0.5], [0.6, 0]]] },
   M: { w: 0.7, strokes: [[[0, 0], [0, 1], [0.35, 0.45], [0.7, 1], [0.7, 0]]] },
   I: { w: 0.1, strokes: [[[0.05, 0], [0.05, 1]]] },
+  // Pour le fourgon des pompiers (phase 4) : POMPIERS.
+  P: { w: 0.55, strokes: [[[0, 0], [0, 1], [0.45, 1], [0.55, 0.9], [0.55, 0.6], [0.45, 0.5], [0, 0.5]]] },
+  O: { w: 0.6, strokes: [[[0.1, 0], [0, 0.1], [0, 0.9], [0.1, 1], [0.5, 1], [0.6, 0.9], [0.6, 0.1], [0.5, 0], [0.1, 0]]] },
+  S: { w: 0.55, strokes: [[[0.55, 1], [0.08, 1], [0, 0.9], [0, 0.6], [0.08, 0.5], [0.47, 0.5], [0.55, 0.4], [0.55, 0.1], [0.47, 0], [0, 0]]] },
 };
 
 /**

@@ -182,7 +182,7 @@ describe("stockage", () => {
 describe("réglages", () => {
   it("valeurs invalides : retour aux valeurs par défaut champ par champ ; valeurs proches : on prend le choix le plus proche", () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, aimSensitivity: 0.04, aimAssist: 3, minimapNorth: "oui", crowd: 120, slowmo: "non", seasonLength: 10, season: 4 })).toEqual({ dpr: 2.5, shadows: 2048, fps: 60, detail: 400, sensitivity: 2, aimSensitivity: 0.3, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, volume: 0.8, vibration: true, slowmo: true, effects: 2, sky: true, sea: true, fullscreen: true, seasonLength: 7, season: -1 });
+    expect(parseSettings({ dpr: "x", shadows: 3000, detail: 999, sensitivity: 7, aimSensitivity: 0.04, aimAssist: 3, minimapNorth: "oui", crowd: 120, slowmo: "non", seasonLength: 10, season: 4, events: 7 })).toEqual({ dpr: 2.5, shadows: 2048, fps: 60, detail: 400, sensitivity: 2, aimSensitivity: 0.3, aimAssist: 1, minimapNorth: false, crowd: 100, traffic: 20, events: 2, volume: 0.8, vibration: true, slowmo: true, effects: 2, sky: true, sea: true, fullscreen: true, seasonLength: 7, season: -1 });
     expect(parseSettings({ seasonLength: 14, season: 2 })).toMatchObject({ seasonLength: 14, season: 2 });
     expect(parseSettings({ dpr: 2.4, minimapNorth: true }).dpr).toBe(2.5);
     expect(parseSettings({ minimapNorth: true }).minimapNorth).toBe(true);
@@ -198,6 +198,10 @@ describe("réglages", () => {
     expect([...forced.locked].sort()).toEqual(["detail", "dpr", "shadows"]);
     expect(effectiveSettings(stored, new URLSearchParams("shadowmap=1024")).values.shadows).toBe(1024);
     expect(effectiveSettings(stored, new URLSearchParams("dpr=abc")).locked.size).toBe(0);
+    // Événements (phase 4) : `?events=0…3` impose le réglage ; une autre valeur est ignorée.
+    expect(effectiveSettings(stored, new URLSearchParams("events=3")).values.events).toBe(3);
+    expect(effectiveSettings(stored, new URLSearchParams("events=3")).locked.has("events")).toBe(true);
+    expect(effectiveSettings(stored, new URLSearchParams("events=9")).values.events).toBe(2);
   });
 
   it("enregistrement local et relecture", () => {
