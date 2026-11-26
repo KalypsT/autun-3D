@@ -544,6 +544,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       ["e.phase === 'convoy' && e.phaseT > 6", 16, "pj4-mariage-cortege"],
     ]);
   }
+  // Le braqueur, pistolet à la main, qui fuit ; puis le joueur qui le menace : il se retourne et vise.
+  if (want("braquage")) {
+    await eventShots("event=braquage&h=20&traffic=20", [
+      ["e.phase === 'flee' && e.t > 1.5", 8, "pj4-braquage"],
+    ]);
+  }
   if (want("feu")) {
     await eventShots("event=feu&h=21&traffic=20", [
       ["e.phase === 'burn' && e.phaseT > 4", 8, "pj4-feu"],

@@ -1,5 +1,6 @@
 import { TIER_REWARDS } from "../challenges";
 import type { EventEnd } from "./director";
+import type { EventKind } from "./types";
 
 /**
  * Carnet des événements (phase 4) : les comptes de la partie (voleurs rattrapés, bonnes actions…), trois défis à paliers comme ceux de D319
@@ -14,6 +15,15 @@ export const EVENT_CHALLENGES = [
 
 export type EventChallengeId = (typeof EVENT_CHALLENGES)[number]["id"];
 
+/** Les faits divers de la ville, dans l'ordre du carnet (« Déjà vu en ville » : une petite collection, « ? » tant qu'on ne l'a pas vu). */
+export const EVENT_KINDS: readonly { kind: EventKind; label: string }[] = [
+  { kind: "vol", label: "Vol à l'arraché" }, { kind: "pickpocket", label: "Pickpocket" }, { kind: "chien", label: "Chien échappé" },
+  { kind: "accident", label: "Accident" }, { kind: "poursuite", label: "Course-poursuite" }, { kind: "malaise", label: "Malaise" },
+  { kind: "rixe", label: "Rixe" }, { kind: "enerve", label: "Conducteur énervé" }, { kind: "livreur", label: "Livreur pressé" },
+  { kind: "chauffard", label: "Accident en direct" }, { kind: "mariage", label: "Cortège de mariage" }, { kind: "feu", label: "Feu de poubelle" },
+  { kind: "braquage", label: "Braquage" },
+];
+
 /** Une ligne du journal : date du jeu, heure, texte (« Vol à l'arraché, rue aux Cordiers · voleur rattrapé »). */
 export interface BookLine {
   date: number;
@@ -25,6 +35,8 @@ export interface SavedEventBook {
   counts: Partial<Record<EventChallengeId, number>>;
   tiers: Partial<Record<EventChallengeId, number>>;
   lines: BookLine[];
+  /** Faits divers vus, par sorte (absent dans les sauvegardes d'avant le lot 10). */
+  seen?: Partial<Record<EventKind, number>>;
 }
 
 /** Un palier franchi : le défi, le palier (1 bronze, 2 argent, 3 or), la prime. */
@@ -53,9 +65,11 @@ export class EventBook {
   readonly counts: Record<EventChallengeId, number> = { voleurs: 0, fugitifs: 0, bonnes: 0 };
   readonly tiers: Record<EventChallengeId, number> = { voleurs: 0, fugitifs: 0, bonnes: 0 };
   readonly lines: BookLine[] = [];
+  readonly seen: Partial<Record<EventKind, number>> = {};
 
   constructor(saved?: SavedEventBook | null) {
     if (!saved) return;
+    Object.assign(this.seen, saved.seen ?? {});
     for (const c of EVENT_CHALLENGES) {
       this.counts[c.id] = saved.counts[c.id] ?? 0;
       this.tiers[c.id] = saved.tiers[c.id] ?? 0;
@@ -66,8 +80,9 @@ export class EventBook {
   /** Un événement fini : ses comptes, et les paliers qu'il fait franchir. */
   record(end: EventEnd): EventTierHit[] {
     const hits: EventTierHit[] = [];
-    // Un pickpocket rattrapé est aussi un voleur rattrapé.
-    if (end.caught && (end.kind === "vol" || end.kind === "pickpocket")) hits.push(...this.bump("voleurs"));
+    this.seen[end.kind] = (this.seen[end.kind] ?? 0) + 1;
+    // Un pickpocket rattrapé, un braqueur arrêté sont aussi des voleurs rattrapés.
+    if (end.caught && (end.kind === "vol" || end.kind === "pickpocket" || end.kind === "braquage")) hits.push(...this.bump("voleurs"));
     // Un fugitif arrêté grâce au joueur (phase 4, poursuite).
     if (end.caught && end.kind === "poursuite") hits.push(...this.bump("fugitifs"));
     if (end.goodDeed) hits.push(...this.bump("bonnes"));
@@ -103,7 +118,7 @@ export class EventBook {
       if (this.counts[c.id] > 0) counts[c.id] = this.counts[c.id];
       if (this.tiers[c.id] > 0) tiers[c.id] = this.tiers[c.id];
     }
-    return { counts, tiers, lines: this.lines.map((l) => ({ ...l })) };
+    return { counts, tiers, lines: this.lines.map((l) => ({ ...l })), seen: { ...this.seen } };
   }
 }
 
@@ -128,5 +143,13 @@ export function parseEventBook(o: unknown): SavedEventBook | null {
       }
     }
   }
-  return { counts, tiers, lines };
+  const seen: Partial<Record<EventKind, number>> = {};
+  const sv = r["seen"];
+  if (sv && typeof sv === "object") {
+    for (const k of EVENT_KINDS) {
+      const v = (sv as Record<string, unknown>)[k.kind];
+      if (v !== undefined) seen[k.kind] = int(v, 1e6);
+    }
+  }
+  return { counts, tiers, lines, seen };
 }

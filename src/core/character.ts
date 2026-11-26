@@ -274,6 +274,15 @@ export function gendarmeRecipe(seed: number): Recipe {
   };
 }
 
+/** Braqueur (phase 4) : sweat à capuche et bonnet noirs, jean sombre, baskets noires, pas de sac ni de lunettes de soleil. */
+export function robberRecipe(seed: number): Recipe {
+  const r = recipeFromSeed(seed);
+  return {
+    ...r, age: "adult", top: "hoodie", topColor: 8, bottom: "jeans", bottomColor: 2, shoes: "sneakers", shoeColor: 1, hat: "beanie", hatColor: 8,
+    glasses: "none", bag: "none", scarf: false, outfit: "city", umbrella: false,
+  };
+}
+
 /** Pompier (phase 4, malaise) : veste et pantalon bleu marine, bottes, casque clair. */
 export function pompierRecipe(seed: number): Recipe {
   const r = recipeFromSeed(seed);

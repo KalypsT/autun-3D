@@ -11,7 +11,7 @@ import { RECORD_KINDS, RECORD_LABELS, recordText, type RecordKind, type RecordVa
 import { challengeGoal, TIER_NAMES, TIER_REWARDS, type Challenges } from "../core/challenges";
 import type { CollectionDef, Notebook } from "../core/collections";
 import { formatMoney } from "../core/wallet";
-import { EVENT_CHALLENGES, type EventBook } from "../core/events/book";
+import { EVENT_CHALLENGES, EVENT_KINDS, type EventBook } from "../core/events/book";
 import { AIM_SENSITIVITY_RANGE, CROWD_CHOICES, DETAIL_CHOICES, DPR_CHOICES, EFFECTS_CHOICES, FPS_CHOICES, SENSITIVITY_RANGE, SHADOW_CHOICES, TRAFFIC_CHOICES, EVENTS_CHOICES, VOLUME_STEP, type SettingKey, type Settings } from "../core/settings";
 
 /** Menu pause : Reprendre, Carte, Apparence, Réglages, Lieux notés, Sauvegarde, Crédits. Il ne touche pas au jeu : tout passe par `PauseHooks`. */
@@ -652,7 +652,7 @@ export class PauseMenu {
     c.append(h("p", "pm-muted", "Les défis se gagnent pendant la partie : les records d'une partie précédente ne comptent pas."));
   }
 
-  /** Faits divers (phase 4) : les défis des événements (trois paliers chacun), puis le journal du jour. */
+  /** Faits divers (phase 4) : les défis des événements (trois paliers chacun), les sortes de faits divers déjà vues, puis le journal du jour. */
   private eventsTab(): void {
     const c = this.content, book = this.hooks.events?.();
     if (!book) return;
@@ -667,6 +667,14 @@ export class PauseMenu {
         medals.append(m);
       }
       r.append(left, medals);
+      c.append(r);
+    }
+    // Déjà vu en ville : les treize sortes de faits divers, combien de fois chacune ; « ? » tant qu'on ne l'a pas vue.
+    const seenKinds = EVENT_KINDS.filter((k) => (book.seen[k.kind] ?? 0) > 0).length;
+    c.append(h("h3", "pm-sub", `Déjà vu en ville · ${seenKinds} / ${EVENT_KINDS.length}`));
+    for (const k of EVENT_KINDS) {
+      const n = book.seen[k.kind] ?? 0, r = h("div", "pm-row");
+      r.append(h("span", n ? "" : "pm-muted", n ? k.label : "?"), h("strong", "pm-record", n ? `× ${n}` : "—"));
       c.append(r);
     }
     const today = this.hooks.today?.() ?? 0;

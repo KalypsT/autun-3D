@@ -7,7 +7,7 @@ import type { Crime } from "../wanted";
  */
 
 /** Les identifiants des événements du catalogue (§ 3 du plan). */
-export type EventKind = "vol" | "pickpocket" | "chien" | "accident" | "poursuite" | "malaise" | "rixe" | "enerve" | "livreur" | "chauffard" | "mariage" | "feu";
+export type EventKind = "vol" | "pickpocket" | "chien" | "accident" | "poursuite" | "malaise" | "rixe" | "enerve" | "livreur" | "chauffard" | "mariage" | "feu" | "braquage";
 
 /** Les passants, vus par un événement : un sous-ensemble de `PedSim` (le jeu passe la vraie simulation). */
 export interface EventPeds {
@@ -29,6 +29,8 @@ export interface EventPeds {
   applyImpulse(i: number, ix: number, iy: number): void;
   /** Fait apparaître quelqu'un debout, réquisitionné (voir `PedSim.appear`) ; −1 sans file piétonne proche. */
   appear(x: number, y: number, seed: number, heading: number, recipe?: Recipe | null): number;
+  /** Pistolet en main (le braqueur) ou plus. */
+  setHeld(i: number, on: boolean): void;
   /** Le passant disparaît (il monte en voiture). */
   vanish(i: number): void;
   /** Fait tomber le passant, même s'il trébuchait (plaquage). */
@@ -93,6 +95,8 @@ export interface EventPlayer {
   onFoot: boolean;
   /** Direction du regard de la caméra (rad, 0 = nord). */
   yaw: number;
+  /** En mode visée, une arme à feu en main (il menace quelqu'un). */
+  aiming?: boolean;
 }
 
 /** Ce qu'un événement fait dans le monde : paroles, cris, argent, bandeau, infractions. Le jeu le branche sur l'interface, le son, le porte-monnaie, la police. */

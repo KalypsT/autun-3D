@@ -2426,3 +2426,10 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 ![Mariage : les invités sur le parvis de l'hôtel de ville](docs/captures/pj4-mariage.jpg)
 ![Feu de poubelle, le soir](docs/captures/pj4-feu.jpg)
 ![Les pompiers arrivent : « On s'en occupe, reculez ! »](docs/captures/pj4-feu-pompiers.jpg)
+
+**Plaisir de jeu, phase 4, lots 9 et 10 : le braquage, et le bilan de la phase (26 novembre 2026)** (D336, D337)
+- **Braquage** (avec ton accord) : le soir, un homme cagoulé sort en courant d'un commerce ouvert, pistolet à la main ; l'alarme sonne, le commerçant crie « Au voleur ! Il a une arme ! ». Si tu le menaces d'une arme ou que tu lui coupes la route, il s'arrête et **te tire dessus** (trois coups au plus, 12 points chacun). Plaque-le : il lâche son pistolet (tu peux le ramasser), lève les mains, une patrouille l'emmène : **800 €**.
+- **Carnet « Faits divers »** : nouvelle section « Déjà vu en ville » : les treize sortes de faits divers, combien de fois tu as vu chacune, « ? » pour celles que tu n'as pas encore vues.
+- **Phase 4 terminée côté code** : treize événements (le tableau est dans D337). Les fréquences restent celles du plan : c'est à toi de dire, en jouant, ce qui revient trop ou pas assez.
+- **À faire de ton côté** (protocole dans D337) : le banc `?bench=1&crowd=100&sim=1&traffic=20&events=1` sur le téléphone (et sans `&events=1` pour comparer), puis vingt minutes de jeu avec « Événements : Fréquents ».
+- Pour essayer le braquage : `?event=braquage&h=20`.

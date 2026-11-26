@@ -10,6 +10,7 @@ import { findDeliverySpot, LivreurEvent } from "./livreur";
 import { ChauffardEvent, findChauffard } from "./chauffard";
 import { HALL, MARIAGE, MariageEvent } from "./mariage";
 import { FeuEvent, findBin } from "./feu";
+import { BraquageEvent, findShop } from "./braquage";
 import type { NavGraph } from "../nav-graph";
 import type { RoadGraph } from "../road-graph";
 import { findSnatchSite, SnatchEvent } from "./snatch";
@@ -31,7 +32,12 @@ export interface EventWorld {
     hurtPlayer(damage: number, fromX: number, fromY: number): void;
     applause(x: number, y: number, seconds: number): void;
     bells(x: number, y: number, seconds: number): void;
+    shoot(x0: number, y0: number, x1: number, y1: number, hit: boolean, damage: number): void;
+    dropGun(x: number, y: number): void;
+    alarm(x: number, y: number, seconds: number): void;
   };
+  /** Commerces ouverts en ce moment (le braquage). */
+  openShops?(): readonly { x: number; y: number }[];
   /** Bars, cafés et restaurants (où éclatent les rixes). */
   bars?(): readonly { x: number; y: number }[];
   /** Corbeilles de rue des tuiles chargées (où prend un feu de poubelle). */
@@ -203,6 +209,25 @@ export function eventCatalog(world: EventWorld): EventDef[] {
         const bin = findBin(world.bins?.() ?? [], ctx, rng);
         if (!bin) return null;
         return new FeuEvent(world.peds(), ctx.traffic ? world.traffic?.() ?? null : null, world.road?.() ?? null, world.pedNav?.() ?? null, world.fx, bin, rng);
+      },
+    },
+    {
+      kind: "braquage",
+      big: true,
+      label: "Braquage",
+      weight: (ctx: DirectorContext) => {
+        // Le soir (19 h – 23 h), un commerce ouvert à moins de 100 m.
+        if (!ctx.crowd || ctx.hour < 19 || ctx.hour >= 23 || !world.openShops || !world.pedNav) return 0;
+        const p = ctx.player;
+        return world.openShops().some((s) => Math.hypot(s.x - p.x, s.y - p.y) < 100) ? 0.5 : 0;
+      },
+      start: (ctx, rng) => {
+        const peds = world.peds(), nav = world.pedNav?.();
+        if (!peds || !nav) return null;
+        const shop = findShop(world.openShops?.() ?? [], nav, ctx, rng);
+        if (!shop) return null;
+        const ev = new BraquageEvent(peds, ctx.traffic ? world.traffic?.() ?? null : null, world.road?.() ?? null, nav, world.fx, shop, rng);
+        return ev.ok ? ev : null;
       },
     },
     {

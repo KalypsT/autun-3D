@@ -273,6 +273,14 @@ export class GameAudio {
     S.applause(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
   }
 
+  /** Alarme d'un commerce braqué (phase 4). */
+  shopAlarm(x: number, y: number, seconds: number): void {
+    const kit = this.kit;
+    const spot = kit && this.spot(x, y, 6, 220, 0.2);
+    if (!kit || !spot) return;
+    S.shopAlarm(kit, this.sys.buses!.sfx, kit.ctx.currentTime, seconds, spot);
+  }
+
   bells(x: number, y: number, seconds: number): void {
     const kit = this.kit;
     const spot = kit && this.spot(x, y, 20, 600, 0.4);

@@ -8362,3 +8362,105 @@ par l'utilisateur sur ses captures, retrouvée sur la carte du jeu (bâtiment au
 - Un mariage met jusqu'à sept passants réquisitionnés : avec un vol à côté, neuf (le plan disait huit au plus).
 
 **À juger en jouant** : la fréquence du mariage (le samedi après-midi seulement), les klaxons du cortège, la taille du feu.
+
+## 2026-11-26 — D336. Plaisir de jeu, phase 4, lot 9 : le braquage
+
+**Contexte** : plan `docs/plans/evenements.md`, E13, lot 9, fait **avec l'accord de l'utilisateur** (Q3 : « Oui, fais le braquage ») : c'est le seul
+événement où un PNJ tire sur le joueur.
+
+**Choix**
+- **Où, quand** (`src/core/events/braquage.ts`) : le soir (19 h – 23 h), un **commerce ouvert** de la carte (les commerces de D322 à leurs
+  horaires) à 30 – 100 m, de préférence à l'écran. Poids 0,5, grand événement.
+- **Ce qu'on voit et entend** : un homme **cagoulé** (sweat à capuche et bonnet noirs : `robberRecipe`) sort en courant de la porte du commerce,
+  **pistolet à la main** (la pièce `weaponPistol` des gendarmes armés de D85, sur un passant réquisitionné : `PedSim.setHeld`) ; l'**alarme**
+  du commerce sonne 25 s (nouveau son, deux notes aiguës, page `?sounds`), un cri ; les passants tout près s'écartent ; le **commerçant** sort
+  derrière lui, le montre du doigt (« Au voleur ! Il a une arme ! ») et rentre au bout de 10 s. Le braqueur fuit le joueur sur le graphe piéton
+  (le fuyard de D329, un peu plus rapide : 6 m/s, 4,8 essoufflé ; le sprint du joueur fait 7). Repère « fuyard » sur la minimap.
+- **Il tire** : si le joueur, à pied, le **menace d'une arme à feu** (en mode visée, D205) à moins de 25 m, ou le **rattrape de face** (devant lui,
+  à moins de 60° de son cap) à moins de 7 m. Il s'arrête, se tourne, **vise** (« Lâche ça ! », « Recule ! ») et tire toutes les 1,2 s, **trois coups
+  au plus**, puis repart (pas de nouveau face-à-face avant 6 s, sauf menace) ; le joueur à plus de 15 m : il repart aussi. Un tir est celui d'un
+  gendarme armé (D85) : éclair, trait, détonation, arc du tir reçu, **12 points de vie** (le gilet en prend la moitié, D327), chance de toucher
+  selon la distance et la vitesse du joueur ; les passants proches fuient.
+- **L'arrêter** : le **plaquer** (sprint), le frapper, le renverser : il **lâche son pistolet** (il se ramasse, avec la moitié d'un chargeur),
+  lève les mains (« C'est bon, c'est bon ! ») ; une **patrouille** vient (itinéraire, sirène), un gendarme descend (« Gendarmerie ! Pas un
+  geste ! »), le rejoint par le graphe piéton, l'arrête et tous deux montent dans la voiture. **Prime de la gendarmerie : 800 €**, un **voleur
+  rattrapé** et une bonne action au carnet. Sans circulation, il est emmené au bout de 12 s. En fuite (ou en train de viser), le mettre à terre
+  n'est pas une infraction ; **le tuer reste un meurtre** (Q5 du plan) ; tirer reste un coup de feu en public. Il s'échappe s'il distance le
+  joueur (règles du fuyard).
+
+**Mesures**
+- **Tests sans écran** (`src/game/braquage.test.ts`, vraies données, commerces « de test » posés sur le graphe piéton) : pistolet en main, bonnet,
+  alarme, « Au voleur ! » ; sans le joueur, il s'échappe sans tirer, rien ne reste réquisitionné ni armé ; menacé d'une arme à 12 m, il vise
+  (pose de visée) et tire de un à trois coups (12 points par coup qui porte), puis repart ; poursuivi en sprint par derrière : **arrêté 4 fois sur
+  4**, l'arme lâchée, la prime ; sans circulation aussi. (Poursuivi par derrière, il ne s'est jamais retourné pour tirer : le face-à-face vient
+  d'un joueur qui lui coupe la route.)
+- **Endurance** : un braquage lancé (graine 11), arrêté grâce au robot. Voir D337.
+
+**Limites, honnêtement**
+- Le braqueur court avec le pistolet dans la main qui balance (pas de pose « arme basse » pendant la course : les passants n'ont de pose qu'à
+  l'arrêt) ; à l'arrêt il vise correctement.
+- Il ne monte jamais dans une voiture qui l'attend (l'enchaînement sur E5 du plan) : il fuit toujours à pied.
+- Le commerce ne change pas (pas de vitrine brisée, le commerçant ne vous remercie pas).
+
+**À juger en jouant** : la difficulté (trois tirs à 12 points), la prime (800 €), la fréquence (poids 0,5, le soir).
+
+## 2026-11-26 — D337. Plaisir de jeu, phase 4, lot 10 : bilan de la phase « événements aléatoires »
+
+**Contexte** : plan `docs/plans/evenements.md`, lot 10 : bilan, carnet, défis, fréquences, banc, protocole de mesure, PR.
+
+**Ce que la phase a fait** (D328 à D336) : un **directeur d'événements** (rythme selon le quartier, l'heure, le réglage « Événements » ; un grand et
+un petit au plus ; jamais avec une étoile ; deux essais par tirage) et **treize faits divers** :
+
+| Événement | Quand, où | Ce que le joueur peut faire | Prime | Décision |
+|---|---|---|---|---|
+| Vol à l'arraché | 8 h – 22 h, centre | plaquer le voleur, rendre le sac (ou le garder) | 100 – 250 € | D328 |
+| Pickpocket | 9 h – 20 h, rue animée, matins de marché ×2 | le rattraper | son argent + 50 € | D329 |
+| Chien échappé | 7 h – 20 h, quartiers, parcs | l'attraper au pas, le rendre | 60 – 120 € | D329 |
+| Accident | 6 h – minuit, ×2 sous la pluie | regarder, prendre une des voitures | — | D330 |
+| Course-poursuite | surtout le soir | percuter, plaquer le fugitif | 500 € | D331 |
+| Malaise | 7 h – 22 h, l'après-midi ×1,5 | « Aider » avant les pompiers | 80 € | D332 |
+| Rixe | 20 h – 3 h, devant un bar, ven. et sam. ×2 | « Séparer », ou s'en mêler | 50 € | D333 |
+| Conducteur énervé | après un accrochage, 1 fois sur 4 | rester calme, repartir, le frapper | — | D334 |
+| Livreur pressé | 6 h – 11 h, lun. – sam., centre | lui prendre sa camionnette | — | D334 |
+| Accident en direct | 7 h – 23 h | regarder (un choc une fois sur deux) | — | D334 |
+| Cortège de mariage | samedi 14 h – 18 h, mairie | suivre, voler la voiture des mariés | — | D335 |
+| Feu de poubelle | 19 h – 5 h, une corbeille de rue | regarder ; trop près, ça brûle | — | D335 |
+| Braquage | 19 h – 23 h, un commerce ouvert | le plaquer (il tire si on le menace) | 800 € | D336 |
+
+Et les outils communs qu'ils ont demandés : passants **réquisitionnés** et rendus à la foule, **fuite volontaire** (qui remplace aussi la
+panique), **une cible par poursuivant** dans la circulation, voitures **posées** ou **prises** à la circulation, chocs entre voitures retenus,
+figurants qui contournent les murs par le **graphe piéton**, équipe des **pompiers** et leur fourgon, bulles de parole, poses (poitrine, chute,
+genou à terre, poings, mains en l'air, applaudir), sons (sirène des pompiers, applaudissements, alarme de commerce).
+
+**Choix du lot 10**
+- **Carnet « Faits divers »** complété : sous les trois défis (voleurs rattrapés, fugitifs arrêtés, bonnes actions), une section **« Déjà vu en
+  ville · n / 13 »** : chaque sorte de fait divers, combien de fois on l'a vue, « ? » tant qu'on ne l'a pas vue (une petite collection,
+  enregistrée dans le carnet : champ facultatif `seen`, les anciennes sauvegardes se relisent). Le journal du jour reste dessous. Un braqueur
+  arrêté compte comme un voleur rattrapé.
+- **Fréquences** : **inchangées** (« Normaux » par défaut, le plan). Le plan prévoyait de les régler d'après les parties de l'utilisateur : il
+  n'y en a pas encore eu avec ces événements. C'est la première chose à juger en jouant.
+- **Banc** (`?bench=1&crowd=100&sim=1&traffic=20&events=1`) : à chaque phase, un événement est lancé à tour de rôle (à pied : vol, malaise, feu
+  de poubelle ; en voiture, avec la circulation : accident, poursuite, accident en direct), **seulement quand rien n'est en cours** (forcer passe
+  outre « un grand et un petit », et les phases du banc sont plus courtes que les événements : au premier essai, ils s'empilaient, jusqu'à dix
+  en cours et dix-huit passants réquisitionnés). Ligne « Événements » du rapport : lancés, en cours, passants réquisitionnés, coût.
+
+**Mesures (rendu logiciel, sans valeur absolue)**
+- **Endurance** (`src/game/events-soak.test.ts`, deux fois vingt minutes à « Fréquents », un mercredi matin, un samedi après-midi, un samedi
+  soir, avec la circulation, 100 passants, les vrais bars et restaurants) : **dix événements différents** ont commencé sur les deux graines (chien,
+  mariage, poursuite, vol, feu, rixe, livreur, malaise, accident en direct, braquage), 8 et 10 départs ; aucun passant oublié, 7 réquisitionnés
+  au plus ; directeur et événements **0,003 ms par image** en moyenne, **3 à 8 ms au pire** (le départ d'un grand événement, une image).
+- **Tests** : 1 639 tests, dont 49 pour la phase.
+- **Appels de dessin** : aucun événement à pied n'en ajoute (des passants) ; les voitures sont celles de la circulation ; la police et les pompiers
+  ajoutent leur modèle s'il n'était pas déjà en vue (+1 à +3). Au banc en rendu logiciel, 150 à 210 appels selon les phases en ville.
+
+**Protocole de mesure sur le téléphone** (Honor Magic 8 Pro, à faire par l'utilisateur ; reprend celui de D86) :
+1. Ouvrir `…/?bench=1&crowd=100&sim=1&traffic=20&events=1`, téléphone en paysage, rien d'autre d'ouvert, attendre la fin (environ 6 minutes) et
+   copier le rapport (bouton du rapport) : les lignes « Événements » donnent le coût par image ; le comparer à un banc **sans** `&events=1`.
+2. Jouer vingt minutes au centre avec « Événements : Fréquents », à pied puis en voiture, le jour puis le soir : noter les à-coups ressentis au
+   départ d'un événement (le pire mesuré en rendu logiciel est de 3 à 8 ms) et si un événement « disparaît » sans fin visible.
+3. Dire, pour chaque événement vu : trop fréquent, trop rare, trop long, pas lisible (le carnet « Faits divers » donne la liste de ce qu'on a vu).
+
+**Repoussé (noté dans `docs/ROADMAP.md`)** : confettis du mariage, cortège qui répond au klaxon du joueur, colis du livreur, braqueur qui monte dans
+une voiture complice, « détrousser » un malade, fourgon des pompiers qui double (il reste parfois bloqué), malaise et feu qui partagent la même
+équipe de pompiers (le malaise garde encore la sienne), pose « arme basse » en courant pour le braqueur, vraies captures de la poursuite et de
+l'accident en direct (trop rapides pour le rendu logiciel).

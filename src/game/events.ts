@@ -37,6 +37,12 @@ export interface EventsHost {
   /** Applaudissements, volée de cloches (le mariage). */
   applause(x: number, y: number, seconds: number): void;
   bells(x: number, y: number, seconds: number): void;
+  /** Un PNJ tire sur le joueur (le braqueur) : rendu du tir, son, points de vie ; son arme lâchée au sol ; l'alarme du commerce. */
+  shoot(x0: number, y0: number, x1: number, y1: number, hit: boolean, damage: number): void;
+  dropGun(x: number, y: number): void;
+  shopAlarm(x: number, y: number, seconds: number): void;
+  /** Commerces ouverts en ce moment. */
+  openShops(): readonly { x: number; y: number }[];
   /** Corbeilles de rue des tuiles chargées (le feu de poubelle). */
   bins(): readonly { x: number; y: number }[];
   /** Bars, cafés et restaurants (repère du jeu ; vide tant que la carte n'est pas chargée). */
@@ -106,10 +112,13 @@ export class EventsController {
       hurtPlayer: (n: number, x: number, y: number) => host.hurtPlayer(n, x, y),
       applause: (x: number, y: number, t: number) => host.applause(x, y, t),
       bells: (x: number, y: number, t: number) => host.bells(x, y, t),
+      shoot: (x0: number, y0: number, x1: number, y1: number, hit: boolean, damage: number) => host.shoot(x0, y0, x1, y1, hit, damage),
+      dropGun: (x: number, y: number) => host.dropGun(x, y),
+      alarm: (x: number, y: number, t: number) => host.shopAlarm(x, y, t),
       feat: (t: string) => host.feat(t),
       crime: (k: Crime, x: number, y: number) => host.crime(k, x, y),
     };
-    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), pedNav: () => host.pedNav(), bars: () => host.bars(), bins: () => host.bins(), pendingBump: () => this.pendingBump, fx };
+    const world = { peds: () => this.sim, dogs: () => (this.sim ? host.peds() : null), money: () => host.money(), traffic: () => host.traffic(), road: () => host.road(), pedNav: () => host.pedNav(), bars: () => host.bars(), bins: () => host.bins(), openShops: () => host.openShops(), pendingBump: () => this.pendingBump, fx };
     for (const def of eventCatalog(world)) this.director.register(def);
     if (forced && this.director.defOf(forced as EventKind)) this.forced = forced as EventKind;
     const cam = host.camera;

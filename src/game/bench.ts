@@ -31,6 +31,7 @@ import { showReportPanel } from "./report-panel";
 import { CombatBot } from "./combat-bot";
 import { EventDirector, type DirectorContext } from "../core/events/director";
 import { eventCatalog } from "../core/events/catalog";
+import type { EventKind } from "../core/events/types";
 import { Fx } from "../render/fx";
 import { GpuTimer } from "../render/gpu-timer";
 import type { EffectsLevel } from "../render/post";
@@ -245,12 +246,14 @@ export function startBench(ctx: GameContext): void {
   const fx = combatMode ? new Fx(scene) : null;
   let bot: CombatBot | null = null;
   let combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: 0, hits0: 0, kills0: 0 };
-  // ?events=1 (phase 4), avec ?sim=1 : les événements du jeu à « Fréquents » ; à chaque arrêt un vol à l'arraché est lancé autour du point suivi
-  // (les figurants sont des passants de la foule : 0 appel de dessin de plus).
+  // ?events=1 (phase 4), avec ?sim=1 : les événements du jeu à « Fréquents » ; à chaque phase, un événement est lancé autour du point suivi, à tour
+  // de rôle : à pied, un vol à l'arraché, un malaise, un feu de poubelle ; en voiture (avec `&traffic=`), un accident, une poursuite, un accident en
+  // direct (les figurants sont des passants de la foule, les voitures celles de la circulation).
   const eventsMode = params.get("events") === "1" && simMode;
   const director = eventsMode ? new EventDirector(7) : null;
   let eventsCost = { ms: 0, max: 0, frames: 0, peak: 0, starts0: 0 };
-  let forceVol = false, forceIn = 0;
+  let forceKind: EventKind | null = null, forceIn = 0, footK = 0, driveK = 0;
+  const FOOT_EVENTS: readonly EventKind[] = ["vol", "malaise", "feu"], DRIVE_EVENTS: readonly EventKind[] = ["accident", "poursuite", "chauffard"];
   const fleetMode = params.get("fleet") === "1";
   const fleet = fleetMode ? new Fleet(scene, ctx.colliders, terrain) : null;
   if (fleet) {
@@ -429,7 +432,7 @@ export function startBench(ctx: GameContext): void {
     policeCost = { ms: 0, max: 0, frames: 0 };
     combatCost = { ms: 0, max: 0, frames: 0, fxPeak: 0, fxFrames: 0, policeShots: 0, policeDamage: 0, shots0: bot?.shots ?? 0, hits0: bot?.hits ?? 0, kills0: bot?.kills ?? 0 };
     eventsCost = { ms: 0, max: 0, frames: 0, peak: 0, starts0: director?.starts ?? 0 };
-    forceVol = !!director && !phase.drive;
+    forceKind = !director ? null : phase.drive ? (traffic ? DRIVE_EVENTS[driveK++ % DRIVE_EVENTS.length]! : null) : FOOT_EVENTS[footK++ % FOOT_EVENTS.length]!;
     pigCost = { ms: 0, frames: 0 };
     if (simMode) {
       if (!crowd) {
@@ -445,8 +448,14 @@ export function startBench(ctx: GameContext): void {
         if (director) {
           director.level = 3;
           const sim = pedSim;
-          const fx = { say: () => {}, sayPlayer: () => {}, cry: () => {}, earn: () => {}, take: () => 0, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, applause: () => {}, bells: () => {}, feat: () => {}, crime: () => {} };
-          for (const d of eventCatalog({ peds: () => sim, fx })) director.register(d);
+          const fx = { say: () => {}, sayPlayer: () => {}, cry: () => {}, earn: () => {}, take: () => 0, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, applause: () => {}, bells: () => {}, shoot: () => {}, dropGun: () => {}, alarm: () => {}, feat: () => {}, crime: () => {} };
+          // Les corbeilles de rue des tuiles chargées (le feu de poubelle), la circulation et les graphes (accidents, poursuites, pompiers).
+          const bins = (): { x: number; y: number }[] => {
+            const out: { x: number; y: number }[] = [];
+            for (const t of ctx.tiles.loadedExtras()) for (const f of t.furniture) if (f.kind === "waste_basket") out.push({ x: f.x, y: f.y });
+            return out;
+          };
+          for (const d of eventCatalog({ peds: () => sim, fx, traffic: () => traffic, road: () => nav?.graph.road ?? null, pedNav: () => nav?.graph ?? null, bins })) director.register(d);
         }
         // Les pigeons du jeu (40 % de la foule) vivent aussi pendant le banc.
         pigSim = new PigeonSim(nav!.graph, terrain, ctx.colliders, { capacity: pigeonCapacity(crowdN), seed: 7 });
@@ -802,9 +811,11 @@ export function startBench(ctx: GameContext): void {
           hour: atmosphere.hour, weekday: 2, rain: 0, zone: pedSim.stats.zone, stars: 0, blocked: false, crowd: true, traffic: !!traffic,
         };
         // Un essai toutes les demi-secondes (comme `?event=` dans le jeu) : chercher un lieu coûte une recherche dans la foule.
-        if (forceVol && (forceIn -= dt) <= 0) {
+        // (Seulement quand rien n'est en cours : forcer passe outre « un grand et un petit au plus », et les phases du banc sont plus courtes que
+        // les événements : ils s'empilaient.)
+        if (forceKind && director.active.length === 0 && (forceIn -= dt) <= 0) {
           forceIn = 0.5;
-          if (director.force("vol", ectx)) forceVol = false;
+          if (director.force(forceKind, ectx)) forceKind = null;
         }
         director.update(ectx);
         const ed = performance.now() - e0;
@@ -865,7 +876,7 @@ export function reportText(device: Record<string, unknown>, r: Report): string {
   lines.push(`BANC DE TEST AUTUN 3D — ${new Date().toLocaleString("fr-FR")}`);
   lines.push(`Version : ${String(device["build"] ?? "")}`);
   lines.push(`Appareil : ${String(device["gpu"])} · écran ${String(device["screen"])} · densité ${String(device["devicePixelRatio"])} · ${String(device["cores"])} cœurs`);
-  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["events"] ? " · événements (un vol à chaque arrêt)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
+  lines.push(`Rendu : ${String(device["drawingBuffer"])} px (×${String(r.settings["pixelRatio"])}) · ombres ${r.settings["shadows"] ? `oui (${String(r.settings["shadowMap"])})` : "non"} · détail ${String(r.settings["detail"])} m · construction ${String(r.settings["budget"])} ms/image · ${String(r.settings["hour"])} · minimap ${r.settings["minimap"] ? "active" : "coupée"}${r.settings["fast"] ? ` · trajet rapide ${String(r.settings["fast"])} km/h` : ""}${r.settings["fleet"] ? ` · véhicules garés${r.settings["fleet"] === "dent" ? " (un sur trois abîmé)" : ""}` : ""}${r.settings["traffic"] ? ` · circulation ${String(r.settings["traffic"])}` : ""}${r.settings["police"] ? ` · police (${r.settings["combat"] ? "5 étoiles, armée" : "3 étoiles"})` : ""}${r.settings["combat"] ? " · combat (tireur au fusil d'assaut)" : ""}${r.settings["events"] ? " · événements (un à chaque phase, à tour de rôle)" : ""}${r.settings["crowd"] ? ` · foule ${String(r.settings["crowd"])}${r.settings["sim"] ? ` (${String(r.settings["sim"])})` : ""}${r.settings["soak"] ? `, endurance ${String(r.settings["soak"])} min` : ""}` : ""}`);
   lines.push(`Effets d'image : ${typeof r.settings["effects"] === "number" ? ["coupés", "couleurs", "couleurs et halo"][r.settings["effects"]] : String(r.settings["effects"])} · MSAA ×${String(r.settings["msaa"])} · minutage de la carte graphique ${r.settings["gpuTimer"] ? "disponible" : "indisponible"} · rendu MSAA dans une texture ${r.settings["msrtt"] ? "natif (WEBGL_multisampled_render_to_texture)" : "par copie"}`);
   lines.push(`Chargement initial : ${(r.loadMs / 1000).toFixed(1)} s · parcours ${String(r.settings["route"])}`);
   const still = r.phases[0]?.frames;

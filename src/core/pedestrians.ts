@@ -1571,7 +1571,14 @@ export class PedSim {
     this.borrowed[i] = 0;
     this.order[i] = ORDER.none;
     this.threatX[i] = this.threatY[i] = NaN;
+    this.state.held![i] = 0;
     if (alive[i] && this.mode[i]! < PED_STATE.stumble) this.state.pose![i] = 0;
+  }
+
+  /** Un passant réquisitionné tient un pistolet (phase 4 : le braqueur), ou plus (il l'a lâché). Rendu à la foule, il ne tient plus rien. */
+  setHeld(i: number, on: boolean): void {
+    if (i < 0 || i >= this.free || !this.borrowed[i]) return;
+    this.state.held![i] = on ? 1 : 0;
   }
 
   /** Le passant `i` est-il réquisitionné ? */
@@ -1963,6 +1970,7 @@ export class PedSim {
     this.state.alive![i] = 0;
     this.borrowed[i] = 0;
     this.order[i] = ORDER.none;
+    this.state.held![i] = 0;
     this.stats.despawns++;
   }
 

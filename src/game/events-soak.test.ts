@@ -9,6 +9,7 @@ import type { DogEscapeEvent } from "../core/events/dog-escape";
 import { SimDogs } from "../core/events/sim-dogs";
 import type { PursuitEvent } from "../core/events/pursuit";
 import type { MalaiseEvent } from "../core/events/malaise";
+import type { BraquageEvent } from "../core/events/braquage";
 import type { PickpocketEffects } from "../core/events/pickpocket";
 import type { DogEffects } from "../core/events/dog-escape";
 import { OFFICER } from "../core/officers";
@@ -69,8 +70,8 @@ function soak(seed: number, minutes: number): SoakResult {
   traffic.setPeds(peds);
   const r: SoakResult = { starts: 0, snatched: 0, caught: 0, returned: 0, escaped: 0, maxBorrowed: 0, leaked: 0, bad: 0, earned: 0, journal: 0, kinds: {}, started: {}, meanMs: 0, worstMs: 0 };
   let money = 1000;
-  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void; applause(): void; bells(): void } = {
-    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, applause: () => {}, bells: () => {}, feat: () => {}, crime: () => {},
+  const fx: PickpocketEffects & DogEffects & { honk(x: number, y: number): void; kneel(on: boolean): void; hurtPlayer(damage: number, fromX: number, fromY: number): void; applause(): void; bells(): void; shoot(): void; dropGun(): void; alarm(): void } = {
+    say: () => {}, sayPlayer: () => {}, cry: () => {}, bark: () => {}, honk: () => {}, kneel: () => {}, hurtPlayer: () => {}, applause: () => {}, bells: () => {}, shoot: () => {}, dropGun: () => {}, alarm: () => {}, feat: () => {}, crime: () => {},
     earn: (n) => {
       r.earned += n;
       money += n;
@@ -90,7 +91,7 @@ function soak(seed: number, minutes: number): SoakResult {
   const dogs = new SimDogs(peds);
   const director = new EventDirector(seed);
   director.level = 3;
-  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, pedNav: () => nav.graph, bars: () => BARS, bins: () => bins, fx })) director.register(d);
+  for (const d of eventCatalog({ peds: () => peds, dogs: () => dogs, money: () => money, traffic: () => traffic, road: () => nav.graph.road, pedNav: () => nav.graph, bars: () => BARS, bins: () => bins, openShops: () => bins, fx })) director.register(d);
   const player = { x: 0, y: -20, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 };
   let rng = seed * 7919;
   const rand = (): number => ((rng = (rng * 16807) % 2147483647) / 2147483647);
@@ -128,6 +129,12 @@ function soak(seed: number, minutes: number): SoakResult {
         [target, v] = [{ x: ml.x + 1, y: ml.y }, 5];
         ml.action(player)?.run();
       }
+    }
+    // Un braqueur en fuite à moins de 60 m : on le plaque (il tire si on arrive de face : le robot n'a pas de points de vie).
+    const bq = director.active.find((e) => e.kind === "braquage") as BraquageEvent | undefined;
+    if (!target && bq && (bq.phase === "flee" || bq.phase === "aim")) {
+      peds.position(bq.robber, q);
+      if (Math.hypot(q.x - player.x, q.y - player.y) < 60) [target, v] = [{ ...q }, 7.5];
     }
     // Un fugitif à pied à moins de 60 m : on le plaque.
     if (!target && pu && pu.phase === "foot" && pu.runner >= 0) {
@@ -236,7 +243,7 @@ function soak(seed: number, minutes: number): SoakResult {
 }
 
 describe("endurance des événements (phase 4)", () => {
-  it("vingt minutes à « Fréquents » au centre, du matin au soir : vols, pickpockets, chiens, accidents, poursuites, malaises, rixes, livreurs, chauffards, mariages, feux ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
+  it("vingt minutes à « Fréquents » au centre, du matin au soir : vols, pickpockets, chiens, accidents, poursuites, malaises, rixes, livreurs, chauffards, mariages, feux, braquages ; aucun figurant oublié, rien d'aberrant, un coût négligeable", () => {
     const sum = { starts: 0, snatched: 0, caught: 0, returned: 0, earned: 0, journal: 0, kinds: new Set<string>() };
     for (const seed of [4, 11]) {
       const r = soak(seed, 20);
@@ -257,7 +264,7 @@ describe("endurance des événements (phase 4)", () => {
       sum.journal += r.journal;
       for (const k of Object.keys(r.started)) sum.kinds.add(k);
     }
-    // Au moins sept des douze événements du catalogue ont commencé (le conducteur énervé ne vient que d'un choc du joueur en voiture ; le
+    // Au moins sept des treize événements du catalogue ont commencé (le conducteur énervé ne vient que d'un choc du joueur en voiture ; le
     // tirage en laisse d'autres de côté en 40 minutes), dont un grand.
     expect(sum.kinds.size).toBeGreaterThanOrEqual(7);
     expect(["accident", "poursuite", "malaise", "rixe"].some((k) => sum.kinds.has(k))).toBe(true);

@@ -454,6 +454,12 @@ export function peal(kit: Kit, dest: AudioNode, t: number, seconds: number, spot
   }
 }
 
+/** Alarme d'un commerce (phase 4, braquage) : deux notes aiguës qui alternent quatre fois par seconde, pendant `seconds`. */
+export function shopAlarm(kit: Kit, dest: AudioNode, t: number, seconds: number, spot: Spot): void {
+  const out = spotOut(kit, dest, spot);
+  for (let k = 0; k * 0.25 < seconds; k++) tone(kit, out, t + k * 0.25, "square", k % 2 ? 1320 : 990, k % 2 ? 1320 : 990, 0.01, 0.09, 0.005, 0.2);
+}
+
 /** Applaudissements (phase 4 : la sortie des mariés) : une petite foule qui claque des mains pendant `seconds`, plus fort au début. */
 export function applause(kit: Kit, dest: AudioNode, t: number, seconds: number, spot: Spot): void {
   const out = spotOut(kit, dest, spot);

@@ -3,7 +3,8 @@
 **Avancement** : plan rédigé le 25 novembre 2026 ; **réponses de l'utilisateur : « ok » pour toutes les réponses par défaut** (§ 9). Les lots
 se font **deux par deux**, avec une pause après chaque paire ; la PR à la fin de la phase.
 Lots 1 (socle et vol à l'arraché, D328), 2 (pickpocket et chien échappé, D329), 3 (accident, D330), 4 (poursuite police contre
-conducteur, D331), 5 (malaise et pompiers, D332), 6 (rixe, D333), 7 (conducteurs, D334) et 8 (mariage et feu de poubelle, D335) faits ; pause demandée par l'utilisateur après chaque paire.
+conducteur, D331), 5 (malaise et pompiers, D332), 6 (rixe, D333), 7 (conducteurs, D334), 8 (mariage et feu de poubelle, D335), 9 (braquage, D336, avec l'accord de l'utilisateur) et 10 (bilan, D337) faits :
+**phase terminée côté code** ; pause demandée par l'utilisateur après chaque paire.
 
 Chantier « PJ » de `docs/ROADMAP.md`, phase 4. Demande : « c'est ce qui doit rendre la ville vraiment vivante : il faut bien le travailler ».
 Conventions habituelles : repère local du jeu (x vers l'est, y vers le nord), mètres, heures de jeu (une journée dure 20 minutes réelles).

@@ -549,6 +549,25 @@ export function startGame(ctx: GameContext): void {
     bars: () => ui.bars,
     applause: (x, y, t) => audio.applause(x, y, t),
     bells: (x, y, t) => audio.bells(x, y, t),
+    // Le braqueur tire sur le joueur (phase 4) : comme un tir de gendarme (D85) : éclair, trait, son, gilet, points de vie, arc du tir reçu.
+    shoot: (x0, y0, x1, y1, hit, damage) => {
+      const z0 = terrain.heightAt(x0, y0) + 1.3;
+      fx.flash(x0, y0, z0);
+      fx.tracer(x0, y0, z0, x1, y1, hit ? player.z + 1.1 : z0);
+      audio.shot("pistol", x0, y0, false);
+      threats.add(x0, y0, player.x, player.y, hit);
+      if (hit) {
+        fx.sparks(x1, y1, player.z + 1.1, true, Math.random);
+        if (!health.dead) {
+          const v = vestAbsorb(damage * (riding ? 0.5 : 1), armor);
+          armor = v.armor;
+          health.damage(v.hurt);
+        }
+      } else audio.nearMiss(x0, y0, x1, y1, player.x, player.y);
+    },
+    dropGun: (x, y) => pickups.drop(x, y, "pistol", CACHE_ROUNDS.pistol! / 2),
+    shopAlarm: (x, y, t) => audio.shopAlarm(x, y, t),
+    openShops: () => ui.shops.filter((q) => shopOpen(q, atmosphere.calendar.weekday, atmosphere.hour)),
     // Les corbeilles de rue des tuiles chargées (cherchées seulement au lancement d'un feu de poubelle).
     bins: () => {
       const out: { x: number; y: number }[] = [];
@@ -563,7 +582,7 @@ export function startGame(ctx: GameContext): void {
     street: (x: number, y: number): string | null => streetNear(ui.streets, x, y),
   }, 13, saved?.events ? new EventBook(saved.events) : null, params.get("event"));
   /** Le joueur tel que les événements le voient (réécrit à chaque appel). */
-  const evPlayer = { x: 0, y: 0, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0 };
+  const evPlayer = { x: 0, y: 0, vx: 0, vy: 0, speed: 0, onFoot: true, yaw: 0, aiming: false };
   const evFill = (): typeof evPlayer => {
     const st = riding?.state;
     evPlayer.x = player.x;
@@ -573,6 +592,7 @@ export function startGame(ctx: GameContext): void {
     evPlayer.speed = Math.abs(speedOf());
     evPlayer.onFoot = !riding && !player.swim;
     evPlayer.yaw = yaw;
+    evPlayer.aiming = aiming;
     return evPlayer;
   };
   let discoverTimer = 0;

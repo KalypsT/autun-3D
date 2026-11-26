@@ -261,6 +261,7 @@ const OUTCOME_TEXT: Partial<Record<EventKind, Partial<Record<EventOutcome, strin
   chauffard: { grille: "un feu grillé, sans casse", choc: "un choc", constat: "un choc, constat de la gendarmerie", vole: "une des voitures a été volée", termine: "un choc, les conducteurs se disputaient encore", enfui: "un choc, un des conducteurs est parti" },
   mariage: { cortege: "le cortège est parti en klaxonnant", vole: "la voiture des mariés a été volée" },
   feu: { eteint: "éteint par les pompiers", termine: "il s'est éteint tout seul" },
+  braquage: { rattrape: "braqueur arrêté grâce à toi", enfui: "le braqueur s'est enfui", perdu: "le braqueur est mort" },
   malaise: { secouru: "secouru par toi", soigne: "soigné par les pompiers", evacue: "emmené par les pompiers", termine: "il s'est relevé", perdu: "il est mort" },
 };
 
