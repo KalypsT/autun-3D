@@ -21,7 +21,7 @@ export function startSoundGallery(): void {
     return el;
   };
   panel.append(
-    h("h1", "Sons d'Autun 3D", "margin:0 0 4px;font-size:22px;"),
+    h("h1", "Sons de Grand Theft Autun", "margin:0 0 4px;font-size:22px;"),
     h("p", "Tous les sons sont fabriqués par le navigateur, sans fichier. Appuie sur un bouton pour écouter le son jusqu'au bout.", "margin:0 0 12px;color:#5b4a3a;"),
   );
   const vol = document.createElement("input");

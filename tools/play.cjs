@@ -22,7 +22,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const state = () => page.evaluate(() => { const p = window.__autun.player; const c = window.__autun.camera(); return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), speed: +p.speed.toFixed(2), cam: [c.x, c.y, c.z].map((v) => +v.toFixed(1)) }; });
   const shot = async (name) => { await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 }); console.log("ok", `${out}/${name}.png`, JSON.stringify(await state())); };
 
-  await page.goto(`${base}?debug&dpr=1${query ? "&" + query : ""}`);
+  // ?skipintro (D338) : ni « Touche l'écran pour jouer », ni cinématique d'arrivée quand la partie est nouvelle.
+  await page.goto(`${base}?debug&dpr=1&skipintro${query ? "&" + query : ""}`);
   await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 180000 });
   await sleep(1500);
   await shot("jeu-depart");

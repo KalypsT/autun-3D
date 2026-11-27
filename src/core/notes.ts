@@ -38,7 +38,7 @@ export function noteLine(n: PlaceNote, index: number): string {
 
 /** Rapport texte (à coller dans une conversation) : une ligne par note, sans les captures. */
 export function notesText(notes: readonly PlaceNote[], version: string): string {
-  const head = `Lieux notés (${notes.length}) — Autun 3D ${version}`;
+  const head = `Lieux notés (${notes.length}) — Grand Theft Autun ${version}`;
   return [head, ...notes.map(noteLine)].join("\n");
 }
 

@@ -8468,3 +8468,66 @@ genou à terre, poings, mains en l'air, applaudir), sons (sirène des pompiers, 
 une voiture complice, « détrousser » un malade, fourgon des pompiers qui double (il reste parfois bloqué), malaise et feu qui partagent la même
 équipe de pompiers (le malaise garde encore la sienne), pose « arme basse » en courant pour le braqueur, vraies captures de la poursuite et de
 l'accident en direct (trop rapides pour le rendu logiciel).
+
+## 2026-11-26 — D338. Grand Theft Autun : nom, jaquette, écran de chargement, arrivée en train à la gare
+
+**Contexte** : plan `docs/plans/lancement.md`, demandé par l'utilisateur : nouveau nom et jaquette, écran de chargement « dans le style des GTA »,
+et une nouvelle partie qui commence à la gare d'Autun et lance l'histoire. Réponses de l'utilisateur dans le plan (§1).
+
+**Nom.** Le jeu s'appelle **Grand Theft Autun** : manifeste DomoThib (`nom`, `description`), titre de la page, crédits, page des sons, export des
+lieux notés, README. **Rien ne change dans DomoThib** : il relit `domothib.json` toutes les 30 s (jaquette gardée 5 min en cache). L'identifiant
+`autun-3d` (dossier sur l'hôte des jeux, sauvegardes du serveur), le nom du dépôt et les clés de stockage `autun3d.*` **restent** : les changer
+perdrait les parties.
+
+**Logo et jaquette** (`tools/logo/make_art.py`). « GRAND THEFT AUTUN » sur trois lignes de même hauteur, lettres blanches cernées de noir, ombre
+portée. La police des titres (Pricedown, Typodermic) ne sert qu'à **fabriquer des images** (`src/assets/logo.webp`, `public/jaquette.webp`) :
+elle n'est pas embarquée dans le jeu (pas de question de licence de police web, rien de plus à charger) et reste hors du dépôt
+(`.cache/fonts/`). Le réseau de l'environnement de travail bloque les sites de polices : en attendant le fichier, le logo est fait avec une
+police de repli (Inter Display Black) ; relancer le script avec la police suffit à tout refaire. Jaquette : capture mise en scène
+(`tools/logo/jaquette-source.webp` : le personnage face à nous devant la cathédrale, au soleil couchant, une voiture rouge à gauche), retouchée
+(contraste, chaleur, vignette), logo en haut à gauche sur la moitié de la hauteur (lisible sur une tuile de 170 px). Captures mises en scène :
+`tools/stage.cjs` (le jeu sans interface, caméra tournée autour du joueur, touches).
+
+**Écran de chargement.** Dans `index.html`, en HTML et CSS seulement : il paraît avant même le téléchargement de three.js et du jeu, et ses
+animations (`transform`, `opacity`) restent fluides pendant que le processeur construit la ville. Huit captures 1280 × 720 en WebP (≈ 50 Ko
+chacune, `src/assets/loading/`, cache d'un an grâce à l'empreinte de Vite ; `public/` reste réservé aux données) : cathédrale, visée au
+pistolet devant la mairie au crépuscule, toits, gare, mairie de nuit, Janus, Croix de la Libération, Pierre de Couhard ; refaites par
+`tools/logo/loading.sh`. 6 s par image, fondu de 0,8 s, zoom lent de 8 % vers un point choisi par image ; `prefers-reduced-motion` : fondus seuls.
+Logo en bas à gauche, avancement en bas à droite (« Le monde », « Le relief », « La ville »), erreurs au même endroit. Prêt : « Touche l'écran
+pour jouer » ; ce toucher ferme l'écran et compte comme premier geste (son, plein écran hors de DomoThib). Avant lui, le jeu attend comme en pause
+(la ville finit de se construire, l'horloge ne tourne pas). Le viewer, le banc, les paramètres de test et `?skipintro` passent l'écran.
+
+**Nouvelle partie à la gare.** Sans sauvegarde, avec `?new` ou « Nouvelle partie » : départ sur le quai 1, devant la porte de l'autorail, à
+**8 h 12** (le lundi du premier jour d'été, comme avant). Les outils (banc, galeries) et les paramètres de test gardent la place du Champ de Mars
+et 16 h ; `?intro` rejoue l'arrivée sans toucher à la sauvegarde (captures).
+
+**L'autorail et la cinématique** (`src/core/arrival.ts`, `src/render/ter-model.ts`, `src/game/arrival.ts`). Une voiture TER de 28,9 m (caisse
+blanche, bandeau bleu, vitres sombres, bouts profilés, bogies, portes coulissantes du côté du quai) suit la voie du quai 1 (sommets des rails des
+données, altitude `railAt`) : elle paraît à 140 m de son arrêt à ≈ 56 km/h, freine régulièrement 18 s et s'arrête porte arrière devant le
+passage du pavillon ; elle repart vers l'ouest 30 s après la fin de la cinématique et disparaît à 240 m. C'est un obstacle (cercles le long de la
+caisse) tant qu'elle est là. La cinématique (26,5 s ; un toucher la passe) masque l'interface et ignore les commandes, ajoute des bandes noires :
+(1) depuis le bout est du quai, au téléobjectif, le train qui approche, le logo au milieu pendant les 4 premières secondes ; (2) au ras du quai,
+le train qui passe et s'arrête ; (3) face à la porte : elle s'ouvre, le personnage descend et marche vers la gare (il marche vraiment : commandes
+simulées), carton « Autun — gare SNCF / Lundi, 8 h 12 ». Puis la main revient au joueur, caméra derrière lui ; événements remis à zéro
+(une minute de calme) ; la découverte du monument « Gare » attend la fin de la cinématique.
+
+**Prologue « Le retour »** (`src/core/story.ts`, textes réunis pour relecture). Étapes `arrivee`, `rejoindre`, `fin`, enregistrées dans la
+sauvegarde (champ facultatif `story` de la version 6 : pas de changement de version). 8 s après la cinématique (après la fiche de la gare) : SMS de
+Jojo, objectif « Rejoins Jojo au café du Champ de Mars. », repère posé avec son itinéraire (D310). Jojo attend sur le trottoir devant le Commerce
+(à 2,2 m de la façade), se tourne vers le joueur qui approche ; à 4,5 m : le SMS et l'objectif s'effacent, trois répliques en bulles, puis le
+bandeau « Prologue terminé — La suite au prochain épisode », et Jojo s'en va 20 s plus tard. Une partie reprise à l'étape `rejoindre` (ou
+enregistrée pendant la cinématique) retrouve l'objectif et le repère, sans SMS ; une sauvegarde sans `story` (partie d'avant) est un prologue
+terminé.
+
+**Pas encore** : la police Pricedown (logo et jaquette provisoires) ; le TER qui circule (il pourra reprendre ce modèle) ; musique du chargement ;
+Jojo n'a pas d'animation de repos ni de geste en parlant ; les missions qui suivent le prologue.
+
+## 2026-11-26 — D339. Police du titre : Anton (remplace la police de repli de D338)
+
+**Contexte** : D338 prévoyait la police des titres de GTA (Pricedown) ; elle est payante. L'utilisateur a choisi parmi huit polices libres
+rendues avec le logo (Bangers, Luckiest Guy, Titan One, Bowlby One, Lilita One, Rubik Mono One, Anton, Ultra).
+
+**Choix** : **Anton** (Google Fonts, SIL Open Font License 1.1). Le fichier et sa licence sont dans le dépôt (`tools/logo/fonts/anton.woff`,
+`OFL-anton.txt`, ce que la licence permet) : `python3 tools/logo/make_art.py` refait logo et jaquette sans rien télécharger. Comme avant, la
+police ne sert qu'à fabriquer les images ; elle n'est pas embarquée dans le jeu. Plus étroite que la police de repli, elle laisse voir la
+flèche de la cathédrale sur la jaquette.

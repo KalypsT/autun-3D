@@ -10,6 +10,7 @@ import { parseChallenges, type SavedChallenges } from "./challenges";
 import { parseNotebook, type SavedNotebook } from "./collections";
 import { parseEventBook, type SavedEventBook } from "./events/book";
 import { parseOwned, type OwnedVehicle } from "./owned";
+import { parseStory, type SavedStory } from "./story";
 
 /**
  * Version 2 (D50) : un véhicule est enregistré par son modèle du catalogue (`model`) et non plus par son type (`kind`).
@@ -83,6 +84,8 @@ export interface SaveGame {
   events?: SavedEventBook;
   /** Points du gilet pare-balles (D327), 1 à 100 ; absent sans gilet. */
   armor?: number;
+  /** Histoire (D338) : étape du prologue ; absente avant (partie d'avant l'histoire : prologue considéré comme terminé). */
+  story?: SavedStory;
 }
 
 /** Ce que l'on utilise du stockage du navigateur (`localStorage`) ; un double sert aux tests. */
@@ -177,6 +180,7 @@ export function parseSave(text: string | null): SaveGame | null {
   const challenges = version === SAVE_VERSION ? parseChallenges(r["challenges"]) : null;
   const garage = version === SAVE_VERSION ? parseOwned(r["garage"]) : null;
   const events = version === SAVE_VERSION ? parseEventBook(r["events"]) : null;
+  const story = version === SAVE_VERSION ? parseStory(r["story"]) : null;
   return {
     version: SAVE_VERSION,
     savedAt: finite(r["savedAt"]) ? r["savedAt"] : 0,
@@ -198,6 +202,7 @@ export function parseSave(text: string | null): SaveGame | null {
     ...(garage?.length ? { garage } : {}),
     ...(events ? { events } : {}),
     ...(version === SAVE_VERSION && finite(r["armor"]) && r["armor"] >= 1 ? { armor: Math.min(Math.round(r["armor"]), 100) } : {}),
+    ...(story ? { story } : {}),
   };
 }
 

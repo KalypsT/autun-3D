@@ -92,6 +92,7 @@ import { VehicleLights } from "../render/vehicle-lights";
 import { SchoolGate } from "./school-gate";
 import { PassageGates } from "./passage-gate";
 import { TouristTrain, TRAIN_CLEAR, type TrainEnv } from "./tourist-train";
+import { ArrivalController } from "./arrival";
 
 export { gameSpawn } from "./start";
 const STEP = 1 / 60;
@@ -151,7 +152,7 @@ export function startGame(ctx: GameContext): void {
     const g = surface.heightAt(x, y, z);
     return z - g > 0.5 ? z : g;
   };
-  const spawn = ctx.start ?? { ...gameSpawn(params), save: null, noSave: true };
+  const spawn = ctx.start ?? { ...gameSpawn(params), save: null, noSave: true, intro: false };
   const startYaw = spawn.yaw;
   const saved = spawn.save;
   // La sauvegarde ne garde que x et y : un point dans l'emprise d'un bâtiment est sur son toit (D215), d'où la surface la plus haute.
@@ -1560,8 +1561,18 @@ export function startGame(ctx: GameContext): void {
   };
 
   const facing = (): number => (riding ? riding.state.heading : player.heading);
+  // Arrivée à la gare et prologue « Le retour » (D338) : cinématique d'une nouvelle partie, SMS, objectif, Jojo.
+  const arrival = new ArrivalController({
+    scene, colliders, terrain,
+    setWaypoint: (at) => ui.setWaypoint(at),
+    banner: (title, sub) => banner(title, sub, false),
+    save: () => void ui.save(),
+    player: () => ({ x: player.x, y: player.y, z: player.z }),
+    when: () => ({ weekday: atmosphere.calendar.weekday, hour: atmosphere.hour }),
+  }, saved?.story ?? null, spawn.intro);
   const ui = new UiBridge(ctx, controls, fleet, spawn.noSave ? null : new SaveStore(ctx.storage), () => ({
     x: player.x, y: player.y, z: player.z, facing: facing(), yaw, pitch, ridingId: riding ? riding.id : null, lastId: lastRidden ? lastRidden.id : null, health: health.hp, arms: inventory.toSave(), money: wallet.balance, book: notebook.toSave(), challenges: challenges.toSave(), garage: owned.toSave(), armor: Math.round(armor), events: events.book.toSave(),
+    story: arrival.story.toSave(),
   }), saved, {
     get: () => appearance,
     set: (r) => {
@@ -1660,6 +1671,18 @@ export function startGame(ctx: GameContext): void {
   const schedule = (): void => {
     rafId = requestAnimationFrame(frame);
   };
+  /** La partie a commencé : l'écran de chargement est fermé (D338). Le toucher qui le ferme est un geste : plein écran hors de DomoThib. */
+  let begun = false;
+  void ctx.started.then(() => {
+    begun = true;
+    last = performance.now();
+    enterFullscreen();
+    // Nouvelle partie : la cinématique de l'arrivée commence, la ville est calme (ni événement ni police).
+    if (spawn.intro) events.reset();
+    arrival.begin();
+    // `?skipintro` (captures, outils) : ni écran de chargement à toucher, ni cinématique ; le joueur est déjà sur le quai.
+    if (params.has("skipintro")) arrival.skip();
+  });
   const frame = (now: number): void => {
     // Limite d'images par seconde (D221) : un appel arrivé trop tôt est sauté, sans rien simuler ni dessiner.
     if (!limiter.ready(now, settings.values.fps)) {
@@ -1670,8 +1693,9 @@ export function startGame(ctx: GameContext): void {
     const realDt = Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     const input = controls.poll();
-    audioSys.setPaused(ui.paused);
-    if (ui.paused) {
+    audioSys.setPaused(ui.paused || !begun);
+    // Avant le toucher de l'écran de chargement (D338), le jeu attend comme en pause : la ville finit de se construire, rien ne bouge.
+    if (ui.paused || !begun) {
       // Pause : ni simulation ni horloge. Le chargement des tuiles continue, et l'image se rafraîchit à 4 Hz
       // (ou tout de suite quand un réglage change) : rien ne bouge, mais l'aperçu des réglages reste vrai.
       pausedRender += realDt;
@@ -1690,6 +1714,25 @@ export function startGame(ctx: GameContext): void {
     }
     // Temps du jeu (D311) : ralenti pendant un grand saut, figé un instant quand un coup porte. Tout ce qui suit avance de `dt`.
     const dt = realDt * timeScale.update(realDt, jumps.slowmo);
+    // Cinématique de l'arrivée (D338) : commandes ignorées ; le personnage descend du train et marche vers la gare tout seul.
+    arrival.update(dt);
+    if (arrival.cinematic) {
+      for (const k of Object.keys(input) as (keyof typeof input)[]) {
+        const v = input[k];
+        (input as unknown as Record<string, unknown>)[k] = typeof v === "number" ? 0 : typeof v === "boolean" ? false : v;
+      }
+      if (arrival.walking) {
+        yaw = arrival.walkHeading;
+        input.forward = 0.55;
+      }
+    }
+    if (arrival.skipped) {
+      arrival.skipped = false;
+      player.x = arrival.walkEnd[0];
+      player.y = arrival.walkEnd[1];
+      player.z = footZ(player.x, player.y, player.z);
+      player.heading = yaw = arrival.walkHeading;
+    }
     lastDt = dt;
     lastRealDt = realDt;
     records.update(realDt);
@@ -1917,6 +1960,7 @@ export function startGame(ctx: GameContext): void {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
+    arrival.placeCamera(camera);
     const lines = riding ? speedLines(speed) : 0;
     if (lines > 0.01 || speedLinesOn) {
       speedLinesOn = lines > 0.01;
@@ -2169,7 +2213,7 @@ export function startGame(ctx: GameContext): void {
       const moveRel = player.speed > 0.3 && weapon.kind === "gun" && (aiming || gun.aim > 0) ? angleDelta(player.heading, Math.atan2(player.vx, player.vy)) : 0;
       model.update(player.x, player.y, player.z, player.heading, player.stride, player.speed, moveRel);
       // Dans la lunette, la caméra est dans la tête : le personnage est caché.
-      model.group.visible = camDist > 0.9 && scopeB < 0.5;
+      model.group.visible = camDist > 0.9 && scopeB < 0.5 && !arrival.playerHidden;
       if (stepCrossed(lastPhase, model.phase) && (player.swim ? player.speed > 0.2 : player.speed > 0.3)) {
         if (player.swim) audio.stroke();
         else audio.footstep(player.speed > 3, footingNow());
@@ -2200,7 +2244,7 @@ export function startGame(ctx: GameContext): void {
     tickOwned(dt);
     // Carnet (D319) : découvertes, quatre fois par seconde, à pied ou en véhicule (vivant).
     discoverTimer -= dt;
-    if (discoverTimer <= 0 && !health.dead) {
+    if (discoverTimer <= 0 && !health.dead && !arrival.cinematic) {
       discoverTimer = 0.25;
       const at = riding ? riding.state : player;
       const found = notebook.check(at.x, at.y, at.z, atmosphere.date);
@@ -2400,6 +2444,7 @@ export function startGame(ctx: GameContext): void {
     placeSun(player.x, player.y, player.z);
     sky.position.copy(camera.position);
     ui.tick(dt, now / 1000);
+    arrival.drawBubbles(camera, window.innerWidth, window.innerHeight, dt);
 
     ctx.post.render(scene, camera);
     meter.tick(dt);
@@ -2453,6 +2498,8 @@ export function startGame(ctx: GameContext): void {
     animals: () => animals.counts(),
     /** Essais et captures : les événements (phase 4). */
     events,
+    /** Essais et captures : l'arrivée à la gare et le prologue (D338). */
+    arrival,
     riding: () => riding,
     peds: () => {
       const p = peds as PedsController | null;

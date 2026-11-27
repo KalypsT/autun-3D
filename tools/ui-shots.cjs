@@ -21,7 +21,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     page.on("pageerror", (e) => { errors.push(e.message); console.log("pageerror:", e.message); });
     if (init) await page.addInitScript(init);
     cdp = await ctx.newCDPSession(page);
-    await page.goto(`${base}?${free ? "" : "dpr=1&"}${query}`);
+    // ?skipintro (D338) : ni « Touche l'écran pour jouer », ni cinématique d'arrivée quand la partie est nouvelle.
+    await page.goto(`${base}?skipintro&${free ? "" : "dpr=1&"}${query}`);
     await page.waitForFunction(() => window.__autun && window.__autun.ready, null, { timeout: 240000 });
     await page.waitForFunction(() => document.getElementById("clock").textContent !== "--:--" && window.__autun.ui.minimap.cost.calls > 2, null, { timeout: 240000 });
     return ctx;

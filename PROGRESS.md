@@ -2434,3 +2434,22 @@ Cadrage (D91) après ta balade : bâtiments non reconnaissables, ponts et riviè
 - **À faire de ton côté** (protocole dans D337) : le banc `?bench=1&crowd=100&sim=1&traffic=20&events=1` sur le téléphone (et sans `&events=1` pour comparer), puis vingt minutes de jeu avec « Événements : Fréquents ».
 - Pour essayer le braquage : `?event=braquage&h=20`.
 ![Braquage : le commerçant crie « Au voleur ! Il a une arme ! » (le braqueur, lui, est caché derrière le personnage sur cette capture)](docs/captures/pj4-braquage.jpg)
+
+**Grand Theft Autun : nom, jaquette, écran de chargement, arrivée en train (26 novembre 2026)** (D338, plan `docs/plans/lancement.md`)
+- Le jeu s'appelle **Grand Theft Autun** (DomoThib le lit dans `domothib.json` : rien à changer de son côté ; l'identifiant `autun-3d` et les sauvegardes restent).
+- **Logo et jaquette provisoires** : faits avec une police de repli, la police des titres de GTA (Pricedown) n'étant pas téléchargeable d'ici. Dépose le fichier dans `.cache/fonts/` et lance `python3 tools/logo/make_art.py` : logo et jaquette sont refaits.
+- **Écran de chargement** : huit captures du jeu qui défilent (zoom lent, fondu), le logo, l'avancement, puis « Touche l'écran pour jouer ».
+- **Nouvelle partie** : à la gare, 8 h 12. Un autorail TER entre en gare, s'arrête le long du quai 1, le personnage descend (cinématique de 26 s, un toucher la passe). Puis le prologue « Le retour » : SMS de Jojo, objectif, repère jusqu'au café du Champ de Mars, trois répliques, « Prologue terminé ». La partie en cours reprend directement, comme avant.
+- Textes du prologue à relire dans `src/core/story.ts`.
+- À faire de ton côté : fournir la police ; lancer une nouvelle partie sur le téléphone (chargement, cinématique, marche jusqu'à Jojo) ; dire si le rythme des plans et les textes te vont.
+![Chargement](docs/captures/d338-chargement.jpg)
+![Touche l'écran](docs/captures/d338-touche-pour-jouer.jpg)
+![Le train approche](docs/captures/d338-intro-train.jpg)
+![Le train passe](docs/captures/d338-intro-quai.jpg)
+![La descente](docs/captures/d338-intro-descente.jpg)
+![SMS de Jojo](docs/captures/d338-sms-jojo.jpg)
+![Prologue terminé](docs/captures/d338-prologue-fin.jpg)
+
+**Police du titre : Anton (26 novembre 2026)** (D339)
+- Pricedown étant payante, le logo et la jaquette sont faits avec **Anton**, police libre que tu as choisie parmi huit. Le fichier est dans le dépôt : `python3 tools/logo/make_art.py` refait tout.
+![Jaquette et logo](docs/captures/d339-intro-logo.jpg)
